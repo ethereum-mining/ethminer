@@ -1597,7 +1597,7 @@ void Main::on_destination_currentTextChanged()
 //	updateFee();
 }
 
-static shh::Topic topicFromText(QString _s)
+static shh::FullTopic topicFromText(QString _s)
 {
 	shh::BuildTopic ret;
 	while (_s.size())

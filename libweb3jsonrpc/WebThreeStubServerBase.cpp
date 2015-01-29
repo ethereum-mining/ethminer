@@ -571,18 +571,21 @@ Json::Value WebThreeStubServerBase::shh_changed(int const& _id)
 	if (!pub || m_ids.count(pub))
 		for (h256 const& h: face()->checkWatch(_id))
 		{
-			face()->watchFilter(_id).topics();
 			auto e = face()->envelope(h);
 			shh::Message m;
 			if (pub)
 			{
 				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
-				m = e.open(m_ids[pub]);
+				m = e.open(m_ids[pub], shh::NotPublic);
 				if (!m)
 					continue;
 			}
 			else
-				m = e.open();
+			{
+				unsigned i = 0;
+				for (; i < face()->getFilter(_id).size() && !face()->getFilter(_id)[i]; ++i) {}
+				m = e.open(face()->getFilter(_id)[i], i);
+			}
 			ret.append(toJson(h, e, m));
 		}
 	
