@@ -85,13 +85,15 @@ enum /*Message Flags*/
 	ContainsSignature = 1
 };
 
+static const unsigned NotPublic = (unsigned)-1;
+
 /// An (unencrypted) message, constructed from the combination of an Envelope, and, potentially,
 /// a Secret key to decrypt the Message.
 class Message
 {
 public:
 	Message() {}
-	Message(Envelope const& _e, Secret const& _s = Secret(), unsigned _topicIndex = (unsigned)-1);
+	Message(Envelope const& _e, Secret const& _s, unsigned _topicIndex);
 	Message(bytes const& _payload): m_payload(_payload) {}
 	Message(bytesConstRef _payload): m_payload(_payload.toBytes()) {}
 	Message(bytes&& _payload) { std::swap(_payload, m_payload); }

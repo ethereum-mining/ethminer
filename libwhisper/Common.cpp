@@ -37,15 +37,6 @@ Topic BuildTopic::toTopic() const
 	return ret;
 }
 
-FullTopic BuildTopic::toFullTopic() const
-{
-	FullTopic ret;
-	ret.reserve(m_parts.size());
-	for (auto const& h: m_parts)
-		ret.push_back(h);
-	return ret;
-}
-
 BuildTopic& BuildTopic::shiftBytes(bytes const& _b)
 {
 	m_parts.push_back(dev::sha3(_b));
