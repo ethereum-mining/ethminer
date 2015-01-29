@@ -16,7 +16,7 @@ public:
 	ExecutionEngine(ExecutionEngine const&) = delete;
 	void operator=(ExecutionEngine) = delete;
 
-	EXPORT ReturnCode run(bytes const& _code, RuntimeData* _data, Env* _env);
+	EXPORT ReturnCode run(RuntimeData* _data, Env* _env);
 
 	/// Reference to returned data (RETURN opcode used)
 	bytes_ref returnData;

@@ -53,7 +53,7 @@ public:
 	/// Basic block name prefix. The rest is instruction index.
 	static const char* NamePrefix;
 
-	explicit BasicBlock(bytes::const_iterator _begin, bytes::const_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
+	explicit BasicBlock(code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
 	explicit BasicBlock(std::string _name, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
 
 	BasicBlock(const BasicBlock&) = delete;
@@ -61,8 +61,8 @@ public:
 
 	llvm::BasicBlock* llvm() { return m_llvmBB; }
 
-	bytes::const_iterator begin() { return m_begin; }
-	bytes::const_iterator end() { return m_end; }
+	code_iterator begin() { return m_begin; }
+	code_iterator end() { return m_end; }
 
 	bool isJumpDest() const { return m_isJumpDest; }
 
@@ -84,8 +84,8 @@ public:
 	void dump(std::ostream& os, bool _dotOutput = false);
 
 private:
-	bytes::const_iterator const m_begin;
-	bytes::const_iterator const m_end;
+	code_iterator const m_begin = {};
+	code_iterator const m_end = {};
 
 	llvm::BasicBlock* const m_llvmBB;
 
