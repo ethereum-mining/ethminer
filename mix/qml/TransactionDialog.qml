@@ -21,10 +21,12 @@ Window {
 	property var itemParams;
 	property bool isConstructorTransaction;
 	property bool useTransactionDefaultValue: false
+	property var qType;
 
 	signal accepted;
 
 	function open(index, item) {
+		qType = [];
 		rowFunction.visible = !useTransactionDefaultValue;
 		rowValue.visible = !useTransactionDefaultValue;
 		rowGas.visible = !useTransactionDefaultValue;
@@ -39,8 +41,8 @@ Window {
 		rowFunction.visible = !item.executeConstructor;
 
 		itemParams = item.parameters !== undefined ? item.parameters : {};
-		console.log("opening ...");
-		console.log(JSON.stringify(itemParams));
+		console.log("save parameters : ");
+		console.log(JSON.stringify(item.qType));
 		functionsModel.clear();
 		var functionIndex = -1;
 		var functions = codeModel.code.contract.functions;
@@ -70,8 +72,6 @@ Window {
 	}
 
 	function loadParameters() {
-		console.log("opening3 ...");
-		console.log(JSON.stringify(itemParams));
 		if (!paramsModel)
 			return;
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
@@ -81,8 +81,7 @@ Window {
 				var pname = parameters[p].name;
 				var varComponent;
 				var type = parameters[p].type;
-				console.log("type : " + type);
-				console.log("name : " + pname);
+
 				if (type.indexOf("int") !== -1)
 					varComponent = Qt.createComponent("qrc:/qml/QIntType.qml");
 				else if (type.indexOf("real") !== -1)
@@ -91,14 +90,16 @@ Window {
 					varComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
 				else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
 					varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
-				var param = varComponent.createObject(modalTransactionDialog);
-				var value = itemParams[pname] !== undefined ? itemParams[pname].value : "";
+				else if (type.indexOf("bool") !== -1)
+					varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
 
-				console.log("loading parameters");
-				console.log(JSON.stringify(itemParams));
+				var param = varComponent.createObject(modalTransactionDialog);
+				var value = itemParams[pname] !== undefined ? itemParams[pname] : "";
+
 				param.setValue(value);
 				param.setDeclaration(parameters[p]);
-				paramsModel.append({ internalValue: param, name: pname, type: parameters[p].type, value: itemParams[pname] !== undefined ? itemParams[pname].value : "" });
+				qType.push({ name: pname, value: param });
+				paramsModel.append({ name: pname, type: parameters[p].type, value: value });
 			}
 		}
 	}
@@ -106,6 +107,15 @@ Window {
 	function close()
 	{
 		visible = false;
+	}
+
+	function getqTypeParam(name)
+	{
+		for (var k in qType)
+		{
+			if (qType[k].name === name)
+				return qType[k].value;
+		}
 	}
 
 	function getItem()
@@ -132,18 +142,15 @@ Window {
 		if (isConstructorTransaction)
 			item.functionId = qsTr("Constructor");
 
+		var orderedQType = [];
 		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
 			var parameter = transactionDialog.transactionParams.get(p);
-			//var intComponent = Qt.createComponent("qrc:/qml/BigIntValue.qml");
-			//var param = intComponent.createObject(modalTransactionDialog);
-			//param.setValue(parameter.value);
-			//parameter.internalValue.setValue(parameter.value);
-			console.log("onget");
-			console.log(JSON.stringify(parameter));
-			item.parameters[parameter.name] = parameter;
+			getqTypeParam(parameter.name).setValue(parameter.value);
+			orderedQType.push(getqTypeParam(parameter.name));
+			item.parameters[parameter.name] = parameter.value;
 		}
-		console.log("return item");
-		console.log(JSON.stringify(item));
+		console.log(JSON.stringify(qType));
+		item.qType = orderedQType;
 		return item;
 	}
 
@@ -247,7 +254,6 @@ Window {
 			TableView {
 				model: paramsModel
 				Layout.fillWidth: true
-
 				TableViewColumn {
 					role: "name"
 					title: "Name"
@@ -264,7 +270,13 @@ Window {
 					width: 120
 				}
 
-				itemDelegate: {
+				rowDelegate:
+				{
+					return rowDelegate
+				}
+
+				itemDelegate:
+				{
 					return editableDelegate;
 				}
 			}
@@ -295,19 +307,15 @@ Window {
 	}
 
 	Component {
+		id: rowDelegate
+		Item {
+			height: 100
+		}
+	}
+
+	Component {
 		id: editableDelegate
 		Item {
-
-			Text {
-				width: parent.width
-				anchors.margins: 4
-				anchors.left: parent.left
-				anchors.verticalCenter: parent.verticalCenter
-				elide: styleData.elideMode
-				text: styleData.value !== undefined ? styleData.value : ""
-				color: styleData.textColor
-				visible: !styleData.selected
-			}
 			Loader {
 				id: loaderEditor
 				anchors.fill: parent
@@ -319,11 +327,73 @@ Window {
 							paramsModel.setProperty(styleData.row, styleData.role, loaderEditor.item.text);
 					}
 				}
-				sourceComponent: (styleData.selected) ? editor : null
+
+				sourceComponent:
+				{
+					if (styleData.role === "value")
+					{
+						if (paramsModel.get(styleData.row) === 'undefined')
+							return null;
+						if (paramsModel.get(styleData.row).type.indexOf("int") !== -1)
+							return intViewComp;
+						else if (paramsModel.get(styleData.row).type.indexOf("bool") !== -1)
+							return boolViewComp;
+						else if (paramsModel.get(styleData.row).type.indexOf("string") !== -1)
+							return stringViewComp;
+						else if (paramsModel.get(styleData.row).type.indexOf("hash") !== -1)
+							return hashViewComp;
+					}
+					else
+						return editor;
+				}
+
+				Component
+				{
+					id: intViewComp
+					QIntTypeView
+					{
+						id: intView
+						text: styleData.value
+					}
+				}
+
+
+				Component
+				{
+					id: boolViewComp
+					QBoolTypeView
+					{
+						id: boolView
+						text: styleData.value
+					}
+				}
+
+				Component
+				{
+					id: stringViewComp
+					QStringTypeView
+					{
+						id: stringView
+						text: styleData.value
+					}
+				}
+
+
+				Component
+				{
+					id: hashViewComp
+					QHashTypeView
+					{
+						id: hashView
+						text: styleData.value
+					}
+				}
+
 				Component {
 					id: editor
 					TextInput {
 						id: textinput
+						readOnly: true
 						color: styleData.textColor
 						text: styleData.value
 						MouseArea {

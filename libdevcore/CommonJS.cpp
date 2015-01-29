@@ -45,11 +45,30 @@ bytes padded(bytes _b, unsigned _l)
 	return asBytes(asString(_b).substr(_b.size() - std::max(_l, _l)));
 }
 
+bytes paddedRight(bytes _b, unsigned _l)
+{
+	while (_b.size() < _l)
+		_b.insert(_b.end(), 0);
+	return asBytes(asString(_b).substr(_b.size() - std::max(_l, _l)));
+}
+
 bytes unpadded(bytes _b)
 {
 	auto p = asString(_b).find_last_not_of((char)0);
 	_b.resize(p == std::string::npos ? 0 : (p + 1));
 	return _b;
+}
+
+std::string unpadRight(std::string _b)
+{
+	while (true)
+	{
+		auto p = _b.find_last_of("0");
+		if (p == _b.size() - 1)
+			_b = _b.substr(0, _b.size() - 1);
+		else
+			return _b;
+	}
 }
 
 std::string unpadLeft(std::string _b)

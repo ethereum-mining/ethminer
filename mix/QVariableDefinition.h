@@ -22,6 +22,7 @@
 #pragma once
 
 #include <QAbstractListModel>
+#include "QBigInt.h"
 #include "QVariableDeclaration.h"
 
 namespace dev
@@ -48,7 +49,6 @@ public:
 	Q_INVOKABLE void setDeclaration(QVariableDeclaration* _dec) { m_dec = _dec; }
 	virtual bytes encodeValue() = 0;
 	virtual void decodeValue(std::string const& _rawValue) = 0;
-	virtual int length() = 0;
 
 private:
 	QString m_value;
@@ -82,7 +82,7 @@ public:
 	QIntType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
 	void decodeValue(std::string const& _rawValue) override;
-	int length() override;
+	QBigInt* toBigInt() { return new QBigInt(value()); }
 };
 
 class QRealType: public QVariableDefinition
@@ -94,7 +94,6 @@ public:
 	QRealType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
 	void decodeValue(std::string const& _rawValue) override;
-	int length() override;
 };
 
 class QStringType: public QVariableDefinition
@@ -106,7 +105,6 @@ public:
 	QStringType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
 	void decodeValue(std::string const& _rawValue) override;
-	int length() override;
 };
 
 class QHashType: public QVariableDefinition
@@ -118,7 +116,6 @@ public:
 	QHashType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
 	void decodeValue(std::string const& _rawValue) override;
-	int length() override;
 };
 
 class QBoolType: public QVariableDefinition
@@ -130,13 +127,12 @@ public:
 	QBoolType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
 	void decodeValue(std::string const& _rawValue) override;
-	int length() override;
+	bool toBool() { return value() != "0"; }
 };
 
 }
 }
 
-//Q_DECLARE_METATYPE(dev::mix::QVariableDefinition*)
 Q_DECLARE_METATYPE(dev::mix::QIntType*)
 Q_DECLARE_METATYPE(dev::mix::QStringType*)
 Q_DECLARE_METATYPE(dev::mix::QHashType*)

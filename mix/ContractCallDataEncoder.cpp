@@ -35,6 +35,7 @@ using namespace dev::mix;
 
 bytes ContractCallDataEncoder::encodedData()
 {
+	qDebug() << " encoded data " << QString::fromStdString(toJS(m_encodedData));
 	return m_encodedData;
 }
 
@@ -62,96 +63,16 @@ QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDecla
 			def = new QIntType(dec, QString());
 		else if (dec->type().contains("real"))
 			def = new QRealType(dec, QString());
+		else if (dec->type().contains("bool"))
+			def = new QBoolType(dec, QString());
 		else if (dec->type().contains("string") || dec->type().contains("text"))
 			def = new QStringType(dec, QString());
 		else if (dec->type().contains("hash") || dec->type().contains("address"))
 			def = new QHashType(dec, QString());
-
 		def->decodeValue(returnValue);
 		r.push_back(def);
-		returnValue = returnValue.substr(def->length(), returnValue.length() - 1);
-
-		/*QStringList tLength = typeLength(dec->type());
-
-		QRegExp intTest("(uint|int|hash|address)");
-		QRegExp stringTest("(string|text)");
-		QRegExp realTest("(real|ureal)");
-		if (intTest.indexIn(dec->type()) != -1)
-		{
-			std::string rawParam = returnValue.substr(0, (tLength.first().toInt() / 8) * 2);
-			QString value = resolveNumber(QString::fromStdString(rawParam));
-			r.append(new QVariableDefinition(dec, value));
-			returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
-		}
-		else if (dec->type() == "bool")
-		{
-			std::string rawParam = returnValue.substr(0, 2);
-			std::string unpadded = unpadLeft(rawParam);
-			r.append(new QVariableDefinition(dec, QString::fromStdString(unpadded)));
-			returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
-		}
-		else if (stringTest.indexIn(dec->type()) != -1)
-		{
-			if (tLength.length() == 0)
-			{
-				QString strLength = QString::fromStdString(returnValue.substr(0, 2));
-				returnValue = returnValue.substr(2, returnValue.length() - 1);
-				QString strValue = QString::fromStdString(returnValue.substr(0, strLength.toInt()));
-				r.append(new QVariableDefinition(dec, strValue));
-				returnValue = returnValue.substr(strValue.length(), returnValue.length() - 1);
-			}
-			else
-			{
-				std::string rawParam = returnValue.substr(0, (tLength.first().toInt() / 8) * 2);
-				r.append(new QVariableDefinition(dec, QString::fromStdString(rawParam)));
-				returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
-			}
-		}
-		else if (realTest.indexIn(dec->type()) != -1)
-		{
-			QString value;
-			for (QString str: tLength)
-			{
-				std::string rawParam = returnValue.substr(0, (str.toInt() / 8) * 2);
-				QString value = resolveNumber(QString::fromStdString(rawParam));
-				value += value + "x";
-				returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
-			}
-			r.append(new QVariableDefinition(dec, value));
-		}*/
+		returnValue = returnValue.substr(32 * 2, returnValue.length() - 1);
+		qDebug() << "decoded return value : " << dec->type() << " " << def->value();
 	}
 	return r;
-}
-
-QString ContractCallDataEncoder::resolveNumber(QString const& _rawParam)
-{
-	std::string unPadded = unpadLeft(_rawParam.toStdString());
-	int x = std::stol(unPadded, nullptr, 16);
-	std::stringstream ss;
-	ss << std::dec << x;
-	return QString::fromStdString(ss.str());
-}
-
-QString ContractCallDataEncoder::convertToReadable(std::string _v, QVariableDeclaration* _dec)
-{
-	if (_dec->type().indexOf("int") != -1)
-		return convertToInt(_v);
-	else if (_dec->type().indexOf("bool") != -1)
-		return convertToBool(_v);
-	else
-		return QString::fromStdString(_v);
-}
-
-QString ContractCallDataEncoder::convertToBool(std::string _v)
-{
-	return _v == "1" ? "true" : "false";
-}
-
-QString ContractCallDataEncoder::convertToInt(std::string _v)
-{
-	//TO DO to be improve to manage all int, uint size (128, 256, ...) in ethereum QML types task #612.
-	int x = std::stol(_v, nullptr, 16);
-	std::stringstream ss;
-	ss << std::dec << x;
-	return QString::fromStdString(ss.str());
 }
