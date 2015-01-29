@@ -44,12 +44,12 @@ void ContractCallDataEncoder::encode(QFunctionDefinition const* _function)
 	m_encodedData.insert(m_encodedData.end(), hash.begin(), hash.end());
 }
 
-void ContractCallDataEncoder::push(bytes _b)
+void ContractCallDataEncoder::push(bytes const& _b)
 {
 	m_encodedData.insert(m_encodedData.end(), _b.begin(), _b.end());
 }
 
-QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> _returnParameters, bytes _value)
+QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& _returnParameters, bytes const& _value)
 {
 	QList<QVariableDefinition*> r;
 	std::string returnValue = toJS(_value);
