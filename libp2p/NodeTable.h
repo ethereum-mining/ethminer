@@ -272,7 +272,7 @@ struct PingNode: RLPXDatagram<PingNode>
 	PingNode(bi::udp::endpoint _ep): RLPXDatagram<PingNode>(_ep) {}
 	PingNode(bi::udp::endpoint _ep, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram<PingNode>(_ep), ipAddress(_src), port(_srcPort), expiration(futureFromEpoch(_expiration)) {}
 
-	uint8_t packetType() { return 1; }
+	static const uint8_t type = 1;
 	
 	unsigned version = 1;
 	std::string ipAddress;
@@ -294,7 +294,8 @@ struct Pong: RLPXDatagram<Pong>
 {
 	Pong(bi::udp::endpoint _ep): RLPXDatagram<Pong>(_ep), expiration(futureFromEpoch(std::chrono::seconds(60))) {}
 
-	uint8_t packetType() { return 2; }
+	static const uint8_t type = 2;
+
 	h256 echo;				///< MCD of PingNode
 	unsigned expiration;
 	
@@ -319,8 +320,9 @@ struct FindNode: RLPXDatagram<FindNode>
 {
 	FindNode(bi::udp::endpoint _ep): RLPXDatagram<FindNode>(_ep) {}
 	FindNode(bi::udp::endpoint _ep, NodeId _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram<FindNode>(_ep), target(_target), expiration(futureFromEpoch(_expiration)) {}
+
+	static const uint8_t type = 3;
 	
-	uint8_t packetType() { return 3; }
 	h512 target;
 	unsigned expiration;
 	
@@ -361,7 +363,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 		}
 	}
 	
-	uint8_t packetType() { return 4; }
+	static const uint8_t type = 4;
 	std::list<Node> nodes;
 	unsigned expiration = 1;
 

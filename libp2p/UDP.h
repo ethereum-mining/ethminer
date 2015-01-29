@@ -77,6 +77,7 @@ struct RLPXDatagram: public RLPXDatagramFace
 {
 	RLPXDatagram(bi::udp::endpoint const& _ep): RLPXDatagramFace(_ep) {}
 	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
+	uint8_t packetType() { return T::type; }
 };
 
 /**
