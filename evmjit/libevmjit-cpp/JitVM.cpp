@@ -2,6 +2,7 @@
 #include "JitVM.h"
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
+#include <libdevcrypto/SHA3.h>
 #include <evmjit/libevmjit/ExecutionEngine.h>
 #include "Utils.h"
 
@@ -45,6 +46,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 	m_data.timestamp 	= static_cast<decltype(m_data.timestamp)>(_ext.currentBlock.timestamp);
 	m_data.code     	= _ext.code.data();
 	m_data.codeSize 	= _ext.code.size();
+	m_data.codeHash		= eth2llvm(sha3(_ext.code));
 
 	auto env = reinterpret_cast<Env*>(&_ext);
 	auto exitCode = m_engine.run(&m_data, env);
