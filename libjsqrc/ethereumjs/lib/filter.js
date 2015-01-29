@@ -33,9 +33,13 @@ var Filter = function(options, impl) {
 
     if (typeof options !== "string") {
         // evaluate lazy properties
+        if (options.topics) {
+            console.warn('"topics" is deprecated, use "topic" instead');
+        }
+
         options = {
             to: options.to,
-            topics: options.topics,
+            topic: options.topic,
             earliest: options.earliest,
             latest: options.latest,
             max: options.max,
