@@ -5,6 +5,7 @@ import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
 import CodeEditorExtensionManager 1.0
+import org.ethereum.qml.QEther 1.0
 
 ApplicationWindow {
 	id: mainApplication
@@ -79,11 +80,8 @@ ApplicationWindow {
 		id: debugRunAction
 		text: "&Run"
 		shortcut: "F5"
-		onTriggered: {
-			mainContent.ensureRightView();
-			clientModel.debugDeployment();
-		}
-		enabled: codeModel.hasContract && !clientModel.running;
+		onTriggered: mainContent.startQuickDebugging()
+		enabled: codeModel.hasContract && !clientModel.running
 	}
 
 	Action {
