@@ -201,7 +201,7 @@ dev::bytes const& CodeModel::getStdContractCode(const QString& _contractName, co
 	solidity::CompilerStack cs(false);
 	cs.setSource(source);
 	cs.compile(false);
-	for(std::string name: cs.getContractNames())
+	for (std::string const& name: cs.getContractNames())
 	{
 		dev::bytes code = cs.getBytecode(name);
 		m_compiledContracts.insert(std::make_pair(QString::fromStdString(name), std::move(code)));

@@ -323,6 +323,7 @@ void ClientModel::onNewTransaction()
 
 	//TODO: handle value transfer
 	FixedHash<4> functionHash;
+	bool call = false;
 	if (creation)
 	{
 		//contract creation
@@ -339,8 +340,13 @@ void ClientModel::onNewTransaction()
 	{
 		//call
 		if (tr.transactionData.size() >= 4)
+		{
 			functionHash = FixedHash<4>(tr.transactionData.data(), FixedHash<4>::ConstructFromPointer);
-		function = QString::fromStdString(toJS(functionHash));
+			function = QString::fromStdString(toJS(functionHash));
+			call = true;
+		}
+		else
+			function = QObject::tr("<none>");
 	}
 
 	if (m_contractAddress != 0 && (tr.address == m_contractAddress || tr.contractAddress == m_contractAddress))
@@ -348,7 +354,7 @@ void ClientModel::onNewTransaction()
 		auto compilerRes = m_context->codeModel()->code();
 		QContractDefinition* def = compilerRes->contract();
 		contract = def->name();
-		if (!creation)
+		if (call)
 		{
 			QFunctionDefinition* funcDef = def->getFunction(functionHash);
 			if (funcDef)
