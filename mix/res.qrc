@@ -50,5 +50,6 @@
         <file>stdc/namereg.sol</file>
         <file>stdc/std.sol</file>
         <file>qml/TransactionLog.qml</file>
+	<file>res/mix_256x256x32.png</file>
     </qresource>
 </RCC>
