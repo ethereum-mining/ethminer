@@ -52,15 +52,15 @@ ReturnCode runEntryFunc(EntryFuncPtr _mainFunc, Runtime* _runtime)
 	return returnCode;
 }
 
-std::string codeHash(bytes const& _code)
+std::string codeHash(code_iterator _begin, code_iterator _end)
 {
 	uint32_t hash = 0;
-	for (auto b : _code)
+	std::for_each(_begin, _end, [&hash](decltype(*_begin) b)
 	{
 		hash += b;
 		hash += (hash << 10);
 		hash ^= (hash >> 6);
-	}
+	});
 	hash += (hash << 3);
 	hash ^= (hash >> 11);
 	hash += (hash << 15);
@@ -69,13 +69,16 @@ std::string codeHash(bytes const& _code)
 
 }
 
-ReturnCode ExecutionEngine::run(bytes const& _code, RuntimeData* _data, Env* _env)
+ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 {
 	static std::unique_ptr<llvm::ExecutionEngine> ee;  // TODO: Use Managed Objects from LLVM?
 	static auto debugDumpModule = DEBUG_ENV_OPTION(EVMJIT_DUMP_MODULE);
 	static bool objectCacheEnabled = !DEBUG_ENV_OPTION(EVMJIT_CACHE_OFF);
 
-	auto mainFuncName = codeHash(_code);
+	auto codeBegin = _data->code;
+	auto codeEnd = codeBegin + _data->codeSize;
+	assert(codeBegin || !codeEnd); //TODO: Is it good idea to execute empty code?
+	auto mainFuncName = codeHash(codeBegin, codeEnd);
 	EntryFuncPtr entryFuncPtr{};
 	Runtime runtime(_data, _env);	// TODO: I don't know why but it must be created before getFunctionAddress() calls
 
@@ -89,7 +92,7 @@ ReturnCode ExecutionEngine::run(bytes const& _code, RuntimeData* _data, Env* _en
 		if (objectCache)
 			module = Cache::getObject(mainFuncName);
 		if (!module)
-			module = Compiler({}).compile(_code, mainFuncName);
+			module = Compiler({}).compile(codeBegin, codeEnd, mainFuncName);
 		if (debugDumpModule)
 			module->dump();
 		if (!ee)
