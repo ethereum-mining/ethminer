@@ -583,8 +583,7 @@ Json::Value WebThreeStubServerBase::shh_changed(int const& _id)
 			else
 			{
 				unsigned i = 0;
-				for (; i < face()->getFilter(_id).size() && !face()->getFilter(_id)[i]; ++i) {}
-				m = e.open(face()->getFilter(_id)[i], i);
+				m = e.open(face()->filterKey(_id));
 			}
 			ret.append(toJson(h, e, m));
 		}
