@@ -495,24 +495,6 @@ extern "C"
 
 	EXPORT void arith_mul(uint256* _arg1, uint256* _arg2, uint256* o_result)
 	{
-		uint128 a = 1;
-		uint128 b = 2;
-
-		auto c = a * b;
-		assert(c.lo == 2);
-		assert(c.hi == 0);
-
-		a = uint64_t(-1);
-		c = a * b;
-		assert(c.hi == 1);
-
-		b = a;
-
-		c = a * b;
-		assert(c.hi == 18446744073709551614);
-		auto d = a + b;
-		assert(d.hi == 1);
-
 		*o_result = mul(*_arg1, *_arg2);
 	}
 
