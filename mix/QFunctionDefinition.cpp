@@ -28,12 +28,15 @@
 using namespace dev::solidity;
 using namespace dev::mix;
 
-QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionDescription const& _f): QBasicNodeDefinition(_f.getDeclaration()), m_hash(dev::sha3(_f.getSignature()))
+QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionDescription const& _f): QBasicNodeDefinition(_f.getDeclaration()), m_hash()
 {
+
 	FunctionDefinition const* funcDef;
 	VariableDeclaration const* varDecl;
+
 	if ((funcDef = _f.getFunctionDefinition()))
 	{
+		m_hash = FixedHash<4>(dev::sha3(funcDef->getCanonicalSignature()));
 		std::vector<std::shared_ptr<VariableDeclaration>> parameters = funcDef->getParameterList().getParameters();
 		for (unsigned i = 0; i < parameters.size(); i++)
 			m_parameters.append(new QVariableDeclaration(parameters.at(i).get()));
