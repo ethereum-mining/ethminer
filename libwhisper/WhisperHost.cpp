@@ -104,14 +104,15 @@ unsigned WhisperHost::installWatchOnId(h256 _h)
 	return ret;
 }
 
-unsigned WhisperHost::installWatch(shh::TopicFilter const& _f)
+unsigned WhisperHost::installWatch(shh::FullTopic const& _ft)
 {
 	Guard l(m_filterLock);
 
-	h256 h = _f.sha3();
+	InstalledFilter f(_ft);
+	h256 h = f.filter.sha3();
 
 	if (!m_filters.count(h))
-		m_filters.insert(make_pair(h, _f));
+		m_filters.insert(make_pair(h, f));
 
 	return installWatchOnId(h);
 }

@@ -106,7 +106,7 @@ void WhisperPeer::sendMessages()
 	}
 }
 
-void WhisperPeer::noteNewMessage(h256 _h, Message const& _m)
+void WhisperPeer::noteNewMessage(h256 _h, Envelope const& _m)
 {
 	Guard l(x_unseen);
 	m_unseen.insert(make_pair(rating(_m), _h));

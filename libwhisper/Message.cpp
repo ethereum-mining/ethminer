@@ -35,13 +35,13 @@ Message::Message(Envelope const& _e, Secret const& _s, unsigned _topicIndex)
 			if (!decrypt(_s, &(_e.data()), b))
 				return;
 			else{}
-		else
+		else if (_topicIndex != (unsigned)-1)
 		{
 			// public - need to get the key through combining with the topic/topicIndex we know.
 			if (_e.data().size() < _e.topics().size() * 32)
 				return;
 			// get key from decrypted topic key: just xor
-			if (!decrypt(_s ^ h256(bytesConstRef(&(_e.data())).cropped(32 * _topicIndex, 32)), bytesConstRef(&(_e.data())).cropped(32 * _e.topics().size()), b))
+			if (!decryptSym(_s ^ h256(bytesConstRef(&(_e.data())).cropped(32 * _topicIndex, 32)), bytesConstRef(&(_e.data())).cropped(32 * _e.topics().size()), b))
 				return;
 		}
 
@@ -74,9 +74,12 @@ bool Message::populate(bytes const& _data)
 	return true;
 }
 
-Envelope Message::seal(Secret _from, FullTopic const& _topic, unsigned _ttl, unsigned _workToProve) const
+Envelope Message::seal(Secret _from, FullTopic const& _fullTopic, unsigned _ttl, unsigned _workToProve) const
 {
-	Envelope ret(time(0) + _ttl, _ttl, _topic);
+	Topic topic;
+	for (auto const& ft: _fullTopic)
+		topic.push_back(TopicPart(ft));
+	Envelope ret(time(0) + _ttl, _ttl, topic);
 
 	bytes input(1 + m_payload.size());
 	input[0] = 0;
@@ -94,7 +97,15 @@ Envelope Message::seal(Secret _from, FullTopic const& _topic, unsigned _ttl, uns
 	if (m_to)
 		encrypt(m_to, &input, ret.m_data);
 	else
-		swap(ret.m_data, input);
+	{
+		// create the shared secret and encrypt
+		Secret s = Secret::random();
+		for (h256 const& t: _fullTopic)
+			ret.m_data += (t ^ s).asBytes();
+		bytes d;
+		encryptSym(s, &input, d);
+		ret.m_data += d;
+	}
 
 	ret.proveWork(_workToProve);
 	return ret;
@@ -109,9 +120,9 @@ Envelope::Envelope(RLP const& _m)
 	m_nonce = _m[4].toInt<u256>();
 }
 
-Message Envelope::open(Secret const& _s) const
+Message Envelope::open(Secret const& _s, unsigned _topicIndex) const
 {
-	return Message(*this, _s);
+	return Message(*this, _s, _topicIndex);
 }
 
 unsigned Envelope::workProved() const
