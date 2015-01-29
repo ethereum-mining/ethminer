@@ -47,7 +47,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 	m_data.codeSize 	= _ext.code.size();
 
 	auto env = reinterpret_cast<Env*>(&_ext);
-	auto exitCode = m_engine.run(_ext.code, &m_data, env);
+	auto exitCode = m_engine.run(&m_data, env);
 	switch (exitCode)
 	{
 	case ReturnCode::Suicide:
