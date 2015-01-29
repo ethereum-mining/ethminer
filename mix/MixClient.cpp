@@ -47,7 +47,10 @@ MixClient::MixClient():
 void MixClient::resetState(u256 _balance)
 {
 	WriteGuard l(x_state);
-	m_state = eth::State(Address(), m_stateDB, BaseState::Empty);
+	Guard fl(m_filterLock);
+	m_filters.clear();
+	m_watches.clear();
+	m_state = eth::State(m_userAccount.address(), m_stateDB, BaseState::Empty);
 	m_state.addBalance(m_userAccount.address(), _balance);
 	Block genesis;
 	genesis.state = m_state;
@@ -120,6 +123,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 			}
 		}
 	}
+	changed.insert(dev::eth::PendingChangedFilter);
 	noteChanged(changed);
 }
 
@@ -138,6 +142,8 @@ void MixClient::mine()
 	block.info = m_state.info();
 	block.hash = block.info.hash;
 	m_blocks.push_back(Block());
+	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
+	noteChanged(changed);
 }
 
 State const& MixClient::asOf(int _block) const
@@ -240,12 +246,12 @@ eth::LocalisedLogEntries MixClient::logs(unsigned _watchId) const
 eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 {
 	LocalisedLogEntries ret;
-	unsigned blockCount = m_blocks.size(); //last block contains pending transactions
-	unsigned block = std::min<unsigned>(blockCount, (unsigned)_f.latest());
-	unsigned end = std::min(blockCount, std::min(block, (unsigned)_f.earliest()));
+	unsigned lastBlock = m_blocks.size() - 1; //last block contains pending transactions
+	unsigned block = std::min<unsigned>(lastBlock, (unsigned)_f.latest());
+	unsigned end = std::min(lastBlock, std::min(block, (unsigned)_f.earliest()));
 	for (; ret.size() != _f.max() && block != end; block--)
 	{
-		bool pendingBlock = (block == blockCount);
+		bool pendingBlock = (block == lastBlock);
 		if (pendingBlock || _f.matches(m_blocks[block].info.logBloom))
 			for (ExecutionResult const& t: m_blocks[block].transactions)
 				if (pendingBlock || _f.matches(t.receipt.bloom()))
@@ -323,14 +329,17 @@ void MixClient::noteChanged(h256Set const& _filters)
 LocalisedLogEntries MixClient::peekWatch(unsigned _watchId) const
 {
 	Guard l(m_filterLock);
-	return m_watches.at(_watchId).changes;
+	if (_watchId < m_watches.size())
+		return m_watches.at(_watchId).changes;
+	return LocalisedLogEntries();
 }
 
 LocalisedLogEntries MixClient::checkWatch(unsigned _watchId)
 {
 	Guard l(m_filterLock);
 	LocalisedLogEntries ret;
-	std::swap(ret, m_watches.at(_watchId).changes);
+	if (_watchId < m_watches.size())
+		std::swap(ret, m_watches.at(_watchId).changes);
 	return ret;
 }
 
