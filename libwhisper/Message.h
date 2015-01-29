@@ -39,13 +39,21 @@ namespace shh
 
 class Message;
 
+static const unsigned Undefined = (unsigned)-1;
+
+struct FilterKey
+{
+	FilterKey() {}
+	FilterKey(unsigned _tI, Secret const& _k): topicIndex(_tI), key(_k) {}
+	unsigned topicIndex = Undefined;
+	Secret key;
+};
+
 enum IncludeNonce
 {
 	WithoutNonce = 0,
 	WithNonce = 1
 };
-
-static const unsigned NotPublic = (unsigned)-1;
 
 class Envelope
 {
@@ -66,7 +74,7 @@ public:
 	Topic const& topic() const { return m_topic; }
 	bytes const& data() const { return m_data; }
 
-	Message open(Secret const& _s, unsigned _topicIndex = NotPublic) const;
+	Message open(FilterKey const& _fk) const;
 
 	unsigned workProved() const;
 	void proveWork(unsigned _ms);
@@ -93,7 +101,7 @@ class Message
 {
 public:
 	Message() {}
-	Message(Envelope const& _e, Secret const& _s, unsigned _topicIndex);
+	Message(Envelope const& _e, FilterKey const& _fk);
 	Message(bytes const& _payload): m_payload(_payload) {}
 	Message(bytesConstRef _payload): m_payload(_payload.toBytes()) {}
 	Message(bytes&& _payload) { std::swap(_payload, m_payload); }
