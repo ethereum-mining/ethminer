@@ -51,7 +51,7 @@ struct SignatureStruct
 	operator Signature() const { return *(h520 const*)this; }
 
 	/// @returns true if r,s,v values are valid, otherwise false
-	bool isValid();
+	bool isValid() const;
 
 	h256 r;
 	h256 s;
