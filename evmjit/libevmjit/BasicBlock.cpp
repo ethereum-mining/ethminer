@@ -20,7 +20,7 @@ namespace jit
 
 const char* BasicBlock::NamePrefix = "Instr.";
 
-BasicBlock::BasicBlock(bytes::const_iterator _begin, bytes::const_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest) :
+BasicBlock::BasicBlock(code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest) :
 	m_begin(_begin),
 	m_end(_end),
 	// TODO: Add begin index to name
