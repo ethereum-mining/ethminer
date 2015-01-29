@@ -1,6 +1,7 @@
 
 #include "JitVM.h"
 #include <libevm/VM.h>
+#include <libevm/VMFactory.h>
 #include <evmjit/libevmjit/ExecutionEngine.h>
 #include "Utils.h"
 
@@ -9,22 +10,25 @@ namespace dev
 namespace eth
 {
 
-bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
+bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 {
 	using namespace jit;
 
-	if (m_gas > std::numeric_limits<decltype(m_data.gas)>::max())
-		BOOST_THROW_EXCEPTION(OutOfGas()); // Do not accept requests with gas > 2^63 (int64 max) // TODO: Return "not accepted" exception to allow interpreted handle that
+	auto rejected = false;
+	rejected |= m_gas > std::numeric_limits<decltype(m_data.gas)>::max(); // Do not accept requests with gas > 2^63 (int64 max)
+	rejected |= _ext.gasPrice > std::numeric_limits<decltype(m_data.gasPrice)>::max();
+	rejected |= _ext.currentBlock.number > std::numeric_limits<decltype(m_data.number)>::max();
+	rejected |= _ext.currentBlock.timestamp > std::numeric_limits<decltype(m_data.timestamp)>::max();
 
-	if (_ext.gasPrice > std::numeric_limits<decltype(m_data.gasPrice)>::max())
-		BOOST_THROW_EXCEPTION(OutOfGas());
-
-	if (_ext.currentBlock.number > std::numeric_limits<decltype(m_data.number)>::max())
-		BOOST_THROW_EXCEPTION(OutOfGas());
-
-	if (_ext.currentBlock.timestamp > std::numeric_limits<decltype(m_data.timestamp)>::max())
-		BOOST_THROW_EXCEPTION(OutOfGas());
-
+	if (rejected)
+	{
+		UNTESTED;
+		std::cerr << "Rejected\n";
+		VMFactory::setKind(VMKind::Interpreter);
+		m_fallbackVM = VMFactory::create(m_gas);
+		VMFactory::setKind(VMKind::JIT);
+		return m_fallbackVM->go(_ext, _onOp, _step);
+	}
 
 	m_data.gas 			= static_cast<decltype(m_data.gas)>(m_gas);
 	m_data.gasPrice		= static_cast<decltype(m_data.gasPrice)>(_ext.gasPrice);
