@@ -50,6 +50,10 @@ inline std::string toJS(dev::bytes const& _n)
 bytes jsToBytes(std::string const& _s);
 /// Add '0' on the head of _b until _l.
 bytes padded(bytes _b, unsigned _l);
+/// Add '0' on the queue of _b until _l.
+bytes paddedRight(bytes _b, unsigned _l);
+/// Remove all trailing '0'
+std::string unpadRight(std::string _b);
 /// Removing all trailing '0'. Returns empty array if input contains only '0' char.
 bytes unpadded(bytes _s);
 /// Remove all '0' on the head of _s. Returns 0 if _s contains only '0'.

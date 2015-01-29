@@ -41,7 +41,7 @@
         <file>qml/Ether.qml</file>
         <file>qml/EtherValue.qml</file>
         <file>qml/BigIntValue.qml</file>
-	<file>qml/QVariableDefinition.qml</file>
+        <file>qml/QVariableDefinition.qml</file>
         <file>qml/QBoolType.qml</file>
         <file>qml/QHashType.qml</file>
         <file>qml/QIntType.qml</file>
@@ -49,5 +49,11 @@
         <file>qml/js/QEtherHelper.js</file>
         <file>qml/js/TransactionHelper.js</file>
         <file>qml/Splitter.qml</file>
+        <file>qml/QStringType.qml</file>
+        <file>qml/QBoolTypeView.qml</file>
+        <file>qml/QIntTypeView.qml</file>
+        <file>qml/QRealTypeView.qml</file>
+        <file>qml/QStringTypeView.qml</file>
+        <file>qml/QHashTypeView.qml</file>
     </qresource>
 </RCC>

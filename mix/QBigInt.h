@@ -28,7 +28,6 @@
 #include <QQmlEngine>
 #include <libdevcore/CommonJS.h>
 #include <libdevcore/Common.h>
-#include "QVariableDefinition.h"
 
 using namespace dev;
 
@@ -76,6 +75,7 @@ public:
 	QBigInt(dev::u256 const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value) { QQmlEngine::setObjectOwnership(this, QQmlEngine::JavaScriptOwnership); }
 	QBigInt(dev::bigint const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value) { QQmlEngine::setObjectOwnership(this, QQmlEngine::JavaScriptOwnership); }
 	QBigInt(BigIntVariant const& _value, QObject* _parent = 0): QObject(_parent), m_internalValue(_value){ QQmlEngine::setObjectOwnership(this, QQmlEngine::JavaScriptOwnership); }
+	QBigInt(QString const& _value, QObject* _parent = 0): QObject(_parent) { QQmlEngine::setObjectOwnership(this, QQmlEngine::JavaScriptOwnership); setValue(_value); }
 	~QBigInt() {}
 
 	/// @returns the current used big integer.

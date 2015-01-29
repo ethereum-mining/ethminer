@@ -19,6 +19,7 @@
  * @date 2014
  */
 
+#include <QDebug>
 #include <QStringList>
 #include <libsolidity/AST.h>
 #include "QBasicNodeDefinition.h"
@@ -39,13 +40,6 @@ public:
 	QVariableDeclaration() {}
 	QVariableDeclaration(solidity::VariableDeclaration const* _v): QBasicNodeDefinition(_v), m_type(QString::fromStdString(_v->getType()->toString())) {}
 	Q_INVOKABLE QString type() const { return m_type; }
-	QStringList typeLength()
-	{
-		QRegExp rules("\\d");
-		int pos = 0;
-		while ((pos = rules.indexIn(m_type, pos)) != -1) {}
-		return rules.capturedTexts();
-	}
 
 private:
 	QString m_type;

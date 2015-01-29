@@ -119,12 +119,11 @@ void ClientModel::debugState(QVariantMap _state)
 		u256 gas = (qvariant_cast<QEther*>(transaction.value("gas")))->toU256Wei();
 		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
 		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
-		QVariantMap params = transaction.value("parameters").toMap();
 		TransactionSettings transactionSettings(functionId, value, gas, gasPrice);
-
-		for (auto p = params.cbegin(); p != params.cend(); ++p)
+		QVariantList qParams = transaction.value("qType").toList();
+		for (QVariant const& variant: qParams)
 		{
-			QVariableDefinition* param = qvariant_cast<QVariableDefinition*>(p.value());
+			QVariableDefinition* param = qvariant_cast<QVariableDefinition*>(variant);
 			transactionSettings.parameterValues.push_back(param);
 		}
 
@@ -173,7 +172,12 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 
 				c.encode(f);
 				for (int p = 0; p < t.parameterValues.size(); p++)
+				{
+					qDebug() << " encode input parameters : " + t.parameterValues.at(p)->declaration()->type();
+					qDebug() << t.parameterValues.at(p)->declaration()->type();
+					qDebug() << t.parameterValues.at(p)->value();
 					c.push(t.parameterValues.at(p)->encodeValue());
+				}
 				transactonData.emplace_back(c.encodedData());
 			}
 

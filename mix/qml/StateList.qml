@@ -59,7 +59,6 @@ Rectangle {
 				stateList.push(item);
 				stateListModel.append(item);
 			}
-
 			stateListModel.save();
 		}
 	}
