@@ -132,7 +132,7 @@ Rectangle {
 
 				TransactionLog {
 					Layout.fillWidth: true
-					height: 400
+					height: 250
 				}
 
 				RowLayout {
