@@ -88,6 +88,9 @@ protected:
  * Thread-safety is ensured by modifying NodeEntry details via 
  * shared_ptr replacement instead of mutating values.
  *
+ * NodeTable accepts a port for UDP and will listen to the port on all available
+ * interfaces.
+ *
  * [Integration]
  * @todo restore nodes: affects refreshbuckets
  * @todo TCP endpoints
@@ -289,7 +292,7 @@ struct PingNode: RLPXDatagram<PingNode>
  */
 struct Pong: RLPXDatagram<Pong>
 {
-	Pong(bi::udp::endpoint _ep): RLPXDatagram<Pong>(_ep) {}
+	Pong(bi::udp::endpoint _ep): RLPXDatagram<Pong>(_ep), expiration(futureFromEpoch(std::chrono::seconds(60))) {}
 
 	uint8_t packetType() { return 2; }
 	h256 echo;				///< MCD of PingNode
