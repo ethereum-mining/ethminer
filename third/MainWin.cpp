@@ -197,21 +197,21 @@ unsigned Main::installWatch(dev::h256 _tf, WatchHandler const& _f)
 
 void Main::installWatches()
 {
-	installWatch(dev::eth::LogFilter().topic((u256)(u160)c_config).topic((u256)0), [=](LocalisedLogEntries const&){ installNameRegWatch(); });
-	installWatch(dev::eth::LogFilter().topic((u256)(u160)c_config).topic((u256)1), [=](LocalisedLogEntries const&){ installCurrenciesWatch(); });
+	installWatch(dev::eth::LogFilter().address(c_config).topic(0, (u256)0), [=](LocalisedLogEntries const&){ installNameRegWatch(); });
+	installWatch(dev::eth::LogFilter().address(c_config).topic(0, (u256)1), [=](LocalisedLogEntries const&){ installCurrenciesWatch(); });
 	installWatch(dev::eth::ChainChangedFilter, [=](LocalisedLogEntries const&){ onNewBlock(); });
 }
 
 void Main::installNameRegWatch()
 {
 	ethereum()->uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(dev::eth::LogFilter().topic(ethereum()->stateAt(c_config, 0)), [=](LocalisedLogEntries const&){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(dev::eth::LogFilter().address(u160(ethereum()->stateAt(c_config, 0))), [=](LocalisedLogEntries const&){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
 	ethereum()->uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(dev::eth::LogFilter().topic(ethereum()->stateAt(c_config, 1)), [=](LocalisedLogEntries const&){ onCurrenciesChange(); });
+	m_currenciesFilter = installWatch(dev::eth::LogFilter().address(u160(ethereum()->stateAt(c_config, 1))), [=](LocalisedLogEntries const&){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
@@ -224,7 +224,7 @@ void Main::installBalancesWatch()
 		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
 		for (auto c: altCoins)
-			tf.address(c).topic((u256)(u160)i.address());
+			tf.address(c).topic(0, (u256)(u160)i.address());
 
 	ethereum()->uninstallWatch(m_balancesFilter);
 	m_balancesFilter = installWatch(tf, [=](LocalisedLogEntries const&){ onBalancesChange(); });
