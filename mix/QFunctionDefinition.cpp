@@ -28,7 +28,7 @@
 using namespace dev::solidity;
 using namespace dev::mix;
 
-QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionTypePointer const& _f): QBasicNodeDefinition(_f->getDeclaration()), m_hash(dev::sha3(_f->getCanonicalSignature()))
+QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionTypePointer const& _f): QBasicNodeDefinition(&_f->getDeclaration()), m_hash(dev::sha3(_f->getCanonicalSignature()))
 {
 	auto paramNames = _f->getParameterNames();
 	auto paramTypes = _f->getParameterTypeNames();
