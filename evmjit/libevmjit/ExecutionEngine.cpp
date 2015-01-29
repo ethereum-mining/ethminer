@@ -20,6 +20,8 @@
 #include "Compiler.h"
 #include "Cache.h"
 
+#include <iostream>
+
 namespace dev
 {
 namespace eth
@@ -46,19 +48,20 @@ ReturnCode runEntryFunc(EntryFuncPtr _mainFunc, Runtime* _runtime)
 	return returnCode;
 }
 
-std::string codeHash(code_iterator _begin, code_iterator _end)
+std::string codeHash(i256 const& _hash)
 {
-	uint32_t hash = 0;
-	std::for_each(_begin, _end, [&hash](decltype(*_begin) b)
+	static const auto size = sizeof(_hash);
+	static const auto hexChars = "0123456789abcdef";
+	std::string str;
+	str.resize(size * 2);
+	auto outIt = str.rbegin(); // reverse for BE
+	auto& arr = *(std::array<byte, size>*)&_hash;
+	for (auto b : arr)
 	{
-		hash += b;
-		hash += (hash << 10);
-		hash ^= (hash >> 6);
-	});
-	hash += (hash << 3);
-	hash ^= (hash >> 11);
-	hash += (hash << 15);
-	return std::to_string(hash);
+		*(outIt++) = hexChars[b & 0xf];
+		*(outIt++) = hexChars[b >> 4];
+	}
+	return str;
 }
 
 bool getEnvOption(char const* _name, bool _default)
@@ -80,7 +83,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	auto codeBegin = _data->code;
 	auto codeEnd = codeBegin + _data->codeSize;
 	assert(codeBegin || !codeEnd); //TODO: Is it good idea to execute empty code?
-	auto mainFuncName = codeHash(codeBegin, codeEnd);
+	auto mainFuncName = codeHash(_data->codeHash);
 	EntryFuncPtr entryFuncPtr{};
 	Runtime runtime(_data, _env);	// TODO: I don't know why but it must be created before getFunctionAddress() calls
 
