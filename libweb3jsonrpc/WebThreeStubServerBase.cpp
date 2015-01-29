@@ -576,15 +576,12 @@ Json::Value WebThreeStubServerBase::shh_changed(int const& _id)
 			if (pub)
 			{
 				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
-				m = e.open(m_ids[pub], shh::NotPublic);
+				m = e.open(shh::FilterKey(shh::Undefined, m_ids[pub]));
 				if (!m)
 					continue;
 			}
 			else
-			{
-				unsigned i = 0;
 				m = e.open(face()->filterKey(_id));
-			}
 			ret.append(toJson(h, e, m));
 		}
 	

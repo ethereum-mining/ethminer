@@ -26,27 +26,28 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-Message::Message(Envelope const& _e, Secret const& _s, unsigned _topicIndex)
+Message::Message(Envelope const& _e, FilterKey const& _fk)
 {
 	try
 	{
 		bytes b;
-		if (_s)
-			if (!decrypt(_s, &(_e.data()), b))
+		if (_fk.topicIndex == Undefined)
+			if (!_fk.key || !decrypt(_fk.key, &(_e.data()), b))
 				return;
 			else{}
-		else if (_topicIndex != (unsigned)-1)
+		else
 		{
 			// public - need to get the key through combining with the topic/topicIndex we know.
 			if (_e.data().size() < _e.topics().size() * 32)
 				return;
 			// get key from decrypted topic key: just xor
-			if (!decryptSym(_s ^ h256(bytesConstRef(&(_e.data())).cropped(32 * _topicIndex, 32)), bytesConstRef(&(_e.data())).cropped(32 * _e.topics().size()), b))
+			if (!decryptSym(_fk.key ^ h256(bytesConstRef(&(_e.data())).cropped(32 * _fk.topicIndex, 32)), bytesConstRef(&(_e.data())).cropped(32 * _e.topics().size()), b))
 				return;
 		}
 
 		if (populate(b))
-			m_to = KeyPair(_s).pub();
+			if (_fk.key && _fk.topicIndex == Undefined)
+				m_to = KeyPair(_fk.key).pub();
 	}
 	catch (...)	// Invalid secret? TODO: replace ... with InvalidSecret
 	{
@@ -120,9 +121,9 @@ Envelope::Envelope(RLP const& _m)
 	m_nonce = _m[4].toInt<u256>();
 }
 
-Message Envelope::open(Secret const& _s, unsigned _topicIndex) const
+Message Envelope::open(FilterKey const& _filterKey) const
 {
-	return Message(*this, _s, _topicIndex);
+	return Message(*this, _filterKey);
 }
 
 unsigned Envelope::workProved() const
