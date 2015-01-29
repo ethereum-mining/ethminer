@@ -365,15 +365,25 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 	{
 	case Type::Category::CONTRACT:
 	{
+		bool alsoSearchInteger = false;
 		ContractType const& type = dynamic_cast<ContractType const&>(*_memberAccess.getExpression().getType());
-		u256 identifier = type.getFunctionIdentifier(member);
-		if (identifier != Invalid256)
+		if (type.isSuper())
+			m_context << m_context.getSuperFunctionEntryLabel(member, type.getContractDefinition()).pushTag();
+		else
 		{
-			appendTypeConversion(type, IntegerType(0, IntegerType::Modifier::ADDRESS), true);
-			m_context << identifier;
-			break;
+			// ordinary contract type
+			u256 identifier = type.getFunctionIdentifier(member);
+			if (identifier != Invalid256)
+			{
+				appendTypeConversion(type, IntegerType(0, IntegerType::Modifier::ADDRESS), true);
+				m_context << identifier;
+			}
+			else
+				// not found in contract, search in members inherited from address
+				alsoSearchInteger = true;
 		}
-		// fall-through to "integer" otherwise (address)
+		if (!alsoSearchInteger)
+			break;
 	}
 	case Type::Category::INTEGER:
 		if (member == "balance")
@@ -469,8 +479,10 @@ void ExpressionCompiler::endVisit(Identifier const& _identifier)
 	Declaration const* declaration = _identifier.getReferencedDeclaration();
 	if (MagicVariableDeclaration const* magicVar = dynamic_cast<MagicVariableDeclaration const*>(declaration))
 	{
-		if (magicVar->getType()->getCategory() == Type::Category::CONTRACT) // must be "this"
-			m_context << eth::Instruction::ADDRESS;
+		if (magicVar->getType()->getCategory() == Type::Category::CONTRACT)
+			// "this" or "super"
+			if (!dynamic_cast<ContractType const&>(*magicVar->getType()).isSuper())
+				m_context << eth::Instruction::ADDRESS;
 	}
 	else if (FunctionDefinition const* functionDef = dynamic_cast<FunctionDefinition const*>(declaration))
 		m_context << m_context.getVirtualFunctionEntryLabel(*functionDef).pushTag();
