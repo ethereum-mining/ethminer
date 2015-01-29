@@ -409,12 +409,15 @@ namespace
 		uint256(uint64_t lo, uint64_t mid, uint128 hi): lo(lo), mid(mid), hi(hi) {}
 		uint256(uint128 n)
 		{
-			*((uint128*)&lo) = n;
+			lo = (uint64_t) n;
+			mid = (uint64_t) (n >> 64);
 		}
 
 		explicit operator uint128()
 		{
-			return *((uint128*)&lo);
+			uint128 r = lo;
+			r |= ((uint128) mid) << 64;
+			return r;
 		}
 
 		uint256 operator+(uint256 a)
