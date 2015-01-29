@@ -61,7 +61,6 @@ void AppContext::load()
 	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
 	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
 	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
-	//qmlRegisterType<QVariableDefinition>("org.ethereum.qml.QVariableDefinition", 1, 0, "QVariableDefinition");
 	qmlRegisterType<QIntType>("org.ethereum.qml.QIntType", 1, 0, "QIntType");
 	qmlRegisterType<QRealType>("org.ethereum.qml.QRealType", 1, 0, "QRealType");
 	qmlRegisterType<QStringType>("org.ethereum.qml.QStringType", 1, 0, "QStringType");

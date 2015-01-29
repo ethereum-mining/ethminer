@@ -171,13 +171,8 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 					throw std::runtime_error("function " + t.functionId.toStdString() + " not found");
 
 				c.encode(f);
-				for (int p = 0; p < t.parameterValues.size(); p++)
-				{
-					qDebug() << " encode input parameters : " + t.parameterValues.at(p)->declaration()->type();
-					qDebug() << t.parameterValues.at(p)->declaration()->type();
-					qDebug() << t.parameterValues.at(p)->value();
+				for (unsigned int p = 0; p < t.parameterValues.size(); p++)
 					c.push(t.parameterValues.at(p)->encodeValue());
-				}
 				transactonData.emplace_back(c.encodedData());
 			}
 

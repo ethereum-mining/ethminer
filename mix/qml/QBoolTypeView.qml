@@ -5,23 +5,29 @@ Item
 {
 	id: editRoot
 	property string text
+	property bool defaultValue
 	Rectangle {
 		anchors.fill: parent
 		ComboBox
 		{
+			Component.onCompleted:
+			{
+				text = (defaultValue ? "1" : "0");
+				currentIndex = parseInt(text);
+			}
+
 			id: boolCombo
 			anchors.fill: parent
 			onCurrentIndexChanged:
 			{
-				text = coolComboModel.get(currentIndex).value;
-				editRoot.textChanged();
+				text = comboModel.get(currentIndex).value;
 			}
 			model: ListModel
 			{
-			id: coolComboModel
-			ListElement { text: qsTr("True"); value: "1" }
-			ListElement { text: qsTr("False"); value: "0" }
-		}
+				id: comboModel
+				ListElement { text: qsTr("False"); value: "0" }
+				ListElement { text: qsTr("True"); value: "1" }
+			}
 		}
 	}
 }

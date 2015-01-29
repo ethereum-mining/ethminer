@@ -64,7 +64,7 @@ std::string unpadRight(std::string _b)
 	while (true)
 	{
 		auto p = _b.find_last_of("0");
-		if (p == _b.size() - 1)
+		if (p == _b.size() - 1 && p != std::string::npos)
 			_b = _b.substr(0, _b.size() - 1);
 		else
 			return _b;
