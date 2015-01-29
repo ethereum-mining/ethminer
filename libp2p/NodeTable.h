@@ -286,7 +286,7 @@ struct PingNode: RLPXDatagram<PingNode>
 /**
  * Pong packet: response to ping
  *
- * RLP Encoded Items: 1
+ * RLP Encoded Items: 2
  * Minimum Encoded Size: 33 bytes
  * Maximum Encoded Size: 33 bytes
  */
@@ -299,8 +299,8 @@ struct Pong: RLPXDatagram<Pong>
 	h256 echo;				///< MCD of PingNode
 	unsigned expiration;
 	
-	void streamRLP(RLPStream& _s) const { _s.appendList(1); _s << echo; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); echo = (h256)r[0]; }
+	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << echo << expiration; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); echo = (h256)r[0]; expiration = r[1].toInt<unsigned>(); }
 };
 
 /**
