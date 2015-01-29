@@ -77,7 +77,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 	res["data"] = jsFromBinary(_e.data);
 	res["address"] = toJS(_e.address);
 	for (auto const& t: _e.topics)
-		res["topics"].append(toJS(t));
+		res["topic"].append(toJS(t));
 	res["number"] = _e.number;
 	return res;
 }
@@ -123,10 +123,10 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 		else if (_json["address"].isString())
 			filter.address(jsToAddress(_json["address"].asString()));
 	}
-	if (!_json["topics"].empty() && _json["topics"].isArray())
+	if (!_json["topic"].empty() && _json["topic"].isArray())
 	{
 		unsigned i = 0;
-		for (auto t: _json["topics"])
+		for (auto t: _json["topic"])
 		{
 			if (t.isArray())
 				for (auto tt: t)
@@ -201,8 +201,8 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["sent"] = (int)_e.sent();
 	res["ttl"] = (int)_e.ttl();
 	res["workProved"] = (int)_e.workProved();
-	for (auto const& t: _e.topics())
-		res["topics"].append(toJS(t));
+	for (auto const& t: _e.topic())
+		res["topic"].append(toJS(t));
 	res["payload"] = toJS(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
