@@ -9,7 +9,7 @@ Window {
 	id: modalTransactionDialog
 	modality: Qt.WindowModal
 	width:640
-	height:480
+	height:640
 	visible: false
 
 	property int transactionIndex
@@ -41,8 +41,6 @@ Window {
 		rowFunction.visible = !item.executeConstructor;
 
 		itemParams = item.parameters !== undefined ? item.parameters : {};
-		console.log("save parameters : ");
-		console.log(JSON.stringify(item.qType));
 		functionsModel.clear();
 		var functionIndex = -1;
 		var functions = codeModel.code.contract.functions;
@@ -72,6 +70,7 @@ Window {
 	}
 
 	function loadParameters() {
+		paramsModel.clear();
 		if (!paramsModel)
 			return;
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
@@ -109,7 +108,7 @@ Window {
 		visible = false;
 	}
 
-	function getqTypeParam(name)
+	function qTypeParam(name)
 	{
 		for (var k in qType)
 		{
@@ -145,11 +144,11 @@ Window {
 		var orderedQType = [];
 		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
 			var parameter = transactionDialog.transactionParams.get(p);
-			getqTypeParam(parameter.name).setValue(parameter.value);
-			orderedQType.push(getqTypeParam(parameter.name));
+			var qtypeParam = qTypeParam(parameter.name);
+			qtypeParam.setValue(parameter.value);
+			orderedQType.push(qtypeParam);
 			item.parameters[parameter.name] = parameter.value;
 		}
-		console.log(JSON.stringify(qType));
 		item.qType = orderedQType;
 		return item;
 	}
@@ -253,7 +252,10 @@ Window {
 			}
 			TableView {
 				model: paramsModel
-				Layout.fillWidth: true
+				Layout.preferredWidth: 120 * 2 + 240
+				Layout.minimumHeight: 150
+				Layout.preferredHeight: 400
+				Layout.maximumHeight: 600
 				TableViewColumn {
 					role: "name"
 					title: "Name"
@@ -267,18 +269,10 @@ Window {
 				TableViewColumn {
 					role: "value"
 					title: "Value"
-					width: 120
+					width: 240
 				}
-
-				rowDelegate:
-				{
-					return rowDelegate
-				}
-
-				itemDelegate:
-				{
-					return editableDelegate;
-				}
+				rowDelegate: rowDelegate
+				itemDelegate: editableDelegate
 			}
 		}
 	}
@@ -324,15 +318,20 @@ Window {
 					target: loaderEditor.item
 					onTextChanged: {
 						if (styleData.role === "value" && styleData.row < paramsModel.count)
-							paramsModel.setProperty(styleData.row, styleData.role, loaderEditor.item.text);
+							loaderEditor.updateValue(styleData.row, styleData.role, loaderEditor.item.text);
 					}
+				}
+
+				function updateValue(row, role, value)
+				{
+					paramsModel.setProperty(styleData.row, styleData.role, value);
 				}
 
 				sourceComponent:
 				{
 					if (styleData.role === "value")
 					{
-						if (paramsModel.get(styleData.row) === 'undefined')
+						if (paramsModel.get(styleData.row) === undefined)
 							return null;
 						if (paramsModel.get(styleData.row).type.indexOf("int") !== -1)
 							return intViewComp;
@@ -365,6 +364,12 @@ Window {
 					{
 						id: boolView
 						text: styleData.value
+						defaultValue: true
+						Component.onCompleted:
+						{
+							//default value
+							loaderEditor.updateValue(styleData.row, styleData.role, "1");
+						}
 					}
 				}
 

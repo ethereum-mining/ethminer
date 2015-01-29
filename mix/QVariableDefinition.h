@@ -41,13 +41,17 @@ public:
 	QVariableDefinition() {}
 	QVariableDefinition(QVariableDeclaration* _def, QString _value): QObject(), m_value(_value), m_dec(_def) {}
 
-	/// Return the associated declaration of this variable definition.
+	/// Return the associated declaration of this variable definition. Invokable from QML.
 	Q_INVOKABLE QVariableDeclaration* declaration() const { return m_dec; }
 	/// Return the variable value.
 	QString value() const { return m_value; }
+	/// Set a new value for this instance. Invokable from QML.
 	Q_INVOKABLE void setValue(QString _value) { m_value = _value; }
+	/// Set a new Declaration for this instance. Invokable from QML.
 	Q_INVOKABLE void setDeclaration(QVariableDeclaration* _dec) { m_dec = _dec; }
+	/// Encode the current value in order to be used as function parameter.
 	virtual bytes encodeValue() = 0;
+	/// Decode the return value @a _rawValue.
 	virtual void decodeValue(std::string const& _rawValue) = 0;
 
 private:
@@ -82,6 +86,7 @@ public:
 	QIntType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
 	void decodeValue(std::string const& _rawValue) override;
+	/// @returns an instance of QBigInt for the current value.
 	QBigInt* toBigInt() { return new QBigInt(value()); }
 };
 
@@ -127,6 +132,7 @@ public:
 	QBoolType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
 	void decodeValue(std::string const& _rawValue) override;
+	///  @returns the boolean value for the current definition.
 	bool toBool() { return value() != "0"; }
 };
 

@@ -3,6 +3,5 @@ import org.ethereum.qml.QHashType 1.0
 
 QHashType
 {
-	property string view: "qrc:/qml/QHashTypeView.qml"
 }
 
