@@ -2414,10 +2414,10 @@ void Main::refreshWhispers()
 		shh::Envelope const& e = w.second;
 		shh::Message m;
 		for (pair<Public, Secret> const& i: m_server->ids())
-			if (!!(m = e.open(shh::FilterKey(shh::Undefined, i.second))))
+			if (!!(m = e.open(shh::FullTopic(), i.second)))
 				break;
 		if (!m)
-			m = e.open(shh::FilterKey());
+			m = e.open(shh::FullTopic());
 
 		QString msg;
 		if (m.from())

@@ -74,7 +74,7 @@ public:
 	Topic const& topic() const { return m_topic; }
 	bytes const& data() const { return m_data; }
 
-	Message open(FilterKey const& _fk) const;
+	Message open(FullTopic const& _ft, Secret const& _s = Secret()) const;
 
 	unsigned workProved() const;
 	void proveWork(unsigned _ms);
@@ -101,7 +101,7 @@ class Message
 {
 public:
 	Message() {}
-	Message(Envelope const& _e, FilterKey const& _fk);
+	Message(Envelope const& _e, FullTopic const& _ft, Secret const& _s = Secret());
 	Message(bytes const& _payload): m_payload(_payload) {}
 	Message(bytesConstRef _payload): m_payload(_payload.toBytes()) {}
 	Message(bytes&& _payload) { std::swap(_payload, m_payload); }

@@ -39,6 +39,8 @@ namespace dev
 namespace shh
 {
 
+static const FullTopic EmptyFullTopic;
+
 class WhisperHost: public HostCapability<WhisperPeer>, public Interface, public Worker
 {
 	friend class WhisperPeer;
@@ -51,7 +53,7 @@ public:
 
 	virtual void inject(Envelope const& _e, WhisperPeer* _from = nullptr) override;
 
-	virtual FilterKey filterKey(unsigned _id) const { try { return m_filters.at(m_watches.at(_id).id).filterKey(); } catch (...) { return FilterKey(); } }
+	virtual FullTopic const& fullTopic(unsigned _id) const { try { return m_filters.at(m_watches.at(_id).id).full; } catch (...) { return EmptyFullTopic; } }
 	virtual unsigned installWatch(FullTopic const& _filter) override;
 	virtual unsigned installWatchOnId(h256 _filterId) override;
 	virtual void uninstallWatch(unsigned _watchId) override;
