@@ -56,7 +56,12 @@ void ContractDefinition::checkTypeRequirements()
 	FunctionDefinition const* constructor = getConstructor();
 	if (constructor && !constructor->getReturnParameters().empty())
 		BOOST_THROW_EXCEPTION(constructor->getReturnParameterList()->createTypeError(
-								  "Non-empty \"returns\" directive for constructor."));
+									"Non-empty \"returns\" directive for constructor."));
+
+	FunctionDefinition const* fallbackFunction = getFallbackFunction();
+	if (fallbackFunction && fallbackFunction->getScope() == this && !fallbackFunction->getParameters().empty())
+		BOOST_THROW_EXCEPTION(fallbackFunction->getParameterList().createTypeError(
+									"Fallback function cannot take parameters."));
 
 	for (ASTPointer<ModifierDefinition> const& modifier: getFunctionModifiers())
 		modifier->checkTypeRequirements();
@@ -66,24 +71,24 @@ void ContractDefinition::checkTypeRequirements()
 
 	// check for hash collisions in function signatures
 	set<FixedHash<4>> hashes;
-	for (auto const& hashAndFunction: getInterfaceFunctionList())
+	for (auto const& it: getInterfaceFunctionList())
 	{
-		FixedHash<4> const& hash = std::get<0>(hashAndFunction);
+		FixedHash<4> const& hash = it.first;
 		if (hashes.count(hash))
 			BOOST_THROW_EXCEPTION(createTypeError(
 									  std::string("Function signature hash collision for ") +
-									  std::get<1>(hashAndFunction)->getCanonicalSignature(std::get<2>(hashAndFunction)->getName())));
+									  it.second->getCanonicalSignature()));
 		hashes.insert(hash);
 	}
 }
 
-map<FixedHash<4>, FunctionDescription> ContractDefinition::getInterfaceFunctions() const
+map<FixedHash<4>, FunctionTypePointer> ContractDefinition::getInterfaceFunctions() const
 {
 	auto exportedFunctionList = getInterfaceFunctionList();
 
-	map<FixedHash<4>, FunctionDescription> exportedFunctions;
+	map<FixedHash<4>, FunctionTypePointer> exportedFunctions;
 	for (auto const& it: exportedFunctionList)
-		exportedFunctions.insert(make_pair(std::get<0>(it), FunctionDescription(std::get<1>(it), std::get<2>(it))));
+		exportedFunctions.insert(it);
 
 	solAssert(exportedFunctionList.size() == exportedFunctions.size(),
 			  "Hash collision at Function Definition Hash calculation");
@@ -96,6 +101,15 @@ FunctionDefinition const* ContractDefinition::getConstructor() const
 	for (ASTPointer<FunctionDefinition> const& f: m_definedFunctions)
 		if (f->isConstructor())
 			return f.get();
+	return nullptr;
+}
+
+FunctionDefinition const* ContractDefinition::getFallbackFunction() const
+{
+	for (ContractDefinition const* contract: getLinearizedBaseContracts())
+		for (ASTPointer<FunctionDefinition> const& f: contract->getDefinedFunctions())
+			if (f->getName().empty())
+				return f.get();
 	return nullptr;
 }
 
@@ -138,20 +152,20 @@ void ContractDefinition::checkIllegalOverrides() const
 	}
 }
 
-vector<tuple<FixedHash<4>, std::shared_ptr<FunctionType const>, Declaration const*>> const& ContractDefinition::getInterfaceFunctionList() const
+vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getInterfaceFunctionList() const
 {
 	if (!m_interfaceFunctionList)
 	{
 		set<string> functionsSeen;
-		m_interfaceFunctionList.reset(new vector<tuple<FixedHash<4>, std::shared_ptr<FunctionType const>, Declaration const*>>());
+		m_interfaceFunctionList.reset(new vector<pair<FixedHash<4>, FunctionTypePointer>>());
 		for (ContractDefinition const* contract: getLinearizedBaseContracts())
 		{
 			for (ASTPointer<FunctionDefinition> const& f: contract->getDefinedFunctions())
-				if (f->isPublic() && !f->isConstructor() && functionsSeen.count(f->getName()) == 0)
+				if (f->isPublic() && !f->isConstructor() && !f->getName().empty() && functionsSeen.count(f->getName()) == 0)
 				{
 					functionsSeen.insert(f->getName());
 					FixedHash<4> hash(dev::sha3(f->getCanonicalSignature()));
-					m_interfaceFunctionList->push_back(make_tuple(hash, make_shared<FunctionType>(*f, false), f.get()));
+					m_interfaceFunctionList->push_back(make_pair(hash, make_shared<FunctionType>(*f, false)));
 				}
 
 			for (ASTPointer<VariableDeclaration> const& v: contract->getStateVariables())
@@ -160,7 +174,7 @@ vector<tuple<FixedHash<4>, std::shared_ptr<FunctionType const>, Declaration cons
 					FunctionType ftype(*v);
 					functionsSeen.insert(v->getName());
 					FixedHash<4> hash(dev::sha3(ftype.getCanonicalSignature(v->getName())));
-					m_interfaceFunctionList->push_back(make_tuple(hash, make_shared<FunctionType>(*v), v.get()));
+					m_interfaceFunctionList->push_back(make_pair(hash, make_shared<FunctionType>(*v)));
 				}
 		}
 	}
@@ -269,6 +283,20 @@ void ModifierInvocation::checkTypeRequirements()
 	for (size_t i = 0; i < m_arguments.size(); ++i)
 		if (!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameters[i]->getType()))
 			BOOST_THROW_EXCEPTION(createTypeError("Invalid type for argument in modifier invocation."));
+}
+
+void EventDefinition::checkTypeRequirements()
+{
+	int numIndexed = 0;
+	for (ASTPointer<VariableDeclaration> const& var: getParameters())
+	{
+		if (var->isIndexed())
+			numIndexed++;
+		if (!var->getType()->canLiveOutsideStorage())
+			BOOST_THROW_EXCEPTION(var->createTypeError("Type is required to live outside storage."));
+	}
+	if (numIndexed > 3)
+		BOOST_THROW_EXCEPTION(createTypeError("More than 3 indexed arguments for event."));
 }
 
 void Block::checkTypeRequirements()
@@ -518,104 +546,6 @@ void Literal::checkTypeRequirements()
 	if (!m_type)
 		BOOST_THROW_EXCEPTION(createTypeError("Invalid literal value."));
 }
-
-std::string const& ParamDescription::getName() const
-{
-	return m_description.first;
-}
-
-std::string const& ParamDescription::getType() const
-{
-	return m_description.second;
-}
-
-ASTPointer<ASTString> FunctionDescription::getDocumentation() const
-{
-	auto function = dynamic_cast<FunctionDefinition const*>(m_description.second);
-	if (function)
-		return function->getDocumentation();
-
-	return ASTPointer<ASTString>();
-}
-
-string FunctionDescription::getSignature() const
-{
-	return m_description.first->getCanonicalSignature(m_description.second->getName());
-}
-
-string FunctionDescription::getName() const
-{
-	return m_description.second->getName();
-}
-
-bool FunctionDescription::isConstant() const
-{
-	auto function = dynamic_cast<FunctionDefinition const*>(m_description.second);
-	if (function)
-		return function->isDeclaredConst();
-
-	return true;
-}
-
-vector<ParamDescription> const FunctionDescription::getParameters() const
-{
-	auto function = dynamic_cast<FunctionDefinition const*>(m_description.second);
-	if (function)
-	{
-		vector<ParamDescription> paramsDescription;
-		for (auto const& param: function->getParameters())
-			paramsDescription.push_back(ParamDescription(param->getName(), param->getType()->toString()));
-
-		return paramsDescription;
-	}
-
-	// else for now let's assume no parameters to accessors
-	// LTODO: fix this for mapping types
-	return {};
-}
-
-vector<ParamDescription> const FunctionDescription::getReturnParameters() const
-{
-	auto function = dynamic_cast<FunctionDefinition const*>(m_description.second);
-	if (function)
-	{
-		vector<ParamDescription> paramsDescription;
-		for (auto const& param: function->getReturnParameters())
-			paramsDescription.push_back(ParamDescription(param->getName(), param->getType()->toString()));
-
-		return paramsDescription;
-	}
-
-	auto vardecl = dynamic_cast<VariableDeclaration const*>(m_description.second);
-	return {ParamDescription(vardecl->getName(), vardecl->getType()->toString())};
-}
-
-Declaration const* FunctionDescription::getDeclaration() const
-{
-	return m_description.second;
-}
-
-VariableDeclaration const* FunctionDescription::getVariableDeclaration() const
-{
-	return dynamic_cast<VariableDeclaration const*>(m_description.second);
-}
-
-FunctionDefinition const* FunctionDescription::getFunctionDefinition() const
-{
-	return dynamic_cast<FunctionDefinition const*>(m_description.second);
-}
-
-shared_ptr<FunctionType const> FunctionDescription::getFunctionTypeShared() const
-{
-	return m_description.first;
-}
-
-
-FunctionType const* FunctionDescription::getFunctionType() const
-{
-	return m_description.first.get();
-}
-
 
 }
 }
