@@ -61,7 +61,7 @@ public:
 	unsigned sent() const { return m_expiry - m_ttl; }
 	unsigned expiry() const { return m_expiry; }
 	unsigned ttl() const { return m_ttl; }
-	Topic const& topics() const { return m_topic; }
+	Topic const& topic() const { return m_topic; }
 	bytes const& data() const { return m_data; }
 
 	Message open(Secret const& _s = Secret()) const;
