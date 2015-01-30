@@ -6,9 +6,9 @@ set(INTERFACE_HEADERS interface.h)
 source_group("" FILES ${HEADERS})
 source_group("" FILES ${SOURCES})
 
-if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-	# Disable rtti for Cache as LLVM has no rtti
-	set_source_files_properties(Cache.cpp PROPERTIES COMPILE_FLAGS -fno-rtti)
+if(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
+else()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
 endif()
 
 
