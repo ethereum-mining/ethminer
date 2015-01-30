@@ -72,7 +72,7 @@ void HttpServer::setPort(int _port)
 
 QString HttpServer::errorString() const
 {
-	return this->errorString();
+	return QTcpServer::errorString();
 }
 
 void HttpServer::setListen(bool _listen)

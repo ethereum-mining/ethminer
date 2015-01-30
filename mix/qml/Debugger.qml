@@ -129,6 +129,12 @@ Rectangle {
 				anchors.fill: parent
 				Layout.fillWidth: true
 				Layout.fillHeight: true
+
+				TransactionLog {
+					Layout.fillWidth: true
+					height: 250
+				}
+
 				RowLayout {
 					// step button + slider
 					id: buttonRow
