@@ -11,7 +11,7 @@ namespace eth
 namespace jit
 {
 
-using ProgramCounter = uint64_t; // TODO: Rename
+using instr_idx = uint64_t;
 
 class BasicBlock
 {
@@ -50,10 +50,7 @@ public:
 		BasicBlock& m_bblock;
 	};
 
-	/// Basic block name prefix. The rest is instruction index.
-	static const char* NamePrefix;
-
-	explicit BasicBlock(code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
+	explicit BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
 	explicit BasicBlock(std::string _name, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);
 
 	BasicBlock(const BasicBlock&) = delete;
@@ -61,8 +58,9 @@ public:
 
 	llvm::BasicBlock* llvm() { return m_llvmBB; }
 
-	code_iterator begin() { return m_begin; }
-	code_iterator end() { return m_end; }
+	instr_idx firstInstrIdx() const { return m_firstInstrIdx; }
+	code_iterator begin() const { return m_begin; }
+	code_iterator end() const { return m_end; }
 
 	bool isJumpDest() const { return m_isJumpDest; }
 
@@ -84,8 +82,9 @@ public:
 	void dump(std::ostream& os, bool _dotOutput = false);
 
 private:
-	code_iterator const m_begin = {};
-	code_iterator const m_end = {};
+	instr_idx const m_firstInstrIdx = 0; 	///< Code index of first instruction in the block
+	code_iterator const m_begin = {};			///< Iterator pointing code beginning of the block
+	code_iterator const m_end = {};				///< Iterator pointing code end of the block
 
 	llvm::BasicBlock* const m_llvmBB;
 
