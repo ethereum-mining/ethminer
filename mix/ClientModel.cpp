@@ -72,7 +72,10 @@ ClientModel::ClientModel(AppContext* _context):
 	qRegisterMetaType<QList<QVariableDefinition*>>("QList<QVariableDefinition*>");
 	qRegisterMetaType<QList<QVariableDeclaration*>>("QList<QVariableDeclaration*>");
 	qRegisterMetaType<QVariableDeclaration*>("QVariableDeclaration*");
-	qRegisterMetaType<AssemblyDebuggerData>("AssemblyDebuggerData");
+	qRegisterMetaType<QMachineState*>("QMachineState");
+	qRegisterMetaType<QInstruction*>("QInstruction");
+	qRegisterMetaType<QCode*>("QCode");
+	qRegisterMetaType<QCallData*>("QCallData");
 	qRegisterMetaType<TransactionLogEntry*>("TransactionLogEntry");
 
 	connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
@@ -251,24 +254,27 @@ void ClientModel::showDebugger()
 void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 {
 	//we need to wrap states in a QObject before sending to QML.
-	QList<QObject*> wStates;
-	for (unsigned i = 0; i < _t.machineStates.size(); i++)
-	{
-		QPointer<DebuggingStateWrapper> s(new DebuggingStateWrapper(_t.executionCode, _t.executionData.toBytes()));
-		s->setState(_t.machineStates[i]);
-		wStates.append(s);
-	}
+	QDebugData* debugData = new QDebugData();
+	QQmlEngine::setObjectOwnership(debugData, QQmlEngine::JavaScriptOwnership);
+	QList<QCode*> codes;
+	for (bytes const& code: _t.executionCode)
+		codes.push_back(QMachineState::getHumanReadableCode(debugData, code));
 
-	QList<QVariableDefinition*> returnParameters;
+	QList<QCallData*> data;
+	for (bytes const& d: _t.transactionData)
+		data.push_back(QMachineState::getDebugCallData(debugData, d));
+
+	QVariantList states;
+	for (MachineState const& s: _t.machineStates)
+		states.append(QVariant::fromValue(new QMachineState(debugData, s, codes[s.codeIndex], data[s.dataIndex])));
+
+	debugData->setStates(std::move(states));
+
+	//QList<QVariableDefinition*> returnParameters;
 	//returnParameters = encoder.decode(f->returnParameters(), debuggingContent.returnValue);
 
 	//collect states for last transaction
-	AssemblyDebuggerData code = DebuggingStateWrapper::getHumanReadableCode(_t.executionCode);
-	m_context->appEngine()->rootContext()->setContextProperty("debugStates", QVariant::fromValue(wStates));
-	m_context->appEngine()->rootContext()->setContextProperty("humanReadableExecutionCode", QVariant::fromValue(std::get<0>(code)));
-	m_context->appEngine()->rootContext()->setContextProperty("bytesCodeMapping", QVariant::fromValue(std::get<1>(code)));
-	m_context->appEngine()->rootContext()->setContextProperty("contractCallReturnParameters", QVariant::fromValue(new QVariableDefinitionList(returnParameters)));
-	showDebuggerWindow();
+	debugDataReady(debugData);
 }
 
 
@@ -339,9 +345,9 @@ void ClientModel::onNewTransaction()
 	else
 	{
 		//call
-		if (tr.transactionData.size() >= 4)
+		if (tr.transactionData.size() > 0 && tr.transactionData.front().size() >= 4)
 		{
-			functionHash = FixedHash<4>(tr.transactionData.data(), FixedHash<4>::ConstructFromPointer);
+			functionHash = FixedHash<4>(tr.transactionData.front().data(), FixedHash<4>::ConstructFromPointer);
 			function = QString::fromStdString(toJS(functionHash));
 			call = true;
 		}

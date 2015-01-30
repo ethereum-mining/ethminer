@@ -1,35 +1,53 @@
-//humanReadableExecutionCode => contain human readable code.
-//debugStates => contain all debug states.
-//bytesCodeMapping => mapping between humanReadableExecutionCode and bytesCode.
+//debugData => contain all debug states.
 //statesList => ListView
 
 var currentSelectedState = null;
 var jumpStartingPoint = null;
-function init()
+var debugData = null;
+var codeMap = null;
+
+function init(data)
 {
-	if (typeof(debugStates) === "undefined")
-		return;
-
-	statesSlider.maximumValue = debugStates.length - 1;
-	statesSlider.value = 0;
-	statesList.model = humanReadableExecutionCode;
-	currentSelectedState = 0;
-	select(currentSelectedState);
-
 	jumpOutBackAction.enabled(false);
 	jumpIntoBackAction.enabled(false);
 	jumpIntoForwardAction.enabled(false);
 	jumpOutForwardAction.enabled(false);
+
+	if (data === null) {
+		statesList.model.clear();
+		statesSlider.maximumValue = 0;
+		statesSlider.value = 0;
+		currentSelectedState = null;
+		jumpStartingPoint = null;
+		debugData = null;
+		return;
+	}
+
+	debugData = data;
+	statesSlider.maximumValue = data.states.length - 1;
+	statesSlider.value = 0;
+	currentSelectedState = 0;
+	setupInstructions(currentSelectedState);
+	select(currentSelectedState);
+}
+
+function setupInstructions(stateIndex) {
+
+	var instructions = debugData.states[stateIndex].code.instructions;
+	codeMap = {};
+	statesList.model.clear();
+	for (var i = 0; i < instructions.length; i++) {
+		statesList.model.append(instructions[i]);
+		codeMap[instructions[i].processIndex] = i;
+	}
 }
 
 function moveSelection(incr)
 {
-	if (typeof(debugStates) === "undefined")
-		return;
-
+	var prevState = currentSelectedState;
 	if (currentSelectedState + incr >= 0)
 	{
-		if (currentSelectedState + incr < debugStates.length)
+		if (currentSelectedState + incr < debugData.states.length)
 			select(currentSelectedState + incr);
 		statesSlider.value = currentSelectedState;
 	}
@@ -37,16 +55,15 @@ function moveSelection(incr)
 
 function select(stateIndex)
 {
-	if (typeof(debugStates) === "undefined")
-		return;
-
-	var codeLine = codeStr(stateIndex);
-	var state = debugStates[stateIndex];
-	highlightSelection(codeLine);
+	if (debugData.states[stateIndex].codeIndex !== debugData.states[currentSelectedState].codeIndex)
+		setupInstructions(stateIndex);
 	currentSelectedState = stateIndex;
+	var codeLine = codeStr(stateIndex);
+	var state = debugData.states[stateIndex];
+	highlightSelection(codeLine);
 	completeCtxInformation(state);
 
-	if (state.instruction === "JUMP")
+	if (state.instruction === "CALL" || state.instruction === "CREATE")
 		jumpIntoForwardAction.enabled(true);
 	else
 		jumpIntoForwardAction.enabled(false);
@@ -59,11 +76,8 @@ function select(stateIndex)
 
 function codeStr(stateIndex)
 {
-	if (typeof(debugStates) === "undefined")
-		return;
-
-	var state = debugStates[stateIndex];
-	return bytesCodeMapping.getValue(state.curPC);
+	var state = debugData.states[stateIndex];
+	return codeMap[state.curPC];
 }
 
 function highlightSelection(index)
@@ -73,13 +87,10 @@ function highlightSelection(index)
 
 function completeCtxInformation(state)
 {
-	if (typeof(debugStates) === "undefined")
-		return;
-
 	currentStep.update(state.step);
 	mem.update(state.newMemSize.value() + " " + qsTr("words"));
 	stepCost.update(state.gasCost.value());
-	gasSpent.update(debugStates[0].gas.subtract(state.gas).value());
+	gasSpent.update(debugData.states[0].gas.subtract(state.gas).value());
 
 	stack.listModel = state.debugStack;
 	storage.listModel = state.debugStorage;
@@ -87,17 +98,8 @@ function completeCtxInformation(state)
 	callDataDump.listModel = state.debugCallData;
 }
 
-function displayReturnValue()
-{
-	headerReturnList.model = contractCallReturnParameters;
-	headerReturnList.update();
-}
-
 function stepOutBack()
 {
-	if (typeof(debugStates) === "undefined")
-		return;
-
 	if (jumpStartingPoint != null)
 	{
 		select(jumpStartingPoint);
@@ -114,15 +116,12 @@ function stepIntoBack()
 
 function stepOverBack()
 {
-	if (typeof(debugStates) === "undefined")
-		return;
-
-	var state = debugStates[currentSelectedState];
-	if (state.instruction === "JUMPDEST")
+	var state = debugData.states[currentSelectedState];
+	if (state.instruction === "CALL" || state.instruction === "CREATE")
 	{
 		for (var k = currentSelectedState; k > 0; k--)
 		{
-			var line = bytesCodeMapping.getValue(debugStates[k].curPC);
+			var line = codeMap[debugData.states[k].curPC];
 			if (line === statesList.currentIndex - 2)
 			{
 				select(k);
@@ -136,15 +135,12 @@ function stepOverBack()
 
 function stepOverForward()
 {
-	if (typeof(debugStates) === "undefined")
-		return;
-
-	var state = debugStates[currentSelectedState];
-	if (state.instruction === "JUMP")
+	var state = debugData.states[currentSelectedState];
+	if (state.instruction === "CALL" || state.instruction === "CREATE")
 	{
-		for (var k = currentSelectedState; k < debugStates.length; k++)
+		for (var k = currentSelectedState; k < debugData.states.length; k++)
 		{
-			var line = bytesCodeMapping.getValue(debugStates[k].curPC);
+			var line = codeMap[debugData.states[k].curPC];
 			if (line === statesList.currentIndex + 2)
 			{
 				select(k);
@@ -158,11 +154,8 @@ function stepOverForward()
 
 function stepIntoForward()
 {
-	if (typeof(debugStates) === "undefined")
-		return;
-
-	var state = debugStates[currentSelectedState];
-	if (state.instruction === "JUMP")
+	var state = debugData.states[currentSelectedState];
+	if (state.instruction === "CALL" || state.instruction === "CREATE")
 	{
 		jumpStartingPoint = currentSelectedState;
 		moveSelection(1);
@@ -184,6 +177,5 @@ function stepOutForward()
 
 function jumpTo(value)
 {
-	currentSelectedState = value;
-	select(currentSelectedState);
+	select(value);
 }

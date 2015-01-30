@@ -38,7 +38,7 @@ namespace mix
 struct MachineState
 {
 	uint64_t steps;
-	dev::Address cur;
+	dev::Address address;
 	dev::u256 curPC;
 	dev::eth::Instruction inst;
 	dev::bigint newMemSize;
@@ -48,6 +48,8 @@ struct MachineState
 	dev::bigint gasCost;
 	std::map<dev::u256, dev::u256> storage;
 	std::vector<MachineState const*> levels;
+	unsigned codeIndex;
+	unsigned dataIndex;
 };
 
 /**
@@ -58,9 +60,8 @@ struct ExecutionResult
 	ExecutionResult(): receipt(dev::h256(), dev::h256(), dev::eth::LogEntries()) {}
 
 	std::vector<MachineState> machineStates;
-	bytes transactionData;
-	bytes executionCode;
-	bytesConstRef executionData;
+	std::vector<bytes> transactionData;
+	std::vector<bytes> executionCode;
 	bytes returnValue;
 	dev::Address address;
 	dev::Address sender;

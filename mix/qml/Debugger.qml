@@ -27,11 +27,11 @@ Rectangle {
 			forceActiveFocus();
 	}
 
-	function update(giveFocus)
+	function update(data, giveFocus)
 	{
 		if (statusPane.result.successful)
 		{
-			Debugger.init();
+			Debugger.init(data);
 			debugScrollArea.visible = true;
 			compilationErrorArea.visible = false;
 			machineStates.visible = true;
@@ -51,8 +51,15 @@ Rectangle {
 	}
 
 	Connections {
+		target: clientModel
+		onDebugDataReady:  {
+			update(_debugData, true);
+		}
+	}
+
+	Connections {
 		target: codeModel
-		onCompilationComplete: update(false)
+		onCompilationComplete: update(null, false);
 	}
 
 	Rectangle
@@ -277,6 +284,7 @@ Rectangle {
 							delegate: renderDelegate
 							highlight: highlightBar
 							highlightFollowsCurrentItem: false
+							model: ListModel {}
 						}
 
 						Component {
