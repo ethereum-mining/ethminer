@@ -1597,7 +1597,7 @@ void Main::on_destination_currentTextChanged()
 //	updateFee();
 }
 
-static shh::Topic topicFromText(QString _s)
+static shh::FullTopic topicFromText(QString _s)
 {
 	shh::BuildTopic ret;
 	while (_s.size())
@@ -2414,10 +2414,10 @@ void Main::refreshWhispers()
 		shh::Envelope const& e = w.second;
 		shh::Message m;
 		for (pair<Public, Secret> const& i: m_server->ids())
-			if (!!(m = e.open(i.second)))
+			if (!!(m = e.open(shh::FullTopic(), i.second)))
 				break;
 		if (!m)
-			m = e.open();
+			m = e.open(shh::FullTopic());
 
 		QString msg;
 		if (m.from())

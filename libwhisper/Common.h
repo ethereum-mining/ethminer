@@ -62,6 +62,7 @@ enum WhisperPacket
 using TopicPart = FixedHash<4>;
 
 using Topic = std::vector<TopicPart>;
+using FullTopic = h256s;
 
 class BuildTopic
 {
@@ -75,7 +76,9 @@ public:
 	BuildTopic& shiftRaw(h256 const& _part) { m_parts.push_back(_part); return *this; }
 
 	operator Topic() const { return toTopic(); }
+	operator FullTopic() const { return toFullTopic(); }
 	Topic toTopic() const;
+	FullTopic toFullTopic() const { return m_parts; }
 
 protected:
 	BuildTopic& shiftBytes(bytes const& _b);
@@ -90,6 +93,7 @@ class TopicFilter
 {
 public:
 	TopicFilter() {}
+	TopicFilter(FullTopic const& _m) { m_topicMasks.push_back(TopicMask()); for (auto const& h: _m) m_topicMasks.back().push_back(std::make_pair(TopicPart(h), h ? ~TopicPart() : TopicPart())); }
 	TopicFilter(TopicMask const& _m): m_topicMasks(1, _m) {}
 	TopicFilter(TopicMasks const& _m): m_topicMasks(_m) {}
 	TopicFilter(RLP const& _r)//: m_topicMasks(_r.toVector<std::vector<>>())
@@ -123,7 +127,9 @@ public:
 	template <class T> BuildTopicMask& operator()(T const& _t) { shift(_t); return *this; }
 
 	operator TopicMask() const { return toTopicMask(); }
+	operator FullTopic() const { return toFullTopic(); }
 	TopicMask toTopicMask() const;
+	FullTopic toFullTopic() const { return m_parts; }
 };
 
 }
