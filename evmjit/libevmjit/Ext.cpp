@@ -60,14 +60,16 @@ llvm::Function* createFunc(EnvFunc _id, llvm::Module* _module)
 
 llvm::Value* Ext::getArgAlloca()
 {
-	auto& a = m_argAllocas[m_argCounter++];
+	auto& a = m_argAllocas[m_argCounter];
 	if (!a)
 	{
-		// FIXME: Improve order and names
 		InsertPointGuard g{getBuilder()};
-		getBuilder().SetInsertPoint(getMainFunction()->front().getFirstNonPHI());
-		a = getBuilder().CreateAlloca(Type::Word, nullptr, "arg");
+		auto allocaIt = getMainFunction()->front().begin();
+		std::advance(allocaIt, m_argCounter); // Skip already created allocas
+		getBuilder().SetInsertPoint(allocaIt);
+		a = getBuilder().CreateAlloca(Type::Word, nullptr, {"a.", std::to_string(m_argCounter)});
 	}
+	++m_argCounter;
 	return a;
 }
 
