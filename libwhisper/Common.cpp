@@ -28,12 +28,26 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-Topic BuildTopic::toTopic() const
+CollapsedTopicPart dev::shh::collapse(FullTopicPart const& _p)
 {
-	Topic ret;
+	return CollapsedTopicPart(sha3(_p));
+}
+
+CollapsedTopic dev::shh::collapse(FullTopic const& _fullTopic)
+{
+	CollapsedTopic ret;
+	ret.reserve(_fullTopic.size());
+	for (auto const& ft: _fullTopic)
+		ret.push_back(collapse(ft));
+	return ret;
+}
+
+CollapsedTopic BuildTopic::toTopic() const
+{
+	CollapsedTopic ret;
 	ret.reserve(m_parts.size());
 	for (auto const& h: m_parts)
-		ret.push_back(TopicPart(h));
+		ret.push_back(collapse(h));
 	return ret;
 }
 
@@ -75,7 +89,7 @@ TopicMask BuildTopicMask::toTopicMask() const
 	TopicMask ret;
 	ret.reserve(m_parts.size());
 	for (auto const& h: m_parts)
-		ret.push_back(make_pair(TopicPart(h), ~TopicPart()));
+		ret.push_back(make_pair(collapse(h), ~CollapsedTopicPart()));
 	return ret;
 }
 

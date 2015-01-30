@@ -26,15 +26,6 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-Topic collapse(FullTopic const& _fullTopic)
-{
-	Topic ret;
-	ret.reserve(_fullTopic.size());
-	for (auto const& ft: _fullTopic)
-		ret.push_back(TopicPart(ft));
-	return ret;
-}
-
 Message::Message(Envelope const& _e, FullTopic const& _fk, Secret const& _s)
 {
 	try
@@ -51,7 +42,7 @@ Message::Message(Envelope const& _e, FullTopic const& _fk, Secret const& _s)
 			Secret topicSecret;
 
 			// determine topicSecret/topicIndex from knowledge of the collapsed topics (which give the order) and our full-size filter topic.
-			Topic knownTopic = collapse(_fk);
+			CollapsedTopic knownTopic = collapse(_fk);
 			for (unsigned ti = 0; ti < _fk.size() && !topicSecret; ++ti)
 				for (unsigned i = 0; i < _e.topic().size(); ++i)
 					if (_e.topic()[i] == knownTopic[ti])
@@ -105,7 +96,7 @@ bool Message::populate(bytes const& _data)
 
 Envelope Message::seal(Secret _from, FullTopic const& _fullTopic, unsigned _ttl, unsigned _workToProve) const
 {
-	Topic topic = collapse(_fullTopic);
+	CollapsedTopic topic = collapse(_fullTopic);
 	Envelope ret(time(0) + _ttl, _ttl, topic);
 
 	bytes input(1 + m_payload.size());

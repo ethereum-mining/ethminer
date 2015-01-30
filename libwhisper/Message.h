@@ -71,7 +71,7 @@ public:
 	unsigned sent() const { return m_expiry - m_ttl; }
 	unsigned expiry() const { return m_expiry; }
 	unsigned ttl() const { return m_ttl; }
-	Topic const& topic() const { return m_topic; }
+	CollapsedTopic const& topic() const { return m_topic; }
 	bytes const& data() const { return m_data; }
 
 	Message open(FullTopic const& _ft, Secret const& _s = Secret()) const;
@@ -80,13 +80,13 @@ public:
 	void proveWork(unsigned _ms);
 
 private:
-	Envelope(unsigned _exp, unsigned _ttl, Topic const& _topic): m_expiry(_exp), m_ttl(_ttl), m_topic(_topic) {}
+	Envelope(unsigned _exp, unsigned _ttl, CollapsedTopic const& _topic): m_expiry(_exp), m_ttl(_ttl), m_topic(_topic) {}
 
 	unsigned m_expiry = 0;
 	unsigned m_ttl = 0;
 	u256 m_nonce;
 
-	Topic m_topic;
+	CollapsedTopic m_topic;
 	bytes m_data;
 };
 
