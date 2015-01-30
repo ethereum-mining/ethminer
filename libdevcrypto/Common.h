@@ -86,7 +86,13 @@ void encrypt(Public const& _k, bytesConstRef _plain, bytes& o_cipher);
 
 /// Decrypts cipher using Secret key.
 bool decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
-	
+
+/// Symmetric encryption.
+void encryptSym(Secret const& _k, bytesConstRef _plain, bytes& o_cipher);
+
+/// Symmetric decryption.
+bool decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
+
 /// Recovers Public key from signed message hash.
 Public recover(Signature const& _sig, h256 const& _hash);
 	

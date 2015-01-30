@@ -494,12 +494,12 @@ MemberList const& ContractType::getMembers() const
 		{
 			for (ContractDefinition const* base: m_contract.getLinearizedBaseContracts())
 				for (ASTPointer<FunctionDefinition> const& function: base->getDefinedFunctions())
-					if (!function->isConstructor())
+					if (!function->isConstructor() && !function->getName().empty())
 						members.insert(make_pair(function->getName(), make_shared<FunctionType>(*function, true)));
 		}
 		else
 			for (auto const& it: m_contract.getInterfaceFunctions())
-				members[it.second.getName()] = it.second.getFunctionTypeShared();
+				members[it.second->getDeclaration().getName()] = it.second;
 		m_members.reset(new MemberList(members));
 	}
 	return *m_members;
@@ -522,7 +522,7 @@ u256 ContractType::getFunctionIdentifier(string const& _functionName) const
 {
 	auto interfaceFunctions = m_contract.getInterfaceFunctions();
 	for (auto const& it: m_contract.getInterfaceFunctions())
-		if (it.second.getName() == _functionName)
+		if (it.second->getDeclaration().getName() == _functionName)
 			return FixedHash<4>::Arith(it.first);
 
 	return Invalid256;
@@ -589,12 +589,15 @@ u256 StructType::getStorageOffsetOfMember(string const& _name) const
 }
 
 FunctionType::FunctionType(FunctionDefinition const& _function, bool _isInternal):
-	m_location(_isInternal ? Location::INTERNAL : Location::EXTERNAL)
+	m_location(_isInternal ? Location::INTERNAL : Location::EXTERNAL),
+	m_isConstant(_function.isDeclaredConst()),
+	m_declaration(&_function)
 {
 	TypePointers params;
 	vector<string> paramNames;
 	TypePointers retParams;
 	vector<string> retParamNames;
+
 	params.reserve(_function.getParameters().size());
 	paramNames.reserve(_function.getParameters().size());
 	for (ASTPointer<VariableDeclaration> const& var: _function.getParameters())
@@ -616,7 +619,7 @@ FunctionType::FunctionType(FunctionDefinition const& _function, bool _isInternal
 }
 
 FunctionType::FunctionType(VariableDeclaration const& _varDecl):
-	m_location(Location::EXTERNAL)
+	m_location(Location::EXTERNAL), m_isConstant(true), m_declaration(&_varDecl)
 {
 	TypePointers params({});
 	vector<string> paramNames({});
@@ -630,6 +633,22 @@ FunctionType::FunctionType(VariableDeclaration const& _varDecl):
 	swap(retParamNames, m_returnParameterNames);
 }
 
+FunctionType::FunctionType(const EventDefinition& _event):
+	m_location(Location::EVENT), m_declaration(&_event)
+{
+	TypePointers params;
+	vector<string> paramNames;
+	params.reserve(_event.getParameters().size());
+	paramNames.reserve(_event.getParameters().size());
+	for (ASTPointer<VariableDeclaration> const& var: _event.getParameters())
+	{
+		paramNames.push_back(var->getName());
+		params.push_back(var->getType());
+	}
+	swap(params, m_parameterTypes);
+	swap(paramNames, m_parameterNames);
+}
+
 bool FunctionType::operator==(Type const& _other) const
 {
 	if (_other.getCategory() != getCategory())
@@ -638,6 +657,9 @@ bool FunctionType::operator==(Type const& _other) const
 
 	if (m_location != other.m_location)
 		return false;
+	if (m_isConstant != other.isConstant())
+		return false;
+
 	if (m_parameterTypes.size() != other.m_parameterTypes.size() ||
 			m_returnParameterTypes.size() != other.m_returnParameterTypes.size())
 		return false;
@@ -711,7 +733,13 @@ MemberList const& FunctionType::getMembers() const
 
 string FunctionType::getCanonicalSignature(std::string const& _name) const
 {
-	string ret = _name + "(";
+	std::string funcName = _name;
+	if (_name == "")
+	{
+		solAssert(m_declaration != nullptr, "Function type without name needs a declaration");
+		funcName = m_declaration->getName();
+	}
+	string ret = funcName + "(";
 
 	for (auto it = m_parameterTypes.cbegin(); it != m_parameterTypes.cend(); ++it)
 		ret += (*it)->toString() + (it + 1 == m_parameterTypes.cend() ? "" : ",");
@@ -732,6 +760,33 @@ TypePointer FunctionType::copyAndSetGasOrValue(bool _setGas, bool _setValue) con
 {
 	return make_shared<FunctionType>(m_parameterTypes, m_returnParameterTypes, m_location,
 									 m_gasSet || _setGas, m_valueSet || _setValue);
+}
+
+vector<string> const FunctionType::getParameterTypeNames() const
+{
+	vector<string> names;
+	for (TypePointer const& t: m_parameterTypes)
+		names.push_back(t->toString());
+
+	return names;
+}
+
+vector<string> const FunctionType::getReturnParameterTypeNames() const
+{
+	vector<string> names;
+	for (TypePointer const& t: m_returnParameterTypes)
+		names.push_back(t->toString());
+
+	return names;
+}
+
+ASTPointer<ASTString> FunctionType::getDocumentation() const
+{
+	auto function = dynamic_cast<Documented const*>(m_declaration);
+	if (function)
+		return function->getDocumentation();
+
+	return ASTPointer<ASTString>();
 }
 
 bool MappingType::operator==(Type const& _other) const
@@ -769,7 +824,7 @@ MemberList const& TypeType::getMembers() const
 				// We are accessing the type of a base contract, so add all public and private
 				// functions. Note that this does not add inherited functions on purpose.
 				for (ASTPointer<FunctionDefinition> const& f: contract.getDefinedFunctions())
-					if (!f->isConstructor())
+					if (!f->isConstructor() && !f->getName().empty())
 						members[f->getName()] = make_shared<FunctionType>(*f);
 		}
 		m_members.reset(new MemberList(members));

@@ -916,7 +916,7 @@ BOOST_AUTO_TEST_CASE(multiple_elementary_accessors)
 	BOOST_CHECK(callContractFunction("name()") == encodeArgs("Celina"));
 	BOOST_CHECK(callContractFunction("a_hash()") == encodeArgs(dev::sha3(toBigEndian(u256(123)))));
 	BOOST_CHECK(callContractFunction("an_address()") == encodeArgs(toBigEndian(u160(0x1337))));
-	BOOST_CHECK(!(callContractFunction("super_secret_data()") == encodeArgs(42)));
+	BOOST_CHECK(callContractFunction("super_secret_data()") == bytes());
 }
 
 BOOST_AUTO_TEST_CASE(balance)
@@ -1953,6 +1953,88 @@ BOOST_AUTO_TEST_CASE(super_in_constructor)
 	)";
 	compileAndRun(sourceCode, 0, "D");
 	BOOST_CHECK(callContractFunction("f()") == encodeArgs(1 | 2 | 4 | 8));
+}
+
+BOOST_AUTO_TEST_CASE(fallback_function)
+{
+	char const* sourceCode = R"(
+		contract A {
+			uint data;
+			function() returns (uint r) { data = 1; return 2; }
+			function getData() returns (uint r) { return data; }
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("getData()") == encodeArgs(0));
+	BOOST_CHECK(callContractFunction("") == encodeArgs(2));
+	BOOST_CHECK(callContractFunction("getData()") == encodeArgs(1));
+}
+
+BOOST_AUTO_TEST_CASE(inherited_fallback_function)
+{
+	char const* sourceCode = R"(
+		contract A {
+			uint data;
+			function() returns (uint r) { data = 1; return 2; }
+			function getData() returns (uint r) { return data; }
+		}
+		contract B is A {}
+	)";
+	compileAndRun(sourceCode, 0, "B");
+	BOOST_CHECK(callContractFunction("getData()") == encodeArgs(0));
+	BOOST_CHECK(callContractFunction("") == encodeArgs(2));
+	BOOST_CHECK(callContractFunction("getData()") == encodeArgs(1));
+}
+
+BOOST_AUTO_TEST_CASE(event)
+{
+	char const* sourceCode = R"(
+		contract ClientReceipt {
+			event Deposit(address indexed _from, hash indexed _id, uint _value);
+			function deposit(hash _id, bool _manually) {
+				if (_manually) {
+					hash s = 0x50cb9fe53daa9737b786ab3646f04d0150dc50ef4e75f59509d83667ad5adb20;
+					log3(msg.value, s, hash32(msg.sender), _id);
+				} else
+					Deposit(hash32(msg.sender), _id, msg.value);
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	u256 value(18);
+	u256 id(0x1234);
+	for (bool manually: {true, false})
+	{
+		callContractFunctionWithValue("deposit(hash256,bool)", value, id, manually);
+		BOOST_REQUIRE_EQUAL(m_logs.size(), 1);
+		BOOST_CHECK_EQUAL(m_logs[0].address, m_contractAddress);
+		BOOST_CHECK_EQUAL(h256(m_logs[0].data), h256(u256(value)));
+		BOOST_REQUIRE_EQUAL(m_logs[0].topics.size(), 3);
+		BOOST_CHECK_EQUAL(m_logs[0].topics[0], dev::sha3(string("Deposit(address,hash256,uint256)")));
+		BOOST_CHECK_EQUAL(m_logs[0].topics[1], h256(m_sender));
+		BOOST_CHECK_EQUAL(m_logs[0].topics[2], h256(id));
+	}
+}
+
+BOOST_AUTO_TEST_CASE(event_lots_of_data)
+{
+	char const* sourceCode = R"(
+		contract ClientReceipt {
+			event Deposit(address _from, hash _id, uint _value, bool _flag);
+			function deposit(hash _id) {
+				Deposit(msg.sender, hash32(_id), msg.value, true);
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	u256 value(18);
+	u256 id(0x1234);
+	callContractFunctionWithValue("deposit(hash256)", value, id);
+	BOOST_REQUIRE_EQUAL(m_logs.size(), 1);
+	BOOST_CHECK_EQUAL(m_logs[0].address, m_contractAddress);
+	BOOST_CHECK(m_logs[0].data == encodeArgs(m_sender, id, value, true));
+	BOOST_REQUIRE_EQUAL(m_logs[0].topics.size(), 1);
+	BOOST_CHECK_EQUAL(m_logs[0].topics[0], dev::sha3(string("Deposit(address,hash256,uint256,bool)")));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
