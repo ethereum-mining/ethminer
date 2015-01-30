@@ -27,6 +27,22 @@ Rectangle {
 		debugRunActionIcon.enabled = statusPane.result.successful;
 	}
 
+	function infoMessage(text)
+	{
+		status.state = "";
+		status.text = text
+		logslink.visible = false;
+	}
+
+
+	Connections {
+		target:clientModel
+		onRunStarted: infoMessage(qsTr("Running transactions.."));
+		onRunFailed: infoMessage(qsTr("Error running transactions"));
+		onRunComplete: infoMessage(qsTr("Run complete"));
+		onNewBlock: infoMessage(qsTr("New block created"));
+	}
+
 	color: "transparent"
 	anchors.fill: parent
 	Rectangle {

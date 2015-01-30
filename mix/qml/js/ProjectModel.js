@@ -47,7 +47,7 @@ function saveProject() {
 		for (var i = 0; i < projectListModel.count; i++)
 			projectData.files.push(projectListModel.get(i).fileName)
 		projectSaving(projectData);
-		var json = JSON.stringify(projectData);
+		var json = JSON.stringify(projectData, null, "\t");
 		var projectFile = projectPath + projectFileName;
 		fileIo.writeFile(projectFile, json);
 		projectSaved();
@@ -173,7 +173,8 @@ function doCreateProject(title, path) {
 	//TODO: copy from template
 	fileIo.writeFile(dirPath + indexFile, "<html></html>");
 	fileIo.writeFile(dirPath + contractsFile, "contract MyContract {\n}\n");
-	var json = JSON.stringify(projectData);
+	newProject(projectData);
+	var json = JSON.stringify(projectData, null, "\t");
 	fileIo.writeFile(projectFile, json);
 	loadProject(dirPath);
 }

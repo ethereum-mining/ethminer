@@ -23,6 +23,7 @@
  */
 
 #include <QMessageBox>
+#include <QClipboard>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
@@ -93,4 +94,10 @@ void AppContext::displayMessageDialog(QString _title, QString _message)
 	dialogWin->setProperty("height", "100");
 	dialogWin->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
 	QMetaObject::invokeMethod(dialogWin, "open");
+}
+
+void AppContext::toClipboard(QString _text)
+{
+	QClipboard *clipboard = QApplication::clipboard();
+	clipboard->setText(_text);
 }
