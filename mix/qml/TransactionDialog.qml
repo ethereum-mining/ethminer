@@ -49,7 +49,7 @@ Window {
 		}
 
 		if (functionIndex == -1 && functionsModel.count > 0)
-			functionIndex = 0; //@todo suggest unused funtion
+			functionIndex = 0; //@todo suggest unused function
 
 		functionComboBox.currentIndex = functionIndex;
 		paramsModel.clear();
@@ -223,17 +223,17 @@ Window {
 
 				TableViewColumn {
 					role: "name"
-					title: "Name"
+					title: qsTr("Name")
 					width: 120
 				}
 				TableViewColumn {
 					role: "type"
-					title: "Type"
+					title: qsTr("Type")
 					width: 120
 				}
 				TableViewColumn {
 					role: "value"
-					title: "Value"
+					title: qsTr("Value")
 					width: 120
 				}
 
