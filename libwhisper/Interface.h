@@ -49,8 +49,6 @@ struct InstalledFilter
 {
 	InstalledFilter(FullTopic const& _f): full(_f), filter(_f) {}
 
-	FilterKey filterKey() const { unsigned i; for (i = 0; i < full.size() && !full[i]; ++i) {} return i < full.size() ? FilterKey(i, full[i]) : FilterKey(); }
-
 	FullTopic full;
 	TopicFilter filter;
 	unsigned refCount = 1;
@@ -72,7 +70,7 @@ public:
 
 	virtual void inject(Envelope const& _m, WhisperPeer* _from = nullptr) = 0;
 
-	virtual FilterKey filterKey(unsigned _id) const = 0;
+	virtual FullTopic const& fullTopic(unsigned _id) const = 0;
 	virtual unsigned installWatch(FullTopic const& _mask) = 0;
 	virtual unsigned installWatchOnId(h256 _filterId) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
