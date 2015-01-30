@@ -85,7 +85,7 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		{
 			auto beginIdx = begin - _codeBegin;
 			m_basicBlocks.emplace(std::piecewise_construct, std::forward_as_tuple(beginIdx),
-					std::forward_as_tuple(begin, next, m_mainFunc, m_builder, nextJumpDest));
+					std::forward_as_tuple(beginIdx, begin, next, m_mainFunc, m_builder, nextJumpDest));
 			nextJumpDest = false;
 			begin = next;
 		}
@@ -138,7 +138,6 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto entryBlock = llvm::BasicBlock::Create(m_builder.getContext(), "entry", m_mainFunc);
 	m_builder.SetInsertPoint(entryBlock);
 
-	m_codeBegin = _begin;
 	createBasicBlocks(_begin, _end);
 
 	// Init runtime structures.
@@ -623,7 +622,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
 		case Instruction::PC:
 		{
-			auto value = Constant::get(it - m_codeBegin);
+			auto value = Constant::get(it - _basicBlock.begin() + _basicBlock.firstInstrIdx());
 			stack.push(value);
 			break;
 		}
