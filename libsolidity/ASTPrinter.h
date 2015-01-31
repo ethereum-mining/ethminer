@@ -44,16 +44,21 @@ public:
 
 	bool visit(ImportDirective const& _node) override;
 	bool visit(ContractDefinition const& _node) override;
+	bool visit(InheritanceSpecifier const& _node) override;
 	bool visit(StructDefinition const& _node) override;
 	bool visit(ParameterList const& _node) override;
 	bool visit(FunctionDefinition const& _node) override;
 	bool visit(VariableDeclaration const& _node) override;
+	bool visit(ModifierDefinition const& _node) override;
+	bool visit(ModifierInvocation const& _node) override;
+	bool visit(EventDefinition const& _node) override;
 	bool visit(TypeName const& _node) override;
 	bool visit(ElementaryTypeName const& _node) override;
 	bool visit(UserDefinedTypeName const& _node) override;
 	bool visit(Mapping const& _node) override;
 	bool visit(Statement const& _node) override;
 	bool visit(Block const& _node) override;
+	bool visit(PlaceholderStatement const& _node) override;
 	bool visit(IfStatement const& _node) override;
 	bool visit(BreakableStatement const& _node) override;
 	bool visit(WhileStatement const& _node) override;
@@ -78,16 +83,21 @@ public:
 
 	void endVisit(ImportDirective const&) override;
 	void endVisit(ContractDefinition const&) override;
+	void endVisit(InheritanceSpecifier const&) override;
 	void endVisit(StructDefinition const&) override;
 	void endVisit(ParameterList const&) override;
 	void endVisit(FunctionDefinition const&) override;
 	void endVisit(VariableDeclaration const&) override;
+	void endVisit(ModifierDefinition const&) override;
+	void endVisit(ModifierInvocation const&) override;
+	void endVisit(EventDefinition const&) override;
 	void endVisit(TypeName const&) override;
 	void endVisit(ElementaryTypeName const&) override;
 	void endVisit(UserDefinedTypeName const&) override;
 	void endVisit(Mapping const&) override;
 	void endVisit(Statement const&) override;
 	void endVisit(Block const&) override;
+	void endVisit(PlaceholderStatement const&) override;
 	void endVisit(IfStatement const&) override;
 	void endVisit(BreakableStatement const&) override;
 	void endVisit(WhileStatement const&) override;

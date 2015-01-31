@@ -23,47 +23,33 @@
  * @date 2014
  */
 
-/// Recursively resolves all promises in given object and replaces the resolved values with promises
-/// @param any object/array/promise/anything else..
-/// @returns (resolves) object with replaced promises with their result 
-function flattenPromise (obj) {
-    if (obj instanceof Promise) {
-        return Promise.resolve(obj);
-    }
-
-    if (obj instanceof Array) {
-        return new Promise(function (resolve) {
-            var promises = obj.map(function (o) {
-                return flattenPromise(o);
-            });
-
-            return Promise.all(promises).then(function (res) {
-                for (var i = 0; i < obj.length; i++) {
-                    obj[i] = res[i];
-                }
-                resolve(obj);
-            });
-        });
-    }
-
-    if (obj instanceof Object) {
-        return new Promise(function (resolve) {
-            var keys = Object.keys(obj);
-            var promises = keys.map(function (key) {
-                return flattenPromise(obj[key]);
-            });
-
-            return Promise.all(promises).then(function (res) {
-                for (var i = 0; i < keys.length; i++) {
-                    obj[keys[i]] = res[i];
-                }
-                resolve(obj);
-            });
-        });
-    }
-
-    return Promise.resolve(obj);
+if (process.env.NODE_ENV !== 'build') {
+    var BigNumber = require('bignumber.js');
 }
+
+var utils = require('./utils');
+
+var ETH_UNITS = [ 
+    'wei', 
+    'Kwei', 
+    'Mwei', 
+    'Gwei', 
+    'szabo', 
+    'finney', 
+    'ether', 
+    'grand', 
+    'Mether', 
+    'Gether', 
+    'Tether', 
+    'Pether', 
+    'Eether', 
+    'Zether', 
+    'Yether', 
+    'Nether', 
+    'Dether', 
+    'Vether', 
+    'Uether' 
+];
 
 /// @returns an array of objects describing web3 api methods
 var web3Methods = function () {
@@ -98,6 +84,7 @@ var ethMethods = function () {
     { name: 'transaction', call: transactionCall },
     { name: 'uncle', call: uncleCall },
     { name: 'compilers', call: 'eth_compilers' },
+    { name: 'flush', call: 'eth_flush' },
     { name: 'lll', call: 'eth_lll' },
     { name: 'solidity', call: 'eth_solidity' },
     { name: 'serpent', call: 'eth_serpent' },
@@ -113,7 +100,6 @@ var ethProperties = function () {
     { name: 'listening', getter: 'eth_listening', setter: 'eth_setListening' },
     { name: 'mining', getter: 'eth_mining', setter: 'eth_setMining' },
     { name: 'gasPrice', getter: 'eth_gasPrice' },
-    { name: 'account', getter: 'eth_account' },
     { name: 'accounts', getter: 'eth_accounts' },
     { name: 'peerCount', getter: 'eth_peerCount' },
     { name: 'defaultBlock', getter: 'eth_defaultBlock', setter: 'eth_setDefaultBlock' },
@@ -160,7 +146,7 @@ var shhWatchMethods = function () {
     return [
     { name: 'newFilter', call: 'shh_newFilter' },
     { name: 'uninstallFilter', call: 'shh_uninstallFilter' },
-    { name: 'getMessage', call: 'shh_getMessages' }
+    { name: 'getMessages', call: 'shh_getMessages' }
     ];
 };
 
@@ -169,21 +155,11 @@ var shhWatchMethods = function () {
 var setupMethods = function (obj, methods) {
     methods.forEach(function (method) {
         obj[method.name] = function () {
-            return flattenPromise(Array.prototype.slice.call(arguments)).then(function (args) {
-                var call = typeof method.call === "function" ? method.call(args) : method.call;
-                return {call: call, args: args};
-            }).then(function (request) {
-                return new Promise(function (resolve, reject) {
-                    web3.provider.send(request, function (err, result) {
-                        if (!err) {
-                            resolve(result);
-                            return;
-                        }
-                        reject(err);
-                    });
-                });
-            }).catch(function(err) {
-                console.error(err);
+            var args = Array.prototype.slice.call(arguments);
+            var call = typeof method.call === 'function' ? method.call(args) : method.call;
+            return web3.provider.send({
+                call: call,
+                args: args
             });
         };
     });
@@ -195,44 +171,21 @@ var setupProperties = function (obj, properties) {
     properties.forEach(function (property) {
         var proto = {};
         proto.get = function () {
-            return new Promise(function(resolve, reject) {
-                web3.provider.send({call: property.getter}, function(err, result) {
-                    if (!err) {
-                        resolve(result);
-                        return;
-                    }
-                    reject(err);
-                });
+            return web3.provider.send({
+                call: property.getter
             });
         };
+
         if (property.setter) {
             proto.set = function (val) {
-                return flattenPromise([val]).then(function (args) {
-                    return new Promise(function (resolve) {
-                        web3.provider.send({call: property.setter, args: args}, function (err, result) {
-                            if (!err) {
-                                resolve(result);
-                                return;
-                            }
-                            reject(err);
-                        });
-                    });
-                }).catch(function (err) {
-                    console.error(err);
+                return web3.provider.send({
+                    call: property.setter,
+                    args: [val]
                 });
             };
         }
         Object.defineProperty(obj, property.name, proto);
     });
-};
-
-// TODO: import from a dependency, don't duplicate.
-var hexToDec = function (hex) {
-    return parseInt(hex, 16).toString();
-};
-
-var decToHex = function (dec) {
-    return parseInt(dec).toString(16);
 };
 
 /// setups web3 object, and it's in-browser executed methods
@@ -241,59 +194,30 @@ var web3 = {
     _events: {},
     providers: {},
 
-    toHex: function(str) {
-        var hex = "";
-        for(var i = 0; i < str.length; i++) {
-            var n = str.charCodeAt(i).toString(16);
-            hex += n.length < 2 ? '0' + n : n;
-        }
-
-        return hex;
-    },
-
     /// @returns ascii string representation of hex value prefixed with 0x
-    toAscii: function(hex) {
-        // Find termination
-        var str = "";
-        var i = 0, l = hex.length;
-        if (hex.substring(0, 2) === '0x')
-            i = 2;
-        for(; i < l; i+=2) {
-            var code = parseInt(hex.substr(i, 2), 16);
-            if(code === 0) {
-                break;
-            }
-
-            str += String.fromCharCode(code);
-        }
-
-        return str;
-    },
+    toAscii: utils.toAscii,
 
     /// @returns hex representation (prefixed by 0x) of ascii string
-    fromAscii: function(str, pad) {
-        pad = pad === undefined ? 0 : pad;
-        var hex = this.toHex(str);
-        while(hex.length < pad*2)
-            hex += "00";
-        return "0x" + hex;
-    },
+    fromAscii: utils.fromAscii,
 
     /// @returns decimal representaton of hex value prefixed by 0x
     toDecimal: function (val) {
-        return hexToDec(val.substring(2));
+        // remove 0x and place 0, if it's required
+        val = val.length > 2 ? val.substring(2) : "0";
+        return (new BigNumber(val, 16).toString(10));
     },
 
     /// @returns hex representation (prefixed by 0x) of decimal value
     fromDecimal: function (val) {
-        return "0x" + decToHex(val);
+        return "0x" + (new BigNumber(val).toString(16));
     },
 
     /// used to transform value/string to eth string
+    /// TODO: use BigNumber.js to parse int
     toEth: function(str) {
         var val = typeof str === "string" ? str.indexOf('0x') === 0 ? parseInt(str.substr(2), 16) : parseInt(str) : str;
         var unit = 0;
-        var units = [ 'wei', 'Kwei', 'Mwei', 'Gwei', 'szabo', 'finney', 'ether', 'grand', 'Mether', 'Gether', 'Tether', 'Pether', 'Eether', 'Zether', 'Yether', 'Nether', 'Dether', 'Vether', 'Uether' ];
+        var units = ETH_UNITS;
         while (val > 3000 && unit < units.length - 1)
         {
             val /= 1000;
@@ -315,8 +239,24 @@ var web3 = {
 
     /// eth object prototype
     eth: {
-        watch: function (params) {
-            return new web3.filter(params, ethWatch);
+        contractFromAbi: function (abi) {
+            return function(addr) {
+                // Default to address of Config. TODO: rremove prior to genesis.
+                addr = addr || '0xc6d9d2cd449a754c494264e1809c50e34d64562b';
+                var ret = web3.eth.contract(addr, abi);
+                ret.address = addr;
+                return ret;
+            };
+        },
+
+        /// @param filter may be a string, object or event
+        /// @param indexed is optional, this is an object with optional event indexed params
+        /// @param options is optional, this is an object with optional event options ('max'...)
+        watch: function (filter, indexed, options) {
+            if (filter._isEvent) {
+                return filter(indexed, options);
+            }
+            return new web3.filter(filter, ethWatch);
         }
     },
 
@@ -325,38 +265,11 @@ var web3 = {
 
     /// shh object prototype
     shh: {
-        watch: function (params) {
-            return new web3.filter(params, shhWatch);
+        
+        /// @param filter may be a string, object or event
+        watch: function (filter, indexed) {
+            return new web3.filter(filter, shhWatch);
         }
-    },
-
-    /// used by filter to register callback with given id
-    on: function(event, id, cb) {
-        if(web3._events[event] === undefined) {
-            web3._events[event] = {};
-        }
-
-        web3._events[event][id] = cb;
-        return this;
-    },
-
-    /// used by filter to unregister callback with given id
-    off: function(event, id) {
-        if(web3._events[event] !== undefined) {
-            delete web3._events[event][id];
-        }
-
-        return this;
-    },
-
-    /// used to trigger callback registered by filter
-    trigger: function(event, id, data) {
-        var callbacks = web3._events[event];
-        if (!callbacks || !callbacks[id]) {
-            return;
-        }
-        var cb = callbacks[id];
-        cb(data);
     },
 
     /// @returns true if provider is installed
@@ -385,26 +298,9 @@ var shhWatch = {
 setupMethods(shhWatch, shhWatchMethods());
 
 web3.setProvider = function(provider) {
-    provider.onmessage = messageHandler;
+    //provider.onmessage = messageHandler; // there will be no async calls, to remove
     web3.provider.set(provider);
-    web3.provider.sendQueued();
 };
-
-/// callled when there is new incoming message
-function messageHandler(data) {
-    if(data._event !== undefined) {
-        web3.trigger(data._event, data._id, data.data);
-        return;
-    }
-
-    if(data._id) {
-        var cb = web3._callbacks[data._id];
-        if (cb) {
-            cb.call(this, data.error, data.data);
-            delete web3._callbacks[data._id];
-        }
-    }
-}
 
 module.exports = web3;
 

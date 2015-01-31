@@ -4,7 +4,8 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
-import Qt.WebSockets 1.0
+import QtWebEngine.experimental 1.0
+import HttpServer 1.0
 
 Item {
 	id: webPreview
@@ -53,7 +54,7 @@ Item {
 		onAppLoaded: {
 			//We need to load the container using file scheme so that web security would allow loading local files in iframe
 			var containerPage = fileIo.readFile("qrc:///qml/html/WebContainer.html");
-			webView.loadHtml(containerPage, "file:///")
+			webView.loadHtml(containerPage, "file:///WebContainer.html")
 
 		}
 	}
@@ -61,6 +62,7 @@ Item {
 	Connections {
 		target: clientModel
 		onContractAddressChanged: reload();
+		onRunComplete: reload();
 	}
 
 	Connections {
@@ -104,20 +106,21 @@ Item {
 		id: pageListModel
 	}
 
-	WebSocketServer {
-		id: socketServer
+	HttpServer {
+		id: httpServer
 		listen: true
-		name: "mix"
-		onClientConnected:
-		{
-			webSocket.onTextMessageReceived.connect(function(message) {
-				console.log("rpc_request: " + message);
-				clientModel.apiRequest(message);
-			});
-			clientModel.onApiResponse.connect(function(message) {
-				console.log("rpc_response: " + message);
-				webSocket.sendTextMessage(message);
-			});
+		accept: true
+		port: 8893
+		onClientConnected: {
+			//filter polling spam
+			//TODO: do it properly
+			var log = _request.content.indexOf("eth_changed") < 0;
+			if (log)
+				console.log(_request.content);
+			var response = clientModel.apiCall(_request.content);
+			if (log)
+				console.log(response);
+			_request.setResponse(response);
 		}
 	}
 
@@ -152,13 +155,14 @@ Item {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 			id: webView
+			experimental.settings.localContentCanAccessRemoteUrls: true
 			onJavaScriptConsoleMessage: {
 				console.log(sourceID + ":" + lineNumber + ":" + message);
 			}
 			onLoadingChanged: {
 				if (!loading) {
 					initialized = true;
-					webView.runJavaScript("init(\"" + socketServer.url + "\")");
+					webView.runJavaScript("init(\"" + httpServer.url + "\")");
 					if (pendingPageUrl)
 						setPreviewUrl(pendingPageUrl);
 				}

@@ -63,8 +63,8 @@ private:
 
 	void sendMessages();
 
-	unsigned rating(Message const&) const { return 0; }	// TODO
-	void noteNewMessage(h256 _h, Message const& _m);
+	unsigned rating(Envelope const&) const { return 0; }	// TODO
+	void noteNewMessage(h256 _h, Envelope const& _m);
 
 	mutable dev::Mutex x_unseen;
 	std::multimap<unsigned, h256> m_unseen;	///< Rated according to what they want.

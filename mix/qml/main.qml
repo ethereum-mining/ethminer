@@ -4,13 +4,14 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
-import CodeEditorExtensionManager 1.0
+import Qt.labs.settings 1.0
+import org.ethereum.qml.QEther 1.0
 
 ApplicationWindow {
 	id: mainApplication
 	visible: true
 	width: 1200
-	height: 600
+	height: 800
 	minimumWidth: 400
 	minimumHeight: 300
 	title: qsTr("mix")
@@ -36,17 +37,17 @@ ApplicationWindow {
 			title: qsTr("Debug")
 			MenuItem { action: debugRunAction }
 			MenuItem { action: debugResetStateAction }
+			MenuItem { action: mineAction }
 		}
 		Menu {
 			title: qsTr("Windows")
-			MenuItem { action: showHideRightPanel }
-			MenuItem { action: toggleWebPreview }
+			MenuItem { action: openNextDocumentAction }
+			MenuItem { action: openPrevDocumentAction }
+			MenuSeparator {}
+			MenuItem { action: showHideRightPanelAction }
+			MenuItem { action: toggleWebPreviewAction }
+			MenuItem { action: toggleWebPreviewOrientationAction }
 		}
-	}
-
-	Component.onCompleted: {
-		setX(Screen.width / 2 - width / 2);
-		setY(Screen.height / 2 - height / 2);
 	}
 
 	MainContent {
@@ -64,6 +65,14 @@ ApplicationWindow {
 		id: messageDialog
 	}
 
+	Settings {
+		id: mainWindowSettings
+		property alias mainWidth: mainApplication.width
+		property alias mainHeight: mainApplication.height
+		property alias mainX: mainApplication.x
+		property alias mainY: mainApplication.y
+	}
+
 	Action {
 		id: exitAppAction
 		text: qsTr("Exit")
@@ -72,14 +81,18 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: mineAction
+		text: "Mine"
+		shortcut: "Ctrl+M"
+		onTriggered: clientModel.mine();
+		enabled: codeModel.hasContract && !clientModel.running
+	}
+	Action {
 		id: debugRunAction
 		text: "&Run"
 		shortcut: "F5"
-		onTriggered: {
-			mainContent.ensureRightView();
-			clientModel.debugDeployment();
-		}
-		enabled: codeModel.hasContract && !clientModel.running;
+		onTriggered: mainContent.startQuickDebugging()
+		enabled: codeModel.hasContract && !clientModel.running
 	}
 
 	Action {
@@ -90,7 +103,7 @@ ApplicationWindow {
 	}
 
 	Action {
-		id: toggleWebPreview
+		id: toggleWebPreviewAction
 		text: "Show Web View"
 		shortcut: "F2"
 		checkable: true
@@ -99,7 +112,16 @@ ApplicationWindow {
 	}
 
 	Action {
-		id: showHideRightPanel
+		id: toggleWebPreviewOrientationAction
+		text: "Horizontal Web View"
+		shortcut: ""
+		checkable: true
+		checked: mainContent.webViewHorizontal
+		onTriggered: mainContent.toggleWebPreviewOrientation();
+	}
+
+	Action {
+		id: showHideRightPanelAction
 		text: "Show Right View"
 		shortcut: "F7"
 		checkable: true
@@ -170,4 +192,21 @@ ApplicationWindow {
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.closeProject();
 	}
+
+	Action {
+		id: openNextDocumentAction
+		text: qsTr("Next Document")
+		shortcut: "Ctrl+Tab"
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.openNextDocument();
+	}
+
+	Action {
+		id: openPrevDocumentAction
+		text: qsTr("Previous Document")
+		shortcut: "Ctrl+Shift+Tab"
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.openPrevDocument();
+	}
+
 }

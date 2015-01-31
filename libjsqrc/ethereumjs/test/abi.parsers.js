@@ -5,6 +5,7 @@ var clone = function (object) { return JSON.parse(JSON.stringify(object)); };
 
 var description =  [{
     "name": "test",
+    "type": "function",
     "inputs": [{
         "name": "a",
         "type": "uint256"
@@ -47,7 +48,6 @@ describe('abi', function() {
             assert.equal(parser.test(3.9), "0000000000000000000000000000000000000000000000000000000000000003");
             assert.equal(parser.test('0.1'), "0000000000000000000000000000000000000000000000000000000000000000");
             assert.equal(parser.test('3.9'), "0000000000000000000000000000000000000000000000000000000000000003");
-
 
         });
 
@@ -321,7 +321,7 @@ describe('abi', function() {
         
             // given
             var d = clone(description);
-            d[0].name = 'helloworld';
+            d[0].name = 'helloworld(int)';
             d[0].inputs = [
                 { type: "int" }
             ];
@@ -331,6 +331,7 @@ describe('abi', function() {
 
             // then
             assert.equal(parser.helloworld(1), "0000000000000000000000000000000000000000000000000000000000000001");
+            assert.equal(parser.helloworld['int'](1), "0000000000000000000000000000000000000000000000000000000000000001");
 
         });
         
@@ -339,10 +340,12 @@ describe('abi', function() {
             // given
             var d =  [{
                 name: "test",
+                type: "function",
                 inputs: [{ type: "int" }],
                 outputs: [{ type: "int" }]
             },{
                 name: "test2",
+                type: "function",
                 inputs: [{ type: "string" }],
                 outputs: [{ type: "string" }]
             }];
@@ -755,7 +758,7 @@ describe('abi', function() {
         
             // given
             var d = clone(description);
-            d[0].name = 'helloworld';
+            d[0].name = 'helloworld(int)';
             d[0].outputs = [
                 { type: "int" }
             ];
@@ -765,6 +768,7 @@ describe('abi', function() {
 
             // then
             assert.equal(parser.helloworld("0x0000000000000000000000000000000000000000000000000000000000000001")[0], 1);
+            assert.equal(parser.helloworld['int']("0x0000000000000000000000000000000000000000000000000000000000000001")[0], 1);
 
         });
 
@@ -774,10 +778,12 @@ describe('abi', function() {
             // given
             var d =  [{
                 name: "test",
+                type: "function",
                 inputs: [{ type: "int" }],
                 outputs: [{ type: "int" }]
             },{
                 name: "test2",
+                type: "function",
                 inputs: [{ type: "string" }],
                 outputs: [{ type: "string" }]
             }];
@@ -819,6 +825,38 @@ describe('abi', function() {
                     "0000000000000000000000000000000000000000000000000000000000000006")[0][1],
                 6
                 );
+
+        });
+
+        it('should parse 0x value', function () {
+        
+            // given
+            var d = clone(description);
+            d[0].outputs = [
+                { type: 'int' }
+            ];
+
+            // when
+            var parser = abi.outputParser(d);
+
+            // then
+            assert.equal(parser.test("0x")[0], 0);
+
+        });
+        
+        it('should parse 0x value', function () {
+        
+            // given
+            var d = clone(description);
+            d[0].outputs = [
+                { type: 'uint' }
+            ];
+
+            // when
+            var parser = abi.outputParser(d);
+
+            // then
+            assert.equal(parser.test("0x")[0], 0);
 
         });
 

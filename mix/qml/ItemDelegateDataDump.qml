@@ -49,21 +49,6 @@ Rectangle {
 				font.pointSize: 8
 			}
 		}
-
-		Rectangle
-		{
-			Layout.fillWidth: true
-			Layout.minimumWidth: 50
-			Layout.minimumHeight: parent.height
-			Text {
-				anchors.verticalCenter: parent.verticalCenter
-				anchors.horizontalCenter:  parent.horizontalCenter
-				font.family: "monospace"
-				color: "#4a4a4a"
-				text: modelData[2]
-				font.pointSize: 8
-			}
-		}
 	}
 
 	Rectangle {

@@ -4,6 +4,9 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import CodeEditorExtensionManager 1.0
 import Qt.labs.settings 1.0
+import org.ethereum.qml.QEther 1.0
+import "js/QEtherHelper.js" as QEtherHelper
+import "js/TransactionHelper.js" as TransactionHelper
 
 Rectangle {
 
@@ -20,6 +23,7 @@ Rectangle {
 
 	property alias rightViewVisible : rightView.visible
 	property alias webViewVisible : webPreview.visible
+	property bool webViewHorizontal : codeWebSplitter.orientation === Qt.Vertical //vertical splitter positions elements vertically, splits screen horizontally
 
 	onWidthChanged:
 	{
@@ -27,6 +31,12 @@ Rectangle {
 			contentView.width = parent.width - projectList.width - rightView.width;
 		else
 			contentView.width = parent.width - projectList.width;
+	}
+
+	function startQuickDebugging()
+	{
+		ensureRightView();
+		projectModel.stateListModel.debugDefaultState();
 	}
 
 	function toggleRightView() {
@@ -41,6 +51,11 @@ Rectangle {
 			rightView.show();
 	}
 
+	function rightViewIsVisible()
+	{
+		return rightView.visible;
+	}
+
 	function hideRightView() {
 		if (rightView.visible)
 			rightView.hide();
@@ -50,13 +65,20 @@ Rectangle {
 		webPreview.visible = !webPreview.visible;
 	}
 
-	function rightViewVisible()	{
-		return rightView.visible;
+	function toggleWebPreviewOrientation() {
+		codeWebSplitter.orientation = (codeWebSplitter.orientation === Qt.Vertical ? Qt.Horizontal : Qt.Vertical);
 	}
 
 	CodeEditorExtensionManager {
 		headerView: headerPaneTabs;
 		rightView: rightPaneTabs;
+	}
+
+	Settings {
+		id: mainLayoutSettings
+		property alias codeWebOrientation: codeWebSplitter.orientation
+		property alias webWidth: webPreview.width
+		property alias webHeight: webPreview.height
 	}
 
 	GridLayout
@@ -130,6 +152,12 @@ Rectangle {
 				width: parent.width - projectList.width
 				height: parent.height
 				SplitView {
+					 handleDelegate: Rectangle {
+						width: 4
+						height: 4
+						color: "#cccccc"
+					 }
+					id: codeWebSplitter
 					anchors.fill: parent
 					orientation: Qt.Vertical
 					CodeEditorView {
@@ -141,7 +169,10 @@ Rectangle {
 					WebPreview {
 						id: webPreview
 						height: parent.height * 0.4
-						Layout.fillWidth: true
+						Layout.fillWidth: codeWebSplitter.orientation === Qt.Vertical
+						Layout.fillHeight: codeWebSplitter.orientation === Qt.Horizontal
+						Layout.minimumHeight: 200
+						Layout.minimumWidth: 200
 					}
 				}
 			}

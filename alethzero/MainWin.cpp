@@ -102,7 +102,7 @@ static vector<KeyPair> keysAsVector(QList<KeyPair> const& keys)
 	return {begin(list), end(list)};
 }
 
-static QString contentsOfQResource(string const& res)
+QString contentsOfQResource(string const& res)
 {
 	QFile file(QString::fromStdString(res));
 	if (!file.open(QFile::ReadOnly))
@@ -112,7 +112,7 @@ static QString contentsOfQResource(string const& res)
 }
 
 //Address c_config = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
-Address c_newConfig = Address("661005d2720d855f1d9976f88bb10c1a3398c77f");
+Address c_newConfig = Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
 //Address c_nameReg = Address("ddd1cea741d548f90d86fb87a3ae6492e18c03a1");
 
 Main::Main(QWidget *parent) :
@@ -178,13 +178,13 @@ Main::Main(QWidget *parent) :
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
+		
 		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
 		connect(m_qweb, SIGNAL(onNewId(QString)), this, SLOT(addNewId(QString)));
 	});
 
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
-		m_qweb->poll();
 	});
 
 	connect(ui->webView, &QWebView::titleChanged, [=]()
@@ -311,7 +311,7 @@ void Main::installBalancesWatch()
 		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
 		for (auto c: altCoins)
-			tf.address(c).topic(h256(i.address(), h256::AlignRight));
+			tf.address(c).topic(0, h256(i.address(), h256::AlignRight));
 
 	uninstallWatch(m_balancesFilter);
 	m_balancesFilter = installWatch(tf, [=](LocalisedLogEntries const&){ onBalancesChange(); });
@@ -432,6 +432,11 @@ void Main::on_jsInput_returnPressed()
 {
 	eval(ui->jsInput->text());
 	ui->jsInput->setText("");
+}
+
+QVariant Main::evalRaw(QString const& _js)
+{
+	return ui->webView->page()->currentFrame()->evaluateJavaScript(_js);
 }
 
 void Main::eval(QString const& _js)
@@ -721,7 +726,7 @@ void Main::readSettings(bool _skipGeometry)
 	ui->enableOptimizer->setChecked(m_enableOptimizer);
 	ui->clientName->setText(s.value("clientName", "").toString());
 	if (ui->clientName->text().isEmpty())
-		ui->clientName->setText(QInputDialog::getText(this, "Enter identity", "Enter a name that will identify you on the peer network"));
+		ui->clientName->setText(QInputDialog::getText(nullptr, "Enter identity", "Enter a name that will identify you on the peer network"));
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("nameReg", "").toString());
@@ -783,6 +788,7 @@ void Main::on_importKeyFile_triggered()
 				}
 			}
 
+			cnote << k.address();
 			if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
 			{
 				if (m_myKeys.empty())
@@ -1178,9 +1184,6 @@ void Main::timerEvent(QTimerEvent*)
 	}
 	else
 		interval += 100;
-
-	if (m_qweb)
-		m_qweb->poll();
 
 	for (auto const& i: m_handlers)
 	{
@@ -1594,7 +1597,7 @@ void Main::on_destination_currentTextChanged()
 //	updateFee();
 }
 
-static shh::Topic topicFromText(QString _s)
+static shh::FullTopic topicFromText(QString _s)
 {
 	shh::BuildTopic ret;
 	while (_s.size())
@@ -1671,7 +1674,7 @@ string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compil
 	{
 		ret += it.first.abridged();
 		ret += " :";
-		ret += it.second->getName() + "\n";
+		ret += it.second->getDeclaration().getName() + "\n";
 	}
 	return ret;
 }
@@ -1697,7 +1700,7 @@ void Main::on_data_textChanged()
 //				compiler.addSources(dev::solidity::StandardSources);
 				m_data = compiler.compile(src, m_enableOptimizer);
 				solidity = "<h4>Solidity</h4>";
-				solidity += "<pre>" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + "</pre>";
+				solidity += "<pre>var " + QString::fromStdString(compiler.getContractNames().front()) + " = web3.eth.contractFromAbi(" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + ");</pre>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getSolidityInterface()).toHtmlEscaped() + "</pre>";
 				solidity += "<pre>" + QString::fromStdString(getFunctionHashes(compiler)).toHtmlEscaped() + "</pre>";
 			}
@@ -1990,14 +1993,69 @@ bool beginsWith(Address _a, bytes const& _b)
 void Main::on_create_triggered()
 {
 	bool ok = true;
-	QString s = QInputDialog::getText(this, "Special Beginning?", "If you want a special key, enter some hex digits that it should begin with.\nNOTE: The more you enter, the longer generation will take.", QLineEdit::Normal, QString(), &ok);
+	enum { NoVanity = 0, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour, StringMatch };
+	QStringList items = {"No vanity (instant)", "Two pairs first (a few seconds)", "Two pairs first and second (a few minutes)", "Three pairs first (a few minutes)", "Four pairs first (several hours)", "Specific hex string"};
+	unsigned v = items.QList<QString>::indexOf(QInputDialog::getItem(this, "Vanity Key?", "Would you a vanity key? This could take several hours.", items, 0, false, &ok));
 	if (!ok)
 		return;
+
+	bytes bs;
+	if (v == StringMatch)
+	{
+		QString s = QInputDialog::getText(this, "Vanity Beginning?", "Enter some hex digits that it should begin with.\nNOTE: The more you enter, the longer generation will take.", QLineEdit::Normal, QString(), &ok);
+		if (!ok)
+			return;
+		bs = fromHex(s.toStdString());
+	}
+
 	KeyPair p;
-	while (!beginsWith(p.address(), asBytes(s.toStdString())))
-		p = KeyPair::create();
+	bool keepGoing = true;
+	unsigned done = 0;
+	function<void()> f = [&]() {
+		KeyPair lp;
+		while (keepGoing)
+		{
+			done++;
+			if (done % 1000 == 0)
+				cnote << "Tried" << done << "keys";
+			lp = KeyPair::create();
+			auto a = lp.address();
+			if (v == NoVanity ||
+				(v == FirstTwo && a[0] == a[1]) ||
+				(v == FirstTwoNextTwo && a[0] == a[1] && a[2] == a[3]) ||
+				(v == FirstThree && a[0] == a[1] && a[1] == a[2]) ||
+				(v == FirstFour && a[0] == a[1] && a[1] == a[2] && a[2] == a[3]) ||
+				(v == StringMatch && beginsWith(lp.address(), bs))
+			)
+				break;
+		}
+		if (keepGoing)
+			p = lp;
+		keepGoing = false;
+	};
+	vector<std::thread*> ts;
+	for (unsigned t = 0; t < std::thread::hardware_concurrency() - 1; ++t)
+		ts.push_back(new std::thread(f));
+	f();
+	for (std::thread* t: ts)
+	{
+		t->join();
+		delete t;
+	}
 	m_myKeys.append(p);
 	keysChanged();
+}
+
+void Main::on_killAccount_triggered()
+{
+	if (ui->ourAccounts->currentRow() >= 0 && ui->ourAccounts->currentRow() < m_myKeys.size())
+	{
+		auto k = m_myKeys[ui->ourAccounts->currentRow()];
+		if (ethereum()->balanceAt(k.address()) != 0 && QMessageBox::critical(this, "Kill Account?!", "Account " + render(k.address()) + " has " + QString::fromStdString(formatBalance(ethereum()->balanceAt(k.address()))) + " in it. It, and any contract that this account can access, will be lost forever if you continue. Do NOT continue unless you know what you are doing.\nAre you sure you want to continue?", QMessageBox::Yes, QMessageBox::No) == QMessageBox::No)
+			return;
+		m_myKeys.erase(m_myKeys.begin() + ui->ourAccounts->currentRow());
+		keysChanged();
+	}
 }
 
 void Main::on_debugStep_triggered()
@@ -2356,10 +2414,10 @@ void Main::refreshWhispers()
 		shh::Envelope const& e = w.second;
 		shh::Message m;
 		for (pair<Public, Secret> const& i: m_server->ids())
-			if (!!(m = e.open(i.second)))
+			if (!!(m = e.open(shh::FullTopic(), i.second)))
 				break;
 		if (!m)
-			m = e.open();
+			m = e.open(shh::FullTopic());
 
 		QString msg;
 		if (m.from())
@@ -2372,7 +2430,7 @@ void Main::refreshWhispers()
 		time_t ex = e.expiry();
 		QString t(ctime(&ex));
 		t.chop(1);
-		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topics()).c_str()).arg(msg);
+		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
 		ui->whispers->addItem(item);
 	}
 }
