@@ -133,7 +133,7 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 	if (_jobId != m_backgroundJobId)
 		return; //obsolete job
 
-	solidity::CompilerStack cs;
+	solidity::CompilerStack cs(true);
 	std::unique_ptr<CompilationResult> result;
 
 	std::string source = _code.toStdString();

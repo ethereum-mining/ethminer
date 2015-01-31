@@ -63,21 +63,46 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 	bytes rlp = _t.rlp();
 	Executive execution(_state, LastHashes(), 0);
 	execution.setup(&rlp);
-	bytes code;
-	bytesConstRef data;
-	bool firstIteration = true;
 	std::vector<MachineState> machineStates;
 	std::vector<MachineState const*> levels;
+	std::vector<bytes> codes;
+	std::map<bytes const*, unsigned> codeIndexes;
+	std::vector<bytes> data;
+	std::map<bytesConstRef const*, unsigned> dataIndexes;
+	bytes const* lastCode = nullptr;
+	bytesConstRef const* lastData = nullptr;
+	unsigned codeIndex = 0;
+	unsigned dataIndex = 0;
 	auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, void* voidVM, void const* voidExt)
 	{
 		VM& vm = *(VM*)voidVM;
 		ExtVM const& ext = *(ExtVM const*)voidExt;
-
-		if (firstIteration)
+		if (lastCode == nullptr || lastCode != &ext.code)
 		{
-			code = ext.code;
-			data = ext.data;
-			firstIteration = false;
+			auto const& iter = codeIndexes.find(&ext.code);
+			if (iter != codeIndexes.end())
+				codeIndex = iter->second;
+			else
+			{
+				codeIndex = codes.size();
+				codes.push_back(ext.code);
+				codeIndexes[&ext.code] = codeIndex;
+			}
+			lastCode = &ext.code;
+		}
+
+		if (lastData == nullptr || lastData != &ext.data)
+		{
+			auto const& iter = dataIndexes.find(&ext.data);
+			if (iter != dataIndexes.end())
+				dataIndex = iter->second;
+			else
+			{
+				dataIndex = data.size();
+				data.push_back(ext.data.toBytes());
+				dataIndexes[&ext.data] = dataIndex;
+			}
+			lastData = &ext.data;
 		}
 
 		if (levels.size() < ext.depth)
@@ -85,8 +110,8 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 		else
 			levels.resize(ext.depth);
 
-		machineStates.push_back(MachineState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(),
-									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
+		machineStates.emplace_back(MachineState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(),
+									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels, codeIndex, dataIndex}));
 	};
 
 	execution.go(onOp);
@@ -95,9 +120,8 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 	ExecutionResult d;
 	d.returnValue = execution.out().toVector();
 	d.machineStates = machineStates;
-	d.executionCode = code;
-	d.executionData = data;
-	d.transactionData = _t.data();
+	d.executionCode = std::move(codes);
+	d.transactionData = std::move(data);
 	d.address = _t.receiveAddress();
 	d.sender = _t.sender();
 	d.value = _t.value();
