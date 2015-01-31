@@ -1597,7 +1597,7 @@ void Main::on_destination_currentTextChanged()
 //	updateFee();
 }
 
-static shh::Topic topicFromText(QString _s)
+static shh::FullTopic topicFromText(QString _s)
 {
 	shh::BuildTopic ret;
 	while (_s.size())
@@ -1674,7 +1674,7 @@ string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compil
 	{
 		ret += it.first.abridged();
 		ret += " :";
-		ret += it.second.getName() + "\n";
+		ret += it.second->getDeclaration().getName() + "\n";
 	}
 	return ret;
 }
@@ -2414,10 +2414,10 @@ void Main::refreshWhispers()
 		shh::Envelope const& e = w.second;
 		shh::Message m;
 		for (pair<Public, Secret> const& i: m_server->ids())
-			if (!!(m = e.open(i.second)))
+			if (!!(m = e.open(shh::FullTopic(), i.second)))
 				break;
 		if (!m)
-			m = e.open();
+			m = e.open(shh::FullTopic());
 
 		QString msg;
 		if (m.from())
@@ -2430,7 +2430,7 @@ void Main::refreshWhispers()
 		time_t ex = e.expiry();
 		QString t(ctime(&ex));
 		t.chop(1);
-		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topics()).c_str()).arg(msg);
+		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
 		ui->whispers->addItem(item);
 	}
 }
