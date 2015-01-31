@@ -35,9 +35,9 @@ using namespace dev::p2p;
 using namespace dev::eth;
 using namespace dev::shh;
 
-WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean, std::set<std::string> const& _interfaces, NetworkPreferences const& _n):
+WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean, std::set<std::string> const& _interfaces, NetworkPreferences const& _n, bytesConstRef _network):
 	m_clientVersion(_clientVersion),
-	m_net(_clientVersion, _n)
+	m_net(_clientVersion, _n, _network)
 {
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
@@ -90,14 +90,9 @@ void WebThreeDirect::setIdealPeerCount(size_t _n)
 	return m_net.setIdealPeerCount(_n);
 }
 
-bytes WebThreeDirect::saveNodes()
+bytes WebThreeDirect::saveNetwork()
 {
-	return m_net.saveNodes();
-}
-
-void WebThreeDirect::restoreNodes(bytesConstRef _saved)
-{
-	return m_net.restoreNodes(_saved);
+	return m_net.saveNetwork();
 }
 
 void WebThreeDirect::connect(std::string const& _seedHost, unsigned short _port)

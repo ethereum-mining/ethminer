@@ -59,7 +59,7 @@ public:
 
 	void ping();
 
-	bool isOpen() const { return m_socket.is_open(); }
+	bool isConnected() const { return m_socket.is_open(); }
 
 	NodeId id() const;
 	unsigned socketId() const { return m_socket.native_handle(); }

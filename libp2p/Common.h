@@ -32,6 +32,7 @@
 #include <chrono>
 #include <libdevcrypto/Common.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/Exceptions.h>
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
@@ -53,6 +54,8 @@ class UPnP;
 class Capability;
 class Host;
 class Session;
+
+struct NetworkStartRequired: virtual dev::Exception {};
 
 struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
 struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
@@ -168,7 +171,7 @@ struct Node
 	/// If true, node will not be removed from Node list.
 	bool required = false;
 	
-	operator bool() const { return (bool)id; }
+	virtual operator bool() const { return (bool)id; }
 };
 
 }

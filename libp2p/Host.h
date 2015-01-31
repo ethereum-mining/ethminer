@@ -66,7 +66,7 @@ class Host;
  * Specifically, peers can be utilized in a variety of
  * many-to-many relationships while also needing to modify shared instances of
  * those peers. Modifying these properties via a storage backend alleviates
- * Host of the responsibility. (&& remove save/restoreNodes)
+ * Host of the responsibility. (&& remove save/restoreNetwork)
  * @todo reimplement recording of historical session information on per-transport basis
  * @todo rebuild nodetable when localNetworking is enabled/disabled
  * @todo move attributes into protected
@@ -74,7 +74,7 @@ class Host;
 class Peer: public Node
 {
 	friend class Session;		/// Allows Session to update score and rating.
-	friend class Host;		/// For Host: saveNodes(), restoreNodes()
+	friend class Host;		/// For Host: saveNetwork(), restoreNetwork()
 public:
 	bool isOffline() const { return !m_session.lock(); }
 
@@ -89,6 +89,28 @@ public:
 	std::chrono::system_clock::time_point lastAttempted;
 	unsigned failedAttempts = 0;
 	DisconnectReason lastDisconnect = NoDisconnect;	///< Reason for disconnect that happened last.
+	
+	virtual bool operator<(Peer const& _p) const
+	{
+		if (isOffline() != _p.isOffline())
+			return isOffline();
+		else if (isOffline())
+			if (lastAttempted == _p.lastAttempted)
+				return failedAttempts < _p.failedAttempts;
+			else
+				return lastAttempted < _p.lastAttempted;
+			else
+				if (score == _p.score)
+					if (rating == _p.rating)
+						if (failedAttempts == _p.failedAttempts)
+							return id < _p.id;
+						else
+							return failedAttempts < _p.failedAttempts;
+					else
+						return rating < _p.rating;
+					else
+						return score < _p.score;
+	}
 	
 protected:
 	/// Used by isOffline() and (todo) for peer to emit session information.
@@ -109,6 +131,7 @@ class HostNodeTableHandler: public NodeTableEventHandler
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
  *
+ * @todo exceptions when nodeTable not set (prior to start)
  * @todo onNodeTableEvent: move peer-connection logic into ensurePeers
  * @todo handshake: gracefully disconnect peer if peer already connected
  * @todo abstract socket -> IPConnection
@@ -116,6 +139,7 @@ class HostNodeTableHandler: public NodeTableEventHandler
  * @todo handle conflict if addNode/requireNode called and Node already exists w/conflicting tcp or udp port
  * @todo write host identifier to disk w/nodes
  * @todo per-session keepalive/ping instead of broadcast; set ping-timeout via median-latency
+ * @todo configuration-management (NetworkPrefs+Keys+Topology)
  */
 class Host: public Worker
 {
@@ -125,7 +149,7 @@ class Host: public Worker
 	
 public:
 	/// Start server, listening for connections on the given port.
-	Host(std::string const& _clientVersion, NetworkPreferences const& _n = NetworkPreferences());
+	Host(std::string const& _clientVersion, NetworkPreferences const& _n = NetworkPreferences(), bytesConstRef _restoreNetwork = bytesConstRef());
 
 	/// Will block on network process events.
 	virtual ~Host();
@@ -158,10 +182,10 @@ public:
 
 	/// Get peer information.
 	PeerSessionInfos peers() const;
-
-	/// Get number of peers connected; equivalent to, but faster than, peers().size().
-	size_t peerCount() const { RecursiveGuard l(x_sessions); return m_peers.size(); }
-
+	
+	/// Get number of peers connected.
+	size_t peerCount() const;
+	
 	/// Get the address we're listening on currently.
 	std::string listenAddress() const { return m_tcpPublic.address().to_string(); }
 	
@@ -169,10 +193,7 @@ public:
 	unsigned short listenPort() const { return m_tcpPublic.port(); }
 
 	/// Serialise the set of known peers.
-	bytes saveNodes() const;
-
-	/// Deserialise the data and populate the set of known peers.
-	void restoreNodes(bytesConstRef _b);
+	bytes saveNetwork() const;
 
 	// TODO: P2P this should be combined with peers into a HostStat object of some kind; coalesce data, as it's only used for status information.
 	Peers nodes() const { RecursiveGuard l(x_sessions); Peers ret; for (auto const& i: m_peers) ret.push_back(*i.second); return ret; }
@@ -196,6 +217,9 @@ public:
 protected:
 	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);
 
+	/// Deserialise the data and populate the set of known peers.
+	void restoreNetwork(bytesConstRef _b);
+	
 private:
 	/// Populate m_peerAddresses with available public addresses.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
@@ -226,13 +250,12 @@ private:
 	
 	/// Shutdown network. Not thread-safe; to be called only by worker.
 	virtual void doneWorking();
-	
-	/// Add node
-	void addNode(Node const& _node) { if (m_nodeTable) m_nodeTable->addNode(_node); }
 
 	/// Get or create host identifier (KeyPair).
-	KeyPair getHostIdentifier();
+	static KeyPair getNetworkAlias(bytesConstRef _b);
 
+	bytes m_restoreNetwork;										///< Set by constructor and used to set Host key and restore network peers & nodes.
+	
 	bool m_run = false;													///< Whether network is running.
 	std::mutex x_runTimer;												///< Start/stop mutex.
 	

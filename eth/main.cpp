@@ -332,13 +332,14 @@ int main(int argc, char** argv)
 
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
+	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
 	dev::WebThreeDirect web3(
 		"Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : ""),
 		dbPath,
 		false,
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
-		netPrefs
-		);
+		netPrefs,
+		&nodesState);
 	web3.setIdealPeerCount(peers);
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
 
@@ -347,9 +348,6 @@ int main(int argc, char** argv)
 		c->setForceMining(forceMining);
 		c->setAddress(coinbase);
 	}
-
-	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/nodeState.rlp");
-	web3.restoreNodes(&nodesState);
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 	web3.startNetwork();
@@ -824,7 +822,7 @@ int main(int argc, char** argv)
 		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
-	writeFile((dbPath.size() ? dbPath : getDataDir()) + "/nodeState.rlp", web3.saveNodes());
+	writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", web3.saveNetwork());
 	return 0;
 }
 

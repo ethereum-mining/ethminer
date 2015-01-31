@@ -660,10 +660,10 @@ void Main::writeSettings()
 	s.setValue("verbosity", ui->verbosity->value());
 	s.setValue("jitvm", ui->jitvm->isChecked());
 
-	bytes d = m_webThree->saveNodes();
+	bytes d = m_webThree->saveNetwork();
 	if (d.size())
-		m_peers = QByteArray((char*)d.data(), (int)d.size());
-	s.setValue("peers", m_peers);
+		m_networkConfig = QByteArray((char*)d.data(), (int)d.size());
+	s.setValue("peers", m_networkConfig);
 	s.setValue("nameReg", ui->nameReg->text());
 
 	s.setValue("geometry", saveGeometry());
@@ -712,7 +712,7 @@ void Main::readSettings(bool _skipGeometry)
 		}
 	}
 
-	m_peers = s.value("peers").toByteArray();
+	m_networkConfig = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
@@ -1859,8 +1859,9 @@ void Main::on_net_triggered()
 		web3()->setIdealPeerCount(ui->idealPeers->value());
 		web3()->setNetworkPreferences(netPrefs());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
-		if (m_peers.size()/* && ui->usePast->isChecked()*/)
-			web3()->restoreNodes(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+		// TODO: p2p
+		if (m_networkConfig.size()/* && ui->usePast->isChecked()*/)
+			web3()->restoreNetwork(bytesConstRef((byte*)m_networkConfig.data(), m_networkConfig.size()));
 		web3()->startNetwork();
 		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
 	}
