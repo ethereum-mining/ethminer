@@ -64,7 +64,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 	Executive execution(_state, LastHashes(), 0);
 	execution.setup(&rlp);
 	std::vector<MachineState> machineStates;
-	std::vector<MachineState const*> levels;
+	std::vector<unsigned> levels;
 	std::vector<bytes> codes;
 	std::map<bytes const*, unsigned> codeIndexes;
 	std::vector<bytes> data;
@@ -106,7 +106,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 		}
 
 		if (levels.size() < ext.depth)
-			levels.push_back(&machineStates.back());
+			levels.push_back(machineStates.size() - 1);
 		else
 			levels.resize(ext.depth);
 
