@@ -77,7 +77,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 	res["data"] = jsFromBinary(_e.data);
 	res["address"] = toJS(_e.address);
 	for (auto const& t: _e.topics)
-		res["topics"].append(toJS(t));
+		res["topic"].append(toJS(t));
 	res["number"] = _e.number;
 	return res;
 }
@@ -123,10 +123,10 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 		else if (_json["address"].isString())
 			filter.address(jsToAddress(_json["address"].asString()));
 	}
-	if (!_json["topics"].empty() && _json["topics"].isArray())
+	if (!_json["topic"].empty() && _json["topic"].isArray())
 	{
 		unsigned i = 0;
-		for (auto t: _json["topics"])
+		for (auto t: _json["topic"])
 		{
 			if (t.isArray())
 				for (auto tt: t)
@@ -173,9 +173,9 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	return _m.seal(_from, bt, ttl, workToProve);
 }
 
-static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
+static pair<shh::FullTopic, Public> toWatch(Json::Value const& _json)
 {
-	shh::BuildTopicMask bt;
+	shh::BuildTopic bt;
 	Public to;
 
 	if (_json["to"].isString())
@@ -190,7 +190,7 @@ static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 				if (i.isString())
 					bt.shift(jsToBytes(i.asString()));
 	}
-	return make_pair(bt.toTopicMask(), to);
+	return make_pair(bt, to);
 }
 
 static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message const& _m)
@@ -201,8 +201,8 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["sent"] = (int)_e.sent();
 	res["ttl"] = (int)_e.ttl();
 	res["workProved"] = (int)_e.workProved();
-	for (auto const& t: _e.topics())
-		res["topics"].append(toJS(t));
+	for (auto const& t: _e.topic())
+		res["topic"].append(toJS(t));
 	res["payload"] = toJS(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
@@ -576,12 +576,12 @@ Json::Value WebThreeStubServerBase::shh_changed(int const& _id)
 			if (pub)
 			{
 				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
-				m = e.open(m_ids[pub]);
-				if (!m)
-					continue;
+				m = e.open(face()->fullTopic(_id), m_ids[pub]);
 			}
 			else
-				m = e.open();
+				m = e.open(face()->fullTopic(_id));
+			if (!m)
+				continue;
 			ret.append(toJson(h, e, m));
 		}
 	

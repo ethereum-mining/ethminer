@@ -80,6 +80,18 @@ bool dev::decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
 	return true;
 }
 
+void dev::encryptSym(Secret const& _k, bytesConstRef _plain, bytes& o_cipher)
+{
+	// TOOD: @alex @subtly do this properly.
+	encrypt(KeyPair(_k).pub(), _plain, o_cipher);
+}
+
+bool dev::decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plain)
+{
+	// TODO: @alex @subtly do this properly.
+	return decrypt(_k, _cipher, o_plain);
+}
+
 Public dev::recover(Signature const& _sig, h256 const& _message)
 {
 	return s_secp256k1.recover(_sig, _message.ref());
