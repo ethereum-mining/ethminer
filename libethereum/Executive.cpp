@@ -68,7 +68,7 @@ bool Executive::setup(bytesConstRef _rlp)
 
 	if (m_t.gas() < gasCost)
 	{
-		clog(StateDetail) << "Not enough gas to pay for the transaction: Require >" << gasCost << " Got" << m_t.gas();
+		clog << "Not enough gas to pay for the transaction: Require >" << gasCost << " Got" << m_t.gas();
 		BOOST_THROW_EXCEPTION(OutOfGas() << RequirementError((bigint)gasCost, (bigint)m_t.gas()));
 	}
 
