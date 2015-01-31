@@ -24,12 +24,8 @@ if (process.env.NODE_ENV !== 'build') {
     var BigNumber = require('bignumber.js'); // jshint ignore:line
 }
 
-// TODO: remove web3 dependency from here!
-var web3 = require('./web3'); 
-
-BigNumber.config({ ROUNDING_MODE: BigNumber.ROUND_DOWN });
-
-var ETH_PADDING = 32;
+var utils = require('./utils');
+var c = require('./const');
 
 /// @param string string to be padded
 /// @param number of characters that result string should have
@@ -44,10 +40,11 @@ var padLeft = function (string, chars, sign) {
 /// If the value is floating point, round it down
 /// @returns right-aligned byte representation of int
 var formatInputInt = function (value) {
-    var padding = ETH_PADDING * 2;
+    var padding = c.ETH_PADDING * 2;
     if (value instanceof BigNumber || typeof value === 'number') {
         if (typeof value === 'number')
             value = new BigNumber(value);
+        BigNumber.config(c.ETH_BIGNUMBER_ROUNDING_MODE);
         value = value.round();
 
         if (value.lessThan(0)) 
@@ -66,7 +63,7 @@ var formatInputInt = function (value) {
 /// Formats input value to byte representation of string
 /// @returns left-algined byte representation of string
 var formatInputString = function (value) {
-    return web3.fromAscii(value, ETH_PADDING).substr(2);
+    return utils.fromAscii(value, c.ETH_PADDING).substr(2);
 };
 
 /// Formats input value to byte representation of bool
@@ -131,7 +128,7 @@ var formatOutputBool = function (value) {
 
 /// @returns left-aligned input bytes formatted to ascii string
 var formatOutputString = function (value) {
-    return web3.toAscii(value);
+    return utils.toAscii(value);
 };
 
 /// @returns right-aligned input bytes formatted to address
