@@ -55,7 +55,7 @@ Item {
 			}
 			onActivated:  {
 				var item = logModel.get(row);
-				clientModel.debugTransaction(item.block, item.index);
+				clientModel.debugTransaction(item.block, item.tindex);
 			}
 			Keys.onPressed: {
 				if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < logModel.count) {

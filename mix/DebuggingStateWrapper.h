@@ -110,6 +110,7 @@ class QMachineState: public QObject
 	Q_PROPERTY(QBigInt* gasCost READ gasCost CONSTANT)
 	Q_PROPERTY(QBigInt* gas READ gas CONSTANT)
 	Q_PROPERTY(QString instruction READ instruction CONSTANT)
+	Q_PROPERTY(QString address READ address CONSTANT)
 	Q_PROPERTY(QStringList debugStack READ debugStack CONSTANT)
 	Q_PROPERTY(QStringList debugStorage READ debugStorage CONSTANT)
 	Q_PROPERTY(QVariantList debugMemory READ debugMemory CONSTANT)
@@ -117,7 +118,7 @@ class QMachineState: public QObject
 	Q_PROPERTY(QObject* callData MEMBER m_callData CONSTANT)
 	Q_PROPERTY(QString endOfDebug READ endOfDebug CONSTANT)
 	Q_PROPERTY(QBigInt* newMemSize READ newMemSize CONSTANT)
-	Q_PROPERTY(QStringList levels READ levels CONSTANT)
+	Q_PROPERTY(QVariantList levels READ levels CONSTANT)
 	Q_PROPERTY(unsigned codeIndex READ codeIndex CONSTANT)
 	Q_PROPERTY(unsigned dataIndex READ dataIndex CONSTANT)
 
@@ -132,6 +133,8 @@ public:
 	unsigned codeIndex() { return m_state.codeIndex; }
 	/// Get the call data id
 	unsigned dataIndex() { return m_state.dataIndex; }
+	/// Get address for call stack
+	QString address();
 	/// Get gas cost.
 	QBigInt* gasCost();
 	/// Get gas used.
@@ -142,8 +145,6 @@ public:
 	QStringList debugStorage();
 	/// Get memory.
 	QVariantList debugMemory();
-	/// Get call data.
-	QString headerInfo();
 	/// get end of debug information.
 	QString endOfDebug();
 	/// Get the new memory size.
@@ -151,7 +152,7 @@ public:
 	/// Get current instruction
 	QString instruction();
 	/// Get all previous steps.
-	QStringList levels();
+	QVariantList levels();
 	/// Get the current processed machine state.
 	MachineState state() { return m_state; }
 	/// Set the current processed machine state.

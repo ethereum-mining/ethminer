@@ -144,18 +144,17 @@ QCallData* QMachineState::getDebugCallData(QObject* _owner, bytes const& _data)
 	return new QCallData(_owner, memDumpToList(_data, 16));
 }
 
-QStringList QMachineState::levels()
+QVariantList QMachineState::levels()
 {
-	QStringList levelsStr;
-	for (unsigned i = 0; i <= m_state.levels.size(); ++i)
-	{
-		std::ostringstream out;
-		out << m_state.address.abridged();
-		if (i)
-			out << " " << instructionInfo(m_state.inst).name << " @0x" << std::hex << m_state.curPC;
-		levelsStr.append(QString::fromStdString(out.str()));
-	}
-	return levelsStr;
+	QVariantList levelList;
+	for (unsigned l: m_state.levels)
+		levelList.push_back(l);
+	return levelList;
+}
+
+QString QMachineState::address()
+{
+	return QString::fromStdString(toString(m_state.address));
 }
 
 QString QMachineState::instruction()

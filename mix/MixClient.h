@@ -47,7 +47,7 @@ struct MachineState
 	dev::bytes memory;
 	dev::bigint gasCost;
 	std::map<dev::u256, dev::u256> storage;
-	std::vector<MachineState const*> levels;
+	std::vector<unsigned> levels;
 	unsigned codeIndex;
 	unsigned dataIndex;
 };
