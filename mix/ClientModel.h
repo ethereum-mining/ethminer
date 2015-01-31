@@ -72,7 +72,7 @@ class TransactionLogEntry: public QObject
 	/// Transaction block number
 	Q_PROPERTY(unsigned block MEMBER m_block CONSTANT)
 	/// Transaction index within the block
-	Q_PROPERTY(unsigned index MEMBER m_index CONSTANT)
+	Q_PROPERTY(unsigned tindex MEMBER m_index CONSTANT)
 	/// Contract name if any
 	Q_PROPERTY(QString contract MEMBER m_contract CONSTANT)
 	/// Function name if any
