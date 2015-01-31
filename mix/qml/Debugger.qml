@@ -444,6 +444,24 @@ Rectangle {
 
 					orientation: Qt.Vertical
 					width: debugPanel.width - 2 * machineStates.sideMargin
+
+
+					Rectangle
+					{
+						id: callStackRect;
+						color: "transparent"
+						height: 120
+						width: parent.width
+						Layout.minimumHeight: 120
+						Layout.maximumHeight: 400
+						CallStack {
+							anchors.fill: parent
+							id: callStack
+							onFrameActivated: Debugger.displayFrame(index);
+						}
+					}
+
+
 					Rectangle
 					{
 						id: storageRect

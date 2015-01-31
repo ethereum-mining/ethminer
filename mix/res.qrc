@@ -50,6 +50,7 @@
         <file>stdc/namereg.sol</file>
         <file>stdc/std.sol</file>
         <file>qml/TransactionLog.qml</file>
-	<file>res/mix_256x256x32.png</file>
+        <file>res/mix_256x256x32.png</file>
+        <file>qml/CallStack.qml</file>
     </qresource>
 </RCC>
