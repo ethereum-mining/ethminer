@@ -20,13 +20,51 @@
  * @date 2014
  */
 
-var implementationOfEvent = function (address, signature) {
+var abi = require('./abi');
+var utils = require('./utils');
+
+var inputWithName = function (inputs, name) {
+    var index = utils.findIndex(inputs, function (input) {
+        return input.name === name;
+    });
     
-    return function (options) {
+    if (index === -1) {
+        console.error('indexed paray with name ' + name + ' not found');
+        return undefined;
+    }
+    return inputs[index];
+};
+
+var indexedParamsToTopics = function (event, indexed) {
+    // sort keys?
+    return Object.keys(indexed).map(function (key) {
+        // TODO: simplify this!
+        var parser = abi.inputParser([{
+            name: 'test', 
+            inputs: [inputWithName(event.inputs, key)] 
+        }]);
+
+        var value = indexed[key];
+        if (value instanceof Array) {
+            return value.map(function (v) {
+                return parser.test(v);
+            }); 
+        }
+        return parser.test(value);
+    });
+};
+
+var implementationOfEvent = function (address, signature, event) {
+    
+    // valid options are 'earliest', 'latest', 'offset' and 'max', as defined for 'eth.watch'
+    return function (indexed, options) {
         var o = options || {};
-        o.address = o.address || address;
-        o.topics = o.topics || [];
-        o.topics.push(signature);
+        o.address = address;
+        o.topic = [];
+        o.topic.push(signature);
+        if (indexed) {
+            o.topic = o.topic.concat(indexedParamsToTopics(event, indexed));
+        }
         return o;
     };
 };
