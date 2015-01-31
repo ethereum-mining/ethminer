@@ -142,10 +142,12 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 	auto codeHighlighter = std::make_shared<CodeHighlighter>();
 	codeHighlighter->processSource(source);
 
+	cs.addSource("configUser", R"(contract configUser{function configAddr()constant returns(address a){ return 0xf025d81196b72fba60a1d4dddad12eeb8360d828;}})");
+
 	// run compilation
 	try
 	{
-		cs.setSource(source);
+		cs.addSource("", source);
 		cs.compile(false);
 		codeHighlighter->processAST(cs.getAST());
 		result.reset(new CompilationResult(cs));
