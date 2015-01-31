@@ -53,6 +53,9 @@ private:
 	int m_processIndex;
 };
 
+/**
+ * @brief Shared container for lines
+ */
 class QCode: public QObject
 {
 	Q_OBJECT
@@ -65,6 +68,9 @@ private:
 	QVariantList m_instructions;
 };
 
+/**
+ * @brief Shared container for call data
+ */
 class QCallData: public QObject
 {
 	Q_OBJECT
@@ -77,6 +83,9 @@ private:
 	QVariantList m_items;
 };
 
+/**
+ * @brief Shared container for machine states
+ */
 class QDebugData: public QObject
 {
 	Q_OBJECT
@@ -91,7 +100,7 @@ private:
 };
 
 /**
- * @brief Wrap DebuggingState in QObject
+ * @brief Wrap MachineState in QObject
  */
 class QMachineState: public QObject
 {
