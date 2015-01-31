@@ -13,13 +13,6 @@ Rectangle {
 	anchors.fill: parent;
 	color: "#ededed"
 	clip: true
-	Keys.onPressed:
-	{
-		if (event.key === Qt.Key_F10)
-			Debugger.moveSelection(1);
-		else if (event.key === Qt.Key_F9)
-			Debugger.moveSelection(-1);
-	}
 
 	onVisibleChanged:
 	{
@@ -166,6 +159,7 @@ Rectangle {
 								onClicked: Debugger.stepOutBack()
 								width: 28
 								height: 30
+								buttonShortcut: "Ctrl+Shift+F11"
 								buttonTooltip: qsTr("Step Out Back")
 							}
 
@@ -177,6 +171,7 @@ Rectangle {
 								onClicked: Debugger.stepIntoBack()
 								width: 28
 								height: 30
+								buttonShortcut: "Ctrl+F11"
 								buttonTooltip: qsTr("Step Into Back")
 							}
 
@@ -188,6 +183,7 @@ Rectangle {
 								onClicked: Debugger.stepOverBack()
 								width: 28
 								height: 30
+								buttonShortcut: "Ctrl+F10"
 								buttonTooltip: qsTr("Step Over Back")
 							}
 
@@ -199,6 +195,7 @@ Rectangle {
 								onClicked: Debugger.stepOverForward()
 								width: 28
 								height: 30
+								buttonShortcut: "F10"
 								buttonTooltip: qsTr("Step Over Forward")
 							}
 
@@ -210,6 +207,7 @@ Rectangle {
 								onClicked: Debugger.stepIntoForward()
 								width: 28
 								height: 30
+								buttonShortcut: "F11"
 								buttonTooltip: qsTr("Step Into Forward")
 							}
 
@@ -221,6 +219,7 @@ Rectangle {
 								onClicked: Debugger.stepOutForward()
 								width: 28
 								height: 30
+								buttonShortcut: "Shift+F11"
 								buttonTooltip: qsTr("Step Out Forward")
 							}
 						}
@@ -283,7 +282,7 @@ Rectangle {
 							id: statesList
 							delegate: renderDelegate
 							highlight: highlightBar
-							highlightFollowsCurrentItem: false
+							//highlightFollowsCurrentItem: false
 							model: ListModel {}
 						}
 
@@ -295,9 +294,9 @@ Rectangle {
 								width: statesList.currentItem.width;
 								y: statesList.currentItem.y
 								color: "#4A90E2"
-								Behavior on y {
-									 PropertyAnimation { properties: "y"; easing.type: Easing.InOutQuad; duration: 50}
-								}
+								//Behavior on y {
+								//	 PropertyAnimation { properties: "y"; easing.type: Easing.InOutQuad; duration: 50}
+								//}
 							}
 						}
 
@@ -314,6 +313,7 @@ Rectangle {
 									width: 15
 									color: "#b2b3ae"
 									text: line.split(' ')[0]
+									font.family: "monospace"
 									font.pointSize: 9
 									id: id
 									wrapMode: Text.NoWrap
@@ -321,6 +321,7 @@ Rectangle {
 								Text {
 									wrapMode: Text.NoWrap
 									color: parent.ListView.isCurrentItem ? "white" : "black"
+									font.family: "monospace"
 									text: line.replace(line.split(' ')[0], '')
 									anchors.left: id.right
 									font.pointSize: 9
@@ -481,8 +482,10 @@ Rectangle {
 											font.family: "monospace"
 											anchors.leftMargin: 5
 											color: "#4a4a4a"
-											text: modelData.split(' ')[0].substring(0, 10);
+											text: modelData.split('\t')[0];
 											font.pointSize: 9
+											width: parent.width - 5
+											elide: Text.ElideRight
 										}
 									}
 									Rectangle
@@ -502,7 +505,8 @@ Rectangle {
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
 											color: "#4a4a4a"
-											text: modelData.split(' ')[1].substring(0, 10);
+											text: modelData.split('\t')[1];
+											elide: Text.ElideRight
 											font.pointSize: 9
 										}
 									}
