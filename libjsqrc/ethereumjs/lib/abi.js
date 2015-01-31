@@ -21,38 +21,11 @@
  * @date 2014
  */
 
-if (process.env.NODE_ENV !== 'build') {
-    var BigNumber = require('bignumber.js'); // jshint ignore:line
-}
-
 var web3 = require('./web3'); 
 var utils = require('./utils');
 var types = require('./types');
+var c = require('./const');
 var f = require('./formatters');
-
-BigNumber.config({ ROUNDING_MODE: BigNumber.ROUND_DOWN });
-
-var ETH_PADDING = 32;
-
-/// method signature length in bytes
-var ETH_METHOD_SIGNATURE_LENGTH = 4;
-
-/// @returns a function that is used as a pattern for 'findIndex'
-var findMethodIndex = function (json, methodName) {
-    return utils.findIndex(json, function (method) {
-        return method.name === methodName;
-    });
-};
-
-/// @returns method with given method name
-var getMethodWithName = function (json, methodName) {
-    var index = findMethodIndex(json, methodName);
-    if (index === -1) {
-        console.error('method ' + methodName + ' not found in the abi');
-        return undefined;
-    }
-    return json[index];
-};
 
 /// Filters all function from input abi
 /// @returns abi array with filtered objects of type 'function'
@@ -86,15 +59,12 @@ var dynamicTypeBytes = function (type, value) {
 var inputTypes = types.inputTypes(); 
 
 /// Formats input params to bytes
-/// @param contract json abi
-/// @param name of the method that we want to use
+/// @param abi contract method
 /// @param array of params that will be formatted to bytes
 /// @returns bytes representation of input params
-var toAbiInput = function (json, methodName, params) {
+var toAbiInput = function (method, params) {
     var bytes = "";
-
-    var method = getMethodWithName(json, methodName);
-    var padding = ETH_PADDING * 2;
+    var padding = c.ETH_PADDING * 2;
 
     /// first we iterate in search for dynamic 
     method.inputs.forEach(function (input, index) {
@@ -127,23 +97,21 @@ var toAbiInput = function (json, methodName, params) {
 
 var dynamicBytesLength = function (type) {
     if (arrayType(type) || type === 'string')   // only string itself that is dynamic; stringX is static length.
-        return ETH_PADDING * 2;
+        return c.ETH_PADDING * 2;
     return 0;
 };
 
 var outputTypes = types.outputTypes(); 
 
 /// Formats output bytes back to param list
-/// @param contract json abi
-/// @param name of the method that we want to use
+/// @param contract abi method
 /// @param bytes representtion of output 
 /// @returns array of output params 
-var fromAbiOutput = function (json, methodName, output) {
+var fromAbiOutput = function (method, output) {
     
     output = output.slice(2);
     var result = [];
-    var method = getMethodWithName(json, methodName);
-    var padding = ETH_PADDING * 2;
+    var padding = c.ETH_PADDING * 2;
 
     var dynamicPartLength = method.outputs.reduce(function (acc, curr) {
         return acc + dynamicBytesLength(curr.type);
@@ -194,7 +162,7 @@ var methodDisplayName = function (method) {
 
 /// @returns overloaded part of method's name
 var methodTypeName = function (method) {
-    /// TODO: make it not vulnerable
+    /// TODO: make it invulnerable
     var length = method.indexOf('(');
     return length !== -1 ? method.substr(length + 1, method.length - 1 - (length + 1)) : "";
 };
@@ -210,7 +178,7 @@ var inputParser = function (json) {
 
         var impl = function () {
             var params = Array.prototype.slice.call(arguments);
-            return toAbiInput(json, method.name, params);
+            return toAbiInput(method, params);
         };
        
         if (parser[displayName] === undefined) {
@@ -233,7 +201,7 @@ var outputParser = function (json) {
         var typeName = methodTypeName(method.name);
 
         var impl = function (output) {
-            return fromAbiOutput(json, method.name, output);
+            return fromAbiOutput(method, output);
         };
 
         if (parser[displayName] === undefined) {
@@ -249,7 +217,7 @@ var outputParser = function (json) {
 /// @param method name for which we want to get method signature
 /// @returns (promise) contract method signature for method with given name
 var methodSignature = function (name) {
-    return web3.sha3(web3.fromAscii(name)).slice(0, 2 + ETH_METHOD_SIGNATURE_LENGTH * 2);
+    return web3.sha3(web3.fromAscii(name)).slice(0, 2 + c.ETH_METHOD_SIGNATURE_LENGTH * 2);
 };
 
 module.exports = {
@@ -258,7 +226,6 @@ module.exports = {
     methodSignature: methodSignature,
     methodDisplayName: methodDisplayName,
     methodTypeName: methodTypeName,
-    getMethodWithName: getMethodWithName,
     filterFunctions: filterFunctions,
     filterEvents: filterEvents
 };
