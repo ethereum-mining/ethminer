@@ -23,6 +23,7 @@
 #include <utility>
 #include <numeric>
 #include <libdevcore/Common.h>
+#include <libdevcrypto/SHA3.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/ExpressionCompiler.h>
 #include <libsolidity/CompilerContext.h>
@@ -66,7 +67,7 @@ bool ExpressionCompiler::visit(Assignment const& _assignment)
 	{
 		if (m_currentLValue.storesReferenceOnStack())
 			m_context << eth::Instruction::SWAP1 << eth::Instruction::DUP2;
-		m_currentLValue.retrieveValue(_assignment, true);
+		m_currentLValue.retrieveValue(_assignment.getType(), _assignment.getLocation(), true);
 		appendOrdinaryBinaryOperatorCode(Token::AssignmentToBinaryOp(op), *_assignment.getType());
 		if (m_currentLValue.storesReferenceOnStack())
 			m_context << eth::Instruction::SWAP1;
@@ -107,7 +108,7 @@ bool ExpressionCompiler::visit(UnaryOperation const& _unaryOperation)
 	case Token::INC: // ++ (pre- or postfix)
 	case Token::DEC: // -- (pre- or postfix)
 		solAssert(m_currentLValue.isValid(), "LValue not retrieved.");
-		m_currentLValue.retrieveValue(_unaryOperation);
+		m_currentLValue.retrieveValue(_unaryOperation.getType(), _unaryOperation.getLocation());
 		if (!_unaryOperation.isPrefixOperation())
 		{
 			if (m_currentLValue.storesReferenceOnStack())
@@ -304,10 +305,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			m_context << eth::Instruction::SUICIDE;
 			break;
 		case Location::SHA3:
-			arguments.front()->accept(*this);
-			appendTypeConversion(*arguments.front()->getType(), *function.getParameterTypes().front(), true);
-			// @todo move this once we actually use memory
-			CompilerUtils(m_context).storeInMemory(0);
+			appendExpressionCopyToMemory(*function.getParameterTypes().front(), *arguments.front());
 			m_context << u256(32) << u256(0) << eth::Instruction::SHA3;
 			break;
 		case Location::LOG0:
@@ -317,14 +315,41 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 		case Location::LOG4:
 		{
 			unsigned logNumber = int(function.getLocation()) - int(Location::LOG0);
-			for (int arg = logNumber; arg >= 0; --arg)
+			for (unsigned arg = logNumber; arg > 0; --arg)
 			{
 				arguments[arg]->accept(*this);
 				appendTypeConversion(*arguments[arg]->getType(), *function.getParameterTypes()[arg], true);
 			}
-			// @todo move this once we actually use memory
-			CompilerUtils(m_context).storeInMemory(0);
-			m_context << u256(32) << u256(0) << eth::logInstruction(logNumber);
+			unsigned length = appendExpressionCopyToMemory(*function.getParameterTypes().front(),
+														   *arguments.front());
+			solAssert(length == 32, "Log data should be 32 bytes long (for now).");
+			m_context << u256(length) << u256(0) << eth::logInstruction(logNumber);
+			break;
+		}
+		case Location::EVENT:
+		{
+			_functionCall.getExpression().accept(*this);
+			auto const& event = dynamic_cast<EventDefinition const&>(function.getDeclaration());
+			// Copy all non-indexed arguments to memory (data)
+			unsigned numIndexed = 0;
+			unsigned memLength = 0;
+			for (unsigned arg = 0; arg < arguments.size(); ++arg)
+				if (!event.getParameters()[arg]->isIndexed())
+					memLength += appendExpressionCopyToMemory(*function.getParameterTypes()[arg],
+															  *arguments[arg], memLength);
+			// All indexed arguments go to the stack
+			for (unsigned arg = arguments.size(); arg > 0; --arg)
+				if (event.getParameters()[arg - 1]->isIndexed())
+				{
+					++numIndexed;
+					arguments[arg - 1]->accept(*this);
+					appendTypeConversion(*arguments[arg - 1]->getType(),
+										 *function.getParameterTypes()[arg - 1], true);
+				}
+			m_context << u256(h256::Arith(dev::sha3(function.getCanonicalSignature(event.getName()))));
+			++numIndexed;
+			solAssert(numIndexed <= 4, "Too many indexed arguments.");
+			m_context << u256(memLength) << u256(0) << eth::logInstruction(numIndexed);
 			break;
 		}
 		case Location::BLOCKHASH:
@@ -459,14 +484,13 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 {
 	_indexAccess.getBaseExpression().accept(*this);
-	_indexAccess.getIndexExpression().accept(*this);
-	appendTypeConversion(*_indexAccess.getIndexExpression().getType(),
-						 *dynamic_cast<MappingType const&>(*_indexAccess.getBaseExpression().getType()).getKeyType(),
-						 true);
+
+	TypePointer const& keyType = dynamic_cast<MappingType const&>(*_indexAccess.getBaseExpression().getType()).getKeyType();
+	unsigned length = appendExpressionCopyToMemory(*keyType, _indexAccess.getIndexExpression());
+	solAssert(length == 32, "Mapping key has to take 32 bytes in memory (for now).");
 	// @todo move this once we actually use memory
-	CompilerUtils(m_context).storeInMemory(0);
-	CompilerUtils(m_context).storeInMemory(32);
-	m_context << u256(64) << u256(0) << eth::Instruction::SHA3;
+	length += CompilerUtils(m_context).storeInMemory(length);
+	m_context << u256(length) << u256(0) << eth::Instruction::SHA3;
 
 	m_currentLValue = LValue(m_context, LValue::STORAGE, *_indexAccess.getType());
 	m_currentLValue.retrieveValueIfLValueNotRequested(_indexAccess);
@@ -492,6 +516,10 @@ void ExpressionCompiler::endVisit(Identifier const& _identifier)
 		m_currentLValue.retrieveValueIfLValueNotRequested(_identifier);
 	}
 	else if (dynamic_cast<ContractDefinition const*>(declaration))
+	{
+		// no-op
+	}
+	else if (dynamic_cast<EventDefinition const*>(declaration))
 	{
 		// no-op
 	}
@@ -791,27 +819,30 @@ unsigned ExpressionCompiler::appendArgumentCopyToMemory(TypePointers const& _typ
 {
 	unsigned length = 0;
 	for (unsigned i = 0; i < _arguments.size(); ++i)
-	{
-		_arguments[i]->accept(*this);
-		appendTypeConversion(*_arguments[i]->getType(), *_types[i], true);
-		unsigned const c_numBytes = _types[i]->getCalldataEncodedSize();
-		if (c_numBytes == 0 || c_numBytes > 32)
-			BOOST_THROW_EXCEPTION(CompilerError()
-								  << errinfo_sourceLocation(_arguments[i]->getLocation())
-								  << errinfo_comment("Type " + _types[i]->toString() + " not yet supported."));
-		bool const c_leftAligned = _types[i]->getCategory() == Type::Category::STRING;
-		bool const c_padToWords = true;
-		length += CompilerUtils(m_context).storeInMemory(_memoryOffset + length, c_numBytes,
-														 c_leftAligned, c_padToWords);
-	}
+		length += appendExpressionCopyToMemory(*_types[i], *_arguments[i], _memoryOffset + length);
 	return length;
+}
+
+unsigned ExpressionCompiler::appendExpressionCopyToMemory(Type const& _expectedType,
+														  Expression const& _expression, unsigned _memoryOffset)
+{
+	_expression.accept(*this);
+	appendTypeConversion(*_expression.getType(), _expectedType, true);
+	unsigned const c_numBytes = CompilerUtils::getPaddedSize(_expectedType.getCalldataEncodedSize());
+	if (c_numBytes == 0 || c_numBytes > 32)
+		BOOST_THROW_EXCEPTION(CompilerError()
+							  << errinfo_sourceLocation(_expression.getLocation())
+							  << errinfo_comment("Type " + _expectedType.toString() + " not yet supported."));
+	bool const c_leftAligned = _expectedType.getCategory() == Type::Category::STRING;
+	bool const c_padToWords = true;
+	return CompilerUtils(m_context).storeInMemory(_memoryOffset, c_numBytes, c_leftAligned, c_padToWords);
 }
 
 void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& _varDecl)
 {
 	m_currentLValue.fromStateVariable(_varDecl, _varDecl.getType());
 	solAssert(m_currentLValue.isInStorage(), "");
-	m_currentLValue.retrieveValueFromStorage(_varDecl.getType(), true);
+	m_currentLValue.retrieveValue(_varDecl.getType(), Location(), true);
 }
 
 ExpressionCompiler::LValue::LValue(CompilerContext& _compilerContext, LValueType _type, Type const& _dataType,
@@ -826,7 +857,7 @@ ExpressionCompiler::LValue::LValue(CompilerContext& _compilerContext, LValueType
 		m_size = unsigned(_dataType.getSizeOnStack());
 }
 
-void ExpressionCompiler::LValue::retrieveValue(Expression const& _expression, bool _remove) const
+void ExpressionCompiler::LValue::retrieveValue(TypePointer const& _type, Location const& _location, bool _remove) const
 {
 	switch (m_type)
 	{
@@ -834,23 +865,23 @@ void ExpressionCompiler::LValue::retrieveValue(Expression const& _expression, bo
 	{
 		unsigned stackPos = m_context->baseToCurrentStackOffset(unsigned(m_baseStackOffset));
 		if (stackPos >= 15) //@todo correct this by fetching earlier or moving to memory
-			BOOST_THROW_EXCEPTION(CompilerError() << errinfo_sourceLocation(_expression.getLocation())
+			BOOST_THROW_EXCEPTION(CompilerError() << errinfo_sourceLocation(_location)
 												  << errinfo_comment("Stack too deep."));
 		for (unsigned i = 0; i < m_size; ++i)
 			*m_context << eth::dupInstruction(stackPos + 1);
 		break;
 	}
 	case STORAGE:
-		retrieveValueFromStorage(_expression.getType(), _remove);
+		retrieveValueFromStorage(_type, _remove);
 		break;
 	case MEMORY:
-		if (!_expression.getType()->isValueType())
+		if (!_type->isValueType())
 			break; // no distinction between value and reference for non-value types
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_sourceLocation(_expression.getLocation())
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_sourceLocation(_location)
 													  << errinfo_comment("Location type not yet implemented."));
 		break;
 	default:
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_sourceLocation(_expression.getLocation())
+		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_sourceLocation(_location)
 													  << errinfo_comment("Unsupported location type."));
 		break;
 	}
@@ -889,7 +920,7 @@ void ExpressionCompiler::LValue::storeValue(Expression const& _expression, bool 
 			for (unsigned i = 0; i < m_size; ++i)
 				*m_context << eth::swapInstruction(stackDiff) << eth::Instruction::POP;
 		if (!_move)
-			retrieveValue(_expression);
+			retrieveValue(_expression.getType(), _expression.getLocation());
 		break;
 	}
 	case LValue::STORAGE:
@@ -976,7 +1007,7 @@ void ExpressionCompiler::LValue::retrieveValueIfLValueNotRequested(Expression co
 {
 	if (!_expression.lvalueRequested())
 	{
-		retrieveValue(_expression, true);
+		retrieveValue(_expression.getType(), _expression.getLocation(), true);
 		reset();
 	}
 }
