@@ -25,13 +25,8 @@
 
 #include <atomic>
 #include <map>
-#include "DebuggingStateWrapper.h"
+#include <QString>
 #include "MixClient.h"
-
-using AssemblyDebuggerData = std::tuple<QList<QObject*>, dev::mix::QQMLMap*>;
-
-Q_DECLARE_METATYPE(AssemblyDebuggerData)
-Q_DECLARE_METATYPE(dev::mix::ExecutionResult)
 
 namespace dev
 {
@@ -42,6 +37,7 @@ class AppContext;
 class Web3Server;
 class RpcConnector;
 class QEther;
+class QDebugData;
 
 /// Backend transaction config class
 struct TransactionSettings
@@ -156,7 +152,7 @@ signals:
 	/// Execution state changed
 	void runStateChanged();
 	/// Show debugger window request
-	void showDebuggerWindow();
+	void debugDataReady(QObject* _debugData);
 	/// ethereum.js RPC response ready
 	/// @param _message RPC response in Json format
 	void apiResponse(QString const& _message);

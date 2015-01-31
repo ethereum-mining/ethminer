@@ -42,10 +42,6 @@ public:
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
-
-private slots:
-	/// Update UI with machine states result. Displayed in the right side tab.
-	void showDebugger();
 };
 
 }
