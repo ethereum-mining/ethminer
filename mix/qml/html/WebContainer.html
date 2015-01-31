@@ -1,7 +1,6 @@
 <!doctype html>
 <html>
 <head>
-<script src="qrc:///js/es6-promise-2.0.0.js"></script>
 <script src="qrc:///js/bignumber.min.js"></script>
 <script src="qrc:///js/webthree.js"></script>
 <script>
@@ -16,17 +15,18 @@ reloadPage = function() {
 	preview.contentWindow.location.reload();
 };
 
-updateContract = function(address, definition) {
+updateContract = function(address, contractFace) {
 	if (window.web3) {
+		window.web3.provider.polls = [];
 		window.contractAddress = address;
-		window.contractDefinition = definition;
-		window.contract = window.web3.eth.contract(address, definition);
+		window.contractInterface = contractFace;
+		window.contract = window.web3.eth.contract(address, contractFace);
 	}
 };
 
 init = function(url) {
 	web3 = require('web3');
-	web3.setProvider(new web3.providers.WebSocketProvider(url));
+	web3.setProvider(new web3.providers.HttpSyncProvider(url));
 	window.web3 = web3;
 };
 
@@ -39,5 +39,5 @@ body {
 </style>
 
 </head>
-<body><iframe src="" name="preview" id="preview" style="border: 0; width: 100%; height: 100%"></iframe></body>
+<body><iframe src="" name="preview" id="preview" style="border: 0; position:absolute; top:0; left:0; right:0; bottom:0; width:100%; height:100%"></iframe></body>
 </html>

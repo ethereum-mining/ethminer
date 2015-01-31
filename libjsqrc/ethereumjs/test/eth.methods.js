@@ -1,9 +1,6 @@
-require('es6-promise').polyfill();
-
 var assert = require('assert');
 var web3 = require('../index.js');
 var u = require('./utils.js');
-web3.setProvider(new web3.providers.WebSocketProvider('http://localhost:8080')); // TODO: create some mock provider
 
 describe('web3', function() {
     describe('eth', function() {
@@ -27,7 +24,6 @@ describe('web3', function() {
         u.propertyExists(web3.eth, 'listening');
         u.propertyExists(web3.eth, 'mining');
         u.propertyExists(web3.eth, 'gasPrice');
-        u.propertyExists(web3.eth, 'account');
         u.propertyExists(web3.eth, 'accounts');
         u.propertyExists(web3.eth, 'peerCount');
         u.propertyExists(web3.eth, 'defaultBlock');

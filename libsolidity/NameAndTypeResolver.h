@@ -94,14 +94,18 @@ public:
 	DeclarationRegistrationHelper(std::map<ASTNode const*, DeclarationContainer>& _scopes, ASTNode& _astRoot);
 
 private:
-	bool visit(ContractDefinition& _contract);
-	void endVisit(ContractDefinition& _contract);
-	bool visit(StructDefinition& _struct);
-	void endVisit(StructDefinition& _struct);
-	bool visit(FunctionDefinition& _function);
-	void endVisit(FunctionDefinition& _function);
-	void endVisit(VariableDefinition& _variableDefinition);
-	bool visit(VariableDeclaration& _declaration);
+	bool visit(ContractDefinition& _contract) override;
+	void endVisit(ContractDefinition& _contract) override;
+	bool visit(StructDefinition& _struct) override;
+	void endVisit(StructDefinition& _struct) override;
+	bool visit(FunctionDefinition& _function) override;
+	void endVisit(FunctionDefinition& _function) override;
+	bool visit(ModifierDefinition& _modifier) override;
+	void endVisit(ModifierDefinition& _modifier) override;
+	void endVisit(VariableDefinition& _variableDefinition) override;
+	bool visit(VariableDeclaration& _declaration) override;
+	bool visit(EventDefinition& _event) override;
+	void endVisit(EventDefinition& _event) override;
 
 	void enterNewSubScope(Declaration const& _declaration);
 	void closeCurrentScope();
@@ -109,7 +113,7 @@ private:
 
 	std::map<ASTNode const*, DeclarationContainer>& m_scopes;
 	Declaration const* m_currentScope;
-	FunctionDefinition* m_currentFunction;
+	VariableScope* m_currentFunction;
 };
 
 /**

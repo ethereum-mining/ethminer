@@ -226,11 +226,12 @@ void Client::uninstallWatch(unsigned _i)
 void Client::noteChanged(h256Set const& _filters)
 {
 	Guard l(m_filterLock);
+	cnote << "noteChanged(" << _filters << ")";
 	// accrue all changes left in each filter into the watches.
 	for (auto& i: m_watches)
 		if (_filters.count(i.second.id))
 		{
-//			cwatch << "!!!" << i.first << i.second.id;
+			cwatch << "!!!" << i.first << i.second.id;
 			if (m_filters.count(i.second.id))
 				i.second.changes += m_filters.at(i.second.id).changes;
 			else
@@ -642,14 +643,20 @@ Transaction Client::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = m_bc.block(_blockHash);
 	RLP b(bl);
-	return Transaction(b[1][_i].data(), CheckSignature::Range);
+	if (_i < b[1].itemCount())
+		return Transaction(b[1][_i].data(), CheckSignature::Range);
+	else
+		return Transaction();
 }
 
 BlockInfo Client::uncle(h256 _blockHash, unsigned _i) const
 {
 	auto bl = m_bc.block(_blockHash);
 	RLP b(bl);
-	return BlockInfo::fromHeader(b[2][_i].data());
+	if (_i < b[2].itemCount())
+		return BlockInfo::fromHeader(b[2][_i].data());
+	else
+		return BlockInfo();
 }
 
 LocalisedLogEntries Client::logs(LogFilter const& _f) const

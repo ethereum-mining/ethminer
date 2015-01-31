@@ -153,12 +153,15 @@ namespace solidity
 	K(DEFAULT, "default", 0)                                           \
 	K(DO, "do", 0)                                                     \
 	K(ELSE, "else", 0)                                                 \
+	K(EVENT, "event", 0)                                               \
 	K(IS, "is", 0)                                                     \
+	K(INDEXED, "indexed", 0)                                           \
 	K(FOR, "for", 0)                                                   \
 	K(FUNCTION, "function", 0)                                         \
 	K(IF, "if", 0)                                                     \
 	K(IMPORT, "import", 0)                                             \
 	K(MAPPING, "mapping", 0)                                           \
+	K(MODIFIER, "modifier", 0)                                         \
 	K(NEW, "new", 0)                                                   \
 	K(PUBLIC, "public", 0)                                             \
 	K(PRIVATE, "private", 0)                                           \

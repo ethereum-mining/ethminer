@@ -39,6 +39,8 @@ namespace dev
 namespace shh
 {
 
+static const FullTopic EmptyFullTopic;
+
 class WhisperHost: public HostCapability<WhisperPeer>, public Interface, public Worker
 {
 	friend class WhisperPeer;
@@ -47,12 +49,12 @@ public:
 	WhisperHost();
 	virtual ~WhisperHost();
 
-	unsigned protocolVersion() const { return 1; }
+	unsigned protocolVersion() const { return 2; }
 
 	virtual void inject(Envelope const& _e, WhisperPeer* _from = nullptr) override;
 
-	using Interface::installWatch;
-	virtual unsigned installWatch(TopicFilter const& _filter) override;
+	virtual FullTopic const& fullTopic(unsigned _id) const { try { return m_filters.at(m_watches.at(_id).id).full; } catch (...) { return EmptyFullTopic; } }
+	virtual unsigned installWatch(FullTopic const& _filter) override;
 	virtual unsigned installWatchOnId(h256 _filterId) override;
 	virtual void uninstallWatch(unsigned _watchId) override;
 	virtual h256s peekWatch(unsigned _watchId) const override { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }
