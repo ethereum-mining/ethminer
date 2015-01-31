@@ -50,7 +50,7 @@ void MixClient::resetState(u256 _balance)
 	Guard fl(m_filterLock);
 	m_filters.clear();
 	m_watches.clear();
-	m_state = eth::State(m_userAccount.address(), m_stateDB, BaseState::Empty);
+	m_state = eth::State(m_userAccount.address(), m_stateDB, BaseState::Genesis);
 	m_state.addBalance(m_userAccount.address(), _balance);
 	Block genesis;
 	genesis.state = m_state;
@@ -161,7 +161,10 @@ void MixClient::mine()
 {
 	WriteGuard l(x_state);
 	Block& block = m_blocks.back();
+	m_state.mine(0, true);
 	m_state.completeMine();
+	m_state.commitToMine(BlockChain());
+	m_state.cleanup(true);
 	block.state = m_state;
 	block.info = m_state.info();
 	block.hash = block.info.hash;
