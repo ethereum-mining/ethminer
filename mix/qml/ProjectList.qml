@@ -10,7 +10,7 @@ Item {
 		Text {
 			Layout.fillWidth: true
 			color: "blue"
-			text: projectModel.projectData ? projectModel.projectData.title : ""
+			text: projectModel.projectTitle
 			horizontalAlignment: Text.AlignHCenter
 			visible: !projectModel.isEmpty;
 		}
@@ -117,12 +117,23 @@ Item {
 						contextMenu.popup();
 				}
 			}
-			Connections {
-				target: projectModel
-				onProjectLoaded: {
-					projectList.currentIndex = 0;
-				}
-			}
+		}
+	}
+	Connections {
+		target: projectModel
+		onProjectLoaded: {
+			projectList.currentIndex = 0;
+			if (projectList.currentIndex >= 0 && projectList.currentIndex < projectModel.listModel.count)
+				projectModel.openDocument(projectModel.listModel.get(projectList.currentIndex).documentId);
+
+		}
+		onProjectClosed: {
+			projectList.currentIndex = -1;
+		}
+		onDocumentOpened: {
+			if (projectList.currentItem.documentId !== document.documentId)
+				projectList.currentIndex = projectModel.getDocumentIndex(document.documentId);
+
 		}
 	}
 }

@@ -29,7 +29,6 @@ using namespace dev::mix;
 AssemblyDebuggerControl::AssemblyDebuggerControl(AppContext* _context):
 	Extension(_context, ExtensionDisplayBehavior::RightView)
 {
-	connect(_context->clientModel(), &ClientModel::showDebuggerWindow, this, &AssemblyDebuggerControl::showDebugger, Qt::QueuedConnection);
 }
 
 QString AssemblyDebuggerControl::contentUrl() const
@@ -44,10 +43,4 @@ QString AssemblyDebuggerControl::title() const
 
 void AssemblyDebuggerControl::start() const
 {
-}
-
-void AssemblyDebuggerControl::showDebugger()
-{
-	QObject* debugPanel = m_view->findChild<QObject*>("debugPanel", Qt::FindChildrenRecursively);
-	QMetaObject::invokeMethod(debugPanel, "update", Q_ARG(QVariant, true));
 }

@@ -4,7 +4,6 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 import QtQuick.Dialogs 1.1
 import Qt.labs.settings 1.0
-
 import "js/ProjectModel.js" as ProjectModelCode
 
 Item {
@@ -18,6 +17,7 @@ Item {
 	signal documentAdded(var documentId)
 	signal projectSaving(var projectData)
 	signal projectSaved()
+	signal newProject(var projectData)
 	signal documentSaved(var documentId)
 
 	property bool isEmpty: (projectPath === "")
@@ -26,7 +26,9 @@ Item {
 	property bool haveUnsavedChanges: false
 	property string projectPath: ""
 	property string projectTitle: ""
+	property string currentDocumentId: ""
 	property var listModel: projectListModel
+	property var stateListModel: projectStateListModel.model
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
@@ -40,9 +42,12 @@ Item {
 	function newJsFile() { ProjectModelCode.newJsFile(); }
 	//function newContract() { ProjectModelCode.newContract(); }
 	function openDocument(documentId) { ProjectModelCode.openDocument(documentId); }
+	function openNextDocument() { ProjectModelCode.openNextDocument(); }
+	function openPrevDocument() { ProjectModelCode.openPrevDocument(); }
 	function renameDocument(documentId, newName) { ProjectModelCode.renameDocument(documentId, newName); }
 	function removeDocument(documentId) { ProjectModelCode.removeDocument(documentId); }
 	function getDocument(documentId) { return ProjectModelCode.getDocument(documentId); }
+	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 
 	Connections {
 		target: appContext
@@ -79,6 +84,10 @@ Item {
 
 	ListModel {
 		id: projectListModel
+	}
+
+	StateListModel {
+		id: projectStateListModel
 	}
 
 	Settings {

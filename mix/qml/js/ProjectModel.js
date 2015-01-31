@@ -47,7 +47,7 @@ function saveProject() {
 		for (var i = 0; i < projectListModel.count; i++)
 			projectData.files.push(projectListModel.get(i).fileName)
 		projectSaving(projectData);
-		var json = JSON.stringify(projectData);
+		var json = JSON.stringify(projectData, null, "\t");
 		var projectFile = projectPath + projectFileName;
 		fileIo.writeFile(projectFile, json);
 		projectSaved();
@@ -85,13 +85,17 @@ function addFile(fileName) {
 	var extension = fileName.substring(fileName.lastIndexOf("."), fileName.length);
 	var isContract = extension === ".sol";
 	var isHtml = extension === ".html";
+	var isCss = extension === ".css";
+	var isJs = extension === ".js";
+	var syntaxMode = isContract ? "solidity" : isJs ? "javascript" : isHtml ? "htmlmixed" : isCss ? "css" : "";
 	var docData = {
 		contract: false,
 		path: p,
 		fileName: fileName,
 		name: isContract ? "Contract" : fileName,
 		documentId: fileName,
-		isText: isContract || isHtml || extension === ".js",
+		syntaxMode: syntaxMode,
+		isText: isContract || isHtml || isCss || isJs,
 		isContract: isContract,
 		isHtml: isHtml,
 	};
@@ -100,7 +104,7 @@ function addFile(fileName) {
 	return docData.documentId;
 }
 
-function findDocument(documentId)
+function getDocumentIndex(documentId)
 {
 	for (var i = 0; i < projectListModel.count; i++)
 		if (projectListModel.get(i).documentId === documentId)
@@ -110,7 +114,38 @@ function findDocument(documentId)
 }
 
 function openDocument(documentId) {
-	documentOpened(projectListModel.get(findDocument(documentId)));
+	if (documentId !== currentDocumentId) {
+		documentOpened(projectListModel.get(getDocumentIndex(documentId)));
+		currentDocumentId = documentId;
+	}
+}
+
+function openNextDocument() {
+	var docIndex = getDocumentIndex(currentDocumentId);
+	var nextDocId = "";
+	while (nextDocId === "") {
+		docIndex++;
+		if (docIndex >= projectListModel.count)
+			docIndex = 0;
+		var document = projectListModel.get(docIndex);
+		if (document.isText)
+			nextDocId = document.documentId;
+	}
+	openDocument(nextDocId);
+}
+
+function openPrevDocument() {
+	var docIndex = getDocumentIndex(currentDocumentId);
+	var prevDocId = "";
+	while (prevDocId === "") {
+		docIndex--;
+		if (docIndex < 0)
+			docIndex = projectListModel.count - 1;
+		var document = projectListModel.get(docIndex);
+		if (document.isText)
+			prevDocId = document.documentId;
+	}
+	openDocument(prevDocId);
 }
 
 function doCloseProject() {
@@ -138,7 +173,8 @@ function doCreateProject(title, path) {
 	//TODO: copy from template
 	fileIo.writeFile(dirPath + indexFile, "<html></html>");
 	fileIo.writeFile(dirPath + contractsFile, "contract MyContract {\n}\n");
-	var json = JSON.stringify(projectData);
+	newProject(projectData);
+	var json = JSON.stringify(projectData, null, "\t");
 	fileIo.writeFile(projectFile, json);
 	loadProject(dirPath);
 }
@@ -156,7 +192,7 @@ function doAddExistingFiles(files) {
 }
 
 function renameDocument(documentId, newName) {
-	var i = findDocument(documentId);
+	var i = getDocumentIndex(documentId);
 	var document = projectListModel.get(i);
 	if (!document.isContract) {
 		var sourcePath = document.path;
@@ -170,12 +206,12 @@ function renameDocument(documentId, newName) {
 }
 
 function getDocument(documentId) {
-	var i = findDocument(documentId);
+	var i = getDocumentIndex(documentId);
 	return projectListModel.get(i);
 }
 
 function removeDocument(documentId) {
-	var i = findDocument(documentId);
+	var i = getDocumentIndex(documentId);
 	var document = projectListModel.get(i);
 	if (!document.isContract) {
 		projectListModel.remove(i);
