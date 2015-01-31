@@ -2,6 +2,7 @@
 //statesList => ListView
 
 var currentSelectedState = null;
+var currentDisplayedState = null;
 var debugData = null;
 var codeMap = null;
 
@@ -19,20 +20,23 @@ function init(data)
 		statesSlider.maximumValue = 0;
 		statesSlider.value = 0;
 		currentSelectedState = null;
+		currentDisplayedState = null;
 		debugData = null;
 		return;
 	}
 
 	debugData = data;
+	currentSelectedState = 0;
+	currentDisplayedState = 0;
+	setupInstructions(currentSelectedState);
+	setupCallData(currentSelectedState);
 	statesSlider.maximumValue = data.states.length - 1;
 	statesSlider.value = 0;
-	currentSelectedState = 0;
-	setupInstructions(currentSelectedState);
 	select(currentSelectedState);
 }
 
-function setupInstructions(stateIndex) {
-
+function setupInstructions(stateIndex)
+{
 	var instructions = debugData.states[stateIndex].code.instructions;
 	codeMap = {};
 	statesList.model.clear();
@@ -40,6 +44,11 @@ function setupInstructions(stateIndex) {
 		statesList.model.append(instructions[i]);
 		codeMap[instructions[i].processIndex] = i;
 	}
+	callDataDump.listModel = debugData.states[stateIndex].callData.items;
+}
+
+function setupCallData(stateIndex)
+{
 	callDataDump.listModel = debugData.states[stateIndex].callData.items;
 }
 
@@ -53,27 +62,52 @@ function moveSelection(incr)
 	}
 }
 
-function select(stateIndex)
+function display(stateIndex)
 {
 	if (stateIndex < 0)
 		stateIndex = 0;
 	if (stateIndex >= debugData.states.length)
 		stateIndex = debugData.state.length - 1;
-	if (debugData.states[stateIndex].codeIndex !== debugData.states[currentSelectedState].codeIndex)
+	if (debugData.states[stateIndex].codeIndex !== debugData.states[currentDisplayedState].codeIndex)
 		setupInstructions(stateIndex);
-	currentSelectedState = stateIndex;
+	if (debugData.states[stateIndex].dataIndex !== debugData.states[currentDisplayedState].dataIndex)
+		setupCallData(stateIndex);
 	var codeLine = codeStr(stateIndex);
 	var state = debugData.states[stateIndex];
 	highlightSelection(codeLine);
 	completeCtxInformation(state);
+	currentDisplayedState = stateIndex;
+}
 
-	statesSlider.value = currentSelectedState;
+function displayFrame(frameIndex)
+{
+	var state = debugData.states[currentSelectedState];
+	if (frameIndex === 0)
+		display(currentSelectedState);
+	else
+		display(state.levels[frameIndex - 1]);
+}
+
+function select(stateIndex)
+{
+	display(stateIndex);
+	currentSelectedState = stateIndex;
+	var state = debugData.states[stateIndex];
+	statesSlider.value = stateIndex;
 	jumpIntoForwardAction.enabled(stateIndex < debugData.states.length - 1)
 	jumpIntoBackAction.enabled(stateIndex > 0);
 	jumpOverForwardAction.enabled(stateIndex < debugData.states.length - 1);
 	jumpOverBackAction.enabled(stateIndex > 0);
 	jumpOutBackAction.enabled(state.levels.length > 1);
 	jumpOutForwardAction.enabled(state.levels.length > 1);
+
+	var callStackData = [];
+	for (var l = 0; l < state.levels.length; l++) {
+		var address = debugData.states[state.levels[l] + 1].address;
+		callStackData.push(address);
+	}
+	callStackData.push(debugData.states[0].address);
+	callStack.model = callStackData;
 }
 
 function codeStr(stateIndex)
