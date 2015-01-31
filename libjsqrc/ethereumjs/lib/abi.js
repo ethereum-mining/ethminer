@@ -27,20 +27,8 @@ var types = require('./types');
 var c = require('./const');
 var f = require('./formatters');
 
-/// Filters all function from input abi
-/// @returns abi array with filtered objects of type 'function'
-var filterFunctions = function (json) {
-    return json.filter(function (current) {
-        return current.type === 'function'; 
-    }); 
-};
-
-/// Filters all events form input abi
-/// @returns abi array with filtered objects of type 'event'
-var filterEvents = function (json) {
-    return json.filter(function (current) {
-        return current.type === 'event';
-    });
+var displayTypeError = function (type) {
+    console.error('parser does not support type: ' + type);
 };
 
 /// This method should be called if we want to check if givent type is an array type
@@ -59,31 +47,31 @@ var dynamicTypeBytes = function (type, value) {
 var inputTypes = types.inputTypes(); 
 
 /// Formats input params to bytes
-/// @param abi contract method
+/// @param abi contract method inputs
 /// @param array of params that will be formatted to bytes
 /// @returns bytes representation of input params
-var toAbiInput = function (method, params) {
+var formatInput = function (inputs, params) {
     var bytes = "";
     var padding = c.ETH_PADDING * 2;
 
     /// first we iterate in search for dynamic 
-    method.inputs.forEach(function (input, index) {
+    inputs.forEach(function (input, index) {
         bytes += dynamicTypeBytes(input.type, params[index]);
     });
 
-    method.inputs.forEach(function (input, i) {
+    inputs.forEach(function (input, i) {
         var typeMatch = false;
         for (var j = 0; j < inputTypes.length && !typeMatch; j++) {
-            typeMatch = inputTypes[j].type(method.inputs[i].type, params[i]);
+            typeMatch = inputTypes[j].type(inputs[i].type, params[i]);
         }
         if (!typeMatch) {
-            console.error('input parser does not support type: ' + method.inputs[i].type);
+            displayTypeError(inputs[i].type);
         }
 
         var formatter = inputTypes[j - 1].format;
         var toAppend = "";
 
-        if (arrayType(method.inputs[i].type))
+        if (arrayType(inputs[i].type))
             toAppend = params[i].reduce(function (acc, curr) {
                 return acc + formatter(curr);
             }, "");
@@ -104,34 +92,34 @@ var dynamicBytesLength = function (type) {
 var outputTypes = types.outputTypes(); 
 
 /// Formats output bytes back to param list
-/// @param contract abi method
+/// @param contract abi method outputs
 /// @param bytes representtion of output 
 /// @returns array of output params 
-var fromAbiOutput = function (method, output) {
+var formatOutput = function (outs, output) {
     
     output = output.slice(2);
     var result = [];
     var padding = c.ETH_PADDING * 2;
 
-    var dynamicPartLength = method.outputs.reduce(function (acc, curr) {
+    var dynamicPartLength = outs.reduce(function (acc, curr) {
         return acc + dynamicBytesLength(curr.type);
     }, 0);
     
     var dynamicPart = output.slice(0, dynamicPartLength);
     output = output.slice(dynamicPartLength);
 
-    method.outputs.forEach(function (out, i) {
+    outs.forEach(function (out, i) {
         var typeMatch = false;
         for (var j = 0; j < outputTypes.length && !typeMatch; j++) {
-            typeMatch = outputTypes[j].type(method.outputs[i].type);
+            typeMatch = outputTypes[j].type(outs[i].type);
         }
 
         if (!typeMatch) {
-            console.error('output parser does not support type: ' + method.outputs[i].type);
+            displayTypeError(outs[i].type);
         }
 
         var formatter = outputTypes[j - 1].format;
-        if (arrayType(method.outputs[i].type)) {
+        if (arrayType(outs[i].type)) {
             var size = f.formatOutputUInt(dynamicPart.slice(0, padding));
             dynamicPart = dynamicPart.slice(padding);
             var array = [];
@@ -141,7 +129,7 @@ var fromAbiOutput = function (method, output) {
             }
             result.push(array);
         }
-        else if (types.prefixedType('string')(method.outputs[i].type)) {
+        else if (types.prefixedType('string')(outs[i].type)) {
             dynamicPart = dynamicPart.slice(padding); 
             result.push(formatter(output.slice(0, padding)));
             output = output.slice(padding);
@@ -154,31 +142,18 @@ var fromAbiOutput = function (method, output) {
     return result;
 };
 
-/// @returns display name for method eg. multiply(uint256) -> multiply
-var methodDisplayName = function (method) {
-    var length = method.indexOf('('); 
-    return length !== -1 ? method.substr(0, length) : method;
-};
-
-/// @returns overloaded part of method's name
-var methodTypeName = function (method) {
-    /// TODO: make it invulnerable
-    var length = method.indexOf('(');
-    return length !== -1 ? method.substr(length + 1, method.length - 1 - (length + 1)) : "";
-};
-
 /// @param json abi for contract
 /// @returns input parser object for given json abi
 /// TODO: refactor creating the parser, do not double logic from contract
 var inputParser = function (json) {
     var parser = {};
     json.forEach(function (method) {
-        var displayName = methodDisplayName(method.name); 
-        var typeName = methodTypeName(method.name);
+        var displayName = utils.extractDisplayName(method.name); 
+        var typeName = utils.extractTypeName(method.name);
 
         var impl = function () {
             var params = Array.prototype.slice.call(arguments);
-            return toAbiInput(method, params);
+            return formatInput(method.inputs, params);
         };
        
         if (parser[displayName] === undefined) {
@@ -197,11 +172,11 @@ var outputParser = function (json) {
     var parser = {};
     json.forEach(function (method) {
 
-        var displayName = methodDisplayName(method.name); 
-        var typeName = methodTypeName(method.name);
+        var displayName = utils.extractDisplayName(method.name); 
+        var typeName = utils.extractTypeName(method.name);
 
         var impl = function (output) {
-            return fromAbiOutput(method, output);
+            return formatOutput(method.outputs, output);
         };
 
         if (parser[displayName] === undefined) {
@@ -214,19 +189,17 @@ var outputParser = function (json) {
     return parser;
 };
 
-/// @param method name for which we want to get method signature
-/// @returns (promise) contract method signature for method with given name
-var methodSignature = function (name) {
-    return web3.sha3(web3.fromAscii(name)).slice(0, 2 + c.ETH_METHOD_SIGNATURE_LENGTH * 2);
+/// @param function/event name for which we want to get signature
+/// @returns signature of function/event with given name
+var signatureFromAscii = function (name) {
+    return web3.sha3(web3.fromAscii(name)).slice(0, 2 + c.ETH_SIGNATURE_LENGTH * 2);
 };
 
 module.exports = {
     inputParser: inputParser,
     outputParser: outputParser,
-    methodSignature: methodSignature,
-    methodDisplayName: methodDisplayName,
-    methodTypeName: methodTypeName,
-    filterFunctions: filterFunctions,
-    filterEvents: filterEvents
+    formatInput: formatInput,
+    formatOutput: formatOutput,
+    signatureFromAscii: signatureFromAscii
 };
 
