@@ -9,6 +9,7 @@ Rectangle {
 	property string disableStateImg
 	property string enabledStateImg
 	property string buttonTooltip
+	property string buttonShortcut
 	signal clicked
 
 	function enabled(state)
@@ -33,6 +34,7 @@ Rectangle {
 	Action {
 		tooltip: buttonTooltip
 		id: buttonAction
+		shortcut: buttonShortcut
 		onTriggered: {
 			buttonActionContainer.clicked();
 		}
