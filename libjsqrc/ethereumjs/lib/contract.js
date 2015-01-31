@@ -127,11 +127,15 @@ var addEventsToContract = function (contract, desc, address) {
         var impl = function () {
             var params = Array.prototype.slice.call(arguments);
             var signature = abi.methodSignature(e.name);
-            var event = eventImpl(address, signature);
+            var event = eventImpl(address, signature, e);
             var o = event.apply(null, params);
             return web3.eth.watch(o);  
         };
+        
+        // this property should be used by eth.filter to check if object is an event
+        impl._isEvent = true;
 
+        // TODO: we can remove address && topic properties, they are not used anymore since we introduced _isEvent
         impl.address = address;
 
         Object.defineProperty(impl, 'topic', {

@@ -278,8 +278,14 @@ var web3 = {
                 return ret;
             };
         },
-        watch: function (params) {
-            return new web3.filter(params, ethWatch);
+
+        /// @param filter may be a string, object or event
+        /// @param indexed is optional, this may be an object with optional event indexed params
+        watch: function (filter, indexed) {
+            if (filter._isEvent) {
+                return filter(indexed);
+            }
+            return new web3.filter(filter, ethWatch);
         }
     },
 
@@ -288,8 +294,10 @@ var web3 = {
 
     /// shh object prototype
     shh: {
-        watch: function (params) {
-            return new web3.filter(params, shhWatch);
+        
+        /// @param filter may be a string, object or event
+        watch: function (filter, indexed) {
+            return new web3.filter(filter, shhWatch);
         }
     },
 
