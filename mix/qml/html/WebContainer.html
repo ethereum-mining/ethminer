@@ -17,6 +17,7 @@ reloadPage = function() {
 
 updateContract = function(address, contractFace) {
 	if (window.web3) {
+		window.web3.provider.polls = [];
 		window.contractAddress = address;
 		window.contractInterface = contractFace;
 		window.contract = window.web3.eth.contract(address, contractFace);
