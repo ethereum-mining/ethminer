@@ -131,7 +131,7 @@ private:
 	unsigned m_currenciesFilter = (unsigned)-1;
 	unsigned m_balancesFilter = (unsigned)-1;
 
-	QByteArray m_nodes;
+	QByteArray m_networkConfig;
 	QStringList m_servers;
 
 	QNetworkAccessManager m_webCtrl;

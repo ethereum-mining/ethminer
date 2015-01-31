@@ -161,6 +161,7 @@ public:
 	
 	NodeEntry root() const { return NodeEntry(m_node, m_node.publicKey(), m_node.endpoint.udp); }
 	std::list<NodeId> nodes() const;
+	unsigned size() const { return m_nodes.size(); }
 	std::list<NodeEntry> state() const;
 	
 	bool haveNode(NodeId _id) { Guard l(x_nodes); return m_nodes.count(_id); }
@@ -347,7 +348,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 		void interpretRLP(RLP const& _r) { ipAddress = _r[0].toString(); port = _r[1].toInt<unsigned>(); node = h512(_r[2].toBytes()); }
 	};
 	
-	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep) {}
+	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep), expiration(futureFromEpoch(std::chrono::seconds(30))) {}
 	Neighbours(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbours>(_to), expiration(futureFromEpoch(std::chrono::seconds(30)))
 	{
 		auto limit = _limit ? std::min(_nearest.size(), (size_t)(_offset + _limit)) : _nearest.size();

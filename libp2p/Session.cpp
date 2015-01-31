@@ -102,7 +102,7 @@ template <class T> vector<T> randomSelection(vector<T> const& _t, unsigned _n)
 // TODO: P2P integration: replace w/asio post -> serviceNodesRequest()
 void Session::ensureNodesRequested()
 {
-	if (isOpen() && !m_weRequestedNodes)
+	if (isConnected() && !m_weRequestedNodes)
 	{
 		m_weRequestedNodes = true;
 		RLPStream s;
@@ -310,7 +310,7 @@ bool Session::interpret(RLP const& _r)
 
 			// OK passed all our checks. Assume it's good.
 			addRating(1000);
-			m_server->addNode(Node(id, NodeIPEndpoint(bi::udp::endpoint(ep.address(), ep.port()), ep)));
+			m_server->addNode(id, ep.address().to_string(), ep.port(), ep.port());
 			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
 			LAMEPEER:;

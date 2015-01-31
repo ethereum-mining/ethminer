@@ -45,14 +45,15 @@ void HostNodeTableHandler::processEvent(NodeId const& _n, NodeTableEventType con
 	m_host.onNodeTableEvent(_n, _e);
 }
 
-Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n):
+Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork):
 	Worker("p2p", 0),
+	m_restoreNetwork(_restoreNetwork.toBytes()),
 	m_clientVersion(_clientVersion),
 	m_netPrefs(_n),
 	m_ifAddresses(Network::getInterfaceAddresses()),
 	m_ioService(2),
 	m_tcp4Acceptor(m_ioService),
-	m_alias(move(getHostIdentifier())),
+	m_alias(getNetworkAlias(_restoreNetwork)),
 	m_lastPing(chrono::time_point<chrono::steady_clock>::min())
 {
 	for (auto address: m_ifAddresses)
@@ -124,7 +125,7 @@ void Host::doneWorking()
 			RecursiveGuard l(x_sessions);
 			for (auto i: m_sessions)
 				if (auto p = i.second.lock())
-					if (p->isOpen())
+					if (p->isConnected())
 					{
 						p->disconnect(ClientQuit);
 						n++;
@@ -156,6 +157,7 @@ unsigned Host::protocolVersion() const
 void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
 	{
+		clog(NetNote) << "p2p.host.peer.register" << _s->m_peer->id.abridged();
 		RecursiveGuard l(x_sessions);
 		// TODO: temporary loose-coupling; if m_peers already has peer,
 		//       it is same as _s->m_peer. (fixing next PR)
@@ -385,8 +387,6 @@ string Host::pocHost()
 
 void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPeerPort, unsigned short _udpNodePort)
 {
-	
-	
 	if (_tcpPeerPort < 30300 || _tcpPeerPort > 30305)
 		cwarn << "Non-standard port being recorded: " << _tcpPeerPort;
 
@@ -406,11 +406,11 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 			if (_ec)
 				return;
 			bi::tcp::endpoint tcp = *_epIt;
-			addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(tcp.address(), _udpNodePort), tcp)));
+			if (m_nodeTable) m_nodeTable->addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(tcp.address(), _udpNodePort), tcp)));
 		});
 	}
 	else
-		addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(addr, _udpNodePort), bi::tcp::endpoint(addr, _tcpPeerPort))));
+		if (m_nodeTable) m_nodeTable->addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(addr, _udpNodePort), bi::tcp::endpoint(addr, _tcpPeerPort))));
 }
 
 void Host::connect(std::shared_ptr<Peer> const& _p)
@@ -473,9 +473,20 @@ PeerSessionInfos Host::peers() const
 	RecursiveGuard l(x_sessions);
 	for (auto& i: m_sessions)
 		if (auto j = i.second.lock())
-			if (j->m_socket.is_open())
+			if (j->isConnected())
 				ret.push_back(j->m_info);
 	return ret;
+}
+
+size_t Host::peerCount() const
+{
+	unsigned retCount = 0;
+	RecursiveGuard l(x_sessions);
+	for (auto& i: m_sessions)
+		if (std::shared_ptr<Session> j = i.second.lock())
+			if (j->isConnected())
+				retCount++;
+	return retCount;
 }
 
 void Host::run(boost::system::error_code const&)
@@ -537,16 +548,14 @@ void Host::startedWorking()
 		
 		if (m_listenPort > 0)
 			runAcceptor();
-			
-		if (!m_tcpPublic.address().is_unspecified())
-			// TODO: add m_tcpPublic endpoint; sort out endpoint stuff for nodetable
-			m_nodeTable.reset(new NodeTable(m_ioService, m_alias, m_listenPort));
-		else
-			m_nodeTable.reset(new NodeTable(m_ioService, m_alias, m_listenPort > 0 ? m_listenPort : 30303));
-		m_nodeTable->setEventHandler(new HostNodeTableHandler(*this));
 	}
 	else
-		clog(NetNote) << "p2p.start.notice id:" << id().abridged() << "Invalid listen-port. Node Table Disabled.";
+		clog(NetNote) << "p2p.start.notice id:" << id().abridged() << "Listen port is invalid or unavailable. Node Table using default port (30303).";
+	
+	// TODO: add m_tcpPublic endpoint; sort out endpoint stuff for nodetable
+	m_nodeTable.reset(new NodeTable(m_ioService, m_alias, m_listenPort > 0 ? m_listenPort : 30303));
+	m_nodeTable->setEventHandler(new HostNodeTableHandler(*this));
+	restoreNetwork(&m_restoreNetwork);
 	
 	clog(NetNote) << "p2p.started id:" << id().abridged();
 	
@@ -585,112 +594,117 @@ void Host::disconnectLatePeers()
 				pp->disconnect(PingTimeout);
 }
 
-bytes Host::saveNodes() const
+bytes Host::saveNetwork() const
 {
-	RLPStream nodes;
+	std::list<Peer> peers;
+	{
+		RecursiveGuard l(x_sessions);
+		for (auto p: m_peers)
+			if (p.second)
+				peers.push_back(*p.second);
+	}
+	peers.sort();
+	
+	RLPStream network;
 	int count = 0;
 	{
 		RecursiveGuard l(x_sessions);
-		for (auto const& i: m_peers)
+		for (auto const& p: peers)
 		{
-			Peer const& n = *(i.second);
-			// TODO: alpha: Figure out why it ever shares these ports.//n.address.port() >= 30300 && n.address.port() <= 30305 &&
+			// TODO: alpha: Figure out why it ever shares these ports.//p.address.port() >= 30300 && p.address.port() <= 30305 &&
 			// TODO: alpha: if/how to save private addresses
 			// Only save peers which have connected within 2 days, with properly-advertised port and public IP address
-			if (chrono::system_clock::now() - n.lastConnected < chrono::seconds(3600 * 48) && n.peerEndpoint().port() > 0 && n.peerEndpoint().port() < /*49152*/32768 && n.id != id() && !isPrivateAddress(n.peerEndpoint().address()))
+			if (chrono::system_clock::now() - p.lastConnected < chrono::seconds(3600 * 48) && p.peerEndpoint().port() > 0 && p.peerEndpoint().port() < /*49152*/32768 && p.id != id() && !isPrivateAddress(p.peerEndpoint().address()))
 			{
-				nodes.appendList(10);
-				if (n.peerEndpoint().address().is_v4())
-					nodes << n.peerEndpoint().address().to_v4().to_bytes();
+				network.appendList(10);
+				if (p.peerEndpoint().address().is_v4())
+					network << p.peerEndpoint().address().to_v4().to_bytes();
 				else
-					nodes << n.peerEndpoint().address().to_v6().to_bytes();
+					network << p.peerEndpoint().address().to_v6().to_bytes();
 				// TODO: alpha: replace 0 with trust-state of node
-				nodes << n.peerEndpoint().port() << n.id << 0
-					<< chrono::duration_cast<chrono::seconds>(n.lastConnected.time_since_epoch()).count()
-					<< chrono::duration_cast<chrono::seconds>(n.lastAttempted.time_since_epoch()).count()
-					<< n.failedAttempts << (unsigned)n.lastDisconnect << n.score << n.rating;
+				network << p.peerEndpoint().port() << p.id << 0
+					<< chrono::duration_cast<chrono::seconds>(p.lastConnected.time_since_epoch()).count()
+					<< chrono::duration_cast<chrono::seconds>(p.lastAttempted.time_since_epoch()).count()
+					<< p.failedAttempts << (unsigned)p.lastDisconnect << p.score << p.rating;
 				count++;
 			}
 		}
 	}
+
+	auto state = m_nodeTable->state();
+	state.sort();
+	for (auto const& s: state)
+	{
+		network.appendList(3);
+		if (s.endpoint.tcp.address().is_v4())
+			network << s.endpoint.tcp.address().to_v4().to_bytes();
+		else
+			network << s.endpoint.tcp.address().to_v6().to_bytes();
+		network << s.endpoint.tcp.port() << s.id;
+		count++;
+	}
+	
 	RLPStream ret(3);
-	ret << 0 << m_alias.secret();
-	ret.appendList(count).appendRaw(nodes.out(), count);
+	ret << 1 << m_alias.secret();
+	ret.appendList(count).appendRaw(network.out(), count);
 	return ret.out();
 }
 
-// TODO: p2p Import-ant
-void Host::restoreNodes(bytesConstRef _b)
+void Host::restoreNetwork(bytesConstRef _b)
 {
+	// nodes can only be added if network is added
+	if (!isStarted())
+		BOOST_THROW_EXCEPTION(NetworkStartRequired());
+	
 	RecursiveGuard l(x_sessions);
 	RLP r(_b);
-	if (r.itemCount() > 0 && r[0].isInt())
-		switch (r[0].toInt<int>())
-		{
-		case 0:
-		{
-			m_alias = KeyPair(r[1].toHash<Secret>());
-//			noteNode(id(), m_tcpPublic);
+	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<int>() == 1)
+	{
+		// r[0] = version
+		// r[1] = key
+		// r[2] = nodes
 
-			for (auto i: r[2])
-			{
-				bi::tcp::endpoint ep;
-				if (i[0].itemCount() == 4)
-					ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
-				else
-					ep = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
-				auto id = (NodeId)i[2];
-				if (!m_peers.count(id))
-				{
-					// TODO: p2p import/export :)
-//					auto n = noteNode(id, ep);
-//					n->lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
-//					n->lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
-//					n->failedAttempts = i[6].toInt<unsigned>();
-//					n->lastDisconnect = (DisconnectReason)i[7].toInt<unsigned>();
-//					n->score = (int)i[8].toInt<unsigned>();
-//					n->rating = (int)i[9].toInt<unsigned>();
-				}
-			}
-		}
-		default:;
-		}
-	else
-		for (auto i: r)
+		for (auto i: r[2])
 		{
-			auto id = (NodeId)i[2];
-			if (!m_peers.count(id))
+			bi::tcp::endpoint tcp;
+			bi::udp::endpoint udp;
+			if (i[0].itemCount() == 4)
 			{
-				bi::tcp::endpoint ep;
-				if (i[0].itemCount() == 4)
-					ep = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
-				else
-					ep = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
-//				auto n = noteNode(id, ep);
+				tcp = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
+				udp = bi::udp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
+			}
+			else
+			{
+				tcp = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
+				udp = bi::udp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
+			}
+			auto id = (NodeId)i[2];
+			if (i.itemCount() == 3)
+				m_nodeTable->addNode(id, udp, tcp);
+			else if (i.itemCount() == 10)
+			{
+				shared_ptr<Peer> p = make_shared<Peer>();
+				p->id = id;
+				p->lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
+				p->lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
+				p->failedAttempts = i[6].toInt<unsigned>();
+				p->lastDisconnect = (DisconnectReason)i[7].toInt<unsigned>();
+				p->score = (int)i[8].toInt<unsigned>();
+				p->rating = (int)i[9].toInt<unsigned>();
+				p->endpoint.tcp = tcp;
+				p->endpoint.udp = udp;
+				m_peers[p->id] = p;
+				m_nodeTable->addNode(*p.get());
 			}
 		}
+	}
 }
 
-KeyPair Host::getHostIdentifier()
+KeyPair Host::getNetworkAlias(bytesConstRef _b)
 {
-	static string s_file(getDataDir() + "/host");
-	static mutex s_x;
-	lock_guard<mutex> l(s_x);
-	
-	h256 secret;
-	bytes b = contents(s_file);
-	if (b.size() == 32)
-		memcpy(secret.data(), b.data(), 32);
+	RLP r(_b);
+	if (r.itemCount() == 3 && r[0].isInt() && r[0].toInt<int>() == 1)
+		return move(KeyPair(move(Secret(r[1].toBytes()))));
 	else
-	{
-		// todo: replace w/user entropy; abstract to devcrypto
-		std::mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
-		std::uniform_int_distribution<uint16_t> d(0, 255);
-		for (unsigned i = 0; i < 32; ++i)
-			secret[i] = (byte)d(s_eng);
-	}
-	
-	if (!secret)
-		BOOST_THROW_EXCEPTION(crypto::InvalidState());
-	return move(KeyPair(move(secret)));
+		return move(KeyPair::create());
 }
