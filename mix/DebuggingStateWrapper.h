@@ -156,12 +156,6 @@ private:
 	MachineState m_state;
 	QCode* m_code;
 	QCallData* m_callData;
-	static QStringList fillList(QStringList& _list, QString const& _emptyValue);
-	static QVariantList fillList(QVariantList _list, QVariant const& _emptyValue);
-	static QVariantList qVariantDump(std::vector<std::vector<std::string>> const& _dump);
-	/// Nicely renders the given bytes to a string, store the content in an array.
-	/// @a _bytes: bytes array to be rendered as string. @a _width of a bytes line.
-	static std::vector<std::vector<std::string>> memDumpToList(bytes const& _bytes, unsigned _width);
 };
 
 }
