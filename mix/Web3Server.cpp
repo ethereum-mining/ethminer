@@ -20,8 +20,9 @@
  * Ethereum IDE client.
  */
 
-
 #include <libdevcore/Exceptions.h>
+#include <libdevcore/Log.h>
+#include <libethereum/Interface.h>
 #include "Web3Server.h"
 
 using namespace dev::mix;
@@ -54,6 +55,12 @@ void Web3Server::put(std::string const& _name, std::string const& _key, std::str
 	m_db[k] = _value;
 }
 
+Json::Value Web3Server::eth_changed(int const& _id)
+{
+	cnote << "eth_changed(" << _id << ") ->" << client()->peekWatch(_id).size();
+
+	return WebThreeStubServerBase::eth_changed(_id);
+}
 
 std::string Web3Server::eth_transact(Json::Value const& _json)
 {

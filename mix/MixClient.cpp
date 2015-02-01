@@ -137,7 +137,6 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 	h256Set changed;
 	Guard l(m_filterLock);
 	for (std::pair<h256 const, eth::InstalledFilter>& i: m_filters)
-	{
 		if ((unsigned)i.second.filter.latest() > m_blocks.size() - 1)
 		{
 			// acceptable number.
@@ -150,7 +149,6 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 				changed.insert(i.first);
 			}
 		}
-	}
 	changed.insert(dev::eth::PendingChangedFilter);
 	noteChanged(changed);
 }
@@ -190,7 +188,6 @@ State const& MixClient::asOf(int _block) const
 	else
 		return m_blocks[_block].state;
 }
-
 
 void MixClient::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
