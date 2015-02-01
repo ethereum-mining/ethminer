@@ -34,13 +34,14 @@ namespace mix
 class QVariableDeclaration: public QBasicNodeDefinition
 {
 	Q_OBJECT
-	Q_PROPERTY(QString type READ type CONSTANT)
+	Q_PROPERTY(QString type READ type WRITE setType)
 
 public:
 	QVariableDeclaration() {}
 	QVariableDeclaration(solidity::VariableDeclaration const* _v): QBasicNodeDefinition(_v), m_type(QString::fromStdString(_v->getType()->toString())) {}
 	QVariableDeclaration(std::string const& _name, std::string const& _type): QBasicNodeDefinition(_name), m_type(QString::fromStdString(_type)) {}
 	QString type() const { return m_type; }
+	void setType(QString _type) { m_type = _type; }
 
 private:
 	QString m_type;
@@ -48,3 +49,5 @@ private:
 
 }
 }
+
+Q_DECLARE_METATYPE(dev::mix::QVariableDeclaration*)
