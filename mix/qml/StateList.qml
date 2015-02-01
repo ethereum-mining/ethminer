@@ -27,64 +27,6 @@ Rectangle {
 		action: addStateAction
 	}
 
-	StateDialog {
-		id: stateDialog
-		onAccepted: {
-			var item = stateDialog.getItem();
-			if (stateDialog.stateIndex < stateListModel.count) {
-				stateList[stateDialog.stateIndex] = item;
-				stateListModel.set(stateDialog.stateIndex, item);
-			} else {
-				stateList.push(item);
-				stateListModel.append(item);
-			}
-			stateListModel.save();
-		}
-	}
-
-	ListModel {
-		id: stateListModel
-
-		function addState() {
-			var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
-			var item = {
-				title: "",
-				balance: ether,
-				transactions: []
-			};
-
-			var ctorTr = {
-				value: QEtherHelper.createEther("100", QEther.Wei),
-				functionId:  qsTr("Constructor"),
-				gas: QEtherHelper.createEther("125000", QEther.Wei),
-				gasPrice: QEtherHelper.createEther("10000000000000", QEther.Wei),
-				executeConstructor: true
-			};
-
-			item.transactions.push(ctorTr);
-			stateDialog.open(stateListModel.count, item);
-		}
-
-		function editState(index) {
-			stateDialog.open(index, stateList[index]);
-		}
-
-		function runState(index) {
-			var item = stateList[index];
-			clientModel.debugState(item);
-		}
-
-		function deleteState(index) {
-			stateListModel.remove(index);
-			stateList.splice(index, 1);
-			save();
-		}
-
-		function save() {
-			projectModel.saveProject();
-		}
-	}
-
 	Component {
 		id: renderDelegate
 		Item {
