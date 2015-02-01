@@ -383,14 +383,12 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	if (packetType && packetType < 4)
 		noteNode(nodeid, _from);
 	
-	// todo: switch packet-type
 	bytesConstRef rlpBytes(_packet.cropped(h256::size + Signature::size + 1));
 	RLP rlp(rlpBytes);
-	unsigned itemCount = rlp.itemCount();
 	try {
-		switch (itemCount)
+		switch (packetType)
 		{
-			case 1:
+			case Pong::type:
 			{
 //				clog(NodeTableMessageSummary) << "Received Pong from " << _from.address().to_string() << ":" << _from.port();
 				Pong in = Pong::fromBytesConstRef(_from, rlpBytes);
@@ -408,35 +406,35 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 						
 						it = m_evictions.erase(it);
 					}
-				
 				break;
 			}
 				
-			case 2:
-				if (rlp[0].isList())
+			case Neighbours::type:
+			{
+				Neighbours in = Neighbours::fromBytesConstRef(_from, rlpBytes);
+//				clog(NodeTableMessageSummary) << "Received " << in.nodes.size() << " Neighbours from " << _from.address().to_string() << ":" << _from.port();
+				for (auto n: in.nodes)
+					noteNode(n.node, bi::udp::endpoint(bi::address::from_string(n.ipAddress), n.port));
+				break;
+			}
+
+			case FindNode::type:
+			{
+//				clog(NodeTableMessageSummary) << "Received FindNode from " << _from.address().to_string() << ":" << _from.port();
+				FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
+
+				vector<shared_ptr<NodeEntry>> nearest = findNearest(in.target);
+				static unsigned const nlimit = (m_socketPtr->maxDatagramSize - 11) / 86;
+				for (unsigned offset = 0; offset < nearest.size(); offset += nlimit)
 				{
-					Neighbours in = Neighbours::fromBytesConstRef(_from, rlpBytes);
-//					clog(NodeTableMessageSummary) << "Received " << in.nodes.size() << " Neighbours from " << _from.address().to_string() << ":" << _from.port();
-					for (auto n: in.nodes)
-						noteNode(n.node, bi::udp::endpoint(bi::address::from_string(n.ipAddress), n.port));
-				}
-				else
-				{
-//					clog(NodeTableMessageSummary) << "Received FindNode from " << _from.address().to_string() << ":" << _from.port();
-					FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
-					
-					vector<shared_ptr<NodeEntry>> nearest = findNearest(in.target);
-					static unsigned const nlimit = (m_socketPtr->maxDatagramSize - 11) / 86;
-					for (unsigned offset = 0; offset < nearest.size(); offset += nlimit)
-					{
-						Neighbours out(_from, nearest, offset, nlimit);
-						out.sign(m_secret);
-						m_socketPtr->send(out);
-					}
+					Neighbours out(_from, nearest, offset, nlimit);
+					out.sign(m_secret);
+					m_socketPtr->send(out);
 				}
 				break;
-				
-			case 3:
+			}
+
+			case PingNode::type:
 			{
 //				clog(NodeTableMessageSummary) << "Received PingNode from " << _from.address().to_string() << ":" << _from.port();
 				PingNode in = PingNode::fromBytesConstRef(_from, rlpBytes);
