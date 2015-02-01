@@ -52,10 +52,12 @@ public:
 	/// Encode the current value in order to be used as function parameter.
 	virtual bytes encodeValue() = 0;
 	/// Decode the return value @a _rawValue.
-	virtual void decodeValue(std::string const& _rawValue) = 0;
+	virtual void decodeValue(dev::bytes const& _rawValue) = 0;
+
+protected:
+	QString m_value;
 
 private:
-	QString m_value;
 	QVariableDeclaration* m_dec;
 };
 
@@ -85,9 +87,14 @@ public:
 	QIntType() {}
 	QIntType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
-	void decodeValue(std::string const& _rawValue) override;
+	void decodeValue(dev::bytes const& _rawValue) override;
 	/// @returns an instance of QBigInt for the current value.
-	QBigInt* toBigInt() { return new QBigInt(value()); }
+	QBigInt* toBigInt() { return new QBigInt(m_bigIntvalue); }
+	dev::bigint bigInt() { return m_bigIntvalue; }
+	void setValue(dev::bigint _value);
+
+private:
+	dev::bigint m_bigIntvalue;
 };
 
 class QRealType: public QVariableDefinition
@@ -98,7 +105,7 @@ public:
 	QRealType() {}
 	QRealType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
-	void decodeValue(std::string const& _rawValue) override;
+	void decodeValue(dev::bytes const& _rawValue) override;
 };
 
 class QStringType: public QVariableDefinition
@@ -109,7 +116,7 @@ public:
 	QStringType() {}
 	QStringType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
-	void decodeValue(std::string const& _rawValue) override;
+	void decodeValue(dev::bytes const& _rawValue) override;
 };
 
 class QHashType: public QVariableDefinition
@@ -120,7 +127,7 @@ public:
 	QHashType() {}
 	QHashType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
-	void decodeValue(std::string const& _rawValue) override;
+	void decodeValue(dev::bytes const& _rawValue) override;
 };
 
 class QBoolType: public QVariableDefinition
@@ -131,9 +138,12 @@ public:
 	QBoolType() {}
 	QBoolType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
 	dev::bytes encodeValue() override;
-	void decodeValue(std::string const& _rawValue) override;
+	void decodeValue(dev::bytes const& _rawValue) override;
 	///  @returns the boolean value for the current definition.
-	bool toBool() { return value() != "0"; }
+	bool toBool() { return m_boolValue; }
+
+private:
+	bool m_boolValue;
 };
 
 }

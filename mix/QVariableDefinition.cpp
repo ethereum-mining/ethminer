@@ -59,25 +59,30 @@ QVariableDefinition* QVariableDefinitionList::val(int _idx)
 /*
  * QIntType
  */
+void QIntType::setValue(dev::bigint _value)
+{
+	m_bigIntvalue = _value;
+	std::stringstream str;
+	str << std::dec << m_bigIntvalue;
+	m_value = QString::fromStdString(str.str());
+}
+
 dev::bytes QIntType::encodeValue()
 {
 	dev::bigint i(value().toStdString());
 	if (i < 0)
 		i = i + dev::bigint("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff") + 1;
-	std::ostringstream s;
-	s << std::hex << "0x" << i;
-	return padded(jsToBytes(s.str()), 32);
+	bytes ret(32);
+	toBigEndian(i, ret);
+	return ret;
 }
 
-void QIntType::decodeValue(std::string const& _rawValue)
+void QIntType::decodeValue(dev::bytes const& _rawValue)
 {
-	std::string rawParam = _rawValue.substr(0, 32 * 2);
-	dev::bigint bigint = dev::bigint("0x" + rawParam);
+	dev::bigint bigint = dev::fromBigEndian<dev::bigint>(_rawValue);
 	if (((bigint >> 32) & 1) == 1)
 		bigint = bigint - dev::bigint("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff") - 1;
-	std::ostringstream s;
-	s << std::dec << bigint;
-	setValue(QString::fromStdString(s.str()));
+	setValue(bigint);
 }
 
 /*
@@ -85,14 +90,15 @@ void QIntType::decodeValue(std::string const& _rawValue)
  */
 dev::bytes QHashType::encodeValue()
 {
-	return padded(jsToBytes("0x" + value().toStdString()), 32);
+	QByteArray b = value().toUtf8();
+	bytes r = bytes(b.begin(), b.end());
+	return padded(r, 32);
 }
 
-void QHashType::decodeValue(std::string const& _rawValue)
+void QHashType::decodeValue(dev::bytes const& _rawValue)
 {
-	std::string rawParam = _rawValue.substr(0, 32 * 2);
-	std::string unPadded = unpadLeft(rawParam);
-	setValue(QString::fromStdString(unPadded));
+	std::string _ret = asString(unpadLeft(_rawValue));
+	setValue(QString::fromStdString(_ret));
 }
 
 /*
@@ -103,7 +109,7 @@ dev::bytes QRealType::encodeValue()
 	return bytes();
 }
 
-void QRealType::decodeValue(std::string const& _rawValue)
+void QRealType::decodeValue(dev::bytes const& _rawValue)
 {
 	Q_UNUSED(_rawValue);
 }
@@ -113,24 +119,14 @@ void QRealType::decodeValue(std::string const& _rawValue)
  */
 dev::bytes QStringType::encodeValue()
 {
-	qDebug() << QString::fromStdString(toJS(paddedRight(asBytes(value().toStdString()), 32)));
-	return paddedRight(asBytes(value().toStdString()), 32);
+	QByteArray b = value().toUtf8();
+	bytes r = bytes(b.begin(), b.end());
+	return paddedRight(r, 32);
 }
 
-void QStringType::decodeValue(std::string const& _rawValue)
+void QStringType::decodeValue(dev::bytes const& _rawValue)
 {
-	std::string rawParam = _rawValue.substr(0, 32 * 2);
-	rawParam = unpadRight(rawParam);
-	std::string res;
-	res.reserve(rawParam.size() / 2);
-	for (unsigned int i = 0; i < rawParam.size(); i += 2)
-	{
-		std::istringstream iss(rawParam.substr(i, 2));
-		int temp;
-		iss >> std::hex >> temp;
-		res += static_cast<char>(temp);
-	}
-	setValue(QString::fromStdString(res));
+	setValue(QString::fromUtf8((char*)_rawValue.data()));
 }
 
 /*
@@ -141,9 +137,10 @@ dev::bytes QBoolType::encodeValue()
 	return padded(jsToBytes(value().toStdString()), 32);
 }
 
-void QBoolType::decodeValue(std::string const& _rawValue)
+void QBoolType::decodeValue(dev::bytes const& _rawValue)
 {
-	std::string rawParam = _rawValue.substr(0, 32 * 2);
-	std::string unpadded = unpadLeft(rawParam);
-	setValue(QString::fromStdString(unpadded));
+	byte ret = _rawValue.at(_rawValue.size() - 1);
+	bool boolRet = (ret == byte(1));
+	m_boolValue = boolRet;
+	m_value = m_boolValue ? "1" : "0";
 }

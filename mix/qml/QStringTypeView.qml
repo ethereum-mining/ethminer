@@ -10,6 +10,7 @@ Item
 			id: textinput
 			text: text
 			anchors.fill: parent
+			wrapMode: Text.WrapAnywhere
 			MouseArea {
 				id: mouseArea
 				anchors.fill: parent

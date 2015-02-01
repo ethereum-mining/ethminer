@@ -5,22 +5,28 @@ Item
 {
 	id: editRoot
 	property string text
-	property bool defaultValue
+	property string defaultValue
+
 	Rectangle {
 		anchors.fill: parent
 		ComboBox
 		{
+			property bool inited: false
 			Component.onCompleted:
 			{
-				text = (defaultValue ? "1" : "0");
-				currentIndex = parseInt(text);
+				if (text === "")
+					currentIndex = parseInt(defaultValue);
+				else
+					currentIndex = parseInt(text);
+				inited = true
 			}
 
 			id: boolCombo
 			anchors.fill: parent
 			onCurrentIndexChanged:
 			{
-				text = comboModel.get(currentIndex).value;
+				if (inited)
+					text = comboModel.get(currentIndex).value;
 			}
 			model: ListModel
 			{
