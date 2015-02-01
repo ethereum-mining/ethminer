@@ -17,6 +17,7 @@ Item {
 	signal documentAdded(var documentId)
 	signal projectSaving(var projectData)
 	signal projectSaved()
+	signal newProject(var projectData)
 	signal documentSaved(var documentId)
 
 	property bool isEmpty: (projectPath === "")
@@ -27,6 +28,7 @@ Item {
 	property string projectTitle: ""
 	property string currentDocumentId: ""
 	property var listModel: projectListModel
+	property var stateListModel: projectStateListModel.model
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
@@ -82,6 +84,10 @@ Item {
 
 	ListModel {
 		id: projectListModel
+	}
+
+	StateListModel {
+		id: projectStateListModel
 	}
 
 	Settings {
