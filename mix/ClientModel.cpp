@@ -207,15 +207,14 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 					if (!f)
 						BOOST_THROW_EXCEPTION(FunctionNotFoundException() << FunctionName(transaction.functionId.toStdString()));
 
-					for (int k = 0; k < f->parametersList() .size(); k++)
-					{
-						if (f->parametersList().at(k)->type() != transaction.parameterValues.at(k)->declaration()->type())
-							BOOST_THROW_EXCEPTION(ParameterChangedException() << FunctionName(f->parametersList().at(k)->type().toStdString()));
-					}
-
 					encoder.encode(f);
 					for (int p = 0; p < transaction.parameterValues.size(); p++)
+					{
+						if (f->parametersList().at(p)->type() != transaction.parameterValues.at(p)->declaration()->type())
+							BOOST_THROW_EXCEPTION(ParameterChangedException() << FunctionName(f->parametersList().at(p)->type().toStdString()));
 						encoder.push(transaction.parameterValues.at(p)->encodeValue());
+					}
+
 
 					if (transaction.functionId.isEmpty())
 					{
@@ -229,10 +228,6 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 					else
 					{
 						callContract(m_contractAddress, encoder.encodedData(), transaction);
-
-						// Used to log return values. TODO move this to QML.
-						ExecutionResult const& last = m_client->record().back().transactions.back();
-						encoder.decode(f->returnParameters(), last.returnValue);
 					}
 				}
 				onNewTransaction();
@@ -331,11 +326,6 @@ void ClientModel::onNewTransaction()
 
 	bool creation = tr.contractAddress != 0;
 
-	if (creation)
-		returned = QString::fromStdString(toJS(tr.contractAddress));
-	else
-		returned = QString::fromStdString(toJS(tr.returnValue));
-
 	//TODO: handle value transfer
 	FixedHash<4> functionHash;
 	bool call = false;
@@ -364,6 +354,10 @@ void ClientModel::onNewTransaction()
 			function = QObject::tr("<none>");
 	}
 
+	if (creation)
+		returned = QString::fromStdString(toJS(tr.contractAddress));
+
+	QList<QVariableDefinition*> returnValues;
 	if (m_contractAddress != 0 && (tr.address == m_contractAddress || tr.contractAddress == m_contractAddress))
 	{
 		auto compilerRes = m_context->codeModel()->code();
@@ -373,7 +367,13 @@ void ClientModel::onNewTransaction()
 		{
 			QFunctionDefinition* funcDef = def->getFunction(functionHash);
 			if (funcDef)
+			{
 				function = funcDef->name();
+				ContractCallDataEncoder encoder;
+				returnValues = encoder.decode(funcDef->returnParameters(), tr.returnValue);
+				for (auto const& var: returnValues)
+					returned += var->value() + " | ";
+			}
 		}
 	}
 
