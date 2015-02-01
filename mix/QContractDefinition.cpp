@@ -34,13 +34,19 @@ using namespace dev::mix;
 QContractDefinition::QContractDefinition(dev::solidity::ContractDefinition const* _contract): QBasicNodeDefinition(_contract)
 {
 	if (_contract->getConstructor() != nullptr)
-	{
-		FunctionDescription desc(_contract->getConstructor());
-		m_constructor = new QFunctionDefinition(desc);
-	}
+		m_constructor = new QFunctionDefinition(ContractType(*_contract).getConstructorType());
 	else
 		m_constructor = new QFunctionDefinition();
 
 	for (auto const& it: _contract->getInterfaceFunctions())
 		m_functions.append(new QFunctionDefinition(it.second));}
 
+
+QFunctionDefinition* QContractDefinition::getFunction(dev::FixedHash<4> _hash)
+{
+	for (auto const& f: m_functions)
+		if (f->hash() == _hash)
+			return f;
+
+	return nullptr;
+}

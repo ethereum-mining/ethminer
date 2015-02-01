@@ -13,7 +13,7 @@ aux_source_directory(. SRC_LIST)
 include_directories(..)
 
 find_package (Qt5WebEngine QUIET)
-qt5_add_resources(UI_RESOURCES qml.qrc)
+qt5_add_resources(UI_RESOURCES res.qrc)
 
 file(GLOB HEADERS "*.h")
 
@@ -62,6 +62,7 @@ eth_install_executable(${EXECUTABLE}
 	QMLDIR ${CMAKE_CURRENT_SOURCE_DIR}/qml
 )
 
-#add qml files to project tree in Qt creator
+#add qml asnd stdc files to project tree in Qt creator
 file(GLOB_RECURSE QMLFILES "qml/*.*")
-add_custom_target(dummy SOURCES ${QMLFILES})
+file(GLOB_RECURSE SOLFILES "stdc/*.*")
+add_custom_target(dummy SOURCES ${QMLFILES} ${SOLFILES})

@@ -28,29 +28,15 @@
 using namespace dev::solidity;
 using namespace dev::mix;
 
-QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionDescription const& _f): QBasicNodeDefinition(_f.getDeclaration()), m_hash(dev::sha3(_f.getSignature()))
+QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionTypePointer const& _f): QBasicNodeDefinition(&_f->getDeclaration()), m_hash(dev::sha3(_f->getCanonicalSignature()))
 {
-	FunctionDefinition const* funcDef;
-	VariableDeclaration const* varDecl;
-	if ((funcDef = _f.getFunctionDefinition()))
-	{
-		std::vector<std::shared_ptr<VariableDeclaration>> parameters = funcDef->getParameterList().getParameters();
-		for (unsigned i = 0; i < parameters.size(); i++)
-			m_parameters.append(new QVariableDeclaration(parameters.at(i).get()));
+	auto paramNames = _f->getParameterNames();
+	auto paramTypes = _f->getParameterTypeNames();
+	auto returnNames = _f->getReturnParameterNames();
+	auto returnTypes = _f->getReturnParameterTypeNames();
+	for (unsigned i = 0; i < paramNames.size(); ++i)
+		m_parameters.append(new QVariableDeclaration(paramNames[i], paramTypes[i]));
 
-		std::vector<std::shared_ptr<VariableDeclaration>> returnParameters = funcDef->getReturnParameters();
-		for (unsigned i = 0; i < returnParameters.size(); i++)
-			m_returnParameters.append(new QVariableDeclaration(returnParameters.at(i).get()));
-	}
-	else
-	{
-		if (!(varDecl = _f.getVariableDeclaration()))
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Malformed FunctionDescription. Should never happen."));
-
-		// only the return parameter for now.
-		// TODO: change this for other state variables like mapping and maybe abstract this inside solidity and not here
-		auto returnParams = _f.getReturnParameters();
-		m_returnParameters.append(new QVariableDeclaration(returnParams[0]));
-
-	}
+	for (unsigned i = 0; i < returnNames.size(); ++i)
+		m_returnParameters.append(new QVariableDeclaration(returnNames[i], returnTypes[i]));
 }

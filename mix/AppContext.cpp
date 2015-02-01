@@ -23,9 +23,11 @@
  */
 
 #include <QMessageBox>
+#include <QClipboard>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
+#include <QQuickWindow>
 #include "CodeModel.h"
 #include "FileIo.h"
 #include "ClientModel.h"
@@ -79,6 +81,8 @@ void AppContext::load()
 	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
 	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
 	m_applicationEngine->load(QUrl("qrc:/qml/main.qml"));
+	QQuickWindow *window = qobject_cast<QQuickWindow *>(m_applicationEngine->rootObjects().at(0));
+	window->setIcon(QIcon(":/res/mix_256x256x32.png"));
 	appLoaded();
 }
 
@@ -98,4 +102,10 @@ void AppContext::displayMessageDialog(QString _title, QString _message)
 	dialogWin->setProperty("height", "100");
 	dialogWin->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
 	QMetaObject::invokeMethod(dialogWin, "open");
+}
+
+void AppContext::toClipboard(QString _text)
+{
+	QClipboard *clipboard = QApplication::clipboard();
+	clipboard->setText(_text);
 }
