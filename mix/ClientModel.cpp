@@ -170,6 +170,12 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 				if (!f)
 					throw std::runtime_error("function " + t.functionId.toStdString() + " not found");
 
+				for (int k = 0; k < f->parametersList() .size(); k++)
+				{
+					if (f->parametersList().at(k)->type() != t.parameterValues.at(k)->declaration()->type())
+						throw std::runtime_error("list of parameters has been changed. Need to update this transaction");
+				}
+
 				c.encode(f);
 				for (int p = 0; p < t.parameterValues.size(); p++)
 					c.push(t.parameterValues.at(p)->encodeValue());

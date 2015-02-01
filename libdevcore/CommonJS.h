@@ -52,12 +52,10 @@ bytes jsToBytes(std::string const& _s);
 bytes padded(bytes _b, unsigned _l);
 /// Add '0' on the queue of @a _b until @a _l.
 bytes paddedRight(bytes _b, unsigned _l);
-/// Remove all trailing '0'
-std::string unpadRight(std::string _b);
 /// Removing all trailing '0'. Returns empty array if input contains only '0' char.
 bytes unpadded(bytes _s);
-/// Remove all '0' on the head of @a _s. Returns 0 if @a _s contains only '0'.
-std::string unpadLeft(std::string _s);
+/// Remove all 0 byte on the head of @a _s.
+bytes unpadLeft(bytes _s);
 /// Convert u256 into user-readable string. Returns int/hex value of 64 bits int, hex of 160 bits FixedHash. As a fallback try to handle input as h256.
 std::string prettyU256(u256 _n);
 /// Convert h256 into user-readable string (by directly using std::string constructor).
