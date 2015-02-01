@@ -356,19 +356,19 @@ Window {
 					}
 				}
 
-
 				Component
 				{
 					id: boolViewComp
 					QBoolTypeView
 					{
 						id: boolView
-						text: styleData.value
-						defaultValue: true
+						defaultValue: "1"
 						Component.onCompleted:
 						{
-							//default value
-							loaderEditor.updateValue(styleData.row, styleData.role, "1");
+							loaderEditor.updateValue(styleData.row, styleData.role,
+													 (paramsModel.get(styleData.row).value === "" ? defaultValue :
+																									paramsModel.get(styleData.row).value));
+							text = (paramsModel.get(styleData.row).value === "" ? defaultValue : paramsModel.get(styleData.row).value);
 						}
 					}
 				}

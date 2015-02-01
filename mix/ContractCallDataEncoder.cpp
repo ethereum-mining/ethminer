@@ -49,11 +49,9 @@ void ContractCallDataEncoder::push(bytes const& _b)
 	m_encodedData.insert(m_encodedData.end(), _b.begin(), _b.end());
 }
 
-QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& _returnParameters, bytes const& _value)
+QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& _returnParameters, bytes _value)
 {
 	QList<QVariableDefinition*> r;
-	std::string returnValue = toJS(_value);
-	returnValue = returnValue.substr(2, returnValue.length() - 1);
 	for (int k = 0; k <_returnParameters.length(); k++)
 	{
 		QVariableDeclaration* dec = (QVariableDeclaration*)_returnParameters.at(k);
@@ -68,9 +66,14 @@ QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDecla
 			def = new QStringType(dec, QString());
 		else if (dec->type().contains("hash") || dec->type().contains("address"))
 			def = new QHashType(dec, QString());
-		def->decodeValue(returnValue);
+		else
+			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Parameter declaration not found"));
+
+		bytes rawParam(_value.begin(), _value.begin() + 32);
+		def->decodeValue(rawParam);
 		r.push_back(def);
-		returnValue = returnValue.substr(32 * 2, returnValue.length() - 1);
+		if (_value.size() > 32)
+			_value =  bytes(_value.begin() + 32, _value.end());
 		qDebug() << "decoded return value : " << dec->type() << " " << def->value();
 	}
 	return r;
