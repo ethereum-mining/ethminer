@@ -68,6 +68,7 @@ void AppContext::load()
 	qmlRegisterType<QStringType>("org.ethereum.qml.QStringType", 1, 0, "QStringType");
 	qmlRegisterType<QHashType>("org.ethereum.qml.QHashType", 1, 0, "QHashType");
 	qmlRegisterType<QBoolType>("org.ethereum.qml.QBoolType", 1, 0, "QBoolType");
+	qmlRegisterType<QVariableDeclaration>("org.ethereum.qml.QVariableDeclaration", 1, 0, "QVariableDeclaration");
 	QQmlComponent projectModelComponent(m_applicationEngine, QUrl("qrc:/qml/ProjectModel.qml"));
 	QObject* projectModel = projectModelComponent.create();
 	if (projectModelComponent.isError())

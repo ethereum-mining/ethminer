@@ -357,7 +357,6 @@ void ClientModel::onNewTransaction()
 	if (creation)
 		returned = QString::fromStdString(toJS(tr.contractAddress));
 
-	QList<QVariableDefinition*> returnValues;
 	if (m_contractAddress != 0 && (tr.address == m_contractAddress || tr.contractAddress == m_contractAddress))
 	{
 		auto compilerRes = m_context->codeModel()->code();
@@ -370,7 +369,7 @@ void ClientModel::onNewTransaction()
 			{
 				function = funcDef->name();
 				ContractCallDataEncoder encoder;
-				returnValues = encoder.decode(funcDef->returnParameters(), tr.returnValue);
+				QList<QVariableDefinition*> returnValues = encoder.decode(funcDef->returnParameters(), tr.returnValue);
 				for (auto const& var: returnValues)
 					returned += var->value() + " | ";
 			}
