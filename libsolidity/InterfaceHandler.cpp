@@ -40,20 +40,21 @@ std::unique_ptr<std::string> InterfaceHandler::getABIInterface(ContractDefinitio
 	Json::Value abi(Json::arrayValue);
 	for (auto const& it: _contractDef.getInterfaceFunctions())
 	{
-		Json::Value method;
 		auto populateParameters = [](vector<string> const& _paramNames, vector<string> const& _paramTypes)
 		{
 			Json::Value params(Json::arrayValue);
 			solAssert(_paramNames.size() == _paramTypes.size(), "Names and types vector size does not match");
 			for (unsigned i = 0; i < _paramNames.size(); ++i)
 			{
-				Json::Value input;
-				input["name"] = _paramNames[i];
-				input["type"] = _paramTypes[i];
-				params.append(input);
+				Json::Value param;
+				param["name"] = _paramNames[i];
+				param["type"] = _paramTypes[i];
+				params.append(param);
 			}
 			return params;
 		};
+
+		Json::Value method;
 		method["type"] = "function";
 		method["name"] = it.second->getDeclaration().getName();
 		method["constant"] = it.second->isConstant();
