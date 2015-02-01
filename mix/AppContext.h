@@ -62,6 +62,8 @@ public:
 	ClientModel* clientModel() { return m_clientModel.get(); }
 	/// Display an alert message.
 	void displayMessageDialog(QString _title, QString _message);
+	/// Copy text to clipboard
+	Q_INVOKABLE void toClipboard(QString _text);
 
 signals:
 	/// Triggered once components have been loaded

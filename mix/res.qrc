@@ -10,6 +10,7 @@
         <file>qml/ProjectList.qml</file>
         <file>qml/StateDialog.qml</file>
         <file>qml/StateList.qml</file>
+        <file>qml/StateListModel.qml</file>
         <file>qml/img/jumpintoback.png</file>
         <file>qml/img/jumpintoforward.png</file>
         <file>qml/img/jumpoutback.png</file>
@@ -55,5 +56,12 @@
         <file>qml/QRealTypeView.qml</file>
         <file>qml/QStringTypeView.qml</file>
         <file>qml/QHashTypeView.qml</file>
+        <file>qml/ContractLibrary.qml</file>
+        <file>stdc/config.sol</file>
+        <file>stdc/namereg.sol</file>
+        <file>stdc/std.sol</file>
+        <file>qml/TransactionLog.qml</file>
+        <file>res/mix_256x256x32.png</file>
+        <file>qml/CallStack.qml</file>
     </qresource>
 </RCC>

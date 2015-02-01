@@ -17,5 +17,9 @@
         <file>qml/html/cm/htmlmixed.js</file>
         <file>qml/html/cm/css.js</file>
         <file>qml/html/cm/solidity.js</file>
+        <file>qml/html/cm/dialog.css</file>
+        <file>qml/html/cm/dialog.js</file>
+        <file>qml/html/cm/search.js</file>
+        <file>qml/html/cm/searchcursor.js</file>
     </qresource>
 </RCC>

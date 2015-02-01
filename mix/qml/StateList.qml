@@ -3,8 +3,6 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Controls 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
-import org.ethereum.qml.QEther 1.0
-import "js/QEtherHelper.js" as QEtherHelper
 
 Rectangle {
 	color: "#ededed"
@@ -14,32 +12,13 @@ Rectangle {
 	anchors.left: parent.left
 	height: parent.height
 	width: parent.width
-	property var stateList: []
-
-	Connections {
-		target: projectModel
-		onProjectClosed: {
-			stateListModel.clear();
-		}
-		onProjectLoaded: {
-			if (!projectData.states)
-				projectData.states = [];
-			var items = projectData.states;
-			for(var i = 0; i < items.length; i++) {
-				stateListModel.append(items[i]);
-				stateList.push(items[i])
-			}
-		}
-		onProjectSaving: {
-			projectData.states = stateList;
-		}
-	}
 
 	ListView {
+		id: list
 		anchors.top: parent.top
 		height: parent.height
 		width: parent.width
-		model: stateListModel
+		model: projectModel.stateListModel
 		delegate: renderDelegate
 	}
 
@@ -124,20 +103,17 @@ Rectangle {
 				ToolButton {
 					text: qsTr("Edit");
 					Layout.fillHeight: true
-					onClicked: stateListModel.editState(index);
+					onClicked: list.model.editState(index);
 				}
 				ToolButton {
 					text: qsTr("Delete");
 					Layout.fillHeight: true
-					onClicked: stateListModel.deleteState(index);
+					onClicked: list.model.deleteState(index);
 				}
 				ToolButton {
 					text: qsTr("Run");
 					Layout.fillHeight: true
-					onClicked:
-					{
-						stateListModel.runState(index)
-					}
+					onClicked: list.model.runState(index);
 				}
 			}
 		}
@@ -148,7 +124,7 @@ Rectangle {
 		text: "&Add State"
 		shortcut: "Ctrl+T"
 		enabled: codeModel.hasContract && !clientModel.running;
-		onTriggered: stateListModel.addState();
+		onTriggered: list.model.addState();
 	}
 }
 
