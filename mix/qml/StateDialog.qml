@@ -167,6 +167,7 @@ Window {
 					onClicked: transactionsModel.editTransaction(index)
 				}
 				ToolButton {
+					visible: !transactionsModel.get(index).executeConstructor
 					text: qsTr("Delete");
 					Layout.fillHeight: true
 					onClicked: transactionsModel.deleteTransaction(index)
