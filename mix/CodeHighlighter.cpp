@@ -102,7 +102,8 @@ void CodeHighlighter::processAST(dev::solidity::ASTNode const& _ast)
 void CodeHighlighter::processError(dev::Exception const& _exception)
 {
 	Location const* location = boost::get_error_info<errinfo_sourceLocation>(_exception);
-	m_formats.push_back(FormatRange(CodeHighlighterSettings::CompilationError, *location));
+	if (location)
+		m_formats.push_back(FormatRange(CodeHighlighterSettings::CompilationError, *location));
 }
 
 void CodeHighlighter::processComments(std::string const& _source)

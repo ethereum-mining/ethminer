@@ -4,6 +4,9 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import CodeEditorExtensionManager 1.0
 import Qt.labs.settings 1.0
+import org.ethereum.qml.QEther 1.0
+import "js/QEtherHelper.js" as QEtherHelper
+import "js/TransactionHelper.js" as TransactionHelper
 
 Rectangle {
 
@@ -30,6 +33,12 @@ Rectangle {
 			contentView.width = parent.width - projectList.width;
 	}
 
+	function startQuickDebugging()
+	{
+		ensureRightView();
+		projectModel.stateListModel.debugDefaultState();
+	}
+
 	function toggleRightView() {
 		if (!rightView.visible)
 			rightView.show();
@@ -40,6 +49,11 @@ Rectangle {
 	function ensureRightView() {
 		if (!rightView.visible)
 			rightView.show();
+	}
+
+	function rightViewIsVisible()
+	{
+		return rightView.visible;
 	}
 
 	function hideRightView() {
@@ -53,10 +67,6 @@ Rectangle {
 
 	function toggleWebPreviewOrientation() {
 		codeWebSplitter.orientation = (codeWebSplitter.orientation === Qt.Vertical ? Qt.Horizontal : Qt.Vertical);
-	}
-
-	function rightViewVisible()	{
-		return rightView.visible;
 	}
 
 	CodeEditorExtensionManager {

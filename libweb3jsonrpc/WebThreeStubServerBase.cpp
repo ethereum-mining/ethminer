@@ -62,7 +62,7 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	res["hash"] = toJS(_t.sha3());
 	res["input"] = jsFromBinary(_t.data());
 	res["to"] = toJS(_t.receiveAddress());
-	res["from"] = toJS(_t.sender());
+	res["from"] = toJS(_t.safeSender());
 	res["gas"] = (int)_t.gas();
 	res["gasPrice"] = toJS(_t.gasPrice());
 	res["nonce"] = toJS(_t.nonce());
@@ -77,7 +77,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 	res["data"] = jsFromBinary(_e.data);
 	res["address"] = toJS(_e.address);
 	for (auto const& t: _e.topics)
-		res["topics"].append(toJS(t));
+		res["topic"].append(toJS(t));
 	res["number"] = _e.number;
 	return res;
 }
@@ -123,16 +123,18 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 		else if (_json["address"].isString())
 			filter.address(jsToAddress(_json["address"].asString()));
 	}
-	if (!_json["topics"].empty())
+	if (!_json["topic"].empty() && _json["topic"].isArray())
 	{
-		if (_json["topics"].isArray())
+		unsigned i = 0;
+		for (auto t: _json["topic"])
 		{
-			for (auto i: _json["topics"])
-				if (i.isString())
-					filter.topic(jsToU256(i.asString()));
+			if (t.isArray())
+				for (auto tt: t)
+					filter.topic(i, jsToFixed<32>(tt.asString()));
+			else if (t.isString())
+				filter.topic(i, jsToFixed<32>(t.asString()));
+			i++;
 		}
-		else if(_json["topics"].isString())
-			filter.topic(jsToU256(_json["topics"].asString()));
 	}
 	return filter;
 }
@@ -171,9 +173,9 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	return _m.seal(_from, bt, ttl, workToProve);
 }
 
-static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
+static pair<shh::FullTopic, Public> toWatch(Json::Value const& _json)
 {
-	shh::BuildTopicMask bt;
+	shh::BuildTopic bt;
 	Public to;
 
 	if (_json["to"].isString())
@@ -188,7 +190,7 @@ static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 				if (i.isString())
 					bt.shift(jsToBytes(i.asString()));
 	}
-	return make_pair(bt.toTopicMask(), to);
+	return make_pair(bt, to);
 }
 
 static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message const& _m)
@@ -199,8 +201,8 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["sent"] = (int)_e.sent();
 	res["ttl"] = (int)_e.ttl();
 	res["workProved"] = (int)_e.workProved();
-	for (auto const& t: _e.topics())
-		res["topics"].append(toJS(t));
+	for (auto const& t: _e.topic())
+		res["topic"].append(toJS(t));
 	res["payload"] = toJS(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
@@ -574,12 +576,12 @@ Json::Value WebThreeStubServerBase::shh_changed(int const& _id)
 			if (pub)
 			{
 				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
-				m = e.open(m_ids[pub]);
-				if (!m)
-					continue;
+				m = e.open(face()->fullTopic(_id), m_ids[pub]);
 			}
 			else
-				m = e.open();
+				m = e.open(face()->fullTopic(_id));
+			if (!m)
+				continue;
 			ret.append(toJson(h, e, m));
 		}
 	

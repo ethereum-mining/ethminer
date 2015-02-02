@@ -2,7 +2,6 @@
 <html>
 
 <head>
-<script type="text/javascript" src="js/es6-promise/promise.min.js"></script>
 <script type="text/javascript" src="js/bignumber.js/bignumber.min.js"></script>
 <script type="text/javascript" src="../dist/ethereum.js"></script>
 <script type="text/javascript">
@@ -18,7 +17,7 @@
         var originalBalance = web3.toDecimal(balance);
         document.getElementById('original').innerText = 'original balance: ' + originalBalance + '    watching...';
 
-        web3.eth.watch({altered: coinbase}).changed(function() {
+        web3.eth.watch('pending').changed(function() {
             balance = web3.eth.balanceAt(coinbase)
             var currentBalance = web3.toDecimal(balance);
             document.getElementById("current").innerText = 'current: ' + currentBalance;
