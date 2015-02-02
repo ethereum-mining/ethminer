@@ -197,7 +197,8 @@ void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value*
 
 	// Additional copy cost
 	// TODO: This round ups to 32 happens in many places
-	auto copyWords = m_builder.CreateUDiv(m_builder.CreateAdd(_reqBytes, Constant::get(31)), Constant::get(32));
+	auto reqBytes = m_builder.CreateTrunc(_reqBytes, Type::Gas);
+	auto copyWords = m_builder.CreateUDiv(m_builder.CreateNUWAdd(reqBytes, m_builder.getInt64(31)), m_builder.getInt64(32));
 	m_gasMeter.countCopy(copyWords);
 
 	// Algorithm:
@@ -210,14 +211,12 @@ void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value*
 	// bytesToCopy = select(isOutsideData, 0, bytesToCopy0)
 
 	auto isOutsideData = m_builder.CreateICmpUGE(_srcIdx, _srcSize);
-	auto idx64 = m_builder.CreateTrunc(_srcIdx, Type::lowPrecision);
-	auto size64 = m_builder.CreateTrunc(_srcSize, Type::lowPrecision);
+	auto idx64 = m_builder.CreateTrunc(_srcIdx, Type::Size);
+	auto size64 = m_builder.CreateTrunc(_srcSize, Type::Size);
 	auto dataLeftSize = m_builder.CreateNUWSub(size64, idx64);
-	auto reqBytes64 = m_builder.CreateTrunc(_reqBytes, Type::lowPrecision);
-	auto outOfBound = m_builder.CreateICmpUGT(reqBytes64, dataLeftSize);
-	auto bytesToCopyInner = m_builder.CreateSelect(outOfBound, dataLeftSize, reqBytes64);
-	auto zero64 = llvm::ConstantInt::get(Type::lowPrecision, 0);	// TODO: Cache common constants
-	auto bytesToCopy = m_builder.CreateSelect(isOutsideData, zero64, bytesToCopyInner);
+	auto outOfBound = m_builder.CreateICmpUGT(reqBytes, dataLeftSize);
+	auto bytesToCopyInner = m_builder.CreateSelect(outOfBound, dataLeftSize, reqBytes);
+	auto bytesToCopy = m_builder.CreateSelect(isOutsideData, m_builder.getInt64(0), bytesToCopyInner);
 
 	auto src = m_builder.CreateGEP(_srcPtr, idx64, "src");
 	auto dstIdx = m_builder.CreateTrunc(_destMemIdx, Type::Size, "dstIdx"); // Never allow memory index be a type bigger than i64
