@@ -182,6 +182,11 @@ llvm::Value* Memory::getBytePtr(llvm::Value* _index)
 
 void Memory::require(llvm::Value* _offset, llvm::Value* _size)
 {
+	if (auto constant = llvm::dyn_cast<llvm::ConstantInt>(_size))
+	{
+		if (!constant->getValue())
+			return;
+	}
 	createCall(m_require, {getRuntimeManager().getRuntimePtr(), _offset, _size});
 }
 
