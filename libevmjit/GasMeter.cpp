@@ -183,10 +183,9 @@ void GasMeter::countSha3Data(llvm::Value* _dataLength)
 	assert(m_blockCost > 0); // SHA3 instruction is already counted
 
 	// TODO: This round ups to 32 happens in many places
-	// FIXME: 64-bit arith used, but not verified
 	static_assert(c_sha3WordGas != 1, "SHA3 data cost has changed. Update GasMeter");
-	auto dataLength64 = getBuilder().CreateTrunc(_dataLength, Type::lowPrecision);
-	auto words64 = m_builder.CreateUDiv(m_builder.CreateAdd(dataLength64, getBuilder().getInt64(31)), getBuilder().getInt64(32));
+	auto dataLength64 = getBuilder().CreateTrunc(_dataLength, Type::Gas);
+	auto words64 = m_builder.CreateUDiv(m_builder.CreateNUWAdd(dataLength64, getBuilder().getInt64(31)), getBuilder().getInt64(32));
 	auto cost64 = m_builder.CreateNUWMul(getBuilder().getInt64(c_sha3WordGas), words64);
 	count(cost64);
 }
