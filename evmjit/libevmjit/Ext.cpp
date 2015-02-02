@@ -41,7 +41,7 @@ std::array<FuncDesc, sizeOf<EnvFunc>::value> const& getEnvFuncDescs()
 		FuncDesc{"env_sstore",  getFunctionType(Type::Void, {Type::EnvPtr, Type::WordPtr, Type::WordPtr})},
 		FuncDesc{"env_sha3", getFunctionType(Type::Void, {Type::BytePtr, Type::Size, Type::WordPtr})},
 		FuncDesc{"env_balance", getFunctionType(Type::Void, {Type::EnvPtr, Type::WordPtr, Type::WordPtr})},
-		FuncDesc{"env_create", getFunctionType(Type::Void, {Type::EnvPtr, Type::WordPtr, Type::WordPtr, Type::BytePtr, Type::Size, Type::WordPtr})},
+		FuncDesc{"env_create", getFunctionType(Type::Void, {Type::EnvPtr, Type::GasPtr, Type::WordPtr, Type::BytePtr, Type::Size, Type::WordPtr})},
 		FuncDesc{"env_call", getFunctionType(Type::Bool, {Type::EnvPtr, Type::WordPtr, Type::WordPtr, Type::WordPtr, Type::BytePtr, Type::Size, Type::BytePtr, Type::Size, Type::WordPtr})},
 		FuncDesc{"env_log", getFunctionType(Type::Void, {Type::EnvPtr, Type::BytePtr, Type::Size, Type::WordPtr, Type::WordPtr, Type::WordPtr, Type::WordPtr})},
 		FuncDesc{"env_blockhash", getFunctionType(Type::Void, {Type::EnvPtr, Type::WordPtr, Type::WordPtr})},
@@ -126,16 +126,12 @@ llvm::Value* Ext::blockhash(llvm::Value* _number)
 	return Endianness::toNative(getBuilder(), hash);
 }
 
-llvm::Value* Ext::create(llvm::Value*& _gas, llvm::Value* _endowment, llvm::Value* _initOff, llvm::Value* _initSize)
+llvm::Value* Ext::create(llvm::Value* _endowment, llvm::Value* _initOff, llvm::Value* _initSize)
 {
-	auto gas256 = m_builder.CreateZExt(_gas, Type::Word, "gas256");
-	auto gas = byPtr(gas256);
 	auto ret = getArgAlloca();
 	auto begin = m_memoryMan.getBytePtr(_initOff);
 	auto size = m_builder.CreateTrunc(_initSize, Type::Size, "size");
-	createCall(EnvFunc::create, {getRuntimeManager().getEnvPtr(), gas, byPtr(_endowment), begin, size, ret});
-	gas256 = m_builder.CreateLoad(gas); // Return gas
-	_gas = m_builder.CreateTrunc(gas256, Type::Gas);
+	createCall(EnvFunc::create, {getRuntimeManager().getEnvPtr(), getRuntimeManager().getGasPtr(), byPtr(_endowment), begin, size, ret});
 	llvm::Value* address = m_builder.CreateLoad(ret);
 	address = Endianness::toNative(m_builder, address);
 	return address;

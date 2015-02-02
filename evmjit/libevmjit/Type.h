@@ -24,6 +24,7 @@ struct Type
 	static llvm::IntegerType* Bool;
 	static llvm::IntegerType* Size;
 	static llvm::IntegerType* Gas;
+	static llvm::PointerType* GasPtr;
 
 	static llvm::IntegerType* Byte;
 	static llvm::PointerType* BytePtr;

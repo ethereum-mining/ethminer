@@ -221,6 +221,11 @@ llvm::Value* RuntimeManager::getGas()
 	return gas;
 }
 
+llvm::Value* RuntimeManager::getGasPtr()
+{
+	return getPtr(RuntimeData::Gas);
+}
+
 void RuntimeManager::setGas(llvm::Value* _gas)
 {
 	assert(_gas->getType() == Type::Gas);

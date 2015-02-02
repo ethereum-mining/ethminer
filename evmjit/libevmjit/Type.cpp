@@ -18,6 +18,7 @@ llvm::IntegerType* Type::lowPrecision;
 llvm::IntegerType* Type::Bool;
 llvm::IntegerType* Type::Size;
 llvm::IntegerType* Type::Gas;
+llvm::PointerType* Type::GasPtr;
 llvm::IntegerType* Type::Byte;
 llvm::PointerType* Type::BytePtr;
 llvm::Type* Type::Void;
@@ -38,6 +39,7 @@ void Type::init(llvm::LLVMContext& _context)
 		Bool = llvm::Type::getInt1Ty(_context);
 		Size = llvm::Type::getInt64Ty(_context);
 		Gas = Size;
+		GasPtr = Gas->getPointerTo();
 		Byte = llvm::Type::getInt8Ty(_context);
 		BytePtr = Byte->getPointerTo();
 		Void = llvm::Type::getVoidTy(_context);
