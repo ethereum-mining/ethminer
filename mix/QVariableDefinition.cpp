@@ -70,19 +70,18 @@ void QIntType::setValue(dev::bigint _value)
 dev::bytes QIntType::encodeValue()
 {
 	dev::bigint i(value().toStdString());
-	if (i < 0)
-		i = i + dev::bigint("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff") + 1;
 	bytes ret(32);
-	toBigEndian(i, ret);
+	toBigEndian((u256)i, ret);
 	return ret;
 }
 
 void QIntType::decodeValue(dev::bytes const& _rawValue)
 {
-	dev::bigint bigint = dev::fromBigEndian<dev::bigint>(_rawValue);
-	if (((bigint >> 32) & 1) == 1)
-		bigint = bigint - dev::bigint("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff") - 1;
-	setValue(bigint);
+	dev::u256 un = dev::fromBigEndian<dev::u256>(_rawValue);
+	if (un >> 255)
+		setValue(-s256(~un + 1));
+	else
+		setValue(un);
 }
 
 /*
@@ -90,8 +89,8 @@ void QIntType::decodeValue(dev::bytes const& _rawValue)
  */
 dev::bytes QHashType::encodeValue()
 {
-	QByteArray b = value().toUtf8();
-	bytes r = bytes(b.begin(), b.end());
+	QByteArray bytesAr = value().toLocal8Bit();
+	bytes r = bytes(bytesAr.begin(), bytesAr.end());
 	return padded(r, 32);
 }
 

@@ -215,7 +215,6 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 						encoder.push(transaction.parameterValues.at(p)->encodeValue());
 					}
 
-
 					if (transaction.functionId.isEmpty())
 					{
 						Address newAddress = deployContract(contractCode, transaction);
@@ -226,9 +225,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 						}
 					}
 					else
-					{
 						callContract(m_contractAddress, encoder.encodedData(), transaction);
-					}
 				}
 				onNewTransaction();
 			}
