@@ -36,7 +36,6 @@ int main(int _argc, char* _argv[])
 	//https://bugs.launchpad.net/ubuntu/+source/appmenu-qt5/+bug/1323853
 	putenv((char*)"QT_QPA_PLATFORMTHEME=");
 	putenv((char*)"QSG_RENDER_LOOP=threaded");
-	putenv((char*)"QT_IM_MODULE=");
 #endif
 	try
 	{
