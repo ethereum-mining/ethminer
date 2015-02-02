@@ -114,7 +114,7 @@ Main::Main(QWidget *parent) :
 	
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
-	bytesConstRef networkConfig((byte*)m_networkConfig.data(), m_networkConfig.size())
+	bytesConstRef networkConfig((byte*)m_networkConfig.data(), m_networkConfig.size());
 	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}, NetworkPreferences(), networkConfig));
 	m_web3->connect(Host::pocHost());
 
