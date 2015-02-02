@@ -17,6 +17,7 @@ llvm::PointerType* Type::WordPtr;
 llvm::IntegerType* Type::lowPrecision;
 llvm::IntegerType* Type::Bool;
 llvm::IntegerType* Type::Size;
+llvm::IntegerType* Type::Gas;
 llvm::IntegerType* Type::Byte;
 llvm::PointerType* Type::BytePtr;
 llvm::Type* Type::Void;
@@ -24,6 +25,7 @@ llvm::IntegerType* Type::MainReturn;
 llvm::PointerType* Type::EnvPtr;
 llvm::PointerType* Type::RuntimeDataPtr;
 llvm::PointerType* Type::RuntimePtr;
+llvm::ConstantInt* Constant::gasMax;
 
 void Type::init(llvm::LLVMContext& _context)
 {
@@ -35,6 +37,7 @@ void Type::init(llvm::LLVMContext& _context)
 		// TODO: Size should be architecture-dependent
 		Bool = llvm::Type::getInt1Ty(_context);
 		Size = llvm::Type::getInt64Ty(_context);
+		Gas = Size;
 		Byte = llvm::Type::getInt8Ty(_context);
 		BytePtr = Byte->getPointerTo();
 		Void = llvm::Type::getVoidTy(_context);
@@ -43,6 +46,8 @@ void Type::init(llvm::LLVMContext& _context)
 		EnvPtr = llvm::StructType::create(_context, "Env")->getPointerTo();
 		RuntimeDataPtr = RuntimeManager::getRuntimeDataType()->getPointerTo();
 		RuntimePtr = RuntimeManager::getRuntimeType()->getPointerTo();
+
+		Constant::gasMax = llvm::ConstantInt::getSigned(Type::Gas, std::numeric_limits<int64_t>::max());
 	}
 }
 
