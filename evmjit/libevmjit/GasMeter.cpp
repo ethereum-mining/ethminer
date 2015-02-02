@@ -193,8 +193,8 @@ void GasMeter::countSha3Data(llvm::Value* _dataLength)
 
 void GasMeter::giveBack(llvm::Value* _gas)
 {
-	assert(_gas->getType() == Type::Word);
-	m_runtimeManager.setGas(m_builder.CreateAdd(m_runtimeManager.getGas(), m_builder.CreateTrunc(_gas, Type::Gas)));
+	assert(_gas->getType() == Type::Gas);
+	m_runtimeManager.setGas(m_builder.CreateAdd(m_runtimeManager.getGas(), _gas));
 }
 
 void GasMeter::commitCostBlock()
