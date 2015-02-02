@@ -3,7 +3,7 @@ import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 
-Item {
+Rectangle {
 	property bool renameMode: false;
 	ColumnLayout {
 		anchors.fill: parent
