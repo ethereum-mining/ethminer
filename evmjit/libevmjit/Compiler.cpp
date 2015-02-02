@@ -740,10 +740,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			_memory.require(initOff, initSize);
 
 			_gasMeter.commitCostBlock();
-
-			auto gas = _runtimeManager.getGas();
-			auto address = _ext.create(gas, endowment, initOff, initSize);
-			_runtimeManager.setGas(gas);
+			auto address = _ext.create(endowment, initOff, initSize);
 			stack.push(address);
 			break;
 		}
