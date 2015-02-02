@@ -48,6 +48,7 @@ Rectangle {
 					onClicked: list.model.editState(index);
 				}
 				ToolButton {
+					visible: !list.model.isDefaultState(index)
 					text: qsTr("Delete");
 					Layout.fillHeight: true
 					onClicked: list.model.deleteState(index);
