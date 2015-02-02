@@ -60,15 +60,12 @@ bytes unpadded(bytes _b)
 
 bytes unpadLeft(bytes _b)
 {
-	int i = 0;
+	unsigned int i = 0;
 	if (_b.size() == 0)
 		return _b;
 
-	while (true)
-		if (_b.at(i) == byte(0))
-			i++;
-		else
-			break;
+	while (i < _b.size() && _b[i] == byte(0))
+		i++;
 
 	if (i != 0)
 		_b.erase(_b.begin(), _b.begin() + i);
