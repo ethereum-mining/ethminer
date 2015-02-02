@@ -61,7 +61,7 @@ extern "C"
 			*o_address = {};
 	}
 
-	EXPORT bool env_call(ExtVMFace* _env, i256* io_gas, h256* _receiveAddress, i256* _value, byte* _inBeg, uint64_t _inSize, byte* _outBeg, uint64_t _outSize, h256* _codeAddress)
+	EXPORT bool env_call(ExtVMFace* _env, int64_t* io_gas, h256* _receiveAddress, i256* _value, byte* _inBeg, uint64_t _inSize, byte* _outBeg, uint64_t _outSize, h256* _codeAddress)
 	{
 		auto value = llvm2eth(*_value);
 		if (_env->balance(_env->myAddress) >= value && _env->depth < 1024)
@@ -70,11 +70,10 @@ extern "C"
 			auto receiveAddress = right160(*_receiveAddress);
 			auto inRef = bytesConstRef{_inBeg, _inSize};
 			auto outRef = bytesConstRef{_outBeg, _outSize};
-			OnOpFunc onOp {}; // TODO: Handle that thing
 			auto codeAddress = right160(*_codeAddress);
-			auto gas = llvm2eth(*io_gas);
-			auto ret = _env->call(receiveAddress, value, inRef, gas, outRef, onOp, {}, codeAddress);
-			*io_gas = eth2llvm(gas);
+			u256 gas = *io_gas;
+			auto ret = _env->call(receiveAddress, value, inRef, gas, outRef, {}, {}, codeAddress);
+			*io_gas = static_cast<int64_t>(gas);
 			return ret;
 		}
 
