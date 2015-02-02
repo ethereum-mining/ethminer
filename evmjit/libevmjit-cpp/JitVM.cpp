@@ -16,6 +16,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 	using namespace jit;
 
 	auto rejected = false;
+	// TODO: Rejecting transactions with gas limit > 2^63 can be used by attacker to take JIT out of scope
 	rejected |= m_gas > std::numeric_limits<decltype(m_data.gas)>::max(); // Do not accept requests with gas > 2^63 (int64 max)
 	rejected |= _ext.gasPrice > std::numeric_limits<decltype(m_data.gasPrice)>::max();
 	rejected |= _ext.currentBlock.number > std::numeric_limits<decltype(m_data.number)>::max();
