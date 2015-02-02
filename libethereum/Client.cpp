@@ -361,12 +361,13 @@ void Client::setupState(State& _s)
 		cwork << "SETUP MINE";
 		_s = m_postMine;
 	}
+	_s.setUncles(m_bc);
 	if (m_paranoia)
 	{
 		if (_s.amIJustParanoid(m_bc))
 		{
 			cnote << "I'm just paranoid. Block is fine.";
-			_s.commitToMine(m_bc);
+			_s.commitToMine();
 		}
 		else
 		{
@@ -374,7 +375,7 @@ void Client::setupState(State& _s)
 		}
 	}
 	else
-		_s.commitToMine(m_bc);
+		_s.commitToMine();
 }
 
 void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
