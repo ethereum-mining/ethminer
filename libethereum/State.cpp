@@ -639,7 +639,8 @@ void State::uncommitToMine()
 
 bool State::amIJustParanoid(BlockChain const& _bc)
 {
-	commitToMine(_bc);
+	setUncles(_bc);
+	commitToMine();
 
 	// Update difficulty according to timestamp.
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
@@ -682,22 +683,8 @@ LogBloom State::logBloom() const
 	return ret;
 }
 
-// @returns the block that represents the difference between m_previousBlock and m_currentBlock.
-// (i.e. all the transactions we executed).
-void State::commitToMine(BlockChain const& _bc)
+void State::setUncles(BlockChain const& _bc)
 {
-	uncommitToMine();
-
-//	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
-#ifdef ETH_PARANOIA
-	commit();
-	cnote << "Pre-reward stateRoot:" << m_state.root();
-#endif
-
-	m_lastTx = m_db;
-
-	Addresses uncleAddresses;
-
 	RLPStream unclesData;
 	unsigned unclesCount = 0;
 	if (m_previousBlock != BlockChain::genesis())
@@ -716,10 +703,25 @@ void State::commitToMine(BlockChain const& _bc)
 					BlockInfo ubi(_bc.block(u));
 					ubi.streamRLP(unclesData, WithNonce);
 					++unclesCount;
-					uncleAddresses.push_back(ubi.coinbaseAddress);
 				}
 		}
 	}
+
+	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
+	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
+}
+
+void State::commitToMine()
+{
+	uncommitToMine();
+
+//	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
+#ifdef ETH_PARANOIA
+	commit();
+	cnote << "Pre-reward stateRoot:" << m_state.root();
+#endif
+
+	m_lastTx = m_db;
 
 	MemoryDB tm;
 	GenericTrieDB<MemoryDB> transactionsTrie(&tm);
@@ -750,12 +752,13 @@ void State::commitToMine(BlockChain const& _bc)
 
 	txs.swapOut(m_currentTxs);
 
-	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
-
 	m_currentBlock.transactionsRoot = transactionsTrie.root();
 	m_currentBlock.receiptsRoot = receiptsTrie.root();
 	m_currentBlock.logBloom = logBloom();
-	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
+
+	Addresses uncleAddresses;
+	for (const auto& r: RLP(m_currentUncles))
+		uncleAddresses.push_back(BlockInfo::fromHeader(r.data()).coinbaseAddress);
 
 	// Apply rewards last of all.
 	applyRewards(uncleAddresses);
