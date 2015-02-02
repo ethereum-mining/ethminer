@@ -94,12 +94,13 @@ GasMeter::GasMeter(llvm::IRBuilder<>& _builder, RuntimeManager& _runtimeManager)
 	auto outOfGasBB = llvm::BasicBlock::Create(_builder.getContext(), "OutOfGas", m_gasCheckFunc);
 	auto updateBB = llvm::BasicBlock::Create(_builder.getContext(), "Update", m_gasCheckFunc);
 
-	m_builder.SetInsertPoint(checkBB);
 	auto arg = m_gasCheckFunc->arg_begin();
 	arg->setName("rt");
 	++arg;
 	arg->setName("cost");
 	auto cost = arg;
+
+	m_builder.SetInsertPoint(checkBB);
 	auto gas = m_runtimeManager.getGas();
 	auto isOutOfGas = m_builder.CreateICmpUGT(cost, gas, "isOutOfGas");
 	m_builder.CreateCondBr(isOutOfGas, outOfGasBB, updateBB);
@@ -208,8 +209,14 @@ void GasMeter::commitCostBlock()
 
 void GasMeter::countMemory(llvm::Value* _additionalMemoryInWords)
 {
+	assert(_additionalMemoryInWords->getType() == Type::Word);
 	static_assert(c_memoryGas == 1, "Memory gas cost has changed. Update GasMeter.");
-	count(_additionalMemoryInWords);
+	auto gasMax256 = m_builder.CreateZExt(Constant::gasMax, Type::Word);
+	auto tooHigh = m_builder.CreateICmpUGT(_additionalMemoryInWords, gasMax256, "tooHigh");
+	auto additionalMemoryInWords64 = m_builder.CreateTrunc(_additionalMemoryInWords, Type::Gas);
+	additionalMemoryInWords64 = m_builder.CreateSelect(tooHigh, Constant::gasMax, additionalMemoryInWords64, "additionalMemoryInWords");
+	auto additionalMemoryInWords256 = m_builder.CreateZExt(additionalMemoryInWords64, Type::Word);
+	count(additionalMemoryInWords256);
 }
 
 void GasMeter::countCopy(llvm::Value* _copyWords)
