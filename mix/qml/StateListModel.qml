@@ -176,6 +176,11 @@ Item {
 				runState(defaultStateIndex);
 		}
 
+		function isDefaultState(index)
+		{
+			return index === defaultStateIndex;
+		}
+
 		function runState(index) {
 			var item = stateList[index];
 			clientModel.setupState(item);
