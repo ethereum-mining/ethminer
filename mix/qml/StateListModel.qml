@@ -70,7 +70,7 @@ Item {
 			stateListModel.clear();
 			stateList = [];
 		}
-		onProjectLoaded: {
+		onProjectLoading: {
 			if (!projectData.states)
 				projectData.states = [];
 			if (projectData.defaultStateIndex !== undefined)
