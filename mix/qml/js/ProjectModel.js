@@ -171,8 +171,8 @@ function doCreateProject(title, path) {
 		files: [ contractsFile, indexFile ]
 	};
 	//TODO: copy from template
-	fileIo.writeFile(dirPath + indexFile, "<html></html>");
-	fileIo.writeFile(dirPath + contractsFile, "contract MyContract {\n}\n");
+    fileIo.writeFile(dirPath + indexFile, "<html>\n<head>\n<script>\nvar web3 = parent.web3;\nvar theContract = parent.contract;\n</script>\n</head>\n<body>\n<script>\n</script>\n</body>\n</html>");
+    fileIo.writeFile(dirPath + contractsFile, "contract Contract {\n}\n");
 	newProject(projectData);
 	var json = JSON.stringify(projectData, null, "\t");
 	fileIo.writeFile(projectFile, json);
