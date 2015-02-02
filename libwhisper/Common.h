@@ -59,9 +59,14 @@ enum WhisperPacket
 	PacketCount
 };
 
-using TopicPart = FixedHash<4>;
+using CollapsedTopicPart = FixedHash<4>;
+using FullTopicPart = h256;
 
-using Topic = std::vector<TopicPart>;
+using CollapsedTopic = std::vector<CollapsedTopicPart>;
+using FullTopic = h256s;
+
+CollapsedTopicPart collapse(FullTopicPart const& _fullTopicPart);
+CollapsedTopic collapse(FullTopic const& _fullTopic);
 
 class BuildTopic
 {
@@ -74,8 +79,10 @@ public:
 
 	BuildTopic& shiftRaw(h256 const& _part) { m_parts.push_back(_part); return *this; }
 
-	operator Topic() const { return toTopic(); }
-	Topic toTopic() const;
+	operator CollapsedTopic() const { return toTopic(); }
+	operator FullTopic() const { return toFullTopic(); }
+	CollapsedTopic toTopic() const;
+	FullTopic toFullTopic() const { return m_parts; }
 
 protected:
 	BuildTopic& shiftBytes(bytes const& _b);
@@ -83,13 +90,14 @@ protected:
 	h256s m_parts;
 };
 
-using TopicMask = std::vector<std::pair<TopicPart, TopicPart>>;
+using TopicMask = std::vector<std::pair<CollapsedTopicPart, CollapsedTopicPart>>;
 using TopicMasks = std::vector<TopicMask>;
 
 class TopicFilter
 {
 public:
 	TopicFilter() {}
+	TopicFilter(FullTopic const& _m) { m_topicMasks.push_back(TopicMask()); for (auto const& h: _m) m_topicMasks.back().push_back(std::make_pair(collapse(h), h ? ~CollapsedTopicPart() : CollapsedTopicPart())); }
 	TopicFilter(TopicMask const& _m): m_topicMasks(1, _m) {}
 	TopicFilter(TopicMasks const& _m): m_topicMasks(_m) {}
 	TopicFilter(RLP const& _r)//: m_topicMasks(_r.toVector<std::vector<>>())
@@ -123,7 +131,9 @@ public:
 	template <class T> BuildTopicMask& operator()(T const& _t) { shift(_t); return *this; }
 
 	operator TopicMask() const { return toTopicMask(); }
+	operator FullTopic() const { return toFullTopic(); }
 	TopicMask toTopicMask() const;
+	FullTopic toFullTopic() const { return m_parts; }
 };
 
 }

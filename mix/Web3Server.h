@@ -24,6 +24,7 @@
 
 #include <map>
 #include <string>
+#include <QObject>
 #include <libweb3jsonrpc/WebThreeStubServerBase.h>
 
 namespace dev
@@ -32,10 +33,20 @@ namespace dev
 namespace mix
 {
 
-class Web3Server: public dev::WebThreeStubServerBase, public dev::WebThreeStubDatabaseFace
+class Web3Server: public QObject, public dev::WebThreeStubServerBase, public dev::WebThreeStubDatabaseFace
 {
+	Q_OBJECT
+
 public:
 	Web3Server(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts, dev::eth::Interface* _client);
+
+signals:
+	void newTransaction();
+
+protected:
+	virtual Json::Value eth_changed(int const& _id) override;
+	virtual std::string eth_transact(Json::Value const& _json) override;
+	virtual std::string eth_call(Json::Value const& _json) override;
 
 private:
 	dev::eth::Interface* client() override { return m_client; }

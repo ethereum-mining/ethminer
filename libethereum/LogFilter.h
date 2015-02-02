@@ -50,7 +50,7 @@ public:
 	LogEntries matches(TransactionReceipt const& _r) const;
 
 	LogFilter address(Address _a) { m_addresses.insert(_a); return *this; }
-	LogFilter topic(h256 const& _t) { m_topics.insert(_t); return *this; }
+	LogFilter topic(unsigned _index, h256 const& _t) { if (_index < 4) m_topics[_index].insert(_t); return *this; }
 	LogFilter withMax(unsigned _m) { m_max = _m; return *this; }
 	LogFilter withSkip(unsigned _m) { m_skip = _m; return *this; }
 	LogFilter withEarliest(int _e) { m_earliest = _e; return *this; }
@@ -58,7 +58,7 @@ public:
 
 private:
 	AddressSet m_addresses;
-	h256Set m_topics;
+	std::array<h256Set, 4> m_topics;
 	int m_earliest = 0;
 	int m_latest = -1;
 	unsigned m_max;
