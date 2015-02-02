@@ -42,6 +42,7 @@ signals:
 
 private:
 	bool showAuthenticationPopup(std::string const& _title, std::string const& _text) const;
+	void showBasicValueTransferNotice(dev::u256 _value) const;
 
 	dev::WebThreeDirect* m_web3;
 	Main* m_main;
@@ -51,13 +52,13 @@ private:
 class QNatspecExpressionEvaluator: public QObject
 {
 	Q_OBJECT
-	
+
 public:
 	QNatspecExpressionEvaluator(OurWebThreeStubServer* _server, Main* _main);
 	virtual ~QNatspecExpressionEvaluator();
-	
-	QString evalExpression(QString const& _expression);
-	
+
+	QString evalExpression(QString const& _expression) const;
+
 private:
 	OurWebThreeStubServer* m_server;
 	Main* m_main;

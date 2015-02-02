@@ -32,7 +32,7 @@
 #include <libethereum/All.h>
 #if ETH_JSONRPC
 #include <libweb3jsonrpc/WebThreeStubServer.h>
-#include <libweb3jsonrpc/CorsHttpServer.h>
+#include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
 #include <libwebthree/WebThree.h>
 #include "BuildInfo.h"

@@ -35,7 +35,7 @@ using namespace dev::crypto;
 
 static Secp256k1 s_secp256k1;
 
-bool dev::SignatureStruct::isValid()
+bool dev::SignatureStruct::isValid() const
 {
 	if (this->v > 1 ||
 			this->r >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
@@ -78,6 +78,18 @@ bool dev::decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
 		return false;
 	o_plaintext = std::move(io);
 	return true;
+}
+
+void dev::encryptSym(Secret const& _k, bytesConstRef _plain, bytes& o_cipher)
+{
+	// TOOD: @alex @subtly do this properly.
+	encrypt(KeyPair(_k).pub(), _plain, o_cipher);
+}
+
+bool dev::decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plain)
+{
+	// TODO: @alex @subtly do this properly.
+	return decrypt(_k, _cipher, o_plain);
 }
 
 Public dev::recover(Signature const& _sig, h256 const& _message)

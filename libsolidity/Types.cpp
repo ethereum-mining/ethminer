@@ -140,6 +140,11 @@ bool IntegerType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 
 bool IntegerType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
+	if (_convertTo.getCategory() == Category::STRING)
+	{
+		StaticStringType const& convertTo = dynamic_cast<StaticStringType const&>(_convertTo);
+		return isHash() && (m_bits == convertTo.getNumBytes() * 8);
+	}
 	return _convertTo.getCategory() == getCategory() || _convertTo.getCategory() == Category::CONTRACT;
 }
 
@@ -367,6 +372,17 @@ bool StaticStringType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 	return convertTo.m_bytes >= m_bytes;
 }
 
+bool StaticStringType::isExplicitlyConvertibleTo(Type const& _convertTo) const
+{
+	if (_convertTo.getCategory() == Category::INTEGER)
+	{
+		IntegerType const& convertTo = dynamic_cast<IntegerType const&>(_convertTo);
+		if (convertTo.isHash() && (m_bytes * 8 == convertTo.getNumBits()))
+			return true;
+	}
+	return isImplicitlyConvertibleTo(_convertTo);
+}
+
 bool StaticStringType::operator==(Type const& _other) const
 {
 	if (_other.getCategory() != getCategory())
@@ -434,7 +450,9 @@ bool ContractType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 	if (_convertTo.getCategory() == Category::CONTRACT)
 	{
 		auto const& bases = getContractDefinition().getLinearizedBaseContracts();
-		return find(bases.begin(), bases.end(),
+		if (m_super && bases.size() <= 1)
+			return false;
+		return find(m_super ? ++bases.begin() : bases.begin(), bases.end(),
 					&dynamic_cast<ContractType const&>(_convertTo).getContractDefinition()) != bases.end();
 	}
 	return false;
@@ -456,12 +474,12 @@ bool ContractType::operator==(Type const& _other) const
 	if (_other.getCategory() != getCategory())
 		return false;
 	ContractType const& other = dynamic_cast<ContractType const&>(_other);
-	return other.m_contract == m_contract;
+	return other.m_contract == m_contract && other.m_super == m_super;
 }
 
 string ContractType::toString() const
 {
-	return "contract " + m_contract.getName();
+	return "contract " + string(m_super ? "super " : "") + m_contract.getName();
 }
 
 MemberList const& ContractType::getMembers() const
@@ -472,8 +490,16 @@ MemberList const& ContractType::getMembers() const
 		// All address members and all interface functions
 		map<string, shared_ptr<Type const>> members(IntegerType::AddressMemberList.begin(),
 													IntegerType::AddressMemberList.end());
-		for (auto const& it: m_contract.getInterfaceFunctions())
-			members[it.second->getName()] = make_shared<FunctionType>(*it.second, false);
+		if (m_super)
+		{
+			for (ContractDefinition const* base: m_contract.getLinearizedBaseContracts())
+				for (ASTPointer<FunctionDefinition> const& function: base->getDefinedFunctions())
+					if (!function->isConstructor() && !function->getName().empty())
+						members.insert(make_pair(function->getName(), make_shared<FunctionType>(*function, true)));
+		}
+		else
+			for (auto const& it: m_contract.getInterfaceFunctions())
+				members[it.second->getDeclaration().getName()] = it.second;
 		m_members.reset(new MemberList(members));
 	}
 	return *m_members;
@@ -495,9 +521,9 @@ shared_ptr<FunctionType const> const& ContractType::getConstructorType() const
 u256 ContractType::getFunctionIdentifier(string const& _functionName) const
 {
 	auto interfaceFunctions = m_contract.getInterfaceFunctions();
-	for (auto it = interfaceFunctions.cbegin(); it != interfaceFunctions.cend(); ++it)
-		if (it->second->getName() == _functionName)
-			return FixedHash<4>::Arith(it->first);
+	for (auto const& it: m_contract.getInterfaceFunctions())
+		if (it.second->getDeclaration().getName() == _functionName)
+			return FixedHash<4>::Arith(it.first);
 
 	return Invalid256;
 }
@@ -563,18 +589,64 @@ u256 StructType::getStorageOffsetOfMember(string const& _name) const
 }
 
 FunctionType::FunctionType(FunctionDefinition const& _function, bool _isInternal):
-	m_location(_isInternal ? Location::INTERNAL : Location::EXTERNAL)
+	m_location(_isInternal ? Location::INTERNAL : Location::EXTERNAL),
+	m_isConstant(_function.isDeclaredConst()),
+	m_declaration(&_function)
 {
 	TypePointers params;
+	vector<string> paramNames;
 	TypePointers retParams;
+	vector<string> retParamNames;
+
 	params.reserve(_function.getParameters().size());
+	paramNames.reserve(_function.getParameters().size());
 	for (ASTPointer<VariableDeclaration> const& var: _function.getParameters())
+	{
+		paramNames.push_back(var->getName());
 		params.push_back(var->getType());
+	}
 	retParams.reserve(_function.getReturnParameters().size());
+	retParamNames.reserve(_function.getReturnParameters().size());
 	for (ASTPointer<VariableDeclaration> const& var: _function.getReturnParameters())
+	{
+		retParamNames.push_back(var->getName());
 		retParams.push_back(var->getType());
+	}
 	swap(params, m_parameterTypes);
+	swap(paramNames, m_parameterNames);
 	swap(retParams, m_returnParameterTypes);
+	swap(retParamNames, m_returnParameterNames);
+}
+
+FunctionType::FunctionType(VariableDeclaration const& _varDecl):
+	m_location(Location::EXTERNAL), m_isConstant(true), m_declaration(&_varDecl)
+{
+	TypePointers params({});
+	vector<string> paramNames({});
+	TypePointers retParams({_varDecl.getType()});
+	vector<string> retParamNames({ _varDecl.getName()});
+	// for now, no input parameters LTODO: change for some things like mapping
+
+	swap(params, m_parameterTypes);
+	swap(paramNames, m_parameterNames);
+	swap(retParams, m_returnParameterTypes);
+	swap(retParamNames, m_returnParameterNames);
+}
+
+FunctionType::FunctionType(const EventDefinition& _event):
+	m_location(Location::EVENT), m_declaration(&_event)
+{
+	TypePointers params;
+	vector<string> paramNames;
+	params.reserve(_event.getParameters().size());
+	paramNames.reserve(_event.getParameters().size());
+	for (ASTPointer<VariableDeclaration> const& var: _event.getParameters())
+	{
+		paramNames.push_back(var->getName());
+		params.push_back(var->getType());
+	}
+	swap(params, m_parameterTypes);
+	swap(paramNames, m_parameterNames);
 }
 
 bool FunctionType::operator==(Type const& _other) const
@@ -585,6 +657,9 @@ bool FunctionType::operator==(Type const& _other) const
 
 	if (m_location != other.m_location)
 		return false;
+	if (m_isConstant != other.isConstant())
+		return false;
+
 	if (m_parameterTypes.size() != other.m_parameterTypes.size() ||
 			m_returnParameterTypes.size() != other.m_returnParameterTypes.size())
 		return false;
@@ -656,9 +731,15 @@ MemberList const& FunctionType::getMembers() const
 	}
 }
 
-string FunctionType::getCanonicalSignature() const
+string FunctionType::getCanonicalSignature(std::string const& _name) const
 {
-	string ret = "(";
+	std::string funcName = _name;
+	if (_name == "")
+	{
+		solAssert(m_declaration != nullptr, "Function type without name needs a declaration");
+		funcName = m_declaration->getName();
+	}
+	string ret = funcName + "(";
 
 	for (auto it = m_parameterTypes.cbegin(); it != m_parameterTypes.cend(); ++it)
 		ret += (*it)->toString() + (it + 1 == m_parameterTypes.cend() ? "" : ",");
@@ -679,6 +760,33 @@ TypePointer FunctionType::copyAndSetGasOrValue(bool _setGas, bool _setValue) con
 {
 	return make_shared<FunctionType>(m_parameterTypes, m_returnParameterTypes, m_location,
 									 m_gasSet || _setGas, m_valueSet || _setValue);
+}
+
+vector<string> const FunctionType::getParameterTypeNames() const
+{
+	vector<string> names;
+	for (TypePointer const& t: m_parameterTypes)
+		names.push_back(t->toString());
+
+	return names;
+}
+
+vector<string> const FunctionType::getReturnParameterTypeNames() const
+{
+	vector<string> names;
+	for (TypePointer const& t: m_returnParameterTypes)
+		names.push_back(t->toString());
+
+	return names;
+}
+
+ASTPointer<ASTString> FunctionType::getDocumentation() const
+{
+	auto function = dynamic_cast<Documented const*>(m_declaration);
+	if (function)
+		return function->getDocumentation();
+
+	return ASTPointer<ASTString>();
 }
 
 bool MappingType::operator==(Type const& _other) const
@@ -716,7 +824,7 @@ MemberList const& TypeType::getMembers() const
 				// We are accessing the type of a base contract, so add all public and private
 				// functions. Note that this does not add inherited functions on purpose.
 				for (ASTPointer<FunctionDefinition> const& f: contract.getDefinedFunctions())
-					if (!f->isConstructor())
+					if (!f->isConstructor() && !f->getName().empty())
 						members[f->getName()] = make_shared<FunctionType>(*f);
 		}
 		m_members.reset(new MemberList(members));
@@ -724,6 +832,38 @@ MemberList const& TypeType::getMembers() const
 	return *m_members;
 }
 
+ModifierType::ModifierType(const ModifierDefinition& _modifier)
+{
+	TypePointers params;
+	params.reserve(_modifier.getParameters().size());
+	for (ASTPointer<VariableDeclaration> const& var: _modifier.getParameters())
+		params.push_back(var->getType());
+	swap(params, m_parameterTypes);
+}
+
+bool ModifierType::operator==(Type const& _other) const
+{
+	if (_other.getCategory() != getCategory())
+		return false;
+	ModifierType const& other = dynamic_cast<ModifierType const&>(_other);
+
+	if (m_parameterTypes.size() != other.m_parameterTypes.size())
+		return false;
+	auto typeCompare = [](TypePointer const& _a, TypePointer const& _b) -> bool { return *_a == *_b; };
+
+	if (!equal(m_parameterTypes.cbegin(), m_parameterTypes.cend(),
+			   other.m_parameterTypes.cbegin(), typeCompare))
+		return false;
+	return true;
+}
+
+string ModifierType::toString() const
+{
+	string name = "modifier (";
+	for (auto it = m_parameterTypes.begin(); it != m_parameterTypes.end(); ++it)
+		name += (*it)->toString() + (it + 1 == m_parameterTypes.end() ? "" : ",");
+	return name + ")";
+}
 
 MagicType::MagicType(MagicType::Kind _kind):
 	m_kind(_kind)

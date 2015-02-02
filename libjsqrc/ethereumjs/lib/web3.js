@@ -27,6 +27,8 @@ if (process.env.NODE_ENV !== 'build') {
     var BigNumber = require('bignumber.js');
 }
 
+var utils = require('./utils');
+
 var ETH_UNITS = [ 
     'wei', 
     'Kwei', 
@@ -98,7 +100,6 @@ var ethProperties = function () {
     { name: 'listening', getter: 'eth_listening', setter: 'eth_setListening' },
     { name: 'mining', getter: 'eth_mining', setter: 'eth_setMining' },
     { name: 'gasPrice', getter: 'eth_gasPrice' },
-    { name: 'account', getter: 'eth_account' },
     { name: 'accounts', getter: 'eth_accounts' },
     { name: 'peerCount', getter: 'eth_peerCount' },
     { name: 'defaultBlock', getter: 'eth_defaultBlock', setter: 'eth_setDefaultBlock' },
@@ -145,7 +146,7 @@ var shhWatchMethods = function () {
     return [
     { name: 'newFilter', call: 'shh_newFilter' },
     { name: 'uninstallFilter', call: 'shh_uninstallFilter' },
-    { name: 'getMessage', call: 'shh_getMessages' }
+    { name: 'getMessages', call: 'shh_getMessages' }
     ];
 };
 
@@ -193,47 +194,17 @@ var web3 = {
     _events: {},
     providers: {},
 
-    toHex: function(str) {
-        var hex = "";
-        for(var i = 0; i < str.length; i++) {
-            var n = str.charCodeAt(i).toString(16);
-            hex += n.length < 2 ? '0' + n : n;
-        }
-
-        return hex;
-    },
-
     /// @returns ascii string representation of hex value prefixed with 0x
-    toAscii: function(hex) {
-        // Find termination
-        var str = "";
-        var i = 0, l = hex.length;
-        if (hex.substring(0, 2) === '0x')
-            i = 2;
-        for(; i < l; i+=2) {
-            var code = parseInt(hex.substr(i, 2), 16);
-            if(code === 0) {
-                break;
-            }
-
-            str += String.fromCharCode(code);
-        }
-
-        return str;
-    },
+    toAscii: utils.toAscii,
 
     /// @returns hex representation (prefixed by 0x) of ascii string
-    fromAscii: function(str, pad) {
-        pad = pad === undefined ? 0 : pad;
-        var hex = this.toHex(str);
-        while(hex.length < pad*2)
-            hex += "00";
-        return "0x" + hex;
-    },
+    fromAscii: utils.fromAscii,
 
     /// @returns decimal representaton of hex value prefixed by 0x
     toDecimal: function (val) {
-        return (new BigNumber(val.substring(2), 16).toString(10));
+        // remove 0x and place 0, if it's required
+        val = val.length > 2 ? val.substring(2) : "0";
+        return (new BigNumber(val, 16).toString(10));
     },
 
     /// @returns hex representation (prefixed by 0x) of decimal value
@@ -277,8 +248,15 @@ var web3 = {
                 return ret;
             };
         },
-        watch: function (params) {
-            return new web3.filter(params, ethWatch);
+
+        /// @param filter may be a string, object or event
+        /// @param indexed is optional, this is an object with optional event indexed params
+        /// @param options is optional, this is an object with optional event options ('max'...)
+        watch: function (filter, indexed, options) {
+            if (filter._isEvent) {
+                return filter(indexed, options);
+            }
+            return new web3.filter(filter, ethWatch);
         }
     },
 
@@ -287,8 +265,10 @@ var web3 = {
 
     /// shh object prototype
     shh: {
-        watch: function (params) {
-            return new web3.filter(params, shhWatch);
+        
+        /// @param filter may be a string, object or event
+        watch: function (filter, indexed) {
+            return new web3.filter(filter, shhWatch);
         }
     },
 
