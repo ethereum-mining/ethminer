@@ -44,6 +44,7 @@ BasicBlock::LocalStack::LocalStack(BasicBlock& _owner) :
 
 void BasicBlock::LocalStack::push(llvm::Value* _value)
 {
+	assert(_value->getType() == Type::Word);
 	m_bblock.m_currentStack.push_back(_value);
 	m_bblock.m_tosOffset += 1;
 }

@@ -630,7 +630,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		case Instruction::GAS:
 		{
 			_gasMeter.commitCostBlock();
-			stack.push(_runtimeManager.getGas());
+			stack.push(m_builder.CreateZExt(_runtimeManager.getGas(), Type::Word));
 			break;
 		}
 
@@ -770,6 +770,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 				receiveAddress = _runtimeManager.get(RuntimeData::Address);
 
 			_gasMeter.count(gas);
+			// TODO: pass gas to call as int64
 			auto ret = _ext.call(gas, receiveAddress, value, inOff, inSize, outOff, outSize, codeAddress);
 			_gasMeter.giveBack(gas);
 			stack.push(ret);
