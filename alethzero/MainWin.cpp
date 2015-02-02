@@ -159,8 +159,9 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->blockCount);
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
-
-	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
+	
+	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
+	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}, p2p::NetworkPreferences(), network));
 
 	m_qwebConnector.reset(new QWebThreeConnector());
 	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys), this));
@@ -1860,8 +1861,8 @@ void Main::on_net_triggered()
 		web3()->setNetworkPreferences(netPrefs());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
 		// TODO: p2p
-		if (m_networkConfig.size()/* && ui->usePast->isChecked()*/)
-			web3()->restoreNetwork(bytesConstRef((byte*)m_networkConfig.data(), m_networkConfig.size()));
+//		if (m_networkConfig.size()/* && ui->usePast->isChecked()*/)
+//			web3()->restoreNetwork(bytesConstRef((byte*)m_networkConfig.data(), m_networkConfig.size()));
 		web3()->startNetwork();
 		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
 	}
