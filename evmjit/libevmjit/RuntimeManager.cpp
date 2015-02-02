@@ -216,15 +216,15 @@ llvm::Value* RuntimeManager::getJmpBuf()
 
 llvm::Value* RuntimeManager::getGas()
 {
-	auto value = get(RuntimeData::Gas);
-	assert(value->getType() == Type::Size);
-	return getBuilder().CreateZExt(value, Type::Word);
+	auto gas = get(RuntimeData::Gas);
+	assert(gas->getType() == Type::Gas);
+	return gas;
 }
 
 void RuntimeManager::setGas(llvm::Value* _gas)
 {
-	auto newGas = getBuilder().CreateTrunc(_gas, Type::Size);
-	set(RuntimeData::Gas, newGas);
+	assert(_gas->getType() == Type::Gas);
+	set(RuntimeData::Gas, _gas);
 }
 
 }

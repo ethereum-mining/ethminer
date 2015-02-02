@@ -128,12 +128,14 @@ llvm::Value* Ext::blockhash(llvm::Value* _number)
 
 llvm::Value* Ext::create(llvm::Value*& _gas, llvm::Value* _endowment, llvm::Value* _initOff, llvm::Value* _initSize)
 {
-	auto gas = byPtr(_gas);
+	auto gas256 = m_builder.CreateZExt(_gas, Type::Word, "gas256");
+	auto gas = byPtr(gas256);
 	auto ret = getArgAlloca();
 	auto begin = m_memoryMan.getBytePtr(_initOff);
 	auto size = m_builder.CreateTrunc(_initSize, Type::Size, "size");
 	createCall(EnvFunc::create, {getRuntimeManager().getEnvPtr(), gas, byPtr(_endowment), begin, size, ret});
-	_gas = m_builder.CreateLoad(gas); // Return gas
+	gas256 = m_builder.CreateLoad(gas); // Return gas
+	_gas = m_builder.CreateTrunc(gas256, Type::Gas);
 	llvm::Value* address = m_builder.CreateLoad(ret);
 	address = Endianness::toNative(m_builder, address);
 	return address;
