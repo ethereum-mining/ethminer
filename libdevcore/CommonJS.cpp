@@ -63,13 +63,13 @@ bytes unpadLeft(bytes _b)
 	int i = 0;
 	if (_b.size() == 0)
 		return _b;
+
 	while (true)
-	{
 		if (_b.at(i) == byte(0))
 			i++;
 		else
 			break;
-	}
+
 	if (i != 0)
 		_b.erase(_b.begin(), _b.begin() + i);
 	return _b;
