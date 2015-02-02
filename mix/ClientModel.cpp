@@ -93,8 +93,16 @@ ClientModel::~ClientModel()
 
 QString ClientModel::apiCall(QString const& _message)
 {
-	m_rpcConnector->OnRequest(_message.toStdString(), nullptr);
-	return m_rpcConnector->response();
+	try
+	{
+		m_rpcConnector->OnRequest(_message.toStdString(), nullptr);
+		return m_rpcConnector->response();
+	}
+	catch (...)
+	{
+		std::cerr << boost::current_exception_diagnostic_information();
+		return QString();
+	}
 }
 
 void ClientModel::mine()
