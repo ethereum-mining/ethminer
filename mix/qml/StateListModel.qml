@@ -125,16 +125,19 @@ Item {
 		id: stateDialog
 		onAccepted: {
 			var item = stateDialog.getItem();
-			if (stateDialog.stateIndex < stateListModel.count)
-			{
+			if (stateDialog.stateIndex < stateListModel.count) {
+				if (stateDialog.isDefault)
+					defaultStateIndex = stateIndex;
 				stateList[stateDialog.stateIndex] = item;
 				stateListModel.set(stateDialog.stateIndex, item);
-			}
-			else
-			{
+			} else {
+				if (stateDialog.isDefault)
+					defaultStateIndex = 0;
 				stateList.push(item);
 				stateListModel.append(item);
 			}
+			if (stateDialog.isDefault)
+				stateListModel.defaultStateChanged();
 			stateListModel.save();
 		}
 	}
@@ -187,11 +190,11 @@ Item {
 
 		function addState() {
 			var item = createDefaultState();
-			stateDialog.open(stateListModel.count, item);
+			stateDialog.open(stateListModel.count, item, false);
 		}
 
 		function editState(index) {
-			stateDialog.open(index, stateList[index]);
+			stateDialog.open(index, stateList[index], defaultStateIndex === index);
 		}
 
 		function debugDefaultState() {
@@ -208,7 +211,10 @@ Item {
 			stateListModel.remove(index);
 			stateList.splice(index, 1);
 			if (index === defaultStateIndex)
+			{
+				defaultStateIndex = 0;
 				defaultStateChanged();
+			}
 			save();
 		}
 
