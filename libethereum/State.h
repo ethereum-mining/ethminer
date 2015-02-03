@@ -122,11 +122,14 @@ public:
 	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
 	 * Typically looks like:
 	 * @code
+	 * while (notYetMined)
+	 * {
 	 * // lock
-	 * commitToMine(blockchain);
+	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
 	 * // unlock
 	 * MineInfo info;
 	 * for (info.complete = false; !info.complete; info = mine()) {}
+	 * }
 	 * // lock
 	 * completeMine();
 	 * // unlock

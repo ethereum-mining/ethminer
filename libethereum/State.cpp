@@ -682,8 +682,6 @@ LogBloom State::logBloom() const
 	return ret;
 }
 
-// @returns the block that represents the difference between m_previousBlock and m_currentBlock.
-// (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
 {
 	uncommitToMine();

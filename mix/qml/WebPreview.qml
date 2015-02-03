@@ -62,6 +62,7 @@ Item {
 	Connections {
 		target: clientModel
 		onContractAddressChanged: reload();
+		onRunComplete: reload();
 	}
 
 	Connections {
@@ -85,7 +86,7 @@ Item {
 			updateDocument(documentId, function(i) { pageListModel.set(i, projectModel.getDocument(documentId)) } )
 		}
 
-		onProjectLoaded: {
+		onProjectLoading: {
 			for (var i = 0; i < target.listModel.count; i++) {
 				var document = target.listModel.get(i);
 				if (document.isHtml) {
@@ -111,9 +112,14 @@ Item {
 		accept: true
 		port: 8893
 		onClientConnected: {
-			console.log(_request.content);
+			//filter polling spam
+			//TODO: do it properly
+			var log = _request.content.indexOf("eth_changed") < 0;
+			if (log)
+				console.log(_request.content);
 			var response = clientModel.apiCall(_request.content);
-			console.log(response);
+			if (log)
+				console.log(response);
 			_request.setResponse(response);
 		}
 	}
