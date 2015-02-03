@@ -19,6 +19,7 @@
 #include "Runtime.h"
 #include "Compiler.h"
 #include "Cache.h"
+#include "BuildInfo.gen.h"
 
 #include <iostream>
 
@@ -72,6 +73,16 @@ bool getEnvOption(char const* _name, bool _default)
 	return std::strtol(var, nullptr, 10) != 0;
 }
 
+bool showInfo()
+{
+	auto show = getEnvOption("EVMJIT_INFO", false);
+	if (show)
+	{
+		std::cout << "The Ethereum EVM JIT " EVMJIT_VERSION_FULL " LLVM " LLVM_VERSION << std::endl;
+	}
+	return show;
+}
+
 }
 
 ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
@@ -79,6 +90,8 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	static std::unique_ptr<llvm::ExecutionEngine> ee;  // TODO: Use Managed Objects from LLVM?
 	static auto debugDumpModule = getEnvOption("EVMJIT_DUMP", false);
 	static auto objectCacheEnabled = getEnvOption("EVMJIT_CACHE", true);
+	static auto infoShown = showInfo();
+	(void) infoShown;
 
 	auto codeBegin = _data->code;
 	auto codeEnd = codeBegin + _data->codeSize;

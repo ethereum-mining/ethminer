@@ -47,14 +47,17 @@ else()
 	set(EVMJIT_SOVERSION ${EVMJIT_VERSION_MAJOR})
 endif()
 
+configure_file(BuildInfo.h.in ${CMAKE_CURRENT_BINARY_DIR}/gen/BuildInfo.gen.h)
+
 message(STATUS "EVM JIT version: ${EVMJIT_VERSION_MAJOR}.${EVMJIT_VERSION_MINOR}.${EVMJIT_VERSION_PATCH}-${EVMJIT_VERSION_PRERELEASE} (${EVMJIT_VERSION_FULL})")
 
-add_library(${TARGET_NAME} SHARED ${SOURCES} ${HEADERS})
+add_library(${TARGET_NAME} SHARED ${SOURCES} ${HEADERS} gen/BuildInfo.gen.h)
 set_target_properties(${TARGET_NAME} PROPERTIES 
 						VERSION ${EVMJIT_VERSION} SOVERSION ${EVMJIT_SOVERSION}
 						FOLDER "libs")
 
 include_directories(${LLVM_INCLUDE_DIRS})
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/gen)
 
 target_link_libraries(${TARGET_NAME} PRIVATE ${LLVM_LIBS})
 
