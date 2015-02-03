@@ -67,6 +67,9 @@ public:
 	/// Explicitly construct, copying from a byte array.
 	explicit FixedHash(bytes const& _b) { if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N)); }
 
+	/// Explicitly construct, copying from a byte array.
+	explicit FixedHash(bytesConstRef _b) { if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N)); }
+
 	/// Explicitly construct, copying from a bytes in memory with given pointer.
 	explicit FixedHash(byte const* _bs, ConstructFromPointerType) { memcpy(m_data.data(), _bs, N); }
 

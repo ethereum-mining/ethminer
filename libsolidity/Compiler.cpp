@@ -142,12 +142,12 @@ void Compiler::appendConstructorCall(FunctionDefinition const& _constructor)
 
 void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 {
-	map<FixedHash<4>, FunctionDescription> interfaceFunctions = _contract.getInterfaceFunctions();
+	map<FixedHash<4>, FunctionTypePointer> interfaceFunctions = _contract.getInterfaceFunctions();
 	map<FixedHash<4>, const eth::AssemblyItem> callDataUnpackerEntryPoints;
 
 	// retrieve the function signature hash from the calldata
-	m_context << u256(1) << u256(0);
-	CompilerUtils(m_context).loadFromMemory(0, 4, false, true);
+	if (!interfaceFunctions.empty())
+		CompilerUtils(m_context).loadFromMemory(0, 4, false, true);
 
 	// stack now is: 1 0 <funhash>
 	for (auto const& it: interfaceFunctions)
@@ -156,15 +156,23 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 		m_context << eth::dupInstruction(1) << u256(FixedHash<4>::Arith(it.first)) << eth::Instruction::EQ;
 		m_context.appendConditionalJumpTo(callDataUnpackerEntryPoints.at(it.first));
 	}
-	m_context << eth::Instruction::STOP; // function not found
+	if (FunctionDefinition const* fallback = _contract.getFallbackFunction())
+	{
+		eth::AssemblyItem returnTag = m_context.pushNewTag();
+		fallback->accept(*this);
+		m_context << returnTag;
+		appendReturnValuePacker(FunctionType(*fallback).getReturnParameterTypes());
+	}
+	else
+		m_context << eth::Instruction::STOP; // function not found
 
 	for (auto const& it: interfaceFunctions)
 	{
-		FunctionType const* functionType = it.second.getFunctionType();
+		FunctionTypePointer const& functionType = it.second;
 		m_context << callDataUnpackerEntryPoints.at(it.first);
 		eth::AssemblyItem returnTag = m_context.pushNewTag();
 		appendCalldataUnpacker(functionType->getParameterTypes());
-		m_context.appendJumpTo(m_context.getFunctionEntryLabel(*it.second.getDeclaration()));
+		m_context.appendJumpTo(m_context.getFunctionEntryLabel(it.second->getDeclaration()));
 		m_context << returnTag;
 		appendReturnValuePacker(functionType->getReturnParameterTypes());
 	}

@@ -4,14 +4,14 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
-import CodeEditorExtensionManager 1.0
+import Qt.labs.settings 1.0
 import org.ethereum.qml.QEther 1.0
 
 ApplicationWindow {
 	id: mainApplication
 	visible: true
 	width: 1200
-	height: 600
+	height: 800
 	minimumWidth: 400
 	minimumHeight: 300
 	title: qsTr("mix")
@@ -34,24 +34,22 @@ ApplicationWindow {
 			MenuItem { action: exitAppAction }
 		}
 		Menu {
-			title: qsTr("Debug")
+			title: qsTr("Deploy")
 			MenuItem { action: debugRunAction }
-			MenuItem { action: debugResetStateAction }
+			MenuItem { action: mineAction }
+			MenuSeparator {}
+			MenuItem { action: toggleRunOnLoadAction }
 		}
 		Menu {
 			title: qsTr("Windows")
 			MenuItem { action: openNextDocumentAction }
 			MenuItem { action: openPrevDocumentAction }
 			MenuSeparator {}
+			MenuItem { action: toggleProjectNavigatorAction }
 			MenuItem { action: showHideRightPanelAction }
 			MenuItem { action: toggleWebPreviewAction }
 			MenuItem { action: toggleWebPreviewOrientationAction }
 		}
-	}
-
-	Component.onCompleted: {
-		setX(Screen.width / 2 - width / 2);
-		setY(Screen.height / 2 - height / 2);
 	}
 
 	MainContent {
@@ -69,6 +67,14 @@ ApplicationWindow {
 		id: messageDialog
 	}
 
+	Settings {
+		id: mainWindowSettings
+		property alias mainWidth: mainApplication.width
+		property alias mainHeight: mainApplication.height
+		property alias mainX: mainApplication.x
+		property alias mainY: mainApplication.y
+	}
+
 	Action {
 		id: exitAppAction
 		text: qsTr("Exit")
@@ -77,23 +83,36 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: mineAction
+		text: qsTr("Mine")
+		shortcut: "Ctrl+M"
+		onTriggered: clientModel.mine();
+		enabled: codeModel.hasContract && !clientModel.running
+	}
+
+	Connections {
+		target: projectModel.stateListModel
+
+		function updateRunLabel()
+		{
+			debugRunAction.text = qsTr("Deploy") + " \"" + projectModel.stateListModel.defaultStateName() + "\"";
+		}
+
+		onDefaultStateChanged: updateRunLabel()
+		onStateListModelReady: updateRunLabel()
+	}
+
+	Action {
 		id: debugRunAction
-		text: "&Run"
+		text: qsTr("Deploy")
 		shortcut: "F5"
 		onTriggered: mainContent.startQuickDebugging()
 		enabled: codeModel.hasContract && !clientModel.running
 	}
 
 	Action {
-		id: debugResetStateAction
-		text: "Reset &State"
-		shortcut: "F6"
-		onTriggered: clientModel.resetState();
-	}
-
-	Action {
 		id: toggleWebPreviewAction
-		text: "Show Web View"
+		text: qsTr("Show Web View")
 		shortcut: "F2"
 		checkable: true
 		checked: mainContent.webViewVisible
@@ -101,8 +120,17 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: toggleProjectNavigatorAction
+		text: qsTr("Show Project Navigator")
+		shortcut: "Alt+0"
+		checkable: true
+		checked: mainContent.projectViewVisible
+		onTriggered: mainContent.toggleProjectView();
+	}
+
+	Action {
 		id: toggleWebPreviewOrientationAction
-		text: "Horizontal Web View"
+		text: qsTr("Horizontal Web View")
 		shortcut: ""
 		checkable: true
 		checked: mainContent.webViewHorizontal
@@ -110,8 +138,17 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: toggleRunOnLoadAction
+		text: qsTr("Load State on Startup")
+		shortcut: ""
+		checkable: true
+		checked: mainContent.runOnProjectLoad
+		onTriggered: mainContent.runOnProjectLoad = !mainContent.runOnProjectLoad
+	}
+
+	Action {
 		id: showHideRightPanelAction
-		text: "Show Right View"
+		text: qsTr("Show Right View")
 		shortcut: "F7"
 		checkable: true
 		checked: mainContent.rightViewVisible

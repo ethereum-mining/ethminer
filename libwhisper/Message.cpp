@@ -26,7 +26,7 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-Message::Message(Envelope const& _e, Secret const& _s)
+Message::Message(Envelope const& _e, FullTopic const& _fk, Secret const& _s)
 {
 	try
 	{
@@ -34,8 +34,39 @@ Message::Message(Envelope const& _e, Secret const& _s)
 		if (_s)
 			if (!decrypt(_s, &(_e.data()), b))
 				return;
-		if (populate(_s ? b : _e.data()))
-			m_to = KeyPair(_s).pub();
+			else{}
+		else
+		{
+			// public - need to get the key through combining with the topic/topicIndex we know.
+			unsigned topicIndex = 0;
+			Secret topicSecret;
+
+			// determine topicSecret/topicIndex from knowledge of the collapsed topics (which give the order) and our full-size filter topic.
+			CollapsedTopic knownTopic = collapse(_fk);
+			for (unsigned ti = 0; ti < _fk.size() && !topicSecret; ++ti)
+				for (unsigned i = 0; i < _e.topic().size(); ++i)
+					if (_e.topic()[i] == knownTopic[ti])
+					{
+						topicSecret = _fk[ti];
+						topicIndex = i;
+						break;
+					}
+
+			if (_e.data().size() < _e.topic().size() * 32)
+				return;
+
+			// get key from decrypted topic key: just xor
+			h256 tk = h256(bytesConstRef(&(_e.data())).cropped(32 * topicIndex, 32));
+			bytesConstRef cipherText = bytesConstRef(&(_e.data())).cropped(32 * _e.topic().size());
+			cnote << "Decrypting(" << topicIndex << "): " << topicSecret << tk << (topicSecret ^ tk) << toHex(cipherText);
+			if (!decryptSym(topicSecret ^ tk, cipherText, b))
+				return;
+			cnote << "Got: " << toHex(b);
+		}
+
+		if (populate(b))
+			if (_s)
+				m_to = KeyPair(_s).pub();
 	}
 	catch (...)	// Invalid secret? TODO: replace ... with InvalidSecret
 	{
@@ -63,9 +94,10 @@ bool Message::populate(bytes const& _data)
 	return true;
 }
 
-Envelope Message::seal(Secret _from, Topic const& _topic, unsigned _ttl, unsigned _workToProve) const
+Envelope Message::seal(Secret _from, FullTopic const& _fullTopic, unsigned _ttl, unsigned _workToProve) const
 {
-	Envelope ret(time(0) + _ttl, _ttl, _topic);
+	CollapsedTopic topic = collapse(_fullTopic);
+	Envelope ret(time(0) + _ttl, _ttl, topic);
 
 	bytes input(1 + m_payload.size());
 	input[0] = 0;
@@ -83,7 +115,25 @@ Envelope Message::seal(Secret _from, Topic const& _topic, unsigned _ttl, unsigne
 	if (m_to)
 		encrypt(m_to, &input, ret.m_data);
 	else
-		swap(ret.m_data, input);
+	{
+		// create the shared secret and encrypt
+		Secret s = Secret::random();
+		for (h256 const& t: _fullTopic)
+			ret.m_data += (t ^ s).asBytes();
+		bytes d;
+		encryptSym(s, &input, d);
+		ret.m_data += d;
+
+		for (unsigned i = 0; i < _fullTopic.size(); ++i)
+		{
+			bytes b;
+			h256 tk = h256(bytesConstRef(&(ret.m_data)).cropped(32 * i, 32));
+			bytesConstRef cipherText = bytesConstRef(&(ret.m_data)).cropped(32 * ret.topic().size());
+			cnote << "Test decrypting(" << i << "): " << _fullTopic[i] << tk << (_fullTopic[i] ^ tk) << toHex(cipherText);
+			assert(decryptSym(_fullTopic[i] ^ tk, cipherText, b));
+			cnote << "Got: " << toHex(b);
+		}
+	}
 
 	ret.proveWork(_workToProve);
 	return ret;
@@ -98,9 +148,9 @@ Envelope::Envelope(RLP const& _m)
 	m_nonce = _m[4].toInt<u256>();
 }
 
-Message Envelope::open(Secret const& _s) const
+Message Envelope::open(FullTopic const& _ft, Secret const& _s) const
 {
-	return Message(*this, _s);
+	return Message(*this, _ft, _s);
 }
 
 unsigned Envelope::workProved() const
