@@ -39,7 +39,7 @@ extern const unsigned c_protocolVersion;
 extern const unsigned c_databaseVersion;
 
 /// User-friendly string representation of the amount _b in wei.
-std::string formatBalance(u256 _b);
+std::string formatBalance(bigint const& _b);
 
 /// Get information concerning the currency denominations.
 std::vector<std::pair<u256, std::string>> const& units();

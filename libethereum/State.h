@@ -105,16 +105,13 @@ public:
 	/// @returns true if all is ok. If it's false, worry.
 	bool amIJustParanoid(BlockChain const& _bc);
 
-	/// @brief Loads current block uncles from blockchain
-	void setUncles(BlockChain const& _bc);
-
 	/// Prepares the current state for mining.
 	/// Commits all transactions into the trie, compiles uncles and transactions list, applies all
 	/// rewards and populates the current block header with the appropriate hashes.
 	/// The only thing left to do after this is to actually mine().
 	///
 	/// This may be called multiple times and without issue.
-	void commitToMine();
+	void commitToMine(BlockChain const& _bc);
 
 	/// Attempt to find valid nonce for block that this state represents.
 	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
@@ -125,11 +122,14 @@ public:
 	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
 	 * Typically looks like:
 	 * @code
+	 * while (notYetMined)
+	 * {
 	 * // lock
-	 * commitToMine();
+	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
 	 * // unlock
 	 * MineInfo info;
 	 * for (info.complete = false; !info.complete; info = mine()) {}
+	 * }
 	 * // lock
 	 * completeMine();
 	 * // unlock
