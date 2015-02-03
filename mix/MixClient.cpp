@@ -56,16 +56,15 @@ void MixClient::resetState(u256 _balance)
 	genesis.state = m_state;
 	Block open;
 	m_blocks = Blocks { genesis, open }; //last block contains a list of pending transactions to be finalized
-	m_lastHashes.clear();
-	m_lastHashes.resize(256);
-	m_lastHashes[0] = genesis.hash;
+//	m_lastHashes.clear();
+//	m_lastHashes.resize(256);
+//	m_lastHashes[0] = genesis.hash;
 }
 
 void MixClient::executeTransaction(Transaction const& _t, State& _state)
 {
 	bytes rlp = _t.rlp();
-
-	Executive execution(_state, m_lastHashes, 0);
+	Executive execution(_state, LastHashes(), 0);
 	execution.setup(&rlp);
 	std::vector<MachineState> machineStates;
 	std::vector<unsigned> levels;
@@ -165,14 +164,12 @@ void MixClient::mine()
 	Block& block = m_blocks.back();
 	m_state.mine(0, true);
 	m_state.completeMine();
-	m_state.commitToMine();
+	m_state.commitToMine(BlockChain());
+	m_state.cleanup(true);
 	block.state = m_state;
 	block.info = m_state.info();
 	block.hash = block.info.hash;
-	m_state.cleanup(true);
 	m_blocks.push_back(Block());
-	m_lastHashes.insert(m_lastHashes.begin(), block.hash);
-	m_lastHashes.resize(256);
 
 	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
 	noteChanged(changed);
