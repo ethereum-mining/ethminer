@@ -31,12 +31,30 @@ Item {
 			stdContract: t.stdContract,
 			parameters: {}
 		};
-		for (var key in t.parameters) {
-			var intComponent = Qt.createComponent("qrc:/qml/BigIntValue.qml");
-			var param = intComponent.createObject();
-			param.setValue(t.parameters[key]);
-			r.parameters[key] = param;
+		var qType = [];
+		for (var key in t.parameters)
+		{
+			r.parameters[key] = t.parameters[key].value;
+			var type = t.parameters[key].type;
+			var varComponent;
+			if (type.indexOf("int") !== -1)
+				varComponent = Qt.createComponent("qrc:/qml/QIntType.qml");
+			else if (type.indexOf("real") !== -1)
+				varComponent = Qt.createComponent("qrc:/qml/QRealType.qml");
+			else if (type.indexOf("string") !== -1 || type.indexOf("text") !== -1)
+				varComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
+			else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
+				varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
+			else if (type.indexOf("bool") !== -1)
+				varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
+
+			var param = varComponent.createObject(stateListModel);
+			var dec = Qt.createComponent("qrc:/qml/QVariableDeclaration.qml");
+			param.setDeclaration(dec.createObject(stateListModel, { "type": type }));
+			param.setValue(r.parameters[key]);
+			qType.push(param);
 		}
+		r.qType = qType;
 		return r;
 	}
 
@@ -46,6 +64,16 @@ Item {
 			balance: { value: s.balance.value, unit: s.balance.unit },
 			transactions: s.transactions.map(toPlainTransactionItem)
 		};
+	}
+
+	function getParamType(param, params)
+	{
+		for (var k in params)
+		{
+			if (params[k].declaration.name === param)
+				return params[k].declaration.type;
+		}
+		return '';
 	}
 
 	function toPlainTransactionItem(t) {
@@ -60,7 +88,14 @@ Item {
 			parameters: {}
 		};
 		for (var key in t.parameters)
-			r.parameters[key] = t.parameters[key].value();
+		{
+			var param = {
+				name: key,
+				value: t.parameters[key],
+				type: getParamType(key, t.qType)
+			}
+			r.parameters[key] = param;
+		}
 		return r;
 	}
 
@@ -70,7 +105,7 @@ Item {
 			stateListModel.clear();
 			stateList = [];
 		}
-		onProjectLoaded: stateListModel.loadStatesFromProject(projectData);
+		onProjectLoading: stateListModel.loadStatesFromProject(projectData);
 		onProjectSaving: {
 			projectData.states = []
 			for(var i = 0; i < stateListModel.count; i++) {

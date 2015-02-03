@@ -36,14 +36,16 @@ ApplicationWindow {
 		Menu {
 			title: qsTr("Deploy")
 			MenuItem { action: debugRunAction }
-			MenuItem { action: debugResetStateAction }
 			MenuItem { action: mineAction }
+			MenuSeparator {}
+			MenuItem { action: toggleRunOnLoadAction }
 		}
 		Menu {
 			title: qsTr("Windows")
 			MenuItem { action: openNextDocumentAction }
 			MenuItem { action: openPrevDocumentAction }
 			MenuSeparator {}
+			MenuItem { action: toggleProjectNavigatorAction }
 			MenuItem { action: showHideRightPanelAction }
 			MenuItem { action: toggleWebPreviewAction }
 			MenuItem { action: toggleWebPreviewOrientationAction }
@@ -82,7 +84,7 @@ ApplicationWindow {
 
 	Action {
 		id: mineAction
-		text: "Mine"
+		text: qsTr("Mine")
 		shortcut: "Ctrl+M"
 		onTriggered: clientModel.mine();
 		enabled: codeModel.hasContract && !clientModel.running
@@ -102,22 +104,15 @@ ApplicationWindow {
 
 	Action {
 		id: debugRunAction
-		text: "&Deploy"
+		text: qsTr("Deploy")
 		shortcut: "F5"
 		onTriggered: mainContent.startQuickDebugging()
 		enabled: codeModel.hasContract && !clientModel.running
 	}
 
 	Action {
-		id: debugResetStateAction
-		text: "Reset &State"
-		shortcut: "F6"
-		onTriggered: clientModel.resetState();
-	}
-
-	Action {
 		id: toggleWebPreviewAction
-		text: "Show Web View"
+		text: qsTr("Show Web View")
 		shortcut: "F2"
 		checkable: true
 		checked: mainContent.webViewVisible
@@ -125,8 +120,17 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: toggleProjectNavigatorAction
+		text: qsTr("Show Project Navigator")
+		shortcut: "Alt+0"
+		checkable: true
+		checked: mainContent.projectViewVisible
+		onTriggered: mainContent.toggleProjectView();
+	}
+
+	Action {
 		id: toggleWebPreviewOrientationAction
-		text: "Horizontal Web View"
+		text: qsTr("Horizontal Web View")
 		shortcut: ""
 		checkable: true
 		checked: mainContent.webViewHorizontal
@@ -134,8 +138,17 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: toggleRunOnLoadAction
+		text: qsTr("Load State on Startup")
+		shortcut: ""
+		checkable: true
+		checked: mainContent.runOnProjectLoad
+		onTriggered: mainContent.runOnProjectLoad = !mainContent.runOnProjectLoad
+	}
+
+	Action {
 		id: showHideRightPanelAction
-		text: "Show Right View"
+		text: qsTr("Show Right View")
 		shortcut: "F7"
 		checkable: true
 		checked: mainContent.rightViewVisible
