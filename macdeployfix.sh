@@ -7,6 +7,12 @@ BUILD_FOLDER_PATH=$1
 BUILD_QML_FOLDER_PATH="$BUILD_FOLDER_PATH/Resources/qml"
 BUILD_PLUGINS_FOLDER_PATH="$BUILD_FOLDER_PATH/PlugIns"
 
+if [ ! -d ${BUILD_QML_FOLDER_PATH} ]; then
+    # we are not using any qml files
+    # gracefully exit
+    exit 0
+fi
+
 declare -a BROKEN_FILES;
 k=0;
 for j in $(find ${BUILD_QML_FOLDER_PATH} -name *.dylib); do
@@ -36,3 +42,4 @@ for i in "${BROKEN_FILES[@]}"; do
 	REMOVE_BROKEN_ALIAS=$(rm -rf $i)
 	RESULT=$(ln -s $s $i)
 done
+
