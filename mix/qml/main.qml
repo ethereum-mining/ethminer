@@ -94,11 +94,11 @@ ApplicationWindow {
 		target: projectModel.stateListModel
 		onDefaultStateChanged:
 		{
-			debugRunAction.text = "&Deploy" + " \"" + projectModel.stateListModel.defaultStateName() + "\"";
+			debugRunAction.text = qsTr("Deploy") + " \"" + projectModel.stateListModel.defaultStateName() + "\"";
 		}
 		onStateListModelReady:
 		{
-			debugRunAction.text = "&Deploy" + " \"" + projectModel.stateListModel.defaultStateName() + "\"";
+			debugRunAction.text = qsTr("Deploy") + " \"" + projectModel.stateListModel.defaultStateName() + "\"";
 		}
 	}
 
