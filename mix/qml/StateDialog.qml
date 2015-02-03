@@ -37,7 +37,6 @@ Window {
 		isDefault = setDefault;
 		titleField.focus = true;
 		defaultCheckBox.enabled = !isDefault;
-
 	}
 
 	function close() {
@@ -88,7 +87,6 @@ Window {
 			id: defaultCheckBox
 			Layout.fillWidth: true
 		}
-
 
 		Label {
 			text: qsTr("Transactions")
