@@ -34,7 +34,7 @@ ApplicationWindow {
 			MenuItem { action: exitAppAction }
 		}
 		Menu {
-			title: qsTr("Debug")
+			title: qsTr("Deploy")
 			MenuItem { action: debugRunAction }
 			MenuItem { action: debugResetStateAction }
 			MenuItem { action: mineAction }
@@ -87,9 +87,22 @@ ApplicationWindow {
 		onTriggered: clientModel.mine();
 		enabled: codeModel.hasContract && !clientModel.running
 	}
+
+	Connections {
+		target: projectModel.stateListModel
+		onDefaultStateChanged:
+		{
+			debugRunAction.text = "&Deploy" + " \"" + projectModel.stateListModel.defaultStateName() + "\"";
+		}
+		onStateListModelReady:
+		{
+			debugRunAction.text = "&Deploy" + " \"" + projectModel.stateListModel.defaultStateName() + "\"";
+		}
+	}
+
 	Action {
 		id: debugRunAction
-		text: "&Run"
+		text: "&Deploy"
 		shortcut: "F5"
 		onTriggered: mainContent.startQuickDebugging()
 		enabled: codeModel.hasContract && !clientModel.running
