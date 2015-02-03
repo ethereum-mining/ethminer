@@ -86,8 +86,8 @@ macro(eth_install_executable EXECUTABLE)
 		# TODO check, how fixup_bundle works and if it is required
 		install(CODE "
 			include(BundleUtilities)
-			set(BU_CHMOD_BUNDLE_ITEMS 1)
-			fixup_bundle(\"${APP_BUNDLE_PATH}\" \"${BUNDLELIBS}\" \"../libqethereum ../libethereum ../secp256k1\")
+            set(BU_CHMOD_BUNDLE_ITEMS 1)
+            verify_app(\"${APP_BUNDLE_PATH}\")
 			" COMPONENT RUNTIME )
 		# Cleanup duplicate libs from macdeployqt
 		install(CODE "
