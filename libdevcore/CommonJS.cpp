@@ -45,6 +45,12 @@ bytes padded(bytes _b, unsigned _l)
 	return asBytes(asString(_b).substr(_b.size() - std::max(_l, _l)));
 }
 
+bytes paddedRight(bytes _b, unsigned _l)
+{
+	_b.resize(_l);
+	return _b;
+}
+
 bytes unpadded(bytes _b)
 {
 	auto p = asString(_b).find_last_not_of((char)0);
@@ -52,12 +58,18 @@ bytes unpadded(bytes _b)
 	return _b;
 }
 
-std::string unpadLeft(std::string _b)
+bytes unpadLeft(bytes _b)
 {
-	auto p = _b.find_first_not_of('0');
-	if (p == std::string::npos)
-		return "0";
-	return _b.substr(p, _b.length() - 1);
+	unsigned int i = 0;
+	if (_b.size() == 0)
+		return _b;
+
+	while (i < _b.size() && _b[i] == byte(0))
+		i++;
+
+	if (i != 0)
+		_b.erase(_b.begin(), _b.begin() + i);
+	return _b;
 }
 
 std::string prettyU256(u256 _n)

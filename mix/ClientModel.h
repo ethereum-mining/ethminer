@@ -27,6 +27,7 @@
 #include <map>
 #include <QString>
 #include "MixClient.h"
+#include "QVariableDefinition.h"
 
 namespace dev
 {
@@ -59,7 +60,7 @@ struct TransactionSettings
 	/// Gas price
 	u256 gasPrice;
 	/// Mapping from contract function parameter name to value
-	std::map<QString, u256> parameterValues;
+	QList<QVariableDefinition*> parameterValues;
 	/// Standard contract url
 	QString stdContractUrl;
 };
