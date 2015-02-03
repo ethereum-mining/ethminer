@@ -92,14 +92,14 @@ ApplicationWindow {
 
 	Connections {
 		target: projectModel.stateListModel
-		onDefaultStateChanged:
+
+		function updateRunLabel()
 		{
 			debugRunAction.text = qsTr("Deploy") + " \"" + projectModel.stateListModel.defaultStateName() + "\"";
 		}
-		onStateListModelReady:
-		{
-			debugRunAction.text = qsTr("Deploy") + " \"" + projectModel.stateListModel.defaultStateName() + "\"";
-		}
+
+		onDefaultStateChanged: updateRunLabel()
+		onStateListModelReady: updateRunLabel()
 	}
 
 	Action {
