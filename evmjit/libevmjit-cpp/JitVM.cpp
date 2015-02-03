@@ -9,6 +9,8 @@ namespace dev
 namespace eth
 {
 
+extern "C" void env_sload(); // fake declaration for linker symbol stripping workaround, see a call below
+
 bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 {
 	using namespace jit;
@@ -58,6 +60,9 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 		BOOST_THROW_EXCEPTION(StackTooSmall());
 	case ReturnCode::BadInstruction:
 		BOOST_THROW_EXCEPTION(BadInstruction());
+	case ReturnCode::LinkerWorkaround:	// never happens
+		env_sload();					// but forces linker to include env_* JIT callback functions
+		break;
 	default:
 		break;
 	}
@@ -67,15 +72,4 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 }
 
 }
-}
-
-namespace
-{
-	// MSVS linker ignores export symbols in Env.cpp if nothing points at least one of them
-	extern "C" void env_sload();
-	void linkerWorkaround() 
-	{ 
-		env_sload();
-		(void)&linkerWorkaround; // suppress unused function warning from GCC
-	}
 }
