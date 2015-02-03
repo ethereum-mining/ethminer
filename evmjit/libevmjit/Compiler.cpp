@@ -91,6 +91,7 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		}
 	}
 
+	// TODO: Create Stop basic block on demand
 	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
 }
 
@@ -864,6 +865,18 @@ void Compiler::removeDeadBlocks()
 		}
 	}
 	while (sthErased);
+
+	if (m_jumpTableBlock && llvm::pred_begin(m_jumpTableBlock->llvm()) == llvm::pred_end(m_jumpTableBlock->llvm()))
+	{
+		m_jumpTableBlock->llvm()->eraseFromParent();
+		m_jumpTableBlock.reset();
+	}
+
+	if (m_badJumpBlock && llvm::pred_begin(m_badJumpBlock->llvm()) == llvm::pred_end(m_badJumpBlock->llvm()))
+	{
+		m_badJumpBlock->llvm()->eraseFromParent();
+		m_badJumpBlock.reset();
+	}
 }
 
 void Compiler::dumpCFGifRequired(std::string const& _dotfilePath)
