@@ -31,6 +31,7 @@ getText = function() {
 
 setTextBase64 = function(text) {
 	editor.setValue(window.atob(text));
+	editor.getDoc().clearHistory();
 	editor.focus();
 };
 
