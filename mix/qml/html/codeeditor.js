@@ -4,10 +4,11 @@ var editor = CodeMirror(document.body, {
 							//styleActiveLine: true,
 							matchBrackets: true,
 							autofocus: true,
-							indentWithTabs: true,
 						});
 
 editor.setOption("theme", "solarized dark");
+editor.setOption("indentUnit", 4);
+editor.setOption("indentWithTabs", true);
 editor.setOption("fullScreen", true);
 
 editor.changeRegistered = false;
@@ -30,6 +31,7 @@ getText = function() {
 
 setTextBase64 = function(text) {
 	editor.setValue(window.atob(text));
+	editor.getDoc().clearHistory();
 	editor.focus();
 };
 

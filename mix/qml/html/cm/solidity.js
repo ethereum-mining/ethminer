@@ -12,11 +12,17 @@
 CodeMirror.defineMode("solidity", function(config) {
   var indentUnit = config.indentUnit;
 
-  var keywords = { "delete":true, "break":true, "case":true, "constant":true, "continue":true, "contract":true, "default":true,
+  var keywords = { "address":true, "indexed":true, "event":true, "delete":true, "break":true, "case":true, "constant":true, "continue":true, "contract":true, "default":true,
 		"do":true, "else":true, "is":true, "for":true, "function":true, "if":true, "import":true, "mapping":true, "new":true,
 		"public":true, "private":true, "return":true, "returns":true, "struct":true, "switch":true, "var":true, "while":true,
 		"int":true, "uint":true, "hash":true, "bool":true, "string":true, "string0":true, "text":true, "real":true,
 		"ureal":true,
+
+        "owned":true,
+        "onlyowner":true,
+        "named":true,
+        "mortal":true,
+        "coin":true,
 	};
 
   for (var i = 1; i <= 32; i++) {
@@ -27,7 +33,10 @@ CodeMirror.defineMode("solidity", function(config) {
   };
 
   var atoms = {
-	"true":true, "false":true, "null":true
+    "true":true, "false":true, "null":true,
+      "Config":true,
+      "NameReg":true,
+      "CoinReg":true,
   };
 
   var isOperatorChar = /[+\-*&^%:=<>!|\/]/;
