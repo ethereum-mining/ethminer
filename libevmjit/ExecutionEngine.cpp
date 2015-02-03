@@ -72,13 +72,6 @@ bool getEnvOption(char const* _name, bool _default)
 	return std::strtol(var, nullptr, 10) != 0;
 }
 
-bool getEnvOption(char const* _name, bool _default)
-{
-	auto var = std::getenv(_name);
-	if (!var)
-		return _default;
-	return std::strtol(var, nullptr, 10) != 0;
-
 }
 
 ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
