@@ -800,7 +800,7 @@ void State::completeMine()
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
-	m_currentBlock.hash = sha3(m_currentBytes);
+	m_currentBlock.hash = sha3(RLP(m_currentBytes)[0].data());
 	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
 
 	// Quickly reset the transactions.
