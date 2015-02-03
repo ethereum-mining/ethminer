@@ -32,6 +32,7 @@
 #include "QFunctionDefinition.h"
 #include "QVariableDeclaration.h"
 #include "CodeHighlighter.h"
+#include "FileIo.h"
 #include "CodeModel.h"
 
 using namespace dev::mix;
@@ -132,7 +133,7 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 	if (_jobId != m_backgroundJobId)
 		return; //obsolete job
 
-	solidity::CompilerStack cs;
+	solidity::CompilerStack cs(true);
 	std::unique_ptr<CompilationResult> result;
 
 	std::string source = _code.toStdString();
@@ -141,10 +142,12 @@ void CodeModel::runCompilationJob(int _jobId, QString const& _code)
 	auto codeHighlighter = std::make_shared<CodeHighlighter>();
 	codeHighlighter->processSource(source);
 
+	cs.addSource("configUser", R"(contract configUser{function configAddr()constant returns(address a){ return 0xf025d81196b72fba60a1d4dddad12eeb8360d828;}})");
+
 	// run compilation
 	try
 	{
-		cs.setSource(source);
+		cs.addSource("", source);
 		cs.compile(false);
 		codeHighlighter->processAST(cs.getAST());
 		result.reset(new CompilationResult(cs));
@@ -188,3 +191,23 @@ void CodeModel::updateFormatting(QTextDocument* _document)
 {
 	m_result->codeHighlighter()->updateFormatting(_document, *m_codeHighlighterSettings);
 }
+
+dev::bytes const& CodeModel::getStdContractCode(const QString& _contractName, const QString& _url)
+{
+	auto cached = m_compiledContracts.find(_contractName);
+	if (cached != m_compiledContracts.end())
+		return cached->second;
+
+	FileIo fileIo;
+	std::string source = fileIo.readFile(_url).toStdString();
+	solidity::CompilerStack cs(false);
+	cs.setSource(source);
+	cs.compile(false);
+	for (std::string const& name: cs.getContractNames())
+	{
+		dev::bytes code = cs.getBytecode(name);
+		m_compiledContracts.insert(std::make_pair(QString::fromStdString(name), std::move(code)));
+	}
+	return m_compiledContracts.at(_contractName);
+}
+
