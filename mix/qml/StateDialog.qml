@@ -17,12 +17,11 @@ Window {
 
 	property alias stateTitle: titleField.text
 	property alias stateBalance: balanceField.value
-	property alias isDefault: defaultCheckBox.checked
 	property int stateIndex
 	property var stateTransactions: []
 	signal accepted
 
-	function open(index, item, setDefault) {
+	function open(index, item) {
 		stateIndex = index;
 		stateTitle = item.title;
 		balanceField.value = item.balance;
@@ -33,7 +32,6 @@ Window {
 			transactionsModel.append(item.transactions[t]);
 			stateTransactions.push(item.transactions[t]);
 		}
-		isDefault = setDefault;
 		visible = true;
 		titleField.focus = true;
 	}
@@ -76,14 +74,6 @@ Window {
 			id: balanceField
 			edit: true
 			displayFormattedValue: true
-			Layout.fillWidth: true
-		}
-
-		Label {
-			text: qsTr("Default")
-		}
-		CheckBox {
-			id: defaultCheckBox
 			Layout.fillWidth: true
 		}
 
@@ -167,7 +157,7 @@ Window {
 					onClicked: transactionsModel.editTransaction(index)
 				}
 				ToolButton {
-					visible: !transactionsModel.get(index).executeConstructor
+					visible: index >= 0 ? !transactionsModel.get(index).executeConstructor : false
 					text: qsTr("Delete");
 					Layout.fillHeight: true
 					onClicked: transactionsModel.deleteTransaction(index)
