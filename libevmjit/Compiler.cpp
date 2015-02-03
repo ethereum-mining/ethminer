@@ -85,7 +85,7 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		{
 			auto beginIdx = begin - _codeBegin;
 			m_basicBlocks.emplace(std::piecewise_construct, std::forward_as_tuple(beginIdx),
-					std::forward_as_tuple(begin, next, m_mainFunc, m_builder, nextJumpDest));
+					std::forward_as_tuple(beginIdx, begin, next, m_mainFunc, m_builder, nextJumpDest));
 			nextJumpDest = false;
 			begin = next;
 		}
@@ -138,7 +138,6 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto entryBlock = llvm::BasicBlock::Create(m_builder.getContext(), "entry", m_mainFunc);
 	m_builder.SetInsertPoint(entryBlock);
 
-	m_codeBegin = _begin;
 	createBasicBlocks(_begin, _end);
 
 	// Init runtime structures.
@@ -623,7 +622,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
 		case Instruction::PC:
 		{
-			auto value = Constant::get(it - m_codeBegin);
+			auto value = Constant::get(it - _basicBlock.begin() + _basicBlock.firstInstrIdx());
 			stack.push(value);
 			break;
 		}
@@ -631,7 +630,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		case Instruction::GAS:
 		{
 			_gasMeter.commitCostBlock();
-			stack.push(_runtimeManager.getGas());
+			stack.push(m_builder.CreateZExt(_runtimeManager.getGas(), Type::Word));
 			break;
 		}
 
@@ -741,10 +740,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			_memory.require(initOff, initSize);
 
 			_gasMeter.commitCostBlock();
-
-			auto gas = _runtimeManager.getGas();
-			auto address = _ext.create(gas, endowment, initOff, initSize);
-			_runtimeManager.setGas(gas);
+			auto address = _ext.create(endowment, initOff, initSize);
 			stack.push(address);
 			break;
 		}
@@ -752,7 +748,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 		{
-			auto gas = stack.pop();
+			auto callGas256 = stack.pop();
 			auto codeAddress = stack.pop();
 			auto value = stack.pop();
 			auto inOff = stack.pop();
@@ -770,9 +766,13 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			if (inst == Instruction::CALLCODE)
 				receiveAddress = _runtimeManager.get(RuntimeData::Address);
 
-			_gasMeter.count(gas);
-			auto ret = _ext.call(gas, receiveAddress, value, inOff, inSize, outOff, outSize, codeAddress);
-			_gasMeter.giveBack(gas);
+			auto gas = _runtimeManager.getGas();
+			_gasMeter.count(callGas256);
+			auto callGas = m_builder.CreateTrunc(callGas256, Type::Gas);
+			auto gasLeft = m_builder.CreateNSWSub(gas, callGas);
+			_runtimeManager.setGas(callGas);
+			auto ret = _ext.call(receiveAddress, value, inOff, inSize, outOff, outSize, codeAddress);
+			_gasMeter.giveBack(gasLeft);
 			stack.push(ret);
 			break;
 		}

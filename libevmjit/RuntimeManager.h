@@ -23,7 +23,8 @@ public:
 
 	llvm::Value* get(RuntimeData::Index _index);
 	llvm::Value* get(Instruction _inst);
-	llvm::Value* getGas();	// TODO: Remove
+	llvm::Value* getGas();
+	llvm::Value* getGasPtr();
 	llvm::Value* getCallData();
 	llvm::Value* getCode();
 	llvm::Value* getCodeSize();

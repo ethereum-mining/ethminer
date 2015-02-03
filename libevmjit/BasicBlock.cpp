@@ -18,13 +18,14 @@ namespace eth
 namespace jit
 {
 
-const char* BasicBlock::NamePrefix = "Instr.";
+static const char* jumpDestName = "JmpDst.";
+static const char* basicBlockName = "Instr.";
 
-BasicBlock::BasicBlock(code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest) :
+BasicBlock::BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest) :
+	m_firstInstrIdx{_firstInstrIdx},
 	m_begin(_begin),
 	m_end(_end),
-	// TODO: Add begin index to name
-	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), NamePrefix, _mainFunc)),
+	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), {isJumpDest ? jumpDestName : basicBlockName, std::to_string(_firstInstrIdx)}, _mainFunc)),
 	m_stack(*this),
 	m_builder(_builder),
 	m_isJumpDest(isJumpDest)
@@ -43,6 +44,7 @@ BasicBlock::LocalStack::LocalStack(BasicBlock& _owner) :
 
 void BasicBlock::LocalStack::push(llvm::Value* _value)
 {
+	assert(_value->getType() == Type::Word);
 	m_bblock.m_currentStack.push_back(_value);
 	m_bblock.m_tosOffset += 1;
 }

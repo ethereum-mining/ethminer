@@ -76,8 +76,6 @@ private:
 
 	/// Main program function
 	llvm::Function* m_mainFunc = nullptr;
-
-	code_iterator m_codeBegin = {};
 };
 
 }
