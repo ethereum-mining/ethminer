@@ -226,7 +226,7 @@ void Client::uninstallWatch(unsigned _i)
 void Client::noteChanged(h256Set const& _filters)
 {
 	Guard l(m_filterLock);
-	cnote << "noteChanged(" << _filters << ")";
+//	cnote << "noteChanged(" << _filters << ")";
 	// accrue all changes left in each filter into the watches.
 	for (auto& i: m_watches)
 		if (_filters.count(i.second.id))
@@ -361,13 +361,12 @@ void Client::setupState(State& _s)
 		cwork << "SETUP MINE";
 		_s = m_postMine;
 	}
-	_s.setUncles(m_bc);
 	if (m_paranoia)
 	{
 		if (_s.amIJustParanoid(m_bc))
 		{
 			cnote << "I'm just paranoid. Block is fine.";
-			_s.commitToMine();
+			_s.commitToMine(m_bc);
 		}
 		else
 		{
@@ -375,7 +374,7 @@ void Client::setupState(State& _s)
 		}
 	}
 	else
-		_s.commitToMine();
+		_s.commitToMine(m_bc);
 }
 
 void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
