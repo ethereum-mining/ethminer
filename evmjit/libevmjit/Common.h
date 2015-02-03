@@ -44,6 +44,8 @@ enum class ReturnCode
 	LLVMLinkError      = -103,
 
 	UnexpectedException = -111,
+
+	LinkerWorkaround = -299,
 };
 
 /// Representation of 256-bit value binary compatible with LLVM i256
