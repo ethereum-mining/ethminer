@@ -94,8 +94,13 @@ private:
 									bool bare = false);
 	/// Appends code that copies the given arguments to memory (with optional offset).
 	/// @returns the number of bytes copied to memory
-	unsigned appendArgumentCopyToMemory(TypePointers const& _functionType, std::vector<ASTPointer<Expression const>> const& _arguments,
+	unsigned appendArgumentCopyToMemory(TypePointers const& _types,
+										std::vector<ASTPointer<Expression const>> const& _arguments,
 										unsigned _memoryOffset = 0);
+	/// Appends code that evaluates a single expression and copies it to memory (with optional offset).
+	/// @returns the number of bytes copied to memory
+	unsigned appendExpressionCopyToMemory(Type const& _expectedType, Expression const& _expression,
+										  unsigned _memoryOffset = 0);
 
 	/// Appends code for a State Variable accessor function
 	void appendStateVariableAccessor(VariableDeclaration const& _varDecl);
@@ -130,10 +135,9 @@ private:
 
 		/// Copies the value of the current lvalue to the top of the stack and, if @a _remove is true,
 		/// also removes the reference from the stack (note that is does not reset the type to @a NONE).
-		/// @a _expression is the current expression, used for error reporting.
-		void retrieveValue(Expression const& _expression, bool _remove = false) const;
-		/// Convenience function to retrieve Value from Storage. Specific version of @ref retrieveValue
-		void retrieveValueFromStorage(TypePointer const& _type, bool _remove = false) const;
+		/// @a _type is the type of the current expression and @ _location its location, used for error reporting.
+		/// @a _location can be a nullptr for expressions that don't have an actual ASTNode equivalent
+		void retrieveValue(TypePointer const& _type, Location const& _location, bool _remove = false) const;
 		/// Stores a value (from the stack directly beneath the reference, which is assumed to
 		/// be on the top of the stack, if any) in the lvalue and removes the reference.
 		/// Also removes the stored value from the stack if @a _move is
@@ -147,6 +151,9 @@ private:
 		void retrieveValueIfLValueNotRequested(Expression const& _expression);
 
 	private:
+		/// Convenience function to retrieve Value from Storage. Specific version of @ref retrieveValue
+		void retrieveValueFromStorage(TypePointer const& _type, bool _remove = false) const;
+
 		CompilerContext* m_context;
 		LValueType m_type = NONE;
 		/// If m_type is STACK, this is base stack offset (@see

@@ -27,7 +27,29 @@ var web3 = require('./web3'); // jshint ignore:line
 
 /// should be used when we want to watch something
 /// it's using inner polling mechanism and is notified about changes
+/// TODO: change 'options' name cause it may be not the best matching one, since we have events
 var Filter = function(options, impl) {
+
+    if (typeof options !== "string") {
+
+        // topics property is deprecated, warn about it!
+        if (options.topics) {
+            console.warn('"topics" is deprecated, use "topic" instead');
+        }
+
+        // evaluate lazy properties
+        options = {
+            to: options.to,
+            topic: options.topic,
+            earliest: options.earliest,
+            latest: options.latest,
+            max: options.max,
+            skip: options.skip,
+            address: options.address
+        };
+
+    }
+    
     this.impl = impl;
     this.callbacks = [];
 
@@ -39,6 +61,9 @@ var Filter = function(options, impl) {
 Filter.prototype.arrived = function(callback) {
     this.changed(callback);
 };
+Filter.prototype.happened = function(callback) {
+    this.changed(callback);
+};
 
 /// gets called when there is new eth/shh message
 Filter.prototype.changed = function(callback) {
@@ -48,7 +73,7 @@ Filter.prototype.changed = function(callback) {
 /// trigger calling new message from people
 Filter.prototype.trigger = function(messages) {
     for (var i = 0; i < this.callbacks.length; i++) {
-        for (var j = 0; j < messages; j++) {
+        for (var j = 0; j < messages.length; j++) {
             this.callbacks[i].call(this, messages[j]);
         }
     }

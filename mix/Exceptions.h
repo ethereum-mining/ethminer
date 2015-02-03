@@ -35,9 +35,15 @@ namespace mix
 
 struct QmlLoadException: virtual Exception {};
 struct FileIoException: virtual Exception {};
+struct InvalidBlockException: virtual Exception {};
+struct FunctionNotFoundException: virtual Exception {};
+struct ExecutionStateException: virtual Exception {};
+struct ParameterChangedException: virtual Exception {};
 
 typedef boost::error_info<struct tagQmlError, QQmlError> QmlErrorInfo;
 typedef boost::error_info<struct tagFileError, std::string> FileError;
+typedef boost::error_info<struct tagBlockIndex, unsigned> BlockIndex;
+typedef boost::error_info<struct tagFunctionName, std::string> FunctionName;
 
 }
 }

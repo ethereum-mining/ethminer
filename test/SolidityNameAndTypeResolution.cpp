@@ -93,7 +93,7 @@ static ContractDefinition const* retrieveContract(ASTPointer<SourceUnit> _source
 	return NULL;
 }
 
-static FunctionDescription const& retrieveFunctionBySignature(ContractDefinition const* _contract,
+static FunctionTypePointer const& retrieveFunctionBySignature(ContractDefinition const* _contract,
 															  std::string const& _signature)
 {
 	FixedHash<4> hash(dev::sha3(_signature));
@@ -643,11 +643,11 @@ BOOST_AUTO_TEST_CASE(state_variable_accessors)
 	ContractDefinition const* contract;
 	BOOST_CHECK_NO_THROW(source = parseTextAndResolveNamesWithChecks(text));
 	BOOST_REQUIRE((contract = retrieveContract(source, 0)) != nullptr);
-	FunctionDescription function = retrieveFunctionBySignature(contract, "foo()");
-	BOOST_CHECK_MESSAGE(function.getDeclaration() != nullptr, "Could not find the accessor function");
-	auto returnParams = function.getReturnParameters();
-	BOOST_CHECK_EQUAL(returnParams.at(0).getType(), "uint256");
-	BOOST_CHECK(function.isConstant());
+	FunctionTypePointer function = retrieveFunctionBySignature(contract, "foo()");
+	BOOST_REQUIRE(function->hasDeclaration());
+	auto returnParams = function->getReturnParameterTypeNames();
+	BOOST_CHECK_EQUAL(returnParams.at(0), "uint256");
+	BOOST_CHECK(function->isConstant());
 }
 
 BOOST_AUTO_TEST_CASE(function_clash_with_state_variable_accessor)
@@ -676,8 +676,108 @@ BOOST_AUTO_TEST_CASE(private_state_variable)
 	ContractDefinition const* contract;
 	BOOST_CHECK_NO_THROW(source = parseTextAndResolveNamesWithChecks(text));
 	BOOST_CHECK((contract = retrieveContract(source, 0)) != nullptr);
-	FunctionDescription function = retrieveFunctionBySignature(contract, "foo()");
-	BOOST_CHECK_MESSAGE(function.getDeclaration() == nullptr, "Accessor function of a private variable should not exist");
+	FunctionTypePointer function = retrieveFunctionBySignature(contract, "foo()");
+	BOOST_CHECK_MESSAGE(function == nullptr, "Accessor function of a private variable should not exist");
+}
+
+BOOST_AUTO_TEST_CASE(fallback_function)
+{
+	char const* text = R"(
+		contract C {
+			uint x;
+			function() { x = 2; }
+		}
+	)";
+	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(text));
+}
+
+BOOST_AUTO_TEST_CASE(fallback_function_with_arguments)
+{
+	char const* text = R"(
+		contract C {
+			uint x;
+			function(uint a) { x = 2; }
+		}
+	)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(fallback_function_twice)
+{
+	char const* text = R"(
+		contract C {
+			uint x;
+			function() { x = 2; }
+			function() { x = 3; }
+		}
+	)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), DeclarationError);
+}
+
+BOOST_AUTO_TEST_CASE(fallback_function_inheritance)
+{
+	char const* text = R"(
+		contract A {
+			uint x;
+			function() { x = 1; }
+		}
+		contract C is A {
+			function() { x = 2; }
+		}
+	)";
+	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(text));
+}
+
+BOOST_AUTO_TEST_CASE(event)
+{
+	char const* text = R"(
+		contract c {
+			event e(uint indexed a, string3 indexed s, bool indexed b);
+			function f() { e(2, "abc", true); }
+		})";
+	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(text));
+}
+
+BOOST_AUTO_TEST_CASE(event_too_many_indexed)
+{
+	char const* text = R"(
+		contract c {
+			event e(uint indexed a, string3 indexed b, bool indexed c, uint indexed d);
+			function f() { e(2, "abc", true); }
+		})";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(event_call)
+{
+	char const* text = R"(
+		contract c {
+			event e(uint a, string3 indexed s, bool indexed b);
+			function f() { e(2, "abc", true); }
+		})";
+	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(text));
+}
+
+BOOST_AUTO_TEST_CASE(event_inheritance)
+{
+	char const* text = R"(
+		contract base {
+			event e(uint a, string3 indexed s, bool indexed b);
+		}
+		contract c is base {
+			function f() { e(2, "abc", true); }
+		})";
+	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(text));
+}
+
+BOOST_AUTO_TEST_CASE(multiple_events_argument_clash)
+{
+	char const* text = R"(
+		contract c {
+			event e1(uint a, uint e1, uint e2);
+			event e2(uint a, uint e1, uint e2);
+		})";
+	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(text));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -33,7 +33,7 @@ namespace mix
 {
 
 /// Simple http server for serving jsonrpc requests
-class HttpRequest : public QObject
+class HttpRequest: public QObject
 {
 	Q_OBJECT
 	/// Request url
@@ -59,7 +59,7 @@ private:
 	friend class HttpServer;
 };
 
-class HttpServer : public QTcpServer, public QQmlParserStatus
+class HttpServer: public QTcpServer, public QQmlParserStatus
 {
 	Q_OBJECT
 	Q_DISABLE_COPY(HttpServer)

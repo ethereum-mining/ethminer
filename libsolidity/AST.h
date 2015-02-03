@@ -156,71 +156,6 @@ private:
 	Declaration const* m_scope;
 };
 
-
-
-/// Traits and Helpers (@todo: move to their own header)
-/// @{
-
-/**
- * Generic Parameter description used by @see FunctionDescription to return
- * a descripton of its parameters.
- */
-struct ParamDescription
-{
-	ParamDescription(std::string const& _name, std::string const& _type):
-		m_description(_name, _type){}
-
-	std::string const& getName() const;
-	std::string const& getType() const;
-
-	std::pair<std::string, std::string> m_description;
-};
-
-
-/**
- * Generic function description able to describe both normal functions and
- * functions that should be made as accessors to state variables
- */
-struct FunctionDescription
-{
-	FunctionDescription(std::shared_ptr<FunctionType const> _type, Declaration const* _decl):
-		m_description(_type, _decl){}
-
-	/// constructor for a constructor's function definition. Used only inside mix.
-	FunctionDescription(Declaration const* _def):
-	m_description(nullptr, _def){}
-
-	FunctionDescription():
-		m_description(nullptr, nullptr){}
-
-	/// @returns the natspec documentation of the function if existing. Accessor (for now) don't have natspec doc
-	ASTPointer<ASTString> getDocumentation() const;
-	/// @returns the canonical signature of the function
-	std::string getSignature() const;
-	/// @returns the name of the function, basically that of the declaration
-	std::string getName() const;
-	/// @returns whether the function is constant. IF it's an accessor this is always true
-	bool isConstant() const;
-	/// @returns the argument parameters of the function
-	std::vector<ParamDescription> const getParameters() const;
-	/// @returns the return parameters of the function
-	std::vector<ParamDescription> const getReturnParameters() const;
-	/// @returns a generic Declaration AST Node pointer which can be either a FunctionDefinition or a VariableDeclaration
-	Declaration const* getDeclaration() const;
-	/// @returns the VariableDeclaration AST Node pointer or nullptr if it's not a VariableDeclaration
-	VariableDeclaration const* getVariableDeclaration() const;
-	/// @returns the FunctionDefinition AST Node pointer or nullptr if it's not a FunctionDefinition
-	FunctionDefinition const* getFunctionDefinition() const;
-	/// @returns a created shared pointer with the type of the function
-	std::shared_ptr<FunctionType> makeFunctionType() const;
-	/// @returns a pointer to the function type
-	FunctionType const* getFunctionType() const;
-	/// @returns a shared pointer to the function type
-	std::shared_ptr<FunctionType const> getFunctionTypeShared() const;
-
-	std::pair<std::shared_ptr<FunctionType const>, Declaration const*> m_description;
-};
-
 /**
  * Abstract class that is added to each AST node that can store local variables.
  */
@@ -252,7 +187,6 @@ protected:
 
 /// @}
 
-
 /**
  * Definition of a contract. This is the only AST nodes where child nodes are not visited in
  * document order. It first visits all struct declarations, then all variable declarations and
@@ -268,13 +202,15 @@ public:
 					   std::vector<ASTPointer<StructDefinition>> const& _definedStructs,
 					   std::vector<ASTPointer<VariableDeclaration>> const& _stateVariables,
 					   std::vector<ASTPointer<FunctionDefinition>> const& _definedFunctions,
-					   std::vector<ASTPointer<ModifierDefinition>> const& _functionModifiers):
+					   std::vector<ASTPointer<ModifierDefinition>> const& _functionModifiers,
+					   std::vector<ASTPointer<EventDefinition>> const& _events):
 		Declaration(_location, _name), Documented(_documentation),
 		m_baseContracts(_baseContracts),
 		m_definedStructs(_definedStructs),
 		m_stateVariables(_stateVariables),
 		m_definedFunctions(_definedFunctions),
-		m_functionModifiers(_functionModifiers)
+		m_functionModifiers(_functionModifiers),
+		m_events(_events)
 	{}
 
 	virtual void accept(ASTVisitor& _visitor) override;
@@ -285,6 +221,8 @@ public:
 	std::vector<ASTPointer<VariableDeclaration>> const& getStateVariables() const { return m_stateVariables; }
 	std::vector<ASTPointer<ModifierDefinition>> const& getFunctionModifiers() const { return m_functionModifiers; }
 	std::vector<ASTPointer<FunctionDefinition>> const& getDefinedFunctions() const { return m_definedFunctions; }
+	std::vector<ASTPointer<EventDefinition>> const& getEvents() const { return m_events; }
+	std::vector<ASTPointer<EventDefinition>> const& getInterfaceEvents() const;
 
 	virtual TypePointer getType(ContractDefinition const* m_currentContract) const override;
 
@@ -294,29 +232,33 @@ public:
 
 	/// @returns a map of canonical function signatures to FunctionDefinitions
 	/// as intended for use by the ABI.
-	std::map<FixedHash<4>, FunctionDescription> getInterfaceFunctions() const;
+	std::map<FixedHash<4>, FunctionTypePointer> getInterfaceFunctions() const;
 
 	/// List of all (direct and indirect) base contracts in order from derived to base, including
 	/// the contract itself. Available after name resolution
 	std::vector<ContractDefinition const*> const& getLinearizedBaseContracts() const { return m_linearizedBaseContracts; }
 	void setLinearizedBaseContracts(std::vector<ContractDefinition const*> const& _bases) { m_linearizedBaseContracts = _bases; }
 
-	/// Returns the constructor or nullptr if no constructor was specified
+	/// Returns the constructor or nullptr if no constructor was specified.
 	FunctionDefinition const* getConstructor() const;
+	/// Returns the fallback function or nullptr if no constructor was specified.
+	FunctionDefinition const* getFallbackFunction() const;
 
 private:
 	void checkIllegalOverrides() const;
 
-	std::vector<std::tuple<FixedHash<4>, std::shared_ptr<FunctionType const>, Declaration const*>> const& getInterfaceFunctionList() const;
+	std::vector<std::pair<FixedHash<4>, FunctionTypePointer>> const& getInterfaceFunctionList() const;
 
 	std::vector<ASTPointer<InheritanceSpecifier>> m_baseContracts;
 	std::vector<ASTPointer<StructDefinition>> m_definedStructs;
 	std::vector<ASTPointer<VariableDeclaration>> m_stateVariables;
 	std::vector<ASTPointer<FunctionDefinition>> m_definedFunctions;
 	std::vector<ASTPointer<ModifierDefinition>> m_functionModifiers;
+	std::vector<ASTPointer<EventDefinition>> m_events;
 
 	std::vector<ContractDefinition const*> m_linearizedBaseContracts;
-	mutable std::unique_ptr<std::vector<std::tuple<FixedHash<4>, std::shared_ptr<FunctionType const>, Declaration const*>>> m_interfaceFunctionList;
+	mutable std::unique_ptr<std::vector<std::pair<FixedHash<4>, FunctionTypePointer>>> m_interfaceFunctionList;
+	mutable std::unique_ptr<std::vector<ASTPointer<EventDefinition>>> m_interfaceEvents;
 };
 
 class InheritanceSpecifier: public ASTNode
@@ -446,8 +388,10 @@ class VariableDeclaration: public Declaration
 {
 public:
 	VariableDeclaration(Location const& _location, ASTPointer<TypeName> const& _type,
-							ASTPointer<ASTString> const& _name, bool _isPublic, bool _isStateVar = false):
-	Declaration(_location, _name), m_typeName(_type), m_isPublic(_isPublic), m_isStateVariable(_isStateVar) {}
+						ASTPointer<ASTString> const& _name, bool _isPublic, bool _isStateVar = false,
+						bool _isIndexed = false):
+		Declaration(_location, _name), m_typeName(_type),
+		m_isPublic(_isPublic), m_isStateVariable(_isStateVar), m_isIndexed(_isIndexed) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 
@@ -462,12 +406,13 @@ public:
 	bool isLocalVariable() const { return !!dynamic_cast<FunctionDefinition const*>(getScope()); }
 	bool isPublic() const { return m_isPublic; }
 	bool isStateVariable() const { return m_isStateVariable; }
-
+	bool isIndexed() const { return m_isIndexed; }
 
 private:
 	ASTPointer<TypeName> m_typeName;    ///< can be empty ("var")
 	bool m_isPublic;                    ///< Whether there is an accessor for it or not
 	bool m_isStateVariable;             ///< Whether or not this is a contract state variable
+	bool m_isIndexed;                   ///< Whether this is an indexed variable (used by events).
 
 	std::shared_ptr<Type const> m_type; ///< derived type, initially empty
 };
@@ -494,7 +439,6 @@ public:
 	Block const& getBody() const { return *m_body; }
 
 	virtual TypePointer getType(ContractDefinition const* = nullptr) const override;
-
 
 	void checkTypeRequirements();
 
@@ -524,6 +468,35 @@ public:
 private:
 	ASTPointer<Identifier> m_modifierName;
 	std::vector<ASTPointer<Expression>> m_arguments;
+};
+
+/**
+ * Definition of a (loggable) event.
+ */
+class EventDefinition: public Declaration, public VariableScope, public Documented
+{
+public:
+	EventDefinition(Location const& _location,
+					ASTPointer<ASTString> const& _name,
+					ASTPointer<ASTString> const& _documentation,
+					ASTPointer<ParameterList> const& _parameters):
+		Declaration(_location, _name), Documented(_documentation), m_parameters(_parameters) {}
+
+	virtual void accept(ASTVisitor& _visitor) override;
+	virtual void accept(ASTConstVisitor& _visitor) const override;
+
+	std::vector<ASTPointer<VariableDeclaration>> const& getParameters() const { return m_parameters->getParameters(); }
+	ParameterList const& getParameterList() const { return *m_parameters; }
+
+	virtual TypePointer getType(ContractDefinition const* = nullptr) const override
+	{
+		return std::make_shared<FunctionType>(*this);
+	}
+
+	void checkTypeRequirements();
+
+private:
+	ASTPointer<ParameterList> m_parameters;
 };
 
 /**

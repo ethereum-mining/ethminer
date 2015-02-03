@@ -10,7 +10,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.1
 
-Rectangle {
+RowLayout {
 	id: etherEdition
 	property bool displayFormattedValue;
 	property bool edit;
@@ -32,84 +32,59 @@ Rectangle {
 		units.currentIndex = unit;
 	}
 
-	RowLayout
+	TextField
 	{
-		anchors.fill: parent;
-		id: row
-		width: 200
-		height: parent.height
-		Rectangle
+		implicitWidth: 200
+		onTextChanged:
 		{
-			width : 200
-			color: edit ? "blue" : "white"
-			TextField
+			if (value !== undefined)
 			{
-				onTextChanged:
-				{
-					if (value !== undefined)
-					{
-						value.setValue(text)
-						formattedValue.text = value.format();
-					}
-				}
-				width: parent.width
-				readOnly: !edit
-				visible: edit
-				id: etherValueEdit;
+				value.setValue(text)
+				formattedValue.text = value.format();
 			}
 		}
+		readOnly: !edit
+		visible: edit
+		id: etherValueEdit;
+	}
 
-		Rectangle
+	ComboBox
+	{
+		id: units
+		onCurrentTextChanged:
 		{
-			Layout.fillWidth: true
-			id: unitContainer
-			width: 20
-			anchors.verticalCenter: parent.verticalCenter
-			ComboBox
+			if (value !== undefined)
 			{
-				id: units
-				onCurrentTextChanged:
-				{
-					if (value !== undefined)
-					{
-						value.setUnit(currentText);
-						formattedValue.text = value.format();
-					}
-				}
-				model: ListModel {
-					id: unitsModel
-					ListElement { text: "Uether"; }
-					ListElement { text: "Vether"; }
-					ListElement { text: "Dether"; }
-					ListElement { text: "Nether"; }
-					ListElement { text: "Yether"; }
-					ListElement { text: "Zether"; }
-					ListElement { text: "Eether"; }
-					ListElement { text: "Pether"; }
-					ListElement { text: "Tether"; }
-					ListElement { text: "Gether"; }
-					ListElement { text: "Mether"; }
-					ListElement { text: "grand"; }
-					ListElement { text: "ether"; }
-					ListElement { text: "finney"; }
-					ListElement { text: "szabo"; }
-					ListElement { text: "Gwei"; }
-					ListElement { text: "Mwei"; }
-					ListElement { text: "Kwei"; }
-					ListElement { text: "wei"; }
-				}
-			}
-			Rectangle
-			{
-				anchors.verticalCenter: parent.verticalCenter
-				anchors.left: units.right
-				visible: displayFormattedValue
-				width: 20
-				Text
-				{
-					id: formattedValue
-				}
+				value.setUnit(currentText);
+				formattedValue.text = value.format();
 			}
 		}
+		model: ListModel {
+			id: unitsModel
+			ListElement { text: "Uether"; }
+			ListElement { text: "Vether"; }
+			ListElement { text: "Dether"; }
+			ListElement { text: "Nether"; }
+			ListElement { text: "Yether"; }
+			ListElement { text: "Zether"; }
+			ListElement { text: "Eether"; }
+			ListElement { text: "Pether"; }
+			ListElement { text: "Tether"; }
+			ListElement { text: "Gether"; }
+			ListElement { text: "Mether"; }
+			ListElement { text: "grand"; }
+			ListElement { text: "ether"; }
+			ListElement { text: "finney"; }
+			ListElement { text: "szabo"; }
+			ListElement { text: "Gwei"; }
+			ListElement { text: "Mwei"; }
+			ListElement { text: "Kwei"; }
+			ListElement { text: "wei"; }
+		}
+	}
+	Text
+	{
+		visible: displayFormattedValue
+		id: formattedValue
 	}
 }

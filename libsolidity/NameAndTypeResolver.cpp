@@ -60,6 +60,8 @@ void NameAndTypeResolver::resolveNamesAndTypes(ContractDefinition& _contract)
 		ReferencesResolver resolver(*structDef, *this, &_contract, nullptr);
 	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
 		ReferencesResolver resolver(*variable, *this, &_contract, nullptr);
+	for (ASTPointer<EventDefinition> const& event: _contract.getEvents())
+		ReferencesResolver resolver(*event, *this, &_contract, nullptr);
 	for (ASTPointer<ModifierDefinition> const& modifier: _contract.getFunctionModifiers())
 	{
 		m_currentScope = &m_scopes[modifier.get()];
@@ -257,6 +259,17 @@ bool DeclarationRegistrationHelper::visit(VariableDeclaration& _declaration)
 {
 	registerDeclaration(_declaration, false);
 	return true;
+}
+
+bool DeclarationRegistrationHelper::visit(EventDefinition& _event)
+{
+	registerDeclaration(_event, true);
+	return true;
+}
+
+void DeclarationRegistrationHelper::endVisit(EventDefinition&)
+{
+	closeCurrentScope();
 }
 
 void DeclarationRegistrationHelper::enterNewSubScope(Declaration const& _declaration)
