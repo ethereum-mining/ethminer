@@ -41,6 +41,7 @@ const Secret c_userAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4d
 MixClient::MixClient(std::string const& _dbPath):
 	m_userAccount(c_userAccountSecret), m_bc(_dbPath, true), m_dbPath(_dbPath), m_minigThreads(0)
 {
+	//TODO: put this into genesis block somehow
 	//resetState(10000000 * ether);
 }
 
