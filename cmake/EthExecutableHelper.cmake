@@ -83,19 +83,11 @@ macro(eth_install_executable EXECUTABLE)
 			set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/\$ENV{CONFIGURATION}/${EXECUTABLE}.app")
 		endif ()
 
-		# TODO check, how fixup_bundle works and if it is required
 		install(CODE "
 			include(BundleUtilities)
 			set(BU_CHMOD_BUNDLE_ITEMS 1)
 			verify_app(\"${APP_BUNDLE_PATH}\")
 			" COMPONENT RUNTIME )
-		# Cleanup duplicate libs from macdeployqt
-		install(CODE "
-			file(GLOB LINGER_RM \"${APP_BUNDLE_PATH}/Contents/Frameworks/*.dylib\")
-			if (LINGER_RM)
-				file(REMOVE \${LINGER_RM})
-			endif ()
-		")
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 		# copy all dlls to executable directory
