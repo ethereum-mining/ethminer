@@ -106,7 +106,6 @@ private:
 	std::map<h256, dev::eth::InstalledFilter> m_filters;
 	std::map<unsigned, dev::eth::ClientWatch> m_watches;
 	Blocks m_blocks;
-	eth::LastHashes m_lastHashes;
 };
 
 }
