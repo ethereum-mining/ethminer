@@ -25,12 +25,14 @@ public:
 
 private:
 	llvm::Function* getMulFunc();
+	llvm::Function* getMul512Func();
 	llvm::Function* getDivFunc(llvm::Type* _type);
 	llvm::Function* getExpFunc();
 	llvm::Function* getAddModFunc();
 	llvm::Function* getMulModFunc();
 
 	llvm::Function* m_mul = nullptr;
+	llvm::Function* m_mul512 = nullptr;
 	llvm::Function* m_div = nullptr;
 	llvm::Function* m_div512 = nullptr;
 	llvm::Function* m_exp = nullptr;
