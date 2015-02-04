@@ -48,6 +48,7 @@ class FileIo;
 class AppContext: public QObject
 {
 	Q_OBJECT
+	Q_PROPERTY(QString clipboard READ clipboard WRITE toClipboard NOTIFY clipboardChanged)
 
 public:
 	AppContext(QQmlApplicationEngine* _engine);
@@ -64,10 +65,13 @@ public:
 	void displayMessageDialog(QString _title, QString _message);
 	/// Copy text to clipboard
 	Q_INVOKABLE void toClipboard(QString _text);
+	/// Get text from clipboard
+	QString clipboard() const;
 
 signals:
 	/// Triggered once components have been loaded
 	void appLoaded();
+	void clipboardChanged();
 
 private:
 	QQmlApplicationEngine* m_applicationEngine; //owned by app
