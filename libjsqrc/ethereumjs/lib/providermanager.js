@@ -23,7 +23,9 @@
  * @date 2014
  */
 
-var web3 = require('./web3'); // jshint ignore:line
+var web3 = require('./web3'); 
+var jsonrpc = require('./jsonrpc');
+
 
 /**
  * Provider manager object prototype
@@ -35,74 +37,72 @@ var web3 = require('./web3'); // jshint ignore:line
  * and provider manager polling mechanism is not used
  */
 var ProviderManager = function() {
-    this.queued = [];
     this.polls = [];
-    this.ready = false;
     this.provider = undefined;
-    this.id = 1;
 
     var self = this;
     var poll = function () {
-        if (self.provider && self.provider.poll) {
-            self.polls.forEach(function (data) {
-                data.data._id = self.id;
-                self.id++;
-                self.provider.poll(data.data, data.id);
+        if (self.provider) {
+            var pollsBatch = self.polls.map(function (data) {
+                return data.data;
             });
+
+            var payload = jsonrpc.toBatchPayload(pollsBatch);
+            var results = self.provider.send(payload);
+
+            self.polls.forEach(function (data, index) {
+                var result = results[index];
+                
+                if (!jsonrpc.isValidResponse(result)) {
+                    console.log(result);
+                    return;
+                }
+
+                result = result.result;
+                // dont call the callback if result is not an array, or empty one
+                if (!(result instanceof Array) || result.length === 0) {
+                    return;
+                }
+
+                data.callback(result);
+
+            });
+
         }
-        setTimeout(poll, 12000);
+        setTimeout(poll, 1000);
     };
     poll();
 };
 
-/// sends outgoing requests, if provider is not available, enqueue the request
-ProviderManager.prototype.send = function(data, cb) {
-    data._id = this.id;
-    if (cb) {
-        web3._callbacks[data._id] = cb;
+/// sends outgoing requests
+/// @params data - an object with at least 'method' property
+ProviderManager.prototype.send = function(data) {
+    var payload = jsonrpc.toPayload(data.method, data.params);
+
+    if (this.provider === undefined) {
+        console.error('provider is not set');
+        return null; 
     }
 
-    data.args = data.args || [];
-    this.id++;
+    var result = this.provider.send(payload);
 
-    if(this.provider !== undefined) {
-        this.provider.send(data);
-    } else {
-        console.warn("provider is not set");
-        this.queued.push(data);
+    if (!jsonrpc.isValidResponse(result)) {
+        console.log(result);
+        return null;
     }
+
+    return result.result;
 };
 
 /// setups provider, which will be used for sending messages
 ProviderManager.prototype.set = function(provider) {
-    if(this.provider !== undefined && this.provider.unload !== undefined) {
-        this.provider.unload();
-    }
-
     this.provider = provider;
-    this.ready = true;
-};
-
-/// resends queued messages
-ProviderManager.prototype.sendQueued = function() {
-    for(var i = 0; this.queued.length; i++) {
-        // Resend
-        this.send(this.queued[i]);
-    }
-};
-
-/// @returns true if the provider i properly set
-ProviderManager.prototype.installed = function() {
-    return this.provider !== undefined;
 };
 
 /// this method is only used, when we do not have native qt bindings and have to do polling on our own
 /// should be callled, on start watching for eth/shh changes
-ProviderManager.prototype.startPolling = function (data, pollId) {
-    if (!this.provider || !this.provider.poll) {
-        return;
-    }
-    this.polls.push({data: data, id: pollId});
+ProviderManager.prototype.startPolling = function (data, pollId, callback) {
+    this.polls.push({data: data, id: pollId, callback: callback});
 };
 
 /// should be called to stop polling for certain watch changes

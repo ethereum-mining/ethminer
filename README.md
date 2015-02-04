@@ -1,14 +1,12 @@
 ## Ethereum C++ Client.
 
-[![Build
-Status](http://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20master%20branch)](http://build.ethdev.com/builders/Linux%20C%2B%2B%20master%20branch/builds/-1) master [![Build
-Status](http://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20develop%20branch)](http://build.ethdev.com/builders/Linux%20C%2B%2B%20develop%20branch/builds/-1) develop
-
 By Gav Wood, 2014.
 
-[![Build
-+Status](http://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20master%20branch)](http://build.ethdev.com/builders/Linux%20C%2B%2B%20master%20branch/builds/-1) master [![Build
-+Status](http://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20develop%20branch)](http://build.ethdev.com/builders/Linux%20C%2B%2B%20develop%20branch/builds/-1) develop
+          | Linux   | OSX | Windows
+----------|---------|-----|--------
+develop   | [![Build+Status](http://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20develop%20branch)](http://build.ethdev.com/builders/Linux%20C%2B%2B%20develop%20branch/builds/-1) | [![Build+Status](http://build.ethdev.com/buildstatusimage?builder=OSX%20C%2B%2B%20develop%20branch)](http://build.ethdev.com/builders/OSX%20C%2B%2B%20develop%20branch/builds/-1) | [![Build+Status](http://build.ethdev.com/buildstatusimage?builder=Windows%20C%2B%2B%20develop%20branch)](http://build.ethdev.com/builders/Windows%20C%2B%2B%20develop%20branch/builds/-1)
+master    | [![Build+Status](http://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20master%20branch)](http://build.ethdev.com/builders/Linux%20C%2B%2B%20master%20branch/builds/-1) | [![Build+Status](http://build.ethdev.com/buildstatusimage?builder=OSX%20C%2B%2B%20master%20branch)](http://build.ethdev.com/builders/OSX%20C%2B%2B%20master%20branch/builds/-1) | [![Build+Status](http://build.ethdev.com/buildstatusimage?builder=Windows%20C%2B%2B%20master%20branch)](http://build.ethdev.com/builders/Windows%20C%2B%2B%20master%20branch/builds/-1)
+evmjit    | [![Build+Status](http://build.ethdev.com/buildstatusimage?builder=Linux%20C%2B%2B%20develop%20evmjit)](http://build.ethdev.com/builders/Linux%20C%2B%2B%20develop%20evmjit/builds/-1) | [![Build+Status](http://build.ethdev.com/buildstatusimage?builder=OSX%20C%2B%2B%20develop%20evmjit)](http://build.ethdev.com/builders/OSX%20C%2B%2B%20develop%20evmjit/builds/-1) | N/A
 
 [![Stories in Ready](https://badge.waffle.io/ethereum/cpp-ethereum.png?label=ready&title=Ready)](http://waffle.io/ethereum/cpp-ethereum)
 

@@ -1,0 +1,6 @@
+<RCC>
+        <qresource prefix="/">
+		<file alias="qml/WebPreview.qml">qml/WebPreviewStub.qml</file>
+		<file alias="qml/CodeEditor.qml">qml/CodeEditor.qml</file>
+        </qresource>
+</RCC>
