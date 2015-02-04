@@ -49,7 +49,7 @@ extern const h256 EmptyTrie;
 
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
- * This version uses an database backend.
+ * This version uses a database backend.
  * Usage:
  * @code
  * GenericTrieDB<MyDB> t(&myDB);
