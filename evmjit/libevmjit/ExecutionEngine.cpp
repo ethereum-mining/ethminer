@@ -83,6 +83,50 @@ bool showInfo()
 	return show;
 }
 
+class StatsCollector
+{
+public:
+	std::vector<std::unique_ptr<ExecStats>> stats;
+
+	~StatsCollector()
+	{
+		if (stats.empty())
+			return;
+
+		using d = decltype(ExecStats{}.execTime);
+		d total = d::zero();
+		d max = d::zero();
+		d min = d::max();
+
+		for (auto&& s : stats)
+		{
+			auto t = s->execTime;
+			total += t;
+			if (t < min)
+				min = t;
+			if (t > max)
+				max = t;
+		}
+
+		using u = std::chrono::microseconds;
+		auto nTotal = std::chrono::duration_cast<u>(total).count();
+		auto nAverage = std::chrono::duration_cast<u>(total / stats.size()).count();
+		auto nMax = std::chrono::duration_cast<u>(max).count();
+		auto nMin = std::chrono::duration_cast<u>(min).count();
+
+		std::cout << "Total  exec time: " << nTotal << " us" << std::endl
+				  << "Averge exec time: " << nAverage << " us" << std::endl
+				  << "Min    exec time: " << nMin << " us" << std::endl
+				  << "Max    exec time: " << nMax << " us" << std::endl;
+	}
+};
+
+}
+
+void ExecutionEngine::collectStats()
+{
+	if (!m_stats)
+		m_stats.reset(new ExecStats);
 }
 
 ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
@@ -90,8 +134,14 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	static std::unique_ptr<llvm::ExecutionEngine> ee;  // TODO: Use Managed Objects from LLVM?
 	static auto debugDumpModule = getEnvOption("EVMJIT_DUMP", false);
 	static auto objectCacheEnabled = getEnvOption("EVMJIT_CACHE", true);
+	static auto statsCollectingEnabled = getEnvOption("EVMJIT_STATS", false);
 	static auto infoShown = showInfo();
 	(void) infoShown;
+
+	static StatsCollector statsCollector;
+
+	if (statsCollectingEnabled)
+		collectStats();
 
 	auto codeBegin = _data->code;
 	auto codeEnd = codeBegin + _data->codeSize;
@@ -153,17 +203,22 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	}
 	assert(entryFuncPtr);
 
-	auto executionStartTime = std::chrono::high_resolution_clock::now();
+	if (m_stats)
+		m_stats->execStarted();
 
 	auto returnCode = runEntryFunc(entryFuncPtr, &runtime);
+
+	if (m_stats)
+		m_stats->execEnded();
+
 	if (returnCode == ReturnCode::Return)
 	{
 		returnData = runtime.getReturnData();     // Save reference to return data
 		std::swap(m_memory, runtime.getMemory()); // Take ownership of memory
 	}
 
-	auto executionEndTime = std::chrono::high_resolution_clock::now();
-	clog(JIT) << " + " << std::chrono::duration_cast<std::chrono::milliseconds>(executionEndTime - executionStartTime).count() << " ms\n";
+	if (statsCollectingEnabled)
+		statsCollector.stats.push_back(std::move(m_stats));
 
 	return returnCode;
 }
