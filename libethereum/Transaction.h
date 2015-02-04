@@ -37,6 +37,13 @@ enum IncludeSignature
 	WithSignature = 1,		///< Do include a signature.
 };
 
+enum class CheckSignature
+{
+	None,
+	Range,
+	Sender
+};
+
 /// Encodes a transaction, ready to be exported to or freshly imported from RLP.
 class Transaction
 {
@@ -57,10 +64,10 @@ public:
 	Transaction(u256 _value, u256 _gasPrice, u256 _gas, bytes const& _data): m_type(ContractCreation), m_value(_value), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
 
 	/// Constructs a transaction from the given RLP.
-	explicit Transaction(bytesConstRef _rlp, bool _checkSender = false);
+	explicit Transaction(bytesConstRef _rlp, CheckSignature _checkSig);
 
 	/// Constructs a transaction from the given RLP.
-	explicit Transaction(bytes const& _rlp, bool _checkSender = false): Transaction(&_rlp, _checkSender) {}
+	explicit Transaction(bytes const& _rlp, CheckSignature _checkSig): Transaction(&_rlp, _checkSig) {}
 
 
 	/// Checks equality of transactions.

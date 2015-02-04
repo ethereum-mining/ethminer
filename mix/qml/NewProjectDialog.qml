@@ -26,6 +26,11 @@ Window {
 		visible = false;
 	}
 
+	function acceptAndClose() {
+		close();
+		accepted();
+	}
+
 	GridLayout {
 		id: dialogContent
 		columns: 2
@@ -41,6 +46,10 @@ Window {
 			id: titleField
 			focus: true
 			Layout.fillWidth: true
+			Keys.onReturnPressed: {
+				if (okButton.enabled)
+					acceptAndClose();
+			}
 		}
 
 		Label {
@@ -50,6 +59,10 @@ Window {
 			TextField {
 				id: pathField
 				Layout.fillWidth: true
+				Keys.onReturnPressed: {
+					if (okButton.enabled)
+						acceptAndClose();
+				}
 			}
 			Button {
 				text: qsTr("Browse")
@@ -63,11 +76,11 @@ Window {
 			anchors.right: parent.right;
 
 			Button {
+				id: okButton;
 				enabled: titleField.text != "" && pathField.text != ""
-				text: qsTr("Ok");
+				text: qsTr("OK");
 				onClicked: {
-					close();
-					accepted();
+					acceptAndClose();
 				}
 			}
 			Button {

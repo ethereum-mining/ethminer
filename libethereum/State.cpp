@@ -395,7 +395,7 @@ bool State::cull(TransactionQueue& _tq) const
 		{
 			try
 			{
-				Transaction t(i.second);
+				Transaction t(i.second, CheckSignature::Sender);
 				if (t.nonce() <= transactionsFrom(t.sender()))
 				{
 					_tq.drop(i.first);
@@ -682,8 +682,6 @@ LogBloom State::logBloom() const
 	return ret;
 }
 
-// @returns the block that represents the difference between m_previousBlock and m_currentBlock.
-// (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
 {
 	uncommitToMine();
@@ -802,7 +800,7 @@ void State::completeMine()
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
-	m_currentBlock.hash = sha3(m_currentBytes);
+	m_currentBlock.hash = sha3(RLP(m_currentBytes)[0].data());
 	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
 
 	// Quickly reset the transactions.

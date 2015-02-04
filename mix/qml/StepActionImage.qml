@@ -8,6 +8,8 @@ Rectangle {
 	id: buttonActionContainer
 	property string disableStateImg
 	property string enabledStateImg
+	property string buttonTooltip
+	property string buttonShortcut
 	signal clicked
 
 	function enabled(state)
@@ -19,7 +21,6 @@ Rectangle {
 			debugImg.iconSource = disableStateImg;
 	}
 
-	color: "transparent"
 	Button
 	{
 		anchors.fill: parent
@@ -31,7 +32,9 @@ Rectangle {
 	}
 
 	Action {
+		tooltip: buttonTooltip
 		id: buttonAction
+		shortcut: buttonShortcut
 		onTriggered: {
 			buttonActionContainer.clicked();
 		}

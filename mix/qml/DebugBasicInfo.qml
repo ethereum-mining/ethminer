@@ -5,8 +5,6 @@ import QtQuick.Controls.Styles 1.1
 
 RowLayout {
 	property string titleStr
-	width: parent.width
-	height: parent.height / 4
 
 	function update(_value)
 	{
@@ -14,7 +12,7 @@ RowLayout {
 	}
 
 	Rectangle {
-		width: parent.width / 2
+		width: 120
 		height: parent.height
 		color: "#e5e5e5"
 		Text

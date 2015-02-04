@@ -39,6 +39,16 @@ namespace shh
 
 class Message;
 
+static const unsigned Undefined = (unsigned)-1;
+
+struct FilterKey
+{
+	FilterKey() {}
+	FilterKey(unsigned _tI, Secret const& _k): topicIndex(_tI), key(_k) {}
+	unsigned topicIndex = Undefined;
+	Secret key;
+};
+
 enum IncludeNonce
 {
 	WithoutNonce = 0,
@@ -61,22 +71,22 @@ public:
 	unsigned sent() const { return m_expiry - m_ttl; }
 	unsigned expiry() const { return m_expiry; }
 	unsigned ttl() const { return m_ttl; }
-	Topic const& topics() const { return m_topic; }
+	CollapsedTopic const& topic() const { return m_topic; }
 	bytes const& data() const { return m_data; }
 
-	Message open(Secret const& _s = Secret()) const;
+	Message open(FullTopic const& _ft, Secret const& _s = Secret()) const;
 
 	unsigned workProved() const;
 	void proveWork(unsigned _ms);
 
 private:
-	Envelope(unsigned _exp, unsigned _ttl, Topic const& _topic): m_expiry(_exp), m_ttl(_ttl), m_topic(_topic) {}
+	Envelope(unsigned _exp, unsigned _ttl, CollapsedTopic const& _topic): m_expiry(_exp), m_ttl(_ttl), m_topic(_topic) {}
 
 	unsigned m_expiry = 0;
 	unsigned m_ttl = 0;
 	u256 m_nonce;
 
-	Topic m_topic;
+	CollapsedTopic m_topic;
 	bytes m_data;
 };
 
@@ -91,7 +101,7 @@ class Message
 {
 public:
 	Message() {}
-	Message(Envelope const& _e, Secret const& _s = Secret());
+	Message(Envelope const& _e, FullTopic const& _ft, Secret const& _s = Secret());
 	Message(bytes const& _payload): m_payload(_payload) {}
 	Message(bytesConstRef _payload): m_payload(_payload.toBytes()) {}
 	Message(bytes&& _payload) { std::swap(_payload, m_payload); }
@@ -108,11 +118,11 @@ public:
 	operator bool() const { return !!m_payload.size() || m_from || m_to; }
 
 	/// Turn this message into a ditributable Envelope.
-	Envelope seal(Secret _from, Topic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) const;
+	Envelope seal(Secret _from, FullTopic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) const;
 	// Overloads for skipping _from or specifying _to.
-	Envelope seal(Topic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) const { return seal(Secret(), _topic, _workToProve, _ttl); }
-	Envelope sealTo(Public _to, Topic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) { m_to = _to; return seal(Secret(), _topic, _workToProve, _ttl); }
-	Envelope sealTo(Secret _from, Public _to, Topic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) { m_to = _to; return seal(_from, _topic, _workToProve, _ttl); }
+	Envelope seal(FullTopic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) const { return seal(Secret(), _topic, _workToProve, _ttl); }
+	Envelope sealTo(Public _to, FullTopic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) { m_to = _to; return seal(Secret(), _topic, _workToProve, _ttl); }
+	Envelope sealTo(Secret _from, Public _to, FullTopic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) { m_to = _to; return seal(_from, _topic, _workToProve, _ttl); }
 
 private:
 	bool populate(bytes const& _data);

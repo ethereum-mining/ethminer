@@ -277,17 +277,7 @@ public:
 	/// Kills the blockchain. Just for debug use.
 	void killChain();
 
-private:
-	/// Do some work. Handles blockchain maintenance and mining.
-	virtual void doWork();
-
-	virtual void doneWorking();
-
-	/// Overrides for being a mining host.
-	virtual void setupState(State& _s);
-	virtual bool turbo() const { return m_turboMining; }
-	virtual bool force() const { return m_forceMining; }
-
+protected:
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
 	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed);
@@ -299,6 +289,17 @@ private:
 	/// Record that the set of filters @a _filters have changed.
 	/// This doesn't actually make any callbacks, but incrememnts some counters in m_watches.
 	void noteChanged(h256Set const& _filters);
+
+private:
+	/// Do some work. Handles blockchain maintenance and mining.
+	virtual void doWork();
+
+	virtual void doneWorking();
+
+	/// Overrides for being a mining host.
+	virtual void setupState(State& _s);
+	virtual bool turbo() const { return m_turboMining; }
+	virtual bool force() const { return m_forceMining; }
 
 	/// Return the actual block number of the block with the given int-number (positive is the same, INT_MIN is genesis block, < 0 is negative age, thus -1 is most recently mined, 0 is pending.
 	unsigned numberOf(int _b) const;

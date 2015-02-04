@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+<script src="qrc:///js/bignumber.min.js"></script>
+<script src="qrc:///js/webthree.js"></script>
+<script>
+loadPage = function(url) {
+	var preview = document.getElementById('preview');
+	preview.src = url;
+
+};
+
+reloadPage = function() {
+	var preview = document.getElementById('preview');
+	preview.contentWindow.location.reload();
+};
+
+updateContract = function(address, contractFace) {
+	if (window.web3) {
+		window.web3.provider.polls = [];
+		window.contractAddress = address;
+		window.contractInterface = contractFace;
+		window.contract = window.web3.eth.contract(address, contractFace);
+	}
+};
+
+init = function(url) {
+	web3 = require('web3');
+	web3.setProvider(new web3.providers.HttpSyncProvider(url));
+	window.web3 = web3;
+};
+
+</script>
+
+<style>
+body {
+	margin: 0;
+}
+</style>
+
+</head>
+<body><iframe src="" name="preview" id="preview" style="border: 0; position:absolute; top:0; left:0; right:0; bottom:0; width:100%; height:100%"></iframe></body>
+</html>

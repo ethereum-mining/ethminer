@@ -62,6 +62,9 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 		if (protocolVersion != version())
 			disable("Invalid protocol version.");
 
+		for (auto const& m: host()->all())
+			m_unseen.insert(make_pair(0, m.first));
+
 		if (session()->id() < host()->host()->id())
 			sendMessages();
 		break;
@@ -103,7 +106,7 @@ void WhisperPeer::sendMessages()
 	}
 }
 
-void WhisperPeer::noteNewMessage(h256 _h, Message const& _m)
+void WhisperPeer::noteNewMessage(h256 _h, Envelope const& _m)
 {
 	Guard l(x_unseen);
 	m_unseen.insert(make_pair(rating(_m), _h));
