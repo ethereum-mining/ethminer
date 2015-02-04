@@ -36,9 +36,9 @@ namespace dev
 {
 class WebThreeNetworkFace;
 class KeyPair;
-struct TransactionSkeleton;
 namespace eth
 {
+struct TransactionSkeleton;
 class Interface;
 }
 namespace shh
@@ -122,7 +122,7 @@ public:
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
 
 protected:
-	virtual bool authenticate(dev::TransactionSkeleton const& _t);
+	virtual bool authenticate(dev::eth::TransactionSkeleton const& _t);
 
 protected:
 	virtual dev::eth::Interface* client() = 0;

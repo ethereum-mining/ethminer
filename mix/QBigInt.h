@@ -26,7 +26,7 @@
 #include "boost/variant/multivisitors.hpp"
 #include <QObject>
 #include <QQmlEngine>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libdevcore/Common.h>
 
 using namespace dev;
