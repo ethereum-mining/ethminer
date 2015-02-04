@@ -23,7 +23,7 @@
 #include <QDebug>
 #include <QMap>
 #include <QStringList>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libsolidity/AST.h>
 #include "QVariableDeclaration.h"
 #include "QVariableDefinition.h"
