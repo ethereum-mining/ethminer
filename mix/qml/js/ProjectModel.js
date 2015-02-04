@@ -43,10 +43,14 @@ function closeProject() {
 
 function saveProject() {
 	if (!isEmpty) {
+		var projectData = { files: [] };
+		for (var i = 0; i < projectListModel.count; i++)
+			projectData.files.push(projectListModel.get(i).fileName)
 		projectSaving(projectData);
-		var json = JSON.stringify(projectData);
+		var json = JSON.stringify(projectData, null, "\t");
 		var projectFile = projectPath + projectFileName;
 		fileIo.writeFile(projectFile, json);
+		projectSaved();
 	}
 }
 
@@ -55,11 +59,12 @@ function loadProject(path) {
 	console.log("loading project at " + path);
 	var projectFile = path + projectFileName;
 	var json = fileIo.readFile(projectFile);
-	projectData = JSON.parse(json);
+	var projectData = JSON.parse(json);
 	if (!projectData.title) {
 		var parts = path.split("/");
 		projectData.title = parts[parts.length - 2];
 	}
+	projectTitle = projectData.title;
 	projectPath = path;
 	if (!projectData.files)
 		projectData.files = [];
@@ -68,35 +73,39 @@ function loadProject(path) {
 		addFile(projectData.files[i]);
 	}
 	projectSettings.lastProjectPath = path;
-	projectLoaded();
+	projectLoading(projectData);
+	projectLoaded()
 }
 
 function addExistingFile() {
 	addExistingFileDialog.open();
 }
 
-function addProjectFiles(files) {
-	for(var i = 0; i < files.length; i++)
-		addFile(files[i]);
-}
-
 function addFile(fileName) {
 	var p = projectPath + fileName;
-	var extension = fileName.substring(fileName.length - 4, fileName.length);
+	var extension = fileName.substring(fileName.lastIndexOf("."), fileName.length);
 	var isContract = extension === ".sol";
-	var fileData = {
+	var isHtml = extension === ".html";
+	var isCss = extension === ".css";
+	var isJs = extension === ".js";
+	var syntaxMode = isContract ? "solidity" : isJs ? "javascript" : isHtml ? "htmlmixed" : isCss ? "css" : "";
+	var docData = {
 		contract: false,
 		path: p,
+		fileName: fileName,
 		name: isContract ? "Contract" : fileName,
 		documentId: fileName,
-		isText: isContract || extension === ".html" || extension === ".js",
+		syntaxMode: syntaxMode,
+		isText: isContract || isHtml || isCss || isJs,
 		isContract: isContract,
+		isHtml: isHtml,
 	};
 
-	projectListModel.append(fileData);
+	projectListModel.append(docData);
+	return docData.documentId;
 }
 
-function findDocument(documentId)
+function getDocumentIndex(documentId)
 {
 	for (var i = 0; i < projectListModel.count; i++)
 		if (projectListModel.get(i).documentId === documentId)
@@ -106,14 +115,44 @@ function findDocument(documentId)
 }
 
 function openDocument(documentId) {
-	documentOpened(projectListModel.get(findDocument(documentId)));
+	if (documentId !== currentDocumentId) {
+		documentOpened(projectListModel.get(getDocumentIndex(documentId)));
+		currentDocumentId = documentId;
+	}
+}
+
+function openNextDocument() {
+	var docIndex = getDocumentIndex(currentDocumentId);
+	var nextDocId = "";
+	while (nextDocId === "") {
+		docIndex++;
+		if (docIndex >= projectListModel.count)
+			docIndex = 0;
+		var document = projectListModel.get(docIndex);
+		if (document.isText)
+			nextDocId = document.documentId;
+	}
+	openDocument(nextDocId);
+}
+
+function openPrevDocument() {
+	var docIndex = getDocumentIndex(currentDocumentId);
+	var prevDocId = "";
+	while (prevDocId === "") {
+		docIndex--;
+		if (docIndex < 0)
+			docIndex = projectListModel.count - 1;
+		var document = projectListModel.get(docIndex);
+		if (document.isText)
+			prevDocId = document.documentId;
+	}
+	openDocument(prevDocId);
 }
 
 function doCloseProject() {
 	console.log("closing project");
 	projectListModel.clear();
 	projectPath = "";
-	projectData = null;
 	projectClosed();
 }
 
@@ -133,9 +172,10 @@ function doCreateProject(title, path) {
 		files: [ contractsFile, indexFile ]
 	};
 	//TODO: copy from template
-	fileIo.writeFile(dirPath + indexFile, "<html></html>");
-	fileIo.writeFile(dirPath + contractsFile, "contract MyContract {\n}\n");
-	var json = JSON.stringify(projectData);
+    fileIo.writeFile(dirPath + indexFile, "<html>\n<head>\n<script>\nvar web3 = parent.web3;\nvar theContract = parent.contract;\n</script>\n</head>\n<body>\n<script>\n</script>\n</body>\n</html>");
+    fileIo.writeFile(dirPath + contractsFile, "contract Contract {\n}\n");
+	newProject(projectData);
+	var json = JSON.stringify(projectData, null, "\t");
 	fileIo.writeFile(projectFile, json);
 	loadProject(dirPath);
 }
@@ -143,19 +183,17 @@ function doCreateProject(title, path) {
 function doAddExistingFiles(files) {
 	for(var i = 0; i < files.length; i++) {
 		var sourcePath = files[i];
-		console.log(sourcePath);
 		var sourceFileName = sourcePath.substring(sourcePath.lastIndexOf("/") + 1, sourcePath.length);
-		console.log(sourceFileName);
 		var destPath = projectPath + sourceFileName;
-		console.log(destPath);
 		if (sourcePath !== destPath)
 			fileIo.copyFile(sourcePath, destPath);
-		addFile(sourceFileName);
+		var id = addFile(sourceFileName);
+		documentAdded(id)
 	}
 }
 
 function renameDocument(documentId, newName) {
-	var i = findDocument(documentId);
+	var i = getDocumentIndex(documentId);
 	var document = projectListModel.get(i);
 	if (!document.isContract) {
 		var sourcePath = document.path;
@@ -168,12 +206,17 @@ function renameDocument(documentId, newName) {
 	}
 }
 
+function getDocument(documentId) {
+	var i = getDocumentIndex(documentId);
+	return projectListModel.get(i);
+}
+
 function removeDocument(documentId) {
-	var i = findDocument(documentId);
+	var i = getDocumentIndex(documentId);
 	var document = projectListModel.get(i);
 	if (!document.isContract) {
 		projectListModel.remove(i);
-		documentUpdated(documentId);
+		documentRemoved(documentId);
 	}
 }
 
@@ -189,7 +232,8 @@ function createAndAddFile(name, extension, content) {
 	var fileName = generateFileName(name, extension);
 	var filePath = projectPath + fileName;
 	fileIo.writeFile(filePath, content);
-	addFile(fileName);
+	var id = addFile(fileName);
+	documentAdded(id);
 }
 
 function generateFileName(name, extension) {

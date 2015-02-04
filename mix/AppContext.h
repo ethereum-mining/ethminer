@@ -32,14 +32,6 @@
 #include <QObject>
 
 class QQmlApplicationEngine;
-namespace dev
-{
-	class WebThreeDirect;
-	namespace solidity
-	{
-		class CompilerStack;
-	}
-}
 
 namespace dev
 {
@@ -70,6 +62,8 @@ public:
 	ClientModel* clientModel() { return m_clientModel.get(); }
 	/// Display an alert message.
 	void displayMessageDialog(QString _title, QString _message);
+	/// Copy text to clipboard
+	Q_INVOKABLE void toClipboard(QString _text);
 
 signals:
 	/// Triggered once components have been loaded
@@ -77,7 +71,6 @@ signals:
 
 private:
 	QQmlApplicationEngine* m_applicationEngine; //owned by app
-	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 	std::unique_ptr<CodeModel> m_codeModel;
 	std::unique_ptr<ClientModel> m_clientModel;
 	std::unique_ptr<FileIo> m_fileIo;

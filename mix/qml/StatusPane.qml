@@ -14,6 +14,7 @@ Rectangle {
 			status.state = "";
 			status.text = qsTr("Compile without errors.");
 			logslink.visible = false;
+			debugImg.state = "active";
 		}
 		else
 		{
@@ -21,8 +22,25 @@ Rectangle {
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(statusPane.result.compilerMessage, true);
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
 			logslink.visible = true;
+			debugImg.state = "";
 		}
 		debugRunActionIcon.enabled = statusPane.result.successful;
+	}
+
+	function infoMessage(text)
+	{
+		status.state = "";
+		status.text = text
+		logslink.visible = false;
+	}
+
+
+	Connections {
+		target:clientModel
+		onRunStarted: infoMessage(qsTr("Running transactions.."));
+		onRunFailed: infoMessage(qsTr("Error running transactions"));
+		onRunComplete: infoMessage(qsTr("Run complete"));
+		onNewBlock: infoMessage(qsTr("New block created"));
 	}
 
 	color: "transparent"
@@ -65,7 +83,7 @@ Rectangle {
 				visible: false
 				font.pointSize: 9
 				height: 9
-				text: qsTr("See log.")
+				text: qsTr("See Log.")
 				font.family: "Monospace"
 				objectName: "status"
 				id: logslink
@@ -96,17 +114,25 @@ Rectangle {
 				Button
 				{
 					anchors.right: parent.right
-					anchors.rightMargin: 7
+					anchors.rightMargin: 9
 					anchors.verticalCenter: parent.verticalCenter
 					id: debugImg
 					iconSource: "qrc:/qml/img/bugiconinactive.png"
 					action: debugRunActionIcon
+					states: [
+						State{
+							name: "active"
+							PropertyChanges { target: debugImg; iconSource: "qrc:/qml/img/bugiconactive.png"}
+						}
+					]
 				}
 				Action {
 					id: debugRunActionIcon
 					onTriggered: {
-						mainContent.ensureRightView();
-						clientModel.debugDeployment();
+						if (mainContent.rightViewIsVisible())
+							mainContent.hideRightView()
+						else
+							mainContent.startQuickDebugging();
 					}
 					enabled: false
 				}

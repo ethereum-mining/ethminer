@@ -32,7 +32,7 @@
 #include <libethereum/All.h>
 #if ETH_JSONRPC
 #include <libweb3jsonrpc/WebThreeStubServer.h>
-#include <libweb3jsonrpc/CorsHttpServer.h>
+#include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
 #include <libwebthree/WebThree.h>
 #include "BuildInfo.h"
@@ -305,7 +305,6 @@ int main(int argc, char** argv)
 	unsigned short remotePort = 30303;
 	string dbPath;
 	unsigned mining = ~(unsigned)0;
-	(void)mining;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
 #if ETH_JSONRPC
@@ -441,6 +440,8 @@ int main(int argc, char** argv)
 		web3.connect(Host::pocHost());
 	if (remoteHost.size())
 		web3.connect(remoteHost, remotePort);
+	if (mining)
+		c->startMining();
 
 #if ETH_JSONRPC
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
@@ -885,7 +886,7 @@ int main(int argc, char** argv)
 			auto b = bc.block(h);
 			for (auto const& i: RLP(b)[1])
 			{
-				Transaction t(i.data());
+				Transaction t(i.data(), CheckSignature::Sender);
 				auto s = t.receiveAddress() ?
 					boost::format("  %1% %2%> %3%: %4% [%5%]") %
 						toString(t.safeSender()) %

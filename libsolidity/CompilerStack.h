@@ -49,6 +49,8 @@ enum class DocumentationType: uint8_t
 	ABI_SOLIDITY_INTERFACE
 };
 
+extern const std::map<std::string, std::string> StandardSources;
+
 /**
  * Easy to use and self-contained Solidity compiler with as few header dependencies as possible.
  * It holds state and can be used to either step through the compilation stages (and abort e.g.
@@ -57,15 +59,17 @@ enum class DocumentationType: uint8_t
 class CompilerStack: boost::noncopyable
 {
 public:
-	CompilerStack(): m_parseSuccessful(false) {}
+	/// Creates a new compiler stack. Adds standard sources if @a _addStandardSources.
+	explicit CompilerStack(bool _addStandardSources = false);
 
 	/// Adds a source object (e.g. file) to the parser. After this, parse has to be called again.
 	/// @returns true if a source object by the name already existed and was replaced.
+	void addSources(std::map<std::string, std::string> const& _nameContents) { for (auto const& i: _nameContents) addSource(i.first, i.second); }
 	bool addSource(std::string const& _name, std::string const& _content);
 	void setSource(std::string const& _sourceCode);
 	/// Parses all source units that were added
 	void parse();
-	/// Sets the given source code as the only source unit and parses it.
+	/// Sets the given source code as the only source unit apart from standard sources and parses it.
 	void parse(std::string const& _sourceCode);
 	/// Returns a list of the contract names in the sources.
 	std::vector<std::string> getContractNames() const;
@@ -138,12 +142,17 @@ private:
 		Contract();
 	};
 
+	/// Expand source code with preprocessor-like includes.
+	/// @todo Replace with better framework.
+	std::string expanded(std::string const& _sourceCode);
+
 	void reset(bool _keepSources = false);
 	void resolveImports();
 
 	Contract const& getContract(std::string const& _contractName = "") const;
 	Source const& getSource(std::string const& _sourceName = "") const;
 
+	bool m_addStandardSources; ///< If true, standard sources are added.
 	bool m_parseSuccessful;
 	std::map<std::string const, Source> m_sources;
 	std::shared_ptr<GlobalContext> m_globalContext;
