@@ -33,7 +33,7 @@
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #include <libdevcrypto/FileSystem.h>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libsolidity/Scanner.h>

@@ -24,7 +24,7 @@
 #include <QQmlApplicationEngine>
 #include <QStandardPaths>
 #include <jsonrpccpp/server.h>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libethereum/Transaction.h>
 #include "AppContext.h"
 #include "DebuggingStateWrapper.h"

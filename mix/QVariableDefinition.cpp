@@ -20,7 +20,7 @@
  */
 
 #include <libdevcore/CommonData.h>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include "QVariableDefinition.h"
 
 using namespace dev::mix;
