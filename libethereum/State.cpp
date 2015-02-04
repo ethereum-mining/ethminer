@@ -639,8 +639,7 @@ void State::uncommitToMine()
 
 bool State::amIJustParanoid(BlockChain const& _bc)
 {
-	setUncles(_bc);
-	commitToMine();
+	commitToMine(_bc);
 
 	// Update difficulty according to timestamp.
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
@@ -683,8 +682,20 @@ LogBloom State::logBloom() const
 	return ret;
 }
 
-void State::setUncles(BlockChain const& _bc)
+void State::commitToMine(BlockChain const& _bc)
 {
+	uncommitToMine();
+
+//	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
+#ifdef ETH_PARANOIA
+	commit();
+	cnote << "Pre-reward stateRoot:" << m_state.root();
+#endif
+
+	m_lastTx = m_db;
+
+	Addresses uncleAddresses;
+
 	RLPStream unclesData;
 	unsigned unclesCount = 0;
 	if (m_previousBlock != BlockChain::genesis())
@@ -703,25 +714,10 @@ void State::setUncles(BlockChain const& _bc)
 					BlockInfo ubi(_bc.block(u));
 					ubi.streamRLP(unclesData, WithNonce);
 					++unclesCount;
+					uncleAddresses.push_back(ubi.coinbaseAddress);
 				}
 		}
 	}
-
-	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
-	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
-}
-
-void State::commitToMine()
-{
-	uncommitToMine();
-
-//	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
-#ifdef ETH_PARANOIA
-	commit();
-	cnote << "Pre-reward stateRoot:" << m_state.root();
-#endif
-
-	m_lastTx = m_db;
 
 	MemoryDB tm;
 	GenericTrieDB<MemoryDB> transactionsTrie(&tm);
@@ -752,13 +748,12 @@ void State::commitToMine()
 
 	txs.swapOut(m_currentTxs);
 
+	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
+
 	m_currentBlock.transactionsRoot = transactionsTrie.root();
 	m_currentBlock.receiptsRoot = receiptsTrie.root();
 	m_currentBlock.logBloom = logBloom();
-
-	Addresses uncleAddresses;
-	for (const auto& r: RLP(m_currentUncles))
-		uncleAddresses.push_back(BlockInfo::fromHeader(r.data()).coinbaseAddress);
+	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
 
 	// Apply rewards last of all.
 	applyRewards(uncleAddresses);
@@ -805,7 +800,7 @@ void State::completeMine()
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
-	m_currentBlock.hash = sha3(m_currentBytes);
+	m_currentBlock.hash = sha3(RLP(m_currentBytes)[0].data());
 	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
 
 	// Quickly reset the transactions.

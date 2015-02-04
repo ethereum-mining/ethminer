@@ -41,27 +41,17 @@ class ContractCallDataEncoder
 {
 public:
 	ContractCallDataEncoder() {}
-	/// Encode variable in order to be sent as parameter.
-	void encode(QVariableDeclaration const* _dec, QString _value);
-	/// Encode variable in order to be sent as parameter.
-	void encode(QVariableDeclaration const* _dec, u256 _value);
-	/// Encode variable in order to be sent as parameter.
-	void encode(QVariableDeclaration const* _dec, bool _value);
 	/// Encode hash of the function to call.
 	void encode(QFunctionDefinition const* _function);
 	/// Decode variable in order to be sent to QML view.
-	QList<QVariableDefinition*> decode(QList<QVariableDeclaration*> _dec, bytes _value);
+	QList<QVariableDefinition*> decode(QList<QVariableDeclaration*> const& _dec, bytes _value);
 	/// Get all encoded data encoded by encode function.
 	bytes encodedData();
+	/// Push the given @a _b to the current param context.
+	void push(bytes const& _b);
 
 private:
-	int padding(QString _type);
 	bytes m_encodedData;
-	static QString convertToReadable(std::string _v, QVariableDeclaration* _dec);
-	static QString convertToBool(std::string _v);
-	static QString convertToInt(std::string _v);
-	static int integerPadding(int _bitValue);
-	static QString formatBool(bool _value);
 };
 
 }
