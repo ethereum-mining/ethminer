@@ -33,9 +33,10 @@ Window {
 			transactionsModel.append(item.transactions[t]);
 			stateTransactions.push(item.transactions[t]);
 		}
-		isDefault = setDefault;
 		visible = true;
+		isDefault = setDefault;
 		titleField.focus = true;
+		defaultCheckBox.enabled = !isDefault;
 	}
 
 	function close() {
@@ -167,6 +168,7 @@ Window {
 					onClicked: transactionsModel.editTransaction(index)
 				}
 				ToolButton {
+					visible: index >= 0 ? !transactionsModel.get(index).executeConstructor : false
 					text: qsTr("Delete");
 					Layout.fillHeight: true
 					onClicked: transactionsModel.deleteTransaction(index)
