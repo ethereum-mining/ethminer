@@ -182,7 +182,7 @@ unsigned Client::installWatch(h256 _h)
 		Guard l(m_filterLock);
 		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 		m_watches[ret] = ClientWatch(_h);
-		cwatch << "+++" << ret << _h;
+		cwatch << "+++" << ret << _h.abridged();
 	}
 	auto ch = logs(ret);
 	if (ch.empty())
@@ -200,7 +200,10 @@ unsigned Client::installWatch(LogFilter const& _f)
 	{
 		Guard l(m_filterLock);
 		if (!m_filters.count(h))
+		{
+			cwatch << "FFF" << _f << h.abridged();
 			m_filters.insert(make_pair(h, _f));
+		}
 	}
 	return installWatch(h);
 }
@@ -226,7 +229,7 @@ void Client::uninstallWatch(unsigned _i)
 void Client::noteChanged(h256Set const& _filters)
 {
 	Guard l(m_filterLock);
-//	cnote << "noteChanged(" << _filters << ")";
+	cnote << "noteChanged(" << _filters << ")";
 	// accrue all changes left in each filter into the watches.
 	for (auto& i: m_watches)
 		if (_filters.count(i.second.id))
