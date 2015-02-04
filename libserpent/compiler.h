@@ -8,13 +8,10 @@
 #include "util.h"
 
 // Compiled fragtree -> compiled fragtree without labels
-Node dereference(Node program);
+std::vector<Node> dereference(Node program);
 
 // LLL -> fragtree
 Node buildFragmentTree(Node program);
-
-// Dereferenced fragtree -> opcodes
-std::vector<Node> flatten(Node derefed);
 
 // opcodes -> bin
 std::string serialize(std::vector<Node> codons);
