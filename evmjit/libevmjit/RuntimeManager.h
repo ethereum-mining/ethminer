@@ -15,11 +15,11 @@ namespace jit
 class RuntimeManager: public CompilerHelper
 {
 public:
-	RuntimeManager(llvm::IRBuilder<>& _builder);
+	RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeBegin, code_iterator _codeEnd);
 
 	llvm::Value* getRuntimePtr();
 	llvm::Value* getDataPtr();
-	llvm::Value* getEnvPtr();	// TODO: Can we make it const?
+	llvm::Value* getEnvPtr();
 
 	llvm::Value* get(RuntimeData::Index _index);
 	llvm::Value* get(Instruction _inst);
@@ -47,6 +47,9 @@ private:
 	llvm::Function* m_longjmp = nullptr;
 	llvm::Value* m_dataPtr = nullptr;
 	llvm::Value* m_envPtr = nullptr;
+
+	code_iterator m_codeBegin = {};
+	code_iterator m_codeEnd = {};
 };
 
 }

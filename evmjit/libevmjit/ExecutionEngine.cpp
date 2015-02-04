@@ -174,6 +174,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 			std::unique_ptr<llvm::SectionMemoryManager> memoryManager(new llvm::SectionMemoryManager);
 			builder.setMCJITMemoryManager(memoryManager.get());
 			builder.setOptLevel(llvm::CodeGenOpt::None);
+			builder.setVerifyModules(true);
 
 			auto triple = llvm::Triple(llvm::sys::getProcessTriple());
 			if (triple.getOS() == llvm::Triple::OSType::Win32)
