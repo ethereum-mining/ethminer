@@ -71,8 +71,9 @@ macro(eth_install_executable EXECUTABLE)
 	if (APPLE)
 		# First have qt5 install plugins and frameworks
 		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND ${MACDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app ${eth_qml_dir}
+			COMMAND ${MACDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app -executable=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app/Contents/MacOS/${EXECUTABLE} ${eth_qml_dir}
 			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+			COMMAND sh ${CMAKE_SOURCE_DIR}/macdeployfix.sh ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app/Contents
 		)
 			
 		# This tool and next will inspect linked libraries in order to determine which dependencies are required
@@ -82,19 +83,11 @@ macro(eth_install_executable EXECUTABLE)
 			set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/\$ENV{CONFIGURATION}/${EXECUTABLE}.app")
 		endif ()
 
-		# TODO check, how fixup_bundle works and if it is required
 		install(CODE "
 			include(BundleUtilities)
 			set(BU_CHMOD_BUNDLE_ITEMS 1)
-			fixup_bundle(\"${APP_BUNDLE_PATH}\" \"${BUNDLELIBS}\" \"../libqethereum ../libethereum ../secp256k1\")
+			verify_app(\"${APP_BUNDLE_PATH}\")
 			" COMPONENT RUNTIME )
-		# Cleanup duplicate libs from macdeployqt
-		install(CODE "
-			file(GLOB LINGER_RM \"${APP_BUNDLE_PATH}/Contents/Frameworks/*.dylib\")
-			if (LINGER_RM)
-				file(REMOVE \${LINGER_RM})
-			endif ()
-		")
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 		# copy all dlls to executable directory
