@@ -6,6 +6,7 @@ var editor = CodeMirror(document.body, {
 							autofocus: true,
 						});
 
+
 editor.setOption("theme", "solarized dark");
 editor.setOption("indentUnit", 4);
 editor.setOption("indentWithTabs", true);
@@ -18,10 +19,23 @@ editor.on("change", function(eMirror, object) {
 
 });
 
+var mac = /Mac/.test(navigator.platform);
+if (mac === true) {
+editor.setOption("extraKeys", {
+	"Cmd-V": function(cm) {
+		cm.replaceSelection(clipboard);
+	},
+	"Cmd-X": function(cm) {
+		window.document.execCommand("cut");
+	},
+	"Cmd-C": function(cm) {
+		window.document.execCommand("copy");
+	}});
+}
+
 getTextChanged = function() {
 	return editor.changeRegistered;
 };
-
 
 getText = function() {
 	editor.changeRegistered = false;
@@ -41,4 +55,8 @@ setText = function(text) {
 
 setMode = function(mode) {
 	this.editor.setOption("mode", mode);
+};
+
+setClipboardBase64 = function(text) {
+	clipboard = window.atob(text);
 };
