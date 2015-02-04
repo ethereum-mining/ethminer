@@ -87,7 +87,10 @@ llvm::Twine getName(RuntimeData::Index _index)
 }
 }
 
-RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder): CompilerHelper(_builder)
+RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeBegin, code_iterator _codeEnd):
+	CompilerHelper(_builder),
+	m_codeBegin(_codeBegin),
+	m_codeEnd(_codeEnd)
 {
 	m_longjmp = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::longjmp);
 
@@ -191,14 +194,14 @@ llvm::Value* RuntimeManager::getCallData()
 
 llvm::Value* RuntimeManager::getCode()
 {
-	return get(RuntimeData::Code);
+	// OPT Check what is faster
+	//return get(RuntimeData::Code);
+	return m_builder.CreateGlobalStringPtr({reinterpret_cast<char const*>(m_codeBegin), static_cast<size_t>(m_codeEnd - m_codeBegin)}, "code");
 }
 
 llvm::Value* RuntimeManager::getCodeSize()
 {
-	auto value = get(RuntimeData::CodeSize);
-	assert(value->getType() == Type::Size);
-	return getBuilder().CreateZExt(value, Type::Word);
+	return Constant::get(m_codeEnd - m_codeBegin);
 }
 
 llvm::Value* RuntimeManager::getCallDataSize()
