@@ -23,7 +23,7 @@
 
 #include <vector>
 #include <libdevcore/Exceptions.h>
-#include <libethereum/BlockChain.h>
+#include <libethereum/CanonBlockChain.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/Executive.h>
 #include <libethereum/ExtVM.h>
@@ -50,7 +50,7 @@ void MixClient::resetState(u256 _balance)
 	Guard fl(m_filterLock);
 	m_filters.clear();
 	m_watches.clear();
-	m_state = eth::State(m_userAccount.address(), m_stateDB, BaseState::Genesis);
+	m_state = eth::State(m_userAccount.address(), m_stateDB, BaseState::CanonGenesis);
 	m_state.addBalance(m_userAccount.address(), _balance);
 	Block genesis;
 	genesis.state = m_state;
@@ -164,7 +164,7 @@ void MixClient::mine()
 	Block& block = m_blocks.back();
 	m_state.mine(0, true);
 	m_state.completeMine();
-	m_state.commitToMine(BlockChain());
+	m_state.commitToMine(CanonBlockChain());
 	m_state.cleanup(true);
 	block.state = m_state;
 	block.info = m_state.info();

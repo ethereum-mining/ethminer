@@ -34,7 +34,7 @@
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libevm/VM.h>
-#include <libethereum/BlockChain.h>
+#include <libethereum/CanonBlockChain.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/Client.h>
 #include <libethereum/EthereumHost.h>
@@ -97,8 +97,8 @@ Main::Main(QWidget *parent) :
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
 
-    cerr << "State root: " << BlockChain::genesis().stateRoot << endl;
-	auto gb = BlockChain::createGenesisBlock();
+    cerr << "State root: " << CanonBlockChain::genesis().stateRoot << endl;
+	auto gb = CanonBlockChain::createGenesisBlock();
 	cerr << "Block Hash: " << sha3(gb) << endl;
 	cerr << "Block RLP: " << RLP(gb) << endl;
 	cerr << "Block Hex: " << toHex(gb) << endl;
