@@ -5,7 +5,6 @@
 #include "util.h"
 #include "bignum.h"
 #include <fstream>
-#include <string>
 #include <cerrno>
 
 //Token or value node constructor
@@ -260,7 +259,7 @@ std::string get_file_contents(std::string filename)
   {
     std::string contents;
     in.seekg(0, std::ios::end);
-    contents.resize((unsigned)in.tellg());
+    contents.resize(in.tellg());
     in.seekg(0, std::ios::beg);
     in.read(&contents[0], contents.size());
     in.close();
