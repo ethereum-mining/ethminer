@@ -41,20 +41,9 @@ void QWebThree::clientDieing()
 	this->disconnect();
 }
 
-static QString formatInput(QJsonObject const& _object)
-{
-	QJsonObject res;
-	res["jsonrpc"] = QString::fromStdString("2.0");
-	res["method"] = _object["call"];
-	res["params"] = _object["args"];
-	res["id"] = _object["_id"];
-	return QString::fromUtf8(QJsonDocument(res).toJson());
-}
-
 QString QWebThree::callMethod(QString _json)
 {
-	QJsonObject f = QJsonDocument::fromJson(_json.toUtf8()).object();
-	emit processData(formatInput(f), ""); // it's synchronous
+	emit processData(_json, ""); // it's synchronous
 	return m_response;
 }
 
