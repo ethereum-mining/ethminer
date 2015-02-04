@@ -1206,8 +1206,9 @@ string Main::renderDiff(StateDiff const& _d) const
 
 		if (ad.balance)
 		{
-			s << "<br/>" << indent << "Balance " << dec << formatBalance(ad.balance.to());
-			s << " <b>" << showpos << (((dev::bigint)ad.balance.to()) - ((dev::bigint)ad.balance.from())) << noshowpos << "</b>";
+			s << "<br/>" << indent << "Balance " << dec << ad.balance.to() << " [=" << formatBalance(ad.balance.to()) << "]";
+			auto d = (((dev::bigint)ad.balance.to()) - ((dev::bigint)ad.balance.from()));
+			s << " <b>" << showpos << dec << d << " [=" << formatBalance(d) << "]" << noshowpos << "</b>";
 		}
 		if (ad.nonce)
 		{
@@ -1216,7 +1217,7 @@ string Main::renderDiff(StateDiff const& _d) const
 		}
 		if (ad.code)
 		{
-			s << "<br/>" << indent << "Code " << hex << ad.code.to().size() << " bytes";
+			s << "<br/>" << indent << "Code " << dec << ad.code.to().size() << " bytes";
 			if (ad.code.from().size())
 				 s << " (" << ad.code.from().size() << " bytes)";
 		}

@@ -29,10 +29,20 @@ var getContractMethods = function (address, abi) {
     return web3.eth.contract(address, abi);
 };
 
+var getMethodWithName = function(abi, name) {
+    for (var i = 0; i < abi.length; i++) {
+        if (abi[i].name === name) {
+            return abi[i];
+        }
+    }
+    console.warn('could not find method with name: ' + name);
+    return undefined;
+};
+
 /// Function called to get all contract method input variables
 /// @returns hashmap with all contract's method input variables
 var getContractInputParams = function (abi, methodName, params) {
-    var method = web3.abi.getMethodWithName(abi, methodName);
+    var method = getMethodWithName(abi, methodName);
     return method.inputs.reduce(function (acc, current, index) {
         acc[current.name] = params[index];
         return acc;
