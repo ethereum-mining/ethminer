@@ -226,7 +226,7 @@ void Client::uninstallWatch(unsigned _i)
 void Client::noteChanged(h256Set const& _filters)
 {
 	Guard l(m_filterLock);
-	cnote << "noteChanged(" << _filters << ")";
+//	cnote << "noteChanged(" << _filters << ")";
 	// accrue all changes left in each filter into the watches.
 	for (auto& i: m_watches)
 		if (_filters.count(i.second.id))

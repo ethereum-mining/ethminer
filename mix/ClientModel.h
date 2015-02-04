@@ -26,7 +26,7 @@
 #include <atomic>
 #include <map>
 #include <QString>
-#include "MixClient.h"
+#include "MachineStates.h"
 
 namespace dev
 {
@@ -38,6 +38,8 @@ class Web3Server;
 class RpcConnector;
 class QEther;
 class QDebugData;
+class MixClient;
+class QVariableDefinition;
 
 /// Backend transaction config class
 struct TransactionSettings
@@ -59,7 +61,7 @@ struct TransactionSettings
 	/// Gas price
 	u256 gasPrice;
 	/// Mapping from contract function parameter name to value
-	std::map<QString, u256> parameterValues;
+	QList<QVariableDefinition*> parameterValues;
 	/// Standard contract url
 	QString stdContractUrl;
 };

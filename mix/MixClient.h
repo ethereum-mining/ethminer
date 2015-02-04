@@ -26,51 +26,12 @@
 #include <vector>
 #include <libethereum/Interface.h>
 #include <libethereum/Client.h>
+#include "MachineStates.h"
 
 namespace dev
 {
 namespace mix
 {
-
-/**
- * @brief Store information about a machine state.
- */
-struct MachineState
-{
-	uint64_t steps;
-	dev::Address address;
-	dev::u256 curPC;
-	dev::eth::Instruction inst;
-	dev::bigint newMemSize;
-	dev::u256 gas;
-	dev::u256s stack;
-	dev::bytes memory;
-	dev::bigint gasCost;
-	std::map<dev::u256, dev::u256> storage;
-	std::vector<unsigned> levels;
-	unsigned codeIndex;
-	unsigned dataIndex;
-};
-
-/**
- * @brief Store information about a machine states.
- */
-struct ExecutionResult
-{
-	ExecutionResult(): receipt(dev::h256(), dev::h256(), dev::eth::LogEntries()) {}
-
-	std::vector<MachineState> machineStates;
-	std::vector<bytes> transactionData;
-	std::vector<bytes> executionCode;
-	bytes returnValue;
-	dev::Address address;
-	dev::Address sender;
-	dev::Address contractAddress;
-	dev::u256 value;
-	dev::eth::TransactionReceipt receipt;
-};
-
-using ExecutionResults = std::vector<ExecutionResult>;
 
 struct Block
 {
