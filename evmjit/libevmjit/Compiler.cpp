@@ -142,7 +142,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	createBasicBlocks(_begin, _end);
 
 	// Init runtime structures.
-	RuntimeManager runtimeManager(m_builder);
+	RuntimeManager runtimeManager(m_builder, _begin, _end);
 	GasMeter gasMeter(m_builder, runtimeManager);
 	Memory memory(runtimeManager, gasMeter);
 	Ext ext(runtimeManager, memory);
