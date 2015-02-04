@@ -30,6 +30,7 @@
 #include "Exceptions.h"
 #include "QContractDefinition.h"
 #include "QVariableDeclaration.h"
+#include "QVariableDefinition.h"
 #include "ContractCallDataEncoder.h"
 #include "CodeModel.h"
 #include "ClientModel.h"
