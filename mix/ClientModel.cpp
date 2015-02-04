@@ -94,7 +94,6 @@ ClientModel::ClientModel(AppContext* _context):
 
 ClientModel::~ClientModel()
 {
-
 }
 
 QString ClientModel::apiCall(QString const& _message)
