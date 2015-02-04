@@ -86,7 +86,7 @@ Item {
 			updateDocument(documentId, function(i) { pageListModel.set(i, projectModel.getDocument(documentId)) } )
 		}
 
-		onProjectLoaded: {
+		onProjectLoading: {
 			for (var i = 0; i < target.listModel.count; i++) {
 				var document = target.listModel.get(i);
 				if (document.isHtml) {

@@ -30,6 +30,7 @@
 #include "Exceptions.h"
 #include "QContractDefinition.h"
 #include "QVariableDeclaration.h"
+#include "QVariableDefinition.h"
 #include "ContractCallDataEncoder.h"
 #include "CodeModel.h"
 #include "ClientModel.h"
@@ -66,6 +67,10 @@ ClientModel::ClientModel(AppContext* _context):
 	m_context(_context), m_running(false), m_rpcConnector(new RpcConnector()), m_contractAddress(Address())
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
+	qRegisterMetaType<QIntType*>("QIntType*");
+	qRegisterMetaType<QStringType*>("QStringType*");
+	qRegisterMetaType<QRealType*>("QRealType*");
+	qRegisterMetaType<QHashType*>("QHashType*");
 	qRegisterMetaType<QEther*>("QEther*");
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
 	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
@@ -93,8 +98,16 @@ ClientModel::~ClientModel()
 
 QString ClientModel::apiCall(QString const& _message)
 {
-	m_rpcConnector->OnRequest(_message.toStdString(), nullptr);
-	return m_rpcConnector->response();
+	try
+	{
+		m_rpcConnector->OnRequest(_message.toStdString(), nullptr);
+		return m_rpcConnector->response();
+	}
+	catch (...)
+	{
+		std::cerr << boost::current_exception_diagnostic_information();
+		return QString();
+	}
 }
 
 void ClientModel::mine()
@@ -138,13 +151,13 @@ void ClientModel::setupState(QVariantMap _state)
 		}
 		else
 		{
-			QVariantMap params = transaction.value("parameters").toMap();
+			QVariantList qParams = transaction.value("qType").toList();
 			TransactionSettings transactionSettings(functionId, value, gas, gasPrice);
 
-			for (auto p = params.cbegin(); p != params.cend(); ++p)
+			for (QVariant const& variant: qParams)
 			{
-				QBigInt* param = qvariant_cast<QBigInt*>(p.value());
-				transactionSettings.parameterValues.insert(std::make_pair(p.key(), boost::get<dev::u256>(param->internalValue())));
+				QVariableDefinition* param = qvariant_cast<QVariableDefinition*>(variant);
+				transactionSettings.parameterValues.push_back(param);
 			}
 
 			if (transaction.value("executeConstructor").toBool())
@@ -204,14 +217,11 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 						BOOST_THROW_EXCEPTION(FunctionNotFoundException() << FunctionName(transaction.functionId.toStdString()));
 
 					encoder.encode(f);
-					for (int p = 0; p < f->parametersList().size(); p++)
+					for (int p = 0; p < transaction.parameterValues.size(); p++)
 					{
-						QVariableDeclaration* var = f->parametersList().at(p);
-						u256 value = 0;
-						auto v = transaction.parameterValues.find(var->name());
-						if (v != transaction.parameterValues.cend())
-							value = v->second;
-						encoder.encode(var, value);
+						if (f->parametersList().at(p)->type() != transaction.parameterValues.at(p)->declaration()->type())
+							BOOST_THROW_EXCEPTION(ParameterChangedException() << FunctionName(f->parametersList().at(p)->type().toStdString()));
+						encoder.push(transaction.parameterValues.at(p)->encodeValue());
 					}
 
 					if (transaction.functionId.isEmpty())
@@ -322,11 +332,6 @@ void ClientModel::onNewTransaction()
 
 	bool creation = tr.contractAddress != 0;
 
-	if (creation)
-		returned = QString::fromStdString(toJS(tr.contractAddress));
-	else
-		returned = QString::fromStdString(toJS(tr.returnValue));
-
 	//TODO: handle value transfer
 	FixedHash<4> functionHash;
 	bool call = false;
@@ -355,6 +360,9 @@ void ClientModel::onNewTransaction()
 			function = QObject::tr("<none>");
 	}
 
+	if (creation)
+		returned = QString::fromStdString(toJS(tr.contractAddress));
+
 	if (m_contractAddress != 0 && (tr.address == m_contractAddress || tr.contractAddress == m_contractAddress))
 	{
 		auto compilerRes = m_context->codeModel()->code();
@@ -364,7 +372,13 @@ void ClientModel::onNewTransaction()
 		{
 			QFunctionDefinition* funcDef = def->getFunction(functionHash);
 			if (funcDef)
+			{
 				function = funcDef->name();
+				ContractCallDataEncoder encoder;
+				QList<QVariableDefinition*> returnValues = encoder.decode(funcDef->returnParameters(), tr.returnValue);
+				for (auto const& var: returnValues)
+					returned += var->value() + " | ";
+			}
 		}
 	}
 
