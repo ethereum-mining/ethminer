@@ -10,7 +10,8 @@ Item {
 	id: projectModel
 
 	signal projectClosed
-	signal projectLoaded(var projectData)
+	signal projectLoading(var projectData)
+	signal projectLoaded()
 	signal documentOpened(var document)
 	signal documentRemoved(var documentId)
 	signal documentUpdated(var documentId) //renamed

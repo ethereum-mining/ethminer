@@ -8,7 +8,7 @@ import "js/QEtherHelper.js" as QEtherHelper
 
 Item {
 
-	property int defaultStateIndex: -1
+	property int defaultStateIndex: 0
 	property alias model: stateListModel
 	property var stateList: []
 
@@ -105,20 +105,7 @@ Item {
 			stateListModel.clear();
 			stateList = [];
 		}
-		onProjectLoaded: {
-			if (!projectData.states)
-				projectData.states = [];
-			if (projectData.defaultStateIndex !== undefined)
-				defaultStateIndex = projectData.defaultStateIndex;
-			else
-				defaultStateIndex = -1;
-			var items = projectData.states;
-			for(var i = 0; i < items.length; i++) {
-				var item = fromPlainStateItem(items[i]);
-				stateListModel.append(item);
-				stateList.push(item);
-			}
-		}
+		onProjectLoading: stateListModel.loadStatesFromProject(projectData);
 		onProjectSaving: {
 			projectData.states = []
 			for(var i = 0; i < stateListModel.count; i++) {
@@ -149,7 +136,8 @@ Item {
 				stateList.push(item);
 				stateListModel.append(item);
 			}
-
+			if (stateDialog.isDefault)
+				stateListModel.defaultStateChanged();
 			stateListModel.save();
 		}
 	}
@@ -160,6 +148,9 @@ Item {
 
 	ListModel {
 		id: stateListModel
+
+		signal defaultStateChanged;
+		signal stateListModelReady;
 
 		function defaultTransactionItem() {
 			return {
@@ -199,7 +190,7 @@ Item {
 
 		function addState() {
 			var item = createDefaultState();
-			stateDialog.open(stateListModel.count, item, defaultStateIndex === -1);
+			stateDialog.open(stateListModel.count, item, false);
 		}
 
 		function editState(index) {
@@ -220,12 +211,37 @@ Item {
 			stateListModel.remove(index);
 			stateList.splice(index, 1);
 			if (index === defaultStateIndex)
-				defaultStateIndex = -1;
+			{
+				defaultStateIndex = 0;
+				defaultStateChanged();
+			}
 			save();
 		}
 
 		function save() {
 			projectModel.saveProject();
+		}
+
+		function defaultStateName()
+		{
+			return stateList[defaultStateIndex].title;
+		}
+
+		function loadStatesFromProject(projectData)
+		{
+			if (!projectData.states)
+				projectData.states = [];
+			if (projectData.defaultStateIndex !== undefined)
+				defaultStateIndex = projectData.defaultStateIndex;
+			else
+				defaultStateIndex = 0;
+			var items = projectData.states;
+			for(var i = 0; i < items.length; i++) {
+				var item = fromPlainStateItem(items[i]);
+				stateListModel.append(item);
+				stateList.push(item);
+			}
+			stateListModelReady();
 		}
 	}
 }

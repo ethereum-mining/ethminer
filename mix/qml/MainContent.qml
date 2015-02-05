@@ -23,14 +23,20 @@ Rectangle {
 
 	property alias rightViewVisible : rightView.visible
 	property alias webViewVisible : webPreview.visible
+	property alias projectViewVisible : projectList.visible
+	property alias runOnProjectLoad : mainSettings.runOnProjectLoad
 	property bool webViewHorizontal : codeWebSplitter.orientation === Qt.Vertical //vertical splitter positions elements vertically, splits screen horizontally
+	property bool firstCompile: true
 
-	onWidthChanged:
-	{
-		if (rightView.visible)
-			contentView.width = parent.width - projectList.width - rightView.width;
-		else
-			contentView.width = parent.width - projectList.width;
+	Connections {
+		target: codeModel
+		onCompilationComplete: {
+			if (firstCompile) {
+				firstCompile = false;
+			if (codeModel.code.successful && runOnProjectLoad)
+				startQuickDebugging();
+			}
+		}
 	}
 
 	function startQuickDebugging()
@@ -40,15 +46,11 @@ Rectangle {
 	}
 
 	function toggleRightView() {
-		if (!rightView.visible)
-			rightView.show();
-		else
-			rightView.hide();
+		rightView.visible = !rightView.visible;
 	}
 
 	function ensureRightView() {
-		if (!rightView.visible)
-			rightView.show();
+		rightView.visible = true;
 	}
 
 	function rightViewIsVisible()
@@ -57,12 +59,15 @@ Rectangle {
 	}
 
 	function hideRightView() {
-		if (rightView.visible)
-			rightView.hide();
+		rightView.visible = false;
 	}
 
 	function toggleWebPreview() {
 		webPreview.visible = !webPreview.visible;
+	}
+
+	function toggleProjectView() {
+		projectList.visible = !projectList.visible;
 	}
 
 	function toggleWebPreviewOrientation() {
@@ -75,19 +80,18 @@ Rectangle {
 	}
 
 	Settings {
-		id: mainLayoutSettings
+		id: mainSettings
 		property alias codeWebOrientation: codeWebSplitter.orientation
 		property alias webWidth: webPreview.width
 		property alias webHeight: webPreview.height
+		property alias showProjectView: projectList.visible
+		property bool runOnProjectLoad: false
 	}
 
-	GridLayout
+	ColumnLayout
 	{
 		anchors.fill: parent
-		rows: 2
-		flow: GridLayout.TopToBottom
-		columnSpacing: 0
-		rowSpacing: 0
+		spacing: 0
 		Rectangle {
 			width: parent.width
 			height: 50
@@ -128,115 +132,89 @@ Rectangle {
 				property alias rightViewWidth: rightView.width
 			}
 
-			ProjectList	{
-				anchors.left: parent.left
-				id: projectList
-				width: 200
-				height: parent.height
-				Layout.minimumWidth: 200
-			}
-
-			Splitter
+			SplitView
 			{
-				id: resizeLeft
-				itemToStick: projectList
-				itemMinimumWidth: projectList.Layout.minimumWidth
-				direction: "right"
-				brother: contentView
-				color: "#a2a2a2"
-			}
-
-			Rectangle {
-				anchors.left: projectList.right
-				id: contentView
-				width: parent.width - projectList.width
-				height: parent.height
-				SplitView {
-					 handleDelegate: Rectangle {
-						width: 4
-						height: 4
-						color: "#cccccc"
-					 }
-					id: codeWebSplitter
-					anchors.fill: parent
-					orientation: Qt.Vertical
-					CodeEditorView {
-						height: parent.height * 0.6
-						anchors.top: parent.top
-						Layout.fillWidth: true
-						Layout.fillHeight: true
-					}
-					WebPreview {
-						id: webPreview
-						height: parent.height * 0.4
-						Layout.fillWidth: codeWebSplitter.orientation === Qt.Vertical
-						Layout.fillHeight: codeWebSplitter.orientation === Qt.Horizontal
-						Layout.minimumHeight: 200
-						Layout.minimumWidth: 200
-					}
+				anchors.fill: parent
+				handleDelegate: Rectangle {
+				   width: 4
+				   height: 4
+				   color: "#cccccc"
 				}
-			}
+				orientation: Qt.Horizontal
 
-			Splitter
-			{
-				id: resizeRight
-				visible: false;
-				itemToStick: rightView
-				itemMinimumWidth: rightView.Layout.minimumWidth
-				direction: "left"
-				brother: contentView
-				color: "#a2a2a2"
-			}
-
-			Rectangle {
-				visible: false;
-				id: rightView;
-
-				Keys.onEscapePressed: hide()
-
-				function show() {
-					visible = true;
-					resizeRight.visible = true;
-					contentView.width = parent.width - projectList.width - rightView.width;
+				ProjectList	{
+					id: projectList
+					width: 200
+					Layout.minimumWidth: 180
+					Layout.fillHeight: true
 				}
-
-				function hide() {
-					resizeRight.visible = false;
-					visible = false;
-					contentView.width = parent.width - projectList.width;
-				}
-
-				height: parent.height;
-				width: 515
-				Layout.minimumWidth: 515
-				anchors.right: parent.right
 				Rectangle {
-					anchors.fill: parent;
-					id: rightPaneView
-					TabView {
-						id: rightPaneTabs
-						tabsVisible: true
-						antialiasing: true
+					id: contentView
+					Layout.fillHeight: true
+					Layout.fillWidth: true
+					SplitView {
+						 handleDelegate: Rectangle {
+							width: 4
+							height: 4
+							color: "#cccccc"
+						 }
+						id: codeWebSplitter
 						anchors.fill: parent
-						style: TabViewStyle {
-							frameOverlap: 1
-							tabBar:
-								Rectangle {
+						orientation: Qt.Vertical
+						CodeEditorView {
+							height: parent.height * 0.6
+							anchors.top: parent.top
+							Layout.fillWidth: true
+							Layout.fillHeight: true
+						}
+						WebPreview {
+							id: webPreview
+							height: parent.height * 0.4
+							Layout.fillWidth: codeWebSplitter.orientation === Qt.Vertical
+							Layout.fillHeight: codeWebSplitter.orientation === Qt.Horizontal
+							Layout.minimumHeight: 200
+							Layout.minimumWidth: 200
+						}
+					}
+				}
+
+				Rectangle {
+					visible: false;
+					id: rightView;
+					Layout.fillHeight: true
+					Keys.onEscapePressed: visible = false
+					height: parent.height;
+					width: 515
+					Layout.minimumWidth: 515
+					anchors.right: parent.right
+					Rectangle {
+						anchors.fill: parent;
+						id: rightPaneView
+						TabView {
+							id: rightPaneTabs
+							tabsVisible: true
+							antialiasing: true
+							anchors.fill: parent
+							style: TabViewStyle {
+								frameOverlap: 1
+								tabBar:
+									Rectangle {
+										color: "#ededed"
+										id: background
+									}
+								tab: Rectangle {
 									color: "#ededed"
-									id: background
+									implicitWidth: 80
+									implicitHeight: 20
+									radius: 2
+									Text {
+										anchors.centerIn: parent
+										text: styleData.title
+										color: styleData.selected ? "#7da4cd" : "#202020"
+									}
 								}
-							tab: Rectangle {
-								color: "#ededed"
-								implicitWidth: 80
-								implicitHeight: 20
-								radius: 2
-								Text {
-									anchors.centerIn: parent
-									text: styleData.title
-									color: styleData.selected ? "#7da4cd" : "#202020"
+								frame: Rectangle {
 								}
-							}
-							frame: Rectangle {
 							}
 						}
 					}

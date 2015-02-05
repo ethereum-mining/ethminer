@@ -28,10 +28,12 @@
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
 #include <libwebthree/WebThree.h>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
+#ifndef _MSC_VER
 #include <libserpent/funcs.h>
+#endif
 #include "WebThreeStubServerBase.h"
 
 using namespace std;
@@ -342,7 +344,10 @@ std::string WebThreeStubServerBase::eth_call(Json::Value const& _json)
 
 Json::Value WebThreeStubServerBase::eth_changed(int const& _id)
 {
-	return toJson(client()->checkWatch(_id));
+	auto entries = client()->checkWatch(_id);
+	if (entries.size())
+		cnote << "FIRING WATCH" << _id << entries.size();
+	return toJson(entries);
 }
 
 std::string WebThreeStubServerBase::eth_codeAt(string const& _address)
@@ -443,7 +448,9 @@ Json::Value WebThreeStubServerBase::eth_compilers()
 	Json::Value ret(Json::arrayValue);
 	ret.append("lll");
 	ret.append("solidity");
+#ifndef _MSC_VER
 	ret.append("serpent");
+#endif
 	return ret;
 }
 
@@ -459,6 +466,7 @@ std::string WebThreeStubServerBase::eth_lll(std::string const& _code)
 std::string WebThreeStubServerBase::eth_serpent(std::string const& _code)
 {
 	string res;
+#ifndef _MSC_VER
 	try
 	{
 		res = toJS(dev::asBytes(::compile(_code)));
@@ -471,6 +479,7 @@ std::string WebThreeStubServerBase::eth_serpent(std::string const& _code)
 	{
 		cwarn << "Uncought serpent compilation exception";
 	}
+#endif
 	return res;
 }
 

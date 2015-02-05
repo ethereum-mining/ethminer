@@ -20,7 +20,6 @@
 #include <QDebug>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
-#include "AppContext.h"
 #include "ClientModel.h"
 #include "AssemblyDebuggerControl.h"
 
