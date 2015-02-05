@@ -42,37 +42,16 @@ var ProviderManager = function() {
 
     var self = this;
     var poll = function () {
-        if (self.provider) {
-            var pollsBatch = self.polls.map(function (data) {
-                return data.data;
-            });
+        self.polls.forEach(function (data) {
+            var result = self.send(data.data);
 
-            var payload = jsonrpc.toBatchPayload(pollsBatch);
-            var results = self.provider.send(payload);
+            if (!(result instanceof Array) || result.length === 0) {
+                return;
+            }
 
-            self.polls.forEach(function (data, index) {
-                var result = results[index];
+            data.callback(result);
+        });
 
-                if (!jsonrpc.isValidResponse(result)) {
-                    console.log("INVALID RESPONSE");
-                    console.log("results:" + JSON.stringify(results));
-                    console.log("data:" + JSON.stringify(data));
-                    console.log("index:" + index);
-                    console.log("result:" + JSON.stringify(result));
-                    return;
-                }
-
-                result = result.result;
-                // dont call the callback if result is not an array, or empty one
-                if (!(result instanceof Array) || result.length === 0) {
-                    return;
-                }
-
-                data.callback(result);
-
-            });il
-
-        }
         setTimeout(poll, 1000);
     };
     poll();
