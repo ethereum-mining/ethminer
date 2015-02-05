@@ -31,7 +31,9 @@
 #include <libethcore/CommonJS.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
+#ifndef _MSC_VER
 #include <libserpent/funcs.h>
+#endif
 #include "WebThreeStubServerBase.h"
 
 using namespace std;
@@ -446,7 +448,9 @@ Json::Value WebThreeStubServerBase::eth_compilers()
 	Json::Value ret(Json::arrayValue);
 	ret.append("lll");
 	ret.append("solidity");
+#ifndef _MSC_VER
 	ret.append("serpent");
+#endif
 	return ret;
 }
 
@@ -462,6 +466,7 @@ std::string WebThreeStubServerBase::eth_lll(std::string const& _code)
 std::string WebThreeStubServerBase::eth_serpent(std::string const& _code)
 {
 	string res;
+#ifndef _MSC_VER
 	try
 	{
 		res = toJS(dev::asBytes(::compile(_code)));
@@ -474,6 +479,7 @@ std::string WebThreeStubServerBase::eth_serpent(std::string const& _code)
 	{
 		cwarn << "Uncought serpent compilation exception";
 	}
+#endif
 	return res;
 }
 

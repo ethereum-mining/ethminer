@@ -30,8 +30,10 @@
 #include <QtCore/QtCore>
 #include <boost/algorithm/string.hpp>
 #include <test/JsonSpiritHeaders.h>
+#ifndef _MSC_VER
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
+#endif
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/CommonJS.h>
 #include <liblll/Compiler.h>
@@ -1716,6 +1718,7 @@ void Main::on_data_textChanged()
 				solidity = "<h4>Solidity</h4><pre>Uncaught exception.</pre>";
 			}
 		}
+#ifndef _MSC_VER
 		else if (sourceIsSerpent(src))
 		{
 			try
@@ -1729,6 +1732,7 @@ void Main::on_data_textChanged()
 				errors.push_back("Serpent " + err);
 			}
 		}
+#endif
 		else
 		{
 			m_data = compileLLL(src, m_enableOptimizer, &errors);

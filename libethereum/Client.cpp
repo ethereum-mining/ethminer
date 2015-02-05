@@ -182,7 +182,7 @@ unsigned Client::installWatch(h256 _h)
 		Guard l(m_filterLock);
 		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 		m_watches[ret] = ClientWatch(_h);
-		cwatch << "+++" << ret << _h;
+		cwatch << "+++" << ret << _h.abridged();
 	}
 	auto ch = logs(ret);
 	if (ch.empty())
@@ -200,7 +200,10 @@ unsigned Client::installWatch(LogFilter const& _f)
 	{
 		Guard l(m_filterLock);
 		if (!m_filters.count(h))
+		{
+			cwatch << "FFF" << _f << h.abridged();
 			m_filters.insert(make_pair(h, _f));
+		}
 	}
 	return installWatch(h);
 }
@@ -220,13 +223,17 @@ void Client::uninstallWatch(unsigned _i)
 	auto fit = m_filters.find(id);
 	if (fit != m_filters.end())
 		if (!--fit->second.refCount)
+		{
+			cwatch << "*X*" << fit->first << ":" << fit->second.filter;
 			m_filters.erase(fit);
+		}
 }
 
 void Client::noteChanged(h256Set const& _filters)
 {
 	Guard l(m_filterLock);
-//	cnote << "noteChanged(" << _filters << ")";
+	if (_filters.size())
+		cnote << "noteChanged(" << _filters << ")";
 	// accrue all changes left in each filter into the watches.
 	for (auto& i: m_watches)
 		if (_filters.count(i.second.id))
@@ -247,8 +254,11 @@ LocalisedLogEntries Client::peekWatch(unsigned _watchId) const
 	Guard l(m_filterLock);
 
 	try {
-		return m_watches.at(_watchId).changes;
+		auto& w = m_watches.at(_watchId);
+		w.lastPoll = chrono::system_clock::now();
+		return w.changes;
 	} catch (...) {}
+
 	return LocalisedLogEntries();
 }
 
@@ -258,7 +268,9 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	LocalisedLogEntries ret;
 
 	try {
-		std::swap(ret, m_watches.at(_watchId).changes);
+		auto& w = m_watches.at(_watchId);
+		std::swap(ret, w.changes);
+		w.lastPoll = chrono::system_clock::now();
 	} catch (...) {}
 
 	return ret;
@@ -553,6 +565,23 @@ void Client::doWork()
 	cworkout << "WORK";
 
 	this_thread::sleep_for(chrono::milliseconds(100));
+	if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(5))
+	{
+		// garbage collect on watches
+		vector<unsigned> toUninstall;
+		{
+			Guard l(m_filterLock);
+			for (auto key: keysOf(m_watches))
+				if (chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(20))
+				{
+					toUninstall.push_back(key);
+					cnote << "GC: Uninstall" << key << "(" << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - m_watches[key].lastPoll).count() << "s old)";
+				}
+		}
+		for (auto i: toUninstall)
+			uninstallWatch(i);
+		m_lastGarbageCollection = chrono::system_clock::now();
+	}
 }
 
 unsigned Client::numberOf(int _n) const

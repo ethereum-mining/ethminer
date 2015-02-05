@@ -27,6 +27,13 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+std::ostream& dev::eth::operator<<(std::ostream& _out, LogFilter const& _s)
+{
+	// TODO
+	_out << "(@" << _s.m_addresses << "#" << _s.m_topics << ">" << _s.m_earliest << "-" << _s.m_latest << "< +" << _s.m_skip << "^" << _s.m_max << ")";
+	return _out;
+}
+
 void LogFilter::streamRLP(RLPStream& _s) const
 {
 	_s.appendList(6) << m_addresses << m_topics << m_earliest << m_latest << m_max << m_skip;
