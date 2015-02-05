@@ -50,6 +50,7 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	m_codeModel.reset(new CodeModel(this));
 	m_clientModel.reset(new ClientModel(this));
 	m_fileIo.reset(new FileIo());
+	connect(QApplication::clipboard(), &QClipboard::dataChanged, [this] { emit clipboardChanged();});
 }
 
 AppContext::~AppContext()
@@ -104,6 +105,12 @@ void AppContext::displayMessageDialog(QString _title, QString _message)
 	dialogWin->setProperty("height", "100");
 	dialogWin->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
 	QMetaObject::invokeMethod(dialogWin, "open");
+}
+
+QString AppContext::clipboard() const
+{
+	QClipboard *clipboard = QApplication::clipboard();
+	return clipboard->text();
 }
 
 void AppContext::toClipboard(QString _text)
