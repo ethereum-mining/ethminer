@@ -387,9 +387,15 @@ string Host::pocHost()
 
 void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPeerPort, unsigned short _udpNodePort)
 {
+	// TODO: p2p clean this up (bring tested acceptor code over from network branch)
+	while (isWorking() && !m_run)
+		this_thread::sleep_for(chrono::milliseconds(50));
+	if (!m_run)
+		return;
+	
 	if (_tcpPeerPort < 30300 || _tcpPeerPort > 30305)
 		cwarn << "Non-standard port being recorded: " << _tcpPeerPort;
-
+	
 	if (_tcpPeerPort >= /*49152*/32768)
 	{
 		cwarn << "Private port being recorded - setting to 0";
@@ -415,6 +421,8 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 
 void Host::connect(std::shared_ptr<Peer> const& _p)
 {
+	while (isWorking() && !m_run)
+		this_thread::sleep_for(chrono::milliseconds(50));
 	if (!m_run)
 		return;
 	
