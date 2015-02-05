@@ -61,8 +61,11 @@ void ContractDefinition::accept(ASTVisitor& _visitor)
 {
 	if (_visitor.visit(*this))
 	{
+		listAccept(m_baseContracts, _visitor);
 		listAccept(m_definedStructs, _visitor);
 		listAccept(m_stateVariables, _visitor);
+		listAccept(m_events, _visitor);
+		listAccept(m_functionModifiers, _visitor);
 		listAccept(m_definedFunctions, _visitor);
 	}
 	_visitor.endVisit(*this);
@@ -72,9 +75,32 @@ void ContractDefinition::accept(ASTConstVisitor& _visitor) const
 {
 	if (_visitor.visit(*this))
 	{
+		listAccept(m_baseContracts, _visitor);
 		listAccept(m_definedStructs, _visitor);
 		listAccept(m_stateVariables, _visitor);
+		listAccept(m_events, _visitor);
+		listAccept(m_functionModifiers, _visitor);
 		listAccept(m_definedFunctions, _visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
+void InheritanceSpecifier::accept(ASTVisitor& _visitor)
+{
+	if (_visitor.visit(*this))
+	{
+		m_baseName->accept(_visitor);
+		listAccept(m_arguments, _visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
+void InheritanceSpecifier::accept(ASTConstVisitor& _visitor) const
+{
+	if (_visitor.visit(*this))
+	{
+		m_baseName->accept(_visitor);
+		listAccept(m_arguments, _visitor);
 	}
 	_visitor.endVisit(*this);
 }
@@ -120,6 +146,7 @@ void FunctionDefinition::accept(ASTVisitor& _visitor)
 		m_parameters->accept(_visitor);
 		if (m_returnParameters)
 			m_returnParameters->accept(_visitor);
+		listAccept(m_functionModifiers, _visitor);
 		m_body->accept(_visitor);
 	}
 	_visitor.endVisit(*this);
@@ -132,6 +159,7 @@ void FunctionDefinition::accept(ASTConstVisitor& _visitor) const
 		m_parameters->accept(_visitor);
 		if (m_returnParameters)
 			m_returnParameters->accept(_visitor);
+		listAccept(m_functionModifiers, _visitor);
 		m_body->accept(_visitor);
 	}
 	_visitor.endVisit(*this);
@@ -150,6 +178,60 @@ void VariableDeclaration::accept(ASTConstVisitor& _visitor) const
 	if (_visitor.visit(*this))
 		if (m_typeName)
 			m_typeName->accept(_visitor);
+	_visitor.endVisit(*this);
+}
+
+void ModifierDefinition::accept(ASTVisitor& _visitor)
+{
+	if (_visitor.visit(*this))
+	{
+		m_parameters->accept(_visitor);
+		m_body->accept(_visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
+void ModifierDefinition::accept(ASTConstVisitor& _visitor) const
+{
+	if (_visitor.visit(*this))
+	{
+		m_parameters->accept(_visitor);
+		m_body->accept(_visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
+void ModifierInvocation::accept(ASTVisitor& _visitor)
+{
+	if (_visitor.visit(*this))
+	{
+		m_modifierName->accept(_visitor);
+		listAccept(m_arguments, _visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
+void ModifierInvocation::accept(ASTConstVisitor& _visitor) const
+{
+	if (_visitor.visit(*this))
+	{
+		m_modifierName->accept(_visitor);
+		listAccept(m_arguments, _visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
+void EventDefinition::accept(ASTVisitor& _visitor)
+{
+	if (_visitor.visit(*this))
+		m_parameters->accept(_visitor);
+	_visitor.endVisit(*this);
+}
+
+void EventDefinition::accept(ASTConstVisitor& _visitor) const
+{
+	if (_visitor.visit(*this))
+		m_parameters->accept(_visitor);
 	_visitor.endVisit(*this);
 }
 
@@ -220,6 +302,18 @@ void Block::accept(ASTConstVisitor& _visitor) const
 {
 	if (_visitor.visit(*this))
 		listAccept(m_statements, _visitor);
+	_visitor.endVisit(*this);
+}
+
+void PlaceholderStatement::accept(ASTVisitor& _visitor)
+{
+	_visitor.visit(*this);
+	_visitor.endVisit(*this);
+}
+
+void PlaceholderStatement::accept(ASTConstVisitor& _visitor) const
+{
+	_visitor.visit(*this);
 	_visitor.endVisit(*this);
 }
 

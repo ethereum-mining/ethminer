@@ -19,6 +19,8 @@
  * @date 2014
  */
 
+#include <libdevcore/CommonData.h>
+#include <libethcore/CommonJS.h>
 #include "QVariableDefinition.h"
 
 using namespace dev::mix;
@@ -52,4 +54,92 @@ QVariableDefinition* QVariableDefinitionList::val(int _idx)
 	if (_idx < 0 || _idx >= m_def.size())
 		return nullptr;
 	return m_def.at(_idx);
+}
+
+/*
+ * QIntType
+ */
+void QIntType::setValue(dev::bigint _value)
+{
+	m_bigIntvalue = _value;
+	std::stringstream str;
+	str << std::dec << m_bigIntvalue;
+	m_value = QString::fromStdString(str.str());
+}
+
+dev::bytes QIntType::encodeValue()
+{
+	dev::bigint i(value().toStdString());
+	bytes ret(32);
+	toBigEndian((u256)i, ret);
+	return ret;
+}
+
+void QIntType::decodeValue(dev::bytes const& _rawValue)
+{
+	dev::u256 un = dev::fromBigEndian<dev::u256>(_rawValue);
+	if (un >> 255)
+		setValue(-s256(~un + 1));
+	else
+		setValue(un);
+}
+
+/*
+ * QHashType
+ */
+dev::bytes QHashType::encodeValue()
+{
+	QByteArray bytesAr = value().toLocal8Bit();
+	bytes r = bytes(bytesAr.begin(), bytesAr.end());
+	return padded(r, 32);
+}
+
+void QHashType::decodeValue(dev::bytes const& _rawValue)
+{
+	std::string _ret = asString(unpadLeft(_rawValue));
+	setValue(QString::fromStdString(_ret));
+}
+
+/*
+ * QRealType
+ */
+dev::bytes QRealType::encodeValue()
+{
+	return bytes();
+}
+
+void QRealType::decodeValue(dev::bytes const& _rawValue)
+{
+	Q_UNUSED(_rawValue);
+}
+
+/*
+ * QStringType
+ */
+dev::bytes QStringType::encodeValue()
+{
+	QByteArray b = value().toUtf8();
+	bytes r = bytes(b.begin(), b.end());
+	return paddedRight(r, 32);
+}
+
+void QStringType::decodeValue(dev::bytes const& _rawValue)
+{
+	setValue(QString::fromUtf8((char*)_rawValue.data()));
+}
+
+/*
+ * QBoolType
+ */
+dev::bytes QBoolType::encodeValue()
+{
+	return padded(jsToBytes(value().toStdString()), 32);
+}
+
+void QBoolType::decodeValue(dev::bytes const& _rawValue)
+{
+	byte ret = _rawValue.at(_rawValue.size() - 1);
+	bool boolRet = (ret == byte(1));
+	m_boolValue = boolRet;
+	m_value = m_boolValue ? "1" : "0";
 }

@@ -21,19 +21,22 @@
 
 #include <libsolidity/AST.h>
 #include <libdevcrypto/SHA3.h>
+#include <libdevcore/Exceptions.h>
 #include "QVariableDeclaration.h"
 #include "QFunctionDefinition.h"
 
 using namespace dev::solidity;
 using namespace dev::mix;
 
-QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionDefinition const* _f, int _index): QBasicNodeDefinition(_f), m_index(_index), m_hash(dev::sha3(_f->getCanonicalSignature()))
+QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionTypePointer const& _f): QBasicNodeDefinition(&_f->getDeclaration()), m_hash(dev::sha3(_f->getCanonicalSignature()))
 {
-	std::vector<std::shared_ptr<VariableDeclaration>> parameters = _f->getParameterList().getParameters();
-	for (unsigned i = 0; i < parameters.size(); i++)
-		m_parameters.append(new QVariableDeclaration(parameters.at(i).get()));
+	auto paramNames = _f->getParameterNames();
+	auto paramTypes = _f->getParameterTypeNames();
+	auto returnNames = _f->getReturnParameterNames();
+	auto returnTypes = _f->getReturnParameterTypeNames();
+	for (unsigned i = 0; i < paramNames.size(); ++i)
+		m_parameters.append(new QVariableDeclaration(paramNames[i], paramTypes[i]));
 
-	std::vector<std::shared_ptr<VariableDeclaration>> returnParameters = _f->getReturnParameters();
-	for (unsigned i = 0; i < returnParameters.size(); i++)
-		m_returnParameters.append(new QVariableDeclaration(returnParameters.at(i).get()));
+	for (unsigned i = 0; i < returnNames.size(); ++i)
+		m_returnParameters.append(new QVariableDeclaration(returnNames[i], returnTypes[i]));
 }

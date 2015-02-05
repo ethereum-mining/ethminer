@@ -1,16 +1,16 @@
 {
   "name": "ethereum.js",
   "namespace": "ethereum",
-  "version": "0.0.7",
+  "version": "0.0.13",
   "description": "Ethereum Compatible JavaScript API",
   "main": "./index.js",
   "directories": {
     "lib": "./lib"
   },
   "dependencies": {
-    "es6-promise": "*",
     "ws": "*",
-    "xmlhttprequest": "*"
+    "xmlhttprequest": "*",
+    "bignumber.js": ">=2.0.0"
   },
   "devDependencies": {
     "bower": ">=1.3.0",

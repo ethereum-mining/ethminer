@@ -176,7 +176,8 @@ llvm::Value* Memory::getSize()
 
 llvm::Value* Memory::getBytePtr(llvm::Value* _index)
 {
-	return m_builder.CreateGEP(getData(), _index, "ptr");
+	auto idx = m_builder.CreateTrunc(_index, Type::Size, "idx"); // Never allow memory index be a type bigger than i64
+	return m_builder.CreateGEP(getData(), idx, "ptr");
 }
 
 void Memory::require(llvm::Value* _offset, llvm::Value* _size)
@@ -214,7 +215,8 @@ void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value*
 	auto bytesToCopy = m_builder.CreateSelect(isOutsideData, zero64, bytesToCopyInner);
 
 	auto src = m_builder.CreateGEP(_srcPtr, idx64, "src");
-	auto dst = m_builder.CreateGEP(getData(), _destMemIdx, "dst");
+	auto dstIdx = m_builder.CreateTrunc(_destMemIdx, Type::Size, "dstIdx"); // Never allow memory index be a type bigger than i64
+	auto dst = m_builder.CreateGEP(getData(), dstIdx, "dst");
 	m_builder.CreateMemCpy(dst, src, bytesToCopy, 0);
 }
 

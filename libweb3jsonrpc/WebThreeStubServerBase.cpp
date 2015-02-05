@@ -28,10 +28,12 @@
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
 #include <libwebthree/WebThree.h>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
+#ifndef _MSC_VER
 #include <libserpent/funcs.h>
+#endif
 #include "WebThreeStubServerBase.h"
 
 using namespace std;
@@ -62,7 +64,7 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	res["hash"] = toJS(_t.sha3());
 	res["input"] = jsFromBinary(_t.data());
 	res["to"] = toJS(_t.receiveAddress());
-	res["from"] = toJS(_t.sender());
+	res["from"] = toJS(_t.safeSender());
 	res["gas"] = (int)_t.gas();
 	res["gasPrice"] = toJS(_t.gasPrice());
 	res["nonce"] = toJS(_t.nonce());
@@ -77,7 +79,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 	res["data"] = jsFromBinary(_e.data);
 	res["address"] = toJS(_e.address);
 	for (auto const& t: _e.topics)
-		res["topics"].append(toJS(t));
+		res["topic"].append(toJS(t));
 	res["number"] = _e.number;
 	return res;
 }
@@ -123,16 +125,18 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 		else if (_json["address"].isString())
 			filter.address(jsToAddress(_json["address"].asString()));
 	}
-	if (!_json["topics"].empty())
+	if (!_json["topic"].empty() && _json["topic"].isArray())
 	{
-		if (_json["topics"].isArray())
+		unsigned i = 0;
+		for (auto t: _json["topic"])
 		{
-			for (auto i: _json["topics"])
-				if (i.isString())
-					filter.topic(jsToU256(i.asString()));
+			if (t.isArray())
+				for (auto tt: t)
+					filter.topic(i, jsToFixed<32>(tt.asString()));
+			else if (t.isString())
+				filter.topic(i, jsToFixed<32>(t.asString()));
+			i++;
 		}
-		else if(_json["topics"].isString())
-			filter.topic(jsToU256(_json["topics"].asString()));
 	}
 	return filter;
 }
@@ -171,9 +175,9 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	return _m.seal(_from, bt, ttl, workToProve);
 }
 
-static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
+static pair<shh::FullTopic, Public> toWatch(Json::Value const& _json)
 {
-	shh::BuildTopicMask bt;
+	shh::BuildTopic bt;
 	Public to;
 
 	if (_json["to"].isString())
@@ -188,7 +192,7 @@ static pair<shh::TopicMask, Public> toWatch(Json::Value const& _json)
 				if (i.isString())
 					bt.shift(jsToBytes(i.asString()));
 	}
-	return make_pair(bt.toTopicMask(), to);
+	return make_pair(bt, to);
 }
 
 static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message const& _m)
@@ -199,8 +203,8 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["sent"] = (int)_e.sent();
 	res["ttl"] = (int)_e.ttl();
 	res["workProved"] = (int)_e.workProved();
-	for (auto const& t: _e.topics())
-		res["topics"].append(toJS(t));
+	for (auto const& t: _e.topic())
+		res["topic"].append(toJS(t));
 	res["payload"] = toJS(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
@@ -216,8 +220,11 @@ WebThreeStubServerBase::WebThreeStubServerBase(jsonrpc::AbstractServerConnector&
 void WebThreeStubServerBase::setAccounts(std::vector<dev::KeyPair> const& _accounts)
 {
 	m_accounts.clear();
-	for (auto i: _accounts)
-		m_accounts[i.address()] = i.secret();
+	for (auto const& i: _accounts)
+	{
+		m_accounts.push_back(i.address());
+		m_accountsLookup[i.address()] = i;
+	}
 }
 
 void WebThreeStubServerBase::setIdentities(std::vector<dev::KeyPair> const& _ids)
@@ -235,8 +242,8 @@ std::string WebThreeStubServerBase::web3_sha3(std::string const& _param1)
 Json::Value WebThreeStubServerBase::eth_accounts()
 {
 	Json::Value ret(Json::arrayValue);
-	for (auto i: m_accounts)
-		ret.append(toJS(i.first));
+	for (auto const& i: m_accounts)
+		ret.append(toJS(i));
 	return ret;
 }
 
@@ -307,31 +314,40 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 	return ret;
 }
 
+bool WebThreeStubServerBase::eth_flush()
+{
+	client()->flushTransactions();
+	return true;
+}
+
 std::string WebThreeStubServerBase::eth_call(Json::Value const& _json)
 {
 	std::string ret;
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from && m_accounts.size())
 	{
-		auto b = m_accounts.begin()->first;
-		for (auto a: m_accounts)
-			if (client()->balanceAt(a.first) > client()->balanceAt(b))
-				b = a.first;
+		auto b = m_accounts.front();
+		for (auto const& a: m_accounts)
+			if (client()->balanceAt(a) > client()->balanceAt(b))
+				b = a;
 		t.from = b;
 	}
-	if (!m_accounts.count(t.from))
+	if (!m_accountsLookup.count(t.from))
 		return ret;
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
-	ret = toJS(client()->call(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice));
+	ret = toJS(client()->call(m_accountsLookup[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice));
 	return ret;
 }
 
 Json::Value WebThreeStubServerBase::eth_changed(int const& _id)
 {
-	return toJson(client()->checkWatch(_id));
+	auto entries = client()->checkWatch(_id);
+	if (entries.size())
+		cnote << "FIRING WATCH" << _id << entries.size();
+	return toJson(entries);
 }
 
 std::string WebThreeStubServerBase::eth_codeAt(string const& _address)
@@ -432,7 +448,9 @@ Json::Value WebThreeStubServerBase::eth_compilers()
 	Json::Value ret(Json::arrayValue);
 	ret.append("lll");
 	ret.append("solidity");
+#ifndef _MSC_VER
 	ret.append("serpent");
+#endif
 	return ret;
 }
 
@@ -448,6 +466,7 @@ std::string WebThreeStubServerBase::eth_lll(std::string const& _code)
 std::string WebThreeStubServerBase::eth_serpent(std::string const& _code)
 {
 	string res;
+#ifndef _MSC_VER
 	try
 	{
 		res = toJS(dev::asBytes(::compile(_code)));
@@ -460,6 +479,7 @@ std::string WebThreeStubServerBase::eth_serpent(std::string const& _code)
 	{
 		cwarn << "Uncought serpent compilation exception";
 	}
+#endif
 	return res;
 }
 
@@ -565,12 +585,12 @@ Json::Value WebThreeStubServerBase::shh_changed(int const& _id)
 			if (pub)
 			{
 				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
-				m = e.open(m_ids[pub]);
-				if (!m)
-					continue;
+				m = e.open(face()->fullTopic(_id), m_ids[pub]);
 			}
 			else
-				m = e.open();
+				m = e.open(face()->fullTopic(_id));
+			if (!m)
+				continue;
 			ret.append(toJson(h, e, m));
 		}
 	
@@ -607,13 +627,13 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from && m_accounts.size())
 	{
-		auto b = m_accounts.begin()->first;
-		for (auto a: m_accounts)
-			if (client()->balanceAt(a.first) > client()->balanceAt(b))
-				b = a.first;
+		auto b = m_accounts.front();
+		for (auto const& a: m_accounts)
+			if (client()->balanceAt(a) > client()->balanceAt(b))
+				b = a;
 		t.from = b;
 	}
-	if (!m_accounts.count(t.from))
+	if (!m_accountsLookup.count(t.from))
 		return ret;
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
@@ -623,15 +643,15 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 	{
 		if (t.to)
 			// TODO: from qethereum, insert validification hook here.
-			client()->transact(m_accounts[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice);
+			client()->transact(m_accountsLookup[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice);
 		else
-			ret = toJS(client()->transact(m_accounts[t.from].secret(), t.value, t.data, t.gas, t.gasPrice));
+			ret = toJS(client()->transact(m_accountsLookup[t.from].secret(), t.value, t.data, t.gas, t.gasPrice));
 		client()->flushTransactions();
 	}
 	return ret;
 }
 
-bool WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t) const
+bool WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t)
 {
 	cwarn << "Silently signing transaction from address" << _t.from.abridged() << ": User validation hook goes here.";
 	return true;

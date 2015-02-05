@@ -2,25 +2,30 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
+import org.ethereum.qml.QEther 1.0
+import "js/QEtherHelper.js" as QEtherHelper
+import "js/TransactionHelper.js" as TransactionHelper
 
 Window {
+	id: modalStateDialog
 	modality: Qt.WindowModal
 
-	width:640
-	height:480
+	width: 640
+	height: 480
 
 	visible: false
 
 	property alias stateTitle: titleField.text
-	property alias stateBalance: balanceField.text
+	property alias stateBalance: balanceField.value
+	property alias isDefault: defaultCheckBox.checked
 	property int stateIndex
 	property var stateTransactions: []
 	signal accepted
 
-	function open(index, item) {
+	function open(index, item, setDefault) {
 		stateIndex = index;
 		stateTitle = item.title;
-		stateBalance = item.balance;
+		balanceField.value = item.balance;
 		transactionsModel.clear();
 		stateTransactions = [];
 		var transactions = item.transactions;
@@ -29,7 +34,9 @@ Window {
 			stateTransactions.push(item.transactions[t]);
 		}
 		visible = true;
+		isDefault = setDefault;
 		titleField.focus = true;
+		defaultCheckBox.enabled = !isDefault;
 	}
 
 	function close() {
@@ -66,8 +73,18 @@ Window {
 		Label {
 			text: qsTr("Balance")
 		}
-		TextField {
+		Ether {
 			id: balanceField
+			edit: true
+			displayFormattedValue: true
+			Layout.fillWidth: true
+		}
+
+		Label {
+			text: qsTr("Default")
+		}
+		CheckBox {
+			id: defaultCheckBox
 			Layout.fillWidth: true
 		}
 
@@ -95,7 +112,7 @@ Window {
 		anchors.right: parent.right;
 
 		Button {
-			text: qsTr("Ok");
+			text: qsTr("OK");
 			onClicked: {
 				close();
 				accepted();
@@ -119,13 +136,7 @@ Window {
 			// Set next id here to work around Qt bug
 			// https://bugreports.qt-project.org/browse/QTBUG-41327
 			// Second call to signal handler would just edit the item that was just created, no harm done
-			var item = {
-				value: "0",
-				functionId: "",
-				gas: "125000",
-				gasPrice: "100000"
-			};
-
+			var item = TransactionHelper.defaultTransaction();
 			transactionDialog.open(transactionsModel.count, item);
 		}
 
@@ -152,10 +163,12 @@ Window {
 				}
 				ToolButton {
 					text: qsTr("Edit");
+					visible: !stdContract
 					Layout.fillHeight: true
 					onClicked: transactionsModel.editTransaction(index)
 				}
 				ToolButton {
+					visible: index >= 0 ? !transactionsModel.get(index).executeConstructor : false
 					text: qsTr("Delete");
 					Layout.fillHeight: true
 					onClicked: transactionsModel.deleteTransaction(index)
@@ -171,7 +184,7 @@ Window {
 
 			if (transactionDialog.transactionIndex < transactionsModel.count) {
 				transactionsModel.set(transactionDialog.transactionIndex, item);
-				stateTransactions[index] = item;
+				stateTransactions[transactionDialog.transactionIndex] = item;
 			} else {
 				transactionsModel.append(item);
 				stateTransactions.push(item);

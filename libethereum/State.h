@@ -53,7 +53,7 @@ struct StateTrace: public LogChannel { static const char* name() { return "=S=";
 struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
 struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
 
-enum class BaseState { Empty, Genesis };
+enum class BaseState { Empty, CanonGenesis };
 
 /**
  * @brief Model of the current state of the ledger.
@@ -68,7 +68,7 @@ class State
 
 public:
 	/// Construct state object.
-	State(Address _coinbaseAddress = Address(), OverlayDB const& _db = OverlayDB(), BaseState _bs = BaseState::Genesis);
+	State(Address _coinbaseAddress = Address(), OverlayDB const& _db = OverlayDB(), BaseState _bs = BaseState::CanonGenesis);
 
 	/// Construct state object from arbitrary point in blockchain.
 	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash);
@@ -122,11 +122,14 @@ public:
 	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
 	 * Typically looks like:
 	 * @code
+	 * while (notYetMined)
+	 * {
 	 * // lock
-	 * commitToMine(blockchain);
+	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
 	 * // unlock
 	 * MineInfo info;
 	 * for (info.complete = false; !info.complete; info = mine()) {}
+	 * }
 	 * // lock
 	 * completeMine();
 	 * // unlock

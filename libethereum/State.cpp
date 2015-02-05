@@ -35,6 +35,7 @@
 #include "ExtVM.h"
 #include "Executive.h"
 #include "CachedAddressState.h"
+#include "CanonBlockChain.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -74,18 +75,16 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db, BaseState _bs):
 
 	paranoia("beginning of normal construction.", true);
 
-	if (_bs == BaseState::Genesis)
+	if (_bs == BaseState::CanonGenesis)
 	{
 		dev::eth::commit(genesisState(), m_db, m_state);
 		m_db.commit();
 
 		paranoia("after DB commit of normal construction.", true);
-		m_previousBlock = BlockChain::genesis();
+		m_previousBlock = CanonBlockChain::genesis();
 	}
 	else
-	{
 		m_previousBlock.setEmpty();
-	}
 
 	resetCurrent();
 
@@ -304,7 +303,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 		// (Most recent state dump might end up being genesis.)
 
 		std::vector<h256> chain;
-		while (bi.stateRoot != BlockChain::genesis().hash && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
+		while (bi.number != 0 && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
 		{
 			chain.push_back(bi.hash);				// push back for later replay.
 			bi.populate(_bc.block(bi.parentHash));	// move to parent.
@@ -395,7 +394,7 @@ bool State::cull(TransactionQueue& _tq) const
 		{
 			try
 			{
-				Transaction t(i.second);
+				Transaction t(i.second, CheckSignature::Sender);
 				if (t.nonce() <= transactionsFrom(t.sender()))
 				{
 					_tq.drop(i.first);
@@ -682,8 +681,6 @@ LogBloom State::logBloom() const
 	return ret;
 }
 
-// @returns the block that represents the difference between m_previousBlock and m_currentBlock.
-// (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
 {
 	uncommitToMine();
@@ -700,7 +697,7 @@ void State::commitToMine(BlockChain const& _bc)
 
 	RLPStream unclesData;
 	unsigned unclesCount = 0;
-	if (m_previousBlock != BlockChain::genesis())
+	if (m_previousBlock.number != 0)
 	{
 		// Find great-uncles (or second-cousins or whatever they are) - children of great-grandparents, great-great-grandparents... that were not already uncles in previous generations.
 //		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
@@ -802,7 +799,7 @@ void State::completeMine()
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
-	m_currentBlock.hash = sha3(m_currentBytes);
+	m_currentBlock.hash = sha3(RLP(m_currentBytes)[0].data());
 	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
 
 	// Quickly reset the transactions.

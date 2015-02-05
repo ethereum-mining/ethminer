@@ -16,9 +16,15 @@ public:
 	ExecutionEngine(ExecutionEngine const&) = delete;
 	void operator=(ExecutionEngine) = delete;
 
-	ReturnCode run(bytes const& _code, RuntimeData* _data, Env* _env);
+	EXPORT ReturnCode run(bytes const& _code, RuntimeData* _data, Env* _env);
 
-	bytes returnData;
+	/// Reference to returned data (RETURN opcode used)
+	bytes_ref returnData;
+
+private:
+	/// After execution, if RETURN used, memory is moved there
+	/// to allow client copy the returned data
+	bytes m_memory;
 };
 
 }

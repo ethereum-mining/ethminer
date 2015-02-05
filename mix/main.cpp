@@ -20,11 +20,34 @@
  * Ethereum IDE client.
  */
 
+#include <iostream>
+#include <stdlib.h>
 #include "MixApplication.h"
+#include "Exceptions.h"
 using namespace dev::mix;
 
 int main(int _argc, char* _argv[])
 {
-	MixApplication app(_argc, _argv);
-	return app.exec();
+#ifdef ETH_HAVE_WEBENGINE
+	Q_INIT_RESOURCE(js);
+#endif
+#if __linux
+	//work around ubuntu appmenu-qt5 bug
+	//https://bugs.launchpad.net/ubuntu/+source/appmenu-qt5/+bug/1323853
+	putenv((char*)"QT_QPA_PLATFORMTHEME=");
+	putenv((char*)"QSG_RENDER_LOOP=threaded");
+#endif
+	try
+	{
+		MixApplication app(_argc, _argv);
+		return app.exec();
+	}
+	catch (boost::exception const& _e)
+	{
+		std::cerr << boost::diagnostic_information(_e);
+	}
+	catch (std::exception const& _e)
+	{
+		std::cerr << _e.what();
+	}
 }

@@ -49,14 +49,14 @@ void WhisperHost::streamMessage(h256 _m, RLPStream& _s) const
 	{
 		UpgradeGuard ll(l);
 		auto const& m = m_messages.at(_m);
-		cnote << "streamRLP: " << m.expiry() << m.ttl() << m.topics() << toHex(m.data());
+		cnote << "streamRLP: " << m.expiry() << m.ttl() << m.topic() << toHex(m.data());
 		m.streamRLP(_s);
 	}
 }
 
 void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
-	cnote << "inject: " << _m.expiry() << _m.ttl() << _m.topics() << toHex(_m.data());
+	cnote << this << ": inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
 
 	if (_m.expiry() <= time(0))
 		return;
@@ -104,14 +104,15 @@ unsigned WhisperHost::installWatchOnId(h256 _h)
 	return ret;
 }
 
-unsigned WhisperHost::installWatch(shh::TopicFilter const& _f)
+unsigned WhisperHost::installWatch(shh::FullTopic const& _ft)
 {
 	Guard l(m_filterLock);
 
-	h256 h = _f.sha3();
+	InstalledFilter f(_ft);
+	h256 h = f.filter.sha3();
 
 	if (!m_filters.count(h))
-		m_filters.insert(make_pair(h, _f));
+		m_filters.insert(make_pair(h, f));
 
 	return installWatchOnId(h);
 }

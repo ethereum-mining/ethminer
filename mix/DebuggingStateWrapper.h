@@ -29,6 +29,7 @@
 #include <libethereum/Executive.h>
 #include "QVariableDefinition.h"
 #include "MixClient.h"
+#include "QBigInt.h"
 
 namespace dev
 {
@@ -38,109 +39,133 @@ namespace mix
 /**
  * @brief Contains the line nb of the assembly code and the corresponding index in the code bytes array.
  */
-class HumanReadableCode: public QObject
+class QInstruction: public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(QString line READ line CONSTANT)
-	Q_PROPERTY(int processIndex READ processIndex CONSTANT)
+	Q_PROPERTY(QString line MEMBER m_line CONSTANT)
+	Q_PROPERTY(int processIndex MEMBER m_processIndex CONSTANT)
 
 public:
-	HumanReadableCode(QString _line, int _processIndex): QObject(), m_line(_line), m_processIndex(_processIndex) {}
-	/// Get the assembly code line.
-	QString line() { return m_line; }
-	/// Get corresponding index.
-	int processIndex() { return m_processIndex; }
+	QInstruction(QObject* _owner, QString _line, int _processIndex): QObject(_owner), m_line(_line), m_processIndex(_processIndex) {}
 
 private:
 	QString m_line;
 	int m_processIndex;
 };
 
-
 /**
- * @brief Publish QMap type to QML.
+ * @brief Shared container for lines
  */
-class QQMLMap: public QObject
+class QCode: public QObject
 {
 	Q_OBJECT
+	Q_PROPERTY(QVariantList instructions MEMBER m_instructions CONSTANT)
 
 public:
-	QQMLMap(QMap<int, int> _map): QObject(), m_map(_map) { }
-	/// Get the value associated with _key store in n_map.
-	Q_INVOKABLE int getValue(int _key) { return m_map.value(_key); }
+	QCode(QObject* _owner, QVariantList&& _instrunctions): QObject(_owner), m_instructions(_instrunctions) {}
 
 private:
-	QMap<int, int> m_map;
+	QVariantList m_instructions;
 };
 
 /**
- * @brief Wrap DebuggingState in QObject
+ * @brief Shared container for call data
  */
-class DebuggingStateWrapper: public QObject
+class QCallData: public QObject
+{
+	Q_OBJECT
+	Q_PROPERTY(QVariantList items MEMBER m_items CONSTANT)
+
+public:
+	QCallData(QObject* _owner, QVariantList&& _items): QObject(_owner), m_items(_items) {}
+
+private:
+	QVariantList m_items;
+};
+
+/**
+ * @brief Shared container for machine states
+ */
+class QDebugData: public QObject
+{
+	Q_OBJECT
+	Q_PROPERTY(QVariantList states MEMBER m_states CONSTANT)
+
+public:
+	QDebugData() { }
+	void setStates(QVariantList&& _states) { m_states = _states; }
+
+private:
+	QVariantList m_states;
+};
+
+/**
+ * @brief Wrap MachineState in QObject
+ */
+class QMachineState: public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(int step READ step CONSTANT)
 	Q_PROPERTY(int curPC READ curPC CONSTANT)
-	Q_PROPERTY(QString gasCost READ gasCost CONSTANT)
-	Q_PROPERTY(QString gas READ gas CONSTANT)
+	Q_PROPERTY(QBigInt* gasCost READ gasCost CONSTANT)
+	Q_PROPERTY(QBigInt* gas READ gas CONSTANT)
 	Q_PROPERTY(QString instruction READ instruction CONSTANT)
+	Q_PROPERTY(QString address READ address CONSTANT)
 	Q_PROPERTY(QStringList debugStack READ debugStack CONSTANT)
 	Q_PROPERTY(QStringList debugStorage READ debugStorage CONSTANT)
 	Q_PROPERTY(QVariantList debugMemory READ debugMemory CONSTANT)
-	Q_PROPERTY(QVariantList debugCallData READ debugCallData CONSTANT)
-	Q_PROPERTY(QString headerInfo READ headerInfo CONSTANT)
+	Q_PROPERTY(QObject* code MEMBER m_code CONSTANT)
+	Q_PROPERTY(QObject* callData MEMBER m_callData CONSTANT)
 	Q_PROPERTY(QString endOfDebug READ endOfDebug CONSTANT)
-	Q_PROPERTY(QString newMemSize READ newMemSize CONSTANT)
-	Q_PROPERTY(QStringList levels READ levels CONSTANT)
+	Q_PROPERTY(QBigInt* newMemSize READ newMemSize CONSTANT)
+	Q_PROPERTY(QVariantList levels READ levels CONSTANT)
+	Q_PROPERTY(unsigned codeIndex READ codeIndex CONSTANT)
+	Q_PROPERTY(unsigned dataIndex READ dataIndex CONSTANT)
 
 public:
-	DebuggingStateWrapper(bytes _code, bytes _data): QObject(), m_code(_code), m_data(_data) {}
+	QMachineState(QObject* _owner, MachineState const& _state, QCode* _code, QCallData* _callData):
+		QObject(_owner), m_state(_state), m_code(_code), m_callData(_callData) {}
 	/// Get the step of this machine states.
 	int step() { return  (int)m_state.steps; }
 	/// Get the proccessed code index.
 	int curPC() { return (int)m_state.curPC; }
-	/// Get gas left.
-	QString gasLeft();
+	/// Get the code id
+	unsigned codeIndex() { return m_state.codeIndex; }
+	/// Get the call data id
+	unsigned dataIndex() { return m_state.dataIndex; }
+	/// Get address for call stack
+	QString address();
 	/// Get gas cost.
-	QString gasCost();
+	QBigInt* gasCost();
 	/// Get gas used.
-	QString gas();
+	QBigInt* gas();
 	/// Get stack.
 	QStringList debugStack();
 	/// Get storage.
 	QStringList debugStorage();
 	/// Get memory.
 	QVariantList debugMemory();
-	/// Get call data.
-	QVariantList debugCallData();
-	/// Get info to be displayed in the header.
-	QString headerInfo();
 	/// get end of debug information.
 	QString endOfDebug();
 	/// Get the new memory size.
-	QString newMemSize();
+	QBigInt* newMemSize();
 	/// Get current instruction
 	QString instruction();
 	/// Get all previous steps.
-	QStringList levels();
+	QVariantList levels();
 	/// Get the current processed machine state.
 	MachineState state() { return m_state; }
 	/// Set the current processed machine state.
 	void setState(MachineState _state) { m_state = _state;  }
-	/// Convert all machine state in human readable code.
-	static std::tuple<QList<QObject*>, QQMLMap*> getHumanReadableCode(bytes const& _code);
+	/// Convert all machine states in human readable code.
+	static QCode* getHumanReadableCode(QObject* _owner, bytes const& _code);
+	/// Convert call data into human readable form
+	static QCallData* getDebugCallData(QObject* _owner, bytes const& _data);
 
 private:
 	MachineState m_state;
-	bytes m_code;
-	bytes m_data;
-	QStringList fillList(QStringList& _list, QString const& _emptyValue);
-	QVariantList fillList(QVariantList _list, QVariant const& _emptyValue);
-	QVariantList qVariantDump(std::vector<std::vector<std::string>> const& _dump);
-	/// Nicely renders the given bytes to a string, store the content in an array.
-	/// @a _bytes: bytes array to be rendered as string. @a _width of a bytes line.
-	std::vector<std::vector<std::string>> memDumpToList(bytes const& _bytes, unsigned _width);
-
+	QCode* m_code;
+	QCallData* m_callData;
 };
 
 }
