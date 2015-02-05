@@ -23,7 +23,7 @@
 #include <QDebug>
 #include <QMap>
 #include <QStringList>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libsolidity/AST.h>
 #include "QVariableDeclaration.h"
 #include "QVariableDefinition.h"
@@ -44,89 +44,37 @@ void ContractCallDataEncoder::encode(QFunctionDefinition const* _function)
 	m_encodedData.insert(m_encodedData.end(), hash.begin(), hash.end());
 }
 
-void ContractCallDataEncoder::encode(QVariableDeclaration const* _dec, bool _value)
+void ContractCallDataEncoder::push(bytes const& _b)
 {
-	return encode(_dec, QString(formatBool(_value)));
+	m_encodedData.insert(m_encodedData.end(), _b.begin(), _b.end());
 }
 
-void ContractCallDataEncoder::encode(QVariableDeclaration const* _dec, QString _value)
-{
-	int padding = this->padding(_dec->type());
-	bytes data = padded(jsToBytes(_value.toStdString()), padding);
-	m_encodedData.insert(m_encodedData.end(), data.begin(), data.end());
-}
-
-void ContractCallDataEncoder::encode(QVariableDeclaration const* _dec, u256 _value)
-{
-	int padding = this->padding(_dec->type());
-	std::ostringstream s;
-	s << std::hex << "0x" << _value;
-	bytes data = padded(jsToBytes(s.str()), padding);
-	m_encodedData.insert(m_encodedData.end(), data.begin(), data.end());
-	encodedData();
-}
-
-QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> _returnParameters, bytes _value)
+QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& _returnParameters, bytes _value)
 {
 	QList<QVariableDefinition*> r;
-	std::string returnValue = toJS(_value);
-	returnValue = returnValue.substr(2, returnValue.length() - 1);
 	for (int k = 0; k <_returnParameters.length(); k++)
 	{
 		QVariableDeclaration* dec = (QVariableDeclaration*)_returnParameters.at(k);
-		int padding = this->padding(dec->type());
-		std::string rawParam = returnValue.substr(0, padding * 2);
-		r.append(new QVariableDefinition(dec, convertToReadable(unpadLeft(rawParam), dec)));
-		returnValue = returnValue.substr(rawParam.length(), returnValue.length() - 1);
+		QVariableDefinition* def = nullptr;
+		if (dec->type().contains("int"))
+			def = new QIntType(dec, QString());
+		else if (dec->type().contains("real"))
+			def = new QRealType(dec, QString());
+		else if (dec->type().contains("bool"))
+			def = new QBoolType(dec, QString());
+		else if (dec->type().contains("string") || dec->type().contains("text"))
+			def = new QStringType(dec, QString());
+		else if (dec->type().contains("hash") || dec->type().contains("address"))
+			def = new QHashType(dec, QString());
+		else
+			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Parameter declaration not found"));
+
+		bytes rawParam(_value.begin(), _value.begin() + 32);
+		def->decodeValue(rawParam);
+		r.push_back(def);
+		if (_value.size() > 32)
+			_value =  bytes(_value.begin() + 32, _value.end());
+		qDebug() << "decoded return value : " << dec->type() << " " << def->value();
 	}
 	return r;
-}
-
-int ContractCallDataEncoder::padding(QString type)
-{
-	// TODO : to be improved (load types automatically from solidity library).
-	if (type.indexOf("uint") != -1)
-		return integerPadding(type.remove("uint").toInt());
-	else if (type.indexOf("int") != -1)
-		return integerPadding(type.remove("int").toInt());
-	else if (type.indexOf("bool") != -1)
-		return 1;
-	else if ((type.indexOf("address") != -1))
-		return 32;
-	else
-		return 0;
-}
-
-int ContractCallDataEncoder::integerPadding(int bitValue)
-{
-	return bitValue / 8;
-}
-
-QString ContractCallDataEncoder::formatBool(bool _value)
-{
-	return (_value ? "1" : "0");
-}
-
-QString ContractCallDataEncoder::convertToReadable(std::string _v, QVariableDeclaration* _dec)
-{
-	if (_dec->type().indexOf("int") != -1)
-		return convertToInt(_v);
-	else if (_dec->type().indexOf("bool") != -1)
-		return convertToBool(_v);
-	else
-		return QString::fromStdString(_v);
-}
-
-QString ContractCallDataEncoder::convertToBool(std::string _v)
-{
-	return _v == "1" ? "true" : "false";
-}
-
-QString ContractCallDataEncoder::convertToInt(std::string _v)
-{
-	//TO DO to be improve to manage all int, uint size (128, 256, ...) in ethereum QML types task #612.
-	int x = std::stol(_v, nullptr, 16);
-	std::stringstream ss;
-	ss << std::dec << x;
-	return QString::fromStdString(ss.str());
 }

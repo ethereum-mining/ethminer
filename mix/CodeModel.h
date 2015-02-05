@@ -24,6 +24,7 @@
 
 #include <memory>
 #include <atomic>
+#include <map>
 #include <QObject>
 #include <QThread>
 #include <libdevcore/Common.h>
@@ -67,6 +68,7 @@ class CompilationResult: public QObject
 	Q_PROPERTY(QContractDefinition* contract READ contract)
 	Q_PROPERTY(QString compilerMessage READ compilerMessage CONSTANT)
 	Q_PROPERTY(bool successful READ successful CONSTANT)
+	Q_PROPERTY(QString contractInterface READ contractInterface CONSTANT)
 
 public:
 	/// Empty compilation result constructor
@@ -88,6 +90,8 @@ public:
 	dev::bytes const& bytes() const { return m_bytes; }
 	/// @returns contract bytecode in human-readable form
 	QString assemblyCode() const { return m_assemblyCode; }
+	/// @returns contract definition in JSON format
+	QString contractInterface() const { return m_contractInterface; }
 	/// Get code highlighter
 	std::shared_ptr<CodeHighlighter> codeHighlighter() { return m_codeHighlighter; }
 
@@ -98,6 +102,7 @@ private:
 	QString m_compilerMessage; ///< @todo: use some structure here
 	dev::bytes m_bytes;
 	QString m_assemblyCode;
+	QString m_contractInterface;
 	std::shared_ptr<CodeHighlighter> m_codeHighlighter;
 
 	friend class CodeModel;
@@ -127,6 +132,8 @@ public:
 	bool hasContract() const;
 	/// Apply text document formatting. @todo Move this to editor module
 	void updateFormatting(QTextDocument* _document);
+	/// Get contract code by url. Contract is compiled on first access and cached
+	dev::bytes const& getStdContractCode(QString const& _contractName, QString const& _url);
 
 signals:
 	/// Emited on compilation state change
@@ -137,6 +144,8 @@ signals:
 	void scheduleCompilationJob(int _jobId, QString const& _content);
 	/// Emitted if there are any changes in the code model
 	void codeChanged();
+	/// Emitted if there are any changes in the contract interface
+	void contractInterfaceChanged();
 	/// Emitted on compilation complete. Internal
 	void compilationCompleteInternal(CompilationResult* _newResult);
 
@@ -157,6 +166,7 @@ private:
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;
 	int m_backgroundJobId = 0; //protects from starting obsolete compilation job
+	std::map<QString, dev::bytes> m_compiledContracts; //by name
 	friend class BackgroundWorker;
 };
 

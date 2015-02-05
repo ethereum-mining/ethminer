@@ -53,7 +53,7 @@ void Executive::accrueSubState(SubState& _parentContext)
 bool Executive::setup(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
-	m_t = Transaction(_rlp);
+	m_t = Transaction(_rlp, CheckSignature::Sender);
 
 	// Avoid invalid transactions.
 	auto nonceReq = m_s.transactionsFrom(m_t.sender());
@@ -72,17 +72,17 @@ bool Executive::setup(bytesConstRef _rlp)
 		BOOST_THROW_EXCEPTION(OutOfGas() << RequirementError((bigint)gasCost, (bigint)m_t.gas()));
 	}
 
-	u256 cost = m_t.value() + m_t.gas() * m_t.gasPrice();
+	bigint cost = m_t.value() + (bigint)m_t.gas() * m_t.gasPrice();
 
 	// Avoid unaffordable transactions.
 	if (m_s.balance(m_t.sender()) < cost)
 	{
 		clog(StateDetail) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_t.sender());
-		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError((bigint)cost, (bigint)m_s.balance(m_t.sender())));
+		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(cost, (bigint)m_s.balance(m_t.sender())));
 	}
 
 	u256 startGasUsed = m_s.gasUsed();
-	if (startGasUsed + m_t.gas() > m_s.m_currentBlock.gasLimit)
+	if (startGasUsed + (bigint)m_t.gas() > m_s.m_currentBlock.gasLimit)
 	{
 		clog(StateDetail) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas();
 		BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementError((bigint)(m_s.m_currentBlock.gasLimit - startGasUsed), (bigint)m_t.gas()));
@@ -92,7 +92,7 @@ bool Executive::setup(bytesConstRef _rlp)
 	m_s.noteSending(m_t.sender());
 
 	// Pay...
-	clog(StateDetail) << "Paying" << formatBalance(cost) << "from sender (includes" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
+	clog(StateDetail) << "Paying" << formatBalance(u256(cost)) << "from sender (includes" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
 	m_s.subBalance(m_t.sender(), cost);
 
 	if (m_t.isCreation())
@@ -197,7 +197,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 					m_endGas -= m_out.size() * c_createDataGas;
 				else
 					m_out.reset();
-				m_s.m_cache[m_newAddress].setCode(m_out);
+				m_s.m_cache[m_newAddress].setCode(m_out.toBytes());
 			}
 		}
 		catch (StepsDone const&)

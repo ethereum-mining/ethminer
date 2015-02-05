@@ -38,6 +38,7 @@ public:
 	QBasicNodeDefinition(): QObject() {}
 	~QBasicNodeDefinition() {}
 	QBasicNodeDefinition(solidity::Declaration const* _d): QObject(), m_name(QString::fromStdString(_d->getName())) {}
+	QBasicNodeDefinition(std::string const& _name): QObject(), m_name(QString::fromStdString(_name)) {}
 	/// Get the name of the node.
 	QString name() const { return m_name; }
 

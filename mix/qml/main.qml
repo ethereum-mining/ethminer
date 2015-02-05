@@ -4,14 +4,15 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
-import CodeEditorExtensionManager 1.0
-import org.ethereum.qml.ProjectModel 1.0
+import QtQuick.PrivateWidgets 1.1
+import Qt.labs.settings 1.0
+import org.ethereum.qml.QEther 1.0
 
 ApplicationWindow {
 	id: mainApplication
 	visible: true
 	width: 1200
-	height: 600
+	height: 800
 	minimumWidth: 400
 	minimumHeight: 300
 	title: qsTr("mix")
@@ -34,19 +35,22 @@ ApplicationWindow {
 			MenuItem { action: exitAppAction }
 		}
 		Menu {
-			title: qsTr("Debug")
+			title: qsTr("Deploy")
 			MenuItem { action: debugRunAction }
-			MenuItem { action: debugResetStateAction }
+			MenuItem { action: mineAction }
+			MenuSeparator {}
+			MenuItem { action: toggleRunOnLoadAction }
 		}
 		Menu {
 			title: qsTr("Windows")
-			MenuItem { action: showHideRightPanel }
+			MenuItem { action: openNextDocumentAction }
+			MenuItem { action: openPrevDocumentAction }
+			MenuSeparator {}
+			MenuItem { action: toggleProjectNavigatorAction }
+			MenuItem { action: showHideRightPanelAction }
+			MenuItem { action: toggleWebPreviewAction }
+			MenuItem { action: toggleWebPreviewOrientationAction }
 		}
-	}
-
-	Component.onCompleted: {
-		setX(Screen.width / 2 - width / 2);
-		setY(Screen.height / 2 - height / 2);
 	}
 
 	MainContent {
@@ -64,6 +68,14 @@ ApplicationWindow {
 		id: messageDialog
 	}
 
+	Settings {
+		id: mainWindowSettings
+		property alias mainWidth: mainApplication.width
+		property alias mainHeight: mainApplication.height
+		property alias mainX: mainApplication.x
+		property alias mainY: mainApplication.y
+	}
+
 	Action {
 		id: exitAppAction
 		text: qsTr("Exit")
@@ -72,91 +84,156 @@ ApplicationWindow {
 	}
 
 	Action {
-		id: debugRunAction
-		text: "&Run"
-		shortcut: "F5"
-		onTriggered: {
-			mainContent.ensureRightView();
-			clientModel.debugDeployment();
+		id: mineAction
+		text: qsTr("Mine")
+		shortcut: "Ctrl+M"
+		onTriggered: clientModel.mine();
+		enabled: codeModel.hasContract && !clientModel.running
+	}
+
+	Connections {
+		target: projectModel.stateListModel
+
+		function updateRunLabel()
+		{
+			debugRunAction.text = qsTr("Deploy") + " \"" + projectModel.stateListModel.defaultStateName() + "\"";
 		}
-		enabled: codeModel.hasContract && !clientModel.running;
+
+		onDefaultStateChanged: updateRunLabel()
+		onStateListModelReady: updateRunLabel()
 	}
 
 	Action {
-		id: debugResetStateAction
-		text: "Reset &State"
-		shortcut: "F6"
-		onTriggered: clientModel.resetState();
+		id: debugRunAction
+		text: qsTr("Deploy")
+		shortcut: "F5"
+		onTriggered: mainContent.startQuickDebugging()
+		enabled: codeModel.hasContract && !clientModel.running
 	}
 
 	Action {
-		id: showHideRightPanel
-		text: "Show/Hide right view"
+		id: toggleWebPreviewAction
+		text: qsTr("Show Web View")
+		shortcut: "F2"
+		checkable: true
+		checked: mainContent.webViewVisible
+		onTriggered: mainContent.toggleWebPreview();
+	}
+
+	Action {
+		id: toggleProjectNavigatorAction
+		text: qsTr("Show Project Navigator")
+		shortcut: "Alt+0"
+		checkable: true
+		checked: mainContent.projectViewVisible
+		onTriggered: mainContent.toggleProjectView();
+	}
+
+	Action {
+		id: toggleWebPreviewOrientationAction
+		text: qsTr("Horizontal Web View")
+		shortcut: ""
+		checkable: true
+		checked: mainContent.webViewHorizontal
+		onTriggered: mainContent.toggleWebPreviewOrientation();
+	}
+
+	Action {
+		id: toggleRunOnLoadAction
+		text: qsTr("Load State on Startup")
+		shortcut: ""
+		checkable: true
+		checked: mainContent.runOnProjectLoad
+		onTriggered: mainContent.runOnProjectLoad = !mainContent.runOnProjectLoad
+	}
+
+	Action {
+		id: showHideRightPanelAction
+		text: qsTr("Show Right View")
 		shortcut: "F7"
+		checkable: true
+		checked: mainContent.rightViewVisible
 		onTriggered: mainContent.toggleRightView();
 	}
 
 	Action {
 		id: createProjectAction
-		text: qsTr("&New project")
+		text: qsTr("&New Project")
 		shortcut: "Ctrl+N"
 		enabled: true;
-		onTriggered: ProjectModel.createProject();
+		onTriggered: projectModel.createProject();
 	}
 
 	Action {
 		id: openProjectAction
-		text: qsTr("&Open project")
+		text: qsTr("&Open Project")
 		shortcut: "Ctrl+O"
 		enabled: true;
-		onTriggered: ProjectModel.browseProject();
+		onTriggered: projectModel.browseProject();
 	}
 
 	Action {
 		id: addNewJsFileAction
-		text: qsTr("New JavaScript file")
+		text: qsTr("New JavaScript File")
 		shortcut: "Ctrl+Alt+J"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.newJsFile();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.newJsFile();
 	}
 
 	Action {
 		id: addNewHtmlFileAction
-		text: qsTr("New HTML file")
+		text: qsTr("New HTML File")
 		shortcut: "Ctrl+Alt+H"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.newHtmlFile();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.newHtmlFile();
 	}
 
 	Action {
 		id: addNewContractAction
-		text: qsTr("New contract")
+		text: qsTr("New Contract")
 		shortcut: "Ctrl+Alt+C"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.newContract();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.newContract();
 	}
 
 	Action {
 		id: addExistingFileAction
-		text: qsTr("Add existing file")
+		text: qsTr("Add Existing File")
 		shortcut: "Ctrl+Alt+A"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.addExistingFile();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.addExistingFile();
 	}
 
 	Action {
 		id: saveAllFilesAction
-		text: qsTr("Save all")
+		text: qsTr("Save All")
 		shortcut: "Ctrl+S"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.saveAll();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.saveAll();
 	}
 
 	Action {
 		id: closeProjectAction
-		text: qsTr("Close project")
+		text: qsTr("Close Project")
 		shortcut: "Ctrl+W"
-		enabled: !ProjectModel.isEmpty
-		onTriggered: ProjectModel.closeProject();
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.closeProject();
 	}
+
+	Action {
+		id: openNextDocumentAction
+		text: qsTr("Next Document")
+		shortcut: "Ctrl+Tab"
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.openNextDocument();
+	}
+
+	Action {
+		id: openPrevDocumentAction
+		text: qsTr("Previous Document")
+		shortcut: "Ctrl+Shift+Tab"
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.openPrevDocument();
+	}
+
 }

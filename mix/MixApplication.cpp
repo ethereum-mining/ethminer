@@ -21,7 +21,11 @@
 
 #include <QDebug>
 #include <QQmlApplicationEngine>
-#include "CodeEditorExtensionManager.h"
+
+#ifdef ETH_HAVE_WEBENGINE
+#include <QtWebEngine/QtWebEngine>
+#endif
+
 #include "MixApplication.h"
 #include "AppContext.h"
 
@@ -32,10 +36,15 @@ using namespace dev::mix;
 MixApplication::MixApplication(int _argc, char* _argv[]):
 	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine()), m_appContext(new AppContext(m_engine.get()))
 {
-	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
+	setOrganizationName(tr("Ethereum"));
+	setOrganizationDomain(tr("ethereum.org"));
+	setApplicationName(tr("Mix"));
+	setApplicationVersion("0.1");
+#ifdef ETH_HAVE_WEBENGINE
+	QtWebEngine::initialize();
+#endif
 	QObject::connect(this, SIGNAL(lastWindowClosed()), context(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
-	m_engine->load(QUrl("qrc:/qml/main.qml"));
-	m_appContext->appLoaded();
+	m_appContext->load();
 }
 
 MixApplication::~MixApplication()

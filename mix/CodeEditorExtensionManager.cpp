@@ -51,7 +51,6 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 {
 	if (!_editor)
 		return;
-
 }
 
 void CodeEditorExtensionManager::initExtensions()

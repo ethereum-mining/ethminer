@@ -32,14 +32,6 @@
 #include <QObject>
 
 class QQmlApplicationEngine;
-namespace dev
-{
-	class WebThreeDirect;
-	namespace solidity
-	{
-		class CompilerStack;
-	}
-}
 
 namespace dev
 {
@@ -56,10 +48,13 @@ class FileIo;
 class AppContext: public QObject
 {
 	Q_OBJECT
+	Q_PROPERTY(QString clipboard READ clipboard WRITE toClipboard NOTIFY clipboardChanged)
 
 public:
 	AppContext(QQmlApplicationEngine* _engine);
 	virtual ~AppContext();
+	/// Load the UI from qml files
+	void load();
 	/// Get the current QQMLApplicationEngine instance.
 	QQmlApplicationEngine* appEngine();
 	/// Get code model
@@ -68,14 +63,18 @@ public:
 	ClientModel* clientModel() { return m_clientModel.get(); }
 	/// Display an alert message.
 	void displayMessageDialog(QString _title, QString _message);
+	/// Copy text to clipboard
+	Q_INVOKABLE void toClipboard(QString _text);
+	/// Get text from clipboard
+	QString clipboard() const;
 
 signals:
 	/// Triggered once components have been loaded
 	void appLoaded();
+	void clipboardChanged();
 
 private:
 	QQmlApplicationEngine* m_applicationEngine; //owned by app
-	std::unique_ptr<dev::WebThreeDirect> m_webThree;
 	std::unique_ptr<CodeModel> m_codeModel;
 	std::unique_ptr<ClientModel> m_clientModel;
 	std::unique_ptr<FileIo> m_fileIo;

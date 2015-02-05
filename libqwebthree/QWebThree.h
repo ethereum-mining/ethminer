@@ -34,12 +34,10 @@ class QWebThree: public QObject
 public:
 	QWebThree(QObject* _p);
 	virtual ~QWebThree();
-
-	void poll();
-	void clearWatches();
 	void clientDieing();
 	
-	Q_INVOKABLE void postMessage(QString _json);
+	Q_INVOKABLE QString callMethod(QString _json);
+	void syncResponse(QString _json);
 	
 public slots:
 	void onDataProcessed(QString _json, QString _addInfo);
@@ -50,8 +48,7 @@ signals:
 	void onNewId(QString _id);
 	
 private:
-	std::vector<unsigned> m_watches;
-	std::vector<unsigned> m_shhWatches;
+	QString m_response;
 };
 
 class QWebThreeConnector: public QObject, public jsonrpc::AbstractServerConnector
@@ -84,7 +81,7 @@ private:
 	_frame->disconnect(); \
 	_frame->addToJavaScriptWindowObject("_web3", qweb, QWebFrame::ScriptOwnership); \
 	_frame->addToJavaScriptWindowObject("env", _env, QWebFrame::QtOwnership); \
-	_frame->evaluateJavaScript(contentsOfQResource(":/js/es6-promise-2.0.0.js")); \
+	_frame->evaluateJavaScript(contentsOfQResource(":/js/bignumber.min.js")); \
 	_frame->evaluateJavaScript(contentsOfQResource(":/js/webthree.js")); \
 	_frame->evaluateJavaScript(contentsOfQResource(":/js/setup.js")); \
 }

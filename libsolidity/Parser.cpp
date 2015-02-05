@@ -112,47 +112,88 @@ ASTPointer<ImportDirective> Parser::parseImportDirective()
 ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 {
 	ASTNodeFactory nodeFactory(*this);
-	ASTPointer<ASTString> docstring;
+	ASTPointer<ASTString> docString;
 	if (m_scanner->getCurrentCommentLiteral() != "")
-		docstring = make_shared<ASTString>(m_scanner->getCurrentCommentLiteral());
+		docString = make_shared<ASTString>(m_scanner->getCurrentCommentLiteral());
 	expectToken(Token::CONTRACT);
 	ASTPointer<ASTString> name = expectIdentifierToken();
-	expectToken(Token::LBRACE);
+	vector<ASTPointer<InheritanceSpecifier>> baseContracts;
 	vector<ASTPointer<StructDefinition>> structs;
 	vector<ASTPointer<VariableDeclaration>> stateVariables;
 	vector<ASTPointer<FunctionDefinition>> functions;
-	bool visibilityIsPublic = true;
+	vector<ASTPointer<ModifierDefinition>> modifiers;
+	vector<ASTPointer<EventDefinition>> events;
+	if (m_scanner->getCurrentToken() == Token::IS)
+		do
+		{
+			m_scanner->next();
+			baseContracts.push_back(parseInheritanceSpecifier());
+		}
+		while (m_scanner->getCurrentToken() == Token::COMMA);
+	expectToken(Token::LBRACE);
 	while (true)
 	{
 		Token::Value currentToken = m_scanner->getCurrentToken();
 		if (currentToken == Token::RBRACE)
 			break;
-		else if (currentToken == Token::PUBLIC || currentToken == Token::PRIVATE)
-		{
-			visibilityIsPublic = (m_scanner->getCurrentToken() == Token::PUBLIC);
-			m_scanner->next();
-			expectToken(Token::COLON);
-		}
 		else if (currentToken == Token::FUNCTION)
-			functions.push_back(parseFunctionDefinition(visibilityIsPublic));
+			functions.push_back(parseFunctionDefinition(name.get()));
 		else if (currentToken == Token::STRUCT)
 			structs.push_back(parseStructDefinition());
 		else if (currentToken == Token::IDENTIFIER || currentToken == Token::MAPPING ||
 				 Token::isElementaryTypeName(currentToken))
 		{
-			bool const allowVar = false;
-			stateVariables.push_back(parseVariableDeclaration(allowVar));
+			VarDeclParserOptions options;
+			options.isStateVariable = true;
+			stateVariables.push_back(parseVariableDeclaration(options));
 			expectToken(Token::SEMICOLON);
 		}
+		else if (currentToken == Token::MODIFIER)
+			modifiers.push_back(parseModifierDefinition());
+		else if (currentToken == Token::EVENT)
+			events.push_back(parseEventDefinition());
 		else
-			BOOST_THROW_EXCEPTION(createParserError("Function, variable or struct declaration expected."));
+			BOOST_THROW_EXCEPTION(createParserError("Function, variable, struct or modifier declaration expected."));
 	}
 	nodeFactory.markEndPosition();
 	expectToken(Token::RBRACE);
-	return nodeFactory.createNode<ContractDefinition>(name, docstring, structs, stateVariables, functions);
+	return nodeFactory.createNode<ContractDefinition>(name, docString, baseContracts, structs,
+													  stateVariables, functions, modifiers, events);
 }
 
-ASTPointer<FunctionDefinition> Parser::parseFunctionDefinition(bool _isPublic)
+ASTPointer<InheritanceSpecifier> Parser::parseInheritanceSpecifier()
+{
+	ASTNodeFactory nodeFactory(*this);
+	ASTPointer<Identifier> name(parseIdentifier());
+	vector<ASTPointer<Expression>> arguments;
+	if (m_scanner->getCurrentToken() == Token::LPAREN)
+	{
+		m_scanner->next();
+		arguments = parseFunctionCallListArguments();
+		nodeFactory.markEndPosition();
+		expectToken(Token::RPAREN);
+	}
+	else
+		nodeFactory.setEndPositionFromNode(name);
+	return nodeFactory.createNode<InheritanceSpecifier>(name, arguments);
+}
+
+Declaration::Visibility Parser::parseVisibilitySpecifier(Token::Value _token)
+{
+	Declaration::Visibility visibility;
+	if (_token == Token::PUBLIC)
+		visibility = Declaration::Visibility::PUBLIC;
+	else if (_token == Token::PROTECTED)
+		visibility = Declaration::Visibility::PROTECTED;
+	else if (_token == Token::PRIVATE)
+		visibility = Declaration::Visibility::PRIVATE;
+	else
+		solAssert(false, "Invalid visibility specifier.");
+	m_scanner->next();
+	return visibility;
+}
+
+ASTPointer<FunctionDefinition> Parser::parseFunctionDefinition(ASTString const* _contractName)
 {
 	ASTNodeFactory nodeFactory(*this);
 	ASTPointer<ASTString> docstring;
@@ -160,13 +201,33 @@ ASTPointer<FunctionDefinition> Parser::parseFunctionDefinition(bool _isPublic)
 		docstring = make_shared<ASTString>(m_scanner->getCurrentCommentLiteral());
 
 	expectToken(Token::FUNCTION);
-	ASTPointer<ASTString> name(expectIdentifierToken());
+	ASTPointer<ASTString> name;
+	if (m_scanner->getCurrentToken() == Token::LPAREN)
+		name = make_shared<ASTString>(); // anonymous function
+	else
+		name = expectIdentifierToken();
 	ASTPointer<ParameterList> parameters(parseParameterList());
 	bool isDeclaredConst = false;
-	if (m_scanner->getCurrentToken() == Token::CONST)
+	Declaration::Visibility visibility(Declaration::Visibility::DEFAULT);
+	vector<ASTPointer<ModifierInvocation>> modifiers;
+	while (true)
 	{
-		isDeclaredConst = true;
-		m_scanner->next();
+		Token::Value token = m_scanner->getCurrentToken();
+		if (token == Token::CONST)
+		{
+			isDeclaredConst = true;
+			m_scanner->next();
+		}
+		else if (token == Token::IDENTIFIER)
+			modifiers.push_back(parseModifierInvocation());
+		else if (Token::isVisibilitySpecifier(token))
+		{
+			if (visibility != Declaration::Visibility::DEFAULT)
+				BOOST_THROW_EXCEPTION(createParserError("Multiple visibility specifiers."));
+			visibility = parseVisibilitySpecifier(token);
+		}
+		else
+			break;
 	}
 	ASTPointer<ParameterList> returnParameters;
 	if (m_scanner->getCurrentToken() == Token::RETURNS)
@@ -176,17 +237,13 @@ ASTPointer<FunctionDefinition> Parser::parseFunctionDefinition(bool _isPublic)
 		returnParameters = parseParameterList(permitEmptyParameterList);
 	}
 	else
-	{
-		// create an empty parameter list at a zero-length location
-		ASTNodeFactory nodeFactory(*this);
-		nodeFactory.setLocationEmpty();
-		returnParameters = nodeFactory.createNode<ParameterList>(vector<ASTPointer<VariableDeclaration>>());
-	}
+		returnParameters = createEmptyParameterList();
 	ASTPointer<Block> block = parseBlock();
 	nodeFactory.setEndPositionFromNode(block);
-	return nodeFactory.createNode<FunctionDefinition>(name, _isPublic, docstring,
-													  parameters,
-													  isDeclaredConst, returnParameters, block);
+	bool const c_isConstructor = (_contractName && *name == *_contractName);
+	return nodeFactory.createNode<FunctionDefinition>(name, visibility, c_isConstructor, docstring,
+													  parameters, isDeclaredConst, modifiers,
+													  returnParameters, block);
 }
 
 ASTPointer<StructDefinition> Parser::parseStructDefinition()
@@ -198,8 +255,7 @@ ASTPointer<StructDefinition> Parser::parseStructDefinition()
 	expectToken(Token::LBRACE);
 	while (m_scanner->getCurrentToken() != Token::RBRACE)
 	{
-		bool const allowVar = false;
-		members.push_back(parseVariableDeclaration(allowVar));
+		members.push_back(parseVariableDeclaration());
 		expectToken(Token::SEMICOLON);
 	}
 	nodeFactory.markEndPosition();
@@ -207,12 +263,89 @@ ASTPointer<StructDefinition> Parser::parseStructDefinition()
 	return nodeFactory.createNode<StructDefinition>(name, members);
 }
 
-ASTPointer<VariableDeclaration> Parser::parseVariableDeclaration(bool _allowVar)
+ASTPointer<VariableDeclaration> Parser::parseVariableDeclaration(VarDeclParserOptions const& _options)
 {
 	ASTNodeFactory nodeFactory(*this);
-	ASTPointer<TypeName> type = parseTypeName(_allowVar);
+	ASTPointer<TypeName> type = parseTypeName(_options.allowVar);
+	bool isIndexed = false;
+	Token::Value token = m_scanner->getCurrentToken();
+	if (_options.allowIndexed && token == Token::INDEXED)
+	{
+		isIndexed = true;
+		m_scanner->next();
+	}
+	Declaration::Visibility visibility(Declaration::Visibility::DEFAULT);
+	if (_options.isStateVariable && Token::isVisibilitySpecifier(token))
+		visibility = parseVisibilitySpecifier(token);
 	nodeFactory.markEndPosition();
-	return nodeFactory.createNode<VariableDeclaration>(type, expectIdentifierToken());
+	return nodeFactory.createNode<VariableDeclaration>(type, expectIdentifierToken(),
+													   visibility, _options.isStateVariable,
+													   isIndexed);
+}
+
+ASTPointer<ModifierDefinition> Parser::parseModifierDefinition()
+{
+	ScopeGuard resetModifierFlag([this]() { m_insideModifier = false; });
+	m_insideModifier = true;
+
+	ASTNodeFactory nodeFactory(*this);
+	ASTPointer<ASTString> docstring;
+	if (m_scanner->getCurrentCommentLiteral() != "")
+		docstring = make_shared<ASTString>(m_scanner->getCurrentCommentLiteral());
+
+	expectToken(Token::MODIFIER);
+	ASTPointer<ASTString> name(expectIdentifierToken());
+	ASTPointer<ParameterList> parameters;
+	if (m_scanner->getCurrentToken() == Token::LPAREN)
+		parameters = parseParameterList();
+	else
+		parameters = createEmptyParameterList();
+	ASTPointer<Block> block = parseBlock();
+	nodeFactory.setEndPositionFromNode(block);
+	return nodeFactory.createNode<ModifierDefinition>(name, docstring, parameters, block);
+}
+
+ASTPointer<EventDefinition> Parser::parseEventDefinition()
+{
+	ASTNodeFactory nodeFactory(*this);
+	ASTPointer<ASTString> docstring;
+	if (m_scanner->getCurrentCommentLiteral() != "")
+		docstring = make_shared<ASTString>(m_scanner->getCurrentCommentLiteral());
+
+	expectToken(Token::EVENT);
+	ASTPointer<ASTString> name(expectIdentifierToken());
+	ASTPointer<ParameterList> parameters;
+	if (m_scanner->getCurrentToken() == Token::LPAREN)
+		parameters = parseParameterList(true, true);
+	else
+		parameters = createEmptyParameterList();
+	nodeFactory.markEndPosition();
+	expectToken(Token::SEMICOLON);
+	return nodeFactory.createNode<EventDefinition>(name, docstring, parameters);
+}
+
+ASTPointer<ModifierInvocation> Parser::parseModifierInvocation()
+{
+	ASTNodeFactory nodeFactory(*this);
+	ASTPointer<Identifier> name(parseIdentifier());
+	vector<ASTPointer<Expression>> arguments;
+	if (m_scanner->getCurrentToken() == Token::LPAREN)
+	{
+		m_scanner->next();
+		arguments = parseFunctionCallListArguments();
+		nodeFactory.markEndPosition();
+		expectToken(Token::RPAREN);
+	}
+	else
+		nodeFactory.setEndPositionFromNode(name);
+	return nodeFactory.createNode<ModifierInvocation>(name, arguments);
+}
+
+ASTPointer<Identifier> Parser::parseIdentifier()
+{
+	ASTNodeFactory nodeFactory(*this);
+	nodeFactory.markEndPosition();
+	return nodeFactory.createNode<Identifier>(expectIdentifierToken());
 }
 
 ASTPointer<TypeName> Parser::parseTypeName(bool _allowVar)
@@ -263,19 +396,20 @@ ASTPointer<Mapping> Parser::parseMapping()
 	return nodeFactory.createNode<Mapping>(keyType, valueType);
 }
 
-ASTPointer<ParameterList> Parser::parseParameterList(bool _allowEmpty)
+ASTPointer<ParameterList> Parser::parseParameterList(bool _allowEmpty, bool _allowIndexed)
 {
 	ASTNodeFactory nodeFactory(*this);
 	vector<ASTPointer<VariableDeclaration>> parameters;
+	VarDeclParserOptions options;
+	options.allowIndexed = _allowIndexed;
 	expectToken(Token::LPAREN);
 	if (!_allowEmpty || m_scanner->getCurrentToken() != Token::RPAREN)
 	{
-		bool const allowVar = false;
-		parameters.push_back(parseVariableDeclaration(allowVar));
+		parameters.push_back(parseVariableDeclaration(options));
 		while (m_scanner->getCurrentToken() != Token::RPAREN)
 		{
 			expectToken(Token::COMMA);
-			parameters.push_back(parseVariableDeclaration(allowVar));
+			parameters.push_back(parseVariableDeclaration(options));
 		}
 	}
 	nodeFactory.markEndPosition();
@@ -327,8 +461,16 @@ ASTPointer<Statement> Parser::parseStatement()
 			nodeFactory.setEndPositionFromNode(expression);
 		}
 		statement = nodeFactory.createNode<Return>(expression);
+		break;
 	}
-	break;
+	case Token::IDENTIFIER:
+		if (m_insideModifier && m_scanner->getCurrentLiteral() == "_")
+		{
+			statement = ASTNodeFactory(*this).createNode<PlaceholderStatement>();
+			m_scanner->next();
+			return statement;
+		}
+	// fall-through
 	default:
 		statement = parseVarDefOrExprStmt();
 	}
@@ -409,8 +551,9 @@ ASTPointer<Statement> Parser::parseVarDefOrExprStmt()
 ASTPointer<VariableDefinition> Parser::parseVariableDefinition()
 {
 	ASTNodeFactory nodeFactory(*this);
-	bool const allowVar = true;
-	ASTPointer<VariableDeclaration> variable = parseVariableDeclaration(allowVar);
+	VarDeclParserOptions options;
+	options.allowVar = true;
+	ASTPointer<VariableDeclaration> variable = parseVariableDeclaration(options);
 	ASTPointer<Expression> value;
 	if (m_scanner->getCurrentToken() == Token::ASSIGN)
 	{
@@ -449,7 +592,6 @@ ASTPointer<Expression> Parser::parseBinaryExpression(int _minPrecedence)
 	ASTPointer<Expression> expression = parseUnaryExpression();
 	int precedence = Token::precedence(m_scanner->getCurrentToken());
 	for (; precedence >= _minPrecedence; --precedence)
-	{
 		while (Token::precedence(m_scanner->getCurrentToken()) == precedence)
 		{
 			Token::Value op = m_scanner->getCurrentToken();
@@ -458,7 +600,6 @@ ASTPointer<Expression> Parser::parseBinaryExpression(int _minPrecedence)
 			nodeFactory.setEndPositionFromNode(right);
 			expression = nodeFactory.createNode<BinaryOperation>(expression, op, right);
 		}
-	}
 	return expression;
 }
 
@@ -494,8 +635,8 @@ ASTPointer<Expression> Parser::parseLeftHandSideExpression()
 	if (m_scanner->getCurrentToken() == Token::NEW)
 	{
 		expectToken(Token::NEW);
-		ASTPointer<Identifier> contractName = ASTNodeFactory(*this).createNode<Identifier>(expectIdentifierToken());
-		nodeFactory.markEndPosition();
+		ASTPointer<Identifier> contractName(parseIdentifier());
+		nodeFactory.setEndPositionFromNode(contractName);
 		expression = nodeFactory.createNode<NewExpression>(contractName);
 	}
 	else
@@ -524,10 +665,12 @@ ASTPointer<Expression> Parser::parseLeftHandSideExpression()
 		case Token::LPAREN:
 		{
 			m_scanner->next();
-			vector<ASTPointer<Expression>> arguments = parseFunctionCallArguments();
+			vector<ASTPointer<Expression>> arguments;
+			vector<ASTPointer<ASTString>> names;
+			std::tie(arguments, names) = parseFunctionCallArguments();
 			nodeFactory.markEndPosition();
 			expectToken(Token::RPAREN);
-			expression = nodeFactory.createNode<FunctionCall>(expression, arguments);
+			expression = nodeFactory.createNode<FunctionCall>(expression, arguments, names);
 		}
 		break;
 		default:
@@ -580,7 +723,7 @@ ASTPointer<Expression> Parser::parsePrimaryExpression()
 	return expression;
 }
 
-vector<ASTPointer<Expression>> Parser::parseFunctionCallArguments()
+vector<ASTPointer<Expression>> Parser::parseFunctionCallListArguments()
 {
 	vector<ASTPointer<Expression>> arguments;
 	if (m_scanner->getCurrentToken() != Token::RPAREN)
@@ -593,6 +736,32 @@ vector<ASTPointer<Expression>> Parser::parseFunctionCallArguments()
 		}
 	}
 	return arguments;
+}
+
+pair<vector<ASTPointer<Expression>>, vector<ASTPointer<ASTString>>> Parser::parseFunctionCallArguments()
+{
+	pair<vector<ASTPointer<Expression>>, vector<ASTPointer<ASTString>>> ret;
+	Token::Value token = m_scanner->getCurrentToken();
+	if (token == Token::LBRACE)
+	{
+		// call({arg1 : 1, arg2 : 2 })
+		expectToken(Token::LBRACE);
+		while (m_scanner->getCurrentToken() != Token::RBRACE)
+		{
+			ret.second.push_back(expectIdentifierToken());
+			expectToken(Token::COLON);
+			ret.first.push_back(parseExpression());
+
+			if (m_scanner->getCurrentToken() == Token::COMMA)
+				expectToken(Token::COMMA);
+			else
+				break;
+		}
+		expectToken(Token::RBRACE);
+	}
+	else
+		ret.first = parseFunctionCallListArguments();
+	return ret;
 }
 
 
@@ -637,6 +806,13 @@ ASTPointer<ASTString> Parser::getLiteralAndAdvance()
 	ASTPointer<ASTString> identifier = make_shared<ASTString>(m_scanner->getCurrentLiteral());
 	m_scanner->next();
 	return identifier;
+}
+
+ASTPointer<ParameterList> Parser::createEmptyParameterList()
+{
+	ASTNodeFactory nodeFactory(*this);
+	nodeFactory.setLocationEmpty();
+	return nodeFactory.createNode<ParameterList>(vector<ASTPointer<VariableDeclaration>>());
 }
 
 ParserError Parser::createParserError(string const& _description) const

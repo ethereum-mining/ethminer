@@ -37,34 +37,52 @@ std::unique_ptr<std::string> InterfaceHandler::getDocumentation(ContractDefiniti
 
 std::unique_ptr<std::string> InterfaceHandler::getABIInterface(ContractDefinition const& _contractDef)
 {
-	Json::Value methods(Json::arrayValue);
-
+	Json::Value abi(Json::arrayValue);
 	for (auto const& it: _contractDef.getInterfaceFunctions())
 	{
-		Json::Value method;
-		Json::Value inputs(Json::arrayValue);
-		Json::Value outputs(Json::arrayValue);
-
-		auto populateParameters = [](std::vector<ASTPointer<VariableDeclaration>> const& _vars)
+		auto populateParameters = [](vector<string> const& _paramNames, vector<string> const& _paramTypes)
 		{
 			Json::Value params(Json::arrayValue);
-			for (ASTPointer<VariableDeclaration> const& var: _vars)
+			solAssert(_paramNames.size() == _paramTypes.size(), "Names and types vector size does not match");
+			for (unsigned i = 0; i < _paramNames.size(); ++i)
 			{
-				Json::Value input;
-				input["name"] = var->getName();
-				input["type"] = var->getType()->toString();
-				params.append(input);
+				Json::Value param;
+				param["name"] = _paramNames[i];
+				param["type"] = _paramTypes[i];
+				params.append(param);
 			}
 			return params;
 		};
 
-		method["name"] = it.second->getName();
-		method["constant"] = it.second->isDeclaredConst();
-		method["inputs"] = populateParameters(it.second->getParameters());
-		method["outputs"] = populateParameters(it.second->getReturnParameters());
-		methods.append(method);
+		Json::Value method;
+		method["type"] = "function";
+		method["name"] = it.second->getDeclaration().getName();
+		method["constant"] = it.second->isConstant();
+		method["inputs"] = populateParameters(it.second->getParameterNames(),
+											  it.second->getParameterTypeNames());
+		method["outputs"] = populateParameters(it.second->getReturnParameterNames(),
+											   it.second->getReturnParameterTypeNames());
+		abi.append(method);
 	}
-	return std::unique_ptr<std::string>(new std::string(m_writer.write(methods)));
+
+	for (auto const& it: _contractDef.getInterfaceEvents())
+	{
+		Json::Value event;
+		event["type"] = "event";
+		event["name"] = it->getName();
+		Json::Value params(Json::arrayValue);
+		for (auto const& p: it->getParameters())
+		{
+			Json::Value input;
+			input["name"] = p->getName();
+			input["type"] = p->getType()->toString();
+			input["indexed"] = p->isIndexed();
+			params.append(input);
+		}
+		event["inputs"] = params;
+		abi.append(event);
+	}
+	return std::unique_ptr<std::string>(new std::string(m_writer.write(abi)));
 }
 
 unique_ptr<string> InterfaceHandler::getABISolidityInterface(ContractDefinition const& _contractDef)
@@ -72,20 +90,33 @@ unique_ptr<string> InterfaceHandler::getABISolidityInterface(ContractDefinition 
 	string ret = "contract " + _contractDef.getName() + "{";
 	for (auto const& it: _contractDef.getInterfaceFunctions())
 	{
-		FunctionDefinition const* f = it.second;
-		auto populateParameters = [](vector<ASTPointer<VariableDeclaration>> const& _vars)
+		auto populateParameters = [](vector<string> const& _paramNames,
+									 vector<string> const& _paramTypes)
 		{
 			string r = "";
-			for (ASTPointer<VariableDeclaration> const& var: _vars)
-				r += (r.size() ? "," : "(") + var->getType()->toString() + " " + var->getName();
+			solAssert(_paramNames.size() == _paramTypes.size(), "Names and types vector size does not match");
+			for (unsigned i = 0; i < _paramNames.size(); ++i)
+				r += (r.size() ? "," : "(") + _paramTypes[i] + " " + _paramNames[i];
 			return r.size() ? r + ")" : "()";
 		};
-		ret += "function " + f->getName() + populateParameters(f->getParameters()) + (f->isDeclaredConst() ? "constant " : "");
-		if (f->getReturnParameters().size())
-			ret += "returns" + populateParameters(f->getReturnParameters());
+		ret += "function " + it.second->getDeclaration().getName() +
+			populateParameters(it.second->getParameterNames(), it.second->getParameterTypeNames()) +
+			(it.second->isConstant() ? "constant " : "");
+		if (it.second->getReturnParameterTypes().size())
+			ret += "returns" + populateParameters(it.second->getReturnParameterNames(), it.second->getReturnParameterTypeNames());
 		else if (ret.back() == ' ')
 			ret.pop_back();
 		ret += "{}";
+	}
+	for (auto const& it: _contractDef.getInterfaceEvents())
+	{
+		std::string params;
+		for (auto const& p: it->getParameters())
+			params += (params.empty() ? "(" : ",") + p->getType()->toString() + (p->isIndexed() ? " indexed " : " ") + p->getName();
+		if (!params.empty())
+			params += ")";
+
+		ret += "event " + it->getName() + params + ";";
 	}
 	return unique_ptr<string>(new string(ret + "}"));
 }
@@ -351,9 +382,15 @@ void InterfaceHandler::parseDocString(std::string const& _string, CommentOwner _
 			currPos = appendDocTag(currPos, end, _owner);
 		else if (currPos != end)
 		{
-			if (nlPos == end) //end of text
+			// if it begins without a tag then consider it as @notice
+			if (currPos == _string.begin())
+			{
+				currPos = parseDocTag(currPos, end, "notice", CommentOwner::FUNCTION);
+				continue;
+			}
+			else if (nlPos == end) //end of text
 				return;
-			// else skip the line if a newline was found
+			// else skip the line if a newline was found and we get here
 			currPos = nlPos + 1;
 		}
 	}
