@@ -107,7 +107,7 @@ function select(stateIndex)
 		callStackData.push(address);
 	}
 	callStackData.push(debugData.states[0].address);
-	callStack.model = callStackData;
+	callStack.listModel = callStackData;
 }
 
 function codeStr(stateIndex)

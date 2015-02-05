@@ -113,24 +113,27 @@ QString ClientModel::apiCall(QString const& _message)
 
 void ClientModel::mine()
 {
-	if (m_running)
+	if (m_running || m_mining)
 		BOOST_THROW_EXCEPTION(ExecutionStateException());
-	m_running = true;
-	emit runStarted();
-	emit runStateChanged();
+	m_mining = true;
+	emit miningStarted();
+	emit miningStateChanged();
 	QtConcurrent::run([=]()
 	{
 		try
 		{
 			m_client->mine();
 			newBlock();
+			m_mining = false;
+			emit miningComplete();
 		}
 		catch (...)
 		{
+			m_mining = false;
 			std::cerr << boost::current_exception_diagnostic_information();
 			emit runFailed(QString::fromStdString(boost::current_exception_diagnostic_information()));
 		}
-		m_running = false;
+		emit miningStateChanged();
 	});
 }
 

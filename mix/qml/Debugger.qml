@@ -58,7 +58,7 @@ Rectangle {
 	Settings {
 		id: splitSettings
 		property alias transactionLogHeight: transactionLog.height
-		property alias callStackHeight: callStack.height
+		property alias callStackHeight: callStackRect.height
 		property alias storageHeightSettings: storageRect.height
 		property alias memoryDumpHeightSettings: memoryRect.height
 		property alias callDataHeightSettings: callDataRect.height
@@ -154,18 +154,19 @@ Rectangle {
 				id: statesLayout
 				spacing: machineStates.sideMargin
 
-				RowLayout {
+				Rectangle {
 					// step button + slider
 					id: buttonRow
-					spacing: machineStates.sideMargin
 					height: 27
 					Layout.fillWidth: true
+					color: "transparent"
 
 					Rectangle {
-						height: parent.height
+						anchors.top: parent.top
+						anchors.bottom: parent.bottom
+						anchors.left: parent.left
 						color: "transparent"
-						Layout.minimumWidth: stateListContainer.width
-						Layout.maximumWidth: stateListContainer.width
+						width: stateListContainer.width
 						RowLayout {
 							anchors.horizontalCenter: parent.horizontalCenter
 							id: jumpButtons
@@ -245,9 +246,11 @@ Rectangle {
 					}
 
 					Rectangle {
+						anchors.top: parent.top
+						anchors.bottom: parent.bottom
+						anchors.right: parent.right
+						width: debugInfoContainer.width
 						color: "transparent"
-						Layout.fillWidth: true
-						height: parent.height
 						Slider {
 							id: statesSlider
 							anchors.fill: parent
@@ -324,47 +327,45 @@ Rectangle {
 						Component {
 							id: renderDelegate
 							Item {
-
-							Rectangle {
-								radius: 4
-								anchors.fill: parent
-								color: "#4A90E2"
-								visible: styleData.selected;
-							}
-
-							RowLayout {
-								id: wrapperItem
-								height: 20
-								//width: parent.width
-								anchors.fill: parent
-								spacing: 5
-
-
-								Text {
-									anchors.left: parent.left
-									anchors.leftMargin: 10
-									width: 15
-									color: "#b2b3ae"
-									text: styleData.value.split(' ')[0]
-									font.family: "monospace"
-									font.pointSize: 9
-									wrapMode: Text.NoWrap
-									id: id
+								Rectangle {
+									radius: 4
+									anchors.fill: parent
+									color: "#4A90E2"
+									visible: styleData.selected;
 								}
-								Text {
-									anchors.left: id.right;
-									wrapMode: Text.NoWrap
-									color: styleData.selected ? "white" : "black"
-									font.family: "monospace"
-									text: styleData.value.replace(styleData.value.split(' ')[0], '')
-									font.pointSize: 9
+
+								RowLayout {
+									id: wrapperItem
+									anchors.fill: parent
+									spacing: 5
+
+
+									Text {
+										anchors.left: parent.left
+										anchors.leftMargin: 10
+										width: 15
+										color: "#b2b3ae"
+										text: styleData.value.split(' ')[0]
+										font.family: "monospace"
+										font.pointSize: 9
+										wrapMode: Text.NoWrap
+										id: id
+									}
+									Text {
+										anchors.left: id.right;
+										wrapMode: Text.NoWrap
+										color: styleData.selected ? "white" : "black"
+										font.family: "monospace"
+										text: styleData.value.replace(styleData.value.split(' ')[0], '')
+										font.pointSize: 9
+									}
 								}
-							}
 							}
 						}
 					}
 
 					Rectangle {
+						id: debugInfoContainer
 						width: parent.width * 0.6 - machineStates.sideMargin
 						anchors.top : parent.top
 						anchors.bottom: parent.bottom
@@ -409,7 +410,7 @@ Rectangle {
 								title : qsTr("Stack")
 								itemDelegate: Item {
 									id: renderedItem
-									height: 25
+									//height: 25
 									width: parent.width
 									RowLayout
 									{
@@ -428,7 +429,7 @@ Rectangle {
 												anchors.leftMargin: 5
 												font.family: "monospace"
 												color: "#4a4a4a"
-												text: model.index;
+												text: styleData.row;
 												font.pointSize: 9
 											}
 										}
@@ -439,7 +440,6 @@ Rectangle {
 											Layout.fillWidth: true
 											Layout.minimumWidth: 15
 											Layout.preferredWidth: 15
-											Layout.maximumWidth: 60
 											Layout.minimumHeight: parent.height
 											Text {
 												anchors.left: parent.left
@@ -447,7 +447,7 @@ Rectangle {
 												font.family: "monospace"
 												anchors.verticalCenter: parent.verticalCenter
 												color: "#4a4a4a"
-												text: modelData
+												text: styleData.value
 												font.pointSize: 9
 											}
 										}
@@ -477,16 +477,80 @@ Rectangle {
 					{
 						id: callStackRect;
 						color: "transparent"
-						height: 120
-						width: parent.width
-						Layout.minimumHeight: 120
-						Layout.maximumHeight: 400
+						Layout.minimumHeight: 25
+						Layout.maximumHeight: 800
 						onHeightChanged: machineStates.updateHeight();
-						CallStack {
-							anchors.fill: parent
+						DebugInfoList
+						{
 							id: callStack
-							onFrameActivated: Debugger.displayFrame(index);
+							collapsible: true
+							anchors.fill: parent
+							title : qsTr("Call Stack")
+							enableSelection: true
+							onRowActivated: Debugger.displayFrame(index);
+							itemDelegate:
+								Item {
+								anchors.fill: parent
+
+								Rectangle {
+									anchors.fill: parent
+									color: "#4A90E2"
+									visible: styleData.selected;
+								}
+
+								RowLayout
+								{
+									id: row
+									anchors.fill: parent
+									Rectangle
+									{
+										color: "#f7f7f7"
+										Layout.fillWidth: true
+										Layout.minimumWidth: 30
+										Layout.maximumWidth: 30
+										Text {
+											anchors.verticalCenter: parent.verticalCenter
+											anchors.left: parent.left
+											font.family: "monospace"
+											anchors.leftMargin: 5
+											color: "#4a4a4a"
+											text: styleData.row;
+											font.pointSize: 9
+											width: parent.width - 5
+											elide: Text.ElideRight
+										}
+									}
+									Rectangle
+									{
+										color: "transparent"
+										Layout.fillWidth: true
+										Layout.minimumWidth: parent.width - 30
+										Layout.maximumWidth: parent.width - 30
+										Text {
+											anchors.leftMargin: 5
+											width: parent.width - 5
+											wrapMode: Text.Wrap
+											anchors.left: parent.left
+											font.family: "monospace"
+											anchors.verticalCenter: parent.verticalCenter
+											color: "#4a4a4a"
+											text: styleData.value;
+											elide: Text.ElideRight
+											font.pointSize: 9
+										}
+									}
+								}
+
+								Rectangle {
+									anchors.top: row.bottom
+									width: parent.width;
+									height: 1;
+									color: "#cccccc"
+									anchors.bottom: parent.bottom
+								}
+							}
 						}
+
 					}
 
 					Rectangle
@@ -505,28 +569,24 @@ Rectangle {
 							title : qsTr("Storage")
 							itemDelegate:
 								Item {
-								height: 27
-								width: parent.width;
+								anchors.fill: parent
 								RowLayout
 								{
 									id: row
-									width: parent.width
-									height: 26
+									anchors.fill: parent
 									Rectangle
 									{
 										color: "#f7f7f7"
 										Layout.fillWidth: true
 										Layout.minimumWidth: parent.width / 2
-										Layout.preferredWidth: parent.width / 2
 										Layout.maximumWidth: parent.width / 2
-										Layout.minimumHeight: parent.height
 										Text {
 											anchors.verticalCenter: parent.verticalCenter
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.leftMargin: 5
 											color: "#4a4a4a"
-											text: modelData.split('\t')[0];
+											text: styleData.value.split('\t')[0];
 											font.pointSize: 9
 											width: parent.width - 5
 											elide: Text.ElideRight
@@ -537,9 +597,7 @@ Rectangle {
 										color: "transparent"
 										Layout.fillWidth: true
 										Layout.minimumWidth: parent.width / 2
-										Layout.preferredWidth: parent.width / 2
 										Layout.maximumWidth: parent.width / 2
-										Layout.minimumHeight: parent.height
 										Text {
 											anchors.leftMargin: 5
 											width: parent.width - 5
@@ -548,7 +606,7 @@ Rectangle {
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
 											color: "#4a4a4a"
-											text: modelData.split('\t')[1];
+											text: styleData.value.split('\t')[1];
 											elide: Text.ElideRight
 											font.pointSize: 9
 										}
