@@ -16,8 +16,8 @@ namespace eth
 namespace jit
 {
 
-//#define LOG(...) std::cerr << "CACHE "
-#define LOG(...) std::ostream(nullptr)
+//#define CACHE_LOG std::cerr << "CACHE "
+#define CACHE_LOG std::ostream(nullptr)
 
 namespace
 {
@@ -37,6 +37,7 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 	if (g_listener)
 		g_listener->stateChanged(ExecState::CacheLoad);
 
+	CACHE_LOG << id << ": search\n";
 	assert(!g_lastObject);
 	llvm::SmallString<256> cachePath;
 	llvm::sys::path::system_temp_directory(false, cachePath);
@@ -63,10 +64,15 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 
 	if (g_lastObject)  // if object found create fake module
 	{
-		auto module = std::unique_ptr<llvm::Module>(new llvm::Module(id, llvm::getGlobalContext()));
-		auto mainFuncType = llvm::FunctionType::get(llvm::IntegerType::get(llvm::getGlobalContext(), 32), {}, false);
-		llvm::Function::Create(mainFuncType, llvm::Function::ExternalLinkage, id, module.get());
+		CACHE_LOG << id << ": found\n";
+		auto&& context = llvm::getGlobalContext();
+		auto module = std::unique_ptr<llvm::Module>(new llvm::Module(id, context));
+		auto mainFuncType = llvm::FunctionType::get(llvm::Type::getVoidTy(context), {}, false);
+		auto mainFunc = llvm::Function::Create(mainFuncType, llvm::Function::ExternalLinkage, id, module.get());
+		llvm::BasicBlock::Create(context, {}, mainFunc); // FIXME: Check if empty basic block is valid
+		return module;
 	}
+	CACHE_LOG << id << ": not found\n";
 	return nullptr;
 }
 
@@ -86,13 +92,15 @@ void ObjectCache::notifyObjectCompiled(llvm::Module const* _module, llvm::Memory
 
 	llvm::sys::path::append(cachePath, id);
 
+	CACHE_LOG << id << ": write\n";
 	std::string error;
 	llvm::raw_fd_ostream cacheFile(cachePath.c_str(), error, llvm::sys::fs::F_None);
 	cacheFile << _object->getBuffer();
 }
 
-llvm::MemoryBuffer* ObjectCache::getObject(llvm::Module const*)
+llvm::MemoryBuffer* ObjectCache::getObject(llvm::Module const* _module)
 {
+	CACHE_LOG << _module->getModuleIdentifier() << ": use\n";
 	auto o = g_lastObject;
 	g_lastObject = nullptr;
 	return o;

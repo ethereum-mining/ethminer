@@ -164,7 +164,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 			}
 		}
 	}
-	assert(entryFuncPtr);
+	assert(entryFuncPtr); //TODO: Replace it with safe exception
 
 	listener->stateChanged(ExecState::Execution);
 	auto returnCode = runEntryFunc(entryFuncPtr, &runtime);
