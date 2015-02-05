@@ -89,12 +89,12 @@ static const LocalisedLogEntry InitialChange(SpecialLogEntry, 0);
 
 struct ClientWatch
 {
-	ClientWatch() {}
-	explicit ClientWatch(h256 _id): id(_id) {}
+	ClientWatch(): lastPoll(std::chrono::system_clock::now()) {}
+	explicit ClientWatch(h256 _id): id(_id), lastPoll(std::chrono::system_clock::now()) {}
 
 	h256 id;
 	LocalisedLogEntries changes = LocalisedLogEntries{ InitialChange };
-	mutable std::chrono::system_clock::time_point lastPoll;
+	mutable std::chrono::system_clock::time_point lastPoll = std::chrono::system_clock::now();
 };
 
 struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
