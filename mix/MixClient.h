@@ -27,13 +27,14 @@
 #include <string>
 #include <libethereum/Interface.h>
 #include <libethereum/Client.h>
-#include <libethereum/CanonBlockChain.h>
 #include "MachineStates.h"
 
 namespace dev
 {
 namespace mix
 {
+
+class MixBlockChain;
 
 class MixClient: public dev::eth::Interface
 {
@@ -90,12 +91,14 @@ private:
 	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state);
 	void noteChanged(h256Set const& _filters);
 	dev::eth::State asOf(int _block) const;
+	MixBlockChain& bc() { return *m_bc; }
+	MixBlockChain const& bc() const { return *m_bc; }
 
 	KeyPair m_userAccount;
 	eth::State m_state;
 	eth::State m_startState;
 	OverlayDB m_stateDB;
-	eth::CanonBlockChain m_bc;
+	std::auto_ptr<MixBlockChain> m_bc;
 	mutable boost::shared_mutex x_state;
 	mutable std::mutex m_filterLock;
 	std::map<h256, dev::eth::InstalledFilter> m_filters;
