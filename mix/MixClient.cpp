@@ -23,7 +23,7 @@
 
 #include <vector>
 #include <libdevcore/Exceptions.h>
-#include <libethereum/BlockChain.h>
+#include <libethereum/CanonBlockChain.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/Executive.h>
 #include <libethereum/ExtVM.h>
@@ -36,35 +36,50 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
-const Secret c_stdSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
+const Secret c_userAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
 
-MixClient::MixClient():
-	m_userAccount(c_stdSecret)
+MixClient::MixClient(std::string const& _dbPath):
+	m_userAccount(c_userAccountSecret), m_bc(_dbPath, true), m_dbPath(_dbPath), m_minigThreads(0)
 {
-	resetState(10000000 * ether);
+	//TODO: put this into genesis block somehow
+	//resetState(10000000 * ether);
+}
+
+MixClient::~MixClient()
+{
 }
 
 void MixClient::resetState(u256 _balance)
 {
-	WriteGuard l(x_state);
-	Guard fl(m_filterLock);
-	m_filters.clear();
-	m_watches.clear();
-	m_state = eth::State(m_userAccount.address(), m_stateDB, BaseState::Genesis);
-	m_state.addBalance(m_userAccount.address(), _balance);
-	Block genesis;
-	genesis.state = m_state;
-	Block open;
-	m_blocks = Blocks { genesis, open }; //last block contains a list of pending transactions to be finalized
-//	m_lastHashes.clear();
-//	m_lastHashes.resize(256);
-//	m_lastHashes[0] = genesis.hash;
+	(void) _balance;
+	{
+		WriteGuard l(x_state);
+		Guard fl(m_filterLock);
+		m_filters.clear();
+		m_watches.clear();
+		m_bc.reopen(m_dbPath, true);
+		m_state = eth::State();
+		m_stateDB = OverlayDB();
+		m_state = eth::State(m_userAccount.address(), m_stateDB, BaseState::CanonGenesis);
+		m_state.sync(m_bc);
+		m_startState = m_state;
+		m_pendingExecutions.clear();
+	}
+	mine();
 }
 
 void MixClient::executeTransaction(Transaction const& _t, State& _state)
 {
 	bytes rlp = _t.rlp();
-	Executive execution(_state, LastHashes(), 0);
+
+	// do debugging run first
+	LastHashes lastHashes(256);
+	lastHashes[0] = m_bc.numberHash(m_bc.number());
+	for (unsigned i = 1; i < 256; ++i)
+		lastHashes[i] = lastHashes[i - 1] ? m_bc.details(lastHashes[i - 1]).parent : h256();
+
+	State execState = _state;
+	Executive execution(execState, lastHashes, 0);
 	execution.setup(&rlp);
 	std::vector<MachineState> machineStates;
 	std::vector<unsigned> levels;
@@ -130,21 +145,25 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 	d.value = _t.value();
 	if (_t.isCreation())
 		d.contractAddress = right160(sha3(rlpList(_t.sender(), _t.nonce())));
-	d.receipt = TransactionReceipt(m_state.rootHash(), execution.gasUsed(), execution.logs()); //TODO: track gas usage
-	m_blocks.back().transactions.emplace_back(d);
+	d.receipt = TransactionReceipt(execState.rootHash(), execution.gasUsed(), execution.logs()); //TODO: track gas usage
+	m_pendingExecutions.emplace_back(std::move(d));
 
+	// execute on a state
+	_state.execute(lastHashes, rlp, nullptr, true);
+
+	// collect watches
 	h256Set changed;
 	Guard l(m_filterLock);
 	for (std::pair<h256 const, eth::InstalledFilter>& i: m_filters)
-		if ((unsigned)i.second.filter.latest() > m_blocks.size() - 1)
+		if ((unsigned)i.second.filter.latest() > m_bc.number())
 		{
 			// acceptable number.
-			auto m = i.second.filter.matches(d.receipt);
+			auto m = i.second.filter.matches(_state.receipt(_state.pending().size() - 1));
 			if (m.size())
 			{
 				// filter catches them
 				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, m_blocks.size()));
+					i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1));
 				changed.insert(i.first);
 			}
 		}
@@ -152,44 +171,56 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 	noteChanged(changed);
 }
 
-void MixClient::validateBlock(int _block) const
-{
-	if (_block != -1 && _block != 0 && (unsigned)_block >= m_blocks.size() - 1)
-		BOOST_THROW_EXCEPTION(InvalidBlockException() << BlockIndex(_block));
-}
-
 void MixClient::mine()
 {
 	WriteGuard l(x_state);
-	Block& block = m_blocks.back();
-	m_state.mine(0, true);
+	m_state.commitToMine(m_bc);
+	while (!m_state.mine(100, true).completed) {}
 	m_state.completeMine();
-	m_state.commitToMine(BlockChain());
-	m_state.cleanup(true);
-	block.state = m_state;
-	block.info = m_state.info();
-	block.hash = block.info.hash;
-	m_blocks.push_back(Block());
-
+	m_bc.import(m_state.blockData(), m_stateDB);
+	m_state.sync(m_bc);
+	//m_state.cleanup(true);
+	m_startState = m_state;
+	m_executions.emplace_back(std::move(m_pendingExecutions));
 	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
 	noteChanged(changed);
 }
 
-State const& MixClient::asOf(int _block) const
+ExecutionResult const& MixClient::execution(unsigned _block, unsigned _transaction) const
 {
-	validateBlock(_block);
+	if (_block == m_bc.number() + 1)
+		return m_pendingExecutions.at(_transaction);
+	return m_executions.at(_block).at(_transaction);
+}
+
+ExecutionResult const& MixClient::lastExecution() const
+{
+	if (m_pendingExecutions.size() > 0)
+		return m_pendingExecutions.back();
+	return m_executions.back().back();
+}
+
+ExecutionResults const& MixClient::pendingExecutions() const
+{
+	return m_pendingExecutions;
+}
+
+State MixClient::asOf(int _block) const
+{
+	ReadGuard l(x_state);
 	if (_block == 0)
-		return m_blocks[m_blocks.size() - 2].state;
-	else if (_block == -1)
 		return m_state;
+	else if (_block == -1)
+		return m_startState;
 	else
-		return m_blocks[_block].state;
+		return State(m_stateDB, m_bc, m_bc.numberHash(_block));
 }
 
 void MixClient::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	WriteGuard l(x_state);
 	u256 n = m_state.transactionsFrom(toAddress(_secret));
+	_gasPrice = 0; //TODO: remove after fixing setBalance
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
 	executeTransaction(t, m_state);
 }
@@ -198,6 +229,7 @@ Address MixClient::transact(Secret _secret, u256 _endowment, bytes const& _init,
 {
 	WriteGuard l(x_state);
 	u256 n = m_state.transactionsFrom(toAddress(_secret));
+	_gasPrice = 0; //TODO: remove after fixing setBalance
 	eth::Transaction t(_endowment, _gasPrice, _gas, _init, n, _secret);
 	executeTransaction(t, m_state);
 	Address address = right160(sha3(rlpList(t.sender(), t.nonce())));
@@ -228,36 +260,31 @@ bytes MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _
 	bytes rlp = t.rlp();
 	WriteGuard lw(x_state); //TODO: lock is required only for last execution state
 	executeTransaction(t, temp);
-	return m_blocks.back().transactions.back().returnValue;
+	return m_pendingExecutions.back().returnValue;
 }
 
 u256 MixClient::balanceAt(Address _a, int _block) const
 {
-	ReadGuard l(x_state);
 	return asOf(_block).balance(_a);
 }
 
 u256 MixClient::countAt(Address _a, int _block) const
 {
-	ReadGuard l(x_state);
 	return asOf(_block).transactionsFrom(_a);
 }
 
 u256 MixClient::stateAt(Address _a, u256 _l, int _block) const
 {
-	ReadGuard l(x_state);
 	return asOf(_block).storage(_a, _l);
 }
 
 bytes MixClient::codeAt(Address _a, int _block) const
 {
-	ReadGuard l(x_state);
 	return asOf(_block).code(_a);
 }
 
 std::map<u256, u256> MixClient::storageAt(Address _a, int _block) const
 {
-	ReadGuard l(x_state);
 	return asOf(_block).storage(_a);
 }
 
@@ -274,23 +301,40 @@ eth::LocalisedLogEntries MixClient::logs(unsigned _watchId) const
 eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 {
 	LocalisedLogEntries ret;
-	unsigned lastBlock = m_blocks.size() - 1; //last block contains pending transactions
+	unsigned lastBlock = m_bc.number();
 	unsigned block = std::min<unsigned>(lastBlock, (unsigned)_f.latest());
 	unsigned end = std::min(lastBlock, std::min(block, (unsigned)_f.earliest()));
-	for (; ret.size() != _f.max() && block != end; block--)
+	unsigned skip = _f.skip();
+	// Pending transactions
+	if (block > m_bc.number())
 	{
-		bool pendingBlock = (block == lastBlock);
-		if (pendingBlock || _f.matches(m_blocks[block].info.logBloom))
-			for (ExecutionResult const& t: m_blocks[block].transactions)
-				if (pendingBlock || _f.matches(t.receipt.bloom()))
+		ReadGuard l(x_state);
+		for (unsigned i = 0; i < m_state.pending().size(); ++i)
+		{
+			// Might have a transaction that contains a matching log.
+			TransactionReceipt const& tr = m_state.receipt(i);
+			LogEntries logEntries = _f.matches(tr);
+			for (unsigned entry = 0; entry < logEntries.size() && ret.size() != _f.max(); ++entry)
+				ret.insert(ret.begin(), LocalisedLogEntry(logEntries[entry], block));
+			skip -= std::min(skip, static_cast<unsigned>(logEntries.size()));
+		}
+		block = m_bc.number();
+	}
+
+	// The rest
+	auto h = m_bc.numberHash(block);
+	for (; ret.size() != block && block != end; block--)
+	{
+		if (_f.matches(m_bc.info(h).logBloom))
+			for (TransactionReceipt receipt: m_bc.receipts(h).receipts)
+				if (_f.matches(receipt.bloom()))
 				{
-					LogEntries logEntries = _f.matches(t.receipt);
-					if (logEntries.size())
-					{
-						for (unsigned entry = _f.skip(); entry < logEntries.size() && ret.size() != _f.max(); ++entry)
-							ret.insert(ret.begin(), LocalisedLogEntry(logEntries[entry], block));
-					}
+					LogEntries logEntries = _f.matches(receipt);
+					for (unsigned entry = skip; entry < logEntries.size() && ret.size() != _f.max(); ++entry)
+						ret.insert(ret.begin(), LocalisedLogEntry(logEntries[entry], block));
+					skip -= std::min(skip, static_cast<unsigned>(logEntries.size()));
 				}
+		h = m_bc.details(h).parent;
 	}
 	return ret;
 }
@@ -372,66 +416,65 @@ LocalisedLogEntries MixClient::checkWatch(unsigned _watchId)
 
 h256 MixClient::hashFromNumber(unsigned _number) const
 {
-	validateBlock(_number);
-	return m_blocks[_number].hash;
+	return m_bc.numberHash(_number);
 }
 
 eth::BlockInfo MixClient::blockInfo(h256 _hash) const
 {
-	(void)_hash;
-	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::blockInfo"));
+	return BlockInfo(m_bc.block(_hash));
 }
 
 eth::BlockDetails MixClient::blockDetails(h256 _hash) const
 {
-	(void)_hash;
-	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::blockDetails"));
+	return m_bc.details(_hash);
 }
 
 eth::Transaction MixClient::transaction(h256 _blockHash, unsigned _i) const
 {
-	(void)_blockHash;
-	(void)_i;
-	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::transaction"));
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	if (_i < b[1].itemCount())
+		return Transaction(b[1][_i].data(), CheckSignature::Range);
+	else
+		return Transaction();
 }
 
 eth::BlockInfo MixClient::uncle(h256 _blockHash, unsigned _i) const
 {
-	(void)_blockHash;
-	(void)_i;
-	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::uncle"));
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	if (_i < b[2].itemCount())
+		return BlockInfo::fromHeader(b[2][_i].data());
+	else
+		return BlockInfo();
 }
 
 unsigned MixClient::number() const
 {
-	return m_blocks.size() - 1;
+	return m_bc.number();
 }
 
 eth::Transactions MixClient::pending() const
 {
-	return eth::Transactions();
+	return m_state.pending();
 }
 
 eth::StateDiff MixClient::diff(unsigned _txi, h256 _block) const
 {
-	(void)_txi;
-	(void)_block;
-	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::diff"));
+	State st(m_stateDB, m_bc, _block);
+	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
 }
 
 eth::StateDiff MixClient::diff(unsigned _txi, int _block) const
 {
-	(void)_txi;
-	(void)_block;
-	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::diff"));
+	State st = asOf(_block);
+	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
 }
 
 Addresses MixClient::addresses(int _block) const
 {
-	validateBlock(_block);
-	ReadGuard l(x_state);
 	Addresses ret;
-	for (auto const& i: m_state.addresses())
+	for (auto const& i: asOf(_block).addresses())
 		ret.push_back(i.first);
 	return ret;
 }
@@ -456,23 +499,22 @@ Address MixClient::address() const
 
 void MixClient::setMiningThreads(unsigned _threads)
 {
-	(void)_threads;
-	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::setMiningThreads"));
+	m_minigThreads = _threads;
 }
 
 unsigned MixClient::miningThreads() const
 {
-	return 0;
+	return m_minigThreads;
 }
 
 void MixClient::startMining()
 {
-	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::startMining"));
+	//no-op
 }
 
 void MixClient::stopMining()
 {
-	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::Interface::stopMining"));
+	//no-op
 }
 
 bool MixClient::isMining()

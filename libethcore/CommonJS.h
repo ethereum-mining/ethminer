@@ -24,9 +24,11 @@
 #pragma once
 
 #include <string>
-#include <libethereum/Interface.h>
-#include "Common.h"
-#include "CommonData.h"
+#include <libdevcore/Common.h>
+#include <libdevcore/FixedHash.h>
+#include <libdevcore/CommonData.h>
+#include <libdevcore/CommonIO.h>
+#include "CommonEth.h"
 
 namespace dev
 {
@@ -94,15 +96,7 @@ template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_i
 		return 0;			// FAIL
 }
 
-inline Address jsToAddress(std::string const& _s) { return jsToFixed<sizeof(dev::Address)>(_s); }
-inline Public jsToPublic(std::string const& _s) { return jsToFixed<sizeof(dev::Public)>(_s); }
-inline Secret jsToSecret(std::string const& _s) { return jsToFixed<sizeof(dev::Secret)>(_s); }
 inline u256 jsToU256(std::string const& _s) { return jsToInt<32>(_s); }
-
-inline std::string jsToBinary(std::string const& _s)
-{
-	return dev::toString(unpadded(jsToBytes(_s)));
-}
 
 inline std::string jsToDecimal(std::string const& _s)
 {
@@ -125,6 +119,29 @@ inline double jsFromFixed(std::string const& _s)
 	return (double)jsToU256(_s) / (double)(dev::u256(1) << 128);
 }
 
+}
+
+// devcrypto
+
+#include <libdevcrypto/Common.h>
+
+namespace dev
+{
+
+inline Public jsToPublic(std::string const& _s) { return jsToFixed<sizeof(dev::Public)>(_s); }
+inline Secret jsToSecret(std::string const& _s) { return jsToFixed<sizeof(dev::Secret)>(_s); }
+
+}
+
+
+// ethcore
+namespace dev
+{
+namespace eth
+{
+
+inline Address jsToAddress(std::string const& _s) { return jsToFixed<sizeof(dev::Address)>(_s); }
+
 struct TransactionSkeleton
 {
 	Address from;
@@ -135,4 +152,5 @@ struct TransactionSkeleton
 	u256 gasPrice;
 };
 
+}
 }

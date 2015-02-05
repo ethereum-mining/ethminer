@@ -22,8 +22,9 @@
 #include <QDebug>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
+#include <QStandardPaths>
 #include <jsonrpccpp/server.h>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libethereum/Transaction.h>
 #include "AppContext.h"
 #include "DebuggingStateWrapper.h"
@@ -84,7 +85,7 @@ ClientModel::ClientModel(AppContext* _context):
 	qRegisterMetaType<TransactionLogEntry*>("TransactionLogEntry");
 
 	connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
-	m_client.reset(new MixClient());
+	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
 
 	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), std::vector<dev::KeyPair> { m_client->userAccount() }, m_client.get()));
 	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
@@ -112,8 +113,25 @@ QString ClientModel::apiCall(QString const& _message)
 
 void ClientModel::mine()
 {
-	m_client->mine();
-	newBlock();
+	if (m_running)
+		BOOST_THROW_EXCEPTION(ExecutionStateException());
+	m_running = true;
+	emit runStarted();
+	emit runStateChanged();
+	QtConcurrent::run([=]()
+	{
+		try
+		{
+			m_client->mine();
+			newBlock();
+		}
+		catch (...)
+		{
+			std::cerr << boost::current_exception_diagnostic_information();
+			emit runFailed(QString::fromStdString(boost::current_exception_diagnostic_information()));
+		}
+		m_running = false;
+	});
 }
 
 QString ClientModel::contractAddress() const
@@ -146,7 +164,7 @@ void ClientModel::setupState(QVariantMap _state)
 			TransactionSettings transactionSettings(functionId, transaction.value("url").toString());
 			transactionSettings.gasPrice = 10000000000000;
 			transactionSettings.gas = 125000;
-			transactionSettings.value = 100;
+			transactionSettings.value = 0;
 			transactionSequence.push_back(transactionSettings);
 		}
 		else
@@ -243,11 +261,13 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 		}
 		catch(boost::exception const&)
 		{
+			std::cerr << boost::current_exception_diagnostic_information();
 			emit runFailed(QString::fromStdString(boost::current_exception_diagnostic_information()));
 		}
 
 		catch(std::exception const& e)
 		{
+			std::cerr << boost::current_exception_diagnostic_information();
 			emit runFailed(e.what());
 		}
 		m_running = false;
@@ -257,7 +277,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 
 void ClientModel::showDebugger()
 {
-	ExecutionResult const& last = m_client->record().back().transactions.back();
+	ExecutionResult const& last = m_client->lastExecution();
 	showDebuggerForTransaction(last);
 }
 
@@ -290,7 +310,7 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 
 void ClientModel::debugTransaction(unsigned _block, unsigned _index)
 {
-	auto const& t = m_client->record().at(_block).transactions.at(_index);
+	auto const& t = m_client->execution(_block, _index);
 	showDebuggerForTransaction(t);
 }
 
@@ -321,9 +341,9 @@ void ClientModel::onStateReset()
 
 void ClientModel::onNewTransaction()
 {
-	unsigned block = m_client->number();
-	unsigned index =  m_client->record().back().transactions.size() - 1;
-	ExecutionResult const& tr = m_client->record().back().transactions.back();
+	unsigned block = m_client->number() + 1;
+	unsigned index =  m_client->pendingExecutions().size() - 1;
+	ExecutionResult const& tr = m_client->lastExecution();
 	QString address = QString::fromStdString(toJS(tr.address));
 	QString value =  QString::fromStdString(dev::toString(tr.value));
 	QString contract = address;
