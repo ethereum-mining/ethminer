@@ -4,7 +4,7 @@ project(evmjit)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 else()
 	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas -Wextra -fPIC")
 endif()
@@ -31,9 +31,6 @@ else()
 	add_definitions(-D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS)
 	link_directories(/usr/lib/llvm-3.5/lib)
 endif()
-
-# Boost
-find_package(Boost REQUIRED)
 
 add_subdirectory(libevmjit)
 
