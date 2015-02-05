@@ -568,10 +568,18 @@ void Client::doWork()
 	if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(5))
 	{
 		// garbage collect on watches
-		Guard l(m_filterLock);
-		for (auto key: keysOf(m_watches))
-			if (chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(5))
-				uninstallWatch(key);
+		vector<unsigned> toUninstall;
+		{
+			Guard l(m_filterLock);
+			for (auto key: keysOf(m_watches))
+				if (chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(20))
+				{
+					toUninstall.push_back(key);
+					cnote << "GC: Uninstall" << key << "(" << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - m_watches[key].lastPoll).count() << "s old)";
+				}
+		}
+		for (auto i: toUninstall)
+			uninstallWatch(i);
 		m_lastGarbageCollection = chrono::system_clock::now();
 	}
 }
