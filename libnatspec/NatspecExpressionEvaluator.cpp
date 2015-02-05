@@ -52,7 +52,8 @@ QString NatspecExpressionEvaluator::evalExpression(QString const& _expression)
 	QJSValue result = m_engine.evaluate("evaluateExpression(\"" + _expression + "\")");
 	if (result.isError())
 	{
-		cerr << "Could not evaluate expression: " << _expression.toStdString() << ". result: " << result.toString().toStdString() << endl;
+		cerr << "Could not evaluate expression: \"" << _expression.toStdString() << "\"" << endl;
+		return _expression;
 	}
 	return result.toString();
 }
