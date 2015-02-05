@@ -52,9 +52,13 @@ var ProviderManager = function() {
 
             self.polls.forEach(function (data, index) {
                 var result = results[index];
-                
+
                 if (!jsonrpc.isValidResponse(result)) {
-                    console.log(result);
+                    console.log("INVALID RESPONSE");
+                    console.log("results:" + JSON.stringify(results));
+                    console.log("data:" + JSON.stringify(data));
+                    console.log("index:" + index);
+                    console.log("result:" + JSON.stringify(result));
                     return;
                 }
 
@@ -66,7 +70,7 @@ var ProviderManager = function() {
 
                 data.callback(result);
 
-            });
+            });il
 
         }
         setTimeout(poll, 1000);

@@ -246,4 +246,13 @@ inline std::set<_T> operator+(std::set<_T> const& _a, std::set<_T> const& _b)
 /// Make normal string from fixed-length string.
 std::string toString(string32 const& _s);
 
+template<class T, class U>
+std::vector<T> keysOf(std::map<T, U> const& _m)
+{
+	std::vector<T> ret;
+	for (auto const& i: _m)
+		ret.push_back(i.first);
+	return ret;
+}
+
 }
