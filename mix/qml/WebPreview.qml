@@ -3,79 +3,170 @@ import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 import QtQuick.Controls.Styles 1.1
+import QtWebEngine 1.0
+import QtWebEngine.experimental 1.0
+import HttpServer 1.0
 
-Component {
-	Item {
-		signal editorTextChanged
+Item {
+	id: webPreview
+	property string pendingPageUrl: ""
+	property bool initialized: false
 
-		function setText(text) {
-			codeEditor.text = text;
+	function setPreviewUrl(url) {
+		if (!initialized)
+			pendingPageUrl = url;
+		else {
+			pendingPageUrl = "";
+			updateContract();
+			webView.runJavaScript("loadPage(\"" + url + "\")");
+		}
+	}
+
+	function reload() {
+		updateContract();
+		webView.runJavaScript("reloadPage()");
+	}
+
+	function updateContract() {
+		webView.runJavaScript("updateContract(\"" + clientModel.contractAddress + "\", " + codeModel.code.contractInterface + ")");
+	}
+
+	function reloadOnSave() {
+		if (autoReloadOnSave.checked)
+			reload();
+	}
+
+	function updateDocument(documentId, action) {
+		for (var i = 0; i < pageListModel.count; i++)
+			if (pageListModel.get(i).documentId === i)
+				action(i);
+	}
+
+	function changePage() {
+		if (pageCombo.currentIndex >=0 && pageCombo.currentIndex < pageListModel.count) {
+			setPreviewUrl(pageListModel.get(pageCombo.currentIndex).path);
+		} else {
+			setPreviewUrl("");
+		}
+	}
+	Connections {
+		target: appContext
+		onAppLoaded: {
+			//We need to load the container using file scheme so that web security would allow loading local files in iframe
+			var containerPage = fileIo.readFile("qrc:///qml/html/WebContainer.html");
+			webView.loadHtml(containerPage, "file:///WebContainer.html")
+
+		}
+	}
+
+	Connections {
+		target: clientModel
+		onContractAddressChanged: reload();
+		onRunComplete: reload();
+	}
+
+	Connections {
+		target: codeModel
+		onContractInterfaceChanged: reload();
+	}
+
+	Connections {
+		target: projectModel
+		onProjectSaved : reloadOnSave();
+		onDocumentSaved: reloadOnSave();
+		onDocumentAdded: {
+			var document = projectModel.getDocument(documentId)
+			if (document.isHtml)
+				pageListModel.append(document);
+		}
+		onDocumentRemoved: {
+			updateDocument(documentId, function(i) { pageListModel.remove(i) } )
+		}
+		onDocumentUpdated: {
+			updateDocument(documentId, function(i) { pageListModel.set(i, projectModel.getDocument(documentId)) } )
 		}
 
-		function getText() {
-			return codeEditor.text;
+		onProjectLoading: {
+			for (var i = 0; i < target.listModel.count; i++) {
+				var document = target.listModel.get(i);
+				if (document.isHtml) {
+					pageListModel.append(document);
+					if (pageListModel.count === 1) //first page added
+						changePage();
+				}
+			}
 		}
 
+		onProjectClosed: {
+			pageListModel.clear();
+		}
+	}
+
+	ListModel {
+		id: pageListModel
+	}
+
+	HttpServer {
+		id: httpServer
+		listen: true
+		accept: true
+		port: 8893
+		onClientConnected: {
+			//filter polling spam
+			//TODO: do it properly
+			var log = _request.content.indexOf("eth_changed") < 0;
+			if (log)
+				console.log(_request.content);
+			var response = clientModel.apiCall(_request.content);
+			if (log)
+				console.log(response);
+			_request.setResponse(response);
+		}
+	}
+
+	ColumnLayout {
 		anchors.fill: parent
-		id: contentView
-		width: parent.width
-		height: parent.height * 0.7
-			Rectangle {
-				id: lineColumn
-				property int rowHeight: codeEditor.font.pixelSize + 3
-				color: "#202020"
-				width: 50
-				height: parent.height
-				Column {
-					y: -codeEditor.flickableItem.contentY + 4
-					width: parent.width
-					Repeater {
-						model: Math.max(codeEditor.lineCount + 2, (lineColumn.height/lineColumn.rowHeight))
-						delegate: Text {
-							id: text
-							color: codeEditor.textColor
-							font: codeEditor.font
-							width: lineColumn.width - 4
-							horizontalAlignment: Text.AlignRight
-							verticalAlignment: Text.AlignVCenter
-							height: lineColumn.rowHeight
-							renderType: Text.NativeRendering
-							text: index + 1
-						}
-					}
-				}
-			}
 
-		TextArea {
-			id: codeEditor
-			textColor: "#EEE8D5"
-			style: TextAreaStyle {
-				backgroundColor: "#002B36"
-			}
-
-			anchors.left: lineColumn.right
-			anchors.right: parent.right
+		RowLayout {
 			anchors.top: parent.top
-			anchors.bottom: parent.bottom
-			wrapMode: TextEdit.NoWrap
-			frameVisible: false
+			Layout.fillWidth: true;
+			Text {
+				text: qsTr("Page")
+			}
+			ComboBox {
+				id: pageCombo
+				model: pageListModel
+				textRole: "name"
+				currentIndex: -1
+				onCurrentIndexChanged: changePage()
+			}
+			Button {
+				text: qsTr("Reload")
+				onClicked: reload()
+			}
+			CheckBox {
+				id: autoReloadOnSave
+				checked: true
+				text: qsTr("Auto reload on save")
+			}
+		}
 
-			height: parent.height
-			font.family: "Monospace"
-			font.pointSize: 12
-			width: parent.width
-
-			tabChangesFocus: false
-			Keys.onPressed: {
-				if (event.key === Qt.Key_Tab) {
-					codeEditor.insert(codeEditor.cursorPosition, "\t");
-					event.accepted = true;
+		WebEngineView {
+			Layout.fillWidth: true
+			Layout.fillHeight: true
+			id: webView
+			experimental.settings.localContentCanAccessRemoteUrls: true
+			onJavaScriptConsoleMessage: {
+				console.log(sourceID + ":" + lineNumber + ":" + message);
+			}
+			onLoadingChanged: {
+				if (!loading) {
+					initialized = true;
+					webView.runJavaScript("init(\"" + httpServer.url + "\")");
+					if (pendingPageUrl)
+						setPreviewUrl(pendingPageUrl);
 				}
 			}
-			onTextChanged: {
-				editorTextChanged();
-			}
-
 		}
 	}
 }

@@ -36,19 +36,16 @@ class QFunctionDefinition: public QBasicNodeDefinition
 {
 	Q_OBJECT
 	Q_PROPERTY(QQmlListProperty<dev::mix::QVariableDeclaration> parameters READ parameters)
-	Q_PROPERTY(int index READ index)
 
 public:
 	QFunctionDefinition() {}
-	QFunctionDefinition(solidity::FunctionDefinition const* _f, int _index);
+	QFunctionDefinition(solidity::FunctionTypePointer const& _f);
 	/// Get all input parameters of this function.
 	QList<QVariableDeclaration*> const& parametersList() const { return m_parameters; }
 	/// Get all input parameters of this function as QML property.
 	QQmlListProperty<QVariableDeclaration> parameters() const { return QQmlListProperty<QVariableDeclaration>(const_cast<QFunctionDefinition*>(this), const_cast<QFunctionDefinition*>(this)->m_parameters); }
 	/// Get all return parameters of this function.
 	QList<QVariableDeclaration*> returnParameters() const { return m_returnParameters; }
-	/// Get the index of this function on the contract ABI.
-	int index() const { return m_index; }
 	/// Get the hash of this function declaration on the contract ABI.
 	FixedHash<4> hash() const { return m_hash; }
 

@@ -20,23 +20,58 @@
  * Used to translate c++ type (u256, bytes, ...) into friendly value (to be used by QML).
  */
 
-#include <QApplication>
+#include <tuple>
 #include <QDebug>
 #include <QPointer>
+#include <QQmlEngine>
+#include <QVariantList>
 #include <libevmcore/Instruction.h>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libdevcrypto/Common.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/Common.h>
 #include "DebuggingStateWrapper.h"
+#include "QBigInt.h"
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::mix;
 
-std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCode(const bytes& _code)
+namespace
 {
-	QList<QObject*> codeStr;
-	QMap<int, int> codeMapping;
+	static QVariantList memDumpToList(bytes const& _bytes, unsigned _width)
+	{
+		QVariantList dumpList;
+		for (unsigned i = 0; i < _bytes.size(); i += _width)
+		{
+			std::stringstream ret;
+
+			for (unsigned j = i; j < i + _width; ++j)
+				if (j < _bytes.size())
+					if (_bytes[j] >= 32 && _bytes[j] < 127)
+						ret << (char)_bytes[j];
+					else
+						ret << '?';
+				else
+					ret << ' ';
+			QString strPart = QString::fromStdString(ret.str());
+
+			ret.clear();
+			ret.str(std::string());
+
+			for (unsigned j = i; j < i + _width && j < _bytes.size(); ++j)
+				ret << std::setfill('0') << std::setw(2) << std::hex << (unsigned)_bytes[j] << " ";
+			QString hexPart = QString::fromStdString(ret.str());
+
+			QStringList line = { strPart, hexPart };
+			dumpList.push_back(line);
+		}
+		return dumpList;
+	}
+}
+
+QCode* QMachineState::getHumanReadableCode(QObject* _owner, const bytes& _code)
+{
+	QVariantList codeStr;
 	for (unsigned i = 0; i <= _code.size(); ++i)
 	{
 		byte b = i < _code.size() ? _code[i] : 0;
@@ -45,7 +80,6 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 			QString s = QString::fromStdString(instructionInfo((Instruction)b).name);
 			std::ostringstream out;
 			out << std::hex << std::setw(4) << std::setfill('0') << i;
-			codeMapping[i] = codeStr.size();
 			int line = i;
 			if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
 			{
@@ -53,8 +87,7 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 				s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&_code[i + 1], bc)));
 				i += bc;
 			}
-			QPointer<HumanReadableCode> humanCode(new HumanReadableCode(QString::fromStdString(out.str()) + "  "  + s, line));
-			codeStr.append(humanCode);
+			codeStr.append(QVariant::fromValue(new QInstruction(_owner, QString::fromStdString(out.str()) + "  "  + s, line)));
 		}
 		catch (...)
 		{
@@ -63,167 +96,76 @@ std::tuple<QList<QObject*>, QQMLMap*> DebuggingStateWrapper::getHumanReadableCod
 			break;	// probably hit data segment
 		}
 	}
-	return std::make_tuple(codeStr, QPointer<QQMLMap>(new QQMLMap(codeMapping)));
+	return new QCode(_owner, std::move(codeStr));
 }
 
-QString DebuggingStateWrapper::gasCost()
+QBigInt* QMachineState::gasCost()
 {
-	std::ostringstream ss;
-	ss << std::dec << m_state.gasCost;
-	return QString::fromStdString(ss.str());
+	return new QBigInt(m_state.gasCost);
 }
 
-QString DebuggingStateWrapper::gas()
+QBigInt* QMachineState::gas()
 {
-	std::ostringstream ss;
-	ss << std::dec << m_state.gas;
-	return QString::fromStdString(ss.str());
+	return new QBigInt(m_state.gas);
 }
 
-QString DebuggingStateWrapper::newMemSize()
+QBigInt* QMachineState::newMemSize()
 {
-	std::ostringstream ss;
-	ss << std::dec << m_state.newMemSize;
-	return QString::fromStdString(ss.str());
+	return new QBigInt(m_state.newMemSize);
 }
 
-QStringList DebuggingStateWrapper::debugStack()
+QStringList QMachineState::debugStack()
 {
 	QStringList stack;
-	for (auto i: m_state.stack)
-		stack.append(QString::fromStdString(prettyU256(i)));
-
-	return fillList(stack, "");
+	for (std::vector<u256>::reverse_iterator i = m_state.stack.rbegin(); i != m_state.stack.rend(); ++i)
+		stack.append(QString::fromStdString(prettyU256(*i)));
+	return stack;
 }
 
-QStringList DebuggingStateWrapper::debugStorage()
+QStringList QMachineState::debugStorage()
 {
 	QStringList storage;
 	for (auto const& i: m_state.storage)
 	{
 		std::stringstream s;
-		s << "@" << prettyU256(i.first) << " " << prettyU256(i.second);
+		s << "@" << prettyU256(i.first) << "\t" << prettyU256(i.second);
 		storage.append(QString::fromStdString(s.str()));
 	}
-	return fillList(storage, "@ -");
+	return storage;
 }
 
-QVariantList DebuggingStateWrapper::debugMemory()
+QVariantList QMachineState::debugMemory()
 {
-	std::vector<std::vector<std::string>> dump = memDumpToList(m_state.memory, 16);
-	QStringList filled;
-	filled.append(" ");
-	filled.append(" ");
-	filled.append(" ");
-	return fillList(qVariantDump(dump), QVariant(filled));
+	return memDumpToList(m_state.memory, 16);
 }
 
-QVariantList DebuggingStateWrapper::debugCallData()
+QCallData* QMachineState::getDebugCallData(QObject* _owner, bytes const& _data)
 {
-	std::vector<std::vector<std::string>> dump = memDumpToList(m_data, 16);
-	QStringList filled;
-	filled.append(" ");
-	filled.append(" ");
-	filled.append(" ");
-	return fillList(qVariantDump(dump), QVariant(filled));
+	return new QCallData(_owner, memDumpToList(_data, 16));
 }
 
-std::vector<std::vector<std::string>> DebuggingStateWrapper::memDumpToList(bytes const& _bytes, unsigned _width)
+QVariantList QMachineState::levels()
 {
-	std::vector<std::vector<std::string>> dump;
-	for (unsigned i = 0; i < _bytes.size(); i += _width)
-	{
-		std::stringstream ret;
-		std::vector<std::string> dumpLine;
-		ret << std::hex << std::setw(4) << std::setfill('0') << i << " ";
-		dumpLine.push_back(ret.str());
-		ret.str(std::string());
-		ret.clear();
-
-		for (unsigned j = i; j < i + _width; ++j)
-			if (j < _bytes.size())
-				if (_bytes[j] >= 32 && _bytes[j] < 127)
-					ret << (char)_bytes[j];
-				else
-					ret << '?';
-			else
-				ret << ' ';
-		dumpLine.push_back(ret.str());
-		ret.str(std::string());
-		ret.clear();
-
-		for (unsigned j = i; j < i + _width && j < _bytes.size(); ++j)
-			ret << std::setfill('0') << std::setw(2) << std::hex << (unsigned)_bytes[j] << " ";
-		dumpLine.push_back(ret.str());
-		dump.push_back(dumpLine);
-	}
-	return dump;
+	QVariantList levelList;
+	for (unsigned l: m_state.levels)
+		levelList.push_back(l);
+	return levelList;
 }
 
-QVariantList DebuggingStateWrapper::qVariantDump(std::vector<std::vector<std::string>> const& _dump)
+QString QMachineState::address()
 {
-	QVariantList ret;
-	for (std::vector<std::string> const& line: _dump)
-	{
-		QStringList qLine;
-		for (std::string const& cell: line)
-			qLine.push_back(QString::fromStdString(cell));
-		ret.append(QVariant(qLine));
-	}
-	return ret;
+	return QString::fromStdString(toString(m_state.address));
 }
 
-QStringList DebuggingStateWrapper::fillList(QStringList& _list, QString const& _emptyValue)
-{
-	if (_list.size() < 20)
-	{
-		for (int k = _list.size(); k < 20 - _list.size(); k++)
-			_list.append(_emptyValue);
-	}
-	return _list;
-}
-
-QVariantList DebuggingStateWrapper::fillList(QVariantList _list, QVariant const& _emptyValue)
-{
-	if (_list.size() < 20)
-	{
-		for (int k = _list.size(); k < 20 - _list.size(); k++)
-			_list.append(_emptyValue);
-	}
-	return _list;
-}
-
-
-QStringList DebuggingStateWrapper::levels()
-{
-	QStringList levelsStr;
-	for (unsigned i = 0; i <= m_state.levels.size(); ++i)
-	{
-		std::ostringstream out;
-		out << m_state.cur.abridged();
-		if (i)
-			out << " " << instructionInfo(m_state.inst).name << " @0x" << std::hex << m_state.curPC;
-		levelsStr.append(QString::fromStdString(out.str()));
-	}
-	return levelsStr;
-}
-
-QString DebuggingStateWrapper::headerInfo()
-{
-	std::ostringstream ss;
-	ss << std::dec << " " << QApplication::tr("STEP").toStdString() << " : " << m_state.steps << "  |  PC: 0x" << std::hex << m_state.curPC << "  :  " << dev::eth::instructionInfo(m_state.inst).name << "  |  ADDMEM: " << std::dec << m_state.newMemSize << " " << QApplication::tr("words").toStdString() << " | " << QApplication::tr("COST").toStdString() << " : " << std::dec << m_state.gasCost <<  "  | " << QApplication::tr("GAS").toStdString() << " : " << std::dec << m_state.gas;
-	return QString::fromStdString(ss.str());
-}
-
-QString DebuggingStateWrapper::instruction()
+QString QMachineState::instruction()
 {
 	return QString::fromStdString(dev::eth::instructionInfo(m_state.inst).name);
 }
 
-QString DebuggingStateWrapper::endOfDebug()
+QString QMachineState::endOfDebug()
 {
 	if (m_state.gasCost > m_state.gas)
-		return QApplication::tr("OUT-OF-GAS");
+		return QObject::tr("OUT-OF-GAS");
 	else if (m_state.inst == Instruction::RETURN && m_state.stack.size() >= 2)
 	{
 		unsigned from = (unsigned)m_state.stack.back();
@@ -232,12 +174,12 @@ QString DebuggingStateWrapper::endOfDebug()
 		bytes out(size, 0);
 		for (; o < size && from + o < m_state.memory.size(); ++o)
 			out[o] = m_state.memory[from + o];
-		return QApplication::tr("RETURN") + " " + QString::fromStdString(dev::memDump(out, 16, false));
+		return QObject::tr("RETURN") + " " + QString::fromStdString(dev::memDump(out, 16, false));
 	}
 	else if (m_state.inst == Instruction::STOP)
-		return QApplication::tr("STOP");
+		return QObject::tr("STOP");
 	else if (m_state.inst == Instruction::SUICIDE && m_state.stack.size() >= 1)
-		return QApplication::tr("SUICIDE") + " 0x" + QString::fromStdString(toString(right160(m_state.stack.back())));
+		return QObject::tr("SUICIDE") + " 0x" + QString::fromStdString(toString(right160(m_state.stack.back())));
 	else
-		return QApplication::tr("EXCEPTION");
+		return QObject::tr("EXCEPTION");
 }

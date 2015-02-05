@@ -20,7 +20,7 @@
  */
 
 #include <QtCore/QObject>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libdevcrypto/Common.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 
@@ -35,14 +35,31 @@ public:
 						  std::vector<dev::KeyPair> const& _accounts, Main* main);
 
 	virtual std::string shh_newIdentity() override;
-	virtual bool authenticate(dev::TransactionSkeleton const& _t) const;
+	virtual bool authenticate(dev::eth::TransactionSkeleton const& _t);
 
 signals:
 	void onNewId(QString _s);
 
 private:
 	bool showAuthenticationPopup(std::string const& _title, std::string const& _text) const;
+	void showBasicValueTransferNotice(dev::u256 _value) const;
 
 	dev::WebThreeDirect* m_web3;
+	Main* m_main;
+};
+
+
+class QNatspecExpressionEvaluator: public QObject
+{
+	Q_OBJECT
+
+public:
+	QNatspecExpressionEvaluator(OurWebThreeStubServer* _server, Main* _main);
+	virtual ~QNatspecExpressionEvaluator();
+
+	QString evalExpression(QString const& _expression) const;
+
+private:
+	OurWebThreeStubServer* m_server;
 	Main* m_main;
 };

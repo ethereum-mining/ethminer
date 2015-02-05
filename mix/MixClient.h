@@ -1,18 +1,18 @@
 /*
-    This file is part of cpp-ethereum.
+	This file is part of cpp-ethereum.
 
-    cpp-ethereum is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
 
-    cpp-ethereum is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file MixClient.h
  * @author Yann yann@ethdev.com
@@ -23,53 +23,31 @@
 
 #pragma once
 
+#include <vector>
+#include <string>
 #include <libethereum/Interface.h>
+#include <libethereum/Client.h>
+#include "MachineStates.h"
 
 namespace dev
 {
 namespace mix
 {
 
-/**
- * @brief Store information about a machine state.
- */
-struct MachineState
-{
-	uint64_t steps;
-	dev::Address cur;
-	dev::u256 curPC;
-	dev::eth::Instruction inst;
-	dev::bigint newMemSize;
-	dev::u256 gas;
-	dev::u256s stack;
-	dev::bytes memory;
-	dev::bigint gasCost;
-	std::map<dev::u256, dev::u256> storage;
-	std::vector<MachineState const*> levels;
-};
-
-/**
- * @brief Store information about a machine states.
- */
-struct ExecutionResult
-{
-	std::vector<MachineState> machineStates;
-	bytes executionCode;
-	bytesConstRef executionData;
-	Address contractAddress;
-	bool contentAvailable;
-	std::string message;
-	bytes returnValue;
-};
+class MixBlockChain;
 
 class MixClient: public dev::eth::Interface
 {
 public:
-	MixClient();
+	MixClient(std::string const& _dbPath);
+	virtual ~MixClient();
 	/// Reset state to the empty state with given balance.
 	void resetState(u256 _balance);
-	const KeyPair& userAccount() const { return m_userAccount; }
-	const ExecutionResult lastExecutionResult() const { ReadGuard l(x_state); return m_lastExecutionResult; }
+	KeyPair const& userAccount() const { return m_userAccount; }
+	void mine();
+	ExecutionResult const& execution(unsigned _block, unsigned _transaction) const;
+	ExecutionResult const& lastExecution() const;
+	ExecutionResults const& pendingExecutions() const;
 
 	//dev::eth::Interface
 	void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice) override;
@@ -110,14 +88,25 @@ public:
 	eth::MineProgress miningProgress() const override;
 
 private:
-	void executeTransaction(bytesConstRef _rlp, eth::State& _state);
-	void validateBlock(int _block) const;
+	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state);
+	void noteChanged(h256Set const& _filters);
+	dev::eth::State asOf(int _block) const;
+	MixBlockChain& bc() { return *m_bc; }
+	MixBlockChain const& bc() const { return *m_bc; }
 
 	KeyPair m_userAccount;
 	eth::State m_state;
+	eth::State m_startState;
 	OverlayDB m_stateDB;
+	std::auto_ptr<MixBlockChain> m_bc;
 	mutable boost::shared_mutex x_state;
-	ExecutionResult m_lastExecutionResult;
+	mutable std::mutex m_filterLock;
+	std::map<h256, dev::eth::InstalledFilter> m_filters;
+	std::map<unsigned, dev::eth::ClientWatch> m_watches;
+	std::vector<ExecutionResults> m_executions;
+	ExecutionResults m_pendingExecutions;
+	std::string m_dbPath;
+	unsigned m_minigThreads;
 };
 
 }

@@ -28,6 +28,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
+#include <liblll/Compiler.h>
 #include "State.h"
 #include "Defaults.h"
 using namespace std;
@@ -52,28 +53,6 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 	return _out;
 }
 
-std::map<Address, Account> const& dev::eth::genesisState()
-{
-	static std::map<Address, Account> s_ret;
-	if (s_ret.empty())
-		// Initialise.
-		for (auto i: vector<string>({
-            "51ba59315b3a95761d0863b05ccc7a7f54703d99",
-			"e6716f9544a56c530d868e4bfbacb172315bdead",
-			"b9c015918bdaba24b4ff057a92a3873d6eb201be",
-			"1a26338f0d905e295fccb71fa9ea849ffa12aaf4",
-			"2ef47100e0787b915105fd5e3f4ff6752079d5cb",
-			"cd2a3d9f938e13cd947ec05abc7fe734df8dd826",
-			"6c386a4b26f73c802f34673f7248bb118f97424a",
-			"e4157b34ea9615cfbde6b4fda419828124b70c78"
-		}))
-			s_ret[Address(fromHex(i))] = Account(u256(1) << 200, Account::NormalCreation);
-	return s_ret;
-}
-
-std::unique_ptr<BlockInfo> BlockChain::s_genesis;
-boost::shared_mutex BlockChain::x_genesis;
-
 ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
 {
 #if ALL_COMPILERS_ARE_CPP11_COMPLIANT
@@ -88,31 +67,11 @@ ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
 #endif
 }
 
-bytes BlockChain::createGenesisBlock()
-{
-	RLPStream block(3);
-
-	h256 stateRoot;
-	{
-		MemoryDB db;
-		TrieDB<Address, MemoryDB> state(&db);
-		state.init();
-		dev::eth::commit(genesisState(), db, state);
-		stateRoot = state.root();
-	}
-
-	block.appendList(14)
-		<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
-	block.appendRaw(RLPEmptyList);
-	block.appendRaw(RLPEmptyList);
-	return block.out();
-}
-
-BlockChain::BlockChain(std::string _path, bool _killExisting)
+BlockChain::BlockChain(bytes const& _genesisBlock, std::string _path, bool _killExisting)
 {
 	// Initialise with the genesis as the last block on the longest chain.
-	m_genesisHash = BlockChain::genesis().hash;
-	m_genesisBlock = BlockChain::createGenesisBlock();
+	m_genesisBlock = _genesisBlock;
+	m_genesisHash = sha3(RLP(m_genesisBlock)[0].data());
 
 	open(_path, _killExisting);
 }
@@ -350,7 +309,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	}
 #endif
 
-//	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
+	//	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
 
 	h256s ret;
 	// This might be the new best block...
@@ -374,7 +333,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, bool _post) const
 {
-//	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
+	//	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
 	if (!_from || !_to)
 	{
 		return h256s();
@@ -383,14 +342,14 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 	h256s back;
 	unsigned fn = details(_from).number;
 	unsigned tn = details(_to).number;
-//	cdebug << "treeRoute" << fn << "..." << tn;
+	//	cdebug << "treeRoute" << fn << "..." << tn;
 	while (fn > tn)
 	{
 		if (_pre)
 			ret.push_back(_from);
 		_from = details(_from).parent;
 		fn--;
-//		cdebug << "from:" << fn << _from.abridged();
+		//		cdebug << "from:" << fn << _from.abridged();
 	}
 	while (fn < tn)
 	{
@@ -398,7 +357,7 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 			back.push_back(_to);
 		_to = details(_to).parent;
 		tn--;
-//		cdebug << "to:" << tn << _to.abridged();
+		//		cdebug << "to:" << tn << _to.abridged();
 	}
 	while (_from != _to)
 	{
@@ -412,7 +371,7 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 			back.push_back(_to);
 		fn--;
 		tn--;
-//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
+		//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
 	}
 	if (o_common)
 		*o_common = _from;

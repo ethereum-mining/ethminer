@@ -1,31 +1,35 @@
-pragma Singleton
-
 import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 import QtQuick.Dialogs 1.1
 import Qt.labs.settings 1.0
-
 import "js/ProjectModel.js" as ProjectModelCode
 
 Item {
 	id: projectModel
 
 	signal projectClosed
-	signal projectLoaded
+	signal projectLoading(var projectData)
+	signal projectLoaded()
 	signal documentOpened(var document)
 	signal documentRemoved(var documentId)
 	signal documentUpdated(var documentId) //renamed
+	signal documentAdded(var documentId)
 	signal projectSaving(var projectData)
+	signal projectSaved()
+	signal newProject(var projectData)
+	signal documentSaved(var documentId)
 
-	property bool isEmpty: (projectData === null)
+	property bool isEmpty: (projectPath === "")
 	readonly property string projectFileName: ".mix"
 
 	property bool haveUnsavedChanges: false
 	property string projectPath: ""
-	property var projectData: null
+	property string projectTitle: ""
+	property string currentDocumentId: ""
 	property var listModel: projectListModel
+	property var stateListModel: projectStateListModel.model
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
@@ -39,14 +43,18 @@ Item {
 	function newJsFile() { ProjectModelCode.newJsFile(); }
 	//function newContract() { ProjectModelCode.newContract(); }
 	function openDocument(documentId) { ProjectModelCode.openDocument(documentId); }
+	function openNextDocument() { ProjectModelCode.openNextDocument(); }
+	function openPrevDocument() { ProjectModelCode.openPrevDocument(); }
 	function renameDocument(documentId, newName) { ProjectModelCode.renameDocument(documentId, newName); }
 	function removeDocument(documentId) { ProjectModelCode.removeDocument(documentId); }
+	function getDocument(documentId) { return ProjectModelCode.getDocument(documentId); }
+	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 
 	Connections {
 		target: appContext
 		onAppLoaded: {
 			if (projectSettings.lastProjectPath)
-				loadProject(projectSettings.lastProjectPath)
+				projectModel.loadProject(projectSettings.lastProjectPath)
 		}
 	}
 
@@ -79,6 +87,10 @@ Item {
 		id: projectListModel
 	}
 
+	StateListModel {
+		id: projectStateListModel
+	}
+
 	Settings {
 		id: projectSettings
 		property string lastProjectPath;
@@ -87,7 +99,7 @@ Item {
 	FileDialog {
 		id: openProjectFileDialog
 		visible: false
-		title: qsTr("Open a project")
+		title: qsTr("Open a Project")
 		selectFolder: true
 		onAccepted: {
 			var path = openProjectFileDialog.fileUrl.toString();
@@ -99,7 +111,7 @@ Item {
 	FileDialog {
 		id: addExistingFileDialog
 		visible: false
-		title: qsTr("Add a file")
+		title: qsTr("Add a File")
 		selectFolder: false
 		onAccepted: {
 			var paths = addExistingFileDialog.fileUrls;

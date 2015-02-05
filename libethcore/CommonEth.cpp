@@ -32,7 +32,7 @@ namespace dev
 namespace eth
 {
 
-const unsigned c_protocolVersion = 51;
+const unsigned c_protocolVersion = 52;
 const unsigned c_databaseVersion = 5;
 
 static const vector<pair<u256, string>> g_units =
@@ -63,22 +63,31 @@ vector<pair<u256, string>> const& units()
 	return g_units;
 }
 
-std::string formatBalance(u256 _b)
+std::string formatBalance(bigint const& _b)
 {
 	ostringstream ret;
-	if (_b > g_units[0].first * 10000)
+	u256 b;
+	if (_b < 0)
 	{
-		ret << (_b / g_units[0].first) << " " << g_units[0].second;
+		ret << "-";
+		b = (u256)-_b;
+	}
+	else
+		b = (u256)_b;
+
+	if (b > g_units[0].first * 10000)
+	{
+		ret << (b / g_units[0].first) << " " << g_units[0].second;
 		return ret.str();
 	}
 	ret << setprecision(5);
 	for (auto const& i: g_units)
-		if (i.first != 1 && _b >= i.first * 100)
+		if (i.first != 1 && b >= i.first * 100)
 		{
-			ret << (double(_b / (i.first / 1000)) / 1000.0) << " " << i.second;
+			ret << (double(b / (i.first / 1000)) / 1000.0) << " " << i.second;
 			return ret.str();
 		}
-	ret << _b << " wei";
+	ret << b << " wei";
 	return ret.str();
 }
 

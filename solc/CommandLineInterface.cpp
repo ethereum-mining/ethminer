@@ -61,6 +61,7 @@ static string const g_argBinaryStr      = "binary";
 static string const g_argOpcodesStr     = "opcodes";
 static string const g_argNatspecDevStr  = "natspec-dev";
 static string const g_argNatspecUserStr = "natspec-user";
+static string const g_argAddStandard    = "add-std";
 
 static void version()
 {
@@ -116,13 +117,13 @@ void CommandLineInterface::handleBinary(string const& _contract)
 	if (outputToStdout(choice))
 	{
 		cout << "Binary: " << endl;
-		cout << toHex(m_compiler.getBytecode(_contract)) << endl;
+		cout << toHex(m_compiler->getBytecode(_contract)) << endl;
 	}
 
 	if (outputToFile(choice))
 	{
 		ofstream outFile(_contract + ".binary");
-		outFile << toHex(m_compiler.getBytecode(_contract));
+		outFile << toHex(m_compiler->getBytecode(_contract));
 		outFile.close();
 	}
 }
@@ -133,14 +134,14 @@ void CommandLineInterface::handleOpcode(string const& _contract)
 	if (outputToStdout(choice))
 	{
 		cout << "Opcodes: " << endl;
-		cout << eth::disassemble(m_compiler.getBytecode(_contract));
+		cout << eth::disassemble(m_compiler->getBytecode(_contract));
 		cout << endl;
 	}
 
 	if (outputToFile(choice))
 	{
 		ofstream outFile(_contract + ".opcode");
-		outFile << eth::disassemble(m_compiler.getBytecode(_contract));
+		outFile << eth::disassemble(m_compiler->getBytecode(_contract));
 		outFile.close();
 	}
 }
@@ -191,13 +192,13 @@ void CommandLineInterface::handleMeta(DocumentationType _type, string const& _co
 		if (outputToStdout(choice))
 		{
 			cout << title << endl;
-			cout << m_compiler.getMetadata(_contract, _type) << endl;
+			cout << m_compiler->getMetadata(_contract, _type) << endl;
 		}
 
 		if (outputToFile(choice))
 		{
 			ofstream outFile(_contract + suffix);
-			outFile << m_compiler.getMetadata(_contract, _type);
+			outFile << m_compiler->getMetadata(_contract, _type);
 			outFile.close();
 		}
 	}
@@ -205,36 +206,32 @@ void CommandLineInterface::handleMeta(DocumentationType _type, string const& _co
 
 bool CommandLineInterface::parseArguments(int argc, char** argv)
 {
-#define OUTPUT_TYPE_STR "Legal values:\n"				\
-		"\tstdout: Print it to standard output\n"		\
-		"\tfile: Print it to a file with same name\n"	\
-		"\tboth: Print both to a file and the stdout\n"
 	// Declare the supported options.
 	po::options_description desc("Allowed options");
 	desc.add_options()
 		("help", "Show help message and exit")
 		("version", "Show version and exit")
 		("optimize", po::value<bool>()->default_value(false), "Optimize bytecode for size")
+		("add-std", po::value<bool>()->default_value(false), "Add standard contracts")
 		("input-file", po::value<vector<string>>(), "input file")
-		(g_argAstStr.c_str(), po::value<OutputType>(),
-		 "Request to output the AST of the contract. " OUTPUT_TYPE_STR)
-		(g_argAstJson.c_str(), po::value<OutputType>(),
-		 "Request to output the AST of the contract in JSON format. " OUTPUT_TYPE_STR)
-		(g_argAsmStr.c_str(), po::value<OutputType>(),
-		 "Request to output the EVM assembly of the contract. " OUTPUT_TYPE_STR)
-		(g_argOpcodesStr.c_str(), po::value<OutputType>(),
-		 "Request to output the Opcodes of the contract. " OUTPUT_TYPE_STR)
-		(g_argBinaryStr.c_str(), po::value<OutputType>(),
-		 "Request to output the contract in binary (hexadecimal). " OUTPUT_TYPE_STR)
-		(g_argAbiStr.c_str(), po::value<OutputType>(),
-		 "Request to output the contract's JSON ABI interface. "  OUTPUT_TYPE_STR)
-		(g_argSolAbiStr.c_str(), po::value<OutputType>(),
-		 "Request to output the contract's Solidity ABI interface. "  OUTPUT_TYPE_STR)
-		(g_argNatspecUserStr.c_str(), po::value<OutputType>(),
-		 "Request to output the contract's Natspec user documentation. " OUTPUT_TYPE_STR)
-		(g_argNatspecDevStr.c_str(), po::value<OutputType>(),
-		 "Request to output the contract's Natspec developer documentation. " OUTPUT_TYPE_STR);
-#undef OUTPUT_TYPE_STR
+		(g_argAstStr.c_str(), po::value<OutputType>()->value_name("stdout|file|both"),
+		 "Request to output the AST of the contract.")
+		(g_argAstJson.c_str(), po::value<OutputType>()->value_name("stdout|file|both"),
+		 "Request to output the AST of the contract in JSON format.")
+		(g_argAsmStr.c_str(), po::value<OutputType>()->value_name("stdout|file|both"),
+		 "Request to output the EVM assembly of the contract.")
+		(g_argOpcodesStr.c_str(), po::value<OutputType>()->value_name("stdout|file|both"),
+		 "Request to output the Opcodes of the contract.")
+		(g_argBinaryStr.c_str(), po::value<OutputType>()->value_name("stdout|file|both"),
+		 "Request to output the contract in binary (hexadecimal).")
+		(g_argAbiStr.c_str(), po::value<OutputType>()->value_name("stdout|file|both"),
+		 "Request to output the contract's JSON ABI interface.")
+		(g_argSolAbiStr.c_str(), po::value<OutputType>()->value_name("stdout|file|both"),
+		 "Request to output the contract's Solidity ABI interface.")
+		(g_argNatspecUserStr.c_str(), po::value<OutputType>()->value_name("stdout|file|both"),
+		 "Request to output the contract's Natspec user documentation.")
+		(g_argNatspecDevStr.c_str(), po::value<OutputType>()->value_name("stdout|file|both"),
+		 "Request to output the contract's Natspec developer documentation.");
 
 	// All positional options should be interpreted as input files
 	po::positional_options_description p;
@@ -297,31 +294,32 @@ bool CommandLineInterface::processInput()
 			m_sourceCodes[infile] = asString(dev::contents(infile));
 		}
 
+	m_compiler.reset(new CompilerStack(m_args["add-std"].as<bool>()));
 	try
 	{
 		for (auto const& sourceCode: m_sourceCodes)
-			m_compiler.addSource(sourceCode.first, sourceCode.second);
+			m_compiler->addSource(sourceCode.first, sourceCode.second);
 		// TODO: Perhaps we should not compile unless requested
-		m_compiler.compile(m_args["optimize"].as<bool>());
+		m_compiler->compile(m_args["optimize"].as<bool>());
 	}
 	catch (ParserError const& _exception)
 	{
-		SourceReferenceFormatter::printExceptionInformation(cerr, _exception, "Parser error", m_compiler);
+		SourceReferenceFormatter::printExceptionInformation(cerr, _exception, "Parser error", *m_compiler);
 		return false;
 	}
 	catch (DeclarationError const& _exception)
 	{
-		SourceReferenceFormatter::printExceptionInformation(cerr, _exception, "Declaration error", m_compiler);
+		SourceReferenceFormatter::printExceptionInformation(cerr, _exception, "Declaration error", *m_compiler);
 		return false;
 	}
 	catch (TypeError const& _exception)
 	{
-		SourceReferenceFormatter::printExceptionInformation(cerr, _exception, "Type error", m_compiler);
+		SourceReferenceFormatter::printExceptionInformation(cerr, _exception, "Type error", *m_compiler);
 		return false;
 	}
 	catch (CompilerError const& _exception)
 	{
-		SourceReferenceFormatter::printExceptionInformation(cerr, _exception, "Compiler error", m_compiler);
+		SourceReferenceFormatter::printExceptionInformation(cerr, _exception, "Compiler error", *m_compiler);
 		return false;
 	}
 	catch (InternalCompilerError const& _exception)
@@ -374,12 +372,12 @@ void CommandLineInterface::handleAst(string const& _argStr)
 				cout << endl << "======= " << sourceCode.first << " =======" << endl;
 				if (_argStr == g_argAstStr)
 				{
-					ASTPrinter printer(m_compiler.getAST(sourceCode.first), sourceCode.second);
+					ASTPrinter printer(m_compiler->getAST(sourceCode.first), sourceCode.second);
 					printer.print(cout);
 				}
 				else
 				{
-					ASTJsonConverter converter(m_compiler.getAST(sourceCode.first));
+					ASTJsonConverter converter(m_compiler->getAST(sourceCode.first));
 					converter.print(cout);
 				}
 			}
@@ -393,12 +391,12 @@ void CommandLineInterface::handleAst(string const& _argStr)
 				ofstream outFile(p.stem().string() + ".ast");
 				if (_argStr == g_argAstStr)
 				{
-					ASTPrinter printer(m_compiler.getAST(sourceCode.first), sourceCode.second);
+					ASTPrinter printer(m_compiler->getAST(sourceCode.first), sourceCode.second);
 					printer.print(outFile);
 				}
 				else
 				{
-					ASTJsonConverter converter(m_compiler.getAST(sourceCode.first));
+					ASTJsonConverter converter(m_compiler->getAST(sourceCode.first));
 					converter.print(outFile);
 				}
 				outFile.close();
@@ -413,7 +411,7 @@ void CommandLineInterface::actOnInput()
 	handleAst(g_argAstStr);
 	handleAst(g_argAstJson);
 
-	vector<string> contracts = m_compiler.getContractNames();
+	vector<string> contracts = m_compiler->getContractNames();
 	for (string const& contract: contracts)
 	{
 		if (needStdout(m_args))
@@ -426,13 +424,13 @@ void CommandLineInterface::actOnInput()
 			if (outputToStdout(choice))
 			{
 				cout << "EVM assembly:" << endl;
-				m_compiler.streamAssembly(cout, contract);
+				m_compiler->streamAssembly(cout, contract);
 			}
 
 			if (outputToFile(choice))
 			{
 				ofstream outFile(contract + ".evm");
-				m_compiler.streamAssembly(outFile, contract);
+				m_compiler->streamAssembly(outFile, contract);
 				outFile.close();
 			}
 		}
