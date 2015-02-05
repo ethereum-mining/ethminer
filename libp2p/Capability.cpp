@@ -39,7 +39,7 @@ Capability::Capability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset):
 
 void Capability::disable(std::string const& _problem)
 {
-	clogS(NetConnect) << "Disabling capability '" << m_host->name() << "'. Reason:" << _problem;
+	clogS(NetWarn) << "DISABLE: Disabling capability '" << m_host->name() << "'. Reason:" << _problem;
 	m_enabled = false;
 }
 

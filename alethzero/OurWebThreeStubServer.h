@@ -20,7 +20,7 @@
  */
 
 #include <QtCore/QObject>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libdevcrypto/Common.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 
@@ -35,7 +35,7 @@ public:
 						  std::vector<dev::KeyPair> const& _accounts, Main* main);
 
 	virtual std::string shh_newIdentity() override;
-	virtual bool authenticate(dev::TransactionSkeleton const& _t);
+	virtual bool authenticate(dev::eth::TransactionSkeleton const& _t);
 
 signals:
 	void onNewId(QString _s);

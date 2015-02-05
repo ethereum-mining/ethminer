@@ -73,7 +73,7 @@ extern "C"
 	{
 		auto& stack = _rt->getStack();
 		if (stack.size() < _count)
-			longjmp(_rt->getJmpBuf(), static_cast<uint64_t>(ReturnCode::StackTooSmall));
+			longjmp(_rt->getJmpBuf(), static_cast<int>(ReturnCode::StackTooSmall));
 
 		stack.erase(stack.end() - _count, stack.end());
 	}
@@ -92,7 +92,7 @@ extern "C"
 		auto& stack = _rt->getStack();
 		// TODO: encode _index and stack size in the return code
 		if (stack.size() <= _index)
-			longjmp(_rt->getJmpBuf(), static_cast<uint64_t>(ReturnCode::StackTooSmall));
+			longjmp(_rt->getJmpBuf(), static_cast<int>(ReturnCode::StackTooSmall));
 
 		*o_ret = *(stack.rbegin() + _index);
 	}
@@ -102,7 +102,7 @@ extern "C"
 		auto& stack = _rt->getStack();
 		// TODO: encode _index and stack size in the return code
 		if (stack.size() <= _index)
-			longjmp(_rt->getJmpBuf(), static_cast<uint64_t>(ReturnCode::StackTooSmall));
+			longjmp(_rt->getJmpBuf(), static_cast<int>(ReturnCode::StackTooSmall));
 
 		*(stack.rbegin() + _index) = *_word;
 	}
@@ -116,7 +116,7 @@ extern "C"
 			index = std::numeric_limits<decltype(index)>::max(); // set max to fill with 0 leter
 
 		auto data = _rtData->callData;
-		auto size = _rtData->elems[RuntimeData::CallDataSize].a;
+		auto size = _rtData->callDataSize;
 		for (auto i = 0; i < 32; ++i)
 		{
 			if (index < size)
