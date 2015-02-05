@@ -55,6 +55,15 @@ Rectangle {
 		onCompilationComplete: update(null, false);
 	}
 
+	Settings {
+		id: splitSettings
+		property alias transactionLogHeight: transactionLog.height
+		property alias callStackHeight: callStack.height
+		property alias storageHeightSettings: storageRect.height
+		property alias memoryDumpHeightSettings: memoryRect.height
+		property alias callDataHeightSettings: callDataRect.height
+	}
+
 	Rectangle
 	{
 		visible: false;
@@ -105,38 +114,45 @@ Rectangle {
 	}
 
 	ScrollView {
-		property int firstColumnWidth: 180
-		property int secondColumnWidth: 250
 		id: debugScrollArea
-		//flickableDirection: Flickable.VerticalFlick
 		anchors.fill: parent
-		//contentHeight: 4000
-		//width: parent.width
-		//contentWidth: parent.width
-			//color: "transparent"
 
-			ColumnLayout
-			{
-				property int sideMargin: 10
-				id: machineStates
-				anchors.top: parent.top
-				anchors.topMargin: 15
-				anchors.left: parent.left;
-				anchors.leftMargin: machineStates.sideMargin
-				width: debugScrollArea.width - machineStates.sideMargin * 2 - 20;
+		SplitView
+		{
+			property int sideMargin: 10
+			id: machineStates
+			anchors.top: parent.top
+			anchors.topMargin: 15
+			anchors.left: parent.left;
+			anchors.leftMargin: machineStates.sideMargin
+			width: debugScrollArea.width - machineStates.sideMargin * 2 - 20;
+			orientation: Qt.Vertical
+			handleDelegate: Rectangle {
+				height: machineStates.sideMargin
+				color: "transparent"
+			}
 
-				function updateHeight() {
-					machineStates.height = transactionLog.childrenRect.height + buttonRow.childrenRect.height + assemblyCodeRow.childrenRect.height +
-							callStackRect.childrenRect.height + storageRect.childrenRect.height + memoryRect.childrenRect.height + callDataRect.childrenRect.height + 120;
-				}
+			function updateHeight() {
+				machineStates.height = transactionLog.childrenRect.height + buttonRow.childrenRect.height + assemblyCodeRow.childrenRect.height +
+						callStackRect.childrenRect.height + storageRect.childrenRect.height + memoryRect.childrenRect.height + callDataRect.childrenRect.height + 120;
+			}
 
-				Component.onCompleted: updateHeight();
+			Component.onCompleted: updateHeight();
 
-				TransactionLog {
-					id: transactionLog
-					Layout.fillWidth: true
-					height: 250
-				}
+
+			TransactionLog {
+				id: transactionLog
+				Layout.fillWidth: true
+				Layout.minimumHeight: 60
+				height: 250
+			}
+
+			ColumnLayout {
+
+				Layout.fillWidth: true
+				Layout.fillHeight: true
+				id: statesLayout
+				spacing: machineStates.sideMargin
 
 				RowLayout {
 					// step button + slider
@@ -145,11 +161,11 @@ Rectangle {
 					height: 27
 					Layout.fillWidth: true
 
-					Rectangle
-					{
+					Rectangle {
 						height: parent.height
 						color: "transparent"
-						width: debugScrollArea.firstColumnWidth
+						Layout.minimumWidth: stateListContainer.width
+						Layout.maximumWidth: stateListContainer.width
 						RowLayout {
 							anchors.horizontalCenter: parent.horizontalCenter
 							id: jumpButtons
@@ -258,23 +274,25 @@ Rectangle {
 					}
 				}
 
-				RowLayout {
+				Rectangle {
 					// Assembly code
 					id: assemblyCodeRow
 					Layout.fillWidth: true
 					height: 405
 					implicitHeight: 405
-					spacing: machineStates.sideMargin
+					color: "transparent"
 
 					Rectangle
 					{
 						id: stateListContainer
-						width: debugScrollArea.firstColumnWidth
+						anchors.top : parent.top
+						anchors.bottom: parent.bottom
+						anchors.left: parent.left
+						width: parent.width * 0.4
 						height: parent.height
 						border.width: 3
 						border.color: "#deddd9"
 						color: "white"
-						anchors.top: parent.top
 						TableView {
 							id: statesList
 							anchors.fill: parent
@@ -288,7 +306,7 @@ Rectangle {
 							model: ListModel {}
 							TableViewColumn {
 								role: "line"
-								width: debugScrollArea.firstColumnWidth - 10
+								width: parent.width - 10
 							}
 
 						}
@@ -347,7 +365,10 @@ Rectangle {
 					}
 
 					Rectangle {
-						Layout.fillWidth: true
+						width: parent.width * 0.6 - machineStates.sideMargin
+						anchors.top : parent.top
+						anchors.bottom: parent.bottom
+						anchors.right: parent.right
 						height: parent.height //- 2 * stateListContainer.border.width
 						color: "transparent"
 						ColumnLayout
@@ -450,14 +471,6 @@ Rectangle {
 					id: splitInfoList
 					Layout.fillHeight: true
 					Layout.fillWidth: true
-
-					Settings {
-						id: splitSettings
-						property alias storageHeightSettings: storageRect.height
-						property alias memoryDumpHeightSettings: memoryRect.height
-						property alias callDataHeightSettings: callDataRect.height
-					}
-
 					orientation: Qt.Vertical
 
 					Rectangle
@@ -507,7 +520,6 @@ Rectangle {
 										Layout.preferredWidth: parent.width / 2
 										Layout.maximumWidth: parent.width / 2
 										Layout.minimumHeight: parent.height
-										Layout.maximumHeight: parent.height
 										Text {
 											anchors.verticalCenter: parent.verticalCenter
 											anchors.left: parent.left
@@ -528,7 +540,6 @@ Rectangle {
 										Layout.preferredWidth: parent.width / 2
 										Layout.maximumWidth: parent.width / 2
 										Layout.minimumHeight: parent.height
-										Layout.maximumHeight: parent.height
 										Text {
 											anchors.leftMargin: 5
 											width: parent.width - 5
@@ -607,5 +618,6 @@ Rectangle {
 					}
 				}
 			}
+		}
 	}
 }
