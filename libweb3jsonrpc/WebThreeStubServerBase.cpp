@@ -28,7 +28,7 @@
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
 #include <libwebthree/WebThree.h>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
 #include <libserpent/funcs.h>
@@ -342,7 +342,10 @@ std::string WebThreeStubServerBase::eth_call(Json::Value const& _json)
 
 Json::Value WebThreeStubServerBase::eth_changed(int const& _id)
 {
-	return toJson(client()->checkWatch(_id));
+	auto entries = client()->checkWatch(_id);
+	if (entries.size())
+		cnote << "FIRING WATCH" << _id << entries.size();
+	return toJson(entries);
 }
 
 std::string WebThreeStubServerBase::eth_codeAt(string const& _address)
