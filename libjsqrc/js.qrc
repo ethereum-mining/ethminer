@@ -3,6 +3,5 @@
         <file>bignumber.min.js</file>
         <file>setup.js</file>
         <file alias="webthree.js">ethereumjs/dist/ethereum.js</file>
-        <file>natspec.js</file>
     </qresource>
 </RCC>
