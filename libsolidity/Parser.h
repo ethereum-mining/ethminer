@@ -48,7 +48,6 @@ private:
 	struct VarDeclParserOptions {
 		VarDeclParserOptions() {}
 		bool allowVar = false;
-		bool isPublic = false;
 		bool isStateVariable = false;
 		bool allowIndexed = false;
 	};
@@ -58,7 +57,8 @@ private:
 	ASTPointer<ImportDirective> parseImportDirective();
 	ASTPointer<ContractDefinition> parseContractDefinition();
 	ASTPointer<InheritanceSpecifier> parseInheritanceSpecifier();
-	ASTPointer<FunctionDefinition> parseFunctionDefinition(bool _isPublic, ASTString const* _contractName);
+	Declaration::Visibility parseVisibilitySpecifier(Token::Value _token);
+	ASTPointer<FunctionDefinition> parseFunctionDefinition(ASTString const* _contractName);
 	ASTPointer<StructDefinition> parseStructDefinition();
 	ASTPointer<VariableDeclaration> parseVariableDeclaration(VarDeclParserOptions const& _options = VarDeclParserOptions());
 	ASTPointer<ModifierDefinition> parseModifierDefinition();
@@ -81,7 +81,8 @@ private:
 	ASTPointer<Expression> parseUnaryExpression();
 	ASTPointer<Expression> parseLeftHandSideExpression();
 	ASTPointer<Expression> parsePrimaryExpression();
-	std::vector<ASTPointer<Expression>> parseFunctionCallArguments();
+	std::vector<ASTPointer<Expression>> parseFunctionCallListArguments();
+	std::pair<std::vector<ASTPointer<Expression>>, std::vector<ASTPointer<ASTString>>> parseFunctionCallArguments();
 	///@}
 
 	///@{

@@ -26,7 +26,7 @@
 #include <QQmlEngine>
 #include <QVariantList>
 #include <libevmcore/Instruction.h>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libdevcrypto/Common.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/Common.h>
