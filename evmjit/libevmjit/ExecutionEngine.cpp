@@ -19,6 +19,7 @@
 #include "Runtime.h"
 #include "Compiler.h"
 #include "Cache.h"
+#include "ExecStats.h"
 #include "BuildInfo.gen.h"
 
 #include <iostream>
@@ -83,50 +84,6 @@ bool showInfo()
 	return show;
 }
 
-class StatsCollector
-{
-public:
-	std::vector<std::unique_ptr<ExecStats>> stats;
-
-	~StatsCollector()
-	{
-		if (stats.empty())
-			return;
-
-		using d = decltype(ExecStats{}.execTime);
-		d total = d::zero();
-		d max = d::zero();
-		d min = d::max();
-
-		for (auto&& s : stats)
-		{
-			auto t = s->execTime;
-			total += t;
-			if (t < min)
-				min = t;
-			if (t > max)
-				max = t;
-		}
-
-		using u = std::chrono::microseconds;
-		auto nTotal = std::chrono::duration_cast<u>(total).count();
-		auto nAverage = std::chrono::duration_cast<u>(total / stats.size()).count();
-		auto nMax = std::chrono::duration_cast<u>(max).count();
-		auto nMin = std::chrono::duration_cast<u>(min).count();
-
-		std::cout << "Total  exec time: " << nTotal << " us" << std::endl
-				  << "Averge exec time: " << nAverage << " us" << std::endl
-				  << "Min    exec time: " << nMin << " us" << std::endl
-				  << "Max    exec time: " << nMax << " us" << std::endl;
-	}
-};
-
-}
-
-void ExecutionEngine::collectStats()
-{
-	if (!m_stats)
-		m_stats.reset(new ExecStats);
 }
 
 ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
@@ -140,8 +97,8 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 
 	static StatsCollector statsCollector;
 
-	if (statsCollectingEnabled)
-		collectStats();
+	std::unique_ptr<ExecStats> listener{new ExecStats};
+	listener->stateChanged(ExecState::Started);
 
 	auto codeBegin = _data->code;
 	auto codeEnd = codeBegin + _data->codeSize;
@@ -155,12 +112,15 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	}
 	else
 	{
-		auto objectCache = objectCacheEnabled ? Cache::getObjectCache() : nullptr;
+		auto objectCache = objectCacheEnabled ? Cache::getObjectCache(listener.get()) : nullptr;
 		std::unique_ptr<llvm::Module> module;
 		if (objectCache)
 			module = Cache::getObject(mainFuncName);
 		if (!module)
+		{
+			listener->stateChanged(ExecState::Compilation);
 			module = Compiler({}).compile(codeBegin, codeEnd, mainFuncName);
+		}
 		if (debugDumpModule)
 			module->dump();
 		if (!ee)
@@ -190,6 +150,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 
 			if (objectCache)
 				ee->setObjectCache(objectCache);
+			listener->stateChanged(ExecState::CodeGen);
 			entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
 		}
 		else
@@ -198,28 +159,26 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 			{
 				ee->addModule(module.get());
 				module.release();
+				listener->stateChanged(ExecState::CodeGen);
 				entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
 			}
 		}
 	}
 	assert(entryFuncPtr);
 
-	if (m_stats)
-		m_stats->execStarted();
-
+	listener->stateChanged(ExecState::Execution);
 	auto returnCode = runEntryFunc(entryFuncPtr, &runtime);
-
-	if (m_stats)
-		m_stats->execEnded();
+	listener->stateChanged(ExecState::Return);
 
 	if (returnCode == ReturnCode::Return)
 	{
 		returnData = runtime.getReturnData();     // Save reference to return data
 		std::swap(m_memory, runtime.getMemory()); // Take ownership of memory
 	}
+	listener->stateChanged(ExecState::Finished);
 
 	if (statsCollectingEnabled)
-		statsCollector.stats.push_back(std::move(m_stats));
+		statsCollector.stats.push_back(std::move(listener));
 
 	return returnCode;
 }
