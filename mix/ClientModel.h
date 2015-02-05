@@ -26,8 +26,7 @@
 #include <atomic>
 #include <map>
 #include <QString>
-#include "MixClient.h"
-#include "QVariableDefinition.h"
+#include "MachineStates.h"
 
 namespace dev
 {
@@ -39,6 +38,8 @@ class Web3Server;
 class RpcConnector;
 class QEther;
 class QDebugData;
+class MixClient;
+class QVariableDefinition;
 
 /// Backend transaction config class
 struct TransactionSettings

@@ -59,8 +59,7 @@ Rectangle {
 	}
 
 	function hideRightView() {
-		if (rightView.visible)
-			rightView.hide();
+		rightView.visible = false;
 	}
 
 	function toggleWebPreview() {
