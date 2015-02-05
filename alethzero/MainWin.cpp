@@ -30,10 +30,12 @@
 #include <QtCore/QtCore>
 #include <boost/algorithm/string.hpp>
 #include <test/JsonSpiritHeaders.h>
+#ifndef _MSC_VER
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
+#endif
 #include <libdevcrypto/FileSystem.h>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libsolidity/Scanner.h>
@@ -41,7 +43,7 @@
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
-#include <libethereum/BlockChain.h>
+#include <libethereum/CanonBlockChain.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/Client.h>
 #include <libethereum/Utility.h>
@@ -136,9 +138,9 @@ Main::Main(QWidget *parent) :
 #endif
 	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
-	cerr << "State root: " << BlockChain::genesis().stateRoot << endl;
-	auto block = BlockChain::createGenesisBlock();
-	cerr << "Block Hash: " << BlockChain::genesis().hash << endl;
+	cerr << "State root: " << CanonBlockChain::genesis().stateRoot << endl;
+	auto block = CanonBlockChain::createGenesisBlock();
+	cerr << "Block Hash: " << CanonBlockChain::genesis().hash << endl;
 	cerr << "Block RLP: " << RLP(block) << endl;
 	cerr << "Block Hex: " << toHex(block) << endl;
 	cerr << "Network protocol version: " << c_protocolVersion << endl;
@@ -1047,7 +1049,7 @@ void Main::refreshBlockCount()
 	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 PV%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(c_protocolVersion).arg(c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
 }
 
-static bool blockMatch(string const& _f, BlockDetails const& _b, h256 _h, BlockChain const& _bc)
+static bool blockMatch(string const& _f, BlockDetails const& _b, h256 _h, CanonBlockChain const& _bc)
 {
 	try
 	{
@@ -1189,7 +1191,10 @@ void Main::timerEvent(QTimerEvent*)
 	{
 		auto ls = ethereum()->checkWatch(i.first);
 		if (ls.size())
+		{
+			cnote << "FIRING WATCH" << i.first << ls.size();
 			i.second(ls);
+		}
 	}
 }
 
@@ -1202,15 +1207,16 @@ string Main::renderDiff(StateDiff const& _d) const
 	{
 		s << "<hr/>";
 
-		AccountDiff const& ad = i.second;
+		AccountDiff ad = i.second;
 		s << "<code style=\"white-space: pre; font-weight: bold\">" << lead(ad.changeType()) << "  </code>" << " <b>" << render(i.first).toStdString() << "</b>";
 		if (!ad.exist.to())
 			continue;
 
 		if (ad.balance)
 		{
-			s << "<br/>" << indent << "Balance " << dec << formatBalance(ad.balance.to());
-			s << " <b>" << showpos << (((dev::bigint)ad.balance.to()) - ((dev::bigint)ad.balance.from())) << noshowpos << "</b>";
+			s << "<br/>" << indent << "Balance " << dec << ad.balance.to() << " [=" << formatBalance(ad.balance.to()) << "]";
+			bigint d = (dev::bigint)ad.balance.to() - (dev::bigint)ad.balance.from();
+			s << " <b>" << showpos << dec << d << " [=" << formatBalance(d) << "]" << noshowpos << "</b>";
 		}
 		if (ad.nonce)
 		{
@@ -1219,7 +1225,7 @@ string Main::renderDiff(StateDiff const& _d) const
 		}
 		if (ad.code)
 		{
-			s << "<br/>" << indent << "Code " << hex << ad.code.to().size() << " bytes";
+			s << "<br/>" << indent << "Code " << dec << ad.code.to().size() << " bytes";
 			if (ad.code.from().size())
 				 s << " (" << ad.code.from().size() << " bytes)";
 		}
@@ -1715,6 +1721,7 @@ void Main::on_data_textChanged()
 				solidity = "<h4>Solidity</h4><pre>Uncaught exception.</pre>";
 			}
 		}
+#ifndef _MSC_VER
 		else if (sourceIsSerpent(src))
 		{
 			try
@@ -1728,6 +1735,7 @@ void Main::on_data_textChanged()
 				errors.push_back("Serpent " + err);
 			}
 		}
+#endif
 		else
 		{
 			m_data = compileLLL(src, m_enableOptimizer, &errors);

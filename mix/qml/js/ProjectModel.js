@@ -73,7 +73,8 @@ function loadProject(path) {
 		addFile(projectData.files[i]);
 	}
 	projectSettings.lastProjectPath = path;
-	projectLoaded(projectData);
+	projectLoading(projectData);
+	projectLoaded()
 }
 
 function addExistingFile() {

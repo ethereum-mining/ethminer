@@ -49,7 +49,6 @@
         <file>qml/QRealType.qml</file>
         <file>qml/js/QEtherHelper.js</file>
         <file>qml/js/TransactionHelper.js</file>
-        <file>qml/Splitter.qml</file>
         <file>qml/QStringType.qml</file>
         <file>qml/QBoolTypeView.qml</file>
         <file>qml/QIntTypeView.qml</file>
