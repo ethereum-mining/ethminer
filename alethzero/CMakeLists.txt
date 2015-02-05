@@ -47,6 +47,7 @@ target_link_libraries(${EXECUTABLE} evmcore)
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} web3jsonrpc)
 target_link_libraries(${EXECUTABLE} jsqrc)
+target_link_libraries(${EXECUTABLE} natspec)
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
 eth_install_executable(${EXECUTABLE})
