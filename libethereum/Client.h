@@ -94,6 +94,7 @@ struct ClientWatch
 
 	h256 id;
 	LocalisedLogEntries changes = LocalisedLogEntries{ InitialChange };
+	mutable std::chrono::system_clock::time_point lastPoll;
 };
 
 struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
@@ -328,6 +329,8 @@ private:
 	mutable std::mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;
 	std::map<unsigned, ClientWatch> m_watches;
+
+	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
 };
 
 }

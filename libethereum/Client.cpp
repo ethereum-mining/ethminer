@@ -223,7 +223,10 @@ void Client::uninstallWatch(unsigned _i)
 	auto fit = m_filters.find(id);
 	if (fit != m_filters.end())
 		if (!--fit->second.refCount)
+		{
+			cwatch << "*X*" << fit->first << ":" << fit->second.filter;
 			m_filters.erase(fit);
+		}
 }
 
 void Client::noteChanged(h256Set const& _filters)
@@ -250,8 +253,11 @@ LocalisedLogEntries Client::peekWatch(unsigned _watchId) const
 	Guard l(m_filterLock);
 
 	try {
-		return m_watches.at(_watchId).changes;
+		auto& w = m_watches.at(_watchId);
+		w.lastPoll = chrono::system_clock::now();
+		return w.changes;
 	} catch (...) {}
+
 	return LocalisedLogEntries();
 }
 
@@ -261,7 +267,9 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	LocalisedLogEntries ret;
 
 	try {
-		std::swap(ret, m_watches.at(_watchId).changes);
+		auto& w = m_watches.at(_watchId);
+		std::swap(ret, w.changes);
+		w.lastPoll = chrono::system_clock::now();
 	} catch (...) {}
 
 	return ret;
@@ -556,6 +564,15 @@ void Client::doWork()
 	cworkout << "WORK";
 
 	this_thread::sleep_for(chrono::milliseconds(100));
+	if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(5))
+	{
+		// garbage collect on watches
+		Guard l(m_filterLock);
+		for (auto key: keysOf(m_watches))
+			if (chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(5))
+				uninstallWatch(key);
+		m_lastGarbageCollection = chrono::system_clock::now();
+	}
 }
 
 unsigned Client::numberOf(int _n) const
