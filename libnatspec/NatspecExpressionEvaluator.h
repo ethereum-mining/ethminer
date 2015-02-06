@@ -23,11 +23,25 @@
 #include <QtCore/QtCore>
 #include <QtQml/QJSEngine>
 
+/**
+ * Should be used to evaluate natspec expression.
+ * see test/natspec.cpp for natspec expression examples
+ */
 class NatspecExpressionEvaluator
 {
 public:
+	/// Construct natspec expression evaluator
+	/// @params abi - contract's abi in json format, passed as string
+	/// @params method - name of the contract's method for which we evaluate the natspec.
+	/// If we want to use raw string, it should be passed with quotation marks eg. "\"helloWorld\""
+	/// If we pass string "helloWorld", the value of the object with name "helloWorld" will be used
+	/// @params params - array of method input params, passed as string, objects in array should be
+	/// javascript valid objects
 	NatspecExpressionEvaluator(QString const& _abi = "[]", QString const& _method = "", QString const& _params = "[]");
 	
+	/// Should be called to evaluate natspec expression
+	/// @params expression - natspec expression
+	/// @returns evaluated natspec expression if it was valid, otherwise original expression
 	QString evalExpression(QString const& _expression);
 	
 private:
