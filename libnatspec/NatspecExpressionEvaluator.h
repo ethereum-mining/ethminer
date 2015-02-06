@@ -25,7 +25,7 @@
 
 /**
  * Should be used to evaluate natspec expression.
- * see test/natspec.cpp for natspec expression examples
+ * @see test/natspec.cpp for natspec expression examples
  */
 class NatspecExpressionEvaluator
 {
