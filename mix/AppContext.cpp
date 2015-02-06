@@ -84,7 +84,7 @@ void AppContext::load()
 	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
 	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
 	m_applicationEngine->load(QUrl("qrc:/qml/main.qml"));
-	QWindow *window = qobject_cast<QWindow *>(m_applicationEngine->rootObjects().at(0));
+	QWindow *window = qobject_cast<QWindow*>(m_applicationEngine->rootObjects().at(0));
 	window->setIcon(QIcon(":/res/mix_256x256x32.png"));
 	appLoaded();
 }
