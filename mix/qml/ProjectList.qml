@@ -69,6 +69,19 @@ Item {
 						}
 
 						Connections {
+							target: codeModel
+							onContractNameChanged: {
+								if (modelData === "Contracts")
+								{
+									var ctr = projectModel.listModel.get(0);
+									ctr.name = _newName;
+									projectModel.listModel.set(0, ctr);
+									sectionModel.set(0, ctr);
+								}
+							}
+						}
+
+						Connections {
 							id: projectModelConnection
 							target: projectModel
 
