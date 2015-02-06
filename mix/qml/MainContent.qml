@@ -10,7 +10,6 @@ import "js/TransactionHelper.js" as TransactionHelper
 import "."
 
 Rectangle {
-
 	objectName: "mainContent"
 	signal keyPressed(variant event)
 	focus: true
@@ -22,11 +21,12 @@ Rectangle {
 	anchors.fill: parent
 	id: root
 
-	property alias rightViewVisible : rightView.visible
-	property alias webViewVisible : webPreview.visible
-	property alias projectViewVisible : projectList.visible
-	property alias runOnProjectLoad : mainSettings.runOnProjectLoad
-	property bool webViewHorizontal : codeWebSplitter.orientation === Qt.Vertical //vertical splitter positions elements vertically, splits screen horizontally
+	property alias rightViewVisible: rightView.visible
+	property alias webViewVisible: webPreview.visible
+	property alias projectViewVisible: projectList.visible
+	property alias runOnProjectLoad: mainSettings.runOnProjectLoad
+	property alias rightPane: rightView
+	property bool webViewHorizontal: codeWebSplitter.orientation === Qt.Vertical //vertical splitter positions elements vertically, splits screen horizontally
 	property bool firstCompile: true
 
 	Connections {
@@ -77,7 +77,6 @@ Rectangle {
 
 	CodeEditorExtensionManager {
 		headerView: headerPaneTabs;
-		rightView: rightPaneTabs;
 	}
 
 	Settings {
@@ -185,46 +184,13 @@ Rectangle {
 					}
 				}
 
-				Rectangle {
+				Debugger {
 					visible: false;
 					id: rightView;
 					Layout.fillHeight: true
 					Keys.onEscapePressed: visible = false
-					height: parent.height;
-					width: 515
 					Layout.minimumWidth: 515
 					anchors.right: parent.right
-					Rectangle {
-						anchors.fill: parent;
-						id: rightPaneView
-						TabView {
-							id: rightPaneTabs
-							tabsVisible: true
-							antialiasing: true
-							anchors.fill: parent
-							style: TabViewStyle {
-								frameOverlap: 1
-								tabBar:
-									Rectangle {
-										color: "#ededed"
-										id: background
-									}
-								tab: Rectangle {
-									color: "#ededed"
-									implicitWidth: 80
-									implicitHeight: 20
-									radius: 2
-									Text {
-										anchors.centerIn: parent
-										text: styleData.title
-										color: styleData.selected ? "#7da4cd" : "#202020"
-									}
-								}
-								frame: Rectangle {
-								}
-							}
-						}
-					}
 				}
 			}
 		}
