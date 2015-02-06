@@ -88,7 +88,9 @@ function addFile(fileName) {
 	var isHtml = extension === ".html";
 	var isCss = extension === ".css";
 	var isJs = extension === ".js";
+	var isImg = extension === ".png"  || extension === ".gif" || extension === ".jpg" || extension === ".svg";
 	var syntaxMode = isContract ? "solidity" : isJs ? "javascript" : isHtml ? "htmlmixed" : isCss ? "css" : "";
+	var groupName = isContract ? "Contracts" : isJs ? "Javascript" : isHtml ? "HTML" : isCss ? "Styles" : isImg ? "Images" : "Misc";
 	var docData = {
 		contract: false,
 		path: p,
@@ -99,6 +101,7 @@ function addFile(fileName) {
 		isText: isContract || isHtml || isCss || isJs,
 		isContract: isContract,
 		isHtml: isHtml,
+		groupName: groupName
 	};
 
 	projectListModel.append(docData);
@@ -173,8 +176,8 @@ function doCreateProject(title, path) {
 		files: [ contractsFile, indexFile ]
 	};
 	//TODO: copy from template
-    fileIo.writeFile(dirPath + indexFile, "<html>\n<head>\n<script>\nvar web3 = parent.web3;\nvar theContract = parent.contract;\n</script>\n</head>\n<body>\n<script>\n</script>\n</body>\n</html>");
-    fileIo.writeFile(dirPath + contractsFile, "contract Contract {\n}\n");
+	fileIo.writeFile(dirPath + indexFile, "<html>\n<head>\n<script>\nvar web3 = parent.web3;\nvar theContract = parent.contract;\n</script>\n</head>\n<body>\n<script>\n</script>\n</body>\n</html>");
+	fileIo.writeFile(dirPath + contractsFile, "contract Contract {\n}\n");
 	newProject(projectData);
 	var json = JSON.stringify(projectData, null, "\t");
 	fileIo.writeFile(projectFile, json);
@@ -223,6 +226,10 @@ function removeDocument(documentId) {
 
 function newHtmlFile() {
 	createAndAddFile("page", "html", "<html>\n</html>");
+}
+
+function newCssFile() {
+	createAndAddFile("style", "css", "body {\n}\n");
 }
 
 function newJsFile() {

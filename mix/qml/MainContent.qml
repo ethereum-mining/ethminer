@@ -7,6 +7,7 @@ import Qt.labs.settings 1.0
 import org.ethereum.qml.QEther 1.0
 import "js/QEtherHelper.js" as QEtherHelper
 import "js/TransactionHelper.js" as TransactionHelper
+import "."
 
 Rectangle {
 
@@ -121,6 +122,12 @@ Rectangle {
 			}
 		}
 
+		Rectangle{
+			Layout.fillWidth: true
+			height: 1
+			color: "#8c8c8c"
+		}
+
 		Rectangle {
 			Layout.fillWidth: true
 			Layout.preferredHeight: root.height - headerView.height;
@@ -136,16 +143,16 @@ Rectangle {
 			{
 				anchors.fill: parent
 				handleDelegate: Rectangle {
-				   width: 4
-				   height: 4
-				   color: "#cccccc"
+				   width: 1
+				   height: 1
+				   color: "#8c8c8c"
 				}
 				orientation: Qt.Horizontal
 
 				ProjectList	{
 					id: projectList
-					width: 200
-					Layout.minimumWidth: 180
+					width: 350
+					Layout.minimumWidth: 250
 					Layout.fillHeight: true
 				}
 				Rectangle {
@@ -154,9 +161,9 @@ Rectangle {
 					Layout.fillWidth: true
 					SplitView {
 						 handleDelegate: Rectangle {
-							width: 4
-							height: 4
-							color: "#cccccc"
+							width: 1
+							height: 1
+							color: "#8c8c8c"
 						 }
 						id: codeWebSplitter
 						anchors.fill: parent
