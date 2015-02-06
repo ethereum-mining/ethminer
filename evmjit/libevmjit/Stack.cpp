@@ -1,10 +1,8 @@
 #include "Stack.h"
 #include "RuntimeManager.h"
 #include "Runtime.h"
-#include "Type.h"
 
 #include <llvm/IR/Function.h>
-#include <llvm/IR/TypeBuilder.h>
 
 namespace dev
 {

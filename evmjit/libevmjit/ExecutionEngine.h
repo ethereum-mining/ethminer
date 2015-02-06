@@ -1,7 +1,6 @@
 #pragma once
-
-#include <memory>
 #include "RuntimeData.h"
+#include <memory>
 
 namespace dev
 {

@@ -1,7 +1,10 @@
 #include "ExecutionEngine.h"
+#include "Runtime.h"
+#include "Compiler.h"
+#include "Cache.h"
+#include "ExecStats.h"
+#include "BuildInfo.gen.h"
 
-#include <chrono>
-#include <cstdlib>	// env options
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
 #include <llvm/ADT/Triple.h>
@@ -12,12 +15,8 @@
 #include <llvm/Support/Host.h>
 #include "preprocessor/llvm_includes_end.h"
 
-#include "Runtime.h"
-#include "Compiler.h"
-#include "Cache.h"
-#include "ExecStats.h"
-#include "BuildInfo.gen.h"
-
+#include <array>
+#include <cstdlib>	// env options
 #include <iostream>
 
 namespace dev

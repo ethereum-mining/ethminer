@@ -3,8 +3,9 @@
 #include "Type.h"
 #include "Endianness.h"
 
-#include <llvm/IR/Function.h>
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/IntrinsicInst.h>
+#include "preprocessor/llvm_includes_end.h"
 
 #include <iostream>
 

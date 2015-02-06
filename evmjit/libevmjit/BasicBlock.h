@@ -1,8 +1,7 @@
 #pragma once
-#include <vector>
-#include <llvm/IR/BasicBlock.h>
 #include "Common.h"
 #include "Stack.h"
+#include <vector>
 
 namespace dev
 {

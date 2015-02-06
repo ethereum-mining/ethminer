@@ -1,14 +1,17 @@
 #include "Cache.h"
-#include <unordered_map>
-#include <cassert>
-#include <iostream>
+#include "ExecutionEngine.h"
+
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_os_ostream.h>
-#include "ExecutionEngine.h"
+#include "preprocessor/llvm_includes_end.h"
+
+#include <cassert>
+#include <iostream>
 
 namespace dev
 {
