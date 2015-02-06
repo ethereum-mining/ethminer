@@ -12,7 +12,6 @@ ColumnLayout {
 	property alias model: filesList.model
 	property string sectionName;
 	property variant selManager;
-	property variant projectModel;
 	Layout.fillWidth: true
 	Layout.minimumHeight: hiddenHeightTopLevel()
 	height: hiddenHeightTopLevel()
@@ -34,23 +33,51 @@ ColumnLayout {
 		return section.state === "hidden" ? 0 : Style.documentsList.height;
 	}
 
+	function getDocumentIndex(documentId)
+	{
+		for (var i = 0; i < model.count; i++)
+			if (model.get(i).documentId === documentId)
+				return i;
+		return -1;
+	}
+
+	function removeDocument(documentId)
+	{
+		var i = getDocumentIndex(documentId);
+		if (i !== -1)
+			model.remove(i);
+	}
+
 	RowLayout
 	{
 		anchors.top: parent.top
 		id: rowCol
 		width: parent.width
 		height: Style.documentsList.height
+
+		Image {
+			source: "qrc:/qml/img/opentriangleindicator.png"
+			width: 15
+			sourceSize.width: 15
+			id: imgArrow
+			anchors.right: section.left
+			anchors.rightMargin: 5
+		}
+
 		Text
 		{
 			id: section
 			text: sectionName
 			anchors.left: parent.left
 			anchors.leftMargin: Style.general.leftMargin
+			color: Style.documentsList.sectionColor
+			font.bold: true
 			states: [
 				State {
 					name: "hidden"
 					PropertyChanges { target: filesList; visible: false; }
 					PropertyChanges { target: rowCol; Layout.minimumHeight: Style.documentsList.height; Layout.maximumHeight: Style.documentsList.height; height: Style.documentsList.height; }
+					PropertyChanges { target: imgArrow; source: "qrc:/qml/img/closedtriangleindicator.png" }
 				}
 			]
 		}
@@ -76,6 +103,7 @@ ColumnLayout {
 		Layout.maximumHeight: wrapperItem.hiddenHeightRepeater()
 		width: parent.width
 		visible: section.state !== "hidden"
+		spacing: 0
 		Repeater
 		{
 			id: filesList
@@ -100,8 +128,9 @@ ColumnLayout {
 					text: name;
 					font.pointSize: Style.documentsList.fontSize
 					anchors.verticalCenter: parent.verticalCenter
+					verticalAlignment:  Text.AlignVCenter
 					anchors.left: parent.left
-					anchors.leftMargin: Style.general.leftMargin
+					anchors.leftMargin: Style.general.leftMargin + 2
 					width: parent.width
 					Connections
 					{
@@ -154,8 +183,9 @@ ColumnLayout {
 						rootItem.renameMode = false;
 						if (accept)
 						{
+							var i = getDocumentIndex(documentId);
 							projectModel.renameDocument(documentId, textInput.text);
-							nameText.text = textInput.text;
+							wrapperItem.model.set(i, projectModel.getDocument(documentId));
 						}
 					}
 				}
@@ -190,6 +220,7 @@ ColumnLayout {
 						text: qsTr("Delete")
 						onTriggered: {
 							projectModel.removeDocument(documentId);
+							wrapperItem.removeDocument(documentId);
 						}
 					}
 				}

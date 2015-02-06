@@ -35,10 +35,7 @@ Item {
 			color: Style.documentsList.background
 		}
 
-		Item {
-			id: selManager
-			signal selected(string doc, string groupName)
-		}
+
 
 		Rectangle
 		{
@@ -50,126 +47,61 @@ Item {
 			{
 				anchors.top: parent.top
 				width: parent.width
-				FilesSection
-				{
-					sectionName: "Contracts"
-					projectModel: projectModelConnection
-					model: ctrModel
-					selManager: selManager
-					onDocumentSelected: {
-						selManager.selected(doc, groupName);
+				spacing: 0
+
+				Repeater {
+					model: ["Contracts", "Javascript", "HTML", "Styles", "Images"]
+					signal selected(string doc, string groupName)
+					id: sectionRepeater
+					FilesSection
+					{
+						sectionName: modelData
+						model: sectionModel
+						selManager: sectionRepeater
+
+						onDocumentSelected: {
+							selManager.selected(doc, groupName);
+						}
+
+						ListModel
+						{
+							id: sectionModel
+						}
+
+						Connections {
+							id: projectModelConnection
+							target: projectModel
+
+							function addDocToSubModel()
+							{
+								for (var k = 0; k < projectModel.listModel.count; k++)
+								{
+									var item = projectModel.listModel.get(k);
+									if (item.groupName === modelData)
+										sectionModel.append(item);
+								}
+							}
+
+							onProjectLoaded: {
+								addDocToSubModel();
+								if (modelData === "Contracts")
+								{
+									var selItem = projectModel.listModel.get(0);
+									projectModel.openDocument(selItem.documentId);
+									sectionRepeater.selected(selItem.documentId, modelData);
+								}
+							}
+
+							onDocumentAdded:
+							{
+								var newDoc = projectModel.getDocumentIndex(documentId);
+								if (newDoc.groupName === modelData)
+									ctrModel.append(newDoc);
+							}
+						}
 					}
-				}
-
-				ListModel
-				{
-					id: ctrModel
-				}
-
-				FilesSection
-				{
-					id: javascriptSection
-					sectionName: "Javascript"
-					projectModel: projectModelConnection
-					model: javascriptModel
-					selManager: selManager
-					onDocumentSelected: {
-						selManager.selected(doc, groupName);
-					}
-				}
-
-				ListModel
-				{
-					id: javascriptModel
-				}
-
-				FilesSection
-				{
-					id: htmlSection
-					sectionName: "HTML"
-					projectModel: projectModelConnection
-					model: htmlModel
-					selManager: selManager
-					onDocumentSelected: {
-						selManager.selected(doc, groupName);
-					}
-				}
-
-				ListModel
-				{
-					id: htmlModel
-				}
-
-				FilesSection
-				{
-					id: stylesSection
-					sectionName: "Styles"
-					model: styleModel
-					projectModel: projectModelConnection
-					selManager: selManager
-					onDocumentSelected: {
-						selManager.selected(doc, groupName);
-					}
-				}
-
-				ListModel
-				{
-					id: styleModel
-				}
-
-				FilesSection
-				{
-					id: imgSection
-					projectModel: projectModelConnection
-					sectionName: "Images"
-					model: imgModel
-					selManager: selManager
-					onDocumentSelected: {
-						selManager.selected(doc, groupName);
-					}
-				}
-
-				ListModel
-				{
-					id: imgModel
 				}
 			}
-		}
-	}
-
-	Connections {
-		id: projectModelConnection
-		signal projectFilesLoaded;
-		target: projectModel
-		function addDocToSubModel(index)
-		{
-			var item = projectModel.listModel.get(index);
-			if (item.groupName === "Contracts")
-				ctrModel.append(item);
-			else if (item.groupName === "HTML")
-				htmlModel.append(item)
-			else if (item.groupName === "Javascript")
-				javascriptModel.append(item)
-			else if (item.groupName === "Images")
-				imagesModel.append(item)
-			else if (item.groupName === "Styles")
-				stylesModel.append(item)
-		}
-
-		onProjectLoaded: {
-			projectModel.openDocument(projectModel.listModel.get(0).documentId);
-			ctrModel.clear();
-			htmlModel.clear();
-			javascriptModel.clear();
-			imgModel.clear();
-			styleModel.clear();
-			for (var k = 0; k < projectModel.listModel.count; k++)
-				addDocToSubModel(k);
-			projectFilesLoaded();
-		}
-		onDocumentAdded:
-		{
-			addDocToSubModel(projectModel.getDocumentIndex(documentId));
 		}
 	}
 }
