@@ -26,8 +26,7 @@
 #include <atomic>
 #include <map>
 #include <QString>
-#include "MixClient.h"
-#include "QVariableDefinition.h"
+#include "MachineStates.h"
 
 namespace dev
 {
@@ -39,6 +38,8 @@ class Web3Server;
 class RpcConnector;
 class QEther;
 class QDebugData;
+class MixClient;
+class QVariableDefinition;
 
 /// Backend transaction config class
 struct TransactionSettings
@@ -113,6 +114,8 @@ public:
 	~ClientModel();
 	/// @returns true if currently executing contract code
 	Q_PROPERTY(bool running MEMBER m_running NOTIFY runStateChanged)
+	/// @returns true if currently mining
+	Q_PROPERTY(bool mining MEMBER m_mining NOTIFY miningStateChanged)
 	/// @returns address of the last executed contract
 	Q_PROPERTY(QString contractAddress READ contractAddress NOTIFY contractAddressChanged)
 	/// ethereum.js RPC request entry point
@@ -143,6 +146,12 @@ signals:
 	void runStarted();
 	/// Transaction execution completed successfully
 	void runComplete();
+	/// Mining has started
+	void miningStarted();
+	/// Mined a new block
+	void miningComplete();
+	/// Mining stopped or started
+	void miningStateChanged();
 	/// Transaction execution completed with error
 	/// @param _message Error message
 	void runFailed(QString const& _message);
@@ -173,6 +182,7 @@ private:
 
 	AppContext* m_context;
 	std::atomic<bool> m_running;
+	std::atomic<bool> m_mining;
 	std::unique_ptr<MixClient> m_client;
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
