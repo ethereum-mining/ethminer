@@ -4,6 +4,7 @@
 #include <iostream>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_os_ostream.h>
@@ -69,7 +70,8 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 		auto module = std::unique_ptr<llvm::Module>(new llvm::Module(id, context));
 		auto mainFuncType = llvm::FunctionType::get(llvm::Type::getVoidTy(context), {}, false);
 		auto mainFunc = llvm::Function::Create(mainFuncType, llvm::Function::ExternalLinkage, id, module.get());
-		llvm::BasicBlock::Create(context, {}, mainFunc); // FIXME: Check if empty basic block is valid
+		auto bb = llvm::BasicBlock::Create(context, {}, mainFunc);
+		bb->getInstList().push_back(new llvm::UnreachableInst{context});
 		return module;
 	}
 	CACHE_LOG << id << ": not found\n";
