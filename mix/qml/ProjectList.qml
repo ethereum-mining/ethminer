@@ -12,19 +12,47 @@ Item {
 		anchors.fill: parent
 		id: filesCol
 		spacing: 0
+		FontLoader
+		{
+			id: srcSansProLight
+			source: "qrc:/qml/fonts/SourceSansPro-ExtraLight.ttf"
+		}
+
 		Rectangle
 		{
 			color: Style.title.background
 			height: Style.title.height
 			Layout.fillWidth: true
+			Image {
+				id: projectIcon
+				source: "qrc:/qml/img/projecticon.png"
+				sourceSize.height: 30
+				anchors.right: projectTitle.left
+				anchors.verticalCenter: parent.verticalCenter
+				anchors.rightMargin: 6
+			}
+
 			Text
 			{
+				id: projectTitle
 				color: Style.title.color
 				text: projectModel.projectTitle
 				anchors.verticalCenter: parent.verticalCenter
 				visible: !projectModel.isEmpty;
 				anchors.left: parent.left
 				anchors.leftMargin: Style.general.leftMargin
+				font.family: srcSansProLight.name
+				font.pointSize: Style.title.pointSize
+			}
+
+			Text
+			{
+				text: "-"
+				anchors.right: parent.right
+				anchors.rightMargin: 15
+				font.family: srcSansProLight.name
+				font.pointSize: Style.title.pointSize
+				anchors.verticalCenter: parent.verticalCenter
 			}
 		}
 
@@ -70,13 +98,16 @@ Item {
 
 						Connections {
 							target: codeModel
-							onContractNameChanged: {
+							onCompilationComplete: {
 								if (modelData === "Contracts")
 								{
 									var ctr = projectModel.listModel.get(0);
-									ctr.name = _newName;
-									projectModel.listModel.set(0, ctr);
-									sectionModel.set(0, ctr);
+									if (codeModel.code.contract.name !== ctr.name)
+									{
+										ctr.name = codeModel.code.contract.name;
+										projectModel.listModel.set(0, ctr);
+										sectionModel.set(0, ctr);
+									}
 								}
 							}
 						}
@@ -107,9 +138,9 @@ Item {
 
 							onDocumentAdded:
 							{
-								var newDoc = projectModel.getDocumentIndex(documentId);
+								var newDoc = projectModel.getDocument(documentId);
 								if (newDoc.groupName === modelData)
-									ctrModel.append(newDoc);
+									sectionModel.append(newDoc);
 							}
 						}
 					}

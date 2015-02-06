@@ -148,8 +148,6 @@ signals:
 	void contractInterfaceChanged();
 	/// Emitted on compilation complete. Internal
 	void compilationCompleteInternal(CompilationResult* _newResult);
-	/// Emitted when the contract name has changed
-	void contractNameChanged(QString _newName);
 
 private slots:
 	void onCompilationComplete(CompilationResult* _newResult);
