@@ -26,9 +26,9 @@
 using namespace std;
 using namespace dev;
 
-static QString contentsOfQResource(string const& res)
+static QString contentsOfQResource(string const& _res)
 {
-	QFile file(QString::fromStdString(res));
+	QFile file(QString::fromStdString(_res));
 	if (!file.open(QFile::ReadOnly))
 		BOOST_THROW_EXCEPTION(FileError());
 	QTextStream in(&file);
