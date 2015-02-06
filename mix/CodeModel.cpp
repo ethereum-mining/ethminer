@@ -172,18 +172,12 @@ void CodeModel::onCompilationComplete(CompilationResult* _newResult)
 	m_compiling = false;
 	bool contractChanged = m_result->contractInterface() != _newResult->contractInterface();
 
-	bool nameChanged = false;
-	if (m_result->successful())
-		nameChanged = !(m_result->sharedContract()->name() == _newResult->sharedContract()->name()); //@todo should manage multiple contracts.
-
 	m_result.reset(_newResult);
 	emit compilationComplete();
 	emit stateChanged();
 	if (m_result->successful())
 	{
 		emit codeChanged();
-		if (nameChanged)
-			emit contractNameChanged(_newResult->sharedContract()->name());
 		if (contractChanged)
 			emit contractInterfaceChanged();
 	}
