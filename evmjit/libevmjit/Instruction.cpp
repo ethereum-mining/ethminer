@@ -1,6 +1,8 @@
-
 #include "Instruction.h"
+
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/ADT/APInt.h>
+#include "preprocessor/llvm_includes_end.h"
 
 namespace dev
 {

@@ -1,9 +1,5 @@
-
 #include "Runtime.h"
-
-#include <llvm/IR/GlobalVariable.h>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/IntrinsicInst.h>
+#include <cassert>
 
 namespace dev
 {

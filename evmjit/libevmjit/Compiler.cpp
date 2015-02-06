@@ -1,19 +1,4 @@
-
 #include "Compiler.h"
-
-#include <functional>
-#include <fstream>
-#include <chrono>
-#include <sstream>
-
-#include <llvm/ADT/PostOrderIterator.h>
-#include <llvm/IR/CFG.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/IntrinsicInst.h>
-
-#include <llvm/PassManager.h>
-#include <llvm/Transforms/Scalar.h>
-
 #include "Instruction.h"
 #include "Type.h"
 #include "Memory.h"
@@ -24,6 +9,20 @@
 #include "Endianness.h"
 #include "Arith256.h"
 #include "RuntimeManager.h"
+
+#include "preprocessor/llvm_includes_start.h"
+#include <llvm/ADT/PostOrderIterator.h>
+#include <llvm/IR/CFG.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/IntrinsicInst.h>
+#include <llvm/PassManager.h>
+#include <llvm/Transforms/Scalar.h>
+#include "preprocessor/llvm_includes_end.h"
+
+#include <functional>
+#include <fstream>
+#include <chrono>
+#include <sstream>
 
 namespace dev
 {

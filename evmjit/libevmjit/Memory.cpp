@@ -1,20 +1,13 @@
 #include "Memory.h"
-
-#include <vector>
-#include <iostream>
-#include <iomanip>
-#include <cstdint>
-#include <cassert>
-
-#include <llvm/IR/GlobalVariable.h>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/IntrinsicInst.h>
-
 #include "Type.h"
 #include "Runtime.h"
 #include "GasMeter.h"
 #include "Endianness.h"
 #include "RuntimeManager.h"
+
+#include "preprocessor/llvm_includes_start.h"
+#include <llvm/IR/IntrinsicInst.h>
+#include "preprocessor/llvm_includes_end.h"
 
 namespace dev
 {

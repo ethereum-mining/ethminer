@@ -1,8 +1,5 @@
 #pragma once
-
 #include "CompilerHelper.h"
-
-#include <llvm/IR/Module.h>
 
 namespace dev
 {

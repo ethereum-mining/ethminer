@@ -1,12 +1,8 @@
-
 #include "RuntimeManager.h"
 
-#include <llvm/IR/GlobalVariable.h>
-#include <llvm/IR/Function.h>
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/IntrinsicInst.h>
-
-#include "RuntimeData.h"
-#include "Instruction.h"
+#include "preprocessor/llvm_includes_end.h"
 
 namespace dev
 {
