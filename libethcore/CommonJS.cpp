@@ -72,6 +72,31 @@ bytes unpadLeft(bytes _b)
 	return _b;
 }
 
+std::string fromRaw(h256 _n, unsigned* _inc)
+{
+	if (_n)
+	{
+		std::string s((char const*)_n.data(), 32);
+		auto l = s.find_first_of('\0');
+		if (!l)
+			return "";
+		if (l != std::string::npos)
+		{
+			auto p = s.find_first_not_of('\0', l);
+			if (!(p == std::string::npos || (_inc && p == 31)))
+				return "";
+			if (_inc)
+				*_inc = (byte)s[31];
+			s.resize(l);
+		}
+		for (auto i: s)
+			if (i < 32)
+				return "";
+		return s;
+	}
+	return "";
+}
+
 std::string prettyU256(u256 _n)
 {
 	unsigned inc = 0;
@@ -98,31 +123,6 @@ std::string prettyU256(u256 _n)
 	return s.str();
 }
 
-std::string fromRaw(h256 _n, unsigned* _inc)
-{
-	if (_n)
-	{
-		std::string s((char const*)_n.data(), 32);
-		auto l = s.find_first_of('\0');
-		if (!l)
-			return "";
-		if (l != std::string::npos)
-		{
-			auto p = s.find_first_not_of('\0', l);
-			if (!(p == std::string::npos || (_inc && p == 31)))
-				return "";
-			if (_inc)
-				*_inc = (byte)s[31];
-			s.resize(l);
-		}
-		for (auto i: s)
-			if (i < 32)
-				return "";
-		return s;
-	}
-	return "";
-}
-
 Address fromString(std::string const& _sn)
 {
 	if (_sn.size() == 40)
@@ -132,3 +132,4 @@ Address fromString(std::string const& _sn)
 }
 
 }
+

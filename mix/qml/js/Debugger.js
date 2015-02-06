@@ -107,7 +107,7 @@ function select(stateIndex)
 		callStackData.push(address);
 	}
 	callStackData.push(debugData.states[0].address);
-	callStack.model = callStackData;
+	callStack.listModel = callStackData;
 }
 
 function codeStr(stateIndex)
@@ -118,8 +118,9 @@ function codeStr(stateIndex)
 
 function highlightSelection(index)
 {
-	statesList.currentIndex = index;
-	statesList.positionViewAtIndex(index, ListView.Center);
+	statesList.positionViewAtRow(index, ListView.Center);
+	statesList.selection.clear();
+	statesList.selection.select(index);
 }
 
 function completeCtxInformation(state)

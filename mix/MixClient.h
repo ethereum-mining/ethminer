@@ -24,6 +24,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 #include <libethereum/Interface.h>
 #include <libethereum/Client.h>
 #include "MachineStates.h"
@@ -33,26 +34,20 @@ namespace dev
 namespace mix
 {
 
-struct Block
-{
-	ExecutionResults transactions;
-	h256 hash;
-	dev::eth::State state;
-	dev::eth::BlockInfo info;
-};
-
-using Blocks = std::vector<Block>;
-
+class MixBlockChain;
 
 class MixClient: public dev::eth::Interface
 {
 public:
-	MixClient();
+	MixClient(std::string const& _dbPath);
+	virtual ~MixClient();
 	/// Reset state to the empty state with given balance.
 	void resetState(u256 _balance);
 	KeyPair const& userAccount() const { return m_userAccount; }
 	void mine();
-	Blocks const& record() const { return m_blocks; }
+	ExecutionResult const& execution(unsigned _block, unsigned _transaction) const;
+	ExecutionResult const& lastExecution() const;
+	ExecutionResults const& pendingExecutions() const;
 
 	//dev::eth::Interface
 	void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice) override;
@@ -94,18 +89,24 @@ public:
 
 private:
 	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state);
-	void validateBlock(int _block) const;
 	void noteChanged(h256Set const& _filters);
-	dev::eth::State const& asOf(int _block) const;
+	dev::eth::State asOf(int _block) const;
+	MixBlockChain& bc() { return *m_bc; }
+	MixBlockChain const& bc() const { return *m_bc; }
 
 	KeyPair m_userAccount;
 	eth::State m_state;
+	eth::State m_startState;
 	OverlayDB m_stateDB;
+	std::auto_ptr<MixBlockChain> m_bc;
 	mutable boost::shared_mutex x_state;
 	mutable std::mutex m_filterLock;
 	std::map<h256, dev::eth::InstalledFilter> m_filters;
 	std::map<unsigned, dev::eth::ClientWatch> m_watches;
-	Blocks m_blocks;
+	std::vector<ExecutionResults> m_executions;
+	ExecutionResults m_pendingExecutions;
+	std::string m_dbPath;
+	unsigned m_minigThreads;
 };
 
 }

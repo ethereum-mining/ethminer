@@ -273,24 +273,24 @@ bool Session::interpret(RLP const& _r)
 	}
 	case PingPacket:
 	{
-        clogS(NetTriviaSummary) << "Ping";
+		clogS(NetTriviaSummary) << "Ping";
 		RLPStream s;
 		sealAndSend(prep(s, PongPacket));
 		break;
 	}
 	case PongPacket:
 		m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
-        clogS(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
+		clogS(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
 		break;
 	case GetPeersPacket:
 	{
-        clogS(NetTriviaSummary) << "GetPeers";
+		clogS(NetTriviaSummary) << "GetPeers";
 		m_theyRequestedNodes = true;
 		serviceNodesRequest();
 		break;
 	}
 	case PeersPacket:
-        clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
+		clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
 		m_weRequestedNodes = false;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
@@ -369,8 +369,13 @@ bool Session::interpret(RLP const& _r)
 	{
 		auto id = _r[0].toInt<unsigned>();
 		for (auto const& i: m_capabilities)
-			if (i.second->m_enabled && id >= i.second->m_idOffset && id - i.second->m_idOffset < i.second->hostCapability()->messageCount() && i.second->interpret(id - i.second->m_idOffset, _r))
-				return true;
+			if (id >= i.second->m_idOffset && id - i.second->m_idOffset < i.second->hostCapability()->messageCount())
+			{
+				if (i.second->m_enabled)
+					return i.second->interpret(id - i.second->m_idOffset, _r);
+				else
+					return true;
+			}
 		return false;
 	}
 	}

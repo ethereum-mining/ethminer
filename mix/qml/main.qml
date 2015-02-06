@@ -4,6 +4,7 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
+import QtQuick.PrivateWidgets 1.1
 import Qt.labs.settings 1.0
 import org.ethereum.qml.QEther 1.0
 
@@ -87,7 +88,7 @@ ApplicationWindow {
 		text: qsTr("Mine")
 		shortcut: "Ctrl+M"
 		onTriggered: clientModel.mine();
-		enabled: codeModel.hasContract && !clientModel.running
+		enabled: codeModel.hasContract && !clientModel.running &&!clientModel.mining
 	}
 
 	Connections {

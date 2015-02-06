@@ -5,7 +5,6 @@
 #include "util.h"
 #include "bignum.h"
 #include <fstream>
-#include <string>
 #include <cerrno>
 
 //Token or value node constructor
@@ -260,7 +259,7 @@ std::string get_file_contents(std::string filename)
   {
     std::string contents;
     in.seekg(0, std::ios::end);
-    contents.resize((unsigned)in.tellg());
+    contents.resize(in.tellg());
     in.seekg(0, std::ios::beg);
     in.read(&contents[0], contents.size());
     in.close();
@@ -274,7 +273,7 @@ void err(std::string errtext, Metadata met) {
     std::string err = "Error (file \"" + met.file + "\", line " +
         unsignedToDecimal(met.ln + 1) + ", char " + unsignedToDecimal(met.ch) +
         "): " + errtext;
-    std::cerr << err << "\n";
+	std::cerr << err << std::endl;
     throw(err);
 }
 
@@ -283,7 +282,7 @@ void warn(std::string errtext, Metadata met) {
     std::string err = "Warning (file \"" + met.file + "\", line " +
         unsignedToDecimal(met.ln + 1) + ", char " + unsignedToDecimal(met.ch) +
         "): " + errtext;
-    std::cerr << err << "\n";
+	std::cerr << err << std::endl;
 }
 
 //Bin to hex

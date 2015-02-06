@@ -34,7 +34,7 @@
 #include <libdevcore/Worker.h>
 #include <libevm/FeeStructure.h>
 #include <libp2p/Common.h>
-#include "BlockChain.h"
+#include "CanonBlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
 #include "CommonNet.h"
@@ -89,11 +89,12 @@ static const LocalisedLogEntry InitialChange(SpecialLogEntry, 0);
 
 struct ClientWatch
 {
-	ClientWatch() {}
-	explicit ClientWatch(h256 _id): id(_id) {}
+	ClientWatch(): lastPoll(std::chrono::system_clock::now()) {}
+	explicit ClientWatch(h256 _id): id(_id), lastPoll(std::chrono::system_clock::now()) {}
 
 	h256 id;
 	LocalisedLogEntries changes = LocalisedLogEntries{ InitialChange };
+	mutable std::chrono::system_clock::time_point lastPoll = std::chrono::system_clock::now();
 };
 
 struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
@@ -228,7 +229,7 @@ public:
 	/// Get the object representing the current state of Ethereum.
 	dev::eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
-	BlockChain const& blockChain() const { return m_bc; }
+	CanonBlockChain const& blockChain() const { return m_bc; }
 
 	// Mining stuff:
 
@@ -308,7 +309,7 @@ private:
 	State asOf(unsigned _h) const;
 
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
-	BlockChain m_bc;						///< Maintains block database.
+	CanonBlockChain m_bc;						///< Maintains block database.
 	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 
@@ -328,6 +329,8 @@ private:
 	mutable std::mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;
 	std::map<unsigned, ClientWatch> m_watches;
+
+	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
 };
 
 }
