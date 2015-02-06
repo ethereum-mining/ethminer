@@ -26,6 +26,7 @@
 #include <atomic>
 #include <map>
 #include <QString>
+#include <QVariantMap>
 #include "MachineStates.h"
 
 namespace dev

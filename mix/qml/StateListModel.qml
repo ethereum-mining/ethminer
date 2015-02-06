@@ -8,7 +8,6 @@ import "js/QEtherHelper.js" as QEtherHelper
 
 Item {
 
-	property int defaultStateIndex: 0
 	property alias model: stateListModel
 	property var stateList: []
 
@@ -111,7 +110,7 @@ Item {
 			for(var i = 0; i < stateListModel.count; i++) {
 				projectData.states.push(toPlainStateItem(stateList[i]));
 			}
-			projectData.defaultStateIndex = defaultStateIndex;
+			projectData.defaultStateIndex = stateListModel.defaultStateIndex;
 		}
 		onNewProject: {
 			var state = toPlainStateItem(stateListModel.createDefaultState());
@@ -127,12 +126,12 @@ Item {
 			var item = stateDialog.getItem();
 			if (stateDialog.stateIndex < stateListModel.count) {
 				if (stateDialog.isDefault)
-					defaultStateIndex = stateIndex;
+					stateListModel.defaultStateIndex = stateIndex;
 				stateList[stateDialog.stateIndex] = item;
 				stateListModel.set(stateDialog.stateIndex, item);
 			} else {
 				if (stateDialog.isDefault)
-					defaultStateIndex = 0;
+					stateListModel.defaultStateIndex = 0;
 				stateList.push(item);
 				stateListModel.append(item);
 			}
@@ -149,8 +148,10 @@ Item {
 	ListModel {
 		id: stateListModel
 
+		property int defaultStateIndex: 0
 		signal defaultStateChanged;
 		signal stateListModelReady;
+		signal stateRun(int index)
 
 		function defaultTransactionItem() {
 			return {
@@ -205,6 +206,7 @@ Item {
 		function runState(index) {
 			var item = stateList[index];
 			clientModel.setupState(item);
+			stateRun(index);
 		}
 
 		function deleteState(index) {

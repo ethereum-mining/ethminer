@@ -9,7 +9,7 @@ ColumnLayout {
 	property variant listModel;
 	property bool collapsible;
 	property bool enableSelection;
-	property real storedHeight;
+	property real storedHeight: 0;
 	property Component itemDelegate
 	signal rowActivated(int index)
 	spacing: 0
@@ -104,6 +104,17 @@ ColumnLayout {
 			selectionMode: enableSelection ? SelectionMode.SingleSelection : SelectionMode.NoSelection
 			headerDelegate: null
 			itemDelegate: root.itemDelegate
+			onHeightChanged:  {
+				if (height <= 0 && collapsible) {
+					if (storedHeight <= 0)
+						storedHeight = 200;
+					storageContainer.state = "collapsed";
+				}
+				else if (height > 0 && storageContainer.state == "collapsed") {
+					//TODO: fix increasing size
+					//storageContainer.state = "";
+				}
+			}
 			TableViewColumn {
 				role: "modelData"
 				width: parent.width
