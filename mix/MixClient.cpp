@@ -205,7 +205,6 @@ void MixClient::mine()
 	m_state.completeMine();
 	bc().import(m_state.blockData(), m_stateDB);
 	m_state.sync(bc());
-	//m_state.cleanup(true);
 	m_startState = m_state;
 	m_executions.emplace_back(std::move(m_pendingExecutions));
 	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };

@@ -9,8 +9,10 @@ import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Rectangle {
 	id: debugPanel
+
+	property alias transactionLog : transactionLog
+
 	objectName: "debugPanel"
-	anchors.fill: parent;
 	color: "#ededed"
 	clip: true
 
@@ -22,7 +24,7 @@ Rectangle {
 
 	function update(data, giveFocus)
 	{
-		if (statusPane.result.successful)
+		if (statusPane && statusPane.result.successful)
 		{
 			Debugger.init(data);
 			debugScrollArea.visible = true;
@@ -62,6 +64,7 @@ Rectangle {
 		property alias storageHeightSettings: storageRect.height
 		property alias memoryDumpHeightSettings: memoryRect.height
 		property alias callDataHeightSettings: callDataRect.height
+		property alias transactionLogVisible: transactionLog.visible
 	}
 
 	Rectangle
@@ -113,45 +116,41 @@ Rectangle {
 		}
 	}
 
-	ScrollView {
+	SplitView {
 		id: debugScrollArea
 		anchors.fill: parent
+		orientation: Qt.Vertical
+		handleDelegate: Rectangle {
+			height: machineStates.sideMargin
+			color: "transparent"
+		}
 
-		SplitView
+		TransactionLog {
+			id: transactionLog
+			Layout.fillWidth: true
+			Layout.minimumHeight: 60
+			height: 250
+		}
+		ScrollView
 		{
 			property int sideMargin: 10
 			id: machineStates
-			anchors.top: parent.top
-			anchors.topMargin: 15
-			anchors.left: parent.left;
-			anchors.leftMargin: machineStates.sideMargin
-			width: debugScrollArea.width - machineStates.sideMargin * 2 - 20;
-			orientation: Qt.Vertical
-			handleDelegate: Rectangle {
-				height: machineStates.sideMargin
-				color: "transparent"
-			}
-
+			Layout.fillWidth: true
+			Layout.fillHeight: true
 			function updateHeight() {
-				machineStates.height = transactionLog.childrenRect.height + buttonRow.childrenRect.height + assemblyCodeRow.childrenRect.height +
+				statesLayout.height = buttonRow.childrenRect.height + assemblyCodeRow.childrenRect.height +
 						callStackRect.childrenRect.height + storageRect.childrenRect.height + memoryRect.childrenRect.height + callDataRect.childrenRect.height + 120;
 			}
 
 			Component.onCompleted: updateHeight();
 
-
-			TransactionLog {
-				id: transactionLog
-				Layout.fillWidth: true
-				Layout.minimumHeight: 60
-				height: 250
-			}
-
 			ColumnLayout {
-
-				Layout.fillWidth: true
-				Layout.fillHeight: true
 				id: statesLayout
+				anchors.top: parent.top
+				anchors.topMargin: 15
+				anchors.left: parent.left;
+				anchors.leftMargin: machineStates.sideMargin
+				width: debugScrollArea.width - machineStates.sideMargin * 2 - 20;
 				spacing: machineStates.sideMargin
 
 				Rectangle {
@@ -550,7 +549,6 @@ Rectangle {
 								}
 							}
 						}
-
 					}
 
 					Rectangle

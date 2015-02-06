@@ -5,13 +5,69 @@ import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 
 Item {
+	Action {
+		id: addStateAction
+		text: "Add State"
+		shortcut: "Ctrl+Alt+T"
+		enabled: codeModel.hasContract && !clientModel.running;
+		onTriggered: projectModel.stateListModel.addState();
+	}
+	Action {
+		id: editStateAction
+		text: "Edit State"
+		shortcut: "Ctrl+Alt+T"
+		enabled: codeModel.hasContract && !clientModel.running && statesCombo.currentIndex >= 0 && projectModel.stateListModel.count > 0;
+		onTriggered: projectModel.stateListModel.editState(statesCombo.currentIndex);
+	}
+
 	ColumnLayout {
 		anchors.fill: parent
-		CheckBox {
-			id: recording
-			text: qsTr("Record transactions");
-			checked: true
-			Layout.fillWidth: true
+		RowLayout {
+
+			ComboBox {
+				id: statesCombo
+				model: projectModel.stateListModel
+				width: 150
+				editable: false
+				textRole: "title"
+				onActivated:  {
+					model.runState(index);
+				}
+				Connections {
+					target: projectModel.stateListModel
+					onStateRun: {
+						if (statesCombo.currentIndex !== index)
+							statesCombo.currentIndex = index;
+					}
+				}
+			}
+			Button
+			{
+				anchors.rightMargin: 9
+				anchors.verticalCenter: parent.verticalCenter
+				action: editStateAction
+			}
+			Button
+			{
+				anchors.rightMargin: 9
+				anchors.verticalCenter: parent.verticalCenter
+				action: addStateAction
+			}
+			Button
+			{
+				anchors.rightMargin: 9
+				anchors.verticalCenter: parent.verticalCenter
+				action: mineAction
+			}
+
+			CheckBox {
+				id: recording
+				text: qsTr("Record transactions");
+				checked: true
+				Layout.fillWidth: true
+
+
+			}
 		}
 		TableView {
 			Layout.fillWidth: true
@@ -31,7 +87,7 @@ Item {
 			TableViewColumn {
 				role: "contract"
 				title: qsTr("Contract")
-				width: 120
+				width: 100
 			}
 			TableViewColumn {
 				role: "function"
@@ -41,7 +97,7 @@ Item {
 			TableViewColumn {
 				role: "value"
 				title: qsTr("Value")
-				width: 120
+				width: 60
 			}
 			TableViewColumn {
 				role: "address"
