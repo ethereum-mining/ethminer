@@ -48,7 +48,7 @@ Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Peer> const&
 
 Session::~Session()
 {
-	m_peer->lastConnected = m_peer->lastAttempted - chrono::seconds(1);
+	m_peer->m_lastConnected = m_peer->m_lastAttempted - chrono::seconds(1);
 
 	// Read-chain finished for one reason or another.
 	for (auto& i: m_capabilities)
@@ -75,14 +75,14 @@ void Session::addRating(unsigned _r)
 {
 	if (m_peer)
 	{
-		m_peer->rating += _r;
-		m_peer->score += _r;
+		m_peer->m_rating += _r;
+		m_peer->m_score += _r;
 	}
 }
 
 int Session::rating() const
 {
-	return m_peer->rating;
+	return m_peer->m_rating;
 }
 
 template <class T> vector<T> randomSelection(vector<T> const& _t, unsigned _n)
@@ -206,7 +206,7 @@ bool Session::interpret(RLP const& _r)
 		}
 		
 		if (m_peer->isOffline())
-			m_peer->lastConnected = chrono::system_clock::now();
+			m_peer->m_lastConnected = chrono::system_clock::now();
 
 		if (m_protocolVersion != m_server->protocolVersion())
 		{
@@ -446,13 +446,13 @@ void Session::drop(DisconnectReason _reason)
 
 	if (m_peer)
 	{
-		if (_reason != m_peer->lastDisconnect || _reason == NoDisconnect || _reason == ClientQuit || _reason == DisconnectRequested)
-			m_peer->failedAttempts = 0;
-		m_peer->lastDisconnect = _reason;
+		if (_reason != m_peer->m_lastDisconnect || _reason == NoDisconnect || _reason == ClientQuit || _reason == DisconnectRequested)
+			m_peer->m_failedAttempts = 0;
+		m_peer->m_lastDisconnect = _reason;
 		if (_reason == BadProtocol)
 		{
-			m_peer->rating /= 2;
-			m_peer->score /= 2;
+			m_peer->m_rating /= 2;
+			m_peer->m_score /= 2;
 		}
 	}
 	m_dropped = true;

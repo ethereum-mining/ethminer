@@ -77,7 +77,7 @@ void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n)
 
 std::vector<PeerSessionInfo> WebThreeDirect::peers()
 {
-	return m_net.peers();
+	return m_net.peerSessionInfo();
 }
 
 size_t WebThreeDirect::peerCount() const

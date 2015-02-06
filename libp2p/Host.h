@@ -79,37 +79,37 @@ public:
 	bool isOffline() const { return !m_session.lock(); }
 
 	bi::tcp::endpoint const& peerEndpoint() const { return endpoint.tcp; }
-	
-	int score = 0;									///< All time cumulative.
-	int rating = 0;									///< Trending.
+
+	int m_score = 0;									///< All time cumulative.
+	int m_rating = 0;									///< Trending.
 	
 	/// Network Availability
 	
-	std::chrono::system_clock::time_point lastConnected;
-	std::chrono::system_clock::time_point lastAttempted;
-	unsigned failedAttempts = 0;
-	DisconnectReason lastDisconnect = NoDisconnect;	///< Reason for disconnect that happened last.
+	std::chrono::system_clock::time_point m_lastConnected;
+	std::chrono::system_clock::time_point m_lastAttempted;
+	unsigned m_failedAttempts = 0;
+	DisconnectReason m_lastDisconnect = NoDisconnect;	///< Reason for disconnect that happened last.
 	
 	virtual bool operator<(Peer const& _p) const
 	{
 		if (isOffline() != _p.isOffline())
 			return isOffline();
 		else if (isOffline())
-			if (lastAttempted == _p.lastAttempted)
-				return failedAttempts < _p.failedAttempts;
+			if (m_lastAttempted == _p.m_lastAttempted)
+				return m_failedAttempts < _p.m_failedAttempts;
 			else
-				return lastAttempted < _p.lastAttempted;
+				return m_lastAttempted < _p.m_lastAttempted;
 			else
-				if (score == _p.score)
-					if (rating == _p.rating)
-						if (failedAttempts == _p.failedAttempts)
+				if (m_score == _p.m_score)
+					if (m_rating == _p.m_rating)
+						if (m_failedAttempts == _p.m_failedAttempts)
 							return id < _p.id;
 						else
-							return failedAttempts < _p.failedAttempts;
+							return m_failedAttempts < _p.m_failedAttempts;
 					else
-						return rating < _p.rating;
+						return m_rating < _p.m_rating;
 					else
-						return score < _p.score;
+						return m_score < _p.m_score;
 	}
 	
 protected:
@@ -121,9 +121,14 @@ using Peers = std::vector<Peer>;
 
 class HostNodeTableHandler: public NodeTableEventHandler
 {
-	friend class Host;
+public:
 	HostNodeTableHandler(Host& _host);
+
+	Host const& host() const { return m_host; }
+	
+private:
 	virtual void processEvent(NodeId const& _n, NodeTableEventType const& _e);
+
 	Host& m_host;
 };
 	
@@ -181,7 +186,7 @@ public:
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
 
 	/// Get peer information.
-	PeerSessionInfos peers() const;
+	PeerSessionInfos peerSessionInfo() const;
 	
 	/// Get number of peers connected.
 	size_t peerCount() const;
@@ -196,7 +201,7 @@ public:
 	bytes saveNetwork() const;
 
 	// TODO: P2P this should be combined with peers into a HostStat object of some kind; coalesce data, as it's only used for status information.
-	Peers nodes() const { RecursiveGuard l(x_sessions); Peers ret; for (auto const& i: m_peers) ret.push_back(*i.second); return ret; }
+	Peers getPeers() const { RecursiveGuard l(x_sessions); Peers ret; for (auto const& i: m_peers) ret.push_back(*i.second); return ret; }
 
 	void setNetworkPreferences(NetworkPreferences const& _p) { auto had = isStarted(); if (had) stop(); m_netPrefs = _p; if (had) start(); }
 
@@ -252,7 +257,7 @@ private:
 	virtual void doneWorking();
 
 	/// Get or create host identifier (KeyPair).
-	static KeyPair getNetworkAlias(bytesConstRef _b);
+	static KeyPair networkAlias(bytesConstRef _b);
 
 	bytes m_restoreNetwork;										///< Set by constructor and used to set Host key and restore network peers & nodes.
 	
@@ -274,7 +279,7 @@ private:
 	std::unique_ptr<boost::asio::deadline_timer> m_timer;					///< Timer which, when network is running, calls scheduler() every c_timerInterval ms.
 	static const unsigned c_timerInterval = 100;							///< Interval which m_timer is run when network is connected.
 	
-	std::set<Peer*> m_pendingNodeConns;									/// Used only by connect(Peer&) to limit concurrently connecting to same node. See connect(shared_ptr<Peer>const&).
+	std::set<Peer*> m_pendingPeerConns;									/// Used only by connect(Peer&) to limit concurrently connecting to same node. See connect(shared_ptr<Peer>const&).
 	Mutex x_pendingNodeConns;
 
 	bi::tcp::endpoint m_tcpPublic;											///< Our public listening endpoint.
