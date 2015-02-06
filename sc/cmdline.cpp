@@ -68,7 +68,7 @@ int main(int argv, char** argc) {
         std::cout << binToHex(compileLLL(parseLLL(input, true))) << "\n";
     }
     else if (command == "dereference") {
-        std::cout << printAST(dereference(parseLLL(input, true)), haveSec) <<"\n";
+        std::cout << printTokens(dereference(parseLLL(input, true))) <<"\n";
     }
     else if (command == "pretty_assemble") {
         std::cout << printTokens(prettyAssemble(parseLLL(input, true))) <<"\n";
@@ -87,9 +87,6 @@ int main(int argv, char** argc) {
     }
     else if (command == "serialize") {
         std::cout << binToHex(serialize(tokenize(input, Metadata(), false))) << "\n";
-    }
-    else if (command == "flatten") {
-        std::cout << printTokens(flatten(parseLLL(input, true))) << "\n";
     }
     else if (command == "deserialize") {
         std::cout << printTokens(deserialize(hexToBin(input))) << "\n";

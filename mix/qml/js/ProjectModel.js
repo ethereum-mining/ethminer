@@ -155,6 +155,7 @@ function doCloseProject() {
 	console.log("closing project");
 	projectListModel.clear();
 	projectPath = "";
+	currentDocumentId = "";
 	projectClosed();
 }
 

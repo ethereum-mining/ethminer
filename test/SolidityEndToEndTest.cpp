@@ -92,6 +92,26 @@ BOOST_AUTO_TEST_CASE(multiple_functions)
 	BOOST_CHECK(callContractFunction("i_am_not_there()", bytes()) == bytes());
 }
 
+BOOST_AUTO_TEST_CASE(named_args)
+{
+	char const* sourceCode = "contract test {\n"
+							 "  function a(uint a, uint b, uint c) returns (uint r) { r = a * 100 + b * 10 + c * 1; }\n"
+							 "  function b() returns (uint r) { r = a({a: 1, b: 2, c: 3}); }\n"
+							 "}\n";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("b()", bytes()) == toBigEndian(u256(123)));
+}
+
+BOOST_AUTO_TEST_CASE(disorder_named_args)
+{
+	char const* sourceCode = "contract test {\n"
+							 "  function a(uint a, uint b, uint c) returns (uint r) { r = a * 100 + b * 10 + c * 1; }\n"
+							 "  function b() returns (uint r) { r = a({c: 3, a: 1, b: 2}); }\n"
+							 "}\n";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("b()", bytes()) == toBigEndian(u256(123)));
+}
+
 BOOST_AUTO_TEST_CASE(while_loop)
 {
 	char const* sourceCode = "contract test {\n"
@@ -921,10 +941,10 @@ BOOST_AUTO_TEST_CASE(multiple_elementary_accessors)
 BOOST_AUTO_TEST_CASE(complex_accessors)
 {
 	char const* sourceCode = "contract test {\n"
-							 "  mapping(uint256 => string4) to_string_map;\n"
-							 "  mapping(uint256 => bool) to_bool_map;\n"
-							 "  mapping(uint256 => uint256) to_uint_map;\n"
-							 "  mapping(uint256 => mapping(uint256 => uint256)) to_multiple_map;\n"
+							 "  mapping(uint256 => string4) public to_string_map;\n"
+							 "  mapping(uint256 => bool) public to_bool_map;\n"
+							 "  mapping(uint256 => uint256) public to_uint_map;\n"
+							 "  mapping(uint256 => mapping(uint256 => uint256)) public to_multiple_map;\n"
 							 "  function test() {\n"
 							 "    to_string_map[42] = \"24\";\n"
 							 "    to_bool_map[42] = false;\n"
