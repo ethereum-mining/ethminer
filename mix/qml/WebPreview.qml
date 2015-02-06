@@ -114,7 +114,8 @@ Item {
 		onClientConnected: {
 			//filter polling spam
 			//TODO: do it properly
-			var log = _request.content.indexOf("eth_changed") < 0;
+			//var log = _request.content.indexOf("eth_changed") < 0;
+			var log = true;
 			if (log)
 				console.log(_request.content);
 			var response = clientModel.apiCall(_request.content);
