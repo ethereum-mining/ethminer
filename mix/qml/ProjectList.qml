@@ -42,7 +42,7 @@ Item {
 				anchors.left: parent.left
 				anchors.leftMargin: Style.general.leftMargin
 				font.family: srcSansProLight.name
-				font.pointSize: Style.title.pointSize + 3
+				font.pointSize: Style.title.pointSize
 				font.weight: Font.Light
 			}
 
