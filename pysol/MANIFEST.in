@@ -1,0 +1,13 @@
+include pysol/*.cpp
+include *.py
+include libdevcore/*cpp
+include libdevcore/*h
+include libdevcrypto/*cpp
+include libdevcrypto/*h
+include libethcore/*cpp
+include libethcore/*h
+include libsolidity/*cpp
+include libsolidity/*h
+include libevmcore/*cpp
+include libevmcore/*h
+include pysol/README.md

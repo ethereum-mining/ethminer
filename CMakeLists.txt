@@ -168,6 +168,7 @@ endif ()
 
 if (NOT HEADLESS)
 	
+	add_subdirectory(libnatspec)
 	add_subdirectory(libjsqrc)
 	add_subdirectory(libqwebthree)
 	add_subdirectory(alethzero)
