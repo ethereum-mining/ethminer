@@ -383,6 +383,8 @@ void VariableDefinition::checkTypeRequirements()
 					BOOST_THROW_EXCEPTION(m_value->createTypeError("Invalid integer constant " + type->toString()));
 				type = intType;
 			}
+			else if (type->getCategory() == Type::Category::VOID)
+				BOOST_THROW_EXCEPTION(m_variable->createTypeError("var cannot be void type"));
 			m_variable->setType(type);
 		}
 	}
@@ -592,6 +594,17 @@ void Identifier::checkTypeRequirements()
 void ElementaryTypeNameExpression::checkTypeRequirements()
 {
 	m_type = make_shared<TypeType>(Type::fromElementaryTypeName(m_typeToken));
+}
+
+Literal::Literal(Location const& _location, Token::Value _token,
+				 ASTPointer<ASTString> const& _value,
+				 Token::Value _sub):
+	PrimaryExpression(_location), m_token(_token), m_value(_value)
+{
+	if (Token::isEtherSubdenomination(_sub))
+		m_subDenomination = static_cast<Literal::SubDenomination>(_sub);
+	else
+		m_subDenomination = Literal::SubDenomination::None;
 }
 
 void Literal::checkTypeRequirements()

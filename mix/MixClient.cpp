@@ -91,6 +91,7 @@ void MixClient::resetState(u256 _balance)
 	m_state.sync(bc());
 	m_startState = m_state;
 	m_pendingExecutions.clear();
+	m_executions.clear();
 }
 
 void MixClient::executeTransaction(Transaction const& _t, State& _state)
@@ -215,7 +216,7 @@ ExecutionResult const& MixClient::execution(unsigned _block, unsigned _transacti
 {
 	if (_block == bc().number() + 1)
 		return m_pendingExecutions.at(_transaction);
-	return m_executions.at(_block).at(_transaction);
+	return m_executions.at(_block - 1).at(_transaction);
 }
 
 ExecutionResult const& MixClient::lastExecution() const
