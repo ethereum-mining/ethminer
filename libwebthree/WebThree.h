@@ -145,7 +145,7 @@ public:
 	p2p::NodeId id() const override { return m_net.id(); }
 
 	/// Gets the nodes.
-	p2p::Peers nodes() const override { return m_net.nodes(); }
+	p2p::Peers nodes() const override { return m_net.getPeers(); }
 
 	/// Start the network subsystem.
 	void startNetwork() override { m_net.start(); }

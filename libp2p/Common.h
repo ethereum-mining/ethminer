@@ -169,6 +169,7 @@ struct Node
 	NodeIPEndpoint endpoint;
 	
 	/// If true, node will not be removed from Node list.
+	// TODO: p2p implement
 	bool required = false;
 	
 	virtual operator bool() const { return (bool)id; }

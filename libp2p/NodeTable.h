@@ -53,7 +53,7 @@ class NodeTableEventHandler
 {
 	friend class NodeTable;
 public:
-	virtual void processEvent(NodeId const& _n, NodeTableEventType const& _e) =0;
+	virtual void processEvent(NodeId const& _n, NodeTableEventType const& _e) = 0;
 	
 protected:
 	/// Called by NodeTable on behalf of an implementation (Host) to process new events without blocking nodetable.
@@ -65,7 +65,8 @@ protected:
 			if (!m_nodeEventHandler.size())
 				return;
 			m_nodeEventHandler.unique();
-			for (auto const& n: m_nodeEventHandler) events.push_back(std::make_pair(n,m_events[n]));
+			for (auto const& n: m_nodeEventHandler)
+				events.push_back(std::make_pair(n,m_events[n]));
 			m_nodeEventHandler.clear();
 			m_events.clear();
 		}
@@ -80,10 +81,17 @@ protected:
 	std::list<NodeId> m_nodeEventHandler;
 	std::map<NodeId, NodeTableEventType> m_events;
 };
+
+class NodeTable;
+inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable);
 	
 /**
  * NodeTable using modified kademlia for node discovery and preference.
- * untouched buckets are refreshed if they have not been touched within an hour
+ * Node table requires an IO service, creates a socket for incoming 
+ * UDP messages and implements a kademlia-like protocol. Node requests and
+ * responses are used to build a node table which can be queried to
+ * obtain a list of potential nodes to connect to, and, passes events to
+ * Host whenever a node is added or removed to/from the table.
  *
  * Thread-safety is ensured by modifying NodeEntry details via 
  * shared_ptr replacement instead of mutating values.
@@ -101,7 +109,7 @@ protected:
  * @todo serialize evictions per-bucket
  * @todo store evictions in map, unit-test eviction logic
  * @todo store root node in table
- * @todo encapsulate doFindNode into NetworkAlgorithm (task)
+ * @todo encapsulate discover into NetworkAlgorithm (task)
  * @todo Pong to include ip:port where ping was received
  * @todo expiration and sha3(id) 'to' for messages which are replies (prevents replay)
  * @todo cache Ping and FindSelf
@@ -117,33 +125,17 @@ protected:
  */
 class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 {
+	friend std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable);
 	using NodeSocket = UDPSocket<NodeTable, 1280>;
 	using TimePoint = std::chrono::steady_clock::time_point;
-	using EvictionTimeout = std::pair<std::pair<NodeId,TimePoint>,NodeId>;	///< First NodeId may be evicted and replaced with second NodeId.
+	using EvictionTimeout = std::pair<std::pair<NodeId, TimePoint>, NodeId>;	///< First NodeId may be evicted and replaced with second NodeId.
 	
 public:
 	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udpPort = 30303);
 	~NodeTable();
 	
-	/// Constants for Kademlia, derived from address space.
-	
-	static unsigned const s_addressByteSize = sizeof(NodeId);				///< Size of address type in bytes.
-	static unsigned const s_bits = 8 * s_addressByteSize;					///< Denoted by n in [Kademlia].
-	static unsigned const s_bins = s_bits - 1;								///< Size of m_state (excludes root, which is us).
-	static unsigned const s_maxSteps = boost::static_log2<s_bits>::value;	///< Max iterations of discovery. (doFindNode)
-	
-	/// Chosen constants
-	
-	static unsigned const s_bucketSize = 16;			///< Denoted by k in [Kademlia]. Number of nodes stored in each bucket.
-	static unsigned const s_alpha = 3;				///< Denoted by \alpha in [Kademlia]. Number of concurrent FindNode requests.
-	
-	/// Intervals
-	
-	boost::posix_time::milliseconds const c_evictionCheckInterval = boost::posix_time::milliseconds(75);	///< Interval at which eviction timeouts are checked.
-	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
-	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
-	
-	static unsigned dist(NodeId const& _a, NodeId const& _b) { u512 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
+	/// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
+	static unsigned distance(NodeId const& _a, NodeId const& _b) { u512 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 	
 	/// Set event handler for NodeEntryAdded and NodeEntryRemoved events.
 	void setEventHandler(NodeTableEventHandler* _handler) { m_nodeEventHandler.reset(_handler); }
@@ -157,18 +149,49 @@ public:
 	/// Add node. Node will be pinged if it's not already known.
 	std::shared_ptr<NodeEntry> addNode(Node const& _node);
 
-	void join();
+	/// To be called when node table is empty. Runs node discovery with m_node.id as the target in order to populate node-table.
+	void discover();
 	
-	NodeEntry root() const { return NodeEntry(m_node, m_node.publicKey(), m_node.endpoint.udp); }
+	/// Returns list of node ids active in node table.
 	std::list<NodeId> nodes() const;
-	unsigned size() const { return m_nodes.size(); }
-	std::list<NodeEntry> state() const;
 	
+	/// Returns node count.
+	unsigned count() const { return m_nodes.size(); }
+	
+	/// Returns snapshot of table.
+	std::list<NodeEntry> snapshot() const;
+	
+	/// Returns true if node id is in node table.
 	bool haveNode(NodeId _id) { Guard l(x_nodes); return m_nodes.count(_id); }
-	Node operator[](NodeId _id);
-	std::shared_ptr<NodeEntry> getNodeEntry(NodeId _id);
 	
+	/// Returns the Node to the corresponding node id or the empty Node if that id is not found.
+	Node node(NodeId _id);
+	
+#ifndef BOOST_AUTO_TEST_SUITE
+private:
+#else
 protected:
+#endif
+	
+	/// Constants for Kademlia, derived from address space.
+	
+	static unsigned const s_addressByteSize = sizeof(NodeId);				///< Size of address type in bytes.
+	static unsigned const s_bits = 8 * s_addressByteSize;					///< Denoted by n in [Kademlia].
+	static unsigned const s_bins = s_bits - 1;								///< Size of m_state (excludes root, which is us).
+	static unsigned const s_maxSteps = boost::static_log2<s_bits>::value;	///< Max iterations of discovery. (discover)
+	
+	/// Chosen constants
+	
+	static unsigned const s_bucketSize = 16;			///< Denoted by k in [Kademlia]. Number of nodes stored in each bucket.
+	static unsigned const s_alpha = 3;				///< Denoted by \alpha in [Kademlia]. Number of concurrent FindNode requests.
+	
+	/// Intervals
+	
+	/* todo: replace boost::posix_time; change constants to upper camelcase */
+	boost::posix_time::milliseconds const c_evictionCheckInterval = boost::posix_time::milliseconds(75);	///< Interval at which eviction timeouts are checked.
+	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
+	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
+	
 	struct NodeBucket
 	{
 		unsigned distance;
@@ -176,80 +199,94 @@ protected:
 		std::list<std::weak_ptr<NodeEntry>> nodes;
 	};
 	
-	/// Repeatedly sends s_alpha concurrent requests to nodes nearest to target, for nodes nearest to target, up to s_maxSteps rounds.
-	void doFindNode(NodeId _node, unsigned _round = 0, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried = std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>>());
-
-	/// Returns nodes nearest to target.
-	std::vector<std::shared_ptr<NodeEntry>> findNearest(NodeId _target);
-	
+	/// Used to ping endpoint.
 	void ping(bi::udp::endpoint _to) const;
 	
+	/// Used ping known node. Used by node table when refreshing buckets and as part of eviction process (see evict).
 	void ping(NodeEntry* _n) const;
 	
+	/// Returns center node entry which describes this node and used with dist() to calculate xor metric for node table nodes.
+	NodeEntry center() const { return NodeEntry(m_node, m_node.publicKey(), m_node.endpoint.udp); }
+	
+	/// Used by asynchronous operations to return NodeEntry which is active and managed by node table.
+	std::shared_ptr<NodeEntry> nodeEntry(NodeId _id);
+	
+	/// Used to discovery nodes on network which are close to the given target.
+	/// Sends s_alpha concurrent requests to nodes nearest to target, for nodes nearest to target, up to s_maxSteps rounds.
+	void discover(NodeId _target, unsigned _round = 0, std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>> _tried = std::shared_ptr<std::set<std::shared_ptr<NodeEntry>>>());
+
+	/// Returns nodes from node table which are closest to target.
+	std::vector<std::shared_ptr<NodeEntry>> nearestNodeEntries(NodeId _target);
+	
+	/// Asynchronously drops _leastSeen node if it doesn't reply and adds _new node, otherwise _new node is thrown away.
 	void evict(std::shared_ptr<NodeEntry> _leastSeen, std::shared_ptr<NodeEntry> _new);
 	
-	void noteNode(Public const& _pubk, bi::udp::endpoint const& _endpoint);
-	
-	void noteNode(std::shared_ptr<NodeEntry> _n);
-	
+	/// Called whenever activity is received from an unknown node in order to maintain node table.
+	void noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _endpoint);
+
+	/// Used to drop node when timeout occurs or when evict() result is to keep previous node.
 	void dropNode(std::shared_ptr<NodeEntry> _n);
 	
-	NodeBucket& bucket(NodeEntry const* _n);
+	/// Returns references to bucket which corresponds to distance of node id.
+	/// @warning Only use the return reference locked x_state mutex.
+	// TODO p2p: Remove this method after removing offset-by-one functionality.
+	NodeBucket& bucket_UNSAFE(NodeEntry const* _n);
 
 	/// General Network Events
 	
+	/// Called by m_socket when packet is received.
 	void onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packet);
 	
-	void onDisconnected(UDPSocketFace*) {};
+	/// Called by m_socket when socket is disconnected.
+	void onDisconnected(UDPSocketFace*) {}
 	
 	/// Tasks
 	
+	/// Called by evict() to ensure eviction check is scheduled to run and terminates when no evictions remain. Asynchronous.
 	void doCheckEvictions(boost::system::error_code const& _ec);
-	
+
+	/// Purges and pings nodes for any buckets which haven't been touched for c_bucketRefresh seconds.
 	void doRefreshBuckets(boost::system::error_code const& _ec);
 
-#ifndef BOOST_AUTO_TEST_SUITE
-private:
-#else
-protected:
-#endif
-	/// Sends FindNeighbor packet. See doFindNode.
-	void requestNeighbours(NodeEntry const& _node, NodeId _target) const;
-
-	std::unique_ptr<NodeTableEventHandler> m_nodeEventHandler;		///< Event handler for node events.
+	std::unique_ptr<NodeTableEventHandler> m_nodeEventHandler;	///< Event handler for node events.
 	
 	Node m_node;												///< This node.
 	Secret m_secret;											///< This nodes secret key.
 
-	mutable Mutex x_nodes;									///< Mutable for thread-safe copy in nodes() const.
+	mutable Mutex x_nodes;									///< LOCK x_state first if both locks are required. Mutable for thread-safe copy in nodes() const.
 	std::map<NodeId, std::shared_ptr<NodeEntry>> m_nodes;		///< Nodes
 
-	mutable Mutex x_state;
+	mutable Mutex x_state;									///< LOCK x_state first if both x_nodes and x_state locks are required.
 	std::array<NodeBucket, s_bins> m_state;					///< State of p2p node network.
 
-	Mutex x_evictions;
+	Mutex x_evictions;										///< LOCK x_nodes first if both x_nodes and x_evictions locks are required.
 	std::deque<EvictionTimeout> m_evictions;					///< Eviction timeouts.
 
 	ba::io_service& m_io;										///< Used by bucket refresh timer.
 	std::shared_ptr<NodeSocket> m_socket;						///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
-	NodeSocket* m_socketPtr;									///< Set to m_socket.get().
+	NodeSocket* m_socketPointer;								///< Set to m_socket.get(). Socket is created in constructor and disconnected in destructor to ensure access to pointer is safe.
 
 	boost::asio::deadline_timer m_bucketRefreshTimer;			///< Timer which schedules and enacts bucket refresh.
 	boost::asio::deadline_timer m_evictionCheckTimer;			///< Timer for handling node evictions.
 };
-	
+
 inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
 {
-	_out << _nodeTable.root().address() << "\t" << "0\t" << _nodeTable.root().endpoint.udp.address() << ":" << _nodeTable.root().endpoint.udp.port() << std::endl;
-	auto s = _nodeTable.state();
+	_out << _nodeTable.center().address() << "\t" << "0\t" << _nodeTable.center().endpoint.udp.address() << ":" << _nodeTable.center().endpoint.udp.port() << std::endl;
+	auto s = _nodeTable.snapshot();
 	for (auto n: s)
 		_out << n.address() << "\t" << n.distance << "\t" << n.endpoint.udp.address() << ":" << n.endpoint.udp.port() << std::endl;
 	return _out;
 }
 
 /**
- * Ping packet: Check if node is alive.
+ * Ping packet: Sent to check if node is alive.
  * PingNode is cached and regenerated after expiration - t, where t is timeout.
+ *
+ * Ping is used to implement evict. When a new node is seen for
+ * a given bucket which is full, the least-responsive node is pinged.
+ * If the pinged node doesn't respond, then it is removed and the new
+ * node is inserted.
  *
  * RLP Encoded Items: 3
  * Minimum Encoded Size: 18 bytes
@@ -259,11 +296,6 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
  * ipAddress: Our IP address.
  * port: Our port.
  * expiration: Triggers regeneration of packet. May also provide control over synchronization.
- *
- * Ping is used to implement evict. When a new node is seen for
- * a given bucket which is full, the least-responsive node is pinged.
- * If the pinged node doesn't respond then it is removed and the new
- * node is inserted.
  *
  * @todo uint128_t for ip address (<->integer ipv4/6, asio-address, asio-endpoint)
  *
@@ -285,7 +317,7 @@ struct PingNode: RLPXDatagram<PingNode>
 };
 
 /**
- * Pong packet: response to ping
+ * Pong packet: Sent in response to ping
  *
  * RLP Encoded Items: 2
  * Minimum Encoded Size: 33 bytes
@@ -365,7 +397,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 	}
 	
 	static const uint8_t type = 4;
-	std::list<Node> nodes;
+	std::vector<Node> nodes;
 	unsigned expiration = 1;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << expiration; }
