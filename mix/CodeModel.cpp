@@ -171,7 +171,6 @@ void CodeModel::onCompilationComplete(CompilationResult* _newResult)
 {
 	m_compiling = false;
 	bool contractChanged = m_result->contractInterface() != _newResult->contractInterface();
-
 	m_result.reset(_newResult);
 	emit compilationComplete();
 	emit stateChanged();
