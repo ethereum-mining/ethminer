@@ -93,7 +93,7 @@ b. Only one per line.
 c. Associate */& with type, not variable (at ends with parser, but more readable, and safe if in conjunction with (b)).
 d. Favour declarations close to use; don't habitually declare at top of scope ala C.
 e. Always pass non-trivial parameters with a const& suffix.
-f. If a function returns multiple values, use std::tuple (std::pair acceptable). Prefer not using */& arguments, except where efficiency requires.
+f. If a func	tion returns multiple values, use std::tuple (std::pair acceptable). Prefer not using */& arguments, except where efficiency requires.
 g. Never use a macro where adequate non-preprocessor C++ can be written.
 h. Prefer "using NewType = OldType" to "typedef OldType NewType".
 
@@ -128,7 +128,7 @@ d. Use override, final and const judiciously.
 e. No implementations with the class declaration, except:
 - template or force-inline method (though prefer implementation at bottom of header file).
 - one-line implementation (in which case include it in same line as declaration).
-f. For a method 'foo'
+f. For a property 'foo'
 - Member: m_foo;
 - Getter: foo() [ also: for booleans, isFoo() ];
 - Setter: setFoo();
