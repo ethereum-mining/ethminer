@@ -1,7 +1,8 @@
-
 #pragma once
 
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/IRBuilder.h>
+#include "preprocessor/llvm_includes_end.h"
 
 namespace dev
 {

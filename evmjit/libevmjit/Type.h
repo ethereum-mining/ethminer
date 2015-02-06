@@ -1,9 +1,10 @@
-
 #pragma once
+#include "Common.h"
 
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Constants.h>
-#include "Common.h"
+#include "preprocessor/llvm_includes_end.h"
 
 namespace dev
 {

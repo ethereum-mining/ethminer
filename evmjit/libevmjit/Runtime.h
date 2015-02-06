@@ -1,8 +1,6 @@
-
 #pragma once
-
-#include <csetjmp>
 #include "RuntimeData.h"
+#include <csetjmp>
 
 namespace dev
 {

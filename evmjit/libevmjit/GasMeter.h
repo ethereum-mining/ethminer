@@ -1,6 +1,4 @@
-
 #pragma once
-
 #include "CompilerHelper.h"
 #include "Instruction.h"
 

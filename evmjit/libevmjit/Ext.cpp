@@ -1,14 +1,12 @@
-
 #include "Ext.h"
-
-#include <llvm/IR/Function.h>
-#include <llvm/IR/TypeBuilder.h>
-#include <llvm/IR/IntrinsicInst.h>
-
 #include "RuntimeManager.h"
 #include "Memory.h"
 #include "Type.h"
 #include "Endianness.h"
+
+#include "preprocessor/llvm_includes_start.h"
+#include <llvm/IR/IntrinsicInst.h>
+#include "preprocessor/llvm_includes_end.h"
 
 namespace dev
 {

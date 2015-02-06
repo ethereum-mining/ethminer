@@ -1,15 +1,15 @@
-
 #include "BasicBlock.h"
+#include "Type.h"
 
-#include <iostream>
-
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/raw_os_ostream.h>
+#include "preprocessor/llvm_includes_end.h"
 
-#include "Type.h"
+#include <iostream>
 
 namespace dev
 {
@@ -141,7 +141,7 @@ void BasicBlock::synchronizeLocalStack(Stack& _evmStack)
 	auto endIter = m_currentStack.end();
 
 	// Update (emit set()) changed values
-	for (int idx = m_currentStack.size() - 1 - m_tosOffset;
+	for (int idx = (int)m_currentStack.size() - 1 - m_tosOffset;
 		 currIter < endIter && idx >= 0;
 		 ++currIter, --idx)
 	{
@@ -308,7 +308,7 @@ void BasicBlock::linkLocalStacks(std::vector<BasicBlock*> basicBlocks, llvm::IRB
 		auto& initialStack = bblock.m_initialStack;
 		initialStack.erase(initialStack.begin(), initialStack.begin() + info.inputItems);
 		// Initial stack shrinks, so the size difference grows:
-		bblock.m_tosOffset += info.inputItems;
+		bblock.m_tosOffset += (int)info.inputItems;
 	}
 
 	// We must account for the items that were pushed directly to successor
@@ -321,7 +321,7 @@ void BasicBlock::linkLocalStacks(std::vector<BasicBlock*> basicBlocks, llvm::IRB
 
 		auto& exitStack = bblock.m_currentStack;
 		exitStack.erase(exitStack.end() - info.outputItems, exitStack.end());
-		bblock.m_tosOffset -= info.outputItems;
+		bblock.m_tosOffset -= (int)info.outputItems; // FIXME: Fix types
 	}
 }
 
