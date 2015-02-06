@@ -3,60 +3,66 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Controls 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
+import QtQuick.Window 2.0
 
-Rectangle {
-	color: "#ededed"
+Window {
 	id: stateListContainer
-	focus: true
-	anchors.topMargin: 10
-	anchors.left: parent.left
-	height: parent.height
-	width: parent.width
+	modality: Qt.WindowModal
 
-	ListView {
-		id: list
-		anchors.top: parent.top
-		height: parent.height
-		width: parent.width
-		model: projectModel.stateListModel
-		delegate: renderDelegate
-	}
+	width: 640
+	height: 480
 
-	Button {
-		anchors.bottom: parent.bottom
-		action: addStateAction
+	visible: false
+	ColumnLayout
+	{
+		anchors.fill: parent
+		TableView {
+			id: list
+			Layout.fillHeight: true
+			Layout.fillWidth: true
+			model: projectModel.stateListModel
+			itemDelegate: renderDelegate
+			headerDelegate: null
+			TableViewColumn {
+				role: "title"
+				title: qsTr("State")
+				width: list.width
+			}
+		}
+
+		Button {
+			anchors.bottom: parent.bottom
+			action: addStateAction
+		}
 	}
 
 	Component {
 		id: renderDelegate
 		Item {
-			id: wrapperItem
-			height: 20
-			width: parent.width
 			RowLayout {
 				anchors.fill: parent
 				Text {
 					Layout.fillWidth: true
 					Layout.fillHeight: true
-					text: title
+					text: styleData.value
 					font.pointSize: 12
 					verticalAlignment: Text.AlignBottom
 				}
 				ToolButton {
 					text: qsTr("Edit");
 					Layout.fillHeight: true
-					onClicked: list.model.editState(index);
+					onClicked: list.model.editState(styleData.row);
 				}
 				ToolButton {
-					visible: list.model.count - 1 != index
+					visible: list.model.defaultStateIndex !== styleData.row
 					text: qsTr("Delete");
 					Layout.fillHeight: true
-					onClicked: list.model.deleteState(index);
+					onClicked: list.model.deleteState(styleData.row);
 				}
 				ToolButton {
 					text: qsTr("Run");
 					Layout.fillHeight: true
-					onClicked: list.model.runState(index);
+					onClicked: list.model.runState(styleData.row);
 				}
 			}
 		}
