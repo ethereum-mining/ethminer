@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 #include "Common.h"
 
 namespace dev
