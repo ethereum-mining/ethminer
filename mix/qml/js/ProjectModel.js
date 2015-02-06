@@ -88,8 +88,9 @@ function addFile(fileName) {
 	var isHtml = extension === ".html";
 	var isCss = extension === ".css";
 	var isJs = extension === ".js";
+	var isImg = extension === ".png"  || extension === ".gif" || extension === ".jpg" || extension === ".svg";
 	var syntaxMode = isContract ? "solidity" : isJs ? "javascript" : isHtml ? "htmlmixed" : isCss ? "css" : "";
-	var groupName = isContract ? "Contracts" : isJs ? "Javascript" : isHtml ? "HTML" : isCss ? "Styles" : "";
+	var groupName = isContract ? "Contracts" : isJs ? "Javascript" : isHtml ? "HTML" : isCss ? "Styles" : isImg ? "Images" : "Misc";
 	var docData = {
 		contract: false,
 		path: p,
@@ -225,6 +226,10 @@ function removeDocument(documentId) {
 
 function newHtmlFile() {
 	createAndAddFile("page", "html", "<html>\n</html>");
+}
+
+function newCssFile() {
+	createAndAddFile("style", "css", "body {\n}\n");
 }
 
 function newJsFile() {
