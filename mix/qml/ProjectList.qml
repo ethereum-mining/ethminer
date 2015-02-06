@@ -15,7 +15,7 @@ Item {
 		FontLoader
 		{
 			id: srcSansProLight
-			source: "qrc:/qml/fonts/SourceSansPro-ExtraLight.ttf"
+			source: "qrc:/qml/fonts/SourceSansPro-Regular.ttf"
 		}
 
 		Rectangle
@@ -42,7 +42,8 @@ Item {
 				anchors.left: parent.left
 				anchors.leftMargin: Style.general.leftMargin
 				font.family: srcSansProLight.name
-				font.pointSize: Style.title.pointSize
+				font.pointSize: Style.title.pointSize + 3
+				font.weight: Font.Light
 			}
 
 			Text
@@ -78,7 +79,7 @@ Item {
 				spacing: 0
 
 				Repeater {
-					model: ["Contracts", "Javascript", "HTML", "Styles", "Images"]
+					model: ["Contracts", "Javascript", "HTML", "Styles", "Images", "Misc"]
 					signal selected(string doc, string groupName)
 					id: sectionRepeater
 					FilesSection

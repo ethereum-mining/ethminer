@@ -13,7 +13,7 @@ QtObject {
 		property string color: "#808080"
 		property string background: "#f0f0f0"
 		property int height: 70
-		property int pointSize: 15
+		property int pointSize: 18
 	}
 
 	property QtObject documentsList: QtObject {

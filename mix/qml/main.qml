@@ -28,6 +28,7 @@ ApplicationWindow {
 			MenuItem { action: addExistingFileAction }
 			MenuItem { action: addNewJsFileAction }
 			MenuItem { action: addNewHtmlFileAction }
+			MenuItem { action: addNewCssFileAction }
 			MenuSeparator {}
 			//MenuItem { action: addNewContractAction }
 			MenuItem { action: closeProjectAction }
@@ -186,6 +187,14 @@ ApplicationWindow {
 		shortcut: "Ctrl+Alt+H"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.newHtmlFile();
+	}
+
+	Action {
+		id: addNewCssFileAction
+		text: qsTr("New CSS File")
+		shortcut: "Ctrl+Alt+S"
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.newCssFile();
 	}
 
 	Action {
