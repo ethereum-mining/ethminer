@@ -1,8 +1,4 @@
-
 #include "Type.h"
-
-#include <llvm/IR/DerivedTypes.h>
-
 #include "RuntimeManager.h"
 
 namespace dev
