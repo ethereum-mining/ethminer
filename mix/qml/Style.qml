@@ -10,7 +10,7 @@ QtObject {
 	}
 
 	property QtObject title: QtObject {
-		property string color: "#878787"
+		property string color: "#808080"
 		property string background: "#f0f0f0"
 		property int height: 40
 	}
@@ -18,6 +18,7 @@ QtObject {
 	property QtObject documentsList: QtObject {
 		property string background: "#f7f7f7"
 		property string color: "#4d4d4d"
+		property string sectionColor: "#808080"
 		property string selectedColor: "white"
 		property string highlightColor: "#4a90e2"
 		property int height: 30
