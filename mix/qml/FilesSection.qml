@@ -20,17 +20,17 @@ ColumnLayout {
 
 	function hiddenHeightTopLevel()
 	{
-		return section.state === "hidden" ? Style.documentsList.height : Style.documentsList.height * (model.count + 1);
+		return section.state === "hidden" ? Style.documentsList.height : Style.documentsList.fileNameHeight * model.count + Style.documentsList.height;
 	}
 
 	function hiddenHeightRepeater()
 	{
-		return section.state === "hidden" ? 0 : Style.documentsList.height * wrapperItem.model.count;
+		return section.state === "hidden" ? 0 : Style.documentsList.fileNameHeight * wrapperItem.model.count;
 	}
 
 	function hiddenHeightElement()
 	{
-		return section.state === "hidden" ? 0 : Style.documentsList.height;
+		return section.state === "hidden" ? 0 : Style.documentsList.fileNameHeight;
 	}
 
 	function getDocumentIndex(documentId)
@@ -48,6 +48,18 @@ ColumnLayout {
 			model.remove(i);
 	}
 
+	FontLoader
+	{
+		id: sectionTitleFont
+		source: "qrc:/qml/fonts/SourceSansPro-Bold.ttf"
+	}
+
+	FontLoader
+	{
+		id: fileNameFont
+		source: "qrc:/qml/fonts/SourceSansPro-Regular.ttf"
+	}
+
 	RowLayout
 	{
 		anchors.top: parent.top
@@ -56,12 +68,14 @@ ColumnLayout {
 		height: Style.documentsList.height
 
 		Image {
-			source: "qrc:/qml/img/opentriangleindicator.png"
+			source: "qrc:/qml/img/opentriangleindicator_filesproject.png"
 			width: 15
 			sourceSize.width: 15
 			id: imgArrow
 			anchors.right: section.left
 			anchors.rightMargin: 5
+			anchors.top: parent.top
+			anchors.topMargin: 8
 		}
 
 		Text
@@ -71,13 +85,14 @@ ColumnLayout {
 			anchors.left: parent.left
 			anchors.leftMargin: Style.general.leftMargin
 			color: Style.documentsList.sectionColor
-			font.bold: true
+			font.family: sectionTitleFont.name
+			font.pointSize: Style.documentsList.fontSize
 			states: [
 				State {
 					name: "hidden"
 					PropertyChanges { target: filesList; visible: false; }
 					PropertyChanges { target: rowCol; Layout.minimumHeight: Style.documentsList.height; Layout.maximumHeight: Style.documentsList.height; height: Style.documentsList.height; }
-					PropertyChanges { target: imgArrow; source: "qrc:/qml/img/closedtriangleindicator.png" }
+					PropertyChanges { target: imgArrow; source: "qrc:/qml/img/closedtriangleindicator_filesproject.png" }
 				}
 			]
 		}
@@ -126,6 +141,7 @@ ColumnLayout {
 					visible: !renameMode
 					color: rootItem.isSelected ? Style.documentsList.selectedColor : Style.documentsList.color
 					text: name;
+					font.family: fileNameFont.name
 					font.pointSize: Style.documentsList.fontSize
 					anchors.verticalCenter: parent.verticalCenter
 					verticalAlignment:  Text.AlignVCenter
