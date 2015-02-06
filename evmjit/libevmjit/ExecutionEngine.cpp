@@ -29,7 +29,7 @@ namespace jit
 
 namespace
 {
-typedef ReturnCode(*EntryFuncPtr)(Runtime*);
+using EntryFuncPtr = ReturnCode(*)(Runtime*);
 
 ReturnCode runEntryFunc(EntryFuncPtr _mainFunc, Runtime* _runtime)
 {

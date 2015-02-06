@@ -81,7 +81,7 @@ public:
 		int start;
 		int length;
 	};
-	typedef std::vector<FormatRange> Formats; // Sorted by start position
+	using Formats = std::vector<FormatRange>; // Sorted by start position
 
 public:
 	/// Collect highligting information by lexing the source
