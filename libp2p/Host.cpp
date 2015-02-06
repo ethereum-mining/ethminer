@@ -53,7 +53,7 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, byte
 	m_ifAddresses(Network::getInterfaceAddresses()),
 	m_ioService(2),
 	m_tcp4Acceptor(m_ioService),
-	m_alias(getNetworkAlias(_restoreNetwork)),
+	m_alias(networkAlias(_restoreNetwork)),
 	m_lastPing(chrono::time_point<chrono::steady_clock>::min())
 {
 	for (auto address: m_ifAddresses)
@@ -182,7 +182,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 	{
 		clog(NetNote) << "p2p.host.nodeTable.events.nodeEntryAdded " << _n;
 		
-		auto n = (*m_nodeTable)[_n];
+		auto n = m_nodeTable->node(_n);
 		if (n)
 		{
 			RecursiveGuard l(x_sessions);
@@ -195,7 +195,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 			}
 			p->endpoint.tcp = n.endpoint.tcp;
 			
-			// TODO: Implement similar to doFindNode. Attempt connecting to nodes
+			// TODO: Implement similar to discover. Attempt connecting to nodes
 			//       until ideal peer count is reached; if all nodes are tried,
 			//       repeat. Notably, this is an integrated process such that
 			//       when onNodeTableEvent occurs we should also update +/-
@@ -442,9 +442,9 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 	Peer *nptr = _p.get();
 	{
 		Guard l(x_pendingNodeConns);
-		if (m_pendingNodeConns.count(nptr))
+		if (m_pendingPeerConns.count(nptr))
 			return;
-		m_pendingNodeConns.insert(nptr);
+		m_pendingPeerConns.insert(nptr);
 	}
 	
 	clog(NetConnect) << "Attempting connection to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "from" << id().abridged();
@@ -454,25 +454,25 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 		if (ec)
 		{
 			clog(NetConnect) << "Connection refused to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "(" << ec.message() << ")";
-			_p->lastDisconnect = TCPError;
-			_p->lastAttempted = std::chrono::system_clock::now();
+			_p->m_lastDisconnect = TCPError;
+			_p->m_lastAttempted = std::chrono::system_clock::now();
 		}
 		else
 		{
 			clog(NetConnect) << "Connected to" << _p->id.abridged() << "@" << _p->peerEndpoint();
 			
-			_p->lastConnected = std::chrono::system_clock::now();
+			_p->m_lastConnected = std::chrono::system_clock::now();
 			auto ps = make_shared<Session>(this, std::move(*s), _p);
 			ps->start();
 			
 		}
 		delete s;
 		Guard l(x_pendingNodeConns);
-		m_pendingNodeConns.erase(nptr);
+		m_pendingPeerConns.erase(nptr);
 	});
 }
 
-PeerSessionInfos Host::peers() const
+PeerSessionInfos Host::peerSessionInfo() const
 {
 	if (!m_run)
 		return PeerSessionInfos();
@@ -622,7 +622,7 @@ bytes Host::saveNetwork() const
 			// TODO: alpha: Figure out why it ever shares these ports.//p.address.port() >= 30300 && p.address.port() <= 30305 &&
 			// TODO: alpha: if/how to save private addresses
 			// Only save peers which have connected within 2 days, with properly-advertised port and public IP address
-			if (chrono::system_clock::now() - p.lastConnected < chrono::seconds(3600 * 48) && p.peerEndpoint().port() > 0 && p.peerEndpoint().port() < /*49152*/32768 && p.id != id() && !isPrivateAddress(p.peerEndpoint().address()))
+			if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && p.peerEndpoint().port() > 0 && p.peerEndpoint().port() < /*49152*/32768 && p.id != id() && !isPrivateAddress(p.peerEndpoint().address()))
 			{
 				network.appendList(10);
 				if (p.peerEndpoint().address().is_v4())
@@ -631,15 +631,15 @@ bytes Host::saveNetwork() const
 					network << p.peerEndpoint().address().to_v6().to_bytes();
 				// TODO: alpha: replace 0 with trust-state of node
 				network << p.peerEndpoint().port() << p.id << 0
-					<< chrono::duration_cast<chrono::seconds>(p.lastConnected.time_since_epoch()).count()
-					<< chrono::duration_cast<chrono::seconds>(p.lastAttempted.time_since_epoch()).count()
-					<< p.failedAttempts << (unsigned)p.lastDisconnect << p.score << p.rating;
+					<< chrono::duration_cast<chrono::seconds>(p.m_lastConnected.time_since_epoch()).count()
+					<< chrono::duration_cast<chrono::seconds>(p.m_lastAttempted.time_since_epoch()).count()
+					<< p.m_failedAttempts << (unsigned)p.m_lastDisconnect << p.m_score << p.m_rating;
 				count++;
 			}
 		}
 	}
 
-	auto state = m_nodeTable->state();
+	auto state = m_nodeTable->snapshot();
 	state.sort();
 	for (auto const& s: state)
 	{
@@ -693,12 +693,12 @@ void Host::restoreNetwork(bytesConstRef _b)
 			{
 				shared_ptr<Peer> p = make_shared<Peer>();
 				p->id = id;
-				p->lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
-				p->lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
-				p->failedAttempts = i[6].toInt<unsigned>();
-				p->lastDisconnect = (DisconnectReason)i[7].toInt<unsigned>();
-				p->score = (int)i[8].toInt<unsigned>();
-				p->rating = (int)i[9].toInt<unsigned>();
+				p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
+				p->m_lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
+				p->m_failedAttempts = i[6].toInt<unsigned>();
+				p->m_lastDisconnect = (DisconnectReason)i[7].toInt<unsigned>();
+				p->m_score = (int)i[8].toInt<unsigned>();
+				p->m_rating = (int)i[9].toInt<unsigned>();
 				p->endpoint.tcp = tcp;
 				p->endpoint.udp = udp;
 				m_peers[p->id] = p;
@@ -708,7 +708,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 	}
 }
 
-KeyPair Host::getNetworkAlias(bytesConstRef _b)
+KeyPair Host::networkAlias(bytesConstRef _b)
 {
 	RLP r(_b);
 	if (r.itemCount() == 3 && r[0].isInt() && r[0].toInt<int>() == 1)
