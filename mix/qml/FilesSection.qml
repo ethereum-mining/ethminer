@@ -50,12 +50,6 @@ ColumnLayout {
 
 	FontLoader
 	{
-		id: sectionTitleFont
-		source: "qrc:/qml/fonts/SourceSansPro-Bold.ttf"
-	}
-
-	FontLoader
-	{
 		id: fileNameFont
 		source: "qrc:/qml/fonts/SourceSansPro-Regular.ttf"
 	}
@@ -85,8 +79,10 @@ ColumnLayout {
 			anchors.left: parent.left
 			anchors.leftMargin: Style.general.leftMargin
 			color: Style.documentsList.sectionColor
-			font.family: sectionTitleFont.name
+			font.family: fileNameFont.name
 			font.pointSize: Style.documentsList.fontSize
+			font.weight: Font.Bold
+			font.letterSpacing: 1
 			states: [
 				State {
 					name: "hidden"
