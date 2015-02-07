@@ -428,6 +428,20 @@ int WebThreeStubServerBase::eth_newFilterString(std::string const& _filter)
 	return ret;
 }
 
+Json::Value WebThreeStubServerBase::eth_getWork()
+{
+	Json::Value ret(Json::arrayValue);
+	auto r = client()->getWork();
+	ret.append(toJS(r.first));
+	ret.append(toJS(r.second));
+	return ret;
+}
+
+bool WebThreeStubServerBase::eth_submitWork(std::string const& _nonce)
+{
+	return client()->submitNonce(jsToFixed<32>(_nonce));
+}
+
 std::string WebThreeStubServerBase::shh_newGroup(std::string const& _id, std::string const& _who)
 {
 	(void)_id;
