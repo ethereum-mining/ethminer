@@ -36,13 +36,15 @@
             { "name": "eth_solidity", "params": [""], "order": [], "returns": ""},
             { "name": "eth_serpent", "params": [""], "order": [], "returns": ""},
 
-
             { "name": "eth_newFilter", "params": [{}], "order": [], "returns": 0},
             { "name": "eth_newFilterString", "params": [""], "order": [], "returns": 0},
             { "name": "eth_uninstallFilter", "params": [0], "order": [], "returns": true},
             { "name": "eth_changed", "params": [0], "order": [], "returns": []},
             { "name": "eth_filterLogs", "params": [0], "order": [], "returns": []},
             { "name": "eth_logs", "params": [{}], "order": [], "returns": []},
+
+            { "name": "eth_getWork", "params": [], "order": [], "returns": []},
+            { "name": "eth_submitWork", "params": [""], "order": [], "returns": true},
 
             { "name": "db_put", "params": ["", "", ""], "order": [], "returns": true},
             { "name": "db_get", "params": ["", ""], "order": [], "returns": ""},
