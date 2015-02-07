@@ -47,19 +47,3 @@ private:
 	dev::WebThreeDirect* m_web3;
 	Main* m_main;
 };
-
-
-class QNatspecExpressionEvaluator: public QObject
-{
-	Q_OBJECT
-
-public:
-	QNatspecExpressionEvaluator(OurWebThreeStubServer* _server, Main* _main);
-	virtual ~QNatspecExpressionEvaluator();
-
-	QString evalExpression(QString const& _expression) const;
-
-private:
-	OurWebThreeStubServer* m_server;
-	Main* m_main;
-};

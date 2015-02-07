@@ -8,7 +8,9 @@ set(EXECUTABLE sc)
 
 add_executable(${EXECUTABLE} ${SRC_LIST})
 
+if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 target_link_libraries(${EXECUTABLE} serpent)
+endif()
 target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} evmcore)
 target_link_libraries(${EXECUTABLE} devcore)

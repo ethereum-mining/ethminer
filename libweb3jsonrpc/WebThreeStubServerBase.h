@@ -103,6 +103,9 @@ public:
 	virtual Json::Value eth_uncleByNumber(int const& _number, int const& _i);
 	virtual bool eth_uninstallFilter(int const& _id);
 
+	virtual Json::Value eth_getWork();
+	virtual bool eth_submitWork(std::string const& _nonce);
+
 	virtual std::string db_get(std::string const& _name, std::string const& _key);
 	virtual std::string db_getString(std::string const& _name, std::string const& _key);
 	virtual bool db_put(std::string const& _name, std::string const& _key, std::string const& _value);
