@@ -437,10 +437,9 @@ Json::Value WebThreeStubServerBase::eth_getWork()
 	return ret;
 }
 
-int WebThreeStubServerBase::eth_submitWork(std::string const& _nonce)
+bool WebThreeStubServerBase::eth_submitWork(std::string const& _nonce)
 {
-	client()->submitNonce(jsToFixed<32>(_nonce));
-	return 0;
+	return client()->submitNonce(jsToFixed<32>(_nonce));
 }
 
 std::string WebThreeStubServerBase::shh_newGroup(std::string const& _id, std::string const& _who)
