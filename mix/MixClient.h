@@ -86,6 +86,8 @@ public:
 	void stopMining() override;
 	bool isMining() override;
 	eth::MineProgress miningProgress() const override;
+	std::pair<h256, u256> getWork() override { return std::pair<h256, u256>(); }
+	bool submitNonce(h256 const&) override { return false; }
 
 private:
 	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state);
