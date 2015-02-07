@@ -63,6 +63,16 @@ public:
 	virtual bool force() const = 0;				///< @returns true iff the Miner should mine regardless of the number of transactions.
 };
 
+class Miner
+{
+public:
+	virtual ~Miner();
+
+	virtual void noteStateChange() = 0;
+	virtual bool isComplete() const = 0;
+	virtual bytes const& blockData() const = 0;
+};
+
 /**
  * @brief Implements Miner.
  * To begin mining, use start() & stop(). noteStateChange() can be used to reset the mining and set up the
@@ -75,23 +85,23 @@ public:
  * @threadsafe
  * @todo Signal Miner to restart once with condition variables.
  */
-class Miner: Worker
+class LocalMiner: public Miner, Worker
 {
 public:
 	/// Null constructor.
-	Miner(): m_host(nullptr) {}
+	LocalMiner(): m_host(nullptr) {}
 
 	/// Constructor.
-	Miner(MinerHost* _host, unsigned _id = 0);
+	LocalMiner(MinerHost* _host, unsigned _id = 0);
 
 	/// Move-constructor.
-	Miner(Miner&& _m): Worker((Worker&&)_m) { std::swap(m_host, _m.m_host); }
+	LocalMiner(LocalMiner&& _m): Worker((Worker&&)_m) { std::swap(m_host, _m.m_host); }
 
 	/// Move-assignment.
-	Miner& operator=(Miner&& _m) { Worker::operator=((Worker&&)_m); std::swap(m_host, _m.m_host); return *this; }
+	LocalMiner& operator=(LocalMiner&& _m) { Worker::operator=((Worker&&)_m); std::swap(m_host, _m.m_host); return *this; }
 
 	/// Destructor. Stops miner.
-	~Miner() { stop(); }
+	~LocalMiner() { stop(); }
 
 	/// Setup its basics.
 	void setup(MinerHost* _host, unsigned _id = 0);
@@ -103,16 +113,16 @@ public:
 	void stop() { stopWorking(); }
 
 	/// Call to notify Miner of a state change.
-	void noteStateChange() { m_miningStatus = Preparing; }
+	virtual void noteStateChange() override { m_miningStatus = Preparing; }
 
 	/// @returns true iff the mining has been start()ed. It may still not be actually mining, depending on the host's turbo() & force().
 	bool isRunning() { return isWorking(); }
 
 	/// @returns true if mining is complete.
-	bool isComplete() const { return m_miningStatus == Mined; }
+	virtual bool isComplete() const override { return m_miningStatus == Mined; }
 
 	/// @returns the internal State object.
-	bytes const& blockData() { return m_mineState.blockData(); }
+	virtual bytes const& blockData() const override { return m_mineState.blockData(); }
 
 	/// Check the progress of the mining.
 	MineProgress miningProgress() const { Guard l(x_mineInfo); return m_mineProgress; }

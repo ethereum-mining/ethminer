@@ -180,7 +180,7 @@ ASTPointer<InheritanceSpecifier> Parser::parseInheritanceSpecifier()
 
 Declaration::Visibility Parser::parseVisibilitySpecifier(Token::Value _token)
 {
-	Declaration::Visibility visibility;
+	Declaration::Visibility visibility = Declaration::Visibility::DEFAULT;
 	if (_token == Token::PUBLIC)
 		visibility = Declaration::Visibility::PUBLIC;
 	else if (_token == Token::PROTECTED)
@@ -691,6 +691,16 @@ ASTPointer<Expression> Parser::parsePrimaryExpression()
 		expression = nodeFactory.createNode<Literal>(token, getLiteralAndAdvance());
 		break;
 	case Token::NUMBER:
+		if (Token::isEtherSubdenomination(m_scanner->peekNextToken()))
+		{
+			ASTPointer<ASTString> literal = getLiteralAndAdvance();
+			nodeFactory.markEndPosition();
+			Literal::SubDenomination subdenomination = static_cast<Literal::SubDenomination>(m_scanner->getCurrentToken());
+			m_scanner->next();
+			expression = nodeFactory.createNode<Literal>(token, literal, subdenomination);
+			break;
+		}
+		// fall-through
 	case Token::STRING_LITERAL:
 		nodeFactory.markEndPosition();
 		expression = nodeFactory.createNode<Literal>(token, getLiteralAndAdvance());

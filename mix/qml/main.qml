@@ -15,7 +15,7 @@ ApplicationWindow {
 	height: 800
 	minimumWidth: 400
 	minimumHeight: 300
-	title: qsTr("mix")
+	title: qsTr("Mix")
 
 	menuBar: MenuBar {
 		Menu {
@@ -28,6 +28,7 @@ ApplicationWindow {
 			MenuItem { action: addExistingFileAction }
 			MenuItem { action: addNewJsFileAction }
 			MenuItem { action: addNewHtmlFileAction }
+			MenuItem { action: addNewCssFileAction }
 			MenuSeparator {}
 			//MenuItem { action: addNewContractAction }
 			MenuItem { action: closeProjectAction }
@@ -39,6 +40,8 @@ ApplicationWindow {
 			MenuItem { action: debugRunAction }
 			MenuItem { action: mineAction }
 			MenuSeparator {}
+			MenuItem { action: editStatesAction }
+			MenuSeparator {}
 			MenuItem { action: toggleRunOnLoadAction }
 		}
 		Menu {
@@ -48,6 +51,7 @@ ApplicationWindow {
 			MenuSeparator {}
 			MenuItem { action: toggleProjectNavigatorAction }
 			MenuItem { action: showHideRightPanelAction }
+			MenuItem { action: toggleTransactionLogAction }
 			MenuItem { action: toggleWebPreviewAction }
 			MenuItem { action: toggleWebPreviewOrientationAction }
 		}
@@ -88,7 +92,18 @@ ApplicationWindow {
 		text: qsTr("Mine")
 		shortcut: "Ctrl+M"
 		onTriggered: clientModel.mine();
-		enabled: codeModel.hasContract && !clientModel.running
+		enabled: codeModel.hasContract && !clientModel.running &&!clientModel.mining
+	}
+
+	StateList {
+		id: stateList
+	}
+
+	Action {
+		id: editStatesAction
+		text: qsTr("Edit States")
+		shortcut: "Ctrl+Alt+E"
+		onTriggered: stateList.show();
 	}
 
 	Connections {
@@ -118,6 +133,15 @@ ApplicationWindow {
 		checkable: true
 		checked: mainContent.webViewVisible
 		onTriggered: mainContent.toggleWebPreview();
+	}
+
+	Action {
+		id: toggleTransactionLogAction
+		text: qsTr("Show States and Transactions")
+		shortcut: "Alt+1"
+		checkable: true
+		checked: mainContent.rightPane.transactionLog.visible
+		onTriggered: mainContent.rightPane.transactionLog.visible = !mainContent.rightPane.transactionLog.visible
 	}
 
 	Action {
@@ -186,6 +210,14 @@ ApplicationWindow {
 		shortcut: "Ctrl+Alt+H"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.newHtmlFile();
+	}
+
+	Action {
+		id: addNewCssFileAction
+		text: qsTr("New CSS File")
+		shortcut: "Ctrl+Alt+S"
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.newCssFile();
 	}
 
 	Action {
