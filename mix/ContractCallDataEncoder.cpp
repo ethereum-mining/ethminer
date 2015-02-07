@@ -51,6 +51,8 @@ void ContractCallDataEncoder::push(bytes const& _b)
 
 QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& _returnParameters, bytes _value)
 {
+	bytesConstRef value(&_value);
+	bytes rawParam(32);
 	QList<QVariableDefinition*> r;
 	for (int k = 0; k <_returnParameters.length(); k++)
 	{
@@ -69,11 +71,10 @@ QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDecla
 		else
 			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Parameter declaration not found"));
 
-		bytes rawParam(_value.begin(), _value.begin() + 32);
+		value.populate(&rawParam);
 		def->decodeValue(rawParam);
 		r.push_back(def);
-		if (_value.size() > 32)
-			_value =  bytes(_value.begin() + 32, _value.end());
+		value =  value.cropped(32);
 		qDebug() << "decoded return value : " << dec->type() << " " << def->value();
 	}
 	return r;
