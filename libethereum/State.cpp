@@ -774,17 +774,29 @@ MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 	// Update difficulty according to timestamp.
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
+	MineInfo ret;
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	auto ret = m_pow.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHash(WithoutNonce), m_currentBlock.difficulty, _msTimeout, true, _turbo);
+	tie(ret, m_currentBlock.nonce) = m_pow.mine(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.difficulty, _msTimeout, true, _turbo);
 
 	if (!ret.completed)
 		m_currentBytes.clear();
 	else
-	{
 		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
-	}
 
 	return ret;
+}
+
+bool State::completeMine(h256 const& _nonce)
+{
+	if (!m_pow.verify(m_currentBlock.headerHash(WithoutNonce), _nonce, m_currentBlock.difficulty))
+		return false;
+
+	m_currentBlock.nonce = _nonce;
+	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
+
+	completeMine();
+
+	return true;
 }
 
 void State::completeMine()
