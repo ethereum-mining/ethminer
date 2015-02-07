@@ -44,7 +44,7 @@
             { "name": "eth_logs", "params": [{}], "order": [], "returns": []},
 
             { "name": "eth_getWork", "params": [], "order": [], "returns": []},
-            { "name": "eth_submitWork", "params": [""], "order": [], "returns": 0},
+            { "name": "eth_submitWork", "params": [""], "order": [], "returns": true},
 
             { "name": "db_put", "params": ["", "", ""], "order": [], "returns": true},
             { "name": "db_get", "params": ["", ""], "order": [], "returns": ""},
