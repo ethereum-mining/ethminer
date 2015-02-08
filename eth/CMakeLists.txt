@@ -17,6 +17,7 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ${Boost_CHRONO_LIBRARIES})
 
 if (READLINE_FOUND)
 	target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
