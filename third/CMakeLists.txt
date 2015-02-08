@@ -31,6 +31,8 @@ eth_add_executable(${EXECUTABLE}
 
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
+target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ${Boost_CHRONO_LIBRARIES})
 target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} qwebthree)
