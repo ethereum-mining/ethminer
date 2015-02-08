@@ -32,6 +32,8 @@ eth_add_executable(${EXECUTABLE}
 
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
+target_link_libraries(${EXECUTABLE} ${Boost_CHRONO_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARIES})
 target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} qwebthree)
@@ -40,9 +42,6 @@ target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} secp256k1)
-if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
-target_link_libraries(${EXECUTABLE} serpent)
-endif()
 target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} solidity)
 target_link_libraries(${EXECUTABLE} evmcore)
@@ -50,6 +49,10 @@ target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} web3jsonrpc)
 target_link_libraries(${EXECUTABLE} jsqrc)
 target_link_libraries(${EXECUTABLE} natspec)
+
+if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+	target_link_libraries(${EXECUTABLE} serpent)
+endif()
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
 eth_install_executable(${EXECUTABLE})
