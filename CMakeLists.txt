@@ -65,13 +65,13 @@ function(createBuildInfo)
 	endif ()
 
 	if (EVMJIT)
-		set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}/JIT")
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/JIT")
 	else ()
-		set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}/int")
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/int")
 	endif ()
 
 	if (PARANOIA)
-		set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}/PARA")
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/PARA")
 	endif ()
 
 	#cmake build type may be not specified when using msvc
