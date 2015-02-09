@@ -35,35 +35,42 @@ namespace eth
 const unsigned c_protocolVersion = 53;
 const unsigned c_databaseVersion = 5;
 
-template <size_t n> constexpr u256 eth_unit() { return eth_unit<n-1>() * u256(1000); }
-template <> constexpr u256 eth_unit<0>() { return u256(1); }
-
-static const vector<pair<u256, string>> g_units =
+template <size_t n> constexpr u256 exp10()
 {
-	{eth_unit<18>(), "Uether"},
-	{eth_unit<17>(), "Vether"},
-	{eth_unit<16>(), "Dether"},
-	{eth_unit<15>(), "Nether"},
-	{eth_unit<14>(), "Yether"},
-	{eth_unit<13>(), "Zether"},
-	{eth_unit<12>(), "Eether"},
-	{eth_unit<11>(), "Pether"},
-	{eth_unit<10>(), "Tether"},
-	{eth_unit<9>(), "Gether"},
-	{eth_unit<8>(), "Mether"},
-	{eth_unit<7>(), "grand"},
-	{eth_unit<6>(), "ether"},
-	{eth_unit<5>(), "finney"},
-	{eth_unit<4>(), "szabo"},
-	{eth_unit<3>(), "Gwei"},
-	{eth_unit<2>(), "Mwei"},
-	{eth_unit<1>(), "Kwei"},
-	{eth_unit<0>(), "wei"}
-};
+	return exp10<n - 1>() * u256(10);
+}
+
+template <> constexpr u256 exp10<0>()
+{
+	return u256(1);
+}
 
 vector<pair<u256, string>> const& units()
 {
-	return g_units;
+	static const vector<pair<u256, string>> s_units =
+	{
+		{exp10<54>(), "Uether"},
+		{exp10<51>(), "Vether"},
+		{exp10<48>(), "Dether"},
+		{exp10<45>(), "Nether"},
+		{exp10<42>(), "Yether"},
+		{exp10<39>(), "Zether"},
+		{exp10<36>(), "Eether"},
+		{exp10<33>(), "Pether"},
+		{exp10<30>(), "Tether"},
+		{exp10<27>(), "Gether"},
+		{exp10<24>(), "Mether"},
+		{exp10<21>(), "grand"},
+		{exp10<18>(), "ether"},
+		{exp10<15>(), "finney"},
+		{exp10<12>(), "szabo"},
+		{exp10<9>(), "Gwei"},
+		{exp10<6>(), "Mwei"},
+		{exp10<3>(), "Kwei"},
+		{exp10<0>(), "wei"}
+	};
+
+	return s_units;
 }
 
 std::string formatBalance(bigint const& _b)
@@ -78,13 +85,13 @@ std::string formatBalance(bigint const& _b)
 	else
 		b = (u256)_b;
 
-	if (b > g_units[0].first * 10000)
+	if (b > units()[0].first * 10000)
 	{
-		ret << (b / g_units[0].first) << " " << g_units[0].second;
+		ret << (b / units()[0].first) << " " << units()[0].second;
 		return ret.str();
 	}
 	ret << setprecision(5);
-	for (auto const& i: g_units)
+	for (auto const& i: units())
 		if (i.first != 1 && b >= i.first * 100)
 		{
 			ret << (double(b / (i.first / 1000)) / 1000.0) << " " << i.second;
