@@ -30,7 +30,10 @@
 #include <utility>
 #include <thread>
 #include <chrono>
+
+// Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
+
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libdevcore/RangeMask.h>

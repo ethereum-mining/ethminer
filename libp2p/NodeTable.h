@@ -1,16 +1,16 @@
 /*
  This file is part of cpp-ethereum.
- 
+
  cpp-ethereum is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
- 
+
  cpp-ethereum is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
- 
+
  You should have received a copy of the GNU General Public License
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -23,8 +23,11 @@
 
 #include <algorithm>
 #include <deque>
+
+// Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 #include <boost/integer/static_log2.hpp>
+
 #include <libp2p/UDP.h>
 #include "Common.h"
 
@@ -94,7 +97,7 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
  * obtain a list of potential nodes to connect to, and, passes events to
  * Host whenever a node is added or removed to/from the table.
  *
- * Thread-safety is ensured by modifying NodeEntry details via 
+ * Thread-safety is ensured by modifying NodeEntry details via
  * shared_ptr replacement instead of mutating values.
  *
  * NodeTable accepts a port for UDP and will listen to the port on all available
@@ -186,7 +189,7 @@ private:
 	
 	static unsigned const s_bucketSize = 16;			///< Denoted by k in [Kademlia]. Number of nodes stored in each bucket.
 	static unsigned const s_alpha = 3;				///< Denoted by \alpha in [Kademlia]. Number of concurrent FindNode requests.
-	
+
 	/// Intervals
 	
 	/* todo: replace boost::posix_time; change constants to upper camelcase */
@@ -361,7 +364,7 @@ struct FindNode: RLPXDatagram<FindNode>
 	
 	h512 target;
 	unsigned expiration;
-	
+
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << expiration; }
 	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = r[0].toHash<h512>(); expiration = r[1].toInt<unsigned>(); }
 };
