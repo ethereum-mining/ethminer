@@ -43,6 +43,10 @@ function(configureProject)
 	if (EVMJIT)
 		add_definitions(-DETH_EVMJIT)
 	endif()
+
+	if (HEADLESS)
+		add_definitions(-DETH_HEADLESS)
+	endif()
 endfunction()
 
 
