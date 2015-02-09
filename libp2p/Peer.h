@@ -62,6 +62,15 @@ public:
 
 	virtual bool operator<(Peer const& _p) const;
 	
+	/// This peers rating.
+	int rating() const { return m_rating; }
+	
+	/// Number of times connection has been attempted to peer.
+	int failedAttempts() const { return m_failedAttempts; }
+	
+	/// Reason peer was previously disconnected.
+	DisconnectReason lastDisconnect() const { return m_lastDisconnect; }
+	
 protected:
 	int m_score = 0;									///< All time cumulative.
 	int m_rating = 0;									///< Trending.
