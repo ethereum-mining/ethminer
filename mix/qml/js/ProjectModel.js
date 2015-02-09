@@ -90,7 +90,7 @@ function addFile(fileName) {
 	var isJs = extension === ".js";
 	var isImg = extension === ".png"  || extension === ".gif" || extension === ".jpg" || extension === ".svg";
 	var syntaxMode = isContract ? "solidity" : isJs ? "javascript" : isHtml ? "htmlmixed" : isCss ? "css" : "";
-	var groupName = isContract ? "Contracts" : isJs ? "Javascript" : isHtml ? "HTML" : isCss ? "Styles" : isImg ? "Images" : "Misc";
+	var groupName = isContract ? qsTr("Contracts") : isJs ? qsTr("Javascript") : isHtml ? qsTr("Web Pages") : isCss ? qsTr("Styles") : isImg ? qsTr("Images") : qsTr("Misc");
 	var docData = {
 		contract: false,
 		path: p,

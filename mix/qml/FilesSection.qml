@@ -54,6 +54,12 @@ ColumnLayout {
 		source: "qrc:/qml/fonts/SourceSansPro-Regular.ttf"
 	}
 
+	FontLoader
+	{
+		id: semiBoldFont
+		source: "qrc:/qml/fonts/SourceSansPro-Bold.ttf"
+	}
+
 	RowLayout
 	{
 		anchors.top: parent.top
@@ -64,12 +70,12 @@ ColumnLayout {
 		Image {
 			source: "qrc:/qml/img/opentriangleindicator_filesproject.png"
 			width: 15
-			sourceSize.width: 15
+			sourceSize.width: 12
 			id: imgArrow
 			anchors.right: section.left
-			anchors.rightMargin: 5
+			anchors.rightMargin: 8
 			anchors.top: parent.top
-			anchors.topMargin: 8
+			anchors.topMargin: 6
 		}
 
 		Text
@@ -79,10 +85,8 @@ ColumnLayout {
 			anchors.left: parent.left
 			anchors.leftMargin: Style.general.leftMargin
 			color: Style.documentsList.sectionColor
-			font.family: fileNameFont.name
-			font.pointSize: Style.documentsList.fontSize
-			font.weight: Font.Bold
-			font.letterSpacing: 1
+			font.family: semiBoldFont.name
+			font.pointSize: Style.documentsList.sectionFontSize
 			states: [
 				State {
 					name: "hidden"
@@ -154,6 +158,9 @@ ColumnLayout {
 								rootItem.isSelected = true;
 							else
 								rootItem.isSelected = false;
+
+							if (rootItem.isSelected && section.state === "hidden")
+								section.state = "";
 						}
 					}
 				}
