@@ -206,7 +206,8 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 		TypePointers const& parameterTypes = function.getParameterTypes();
 		vector<ASTPointer<Expression const>> const& callArguments = _functionCall.getArguments();
 		vector<ASTPointer<ASTString>> const& callArgumentNames = _functionCall.getNames();
-		solAssert(callArguments.size() == parameterTypes.size(), "");
+		if (function.getLocation() != Location::SHA3)
+			solAssert(callArguments.size() == parameterTypes.size(), "");
 
 		vector<ASTPointer<Expression const>> arguments;
 		if (callArgumentNames.empty())
@@ -274,7 +275,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			m_context << u256(0) << eth::Instruction::CODECOPY;
 
 			unsigned length = bytecode.size();
-			length += appendArgumentCopyToMemory(function.getParameterTypes(), arguments, length);
+			length += appendArgumentsCopyToMemory(arguments, function.getParameterTypes(), length);
 			// size, offset, endowment
 			m_context << u256(length) << u256(0);
 			if (function.valueSet())
@@ -325,9 +326,11 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			m_context << eth::Instruction::SUICIDE;
 			break;
 		case Location::SHA3:
-			appendExpressionCopyToMemory(*function.getParameterTypes().front(), *arguments.front());
-			m_context << u256(32) << u256(0) << eth::Instruction::SHA3;
+		{
+			unsigned length = appendArgumentsCopyToMemory(arguments, TypePointers(), 0, false);
+			m_context << u256(length) << u256(0) << eth::Instruction::SHA3;
 			break;
+		}
 		case Location::LOG0:
 		case Location::LOG1:
 		case Location::LOG2:
@@ -797,7 +800,7 @@ void ExpressionCompiler::appendExternalFunctionCall(FunctionType const& _functio
 
 	// reserve space for the function identifier
 	unsigned dataOffset = bare ? 0 : CompilerUtils::dataStartOffset;
-	dataOffset += appendArgumentCopyToMemory(_functionType.getParameterTypes(), _arguments, dataOffset);
+	dataOffset += appendArgumentsCopyToMemory(_arguments, _functionType.getParameterTypes(), dataOffset);
 
 	//@todo only return the first return value for now
 	Type const* firstType = _functionType.getReturnParameterTypes().empty() ? nullptr :
@@ -833,28 +836,34 @@ void ExpressionCompiler::appendExternalFunctionCall(FunctionType const& _functio
 	}
 }
 
-unsigned ExpressionCompiler::appendArgumentCopyToMemory(TypePointers const& _types,
-														vector<ASTPointer<Expression const>> const& _arguments,
-														unsigned _memoryOffset)
+unsigned ExpressionCompiler::appendArgumentsCopyToMemory(vector<ASTPointer<Expression const>> const& _arguments,
+														 TypePointers const& _types,
+														 unsigned _memoryOffset,
+														 bool _padToWordBoundaries)
 {
+	solAssert(_types.empty() || _types.size() == _arguments.size(), "");
 	unsigned length = 0;
-	for (unsigned i = 0; i < _arguments.size(); ++i)
-		length += appendExpressionCopyToMemory(*_types[i], *_arguments[i], _memoryOffset + length);
+	for (size_t i = 0; i < _arguments.size(); ++i)
+	{
+		_arguments[i]->accept(*this);
+		TypePointer const& expectedType = _types.empty() ? _arguments[i]->getType()->getRealType() : _types[i];
+		appendTypeConversion(*_arguments[i]->getType(), *expectedType, true);
+		length += appendTypeMoveToMemory(*expectedType, _arguments[i]->getLocation(),
+										 _memoryOffset + length, _padToWordBoundaries);
+	}
 	return length;
 }
 
-unsigned ExpressionCompiler::appendTypeConversionAndMoveToMemory(Type const& _expectedType, Type const& _type,
-																 Location const& _location, unsigned _memoryOffset)
+unsigned ExpressionCompiler::appendTypeMoveToMemory(Type const& _type, Location const& _location, unsigned _memoryOffset, bool _padToWordBoundaries)
 {
-	appendTypeConversion(_type, _expectedType, true);
-	unsigned const c_numBytes = CompilerUtils::getPaddedSize(_expectedType.getCalldataEncodedSize());
+	unsigned const c_encodedSize = _type.getCalldataEncodedSize();
+	unsigned const c_numBytes = _padToWordBoundaries ? CompilerUtils::getPaddedSize(c_encodedSize) : c_encodedSize;
 	if (c_numBytes == 0 || c_numBytes > 32)
 		BOOST_THROW_EXCEPTION(CompilerError()
 							  << errinfo_sourceLocation(_location)
-							  << errinfo_comment("Type " + _expectedType.toString() + " not yet supported."));
-	bool const c_leftAligned = _expectedType.getCategory() == Type::Category::STRING;
-	bool const c_padToWords = true;
-	return CompilerUtils(m_context).storeInMemory(_memoryOffset, c_numBytes, c_leftAligned, c_padToWords);
+							  << errinfo_comment("Type " + _type.toString() + " not yet supported."));
+	bool const c_leftAligned = _type.getCategory() == Type::Category::STRING;
+	return CompilerUtils(m_context).storeInMemory(_memoryOffset, c_numBytes, c_leftAligned, _padToWordBoundaries);
 }
 
 unsigned ExpressionCompiler::appendExpressionCopyToMemory(Type const& _expectedType,
@@ -862,7 +871,8 @@ unsigned ExpressionCompiler::appendExpressionCopyToMemory(Type const& _expectedT
 														  unsigned _memoryOffset)
 {
 	_expression.accept(*this);
-	return appendTypeConversionAndMoveToMemory(_expectedType, *_expression.getType(), _expression.getLocation(), _memoryOffset);
+	appendTypeConversion(*_expression.getType(), _expectedType, true);
+	return appendTypeMoveToMemory(_expectedType, _expression.getLocation(), _memoryOffset);
 }
 
 void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& _varDecl)
@@ -870,20 +880,20 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 	FunctionType accessorType(_varDecl);
 
 	unsigned length = 0;
-	TypePointers const& params = accessorType.getParameterTypes();
+	TypePointers const& paramTypes = accessorType.getParameterTypes();
 	// move arguments to memory
-	for (TypePointer const& param: boost::adaptors::reverse(params))
-		length += appendTypeConversionAndMoveToMemory(*param, *param, Location(), length);
+	for (TypePointer const& paramType: boost::adaptors::reverse(paramTypes))
+		length += appendTypeMoveToMemory(*paramType, Location(), length);
 
 	// retrieve the position of the variable
 	m_context << m_context.getStorageLocationOfVariable(_varDecl);
 	TypePointer returnType = _varDecl.getType();
 
-	for (TypePointer const& param: params)
+	for (TypePointer const& paramType: paramTypes)
 	{
 		// move offset to memory
 		CompilerUtils(m_context).storeInMemory(length);
-		unsigned argLen = CompilerUtils::getPaddedSize(param->getCalldataEncodedSize());
+		unsigned argLen = CompilerUtils::getPaddedSize(paramType->getCalldataEncodedSize());
 		length -= argLen;
 		m_context << u256(argLen + 32) << u256(length) << eth::Instruction::SHA3;
 
