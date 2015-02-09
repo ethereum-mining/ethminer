@@ -44,7 +44,8 @@ struct StatsAgg
 	void output(char const* _name, std::ostream& _os)
 	{
 		auto avg = tot / count;
-		_os << std::setw(12) << std::left  << _name
+		_os << std::setfill(' ')
+			<< std::setw(12) << std::left  << _name
 			<< std::setw(10) << std::right << std::chrono::duration_cast<unit>(tot).count()
 			<< std::setw(10) << std::right << std::chrono::duration_cast<unit>(avg).count()
 			<< std::setw(10) << std::right << std::chrono::duration_cast<unit>(min).count()

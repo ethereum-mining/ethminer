@@ -30,21 +30,6 @@ namespace
 {
 typedef ReturnCode(*EntryFuncPtr)(Runtime*);
 
-ReturnCode runEntryFunc(EntryFuncPtr _mainFunc, Runtime* _runtime)
-{
-	// That function uses long jumps to handle "execeptions".
-	// Do not create any non-POD objects here
-
-	ReturnCode returnCode{};
-	auto sj = setjmp(_runtime->getJmpBuf());
-	if (sj == 0)
-		returnCode = _mainFunc(_runtime);
-	else
-		returnCode = static_cast<ReturnCode>(sj);
-
-	return returnCode;
-}
-
 std::string codeHash(i256 const& _hash)
 {
 	static const auto size = sizeof(_hash);
@@ -162,7 +147,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	assert(entryFuncPtr); //TODO: Replace it with safe exception
 
 	listener->stateChanged(ExecState::Execution);
-	auto returnCode = runEntryFunc(entryFuncPtr, &runtime);
+	auto returnCode = entryFuncPtr(&runtime);
 	listener->stateChanged(ExecState::Return);
 
 	if (returnCode == ReturnCode::Return)

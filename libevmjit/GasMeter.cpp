@@ -104,7 +104,7 @@ GasMeter::GasMeter(llvm::IRBuilder<>& _builder, RuntimeManager& _runtimeManager)
 	m_builder.CreateCondBr(isOutOfGas, outOfGasBB, updateBB);
 
 	m_builder.SetInsertPoint(outOfGasBB);
-	m_runtimeManager.raiseException(ReturnCode::OutOfGas);
+	m_runtimeManager.abort();
 	m_builder.CreateUnreachable();
 
 	m_builder.SetInsertPoint(updateBB);

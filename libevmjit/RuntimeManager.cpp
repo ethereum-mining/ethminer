@@ -83,12 +83,17 @@ llvm::Twine getName(RuntimeData::Index _index)
 }
 }
 
-RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeBegin, code_iterator _codeEnd):
+RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, llvm::Value* _jmpBuf, code_iterator _codeBegin, code_iterator _codeEnd):
 	CompilerHelper(_builder),
+	m_jmpBuf(_jmpBuf),
 	m_codeBegin(_codeBegin),
 	m_codeEnd(_codeEnd)
 {
-	m_longjmp = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::longjmp);
+	m_longjmp = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::eh_sjlj_longjmp);
+
+	// save jmpBuf to be used in helper functions
+	auto ptr = m_builder.CreateStructGEP(getRuntimePtr(), 2);
+	m_builder.CreateStore(m_jmpBuf, ptr, "jmpBufExt");
 
 	// Unpack data
 	auto rtPtr = getRuntimePtr();
@@ -160,9 +165,10 @@ void RuntimeManager::registerSuicide(llvm::Value* _balanceAddress)
 	set(RuntimeData::SuicideDestAddress, _balanceAddress);
 }
 
-void RuntimeManager::raiseException(ReturnCode _returnCode)
+void RuntimeManager::abort(llvm::Value* _jmpBuf)
 {
-	m_builder.CreateCall2(m_longjmp, getJmpBuf(), Constant::get(_returnCode));
+	auto longjmp = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::eh_sjlj_longjmp);
+	createCall(longjmp, {_jmpBuf});
 }
 
 llvm::Value* RuntimeManager::get(Instruction _inst)
@@ -207,10 +213,10 @@ llvm::Value* RuntimeManager::getCallDataSize()
 	return getBuilder().CreateZExt(value, Type::Word);
 }
 
-llvm::Value* RuntimeManager::getJmpBuf()
+llvm::Value* RuntimeManager::getJmpBufExt()
 {
-	auto ptr = getBuilder().CreateStructGEP(getRuntimePtr(), 2, "jmpbufPtr");
-	return getBuilder().CreateLoad(ptr, "jmpbuf");
+	auto ptr = getBuilder().CreateStructGEP(getRuntimePtr(), 2);
+	return getBuilder().CreateLoad(ptr, "jmpBufExt");
 }
 
 llvm::Value* RuntimeManager::getGas()
