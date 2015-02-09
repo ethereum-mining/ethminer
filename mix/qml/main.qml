@@ -54,6 +54,7 @@ ApplicationWindow {
 			MenuItem { action: toggleTransactionLogAction }
 			MenuItem { action: toggleWebPreviewAction }
 			MenuItem { action: toggleWebPreviewOrientationAction }
+			MenuItem { action: toggleCallsInLog }
 		}
 	}
 
@@ -160,6 +161,15 @@ ApplicationWindow {
 		checkable: true
 		checked: mainContent.webViewHorizontal
 		onTriggered: mainContent.toggleWebPreviewOrientation();
+	}
+
+	Action {
+		id: toggleCallsInLog
+		text: qsTr("Show Calls in Transaction Log")
+		shortcut: ""
+		checkable: true
+		checked: mainContent.rightPane.transactionLog.showLogs
+		onTriggered: mainContent.rightPane.transactionLog.showLogs = !mainContent.rightPane.transactionLog.showLogs
 	}
 
 	Action {
