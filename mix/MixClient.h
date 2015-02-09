@@ -45,9 +45,8 @@ public:
 	void resetState(u256 _balance);
 	KeyPair const& userAccount() const { return m_userAccount; }
 	void mine();
-	ExecutionResult const& execution(unsigned _block, unsigned _transaction) const;
 	ExecutionResult const& lastExecution() const;
-	ExecutionResults const& pendingExecutions() const;
+	ExecutionResults const& executions() const;
 
 	//dev::eth::Interface
 	void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice) override;
@@ -90,7 +89,7 @@ public:
 	bool submitNonce(h256 const&) override { return false; }
 
 private:
-	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state);
+	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state, bool _call);
 	void noteChanged(h256Set const& _filters);
 	dev::eth::State asOf(int _block) const;
 	MixBlockChain& bc() { return *m_bc; }
@@ -105,8 +104,7 @@ private:
 	mutable std::mutex m_filterLock;
 	std::map<h256, dev::eth::InstalledFilter> m_filters;
 	std::map<unsigned, dev::eth::ClientWatch> m_watches;
-	std::vector<ExecutionResults> m_executions;
-	ExecutionResults m_pendingExecutions;
+	ExecutionResults m_executions;
 	std::string m_dbPath;
 	unsigned m_minigThreads;
 };
