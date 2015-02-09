@@ -27,7 +27,9 @@
 
 #pragma once
 
+// Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
+
 #include <memory>
 #include <QUrl>
 #include <QObject>

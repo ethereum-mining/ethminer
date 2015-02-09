@@ -25,8 +25,11 @@
 #include <mutex>
 #include <list>
 #include <atomic>
+
+// Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 #include <boost/utility.hpp>
+
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
@@ -161,7 +164,7 @@ public:
 
 	/// Stop the network subsystem.
 	void stopNetwork() override { m_net.stop(); }
-	
+
 	/// Is network working? there may not be any peers yet.
 	bool isNetworkStarted() const override { return m_net.isStarted(); }
 
