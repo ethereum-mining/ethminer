@@ -22,11 +22,14 @@ public:
 	static size_t maxStackSize;
 
 private:
+	llvm::Function* getPopFunc();
+	llvm::Function* getGetFunc();
+
 	RuntimeManager& m_runtimeManager;
 
+	llvm::Function* m_pop = nullptr;
 	llvm::Function* m_push;
-	llvm::Function* m_pop;
-	llvm::Function* m_get;
+	llvm::Function* m_get = nullptr;
 	llvm::Function* m_set;
 
 	llvm::Value* m_arg;

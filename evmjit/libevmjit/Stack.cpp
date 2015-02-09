@@ -25,18 +25,81 @@ Stack::Stack(llvm::IRBuilder<>& _builder, RuntimeManager& _runtimeManager):
 	llvm::Type* pushArgTypes[] = {Type::RuntimePtr, Type::WordPtr};
 	m_push = Function::Create(FunctionType::get(Type::Void, pushArgTypes, false), Linkage::ExternalLinkage, "stack_push", module);
 
-	llvm::Type* popArgTypes[] = {Type::RuntimePtr, Type::Size};
-	m_pop = Function::Create(FunctionType::get(Type::Void, popArgTypes, false), Linkage::ExternalLinkage, "stack_pop", module);
-
 	llvm::Type* getSetArgTypes[] = {Type::RuntimePtr, Type::Size, Type::WordPtr};
-	m_get = Function::Create(FunctionType::get(Type::Void, getSetArgTypes, false), Linkage::ExternalLinkage, "stack_get", module);
 	m_set = Function::Create(FunctionType::get(Type::Void, getSetArgTypes, false), Linkage::ExternalLinkage, "stack_set", module);
+}
+
+llvm::Function* Stack::getPopFunc()
+{
+	auto& func = m_pop;
+	if (!func)
+	{
+		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Size};
+		func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::ExternalLinkage, "stack.pop", getModule());
+		auto extPopFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Bool, argTypes, false), llvm::Function::ExternalLinkage, "stack_pop", getModule());
+
+		auto rt = &func->getArgumentList().front();
+		rt->setName("rt");
+		auto index = rt->getNextNode();
+		index->setName("index");
+
+		InsertPointGuard guard{m_builder};
+		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), {}, func);
+		auto underflowBB = llvm::BasicBlock::Create(m_builder.getContext(), "Underflow", func);
+		auto returnBB = llvm::BasicBlock::Create(m_builder.getContext(), "Return", func);
+
+		m_builder.SetInsertPoint(entryBB);
+		auto ok = createCall(extPopFunc, {rt, index});
+		m_builder.CreateCondBr(ok, returnBB, underflowBB);
+
+		m_builder.SetInsertPoint(underflowBB);
+		m_runtimeManager.raiseException(ReturnCode::StackTooSmall);
+		m_builder.CreateUnreachable();
+
+		m_builder.SetInsertPoint(returnBB);
+		m_builder.CreateRetVoid();
+	}
+	return func;
+}
+
+llvm::Function* Stack::getGetFunc()
+{
+	auto& func = m_get;
+	if (!func)
+	{
+		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Size};
+		func = llvm::Function::Create(llvm::FunctionType::get(Type::WordPtr, argTypes, false), llvm::Function::ExternalLinkage, "stack.get", getModule());
+		auto extGetFunc = llvm::Function::Create(llvm::FunctionType::get(Type::WordPtr, argTypes, false), llvm::Function::ExternalLinkage, "stack_get", getModule());
+
+		auto rt = &func->getArgumentList().front();
+		rt->setName("rt");
+		auto index = rt->getNextNode();
+		index->setName("index");
+
+		InsertPointGuard guard{m_builder};
+		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), {}, func);
+		auto underflowBB = llvm::BasicBlock::Create(m_builder.getContext(), "Underflow", func);
+		auto returnBB = llvm::BasicBlock::Create(m_builder.getContext(), "Return", func);
+
+		m_builder.SetInsertPoint(entryBB);
+		auto valuePtr = createCall(extGetFunc, {rt, index});
+		auto ok = m_builder.CreateICmpNE(valuePtr, llvm::ConstantPointerNull::get(Type::WordPtr));
+		m_builder.CreateCondBr(ok, returnBB, underflowBB);
+
+		m_builder.SetInsertPoint(underflowBB);
+		m_runtimeManager.raiseException(ReturnCode::StackTooSmall);
+		m_builder.CreateUnreachable();
+
+		m_builder.SetInsertPoint(returnBB);
+		m_builder.CreateRet(valuePtr);
+	}
+	return func;
 }
 
 llvm::Value* Stack::get(size_t _index)
 {
-	m_builder.CreateCall3(m_get, m_runtimeManager.getRuntimePtr(), llvm::ConstantInt::get(Type::Size, _index, false), m_arg);
-	return m_builder.CreateLoad(m_arg);
+	auto valuePtr = createCall(getGetFunc(), {m_runtimeManager.getRuntimePtr(), m_builder.getInt64(_index)});
+	return m_builder.CreateLoad(valuePtr);
 }
 
 void Stack::set(size_t _index, llvm::Value* _value)
@@ -47,7 +110,7 @@ void Stack::set(size_t _index, llvm::Value* _value)
 
 void Stack::pop(size_t _count)
 {
-	m_builder.CreateCall2(m_pop, m_runtimeManager.getRuntimePtr(), llvm::ConstantInt::get(Type::Size, _count, false));
+	createCall(getPopFunc(), {m_runtimeManager.getRuntimePtr(), m_builder.getInt64(_count)});
 }
 
 void Stack::push(llvm::Value* _value)
@@ -67,13 +130,14 @@ extern "C"
 {
 	using namespace dev::eth::jit;
 
-	EXPORT void stack_pop(Runtime* _rt, uint64_t _count)
+	EXPORT bool stack_pop(Runtime* _rt, uint64_t _count)
 	{
 		auto& stack = _rt->getStack();
 		if (stack.size() < _count)
-			longjmp(_rt->getJmpBuf(), static_cast<int>(ReturnCode::StackTooSmall));
+			return false;
 
 		stack.erase(stack.end() - _count, stack.end());
+		return true;
 	}
 
 	EXPORT void stack_push(Runtime* _rt, i256 const* _word)
@@ -85,22 +149,18 @@ extern "C"
 			Stack::maxStackSize = stack.size();
 	}
 
-	EXPORT void stack_get(Runtime* _rt, uint64_t _index, i256* o_ret)
+	EXPORT i256* stack_get(Runtime* _rt, uint64_t _index)
 	{
 		auto& stack = _rt->getStack();
-		// TODO: encode _index and stack size in the return code
-		if (stack.size() <= _index)
-			longjmp(_rt->getJmpBuf(), static_cast<int>(ReturnCode::StackTooSmall));
-
-		*o_ret = *(stack.rbegin() + _index);
+		return _index < stack.size() ? &*(stack.rbegin() + _index) : nullptr;
 	}
 
 	EXPORT void stack_set(Runtime* _rt, uint64_t _index, i256 const* _word)
 	{
 		auto& stack = _rt->getStack();
-		// TODO: encode _index and stack size in the return code
-		if (stack.size() <= _index)
-			longjmp(_rt->getJmpBuf(), static_cast<int>(ReturnCode::StackTooSmall));
+		assert(_index < stack.size());
+		if (_index >= stack.size())
+			return;
 
 		*(stack.rbegin() + _index) = *_word;
 	}
