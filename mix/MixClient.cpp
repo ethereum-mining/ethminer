@@ -15,7 +15,6 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file MixClient.cpp
- * @author Yann yann@ethdev.com
  * @author Arkadiy Paronyan arkadiy@ethdev.com
  * @date 2015
  * Ethereum IDE client.
@@ -90,11 +89,10 @@ void MixClient::resetState(u256 _balance)
 	m_state = eth::State(m_userAccount.address(), m_stateDB, BaseState::Empty);
 	m_state.sync(bc());
 	m_startState = m_state;
-	m_pendingExecutions.clear();
 	m_executions.clear();
 }
 
-void MixClient::executeTransaction(Transaction const& _t, State& _state)
+void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _call)
 {
 	bytes rlp = _t.rlp();
 
@@ -171,30 +169,33 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state)
 	d.value = _t.value();
 	if (_t.isCreation())
 		d.contractAddress = right160(sha3(rlpList(_t.sender(), _t.nonce())));
-	d.receipt = TransactionReceipt(execState.rootHash(), execution.gasUsed(), execution.logs()); //TODO: track gas usage
-	m_pendingExecutions.emplace_back(std::move(d));
+	if (!_call)
+		d.transactionIndex = m_state.pending().size();
+	m_executions.emplace_back(std::move(d));
 
 	// execute on a state
-	_state.execute(lastHashes, rlp, nullptr, true);
-
-	// collect watches
-	h256Set changed;
-	Guard l(m_filterLock);
-	for (std::pair<h256 const, eth::InstalledFilter>& i: m_filters)
-		if ((unsigned)i.second.filter.latest() > bc().number())
-		{
-			// acceptable number.
-			auto m = i.second.filter.matches(_state.receipt(_state.pending().size() - 1));
-			if (m.size())
+	if (!_call)
+	{
+		_state.execute(lastHashes, rlp, nullptr, true);
+		// collect watches
+		h256Set changed;
+		Guard l(m_filterLock);
+		for (std::pair<h256 const, eth::InstalledFilter>& i: m_filters)
+			if ((unsigned)i.second.filter.latest() > bc().number())
 			{
-				// filter catches them
-				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, bc().number() + 1));
-				changed.insert(i.first);
+				// acceptable number.
+				auto m = i.second.filter.matches(_state.receipt(_state.pending().size() - 1));
+				if (m.size())
+				{
+					// filter catches them
+					for (LogEntry const& l: m)
+						i.second.changes.push_back(LocalisedLogEntry(l, bc().number() + 1));
+					changed.insert(i.first);
+				}
 			}
-		}
-	changed.insert(dev::eth::PendingChangedFilter);
-	noteChanged(changed);
+		changed.insert(dev::eth::PendingChangedFilter);
+		noteChanged(changed);
+	}
 }
 
 void MixClient::mine()
@@ -206,28 +207,18 @@ void MixClient::mine()
 	bc().import(m_state.blockData(), m_stateDB);
 	m_state.sync(bc());
 	m_startState = m_state;
-	m_executions.emplace_back(std::move(m_pendingExecutions));
 	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
 	noteChanged(changed);
 }
 
-ExecutionResult const& MixClient::execution(unsigned _block, unsigned _transaction) const
-{
-	if (_block == bc().number() + 1)
-		return m_pendingExecutions.at(_transaction);
-	return m_executions.at(_block - 1).at(_transaction);
-}
-
 ExecutionResult const& MixClient::lastExecution() const
 {
-	if (m_pendingExecutions.size() > 0)
-		return m_pendingExecutions.back();
-	return m_executions.back().back();
+	return m_executions.back();
 }
 
-ExecutionResults const& MixClient::pendingExecutions() const
+ExecutionResults const& MixClient::executions() const
 {
-	return m_pendingExecutions;
+	return m_executions;
 }
 
 State MixClient::asOf(int _block) const
@@ -246,7 +237,7 @@ void MixClient::transact(Secret _secret, u256 _value, Address _dest, bytes const
 	WriteGuard l(x_state);
 	u256 n = m_state.transactionsFrom(toAddress(_secret));
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
-	executeTransaction(t, m_state);
+	executeTransaction(t, m_state, false);
 }
 
 Address MixClient::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
@@ -254,7 +245,7 @@ Address MixClient::transact(Secret _secret, u256 _endowment, bytes const& _init,
 	WriteGuard l(x_state);
 	u256 n = m_state.transactionsFrom(toAddress(_secret));
 	eth::Transaction t(_endowment, _gasPrice, _gas, _init, n, _secret);
-	executeTransaction(t, m_state);
+	executeTransaction(t, m_state, false);
 	Address address = right160(sha3(rlpList(t.sender(), t.nonce())));
 	return address;
 }
@@ -263,7 +254,7 @@ void MixClient::inject(bytesConstRef _rlp)
 {
 	WriteGuard l(x_state);
 	eth::Transaction t(_rlp, CheckSignature::None);
-	executeTransaction(t, m_state);
+	executeTransaction(t, m_state, false);
 }
 
 void MixClient::flushTransactions()
@@ -282,8 +273,8 @@ bytes MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
 	bytes rlp = t.rlp();
 	WriteGuard lw(x_state); //TODO: lock is required only for last execution state
-	executeTransaction(t, temp);
-	return m_pendingExecutions.back().returnValue;
+	executeTransaction(t, temp, true);
+	return lastExecution().returnValue;
 }
 
 u256 MixClient::balanceAt(Address _a, int _block) const
