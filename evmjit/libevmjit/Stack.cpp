@@ -34,14 +34,17 @@ llvm::Function* Stack::getPopFunc()
 	auto& func = m_pop;
 	if (!func)
 	{
-		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Size};
+		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Size, Type::BytePtr};
 		func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::ExternalLinkage, "stack.pop", getModule());
-		auto extPopFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Bool, argTypes, false), llvm::Function::ExternalLinkage, "stack_pop", getModule());
+		llvm::Type* extArgTypes[] = {Type::RuntimePtr, Type::Size};
+		auto extPopFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Bool, extArgTypes, false), llvm::Function::ExternalLinkage, "stack_pop", getModule());
 
 		auto rt = &func->getArgumentList().front();
 		rt->setName("rt");
 		auto index = rt->getNextNode();
 		index->setName("index");
+		auto jmpBuf = index->getNextNode();
+		jmpBuf->setName("jmpBuf");
 
 		InsertPointGuard guard{m_builder};
 		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), {}, func);
@@ -50,10 +53,10 @@ llvm::Function* Stack::getPopFunc()
 
 		m_builder.SetInsertPoint(entryBB);
 		auto ok = createCall(extPopFunc, {rt, index});
-		m_builder.CreateCondBr(ok, returnBB, underflowBB);
+		m_builder.CreateCondBr(ok, returnBB, underflowBB); //TODO: Add branch weight
 
 		m_builder.SetInsertPoint(underflowBB);
-		m_runtimeManager.raiseException(ReturnCode::StackTooSmall);
+		m_runtimeManager.abort(jmpBuf);
 		m_builder.CreateUnreachable();
 
 		m_builder.SetInsertPoint(returnBB);
@@ -67,14 +70,17 @@ llvm::Function* Stack::getGetFunc()
 	auto& func = m_get;
 	if (!func)
 	{
-		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Size};
+		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Size, Type::BytePtr};
 		func = llvm::Function::Create(llvm::FunctionType::get(Type::WordPtr, argTypes, false), llvm::Function::ExternalLinkage, "stack.get", getModule());
-		auto extGetFunc = llvm::Function::Create(llvm::FunctionType::get(Type::WordPtr, argTypes, false), llvm::Function::ExternalLinkage, "stack_get", getModule());
+		llvm::Type* extArgTypes[] = {Type::RuntimePtr, Type::Size};
+		auto extGetFunc = llvm::Function::Create(llvm::FunctionType::get(Type::WordPtr, extArgTypes, false), llvm::Function::ExternalLinkage, "stack_get", getModule());
 
 		auto rt = &func->getArgumentList().front();
 		rt->setName("rt");
 		auto index = rt->getNextNode();
 		index->setName("index");
+		auto jmpBuf = index->getNextNode();
+		jmpBuf->setName("jmpBuf");
 
 		InsertPointGuard guard{m_builder};
 		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), {}, func);
@@ -84,10 +90,10 @@ llvm::Function* Stack::getGetFunc()
 		m_builder.SetInsertPoint(entryBB);
 		auto valuePtr = createCall(extGetFunc, {rt, index});
 		auto ok = m_builder.CreateICmpNE(valuePtr, llvm::ConstantPointerNull::get(Type::WordPtr));
-		m_builder.CreateCondBr(ok, returnBB, underflowBB);
+		m_builder.CreateCondBr(ok, returnBB, underflowBB); //TODO: Add branch weight
 
 		m_builder.SetInsertPoint(underflowBB);
-		m_runtimeManager.raiseException(ReturnCode::StackTooSmall);
+		m_runtimeManager.abort(jmpBuf);
 		m_builder.CreateUnreachable();
 
 		m_builder.SetInsertPoint(returnBB);
@@ -98,7 +104,7 @@ llvm::Function* Stack::getGetFunc()
 
 llvm::Value* Stack::get(size_t _index)
 {
-	auto valuePtr = createCall(getGetFunc(), {m_runtimeManager.getRuntimePtr(), m_builder.getInt64(_index)});
+	auto valuePtr = createCall(getGetFunc(), {m_runtimeManager.getRuntimePtr(), m_builder.getInt64(_index), m_runtimeManager.getJmpBuf()});
 	return m_builder.CreateLoad(valuePtr);
 }
 
@@ -110,7 +116,7 @@ void Stack::set(size_t _index, llvm::Value* _value)
 
 void Stack::pop(size_t _count)
 {
-	createCall(getPopFunc(), {m_runtimeManager.getRuntimePtr(), m_builder.getInt64(_count)});
+	createCall(getPopFunc(), {m_runtimeManager.getRuntimePtr(), m_builder.getInt64(_count), m_runtimeManager.getJmpBuf()});
 }
 
 void Stack::push(llvm::Value* _value)
