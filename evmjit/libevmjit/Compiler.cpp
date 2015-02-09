@@ -15,6 +15,7 @@
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IntrinsicInst.h>
+#include <llvm/IR/MDBuilder.h>
 #include <llvm/PassManager.h>
 #include <llvm/Transforms/Scalar.h>
 #include "preprocessor/llvm_includes_end.h"
@@ -89,9 +90,6 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 			begin = next;
 		}
 	}
-
-	// TODO: Create Stop basic block on demand
-	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
 }
 
 llvm::BasicBlock* Compiler::getJumpTableBlock()
@@ -134,21 +132,40 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	m_mainFunc = llvm::Function::Create(mainFuncType, llvm::Function::ExternalLinkage, _id, module.get());
 	m_mainFunc->getArgumentList().front().setName("rt");
 
-	// Create the basic blocks.
-	auto entryBlock = llvm::BasicBlock::Create(m_builder.getContext(), "entry", m_mainFunc);
+	// Create entry basic block
+	auto entryBlock = llvm::BasicBlock::Create(m_builder.getContext(), {}, m_mainFunc);
 	m_builder.SetInsertPoint(entryBlock);
+
+	auto jmpBufWords = m_builder.CreateAlloca(Type::BytePtr, m_builder.getInt64(3), "jmpBuf.words");
+	auto frameaddress = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::frameaddress);
+	auto fp = m_builder.CreateCall(frameaddress, m_builder.getInt32(0), "fp");
+	m_builder.CreateStore(fp, jmpBufWords);
+	auto stacksave = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::stacksave);
+	auto sp = m_builder.CreateCall(stacksave, "sp");
+	auto jmpBufSp = m_builder.CreateConstInBoundsGEP1_64(jmpBufWords, 2, "jmpBuf.sp");
+	m_builder.CreateStore(sp, jmpBufSp);
+	auto setjmp = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::eh_sjlj_setjmp);
+	auto jmpBuf = m_builder.CreateBitCast(jmpBufWords, Type::BytePtr, "jmpBuf");
+	auto r = m_builder.CreateCall(setjmp, jmpBuf);
+	auto normalFlow = m_builder.CreateICmpEQ(r, m_builder.getInt32(0));
 
 	createBasicBlocks(_begin, _end);
 
 	// Init runtime structures.
-	RuntimeManager runtimeManager(m_builder, _begin, _end);
+	RuntimeManager runtimeManager(m_builder, jmpBuf, _begin, _end);
 	GasMeter gasMeter(m_builder, runtimeManager);
 	Memory memory(runtimeManager, gasMeter);
 	Ext ext(runtimeManager, memory);
 	Stack stack(m_builder, runtimeManager);
 	Arith256 arith(m_builder);
 
-	m_builder.CreateBr(m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.begin()->second.llvm());
+	// TODO: Create Stop basic block on demand
+	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
+	auto abortBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Abort", m_mainFunc);
+
+	auto firstBB = m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.begin()->second.llvm();
+	auto expectTrue = llvm::MDBuilder{m_builder.getContext()}.createBranchWeights(1, 0);
+	m_builder.CreateCondBr(normalFlow, firstBB, abortBB, expectTrue);
 
 	for (auto basicBlockPairIt = m_basicBlocks.begin(); basicBlockPairIt != m_basicBlocks.end(); ++basicBlockPairIt)
 	{
@@ -163,6 +180,9 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	// TODO: move to separate function.
 	m_builder.SetInsertPoint(m_stopBB);
 	m_builder.CreateRet(Constant::get(ReturnCode::Stop));
+
+	m_builder.SetInsertPoint(abortBB);
+	m_builder.CreateRet(Constant::get(ReturnCode::OutOfGas));
 
 	removeDeadBlocks();
 
@@ -825,12 +845,9 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			break;
 		}
 
-		default: // Invalid instruction - runtime exception
-		{
-			// TODO: Replace with return statement
-			_runtimeManager.raiseException(ReturnCode::BadInstruction);
-		}
-
+		default: // Invalid instruction - abort
+			m_builder.CreateRet(Constant::get(ReturnCode::BadInstruction));
+			it = _basicBlock.end() - 1; // finish block compilation
 		}
 	}
 
