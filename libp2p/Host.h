@@ -37,6 +37,7 @@
 #include "NodeTable.h"
 #include "HostCapability.h"
 #include "Network.h"
+#include "Peer.h"
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = ba::ip;
@@ -44,80 +45,10 @@ namespace bi = ba::ip;
 namespace dev
 {
 
-class RLPStream;
-
 namespace p2p
 {
 
 class Host;
-
-/**
- * @brief Representation of connectivity state and all other pertinent Peer metadata.
- * A Peer represents connectivity between two nodes, which in this case, are the host
- * and remote nodes.
- *
- * State information necessary for loading network topology is maintained by NodeTable.
- *
- * @todo Implement 'bool required'
- * @todo reputation: Move score, rating to capability-specific map (&& remove friend class)
- * @todo reputation: implement via origin-tagged events
- * @todo Populate metadata upon construction; save when destroyed.
- * @todo Metadata for peers needs to be handled via a storage backend. 
- * Specifically, peers can be utilized in a variety of
- * many-to-many relationships while also needing to modify shared instances of
- * those peers. Modifying these properties via a storage backend alleviates
- * Host of the responsibility. (&& remove save/restoreNetwork)
- * @todo reimplement recording of historical session information on per-transport basis
- * @todo rebuild nodetable when localNetworking is enabled/disabled
- * @todo move attributes into protected
- */
-class Peer: public Node
-{
-	friend class Session;		/// Allows Session to update score and rating.
-	friend class Host;		/// For Host: saveNetwork(), restoreNetwork()
-public:
-	bool isOffline() const { return !m_session.lock(); }
-
-	bi::tcp::endpoint const& peerEndpoint() const { return endpoint.tcp; }
-
-	int m_score = 0;									///< All time cumulative.
-	int m_rating = 0;									///< Trending.
-	
-	/// Network Availability
-	
-	std::chrono::system_clock::time_point m_lastConnected;
-	std::chrono::system_clock::time_point m_lastAttempted;
-	unsigned m_failedAttempts = 0;
-	DisconnectReason m_lastDisconnect = NoDisconnect;	///< Reason for disconnect that happened last.
-	
-	virtual bool operator<(Peer const& _p) const
-	{
-		if (isOffline() != _p.isOffline())
-			return isOffline();
-		else if (isOffline())
-			if (m_lastAttempted == _p.m_lastAttempted)
-				return m_failedAttempts < _p.m_failedAttempts;
-			else
-				return m_lastAttempted < _p.m_lastAttempted;
-			else
-				if (m_score == _p.m_score)
-					if (m_rating == _p.m_rating)
-						if (m_failedAttempts == _p.m_failedAttempts)
-							return id < _p.id;
-						else
-							return m_failedAttempts < _p.m_failedAttempts;
-					else
-						return m_rating < _p.m_rating;
-					else
-						return m_score < _p.m_score;
-	}
-	
-protected:
-	/// Used by isOffline() and (todo) for peer to emit session information.
-	std::weak_ptr<Session> m_session;
-};
-using Peers = std::vector<Peer>;
-
 
 class HostNodeTableHandler: public NodeTableEventHandler
 {
@@ -131,7 +62,7 @@ private:
 
 	Host& m_host;
 };
-	
+
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
