@@ -35,27 +35,30 @@ namespace eth
 const unsigned c_protocolVersion = 53;
 const unsigned c_databaseVersion = 5;
 
+template <size_t n> constexpr u256 eth_unit() { return eth_unit<n-1>() * u256(1000); }
+template <> constexpr u256 eth_unit<0>() { return u256(1); }
+
 static const vector<pair<u256, string>> g_units =
 {
-	{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Uether"},
-	{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Vether"},
-	{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Dether"},
-	{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Nether"},
-	{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Yether"},
-	{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Zether"},
-	{((u256(1000000000) * 1000000000) * 1000000000) * 1000000000, "Eether"},
-	{((u256(1000000000) * 1000000000) * 1000000000) * 1000000, "Pether"},
-	{((u256(1000000000) * 1000000000) * 1000000000) * 1000, "Tether"},
-	{(u256(1000000000) * 1000000000) * 1000000000, "Gether"},
-	{(u256(1000000000) * 1000000000) * 1000000, "Mether"},
-	{(u256(1000000000) * 1000000000) * 1000, "grand"},
-	{u256(1000000000) * 1000000000, "ether"},
-	{u256(1000000000) * 1000000, "finney"},
-	{u256(1000000000) * 1000, "szabo"},
-	{u256(1000000000), "Gwei"},
-	{u256(1000000), "Mwei"},
-	{u256(1000), "Kwei"},
-	{u256(1), "wei"}
+	{eth_unit<18>(), "Uether"},
+	{eth_unit<17>(), "Vether"},
+	{eth_unit<16>(), "Dether"},
+	{eth_unit<15>(), "Nether"},
+	{eth_unit<14>(), "Yether"},
+	{eth_unit<13>(), "Zether"},
+	{eth_unit<12>(), "Eether"},
+	{eth_unit<11>(), "Pether"},
+	{eth_unit<10>(), "Tether"},
+	{eth_unit<9>(), "Gether"},
+	{eth_unit<8>(), "Mether"},
+	{eth_unit<7>(), "grand"},
+	{eth_unit<6>(), "ether"},
+	{eth_unit<5>(), "finney"},
+	{eth_unit<4>(), "szabo"},
+	{eth_unit<3>(), "Gwei"},
+	{eth_unit<2>(), "Mwei"},
+	{eth_unit<1>(), "Kwei"},
+	{eth_unit<0>(), "wei"}
 };
 
 vector<pair<u256, string>> const& units()
