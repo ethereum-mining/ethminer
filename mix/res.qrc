@@ -61,7 +61,6 @@
         <file>stdc/std.sol</file>
         <file>qml/TransactionLog.qml</file>
         <file>res/mix_256x256x32.png</file>
-        <file>qml/CallStack.qml</file>
         <file>qml/QVariableDeclaration.qml</file>
         <file>qml/Style.qml</file>
         <file>qml/qmldir</file>
