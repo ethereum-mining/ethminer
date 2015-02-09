@@ -347,7 +347,7 @@ Rectangle {
 										color: "#b2b3ae"
 										text: styleData.value.split(' ')[0]
 										font.family: "monospace"
-										font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
+										font.pointSize: DebuggerPaneStyle.general.basicFontSize
 										wrapMode: Text.NoWrap
 										id: id
 									}
@@ -357,7 +357,7 @@ Rectangle {
 										color: styleData.selected ? "white" : "black"
 										font.family: "monospace"
 										text: styleData.value.replace(styleData.value.split(' ')[0], '')
-										font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
+										font.pointSize: DebuggerPaneStyle.general.basicFontSize
 									}
 								}
 							}
@@ -430,7 +430,7 @@ Rectangle {
 												font.family: "monospace"
 												color: "#4a4a4a"
 												text: styleData.row;
-												font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
+												font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											}
 										}
 
@@ -448,7 +448,7 @@ Rectangle {
 												anchors.verticalCenter: parent.verticalCenter
 												color: "#4a4a4a"
 												text: styleData.value
-												font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
+												font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											}
 										}
 									}
@@ -515,7 +515,7 @@ Rectangle {
 											anchors.leftMargin: 5
 											color: "#4a4a4a"
 											text: styleData.row;
-											font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											width: parent.width - 5
 											elide: Text.ElideRight
 										}
@@ -536,7 +536,7 @@ Rectangle {
 											color: "#4a4a4a"
 											text: styleData.value;
 											elide: Text.ElideRight
-											font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 										}
 									}
 								}
@@ -586,7 +586,7 @@ Rectangle {
 											anchors.leftMargin: 5
 											color: "#4a4a4a"
 											text: styleData.value.split('\t')[0];
-											font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											width: parent.width - 5
 											elide: Text.ElideRight
 										}
@@ -607,7 +607,7 @@ Rectangle {
 											color: "#4a4a4a"
 											text: styleData.value.split('\t')[1];
 											elide: Text.ElideRight
-											font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 										}
 									}
 								}
