@@ -58,11 +58,19 @@ void ContractDefinition::checkTypeRequirements()
 		BOOST_THROW_EXCEPTION(constructor->getReturnParameterList()->createTypeError(
 									"Non-empty \"returns\" directive for constructor."));
 
-	FunctionDefinition const* fallbackFunction = getFallbackFunction();
-	if (fallbackFunction && fallbackFunction->getScope() == this && !fallbackFunction->getParameters().empty())
-		BOOST_THROW_EXCEPTION(fallbackFunction->getParameterList().createTypeError(
-									"Fallback function cannot take parameters."));
-
+	FunctionDefinition const* fallbackFunction = nullptr;
+	for (ASTPointer<FunctionDefinition> const& function: getDefinedFunctions())
+		if (function->getName().empty())
+		{
+			if (fallbackFunction)
+				BOOST_THROW_EXCEPTION(DeclarationError() << errinfo_comment("Only one fallback function is allowed."));
+			else
+			{
+				fallbackFunction = function.get();
+				if (!fallbackFunction->getParameters().empty())
+					BOOST_THROW_EXCEPTION(fallbackFunction->getParameterList().createTypeError("Fallback function cannot take parameters."));
+			}
+		}
 	for (ASTPointer<ModifierDefinition> const& modifier: getFunctionModifiers())
 		modifier->checkTypeRequirements();
 
@@ -478,7 +486,7 @@ void FunctionCall::checkTypeRequirements()
 		if (m_arguments.size() != 1)
 			BOOST_THROW_EXCEPTION(createTypeError("More than one argument for explicit type conversion."));
 		if (!m_names.empty())
-			BOOST_THROW_EXCEPTION(createTypeError("Type conversion can't allow named arguments."));
+			BOOST_THROW_EXCEPTION(createTypeError("Type conversion cannot allow named arguments."));
 		if (!m_arguments.front()->getType()->isExplicitlyConvertibleTo(*type.getActualType()))
 			BOOST_THROW_EXCEPTION(createTypeError("Explicit type conversion not allowed."));
 		m_type = type.getActualType();
@@ -496,24 +504,22 @@ void FunctionCall::checkTypeRequirements()
 		{
 			for (size_t i = 0; i < m_arguments.size(); ++i)
 				if (functionType->getLocation() != FunctionType::Location::SHA3 &&
-					!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameterTypes[i]))
-					BOOST_THROW_EXCEPTION(createTypeError("Invalid type for argument in function call."));
+						!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameterTypes[i]))
+					BOOST_THROW_EXCEPTION(m_arguments[i]->createTypeError("Invalid type for argument in function call."));
 		}
-		else if (functionType->getLocation() == FunctionType::Location::SHA3)
-			BOOST_THROW_EXCEPTION(createTypeError("Named arguments can't be used for SHA3."));
 		else
 		{
+			if (functionType->getLocation() == FunctionType::Location::SHA3)
+				BOOST_THROW_EXCEPTION(createTypeError("Named arguments cannnot be used for SHA3."));
 			auto const& parameterNames = functionType->getParameterNames();
 			if (parameterNames.size() != m_names.size())
 				BOOST_THROW_EXCEPTION(createTypeError("Some argument names are missing."));
 
 			// check duplicate names
-			for (size_t i = 0; i < m_names.size(); i++) {
-				for (size_t j = i + 1; j < m_names.size(); j++) {
+			for (size_t i = 0; i < m_names.size(); i++)
+				for (size_t j = i + 1; j < m_names.size(); j++)
 					if (*m_names[i] == *m_names[j])
-						BOOST_THROW_EXCEPTION(createTypeError("Duplicate named argument."));
-				}
-			}
+						BOOST_THROW_EXCEPTION(m_arguments[i]->createTypeError("Duplicate named argument."));
 
 			for (size_t i = 0; i < m_names.size(); i++) {
 				bool found = false;
@@ -528,7 +534,7 @@ void FunctionCall::checkTypeRequirements()
 					}
 				}
 				if (!found)
-					BOOST_THROW_EXCEPTION(createTypeError("Named argument doesn't match function declaration."));
+					BOOST_THROW_EXCEPTION(createTypeError("Named argument does not match function declaration."));
 			}
 		}
 

@@ -15,7 +15,7 @@ Item {
 		FontLoader
 		{
 			id: srcSansProLight
-			source: "qrc:/qml/fonts/SourceSansPro-Regular.ttf"
+			source: "qrc:/qml/fonts/SourceSansPro-Light.ttf"
 		}
 
 		Rectangle
@@ -54,6 +54,7 @@ Item {
 				font.family: srcSansProLight.name
 				font.pointSize: Style.title.pointSize
 				anchors.verticalCenter: parent.verticalCenter
+				font.weight: Font.Light
 			}
 		}
 
@@ -79,7 +80,7 @@ Item {
 				spacing: 0
 
 				Repeater {
-					model: ["Contracts", "Javascript", "HTML", "Styles", "Images", "Misc"]
+					model: [qsTr("Contracts"), qsTr("Javascript"), qsTr("Web Pages"), qsTr("Styles"), qsTr("Images"), qsTr("Misc")];
 					signal selected(string doc, string groupName)
 					id: sectionRepeater
 					FilesSection
@@ -127,6 +128,15 @@ Item {
 								}
 							}
 
+							onDocumentOpened: {
+								if (document.groupName === modelData)
+									sectionRepeater.selected(document.documentId, modelData);
+							}
+
+							onNewProject: {
+								sectionModel.clear();
+							}
+
 							onProjectLoaded: {
 								addDocToSubModel();
 								if (modelData === "Contracts")
@@ -141,7 +151,12 @@ Item {
 							{
 								var newDoc = projectModel.getDocument(documentId);
 								if (newDoc.groupName === modelData)
+								{
 									sectionModel.append(newDoc);
+									projectModel.openDocument(newDoc.documentId);
+									sectionRepeater.selected(newDoc.documentId, modelData);
+								}
+
 							}
 						}
 					}

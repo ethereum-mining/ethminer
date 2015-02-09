@@ -180,7 +180,7 @@ ASTPointer<InheritanceSpecifier> Parser::parseInheritanceSpecifier()
 
 Declaration::Visibility Parser::parseVisibilitySpecifier(Token::Value _token)
 {
-	Declaration::Visibility visibility = Declaration::Visibility::DEFAULT;
+	Declaration::Visibility visibility(Declaration::Visibility::DEFAULT);
 	if (_token == Token::PUBLIC)
 		visibility = Declaration::Visibility::PUBLIC;
 	else if (_token == Token::PROTECTED)
@@ -267,20 +267,31 @@ ASTPointer<VariableDeclaration> Parser::parseVariableDeclaration(VarDeclParserOp
 {
 	ASTNodeFactory nodeFactory(*this);
 	ASTPointer<TypeName> type = parseTypeName(_options.allowVar);
+	if (type != nullptr)
+		nodeFactory.setEndPositionFromNode(type);
 	bool isIndexed = false;
+	ASTPointer<ASTString> identifier;
 	Token::Value token = m_scanner->getCurrentToken();
+	Declaration::Visibility visibility(Declaration::Visibility::DEFAULT);
+	if (_options.isStateVariable && Token::isVisibilitySpecifier(token))
+		visibility = parseVisibilitySpecifier(token);
 	if (_options.allowIndexed && token == Token::INDEXED)
 	{
 		isIndexed = true;
 		m_scanner->next();
 	}
-	Declaration::Visibility visibility(Declaration::Visibility::DEFAULT);
-	if (_options.isStateVariable && Token::isVisibilitySpecifier(token))
-		visibility = parseVisibilitySpecifier(token);
 	nodeFactory.markEndPosition();
-	return nodeFactory.createNode<VariableDeclaration>(type, expectIdentifierToken(),
-													   visibility, _options.isStateVariable,
-													   isIndexed);
+	if (_options.allowEmptyName && m_scanner->getCurrentToken() != Token::IDENTIFIER)
+	{
+		identifier = make_shared<ASTString>("");
+		solAssert(type != nullptr, "");
+		nodeFactory.setEndPositionFromNode(type);
+	}
+	else
+		identifier = expectIdentifierToken();
+	return nodeFactory.createNode<VariableDeclaration>(type, identifier,
+												   visibility, _options.isStateVariable,
+												   isIndexed);
 }
 
 ASTPointer<ModifierDefinition> Parser::parseModifierDefinition()
@@ -402,6 +413,7 @@ ASTPointer<ParameterList> Parser::parseParameterList(bool _allowEmpty, bool _all
 	vector<ASTPointer<VariableDeclaration>> parameters;
 	VarDeclParserOptions options;
 	options.allowIndexed = _allowIndexed;
+	options.allowEmptyName = true;
 	expectToken(Token::LPAREN);
 	if (!_allowEmpty || m_scanner->getCurrentToken() != Token::RPAREN)
 	{

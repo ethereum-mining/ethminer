@@ -236,8 +236,8 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 							}
 					if (!f)
 						BOOST_THROW_EXCEPTION(FunctionNotFoundException() << FunctionName(transaction.functionId.toStdString()));
-
-					encoder.encode(f);
+					if (!transaction.functionId.isEmpty())
+						encoder.encode(f);
 					for (int p = 0; p < transaction.parameterValues.size(); p++)
 					{
 						if (f->parametersList().at(p)->type() != transaction.parameterValues.at(p)->declaration()->type())
@@ -247,6 +247,8 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 
 					if (transaction.functionId.isEmpty())
 					{
+						bytes param = encoder.encodedData();
+						contractCode.insert(contractCode.end(), param.begin(), param.end());
 						Address newAddress = deployContract(contractCode, transaction);
 						if (newAddress != m_contractAddress)
 						{
