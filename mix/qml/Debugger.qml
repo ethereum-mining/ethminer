@@ -6,6 +6,7 @@ import QtQuick.Layouts 1.1
 import Qt.labs.settings 1.0
 import "js/Debugger.js" as Debugger
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
+import "."
 
 Rectangle {
 	id: debugPanel
@@ -346,7 +347,7 @@ Rectangle {
 										color: "#b2b3ae"
 										text: styleData.value.split(' ')[0]
 										font.family: "monospace"
-										font.pointSize: 9
+										font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
 										wrapMode: Text.NoWrap
 										id: id
 									}
@@ -356,7 +357,7 @@ Rectangle {
 										color: styleData.selected ? "white" : "black"
 										font.family: "monospace"
 										text: styleData.value.replace(styleData.value.split(' ')[0], '')
-										font.pointSize: 9
+										font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
 									}
 								}
 							}
@@ -425,11 +426,11 @@ Rectangle {
 											Layout.minimumHeight: parent.height
 											Text {
 												anchors.centerIn: parent
-												anchors.leftMargin: 5
+												anchors.leftMargin: 5()
 												font.family: "monospace"
 												color: "#4a4a4a"
 												text: styleData.row;
-												font.pointSize: 9
+												font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
 											}
 										}
 
@@ -447,7 +448,7 @@ Rectangle {
 												anchors.verticalCenter: parent.verticalCenter
 												color: "#4a4a4a"
 												text: styleData.value
-												font.pointSize: 9
+												font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
 											}
 										}
 									}
@@ -514,7 +515,7 @@ Rectangle {
 											anchors.leftMargin: 5
 											color: "#4a4a4a"
 											text: styleData.row;
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
 											width: parent.width - 5
 											elide: Text.ElideRight
 										}
@@ -535,7 +536,7 @@ Rectangle {
 											color: "#4a4a4a"
 											text: styleData.value;
 											elide: Text.ElideRight
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
 										}
 									}
 								}
@@ -585,7 +586,7 @@ Rectangle {
 											anchors.leftMargin: 5
 											color: "#4a4a4a"
 											text: styleData.value.split('\t')[0];
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
 											width: parent.width - 5
 											elide: Text.ElideRight
 										}
@@ -606,7 +607,7 @@ Rectangle {
 											color: "#4a4a4a"
 											text: styleData.value.split('\t')[1];
 											elide: Text.ElideRight
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneProjectFilesStyle.general.basicFontSize
 										}
 									}
 								}
