@@ -115,6 +115,7 @@ ColumnLayout {
 					//storageContainer.state = "";
 				}
 			}
+			onActivated: rowActivated(row);
 			TableViewColumn {
 				role: "modelData"
 				width: parent.width
