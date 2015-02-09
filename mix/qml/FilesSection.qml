@@ -56,7 +56,7 @@ ColumnLayout {
 
 	FontLoader
 	{
-		id: semiBoldFont
+		id: boldFont
 		source: "qrc:/qml/fonts/SourceSansPro-Bold.ttf"
 	}
 
@@ -85,7 +85,7 @@ ColumnLayout {
 			anchors.left: parent.left
 			anchors.leftMargin: Style.general.leftMargin
 			color: Style.documentsList.sectionColor
-			font.family: semiBoldFont.name
+			font.family: boldFont.name
 			font.pointSize: Style.documentsList.sectionFontSize
 			states: [
 				State {
