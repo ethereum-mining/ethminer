@@ -60,13 +60,37 @@ Window {
 		else
 		{
 			var parameters = codeModel.code.contract.constructor.parameters;
-			for (var p = 0; p < parameters.length; p++) {
-				var pname = parameters[p].name;
-				paramsModel.append({ name: pname, type: parameters[p].type, value: itemParams[pname] !== undefined ? itemParams[pname].value() : "" });
-			}
+			for (var p = 0; p < parameters.length; p++)
+				loadParameter(parameters[p]);
 		}
 		visible = true;
 		valueField.focus = true;
+	}
+
+	function loadParameter(parameter)
+	{
+		var type = parameter.type;
+		var pname = parameter.name;
+		var varComponent;
+
+		if (type.indexOf("int") !== -1)
+			varComponent = Qt.createComponent("qrc:/qml/QIntType.qml");
+		else if (type.indexOf("real") !== -1)
+			varComponent = Qt.createComponent("qrc:/qml/QRealType.qml");
+		else if (type.indexOf("string") !== -1 || type.indexOf("text") !== -1)
+			varComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
+		else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
+			varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
+		else if (type.indexOf("bool") !== -1)
+			varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
+
+		var param = varComponent.createObject(modalTransactionDialog);
+		var value = itemParams[pname] !== undefined ? itemParams[pname] : "";
+
+		param.setValue(value);
+		param.setDeclaration(parameter);
+		qType.push({ name: pname, value: param });
+		paramsModel.append({ name: pname, type: type, value: value });
 	}
 
 	function loadParameters() {
@@ -76,30 +100,8 @@ Window {
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
 			var func = codeModel.code.contract.functions[functionComboBox.currentIndex];
 			var parameters = func.parameters;
-			for (var p = 0; p < parameters.length; p++) {
-				var pname = parameters[p].name;
-				var varComponent;
-				var type = parameters[p].type;
-
-				if (type.indexOf("int") !== -1)
-					varComponent = Qt.createComponent("qrc:/qml/QIntType.qml");
-				else if (type.indexOf("real") !== -1)
-					varComponent = Qt.createComponent("qrc:/qml/QRealType.qml");
-				else if (type.indexOf("string") !== -1 || type.indexOf("text") !== -1)
-					varComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
-				else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
-					varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
-				else if (type.indexOf("bool") !== -1)
-					varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
-
-				var param = varComponent.createObject(modalTransactionDialog);
-				var value = itemParams[pname] !== undefined ? itemParams[pname] : "";
-
-				param.setValue(value);
-				param.setDeclaration(parameters[p]);
-				qType.push({ name: pname, value: param });
-				paramsModel.append({ name: pname, type: parameters[p].type, value: value });
-			}
+			for (var p = 0; p < parameters.length; p++)
+				loadParameter(parameters[p]);
 		}
 	}
 
