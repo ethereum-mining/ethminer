@@ -127,6 +127,10 @@ Item {
 								}
 							}
 
+							onNewProject: {
+								sectionModel.clear();
+							}
+
 							onProjectLoaded: {
 								addDocToSubModel();
 								if (modelData === "Contracts")
