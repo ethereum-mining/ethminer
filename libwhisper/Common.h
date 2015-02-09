@@ -23,7 +23,10 @@
 
 #include <string>
 #include <chrono>
+
+// Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
+
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>

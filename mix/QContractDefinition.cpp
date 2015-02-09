@@ -20,7 +20,10 @@
  */
 
 #include <QObject>
+
+// Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
+
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/Scanner.h>

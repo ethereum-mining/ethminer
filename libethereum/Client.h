@@ -27,8 +27,11 @@
 #include <atomic>
 #include <string>
 #include <array>
+
+// Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 #include <boost/utility.hpp>
+
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>

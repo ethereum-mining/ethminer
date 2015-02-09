@@ -23,8 +23,11 @@
 
 #include <chrono>
 #include <thread>
+
+// Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
+
 #include <libdevcore/Log.h>
 #include <libp2p/Host.h>
 #include <libethereum/Defaults.h>
