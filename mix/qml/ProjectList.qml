@@ -137,7 +137,12 @@ Item {
 								sectionModel.clear();
 							}
 
+							onProjectClosed: {
+								sectionModel.clear();
+							}
+
 							onProjectLoaded: {
+								sectionModel.clear();
 								addDocToSubModel();
 								if (modelData === "Contracts")
 								{
