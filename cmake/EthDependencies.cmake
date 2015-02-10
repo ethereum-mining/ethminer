@@ -123,6 +123,7 @@ if (NOT HEADLESS)
 	message(" - npm location    : ${ETH_NPM}")
 
 	find_program(ETH_JSON_RPC_STUB jsonrpcstub)
+	message(" - jsonrpcstub location    : ${ETH_JSON_RPC_STUB}")
 
 endif() #HEADLESS
 
