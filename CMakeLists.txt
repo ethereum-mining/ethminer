@@ -43,6 +43,10 @@ function(configureProject)
 	if (EVMJIT)
 		add_definitions(-DETH_EVMJIT)
 	endif()
+
+	if (HEADLESS)
+		add_definitions(-DETH_HEADLESS)
+	endif()
 endfunction()
 
 
@@ -65,13 +69,13 @@ function(createBuildInfo)
 	endif ()
 
 	if (EVMJIT)
-		set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}/JIT")
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/JIT")
 	else ()
-		set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}/int")
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/int")
 	endif ()
 
 	if (PARANOIA)
-		set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}/PARA")
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/PARA")
 	endif ()
 
 	#cmake build type may be not specified when using msvc
@@ -131,11 +135,15 @@ endif()
 add_subdirectory(libdevcore)
 add_subdirectory(libevmcore)
 add_subdirectory(liblll)
-add_subdirectory(libserpent)
+if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+	add_subdirectory(libserpent)
+endif ()
 add_subdirectory(libsolidity)
 add_subdirectory(lllc)
 add_subdirectory(solc)
+if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 add_subdirectory(sc)
+endif()
 
 if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
@@ -164,6 +172,7 @@ endif ()
 
 if (NOT HEADLESS)
 	
+	add_subdirectory(libnatspec)
 	add_subdirectory(libjsqrc)
 	add_subdirectory(libqwebthree)
 	add_subdirectory(alethzero)

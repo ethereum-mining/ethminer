@@ -9,7 +9,7 @@ Window {
 	id: modalTransactionDialog
 	modality: Qt.WindowModal
 	width:640
-	height:480
+	height:640
 	visible: false
 
 	property int transactionIndex
@@ -21,10 +21,12 @@ Window {
 	property var itemParams;
 	property bool isConstructorTransaction;
 	property bool useTransactionDefaultValue: false
+	property var qType;
 
 	signal accepted;
 
 	function open(index, item) {
+		qType = [];
 		rowFunction.visible = !useTransactionDefaultValue;
 		rowValue.visible = !useTransactionDefaultValue;
 		rowGas.visible = !useTransactionDefaultValue;
@@ -58,31 +60,63 @@ Window {
 		else
 		{
 			var parameters = codeModel.code.contract.constructor.parameters;
-			for (var p = 0; p < parameters.length; p++) {
-				var pname = parameters[p].name;
-				paramsModel.append({ name: pname, type: parameters[p].type, value: itemParams[pname] !== undefined ? itemParams[pname].value() : "" });
-			}
+			for (var p = 0; p < parameters.length; p++)
+				loadParameter(parameters[p]);
 		}
 		visible = true;
 		valueField.focus = true;
 	}
 
+	function loadParameter(parameter)
+	{
+		var type = parameter.type;
+		var pname = parameter.name;
+		var varComponent;
+
+		if (type.indexOf("int") !== -1)
+			varComponent = Qt.createComponent("qrc:/qml/QIntType.qml");
+		else if (type.indexOf("real") !== -1)
+			varComponent = Qt.createComponent("qrc:/qml/QRealType.qml");
+		else if (type.indexOf("string") !== -1 || type.indexOf("text") !== -1)
+			varComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
+		else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
+			varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
+		else if (type.indexOf("bool") !== -1)
+			varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
+
+		var param = varComponent.createObject(modalTransactionDialog);
+		var value = itemParams[pname] !== undefined ? itemParams[pname] : "";
+
+		param.setValue(value);
+		param.setDeclaration(parameter);
+		qType.push({ name: pname, value: param });
+		paramsModel.append({ name: pname, type: type, value: value });
+	}
+
 	function loadParameters() {
+		paramsModel.clear();
 		if (!paramsModel)
 			return;
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
 			var func = codeModel.code.contract.functions[functionComboBox.currentIndex];
 			var parameters = func.parameters;
-			for (var p = 0; p < parameters.length; p++) {
-				var pname = parameters[p].name;
-				paramsModel.append({ name: pname, type: parameters[p].type, value: itemParams[pname] !== undefined ? itemParams[pname].value() : "" });
-			}
+			for (var p = 0; p < parameters.length; p++)
+				loadParameter(parameters[p]);
 		}
 	}
 
 	function close()
 	{
 		visible = false;
+	}
+
+	function qTypeParam(name)
+	{
+		for (var k in qType)
+		{
+			if (qType[k].name === name)
+				return qType[k].value;
+		}
 	}
 
 	function getItem()
@@ -109,14 +143,15 @@ Window {
 		if (isConstructorTransaction)
 			item.functionId = qsTr("Constructor");
 
+		var orderedQType = [];
 		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
 			var parameter = transactionDialog.transactionParams.get(p);
-			var intComponent = Qt.createComponent("qrc:/qml/BigIntValue.qml");
-			var param = intComponent.createObject(modalTransactionDialog);
-
-			param.setValue(parameter.value);
-			item.parameters[parameter.name] = param;
+			var qtypeParam = qTypeParam(parameter.name);
+			qtypeParam.setValue(parameter.value);
+			orderedQType.push(qtypeParam);
+			item.parameters[parameter.name] = parameter.value;
 		}
+		item.qType = orderedQType;
 		return item;
 	}
 
@@ -219,8 +254,10 @@ Window {
 			}
 			TableView {
 				model: paramsModel
-				Layout.fillWidth: true
-
+				Layout.preferredWidth: 120 * 2 + 240
+				Layout.minimumHeight: 150
+				Layout.preferredHeight: 400
+				Layout.maximumHeight: 600
 				TableViewColumn {
 					role: "name"
 					title: qsTr("Name")
@@ -234,12 +271,11 @@ Window {
 				TableViewColumn {
 					role: "value"
 					title: qsTr("Value")
-					width: 120
+					width: 240
 				}
 
-				itemDelegate: {
-					return editableDelegate;
-				}
+				rowDelegate: rowDelegate
+				itemDelegate: editableDelegate
 			}
 		}
 	}
@@ -268,19 +304,15 @@ Window {
 	}
 
 	Component {
+		id: rowDelegate
+		Item {
+			height: 100
+		}
+	}
+
+	Component {
 		id: editableDelegate
 		Item {
-
-			Text {
-				width: parent.width
-				anchors.margins: 4
-				anchors.left: parent.left
-				anchors.verticalCenter: parent.verticalCenter
-				elide: styleData.elideMode
-				text: styleData.value !== undefined ? styleData.value : ""
-				color: styleData.textColor
-				visible: !styleData.selected
-			}
 			Loader {
 				id: loaderEditor
 				anchors.fill: parent
@@ -289,14 +321,87 @@ Window {
 					target: loaderEditor.item
 					onTextChanged: {
 						if (styleData.role === "value" && styleData.row < paramsModel.count)
-							paramsModel.setProperty(styleData.row, styleData.role, loaderEditor.item.text);
+							loaderEditor.updateValue(styleData.row, styleData.role, loaderEditor.item.text);
 					}
 				}
-				sourceComponent: (styleData.selected) ? editor : null
+
+				function updateValue(row, role, value)
+				{
+					paramsModel.setProperty(styleData.row, styleData.role, value);
+				}
+
+				sourceComponent:
+				{
+					if (styleData.role === "value")
+					{
+						if (paramsModel.get(styleData.row) === undefined)
+							return null;
+						if (paramsModel.get(styleData.row).type.indexOf("int") !== -1)
+							return intViewComp;
+						else if (paramsModel.get(styleData.row).type.indexOf("bool") !== -1)
+							return boolViewComp;
+						else if (paramsModel.get(styleData.row).type.indexOf("string") !== -1)
+							return stringViewComp;
+						else if (paramsModel.get(styleData.row).type.indexOf("hash") !== -1)
+							return hashViewComp;
+					}
+					else
+						return editor;
+				}
+
+				Component
+				{
+					id: intViewComp
+					QIntTypeView
+					{
+						id: intView
+						text: styleData.value
+					}
+				}
+
+				Component
+				{
+					id: boolViewComp
+					QBoolTypeView
+					{
+						id: boolView
+						defaultValue: "1"
+						Component.onCompleted:
+						{
+							loaderEditor.updateValue(styleData.row, styleData.role,
+													 (paramsModel.get(styleData.row).value === "" ? defaultValue :
+																									paramsModel.get(styleData.row).value));
+							text = (paramsModel.get(styleData.row).value === "" ? defaultValue : paramsModel.get(styleData.row).value);
+						}
+					}
+				}
+
+				Component
+				{
+					id: stringViewComp
+					QStringTypeView
+					{
+						id: stringView
+						text: styleData.value
+					}
+				}
+
+
+				Component
+				{
+					id: hashViewComp
+					QHashTypeView
+					{
+						id: hashView
+						text: styleData.value
+					}
+				}
+
 				Component {
 					id: editor
 					TextInput {
 						id: textinput
+						readOnly: true
 						color: styleData.textColor
 						text: styleData.value
 						MouseArea {

@@ -86,7 +86,7 @@ Item {
 			updateDocument(documentId, function(i) { pageListModel.set(i, projectModel.getDocument(documentId)) } )
 		}
 
-		onProjectLoaded: {
+		onProjectLoading: {
 			for (var i = 0; i < target.listModel.count; i++) {
 				var document = target.listModel.get(i);
 				if (document.isHtml) {
@@ -114,7 +114,8 @@ Item {
 		onClientConnected: {
 			//filter polling spam
 			//TODO: do it properly
-			var log = _request.content.indexOf("eth_changed") < 0;
+			//var log = _request.content.indexOf("eth_changed") < 0;
+			var log = true;
 			if (log)
 				console.log(_request.content);
 			var response = clientModel.apiCall(_request.content);

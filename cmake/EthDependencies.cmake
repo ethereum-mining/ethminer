@@ -122,6 +122,8 @@ if (NOT HEADLESS)
 	string(REGEX REPLACE "npm" "" ETH_NPM_DIRECTORY ${ETH_NPM})
 	message(" - npm location    : ${ETH_NPM}")
 
+	find_program(ETH_JSON_RPC_STUB jsonrpcstub)
+
 endif() #HEADLESS
 
 # use multithreaded boost libraries, with -mt suffix

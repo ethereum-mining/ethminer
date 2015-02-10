@@ -24,74 +24,29 @@
 #pragma once
 
 #include <vector>
+#include <string>
 #include <libethereum/Interface.h>
 #include <libethereum/Client.h>
+#include "MachineStates.h"
 
 namespace dev
 {
 namespace mix
 {
 
-/**
- * @brief Store information about a machine state.
- */
-struct MachineState
-{
-	uint64_t steps;
-	dev::Address address;
-	dev::u256 curPC;
-	dev::eth::Instruction inst;
-	dev::bigint newMemSize;
-	dev::u256 gas;
-	dev::u256s stack;
-	dev::bytes memory;
-	dev::bigint gasCost;
-	std::map<dev::u256, dev::u256> storage;
-	std::vector<unsigned> levels;
-	unsigned codeIndex;
-	unsigned dataIndex;
-};
-
-/**
- * @brief Store information about a machine states.
- */
-struct ExecutionResult
-{
-	ExecutionResult(): receipt(dev::h256(), dev::h256(), dev::eth::LogEntries()) {}
-
-	std::vector<MachineState> machineStates;
-	std::vector<bytes> transactionData;
-	std::vector<bytes> executionCode;
-	bytes returnValue;
-	dev::Address address;
-	dev::Address sender;
-	dev::Address contractAddress;
-	dev::u256 value;
-	dev::eth::TransactionReceipt receipt;
-};
-
-using ExecutionResults = std::vector<ExecutionResult>;
-
-struct Block
-{
-	ExecutionResults transactions;
-	h256 hash;
-	dev::eth::State state;
-	dev::eth::BlockInfo info;
-};
-
-using Blocks = std::vector<Block>;
-
+class MixBlockChain;
 
 class MixClient: public dev::eth::Interface
 {
 public:
-	MixClient();
+	MixClient(std::string const& _dbPath);
+	virtual ~MixClient();
 	/// Reset state to the empty state with given balance.
 	void resetState(u256 _balance);
 	KeyPair const& userAccount() const { return m_userAccount; }
 	void mine();
-	Blocks const& record() const { return m_blocks; }
+	ExecutionResult const& lastExecution() const;
+	ExecutionResults const& executions() const;
 
 	//dev::eth::Interface
 	void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice) override;
@@ -130,21 +85,28 @@ public:
 	void stopMining() override;
 	bool isMining() override;
 	eth::MineProgress miningProgress() const override;
+	std::pair<h256, u256> getWork() override { return std::pair<h256, u256>(); }
+	bool submitNonce(h256 const&) override { return false; }
 
 private:
-	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state);
-	void validateBlock(int _block) const;
+	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state, bool _call);
 	void noteChanged(h256Set const& _filters);
-	dev::eth::State const& asOf(int _block) const;
+	dev::eth::State asOf(int _block) const;
+	MixBlockChain& bc() { return *m_bc; }
+	MixBlockChain const& bc() const { return *m_bc; }
 
 	KeyPair m_userAccount;
 	eth::State m_state;
+	eth::State m_startState;
 	OverlayDB m_stateDB;
+	std::auto_ptr<MixBlockChain> m_bc;
 	mutable boost::shared_mutex x_state;
 	mutable std::mutex m_filterLock;
 	std::map<h256, dev::eth::InstalledFilter> m_filters;
 	std::map<unsigned, dev::eth::ClientWatch> m_watches;
-	Blocks m_blocks;
+	ExecutionResults m_executions;
+	std::string m_dbPath;
+	unsigned m_minigThreads;
 };
 
 }

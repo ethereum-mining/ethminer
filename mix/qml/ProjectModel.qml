@@ -10,7 +10,8 @@ Item {
 	id: projectModel
 
 	signal projectClosed
-	signal projectLoaded(var projectData)
+	signal projectLoading(var projectData)
+	signal projectLoaded()
 	signal documentOpened(var document)
 	signal documentRemoved(var documentId)
 	signal documentUpdated(var documentId) //renamed
@@ -40,6 +41,7 @@ Item {
 	function addExistingFile() { ProjectModelCode.addExistingFile(); }
 	function newHtmlFile() { ProjectModelCode.newHtmlFile(); }
 	function newJsFile() { ProjectModelCode.newJsFile(); }
+	function newCssFile() { ProjectModelCode.newCssFile(); }
 	//function newContract() { ProjectModelCode.newContract(); }
 	function openDocument(documentId) { ProjectModelCode.openDocument(documentId); }
 	function openNextDocument() { ProjectModelCode.openNextDocument(); }

@@ -24,9 +24,11 @@
 #pragma once
 
 #include <string>
-#include <libethereum/Interface.h>
-#include "Common.h"
-#include "CommonData.h"
+#include <libdevcore/Common.h>
+#include <libdevcore/FixedHash.h>
+#include <libdevcore/CommonData.h>
+#include <libdevcore/CommonIO.h>
+#include "CommonEth.h"
 
 namespace dev
 {
@@ -48,12 +50,14 @@ inline std::string toJS(dev::bytes const& _n)
 
 /// Convert string to byte array. Input parameters can be hex or dec. Returns empty array if invalid input e.g neither dec or hex.
 bytes jsToBytes(std::string const& _s);
-/// Add '0' on the head of _b until _l.
+/// Add '0' on the head of @a _b until @a _l.
 bytes padded(bytes _b, unsigned _l);
+/// Add '0' on the queue of @a _b until @a _l.
+bytes paddedRight(bytes _b, unsigned _l);
 /// Removing all trailing '0'. Returns empty array if input contains only '0' char.
 bytes unpadded(bytes _s);
-/// Remove all '0' on the head of _s. Returns 0 if _s contains only '0'.
-std::string unpadLeft(std::string _s);
+/// Remove all 0 byte on the head of @a _s.
+bytes unpadLeft(bytes _s);
 /// Convert u256 into user-readable string. Returns int/hex value of 64 bits int, hex of 160 bits FixedHash. As a fallback try to handle input as h256.
 std::string prettyU256(u256 _n);
 /// Convert h256 into user-readable string (by directly using std::string constructor).
@@ -92,15 +96,7 @@ template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_i
 		return 0;			// FAIL
 }
 
-inline Address jsToAddress(std::string const& _s) { return jsToFixed<sizeof(dev::Address)>(_s); }
-inline Public jsToPublic(std::string const& _s) { return jsToFixed<sizeof(dev::Public)>(_s); }
-inline Secret jsToSecret(std::string const& _s) { return jsToFixed<sizeof(dev::Secret)>(_s); }
 inline u256 jsToU256(std::string const& _s) { return jsToInt<32>(_s); }
-
-inline std::string jsToBinary(std::string const& _s)
-{
-	return dev::toString(unpadded(jsToBytes(_s)));
-}
 
 inline std::string jsToDecimal(std::string const& _s)
 {
@@ -123,6 +119,29 @@ inline double jsFromFixed(std::string const& _s)
 	return (double)jsToU256(_s) / (double)(dev::u256(1) << 128);
 }
 
+}
+
+// devcrypto
+
+#include <libdevcrypto/Common.h>
+
+namespace dev
+{
+
+inline Public jsToPublic(std::string const& _s) { return jsToFixed<sizeof(dev::Public)>(_s); }
+inline Secret jsToSecret(std::string const& _s) { return jsToFixed<sizeof(dev::Secret)>(_s); }
+
+}
+
+
+// ethcore
+namespace dev
+{
+namespace eth
+{
+
+inline Address jsToAddress(std::string const& _s) { return jsToFixed<sizeof(dev::Address)>(_s); }
+
 struct TransactionSkeleton
 {
 	Address from;
@@ -133,4 +152,5 @@ struct TransactionSkeleton
 	u256 gasPrice;
 };
 
+}
 }

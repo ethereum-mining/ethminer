@@ -32,6 +32,17 @@ target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} solidity)
 target_link_libraries(${EXECUTABLE} serpent)
 
+if (ETH_JSON_RPC_STUB)
+	add_custom_target(jsonrpcstub) 
+	add_custom_command(TARGET jsonrpcstub
+		POST_BUILD
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		COMMAND ${ETH_JSON_RPC_STUB} spec.json --cpp-server=AbstractWebThreeStubServer --cpp-client=WebThreeStubClient 
+		COMMAND cmake -E rename webthreestubclient.h ../test/webthreestubclient.h
+	)
+	add_dependencies(${EXECUTABLE} jsonrpcstub)
+endif()
+
 install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
 

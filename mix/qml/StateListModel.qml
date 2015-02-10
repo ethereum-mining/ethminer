@@ -8,7 +8,6 @@ import "js/QEtherHelper.js" as QEtherHelper
 
 Item {
 
-	property int defaultStateIndex: -1
 	property alias model: stateListModel
 	property var stateList: []
 
@@ -31,12 +30,30 @@ Item {
 			stdContract: t.stdContract,
 			parameters: {}
 		};
-		for (var key in t.parameters) {
-			var intComponent = Qt.createComponent("qrc:/qml/BigIntValue.qml");
-			var param = intComponent.createObject();
-			param.setValue(t.parameters[key]);
-			r.parameters[key] = param;
+		var qType = [];
+		for (var key in t.parameters)
+		{
+			r.parameters[key] = t.parameters[key].value;
+			var type = t.parameters[key].type;
+			var varComponent;
+			if (type.indexOf("int") !== -1)
+				varComponent = Qt.createComponent("qrc:/qml/QIntType.qml");
+			else if (type.indexOf("real") !== -1)
+				varComponent = Qt.createComponent("qrc:/qml/QRealType.qml");
+			else if (type.indexOf("string") !== -1 || type.indexOf("text") !== -1)
+				varComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
+			else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
+				varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
+			else if (type.indexOf("bool") !== -1)
+				varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
+
+			var param = varComponent.createObject(stateListModel);
+			var dec = Qt.createComponent("qrc:/qml/QVariableDeclaration.qml");
+			param.setDeclaration(dec.createObject(stateListModel, { "type": type }));
+			param.setValue(r.parameters[key]);
+			qType.push(param);
 		}
+		r.qType = qType;
 		return r;
 	}
 
@@ -46,6 +63,16 @@ Item {
 			balance: { value: s.balance.value, unit: s.balance.unit },
 			transactions: s.transactions.map(toPlainTransactionItem)
 		};
+	}
+
+	function getParamType(param, params)
+	{
+		for (var k in params)
+		{
+			if (params[k].declaration.name === param)
+				return params[k].declaration.type;
+		}
+		return '';
 	}
 
 	function toPlainTransactionItem(t) {
@@ -60,7 +87,14 @@ Item {
 			parameters: {}
 		};
 		for (var key in t.parameters)
-			r.parameters[key] = t.parameters[key].value();
+		{
+			var param = {
+				name: key,
+				value: t.parameters[key],
+				type: getParamType(key, t.qType)
+			}
+			r.parameters[key] = param;
+		}
 		return r;
 	}
 
@@ -70,26 +104,13 @@ Item {
 			stateListModel.clear();
 			stateList = [];
 		}
-		onProjectLoaded: {
-			if (!projectData.states)
-				projectData.states = [];
-			if (projectData.defaultStateIndex !== undefined)
-				defaultStateIndex = projectData.defaultStateIndex;
-			else
-				defaultStateIndex = -1;
-			var items = projectData.states;
-			for(var i = 0; i < items.length; i++) {
-				var item = fromPlainStateItem(items[i]);
-				stateListModel.append(item);
-				stateList.push(item);
-			}
-		}
+		onProjectLoading: stateListModel.loadStatesFromProject(projectData);
 		onProjectSaving: {
 			projectData.states = []
 			for(var i = 0; i < stateListModel.count; i++) {
 				projectData.states.push(toPlainStateItem(stateList[i]));
 			}
-			projectData.defaultStateIndex = defaultStateIndex;
+			projectData.defaultStateIndex = stateListModel.defaultStateIndex;
 		}
 		onNewProject: {
 			var state = toPlainStateItem(stateListModel.createDefaultState());
@@ -105,16 +126,17 @@ Item {
 			var item = stateDialog.getItem();
 			if (stateDialog.stateIndex < stateListModel.count) {
 				if (stateDialog.isDefault)
-					defaultStateIndex = stateIndex;
+					stateListModel.defaultStateIndex = stateIndex;
 				stateList[stateDialog.stateIndex] = item;
 				stateListModel.set(stateDialog.stateIndex, item);
 			} else {
 				if (stateDialog.isDefault)
-					defaultStateIndex = 0;
+					stateListModel.defaultStateIndex = 0;
 				stateList.push(item);
 				stateListModel.append(item);
 			}
-
+			if (stateDialog.isDefault)
+				stateListModel.defaultStateChanged();
 			stateListModel.save();
 		}
 	}
@@ -125,6 +147,11 @@ Item {
 
 	ListModel {
 		id: stateListModel
+
+		property int defaultStateIndex: 0
+		signal defaultStateChanged;
+		signal stateListModelReady;
+		signal stateRun(int index)
 
 		function defaultTransactionItem() {
 			return {
@@ -164,7 +191,7 @@ Item {
 
 		function addState() {
 			var item = createDefaultState();
-			stateDialog.open(stateListModel.count, item, defaultStateIndex === -1);
+			stateDialog.open(stateListModel.count, item, false);
 		}
 
 		function editState(index) {
@@ -179,18 +206,44 @@ Item {
 		function runState(index) {
 			var item = stateList[index];
 			clientModel.setupState(item);
+			stateRun(index);
 		}
 
 		function deleteState(index) {
 			stateListModel.remove(index);
 			stateList.splice(index, 1);
 			if (index === defaultStateIndex)
-				defaultStateIndex = -1;
+			{
+				defaultStateIndex = 0;
+				defaultStateChanged();
+			}
 			save();
 		}
 
 		function save() {
 			projectModel.saveProject();
+		}
+
+		function defaultStateName()
+		{
+			return stateList[defaultStateIndex].title;
+		}
+
+		function loadStatesFromProject(projectData)
+		{
+			if (!projectData.states)
+				projectData.states = [];
+			if (projectData.defaultStateIndex !== undefined)
+				defaultStateIndex = projectData.defaultStateIndex;
+			else
+				defaultStateIndex = 0;
+			var items = projectData.states;
+			for(var i = 0; i < items.length; i++) {
+				var item = fromPlainStateItem(items[i]);
+				stateListModel.append(item);
+				stateList.push(item);
+			}
+			stateListModelReady();
 		}
 	}
 }

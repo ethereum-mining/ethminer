@@ -22,14 +22,16 @@
 #include <QDebug>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
+#include <QStandardPaths>
 #include <jsonrpccpp/server.h>
-#include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 #include <libethereum/Transaction.h>
 #include "AppContext.h"
 #include "DebuggingStateWrapper.h"
 #include "Exceptions.h"
 #include "QContractDefinition.h"
 #include "QVariableDeclaration.h"
+#include "QVariableDefinition.h"
 #include "ContractCallDataEncoder.h"
 #include "CodeModel.h"
 #include "ClientModel.h"
@@ -66,6 +68,10 @@ ClientModel::ClientModel(AppContext* _context):
 	m_context(_context), m_running(false), m_rpcConnector(new RpcConnector()), m_contractAddress(Address())
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
+	qRegisterMetaType<QIntType*>("QIntType*");
+	qRegisterMetaType<QStringType*>("QStringType*");
+	qRegisterMetaType<QRealType*>("QRealType*");
+	qRegisterMetaType<QHashType*>("QHashType*");
 	qRegisterMetaType<QEther*>("QEther*");
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
 	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
@@ -76,10 +82,10 @@ ClientModel::ClientModel(AppContext* _context):
 	qRegisterMetaType<QInstruction*>("QInstruction");
 	qRegisterMetaType<QCode*>("QCode");
 	qRegisterMetaType<QCallData*>("QCallData");
-	qRegisterMetaType<TransactionLogEntry*>("TransactionLogEntry");
+	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry");
 
 	connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
-	m_client.reset(new MixClient());
+	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
 
 	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), std::vector<dev::KeyPair> { m_client->userAccount() }, m_client.get()));
 	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
@@ -93,14 +99,42 @@ ClientModel::~ClientModel()
 
 QString ClientModel::apiCall(QString const& _message)
 {
-	m_rpcConnector->OnRequest(_message.toStdString(), nullptr);
-	return m_rpcConnector->response();
+	try
+	{
+		m_rpcConnector->OnRequest(_message.toStdString(), nullptr);
+		return m_rpcConnector->response();
+	}
+	catch (...)
+	{
+		std::cerr << boost::current_exception_diagnostic_information();
+		return QString();
+	}
 }
 
 void ClientModel::mine()
 {
-	m_client->mine();
-	newBlock();
+	if (m_running || m_mining)
+		BOOST_THROW_EXCEPTION(ExecutionStateException());
+	m_mining = true;
+	emit miningStarted();
+	emit miningStateChanged();
+	QtConcurrent::run([=]()
+	{
+		try
+		{
+			m_client->mine();
+			newBlock();
+			m_mining = false;
+			emit miningComplete();
+		}
+		catch (...)
+		{
+			m_mining = false;
+			std::cerr << boost::current_exception_diagnostic_information();
+			emit runFailed(QString::fromStdString(boost::current_exception_diagnostic_information()));
+		}
+		emit miningStateChanged();
+	});
 }
 
 QString ClientModel::contractAddress() const
@@ -133,18 +167,18 @@ void ClientModel::setupState(QVariantMap _state)
 			TransactionSettings transactionSettings(functionId, transaction.value("url").toString());
 			transactionSettings.gasPrice = 10000000000000;
 			transactionSettings.gas = 125000;
-			transactionSettings.value = 100;
+			transactionSettings.value = 0;
 			transactionSequence.push_back(transactionSettings);
 		}
 		else
 		{
-			QVariantMap params = transaction.value("parameters").toMap();
+			QVariantList qParams = transaction.value("qType").toList();
 			TransactionSettings transactionSettings(functionId, value, gas, gasPrice);
 
-			for (auto p = params.cbegin(); p != params.cend(); ++p)
+			for (QVariant const& variant: qParams)
 			{
-				QBigInt* param = qvariant_cast<QBigInt*>(p.value());
-				transactionSettings.parameterValues.insert(std::make_pair(p.key(), boost::get<dev::u256>(param->internalValue())));
+				QVariableDefinition* param = qvariant_cast<QVariableDefinition*>(variant);
+				transactionSettings.parameterValues.push_back(param);
 			}
 
 			if (transaction.value("executeConstructor").toBool())
@@ -202,20 +236,19 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 							}
 					if (!f)
 						BOOST_THROW_EXCEPTION(FunctionNotFoundException() << FunctionName(transaction.functionId.toStdString()));
-
-					encoder.encode(f);
-					for (int p = 0; p < f->parametersList().size(); p++)
+					if (!transaction.functionId.isEmpty())
+						encoder.encode(f);
+					for (int p = 0; p < transaction.parameterValues.size(); p++)
 					{
-						QVariableDeclaration* var = f->parametersList().at(p);
-						u256 value = 0;
-						auto v = transaction.parameterValues.find(var->name());
-						if (v != transaction.parameterValues.cend())
-							value = v->second;
-						encoder.encode(var, value);
+						if (f->parametersList().at(p)->type() != transaction.parameterValues.at(p)->declaration()->type())
+							BOOST_THROW_EXCEPTION(ParameterChangedException() << FunctionName(f->parametersList().at(p)->type().toStdString()));
+						encoder.push(transaction.parameterValues.at(p)->encodeValue());
 					}
 
 					if (transaction.functionId.isEmpty())
 					{
+						bytes param = encoder.encodedData();
+						contractCode.insert(contractCode.end(), param.begin(), param.end());
 						Address newAddress = deployContract(contractCode, transaction);
 						if (newAddress != m_contractAddress)
 						{
@@ -233,11 +266,13 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 		}
 		catch(boost::exception const&)
 		{
+			std::cerr << boost::current_exception_diagnostic_information();
 			emit runFailed(QString::fromStdString(boost::current_exception_diagnostic_information()));
 		}
 
 		catch(std::exception const& e)
 		{
+			std::cerr << boost::current_exception_diagnostic_information();
 			emit runFailed(e.what());
 		}
 		m_running = false;
@@ -247,7 +282,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 
 void ClientModel::showDebugger()
 {
-	ExecutionResult const& last = m_client->record().back().transactions.back();
+	ExecutionResult const& last = m_client->lastExecution();
 	showDebuggerForTransaction(last);
 }
 
@@ -278,10 +313,10 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 }
 
 
-void ClientModel::debugTransaction(unsigned _block, unsigned _index)
+void ClientModel::debugRecord(unsigned _index)
 {
-	auto const& t = m_client->record().at(_block).transactions.at(_index);
-	showDebuggerForTransaction(t);
+	ExecutionResult const& e = m_client->executions().at(_index);
+	showDebuggerForTransaction(e);
 }
 
 void ClientModel::showDebugError(QString const& _error)
@@ -311,9 +346,10 @@ void ClientModel::onStateReset()
 
 void ClientModel::onNewTransaction()
 {
-	unsigned block = m_client->number();
-	unsigned index =  m_client->record().back().transactions.size() - 1;
-	ExecutionResult const& tr = m_client->record().back().transactions.back();
+	ExecutionResult const& tr = m_client->lastExecution();
+	unsigned block = m_client->number() + 1;
+	unsigned recordIndex = m_client->executions().size() - 1;
+	QString transactionIndex = tr.isCall() ? QObject::tr("Call") : QString("%1:%2").arg(block).arg(tr.transactionIndex);
 	QString address = QString::fromStdString(toJS(tr.address));
 	QString value =  QString::fromStdString(dev::toString(tr.value));
 	QString contract = address;
@@ -322,14 +358,9 @@ void ClientModel::onNewTransaction()
 
 	bool creation = tr.contractAddress != 0;
 
-	if (creation)
-		returned = QString::fromStdString(toJS(tr.contractAddress));
-	else
-		returned = QString::fromStdString(toJS(tr.returnValue));
-
 	//TODO: handle value transfer
 	FixedHash<4> functionHash;
-	bool call = false;
+	bool abi = false;
 	if (creation)
 	{
 		//contract creation
@@ -344,33 +375,42 @@ void ClientModel::onNewTransaction()
 	}
 	else
 	{
-		//call
+		//transaction/call
 		if (tr.transactionData.size() > 0 && tr.transactionData.front().size() >= 4)
 		{
 			functionHash = FixedHash<4>(tr.transactionData.front().data(), FixedHash<4>::ConstructFromPointer);
 			function = QString::fromStdString(toJS(functionHash));
-			call = true;
+			abi = true;
 		}
 		else
 			function = QObject::tr("<none>");
 	}
+
+	if (creation)
+		returned = QString::fromStdString(toJS(tr.contractAddress));
 
 	if (m_contractAddress != 0 && (tr.address == m_contractAddress || tr.contractAddress == m_contractAddress))
 	{
 		auto compilerRes = m_context->codeModel()->code();
 		QContractDefinition* def = compilerRes->contract();
 		contract = def->name();
-		if (call)
+		if (abi)
 		{
 			QFunctionDefinition* funcDef = def->getFunction(functionHash);
 			if (funcDef)
+			{
 				function = funcDef->name();
+				ContractCallDataEncoder encoder;
+				QList<QVariableDefinition*> returnValues = encoder.decode(funcDef->returnParameters(), tr.returnValue);
+				for (auto const& var: returnValues)
+					returned += var->value() + " | ";
+			}
 		}
 	}
 
-	TransactionLogEntry* log = new TransactionLogEntry(block, index, contract, function, value, address, returned);
+	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall());
 	QQmlEngine::setObjectOwnership(log, QQmlEngine::JavaScriptOwnership);
-	emit newTransaction(log);
+	emit newRecord(log);
 }
 
 }

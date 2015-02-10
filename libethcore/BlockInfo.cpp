@@ -208,7 +208,7 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 		if (parentHash != _parent.hash)
 			BOOST_THROW_EXCEPTION(InvalidParentHash());
 
-		if (timestamp < _parent.timestamp)
+		if (timestamp <= _parent.timestamp)
 			BOOST_THROW_EXCEPTION(InvalidTimestamp());
 
 		if (number != _parent.number + 1)
