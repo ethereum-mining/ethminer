@@ -85,7 +85,7 @@ llvm::Function* Arith256::getMul512Func()
 	{
 		auto i512 = m_builder.getIntNTy(512);
 		llvm::Type* argTypes[] = {Type::Word, Type::Word};
-		func = llvm::Function::Create(llvm::FunctionType::get(i512, argTypes, false), llvm::Function::PrivateLinkage, "mul", getModule());
+		func = llvm::Function::Create(llvm::FunctionType::get(i512, argTypes, false), llvm::Function::PrivateLinkage, "mul512", getModule());
 
 		auto x = &func->getArgumentList().front();
 		x->setName("x");
