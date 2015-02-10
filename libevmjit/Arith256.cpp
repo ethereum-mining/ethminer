@@ -8,6 +8,7 @@
 #include "preprocessor/llvm_includes_end.h"
 
 #include <iostream>
+#include <iomanip>
 
 namespace dev
 {
@@ -27,7 +28,7 @@ void Arith256::debug(llvm::Value* _value, char _c)
 		llvm::Type* argTypes[] = {Type::Word, m_builder.getInt8Ty()};
 		m_debug = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::ExternalLinkage, "debug", getModule());
 	}
-	createCall(m_debug, {_value, m_builder.getInt8(_c)});
+	createCall(m_debug, {m_builder.CreateZExtOrTrunc(_value, Type::Word), m_builder.getInt8(_c)});
 }
 
 llvm::Function* Arith256::getMulFunc()
@@ -97,15 +98,15 @@ llvm::Function* Arith256::getMul512Func()
 		m_builder.SetInsertPoint(bb);
 		auto i128 = m_builder.getIntNTy(128);
 		auto i256 = Type::Word;
-		auto x_lo = m_builder.CreateTrunc(x, i128, "x.lo");
-		auto y_lo = m_builder.CreateTrunc(y, i128, "y.lo");
-		auto x_hi = m_builder.CreateTrunc(m_builder.CreateLShr(x, Constant::get(128)), i128, "x.hi");
-		auto y_hi = m_builder.CreateTrunc(m_builder.CreateLShr(y, Constant::get(128)), i128, "y.hi");
+		auto x_lo = m_builder.CreateZExt(m_builder.CreateTrunc(x, i128, "x.lo"), i256);
+		auto y_lo = m_builder.CreateZExt(m_builder.CreateTrunc(y, i128, "y.lo"), i256);
+		auto x_hi = m_builder.CreateZExt(m_builder.CreateTrunc(m_builder.CreateLShr(x, Constant::get(128)), i128, "x.hi"), i256);
+		auto y_hi = m_builder.CreateZExt(m_builder.CreateTrunc(m_builder.CreateLShr(y, Constant::get(128)), i128, "y.hi"), i256);
 
-		auto t1 = createCall(getMulFunc(), {m_builder.CreateZExt(x_lo, i256), m_builder.CreateZExt(y_lo, i256)});
-		auto t2 = createCall(getMulFunc(), {m_builder.CreateZExt(x_lo, i256), m_builder.CreateZExt(y_hi, i256)});
-		auto t3 = createCall(getMulFunc(), {m_builder.CreateZExt(x_hi, i256), m_builder.CreateZExt(y_lo, i256)});
-		auto t4 = createCall(getMulFunc(), {m_builder.CreateZExt(x_hi, i256), m_builder.CreateZExt(y_hi, i256)});
+		auto t1 = createCall(getMulFunc(), {x_lo, y_lo});
+		auto t2 = createCall(getMulFunc(), {x_lo, y_hi});
+		auto t3 = createCall(getMulFunc(), {x_hi, y_lo});
+		auto t4 = createCall(getMulFunc(), {x_hi, y_hi});
 
 		auto p = m_builder.CreateZExt(t1, i512);
 		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t2, i512), m_builder.getIntN(512, 128)));
@@ -160,6 +161,15 @@ llvm::Function* Arith256::getDivFunc(llvm::Type* _type)
 		auto i0 = m_builder.CreateNUWSub(yLz, rLz, "i0");
 		auto shlBy0 = m_builder.CreateICmpEQ(i0, zero);
 		auto y0 = m_builder.CreateShl(yArg, i0);
+		if (_type == m_builder.getIntNTy(512)) // Workaround for shl bug for long shifts
+		{
+			const auto treshold = m_builder.getIntN(512, 128);
+			auto highShift = m_builder.CreateICmpUGT(i0, treshold);
+			auto s = m_builder.CreateNUWSub(i0, treshold);
+			auto yhs = m_builder.CreateShl(yArg, treshold);
+			yhs = m_builder.CreateShl(yhs, s);
+			y0 = m_builder.CreateSelect(highShift, yhs, y0);
+		}
 		y0 = m_builder.CreateSelect(shlBy0, yArg, y0, "y0"); // Workaround for LLVM bug: shl by 0 produces wrong result
 		m_builder.CreateBr(loopBB);
 
@@ -325,7 +335,8 @@ llvm::Function* Arith256::getMulModFunc()
 		auto m = m_builder.CreateZExt(mod, i512Ty, "m");
 		auto d = createCall(getDivFunc(i512Ty), {p, m});
 		auto r = m_builder.CreateExtractValue(d, 1, "r");
-		m_builder.CreateRet(m_builder.CreateTrunc(r, Type::Word));
+		r = m_builder.CreateTrunc(r, Type::Word);
+		m_builder.CreateRet(r);
 	}
 	return m_mulmod;
 }
@@ -389,6 +400,7 @@ extern "C"
 {
 	EXPORT void debug(uint64_t a, uint64_t b, uint64_t c, uint64_t d, char z)
 	{
-		std::cerr << "DEBUG " << z << ": " << d << c << b << a << std::endl;
+		std::cerr << "DEBUG " << std::dec << z << ": " //<< d << c << b << a
+				<< " ["	<< std::hex << std::setfill('0') << std::setw(16) << d << std::setw(16) << c << std::setw(16) << b << std::setw(16) << a << "]\n";
 	}
 }
