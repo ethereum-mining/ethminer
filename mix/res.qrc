@@ -61,7 +61,27 @@
         <file>stdc/std.sol</file>
         <file>qml/TransactionLog.qml</file>
         <file>res/mix_256x256x32.png</file>
-        <file>qml/CallStack.qml</file>
         <file>qml/QVariableDeclaration.qml</file>
+        <file>qml/Style.qml</file>
+        <file>qml/qmldir</file>
+        <file>qml/FilesSection.qml</file>
+        <file>qml/fonts/SourceSansPro-Black.ttf</file>
+        <file>qml/fonts/SourceSansPro-BlackIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-Bold.ttf</file>
+        <file>qml/fonts/SourceSansPro-BoldIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-ExtraLight.ttf</file>
+        <file>qml/fonts/SourceSansPro-ExtraLightIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-It.ttf</file>
+        <file>qml/fonts/SourceSansPro-Light.ttf</file>
+        <file>qml/fonts/SourceSansPro-LightIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-Regular.ttf</file>
+        <file>qml/fonts/SourceSansPro-Semibold.ttf</file>
+        <file>qml/fonts/SourceSansPro-SemiboldIt.ttf</file>
+        <file>qml/fonts/SourceSerifPro-Bold.ttf</file>
+        <file>qml/fonts/SourceSerifPro-Regular.ttf</file>
+        <file>qml/fonts/SourceSerifPro-Semibold.ttf</file>
+        <file>qml/img/closedtriangleindicator_filesproject.png</file>
+        <file>qml/img/opentriangleindicator_filesproject.png</file>
+        <file>qml/img/projecticon.png</file>
     </qresource>
 </RCC>

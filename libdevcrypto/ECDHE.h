@@ -31,7 +31,7 @@ namespace crypto
 {
 	
 /// Public key of remote and corresponding shared secret.
-typedef std::pair<Public,h256> AliasSession;
+using AliasSession = std::pair<Public,h256>;
 	
 /**
  * @brief An addressable EC key pair.
