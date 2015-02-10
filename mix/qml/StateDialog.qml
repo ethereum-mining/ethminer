@@ -5,6 +5,7 @@ import QtQuick.Window 2.0
 import org.ethereum.qml.QEther 1.0
 import "js/QEtherHelper.js" as QEtherHelper
 import "js/TransactionHelper.js" as TransactionHelper
+import "."
 
 Window {
 	id: modalStateDialog
@@ -158,7 +159,7 @@ Window {
 					Layout.fillWidth: true
 					Layout.fillHeight: true
 					text: functionId
-					font.pointSize: 12
+					font.pointSize: StateStyle.general.basicFontSize //12
 					verticalAlignment: Text.AlignBottom
 				}
 				ToolButton {
