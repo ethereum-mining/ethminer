@@ -35,12 +35,12 @@ namespace eth
 const unsigned c_protocolVersion = 53;
 const unsigned c_databaseVersion = 5;
 
-template <size_t n> constexpr u256 exp10()
+template <size_t n> u256 exp10()
 {
 	return exp10<n - 1>() * u256(10);
 }
 
-template <> constexpr u256 exp10<0>()
+template <> u256 exp10<0>()
 {
 	return u256(1);
 }
