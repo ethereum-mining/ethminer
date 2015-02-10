@@ -86,7 +86,12 @@ function(createBuildInfo)
 	endif()
 
 	# Generate header file containing useful build information
-	add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${_cmake_build_type} ${ETH_BUILD_PLATFORM})
+	add_custom_target(BuildInfo.h ALL
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		COMMAND cmake -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
+			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}" 
+			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
+		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 	set(CMAKE_INCLUDE_CURRENT_DIR ON)
