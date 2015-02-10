@@ -5,6 +5,14 @@ import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 
 Item {
+
+	property bool showLogs: true
+	property ListModel fullModel: ListModel{}
+	property ListModel transactionModel: ListModel{}
+	onShowLogsChanged: {
+		logTable.model = showLogs ? fullModel : transactionModel
+	}
+
 	Action {
 		id: addStateAction
 		text: "Add State"
@@ -70,17 +78,13 @@ Item {
 			}
 		}
 		TableView {
+			id: logTable
 			Layout.fillWidth: true
 			Layout.fillHeight: true
-			model: logModel
+			model: fullModel
 
 			TableViewColumn {
-				role: "block"
-				title: qsTr("Block")
-				width: 40
-			}
-			TableViewColumn {
-				role: "tindex"
+				role: "transactionIndex"
 				title: qsTr("Index")
 				width: 40
 			}
@@ -110,30 +114,31 @@ Item {
 				width: 120
 			}
 			onActivated:  {
-				var item = logModel.get(row);
-				clientModel.debugTransaction(item.block, item.tindex);
+				var item = logTable.model.get(row);
+				clientModel.debugRecord(item.recordIndex);
 			}
 			Keys.onPressed: {
-				if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < logModel.count) {
-					var item = logModel.get(currentRow);
+				if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < logTable.model.count) {
+					var item = logTable.model.get(currentRow);
 					appContext.toClipboard(item.returned);
 				}
 			}
 		}
 	}
 
-	ListModel {
-		id: logModel
-	}
-
 	Connections {
 		target: clientModel
 		onStateCleared: {
-			logModel.clear();
+			fullModel.clear();
+			transactionModel.clear();
 		}
-		onNewTransaction: {
+		onNewRecord: {
 			if (recording.checked)
-				logModel.append(_tr);
+			{
+				fullModel.append(_r);
+				if (!_r.call)
+					transactionModel.append(_r);
+			}
 		}
 	}
 

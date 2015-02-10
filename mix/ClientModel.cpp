@@ -82,7 +82,7 @@ ClientModel::ClientModel(AppContext* _context):
 	qRegisterMetaType<QInstruction*>("QInstruction");
 	qRegisterMetaType<QCode*>("QCode");
 	qRegisterMetaType<QCallData*>("QCallData");
-	qRegisterMetaType<TransactionLogEntry*>("TransactionLogEntry");
+	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry");
 
 	connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
@@ -236,8 +236,8 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 							}
 					if (!f)
 						BOOST_THROW_EXCEPTION(FunctionNotFoundException() << FunctionName(transaction.functionId.toStdString()));
-
-					encoder.encode(f);
+					if (!transaction.functionId.isEmpty())
+						encoder.encode(f);
 					for (int p = 0; p < transaction.parameterValues.size(); p++)
 					{
 						if (f->parametersList().at(p)->type() != transaction.parameterValues.at(p)->declaration()->type())
@@ -247,6 +247,8 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 
 					if (transaction.functionId.isEmpty())
 					{
+						bytes param = encoder.encodedData();
+						contractCode.insert(contractCode.end(), param.begin(), param.end());
 						Address newAddress = deployContract(contractCode, transaction);
 						if (newAddress != m_contractAddress)
 						{
@@ -311,10 +313,10 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 }
 
 
-void ClientModel::debugTransaction(unsigned _block, unsigned _index)
+void ClientModel::debugRecord(unsigned _index)
 {
-	auto const& t = m_client->execution(_block, _index);
-	showDebuggerForTransaction(t);
+	ExecutionResult const& e = m_client->executions().at(_index);
+	showDebuggerForTransaction(e);
 }
 
 void ClientModel::showDebugError(QString const& _error)
@@ -344,9 +346,10 @@ void ClientModel::onStateReset()
 
 void ClientModel::onNewTransaction()
 {
-	unsigned block = m_client->number() + 1;
-	unsigned index =  m_client->pendingExecutions().size() - 1;
 	ExecutionResult const& tr = m_client->lastExecution();
+	unsigned block = m_client->number() + 1;
+	unsigned recordIndex = m_client->executions().size() - 1;
+	QString transactionIndex = tr.isCall() ? QObject::tr("Call") : QString("%1:%2").arg(block).arg(tr.transactionIndex);
 	QString address = QString::fromStdString(toJS(tr.address));
 	QString value =  QString::fromStdString(dev::toString(tr.value));
 	QString contract = address;
@@ -357,7 +360,7 @@ void ClientModel::onNewTransaction()
 
 	//TODO: handle value transfer
 	FixedHash<4> functionHash;
-	bool call = false;
+	bool abi = false;
 	if (creation)
 	{
 		//contract creation
@@ -372,12 +375,12 @@ void ClientModel::onNewTransaction()
 	}
 	else
 	{
-		//call
+		//transaction/call
 		if (tr.transactionData.size() > 0 && tr.transactionData.front().size() >= 4)
 		{
 			functionHash = FixedHash<4>(tr.transactionData.front().data(), FixedHash<4>::ConstructFromPointer);
 			function = QString::fromStdString(toJS(functionHash));
-			call = true;
+			abi = true;
 		}
 		else
 			function = QObject::tr("<none>");
@@ -391,7 +394,7 @@ void ClientModel::onNewTransaction()
 		auto compilerRes = m_context->codeModel()->code();
 		QContractDefinition* def = compilerRes->contract();
 		contract = def->name();
-		if (call)
+		if (abi)
 		{
 			QFunctionDefinition* funcDef = def->getFunction(functionHash);
 			if (funcDef)
@@ -405,9 +408,9 @@ void ClientModel::onNewTransaction()
 		}
 	}
 
-	TransactionLogEntry* log = new TransactionLogEntry(block, index, contract, function, value, address, returned);
+	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall());
 	QQmlEngine::setObjectOwnership(log, QQmlEngine::JavaScriptOwnership);
-	emit newTransaction(log);
+	emit newRecord(log);
 }
 
 }
