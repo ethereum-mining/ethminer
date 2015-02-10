@@ -44,13 +44,13 @@ public:
 	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 	
 private:
-	dev::eth::Interface* client() override;
-	std::shared_ptr<dev::shh::Interface> face() override;
-	dev::WebThreeNetworkFace* network() override;
-	dev::WebThreeStubDatabaseFace* db() override;
+	virtual dev::eth::Interface* client() override;
+	virtual std::shared_ptr<dev::shh::Interface> face() override;
+	virtual dev::WebThreeNetworkFace* network() override;
+	virtual dev::WebThreeStubDatabaseFace* db() override;
 
-	std::string get(std::string const& _name, std::string const& _key) override;
-	void put(std::string const& _name, std::string const& _key, std::string const& _value) override;
+	virtual std::string get(std::string const& _name, std::string const& _key) override;
+	virtual void put(std::string const& _name, std::string const& _key, std::string const& _value) override;
 
 private:
 	dev::WebThreeDirect& m_web3;

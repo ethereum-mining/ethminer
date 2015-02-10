@@ -2,138 +2,166 @@ import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
+import QtQuick.Controls.Styles 1.3
+import Qt.labs.settings 1.0
+import "."
 
 Item {
 	property bool renameMode: false;
 	ColumnLayout {
 		anchors.fill: parent
-		Text {
-			Layout.fillWidth: true
-			color: "blue"
-			text: projectModel.projectTitle
-			horizontalAlignment: Text.AlignHCenter
-			visible: !projectModel.isEmpty;
+		id: filesCol
+		spacing: 0
+		FontLoader
+		{
+			id: srcSansProLight
+			source: "qrc:/qml/fonts/SourceSansPro-Light.ttf"
 		}
-		ListView {
-			id: projectList
+
+		Rectangle
+		{
+			color: Style.title.background
+			height: Style.title.height
+			Layout.fillWidth: true
+			Image {
+				id: projectIcon
+				source: "qrc:/qml/img/projecticon.png"
+				sourceSize.height: 30
+				anchors.right: projectTitle.left
+				anchors.verticalCenter: parent.verticalCenter
+				anchors.rightMargin: 6
+			}
+
+			Text
+			{
+				id: projectTitle
+				color: Style.title.color
+				text: projectModel.projectTitle
+				anchors.verticalCenter: parent.verticalCenter
+				visible: !projectModel.isEmpty;
+				anchors.left: parent.left
+				anchors.leftMargin: Style.general.leftMargin
+				font.family: srcSansProLight.name
+				font.pointSize: Style.title.pointSize
+				font.weight: Font.Light
+			}
+
+			Text
+			{
+				text: "-"
+				anchors.right: parent.right
+				anchors.rightMargin: 15
+				font.family: srcSansProLight.name
+				font.pointSize: Style.title.pointSize
+				anchors.verticalCenter: parent.verticalCenter
+				font.weight: Font.Light
+			}
+		}
+
+		Rectangle
+		{
+			Layout.fillWidth: true
+			height: 10
+			color: Style.documentsList.background
+		}
+
+
+
+		Rectangle
+		{
 			Layout.fillWidth: true
 			Layout.fillHeight: true
+			color: Style.documentsList.background
 
-			model: projectModel.listModel
+			ColumnLayout
+			{
+				anchors.top: parent.top
+				width: parent.width
+				spacing: 0
 
-			delegate: renderDelegate
-			highlight: Rectangle {
-				color: "lightsteelblue";
-			}
-			highlightFollowsCurrentItem: true
-			focus: true
-			clip: true
+				Repeater {
+					model: [qsTr("Contracts"), qsTr("Javascript"), qsTr("Web Pages"), qsTr("Styles"), qsTr("Images"), qsTr("Misc")];
+					signal selected(string doc, string groupName)
+					id: sectionRepeater
+					FilesSection
+					{
+						sectionName: modelData
+						model: sectionModel
+						selManager: sectionRepeater
 
-			onCurrentIndexChanged: {
-				if (currentIndex >= 0 && currentIndex < projectModel.listModel.count)
-					projectModel.openDocument(projectModel.listModel.get(currentIndex).documentId);
-			}
-		}
-		Menu {
-			id: contextMenu
-			MenuItem {
-				text: qsTr("Rename")
-				onTriggered: {
-					renameMode = true;
-				}
-			}
-			MenuItem {
-				text: qsTr("Delete")
-				onTriggered: {
-					projectModel.removeDocument(projectList.model.get(projectList.currentIndex).documentId);
-				}
-			}
-		}
-	}
-	Component {
-		id: renderDelegate
-		Item {
-			id: wrapperItem
-			height: 20
-			width: parent.width
-			RowLayout {
-				anchors.fill: parent
-				visible: !(index === projectList.currentIndex) || !renameMode
-				Text {
-					id: nameText
-					Layout.fillWidth: true
-					Layout.fillHeight: true
-					text: name
-					font.pointSize: 12
-					verticalAlignment: Text.AlignBottom
-				}
-			}
+						onDocumentSelected: {
+							selManager.selected(doc, groupName);
+						}
 
-			TextInput {
-				id: textInput
-				text: nameText.text
-				visible: (index === projectList.currentIndex) && renameMode
-				MouseArea {
-					id: textMouseArea
-					anchors.fill: parent
-					hoverEnabled: true
-					z:2
-					onClicked: {
-						textInput.forceActiveFocus();
+						ListModel
+						{
+							id: sectionModel
+						}
+
+						Connections {
+							target: codeModel
+							onCompilationComplete: {
+								if (modelData === "Contracts")
+								{
+									var ctr = projectModel.listModel.get(0);
+									if (codeModel.code.contract.name !== ctr.name)
+									{
+										ctr.name = codeModel.code.contract.name;
+										projectModel.listModel.set(0, ctr);
+										sectionModel.set(0, ctr);
+									}
+								}
+							}
+						}
+
+						Connections {
+							id: projectModelConnection
+							target: projectModel
+
+							function addDocToSubModel()
+							{
+								for (var k = 0; k < projectModel.listModel.count; k++)
+								{
+									var item = projectModel.listModel.get(k);
+									if (item.groupName === modelData)
+										sectionModel.append(item);
+								}
+							}
+
+							onDocumentOpened: {
+								if (document.groupName === modelData)
+									sectionRepeater.selected(document.documentId, modelData);
+							}
+
+							onNewProject: {
+								sectionModel.clear();
+							}
+
+							onProjectLoaded: {
+								addDocToSubModel();
+								if (modelData === "Contracts")
+								{
+									var selItem = projectModel.listModel.get(0);
+									projectModel.openDocument(selItem.documentId);
+									sectionRepeater.selected(selItem.documentId, modelData);
+								}
+							}
+
+							onDocumentAdded:
+							{
+								var newDoc = projectModel.getDocument(documentId);
+								if (newDoc.groupName === modelData)
+								{
+									sectionModel.append(newDoc);
+									projectModel.openDocument(newDoc.documentId);
+									sectionRepeater.selected(newDoc.documentId, modelData);
+								}
+
+							}
+						}
 					}
 				}
-
-				onVisibleChanged: {
-					if (visible) {
-						selectAll();
-						forceActiveFocus();
-					}
-				}
-
-				onAccepted: close(true);
-				onCursorVisibleChanged: {
-					if (!cursorVisible)
-						close(false);
-				}
-				onFocusChanged: {
-					if (!focus)
-						close(false);
-				}
-				function close(accept) {
-					renameMode = false;
-					if (accept)
-						projectModel.renameDocument(projectList.model.get(projectList.currentIndex).documentId, textInput.text);
-				}
 			}
-			MouseArea {
-				id: mouseArea
-				z: 1
-				hoverEnabled: false
-				anchors.fill: parent
-				acceptedButtons: Qt.LeftButton | Qt.RightButton
-				onClicked:{
-					projectList.currentIndex = index;
-					if (mouse.button === Qt.RightButton && !projectList.model.get(index).isContract)
-						contextMenu.popup();
-				}
-			}
-		}
-	}
-	Connections {
-		target: projectModel
-		onProjectLoaded: {
-			projectList.currentIndex = 0;
-			if (projectList.currentIndex >= 0 && projectList.currentIndex < projectModel.listModel.count)
-				projectModel.openDocument(projectModel.listModel.get(projectList.currentIndex).documentId);
-
-		}
-		onProjectClosed: {
-			projectList.currentIndex = -1;
-		}
-		onDocumentOpened: {
-			if (projectList.currentItem.documentId !== document.documentId)
-				projectList.currentIndex = projectModel.getDocumentIndex(document.documentId);
-
 		}
 	}
 }

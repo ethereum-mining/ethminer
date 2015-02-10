@@ -576,7 +576,7 @@ BOOST_AUTO_TEST_CASE(simple_mapping)
 							 "  }\n"
 							 "}";
 	compileAndRun(sourceCode);
-	
+
 	BOOST_CHECK(callContractFunction("get(uint8)", byte(0)) == encodeArgs(byte(0x00)));
 	BOOST_CHECK(callContractFunction("get(uint8)", byte(0x01)) == encodeArgs(byte(0x00)));
 	BOOST_CHECK(callContractFunction("get(uint8)", byte(0xa7)) == encodeArgs(byte(0x00)));
@@ -933,7 +933,7 @@ BOOST_AUTO_TEST_CASE(multiple_elementary_accessors)
 	compileAndRun(sourceCode);
 	BOOST_CHECK(callContractFunction("data()") == encodeArgs(8));
 	BOOST_CHECK(callContractFunction("name()") == encodeArgs("Celina"));
-	BOOST_CHECK(callContractFunction("a_hash()") == encodeArgs(dev::sha3(toBigEndian(u256(123)))));
+	BOOST_CHECK(callContractFunction("a_hash()") == encodeArgs(dev::sha3(bytes({0x7b}))));
 	BOOST_CHECK(callContractFunction("an_address()") == encodeArgs(toBigEndian(u160(0x1337))));
 	BOOST_CHECK(callContractFunction("super_secret_data()") == bytes());
 }
@@ -957,6 +957,24 @@ BOOST_AUTO_TEST_CASE(complex_accessors)
 	BOOST_CHECK(callContractFunction("to_bool_map(uint256)", 42) == encodeArgs(false));
 	BOOST_CHECK(callContractFunction("to_uint_map(uint256)", 42) == encodeArgs(12));
 	BOOST_CHECK(callContractFunction("to_multiple_map(uint256,uint256)", 42, 23) == encodeArgs(31));
+}
+
+BOOST_AUTO_TEST_CASE(struct_accessor)
+{
+	char const* sourceCode = R"(
+		contract test {
+			struct Data { uint a; uint8 b; mapping(uint => uint) c; bool d; }
+			mapping(uint => Data) public data;
+			function test() {
+				data[7].a = 1;
+				data[7].b = 2;
+				data[7].c[0] = 3;
+				data[7].d = true;
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("data(uint256)", 7) == encodeArgs(1, 2, true));
 }
 
 BOOST_AUTO_TEST_CASE(balance)
@@ -2093,6 +2111,117 @@ BOOST_AUTO_TEST_CASE(event_lots_of_data)
 	BOOST_CHECK(m_logs[0].data == encodeArgs(m_sender, id, value, true));
 	BOOST_REQUIRE_EQUAL(m_logs[0].topics.size(), 1);
 	BOOST_CHECK_EQUAL(m_logs[0].topics[0], dev::sha3(string("Deposit(address,hash256,uint256,bool)")));
+}
+
+BOOST_AUTO_TEST_CASE(empty_name_input_parameter_with_named_one)
+{
+	char const* sourceCode = R"(
+		contract test {
+			function f(uint, uint k) returns(uint ret_k, uint ret_g){
+				uint g = 8;
+				ret_k = k;
+				ret_g = g;
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("f(uint256,uint256)", 5, 9) != encodeArgs(5, 8));
+	BOOST_CHECK(callContractFunction("f(uint256,uint256)", 5, 9) == encodeArgs(9, 8));
+}
+
+BOOST_AUTO_TEST_CASE(empty_name_return_parameter)
+{
+	char const* sourceCode = R"(
+		contract test {
+			function f(uint k) returns(uint){
+				return k;
+		}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("f(uint256)", 9) == encodeArgs(9));
+}
+
+BOOST_AUTO_TEST_CASE(sha3_multiple_arguments)
+{
+	char const* sourceCode = R"(
+		contract c {
+			function foo(uint a, uint b, uint c) returns (hash d)
+			{
+				d = sha3(a, b, c);
+			}
+		})";
+	compileAndRun(sourceCode);
+
+	BOOST_CHECK(callContractFunction("foo(uint256,uint256,uint256)", 10, 12, 13) == encodeArgs(
+					dev::sha3(
+						toBigEndian(u256(10)) +
+						toBigEndian(u256(12)) +
+						toBigEndian(u256(13)))));
+}
+
+BOOST_AUTO_TEST_CASE(sha3_multiple_arguments_with_numeric_literals)
+{
+	char const* sourceCode = R"(
+		contract c {
+			function foo(uint a, uint16 b) returns (hash d)
+			{
+				d = sha3(a, b, 145);
+			}
+		})";
+	compileAndRun(sourceCode);
+
+	BOOST_CHECK(callContractFunction("foo(uint256,uint16)", 10, 12) == encodeArgs(
+					dev::sha3(
+						toBigEndian(u256(10)) +
+						bytes({0x0, 0xc}) +
+						bytes({0x91}))));
+}
+
+BOOST_AUTO_TEST_CASE(sha3_multiple_arguments_with_string_literals)
+{
+	char const* sourceCode = R"(
+		contract c {
+			function foo() returns (hash d)
+			{
+				d = sha3("foo");
+			}
+			function bar(uint a, uint16 b) returns (hash d)
+			{
+				d = sha3(a, b, 145, "foo");
+			}
+		})";
+	compileAndRun(sourceCode);
+
+	BOOST_CHECK(callContractFunction("foo()") == encodeArgs(dev::sha3("foo")));
+
+	BOOST_CHECK(callContractFunction("bar(uint256,uint16)", 10, 12) == encodeArgs(
+					dev::sha3(
+						toBigEndian(u256(10)) +
+						bytes({0x0, 0xc}) +
+						bytes({0x91}) +
+						bytes({0x66, 0x6f, 0x6f}))));
+}
+
+BOOST_AUTO_TEST_CASE(generic_call)
+{
+	char const* sourceCode = R"**(
+			contract receiver {
+				uint public received;
+				function receive(uint256 x) { received = x; }
+			}
+			contract sender {
+				function doSend(address rec) returns (uint d)
+				{
+					string4 signature = string4(string32(sha3("receive(uint256)")));
+					rec.call.value(2)(signature, 23);
+					return receiver(rec).received();
+				}
+			}
+	)**";
+	compileAndRun(sourceCode, 0, "receiver");
+	u160 const c_receiverAddress = m_contractAddress;
+	compileAndRun(sourceCode, 50, "sender");
+	BOOST_REQUIRE(callContractFunction("doSend(address)", c_receiverAddress) == encodeArgs(23));
+	BOOST_CHECK_EQUAL(m_state.balance(m_contractAddress), 50 - 2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

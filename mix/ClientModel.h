@@ -26,6 +26,7 @@
 #include <atomic>
 #include <map>
 #include <QString>
+#include <QVariantMap>
 #include "MachineStates.h"
 
 namespace dev
@@ -68,13 +69,13 @@ struct TransactionSettings
 
 
 /// UI Transaction log record
-class TransactionLogEntry: public QObject
+class RecordLogEntry: public QObject
 {
 	Q_OBJECT
-	/// Transaction block number
-	Q_PROPERTY(unsigned block MEMBER m_block CONSTANT)
-	/// Transaction index within the block
-	Q_PROPERTY(unsigned tindex MEMBER m_index CONSTANT)
+	/// Recording index
+	Q_PROPERTY(unsigned recordIndex MEMBER m_recordIndex CONSTANT)
+	/// Human readable transaction bloack and transaction index
+	Q_PROPERTY(QString transactionIndex MEMBER m_transactionIndex CONSTANT)
 	/// Contract name if any
 	Q_PROPERTY(QString contract MEMBER m_contract CONSTANT)
 	/// Function name if any
@@ -85,21 +86,25 @@ class TransactionLogEntry: public QObject
 	Q_PROPERTY(QString address MEMBER m_address CONSTANT)
 	/// Returned value or transaction address in case of creation
 	Q_PROPERTY(QString returned MEMBER m_returned CONSTANT)
+	/// true if call, false if transaction
+	Q_PROPERTY(bool call MEMBER m_call CONSTANT)
+
 
 public:
-	TransactionLogEntry():
-		m_block(0), m_index(0) {}
-	TransactionLogEntry(int _block, int _index, QString _contract, QString _function, QString _value, QString _address, QString _returned):
-		m_block(_block), m_index(_index), m_contract(_contract), m_function(_function), m_value(_value), m_address(_address), m_returned(_returned) {}
+	RecordLogEntry():
+		m_recordIndex(0), m_call(false) {}
+	RecordLogEntry(unsigned _recordIndex, QString _transactionIndex, QString _contract, QString _function, QString _value, QString _address, QString _returned, bool _call):
+		m_recordIndex(_recordIndex), m_transactionIndex(_transactionIndex), m_contract(_contract), m_function(_function), m_value(_value), m_address(_address), m_returned(_returned), m_call(_call) {}
 
 private:
-	unsigned m_block;
-	unsigned m_index;
+	unsigned m_recordIndex;
+	QString m_transactionIndex;
 	QString m_contract;
 	QString m_function;
 	QString m_value;
 	QString m_address;
 	QString m_returned;
+	bool m_call;
 };
 
 /**
@@ -114,6 +119,8 @@ public:
 	~ClientModel();
 	/// @returns true if currently executing contract code
 	Q_PROPERTY(bool running MEMBER m_running NOTIFY runStateChanged)
+	/// @returns true if currently mining
+	Q_PROPERTY(bool mining MEMBER m_mining NOTIFY miningStateChanged)
 	/// @returns address of the last executed contract
 	Q_PROPERTY(QString contractAddress READ contractAddress NOTIFY contractAddressChanged)
 	/// ethereum.js RPC request entry point
@@ -130,8 +137,8 @@ public slots:
 	/// Setup state, run transaction sequence, show debugger for the last transaction
 	/// @param _state JS object with state configuration
 	void setupState(QVariantMap _state);
-	/// Show the debugger for a specified transaction
-	Q_INVOKABLE void debugTransaction(unsigned _block, unsigned _index);
+	/// Show the debugger for a specified record
+	Q_INVOKABLE void debugRecord(unsigned _index);
 
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
@@ -144,6 +151,12 @@ signals:
 	void runStarted();
 	/// Transaction execution completed successfully
 	void runComplete();
+	/// Mining has started
+	void miningStarted();
+	/// Mined a new block
+	void miningComplete();
+	/// Mining stopped or started
+	void miningStateChanged();
 	/// Transaction execution completed with error
 	/// @param _message Error message
 	void runFailed(QString const& _message);
@@ -159,7 +172,7 @@ signals:
 	/// @param _message RPC response in Json format
 	void apiResponse(QString const& _message);
 	/// New transaction log entry
-	void newTransaction(TransactionLogEntry* _tr);
+	void newRecord(RecordLogEntry* _r);
 	/// State (transaction log) cleared
 	void stateCleared();
 
@@ -174,6 +187,7 @@ private:
 
 	AppContext* m_context;
 	std::atomic<bool> m_running;
+	std::atomic<bool> m_mining;
 	std::unique_ptr<MixClient> m_client;
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
