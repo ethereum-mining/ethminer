@@ -1938,7 +1938,7 @@ void Main::on_send_clicked()
 						{
 							h256 contractHash = compiler.getContractCodeHash(s);
 							m_natspecDB.add(contractHash,
-											compiler.getMetadata(s, dev::solidity::DocumentationType::NATSPEC_USER));
+											compiler.getMetadata(s, dev::solidity::DocumentationType::NatspecUser));
 						}
 					}
 					catch (...)
