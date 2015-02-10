@@ -42,8 +42,8 @@ set(TMPFILE "${ETH_DST_DIR}/BuildInfo.h.tmp")
 set(OUTFILE "${ETH_DST_DIR}/BuildInfo.h")
 
 # create outfile if it doesn't exist
-if (NOT (EXISTS ${OUTFILE}))
-	execute_process(COMMAND touch ${OUTFILE})
+if (NOT (EXISTS "${OUTFILE}"))
+	execute_process(COMMAND touch "${OUTFILE}")
 endif()
 
 configure_file("${INFILE}" "${TMPFILE}")
