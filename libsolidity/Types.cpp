@@ -26,6 +26,8 @@
 #include <libsolidity/Types.h>
 #include <libsolidity/AST.h>
 
+#include <limits>
+
 using namespace std;
 
 namespace dev
@@ -319,6 +321,14 @@ TypePointer IntegerConstantType::binaryOperatorResult(Token::Value _operator, Ty
 			if (other.m_value == 0)
 				return TypePointer();
 			value = m_value % other.m_value;
+			break;
+		case Token::Exp:
+			if (other.m_value < 0)
+				return TypePointer();
+			else if (other.m_value > std::numeric_limits<unsigned int>::max())
+				return TypePointer();
+			else
+				value = boost::multiprecision::pow(m_value, other.m_value.convert_to<unsigned int>());
 			break;
 		default:
 			return TypePointer();
