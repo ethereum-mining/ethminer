@@ -12,9 +12,9 @@ template <class _T>
 class vector_ref
 {
 public:
-	typedef _T value_type;
-	typedef _T element_type;
-	typedef typename std::conditional<std::is_const<_T>::value, typename std::remove_const<_T>::type, _T>::type mutable_value_type;
+	using value_type = _T;
+	using element_type = _T;
+	using mutable_value_type = typename std::conditional<std::is_const<_T>::value, typename std::remove_const<_T>::type, _T>::type;
 
 	vector_ref(): m_data(nullptr), m_count(0) {}
 	vector_ref(_T* _data, size_t _count): m_data(_data), m_count(_count) {}
