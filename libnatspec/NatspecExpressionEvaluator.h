@@ -19,6 +19,8 @@
  * @date 2015
  */
 
+#pragma once
+
 #include <QtCore/QObject>
 #include <QtCore/QtCore>
 #include <QtQml/QJSEngine>

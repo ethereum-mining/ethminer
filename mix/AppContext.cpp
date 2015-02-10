@@ -81,6 +81,8 @@ void AppContext::load()
 		BOOST_THROW_EXCEPTION(exception);
 	}
 	m_applicationEngine->rootContext()->setContextProperty("projectModel", projectModel);
+	QFont f;
+	m_applicationEngine->rootContext()->setContextProperty("systemPointSize", f.pointSize());
 	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
 	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
 	m_applicationEngine->load(QUrl("qrc:/qml/main.qml"));
