@@ -9,6 +9,14 @@
 # example usage:
 # cmake -DETH_SOURCE_DIR=. -DETH_DST_DIR=build -DETH_BUILD_TYPE=Debug -DETH_BUILD_PLATFORM=mac -P scripts/buildinfo.cmake
 
+if (NOT ETH_BUILD_TYPE)
+    set(ETH_BUILD_TYPE "unknown")
+endif()
+
+if (NOT ETH_BUILD_PLATFORM)
+    set(ETH_BUILD_PLATFORM "unknown")
+endif()
+
 execute_process(
 	COMMAND git --git-dir=${ETH_SOURCE_DIR}/.git --work-tree=${ETH_SOURCE_DIR} rev-parse HEAD
 	OUTPUT_VARIABLE ETH_COMMIT_HASH
