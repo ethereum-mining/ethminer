@@ -2,39 +2,54 @@
 #include "JitVM.h"
 #include <libevm/VM.h>
 #include <evmjit/libevmjit/ExecutionEngine.h>
-#include <evmjit/libevmjit/Utils.h>
+#include "Utils.h"
 
 namespace dev
 {
 namespace eth
 {
 
+extern "C" void env_sload(); // fake declaration for linker symbol stripping workaround, see a call below
+
 bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 {
 	using namespace jit;
 
-	m_data.set(RuntimeData::Gas, m_gas);
-	m_data.set(RuntimeData::Address, fromAddress(_ext.myAddress));
-	m_data.set(RuntimeData::Caller, fromAddress(_ext.caller));
-	m_data.set(RuntimeData::Origin, fromAddress(_ext.origin));
-	m_data.set(RuntimeData::CallValue, _ext.value);
-	m_data.set(RuntimeData::CallDataSize, _ext.data.size());
-	m_data.set(RuntimeData::GasPrice, _ext.gasPrice);
-	m_data.set(RuntimeData::CoinBase, fromAddress(_ext.currentBlock.coinbaseAddress));
-	m_data.set(RuntimeData::TimeStamp, _ext.currentBlock.timestamp);
-	m_data.set(RuntimeData::Number, _ext.currentBlock.number);
-	m_data.set(RuntimeData::Difficulty, _ext.currentBlock.difficulty);
-	m_data.set(RuntimeData::GasLimit, _ext.currentBlock.gasLimit);
-	m_data.set(RuntimeData::CodeSize, _ext.code.size());
-	m_data.callData = _ext.data.data();
-	m_data.code = _ext.code.data();
+	if (m_gas > std::numeric_limits<decltype(m_data.gas)>::max())
+		BOOST_THROW_EXCEPTION(OutOfGas()); // Do not accept requests with gas > 2^63 (int64 max) // TODO: Return "not accepted" exception to allow interpreted handle that
+
+	if (_ext.gasPrice > std::numeric_limits<decltype(m_data.gasPrice)>::max())
+		BOOST_THROW_EXCEPTION(OutOfGas());
+
+	if (_ext.currentBlock.number > std::numeric_limits<decltype(m_data.number)>::max())
+		BOOST_THROW_EXCEPTION(OutOfGas());
+
+	if (_ext.currentBlock.timestamp > std::numeric_limits<decltype(m_data.timestamp)>::max())
+		BOOST_THROW_EXCEPTION(OutOfGas());
+
+
+	m_data.gas 			= static_cast<decltype(m_data.gas)>(m_gas);
+	m_data.gasPrice		= static_cast<decltype(m_data.gasPrice)>(_ext.gasPrice);
+	m_data.callData 	= _ext.data.data();
+	m_data.callDataSize = _ext.data.size();
+	m_data.address      = eth2llvm(fromAddress(_ext.myAddress));
+	m_data.caller       = eth2llvm(fromAddress(_ext.caller));
+	m_data.origin       = eth2llvm(fromAddress(_ext.origin));
+	m_data.callValue    = eth2llvm(_ext.value);
+	m_data.coinBase     = eth2llvm(fromAddress(_ext.currentBlock.coinbaseAddress));
+	m_data.difficulty   = eth2llvm(_ext.currentBlock.difficulty);
+	m_data.gasLimit     = eth2llvm(_ext.currentBlock.gasLimit);
+	m_data.number 		= static_cast<decltype(m_data.number)>(_ext.currentBlock.number);
+	m_data.timestamp 	= static_cast<decltype(m_data.timestamp)>(_ext.currentBlock.timestamp);
+	m_data.code     	= _ext.code.data();
+	m_data.codeSize 	= _ext.code.size();
 
 	auto env = reinterpret_cast<Env*>(&_ext);
 	auto exitCode = m_engine.run(_ext.code, &m_data, env);
 	switch (exitCode)
 	{
 	case ReturnCode::Suicide:
-		_ext.suicide(right160(m_data.get(RuntimeData::SuicideDestAddress)));
+		_ext.suicide(right160(llvm2eth(m_data.address)));
 		break;
 
 	case ReturnCode::BadJumpDestination:
@@ -45,24 +60,16 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 		BOOST_THROW_EXCEPTION(StackTooSmall());
 	case ReturnCode::BadInstruction:
 		BOOST_THROW_EXCEPTION(BadInstruction());
+	case ReturnCode::LinkerWorkaround:	// never happens
+		env_sload();					// but forces linker to include env_* JIT callback functions
+		break;
 	default:
 		break;
 	}
 
-	m_gas = llvm2eth(m_data.elems[RuntimeData::Gas]);
-	return {m_engine.returnData.data(), m_engine.returnData.size()};  // TODO: This all bytesConstRef is problematic, review.
+	m_gas = m_data.gas; // TODO: Remove m_gas field
+	return {std::get<0>(m_engine.returnData), std::get<1>(m_engine.returnData)};
 }
 
 }
-}
-
-namespace
-{
-	// MSVS linker ignores export symbols in Env.cpp if nothing points at least one of them
-	extern "C" void env_sload();
-	void linkerWorkaround() 
-	{ 
-		env_sload();
-		(void)&linkerWorkaround; // suppress unused function warning from GCC
-	}
 }

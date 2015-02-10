@@ -26,9 +26,8 @@ else()
 endif()
 
 target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARIES})
+#target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_SYSTEM_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${Boost_CHRONO_LIBRARIES})
 
 if (APPLE)
 	find_package(Threads REQUIRED)

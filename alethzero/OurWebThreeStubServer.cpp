@@ -24,6 +24,7 @@
 #include <QMessageBox>
 #include <QAbstractButton>
 #include <libwebthree/WebThree.h>
+#include <libnatspec/NatspecExpressionEvaluator.h>
 
 #include "MainWin.h"
 
@@ -84,36 +85,9 @@ bool OurWebThreeStubServer::authenticate(TransactionSkeleton const& _t)
 		return showAuthenticationPopup("Unverified Pending Transaction",
 									   "An undocumented transaction is about to be executed.");
 
-	QNatspecExpressionEvaluator evaluator(this, m_main);
+	NatspecExpressionEvaluator evaluator;
 	userNotice = evaluator.evalExpression(QString::fromStdString(userNotice)).toStdString();
 
 	// otherwise it's a transaction to a contract for which we have the natspec
 	return showAuthenticationPopup("Pending Transaction", userNotice);
 }
-
-QNatspecExpressionEvaluator::QNatspecExpressionEvaluator(OurWebThreeStubServer* _server, Main* _main)
-: m_server(_server), m_main(_main)
-{}
-
-QNatspecExpressionEvaluator::~QNatspecExpressionEvaluator()
-{}
-
-QString QNatspecExpressionEvaluator::evalExpression(QString const& _expression) const
-{
-	// load natspec.js only when we need it for natspec evaluation
-	m_main->evalRaw(contentsOfQResource(":/js/natspec.js"));
-	QVariant result = m_main->evalRaw("evaluateExpression('" + _expression + "')");
-	if (result.type() == QVariant::Invalid)
-	{
-		cerr << "Could not evaluate natspec expression: \"" << _expression.toStdString() << "\"" << endl;
-		// return the expression unevaluated
-		return _expression;
-	}
-	return result.toString();
-}
-
-
-
-
-
-

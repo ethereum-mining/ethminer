@@ -2,13 +2,19 @@
 /**
  * This plugin exposes 'evaluateExpression' method which should be used
  * to evaluate natspec description
- * It should be reloaded each time we want to evaluate set of expressions
- * Just because of security reasons
- * TODO: make use of sync api (once it's finished) and remove unnecessary 
- * code from 'getContractMethods'
- * TODO: unify method signature creation with abi.js (and make a separate method from it)
  */
 
+/// Object which should be used by NatspecExpressionEvaluator
+/// abi - abi of the contract that will be used
+/// method - name of the method that is called
+/// params - input params of the method that will be called
+var globals = {
+    abi: [],
+    method: "",
+    params: []
+};
+
+/// Helper method
 /// Should be called to copy values from object to global context
 var copyToContext = function (obj, context) {
     var keys = Object.keys(obj);
@@ -17,22 +23,38 @@ var copyToContext = function (obj, context) {
     });
 }
 
+/// Helper method
+/// Should be called to get method with given name from the abi
+/// @param contract's abi
+/// @param name of the method that we are looking for
+var getMethodWithName = function(abi, name) {
+    for (var i = 0; i < abi.length; i++) {
+        if (abi[i].name === name) {
+            return abi[i];
+        }
+    }
+    //console.warn('could not find method with name: ' + name);
+    return undefined;
+};
+
 /// Function called to get all contract's storage values
 /// @returns hashmap with contract properties which are used
+/// TODO: check if this function will be used
 var getContractProperties = function (address, abi) {
     return {};
 };
 
 /// Function called to get all contract's methods
 /// @returns hashmap with used contract's methods
+/// TODO: check if this function will be used
 var getContractMethods = function (address, abi) {
-    return web3.eth.contract(address, abi);
+    //return web3.eth.contract(address, abi); // commented out web3 usage
+    return {};
 };
 
 /// Function called to get all contract method input variables
 /// @returns hashmap with all contract's method input variables
-var getContractInputParams = function (abi, methodName, params) {
-    var method = web3.abi.getMethodWithName(abi, methodName);
+var getMethodInputParams = function (method, params) {
     return method.inputs.reduce(function (acc, current, index) {
         acc[current.name] = params[index];
         return acc;
@@ -45,18 +67,15 @@ var getContractInputParams = function (abi, methodName, params) {
 var evaluateExpression = function (expression) {
 
     var self = this;
-    var abi = web3._currentContractAbi;
-    var address = web3._currentContractAddress;
-    var methodName = web3._currentContractMethodName;
-    var params = web3._currentContractMethodParams;
-
-    var storage = getContractProperties(address, abi); 
-    var methods = getContractMethods(address, abi);
-    var inputParams = getContractInputParams(abi, methodName, params);
-
-    copyToContext(storage, self);
-    copyToContext(methods, self);
-    copyToContext(inputParams, self);
+    
+    //var storage = getContractProperties(address, abi); 
+    //var methods = getContractMethods(address, abi);
+    
+    var method = getMethodWithName(globals.abi, globals.method);
+    if (method) {
+        var input = getMethodInputParams(method, globals.params);
+        copyToContext(input, self);
+    }
 
     // TODO: test if it is safe
     var evaluatedExpression = "";

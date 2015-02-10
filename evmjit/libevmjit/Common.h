@@ -1,7 +1,14 @@
 #pragma once
 
 #include <vector>
-#include <boost/multiprecision/cpp_int.hpp>
+#include <tuple>
+#include <cstdint>
+
+#ifdef _MSC_VER
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
+#endif
 
 namespace dev
 {
@@ -12,8 +19,7 @@ namespace jit
 
 using byte = uint8_t;
 using bytes = std::vector<byte>;
-using u256 = boost::multiprecision::uint256_t;
-using bigint = boost::multiprecision::cpp_int;
+using bytes_ref = std::tuple<byte const*, size_t>;
 
 struct NoteChannel {};	// FIXME: Use some log library?
 
@@ -23,18 +29,21 @@ enum class ReturnCode
 	Return = 1,
 	Suicide = 2,
 
-	BadJumpDestination = 101,
-	OutOfGas = 102,
-	StackTooSmall = 103,
-	BadInstruction = 104,
+	OutOfGas = -1,
+	BadJumpDestination = -2,
+	StackTooSmall = -3,
+	BadInstruction = -4,
 
-	LLVMConfigError = 201,
-	LLVMCompileError = 202,
-	LLVMLinkError = 203,
+	LLVMConfigError = -5,
+	LLVMCompileError = -6,
+	LLVMLinkError = -7,
+
+	UnexpectedException = -8,
+
+	LinkerWorkaround = -299,
 };
 
 /// Representation of 256-bit value binary compatible with LLVM i256
-// TODO: Replace with h256
 struct i256
 {
 	uint64_t a = 0;

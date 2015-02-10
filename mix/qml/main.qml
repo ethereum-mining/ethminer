@@ -4,6 +4,7 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.1
+import QtQuick.PrivateWidgets 1.1
 import Qt.labs.settings 1.0
 import org.ethereum.qml.QEther 1.0
 
@@ -14,7 +15,7 @@ ApplicationWindow {
 	height: 800
 	minimumWidth: 400
 	minimumHeight: 300
-	title: qsTr("mix")
+	title: qsTr("Mix")
 
 	menuBar: MenuBar {
 		Menu {
@@ -27,6 +28,7 @@ ApplicationWindow {
 			MenuItem { action: addExistingFileAction }
 			MenuItem { action: addNewJsFileAction }
 			MenuItem { action: addNewHtmlFileAction }
+			MenuItem { action: addNewCssFileAction }
 			MenuSeparator {}
 			//MenuItem { action: addNewContractAction }
 			MenuItem { action: closeProjectAction }
@@ -34,19 +36,25 @@ ApplicationWindow {
 			MenuItem { action: exitAppAction }
 		}
 		Menu {
-			title: qsTr("Debug")
+			title: qsTr("Deploy")
 			MenuItem { action: debugRunAction }
-			MenuItem { action: debugResetStateAction }
 			MenuItem { action: mineAction }
+			MenuSeparator {}
+			MenuItem { action: editStatesAction }
+			MenuSeparator {}
+			MenuItem { action: toggleRunOnLoadAction }
 		}
 		Menu {
 			title: qsTr("Windows")
 			MenuItem { action: openNextDocumentAction }
 			MenuItem { action: openPrevDocumentAction }
 			MenuSeparator {}
+			MenuItem { action: toggleProjectNavigatorAction }
 			MenuItem { action: showHideRightPanelAction }
+			MenuItem { action: toggleTransactionLogAction }
 			MenuItem { action: toggleWebPreviewAction }
 			MenuItem { action: toggleWebPreviewOrientationAction }
+			MenuItem { action: toggleCallsInLog }
 		}
 	}
 
@@ -82,29 +90,46 @@ ApplicationWindow {
 
 	Action {
 		id: mineAction
-		text: "Mine"
+		text: qsTr("Mine")
 		shortcut: "Ctrl+M"
 		onTriggered: clientModel.mine();
-		enabled: codeModel.hasContract && !clientModel.running
+		enabled: codeModel.hasContract && !clientModel.running &&!clientModel.mining
 	}
+
+	StateList {
+		id: stateList
+	}
+
+	Action {
+		id: editStatesAction
+		text: qsTr("Edit States")
+		shortcut: "Ctrl+Alt+E"
+		onTriggered: stateList.show();
+	}
+
+	Connections {
+		target: projectModel.stateListModel
+
+		function updateRunLabel()
+		{
+			debugRunAction.text = qsTr("Deploy") + " \"" + projectModel.stateListModel.defaultStateName() + "\"";
+		}
+
+		onDefaultStateChanged: updateRunLabel()
+		onStateListModelReady: updateRunLabel()
+	}
+
 	Action {
 		id: debugRunAction
-		text: "&Run"
+		text: qsTr("Deploy")
 		shortcut: "F5"
 		onTriggered: mainContent.startQuickDebugging()
 		enabled: codeModel.hasContract && !clientModel.running
 	}
 
 	Action {
-		id: debugResetStateAction
-		text: "Reset &State"
-		shortcut: "F6"
-		onTriggered: clientModel.resetState();
-	}
-
-	Action {
 		id: toggleWebPreviewAction
-		text: "Show Web View"
+		text: qsTr("Show Web View")
 		shortcut: "F2"
 		checkable: true
 		checked: mainContent.webViewVisible
@@ -112,8 +137,26 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: toggleTransactionLogAction
+		text: qsTr("Show States and Transactions")
+		shortcut: "Alt+1"
+		checkable: true
+		checked: mainContent.rightPane.transactionLog.visible
+		onTriggered: mainContent.rightPane.transactionLog.visible = !mainContent.rightPane.transactionLog.visible
+	}
+
+	Action {
+		id: toggleProjectNavigatorAction
+		text: qsTr("Show Project Navigator")
+		shortcut: "Alt+0"
+		checkable: true
+		checked: mainContent.projectViewVisible
+		onTriggered: mainContent.toggleProjectView();
+	}
+
+	Action {
 		id: toggleWebPreviewOrientationAction
-		text: "Horizontal Web View"
+		text: qsTr("Horizontal Web View")
 		shortcut: ""
 		checkable: true
 		checked: mainContent.webViewHorizontal
@@ -121,8 +164,26 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: toggleCallsInLog
+		text: qsTr("Show Calls in Transaction Log")
+		shortcut: ""
+		checkable: true
+		checked: mainContent.rightPane.transactionLog.showLogs
+		onTriggered: mainContent.rightPane.transactionLog.showLogs = !mainContent.rightPane.transactionLog.showLogs
+	}
+
+	Action {
+		id: toggleRunOnLoadAction
+		text: qsTr("Load State on Startup")
+		shortcut: ""
+		checkable: true
+		checked: mainContent.runOnProjectLoad
+		onTriggered: mainContent.runOnProjectLoad = !mainContent.runOnProjectLoad
+	}
+
+	Action {
 		id: showHideRightPanelAction
-		text: "Show Right View"
+		text: qsTr("Show Right View")
 		shortcut: "F7"
 		checkable: true
 		checked: mainContent.rightViewVisible
@@ -159,6 +220,14 @@ ApplicationWindow {
 		shortcut: "Ctrl+Alt+H"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.newHtmlFile();
+	}
+
+	Action {
+		id: addNewCssFileAction
+		text: qsTr("New CSS File")
+		shortcut: "Ctrl+Alt+S"
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.newCssFile();
 	}
 
 	Action {
