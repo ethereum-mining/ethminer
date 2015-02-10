@@ -354,7 +354,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			auto base = m_stack.back();
 			auto expon = m_stack[m_stack.size() - 2];
 			m_stack.pop_back();
-			m_stack.back() = (u256)boost::multiprecision::powm((bigint)base, (bigint)expon, bigint(2) << 256);
+			m_stack.back() = (u256)boost::multiprecision::powm((bigint)base, (bigint)expon, bigint(1) << 256);
 			break;
 		}
 		case Instruction::NOT:
