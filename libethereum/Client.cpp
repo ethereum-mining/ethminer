@@ -126,7 +126,7 @@ void Client::killChain()
 
 	m_tq.clear();
 	m_bq.clear();
-	m_miners.clear();
+	m_localMiners.clear();
 	m_preMine = State();
 	m_postMine = State();
 
@@ -167,8 +167,8 @@ void Client::clearPending()
 	}
 
 	{
-		ReadGuard l(x_miners);
-		for (auto& m: m_miners)
+		ReadGuard l(x_localMiners);
+		for (auto& m: m_localMiners)
 			m.noteStateChange();
 	}
 
@@ -182,7 +182,7 @@ unsigned Client::installWatch(h256 _h)
 		Guard l(m_filterLock);
 		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 		m_watches[ret] = ClientWatch(_h);
-		cwatch << "+++" << ret << _h;
+		cwatch << "+++" << ret << _h.abridged();
 	}
 	auto ch = logs(ret);
 	if (ch.empty())
@@ -200,7 +200,10 @@ unsigned Client::installWatch(LogFilter const& _f)
 	{
 		Guard l(m_filterLock);
 		if (!m_filters.count(h))
+		{
+			cwatch << "FFF" << _f << h.abridged();
 			m_filters.insert(make_pair(h, _f));
+		}
 	}
 	return installWatch(h);
 }
@@ -220,13 +223,17 @@ void Client::uninstallWatch(unsigned _i)
 	auto fit = m_filters.find(id);
 	if (fit != m_filters.end())
 		if (!--fit->second.refCount)
+		{
+			cwatch << "*X*" << fit->first << ":" << fit->second.filter;
 			m_filters.erase(fit);
+		}
 }
 
 void Client::noteChanged(h256Set const& _filters)
 {
 	Guard l(m_filterLock);
-	cnote << "noteChanged(" << _filters << ")";
+	if (_filters.size())
+		cnote << "noteChanged(" << _filters << ")";
 	// accrue all changes left in each filter into the watches.
 	for (auto& i: m_watches)
 		if (_filters.count(i.second.id))
@@ -247,8 +254,11 @@ LocalisedLogEntries Client::peekWatch(unsigned _watchId) const
 	Guard l(m_filterLock);
 
 	try {
-		return m_watches.at(_watchId).changes;
+		auto& w = m_watches.at(_watchId);
+		w.lastPoll = chrono::system_clock::now();
+		return w.changes;
 	} catch (...) {}
+
 	return LocalisedLogEntries();
 }
 
@@ -258,7 +268,9 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	LocalisedLogEntries ret;
 
 	try {
-		std::swap(ret, m_watches.at(_watchId).changes);
+		auto& w = m_watches.at(_watchId);
+		std::swap(ret, w.changes);
+		w.lastPoll = chrono::system_clock::now();
 	} catch (...) {}
 
 	return ret;
@@ -308,8 +320,8 @@ void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 void Client::setForceMining(bool _enable)
 {
 	 m_forceMining = _enable;
-	 ReadGuard l(x_miners);
-	 for (auto& m: m_miners)
+	 ReadGuard l(x_localMiners);
+	 for (auto& m: m_localMiners)
 		 m.noteStateChange();
 }
 
@@ -318,19 +330,19 @@ void Client::setMiningThreads(unsigned _threads)
 	stopMining();
 
 	auto t = _threads ? _threads : thread::hardware_concurrency();
-	WriteGuard l(x_miners);
-	m_miners.clear();
-	m_miners.resize(t);
+	WriteGuard l(x_localMiners);
+	m_localMiners.clear();
+	m_localMiners.resize(t);
 	unsigned i = 0;
-	for (auto& m: m_miners)
+	for (auto& m: m_localMiners)
 		m.setup(this, i++);
 }
 
 MineProgress Client::miningProgress() const
 {
 	MineProgress ret;
-	ReadGuard l(x_miners);
-	for (auto& m: m_miners)
+	ReadGuard l(x_localMiners);
+	for (auto& m: m_localMiners)
 		ret.combine(m.miningProgress());
 	return ret;
 }
@@ -339,13 +351,13 @@ std::list<MineInfo> Client::miningHistory()
 {
 	std::list<MineInfo> ret;
 
-	ReadGuard l(x_miners);
-	if (m_miners.empty())
+	ReadGuard l(x_localMiners);
+	if (m_localMiners.empty())
 		return ret;
-	ret = m_miners[0].miningHistory();
-	for (unsigned i = 1; i < m_miners.size(); ++i)
+	ret = m_localMiners[0].miningHistory();
+	for (unsigned i = 1; i < m_localMiners.size(); ++i)
 	{
-		auto l = m_miners[i].miningHistory();
+		auto l = m_localMiners[i].miningHistory();
 		auto ri = ret.begin();
 		auto li = l.begin();
 		for (; ri != ret.end() && li != l.end(); ++ri, ++li)
@@ -462,6 +474,22 @@ void Client::inject(bytesConstRef _rlp)
 	m_tq.attemptImport(_rlp);
 }
 
+pair<h256, u256> Client::getWork()
+{
+	Guard l(x_remoteMiner);
+	{
+		ReadGuard l(x_stateDB);
+		m_remoteMiner.update(m_postMine, m_bc);
+	}
+	return make_pair(m_remoteMiner.workHash(), m_remoteMiner.difficulty());
+}
+
+bool Client::submitNonce(h256  const&_nonce)
+{
+	Guard l(x_remoteMiner);
+	return m_remoteMiner.submitWork(_nonce);
+}
+
 void Client::doWork()
 {
 	// TODO: Use condition variable rather than polling.
@@ -469,27 +497,34 @@ void Client::doWork()
 	cworkin << "WORK";
 	h256Set changeds;
 
+	auto maintainMiner = [&](Miner& m)
 	{
-		ReadGuard l(x_miners);
-		for (auto& m: m_miners)
-			if (m.isComplete())
+		if (m.isComplete())
+		{
+			cwork << "CHAIN <== postSTATE";
+			h256s hs;
 			{
-				cwork << "CHAIN <== postSTATE";
-				h256s hs;
-				{
-					WriteGuard l(x_stateDB);
-					hs = m_bc.attemptImport(m.blockData(), m_stateDB);
-				}
-				if (hs.size())
-				{
-					for (auto h: hs)
-						appendFromNewBlock(h, changeds);
-					changeds.insert(ChainChangedFilter);
-					//changeds.insert(PendingChangedFilter);	// if we mined the new block, then we've probably reset the pending transactions.
-				}
-				for (auto& m: m_miners)
-					m.noteStateChange();
+				WriteGuard l(x_stateDB);
+				hs = m_bc.attemptImport(m.blockData(), m_stateDB);
 			}
+			if (hs.size())
+			{
+				for (auto const& h: hs)
+					appendFromNewBlock(h, changeds);
+				changeds.insert(ChainChangedFilter);
+			}
+			for (auto& m: m_localMiners)
+				m.noteStateChange();
+		}
+	};
+	{
+		ReadGuard l(x_localMiners);
+		for (auto& m: m_localMiners)
+			maintainMiner(m);
+	}
+	{
+		Guard l(x_remoteMiner);
+		maintainMiner(m_remoteMiner);
 	}
 
 	// Synchronise state to block chain.
@@ -499,7 +534,7 @@ void Client::doWork()
 	//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
 	//   all blocks.
 	// Resynchronise state with block chain & trans
-	bool rsm = false;
+	bool resyncStateNeeded = false;
 	{
 		WriteGuard l(x_stateDB);
 		cwork << "BQ ==> CHAIN ==> STATE";
@@ -522,7 +557,7 @@ void Client::doWork()
 			if (isMining())
 				cnote << "New block on chain: Restarting mining operation.";
 			m_postMine = m_preMine;
-			rsm = true;
+			resyncStateNeeded = true;
 			changeds.insert(PendingChangedFilter);
 			// TODO: Move transactions pending from m_postMine back to transaction queue.
 		}
@@ -538,13 +573,13 @@ void Client::doWork()
 
 			if (isMining())
 				cnote << "Additional transaction ready: Restarting mining operation.";
-			rsm = true;
+			resyncStateNeeded = true;
 		}
 	}
-	if (rsm)
+	if (resyncStateNeeded)
 	{
-		ReadGuard l(x_miners);
-		for (auto& m: m_miners)
+		ReadGuard l(x_localMiners);
+		for (auto& m: m_localMiners)
 			m.noteStateChange();
 	}
 
@@ -553,6 +588,23 @@ void Client::doWork()
 	cworkout << "WORK";
 
 	this_thread::sleep_for(chrono::milliseconds(100));
+	if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(5))
+	{
+		// garbage collect on watches
+		vector<unsigned> toUninstall;
+		{
+			Guard l(m_filterLock);
+			for (auto key: keysOf(m_watches))
+				if (chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(20))
+				{
+					toUninstall.push_back(key);
+					cnote << "GC: Uninstall" << key << "(" << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - m_watches[key].lastPoll).count() << "s old)";
+				}
+		}
+		for (auto i: toUninstall)
+			uninstallWatch(i);
+		m_lastGarbageCollection = chrono::system_clock::now();
+	}
 }
 
 unsigned Client::numberOf(int _n) const

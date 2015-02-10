@@ -27,15 +27,16 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQmlApplicationEngine>
-#include <QQuickWindow>
+#include <QWindow>
 #include "CodeModel.h"
 #include "FileIo.h"
 #include "ClientModel.h"
 #include "CodeEditorExtensionManager.h"
 #include "Exceptions.h"
-#include "AppContext.h"
 #include "QEther.h"
+#include "QVariableDefinition.h"
 #include "HttpServer.h"
+#include "AppContext.h"
 
 using namespace dev;
 using namespace dev::eth;
@@ -49,6 +50,7 @@ AppContext::AppContext(QQmlApplicationEngine* _engine)
 	m_codeModel.reset(new CodeModel(this));
 	m_clientModel.reset(new ClientModel(this));
 	m_fileIo.reset(new FileIo());
+	connect(QApplication::clipboard(), &QClipboard::dataChanged, [this] { emit clipboardChanged();});
 }
 
 AppContext::~AppContext()
@@ -63,6 +65,12 @@ void AppContext::load()
 	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
 	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
 	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
+	qmlRegisterType<QIntType>("org.ethereum.qml.QIntType", 1, 0, "QIntType");
+	qmlRegisterType<QRealType>("org.ethereum.qml.QRealType", 1, 0, "QRealType");
+	qmlRegisterType<QStringType>("org.ethereum.qml.QStringType", 1, 0, "QStringType");
+	qmlRegisterType<QHashType>("org.ethereum.qml.QHashType", 1, 0, "QHashType");
+	qmlRegisterType<QBoolType>("org.ethereum.qml.QBoolType", 1, 0, "QBoolType");
+	qmlRegisterType<QVariableDeclaration>("org.ethereum.qml.QVariableDeclaration", 1, 0, "QVariableDeclaration");
 	QQmlComponent projectModelComponent(m_applicationEngine, QUrl("qrc:/qml/ProjectModel.qml"));
 	QObject* projectModel = projectModelComponent.create();
 	if (projectModelComponent.isError())
@@ -76,7 +84,7 @@ void AppContext::load()
 	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
 	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
 	m_applicationEngine->load(QUrl("qrc:/qml/main.qml"));
-	QQuickWindow *window = qobject_cast<QQuickWindow *>(m_applicationEngine->rootObjects().at(0));
+	QWindow *window = qobject_cast<QWindow*>(m_applicationEngine->rootObjects().at(0));
 	window->setIcon(QIcon(":/res/mix_256x256x32.png"));
 	appLoaded();
 }
@@ -97,6 +105,12 @@ void AppContext::displayMessageDialog(QString _title, QString _message)
 	dialogWin->setProperty("height", "100");
 	dialogWin->findChild<QObject*>("messageContent", Qt::FindChildrenRecursively)->setProperty("text", _message);
 	QMetaObject::invokeMethod(dialogWin, "open");
+}
+
+QString AppContext::clipboard() const
+{
+	QClipboard *clipboard = QApplication::clipboard();
+	return clipboard->text();
 }
 
 void AppContext::toClipboard(QString _text)

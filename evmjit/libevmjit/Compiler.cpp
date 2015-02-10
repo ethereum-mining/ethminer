@@ -4,6 +4,7 @@
 #include <functional>
 #include <fstream>
 #include <chrono>
+#include <sstream>
 
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/IR/CFG.h>
@@ -90,6 +91,7 @@ void Compiler::createBasicBlocks(bytes const& _bytecode)
 		}
 	}
 
+	// TODO: Create Stop basic block on demand
 	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
 }
 
@@ -272,7 +274,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
 			auto res = _arith.div(lhs, rhs);
-			stack.push(res);
+			stack.push(res.first);
 			break;
 		}
 
@@ -281,7 +283,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
 			auto res = _arith.sdiv(lhs, rhs);
-			stack.push(res);
+			stack.push(res.first);
 			break;
 		}
 
@@ -289,8 +291,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto res = _arith.mod(lhs, rhs);
-			stack.push(res);
+			auto res = _arith.div(lhs, rhs);
+			stack.push(res.second);
 			break;
 		}
 
@@ -298,8 +300,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto res = _arith.smod(lhs, rhs);
-			stack.push(res);
+			auto res = _arith.sdiv(lhs, rhs);
+			stack.push(res.second);
 			break;
 		}
 
@@ -455,14 +457,15 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 
 			// test for word >> (k * 8 + 7)
 			auto bitpos = m_builder.CreateAdd(k32x8, m_builder.getInt64(7), "bitpos");
-			auto bittester = m_builder.CreateShl(Constant::get(1), bitpos);
+			auto bitposEx = m_builder.CreateZExt(bitpos, Type::Word);
+			auto bittester = m_builder.CreateShl(Constant::get(1), bitposEx);
 			auto bitresult = m_builder.CreateAnd(word, bittester);
 			auto bittest = m_builder.CreateICmpUGT(bitresult, Constant::get(0));
 			// FIXME: The following does not work - LLVM bug, report!
 			//auto bitval = m_builder.CreateLShr(word, bitpos, "bitval");
 			//auto bittest = m_builder.CreateTrunc(bitval, Type::Bool, "bittest");
 
-			auto mask_ = m_builder.CreateShl(Constant::get(1), bitpos);
+			auto mask_ = m_builder.CreateShl(Constant::get(1), bitposEx);
 			auto mask = m_builder.CreateSub(mask_, Constant::get(1), "mask");
 
 			auto negmask = m_builder.CreateXor(mask, llvm::ConstantInt::getAllOnesValue(Type::Word), "negmask");
@@ -636,19 +639,28 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 		case Instruction::CALLER:
 		case Instruction::ORIGIN:
 		case Instruction::CALLVALUE:
-		case Instruction::CALLDATASIZE:
-		case Instruction::CODESIZE:
 		case Instruction::GASPRICE:
 		case Instruction::COINBASE:
-		case Instruction::TIMESTAMP:
-		case Instruction::NUMBER:
 		case Instruction::DIFFICULTY:
 		case Instruction::GASLIMIT:
+		case Instruction::NUMBER:
+		case Instruction::TIMESTAMP:
 		{
 			// Pushes an element of runtime data on stack
-			stack.push(_runtimeManager.get(inst));
+			auto value = _runtimeManager.get(inst);
+			value = m_builder.CreateZExt(value, Type::Word);
+			stack.push(value);
 			break;
 		}
+
+		case Instruction::CODESIZE:
+			// TODO: Use constant
+			stack.push(_runtimeManager.getCodeSize());
+			break;
+
+		case Instruction::CALLDATASIZE:
+			stack.push(_runtimeManager.getCallDataSize());
+			break;
 
 		case Instruction::BLOCKHASH:
 		{
@@ -681,7 +693,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto reqBytes = stack.pop();
 
 			auto srcPtr = _runtimeManager.getCallData();
-			auto srcSize = _runtimeManager.get(RuntimeData::CallDataSize);
+			auto srcSize = _runtimeManager.getCallDataSize();
 
 			_memory.copyBytes(srcPtr, srcSize, srcIdx, destMemIdx, reqBytes);
 			break;
@@ -694,7 +706,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode
 			auto reqBytes = stack.pop();
 
 			auto srcPtr = _runtimeManager.getCode();    // TODO: Code & its size are constants, feature #80814234
-			auto srcSize = _runtimeManager.get(RuntimeData::CodeSize);
+			auto srcSize = _runtimeManager.getCodeSize();
 
 			_memory.copyBytes(srcPtr, srcSize, srcIdx, destMemIdx, reqBytes);
 			break;
@@ -852,6 +864,18 @@ void Compiler::removeDeadBlocks()
 		}
 	}
 	while (sthErased);
+
+	if (m_jumpTableBlock && llvm::pred_begin(m_jumpTableBlock->llvm()) == llvm::pred_end(m_jumpTableBlock->llvm()))
+	{
+		m_jumpTableBlock->llvm()->eraseFromParent();
+		m_jumpTableBlock.reset();
+	}
+
+	if (m_badJumpBlock && llvm::pred_begin(m_badJumpBlock->llvm()) == llvm::pred_end(m_badJumpBlock->llvm()))
+	{
+		m_badJumpBlock->llvm()->eraseFromParent();
+		m_badJumpBlock.reset();
+	}
 }
 
 void Compiler::dumpCFGifRequired(std::string const& _dotfilePath)

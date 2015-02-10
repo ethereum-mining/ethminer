@@ -45,6 +45,12 @@ bytes padded(bytes _b, unsigned _l)
 	return asBytes(asString(_b).substr(_b.size() - std::max(_l, _l)));
 }
 
+bytes paddedRight(bytes _b, unsigned _l)
+{
+	_b.resize(_l);
+	return _b;
+}
+
 bytes unpadded(bytes _b)
 {
 	auto p = asString(_b).find_last_not_of((char)0);
@@ -52,12 +58,43 @@ bytes unpadded(bytes _b)
 	return _b;
 }
 
-std::string unpadLeft(std::string _b)
+bytes unpadLeft(bytes _b)
 {
-	auto p = _b.find_first_not_of('0');
-	if (p == std::string::npos)
-		return "0";
-	return _b.substr(p, _b.length() - 1);
+	unsigned int i = 0;
+	if (_b.size() == 0)
+		return _b;
+
+	while (i < _b.size() && _b[i] == byte(0))
+		i++;
+
+	if (i != 0)
+		_b.erase(_b.begin(), _b.begin() + i);
+	return _b;
+}
+
+std::string fromRaw(h256 _n, unsigned* _inc)
+{
+	if (_n)
+	{
+		std::string s((char const*)_n.data(), 32);
+		auto l = s.find_first_of('\0');
+		if (!l)
+			return "";
+		if (l != std::string::npos)
+		{
+			auto p = s.find_first_not_of('\0', l);
+			if (!(p == std::string::npos || (_inc && p == 31)))
+				return "";
+			if (_inc)
+				*_inc = (byte)s[31];
+			s.resize(l);
+		}
+		for (auto i: s)
+			if (i < 32)
+				return "";
+		return s;
+	}
+	return "";
 }
 
 std::string prettyU256(u256 _n)
@@ -86,31 +123,6 @@ std::string prettyU256(u256 _n)
 	return s.str();
 }
 
-std::string fromRaw(h256 _n, unsigned* _inc)
-{
-	if (_n)
-	{
-		std::string s((char const*)_n.data(), 32);
-		auto l = s.find_first_of('\0');
-		if (!l)
-			return "";
-		if (l != std::string::npos)
-		{
-			auto p = s.find_first_not_of('\0', l);
-			if (!(p == std::string::npos || (_inc && p == 31)))
-				return "";
-			if (_inc)
-				*_inc = (byte)s[31];
-			s.resize(l);
-		}
-		for (auto i: s)
-			if (i < 32)
-				return "";
-		return s;
-	}
-	return "";
-}
-
 Address fromString(std::string const& _sn)
 {
 	if (_sn.size() == 40)
@@ -120,3 +132,4 @@ Address fromString(std::string const& _sn)
 }
 
 }
+

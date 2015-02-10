@@ -69,8 +69,7 @@ ldb::Slice toSlice(h256 _h, unsigned _sub = 0);
 class BlockChain
 {
 public:
-	BlockChain(bool _killExisting = false): BlockChain(std::string(), _killExisting) {}
-	BlockChain(std::string _path, bool _killExisting = false);
+	BlockChain(bytes const& _genesisBlock, std::string _path, bool _killExisting);
 	~BlockChain();
 
 	void reopen(std::string _path, bool _killExisting = false) { close(); open(_path, _killExisting); }
@@ -82,7 +81,7 @@ public:
 	/// Sync the chain with any incoming blocks. All blocks should, if processed in order
 	h256s sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
 
-	/// Attempt to import the given block directly into the BlockChain and sync with the state DB.
+	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
 	h256s attemptImport(bytes const& _block, OverlayDB const& _stateDB) noexcept;
 
@@ -131,13 +130,6 @@ public:
 	/// togther with all their quoted uncles.
 	h256Set allUnclesFrom(h256 _parent) const;
 
-	/// @returns the genesis block header.
-	static BlockInfo const& genesis() { UpgradableGuard l(x_genesis); if (!s_genesis) { auto gb = createGenesisBlock(); UpgradeGuard ul(l); s_genesis.reset(new BlockInfo); s_genesis->populate(&gb); } return *s_genesis; }
-
-	/// @returns the genesis block as its RLP-encoded byte array.
-	/// @note This is slow as it's constructed anew each call. Consider genesis() instead.
-	static bytes createGenesisBlock();
-
 	/** @returns the hash of all blocks between @a _from and @a _to, all blocks are ordered first by a number of
 	 * blocks that are parent-to-child, then two sibling blocks, then a number of blocks that are child-to-parent.
 	 *
@@ -171,7 +163,7 @@ private:
 		m_extrasDB->Get(m_readOptions, toSlice(_h, N), &s);
 		if (s.empty())
 		{
-	//			cout << "Not found in DB: " << _h << endl;
+//			cout << "Not found in DB: " << _h << endl;
 			return _n;
 		}
 
@@ -208,10 +200,6 @@ private:
 	ldb::WriteOptions m_writeOptions;
 
 	friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
-
-	/// Static genesis info and its lock.
-	static boost::shared_mutex x_genesis;
-	static std::unique_ptr<BlockInfo> s_genesis;
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);

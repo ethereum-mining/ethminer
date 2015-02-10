@@ -51,7 +51,7 @@ class ProofOfWorkEngine: public Evaluator
 public:
 	static bool verify(h256 const& _root, h256 const& _nonce, u256 const& _difficulty) { return (bigint)(u256)Evaluator::eval(_root, _nonce) <= (bigint(1) << 256) / _difficulty; }
 
-	inline MineInfo mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
+	inline std::pair<MineInfo, h256> mine(h256 const& _root, u256 const& _difficulty, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
 
 protected:
 	h256 m_last;
@@ -79,14 +79,14 @@ using SHA3ProofOfWork = ProofOfWorkEngine<SHA3Evaluator>;
 using ProofOfWork = SHA3ProofOfWork;
 
 template <class Evaluator>
-MineInfo ProofOfWorkEngine<Evaluator>::mine(h256& o_solution, h256 const& _root, u256 const& _difficulty, unsigned _msTimeout, bool _continue, bool _turbo)
+std::pair<MineInfo, h256> ProofOfWorkEngine<Evaluator>::mine(h256 const& _root, u256 const& _difficulty, unsigned _msTimeout, bool _continue, bool _turbo)
 {
-	MineInfo ret;
+	std::pair<MineInfo, h256> ret;
 	static std::mt19937_64 s_eng((time(0) + (unsigned)m_last));
 	u256 s = (m_last = h256::random(s_eng));
 
 	bigint d = (bigint(1) << 256) / _difficulty;
-	ret.requirement = log2((double)d);
+	ret.first.requirement = log2((double)d);
 
 	// 2^ 0      32      64      128      256
 	//   [--------*-------------------------]
@@ -95,20 +95,26 @@ MineInfo ProofOfWorkEngine<Evaluator>::mine(h256& o_solution, h256 const& _root,
 	auto startTime = std::chrono::steady_clock::now();
 	if (!_turbo)
 		std::this_thread::sleep_for(std::chrono::milliseconds(_msTimeout * 90 / 100));
-	for (; (std::chrono::steady_clock::now() - startTime) < std::chrono::milliseconds(_msTimeout) && _continue; s++, ret.hashes++)
+	double best = 1e99;	// high enough to be effectively infinity :)
+	h256 solution;
+	unsigned h = 0;
+	for (; (std::chrono::steady_clock::now() - startTime) < std::chrono::milliseconds(_msTimeout) && _continue; s++, h++)
 	{
-		o_solution = (h256)s;
-		auto e = (bigint)(u256)Evaluator::eval(_root, o_solution);
-		ret.best = std::min<double>(ret.best, log2((double)e));
+		solution = (h256)s;
+		auto e = (bigint)(u256)Evaluator::eval(_root, solution);
+		best = std::min<double>(best, log2((double)e));
 		if (e <= d)
 		{
-			ret.completed = true;
+			ret.first.completed = true;
 			break;
 		}
 	}
+	ret.first.hashes = h;
+	ret.first.best = best;
+	ret.second = solution;
 
-	if (ret.completed)
-		assert(verify(_root, o_solution, _difficulty));
+	if (ret.first.completed)
+		assert(verify(_root, solution, _difficulty));
 
 	return ret;
 }

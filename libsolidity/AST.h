@@ -132,13 +132,18 @@ private:
 class Declaration: public ASTNode
 {
 public:
-	enum class LValueType { NONE, LOCAL, STORAGE };
+	enum class LValueType { None, Local, Storage };
+	enum class Visibility { Default, Public, Protected, Private };
 
-	Declaration(Location const& _location, ASTPointer<ASTString> const& _name):
-		ASTNode(_location), m_name(_name), m_scope(nullptr) {}
+	Declaration(Location const& _location, ASTPointer<ASTString> const& _name,
+				Visibility _visibility = Visibility::Default):
+		ASTNode(_location), m_name(_name), m_visibility(_visibility), m_scope(nullptr) {}
 
 	/// @returns the declared name.
 	ASTString const& getName() const { return *m_name; }
+	Visibility getVisibility() const { return m_visibility == Visibility::Default ? getDefaultVisibility() : m_visibility; }
+	bool isPublic() const { return getVisibility() == Visibility::Public; }
+
 	/// @returns the scope this declaration resides in. Can be nullptr if it is the global scope.
 	/// Available only after name and type resolution step.
 	Declaration const* getScope() const { return m_scope; }
@@ -149,10 +154,14 @@ public:
 	/// contract types.
 	virtual TypePointer getType(ContractDefinition const* m_currentContract = nullptr) const = 0;
 	/// @returns the lvalue type of expressions referencing this declaration
-	virtual LValueType getLValueType() const { return LValueType::NONE; }
+	virtual LValueType getLValueType() const { return LValueType::None; }
+
+protected:
+	virtual Visibility getDefaultVisibility() const { return Visibility::Public; }
 
 private:
 	ASTPointer<ASTString> m_name;
+	Visibility m_visibility;
 	Declaration const* m_scope;
 };
 
@@ -241,7 +250,7 @@ public:
 
 	/// Returns the constructor or nullptr if no constructor was specified.
 	FunctionDefinition const* getConstructor() const;
-	/// Returns the fallback function or nullptr if no constructor was specified.
+	/// Returns the fallback function or nullptr if no fallback function was specified.
 	FunctionDefinition const* getFallbackFunction() const;
 
 private:
@@ -330,16 +339,15 @@ class FunctionDefinition: public Declaration, public VariableScope, public Docum
 {
 public:
 	FunctionDefinition(Location const& _location, ASTPointer<ASTString> const& _name,
-					bool _isPublic,
-					bool _isConstructor,
+					Declaration::Visibility _visibility, bool _isConstructor,
 					ASTPointer<ASTString> const& _documentation,
 					ASTPointer<ParameterList> const& _parameters,
 					bool _isDeclaredConst,
 					std::vector<ASTPointer<ModifierInvocation>> const& _modifiers,
 					ASTPointer<ParameterList> const& _returnParameters,
 					ASTPointer<Block> const& _body):
-	Declaration(_location, _name), Documented(_documentation),
-	m_isPublic(_isPublic), m_isConstructor(_isConstructor),
+	Declaration(_location, _name, _visibility), Documented(_documentation),
+	m_isConstructor(_isConstructor),
 	m_parameters(_parameters),
 	m_isDeclaredConst(_isDeclaredConst),
 	m_functionModifiers(_modifiers),
@@ -350,7 +358,6 @@ public:
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 
-	bool isPublic() const { return m_isPublic; }
 	bool isConstructor() const { return m_isConstructor; }
 	bool isDeclaredConst() const { return m_isDeclaredConst; }
 	std::vector<ASTPointer<ModifierInvocation>> const& getModifiers() const { return m_functionModifiers; }
@@ -371,7 +378,6 @@ public:
 	std::string getCanonicalSignature() const;
 
 private:
-	bool m_isPublic;
 	bool m_isConstructor;
 	ASTPointer<ParameterList> m_parameters;
 	bool m_isDeclaredConst;
@@ -388,10 +394,10 @@ class VariableDeclaration: public Declaration
 {
 public:
 	VariableDeclaration(Location const& _location, ASTPointer<TypeName> const& _type,
-						ASTPointer<ASTString> const& _name, bool _isPublic, bool _isStateVar = false,
-						bool _isIndexed = false):
-		Declaration(_location, _name), m_typeName(_type),
-		m_isPublic(_isPublic), m_isStateVariable(_isStateVar), m_isIndexed(_isIndexed) {}
+						ASTPointer<ASTString> const& _name, Visibility _visibility,
+						bool _isStateVar = false, bool _isIndexed = false):
+		Declaration(_location, _name, _visibility), m_typeName(_type),
+		m_isStateVariable(_isStateVar), m_isIndexed(_isIndexed) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 
@@ -404,13 +410,14 @@ public:
 
 	virtual LValueType getLValueType() const override;
 	bool isLocalVariable() const { return !!dynamic_cast<FunctionDefinition const*>(getScope()); }
-	bool isPublic() const { return m_isPublic; }
 	bool isStateVariable() const { return m_isStateVariable; }
 	bool isIndexed() const { return m_isIndexed; }
 
+protected:
+	Visibility getDefaultVisibility() const override { return Visibility::Protected; }
+
 private:
 	ASTPointer<TypeName> m_typeName;    ///< can be empty ("var")
-	bool m_isPublic;                    ///< Whether there is an accessor for it or not
 	bool m_isStateVariable;             ///< Whether or not this is a contract state variable
 	bool m_isIndexed;                   ///< Whether this is an indexed variable (used by events).
 
@@ -487,7 +494,6 @@ public:
 
 	std::vector<ASTPointer<VariableDeclaration>> const& getParameters() const { return m_parameters->getParameters(); }
 	ParameterList const& getParameterList() const { return *m_parameters; }
-	Block const& getBody() const { return *m_body; }
 
 	virtual TypePointer getType(ContractDefinition const* = nullptr) const override
 	{
@@ -498,7 +504,6 @@ public:
 
 private:
 	ASTPointer<ParameterList> m_parameters;
-	ASTPointer<Block> m_body;
 };
 
 /**
@@ -842,8 +847,8 @@ public:
 	virtual void checkTypeRequirements() = 0;
 
 	std::shared_ptr<Type const> const& getType() const { return m_type; }
-	bool isLValue() const { return m_lvalue != Declaration::LValueType::NONE; }
-	bool isLocalLValue() const { return m_lvalue == Declaration::LValueType::LOCAL; }
+	bool isLValue() const { return m_lvalue != Declaration::LValueType::None; }
+	bool isLocalLValue() const { return m_lvalue == Declaration::LValueType::Local; }
 
 	/// Helper function, infer the type via @ref checkTypeRequirements and then check that it
 	/// is implicitly convertible to @a _expectedType. If not, throw exception.
@@ -860,7 +865,7 @@ protected:
 	std::shared_ptr<Type const> m_type;
 	//! If this expression is an lvalue (i.e. something that can be assigned to) and is stored
 	//! locally or in storage. This is set during calls to @a checkTypeRequirements()
-	Declaration::LValueType m_lvalue = Declaration::LValueType::NONE;
+	Declaration::LValueType m_lvalue = Declaration::LValueType::None;
 	//! Whether the outer expression requested the address (true) or the value (false) of this expression.
 	bool m_lvalueRequested = false;
 };
@@ -958,14 +963,15 @@ class FunctionCall: public Expression
 {
 public:
 	FunctionCall(Location const& _location, ASTPointer<Expression> const& _expression,
-				 std::vector<ASTPointer<Expression>> const& _arguments):
-		Expression(_location), m_expression(_expression), m_arguments(_arguments) {}
+				 std::vector<ASTPointer<Expression>> const& _arguments, std::vector<ASTPointer<ASTString>> const& _names):
+		Expression(_location), m_expression(_expression), m_arguments(_arguments), m_names(_names) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 	virtual void checkTypeRequirements() override;
 
 	Expression const& getExpression() const { return *m_expression; }
 	std::vector<ASTPointer<Expression const>> getArguments() const { return {m_arguments.begin(), m_arguments.end()}; }
+	std::vector<ASTPointer<ASTString>> const& getNames() const { return m_names; }
 
 	/// Returns true if this is not an actual function call, but an explicit type conversion
 	/// or constructor call.
@@ -974,6 +980,7 @@ public:
 private:
 	ASTPointer<Expression> m_expression;
 	std::vector<ASTPointer<Expression>> m_arguments;
+	std::vector<ASTPointer<ASTString>> m_names;
 };
 
 /**
@@ -1105,13 +1112,23 @@ private:
 };
 
 /**
- * A literal string or number. @see Type::literalToBigEndian is used to actually parse its value.
+ * A literal string or number. @see ExpressionCompiler::endVisit() is used to actually parse its value.
  */
 class Literal: public PrimaryExpression
 {
 public:
-	Literal(Location const& _location, Token::Value _token, ASTPointer<ASTString> const& _value):
-		PrimaryExpression(_location), m_token(_token), m_value(_value) {}
+	enum class SubDenomination
+	{
+		None = Token::Illegal,
+		Wei = Token::SubWei,
+		Szabo = Token::SubSzabo,
+		Finney = Token::SubFinney,
+		Ether = Token::SubEther
+	};
+	Literal(Location const& _location, Token::Value _token,
+			ASTPointer<ASTString> const& _value,
+			SubDenomination _sub = SubDenomination::None):
+		PrimaryExpression(_location), m_token(_token), m_value(_value), m_subDenomination(_sub) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 	virtual void checkTypeRequirements() override;
@@ -1120,9 +1137,12 @@ public:
 	/// @returns the non-parsed value of the literal
 	ASTString const& getValue() const { return *m_value; }
 
+	SubDenomination getSubDenomination() const { return m_subDenomination; }
+
 private:
 	Token::Value m_token;
 	ASTPointer<ASTString> m_value;
+	SubDenomination m_subDenomination;
 };
 
 /// @}

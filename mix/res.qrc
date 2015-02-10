@@ -42,15 +42,46 @@
         <file>qml/Ether.qml</file>
         <file>qml/EtherValue.qml</file>
         <file>qml/BigIntValue.qml</file>
+        <file>qml/QVariableDefinition.qml</file>
+        <file>qml/QBoolType.qml</file>
+        <file>qml/QHashType.qml</file>
+        <file>qml/QIntType.qml</file>
+        <file>qml/QRealType.qml</file>
         <file>qml/js/QEtherHelper.js</file>
         <file>qml/js/TransactionHelper.js</file>
-        <file>qml/Splitter.qml</file>
+        <file>qml/QStringType.qml</file>
+        <file>qml/QBoolTypeView.qml</file>
+        <file>qml/QIntTypeView.qml</file>
+        <file>qml/QRealTypeView.qml</file>
+        <file>qml/QStringTypeView.qml</file>
+        <file>qml/QHashTypeView.qml</file>
         <file>qml/ContractLibrary.qml</file>
         <file>stdc/config.sol</file>
         <file>stdc/namereg.sol</file>
         <file>stdc/std.sol</file>
         <file>qml/TransactionLog.qml</file>
         <file>res/mix_256x256x32.png</file>
-        <file>qml/CallStack.qml</file>
+        <file>qml/QVariableDeclaration.qml</file>
+        <file>qml/Style.qml</file>
+        <file>qml/qmldir</file>
+        <file>qml/FilesSection.qml</file>
+        <file>qml/fonts/SourceSansPro-Black.ttf</file>
+        <file>qml/fonts/SourceSansPro-BlackIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-Bold.ttf</file>
+        <file>qml/fonts/SourceSansPro-BoldIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-ExtraLight.ttf</file>
+        <file>qml/fonts/SourceSansPro-ExtraLightIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-It.ttf</file>
+        <file>qml/fonts/SourceSansPro-Light.ttf</file>
+        <file>qml/fonts/SourceSansPro-LightIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-Regular.ttf</file>
+        <file>qml/fonts/SourceSansPro-Semibold.ttf</file>
+        <file>qml/fonts/SourceSansPro-SemiboldIt.ttf</file>
+        <file>qml/fonts/SourceSerifPro-Bold.ttf</file>
+        <file>qml/fonts/SourceSerifPro-Regular.ttf</file>
+        <file>qml/fonts/SourceSerifPro-Semibold.ttf</file>
+        <file>qml/img/closedtriangleindicator_filesproject.png</file>
+        <file>qml/img/opentriangleindicator_filesproject.png</file>
+        <file>qml/img/projecticon.png</file>
     </qresource>
 </RCC>

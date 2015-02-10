@@ -26,6 +26,8 @@ else()
 	qt5_add_resources(UI_RESOURCES noweb.qrc)
 endif()
 
+add_definitions(-DQT_QML_DEBUG)
+
 # eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 eth_add_executable(${EXECUTABLE} 
 	ICON mix
@@ -44,7 +46,9 @@ target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} secp256k1)
+if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 target_link_libraries(${EXECUTABLE} serpent)
+endif()
 target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} solidity)
 target_link_libraries(${EXECUTABLE} evmcore)

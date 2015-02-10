@@ -36,6 +36,8 @@ var Filter = function(options, impl) {
         if (options.topics) {
             console.warn('"topics" is deprecated, use "topic" instead');
         }
+        
+        this._onWatchResult = options._onWatchEventResult;
 
         // evaluate lazy properties
         options = {
@@ -54,11 +56,14 @@ var Filter = function(options, impl) {
     this.callbacks = [];
 
     this.id = impl.newFilter(options);
-    web3.provider.startPolling({call: impl.changed, args: [this.id]}, this.id, this.trigger.bind(this));
+    web3.provider.startPolling({method: impl.changed, params: [this.id]}, this.id, this.trigger.bind(this));
 };
 
 /// alias for changed*
 Filter.prototype.arrived = function(callback) {
+    this.changed(callback);
+};
+Filter.prototype.happened = function(callback) {
     this.changed(callback);
 };
 
@@ -71,7 +76,8 @@ Filter.prototype.changed = function(callback) {
 Filter.prototype.trigger = function(messages) {
     for (var i = 0; i < this.callbacks.length; i++) {
         for (var j = 0; j < messages.length; j++) {
-            this.callbacks[i].call(this, messages[j]);
+            var message = this._onWatchResult ? this._onWatchResult(messages[j]) : messages[j];
+            this.callbacks[i].call(this, message);
         }
     }
 };
