@@ -28,7 +28,7 @@ namespace jit
 
 namespace
 {
-typedef ReturnCode(*EntryFuncPtr)(Runtime*);
+using EntryFuncPtr = ReturnCode(*)(Runtime*);
 
 std::string codeHash(i256 const& _hash)
 {
