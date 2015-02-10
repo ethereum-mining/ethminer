@@ -37,7 +37,7 @@ namespace dev
 {
 
 class RLP;
-typedef std::vector<RLP> RLPs;
+using RLPs = std::vector<RLP>;
 
 template <class _T> struct intTraits { static const unsigned maxSize = sizeof(_T); };
 template <> struct intTraits<u160> { static const unsigned maxSize = 20; };
@@ -125,7 +125,7 @@ public:
 	/// @note if used to access items in ascending order, this is efficient.
 	RLP operator[](unsigned _i) const;
 
-	typedef RLP element_type;
+	using element_type = RLP;
 
 	/// @brief Iterator class for iterating through items of RLP list.
 	class iterator
@@ -133,8 +133,8 @@ public:
 		friend class RLP;
 
 	public:
-		typedef RLP value_type;
-		typedef RLP element_type;
+		using value_type = RLP;
+		using element_type = RLP;
 
 		iterator& operator++();
 		iterator operator++(int) { auto ret = *this; operator++(); return ret; }

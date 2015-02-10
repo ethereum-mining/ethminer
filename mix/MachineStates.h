@@ -61,7 +61,7 @@ namespace mix
 	*/
 	struct ExecutionResult
 	{
-		ExecutionResult() : receipt(dev::h256(), dev::h256(), dev::eth::LogEntries()) {}
+		ExecutionResult(): transactionIndex(std::numeric_limits<unsigned>::max()) {}
 
 		std::vector<MachineState> machineStates;
 		std::vector<bytes> transactionData;
@@ -71,7 +71,9 @@ namespace mix
 		dev::Address sender;
 		dev::Address contractAddress;
 		dev::u256 value;
-		dev::eth::TransactionReceipt receipt;
+		unsigned transactionIndex;
+
+		bool isCall() const { return transactionIndex == std::numeric_limits<unsigned>::max(); }
 	};
 
 	using ExecutionResults = std::vector<ExecutionResult>;
