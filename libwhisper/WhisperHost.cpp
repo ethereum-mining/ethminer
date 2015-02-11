@@ -79,11 +79,15 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 				noteChanged(h, f.first);
 	}
 
-	for (auto& i: peers())
-		if (i->cap<WhisperPeer>().get() == _p)
-			i->addRating(1);
+	// TODO p2p: capability-based rating
+	for (auto i: peerSessions())
+	{
+		auto w = i.first->cap<WhisperPeer>().get();
+		if (w == _p)
+			w->addRating(1);
 		else
-			i->cap<WhisperPeer>()->noteNewMessage(h, _m);
+			w->noteNewMessage(h, _m);
+	}
 }
 
 void WhisperHost::noteChanged(h256 _messageHash, h256 _filter)
@@ -158,8 +162,8 @@ void WhisperHost::uninstallWatch(unsigned _i)
 
 void WhisperHost::doWork()
 {
-	for (auto& i: peers())
-		i->cap<WhisperPeer>()->sendMessages();
+	for (auto& i: peerSessions())
+		i.first->cap<WhisperPeer>().get()->sendMessages();
 	cleanup();
 }
 
