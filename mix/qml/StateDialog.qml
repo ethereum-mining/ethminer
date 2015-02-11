@@ -2,9 +2,11 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
+import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.QEther 1.0
 import "js/QEtherHelper.js" as QEtherHelper
 import "js/TransactionHelper.js" as TransactionHelper
+import "."
 
 Window {
 	id: modalStateDialog
@@ -14,6 +16,7 @@ Window {
 	height: 480
 
 	visible: false
+	color: StateDialogStyle.generic.backgroundColor
 
 	property alias stateTitle: titleField.text
 	property alias stateBalance: balanceField.value
@@ -53,59 +56,96 @@ Window {
 		return item;
 	}
 
-	GridLayout {
-		id: dialogContent
-		columns: 2
+	SourceSansProRegular
+	{
+		id: regularFont
+	}
+
+	Rectangle
+	{
 		anchors.fill: parent
 		anchors.margins: 10
-		rowSpacing: 10
-		columnSpacing: 10
+		color: StateDialogStyle.generic.backgroundColor
+		GridLayout {
+			id: dialogContent
+			columns: 2
+			anchors.top: parent.top
+			rowSpacing: 10
+			columnSpacing: 10
 
-		Label {
-			text: qsTr("Title")
-		}
-		TextField {
-			id: titleField
-			focus: true
-			Layout.fillWidth: true
+			Label {
+				text: qsTr("Title")
+				font.family: regularFont.name
+				color: "#808080"
+			}
+			TextField {
+				id: titleField
+				focus: true
+				Layout.fillWidth: true
+				font.family: regularFont.name
+			}
+
+			Label {
+				text: qsTr("Balance")
+				font.family: regularFont.name
+				color: "#808080"
+			}
+			Ether {
+				id: balanceField
+				edit: true
+				displayFormattedValue: true
+				Layout.fillWidth: true
+			}
+
+			Label {
+				text: qsTr("Default")
+				font.family: regularFont.name
+				color: "#808080"
+			}
+			CheckBox {
+				id: defaultCheckBox
+				Layout.fillWidth: true
+			}
 		}
 
-		Label {
-			text: qsTr("Balance")
-		}
-		Ether {
-			id: balanceField
-			edit: true
-			displayFormattedValue: true
-			Layout.fillWidth: true
-		}
+		ColumnLayout
+		{
+			width: parent.width
+			anchors.top: dialogContent.bottom
+			anchors.topMargin: 5
+			spacing: 5
+			Label {
+				text: qsTr("Transactions")
+				font.family: regularFont.name
+				color: "#808080"
+			}
 
-		Label {
-			text: qsTr("Default")
-		}
-		CheckBox {
-			id: defaultCheckBox
-			Layout.fillWidth: true
-		}
+			ListView {
+				id: trList
+				Layout.preferredWidth: 200
+				Layout.fillHeight: true
+				Layout.minimumHeight: 20 * transactionsModel.count
+				model: transactionsModel
+				delegate: transactionRenderDelegate
+				visible: transactionsModel.count > 0
+			}
 
-		Label {
-			text: qsTr("Transactions")
+			ToolButton {
+				onClicked: transactionsModel.addTransaction()
+				style: ButtonStyle
+				{
+				 label: Text {
+					 font.family: regularFont.name
+					 text: qsTr("+")
+					 font.pointSize: 20
+					 color: "#808080"
+				 }
+				 background: Rectangle {
+					 color: "transparent"
+				 }
+				}
+			}
 		}
-		ListView {
-			Layout.fillWidth: true
-			Layout.fillHeight: true
-			model: transactionsModel
-			delegate: transactionRenderDelegate
-		}
-
-		Label {
-
-		}
-		Button {
-			text: qsTr("Add")
-			onClicked: transactionsModel.addTransaction()
-		}
-	}
 
 	RowLayout {
 		anchors.bottom: parent.bottom
@@ -123,6 +163,10 @@ Window {
 			onClicked: close();
 		}
 	}
+}
+
+
+
 
 	ListModel {
 		id: transactionsModel
@@ -160,18 +204,43 @@ Window {
 					text: functionId
 					font.pointSize: 12
 					verticalAlignment: Text.AlignBottom
+					font.family: regularFont.name
 				}
 				ToolButton {
 					text: qsTr("Edit");
 					visible: !stdContract
 					Layout.fillHeight: true
 					onClicked: transactionsModel.editTransaction(index)
+					style: ButtonStyle
+					{
+					 label: Text {
+						 font.family: regularFont.name
+						 text: qsTr("Edit")
+						 font.italic: true
+						 font.pointSize: 9
+					 }
+					 background: Rectangle {
+						 color: "transparent"
+					 }
+					}
 				}
 				ToolButton {
 					visible: index >= 0 ? !transactionsModel.get(index).executeConstructor : false
 					text: qsTr("Delete");
 					Layout.fillHeight: true
 					onClicked: transactionsModel.deleteTransaction(index)
+					style: ButtonStyle
+					{
+					 label: Text {
+						 font.family: regularFont.name
+						 text: qsTr("Delete")
+						 font.italic: true
+						 font.pointSize: 9
+					 }
+					 background: Rectangle {
+						 color: "transparent"
+					 }
+					}
 				}
 			}
 		}
