@@ -20,17 +20,17 @@ ColumnLayout {
 
 	function hiddenHeightTopLevel()
 	{
-		return section.state === "hidden" ? Style.documentsList.height : Style.documentsList.fileNameHeight * model.count + Style.documentsList.height;
+		return section.state === "hidden" ? ProjectFilesStyle.documentsList.height : ProjectFilesStyle.documentsList.fileNameHeight * model.count + ProjectFilesStyle.documentsList.height;
 	}
 
 	function hiddenHeightRepeater()
 	{
-		return section.state === "hidden" ? 0 : Style.documentsList.fileNameHeight * wrapperItem.model.count;
+		return section.state === "hidden" ? 0 : ProjectFilesStyle.documentsList.fileNameHeight * wrapperItem.model.count;
 	}
 
 	function hiddenHeightElement()
 	{
-		return section.state === "hidden" ? 0 : Style.documentsList.fileNameHeight;
+		return section.state === "hidden" ? 0 : ProjectFilesStyle.documentsList.fileNameHeight;
 	}
 
 	function getDocumentIndex(documentId)
@@ -65,7 +65,7 @@ ColumnLayout {
 		anchors.top: parent.top
 		id: rowCol
 		width: parent.width
-		height: Style.documentsList.height
+		height: ProjectFilesStyle.documentsList.height
 
 		Image {
 			source: "qrc:/qml/img/opentriangleindicator_filesproject.png"
@@ -83,15 +83,15 @@ ColumnLayout {
 			id: section
 			text: sectionName
 			anchors.left: parent.left
-			anchors.leftMargin: Style.general.leftMargin
-			color: Style.documentsList.sectionColor
+			anchors.leftMargin: ProjectFilesStyle.general.leftMargin
+			color: ProjectFilesStyle.documentsList.sectionColor
 			font.family: boldFont.name
-			font.pointSize: Style.documentsList.sectionFontSize
+			font.pointSize: ProjectFilesStyle.documentsList.sectionFontSize
 			states: [
 				State {
 					name: "hidden"
 					PropertyChanges { target: filesList; visible: false; }
-					PropertyChanges { target: rowCol; Layout.minimumHeight: Style.documentsList.height; Layout.maximumHeight: Style.documentsList.height; height: Style.documentsList.height; }
+					PropertyChanges { target: rowCol; Layout.minimumHeight: ProjectFilesStyle.documentsList.height; Layout.maximumHeight: ProjectFilesStyle.documentsList.height; height: ProjectFilesStyle.documentsList.height; }
 					PropertyChanges { target: imgArrow; source: "qrc:/qml/img/closedtriangleindicator_filesproject.png" }
 				}
 			]
@@ -132,21 +132,21 @@ ColumnLayout {
 				Layout.preferredHeight: wrapperItem.hiddenHeightElement()
 				Layout.maximumHeight: wrapperItem.hiddenHeightElement()
 				height: wrapperItem.hiddenHeightElement()
-				color: isSelected ? Style.documentsList.highlightColor : Style.documentsList.background
+				color: isSelected ? ProjectFilesStyle.documentsList.highlightColor : ProjectFilesStyle.documentsList.background
 				property bool isSelected
 				property bool renameMode
 				Text {
 					id: nameText
 					height: parent.height
 					visible: !renameMode
-					color: rootItem.isSelected ? Style.documentsList.selectedColor : Style.documentsList.color
+					color: rootItem.isSelected ? ProjectFilesStyle.documentsList.selectedColor : ProjectFilesStyle.documentsList.color
 					text: name;
 					font.family: fileNameFont.name
-					font.pointSize: Style.documentsList.fontSize
+					font.pointSize: ProjectFilesStyle.documentsList.fontSize
 					anchors.verticalCenter: parent.verticalCenter
 					verticalAlignment:  Text.AlignVCenter
 					anchors.left: parent.left
-					anchors.leftMargin: Style.general.leftMargin + 2
+					anchors.leftMargin: ProjectFilesStyle.general.leftMargin + 2
 					width: parent.width
 					Connections
 					{
@@ -171,7 +171,7 @@ ColumnLayout {
 					visible: renameMode
 					anchors.verticalCenter: parent.verticalCenter
 					anchors.left: parent.left
-					anchors.leftMargin: Style.general.leftMargin
+					anchors.leftMargin: ProjectFilesStyle.general.leftMargin
 					MouseArea {
 						id: textMouseArea
 						anchors.fill: parent
