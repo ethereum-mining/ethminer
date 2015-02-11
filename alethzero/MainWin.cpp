@@ -211,11 +211,11 @@ Main::Main(QWidget *parent) :
 
 Main::~Main()
 {
+	writeSettings();
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
 	m_qweb->clientDieing();
 	g_logPost = simpleDebugOut;
-	writeSettings();
 }
 
 void Main::on_newIdentity_triggered()

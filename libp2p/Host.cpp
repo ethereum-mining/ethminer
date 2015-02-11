@@ -428,8 +428,9 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 
 void Host::connect(std::shared_ptr<Peer> const& _p)
 {
-	while (isWorking() && !m_run)
-		this_thread::sleep_for(chrono::milliseconds(50));
+	for (unsigned i = 0; i < 40; i++)
+		if (isWorking() && !m_run)
+			this_thread::sleep_for(chrono::milliseconds(50));
 	if (!m_run)
 		return;
 	
@@ -442,6 +443,7 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 	if (!m_nodeTable->haveNode(_p->id))
 	{
 		clog(NetWarn) << "Aborted connect. Node not in node table.";
+		m_nodeTable->addNode(*_p.get());
 		return;
 	}
 	
