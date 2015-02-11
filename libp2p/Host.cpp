@@ -185,15 +185,24 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 		auto n = m_nodeTable->node(_n);
 		if (n)
 		{
-			RecursiveGuard l(x_sessions);
-			auto p = m_peers[_n];
-			if (!p)
+			shared_ptr<Peer> p;
 			{
-				m_peers[_n] = make_shared<Peer>();
-				p = m_peers[_n];
-				p->id = _n;
+				RecursiveGuard l(x_sessions);
+				if (m_peers.count(_n))
+					p = m_peers[_n];
+				else
+				{
+					// TODO p2p: construct peer from node
+					p.reset(new Peer());
+					p->id = _n;
+					p->endpoint = NodeIPEndpoint(n.endpoint.udp, n.endpoint.tcp);
+					p->required = n.required;
+					m_peers[_n] = p;
+					
+					clog(NetNote) << "p2p.host.peers.events.peersAdded " << _n << p->endpoint.tcp.address() << p->endpoint.udp.address();
+				}
+				p->endpoint.tcp = n.endpoint.tcp;
 			}
-			p->endpoint.tcp = n.endpoint.tcp;
 			
 			// TODO: Implement similar to discover. Attempt connecting to nodes
 			//       until ideal peer count is reached; if all nodes are tried,
@@ -369,10 +378,8 @@ void Host::doHandshake(bi::tcp::socket* _socket, NodeId _nodeId)
 		p = m_peers[_nodeId];
 	
 	if (!p)
-	{
-		p = make_shared<Peer>();
-		p->endpoint.tcp.address(_socket->remote_endpoint().address());
-	}
+		p.reset(new Peer());
+	p->endpoint.tcp.address(_socket->remote_endpoint().address());
 
 	auto ps = std::make_shared<Session>(this, std::move(*_socket), p);
 	ps->start();

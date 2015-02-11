@@ -115,6 +115,7 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
  * @todo cache Ping and FindSelf
  *
  * [Networking]
+ * @todo node-endpoint updates
  * @todo TCP endpoints
  * @todo eth/upnp/natpmp/stun/ice/etc for public-discovery
  * @todo firewall
@@ -144,7 +145,7 @@ public:
 	void processEvents();
 	
 	/// Add node. Node will be pinged if it's not already known.
-	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp = bi::tcp::endpoint());
+	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp);
 	
 	/// Add node. Node will be pinged if it's not already known.
 	std::shared_ptr<NodeEntry> addNode(Node const& _node);
@@ -162,10 +163,10 @@ public:
 	std::list<NodeEntry> snapshot() const;
 	
 	/// Returns true if node id is in node table.
-	bool haveNode(NodeId _id) { Guard l(x_nodes); return m_nodes.count(_id); }
+	bool haveNode(NodeId const& _id) { Guard l(x_nodes); return m_nodes.count(_id); }
 	
 	/// Returns the Node to the corresponding node id or the empty Node if that id is not found.
-	Node node(NodeId _id);
+	Node node(NodeId const& _id);
 	
 #ifndef BOOST_AUTO_TEST_SUITE
 private:
@@ -197,6 +198,7 @@ protected:
 		unsigned distance;
 		TimePoint modified;
 		std::list<std::weak_ptr<NodeEntry>> nodes;
+		void touch() { modified = std::chrono::steady_clock::now(); }
 	};
 	
 	/// Used to ping endpoint.

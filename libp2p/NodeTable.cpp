@@ -70,28 +70,37 @@ shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, bi::udp::endpoint 
 
 shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 {
-	Guard l(x_nodes);
-	shared_ptr<NodeEntry> ret = m_nodes[_node.id];
-	if (ret)
+	// ping address if nodeid is empty
+	if (!_node.id)
 	{
-		// TODO: p2p robust percolation of node-endpoint changes
+		PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
+		p.sign(m_secret);
+		m_socketPointer->send(p);
+		shared_ptr<NodeEntry> n;
+		return move(n);
+	}
+	
+	Guard l(x_nodes);
+	if (m_nodes.count(_node.id))
+	{
 //		// SECURITY: remove this in beta - it's only for lazy connections and presents an easy attack vector.
 //		if (m_server->m_peers.count(id) && isPrivateAddress(m_server->m_peers.at(id)->address.address()) && ep.port() != 0)
 //			// Update address if the node if we now have a public IP for it.
 //			m_server->m_peers[id]->address = ep;
+		return m_nodes[_node.id];
 	}
-	else
-	{
-		clog(NodeTableNote) << "p2p.nodes.add " << _node.id.abridged();
-		if (m_nodeEventHandler)
-			m_nodeEventHandler->appendEvent(_node.id, NodeEntryAdded);
-		
-		ret.reset(new NodeEntry(m_node, _node.id, NodeIPEndpoint(_node.endpoint.udp, _node.endpoint.tcp)));
-		m_nodes[_node.id] = ret;
-		PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
-		p.sign(m_secret);
-		m_socketPointer->send(p);
-	}
+	
+	shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, NodeIPEndpoint(_node.endpoint.udp, _node.endpoint.tcp)));
+	m_nodes[_node.id] = ret;
+	PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
+	p.sign(m_secret);
+	m_socketPointer->send(p);
+	
+	// TODO p2p: rename to p2p.nodes.pending, add p2p.nodes.add event (when pong is received)
+	clog(NodeTableNote) << "p2p.nodes.add " << _node.id.abridged();
+	if (m_nodeEventHandler)
+		m_nodeEventHandler->appendEvent(_node.id, NodeEntryAdded);
+	
 	return move(ret);
 }
 
@@ -119,18 +128,23 @@ list<NodeEntry> NodeTable::snapshot() const
 	return move(ret);
 }
 
-Node NodeTable::node(NodeId _id)
+Node NodeTable::node(NodeId const& _id)
 {
+	// TODO p2p: eloquent copy operator
 	Guard l(x_nodes);
-	auto n = m_nodes[_id];
-	return !!n ? *n : Node();
+	if (m_nodes.count(_id))
+	{
+		auto entry = m_nodes[_id];
+		Node n(_id, NodeIPEndpoint(entry->endpoint.udp, entry->endpoint.tcp), entry->required);
+		return move(n);
+	}
+	return move(Node());
 }
 
 shared_ptr<NodeEntry> NodeTable::nodeEntry(NodeId _id)
 {
 	Guard l(x_nodes);
-	auto n = m_nodes[_id];
-	return !!n ? move(n) : move(shared_ptr<NodeEntry>());
+	return m_nodes.count(_id) ? move(m_nodes[_id]) : move(shared_ptr<NodeEntry>());
 }
 
 void NodeTable::discover(NodeId _node, unsigned _round, shared_ptr<set<shared_ptr<NodeEntry>>> _tried)
@@ -289,7 +303,9 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 	if (_pubk == m_node.address())
 		return;
 	
-	shared_ptr<NodeEntry> node(addNode(_pubk, _endpoint));
+	clog(NodeTableNote) << "Noting active node:" << _pubk.abridged() << _endpoint.address().to_string() << ":" << _endpoint.port();
+
+	shared_ptr<NodeEntry> node(addNode(_pubk, _endpoint, bi::tcp::endpoint(_endpoint.address(), _endpoint.port())));
 
 	// TODO p2p: old bug (maybe gone now) sometimes node is nullptr here
 	if (!!node)
@@ -471,8 +487,8 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 			Guard le(x_evictions);
 			for (auto& e: m_evictions)
 				if (chrono::steady_clock::now() - e.first.second > c_reqTimeout)
-					if (auto n = m_nodes[e.second])
-						drop.push_back(n);
+					if (m_nodes.count(e.second))
+						drop.push_back(m_nodes[e.second]);
 			evictionsRemain = m_evictions.size() - drop.size() > 0;
 		}
 		
@@ -498,6 +514,7 @@ void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 		Guard l(x_state);
 		for (auto& d: m_state)
 			if (chrono::steady_clock::now() - d.modified > c_bucketRefresh)
+			{
 				while (!d.nodes.empty())
 				{
 					auto n = d.nodes.front();
@@ -509,6 +526,7 @@ void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 					}
 					d.nodes.pop_front();
 				}
+			}
 	}
 
 	unsigned nextRefresh = connected ? (refreshed ? 200 : c_bucketRefresh.count()*1000) : 10000;
