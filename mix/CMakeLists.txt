@@ -34,8 +34,6 @@ eth_add_executable(${EXECUTABLE}
 	UI_RESOURCES ${UI_RESOURCES}
 )
 
-target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${Boost_CHRONO_LIBRARIES})
 target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} Qt5::Gui)
 target_link_libraries(${EXECUTABLE} Qt5::Widgets)
