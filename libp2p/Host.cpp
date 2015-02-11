@@ -528,6 +528,16 @@ void Host::run(boost::system::error_code const&)
 	
 	keepAlivePeers();
 	disconnectLatePeers();
+
+	if (m_idealPeerCount && !peerCount())
+		for (auto p: m_peers)
+			if (p.second->shouldReconnect())
+			{
+				// TODO p2p: fixme
+				p.second->m_lastAttempted = std::chrono::system_clock::now();
+				connect(p.second);
+				break;
+			}
 	
 	auto runcb = [this](boost::system::error_code const& error) { run(error); };
 	m_timer->expires_from_now(boost::posix_time::milliseconds(c_timerInterval));

@@ -62,16 +62,22 @@ public:
 
 	virtual bool operator<(Peer const& _p) const;
 	
-	/// This peers rating.
+	/// WIP: Returns current peer rating.
 	int rating() const { return m_rating; }
+	
+	/// Return true if connection attempt should be made to this peer or false if
+	bool shouldReconnect() const;
 	
 	/// Number of times connection has been attempted to peer.
 	int failedAttempts() const { return m_failedAttempts; }
-	
+
 	/// Reason peer was previously disconnected.
 	DisconnectReason lastDisconnect() const { return m_lastDisconnect; }
 	
 protected:
+	/// Returns number of seconds to wait until attempting connection, based on attempted connection history.
+	unsigned fallbackSeconds() const;
+
 	int m_score = 0;									///< All time cumulative.
 	int m_rating = 0;									///< Trending.
 	
