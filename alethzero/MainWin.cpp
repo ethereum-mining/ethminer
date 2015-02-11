@@ -1330,15 +1330,15 @@ void Main::on_inject_triggered()
 	bytes b;
 	try
 	{
-		b = fromHex(s.toStdString());
+		b = fromHex(s.toStdString(), true);
 	}
-	catch(BadHexCharacter& _e)
+	catch (BadHexCharacter& _e)
 	{
 		cnote << "invalid hex character, transaction rejected";
 		cnote << boost::diagnostic_information(_e);
 		return;
 	}
-	catch(...)
+	catch (...)
 	{
 		cnote << "transaction rejected";
 		return;
