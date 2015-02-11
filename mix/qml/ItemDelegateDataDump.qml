@@ -2,6 +2,7 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
+import "."
 
 Rectangle {
 	anchors.fill: parent
@@ -27,7 +28,7 @@ Rectangle {
 				font.bold: true
 				color: "#4a4a4a"
 				text: modelData[0]
-				font.pointSize: 8;
+				font.pointSize: DebuggerPaneStyle.general.dataDumpFontSize;
 			}
 		}
 
@@ -46,7 +47,7 @@ Rectangle {
 				anchors.leftMargin: 4
 				color: "#4a4a4a"
 				text: modelData[1]
-				font.pointSize: 8
+				font.pointSize: DebuggerPaneStyle.general.dataDumpFontSize
 			}
 		}
 	}
