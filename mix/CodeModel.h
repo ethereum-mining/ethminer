@@ -69,6 +69,7 @@ class CompilationResult: public QObject
 	Q_PROPERTY(QString compilerMessage READ compilerMessage CONSTANT)
 	Q_PROPERTY(bool successful READ successful CONSTANT)
 	Q_PROPERTY(QString contractInterface READ contractInterface CONSTANT)
+	Q_PROPERTY(QString codeHex READ codeHex CONSTANT)
 
 public:
 	/// Empty compilation result constructor
@@ -88,8 +89,8 @@ public:
 	QString compilerMessage() const { return m_compilerMessage; }
 	/// @returns contract bytecode
 	dev::bytes const& bytes() const { return m_bytes; }
-	/// @returns contract bytecode in human-readable form
-	QString assemblyCode() const { return m_assemblyCode; }
+	/// @returns contract bytecode as hex string
+	QString codeHex() const;
 	/// @returns contract definition in JSON format
 	QString contractInterface() const { return m_contractInterface; }
 	/// Get code highlighter
@@ -101,7 +102,6 @@ private:
 	std::shared_ptr<QContractDefinition> m_contract;
 	QString m_compilerMessage; ///< @todo: use some structure here
 	dev::bytes m_bytes;
-	QString m_assemblyCode;
 	QString m_contractInterface;
 	std::shared_ptr<CodeHighlighter> m_codeHighlighter;
 
