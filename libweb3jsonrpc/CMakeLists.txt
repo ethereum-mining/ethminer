@@ -38,7 +38,7 @@ if (ETH_JSON_RPC_STUB)
 		POST_BUILD
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 		COMMAND ${ETH_JSON_RPC_STUB} spec.json --cpp-server=AbstractWebThreeStubServer --cpp-client=WebThreeStubClient 
-		COMMAND cmake -E rename webthreestubclient.h ../test/webthreestubclient.h
+		COMMAND ${CMAKE_COMMAND} -E rename webthreestubclient.h ../test/webthreestubclient.h
 	)
 	add_dependencies(${EXECUTABLE} jsonrpcstub)
 endif()
