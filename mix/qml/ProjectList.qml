@@ -12,10 +12,10 @@ Item {
 		anchors.fill: parent
 		id: filesCol
 		spacing: 0
-		FontLoader
+
+		SourceSansProLight
 		{
 			id: srcSansProLight
-			source: "qrc:/qml/fonts/SourceSansPro-Light.ttf"
 		}
 
 		Rectangle

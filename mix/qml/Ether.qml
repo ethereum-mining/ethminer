@@ -32,6 +32,11 @@ RowLayout {
 		units.currentIndex = unit;
 	}
 
+	SourceSansProRegular
+	{
+		id: regularFont
+	}
+
 	TextField
 	{
 		implicitWidth: 200
@@ -46,6 +51,7 @@ RowLayout {
 		readOnly: !edit
 		visible: edit
 		id: etherValueEdit;
+		font.family: regularFont.name
 	}
 
 	ComboBox
@@ -81,10 +87,15 @@ RowLayout {
 			ListElement { text: "Kwei"; }
 			ListElement { text: "wei"; }
 		}
+		style: ComboBoxStyle
+		{
+		font: regularFont.name
+		}
 	}
 	Text
 	{
 		visible: displayFormattedValue
 		id: formattedValue
+		font.family: regularFont.name
 	}
 }

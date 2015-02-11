@@ -1,1 +1,2 @@
 singleton Style 1.0 Style.qml
+singleton StateDialogStyle 1.0 StateDialogStyle.qml

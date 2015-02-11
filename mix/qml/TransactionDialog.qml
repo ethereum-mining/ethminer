@@ -2,15 +2,18 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
+import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.QEther 1.0
 import "js/TransactionHelper.js" as TransactionHelper
+import "."
 
 Window {
 	id: modalTransactionDialog
 	modality: Qt.WindowModal
-	width:640
-	height:640
+	width: 640
+	height: 700
 	visible: false
+	color: StateDialogStyle.generic.backgroundColor
 
 	property int transactionIndex
 	property alias transactionParams: paramsModel;
@@ -155,11 +158,17 @@ Window {
 		return item;
 	}
 
+	SourceSansProRegular
+	{
+		id: regularFont
+	}
+
 	ColumnLayout {
 		id: dialogContent
 		width: parent.width
 		anchors.left: parent.left
 		anchors.right: parent.right
+		anchors.top: parent.top
 		anchors.margins: 10
 		spacing: 30
 		RowLayout
@@ -170,10 +179,12 @@ Window {
 			Label {
 				Layout.preferredWidth: 75
 				text: qsTr("Function")
+				font.family: regularFont.name
+				color: "#808080"
 			}
 			ComboBox {
 				id: functionComboBox
-				Layout.fillWidth: true
+				Layout.preferredWidth: 350
 				currentIndex: -1
 				textRole: "text"
 				editable: false
@@ -183,6 +194,10 @@ Window {
 				onCurrentIndexChanged: {
 					loadParameters();
 				}
+				style: ComboBoxStyle
+				{
+				font: regularFont.name
+				}
 			}
 		}
 
@@ -191,18 +206,17 @@ Window {
 		{
 			id: rowValue
 			Layout.fillWidth: true
+			height: 150
 			Label {
 				Layout.preferredWidth: 75
 				text: qsTr("Value")
+				font.family: regularFont.name
+				color: "#808080"
 			}
-			Rectangle
-			{
-				Layout.fillWidth: true
-				Ether {
-					id: valueField
-					edit: true
-					displayFormattedValue: true
-				}
+			Ether {
+				id: valueField
+				edit: true
+				displayFormattedValue: true
 			}
 		}
 
@@ -211,18 +225,17 @@ Window {
 		{
 			id: rowGas
 			Layout.fillWidth: true
+			height: 150
 			Label {
 				Layout.preferredWidth: 75
 				text: qsTr("Gas")
+				font.family: regularFont.name
+				color: "#808080"
 			}
-			Rectangle
-			{
-				Layout.fillWidth: true
-				Ether {
-					id: gasField
-					edit: true
-					displayFormattedValue: true
-				}
+			Ether {
+				id: gasField
+				edit: true
+				displayFormattedValue: true
 			}
 		}
 
@@ -230,31 +243,153 @@ Window {
 		{
 			id: rowGasPrice
 			Layout.fillWidth: true
+			height: 150
 			Label {
 				Layout.preferredWidth: 75
 				text: qsTr("Gas Price")
+				font.family: regularFont.name
+				color: "#808080"
 			}
-			Rectangle
-			{
-				Layout.fillWidth: true
-				Ether {
-					id: gasPriceField
-					edit: true
-					displayFormattedValue: true
-				}
+			Ether {
+				id: gasPriceField
+				edit: true
+				displayFormattedValue: true
 			}
 		}
 
-		RowLayout
-		{
-			Layout.fillWidth: true
-			Label {
-				text: qsTr("Parameters")
-				Layout.preferredWidth: 75
-			}
-			TableView {
+			//ColumnLayout
+			//{
+				//Layout.fillHeight: true;
+				//Layout.fillWidth: true;
+				//visible: paramsModel.count > 0
+
+				Label {
+					text: qsTr("Parameters")
+					Layout.preferredWidth: 75
+					font.family: regularFont.name
+					color: "#808080"
+					visible: paramsModel.count > 0
+				}
+
+				Repeater
+				{
+					model: paramsModel
+					visible: paramsModel.count > 0
+					Rectangle
+					{
+						color: "transparent"
+						Layout.fillWidth: true
+						height: 150
+						Label {
+							id: typeLabel
+							text: type
+						}
+
+						Label {
+							anchors.left: typeLabel.right
+							id: nameLabel
+							text: name
+						}
+
+						Label {
+							anchors.left: nameLabel.right
+							id: equalLabel
+							text: "="
+						}
+
+						Loader
+						{
+							anchors.left: equalLabel.right
+							id: typeLoader
+							height: 50
+							width: 150
+							Connections {
+								target: typeLoader.item
+								onTextChanged: {
+									console.log("text changed 0 " + value);
+									value = typeLoader.item.text;
+									console.log("text changed 1 " + value);
+								}
+							}
+
+							sourceComponent:
+							{
+								console.log(type);
+								if (type.indexOf("int") !== -1)
+									return intViewComp;
+								else if (type.indexOf("bool") !== -1)
+									return boolViewComp;
+								else if (type.indexOf("string") !== -1)
+									return stringViewComp;
+								else if (type.indexOf("hash") !== -1)
+									return hashViewComp;
+								else
+									return null;
+							}
+
+							Component
+							{
+								id: intViewComp
+								QIntTypeView
+								{
+									height: 50
+									width: 150
+									id: intView
+									text: value
+								}
+							}
+
+							Component
+							{
+								id: boolViewComp
+								QBoolTypeView
+								{
+									height: 50
+									width: 150
+									id: boolView
+									defaultValue: "1"
+									Component.onCompleted:
+									{
+										/*loaderEditor.updateValue(styleData.row, styleData.role,
+															 (paramsModel.get(styleData.row).value === "" ? defaultValue :
+																											paramsModel.get(styleData.row).value));
+									text = (paramsModel.get(styleData.row).value === "" ? defaultValue : paramsModel.get(styleData.row).value);*/
+									}
+								}
+							}
+
+							Component
+							{
+								id: stringViewComp
+								QStringTypeView
+								{
+									height: 50
+									width: 150
+									id: stringView
+									text: value
+								}
+							}
+
+							Component
+							{
+								id: hashViewComp
+								QHashTypeView
+								{
+									height: 50
+									width: 150
+									id: hashView
+									text: value
+								}
+							}
+						}
+
+					}
+				}
+			//}
+
+			/*TableView {
 				model: paramsModel
-				Layout.preferredWidth: 120 * 2 + 240
+				Layout.fillWidth: true
 				Layout.minimumHeight: 150
 				Layout.preferredHeight: 400
 				Layout.maximumHeight: 600
@@ -276,27 +411,26 @@ Window {
 
 				rowDelegate: rowDelegate
 				itemDelegate: editableDelegate
+			}*/
+		}
+
+		RowLayout
+		{
+			anchors.bottom: parent.bottom
+			anchors.right: parent.right;
+
+			Button {
+				text: qsTr("OK");
+				onClicked: {
+					close();
+					accepted();
+				}
+			}
+			Button {
+				text: qsTr("Cancel");
+				onClicked: close();
 			}
 		}
-	}
-
-	RowLayout
-	{
-		anchors.bottom: parent.bottom
-		anchors.right: parent.right;
-
-		Button {
-			text: qsTr("OK");
-			onClicked: {
-				close();
-				accepted();
-			}
-		}
-		Button {
-			text: qsTr("Cancel");
-			onClicked: close();
-		}
-	}
 
 
 	ListModel {
@@ -332,6 +466,7 @@ Window {
 
 				sourceComponent:
 				{
+					console.log("role " + styleData.role);
 					if (styleData.role === "value")
 					{
 						if (paramsModel.get(styleData.row) === undefined)
@@ -349,53 +484,7 @@ Window {
 						return editor;
 				}
 
-				Component
-				{
-					id: intViewComp
-					QIntTypeView
-					{
-						id: intView
-						text: styleData.value
-					}
-				}
 
-				Component
-				{
-					id: boolViewComp
-					QBoolTypeView
-					{
-						id: boolView
-						defaultValue: "1"
-						Component.onCompleted:
-						{
-							loaderEditor.updateValue(styleData.row, styleData.role,
-													 (paramsModel.get(styleData.row).value === "" ? defaultValue :
-																									paramsModel.get(styleData.row).value));
-							text = (paramsModel.get(styleData.row).value === "" ? defaultValue : paramsModel.get(styleData.row).value);
-						}
-					}
-				}
-
-				Component
-				{
-					id: stringViewComp
-					QStringTypeView
-					{
-						id: stringView
-						text: styleData.value
-					}
-				}
-
-
-				Component
-				{
-					id: hashViewComp
-					QHashTypeView
-					{
-						id: hashView
-						text: styleData.value
-					}
-				}
 
 				Component {
 					id: editor
@@ -404,12 +493,7 @@ Window {
 						readOnly: true
 						color: styleData.textColor
 						text: styleData.value
-						MouseArea {
-							id: mouseArea
-							anchors.fill: parent
-							hoverEnabled: true
-							onClicked: textinput.forceActiveFocus()
-						}
+						font.family: regularFont.name
 					}
 				}
 			}

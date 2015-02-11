@@ -83,5 +83,9 @@
         <file>qml/img/closedtriangleindicator_filesproject.png</file>
         <file>qml/img/opentriangleindicator_filesproject.png</file>
         <file>qml/img/projecticon.png</file>
+        <file>qml/SourceSansProRegular.qml</file>
+        <file>qml/SourceSansProBold.qml</file>
+        <file>qml/SourceSansProLight.qml</file>
+        <file>qml/StateDialogStyle.qml</file>
     </qresource>
 </RCC>
