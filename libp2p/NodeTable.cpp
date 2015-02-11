@@ -65,7 +65,7 @@ void NodeTable::processEvents()
 shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp)
 {
 	auto node = Node(_pubk, NodeIPEndpoint(_udp, _tcp));
-	return move(addNode(node));
+	return addNode(node);
 }
 
 shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
@@ -101,7 +101,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 	if (m_nodeEventHandler)
 		m_nodeEventHandler->appendEvent(_node.id, NodeEntryAdded);
 	
-	return move(ret);
+	return ret;
 }
 
 void NodeTable::discover()
