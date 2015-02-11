@@ -323,15 +323,20 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 			
 			if (s.nodes.size() >= s_bucketSize)
 			{
+				// It's only contested iff nodeentry exists
 				contested = s.nodes.front().lock();
 				if (!contested)
 				{
 					s.nodes.pop_front();
 					s.nodes.push_back(node);
+					s.touch();
 				}
 			}
 			else
+			{
 				s.nodes.push_back(node);
+				s.touch();
+			}
 		}
 		
 		if (contested)
@@ -515,6 +520,7 @@ void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 		for (auto& d: m_state)
 			if (chrono::steady_clock::now() - d.modified > c_bucketRefresh)
 			{
+				d.touch();
 				while (!d.nodes.empty())
 				{
 					auto n = d.nodes.front();
