@@ -2,6 +2,7 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
+import "."
 
 Rectangle {
 	id: statusHeader
@@ -59,7 +60,7 @@ Rectangle {
 			spacing: 5
 
 			Text {
-				font.pointSize: 10
+				font.pointSize: StatusPaneStyle.general.statusFontSize
 				height: 9
 				font.family: "sans serif"
 				objectName: "status"
@@ -81,7 +82,7 @@ Rectangle {
 
 			Text {
 				visible: false
-				font.pointSize: 9
+				font.pointSize: StatusPaneStyle.general.logLinkFontSize
 				height: 9
 				text: qsTr("See Log.")
 				font.family: "Monospace"
