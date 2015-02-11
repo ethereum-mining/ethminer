@@ -53,7 +53,8 @@ int fromHex(char _i);
 
 /// Converts a (printable) ASCII hex string into the corresponding byte stream.
 /// @example fromHex("41626261") == asBytes("Abba")
-bytes fromHex(std::string const& _s);
+/// If _throw = false, it replaces bad hex characters with 0's, otherwise it will throw an exception.
+bytes fromHex(std::string const& _s, bool _throw = false);
 
 #if 0
 std::string toBase58(bytesConstRef _data);
