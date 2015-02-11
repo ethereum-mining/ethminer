@@ -193,8 +193,12 @@ bool Session::interpret(RLP const& _r)
 		}
 		else if (m_peer->id != id)
 		{
-			disconnect(UnexpectedIdentity);
-			return true;
+			// TODO p2p: FIXME. Host should catch this and reattempt adding node to table.
+			m_peer->id = id;
+			m_peer->m_score = 0;
+			m_peer->m_rating = 0;
+//			disconnect(UnexpectedIdentity);
+//			return true;
 		}
 
 		if (m_server->havePeerSession(id))

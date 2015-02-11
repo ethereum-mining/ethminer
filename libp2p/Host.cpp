@@ -467,8 +467,9 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 		else
 		{
 			clog(NetConnect) << "Connected to" << _p->id.abridged() << "@" << _p->peerEndpoint();
-			
+			_p->m_lastDisconnect = NoDisconnect;
 			_p->m_lastConnected = std::chrono::system_clock::now();
+			_p->m_failedAttempts = 0;
 			auto ps = make_shared<Session>(this, std::move(*s), _p);
 			ps->start();
 			
