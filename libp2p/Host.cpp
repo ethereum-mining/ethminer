@@ -413,13 +413,15 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 	bi::address addr = bi::address::from_string(_addr, ec);
 	if (ec)
 	{
-		bi::tcp::resolver r(m_ioService);
-		r.async_resolve({_addr, toString(_tcpPeerPort)}, [=](boost::system::error_code const& _ec, bi::tcp::resolver::iterator _epIt)
+		bi::tcp::resolver *r = new bi::tcp::resolver(m_ioService);
+		r->async_resolve({_addr, toString(_tcpPeerPort)}, [=](boost::system::error_code const& _ec, bi::tcp::resolver::iterator _epIt)
 		{
-			if (_ec)
-				return;
-			bi::tcp::endpoint tcp = *_epIt;
-			if (m_nodeTable) m_nodeTable->addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(tcp.address(), _udpNodePort), tcp)));
+			if (!_ec)
+			{
+				bi::tcp::endpoint tcp = *_epIt;
+				if (m_nodeTable) m_nodeTable->addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(tcp.address(), _udpNodePort), tcp)));
+			}
+			delete r;
 		});
 	}
 	else
@@ -428,7 +430,7 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 
 void Host::connect(std::shared_ptr<Peer> const& _p)
 {
-	for (unsigned i = 0; i < 40; i++)
+	for (unsigned i = 0; i < 200; i++)
 		if (isWorking() && !m_run)
 			this_thread::sleep_for(chrono::milliseconds(50));
 	if (!m_run)
