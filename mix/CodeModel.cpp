@@ -28,6 +28,7 @@
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libsolidity/InterfaceHandler.h>
 #include <libevmcore/Instruction.h>
+#include <libethcore/CommonJS.h>
 #include "QContractDefinition.h"
 #include "QFunctionDefinition.h"
 #include "QVariableDeclaration.h"
@@ -61,7 +62,6 @@ CompilationResult::CompilationResult(const dev::solidity::CompilerStack& _compil
 		auto const& contractDefinition = _compiler.getContractDefinition(std::string());
 		m_contract.reset(new QContractDefinition(&contractDefinition));
 		m_bytes = _compiler.getBytecode();
-		m_assemblyCode = QString::fromStdString(dev::eth::disassemble(m_bytes));
 		dev::solidity::InterfaceHandler interfaceHandler;
 		m_contractInterface = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
 		if (m_contractInterface.isEmpty())
@@ -78,10 +78,15 @@ CompilationResult::CompilationResult(CompilationResult const& _prev, QString con
 	m_contract(_prev.m_contract),
 	m_compilerMessage(_compilerMessage),
 	m_bytes(_prev.m_bytes),
-	m_assemblyCode(_prev.m_assemblyCode),
 	m_contractInterface(_prev.m_contractInterface),
 	m_codeHighlighter(_prev.m_codeHighlighter)
 {}
+
+
+QString CompilationResult::codeHex() const
+{
+	return QString::fromStdString(toJS(m_bytes));
+}
 
 CodeModel::CodeModel(QObject* _parent):
 	QObject(_parent),

@@ -20,6 +20,9 @@ Item {
 	signal projectSaved()
 	signal newProject(var projectData)
 	signal documentSaved(var documentId)
+	signal deploymentStarted()
+	signal deploymentComplete()
+	signal deploymentError(string error)
 
 	property bool isEmpty: (projectPath === "")
 	readonly property string projectFileName: ".mix"
@@ -28,6 +31,7 @@ Item {
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
+	property string deploymentAddress: ""
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
 
@@ -48,7 +52,8 @@ Item {
 	function removeDocument(documentId) { ProjectModelCode.removeDocument(documentId); }
 	function getDocument(documentId) { return ProjectModelCode.getDocument(documentId); }
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
-	function doAddExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
+	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
+	function deployProject() { ProjectModelCode.deployProject(); }
 
 	Connections {
 		target: appContext
