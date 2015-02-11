@@ -28,10 +28,6 @@ function createProject() {
 	newProjectDialog.open();
 }
 
-function browseProject() {
-	openProjectFileDialog.open();
-}
-
 function closeProject() {
 	if (!isEmpty) {
 		if (haveUnsavedChanges)
@@ -75,10 +71,6 @@ function loadProject(path) {
 	projectSettings.lastProjectPath = path;
 	projectLoading(projectData);
 	projectLoaded()
-}
-
-function addExistingFile() {
-	addExistingFileDialog.open();
 }
 
 function addFile(fileName) {
