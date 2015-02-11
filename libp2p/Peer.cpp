@@ -31,6 +31,32 @@ namespace dev
 namespace p2p
 {
 
+bool Peer::shouldReconnect() const
+{
+	return chrono::system_clock::now() > m_lastAttempted + chrono::seconds(fallbackSeconds());
+}
+	
+unsigned Peer::fallbackSeconds() const
+{
+	switch (m_lastDisconnect)
+	{
+	case BadProtocol:
+		return 30 * (m_failedAttempts + 1);
+	case UselessPeer:
+	case TooManyPeers:
+	case ClientQuit:
+		return 15 * (m_failedAttempts + 1);
+	case NoDisconnect:
+	default:
+		if (m_failedAttempts < 5)
+			return m_failedAttempts ? m_failedAttempts * 5 : 5;
+		else if (m_failedAttempts < 15)
+			return 25 + (m_failedAttempts - 5) * 10;
+		else
+			return 25 + 100 + (m_failedAttempts - 15) * 20;
+	}
+}
+	
 bool Peer::operator<(Peer const& _p) const
 {
 	if (isOffline() != _p.isOffline())
