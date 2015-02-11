@@ -27,10 +27,19 @@ set(CLIENT_OUTFILE "${ETH_CLIENT_DIR}/${ETH_CLIENT_NAME_LOWER}.h")
 execute_process(
 	COMMAND ${ETH_JSON_RPC_STUB} ${ETH_SPEC_PATH} 
 		--cpp-server=${ETH_SERVER_NAME} --cpp-server-file=${SERVER_TMPFILE}
-		--cpp-client=${ETH_CLIENT_NAME} --cpp-client-file=${CLIENT_TMPFILE}
+		--cpp-client=${ETH_CLIENT_NAME} --cpp-client-file=${CLIENT_TMPFILE} 
+		OUTPUT_VARIABLE ERR ERROR_QUIET
 )
 
-include("${ETH_SOURCE_DIR}/cmake/EthUtils.cmake")
-replace_if_different("${SERVER_TMPFILE}" "${SERVER_OUTFILE}")
-replace_if_different("${CLIENT_TMPFILE}" "${CLIENT_OUTFILE}")
+# don't throw fatal error on jsonrpcstub error, someone might have old version of jsonrpcstub,
+# he does not need to upgrade it if he is not working on JSON RPC
+# show him warning instead
+if (ERR)
+	message(WARNING "Your version of jsonrcpstub tool is not supported. Please upgrade it.")
+	message(WARNING "${ERR}")
+else()
+	include("${ETH_SOURCE_DIR}/cmake/EthUtils.cmake")
+	replace_if_different("${SERVER_TMPFILE}" "${SERVER_OUTFILE}")
+	replace_if_different("${CLIENT_TMPFILE}" "${CLIENT_OUTFILE}")
+endif()
 
