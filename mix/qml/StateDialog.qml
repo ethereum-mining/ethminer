@@ -202,7 +202,7 @@ Window {
 					Layout.fillWidth: true
 					Layout.fillHeight: true
 					text: functionId
-					font.pointSize: 12
+					font.pointSize: StateStyle.general.basicFontSize //12
 					verticalAlignment: Text.AlignBottom
 					font.family: regularFont.name
 				}

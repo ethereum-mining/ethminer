@@ -89,7 +89,6 @@ ClientModel::ClientModel(AppContext* _context):
 
 	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), std::vector<dev::KeyPair> { m_client->userAccount() }, m_client.get()));
 	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
-
 	_context->appEngine()->rootContext()->setContextProperty("clientModel", this);
 }
 
