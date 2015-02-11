@@ -1327,7 +1327,23 @@ void Main::ourAccountsRowsMoved()
 void Main::on_inject_triggered()
 {
 	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
-	bytes b = fromHex(s.toStdString());
+	bytes b;
+	try
+	{
+		b = fromHex(s.toStdString());
+	}
+	catch(BadHexCharacter& _e)
+	{
+		cnote << "invalid hex character, transaction rejected";
+		cnote << boost::diagnostic_information(_e);
+		return;
+	}
+	catch(...)
+	{
+		cnote << "transaction rejected";
+		return;
+	}
+
 	ethereum()->inject(&b);
 }
 
