@@ -65,6 +65,7 @@ RowLayout {
 				formattedValue.text = value.format();
 			}
 		}
+
 		model: ListModel {
 			id: unitsModel
 			ListElement { text: "Uether"; }
@@ -87,11 +88,11 @@ RowLayout {
 			ListElement { text: "Kwei"; }
 			ListElement { text: "wei"; }
 		}
-		style: ComboBoxStyle
-		{
-		font: regularFont.name
+		style: ComboBoxStyle {
+			font: regularFont.name
 		}
 	}
+
 	Text
 	{
 		visible: displayFormattedValue

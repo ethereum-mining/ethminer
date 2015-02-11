@@ -183,228 +183,228 @@ Window {
 		anchors.margins: 10
 		color: StateDialogStyle.generic.backgroundColor
 
-	ColumnLayout {
-		id: dialogContent
-		spacing: 30
-		RowLayout
-		{
-			id: rowFunction
-			Layout.fillWidth: true
-			height: 150
-			Label {
-				Layout.preferredWidth: 75
-				text: qsTr("Function")
-				font.family: regularFont.name
-				color: "#808080"
-			}
-			ComboBox {
-				id: functionComboBox
-				Layout.preferredWidth: 350
-				currentIndex: -1
-				textRole: "text"
-				editable: false
-				model: ListModel {
-					id: functionsModel
-				}
-				onCurrentIndexChanged: {
-					loadParameters();
-				}
-				style: ComboBoxStyle
-				{
-				font: regularFont.name
-				}
-			}
-		}
-
-
-		RowLayout
-		{
-			id: rowValue
-			Layout.fillWidth: true
-			height: 150
-			Label {
-				Layout.preferredWidth: 75
-				text: qsTr("Value")
-				font.family: regularFont.name
-				color: "#808080"
-			}
-			Ether {
-				id: valueField
-				edit: true
-				displayFormattedValue: true
-			}
-		}
-
-
-		RowLayout
-		{
-			id: rowGas
-			Layout.fillWidth: true
-			height: 150
-			Label {
-				Layout.preferredWidth: 75
-				text: qsTr("Gas")
-				font.family: regularFont.name
-				color: "#808080"
-			}
-			Ether {
-				id: gasField
-				edit: true
-				displayFormattedValue: true
-			}
-		}
-
-		RowLayout
-		{
-			id: rowGasPrice
-			Layout.fillWidth: true
-			height: 150
-			Label {
-				Layout.preferredWidth: 75
-				text: qsTr("Gas Price")
-				font.family: regularFont.name
-				color: "#808080"
-			}
-			Ether {
-				id: gasPriceField
-				edit: true
-				displayFormattedValue: true
-			}
-		}
-
-		Label {
-			text: qsTr("Parameters")
-			Layout.preferredWidth: 75
-			font.family: regularFont.name
-			color: "#808080"
-			visible: paramsModel.count > 0
-		}
-
-		ScrollView
-		{
-			Layout.fillWidth: true
-			visible: paramsModel.count > 0
-			ColumnLayout
+		ColumnLayout {
+			id: dialogContent
+			spacing: 30
+			RowLayout
 			{
-				id: paramRepeater
+				id: rowFunction
 				Layout.fillWidth: true
-				spacing: 10
-				Repeater
+				height: 150
+				Label {
+					Layout.preferredWidth: 75
+					text: qsTr("Function")
+					font.family: regularFont.name
+					color: "#808080"
+				}
+				ComboBox {
+					id: functionComboBox
+					Layout.preferredWidth: 350
+					currentIndex: -1
+					textRole: "text"
+					editable: false
+					model: ListModel {
+						id: functionsModel
+					}
+					onCurrentIndexChanged: {
+						loadParameters();
+					}
+					style: ComboBoxStyle {
+						font: regularFont.name
+					}
+				}
+			}
+
+
+			RowLayout
+			{
+				id: rowValue
+				Layout.fillWidth: true
+				height: 150
+				Label {
+					Layout.preferredWidth: 75
+					text: qsTr("Value")
+					font.family: regularFont.name
+					color: "#808080"
+				}
+				Ether {
+					id: valueField
+					edit: true
+					displayFormattedValue: true
+				}
+			}
+
+
+			RowLayout
+			{
+				id: rowGas
+				Layout.fillWidth: true
+				height: 150
+				Label {
+					Layout.preferredWidth: 75
+					text: qsTr("Gas")
+					font.family: regularFont.name
+					color: "#808080"
+				}
+				Ether {
+					id: gasField
+					edit: true
+					displayFormattedValue: true
+				}
+			}
+
+			RowLayout
+			{
+				id: rowGasPrice
+				Layout.fillWidth: true
+				height: 150
+				Label {
+					Layout.preferredWidth: 75
+					text: qsTr("Gas Price")
+					font.family: regularFont.name
+					color: "#808080"
+				}
+				Ether {
+					id: gasPriceField
+					edit: true
+					displayFormattedValue: true
+				}
+			}
+
+			Label {
+				text: qsTr("Parameters")
+				Layout.preferredWidth: 75
+				font.family: regularFont.name
+				color: "#808080"
+				visible: paramsModel.count > 0
+			}
+
+			ScrollView
+			{
+				Layout.fillWidth: true
+				visible: paramsModel.count > 0
+				ColumnLayout
 				{
-					anchors.fill: parent
-					model: paramsModel
-					visible: paramsModel.count > 0
-					RowLayout
+					id: paramRepeater
+					Layout.fillWidth: true
+					spacing: 10
+					Repeater
 					{
-						id: row
-						Layout.fillWidth: true
-						height: 150
-
-						Label {
-							id: typeLabel
-							text: type
-							font.family: regularFont.name
-							Layout.preferredWidth: 50
-						}
-
-						Label {
-							id: nameLabel
-							text: name
-							font.family: regularFont.name
-							Layout.preferredWidth: 50
-						}
-
-						Label {
-							id: equalLabel
-							text: "="
-							font.family: regularFont.name
-							Layout.preferredWidth: 15
-						}
-
-						Loader
+						anchors.fill: parent
+						model: paramsModel
+						visible: paramsModel.count > 0
+						RowLayout
 						{
-							id: typeLoader
-							Layout.preferredHeight: 50
-							Layout.preferredWidth: 150
-							function getCurrent()
-							{
-								return modalTransactionDialog.param(name);
+							id: row
+							Layout.fillWidth: true
+							height: 150
+
+							Label {
+								id: typeLabel
+								text: type
+								font.family: regularFont.name
+								Layout.preferredWidth: 50
 							}
 
-							Connections {
-								target: typeLoader.item
-								onTextChanged: {
-									typeLoader.getCurrent().value = typeLoader.item.text;
-								}
+							Label {
+								id: nameLabel
+								text: name
+								font.family: regularFont.name
+								Layout.preferredWidth: 50
 							}
 
-							sourceComponent:
-							{
-								if (type.indexOf("int") !== -1)
-									return intViewComp;
-								else if (type.indexOf("bool") !== -1)
-									return boolViewComp;
-								else if (type.indexOf("string") !== -1)
-									return stringViewComp;
-								else if (type.indexOf("hash") !== -1)
-									return hashViewComp;
-								else
-									return null;
+							Label {
+								id: equalLabel
+								text: "="
+								font.family: regularFont.name
+								Layout.preferredWidth: 15
 							}
 
-							Component
+							Loader
 							{
-								id: intViewComp
-								QIntTypeView
+								id: typeLoader
+								Layout.preferredHeight: 50
+								Layout.preferredWidth: 150
+								function getCurrent()
 								{
-									height: 50
-									width: 150
-									id: intView
-									text: typeLoader.getCurrent().value
+									return modalTransactionDialog.param(name);
 								}
-							}
 
-							Component
-							{
-								id: boolViewComp
-								QBoolTypeView
-								{
-									height: 50
-									width: 150
-									id: boolView
-									defaultValue: "1"
-									Component.onCompleted:
-									{
-										var current = typeLoader.getCurrent().value;
-										(current === "" ? text = defaultValue : text = current);
+								Connections {
+									target: typeLoader.item
+									onTextChanged: {
+										typeLoader.getCurrent().value = typeLoader.item.text;
 									}
 								}
-							}
 
-							Component
-							{
-								id: stringViewComp
-								QStringTypeView
+								sourceComponent:
 								{
-									height: 50
-									width: 150
-									id: stringView
-									text:
+									if (type.indexOf("int") !== -1)
+										return intViewComp;
+									else if (type.indexOf("bool") !== -1)
+										return boolViewComp;
+									else if (type.indexOf("string") !== -1)
+										return stringViewComp;
+									else if (type.indexOf("hash") !== -1)
+										return hashViewComp;
+									else
+										return null;
+								}
+
+								Component
+								{
+									id: intViewComp
+									QIntTypeView
 									{
-										return typeLoader.getCurrent().value
+										height: 50
+										width: 150
+										id: intView
+										text: typeLoader.getCurrent().value
 									}
 								}
-							}
 
-							Component
-							{
-								id: hashViewComp
-								QHashTypeView
+								Component
 								{
-									height: 50
-									width: 150
-									id: hashView
-									text: typeLoader.getCurrent().value
+									id: boolViewComp
+									QBoolTypeView
+									{
+										height: 50
+										width: 150
+										id: boolView
+										defaultValue: "1"
+										Component.onCompleted:
+										{
+											var current = typeLoader.getCurrent().value;
+											(current === "" ? text = defaultValue : text = current);
+										}
+									}
+								}
+
+								Component
+								{
+									id: stringViewComp
+									QStringTypeView
+									{
+										height: 50
+										width: 150
+										id: stringView
+										text:
+										{
+											return typeLoader.getCurrent().value
+										}
+									}
+								}
+
+								Component
+								{
+									id: hashViewComp
+									QHashTypeView
+									{
+										height: 50
+										width: 150
+										id: hashView
+										text: typeLoader.getCurrent().value
+									}
 								}
 							}
 						}
@@ -412,89 +412,27 @@ Window {
 				}
 			}
 		}
-	}
 
-	RowLayout
-	{
-		anchors.bottom: parent.bottom
-		anchors.right: parent.right;
+		RowLayout
+		{
+			anchors.bottom: parent.bottom
+			anchors.right: parent.right;
 
-		Button {
-			text: qsTr("OK");
-			onClicked: {
-				close();
-				accepted();
+			Button {
+				text: qsTr("OK");
+				onClicked: {
+					close();
+					accepted();
+				}
+			}
+			Button {
+				text: qsTr("Cancel");
+				onClicked: close();
 			}
 		}
-		Button {
-			text: qsTr("Cancel");
-			onClicked: close();
-		}
 	}
-}
+
 	ListModel {
 		id: paramsModel
-	}
-
-	Component {
-		id: rowDelegate
-		Item {
-			height: 100
-		}
-	}
-
-	Component {
-		id: editableDelegate
-		Item {
-			Loader {
-				id: loaderEditor
-				anchors.fill: parent
-				anchors.margins: 4
-				Connections {
-					target: loaderEditor.item
-					onTextChanged: {
-						if (styleData.role === "value" && styleData.row < paramsModel.count)
-							loaderEditor.updateValue(styleData.row, styleData.role, loaderEditor.item.text);
-					}
-				}
-
-				function updateValue(row, role, value)
-				{
-					paramsModel.setProperty(styleData.row, styleData.role, value);
-				}
-
-				sourceComponent:
-				{
-					if (styleData.role === "value")
-					{
-						if (paramsModel.get(styleData.row) === undefined)
-							return null;
-						if (paramsModel.get(styleData.row).type.indexOf("int") !== -1)
-							return intViewComp;
-						else if (paramsModel.get(styleData.row).type.indexOf("bool") !== -1)
-							return boolViewComp;
-						else if (paramsModel.get(styleData.row).type.indexOf("string") !== -1)
-							return stringViewComp;
-						else if (paramsModel.get(styleData.row).type.indexOf("hash") !== -1)
-							return hashViewComp;
-					}
-					else
-						return editor;
-				}
-
-
-
-				Component {
-					id: editor
-					TextInput {
-						id: textinput
-						readOnly: true
-						color: styleData.textColor
-						text: styleData.value
-						font.family: regularFont.name
-					}
-				}
-			}
-		}
 	}
 }
