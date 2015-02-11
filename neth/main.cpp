@@ -81,7 +81,7 @@ void help()
 		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
-        << "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
+		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
 		<< "    -u,--public-ip <ip>  Force public ip to given (default; auto)." << endl
 		<< "    -v,--verbosity <0..9>  Set the log verbosity from 0 to 9 (tmp forced to 1)." << endl
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 5)." << endl
@@ -308,7 +308,7 @@ int main(int argc, char** argv)
 	unsigned mining = ~(unsigned)0;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
-    int miners = -1;
+	int miners = -1;
 #if ETH_JSONRPC
 	int jsonrpc = 8080;
 #endif
@@ -403,8 +403,8 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
-        else if ((arg == "-t" || arg == "--miners") && i + 1 < argc)
-            miners = atoi(argv[++i]);
+		else if ((arg == "-t" || arg == "--miners") && i + 1 < argc)
+			miners = atoi(argv[++i]);
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
@@ -425,7 +425,7 @@ int main(int argc, char** argv)
 		false,
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
-        miners
+		miners
 		);
 	web3.setIdealPeerCount(peers);
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;

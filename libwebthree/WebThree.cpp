@@ -41,8 +41,8 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string co
 {
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
-    if (_interfaces.count("eth"))
-        m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean, 0, miners));
+	if (_interfaces.count("eth"))
+		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean, 0, miners));
 		
 
 	if (_interfaces.count("shh"))
