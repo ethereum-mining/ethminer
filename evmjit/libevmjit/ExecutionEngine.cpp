@@ -68,81 +68,63 @@ bool showInfo()
 
 ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 {
-	static std::unique_ptr<llvm::ExecutionEngine> ee;  // TODO: Use Managed Objects from LLVM?
 	static auto debugDumpModule = getEnvOption("EVMJIT_DUMP", false);
 	static auto objectCacheEnabled = getEnvOption("EVMJIT_CACHE", true);
 	static auto statsCollectingEnabled = getEnvOption("EVMJIT_STATS", false);
 	static auto infoShown = showInfo();
 	(void) infoShown;
 
-	static StatsCollector statsCollector;
-
 	std::unique_ptr<ExecStats> listener{new ExecStats};
 	listener->stateChanged(ExecState::Started);
 
-	auto codeBegin = _data->code;
-	auto codeEnd = codeBegin + _data->codeSize;
-	assert(codeBegin || !codeEnd); //TODO: Is it good idea to execute empty code?
+	auto objectCache = objectCacheEnabled ? Cache::getObjectCache(listener.get()) : nullptr;
+
+	static std::unique_ptr<llvm::ExecutionEngine> ee;
+	if (!ee)
+	{
+		llvm::InitializeNativeTarget();
+		llvm::InitializeNativeTargetAsmPrinter();
+
+		auto module = std::unique_ptr<llvm::Module>(new llvm::Module({}, llvm::getGlobalContext()));
+		llvm::EngineBuilder builder(module.get());
+		builder.setEngineKind(llvm::EngineKind::JIT);
+		builder.setUseMCJIT(true);
+		builder.setOptLevel(llvm::CodeGenOpt::None);
+
+		auto triple = llvm::Triple(llvm::sys::getProcessTriple());
+		if (triple.getOS() == llvm::Triple::OSType::Win32)
+			triple.setObjectFormat(llvm::Triple::ObjectFormatType::ELF);  // MCJIT does not support COFF format
+		module->setTargetTriple(triple.str());
+
+		ee.reset(builder.create());
+		if (!ee)
+			return ReturnCode::LLVMConfigError;
+		module.release();  // Successfully created llvm::ExecutionEngine takes ownership of the module
+		ee->setObjectCache(objectCache);
+	}
+
+	static StatsCollector statsCollector;
+
 	auto mainFuncName = codeHash(_data->codeHash);
-	EntryFuncPtr entryFuncPtr{};
 	Runtime runtime(_data, _env);	// TODO: I don't know why but it must be created before getFunctionAddress() calls
 
-	if (ee && (entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName)))
-	{
-	}
-	else
-	{
-		auto objectCache = objectCacheEnabled ? Cache::getObjectCache(listener.get()) : nullptr;
-		std::unique_ptr<llvm::Module> module;
-		if (objectCache)
-			module = Cache::getObject(mainFuncName);
+	auto entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
+	if (!entryFuncPtr)
+	{		
+		auto module = objectCache ? Cache::getObject(mainFuncName) : nullptr;
 		if (!module)
 		{
 			listener->stateChanged(ExecState::Compilation);
-			module = Compiler({}).compile(codeBegin, codeEnd, mainFuncName);
+			assert(_data->code || !_data->codeSize); //TODO: Is it good idea to execute empty code?
+			module = Compiler({}).compile(_data->code, _data->code + _data->codeSize, mainFuncName);
 		}
 		if (debugDumpModule)
 			module->dump();
-		if (!ee)
-		{
-			llvm::InitializeNativeTarget();
-			llvm::InitializeNativeTargetAsmPrinter();
 
-			llvm::EngineBuilder builder(module.get());
-			builder.setEngineKind(llvm::EngineKind::JIT);
-			builder.setUseMCJIT(true);
-			std::unique_ptr<llvm::SectionMemoryManager> memoryManager(new llvm::SectionMemoryManager);
-			builder.setMCJITMemoryManager(memoryManager.get());
-			builder.setOptLevel(llvm::CodeGenOpt::None);
-			builder.setVerifyModules(true);
-
-			auto triple = llvm::Triple(llvm::sys::getProcessTriple());
-			if (triple.getOS() == llvm::Triple::OSType::Win32)
-				triple.setObjectFormat(llvm::Triple::ObjectFormatType::ELF);  // MCJIT does not support COFF format
-			module->setTargetTriple(triple.str());
-
-			ee.reset(builder.create());
-			if (!ee)
-				return ReturnCode::LLVMConfigError;
-
-			module.release();         // Successfully created llvm::ExecutionEngine takes ownership of the module
-			memoryManager.release();  // and memory manager
-
-			if (objectCache)
-				ee->setObjectCache(objectCache);
-			listener->stateChanged(ExecState::CodeGen);
-			entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
-		}
-		else
-		{
-			if (!entryFuncPtr)
-			{
-				ee->addModule(module.get());
-				module.release();
-				listener->stateChanged(ExecState::CodeGen);
-				entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
-			}
-		}
+		ee->addModule(module.get());
+		module.release();
+		listener->stateChanged(ExecState::CodeGen);
+		entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
 	}
 	assert(entryFuncPtr); //TODO: Replace it with safe exception
 
