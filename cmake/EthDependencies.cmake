@@ -95,6 +95,10 @@ find_package (CURL)
 message(" - curl header: ${CURL_INCLUDE_DIRS}")
 message(" - curl lib   : ${CURL_LIBRARIES}")
 
+# find location of jsonrpcstub
+find_program(ETH_JSON_RPC_STUB jsonrpcstub)
+message(" - jsonrpcstub location    : ${ETH_JSON_RPC_STUB}")
+
 # do not compile GUI
 if (NOT HEADLESS) 
 
@@ -129,9 +133,6 @@ if (NOT HEADLESS)
 	find_program(ETH_NPM npm)
 	string(REGEX REPLACE "npm" "" ETH_NPM_DIRECTORY ${ETH_NPM})
 	message(" - npm location    : ${ETH_NPM}")
-
-	find_program(ETH_JSON_RPC_STUB jsonrpcstub)
-	message(" - jsonrpcstub location    : ${ETH_JSON_RPC_STUB}")
 
 endif() #HEADLESS
 
