@@ -21,7 +21,6 @@ public:
 
 	StackImpl& getStack() { return m_stack; }
 	MemoryImpl& getMemory() { return m_memory; }
-	Env* getEnvPtr() { return &m_env; }
 
 	bytes_ref getReturnData() const;
 
