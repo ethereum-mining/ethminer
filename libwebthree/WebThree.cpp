@@ -35,15 +35,15 @@ using namespace dev::p2p;
 using namespace dev::eth;
 using namespace dev::shh;
 
-WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean, std::set<std::string> const& _interfaces, NetworkPreferences const& _n):
+WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean, std::set<std::string> const& _interfaces, NetworkPreferences const& _n, int miners):
 	m_clientVersion(_clientVersion),
 	m_net(_clientVersion, _n)
 {
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
-
-	if (_interfaces.count("eth"))
-		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean));
+    if (_interfaces.count("eth"))
+        m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean, 0, miners));
+		
 
 	if (_interfaces.count("shh"))
 		m_whisper = m_net.registerCapability<WhisperHost>(new WhisperHost);
