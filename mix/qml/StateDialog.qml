@@ -44,8 +44,6 @@ Window {
 		isDefault = setDefault;
 		titleField.focus = true;
 		defaultCheckBox.enabled = !isDefault;
-
-
 	}
 
 	function close() {
@@ -67,8 +65,7 @@ Window {
 		id: regularFont
 	}
 
-	Rectangle
-	{
+	Rectangle {
 		anchors.fill: parent
 		anchors.margins: 10
 		color: StateDialogStyle.generic.backgroundColor
@@ -114,8 +111,7 @@ Window {
 			}
 		}
 
-		ColumnLayout
-		{
+		ColumnLayout {
 			anchors.top: dialogContent.bottom
 			anchors.topMargin: 5
 			spacing: 5
@@ -132,27 +128,26 @@ Window {
 					onClicked: transactionsModel.addTransaction()
 					height: 5
 					width: 5
-					style: ButtonStyle
-					{
-					label: Text {
-						font.family: regularFont.name
-						text: qsTr("+")
-						font.pointSize: 15
-						color: "#808080"
-						height: 5
-						width: 5
+					style: ButtonStyle {
+						label: Text {
+							font.family: regularFont.name
+							text: qsTr("+")
+							font.pointSize: 15
+							color: "#808080"
+							height: 5
+							width: 5
+						}
+						background: Rectangle {
+							radius: 4
+							border.width: 1
+							color: "#f7f7f7"
+							height: 5
+							implicitHeight: 5
+						}
 					}
-					background: Rectangle {
-						radius: 4
-						border.width: 1
-						color: "#f7f7f7"
-						height: 5
-						implicitHeight: 5
-					}
-				}
 
+				}
 			}
-		}
 
 			ListView {
 				id: trList
@@ -165,26 +160,25 @@ Window {
 			}
 		}
 
-	RowLayout {
-		anchors.bottom: parent.bottom
-		anchors.right: parent.right;
 
-		Button {
-			text: qsTr("OK");
-			onClicked: {
-				close();
-				accepted();
+		RowLayout
+		{
+			anchors.bottom: parent.bottom
+			anchors.right: parent.right;
+
+			Button {
+				text: qsTr("OK");
+				onClicked: {
+					close();
+					accepted();
+				}
+			}
+			Button {
+				text: qsTr("Cancel");
+				onClicked: close();
 			}
 		}
-		Button {
-			text: qsTr("Cancel");
-			onClicked: close();
-		}
 	}
-}
-
-
-
 
 	ListModel {
 		id: transactionsModel
@@ -229,17 +223,16 @@ Window {
 					visible: !stdContract
 					Layout.fillHeight: true
 					onClicked: transactionsModel.editTransaction(index)
-					style: ButtonStyle
-					{
-					 label: Text {
-						 font.family: regularFont.name
-						 text: qsTr("Edit")
-						 font.italic: true
-						 font.pointSize: 9
-					 }
-					 background: Rectangle {
-						 color: "transparent"
-					 }
+					style: ButtonStyle {
+						label: Text {
+							font.family: regularFont.name
+							text: qsTr("Edit")
+							font.italic: true
+							font.pointSize: 9
+						}
+						background: Rectangle {
+							color: "transparent"
+						}
 					}
 				}
 				ToolButton {
@@ -247,26 +240,27 @@ Window {
 					text: qsTr("Delete");
 					Layout.fillHeight: true
 					onClicked: transactionsModel.deleteTransaction(index)
-					style: ButtonStyle
-					{
-					 label: Text {
-						 font.family: regularFont.name
-						 text: qsTr("Delete")
-						 font.italic: true
-						 font.pointSize: 9
-					 }
-					 background: Rectangle {
-						 color: "transparent"
-					 }
+					style: ButtonStyle {
+						label: Text {
+							font.family: regularFont.name
+							text: qsTr("Delete")
+							font.italic: true
+							font.pointSize: 9
+						}
+						background: Rectangle {
+							color: "transparent"
+						}
 					}
 				}
 			}
 		}
 	}
 
-	TransactionDialog {
+	TransactionDialog
+	{
 		id: transactionDialog
-		onAccepted: {
+		onAccepted:
+		{
 			var item = transactionDialog.getItem();
 
 			if (transactionDialog.transactionIndex < transactionsModel.count) {
