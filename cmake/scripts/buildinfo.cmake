@@ -19,7 +19,7 @@ endif()
 
 execute_process(
 	COMMAND git --git-dir=${ETH_SOURCE_DIR}/.git --work-tree=${ETH_SOURCE_DIR} rev-parse HEAD
-	OUTPUT_VARIABLE ETH_COMMIT_HASH OUTPUT_STRIP_TRAILING_WHITESPACE
+	OUTPUT_VARIABLE ETH_COMMIT_HASH OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
 ) 
 
 if (NOT ETH_COMMIT_HASH)
@@ -28,7 +28,7 @@ endif()
 
 execute_process(
 	COMMAND git --git-dir=${ETH_SOURCE_DIR}/.git --work-tree=${ETH_SOURCE_DIR} diff --shortstat	
-	OUTPUT_VARIABLE ETH_LOCAL_CHANGES OUTPUT_STRIP_TRAILING_WHITESPACE
+	OUTPUT_VARIABLE ETH_LOCAL_CHANGES OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
 )
 
 if (ETH_LOCAL_CHANGES)
@@ -41,21 +41,8 @@ set(INFILE "${ETH_SOURCE_DIR}/BuildInfo.h.in")
 set(TMPFILE "${ETH_DST_DIR}/BuildInfo.h.tmp")
 set(OUTFILE "${ETH_DST_DIR}/BuildInfo.h")
 
-# create outfile if it doesn't exist
-if (NOT (EXISTS "${OUTFILE}"))
-	execute_process(COMMAND touch "${OUTFILE}")
-endif()
-
 configure_file("${INFILE}" "${TMPFILE}")
 
-execute_process(
-	COMMAND diff "${OUTFILE}" "${TMPFILE}"
-	OUTPUT_VARIABLE ETH_FILE_OUTDATED
-)
-
-if (ETH_FILE_OUTDATED)
-	execute_process(COMMAND mv "${TMPFILE}" "${OUTFILE}")
-else()
-	execute_process(COMMAND rm "${TMPFILE}")
-endif()
+include("${ETH_SOURCE_DIR}/cmake/EthUtils.cmake")
+replace_if_different("${TMPFILE}" "${OUTFILE}" CREATE)
 
