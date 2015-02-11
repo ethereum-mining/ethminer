@@ -20,8 +20,8 @@ Item {
 
 		Rectangle
 		{
-			color: Style.title.background
-			height: Style.title.height
+			color: ProjectFilesStyle.title.background
+			height: ProjectFilesStyle.title.height
 			Layout.fillWidth: true
 			Image {
 				id: projectIcon
@@ -35,14 +35,14 @@ Item {
 			Text
 			{
 				id: projectTitle
-				color: Style.title.color
+				color: ProjectFilesStyle.title.color
 				text: projectModel.projectTitle
 				anchors.verticalCenter: parent.verticalCenter
 				visible: !projectModel.isEmpty;
 				anchors.left: parent.left
-				anchors.leftMargin: Style.general.leftMargin
+				anchors.leftMargin: ProjectFilesStyle.general.leftMargin
 				font.family: srcSansProLight.name
-				font.pointSize: Style.title.pointSize
+				font.pointSize: ProjectFilesStyle.title.fontSize
 				font.weight: Font.Light
 			}
 
@@ -52,7 +52,7 @@ Item {
 				anchors.right: parent.right
 				anchors.rightMargin: 15
 				font.family: srcSansProLight.name
-				font.pointSize: Style.title.pointSize
+				font.pointSize: ProjectFilesStyle.title.fontSize
 				anchors.verticalCenter: parent.verticalCenter
 				font.weight: Font.Light
 			}
@@ -62,7 +62,7 @@ Item {
 		{
 			Layout.fillWidth: true
 			height: 10
-			color: Style.documentsList.background
+			color: ProjectFilesStyle.documentsList.background
 		}
 
 
@@ -71,7 +71,7 @@ Item {
 		{
 			Layout.fillWidth: true
 			Layout.fillHeight: true
-			color: Style.documentsList.background
+			color: ProjectFilesStyle.documentsList.background
 
 			ColumnLayout
 			{
@@ -137,7 +137,12 @@ Item {
 								sectionModel.clear();
 							}
 
+							onProjectClosed: {
+								sectionModel.clear();
+							}
+
 							onProjectLoaded: {
+								sectionModel.clear();
 								addDocToSubModel();
 								if (modelData === "Contracts")
 								{

@@ -1,10 +1,13 @@
 pragma Singleton
 import QtQuick 2.0
 
-/*
- * Project Files
- */
 QtObject {
+
+	function absoluteSize(rel)
+	{
+		return systemPointSize + rel;
+	}
+
 	property QtObject general: QtObject {
 		property int leftMargin: 45
 	}
@@ -13,7 +16,7 @@ QtObject {
 		property string color: "#808080"
 		property string background: "#f0f0f0"
 		property int height: 55
-		property int pointSize: 18
+		property int fontSize: absoluteSize(7);// 18
 	}
 
 	property QtObject documentsList: QtObject {
@@ -24,7 +27,7 @@ QtObject {
 		property string highlightColor: "#4a90e2"
 		property int height: 25
 		property int fileNameHeight: 30
-		property int fontSize: 13
-		property int sectionFontSize: 13
+		property int fontSize: absoluteSize(2)// 13
+		property int sectionFontSize: absoluteSize(2)// 13
 	}
 }
