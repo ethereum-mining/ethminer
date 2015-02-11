@@ -48,16 +48,14 @@ ColumnLayout {
 			model.remove(i);
 	}
 
-	FontLoader
+	SourceSansProRegular
 	{
 		id: fileNameFont
-		source: "qrc:/qml/fonts/SourceSansPro-Regular.ttf"
 	}
 
-	FontLoader
+	SourceSansProBold
 	{
 		id: boldFont
-		source: "qrc:/qml/fonts/SourceSansPro-Bold.ttf"
 	}
 
 	RowLayout
