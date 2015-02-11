@@ -205,6 +205,8 @@ bool Session::interpret(RLP const& _r)
 		{
 			// Already connected.
 			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
+			// Possible that two nodes continually connect to each other with exact same timing.
+			this_thread::sleep_for(chrono::milliseconds(rand() % 100));
 			disconnect(DuplicatePeer);
 			return true;
 		}
