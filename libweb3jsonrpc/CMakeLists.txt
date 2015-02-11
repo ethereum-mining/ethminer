@@ -30,15 +30,21 @@ target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARIES})
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} solidity)
-target_link_libraries(${EXECUTABLE} serpent)
+
+if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+	target_link_libraries(${EXECUTABLE} serpent)
+endif()
 
 if (ETH_JSON_RPC_STUB)
 	add_custom_target(jsonrpcstub) 
 	add_custom_command(TARGET jsonrpcstub
 		POST_BUILD
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-		COMMAND ${ETH_JSON_RPC_STUB} spec.json --cpp-server=AbstractWebThreeStubServer --cpp-client=WebThreeStubClient 
-		COMMAND cmake -E rename webthreestubclient.h ../test/webthreestubclient.h
+		COMMAND ${CMAKE_COMMAND} -DETH_SPEC_PATH="${CMAKE_CURRENT_SOURCE_DIR}/spec.json" -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+			-DETH_SERVER_DIR="${CMAKE_CURRENT_SOURCE_DIR}" -DETH_CLIENT_DIR="${CMAKE_SOURCE_DIR}/test"
+			-DETH_SERVER_NAME=AbstractWebThreeStubServer -DETH_CLIENT_NAME=WebThreeStubClient
+			-DETH_JSON_RPC_STUB="${ETH_JSON_RPC_STUB}"
+			-P "${ETH_SCRIPTS_DIR}/jsonrpcstub.cmake"
 	)
 	add_dependencies(${EXECUTABLE} jsonrpcstub)
 endif()
