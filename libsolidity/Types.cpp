@@ -26,6 +26,8 @@
 #include <libsolidity/Types.h>
 #include <libsolidity/AST.h>
 
+#include <limits>
+
 using namespace std;
 
 namespace dev
@@ -210,10 +212,7 @@ TypePointer IntegerType::binaryOperatorResult(Token::Value _operator, TypePointe
 
 const MemberList IntegerType::AddressMemberList =
 	MemberList({{"balance", make_shared<IntegerType >(256)},
-				{"callstring32", make_shared<FunctionType>(strings{"string32"}, strings{},
-														   FunctionType::Location::Bare)},
-				{"callstring32string32", make_shared<FunctionType>(strings{"string32", "string32"},
-																   strings{}, FunctionType::Location::Bare)},
+				{"call", make_shared<FunctionType>(strings(), strings(), FunctionType::Location::Bare, true)},
 				{"send", make_shared<FunctionType>(strings{"uint"}, strings{}, FunctionType::Location::Send)}});
 
 IntegerConstantType::IntegerConstantType(Literal const& _literal)
@@ -323,6 +322,14 @@ TypePointer IntegerConstantType::binaryOperatorResult(Token::Value _operator, Ty
 				return TypePointer();
 			value = m_value % other.m_value;
 			break;
+		case Token::Exp:
+			if (other.m_value < 0)
+				return TypePointer();
+			else if (other.m_value > std::numeric_limits<unsigned int>::max())
+				return TypePointer();
+			else
+				value = boost::multiprecision::pow(m_value, other.m_value.convert_to<unsigned int>());
+			break;
 		default:
 			return TypePointer();
 		}
@@ -401,13 +408,16 @@ bool StaticStringType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 
 bool StaticStringType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
+	if (_convertTo.getCategory() == getCategory())
+		return true;
 	if (_convertTo.getCategory() == Category::Integer)
 	{
 		IntegerType const& convertTo = dynamic_cast<IntegerType const&>(_convertTo);
 		if (convertTo.isHash() && (m_bytes * 8 == convertTo.getNumBits()))
 			return true;
 	}
-	return isImplicitlyConvertibleTo(_convertTo);
+
+	return false;
 }
 
 bool StaticStringType::operator==(Type const& _other) const
@@ -766,10 +776,10 @@ MemberList const& FunctionType::getMembers() const
 			map<string, TypePointer> members{
 				{"gas", make_shared<FunctionType>(parseElementaryTypeVector({"uint"}),
 												  TypePointers{copyAndSetGasOrValue(true, false)},
-												  Location::SetGas, m_gasSet, m_valueSet)},
+												  Location::SetGas, false, m_gasSet, m_valueSet)},
 				{"value", make_shared<FunctionType>(parseElementaryTypeVector({"uint"}),
 													TypePointers{copyAndSetGasOrValue(false, true)},
-													Location::SetValue, m_gasSet, m_valueSet)}};
+													Location::SetValue, false, m_gasSet, m_valueSet)}};
 			if (m_location == Location::Creation)
 				members.erase("gas");
 			m_members.reset(new MemberList(members));
@@ -808,6 +818,7 @@ TypePointers FunctionType::parseElementaryTypeVector(strings const& _types)
 TypePointer FunctionType::copyAndSetGasOrValue(bool _setGas, bool _setValue) const
 {
 	return make_shared<FunctionType>(m_parameterTypes, m_returnParameterTypes, m_location,
+									 m_arbitraryParameters,
 									 m_gasSet || _setGas, m_valueSet || _setValue);
 }
 
