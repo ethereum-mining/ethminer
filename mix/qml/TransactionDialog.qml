@@ -10,11 +10,11 @@ import "."
 Window {
 	id: modalTransactionDialog
 	modality: Qt.WindowModal
-	width: 640
-	height: 700
+	width: 450
+	height: (paramsModel.count > 0 ? 550 : 300)
 	visible: false
 	color: StateDialogStyle.generic.backgroundColor
-
+	title: qsTr("Transaction Edition")
 	property int transactionIndex
 	property alias transactionParams: paramsModel;
 	property alias gas: gasField.value;
@@ -66,6 +66,9 @@ Window {
 			for (var p = 0; p < parameters.length; p++)
 				loadParameter(parameters[p]);
 		}
+		modalTransactionDialog.setX((Screen.width - width) / 2);
+		modalTransactionDialog.setY((Screen.height - height) / 2);
+
 		visible = true;
 		valueField.focus = true;
 	}
@@ -105,6 +108,15 @@ Window {
 			var parameters = func.parameters;
 			for (var p = 0; p < parameters.length; p++)
 				loadParameter(parameters[p]);
+		}
+	}
+
+	function param(name)
+	{
+		for (var k = 0; k < paramsModel.count; k++)
+		{
+			if (paramsModel.get(k).name === name)
+				return paramsModel.get(k);
 		}
 	}
 
@@ -163,13 +175,16 @@ Window {
 		id: regularFont
 	}
 
-	ColumnLayout {
-		id: dialogContent
-		width: parent.width
+	Rectangle {
+		anchors.fill: parent
 		anchors.left: parent.left
 		anchors.right: parent.right
 		anchors.top: parent.top
 		anchors.margins: 10
+		color: StateDialogStyle.generic.backgroundColor
+
+	ColumnLayout {
+		id: dialogContent
 		spacing: 30
 		RowLayout
 		{
@@ -257,64 +272,74 @@ Window {
 			}
 		}
 
-			//ColumnLayout
-			//{
-				//Layout.fillHeight: true;
-				//Layout.fillWidth: true;
-				//visible: paramsModel.count > 0
+		Label {
+			text: qsTr("Parameters")
+			Layout.preferredWidth: 75
+			font.family: regularFont.name
+			color: "#808080"
+			visible: paramsModel.count > 0
+		}
 
-				Label {
-					text: qsTr("Parameters")
-					Layout.preferredWidth: 75
-					font.family: regularFont.name
-					color: "#808080"
-					visible: paramsModel.count > 0
-				}
-
+		ScrollView
+		{
+			Layout.fillWidth: true
+			visible: paramsModel.count > 0
+			ColumnLayout
+			{
+				id: paramRepeater
+				Layout.fillWidth: true
+				spacing: 10
 				Repeater
 				{
+					anchors.fill: parent
 					model: paramsModel
 					visible: paramsModel.count > 0
-					Rectangle
+					RowLayout
 					{
-						color: "transparent"
+						id: row
 						Layout.fillWidth: true
 						height: 150
+
 						Label {
 							id: typeLabel
 							text: type
+							font.family: regularFont.name
+							Layout.preferredWidth: 50
 						}
 
 						Label {
-							anchors.left: typeLabel.right
 							id: nameLabel
 							text: name
+							font.family: regularFont.name
+							Layout.preferredWidth: 50
 						}
 
 						Label {
-							anchors.left: nameLabel.right
 							id: equalLabel
 							text: "="
+							font.family: regularFont.name
+							Layout.preferredWidth: 15
 						}
 
 						Loader
 						{
-							anchors.left: equalLabel.right
 							id: typeLoader
-							height: 50
-							width: 150
+							Layout.preferredHeight: 50
+							Layout.preferredWidth: 150
+							function getCurrent()
+							{
+								return modalTransactionDialog.param(name);
+							}
+
 							Connections {
 								target: typeLoader.item
 								onTextChanged: {
-									console.log("text changed 0 " + value);
-									value = typeLoader.item.text;
-									console.log("text changed 1 " + value);
+									typeLoader.getCurrent().value = typeLoader.item.text;
 								}
 							}
 
 							sourceComponent:
 							{
-								console.log(type);
 								if (type.indexOf("int") !== -1)
 									return intViewComp;
 								else if (type.indexOf("bool") !== -1)
@@ -335,7 +360,7 @@ Window {
 									height: 50
 									width: 150
 									id: intView
-									text: value
+									text: typeLoader.getCurrent().value
 								}
 							}
 
@@ -350,10 +375,8 @@ Window {
 									defaultValue: "1"
 									Component.onCompleted:
 									{
-										/*loaderEditor.updateValue(styleData.row, styleData.role,
-															 (paramsModel.get(styleData.row).value === "" ? defaultValue :
-																											paramsModel.get(styleData.row).value));
-									text = (paramsModel.get(styleData.row).value === "" ? defaultValue : paramsModel.get(styleData.row).value);*/
+										var current = typeLoader.getCurrent().value;
+										(current === "" ? text = defaultValue : text = current);
 									}
 								}
 							}
@@ -366,7 +389,10 @@ Window {
 									height: 50
 									width: 150
 									id: stringView
-									text: value
+									text:
+									{
+										return typeLoader.getCurrent().value
+									}
 								}
 							}
 
@@ -378,61 +404,34 @@ Window {
 									height: 50
 									width: 150
 									id: hashView
-									text: value
+									text: typeLoader.getCurrent().value
 								}
 							}
 						}
-
 					}
 				}
-			//}
-
-			/*TableView {
-				model: paramsModel
-				Layout.fillWidth: true
-				Layout.minimumHeight: 150
-				Layout.preferredHeight: 400
-				Layout.maximumHeight: 600
-				TableViewColumn {
-					role: "name"
-					title: qsTr("Name")
-					width: 120
-				}
-				TableViewColumn {
-					role: "type"
-					title: qsTr("Type")
-					width: 120
-				}
-				TableViewColumn {
-					role: "value"
-					title: qsTr("Value")
-					width: 240
-				}
-
-				rowDelegate: rowDelegate
-				itemDelegate: editableDelegate
-			}*/
-		}
-
-		RowLayout
-		{
-			anchors.bottom: parent.bottom
-			anchors.right: parent.right;
-
-			Button {
-				text: qsTr("OK");
-				onClicked: {
-					close();
-					accepted();
-				}
-			}
-			Button {
-				text: qsTr("Cancel");
-				onClicked: close();
 			}
 		}
+	}
 
+	RowLayout
+	{
+		anchors.bottom: parent.bottom
+		anchors.right: parent.right;
 
+		Button {
+			text: qsTr("OK");
+			onClicked: {
+				close();
+				accepted();
+			}
+		}
+		Button {
+			text: qsTr("Cancel");
+			onClicked: close();
+		}
+	}
+}
 	ListModel {
 		id: paramsModel
 	}
@@ -466,7 +465,6 @@ Window {
 
 				sourceComponent:
 				{
-					console.log("role " + styleData.role);
 					if (styleData.role === "value")
 					{
 						if (paramsModel.get(styleData.row) === undefined)

@@ -12,9 +12,9 @@ Window {
 	id: modalStateDialog
 	modality: Qt.WindowModal
 
-	width: 640
+	width: 450
 	height: 480
-
+	title: qsTr("State Edition")
 	visible: false
 	color: StateDialogStyle.generic.backgroundColor
 
@@ -36,10 +36,16 @@ Window {
 			transactionsModel.append(item.transactions[t]);
 			stateTransactions.push(item.transactions[t]);
 		}
+
+		modalStateDialog.setX((Screen.width - width) / 2);
+		modalStateDialog.setY((Screen.height - height) / 2);
+
 		visible = true;
 		isDefault = setDefault;
 		titleField.focus = true;
 		defaultCheckBox.enabled = !isDefault;
+
+
 	}
 
 	function close() {
@@ -110,15 +116,43 @@ Window {
 
 		ColumnLayout
 		{
-			width: parent.width
 			anchors.top: dialogContent.bottom
 			anchors.topMargin: 5
 			spacing: 5
-			Label {
-				text: qsTr("Transactions")
-				font.family: regularFont.name
-				color: "#808080"
+			RowLayout
+			{
+				Label {
+					text: qsTr("Transactions")
+					font.family: regularFont.name
+					color: "#808080"
+				}
+
+				Button {
+					tooltip: qsTr("Create a new transaction")
+					onClicked: transactionsModel.addTransaction()
+					height: 5
+					width: 5
+					style: ButtonStyle
+					{
+					label: Text {
+						font.family: regularFont.name
+						text: qsTr("+")
+						font.pointSize: 15
+						color: "#808080"
+						height: 5
+						width: 5
+					}
+					background: Rectangle {
+						radius: 4
+						border.width: 1
+						color: "#f7f7f7"
+						height: 5
+						implicitHeight: 5
+					}
+				}
+
 			}
+		}
 
 			ListView {
 				id: trList
@@ -128,22 +162,6 @@ Window {
 				model: transactionsModel
 				delegate: transactionRenderDelegate
 				visible: transactionsModel.count > 0
-			}
-
-			ToolButton {
-				onClicked: transactionsModel.addTransaction()
-				style: ButtonStyle
-				{
-				 label: Text {
-					 font.family: regularFont.name
-					 text: qsTr("+")
-					 font.pointSize: 20
-					 color: "#808080"
-				 }
-				 background: Rectangle {
-					 color: "transparent"
-				 }
-				}
 			}
 		}
 
@@ -260,5 +278,4 @@ Window {
 			}
 		}
 	}
-
 }
