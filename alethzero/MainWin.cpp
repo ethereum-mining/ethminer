@@ -162,6 +162,8 @@ Main::Main(QWidget *parent) :
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 	
+	QSettings s("ethereum", "alethzero");
+	m_networkConfig = s.value("peers").toByteArray();
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}, p2p::NetworkPreferences(), network));
 
@@ -715,7 +717,6 @@ void Main::readSettings(bool _skipGeometry)
 		}
 	}
 
-	m_networkConfig = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
