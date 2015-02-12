@@ -1,8 +1,11 @@
 #include "Stack.h"
+
+#include "preprocessor/llvm_includes_start.h"
+#include <llvm/IR/Function.h>
+#include "preprocessor/llvm_includes_end.h"
+
 #include "RuntimeManager.h"
 #include "Runtime.h"
-
-#include <llvm/IR/Function.h>
 
 namespace dev
 {

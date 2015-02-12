@@ -1,4 +1,5 @@
 #pragma once
+
 #include "CompilerHelper.h"
 #include "Type.h"
 #include "RuntimeData.h"

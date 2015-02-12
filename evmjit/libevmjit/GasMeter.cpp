@@ -1,11 +1,11 @@
 #include "GasMeter.h"
-#include "Ext.h"
-#include "RuntimeManager.h"
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/IntrinsicInst.h>
 #include "preprocessor/llvm_includes_end.h"
 
+#include "Ext.h"
+#include "RuntimeManager.h"
 
 namespace dev
 {
