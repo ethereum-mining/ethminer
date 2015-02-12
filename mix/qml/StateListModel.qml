@@ -25,7 +25,7 @@ Item {
 			functionId: t.functionId,
 			url: t.url,
 			value: QEtherHelper.createEther(t.value.value, t.value.unit),
-			gas: QEtherHelper.createEther(t.gas.value, t.gas.unit),
+			gas: QEtherHelper.createBigInt(t.gas.value), //t.gas,//QEtherHelper.createEther(t.gas.value, t.gas.unit),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
 			executeConstructor: t.executeConstructor,
 			stdContract: t.stdContract,
@@ -81,7 +81,7 @@ Item {
 			functionId: t.functionId,
 			url: t.url,
 			value: { value: t.value.value, unit: t.value.unit },
-			gas:  { value: t.gas.value, unit: t.gas.unit },
+			gas: { value: t.gas.value() },
 			gasPrice: { value: t.gasPrice.value, unit: t.gasPrice.unit },
 			executeConstructor: t.executeConstructor,
 			stdContract: t.stdContract,
@@ -157,7 +157,7 @@ Item {
 		function defaultTransactionItem() {
 			return {
 				value: QEtherHelper.createEther("100", QEther.Wei),
-				gas: QEtherHelper.createEther("125000", QEther.Wei),
+				gas: QEtherHelper.createBigInt("125000"),
 				gasPrice: QEtherHelper.createEther("10000000000000", QEther.Wei),
 				executeConstructor: false,
 				stdContract: false
@@ -165,7 +165,8 @@ Item {
 		}
 
 		function createDefaultState() {
-			var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
+			//var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
+			var ether = QEtherHelper.createEther("1000000", QEther.Ether);
 			var item = {
 				title: "",
 				balance: ether,
