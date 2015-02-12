@@ -100,7 +100,6 @@ Item {
 		}
 	}
 
-
 	ListModel {
 		id: projectListModel
 	}
