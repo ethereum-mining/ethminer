@@ -426,7 +426,7 @@ Rectangle {
 											Layout.minimumHeight: parent.height
 											Text {
 												anchors.centerIn: parent
-												anchors.leftMargin: 5()
+												anchors.leftMargin: 5
 												font.family: "monospace"
 												color: "#4a4a4a"
 												text: styleData.row;
