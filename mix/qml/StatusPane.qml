@@ -38,10 +38,16 @@ Rectangle {
 
 	Connections {
 		target:clientModel
-		onRunStarted: infoMessage(qsTr("Running transactions.."));
+		onRunStarted: infoMessage(qsTr("Running transactions..."));
 		onRunFailed: infoMessage(qsTr("Error running transactions"));
 		onRunComplete: infoMessage(qsTr("Run complete"));
 		onNewBlock: infoMessage(qsTr("New block created"));
+	}
+	Connections {
+		target:projectModel
+		onDeploymentStarted: infoMessage(qsTr("Running deployment..."));
+		onDeploymentError: infoMessage(error);
+		onDeploymentComplete: infoMessage(qsTr("Deployment complete"));
 	}
 
 	color: "transparent"
