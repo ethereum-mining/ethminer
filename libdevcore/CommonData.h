@@ -59,7 +59,7 @@ int fromHex(char _i);
 
 /// Converts a (printable) ASCII hex string into the corresponding byte stream.
 /// @example fromHex("41626261") == asBytes("Abba")
-/// If _throw = false, it replaces bad hex characters with 0's, otherwise it will throw an exception.
+/// If _throw = ThrowType::NoThrow, it replaces bad hex characters with 0's, otherwise it will throw an exception.
 bytes fromHex(std::string const& _s, ThrowType _throw = ThrowType::NoThrow);
 
 #if 0
