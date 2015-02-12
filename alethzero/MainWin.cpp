@@ -572,7 +572,23 @@ Address Main::fromString(QString const& _n) const
 	}*/
 
 	if (_n.size() == 40)
-		return Address(fromHex(_n.toStdString()));
+	{
+		try
+		{
+			return Address(fromHex(_n.toStdString(), ThrowType::Throw));
+		}
+		catch (BadHexCharacter& _e)
+		{
+			cwarn << "invalid hex character, address rejected";
+			cwarn << boost::diagnostic_information(_e);
+			return Address();
+		}
+		catch (...)
+		{
+			cwarn << "address rejected";
+			return Address();
+		}
+	}
 	else
 		return Address();
 }
@@ -1325,8 +1341,20 @@ void Main::ourAccountsRowsMoved()
 void Main::on_inject_triggered()
 {
 	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
-	bytes b = fromHex(s.toStdString());
-	ethereum()->inject(&b);
+	try
+	{
+		bytes b = fromHex(s.toStdString(), ThrowType::Throw);
+		ethereum()->inject(&b);
+	}
+	catch (BadHexCharacter& _e)
+	{
+		cwarn << "invalid hex character, transaction rejected";
+		cwarn << boost::diagnostic_information(_e);
+	}
+	catch (...)
+	{
+		cwarn << "transaction rejected";
+	}
 }
 
 void Main::on_blocks_currentItemChanged()
