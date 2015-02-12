@@ -35,15 +35,15 @@ using namespace dev::p2p;
 using namespace dev::eth;
 using namespace dev::shh;
 
-WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean, std::set<std::string> const& _interfaces, NetworkPreferences const& _n):
+WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean, std::set<std::string> const& _interfaces, NetworkPreferences const& _n, bytesConstRef _network, int miners):
 	m_clientVersion(_clientVersion),
-	m_net(_clientVersion, _n)
+	m_net(_clientVersion, _n, _network)
 {
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
-
 	if (_interfaces.count("eth"))
-		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean));
+		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean, 0, miners));
+		
 
 	if (_interfaces.count("shh"))
 		m_whisper = m_net.registerCapability<WhisperHost>(new WhisperHost);
@@ -75,9 +75,9 @@ void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n)
 		startNetwork();
 }
 
-std::vector<PeerInfo> WebThreeDirect::peers()
+std::vector<PeerSessionInfo> WebThreeDirect::peers()
 {
-	return m_net.peers();
+	return m_net.peerSessionInfo();
 }
 
 size_t WebThreeDirect::peerCount() const
@@ -90,17 +90,12 @@ void WebThreeDirect::setIdealPeerCount(size_t _n)
 	return m_net.setIdealPeerCount(_n);
 }
 
-bytes WebThreeDirect::saveNodes()
+bytes WebThreeDirect::saveNetwork()
 {
-	return m_net.saveNodes();
-}
-
-void WebThreeDirect::restoreNodes(bytesConstRef _saved)
-{
-	return m_net.restoreNodes(_saved);
+	return m_net.saveNetwork();
 }
 
 void WebThreeDirect::connect(std::string const& _seedHost, unsigned short _port)
 {
-	m_net.connect(_seedHost, _port);
+	m_net.addNode(NodeId(), _seedHost, _port, _port);
 }
