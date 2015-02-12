@@ -114,7 +114,8 @@ Main::Main(QWidget *parent) :
 	
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
-	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}));
+	bytesConstRef networkConfig((byte*)m_networkConfig.data(), m_networkConfig.size());
+	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}, NetworkPreferences(), networkConfig));
 	m_web3->connect(Host::pocHost());
 
 	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
@@ -377,10 +378,10 @@ void Main::writeSettings()
 	s.setValue("address", b);
 	s.setValue("url", ui->urlEdit->text());
 
-	bytes d = m_web3->saveNodes();
+	bytes d = m_web3->saveNetwork();
 	if (d.size())
-		m_nodes = QByteArray((char*)d.data(), (int)d.size());
-	s.setValue("peers", m_nodes);
+		m_networkConfig = QByteArray((char*)d.data(), (int)d.size());
+	s.setValue("peers", m_networkConfig);
 
 	s.setValue("geometry", saveGeometry());
 	s.setValue("windowState", saveState());
@@ -409,7 +410,7 @@ void Main::readSettings(bool _skipGeometry)
 		}
 	}
 	ethereum()->setAddress(m_myKeys.back().address());
-	m_nodes = s.value("peers").toByteArray();
+	m_networkConfig = s.value("peers").toByteArray();
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
 }
@@ -581,11 +582,9 @@ void Main::ensureNetwork()
 		web3()->startNetwork();
 		web3()->connect(defPeer);
 	}
-	else
-		if (!m_web3->peerCount())
-			m_web3->connect(defPeer);
-	if (m_nodes.size())
-		m_web3->restoreNodes(bytesConstRef((byte*)m_nodes.data(), m_nodes.size()));
+//	else
+//		if (!m_web3->peerCount())
+//			m_web3->connect(defPeer);
 }
 
 void Main::on_connect_triggered()

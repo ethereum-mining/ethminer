@@ -90,5 +90,12 @@
         <file>qml/CodeEditorStyle.qml</file>
         <file>qml/StatusPaneStyle.qml</file>
         <file>qml/StateStyle.qml</file>
+        <file>qml/img/plus.png</file>
+        <file>qml/img/delete_sign.png</file>
+        <file>qml/img/edit.png</file>
+        <file>qml/DefaultLabel.qml</file>
+        <file>qml/DefaultTextField.qml</file>
+        <file>qml/CommonSeparator.qml</file>
+        <file>qml/Style.qml</file>
     </qresource>
 </RCC>
