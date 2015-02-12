@@ -9,8 +9,11 @@ QtObject {
 	}
 
 	property QtObject generic: QtObject {
-		property QtObject layout : QtObject {
-			property string separatorColor: "#f7f7f7"
+		property QtObject layout: QtObject {
+			property string separatorColor: "#808080"
+		}
+		property QtObject size: QtObject {
+			property string titlePointSize: absoluteSize(0)
 		}
 	}
 }
