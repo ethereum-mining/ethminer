@@ -251,7 +251,7 @@ private:
 	unsigned m_currenciesFilter = (unsigned)-1;
 	unsigned m_balancesFilter = (unsigned)-1;
 
-	QByteArray m_peers;
+	QByteArray m_networkConfig;
 	QStringList m_servers;
 	QList<dev::KeyPair> m_myKeys;
 	QList<dev::KeyPair> m_myIdentities;
