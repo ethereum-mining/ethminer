@@ -108,7 +108,10 @@ void NodeTable::discover()
 {
 	static chrono::steady_clock::time_point s_lastDiscover = chrono::steady_clock::now() - std::chrono::seconds(30);
 	if (chrono::steady_clock::now() > s_lastDiscover + std::chrono::seconds(30))
+	{
+		s_lastDiscover = chrono::steady_clock::now();
 		discover(m_node.id);
+	}
 }
 
 list<NodeId> NodeTable::nodes() const
