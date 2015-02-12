@@ -20,6 +20,9 @@ Item {
 	signal projectSaved()
 	signal newProject(var projectData)
 	signal documentSaved(var documentId)
+	signal deploymentStarted()
+	signal deploymentComplete()
+	signal deploymentError(string error)
 
 	property bool isEmpty: (projectPath === "")
 	readonly property string projectFileName: ".mix"
@@ -28,8 +31,10 @@ Item {
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
+	property string deploymentAddress: ""
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
+	property CodeEditorView codeEditor: null
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
@@ -48,7 +53,8 @@ Item {
 	function removeDocument(documentId) { ProjectModelCode.removeDocument(documentId); }
 	function getDocument(documentId) { return ProjectModelCode.getDocument(documentId); }
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
-	function doAddExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
+	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
+	function deployProject() { ProjectModelCode.deployProject(false); }
 
 	Connections {
 		target: appContext
@@ -80,6 +86,17 @@ Item {
 		}
 		onRejected: {
 			ProjectModelCode.doCloseProject();
+		}
+	}
+
+	MessageDialog {
+		id: deployWarningDialog
+		title: qsTr("Project")
+		text: qsTr("This project has been already deployed to the network. Do you want to re-deploy it?")
+		standardButtons: StandardButton.Ok | StandardButton.Cancel
+		icon: StandardIcon.Question
+		onAccepted: {
+			ProjectModelCode.deployProject(true);
 		}
 	}
 
