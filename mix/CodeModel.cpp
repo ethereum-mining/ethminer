@@ -82,7 +82,6 @@ CompilationResult::CompilationResult(CompilationResult const& _prev, QString con
 	m_codeHighlighter(_prev.m_codeHighlighter)
 {}
 
-
 QString CompilationResult::codeHex() const
 {
 	return QString::fromStdString(toJS(m_bytes));
