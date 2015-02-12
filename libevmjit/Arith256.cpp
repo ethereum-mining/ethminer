@@ -1,13 +1,14 @@
 #include "Arith256.h"
-#include "Type.h"
-#include "Endianness.h"
+
+#include <iostream>
+#include <iomanip>
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/IntrinsicInst.h>
 #include "preprocessor/llvm_includes_end.h"
 
-#include <iostream>
-#include <iomanip>
+#include "Type.h"
+#include "Endianness.h"
 
 namespace dev
 {

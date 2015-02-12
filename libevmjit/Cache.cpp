@@ -1,5 +1,7 @@
 #include "Cache.h"
-#include "ExecutionEngine.h"
+
+#include <iostream>
+#include <cassert>
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
@@ -10,8 +12,7 @@
 #include <llvm/Support/raw_os_ostream.h>
 #include "preprocessor/llvm_includes_end.h"
 
-#include <cassert>
-#include <iostream>
+#include "ExecutionEngine.h"
 
 namespace dev
 {
