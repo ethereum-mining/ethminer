@@ -106,7 +106,9 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 
 void NodeTable::discover()
 {
-	discover(m_node.id);
+	static chrono::steady_clock::time_point s_lastDiscover = chrono::steady_clock::now() - std::chrono::seconds(30);
+	if (chrono::steady_clock::now() > s_lastDiscover + std::chrono::seconds(30))
+		discover(m_node.id);
 }
 
 list<NodeId> NodeTable::nodes() const

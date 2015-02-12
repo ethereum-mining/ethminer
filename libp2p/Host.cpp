@@ -534,7 +534,8 @@ void Host::run(boost::system::error_code const&)
 	keepAlivePeers();
 	disconnectLatePeers();
 
-	if (m_idealPeerCount && !peerCount())
+	auto c = peerCount();
+	if (m_idealPeerCount && !c)
 		for (auto p: m_peers)
 			if (p.second->shouldReconnect())
 			{
@@ -543,6 +544,9 @@ void Host::run(boost::system::error_code const&)
 				connect(p.second);
 				break;
 			}
+	
+	if (c < m_idealPeerCount)
+		m_nodeTable->discover();
 	
 	auto runcb = [this](boost::system::error_code const& error) { run(error); };
 	m_timer->expires_from_now(boost::posix_time::milliseconds(c_timerInterval));
