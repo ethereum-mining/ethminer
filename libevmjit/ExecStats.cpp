@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <cassert>
 
+#include "Utils.h"
+
 namespace dev
 {
 namespace eth
