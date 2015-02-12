@@ -34,6 +34,7 @@ Item {
 	property string deploymentAddress: ""
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
+	property CodeEditorView codeEditor: null
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
@@ -53,7 +54,7 @@ Item {
 	function getDocument(documentId) { return ProjectModelCode.getDocument(documentId); }
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
-	function deployProject() { ProjectModelCode.deployProject(); }
+	function deployProject() { ProjectModelCode.deployProject(false); }
 
 	Connections {
 		target: appContext
@@ -87,6 +88,18 @@ Item {
 			ProjectModelCode.doCloseProject();
 		}
 	}
+
+	MessageDialog {
+		id: deployWarningDialog
+		title: qsTr("Project")
+		text: qsTr("This project has been already deployed to the network. Do you want to re-deploy it?")
+		standardButtons: StandardButton.Ok | StandardButton.Cancel
+		icon: StandardIcon.Question
+		onAccepted: {
+			ProjectModelCode.deployProject(true);
+		}
+	}
+
 
 	ListModel {
 		id: projectListModel

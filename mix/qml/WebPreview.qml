@@ -43,8 +43,8 @@ Item {
 	}
 
 	function changePage() {
-		if (pageCombo.currentIndex >=0 && pageCombo.currentIndex < pageListModel.count) {
-			setPreviewUrl(pageListModel.get(pageCombo.currentIndex).path);
+		if (pageCombo.currentIndex >= 0 && pageCombo.currentIndex < pageListModel.count) {
+			setPreviewUrl(httpServer.url + "/" + pageListModel.get(pageCombo.currentIndex).documentId);
 		} else {
 			setPreviewUrl("");
 		}
@@ -54,7 +54,7 @@ Item {
 		onAppLoaded: {
 			//We need to load the container using file scheme so that web security would allow loading local files in iframe
 			var containerPage = fileIo.readFile("qrc:///qml/html/WebContainer.html");
-			webView.loadHtml(containerPage, "file:///WebContainer.html")
+			webView.loadHtml(containerPage, httpServer.url + "/WebContainer.html")
 
 		}
 	}
@@ -112,16 +112,35 @@ Item {
 		accept: true
 		port: 8893
 		onClientConnected: {
-			//filter polling spam
-			//TODO: do it properly
-			//var log = _request.content.indexOf("eth_changed") < 0;
-			var log = true;
-			if (log)
-				console.log(_request.content);
-			var response = clientModel.apiCall(_request.content);
-			if (log)
-				console.log(response);
-			_request.setResponse(response);
+			var urlPath = _request.url.toString();
+			if (urlPath.indexOf("/rpc/") === 0)
+			{
+				//jsonrpc request
+				//filter polling requests //TODO: do it properly
+				var log = _request.content.indexOf("eth_changed") < 0;
+				if (log)
+					console.log(_request.content);
+				var response = clientModel.apiCall(_request.content);
+				if (log)
+					console.log(response);
+				_request.setResponse(response);
+			}
+			else
+			{
+				//document request
+				var documentId = urlPath.substr(urlPath.lastIndexOf("/") + 1);
+				var content = "";
+				if (projectModel.codeEditor.isDocumentOpen(documentId))
+					content = projectModel.codeEditor.getDocumentText(documentId);
+				else
+					content = fileIo.readFile(projectModel.getDocument(documentId).path);
+				if (documentId === pageListModel.get(pageCombo.currentIndex).documentId) {
+					//root page, inject deployment script
+					content = "<script>deploy=parent.deploy</script>\n" + content;
+					_request.setResponseContentType("text/html");
+				}
+				_request.setResponse(content);
+			}
 		}
 	}
 
@@ -163,7 +182,7 @@ Item {
 			onLoadingChanged: {
 				if (!loading) {
 					initialized = true;
-					webView.runJavaScript("init(\"" + httpServer.url + "\")");
+					webView.runJavaScript("init(\"" + httpServer.url + "/rpc/\")");
 					if (pendingPageUrl)
 						setPreviewUrl(pendingPageUrl);
 				}
