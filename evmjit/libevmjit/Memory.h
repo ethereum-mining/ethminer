@@ -1,4 +1,5 @@
 #pragma once
+
 #include "CompilerHelper.h"
 
 namespace dev

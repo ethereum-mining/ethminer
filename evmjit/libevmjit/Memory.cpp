@@ -1,13 +1,14 @@
 #include "Memory.h"
+
+#include "preprocessor/llvm_includes_start.h"
+#include <llvm/IR/IntrinsicInst.h>
+#include "preprocessor/llvm_includes_end.h"
+
 #include "Type.h"
 #include "Runtime.h"
 #include "GasMeter.h"
 #include "Endianness.h"
 #include "RuntimeManager.h"
-
-#include "preprocessor/llvm_includes_start.h"
-#include <llvm/IR/IntrinsicInst.h>
-#include "preprocessor/llvm_includes_end.h"
 
 namespace dev
 {

@@ -1,5 +1,6 @@
 #include "BasicBlock.h"
-#include "Type.h"
+
+#include <iostream>
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/CFG.h>
@@ -9,7 +10,7 @@
 #include <llvm/Support/raw_os_ostream.h>
 #include "preprocessor/llvm_includes_end.h"
 
-#include <iostream>
+#include "Type.h"
 
 namespace dev
 {

@@ -1,4 +1,5 @@
 #pragma once
+
 #include "RuntimeData.h"
 
 namespace dev

@@ -1,7 +1,9 @@
 #pragma once
+
+#include <vector>
+
 #include "Common.h"
 #include "Stack.h"
-#include <vector>
 
 namespace dev
 {
