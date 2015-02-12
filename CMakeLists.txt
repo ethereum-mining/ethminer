@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC OFF)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
 else()
-	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Wconversion")
+	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Wconversion -Wno-unknown-pragmas")
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
