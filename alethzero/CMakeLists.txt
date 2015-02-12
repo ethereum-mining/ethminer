@@ -11,6 +11,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
+include_directories(${JSONCPP_INCLUDE_DIRS})
 include_directories(..)
 
 qt5_wrap_ui(ui_Main.h Main.ui)
@@ -40,9 +41,6 @@ target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} secp256k1)
-if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
-target_link_libraries(${EXECUTABLE} serpent)
-endif()
 target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} solidity)
 target_link_libraries(${EXECUTABLE} evmcore)
@@ -50,6 +48,10 @@ target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} web3jsonrpc)
 target_link_libraries(${EXECUTABLE} jsqrc)
 target_link_libraries(${EXECUTABLE} natspec)
+
+if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+	target_link_libraries(${EXECUTABLE} serpent)
+endif()
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
 eth_install_executable(${EXECUTABLE})

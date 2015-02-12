@@ -57,7 +57,7 @@ template <class S, class T> struct StreamOut { static S& bypass(S& _out, T const
 template <class S> struct StreamOut<S, uint8_t> { static S& bypass(S& _out, uint8_t const& _t) { _out << (int)_t; return _out; } };
 
 template <class T> inline std::ostream& operator<<(std::ostream& _out, std::vector<T> const& _e);
-template <class T, unsigned Z> inline std::ostream& operator<<(std::ostream& _out, std::array<T, Z> const& _e);
+template <class T, std::size_t Z> inline std::ostream& operator<<(std::ostream& _out, std::array<T, Z> const& _e);
 template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::pair<T, U> const& _e);
 template <class T> inline std::ostream& operator<<(std::ostream& _out, std::list<T> const& _e);
 template <class T1, class T2, class T3> inline std::ostream& operator<<(std::ostream& _out, std::tuple<T1, T2, T3> const& _e);
@@ -84,7 +84,7 @@ inline S& streamout(S& _out, std::vector<T> const& _e)
 
 template <class T> inline std::ostream& operator<<(std::ostream& _out, std::vector<T> const& _e) { streamout(_out, _e); return _out; }
 
-template <class S, class T, unsigned Z>
+template <class S, class T, std::size_t Z>
 inline S& streamout(S& _out, std::array<T, Z> const& _e)
 {
 	_out << "[";
@@ -98,23 +98,7 @@ inline S& streamout(S& _out, std::array<T, Z> const& _e)
 	_out << "]";
 	return _out;
 }
-template <class T, unsigned Z> inline std::ostream& operator<<(std::ostream& _out, std::array<T, Z> const& _e) { streamout(_out, _e); return _out; }
-
-template <class S, class T, unsigned long Z>
-inline S& streamout(S& _out, std::array<T, Z> const& _e)
-{
-	_out << "[";
-	if (!_e.empty())
-	{
-		StreamOut<S, T>::bypass(_out, _e.front());
-		auto i = _e.begin();
-		for (++i; i != _e.end(); ++i)
-			StreamOut<S, T>::bypass(_out << ",", *i);
-	}
-	_out << "]";
-	return _out;
-}
-template <class T, unsigned long Z> inline std::ostream& operator<<(std::ostream& _out, std::array<T, Z> const& _e) { streamout(_out, _e); return _out; }
+template <class T, std::size_t Z> inline std::ostream& operator<<(std::ostream& _out, std::array<T, Z> const& _e) { streamout(_out, _e); return _out; }
 
 template <class S, class T>
 inline S& streamout(S& _out, std::list<T> const& _e)
