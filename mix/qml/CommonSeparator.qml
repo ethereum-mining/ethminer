@@ -3,7 +3,7 @@ import "."
 
 Rectangle
 {
-	height: 3
+	height: 1
 	color: Style.generic.layout.separatorColor
 }
 

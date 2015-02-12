@@ -424,6 +424,7 @@ Window {
 			CommonSeparator
 			{
 				Layout.fillWidth: true
+				visible: paramsModel.count > 0
 			}
 		}
 
