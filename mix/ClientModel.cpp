@@ -156,7 +156,8 @@ void ClientModel::setupState(QVariantMap _state)
 	{
 		QVariantMap transaction = t.toMap();
 		QString functionId = transaction.value("functionId").toString();
-		u256 gas = (qvariant_cast<QEther*>(transaction.value("gas")))->toU256Wei();
+
+		u256 gas = boost::get<u256>(qvariant_cast<QBigInt*>(transaction.value("gas"))->internalValue());
 		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
 		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
 
