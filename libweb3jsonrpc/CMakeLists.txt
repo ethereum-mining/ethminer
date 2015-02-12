@@ -30,7 +30,10 @@ target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARIES})
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} solidity)
-target_link_libraries(${EXECUTABLE} serpent)
+
+if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+	target_link_libraries(${EXECUTABLE} serpent)
+endif()
 
 if (ETH_JSON_RPC_STUB)
 	add_custom_target(jsonrpcstub) 
