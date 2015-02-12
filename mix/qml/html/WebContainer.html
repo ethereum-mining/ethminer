@@ -15,17 +15,15 @@ reloadPage = function() {
 	preview.contentWindow.location.reload();
 };
 
-updateContract = function(address, contractFace) {
+updateContract = function(name, address, contractFace) {
 	if (window.web3) {
 		window.web3.provider.polls = [];
-		window.contractAddress = address;
-		window.contractInterface = contractFace;
-		window.contract = window.web3.eth.contract(address, contractFace);
-		window.deploy = {
-			contractAddress: address,
-			contractInterface: contractFace,
-			contract: window.contract,
-			web3: window.web3
+		var contract = window.web3.eth.contract(address, contractFace);
+		window.contracts = {};
+		window.contracts[name] = {
+			address: address,
+			interface: contractFace,
+			contract: contract,
 		};
 	}
 };

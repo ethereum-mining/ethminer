@@ -28,7 +28,7 @@ Item {
 	}
 
 	function updateContract() {
-		webView.runJavaScript("updateContract(\"" + clientModel.contractAddress + "\", " + codeModel.code.contractInterface + ")");
+		webView.runJavaScript("updateContract(\"" + codeModel.code.contract.name + "\", \"" + clientModel.contractAddress + "\", " + codeModel.code.contractInterface + ")");
 	}
 
 	function reloadOnSave() {
@@ -136,7 +136,7 @@ Item {
 					content = fileIo.readFile(projectModel.getDocument(documentId).path);
 				if (documentId === pageListModel.get(pageCombo.currentIndex).documentId) {
 					//root page, inject deployment script
-					content = "<script>deploy=parent.deploy</script>\n" + content;
+					content = "<script>web3=parent.web3;contracts=parent.contracts;</script>\n" + content;
 					_request.setResponseContentType("text/html");
 				}
 				_request.setResponse(content);
