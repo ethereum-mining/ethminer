@@ -35,7 +35,7 @@ QBigInt* QEther::toWei() const
 	const char* key = units.valueToKey(m_currentUnit);
 	for (std::pair<dev::u256, std::string> rawUnit: dev::eth::units())
 	{
-		if (rawUnit.second == QString(key).toLower().toStdString())
+		if (QString::fromStdString(rawUnit.second).toLower() == QString(key).toLower())
 			return multiply(new QBigInt(rawUnit.first));
 	}
 	return new QBigInt(dev::u256(0));
@@ -46,7 +46,7 @@ void QEther::setUnit(QString const& _unit)
 	QMetaEnum units = staticMetaObject.enumerator(staticMetaObject.indexOfEnumerator("EtherUnit"));
 	for (int k = 0; k < units.keyCount(); k++)
 	{
-		if (QString(units.key(k)).toLower() == _unit)
+		if (QString(units.key(k)).toLower() == _unit.toLower())
 		{
 			m_currentUnit = static_cast<EtherUnit>(units.keysToValue(units.key(k)));
 			return;

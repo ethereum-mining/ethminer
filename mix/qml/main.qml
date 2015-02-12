@@ -203,7 +203,19 @@ ApplicationWindow {
 		text: qsTr("&Open Project")
 		shortcut: "Ctrl+O"
 		enabled: true;
-		onTriggered: projectModel.browseProject();
+		onTriggered: openProjectFileDialog.open()
+	}
+
+	FileDialog {
+		id: openProjectFileDialog
+		visible: false
+		title: qsTr("Open a Project")
+		selectFolder: true
+		onAccepted: {
+			var path = openProjectFileDialog.fileUrl.toString();
+			path += "/";
+			projectModel.loadProject(path);
+		}
 	}
 
 	Action {
@@ -243,7 +255,18 @@ ApplicationWindow {
 		text: qsTr("Add Existing File")
 		shortcut: "Ctrl+Alt+A"
 		enabled: !projectModel.isEmpty
-		onTriggered: projectModel.addExistingFile();
+		onTriggered: addExistingFileDialog.open()
+	}
+
+	FileDialog {
+		id: addExistingFileDialog
+		visible: false
+		title: qsTr("Add a File")
+		selectFolder: false
+		onAccepted: {
+			var paths = addExistingFileDialog.fileUrls;
+			projectModel.doAddExistingFiles(paths);
+		}
 	}
 
 	Action {

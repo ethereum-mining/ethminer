@@ -106,7 +106,7 @@ class WebThreeDirect : public WebThreeNetworkFace
 public:
 	/// Constructor for private instance. If there is already another process on the machine using @a _dbPath, then this will throw an exception.
 	/// ethereum() may be safely static_cast()ed to a eth::Client*.
-	WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean = false, std::set<std::string> const& _interfaces = {"eth", "shh"}, p2p::NetworkPreferences const& _n = p2p::NetworkPreferences());
+	WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean = false, std::set<std::string> const& _interfaces = {"eth", "shh"}, p2p::NetworkPreferences const& _n = p2p::NetworkPreferences(), int miners = -1);
 
 	/// Destructor.
 	~WebThreeDirect();

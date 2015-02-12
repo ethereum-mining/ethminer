@@ -34,11 +34,9 @@ Item {
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
 	function createProject() { ProjectModelCode.createProject(); }
-	function browseProject() { ProjectModelCode.browseProject(); }
 	function closeProject() { ProjectModelCode.closeProject(); }
 	function saveProject() { ProjectModelCode.saveProject(); }
 	function loadProject(path) { ProjectModelCode.loadProject(path); }
-	function addExistingFile() { ProjectModelCode.addExistingFile(); }
 	function newHtmlFile() { ProjectModelCode.newHtmlFile(); }
 	function newJsFile() { ProjectModelCode.newJsFile(); }
 	function newCssFile() { ProjectModelCode.newCssFile(); }
@@ -50,6 +48,7 @@ Item {
 	function removeDocument(documentId) { ProjectModelCode.removeDocument(documentId); }
 	function getDocument(documentId) { return ProjectModelCode.getDocument(documentId); }
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
+	function doAddExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 
 	Connections {
 		target: appContext
@@ -95,28 +94,5 @@ Item {
 	Settings {
 		id: projectSettings
 		property string lastProjectPath;
-	}
-
-	FileDialog {
-		id: openProjectFileDialog
-		visible: false
-		title: qsTr("Open a Project")
-		selectFolder: true
-		onAccepted: {
-			var path = openProjectFileDialog.fileUrl.toString();
-			path += "/";
-			loadProject(path);
-		}
-	}
-
-	FileDialog {
-		id: addExistingFileDialog
-		visible: false
-		title: qsTr("Add a File")
-		selectFolder: false
-		onAccepted: {
-			var paths = addExistingFileDialog.fileUrls;
-			ProjectModelCode.doAddExistingFiles(paths);
-		}
 	}
 }
