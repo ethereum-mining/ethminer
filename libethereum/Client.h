@@ -166,7 +166,7 @@ class Client: public MinerHost, public Interface, Worker
 
 public:
 	/// New-style Constructor.
-	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0);
+	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0, int miners = -1);
 
 	/// Destructor.
 	virtual ~Client();
