@@ -96,7 +96,7 @@ bytes dev::fromHex(std::string const& _s, ThrowType _throw)
 #ifndef BOOST_NO_EXCEPTIONS
 			cwarn << boost::current_exception_diagnostic_information(); 
 #endif
-			if (_throw = ThrowType::Throw)
+			if (_throw == ThrowType::Throw)
 				throw;
 		}
 	for (unsigned i = s; i < _s.size(); i += 2)
@@ -109,7 +109,7 @@ bytes dev::fromHex(std::string const& _s, ThrowType _throw)
 #ifndef BOOST_NO_EXCEPTIONS
 			cwarn << boost::current_exception_diagnostic_information();
 #endif
-			if (_throw = ThrowType::Throw)
+			if (_throw == ThrowType::Throw)
 				throw;
 		}
 	return ret;
