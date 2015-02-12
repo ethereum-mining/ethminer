@@ -70,6 +70,12 @@ void FileIo::writeFile(QString const& _url, QString const& _data)
 
 void FileIo::copyFile(QString const& _sourceUrl, QString const& _destUrl)
 {
+	if (QUrl(_sourceUrl).scheme() == "qrc")
+	{
+		writeFile(_destUrl, readFile(_sourceUrl));
+		return;
+	}
+
 	QUrl sourceUrl(_sourceUrl);
 	QUrl destUrl(_destUrl);
 	if (!QFile::copy(sourceUrl.path(), destUrl.path()))

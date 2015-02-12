@@ -57,20 +57,19 @@ protected:
 
 /**
  * @brief RLPX Datagram which can be signed.
- * @todo compact templates
- * @todo make data private/functional (see UDPDatagram)
  */
 struct RLPXDatagramFace: public UDPDatagram
 {
-	static uint64_t futureFromEpoch(std::chrono::milliseconds _ms) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _ms).time_since_epoch()).count(); }
-	static uint64_t futureFromEpoch(std::chrono::seconds _sec) { return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count(); }
+	static uint64_t futureFromEpoch(std::chrono::milliseconds _ms) { return std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now() + _ms).time_since_epoch()).count(); }
+	static uint64_t futureFromEpoch(std::chrono::seconds _sec) { return std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count(); }
 	static Public authenticate(bytesConstRef _sig, bytesConstRef _rlp);
-
+	
+	virtual uint8_t packetType() = 0;
 	RLPXDatagramFace(bi::udp::endpoint const& _ep): UDPDatagram(_ep) {}
 	virtual h256 sign(Secret const& _from);
 
-	virtual void streamRLP(RLPStream&) const =0;
-	virtual void interpretRLP(bytesConstRef _bytes) =0;
+	virtual void streamRLP(RLPStream&) const = 0;
+	virtual void interpretRLP(bytesConstRef _bytes) = 0;
 };
 
 template <class T>
@@ -78,6 +77,7 @@ struct RLPXDatagram: public RLPXDatagramFace
 {
 	RLPXDatagram(bi::udp::endpoint const& _ep): RLPXDatagramFace(_ep) {}
 	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
+	uint8_t packetType() { return T::type; }
 };
 
 /**

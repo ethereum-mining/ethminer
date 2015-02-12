@@ -35,6 +35,12 @@ namespace dev
 
 // String conversion functions, mainly to/from hex/nibble/byte representations.
 
+enum class ThrowType
+{
+	NoThrow = 0,
+	Throw = 1,
+};
+
 /// Convert a series of bytes to the corresponding string of hex duplets.
 /// @param _w specifies the width of each of the elements. Defaults to two - enough to represent a byte.
 /// @example toHex("A\x69") == "4169"
@@ -53,7 +59,8 @@ int fromHex(char _i);
 
 /// Converts a (printable) ASCII hex string into the corresponding byte stream.
 /// @example fromHex("41626261") == asBytes("Abba")
-bytes fromHex(std::string const& _s);
+/// If _throw = ThrowType::NoThrow, it replaces bad hex characters with 0's, otherwise it will throw an exception.
+bytes fromHex(std::string const& _s, ThrowType _throw = ThrowType::NoThrow);
 
 #if 0
 std::string toBase58(bytesConstRef _data);

@@ -42,6 +42,8 @@ ApplicationWindow {
 			MenuSeparator {}
 			MenuItem { action: editStatesAction }
 			MenuSeparator {}
+			MenuItem { action: deployViaRpcAction }
+			MenuSeparator {}
 			MenuItem { action: toggleRunOnLoadAction }
 		}
 		Menu {
@@ -265,7 +267,7 @@ ApplicationWindow {
 		selectFolder: false
 		onAccepted: {
 			var paths = addExistingFileDialog.fileUrls;
-			projectModel.doAddExistingFiles(paths);
+			projectModel.addExistingFiles(paths);
 		}
 	}
 
@@ -301,4 +303,11 @@ ApplicationWindow {
 		onTriggered: projectModel.openPrevDocument();
 	}
 
+	Action {
+		id: deployViaRpcAction
+		text: qsTr("Deploy to Network")
+		shortcut: "Ctrl+Shift+D"
+		enabled: !projectModel.isEmpty && codeModel.hasContract
+		onTriggered: projectModel.deployProject();
+	}
 }

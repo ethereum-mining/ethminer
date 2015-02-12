@@ -10,6 +10,7 @@ endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 aux_source_directory(. SRC_LIST)
+include_directories(${JSONCPP_INCLUDE_DIRS})
 include_directories(..)
 
 find_package (Qt5WebEngine QUIET)

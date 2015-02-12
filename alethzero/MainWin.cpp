@@ -161,8 +161,11 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->blockCount);
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
-
-	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
+	
+	QSettings s("ethereum", "alethzero");
+	m_networkConfig = s.value("peers").toByteArray();
+	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
+	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}, p2p::NetworkPreferences(), network));
 
 	m_qwebConnector.reset(new QWebThreeConnector());
 	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys), this));
@@ -210,11 +213,11 @@ Main::Main(QWidget *parent) :
 
 Main::~Main()
 {
+	writeSettings();
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
 	m_qweb->clientDieing();
 	g_logPost = simpleDebugOut;
-	writeSettings();
 }
 
 void Main::on_newIdentity_triggered()
@@ -569,7 +572,23 @@ Address Main::fromString(QString const& _n) const
 	}*/
 
 	if (_n.size() == 40)
-		return Address(fromHex(_n.toStdString()));
+	{
+		try
+		{
+			return Address(fromHex(_n.toStdString(), ThrowType::Throw));
+		}
+		catch (BadHexCharacter& _e)
+		{
+			cwarn << "invalid hex character, address rejected";
+			cwarn << boost::diagnostic_information(_e);
+			return Address();
+		}
+		catch (...)
+		{
+			cwarn << "address rejected";
+			return Address();
+		}
+	}
 	else
 		return Address();
 }
@@ -662,10 +681,10 @@ void Main::writeSettings()
 	s.setValue("verbosity", ui->verbosity->value());
 	s.setValue("jitvm", ui->jitvm->isChecked());
 
-	bytes d = m_webThree->saveNodes();
+	bytes d = m_webThree->saveNetwork();
 	if (d.size())
-		m_peers = QByteArray((char*)d.data(), (int)d.size());
-	s.setValue("peers", m_peers);
+		m_networkConfig = QByteArray((char*)d.data(), (int)d.size());
+	s.setValue("peers", m_networkConfig);
 	s.setValue("nameReg", ui->nameReg->text());
 
 	s.setValue("geometry", saveGeometry());
@@ -714,7 +733,6 @@ void Main::readSettings(bool _skipGeometry)
 		}
 	}
 
-	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
@@ -946,31 +964,27 @@ void Main::refreshNetwork()
 
 	if (web3()->haveNetwork())
 	{
-		map<h512, QString> clients;
-		for (PeerInfo const& i: ps)
+		map<h512, QString> sessions;
+		for (PeerSessionInfo const& i: ps)
 			ui->peers->addItem(QString("[%8 %7] %3 ms - %1:%2 - %4 %5 %6")
 							   .arg(QString::fromStdString(i.host))
 							   .arg(i.port)
 							   .arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count())
-							   .arg(clients[i.id] = QString::fromStdString(i.clientVersion))
+							   .arg(sessions[i.id] = QString::fromStdString(i.clientVersion))
 							   .arg(QString::fromStdString(toString(i.caps)))
 							   .arg(QString::fromStdString(toString(i.notes)))
 							   .arg(i.socket)
 							   .arg(QString::fromStdString(i.id.abridged())));
 
 		auto ns = web3()->nodes();
-		for (p2p::Node const& i: ns)
-			if (!i.dead)
-				ui->nodes->insertItem(clients.count(i.id) ? 0 : ui->nodes->count(), QString("[%1 %3] %2 - ( =%5s | /%4s%6 ) - *%7 $%8")
-							   .arg(QString::fromStdString(i.id.abridged()))
-							   .arg(QString::fromStdString(toString(i.address)))
-							   .arg(i.id == web3()->id() ? "self" : clients.count(i.id) ? clients[i.id] : i.secondsSinceLastAttempted() == -1 ? "session-fail" : i.secondsSinceLastAttempted() >= (int)i.fallbackSeconds() ? "retrying..." : "retry-" + QString::number(i.fallbackSeconds() - i.secondsSinceLastAttempted()) + "s")
-							   .arg(i.secondsSinceLastAttempted())
-							   .arg(i.secondsSinceLastConnected())
-							   .arg(i.isOffline() ? " | " + QString::fromStdString(reasonOf(i.lastDisconnect)) + " | " + QString::number(i.failedAttempts) + "x" : "")
-							   .arg(i.rating)
-							   .arg((int)i.idOrigin)
-							   );
+		for (p2p::Peer const& i: ns)
+			ui->nodes->insertItem(sessions.count(i.id) ? 0 : ui->nodes->count(), QString("[%1 %3] %2 - ( =%5s | /%4s%6 ) - *%7 $%8")
+						   .arg(QString::fromStdString(i.id.abridged()))
+						   .arg(QString::fromStdString(i.peerEndpoint().address().to_string()))
+						   .arg(i.id == web3()->id() ? "self" : sessions.count(i.id) ? sessions[i.id] : "disconnected")
+						   .arg(i.isOffline() ? " | " + QString::fromStdString(reasonOf(i.lastDisconnect())) + " | " + QString::number(i.failedAttempts()) + "x" : "")
+						   .arg(i.rating())
+						   );
 	}
 }
 
@@ -1327,8 +1341,20 @@ void Main::ourAccountsRowsMoved()
 void Main::on_inject_triggered()
 {
 	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
-	bytes b = fromHex(s.toStdString());
-	ethereum()->inject(&b);
+	try
+	{
+		bytes b = fromHex(s.toStdString(), ThrowType::Throw);
+		ethereum()->inject(&b);
+	}
+	catch (BadHexCharacter& _e)
+	{
+		cwarn << "invalid hex character, transaction rejected";
+		cwarn << boost::diagnostic_information(_e);
+	}
+	catch (...)
+	{
+		cwarn << "transaction rejected";
+	}
 }
 
 void Main::on_blocks_currentItemChanged()
@@ -1871,8 +1897,9 @@ void Main::on_net_triggered()
 		web3()->setIdealPeerCount(ui->idealPeers->value());
 		web3()->setNetworkPreferences(netPrefs());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
-		if (m_peers.size()/* && ui->usePast->isChecked()*/)
-			web3()->restoreNodes(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+		// TODO: p2p
+//		if (m_networkConfig.size()/* && ui->usePast->isChecked()*/)
+//			web3()->restoreNetwork(bytesConstRef((byte*)m_networkConfig.data(), m_networkConfig.size()));
 		web3()->startNetwork();
 		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
 	}

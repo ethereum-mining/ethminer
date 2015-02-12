@@ -132,7 +132,7 @@ int UPnP::addRedirect(char const* _addr, int _port)
 	srand(time(NULL));
 	for (unsigned i = 0; i < 10; ++i)
 	{
-		_port = rand() % (65535 - 1024) + 1024;
+		_port = rand() % (32768 - 1024) + 1024;
 		sprintf(ext_port_str, "%d", _port);
 		if (!UPNP_AddPortMapping(m_urls->controlURL, m_data->first.servicetype, ext_port_str, port_str, _addr, "ethereum", "TCP", NULL, NULL))
 			return _port;

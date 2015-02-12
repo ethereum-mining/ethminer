@@ -81,10 +81,21 @@
         <file>qml/img/closedtriangleindicator_filesproject.png</file>
         <file>qml/img/opentriangleindicator_filesproject.png</file>
         <file>qml/img/projecticon.png</file>
+        <file>qml/SourceSansProRegular.qml</file>
+        <file>qml/SourceSansProBold.qml</file>
+        <file>qml/SourceSansProLight.qml</file>
+        <file>qml/StateDialogStyle.qml</file>
         <file>qml/ProjectFilesStyle.qml</file>
         <file>qml/DebuggerPaneStyle.qml</file>
         <file>qml/CodeEditorStyle.qml</file>
         <file>qml/StatusPaneStyle.qml</file>
         <file>qml/StateStyle.qml</file>
+        <file>qml/img/plus.png</file>
+        <file>qml/img/delete_sign.png</file>
+        <file>qml/img/edit.png</file>
+        <file>qml/DefaultLabel.qml</file>
+        <file>qml/DefaultTextField.qml</file>
+        <file>qml/CommonSeparator.qml</file>
+        <file>qml/Style.qml</file>
     </qresource>
 </RCC>

@@ -109,6 +109,7 @@ cmake_policy(SET CMP0015 NEW)
 
 createDefaultCacheConfig()
 configureProject()
+message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
 message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}")
 
 
@@ -140,15 +141,15 @@ endif()
 add_subdirectory(libdevcore)
 add_subdirectory(libevmcore)
 add_subdirectory(liblll)
+
 if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 	add_subdirectory(libserpent)
+	add_subdirectory(sc)
 endif ()
+
 add_subdirectory(libsolidity)
 add_subdirectory(lllc)
 add_subdirectory(solc)
-if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
-add_subdirectory(sc)
-endif()
 
 if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
@@ -166,6 +167,7 @@ add_subdirectory(libethereum)
 add_subdirectory(libwebthree)
 add_subdirectory(test)
 add_subdirectory(eth)
+
 if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
 	add_subdirectory(exp)
 endif ()
