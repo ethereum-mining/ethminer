@@ -132,6 +132,7 @@ Window {
 			spacing: 0
 			RowLayout
 			{
+				Layout.preferredWidth: 150
 				DefaultLabel {
 					text: qsTr("Transactions: ")
 				}
@@ -142,6 +143,7 @@ Window {
 					action: newTrAction
 					width: 10
 					height: 10
+					anchors.right: parent.right
 				}
 
 				Action {
