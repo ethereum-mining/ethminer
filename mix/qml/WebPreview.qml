@@ -72,8 +72,8 @@ Item {
 
 	Connections {
 		target: projectModel
-		onProjectSaved : reloadOnSave();
-		onDocumentSaved: reloadOnSave();
+		//onProjectSaved : reloadOnSave();
+		//onDocumentSaved: reloadOnSave();
 		onDocumentAdded: {
 			var document = projectModel.getDocument(documentId)
 			if (document.isHtml)
