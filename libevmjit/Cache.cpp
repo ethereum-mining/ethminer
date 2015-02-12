@@ -13,6 +13,7 @@
 #include "preprocessor/llvm_includes_end.h"
 
 #include "ExecutionEngine.h"
+#include "Utils.h"
 
 namespace dev
 {
@@ -43,7 +44,9 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 		g_listener->stateChanged(ExecState::CacheLoad);
 
 	CACHE_LOG << id << ": search\n";
-	assert(!g_lastObject);
+	if (!CHECK(!g_lastObject))
+		g_lastObject = nullptr;
+
 	llvm::SmallString<256> cachePath;
 	llvm::sys::path::system_temp_directory(false, cachePath);
 	llvm::sys::path::append(cachePath, "evm_objs", id);
