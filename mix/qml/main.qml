@@ -310,6 +310,4 @@ ApplicationWindow {
 		enabled: !projectModel.isEmpty && codeModel.hasContract
 		onTriggered: projectModel.deployProject();
 	}
-
-
 }
