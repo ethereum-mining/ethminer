@@ -26,7 +26,7 @@
 #pragma warning(disable: 4100 4267)
 #include <leveldb/db.h>
 #pragma warning(pop)
-#include <jsoncpp/json/json.h>
+#include <json/json.h>
 #include <libdevcore/FixedHash.h>
 
 namespace ldb = leveldb;
