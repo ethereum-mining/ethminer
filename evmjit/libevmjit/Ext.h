@@ -1,6 +1,8 @@
 #pragma once
-#include "CompilerHelper.h"
+
 #include <array>
+
+#include "CompilerHelper.h"
 
 namespace dev
 {

@@ -1,9 +1,8 @@
 #include "ExecutionEngine.h"
-#include "Runtime.h"
-#include "Compiler.h"
-#include "Cache.h"
-#include "ExecStats.h"
-#include "BuildInfo.gen.h"
+
+#include <array>
+#include <cstdlib>	// env options
+#include <iostream>
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
@@ -15,9 +14,12 @@
 #include <llvm/Support/Host.h>
 #include "preprocessor/llvm_includes_end.h"
 
-#include <array>
-#include <cstdlib>	// env options
-#include <iostream>
+#include "Runtime.h"
+#include "Compiler.h"
+#include "Cache.h"
+#include "ExecStats.h"
+#include "Utils.h"
+#include "BuildInfo.gen.h"
 
 namespace dev
 {
@@ -97,7 +99,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		module->setTargetTriple(triple.str());
 
 		ee.reset(builder.create());
-		if (!ee)
+		if (!CHECK(ee))
 			return ReturnCode::LLVMConfigError;
 		module.release();  // Successfully created llvm::ExecutionEngine takes ownership of the module
 		ee->setObjectCache(objectCache);
@@ -110,7 +112,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 
 	auto entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
 	if (!entryFuncPtr)
-	{		
+	{
 		auto module = objectCache ? Cache::getObject(mainFuncName) : nullptr;
 		if (!module)
 		{
@@ -126,7 +128,8 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		listener->stateChanged(ExecState::CodeGen);
 		entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
 	}
-	assert(entryFuncPtr); //TODO: Replace it with safe exception
+	if (!CHECK(entryFuncPtr))
+		return ReturnCode::LLVMLinkError;
 
 	listener->stateChanged(ExecState::Execution);
 	auto returnCode = entryFuncPtr(&runtime);

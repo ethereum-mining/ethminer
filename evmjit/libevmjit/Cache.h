@@ -1,6 +1,8 @@
 #pragma once
-#include <llvm/ExecutionEngine/ObjectCache.h>
+
 #include <memory>
+
+#include <llvm/ExecutionEngine/ObjectCache.h>
 
 namespace dev
 {
