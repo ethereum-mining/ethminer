@@ -1,4 +1,5 @@
 
+#pragma GCC diagnostic ignored "-Wconversion"
 #include "JitVM.h"
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
