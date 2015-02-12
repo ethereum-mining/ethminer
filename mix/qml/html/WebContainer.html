@@ -21,13 +21,19 @@ updateContract = function(address, contractFace) {
 		window.contractAddress = address;
 		window.contractInterface = contractFace;
 		window.contract = window.web3.eth.contract(address, contractFace);
+		window.deploy = {
+			contractAddress: address,
+			contractInterface: contractFace,
+			contract: window.contract,
+			web3: window.web3
+		};
 	}
 };
 
 init = function(url) {
 	web3 = require('web3');
-	web3.setProvider(new web3.providers.HttpSyncProvider(url));
 	window.web3 = web3;
+	web3.setProvider(new web3.providers.HttpSyncProvider(url));
 };
 
 </script>
