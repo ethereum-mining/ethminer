@@ -2,6 +2,7 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
+import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.QEther 1.0
 import "js/QEtherHelper.js" as QEtherHelper
 import "js/TransactionHelper.js" as TransactionHelper
@@ -11,10 +12,11 @@ Window {
 	id: modalStateDialog
 	modality: Qt.WindowModal
 
-	width: 640
+	width: 450
 	height: 480
-
+	title: qsTr("State Edition")
 	visible: false
+	color: StateDialogStyle.generic.backgroundColor
 
 	property alias stateTitle: titleField.text
 	property alias stateBalance: balanceField.value
@@ -34,6 +36,10 @@ Window {
 			transactionsModel.append(item.transactions[t]);
 			stateTransactions.push(item.transactions[t]);
 		}
+
+		modalStateDialog.setX((Screen.width - width) / 2);
+		modalStateDialog.setY((Screen.height - height) / 2);
+
 		visible = true;
 		isDefault = setDefault;
 		titleField.focus = true;
@@ -54,74 +60,123 @@ Window {
 		return item;
 	}
 
-	GridLayout {
-		id: dialogContent
-		columns: 2
-		anchors.fill: parent
-		anchors.margins: 10
-		rowSpacing: 10
-		columnSpacing: 10
-
-		Label {
-			text: qsTr("Title")
-		}
-		TextField {
-			id: titleField
-			focus: true
-			Layout.fillWidth: true
-		}
-
-		Label {
-			text: qsTr("Balance")
-		}
-		Ether {
-			id: balanceField
-			edit: true
-			displayFormattedValue: true
-			Layout.fillWidth: true
-		}
-
-		Label {
-			text: qsTr("Default")
-		}
-		CheckBox {
-			id: defaultCheckBox
-			Layout.fillWidth: true
-		}
-
-		Label {
-			text: qsTr("Transactions")
-		}
-		ListView {
-			Layout.fillWidth: true
-			Layout.fillHeight: true
-			model: transactionsModel
-			delegate: transactionRenderDelegate
-		}
-
-		Label {
-
-		}
-		Button {
-			text: qsTr("Add")
-			onClicked: transactionsModel.addTransaction()
-		}
+	SourceSansProRegular
+	{
+		id: regularFont
 	}
 
-	RowLayout {
-		anchors.bottom: parent.bottom
-		anchors.right: parent.right;
+	Rectangle {
+		anchors.fill: parent
+		anchors.margins: 10
+		color: StateDialogStyle.generic.backgroundColor
+		GridLayout {
+			id: dialogContent
+			columns: 2
+			anchors.top: parent.top
+			rowSpacing: 10
+			columnSpacing: 10
 
-		Button {
-			text: qsTr("OK");
-			onClicked: {
-				close();
-				accepted();
+			Label {
+				text: qsTr("Title")
+				font.family: regularFont.name
+				color: "#808080"
+			}
+			TextField {
+				id: titleField
+				focus: true
+				Layout.fillWidth: true
+				font.family: regularFont.name
+			}
+
+			Label {
+				text: qsTr("Balance")
+				font.family: regularFont.name
+				color: "#808080"
+			}
+			Ether {
+				id: balanceField
+				edit: true
+				displayFormattedValue: true
+				Layout.fillWidth: true
+			}
+
+			Label {
+				text: qsTr("Default")
+				font.family: regularFont.name
+				color: "#808080"
+			}
+			CheckBox {
+				id: defaultCheckBox
+				Layout.fillWidth: true
 			}
 		}
-		Button {
-			text: qsTr("Cancel");
-			onClicked: close();
+
+		ColumnLayout {
+			anchors.top: dialogContent.bottom
+			anchors.topMargin: 5
+			spacing: 5
+			RowLayout
+			{
+				Label {
+					text: qsTr("Transactions")
+					font.family: regularFont.name
+					color: "#808080"
+				}
+
+				Button {
+					tooltip: qsTr("Create a new transaction")
+					onClicked: transactionsModel.addTransaction()
+					height: 5
+					width: 5
+					style: ButtonStyle {
+						label: Text {
+							font.family: regularFont.name
+							text: qsTr("+")
+							font.pointSize: 15
+							color: "#808080"
+							height: 5
+							width: 5
+						}
+						background: Rectangle {
+							radius: 4
+							border.width: 1
+							color: "#f7f7f7"
+							height: 5
+							implicitHeight: 5
+						}
+					}
+
+				}
+			}
+
+			ListView {
+				id: trList
+				Layout.preferredWidth: 200
+				Layout.fillHeight: true
+				Layout.minimumHeight: 20 * transactionsModel.count
+				model: transactionsModel
+				delegate: transactionRenderDelegate
+				visible: transactionsModel.count > 0
+			}
+		}
+
+
+		RowLayout
+		{
+			anchors.bottom: parent.bottom
+			anchors.right: parent.right;
+
+			Button {
+				text: qsTr("OK");
+				onClicked: {
+					close();
+					accepted();
+				}
+			}
+			Button {
+				text: qsTr("Cancel");
+				onClicked: close();
+			}
 		}
 	}
 
@@ -161,26 +216,51 @@ Window {
 					text: functionId
 					font.pointSize: StateStyle.general.basicFontSize //12
 					verticalAlignment: Text.AlignBottom
+					font.family: regularFont.name
 				}
 				ToolButton {
 					text: qsTr("Edit");
 					visible: !stdContract
 					Layout.fillHeight: true
 					onClicked: transactionsModel.editTransaction(index)
+					style: ButtonStyle {
+						label: Text {
+							font.family: regularFont.name
+							text: qsTr("Edit")
+							font.italic: true
+							font.pointSize: 9
+						}
+						background: Rectangle {
+							color: "transparent"
+						}
+					}
 				}
 				ToolButton {
 					visible: index >= 0 ? !transactionsModel.get(index).executeConstructor : false
 					text: qsTr("Delete");
 					Layout.fillHeight: true
 					onClicked: transactionsModel.deleteTransaction(index)
+					style: ButtonStyle {
+						label: Text {
+							font.family: regularFont.name
+							text: qsTr("Delete")
+							font.italic: true
+							font.pointSize: 9
+						}
+						background: Rectangle {
+							color: "transparent"
+						}
+					}
 				}
 			}
 		}
 	}
 
-	TransactionDialog {
+	TransactionDialog
+	{
 		id: transactionDialog
-		onAccepted: {
+		onAccepted:
+		{
 			var item = transactionDialog.getItem();
 
 			if (transactionDialog.transactionIndex < transactionsModel.count) {
@@ -192,5 +272,4 @@ Window {
 			}
 		}
 	}
-
 }
