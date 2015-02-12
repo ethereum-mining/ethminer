@@ -93,7 +93,7 @@ b. Only one per line.
 c. Associate */& with type, not variable (at ends with parser, but more readable, and safe if in conjunction with (b)).
 d. Favour declarations close to use; don't habitually declare at top of scope ala C.
 e. Always pass non-trivial parameters with a const& suffix.
-f. If a func	tion returns multiple values, use std::tuple (std::pair acceptable). Prefer not using */& arguments, except where efficiency requires.
+f. If a function returns multiple values, use std::tuple (std::pair acceptable). Prefer not using */& arguments, except where efficiency requires.
 g. Never use a macro where adequate non-preprocessor C++ can be written.
 h. Prefer "using NewType = OldType" to "typedef OldType NewType".
 
