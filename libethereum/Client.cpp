@@ -69,7 +69,7 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 {
 	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
-	if(miners > -1)
+	if (miners > -1)
 		setMiningThreads(miners);
 	else
 		setMiningThreads();
