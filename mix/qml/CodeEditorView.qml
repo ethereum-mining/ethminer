@@ -4,16 +4,24 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 
 Item {
-
+	id: codeEditorView
 	property string currentDocumentId: ""
+	signal documentEdit(string documentId)
 
 	function getDocumentText(documentId) {
-		for (i = 0; i < editorListModel.count; i++)	{
+		for (var i = 0; i < editorListModel.count; i++)	{
 			if (editorListModel.get(i).documentId === documentId) {
-				return editors.itemAt(i).getText();
+				return editors.itemAt(i).item.getText();
 			}
 		}
 		return "";
+	}
+
+	function isDocumentOpen(documentId) {
+		for (var i = 0; i < editorListModel.count; i++)
+			if (editorListModel.get(i).documentId === documentId)
+				return true;
+		return false;
 	}
 
 	function openDocument(document)	{
@@ -31,12 +39,15 @@ Item {
 
 	function doLoadDocument(editor, document) {
 		var data = fileIo.readFile(document.path);
-		if (document.isContract)
-			editor.onEditorTextChanged.connect(function() {
+		editor.onEditorTextChanged.connect(function() {
+			documentEdit(document.documentId);
+			if (document.isContract)
 				codeModel.registerCodeChange(editor.getText());
-			});
+		});
 		editor.setText(data, document.syntaxMode);
 	}
+
+	Component.onCompleted: projectModel.codeEditor = codeEditorView;
 
 	Connections {
 		target: projectModel
