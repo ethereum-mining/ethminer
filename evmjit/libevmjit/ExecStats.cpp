@@ -13,7 +13,9 @@ namespace jit
 
 void ExecStats::stateChanged(ExecState _state)
 {
-	assert(m_state != ExecState::Finished);
+	if (!CHECK(m_state != ExecState::Finished))
+		return;
+
 	auto now = clock::now();
 	if (_state != ExecState::Started)
 	{
