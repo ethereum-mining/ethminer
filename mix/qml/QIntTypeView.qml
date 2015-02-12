@@ -19,6 +19,7 @@ Item
 			text: text
 			anchors.fill: parent
 			font.family: boldFont.name
+			clip: true
 			MouseArea {
 				id: mouseArea
 				anchors.fill: parent

@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Peer.h"
 #include "Common.h"
 
 namespace dev
@@ -44,7 +45,7 @@ public:
 
 	Host* host() const { return m_host; }
 
-	std::vector<std::shared_ptr<Session> > peers() const;
+	std::vector<std::pair<std::shared_ptr<Session>,std::shared_ptr<Peer>>> peerSessions() const;
 
 protected:
 	virtual std::string name() const = 0;

@@ -51,8 +51,8 @@ EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQu
 
 EthereumHost::~EthereumHost()
 {
-	for (auto const& i: peers())
-		i->cap<EthereumPeer>()->abortSync();
+	for (auto i: peerSessions())
+		i.first->cap<EthereumPeer>().get()->abortSync();
 }
 
 bool EthereumHost::ensureInitialised()
@@ -95,16 +95,19 @@ void EthereumHost::changeSyncer(EthereumPeer* _syncer)
 	if (isSyncing())
 	{
 		if (_syncer->m_asking == Asking::Blocks)
-			for (auto j: peers())
-				if (j->cap<EthereumPeer>().get() != _syncer && j->cap<EthereumPeer>()->m_asking == Asking::Nothing)
-					j->cap<EthereumPeer>()->transition(Asking::Blocks);
+			for (auto j: peerSessions())
+			{
+				auto e = j.first->cap<EthereumPeer>().get();
+				if (e != _syncer && e->m_asking == Asking::Nothing)
+					e->transition(Asking::Blocks);
+			}
 	}
 	else
 	{
 		// start grabbing next hash chain if there is one.
-		for (auto j: peers())
+		for (auto j: peerSessions())
 		{
-			j->cap<EthereumPeer>()->attemptSync();
+			j.first->cap<EthereumPeer>()->attemptSync();
 			if (isSyncing())
 				return;
 		}
@@ -167,8 +170,8 @@ void EthereumHost::doWork()
 void EthereumHost::maintainTransactions()
 {
 	// Send any new transactions.
-	for (auto const& p: peers())
-		if (auto ep = p->cap<EthereumPeer>())
+	for (auto p: peerSessions())
+		if (auto ep = p.first->cap<EthereumPeer>().get())
 		{
 			bytes b;
 			unsigned n = 0;
@@ -198,9 +201,9 @@ void EthereumHost::maintainBlocks(h256 _currentHash)
 	{
 		clog(NetMessageSummary) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
-		for (auto j: peers())
+		for (auto j: peerSessions())
 		{
-			auto p = j->cap<EthereumPeer>();
+			auto p = j.first->cap<EthereumPeer>().get();
 
 			RLPStream ts;
 			p->prep(ts, NewBlockPacket, 2).appendRaw(m_chain.block(), 1).append(m_chain.details().totalDifficulty);
