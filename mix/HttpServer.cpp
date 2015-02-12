@@ -132,23 +132,25 @@ void HttpServer::readClient()
 		if (socket->canReadLine())
 		{
 			QString hdr = QString(socket->readLine());
-			if (hdr.startsWith("POST"))
+			if (hdr.startsWith("POST") || hdr.startsWith("GET"))
 			{
+				QUrl url(hdr.split(' ')[1]);
 				QString l;
 				do
 					l = socket->readLine();
 				while (!(l.isEmpty() || l == "\r" || l == "\r\n"));
 
 				QString content = socket->readAll();
-				QUrl url;
 				std::unique_ptr<HttpRequest> request(new HttpRequest(this, url, content));
 				clientConnected(request.get());
 				QTextStream os(socket);
 				os.setAutoDetectUnicode(true);
+				QString q;
 				///@todo: allow setting response content-type, charset, etc
-				os << "HTTP/1.0 200 Ok\r\n"
-					  "Content-Type: text/plain; charset=\"utf-8\"\r\n"
-					  "\r\n";
+				os << "HTTP/1.0 200 Ok\r\n";
+				if (!request->m_responseContentType.isEmpty())
+					os << "Content-Type: " << request->m_responseContentType << "; ";
+				os << "charset=\"utf-8\"\r\n\r\n";
 				os << request->m_response;
 			}
 		}
