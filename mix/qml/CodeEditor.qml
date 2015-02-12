@@ -3,6 +3,7 @@ import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 import QtQuick.Controls.Styles 1.1
+import "."
 
 Item {
 	signal editorTextChanged
@@ -65,7 +66,7 @@ Item {
 
 		height: parent.height
 		font.family: "Monospace"
-		font.pointSize: 12
+		font.pointSize: CodeEditorStyle.general.basicFontSize
 		width: parent.width
 
 		tabChangesFocus: false

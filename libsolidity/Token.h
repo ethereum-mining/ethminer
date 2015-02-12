@@ -118,6 +118,7 @@ namespace solidity
 	T(Mul, "*", 13)                                                    \
 	T(Div, "/", 13)                                                    \
 	T(Mod, "%", 13)                                                    \
+	T(Exp, "**", 14)                                                   \
 	\
 	/* Compare operators sorted by precedence. */                      \
 	/* IsCompareOp() relies on this block of enum values */            \
@@ -175,8 +176,7 @@ namespace solidity
 	K(SubFinney, "finney", 0)                                           \
 	K(SubEther, "ether", 0)                                             \
 	/* type keywords, keep them in this order, keep int as first keyword
-	 * the implementation in Types.cpp has to be synced to this here
-	 *  TODO more to be added */                                       \
+	 * the implementation in Types.cpp has to be synced to this here */\
 	K(Int, "int", 0)                                                   \
 	K(Int8, "int8", 0)                                                 \
 	K(Int16, "int16", 0)                                               \
@@ -278,7 +278,8 @@ namespace solidity
 	K(Hash256, "hash256", 0)                                           \
 	K(Address, "address", 0)                                           \
 	K(Bool, "bool", 0)                                                 \
-	K(StringType, "string", 0)                                        \
+	K(Bytes, "bytes", 0)                                               \
+	K(StringType, "string", 0)                                         \
 	K(String0, "string0", 0)                                           \
 	K(String1, "string1", 0)                                           \
 	K(String2, "string2", 0)                                           \
@@ -361,10 +362,10 @@ public:
 	// Predicates
 	static bool isElementaryTypeName(Value tok) { return Int <= tok && tok < TypesEnd; }
 	static bool isAssignmentOp(Value tok) { return Assign <= tok && tok <= AssignMod; }
-	static bool isBinaryOp(Value op) { return Comma <= op && op <= Mod; }
+	static bool isBinaryOp(Value op) { return Comma <= op && op <= Exp; }
 	static bool isCommutativeOp(Value op) { return op == BitOr || op == BitXor || op == BitAnd ||
 				op == Add || op == Mul || op == Equal || op == NotEqual; }
-	static bool isArithmeticOp(Value op) { return Add <= op && op <= Mod; }
+	static bool isArithmeticOp(Value op) { return Add <= op && op <= Exp; }
 	static bool isCompareOp(Value op) { return Equal <= op && op <= In; }
 
 	static Value AssignmentToBinaryOp(Value op)
