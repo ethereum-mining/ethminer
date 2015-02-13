@@ -8,7 +8,7 @@ ColumnLayout {
 	property string title
 	property variant listModel;
 	property bool collapsible;
-	property bool enableSelection;
+	property bool enableSelection: false;
 	property real storedHeight: 0;
 	property Component itemDelegate
 	signal rowActivated(int index)
@@ -116,6 +116,15 @@ ColumnLayout {
 				}
 			}
 			onActivated: rowActivated(row);
+			Keys.onPressed: {
+				if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < listModel.length) {
+					var str = "";
+					for (var i = 0; i < listModel.length; i++)
+						str += listModel[i] + "\n";
+					appContext.toClipboard(str);
+				}
+			}
+
 			TableViewColumn {
 				role: "modelData"
 				width: parent.width

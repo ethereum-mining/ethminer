@@ -426,7 +426,7 @@ Rectangle {
 											Layout.minimumHeight: parent.height
 											Text {
 												anchors.centerIn: parent
-												anchors.leftMargin: 5()
+												anchors.leftMargin: 5
 												font.family: "monospace"
 												color: "#4a4a4a"
 												text: styleData.row;
@@ -529,7 +529,7 @@ Rectangle {
 										Text {
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.NoWrap
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
@@ -600,7 +600,7 @@ Rectangle {
 										Text {
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.NoWrap
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
