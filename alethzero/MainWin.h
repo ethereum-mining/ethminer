@@ -37,7 +37,8 @@
 #include <libqwebthree/QWebThree.h>
 #include <libwebthree/WebThree.h>
 #include <libsolidity/CompilerStack.h>
-
+#include "Context.h"
+#include "Debugger.h"
 #include "NatspecHandler.h"
 
 namespace Ui {
@@ -52,28 +53,11 @@ class State;
 class QQuickView;
 class OurWebThreeStubServer;
 
-struct WorldState
-{
-	uint64_t steps;
-	dev::Address cur;
-	dev::u256 curPC;
-	dev::eth::Instruction inst;
-	dev::bigint newMemSize;
-	dev::u256 gas;
-	dev::h256 code;
-	dev::h256 callData;
-	dev::u256s stack;
-	dev::bytes memory;
-	dev::bigint gasCost;
-	std::map<dev::u256, dev::u256> storage;
-	std::vector<WorldState const*> levels;
-};
-
 using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
 
 QString contentsOfQResource(std::string const& res);
 
-class Main : public QMainWindow
+class Main: public QMainWindow, public Context
 {
 	Q_OBJECT
 
@@ -179,9 +163,6 @@ signals:
 private:
 	dev::p2p::NetworkPreferences netPrefs() const;
 
-	QString pretty(dev::Address _a) const;
-	QString prettyU256(dev::u256 _n) const;
-
 	QString lookup(QString const& _n) const;
 	dev::Address getNameReg() const;
 	dev::Address getCurrencies() const;
@@ -190,9 +171,12 @@ private:
 	void initDebugger();
 	void updateDebugger();
 	void debugFinished();
-	QString render(dev::Address _a) const;
-	dev::Address fromString(QString const& _a) const;
-	std::string renderDiff(dev::eth::StateDiff const& _d) const;
+
+	QString pretty(dev::Address _a) const override;
+	QString prettyU256(dev::u256 _n) const override;
+	QString render(dev::Address _a) const override;
+	dev::Address fromString(QString const& _a) const override;
+	std::string renderDiff(dev::eth::StateDiff const& _d) const override;
 
 	void alterDebugStateGroup(bool _enable) const;
 
@@ -269,6 +253,7 @@ private:
 	QMap<unsigned, unsigned> m_pcWarp;
 	QList<WorldState> m_history;
 	std::map<dev::u256, dev::bytes> m_codes;	// and pcWarps
+
 	bool m_enableOptimizer = true;
 
 	QNetworkAccessManager m_webCtrl;
