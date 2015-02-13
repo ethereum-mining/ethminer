@@ -1,8 +1,11 @@
 0. Formatting
 
+GOLDEN RULE: Never *ever* use spaces for formatting.
+
 a. Use tabs for indentation!
 - tab stops are every 4 characters.
 - One indentation level -> exactly one byte (i.e. a tab character) in the source file.
+- Never use spaces to line up sequential lines: If you have run-on lines, indent as you would for a block.
 b. Line widths:
 - Don't worry about having lines of code > 80-char wide.
 - Lines of comments should be formatted according to ease of viewing, but simplicity is to be prefered over beauty.
@@ -17,10 +20,22 @@ j. Braces, when used, always have their own lines and are at same indentation le
 
 (WRONG)
 if( a==b[ i ] ) { printf ("Hello\n"); }
+foo->bar(someLongVariableName,
+         anotherLongVariableName,
+         anotherLongVariableName,
+         anotherLongVariableName,
+         anotherLongVariableName);
 
 (RIGHT)
 if (a == b[i])
-    printf("Hello\n");	// NOTE spaces used instead of tab here for clarify - first byte should be '\t'.
+    printf("Hello\n");	// NOTE spaces used instead of tab here for clarity - first byte should be '\t'.
+foo->bar(
+    someLongVariableName,
+    anotherLongVariableName,
+    anotherLongVariableName,
+    anotherLongVariableName,
+    anotherLongVariableName
+);
 
 
 
@@ -98,7 +113,7 @@ g. Never use a macro where adequate non-preprocessor C++ can be written.
 h. Prefer "using NewType = OldType" to "typedef OldType NewType".
 i. Make use of auto whenever type is clear or unimportant:
 - Always avoid doubly-stating the type.
-- Use to avoid vast and unimportant type declarations
+- Use to avoid vast and unimportant type declarations.
 
 
 (WRONG)
@@ -172,6 +187,7 @@ d. In general expressions should be roughly as important/semantically meaningful
 11. Commenting
 
 a. Comments should be doxygen-compilable, using @notation rather than \notation.
+
 
 12. Include Headers
 
