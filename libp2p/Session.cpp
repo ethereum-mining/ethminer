@@ -40,10 +40,10 @@ Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Peer> const&
 	m_server(_s),
 	m_socket(std::move(_socket)),
 	m_peer(_n),
-	m_info({NodeId(), "?", m_socket.remote_endpoint().address().to_string(), 0, std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()}),
-	m_ping(chrono::time_point<chrono::steady_clock>::max())
+	m_info({NodeId(), "?", m_socket.remote_endpoint().address().to_string(), 0, chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()}),
+	m_ping(chrono::steady_clock::time_point::max())
 {
-	m_lastReceived = m_connect = std::chrono::steady_clock::now();
+	m_lastReceived = m_connect = chrono::steady_clock::now();
 }
 
 Session::~Session()
