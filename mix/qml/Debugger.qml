@@ -529,7 +529,7 @@ Rectangle {
 										Text {
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.NoWrap
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
@@ -600,7 +600,7 @@ Rectangle {
 										Text {
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.NoWrap
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
