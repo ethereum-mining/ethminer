@@ -117,9 +117,9 @@ std::string prettyU256(u256 _n, bool _abridged)
 			n = toHex(a.ref());
 
 		if (n.empty())
-			s << "0x" << a;
+			s << "0x0";
 		else
-			s << n << "(0x" << n << ")";
+			s << "0x" << n <<;
 	}
 	else if ((raw = fromRaw((h256)_n, &inc)).size())
 		return "\"" + raw + "\"" + (inc ? " + " + std::to_string(inc) : "");
