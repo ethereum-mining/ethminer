@@ -54,7 +54,7 @@ class WebThreeNetworkFace
 {
 public:
 	/// Get information on the current peer set.
-	virtual std::vector<p2p::PeerInfo> peers() = 0;
+	virtual std::vector<p2p::PeerSessionInfo> peers() = 0;
 
 	/// Same as peers().size(), but more efficient.
 	virtual size_t peerCount() const = 0;
@@ -63,10 +63,7 @@ public:
 	virtual void connect(std::string const& _seedHost, unsigned short _port) = 0;
 
 	/// Save peers
-	virtual dev::bytes saveNodes() = 0;
-
-	/// Restore peers
-	virtual void restoreNodes(bytesConstRef _saved) = 0;
+	virtual dev::bytes saveNetwork() = 0;
 
 	/// Sets the ideal number of peers.
 	virtual void setIdealPeerCount(size_t _n) = 0;
@@ -78,7 +75,7 @@ public:
 	virtual p2p::NodeId id() const = 0;
 
 	/// Gets the nodes.
-	virtual p2p::Nodes nodes() const = 0;
+	virtual p2p::Peers nodes() const = 0;
 
 	/// Start the network subsystem.
 	virtual void startNetwork() = 0;
@@ -106,7 +103,7 @@ class WebThreeDirect : public WebThreeNetworkFace
 public:
 	/// Constructor for private instance. If there is already another process on the machine using @a _dbPath, then this will throw an exception.
 	/// ethereum() may be safely static_cast()ed to a eth::Client*.
-	WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean = false, std::set<std::string> const& _interfaces = {"eth", "shh"}, p2p::NetworkPreferences const& _n = p2p::NetworkPreferences(), int miners = -1);
+	WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean = false, std::set<std::string> const& _interfaces = {"eth", "shh"}, p2p::NetworkPreferences const& _n = p2p::NetworkPreferences(), bytesConstRef _network = bytesConstRef(), int miners = -1);
 
 	/// Destructor.
 	~WebThreeDirect();
@@ -124,7 +121,7 @@ public:
 	// Network stuff:
 
 	/// Get information on the current peer set.
-	std::vector<p2p::PeerInfo> peers() override;
+	std::vector<p2p::PeerSessionInfo> peers() override;
 
 	/// Same as peers().size(), but more efficient.
 	size_t peerCount() const override;
@@ -133,10 +130,10 @@ public:
 	void connect(std::string const& _seedHost, unsigned short _port = 30303) override;
 
 	/// Save peers
-	dev::bytes saveNodes() override;
+	dev::bytes saveNetwork() override;
 
-	/// Restore peers
-	void restoreNodes(bytesConstRef _saved) override;
+//	/// Restore peers
+//	void restoreNetwork(bytesConstRef _saved) override;
 
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n) override;
@@ -148,7 +145,7 @@ public:
 	p2p::NodeId id() const override { return m_net.id(); }
 
 	/// Gets the nodes.
-	p2p::Nodes nodes() const override { return m_net.nodes(); }
+	p2p::Peers nodes() const override { return m_net.getPeers(); }
 
 	/// Start the network subsystem.
 	void startNetwork() override { m_net.start(); }
@@ -235,7 +232,7 @@ public:
 	// Peer network stuff - forward through RPCSlave, probably with P2PNetworkSlave/Master classes like Whisper & Ethereum.
 
 	/// Get information on the current peer set.
-	std::vector<p2p::PeerInfo> peers();
+	std::vector<p2p::PeerSessionInfo> peers();
 
 	/// Same as peers().size(), but more efficient.
 	size_t peerCount() const;

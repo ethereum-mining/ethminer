@@ -435,12 +435,14 @@ int main(int argc, char** argv)
 	cout << credits();
 
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
+	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
 	dev::WebThreeDirect web3(
 		"NEthereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM),
 		dbPath,
 		false,
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
+		&nodesState,
 		miners
 		);
 	web3.setIdealPeerCount(peers);
@@ -452,9 +454,7 @@ int main(int argc, char** argv)
 		c->setAddress(coinbase);
 	}
 
-	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/nodeState.rlp");
-	web3.restoreNodes(&nodesState);
-
+	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 	web3.startNetwork();
 
 	if (bootstrap)
@@ -1023,7 +1023,7 @@ int main(int argc, char** argv)
 
 		// Peers
 		y = 1;
-		for (PeerInfo const& i: web3.peers())
+		for (PeerSessionInfo const& i: web3.peers())
 		{
 			auto s = boost::format("%1% ms - %2%:%3% - %4%") %
 				toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) %
