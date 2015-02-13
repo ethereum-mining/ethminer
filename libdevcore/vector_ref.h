@@ -1,7 +1,8 @@
 #pragma once
 
-#include <type_traits>
+#include <cstring>
 #include <cassert>
+#include <type_traits>
 #include <vector>
 #include <string>
 
