@@ -19,6 +19,7 @@ Item
 			text: text
 			anchors.fill: parent
 			wrapMode: Text.WrapAnywhere
+			clip: true
 			font.family: boldFont.name
 			MouseArea {
 				id: mouseArea

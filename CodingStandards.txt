@@ -96,12 +96,18 @@ e. Always pass non-trivial parameters with a const& suffix.
 f. If a function returns multiple values, use std::tuple (std::pair acceptable). Prefer not using */& arguments, except where efficiency requires.
 g. Never use a macro where adequate non-preprocessor C++ can be written.
 h. Prefer "using NewType = OldType" to "typedef OldType NewType".
+i. Make use of auto whenever type is clear or unimportant:
+- Always avoid doubly-stating the type.
+- Use to avoid vast and unimportant type declarations
+
 
 (WRONG)
 const double d = 0;
 int i, j;
 char *s;
 float meanAndSigma(std::vector<float> _v, float* _sigma);
+Derived* x(dynamic_cast<Derived*>(base));
+for (map<ComplexTypeOne, ComplexTypeTwo>::iterator i = l.begin(); i != l.end(); ++l) {}
 
 (CORRECT)
 double const d = 0;
@@ -109,7 +115,8 @@ int i;
 int j;
 char* s;
 std::tuple<float, float> meanAndSigma(std::vector<float> const& _v);
-
+auto x = dynamic_cast<Derived*>(base);
+for (auto i = x.begin(); i != x.end(); ++i) {}
 
 
 7. Structs & classes
