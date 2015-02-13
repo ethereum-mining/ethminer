@@ -598,9 +598,11 @@ Rectangle {
 										Layout.minimumWidth: parent.width / 2
 										Layout.maximumWidth: parent.width / 2
 										Text {
+											maximumLineCount: 1
+											clip: true
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.NoWrap
+											wrapMode: Text.WrapAnywhere
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
