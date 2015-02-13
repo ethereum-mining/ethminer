@@ -97,7 +97,7 @@ std::string fromRaw(h256 _n, unsigned* _inc)
 	return "";
 }
 
-std::string prettyU256(u256 _n)
+std::string prettyU256(u256 _n, bool _abridged)
 {
 	unsigned inc = 0;
 	std::string raw;
@@ -110,11 +110,16 @@ std::string prettyU256(u256 _n)
 	{
 		Address a = right160(_n);
 
-		std::string n = a.abridged();
-		if (n.empty())
-			s << "0x" << a;
+		std::string n;
+		if (_abridged)
+			n =  a.abridged();
 		else
-			s << n << "(0x" << a.abridged() << ")";
+			n = toHex(a.ref());
+
+		if (n.empty())
+			s << "0";
+		else
+			s << _n << "(0x" << n << ")";
 	}
 	else if ((raw = fromRaw((h256)_n, &inc)).size())
 		return "\"" + raw + "\"" + (inc ? " + " + std::to_string(inc) : "");
