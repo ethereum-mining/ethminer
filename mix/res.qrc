@@ -97,5 +97,7 @@
         <file>qml/DefaultTextField.qml</file>
         <file>qml/CommonSeparator.qml</file>
         <file>qml/Style.qml</file>
+        <file>qml/WebPreviewStyle.qml</file>
+        <file>qml/img/available_updates.png</file>
     </qresource>
 </RCC>
