@@ -35,6 +35,7 @@ if (ETH_COMPILE)
 	include(compile/boost.cmake)
 else()	
 	eth_download(jsoncpp)
+	eth_download(microhttpd)
 	eth_download(json-rpc-cpp
 		VERSION 4.2
 		OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/json-rpc-cpp_osx.sh
