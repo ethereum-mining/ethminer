@@ -19,7 +19,8 @@ Item {
 
 	function isDocumentOpen(documentId) {
 		for (var i = 0; i < editorListModel.count; i++)
-			if (editorListModel.get(i).documentId === documentId)
+			if (editorListModel.get(i).documentId === documentId &&
+					editors.itemAt(i).item)
 				return true;
 		return false;
 	}
