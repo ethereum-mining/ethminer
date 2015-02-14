@@ -69,16 +69,16 @@ public:
 	virtual Json::Value eth_accounts();
 	virtual std::string eth_balanceAt(std::string const& _address);
 	virtual Json::Value eth_blockByHash(std::string const& _hash);
-	virtual Json::Value eth_blockByNumber(int const& _number);
+	virtual Json::Value eth_blockByNumber(int _number);
 	virtual std::string eth_call(Json::Value const& _json);
-	virtual Json::Value eth_changed(int const& _id);
+	virtual Json::Value eth_changed(int _id);
 	virtual std::string eth_codeAt(std::string const& _address);
 	virtual std::string eth_coinbase();
 	virtual Json::Value eth_compilers();
 	virtual double eth_countAt(std::string const& _address);
 	virtual int eth_defaultBlock();
 	virtual std::string eth_gasPrice();
-	virtual Json::Value eth_filterLogs(int const& _id);
+	virtual Json::Value eth_filterLogs(int _id);
 	virtual bool eth_flush();
 	virtual Json::Value eth_logs(Json::Value const& _json);
 	virtual bool eth_listening();
@@ -88,20 +88,20 @@ public:
 	virtual int eth_number();
 	virtual int eth_peerCount();
 	virtual bool eth_setCoinbase(std::string const& _address);
-	virtual bool eth_setDefaultBlock(int const& _block);
-	virtual bool eth_setListening(bool const& _listening);
+	virtual bool eth_setDefaultBlock(int _block);
+	virtual bool eth_setListening(bool _listening);
 	virtual std::string eth_lll(std::string const& _s);
 	virtual std::string eth_serpent(std::string const& _s);
-	virtual bool eth_setMining(bool const& _mining);
+	virtual bool eth_setMining(bool _mining);
 	virtual std::string eth_solidity(std::string const& _code);
 	virtual std::string eth_stateAt(std::string const& _address, std::string const& _storage);
 	virtual Json::Value eth_storageAt(std::string const& _address);
 	virtual std::string eth_transact(Json::Value const& _json);
-	virtual Json::Value eth_transactionByHash(std::string const& _hash, int const& _i);
-	virtual Json::Value eth_transactionByNumber(int const& _number, int const& _i);
-	virtual Json::Value eth_uncleByHash(std::string const& _hash, int const& _i);
-	virtual Json::Value eth_uncleByNumber(int const& _number, int const& _i);
-	virtual bool eth_uninstallFilter(int const& _id);
+	virtual Json::Value eth_transactionByHash(std::string const& _hash, int _i);
+	virtual Json::Value eth_transactionByNumber(int  _number, int _i);
+	virtual Json::Value eth_uncleByHash(std::string const& _hash, int _i);
+	virtual Json::Value eth_uncleByNumber(int _number, int _i);
+	virtual bool eth_uninstallFilter(int _id);
 
 	virtual Json::Value eth_getWork();
 	virtual bool eth_submitWork(std::string const& _nonce);
@@ -112,13 +112,13 @@ public:
 	virtual bool db_putString(std::string const& _name, std::string const& _key, std::string const& _value);
 
 	virtual std::string shh_addToGroup(std::string const& _group, std::string const& _who);
-	virtual Json::Value shh_changed(int const& _id);
+	virtual Json::Value shh_changed(int _id);
 	virtual bool shh_haveIdentity(std::string const& _id);
 	virtual int shh_newFilter(Json::Value const& _json);
 	virtual std::string shh_newGroup(std::string const& _id, std::string const& _who);
 	virtual std::string shh_newIdentity();
 	virtual bool shh_post(Json::Value const& _json);
-	virtual bool shh_uninstallFilter(int const& _id);
+	virtual bool shh_uninstallFilter(int _id);
 
 	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
 	void setIdentities(std::vector<dev::KeyPair> const& _ids);
