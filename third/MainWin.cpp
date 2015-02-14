@@ -40,6 +40,7 @@
 #include <libethereum/EthereumHost.h>
 #include <libwebthree/WebThree.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
+#include <jsonrpccpp/server/connectors/httpserver.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -118,20 +119,24 @@ Main::Main(QWidget *parent) :
 	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}, NetworkPreferences(), networkConfig));
 	m_web3->connect(Host::pocHost());
 
-	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_httpConnector.reset(new jsonrpc::HttpServer(8080));
+	m_server.reset(new WebThreeStubServer(*m_httpConnector, *web3(), keysAsVector(m_myKeys)));
+//	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_httpConnector, *web3(), keysAsVector(m_myKeys)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 	
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
-		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
-		m_qweb = new QWebThree(this);
-		auto qweb = m_qweb;
-		m_qwebConnector.setQWeb(qweb);
-
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, [f, this]()
+		{
+			f->disconnect();
+			f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership);
+			f->evaluateJavaScript(contentsOfQResource(":/js/bignumber.min.js"));
+			f->evaluateJavaScript(contentsOfQResource(":/js/webthree.js"));
+			f->evaluateJavaScript(contentsOfQResource(":/js/setup.js"));
+		});
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
@@ -163,7 +168,6 @@ Main::~Main()
 {
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
-	m_qweb->clientDieing();
 	writeSettings();
 }
 
