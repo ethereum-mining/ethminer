@@ -206,6 +206,13 @@ vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getIn
 	return *m_interfaceFunctionList;
 }
 
+TypePointer EnumValue::getType(ContractDefinition const*) const
+{
+	EnumDefinition const* parentDef = dynamic_cast<EnumDefinition const*>(getScope());
+	solAssert(parentDef, "Enclosing Scope of EnumValue was not set");
+	return make_shared<EnumType>(*parentDef);
+}
+
 void InheritanceSpecifier::checkTypeRequirements()
 {
 	m_baseName->checkTypeRequirements();
@@ -253,6 +260,24 @@ void StructDefinition::checkRecursion() const
 				queue.push_back(&dynamic_cast<StructDefinition const&>(*typeName.getReferencedDeclaration()));
 			}
 	}
+}
+
+void EnumDefinition::checkValidityOfMembers() const
+{
+	vector<ASTPointer<EnumValue>> members(getMembers());
+	auto compareDecls = [](ASTPointer<EnumValue> a, ASTPointer<EnumValue> b)
+	{
+		return a->getName() < b->getName();
+	};
+	sort(begin(members), end(members), compareDecls);
+	for (size_t i = 0; i < members.size() - 1; ++i)
+		if (members[i]->getName() == members[i + 1]->getName())
+			BOOST_THROW_EXCEPTION(members[i]->createTypeError("Duplicate member detected in Enum"));
+}
+
+TypePointer EnumDefinition::getType(ContractDefinition const*) const
+{
+	return make_shared<TypeType>(make_shared<EnumType>(*this));
 }
 
 TypePointer FunctionDefinition::getType(ContractDefinition const*) const

@@ -489,13 +489,23 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 		m_currentLValue.retrieveValueIfLValueNotRequested(_memberAccess);
 		break;
 	}
+	case Type::Category::Enum:
+	{
+		EnumType const& type = dynamic_cast<EnumType const&>(*_memberAccess.getExpression().getType());
+		m_context << type.getMemberValue(_memberAccess.getMemberName());
+		break;
+	}
 	case Type::Category::TypeType:
 	{
 		TypeType const& type = dynamic_cast<TypeType const&>(*_memberAccess.getExpression().getType());
-		if (type.getMembers().getMemberType(member))
+		ContractType const* contractType;
+		EnumType const* enumType;
+		if (!type.getMembers().getMemberType(member))
+			BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Invalid member access to " + type.toString()));			
+
+		if ((contractType = dynamic_cast<ContractType const*>(type.getActualType().get())))
 		{
-			ContractDefinition const& contract = dynamic_cast<ContractType const&>(*type.getActualType())
-													.getContractDefinition();
+			ContractDefinition const& contract = contractType->getContractDefinition();
 			for (ASTPointer<FunctionDefinition> const& function: contract.getDefinedFunctions())
 				if (function->getName() == member)
 				{
@@ -503,7 +513,12 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 					return;
 				}
 		}
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Invalid member access to " + type.toString()));
+		else if ((enumType = dynamic_cast<EnumType const*>(type.getActualType().get())))
+		{
+			m_context << enumType->getMemberValue(_memberAccess.getMemberName());
+			return;
+		}
+
 	}
 	case Type::Category::ByteArray:
 	{
@@ -559,6 +574,10 @@ void ExpressionCompiler::endVisit(Identifier const& _identifier)
 		// no-op
 	}
 	else if (dynamic_cast<EventDefinition const*>(declaration))
+	{
+		// no-op
+	}
+	else if (dynamic_cast<EnumDefinition const*>(declaration))
 	{
 		// no-op
 	}
@@ -746,7 +765,7 @@ void ExpressionCompiler::appendTypeConversion(Type const& _typeOnStack, Type con
 		}
 	}
 	else if (stackTypeCategory == Type::Category::Integer || stackTypeCategory == Type::Category::Contract ||
-			 stackTypeCategory == Type::Category::IntegerConstant)
+			 stackTypeCategory == Type::Category::IntegerConstant || stackTypeCategory == Type::Category::Enum)
 	{
 		if (targetTypeCategory == Type::Category::String && stackTypeCategory == Type::Category::Integer)
 		{
