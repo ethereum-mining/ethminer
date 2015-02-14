@@ -46,7 +46,7 @@ else()
 	endif()
 
 	eth_download(leveldb OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/leveldb_osx.sh)
-	eth_download(qt)
+	eth_download(qt VERSION 5.4)
 	eth_download(cryptopp)
 	eth_download(boost)
 	eth_download(curl)
