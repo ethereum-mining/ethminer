@@ -44,7 +44,7 @@ signals:
 	void newTransaction();
 
 protected:
-	virtual Json::Value eth_changed(int const& _id) override;
+	virtual Json::Value eth_changed(int _id) override;
 	virtual std::string eth_transact(Json::Value const& _json) override;
 	virtual std::string eth_call(Json::Value const& _json) override;
 

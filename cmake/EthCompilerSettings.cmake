@@ -27,13 +27,14 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
+	# enable parallel compilation
 	# specify Exception Handling Model in msvc
 	# disable unknown pragma warning (4068)
 	# disable unsafe function warning (4996)
 	# disable decorated name length exceeded, name was truncated (4503)
 	# disable warning C4535: calling _set_se_translator() requires /EHa (for boost tests)
 	# declare Windows XP requirement
-	add_compile_options(/EHsc /wd4068 /wd4996 /wd4503 -D_WIN32_WINNT=0x0501)
+	add_compile_options(/MP /EHsc /wd4068 /wd4996 /wd4503 -D_WIN32_WINNT=0x0501)
 	# disable empty object file warning
 	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4221")
 	# warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification 

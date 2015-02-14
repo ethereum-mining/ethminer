@@ -1,8 +1,11 @@
 0. Formatting
 
+GOLDEN RULE: Never *ever* use spaces for formatting.
+
 a. Use tabs for indentation!
 - tab stops are every 4 characters.
 - One indentation level -> exactly one byte (i.e. a tab character) in the source file.
+- Never use spaces to line up sequential lines: If you have run-on lines, indent as you would for a block.
 b. Line widths:
 - Don't worry about having lines of code > 80-char wide.
 - Lines of comments should be formatted according to ease of viewing, but simplicity is to be prefered over beauty.
@@ -17,10 +20,22 @@ j. Braces, when used, always have their own lines and are at same indentation le
 
 (WRONG)
 if( a==b[ i ] ) { printf ("Hello\n"); }
+foo->bar(someLongVariableName,
+         anotherLongVariableName,
+         anotherLongVariableName,
+         anotherLongVariableName,
+         anotherLongVariableName);
 
 (RIGHT)
 if (a == b[i])
-    printf("Hello\n");	// NOTE spaces used instead of tab here for clarify - first byte should be '\t'.
+    printf("Hello\n");	// NOTE spaces used instead of tab here for clarity - first byte should be '\t'.
+foo->bar(
+    someLongVariableName,
+    anotherLongVariableName,
+    anotherLongVariableName,
+    anotherLongVariableName,
+    anotherLongVariableName
+);
 
 
 
@@ -57,6 +72,8 @@ e. Split complex macro on multiple lines with '\'.
 
 3. Capitalization;
 
+GOLDEN RULE: Preprocessor: ALL_CAPS; C++: camelCase.
+
 a. Use camelCase for splitting words in names, except where obviously extending STL/boost functionality in which case follow those naming conventions.
 b. The following entities' first alpha is upper case:
 - Type names.
@@ -64,6 +81,7 @@ b. The following entities' first alpha is upper case:
 - Enum members.
 - static const variables that form an external API.
 c. All preprocessor symbols (macros, macro argments) in full uppercase with underscore word separation.
+
 
 All other entities' first alpha is lower case.
 
@@ -98,7 +116,7 @@ g. Never use a macro where adequate non-preprocessor C++ can be written.
 h. Prefer "using NewType = OldType" to "typedef OldType NewType".
 i. Make use of auto whenever type is clear or unimportant:
 - Always avoid doubly-stating the type.
-- Use to avoid vast and unimportant type declarations
+- Use to avoid vast and unimportant type declarations.
 
 
 (WRONG)
@@ -122,6 +140,7 @@ for (auto i = x.begin(); i != x.end(); ++i) {}
 7. Structs & classes
 
 a. Structs to be used when all members public and no virtual functions.
+- In this case, members should be named naturally and not prefixed with 'm_'
 b. Classes to be used in all other circumstances.
 
 
@@ -131,7 +150,7 @@ b. Classes to be used in all other circumstances.
 a. One member per line only.
 b. Private, non-static, non-const fields prefixed with m_.
 c. Avoid public fields, except in structs.
-d. Use override, final and const judiciously.
+d. Use override, final and const as much as possible.
 e. No implementations with the class declaration, except:
 - template or force-inline method (though prefer implementation at bottom of header file).
 - one-line implementation (in which case include it in same line as declaration).
@@ -154,14 +173,18 @@ c. Avoid unpronouncable names;
 - If you need to shorten a name favour a pronouncable slice of the original to a scatterred set of consonants.
 - e.g. Manager shortens to Man rather than Mgr.
 d. Avoid prefixes of initials (e.g. DON'T use IMyInterface, CMyImplementation)
-e. A dictionary and thesaurus are your friends.
+e. Find short, memorable & (at least semi-) descriptive names for commonly used classes or name-fragments.
+- A dictionary and thesaurus are your friends.
 - Spell correctly.
-- Find short, memorable & (at least semi-) descriptive names for commonly used classes or name-fragments.
+- Think carefully about the class's purpose.
+- Imagine it as an isolated component to try to decontextualise it when considering its name.
+- Don't be trapped into naming it (purely) in terms of its implementation.
+
 
 
 10. Type-definitions
 
-a. Prefer using to typedef. e.g. using ints = std::vector<int>; rather than typedef std::vector<int> ints;
+a. Prefer 'using' to 'typedef'. e.g. using ints = std::vector<int>; rather than typedef std::vector<int> ints;
 b. Generally avoid shortening a standard form that already includes all important information:
 - e.g. stick to shared_ptr<X> rather than shortening to ptr<X>.
 c. Where there are exceptions to this (due to excessive use and clear meaning), note the change prominently and use it consistently.
@@ -169,9 +192,17 @@ c. Where there are exceptions to this (due to excessive use and clear meaning), 
 d. In general expressions should be roughly as important/semantically meaningful as the space they occupy.
 
 
+
 11. Commenting
 
 a. Comments should be doxygen-compilable, using @notation rather than \notation.
+b. Document the interface, not the implementation.
+- Documentation should be able to remain completely unchanged, even if the method is reimplemented.
+- Comment in terms of the method properties and intended alteration to class state (or what aspects of the state it reports).
+- Be careful to scrutinise documentation that extends only to intended purpose and usage.
+- Reject documentation that is simply an English transaction of the implementation.
+
+
 
 12. Include Headers
 

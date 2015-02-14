@@ -59,6 +59,10 @@ if (JSONRPC)
 	message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 	add_definitions(-DETH_JSONRPC)
 
+ 	find_package(MHD) 
+	message(" - microhttpd header: ${MHD_INCLUDE_DIRS}")
+	message(" - microhttpd lib   : ${MHD_LIBRARIES}")
+
 endif() #JSONRPC
 
 # TODO readline package does not yet check for correct version number
