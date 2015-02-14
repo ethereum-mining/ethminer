@@ -239,8 +239,7 @@ private:
 	/// Attempts to infer that @c _source contains Solidity code
 	bool sourceIsSolidity(std::string const& _source);
 	/// @eturns all method hashes of a Solidity contract in a string
-	std::string const getFunctionHashes(dev::solidity::CompilerStack const &_compiler,
-										std::string const& _contractName = "");
+	std::string const getFunctionHashes(dev::solidity::CompilerStack const &_compiler, std::string const& _contractName = "");
 
 	std::unique_ptr<Ui::Main> ui;
 
