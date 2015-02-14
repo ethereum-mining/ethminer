@@ -34,7 +34,6 @@
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
-#include <libqwebthree/QWebThree.h>
 #include <libwebthree/WebThree.h>
 #include <libsolidity/CompilerStack.h>
 #include "Context.h"
@@ -49,6 +48,10 @@ namespace dev { namespace eth {
 class Client;
 class State;
 }}
+
+namespace jsonrpc {
+class HttpServer;
+}
 
 class QQuickView;
 class OurWebThreeStubServer;
@@ -263,9 +266,8 @@ private:
 	QString m_logHistory;
 	bool m_logChanged = true;
 
-	std::unique_ptr<QWebThreeConnector> m_qwebConnector;
+	std::unique_ptr<jsonrpc::HttpServer> m_httpConnector;
 	std::unique_ptr<OurWebThreeStubServer> m_server;
-	QWebThree* m_qweb = nullptr;
 
 	static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
 	NatspecHandler m_natspecDB;
