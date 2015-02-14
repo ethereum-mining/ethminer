@@ -1,6 +1,6 @@
 import QtQuick 2.2
-import QtQuick.Controls.Styles 1.1
 import QtQuick.Controls 1.1
+import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import Qt.labs.settings 1.0
@@ -529,7 +529,7 @@ Rectangle {
 										Text {
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.NoWrap
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
@@ -598,9 +598,11 @@ Rectangle {
 										Layout.minimumWidth: parent.width / 2
 										Layout.maximumWidth: parent.width / 2
 										Text {
+											maximumLineCount: 1
+											clip: true
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.WrapAnywhere
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
