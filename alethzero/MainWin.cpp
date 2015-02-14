@@ -50,6 +50,7 @@
 #include <libethereum/EthereumHost.h>
 #include <libethereum/DownloadMan.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
+#include <jsonrpccpp/server/connectors/httpserver.h>
 #include "MainWin.h"
 #include "DownloadView.h"
 #include "MiningView.h"
@@ -167,25 +168,26 @@ Main::Main(QWidget *parent) :
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}, p2p::NetworkPreferences(), network));
 
-	m_qwebConnector.reset(new QWebThreeConnector());
-	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys), this));
+	m_httpConnector.reset(new jsonrpc::HttpServer(8080));
+	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), keysAsVector(m_myKeys), this));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
-		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
-		m_qweb = new QWebThree(this);
-		auto qweb = m_qweb;
-		m_qwebConnector->setQWeb(qweb);
-
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
 		
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
-		connect(m_qweb, SIGNAL(onNewId(QString)), this, SLOT(addNewId(QString)));
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, [f, this]()
+		{
+			f->disconnect();
+			f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership);
+			f->evaluateJavaScript(contentsOfQResource(":/js/bignumber.min.js"));
+			f->evaluateJavaScript(contentsOfQResource(":/js/webthree.js"));
+			f->evaluateJavaScript(contentsOfQResource(":/js/setup.js"));
+		});
 	});
 
 	connect(ui->webView, &QWebView::loadFinished, [=]()
@@ -216,7 +218,6 @@ Main::~Main()
 	writeSettings();
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
-	m_qweb->clientDieing();
 	g_logPost = simpleDebugOut;
 }
 
