@@ -117,7 +117,7 @@
      <x>0</x>
      <y>0</y>
      <width>1617</width>
-     <height>25</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -140,11 +140,11 @@
    </widget>
    <widget class="QMenu" name="menu_Tools">
     <property name="title">
-     <string>T&amp;ools</string>
+     <string>&amp;Tools</string>
     </property>
     <addaction name="mine"/>
     <addaction name="separator"/>
-    <addaction name="create"/>
+    <addaction name="newAccount"/>
     <addaction name="importKey"/>
     <addaction name="importKeyFile"/>
     <addaction name="exportKey"/>
@@ -160,11 +160,8 @@
    </widget>
    <widget class="QMenu" name="menu_Debug">
     <property name="title">
-     <string>Deb&amp;ug</string>
+     <string>&amp;Special</string>
     </property>
-    <addaction name="debugDumpState"/>
-    <addaction name="debugDumpStatePre"/>
-    <addaction name="separator"/>
     <addaction name="paranoia"/>
     <addaction name="clearPending"/>
     <addaction name="killBlockchain"/>
@@ -185,42 +182,28 @@
     <addaction name="separator"/>
     <addaction name="preview"/>
    </widget>
-   <widget class="QMenu" name="menuDebugger">
-    <property name="title">
-     <string>D&amp;ebugger</string>
-    </property>
-    <widget class="QMenu" name="menu_Dump_Trace">
-     <property name="title">
-      <string>&amp;Dump Trace</string>
-     </property>
-     <addaction name="dumpTrace"/>
-     <addaction name="dumpTraceStorage"/>
-     <addaction name="dumpTracePretty"/>
-    </widget>
-    <addaction name="debugCurrent"/>
-    <addaction name="menu_Dump_Trace"/>
-    <addaction name="separator"/>
-    <addaction name="debugStep"/>
-    <addaction name="debugStepInto"/>
-    <addaction name="debugStepOut"/>
-    <addaction name="debugStepBack"/>
-    <addaction name="debugStepBackInto"/>
-    <addaction name="debugStepBackOut"/>
-   </widget>
    <widget class="QMenu" name="menuWhispe">
     <property name="title">
      <string>&amp;Whisper</string>
     </property>
     <addaction name="newIdentity"/>
    </widget>
+   <widget class="QMenu" name="menuDebug">
+    <property name="title">
+     <string>&amp;Debug</string>
+    </property>
+    <addaction name="debugCurrent"/>
+    <addaction name="debugDumpState"/>
+    <addaction name="debugDumpStatePre"/>
+   </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_View"/>
    <addaction name="menu_Network"/>
    <addaction name="menu_Tools"/>
-   <addaction name="menuDebugger"/>
    <addaction name="menuWhispe"/>
-   <addaction name="menu_Debug"/>
+   <addaction name="menuDebug"/>
    <addaction name="menu_Help"/>
+   <addaction name="menu_Debug"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="dockWidget_2">
@@ -987,171 +970,6 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget_9">
-   <property name="floating">
-    <bool>false</bool>
-   </property>
-   <property name="features">
-    <set>QDockWidget::DockWidgetFeatureMask</set>
-   </property>
-   <property name="windowTitle">
-    <string>Debugger</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>1</number>
-   </attribute>
-   <widget class="QWidget" name="debugPanel">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
-    <layout class="QVBoxLayout" name="verticalLayout_4">
-     <property name="spacing">
-      <number>6</number>
-     </property>
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
-      <number>0</number>
-     </property>
-     <item>
-      <widget class="QSplitter" name="splitter_6">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <widget class="QSplitter" name="splitter_42">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-          <horstretch>1</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <widget class="QListWidget" name="debugCode">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::NoFrame</enum>
-         </property>
-         <property name="lineWidth">
-          <number>0</number>
-         </property>
-        </widget>
-        <widget class="QListWidget" name="callStack">
-         <property name="font">
-          <font>
-           <family>Ubuntu Mono</family>
-          </font>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::NoFrame</enum>
-         </property>
-         <property name="lineWidth">
-          <number>0</number>
-         </property>
-        </widget>
-       </widget>
-       <widget class="QSplitter" name="splitter_4">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-          <horstretch>1</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <widget class="QTextEdit" name="debugStack">
-         <property name="frameShape">
-          <enum>QFrame::NoFrame</enum>
-         </property>
-         <property name="lineWidth">
-          <number>0</number>
-         </property>
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
-         </property>
-        </widget>
-        <widget class="QTextEdit" name="debugMemory">
-         <property name="frameShape">
-          <enum>QFrame::NoFrame</enum>
-         </property>
-         <property name="lineWidth">
-          <number>0</number>
-         </property>
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
-         </property>
-        </widget>
-        <widget class="QTextEdit" name="debugStorage">
-         <property name="frameShape">
-          <enum>QFrame::NoFrame</enum>
-         </property>
-         <property name="lineWidth">
-          <number>0</number>
-         </property>
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-         <property name="textInteractionFlags">
-          <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
-         </property>
-        </widget>
-        <widget class="QTextEdit" name="debugCallData">
-         <property name="frameShape">
-          <enum>QFrame::NoFrame</enum>
-         </property>
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </widget>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="debugStateInfo">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QSlider" name="debugTimeline">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-  </widget>
   <widget class="QDockWidget" name="dockWidget_10">
    <property name="features">
     <set>QDockWidget::DockWidgetFeatureMask</set>
@@ -1776,7 +1594,7 @@ font-size: 14pt</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Use &amp;UPnP</string>
+    <string>&amp;Use UPnP</string>
    </property>
   </action>
   <action name="connect">
@@ -1800,7 +1618,7 @@ font-size: 14pt</string>
     <string>&amp;Mine</string>
    </property>
   </action>
-  <action name="create">
+  <action name="newAccount">
    <property name="text">
     <string>&amp;New Address</string>
    </property>
@@ -1834,7 +1652,7 @@ font-size: 14pt</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Mining &amp;Paranoia</string>
+    <string>&amp;Mining Paranoia</string>
    </property>
   </action>
   <action name="killBlockchain">
@@ -1862,7 +1680,7 @@ font-size: 14pt</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Show Ancient &amp;Blocks</string>
+    <string>&amp;Show Ancient Blocks</string>
    </property>
   </action>
   <action name="showAllAccounts">
@@ -1870,7 +1688,7 @@ font-size: 14pt</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Show Anonymous &amp;Accounts</string>
+    <string>Show &amp;Anonymous Accounts</string>
    </property>
   </action>
   <action name="usePast">
@@ -1970,7 +1788,7 @@ font-size: 14pt</string>
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>Debu&amp;g Current Transaction</string>
+    <string>&amp;Debug Current Transaction</string>
    </property>
   </action>
   <action name="debugDumpState">
@@ -1978,7 +1796,7 @@ font-size: 14pt</string>
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>D&amp;ump Current Transaction State (post)</string>
+    <string>Dump &amp;Current Transaction State (post)</string>
    </property>
   </action>
   <action name="debugDumpStatePre">
@@ -1986,7 +1804,7 @@ font-size: 14pt</string>
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>D&amp;ump Current Transaction State (pre)</string>
+    <string>Dump Current &amp;Transaction State (pre)</string>
    </property>
   </action>
   <action name="dumpTracePretty">
@@ -2007,7 +1825,7 @@ font-size: 14pt</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Use Private Chain...</string>
+    <string>Use &amp;Private Chain...</string>
    </property>
   </action>
   <action name="enableOptimizer">
@@ -2015,7 +1833,7 @@ font-size: 14pt</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Enable LLL &amp;Optimizer</string>
+    <string>&amp;Enable LLL Optimizer</string>
    </property>
   </action>
   <action name="turboMining">
@@ -2023,7 +1841,7 @@ font-size: 14pt</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Reserved Debug 1</string>
+    <string>&amp;Reserved Debug 1</string>
    </property>
   </action>
   <action name="localNetworking">
@@ -2031,7 +1849,7 @@ font-size: 14pt</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Enable Local Addresses</string>
+    <string>&amp;Enable Local Addresses</string>
    </property>
   </action>
   <action name="importKeyFile">
@@ -2044,7 +1862,7 @@ font-size: 14pt</string>
   </action>
   <action name="go">
    <property name="text">
-    <string>Go!</string>
+    <string>&amp;Go!</string>
    </property>
   </action>
   <action name="newIdentity">
@@ -2054,7 +1872,7 @@ font-size: 14pt</string>
   </action>
   <action name="clearPending">
    <property name="text">
-    <string>Clear Pe&amp;nd&amp;ing</string>
+    <string>&amp;Clear Pending</string>
    </property>
   </action>
   <action name="jitvm">
@@ -2112,10 +1930,6 @@ font-size: 14pt</string>
   <tabstop>urlEdit</tabstop>
   <tabstop>webView</tabstop>
   <tabstop>nameReg</tabstop>
-  <tabstop>debugCode</tabstop>
-  <tabstop>debugStack</tabstop>
-  <tabstop>debugMemory</tabstop>
-  <tabstop>debugStorage</tabstop>
  </tabstops>
  <resources/>
  <connections/>
