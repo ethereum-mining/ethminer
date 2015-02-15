@@ -1491,7 +1491,7 @@ void Main::on_contracts_currentItemChanged()
 			auto storage = ethereum()->storageAt(address);
 			for (auto const& i: storage)
 				s << "@" << showbase << hex << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << prettyU256(i.second).toStdString() << "<br/>";
-			s << "<h4>Body Code</h4>" << disassemble(ethereum()->codeAt(address));
+			s << "<h4>Body Code (" << sha3(ethereum()->codeAt(address)).abridged() << ")</h4>" << disassemble(ethereum()->codeAt(address));
 			s << Div(Mono) << toHex(ethereum()->codeAt(address)) << "</div>";
 			ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 		}

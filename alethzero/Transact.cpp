@@ -30,6 +30,7 @@
 #include <libsolidity/Scanner.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/SourceReferenceFormatter.h>
+#include <libnatspec/NatspecExpressionEvaluator.h>
 #include <libethereum/Client.h>
 #include <libethereum/Utility.h>
 #ifndef _MSC_VER
@@ -239,9 +240,18 @@ void Transact::rejigData()
 	else
 	{
 		m_data = parseData(ui->data->toPlainText().toStdString());
-		ui->code->setHtml(QString::fromStdString(dev::memDump(m_data, 8, true)));
-		if (ethereum()->codeAt(m_context->fromString(ui->destination->currentText()), 0).size())
+		auto to = m_context->fromString(ui->destination->currentText());
+		QString natspec;
+		if (ethereum()->codeAt(to, 0).size())
 		{
+			string userNotice = m_natSpecDB->getUserNotice(ethereum()->postState().codeHash(to), m_data);
+			if (userNotice.empty())
+				natspec = "Destination contract unknown.";
+			else
+			{
+				NatspecExpressionEvaluator evaluator;
+				natspec = evaluator.evalExpression(QString::fromStdString(userNotice));
+			}
 			ui->gas->setMinimum((qint64)Interface::txGas(m_data, 1));
 			if (!ui->gas->isEnabled())
 				ui->gas->setValue(m_backupGas);
@@ -249,11 +259,13 @@ void Transact::rejigData()
 		}
 		else
 		{
+			natspec += "Destination not a contract.";
 			if (ui->gas->isEnabled())
 				m_backupGas = ui->gas->value();
 			ui->gas->setValue((qint64)Interface::txGas(m_data));
 			ui->gas->setEnabled(false);
 		}
+		ui->code->setHtml("<h3>NatSpec</h3>" + natspec + "<h3>Dump</h3>" + QString::fromStdString(dev::memDump(m_data, 8, true)) + "<h3>Hex</h3>" + Div(Mono) + QString::fromStdString(toHex(m_data)) + "</div>");
 	}
 	updateFee();
 }
@@ -312,7 +324,6 @@ void Transact::on_debug_clicked()
 				Executive e(st, ethereum()->blockChain(), 0);
 				dw.populate(e, t);
 				dw.exec();
-				close();
 				return;
 			}
 			QMessageBox::critical(this, "Transaction Failed", "Couldn't make transaction: no single account contains at least the required amount.");

@@ -19,7 +19,7 @@ public:
 
 	vector_ref(): m_data(nullptr), m_count(0) {}
 	vector_ref(_T* _data, size_t _count): m_data(_data), m_count(_count) {}
-	vector_ref(std::string* _data): m_data((_T*)_data->data()), m_count(_data->size() / sizeof(_T)) {}
+	vector_ref(typename std::conditional<std::is_const<_T>::value, std::string const*, std::string*>::type _data): m_data((_T*)_data->data()), m_count(_data->size() / sizeof(_T)) {}
 	vector_ref(typename std::conditional<std::is_const<_T>::value, std::vector<typename std::remove_const<_T>::type> const*, std::vector<_T>*>::type _data): m_data(_data->data()), m_count(_data->size()) {}
 	vector_ref(typename std::conditional<std::is_const<_T>::value, std::string const&, std::string&>::type _data): m_data((_T*)_data.data()), m_count(_data.size() / sizeof(_T)) {}
 #ifdef STORAGE_LEVELDB_INCLUDE_DB_H_
