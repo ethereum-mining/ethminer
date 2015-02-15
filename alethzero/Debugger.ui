@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>946</width>
+    <width>989</width>
     <height>690</height>
    </rect>
   </property>
@@ -62,27 +62,6 @@
        <widget class="QToolButton" name="backOut">
         <property name="text">
          <string>Back Out</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QToolButton" name="dump">
-        <property name="text">
-         <string>Dump</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QToolButton" name="dumpPretty">
-        <property name="text">
-         <string>Dump Pretty</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QToolButton" name="dumpStorage">
-        <property name="text">
-         <string>Dump Storage</string>
         </property>
        </widget>
       </item>
@@ -229,6 +208,59 @@
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="frame_2">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QToolButton" name="dump">
+        <property name="text">
+         <string>Dump</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="dumpStorage">
+        <property name="text">
+         <string>Dump Storage</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="dumpPretty">
+        <property name="text">
+         <string>Dump Pretty</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>577</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QToolButton" name="close">
+        <property name="text">
+         <string>Close</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>
