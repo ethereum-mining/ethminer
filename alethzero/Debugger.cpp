@@ -56,18 +56,26 @@ void Debugger::init()
 	}
 }
 
-void Debugger::populate(dev::eth::Executive& _executive, dev::bytesConstRef _transactionRLP)
+void Debugger::populate(dev::eth::Executive& _executive, dev::eth::Transaction const& _transaction)
 {
 	finished();
-	if (m_session.populate(_executive, _transactionRLP))
+	if (m_session.populate(_executive, _transaction))
 		init();
 	update();
 }
 
-bool DebugSession::populate(dev::eth::Executive& _executive, dev::bytesConstRef _transactionRLP)
+bool DebugSession::populate(dev::eth::Executive& _executive, dev::eth::Transaction const& _transaction)
 {
-	if (_executive.setup(_transactionRLP))
+	try {
+		if (_executive.setup(_transaction))
+			return false;
+	}
+	catch (...)
+	{
+		// Invalid transaction
 		return false;
+	}
+
 	vector<WorldState const*> levels;
 	bytes lastExtCode;
 	bytesConstRef lastData;
