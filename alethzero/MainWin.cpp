@@ -56,23 +56,14 @@
 #include "MiningView.h"
 #include "BuildInfo.h"
 #include "OurWebThreeStubServer.h"
+#include "Transact.h"
+#include "Debugger.h"
 #include "ui_Main.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::eth;
 namespace js = json_spirit;
-
-#define Small "font-size: small; "
-#define Mono "font-family: Ubuntu Mono, Monospace, Lucida Console, Courier New; font-weight: bold; "
-#define Div(S) "<div style=\"" S "\">"
-#define Span(S) "<span style=\"" S "\">"
-
-static void initUnits(QComboBox* _b)
-{
-	for (auto n = (unsigned)units().size(); n-- != 0; )
-		_b->addItem(QString::fromStdString(units()[n].second), n);
-}
 
 QString Main::fromRaw(h256 _n, unsigned* _inc)
 {
@@ -99,12 +90,6 @@ QString Main::fromRaw(h256 _n, unsigned* _inc)
 	return QString();
 }
 
-static vector<KeyPair> keysAsVector(QList<KeyPair> const& keys)
-{
-	auto list = keys.toStdList();
-	return {begin(list), end(list)};
-}
-
 QString contentsOfQResource(string const& res)
 {
 	QFile file(QString::fromStdString(res));
@@ -120,7 +105,8 @@ Address c_newConfig = Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
-	ui(new Ui::Main)
+	ui(new Ui::Main),
+	m_transact(this, this)
 {
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
@@ -149,12 +135,6 @@ Main::Main(QWidget *parent) :
 
 	ui->configDock->close();
 	on_verbosity_valueChanged();
-	initUnits(ui->gasPriceUnits);
-	initUnits(ui->valueUnits);
-	ui->valueUnits->setCurrentIndex(6);
-	ui->gasPriceUnits->setCurrentIndex(4);
-	ui->gasPrice->setValue(10);
-	on_destination_currentTextChanged();
 
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
@@ -373,12 +353,6 @@ void Main::on_forceMining_triggered()
 	ethereum()->setForceMining(ui->forceMining->isChecked());
 }
 
-void Main::on_enableOptimizer_triggered()
-{
-	m_enableOptimizer = ui->enableOptimizer->isChecked();
-	on_data_textChanged();
-}
-
 QString Main::contents(QString _s)
 {
 	return QString::fromStdString(dev::asString(dev::contents(_s.toStdString())));
@@ -410,6 +384,12 @@ void Main::load(QString _s)
 			line.clear();
 		}
 	}*/
+}
+
+void Main::on_newTransaction_triggered()
+{
+	m_transact.setEnvironment(m_myKeys, ethereum(), &m_natSpecDB);
+	m_transact.exec();
 }
 
 void Main::on_loadJS_triggered()
@@ -673,7 +653,6 @@ void Main::writeSettings()
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
 	s.setValue("showAllAccounts", ui->showAllAccounts->isChecked());
-	s.setValue("enableOptimizer", m_enableOptimizer);
 	s.setValue("clientName", ui->clientName->text());
 	s.setValue("idealPeers", ui->idealPeers->value());
 	s.setValue("port", ui->port->value());
@@ -743,8 +722,6 @@ void Main::readSettings(bool _skipGeometry)
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
 	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
-	m_enableOptimizer = s.value("enableOptimizer", true).toBool();
-	ui->enableOptimizer->setChecked(m_enableOptimizer);
 	ui->clientName->setText(s.value("clientName", "").toString());
 	if (ui->clientName->text().isEmpty())
 		ui->clientName->setText(QInputDialog::getText(nullptr, "Enter identity", "Enter a name that will identify you on the peer network"));
@@ -991,7 +968,6 @@ void Main::refreshNetwork()
 
 void Main::refreshAll()
 {
-	refreshDestination();
 	refreshBlockChain();
 	refreshBlockCount();
 	refreshPending();
@@ -1040,20 +1016,6 @@ void Main::refreshAccounts()
 						->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
 			}
 		}
-}
-
-void Main::refreshDestination()
-{
-	cwatch << "refreshDestination()";
-	QString s;
-	for (auto i: ethereum()->addresses())
-		if ((s = pretty(i)).size())
-			// A namereg address
-			if (ui->destination->findText(s, Qt::MatchExactly | Qt::MatchCaseSensitive) == -1)
-				ui->destination->addItem(s);
-	for (int i = 0; i < ui->destination->count(); ++i)
-		if (ui->destination->itemText(i) != "(Create Contract)" && !fromString(ui->destination->itemText(i)))
-			ui->destination->removeItem(i--);
 }
 
 void Main::refreshBlockCount()
@@ -1573,19 +1535,6 @@ void Main::on_contracts_doubleClicked()
 	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
-void Main::on_destination_currentTextChanged()
-{
-	if (ui->destination->currentText().size() && ui->destination->currentText() != "(Create Contract)")
-		if (Address a = fromString(ui->destination->currentText()))
-			ui->calculatedName->setText(render(a));
-		else
-			ui->calculatedName->setText("Unknown Address");
-	else
-		ui->calculatedName->setText("Create Contract");
-	on_data_textChanged();
-//	updateFee();
-}
-
 static shh::FullTopic topicFromText(QString _s)
 {
 	shh::BuildTopic ret;
@@ -1640,133 +1589,6 @@ static shh::FullTopic topicFromText(QString _s)
 	return ret;
 }
 
-bool Main::sourceIsSolidity(string const& _source)
-{
-	// TODO: Improve this heuristic
-	return (_source.substr(0, 8) == "contract" || _source.substr(0, 5) == "//sol");
-}
-
-static bool sourceIsSerpent(string const& _source)
-{
-	// TODO: Improve this heuristic
-	return (_source.substr(0, 5) == "//ser");
-}
-
-string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compiler,
-									 string const& _contractName)
-{
-	string ret = "";
-	auto const& contract = _compiler.getContractDefinition(_contractName);
-	auto interfaceFunctions = contract.getInterfaceFunctions();
-
-	for (auto const& it: interfaceFunctions)
-	{
-		ret += it.first.abridged();
-		ret += " :";
-		ret += it.second->getDeclaration().getName() + "\n";
-	}
-	return ret;
-}
-
-void Main::on_data_textChanged()
-{
-	if (isCreation())
-	{
-		string src = ui->data->toPlainText().toStdString();
-		vector<string> errors;
-		QString lll;
-		QString solidity;
-		if (src.find_first_not_of("1234567890abcdefABCDEF") == string::npos && src.size() % 2 == 0)
-		{
-			m_data = fromHex(src);
-		}
-		else if (sourceIsSolidity(src))
-		{
-			dev::solidity::CompilerStack compiler;
-			try
-			{
-//				compiler.addSources(dev::solidity::StandardSources);
-				m_data = compiler.compile(src, m_enableOptimizer);
-				solidity = "<h4>Solidity</h4>";
-				solidity += "<pre>var " + QString::fromStdString(compiler.defaultContractName()) + " = web3.eth.contractFromAbi(" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + ");</pre>";
-				solidity += "<pre>" + QString::fromStdString(compiler.getSolidityInterface()).toHtmlEscaped() + "</pre>";
-				solidity += "<pre>" + QString::fromStdString(getFunctionHashes(compiler)).toHtmlEscaped() + "</pre>";
-			}
-			catch (dev::Exception const& exception)
-			{
-				ostringstream error;
-				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
-				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
-			}
-			catch (...)
-			{
-				solidity = "<h4>Solidity</h4><pre>Uncaught exception.</pre>";
-			}
-		}
-#ifndef _MSC_VER
-		else if (sourceIsSerpent(src))
-		{
-			try
-			{
-				m_data = dev::asBytes(::compile(src));
-				for (auto& i: errors)
-					i = "(LLL " + i + ")";
-			}
-			catch (string err)
-			{
-				errors.push_back("Serpent " + err);
-			}
-		}
-#endif
-		else
-		{
-			m_data = compileLLL(src, m_enableOptimizer, &errors);
-			if (errors.empty())
-			{
-				auto asmcode = compileLLLToAsm(src, false);
-				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
-				if (m_enableOptimizer)
-				{
-					asmcode = compileLLLToAsm(src, true);
-					lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>" + lll;
-				}
-			}
-		}
-		QString errs;
-		if (errors.size())
-		{
-			errs = "<h4>Errors</h4>";
-			for (auto const& i: errors)
-				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
-		}
-		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped() + "<h4>Hex</h4>" Div(Mono) + QString::fromStdString(toHex(m_data)) + "</div>");
-		ui->gas->setMinimum((qint64)Client::txGas(m_data, 0));
-		if (!ui->gas->isEnabled())
-			ui->gas->setValue(m_backupGas);
-		ui->gas->setEnabled(true);
-	}
-	else
-	{
-		m_data = parseData(ui->data->toPlainText().toStdString());
-		ui->code->setHtml(QString::fromStdString(dev::memDump(m_data, 8, true)));
-		if (ethereum()->codeAt(fromString(ui->destination->currentText()), 0).size())
-		{
-			ui->gas->setMinimum((qint64)Client::txGas(m_data, 1));
-			if (!ui->gas->isEnabled())
-				ui->gas->setValue(m_backupGas);
-			ui->gas->setEnabled(true);
-		}
-		else
-		{
-			if (ui->gas->isEnabled())
-				m_backupGas = ui->gas->value();
-			ui->gas->setValue((qint64)Client::txGas(m_data));
-			ui->gas->setEnabled(false);
-		}
-	}
-	updateFee();
-}
-
 void Main::on_clearPending_triggered()
 {
 	writeSettings();
@@ -1789,54 +1611,6 @@ void Main::on_killBlockchain_triggered()
 	readSettings(true);
 	installWatches();
 	refreshAll();
-}
-
-bool Main::isCreation() const
-{
-	return ui->destination->currentText().isEmpty() || ui->destination->currentText() == "(Create Contract)";
-}
-
-u256 Main::fee() const
-{
-	return ui->gas->value() * gasPrice();
-}
-
-u256 Main::value() const
-{
-	if (ui->valueUnits->currentIndex() == -1)
-		return 0;
-	return ui->value->value() * units()[units().size() - 1 - ui->valueUnits->currentIndex()].first;
-}
-
-u256 Main::gasPrice() const
-{
-	if (ui->gasPriceUnits->currentIndex() == -1)
-		return 0;
-	return ui->gasPrice->value() * units()[units().size() - 1 - ui->gasPriceUnits->currentIndex()].first;
-}
-
-u256 Main::total() const
-{
-	return value() + fee();
-}
-
-void Main::updateFee()
-{
-	ui->fee->setText(QString("(gas sub-total: %1)").arg(formatBalance(fee()).c_str()));
-	auto totalReq = total();
-	ui->total->setText(QString("Total: %1").arg(formatBalance(totalReq).c_str()));
-
-	bool ok = false;
-	for (auto i: m_myKeys)
-		if (ethereum()->balanceAt(i.address()) >= totalReq)
-		{
-			ok = true;
-			break;
-		}
-	ui->send->setEnabled(ok);
-	QPalette p = ui->total->palette();
-	p.setColor(QPalette::WindowText, QColor(ok ? 0x00 : 0x80, 0x00, 0x00));
-	ui->total->setPalette(p);
 }
 
 void Main::on_net_triggered()
@@ -1900,74 +1674,10 @@ void Main::on_mine_triggered()
 		ethereum()->stopMining();
 }
 
-void Main::on_send_clicked()
-{
-	u256 totalReq = value() + fee();
-	for (auto i: m_myKeys)
-		if (ethereum()->balanceAt(i.address(), 0) >= totalReq)
-		{
-			Secret s = i.secret();
-			if (isCreation())
-			{
-				// If execution is a contract creation, add Natspec to
-				// a local Natspec LEVELDB
-				ethereum()->transact(s, value(), m_data, ui->gas->value(), gasPrice());
-				string src = ui->data->toPlainText().toStdString();
-				if (sourceIsSolidity(src))
-					try
-					{
-						dev::solidity::CompilerStack compiler;
-						m_data = compiler.compile(src, m_enableOptimizer);
-						for (string& s: compiler.getContractNames())
-						{
-							h256 contractHash = compiler.getContractCodeHash(s);
-							m_natspecDB.add(contractHash, compiler.getMetadata(s, dev::solidity::DocumentationType::NatspecUser));
-						}
-					}
-					catch (...)
-					{
-						statusBar()->showMessage("Couldn't compile Solidity Contract.");
-					}
-			}
-			else
-				ethereum()->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
-			return;
-		}
-	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
-}
-
 void Main::keysChanged()
 {
 	onBalancesChange();
 	m_server->setAccounts(keysAsVector(m_myKeys));
-}
-
-void Main::on_debug_clicked()
-{
-	try
-	{
-		u256 totalReq = value() + fee();
-		for (auto i: m_myKeys)
-			if (ethereum()->balanceAt(i.address()) >= totalReq)
-			{
-				State st(ethereum()->postState());
-				Secret s = i.secret();
-				Transaction t = isCreation() ?
-					Transaction(value(), gasPrice(), ui->gas->value(), m_data, st.transactionsFrom(dev::toAddress(s)), s) :
-					Transaction(value(), gasPrice(), ui->gas->value(), fromString(ui->destination->currentText()), m_data, st.transactionsFrom(dev::toAddress(s)), s);
-				Debugger dw(this, this);
-				Executive e(st, ethereum()->blockChain(), 0);
-				dw.populate(e, t);
-				dw.exec();
-				return;
-			}
-		statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
-	}
-	catch (dev::Exception const& _e)
-	{
-		statusBar()->showMessage("Error running transaction: " + QString::fromStdString(diagnostic_information(_e)));
-		// this output is aimed at developers, reconsider using _e.what for more user friendly output.
-	}
 }
 
 bool beginsWith(Address _a, bytes const& _b)
@@ -2093,16 +1803,6 @@ void Main::on_post_clicked()
 	if (m_server->ids().count(f))
 		from = m_server->ids().at(f);
 	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
-}
-
-string Main::lookupNatSpec(dev::h256 const& _contractHash) const
-{
-	return m_natspecDB.retrieve(_contractHash);
-}
-
-string Main::lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData)
-{
-	return m_natspecDB.getUserNotice(_contractHash, _transactionData);
 }
 
 int Main::authenticate(QString _title, QString _text)
