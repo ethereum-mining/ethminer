@@ -7,7 +7,6 @@ function defaultTransaction()
 		functionId: "",
 		gas: createBigInt("125000"),
 		gasPrice: createEther("100000", QEther.Wei),
-		executeConstructor: false,
 		parameters: {}
 	};
 }
