@@ -78,15 +78,16 @@ public:
 protected slots:
 	void on_callStack_currentItemChanged();
 	void on_debugTimeline_valueChanged();
-	void on_stepOver_triggered();
-	void on_stepInto_triggered();
-	void on_stepOut_triggered();
-	void on_backOver_triggered();
-	void on_backInto_triggered();
-	void on_backOut_triggered();
-	void on_dump_triggered();
-	void on_dumpPretty_triggered();
-	void on_dumpStorage_triggered();
+	void on_stepOver_clicked();
+	void on_stepInto_clicked();
+	void on_stepOut_clicked();
+	void on_backOver_clicked();
+	void on_backInto_clicked();
+	void on_backOut_clicked();
+	void on_dump_clicked();
+	void on_dumpPretty_clicked();
+	void on_dumpStorage_clicked();
+	void on_close_clicked() { close(); }
 
 private:
 	void init();
