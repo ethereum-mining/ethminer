@@ -79,12 +79,20 @@ public:
 	
 	QVariant evalRaw(QString const& _js);
 
+	QString pretty(dev::Address _a) const override;
+	QString prettyU256(dev::u256 _n) const override;
+	QString render(dev::Address _a) const override;
+	dev::Address fromString(QString const& _a) const override;
+	std::string renderDiff(dev::eth::StateDiff const& _d) const override;
+
 public slots:
 	void load(QString _file);
 	void note(QString _entry);
 	void debug(QString _entry);
 	void warn(QString _entry);
 	QString contents(QString _file);
+
+	int authenticate(QString _title, QString _text);
 
 	void onKeysChanged();
 
@@ -174,12 +182,6 @@ private:
 	void initDebugger();
 	void updateDebugger();
 	void debugFinished();
-
-	QString pretty(dev::Address _a) const override;
-	QString prettyU256(dev::u256 _n) const override;
-	QString render(dev::Address _a) const override;
-	dev::Address fromString(QString const& _a) const override;
-	std::string renderDiff(dev::eth::StateDiff const& _d) const override;
 
 	void alterDebugStateGroup(bool _enable) const;
 
