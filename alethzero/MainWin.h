@@ -99,70 +99,84 @@ public slots:
 private slots:
 	void eval(QString const& _js);
 
-	void on_connect_triggered();
-	void on_mine_triggered();
-	void on_send_clicked();
-	void on_create_triggered();
-	void on_killAccount_triggered();
+	// Application
+	void on_about_triggered();
+	void on_quit_triggered() { close(); }
+
+	// Network
+	void on_go_triggered();
 	void on_net_triggered();
-	void on_verbosity_valueChanged();
-	void on_ourAccounts_doubleClicked();
-	void ourAccountsRowsMoved();
-	void on_accounts_doubleClicked();
-	void on_destination_currentTextChanged();
-	void on_data_textChanged();
+	void on_connect_triggered();
 	void on_idealPeers_valueChanged();
+
+	// Mining
+	void on_mine_triggered();
+
+	// View
+	void on_refresh_triggered();
+	void on_showAll_triggered() { refreshBlockChain(); }
+	void on_showAllAccounts_triggered() { refreshAccounts(); }
+	void on_preview_triggered();
+
+	// Transacting
 	void on_value_valueChanged() { updateFee(); }
 	void on_gas_valueChanged() { updateFee(); }
 	void on_valueUnits_currentIndexChanged() { updateFee(); }
 	void on_gasPriceUnits_currentIndexChanged() { updateFee(); }
 	void on_gasPrice_valueChanged() { updateFee(); }
-	void on_log_doubleClicked();
-	void on_blocks_currentItemChanged();
+	void on_destination_currentTextChanged();
+	void on_data_textChanged();
+	void on_send_clicked();
+	void on_debug_clicked();
+
+	// Account management
+	void on_newAccount_triggered();
+	void on_killAccount_triggered();
+	void on_importKey_triggered();
+	void on_importKeyFile_triggered();
+	void on_exportKey_triggered();
+
+	// Tools
+	void on_loadJS_triggered();
+
+	// Stuff concerning the blocks/transactions/accounts panels
+	void ourAccountsRowsMoved();
+	void on_ourAccounts_doubleClicked();
+	void on_accounts_doubleClicked();
 	void on_contracts_doubleClicked();
 	void on_contracts_currentItemChanged();
 	void on_transactionQueue_currentItemChanged();
-	void on_about_triggered();
-	void on_paranoia_triggered();
-	void on_nameReg_textChanged();
-	void on_preview_triggered();
-	void on_quit_triggered() { close(); }
+	void on_blockChainFilter_textChanged();
+	void on_blocks_currentItemChanged();
+
+	// Logging
+	void on_log_doubleClicked();
+	void on_verbosity_valueChanged();
+
+	// Misc
 	void on_urlEdit_returnPressed();
-	void on_debugStep_triggered();
-	void on_debugStepBack_triggered();
-	void on_debug_clicked();
-	void on_debugTimeline_valueChanged();
 	void on_jsInput_returnPressed();
+	void on_nameReg_textChanged();
+
+	// Special (debug) stuff
+	void on_paranoia_triggered();
 	void on_killBlockchain_triggered();
 	void on_clearPending_triggered();
-	void on_importKey_triggered();
-	void on_exportKey_triggered();
 	void on_inject_triggered();
-	void on_showAll_triggered() { refreshBlockChain(); }
-	void on_showAllAccounts_triggered() { refreshAccounts(); }
-	void on_loadJS_triggered();
-	void on_blockChainFilter_textChanged();
 	void on_forceMining_triggered();
-	void on_dumpTrace_triggered();
-	void on_dumpTraceStorage_triggered();
-	void on_dumpTracePretty_triggered();
-	void on_debugStepInto_triggered();
-	void on_debugStepOut_triggered();
-	void on_debugStepBackOut_triggered();
-	void on_debugStepBackInto_triggered();
-	void on_callStack_currentItemChanged();
-	void on_debugCurrent_triggered();
-	void on_debugDumpState_triggered(int _add = 1);
-	void on_debugDumpStatePre_triggered();
-	void on_refresh_triggered();
 	void on_usePrivate_triggered();
 	void on_enableOptimizer_triggered();
 	void on_turboMining_triggered();
-	void on_go_triggered();
-	void on_importKeyFile_triggered();
-	void on_post_clicked();
-	void on_newIdentity_triggered();
 	void on_jitvm_triggered();
+
+	// Debugger
+	void on_debugCurrent_triggered();
+	void on_debugDumpState_triggered(int _add = 1);
+	void on_debugDumpStatePre_triggered();
+
+	// Whisper
+	void on_newIdentity_triggered();
+	void on_post_clicked();
 
 	void refreshWhisper();
 	void refreshBlockChain();
@@ -177,13 +191,6 @@ private:
 	QString lookup(QString const& _n) const;
 	dev::Address getNameReg() const;
 	dev::Address getCurrencies() const;
-
-	void populateDebugger(dev::bytesConstRef r);
-	void initDebugger();
-	void updateDebugger();
-	void debugFinished();
-
-	void alterDebugStateGroup(bool _enable) const;
 
 	void updateFee();
 	void readSettings(bool _skipGeometry = false);
@@ -248,16 +255,6 @@ private:
 	dev::Address m_nameReg;
 
 	unsigned m_backupGas;
-
-	dev::eth::State m_executiveState;
-	std::unique_ptr<dev::eth::Executive> m_currentExecution;
-	dev::h256 m_lastCode;
-	dev::h256 m_lastData;
-	std::vector<WorldState const*> m_lastLevels;
-
-	QMap<unsigned, unsigned> m_pcWarp;
-	QList<WorldState> m_history;
-	std::map<dev::u256, dev::bytes> m_codes;	// and pcWarps
 
 	bool m_enableOptimizer = true;
 
