@@ -1478,13 +1478,12 @@ void Main::on_debugCurrent_triggered()
 		if (!item->data(Qt::UserRole + 1).isNull())
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			m_executiveState = ethereum()->state(txi + 1, h);
-			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, ethereum()->blockChain(), 0));
-			Transaction t = m_executiveState.pending()[txi];
-			m_executiveState = m_executiveState.fromPending(txi);
-			auto r = t.rlp();
-			populateDebugger(&r);
-			m_currentExecution.reset();
+			bytes t = ethereum()->blockChain().transaction(h, txi);
+			State s(ethereum()->state(txi, h));
+			Executive e(s, ethereum()->blockChain(), 0);
+			Debugger dw(this, this);
+			dw.populate(e, Transaction(t, CheckSignature::Sender));
+			dw.exec();
 		}
 	}
 }
@@ -1991,7 +1990,6 @@ void Main::keysChanged()
 
 void Main::on_debug_clicked()
 {
-	debugFinished();
 	try
 	{
 		u256 totalReq = value() + fee();
@@ -2002,16 +2000,10 @@ void Main::on_debug_clicked()
 				Transaction t = isCreation() ?
 					Transaction(value(), gasPrice(), ui->gas->value(), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s) :
 					Transaction(value(), gasPrice(), ui->gas->value(), fromString(ui->destination->currentText()), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s);
-				auto r = t.rlp();
 				Debugger dw(this, this);
 				Executive e(m_executiveState, ethereum()->blockChain(), 0);
-				dw.populate(e, &r);
+				dw.populate(e, t);
 				dw.exec();
-
-				/*m_executiveState = ethereum()->postState();
-				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, ethereum()->blockChain(), 0));
-				populateDebugger(&r);
-				m_currentExecution.reset();*/
 				return;
 			}
 		statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
