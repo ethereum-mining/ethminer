@@ -53,7 +53,7 @@ struct DebugSession
 {
 	DebugSession() {}
 
-	bool populate(dev::eth::Executive& _executive, dev::bytesConstRef _transactionRLP);
+	bool populate(dev::eth::Executive& _executive, dev::eth::Transaction const& _transaction);
 
 	dev::h256 currentCode;
 	dev::h256 currentData;
@@ -73,7 +73,7 @@ public:
 	explicit Debugger(Context* _context, QWidget* _parent = 0);
 	~Debugger();
 
-	void populate(dev::eth::Executive& _executive, dev::bytesConstRef _transactionRLP);
+	void populate(dev::eth::Executive& _executive, dev::eth::Transaction const& _transaction);
 
 protected slots:
 	void on_callStack_currentItemChanged();
