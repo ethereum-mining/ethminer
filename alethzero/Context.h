@@ -22,10 +22,37 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <QString>
+#include <QList>
 #include <libethcore/CommonEth.h>
 
+class QComboBox;
+
 namespace dev { namespace eth { class StateDiff; } }
+
+#define Small "font-size: small; "
+#define Mono "font-family: Ubuntu Mono, Monospace, Lucida Console, Courier New; font-weight: bold; "
+#define Div(S) "<div style=\"" S "\">"
+#define Span(S) "<span style=\"" S "\">"
+
+void initUnits(QComboBox* _b);
+
+std::vector<dev::KeyPair> keysAsVector(QList<dev::KeyPair> const& _keys);
+
+bool sourceIsSolidity(std::string const& _source);
+bool sourceIsSerpent(std::string const& _source);
+
+class NatSpecFace
+{
+public:
+	virtual ~NatSpecFace();
+
+	virtual void add(dev::h256 const& _contractHash, std::string const& _doc) = 0;
+	virtual std::string retrieve(dev::h256 const& _contractHash) const = 0;
+	virtual std::string getUserNotice(std::string const& json, const dev::bytes& _transactionData) = 0;
+	virtual std::string getUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionDacta) = 0;
+};
 
 class Context
 {

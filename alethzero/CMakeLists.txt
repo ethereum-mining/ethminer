@@ -16,6 +16,7 @@ include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
 qt5_wrap_ui(ui_Main.h Main.ui)
 qt5_wrap_ui(ui_Debugger.h Debugger.ui)
+qt5_wrap_ui(ui_Transact.h Transact.ui)
 
 file(GLOB HEADERS "*.h")
 
@@ -28,7 +29,7 @@ endif ()
 # eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 eth_add_executable(${EXECUTABLE} 
 	ICON alethzero 
-	UI_RESOURCES alethzero.icns Main.ui Debugger.ui
+	UI_RESOURCES alethzero.icns Main.ui Debugger.ui Transact.ui
 	WIN_RESOURCES alethzero.rc
 )
 

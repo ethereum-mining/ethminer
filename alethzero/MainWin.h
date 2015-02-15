@@ -37,7 +37,7 @@
 #include <libwebthree/WebThree.h>
 #include <libsolidity/CompilerStack.h>
 #include "Context.h"
-#include "Debugger.h"
+#include "Transact.h"
 #include "NatspecHandler.h"
 
 namespace Ui {
@@ -72,11 +72,8 @@ public:
 	dev::eth::Client* ethereum() const { return m_webThree->ethereum(); }
 	std::shared_ptr<dev::shh::WhisperHost> whisper() const { return m_webThree->whisper(); }
 
-	std::string lookupNatSpec(dev::h256 const& _contractHash) const;
-	std::string lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData);
+	NatSpecFace* natSpec() { return &m_natSpecDB; }
 
-	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
-	
 	QVariant evalRaw(QString const& _js);
 
 	QString pretty(dev::Address _a) const override;
@@ -84,6 +81,10 @@ public:
 	QString render(dev::Address _a) const override;
 	dev::Address fromString(QString const& _a) const override;
 	std::string renderDiff(dev::eth::StateDiff const& _d) const override;
+
+	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
+
+	dev::u256 gasPrice() const { return 10 * dev::eth::szabo; }
 
 public slots:
 	void load(QString _file);
@@ -118,17 +119,6 @@ private slots:
 	void on_showAllAccounts_triggered() { refreshAccounts(); }
 	void on_preview_triggered();
 
-	// Transacting
-	void on_value_valueChanged() { updateFee(); }
-	void on_gas_valueChanged() { updateFee(); }
-	void on_valueUnits_currentIndexChanged() { updateFee(); }
-	void on_gasPriceUnits_currentIndexChanged() { updateFee(); }
-	void on_gasPrice_valueChanged() { updateFee(); }
-	void on_destination_currentTextChanged();
-	void on_data_textChanged();
-	void on_send_clicked();
-	void on_debug_clicked();
-
 	// Account management
 	void on_newAccount_triggered();
 	void on_killAccount_triggered();
@@ -137,6 +127,7 @@ private slots:
 	void on_exportKey_triggered();
 
 	// Tools
+	void on_newTransaction_triggered();
 	void on_loadJS_triggered();
 
 	// Stuff concerning the blocks/transactions/accounts panels
@@ -165,7 +156,6 @@ private slots:
 	void on_inject_triggered();
 	void on_forceMining_triggered();
 	void on_usePrivate_triggered();
-	void on_enableOptimizer_triggered();
 	void on_turboMining_triggered();
 	void on_jitvm_triggered();
 
@@ -196,12 +186,6 @@ private:
 	void readSettings(bool _skipGeometry = false);
 	void writeSettings();
 
-	bool isCreation() const;
-	dev::u256 fee() const;
-	dev::u256 total() const;
-	dev::u256 value() const;
-	dev::u256 gasPrice() const;
-
 	unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f);
 	unsigned installWatch(dev::h256 _tf, WatchHandler const& _f);
 	void uninstallWatch(unsigned _w);
@@ -228,14 +212,8 @@ private:
 	void refreshAll();
 	void refreshPending();
 	void refreshAccounts();
-	void refreshDestination();
 	void refreshBlockCount();
 	void refreshBalances();
-
-	/// Attempts to infer that @c _source contains Solidity code
-	bool sourceIsSolidity(std::string const& _source);
-	/// @eturns all method hashes of a Solidity contract in a string
-	std::string const getFunctionHashes(dev::solidity::CompilerStack const &_compiler, std::string const& _contractName = "");
 
 	std::unique_ptr<Ui::Main> ui;
 
@@ -251,12 +229,7 @@ private:
 	QList<dev::KeyPair> m_myKeys;
 	QList<dev::KeyPair> m_myIdentities;
 	QString m_privateChain;
-	dev::bytes m_data;
 	dev::Address m_nameReg;
-
-	unsigned m_backupGas;
-
-	bool m_enableOptimizer = true;
 
 	QNetworkAccessManager m_webCtrl;
 
@@ -269,5 +242,7 @@ private:
 	std::unique_ptr<OurWebThreeStubServer> m_server;
 
 	static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
-	NatspecHandler m_natspecDB;
+	NatspecHandler m_natSpecDB;
+
+	Transact m_transact;
 };

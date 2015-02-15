@@ -20,7 +20,40 @@
  */
 
 #include "Context.h"
+#include <QComboBox>
+#include <libethcore/CommonEth.h>
+using namespace std;
+using namespace dev;
+using namespace dev::eth;
+
+NatSpecFace::~NatSpecFace()
+{
+}
 
 Context::~Context()
 {
+}
+
+void initUnits(QComboBox* _b)
+{
+	for (auto n = (unsigned)units().size(); n-- != 0; )
+		_b->addItem(QString::fromStdString(units()[n].second), n);
+}
+
+vector<KeyPair> keysAsVector(QList<KeyPair> const& keys)
+{
+	auto list = keys.toStdList();
+	return {begin(list), end(list)};
+}
+
+bool sourceIsSolidity(string const& _source)
+{
+	// TODO: Improve this heuristic
+	return (_source.substr(0, 8) == "contract" || _source.substr(0, 5) == "//sol");
+}
+
+bool sourceIsSerpent(string const& _source)
+{
+	// TODO: Improve this heuristic
+	return (_source.substr(0, 5) == "//ser");
 }

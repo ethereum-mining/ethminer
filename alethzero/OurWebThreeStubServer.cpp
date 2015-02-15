@@ -92,7 +92,7 @@ bool OurWebThreeStubServer::authenticate(TransactionSkeleton const& _t)
 	}
 
 	// TODO: include total cost in Ether
-	string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, _t.data);
+	string userNotice = m_main->natSpec()->getUserNotice(contractCodeHash, _t.data);
 
 	if (userNotice.empty())
 		return showUnknownCallNotice(_t);
