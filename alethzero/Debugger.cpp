@@ -266,28 +266,28 @@ void Debugger::on_debugTimeline_valueChanged()
 	update();
 }
 
-void Debugger::on_stepOver_triggered()
+void Debugger::on_stepOver_clicked()
 {
 	if (ui->debugTimeline->value() < m_session.history.size()) {
 		auto l = m_session.history[ui->debugTimeline->value()].levels.size();
 		if ((ui->debugTimeline->value() + 1) < m_session.history.size() && m_session.history[ui->debugTimeline->value() + 1].levels.size() > l)
 		{
-			on_stepInto_triggered();
+			on_stepInto_clicked();
 			if (m_session.history[ui->debugTimeline->value()].levels.size() > l)
-				on_stepOut_triggered();
+				on_stepOut_clicked();
 		}
 		else
-			on_stepInto_triggered();
+			on_stepInto_clicked();
 	}
 }
 
-void Debugger::on_stepInto_triggered()
+void Debugger::on_stepInto_clicked()
 {
 	ui->debugTimeline->setValue(ui->debugTimeline->value() + 1);
 	ui->callStack->setCurrentRow(0);
 }
 
-void Debugger::on_stepOut_triggered()
+void Debugger::on_stepOut_clicked()
 {
 	if (ui->debugTimeline->value() < m_session.history.size())
 	{
@@ -299,26 +299,26 @@ void Debugger::on_stepOut_triggered()
 	}
 }
 
-void Debugger::on_backInto_triggered()
+void Debugger::on_backInto_clicked()
 {
 	ui->debugTimeline->setValue(ui->debugTimeline->value() - 1);
 	ui->callStack->setCurrentRow(0);
 }
 
-void Debugger::on_backOver_triggered()
+void Debugger::on_backOver_clicked()
 {
 	auto l = m_session.history[ui->debugTimeline->value()].levels.size();
 	if (ui->debugTimeline->value() > 0 && m_session.history[ui->debugTimeline->value() - 1].levels.size() > l)
 	{
-		on_backInto_triggered();
+		on_backInto_clicked();
 		if (m_session.history[ui->debugTimeline->value()].levels.size() > l)
-			on_backOut_triggered();
+			on_backOut_clicked();
 	}
 	else
-		on_backInto_triggered();
+		on_backInto_clicked();
 }
 
-void Debugger::on_backOut_triggered()
+void Debugger::on_backOut_clicked()
 {
 	if (ui->debugTimeline->value() > 0 && m_session.history.size() > 0)
 	{
@@ -330,7 +330,7 @@ void Debugger::on_backOut_triggered()
 	}
 }
 
-void Debugger::on_dump_triggered()
+void Debugger::on_dump_clicked()
 {
 	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
 	ofstream f(fn.toStdString());
@@ -339,7 +339,7 @@ void Debugger::on_dump_triggered()
 			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
 }
 
-void Debugger::on_dumpPretty_triggered()
+void Debugger::on_dumpPretty_clicked()
 {
 	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
 	ofstream f(fn.toStdString());
@@ -357,7 +357,7 @@ void Debugger::on_dumpPretty_triggered()
 		}
 }
 
-void Debugger::on_dumpStorage_triggered()
+void Debugger::on_dumpStorage_clicked()
 {
 	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
 	ofstream f(fn.toStdString());

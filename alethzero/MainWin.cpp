@@ -1999,14 +1999,19 @@ void Main::on_debug_clicked()
 			if (ethereum()->balanceAt(i.address()) >= totalReq)
 			{
 				Secret s = i.secret();
-				m_executiveState = ethereum()->postState();
-				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, ethereum()->blockChain(), 0));
 				Transaction t = isCreation() ?
 					Transaction(value(), gasPrice(), ui->gas->value(), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s) :
 					Transaction(value(), gasPrice(), ui->gas->value(), fromString(ui->destination->currentText()), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s);
 				auto r = t.rlp();
+				Debugger dw(this, this);
+				Executive e(m_executiveState, ethereum()->blockChain(), 0);
+				dw.populate(e, &r);
+				dw.exec();
+
+				/*m_executiveState = ethereum()->postState();
+				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, ethereum()->blockChain(), 0));
 				populateDebugger(&r);
-				m_currentExecution.reset();
+				m_currentExecution.reset();*/
 				return;
 			}
 		statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
