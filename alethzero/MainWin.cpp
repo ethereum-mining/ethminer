@@ -1514,49 +1514,6 @@ void Main::on_debugDumpStatePre_triggered()
 	on_debugDumpState_triggered(0);
 }
 
-void Main::populateDebugger(dev::bytesConstRef _r)
-{
-	bool done = m_currentExecution->setup(_r);
-	if (!done)
-	{
-		debugFinished();
-		vector<WorldState const*> levels;
-		m_codes.clear();
-		bytes lastExtCode;
-		bytesConstRef lastData;
-		h256 lastHash;
-		h256 lastDataHash;
-		auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, VM* voidVM, ExtVMFace const* voidExt)
-		{
-			VM& vm = *voidVM;
-			ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
-			if (ext.code != lastExtCode)
-			{
-				lastExtCode = ext.code;
-				lastHash = sha3(lastExtCode);
-				if (!m_codes.count(lastHash))
-					m_codes[lastHash] = ext.code;
-			}
-			if (ext.data != lastData)
-			{
-				lastData = ext.data;
-				lastDataHash = sha3(lastData);
-				if (!m_codes.count(lastDataHash))
-					m_codes[lastDataHash] = ext.data.toBytes();
-			}
-			if (levels.size() < ext.depth)
-				levels.push_back(&m_history.back());
-			else
-				levels.resize(ext.depth);
-			m_history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(), lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
-		};
-		m_currentExecution->go(onOp);
-		m_currentExecution->finalize();
-		initDebugger();
-		updateDebugger();
-	}
-}
-
 void Main::on_contracts_currentItemChanged()
 {
 	ui->contractInfo->clear();
@@ -1713,7 +1670,6 @@ string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compil
 
 void Main::on_data_textChanged()
 {
-	m_pcWarp.clear();
 	if (isCreation())
 	{
 		string src = ui->data->toPlainText().toStdString();
@@ -1950,7 +1906,6 @@ void Main::on_send_clicked()
 	for (auto i: m_myKeys)
 		if (ethereum()->balanceAt(i.address(), 0) >= totalReq)
 		{
-			debugFinished();
 			Secret s = i.secret();
 			if (isCreation())
 			{
@@ -1966,8 +1921,7 @@ void Main::on_send_clicked()
 						for (string& s: compiler.getContractNames())
 						{
 							h256 contractHash = compiler.getContractCodeHash(s);
-							m_natspecDB.add(contractHash,
-											compiler.getMetadata(s, dev::solidity::DocumentationType::NatspecUser));
+							m_natspecDB.add(contractHash, compiler.getMetadata(s, dev::solidity::DocumentationType::NatspecUser));
 						}
 					}
 					catch (...)
@@ -1996,12 +1950,13 @@ void Main::on_debug_clicked()
 		for (auto i: m_myKeys)
 			if (ethereum()->balanceAt(i.address()) >= totalReq)
 			{
+				State st(ethereum()->postState());
 				Secret s = i.secret();
 				Transaction t = isCreation() ?
-					Transaction(value(), gasPrice(), ui->gas->value(), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s) :
-					Transaction(value(), gasPrice(), ui->gas->value(), fromString(ui->destination->currentText()), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s);
+					Transaction(value(), gasPrice(), ui->gas->value(), m_data, st.transactionsFrom(dev::toAddress(s)), s) :
+					Transaction(value(), gasPrice(), ui->gas->value(), fromString(ui->destination->currentText()), m_data, st.transactionsFrom(dev::toAddress(s)), s);
 				Debugger dw(this, this);
-				Executive e(m_executiveState, ethereum()->blockChain(), 0);
+				Executive e(st, ethereum()->blockChain(), 0);
 				dw.populate(e, t);
 				dw.exec();
 				return;
@@ -2023,7 +1978,7 @@ bool beginsWith(Address _a, bytes const& _b)
 	return true;
 }
 
-void Main::on_create_triggered()
+void Main::on_newAccount_triggered()
 {
 	bool ok = true;
 	enum { NoVanity = 0, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour, StringMatch };
@@ -2091,111 +2046,6 @@ void Main::on_killAccount_triggered()
 	}
 }
 
-void Main::on_debugStep_triggered()
-{
-	if (ui->debugTimeline->value() < m_history.size()) {
-		auto l = m_history[ui->debugTimeline->value()].levels.size();
-		if ((ui->debugTimeline->value() + 1) < m_history.size() && m_history[ui->debugTimeline->value() + 1].levels.size() > l)
-		{
-			on_debugStepInto_triggered();
-			if (m_history[ui->debugTimeline->value()].levels.size() > l)
-				on_debugStepOut_triggered();
-		}
-		else
-			on_debugStepInto_triggered();
-	}
-}
-
-void Main::on_debugStepInto_triggered()
-{
-	ui->debugTimeline->setValue(ui->debugTimeline->value() + 1);
-	ui->callStack->setCurrentRow(0);
-}
-
-void Main::on_debugStepOut_triggered()
-{
-	if (ui->debugTimeline->value() < m_history.size())
-	{
-		auto ls = m_history[ui->debugTimeline->value()].levels.size();
-		auto l = ui->debugTimeline->value();
-		for (; l < m_history.size() && m_history[l].levels.size() >= ls; ++l) {}
-		ui->debugTimeline->setValue(l);
-		ui->callStack->setCurrentRow(0);
-	}
-}
-
-void Main::on_debugStepBackInto_triggered()
-{
-	ui->debugTimeline->setValue(ui->debugTimeline->value() - 1);
-	ui->callStack->setCurrentRow(0);
-}
-
-void Main::on_debugStepBack_triggered()
-{
-	auto l = m_history[ui->debugTimeline->value()].levels.size();
-	if (ui->debugTimeline->value() > 0 && m_history[ui->debugTimeline->value() - 1].levels.size() > l)
-	{
-		on_debugStepBackInto_triggered();
-		if (m_history[ui->debugTimeline->value()].levels.size() > l)
-			on_debugStepBackOut_triggered();
-	}
-	else
-		on_debugStepBackInto_triggered();
-}
-
-void Main::on_debugStepBackOut_triggered()
-{
-	if (ui->debugTimeline->value() > 0 && m_history.size() > 0)
-	{
-		auto ls = m_history[min(ui->debugTimeline->value(), m_history.size() - 1)].levels.size();
-		int l = ui->debugTimeline->value();
-		for (; l > 0 && m_history[l].levels.size() >= ls; --l) {}
-		ui->debugTimeline->setValue(l);
-		ui->callStack->setCurrentRow(0);
-	}
-}
-
-void Main::on_dumpTrace_triggered()
-{
-	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
-	ofstream f(fn.toStdString());
-	if (f.is_open())
-		for (WorldState const& ws: m_history)
-			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
-}
-
-void Main::on_dumpTracePretty_triggered()
-{
-	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
-	ofstream f(fn.toStdString());
-	if (f.is_open())
-		for (WorldState const& ws: m_history)
-		{
-			f << endl << "    STACK" << endl;
-			for (auto i: ws.stack)
-				f << (h256)i << endl;
-			f << "    MEMORY" << endl << dev::memDump(ws.memory);
-			f << "    STORAGE" << endl;
-			for (auto const& i: ws.storage)
-				f << showbase << hex << i.first << ": " << i.second << endl;
-			f << dec << ws.levels.size() << " | " << ws.cur << " | #" << ws.steps << " | " << hex << setw(4) << setfill('0') << ws.curPC << " : " << instructionInfo(ws.inst).name << " | " << dec << ws.gas << " | -" << dec << ws.gasCost << " | " << ws.newMemSize << "x32";
-		}
-}
-
-void Main::on_dumpTraceStorage_triggered()
-{
-	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
-	ofstream f(fn.toStdString());
-	if (f.is_open())
-		for (WorldState const& ws: m_history)
-		{
-			if (ws.inst == Instruction::STOP || ws.inst == Instruction::RETURN || ws.inst == Instruction::SUICIDE)
-				for (auto i: ws.storage)
-					f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
-			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
-		}
-}
-
 void Main::on_go_triggered()
 {
 	if (!ui->net->isChecked())
@@ -2204,60 +2054,6 @@ void Main::on_go_triggered()
 		on_net_triggered();
 	}
 	web3()->connect(Host::pocHost());
-}
-
-void Main::on_callStack_currentItemChanged()
-{
-	updateDebugger();
-}
-
-void Main::alterDebugStateGroup(bool _enable) const
-{
-	ui->debugStep->setEnabled(_enable);
-	ui->debugStepInto->setEnabled(_enable);
-	ui->debugStepOut->setEnabled(_enable);
-	ui->debugStepBackInto->setEnabled(_enable);
-	ui->debugStepBackOut->setEnabled(_enable);
-	ui->dumpTrace->setEnabled(_enable);
-	ui->dumpTraceStorage->setEnabled(_enable);
-	ui->dumpTracePretty->setEnabled(_enable);
-	ui->debugStepBack->setEnabled(_enable);
-	ui->debugPanel->setEnabled(_enable);
-}
-
-void Main::debugFinished()
-{
-	m_codes.clear();
-	m_pcWarp.clear();
-	m_history.clear();
-	m_lastLevels.clear();
-	m_lastCode = h256();
-	ui->callStack->clear();
-	ui->debugCode->clear();
-	ui->debugStack->clear();
-	ui->debugMemory->setHtml("");
-	ui->debugStorage->setHtml("");
-	ui->debugStateInfo->setText("");
-	alterDebugStateGroup(false);
-//	ui->send->setEnabled(true);
-}
-
-void Main::initDebugger()
-{
-//	ui->send->setEnabled(false);
-	if (m_history.size())
-	{
-		alterDebugStateGroup(true);
-		ui->debugCode->setEnabled(false);
-		ui->debugTimeline->setMinimum(0);
-		ui->debugTimeline->setMaximum(m_history.size());
-		ui->debugTimeline->setValue(0);
-	}
-}
-
-void Main::on_debugTimeline_valueChanged()
-{
-	updateDebugger();
 }
 
 QString Main::prettyU256(dev::u256 _n) const
@@ -2285,136 +2081,6 @@ QString Main::prettyU256(dev::u256 _n) const
 	else
 		s << "<span style=\"color: #466\">0x</span><span style=\"color: #044\">" << (h256)_n << "</span>";
 	return QString::fromStdString(s.str());
-}
-
-void Main::updateDebugger()
-{
-	if (m_history.size())
-	{
-		WorldState const& nws = m_history[min((int)m_history.size() - 1, ui->debugTimeline->value())];
-		WorldState const& ws = ui->callStack->currentRow() > 0 ? *nws.levels[nws.levels.size() - ui->callStack->currentRow()] : nws;
-
-		if (ui->debugTimeline->value() >= m_history.size())
-		{
-			if (ws.gasCost > ws.gas)
-				ui->debugMemory->setHtml("<h3>OUT-OF-GAS</h3>");
-			else if (ws.inst == Instruction::RETURN && ws.stack.size() >= 2)
-			{
-				unsigned from = (unsigned)ws.stack.back();
-				unsigned size = (unsigned)ws.stack[ws.stack.size() - 2];
-				unsigned o = 0;
-				bytes out(size, 0);
-				for (; o < size && from + o < ws.memory.size(); ++o)
-					out[o] = ws.memory[from + o];
-				ui->debugMemory->setHtml("<h3>RETURN</h3>" + QString::fromStdString(dev::memDump(out, 16, true)));
-			}
-			else if (ws.inst == Instruction::STOP)
-				ui->debugMemory->setHtml("<h3>STOP</h3>");
-			else if (ws.inst == Instruction::SUICIDE && ws.stack.size() >= 1)
-				ui->debugMemory->setHtml("<h3>SUICIDE</h3>0x" + QString::fromStdString(toString(right160(ws.stack.back()))));
-			else
-				ui->debugMemory->setHtml("<h3>EXCEPTION</h3>");
-
-			ostringstream ss;
-			ss << dec << "EXIT  |  GAS: " << dec << max<dev::bigint>(0, (dev::bigint)ws.gas - ws.gasCost);
-			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
-			ui->debugStorage->setHtml("");
-			ui->debugCallData->setHtml("");
-			m_lastData = h256();
-			ui->callStack->clear();
-			m_lastLevels.clear();
-			ui->debugCode->clear();
-			m_lastCode = h256();
-			ui->debugStack->setHtml("");
-		}
-		else
-		{
-			if (m_lastLevels != nws.levels || !ui->callStack->count())
-			{
-				m_lastLevels = nws.levels;
-				ui->callStack->clear();
-				for (unsigned i = 0; i <= nws.levels.size(); ++i)
-				{
-					WorldState const& s = i ? *nws.levels[nws.levels.size() - i] : nws;
-					ostringstream out;
-					out << s.cur.abridged();
-					if (i)
-						out << " " << instructionInfo(s.inst).name << " @0x" << hex << s.curPC;
-					ui->callStack->addItem(QString::fromStdString(out.str()));
-				}
-			}
-
-			if (ws.code != m_lastCode)
-			{
-				bytes const& code = m_codes[ws.code];
-				QListWidget* dc = ui->debugCode;
-				dc->clear();
-				m_pcWarp.clear();
-				for (unsigned i = 0; i <= code.size(); ++i)
-				{
-					byte b = i < code.size() ? code[i] : 0;
-					try
-					{
-						QString s = QString::fromStdString(instructionInfo((Instruction)b).name);
-						ostringstream out;
-						out << hex << setw(4) << setfill('0') << i;
-						m_pcWarp[i] = dc->count();
-						if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
-						{
-							unsigned bc = b - (byte)Instruction::PUSH1 + 1;
-							s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&code[i + 1], bc)));
-							i += bc;
-						}
-						dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
-					}
-					catch (...)
-					{
-						cerr << "Unhandled exception!" << endl <<
-									boost::current_exception_diagnostic_information();
-						break;	// probably hit data segment
-					}
-				}
-				m_lastCode = ws.code;
-			}
-
-			if (ws.callData != m_lastData)
-			{
-				m_lastData = ws.callData;
-				if (ws.callData)
-				{
-					assert(m_codes.count(ws.callData));
-					ui->debugCallData->setHtml(QString::fromStdString(dev::memDump(m_codes[ws.callData], 16, true)));
-				}
-				else
-					ui->debugCallData->setHtml("");
-			}
-
-			QString stack;
-			for (auto i: ws.stack)
-				stack.prepend("<div>" + prettyU256(i) + "</div>");
-			ui->debugStack->setHtml(stack);
-			ui->debugMemory->setHtml(QString::fromStdString(dev::memDump(ws.memory, 16, true)));
-			assert(m_codes.count(ws.code));
-
-			if (m_codes[ws.code].size() >= (unsigned)ws.curPC)
-			{
-				int l = m_pcWarp[(unsigned)ws.curPC];
-				ui->debugCode->setCurrentRow(max(0, l - 5));
-				ui->debugCode->setCurrentRow(min(ui->debugCode->count() - 1, l + 5));
-				ui->debugCode->setCurrentRow(l);
-			}
-			else
-				cwarn << "PC (" << (unsigned)ws.curPC << ") is after code range (" << m_codes[ws.code].size() << ")";
-
-			ostringstream ss;
-			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << instructionInfo(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
-			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
-			stringstream s;
-			for (auto const& i: ws.storage)
-				s << "@" << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << prettyU256(i.second).toStdString() << "<br/>";
-			ui->debugStorage->setHtml(QString::fromStdString(s.str()));
-		}
-	}
 }
 
 void Main::on_post_clicked()
