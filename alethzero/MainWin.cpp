@@ -1733,7 +1733,7 @@ void Main::on_data_textChanged()
 //				compiler.addSources(dev::solidity::StandardSources);
 				m_data = compiler.compile(src, m_enableOptimizer);
 				solidity = "<h4>Solidity</h4>";
-				solidity += "<pre>var " + QString::fromStdString(compiler.getContractNames().front()) + " = web3.eth.contractFromAbi(" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + ");</pre>";
+				solidity += "<pre>var " + QString::fromStdString(compiler.defaultContractName()) + " = web3.eth.contractFromAbi(" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + ");</pre>";
 				solidity += "<pre>" + QString::fromStdString(compiler.getSolidityInterface()).toHtmlEscaped() + "</pre>";
 				solidity += "<pre>" + QString::fromStdString(getFunctionHashes(compiler)).toHtmlEscaped() + "</pre>";
 			}
@@ -2440,6 +2440,18 @@ string Main::lookupNatSpec(dev::h256 const& _contractHash) const
 string Main::lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData)
 {
 	return m_natspecDB.getUserNotice(_contractHash, _transactionData);
+}
+
+int Main::authenticate(QString _title, QString _text)
+{
+	QMessageBox userInput(this);
+	userInput.setText(_title);
+	userInput.setInformativeText(_text);
+	userInput.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+	userInput.button(QMessageBox::Ok)->setText("Allow");
+	userInput.button(QMessageBox::Cancel)->setText("Reject");
+	userInput.setDefaultButton(QMessageBox::Cancel);
+	return userInput.exec();
 }
 
 void Main::refreshWhispers()
