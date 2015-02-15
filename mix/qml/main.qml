@@ -30,7 +30,7 @@ ApplicationWindow {
 			MenuItem { action: addNewHtmlFileAction }
 			MenuItem { action: addNewCssFileAction }
 			MenuSeparator {}
-			//MenuItem { action: addNewContractAction }
+			MenuItem { action: addNewContractAction }
 			MenuItem { action: closeProjectAction }
 			MenuSeparator {}
 			MenuItem { action: exitAppAction }

@@ -21,6 +21,7 @@
  */
 
 #include <sstream>
+#include <memory>
 #include <QDebug>
 #include <QApplication>
 #include <QtQml>
@@ -38,51 +39,31 @@
 
 using namespace dev::mix;
 
-void BackgroundWorker::queueCodeChange(int _jobId, QString const& _content)
+const std::set<std::string> c_predefinedContracts =
+	{ "Config", "Coin", "CoinReg", "coin", "service", "owned", "mortal", "NameReg", "named", "std", "configUser" };
+
+void BackgroundWorker::queueCodeChange(int _jobId)
 {
-	m_model->runCompilationJob(_jobId, _content);
+	m_model->runCompilationJob(_jobId);
 }
 
-CompilationResult::CompilationResult():
+CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler, QString const& _contractName, QString const& _source):
 	QObject(nullptr),
-	m_successful(false),
-	m_codeHash(qHash(QString())),
-	m_contract(new QContractDefinition()),
-	m_contractInterface("[]"),
-	m_codeHighlighter(new CodeHighlighter())
-{}
-
-CompilationResult::CompilationResult(const dev::solidity::CompilerStack& _compiler):
-	QObject(nullptr),
-	m_successful(true),
-	m_codeHash(qHash(QString()))
+	m_sourceHash(qHash(_source))
 {
-	if (!_compiler.getContractNames().empty())
-	{
-		auto const& contractDefinition = _compiler.getContractDefinition(std::string());
-		m_contract.reset(new QContractDefinition(&contractDefinition));
-		m_bytes = _compiler.getBytecode();
-		dev::solidity::InterfaceHandler interfaceHandler;
-		m_contractInterface = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
-		if (m_contractInterface.isEmpty())
-			m_contractInterface = "[]";
-	}
-	else
-		m_contract.reset(new QContractDefinition());
+	auto const& contractDefinition = _compiler.getContractDefinition(_contractName.toStdString());
+	m_contract.reset(new QContractDefinition(&contractDefinition));
+	QQmlEngine::setObjectOwnership(m_contract.get(), QQmlEngine::CppOwnership);
+	m_bytes = _compiler.getBytecode(_contractName.toStdString());
+	dev::solidity::InterfaceHandler interfaceHandler;
+	m_contractInterface = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
+	if (m_contractInterface.isEmpty())
+		m_contractInterface = "[]";
+	if (contractDefinition.getLocation().sourceName.get())
+		m_documentId = QString::fromStdString(*contractDefinition.getLocation().sourceName);
 }
 
-CompilationResult::CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage):
-	QObject(nullptr),
-	m_successful(false),
-	m_codeHash(qHash(QString())),
-	m_contract(_prev.m_contract),
-	m_compilerMessage(_compilerMessage),
-	m_bytes(_prev.m_bytes),
-	m_contractInterface(_prev.m_contractInterface),
-	m_codeHighlighter(_prev.m_codeHighlighter)
-{}
-
-QString CompilationResult::codeHex() const
+QString CompiledContract::codeHex() const
 {
 	return QString::fromStdString(toJS(m_bytes));
 }
@@ -90,27 +71,26 @@ QString CompilationResult::codeHex() const
 CodeModel::CodeModel(QObject* _parent):
 	QObject(_parent),
 	m_compiling(false),
-	m_result(new CompilationResult()),
 	m_codeHighlighterSettings(new CodeHighlighterSettings()),
 	m_backgroundWorker(this),
 	m_backgroundJobId(0)
 {
+	m_backgroundThread.start();
 	m_backgroundWorker.moveToThread(&m_backgroundThread);
 	connect(this, &CodeModel::scheduleCompilationJob, &m_backgroundWorker, &BackgroundWorker::queueCodeChange, Qt::QueuedConnection);
-	connect(this, &CodeModel::compilationCompleteInternal, this, &CodeModel::onCompilationComplete, Qt::QueuedConnection);
-	qRegisterMetaType<CompilationResult*>("CompilationResult*");
+	qRegisterMetaType<CompiledContract*>("CompiledContract*");
 	qRegisterMetaType<QContractDefinition*>("QContractDefinition*");
 	qRegisterMetaType<QFunctionDefinition*>("QFunctionDefinition*");
 	qRegisterMetaType<QVariableDeclaration*>("QVariableDeclaration*");
 	qmlRegisterType<QFunctionDefinition>("org.ethereum.qml", 1, 0, "QFunctionDefinition");
 	qmlRegisterType<QVariableDeclaration>("org.ethereum.qml", 1, 0, "QVariableDeclaration");
-	m_backgroundThread.start();
 }
 
 CodeModel::~CodeModel()
 {
 	stop();
 	disconnect(this);
+	releaseContracts();
 }
 
 void CodeModel::stop()
@@ -120,80 +100,133 @@ void CodeModel::stop()
 	m_backgroundThread.wait();
 }
 
-void CodeModel::registerCodeChange(QString const& _code)
+void CodeModel::reset(QVariantMap const& _documents)
 {
+	///@todo: cancel bg job
+	Guard l(x_contractMap);
+	releaseContracts();
+	Guard pl(x_pendingContracts);
+	m_pendingContracts.clear();
+
+	for (QVariantMap::const_iterator d =  _documents.cbegin(); d != _documents.cend(); d++)
+		m_pendingContracts[d.key()] = d.value().toString();
 	// launch the background thread
-	uint hash = qHash(_code);
-	if (m_result->m_codeHash == hash)
-		return;
-	m_backgroundJobId++;
 	m_compiling = true;
 	emit stateChanged();
-	emit scheduleCompilationJob(m_backgroundJobId, _code);
+	emit scheduleCompilationJob(++m_backgroundJobId);
 }
 
-void CodeModel::runCompilationJob(int _jobId, QString const& _code)
+void CodeModel::registerCodeChange(QString const& _documentId, QString const& _code)
+{
+	{
+		Guard l(x_contractMap);
+		CompiledContract* contract = m_contractMap.value(_documentId);
+		if (contract != nullptr && contract->m_sourceHash == qHash(_code))
+			return;
+
+		Guard pl(x_pendingContracts);
+		m_pendingContracts[_documentId] = _code;
+	}
+
+	// launch the background thread
+	m_compiling = true;
+	emit stateChanged();
+	emit scheduleCompilationJob(++m_backgroundJobId);
+}
+
+QVariantMap CodeModel::contracts() const
+{
+	QVariantMap result;
+	Guard l(x_contractMap);
+	for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); c++)
+		result.insert(c.key(), QVariant::fromValue(c.value()));
+	return result;
+}
+
+CompiledContract* CodeModel::contractByDocumentId(QString _documentId) const
+{
+	Guard l(x_contractMap);
+	for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); c++)
+		if (c.value()->m_documentId == _documentId)
+			return c.value();
+	return nullptr;
+}
+
+CompiledContract const& CodeModel::contract(QString _name) const
+{
+	Guard l(x_contractMap);
+	CompiledContract* res = m_contractMap.value(_name);
+	if (res == nullptr)
+		BOOST_THROW_EXCEPTION(dev::Exception() << dev::errinfo_comment("Contract not found: " + _name.toStdString()));
+	return *res;
+}
+
+void CodeModel::releaseContracts()
+{
+	for (ContractMap::iterator c = m_contractMap.begin(); c != m_contractMap.end(); c++)
+		c.value()->deleteLater();
+	m_contractMap.clear();
+}
+
+void CodeModel::runCompilationJob(int _jobId)
 {
 	if (_jobId != m_backgroundJobId)
 		return; //obsolete job
 
+	ContractMap result;
 	solidity::CompilerStack cs(true);
-	std::unique_ptr<CompilationResult> result;
-
-	std::string source = _code.toStdString();
-	// run syntax highlighting first
-	// @todo combine this with compilation step
-	auto codeHighlighter = std::make_shared<CodeHighlighter>();
-	codeHighlighter->processSource(source);
-
-	cs.addSource("configUser", R"(contract configUser{function configAddr()constant returns(address a){ return 0xf025d81196b72fba60a1d4dddad12eeb8360d828;}})");
-
-	// run compilation
 	try
 	{
-		cs.addSource("", source);
+		cs.addSource("configUser", R"(contract configUser{function configAddr()constant returns(address a){ return 0xf025d81196b72fba60a1d4dddad12eeb8360d828;}})");
+		{
+			Guard l(x_pendingContracts);
+			for (auto const& c: m_pendingContracts)
+				cs.addSource(c.first.toStdString(), c.second.toStdString());
+		}
 		cs.compile(false);
-		codeHighlighter->processAST(cs.getAST());
-		result.reset(new CompilationResult(cs));
-		qDebug() << QString(QApplication::tr("compilation succeeded"));
+
+		{
+			Guard pl(x_pendingContracts);
+			Guard l(x_contractMap);
+			for (std::string n: cs.getContractNames())
+			{
+				if (c_predefinedContracts.count(n) != 0)
+					continue;
+				QString name = QString::fromStdString(n);
+				auto sourceIter = m_pendingContracts.find(name);
+				QString source = sourceIter != m_pendingContracts.end() ? sourceIter->second : QString();
+				CompiledContract* contract = new CompiledContract(cs, name, source);
+				QQmlEngine::setObjectOwnership(contract, QQmlEngine::CppOwnership);
+				result[name] = contract;
+				CompiledContract* prevContract = m_contractMap.value(name);
+				if (prevContract != nullptr && prevContract->contractInterface() != result[name]->contractInterface())
+					emit contractInterfaceChanged(name);
+			}
+			releaseContracts();
+			m_contractMap.swap(result);
+			emit codeChanged();
+			emit compilationComplete();
+		}
 	}
 	catch (dev::Exception const& _exception)
 	{
 		std::ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
-		result.reset(new CompilationResult(*m_result, QString::fromStdString(error.str())));
-		codeHighlighter->processError(_exception);
-		qDebug() << QString(QApplication::tr("compilation failed:") + " " + result->compilerMessage());
+		solidity::Location const* location = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception);
+		QString message = QString::fromStdString(error.str());
+		CompiledContract* contract = nullptr;
+		if (location && location->sourceName.get() && (contract = contractByDocumentId(QString::fromStdString(*location->sourceName))))
+			message = message.replace(QString::fromStdString(*location->sourceName), contract->contract()->name()); //substitute the location to match our contract names
+		compilationError(message);
 	}
-	result->m_codeHighlighter = codeHighlighter;
-	result->m_codeHash = qHash(_code);
-
-	emit compilationCompleteInternal(result.release());
-}
-
-void CodeModel::onCompilationComplete(CompilationResult* _newResult)
-{
 	m_compiling = false;
-	bool contractChanged = m_result->contractInterface() != _newResult->contractInterface();
-	m_result.reset(_newResult);
-	emit compilationComplete();
 	emit stateChanged();
-	if (m_result->successful())
-	{
-		emit codeChanged();
-		if (contractChanged)
-			emit contractInterfaceChanged();
-	}
 }
 
 bool CodeModel::hasContract() const
 {
-	return m_result->successful();
-}
-
-void CodeModel::updateFormatting(QTextDocument* _document)
-{
-	m_result->codeHighlighter()->updateFormatting(_document, *m_codeHighlighterSettings);
+	Guard l(x_contractMap);
+	return m_contractMap.size() != 0;
 }
 
 dev::bytes const& CodeModel::getStdContractCode(const QString& _contractName, const QString& _url)
