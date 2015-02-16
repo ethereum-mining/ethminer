@@ -168,10 +168,10 @@ public:
 	/// Returns the Node to the corresponding node id or the empty Node if that id is not found.
 	Node node(NodeId const& _id);
 	
-#ifndef BOOST_AUTO_TEST_SUITE
-private:
-#else
+#if defined(BOOST_AUTO_TEST_SUITE) || defined(_MSC_VER) // MSVC includes access specifier in symbol name
 protected:
+#else
+private:
 #endif
 	
 	/// Constants for Kademlia, derived from address space.

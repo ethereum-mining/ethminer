@@ -59,7 +59,7 @@ bytes unpadded(bytes _s);
 /// Remove all 0 byte on the head of @a _s.
 bytes unpadLeft(bytes _s);
 /// Convert u256 into user-readable string. Returns int/hex value of 64 bits int, hex of 160 bits FixedHash. As a fallback try to handle input as h256.
-std::string prettyU256(u256 _n);
+std::string prettyU256(u256 _n, bool _abridged = true);
 /// Convert h256 into user-readable string (by directly using std::string constructor).
 std::string fromRaw(h256 _n, unsigned* _inc = nullptr);
 /// Convert string to Address (h160), returns empty address if (_a.size != 40).
@@ -144,6 +144,7 @@ inline Address jsToAddress(std::string const& _s) { return jsToFixed<sizeof(dev:
 
 struct TransactionSkeleton
 {
+	bool creation = false;
 	Address from;
 	Address to;
 	u256 value;
