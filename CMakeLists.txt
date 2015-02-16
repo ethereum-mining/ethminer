@@ -181,7 +181,6 @@ if (NOT HEADLESS)
 	
 	add_subdirectory(libnatspec)
 	add_subdirectory(libjsqrc)
-	add_subdirectory(libqwebthree)
 	add_subdirectory(alethzero)
 	add_subdirectory(third)
 	add_subdirectory(mix)

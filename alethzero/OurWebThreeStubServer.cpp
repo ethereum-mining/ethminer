@@ -46,48 +46,71 @@ string OurWebThreeStubServer::shh_newIdentity()
 
 bool OurWebThreeStubServer::showAuthenticationPopup(string const& _title, string const& _text) const
 {
-	QMessageBox userInput;
-	userInput.setText(QString::fromStdString(_title));
-	userInput.setInformativeText(QString::fromStdString(_text + "\n Do you wish to allow this?"));
-	userInput.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
-	userInput.button(QMessageBox::Ok)->setText("Allow");
-	userInput.button(QMessageBox::Cancel)->setText("Reject");
-	userInput.setDefaultButton(QMessageBox::Cancel);
-	return userInput.exec() == QMessageBox::Ok;
+	int button;
+	QMetaObject::invokeMethod(m_main, "authenticate", Qt::BlockingQueuedConnection, Q_RETURN_ARG(int, button), Q_ARG(QString, QString::fromStdString(_title)), Q_ARG(QString, QString::fromStdString(_text)));
+	return button == QMessageBox::Ok;
 }
 
-void OurWebThreeStubServer::showBasicValueTransferNotice(u256 _value) const
+bool OurWebThreeStubServer::showCreationNotice(TransactionSkeleton const& _t) const
 {
-	QMessageBox notice;
-	notice.setText("Basic Value Transfer Transaction");
-	notice.setInformativeText(QString::fromStdString("Value is " + toString(_value)));
-	notice.setStandardButtons(QMessageBox::Ok);
-	notice.exec();
+	return showAuthenticationPopup("Contract Creation Transaction", "ÐApp is attemping to create a contract; to be endowed with " + formatBalance(_t.value) + ", with additional network fees of up to " + formatBalance(_t.gas * _t.gasPrice) + ".\n\nMaximum total cost is <b>" + formatBalance(_t.value + _t.gas * _t.gasPrice) + "</b>.");
+}
+
+bool OurWebThreeStubServer::showSendNotice(TransactionSkeleton const& _t) const
+{
+	return showAuthenticationPopup("Fund Transfer Transaction", "ÐApp is attempting to send " + formatBalance(_t.value) + " to a recipient " + m_main->pretty(_t.to).toStdString() + ", with additional network fees of up to " + formatBalance(_t.gas * _t.gasPrice) + ".\n\nMaximum total cost is <b>" + formatBalance(_t.value + _t.gas * _t.gasPrice) + "</b>.");
+}
+
+bool OurWebThreeStubServer::showUnknownCallNotice(TransactionSkeleton const& _t) const
+{
+	return showAuthenticationPopup("DANGEROUS! Unknown Contract Transaction!",
+		"ÐApp is attempting to call into an unknown contract at address " +
+		m_main->pretty(_t.to).toStdString() +
+		".\n\nCall involves sending " +
+		formatBalance(_t.value) + " to the recipient, with additional network fees of up to " +
+		formatBalance(_t.gas * _t.gasPrice) +
+		"However, this also does other stuff which we don't understand, and does so in your name.\n\n" +
+		"WARNING: This is probably going to cost you at least " +
+		formatBalance(_t.value + _t.gas * _t.gasPrice) +
+		", however this doesn't include any side-effects, which could be of far greater importance.\n\n" +
+		"REJECT UNLESS YOU REALLY KNOW WHAT YOU ARE DOING!");
 }
 
 bool OurWebThreeStubServer::authenticate(TransactionSkeleton const& _t)
 {
-	h256 contractCodeHash = m_web3->ethereum()->postState().codeHash(_t.to);
-	if (contractCodeHash == EmptySHA3)
-		// contract creation
-		return true;
-
-	if (false) //TODO: When is is just a value transfer?
+	if (_t.creation)
 	{
 		// recipient has no code - nothing special about this transaction, show basic value transfer info
-		showBasicValueTransferNotice(_t.value);
-		return true;
+		return showCreationNotice(_t);
 	}
 
-	string userNotice = m_main->lookupNatSpecUserNotice(contractCodeHash, _t.data);
+	h256 contractCodeHash = m_web3->ethereum()->postState().codeHash(_t.to);
+	if (contractCodeHash == EmptySHA3)
+	{
+		// recipient has no code - nothing special about this transaction, show basic value transfer info
+		return showSendNotice(_t);
+	}
+
+	string userNotice = m_main->natSpec()->getUserNotice(contractCodeHash, _t.data);
 
 	if (userNotice.empty())
-		return showAuthenticationPopup("Unverified Pending Transaction",
-									   "An undocumented transaction is about to be executed.");
+		return showUnknownCallNotice(_t);
 
 	NatspecExpressionEvaluator evaluator;
 	userNotice = evaluator.evalExpression(QString::fromStdString(userNotice)).toStdString();
 
 	// otherwise it's a transaction to a contract for which we have the natspec
-	return showAuthenticationPopup("Pending Transaction", userNotice);
+	return showAuthenticationPopup("Contract Transaction",
+		"ÐApp attempting to conduct contract interaction with " +
+		m_main->pretty(_t.to).toStdString() +
+		": <b>" + userNotice + "</b>.\n\n" +
+		(_t.value > 0 ?
+			"In addition, ÐApp is attempting to send " +
+			formatBalance(_t.value) + " to said recipient, with additional network fees of up to " +
+			formatBalance(_t.gas * _t.gasPrice) + " = <b>" +
+			formatBalance(_t.value + _t.gas * _t.gasPrice) + "</b>."
+		:
+			"Additional network fees are at most" +
+			formatBalance(_t.gas * _t.gasPrice) + ".")
+		);
 }

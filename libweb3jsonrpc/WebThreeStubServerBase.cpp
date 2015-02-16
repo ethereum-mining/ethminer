@@ -279,6 +279,8 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 		ret.from = jsToAddress(_json["from"].asString());
 	if (_json["to"].isString())
 		ret.to = jsToAddress(_json["to"].asString());
+	else
+		ret.creation = true;
 	if (!_json["value"].empty())
 	{
 		if (_json["value"].isString())
