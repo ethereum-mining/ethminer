@@ -157,8 +157,8 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 	{
 		bytes k = rlp(i);
 		t.insert(&k, tr.data());
-		u256 gp = tr[1].toInt<u256>();
-		mgp = min(mgp, gp);
+		u256 gasprice = tr[1].toInt<u256>();
+		mgp = min(mgp, gasprice); // the minimum gas price is not used for anything //TODO delete?
 		++i;
 	}
 	if (transactionsRoot != t.root())
