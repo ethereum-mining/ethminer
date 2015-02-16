@@ -17,6 +17,7 @@ enum class ExecState
 	CacheLoad,
 	CacheWrite,
 	Compilation,
+	Optimization,
 	CodeGen,
 	Execution,
 	Return,
