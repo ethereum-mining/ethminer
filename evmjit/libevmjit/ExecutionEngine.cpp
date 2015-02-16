@@ -16,6 +16,7 @@
 
 #include "Runtime.h"
 #include "Compiler.h"
+#include "Optimizer.h"
 #include "Cache.h"
 #include "ExecStats.h"
 #include "Utils.h"
@@ -70,6 +71,7 @@ bool showInfo()
 
 ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 {
+	static auto optimizationEnabled = getEnvOption("EVMJIT_OPT", false);
 	static auto debugDumpModule = getEnvOption("EVMJIT_DUMP", false);
 	static auto objectCacheEnabled = getEnvOption("EVMJIT_CACHE", true);
 	static auto statsCollectingEnabled = getEnvOption("EVMJIT_STATS", false);
@@ -118,7 +120,13 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		{
 			listener->stateChanged(ExecState::Compilation);
 			assert(_data->code || !_data->codeSize); //TODO: Is it good idea to execute empty code?
-			module = Compiler({}).compile(_data->code, _data->code + _data->codeSize, mainFuncName);
+			module = Compiler{{}}.compile(_data->code, _data->code + _data->codeSize, mainFuncName);
+
+			if (optimizationEnabled)
+			{
+				listener->stateChanged(ExecState::Optimization);
+				optimize(*module);
+			}
 		}
 		if (debugDumpModule)
 			module->dump();
