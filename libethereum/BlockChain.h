@@ -112,6 +112,10 @@ public:
 	bytes block(h256 _hash) const;
 	bytes block() const { return block(currentHash()); }
 
+	/// Get a block's transaction (RLP format) for the given block hash (or the most recent mined if none given) & index. Thread-safe.
+	bytes transaction(h256 _hash, unsigned _i) const { bytes b = block(_hash); return RLP(b)[1][_i].data().toBytes(); }
+	bytes transaction(unsigned _i) const { return transaction(currentHash(), _i); }
+
 	/// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
 	unsigned number(h256 _hash) const { return details(_hash).number; }
 	unsigned number() const { return number(currentHash()); }
