@@ -30,7 +30,6 @@
 #include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
-#include <libqwebthree/QWebThree.h>
 
 namespace Ui {
 class Main;
@@ -45,6 +44,10 @@ class LogFilter;
 namespace shh {
 class WhisperHost;
 }
+}
+
+namespace jsonrpc {
+class HttpServer;
 }
 
 class QQuickView;
@@ -136,7 +139,6 @@ private:
 
 	QNetworkAccessManager m_webCtrl;
 
+	std::unique_ptr<jsonrpc::HttpServer> m_httpConnector;
 	std::unique_ptr<WebThreeStubServer> m_server;
-	QWebThreeConnector m_qwebConnector;
-	QWebThree* m_qweb = nullptr;
 };
