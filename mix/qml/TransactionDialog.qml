@@ -10,7 +10,7 @@ import "."
 Window {
 	id: modalTransactionDialog
 	modality: Qt.ApplicationModal
-	width: 450
+	width: 520
 	height: (paramsModel.count > 0 ? 500 : 300)
 	visible: false
 	color: StateDialogStyle.generic.backgroundColor
@@ -174,11 +174,6 @@ Window {
 		anchors.fill: parent
 		anchors.margins: 10
 
-		SourceSansProLight
-		{
-			id: lightFont
-		}
-
 		ColumnLayout {
 			id: dialogContent
 			anchors.top: parent.top
@@ -203,9 +198,6 @@ Window {
 					}
 					onCurrentIndexChanged: {
 						loadParameters();
-					}
-					style: ComboBoxStyle {
-						font: lightFont.name
 					}
 				}
 			}
