@@ -6,13 +6,10 @@
 #include <sstream>
 
 #include "preprocessor/llvm_includes_start.h"
-#include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/MDBuilder.h>
-#include <llvm/PassManager.h>
-#include <llvm/Transforms/Scalar.h>
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Instruction.h"
@@ -229,14 +226,6 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 		m_jumpTableBlock->synchronizeLocalStack(stack);
 
 	dumpCFGifRequired("blocks-sync.dot");
-
-	if (m_jumpTableBlock && m_options.rewriteSwitchToBranches)
-	{
-		llvm::FunctionPassManager fpManager(module.get());
-		fpManager.add(llvm::createLowerSwitchPass());
-		fpManager.doInitialization();
-		fpManager.run(*m_mainFunc);
-	}
 
 	auto compilationEndTime = std::chrono::high_resolution_clock::now();
 	clog(JIT) << "JIT: " << std::chrono::duration_cast<std::chrono::milliseconds>(compilationEndTime - compilationStartTime).count();
