@@ -11,6 +11,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
 
+include_directories(BEFORE ..)
 # we may not use it in libp2p, but one of our dependecies is including leveldb in header file
 # and windows is failing to build without that
 include_directories(${LEVELDB_INCLUDE_DIRS})
@@ -18,7 +19,6 @@ include_directories(${LEVELDB_INCLUDE_DIRS})
 if (MINIUPNPC_FOUND)
 	include_directories(${MINIUPNPC_INCLUDE_DIRS})
 endif()
-include_directories(..)
 
 set(EXECUTABLE p2p)
 
