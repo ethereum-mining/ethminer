@@ -2,9 +2,9 @@ cmake_policy(SET CMP0015 NEW)
 
 aux_source_directory(. SRC_LIST)
 
+include_directories(BEFORE ..)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 include_directories(${LEVELDB_INCLUDE_DIRS})
-include_directories(..)
 
 set(EXECUTABLE neth)
 
