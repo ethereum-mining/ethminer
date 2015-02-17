@@ -229,6 +229,8 @@ public:
 	virtual BlockDetails blockDetails(h256 _hash) const { return m_bc.details(_hash); }
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const;
+	virtual unsigned transactionCount(h256 _blockHash) const;
+	virtual unsigned uncleCount(h256 _blockHash) const;
 
 	/// Differences between transactions.
 	using Interface::diff;
