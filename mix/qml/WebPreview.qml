@@ -24,8 +24,10 @@ Item {
 	}
 
 	function reload() {
-		updateContract();
-		webView.runJavaScript("reloadPage()");
+		if (initialized) {
+			updateContract();
+			webView.runJavaScript("reloadPage()");
+		}
 	}
 
 	function updateContract() {
@@ -33,9 +35,9 @@ Item {
 		for (var c in codeModel.contracts) {
 			var contract = codeModel.contracts[c];
 			contracts[c] = {
-					name: contract.contract.name,
-					address: clientModel.contractAddresses[contract.contract.name],
-					interface: JSON.parse(contract.contractInterface),
+				name: contract.contract.name,
+				address: clientModel.contractAddresses[contract.contract.name],
+				interface: JSON.parse(contract.contractInterface),
 			};
 		}
 		webView.runJavaScript("updateContracts(" + JSON.stringify(contracts) + ")");

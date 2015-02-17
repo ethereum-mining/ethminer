@@ -47,6 +47,10 @@ Item {
 				varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
 			else if (type.indexOf("bool") !== -1)
 				varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
+			else {
+				console.log("Unknown parameter type: " + type);
+				continue;
+			}
 
 			var param = varComponent.createObject(stateListModel);
 			var dec = Qt.createComponent("qrc:/qml/QVariableDeclaration.qml");
@@ -203,7 +207,7 @@ Item {
 		}
 
 		function debugDefaultState() {
-			if (defaultStateIndex >= 0)
+			if (defaultStateIndex >= 0 && defaultStateIndex < stateList.length)
 				runState(defaultStateIndex);
 		}
 
@@ -221,6 +225,9 @@ Item {
 				defaultStateIndex = 0;
 				defaultStateChanged();
 			}
+			else if (defaultStateIndex > index)
+				defaultStateIndex--;
+
 			save();
 		}
 
