@@ -206,6 +206,13 @@ vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getIn
 	return *m_interfaceFunctionList;
 }
 
+TypePointer EnumValue::getType(ContractDefinition const*) const
+{
+	EnumDefinition const* parentDef = dynamic_cast<EnumDefinition const*>(getScope());
+	solAssert(parentDef, "Enclosing Scope of EnumValue was not set");
+	return make_shared<EnumType>(*parentDef);
+}
+
 void InheritanceSpecifier::checkTypeRequirements()
 {
 	m_baseName->checkTypeRequirements();
@@ -253,6 +260,11 @@ void StructDefinition::checkRecursion() const
 				queue.push_back(&dynamic_cast<StructDefinition const&>(*typeName.getReferencedDeclaration()));
 			}
 	}
+}
+
+TypePointer EnumDefinition::getType(ContractDefinition const*) const
+{
+	return make_shared<TypeType>(make_shared<EnumType>(*this));
 }
 
 TypePointer FunctionDefinition::getType(ContractDefinition const*) const

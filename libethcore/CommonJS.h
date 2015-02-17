@@ -144,6 +144,7 @@ inline Address jsToAddress(std::string const& _s) { return jsToFixed<sizeof(dev:
 
 struct TransactionSkeleton
 {
+	bool creation = false;
 	Address from;
 	Address to;
 	u256 value;
