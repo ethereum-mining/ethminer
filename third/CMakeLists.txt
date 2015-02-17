@@ -32,8 +32,11 @@ eth_add_executable(${EXECUTABLE}
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} Qt5::Core)
+target_link_libraries(${EXECUTABLE} Qt5::Widgets)
+target_link_libraries(${EXECUTABLE} Qt5::WebKit)
+target_link_libraries(${EXECUTABLE} Qt5::WebKitWidgets)
 target_link_libraries(${EXECUTABLE} webthree)
-target_link_libraries(${EXECUTABLE} qwebthree)
+target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} ethcore) 

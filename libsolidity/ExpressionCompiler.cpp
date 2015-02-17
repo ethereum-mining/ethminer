@@ -489,13 +489,21 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 		m_currentLValue.retrieveValueIfLValueNotRequested(_memberAccess);
 		break;
 	}
+	case Type::Category::Enum:
+	{
+		EnumType const& type = dynamic_cast<EnumType const&>(*_memberAccess.getExpression().getType());
+		m_context << type.getMemberValue(_memberAccess.getMemberName());
+		break;
+	}
 	case Type::Category::TypeType:
 	{
 		TypeType const& type = dynamic_cast<TypeType const&>(*_memberAccess.getExpression().getType());
-		if (type.getMembers().getMemberType(member))
+		if (!type.getMembers().getMemberType(member))
+			BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Invalid member access to " + type.toString()));
+
+		if (auto contractType = dynamic_cast<ContractType const*>(type.getActualType().get()))
 		{
-			ContractDefinition const& contract = dynamic_cast<ContractType const&>(*type.getActualType())
-													.getContractDefinition();
+			ContractDefinition const& contract = contractType->getContractDefinition();
 			for (ASTPointer<FunctionDefinition> const& function: contract.getDefinedFunctions())
 				if (function->getName() == member)
 				{
@@ -503,7 +511,9 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 					return;
 				}
 		}
-		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Invalid member access to " + type.toString()));
+		else if (auto enumType = dynamic_cast<EnumType const*>(type.getActualType().get()))
+			m_context << enumType->getMemberValue(_memberAccess.getMemberName());
+		break;
 	}
 	case Type::Category::ByteArray:
 	{
@@ -559,6 +569,10 @@ void ExpressionCompiler::endVisit(Identifier const& _identifier)
 		// no-op
 	}
 	else if (dynamic_cast<EventDefinition const*>(declaration))
+	{
+		// no-op
+	}
+	else if (dynamic_cast<EnumDefinition const*>(declaration))
 	{
 		// no-op
 	}
@@ -745,6 +759,9 @@ void ExpressionCompiler::appendTypeConversion(Type const& _typeOnStack, Type con
 			}
 		}
 	}
+	else if (stackTypeCategory == Type::Category::Enum)
+		solAssert(targetTypeCategory == Type::Category::Integer ||
+			targetTypeCategory == Type::Category::Enum, "");
 	else if (stackTypeCategory == Type::Category::Integer || stackTypeCategory == Type::Category::Contract ||
 			 stackTypeCategory == Type::Category::IntegerConstant)
 	{
@@ -758,6 +775,9 @@ void ExpressionCompiler::appendTypeConversion(Type const& _typeOnStack, Type con
 			solAssert(typeOnStack.getNumBits() == targetStringType.getNumBytes() * 8, "The size should be the same.");
 			m_context << (u256(1) << (256 - typeOnStack.getNumBits())) << eth::Instruction::MUL;
 		}
+		else if (targetTypeCategory == Type::Category::Enum)
+			// just clean
+			appendTypeConversion(_typeOnStack, *_typeOnStack.getRealType(), true);
 		else
 		{
 			solAssert(targetTypeCategory == Type::Category::Integer || targetTypeCategory == Type::Category::Contract, "");

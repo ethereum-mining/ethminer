@@ -49,10 +49,6 @@ RowLayout {
 		id: etherValueEdit;
 	}
 
-	SourceSansProBold {
-		id: regularFont;
-	}
-
 	ComboBox
 	{
 		id: units
@@ -87,15 +83,11 @@ RowLayout {
 			ListElement { text: "Kwei"; }
 			ListElement { text: "wei"; }
 		}
-		style: ComboBoxStyle {
-			font: regularFont.name
-		}
 	}
 
 	Text
 	{
 		visible: displayFormattedValue
 		id: formattedValue
-		font.family: regularFont.name
 	}
 }
