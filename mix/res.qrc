@@ -99,5 +99,6 @@
         <file>qml/Style.qml</file>
         <file>qml/WebPreviewStyle.qml</file>
         <file>qml/img/available_updates.png</file>
+        <file>qml/DeploymentDialog.qml</file>
     </qresource>
 </RCC>
