@@ -216,7 +216,6 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 			for (TransactionSettings const& transaction: _sequence)
 			{
 				ContractCallDataEncoder encoder;
-				QFunctionDefinition const* f = nullptr;
 				if (!transaction.stdContractUrl.isEmpty())
 				{
 					//std contract
@@ -229,9 +228,9 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 				{
 					//encode data
 					CompiledContract const& compilerRes = m_context->codeModel()->contract(transaction.contractId);
+					QFunctionDefinition const* f = nullptr;
 					bytes contractCode = compilerRes.bytes();
 					std::shared_ptr<QContractDefinition> contractDef = compilerRes.sharedContract();
-					f = nullptr;
 					if (transaction.functionId.isEmpty())
 						f = contractDef->constructor();
 					else

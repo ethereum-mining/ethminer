@@ -108,7 +108,7 @@ void CodeModel::reset(QVariantMap const& _documents)
 	Guard pl(x_pendingContracts);
 	m_pendingContracts.clear();
 
-	for (QVariantMap::const_iterator d =  _documents.cbegin(); d != _documents.cend(); d++)
+	for (QVariantMap::const_iterator d =  _documents.cbegin(); d != _documents.cend(); ++d)
 		m_pendingContracts[d.key()] = d.value().toString();
 	// launch the background thread
 	m_compiling = true;
@@ -138,7 +138,7 @@ QVariantMap CodeModel::contracts() const
 {
 	QVariantMap result;
 	Guard l(x_contractMap);
-	for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); c++)
+	for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
 		result.insert(c.key(), QVariant::fromValue(c.value()));
 	return result;
 }
@@ -146,7 +146,7 @@ QVariantMap CodeModel::contracts() const
 CompiledContract* CodeModel::contractByDocumentId(QString _documentId) const
 {
 	Guard l(x_contractMap);
-	for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); c++)
+	for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
 		if (c.value()->m_documentId == _documentId)
 			return c.value();
 	return nullptr;
@@ -163,7 +163,7 @@ CompiledContract const& CodeModel::contract(QString _name) const
 
 void CodeModel::releaseContracts()
 {
-	for (ContractMap::iterator c = m_contractMap.begin(); c != m_contractMap.end(); c++)
+	for (ContractMap::iterator c = m_contractMap.begin(); c != m_contractMap.end(); ++c)
 		c.value()->deleteLater();
 	m_contractMap.clear();
 }
