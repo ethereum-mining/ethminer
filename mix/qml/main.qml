@@ -95,7 +95,7 @@ ApplicationWindow {
 		text: qsTr("Mine")
 		shortcut: "Ctrl+M"
 		onTriggered: clientModel.mine();
-		enabled: codeModel.hasContract && !clientModel.running &&!clientModel.mining
+		enabled: codeModel.hasContract && !clientModel.running && !clientModel.mining
 	}
 
 	StateList {
