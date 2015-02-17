@@ -34,6 +34,7 @@
 #include <libdevcore/Worker.h>
 #include <libdevcore/RangeMask.h>
 #include <libdevcrypto/Common.h>
+#include <libdevcrypto/ECDHE.h>
 #include "NodeTable.h"
 #include "HostCapability.h"
 #include "Network.h"
@@ -157,6 +158,48 @@ protected:
 	void restoreNetwork(bytesConstRef _b);
 	
 private:
+	struct Handshake
+	{
+		/// Handshake for ingress connection. Takes ownership of socket.
+		Handshake(bi::tcp::socket* _socket): socket(std::move(_socket)), originated(false) { crypto::Nonce::get().ref().copyTo(nonce.ref()); }
+		
+		/// Handshake for egress connection to _remote. Takes ownership of socket.
+		Handshake(bi::tcp::socket* _socket, NodeId _remote): socket(std::move(_socket)), originated(true), remote(_remote) { crypto::Nonce::get().ref().copyTo(nonce.ref()); }
+		
+		~Handshake() { delete socket; }
+		
+		bool started() { return auth.size() > 0; }
+		bool acked() { return ack.size() > 0; }
+
+		/// If originated this is accepting (ingress) node id, otherwise it is originating (egress) node.
+		NodeId remote;
+		bi::tcp::socket *socket;
+		bool originated = false;
+		
+		bytes auth;
+		bytes authCipher;
+		bytes ack;
+		bytes ackCipher;
+		Secret ss;
+		Secret ess;
+		
+		crypto::ECDHE ecdhe;
+		h256 nonce;
+		
+		Public remoteEphemeral;
+		h256 remoteNonce;
+	};
+	struct PeerSecrets
+	{
+		Secret encryptK;
+		Secret macK;
+		h256 egressMac;
+		h256 ingressMac;
+		
+		bytes magicCipherAndMac;
+		bytes recvdMagicCipherAndMac;
+	};
+	
 	/// Populate m_peerAddresses with available public addresses.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	
@@ -171,8 +214,8 @@ private:
 	/// Called only from startedWorking().
 	void runAcceptor();
 	
-	/// Handler for verifying handshake siganture before creating session. _nodeId is passed for outbound connections. If successful, socket is moved to Session via std::move.
-	void doHandshake(bi::tcp::socket* _socket, NodeId _nodeId = NodeId());
+	/// Attempt to authenticate peer and establish a new session. 
+	void doHandshake(Handshake* _h, boost::system::error_code _ec = boost::system::error_code());
 	
 	void seal(bytes& _b);
 
