@@ -117,8 +117,8 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	unsigned dataIndex = 0;
 	auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, void* voidVM, void const* voidExt)
 	{
-		VM& vm = *(VM*)voidVM;
-		ExtVM const& ext = *(ExtVM const*)voidExt;
+		VM& vm = *static_cast<VM*>(voidVM);
+		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
 		if (lastCode == nullptr || lastCode != &ext.code)
 		{
 			auto const& iter = codeIndexes.find(&ext.code);
