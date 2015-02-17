@@ -367,6 +367,26 @@ double WebThreeStubServerBase::eth_countAt(string const& _address)
 	return (double)(uint64_t)client()->countAt(jsToAddress(_address), client()->getDefault());
 }
 
+double WebThreeStubServerBase::eth_transactionCountByHash(std::string const& _hash)
+{
+	return client()->transactionCount(jsToFixed<32>(_hash));
+}
+
+double WebThreeStubServerBase::eth_transactionCountByNumber(int _number)
+{
+	return client()->transactionCount(client()->hashFromNumber(_number));
+}
+
+double WebThreeStubServerBase::eth_uncleCountByHash(std::string const& _hash)
+{
+	return client()->transactionCount(jsToFixed<32>(_hash));
+}
+
+double WebThreeStubServerBase::eth_uncleCountByNumber(int _number)
+{
+	return client()->transactionCount(client()->hashFromNumber(_number));
+}
+
 int WebThreeStubServerBase::eth_defaultBlock()
 {
 	return client()->getDefault();
