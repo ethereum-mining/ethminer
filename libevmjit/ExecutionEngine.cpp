@@ -13,6 +13,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Support/ManagedStatic.h>
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Runtime.h"
@@ -71,6 +72,7 @@ cl::opt<bool> g_dump{"dump", cl::desc{"Dump LLVM IR module"}};
 
 void parseOptions()
 {
+	static llvm::llvm_shutdown_obj shutdownObj{};
 	cl::AddExtraVersionPrinter(printVersion);
 	cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
 }
