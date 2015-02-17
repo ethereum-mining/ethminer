@@ -119,7 +119,7 @@ void CodeHighlighter::processComments(std::string const& _source)
 			//add single line comment
 			int start = i;
 			i += 2;
-			while (_source[i] != '\n' && i < size)
+			while (i < size && _source[i] != '\n')
 				++i;
 			m_formats.push_back(FormatRange(CodeHighlighterSettings::Comment, start, i - start));
 		}

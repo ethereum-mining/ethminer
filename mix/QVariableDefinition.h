@@ -135,8 +135,8 @@ class QBoolType: public QVariableDefinition
 	Q_OBJECT
 
 public:
-	QBoolType() {}
-	QBoolType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
+	QBoolType(): m_boolValue(false) {}
+	QBoolType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value), m_boolValue(false) {}
 	dev::bytes encodeValue() override;
 	void decodeValue(dev::bytes const& _rawValue) override;
 	///  @returns the boolean value for the current definition.

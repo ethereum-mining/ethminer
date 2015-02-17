@@ -36,7 +36,6 @@ using namespace dev::mix;
 
 StatusPane::StatusPane(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::HeaderView)
 {
-	connect(_context->codeModel(), &CodeModel::compilationComplete, this, &StatusPane::update);
 	_context->appEngine()->rootContext()->setContextProperty("statusPane", this);
 }
 
@@ -54,13 +53,3 @@ void StatusPane::start() const
 {
 }
 
-CompilationResult* StatusPane::result() const
-{
-	return m_ctx->codeModel()->code();
-}
-
-void StatusPane::update()
-{
-	QObject* ctrl = m_view->findChild<QObject*>("statusPane", Qt::FindChildrenRecursively);
-	QMetaObject::invokeMethod(ctrl, "updateStatus");
-}

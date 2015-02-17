@@ -45,7 +45,7 @@ Item {
 	function newHtmlFile() { ProjectModelCode.newHtmlFile(); }
 	function newJsFile() { ProjectModelCode.newJsFile(); }
 	function newCssFile() { ProjectModelCode.newCssFile(); }
-	//function newContract() { ProjectModelCode.newContract(); }
+	function newContract() { ProjectModelCode.newContract(); }
 	function openDocument(documentId) { ProjectModelCode.openDocument(documentId); }
 	function openNextDocument() { ProjectModelCode.openNextDocument(); }
 	function openPrevDocument() { ProjectModelCode.openPrevDocument(); }
