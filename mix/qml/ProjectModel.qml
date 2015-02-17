@@ -100,6 +100,14 @@ Item {
 		}
 	}
 
+	DeploymentDialog
+	{
+		id: deploymentDialog
+		onAccepted: {
+			ProjectModelCode.startDeployProject()
+		}
+	}
+
 	ListModel {
 		id: projectListModel
 	}

@@ -262,11 +262,17 @@ function deployProject(force) {
 		return;
 	}
 
+	deploymentDialog.open();
+}
+
+function startDeployProject()
+{
 	var date = new Date();
 	var deploymentId = date.toLocaleString(Qt.locale(), "ddMMyyHHmmsszzz");
 	var jsonRpcUrl = "http://localhost:8080";
 	console.log("Deploying " + deploymentId + " to " + jsonRpcUrl);
 	deploymentStarted();
+
 	var code = codeModel.codeHex
 	var rpcRequest = JSON.stringify({
 		jsonrpc: "2.0",
@@ -302,6 +308,11 @@ function finalizeDeployment(deploymentId, address) {
 	//create a dir for frontend files and copy them
 	var deploymentDir = projectPath + deploymentId + "/";
 	fileIo.makeDir(deploymentDir);
+	var manifest = {
+		previous: 'jgjgj67576576576567ytjy',
+		first: 'ds564rh5656hhfghfg',
+		entries: []
+	};
 	for (var i = 0; i < projectListModel.count; i++) {
 		var doc = projectListModel.get(i);
 		if (doc.isContract)
@@ -324,6 +335,11 @@ function finalizeDeployment(deploymentId, address) {
 		}
 		else
 			fileIo.copyFile(doc.path, deploymentDir + doc.fileName);
+		var jsonFile = {
+			path: '/' + doc.fileName,
+			file: '/' + doc.fileName
+		}
+		manifest.entries.push(jsonFile);
 	}
 	//write deployment js
 	var contractAccessor = "contracts[\"" + codeModel.code.contract.name + "\"]";
@@ -342,5 +358,28 @@ function finalizeDeployment(deploymentId, address) {
 	fileIo.copyFile("qrc:///js/webthree.js", deploymentDir + "ethereum.js");
 	deploymentAddress = address;
 	saveProject();
+
+	var hash  = fileIo.compress(JSON.stringify(manifest), deploymentDir);
+	//Call Registry
+	var applicationUrlEth = deploymentDialog.applicationUrlEth;
+	var applicationUrlHttp = deploymentDialog.applicationUrlHttp;
+	applicationUrlEth = formatAppUrl(applicationEth);
 	deploymentComplete();
+}
+
+function formatAppUrl(url)
+{
+	var slash = url.indexof("/");
+	var dot = url.indexof(".");
+	if ((slash === -1 && dot === -1) || dot > slash)
+		return url;
+	else
+	{
+		var split = url.split("/");
+		var dotted = split[0].split(".");
+		var main = "";
+		for (var k in dotted)
+			main += dotted[k] + '/' + main;
+		return main;
+	}
 }

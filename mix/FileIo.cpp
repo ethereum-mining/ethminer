@@ -1,18 +1,18 @@
 /*
-    This file is part of cpp-ethereum.
+	This file is part of cpp-ethereum.
 
-    cpp-ethereum is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
 
-    cpp-ethereum is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file FileIo.cpp
  * @author Arkadiy Paronyan arkadiy@ethdev.com
@@ -25,6 +25,8 @@
 #include <QFileInfo>
 #include <QTextStream>
 #include <QUrl>
+#include <libdevcrypto/SHA3.h>
+#include "libminizip/zip.h"
 #include "FileIo.h"
 
 using namespace dev::mix;
@@ -100,4 +102,49 @@ bool FileIo::fileExists(QString const& _url)
 	QUrl url(_url);
 	QFile file(url.path());
 	return file.exists();
+}
+
+QString compress(QString const& _manifest, QString const& _folder)
+{
+	zipFile compressed = zipOpen(_folder + "\dapp.zip", APPEND_STATUS_CREATE);
+	zip_fileinfo zfiManifest = { 0 };
+	bool res = zipOpenNewFileInZip(compressed, "manifest.json",
+						&zfiManifest, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_DEFAULT_COMPRESSION);
+	if (res)
+	{
+		zipWriteInFileInZip(compressed, _manifest , _manifest.size());
+		zipCloseFileInZip(compressed);
+	}
+
+	QDirIterator dirIt(_folder, QDirIterator::Subdirectories);
+	while (dirIt.hasNext())
+	{
+		dirIt.next();
+		QFile file(dirIt.filePath());
+		QByteArray _a;
+		while (!file.atEnd())
+		{
+			QByteArray line = file.readLine();
+			_a.insert(_a, line.begin(), line.end());
+		}
+		zip_fileinfo zfi = { 0 };
+		res = zipOpenNewFileInZip(compressed, QFileInfo(dirIt.filePath()).fileName().toStdString(),
+							&zfi, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_DEFAULT_COMPRESSION);
+		if (res)
+		{
+			zipWriteInFileInZip(compressed, _a, _a.size());
+			zipCloseFileInZip(compressed);
+		}
+		file.close();
+	}
+
+	QFile zip(_folder + "\dapp.zip");
+	QByteArray aZip;
+	while (!zip.atEnd())
+	{
+		QByteArray line = zip.readLine();
+		aZip.insert(aZip, line.begin(), line.end());
+	}
+	dev::h256 h = dev::sha3(aZip);
+	return toHex(h.ref());
 }
