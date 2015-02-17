@@ -714,6 +714,20 @@ BlockInfo Client::uncle(h256 _blockHash, unsigned _i) const
 		return BlockInfo();
 }
 
+unsigned Client::transactionCount(h256 _blockHash) const
+{
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	return b[1].itemCount();
+}
+
+unsigned Client::uncleCount(h256 _blockHash) const
+{
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	return b[2].itemCount();
+}
+
 LocalisedLogEntries Client::logs(LogFilter const& _f) const
 {
 	LocalisedLogEntries ret;
