@@ -27,7 +27,9 @@
 #include <map>
 #include <QObject>
 #include <QThread>
+#include <QHash>
 #include <libdevcore/Common.h>
+#include <libdevcore/Guards.h>
 
 class QTextDocument;
 
@@ -56,59 +58,50 @@ public:
 	BackgroundWorker(CodeModel* _model): QObject(), m_model(_model) {}
 
 public slots:
-	void queueCodeChange(int _jobId, QString const& _content);
+	void queueCodeChange(int _jobId);
 private:
 	CodeModel* m_model;
 };
 
 ///Compilation result model. Contains all the compiled contract data required by UI
-class CompilationResult: public QObject
+class CompiledContract: public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QContractDefinition* contract READ contract)
-	Q_PROPERTY(QString compilerMessage READ compilerMessage CONSTANT)
-	Q_PROPERTY(bool successful READ successful CONSTANT)
 	Q_PROPERTY(QString contractInterface READ contractInterface CONSTANT)
 	Q_PROPERTY(QString codeHex READ codeHex CONSTANT)
+	Q_PROPERTY(QString documentId MEMBER m_documentId CONSTANT)
 
 public:
-	/// Empty compilation result constructor
-	CompilationResult();
 	/// Successful compilation result constructor
-	CompilationResult(solidity::CompilerStack const& _compiler);
-	/// Failed compilation result constructor
-	CompilationResult(CompilationResult const& _prev, QString const& _compilerMessage);
+	CompiledContract(solidity::CompilerStack const& _compiler, QString const& _contractName, QString const& _source);
 
 	/// @returns contract definition for QML property
-	QContractDefinition* contract() { return m_contract.get(); }
+	QContractDefinition* contract() const { return m_contract.get(); }
 	/// @returns contract definition
-	std::shared_ptr<QContractDefinition> sharedContract() { return m_contract; }
-	/// Indicates if the compilation was successful
-	bool successful() const { return m_successful; }
-	/// @returns compiler error message in case of unsuccessful compilation
-	QString compilerMessage() const { return m_compilerMessage; }
+	std::shared_ptr<QContractDefinition> sharedContract() const { return m_contract; }
 	/// @returns contract bytecode
 	dev::bytes const& bytes() const { return m_bytes; }
 	/// @returns contract bytecode as hex string
 	QString codeHex() const;
 	/// @returns contract definition in JSON format
 	QString contractInterface() const { return m_contractInterface; }
-	/// Get code highlighter
-	std::shared_ptr<CodeHighlighter> codeHighlighter() { return m_codeHighlighter; }
 
 private:
-	bool m_successful;
-	uint m_codeHash;
+	uint m_sourceHash;
 	std::shared_ptr<QContractDefinition> m_contract;
 	QString m_compilerMessage; ///< @todo: use some structure here
 	dev::bytes m_bytes;
 	QString m_contractInterface;
-	std::shared_ptr<CodeHighlighter> m_codeHighlighter;
+	QString m_documentId;
 
 	friend class CodeModel;
 };
 
-/// Background code compiler
+
+using ContractMap = QHash<QString, CompiledContract*>;
+
+/// Code compilation model. Compiles contracts in background an provides compiled contract data
 class CodeModel: public QObject
 {
 	Q_OBJECT
@@ -117,56 +110,59 @@ public:
 	CodeModel(QObject* _parent);
 	~CodeModel();
 
-	/// @returns latest compilation result
-	CompilationResult* code() { return m_result.get(); }
-	/// @returns latest compilation resul
-	CompilationResult const* code() const { return m_result.get(); }
-
-	Q_PROPERTY(CompilationResult* code READ code NOTIFY codeChanged)
+	Q_PROPERTY(QVariantMap contracts READ contracts NOTIFY codeChanged)
 	Q_PROPERTY(bool compiling READ isCompiling NOTIFY stateChanged)
 	Q_PROPERTY(bool hasContract READ hasContract NOTIFY codeChanged)
 
+	/// @returns latest compilation results for contracts
+	QVariantMap contracts() const;
 	/// @returns compilation status
 	bool isCompiling() const { return m_compiling; }
-	/// @returns true if contract has at least one function
+	/// @returns true there is a contract which has at least one function
 	bool hasContract() const;
-	/// Apply text document formatting. @todo Move this to editor module
-	void updateFormatting(QTextDocument* _document);
 	/// Get contract code by url. Contract is compiled on first access and cached
 	dev::bytes const& getStdContractCode(QString const& _contractName, QString const& _url);
+	/// Get contract by name
+	CompiledContract const& contract(QString _name) const;
+	/// Find a contract by document id
+	/// @returns CompiledContract object or null if not found
+	Q_INVOKABLE CompiledContract* contractByDocumentId(QString _documentId) const;
 
 signals:
 	/// Emited on compilation state change
 	void stateChanged();
 	/// Emitted on compilation complete
 	void compilationComplete();
+	/// Emitted on compilation error
+	void compilationError(QString _error);
 	/// Internal signal used to transfer compilation job to background thread
-	void scheduleCompilationJob(int _jobId, QString const& _content);
+	void scheduleCompilationJob(int _jobId);
 	/// Emitted if there are any changes in the code model
 	void codeChanged();
 	/// Emitted if there are any changes in the contract interface
-	void contractInterfaceChanged();
-	/// Emitted on compilation complete. Internal
-	void compilationCompleteInternal(CompilationResult* _newResult);
-
-private slots:
-	void onCompilationComplete(CompilationResult* _newResult);
+	void contractInterfaceChanged(QString _documentId);
 
 public slots:
 	/// Update code model on source code change
-	void registerCodeChange(QString const& _code);
+	void registerCodeChange(QString const& _documentId, QString const& _code);
+	/// Reset code model for a new project
+	void reset(QVariantMap const& _documents);
 
 private:
-	void runCompilationJob(int _jobId, QString const& _content);
+	void runCompilationJob(int _jobId);
 	void stop();
+	void releaseContracts();
 
 	std::atomic<bool> m_compiling;
-	std::unique_ptr<CompilationResult> m_result;
+	mutable dev::Mutex x_contractMap;
+	ContractMap m_contractMap;
 	std::unique_ptr<CodeHighlighterSettings> m_codeHighlighterSettings;
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;
 	int m_backgroundJobId = 0; //protects from starting obsolete compilation job
 	std::map<QString, dev::bytes> m_compiledContracts; //by name
+	dev::Mutex x_pendingContracts;
+	std::map<QString, QString> m_pendingContracts; //name to source
 	friend class BackgroundWorker;
 };
 
