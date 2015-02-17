@@ -1,7 +1,7 @@
 #include "ExecutionEngine.h"
 
 #include <array>
-#include <cstdlib>	// env options
+#include <mutex>
 #include <iostream>
 
 #include "preprocessor/llvm_includes_start.h"
@@ -12,6 +12,7 @@
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/Host.h>
+#include <llvm/Support/CommandLine.h>
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Runtime.h"
@@ -49,39 +50,43 @@ std::string codeHash(i256 const& _hash)
 	return str;
 }
 
-bool getEnvOption(char const* _name, bool _default)
+void printVersion()
 {
-	auto var = std::getenv(_name);
-	if (!var)
-		return _default;
-	return std::strtol(var, nullptr, 10) != 0;
+	std::cout << "Ethereum EVM JIT Compiler (http://github.com/ethereum/evmjit):\n"
+			  << "  EVMJIT version " << EVMJIT_VERSION << "\n"
+#ifdef NDEBUG
+			  << "  Optimized build, " EVMJIT_VERSION_FULL "\n"
+#else
+			  << "  DEBUG build, " EVMJIT_VERSION_FULL "\n"
+#endif
+			  << "  Built " << __DATE__ << " (" << __TIME__ << ")\n"
+			  << std::endl;
 }
 
-bool showInfo()
+namespace cl = llvm::cl;
+cl::opt<bool> g_optimize{"O", cl::desc{"Optimize"}};
+cl::opt<bool> g_cache{"cache", cl::desc{"Cache compiled EVM code on disk"}, cl::init(true)};
+cl::opt<bool> g_stats{"st", cl::desc{"Statistics"}};
+cl::opt<bool> g_dump{"dump", cl::desc{"Dump LLVM IR module"}};
+
+void parseOptions()
 {
-	auto show = getEnvOption("EVMJIT_INFO", false);
-	if (show)
-	{
-		std::cout << "The Ethereum EVM JIT " EVMJIT_VERSION_FULL " LLVM " LLVM_VERSION << std::endl;
-	}
-	return show;
+	cl::AddExtraVersionPrinter(printVersion);
+	cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
 }
 
 }
+
 
 ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 {
-	static auto optimizationEnabled = getEnvOption("EVMJIT_OPT", false);
-	static auto debugDumpModule = getEnvOption("EVMJIT_DUMP", false);
-	static auto objectCacheEnabled = getEnvOption("EVMJIT_CACHE", true);
-	static auto statsCollectingEnabled = getEnvOption("EVMJIT_STATS", false);
-	static auto infoShown = showInfo();
-	(void) infoShown;
+	static std::once_flag flag;
+	std::call_once(flag, parseOptions);
 
 	std::unique_ptr<ExecStats> listener{new ExecStats};
 	listener->stateChanged(ExecState::Started);
 
-	auto objectCache = objectCacheEnabled ? Cache::getObjectCache(listener.get()) : nullptr;
+	auto objectCache = g_cache ? Cache::getObjectCache(listener.get()) : nullptr;
 
 	static std::unique_ptr<llvm::ExecutionEngine> ee;
 	if (!ee)
@@ -93,7 +98,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		llvm::EngineBuilder builder(module.get());
 		builder.setEngineKind(llvm::EngineKind::JIT);
 		builder.setUseMCJIT(true);
-		builder.setOptLevel(llvm::CodeGenOpt::None);
+		builder.setOptLevel(g_optimize ? llvm::CodeGenOpt::Default : llvm::CodeGenOpt::None);
 
 		auto triple = llvm::Triple(llvm::sys::getProcessTriple());
 		if (triple.getOS() == llvm::Triple::OSType::Win32)
@@ -122,13 +127,13 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 			assert(_data->code || !_data->codeSize); //TODO: Is it good idea to execute empty code?
 			module = Compiler{{}}.compile(_data->code, _data->code + _data->codeSize, mainFuncName);
 
-			if (optimizationEnabled)
+			if (g_optimize)
 			{
 				listener->stateChanged(ExecState::Optimization);
 				optimize(*module);
 			}
 		}
-		if (debugDumpModule)
+		if (g_dump)
 			module->dump();
 
 		ee->addModule(module.get());
@@ -150,7 +155,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	}
 	listener->stateChanged(ExecState::Finished);
 
-	if (statsCollectingEnabled)
+	if (g_stats)
 		statsCollector.stats.push_back(std::move(listener));
 
 	return returnCode;
