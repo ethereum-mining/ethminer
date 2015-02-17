@@ -201,7 +201,7 @@ void Secp256k1::agree(Secret const& _s, Public const& _r, h256& o_s)
 {
 	(void)o_s;
 	(void)_s;
-	ECDH<ECP>::Domain d(m_oid);
+	ECDH<ECP>::Domain d(ASN1::secp256k1());
 	assert(d.AgreedValueLength() == sizeof(o_s));
 	byte remote[65] = {0x04};
 	memcpy(&remote[1], _r.data(), 64);

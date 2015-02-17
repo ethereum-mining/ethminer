@@ -337,7 +337,7 @@ void Host::runAcceptor()
 				{
 					// doHandshake takes ownersihp of *s via std::move
 					// incoming connection; we don't yet know nodeid
-					doHandshake(s, NodeId());
+					doHandshake(new Handshake(s));
 					success = true;
 				}
 				catch (Exception const& _e)
@@ -351,15 +351,18 @@ void Host::runAcceptor()
 			}
 			
 			// asio doesn't close socket on error
-			if (!success && s->is_open())
+			if (!success)
 			{
-				boost::system::error_code ec;
-				s->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-				s->close();
+				if (s->is_open())
+				{
+					boost::system::error_code ec;
+					s->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+					s->close();
+				}
+				delete s;
 			}
 
 			m_accepting = false;
-			delete s;
 			
 			if (ec.value() < 1)
 				runAcceptor();
@@ -367,22 +370,209 @@ void Host::runAcceptor()
 	}
 }
 
-void Host::doHandshake(bi::tcp::socket* _socket, NodeId _nodeId)
+void Host::doHandshake(Handshake* _h, boost::system::error_code _ech)
 {
-	try {
-		clog(NetConnect) << "Accepting connection for " << _socket->remote_endpoint();
-	} catch (...){}
-
-	shared_ptr<Peer> p;
-	if (_nodeId)
-		p = m_peers[_nodeId];
+	if (_ech)
+	{
+		boost::system::error_code ec;
+		_h->socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+		if (_h->socket->is_open())
+			_h->socket->close();
+		delete _h;
+		return;
+	}
 	
-	if (!p)
-		p.reset(new Peer());
-	p->endpoint.tcp.address(_socket->remote_endpoint().address());
+	if (!_h->started())
+	{
+		clog(NetConnect) << "Authenticating connection for " << _h->socket->remote_endpoint();
+		
+		if (_h->originated)
+		{
+			clog(NetConnect) << "devp2p.connect.egress sending auth";
+			// egress: tx auth
+			asserts(_h->remote);
+			_h->auth.resize(Signature::size + h256::size + Public::size + h256::size + 1);
+			bytesConstRef sig(&_h->auth[0], Signature::size);
+			bytesConstRef hepubk(&_h->auth[Signature::size], h256::size);
+			bytesConstRef pubk(&_h->auth[Signature::size + h256::size], Public::size);
+			bytesConstRef nonce(&_h->auth[Signature::size + h256::size + Public::size], h256::size);
+			
+			// E(remote-pubk, S(ecdhe-random, ecdh-shared-secret^nonce) || H(ecdhe-random-pubk) || pubk || nonce || 0x0)
+			crypto::ecdh::agree(m_alias.sec(), _h->remote, _h->ss);
+			sign(_h->ecdhe.seckey(), _h->ss ^ _h->nonce).ref().copyTo(sig);
+			sha3(_h->ecdhe.pubkey().ref(), hepubk);
+			m_alias.pub().ref().copyTo(pubk);
+			_h->nonce.ref().copyTo(nonce);
+			_h->auth[_h->auth.size() - 1] = 0x0;
+			encrypt(_h->remote, &_h->auth, _h->authCipher);
+			ba::async_write(*_h->socket, ba::buffer(_h->authCipher), [=](boost::system::error_code ec, std::size_t)
+			{
+				doHandshake(_h, ec);
+			});
+		}
+		else
+		{
+			clog(NetConnect) << "devp2p.connect.ingress recving auth";
+			// ingress: rx auth
+			_h->authCipher.resize(279);
+			ba::async_read(*_h->socket, ba::buffer(_h->authCipher, 279), [=](boost::system::error_code ec, std::size_t)
+			{
+				if (ec)
+					doHandshake(_h, ec);
+				else
+				{
+					decrypt(m_alias.sec(), bytesConstRef(&_h->authCipher), _h->auth);
+					bytesConstRef sig(&_h->auth[0], Signature::size);
+					bytesConstRef hepubk(&_h->auth[Signature::size], h256::size);
+					bytesConstRef pubk(&_h->auth[Signature::size + h256::size], Public::size);
+					bytesConstRef nonce(&_h->auth[Signature::size + h256::size + Public::size], h256::size);
+					pubk.copyTo(_h->remote.ref());
+					nonce.copyTo(_h->remoteNonce.ref());
+					
+					crypto::ecdh::agree(m_alias.sec(), _h->remote, _h->ss);
+					_h->remoteEphemeral = recover(*(Signature*)sig.data(), _h->ss ^ _h->remoteNonce);
+					assert(sha3(_h->remoteEphemeral) == *(h256*)hepubk.data());
+					doHandshake(_h);
+				}
+			});
+		}
+	}
+	else if (_h->started() && !_h->acked())
+		if (_h->originated)
+		{
+			clog(NetConnect) << "devp2p.connect.egress recving ack";
+			// egress: rx ack
+			_h->ackCipher.resize(182);
+			ba::async_read(*_h->socket, ba::buffer(_h->ackCipher, 182), [=](boost::system::error_code ec, std::size_t)
+			{
+				if (ec)
+					doHandshake(_h, ec);
+				else
+				{
+					decrypt(m_alias.sec(), bytesConstRef(&_h->ackCipher), _h->ack);
+					bytesConstRef(&_h->ack).cropped(0, Public::size).copyTo(_h->remoteEphemeral.ref());
+					bytesConstRef(&_h->ack).cropped(Public::size, h256::size).copyTo(_h->remoteNonce.ref());
+					doHandshake(_h);
+				}
+			});
+		}
+		else
+		{
+			clog(NetConnect) << "devp2p.connect.ingress sending ack";
+			// ingress: tx ack
+			_h->ack.resize(Public::size + h256::size + 1);
+			bytesConstRef epubk(&_h->ack[0], Public::size);
+			bytesConstRef nonce(&_h->ack[Public::size], h256::size);
+			_h->ecdhe.pubkey().ref().copyTo(epubk);
+			_h->nonce.ref().copyTo(nonce);
+			_h->ack[_h->ack.size() - 1] = 0x0;
+			encrypt(_h->remote, &_h->ack, _h->ackCipher);
+			ba::async_write(*_h->socket, ba::buffer(_h->ackCipher), [=](boost::system::error_code ec, std::size_t)
+			{
+				doHandshake(_h, ec);
+			});
+		}
+	else if (_h->started() && _h->acked())
+	{
+		if (_h->originated)
+			clog(NetConnect) << "devp2p.connect.egress sending magic sequence";
+		else
+			clog(NetConnect) << "devp2p.connect.ingress sending magic sequence";
+		PeerSecrets* k = new PeerSecrets;
+		bytes keyMaterialBytes(512);
+		bytesConstRef keyMaterial(&keyMaterialBytes);
 
-	auto ps = std::make_shared<Session>(this, std::move(*_socket), p);
-	ps->start();
+		_h->ecdhe.agree(_h->remoteEphemeral, _h->ess);
+		_h->ess.ref().copyTo(keyMaterial.cropped(0, h256::size));
+		_h->ss.ref().copyTo(keyMaterial.cropped(h256::size, h256::size));
+		//		auto token = sha3(ssA);
+		k->encryptK = sha3(keyMaterial);
+		k->encryptK.ref().copyTo(keyMaterial.cropped(h256::size, h256::size));
+		k->macK = sha3(keyMaterial);
+		
+		// Initiator egress-mac: sha3(mac-secret^recipient-nonce || auth-sent-init)
+		//           ingress-mac: sha3(mac-secret^initiator-nonce || auth-recvd-ack)
+		// Recipient egress-mac: sha3(mac-secret^initiator-nonce || auth-sent-ack)
+		//           ingress-mac: sha3(mac-secret^recipient-nonce || auth-recvd-init)
+		
+		bytes const& egressCipher = _h->originated ? _h->authCipher : _h->ackCipher;
+		keyMaterialBytes.resize(h256::size + egressCipher.size());
+		keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
+		(k->macK ^ _h->remoteNonce).ref().copyTo(keyMaterial);
+		bytesConstRef(&egressCipher).copyTo(keyMaterial.cropped(h256::size, egressCipher.size()));
+		k->egressMac = sha3(keyMaterial);
+		
+		bytes const& ingressCipher = _h->originated ? _h->ackCipher : _h->authCipher;
+		keyMaterialBytes.resize(h256::size + ingressCipher.size());
+		keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
+		(k->macK ^ _h->nonce).ref().copyTo(keyMaterial);
+		bytesConstRef(&ingressCipher).copyTo(keyMaterial.cropped(h256::size, ingressCipher.size()));
+		k->ingressMac = sha3(keyMaterial);
+		
+		// TESTING: send encrypt magic sequence
+		bytes magic {0x22,0x40,0x08,0x91};
+		encryptSymNoAuth(k->encryptK, &magic, k->magicCipherAndMac, h256());
+		k->magicCipherAndMac.resize(k->magicCipherAndMac.size() + 32);
+		sha3mac(k->egressMac.ref(), &magic, k->egressMac.ref());
+		k->egressMac.ref().copyTo(bytesConstRef(&k->magicCipherAndMac).cropped(k->magicCipherAndMac.size() - 32, 32));
+		
+		clog(NetConnect) << "devp2p.connect.egress txrx magic sequence";
+		
+		ba::async_write(*_h->socket, ba::buffer(k->magicCipherAndMac), [this, k, _h, magic](boost::system::error_code ec, std::size_t)
+		{
+			if (ec)
+			{
+				delete k;
+				doHandshake(_h, ec);
+				return;
+			}
+			
+			ba::async_read(*_h->socket, ba::buffer(k->recvdMagicCipherAndMac, k->magicCipherAndMac.size()), [this, k, _h, magic](boost::system::error_code ec, std::size_t)
+			{
+				if (_h->originated)
+					clog(NetNote) << "devp2p.connect.egress recving magic sequence";
+				else
+					clog(NetNote) << "devp2p.connect.ingress recving magic sequence";
+				
+				if (ec)
+				{
+					delete k;
+					doHandshake(_h, ec);
+					return;
+				}
+				
+				bytes decryptedMagic;
+				decryptSymNoAuth(k->encryptK, h256(), &k->recvdMagicCipherAndMac, decryptedMagic);
+				clog(NetNote) << "devp2p.connect received magic sequence";
+				
+				shared_ptr<Peer> p;
+				p = m_peers[_h->remote];
+				
+				if (!p)
+				{
+					p.reset(new Peer());
+					p->id = _h->remote;
+				}
+				p->endpoint.tcp.address(_h->socket->remote_endpoint().address());
+				p->m_lastDisconnect = NoDisconnect;
+				p->m_lastConnected = std::chrono::system_clock::now();
+				p->m_failedAttempts = 0;
+				
+				auto ps = std::make_shared<Session>(this, move(*_h->socket), p);
+				ps->start();
+				
+				delete k;
+			});
+		});
+	}
+	else
+	{
+		clog(NetConnect) << "Disconnecting " << _h->socket->remote_endpoint() << " (Authentication Failed)";
+		boost::system::error_code ec;
+		_h->socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+		_h->socket->close();
+		delete _h;
+	}
 }
 
 string Host::pocHost()
@@ -467,18 +657,13 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 			clog(NetConnect) << "Connection refused to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "(" << ec.message() << ")";
 			_p->m_lastDisconnect = TCPError;
 			_p->m_lastAttempted = std::chrono::system_clock::now();
+			delete s;
 		}
 		else
 		{
 			clog(NetConnect) << "Connected to" << _p->id.abridged() << "@" << _p->peerEndpoint();
-			_p->m_lastDisconnect = NoDisconnect;
-			_p->m_lastConnected = std::chrono::system_clock::now();
-			_p->m_failedAttempts = 0;
-			auto ps = make_shared<Session>(this, std::move(*s), _p);
-			ps->start();
-			
+			doHandshake(new Handshake(s, _p->id));
 		}
-		delete s;
 		Guard l(x_pendingNodeConns);
 		m_pendingPeerConns.erase(nptr);
 	});
