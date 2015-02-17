@@ -59,6 +59,7 @@
             
             { "name": "shh_newFilter", "params": [{}], "order": [], "returns": 0},
             { "name": "shh_uninstallFilter", "params": [0], "order": [], "returns": true},
-            { "name": "shh_changed", "params": [0], "order": [], "returns": []}
+            { "name": "shh_changed", "params": [0], "order": [], "returns": []},
+            { "name": "shh_getMessages", "params": [0], "order": [], "returns": []}
 ]
 

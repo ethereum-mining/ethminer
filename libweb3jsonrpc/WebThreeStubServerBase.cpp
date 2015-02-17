@@ -613,6 +613,29 @@ Json::Value WebThreeStubServerBase::shh_changed(int _id)
 	return ret;
 }
 
+Json::Value WebThreeStubServerBase::shh_getMessages(int _id)
+{
+	Json::Value ret(Json::arrayValue);
+	auto pub = m_shhWatches[_id];
+	if (!pub || m_ids.count(pub))
+		for (h256 const& h: face()->watchMessages(_id))
+		{
+			auto e = face()->envelope(h);
+			shh::Message m;
+			if (pub)
+			{
+				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
+				m = e.open(face()->fullTopic(_id), m_ids[pub]);
+			}
+			else
+				m = e.open(face()->fullTopic(_id));
+			if (!m)
+				continue;
+			ret.append(toJson(h, e, m));
+		}
+	return ret;
+}
+
 int WebThreeStubServerBase::shh_newFilter(Json::Value const& _json)
 {
 	auto w = toWatch(_json);
