@@ -37,6 +37,12 @@ int main(int _argc, char* _argv[])
 	putenv((char*)"QT_QPA_PLATFORMTHEME=");
 	putenv((char*)"QSG_RENDER_LOOP=threaded");
 #endif
+#ifdef _WIN32
+	putenv((char*)"OPENSSL_CONF=c:\\");
+#endif
+#ifdef _WIN64
+	putenv((char*)"OPENSSL_CONF=c:\\");
+#endif
 	try
 	{
 		MixApplication app(_argc, _argv);
