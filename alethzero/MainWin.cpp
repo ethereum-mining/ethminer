@@ -114,6 +114,7 @@ Main::Main(QWidget *parent) :
 	QtWebEngine::initialize();
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
+	QtWebEngine::initialize();
 	g_logPost = [=](string const& s, char const* c)
 	{
 		simpleDebugOut(s, c);
