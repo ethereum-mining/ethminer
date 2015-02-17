@@ -542,24 +542,27 @@ void Host::doHandshake(Handshake* _h, boost::system::error_code _ech)
 					return;
 				}
 				
+				/// capabilities handshake (encrypted magic sequence is placeholder)
 				bytes decryptedMagic;
 				decryptSymNoAuth(k->encryptK, h256(), &k->recvdMagicCipherAndMac, decryptedMagic);
-
-				shared_ptr<Peer> p;
-				p = m_peers[_h->remote];
-				
-				if (!p)
+				if (decryptedMagic[0] == 0x22 && decryptedMagic[1] == 0x40 && decryptedMagic[2] == 0x08 && decryptedMagic[3] == 0x91)
 				{
-					p.reset(new Peer());
-					p->id = _h->remote;
+					shared_ptr<Peer> p;
+					p = m_peers[_h->remote];
+					
+					if (!p)
+					{
+						p.reset(new Peer());
+						p->id = _h->remote;
+					}
+					p->endpoint.tcp.address(_h->socket->remote_endpoint().address());
+					p->m_lastDisconnect = NoDisconnect;
+					p->m_lastConnected = std::chrono::system_clock::now();
+					p->m_failedAttempts = 0;
+					
+					auto ps = std::make_shared<Session>(this, move(*_h->socket), p);
+					ps->start();
 				}
-				p->endpoint.tcp.address(_h->socket->remote_endpoint().address());
-				p->m_lastDisconnect = NoDisconnect;
-				p->m_lastConnected = std::chrono::system_clock::now();
-				p->m_failedAttempts = 0;
-				
-				auto ps = std::make_shared<Session>(this, move(*_h->socket), p);
-				ps->start();
 				
 				delete k;
 			});
