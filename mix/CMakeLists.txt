@@ -71,4 +71,4 @@ eth_install_executable(${EXECUTABLE}
 #add qml asnd stdc files to project tree in Qt creator
 file(GLOB_RECURSE QMLFILES "qml/*.*")
 file(GLOB_RECURSE SOLFILES "stdc/*.*")
-add_custom_target(dummy SOURCES ${QMLFILES} ${SOLFILES})
+add_custom_target(mix_qml SOURCES ${QMLFILES} ${SOLFILES})
