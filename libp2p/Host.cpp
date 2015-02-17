@@ -517,6 +517,7 @@ void Host::doHandshake(Handshake* _h, boost::system::error_code _ech)
 		k->egressMac.ref().copyTo(bytesConstRef(&k->magicCipherAndMac).cropped(k->magicCipherAndMac.size() - 32, 32));
 		
 		clog(NetConnect) << "devp2p.connect.egress txrx magic sequence";
+		k->recvdMagicCipherAndMac.resize(k->magicCipherAndMac.size());
 		
 		ba::async_write(*_h->socket, ba::buffer(k->magicCipherAndMac), [this, k, _h, magic](boost::system::error_code ec, std::size_t)
 		{
@@ -543,8 +544,7 @@ void Host::doHandshake(Handshake* _h, boost::system::error_code _ech)
 				
 				bytes decryptedMagic;
 				decryptSymNoAuth(k->encryptK, h256(), &k->recvdMagicCipherAndMac, decryptedMagic);
-				clog(NetNote) << "devp2p.connect received magic sequence";
-				
+
 				shared_ptr<Peer> p;
 				p = m_peers[_h->remote];
 				
@@ -716,8 +716,8 @@ void Host::run(boost::system::error_code const&)
 		if (auto pp = p.second.lock())
 			pp->serviceNodesRequest();
 	
-	keepAlivePeers();
-	disconnectLatePeers();
+//	keepAlivePeers();
+//	disconnectLatePeers();
 
 	auto c = peerCount();
 	if (m_idealPeerCount && !c)
