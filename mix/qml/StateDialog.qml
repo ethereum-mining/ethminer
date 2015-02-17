@@ -12,7 +12,7 @@ Window {
 	id: modalStateDialog
 	modality: Qt.ApplicationModal
 
-	width: 450
+	width: 520
 	height: 480
 	title: qsTr("Edit State")
 	visible: false
