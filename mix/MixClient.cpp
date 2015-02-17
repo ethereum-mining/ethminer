@@ -463,6 +463,20 @@ eth::BlockInfo MixClient::uncle(h256 _blockHash, unsigned _i) const
 		return BlockInfo();
 }
 
+unsigned MixClient::transactionCount(h256 _blockHash) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	return b[1].itemCount();
+}
+
+unsigned MixClient::uncleCount(h256 _blockHash) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	return b[2].itemCount();
+}
+
 unsigned MixClient::number() const
 {
 	return bc().number();
