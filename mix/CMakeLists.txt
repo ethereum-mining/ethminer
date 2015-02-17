@@ -11,8 +11,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 aux_source_directory(. SRC_LIST)
 
-include_directories(..)
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
+include_directories(BEFORE ..)
 
 find_package (Qt5WebEngine QUIET)
 qt5_add_resources(UI_RESOURCES res.qrc)
