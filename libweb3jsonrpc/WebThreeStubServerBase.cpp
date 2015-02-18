@@ -367,6 +367,26 @@ double WebThreeStubServerBase::eth_countAt(string const& _address)
 	return (double)(uint64_t)client()->countAt(jsToAddress(_address), client()->getDefault());
 }
 
+double WebThreeStubServerBase::eth_transactionCountByHash(std::string const& _hash)
+{
+	return client()->transactionCount(jsToFixed<32>(_hash));
+}
+
+double WebThreeStubServerBase::eth_transactionCountByNumber(int _number)
+{
+	return client()->transactionCount(client()->hashFromNumber(_number));
+}
+
+double WebThreeStubServerBase::eth_uncleCountByHash(std::string const& _hash)
+{
+	return client()->transactionCount(jsToFixed<32>(_hash));
+}
+
+double WebThreeStubServerBase::eth_uncleCountByNumber(int _number)
+{
+	return client()->transactionCount(client()->hashFromNumber(_number));
+}
+
 int WebThreeStubServerBase::eth_defaultBlock()
 {
 	return client()->getDefault();
@@ -610,6 +630,29 @@ Json::Value WebThreeStubServerBase::shh_changed(int _id)
 			ret.append(toJson(h, e, m));
 		}
 	
+	return ret;
+}
+
+Json::Value WebThreeStubServerBase::shh_getMessages(int _id)
+{
+	Json::Value ret(Json::arrayValue);
+	auto pub = m_shhWatches[_id];
+	if (!pub || m_ids.count(pub))
+		for (h256 const& h: face()->watchMessages(_id))
+		{
+			auto e = face()->envelope(h);
+			shh::Message m;
+			if (pub)
+			{
+				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
+				m = e.open(face()->fullTopic(_id), m_ids[pub]);
+			}
+			else
+				m = e.open(face()->fullTopic(_id));
+			if (!m)
+				continue;
+			ret.append(toJson(h, e, m));
+		}
 	return ret;
 }
 
