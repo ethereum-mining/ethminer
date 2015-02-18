@@ -266,22 +266,13 @@ struct PeerHandshake: public std::enable_shared_from_this<PeerHandshake>
 	~PeerHandshake() { delete socket; }
 
 protected:
-	/// Returns true when the auth message is to be sent or received.
-	bool isNew() { return state == New; }
-	
-	/// Returns true when the ack message is to be sent or received.
-	bool isAcking() { return state == AckAuth; }
-	
-	/// Returns true when auth and ack messages have been received and caps message is to be sent, received, and authenticated.
-	bool isAuthenticating() { return state == Authenticating; }
-	
 	void start() { transition(); }
 
 private:
 	void transition(boost::system::error_code _ech = boost::system::error_code());
 	
 	/// Current state of handshake.
-	State state = New;
+	State nextState = New;
 	
 	Host* host;
 	
