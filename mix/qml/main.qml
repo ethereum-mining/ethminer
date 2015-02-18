@@ -30,7 +30,7 @@ ApplicationWindow {
 			MenuItem { action: addNewHtmlFileAction }
 			MenuItem { action: addNewCssFileAction }
 			MenuSeparator {}
-			//MenuItem { action: addNewContractAction }
+			MenuItem { action: addNewContractAction }
 			MenuItem { action: closeProjectAction }
 			MenuSeparator {}
 			MenuItem { action: exitAppAction }
@@ -95,7 +95,7 @@ ApplicationWindow {
 		text: qsTr("Mine")
 		shortcut: "Ctrl+M"
 		onTriggered: clientModel.mine();
-		enabled: codeModel.hasContract && !clientModel.running &&!clientModel.mining
+		enabled: codeModel.hasContract && !clientModel.running && !clientModel.mining
 	}
 
 	StateList {

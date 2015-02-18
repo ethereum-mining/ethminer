@@ -132,8 +132,8 @@ private:
 class Declaration: public ASTNode
 {
 public:
-	enum class LValueType { None, Local, Storage };
-	enum class Visibility { Default, Public, Protected, Private };
+	/// Visibility ordered from restricted to unrestricted.
+	enum class Visibility { Default, Private, Protected, Public, External };
 
 	Declaration(Location const& _location, ASTPointer<ASTString> const& _name,
 				Visibility _visibility = Visibility::Default):
@@ -142,7 +142,9 @@ public:
 	/// @returns the declared name.
 	ASTString const& getName() const { return *m_name; }
 	Visibility getVisibility() const { return m_visibility == Visibility::Default ? getDefaultVisibility() : m_visibility; }
-	bool isPublic() const { return getVisibility() == Visibility::Public; }
+	bool isPublic() const { return getVisibility() >= Visibility::Public; }
+	bool isVisibleInContract() const { return getVisibility() != Visibility::External; }
+	bool isVisibleInDerivedContracts() const { return isVisibleInContract() && getVisibility() >= Visibility::Protected; }
 
 	/// @returns the scope this declaration resides in. Can be nullptr if it is the global scope.
 	/// Available only after name and type resolution step.
@@ -153,8 +155,7 @@ public:
 	/// The current contract has to be given since this context can change the type, especially of
 	/// contract types.
 	virtual TypePointer getType(ContractDefinition const* m_currentContract = nullptr) const = 0;
-	/// @returns the lvalue type of expressions referencing this declaration
-	virtual LValueType getLValueType() const { return LValueType::None; }
+	virtual bool isLValue() const { return false; }
 
 protected:
 	virtual Visibility getDefaultVisibility() const { return Visibility::Public; }
@@ -209,6 +210,7 @@ public:
 					   ASTPointer<ASTString> const& _documentation,
 					   std::vector<ASTPointer<InheritanceSpecifier>> const& _baseContracts,
 					   std::vector<ASTPointer<StructDefinition>> const& _definedStructs,
+					   std::vector<ASTPointer<EnumDefinition>> const& _definedEnums,
 					   std::vector<ASTPointer<VariableDeclaration>> const& _stateVariables,
 					   std::vector<ASTPointer<FunctionDefinition>> const& _definedFunctions,
 					   std::vector<ASTPointer<ModifierDefinition>> const& _functionModifiers,
@@ -216,6 +218,7 @@ public:
 		Declaration(_location, _name), Documented(_documentation),
 		m_baseContracts(_baseContracts),
 		m_definedStructs(_definedStructs),
+		m_definedEnums(_definedEnums),
 		m_stateVariables(_stateVariables),
 		m_definedFunctions(_definedFunctions),
 		m_functionModifiers(_functionModifiers),
@@ -227,6 +230,7 @@ public:
 
 	std::vector<ASTPointer<InheritanceSpecifier>> const& getBaseContracts() const { return m_baseContracts; }
 	std::vector<ASTPointer<StructDefinition>> const& getDefinedStructs() const { return m_definedStructs; }
+	std::vector<ASTPointer<EnumDefinition>> const& getDefinedEnums() const { return m_definedEnums; }
 	std::vector<ASTPointer<VariableDeclaration>> const& getStateVariables() const { return m_stateVariables; }
 	std::vector<ASTPointer<ModifierDefinition>> const& getFunctionModifiers() const { return m_functionModifiers; }
 	std::vector<ASTPointer<FunctionDefinition>> const& getDefinedFunctions() const { return m_definedFunctions; }
@@ -260,6 +264,7 @@ private:
 
 	std::vector<ASTPointer<InheritanceSpecifier>> m_baseContracts;
 	std::vector<ASTPointer<StructDefinition>> m_definedStructs;
+	std::vector<ASTPointer<EnumDefinition>> m_definedEnums;
 	std::vector<ASTPointer<VariableDeclaration>> m_stateVariables;
 	std::vector<ASTPointer<FunctionDefinition>> m_definedFunctions;
 	std::vector<ASTPointer<ModifierDefinition>> m_functionModifiers;
@@ -313,6 +318,39 @@ private:
 	void checkRecursion() const;
 
 	std::vector<ASTPointer<VariableDeclaration>> m_members;
+};
+
+class EnumDefinition: public Declaration
+{
+public:
+	EnumDefinition(Location const& _location,
+				   ASTPointer<ASTString> const& _name,
+				   std::vector<ASTPointer<EnumValue>> const& _members):
+		Declaration(_location, _name), m_members(_members) {}
+	virtual void accept(ASTVisitor& _visitor) override;
+	virtual void accept(ASTConstVisitor& _visitor) const override;
+
+	std::vector<ASTPointer<EnumValue>> const& getMembers() const { return m_members; }
+
+	virtual TypePointer getType(ContractDefinition const*) const override;
+
+private:
+	std::vector<ASTPointer<EnumValue>> m_members;
+};
+
+/**
+ * Declaration of an Enum Value
+ */
+class EnumValue: public Declaration
+{
+  public:
+	EnumValue(Location const& _location,
+			  ASTPointer<ASTString> const& _name):
+		Declaration(_location, _name) {}
+
+	virtual void accept(ASTVisitor& _visitor) override;
+	virtual void accept(ASTConstVisitor& _visitor) const override;
+	TypePointer getType(ContractDefinition const* = nullptr) const;
 };
 
 /**
@@ -408,8 +446,9 @@ public:
 	TypePointer getType(ContractDefinition const* = nullptr) const { return m_type; }
 	void setType(std::shared_ptr<Type const> const& _type) { m_type = _type; }
 
-	virtual LValueType getLValueType() const override;
+	virtual bool isLValue() const override;
 	bool isLocalVariable() const { return !!dynamic_cast<FunctionDefinition const*>(getScope()); }
+	bool isFunctionParameter() const;
 	bool isStateVariable() const { return m_isStateVariable; }
 	bool isIndexed() const { return m_isIndexed; }
 
@@ -679,7 +718,7 @@ public:
 
 	Expression const& getCondition() const { return *m_condition; }
 	Statement const& getTrueStatement() const { return *m_trueBody; }
-	/// @returns the "else" part of the if statement or nullptr if there is no "else" part. 
+	/// @returns the "else" part of the if statement or nullptr if there is no "else" part.
 	Statement const* getFalseStatement() const { return m_falseBody.get(); }
 
 private:
@@ -847,8 +886,7 @@ public:
 	virtual void checkTypeRequirements() = 0;
 
 	std::shared_ptr<Type const> const& getType() const { return m_type; }
-	bool isLValue() const { return m_lvalue != Declaration::LValueType::None; }
-	bool isLocalLValue() const { return m_lvalue == Declaration::LValueType::Local; }
+	bool isLValue() const { return m_isLValue; }
 
 	/// Helper function, infer the type via @ref checkTypeRequirements and then check that it
 	/// is implicitly convertible to @a _expectedType. If not, throw exception.
@@ -863,9 +901,9 @@ public:
 protected:
 	//! Inferred type of the expression, only filled after a call to checkTypeRequirements().
 	std::shared_ptr<Type const> m_type;
-	//! If this expression is an lvalue (i.e. something that can be assigned to) and is stored
-	//! locally or in storage. This is set during calls to @a checkTypeRequirements()
-	Declaration::LValueType m_lvalue = Declaration::LValueType::None;
+	//! If this expression is an lvalue (i.e. something that can be assigned to).
+	//! This is set during calls to @a checkTypeRequirements()
+	bool m_isLValue = false;
 	//! Whether the outer expression requested the address (true) or the value (false) of this expression.
 	bool m_lvalueRequested = false;
 };

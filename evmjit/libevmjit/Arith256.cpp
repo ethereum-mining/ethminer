@@ -416,7 +416,7 @@ namespace
 		explicit operator uint128()
 		{
 			uint128 r = lo;
-			r |= ((uint128) mid) << 64;
+			r = (r + ((uint128) mid)) << 64;
 			return r;
 		}
 
