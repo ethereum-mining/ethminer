@@ -20,7 +20,6 @@
 #pragma once
 
 #include "Extension.h"
-#include "CodeModel.h"
 
 namespace dev
 {
@@ -33,7 +32,6 @@ namespace mix
 class StatusPane: public Extension
 {
 	Q_OBJECT
-	Q_PROPERTY(CompilationResult* result READ result CONSTANT)
 
 public:
 	StatusPane(AppContext* _appContext);
@@ -41,10 +39,8 @@ public:
 	void start() const override;
 	QString title() const override;
 	QString contentUrl() const override;
-	CompilationResult* result() const;
 
 public slots:
-	void update();
 };
 
 }

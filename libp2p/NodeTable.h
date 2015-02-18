@@ -163,15 +163,15 @@ public:
 	std::list<NodeEntry> snapshot() const;
 	
 	/// Returns true if node id is in node table.
-	bool haveNode(NodeId const& _id) { Guard l(x_nodes); return m_nodes.count(_id); }
+	bool haveNode(NodeId const& _id) { Guard l(x_nodes); return m_nodes.count(_id) > 0; }
 	
 	/// Returns the Node to the corresponding node id or the empty Node if that id is not found.
 	Node node(NodeId const& _id);
 	
-#ifndef BOOST_AUTO_TEST_SUITE
-private:
-#else
+#if defined(BOOST_AUTO_TEST_SUITE) || defined(_MSC_VER) // MSVC includes access specifier in symbol name
 protected:
+#else
+private:
 #endif
 	
 	/// Constants for Kademlia, derived from address space.

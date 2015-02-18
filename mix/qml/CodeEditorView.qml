@@ -19,7 +19,8 @@ Item {
 
 	function isDocumentOpen(documentId) {
 		for (var i = 0; i < editorListModel.count; i++)
-			if (editorListModel.get(i).documentId === documentId)
+			if (editorListModel.get(i).documentId === documentId &&
+					editors.itemAt(i).item)
 				return true;
 		return false;
 	}
@@ -42,7 +43,7 @@ Item {
 		editor.onEditorTextChanged.connect(function() {
 			documentEdit(document.documentId);
 			if (document.isContract)
-				codeModel.registerCodeChange(editor.getText());
+				codeModel.registerCodeChange(document.documentId, editor.getText());
 		});
 		editor.setText(data, document.syntaxMode);
 	}

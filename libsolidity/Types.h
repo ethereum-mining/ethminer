@@ -76,10 +76,9 @@ class Type: private boost::noncopyable, public std::enable_shared_from_this<Type
 public:
 	enum class Category
 	{
-		Integer, IntegerConstant, Bool, Real, String,
-		ByteArray, Mapping,
-		Contract, Struct, Function,
-		Void, TypeType, Modifier, Magic
+		Integer, IntegerConstant, Bool, Real, ByteArray,
+		String, Contract, Struct, Function, Enum,
+		Mapping, Void, TypeType, Modifier, Magic
 	};
 
 	///@{
@@ -123,6 +122,8 @@ public:
 	/// is not a simple big-endian encoding or the type cannot be stored in calldata.
 	/// Note that irrespective of this size, each calldata element is padded to a multiple of 32 bytes.
 	virtual unsigned getCalldataEncodedSize() const { return 0; }
+	/// @returns true if the type is dynamically encoded in calldata
+	virtual bool isDynamicallySized() const { return false; }
 	/// @returns number of bytes required to hold this value in storage.
 	/// For dynamically "allocated" types, it returns the size of the statically allocated head,
 	virtual u256 getStorageSize() const { return 1; }
@@ -290,11 +291,16 @@ public:
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual bool operator==(const Type& _other) const override;
+	virtual bool isDynamicallySized() const { return true; }
 	virtual unsigned getSizeOnStack() const override;
 	virtual std::string toString() const override { return "bytes"; }
 	virtual MemberList const& getMembers() const override { return s_byteArrayMemberList; }
 
 	Location getLocation() const { return m_location; }
+
+	/// @returns a copy of this type with location changed to @a _location
+	/// @todo this might move as far up as Type later
+	std::shared_ptr<ByteArrayType> copyForLocation(Location _location) const;
 
 private:
 	Location m_location;
@@ -364,6 +370,32 @@ public:
 
 private:
 	StructDefinition const& m_struct;
+	/// List of member types, will be lazy-initialized because of recursive references.
+	mutable std::unique_ptr<MemberList> m_members;
+};
+
+/**
+ * The type of an enum instance, there is one distinct type per enum definition.
+ */
+class EnumType: public Type
+{
+public:
+	virtual Category getCategory() const override { return Category::Enum; }
+	explicit EnumType(EnumDefinition const& _enum): m_enum(_enum) {}
+	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
+	virtual bool operator==(Type const& _other) const override;
+	virtual unsigned getSizeOnStack() const override { return 1; }
+	virtual std::string toString() const override;
+	virtual bool isValueType() const override { return true; }
+
+	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
+
+	EnumDefinition const& getEnumDefinition() const { return m_enum; }
+	/// @returns the value that the string has in the Enum
+	unsigned int getMemberValue(ASTString const& _member) const;
+
+private:
+	EnumDefinition const& m_enum;
 	/// List of member types, will be lazy-initialized because of recursive references.
 	mutable std::unique_ptr<MemberList> m_members;
 };

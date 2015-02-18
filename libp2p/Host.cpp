@@ -54,7 +54,7 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, byte
 	m_ioService(2),
 	m_tcp4Acceptor(m_ioService),
 	m_alias(networkAlias(_restoreNetwork)),
-	m_lastPing(chrono::time_point<chrono::steady_clock>::min())
+	m_lastPing(chrono::steady_clock::time_point::min())
 {
 	for (auto address: m_ifAddresses)
 		if (address.is_v4())

@@ -1,6 +1,6 @@
 import QtQuick 2.2
-import QtQuick.Controls.Styles 1.1
 import QtQuick.Controls 1.1
+import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import Qt.labs.settings 1.0
@@ -25,7 +25,7 @@ Rectangle {
 
 	function update(data, giveFocus)
 	{
-		if (statusPane && statusPane.result.successful)
+		if (statusPane && codeModel.hasContract)
 		{
 			Debugger.init(data);
 			debugScrollArea.visible = true;
@@ -131,7 +131,14 @@ Rectangle {
 			Layout.fillWidth: true
 			Layout.minimumHeight: 60
 			height: 250
+			anchors.top: parent.top
+			anchors.left: parent.left
+			anchors.right: parent.right
+			anchors.leftMargin: machineStates.sideMargin
+			anchors.rightMargin: machineStates.sideMargin
+			anchors.topMargin: machineStates.sideMargin
 		}
+
 		ScrollView
 		{
 			property int sideMargin: 10
@@ -529,7 +536,7 @@ Rectangle {
 										Text {
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.NoWrap
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
@@ -598,9 +605,11 @@ Rectangle {
 										Layout.minimumWidth: parent.width / 2
 										Layout.maximumWidth: parent.width / 2
 										Text {
+											maximumLineCount: 1
+											clip: true
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.WrapAnywhere
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter

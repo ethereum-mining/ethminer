@@ -600,6 +600,13 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		BOOST_THROW_EXCEPTION(InvalidStateRoot());
 	}
 
+	if (m_currentBlock.gasUsed != gasUsed())
+	{
+		// Rollback the trie.
+		m_db.rollback();
+		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed)));
+	}
+
 	return tdIncrease;
 }
 
