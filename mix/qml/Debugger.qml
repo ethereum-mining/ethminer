@@ -25,7 +25,7 @@ Rectangle {
 
 	function update(data, giveFocus)
 	{
-		if (statusPane && statusPane.result.successful)
+		if (statusPane && codeModel.hasContract)
 		{
 			Debugger.init(data);
 			debugScrollArea.visible = true;

@@ -29,7 +29,7 @@
 
 class QComboBox;
 
-namespace dev { namespace eth { class StateDiff; } }
+namespace dev { namespace eth { struct StateDiff; } }
 
 #define Small "font-size: small; "
 #define Mono "font-family: Ubuntu Mono, Monospace, Lucida Console, Courier New; font-weight: bold; "

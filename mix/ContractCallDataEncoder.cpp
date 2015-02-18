@@ -56,7 +56,7 @@ QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDecla
 	QList<QVariableDefinition*> r;
 	for (int k = 0; k <_returnParameters.length(); k++)
 	{
-		QVariableDeclaration* dec = (QVariableDeclaration*)_returnParameters.at(k);
+		QVariableDeclaration* dec = static_cast<QVariableDeclaration*>(_returnParameters.at(k));
 		QVariableDefinition* def = nullptr;
 		if (dec->type().contains("int"))
 			def = new QIntType(dec, QString());
