@@ -385,6 +385,8 @@ void PeerHandshake::transition(boost::system::error_code _ech) {
 	auto self(shared_from_this());
 	if (isNew())
 	{
+		state = AckAuth;
+		
 		clog(NetConnect) << "Authenticating connection for " << socket->remote_endpoint();
 		
 		if (originated)
@@ -440,6 +442,9 @@ void PeerHandshake::transition(boost::system::error_code _ech) {
 		}
 	}
 	else if (isAcking())
+	{
+		state = Authenticating;
+		
 		if (originated)
 		{
 			clog(NetConnect) << "devp2p.connect.egress recving ack";
@@ -474,6 +479,7 @@ void PeerHandshake::transition(boost::system::error_code _ech) {
 				transition(ec);
 			});
 		}
+	}
 	else if (isAuthenticating())
 	{
 		if (originated)
