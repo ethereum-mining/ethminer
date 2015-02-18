@@ -132,7 +132,7 @@ public:
 	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
 	 * // unlock
 	 * MineInfo info;
-	 * for (info.complete = false; !info.complete; info = mine()) {}
+	 * for (info.completed = false; !info.completed; info = mine()) {}
 	 * }
 	 * // lock
 	 * completeMine();

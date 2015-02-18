@@ -6,6 +6,7 @@ import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
 import HttpServer 1.0
+import "."
 
 Item {
 	id: webPreview
@@ -23,12 +24,23 @@ Item {
 	}
 
 	function reload() {
-		updateContract();
-		webView.runJavaScript("reloadPage()");
+		if (initialized) {
+			updateContract();
+			webView.runJavaScript("reloadPage()");
+		}
 	}
 
 	function updateContract() {
-		webView.runJavaScript("updateContract(\"" + clientModel.contractAddress + "\", " + codeModel.code.contractInterface + ")");
+		var contracts = {};
+		for (var c in codeModel.contracts) {
+			var contract = codeModel.contracts[c];
+			contracts[c] = {
+				name: contract.contract.name,
+				address: clientModel.contractAddresses[contract.contract.name],
+				interface: JSON.parse(contract.contractInterface),
+			};
+		}
+		webView.runJavaScript("updateContracts(" + JSON.stringify(contracts) + ")");
 	}
 
 	function reloadOnSave() {
@@ -38,7 +50,7 @@ Item {
 
 	function updateDocument(documentId, action) {
 		for (var i = 0; i < pageListModel.count; i++)
-			if (pageListModel.get(i).documentId === i)
+			if (pageListModel.get(i).documentId === documentId)
 				action(i);
 	}
 
@@ -61,7 +73,6 @@ Item {
 
 	Connections {
 		target: clientModel
-		onContractAddressChanged: reload();
 		onRunComplete: reload();
 	}
 
@@ -82,8 +93,20 @@ Item {
 		onDocumentRemoved: {
 			updateDocument(documentId, function(i) { pageListModel.remove(i) } )
 		}
+
 		onDocumentUpdated: {
 			updateDocument(documentId, function(i) { pageListModel.set(i, projectModel.getDocument(documentId)) } )
+		}
+
+		onDocumentOpened: {
+			if (!document.isHtml)
+				return;
+			for (var i = 0; i < pageListModel.count; i++) {
+				var doc = pageListModel.get(i);
+				if (doc.documentId === document.documentId) {
+					pageCombo.currentIndex = i;
+				}
+			}
 		}
 
 		onProjectLoading: {
@@ -136,7 +159,7 @@ Item {
 					content = fileIo.readFile(projectModel.getDocument(documentId).path);
 				if (documentId === pageListModel.get(pageCombo.currentIndex).documentId) {
 					//root page, inject deployment script
-					content = "<script>deploy=parent.deploy</script>\n" + content;
+					content = "<script>web3=parent.web3;contracts=parent.contracts;</script>\n" + content;
 					_request.setResponseContentType("text/html");
 				}
 				_request.setResponse(content);
@@ -146,45 +169,80 @@ Item {
 
 	ColumnLayout {
 		anchors.fill: parent
+		spacing: 0
+		Rectangle
+		{
+			anchors.leftMargin: 4
+			color: WebPreviewStyle.general.headerBackgroundColor
+			Layout.preferredWidth: parent.width
+			Layout.preferredHeight: 32
+			Row {
+				anchors.top: parent.top
+				anchors.fill: parent
+				anchors.leftMargin: 3
+				spacing: 3
+				DefaultLabel {
+					text: qsTr("Preview of")
+					anchors.verticalCenter: parent.verticalCenter
+				}
 
-		RowLayout {
-			anchors.top: parent.top
-			Layout.fillWidth: true;
-			Text {
-				text: qsTr("Page")
-			}
-			ComboBox {
-				id: pageCombo
-				model: pageListModel
-				textRole: "name"
-				currentIndex: -1
-				onCurrentIndexChanged: changePage()
-			}
-			Button {
-				text: qsTr("Reload")
-				onClicked: reload()
-			}
-			CheckBox {
-				id: autoReloadOnSave
-				checked: true
-				text: qsTr("Auto reload on save")
+				ComboBox {
+					id: pageCombo
+					model: pageListModel
+					textRole: "name"
+					currentIndex: -1
+					onCurrentIndexChanged: changePage()
+					anchors.verticalCenter: parent.verticalCenter
+					height: 21
+				}
+
+				Action {
+					tooltip: qsTr("Reload")
+					id: buttonReloadAction
+					onTriggered: {
+						reload();
+					}
+				}
+
+				Button {
+					iconSource: "qrc:/qml/img/available_updates.png"
+					action: buttonReloadAction
+					anchors.verticalCenter: parent.verticalCenter
+					width: 21
+					height: 21
+				}
+				CheckBox {
+					id: autoReloadOnSave
+					checked: true
+					height: 21
+					anchors.verticalCenter: parent.verticalCenter
+					style: CheckBoxStyle {
+						label: DefaultLabel {
+							text: qsTr("Auto reload on save")
+						}
+					}
+				}
 			}
 		}
 
-		WebEngineView {
-			Layout.fillWidth: true
+		Rectangle
+		{
+			Layout.preferredWidth: parent.width
 			Layout.fillHeight: true
-			id: webView
-			experimental.settings.localContentCanAccessRemoteUrls: true
-			onJavaScriptConsoleMessage: {
-				console.log(sourceID + ":" + lineNumber + ":" + message);
-			}
-			onLoadingChanged: {
-				if (!loading) {
-					initialized = true;
-					webView.runJavaScript("init(\"" + httpServer.url + "/rpc/\")");
-					if (pendingPageUrl)
-						setPreviewUrl(pendingPageUrl);
+			WebEngineView {
+				anchors.fill: parent
+				id: webView
+				experimental.settings.localContentCanAccessRemoteUrls: true
+				onJavaScriptConsoleMessage: {
+					console.log(sourceID + ":" + lineNumber + ":" + message);
+				}
+				onLoadingChanged: {
+					if (!loading) {
+						initialized = true;
+						webView.runJavaScript("init(\"" + httpServer.url + "/rpc/\")");
+						if (pendingPageUrl)
+							setPreviewUrl(pendingPageUrl);
+					}
 				}
 			}
 		}

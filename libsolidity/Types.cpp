@@ -74,6 +74,8 @@ TypePointer Type::fromUserDefinedTypeName(UserDefinedTypeName const& _typeName)
 	Declaration const* declaration = _typeName.getReferencedDeclaration();
 	if (StructDefinition const* structDef = dynamic_cast<StructDefinition const*>(declaration))
 		return make_shared<StructType>(*structDef);
+	else if (EnumDefinition const* enumDef = dynamic_cast<EnumDefinition const*>(declaration))
+		return make_shared<EnumType>(*enumDef);
 	else if (FunctionDefinition const* function = dynamic_cast<FunctionDefinition const*>(declaration))
 		return make_shared<FunctionType>(*function);
 	else if (ContractDefinition const* contract = dynamic_cast<ContractDefinition const*>(declaration))
@@ -154,7 +156,9 @@ bool IntegerType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 		StaticStringType const& convertTo = dynamic_cast<StaticStringType const&>(_convertTo);
 		return isHash() && (m_bits == convertTo.getNumBytes() * 8);
 	}
-	return _convertTo.getCategory() == getCategory() || _convertTo.getCategory() == Category::Contract;
+	return _convertTo.getCategory() == getCategory() ||
+		   _convertTo.getCategory() == Category::Contract ||
+		   _convertTo.getCategory() == Category::Enum;
 }
 
 TypePointer IntegerType::unaryOperatorResult(Token::Value _operator) const
@@ -536,12 +540,19 @@ bool ByteArrayType::operator==(Type const& _other) const
 unsigned ByteArrayType::getSizeOnStack() const
 {
 	if (m_location == Location::CallData)
-		return 0;
+		// offset, length (stack top)
+		return 2;
 	else
+		// offset
 		return 1;
 }
 
-const MemberList ByteArrayType::s_byteArrayMemberList = MemberList({{"length", make_shared<IntegerType >(256)}});
+shared_ptr<ByteArrayType> ByteArrayType::copyForLocation(ByteArrayType::Location _location) const
+{
+	return make_shared<ByteArrayType>(_location);
+}
+
+const MemberList ByteArrayType::s_byteArrayMemberList = MemberList({{"length", make_shared<IntegerType>(256)}});
 
 bool ContractType::operator==(Type const& _other) const
 {
@@ -568,7 +579,8 @@ MemberList const& ContractType::getMembers() const
 		{
 			for (ContractDefinition const* base: m_contract.getLinearizedBaseContracts())
 				for (ASTPointer<FunctionDefinition> const& function: base->getDefinedFunctions())
-					if (!function->isConstructor() && !function->getName().empty())
+					if (!function->isConstructor() && !function->getName().empty() &&
+							function->isVisibleInDerivedContracts())
 						members.insert(make_pair(function->getName(), make_shared<FunctionType>(*function, true)));
 		}
 		else
@@ -653,13 +665,48 @@ u256 StructType::getStorageOffsetOfMember(string const& _name) const
 {
 	//@todo cache member offset?
 	u256 offset;
-	for (ASTPointer<VariableDeclaration> variable: m_struct.getMembers())
+	for (ASTPointer<VariableDeclaration> const& variable: m_struct.getMembers())
 	{
 		if (variable->getName() == _name)
 			return offset;
 		offset += variable->getType()->getStorageSize();
 	}
 	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage offset of non-existing member requested."));
+}
+
+TypePointer EnumType::unaryOperatorResult(Token::Value _operator) const
+{
+	return _operator == Token::Delete ? make_shared<VoidType>() : TypePointer();
+}
+
+bool EnumType::operator==(Type const& _other) const
+{
+	if (_other.getCategory() != getCategory())
+		return false;
+	EnumType const& other = dynamic_cast<EnumType const&>(_other);
+	return other.m_enum == m_enum;
+}
+
+string EnumType::toString() const
+{
+	return string("enum ") + m_enum.getName();
+}
+
+bool EnumType::isExplicitlyConvertibleTo(Type const& _convertTo) const
+{
+	return _convertTo.getCategory() == getCategory() || _convertTo.getCategory() == Category::Integer;
+}
+
+unsigned int EnumType::getMemberValue(ASTString const& _member) const
+{
+	unsigned int index = 0;
+	for (ASTPointer<EnumValue> const& decl: m_enum.getMembers())
+	{
+		if (decl->getName() == _member)
+			return index;
+		++index;
+	}
+	BOOST_THROW_EXCEPTION(m_enum.createTypeError("Requested unknown enum value ." + _member));
 }
 
 FunctionType::FunctionType(FunctionDefinition const& _function, bool _isInternal):
@@ -730,7 +777,7 @@ FunctionType::FunctionType(VariableDeclaration const& _varDecl):
 }
 
 FunctionType::FunctionType(const EventDefinition& _event):
-	m_location(Location::Event), m_declaration(&_event)
+	m_location(Location::Event), m_isConstant(true), m_declaration(&_event)
 {
 	TypePointers params;
 	vector<string> paramNames;
@@ -918,11 +965,18 @@ MemberList const& TypeType::getMembers() const
 			ContractDefinition const& contract = dynamic_cast<ContractType const&>(*m_actualType).getContractDefinition();
 			vector<ContractDefinition const*> currentBases = m_currentContract->getLinearizedBaseContracts();
 			if (find(currentBases.begin(), currentBases.end(), &contract) != currentBases.end())
-				// We are accessing the type of a base contract, so add all public and private
+				// We are accessing the type of a base contract, so add all public and protected
 				// functions. Note that this does not add inherited functions on purpose.
 				for (ASTPointer<FunctionDefinition> const& f: contract.getDefinedFunctions())
-					if (!f->isConstructor() && !f->getName().empty())
+					if (!f->isConstructor() && !f->getName().empty() && f->isVisibleInDerivedContracts())
 						members[f->getName()] = make_shared<FunctionType>(*f);
+		}
+		else if (m_actualType->getCategory() == Category::Enum)
+		{
+			EnumDefinition const& enumDef = dynamic_cast<EnumType const&>(*m_actualType).getEnumDefinition();
+			auto enumType = make_shared<EnumType>(enumDef);
+			for (ASTPointer<EnumValue> const& enumValue: enumDef.getMembers())
+				members.insert(make_pair(enumValue->getName(), enumType));
 		}
 		m_members.reset(new MemberList(members));
 	}
