@@ -31,7 +31,7 @@ else()
 		add_library(${EXECUTABLE} SHARED ${EXECUTABLE}.c)
 	endif()
 	# /TP - compile project as cpp project
-	set_target_properties(${EXECUTABLE} PROPERTIES COMPILE_FLAGS "/TP")
+	set_target_properties(${EXECUTABLE} PROPERTIES COMPILE_FLAGS "/TP /wd4244")
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_NUM_BOOST -DUSE_FIELD_10X26 -DUSE_FIELD_INV_BUILTIN")
 	
 endif()
