@@ -29,7 +29,7 @@ namespace dev
 
 namespace p2p
 {
-
+	
 /**
  * @brief Representation of connectivity state and all other pertinent Peer metadata.
  * A Peer represents connectivity between two nodes, which in this case, are the host
@@ -54,6 +54,7 @@ class Peer: public Node
 {
 	friend class Session;		/// Allows Session to update score and rating.
 	friend class Host;		/// For Host: saveNetwork(), restoreNetwork()
+	friend struct PeerHandshake;
 
 public:
 	bool isOffline() const { return !m_session.lock(); }
