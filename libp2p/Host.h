@@ -65,6 +65,80 @@ private:
 };
 
 /**
+ * @brief Key material and derived secrets for TCP peer connection.
+ */
+struct PeerSecrets
+{
+	friend class PeerHandshake;
+protected:
+	Secret encryptK;
+	Secret macK;
+	h256 egressMac;
+	h256 ingressMac;
+	
+	bytes magicCipherAndMac;
+	bytes recvdMagicCipherAndMac;
+};
+	
+struct PeerHandshake: public std::enable_shared_from_this<PeerHandshake>
+{
+	friend class Host;
+	enum State
+	{
+		New,				// New->AckAuth				[egress: tx auth, ingress: rx auth]
+		AckAuth,			// AckAuth->Authenticating	[egress: rx ack, ingress: tx ack]
+		Authenticating,	// Authenticating			[tx caps, rx caps, authenticate]
+	};
+
+	/// Handshake for ingress connection. Takes ownership of socket.
+	PeerHandshake(KeyPair const& _alias, bi::tcp::socket* _socket): alias(_alias), socket(std::move(_socket)), originated(false) { crypto::Nonce::get().ref().copyTo(nonce.ref()); }
+	
+	/// Handshake for egress connection to _remote. Takes ownership of socket.
+	PeerHandshake(KeyPair const& _alias, bi::tcp::socket* _socket, NodeId _remote): alias(_alias), socket(std::move(_socket)), originated(true), remote(_remote) { crypto::Nonce::get().ref().copyTo(nonce.ref()); }
+	
+	~PeerHandshake() { delete socket; }
+	
+protected:
+	/// Returns true when the auth message is to be sent or received.
+	bool isNew() { return state == New; }
+	
+	/// Returns true when the ack message is to be sent or received.
+	bool isAcking() { return state == AckAuth; }
+	
+	/// Returns true when auth and ack messages have been received and caps message is to be sent, received, and authenticated.
+	bool isAuthenticating() { return state == Authenticating; }
+	
+	void start() { transition(); }
+
+private:
+	void transition(boost::system::error_code _ech = boost::system::error_code());
+	
+	/// Current state of handshake.
+	State state = New;
+	
+	KeyPair const& alias;
+	
+	/// Node id of remote host for socket.
+	NodeId remote;
+	
+	bi::tcp::socket* socket;
+	bool originated = false;
+	
+	bytes auth;
+	bytes authCipher;
+	bytes ack;
+	bytes ackCipher;
+	Secret ss;
+	Secret ess;
+	
+	crypto::ECDHE ecdhe;
+	h256 nonce;
+	
+	Public remoteEphemeral;
+	h256 remoteNonce;
+};
+	
+/**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
  *
@@ -158,48 +232,6 @@ protected:
 	void restoreNetwork(bytesConstRef _b);
 	
 private:
-	struct Handshake
-	{
-		/// Handshake for ingress connection. Takes ownership of socket.
-		Handshake(bi::tcp::socket* _socket): socket(std::move(_socket)), originated(false) { crypto::Nonce::get().ref().copyTo(nonce.ref()); }
-		
-		/// Handshake for egress connection to _remote. Takes ownership of socket.
-		Handshake(bi::tcp::socket* _socket, NodeId _remote): socket(std::move(_socket)), originated(true), remote(_remote) { crypto::Nonce::get().ref().copyTo(nonce.ref()); }
-		
-		~Handshake() { delete socket; }
-		
-		bool started() { return auth.size() > 0; }
-		bool acked() { return ack.size() > 0; }
-
-		/// If originated this is accepting (ingress) node id, otherwise it is originating (egress) node.
-		NodeId remote;
-		bi::tcp::socket *socket;
-		bool originated = false;
-		
-		bytes auth;
-		bytes authCipher;
-		bytes ack;
-		bytes ackCipher;
-		Secret ss;
-		Secret ess;
-		
-		crypto::ECDHE ecdhe;
-		h256 nonce;
-		
-		Public remoteEphemeral;
-		h256 remoteNonce;
-	};
-	struct PeerSecrets
-	{
-		Secret encryptK;
-		Secret macK;
-		h256 egressMac;
-		h256 ingressMac;
-		
-		bytes magicCipherAndMac;
-		bytes recvdMagicCipherAndMac;
-	};
-	
 	/// Populate m_peerAddresses with available public addresses.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	
@@ -213,10 +245,7 @@ private:
 	
 	/// Called only from startedWorking().
 	void runAcceptor();
-	
-	/// Attempt to authenticate peer and establish a new session. 
-	void doHandshake(Handshake* _h, boost::system::error_code _ec = boost::system::error_code());
-	
+
 	void seal(bytes& _b);
 
 	/// Called by Worker. Not thread-safe; to be called only by worker.
