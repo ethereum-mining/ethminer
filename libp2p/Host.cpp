@@ -338,7 +338,7 @@ void Host::runAcceptor()
 				{
 					// doHandshake takes ownersihp of *s via std::move
 					// incoming connection; we don't yet know nodeid
-					auto handshake = make_shared<PeerHandshake>(m_alias, s);
+					auto handshake = make_shared<PeerHandshake>(this, s);
 					handshake->start();
 					success = true;
 				}
@@ -399,10 +399,10 @@ void PeerHandshake::transition(boost::system::error_code _ech) {
 			bytesConstRef nonce(&auth[Signature::size + h256::size + Public::size], h256::size);
 			
 			// E(remote-pubk, S(ecdhe-random, ecdh-shared-secret^nonce) || H(ecdhe-random-pubk) || pubk || nonce || 0x0)
-			crypto::ecdh::agree(alias.sec(), remote, ss);
+			crypto::ecdh::agree(host->m_alias.sec(), remote, ss);
 			sign(ecdhe.seckey(), ss ^ this->nonce).ref().copyTo(sig);
 			sha3(ecdhe.pubkey().ref(), hepubk);
-			alias.pub().ref().copyTo(pubk);
+			host->m_alias.pub().ref().copyTo(pubk);
 			this->nonce.ref().copyTo(nonce);
 			auth[auth.size() - 1] = 0x0;
 			encrypt(remote, &auth, authCipher);
@@ -423,7 +423,7 @@ void PeerHandshake::transition(boost::system::error_code _ech) {
 					transition(ec);
 				else
 				{
-					decrypt(alias.sec(), bytesConstRef(&authCipher), auth);
+					decrypt(host->m_alias.sec(), bytesConstRef(&authCipher), auth);
 					bytesConstRef sig(&auth[0], Signature::size);
 					bytesConstRef hepubk(&auth[Signature::size], h256::size);
 					bytesConstRef pubk(&auth[Signature::size + h256::size], Public::size);
@@ -431,7 +431,7 @@ void PeerHandshake::transition(boost::system::error_code _ech) {
 					pubk.copyTo(remote.ref());
 					nonce.copyTo(remoteNonce.ref());
 					
-					crypto::ecdh::agree(alias.sec(), remote, ss);
+					crypto::ecdh::agree(host->m_alias.sec(), remote, ss);
 					remoteEphemeral = recover(*(Signature*)sig.data(), ss ^ remoteNonce);
 					assert(sha3(remoteEphemeral) == *(h256*)hepubk.data());
 					transition();
@@ -451,7 +451,7 @@ void PeerHandshake::transition(boost::system::error_code _ech) {
 					transition(ec);
 				else
 				{
-					decrypt(alias.sec(), bytesConstRef(&ackCipher), ack);
+					decrypt(host->m_alias.sec(), bytesConstRef(&ackCipher), ack);
 					bytesConstRef(&ack).cropped(0, Public::size).copyTo(remoteEphemeral.ref());
 					bytesConstRef(&ack).cropped(Public::size, h256::size).copyTo(remoteNonce.ref());
 					transition();
@@ -551,7 +551,7 @@ void PeerHandshake::transition(boost::system::error_code _ech) {
 				{
 					shared_ptr<Peer> p;
 					// todo: need host
-//					p = m_peers[remote];
+					p = host->m_peers[remote];
 					
 					if (!p)
 					{
@@ -562,10 +562,9 @@ void PeerHandshake::transition(boost::system::error_code _ech) {
 					p->m_lastDisconnect = NoDisconnect;
 					p->m_lastConnected = std::chrono::system_clock::now();
 					p->m_failedAttempts = 0;
-					
-					// todo: need host
-//					auto ps = std::make_shared<Session>(this, move(*socket), p);
-//					ps->start();
+
+					auto ps = std::make_shared<Session>(host, move(*socket), p);
+					ps->start();
 				}
 				
 				// todo: PeerSession needs to take ownership of k (PeerSecrets)
@@ -877,7 +876,7 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 		else
 		{
 			clog(NetConnect) << "Connected to" << _p->id.abridged() << "@" << _p->peerEndpoint();
-			auto handshake = make_shared<PeerHandshake>(m_alias, s, _p->id);
+			auto handshake = make_shared<PeerHandshake>(this, s, _p->id);
 			handshake->start();
 		}
 		Guard l(x_pendingNodeConns);
