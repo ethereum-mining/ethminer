@@ -76,6 +76,10 @@ public:
 	virtual std::string eth_coinbase();
 	virtual Json::Value eth_compilers();
 	virtual double eth_countAt(std::string const& _address);
+	virtual double eth_transactionCountByHash(std::string const& _hash);
+	virtual double eth_transactionCountByNumber(int _number);
+	virtual double eth_uncleCountByHash(std::string const& _hash);
+	virtual double eth_uncleCountByNumber(int _number);
 	virtual int eth_defaultBlock();
 	virtual std::string eth_gasPrice();
 	virtual Json::Value eth_filterLogs(int _id);
@@ -113,6 +117,7 @@ public:
 
 	virtual std::string shh_addToGroup(std::string const& _group, std::string const& _who);
 	virtual Json::Value shh_changed(int _id);
+	virtual Json::Value shh_getMessages(int _id);
 	virtual bool shh_haveIdentity(std::string const& _id);
 	virtual int shh_newFilter(Json::Value const& _json);
 	virtual std::string shh_newGroup(std::string const& _id, std::string const& _who);
