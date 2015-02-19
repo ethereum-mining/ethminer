@@ -281,14 +281,7 @@ function generateFileName(name, extension) {
 
 var jsonRpcRequestId = 1;
 function deployProject(force) {
-
 	saveAll(); //TODO: ask user
-
-	/*if (!force && deploymentAddresses !== []) {
-		deployWarningDialog.visible = true;
-		return;
-	}*/
-
 	deploymentDialog.open();
 }
 

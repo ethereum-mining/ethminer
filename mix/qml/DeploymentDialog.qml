@@ -66,9 +66,12 @@ Window {
 		anchors.bottomMargin: 10
 		Button {
 			text: qsTr("Deploy");
-			enabled: Object.keys(projectModel.deploymentAddresses).length === 0
+			enabled: applicationUrlHttp.text !== ""
 			onClicked: {
-				ProjectModelCode.startDeployProject();
+				if (Object.keys(projectModel.deploymentAddresses).length > 0)
+					deployWarningDialog.open();
+				else
+					ProjectModelCode.startDeployProject();
 			}
 		}
 
