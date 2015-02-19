@@ -24,6 +24,7 @@
 #pragma once
 
 #include <iostream>
+#include <functional>
 #include <jsonrpccpp/server.h>
 #include <libdevcrypto/Common.h>
 #pragma GCC diagnostic push
@@ -52,6 +53,32 @@ public:
 	virtual std::string get(std::string const& _name, std::string const& _key) = 0;
 	virtual void put(std::string const& _name, std::string const& _key, std::string const& _value) = 0;
 };
+
+
+/**
+ * Manages real accounts (where we know the secret key) and proxy accounts (where transactions
+ * to be sent from these accounts are forwarded to a proxy on the other side).
+ */
+class AccountHolder
+{
+public:
+	explicit AccountHolder(std::function<dev::eth::Interface*()> const& _client): m_client(_client) {}
+
+	/// Sets or resets the list of real accounts.
+	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
+	std::vector<dev::Address> const& getRealAccounts() const { return m_accounts; }
+	bool isRealAccount(dev::Address const& _account) const { return m_keyPairs.count(_account) > 0; }
+	Secret const& secretKey(dev::Address const& _account) const { return m_keyPairs.at(_account).secret(); }
+	std::vector<dev::Address> const& getAllAccounts() const { return m_accounts; /*todo */}
+	dev::Address const& getDefaultCallAccount() const;
+
+private:
+	std::map<dev::Address, dev::KeyPair> m_keyPairs;
+	std::vector<dev::Address> m_accounts;
+	std::function<dev::eth::Interface*()> m_client;
+
+};
+
 
 /**
  * @brief JSON-RPC api implementation
@@ -125,7 +152,7 @@ public:
 	virtual bool shh_post(Json::Value const& _json);
 	virtual bool shh_uninstallFilter(int _id);
 
-	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
+	void setAccounts(std::vector<dev::KeyPair> const& _accounts) { m_accounts.setAccounts(_accounts); }
 	void setIdentities(std::vector<dev::KeyPair> const& _ids);
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
 
@@ -138,11 +165,9 @@ protected:
 	virtual dev::WebThreeNetworkFace* network() = 0;
 	virtual dev::WebThreeStubDatabaseFace* db() = 0;
 
-	std::map<dev::Address, dev::KeyPair> m_accountsLookup;
-	std::vector<dev::Address> m_accounts;
-
 	std::map<dev::Public, dev::Secret> m_ids;
 	std::map<unsigned, dev::Public> m_shhWatches;
+	AccountHolder m_accounts;
 };
 
 } //namespace dev
