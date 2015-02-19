@@ -10,8 +10,8 @@ endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 
-include_directories(..)
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
+include_directories(BEFORE ..)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
 qt5_wrap_ui(ui_Main.h Main.ui)
