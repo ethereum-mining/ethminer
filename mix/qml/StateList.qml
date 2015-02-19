@@ -1,9 +1,10 @@
 import QtQuick 2.2
-import QtQuick.Controls.Styles 1.1
 import QtQuick.Controls 1.1
+import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
+import "."
 
 Window {
 	id: stateListContainer
@@ -45,7 +46,7 @@ Window {
 					Layout.fillWidth: true
 					Layout.fillHeight: true
 					text: styleData.value
-					font.pointSize: 12
+					font.pointSize: StateStyle.general.basicFontSize
 					verticalAlignment: Text.AlignBottom
 				}
 				ToolButton {

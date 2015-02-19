@@ -117,8 +117,8 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	unsigned dataIndex = 0;
 	auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, void* voidVM, void const* voidExt)
 	{
-		VM& vm = *(VM*)voidVM;
-		ExtVM const& ext = *(ExtVM const*)voidExt;
+		VM& vm = *static_cast<VM*>(voidVM);
+		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
 		if (lastCode == nullptr || lastCode != &ext.code)
 		{
 			auto const& iter = codeIndexes.find(&ext.code);
@@ -461,6 +461,20 @@ eth::BlockInfo MixClient::uncle(h256 _blockHash, unsigned _i) const
 		return BlockInfo::fromHeader(b[2][_i].data());
 	else
 		return BlockInfo();
+}
+
+unsigned MixClient::transactionCount(h256 _blockHash) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	return b[1].itemCount();
+}
+
+unsigned MixClient::uncleCount(h256 _blockHash) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	return b[2].itemCount();
 }
 
 unsigned MixClient::number() const

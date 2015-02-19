@@ -1,11 +1,12 @@
 import QtQuick 2.2
-import QtQuick.Controls.Styles 1.1
 import QtQuick.Controls 1.1
+import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import Qt.labs.settings 1.0
 import "js/Debugger.js" as Debugger
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
+import "."
 
 Rectangle {
 	id: debugPanel
@@ -24,7 +25,7 @@ Rectangle {
 
 	function update(data, giveFocus)
 	{
-		if (statusPane && statusPane.result.successful)
+		if (statusPane && codeModel.hasContract)
 		{
 			Debugger.init(data);
 			debugScrollArea.visible = true;
@@ -130,7 +131,14 @@ Rectangle {
 			Layout.fillWidth: true
 			Layout.minimumHeight: 60
 			height: 250
+			anchors.top: parent.top
+			anchors.left: parent.left
+			anchors.right: parent.right
+			anchors.leftMargin: machineStates.sideMargin
+			anchors.rightMargin: machineStates.sideMargin
+			anchors.topMargin: machineStates.sideMargin
 		}
+
 		ScrollView
 		{
 			property int sideMargin: 10
@@ -346,7 +354,7 @@ Rectangle {
 										color: "#b2b3ae"
 										text: styleData.value.split(' ')[0]
 										font.family: "monospace"
-										font.pointSize: 9
+										font.pointSize: DebuggerPaneStyle.general.basicFontSize
 										wrapMode: Text.NoWrap
 										id: id
 									}
@@ -356,7 +364,7 @@ Rectangle {
 										color: styleData.selected ? "white" : "black"
 										font.family: "monospace"
 										text: styleData.value.replace(styleData.value.split(' ')[0], '')
-										font.pointSize: 9
+										font.pointSize: DebuggerPaneStyle.general.basicFontSize
 									}
 								}
 							}
@@ -429,7 +437,7 @@ Rectangle {
 												font.family: "monospace"
 												color: "#4a4a4a"
 												text: styleData.row;
-												font.pointSize: 9
+												font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											}
 										}
 
@@ -447,7 +455,7 @@ Rectangle {
 												anchors.verticalCenter: parent.verticalCenter
 												color: "#4a4a4a"
 												text: styleData.value
-												font.pointSize: 9
+												font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											}
 										}
 									}
@@ -514,7 +522,7 @@ Rectangle {
 											anchors.leftMargin: 5
 											color: "#4a4a4a"
 											text: styleData.row;
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											width: parent.width - 5
 											elide: Text.ElideRight
 										}
@@ -528,14 +536,14 @@ Rectangle {
 										Text {
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.NoWrap
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
 											color: "#4a4a4a"
 											text: styleData.value;
 											elide: Text.ElideRight
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 										}
 									}
 								}
@@ -585,7 +593,7 @@ Rectangle {
 											anchors.leftMargin: 5
 											color: "#4a4a4a"
 											text: styleData.value.split('\t')[0];
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											width: parent.width - 5
 											elide: Text.ElideRight
 										}
@@ -597,16 +605,18 @@ Rectangle {
 										Layout.minimumWidth: parent.width / 2
 										Layout.maximumWidth: parent.width / 2
 										Text {
+											maximumLineCount: 1
+											clip: true
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.WrapAnywhere
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
 											color: "#4a4a4a"
 											text: styleData.value.split('\t')[1];
 											elide: Text.ElideRight
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 										}
 									}
 								}

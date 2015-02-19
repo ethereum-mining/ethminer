@@ -2,14 +2,15 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
+import "."
 
 Rectangle {
 	id: statusHeader
 	objectName: "statusPane"
 
-	function updateStatus()
+	function updateStatus(message)
 	{
-		if (statusPane.result.successful)
+		if (!message)
 		{
 			status.state = "";
 			status.text = qsTr("Compile without errors.");
@@ -19,12 +20,12 @@ Rectangle {
 		else
 		{
 			status.state = "error";
-			var errorInfo = ErrorLocationFormater.extractErrorInfo(statusPane.result.compilerMessage, true);
+			var errorInfo = ErrorLocationFormater.extractErrorInfo(message, true);
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
 			logslink.visible = true;
 			debugImg.state = "";
 		}
-		debugRunActionIcon.enabled = statusPane.result.successful;
+		debugRunActionIcon.enabled = codeModel.hasContract;
 	}
 
 	function infoMessage(text)
@@ -34,13 +35,23 @@ Rectangle {
 		logslink.visible = false;
 	}
 
-
 	Connections {
 		target:clientModel
-		onRunStarted: infoMessage(qsTr("Running transactions.."));
+		onRunStarted: infoMessage(qsTr("Running transactions..."));
 		onRunFailed: infoMessage(qsTr("Error running transactions"));
 		onRunComplete: infoMessage(qsTr("Run complete"));
 		onNewBlock: infoMessage(qsTr("New block created"));
+	}
+	Connections {
+		target:projectModel
+		onDeploymentStarted: infoMessage(qsTr("Running deployment..."));
+		onDeploymentError: infoMessage(error);
+		onDeploymentComplete: infoMessage(qsTr("Deployment complete"));
+	}
+	Connections {
+		target: codeModel
+		onCompilationComplete: updateStatus();
+		onCompilationError: updateStatus(_error);
 	}
 
 	color: "transparent"
@@ -59,7 +70,7 @@ Rectangle {
 			spacing: 5
 
 			Text {
-				font.pointSize: 10
+				font.pointSize: StatusPaneStyle.general.statusFontSize
 				height: 9
 				font.family: "sans serif"
 				objectName: "status"
@@ -81,7 +92,7 @@ Rectangle {
 
 			Text {
 				visible: false
-				font.pointSize: 9
+				font.pointSize: StatusPaneStyle.general.logLinkFontSize
 				height: 9
 				text: qsTr("See Log.")
 				font.family: "Monospace"

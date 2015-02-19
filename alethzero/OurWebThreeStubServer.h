@@ -42,7 +42,9 @@ signals:
 
 private:
 	bool showAuthenticationPopup(std::string const& _title, std::string const& _text) const;
-	void showBasicValueTransferNotice(dev::u256 _value) const;
+	bool showCreationNotice(dev::eth::TransactionSkeleton const& _t) const;
+	bool showSendNotice(dev::eth::TransactionSkeleton const& _t) const;
+	bool showUnknownCallNotice(dev::eth::TransactionSkeleton const& _t) const;
 
 	dev::WebThreeDirect* m_web3;
 	Main* m_main;

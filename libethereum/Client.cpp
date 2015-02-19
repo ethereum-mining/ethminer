@@ -59,7 +59,7 @@ void VersionChecker::setOk()
 	}
 }
 
-Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId):
+Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId, int miners):
 	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
@@ -69,7 +69,10 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 {
 	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
-	setMiningThreads();
+	if (miners > -1)
+		setMiningThreads(miners);
+	else
+		setMiningThreads();
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
@@ -709,6 +712,20 @@ BlockInfo Client::uncle(h256 _blockHash, unsigned _i) const
 		return BlockInfo::fromHeader(b[2][_i].data());
 	else
 		return BlockInfo();
+}
+
+unsigned Client::transactionCount(h256 _blockHash) const
+{
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	return b[1].itemCount();
+}
+
+unsigned Client::uncleCount(h256 _blockHash) const
+{
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	return b[2].itemCount();
 }
 
 LocalisedLogEntries Client::logs(LogFilter const& _f) const
