@@ -136,7 +136,7 @@ public:
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
 
 protected:
-	virtual bool authenticate(dev::eth::TransactionSkeleton const& _t);
+	virtual bool authenticate(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
 
 protected:
 	virtual dev::eth::Interface* client() = 0;

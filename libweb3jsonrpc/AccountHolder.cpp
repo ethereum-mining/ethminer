@@ -22,14 +22,15 @@
  */
 
 #include "AccountHolder.h"
+#include <random>
+#include <ctime>
 #include <libethereum/Client.h>
-
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-vector<TransactionSkeleton> emptyQueue;
+vector<TransactionSkeleton> g_emptyQueue;
 
 void AccountHolder::setAccounts(vector<KeyPair> const& _accounts)
 {
@@ -63,12 +64,13 @@ Address const& AccountHolder::getDefaultTransactAccount() const
 
 int AccountHolder::addProxyAccount(const Address& _account)
 {
-	int const c_id = m_transactionQueues.empty() ? 1 : m_transactionQueues.rbegin()->first + 1;
-	if (isProxyAccount(_account))
+	static std::mt19937 s_randomNumberGenerator(time(0));
+	int id = std::uniform_int_distribution<int>(1)(s_randomNumberGenerator);
+	if (isProxyAccount(_account) || id == 0 || m_transactionQueues.count(id))
 		return 0;
-	m_proxyAccounts.insert(make_pair(_account, c_id));
-	m_transactionQueues[c_id].first = _account;
-	return c_id;
+	m_proxyAccounts.insert(make_pair(_account, id));
+	m_transactionQueues[id].first = _account;
+	return id;
 }
 
 bool AccountHolder::removeProxyAccount(unsigned _id)
@@ -91,7 +93,7 @@ void AccountHolder::queueTransaction(TransactionSkeleton const& _transaction)
 vector<TransactionSkeleton> const& AccountHolder::getQueuedTransactions(int _id) const
 {
 	if (!m_transactionQueues.count(_id))
-		return emptyQueue;
+		return g_emptyQueue;
 	return m_transactionQueues.at(_id).second;
 }
 

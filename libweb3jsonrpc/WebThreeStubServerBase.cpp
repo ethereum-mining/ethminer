@@ -41,6 +41,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+
 static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 {
 	Json::Value res;
@@ -78,7 +79,7 @@ static Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
 	Json::Value res;
 	res["to"] = toJS(_t.to);
 	res["from"] = toJS(_t.from);
-	res["gas"] = (int)_t.gas;
+	res["gas"] = toJS(_t.gas);
 	res["gasPrice"] = toJS(_t.gasPrice);
 	res["value"] = toJS(_t.value);
 	res["data"] = jsFromBinary(_t.data);
@@ -709,13 +710,11 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 	if (!m_accounts->isRealAccount(t.from))
 	{
 		if (m_accounts->isProxyAccount(t.from))
-		{
-			// todo "authenticate for proxy"
-			m_accounts->queueTransaction(t);
-		}
+			if (authenticate(t, true))
+				m_accounts->queueTransaction(t);
 		return ret;
 	}
-	if (authenticate(t))
+	if (authenticate(t, false))
 	{
 		if (t.to)
 			// TODO: from qethereum, insert validification hook here.
@@ -727,7 +726,7 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 	return ret;
 }
 
-bool WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t)
+bool WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t, bool)
 {
 	cwarn << "Silently signing transaction from address" << _t.from.abridged() << ": User validation hook goes here.";
 	return true;
