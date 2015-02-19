@@ -211,20 +211,31 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	return res;
 }
 
-WebThreeStubServerBase::WebThreeStubServerBase(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts):
-	AbstractWebThreeStubServer(_conn)
-{
-	setAccounts(_accounts);
-}
-
-void WebThreeStubServerBase::setAccounts(std::vector<dev::KeyPair> const& _accounts)
+void AccountHolder::setAccounts(std::vector<dev::KeyPair> const& _accounts)
 {
 	m_accounts.clear();
-	for (auto const& i: _accounts)
+	for (auto const& keyPair: _accounts)
 	{
-		m_accounts.push_back(i.address());
-		m_accountsLookup[i.address()] = i;
+		m_accounts.push_back(keyPair.address());
+		m_keyPairs[keyPair.address()] = keyPair;
 	}
+}
+
+Address const& AccountHolder::getDefaultCallAccount() const
+{
+	if (m_accounts.empty())
+		return ZeroAddress;
+	Address const* bestMatch = &m_accounts.front();
+	for (auto const& account: m_accounts)
+		if (m_client()->balanceAt(account) > m_client()->balanceAt(*bestMatch))
+			bestMatch = &account;
+	return *bestMatch;
+}
+
+WebThreeStubServerBase::WebThreeStubServerBase(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts):
+	AbstractWebThreeStubServer(_conn), m_accounts(std::bind(&WebThreeStubServerBase::client, this))
+{
+	m_accounts.setAccounts(_accounts);
 }
 
 void WebThreeStubServerBase::setIdentities(std::vector<dev::KeyPair> const& _ids)
@@ -242,7 +253,7 @@ std::string WebThreeStubServerBase::web3_sha3(std::string const& _param1)
 Json::Value WebThreeStubServerBase::eth_accounts()
 {
 	Json::Value ret(Json::arrayValue);
-	for (auto const& i: m_accounts)
+	for (auto const& i: m_accounts.getAllAccounts())
 		ret.append(toJS(i));
 	return ret;
 }
@@ -326,21 +337,15 @@ std::string WebThreeStubServerBase::eth_call(Json::Value const& _json)
 {
 	std::string ret;
 	TransactionSkeleton t = toTransaction(_json);
-	if (!t.from && m_accounts.size())
-	{
-		auto b = m_accounts.front();
-		for (auto const& a: m_accounts)
-			if (client()->balanceAt(a) > client()->balanceAt(b))
-				b = a;
-		t.from = b;
-	}
-	if (!m_accountsLookup.count(t.from))
+	if (!t.from)
+		t.from = m_accounts.getDefaultCallAccount();
+	if (!m_accounts.isRealAccount(t.from))
 		return ret;
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
-	ret = toJS(client()->call(m_accountsLookup[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice));
+	ret = toJS(client()->call(m_accounts.secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice));
 	return ret;
 }
 
@@ -684,16 +689,14 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 {
 	std::string ret;
 	TransactionSkeleton t = toTransaction(_json);
-	if (!t.from && m_accounts.size())
+	if (!t.from)
+		t.from = m_accounts.getDefaultCallAccount();
+	if (!m_accounts.isRealAccount(t.from))
 	{
-		auto b = m_accounts.front();
-		for (auto const& a: m_accounts)
-			if (client()->balanceAt(a) > client()->balanceAt(b))
-				b = a;
-		t.from = b;
-	}
-	if (!m_accountsLookup.count(t.from))
+//		if (m_accounts.isProxyAccount(t.from))
+//			m_accounts.storeTransaction(t);
 		return ret;
+	}
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
@@ -702,9 +705,9 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 	{
 		if (t.to)
 			// TODO: from qethereum, insert validification hook here.
-			client()->transact(m_accountsLookup[t.from].secret(), t.value, t.to, t.data, t.gas, t.gasPrice);
+			client()->transact(m_accounts.secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice);
 		else
-			ret = toJS(client()->transact(m_accountsLookup[t.from].secret(), t.value, t.data, t.gas, t.gasPrice));
+			ret = toJS(client()->transact(m_accounts.secretKey(t.from), t.value, t.data, t.gas, t.gasPrice));
 		client()->flushTransactions();
 	}
 	return ret;
@@ -741,4 +744,3 @@ bool WebThreeStubServerBase::eth_uninstallFilter(int _id)
 	client()->uninstallWatch(_id);
 	return true;
 }
-
