@@ -542,7 +542,7 @@ std::string WebThreeStubServerBase::eth_solidity(std::string const& _code)
 
 int WebThreeStubServerBase::eth_number()
 {
-	return client()->number() + 1;
+	return client()->number();
 }
 
 int WebThreeStubServerBase::eth_peerCount()
