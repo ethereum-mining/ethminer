@@ -1,7 +1,8 @@
 import QtQuick 2.2
-import QtQuick.Controls.Styles 1.1
 import QtQuick.Controls 1.1
+import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
+import QtQuick.Window 2.2
 import QtQuick.Layouts 1.1
 import org.ethereum.qml.QEther 1.0
 import "js/QEtherHelper.js" as QEtherHelper
@@ -21,12 +22,12 @@ Item {
 
 	function fromPlainTransactionItem(t) {
 		var r = {
+			contractId: t.contractId,
 			functionId: t.functionId,
 			url: t.url,
 			value: QEtherHelper.createEther(t.value.value, t.value.unit),
-			gas: QEtherHelper.createEther(t.gas.value, t.gas.unit),
+			gas: QEtherHelper.createBigInt(t.gas.value), //t.gas,//QEtherHelper.createEther(t.gas.value, t.gas.unit),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
-			executeConstructor: t.executeConstructor,
 			stdContract: t.stdContract,
 			parameters: {}
 		};
@@ -46,6 +47,10 @@ Item {
 				varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
 			else if (type.indexOf("bool") !== -1)
 				varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
+			else {
+				console.log("Unknown parameter type: " + type);
+				continue;
+			}
 
 			var param = varComponent.createObject(stateListModel);
 			var dec = Qt.createComponent("qrc:/qml/QVariableDeclaration.qml");
@@ -77,12 +82,12 @@ Item {
 
 	function toPlainTransactionItem(t) {
 		var r = {
+			contractId: t.contractId,
 			functionId: t.functionId,
 			url: t.url,
 			value: { value: t.value.value, unit: t.value.unit },
-			gas:  { value: t.gas.value, unit: t.gas.unit },
+			gas: { value: t.gas.value() },
 			gasPrice: { value: t.gasPrice.value, unit: t.gasPrice.unit },
-			executeConstructor: t.executeConstructor,
 			stdContract: t.stdContract,
 			parameters: {}
 		};
@@ -156,15 +161,15 @@ Item {
 		function defaultTransactionItem() {
 			return {
 				value: QEtherHelper.createEther("100", QEther.Wei),
-				gas: QEtherHelper.createEther("125000", QEther.Wei),
+				gas: QEtherHelper.createBigInt("125000"),
 				gasPrice: QEtherHelper.createEther("10000000000000", QEther.Wei),
-				executeConstructor: false,
 				stdContract: false
 			};
 		}
 
 		function createDefaultState() {
-			var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
+			//var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
+			var ether = QEtherHelper.createEther("1000000", QEther.Ether);
 			var item = {
 				title: "",
 				balance: ether,
@@ -176,16 +181,19 @@ Item {
 				var contractTransaction = defaultTransactionItem();
 				var contractItem = contractLibrary.model.get(i);
 				contractTransaction.url = contractItem.url;
+				contractTransaction.contractId = contractItem.name;
 				contractTransaction.functionId = contractItem.name;
 				contractTransaction.stdContract = true;
 				item.transactions.push(contractTransaction);
 			};
 
-			//add constructor
-			var ctorTr = defaultTransactionItem();
-			ctorTr.executeConstructor = true;
-			ctorTr.functionId = qsTr("Constructor");
-			item.transactions.push(ctorTr);
+			//add constructors, //TODO: order by dependencies
+			for(var c in codeModel.contracts) {
+				var ctorTr = defaultTransactionItem();
+				ctorTr.functionId = c;
+				ctorTr.contractId = c;
+				item.transactions.push(ctorTr);
+			}
 			return item;
 		}
 
@@ -199,7 +207,7 @@ Item {
 		}
 
 		function debugDefaultState() {
-			if (defaultStateIndex >= 0)
+			if (defaultStateIndex >= 0 && defaultStateIndex < stateList.length)
 				runState(defaultStateIndex);
 		}
 
@@ -217,6 +225,9 @@ Item {
 				defaultStateIndex = 0;
 				defaultStateChanged();
 			}
+			else if (defaultStateIndex > index)
+				defaultStateIndex--;
+
 			save();
 		}
 

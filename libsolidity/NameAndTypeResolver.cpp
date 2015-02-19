@@ -58,6 +58,8 @@ void NameAndTypeResolver::resolveNamesAndTypes(ContractDefinition& _contract)
 
 	for (ASTPointer<StructDefinition> const& structDef: _contract.getDefinedStructs())
 		ReferencesResolver resolver(*structDef, *this, &_contract, nullptr);
+	for (ASTPointer<EnumDefinition> const& enumDef: _contract.getDefinedEnums())
+		ReferencesResolver resolver(*enumDef, *this, &_contract, nullptr);
 	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
 		ReferencesResolver resolver(*variable, *this, &_contract, nullptr);
 	for (ASTPointer<EventDefinition> const& event: _contract.getEvents())
@@ -84,7 +86,7 @@ void NameAndTypeResolver::checkTypeRequirements(ContractDefinition& _contract)
 
 void NameAndTypeResolver::updateDeclaration(Declaration const& _declaration)
 {
-	m_scopes[nullptr].registerDeclaration(_declaration, true);
+	m_scopes[nullptr].registerDeclaration(_declaration, false, true);
 	solAssert(_declaration.getScope() == nullptr, "Updated declaration outside global scope.");
 }
 
@@ -108,8 +110,9 @@ void NameAndTypeResolver::importInheritedScope(ContractDefinition const& _base)
 	for (auto const& nameAndDeclaration: iterator->second.getDeclarations())
 	{
 		Declaration const* declaration = nameAndDeclaration.second;
-		// Import if it was declared in the base and is not the constructor
-		if (declaration->getScope() == &_base && declaration->getName() != _base.getName())
+		// Import if it was declared in the base, is not the constructor and is visible in derived classes
+		if (declaration->getScope() == &_base && declaration->getName() != _base.getName() &&
+				declaration->isVisibleInDerivedContracts())
 			m_currentScope->registerDeclaration(*declaration);
 	}
 }
@@ -221,6 +224,23 @@ void DeclarationRegistrationHelper::endVisit(StructDefinition&)
 	closeCurrentScope();
 }
 
+bool DeclarationRegistrationHelper::visit(EnumDefinition& _enum)
+{
+	registerDeclaration(_enum, true);
+	return true;
+}
+
+void DeclarationRegistrationHelper::endVisit(EnumDefinition&)
+{
+	closeCurrentScope();
+}
+
+bool DeclarationRegistrationHelper::visit(EnumValue& _value)
+{
+	registerDeclaration(_value, false);
+	return true;
+}
+
 bool DeclarationRegistrationHelper::visit(FunctionDefinition& _function)
 {
 	registerDeclaration(_function, true);
@@ -289,7 +309,7 @@ void DeclarationRegistrationHelper::closeCurrentScope()
 
 void DeclarationRegistrationHelper::registerDeclaration(Declaration& _declaration, bool _opensScope)
 {
-	if (!m_scopes[m_currentScope].registerDeclaration(_declaration))
+	if (!m_scopes[m_currentScope].registerDeclaration(_declaration, !_declaration.isVisibleInContract()))
 		BOOST_THROW_EXCEPTION(DeclarationError() << errinfo_sourceLocation(_declaration.getLocation())
 												 << errinfo_comment("Identifier already declared."));
 	//@todo the exception should also contain the location of the first declaration

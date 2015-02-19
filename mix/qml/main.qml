@@ -30,7 +30,7 @@ ApplicationWindow {
 			MenuItem { action: addNewHtmlFileAction }
 			MenuItem { action: addNewCssFileAction }
 			MenuSeparator {}
-			//MenuItem { action: addNewContractAction }
+			MenuItem { action: addNewContractAction }
 			MenuItem { action: closeProjectAction }
 			MenuSeparator {}
 			MenuItem { action: exitAppAction }
@@ -41,6 +41,8 @@ ApplicationWindow {
 			MenuItem { action: mineAction }
 			MenuSeparator {}
 			MenuItem { action: editStatesAction }
+			MenuSeparator {}
+			MenuItem { action: deployViaRpcAction }
 			MenuSeparator {}
 			MenuItem { action: toggleRunOnLoadAction }
 		}
@@ -93,7 +95,7 @@ ApplicationWindow {
 		text: qsTr("Mine")
 		shortcut: "Ctrl+M"
 		onTriggered: clientModel.mine();
-		enabled: codeModel.hasContract && !clientModel.running &&!clientModel.mining
+		enabled: codeModel.hasContract && !clientModel.running && !clientModel.mining
 	}
 
 	StateList {
@@ -203,7 +205,19 @@ ApplicationWindow {
 		text: qsTr("&Open Project")
 		shortcut: "Ctrl+O"
 		enabled: true;
-		onTriggered: projectModel.browseProject();
+		onTriggered: openProjectFileDialog.open()
+	}
+
+	FileDialog {
+		id: openProjectFileDialog
+		visible: false
+		title: qsTr("Open a Project")
+		selectFolder: true
+		onAccepted: {
+			var path = openProjectFileDialog.fileUrl.toString();
+			path += "/";
+			projectModel.loadProject(path);
+		}
 	}
 
 	Action {
@@ -243,7 +257,18 @@ ApplicationWindow {
 		text: qsTr("Add Existing File")
 		shortcut: "Ctrl+Alt+A"
 		enabled: !projectModel.isEmpty
-		onTriggered: projectModel.addExistingFile();
+		onTriggered: addExistingFileDialog.open()
+	}
+
+	FileDialog {
+		id: addExistingFileDialog
+		visible: false
+		title: qsTr("Add a File")
+		selectFolder: false
+		onAccepted: {
+			var paths = addExistingFileDialog.fileUrls;
+			projectModel.addExistingFiles(paths);
+		}
 	}
 
 	Action {
@@ -278,4 +303,11 @@ ApplicationWindow {
 		onTriggered: projectModel.openPrevDocument();
 	}
 
+	Action {
+		id: deployViaRpcAction
+		text: qsTr("Deploy to Network")
+		shortcut: "Ctrl+Shift+D"
+		enabled: !projectModel.isEmpty && codeModel.hasContract
+		onTriggered: projectModel.deployProject();
+	}
 }

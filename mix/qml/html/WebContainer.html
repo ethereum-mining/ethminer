@@ -15,19 +15,25 @@ reloadPage = function() {
 	preview.contentWindow.location.reload();
 };
 
-updateContract = function(address, contractFace) {
+updateContracts = function(contracts) {
 	if (window.web3) {
 		window.web3.provider.polls = [];
-		window.contractAddress = address;
-		window.contractInterface = contractFace;
-		window.contract = window.web3.eth.contract(address, contractFace);
+		window.contracts = {};
+		for (var c in contracts) {
+			var contract = window.web3.eth.contract(contracts[c].address, contracts[c].interface);
+			window.contracts[c] = {
+				address: c.address,
+				interface: c.interface,
+				contract: contract,
+			};
+		}
 	}
 };
 
 init = function(url) {
 	web3 = require('web3');
-	web3.setProvider(new web3.providers.HttpSyncProvider(url));
 	window.web3 = web3;
+	web3.setProvider(new web3.providers.HttpSyncProvider(url));
 };
 
 </script>

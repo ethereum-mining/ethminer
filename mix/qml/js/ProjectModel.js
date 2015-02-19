@@ -20,16 +20,15 @@
  * Ethereum IDE client.
  */
 
+var htmlTemplate = "<html>\n<head>\n<script>\n</script>\n</head>\n<body>\n<script>\n</script>\n</body>\n</html>";
+var contractTemplate = "contract Contract {\n}\n";
+
 function saveAll() {
 	saveProject();
 }
 
 function createProject() {
 	newProjectDialog.open();
-}
-
-function browseProject() {
-	openProjectFileDialog.open();
 }
 
 function closeProject() {
@@ -43,7 +42,11 @@ function closeProject() {
 
 function saveProject() {
 	if (!isEmpty) {
-		var projectData = { files: [] };
+		var projectData = {
+			files: [],
+			title: projectTitle,
+			deploymentAddress: deploymentAddress
+		};
 		for (var i = 0; i < projectListModel.count; i++)
 			projectData.files.push(projectListModel.get(i).fileName)
 		projectSaving(projectData);
@@ -64,6 +67,7 @@ function loadProject(path) {
 		var parts = path.split("/");
 		projectData.title = parts[parts.length - 2];
 	}
+	deploymentAddress = projectData.deploymentAddress ? projectData.deploymentAddress : "";
 	projectTitle = projectData.title;
 	projectPath = path;
 	if (!projectData.files)
@@ -75,10 +79,16 @@ function loadProject(path) {
 	projectSettings.lastProjectPath = path;
 	projectLoading(projectData);
 	projectLoaded()
-}
 
-function addExistingFile() {
-	addExistingFileDialog.open();
+	//TODO: move this to codemodel
+	var contractSources = {};
+	for (var d = 0; d < listModel.count; d++) {
+		var doc = listModel.get(d);
+		if (doc.isContract)
+			contractSources[doc.documentId] = fileIo.readFile(doc.path);
+	}
+	codeModel.reset(contractSources);
+
 }
 
 function addFile(fileName) {
@@ -95,7 +105,7 @@ function addFile(fileName) {
 		contract: false,
 		path: p,
 		fileName: fileName,
-		name: isContract ? "Contract" : fileName,
+		name: fileName,
 		documentId: fileName,
 		syntaxMode: syntaxMode,
 		isText: isContract || isHtml || isCss || isJs,
@@ -153,7 +163,7 @@ function openPrevDocument() {
 }
 
 function doCloseProject() {
-	console.log("closing project");
+	console.log("Closing project");
 	projectListModel.clear();
 	projectPath = "";
 	currentDocumentId = "";
@@ -170,14 +180,14 @@ function doCreateProject(title, path) {
 	var projectFile = dirPath + projectFileName;
 
 	var indexFile = "index.html";
-	var contractsFile = "contracts.sol";
+	var contractsFile = "contract.sol";
 	var projectData = {
 		title: title,
 		files: [ contractsFile, indexFile ]
 	};
 	//TODO: copy from template
-	fileIo.writeFile(dirPath + indexFile, "<html>\n<head>\n<script>\nvar web3 = parent.web3;\nvar theContract = parent.contract;\n</script>\n</head>\n<body>\n<script>\n</script>\n</body>\n</html>");
-	fileIo.writeFile(dirPath + contractsFile, "contract Contract {\n}\n");
+	fileIo.writeFile(dirPath + indexFile, htmlTemplate);
+	fileIo.writeFile(dirPath + contractsFile, contractTemplate);
 	newProject(projectData);
 	var json = JSON.stringify(projectData, null, "\t");
 	fileIo.writeFile(projectFile, json);
@@ -225,7 +235,7 @@ function removeDocument(documentId) {
 }
 
 function newHtmlFile() {
-	createAndAddFile("page", "html", "<html>\n</html>");
+	createAndAddFile("page", "html", htmlTemplate);
 }
 
 function newCssFile() {
@@ -235,6 +245,11 @@ function newCssFile() {
 function newJsFile() {
 	createAndAddFile("script", "js", "function foo() {\n}\n");
 }
+
+function newContract() {
+	createAndAddFile("contract", "sol", contractTemplate);
+}
+
 
 function createAndAddFile(name, extension, content) {
 	var fileName = generateFileName(name, extension);
@@ -254,3 +269,107 @@ function generateFileName(name, extension) {
 	return fileName
 }
 
+
+var jsonRpcRequestId = 1;
+function deployProject(force) {
+
+	saveAll(); //TODO: ask user
+
+	if (!force && deploymentAddress !== "") {
+		deployWarningDialog.visible = true;
+		return;
+	}
+
+	var date = new Date();
+	var deploymentId = date.toLocaleString(Qt.locale(), "ddMMyyHHmmsszzz");
+	var jsonRpcUrl = "http://localhost:8080";
+	console.log("Deploying " + deploymentId + " to " + jsonRpcUrl);
+	deploymentStarted();
+
+	var requests = [];
+	var requestNames = [];
+	for (var c in codeModel.contracts) { //TODO: order based on dependencies
+		var code = codeModel.contracts[c].codeHex;
+		requests.push({
+			jsonrpc: "2.0",
+			method: "eth_transact",
+			params: [ { "code": code } ],
+			id: jsonRpcRequestId++
+		});
+		requestNames.push(c);
+	}
+
+	var rpcRequest = JSON.stringify(requests);;
+	var httpRequest = new XMLHttpRequest()
+	httpRequest.open("POST", jsonRpcUrl, true);
+	httpRequest.setRequestHeader("Content-type", "application/json");
+	httpRequest.setRequestHeader("Content-length", rpcRequest.length);
+	httpRequest.setRequestHeader("Connection", "close");
+	httpRequest.onreadystatechange = function() {
+		if (httpRequest.readyState === XMLHttpRequest.DONE) {
+			if (httpRequest.status === 200) {
+				var rpcResponse = JSON.parse(httpRequest.responseText);
+				if (rpcResponse.length === requestNames.length) {
+					var contractAddresses = {};
+					for (var r = 0; r < rpcResponse.lenght; r++)
+						contractAddresses[requestNames[r]] = rpcResponse.result;
+					finalizeDeployment(deploymentId, contractAddresses);
+				}
+			} else {
+				var errorText = qsTr("Deployment error: RPC server HTTP status ") + httpRequest.status;
+				console.log(errorText);
+				deploymentError(errorText);
+			}
+		}
+	}
+	httpRequest.send(rpcRequest);
+}
+
+function finalizeDeployment(deploymentId, addresses) {
+	//create a dir for frontend files and copy them
+	var deploymentDir = projectPath + deploymentId + "/";
+	fileIo.makeDir(deploymentDir);
+	for (var i = 0; i < projectListModel.count; i++) {
+		var doc = projectListModel.get(i);
+		if (doc.isContract)
+			continue;
+		if (doc.isHtml) {
+			//inject the script to access contract API
+			//TODO: use a template
+			var html = fileIo.readFile(doc.path);
+			var insertAt = html.indexOf("<head>")
+			if (insertAt < 0)
+				insertAt = 0;
+			else
+				insertAt += 6;
+			html = html.substr(0, insertAt) +
+					"<script src=\"bignumber.min.js\"></script>" +
+					"<script src=\"ethereum.js\"></script>" +
+					"<script src=\"deployment.js\"></script>" +
+					html.substr(insertAt);
+			fileIo.writeFile(deploymentDir + doc.fileName, html);
+		}
+		else
+			fileIo.copyFile(doc.path, deploymentDir + doc.fileName);
+	}
+	//write deployment js
+	var deploymentJs =
+		"// Autogenerated by Mix\n" +
+		"web3 = require(\"web3\");\n" +
+		"contracts = {};\n";
+	for (var c in codeModel.contracts)  {
+		var contractAccessor = "contracts[\"" + codeModel.contracts[c].contract.name + "\"]";
+		deploymentJs += contractAccessor + " = {\n" +
+		"\tinterface: " + codeModel.contracts[c].contractInterface + ",\n" +
+		"\taddress: \"" + addresses[c] + "\"\n" +
+		"};\n" +
+		contractAccessor + ".contract = web3.eth.contract(" + contractAccessor + ".address, " + contractAccessor + ".interface);\n";
+	}
+	fileIo.writeFile(deploymentDir + "deployment.js", deploymentJs);
+	//copy scripts
+	fileIo.copyFile("qrc:///js/bignumber.min.js", deploymentDir + "bignumber.min.js");
+	fileIo.copyFile("qrc:///js/webthree.js", deploymentDir + "ethereum.js");
+	deploymentAddress = address;
+	saveProject();
+	deploymentComplete();
+}
