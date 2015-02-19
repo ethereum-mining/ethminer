@@ -330,7 +330,7 @@ std::string WebThreeStubServerBase::eth_call(Json::Value const& _json)
 	std::string ret;
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from)
-		t.from = m_accounts->getDefaultCallAccount();
+		t.from = m_accounts->getDefaultTransactAccount();
 	if (!m_accounts->isRealAccount(t.from))
 		return ret;
 	if (!t.gasPrice)
@@ -701,7 +701,7 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 	std::string ret;
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from)
-		t.from = m_accounts->getDefaultCallAccount();
+		t.from = m_accounts->getDefaultTransactAccount();
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)

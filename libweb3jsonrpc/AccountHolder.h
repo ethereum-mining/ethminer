@@ -52,7 +52,7 @@ public:
 	bool isProxyAccount(Address const& _account) const { return m_proxyAccounts.count(_account) > 0; }
 	Secret const& secretKey(Address const& _account) const { return m_keyPairs.at(_account).secret(); }
 	std::vector<Address> getAllAccounts() const;
-	Address const& getDefaultCallAccount() const;
+	Address const& getDefaultTransactAccount() const;
 
 	int addProxyAccount(Address const& _account);
 	bool removeProxyAccount(unsigned _id);
