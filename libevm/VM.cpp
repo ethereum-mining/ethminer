@@ -529,7 +529,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.push_back(_ext.currentBlock.difficulty);
 			break;
 		case Instruction::GASLIMIT:
-			m_stack.push_back(1000000);
+			m_stack.push_back(_ext.currentBlock.gasLimit);
 			break;
 		case Instruction::PUSH1:
 		case Instruction::PUSH2:
