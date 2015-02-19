@@ -25,7 +25,7 @@ Rectangle {
 
 	function update(data, giveFocus)
 	{
-		if (statusPane && statusPane.result.successful)
+		if (statusPane && codeModel.hasContract)
 		{
 			Debugger.init(data);
 			debugScrollArea.visible = true;
@@ -131,7 +131,14 @@ Rectangle {
 			Layout.fillWidth: true
 			Layout.minimumHeight: 60
 			height: 250
+			anchors.top: parent.top
+			anchors.left: parent.left
+			anchors.right: parent.right
+			anchors.leftMargin: machineStates.sideMargin
+			anchors.rightMargin: machineStates.sideMargin
+			anchors.topMargin: machineStates.sideMargin
 		}
+
 		ScrollView
 		{
 			property int sideMargin: 10
