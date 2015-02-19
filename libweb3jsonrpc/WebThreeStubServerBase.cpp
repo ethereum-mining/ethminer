@@ -35,6 +35,7 @@
 #include <libserpent/funcs.h>
 #endif
 #include "WebThreeStubServerBase.h"
+#include "AccountHolder.h"
 
 using namespace std;
 using namespace dev;
@@ -69,6 +70,18 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	res["gasPrice"] = toJS(_t.gasPrice());
 	res["nonce"] = toJS(_t.nonce());
 	res["value"] = toJS(_t.value());
+	return res;
+}
+
+static Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
+{
+	Json::Value res;
+	res["to"] = toJS(_t.to);
+	res["from"] = toJS(_t.from);
+	res["gas"] = (int)_t.gas;
+	res["gasPrice"] = toJS(_t.gasPrice);
+	res["value"] = toJS(_t.value);
+	res["data"] = jsFromBinary(_t.data);
 	return res;
 }
 
@@ -211,31 +224,10 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	return res;
 }
 
-void AccountHolder::setAccounts(std::vector<dev::KeyPair> const& _accounts)
-{
-	m_accounts.clear();
-	for (auto const& keyPair: _accounts)
-	{
-		m_accounts.push_back(keyPair.address());
-		m_keyPairs[keyPair.address()] = keyPair;
-	}
-}
-
-Address const& AccountHolder::getDefaultCallAccount() const
-{
-	if (m_accounts.empty())
-		return ZeroAddress;
-	Address const* bestMatch = &m_accounts.front();
-	for (auto const& account: m_accounts)
-		if (m_client()->balanceAt(account) > m_client()->balanceAt(*bestMatch))
-			bestMatch = &account;
-	return *bestMatch;
-}
-
 WebThreeStubServerBase::WebThreeStubServerBase(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts):
-	AbstractWebThreeStubServer(_conn), m_accounts(std::bind(&WebThreeStubServerBase::client, this))
+	AbstractWebThreeStubServer(_conn), m_accounts(make_shared<AccountHolder>(std::bind(&WebThreeStubServerBase::client, this)))
 {
-	m_accounts.setAccounts(_accounts);
+	m_accounts->setAccounts(_accounts);
 }
 
 void WebThreeStubServerBase::setIdentities(std::vector<dev::KeyPair> const& _ids)
@@ -253,7 +245,7 @@ std::string WebThreeStubServerBase::web3_sha3(std::string const& _param1)
 Json::Value WebThreeStubServerBase::eth_accounts()
 {
 	Json::Value ret(Json::arrayValue);
-	for (auto const& i: m_accounts.getAllAccounts())
+	for (auto const& i: m_accounts->getAllAccounts())
 		ret.append(toJS(i));
 	return ret;
 }
@@ -338,14 +330,14 @@ std::string WebThreeStubServerBase::eth_call(Json::Value const& _json)
 	std::string ret;
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from)
-		t.from = m_accounts.getDefaultCallAccount();
-	if (!m_accounts.isRealAccount(t.from))
+		t.from = m_accounts->getDefaultCallAccount();
+	if (!m_accounts->isRealAccount(t.from))
 		return ret;
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
-	ret = toJS(client()->call(m_accounts.secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice));
+	ret = toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice));
 	return ret;
 }
 
@@ -467,6 +459,25 @@ Json::Value WebThreeStubServerBase::eth_getWork()
 bool WebThreeStubServerBase::eth_submitWork(std::string const& _nonce)
 {
 	return client()->submitNonce(jsToFixed<32>(_nonce));
+}
+
+int WebThreeStubServerBase::eth_register(std::string const& _address)
+{
+	return m_accounts->addProxyAccount(jsToAddress(_address));
+}
+
+bool WebThreeStubServerBase::eth_unregister(int _id)
+{
+	return m_accounts->removeProxyAccount(_id);
+}
+
+Json::Value WebThreeStubServerBase::eth_queuedTransactions(int _id)
+{
+	Json::Value ret(Json::arrayValue);
+	for (TransactionSkeleton const& t: m_accounts->getQueuedTransactions(_id))
+		ret.append(toJson(t));
+	m_accounts->clearQueue(_id);
+	return ret;
 }
 
 std::string WebThreeStubServerBase::shh_newGroup(std::string const& _id, std::string const& _who)
@@ -690,24 +701,27 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 	std::string ret;
 	TransactionSkeleton t = toTransaction(_json);
 	if (!t.from)
-		t.from = m_accounts.getDefaultCallAccount();
-	if (!m_accounts.isRealAccount(t.from))
-	{
-//		if (m_accounts.isProxyAccount(t.from))
-//			m_accounts.storeTransaction(t);
-		return ret;
-	}
+		t.from = m_accounts->getDefaultCallAccount();
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
+	if (!m_accounts->isRealAccount(t.from))
+	{
+		if (m_accounts->isProxyAccount(t.from))
+		{
+			// todo "authenticate for proxy"
+			m_accounts->queueTransaction(t);
+		}
+		return ret;
+	}
 	if (authenticate(t))
 	{
 		if (t.to)
 			// TODO: from qethereum, insert validification hook here.
-			client()->transact(m_accounts.secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice);
+			client()->transact(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice);
 		else
-			ret = toJS(client()->transact(m_accounts.secretKey(t.from), t.value, t.data, t.gas, t.gasPrice));
+			ret = toJS(client()->transact(m_accounts->secretKey(t.from), t.value, t.data, t.gas, t.gasPrice));
 		client()->flushTransactions();
 	}
 	return ret;
@@ -743,4 +757,9 @@ bool WebThreeStubServerBase::eth_uninstallFilter(int _id)
 {
 	client()->uninstallWatch(_id);
 	return true;
+}
+
+void WebThreeStubServerBase::setAccounts(const std::vector<KeyPair>& _accounts)
+{
+	m_accounts->setAccounts(_accounts);
 }
