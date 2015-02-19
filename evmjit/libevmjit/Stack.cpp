@@ -17,19 +17,60 @@ namespace jit
 Stack::Stack(llvm::IRBuilder<>& _builder, RuntimeManager& _runtimeManager):
 	CompilerHelper(_builder),
 	m_runtimeManager(_runtimeManager)
+{}
+
+llvm::Function* Stack::getPushFunc()
 {
-	m_arg = m_builder.CreateAlloca(Type::Word, nullptr, "stack.arg");
+	auto& func = m_push;
+	if (!func)
+	{
+		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Word};
+		func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::ExternalLinkage, "stack.push", getModule());
+		llvm::Type* extArgTypes[] = {Type::RuntimePtr, Type::WordPtr};
+		auto extPushFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Void, extArgTypes, false), llvm::Function::ExternalLinkage, "stack_push", getModule());
 
-	using namespace llvm;
-	using Linkage = GlobalValue::LinkageTypes;
+		auto rt = &func->getArgumentList().front();
+		rt->setName("rt");
+		auto value = rt->getNextNode();
+		value->setName("value");
 
-	auto module = getModule();
+		InsertPointGuard guard{m_builder};
+		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), {}, func);
+		m_builder.SetInsertPoint(entryBB);
+		auto a = m_builder.CreateAlloca(Type::Word);
+		m_builder.CreateStore(value, a);
+		createCall(extPushFunc, {rt, a});
+		m_builder.CreateRetVoid();
+	}
+	return func;
+}
 
-	llvm::Type* pushArgTypes[] = {Type::RuntimePtr, Type::WordPtr};
-	m_push = Function::Create(FunctionType::get(Type::Void, pushArgTypes, false), Linkage::ExternalLinkage, "stack_push", module);
+llvm::Function* Stack::getSetFunc()
+{
+	auto& func = m_set;
+	if (!func)
+	{
+		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Size, Type::Word};
+		func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::ExternalLinkage, "stack.set", getModule());
+		llvm::Type* extArgTypes[] = {Type::RuntimePtr, Type::Size, Type::WordPtr};
+		auto extPushFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Void, extArgTypes, false), llvm::Function::ExternalLinkage, "stack_set", getModule());
 
-	llvm::Type* getSetArgTypes[] = {Type::RuntimePtr, Type::Size, Type::WordPtr};
-	m_set = Function::Create(FunctionType::get(Type::Void, getSetArgTypes, false), Linkage::ExternalLinkage, "stack_set", module);
+		auto rt = &func->getArgumentList().front();
+		rt->setName("rt");
+		auto index = rt->getNextNode();
+		index->setName("index");
+		auto value = index->getNextNode();
+		value->setName("value");
+
+		InsertPointGuard guard{m_builder};
+		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), {}, func);
+		m_builder.SetInsertPoint(entryBB);
+		auto a = m_builder.CreateAlloca(Type::Word);
+		m_builder.CreateStore(value, a);
+		createCall(extPushFunc, {rt, index, a});
+		m_builder.CreateRetVoid();
+	}
+	return func;
 }
 
 llvm::Function* Stack::getPopFunc()
@@ -113,8 +154,7 @@ llvm::Value* Stack::get(size_t _index)
 
 void Stack::set(size_t _index, llvm::Value* _value)
 {
-	m_builder.CreateStore(_value, m_arg);
-	m_builder.CreateCall3(m_set, m_runtimeManager.getRuntimePtr(), llvm::ConstantInt::get(Type::Size, _index, false), m_arg);
+	createCall(getSetFunc(), {m_runtimeManager.getRuntimePtr(), m_builder.getInt64(_index), _value});
 }
 
 void Stack::pop(size_t _count)
@@ -124,12 +164,8 @@ void Stack::pop(size_t _count)
 
 void Stack::push(llvm::Value* _value)
 {
-	m_builder.CreateStore(_value, m_arg);
-	m_builder.CreateCall2(m_push, m_runtimeManager.getRuntimePtr(), m_arg);
+	createCall(getPushFunc(), {m_runtimeManager.getRuntimePtr(), _value});
 }
-
-
-size_t Stack::maxStackSize = 0;
 
 }
 }
@@ -153,9 +189,6 @@ extern "C"
 	{
 		auto& stack = _rt->getStack();
 		stack.push_back(*_word);
-
-		if (stack.size() > Stack::maxStackSize)
-			Stack::maxStackSize = stack.size();
 	}
 
 	EXPORT i256* stack_get(Runtime* _rt, uint64_t _index)
