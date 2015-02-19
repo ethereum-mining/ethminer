@@ -3,9 +3,9 @@ set(CMAKE_AUTOMOC OFF)
 
 aux_source_directory(. SRC_LIST)
 
+include_directories(BEFORE ..)
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
-include_directories(..)
 
 set(EXECUTABLE eth)
 
@@ -16,7 +16,6 @@ add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${Boost_DATE_TIME_LIBRARIES})
 
 if (READLINE_FOUND)
 	target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})

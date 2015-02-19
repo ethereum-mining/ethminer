@@ -370,7 +370,7 @@ void State::resetCurrent()
 	m_cache.clear();
 	m_currentBlock = BlockInfo();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
-	m_currentBlock.timestamp = time(0);
+	m_currentBlock.timestamp = max(m_previousBlock.timestamp + 1, (u256)time(0));
 	m_currentBlock.transactionsRoot = h256();
 	m_currentBlock.sha3Uncles = h256();
 	m_currentBlock.populateFromParent(m_previousBlock);
@@ -598,6 +598,13 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		// Rollback the trie.
 		m_db.rollback();
 		BOOST_THROW_EXCEPTION(InvalidStateRoot());
+	}
+
+	if (m_currentBlock.gasUsed != gasUsed())
+	{
+		// Rollback the trie.
+		m_db.rollback();
+		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed)));
 	}
 
 	return tdIncrease;

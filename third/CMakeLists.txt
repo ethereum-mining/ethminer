@@ -10,8 +10,8 @@ endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 
+include_directories(BEFORE ..)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
-include_directories(..)
 
 qt5_wrap_ui(ui_Main.h Main.ui)
 
@@ -32,8 +32,11 @@ eth_add_executable(${EXECUTABLE}
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} Qt5::Core)
+target_link_libraries(${EXECUTABLE} Qt5::Widgets)
+target_link_libraries(${EXECUTABLE} Qt5::WebKit)
+target_link_libraries(${EXECUTABLE} Qt5::WebKitWidgets)
 target_link_libraries(${EXECUTABLE} webthree)
-target_link_libraries(${EXECUTABLE} qwebthree)
+target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} ethcore) 

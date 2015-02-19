@@ -50,28 +50,20 @@
 #include <libethereum/EthereumHost.h>
 #include <libethereum/DownloadMan.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
+#include <jsonrpccpp/server/connectors/httpserver.h>
 #include "MainWin.h"
 #include "DownloadView.h"
 #include "MiningView.h"
 #include "BuildInfo.h"
 #include "OurWebThreeStubServer.h"
+#include "Transact.h"
+#include "Debugger.h"
 #include "ui_Main.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::eth;
 namespace js = json_spirit;
-
-#define Small "font-size: small; "
-#define Mono "font-family: Ubuntu Mono, Monospace, Lucida Console, Courier New; font-weight: bold; "
-#define Div(S) "<div style=\"" S "\">"
-#define Span(S) "<span style=\"" S "\">"
-
-static void initUnits(QComboBox* _b)
-{
-	for (auto n = (unsigned)units().size(); n-- != 0; )
-		_b->addItem(QString::fromStdString(units()[n].second), n);
-}
 
 QString Main::fromRaw(h256 _n, unsigned* _inc)
 {
@@ -98,12 +90,6 @@ QString Main::fromRaw(h256 _n, unsigned* _inc)
 	return QString();
 }
 
-static vector<KeyPair> keysAsVector(QList<KeyPair> const& keys)
-{
-	auto list = keys.toStdList();
-	return {begin(list), end(list)};
-}
-
 QString contentsOfQResource(string const& res)
 {
 	QFile file(QString::fromStdString(res));
@@ -119,7 +105,8 @@ Address c_newConfig = Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
 
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
-	ui(new Ui::Main)
+	ui(new Ui::Main),
+	m_transact(this, this)
 {
 	setWindowFlags(Qt::Window);
 	ui->setupUi(this);
@@ -148,12 +135,6 @@ Main::Main(QWidget *parent) :
 
 	ui->configDock->close();
 	on_verbosity_valueChanged();
-	initUnits(ui->gasPriceUnits);
-	initUnits(ui->valueUnits);
-	ui->valueUnits->setCurrentIndex(6);
-	ui->gasPriceUnits->setCurrentIndex(4);
-	ui->gasPrice->setValue(10);
-	on_destination_currentTextChanged();
 
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
@@ -161,28 +142,32 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->blockCount);
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
+	
+	QSettings s("ethereum", "alethzero");
+	m_networkConfig = s.value("peers").toByteArray();
+	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
+	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}, p2p::NetworkPreferences(), network));
 
-	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}));
-
-	m_qwebConnector.reset(new QWebThreeConnector());
-	m_server.reset(new OurWebThreeStubServer(*m_qwebConnector, *web3(), keysAsVector(m_myKeys), this));
+	m_httpConnector.reset(new jsonrpc::HttpServer(8080));
+	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), keysAsVector(m_myKeys), this));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
-		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
-		m_qweb = new QWebThree(this);
-		auto qweb = m_qweb;
-		m_qwebConnector->setQWeb(qweb);
-
 		QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
 		
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
-		connect(m_qweb, SIGNAL(onNewId(QString)), this, SLOT(addNewId(QString)));
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, [f, this]()
+		{
+			f->disconnect();
+			f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership);
+			f->evaluateJavaScript(contentsOfQResource(":/js/bignumber.min.js"));
+			f->evaluateJavaScript(contentsOfQResource(":/js/webthree.js"));
+			f->evaluateJavaScript(contentsOfQResource(":/js/setup.js"));
+		});
 	});
 
 	connect(ui->webView, &QWebView::loadFinished, [=]()
@@ -210,11 +195,10 @@ Main::Main(QWidget *parent) :
 
 Main::~Main()
 {
+	writeSettings();
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
-	m_qweb->clientDieing();
 	g_logPost = simpleDebugOut;
-	writeSettings();
 }
 
 void Main::on_newIdentity_triggered()
@@ -369,12 +353,6 @@ void Main::on_forceMining_triggered()
 	ethereum()->setForceMining(ui->forceMining->isChecked());
 }
 
-void Main::on_enableOptimizer_triggered()
-{
-	m_enableOptimizer = ui->enableOptimizer->isChecked();
-	on_data_textChanged();
-}
-
 QString Main::contents(QString _s)
 {
 	return QString::fromStdString(dev::asString(dev::contents(_s.toStdString())));
@@ -406,6 +384,12 @@ void Main::load(QString _s)
 			line.clear();
 		}
 	}*/
+}
+
+void Main::on_newTransaction_triggered()
+{
+	m_transact.setEnvironment(m_myKeys, ethereum(), &m_natSpecDB);
+	m_transact.exec();
 }
 
 void Main::on_loadJS_triggered()
@@ -569,7 +553,23 @@ Address Main::fromString(QString const& _n) const
 	}*/
 
 	if (_n.size() == 40)
-		return Address(fromHex(_n.toStdString()));
+	{
+		try
+		{
+			return Address(fromHex(_n.toStdString(), ThrowType::Throw));
+		}
+		catch (BadHexCharacter& _e)
+		{
+			cwarn << "invalid hex character, address rejected";
+			cwarn << boost::diagnostic_information(_e);
+			return Address();
+		}
+		catch (...)
+		{
+			cwarn << "address rejected";
+			return Address();
+		}
+	}
 	else
 		return Address();
 }
@@ -653,7 +653,6 @@ void Main::writeSettings()
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
 	s.setValue("showAllAccounts", ui->showAllAccounts->isChecked());
-	s.setValue("enableOptimizer", m_enableOptimizer);
 	s.setValue("clientName", ui->clientName->text());
 	s.setValue("idealPeers", ui->idealPeers->value());
 	s.setValue("port", ui->port->value());
@@ -662,10 +661,10 @@ void Main::writeSettings()
 	s.setValue("verbosity", ui->verbosity->value());
 	s.setValue("jitvm", ui->jitvm->isChecked());
 
-	bytes d = m_webThree->saveNodes();
+	bytes d = m_webThree->saveNetwork();
 	if (d.size())
-		m_peers = QByteArray((char*)d.data(), (int)d.size());
-	s.setValue("peers", m_peers);
+		m_networkConfig = QByteArray((char*)d.data(), (int)d.size());
+	s.setValue("peers", m_networkConfig);
 	s.setValue("nameReg", ui->nameReg->text());
 
 	s.setValue("geometry", saveGeometry());
@@ -714,7 +713,6 @@ void Main::readSettings(bool _skipGeometry)
 		}
 	}
 
-	m_peers = s.value("peers").toByteArray();
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
@@ -724,8 +722,6 @@ void Main::readSettings(bool _skipGeometry)
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
 	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
-	m_enableOptimizer = s.value("enableOptimizer", true).toBool();
-	ui->enableOptimizer->setChecked(m_enableOptimizer);
 	ui->clientName->setText(s.value("clientName", "").toString());
 	if (ui->clientName->text().isEmpty())
 		ui->clientName->setText(QInputDialog::getText(nullptr, "Enter identity", "Enter a name that will identify you on the peer network"));
@@ -946,37 +942,32 @@ void Main::refreshNetwork()
 
 	if (web3()->haveNetwork())
 	{
-		map<h512, QString> clients;
-		for (PeerInfo const& i: ps)
+		map<h512, QString> sessions;
+		for (PeerSessionInfo const& i: ps)
 			ui->peers->addItem(QString("[%8 %7] %3 ms - %1:%2 - %4 %5 %6")
 							   .arg(QString::fromStdString(i.host))
 							   .arg(i.port)
 							   .arg(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count())
-							   .arg(clients[i.id] = QString::fromStdString(i.clientVersion))
+							   .arg(sessions[i.id] = QString::fromStdString(i.clientVersion))
 							   .arg(QString::fromStdString(toString(i.caps)))
 							   .arg(QString::fromStdString(toString(i.notes)))
 							   .arg(i.socket)
 							   .arg(QString::fromStdString(i.id.abridged())));
 
 		auto ns = web3()->nodes();
-		for (p2p::Node const& i: ns)
-			if (!i.dead)
-				ui->nodes->insertItem(clients.count(i.id) ? 0 : ui->nodes->count(), QString("[%1 %3] %2 - ( =%5s | /%4s%6 ) - *%7 $%8")
-							   .arg(QString::fromStdString(i.id.abridged()))
-							   .arg(QString::fromStdString(toString(i.address)))
-							   .arg(i.id == web3()->id() ? "self" : clients.count(i.id) ? clients[i.id] : i.secondsSinceLastAttempted() == -1 ? "session-fail" : i.secondsSinceLastAttempted() >= (int)i.fallbackSeconds() ? "retrying..." : "retry-" + QString::number(i.fallbackSeconds() - i.secondsSinceLastAttempted()) + "s")
-							   .arg(i.secondsSinceLastAttempted())
-							   .arg(i.secondsSinceLastConnected())
-							   .arg(i.isOffline() ? " | " + QString::fromStdString(reasonOf(i.lastDisconnect)) + " | " + QString::number(i.failedAttempts) + "x" : "")
-							   .arg(i.rating)
-							   .arg((int)i.idOrigin)
-							   );
+		for (p2p::Peer const& i: ns)
+			ui->nodes->insertItem(sessions.count(i.id) ? 0 : ui->nodes->count(), QString("[%1 %3] %2 - ( =%5s | /%4s%6 ) - *%7 $%8")
+						   .arg(QString::fromStdString(i.id.abridged()))
+						   .arg(QString::fromStdString(i.peerEndpoint().address().to_string()))
+						   .arg(i.id == web3()->id() ? "self" : sessions.count(i.id) ? sessions[i.id] : "disconnected")
+						   .arg(i.isOffline() ? " | " + QString::fromStdString(reasonOf(i.lastDisconnect())) + " | " + QString::number(i.failedAttempts()) + "x" : "")
+						   .arg(i.rating())
+						   );
 	}
 }
 
 void Main::refreshAll()
 {
-	refreshDestination();
 	refreshBlockChain();
 	refreshBlockCount();
 	refreshPending();
@@ -1025,20 +1016,6 @@ void Main::refreshAccounts()
 						->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
 			}
 		}
-}
-
-void Main::refreshDestination()
-{
-	cwatch << "refreshDestination()";
-	QString s;
-	for (auto i: ethereum()->addresses())
-		if ((s = pretty(i)).size())
-			// A namereg address
-			if (ui->destination->findText(s, Qt::MatchExactly | Qt::MatchCaseSensitive) == -1)
-				ui->destination->addItem(s);
-	for (int i = 0; i < ui->destination->count(); ++i)
-		if (ui->destination->itemText(i) != "(Create Contract)" && !fromString(ui->destination->itemText(i)))
-			ui->destination->removeItem(i--);
 }
 
 void Main::refreshBlockCount()
@@ -1327,8 +1304,20 @@ void Main::ourAccountsRowsMoved()
 void Main::on_inject_triggered()
 {
 	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
-	bytes b = fromHex(s.toStdString());
-	ethereum()->inject(&b);
+	try
+	{
+		bytes b = fromHex(s.toStdString(), ThrowType::Throw);
+		ethereum()->inject(&b);
+	}
+	catch (BadHexCharacter& _e)
+	{
+		cwarn << "invalid hex character, transaction rejected";
+		cwarn << boost::diagnostic_information(_e);
+	}
+	catch (...)
+	{
+		cwarn << "transaction rejected";
+	}
 }
 
 void Main::on_blocks_currentItemChanged()
@@ -1451,13 +1440,12 @@ void Main::on_debugCurrent_triggered()
 		if (!item->data(Qt::UserRole + 1).isNull())
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			m_executiveState = ethereum()->state(txi + 1, h);
-			m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, ethereum()->blockChain(), 0));
-			Transaction t = m_executiveState.pending()[txi];
-			m_executiveState = m_executiveState.fromPending(txi);
-			auto r = t.rlp();
-			populateDebugger(&r);
-			m_currentExecution.reset();
+			bytes t = ethereum()->blockChain().transaction(h, txi);
+			State s(ethereum()->state(txi, h));
+			Executive e(s, ethereum()->blockChain(), 0);
+			Debugger dw(this, this);
+			dw.populate(e, Transaction(t, CheckSignature::Sender));
+			dw.exec();
 		}
 	}
 }
@@ -1488,49 +1476,6 @@ void Main::on_debugDumpStatePre_triggered()
 	on_debugDumpState_triggered(0);
 }
 
-void Main::populateDebugger(dev::bytesConstRef _r)
-{
-	bool done = m_currentExecution->setup(_r);
-	if (!done)
-	{
-		debugFinished();
-		vector<WorldState const*> levels;
-		m_codes.clear();
-		bytes lastExtCode;
-		bytesConstRef lastData;
-		h256 lastHash;
-		h256 lastDataHash;
-		auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, VM* voidVM, ExtVMFace const* voidExt)
-		{
-			VM& vm = *voidVM;
-			ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
-			if (ext.code != lastExtCode)
-			{
-				lastExtCode = ext.code;
-				lastHash = sha3(lastExtCode);
-				if (!m_codes.count(lastHash))
-					m_codes[lastHash] = ext.code;
-			}
-			if (ext.data != lastData)
-			{
-				lastData = ext.data;
-				lastDataHash = sha3(lastData);
-				if (!m_codes.count(lastDataHash))
-					m_codes[lastDataHash] = ext.data.toBytes();
-			}
-			if (levels.size() < ext.depth)
-				levels.push_back(&m_history.back());
-			else
-				levels.resize(ext.depth);
-			m_history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(), lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
-		};
-		m_currentExecution->go(onOp);
-		m_currentExecution->finalize();
-		initDebugger();
-		updateDebugger();
-	}
-}
-
 void Main::on_contracts_currentItemChanged()
 {
 	ui->contractInfo->clear();
@@ -1546,7 +1491,7 @@ void Main::on_contracts_currentItemChanged()
 			auto storage = ethereum()->storageAt(address);
 			for (auto const& i: storage)
 				s << "@" << showbase << hex << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << showbase << hex << prettyU256(i.second).toStdString() << "<br/>";
-			s << "<h4>Body Code</h4>" << disassemble(ethereum()->codeAt(address));
+			s << "<h4>Body Code (" << sha3(ethereum()->codeAt(address)).abridged() << ")</h4>" << disassemble(ethereum()->codeAt(address));
 			s << Div(Mono) << toHex(ethereum()->codeAt(address)) << "</div>";
 			ui->contractInfo->appendHtml(QString::fromStdString(s.str()));
 		}
@@ -1588,19 +1533,6 @@ void Main::on_contracts_doubleClicked()
 	auto hba = ui->contracts->currentItem()->data(Qt::UserRole).toByteArray();
 	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
 	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
-}
-
-void Main::on_destination_currentTextChanged()
-{
-	if (ui->destination->currentText().size() && ui->destination->currentText() != "(Create Contract)")
-		if (Address a = fromString(ui->destination->currentText()))
-			ui->calculatedName->setText(render(a));
-		else
-			ui->calculatedName->setText("Unknown Address");
-	else
-		ui->calculatedName->setText("Create Contract");
-	on_data_textChanged();
-//	updateFee();
 }
 
 static shh::FullTopic topicFromText(QString _s)
@@ -1657,134 +1589,6 @@ static shh::FullTopic topicFromText(QString _s)
 	return ret;
 }
 
-bool Main::sourceIsSolidity(string const& _source)
-{
-	// TODO: Improve this heuristic
-	return (_source.substr(0, 8) == "contract" || _source.substr(0, 5) == "//sol");
-}
-
-static bool sourceIsSerpent(string const& _source)
-{
-	// TODO: Improve this heuristic
-	return (_source.substr(0, 5) == "//ser");
-}
-
-string const Main::getFunctionHashes(dev::solidity::CompilerStack const &_compiler,
-									 string const& _contractName)
-{
-	string ret = "";
-	auto const& contract = _compiler.getContractDefinition(_contractName);
-	auto interfaceFunctions = contract.getInterfaceFunctions();
-
-	for (auto const& it: interfaceFunctions)
-	{
-		ret += it.first.abridged();
-		ret += " :";
-		ret += it.second->getDeclaration().getName() + "\n";
-	}
-	return ret;
-}
-
-void Main::on_data_textChanged()
-{
-	m_pcWarp.clear();
-	if (isCreation())
-	{
-		string src = ui->data->toPlainText().toStdString();
-		vector<string> errors;
-		QString lll;
-		QString solidity;
-		if (src.find_first_not_of("1234567890abcdefABCDEF") == string::npos && src.size() % 2 == 0)
-		{
-			m_data = fromHex(src);
-		}
-		else if (sourceIsSolidity(src))
-		{
-			dev::solidity::CompilerStack compiler;
-			try
-			{
-//				compiler.addSources(dev::solidity::StandardSources);
-				m_data = compiler.compile(src, m_enableOptimizer);
-				solidity = "<h4>Solidity</h4>";
-				solidity += "<pre>var " + QString::fromStdString(compiler.getContractNames().front()) + " = web3.eth.contractFromAbi(" + QString::fromStdString(compiler.getInterface()).replace(QRegExp("\\s"), "").toHtmlEscaped() + ");</pre>";
-				solidity += "<pre>" + QString::fromStdString(compiler.getSolidityInterface()).toHtmlEscaped() + "</pre>";
-				solidity += "<pre>" + QString::fromStdString(getFunctionHashes(compiler)).toHtmlEscaped() + "</pre>";
-			}
-			catch (dev::Exception const& exception)
-			{
-				ostringstream error;
-				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
-				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
-			}
-			catch (...)
-			{
-				solidity = "<h4>Solidity</h4><pre>Uncaught exception.</pre>";
-			}
-		}
-#ifndef _MSC_VER
-		else if (sourceIsSerpent(src))
-		{
-			try
-			{
-				m_data = dev::asBytes(::compile(src));
-				for (auto& i: errors)
-					i = "(LLL " + i + ")";
-			}
-			catch (string err)
-			{
-				errors.push_back("Serpent " + err);
-			}
-		}
-#endif
-		else
-		{
-			m_data = compileLLL(src, m_enableOptimizer, &errors);
-			if (errors.empty())
-			{
-				auto asmcode = compileLLLToAsm(src, false);
-				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
-				if (m_enableOptimizer)
-				{
-					asmcode = compileLLLToAsm(src, true);
-					lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>" + lll;
-				}
-			}
-		}
-		QString errs;
-		if (errors.size())
-		{
-			errs = "<h4>Errors</h4>";
-			for (auto const& i: errors)
-				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
-		}
-		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped() + "<h4>Hex</h4>" Div(Mono) + QString::fromStdString(toHex(m_data)) + "</div>");
-		ui->gas->setMinimum((qint64)Client::txGas(m_data, 0));
-		if (!ui->gas->isEnabled())
-			ui->gas->setValue(m_backupGas);
-		ui->gas->setEnabled(true);
-	}
-	else
-	{
-		m_data = parseData(ui->data->toPlainText().toStdString());
-		ui->code->setHtml(QString::fromStdString(dev::memDump(m_data, 8, true)));
-		if (ethereum()->codeAt(fromString(ui->destination->currentText()), 0).size())
-		{
-			ui->gas->setMinimum((qint64)Client::txGas(m_data, 1));
-			if (!ui->gas->isEnabled())
-				ui->gas->setValue(m_backupGas);
-			ui->gas->setEnabled(true);
-		}
-		else
-		{
-			if (ui->gas->isEnabled())
-				m_backupGas = ui->gas->value();
-			ui->gas->setValue((qint64)Client::txGas(m_data));
-			ui->gas->setEnabled(false);
-		}
-	}
-	updateFee();
-}
-
 void Main::on_clearPending_triggered()
 {
 	writeSettings();
@@ -1809,54 +1613,6 @@ void Main::on_killBlockchain_triggered()
 	refreshAll();
 }
 
-bool Main::isCreation() const
-{
-	return ui->destination->currentText().isEmpty() || ui->destination->currentText() == "(Create Contract)";
-}
-
-u256 Main::fee() const
-{
-	return ui->gas->value() * gasPrice();
-}
-
-u256 Main::value() const
-{
-	if (ui->valueUnits->currentIndex() == -1)
-		return 0;
-	return ui->value->value() * units()[units().size() - 1 - ui->valueUnits->currentIndex()].first;
-}
-
-u256 Main::gasPrice() const
-{
-	if (ui->gasPriceUnits->currentIndex() == -1)
-		return 0;
-	return ui->gasPrice->value() * units()[units().size() - 1 - ui->gasPriceUnits->currentIndex()].first;
-}
-
-u256 Main::total() const
-{
-	return value() + fee();
-}
-
-void Main::updateFee()
-{
-	ui->fee->setText(QString("(gas sub-total: %1)").arg(formatBalance(fee()).c_str()));
-	auto totalReq = total();
-	ui->total->setText(QString("Total: %1").arg(formatBalance(totalReq).c_str()));
-
-	bool ok = false;
-	for (auto i: m_myKeys)
-		if (ethereum()->balanceAt(i.address()) >= totalReq)
-		{
-			ok = true;
-			break;
-		}
-	ui->send->setEnabled(ok);
-	QPalette p = ui->total->palette();
-	p.setColor(QPalette::WindowText, QColor(ok ? 0x00 : 0x80, 0x00, 0x00));
-	ui->total->setPalette(p);
-}
-
 void Main::on_net_triggered()
 {
 	ui->port->setEnabled(!ui->net->isChecked());
@@ -1871,8 +1627,9 @@ void Main::on_net_triggered()
 		web3()->setIdealPeerCount(ui->idealPeers->value());
 		web3()->setNetworkPreferences(netPrefs());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
-		if (m_peers.size()/* && ui->usePast->isChecked()*/)
-			web3()->restoreNodes(bytesConstRef((byte*)m_peers.data(), m_peers.size()));
+		// TODO: p2p
+//		if (m_networkConfig.size()/* && ui->usePast->isChecked()*/)
+//			web3()->restoreNetwork(bytesConstRef((byte*)m_networkConfig.data(), m_networkConfig.size()));
 		web3()->startNetwork();
 		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
 	}
@@ -1917,77 +1674,10 @@ void Main::on_mine_triggered()
 		ethereum()->stopMining();
 }
 
-void Main::on_send_clicked()
-{
-	u256 totalReq = value() + fee();
-	for (auto i: m_myKeys)
-		if (ethereum()->balanceAt(i.address(), 0) >= totalReq)
-		{
-			debugFinished();
-			Secret s = i.secret();
-			if (isCreation())
-			{
-				// If execution is a contract creation, add Natspec to
-				// a local Natspec LEVELDB
-				ethereum()->transact(s, value(), m_data, ui->gas->value(), gasPrice());
-				string src = ui->data->toPlainText().toStdString();
-				if (sourceIsSolidity(src))
-					try
-					{
-						dev::solidity::CompilerStack compiler;
-						m_data = compiler.compile(src, m_enableOptimizer);
-						for (string& s: compiler.getContractNames())
-						{
-							h256 contractHash = compiler.getContractCodeHash(s);
-							m_natspecDB.add(contractHash,
-											compiler.getMetadata(s, dev::solidity::DocumentationType::NatspecUser));
-						}
-					}
-					catch (...)
-					{
-						statusBar()->showMessage("Couldn't compile Solidity Contract.");
-					}
-			}
-			else
-				ethereum()->transact(s, value(), fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
-			return;
-		}
-	statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
-}
-
 void Main::keysChanged()
 {
 	onBalancesChange();
 	m_server->setAccounts(keysAsVector(m_myKeys));
-}
-
-void Main::on_debug_clicked()
-{
-	debugFinished();
-	try
-	{
-		u256 totalReq = value() + fee();
-		for (auto i: m_myKeys)
-			if (ethereum()->balanceAt(i.address()) >= totalReq)
-			{
-				Secret s = i.secret();
-				m_executiveState = ethereum()->postState();
-				m_currentExecution = unique_ptr<Executive>(new Executive(m_executiveState, ethereum()->blockChain(), 0));
-				Transaction t = isCreation() ?
-					Transaction(value(), gasPrice(), ui->gas->value(), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s) :
-					Transaction(value(), gasPrice(), ui->gas->value(), fromString(ui->destination->currentText()), m_data, m_executiveState.transactionsFrom(dev::toAddress(s)), s);
-				auto r = t.rlp();
-				populateDebugger(&r);
-				m_currentExecution.reset();
-				return;
-			}
-		statusBar()->showMessage("Couldn't make transaction: no single account contains at least the required amount.");
-	}
-	catch (dev::Exception const& _e)
-	{
-		statusBar()->showMessage("Error running transaction: " + QString::fromStdString(diagnostic_information(_e)));
-		// this output is aimed at developers, reconsider using _e.what for more user friendly output.
-	}
 }
 
 bool beginsWith(Address _a, bytes const& _b)
@@ -1998,7 +1688,7 @@ bool beginsWith(Address _a, bytes const& _b)
 	return true;
 }
 
-void Main::on_create_triggered()
+void Main::on_newAccount_triggered()
 {
 	bool ok = true;
 	enum { NoVanity = 0, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour, StringMatch };
@@ -2066,111 +1756,6 @@ void Main::on_killAccount_triggered()
 	}
 }
 
-void Main::on_debugStep_triggered()
-{
-	if (ui->debugTimeline->value() < m_history.size()) {
-		auto l = m_history[ui->debugTimeline->value()].levels.size();
-		if ((ui->debugTimeline->value() + 1) < m_history.size() && m_history[ui->debugTimeline->value() + 1].levels.size() > l)
-		{
-			on_debugStepInto_triggered();
-			if (m_history[ui->debugTimeline->value()].levels.size() > l)
-				on_debugStepOut_triggered();
-		}
-		else
-			on_debugStepInto_triggered();
-	}
-}
-
-void Main::on_debugStepInto_triggered()
-{
-	ui->debugTimeline->setValue(ui->debugTimeline->value() + 1);
-	ui->callStack->setCurrentRow(0);
-}
-
-void Main::on_debugStepOut_triggered()
-{
-	if (ui->debugTimeline->value() < m_history.size())
-	{
-		auto ls = m_history[ui->debugTimeline->value()].levels.size();
-		auto l = ui->debugTimeline->value();
-		for (; l < m_history.size() && m_history[l].levels.size() >= ls; ++l) {}
-		ui->debugTimeline->setValue(l);
-		ui->callStack->setCurrentRow(0);
-	}
-}
-
-void Main::on_debugStepBackInto_triggered()
-{
-	ui->debugTimeline->setValue(ui->debugTimeline->value() - 1);
-	ui->callStack->setCurrentRow(0);
-}
-
-void Main::on_debugStepBack_triggered()
-{
-	auto l = m_history[ui->debugTimeline->value()].levels.size();
-	if (ui->debugTimeline->value() > 0 && m_history[ui->debugTimeline->value() - 1].levels.size() > l)
-	{
-		on_debugStepBackInto_triggered();
-		if (m_history[ui->debugTimeline->value()].levels.size() > l)
-			on_debugStepBackOut_triggered();
-	}
-	else
-		on_debugStepBackInto_triggered();
-}
-
-void Main::on_debugStepBackOut_triggered()
-{
-	if (ui->debugTimeline->value() > 0 && m_history.size() > 0)
-	{
-		auto ls = m_history[min(ui->debugTimeline->value(), m_history.size() - 1)].levels.size();
-		int l = ui->debugTimeline->value();
-		for (; l > 0 && m_history[l].levels.size() >= ls; --l) {}
-		ui->debugTimeline->setValue(l);
-		ui->callStack->setCurrentRow(0);
-	}
-}
-
-void Main::on_dumpTrace_triggered()
-{
-	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
-	ofstream f(fn.toStdString());
-	if (f.is_open())
-		for (WorldState const& ws: m_history)
-			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
-}
-
-void Main::on_dumpTracePretty_triggered()
-{
-	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
-	ofstream f(fn.toStdString());
-	if (f.is_open())
-		for (WorldState const& ws: m_history)
-		{
-			f << endl << "    STACK" << endl;
-			for (auto i: ws.stack)
-				f << (h256)i << endl;
-			f << "    MEMORY" << endl << dev::memDump(ws.memory);
-			f << "    STORAGE" << endl;
-			for (auto const& i: ws.storage)
-				f << showbase << hex << i.first << ": " << i.second << endl;
-			f << dec << ws.levels.size() << " | " << ws.cur << " | #" << ws.steps << " | " << hex << setw(4) << setfill('0') << ws.curPC << " : " << instructionInfo(ws.inst).name << " | " << dec << ws.gas << " | -" << dec << ws.gasCost << " | " << ws.newMemSize << "x32";
-		}
-}
-
-void Main::on_dumpTraceStorage_triggered()
-{
-	QString fn = QFileDialog::getSaveFileName(this, "Select file to output EVM trace");
-	ofstream f(fn.toStdString());
-	if (f.is_open())
-		for (WorldState const& ws: m_history)
-		{
-			if (ws.inst == Instruction::STOP || ws.inst == Instruction::RETURN || ws.inst == Instruction::SUICIDE)
-				for (auto i: ws.storage)
-					f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
-			f << ws.cur << " " << hex << toHex(dev::toCompactBigEndian(ws.curPC, 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)ws.inst, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)ws.gas, 1)) << endl;
-		}
-}
-
 void Main::on_go_triggered()
 {
 	if (!ui->net->isChecked())
@@ -2179,60 +1764,6 @@ void Main::on_go_triggered()
 		on_net_triggered();
 	}
 	web3()->connect(Host::pocHost());
-}
-
-void Main::on_callStack_currentItemChanged()
-{
-	updateDebugger();
-}
-
-void Main::alterDebugStateGroup(bool _enable) const
-{
-	ui->debugStep->setEnabled(_enable);
-	ui->debugStepInto->setEnabled(_enable);
-	ui->debugStepOut->setEnabled(_enable);
-	ui->debugStepBackInto->setEnabled(_enable);
-	ui->debugStepBackOut->setEnabled(_enable);
-	ui->dumpTrace->setEnabled(_enable);
-	ui->dumpTraceStorage->setEnabled(_enable);
-	ui->dumpTracePretty->setEnabled(_enable);
-	ui->debugStepBack->setEnabled(_enable);
-	ui->debugPanel->setEnabled(_enable);
-}
-
-void Main::debugFinished()
-{
-	m_codes.clear();
-	m_pcWarp.clear();
-	m_history.clear();
-	m_lastLevels.clear();
-	m_lastCode = h256();
-	ui->callStack->clear();
-	ui->debugCode->clear();
-	ui->debugStack->clear();
-	ui->debugMemory->setHtml("");
-	ui->debugStorage->setHtml("");
-	ui->debugStateInfo->setText("");
-	alterDebugStateGroup(false);
-//	ui->send->setEnabled(true);
-}
-
-void Main::initDebugger()
-{
-//	ui->send->setEnabled(false);
-	if (m_history.size())
-	{
-		alterDebugStateGroup(true);
-		ui->debugCode->setEnabled(false);
-		ui->debugTimeline->setMinimum(0);
-		ui->debugTimeline->setMaximum(m_history.size());
-		ui->debugTimeline->setValue(0);
-	}
-}
-
-void Main::on_debugTimeline_valueChanged()
-{
-	updateDebugger();
 }
 
 QString Main::prettyU256(dev::u256 _n) const
@@ -2262,136 +1793,6 @@ QString Main::prettyU256(dev::u256 _n) const
 	return QString::fromStdString(s.str());
 }
 
-void Main::updateDebugger()
-{
-	if (m_history.size())
-	{
-		WorldState const& nws = m_history[min((int)m_history.size() - 1, ui->debugTimeline->value())];
-		WorldState const& ws = ui->callStack->currentRow() > 0 ? *nws.levels[nws.levels.size() - ui->callStack->currentRow()] : nws;
-
-		if (ui->debugTimeline->value() >= m_history.size())
-		{
-			if (ws.gasCost > ws.gas)
-				ui->debugMemory->setHtml("<h3>OUT-OF-GAS</h3>");
-			else if (ws.inst == Instruction::RETURN && ws.stack.size() >= 2)
-			{
-				unsigned from = (unsigned)ws.stack.back();
-				unsigned size = (unsigned)ws.stack[ws.stack.size() - 2];
-				unsigned o = 0;
-				bytes out(size, 0);
-				for (; o < size && from + o < ws.memory.size(); ++o)
-					out[o] = ws.memory[from + o];
-				ui->debugMemory->setHtml("<h3>RETURN</h3>" + QString::fromStdString(dev::memDump(out, 16, true)));
-			}
-			else if (ws.inst == Instruction::STOP)
-				ui->debugMemory->setHtml("<h3>STOP</h3>");
-			else if (ws.inst == Instruction::SUICIDE && ws.stack.size() >= 1)
-				ui->debugMemory->setHtml("<h3>SUICIDE</h3>0x" + QString::fromStdString(toString(right160(ws.stack.back()))));
-			else
-				ui->debugMemory->setHtml("<h3>EXCEPTION</h3>");
-
-			ostringstream ss;
-			ss << dec << "EXIT  |  GAS: " << dec << max<dev::bigint>(0, (dev::bigint)ws.gas - ws.gasCost);
-			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
-			ui->debugStorage->setHtml("");
-			ui->debugCallData->setHtml("");
-			m_lastData = h256();
-			ui->callStack->clear();
-			m_lastLevels.clear();
-			ui->debugCode->clear();
-			m_lastCode = h256();
-			ui->debugStack->setHtml("");
-		}
-		else
-		{
-			if (m_lastLevels != nws.levels || !ui->callStack->count())
-			{
-				m_lastLevels = nws.levels;
-				ui->callStack->clear();
-				for (unsigned i = 0; i <= nws.levels.size(); ++i)
-				{
-					WorldState const& s = i ? *nws.levels[nws.levels.size() - i] : nws;
-					ostringstream out;
-					out << s.cur.abridged();
-					if (i)
-						out << " " << instructionInfo(s.inst).name << " @0x" << hex << s.curPC;
-					ui->callStack->addItem(QString::fromStdString(out.str()));
-				}
-			}
-
-			if (ws.code != m_lastCode)
-			{
-				bytes const& code = m_codes[ws.code];
-				QListWidget* dc = ui->debugCode;
-				dc->clear();
-				m_pcWarp.clear();
-				for (unsigned i = 0; i <= code.size(); ++i)
-				{
-					byte b = i < code.size() ? code[i] : 0;
-					try
-					{
-						QString s = QString::fromStdString(instructionInfo((Instruction)b).name);
-						ostringstream out;
-						out << hex << setw(4) << setfill('0') << i;
-						m_pcWarp[i] = dc->count();
-						if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
-						{
-							unsigned bc = b - (byte)Instruction::PUSH1 + 1;
-							s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&code[i + 1], bc)));
-							i += bc;
-						}
-						dc->addItem(QString::fromStdString(out.str()) + "  "  + s);
-					}
-					catch (...)
-					{
-						cerr << "Unhandled exception!" << endl <<
-									boost::current_exception_diagnostic_information();
-						break;	// probably hit data segment
-					}
-				}
-				m_lastCode = ws.code;
-			}
-
-			if (ws.callData != m_lastData)
-			{
-				m_lastData = ws.callData;
-				if (ws.callData)
-				{
-					assert(m_codes.count(ws.callData));
-					ui->debugCallData->setHtml(QString::fromStdString(dev::memDump(m_codes[ws.callData], 16, true)));
-				}
-				else
-					ui->debugCallData->setHtml("");
-			}
-
-			QString stack;
-			for (auto i: ws.stack)
-				stack.prepend("<div>" + prettyU256(i) + "</div>");
-			ui->debugStack->setHtml(stack);
-			ui->debugMemory->setHtml(QString::fromStdString(dev::memDump(ws.memory, 16, true)));
-			assert(m_codes.count(ws.code));
-
-			if (m_codes[ws.code].size() >= (unsigned)ws.curPC)
-			{
-				int l = m_pcWarp[(unsigned)ws.curPC];
-				ui->debugCode->setCurrentRow(max(0, l - 5));
-				ui->debugCode->setCurrentRow(min(ui->debugCode->count() - 1, l + 5));
-				ui->debugCode->setCurrentRow(l);
-			}
-			else
-				cwarn << "PC (" << (unsigned)ws.curPC << ") is after code range (" << m_codes[ws.code].size() << ")";
-
-			ostringstream ss;
-			ss << dec << "STEP: " << ws.steps << "  |  PC: 0x" << hex << ws.curPC << "  :  " << instructionInfo(ws.inst).name << "  |  ADDMEM: " << dec << ws.newMemSize << " words  |  COST: " << dec << ws.gasCost <<  "  |  GAS: " << dec << ws.gas;
-			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
-			stringstream s;
-			for (auto const& i: ws.storage)
-				s << "@" << prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << prettyU256(i.second).toStdString() << "<br/>";
-			ui->debugStorage->setHtml(QString::fromStdString(s.str()));
-		}
-	}
-}
-
 void Main::on_post_clicked()
 {
 	shh::Message m;
@@ -2404,14 +1805,16 @@ void Main::on_post_clicked()
 	whisper()->inject(m.seal(from, topicFromText(ui->shhTopic->toPlainText()), ui->shhTtl->value(), ui->shhWork->value()));
 }
 
-string Main::lookupNatSpec(dev::h256 const& _contractHash) const
+int Main::authenticate(QString _title, QString _text)
 {
-	return m_natspecDB.retrieve(_contractHash);
-}
-
-string Main::lookupNatSpecUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionData)
-{
-	return m_natspecDB.getUserNotice(_contractHash, _transactionData);
+	QMessageBox userInput(this);
+	userInput.setText(_title);
+	userInput.setInformativeText(_text);
+	userInput.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+	userInput.button(QMessageBox::Ok)->setText("Allow");
+	userInput.button(QMessageBox::Cancel)->setText("Reject");
+	userInput.setDefaultButton(QMessageBox::Cancel);
+	return userInput.exec();
 }
 
 void Main::refreshWhispers()

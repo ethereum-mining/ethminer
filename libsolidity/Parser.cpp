@@ -119,6 +119,7 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 	ASTPointer<ASTString> name = expectIdentifierToken();
 	vector<ASTPointer<InheritanceSpecifier>> baseContracts;
 	vector<ASTPointer<StructDefinition>> structs;
+	vector<ASTPointer<EnumDefinition>> enums;
 	vector<ASTPointer<VariableDeclaration>> stateVariables;
 	vector<ASTPointer<FunctionDefinition>> functions;
 	vector<ASTPointer<ModifierDefinition>> modifiers;
@@ -140,6 +141,8 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 			functions.push_back(parseFunctionDefinition(name.get()));
 		else if (currentToken == Token::Struct)
 			structs.push_back(parseStructDefinition());
+		else if (currentToken == Token::Enum)
+			enums.push_back(parseEnumDefinition());
 		else if (currentToken == Token::Identifier || currentToken == Token::Mapping ||
 				 Token::isElementaryTypeName(currentToken))
 		{
@@ -157,7 +160,7 @@ ASTPointer<ContractDefinition> Parser::parseContractDefinition()
 	}
 	nodeFactory.markEndPosition();
 	expectToken(Token::RBrace);
-	return nodeFactory.createNode<ContractDefinition>(name, docString, baseContracts, structs,
+	return nodeFactory.createNode<ContractDefinition>(name, docString, baseContracts, structs, enums,
 													  stateVariables, functions, modifiers, events);
 }
 
@@ -187,6 +190,8 @@ Declaration::Visibility Parser::parseVisibilitySpecifier(Token::Value _token)
 		visibility = Declaration::Visibility::Protected;
 	else if (_token == Token::Private)
 		visibility = Declaration::Visibility::Private;
+	else if (_token == Token::External)
+		visibility = Declaration::Visibility::External;
 	else
 		solAssert(false, "Invalid visibility specifier.");
 	m_scanner->next();
@@ -263,6 +268,36 @@ ASTPointer<StructDefinition> Parser::parseStructDefinition()
 	return nodeFactory.createNode<StructDefinition>(name, members);
 }
 
+ASTPointer<EnumValue> Parser::parseEnumValue()
+{
+	ASTNodeFactory nodeFactory(*this);
+	nodeFactory.markEndPosition();
+	return nodeFactory.createNode<EnumValue>(expectIdentifierToken());
+}
+
+ASTPointer<EnumDefinition> Parser::parseEnumDefinition()
+{
+	ASTNodeFactory nodeFactory(*this);
+	expectToken(Token::Enum);
+	ASTPointer<ASTString> name = expectIdentifierToken();
+	vector<ASTPointer<EnumValue>> members;
+	expectToken(Token::LBrace);
+
+	while (m_scanner->getCurrentToken() != Token::RBrace)
+	{
+		members.push_back(parseEnumValue());
+		if (m_scanner->getCurrentToken() == Token::RBrace)
+			break;
+		expectToken(Token::Comma);
+		if (m_scanner->getCurrentToken() != Token::Identifier)
+			BOOST_THROW_EXCEPTION(createParserError("Expected Identifier after ','"));
+	}
+
+	nodeFactory.markEndPosition();
+	expectToken(Token::RBrace);
+	return nodeFactory.createNode<EnumDefinition>(name, members);
+}
+
 ASTPointer<VariableDeclaration> Parser::parseVariableDeclaration(VarDeclParserOptions const& _options)
 {
 	ASTNodeFactory nodeFactory(*this);
@@ -273,7 +308,7 @@ ASTPointer<VariableDeclaration> Parser::parseVariableDeclaration(VarDeclParserOp
 	ASTPointer<ASTString> identifier;
 	Token::Value token = m_scanner->getCurrentToken();
 	Declaration::Visibility visibility(Declaration::Visibility::Default);
-	if (_options.isStateVariable && Token::isVisibilitySpecifier(token))
+	if (_options.isStateVariable && Token::isVariableVisibilitySpecifier(token))
 		visibility = parseVisibilitySpecifier(token);
 	if (_options.allowIndexed && token == Token::Indexed)
 	{

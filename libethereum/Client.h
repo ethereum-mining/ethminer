@@ -166,7 +166,7 @@ class Client: public MinerHost, public Interface, Worker
 
 public:
 	/// New-style Constructor.
-	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0);
+	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0, int miners = -1);
 
 	/// Destructor.
 	virtual ~Client();
@@ -229,6 +229,8 @@ public:
 	virtual BlockDetails blockDetails(h256 _hash) const { return m_bc.details(_hash); }
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const;
+	virtual unsigned transactionCount(h256 _blockHash) const;
+	virtual unsigned uncleCount(h256 _blockHash) const;
 
 	/// Differences between transactions.
 	using Interface::diff;

@@ -4,7 +4,8 @@ set(CMAKE_AUTOMOC OFF)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
-include_directories(..)
+
+include_directories(BEFORE ..)
 
 set(EXECUTABLE ethereumx)
 

@@ -6,6 +6,7 @@ import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
 import HttpServer 1.0
+import "."
 
 Item {
 	id: webPreview
@@ -23,12 +24,23 @@ Item {
 	}
 
 	function reload() {
-		updateContract();
-		webView.runJavaScript("reloadPage()");
+		if (initialized) {
+			updateContract();
+			webView.runJavaScript("reloadPage()");
+		}
 	}
 
 	function updateContract() {
-		webView.runJavaScript("updateContract(\"" + clientModel.contractAddress + "\", " + codeModel.code.contractInterface + ")");
+		var contracts = {};
+		for (var c in codeModel.contracts) {
+			var contract = codeModel.contracts[c];
+			contracts[c] = {
+				name: contract.contract.name,
+				address: clientModel.contractAddresses[contract.contract.name],
+				interface: JSON.parse(contract.contractInterface),
+			};
+		}
+		webView.runJavaScript("updateContracts(" + JSON.stringify(contracts) + ")");
 	}
 
 	function reloadOnSave() {
@@ -38,13 +50,13 @@ Item {
 
 	function updateDocument(documentId, action) {
 		for (var i = 0; i < pageListModel.count; i++)
-			if (pageListModel.get(i).documentId === i)
+			if (pageListModel.get(i).documentId === documentId)
 				action(i);
 	}
 
 	function changePage() {
-		if (pageCombo.currentIndex >=0 && pageCombo.currentIndex < pageListModel.count) {
-			setPreviewUrl(pageListModel.get(pageCombo.currentIndex).path);
+		if (pageCombo.currentIndex >= 0 && pageCombo.currentIndex < pageListModel.count) {
+			setPreviewUrl(httpServer.url + "/" + pageListModel.get(pageCombo.currentIndex).documentId);
 		} else {
 			setPreviewUrl("");
 		}
@@ -54,14 +66,13 @@ Item {
 		onAppLoaded: {
 			//We need to load the container using file scheme so that web security would allow loading local files in iframe
 			var containerPage = fileIo.readFile("qrc:///qml/html/WebContainer.html");
-			webView.loadHtml(containerPage, "file:///WebContainer.html")
+			webView.loadHtml(containerPage, httpServer.url + "/WebContainer.html")
 
 		}
 	}
 
 	Connections {
 		target: clientModel
-		onContractAddressChanged: reload();
 		onRunComplete: reload();
 	}
 
@@ -72,8 +83,8 @@ Item {
 
 	Connections {
 		target: projectModel
-		onProjectSaved : reloadOnSave();
-		onDocumentSaved: reloadOnSave();
+		//onProjectSaved : reloadOnSave();
+		//onDocumentSaved: reloadOnSave();
 		onDocumentAdded: {
 			var document = projectModel.getDocument(documentId)
 			if (document.isHtml)
@@ -82,8 +93,20 @@ Item {
 		onDocumentRemoved: {
 			updateDocument(documentId, function(i) { pageListModel.remove(i) } )
 		}
+
 		onDocumentUpdated: {
 			updateDocument(documentId, function(i) { pageListModel.set(i, projectModel.getDocument(documentId)) } )
+		}
+
+		onDocumentOpened: {
+			if (!document.isHtml)
+				return;
+			for (var i = 0; i < pageListModel.count; i++) {
+				var doc = pageListModel.get(i);
+				if (doc.documentId === document.documentId) {
+					pageCombo.currentIndex = i;
+				}
+			}
 		}
 
 		onProjectLoading: {
@@ -112,60 +135,114 @@ Item {
 		accept: true
 		port: 8893
 		onClientConnected: {
-			//filter polling spam
-			//TODO: do it properly
-			//var log = _request.content.indexOf("eth_changed") < 0;
-			var log = true;
-			if (log)
-				console.log(_request.content);
-			var response = clientModel.apiCall(_request.content);
-			if (log)
-				console.log(response);
-			_request.setResponse(response);
+			var urlPath = _request.url.toString();
+			if (urlPath.indexOf("/rpc/") === 0)
+			{
+				//jsonrpc request
+				//filter polling requests //TODO: do it properly
+				var log = _request.content.indexOf("eth_changed") < 0;
+				if (log)
+					console.log(_request.content);
+				var response = clientModel.apiCall(_request.content);
+				if (log)
+					console.log(response);
+				_request.setResponse(response);
+			}
+			else
+			{
+				//document request
+				var documentId = urlPath.substr(urlPath.lastIndexOf("/") + 1);
+				var content = "";
+				if (projectModel.codeEditor.isDocumentOpen(documentId))
+					content = projectModel.codeEditor.getDocumentText(documentId);
+				else
+					content = fileIo.readFile(projectModel.getDocument(documentId).path);
+				if (documentId === pageListModel.get(pageCombo.currentIndex).documentId) {
+					//root page, inject deployment script
+					content = "<script>web3=parent.web3;contracts=parent.contracts;</script>\n" + content;
+					_request.setResponseContentType("text/html");
+				}
+				_request.setResponse(content);
+			}
 		}
 	}
 
 	ColumnLayout {
 		anchors.fill: parent
+		spacing: 0
+		Rectangle
+		{
+			anchors.leftMargin: 4
+			color: WebPreviewStyle.general.headerBackgroundColor
+			Layout.preferredWidth: parent.width
+			Layout.preferredHeight: 32
+			Row {
+				anchors.top: parent.top
+				anchors.fill: parent
+				anchors.leftMargin: 3
+				spacing: 3
+				DefaultLabel {
+					text: qsTr("Preview of")
+					anchors.verticalCenter: parent.verticalCenter
+				}
 
-		RowLayout {
-			anchors.top: parent.top
-			Layout.fillWidth: true;
-			Text {
-				text: qsTr("Page")
-			}
-			ComboBox {
-				id: pageCombo
-				model: pageListModel
-				textRole: "name"
-				currentIndex: -1
-				onCurrentIndexChanged: changePage()
-			}
-			Button {
-				text: qsTr("Reload")
-				onClicked: reload()
-			}
-			CheckBox {
-				id: autoReloadOnSave
-				checked: true
-				text: qsTr("Auto reload on save")
+				ComboBox {
+					id: pageCombo
+					model: pageListModel
+					textRole: "name"
+					currentIndex: -1
+					onCurrentIndexChanged: changePage()
+					anchors.verticalCenter: parent.verticalCenter
+					height: 21
+				}
+
+				Action {
+					tooltip: qsTr("Reload")
+					id: buttonReloadAction
+					onTriggered: {
+						reload();
+					}
+				}
+
+				Button {
+					iconSource: "qrc:/qml/img/available_updates.png"
+					action: buttonReloadAction
+					anchors.verticalCenter: parent.verticalCenter
+					width: 21
+					height: 21
+				}
+				CheckBox {
+					id: autoReloadOnSave
+					checked: true
+					height: 21
+					anchors.verticalCenter: parent.verticalCenter
+					style: CheckBoxStyle {
+						label: DefaultLabel {
+							text: qsTr("Auto reload on save")
+						}
+					}
+				}
 			}
 		}
 
-		WebEngineView {
-			Layout.fillWidth: true
+		Rectangle
+		{
+			Layout.preferredWidth: parent.width
 			Layout.fillHeight: true
-			id: webView
-			experimental.settings.localContentCanAccessRemoteUrls: true
-			onJavaScriptConsoleMessage: {
-				console.log(sourceID + ":" + lineNumber + ":" + message);
-			}
-			onLoadingChanged: {
-				if (!loading) {
-					initialized = true;
-					webView.runJavaScript("init(\"" + httpServer.url + "\")");
-					if (pendingPageUrl)
-						setPreviewUrl(pendingPageUrl);
+			WebEngineView {
+				anchors.fill: parent
+				id: webView
+				experimental.settings.localContentCanAccessRemoteUrls: true
+				onJavaScriptConsoleMessage: {
+					console.log(sourceID + ":" + lineNumber + ":" + message);
+				}
+				onLoadingChanged: {
+					if (!loading) {
+						initialized = true;
+						webView.runJavaScript("init(\"" + httpServer.url + "/rpc/\")");
+						if (pendingPageUrl)
+							setPreviewUrl(pendingPageUrl);
+					}
 				}
 			}
 		}

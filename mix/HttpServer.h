@@ -51,11 +51,15 @@ public:
 	/// Set response for a request
 	/// @param _response Response body. If no response is set, server returns status 200 with empty body
 	Q_INVOKABLE void setResponse(QString const& _response) { m_response = _response; }
+	/// Set response content type
+	/// @param _contentType Response content type string. text/plain by default
+	Q_INVOKABLE void setResponseContentType(QString const& _contentType) { m_responseContentType = _contentType ; }
 
 private:
 	QUrl m_url;
 	QString m_content;
 	QString m_response;
+	QString m_responseContentType;
 	friend class HttpServer;
 };
 

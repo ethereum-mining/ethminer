@@ -34,7 +34,7 @@ Rectangle {
 		onCompilationComplete: {
 			if (firstCompile) {
 				firstCompile = false;
-			if (codeModel.code.successful && runOnProjectLoad)
+			if (runOnProjectLoad)
 				startQuickDebugging();
 			}
 		}
@@ -85,7 +85,7 @@ Rectangle {
 		property alias webWidth: webPreview.width
 		property alias webHeight: webPreview.height
 		property alias showProjectView: projectList.visible
-		property bool runOnProjectLoad: false
+		property bool runOnProjectLoad: true
 	}
 
 	ColumnLayout

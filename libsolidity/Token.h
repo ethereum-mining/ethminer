@@ -67,31 +67,31 @@ namespace solidity
 
 #define IGNORE_TOKEN(name, string, precedence)
 
-#define TOKEN_LIST(T, K)                                               \
-	/* End of source indicator. */                                     \
-	T(EOS, "EOS", 0)                                                   \
+#define TOKEN_LIST(T, K)												\
+	/* End of source indicator. */										\
+	T(EOS, "EOS", 0)													\
+																		\
+	/* Punctuators (ECMA-262, section 7.7, page 15). */				\
+	T(LParen, "(", 0)                                                   \
+	T(RParen, ")", 0)                                                   \
+	T(LBrack, "[", 0)                                                   \
+	T(RBrack, "]", 0)                                                   \
+	T(LBrace, "{", 0)                                                   \
+	T(RBrace, "}", 0)                                                   \
+	T(Colon, ":", 0)                                                    \
+	T(Semicolon, ";", 0)                                                \
+	T(Period, ".", 0)                                                   \
+	T(Conditional, "?", 3)                                              \
+	T(Arrow, "=>", 0)                                                   \
 	\
-	/* Punctuators (ECMA-262, section 7.7, page 15). */                \
-	T(LParen, "(", 0)                                                  \
-	T(RParen, ")", 0)                                                  \
-	T(LBrack, "[", 0)                                                  \
-	T(RBrack, "]", 0)                                                  \
-	T(LBrace, "{", 0)                                                  \
-	T(RBrace, "}", 0)                                                  \
-	T(Colon, ":", 0)                                                   \
-	T(Semicolon, ";", 0)                                               \
-	T(Period, ".", 0)                                                  \
-	T(Conditional, "?", 3)                                             \
-	T(Arrow, "=>", 0)                                                  \
-	\
-	/* Assignment operators. */                                        \
-	/* IsAssignmentOp() relies on this block of enum values being */   \
-	/* contiguous and sorted in the same order!*/                      \
-	T(Assign, "=", 2)                                                  \
+	/* Assignment operators. */										\
+	/* IsAssignmentOp() relies on this block of enum values being */	\
+	/* contiguous and sorted in the same order!*/						\
+	T(Assign, "=", 2)                                                   \
 	/* The following have to be in exactly the same order as the simple binary operators*/ \
-	T(AssignBitOr, "|=", 2)                                          \
-	T(AssignBitXor, "^=", 2)                                         \
-	T(AssignBitAnd, "&=", 2)                                         \
+	T(AssignBitOr, "|=", 2)                                           \
+	T(AssignBitXor, "^=", 2)                                          \
+	T(AssignBitAnd, "&=", 2)                                          \
 	T(AssignShl, "<<=", 2)                                            \
 	T(AssignSar, ">>=", 2)                                            \
 	T(AssignShr, ">>>=", 2)                                           \
@@ -107,9 +107,9 @@ namespace solidity
 	T(Comma, ",", 1)                                                   \
 	T(Or, "||", 4)                                                     \
 	T(And, "&&", 5)                                                    \
-	T(BitOr, "|", 8)                                                  \
-	T(BitXor, "^", 9)                                                 \
-	T(BitAnd, "&", 10)                                                \
+	T(BitOr, "|", 8)                                                   \
+	T(BitXor, "^", 9)                                                  \
+	T(BitAnd, "&", 10)                                                 \
 	T(SHL, "<<", 11)                                                   \
 	T(SAR, ">>", 11)                                                   \
 	T(SHR, ">>>", 11)                                                  \
@@ -118,23 +118,24 @@ namespace solidity
 	T(Mul, "*", 13)                                                    \
 	T(Div, "/", 13)                                                    \
 	T(Mod, "%", 13)                                                    \
+	T(Exp, "**", 14)                                                   \
 	\
 	/* Compare operators sorted by precedence. */                      \
 	/* IsCompareOp() relies on this block of enum values */            \
 	/* being contiguous and sorted in the same order! */               \
-	T(Equal, "==", 6)                                                     \
-	T(NotEqual, "!=", 6)                                                     \
-	T(LessThan, "<", 7)                                                      \
-	T(GreaterThan, ">", 7)                                                      \
-	T(LessThanOrEqual, "<=", 7)                                                    \
-	T(GreaterThanOrEqual, ">=", 7)                                                    \
+	T(Equal, "==", 6)                                                  \
+	T(NotEqual, "!=", 6)                                               \
+	T(LessThan, "<", 7)                                                \
+	T(GreaterThan, ">", 7)                                             \
+	T(LessThanOrEqual, "<=", 7)                                        \
+	T(GreaterThanOrEqual, ">=", 7)                                     \
 	K(In, "in", 7)                                                     \
 	\
 	/* Unary operators. */                                             \
 	/* IsUnaryOp() relies on this block of enum values */              \
 	/* being contiguous and sorted in the same order! */               \
 	T(Not, "!", 0)                                                     \
-	T(BitNot, "~", 0)                                                 \
+	T(BitNot, "~", 0)                                                  \
 	T(Inc, "++", 0)                                                    \
 	T(Dec, "--", 0)                                                    \
 	K(Delete, "delete", 0)                                             \
@@ -149,6 +150,7 @@ namespace solidity
 	K(Do, "do", 0)                                                     \
 	K(Else, "else", 0)                                                 \
 	K(Event, "event", 0)                                               \
+	K(External, "external", 0)                                         \
 	K(Is, "is", 0)                                                     \
 	K(Indexed, "indexed", 0)                                           \
 	K(For, "for", 0)                                                   \
@@ -167,7 +169,7 @@ namespace solidity
 	K(Switch, "switch", 0)                                             \
 	K(Var, "var", 0)                                                   \
 	K(While, "while", 0)                                               \
-	\
+	K(Enum, "enum", 0)                                                 \
 	\
 	/* Ether subdenominations */                                        \
 	K(SubWei, "wei", 0)                                                 \
@@ -175,8 +177,7 @@ namespace solidity
 	K(SubFinney, "finney", 0)                                           \
 	K(SubEther, "ether", 0)                                             \
 	/* type keywords, keep them in this order, keep int as first keyword
-	 * the implementation in Types.cpp has to be synced to this here
-	 *  TODO more to be added */                                       \
+	 * the implementation in Types.cpp has to be synced to this here */\
 	K(Int, "int", 0)                                                   \
 	K(Int8, "int8", 0)                                                 \
 	K(Int16, "int16", 0)                                               \
@@ -278,7 +279,8 @@ namespace solidity
 	K(Hash256, "hash256", 0)                                           \
 	K(Address, "address", 0)                                           \
 	K(Bool, "bool", 0)                                                 \
-	K(StringType, "string", 0)                                        \
+	K(Bytes, "bytes", 0)                                               \
+	K(StringType, "string", 0)                                         \
 	K(String0, "string0", 0)                                           \
 	K(String1, "string1", 0)                                           \
 	K(String2, "string2", 0)                                           \
@@ -315,15 +317,15 @@ namespace solidity
 	K(Text, "text", 0)                                                 \
 	K(Real, "real", 0)                                                 \
 	K(UReal, "ureal", 0)                                               \
-	T(TypesEnd, NULL, 0) /* used as type enum end marker */           \
+	T(TypesEnd, NULL, 0) /* used as type enum end marker */            \
 	\
 	/* Literals */                                                     \
-	K(NullLiteral, "null", 0)                                         \
-	K(TrueLiteral, "true", 0)                                         \
-	K(FalseLiteral, "false", 0)                                       \
+	K(NullLiteral, "null", 0)                                          \
+	K(TrueLiteral, "true", 0)                                          \
+	K(FalseLiteral, "false", 0)                                        \
 	T(Number, NULL, 0)                                                 \
-	T(StringLiteral, NULL, 0)                                         \
-	T(CommentLiteral, NULL, 0)                                        \
+	T(StringLiteral, NULL, 0)                                          \
+	T(CommentLiteral, NULL, 0)                                         \
 	\
 	/* Identifiers (not keywords or future reserved words). */         \
 	T(Identifier, NULL, 0)                                             \
@@ -361,10 +363,10 @@ public:
 	// Predicates
 	static bool isElementaryTypeName(Value tok) { return Int <= tok && tok < TypesEnd; }
 	static bool isAssignmentOp(Value tok) { return Assign <= tok && tok <= AssignMod; }
-	static bool isBinaryOp(Value op) { return Comma <= op && op <= Mod; }
+	static bool isBinaryOp(Value op) { return Comma <= op && op <= Exp; }
 	static bool isCommutativeOp(Value op) { return op == BitOr || op == BitXor || op == BitAnd ||
 				op == Add || op == Mul || op == Equal || op == NotEqual; }
-	static bool isArithmeticOp(Value op) { return Add <= op && op <= Mod; }
+	static bool isArithmeticOp(Value op) { return Add <= op && op <= Exp; }
 	static bool isCompareOp(Value op) { return Equal <= op && op <= In; }
 
 	static Value AssignmentToBinaryOp(Value op)
@@ -377,7 +379,8 @@ public:
 	static bool isUnaryOp(Value op) { return (Not <= op && op <= Delete) || op == Add || op == Sub; }
 	static bool isCountOp(Value op) { return op == Inc || op == Dec; }
 	static bool isShiftOp(Value op) { return (SHL <= op) && (op <= SHR); }
-	static bool isVisibilitySpecifier(Value op) { return op == Public || op == Private || op == Protected; }
+	static bool isVisibilitySpecifier(Value op) { return isVariableVisibilitySpecifier(op) || op == External; }
+	static bool isVariableVisibilitySpecifier(Value op) { return op == Public || op == Private || op == Protected; }
 	static bool isEtherSubdenomination(Value op) { return op == SubWei || op == SubSzabo || op == SubFinney || op == Token::SubEther; }
 
 	// Returns a string corresponding to the JS token string

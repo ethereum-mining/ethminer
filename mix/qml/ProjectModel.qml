@@ -20,6 +20,9 @@ Item {
 	signal projectSaved()
 	signal newProject(var projectData)
 	signal documentSaved(var documentId)
+	signal deploymentStarted()
+	signal deploymentComplete()
+	signal deploymentError(string error)
 
 	property bool isEmpty: (projectPath === "")
 	readonly property string projectFileName: ".mix"
@@ -28,21 +31,21 @@ Item {
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
+	property string deploymentAddress: ""
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
+	property CodeEditorView codeEditor: null
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
 	function createProject() { ProjectModelCode.createProject(); }
-	function browseProject() { ProjectModelCode.browseProject(); }
 	function closeProject() { ProjectModelCode.closeProject(); }
 	function saveProject() { ProjectModelCode.saveProject(); }
 	function loadProject(path) { ProjectModelCode.loadProject(path); }
-	function addExistingFile() { ProjectModelCode.addExistingFile(); }
 	function newHtmlFile() { ProjectModelCode.newHtmlFile(); }
 	function newJsFile() { ProjectModelCode.newJsFile(); }
 	function newCssFile() { ProjectModelCode.newCssFile(); }
-	//function newContract() { ProjectModelCode.newContract(); }
+	function newContract() { ProjectModelCode.newContract(); }
 	function openDocument(documentId) { ProjectModelCode.openDocument(documentId); }
 	function openNextDocument() { ProjectModelCode.openNextDocument(); }
 	function openPrevDocument() { ProjectModelCode.openPrevDocument(); }
@@ -50,6 +53,8 @@ Item {
 	function removeDocument(documentId) { ProjectModelCode.removeDocument(documentId); }
 	function getDocument(documentId) { return ProjectModelCode.getDocument(documentId); }
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
+	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
+	function deployProject() { ProjectModelCode.deployProject(false); }
 
 	Connections {
 		target: appContext
@@ -84,6 +89,17 @@ Item {
 		}
 	}
 
+	MessageDialog {
+		id: deployWarningDialog
+		title: qsTr("Project")
+		text: qsTr("This project has been already deployed to the network. Do you want to re-deploy it?")
+		standardButtons: StandardButton.Ok | StandardButton.Cancel
+		icon: StandardIcon.Question
+		onAccepted: {
+			ProjectModelCode.deployProject(true);
+		}
+	}
+
 	ListModel {
 		id: projectListModel
 	}
@@ -95,28 +111,5 @@ Item {
 	Settings {
 		id: projectSettings
 		property string lastProjectPath;
-	}
-
-	FileDialog {
-		id: openProjectFileDialog
-		visible: false
-		title: qsTr("Open a Project")
-		selectFolder: true
-		onAccepted: {
-			var path = openProjectFileDialog.fileUrl.toString();
-			path += "/";
-			loadProject(path);
-		}
-	}
-
-	FileDialog {
-		id: addExistingFileDialog
-		visible: false
-		title: qsTr("Add a File")
-		selectFolder: false
-		onAccepted: {
-			var paths = addExistingFileDialog.fileUrls;
-			ProjectModelCode.doAddExistingFiles(paths);
-		}
 	}
 }

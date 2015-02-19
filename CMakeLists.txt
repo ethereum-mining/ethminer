@@ -86,7 +86,12 @@ function(createBuildInfo)
 	endif()
 
 	# Generate header file containing useful build information
-	add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${_cmake_build_type} ${ETH_BUILD_PLATFORM})
+	add_custom_target(BuildInfo.h ALL
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
+			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}" 
+			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
+		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 	set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -104,6 +109,7 @@ cmake_policy(SET CMP0015 NEW)
 
 createDefaultCacheConfig()
 configureProject()
+message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
 message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}")
 
 
@@ -135,15 +141,15 @@ endif()
 add_subdirectory(libdevcore)
 add_subdirectory(libevmcore)
 add_subdirectory(liblll)
+
 if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 	add_subdirectory(libserpent)
+	add_subdirectory(sc)
 endif ()
+
 add_subdirectory(libsolidity)
 add_subdirectory(lllc)
 add_subdirectory(solc)
-if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
-add_subdirectory(sc)
-endif()
 
 if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
@@ -161,6 +167,7 @@ add_subdirectory(libethereum)
 add_subdirectory(libwebthree)
 add_subdirectory(test)
 add_subdirectory(eth)
+
 if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
 	add_subdirectory(exp)
 endif ()
@@ -174,7 +181,6 @@ if (NOT HEADLESS)
 	
 	add_subdirectory(libnatspec)
 	add_subdirectory(libjsqrc)
-	add_subdirectory(libqwebthree)
 	add_subdirectory(alethzero)
 	add_subdirectory(third)
 	add_subdirectory(mix)

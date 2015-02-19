@@ -60,6 +60,8 @@ AppContext::~AppContext()
 void AppContext::load()
 {
 	m_applicationEngine->rootContext()->setContextProperty("appContext", this);
+	QFont f;
+	m_applicationEngine->rootContext()->setContextProperty("systemPointSize", f.pointSize());
 	qmlRegisterType<FileIo>("org.ethereum.qml", 1, 0, "FileIo");
 	m_applicationEngine->rootContext()->setContextProperty("codeModel", m_codeModel.get());
 	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());

@@ -71,6 +71,8 @@ public:
 	eth::BlockDetails blockDetails(h256 _hash) const override;
 	eth::Transaction transaction(h256 _blockHash, unsigned _i) const override;
 	eth::BlockInfo uncle(h256 _blockHash, unsigned _i) const override;
+	unsigned transactionCount(h256 _blockHash) const override;
+	unsigned uncleCount(h256 _blockHash) const override;
 	unsigned number() const override;
 	eth::Transactions pending() const override;
 	eth::StateDiff diff(unsigned _txi, h256 _block) const override;

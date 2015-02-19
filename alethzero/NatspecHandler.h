@@ -26,12 +26,13 @@
 #pragma warning(disable: 4100 4267)
 #include <leveldb/db.h>
 #pragma warning(pop)
-#include <jsoncpp/json/json.h>
+#include <json/json.h>
 #include <libdevcore/FixedHash.h>
+#include "Context.h"
 
 namespace ldb = leveldb;
 
-class NatspecHandler
+class NatspecHandler: public NatSpecFace
 {
   public:
 	NatspecHandler();
@@ -40,7 +41,7 @@ class NatspecHandler
 	/// Stores locally in a levelDB a key value pair of contract code hash to natspec documentation
 	void add(dev::h256 const& _contractHash, std::string const& _doc);
 	/// Retrieves the natspec documentation as a string given a contract code hash
-	std::string retrieve(dev::h256 const& _contractHash) const;
+	std::string retrieve(dev::h256 const& _contractHash) const override;
 
 	/// Given a json natspec string and the transaction data return the user notice
 	std::string getUserNotice(std::string const& json, const dev::bytes& _transactionData);
