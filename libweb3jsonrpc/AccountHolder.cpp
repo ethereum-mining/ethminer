@@ -50,7 +50,7 @@ vector<Address> AccountHolder::getAllAccounts() const
 	return accounts;
 }
 
-Address const& AccountHolder::getDefaultCallAccount() const
+Address const& AccountHolder::getDefaultTransactAccount() const
 {
 	if (m_accounts.empty())
 		return ZeroAddress;
