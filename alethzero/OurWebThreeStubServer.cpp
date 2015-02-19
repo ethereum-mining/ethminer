@@ -51,22 +51,24 @@ bool OurWebThreeStubServer::showAuthenticationPopup(string const& _title, string
 	return button == QMessageBox::Ok;
 }
 
-bool OurWebThreeStubServer::showCreationNotice(TransactionSkeleton const& _t) const
+bool OurWebThreeStubServer::showCreationNotice(TransactionSkeleton const& _t, bool _toProxy) const
 {
-	return showAuthenticationPopup("Contract Creation Transaction", "ÐApp is attemping to create a contract; to be endowed with " + formatBalance(_t.value) + ", with additional network fees of up to " + formatBalance(_t.gas * _t.gasPrice) + ".\n\nMaximum total cost is <b>" + formatBalance(_t.value + _t.gas * _t.gasPrice) + "</b>.");
+	return showAuthenticationPopup("Contract Creation Transaction", string("ÐApp is attemping to create a contract; ") + (_toProxy ? "(this transaction is not executed directly, but forwarded to another ÐApp) " : "") + "to be endowed with " + formatBalance(_t.value) + ", with additional network fees of up to " + formatBalance(_t.gas * _t.gasPrice) + ".\n\nMaximum total cost is <b>" + formatBalance(_t.value + _t.gas * _t.gasPrice) + "</b>.");
 }
 
-bool OurWebThreeStubServer::showSendNotice(TransactionSkeleton const& _t) const
+bool OurWebThreeStubServer::showSendNotice(TransactionSkeleton const& _t, bool _toProxy) const
 {
-	return showAuthenticationPopup("Fund Transfer Transaction", "ÐApp is attempting to send " + formatBalance(_t.value) + " to a recipient " + m_main->pretty(_t.to).toStdString() + ", with additional network fees of up to " + formatBalance(_t.gas * _t.gasPrice) + ".\n\nMaximum total cost is <b>" + formatBalance(_t.value + _t.gas * _t.gasPrice) + "</b>.");
+	return showAuthenticationPopup("Fund Transfer Transaction", "ÐApp is attempting to send " + formatBalance(_t.value) + " to a recipient " + m_main->pretty(_t.to).toStdString() + (_toProxy ? " (this transaction is not executed directly, but forwarded to another ÐApp)" : "") +
+", with additional network fees of up to " + formatBalance(_t.gas * _t.gasPrice) + ".\n\nMaximum total cost is <b>" + formatBalance(_t.value + _t.gas * _t.gasPrice) + "</b>.");
 }
 
-bool OurWebThreeStubServer::showUnknownCallNotice(TransactionSkeleton const& _t) const
+bool OurWebThreeStubServer::showUnknownCallNotice(TransactionSkeleton const& _t, bool _toProxy) const
 {
 	return showAuthenticationPopup("DANGEROUS! Unknown Contract Transaction!",
 		"ÐApp is attempting to call into an unknown contract at address " +
-		m_main->pretty(_t.to).toStdString() +
-		".\n\nCall involves sending " +
+		m_main->pretty(_t.to).toStdString() + ".\n\n" +
+		(_toProxy ? "This transaction is not executed directly, but forwarded to another ÐApp.\n\n" : "")  +
+		"Call involves sending " +
 		formatBalance(_t.value) + " to the recipient, with additional network fees of up to " +
 		formatBalance(_t.gas * _t.gasPrice) +
 		"However, this also does other stuff which we don't understand, and does so in your name.\n\n" +
@@ -76,25 +78,25 @@ bool OurWebThreeStubServer::showUnknownCallNotice(TransactionSkeleton const& _t)
 		"REJECT UNLESS YOU REALLY KNOW WHAT YOU ARE DOING!");
 }
 
-bool OurWebThreeStubServer::authenticate(TransactionSkeleton const& _t)
+bool OurWebThreeStubServer::authenticate(TransactionSkeleton const& _t, bool _toProxy)
 {
 	if (_t.creation)
 	{
 		// recipient has no code - nothing special about this transaction, show basic value transfer info
-		return showCreationNotice(_t);
+		return showCreationNotice(_t, _toProxy);
 	}
 
 	h256 contractCodeHash = m_web3->ethereum()->postState().codeHash(_t.to);
 	if (contractCodeHash == EmptySHA3)
 	{
 		// recipient has no code - nothing special about this transaction, show basic value transfer info
-		return showSendNotice(_t);
+		return showSendNotice(_t, _toProxy);
 	}
 
 	string userNotice = m_main->natSpec()->getUserNotice(contractCodeHash, _t.data);
 
 	if (userNotice.empty())
-		return showUnknownCallNotice(_t);
+		return showUnknownCallNotice(_t, _toProxy);
 
 	NatspecExpressionEvaluator evaluator;
 	userNotice = evaluator.evalExpression(QString::fromStdString(userNotice)).toStdString();
@@ -104,6 +106,7 @@ bool OurWebThreeStubServer::authenticate(TransactionSkeleton const& _t)
 		"ÐApp attempting to conduct contract interaction with " +
 		m_main->pretty(_t.to).toStdString() +
 		": <b>" + userNotice + "</b>.\n\n" +
+		(_toProxy ? "This transaction is not executed directly, but forwarded to another ÐApp.\n\n" : "") +
 		(_t.value > 0 ?
 			"In addition, ÐApp is attempting to send " +
 			formatBalance(_t.value) + " to said recipient, with additional network fees of up to " +

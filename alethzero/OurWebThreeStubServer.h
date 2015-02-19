@@ -35,16 +35,16 @@ public:
 						  std::vector<dev::KeyPair> const& _accounts, Main* main);
 
 	virtual std::string shh_newIdentity() override;
-	virtual bool authenticate(dev::eth::TransactionSkeleton const& _t);
+	virtual bool authenticate(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
 
 signals:
 	void onNewId(QString _s);
 
 private:
 	bool showAuthenticationPopup(std::string const& _title, std::string const& _text) const;
-	bool showCreationNotice(dev::eth::TransactionSkeleton const& _t) const;
-	bool showSendNotice(dev::eth::TransactionSkeleton const& _t) const;
-	bool showUnknownCallNotice(dev::eth::TransactionSkeleton const& _t) const;
+	bool showCreationNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy) const;
+	bool showSendNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy) const;
+	bool showUnknownCallNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy) const;
 
 	dev::WebThreeDirect* m_web3;
 	Main* m_main;
