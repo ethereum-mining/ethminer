@@ -31,7 +31,7 @@ Item {
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
-	property string deploymentAddress: ""
+	property var deploymentAddresses: []
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
 	property CodeEditorView codeEditor: null
@@ -103,9 +103,6 @@ Item {
 	DeploymentDialog
 	{
 		id: deploymentDialog
-		onAccepted: {
-			ProjectModelCode.startDeployProject()
-		}
 	}
 
 	ListModel {

@@ -20,13 +20,15 @@
  * Ethereum IDE client.
  */
 
+#include <QDebug>
+#include <QDirIterator>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QTextStream>
 #include <QUrl>
+#include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
-#include "libminizip/zip.h"
 #include "FileIo.h"
 
 using namespace dev::mix;
@@ -104,47 +106,54 @@ bool FileIo::fileExists(QString const& _url)
 	return file.exists();
 }
 
-QString compress(QString const& _manifest, QString const& _folder)
+QString FileIo::compress(QString const& _manifest, QString const& _deploymentFolder)
 {
-	zipFile compressed = zipOpen(_folder + "\dapp.zip", APPEND_STATUS_CREATE);
-	zip_fileinfo zfiManifest = { 0 };
-	bool res = zipOpenNewFileInZip(compressed, "manifest.json",
-						&zfiManifest, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_DEFAULT_COMPRESSION);
-	if (res)
+	QUrl folder(_deploymentFolder);
+	QString path(folder.path());
+	QDir deployDir = QDir(path);
+
+	dev::RLPStream str;
+
+	QByteArray manifestBytes = "swarm.json";
+	str.append(bytes(manifestBytes.begin(), manifestBytes.end()));
+
+	QByteArray manifestcontentBytes = "application/json";
+	str.append(bytes(manifestcontentBytes.begin(), manifestcontentBytes.end()));
+
+	QByteArray b = _manifest.toUtf8();
+	str.append(bytes(b.begin(), b.end()));
+
+	for (auto item: deployDir.entryInfoList(QDir::Files))
 	{
-		zipWriteInFileInZip(compressed, _manifest , _manifest.size());
-		zipCloseFileInZip(compressed);
+		QFile qFile(item.filePath());
+		if (qFile.open(QIODevice::ReadOnly | QIODevice::Text))
+		{
+			QFileInfo i = QFileInfo(qFile.fileName());
+			QByteArray fileBytes =  i.fileName().toUtf8();
+			str.append(bytes(fileBytes.begin(), fileBytes.end()));
+
+			QByteArray contentBytes = QString().toUtf8();
+			str.append(bytes(contentBytes.begin(), contentBytes.end()));
+
+			QByteArray _a = qFile.readAll();
+			str.append(bytes(_a.begin(), _a.end()));
+		}
+		qFile.close();
 	}
 
-	QDirIterator dirIt(_folder, QDirIterator::Subdirectories);
-	while (dirIt.hasNext())
+	bytes dapp = str.out();
+	dev::h256 h = dev::sha3(dapp);
+	QString ret = QString::fromStdString(toHex(h.ref()));
+	QUrl url(_deploymentFolder + "package.dapp");
+	QFile compressed(url.path());
+	if (compressed.open(QIODevice::WriteOnly | QIODevice::Text))
 	{
-		dirIt.next();
-		QFile file(dirIt.filePath());
-		QByteArray _a;
-		while (!file.atEnd())
-		{
-			QByteArray line = file.readLine();
-			_a.insert(_a, line.begin(), line.end());
-		}
-		zip_fileinfo zfi = { 0 };
-		res = zipOpenNewFileInZip(compressed, QFileInfo(dirIt.filePath()).fileName().toStdString(),
-							&zfi, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_DEFAULT_COMPRESSION);
-		if (res)
-		{
-			zipWriteInFileInZip(compressed, _a, _a.size());
-			zipCloseFileInZip(compressed);
-		}
-		file.close();
+		compressed.write((char*)dapp.data(), dapp.size());
+		compressed.flush();
 	}
-
-	QFile zip(_folder + "\dapp.zip");
-	QByteArray aZip;
-	while (!zip.atEnd())
-	{
-		QByteArray line = zip.readLine();
-		aZip.insert(aZip, line.begin(), line.end());
-	}
-	dev::h256 h = dev::sha3(aZip);
-	return toHex(h.ref());
+	else
+		error(tr("Error creating package.dapp"));
+	compressed.close();
+	return ret;
 }
+
