@@ -5,18 +5,18 @@ import QtQuick.Window 2.0
 import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.QEther 1.0
 import "js/TransactionHelper.js" as TransactionHelper
+import "js/ProjectModel.js" as ProjectModelCode
 import "."
 
 Window {
-	id: modalTransactionDialog
+	id: modalDeploymentDialog
 	modality: Qt.ApplicationModal
 	width: 520
-	height: 300
+	height: 200
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
-
-	signal accepted
+	color: Style.generic.layout.backgroundColor
 
 	function close()
 	{
@@ -25,64 +25,66 @@ Window {
 
 	function open()
 	{
+		modalDeploymentDialog.setX((Screen.width - width) / 2);
+		modalDeploymentDialog.setY((Screen.height - height) / 2);
 		visible = true;
 	}
 
-	ColumnLayout
+	GridLayout
 	{
-		anchors.fill: parent
-		RowLayout
+		columns: 2
+		anchors.top: parent.top
+		anchors.left: parent.left
+		anchors.topMargin: 10
+		anchors.leftMargin: 10
+		anchors.rightMargin: 10
+		DefaultLabel
 		{
-			height: 40
-			DefaultLabel
-			{
-				text: qsTr("Fill in eth application URL")
-			}
-
-			Rectangle
-			{
-				TextField
-				{
-					id: applicationUrlEth
-				}
-			}
+			text: qsTr("Eth URL: ")
 		}
 
-		RowLayout
+		DefaultTextField
 		{
-			height: 40
-			DefaultLabel
-			{
-				text: qsTr("Fill in http application URL")
-			}
-
-			Rectangle
-			{
-				TextField
-				{
-					id: applicationUrlHttp
-				}
-			}
+			id: applicationUrlEth
 		}
 
-		RowLayout
+		DefaultLabel
 		{
-			anchors.bottom: parent.bottom
-			anchors.right: parent.right;
+			text: qsTr("Http URL: ")
+		}
 
-			Button {
-				text: qsTr("OK");
-				onClicked: {
-					close();
-					accepted();
-				}
-			}
-			Button {
-				text: qsTr("Cancel");
-				onClicked: close();
-			}
+		DefaultTextField
+		{
+			id: applicationUrlHttp
 		}
 	}
 
+	RowLayout
+	{
+		anchors.bottom: parent.bottom
+		anchors.right: parent.right;
+		anchors.bottomMargin: 10
+		Button {
+			text: qsTr("Deploy");
+			enabled: Object.keys(projectModel.deploymentAddresses).length === 0
+			onClicked: {
+				ProjectModelCode.startDeployProject();
+			}
+		}
 
+		Button {
+			text: qsTr("Rebuild Package");
+			enabled: Object.keys(projectModel.deploymentAddresses).length > 0 && applicationUrlHttp.text !== ""
+			onClicked: {
+				var date = new Date();
+				var deploymentId = date.toLocaleString(Qt.locale(), "ddMMyyHHmmsszzz");
+				ProjectModelCode.finalizeDeployment(deploymentId, projectModel.deploymentAddresses);
+			}
+		}
+
+		Button {
+			text: qsTr("Close");
+			onClicked: close();
+		}
+	}
 }

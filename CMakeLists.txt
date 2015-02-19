@@ -167,7 +167,6 @@ add_subdirectory(libethereum)
 add_subdirectory(libwebthree)
 add_subdirectory(test)
 add_subdirectory(eth)
-add_subdirectory(libminizip)
 
 if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
 	add_subdirectory(exp)

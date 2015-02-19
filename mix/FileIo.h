@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <libdevcore/CommonData.h>
 #include <QObject>
 
 namespace dev
@@ -53,7 +54,7 @@ public:
 	/// Check if file exists
 	Q_INVOKABLE bool fileExists(QString const& _url);
 	/// Compress a folder, @returns sha3 of the compressed file.
-	Q_INVOKABLE QString compress(QString const& _manifest, QString const& _folder);
+	Q_INVOKABLE QString compress(QString const& _manifest, QString const& _deploymentFolder);
 
 private:
 	QString getHomePath() const;
