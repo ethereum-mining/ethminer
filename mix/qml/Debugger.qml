@@ -164,7 +164,7 @@ Rectangle {
 				Rectangle {
 					// step button + slider
 					id: buttonRow
-					height: 27
+					height: 30
 					Layout.fillWidth: true
 					color: "transparent"
 
@@ -184,7 +184,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutback.png"
 								disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
 								onClicked: Debugger.stepOutBack()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "Ctrl+Shift+F11"
 								buttonTooltip: qsTr("Step Out Back")
@@ -196,7 +196,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpintoback.png"
 								disableStateImg: "qrc:/qml/img/jumpintobackdisabled.png"
 								onClicked: Debugger.stepIntoBack()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "Ctrl+F11"
 								buttonTooltip: qsTr("Step Into Back")
@@ -208,7 +208,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoverback.png"
 								disableStateImg: "qrc:/qml/img/jumpoverbackdisabled.png"
 								onClicked: Debugger.stepOverBack()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "Ctrl+F10"
 								buttonTooltip: qsTr("Step Over Back")
@@ -220,7 +220,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoverforward.png"
 								disableStateImg: "qrc:/qml/img/jumpoverforwarddisabled.png"
 								onClicked: Debugger.stepOverForward()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "F10"
 								buttonTooltip: qsTr("Step Over Forward")
@@ -232,7 +232,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpintoforward.png"
 								disableStateImg: "qrc:/qml/img/jumpintoforwarddisabled.png"
 								onClicked: Debugger.stepIntoForward()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "F11"
 								buttonTooltip: qsTr("Step Into Forward")
@@ -244,7 +244,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
 								disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
 								onClicked: Debugger.stepOutForward()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "Shift+F11"
 								buttonTooltip: qsTr("Step Out Forward")
