@@ -96,7 +96,7 @@ Item {
 		standardButtons: StandardButton.Ok | StandardButton.Cancel
 		icon: StandardIcon.Question
 		onAccepted: {
-			ProjectModelCode.deployProject(true);
+			ProjectModelCode.startDeployProject();
 		}
 	}
 
