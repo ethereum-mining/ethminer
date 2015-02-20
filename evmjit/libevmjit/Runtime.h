@@ -8,8 +8,6 @@ namespace eth
 {
 namespace jit
 {
-
-using StackImpl = std::vector<i256>;
 using MemoryImpl = bytes;
 
 class Runtime
@@ -20,7 +18,6 @@ public:
 	Runtime(const Runtime&) = delete;
 	Runtime& operator=(const Runtime&) = delete;
 
-	StackImpl& getStack() { return m_stack; }
 	MemoryImpl& getMemory() { return m_memory; }
 
 	bytes_ref getReturnData() const;
@@ -31,7 +28,6 @@ private:
 	void* m_currJmpBuf = nullptr;	///< Pointer to jump buffer. Expected by compiled contract.
 	byte* m_memoryData = nullptr;
 	i256 m_memorySize;
-	StackImpl m_stack;
 	MemoryImpl m_memory;
 };
 
