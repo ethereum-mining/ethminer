@@ -21,23 +21,26 @@
  */
 #include <functional>
 #include <libethereum/AccountDiff.h>
+#include <libdevcore/RangeMask.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/RLP.h>
+#include <libdevcrypto/TrieDB.h>
 #include <libdevcore/CommonIO.h>
 #include <libp2p/All.h>
-#include <libdevcore/RangeMask.h>
 #include <libethereum/DownloadMan.h>
 #include <libethereum/All.h>
 #include <liblll/All.h>
 #include <libwhisper/WhisperPeer.h>
 #include <libwhisper/WhisperHost.h>
+#include <test/JsonSpiritHeaders.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::p2p;
 using namespace dev::shh;
+namespace js = json_spirit;
 
 #if 0
 int main()
@@ -75,7 +78,7 @@ int main()
 		cnote << i;*/
 	return 0;
 }
-#else
+#elif 0
 int main()
 {
 	KeyPair u = KeyPair::create();
@@ -91,9 +94,14 @@ int main()
 	Transaction t(0, 10000, 10000, c, bytes(), 0, u.secret());
 	cnote << "Transaction: " << t;
 	cnote << s.balance(c);
-	s.execute(t.rlp());
+	s.execute(LastHashes(), t.rlp());
 	cnote << "State after transaction: " << s;
 	cnote << before.diff(s);
+}
+#else
+int main()
+{
+	return 0;
 }
 #endif
 

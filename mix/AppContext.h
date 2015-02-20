@@ -27,41 +27,62 @@
 
 #pragma once
 
-#include <QQmlApplicationEngine>
-#include "libwebthree/WebThree.h"
-#include "KeyEventManager.h"
+#include <memory>
+#include <QUrl>
+#include <QObject>
+
+class QQmlApplicationEngine;
 
 namespace dev
 {
 namespace mix
 {
 
+class CodeModel;
+class ClientModel;
+class FileIo;
+/**
+ * @brief Provides access to application scope variable.
+ */
+
 class AppContext: public QObject
 {
 	Q_OBJECT
+	Q_PROPERTY(QString clipboard READ clipboard WRITE toClipboard NOTIFY clipboardChanged)
 
 public:
 	AppContext(QQmlApplicationEngine* _engine);
-	~AppContext() {}
-	static AppContext* getInstance() { return Instance; }
-	static void setApplicationContext(QQmlApplicationEngine* _engine);
+	virtual ~AppContext();
+	/// Load the UI from qml files
+	void load();
+	/// Get the current QQMLApplicationEngine instance.
 	QQmlApplicationEngine* appEngine();
-	dev::eth::Client* getEthereumClient();
-	void initKeyEventManager(QObject* _obj);
-	KeyEventManager* getKeyEventManager();
+	/// Get code model
+	CodeModel* codeModel() { return m_codeModel.get(); }
+	/// Get client model
+	ClientModel* clientModel() { return m_clientModel.get(); }
+	/// Display an alert message.
 	void displayMessageDialog(QString _title, QString _message);
+	/// Copy text to clipboard
+	Q_INVOKABLE void toClipboard(QString _text);
+	/// Get text from clipboard
+	QString clipboard() const;
+
+signals:
+	/// Triggered once components have been loaded
+	void appLoaded();
+	void clipboardChanged();
 
 private:
-	static AppContext* Instance;
-	std::unique_ptr<QQmlApplicationEngine> m_applicationEngine;
-	std::unique_ptr<dev::WebThreeDirect> m_webThree;
-	std::unique_ptr<KeyEventManager> m_keyEventManager;
+	QQmlApplicationEngine* m_applicationEngine; //owned by app
+	std::unique_ptr<CodeModel> m_codeModel;
+	std::unique_ptr<ClientModel> m_clientModel;
+	std::unique_ptr<FileIo> m_fileIo;
 
 public slots:
-	void quitApplication() { delete Instance; }
-	void resourceLoaded(QObject* _obj, QUrl _url) { Q_UNUSED(_url); initKeyEventManager(_obj); }
+	/// Delete the current instance when application quit.
+	void quitApplication() {}
 };
 
 }
-
 }

@@ -1,7 +1,7 @@
-<RCC version="1.0">
-<qresource prefix="/js">
-    <file>es6-promise-2.0.0.js</file>
-    <file>setup.js</file>
-    <file>ethereum.js</file>
-</qresource>
+<RCC>
+    <qresource prefix="/js">
+        <file>bignumber.min.js</file>
+        <file>setup.js</file>
+        <file alias="webthree.js">ethereumjs/dist/ethereum.js</file>
+    </qresource>
 </RCC>

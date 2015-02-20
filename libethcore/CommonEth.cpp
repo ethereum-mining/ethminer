@@ -32,53 +32,62 @@ namespace dev
 namespace eth
 {
 
-const unsigned c_protocolVersion = 49;
+const unsigned c_protocolVersion = 54;
 const unsigned c_databaseVersion = 5;
-
-static const vector<pair<u256, string>> g_units =
-{
-	{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Uether"},
-	{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Vether"},
-	{((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Dether"},
-	{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000, "Nether"},
-	{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000, "Yether"},
-	{(((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000, "Zether"},
-	{((u256(1000000000) * 1000000000) * 1000000000) * 1000000000, "Eether"},
-	{((u256(1000000000) * 1000000000) * 1000000000) * 1000000, "Pether"},
-	{((u256(1000000000) * 1000000000) * 1000000000) * 1000, "Tether"},
-	{(u256(1000000000) * 1000000000) * 1000000000, "Gether"},
-	{(u256(1000000000) * 1000000000) * 1000000, "Mether"},
-	{(u256(1000000000) * 1000000000) * 1000, "grand"},
-	{u256(1000000000) * 1000000000, "ether"},
-	{u256(1000000000) * 1000000, "finney"},
-	{u256(1000000000) * 1000, "szabo"},
-	{u256(1000000000), "Gwei"},
-	{u256(1000000), "Mwei"},
-	{u256(1000), "Kwei"},
-	{u256(1), "wei"}
-};
 
 vector<pair<u256, string>> const& units()
 {
-	return g_units;
+	static const vector<pair<u256, string>> s_units =
+	{
+		{exp10<54>(), "Uether"},
+		{exp10<51>(), "Vether"},
+		{exp10<48>(), "Dether"},
+		{exp10<45>(), "Nether"},
+		{exp10<42>(), "Yether"},
+		{exp10<39>(), "Zether"},
+		{exp10<36>(), "Eether"},
+		{exp10<33>(), "Pether"},
+		{exp10<30>(), "Tether"},
+		{exp10<27>(), "Gether"},
+		{exp10<24>(), "Mether"},
+		{exp10<21>(), "grand"},
+		{exp10<18>(), "ether"},
+		{exp10<15>(), "finney"},
+		{exp10<12>(), "szabo"},
+		{exp10<9>(), "Gwei"},
+		{exp10<6>(), "Mwei"},
+		{exp10<3>(), "Kwei"},
+		{exp10<0>(), "wei"}
+	};
+
+	return s_units;
 }
 
-std::string formatBalance(u256 _b)
+std::string formatBalance(bigint const& _b)
 {
 	ostringstream ret;
-	if (_b > g_units[0].first * 10000)
+	u256 b;
+	if (_b < 0)
 	{
-		ret << (_b / g_units[0].first) << " " << g_units[0].second;
+		ret << "-";
+		b = (u256)-_b;
+	}
+	else
+		b = (u256)_b;
+
+	if (b > units()[0].first * 10000)
+	{
+		ret << (b / units()[0].first) << " " << units()[0].second;
 		return ret.str();
 	}
 	ret << setprecision(5);
-	for (auto const& i: g_units)
-		if (i.first != 1 && _b >= i.first * 100)
+	for (auto const& i: units())
+		if (i.first != 1 && b >= i.first * 100)
 		{
-			ret << (double(_b / (i.first / 1000)) / 1000.0) << " " << i.second;
+			ret << (double(b / (i.first / 1000)) / 1000.0) << " " << i.second;
 			return ret.str();
 		}
-	ret << _b << " wei";
+	ret << b << " wei";
 	return ret.str();
 }
 

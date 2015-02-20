@@ -12,7 +12,8 @@
 # only look in default directories
 find_path(
 	JSONCPP_INCLUDE_DIR 
-	NAMES jsoncpp/json/json.h
+	NAMES json/json.h
+	PATH_SUFFIXES jsoncpp
 	DOC "jsoncpp include dir"
 )
 

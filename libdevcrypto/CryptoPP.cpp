@@ -20,6 +20,7 @@
  */
 
 #include "CryptoPP.h"
+#include <libdevcore/Guards.h>
 
 using namespace std;
 using namespace dev;
@@ -40,7 +41,7 @@ void Secp256k1::encrypt(Public const& _k, bytes& io_cipher)
 	ciphertext.resize(e.CiphertextLength(plen));
 	
 	{
-		lock_guard<mutex> l(x_rng);
+		Guard l(x_rng);
 		e.Encrypt(m_rng, io_cipher.data(), plen, ciphertext.data());
 	}
 	
@@ -65,7 +66,7 @@ void Secp256k1::decrypt(Secret const& _k, bytes& io_text)
 	
 	DecodingResult r;
 	{
-		lock_guard<mutex> l(x_rng);
+		Guard l(x_rng);
 		r = d.Decrypt(m_rng, io_text.data(), clen, plain.data());
 	}
 	
@@ -99,7 +100,7 @@ Signature Secp256k1::sign(Secret const& _key, h256 const& _hash)
 	ECP::Point rp;
 	Integer r;
 	{
-		lock_guard<mutex> l(x_params);
+		Guard l(x_params);
 		rp = m_params.ExponentiateBase(k);
 		r = m_params.ConvertElementToInteger(rp);
 	}
@@ -108,7 +109,7 @@ Signature Secp256k1::sign(Secret const& _key, h256 const& _hash)
 	
 	Integer kInv = k.InverseMod(m_q);
 	Integer z(_hash.asBytes().data(), 32);
-	Integer s = (kInv * (Integer(_key.asBytes().data(), 32)*r + z)) % m_q;
+	Integer s = (kInv * (Integer(_key.asBytes().data(), 32) * r + z)) % m_q;
 	if (r == 0 || s == 0)
 		BOOST_THROW_EXCEPTION(InvalidState());
 	
@@ -144,12 +145,12 @@ Public Secp256k1::recover(Signature _signature, bytesConstRef _message)
 	Integer s(_signature.data()+32, 32);
 	// cryptopp encodes sign of y as 0x02/0x03 instead of 0/1 or 27/28
 	byte encodedpoint[33];
-	encodedpoint[0] = _signature[64]|2;
+	encodedpoint[0] = _signature[64] | 2;
 	memcpy(&encodedpoint[1], _signature.data(), 32);
 	
 	ECP::Element x;
 	{
-		lock_guard<mutex> l(x_curve);
+		Guard l(x_curve);
 		m_curve.DecodePoint(x, encodedpoint, 33);
 		if (!m_curve.VerifyPoint(x))
 			return recovered;
@@ -158,7 +159,7 @@ Public Secp256k1::recover(Signature _signature, bytesConstRef _message)
 //	if (_signature[64] & 2)
 //	{
 //		r += m_q;
-//		lock_guard<mutex> l(x_params);
+//		Guard l(x_params);
 //		if (r >= m_params.GetMaxExponent())
 //			return recovered;
 //	}
@@ -171,7 +172,7 @@ Public Secp256k1::recover(Signature _signature, bytesConstRef _message)
 	ECP::Point p;
 	byte recoveredbytes[65];
 	{
-		lock_guard<mutex> l(x_curve);
+		Guard l(x_curve);
 		// todo: make generator member
 		p = m_curve.CascadeMultiply(u2, x, u1, m_params.GetSubgroupGenerator());
 		m_curve.EncodePoint(recoveredbytes, p, false);
@@ -198,9 +199,8 @@ bool Secp256k1::verifySecret(Secret const& _s, Public& _p)
 
 void Secp256k1::agree(Secret const& _s, Public const& _r, h256& o_s)
 {
-	(void)_s;
-	(void)_r;
 	(void)o_s;
+	(void)_s;
 	ECDH<ECP>::Domain d(m_oid);
 	assert(d.AgreedValueLength() == sizeof(o_s));
 	byte remote[65] = {0x04};
@@ -213,7 +213,7 @@ void Secp256k1::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& 
 	bytes prefixedKey(_k.GetGroupParameters().GetEncodedElementSize(true));
 	
 	{
-		lock_guard<mutex> l(x_params);
+		Guard l(x_params);
 		m_params.GetCurve().EncodePoint(prefixedKey.data(), _k.GetPublicElement(), false);
 		assert(Public::size + 1 == _k.GetGroupParameters().GetEncodedElementSize(true));
 	}
@@ -226,7 +226,7 @@ void Secp256k1::exponentToPublic(Integer const& _e, Public& o_p)
 	CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> pk;
 	
 	{
-		lock_guard<mutex> l(x_params);
+		Guard l(x_params);
 		pk.Initialize(m_params, m_params.ExponentiateBase(_e));
 	}
 	

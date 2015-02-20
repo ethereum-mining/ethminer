@@ -22,7 +22,9 @@
 
 #include <random>
 #include <chrono>
+#include <thread>
 #include <mutex>
+#include <libdevcore/Guards.h>
 #include "SHA3.h"
 #include "FileSystem.h"
 #include "CryptoPP.h"
@@ -33,7 +35,7 @@ using namespace dev::crypto;
 
 static Secp256k1 s_secp256k1;
 
-bool dev::SignatureStruct::isValid()
+bool dev::SignatureStruct::isValid() const
 {
 	if (this->v > 1 ||
 			this->r >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
@@ -41,6 +43,8 @@ bool dev::SignatureStruct::isValid()
 		return false;
 	return true;
 }
+
+Address dev::ZeroAddress = Address();
 
 Public dev::toPublic(Secret const& _secret)
 {
@@ -78,6 +82,18 @@ bool dev::decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
 	return true;
 }
 
+void dev::encryptSym(Secret const& _k, bytesConstRef _plain, bytes& o_cipher)
+{
+	// TOOD: @alex @subtly do this properly.
+	encrypt(KeyPair(_k).pub(), _plain, o_cipher);
+}
+
+bool dev::decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plain)
+{
+	// TODO: @alex @subtly do this properly.
+	return decrypt(_k, _cipher, o_plain);
+}
+
 Public dev::recover(Signature const& _sig, h256 const& _message)
 {
 	return s_secp256k1.recover(_sig, _message.ref());
@@ -95,12 +111,16 @@ bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 
 KeyPair KeyPair::create()
 {
-	static mt19937_64 s_eng(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count());
+	static boost::thread_specific_ptr<mt19937_64> s_eng;
+	static unsigned s_id = 0;
+	if (!s_eng.get())
+		s_eng.reset(new mt19937_64(time(0) + chrono::high_resolution_clock::now().time_since_epoch().count() + ++s_id));
+
 	uniform_int_distribution<uint16_t> d(0, 255);
 
 	for (int i = 0; i < 100; ++i)
 	{
-		KeyPair ret(FixedHash<32>::random(s_eng));
+		KeyPair ret(FixedHash<32>::random(*s_eng.get()));
 		if (ret.address())
 			return ret;
 	}
@@ -139,7 +159,7 @@ h256 Nonce::get(bool _commit)
 	static h256 s_seed;
 	static string s_seedFile(getDataDir() + "/seed");
 	static mutex s_x;
-	lock_guard<mutex> l(s_x);
+	Guard l(s_x);
 	if (!s_seed)
 	{
 		static Nonce s_nonce;

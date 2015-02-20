@@ -134,7 +134,7 @@ void BlockInfo::populate(bytesConstRef _block, bool _checkNonce)
 	RLP header = root[0];
 
 	if (!header.isList())
-		BOOST_THROW_EXCEPTION(InvalidBlockFormat(0,header.data()));
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat(0,header.data()) << errinfo_comment("block header needs to be a list"));
 	populateFromHeader(header, _checkNonce);
 
 	if (!root[1].isList())
@@ -157,8 +157,8 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 	{
 		bytes k = rlp(i);
 		t.insert(&k, tr.data());
-		u256 gp = tr[1].toInt<u256>();
-		mgp = min(mgp, gp);
+		u256 gasprice = tr[1].toInt<u256>();
+		mgp = min(mgp, gasprice); // the minimum gas price is not used for anything //TODO delete?
 		++i;
 	}
 	if (transactionsRoot != t.root())
@@ -208,7 +208,7 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 		if (parentHash != _parent.hash)
 			BOOST_THROW_EXCEPTION(InvalidParentHash());
 
-		if (timestamp < _parent.timestamp)
+		if (timestamp <= _parent.timestamp)
 			BOOST_THROW_EXCEPTION(InvalidTimestamp());
 
 		if (number != _parent.number + 1)

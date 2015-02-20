@@ -20,26 +20,33 @@
  */
 
 #include <QDebug>
+#include <QQmlApplicationEngine>
+
+#ifdef ETH_HAVE_WEBENGINE
+#include <QtWebEngine/QtWebEngine>
+#endif
+
 #include "MixApplication.h"
+#include "AppContext.h"
+
+#include <QMenuBar>
+
 using namespace dev::mix;
 
-MixApplication::MixApplication(int _argc, char* _argv[]): QApplication(_argc, _argv)
+MixApplication::MixApplication(int _argc, char* _argv[]):
+	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine()), m_appContext(new AppContext(m_engine.get()))
 {
+	setOrganizationName(tr("Ethereum"));
+	setOrganizationDomain(tr("ethereum.org"));
+	setApplicationName(tr("Mix"));
+	setApplicationVersion("0.1");
+#ifdef ETH_HAVE_WEBENGINE
+	QtWebEngine::initialize();
+#endif
+	QObject::connect(this, SIGNAL(lastWindowClosed()), context(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
+	m_appContext->load();
 }
 
-bool MixApplication::notify(QObject* _receiver, QEvent* _event)
+MixApplication::~MixApplication()
 {
-	try
-	{
-		return MixApplication::notify(_receiver, _event);
-	}
-	catch (std::exception& _ex)
-	{
-		qDebug() << "std::exception was caught " << _ex.what();
-	}
-	catch (...)
-	{
-		qDebug() << "uncaught exception ";
-	}
-	return false;
 }

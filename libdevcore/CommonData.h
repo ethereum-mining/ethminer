@@ -35,6 +35,12 @@ namespace dev
 
 // String conversion functions, mainly to/from hex/nibble/byte representations.
 
+enum class ThrowType
+{
+	NoThrow = 0,
+	Throw = 1,
+};
+
 /// Convert a series of bytes to the corresponding string of hex duplets.
 /// @param _w specifies the width of each of the elements. Defaults to two - enough to represent a byte.
 /// @example toHex("A\x69") == "4169"
@@ -53,7 +59,8 @@ int fromHex(char _i);
 
 /// Converts a (printable) ASCII hex string into the corresponding byte stream.
 /// @example fromHex("41626261") == asBytes("Abba")
-bytes fromHex(std::string const& _s);
+/// If _throw = ThrowType::NoThrow, it replaces bad hex characters with 0's, otherwise it will throw an exception.
+bytes fromHex(std::string const& _s, ThrowType _throw = ThrowType::NoThrow);
 
 #if 0
 std::string toBase58(bytesConstRef _data);
@@ -110,6 +117,9 @@ inline std::string toBigEndianString(u160 _val) { std::string ret(20, '\0'); toB
 inline bytes toBigEndian(u256 _val) { bytes ret(32); toBigEndian(_val, ret); return ret; }
 inline bytes toBigEndian(u160 _val) { bytes ret(20); toBigEndian(_val, ret); return ret; }
 
+/// Convenience function for conversion of a u256 to hex
+inline std::string toHex(u256 val) { return toHex(toBigEndian(val)); }
+
 /// Convenience function for toBigEndian.
 /// @returns a byte array just big enough to represent @a _val.
 template <class _T>
@@ -120,6 +130,10 @@ inline bytes toCompactBigEndian(_T _val, unsigned _min = 0)
 	bytes ret(std::max<unsigned>(_min, i), 0);
 	toBigEndian(_val, ret);
 	return ret;
+}
+inline bytes toCompactBigEndian(byte _val, unsigned _min = 0)
+{
+	return (_min || _val) ? bytes{ _val } : bytes{};
 }
 
 /// Convenience function for toBigEndian.
@@ -234,6 +248,18 @@ inline std::set<_T> operator+(std::set<_T> const& _a, std::set<_T> const& _b)
 {
 	std::set<_T> ret(_a);
 	return ret += _b;
+}
+
+/// Make normal string from fixed-length string.
+std::string toString(string32 const& _s);
+
+template<class T, class U>
+std::vector<T> keysOf(std::map<T, U> const& _m)
+{
+	std::vector<T> ret;
+	for (auto const& i: _m)
+		ret.push_back(i.first);
+	return ret;
 }
 
 }

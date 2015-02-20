@@ -1,0 +1,25 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/WebPreview.qml</file>
+        <file>qml/html/WebContainer.html</file>
+        <file>qml/html/cm/active-line.js</file>
+        <file>qml/html/codeeditor.html</file>
+        <file>qml/html/cm/codemirror.css</file>
+        <file>qml/html/cm/codemirror.js</file>
+        <file>qml/html/cm/javascript.js</file>
+        <file>qml/html/cm/matchbrackets.js</file>
+        <file alias="qml/CodeEditor.qml">qml/WebCodeEditor.qml</file>
+        <file>qml/html/codeeditor.js</file>
+        <file>qml/html/cm/fullscreen.css</file>
+        <file>qml/html/cm/fullscreen.js</file>
+        <file>qml/html/cm/solarized.css</file>
+        <file>qml/html/cm/xml.js</file>
+        <file>qml/html/cm/htmlmixed.js</file>
+        <file>qml/html/cm/css.js</file>
+        <file>qml/html/cm/solidity.js</file>
+        <file>qml/html/cm/dialog.css</file>
+        <file>qml/html/cm/dialog.js</file>
+        <file>qml/html/cm/search.js</file>
+        <file>qml/html/cm/searchcursor.js</file>
+    </qresource>
+</RCC>

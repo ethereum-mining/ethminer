@@ -54,7 +54,7 @@ bool isValidFunctionName(std::string f) {
             vfMap[validFunctions[i][0]] = true;
         }
     }
-    return vfMap.count(f);
+    return vfMap.count(f) != 0;
 }
 
 // Cool function for debug purposes (named cerrStringList to make

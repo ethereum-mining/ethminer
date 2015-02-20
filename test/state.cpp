@@ -24,7 +24,7 @@
 #include <boost/test/unit_test.hpp>
 #include "JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
-#include <libethereum/BlockChain.h>
+#include <libethereum/CanonBlockChain.h>
 #include <libethereum/State.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/Defaults.h>
@@ -35,11 +35,8 @@ using namespace std;
 using namespace json_spirit;
 using namespace dev;
 using namespace dev::eth;
-using namespace dev::eth;
 
 namespace dev {  namespace test {
-
-
 
 void doStateTests(json_spirit::mValue& v, bool _fillin)
 {
@@ -62,7 +59,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 
 		try
 		{
-			theState.execute(tx, &output);
+			theState.execute(lastHashes(importer.m_environment.currentBlock.number), tx, &output);
 		}
 		catch (Exception const& _e)
 		{
@@ -155,6 +152,16 @@ BOOST_AUTO_TEST_CASE(stSpecialTest)
 BOOST_AUTO_TEST_CASE(stRefundTest)
 {
 	dev::test::executeTests("stRefundTest", "/StateTests", dev::test::doStateTests);
+}
+
+BOOST_AUTO_TEST_CASE(stBlockHashTest)
+{
+	dev::test::executeTests("stBlockHashTest", "/StateTests", dev::test::doStateTests);
+}
+
+BOOST_AUTO_TEST_CASE(stSolidityTest)
+{
+	dev::test::executeTests("stSolidityTest", "/StateTests", dev::test::doStateTests);
 }
 
 BOOST_AUTO_TEST_CASE(stCreateTest)

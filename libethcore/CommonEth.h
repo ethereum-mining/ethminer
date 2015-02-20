@@ -39,7 +39,7 @@ extern const unsigned c_protocolVersion;
 extern const unsigned c_databaseVersion;
 
 /// User-friendly string representation of the amount _b in wei.
-std::string formatBalance(u256 _b);
+std::string formatBalance(bigint const& _b);
 
 /// Get information concerning the currency denominations.
 std::vector<std::pair<u256, std::string>> const& units();
@@ -47,26 +47,21 @@ std::vector<std::pair<u256, std::string>> const& units();
 /// The log bloom's size (512 bit).
 using LogBloom = h512;
 
+template <size_t n> inline u256 exp10()
+{
+	return exp10<n - 1>() * u256(10);
+}
+
+template <> inline u256 exp10<0>()
+{
+	return u256(1);
+}
+
 // The various denominations; here for ease of use where needed within code.
-/*static const u256 Uether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000;
-static const u256 Vether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000;
-static const u256 Dether = ((((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000;
-static const u256 Nether = (((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000000;
-static const u256 Yether = (((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000000;
-static const u256 Zether = (((u256(1000000000) * 1000000000) * 1000000000) * 1000000000) * 1000;
-static const u256 Eether = ((u256(1000000000) * 1000000000) * 1000000000) * 1000000000;
-static const u256 Pether = ((u256(1000000000) * 1000000000) * 1000000000) * 1000000;
-static const u256 Tether = ((u256(1000000000) * 1000000000) * 1000000000) * 1000;
-static const u256 Gether = (u256(1000000000) * 1000000000) * 1000000000;
-static const u256 Mether = (u256(1000000000) * 1000000000) * 1000000;
-static const u256 grand = (u256(1000000000) * 1000000000) * 1000;*/
-static const u256 ether = u256(1000000000) * 1000000000;
-static const u256 finney = u256(1000000000) * 1000000;
-static const u256 szabo = u256(1000000000) * 1000;
-/*static const u256 Gwei = u256(1000000000);
-static const u256 Mwei = u256(1000000);
-static const u256 Kwei = u256(1000);*/
-static const u256 wei = u256(1);
+static const u256 ether = exp10<18>();
+static const u256 finney = exp10<15>();
+static const u256 szabo = exp10<12>();
+static const u256 wei = exp10<0>();
 
 }
 }

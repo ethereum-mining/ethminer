@@ -35,6 +35,7 @@
 #include "ExtVM.h"
 #include "Executive.h"
 #include "CachedAddressState.h"
+#include "CanonBlockChain.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -74,18 +75,16 @@ State::State(Address _coinbaseAddress, OverlayDB const& _db, BaseState _bs):
 
 	paranoia("beginning of normal construction.", true);
 
-	if (_bs == BaseState::Genesis)
+	if (_bs == BaseState::CanonGenesis)
 	{
 		dev::eth::commit(genesisState(), m_db, m_state);
 		m_db.commit();
 
 		paranoia("after DB commit of normal construction.", true);
-		m_previousBlock = BlockChain::genesis();
+		m_previousBlock = CanonBlockChain::genesis();
 	}
 	else
-	{
 		m_previousBlock.setEmpty();
-	}
 
 	resetCurrent();
 
@@ -114,7 +113,7 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 	m_ourAddress = bi.coinbaseAddress;
 
 	sync(_bc, bi.parentHash, bip);
-	enact(&b);
+	enact(&b, _bc);
 }
 
 State::State(State const& _s):
@@ -304,7 +303,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 		// (Most recent state dump might end up being genesis.)
 
 		std::vector<h256> chain;
-		while (bi.stateRoot != BlockChain::genesis().hash && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
+		while (bi.number != 0 && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
 		{
 			chain.push_back(bi.hash);				// push back for later replay.
 			bi.populate(_bc.block(bi.parentHash));	// move to parent.
@@ -319,7 +318,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 			for (auto it = chain.rbegin(); it != chain.rend(); ++it)
 			{
 				auto b = _bc.block(*it);
-				enact(&b);
+				enact(&b, _bc);
 				cleanup(true);
 			}
 		}
@@ -348,7 +347,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 	sync(_bc, _bi.parentHash);
 	resetCurrent();
 	m_previousBlock = biParent;
-	return enact(_block, &_bc);
+	return enact(_block, _bc);
 }
 
 map<Address, u256> State::addresses() const
@@ -371,7 +370,7 @@ void State::resetCurrent()
 	m_cache.clear();
 	m_currentBlock = BlockInfo();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
-	m_currentBlock.timestamp = time(0);
+	m_currentBlock.timestamp = max(m_previousBlock.timestamp + 1, (u256)time(0));
 	m_currentBlock.transactionsRoot = h256();
 	m_currentBlock.sha3Uncles = h256();
 	m_currentBlock.populateFromParent(m_previousBlock);
@@ -395,7 +394,7 @@ bool State::cull(TransactionQueue& _tq) const
 		{
 			try
 			{
-				Transaction t(i.second);
+				Transaction t(i.second, CheckSignature::Sender);
 				if (t.nonce() <= transactionsFrom(t.sender()))
 				{
 					_tq.drop(i.first);
@@ -412,11 +411,13 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-h512s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
+TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
-	h512s ret;
+	TransactionReceipts ret;
 	auto ts = _tq.transactions();
+
+	auto lh = getLastHashes(_bc, _bc.number());
 
 	for (int goodTxs = 1; goodTxs;)
 	{
@@ -429,8 +430,8 @@ h512s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 				{
 					uncommitToMine();
 //					boost::timer t;
-					execute(i.second);
-					ret.push_back(m_receipts.back().bloom());
+					execute(lh, i.second);
+					ret.push_back(m_receipts.back());
 					_tq.noteGood(i);
 					++goodTxs;
 //					cnote << "TX took:" << t.elapsed() * 1000;
@@ -467,7 +468,7 @@ h512s State::sync(TransactionQueue& _tq, bool* o_transactionQueueChanged)
 	return ret;
 }
 
-u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
+u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
 
@@ -496,6 +497,8 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
 	receiptsTrie.init();
 
+	LastHashes lh = getLastHashes(_bc, (unsigned)m_previousBlock.number);
+
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
 	for (auto const& tr: RLP(_block)[1])
@@ -504,26 +507,11 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 		k << i;
 
 		transactionsTrie.insert(&k.out(), tr.data());
-
-//		cnote << m_state.root() << m_state;
-//		cnote << *this;
-		execute(tr.data());
+		execute(lh, tr.data());
 
 		RLPStream receiptrlp;
 		m_receipts.back().streamRLP(receiptrlp);
 		receiptsTrie.insert(&k.out(), &receiptrlp.out());
-/*
-		if (tr[1].toHash<h256>() != m_state.root())
-		{
-			// Invalid state root
-			cnote << m_state.root() << "\n" << m_state;
-			cnote << *this;
-			cnote << "INVALID: " << tr[1].toHash<h256>();
-			BOOST_THROW_EXCEPTION(InvalidTransactionStateRoot());
-		}
-		if (tr[2].toInt<u256>() != gasUsed())
-			BOOST_THROW_EXCEPTION(InvalidTransactionGasUsed());
-*/
 		++i;
 	}
 
@@ -535,7 +523,30 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 
 	if (receiptsTrie.root() != m_currentBlock.receiptsRoot)
 	{
-		cwarn << "Bad receipts state root!";
+		cwarn << "Bad receipts state root.";
+		cwarn << "Block:" << toHex(_block);
+		cwarn << "Block RLP:" << RLP(_block);
+		cwarn << "Calculated: " << receiptsTrie.root();
+		for (unsigned j = 0; j < i; ++j)
+		{
+			RLPStream k;
+			k << j;
+			auto b = asBytes(receiptsTrie.at(&k.out()));
+			cwarn << j << ": ";
+			cwarn << "RLP: " << RLP(b);
+			cwarn << "Hex: " << toHex(b);
+			cwarn << TransactionReceipt(&b);
+		}
+		cwarn << "Recorded: " << m_currentBlock.receiptsRoot;
+		auto rs = _bc.receipts(m_currentBlock.hash);
+		for (unsigned j = 0; j < rs.receipts.size(); ++j)
+		{
+			auto b = rs.receipts[j].rlp();
+			cwarn << j << ": ";
+			cwarn << "RLP: " << RLP(b);
+			cwarn << "Hex: " << toHex(b);
+			cwarn << rs.receipts[j];
+		}
 		BOOST_THROW_EXCEPTION(InvalidReceiptsStateRoot());
 	}
 
@@ -551,7 +562,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 	// Check uncles & apply their rewards to state.
 	set<h256> nonces = { m_currentBlock.nonce };
 	Addresses rewarded;
-	set<h256> knownUncles = _bc ? _bc->allUnclesFrom(m_currentBlock.parentHash) : set<h256>();
+	set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
 	for (auto const& i: RLP(_block)[2])
 	{
 		if (knownUncles.count(sha3(i.data())))
@@ -560,13 +571,11 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 		BlockInfo uncle = BlockInfo::fromHeader(i.data());
 		if (nonces.count(uncle.nonce))
 			BOOST_THROW_EXCEPTION(DuplicateUncleNonce());
-		if (_bc)
-		{
-			BlockInfo uncleParent(_bc->block(uncle.parentHash));
-			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
-				BOOST_THROW_EXCEPTION(UncleTooOld());
-			uncle.verifyParent(uncleParent);
-		}
+
+		BlockInfo uncleParent(_bc.block(uncle.parentHash));
+		if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
+			BOOST_THROW_EXCEPTION(UncleTooOld());
+		uncle.verifyParent(uncleParent);
 
 		nonces.insert(uncle.nonce);
 		tdIncrease += uncle.difficulty;
@@ -589,6 +598,13 @@ u256 State::enact(bytesConstRef _block, BlockChain const* _bc, bool _checkNonce)
 		// Rollback the trie.
 		m_db.rollback();
 		BOOST_THROW_EXCEPTION(InvalidStateRoot());
+	}
+
+	if (m_currentBlock.gasUsed != gasUsed())
+	{
+		// Rollback the trie.
+		m_db.rollback();
+		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed)));
 	}
 
 	return tdIncrease;
@@ -648,7 +664,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 		cnote << "PARANOIA root:" << s.rootHash();
 //		s.m_currentBlock.populate(&block.out(), false);
 //		s.m_currentBlock.verifyInternals(&block.out());
-		s.enact(&block.out(), &_bc, false);	// don't check nonce for this since we haven't mined it yet.
+		s.enact(&block.out(), _bc, false);	// don't check nonce for this since we haven't mined it yet.
 		s.cleanup(false);
 		return true;
 	}
@@ -672,8 +688,6 @@ LogBloom State::logBloom() const
 	return ret;
 }
 
-// @returns the block that represents the difference between m_previousBlock and m_currentBlock.
-// (i.e. all the transactions we executed).
 void State::commitToMine(BlockChain const& _bc)
 {
 	uncommitToMine();
@@ -690,7 +704,7 @@ void State::commitToMine(BlockChain const& _bc)
 
 	RLPStream unclesData;
 	unsigned unclesCount = 0;
-	if (m_previousBlock != BlockChain::genesis())
+	if (m_previousBlock.number != 0)
 	{
 		// Find great-uncles (or second-cousins or whatever they are) - children of great-grandparents, great-great-grandparents... that were not already uncles in previous generations.
 //		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
@@ -767,17 +781,29 @@ MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 	// Update difficulty according to timestamp.
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
+	MineInfo ret;
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	auto ret = m_pow.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHash(WithoutNonce), m_currentBlock.difficulty, _msTimeout, true, _turbo);
+	tie(ret, m_currentBlock.nonce) = m_pow.mine(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.difficulty, _msTimeout, true, _turbo);
 
 	if (!ret.completed)
 		m_currentBytes.clear();
 	else
-	{
 		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
-	}
 
 	return ret;
+}
+
+bool State::completeMine(h256 const& _nonce)
+{
+	if (!m_pow.verify(m_currentBlock.headerHash(WithoutNonce), _nonce, m_currentBlock.difficulty))
+		return false;
+
+	m_currentBlock.nonce = _nonce;
+	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
+
+	completeMine();
+
+	return true;
 }
 
 void State::completeMine()
@@ -792,7 +818,7 @@ void State::completeMine()
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
-	m_currentBlock.hash = sha3(m_currentBytes);
+	m_currentBlock.hash = sha3(RLP(m_currentBytes)[0].data());
 	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
 
 	// Quickly reset the transactions.
@@ -958,6 +984,13 @@ bytes const& State::code(Address _contract) const
 	return m_cache[_contract].code();
 }
 
+h256 State::codeHash(Address _contract) const
+{
+	if (!addressHasCode(_contract))
+		return EmptySHA3;
+	return m_cache[_contract].codeHash();
+}
+
 bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 {
 	for (int e = 0; e < (_enforceRefs ? 2 : 1); ++e)
@@ -993,9 +1026,31 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 	return true;
 }
 
-// TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
+LastHashes State::getLastHashes(BlockChain const& _bc, unsigned _n) const
+{
+	LastHashes ret;
+	ret.resize(256);
+	if (c_protocolVersion > 49)
+	{
+		ret[0] = _bc.numberHash(_n);
+		for (unsigned i = 1; i < 256; ++i)
+			ret[i] = ret[i - 1] ? _bc.details(ret[i - 1]).parent : h256();
+	}
+	return ret;
+}
 
-u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
+u256 State::execute(BlockChain const& _bc, bytes const& _rlp, bytes* o_output, bool _commit)
+{
+	return execute(getLastHashes(_bc, _bc.number()), &_rlp, o_output, _commit);
+}
+
+u256 State::execute(BlockChain const& _bc, bytesConstRef _rlp, bytes* o_output, bool _commit)
+{
+	return execute(getLastHashes(_bc, _bc.number()), _rlp, o_output, _commit);
+}
+
+// TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
+u256 State::execute(LastHashes const& _lh, bytesConstRef _rlp, bytes* o_output, bool _commit)
 {
 #ifndef ETH_RELEASE
 	commit();	// get an updated hash
@@ -1008,7 +1063,7 @@ u256 State::execute(bytesConstRef _rlp, bytes* o_output, bool _commit)
 	auto h = rootHash();
 #endif
 
-	Executive e(*this, 0);
+	Executive e(*this, _lh, 0);
 	e.setup(_rlp);
 
 	u256 startGasUsed = gasUsed();
@@ -1144,11 +1199,11 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 						else if (j.second)
 							cached.insert(j.first);
 					}
-				if (delta.size())
+				if (!delta.empty())
 					lead = (lead == " .   ") ? "*.*  " : "***  ";
 
 				contout << " @:";
-				if (delta.size())
+				if (!delta.empty())
 					contout << "???";
 				else
 					contout << r[2].toHash<h256>();

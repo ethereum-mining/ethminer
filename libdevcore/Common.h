@@ -36,7 +36,13 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <functional>
+#pragma warning(push)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <boost/multiprecision/cpp_int.hpp>
+#pragma warning(pop)
+#pragma GCC diagnostic pop
 #include "vector_ref.h"
 #include "debugbreak.h"
 
@@ -64,6 +70,7 @@ using u256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backe
 using s256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
 using u160 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<160, 160, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 using s160 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<160, 160, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
+using u512 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<512, 512, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 using u256s = std::vector<u256>;
 using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
@@ -73,6 +80,12 @@ using u160Set = std::set<u160>;
 using StringMap = std::map<std::string, std::string>;
 using u256Map = std::map<u256, u256>;
 using HexMap = std::map<bytes, std::string>;
+
+// String types.
+using strings = std::vector<std::string>;
+
+// Fixed-length string types.
+using string32 = std::array<char, 32>;
 
 // Null/Invalid values for convenience.
 static const u256 Invalid256 = ~(u256)0;
@@ -104,6 +117,15 @@ inline unsigned int toLog2(u256 _x)
 	for (ret = 0; _x >>= 1; ++ret) {}
 	return ret;
 }
+
+/// RAII utility class whose destructor calls a given function.
+class ScopeGuard {
+public:
+	ScopeGuard(std::function<void(void)> _f): m_f(_f) {}
+	~ScopeGuard() { m_f(); }
+private:
+	std::function<void(void)> m_f;
+};
 
 // Assertions...
 

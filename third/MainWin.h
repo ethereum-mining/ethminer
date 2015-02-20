@@ -30,7 +30,6 @@
 #include <libdevcore/RLP.h>
 #include <libethcore/CommonEth.h>
 #include <libethereum/State.h>
-#include <libqethereum/QEthereum.h>
 
 namespace Ui {
 class Main;
@@ -47,8 +46,14 @@ class WhisperHost;
 }
 }
 
+namespace jsonrpc {
+class HttpServer;
+}
+
 class QQuickView;
 class WebThreeStubServer;
+
+using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
 
 class Main : public QMainWindow
 {
@@ -95,8 +100,8 @@ private:
 	void readSettings(bool _skipGeometry = false);
 	void writeSettings();
 
-	unsigned installWatch(dev::eth::LogFilter const& _tf, std::function<void()> const& _f);
-	unsigned installWatch(dev::h256 _tf, std::function<void()> const& _f);
+	unsigned installWatch(dev::eth::LogFilter const& _tf, WatchHandler const& _f);
+	unsigned installWatch(dev::h256 _tf, WatchHandler const& _f);
 
 	void onNewBlock();
 	void onNameRegChange();
@@ -124,17 +129,16 @@ private:
 	QList<dev::KeyPair> m_myKeys;
 	QList<dev::KeyPair> m_myIdentities;
 
-	std::map<unsigned, std::function<void()>> m_handlers;
+	std::map<unsigned, WatchHandler> m_handlers;
 	unsigned m_nameRegFilter = (unsigned)-1;
 	unsigned m_currenciesFilter = (unsigned)-1;
 	unsigned m_balancesFilter = (unsigned)-1;
 
-	QByteArray m_nodes;
+	QByteArray m_networkConfig;
 	QStringList m_servers;
 
 	QNetworkAccessManager m_webCtrl;
 
+	std::unique_ptr<jsonrpc::HttpServer> m_httpConnector;
 	std::unique_ptr<WebThreeStubServer> m_server;
-	QWebThreeConnector m_qwebConnector;
-	QWebThree* m_qweb = nullptr;
 };
