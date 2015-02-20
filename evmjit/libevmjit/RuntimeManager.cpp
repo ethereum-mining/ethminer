@@ -93,7 +93,7 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, llvm::Value* _jmpBuf
 
 	// save jmpBuf to be used in helper functions
 	auto ptr = m_builder.CreateStructGEP(getRuntimePtr(), 2);
-	m_builder.CreateStore(m_jmpBuf, ptr, "jmpBufExt");
+	m_builder.CreateStore(m_jmpBuf, ptr);
 
 	// Unpack data
 	auto rtPtr = getRuntimePtr();
