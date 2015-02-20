@@ -63,7 +63,7 @@ macro(eth_install_executable EXECUTABLE)
 		if (APPLE)
 			set(eth_qml_dir "-qmldir=${ETH_INSTALL_EXECUTABLE_QMLDIR}")
 		elseif (WIN32)
-			set(eth_qml_dir --qmldir ${ETH_INSTALL_EXECUTABLE_QMLDIR})
+			set(eth_qml_dir "--qmldir ${ETH_INSTALL_EXECUTABLE_QMLDIR}")
 		endif()
 		message(STATUS "${EXECUTABLE} qmldir: ${eth_qml_dir}")
 	endif()
@@ -88,49 +88,17 @@ macro(eth_install_executable EXECUTABLE)
 			set(BU_CHMOD_BUNDLE_ITEMS 1)
 			verify_app(\"${APP_BUNDLE_PATH}\")
 			" COMPONENT RUNTIME )
+
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-
-		# copy all dlls to executable directory
-		# TODO improve that by copying only required dlls
-		file (GLOB DLLS ${ETH_DEPENDENCY_INSTALL_DIR}/bin/*.dll)
-
-		foreach(DLL ${DLLS})
-			add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-				COMMAND cmake -E copy "${DLL}" "$<TARGET_FILE_DIR:${EXECUTABLE}>"
-			)
-		endforeach()
-
 		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND cmake -E copy_directory
-			"${ETH_DEPENDENCY_INSTALL_DIR}/plugins/platforms"
-			$<TARGET_FILE_DIR:${EXECUTABLE}>/platforms
+			COMMAND cmd /C "set PATH=${Qt5Core_DIR}/../../../bin;%PATH% && ${WINDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.exe ${eth_qml_dir}"
+			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 		)
-
-		# ugly way, improve that
+		#workaround for https://bugreports.qt.io/browse/QTBUG-42083
 		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND cmake -E copy_directory
-			"${ETH_DEPENDENCY_INSTALL_DIR}/qml"
-			$<TARGET_FILE_DIR:${EXECUTABLE}>
+			COMMAND cmd /C "(echo [Paths] & echo.Prefix=.)" > "qt.conf"
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR} VERBATIM
 		)
-
-		install( FILES ${DLLS} 
-			DESTINATION bin
-			COMPONENT ${EXECUTABLE}
-		)
-
-		install( DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/plugins/platforms 
-			DESTINATION bin
-			COMPONENT ${EXECUTABLE}
-		)
-
-		file (GLOB QMLS ${ETH_DEPENDENCY_INSTALL_DIR}/qml/*)
-		foreach(QML ${QMLS})
-			install( DIRECTORY ${QML} 
-				DESTINATION bin
-				COMPONENT ${EXECUTABLE}
-			)
-		endforeach()
-
 		install( TARGETS ${EXECUTABLE} RUNTIME 
 			DESTINATION bin
 			COMPONENT ${EXECUTABLE}
