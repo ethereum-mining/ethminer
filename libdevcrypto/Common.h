@@ -62,6 +62,9 @@ struct SignatureStruct
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
 using Address = h160;
 
+/// The zero address.
+extern Address ZeroAddress;
+
 /// A vector of Ethereum addresses.
 using Addresses = h160s;
 
