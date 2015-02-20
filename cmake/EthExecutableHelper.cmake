@@ -91,7 +91,7 @@ macro(eth_install_executable EXECUTABLE)
 
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND cmd /C "set PATH=${Qt5Core_DIR}/../../../bin;%PATH% && ${WINDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.exe ${eth_qml_dir} --verbose 100"
+			COMMAND cmd /C "set PATH=${Qt5Core_DIR}/../../../bin;%PATH% && ${WINDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.exe ${eth_qml_dir}"
 			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 		)
 		#workaround for https://bugreports.qt.io/browse/QTBUG-42083
