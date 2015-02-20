@@ -20,7 +20,6 @@
  * Ethereum IDE client.
  */
 
-#include <json/json.h>
 #include <QJsonObject>
 #include <QDebug>
 #include <QDirIterator>
@@ -29,10 +28,15 @@
 #include <QFileInfo>
 #include <QTextStream>
 #include <QUrl>
+#include <json/json.h>
+#include <libdevcrypto/CryptoPP.h>
+#include <libdevcrypto/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
 #include "FileIo.h"
 
+using namespace dev;
+using namespace dev::crypto;
 using namespace dev::mix;
 
 void FileIo::makeDir(QString const& _url)
@@ -108,7 +112,7 @@ bool FileIo::fileExists(QString const& _url)
 	return file.exists();
 }
 
-QString FileIo::compress(QString const& _deploymentFolder)
+QStringList FileIo::compress(QString const& _deploymentFolder)
 {
 
 	Json::Value manifest;
@@ -119,6 +123,14 @@ QString FileIo::compress(QString const& _deploymentFolder)
 	QDir deployDir = QDir(path);
 
 	dev::RLPStream str;
+	int k = 1;
+	for (auto item: deployDir.entryInfoList(QDir::Files))
+	{
+		QFile qFile(item.filePath());
+		if (qFile.open(QIODevice::ReadOnly | QIODevice::Text))
+				k++;
+	}
+	str.appendList(k);
 
 	for (auto item: deployDir.entryInfoList(QDir::Files))
 	{
@@ -126,19 +138,15 @@ QString FileIo::compress(QString const& _deploymentFolder)
 		if (qFile.open(QIODevice::ReadOnly | QIODevice::Text))
 		{
 			QFileInfo i = QFileInfo(qFile.fileName());
-			QByteArray fileBytes =  i.fileName().toUtf8();
-			str.append(bytes(fileBytes.begin(), fileBytes.end()));
-
-			QByteArray contentBytes = QString().toUtf8();
-			bytes b = bytes(contentBytes.begin(), contentBytes.end());
-			str.append(b);
 
 			QByteArray _a = qFile.readAll();
-			str.append(bytes(_a.begin(), _a.end()));
+			bytes b = bytes(_a.begin(), _a.end());
+			str.append(b);
 
 			Json::Value f;
 			f["path"] = "/"; //TODO: Manage relative sub folder
 			f["file"] = "/" + i.fileName().toStdString();
+			f["contentType"] = "application/html"; //TODO: manage multiple content type
 			f["hash"] = toHex(dev::sha3(b).ref());
 			entries.append(f);
 		}
@@ -147,12 +155,6 @@ QString FileIo::compress(QString const& _deploymentFolder)
 
 	manifest["entries"] = entries;
 
-	QByteArray manifestBytes = "swarm.json";
-	str.append(bytes(manifestBytes.begin(), manifestBytes.end()));
-
-	QByteArray manifestcontentBytes = "application/json";
-	str.append(bytes(manifestcontentBytes.begin(), manifestcontentBytes.end()));
-
 	std::stringstream jsonStr;
 	jsonStr << manifest;
 	QByteArray b =  QString::fromStdString(jsonStr.str()).toUtf8();
@@ -160,17 +162,25 @@ QString FileIo::compress(QString const& _deploymentFolder)
 
 	bytes dapp = str.out();
 	dev::h256 h = dev::sha3(dapp);
-	QString ret = QString::fromStdString(toHex(h.ref()));
+	//encrypt
+	KeyPair key(h);
+	Secp256k1 enc;
+	enc.encrypt(key.pub(), dapp);
+
 	QUrl url(_deploymentFolder + "package.dapp");
 	QFile compressed(url.path());
+	QByteArray qFileBytes((char*)dapp.data(), dapp.size());
 	if (compressed.open(QIODevice::WriteOnly | QIODevice::Text))
 	{
-		compressed.write((char*)dapp.data(), dapp.size());
+		compressed.write(qFileBytes);
 		compressed.flush();
 	}
 	else
 		error(tr("Error creating package.dapp"));
 	compressed.close();
+	QStringList ret;
+	ret.append(QString::fromStdString(toHex(h.ref())));
+	ret.append(qFileBytes.toBase64());
 	return ret;
 }
 
