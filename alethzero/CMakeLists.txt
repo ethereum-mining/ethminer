@@ -56,6 +56,7 @@ target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} web3jsonrpc)
 target_link_libraries(${EXECUTABLE} jsqrc)
 target_link_libraries(${EXECUTABLE} natspec)
+target_link_libraries(${EXECUTABLE} ${MHD_LIBRARIES})
 
 if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 	target_link_libraries(${EXECUTABLE} serpent)
