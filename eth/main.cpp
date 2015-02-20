@@ -898,7 +898,9 @@ int main(int argc, char** argv)
 		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
-	writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", web3.saveNetwork());
+	auto netData = web3.saveNetwork();
+	if (!netData.empty())
+		writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", netData);
 	return 0;
 }
 

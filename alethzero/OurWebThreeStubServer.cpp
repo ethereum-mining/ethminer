@@ -46,6 +46,12 @@ string OurWebThreeStubServer::shh_newIdentity()
 
 bool OurWebThreeStubServer::showAuthenticationPopup(string const& _title, string const& _text) const
 {
+	if (!m_main->confirm())
+	{
+		cnote << "Skipping confirmation step for: " << _title << "\n" << _text;
+		return true;
+	}
+
 	int button;
 	QMetaObject::invokeMethod(m_main, "authenticate", Qt::BlockingQueuedConnection, Q_RETURN_ARG(int, button), Q_ARG(QString, QString::fromStdString(_title)), Q_ARG(QString, QString::fromStdString(_text)));
 	return button == QMessageBox::Ok;
