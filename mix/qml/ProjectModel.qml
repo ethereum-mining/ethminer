@@ -21,6 +21,7 @@ Item {
 	signal newProject(var projectData)
 	signal documentSaved(var documentId)
 	signal deploymentStarted()
+	signal deploymentStepChanged(string message)
 	signal deploymentComplete()
 	signal deploymentError(string error)
 
@@ -55,6 +56,7 @@ Item {
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 	function deployProject() { ProjectModelCode.deployProject(false); }
+	function registerToUrlHint() { ProjectModelCode.registerToUrlHint(); }
 
 	Connections {
 		target: appContext

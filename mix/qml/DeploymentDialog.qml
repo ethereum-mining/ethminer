@@ -14,15 +14,16 @@ Window {
 	id: modalDeploymentDialog
 	modality: Qt.ApplicationModal
 	width: 520
-	height: 200
+	height: 350
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
+	property string urlHintContract: "29a2e6d3c56ef7713a4e7229c3d1a23406f0161a"
+	property string packageHash
+	property alias packageBase64: base64Value.text
 	property string root: "42f6279a5b6d350e1ce2a9ebef05657c79275c6a";
 	property string eth: "31f6aee7f26e9d3320753c112ed34bcfc3c989b8";
 	property string wallet: "c4040ef9635e7503bbbc74b73a9385ac78733d09";
-	property string urlHintContract: "29a2e6d3c56ef7713a4e7229c3d1a23406f0161a"
-
 
 	color: Style.generic.layout.backgroundColor
 
@@ -75,6 +76,17 @@ Window {
 		{
 			id: applicationUrlHttp
 		}
+
+		DefaultLabel
+		{
+			text: qsTr("Package: ")
+		}
+
+		TextArea
+		{
+			id: base64Value
+			height: 60
+		}
 	}
 
 	RowLayout
@@ -83,7 +95,8 @@ Window {
 		anchors.right: parent.right;
 		anchors.bottomMargin: 10
 		Button {
-			text: qsTr("Deploy");
+			text: qsTr("Deploy on Ethereum");
+			tooltip: qsTr("Deploy the contract and Package ressources files.")
 			enabled: applicationUrlHttp.text !== ""
 			onClicked: {
 				if (Object.keys(projectModel.deploymentAddresses).length > 0)
@@ -94,12 +107,11 @@ Window {
 		}
 
 		Button {
-			text: qsTr("Rebuild Package");
+			text: qsTr("Register Web Application");
+			tooltip: qsTr("Register hosted Web Application.")
 			enabled: Object.keys(projectModel.deploymentAddresses).length > 0 && applicationUrlHttp.text !== ""
 			onClicked: {
-				var date = new Date();
-				var deploymentId = date.toLocaleString(Qt.locale(), "ddMMyyHHmmsszzz");
-				ProjectModelCode.finalizeDeployment(deploymentId, projectModel.deploymentAddresses);
+				ProjectModelCode.registerToUrlHint();
 			}
 		}
 
@@ -110,13 +122,14 @@ Window {
 
 		Button {
 			text: qsTr("Check Ownership");
+			visible : false
 			onClicked: {
 				var requests = [];
-				var ethStr = QEtherHelper.createString("eth");
+				var ethStr = QEtherHelper.createString("mul");
 
 				var ethHash = QEtherHelper.createHash(eth);
 
-				requests.push({ //owner
+				/*requests.push({ //owner
 					jsonrpc: "2.0",
 					method: "eth_call",
 					params: [ { "to": '0x' + modalDeploymentDialog.root, "data": "0xec7b9200" + ethStr.encodeValueAsString() } ],
@@ -127,6 +140,13 @@ Window {
 					jsonrpc: "2.0",
 					method: "eth_call",
 					params: [ { "to":  '0x' + modalDeploymentDialog.root, "data": "0x6be16bed" + ethStr.encodeValueAsString() } ],
+					id: 4
+				});*/
+
+				requests.push({ //register
+					jsonrpc: "2.0",
+					method: "eth_call",
+					params: [ { "to":  '0x' + modalDeploymentDialog.wallet, "data": "0x618242da" + ethStr.encodeValueAsString() } ],
 					id: 4
 				});
 
@@ -154,6 +174,7 @@ Window {
 
 		Button {
 			text: qsTr("Generate registrar init");
+			visible: false
 			onClicked: {
 				console.log("registering eth/wallet")
 				var jsonRpcRequestId = 0;
