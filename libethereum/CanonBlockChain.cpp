@@ -50,8 +50,8 @@ std::map<Address, Account> const& dev::eth::genesisState()
 		for (auto account: val.get_obj())
 		{
 			u256 balance;
-			if (account.second.get_obj().count("balance"))
-				balance = fromBigEndian<u256>(fromHex(account.second.get_obj()["balance"].get_str()));
+			if (account.second.get_obj().count("wei"))
+				balance = u256(account.second.get_obj()["wei"].get_str());
 			else
 				balance = u256(account.second.get_obj()["finney"].get_str()) * finney;
 			if (account.second.get_obj().count("code"))
