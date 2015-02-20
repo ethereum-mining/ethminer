@@ -332,7 +332,7 @@ function startDeployProject()
 }
 
 function finalizeDeployment(deploymentId, addresses) {
-	//create a dir for frontend files and copy them
+	deploymentStepChanged(qsTr("Packaging application ..."));
 	var deploymentDir = projectPath + deploymentId + "/";
 	fileIo.makeDir(deploymentDir);
 	for (var i = 0; i < projectListModel.count; i++) {
@@ -378,10 +378,14 @@ function finalizeDeployment(deploymentId, addresses) {
 	deploymentAddresses = addresses;
 	saveProject();
 
-	var hash  = fileIo.compress(deploymentDir);
+	var packageRet = fileIo.compress(deploymentDir);
+	deploymentDialog.packageHash = packageRet[0];
+	deploymentDialog.packageBase64 = packageRet[1];
+
 	var applicationUrlEth = deploymentDialog.applicationUrlEth;
 	applicationUrlEth = formatAppUrl(applicationUrlEth);
-	checkRegistration(applicationUrlEth, deploymentDialog.root, hash, function () {
+	deploymentStepChanged(qsTr("Registering application on Ethereum ..."));
+	checkRegistration(applicationUrlEth, deploymentDialog.root, function () {
 		deploymentComplete();
 	});
 }
@@ -404,7 +408,6 @@ function rpcCall(requests, callBack)
 				deploymentError(errorText);
 				return;
 			}
-			console.log(httpRequest.responseText);
 			callBack(httpRequest.status, httpRequest.responseText)
 		}
 	}
@@ -412,19 +415,16 @@ function rpcCall(requests, callBack)
 }
 
 
-function checkRegistration(dappUrl, addr, hash, callBack)
+function checkRegistration(dappUrl, addr, callBack)
 {
-	console.log("CALL TO " + addr);
 	var requests = [];
 	var data  = "";
-	console.log(JSON.stringify(dappUrl));
 	if (dappUrl.length > 0)
 	{
 		//checking path (register).
 		var str = createString(dappUrl[0]);
 		data  = "0x6be16bed" + str.encodeValueAsString();
-		console.log("checking if path exists (register) => " + data);
-		console.log("adrr : " + '0x' + addr + " param " + data);
+		console.log("checking if path exists (register) => " + JSON.stringify(dappUrl));
 		requests.push({
 			jsonrpc: "2.0",
 			method: "eth_call",
@@ -443,7 +443,7 @@ function checkRegistration(dappUrl, addr, hash, callBack)
 			}
 
 			dappUrl.splice(0, 1);
-			checkRegistration(dappUrl, address, hash, callBack);
+			checkRegistration(dappUrl, address, callBack);
 		});
 	}
 	else
@@ -470,7 +470,6 @@ function checkRegistration(dappUrl, addr, hash, callBack)
 			var res = JSON.parse(response);
 			var currentOwner = res[0].result;
 			var noOwner = currentOwner.replace('0x', '').replace(/0/g, '') === '';
-			var bOwner = false;
 
 			if (noOwner)
 			{
@@ -484,6 +483,7 @@ function checkRegistration(dappUrl, addr, hash, callBack)
 			}
 			else
 			{
+				var bOwner = false;
 				currentOwner = normalizeAddress(currentOwner);
 				for (var u in res[1].result)
 				{
@@ -499,33 +499,37 @@ function checkRegistration(dappUrl, addr, hash, callBack)
 					return;
 				}
 			}
-
-
+			console.log("setContentHash");
 			requests.push({
 						  //setContent()
 						  jsonrpc: "2.0",
 						  method: "eth_transact",
-						  params: [ { "to": '0x' + addr, "data": "0x5d574e32" + paramTitle.encodeValueAsString() + hash } ],
+						  params: [ { "to": '0x' + addr, "data": "0x5d574e32" + paramTitle.encodeValueAsString() + deploymentDialog.packageHash } ],
 						  id: jsonRpcRequestId++
 					  });
-			console.log("reserve and register");
 			rpcCall(requests, function (httpRequest, response) {
-				requests = [];
-				var paramUrlHttp = createString(deploymentDialog.applicationUrlHttp);
-				requests.push({
-							  //urlHint => suggestUrl
-							  jsonrpc: "2.0",
-							  method: "eth_transact",
-							  params: [ { "to": '0x' + deploymentDialog.urlHintContract, "data": "0x4983e19c" + hash + paramUrlHttp.encodeValueAsString() } ],
-							  id: jsonRpcRequestId++
-						  });
-
-				rpcCall(requests, function (httpRequest, response) {
-					callBack();
-				});
+				callBack();
 			});
 		});
 	}
+}
+
+function registerToUrlHint()
+{
+	deploymentStepChanged(qsTr("Registering application Ressources (" + deploymentDialog.applicationUrlHttp) + ") ...");
+	var requests = [];
+	var paramUrlHttp = createString(deploymentDialog.applicationUrlHttp);
+	requests.push({
+				  //urlHint => suggestUrl
+				  jsonrpc: "2.0",
+				  method: "eth_transact",
+				  params: [ { "to": '0x' + deploymentDialog.urlHintContract, "data": "0x4983e19c" + deploymentDialog.packageHash + paramUrlHttp.encodeValueAsString() } ],
+				  id: jsonRpcRequestId++
+			  });
+
+	rpcCall(requests, function (httpRequest, response) {
+		deploymentComplete();
+	});
 }
 
 function normalizeAddress(addr)
