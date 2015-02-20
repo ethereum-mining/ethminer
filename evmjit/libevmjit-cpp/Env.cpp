@@ -1,4 +1,5 @@
 
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <libdevcrypto/SHA3.h>
 #include <libevm/FeeStructure.h>
 #include <libevm/ExtVMFace.h>
@@ -46,23 +47,22 @@ extern "C"
 		*o_hash = _env->blockhash(llvm2eth(*_number));
 	}
 
-	EXPORT void env_create(ExtVMFace* _env, i256* io_gas, i256* _endowment, byte* _initBeg, uint64_t _initSize, h256* o_address)
+	EXPORT void env_create(ExtVMFace* _env, int64_t* io_gas, i256* _endowment, byte* _initBeg, uint64_t _initSize, h256* o_address)
 	{
 		auto endowment = llvm2eth(*_endowment);
 		if (_env->balance(_env->myAddress) >= endowment && _env->depth < 1024)
 		{
 			_env->subBalance(endowment);
-			auto gas = llvm2eth(*io_gas);
-			OnOpFunc onOp {}; // TODO: Handle that thing
-			h256 address(_env->create(endowment, gas, {_initBeg, _initSize}, onOp), h256::AlignRight);
-			*io_gas = eth2llvm(gas);
+			u256 gas = *io_gas;
+			h256 address(_env->create(endowment, gas, {_initBeg, _initSize}, {}), h256::AlignRight);
+			*io_gas = static_cast<int64_t>(gas);
 			*o_address = address;
 		}
 		else
 			*o_address = {};
 	}
 
-	EXPORT bool env_call(ExtVMFace* _env, i256* io_gas, h256* _receiveAddress, i256* _value, byte* _inBeg, uint64_t _inSize, byte* _outBeg, uint64_t _outSize, h256* _codeAddress)
+	EXPORT bool env_call(ExtVMFace* _env, int64_t* io_gas, h256* _receiveAddress, i256* _value, byte* _inBeg, uint64_t _inSize, byte* _outBeg, uint64_t _outSize, h256* _codeAddress)
 	{
 		auto value = llvm2eth(*_value);
 		if (_env->balance(_env->myAddress) >= value && _env->depth < 1024)
@@ -71,11 +71,10 @@ extern "C"
 			auto receiveAddress = right160(*_receiveAddress);
 			auto inRef = bytesConstRef{_inBeg, _inSize};
 			auto outRef = bytesConstRef{_outBeg, _outSize};
-			OnOpFunc onOp {}; // TODO: Handle that thing
 			auto codeAddress = right160(*_codeAddress);
-			auto gas = llvm2eth(*io_gas);
-			auto ret = _env->call(receiveAddress, value, inRef, gas, outRef, onOp, {}, codeAddress);
-			*io_gas = eth2llvm(gas);
+			u256 gas = *io_gas;
+			auto ret = _env->call(receiveAddress, value, inRef, gas, outRef, {}, {}, codeAddress);
+			*io_gas = static_cast<int64_t>(gas);
 			return ret;
 		}
 
