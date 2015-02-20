@@ -701,35 +701,31 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 {
 	std::string ret;
 	TransactionSkeleton t = toTransaction(_json);
+	if (t.creation)
+		ret = right160(sha3(rlpList(t.from, client()->countAt(t.from))));;
 	if (!t.from)
 		t.from = m_accounts->getDefaultTransactAccount();
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
-	if (!m_accounts->isRealAccount(t.from))
-	{
-		if (m_accounts->isProxyAccount(t.from))
-			if (authenticate(t, true))
-				m_accounts->queueTransaction(t);
-		return ret;
-	}
-	if (authenticate(t, false))
-	{
-		if (t.to)
-			// TODO: from qethereum, insert validification hook here.
-			client()->transact(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice);
-		else
-			ret = toJS(client()->transact(m_accounts->secretKey(t.from), t.value, t.data, t.gas, t.gasPrice));
-		client()->flushTransactions();
-	}
+
+	if (m_accounts->isRealAccount(t.from))
+		authenticate(t, false);
+	else if (m_accounts->isProxyAccount(t.from))
+		authenticate(t, true);
+
 	return ret;
 }
 
-bool WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t, bool)
+void WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t, bool _toProxy)
 {
-	cwarn << "Silently signing transaction from address" << _t.from.abridged() << ": User validation hook goes here.";
-	return true;
+	if (_toProxy)
+		m_accounts->queueTransaction(_t);
+	else if (_t.to)
+		client()->transact(m_accounts->secretKey(_t.from), _t.value, _t.to, _t.data, _t.gas, _t.gasPrice);
+	else
+		client()->transact(m_accounts->secretKey(_t.from), _t.value, _t.data, _t.gas, _t.gasPrice);
 }
 
 Json::Value WebThreeStubServerBase::eth_transactionByHash(std::string const& _hash, int _i)
