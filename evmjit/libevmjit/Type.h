@@ -1,8 +1,10 @@
-
 #pragma once
 
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Constants.h>
+#include "preprocessor/llvm_includes_end.h"
+
 #include "Common.h"
 
 namespace dev
@@ -23,6 +25,8 @@ struct Type
 
 	static llvm::IntegerType* Bool;
 	static llvm::IntegerType* Size;
+	static llvm::IntegerType* Gas;
+	static llvm::PointerType* GasPtr;
 
 	static llvm::IntegerType* Byte;
 	static llvm::PointerType* BytePtr;
@@ -41,6 +45,8 @@ struct Type
 
 struct Constant
 {
+	static llvm::ConstantInt* gasMax;
+
 	/// Returns word-size constant
 	static llvm::ConstantInt* get(int64_t _n);
 	static llvm::ConstantInt* get(llvm::APInt const& _n);
