@@ -23,8 +23,6 @@ Qt.include("QEtherHelper.js")
 
 var htmlTemplate = "<html>\n<head>\n<script>\n</script>\n</head>\n<body>\n<script>\n</script>\n</body>\n</html>";
 var contractTemplate = "contract Contract {\n}\n";
-var registrarContract = "6fcdee8688e44aebdcddf28a8d87318d38f695ff" /*"0000000000000000000000000000000000000a28"*/
-var hintContract = "c4040ef9635e7503bbbc74b73a9385ac78733d09"
 
 function saveAll() {
 	saveProject();
@@ -337,9 +335,6 @@ function finalizeDeployment(deploymentId, addresses) {
 	//create a dir for frontend files and copy them
 	var deploymentDir = projectPath + deploymentId + "/";
 	fileIo.makeDir(deploymentDir);
-	var manifest = {
-		entries: []
-	};
 	for (var i = 0; i < projectListModel.count; i++) {
 		var doc = projectListModel.get(i);
 		if (doc.isContract)
@@ -362,12 +357,6 @@ function finalizeDeployment(deploymentId, addresses) {
 		}
 		else
 			fileIo.copyFile(doc.path, deploymentDir + doc.fileName);
-
-		var jsonFile = {
-			path: '/' + doc.fileName,
-			file: '/' + doc.fileName
-		}
-		manifest.entries.push(jsonFile);
 	}
 	//write deployment js
 	var deploymentJs =
@@ -389,57 +378,16 @@ function finalizeDeployment(deploymentId, addresses) {
 	deploymentAddresses = addresses;
 	saveProject();
 
-	var hash  = fileIo.compress(JSON.stringify(manifest), deploymentDir);
+	var hash  = fileIo.compress(deploymentDir);
 	var applicationUrlEth = deploymentDialog.applicationUrlEth;
-	var applicationUrlHttp = deploymentDialog.applicationUrlHttp;
 	applicationUrlEth = formatAppUrl(applicationUrlEth);
-	checkRegistration(applicationUrlEth, registrarContract, hash, function () {
+	checkRegistration(applicationUrlEth, deploymentDialog.root, hash, function () {
 		deploymentComplete();
 	});
 }
 
-function checkRegistration(dappUrl, addr, hash, callBack)
+function rpcCall(requests, callBack)
 {
-	var requests = [];
-	var data  = "";
-	if (dappUrl.length > 0)
-	{
-		//checking path (addr).
-		var str = createString(dappUrl[0]);
-		data  = "6be16bed" + str.encodeValueAsString();
-		console.log("checking if path exists (register) => " + data);
-		requests.push({
-			jsonrpc: "2.0",
-			method: "eth_call",
-			params: [ { "to": addr, "data": data } ],
-			id: jsonRpcRequestId++
-		});
-	}
-	else
-	{
-		//finalize (setContentHash).
-		finalize = true;
-		var paramTitle = createString(projectModel.projectTitle);
-		var paramHash = createHash(hash);
-		data  = "5d574e32" + paramTitle.encodeValueAsString() + paramHash.encodeValueAsString();
-		console.log("finalize (setRegister) => " + data);
-		requests.push({
-			jsonrpc: "2.0",
-			method: "eth_transact",
-			params: [ { "to": addr, "data": data } ],
-			id: jsonRpcRequestId++
-		});
-
-		var paramWebUrl = createString(deploymentDialog.applicationUrlHttp);
-		var dataHint  = "4983e19c" + paramHash.encodeValueAsString() + paramWebUrl.encodeValueAsString();
-		requests.push({
-						  jsonrpc: "2.0",
-						  method: "eth_transact",
-						  params: [ { "to": hintContract, "data": dataHint } ],
-						  id: jsonRpcRequestId++
-					  });
-	}
-
 	var jsonRpcUrl = "http://localhost:8080";
 	var rpcRequest = JSON.stringify(requests);
 	var httpRequest = new XMLHttpRequest();
@@ -449,29 +397,149 @@ function checkRegistration(dappUrl, addr, hash, callBack)
 	httpRequest.setRequestHeader("Connection", "close");
 	httpRequest.onreadystatechange = function() {
 		if (httpRequest.readyState === XMLHttpRequest.DONE) {
-			if (httpRequest.status === 200) {
-				console.log(httpRequest.responseText);
-				if (dappUrl.length > 0)
-				{
-					var address = JSON.parse(httpRequest.responseText)[0].result.replace('0x', '');
-					if (address ===  "")
-						deploymentError(qsTr("This Eth Dapp path has not been registered"));
-					else
-					{
-						dappUrl.splice(0, 1);
-						checkRegistration(dappUrl, address, hash, callBack);
-					}
-				}
-				else
-					callBack();
-			} else {
+			if (httpRequest.status !== 200)
+			{
 				var errorText = qsTr("Deployment error: Error while registering Dapp ") + httpRequest.status;
 				console.log(errorText);
 				deploymentError(errorText);
+				return;
 			}
+			console.log(httpRequest.responseText);
+			callBack(httpRequest.status, httpRequest.responseText)
 		}
 	}
 	httpRequest.send(rpcRequest);
+}
+
+
+function checkRegistration(dappUrl, addr, hash, callBack)
+{
+	console.log("CALL TO " + addr);
+	var requests = [];
+	var data  = "";
+	console.log(JSON.stringify(dappUrl));
+	if (dappUrl.length > 0)
+	{
+		//checking path (register).
+		var str = createString(dappUrl[0]);
+		data  = "0x6be16bed" + str.encodeValueAsString();
+		console.log("checking if path exists (register) => " + data);
+		console.log("adrr : " + '0x' + addr + " param " + data);
+		requests.push({
+			jsonrpc: "2.0",
+			method: "eth_call",
+			params: [ { "to": '0x' + addr, "data": data } ],
+			id: jsonRpcRequestId++
+		});
+
+		rpcCall(requests, function (httpRequest, response) {
+			var address = JSON.parse(response)[0].result.replace('0x', '');
+			if (address === "")
+			{
+				var errorTxt = qsTr("Path does not exists " + JSON.stringify(dappUrl) + " cannot continue");
+				deploymentError(errorTxt);
+				console.log(errorTxt);
+				return;
+			}
+
+			dappUrl.splice(0, 1);
+			checkRegistration(dappUrl, address, hash, callBack);
+		});
+	}
+	else
+	{
+		var paramTitle = createString(projectModel.projectTitle);
+		requests.push({
+						  //owner()
+						  jsonrpc: "2.0",
+						  method: "eth_call",
+						  params: [ { "to": '0x' + addr, "data": "0xec7b9200" + paramTitle.encodeValueAsString() } ],
+						  id: jsonRpcRequestId++
+					  });
+
+		requests.push({
+						  //accounts
+						  jsonrpc: "2.0",
+						  method: "eth_accounts",
+						  params: null,
+						  id: jsonRpcRequestId++
+					  });
+
+		rpcCall(requests, function (httpRequest, response) {
+			requests = [];
+			var res = JSON.parse(response);
+			var currentOwner = res[0].result;
+			var noOwner = currentOwner.replace('0x', '').replace(/0/g, '') === '';
+			var bOwner = false;
+
+			if (noOwner)
+			{
+				requests.push({
+							  //reserve()
+							  jsonrpc: "2.0",
+							  method: "eth_transact",
+							  params: [ { "to": '0x' + addr, "data": "0x1c83171b" + paramTitle.encodeValueAsString() } ],
+							  id: jsonRpcRequestId++
+						  });
+			}
+			else
+			{
+				currentOwner = normalizeAddress(currentOwner);
+				for (var u in res[1].result)
+				{
+					if (normalizeAddress(res[1].result[u]) === currentOwner)
+						bOwner = true;
+				}
+
+				if (!bOwner)
+				{
+					var errorTxt = qsTr("Current user is not the owner of this path. Cannot continue")
+					deploymentError(errorTxt);
+					console.log(errorTxt);
+					return;
+				}
+			}
+
+
+			requests.push({
+						  //setContent()
+						  jsonrpc: "2.0",
+						  method: "eth_transact",
+						  params: [ { "to": '0x' + addr, "data": "0x5d574e32" + paramTitle.encodeValueAsString() + hash } ],
+						  id: jsonRpcRequestId++
+					  });
+			console.log("reserve and register");
+			rpcCall(requests, function (httpRequest, response) {
+				requests = [];
+				var paramUrlHttp = createString(deploymentDialog.applicationUrlHttp);
+				requests.push({
+							  //urlHint => suggestUrl
+							  jsonrpc: "2.0",
+							  method: "eth_transact",
+							  params: [ { "to": '0x' + deploymentDialog.urlHintContract, "data": "0x4983e19c" + hash + paramUrlHttp.encodeValueAsString() } ],
+							  id: jsonRpcRequestId++
+						  });
+
+				rpcCall(requests, function (httpRequest, response) {
+					callBack();
+				});
+			});
+		});
+	}
+}
+
+function normalizeAddress(addr)
+{
+	addr = addr.replace('0x', '');
+	var i = 0;
+	for (var k in addr)
+	{
+		if (addr[k] !== "0")
+			break;
+		else
+			i++;
+	}
+	return addr.substring(i);
 }
 
 function formatAppUrl(url)
@@ -499,3 +567,4 @@ function formatAppUrl(url)
 		return ret;
 	}
 }
+
