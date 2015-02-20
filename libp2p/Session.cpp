@@ -36,37 +36,19 @@ using namespace dev::p2p;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-Session::Session(Host* _s, bi::tcp::socket _socket, bi::tcp::endpoint const& _manual):
+Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Peer> const& _n):
 	m_server(_s),
 	m_socket(std::move(_socket)),
-	m_node(nullptr),
-	m_manualEndpoint(_manual)	// NOTE: the port on this shouldn't be used if it's zero.
+	m_peer(_n),
+	m_info({NodeId(), "?", m_socket.remote_endpoint().address().to_string(), 0, chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()}),
+	m_ping(chrono::steady_clock::time_point::max())
 {
-	m_lastReceived = m_connect = std::chrono::steady_clock::now();
-
-	m_info = PeerInfo({NodeId(), "?", m_manualEndpoint.address().to_string(), 0, std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
-}
-
-Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Node> const& _n, bool _force):
-	m_server(_s),
-	m_socket(std::move(_socket)),
-	m_node(_n),
-	m_manualEndpoint(_n->address),
-	m_force(_force)
-{
-	m_lastReceived = m_connect = std::chrono::steady_clock::now();
-	m_info = PeerInfo({m_node->id, "?", _n->address.address().to_string(), _n->address.port(), std::chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()});
+	m_lastReceived = m_connect = chrono::steady_clock::now();
 }
 
 Session::~Session()
 {
-	if (m_node)
-	{
-		if (id() && !isPermanentProblem(m_node->lastDisconnect) && !m_node->dead)
-			m_server->m_ready += m_node->index;
-		else
-			m_node->lastConnected = m_node->lastAttempted - chrono::seconds(1);
-	}
+	m_peer->m_lastConnected = m_peer->m_lastAttempted - chrono::seconds(1);
 
 	// Read-chain finished for one reason or another.
 	for (auto& i: m_capabilities)
@@ -86,36 +68,21 @@ Session::~Session()
 
 NodeId Session::id() const
 {
-	return m_node ? m_node->id : NodeId();
+	return m_peer ? m_peer->id : NodeId();
 }
 
 void Session::addRating(unsigned _r)
 {
-	if (m_node)
+	if (m_peer)
 	{
-		m_node->rating += _r;
-		m_node->score += _r;
+		m_peer->m_rating += _r;
+		m_peer->m_score += _r;
 	}
 }
 
 int Session::rating() const
 {
-	return m_node->rating;
-}
-
-bi::tcp::endpoint Session::endpoint() const
-{
-	if (m_socket.is_open() && m_node)
-		try
-		{
-			return bi::tcp::endpoint(m_socket.remote_endpoint().address(), m_node->address.port());
-		}
-		catch (...) {}
-
-	if (m_node)
-		return m_node->address;
-
-	return m_manualEndpoint;
+	return m_peer->m_rating;
 }
 
 template <class T> vector<T> randomSelection(vector<T> const& _t, unsigned _n)
@@ -132,9 +99,10 @@ template <class T> vector<T> randomSelection(vector<T> const& _t, unsigned _n)
 	return ret;
 }
 
+// TODO: P2P integration: replace w/asio post -> serviceNodesRequest()
 void Session::ensureNodesRequested()
 {
-	if (isOpen() && !m_weRequestedNodes)
+	if (isConnected() && !m_weRequestedNodes)
 	{
 		m_weRequestedNodes = true;
 		RLPStream s;
@@ -147,7 +115,9 @@ void Session::serviceNodesRequest()
 	if (!m_theyRequestedNodes)
 		return;
 
-	auto peers = m_server->potentialPeers(m_knownNodes);
+// TODO: P2P reimplement, as per TCP "close nodes" gossip specifications (WiP)
+//	auto peers = m_server->potentialPeers(m_knownNodes);
+	Peers peers;
 	if (peers.empty())
 	{
 		addNote("peers", "requested");
@@ -160,13 +130,11 @@ void Session::serviceNodesRequest()
 	auto rs = randomSelection(peers, 10);
 	for (auto const& i: rs)
 	{
-		clogS(NetTriviaDetail) << "Sending peer " << i.id.abridged() << i.address;
-		if (i.address.address().is_v4())
-			s.appendList(3) << bytesConstRef(i.address.address().to_v4().to_bytes().data(), 4) << i.address.port() << i.id;
+		clogS(NetTriviaDetail) << "Sending peer " << i.id.abridged() << i.peerEndpoint();
+		if (i.peerEndpoint().address().is_v4())
+			s.appendList(3) << bytesConstRef(i.peerEndpoint().address().to_v4().to_bytes().data(), 4) << i.peerEndpoint().port() << i.id;
 		else// if (i.second.address().is_v6()) - assumed
-			s.appendList(3) << bytesConstRef(i.address.address().to_v6().to_bytes().data(), 16) << i.address.port() << i.id;
-		m_knownNodes.extendAll(i.index);
-		m_knownNodes.unionWith(i.index);
+			s.appendList(3) << bytesConstRef(i.peerEndpoint().address().to_v6().to_bytes().data(), 16) << i.peerEndpoint().port() << i.id;
 	}
 	sealAndSend(s);
 	m_theyRequestedNodes = false;
@@ -185,6 +153,11 @@ bool Session::interpret(RLP const& _r)
 	{
 	case HelloPacket:
 	{
+		// TODO: P2P first pass, implement signatures. if signature fails, drop connection. if egress, flag node's endpoint as stale.
+		// Move auth to Host so we consolidate authentication logic and eschew peer deduplication logic.
+		// Move all node-lifecycle information into Host.
+		// Finalize peer-lifecycle properties vs node lifecycle.
+		
 		m_protocolVersion = _r[1].toInt<unsigned>();
 		auto clientVersion = _r[2].toString();
 		auto caps = _r[3].toVector<CapDesc>();
@@ -195,64 +168,65 @@ bool Session::interpret(RLP const& _r)
 		// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
 		stringstream capslog;
 		for (auto cap: caps)
-			capslog << "(" << hex << cap.first << "," << hex << cap.second << ")";
+			capslog << "(" << cap.first << "," << dec << cap.second << ")";
 
 		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << id.abridged() << showbase << capslog.str() << dec << listenPort;
 
 		if (m_server->id() == id)
 		{
 			// Already connected.
-			clogS(NetWarn) << "Connected to ourself under a false pretext. We were told this peer was id" << m_info.id.abridged();
+			clogS(NetWarn) << "Connected to ourself under a false pretext. We were told this peer was id" << id.abridged();
 			disconnect(LocalIdentity);
 			return true;
 		}
 
-		if (m_node && m_node->id != id)
-		{
-			if (m_force || m_node->idOrigin <= Origin::SelfThird)
-				// SECURITY: We're forcing through the new ID, despite having been told
-				clogS(NetWarn) << "Connected to node, but their ID has changed since last time. This could indicate a MitM attack. Allowing anyway...";
-			else
-			{
-				clogS(NetWarn) << "Connected to node, but their ID has changed since last time. This could indicate a MitM attack. Disconnecting.";
-				disconnect(UnexpectedIdentity);
-				return true;
-			}
-
-			if (m_server->havePeer(id))
-			{
-				m_node->dead = true;
-				disconnect(DuplicatePeer);
-				return true;
-			}
-		}
-
-		if (m_server->havePeer(id))
-		{
-			// Already connected.
-			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
-			disconnect(DuplicatePeer);
-			return true;
-		}
-
+		// if peer and connection have id, check for UnexpectedIdentity
 		if (!id)
 		{
 			disconnect(NullIdentity);
 			return true;
 		}
+		else if (!m_peer->id)
+		{
+			m_peer->id = id;
+			m_peer->endpoint.tcp.port(listenPort);
+		}
+		else if (m_peer->id != id)
+		{
+			// TODO p2p: FIXME. Host should catch this and reattempt adding node to table.
+			m_peer->id = id;
+			m_peer->m_score = 0;
+			m_peer->m_rating = 0;
+//			disconnect(UnexpectedIdentity);
+//			return true;
+		}
 
-		m_node = m_server->noteNode(id, bi::tcp::endpoint(m_socket.remote_endpoint().address(), listenPort), Origin::Self, false, !m_node || m_node->id == id ? NodeId() : m_node->id);
-		if (m_node->isOffline())
-			m_node->lastConnected = chrono::system_clock::now();
-		m_knownNodes.extendAll(m_node->index);
-		m_knownNodes.unionWith(m_node->index);
+		if (m_server->havePeerSession(id))
+		{
+			// Already connected.
+			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
+			// Possible that two nodes continually connect to each other with exact same timing.
+			this_thread::sleep_for(chrono::milliseconds(rand() % 100));
+			disconnect(DuplicatePeer);
+			return true;
+		}
+		
+		if (m_peer->isOffline())
+			m_peer->m_lastConnected = chrono::system_clock::now();
 
 		if (m_protocolVersion != m_server->protocolVersion())
 		{
 			disconnect(IncompatibleProtocol);
 			return true;
 		}
-		m_info = PeerInfo({id, clientVersion, m_socket.remote_endpoint().address().to_string(), listenPort, std::chrono::steady_clock::duration(), _r[3].toSet<CapDesc>(), (unsigned)m_socket.native_handle(), map<string, string>() });
+		
+		m_info.clientVersion = clientVersion;
+		m_info.host = m_socket.remote_endpoint().address().to_string();
+		m_info.port = listenPort;
+		m_info.lastPing = std::chrono::steady_clock::duration();
+		m_info.caps = _r[3].toSet<CapDesc>();
+		m_info.socket = (unsigned)m_socket.native_handle();
+		m_info.notes = map<string, string>();
 
 		m_server->registerPeer(shared_from_this(), caps);
 		break;
@@ -273,24 +247,32 @@ bool Session::interpret(RLP const& _r)
 	}
 	case PingPacket:
 	{
-        clogS(NetTriviaSummary) << "Ping";
+		clogS(NetTriviaSummary) << "Ping";
 		RLPStream s;
 		sealAndSend(prep(s, PongPacket));
 		break;
 	}
 	case PongPacket:
 		m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
-        clogS(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
+		clogS(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
 		break;
 	case GetPeersPacket:
 	{
-        clogS(NetTriviaSummary) << "GetPeers";
+		// Disabled for interop testing.
+		// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
+		break;
+		
+		clogS(NetTriviaSummary) << "GetPeers";
 		m_theyRequestedNodes = true;
 		serviceNodesRequest();
 		break;
 	}
 	case PeersPacket:
-        clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
+		// Disabled for interop testing.
+		// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
+		break;
+			
+		clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
 		m_weRequestedNodes = false;
 		for (unsigned i = 1; i < _r.itemCount(); ++i)
 		{
@@ -307,70 +289,50 @@ bool Session::interpret(RLP const& _r)
 			}
 			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 			NodeId id = _r[i][2].toHash<NodeId>();
-			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << this->id().abridged() << isPrivateAddress(endpoint().address()) << m_server->m_nodes.count(id) << (m_server->m_nodes.count(id) ? isPrivateAddress(m_server->m_nodes.at(id)->address.address()) : -1);
+			
+			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
+//			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << this->id().abridged() << isPrivateAddress(endpoint().address()) << m_server->m_peers.count(id) << (m_server->m_peers.count(id) ? isPrivateAddress(m_server->m_peers.at(id)->address.address()) : -1);
 
-			if (isPrivateAddress(peerAddress) && !m_server->m_netPrefs.localNetworking)
+			// todo: draft spec: ignore if dist(us,item) - dist(us,them) > 1
+			
+			// TODO: isPrivate
+			if (!m_server->m_netPrefs.localNetworking && isPrivateAddress(peerAddress))
 				goto CONTINUE;	// Private address. Ignore.
 
 			if (!id)
-				goto CONTINUE;	// Null identity. Ignore.
+				goto LAMEPEER;	// Null identity. Ignore.
 
 			if (m_server->id() == id)
-				goto CONTINUE;	// Just our info - we already have that.
+				goto LAMEPEER;	// Just our info - we already have that.
 
 			if (id == this->id())
-				goto CONTINUE;	// Just their info - we already have that.
-
-			// check that it's not us or one we already know:
-			if (m_server->m_nodes.count(id))
-			{
-				/*	MEH. Far from an ideal solution. Leave alone for now.
-				// Already got this node.
-				// See if it's any better that ours or not...
-				// This could be the public address of a known node.
-				// SECURITY: remove this in beta - it's only for lazy connections and presents an easy attack vector.
-				if (m_server->m_nodes.count(id) && isPrivateAddress(m_server->m_nodes.at(id)->address.address()) && ep.port() != 0)
-					// Update address if the node if we now have a public IP for it.
-					m_server->m_nodes[id]->address = ep;
-				*/
-				goto CONTINUE;
-			}
+				goto LAMEPEER;	// Just their info - we already have that.
 
 			if (!ep.port())
-				goto CONTINUE;	// Zero port? Don't think so.
+				goto LAMEPEER;	// Zero port? Don't think so.
 
 			if (ep.port() >= /*49152*/32768)
-				goto CONTINUE;	// Private port according to IANA.
-
-			// TODO: PoC-7:
-			// Technically fine, but ignore for now to avoid peers passing on incoming ports until we can be sure that doesn't happen any more.
-//			if (ep.port() < 30300 || ep.port() > 30305)
-//				goto CONTINUE;	// Wierd port.
-
-			// Avoid our random other addresses that they might end up giving us.
-			for (auto i: m_server->m_peerAddresses)
-				if (ep.address() == i && ep.port() == m_server->listenPort())
-					goto CONTINUE;
-
-			// Check that we don't already know about this addr:port combination. If we are, assume the original is best.
-			// SECURITY: Not a valid assumption in general. Should compare ID origins and pick the best or note uncertainty and weight each equally.
-			for (auto const& i: m_server->m_nodes)
-				if (i.second->address == ep)
-					goto CONTINUE;		// Same address but a different node.
+				goto LAMEPEER;	// Private port according to IANA.
 
 			// OK passed all our checks. Assume it's good.
 			addRating(1000);
-			m_server->noteNode(id, ep, m_node->idOrigin == Origin::Perfect ? Origin::PerfectThird : Origin::SelfThird, true);
+			m_server->addNode(id, ep.address().to_string(), ep.port(), ep.port());
 			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
+			LAMEPEER:;
 		}
 		break;
 	default:
 	{
 		auto id = _r[0].toInt<unsigned>();
 		for (auto const& i: m_capabilities)
-			if (i.second->m_enabled && id >= i.second->m_idOffset && id - i.second->m_idOffset < i.second->hostCapability()->messageCount() && i.second->interpret(id - i.second->m_idOffset, _r))
-				return true;
+			if (id >= i.second->m_idOffset && id - i.second->m_idOffset < i.second->hostCapability()->messageCount())
+			{
+				if (i.second->m_enabled)
+					return i.second->interpret(id - i.second->m_idOffset, _r);
+				else
+					return true;
+			}
 		return false;
 	}
 	}
@@ -436,7 +398,6 @@ void Session::send(bytes&& _msg)
 	if (!checkPacket(bytesConstRef(&_msg)))
 		clogS(NetWarn) << "INVALID PACKET CONSTRUCTED!";
 
-//	cerr << (void*)this << " writeImpl" << endl;
 	if (!m_socket.is_open())
 		return;
 
@@ -489,15 +450,15 @@ void Session::drop(DisconnectReason _reason)
 		}
 		catch (...) {}
 
-	if (m_node)
+	if (m_peer)
 	{
-		if (_reason != m_node->lastDisconnect || _reason == NoDisconnect || _reason == ClientQuit || _reason == DisconnectRequested)
-			m_node->failedAttempts = 0;
-		m_node->lastDisconnect = _reason;
+		if (_reason != m_peer->m_lastDisconnect || _reason == NoDisconnect || _reason == ClientQuit || _reason == DisconnectRequested)
+			m_peer->m_failedAttempts = 0;
+		m_peer->m_lastDisconnect = _reason;
 		if (_reason == BadProtocol)
 		{
-			m_node->rating /= 2;
-			m_node->score /= 2;
+			m_peer->m_rating /= 2;
+			m_peer->m_score /= 2;
 		}
 	}
 	m_dropped = true;
@@ -522,7 +483,7 @@ void Session::start()
 					<< m_server->protocolVersion()
 					<< m_server->m_clientVersion
 					<< m_server->caps()
-					<< m_server->m_public.port()
+					<< m_server->m_tcpPublic.port()
 					<< m_server->id();
 	sealAndSend(s);
 	ping();

@@ -53,7 +53,7 @@ struct StateTrace: public LogChannel { static const char* name() { return "=S=";
 struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
 struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
 
-enum class BaseState { Empty, Genesis };
+enum class BaseState { Empty, CanonGenesis };
 
 /**
  * @brief Model of the current state of the ledger.
@@ -68,7 +68,7 @@ class State
 
 public:
 	/// Construct state object.
-	State(Address _coinbaseAddress = Address(), OverlayDB const& _db = OverlayDB(), BaseState _bs = BaseState::Genesis);
+	State(Address _coinbaseAddress = Address(), OverlayDB const& _db = OverlayDB(), BaseState _bs = BaseState::CanonGenesis);
 
 	/// Construct state object from arbitrary point in blockchain.
 	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash);
@@ -113,6 +113,10 @@ public:
 	/// This may be called multiple times and without issue.
 	void commitToMine(BlockChain const& _bc);
 
+	/// Pass in a solution to the proof-of-work.
+	/// @returns true iff the given nonce is a proof-of-work for this State's block.
+	bool completeMine(h256 const& _nonce);
+
 	/// Attempt to find valid nonce for block that this state represents.
 	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
 	/// @param _msTimeout Timeout before return in milliseconds.
@@ -122,11 +126,14 @@ public:
 	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
 	 * Typically looks like:
 	 * @code
+	 * while (notYetMined)
+	 * {
 	 * // lock
-	 * commitToMine(blockchain);
+	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
 	 * // unlock
 	 * MineInfo info;
-	 * for (info.complete = false; !info.complete; info = mine()) {}
+	 * for (info.completed = false; !info.completed; info = mine()) {}
+	 * }
 	 * // lock
 	 * completeMine();
 	 * // unlock
@@ -140,17 +147,21 @@ public:
 
 	// TODO: Cleaner interface.
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
-	/// @returns a list of bloom filters one for each transaction placed from the queue into the state.
+	/// @returns a list of receipts one for each transaction placed from the queue into the state.
 	/// @a o_transactionQueueChanged boolean pointer, the value of which will be set to true if the transaction queue
 	/// changed and the pointer is non-null
-	h512s sync(TransactionQueue& _tq, bool* o_transactionQueueChanged = nullptr);
+	TransactionReceipts sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged = nullptr);
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
+	LastHashes getLastHashes(BlockChain const& _bc, unsigned _n) const;
+
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	u256 execute(bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true) { return execute(&_rlp, o_output, _commit); }
-	u256 execute(bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
+	u256 execute(BlockChain const& _bc, bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true);
+	u256 execute(BlockChain const& _bc, bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
+	u256 execute(LastHashes const& _lh, bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true) { return execute(_lh, &_rlp, o_output, _commit); }
+	u256 execute(LastHashes const& _lh, bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
 
 	/// Get the remaining gas limit in this block.
 	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
@@ -196,6 +207,10 @@ public:
 	/// Get the code of an account.
 	/// @returns bytes() if no account exists at that address.
 	bytes const& code(Address _contract) const;
+
+	/// Get the code hash of an account.
+	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
+	h256 codeHash(Address _contract) const;
 
 	/// Note that the given address is sending a transaction and thus increment the associated ticker.
 	void noteSending(Address _id);
@@ -268,9 +283,9 @@ private:
 	/// Retrieve all information about a given address into a cache.
 	void ensureCached(std::map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
 
-	/// Execute the given block, assuming it corresponds to m_currentBlock. If _bc is passed, it will be used to check the uncles.
+	/// Execute the given block, assuming it corresponds to m_currentBlock.
 	/// Throws on failure.
-	u256 enact(bytesConstRef _block, BlockChain const* _bc = nullptr, bool _checkNonce = true);
+	u256 enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce = true);
 
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(Addresses const& _uncleAddresses);

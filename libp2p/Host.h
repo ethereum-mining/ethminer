@@ -34,8 +34,10 @@
 #include <libdevcore/Worker.h>
 #include <libdevcore/RangeMask.h>
 #include <libdevcrypto/Common.h>
+#include "NodeTable.h"
 #include "HostCapability.h"
 #include "Network.h"
+#include "Peer.h"
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = ba::ip;
@@ -43,82 +45,59 @@ namespace bi = ba::ip;
 namespace dev
 {
 
-class RLPStream;
-
 namespace p2p
 {
 
 class Host;
 
-enum class Origin
+class HostNodeTableHandler: public NodeTableEventHandler
 {
-	Unknown,
-	Self,
-	SelfThird,
-	PerfectThird,
-	Perfect,
+public:
+	HostNodeTableHandler(Host& _host);
+
+	Host const& host() const { return m_host; }
+	
+private:
+	virtual void processEvent(NodeId const& _n, NodeTableEventType const& _e);
+
+	Host& m_host;
 };
-
-struct Node
-{
-	NodeId id;										///< Their id/public key.
-	unsigned index;									///< Index into m_nodesList
-	bi::tcp::endpoint address;						///< As reported from the node itself.
-	int score = 0;									///< All time cumulative.
-	int rating = 0;									///< Trending.
-	bool dead = false;								///< If true, we believe this node is permanently dead - forget all about it.
-	std::chrono::system_clock::time_point lastConnected;
-	std::chrono::system_clock::time_point lastAttempted;
-	unsigned failedAttempts = 0;
-	DisconnectReason lastDisconnect = NoDisconnect;	///< Reason for disconnect that happened last.
-
-	Origin idOrigin = Origin::Unknown;				///< How did we get to know this node's id?
-
-	int secondsSinceLastConnected() const { return lastConnected == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastConnected).count(); }
-	int secondsSinceLastAttempted() const { return lastAttempted == std::chrono::system_clock::time_point() ? -1 : (int)std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastAttempted).count(); }
-
-	unsigned fallbackSeconds() const;
-	bool shouldReconnect() const;
-
-	bool isOffline() const { return lastAttempted > lastConnected; }
-	bool operator<(Node const& _n) const
-	{
-		if (isOffline() != _n.isOffline())
-			return isOffline();
-		else if (isOffline())
-			if (lastAttempted == _n.lastAttempted)
-				return failedAttempts < _n.failedAttempts;
-			else
-				return lastAttempted < _n.lastAttempted;
-		else
-			if (score == _n.score)
-				if (rating == _n.rating)
-					return failedAttempts < _n.failedAttempts;
-				else
-					return rating < _n.rating;
-			else
-				return score < _n.score;
-	}
-};
-
-using Nodes = std::vector<Node>;
 
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
+ *
+ * @todo exceptions when nodeTable not set (prior to start)
+ * @todo onNodeTableEvent: move peer-connection logic into ensurePeers
+ * @todo handshake: gracefully disconnect peer if peer already connected
+ * @todo abstract socket -> IPConnection
+ * @todo determinePublic: ipv6, udp
+ * @todo handle conflict if addNode/requireNode called and Node already exists w/conflicting tcp or udp port
+ * @todo write host identifier to disk w/nodes
+ * @todo per-session keepalive/ping instead of broadcast; set ping-timeout via median-latency
+ * @todo configuration-management (NetworkPrefs+Keys+Topology)
  */
 class Host: public Worker
 {
+	friend class HostNodeTableHandler;
 	friend class Session;
 	friend class HostCapabilityFace;
-	friend struct Node;
 	
 public:
 	/// Start server, listening for connections on the given port.
-	Host(std::string const& _clientVersion, NetworkPreferences const& _n = NetworkPreferences(), bool _start = false);
+	Host(std::string const& _clientVersion, NetworkPreferences const& _n = NetworkPreferences(), bytesConstRef _restoreNetwork = bytesConstRef());
 
 	/// Will block on network process events.
 	virtual ~Host();
+	
+	/// Interval at which Host::run will call keepAlivePeers to ping peers.
+	std::chrono::seconds const c_keepAliveInterval = std::chrono::seconds(30);
+
+	/// Disconnect timeout after failure to respond to keepAlivePeers ping.
+	std::chrono::milliseconds const c_keepAliveTimeOut = std::chrono::milliseconds(1000);
+	
+	/// Default host for current version of client.
+	static std::string pocHost();
 	
 	/// Basic peer network protocol version.
 	unsigned protocolVersion() const;
@@ -129,38 +108,31 @@ public:
 	bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(std::make_pair(T::staticName(), T::staticVersion()))); } catch (...) { return nullptr; } }
-
-	/// Connect to a peer explicitly.
-	static std::string pocHost();
-	void connect(std::string const& _addr, unsigned short _port = 30303) noexcept;
-	void connect(bi::tcp::endpoint const& _ep);
-	void connect(std::shared_ptr<Node> const& _n);
-
-	/// @returns true iff we have a peer of the given id.
-	bool havePeer(NodeId _id) const;
-
+	
+	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
+	
+	void addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort, unsigned short _udpPort);
+	
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
 
 	/// Get peer information.
-	PeerInfos peers(bool _updatePing = false) const;
-
-	/// Get number of peers connected; equivalent to, but faster than, peers().size().
-	size_t peerCount() const { RecursiveGuard l(x_peers); return m_peers.size(); }
-
-	/// Ping the peers, to update the latency information.
-	void pingAll();
-
+	PeerSessionInfos peerSessionInfo() const;
+	
+	/// Get number of peers connected.
+	size_t peerCount() const;
+	
+	/// Get the address we're listening on currently.
+	std::string listenAddress() const { return m_tcpPublic.address().to_string(); }
+	
 	/// Get the port we're listening on currently.
-	unsigned short listenPort() const { return m_public.port(); }
+	unsigned short listenPort() const { return m_tcpPublic.port(); }
 
 	/// Serialise the set of known peers.
-	bytes saveNodes() const;
+	bytes saveNetwork() const;
 
-	/// Deserialise the data and populate the set of known peers.
-	void restoreNodes(bytesConstRef _b);
-
-	Nodes nodes() const { RecursiveGuard l(x_peers); Nodes ret; for (auto const& i: m_nodes) ret.push_back(*i.second); return ret; }
+	// TODO: P2P this should be combined with peers into a HostStat object of some kind; coalesce data, as it's only used for status information.
+	Peers getPeers() const { RecursiveGuard l(x_sessions); Peers ret; for (auto const& i: m_peers) ret.push_back(*i.second); return ret; }
 
 	void setNetworkPreferences(NetworkPreferences const& _p) { auto had = isStarted(); if (had) stop(); m_netPrefs = _p; if (had) start(); }
 
@@ -174,23 +146,35 @@ public:
 	/// @returns if network is running.
 	bool isStarted() const { return m_run; }
 
-	NodeId id() const { return m_key.pub(); }
+	NodeId id() const { return m_alias.pub(); }
 
 	void registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps);
 
-	std::shared_ptr<Node> node(NodeId _id) const { if (m_nodes.count(_id)) return m_nodes.at(_id); return std::shared_ptr<Node>(); }
+protected:
+	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);
 
+	/// Deserialise the data and populate the set of known peers.
+	void restoreNetwork(bytesConstRef _b);
+	
 private:
 	/// Populate m_peerAddresses with available public addresses.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	
+	void connect(std::shared_ptr<Peer> const& _p);
+	
+	/// Ping the peers to update the latency information and disconnect peers which have timed out.
+	void keepAlivePeers();
+	
+	/// Disconnect peers which didn't respond to keepAlivePeers ping prior to c_keepAliveTimeOut.
+	void disconnectLatePeers();
+	
 	/// Called only from startedWorking().
 	void runAcceptor();
 	
+	/// Handler for verifying handshake siganture before creating session. _nodeId is passed for outbound connections. If successful, socket is moved to Session via std::move.
+	void doHandshake(bi::tcp::socket* _socket, NodeId _nodeId = NodeId());
+	
 	void seal(bytes& _b);
-
-	void growPeers();
-	void prunePeers();
 
 	/// Called by Worker. Not thread-safe; to be called only by worker.
 	virtual void startedWorking();
@@ -203,64 +187,54 @@ private:
 	/// Shutdown network. Not thread-safe; to be called only by worker.
 	virtual void doneWorking();
 
-	std::shared_ptr<Node> noteNode(NodeId _id, bi::tcp::endpoint _a, Origin _o, bool _ready, NodeId _oldId = NodeId());
-	Nodes potentialPeers(RangeMask<unsigned> const& _known);
+	/// Get or create host identifier (KeyPair).
+	static KeyPair networkAlias(bytesConstRef _b);
 
+	bytes m_restoreNetwork;										///< Set by constructor and used to set Host key and restore network peers & nodes.
+	
 	bool m_run = false;													///< Whether network is running.
-	std::mutex x_runTimer;													///< Start/stop mutex.
+	std::mutex x_runTimer;												///< Start/stop mutex.
 	
 	std::string m_clientVersion;											///< Our version string.
 
 	NetworkPreferences m_netPrefs;										///< Network settings.
 	
 	/// Interface addresses (private, public)
-	std::vector<bi::address> m_ifAddresses;									///< Interface addresses.
+	std::vector<bi::address> m_ifAddresses;								///< Interface addresses.
 
 	int m_listenPort = -1;												///< What port are we listening on. -1 means binding failed or acceptor hasn't been initialized.
 
-	ba::io_service m_ioService;							///< IOService for network stuff.
-	bi::tcp::acceptor m_acceptorV4;							///< Listening acceptor.
-	std::unique_ptr<bi::tcp::socket> m_socket;								///< Listening socket.
+	ba::io_service m_ioService;											///< IOService for network stuff.
+	bi::tcp::acceptor m_tcp4Acceptor;										///< Listening acceptor.
 	
 	std::unique_ptr<boost::asio::deadline_timer> m_timer;					///< Timer which, when network is running, calls scheduler() every c_timerInterval ms.
 	static const unsigned c_timerInterval = 100;							///< Interval which m_timer is run when network is connected.
-	unsigned m_lastTick = 0;											///< Used by run() for scheduling; must not be mutated outside of run().
 	
-	std::set<Node*> m_pendingNodeConns;									/// Used only by connect(Node&) to limit concurrently connecting to same node. See connect(shared_ptr<Node>const&).
+	std::set<Peer*> m_pendingPeerConns;									/// Used only by connect(Peer&) to limit concurrently connecting to same node. See connect(shared_ptr<Peer>const&).
 	Mutex x_pendingNodeConns;
 
-	bi::tcp::endpoint m_public;											///< Our public listening endpoint.
-	KeyPair m_key;														///< Our unique ID.
+	bi::tcp::endpoint m_tcpPublic;											///< Our public listening endpoint.
+	KeyPair m_alias;															///< Alias for network communication. Network address is k*G. k is key material. TODO: Replace KeyPair.
+	std::shared_ptr<NodeTable> m_nodeTable;									///< Node table (uses kademlia-like discovery).
 
-	bool m_hadNewNodes = false;
-
-	mutable RecursiveMutex x_peers;
-
-	/// The nodes to which we are currently connected.
+	/// Shared storage of Peer objects. Peers are created or destroyed on demand by the Host. Active sessions maintain a shared_ptr to a Peer;
+	std::map<NodeId, std::shared_ptr<Peer>> m_peers;
+	
+	/// The nodes to which we are currently connected. Used by host to service peer requests and keepAlivePeers and for shutdown. (see run())
 	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
-	mutable std::map<NodeId, std::weak_ptr<Session>> m_peers;
-
-	/// Nodes to which we may connect (or to which we have connected).
-	/// TODO: does this need a lock?
-	std::map<NodeId, std::shared_ptr<Node> > m_nodes;
-
-	/// A list of node IDs. This contains every index from m_nodes; the order is guaranteed to remain the same.
-	std::vector<NodeId> m_nodesList;
-
-	RangeMask<unsigned> m_ready;											///< Indices into m_nodesList over to which nodes we are not currently connected, connecting or otherwise ignoring.
-	RangeMask<unsigned> m_private;										///< Indices into m_nodesList over to which nodes are private.
+	mutable std::map<NodeId, std::weak_ptr<Session>> m_sessions;
+	mutable RecursiveMutex x_sessions;
 
 	unsigned m_idealPeerCount = 5;										///< Ideal number of peers to be connected to.
 	
 	std::set<bi::address> m_peerAddresses;									///< Public addresses that peers (can) know us by.
 
-	// Our capabilities.
 	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
 
 	std::chrono::steady_clock::time_point m_lastPing;						///< Time we sent the last ping to all peers.
 
 	bool m_accepting = false;
 };
-
+	
 }
 }

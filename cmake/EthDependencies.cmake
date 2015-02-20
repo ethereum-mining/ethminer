@@ -7,6 +7,14 @@ string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
 set (ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}")
 set (CMAKE_PREFIX_PATH ${ETH_DEPENDENCY_INSTALL_DIR})
 
+# setup directory for cmake generated files and include it globally 
+# it's not used yet, but if we have more generated files, consider moving them to ETH_GENERATED_DIR
+set(ETH_GENERATED_DIR "${PROJECT_BINARY_DIR}/gen")
+include_directories(${ETH_GENERATED_DIR})
+
+# custom cmake scripts
+set(ETH_SCRIPTS_DIR ${CMAKE_SOURCE_DIR}/cmake/scripts)
+
 # Qt5 requires opengl
 # TODO use proper version of windows SDK (32 vs 64)
 # TODO make it possible to use older versions of windows SDK (7.0+ should also work)
@@ -51,6 +59,10 @@ if (JSONRPC)
 	message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 	add_definitions(-DETH_JSONRPC)
 
+ 	find_package(MHD) 
+	message(" - microhttpd header: ${MHD_INCLUDE_DIRS}")
+	message(" - microhttpd lib   : ${MHD_LIBRARIES}")
+
 endif() #JSONRPC
 
 # TODO readline package does not yet check for correct version number
@@ -87,6 +99,10 @@ find_package (CURL)
 message(" - curl header: ${CURL_INCLUDE_DIRS}")
 message(" - curl lib   : ${CURL_LIBRARIES}")
 
+# find location of jsonrpcstub
+find_program(ETH_JSON_RPC_STUB jsonrpcstub)
+message(" - jsonrpcstub location    : ${ETH_JSON_RPC_STUB}")
+
 # do not compile GUI
 if (NOT HEADLESS) 
 
@@ -112,6 +128,20 @@ if (NOT HEADLESS)
 		set (MACDEPLOYQT_APP ${Qt5Core_DIR}/../../../bin/macdeployqt)
 		message(" - macdeployqt path: ${MACDEPLOYQT_APP}")
 	endif()
+	# we need to find path to windeployqt on windows
+	if (WIN32)
+		set (WINDEPLOYQT_APP ${Qt5Core_DIR}/../../../bin/windeployqt)
+		message(" - windeployqt path: ${WINDEPLOYQT_APP}")
+	endif()
+
+# TODO check node && npm version
+	find_program(ETH_NODE node)
+	string(REGEX REPLACE "node" "" ETH_NODE_DIRECTORY ${ETH_NODE})
+	message(" - nodejs location : ${ETH_NODE}")
+
+	find_program(ETH_NPM npm)
+	string(REGEX REPLACE "npm" "" ETH_NPM_DIRECTORY ${ETH_NPM})
+	message(" - npm location    : ${ETH_NPM}")
 
 endif() #HEADLESS
 

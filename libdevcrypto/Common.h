@@ -51,7 +51,7 @@ struct SignatureStruct
 	operator Signature() const { return *(h520 const*)this; }
 
 	/// @returns true if r,s,v values are valid, otherwise false
-	bool isValid();
+	bool isValid() const;
 
 	h256 r;
 	h256 s;
@@ -61,6 +61,9 @@ struct SignatureStruct
 /// An Ethereum address: 20 bytes.
 /// @NOTE This is not endian-specific; it's just a bunch of bytes.
 using Address = h160;
+
+/// The zero address.
+extern Address ZeroAddress;
 
 /// A vector of Ethereum addresses.
 using Addresses = h160s;
@@ -86,7 +89,13 @@ void encrypt(Public const& _k, bytesConstRef _plain, bytes& o_cipher);
 
 /// Decrypts cipher using Secret key.
 bool decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
-	
+
+/// Symmetric encryption.
+void encryptSym(Secret const& _k, bytesConstRef _plain, bytes& o_cipher);
+
+/// Symmetric decryption.
+bool decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
+
 /// Recovers Public key from signed message hash.
 Public recover(Signature const& _sig, h256 const& _hash);
 	

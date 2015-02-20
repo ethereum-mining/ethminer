@@ -27,6 +27,13 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+std::ostream& dev::eth::operator<<(std::ostream& _out, LogFilter const& _s)
+{
+	// TODO
+	_out << "(@" << _s.m_addresses << "#" << _s.m_topics << ">" << _s.m_earliest << "-" << _s.m_latest << "< +" << _s.m_skip << "^" << _s.m_max << ")";
+	return _out;
+}
+
 void LogFilter::streamRLP(RLPStream& _s) const
 {
 	_s.appendList(6) << m_addresses << m_topics << m_earliest << m_latest << m_max << m_skip;
@@ -43,20 +50,21 @@ bool LogFilter::matches(LogBloom _bloom) const
 {
 	if (m_addresses.size())
 	{
-		for (auto i: m_addresses)
+		for (auto const& i: m_addresses)
 			if (_bloom.containsBloom<3>(dev::sha3(i)))
 				goto OK1;
 		return false;
 	}
 	OK1:
-	if (m_topics.size())
-	{
-		for (auto i: m_topics)
-			if (_bloom.containsBloom<3>(dev::sha3(i)))
-				goto OK2;
-		return false;
-	}
-	OK2:
+	for (auto const& t: m_topics)
+		if (t.size())
+		{
+			for (auto const& i: t)
+				if (_bloom.containsBloom<3>(dev::sha3(i)))
+					goto OK2;
+			return false;
+			OK2:;
+		}
 	return true;
 }
 
@@ -68,14 +76,16 @@ bool LogFilter::matches(State const& _s, unsigned _i) const
 LogEntries LogFilter::matches(TransactionReceipt const& _m) const
 {
 	LogEntries ret;
-	for (LogEntry const& e: _m.log())
-	{
-		if (!m_addresses.empty() && !m_addresses.count(e.address))
-			continue;
-		for (auto const& t: m_topics)
-			if (!std::count(e.topics.begin(), e.topics.end(), t))
-				continue;
-		ret.push_back(e);
-	}
+	if (matches(_m.bloom()))
+		for (LogEntry const& e: _m.log())
+		{
+			if (!m_addresses.empty() && !m_addresses.count(e.address))
+				goto continue2;
+			for (unsigned i = 0; i < 4; ++i)
+				if (!m_topics[i].empty() && (e.topics.size() < i || !m_topics[i].count(e.topics[i])))
+					goto continue2;
+			ret.push_back(e);
+			continue2:;
+		}
 	return ret;
 }

@@ -70,9 +70,9 @@ struct BlockReceipts
 	TransactionReceipts receipts;
 };
 
-typedef std::map<h256, BlockDetails> BlockDetailsHash;
-typedef std::map<h256, BlockLogBlooms> BlockLogBloomsHash;
-typedef std::map<h256, BlockReceipts> BlockReceiptsHash;
+using BlockDetailsHash = std::map<h256, BlockDetails>;
+using BlockLogBloomsHash = std::map<h256, BlockLogBlooms>;
+using BlockReceiptsHash = std::map<h256, BlockReceipts>;
 
 static const BlockDetails NullBlockDetails;
 static const BlockLogBlooms NullBlockLogBlooms;

@@ -34,7 +34,6 @@ using namespace dev::shh;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
-unsigned Interface::installWatch(TopicMask const& _mask)
+Interface::~Interface()
 {
-	return installWatch(TopicFilter(_mask));
 }
