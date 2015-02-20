@@ -1,8 +1,0 @@
-#!/bin/bash
-
-ETH_DEPENDENCY_SOURCE_DIR=$1
-ETH_DEPENDENCY_INSTALL_DIR=$2
-
-SNAPPY_DYLIB=${ETH_DEPENDENCY_INSTALL_DIR}/lib/libsnappy.dylib 
-install_name_tool -id ${SNAPPY_DYLIB} ${SNAPPY_DYLIB}
-
