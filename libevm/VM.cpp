@@ -35,7 +35,12 @@ void VM::reset(u256 _gas) noexcept
 bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
 	auto memNeed = [](u256 _offset, dev::u256 _size) { return _size ? (bigint)_offset + _size : (bigint)0; };
-	auto gasForMem = [](bigint _size) -> bigint { bigint s = _size / 32; return (bigint)c_memoryGas * (s + s * s / 1024); };
+	auto gasForMem = [](bigint _size) -> bigint
+	{
+		bigint s = _size / 32;
+//		return (bigint)c_memoryGas * (s + s * s / 1024);
+		return (bigint)c_memoryGas * s;
+	};
 
 	if (m_jumpDests.empty())
 		for (unsigned i = 0; i < _ext.code.size(); ++i)
