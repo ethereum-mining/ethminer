@@ -161,7 +161,7 @@ public:
 	std::string at(bytesConstRef _key) const;
 	void insert(bytesConstRef _key, bytesConstRef _value);
 	void remove(bytesConstRef _key);
-	void contains(bytesConstRef _key) { return !at(_key).empty(); }
+	bool contains(bytesConstRef _key) { return !at(_key).empty(); }
 
 	class iterator
 	{
@@ -809,7 +809,10 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 
 		// exactly our node - return null.
 		if (k == _k && isLeaf(_orig))
+		{
+			killNode(_orig);
 			return RLPNull;
+		}
 
 		// partial key is our key - move down.
 		if (_k.contains(k))
@@ -916,7 +919,6 @@ template <class DB> bytes GenericTrieDB<DB>::place(RLP const& _orig, NibbleSlice
 #if ETH_PARANOIA
 	tdebug << "place " << _orig << _k;
 #endif
-
 
 	killNode(_orig);
 	if (_orig.isEmpty())
