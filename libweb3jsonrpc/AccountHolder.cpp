@@ -24,6 +24,7 @@
 #include "AccountHolder.h"
 #include <random>
 #include <ctime>
+#include <libdevcore/Guards.h>
 #include <libethereum/Client.h>
 
 using namespace std;
@@ -31,6 +32,8 @@ using namespace dev;
 using namespace dev::eth;
 
 vector<TransactionSkeleton> g_emptyQueue;
+static std::mt19937 g_randomNumberGenerator(time(0));
+static Mutex x_rngMutex;
 
 void AccountHolder::setAccounts(vector<KeyPair> const& _accounts)
 {
@@ -64,8 +67,9 @@ Address const& AccountHolder::getDefaultTransactAccount() const
 
 int AccountHolder::addProxyAccount(const Address& _account)
 {
-	static std::mt19937 s_randomNumberGenerator(time(0));
-	int id = std::uniform_int_distribution<int>(1)(s_randomNumberGenerator);
+	Guard g(x_rngMutex);
+	int id = std::uniform_int_distribution<int>(1)(g_randomNumberGenerator);
+	id = int(u256(FixedHash<32>(sha3(bytesConstRef((byte*)(&id), sizeof(int) / sizeof(byte))))));
 	if (isProxyAccount(_account) || id == 0 || m_transactionQueues.count(id))
 		return 0;
 	m_proxyAccounts.insert(make_pair(_account, id));
