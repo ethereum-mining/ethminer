@@ -20,6 +20,8 @@
  * Ethereum IDE client.
  */
 
+#include <json/json.h>
+#include <QJsonObject>
 #include <QDebug>
 #include <QDirIterator>
 #include <QDir>
@@ -106,22 +108,17 @@ bool FileIo::fileExists(QString const& _url)
 	return file.exists();
 }
 
-QString FileIo::compress(QString const& _manifest, QString const& _deploymentFolder)
+QString FileIo::compress(QString const& _deploymentFolder)
 {
+
+	Json::Value manifest;
+	Json::Value entries(Json::arrayValue);
+
 	QUrl folder(_deploymentFolder);
 	QString path(folder.path());
 	QDir deployDir = QDir(path);
 
 	dev::RLPStream str;
-
-	QByteArray manifestBytes = "swarm.json";
-	str.append(bytes(manifestBytes.begin(), manifestBytes.end()));
-
-	QByteArray manifestcontentBytes = "application/json";
-	str.append(bytes(manifestcontentBytes.begin(), manifestcontentBytes.end()));
-
-	QByteArray b = _manifest.toUtf8();
-	str.append(bytes(b.begin(), b.end()));
 
 	for (auto item: deployDir.entryInfoList(QDir::Files))
 	{
@@ -133,13 +130,33 @@ QString FileIo::compress(QString const& _manifest, QString const& _deploymentFol
 			str.append(bytes(fileBytes.begin(), fileBytes.end()));
 
 			QByteArray contentBytes = QString().toUtf8();
-			str.append(bytes(contentBytes.begin(), contentBytes.end()));
+			bytes b = bytes(contentBytes.begin(), contentBytes.end());
+			str.append(b);
 
 			QByteArray _a = qFile.readAll();
 			str.append(bytes(_a.begin(), _a.end()));
+
+			Json::Value f;
+			f["path"] = "/"; //TODO: Manage relative sub folder
+			f["file"] = "/" + i.fileName().toStdString();
+			f["hash"] = toHex(dev::sha3(b).ref());
+			entries.append(f);
 		}
 		qFile.close();
 	}
+
+	manifest["entries"] = entries;
+
+	QByteArray manifestBytes = "swarm.json";
+	str.append(bytes(manifestBytes.begin(), manifestBytes.end()));
+
+	QByteArray manifestcontentBytes = "application/json";
+	str.append(bytes(manifestcontentBytes.begin(), manifestcontentBytes.end()));
+
+	std::stringstream jsonStr;
+	jsonStr << manifest;
+	QByteArray b =  QString::fromStdString(jsonStr.str()).toUtf8();
+	str.append(bytes(b.begin(), b.end()));
 
 	bytes dapp = str.out();
 	dev::h256 h = dev::sha3(dapp);
