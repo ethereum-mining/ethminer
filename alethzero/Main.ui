@@ -163,6 +163,7 @@
     <property name="title">
      <string>&amp;Special</string>
     </property>
+    <addaction name="natSpec"/>
     <addaction name="paranoia"/>
     <addaction name="clearPending"/>
     <addaction name="killBlockchain"/>
@@ -1650,6 +1651,17 @@ font-size: 14pt</string>
   <action name="newTransaction">
    <property name="text">
     <string>New &amp;Transaction...</string>
+   </property>
+  </action>
+  <action name="natSpec">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;NatSpec Enabled</string>
    </property>
   </action>
  </widget>
