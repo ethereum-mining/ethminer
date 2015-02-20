@@ -1167,6 +1167,7 @@ void Main::timerEvent(QTimerEvent*)
 		interval = 0;
 		refreshNetwork();
 		refreshWhispers();
+		poll();
 	}
 	else
 		interval += 100;

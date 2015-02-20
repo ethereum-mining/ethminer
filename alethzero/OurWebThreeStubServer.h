@@ -19,7 +19,9 @@
  * @date 2014
  */
 
+#include <queue>
 #include <QtCore/QObject>
+#include <libdevcore/Guards.h>
 #include <libethcore/CommonJS.h>
 #include <libdevcrypto/Common.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
@@ -35,16 +37,24 @@ public:
 						  std::vector<dev::KeyPair> const& _accounts, Main* main);
 
 	virtual std::string shh_newIdentity() override;
-	virtual bool authenticate(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
+	virtual void authenticate(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
 
 signals:
 	void onNewId(QString _s);
 
+public slots:
+	void doValidations();
+
 private:
-	bool showAuthenticationPopup(std::string const& _title, std::string const& _text) const;
-	bool showCreationNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy) const;
-	bool showSendNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy) const;
-	bool showUnknownCallNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy) const;
+	bool showAuthenticationPopup(std::string const& _title, std::string const& _text);
+	bool showCreationNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
+	bool showSendNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
+	bool showUnknownCallNotice(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
+
+	bool validateTransaction(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
+
+	std::queue<std::pair<dev::eth::TransactionSkeleton, bool>> m_queued;
+	dev::Mutex x_queued;
 
 	dev::WebThreeDirect* m_web3;
 	Main* m_main;
