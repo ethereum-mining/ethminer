@@ -1199,11 +1199,11 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 						else if (j.second)
 							cached.insert(j.first);
 					}
-				if (delta.size())
+				if (!delta.empty())
 					lead = (lead == " .   ") ? "*.*  " : "***  ";
 
 				contout << " @:";
-				if (delta.size())
+				if (!delta.empty())
 					contout << "???";
 				else
 					contout << r[2].toHash<h256>();
