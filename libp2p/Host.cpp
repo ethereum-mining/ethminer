@@ -630,6 +630,9 @@ void Host::disconnectLatePeers()
 
 bytes Host::saveNetwork() const
 {
+	if (!m_nodeTable)
+		return bytes();
+
 	std::list<Peer> peers;
 	{
 		RecursiveGuard l(x_sessions);
