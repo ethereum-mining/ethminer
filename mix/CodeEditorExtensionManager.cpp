@@ -25,12 +25,20 @@
 #include <QQmlEngine>
 #include <QQmlComponent>
 #include <QQuickTextDocument>
-#include <libevm/VM.h>
-#include "ConstantCompilationCtrl.h"
-#include "AssemblyDebuggerCtrl.h"
+#include "StatusPane.h"
 #include "AppContext.h"
+#include "MixApplication.h"
+#include "CodeModel.h"
+#include "ClientModel.h"
+#include "CodeHighlighter.h"
 #include "CodeEditorExtensionManager.h"
+
 using namespace dev::mix;
+
+CodeEditorExtensionManager::CodeEditorExtensionManager():
+	m_appContext(static_cast<MixApplication*>(QApplication::instance())->context())
+{
+}
 
 CodeEditorExtensionManager::~CodeEditorExtensionManager()
 {
@@ -41,26 +49,14 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 {
 	if (!_editor)
 		return;
-	try
-	{
-		QVariant doc = _editor->property("textDocument");
-		if (doc.canConvert<QQuickTextDocument*>())
-		{
-			QQuickTextDocument* qqdoc = doc.value<QQuickTextDocument*>();
-			if (qqdoc)
-				m_doc = qqdoc->textDocument();
-		}
-	}
-	catch (...)
-	{
-		qDebug() << "unable to load editor: ";
-	}
 }
 
 void CodeEditorExtensionManager::initExtensions()
 {
-	initExtension(std::make_shared<ConstantCompilationCtrl>(m_doc));
-	initExtension(std::make_shared<AssemblyDebuggerCtrl>(m_doc));
+	std::shared_ptr<StatusPane> output = std::make_shared<StatusPane>(m_appContext);
+	QObject::connect(m_appContext->codeModel(), &CodeModel::compilationComplete, this, &CodeEditorExtensionManager::applyCodeHighlight);
+
+	initExtension(output);
 }
 
 void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
@@ -69,8 +65,10 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 	{
 		try
 		{
-			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::Tab)
-				_ext->addTabOn(m_tabView);
+			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::RightView)
+				_ext->addTabOn(m_rightView);
+			if (_ext->getDisplayBehavior() == ExtensionDisplayBehavior::HeaderView)
+				_ext->addTabOn(m_headerView);
 		}
 		catch (...)
 		{
@@ -82,13 +80,18 @@ void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 	m_features.append(_ext);
 }
 
-void CodeEditorExtensionManager::setEditor(QQuickItem* _editor)
+void CodeEditorExtensionManager::applyCodeHighlight()
 {
-	this->loadEditor(_editor);
-	this->initExtensions();
+	//TODO: reimplement
 }
 
-void CodeEditorExtensionManager::setTabView(QQuickItem* _tabView)
+void CodeEditorExtensionManager::setRightView(QQuickItem* _rightView)
 {
-	m_tabView = _tabView;
+	m_rightView = _rightView;
+}
+
+void CodeEditorExtensionManager::setHeaderView(QQuickItem* _headerView)
+{
+	m_headerView = _headerView;
+	initExtensions(); //TODO: move this to a proper place
 }

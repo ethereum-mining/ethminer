@@ -39,8 +39,8 @@ class ExtVM: public ExtVMFace
 {
 public:
 	/// Full constructor.
-	ExtVM(State& _s, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, unsigned _depth = 0):
-		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code.toBytes(), _s.m_previousBlock, _s.m_currentBlock, _depth), m_s(_s), m_origCache(_s.m_cache)
+	ExtVM(State& _s, LastHashes const& _lh, Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code, unsigned _depth = 0):
+		ExtVMFace(_myAddress, _caller, _origin, _value, _gasPrice, _data, _code.toBytes(), _s.m_previousBlock, _s.m_currentBlock, _lh, _depth), m_s(_s), m_origCache(_s.m_cache)
 	{
 		m_s.ensureCached(_myAddress, true, true);
 	}

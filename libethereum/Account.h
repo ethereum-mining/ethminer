@@ -140,7 +140,8 @@ public:
 	h256 codeHash() const { assert(!isFreshCode()); return m_codeHash; }
 
 	/// Sets the code of the account. Must only be called when isFreshCode() returns true.
-	void setCode(bytesConstRef _code) { assert(isFreshCode()); m_codeCache = _code.toBytes(); }
+	void setCode(bytes&& _code) { assert(isFreshCode()); m_codeCache = _code; }
+	void setCode(bytes const& _code) { assert(isFreshCode()); m_codeCache = _code; }
 
 	/// @returns true if the account's code is available through code().
 	bool codeCacheValid() const { return m_codeHash == EmptySHA3 || m_codeHash == c_contractConceptionCodeHash || m_codeCache.size(); }

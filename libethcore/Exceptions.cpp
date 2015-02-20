@@ -20,6 +20,7 @@
  */
 
 #include "Exceptions.h"
+#include <boost/thread.hpp>
 #include <libdevcore/CommonIO.h>
 
 using namespace std;

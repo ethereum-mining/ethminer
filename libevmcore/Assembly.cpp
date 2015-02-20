@@ -214,7 +214,7 @@ ostream& Assembly::streamRLP(ostream& _out, string const& _prefix) const
 			BOOST_THROW_EXCEPTION(InvalidOpcode());
 		}
 
-	if (m_data.size() || m_subs.size())
+	if (!m_data.empty() || !m_subs.empty())
 	{
 		_out << _prefix << ".data:" << endl;
 		for (auto const& i: m_data)
@@ -291,7 +291,7 @@ Assembly& Assembly::optimise(bool _enable)
 		{ Instruction::SDIV, [](u256 a, u256 b)->u256{return s2u(u2s(a) / u2s(b));} },
 		{ Instruction::MOD, [](u256 a, u256 b)->u256{return a % b;} },
 		{ Instruction::SMOD, [](u256 a, u256 b)->u256{return s2u(u2s(a) % u2s(b));} },
-		{ Instruction::EXP, [](u256 a, u256 b)->u256{return (u256)boost::multiprecision::powm((bigint)a, (bigint)b, bigint(2) << 256);} },
+		{ Instruction::EXP, [](u256 a, u256 b)->u256{return (u256)boost::multiprecision::powm((bigint)a, (bigint)b, bigint(1) << 256);} },
 		{ Instruction::SIGNEXTEND, signextend },
 		{ Instruction::LT, [](u256 a, u256 b)->u256{return a < b ? 1 : 0;} },
 		{ Instruction::GT, [](u256 a, u256 b)->u256{return a > b ? 1 : 0;} },
@@ -391,10 +391,9 @@ Assembly& Assembly::optimise(bool _enable)
 				if (matches(vr, &r.first))
 				{
 					auto rw = r.second(vr);
-					unsigned const vrSize = bytesRequiredBySlice(vr.begin(), vr.end());
-					unsigned const rwSize = bytesRequiredBySlice(rw.begin(), rw.end());
-					//@todo check the actual size (including constant sizes)
-					if (rwSize < vrSize || (rwSize == vrSize && popCountIncreased(vr, rw)))
+					unsigned const vrSizeInBytes = bytesRequiredBySlice(vr.begin(), vr.end());
+					unsigned const rwSizeInBytes = bytesRequiredBySlice(rw.begin(), rw.end());
+					if (rwSizeInBytes < vrSizeInBytes || (rwSizeInBytes == vrSizeInBytes && popCountIncreased(vr, rw)))
 					{
 						copt << vr << "matches" << AssemblyItemsConstRef(&r.first) << "becomes...";
 						copt << AssemblyItemsConstRef(&rw);
@@ -405,12 +404,10 @@ Assembly& Assembly::optimise(bool _enable)
 							m_items.resize(m_items.size() + sizeIncrease, AssemblyItem(UndefinedItem));
 							move_backward(m_items.begin() + i, m_items.end() - sizeIncrease, m_items.end());
 						}
+						else
+							m_items.erase(m_items.begin() + i + rw.size(), m_items.begin() + i + vr.size());
 
-						for (unsigned j = 0; j < max(rw.size(), vr.size()); ++j)
-							if (j < rw.size())
-								m_items[i + j] = rw[j];
-							else
-								m_items.erase(m_items.begin() + i + rw.size());
+						copy(rw.begin(), rw.end(), m_items.begin() + i);
 
 						count++;
 						copt << "Now:\n" << m_items;
@@ -444,7 +441,7 @@ Assembly& Assembly::optimise(bool _enable)
 			if (i.type() == PushTag)
 				tags.erase(i.data());
 
-		if (tags.size())
+		if (!tags.empty())
 		{
 			auto t = *tags.begin();
 			unsigned i = t.second;
@@ -570,7 +567,7 @@ bytes Assembly::assemble() const
 		toBigEndian(tagPos[i.second], r);
 	}
 
-	if (m_data.size())
+	if (!m_data.empty())
 	{
 		ret.push_back(0);
 		for (auto const& i: m_data)

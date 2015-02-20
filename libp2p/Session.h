@@ -39,7 +39,7 @@ namespace dev
 namespace p2p
 {
 
-struct Node;
+class Peer;
 
 /**
  * @brief The Session class
@@ -51,8 +51,7 @@ class Session: public std::enable_shared_from_this<Session>
 	friend class HostCapabilityFace;
 
 public:
-	Session(Host* _server, bi::tcp::socket _socket, std::shared_ptr<Node> const& _n, bool _force = false);
-	Session(Host* _server, bi::tcp::socket _socket, bi::tcp::endpoint const& _manual);
+	Session(Host* _server, bi::tcp::socket _socket, std::shared_ptr<Peer> const& _n);
 	virtual ~Session();
 
 	void start();
@@ -60,12 +59,10 @@ public:
 
 	void ping();
 
-	bool isOpen() const { return m_socket.is_open(); }
+	bool isConnected() const { return m_socket.is_open(); }
 
 	NodeId id() const;
 	unsigned socketId() const { return m_socket.native_handle(); }
-
-	bi::tcp::endpoint endpoint() const;	///< for other peers to connect to.
 
 	template <class PeerCap>
 	std::shared_ptr<PeerCap> cap() const { try { return std::static_pointer_cast<PeerCap>(m_capabilities.at(std::make_pair(PeerCap::name(), PeerCap::version()))); } catch (...) { return nullptr; } }
@@ -81,7 +78,7 @@ public:
 
 	void addNote(std::string const& _k, std::string const& _v) { m_info.notes[_k] = _v; }
 
-	PeerInfo const& info() const { return m_info; }
+	PeerSessionInfo const& info() const { return m_info; }
 
 	void ensureNodesRequested();
 	void serviceNodesRequest();
@@ -107,17 +104,15 @@ private:
 	mutable bi::tcp::socket m_socket;		///< Socket for the peer's connection. Mutable to ask for native_handle().
 	Mutex x_writeQueue;						///< Mutex for the write queue.
 	std::deque<bytes> m_writeQueue;			///< The write queue.
-	std::array<byte, 65536> m_data;			///< Data buffer for the write queue.
-	bytes m_incoming;						///< The incoming read queue of bytes.
-
-	PeerInfo m_info;						///< Dynamic information about this peer.
+	std::array<byte, 65536> m_data;			///< Buffer for ingress packet data.
+	bytes m_incoming;						///< Read buffer for ingress bytes.
 
 	unsigned m_protocolVersion = 0;			///< The protocol version of the peer.
-	std::shared_ptr<Node> m_node;			///< The Node object. Might be null if we constructed using a bare address/port.
-	bi::tcp::endpoint m_manualEndpoint;		///< The endpoint as specified by the constructor.
-	bool m_force = false;					///< If true, ignore IDs being different. This could open you up to MitM attacks.
+	std::shared_ptr<Peer> m_peer;			///< The Peer object.
 	bool m_dropped = false;					///< If true, we've already divested ourselves of this peer. We're just waiting for the reads & writes to fail before the shared_ptr goes OOS and the destructor kicks in.
 
+	PeerSessionInfo m_info;						///< Dynamic information about this peer.
+	
 	bool m_theyRequestedNodes = false;		///< Has the peer requested nodes from us without receiveing an answer from us?
 	bool m_weRequestedNodes = false;		///< Have we requested nodes from the peer and not received an answer yet?
 
@@ -126,7 +121,6 @@ private:
 	std::chrono::steady_clock::time_point m_lastReceived;	///< Time point of last message.
 
 	std::map<CapDesc, std::shared_ptr<Capability>> m_capabilities;	///< The peer's capability set.
-	RangeMask<unsigned> m_knownNodes;		///< Nodes we already know about as indices into Host's nodesList. These shouldn't be resent to peer.
 };
 
 }

@@ -21,9 +21,9 @@
  */
 #pragma once
 
-#include <boost/program_options.hpp>
-
 #include <libsolidity/CompilerStack.h>
+#include <memory>
+#include <boost/program_options.hpp>
 
 namespace dev
 {
@@ -53,10 +53,11 @@ public:
 	void actOnInput();
 
 private:
+	void handleAst(std::string const& _argStr);
 	void handleBinary(std::string const& _contract);
 	void handleOpcode(std::string const& _contract);
 	void handleBytecode(std::string const& _contract);
-	void handleJson(DocumentationType _type,
+	void handleMeta(DocumentationType _type,
 					std::string const& _contract);
 
 	/// Compiler arguments variable map
@@ -64,7 +65,7 @@ private:
 	/// map of input files to source code strings
 	std::map<std::string, std::string> m_sourceCodes;
 	/// Solidity compiler stack
-	dev::solidity::CompilerStack m_compiler;
+	std::unique_ptr<dev::solidity::CompilerStack> m_compiler;
 };
 
 }

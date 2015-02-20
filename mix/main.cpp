@@ -20,22 +20,38 @@
  * Ethereum IDE client.
  */
 
-#include <QApplication>
-#include <QQmlApplicationEngine>
-#include <QQuickItem>
-#include "CodeEditorExtensionManager.h"
-#include "AppContext.h"
+#include <iostream>
+#include <stdlib.h>
 #include "MixApplication.h"
+#include "Exceptions.h"
 using namespace dev::mix;
 
-int main(int _argc, char *_argv[])
+int main(int _argc, char* _argv[])
 {
-	QApplication app(_argc, _argv);
-	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
-	QQmlApplicationEngine* engine = new QQmlApplicationEngine();
-	AppContext::setApplicationContext(engine);
-	QObject::connect(&app, SIGNAL(lastWindowClosed()), AppContext::getInstance(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
-	QObject::connect(engine, SIGNAL(objectCreated(QObject*, QUrl)), AppContext::getInstance(), SLOT(resourceLoaded(QObject*, QUrl)));
-	engine->load(QUrl("qrc:/qml/main.qml"));
-	return app.exec();
+#ifdef ETH_HAVE_WEBENGINE
+	Q_INIT_RESOURCE(js);
+#endif
+#if __linux
+	//work around ubuntu appmenu-qt5 bug
+	//https://bugs.launchpad.net/ubuntu/+source/appmenu-qt5/+bug/1323853
+	putenv((char*)"QT_QPA_PLATFORMTHEME=");
+	putenv((char*)"QSG_RENDER_LOOP=threaded");
+#endif
+#if (defined(_WIN32) || defined(_WIN64))
+	if (!getenv("OPENSSL_CONF"))
+		putenv((char*)"OPENSSL_CONF=c:\\");
+#endif
+	try
+	{
+		MixApplication app(_argc, _argv);
+		return app.exec();
+	}
+	catch (boost::exception const& _e)
+	{
+		std::cerr << boost::diagnostic_information(_e);
+	}
+	catch (std::exception const& _e)
+	{
+		std::cerr << _e.what();
+	}
 }

@@ -76,24 +76,24 @@ public:
 	void labelYOrderedPoints(std::map<float, float> const& _translatedData, int _maxCount = 20, float _minFactor = .01f) const;
 
 protected:
-	QPainter* p;
+	QPainter* p = nullptr;
 	QRect active;
 	std::pair<float, float> xRange;
 	std::pair<float, float> yRange;
 
-	float xM;
-	float xC;
-	float yM;
-	float yC;
+	float xM = 0;
+	float xC = 0;
+	float yM = 0;
+	float yC = 0;
 
-	float dx;
-	float dy;
+	float dx = 0;
+	float dy = 0;
 
 	std::function<std::string(float _f)> xLabel;
 	std::function<std::string(float _f)> yLabel;
 	std::function<std::string(float _x, float _y)> pLabel;
 
-	float fontPixelSize;
+	float fontPixelSize = 0;
 
 	// Translate from raw indexed data into x/y graph units. Only relevant for indexed data.
 	float xT(float _dataIndex) const { return _dataIndex * xM + xC; }

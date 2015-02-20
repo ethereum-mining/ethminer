@@ -43,12 +43,17 @@ function(configureProject)
 	if (EVMJIT)
 		add_definitions(-DETH_EVMJIT)
 	endif()
+
+	if (HEADLESS)
+		add_definitions(-DETH_HEADLESS)
+	endif()
 endfunction()
 
 
 
 function(createBuildInfo)
 	# Set build platform; to be written to BuildInfo.h
+	set(ETH_BUILD_PLATFORM "${TARGET_PLATFORM}")
 	if (CMAKE_COMPILER_IS_MINGW)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/mingw")
 	elseif (CMAKE_COMPILER_IS_MSYS)
@@ -63,15 +68,30 @@ function(createBuildInfo)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/unknown")
 	endif ()
 
+	if (EVMJIT)
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/JIT")
+	else ()
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/int")
+	endif ()
+
+	if (PARANOIA)
+		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/PARA")
+	endif ()
+
 	#cmake build type may be not specified when using msvc
-	if (${CMAKE_BUILD_TYPE})
+	if (CMAKE_BUILD_TYPE)
 		set(_cmake_build_type ${CMAKE_BUILD_TYPE})
 	else()
-		set(_cmake_build_type "undefined")
+		set(_cmake_build_type "${CMAKE_CFG_INTDIR}")
 	endif()
 
 	# Generate header file containing useful build information
-	add_custom_target(BuildInfo.h ALL COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/BuildInfo.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${_cmake_build_type} ${ETH_BUILD_PLATFORM})
+	add_custom_target(BuildInfo.h ALL
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		COMMAND ${CMAKE_COMMAND} -DETH_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DETH_DST_DIR="${CMAKE_BINARY_DIR}"
+			-DETH_BUILD_TYPE="${_cmake_build_type}" -DETH_BUILD_PLATFORM="${ETH_BUILD_PLATFORM}" 
+			-P "${ETH_SCRIPTS_DIR}/buildinfo.cmake"
+		)
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 	set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -89,6 +109,7 @@ cmake_policy(SET CMP0015 NEW)
 
 createDefaultCacheConfig()
 configureProject()
+message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
 message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}")
 
 
@@ -113,20 +134,22 @@ include(EthExecutableHelper)
 createBuildInfo()
 
 if (EVMJIT)
-	# Workaround for Ubuntu broken LLVM package
-	link_directories(/usr/lib/llvm-3.5/lib)
-	
+	set(EVMJIT_CPP TRUE) # include CPP-JIT connector
 	add_subdirectory(evmjit)
 endif()
 
 add_subdirectory(libdevcore)
 add_subdirectory(libevmcore)
 add_subdirectory(liblll)
-add_subdirectory(libserpent)
+
+if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+	add_subdirectory(libserpent)
+	add_subdirectory(sc)
+endif ()
+
 add_subdirectory(libsolidity)
 add_subdirectory(lllc)
 add_subdirectory(solc)
-add_subdirectory(sc)
 
 if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
@@ -144,6 +167,7 @@ add_subdirectory(libethereum)
 add_subdirectory(libwebthree)
 add_subdirectory(test)
 add_subdirectory(eth)
+
 if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
 	add_subdirectory(exp)
 endif ()
@@ -155,8 +179,8 @@ endif ()
 
 if (NOT HEADLESS)
 	
+	add_subdirectory(libnatspec)
 	add_subdirectory(libjsqrc)
-	add_subdirectory(libqethereum)
 	add_subdirectory(alethzero)
 	add_subdirectory(third)
 	add_subdirectory(mix)

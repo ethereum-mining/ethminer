@@ -22,6 +22,7 @@
 #pragma once
 
 #include <exception>
+#include <string>
 #include <boost/exception/all.hpp>
 #include <boost/throw_exception.hpp>
 #include "CommonData.h"
@@ -40,12 +41,13 @@ struct NoNetworking: virtual Exception {};
 struct NoUPnPDevice: virtual Exception {};
 struct RootNotFound: virtual Exception {};
 struct FileError: virtual Exception {};
+struct InterfaceNotSupported: virtual Exception { public: InterfaceNotSupported(std::string _f): m_f("Interface " + _f + " not supported.") {} virtual const char* what() const noexcept { return m_f.c_str(); } private: std::string m_f; };
 
 // error information to be added to exceptions
-typedef boost::error_info<struct tag_invalidSymbol, char> errinfo_invalidSymbol;
-typedef boost::error_info<struct tag_address, std::string> errinfo_wrongAddress;
-typedef boost::error_info<struct tag_comment, std::string> errinfo_comment;
-typedef boost::error_info<struct tag_required, bigint> errinfo_required;
-typedef boost::error_info<struct tag_got, bigint> errinfo_got;
-typedef boost::tuple<errinfo_required, errinfo_got> RequirementError;
+using errinfo_invalidSymbol = boost::error_info<struct tag_invalidSymbol, char>;
+using errinfo_wrongAddress = boost::error_info<struct tag_address, std::string>;
+using errinfo_comment = boost::error_info<struct tag_comment, std::string>;
+using errinfo_required = boost::error_info<struct tag_required, bigint>;
+using errinfo_got = boost::error_info<struct tag_got, bigint>;
+using RequirementError = boost::tuple<errinfo_required, errinfo_got>;
 }
