@@ -128,6 +128,11 @@ if (NOT HEADLESS)
 		set (MACDEPLOYQT_APP ${Qt5Core_DIR}/../../../bin/macdeployqt)
 		message(" - macdeployqt path: ${MACDEPLOYQT_APP}")
 	endif()
+	# we need to find path to windeployqt on windows
+	if (WIN32)
+		set (WINDEPLOYQT_APP ${Qt5Core_DIR}/../../../bin/windeployqt)
+		message(" - windeployqt path: ${WINDEPLOYQT_APP}")
+	endif()
 
 # TODO check node && npm version
 	find_program(ETH_NODE node)
