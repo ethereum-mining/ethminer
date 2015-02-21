@@ -48,7 +48,9 @@ function saveProject() {
 			title: projectTitle,
 			deploymentAddresses: deploymentAddresses,
 			applicationUrlEth: deploymentDialog.applicationUrlEth,
-			applicationUrlHttp: deploymentDialog.applicationUrlHttp
+			applicationUrlHttp: deploymentDialog.applicationUrlHttp,
+			packageHash: deploymentDialog.packageHash,
+			packageBase64: deploymentDialog.packageBase64
 		};
 		for (var i = 0; i < projectListModel.count; i++)
 			projectData.files.push(projectListModel.get(i).fileName)
@@ -66,6 +68,10 @@ function loadProject(path) {
 	var projectFile = path + projectFileName;
 	var json = fileIo.readFile(projectFile);
 	var projectData = JSON.parse(json);
+	if (projectData.packageHash)
+		deploymentDialog.packageHash =  projectData.packageHash
+	if (projectData.packageBase64)
+		deploymentDialog.packageBase64 =  projectData.packageBase64
 	if (projectData.applicationUrlEth)
 		deploymentDialog.applicationUrlEth = projectData.applicationUrlEth
 	if (projectData.applicationUrlHttp)
@@ -283,10 +289,16 @@ function deployProject(force) {
 	deploymentDialog.open();
 }
 
-function startDeployProject()
+function startDeployProject(erasePrevious)
 {
 	var date = new Date();
 	var deploymentId = date.toLocaleString(Qt.locale(), "ddMMyyHHmmsszzz");
+	if (!erasePrevious)
+	{
+		finalizeDeployment(deploymentId, projectModel.deploymentAddresses);
+		return;
+	}
+
 	var jsonRpcUrl = "http://localhost:8080";
 	console.log("Deploying " + deploymentId + " to " + jsonRpcUrl);
 	deploymentStarted();
@@ -384,9 +396,12 @@ function finalizeDeployment(deploymentId, addresses) {
 
 	var applicationUrlEth = deploymentDialog.applicationUrlEth;
 	applicationUrlEth = formatAppUrl(applicationUrlEth);
-	deploymentStepChanged(qsTr("Registering application on Ethereum ..."));
+
+	deploymentStepChanged(qsTr("Registering application on the Ethereum network ..."));
 	checkRegistration(applicationUrlEth, deploymentDialog.root, function () {
 		deploymentComplete();
+		deployRessourcesDialog.text = qsTr("Register Web Application to finalize deployment.");
+		deployRessourcesDialog.open();
 	});
 }
 
@@ -552,7 +567,7 @@ function formatAppUrl(url)
 	var dot = url.indexOf(".");
 	if (slash === -1 && dot === -1)
 		return url;
-	if (slash !== -1 && slash < dot)
+	if ((slash !== -1 && slash < dot) || dot === -1)
 		return url.split("/");
 	else
 	{
