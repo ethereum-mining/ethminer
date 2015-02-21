@@ -45,16 +45,9 @@ find_package (Jsoncpp 0.60 REQUIRED)
 message(" - Jsoncpp header: ${JSONCPP_INCLUDE_DIRS}")
 message(" - Jsoncpp lib   : ${JSONCPP_LIBRARIES}")
 
-# TODO the JsonRpcCpp package does not yet check for correct version number
-# json-rpc-cpp support is currently not mandatory
-# TODO make headless client optional
 # TODO get rid of -DETH_JSONRPC
 if (JSONRPC)
-
-	find_package (JsonRpcCpp 0.3.2)
-	if (NOT JSON_RPC_CPP_FOUND)
-		message (FATAL_ERROR "JSONRPC 0.3.2. not found")
-	endif()
+	find_package (json_rpc_cpp 0.4 EXACT REQUIRED)
 	message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
 	message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 	add_definitions(-DETH_JSONRPC)
