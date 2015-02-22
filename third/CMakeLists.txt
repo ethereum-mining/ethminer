@@ -51,5 +51,5 @@ target_link_libraries(${EXECUTABLE} web3jsonrpc)
 target_link_libraries(${EXECUTABLE} jsqrc) 
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
-eth_install_executable(${EXECUTABLE})
+eth_install_executable(${EXECUTABLE} DLLS ${MHD_DLL_RELEASE})
 
