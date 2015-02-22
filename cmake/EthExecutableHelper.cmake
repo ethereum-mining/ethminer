@@ -90,15 +90,20 @@ macro(eth_install_executable EXECUTABLE)
 			" COMPONENT RUNTIME )
 
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND cmd /C "set PATH=${Qt5Core_DIR}/../../../bin;%PATH% && ${WINDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.exe ${eth_qml_dir}"
-			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-		)
-		#workaround for https://bugreports.qt.io/browse/QTBUG-42083
-		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND cmd /C "(echo [Paths] & echo.Prefix=.)" > "qt.conf"
-			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR} VERBATIM
-		)
+
+		get_target_property(TARGET_LIBS ${EXECUTABLE} INTERFACE_LINK_LIBRARIES)
+		string(REGEX MATCH "Qt5::Core" HAVE_QT ${TARGET_LIBS})
+		if ("${HAVE_QT}" STREQUAL "Qt5::Core")
+			add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+				COMMAND cmd /C "set PATH=${Qt5Core_DIR}/../../../bin;%PATH% && ${WINDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.exe ${eth_qml_dir}"
+				WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+			)
+			#workaround for https://bugreports.qt.io/browse/QTBUG-42083
+			add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+				COMMAND cmd /C "(echo [Paths] & echo.Prefix=.)" > "qt.conf"
+				WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR} VERBATIM
+			)
+		endif()
 
 		#copy additional dlls
 		foreach(dll ${ETH_INSTALL_EXECUTABLE_DLLS})
