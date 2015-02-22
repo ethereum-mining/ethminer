@@ -56,7 +56,7 @@ macro(eth_install_executable EXECUTABLE)
 	set (extra_macro_args ${ARGN})
 	set (options)
 	set (one_value_args QMLDIR)
-	set (multi_value_args)
+	set (multi_value_args DLLS)
 	cmake_parse_arguments (ETH_INSTALL_EXECUTABLE "${options}" "${one_value_args}" "${multi_value_args}" "${extra_macro_args}")
 	
 	if (ETH_INSTALL_EXECUTABLE_QMLDIR)
@@ -99,6 +99,15 @@ macro(eth_install_executable EXECUTABLE)
 			COMMAND cmd /C "(echo [Paths] & echo.Prefix=.)" > "qt.conf"
 			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR} VERBATIM
 		)
+
+		#copy additional dlls
+		foreach(dll ${ETH_INSTALL_EXECUTABLE_DLLS})
+			add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+			COMMAND ${CMAKE_COMMAND}
+			ARGS -E copy ${dll} "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}"
+		)
+		endforeach(dll)
+
 		install( TARGETS ${EXECUTABLE} RUNTIME 
 			DESTINATION bin
 			COMPONENT ${EXECUTABLE}
