@@ -90,7 +90,7 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 	}
 }
 
-llvm::BasicBlock* Compiler::getJumpTableBlock()
+llvm::BasicBlock* Compiler::getJumpTableBlock(RuntimeManager& _runtimeManager)
 {
 	if (!m_jumpTableBlock)
 	{
@@ -98,7 +98,7 @@ llvm::BasicBlock* Compiler::getJumpTableBlock()
 		InsertPointGuard g{m_builder};
 		m_builder.SetInsertPoint(m_jumpTableBlock->llvm());
 		auto dest = m_builder.CreatePHI(Type::Word, 8, "target");
-		auto switchInstr = m_builder.CreateSwitch(dest, getBadJumpBlock());
+		auto switchInstr = m_builder.CreateSwitch(dest, getBadJumpBlock(_runtimeManager));
 		for (auto&& p : m_basicBlocks)
 		{
 			if (p.second.isJumpDest())
@@ -108,14 +108,14 @@ llvm::BasicBlock* Compiler::getJumpTableBlock()
 	return m_jumpTableBlock->llvm();
 }
 
-llvm::BasicBlock* Compiler::getBadJumpBlock()
+llvm::BasicBlock* Compiler::getBadJumpBlock(RuntimeManager& _runtimeManager)
 {
 	if (!m_badJumpBlock)
 	{
 		m_badJumpBlock.reset(new BasicBlock("BadJump", m_mainFunc, m_builder, true));
 		InsertPointGuard g{m_builder};
 		m_builder.SetInsertPoint(m_badJumpBlock->llvm());
-		m_builder.CreateRet(Constant::get(ReturnCode::BadJumpDestination));
+		_runtimeManager.exit(ReturnCode::BadJumpDestination);
 	}
 	return m_badJumpBlock->llvm();
 }
@@ -155,6 +155,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	Memory memory(runtimeManager, gasMeter);
 	Ext ext(runtimeManager, memory);
 	Stack stack(m_builder, runtimeManager);
+	runtimeManager.setStack(stack); // Runtime Manager will free stack memory
 	Arith256 arith(m_builder);
 
 	// TODO: Create Stop basic block on demand
@@ -177,10 +178,10 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	// Code for special blocks:
 	// TODO: move to separate function.
 	m_builder.SetInsertPoint(m_stopBB);
-	m_builder.CreateRet(Constant::get(ReturnCode::Stop));
+	runtimeManager.exit(ReturnCode::Stop);
 
 	m_builder.SetInsertPoint(abortBB);
-	m_builder.CreateRet(Constant::get(ReturnCode::OutOfGas));
+	runtimeManager.exit(ReturnCode::OutOfGas);
 
 	removeDeadBlocks();
 
@@ -589,7 +590,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 				auto&& c = constant->getValue();
 				auto targetIdx = c.getActiveBits() <= 64 ? c.getZExtValue() : -1;
 				auto it = m_basicBlocks.find(targetIdx);
-				targetBlock = (it != m_basicBlocks.end() && it->second.isJumpDest()) ? it->second.llvm() : getBadJumpBlock();
+				targetBlock = (it != m_basicBlocks.end() && it->second.isJumpDest()) ? it->second.llvm() : getBadJumpBlock(_runtimeManager);
 			}
 
 			// TODO: Improve; check for constants
@@ -602,7 +603,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 				else
 				{
 					_basicBlock.setJumpTarget(target);
-					m_builder.CreateBr(getJumpTableBlock());
+					m_builder.CreateBr(getJumpTableBlock(_runtimeManager));
 				}
 			}
 			else // JUMPI
@@ -618,7 +619,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 				else
 				{
 					_basicBlock.setJumpTarget(target);
-					m_builder.CreateCondBr(cond, getJumpTableBlock(), _nextBasicBlock);
+					m_builder.CreateCondBr(cond, getJumpTableBlock(_runtimeManager), _nextBasicBlock);
 				}
 			}
 			break;
@@ -795,14 +796,14 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			_memory.require(index, size);
 			_runtimeManager.registerReturnData(index, size);
 
-			m_builder.CreateRet(Constant::get(ReturnCode::Return));
+			_runtimeManager.exit(ReturnCode::Return);
 			break;
 		}
 
 		case Instruction::SUICIDE:
 		{
 			_runtimeManager.registerSuicide(stack.pop());
-			m_builder.CreateRet(Constant::get(ReturnCode::Suicide));
+			_runtimeManager.exit(ReturnCode::Suicide);
 			break;
 		}
 
