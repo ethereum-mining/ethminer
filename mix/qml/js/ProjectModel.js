@@ -390,7 +390,7 @@ function finalizeDeployment(deploymentId, addresses) {
 	deploymentAddresses = addresses;
 	saveProject();
 
-	var packageRet = fileIo.compress(deploymentDir);
+	var packageRet = fileIo.makePackage(deploymentDir);
 	deploymentDialog.packageHash = packageRet[0];
 	deploymentDialog.packageBase64 = packageRet[1];
 
@@ -531,7 +531,7 @@ function checkRegistration(dappUrl, addr, callBack)
 
 function registerToUrlHint()
 {
-	deploymentStepChanged(qsTr("Registering application Ressources (" + deploymentDialog.applicationUrlHttp) + ") ...");
+	deploymentStepChanged(qsTr("Registering application Resources (" + deploymentDialog.applicationUrlHttp) + ") ...");
 	var requests = [];
 	var paramUrlHttp = createString(deploymentDialog.applicationUrlHttp);
 	requests.push({
