@@ -26,6 +26,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/RLP.h>
+#include <libdevcrypto/TrieDB.h>
 #include <libdevcore/CommonIO.h>
 #include <libp2p/All.h>
 #include <libethereum/DownloadMan.h>
@@ -33,11 +34,13 @@
 #include <liblll/All.h>
 #include <libwhisper/WhisperPeer.h>
 #include <libwhisper/WhisperHost.h>
+#include <test/JsonSpiritHeaders.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::p2p;
 using namespace dev::shh;
+namespace js = json_spirit;
 
 #if 0
 int main()
@@ -98,8 +101,7 @@ int main()
 #else
 int main()
 {
-	cnote << KeyPair(Secret("0000000000000000000000000000000000000000000000000000000000000000")).address();
-	cnote << KeyPair(Secret("1111111111111111111111111111111111111111111111111111111111111111")).address();
+	return 0;
 }
 #endif
 

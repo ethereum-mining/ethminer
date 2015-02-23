@@ -1,9 +1,6 @@
-
 #include "Runtime.h"
 
-#include <llvm/IR/GlobalVariable.h>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/IntrinsicInst.h>
+#include <cassert>
 
 namespace dev
 {
@@ -14,8 +11,7 @@ namespace jit
 
 Runtime::Runtime(RuntimeData* _data, Env* _env) :
 	m_data(*_data),
-	m_env(*_env),
-	m_currJmpBuf(m_jmpBuf)
+	m_env(*_env)
 {}
 
 bytes_ref Runtime::getReturnData() const

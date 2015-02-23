@@ -433,7 +433,6 @@ int main(int argc, char** argv)
 		clientName += "/";
 
 	cout << credits();
-
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
 	dev::WebThreeDirect web3(
@@ -455,6 +454,7 @@ int main(int argc, char** argv)
 	}
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
+
 	web3.startNetwork();
 
 	if (bootstrap)

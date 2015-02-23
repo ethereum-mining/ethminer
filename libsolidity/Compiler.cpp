@@ -34,6 +34,20 @@ using namespace std;
 namespace dev {
 namespace solidity {
 
+/**
+ * Simple helper class to ensure that the stack height is the same at certain places in the code.
+ */
+class StackHeightChecker
+{
+public:
+	StackHeightChecker(CompilerContext const& _context):
+		m_context(_context), stackHeight(m_context.getStackHeight()) {}
+	void check() { solAssert(m_context.getStackHeight() == stackHeight, "I sense a disturbance in the stack."); }
+private:
+	CompilerContext const& m_context;
+	unsigned stackHeight;
+};
+
 void Compiler::compileContract(ContractDefinition const& _contract,
 							   map<ContractDefinition const*, bytes const*> const& _contracts)
 {
@@ -73,7 +87,7 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 		for (ASTPointer<InheritanceSpecifier> const& base: contract->getBaseContracts())
 		{
 			ContractDefinition const* baseContract = dynamic_cast<ContractDefinition const*>(
-													base->getName()->getReferencedDeclaration());
+						base->getName()->getReferencedDeclaration());
 			solAssert(baseContract, "");
 			if (baseArguments.count(baseContract) == 0)
 				baseArguments[baseContract] = &base->getArguments();
@@ -85,12 +99,14 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 	{
 		ContractDefinition const* base = bases[bases.size() - i];
 		solAssert(base, "");
+		initializeStateVariables(*base);
 		FunctionDefinition const* baseConstructor = base->getConstructor();
 		if (!baseConstructor)
 			continue;
 		solAssert(baseArguments[base], "");
 		appendBaseConstructorCall(*baseConstructor, *baseArguments[base]);
 	}
+	initializeStateVariables(_contract);
 	if (_contract.getConstructor())
 		appendConstructorCall(*_contract.getConstructor());
 
@@ -247,6 +263,13 @@ void Compiler::registerStateVariables(ContractDefinition const& _contract)
 			m_context.addStateVariable(*variable);
 }
 
+void Compiler::initializeStateVariables(ContractDefinition const& _contract)
+{
+	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
+		if (variable->getValue())
+			ExpressionCompiler::appendStateVariableInitialization(m_context, *variable);
+}
+
 bool Compiler::visit(VariableDeclaration const& _variableDeclaration)
 {
 	solAssert(_variableDeclaration.isStateVariable(), "Compiler visit to non-state variable declaration.");
@@ -331,6 +354,8 @@ bool Compiler::visit(FunctionDefinition const& _function)
 
 bool Compiler::visit(IfStatement const& _ifStatement)
 {
+	StackHeightChecker checker(m_context);
+
 	compileExpression(_ifStatement.getCondition());
 	eth::AssemblyItem trueTag = m_context.appendConditionalJump();
 	if (_ifStatement.getFalseStatement())
@@ -339,11 +364,15 @@ bool Compiler::visit(IfStatement const& _ifStatement)
 	m_context << trueTag;
 	_ifStatement.getTrueStatement().accept(*this);
 	m_context << endTag;
+
+	checker.check();
 	return false;
 }
 
 bool Compiler::visit(WhileStatement const& _whileStatement)
 {
+	StackHeightChecker checker(m_context);
+
 	eth::AssemblyItem loopStart = m_context.newTag();
 	eth::AssemblyItem loopEnd = m_context.newTag();
 	m_continueTags.push_back(loopStart);
@@ -361,11 +390,15 @@ bool Compiler::visit(WhileStatement const& _whileStatement)
 
 	m_continueTags.pop_back();
 	m_breakTags.pop_back();
+
+	checker.check();
 	return false;
 }
 
 bool Compiler::visit(ForStatement const& _forStatement)
 {
+	StackHeightChecker checker(m_context);
+
 	eth::AssemblyItem loopStart = m_context.newTag();
 	eth::AssemblyItem loopEnd = m_context.newTag();
 	m_continueTags.push_back(loopStart);
@@ -395,6 +428,8 @@ bool Compiler::visit(ForStatement const& _forStatement)
 
 	m_continueTags.pop_back();
 	m_breakTags.pop_back();
+
+	checker.check();
 	return false;
 }
 
@@ -429,29 +464,35 @@ bool Compiler::visit(Return const& _return)
 	return false;
 }
 
-bool Compiler::visit(VariableDefinition const& _variableDefinition)
+bool Compiler::visit(VariableDeclarationStatement const& _variableDeclarationStatement)
 {
-	if (Expression const* expression = _variableDefinition.getExpression())
+	StackHeightChecker checker(m_context);
+	if (Expression const* expression = _variableDeclarationStatement.getExpression())
 	{
-		compileExpression(*expression, _variableDefinition.getDeclaration().getType());
-		CompilerUtils(m_context).moveToStackVariable(_variableDefinition.getDeclaration());
+		compileExpression(*expression, _variableDeclarationStatement.getDeclaration().getType());
+		CompilerUtils(m_context).moveToStackVariable(_variableDeclarationStatement.getDeclaration());
 	}
+	checker.check();
 	return false;
 }
 
 bool Compiler::visit(ExpressionStatement const& _expressionStatement)
 {
+	StackHeightChecker checker(m_context);
 	Expression const& expression = _expressionStatement.getExpression();
 	compileExpression(expression);
 	CompilerUtils(m_context).popStackElement(*expression.getType());
+	checker.check();
 	return false;
 }
 
 bool Compiler::visit(PlaceholderStatement const&)
 {
+	StackHeightChecker checker(m_context);
 	++m_modifierDepth;
 	appendModifierOrFunctionCode();
 	--m_modifierDepth;
+	checker.check();
 	return true;
 }
 

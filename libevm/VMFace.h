@@ -40,7 +40,7 @@ public:
 	explicit VMFace(u256 _gas): m_gas(_gas) {}
 	virtual ~VMFace() = default;
 	VMFace(VMFace const&) = delete;
-	void operator=(VMFace const&) = delete;
+	VMFace& operator=(VMFace const&) = delete;
 
 	virtual void reset(u256 _gas = 0) noexcept { m_gas = _gas; }
 	u256 gas() const noexcept { return m_gas; }
