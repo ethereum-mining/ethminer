@@ -19,10 +19,9 @@ Window {
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
-	property string urlHintContract: "29a2e6d3c56ef7713a4e7229c3d1a23406f0161a"
+	property string urlHintContract: "c83d3e22645fb015d02043a744921cc2f828c64d"
 	property string packageHash
 	property alias packageBase64: base64Value.text
-	property string root: "165fd25527c23aa90f8009dad4465bafab5d7dd0";
 	property string eth: "afb7cdbd076674fd2c67f8a66518e3145b184ae4";
 	property string wallet: "c83d3e22645fb015d02043a744921cc2f828c64d";
 
@@ -142,30 +141,23 @@ Window {
 				visible : false
 				onClicked: {
 					var requests = [];
-					var ethStr = QEtherHelper.createString("eth");
+					var ethStr = QEtherHelper.createString("wallet");
 
 					var ethHash = QEtherHelper.createHash(eth);
 
 					requests.push({ //owner
 					jsonrpc: "2.0",
 					method: "eth_call",
-					params: [ { "to": '0x' + modalDeploymentDialog.root, "data": "0xec7b9200" + ethStr.encodeValueAsString() } ],
+					params: [ { "to": '0x' + modalDeploymentDialog.eth, "data": "0xec7b9200" + ethStr.encodeValueAsString() } ],
 					id: 3
 				});
 
 				requests.push({ //register
 					jsonrpc: "2.0",
 					method: "eth_call",
-					params: [ { "to":  '0x' + modalDeploymentDialog.root, "data": "0x6be16bed" + ethStr.encodeValueAsString() } ],
+					params: [ { "to":  '0x' + modalDeploymentDialog.eth, "data": "0x6be16bed" + ethStr.encodeValueAsString() } ],
 					id: 4
 				});
-
-					requests.push({ //register
-									  jsonrpc: "2.0",
-									  method: "eth_call",
-									  params: [ { "to":  '0x' + modalDeploymentDialog.wallet, "data": "0x618242da" + ethStr.encodeValueAsString() } ],
-									  id: 4
-								  });
 
 					var jsonRpcUrl = "http://localhost:8080";
 					var rpcRequest = JSON.stringify(requests);
@@ -197,28 +189,8 @@ Window {
 					var jsonRpcRequestId = 0;
 
 					var requests = [];
-					var ethStr = QEtherHelper.createString("eth");
-					var ethHash = QEtherHelper.createHash(eth);
-					requests.push({ //reserve
-									  jsonrpc: "2.0",
-									  method: "eth_transact",
-									  params: [ { "to": '0x' + modalDeploymentDialog.root, "data": "0x1c83171b" + ethStr.encodeValueAsString() } ],
-									  id: jsonRpcRequestId++
-								  });
-
-					console.log("0x7d2e3ce9" + ethStr.encodeValueAsString() + pad(eth));
-					console.log(ethStr.encodeValueAsString());
-					console.log(pad(eth));
-
-					requests.push({ //setRegister
-									  jsonrpc: "2.0",
-									  method: "eth_transact",
-									  params: [ { "to": '0x' + modalDeploymentDialog.root, "data": "0x96077307" + ethStr.encodeValueAsString() + pad(eth) /*ethHash.encodeValueAsString()*/ } ],
-									  id: jsonRpcRequestId++
-								  });
 
 					var walletStr = QEtherHelper.createString("wallet");
-					var walletHash = QEtherHelper.createHash(wallet);
 
 					requests.push({ //reserve
 									  jsonrpc: "2.0",

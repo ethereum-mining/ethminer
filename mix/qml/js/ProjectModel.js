@@ -398,7 +398,7 @@ function finalizeDeployment(deploymentId, addresses) {
 	applicationUrlEth = formatAppUrl(applicationUrlEth);
 
 	deploymentStepChanged(qsTr("Registering application on the Ethereum network ..."));
-	checkRegistration(applicationUrlEth, deploymentDialog.root, function () {
+	checkRegistration(applicationUrlEth, deploymentDialog.eth, function () {
 		deploymentComplete();
 		deployRessourcesDialog.text = qsTr("Register Web Application to finalize deployment.");
 		deployRessourcesDialog.open();
