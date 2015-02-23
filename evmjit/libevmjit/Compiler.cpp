@@ -122,7 +122,6 @@ llvm::BasicBlock* Compiler::getBadJumpBlock(RuntimeManager& _runtimeManager)
 
 std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_iterator _end, std::string const& _id)
 {
-	auto compilationStartTime = std::chrono::high_resolution_clock::now();
 	auto module = std::unique_ptr<llvm::Module>(new llvm::Module(_id, m_builder.getContext()));
 
 	// Create main function
@@ -228,8 +227,6 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 
 	dumpCFGifRequired("blocks-sync.dot");
 
-	auto compilationEndTime = std::chrono::high_resolution_clock::now();
-	clog(JIT) << "JIT: " << std::chrono::duration_cast<std::chrono::milliseconds>(compilationEndTime - compilationStartTime).count();
 	return module;
 }
 

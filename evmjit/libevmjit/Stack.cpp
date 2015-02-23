@@ -6,9 +6,9 @@
 
 #include "RuntimeManager.h"
 #include "Runtime.h"
+#include "Utils.h"
 
-#include <iostream>
-#include <set>
+#include <set> // DEBUG only
 
 namespace dev
 {
@@ -353,7 +353,7 @@ namespace
 		~AllocatedMemoryWatchdog()
 		{
 			if (!allocatedMemory.empty())
-				std::cerr << allocatedMemory.size() << " MEM LEAKS!" << std::endl;
+				DLOG(mem) << allocatedMemory.size() << " MEM LEAKS!\n";
 		}
 	};
 
@@ -392,7 +392,7 @@ extern "C"
 		auto newData = std::realloc(_data, _size);
 		if (_data != newData)
 		{
-			std::cerr << "REALLOC: " << _data << " -> " << newData << " [" << _size << "]" << std::endl;
+			DLOG(mem) << "REALLOC: " << _data << " -> " << newData << " [" << _size << "]\n";
 			watchdog.allocatedMemory.erase(_data);
 			watchdog.allocatedMemory.insert(newData);
 		}
@@ -404,7 +404,7 @@ extern "C"
 		std::free(_data);
 		if (_data)
 		{
-			std::cerr << "FREE   : " << _data << std::endl;
+			DLOG(mem) << "FREE   : " << _data << "\n";
 			watchdog.allocatedMemory.erase(_data);
 		}
 	}
