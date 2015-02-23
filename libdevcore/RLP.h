@@ -242,7 +242,9 @@ public:
 		AllowNonCanon = 1,
 		ThrowOnFail = 4,
 		FailIfTooBig = 8,
+		FailIfTooSmall = 16,
 		Strict = ThrowOnFail | FailIfTooBig,
+		VeryStrict = ThrowOnFail | FailIfTooBig | FailIfTooSmall,
 		LaisezFaire = AllowNonCanon
 	};
 
@@ -269,7 +271,7 @@ public:
 
 	template <class _N> _N toHash(int _flags = Strict) const
 	{
-		if (!isData() || (length() > _N::size && (_flags & FailIfTooBig)))
+		if (!isData() || (length() > _N::size && (_flags & FailIfTooBig)) || (length() < _N::size && (_flags & FailIfTooSmall)))
 			if (_flags & ThrowOnFail)
 				BOOST_THROW_EXCEPTION(BadCast());
 			else

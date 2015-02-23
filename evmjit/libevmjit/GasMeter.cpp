@@ -1,11 +1,9 @@
-
 #include "GasMeter.h"
 
-#include <llvm/IR/GlobalVariable.h>
-#include <llvm/IR/Function.h>
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/IntrinsicInst.h>
+#include "preprocessor/llvm_includes_end.h"
 
-#include "Type.h"
 #include "Ext.h"
 #include "RuntimeManager.h"
 
@@ -19,29 +17,29 @@ namespace jit
 namespace // Helper functions
 {
 
-uint64_t const c_stepGas = 1;
-uint64_t const c_balanceGas = 20;
-uint64_t const c_sha3Gas = 10;
-uint64_t const c_sha3WordGas = 10;
-uint64_t const c_sloadGas = 20;
-uint64_t const c_sstoreSetGas = 300;
-uint64_t const c_sstoreResetGas = 100;
-uint64_t const c_sstoreRefundGas = 100;
-uint64_t const c_createGas = 100;
-uint64_t const c_createDataGas = 5;
-uint64_t const c_callGas = 20;
-uint64_t const c_expGas = 1;
-uint64_t const c_expByteGas = 1;
-uint64_t const c_memoryGas = 1;
-uint64_t const c_txDataZeroGas = 1;
-uint64_t const c_txDataNonZeroGas = 5;
-uint64_t const c_txGas = 500;
-uint64_t const c_logGas = 32;
-uint64_t const c_logDataGas = 1;
-uint64_t const c_logTopicGas = 32;
-uint64_t const c_copyGas = 1;
+int64_t const c_stepGas = 1;
+int64_t const c_balanceGas = 20;
+int64_t const c_sha3Gas = 10;
+int64_t const c_sha3WordGas = 10;
+int64_t const c_sloadGas = 20;
+int64_t const c_sstoreSetGas = 300;
+int64_t const c_sstoreResetGas = 100;
+int64_t const c_sstoreRefundGas = 100;
+int64_t const c_createGas = 100;
+int64_t const c_createDataGas = 5;
+int64_t const c_callGas = 20;
+int64_t const c_expGas = 1;
+int64_t const c_expByteGas = 1;
+int64_t const c_memoryGas = 1;
+int64_t const c_txDataZeroGas = 1;
+int64_t const c_txDataNonZeroGas = 5;
+int64_t const c_txGas = 500;
+int64_t const c_logGas = 32;
+int64_t const c_logDataGas = 1;
+int64_t const c_logTopicGas = 32;
+int64_t const c_copyGas = 1;
 
-uint64_t getStepCost(Instruction inst)
+int64_t getStepCost(Instruction inst)
 {
 	switch (inst)
 	{
@@ -72,7 +70,7 @@ uint64_t getStepCost(Instruction inst)
 	case Instruction::LOG3:
 	case Instruction::LOG4:
 	{
-		auto numTopics = static_cast<uint64_t>(inst) - static_cast<uint64_t>(Instruction::LOG0);
+		auto numTopics = static_cast<int64_t>(inst) - static_cast<int64_t>(Instruction::LOG0);
 		return c_logGas + numTopics * c_logTopicGas;
 	}
 	}
@@ -86,7 +84,7 @@ GasMeter::GasMeter(llvm::IRBuilder<>& _builder, RuntimeManager& _runtimeManager)
 {
 	auto module = getModule();
 
-	llvm::Type* gasCheckArgs[] = {Type::RuntimePtr, Type::Word};
+	llvm::Type* gasCheckArgs[] = {Type::RuntimePtr, Type::Gas};
 	m_gasCheckFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Void, gasCheckArgs, false), llvm::Function::PrivateLinkage, "gas.check", module);
 	InsertPointGuard guard(m_builder);
 
@@ -94,22 +92,22 @@ GasMeter::GasMeter(llvm::IRBuilder<>& _builder, RuntimeManager& _runtimeManager)
 	auto outOfGasBB = llvm::BasicBlock::Create(_builder.getContext(), "OutOfGas", m_gasCheckFunc);
 	auto updateBB = llvm::BasicBlock::Create(_builder.getContext(), "Update", m_gasCheckFunc);
 
+	auto rt = &m_gasCheckFunc->getArgumentList().front();
+	rt->setName("rt");
+	auto cost = rt->getNextNode();
+	cost->setName("cost");
+
 	m_builder.SetInsertPoint(checkBB);
-	auto arg = m_gasCheckFunc->arg_begin();
-	arg->setName("rt");
-	++arg;
-	arg->setName("cost");
-	auto cost = arg;
 	auto gas = m_runtimeManager.getGas();
-	auto isOutOfGas = m_builder.CreateICmpUGT(cost, gas, "isOutOfGas");
+	gas = m_builder.CreateNSWSub(gas, cost, "gasUpdated");
+	auto isOutOfGas = m_builder.CreateICmpSLT(gas, m_builder.getInt64(0), "isOutOfGas"); // gas < 0, with gas == 0 we can still do 0 cost instructions
 	m_builder.CreateCondBr(isOutOfGas, outOfGasBB, updateBB);
 
 	m_builder.SetInsertPoint(outOfGasBB);
-	m_runtimeManager.raiseException(ReturnCode::OutOfGas);
+	m_runtimeManager.abort();
 	m_builder.CreateUnreachable();
 
 	m_builder.SetInsertPoint(updateBB);
-	gas = m_builder.CreateSub(gas, cost);
 	m_runtimeManager.setGas(gas);
 	m_builder.CreateRetVoid();
 }
@@ -119,7 +117,7 @@ void GasMeter::count(Instruction _inst)
 	if (!m_checkCall)
 	{
 		// Create gas check call with mocked block cost at begining of current cost-block
-		m_checkCall = createCall(m_gasCheckFunc, {m_runtimeManager.getRuntimePtr(), llvm::UndefValue::get(Type::Word)});
+		m_checkCall = createCall(m_gasCheckFunc, {m_runtimeManager.getRuntimePtr(), llvm::UndefValue::get(Type::Gas)});
 	}
 
 	m_blockCost += getStepCost(_inst);
@@ -127,6 +125,15 @@ void GasMeter::count(Instruction _inst)
 
 void GasMeter::count(llvm::Value* _cost)
 {
+	if (_cost->getType() == Type::Word)
+	{
+		auto gasMax256 = m_builder.CreateZExt(Constant::gasMax, Type::Word);
+		auto tooHigh = m_builder.CreateICmpUGT(_cost, gasMax256, "costTooHigh");
+		auto cost64 = m_builder.CreateTrunc(_cost, Type::Gas);
+		_cost = m_builder.CreateSelect(tooHigh, Constant::gasMax, cost64, "cost");
+	}
+
+	assert(_cost->getType() == Type::Gas);
 	createCall(m_gasCheckFunc, {m_runtimeManager.getRuntimePtr(), _cost});
 }
 
@@ -136,12 +143,13 @@ void GasMeter::countExp(llvm::Value* _exponent)
 	// lz - leading zeros
 	// cost = ((256 - lz) + 7) / 8
 
-	// OPT: All calculations can be done on 32/64 bits
+	// OPT: Can gas update be done in exp algorithm?
 
 	auto ctlz = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::ctlz, Type::Word);
-	auto lz = m_builder.CreateCall2(ctlz, _exponent, m_builder.getInt1(false));
-	auto sigBits = m_builder.CreateSub(Constant::get(256), lz);
-	auto sigBytes = m_builder.CreateUDiv(m_builder.CreateAdd(sigBits, Constant::get(7)), Constant::get(8));
+	auto lz256 = m_builder.CreateCall2(ctlz, _exponent, m_builder.getInt1(false));
+	auto lz = m_builder.CreateTrunc(lz256, Type::Gas, "lz");
+	auto sigBits = m_builder.CreateSub(m_builder.getInt64(256), lz, "sigBits");
+	auto sigBytes = m_builder.CreateUDiv(m_builder.CreateAdd(sigBits, m_builder.getInt64(7)), m_builder.getInt64(8));
 	count(sigBytes);
 }
 
@@ -154,8 +162,8 @@ void GasMeter::countSStore(Ext& _ext, llvm::Value* _index, llvm::Value* _newValu
 	auto newValueIsntZero = m_builder.CreateICmpNE(_newValue, Constant::get(0), "newValueIsntZero");
 	auto isInsert = m_builder.CreateAnd(oldValueIsZero, newValueIsntZero, "isInsert");
 	auto isDelete = m_builder.CreateAnd(oldValueIsntZero, newValueIsZero, "isDelete");
-	auto cost = m_builder.CreateSelect(isInsert, Constant::get(c_sstoreSetGas), Constant::get(c_sstoreResetGas), "cost");
-	cost = m_builder.CreateSelect(isDelete, Constant::get(0), cost, "cost");
+	auto cost = m_builder.CreateSelect(isInsert, m_builder.getInt64(c_sstoreSetGas), m_builder.getInt64(c_sstoreResetGas), "cost");
+	cost = m_builder.CreateSelect(isDelete, m_builder.getInt64(0), cost, "cost");
 	count(cost);
 }
 
@@ -173,17 +181,16 @@ void GasMeter::countSha3Data(llvm::Value* _dataLength)
 	assert(m_blockCost > 0); // SHA3 instruction is already counted
 
 	// TODO: This round ups to 32 happens in many places
-	// FIXME: 64-bit arith used, but not verified
 	static_assert(c_sha3WordGas != 1, "SHA3 data cost has changed. Update GasMeter");
-	auto dataLength64 = getBuilder().CreateTrunc(_dataLength, Type::lowPrecision);
-	auto words64 = m_builder.CreateUDiv(m_builder.CreateAdd(dataLength64, getBuilder().getInt64(31)), getBuilder().getInt64(32));
+	auto dataLength64 = getBuilder().CreateTrunc(_dataLength, Type::Gas);
+	auto words64 = m_builder.CreateUDiv(m_builder.CreateNUWAdd(dataLength64, getBuilder().getInt64(31)), getBuilder().getInt64(32));
 	auto cost64 = m_builder.CreateNUWMul(getBuilder().getInt64(c_sha3WordGas), words64);
-	auto cost = getBuilder().CreateZExt(cost64, Type::Word);
-	count(cost);
+	count(cost64);
 }
 
 void GasMeter::giveBack(llvm::Value* _gas)
 {
+	assert(_gas->getType() == Type::Gas);
 	m_runtimeManager.setGas(m_builder.CreateAdd(m_runtimeManager.getGas(), _gas));
 }
 
@@ -199,7 +206,7 @@ void GasMeter::commitCostBlock()
 			return;
 		}
 
-		m_checkCall->setArgOperand(1, Constant::get(m_blockCost)); // Update block cost in gas check call
+		m_checkCall->setArgOperand(1, m_builder.getInt64(m_blockCost)); // Update block cost in gas check call
 		m_checkCall = nullptr; // End cost-block
 		m_blockCost = 0;
 	}

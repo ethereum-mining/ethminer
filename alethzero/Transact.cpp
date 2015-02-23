@@ -202,7 +202,7 @@ void Transact::rejigData()
 				for (auto& i: errors)
 					i = "(LLL " + i + ")";
 			}
-			catch (string err)
+			catch (string const& err)
 			{
 				errors.push_back("Serpent " + err);
 			}
