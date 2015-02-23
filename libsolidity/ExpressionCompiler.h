@@ -39,7 +39,7 @@ namespace solidity {
 class CompilerContext;
 class Type;
 class IntegerType;
-class ByteArrayType;
+class ArrayType;
 class StaticStringType;
 
 /**
@@ -58,6 +58,9 @@ public:
 									 Type const& _targetType, bool _cleanupNeeded = false);
 	/// Appends code for a State Variable accessor function
 	static void appendStateVariableAccessor(CompilerContext& _context, VariableDeclaration const& _varDecl, bool _optimize = false);
+
+	/// Appends code for a State Variable Initialization function
+	static void appendStateVariableInitialization(CompilerContext& _context, VariableDeclaration const& _varDecl, bool _optimize = false);
 
 private:
 	explicit ExpressionCompiler(CompilerContext& _compilerContext, bool _optimize = false):
@@ -111,6 +114,9 @@ private:
 	/// Appends code for a State Variable accessor function
 	void appendStateVariableAccessor(VariableDeclaration const& _varDecl);
 
+	/// Appends code for a State Variable initialization
+	void appendStateVariableInitialization(VariableDeclaration const& _varDecl);
+
 	/**
 	 * Helper class to store and retrieve lvalues to and from various locations.
 	 * All types except STACK store a reference in a slot on the stack, STACK just
@@ -126,8 +132,9 @@ private:
 			   std::shared_ptr<Type const> const& _dataType, unsigned _baseStackOffset = 0);
 
 		/// Set type according to the declaration and retrieve the reference.
-		/// @a _expression is the current expression
-		void fromIdentifier(Identifier const& _identifier, Declaration const& _declaration);
+		/// @a _location is the current location
+		void fromDeclaration(Declaration const& _declaration, Location const& _location);
+
 		void reset() { m_type = LValueType::None; m_dataType.reset(); m_baseStackOffset = 0; m_size = 0; }
 
 		bool isValid() const { return m_type != LValueType::None; }
@@ -158,7 +165,7 @@ private:
 		/// Convenience function to retrieve Value from Storage. Specific version of @ref retrieveValue
 		void retrieveValueFromStorage(bool _remove = false) const;
 		/// Copies from a byte array to a byte array in storage, both references on the stack.
-		void copyByteArrayToStorage(ByteArrayType const& _targetType, ByteArrayType const& _sourceType) const;
+		void copyByteArrayToStorage(ArrayType const& _targetType, ArrayType const& _sourceType) const;
 
 		CompilerContext* m_context;
 		LValueType m_type = LValueType::None;
