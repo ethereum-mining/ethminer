@@ -71,7 +71,7 @@ bool TopicFilter::matches(Envelope const& _e) const
 		for (unsigned i = 0; i < t.size(); ++i)
 		{
 			for (auto et: _e.topic())
-				if (((t[i].first ^ et) & t[i].second) == 0)
+				if (((t[i].first ^ et) & t[i].second) == CollapsedTopicPart())
 					goto NEXT_TOPICPART;
 			// failed to match topicmask against any topics: move on to next mask
 			goto NEXT_TOPICMASK;
