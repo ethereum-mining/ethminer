@@ -155,6 +155,13 @@ bool ASTPrinter::visit(Mapping const& _node)
 	return goDeeper();
 }
 
+bool ASTPrinter::visit(ArrayTypeName const& _node)
+{
+	writeLine("ArrayTypeName");
+	printSourcePart(_node);
+	return goDeeper();
+}
+
 bool ASTPrinter::visit(Statement const& _node)
 {
 	writeLine("Statement");
@@ -225,9 +232,9 @@ bool ASTPrinter::visit(Return const& _node)
 	return goDeeper();
 }
 
-bool ASTPrinter::visit(VariableDefinition const& _node)
+bool ASTPrinter::visit(VariableDeclarationStatement const& _node)
 {
-	writeLine("VariableDefinition");
+	writeLine("VariableDeclarationStatement");
 	printSourcePart(_node);
 	return goDeeper();
 }
@@ -419,6 +426,11 @@ void ASTPrinter::endVisit(Mapping const&)
 	m_indentation--;
 }
 
+void ASTPrinter::endVisit(ArrayTypeName const&)
+{
+	m_indentation--;
+}
+
 void ASTPrinter::endVisit(Statement const&)
 {
 	m_indentation--;
@@ -469,7 +481,7 @@ void ASTPrinter::endVisit(Return const&)
 	m_indentation--;
 }
 
-void ASTPrinter::endVisit(VariableDefinition const&)
+void ASTPrinter::endVisit(VariableDeclarationStatement const&)
 {
 	m_indentation--;
 }
