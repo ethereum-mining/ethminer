@@ -2,10 +2,23 @@
 
 #include <iostream>
 
-#include <llvm/Support/Debug.h>
-
 // The same as assert, but expression is always evaluated and result returned
 #define CHECK(expr) (assert(expr), expr)
 
-// FIXME: Disable for NDEBUG mode
-#define DLOG(CHANNEL) !(llvm::DebugFlag && llvm::isCurrentDebugType(#CHANNEL)) ? (void)0 : std::cerr
+#if !defined(NDEBUG) // Debug
+
+namespace dev
+{
+namespace evmjit
+{
+
+std::ostream& getLogStream(char const* _channel);
+
+}
+}
+
+#define DLOG(CHANNEL) ::dev::evmjit::getLogStream(#CHANNEL)
+
+#else // Release
+	#define DLOG(CHANNEL) true ? std::cerr : std::cerr
+#endif
