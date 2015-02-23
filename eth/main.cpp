@@ -119,6 +119,7 @@ void help()
         << "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
         << "    -r,--remote <host>  Connect to remote host (default: none)." << endl
         << "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
+		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
         << "    -u,--public-ip <ip>  Force public ip to given (default; auto)." << endl
         << "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
         << "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
@@ -195,6 +196,7 @@ int main(int argc, char** argv)
 	unsigned mining = ~(unsigned)0;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
+	int miners = -1;
 	bool interactive = false;
 #if ETH_JSONRPC
 	int jsonrpc = -1;
@@ -258,7 +260,23 @@ int main(int argc, char** argv)
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
-			coinbase = h160(fromHex(argv[++i]));
+		{
+			try
+			{
+				coinbase = h160(fromHex(argv[++i], ThrowType::Throw));
+			}
+			catch (BadHexCharacter& _e)
+			{
+				cwarn << "invalid hex character, coinbase rejected";
+				cwarn << boost::diagnostic_information(_e);
+				break;
+			}
+			catch (...)
+			{
+				cwarn << "coinbase rejected";
+				break;
+			}
+		}
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			us = KeyPair(h256(fromHex(argv[++i])));
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
@@ -295,6 +313,8 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
+		else if ((arg == "-t" || arg == "--miners") && i + 1 < argc)
+			miners = atoi(argv[++i]);
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -332,12 +352,15 @@ int main(int argc, char** argv)
 
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
+	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
 	dev::WebThreeDirect web3(
 		"Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : ""),
 		dbPath,
 		false,
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
-		netPrefs
+		netPrefs,
+		&nodesState,
+		miners
 		);
 	web3.setIdealPeerCount(peers);
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
@@ -347,9 +370,6 @@ int main(int argc, char** argv)
 		c->setForceMining(forceMining);
 		c->setAddress(coinbase);
 	}
-
-	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/nodeState.rlp");
-	web3.restoreNodes(&nodesState);
 
 	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
 	web3.startNetwork();
@@ -532,9 +552,21 @@ int main(int argc, char** argv)
 					}
 					else
 					{
-						Secret secret = h256(fromHex(sechex));
-						Address dest = h160(fromHex(hexAddr));
-						c->transact(secret, amount, dest, data, gas, gasPrice);
+						try
+						{
+							Secret secret = h256(fromHex(sechex));
+							Address dest = h160(fromHex(hexAddr));
+							c->transact(secret, amount, dest, data, gas, gasPrice);
+						}
+						catch (BadHexCharacter& _e)
+						{
+							cwarn << "invalid hex character, transaction rejected";
+							cwarn << boost::diagnostic_information(_e);
+						}
+						catch (...)
+						{
+							cwarn << "transaction rejected";
+						}
 					}
 				}
 				else
@@ -583,8 +615,20 @@ int main(int argc, char** argv)
 						auto blockData = bc.block(h);
 						BlockInfo info(blockData);
 						u256 minGas = (u256)Client::txGas(bytes(), 0);
-						Address dest = h160(fromHex(hexAddr));
-						c->transact(us.secret(), amount, dest, bytes(), minGas);
+						try
+						{
+							Address dest = h160(fromHex(hexAddr, ThrowType::Throw));
+							c->transact(us.secret(), amount, dest, bytes(), minGas);
+						}
+						catch (BadHexCharacter& _e)
+						{
+							cwarn << "invalid hex character, transaction rejected";
+							cwarn << boost::diagnostic_information(_e);
+						}
+						catch (...)
+						{
+							cwarn << "transaction rejected";
+						}
 					}
 				} 
 				else
@@ -615,14 +659,30 @@ int main(int argc, char** argv)
 					{
 						cnote << "Assembled:";
 						stringstream ssc;
-						init = fromHex(sinit);
+						try
+						{
+							init = fromHex(sinit, ThrowType::Throw);
+						}
+						catch (BadHexCharacter& _e)
+						{
+							cwarn << "invalid hex character, code rejected";
+							cwarn << boost::diagnostic_information(_e);
+							init = bytes();
+						}
+						catch (...)
+						{
+							cwarn << "code rejected";
+							init = bytes();
+						}
 						ssc.str(string());
 						ssc << disassemble(init);
 						cnote << "Init:";
 						cnote << ssc.str();
 					}
 					u256 minGas = (u256)Client::txGas(init, 0);
-					if (endowment < 0)
+					if (!init.size())
+						cwarn << "Contract creation aborted, no init code.";
+					else if (endowment < 0)
 						cwarn << "Invalid endowment";
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is" << minGas;
@@ -689,7 +749,7 @@ int main(int argc, char** argv)
 						else if (format == "standard+")
 							oof = [&](uint64_t, Instruction instr, bigint, bigint, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
 							{
-								dev::eth::VM* vm = (VM*)vvm;
+								dev::eth::VM* vm = vvm;
 								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
 								if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
 									for (auto const& i: ext->state().storage(ext->myAddress))
@@ -759,8 +819,22 @@ int main(int argc, char** argv)
 					if (hexAddr.length() != 40)
 						cwarn << "Invalid address length: " << hexAddr.length();
 					else
-						coinbase = h160(fromHex(hexAddr));
-				} 
+					{
+						try
+						{
+							coinbase = h160(fromHex(hexAddr, ThrowType::Throw));
+						}
+						catch (BadHexCharacter& _e)
+						{
+							cwarn << "invalid hex character, coinbase rejected";
+							cwarn << boost::diagnostic_information(_e);
+						}
+						catch (...)
+						{
+							cwarn << "coinbase rejected";
+						}
+					}
+				}
 				else
 					cwarn << "Require parameter: setAddress HEXADDRESS";
 			}
@@ -824,7 +898,9 @@ int main(int argc, char** argv)
 		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
-	writeFile((dbPath.size() ? dbPath : getDataDir()) + "/nodeState.rlp", web3.saveNodes());
+	auto netData = web3.saveNetwork();
+	if (!netData.empty())
+		writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", netData);
 	return 0;
 }
 

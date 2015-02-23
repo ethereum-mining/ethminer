@@ -43,10 +43,10 @@ class InterfaceHandler;
 
 enum class DocumentationType: uint8_t
 {
-	NATSPEC_USER = 1,
-	NATSPEC_DEV,
-	ABI_INTERFACE,
-	ABI_SOLIDITY_INTERFACE
+	NatspecUser = 1,
+	NatspecDev,
+	ABIInterface,
+	ABISolidityInterface
 };
 
 extern const std::map<std::string, std::string> StandardSources;
@@ -64,8 +64,8 @@ public:
 
 	/// Adds a source object (e.g. file) to the parser. After this, parse has to be called again.
 	/// @returns true if a source object by the name already existed and was replaced.
-	void addSources(std::map<std::string, std::string> const& _nameContents) { for (auto const& i: _nameContents) addSource(i.first, i.second); }
-	bool addSource(std::string const& _name, std::string const& _content);
+	void addSources(std::map<std::string, std::string> const& _nameContents, bool _isLibrary = false) { for (auto const& i: _nameContents) addSource(i.first, i.second, _isLibrary); }
+	bool addSource(std::string const& _name, std::string const& _content, bool _isLibrary = false);
 	void setSource(std::string const& _sourceCode);
 	/// Parses all source units that were added
 	void parse();
@@ -73,6 +73,7 @@ public:
 	void parse(std::string const& _sourceCode);
 	/// Returns a list of the contract names in the sources.
 	std::vector<std::string> getContractNames() const;
+	std::string defaultContractName() const;
 
 	/// Compiles the source units that were previously added and parsed.
 	void compile(bool _optimize = false);
@@ -124,7 +125,8 @@ private:
 		std::shared_ptr<Scanner> scanner;
 		std::shared_ptr<SourceUnit> ast;
 		std::string interface;
-		void reset() { scanner.reset(); ast.reset(); interface.clear(); }
+		bool isLibrary = false;
+		void reset() { scanner.reset(); ast.reset(); interface.clear(); isLibrary = false;}
 	};
 
 	struct Contract
@@ -141,10 +143,6 @@ private:
 
 		Contract();
 	};
-
-	/// Expand source code with preprocessor-like includes.
-	/// @todo Replace with better framework.
-	std::string expanded(std::string const& _sourceCode);
 
 	void reset(bool _keepSources = false);
 	void resolveImports();

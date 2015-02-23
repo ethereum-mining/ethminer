@@ -1,7 +1,8 @@
 #pragma once
 
-#include <type_traits>
+#include <cstring>
 #include <cassert>
+#include <type_traits>
 #include <vector>
 #include <string>
 
@@ -12,13 +13,13 @@ template <class _T>
 class vector_ref
 {
 public:
-	typedef _T value_type;
-	typedef _T element_type;
-	typedef typename std::conditional<std::is_const<_T>::value, typename std::remove_const<_T>::type, _T>::type mutable_value_type;
+	using value_type = _T;
+	using element_type = _T;
+	using mutable_value_type = typename std::conditional<std::is_const<_T>::value, typename std::remove_const<_T>::type, _T>::type;
 
 	vector_ref(): m_data(nullptr), m_count(0) {}
 	vector_ref(_T* _data, size_t _count): m_data(_data), m_count(_count) {}
-	vector_ref(std::string* _data): m_data((_T*)_data->data()), m_count(_data->size() / sizeof(_T)) {}
+	vector_ref(typename std::conditional<std::is_const<_T>::value, std::string const*, std::string*>::type _data): m_data(reinterpret_cast<_T*>(_data->data())), m_count(_data->size() / sizeof(_T)) {}
 	vector_ref(typename std::conditional<std::is_const<_T>::value, std::vector<typename std::remove_const<_T>::type> const*, std::vector<_T>*>::type _data): m_data(_data->data()), m_count(_data->size()) {}
 	vector_ref(typename std::conditional<std::is_const<_T>::value, std::string const&, std::string&>::type _data): m_data((_T*)_data.data()), m_count(_data.size() / sizeof(_T)) {}
 #ifdef STORAGE_LEVELDB_INCLUDE_DB_H_
@@ -28,9 +29,10 @@ public:
 
 	bool contentsEqual(std::vector<mutable_value_type> const& _c) const { return _c.size() == m_count && !memcmp(_c.data(), m_data, m_count); }
 	std::vector<mutable_value_type> toVector() const { return std::vector<mutable_value_type>(m_data, m_data + m_count); }
-	std::vector<unsigned char> toBytes() const { return std::vector<unsigned char>((unsigned char const*)m_data, (unsigned char const*)m_data + m_count * sizeof(_T)); }
+	std::vector<unsigned char> toBytes() const { return std::vector<unsigned char>(reinterpret_cast<unsigned char const*>(m_data), reinterpret_cast<unsigned char const*>(m_data) + m_count * sizeof(_T)); }
 	std::string toString() const { return std::string((char const*)m_data, ((char const*)m_data) + m_count * sizeof(_T)); }
-	template <class _T2> operator vector_ref<_T2>() const { assert(m_count * sizeof(_T) / sizeof(_T2) * sizeof(_T2) / sizeof(_T) == m_count); return vector_ref<_T2>((_T2*)m_data, m_count * sizeof(_T) / sizeof(_T2)); }
+	template <class _T2> explicit operator vector_ref<_T2>() const { assert(m_count * sizeof(_T) / sizeof(_T2) * sizeof(_T2) / sizeof(_T) == m_count); return vector_ref<_T2>(reinterpret_cast<_T2*>(m_data), m_count * sizeof(_T) / sizeof(_T2)); }
+	operator vector_ref<_T const>() const { return vector_ref<_T const>(m_data, m_count); }
 
 	_T* data() const { return m_data; }
 	size_t count() const { return m_count; }

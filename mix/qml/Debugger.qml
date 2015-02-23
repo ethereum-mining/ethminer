@@ -1,16 +1,19 @@
 import QtQuick 2.2
-import QtQuick.Controls.Styles 1.1
 import QtQuick.Controls 1.1
+import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import Qt.labs.settings 1.0
 import "js/Debugger.js" as Debugger
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
+import "."
 
 Rectangle {
 	id: debugPanel
+
+	property alias transactionLog : transactionLog
+
 	objectName: "debugPanel"
-	anchors.fill: parent;
 	color: "#ededed"
 	clip: true
 
@@ -22,7 +25,7 @@ Rectangle {
 
 	function update(data, giveFocus)
 	{
-		if (statusPane.result.successful)
+		if (statusPane && codeModel.hasContract)
 		{
 			Debugger.init(data);
 			debugScrollArea.visible = true;
@@ -62,6 +65,7 @@ Rectangle {
 		property alias storageHeightSettings: storageRect.height
 		property alias memoryDumpHeightSettings: memoryRect.height
 		property alias callDataHeightSettings: callDataRect.height
+		property alias transactionLogVisible: transactionLog.visible
 	}
 
 	Rectangle
@@ -113,51 +117,54 @@ Rectangle {
 		}
 	}
 
-	ScrollView {
+	SplitView {
 		id: debugScrollArea
 		anchors.fill: parent
+		orientation: Qt.Vertical
+		handleDelegate: Rectangle {
+			height: machineStates.sideMargin
+			color: "transparent"
+		}
 
-		SplitView
+		TransactionLog {
+			id: transactionLog
+			Layout.fillWidth: true
+			Layout.minimumHeight: 60
+			height: 250
+			anchors.top: parent.top
+			anchors.left: parent.left
+			anchors.right: parent.right
+			anchors.leftMargin: machineStates.sideMargin
+			anchors.rightMargin: machineStates.sideMargin
+			anchors.topMargin: machineStates.sideMargin
+		}
+
+		ScrollView
 		{
 			property int sideMargin: 10
 			id: machineStates
-			anchors.top: parent.top
-			anchors.topMargin: 15
-			anchors.left: parent.left;
-			anchors.leftMargin: machineStates.sideMargin
-			width: debugScrollArea.width - machineStates.sideMargin * 2 - 20;
-			orientation: Qt.Vertical
-			handleDelegate: Rectangle {
-				height: machineStates.sideMargin
-				color: "transparent"
-			}
-
+			Layout.fillWidth: true
+			Layout.fillHeight: true
 			function updateHeight() {
-				machineStates.height = transactionLog.childrenRect.height + buttonRow.childrenRect.height + assemblyCodeRow.childrenRect.height +
+				statesLayout.height = buttonRow.childrenRect.height + assemblyCodeRow.childrenRect.height +
 						callStackRect.childrenRect.height + storageRect.childrenRect.height + memoryRect.childrenRect.height + callDataRect.childrenRect.height + 120;
 			}
 
 			Component.onCompleted: updateHeight();
 
-
-			TransactionLog {
-				id: transactionLog
-				Layout.fillWidth: true
-				Layout.minimumHeight: 60
-				height: 250
-			}
-
 			ColumnLayout {
-
-				Layout.fillWidth: true
-				Layout.fillHeight: true
 				id: statesLayout
+				anchors.top: parent.top
+				anchors.topMargin: 15
+				anchors.left: parent.left;
+				anchors.leftMargin: machineStates.sideMargin
+				width: debugScrollArea.width - machineStates.sideMargin * 2 - 20;
 				spacing: machineStates.sideMargin
 
 				Rectangle {
 					// step button + slider
 					id: buttonRow
-					height: 27
+					height: 30
 					Layout.fillWidth: true
 					color: "transparent"
 
@@ -177,7 +184,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutback.png"
 								disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
 								onClicked: Debugger.stepOutBack()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "Ctrl+Shift+F11"
 								buttonTooltip: qsTr("Step Out Back")
@@ -189,7 +196,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpintoback.png"
 								disableStateImg: "qrc:/qml/img/jumpintobackdisabled.png"
 								onClicked: Debugger.stepIntoBack()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "Ctrl+F11"
 								buttonTooltip: qsTr("Step Into Back")
@@ -201,7 +208,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoverback.png"
 								disableStateImg: "qrc:/qml/img/jumpoverbackdisabled.png"
 								onClicked: Debugger.stepOverBack()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "Ctrl+F10"
 								buttonTooltip: qsTr("Step Over Back")
@@ -213,7 +220,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoverforward.png"
 								disableStateImg: "qrc:/qml/img/jumpoverforwarddisabled.png"
 								onClicked: Debugger.stepOverForward()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "F10"
 								buttonTooltip: qsTr("Step Over Forward")
@@ -225,7 +232,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpintoforward.png"
 								disableStateImg: "qrc:/qml/img/jumpintoforwarddisabled.png"
 								onClicked: Debugger.stepIntoForward()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "F11"
 								buttonTooltip: qsTr("Step Into Forward")
@@ -237,7 +244,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
 								disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
 								onClicked: Debugger.stepOutForward()
-								width: 28
+								width: 30
 								height: 30
 								buttonShortcut: "Shift+F11"
 								buttonTooltip: qsTr("Step Out Forward")
@@ -347,7 +354,7 @@ Rectangle {
 										color: "#b2b3ae"
 										text: styleData.value.split(' ')[0]
 										font.family: "monospace"
-										font.pointSize: 9
+										font.pointSize: DebuggerPaneStyle.general.basicFontSize
 										wrapMode: Text.NoWrap
 										id: id
 									}
@@ -357,7 +364,7 @@ Rectangle {
 										color: styleData.selected ? "white" : "black"
 										font.family: "monospace"
 										text: styleData.value.replace(styleData.value.split(' ')[0], '')
-										font.pointSize: 9
+										font.pointSize: DebuggerPaneStyle.general.basicFontSize
 									}
 								}
 							}
@@ -430,7 +437,7 @@ Rectangle {
 												font.family: "monospace"
 												color: "#4a4a4a"
 												text: styleData.row;
-												font.pointSize: 9
+												font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											}
 										}
 
@@ -448,7 +455,7 @@ Rectangle {
 												anchors.verticalCenter: parent.verticalCenter
 												color: "#4a4a4a"
 												text: styleData.value
-												font.pointSize: 9
+												font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											}
 										}
 									}
@@ -515,7 +522,7 @@ Rectangle {
 											anchors.leftMargin: 5
 											color: "#4a4a4a"
 											text: styleData.row;
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											width: parent.width - 5
 											elide: Text.ElideRight
 										}
@@ -529,14 +536,14 @@ Rectangle {
 										Text {
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.NoWrap
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
 											color: "#4a4a4a"
 											text: styleData.value;
 											elide: Text.ElideRight
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 										}
 									}
 								}
@@ -550,7 +557,6 @@ Rectangle {
 								}
 							}
 						}
-
 					}
 
 					Rectangle
@@ -587,7 +593,7 @@ Rectangle {
 											anchors.leftMargin: 5
 											color: "#4a4a4a"
 											text: styleData.value.split('\t')[0];
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 											width: parent.width - 5
 											elide: Text.ElideRight
 										}
@@ -599,16 +605,18 @@ Rectangle {
 										Layout.minimumWidth: parent.width / 2
 										Layout.maximumWidth: parent.width / 2
 										Text {
+											maximumLineCount: 1
+											clip: true
 											anchors.leftMargin: 5
 											width: parent.width - 5
-											wrapMode: Text.Wrap
+											wrapMode: Text.WrapAnywhere
 											anchors.left: parent.left
 											font.family: "monospace"
 											anchors.verticalCenter: parent.verticalCenter
 											color: "#4a4a4a"
 											text: styleData.value.split('\t')[1];
 											elide: Text.ElideRight
-											font.pointSize: 9
+											font.pointSize: DebuggerPaneStyle.general.basicFontSize
 										}
 									}
 								}

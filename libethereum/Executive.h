@@ -62,6 +62,9 @@ public:
 	/// Set up the executive for evaluating a transaction. You must call finalize() following this.
 	/// @returns true iff go() must be called (and thus a VM execution in required).
 	bool setup(bytesConstRef _transaction);
+	/// Set up the executive for evaluating a transaction. You must call finalize() following this.
+	/// @returns true iff go() must be called (and thus a VM execution in required).
+	bool setup(Transaction const& _transaction) { m_t = _transaction; return setup(); }
 	/// Finalise a transaction previously set up with setup().
 	/// @warning Only valid after setup(), and possibly go().
 	void finalize();
@@ -101,6 +104,8 @@ public:
 	bool excepted() const { return m_excepted; }
 
 private:
+	bool setup();
+
 	State& m_s;							///< The state to which this operation/transaction is applied.
 	LastHashes m_lastHashes;
 	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required.

@@ -71,6 +71,18 @@ bool ASTPrinter::visit(StructDefinition const& _node)
 	return goDeeper();
 }
 
+bool ASTPrinter::visit(EnumDefinition const& _node)
+{
+	writeLine("EnumDefinition \"" + _node.getName() + "\"");
+	return goDeeper();
+}
+
+bool ASTPrinter::visit(EnumValue const& _node)
+{
+	writeLine("EnumValue \"" + _node.getName() + "\"");
+	return goDeeper();
+}
+
 bool ASTPrinter::visit(ParameterList const& _node)
 {
 	writeLine("ParameterList");
@@ -213,9 +225,9 @@ bool ASTPrinter::visit(Return const& _node)
 	return goDeeper();
 }
 
-bool ASTPrinter::visit(VariableDefinition const& _node)
+bool ASTPrinter::visit(VariableDeclarationStatement const& _node)
 {
-	writeLine("VariableDefinition");
+	writeLine("VariableDeclarationStatement");
 	printSourcePart(_node);
 	return goDeeper();
 }
@@ -347,6 +359,16 @@ void ASTPrinter::endVisit(StructDefinition const&)
 	m_indentation--;
 }
 
+void ASTPrinter::endVisit(EnumDefinition const&)
+{
+	m_indentation--;
+}
+
+void ASTPrinter::endVisit(EnumValue const&)
+{
+	m_indentation--;
+}
+
 void ASTPrinter::endVisit(ParameterList const&)
 {
 	m_indentation--;
@@ -447,7 +469,7 @@ void ASTPrinter::endVisit(Return const&)
 	m_indentation--;
 }
 
-void ASTPrinter::endVisit(VariableDefinition const&)
+void ASTPrinter::endVisit(VariableDeclarationStatement const&)
 {
 	m_indentation--;
 }

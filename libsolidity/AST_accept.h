@@ -63,6 +63,7 @@ void ContractDefinition::accept(ASTVisitor& _visitor)
 	{
 		listAccept(m_baseContracts, _visitor);
 		listAccept(m_definedStructs, _visitor);
+		listAccept(m_definedEnums, _visitor);
 		listAccept(m_stateVariables, _visitor);
 		listAccept(m_events, _visitor);
 		listAccept(m_functionModifiers, _visitor);
@@ -77,6 +78,7 @@ void ContractDefinition::accept(ASTConstVisitor& _visitor) const
 	{
 		listAccept(m_baseContracts, _visitor);
 		listAccept(m_definedStructs, _visitor);
+		listAccept(m_definedEnums, _visitor);
 		listAccept(m_stateVariables, _visitor);
 		listAccept(m_events, _visitor);
 		listAccept(m_functionModifiers, _visitor);
@@ -102,6 +104,32 @@ void InheritanceSpecifier::accept(ASTConstVisitor& _visitor) const
 		m_baseName->accept(_visitor);
 		listAccept(m_arguments, _visitor);
 	}
+	_visitor.endVisit(*this);
+}
+
+void EnumDefinition::accept(ASTVisitor& _visitor)
+{
+	if (_visitor.visit(*this))
+		listAccept(m_members, _visitor);
+	_visitor.endVisit(*this);
+}
+
+void EnumDefinition::accept(ASTConstVisitor& _visitor) const
+{
+	if (_visitor.visit(*this))
+		listAccept(m_members, _visitor);
+	_visitor.endVisit(*this);
+}
+
+void EnumValue::accept(ASTVisitor& _visitor)
+{
+	_visitor.visit(*this);
+	_visitor.endVisit(*this);
+}
+
+void EnumValue::accept(ASTConstVisitor& _visitor) const
+{
+	_visitor.visit(*this);
 	_visitor.endVisit(*this);
 }
 
@@ -168,16 +196,24 @@ void FunctionDefinition::accept(ASTConstVisitor& _visitor) const
 void VariableDeclaration::accept(ASTVisitor& _visitor)
 {
 	if (_visitor.visit(*this))
+	{
 		if (m_typeName)
 			m_typeName->accept(_visitor);
+		if (m_value)
+			m_value->accept(_visitor);
+	}
 	_visitor.endVisit(*this);
 }
 
 void VariableDeclaration::accept(ASTConstVisitor& _visitor) const
 {
 	if (_visitor.visit(*this))
+	{
 		if (m_typeName)
 			m_typeName->accept(_visitor);
+		if (m_value)
+			m_value->accept(_visitor);
+	}
 	_visitor.endVisit(*this);
 }
 
@@ -447,25 +483,17 @@ void ExpressionStatement::accept(ASTConstVisitor& _visitor) const
 	_visitor.endVisit(*this);
 }
 
-void VariableDefinition::accept(ASTVisitor& _visitor)
+void VariableDeclarationStatement::accept(ASTVisitor& _visitor)
 {
 	if (_visitor.visit(*this))
-	{
 		m_variable->accept(_visitor);
-		if (m_value)
-			m_value->accept(_visitor);
-	}
 	_visitor.endVisit(*this);
 }
 
-void VariableDefinition::accept(ASTConstVisitor& _visitor) const
+void VariableDeclarationStatement::accept(ASTConstVisitor& _visitor) const
 {
 	if (_visitor.visit(*this))
-	{
 		m_variable->accept(_visitor);
-		if (m_value)
-			m_value->accept(_visitor);
-	}
 	_visitor.endVisit(*this);
 }
 

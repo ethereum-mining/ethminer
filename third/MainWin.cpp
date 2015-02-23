@@ -40,6 +40,7 @@
 #include <libethereum/EthereumHost.h>
 #include <libwebthree/WebThree.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
+#include <jsonrpccpp/server/connectors/httpserver.h>
 #include "BuildInfo.h"
 #include "MainWin.h"
 #include "ui_Main.h"
@@ -114,23 +115,28 @@ Main::Main(QWidget *parent) :
 	
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
-	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}));
+	bytesConstRef networkConfig((byte*)m_networkConfig.data(), m_networkConfig.size());
+	m_web3.reset(new WebThreeDirect("Third", getDataDir() + "/Third", false, {"eth", "shh"}, NetworkPreferences(), networkConfig));
 	m_web3->connect(Host::pocHost());
 
-	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_qwebConnector, *web3(), keysAsVector(m_myKeys)));
+	m_httpConnector.reset(new jsonrpc::HttpServer(8080));
+	m_server.reset(new WebThreeStubServer(*m_httpConnector, *web3(), keysAsVector(m_myKeys)));
+//	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_httpConnector, *web3(), keysAsVector(m_myKeys)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 	
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
-		// NOTE: no need to delete as QETH_INSTALL_JS_NAMESPACE adopts it.
-		m_qweb = new QWebThree(this);
-		auto qweb = m_qweb;
-		m_qwebConnector.setQWeb(qweb);
-
 		QWebFrame* f = ui->webView->page()->mainFrame();
 		f->disconnect(SIGNAL(javaScriptWindowObjectCleared()));
-		connect(f, &QWebFrame::javaScriptWindowObjectCleared, QETH_INSTALL_JS_NAMESPACE(f, this, qweb));
+		connect(f, &QWebFrame::javaScriptWindowObjectCleared, [f, this]()
+		{
+			f->disconnect();
+			f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership);
+			f->evaluateJavaScript(contentsOfQResource(":/js/bignumber.min.js"));
+			f->evaluateJavaScript(contentsOfQResource(":/js/webthree.js"));
+			f->evaluateJavaScript(contentsOfQResource(":/js/setup.js"));
+		});
 	});
 	
 	connect(ui->webView, &QWebView::loadFinished, [=]()
@@ -162,7 +168,6 @@ Main::~Main()
 {
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
-	m_qweb->clientDieing();
 	writeSettings();
 }
 
@@ -377,10 +382,10 @@ void Main::writeSettings()
 	s.setValue("address", b);
 	s.setValue("url", ui->urlEdit->text());
 
-	bytes d = m_web3->saveNodes();
+	bytes d = m_web3->saveNetwork();
 	if (d.size())
-		m_nodes = QByteArray((char*)d.data(), (int)d.size());
-	s.setValue("peers", m_nodes);
+		m_networkConfig = QByteArray((char*)d.data(), (int)d.size());
+	s.setValue("peers", m_networkConfig);
 
 	s.setValue("geometry", saveGeometry());
 	s.setValue("windowState", saveState());
@@ -409,7 +414,7 @@ void Main::readSettings(bool _skipGeometry)
 		}
 	}
 	ethereum()->setAddress(m_myKeys.back().address());
-	m_nodes = s.value("peers").toByteArray();
+	m_networkConfig = s.value("peers").toByteArray();
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
 }
@@ -581,11 +586,9 @@ void Main::ensureNetwork()
 		web3()->startNetwork();
 		web3()->connect(defPeer);
 	}
-	else
-		if (!m_web3->peerCount())
-			m_web3->connect(defPeer);
-	if (m_nodes.size())
-		m_web3->restoreNodes(bytesConstRef((byte*)m_nodes.data(), m_nodes.size()));
+//	else
+//		if (!m_web3->peerCount())
+//			m_web3->connect(defPeer);
 }
 
 void Main::on_connect_triggered()
