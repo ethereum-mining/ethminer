@@ -133,7 +133,7 @@ class Declaration: public ASTNode
 {
 public:
 	/// Visibility ordered from restricted to unrestricted.
-	enum class Visibility { Default, Private, Inheritable, Public, External };
+	enum class Visibility { Default, Private, Internal, Public, External };
 
 	Declaration(Location const& _location, ASTPointer<ASTString> const& _name,
 				Visibility _visibility = Visibility::Default):
@@ -144,7 +144,7 @@ public:
 	Visibility getVisibility() const { return m_visibility == Visibility::Default ? getDefaultVisibility() : m_visibility; }
 	bool isPublic() const { return getVisibility() >= Visibility::Public; }
 	bool isVisibleInContract() const { return getVisibility() != Visibility::External; }
-	bool isVisibleInDerivedContracts() const { return isVisibleInContract() && getVisibility() >= Visibility::Inheritable; }
+	bool isVisibleInDerivedContracts() const { return isVisibleInContract() && getVisibility() >= Visibility::Internal; }
 
 	/// @returns the scope this declaration resides in. Can be nullptr if it is the global scope.
 	/// Available only after name and type resolution step.
@@ -432,14 +432,17 @@ class VariableDeclaration: public Declaration
 {
 public:
 	VariableDeclaration(Location const& _location, ASTPointer<TypeName> const& _type,
-						ASTPointer<ASTString> const& _name, Visibility _visibility,
-						bool _isStateVar = false, bool _isIndexed = false):
-		Declaration(_location, _name, _visibility), m_typeName(_type),
-		m_isStateVariable(_isStateVar), m_isIndexed(_isIndexed) {}
+							ASTPointer<ASTString> const& _name, ASTPointer<Expression> _value,
+							Visibility _visibility,
+							bool _isStateVar = false, bool _isIndexed = false):
+			Declaration(_location, _name, _visibility),
+			m_typeName(_type), m_value(_value),
+			m_isStateVariable(_isStateVar), m_isIndexed(_isIndexed) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 
-	TypeName const* getTypeName() const { return m_typeName.get(); }
+	TypeName* getTypeName() { return m_typeName.get(); }
+	ASTPointer<Expression> const& getValue() const { return m_value; }
 
 	/// Returns the declared or inferred type. Can be an empty pointer if no type was explicitly
 	/// declared and there is no assignment to the variable that fixes the type.
@@ -447,16 +450,20 @@ public:
 	void setType(std::shared_ptr<Type const> const& _type) { m_type = _type; }
 
 	virtual bool isLValue() const override;
+
+	/// Calls checkTypeRequirments for all state variables.
+	void checkTypeRequirements();
 	bool isLocalVariable() const { return !!dynamic_cast<FunctionDefinition const*>(getScope()); }
 	bool isExternalFunctionParameter() const;
 	bool isStateVariable() const { return m_isStateVariable; }
 	bool isIndexed() const { return m_isIndexed; }
 
 protected:
-	Visibility getDefaultVisibility() const override { return Visibility::Inheritable; }
+	Visibility getDefaultVisibility() const override { return Visibility::Internal; }
 
 private:
 	ASTPointer<TypeName> m_typeName;    ///< can be empty ("var")
+	ASTPointer<Expression> m_value;		///< the assigned value, can be missing
 	bool m_isStateVariable;             ///< Whether or not this is a contract state variable
 	bool m_isIndexed;                   ///< Whether this is an indexed variable (used by events).
 
@@ -581,7 +588,7 @@ public:
 	/// Retrieve the element of the type hierarchy this node refers to. Can return an empty shared
 	/// pointer until the types have been resolved using the @ref NameAndTypeResolver.
 	/// If it returns an empty shared pointer after that, this indicates that the type was not found.
-	virtual std::shared_ptr<Type const> toType() const = 0;
+	virtual std::shared_ptr<Type const> toType() = 0;
 };
 
 /**
@@ -598,7 +605,7 @@ public:
 	}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual std::shared_ptr<Type const> toType() const override { return Type::fromElementaryTypeName(m_type); }
+	virtual std::shared_ptr<Type const> toType() override { return Type::fromElementaryTypeName(m_type); }
 
 	Token::Value getTypeName() const { return m_type; }
 
@@ -616,7 +623,7 @@ public:
 		TypeName(_location), m_name(_name), m_referencedDeclaration(nullptr) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual std::shared_ptr<Type const> toType() const override { return Type::fromUserDefinedTypeName(*this); }
+	virtual std::shared_ptr<Type const> toType() override { return Type::fromUserDefinedTypeName(*this); }
 
 	ASTString const& getName() const { return *m_name; }
 	void setReferencedDeclaration(Declaration const& _referencedDeclaration) { m_referencedDeclaration = &_referencedDeclaration; }
@@ -639,7 +646,7 @@ public:
 		TypeName(_location), m_keyType(_keyType), m_valueType(_valueType) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual std::shared_ptr<Type const> toType() const override { return Type::fromMapping(*this); }
+	virtual TypePointer toType() override { return Type::fromMapping(*m_keyType, *m_valueType); }
 
 	ElementaryTypeName const& getKeyType() const { return *m_keyType; }
 	TypeName const& getValueType() const { return *m_valueType; }
@@ -647,6 +654,27 @@ public:
 private:
 	ASTPointer<ElementaryTypeName> m_keyType;
 	ASTPointer<TypeName> m_valueType;
+};
+
+/**
+ * An array type, can be "typename[]" or "typename[<expression>]".
+ */
+class ArrayTypeName: public TypeName
+{
+public:
+	ArrayTypeName(Location const& _location, ASTPointer<TypeName> const& _baseType,
+			ASTPointer<Expression> const& _length):
+		TypeName(_location), m_baseType(_baseType), m_length(_length) {}
+	virtual void accept(ASTVisitor& _visitor) override;
+	virtual void accept(ASTConstVisitor& _visitor) const override;
+	virtual std::shared_ptr<Type const> toType() override { return Type::fromArrayTypeName(*m_baseType, m_length.get()); }
+
+	TypeName const& getBaseType() const { return *m_baseType; }
+	Expression const* getLength() const { return m_length.get(); }
+
+private:
+	ASTPointer<TypeName> m_baseType;
+	ASTPointer<Expression> m_length; ///< Length of the array, might be empty.
 };
 
 /// @}
@@ -833,22 +861,20 @@ private:
  * also be "var") but the actual assignment can be missing.
  * Examples: var a = 2; uint256 a;
  */
-class VariableDefinition: public Statement
+class VariableDeclarationStatement: public Statement
 {
 public:
-	VariableDefinition(Location const& _location, ASTPointer<VariableDeclaration> _variable,
-					   ASTPointer<Expression> _value):
-		Statement(_location), m_variable(_variable), m_value(_value) {}
+	VariableDeclarationStatement(Location const& _location, ASTPointer<VariableDeclaration> _variable):
+		Statement(_location), m_variable(_variable) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 	virtual void checkTypeRequirements() override;
 
 	VariableDeclaration const& getDeclaration() const { return *m_variable; }
-	Expression const* getExpression() const { return m_value.get(); }
+	Expression const* getExpression() const { return m_variable->getValue().get(); }
 
 private:
 	ASTPointer<VariableDeclaration> m_variable;
-	ASTPointer<Expression> m_value; ///< the assigned value, can be missing
 };
 
 /**
@@ -1076,7 +1102,7 @@ public:
 	virtual void checkTypeRequirements() override;
 
 	Expression const& getBaseExpression() const { return *m_base; }
-	Expression const& getIndexExpression() const { return *m_index; }
+	Expression const* getIndexExpression() const { return m_index.get(); }
 
 private:
 	ASTPointer<Expression> m_base;
