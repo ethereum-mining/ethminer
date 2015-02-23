@@ -27,7 +27,7 @@ if (process.env.NODE_ENV !== 'build') {
 
 var HttpSyncProvider = function (host) {
     this.handlers = [];
-    this.host = host || 'http://localhost:8080';
+    this.host = host || 'http://127.0.0.1:8080';
 };
 
 HttpSyncProvider.prototype.send = function (payload) {

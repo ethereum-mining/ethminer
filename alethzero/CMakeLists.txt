@@ -58,5 +58,5 @@ if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 endif()
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
-eth_install_executable(${EXECUTABLE})
+eth_install_executable(${EXECUTABLE} DLLS ${MHD_DLL_RELEASE})
 

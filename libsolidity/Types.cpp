@@ -653,7 +653,7 @@ MemberList const& StructType::getMembers() const
 	// We need to lazy-initialize it because of recursive references.
 	if (!m_members)
 	{
-		vector<pair<string, TypePointer>> members;
+		MemberList::MemberMap members;
 		for (ASTPointer<VariableDeclaration> const& variable: m_struct.getMembers())
 			members.push_back(make_pair(variable->getName(), variable->getType()));
 		m_members.reset(new MemberList(members));
@@ -833,10 +833,17 @@ string FunctionType::toString() const
 
 unsigned FunctionType::getSizeOnStack() const
 {
+	Location location = m_location;
+	if (m_location == Location::SetGas || m_location == Location::SetValue)
+	{
+		solAssert(m_returnParameterTypes.size() == 1, "");
+		location = dynamic_cast<FunctionType const&>(*m_returnParameterTypes.front()).m_location;
+	}
+
 	unsigned size = 0;
-	if (m_location == Location::External)
+	if (location == Location::External)
 		size = 2;
-	else if (m_location == Location::Internal || m_location == Location::Bare)
+	else if (location == Location::Internal || location == Location::Bare)
 		size = 1;
 	if (m_gasSet)
 		size++;
