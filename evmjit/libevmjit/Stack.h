@@ -38,6 +38,7 @@ public:
 	llvm::Value* get(llvm::Value* _index) { return m_getFunc.call(m_builder, {m_array, _index}); }
 	void pop(llvm::Value* _count);
 	llvm::Value* size();
+	void free() { m_freeFunc.call(m_builder, {m_array}); }
 
 	llvm::Value* getPointerTo() const { return m_array; }
 
@@ -47,10 +48,12 @@ private:
 	LazyFunction m_pushFunc;
 	LazyFunction m_setFunc;
 	LazyFunction m_getFunc;
+	LazyFunction m_freeFunc;
 
 	llvm::Function* createArrayPushFunc();
 	llvm::Function* createArraySetFunc();
 	llvm::Function* createArrayGetFunc();
+	llvm::Function* createFreeFunc();
 };
 
 class Stack : public CompilerHelper
@@ -62,6 +65,7 @@ public:
 	void set(size_t _index, llvm::Value* _value);
 	void pop(size_t _count);
 	void push(llvm::Value* _value);
+	void free() { m_stack.free(); }
 
 private:
 	llvm::Function* getPopFunc();
