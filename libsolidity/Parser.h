@@ -50,6 +50,8 @@ private:
 		bool allowVar = false;
 		bool isStateVariable = false;
 		bool allowIndexed = false;
+		bool allowEmptyName = false;
+		bool allowInitialValue = false;
 	};
 
 	///@{
@@ -60,6 +62,8 @@ private:
 	Declaration::Visibility parseVisibilitySpecifier(Token::Value _token);
 	ASTPointer<FunctionDefinition> parseFunctionDefinition(ASTString const* _contractName);
 	ASTPointer<StructDefinition> parseStructDefinition();
+	ASTPointer<EnumDefinition> parseEnumDefinition();
+	ASTPointer<EnumValue> parseEnumValue();
 	ASTPointer<VariableDeclaration> parseVariableDeclaration(VarDeclParserOptions const& _options = VarDeclParserOptions());
 	ASTPointer<ModifierDefinition> parseModifierDefinition();
 	ASTPointer<EventDefinition> parseEventDefinition();
@@ -73,8 +77,8 @@ private:
 	ASTPointer<IfStatement> parseIfStatement();
 	ASTPointer<WhileStatement> parseWhileStatement();
 	ASTPointer<ForStatement> parseForStatement();
-	ASTPointer<Statement> parseVarDefOrExprStmt();
-	ASTPointer<VariableDefinition> parseVariableDefinition();
+	ASTPointer<Statement> parseVarDeclOrExprStmt();
+	ASTPointer<VariableDeclarationStatement> parseVariableDeclarationStatement();
 	ASTPointer<ExpressionStatement> parseExpressionStatement();
 	ASTPointer<Expression> parseExpression();
 	ASTPointer<Expression> parseBinaryExpression(int _minPrecedence = 4);
@@ -88,8 +92,8 @@ private:
 	///@{
 	///@name Helper functions
 
-	/// Peeks ahead in the scanner to determine if a variable definition is going to follow
-	bool peekVariableDefinition();
+	/// Peeks ahead in the scanner to determine if a variable declaration statement is going to follow
+	bool peekVariableDeclarationStatement();
 
 	/// If current token value is not _value, throw exception otherwise advance token.
 	void expectToken(Token::Value _value);

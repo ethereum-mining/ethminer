@@ -50,16 +50,15 @@ NatspecHandler::~NatspecHandler()
 
 void NatspecHandler::add(dev::h256 const& _contractHash, string const& _doc)
 {
-	bytes k = _contractHash.asBytes();
-	string v = _doc;
-	m_db->Put(m_writeOptions, ldb::Slice((char const*)k.data(), k.size()), ldb::Slice((char const*)v.data(), v.size()));
+	m_db->Put(m_writeOptions, _contractHash.ref(), _doc);
+	cdebug << "Registering NatSpec: " << _contractHash.abridged() << _doc;
 }
 
 string NatspecHandler::retrieve(dev::h256 const& _contractHash) const
 {
-	bytes k = _contractHash.asBytes();
 	string ret;
-	m_db->Get(m_readOptions, ldb::Slice((char const*)k.data(), k.size()), &ret);
+	m_db->Get(m_readOptions, _contractHash.ref(), &ret);
+	cdebug << "Looking up NatSpec: " << _contractHash.abridged() << ret;
 	return ret;
 }
 
@@ -67,10 +66,9 @@ string NatspecHandler::getUserNotice(string const& json, dev::bytes const& _tran
 {
 	Json::Value natspec;
 	Json::Value userNotice;
-	string retStr;
 	m_reader.parse(json, natspec);
-	bytes transactionFunctionPart(_transactionData.begin(), _transactionData.begin() + 4);
-	FixedHash<4> transactionFunctionHash(transactionFunctionPart);
+
+	FixedHash<4> transactionFunctionHash((bytesConstRef(&_transactionData).cropped(0, 4).toBytes()));
 
 	Json::Value methods = natspec["methods"];
 	for (Json::ValueIterator it = methods.begin(); it != methods.end(); ++it)

@@ -55,7 +55,7 @@ void Web3Server::put(std::string const& _name, std::string const& _key, std::str
 	m_db[k] = _value;
 }
 
-Json::Value Web3Server::eth_changed(int const& _id)
+Json::Value Web3Server::eth_changed(int _id)
 {
 	return WebThreeStubServerBase::eth_changed(_id);
 }

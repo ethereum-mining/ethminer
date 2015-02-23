@@ -58,21 +58,22 @@ CompilerStack::CompilerStack(bool _addStandardSources):
 	m_addStandardSources(_addStandardSources), m_parseSuccessful(false)
 {
 	if (m_addStandardSources)
-		addSources(StandardSources);
+		addSources(StandardSources, true); // add them as libraries
 }
 
-bool CompilerStack::addSource(string const& _name, string const& _content)
+bool CompilerStack::addSource(string const& _name, string const& _content, bool _isLibrary)
 {
 	bool existed = m_sources.count(_name) != 0;
 	reset(true);
-	m_sources[_name].scanner = make_shared<Scanner>(CharStream(expanded(_content)), _name);
+	m_sources[_name].scanner = make_shared<Scanner>(CharStream(_content), _name);
+	m_sources[_name].isLibrary = _isLibrary;
 	return existed;
 }
 
 void CompilerStack::setSource(string const& _sourceCode)
 {
 	reset();
-	addSource("", expanded(_sourceCode));
+	addSource("", _sourceCode);
 }
 
 void CompilerStack::parse()
@@ -126,57 +127,6 @@ vector<string> CompilerStack::getContractNames() const
 	return contractNames;
 }
 
-////// BEGIN: TEMPORARY ONLY
-///
-/// NOTE: THIS INVALIDATES SOURCE POINTERS AND CAN CRASH THE COMPILER
-///
-/// remove once import works properly and we have genesis contracts
-
-string CompilerStack::expanded(string const& _sourceCode)
-{
-	const map<string, string> c_standardSources = map<string, string>{
-		{ "Config", "contract Config{function lookup(uint256 service)constant returns(address a){}function kill(){}function unregister(uint256 id){}function register(uint256 id,address service){}}" },
-		{ "Coin", "contract Coin{function isApprovedFor(address _target,address _proxy)constant returns(bool _r){}function isApproved(address _proxy)constant returns(bool _r){}function sendCoinFrom(address _from,uint256 _val,address _to){}function coinBalanceOf(address _a)constant returns(uint256 _r){}function sendCoin(uint256 _val,address _to){}function coinBalance()constant returns(uint256 _r){}function approve(address _a){}}"},
-		{ "CoinReg", "contract CoinReg{function count()constant returns(uint256 r){}function info(uint256 i)constant returns(address addr,string3 name,uint256 denom){}function register(string3 name,uint256 denom){}function unregister(){}}" },
-		{ "coin", "#require CoinReg\ncontract coin {function coin(string3 name, uint denom) {CoinReg(Config().lookup(3)).register(name, denom);}}" },
-		{ "service", "#require Config\ncontract service{function service(uint _n){Config().register(_n, this);}}" },
-		{ "owned", "contract owned{function owned(){owner = msg.sender;}modifier onlyowner(){if(msg.sender==owner)_}address owner;}" },
-		{ "mortal", "#require owned\ncontract mortal is owned {function kill() { if (msg.sender == owner) suicide(owner); }}" },
-		{ "NameReg", "contract NameReg{function register(string32 name){}function addressOf(string32 name)constant returns(address addr){}function unregister(){}function nameOf(address addr)constant returns(string32 name){}}" },
-		{ "named", "#require Config NameReg\ncontract named {function named(string32 name) {NameReg(Config().lookup(1)).register(name);}}" },
-		{ "std", "#require owned mortal Config NameReg named" },
-	};
-
-	string sub;
-	set<string> got;
-	function<string(string const&)> localExpanded;
-	localExpanded = [&](string const& s) -> string
-	{
-		string ret = s;
-		for (size_t p = 0; p != string::npos;)
-			if ((p = ret.find("#require ")) != string::npos)
-			{
-				string n = ret.substr(p + 9, ret.find_first_of('\n', p + 9) - p - 9);
-				ret.replace(p, n.size() + 9, "");
-				vector<string> rs;
-				boost::split(rs, n, boost::is_any_of(" \t,"), boost::token_compress_on);
-				for (auto const& r: rs)
-					if (!got.count(r))
-					{
-						if (c_standardSources.count(r))
-							sub.append("\n" + localExpanded(c_standardSources.at(r)) + "\n");
-						got.insert(r);
-					}
-			}
-			// TODO: remove once we have genesis contracts.
-			else if ((p = ret.find("Config()")) != string::npos)
-				ret.replace(p, 8, "Config(0xc6d9d2cd449a754c494264e1809c50e34d64562b)");
-		return ret;
-	};
-	return sub + localExpanded(_sourceCode);
-}
-
-////// END: TEMPORARY ONLY
 
 void CompilerStack::compile(bool _optimize)
 {
@@ -227,12 +177,12 @@ void CompilerStack::streamAssembly(ostream& _outStream, string const& _contractN
 
 string const& CompilerStack::getInterface(string const& _contractName) const
 {
-	return getMetadata(_contractName, DocumentationType::ABI_INTERFACE);
+	return getMetadata(_contractName, DocumentationType::ABIInterface);
 }
 
 string const& CompilerStack::getSolidityInterface(string const& _contractName) const
 {
-	return getMetadata(_contractName, DocumentationType::ABI_SOLIDITY_INTERFACE);
+	return getMetadata(_contractName, DocumentationType::ABISolidityInterface);
 }
 
 string const& CompilerStack::getMetadata(string const& _contractName, DocumentationType _type) const
@@ -245,16 +195,16 @@ string const& CompilerStack::getMetadata(string const& _contractName, Documentat
 	std::unique_ptr<string const>* doc;
 	switch (_type)
 	{
-	case DocumentationType::NATSPEC_USER:
+	case DocumentationType::NatspecUser:
 		doc = &contract.userDocumentation;
 		break;
-	case DocumentationType::NATSPEC_DEV:
+	case DocumentationType::NatspecDev:
 		doc = &contract.devDocumentation;
 		break;
-	case DocumentationType::ABI_INTERFACE:
+	case DocumentationType::ABIInterface:
 		doc = &contract.interface;
 		break;
-	case DocumentationType::ABI_SOLIDITY_INTERFACE:
+	case DocumentationType::ABISolidityInterface:
 		doc = &contract.solidityInterface;
 		break;
 	default:
@@ -328,9 +278,15 @@ void CompilerStack::resolveImports()
 	};
 
 	for (auto const& sourcePair: m_sources)
-		toposort(&sourcePair.second);
+		if (!sourcePair.second.isLibrary)
+			toposort(&sourcePair.second);
 
 	swap(m_sourceOrder, sourceOrder);
+}
+
+std::string CompilerStack::defaultContractName() const
+{
+	return getContract("").contract->getName();
 }
 
 CompilerStack::Contract const& CompilerStack::getContract(string const& _contractName) const

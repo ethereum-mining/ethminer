@@ -103,6 +103,8 @@ public:
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const = 0;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const = 0;
+	virtual unsigned transactionCount(h256 _blockHash) const = 0;
+	virtual unsigned uncleCount(h256 _blockHash) const = 0;
 
 	// [EXTRA API]:
 
@@ -148,6 +150,11 @@ public:
 	virtual void stopMining() = 0;
 	/// Are we mining now?
 	virtual bool isMining() = 0;
+
+	/// Get hash of the current block to be mined minus the nonce (the 'work hash').
+	virtual std::pair<h256, u256> getWork() = 0;
+	/// Submit the nonce for the proof-of-work.
+	virtual bool submitNonce(h256 const&) = 0;
 
 	/// Check the progress of the mining.
 	virtual MineProgress miningProgress() const = 0;

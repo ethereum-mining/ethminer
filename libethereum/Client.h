@@ -127,13 +127,35 @@ template <class T> struct ABIDeserialiser {};
 template <unsigned N> struct ABIDeserialiser<FixedHash<N>> { static FixedHash<N> deserialise(bytesConstRef& io_t) { static_assert(N <= 32, "Parameter sizes must be at most 32 bytes."); FixedHash<N> ret; io_t.cropped(32 - N, N).populate(ret.ref()); io_t = io_t.cropped(32); return ret; } };
 template <> struct ABIDeserialiser<u256> { static u256 deserialise(bytesConstRef& io_t) { u256 ret = fromBigEndian<u256>(io_t.cropped(0, 32)); io_t = io_t.cropped(32); return ret; } };
 template <> struct ABIDeserialiser<u160> { static u160 deserialise(bytesConstRef& io_t) { u160 ret = fromBigEndian<u160>(io_t.cropped(12, 20)); io_t = io_t.cropped(32); return ret; } };
-template <> struct ABIDeserialiser<string32> { static string32 deserialise(bytesConstRef& io_t) { string32 ret; io_t.cropped(0, 32).populate(vector_ref<char>(ret.data(), 32)); io_t = io_t.cropped(32); return ret; } };
+template <> struct ABIDeserialiser<string32> { static string32 deserialise(bytesConstRef& io_t) { string32 ret; io_t.cropped(0, 32).populate(bytesRef((byte*)ret.data(), 32)); io_t = io_t.cropped(32); return ret; } };
 
 template <class T> T abiOut(bytes const& _data)
 {
 	bytesConstRef o(&_data);
 	return ABIDeserialiser<T>::deserialise(o);
 }
+
+class RemoteMiner: public Miner
+{
+public:
+	RemoteMiner() {}
+
+	void update(State const& _provisional, BlockChain const& _bc) { m_state = _provisional; m_state.commitToMine(_bc); }
+
+	h256 workHash() const { return m_state.info().headerHash(IncludeNonce::WithoutNonce); }
+	u256 const& difficulty() const { return m_state.info().difficulty; }
+
+	bool submitWork(h256 const& _nonce) { return (m_isComplete = m_state.completeMine(_nonce)); }
+
+	virtual bool isComplete() const override { return m_isComplete; }
+	virtual bytes const& blockData() const { return m_state.blockData(); }
+
+	virtual void noteStateChange() override {}
+
+private:
+	bool m_isComplete = false;
+	State m_state;
+};
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
@@ -144,7 +166,7 @@ class Client: public MinerHost, public Interface, Worker
 
 public:
 	/// New-style Constructor.
-	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0);
+	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0, int miners = -1);
 
 	/// Destructor.
 	virtual ~Client();
@@ -207,6 +229,8 @@ public:
 	virtual BlockDetails blockDetails(h256 _hash) const { return m_bc.details(_hash); }
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const;
+	virtual unsigned transactionCount(h256 _blockHash) const;
+	virtual unsigned uncleCount(h256 _blockHash) const;
 
 	/// Differences between transactions.
 	using Interface::diff;
@@ -253,19 +277,25 @@ public:
 	/// Stops mining and sets the number of mining threads (0 for automatic).
 	virtual void setMiningThreads(unsigned _threads = 0);
 	/// Get the effective number of mining threads.
-	virtual unsigned miningThreads() const { ReadGuard l(x_miners); return m_miners.size(); }
+	virtual unsigned miningThreads() const { ReadGuard l(x_localMiners); return m_localMiners.size(); }
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	virtual void startMining() { startWorking(); ReadGuard l(x_miners); for (auto& m: m_miners) m.start(); }
+	virtual void startMining() { startWorking(); ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); }
 	/// Stop mining.
 	/// NOT thread-safe
-	virtual void stopMining() { ReadGuard l(x_miners); for (auto& m: m_miners) m.stop(); }
+	virtual void stopMining() { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); }
 	/// Are we mining now?
-	virtual bool isMining() { ReadGuard l(x_miners); return m_miners.size() && m_miners[0].isRunning(); }
+	virtual bool isMining() { ReadGuard l(x_localMiners); return m_localMiners.size() && m_localMiners[0].isRunning(); }
 	/// Check the progress of the mining.
 	virtual MineProgress miningProgress() const;
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory();
+
+	/// Update to the latest transactions and get hash of the current block to be mined minus the
+	/// nonce (the 'work hash') and the difficulty to be met.
+	virtual std::pair<h256, u256> getWork() override;
+	/// Submit the nonce for the proof-of-work.
+	virtual bool submitNonce(h256  const&_nonce) override;
 
 	// Debug stuff:
 
@@ -295,6 +325,7 @@ private:
 	/// Do some work. Handles blockchain maintenance and mining.
 	virtual void doWork();
 
+	/// Called when Worker is exiting.
 	virtual void doneWorking();
 
 	/// Overrides for being a mining host.
@@ -309,24 +340,27 @@ private:
 	State asOf(unsigned _h) const;
 
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
-	CanonBlockChain m_bc;						///< Maintains block database.
+	CanonBlockChain m_bc;					///< Maintains block database.
 	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 
-	mutable SharedMutex x_stateDB;	///< Lock on the state DB, effectively a lock on m_postMine.
+	mutable SharedMutex x_stateDB;			///< Lock on the state DB, effectively a lock on m_postMine.
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;						///< The present state of the client.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
-	std::vector<Miner> m_miners;
-	mutable SharedMutex x_miners;
+	mutable Mutex x_remoteMiner;			///< The remote miner lock.
+	RemoteMiner m_remoteMiner;				///< The remote miner.
+
+	std::vector<LocalMiner> m_localMiners;	///< The in-process miners.
+	mutable SharedMutex x_localMiners;		///< The in-process miners lock.
 	bool m_paranoia = false;				///< Should we be paranoid about our state?
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
 
-	mutable std::mutex m_filterLock;
+	mutable Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;
 	std::map<unsigned, ClientWatch> m_watches;
 

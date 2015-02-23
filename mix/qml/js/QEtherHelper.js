@@ -6,3 +6,12 @@ function createEther(_value, _unit, _parent)
 	ether.setUnit(_unit);
 	return ether;
 }
+
+function createBigInt(_value)
+{
+	var bigintComponent = Qt.createComponent("qrc:/qml/BigIntValue.qml");
+	var bigint = bigintComponent.createObject();
+	bigint.setValue(_value);
+	return bigint;
+}
+

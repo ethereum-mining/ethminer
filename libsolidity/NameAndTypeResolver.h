@@ -98,11 +98,14 @@ private:
 	void endVisit(ContractDefinition& _contract) override;
 	bool visit(StructDefinition& _struct) override;
 	void endVisit(StructDefinition& _struct) override;
+	bool visit(EnumDefinition& _enum) override;
+	void endVisit(EnumDefinition& _enum) override;
+	bool visit(EnumValue& _value) override;
 	bool visit(FunctionDefinition& _function) override;
 	void endVisit(FunctionDefinition& _function) override;
 	bool visit(ModifierDefinition& _modifier) override;
 	void endVisit(ModifierDefinition& _modifier) override;
-	void endVisit(VariableDefinition& _variableDefinition) override;
+	void endVisit(VariableDeclarationStatement& _variableDeclarationStatement) override;
 	bool visit(VariableDeclaration& _declaration) override;
 	bool visit(EventDefinition& _event) override;
 	void endVisit(EventDefinition& _event) override;

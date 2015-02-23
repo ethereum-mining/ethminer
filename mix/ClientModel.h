@@ -26,6 +26,7 @@
 #include <atomic>
 #include <map>
 #include <QString>
+#include <QVariantMap>
 #include "MachineStates.h"
 
 namespace dev
@@ -45,13 +46,13 @@ class QVariableDefinition;
 struct TransactionSettings
 {
 	TransactionSettings() {}
-	TransactionSettings(QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
-		functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
-	TransactionSettings(u256 _value, u256 _gas, u256 _gasPrice):
-		value(_value), gas(_gas), gasPrice(_gasPrice) {}
+	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
+		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
 	TransactionSettings(QString const& _stdContractName, QString const& _stdContractUrl):
-		functionId(_stdContractName), stdContractUrl(_stdContractUrl) {}
+		contractId(_stdContractName), stdContractUrl(_stdContractUrl) {}
 
+	/// Contract name
+	QString contractId;
 	/// Contract function name
 	QString functionId;
 	/// Transaction value
@@ -68,13 +69,13 @@ struct TransactionSettings
 
 
 /// UI Transaction log record
-class TransactionLogEntry: public QObject
+class RecordLogEntry: public QObject
 {
 	Q_OBJECT
-	/// Transaction block number
-	Q_PROPERTY(unsigned block MEMBER m_block CONSTANT)
-	/// Transaction index within the block
-	Q_PROPERTY(unsigned tindex MEMBER m_index CONSTANT)
+	/// Recording index
+	Q_PROPERTY(unsigned recordIndex MEMBER m_recordIndex CONSTANT)
+	/// Human readable transaction bloack and transaction index
+	Q_PROPERTY(QString transactionIndex MEMBER m_transactionIndex CONSTANT)
 	/// Contract name if any
 	Q_PROPERTY(QString contract MEMBER m_contract CONSTANT)
 	/// Function name if any
@@ -85,21 +86,25 @@ class TransactionLogEntry: public QObject
 	Q_PROPERTY(QString address MEMBER m_address CONSTANT)
 	/// Returned value or transaction address in case of creation
 	Q_PROPERTY(QString returned MEMBER m_returned CONSTANT)
+	/// true if call, false if transaction
+	Q_PROPERTY(bool call MEMBER m_call CONSTANT)
+
 
 public:
-	TransactionLogEntry():
-		m_block(0), m_index(0) {}
-	TransactionLogEntry(int _block, int _index, QString _contract, QString _function, QString _value, QString _address, QString _returned):
-		m_block(_block), m_index(_index), m_contract(_contract), m_function(_function), m_value(_value), m_address(_address), m_returned(_returned) {}
+	RecordLogEntry():
+		m_recordIndex(0), m_call(false) {}
+	RecordLogEntry(unsigned _recordIndex, QString _transactionIndex, QString _contract, QString _function, QString _value, QString _address, QString _returned, bool _call):
+		m_recordIndex(_recordIndex), m_transactionIndex(_transactionIndex), m_contract(_contract), m_function(_function), m_value(_value), m_address(_address), m_returned(_returned), m_call(_call) {}
 
 private:
-	unsigned m_block;
-	unsigned m_index;
+	unsigned m_recordIndex;
+	QString m_transactionIndex;
 	QString m_contract;
 	QString m_function;
 	QString m_value;
 	QString m_address;
 	QString m_returned;
+	bool m_call;
 };
 
 /**
@@ -116,8 +121,8 @@ public:
 	Q_PROPERTY(bool running MEMBER m_running NOTIFY runStateChanged)
 	/// @returns true if currently mining
 	Q_PROPERTY(bool mining MEMBER m_mining NOTIFY miningStateChanged)
-	/// @returns address of the last executed contract
-	Q_PROPERTY(QString contractAddress READ contractAddress NOTIFY contractAddressChanged)
+	/// @returns deployed contracts addresses
+	Q_PROPERTY(QVariantMap contractAddresses READ contractAddresses NOTIFY contractAddressesChanged)
 	/// ethereum.js RPC request entry point
 	/// @param _message RPC request in Json format
 	/// @returns RPC response in Json format
@@ -132,8 +137,8 @@ public slots:
 	/// Setup state, run transaction sequence, show debugger for the last transaction
 	/// @param _state JS object with state configuration
 	void setupState(QVariantMap _state);
-	/// Show the debugger for a specified transaction
-	Q_INVOKABLE void debugTransaction(unsigned _block, unsigned _index);
+	/// Show the debugger for a specified record
+	Q_INVOKABLE void debugRecord(unsigned _index);
 
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
@@ -156,7 +161,7 @@ signals:
 	/// @param _message Error message
 	void runFailed(QString const& _message);
 	/// Contract address changed
-	void contractAddressChanged();
+	void contractAddressesChanged();
 	/// Execution state changed
 	void newBlock();
 	/// Execution state changed
@@ -167,12 +172,12 @@ signals:
 	/// @param _message RPC response in Json format
 	void apiResponse(QString const& _message);
 	/// New transaction log entry
-	void newTransaction(TransactionLogEntry* _tr);
+	void newRecord(RecordLogEntry* _r);
 	/// State (transaction log) cleared
 	void stateCleared();
 
 private:
-	QString contractAddress() const;
+	QVariantMap contractAddresses() const;
 	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
@@ -186,7 +191,8 @@ private:
 	std::unique_ptr<MixClient> m_client;
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
-	Address m_contractAddress;
+	std::map<QString, Address> m_contractAddresses;
+	std::map<Address, QString> m_contractNames;
 	std::map<QString, Address> m_stdContractAddresses;
 	std::map<Address, QString> m_stdContractNames;
 };

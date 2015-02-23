@@ -15,8 +15,8 @@
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
 /** @file Miner.cpp
- * @author Alex Leverington <nessence@gmail.com>
  * @author Gav Wood <i@gavwood.com>
+ * @author Giacomo Tazzari
  * @date 2014
  */
 
@@ -28,19 +28,21 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-Miner::Miner(MinerHost* _host, unsigned _id):
+Miner::~Miner() {}
+
+LocalMiner::LocalMiner(MinerHost* _host, unsigned _id):
 	Worker("miner-" + toString(_id)),
 	m_host(_host)
 {
 }
 
-void Miner::setup(MinerHost* _host, unsigned _id)
+void LocalMiner::setup(MinerHost* _host, unsigned _id)
 {
 	m_host = _host;
 	setName("miner-" + toString(_id));
 }
 
-void Miner::doWork()
+void LocalMiner::doWork()
 {
 	// Do some mining.
 	if (m_miningStatus != Waiting && m_miningStatus != Mined)
@@ -63,7 +65,7 @@ void Miner::doWork()
 
 		if (m_miningStatus == Mining)
 		{
-		// Mine for a while.
+			// Mine for a while.
 			MineInfo mineInfo = m_mineState.mine(100, m_host->turbo());
 
 			{
