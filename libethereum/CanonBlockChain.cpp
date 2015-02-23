@@ -21,6 +21,7 @@
 
 #include "CanonBlockChain.h"
 
+#include <test/JsonSpiritHeaders.h>
 #include <boost/filesystem.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
@@ -29,11 +30,13 @@
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
 #include <liblll/Compiler.h>
+#include "GenesisInfo.h"
 #include "State.h"
 #include "Defaults.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+namespace js = json_spirit;
 
 #define ETH_CATCH 1
 
@@ -42,18 +45,23 @@ std::map<Address, Account> const& dev::eth::genesisState()
 	static std::map<Address, Account> s_ret;
 	if (s_ret.empty())
 	{
-		// Initialise.
-		for (auto i: vector<string>({
-			"dbdbdb2cbd23b783741e8d7fcf51e459b497e4a6",
-			"e6716f9544a56c530d868e4bfbacb172315bdead",
-			"b9c015918bdaba24b4ff057a92a3873d6eb201be",
-			"1a26338f0d905e295fccb71fa9ea849ffa12aaf4",
-			"2ef47100e0787b915105fd5e3f4ff6752079d5cb",
-			"cd2a3d9f938e13cd947ec05abc7fe734df8dd826",
-			"6c386a4b26f73c802f34673f7248bb118f97424a",
-			"e4157b34ea9615cfbde6b4fda419828124b70c78"
-		}))
-			s_ret[Address(fromHex(i))] = Account(u256(1) << 200, Account::NormalCreation);
+		js::mValue val;
+		json_spirit::read_string(c_genesisInfo, val);
+		for (auto account: val.get_obj())
+		{
+			u256 balance;
+			if (account.second.get_obj().count("wei"))
+				balance = u256(account.second.get_obj()["wei"].get_str());
+			else
+				balance = u256(account.second.get_obj()["finney"].get_str()) * finney;
+			if (account.second.get_obj().count("code"))
+			{
+				s_ret[Address(fromHex(account.first))] = Account(balance, Account::ContractConception);
+				s_ret[Address(fromHex(account.first))].setCode(fromHex(account.second.get_obj()["code"].get_str()));
+			}
+			else
+				s_ret[Address(fromHex(account.first))] = Account(balance, Account::NormalCreation);
+		}
 	}
 	return s_ret;
 }
