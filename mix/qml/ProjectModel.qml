@@ -101,7 +101,7 @@ Item {
 			{
 				redeploy = true
 				standardButtons = StandardButton.Ok | StandardButton.Reset | StandardButton.Abort;
-				return qsTr("This project has been already deployed to the network. Do you want to repackage the ressources only, or also reset the deployed contract to his initial state?")
+				return qsTr("This project has been already deployed to the network. Do you want to repackage the resources only, or also reset the deployed contract to its initial state?")
 			}
 			else
 			{

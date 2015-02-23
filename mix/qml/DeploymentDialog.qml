@@ -110,17 +110,10 @@ Window {
 			anchors.right: parent.right;
 			anchors.bottomMargin: 10
 			Button {
-				text: qsTr("Deploy on Ethereum");
-				tooltip: qsTr("Deploy the contract and Package ressources files.")
+				text: qsTr("Deploy to Ethereum");
+				tooltip: qsTr("Deploy contract and package resources files.")
 				onClicked: {
-					if (applicationUrlEth.text === "")
-					{
-						deployDialog.title = text;
-						deployDialog.text = qsTr("Please provide the Ethereum link you want to use for this application.")
-						deployDialog.open();
-					}
-					else
-						deployWarningDialog.open();
+					deployWarningDialog.open();
 				}
 			}
 
@@ -131,7 +124,7 @@ Window {
 					if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
 					{
 						deployDialog.title = text;
-						deployDialog.text = qsTr("Please provide the link where the ressources are stored and ensure the package is aleary built using the deployment step. ")
+						deployDialog.text = qsTr("Please provide the link where the resources are stored and ensure the package is aleary built using the deployment step. ")
 						deployDialog.open();
 					}
 					else
