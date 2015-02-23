@@ -163,7 +163,7 @@ QStringList FileIo::makePackage(QString const& _deploymentFolder)
 	QUrl url(_deploymentFolder + "package.dapp");
 	QFile compressed(url.path());
 	QByteArray qFileBytes((char*)dapp.data(), dapp.size());
-	if (compressed.open(QIODevice::WriteOnly | QIODevice::Text))
+	if (compressed.open(QIODevice::WriteOnly))
 	{
 		compressed.write(qFileBytes);
 		compressed.flush();
