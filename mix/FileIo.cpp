@@ -20,8 +20,6 @@
  * Ethereum IDE client.
  */
 
-#include <QJsonObject>
-#include <QDebug>
 #include <QDirIterator>
 #include <QDir>
 #include <QFile>
@@ -112,7 +110,7 @@ bool FileIo::fileExists(QString const& _url)
 	return file.exists();
 }
 
-QStringList FileIo::compress(QString const& _deploymentFolder)
+QStringList FileIo::makePackage(QString const& _deploymentFolder)
 {
 
 	Json::Value manifest;
@@ -124,42 +122,37 @@ QStringList FileIo::compress(QString const& _deploymentFolder)
 
 	dev::RLPStream str;
 	int k = 1;
+	QMap<std::string, bytesConstRef> files;
 	for (auto item: deployDir.entryInfoList(QDir::Files))
 	{
 		QFile qFile(item.filePath());
-		if (qFile.open(QIODevice::ReadOnly | QIODevice::Text))
-				k++;
-	}
-	str.appendList(k);
-
-	for (auto item: deployDir.entryInfoList(QDir::Files))
-	{
-		QFile qFile(item.filePath());
-		if (qFile.open(QIODevice::ReadOnly | QIODevice::Text))
+		if (qFile.open(QIODevice::ReadOnly))
 		{
+			k++;
 			QFileInfo i = QFileInfo(qFile.fileName());
-
-			QByteArray _a = qFile.readAll();
-			bytes b = bytes(_a.begin(), _a.end());
-			str.append(b);
-
 			Json::Value f;
-			f["path"] = "/"; //TODO: Manage relative sub folder
+			std::string path = i.fileName() == "index.html" ? "/" : i.fileName().toStdString();
+			f["path"] = path; //TODO: Manage relative sub folder
 			f["file"] = "/" + i.fileName().toStdString();
-			f["contentType"] = "application/html"; //TODO: manage multiple content type
-			f["hash"] = toHex(dev::sha3(b).ref());
+			f["contentType"] = "text/html"; //TODO: manage multiple content type
+			QByteArray _a = qFile.readAll();
+			files.insert(path, bytesConstRef((const unsigned char*)_a.data(), _a.size()));
+			f["hash"] = toHex(dev::sha3(files.value(path)).ref());
 			entries.append(f);
 		}
 		qFile.close();
 	}
-
-	manifest["entries"] = entries;
+	str.appendList(k);
 
 	std::stringstream jsonStr;
 	jsonStr << manifest;
 	QByteArray b =  QString::fromStdString(jsonStr.str()).toUtf8();
-	str.append(bytes(b.begin(), b.end()));
+	str.append(bytesConstRef((const unsigned char*)b.data(), b.size()));
 
+	for (auto item: files.keys())
+		str.append(files.value(item));
+
+	manifest["entries"] = entries;
 	bytes dapp = str.out();
 	dev::h256 h = dev::sha3(dapp);
 	//encrypt
