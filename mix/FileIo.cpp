@@ -120,43 +120,44 @@ QStringList FileIo::makePackage(QString const& _deploymentFolder)
 	QString path(folder.path());
 	QDir deployDir = QDir(path);
 
-	dev::RLPStream str;
+	dev::RLPStream rlpStr;
 	int k = 1;
-	QMap<std::string, bytesConstRef> files;
+	std::vector<bytes> files;
 	for (auto item: deployDir.entryInfoList(QDir::Files))
 	{
 		QFile qFile(item.filePath());
 		if (qFile.open(QIODevice::ReadOnly))
 		{
 			k++;
-			QFileInfo i = QFileInfo(qFile.fileName());
-			Json::Value f;
-			std::string path = i.fileName() == "index.html" ? "/" : i.fileName().toStdString();
-			f["path"] = path; //TODO: Manage relative sub folder
-			f["file"] = "/" + i.fileName().toStdString();
-			f["contentType"] = "text/html"; //TODO: manage multiple content type
-			QByteArray _a = qFile.readAll();
-			files.insert(path, bytesConstRef((const unsigned char*)_a.data(), _a.size()));
-			f["hash"] = toHex(dev::sha3(files.value(path)).ref());
-			entries.append(f);
+			QFileInfo fileInfo = QFileInfo(qFile.fileName());
+			Json::Value jsonValue;
+			std::string path = fileInfo.fileName() == "index.html" ? "/" : fileInfo.fileName().toStdString();
+			jsonValue["path"] = path; //TODO: Manage relative sub folder
+			jsonValue["file"] = "/" + fileInfo.fileName().toStdString();
+			jsonValue["contentType"] = "text/html"; //TODO: manage multiple content type
+			QByteArray a = qFile.readAll();
+			bytes data = bytes(a.begin(), a.end());
+			files.push_back(data);
+			jsonValue["hash"] = toHex(dev::sha3(data).ref());
+			entries.append(jsonValue);
 		}
 		qFile.close();
 	}
-	str.appendList(k);
+	rlpStr.appendList(k);
 
 	std::stringstream jsonStr;
 	jsonStr << manifest;
 	QByteArray b =  QString::fromStdString(jsonStr.str()).toUtf8();
-	str.append(bytesConstRef((const unsigned char*)b.data(), b.size()));
+	rlpStr.append(bytesConstRef((const unsigned char*)b.data(), b.size()));
 
-	for (auto item: files.keys())
-		str.append(files.value(item));
+	for (unsigned int k = 0; k < files.size(); k++)
+		rlpStr.append(files.at(k));
 
 	manifest["entries"] = entries;
-	bytes dapp = str.out();
-	dev::h256 h = dev::sha3(dapp);
+	bytes dapp = rlpStr.out();
+	dev::h256 dappHash = dev::sha3(dapp);
 	//encrypt
-	KeyPair key(h);
+	KeyPair key(dappHash);
 	Secp256k1 enc;
 	enc.encrypt(key.pub(), dapp);
 
@@ -172,7 +173,7 @@ QStringList FileIo::makePackage(QString const& _deploymentFolder)
 		error(tr("Error creating package.dapp"));
 	compressed.close();
 	QStringList ret;
-	ret.append(QString::fromStdString(toHex(h.ref())));
+	ret.append(QString::fromStdString(toHex(dappHash.ref())));
 	ret.append(qFileBytes.toBase64());
 	return ret;
 }
