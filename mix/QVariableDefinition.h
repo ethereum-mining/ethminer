@@ -53,6 +53,8 @@ public:
 	virtual bytes encodeValue() = 0;
 	/// Decode the return value @a _rawValue.
 	virtual void decodeValue(dev::bytes const& _rawValue) = 0;
+	/// returns String representation of the encoded value.
+	Q_INVOKABLE QString encodeValueAsString() { return QString::fromStdString(dev::toHex(encodeValue())); }
 
 protected:
 	QString m_value;
