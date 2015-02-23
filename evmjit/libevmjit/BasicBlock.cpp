@@ -11,6 +11,7 @@
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Type.h"
+#include "Utils.h"
 
 namespace dev
 {
@@ -242,13 +243,12 @@ void BasicBlock::linkLocalStacks(std::vector<BasicBlock*> basicBlocks, llvm::IRB
 	bool valuesChanged = true;
 	while (valuesChanged)
 	{
-		if (getenv("EVMCC_DEBUG_BLOCKS"))
+		for (auto& pair : cfg)
 		{
-			for (auto& pair : cfg)
-				std::cerr << pair.second.bblock.llvm()->getName().str()
-						  << ": in " << pair.second.inputItems
-						  << ", out " << pair.second.outputItems
-						  << "\n";
+			DLOG(bb) << pair.second.bblock.llvm()->getName().str()
+				<< ": in " << pair.second.inputItems
+				<< ", out " << pair.second.outputItems
+				<< "\n";
 		}
 
 		valuesChanged = false;
