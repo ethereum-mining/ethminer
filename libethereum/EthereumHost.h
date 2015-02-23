@@ -94,7 +94,7 @@ private:
 	h256Set neededBlocks(h256Set const& _exclude);
 
 	///	Check to see if the network peer-state initialisation has happened.
-	bool isInitialised() const { return m_latestBlockSent; }
+	bool isInitialised() const { return (bool)m_latestBlockSent; }
 
 	/// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
 	bool ensureInitialised();
