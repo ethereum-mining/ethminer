@@ -1669,7 +1669,6 @@ BOOST_AUTO_TEST_CASE(value_insane)
 			function test() { h = new helper(); }
 			function sendAmount(uint amount) returns (uint256 bal) {
 				var x1 = h.getBalance.value;
-				uint someStackElement = 20;
 				var x2 = x1(amount).gas;
 				var x3 = x2(1000).value;
 				return x3(amount + 3)();// overwrite value
@@ -2479,6 +2478,42 @@ BOOST_AUTO_TEST_CASE(struct_copy)
 	BOOST_CHECK(callContractFunction("retrieve(uint256)", 8) == encodeArgs(0, 0, 0, 0));
 }
 
+BOOST_AUTO_TEST_CASE(struct_containing_bytes_copy_and_delete)
+{
+	char const* sourceCode = R"(
+		contract c {
+			struct Struct { uint a; bytes data; uint b; }
+			Struct data1;
+			Struct data2;
+			function set(uint _a, bytes _data, uint _b) external returns (bool) {
+				data1.a = _a;
+				data1.b = _b;
+				data1.data = _data;
+				return true;
+			}
+			function copy() returns (bool) {
+				data1 = data2;
+				return true;
+			}
+			function del() returns (bool) {
+				delete data1;
+				return true;
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	string data = "123456789012345678901234567890123";
+	BOOST_CHECK(m_state.storage(m_contractAddress).empty());
+	BOOST_CHECK(callContractFunction("set(uint256,bytes,uint256)", u256(data.length()), 12, data, 13) == encodeArgs(true));
+	BOOST_CHECK(!m_state.storage(m_contractAddress).empty());
+	BOOST_CHECK(callContractFunction("copy()") == encodeArgs(true));
+	BOOST_CHECK(m_state.storage(m_contractAddress).empty());
+	BOOST_CHECK(callContractFunction("set(uint256,bytes,uint256)", u256(data.length()), 12, data, 13) == encodeArgs(true));
+	BOOST_CHECK(!m_state.storage(m_contractAddress).empty());
+	BOOST_CHECK(callContractFunction("del()") == encodeArgs(true));
+	BOOST_CHECK(m_state.storage(m_contractAddress).empty());
+}
+
 BOOST_AUTO_TEST_CASE(struct_copy_via_local)
 {
 	char const* sourceCode = R"(
@@ -2532,6 +2567,61 @@ BOOST_AUTO_TEST_CASE(constructing_enums_from_ints)
 	)";
 	compileAndRun(sourceCode);
 	BOOST_CHECK(callContractFunction("test()") == encodeArgs(1));
+}
+
+BOOST_AUTO_TEST_CASE(inline_member_init)
+{
+	char const* sourceCode = R"(
+		contract test {
+			function test(){
+				m_b = 6;
+				m_c = 8;
+			}
+			uint m_a = 5;
+			uint m_b;
+			uint m_c = 7;
+			function get() returns (uint a, uint b, uint c){
+				a = m_a;
+				b = m_b;
+				c = m_c;
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("get()") == encodeArgs(5, 6, 8));
+}
+
+BOOST_AUTO_TEST_CASE(inline_member_init_inheritence)
+{
+	char const* sourceCode = R"(
+		contract Base {
+			function Base(){}
+			uint m_base = 5;
+			function getBMember() returns (uint i) { return m_base; }
+		}
+		contract Derived is Base {
+			function Derived(){}
+			uint m_derived = 6;
+			function getDMember() returns (uint i) { return m_derived; }
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("getBMember()") == encodeArgs(5));
+	BOOST_CHECK(callContractFunction("getDMember()") == encodeArgs(6));
+}
+
+BOOST_AUTO_TEST_CASE(inline_member_init_inheritence_without_constructor)
+{
+	char const* sourceCode = R"(
+		contract Base {
+			uint m_base = 5;
+			function getBMember() returns (uint i) { return m_base; }
+		}
+		contract Derived is Base {
+			uint m_derived = 6;
+			function getDMember() returns (uint i) { return m_derived; }
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("getBMember()") == encodeArgs(5));
+	BOOST_CHECK(callContractFunction("getDMember()") == encodeArgs(6));
 }
 
 BOOST_AUTO_TEST_CASE(external_function)

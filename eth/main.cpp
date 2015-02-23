@@ -749,7 +749,7 @@ int main(int argc, char** argv)
 						else if (format == "standard+")
 							oof = [&](uint64_t, Instruction instr, bigint, bigint, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
 							{
-								dev::eth::VM* vm = (VM*)vvm;
+								dev::eth::VM* vm = vvm;
 								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
 								if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
 									for (auto const& i: ext->state().storage(ext->myAddress))
@@ -898,7 +898,9 @@ int main(int argc, char** argv)
 		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
-	writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", web3.saveNetwork());
+	auto netData = web3.saveNetwork();
+	if (!netData.empty())
+		writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", netData);
 	return 0;
 }
 

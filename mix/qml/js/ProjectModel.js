@@ -282,7 +282,7 @@ function deployProject(force) {
 
 	var date = new Date();
 	var deploymentId = date.toLocaleString(Qt.locale(), "ddMMyyHHmmsszzz");
-	var jsonRpcUrl = "http://localhost:8080";
+    var jsonRpcUrl = "http://127.0.0.1:8080";
 	console.log("Deploying " + deploymentId + " to " + jsonRpcUrl);
 	deploymentStarted();
 

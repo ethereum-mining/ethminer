@@ -169,9 +169,7 @@ void Transact::rejigData()
 		QString lll;
 		QString solidity;
 		if (src.find_first_not_of("1234567890abcdefABCDEF") == string::npos && src.size() % 2 == 0)
-		{
 			m_data = fromHex(src);
-		}
 		else if (sourceIsSolidity(src))
 		{
 			dev::solidity::CompilerStack compiler;
@@ -204,7 +202,7 @@ void Transact::rejigData()
 				for (auto& i: errors)
 					i = "(LLL " + i + ")";
 			}
-			catch (string err)
+			catch (string const& err)
 			{
 				errors.push_back("Serpent " + err);
 			}

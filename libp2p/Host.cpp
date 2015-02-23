@@ -630,6 +630,9 @@ void Host::disconnectLatePeers()
 
 bytes Host::saveNetwork() const
 {
+	if (!m_nodeTable)
+		return bytes();
+
 	std::list<Peer> peers;
 	{
 		RecursiveGuard l(x_sessions);
@@ -665,17 +668,20 @@ bytes Host::saveNetwork() const
 		}
 	}
 
-	auto state = m_nodeTable->snapshot();
-	state.sort();
-	for (auto const& s: state)
+	if (!!m_nodeTable)
 	{
-		network.appendList(3);
-		if (s.endpoint.tcp.address().is_v4())
-			network << s.endpoint.tcp.address().to_v4().to_bytes();
-		else
-			network << s.endpoint.tcp.address().to_v6().to_bytes();
-		network << s.endpoint.tcp.port() << s.id;
-		count++;
+		auto state = m_nodeTable->snapshot();
+		state.sort();
+		for (auto const& s: state)
+		{
+			network.appendList(3);
+			if (s.endpoint.tcp.address().is_v4())
+				network << s.endpoint.tcp.address().to_v4().to_bytes();
+			else
+				network << s.endpoint.tcp.address().to_v6().to_bytes();
+			network << s.endpoint.tcp.port() << s.id;
+			count++;
+		}
 	}
 	
 	RLPStream ret(3);

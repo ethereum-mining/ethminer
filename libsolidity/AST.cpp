@@ -77,6 +77,9 @@ void ContractDefinition::checkTypeRequirements()
 	for (ASTPointer<FunctionDefinition> const& function: getDefinedFunctions())
 		function->checkTypeRequirements();
 
+	for (ASTPointer<VariableDeclaration> const& variable: m_stateVariables)
+		variable->checkTypeRequirements();
+
 	// check for hash collisions in function signatures
 	set<FixedHash<4>> hashes;
 	for (auto const& it: getInterfaceFunctionList())
@@ -274,15 +277,6 @@ TypePointer FunctionDefinition::getType(ContractDefinition const*) const
 
 void FunctionDefinition::checkTypeRequirements()
 {
-	// change all byte arrays parameters to point to calldata
-	if (getVisibility() == Visibility::External)
-		for (ASTPointer<VariableDeclaration> const& var: getParameters())
-		{
-			auto const& type = var->getType();
-			solAssert(!!type, "");
-			if (auto const* byteArrayType = dynamic_cast<ByteArrayType const*>(type.get()))
-				var->setType(byteArrayType->copyForLocation(ByteArrayType::Location::CallData));
-		}
 	for (ASTPointer<VariableDeclaration> const& var: getParameters() + getReturnParameters())
 		if (!var->getType()->canLiveOutsideStorage())
 			BOOST_THROW_EXCEPTION(var->createTypeError("Type is required to live outside storage."));
@@ -299,16 +293,20 @@ string FunctionDefinition::getCanonicalSignature() const
 
 bool VariableDeclaration::isLValue() const
 {
-	if (auto const* function = dynamic_cast<FunctionDefinition const*>(getScope()))
-		if (function->getVisibility() == Declaration::Visibility::External && isFunctionParameter())
-			return false;
-	return true;
+	// External function parameters are Read-Only
+	return !isExternalFunctionParameter();
 }
 
-bool VariableDeclaration::isFunctionParameter() const
+void VariableDeclaration::checkTypeRequirements()
+{
+	if (m_value)
+		m_value->checkTypeRequirements();
+}
+
+bool VariableDeclaration::isExternalFunctionParameter() const
 {
 	auto const* function = dynamic_cast<FunctionDefinition const*>(getScope());
-	if (!function)
+	if (!function || function->getVisibility() != Declaration::Visibility::External)
 		return false;
 	for (auto const& variable: function->getParameters())
 		if (variable.get() == this)
@@ -401,26 +399,26 @@ void Return::checkTypeRequirements()
 	m_expression->expectType(*m_returnParameters->getParameters().front()->getType());
 }
 
-void VariableDefinition::checkTypeRequirements()
+void VariableDeclarationStatement::checkTypeRequirements()
 {
 	// Variables can be declared without type (with "var"), in which case the first assignment
 	// sets the type.
 	// Note that assignments before the first declaration are legal because of the special scoping
 	// rules inherited from JavaScript.
-	if (m_value)
+	if (m_variable->getValue())
 	{
 		if (m_variable->getType())
-			m_value->expectType(*m_variable->getType());
+			m_variable->getValue()->expectType(*m_variable->getType());
 		else
 		{
 			// no type declared and no previous assignment, infer the type
-			m_value->checkTypeRequirements();
-			TypePointer type = m_value->getType();
+			m_variable->getValue()->checkTypeRequirements();
+			TypePointer type = m_variable->getValue()->getType();
 			if (type->getCategory() == Type::Category::IntegerConstant)
 			{
 				auto intType = dynamic_pointer_cast<IntegerConstantType const>(type)->getIntegerType();
 				if (!intType)
-					BOOST_THROW_EXCEPTION(m_value->createTypeError("Invalid integer constant " + type->toString()));
+					BOOST_THROW_EXCEPTION(m_variable->getValue()->createTypeError("Invalid integer constant " + type->toString()));
 				type = intType;
 			}
 			else if (type->getCategory() == Type::Category::Void)
@@ -429,7 +427,6 @@ void VariableDefinition::checkTypeRequirements()
 		}
 	}
 }
-
 void Assignment::checkTypeRequirements()
 {
 	m_leftHandSide->checkTypeRequirements();

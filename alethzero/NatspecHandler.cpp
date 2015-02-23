@@ -66,7 +66,6 @@ string NatspecHandler::getUserNotice(string const& json, dev::bytes const& _tran
 {
 	Json::Value natspec;
 	Json::Value userNotice;
-	string retStr;
 	m_reader.parse(json, natspec);
 
 	FixedHash<4> transactionFunctionHash((bytesConstRef(&_transactionData).cropped(0, 4).toBytes()));
