@@ -54,6 +54,6 @@ class NatspecHandler: public NatSpecFace
   private:
 	ldb::ReadOptions m_readOptions;
 	ldb::WriteOptions m_writeOptions;
-	ldb::DB* m_db;
+	ldb::DB* m_db = nullptr;
 	Json::Reader m_reader;
 };

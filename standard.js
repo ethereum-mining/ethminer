@@ -10,6 +10,7 @@ var addrNameReg = initService("namereg");
 var addrGavsino = initServiceVal("gavmble", "1000000000000000000");
 var addrCoinReg = initService("coins");
 var addrGavCoin = initService("coin");
+
 var addrRegistrar = initService("registrar");
 
 var abiNameReg = [{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"getName","outputs":[{"name":"o_name","type":"string32"}]},{"constant":false,"inputs":[{"name":"name","type":"string32"}],"name":"register","outputs":[]},{"constant":true,"inputs":[{"name":"name","type":"string32"}],"name":"addressOf","outputs":[{"name":"addr","type":"address"}]},{"constant":true,"inputs":[{"name":"_name","type":"string32"}],"name":"getAddress","outputs":[{"name":"o_owner","type":"address"}]},{"constant":false,"inputs":[],"name":"unregister","outputs":[]},{"constant":true,"inputs":[{"name":"addr","type":"address"}],"name":"nameOf","outputs":[{"name":"name","type":"string32"}]}];

@@ -38,9 +38,9 @@ h256 RLPXDatagramFace::sign(Secret const& _k)
 	Signature sig = dev::sign(_k, sighash); // S(H(type||data))
 	
 	data.resize(h256::size + Signature::size + rlpx.size());
-	bytesConstRef rlpxHash(&data[0], h256::size);
-	bytesConstRef rlpxSig(&data[h256::size], Signature::size);
-	bytesConstRef rlpxPayload(&data[h256::size + Signature::size], rlpx.size());
+	bytesRef rlpxHash(&data[0], h256::size);
+	bytesRef rlpxSig(&data[h256::size], Signature::size);
+	bytesRef rlpxPayload(&data[h256::size + Signature::size], rlpx.size());
 	
 	sig.ref().copyTo(rlpxSig);
 	rlpx.copyTo(rlpxPayload);

@@ -70,7 +70,7 @@ extern "C"
 			_env->subBalance(value);
 			auto receiveAddress = right160(*_receiveAddress);
 			auto inRef = bytesConstRef{_inBeg, _inSize};
-			auto outRef = bytesConstRef{_outBeg, _outSize};
+			auto outRef = bytesRef{_outBeg, _outSize};
 			auto codeAddress = right160(*_codeAddress);
 			u256 gas = *io_gas;
 			auto ret = _env->call(receiveAddress, value, inRef, gas, outRef, {}, {}, codeAddress);

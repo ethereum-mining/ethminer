@@ -25,11 +25,15 @@ Item {
 			Layout.fillWidth: true
 			Image {
 				id: projectIcon
-				source: "qrc:/qml/img/projecticon.png"
-				sourceSize.height: 30
+				source: "qrc:/qml/img/dappProjectIcon.png"
+				//sourceSize.height: 32
 				anchors.right: projectTitle.left
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.rightMargin: 6
+				//anchors.centerIn: parent
+				fillMode: Image.PreserveAspectFit
+				width: 32
+				height: 32
 			}
 
 			Text
@@ -115,7 +119,7 @@ Item {
 											ci++;
 										}
 									}
-								}
+								}	
 							}
 						}
 
