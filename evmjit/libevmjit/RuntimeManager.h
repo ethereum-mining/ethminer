@@ -11,6 +11,7 @@ namespace eth
 {
 namespace jit
 {
+class Stack;
 
 class RuntimeManager: public CompilerHelper
 {
@@ -35,8 +36,12 @@ public:
 	void registerReturnData(llvm::Value* _index, llvm::Value* _size);
 	void registerSuicide(llvm::Value* _balanceAddress);
 
+	void exit(ReturnCode _returnCode);
+
 	void abort(llvm::Value* _jmpBuf);
 	void abort() { abort(getJmpBufExt()); }
+
+	void setStack(Stack& _stack) { m_stack = &_stack; }
 
 	static llvm::StructType* getRuntimeType();
 	static llvm::StructType* getRuntimeDataType();
@@ -53,6 +58,8 @@ private:
 
 	code_iterator m_codeBegin = {};
 	code_iterator m_codeEnd = {};
+
+	Stack* m_stack = nullptr;
 };
 
 }

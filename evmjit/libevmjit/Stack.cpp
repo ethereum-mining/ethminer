@@ -8,6 +8,7 @@
 #include "Runtime.h"
 
 #include <iostream>
+#include <set>
 
 namespace dev
 {
@@ -35,7 +36,7 @@ llvm::Function* Array::createArrayPushFunc()
 	func->setDoesNotCapture(1);
 
 	llvm::Type* reallocArgTypes[] = {Type::BytePtr, Type::Size};
-	auto reallocFunc = llvm::Function::Create(llvm::FunctionType::get(Type::BytePtr, reallocArgTypes, false), llvm::Function::ExternalLinkage, "realloc", getModule());
+	auto reallocFunc = llvm::Function::Create(llvm::FunctionType::get(Type::BytePtr, reallocArgTypes, false), llvm::Function::ExternalLinkage, "ext_realloc", getModule());
 	reallocFunc->setDoesNotThrow();
 	reallocFunc->setDoesNotAlias(0);
 	reallocFunc->setDoesNotCapture(1);
@@ -130,11 +131,35 @@ llvm::Function* Array::createArrayGetFunc()
 	return func;
 }
 
+llvm::Function* Array::createFreeFunc()
+{
+	auto func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, m_array->getType(), false), llvm::Function::PrivateLinkage, "array.free", getModule());
+	func->setDoesNotThrow();
+	func->setDoesNotCapture(1);
+
+	auto freeFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Void, Type::BytePtr, false), llvm::Function::ExternalLinkage, "ext_free", getModule());
+	freeFunc->setDoesNotThrow();
+	freeFunc->setDoesNotCapture(1);
+
+	auto arrayPtr = &func->getArgumentList().front();
+	arrayPtr->setName("arrayPtr");
+
+	InsertPointGuard guard{m_builder};
+	m_builder.SetInsertPoint(llvm::BasicBlock::Create(m_builder.getContext(), {}, func));
+	auto dataPtr = m_builder.CreateStructGEP(arrayPtr, 0, "dataPtr");
+	auto data = m_builder.CreateLoad(dataPtr, "data");
+	auto mem = m_builder.CreateBitCast(data, Type::BytePtr, "mem");
+	m_builder.CreateCall(freeFunc, mem);
+	m_builder.CreateRetVoid();
+	return func;
+}
+
 Array::Array(llvm::IRBuilder<>& _builder, char const* _name) :
 	CompilerHelper(_builder),
 	m_pushFunc([this](){ return createArrayPushFunc(); }),
 	m_setFunc([this](){ return createArraySetFunc(); }),
-	m_getFunc([this](){ return createArrayGetFunc(); })
+	m_getFunc([this](){ return createArrayGetFunc(); }),
+	m_freeFunc([this](){ return createFreeFunc(); })
 {
 	llvm::Type* elementTys[] = {Type::WordPtr, Type::Size, Type::Size};
 	static auto arrayTy = llvm::StructType::create(elementTys, "Array");
@@ -319,6 +344,22 @@ void Stack::push(llvm::Value* _value)
 }
 }
 
+namespace
+{
+	struct AllocatedMemoryWatchdog
+	{
+		std::set<void*> allocatedMemory;
+
+		~AllocatedMemoryWatchdog()
+		{
+			if (!allocatedMemory.empty())
+				std::cerr << allocatedMemory.size() << " MEM LEAKS!" << std::endl;
+		}
+	};
+
+	AllocatedMemoryWatchdog watchdog;
+}
+
 extern "C"
 {
 	using namespace dev::eth::jit;
@@ -349,8 +390,23 @@ extern "C"
 	{
 		//std::cerr << "REALLOC: " << _data << " [" << _size << "]" << std::endl;
 		auto newData = std::realloc(_data, _size);
-		//std::cerr << "REALLOC: " << _data << " -> " << newData << " [" << _size << "]" << std::endl;
+		if (_data != newData)
+		{
+			std::cerr << "REALLOC: " << _data << " -> " << newData << " [" << _size << "]" << std::endl;
+			watchdog.allocatedMemory.erase(_data);
+			watchdog.allocatedMemory.insert(newData);
+		}
 		return newData;
+	}
+
+	EXPORT void ext_free(void* _data)
+	{
+		std::free(_data);
+		if (_data)
+		{
+			std::cerr << "FREE   : " << _data << std::endl;
+			watchdog.allocatedMemory.erase(_data);
+		}
 	}
 
 } // extern "C"
