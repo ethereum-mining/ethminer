@@ -201,6 +201,11 @@ Main::~Main()
 	g_logPost = simpleDebugOut;
 }
 
+bool Main::confirm() const
+{
+	return ui->natSpec->isChecked();
+}
+
 void Main::on_newIdentity_triggered()
 {
 	KeyPair kp = KeyPair::create();
@@ -651,6 +656,7 @@ void Main::writeSettings()
 	s.setValue("localNetworking", ui->localNetworking->isChecked());
 	s.setValue("forceMining", ui->forceMining->isChecked());
 	s.setValue("paranoia", ui->paranoia->isChecked());
+	s.setValue("natSpec", ui->natSpec->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
 	s.setValue("showAllAccounts", ui->showAllAccounts->isChecked());
 	s.setValue("clientName", ui->clientName->text());
@@ -662,7 +668,7 @@ void Main::writeSettings()
 	s.setValue("jitvm", ui->jitvm->isChecked());
 
 	bytes d = m_webThree->saveNetwork();
-	if (d.size())
+	if (!d.empty())
 		m_networkConfig = QByteArray((char*)d.data(), (int)d.size());
 	s.setValue("peers", m_networkConfig);
 	s.setValue("nameReg", ui->nameReg->text());
@@ -720,6 +726,7 @@ void Main::readSettings(bool _skipGeometry)
 	ui->forceMining->setChecked(s.value("forceMining", false).toBool());
 	on_forceMining_triggered();
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
+	ui->natSpec->setChecked(s.value("natSpec", true).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
 	ui->showAllAccounts->setChecked(s.value("showAllAccounts", false).toBool());
 	ui->clientName->setText(s.value("clientName", "").toString());
@@ -1160,6 +1167,7 @@ void Main::timerEvent(QTimerEvent*)
 		interval = 0;
 		refreshNetwork();
 		refreshWhispers();
+		poll();
 	}
 	else
 		interval += 100;

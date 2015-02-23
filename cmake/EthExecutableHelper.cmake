@@ -56,14 +56,14 @@ macro(eth_install_executable EXECUTABLE)
 	set (extra_macro_args ${ARGN})
 	set (options)
 	set (one_value_args QMLDIR)
-	set (multi_value_args)
+	set (multi_value_args DLLS)
 	cmake_parse_arguments (ETH_INSTALL_EXECUTABLE "${options}" "${one_value_args}" "${multi_value_args}" "${extra_macro_args}")
 	
 	if (ETH_INSTALL_EXECUTABLE_QMLDIR)
 		if (APPLE)
 			set(eth_qml_dir "-qmldir=${ETH_INSTALL_EXECUTABLE_QMLDIR}")
 		elseif (WIN32)
-			set(eth_qml_dir --qmldir ${ETH_INSTALL_EXECUTABLE_QMLDIR})
+			set(eth_qml_dir "--qmldir ${ETH_INSTALL_EXECUTABLE_QMLDIR}")
 		endif()
 		message(STATUS "${EXECUTABLE} qmldir: ${eth_qml_dir}")
 	endif()
@@ -88,48 +88,30 @@ macro(eth_install_executable EXECUTABLE)
 			set(BU_CHMOD_BUNDLE_ITEMS 1)
 			verify_app(\"${APP_BUNDLE_PATH}\")
 			" COMPONENT RUNTIME )
+
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
-		# copy all dlls to executable directory
-		# TODO improve that by copying only required dlls
-		file (GLOB DLLS ${ETH_DEPENDENCY_INSTALL_DIR}/bin/*.dll)
-
-		foreach(DLL ${DLLS})
+		get_target_property(TARGET_LIBS ${EXECUTABLE} INTERFACE_LINK_LIBRARIES)
+		string(REGEX MATCH "Qt5::Core" HAVE_QT ${TARGET_LIBS})
+		if ("${HAVE_QT}" STREQUAL "Qt5::Core")
 			add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-				COMMAND cmake -E copy "${DLL}" "$<TARGET_FILE_DIR:${EXECUTABLE}>"
+				COMMAND cmd /C "set PATH=${Qt5Core_DIR}/../../../bin;%PATH% && ${WINDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.exe ${eth_qml_dir}"
+				WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 			)
-		endforeach()
-
-		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND cmake -E copy_directory
-			"${ETH_DEPENDENCY_INSTALL_DIR}/plugins/platforms"
-			$<TARGET_FILE_DIR:${EXECUTABLE}>/platforms
-		)
-
-		# ugly way, improve that
-		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND cmake -E copy_directory
-			"${ETH_DEPENDENCY_INSTALL_DIR}/qml"
-			$<TARGET_FILE_DIR:${EXECUTABLE}>
-		)
-
-		install( FILES ${DLLS} 
-			DESTINATION bin
-			COMPONENT ${EXECUTABLE}
-		)
-
-		install( DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/plugins/platforms 
-			DESTINATION bin
-			COMPONENT ${EXECUTABLE}
-		)
-
-		file (GLOB QMLS ${ETH_DEPENDENCY_INSTALL_DIR}/qml/*)
-		foreach(QML ${QMLS})
-			install( DIRECTORY ${QML} 
-				DESTINATION bin
-				COMPONENT ${EXECUTABLE}
+			#workaround for https://bugreports.qt.io/browse/QTBUG-42083
+			add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+				COMMAND cmd /C "(echo [Paths] & echo.Prefix=.)" > "qt.conf"
+				WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR} VERBATIM
 			)
-		endforeach()
+		endif()
+
+		#copy additional dlls
+		foreach(dll ${ETH_INSTALL_EXECUTABLE_DLLS})
+			add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+			COMMAND ${CMAKE_COMMAND}
+			ARGS -E copy ${dll} "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}"
+		)
+		endforeach(dll)
 
 		install( TARGETS ${EXECUTABLE} RUNTIME 
 			DESTINATION bin

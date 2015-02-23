@@ -537,7 +537,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 			cwarn << "Hex: " << toHex(b);
 			cwarn << TransactionReceipt(&b);
 		}
-        cwarn << "Recorded: " << m_currentBlock.receiptsRoot;
+		cwarn << "Recorded: " << m_currentBlock.receiptsRoot;
 		auto rs = _bc.receipts(m_currentBlock.hash);
 		for (unsigned j = 0; j < rs.receipts.size(); ++j)
 		{
@@ -1199,11 +1199,11 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 						else if (j.second)
 							cached.insert(j.first);
 					}
-				if (delta.size())
+				if (!delta.empty())
 					lead = (lead == " .   ") ? "*.*  " : "***  ";
 
 				contout << " @:";
-				if (delta.size())
+				if (!delta.empty())
 					contout << "???";
 				else
 					contout << r[2].toHash<h256>();
