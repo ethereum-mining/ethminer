@@ -65,7 +65,7 @@ private:
 
 
 ClientModel::ClientModel(AppContext* _context):
-	m_context(_context), m_running(false), m_rpcConnector(new RpcConnector()), m_contractAddress(Address())
+	m_context(_context), m_running(false), m_rpcConnector(new RpcConnector())
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
 	qRegisterMetaType<QIntType*>("QIntType*");
@@ -82,14 +82,13 @@ ClientModel::ClientModel(AppContext* _context):
 	qRegisterMetaType<QInstruction*>("QInstruction");
 	qRegisterMetaType<QCode*>("QCode");
 	qRegisterMetaType<QCallData*>("QCallData");
-	qRegisterMetaType<TransactionLogEntry*>("TransactionLogEntry");
+	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry");
 
 	connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
 
 	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), std::vector<dev::KeyPair> { m_client->userAccount() }, m_client.get()));
 	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
-
 	_context->appEngine()->rootContext()->setContextProperty("clientModel", this);
 }
 
@@ -137,9 +136,12 @@ void ClientModel::mine()
 	});
 }
 
-QString ClientModel::contractAddress() const
+QVariantMap ClientModel::contractAddresses() const
 {
-	return QString::fromStdString(dev::toJS(m_contractAddress));
+	QVariantMap res;
+	for (auto const& c: m_contractAddresses)
+		res.insert(c.first, QString::fromStdString(dev::toJS(c.second)));
+	return res;
 }
 
 void ClientModel::debugDeployment()
@@ -156,15 +158,18 @@ void ClientModel::setupState(QVariantMap _state)
 	for (auto const& t: transactions)
 	{
 		QVariantMap transaction = t.toMap();
+		QString contractId = transaction.value("contractId").toString();
 		QString functionId = transaction.value("functionId").toString();
-		u256 gas = (qvariant_cast<QEther*>(transaction.value("gas")))->toU256Wei();
+		u256 gas = boost::get<u256>(qvariant_cast<QBigInt*>(transaction.value("gas"))->internalValue());
 		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
 		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
 
 		bool isStdContract = (transaction.value("stdContract").toBool());
 		if (isStdContract)
 		{
-			TransactionSettings transactionSettings(functionId, transaction.value("url").toString());
+			if (contractId.isEmpty()) //TODO: This is to support old project files, remove later
+				contractId = functionId;
+			TransactionSettings transactionSettings(contractId, transaction.value("url").toString());
 			transactionSettings.gasPrice = 10000000000000;
 			transactionSettings.gas = 125000;
 			transactionSettings.value = 0;
@@ -172,8 +177,10 @@ void ClientModel::setupState(QVariantMap _state)
 		}
 		else
 		{
+			if (contractId.isEmpty() && m_context->codeModel()->hasContract()) //TODO: This is to support old project files, remove later
+				contractId = m_context->codeModel()->contracts().keys()[0];
 			QVariantList qParams = transaction.value("qType").toList();
-			TransactionSettings transactionSettings(functionId, value, gas, gasPrice);
+			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasPrice);
 
 			for (QVariant const& variant: qParams)
 			{
@@ -181,7 +188,7 @@ void ClientModel::setupState(QVariantMap _state)
 				transactionSettings.parameterValues.push_back(param);
 			}
 
-			if (transaction.value("executeConstructor").toBool())
+			if (contractId == functionId || functionId == "Constructor")
 				transactionSettings.functionId.clear();
 
 			transactionSequence.push_back(transactionSettings);
@@ -194,8 +201,6 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 {
 	if (m_running)
 		BOOST_THROW_EXCEPTION(ExecutionStateException());
-	CompilationResult* compilerRes = m_context->codeModel()->code();
-	std::shared_ptr<QContractDefinition> contractDef = compilerRes->sharedContract();
 	m_running = true;
 
 	emit runStarted();
@@ -206,25 +211,26 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 	{
 		try
 		{
-			bytes contractCode = compilerRes->bytes();
 			m_client->resetState(_balance);
 			onStateReset();
 			for (TransactionSettings const& transaction: _sequence)
 			{
 				ContractCallDataEncoder encoder;
-				QFunctionDefinition const* f = nullptr;
 				if (!transaction.stdContractUrl.isEmpty())
 				{
 					//std contract
-					dev::bytes const& stdContractCode = m_context->codeModel()->getStdContractCode(transaction.functionId, transaction.stdContractUrl);
+					dev::bytes const& stdContractCode = m_context->codeModel()->getStdContractCode(transaction.contractId, transaction.stdContractUrl);
 					Address address = deployContract(stdContractCode, transaction);
-					m_stdContractAddresses[transaction.functionId] = address;
-					m_stdContractNames[address] = transaction.functionId;
+					m_stdContractAddresses[transaction.contractId] = address;
+					m_stdContractNames[address] = transaction.contractId;
 				}
 				else
 				{
 					//encode data
-					f = nullptr;
+					CompiledContract const& compilerRes = m_context->codeModel()->contract(transaction.contractId);
+					QFunctionDefinition const* f = nullptr;
+					bytes contractCode = compilerRes.bytes();
+					std::shared_ptr<QContractDefinition> contractDef = compilerRes.sharedContract();
 					if (transaction.functionId.isEmpty())
 						f = contractDef->constructor();
 					else
@@ -236,26 +242,35 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 							}
 					if (!f)
 						BOOST_THROW_EXCEPTION(FunctionNotFoundException() << FunctionName(transaction.functionId.toStdString()));
-
-					encoder.encode(f);
+					if (!transaction.functionId.isEmpty())
+						encoder.encode(f);
 					for (int p = 0; p < transaction.parameterValues.size(); p++)
 					{
-						if (f->parametersList().at(p)->type() != transaction.parameterValues.at(p)->declaration()->type())
-							BOOST_THROW_EXCEPTION(ParameterChangedException() << FunctionName(f->parametersList().at(p)->type().toStdString()));
+						if (f->parametersList().size() <= p || f->parametersList().at(p)->type() != transaction.parameterValues.at(p)->declaration()->type())
+							BOOST_THROW_EXCEPTION(ParameterChangedException() << FunctionName(transaction.functionId.toStdString()));
 						encoder.push(transaction.parameterValues.at(p)->encodeValue());
 					}
 
-					if (transaction.functionId.isEmpty())
+					if (transaction.functionId.isEmpty() || transaction.functionId == transaction.contractId)
 					{
+						bytes param = encoder.encodedData();
+						contractCode.insert(contractCode.end(), param.begin(), param.end());
 						Address newAddress = deployContract(contractCode, transaction);
-						if (newAddress != m_contractAddress)
+						auto contractAddressIter = m_contractAddresses.find(transaction.contractId);
+						if (contractAddressIter == m_contractAddresses.end() || newAddress != contractAddressIter->second)
 						{
-							m_contractAddress = newAddress;
-							contractAddressChanged();
+							m_contractAddresses[transaction.contractId] = newAddress;
+							m_contractNames[newAddress] = transaction.contractId;
+							contractAddressesChanged();
 						}
 					}
 					else
-						callContract(m_contractAddress, encoder.encodedData(), transaction);
+					{
+						auto contractAddressIter = m_contractAddresses.find(transaction.contractId);
+						if (contractAddressIter == m_contractAddresses.end())
+							BOOST_THROW_EXCEPTION(dev::Exception() << dev::errinfo_comment("Contract not deployed: " + transaction.contractId.toStdString()));
+						callContract(contractAddressIter->second, encoder.encodedData(), transaction);
+					}
 				}
 				onNewTransaction();
 			}
@@ -311,10 +326,10 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 }
 
 
-void ClientModel::debugTransaction(unsigned _block, unsigned _index)
+void ClientModel::debugRecord(unsigned _index)
 {
-	auto const& t = m_client->execution(_block, _index);
-	showDebuggerForTransaction(t);
+	ExecutionResult const& e = m_client->executions().at(_index);
+	showDebuggerForTransaction(e);
 }
 
 void ClientModel::showDebugError(QString const& _error)
@@ -336,7 +351,8 @@ void ClientModel::callContract(Address const& _contract, bytes const& _data, Tra
 
 void ClientModel::onStateReset()
 {
-	m_contractAddress = dev::Address();
+	m_contractAddresses.clear();
+	m_contractNames.clear();
 	m_stdContractAddresses.clear();
 	m_stdContractNames.clear();
 	emit stateCleared();
@@ -344,9 +360,10 @@ void ClientModel::onStateReset()
 
 void ClientModel::onNewTransaction()
 {
-	unsigned block = m_client->number() + 1;
-	unsigned index =  m_client->pendingExecutions().size() - 1;
 	ExecutionResult const& tr = m_client->lastExecution();
+	unsigned block = m_client->number() + 1;
+	unsigned recordIndex = m_client->executions().size() - 1;
+	QString transactionIndex = tr.isCall() ? QObject::tr("Call") : QString("%1:%2").arg(block).arg(tr.transactionIndex);
 	QString address = QString::fromStdString(toJS(tr.address));
 	QString value =  QString::fromStdString(dev::toString(tr.value));
 	QString contract = address;
@@ -357,7 +374,7 @@ void ClientModel::onNewTransaction()
 
 	//TODO: handle value transfer
 	FixedHash<4> functionHash;
-	bool call = false;
+	bool abi = false;
 	if (creation)
 	{
 		//contract creation
@@ -372,12 +389,12 @@ void ClientModel::onNewTransaction()
 	}
 	else
 	{
-		//call
+		//transaction/call
 		if (tr.transactionData.size() > 0 && tr.transactionData.front().size() >= 4)
 		{
 			functionHash = FixedHash<4>(tr.transactionData.front().data(), FixedHash<4>::ConstructFromPointer);
 			function = QString::fromStdString(toJS(functionHash));
-			call = true;
+			abi = true;
 		}
 		else
 			function = QObject::tr("<none>");
@@ -386,14 +403,16 @@ void ClientModel::onNewTransaction()
 	if (creation)
 		returned = QString::fromStdString(toJS(tr.contractAddress));
 
-	if (m_contractAddress != 0 && (tr.address == m_contractAddress || tr.contractAddress == m_contractAddress))
+	Address contractAddress = tr.address != 0 ? tr.address : tr.contractAddress;
+	auto contractAddressIter = m_contractNames.find(contractAddress);
+	if (contractAddressIter != m_contractNames.end())
 	{
-		auto compilerRes = m_context->codeModel()->code();
-		QContractDefinition* def = compilerRes->contract();
+		CompiledContract const& compilerRes = m_context->codeModel()->contract(contractAddressIter->second);
+		const QContractDefinition* def = compilerRes.contract();
 		contract = def->name();
-		if (call)
+		if (abi)
 		{
-			QFunctionDefinition* funcDef = def->getFunction(functionHash);
+			QFunctionDefinition const* funcDef = def->getFunction(functionHash);
 			if (funcDef)
 			{
 				function = funcDef->name();
@@ -405,9 +424,9 @@ void ClientModel::onNewTransaction()
 		}
 	}
 
-	TransactionLogEntry* log = new TransactionLogEntry(block, index, contract, function, value, address, returned);
+	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall());
 	QQmlEngine::setObjectOwnership(log, QQmlEngine::JavaScriptOwnership);
-	emit newTransaction(log);
+	emit newRecord(log);
 }
 
 }

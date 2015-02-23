@@ -370,7 +370,7 @@ void State::resetCurrent()
 	m_cache.clear();
 	m_currentBlock = BlockInfo();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
-	m_currentBlock.timestamp = time(0);
+	m_currentBlock.timestamp = max(m_previousBlock.timestamp + 1, (u256)time(0));
 	m_currentBlock.transactionsRoot = h256();
 	m_currentBlock.sha3Uncles = h256();
 	m_currentBlock.populateFromParent(m_previousBlock);
@@ -537,7 +537,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 			cwarn << "Hex: " << toHex(b);
 			cwarn << TransactionReceipt(&b);
 		}
-        cwarn << "Recorded: " << m_currentBlock.receiptsRoot;
+		cwarn << "Recorded: " << m_currentBlock.receiptsRoot;
 		auto rs = _bc.receipts(m_currentBlock.hash);
 		for (unsigned j = 0; j < rs.receipts.size(); ++j)
 		{
@@ -598,6 +598,13 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		// Rollback the trie.
 		m_db.rollback();
 		BOOST_THROW_EXCEPTION(InvalidStateRoot());
+	}
+
+	if (m_currentBlock.gasUsed != gasUsed())
+	{
+		// Rollback the trie.
+		m_db.rollback();
+		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed)));
 	}
 
 	return tdIncrease;
@@ -774,17 +781,29 @@ MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 	// Update difficulty according to timestamp.
 	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
+	MineInfo ret;
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	auto ret = m_pow.mine(/*out*/m_currentBlock.nonce, m_currentBlock.headerHash(WithoutNonce), m_currentBlock.difficulty, _msTimeout, true, _turbo);
+	tie(ret, m_currentBlock.nonce) = m_pow.mine(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.difficulty, _msTimeout, true, _turbo);
 
 	if (!ret.completed)
 		m_currentBytes.clear();
 	else
-	{
 		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
-	}
 
 	return ret;
+}
+
+bool State::completeMine(h256 const& _nonce)
+{
+	if (!m_pow.verify(m_currentBlock.headerHash(WithoutNonce), _nonce, m_currentBlock.difficulty))
+		return false;
+
+	m_currentBlock.nonce = _nonce;
+	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
+
+	completeMine();
+
+	return true;
 }
 
 void State::completeMine()
@@ -1180,11 +1199,11 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 						else if (j.second)
 							cached.insert(j.first);
 					}
-				if (delta.size())
+				if (!delta.empty())
 					lead = (lead == " .   ") ? "*.*  " : "***  ";
 
 				contout << " @:";
-				if (delta.size())
+				if (!delta.empty())
 					contout << "???";
 				else
 					contout << r[2].toHash<h256>();

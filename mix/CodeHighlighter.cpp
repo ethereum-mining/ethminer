@@ -76,14 +76,14 @@ void CodeHighlighter::processSource(std::string const& _source)
 	solidity::Token::Value token = scanner.getCurrentToken();
 	while (token != Token::EOS)
 	{
-		if ((token >= Token::BREAK && token < Token::TYPES_END) ||
-				token == Token::IN || token == Token::DELETE || token == Token::NULL_LITERAL || token == Token::TRUE_LITERAL || token == Token::FALSE_LITERAL)
+		if ((token >= Token::Break && token < Token::TypesEnd) ||
+				token == Token::In || token == Token::Delete || token == Token::NullLiteral || token == Token::TrueLiteral || token == Token::FalseLiteral)
 			m_formats.push_back(FormatRange(CodeHighlighterSettings::Keyword, scanner.getCurrentLocation()));
-		else if (token == Token::STRING_LITERAL)
+		else if (token == Token::StringLiteral)
 			m_formats.push_back(FormatRange(CodeHighlighterSettings::StringLiteral, scanner.getCurrentLocation()));
-		else if (token == Token::COMMENT_LITERAL)
+		else if (token == Token::CommentLiteral)
 			m_formats.push_back(FormatRange(CodeHighlighterSettings::Comment, scanner.getCurrentLocation()));
-		else if (token == Token::NUMBER)
+		else if (token == Token::Number)
 			m_formats.push_back(FormatRange(CodeHighlighterSettings::NumLiteral, scanner.getCurrentLocation()));
 
 		token = scanner.next();
@@ -119,7 +119,7 @@ void CodeHighlighter::processComments(std::string const& _source)
 			//add single line comment
 			int start = i;
 			i += 2;
-			while (_source[i] != '\n' && i < size)
+			while (i < size && _source[i] != '\n')
 				++i;
 			m_formats.push_back(FormatRange(CodeHighlighterSettings::Comment, start, i - start));
 		}

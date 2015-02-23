@@ -2,7 +2,7 @@ cmake_policy(SET CMP0015 NEW)
 
 aux_source_directory(. SRC_LIST)
 
-include_directories(..)
+include_directories(BEFORE ..)
 
 set(EXECUTABLE sc)
 

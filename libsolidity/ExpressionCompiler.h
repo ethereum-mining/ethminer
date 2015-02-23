@@ -22,8 +22,10 @@
  */
 
 #include <functional>
+#include <memory>
 #include <boost/noncopyable.hpp>
 #include <libdevcore/Common.h>
+#include <libsolidity/BaseTypes.h>
 #include <libsolidity/ASTVisitor.h>
 
 namespace dev {
@@ -37,6 +39,7 @@ namespace solidity {
 class CompilerContext;
 class Type;
 class IntegerType;
+class ByteArrayType;
 class StaticStringType;
 
 /**
@@ -55,6 +58,9 @@ public:
 									 Type const& _targetType, bool _cleanupNeeded = false);
 	/// Appends code for a State Variable accessor function
 	static void appendStateVariableAccessor(CompilerContext& _context, VariableDeclaration const& _varDecl, bool _optimize = false);
+
+	/// Appends code for a State Variable Initialization function
+	static void appendStateVariableInitialization(CompilerContext& _context, VariableDeclaration const& _varDecl, bool _optimize = false);
 
 private:
 	explicit ExpressionCompiler(CompilerContext& _compilerContext, bool _optimize = false):
@@ -92,22 +98,24 @@ private:
 	/// Appends code to call a function of the given type with the given arguments.
 	void appendExternalFunctionCall(FunctionType const& _functionType, std::vector<ASTPointer<Expression const>> const& _arguments,
 									bool bare = false);
-	/// Appends code that copies the given arguments to memory (with optional offset).
-	/// @returns the number of bytes copied to memory
-	unsigned appendArgumentCopyToMemory(TypePointers const& _types,
-										std::vector<ASTPointer<Expression const>> const& _arguments,
-										unsigned _memoryOffset = 0);
-	/// Appends code that copies a type to memory.
-	/// @returns the number of bytes copied to memory
-	unsigned appendTypeConversionAndMoveToMemory(Type const& _expectedType, Type const& _type,
-												 Location const& _location, unsigned _memoryOffset = 0);
-	/// Appends code that evaluates a single expression and copies it to memory (with optional offset).
-	/// @returns the number of bytes copied to memory
-	unsigned appendExpressionCopyToMemory(Type const& _expectedType, Expression const& _expression,
-										  unsigned _memoryOffset = 0);
+	/// Appends code that evaluates the given arguments and moves the result to memory. The memory offset is
+	/// expected to be on the stack and is updated by this call.
+	void appendArgumentsCopyToMemory(std::vector<ASTPointer<Expression const>> const& _arguments,
+									 TypePointers const& _types = {},
+									 bool _padToWordBoundaries = true,
+									 bool _padExceptionIfFourBytes = false);
+	/// Appends code that moves a stack element of the given type to memory. The memory offset is
+	/// expected below the stack element and is updated by this call.
+	void appendTypeMoveToMemory(Type const& _type, bool _padToWordBoundaries = true);
+	/// Appends code that evaluates a single expression and moves the result to memory. The memory offset is
+	/// expected to be on the stack and is updated by this call.
+	void appendExpressionCopyToMemory(Type const& _expectedType, Expression const& _expression);
 
 	/// Appends code for a State Variable accessor function
 	void appendStateVariableAccessor(VariableDeclaration const& _varDecl);
+
+	/// Appends code for a State Variable initialization
+	void appendStateVariableInitialization(VariableDeclaration const& _varDecl);
 
 	/**
 	 * Helper class to store and retrieve lvalues to and from various locations.
@@ -117,49 +125,51 @@ private:
 	class LValue
 	{
 	public:
-		enum LValueType { NONE, STACK, MEMORY, STORAGE };
+		enum class LValueType { None, Stack, Memory, Storage };
 
 		explicit LValue(CompilerContext& _compilerContext): m_context(&_compilerContext) { reset(); }
-		LValue(CompilerContext& _compilerContext, LValueType _type, Type const& _dataType, unsigned _baseStackOffset = 0);
+		LValue(CompilerContext& _compilerContext, LValueType _type,
+			   std::shared_ptr<Type const> const& _dataType, unsigned _baseStackOffset = 0);
 
 		/// Set type according to the declaration and retrieve the reference.
-		/// @a _expression is the current expression
-		void fromIdentifier(Identifier const& _identifier, Declaration const& _declaration);
-		/// Convenience function to set type for a state variable and retrieve the reference
-		void fromStateVariable(Declaration const& _varDecl, TypePointer const& _type);
-		void reset() { m_type = NONE; m_baseStackOffset = 0; m_size = 0; }
+		/// @a _location is the current location
+		void fromDeclaration(Declaration const& _declaration, Location const& _location);
 
-		bool isValid() const { return m_type != NONE; }
-		bool isInOnStack() const { return m_type == STACK; }
-		bool isInMemory() const { return m_type == MEMORY; }
-		bool isInStorage() const { return m_type == STORAGE; }
+		void reset() { m_type = LValueType::None; m_dataType.reset(); m_baseStackOffset = 0; m_size = 0; }
+
+		bool isValid() const { return m_type != LValueType::None; }
+		bool isInOnStack() const { return m_type == LValueType::Stack; }
+		bool isInMemory() const { return m_type == LValueType::Memory; }
+		bool isInStorage() const { return m_type == LValueType::Storage; }
 
 		/// @returns true if this lvalue reference type occupies a slot on the stack.
-		bool storesReferenceOnStack() const { return m_type == STORAGE || m_type == MEMORY; }
+		bool storesReferenceOnStack() const { return m_type == LValueType::Storage || m_type == LValueType::Memory; }
 
 		/// Copies the value of the current lvalue to the top of the stack and, if @a _remove is true,
 		/// also removes the reference from the stack (note that is does not reset the type to @a NONE).
-		/// @a _type is the type of the current expression and @ _location its location, used for error reporting.
-		/// @a _location can be a nullptr for expressions that don't have an actual ASTNode equivalent
-		void retrieveValue(TypePointer const& _type, Location const& _location, bool _remove = false) const;
-		/// Stores a value (from the stack directly beneath the reference, which is assumed to
-		/// be on the top of the stack, if any) in the lvalue and removes the reference.
-		/// Also removes the stored value from the stack if @a _move is
-		/// true. @a _expression is the current expression, used for error reporting.
-		void storeValue(Expression const& _expression, bool _move = false) const;
+		/// @a _location source location of the current expression, used for error reporting.
+		void retrieveValue(Location const& _location, bool _remove = false) const;
+		/// Moves a value from the stack to the lvalue. Removes the value if @a _move is true.
+		/// @a _location is the source location of the expression that caused this operation.
+		/// Stack pre: value [lvalue_ref]
+		/// Stack post if !_move: value_of(lvalue_ref)
+		void storeValue(Type const& _sourceType, Location const& _location = Location(), bool _move = false) const;
 		/// Stores zero in the lvalue.
-		/// @a _expression is the current expression, used for error reporting.
-		void setToZero(Expression const& _expression) const;
+		/// @a _location is the source location of the requested operation
+		void setToZero(Location const& _location = Location()) const;
 		/// Convenience function to convert the stored reference to a value and reset type to NONE if
 		/// the reference was not requested by @a _expression.
 		void retrieveValueIfLValueNotRequested(Expression const& _expression);
 
 	private:
 		/// Convenience function to retrieve Value from Storage. Specific version of @ref retrieveValue
-		void retrieveValueFromStorage(TypePointer const& _type, bool _remove = false) const;
+		void retrieveValueFromStorage(bool _remove = false) const;
+		/// Copies from a byte array to a byte array in storage, both references on the stack.
+		void copyByteArrayToStorage(ByteArrayType const& _targetType, ByteArrayType const& _sourceType) const;
 
 		CompilerContext* m_context;
-		LValueType m_type = NONE;
+		LValueType m_type = LValueType::None;
+		std::shared_ptr<Type const> m_dataType;
 		/// If m_type is STACK, this is base stack offset (@see
 		/// CompilerContext::getBaseStackOffsetOfVariable) of a local variable.
 		unsigned m_baseStackOffset = 0;

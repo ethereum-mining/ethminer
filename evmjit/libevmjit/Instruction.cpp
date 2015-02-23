@@ -1,6 +1,8 @@
-
 #include "Instruction.h"
+
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/ADT/APInt.h>
+#include "preprocessor/llvm_includes_end.h"
 
 namespace dev
 {
@@ -9,7 +11,7 @@ namespace eth
 namespace jit
 {
 
-llvm::APInt readPushData(bytes::const_iterator& _curr, bytes::const_iterator _end)
+llvm::APInt readPushData(code_iterator& _curr, code_iterator _end)
 {
 	auto pushInst = *_curr;
 	assert(Instruction(pushInst) >= Instruction::PUSH1 && Instruction(pushInst) <= Instruction::PUSH32);
@@ -26,7 +28,7 @@ llvm::APInt readPushData(bytes::const_iterator& _curr, bytes::const_iterator _en
 	return value;
 }
 
-void skipPushData(bytes::const_iterator& _curr, bytes::const_iterator _end)
+void skipPushData(code_iterator& _curr, code_iterator _end)
 {
 	auto pushInst = *_curr;
 	assert(Instruction(pushInst) >= Instruction::PUSH1 && Instruction(pushInst) <= Instruction::PUSH32);

@@ -5,8 +5,8 @@ import QtQuick.Window 2.0
 import QtQuick.Dialogs 1.1
 
 Window {
-
-	modality: Qt.WindowModal
+	id: newProjectWin
+	modality: Qt.ApplicationModal
 
 	width: 640
 	height: 120
@@ -18,6 +18,8 @@ Window {
 	signal accepted
 
 	function open() {
+		newProjectWin.setX((Screen.width - width) / 2);
+		newProjectWin.setY((Screen.height - height) / 2);
 		visible = true;
 		titleField.focus = true;
 	}

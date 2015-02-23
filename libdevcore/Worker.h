@@ -64,7 +64,7 @@ protected:
 
 private:
 	std::string m_name;
-	unsigned m_idleWaitMs;
+	unsigned m_idleWaitMs = 0;
 	
 	mutable Mutex x_work;						///< Lock for the network existance.
 	std::unique_ptr<std::thread> m_work;		///< The network thread.

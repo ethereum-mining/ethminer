@@ -34,6 +34,20 @@ using namespace std;
 namespace dev {
 namespace solidity {
 
+/**
+ * Simple helper class to ensure that the stack height is the same at certain places in the code.
+ */
+class StackHeightChecker
+{
+public:
+	StackHeightChecker(CompilerContext const& _context):
+		m_context(_context), stackHeight(m_context.getStackHeight()) {}
+	void check() { solAssert(m_context.getStackHeight() == stackHeight, "I sense a disturbance in the stack."); }
+private:
+	CompilerContext const& m_context;
+	unsigned stackHeight;
+};
+
 void Compiler::compileContract(ContractDefinition const& _contract,
 							   map<ContractDefinition const*, bytes const*> const& _contracts)
 {
@@ -73,7 +87,7 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 		for (ASTPointer<InheritanceSpecifier> const& base: contract->getBaseContracts())
 		{
 			ContractDefinition const* baseContract = dynamic_cast<ContractDefinition const*>(
-													base->getName()->getReferencedDeclaration());
+						base->getName()->getReferencedDeclaration());
 			solAssert(baseContract, "");
 			if (baseArguments.count(baseContract) == 0)
 				baseArguments[baseContract] = &base->getArguments();
@@ -85,12 +99,14 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 	{
 		ContractDefinition const* base = bases[bases.size() - i];
 		solAssert(base, "");
+		initializeStateVariables(*base);
 		FunctionDefinition const* baseConstructor = base->getConstructor();
 		if (!baseConstructor)
 			continue;
 		solAssert(baseArguments[base], "");
 		appendBaseConstructorCall(*baseConstructor, *baseArguments[base]);
 	}
+	initializeStateVariables(_contract);
 	if (_contract.getConstructor())
 		appendConstructorCall(*_contract.getConstructor());
 
@@ -147,7 +163,7 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 
 	// retrieve the function signature hash from the calldata
 	if (!interfaceFunctions.empty())
-		CompilerUtils(m_context).loadFromMemory(0, 4, false, true);
+		CompilerUtils(m_context).loadFromMemory(0, IntegerType(CompilerUtils::dataStartOffset * 8), true);
 
 	// stack now is: 1 0 <funhash>
 	for (auto const& it: interfaceFunctions)
@@ -178,23 +194,46 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 	}
 }
 
-unsigned Compiler::appendCalldataUnpacker(TypePointers const& _typeParameters, bool _fromMemory)
+void Compiler::appendCalldataUnpacker(TypePointers const& _typeParameters, bool _fromMemory)
 {
 	// We do not check the calldata size, everything is zero-padded.
-	unsigned dataOffset = CompilerUtils::dataStartOffset; // the 4 bytes of the function hash signature
-	//@todo this can be done more efficiently, saving some CALLDATALOAD calls
+	unsigned offset(CompilerUtils::dataStartOffset);
+	bool const c_padToWords = true;
+
+	unsigned dynamicParameterCount = 0;
 	for (TypePointer const& type: _typeParameters)
-	{
-		unsigned const c_numBytes = type->getCalldataEncodedSize();
-		if (c_numBytes > 32)
-			BOOST_THROW_EXCEPTION(CompilerError()
-								  << errinfo_comment("Type " + type->toString() + " not yet supported."));
-		bool const c_leftAligned = type->getCategory() == Type::Category::STRING;
-		bool const c_padToWords = true;
-		dataOffset += CompilerUtils(m_context).loadFromMemory(dataOffset, c_numBytes, c_leftAligned,
-															  !_fromMemory, c_padToWords);
-	}
-	return dataOffset;
+		if (type->isDynamicallySized())
+			dynamicParameterCount++;
+	offset += dynamicParameterCount * 32;
+	unsigned currentDynamicParameter = 0;
+	for (TypePointer const& type: _typeParameters)
+		if (type->isDynamicallySized())
+		{
+			// value on stack: [calldata_offset] (only if we are already in dynamic mode)
+			if (currentDynamicParameter == 0)
+				// switch from static to dynamic
+				m_context << u256(offset);
+			// retrieve length
+			CompilerUtils(m_context).loadFromMemory(
+				CompilerUtils::dataStartOffset + currentDynamicParameter * 32,
+				IntegerType(256), !_fromMemory, c_padToWords);
+			// stack: offset length
+			// add 32-byte padding to copy of length
+			m_context << u256(32) << eth::Instruction::DUP1 << u256(31)
+				<< eth::Instruction::DUP4 << eth::Instruction::ADD
+				<< eth::Instruction::DIV << eth::Instruction::MUL;
+			// stack: offset length padded_length
+			m_context << eth::Instruction::DUP3 << eth::Instruction::ADD;
+			currentDynamicParameter++;
+			// stack: offset length next_calldata_offset
+		}
+		else if (currentDynamicParameter == 0)
+			// we can still use static load
+			offset += CompilerUtils(m_context).loadFromMemory(offset, *type, !_fromMemory, c_padToWords);
+		else
+			CompilerUtils(m_context).loadFromMemoryDynamic(*type, !_fromMemory, c_padToWords);
+	if (dynamicParameterCount > 0)
+		m_context << eth::Instruction::POP;
 }
 
 void Compiler::appendReturnValuePacker(TypePointers const& _typeParameters)
@@ -207,15 +246,10 @@ void Compiler::appendReturnValuePacker(TypePointers const& _typeParameters)
 
 	for (TypePointer const& type: _typeParameters)
 	{
-		unsigned numBytes = type->getCalldataEncodedSize();
-		if (numBytes > 32)
-			BOOST_THROW_EXCEPTION(CompilerError()
-								  << errinfo_comment("Type " + type->toString() + " not yet supported."));
 		CompilerUtils(m_context).copyToStackTop(stackDepth, *type);
 		ExpressionCompiler::appendTypeConversion(m_context, *type, *type, true);
-		bool const c_leftAligned = type->getCategory() == Type::Category::STRING;
 		bool const c_padToWords = true;
-		dataOffset += CompilerUtils(m_context).storeInMemory(dataOffset, numBytes, c_leftAligned, c_padToWords);
+		dataOffset += CompilerUtils(m_context).storeInMemory(dataOffset, *type, c_padToWords);
 		stackDepth -= type->getSizeOnStack();
 	}
 	// note that the stack is not cleaned up here
@@ -227,6 +261,13 @@ void Compiler::registerStateVariables(ContractDefinition const& _contract)
 	for (ContractDefinition const* contract: boost::adaptors::reverse(_contract.getLinearizedBaseContracts()))
 		for (ASTPointer<VariableDeclaration> const& variable: contract->getStateVariables())
 			m_context.addStateVariable(*variable);
+}
+
+void Compiler::initializeStateVariables(ContractDefinition const& _contract)
+{
+	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
+		if (variable->getValue())
+			ExpressionCompiler::appendStateVariableInitialization(m_context, *variable);
 }
 
 bool Compiler::visit(VariableDeclaration const& _variableDeclaration)
@@ -313,6 +354,8 @@ bool Compiler::visit(FunctionDefinition const& _function)
 
 bool Compiler::visit(IfStatement const& _ifStatement)
 {
+	StackHeightChecker checker(m_context);
+
 	compileExpression(_ifStatement.getCondition());
 	eth::AssemblyItem trueTag = m_context.appendConditionalJump();
 	if (_ifStatement.getFalseStatement())
@@ -321,11 +364,15 @@ bool Compiler::visit(IfStatement const& _ifStatement)
 	m_context << trueTag;
 	_ifStatement.getTrueStatement().accept(*this);
 	m_context << endTag;
+
+	checker.check();
 	return false;
 }
 
 bool Compiler::visit(WhileStatement const& _whileStatement)
 {
+	StackHeightChecker checker(m_context);
+
 	eth::AssemblyItem loopStart = m_context.newTag();
 	eth::AssemblyItem loopEnd = m_context.newTag();
 	m_continueTags.push_back(loopStart);
@@ -343,11 +390,15 @@ bool Compiler::visit(WhileStatement const& _whileStatement)
 
 	m_continueTags.pop_back();
 	m_breakTags.pop_back();
+
+	checker.check();
 	return false;
 }
 
 bool Compiler::visit(ForStatement const& _forStatement)
 {
+	StackHeightChecker checker(m_context);
+
 	eth::AssemblyItem loopStart = m_context.newTag();
 	eth::AssemblyItem loopEnd = m_context.newTag();
 	m_continueTags.push_back(loopStart);
@@ -377,6 +428,8 @@ bool Compiler::visit(ForStatement const& _forStatement)
 
 	m_continueTags.pop_back();
 	m_breakTags.pop_back();
+
+	checker.check();
 	return false;
 }
 
@@ -411,29 +464,35 @@ bool Compiler::visit(Return const& _return)
 	return false;
 }
 
-bool Compiler::visit(VariableDefinition const& _variableDefinition)
+bool Compiler::visit(VariableDeclarationStatement const& _variableDeclarationStatement)
 {
-	if (Expression const* expression = _variableDefinition.getExpression())
+	StackHeightChecker checker(m_context);
+	if (Expression const* expression = _variableDeclarationStatement.getExpression())
 	{
-		compileExpression(*expression, _variableDefinition.getDeclaration().getType());
-		CompilerUtils(m_context).moveToStackVariable(_variableDefinition.getDeclaration());
+		compileExpression(*expression, _variableDeclarationStatement.getDeclaration().getType());
+		CompilerUtils(m_context).moveToStackVariable(_variableDeclarationStatement.getDeclaration());
 	}
+	checker.check();
 	return false;
 }
 
 bool Compiler::visit(ExpressionStatement const& _expressionStatement)
 {
+	StackHeightChecker checker(m_context);
 	Expression const& expression = _expressionStatement.getExpression();
 	compileExpression(expression);
 	CompilerUtils(m_context).popStackElement(*expression.getType());
+	checker.check();
 	return false;
 }
 
 bool Compiler::visit(PlaceholderStatement const&)
 {
+	StackHeightChecker checker(m_context);
 	++m_modifierDepth;
 	appendModifierOrFunctionCode();
 	--m_modifierDepth;
+	checker.check();
 	return true;
 }
 

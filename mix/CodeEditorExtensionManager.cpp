@@ -26,8 +26,6 @@
 #include <QQmlComponent>
 #include <QQuickTextDocument>
 #include "StatusPane.h"
-#include "AssemblyDebuggerControl.h"
-#include "StateListView.h"
 #include "AppContext.h"
 #include "MixApplication.h"
 #include "CodeModel.h"
@@ -56,13 +54,9 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 void CodeEditorExtensionManager::initExtensions()
 {
 	std::shared_ptr<StatusPane> output = std::make_shared<StatusPane>(m_appContext);
-	std::shared_ptr<AssemblyDebuggerControl> debug = std::make_shared<AssemblyDebuggerControl>(m_appContext);
-	std::shared_ptr<StateListView> stateList = std::make_shared<StateListView>(m_appContext);
 	QObject::connect(m_appContext->codeModel(), &CodeModel::compilationComplete, this, &CodeEditorExtensionManager::applyCodeHighlight);
 
 	initExtension(output);
-	initExtension(debug);
-	initExtension(stateList);
 }
 
 void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
@@ -94,10 +88,10 @@ void CodeEditorExtensionManager::applyCodeHighlight()
 void CodeEditorExtensionManager::setRightView(QQuickItem* _rightView)
 {
 	m_rightView = _rightView;
-	initExtensions(); //TODO: move this to a proper place
 }
 
 void CodeEditorExtensionManager::setHeaderView(QQuickItem* _headerView)
 {
 	m_headerView = _headerView;
+	initExtensions(); //TODO: move this to a proper place
 }

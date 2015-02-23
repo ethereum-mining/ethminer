@@ -46,6 +46,8 @@ public:
 	bool visit(ContractDefinition const& _node) override;
 	bool visit(InheritanceSpecifier const& _node) override;
 	bool visit(StructDefinition const& _node) override;
+	bool visit(EnumDefinition const& _node) override;
+	bool visit(EnumValue const& _node) override;
 	bool visit(ParameterList const& _node) override;
 	bool visit(FunctionDefinition const& _node) override;
 	bool visit(VariableDeclaration const& _node) override;
@@ -66,7 +68,7 @@ public:
 	bool visit(Continue const& _node) override;
 	bool visit(Break const& _node) override;
 	bool visit(Return const& _node) override;
-	bool visit(VariableDefinition const& _node) override;
+	bool visit(VariableDeclarationStatement const& _node) override;
 	bool visit(ExpressionStatement const& _node) override;
 	bool visit(Expression const& _node) override;
 	bool visit(Assignment const& _node) override;
@@ -85,6 +87,8 @@ public:
 	void endVisit(ContractDefinition const&) override;
 	void endVisit(InheritanceSpecifier const&) override;
 	void endVisit(StructDefinition const&) override;
+	void endVisit(EnumDefinition const&) override;
+	void endVisit(EnumValue const&) override;
 	void endVisit(ParameterList const&) override;
 	void endVisit(FunctionDefinition const&) override;
 	void endVisit(VariableDeclaration const&) override;
@@ -105,7 +109,7 @@ public:
 	void endVisit(Continue const&) override;
 	void endVisit(Break const&) override;
 	void endVisit(Return const&) override;
-	void endVisit(VariableDefinition const&) override;
+	void endVisit(VariableDeclarationStatement const&) override;
 	void endVisit(ExpressionStatement const&) override;
 	void endVisit(Expression const&) override;
 	void endVisit(Assignment const&) override;

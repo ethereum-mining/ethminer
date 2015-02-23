@@ -58,16 +58,27 @@ void ContractDefinition::checkTypeRequirements()
 		BOOST_THROW_EXCEPTION(constructor->getReturnParameterList()->createTypeError(
 									"Non-empty \"returns\" directive for constructor."));
 
-	FunctionDefinition const* fallbackFunction = getFallbackFunction();
-	if (fallbackFunction && fallbackFunction->getScope() == this && !fallbackFunction->getParameters().empty())
-		BOOST_THROW_EXCEPTION(fallbackFunction->getParameterList().createTypeError(
-									"Fallback function cannot take parameters."));
-
+	FunctionDefinition const* fallbackFunction = nullptr;
+	for (ASTPointer<FunctionDefinition> const& function: getDefinedFunctions())
+		if (function->getName().empty())
+		{
+			if (fallbackFunction)
+				BOOST_THROW_EXCEPTION(DeclarationError() << errinfo_comment("Only one fallback function is allowed."));
+			else
+			{
+				fallbackFunction = function.get();
+				if (!fallbackFunction->getParameters().empty())
+					BOOST_THROW_EXCEPTION(fallbackFunction->getParameterList().createTypeError("Fallback function cannot take parameters."));
+			}
+		}
 	for (ASTPointer<ModifierDefinition> const& modifier: getFunctionModifiers())
 		modifier->checkTypeRequirements();
 
 	for (ASTPointer<FunctionDefinition> const& function: getDefinedFunctions())
 		function->checkTypeRequirements();
+
+	for (ASTPointer<VariableDeclaration> const& variable: m_stateVariables)
+		variable->checkTypeRequirements();
 
 	// check for hash collisions in function signatures
 	set<FixedHash<4>> hashes;
@@ -198,6 +209,13 @@ vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getIn
 	return *m_interfaceFunctionList;
 }
 
+TypePointer EnumValue::getType(ContractDefinition const*) const
+{
+	EnumDefinition const* parentDef = dynamic_cast<EnumDefinition const*>(getScope());
+	solAssert(parentDef, "Enclosing Scope of EnumValue was not set");
+	return make_shared<EnumType>(*parentDef);
+}
+
 void InheritanceSpecifier::checkTypeRequirements()
 {
 	m_baseName->checkTypeRequirements();
@@ -239,12 +257,17 @@ void StructDefinition::checkRecursion() const
 												<< errinfo_comment("Recursive struct definition."));
 		definitionsSeen.insert(def);
 		for (ASTPointer<VariableDeclaration> const& member: def->getMembers())
-			if (member->getType()->getCategory() == Type::Category::STRUCT)
+			if (member->getType()->getCategory() == Type::Category::Struct)
 			{
 				UserDefinedTypeName const& typeName = dynamic_cast<UserDefinedTypeName const&>(*member->getTypeName());
 				queue.push_back(&dynamic_cast<StructDefinition const&>(*typeName.getReferencedDeclaration()));
 			}
 	}
+}
+
+TypePointer EnumDefinition::getType(ContractDefinition const*) const
+{
+	return make_shared<TypeType>(make_shared<EnumType>(*this));
 }
 
 TypePointer FunctionDefinition::getType(ContractDefinition const*) const
@@ -268,12 +291,27 @@ string FunctionDefinition::getCanonicalSignature() const
 	return FunctionType(*this).getCanonicalSignature(getName());
 }
 
-Declaration::LValueType VariableDeclaration::getLValueType() const
+bool VariableDeclaration::isLValue() const
 {
-	if (dynamic_cast<FunctionDefinition const*>(getScope()) || dynamic_cast<ModifierDefinition const*>(getScope()))
-		return Declaration::LValueType::LOCAL;
-	else
-		return Declaration::LValueType::STORAGE;
+	// External function parameters are Read-Only
+	return !isExternalFunctionParameter();
+}
+
+void VariableDeclaration::checkTypeRequirements()
+{
+	if (m_value)
+		m_value->checkTypeRequirements();
+}
+
+bool VariableDeclaration::isExternalFunctionParameter() const
+{
+	auto const* function = dynamic_cast<FunctionDefinition const*>(getScope());
+	if (!function || function->getVisibility() != Declaration::Visibility::External)
+		return false;
+	for (auto const& variable: function->getParameters())
+		if (variable.get() == this)
+			return true;
+	return false;
 }
 
 TypePointer ModifierDefinition::getType(ContractDefinition const*) const
@@ -361,44 +399,42 @@ void Return::checkTypeRequirements()
 	m_expression->expectType(*m_returnParameters->getParameters().front()->getType());
 }
 
-void VariableDefinition::checkTypeRequirements()
+void VariableDeclarationStatement::checkTypeRequirements()
 {
 	// Variables can be declared without type (with "var"), in which case the first assignment
 	// sets the type.
 	// Note that assignments before the first declaration are legal because of the special scoping
 	// rules inherited from JavaScript.
-	if (m_value)
+	if (m_variable->getValue())
 	{
 		if (m_variable->getType())
-			m_value->expectType(*m_variable->getType());
+			m_variable->getValue()->expectType(*m_variable->getType());
 		else
 		{
 			// no type declared and no previous assignment, infer the type
-			m_value->checkTypeRequirements();
-			TypePointer type = m_value->getType();
-			if (type->getCategory() == Type::Category::INTEGER_CONSTANT)
+			m_variable->getValue()->checkTypeRequirements();
+			TypePointer type = m_variable->getValue()->getType();
+			if (type->getCategory() == Type::Category::IntegerConstant)
 			{
 				auto intType = dynamic_pointer_cast<IntegerConstantType const>(type)->getIntegerType();
 				if (!intType)
-					BOOST_THROW_EXCEPTION(m_value->createTypeError("Invalid integer constant " + type->toString()));
+					BOOST_THROW_EXCEPTION(m_variable->getValue()->createTypeError("Invalid integer constant " + type->toString()));
 				type = intType;
 			}
-			else if (type->getCategory() == Type::Category::VOID)
+			else if (type->getCategory() == Type::Category::Void)
 				BOOST_THROW_EXCEPTION(m_variable->createTypeError("var cannot be void type"));
 			m_variable->setType(type);
 		}
 	}
 }
-
 void Assignment::checkTypeRequirements()
 {
 	m_leftHandSide->checkTypeRequirements();
 	m_leftHandSide->requireLValue();
-	//@todo later, assignments to structs might be possible, but not to mappings
-	if (!m_leftHandSide->getType()->isValueType() && !m_leftHandSide->isLocalLValue())
-		BOOST_THROW_EXCEPTION(createTypeError("Assignment to non-local non-value lvalue."));
+	if (m_leftHandSide->getType()->getCategory() == Type::Category::Mapping)
+		BOOST_THROW_EXCEPTION(createTypeError("Mappings cannot be assigned to."));
 	m_type = m_leftHandSide->getType();
-	if (m_assigmentOperator == Token::ASSIGN)
+	if (m_assigmentOperator == Token::Assign)
 		m_rightHandSide->expectType(*m_type);
 	else
 	{
@@ -417,7 +453,7 @@ void Assignment::checkTypeRequirements()
 void ExpressionStatement::checkTypeRequirements()
 {
 	m_expression->checkTypeRequirements();
-	if (m_expression->getType()->getCategory() == Type::Category::INTEGER_CONSTANT)
+	if (m_expression->getType()->getCategory() == Type::Category::IntegerConstant)
 		if (!dynamic_pointer_cast<IntegerConstantType const>(m_expression->getType())->getIntegerType())
 			BOOST_THROW_EXCEPTION(m_expression->createTypeError("Invalid integer constant."));
 }
@@ -441,9 +477,9 @@ void Expression::requireLValue()
 
 void UnaryOperation::checkTypeRequirements()
 {
-	// INC, DEC, ADD, SUB, NOT, BIT_NOT, DELETE
+	// Inc, Dec, Add, Sub, Not, BitNot, Delete
 	m_subExpression->checkTypeRequirements();
-	if (m_operator == Token::Value::INC || m_operator == Token::Value::DEC || m_operator == Token::Value::DELETE)
+	if (m_operator == Token::Value::Inc || m_operator == Token::Value::Dec || m_operator == Token::Value::Delete)
 		m_subExpression->requireLValue();
 	m_type = m_subExpression->getType()->unaryOperatorResult(m_operator);
 	if (!m_type)
@@ -478,7 +514,7 @@ void FunctionCall::checkTypeRequirements()
 		if (m_arguments.size() != 1)
 			BOOST_THROW_EXCEPTION(createTypeError("More than one argument for explicit type conversion."));
 		if (!m_names.empty())
-			BOOST_THROW_EXCEPTION(createTypeError("Type conversion can't allow named arguments."));
+			BOOST_THROW_EXCEPTION(createTypeError("Type conversion cannot allow named arguments."));
 		if (!m_arguments.front()->getType()->isExplicitlyConvertibleTo(*type.getActualType()))
 			BOOST_THROW_EXCEPTION(createTypeError("Explicit type conversion not allowed."));
 		m_type = type.getActualType();
@@ -489,28 +525,30 @@ void FunctionCall::checkTypeRequirements()
 		// and then ask if that is implicitly convertible to the struct represented by the
 		// function parameters
 		TypePointers const& parameterTypes = functionType->getParameterTypes();
-		if (parameterTypes.size() != m_arguments.size())
+		if (!functionType->takesArbitraryParameters() && parameterTypes.size() != m_arguments.size())
 			BOOST_THROW_EXCEPTION(createTypeError("Wrong argument count for function call."));
 
 		if (m_names.empty())
 		{
 			for (size_t i = 0; i < m_arguments.size(); ++i)
-				if (!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameterTypes[i]))
-					BOOST_THROW_EXCEPTION(createTypeError("Invalid type for argument in function call."));
+				if (!functionType->takesArbitraryParameters() &&
+						!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameterTypes[i]))
+					BOOST_THROW_EXCEPTION(m_arguments[i]->createTypeError("Invalid type for argument in function call."));
 		}
 		else
 		{
+			if (functionType->takesArbitraryParameters())
+				BOOST_THROW_EXCEPTION(createTypeError("Named arguments cannnot be used for functions "
+													  "that take arbitrary parameters."));
 			auto const& parameterNames = functionType->getParameterNames();
 			if (parameterNames.size() != m_names.size())
 				BOOST_THROW_EXCEPTION(createTypeError("Some argument names are missing."));
 
 			// check duplicate names
-			for (size_t i = 0; i < m_names.size(); i++) {
-				for (size_t j = i + 1; j < m_names.size(); j++) {
+			for (size_t i = 0; i < m_names.size(); i++)
+				for (size_t j = i + 1; j < m_names.size(); j++)
 					if (*m_names[i] == *m_names[j])
-						BOOST_THROW_EXCEPTION(createTypeError("Duplicate named argument."));
-				}
-			}
+						BOOST_THROW_EXCEPTION(m_arguments[i]->createTypeError("Duplicate named argument."));
 
 			for (size_t i = 0; i < m_names.size(); i++) {
 				bool found = false;
@@ -525,7 +563,7 @@ void FunctionCall::checkTypeRequirements()
 					}
 				}
 				if (!found)
-					BOOST_THROW_EXCEPTION(createTypeError("Named argument doesn't match function declaration."));
+					BOOST_THROW_EXCEPTION(createTypeError("Named argument does not match function declaration."));
 			}
 		}
 
@@ -542,7 +580,7 @@ void FunctionCall::checkTypeRequirements()
 
 bool FunctionCall::isTypeConversion() const
 {
-	return m_expression->getType()->getCategory() == Type::Category::TYPE;
+	return m_expression->getType()->getCategory() == Type::Category::TypeType;
 }
 
 void NewExpression::checkTypeRequirements()
@@ -554,7 +592,7 @@ void NewExpression::checkTypeRequirements()
 	shared_ptr<ContractType const> contractType = make_shared<ContractType>(*m_contract);
 	TypePointers const& parameterTypes = contractType->getConstructorType()->getParameterTypes();
 	m_type = make_shared<FunctionType>(parameterTypes, TypePointers{contractType},
-									   FunctionType::Location::CREATION);
+									   FunctionType::Location::Creation);
 }
 
 void MemberAccess::checkTypeRequirements()
@@ -565,27 +603,26 @@ void MemberAccess::checkTypeRequirements()
 	if (!m_type)
 		BOOST_THROW_EXCEPTION(createTypeError("Member \"" + *m_memberName + "\" not found or not "
 											  "visible in " + type.toString()));
-	//@todo later, this will not always be STORAGE
-	m_lvalue = type.getCategory() == Type::Category::STRUCT ? Declaration::LValueType::STORAGE : Declaration::LValueType::NONE;
+	m_isLValue = (type.getCategory() == Type::Category::Struct);
 }
 
 void IndexAccess::checkTypeRequirements()
 {
 	m_base->checkTypeRequirements();
-	if (m_base->getType()->getCategory() != Type::Category::MAPPING)
+	if (m_base->getType()->getCategory() != Type::Category::Mapping)
 		BOOST_THROW_EXCEPTION(m_base->createTypeError("Indexed expression has to be a mapping (is " +
 													  m_base->getType()->toString() + ")"));
 	MappingType const& type = dynamic_cast<MappingType const&>(*m_base->getType());
 	m_index->expectType(*type.getKeyType());
 	m_type = type.getValueType();
-	m_lvalue = Declaration::LValueType::STORAGE;
+	m_isLValue = true;
 }
 
 void Identifier::checkTypeRequirements()
 {
 	solAssert(m_referencedDeclaration, "Identifier not resolved.");
 
-	m_lvalue = m_referencedDeclaration->getLValueType();
+	m_isLValue = m_referencedDeclaration->isLValue();
 	m_type = m_referencedDeclaration->getType(m_currentContract);
 	if (!m_type)
 		BOOST_THROW_EXCEPTION(createTypeError("Declaration referenced before type could be determined."));

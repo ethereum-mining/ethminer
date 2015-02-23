@@ -7,7 +7,7 @@ include(eth_download.cmake)
 # all dependencies will be installed into this directory, separated by platform
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
 set(ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/install/${_system_name}")
-set(ETH_DEPENDENCY_SERVER "http://build.ethdev.com/builds/${_system_name}-precompiled")
+set(ETH_DEPENDENCY_SERVER "https://build.ethdev.com/builds/${_system_name}-precompiled")
 file(MAKE_DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/lib)
 file(MAKE_DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/include)
 file(MAKE_DIRECTORY ${ETH_DEPENDENCY_INSTALL_DIR}/bin)
@@ -35,14 +35,18 @@ if (ETH_COMPILE)
 	include(compile/boost.cmake)
 else()	
 	eth_download(jsoncpp)
-	eth_download(json-rpc-cpp OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/json-rpc-cpp_osx.sh)
+	eth_download(microhttpd)
+	eth_download(json-rpc-cpp
+		VERSION 4.2
+		OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/json-rpc-cpp_osx.sh
+	)
 	
 	if (APPLE)
 		eth_download(snappy OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/snappy_osx.sh)
 	endif()
 
 	eth_download(leveldb OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/leveldb_osx.sh)
-	eth_download(qt)
+	eth_download(qt VERSION 5.4)
 	eth_download(cryptopp)
 	eth_download(boost)
 	eth_download(curl)

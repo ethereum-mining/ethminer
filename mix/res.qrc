@@ -2,7 +2,6 @@
     <qresource prefix="/">
         <file>qml/main.qml</file>
         <file>qml/AlertMessageDialog.qml</file>
-        <file>qml/BasicContent.qml</file>
         <file>qml/BasicMessage.qml</file>
         <file>qml/Debugger.qml</file>
         <file>qml/MainContent.qml</file>
@@ -11,12 +10,14 @@
         <file>qml/StateDialog.qml</file>
         <file>qml/StateList.qml</file>
         <file>qml/StateListModel.qml</file>
+        <file>qml/img/dappProjectIcon.png</file>
         <file>qml/img/jumpintoback.png</file>
         <file>qml/img/jumpintoforward.png</file>
         <file>qml/img/jumpoutback.png</file>
         <file>qml/img/jumpoutforward.png</file>
         <file>qml/img/jumpoverback.png</file>
         <file>qml/img/jumpoverforward.png</file>
+        <file>qml/img/jumpoverforwarddisabled.png</file>
         <file>qml/StepActionImage.qml</file>
         <file>qml/img/jumpintobackdisabled.png</file>
         <file>qml/img/jumpintoforwarddisabled.png</file>
@@ -61,7 +62,44 @@
         <file>stdc/std.sol</file>
         <file>qml/TransactionLog.qml</file>
         <file>res/mix_256x256x32.png</file>
-        <file>qml/CallStack.qml</file>
         <file>qml/QVariableDeclaration.qml</file>
+        <file>qml/qmldir</file>
+        <file>qml/FilesSection.qml</file>
+        <file>qml/fonts/SourceSansPro-Black.ttf</file>
+        <file>qml/fonts/SourceSansPro-BlackIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-Bold.ttf</file>
+        <file>qml/fonts/SourceSansPro-BoldIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-ExtraLight.ttf</file>
+        <file>qml/fonts/SourceSansPro-ExtraLightIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-It.ttf</file>
+        <file>qml/fonts/SourceSansPro-Light.ttf</file>
+        <file>qml/fonts/SourceSansPro-LightIt.ttf</file>
+        <file>qml/fonts/SourceSansPro-Regular.ttf</file>
+        <file>qml/fonts/SourceSansPro-Semibold.ttf</file>
+        <file>qml/fonts/SourceSansPro-SemiboldIt.ttf</file>
+        <file>qml/fonts/SourceSerifPro-Bold.ttf</file>
+        <file>qml/fonts/SourceSerifPro-Regular.ttf</file>
+        <file>qml/fonts/SourceSerifPro-Semibold.ttf</file>
+        <file>qml/img/closedtriangleindicator_filesproject.png</file>
+        <file>qml/img/opentriangleindicator_filesproject.png</file>
+        <file>qml/img/projecticon.png</file>
+        <file>qml/SourceSansProRegular.qml</file>
+        <file>qml/SourceSansProBold.qml</file>
+        <file>qml/SourceSansProLight.qml</file>
+        <file>qml/StateDialogStyle.qml</file>
+        <file>qml/ProjectFilesStyle.qml</file>
+        <file>qml/DebuggerPaneStyle.qml</file>
+        <file>qml/CodeEditorStyle.qml</file>
+        <file>qml/StatusPaneStyle.qml</file>
+        <file>qml/StateStyle.qml</file>
+        <file>qml/img/plus.png</file>
+        <file>qml/img/delete_sign.png</file>
+        <file>qml/img/edit.png</file>
+        <file>qml/DefaultLabel.qml</file>
+        <file>qml/DefaultTextField.qml</file>
+        <file>qml/CommonSeparator.qml</file>
+        <file>qml/Style.qml</file>
+        <file>qml/WebPreviewStyle.qml</file>
+        <file>qml/img/available_updates.png</file>
     </qresource>
 </RCC>

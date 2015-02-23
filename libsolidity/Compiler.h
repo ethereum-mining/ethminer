@@ -20,6 +20,8 @@
  * Solidity AST to EVM bytecode compiler.
  */
 
+#pragma once
+
 #include <ostream>
 #include <functional>
 #include <libsolidity/ASTVisitor.h>
@@ -52,11 +54,12 @@ private:
 	void appendConstructorCall(FunctionDefinition const& _constructor);
 	void appendFunctionSelector(ContractDefinition const& _contract);
 	/// Creates code that unpacks the arguments for the given function represented by a vector of TypePointers.
-	/// From memory if @a _fromMemory is true, otherwise from call data. @returns the size of the data in bytes.
-	unsigned appendCalldataUnpacker(TypePointers const& _typeParameters, bool _fromMemory = false);
+	/// From memory if @a _fromMemory is true, otherwise from call data.
+	void appendCalldataUnpacker(TypePointers const& _typeParameters, bool _fromMemory = false);
 	void appendReturnValuePacker(TypePointers const& _typeParameters);
 
 	void registerStateVariables(ContractDefinition const& _contract);
+	void initializeStateVariables(ContractDefinition const& _contract);
 
 	virtual bool visit(VariableDeclaration const& _variableDeclaration) override;
 	virtual bool visit(FunctionDefinition const& _function) override;
@@ -66,7 +69,7 @@ private:
 	virtual bool visit(Continue const& _continue) override;
 	virtual bool visit(Break const& _break) override;
 	virtual bool visit(Return const& _return) override;
-	virtual bool visit(VariableDefinition const& _variableDefinition) override;
+	virtual bool visit(VariableDeclarationStatement const& _variableDeclarationStatement) override;
 	virtual bool visit(ExpressionStatement const& _expressionStatement) override;
 	virtual bool visit(PlaceholderStatement const&) override;
 

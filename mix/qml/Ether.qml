@@ -32,7 +32,8 @@ RowLayout {
 		units.currentIndex = unit;
 	}
 
-	TextField
+
+	DefaultTextField
 	{
 		implicitWidth: 200
 		onTextChanged:
@@ -59,6 +60,7 @@ RowLayout {
 				formattedValue.text = value.format();
 			}
 		}
+
 		model: ListModel {
 			id: unitsModel
 			ListElement { text: "Uether"; }
@@ -82,6 +84,7 @@ RowLayout {
 			ListElement { text: "wei"; }
 		}
 	}
+
 	Text
 	{
 		visible: displayFormattedValue

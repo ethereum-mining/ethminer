@@ -15,7 +15,7 @@ ApplicationWindow {
 	height: 800
 	minimumWidth: 400
 	minimumHeight: 300
-	title: qsTr("mix")
+	title: qsTr("Mix")
 
 	menuBar: MenuBar {
 		Menu {
@@ -28,8 +28,9 @@ ApplicationWindow {
 			MenuItem { action: addExistingFileAction }
 			MenuItem { action: addNewJsFileAction }
 			MenuItem { action: addNewHtmlFileAction }
+			MenuItem { action: addNewCssFileAction }
 			MenuSeparator {}
-			//MenuItem { action: addNewContractAction }
+			MenuItem { action: addNewContractAction }
 			MenuItem { action: closeProjectAction }
 			MenuSeparator {}
 			MenuItem { action: exitAppAction }
@@ -38,6 +39,10 @@ ApplicationWindow {
 			title: qsTr("Deploy")
 			MenuItem { action: debugRunAction }
 			MenuItem { action: mineAction }
+			MenuSeparator {}
+			MenuItem { action: editStatesAction }
+			MenuSeparator {}
+			MenuItem { action: deployViaRpcAction }
 			MenuSeparator {}
 			MenuItem { action: toggleRunOnLoadAction }
 		}
@@ -48,8 +53,10 @@ ApplicationWindow {
 			MenuSeparator {}
 			MenuItem { action: toggleProjectNavigatorAction }
 			MenuItem { action: showHideRightPanelAction }
+			MenuItem { action: toggleTransactionLogAction }
 			MenuItem { action: toggleWebPreviewAction }
 			MenuItem { action: toggleWebPreviewOrientationAction }
+			MenuItem { action: toggleCallsInLog }
 		}
 	}
 
@@ -88,7 +95,18 @@ ApplicationWindow {
 		text: qsTr("Mine")
 		shortcut: "Ctrl+M"
 		onTriggered: clientModel.mine();
-		enabled: codeModel.hasContract && !clientModel.running &&!clientModel.mining
+		enabled: codeModel.hasContract && !clientModel.running && !clientModel.mining
+	}
+
+	StateList {
+		id: stateList
+	}
+
+	Action {
+		id: editStatesAction
+		text: qsTr("Edit States")
+		shortcut: "Ctrl+Alt+E"
+		onTriggered: stateList.show();
 	}
 
 	Connections {
@@ -121,6 +139,15 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: toggleTransactionLogAction
+		text: qsTr("Show States and Transactions")
+		shortcut: "Alt+1"
+		checkable: true
+		checked: mainContent.rightPane.transactionLog.visible
+		onTriggered: mainContent.rightPane.transactionLog.visible = !mainContent.rightPane.transactionLog.visible
+	}
+
+	Action {
 		id: toggleProjectNavigatorAction
 		text: qsTr("Show Project Navigator")
 		shortcut: "Alt+0"
@@ -136,6 +163,15 @@ ApplicationWindow {
 		checkable: true
 		checked: mainContent.webViewHorizontal
 		onTriggered: mainContent.toggleWebPreviewOrientation();
+	}
+
+	Action {
+		id: toggleCallsInLog
+		text: qsTr("Show Calls in Transaction Log")
+		shortcut: ""
+		checkable: true
+		checked: mainContent.rightPane.transactionLog.showLogs
+		onTriggered: mainContent.rightPane.transactionLog.showLogs = !mainContent.rightPane.transactionLog.showLogs
 	}
 
 	Action {
@@ -169,7 +205,19 @@ ApplicationWindow {
 		text: qsTr("&Open Project")
 		shortcut: "Ctrl+O"
 		enabled: true;
-		onTriggered: projectModel.browseProject();
+		onTriggered: openProjectFileDialog.open()
+	}
+
+	FileDialog {
+		id: openProjectFileDialog
+		visible: false
+		title: qsTr("Open a Project")
+		selectFolder: true
+		onAccepted: {
+			var path = openProjectFileDialog.fileUrl.toString();
+			path += "/";
+			projectModel.loadProject(path);
+		}
 	}
 
 	Action {
@@ -189,6 +237,14 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: addNewCssFileAction
+		text: qsTr("New CSS File")
+		shortcut: "Ctrl+Alt+S"
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.newCssFile();
+	}
+
+	Action {
 		id: addNewContractAction
 		text: qsTr("New Contract")
 		shortcut: "Ctrl+Alt+C"
@@ -201,7 +257,18 @@ ApplicationWindow {
 		text: qsTr("Add Existing File")
 		shortcut: "Ctrl+Alt+A"
 		enabled: !projectModel.isEmpty
-		onTriggered: projectModel.addExistingFile();
+		onTriggered: addExistingFileDialog.open()
+	}
+
+	FileDialog {
+		id: addExistingFileDialog
+		visible: false
+		title: qsTr("Add a File")
+		selectFolder: false
+		onAccepted: {
+			var paths = addExistingFileDialog.fileUrls;
+			projectModel.addExistingFiles(paths);
+		}
 	}
 
 	Action {
@@ -236,4 +303,11 @@ ApplicationWindow {
 		onTriggered: projectModel.openPrevDocument();
 	}
 
+	Action {
+		id: deployViaRpcAction
+		text: qsTr("Deploy to Network")
+		shortcut: "Ctrl+Shift+D"
+		enabled: !projectModel.isEmpty && codeModel.hasContract
+		onTriggered: projectModel.deployProject();
+	}
 }
