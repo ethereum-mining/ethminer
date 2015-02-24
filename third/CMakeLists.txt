@@ -10,8 +10,8 @@ endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 
+include_directories(BEFORE ..)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
-include_directories(..)
 
 qt5_wrap_ui(ui_Main.h Main.ui)
 
@@ -51,5 +51,5 @@ target_link_libraries(${EXECUTABLE} web3jsonrpc)
 target_link_libraries(${EXECUTABLE} jsqrc) 
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
-eth_install_executable(${EXECUTABLE})
+eth_install_executable(${EXECUTABLE} DLLS ${MHD_DLL_RELEASE})
 
