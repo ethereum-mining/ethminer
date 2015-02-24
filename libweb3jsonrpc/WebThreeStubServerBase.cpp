@@ -701,10 +701,10 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 {
 	std::string ret;
 	TransactionSkeleton t = toTransaction(_json);
-	if (t.creation)
-		ret = right160(sha3(rlpList(t.from, client()->countAt(t.from))));;
 	if (!t.from)
 		t.from = m_accounts->getDefaultTransactAccount();
+	if (t.creation)
+		ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
 	if (!t.gasPrice)
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
