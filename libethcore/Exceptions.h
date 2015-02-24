@@ -51,6 +51,7 @@ struct UncleTooOld: virtual dev::Exception {};
 class UncleInChain: virtual public dev::Exception { public: UncleInChain(h256Set _uncles, h256 _block): m_uncles(_uncles), m_block(_block) {} h256Set m_uncles; h256 m_block; virtual const char* what() const noexcept; };
 struct DuplicateUncleNonce: virtual dev::Exception {};
 struct InvalidStateRoot: virtual dev::Exception {};
+struct InvalidGasUsed: virtual dev::Exception {};
 class InvalidTransactionsHash: virtual public dev::Exception { public: InvalidTransactionsHash(h256 _head, h256 _real): m_head(_head), m_real(_real) {} h256 m_head; h256 m_real; virtual const char* what() const noexcept; };
 struct InvalidTransaction: virtual dev::Exception {};
 struct InvalidDifficulty: virtual dev::Exception {};

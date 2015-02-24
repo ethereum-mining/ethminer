@@ -82,7 +82,7 @@ template <class Evaluator>
 std::pair<MineInfo, h256> ProofOfWorkEngine<Evaluator>::mine(h256 const& _root, u256 const& _difficulty, unsigned _msTimeout, bool _continue, bool _turbo)
 {
 	std::pair<MineInfo, h256> ret;
-	static std::mt19937_64 s_eng((time(0) + (unsigned)m_last));
+	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data())));
 	u256 s = (m_last = h256::random(s_eng));
 
 	bigint d = (bigint(1) << 256) / _difficulty;

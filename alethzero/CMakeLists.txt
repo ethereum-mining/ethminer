@@ -10,8 +10,8 @@ endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 
-include_directories(..)
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
+include_directories(BEFORE ..)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
 find_package (Qt5WebEngine QUIET)
@@ -63,5 +63,5 @@ if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 endif()
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
-eth_install_executable(${EXECUTABLE})
+eth_install_executable(${EXECUTABLE} DLLS ${MHD_DLL_RELEASE})
 

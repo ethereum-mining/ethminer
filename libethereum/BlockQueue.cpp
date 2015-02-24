@@ -59,7 +59,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	catch (Exception const& _e)
 	{
 		cwarn << "Ignoring malformed block: " << diagnostic_information(_e);
-		return false;
 		return ImportResult::Malformed;
 	}
 #endif
@@ -128,7 +127,7 @@ void BlockQueue::drain(std::vector<bytes>& o_out)
 void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 {
 	list<h256> goodQueue(1, _good);
-	while (goodQueue.size())
+	while (!goodQueue.empty())
 	{
 		auto r = m_unknown.equal_range(goodQueue.front());
 		goodQueue.pop_front();

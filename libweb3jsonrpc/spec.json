@@ -18,6 +18,10 @@
             { "name": "eth_stateAt", "params": ["", ""], "order": [], "returns": ""},
             { "name": "eth_storageAt", "params": [""], "order": [], "returns": {}},
             { "name": "eth_countAt", "params": [""], "order": [], "returns" : 0.0},
+            { "name": "eth_transactionCountByHash", "params": [""], "order": [], "returns" : 0.0},
+            { "name": "eth_transactionCountByNumber", "params": [0], "order": [], "returns" : 0.0},
+            { "name": "eth_uncleCountByHash", "params": [""], "order": [], "returns" : 0.0},
+            { "name": "eth_uncleCountByNumber", "params": [0], "order": [], "returns" : 0.0},
             { "name": "eth_codeAt", "params": [""], "order": [], "returns": ""},
 
             { "name": "eth_transact", "params": [{}], "order": [], "returns": ""},
@@ -46,6 +50,10 @@
             { "name": "eth_getWork", "params": [], "order": [], "returns": []},
             { "name": "eth_submitWork", "params": [""], "order": [], "returns": true},
 
+            { "name": "eth_register", "params": [""], "order": [], "returns": 0},
+            { "name": "eth_unregister", "params": [0], "order": [], "returns": true},
+            { "name": "eth_queuedTransactions", "params": [0], "order": [], "returns": []},
+
             { "name": "db_put", "params": ["", "", ""], "order": [], "returns": true},
             { "name": "db_get", "params": ["", ""], "order": [], "returns": ""},
             { "name": "db_putString", "params": ["", "", ""], "order": [], "returns": true},
@@ -59,6 +67,7 @@
             
             { "name": "shh_newFilter", "params": [{}], "order": [], "returns": 0},
             { "name": "shh_uninstallFilter", "params": [0], "order": [], "returns": true},
-            { "name": "shh_changed", "params": [0], "order": [], "returns": []}
+            { "name": "shh_changed", "params": [0], "order": [], "returns": []},
+            { "name": "shh_getMessages", "params": [0], "order": [], "returns": []}
 ]
 
