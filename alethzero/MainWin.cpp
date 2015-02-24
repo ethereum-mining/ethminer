@@ -1629,7 +1629,7 @@ void Main::on_net_triggered()
 	{
 		web3()->setIdealPeerCount(ui->idealPeers->value());
 		web3()->setNetworkPreferences(netPrefs());
-		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
+		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : h256());
 		// TODO: p2p
 //		if (m_networkConfig.size()/* && ui->usePast->isChecked()*/)
 //			web3()->restoreNetwork(bytesConstRef((byte*)m_networkConfig.data(), m_networkConfig.size()));
