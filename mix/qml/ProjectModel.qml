@@ -21,6 +21,7 @@ Item {
 	signal newProject(var projectData)
 	signal documentSaved(var documentId)
 	signal deploymentStarted()
+	signal deploymentStepChanged(string message)
 	signal deploymentComplete()
 	signal deploymentError(string error)
 
@@ -31,7 +32,7 @@ Item {
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
-	property string deploymentAddress: ""
+	property var deploymentAddresses: []
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
 	property CodeEditorView codeEditor: null
@@ -45,7 +46,7 @@ Item {
 	function newHtmlFile() { ProjectModelCode.newHtmlFile(); }
 	function newJsFile() { ProjectModelCode.newJsFile(); }
 	function newCssFile() { ProjectModelCode.newCssFile(); }
-	//function newContract() { ProjectModelCode.newContract(); }
+	function newContract() { ProjectModelCode.newContract(); }
 	function openDocument(documentId) { ProjectModelCode.openDocument(documentId); }
 	function openNextDocument() { ProjectModelCode.openNextDocument(); }
 	function openPrevDocument() { ProjectModelCode.openPrevDocument(); }
@@ -55,6 +56,7 @@ Item {
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 	function deployProject() { ProjectModelCode.deployProject(false); }
+	function registerToUrlHint() { ProjectModelCode.registerToUrlHint(); }
 
 	Connections {
 		target: appContext
@@ -91,13 +93,42 @@ Item {
 
 	MessageDialog {
 		id: deployWarningDialog
+		property bool redeploy
 		title: qsTr("Project")
-		text: qsTr("This project has been already deployed to the network. Do you want to re-deploy it?")
-		standardButtons: StandardButton.Ok | StandardButton.Cancel
+		text:
+		{
+			if (Object.keys(projectModel.deploymentAddresses).length > 0)
+			{
+				redeploy = true
+				standardButtons = StandardButton.Ok | StandardButton.Reset | StandardButton.Abort;
+				return qsTr("This project has been already deployed to the network. Do you want to repackage the resources only, or also reset the deployed contract to its initial state?")
+			}
+			else
+			{
+				redeploy = false;
+				standardButtons = StandardButton.Ok | StandardButton.Abort;
+				return qsTr("This action will deploy to the network. Do you want to deploy it?")
+			}
+		}
 		icon: StandardIcon.Question
 		onAccepted: {
-			ProjectModelCode.deployProject(true);
+			ProjectModelCode.startDeployProject(!redeploy);
 		}
+		onReset: {
+			ProjectModelCode.startDeployProject(true);
+		}
+	}
+
+	MessageDialog {
+		id: deployRessourcesDialog
+		title: qsTr("Project")
+		standardButtons: StandardButton.Ok
+		icon: StandardIcon.Info
+	}
+
+	DeploymentDialog
+	{
+		id: deploymentDialog
 	}
 
 	ListModel {

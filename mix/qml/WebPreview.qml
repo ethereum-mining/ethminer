@@ -24,12 +24,23 @@ Item {
 	}
 
 	function reload() {
-		updateContract();
-		webView.runJavaScript("reloadPage()");
+		if (initialized) {
+			updateContract();
+			webView.runJavaScript("reloadPage()");
+		}
 	}
 
 	function updateContract() {
-		webView.runJavaScript("updateContract(\"" + codeModel.code.contract.name + "\", \"" + clientModel.contractAddress + "\", " + codeModel.code.contractInterface + ")");
+		var contracts = {};
+		for (var c in codeModel.contracts) {
+			var contract = codeModel.contracts[c];
+			contracts[c] = {
+				name: contract.contract.name,
+				address: clientModel.contractAddresses[contract.contract.name],
+				interface: JSON.parse(contract.contractInterface),
+			};
+		}
+		webView.runJavaScript("updateContracts(" + JSON.stringify(contracts) + ")");
 	}
 
 	function reloadOnSave() {
@@ -62,7 +73,6 @@ Item {
 
 	Connections {
 		target: clientModel
-		onContractAddressChanged: reload();
 		onRunComplete: reload();
 	}
 
@@ -162,11 +172,6 @@ Item {
 		spacing: 0
 		Rectangle
 		{
-			SourceSansProLight
-			{
-				id: regularFont
-			}
-
 			anchors.leftMargin: 4
 			color: WebPreviewStyle.general.headerBackgroundColor
 			Layout.preferredWidth: parent.width
@@ -188,9 +193,7 @@ Item {
 					currentIndex: -1
 					onCurrentIndexChanged: changePage()
 					anchors.verticalCenter: parent.verticalCenter
-					style: ComboBoxStyle {
-						font: regularFont.name
-					}
+					height: 21
 				}
 
 				Action {
@@ -205,12 +208,13 @@ Item {
 					iconSource: "qrc:/qml/img/available_updates.png"
 					action: buttonReloadAction
 					anchors.verticalCenter: parent.verticalCenter
-					width: 26
-					height: 26
+					width: 21
+					height: 21
 				}
 				CheckBox {
 					id: autoReloadOnSave
 					checked: true
+					height: 21
 					anchors.verticalCenter: parent.verticalCenter
 					style: CheckBoxStyle {
 						label: DefaultLabel {

@@ -34,7 +34,13 @@ void VM::reset(u256 _gas) noexcept
 
 bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
-	auto memNeed = [](dev::u256 _offset, dev::u256 _size) { return _size ? (bigint)_offset + _size : (bigint)0; };
+	auto memNeed = [](u256 _offset, dev::u256 _size) { return _size ? (bigint)_offset + _size : (bigint)0; };
+	auto gasForMem = [](bigint _size) -> bigint
+	{
+		bigint s = _size / 32;
+//		return (bigint)c_memoryGas * (s + s * s / 1024);
+		return (bigint)c_memoryGas * s;
+	};
 
 	if (m_jumpDests.empty())
 		for (unsigned i = 0; i < _ext.code.size(); ++i)
@@ -297,7 +303,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 
 		newTempSize = (newTempSize + 31) / 32 * 32;
 		if (newTempSize > m_temp.size())
-			runGas += c_memoryGas * (newTempSize - m_temp.size()) / 32;
+			runGas += gasForMem(newTempSize) - gasForMem(m_temp.size());
 		runGas += c_copyGas * (copySize + 31) / 32;
 
 		onOperation();
@@ -529,7 +535,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.push_back(_ext.currentBlock.difficulty);
 			break;
 		case Instruction::GASLIMIT:
-			m_stack.push_back(1000000);
+			m_stack.push_back(_ext.currentBlock.gasLimit);
 			break;
 		case Instruction::PUSH1:
 		case Instruction::PUSH2:

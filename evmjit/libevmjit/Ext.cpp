@@ -1,9 +1,8 @@
-
 #include "Ext.h"
 
-#include <llvm/IR/Function.h>
-#include <llvm/IR/TypeBuilder.h>
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/IntrinsicInst.h>
+#include "preprocessor/llvm_includes_end.h"
 
 #include "RuntimeManager.h"
 #include "Memory.h"
@@ -41,8 +40,8 @@ std::array<FuncDesc, sizeOf<EnvFunc>::value> const& getEnvFuncDescs()
 		FuncDesc{"env_sstore",  getFunctionType(Type::Void, {Type::EnvPtr, Type::WordPtr, Type::WordPtr})},
 		FuncDesc{"env_sha3", getFunctionType(Type::Void, {Type::BytePtr, Type::Size, Type::WordPtr})},
 		FuncDesc{"env_balance", getFunctionType(Type::Void, {Type::EnvPtr, Type::WordPtr, Type::WordPtr})},
-		FuncDesc{"env_create", getFunctionType(Type::Void, {Type::EnvPtr, Type::WordPtr, Type::WordPtr, Type::BytePtr, Type::Size, Type::WordPtr})},
-		FuncDesc{"env_call", getFunctionType(Type::Bool, {Type::EnvPtr, Type::WordPtr, Type::WordPtr, Type::WordPtr, Type::BytePtr, Type::Size, Type::BytePtr, Type::Size, Type::WordPtr})},
+		FuncDesc{"env_create", getFunctionType(Type::Void, {Type::EnvPtr, Type::GasPtr, Type::WordPtr, Type::BytePtr, Type::Size, Type::WordPtr})},
+		FuncDesc{"env_call", getFunctionType(Type::Bool, {Type::EnvPtr, Type::GasPtr, Type::WordPtr, Type::WordPtr, Type::BytePtr, Type::Size, Type::BytePtr, Type::Size, Type::WordPtr})},
 		FuncDesc{"env_log", getFunctionType(Type::Void, {Type::EnvPtr, Type::BytePtr, Type::Size, Type::WordPtr, Type::WordPtr, Type::WordPtr, Type::WordPtr})},
 		FuncDesc{"env_blockhash", getFunctionType(Type::Void, {Type::EnvPtr, Type::WordPtr, Type::WordPtr})},
 		FuncDesc{"env_extcode", getFunctionType(Type::BytePtr, {Type::EnvPtr, Type::WordPtr, Type::Size->getPointerTo()})},
@@ -60,14 +59,16 @@ llvm::Function* createFunc(EnvFunc _id, llvm::Module* _module)
 
 llvm::Value* Ext::getArgAlloca()
 {
-	auto& a = m_argAllocas[m_argCounter++];
+	auto& a = m_argAllocas[m_argCounter];
 	if (!a)
 	{
-		// FIXME: Improve order and names
 		InsertPointGuard g{getBuilder()};
-		getBuilder().SetInsertPoint(getMainFunction()->front().getFirstNonPHI());
-		a = getBuilder().CreateAlloca(Type::Word, nullptr, "arg");
+		auto allocaIt = getMainFunction()->front().begin();
+		std::advance(allocaIt, m_argCounter); // Skip already created allocas
+		getBuilder().SetInsertPoint(allocaIt);
+		a = getBuilder().CreateAlloca(Type::Word, nullptr, {"a.", std::to_string(m_argCounter)});
 	}
+	++m_argCounter;
 	return a;
 }
 
@@ -124,30 +125,26 @@ llvm::Value* Ext::blockhash(llvm::Value* _number)
 	return Endianness::toNative(getBuilder(), hash);
 }
 
-llvm::Value* Ext::create(llvm::Value*& _gas, llvm::Value* _endowment, llvm::Value* _initOff, llvm::Value* _initSize)
+llvm::Value* Ext::create(llvm::Value* _endowment, llvm::Value* _initOff, llvm::Value* _initSize)
 {
-	auto gas = byPtr(_gas);
 	auto ret = getArgAlloca();
 	auto begin = m_memoryMan.getBytePtr(_initOff);
 	auto size = m_builder.CreateTrunc(_initSize, Type::Size, "size");
-	createCall(EnvFunc::create, {getRuntimeManager().getEnvPtr(), gas, byPtr(_endowment), begin, size, ret});
-	_gas = m_builder.CreateLoad(gas); // Return gas
+	createCall(EnvFunc::create, {getRuntimeManager().getEnvPtr(), getRuntimeManager().getGasPtr(), byPtr(_endowment), begin, size, ret});
 	llvm::Value* address = m_builder.CreateLoad(ret);
 	address = Endianness::toNative(m_builder, address);
 	return address;
 }
 
-llvm::Value* Ext::call(llvm::Value*& _gas, llvm::Value* _receiveAddress, llvm::Value* _value, llvm::Value* _inOff, llvm::Value* _inSize, llvm::Value* _outOff, llvm::Value* _outSize, llvm::Value* _codeAddress)
+llvm::Value* Ext::call(llvm::Value* _receiveAddress, llvm::Value* _value, llvm::Value* _inOff, llvm::Value* _inSize, llvm::Value* _outOff, llvm::Value* _outSize, llvm::Value* _codeAddress)
 {
-	auto gas = byPtr(_gas);
 	auto receiveAddress = Endianness::toBE(m_builder, _receiveAddress);
 	auto inBeg = m_memoryMan.getBytePtr(_inOff);
 	auto inSize = m_builder.CreateTrunc(_inSize, Type::Size, "in.size");
 	auto outBeg = m_memoryMan.getBytePtr(_outOff);
 	auto outSize = m_builder.CreateTrunc(_outSize, Type::Size, "out.size");
 	auto codeAddress = Endianness::toBE(m_builder, _codeAddress);
-	auto ret = createCall(EnvFunc::call, {getRuntimeManager().getEnvPtr(), gas, byPtr(receiveAddress), byPtr(_value), inBeg, inSize, outBeg, outSize, byPtr(codeAddress)});
-	_gas = m_builder.CreateLoad(gas); // Return gas
+	auto ret = createCall(EnvFunc::call, {getRuntimeManager().getEnvPtr(), getRuntimeManager().getGasPtr(), byPtr(receiveAddress), byPtr(_value), inBeg, inSize, outBeg, outSize, byPtr(codeAddress)});
 	return m_builder.CreateZExt(ret, Type::Word, "ret");
 }
 

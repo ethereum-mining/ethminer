@@ -53,6 +53,8 @@ public:
 	virtual bytes encodeValue() = 0;
 	/// Decode the return value @a _rawValue.
 	virtual void decodeValue(dev::bytes const& _rawValue) = 0;
+	/// returns String representation of the encoded value.
+	Q_INVOKABLE QString encodeValueAsString() { return QString::fromStdString(dev::toHex(encodeValue())); }
 
 protected:
 	QString m_value;
@@ -135,8 +137,8 @@ class QBoolType: public QVariableDefinition
 	Q_OBJECT
 
 public:
-	QBoolType() {}
-	QBoolType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
+	QBoolType(): m_boolValue(false) {}
+	QBoolType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value), m_boolValue(false) {}
 	dev::bytes encodeValue() override;
 	void decodeValue(dev::bytes const& _rawValue) override;
 	///  @returns the boolean value for the current definition.
