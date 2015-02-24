@@ -50,6 +50,10 @@
             { "name": "eth_getWork", "params": [], "order": [], "returns": []},
             { "name": "eth_submitWork", "params": [""], "order": [], "returns": true},
 
+            { "name": "eth_register", "params": [""], "order": [], "returns": 0},
+            { "name": "eth_unregister", "params": [0], "order": [], "returns": true},
+            { "name": "eth_queuedTransactions", "params": [0], "order": [], "returns": []},
+
             { "name": "db_put", "params": ["", "", ""], "order": [], "returns": true},
             { "name": "db_get", "params": ["", ""], "order": [], "returns": ""},
             { "name": "db_putString", "params": ["", "", ""], "order": [], "returns": true},

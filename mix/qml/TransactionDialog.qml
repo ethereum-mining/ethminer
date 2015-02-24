@@ -405,7 +405,7 @@ Window {
 										return boolViewComp;
 									else if (type.indexOf("string") !== -1)
 										return stringViewComp;
-									else if (type.indexOf("hash") !== -1)
+									else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
 										return hashViewComp;
 									else
 										return null;

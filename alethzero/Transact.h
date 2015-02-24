@@ -44,12 +44,12 @@ public:
 	void setEnvironment(QList<dev::KeyPair> _myKeys, dev::eth::Client* _eth, NatSpecFace* _natSpecDB);
 
 private slots:
-	void on_destination_currentTextChanged();
-	void on_value_valueChanged() { updateFee(); }
-	void on_gas_valueChanged() { updateFee(); }
-	void on_valueUnits_currentIndexChanged() { updateFee(); }
-	void on_gasPriceUnits_currentIndexChanged() { updateFee(); }
-	void on_gasPrice_valueChanged() { updateFee(); }
+	void on_destination_currentTextChanged(QString);
+	void on_value_valueChanged(int) { updateFee(); }
+	void on_gas_valueChanged(int) { updateFee(); }
+	void on_valueUnits_currentIndexChanged(int) { updateFee(); }
+	void on_gasPriceUnits_currentIndexChanged(int) { updateFee(); }
+	void on_gasPrice_valueChanged(int) { updateFee(); }
 	void on_data_textChanged() { rejigData(); }
 	void on_optimize_clicked() { rejigData(); }
 	void on_send_clicked();

@@ -58,7 +58,7 @@ TypePointer Type::fromElementaryTypeName(Token::Value _typeToken)
 	else if (Token::String0 <= _typeToken && _typeToken <= Token::String32)
 		return make_shared<StaticStringType>(int(_typeToken) - int(Token::String0));
 	else if (_typeToken == Token::Bytes)
-		return make_shared<ByteArrayType>(ByteArrayType::Location::Storage);
+		return make_shared<ArrayType>(ArrayType::Location::Storage);
 	else
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unable to convert elementary typename " +
 																		 std::string(Token::toString(_typeToken)) + " to type."));
@@ -83,15 +83,33 @@ TypePointer Type::fromUserDefinedTypeName(UserDefinedTypeName const& _typeName)
 	return TypePointer();
 }
 
-TypePointer Type::fromMapping(Mapping const& _typeName)
+TypePointer Type::fromMapping(ElementaryTypeName& _keyType, TypeName& _valueType)
 {
-	TypePointer keyType = _typeName.getKeyType().toType();
+	TypePointer keyType = _keyType.toType();
 	if (!keyType)
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Error resolving type name."));
-	TypePointer valueType = _typeName.getValueType().toType();
+	TypePointer valueType = _valueType.toType();
 	if (!valueType)
-		BOOST_THROW_EXCEPTION(_typeName.getValueType().createTypeError("Invalid type name"));
+		BOOST_THROW_EXCEPTION(_valueType.createTypeError("Invalid type name."));
 	return make_shared<MappingType>(keyType, valueType);
+}
+
+TypePointer Type::fromArrayTypeName(TypeName& _baseTypeName, Expression* _length)
+{
+	TypePointer baseType = _baseTypeName.toType();
+	if (!baseType)
+		BOOST_THROW_EXCEPTION(_baseTypeName.createTypeError("Invalid type name."));
+	if (_length)
+	{
+		if (!_length->getType())
+			_length->checkTypeRequirements();
+		auto const* length = dynamic_cast<IntegerConstantType const*>(_length->getType().get());
+		if (!length)
+			BOOST_THROW_EXCEPTION(_length->createTypeError("Invalid array length."));
+		return make_shared<ArrayType>(ArrayType::Location::Storage, baseType, length->literalValue(nullptr));
+	}
+	else
+		return make_shared<ArrayType>(ArrayType::Location::Storage, baseType);
 }
 
 TypePointer Type::forLiteral(Literal const& _literal)
@@ -517,27 +535,40 @@ TypePointer ContractType::unaryOperatorResult(Token::Value _operator) const
 	return _operator == Token::Delete ? make_shared<VoidType>() : TypePointer();
 }
 
-bool ByteArrayType::isImplicitlyConvertibleTo(const Type& _convertTo) const
+bool ArrayType::isImplicitlyConvertibleTo(const Type& _convertTo) const
 {
 	return _convertTo.getCategory() == getCategory();
 }
 
-TypePointer ByteArrayType::unaryOperatorResult(Token::Value _operator) const
+TypePointer ArrayType::unaryOperatorResult(Token::Value _operator) const
 {
 	if (_operator == Token::Delete)
 		return make_shared<VoidType>();
 	return TypePointer();
 }
 
-bool ByteArrayType::operator==(Type const& _other) const
+bool ArrayType::operator==(Type const& _other) const
 {
 	if (_other.getCategory() != getCategory())
 		return false;
-	ByteArrayType const& other = dynamic_cast<ByteArrayType const&>(_other);
+	ArrayType const& other = dynamic_cast<ArrayType const&>(_other);
 	return other.m_location == m_location;
 }
 
-unsigned ByteArrayType::getSizeOnStack() const
+u256 ArrayType::getStorageSize() const
+{
+	if (isDynamicallySized())
+		return 1;
+	else
+	{
+		bigint size = bigint(getLength()) * getBaseType()->getStorageSize();
+		if (size >= bigint(1) << 256)
+			BOOST_THROW_EXCEPTION(TypeError() << errinfo_comment("Array too large for storage."));
+		return max<u256>(1, u256(size));
+	}
+}
+
+unsigned ArrayType::getSizeOnStack() const
 {
 	if (m_location == Location::CallData)
 		// offset, length (stack top)
@@ -547,12 +578,30 @@ unsigned ByteArrayType::getSizeOnStack() const
 		return 1;
 }
 
-shared_ptr<ByteArrayType> ByteArrayType::copyForLocation(ByteArrayType::Location _location) const
+string ArrayType::toString() const
 {
-	return make_shared<ByteArrayType>(_location);
+	if (isByteArray())
+		return "bytes";
+	string ret = getBaseType()->toString() + "[";
+	if (!isDynamicallySized())
+		ret += getLength().str();
+	return ret + "]";
 }
 
-const MemberList ByteArrayType::s_byteArrayMemberList = MemberList({{"length", make_shared<IntegerType>(256)}});
+shared_ptr<ArrayType> ArrayType::copyForLocation(ArrayType::Location _location) const
+{
+	auto copy = make_shared<ArrayType>(_location);
+	copy->m_isByteArray = m_isByteArray;
+	if (m_baseType->getCategory() == Type::Category::Array)
+		copy->m_baseType = dynamic_cast<ArrayType const&>(*m_baseType).copyForLocation(_location);
+	else
+		copy->m_baseType = m_baseType;
+	copy->m_hasDynamicLength = m_hasDynamicLength;
+	copy->m_length = m_length;
+	return copy;
+}
+
+const MemberList ArrayType::s_arrayTypeMemberList = MemberList({{"length", make_shared<IntegerType>(256)}});
 
 bool ContractType::operator==(Type const& _other) const
 {
@@ -573,19 +622,19 @@ MemberList const& ContractType::getMembers() const
 	if (!m_members)
 	{
 		// All address members and all interface functions
-		map<string, TypePointer> members(IntegerType::AddressMemberList.begin(),
-										 IntegerType::AddressMemberList.end());
+		vector<pair<string, TypePointer>> members(IntegerType::AddressMemberList.begin(),
+												  IntegerType::AddressMemberList.end());
 		if (m_super)
 		{
 			for (ContractDefinition const* base: m_contract.getLinearizedBaseContracts())
 				for (ASTPointer<FunctionDefinition> const& function: base->getDefinedFunctions())
-					if (!function->isConstructor() && !function->getName().empty() &&
+					if (!function->isConstructor() && !function->getName().empty()&&
 							function->isVisibleInDerivedContracts())
-						members.insert(make_pair(function->getName(), make_shared<FunctionType>(*function, true)));
+						members.push_back(make_pair(function->getName(), make_shared<FunctionType>(*function, true)));
 		}
 		else
 			for (auto const& it: m_contract.getInterfaceFunctions())
-				members[it.second->getDeclaration().getName()] = it.second;
+				members.push_back(make_pair(it.second->getDeclaration().getName(), it.second));
 		m_members.reset(new MemberList(members));
 	}
 	return *m_members;
@@ -629,10 +678,12 @@ bool StructType::operator==(Type const& _other) const
 
 u256 StructType::getStorageSize() const
 {
-	u256 size = 0;
+	bigint size = 0;
 	for (pair<string, TypePointer> const& member: getMembers())
 		size += member.second->getStorageSize();
-	return max<u256>(1, size);
+	if (size >= bigint(1) << 256)
+		BOOST_THROW_EXCEPTION(TypeError() << errinfo_comment("Struct too large for storage."));
+	return max<u256>(1, u256(size));
 }
 
 bool StructType::canLiveOutsideStorage() const
@@ -653,9 +704,9 @@ MemberList const& StructType::getMembers() const
 	// We need to lazy-initialize it because of recursive references.
 	if (!m_members)
 	{
-		map<string, TypePointer> members;
+		MemberList::MemberMap members;
 		for (ASTPointer<VariableDeclaration> const& variable: m_struct.getMembers())
-			members[variable->getName()] = variable->getType();
+			members.push_back(make_pair(variable->getName(), variable->getType()));
 		m_members.reset(new MemberList(members));
 	}
 	return *m_members;
@@ -833,10 +884,17 @@ string FunctionType::toString() const
 
 unsigned FunctionType::getSizeOnStack() const
 {
+	Location location = m_location;
+	if (m_location == Location::SetGas || m_location == Location::SetValue)
+	{
+		solAssert(m_returnParameterTypes.size() == 1, "");
+		location = dynamic_cast<FunctionType const&>(*m_returnParameterTypes.front()).m_location;
+	}
+
 	unsigned size = 0;
-	if (m_location == Location::External)
+	if (location == Location::External)
 		size = 2;
-	else if (m_location == Location::Internal || m_location == Location::Bare)
+	else if (location == Location::Internal || location == Location::Bare)
 		size = 1;
 	if (m_gasSet)
 		size++;
@@ -857,15 +915,15 @@ MemberList const& FunctionType::getMembers() const
 	case Location::Bare:
 		if (!m_members)
 		{
-			map<string, TypePointer> members{
-				{"gas", make_shared<FunctionType>(parseElementaryTypeVector({"uint"}),
-												  TypePointers{copyAndSetGasOrValue(true, false)},
-												  Location::SetGas, false, m_gasSet, m_valueSet)},
+			vector<pair<string, TypePointer>> members{
 				{"value", make_shared<FunctionType>(parseElementaryTypeVector({"uint"}),
 													TypePointers{copyAndSetGasOrValue(false, true)},
 													Location::SetValue, false, m_gasSet, m_valueSet)}};
-			if (m_location == Location::Creation)
-				members.erase("gas");
+			if (m_location != Location::Creation)
+				members.push_back(make_pair("gas", make_shared<FunctionType>(
+												parseElementaryTypeVector({"uint"}),
+												TypePointers{copyAndSetGasOrValue(true, false)},
+												Location::SetGas, false, m_gasSet, m_valueSet)));
 			m_members.reset(new MemberList(members));
 		}
 		return *m_members;
@@ -959,7 +1017,7 @@ MemberList const& TypeType::getMembers() const
 	// We need to lazy-initialize it because of recursive references.
 	if (!m_members)
 	{
-		map<string, TypePointer> members;
+		vector<pair<string, TypePointer>> members;
 		if (m_actualType->getCategory() == Category::Contract && m_currentContract != nullptr)
 		{
 			ContractDefinition const& contract = dynamic_cast<ContractType const&>(*m_actualType).getContractDefinition();
@@ -969,14 +1027,14 @@ MemberList const& TypeType::getMembers() const
 				// functions. Note that this does not add inherited functions on purpose.
 				for (ASTPointer<FunctionDefinition> const& f: contract.getDefinedFunctions())
 					if (!f->isConstructor() && !f->getName().empty() && f->isVisibleInDerivedContracts())
-						members[f->getName()] = make_shared<FunctionType>(*f);
+						members.push_back(make_pair(f->getName(), make_shared<FunctionType>(*f)));
 		}
 		else if (m_actualType->getCategory() == Category::Enum)
 		{
 			EnumDefinition const& enumDef = dynamic_cast<EnumType const&>(*m_actualType).getEnumDefinition();
 			auto enumType = make_shared<EnumType>(enumDef);
 			for (ASTPointer<EnumValue> const& enumValue: enumDef.getMembers())
-				members.insert(make_pair(enumValue->getName(), enumType));
+				members.push_back(make_pair(enumValue->getName(), enumType));
 		}
 		m_members.reset(new MemberList(members));
 	}
@@ -1033,7 +1091,7 @@ MagicType::MagicType(MagicType::Kind _kind):
 		m_members = MemberList({{"sender", make_shared<IntegerType>(0, IntegerType::Modifier::Address)},
 								{"gas", make_shared<IntegerType>(256)},
 								{"value", make_shared<IntegerType>(256)},
-								{"data", make_shared<ByteArrayType>(ByteArrayType::Location::CallData)}});
+								{"data", make_shared<ArrayType>(ArrayType::Location::CallData)}});
 		break;
 	case Kind::Transaction:
 		m_members = MemberList({{"origin", make_shared<IntegerType>(0, IntegerType::Modifier::Address)},

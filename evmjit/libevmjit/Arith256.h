@@ -24,26 +24,21 @@ public:
 	void debug(llvm::Value* _value, char _c);
 
 private:
+	llvm::Function* getMulFunc();
+	llvm::Function* getMul512Func();
 	llvm::Function* getDivFunc(llvm::Type* _type);
 	llvm::Function* getExpFunc();
 	llvm::Function* getAddModFunc();
 	llvm::Function* getMulModFunc();
 
-	llvm::Value* binaryOp(llvm::Function* _op, llvm::Value* _arg1, llvm::Value* _arg2);
-
-	llvm::Function* m_mul;
-
+	llvm::Function* m_mul = nullptr;
+	llvm::Function* m_mul512 = nullptr;
 	llvm::Function* m_div = nullptr;
 	llvm::Function* m_div512 = nullptr;
 	llvm::Function* m_exp = nullptr;
 	llvm::Function* m_addmod = nullptr;
 	llvm::Function* m_mulmod = nullptr;
 	llvm::Function* m_debug = nullptr;
-
-	llvm::Value* m_arg1;
-	llvm::Value* m_arg2;
-	llvm::Value* m_arg3;
-	llvm::Value* m_result;
 };
 
 
