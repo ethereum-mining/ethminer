@@ -1,11 +1,14 @@
 #include "Arith256.h"
-#include "Runtime.h"
+
+#include <iostream>
+#include <iomanip>
+
+#include "preprocessor/llvm_includes_start.h"
+#include <llvm/IR/IntrinsicInst.h>
+#include "preprocessor/llvm_includes_end.h"
+
 #include "Type.h"
 #include "Endianness.h"
-
-#include <llvm/IR/Function.h>
-#include <llvm/IR/IntrinsicInst.h>
-#include <iostream>
 
 namespace dev
 {
@@ -16,20 +19,7 @@ namespace jit
 
 Arith256::Arith256(llvm::IRBuilder<>& _builder) :
 	CompilerHelper(_builder)
-{
-	using namespace llvm;
-
-	m_result = m_builder.CreateAlloca(Type::Word, nullptr, "arith.result");
-	m_arg1 = m_builder.CreateAlloca(Type::Word, nullptr, "arith.arg1");
-	m_arg2 = m_builder.CreateAlloca(Type::Word, nullptr, "arith.arg2");
-	m_arg3 = m_builder.CreateAlloca(Type::Word, nullptr, "arith.arg3");
-
-	using Linkage = GlobalValue::LinkageTypes;
-
-	llvm::Type* arg2Types[] = {Type::WordPtr, Type::WordPtr, Type::WordPtr};
-
-	m_mul = Function::Create(FunctionType::get(Type::Void, arg2Types, false), Linkage::ExternalLinkage, "arith_mul", getModule());
-}
+{}
 
 void Arith256::debug(llvm::Value* _value, char _c)
 {
@@ -38,7 +28,93 @@ void Arith256::debug(llvm::Value* _value, char _c)
 		llvm::Type* argTypes[] = {Type::Word, m_builder.getInt8Ty()};
 		m_debug = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::ExternalLinkage, "debug", getModule());
 	}
-	createCall(m_debug, {_value, m_builder.getInt8(_c)});
+	createCall(m_debug, {m_builder.CreateZExtOrTrunc(_value, Type::Word), m_builder.getInt8(_c)});
+}
+
+llvm::Function* Arith256::getMulFunc()
+{
+	auto& func = m_mul;
+	if (!func)
+	{
+		llvm::Type* argTypes[] = {Type::Word, Type::Word};
+		func = llvm::Function::Create(llvm::FunctionType::get(Type::Word, argTypes, false), llvm::Function::PrivateLinkage, "mul", getModule());
+
+		auto x = &func->getArgumentList().front();
+		x->setName("x");
+		auto y = x->getNextNode();
+		y->setName("y");
+
+		InsertPointGuard guard{m_builder};
+		auto bb = llvm::BasicBlock::Create(m_builder.getContext(), {}, func);
+		m_builder.SetInsertPoint(bb);
+		auto i64 = Type::Size;
+		auto i128 = m_builder.getIntNTy(128);
+		auto i256 = Type::Word;
+		auto x_lo = m_builder.CreateTrunc(x, i64, "x.lo");
+		auto y_lo = m_builder.CreateTrunc(y, i64, "y.lo");
+		auto x_mi = m_builder.CreateTrunc(m_builder.CreateLShr(x, Constant::get(64)), i64);
+		auto y_mi = m_builder.CreateTrunc(m_builder.CreateLShr(y, Constant::get(64)), i64);
+		auto x_hi = m_builder.CreateTrunc(m_builder.CreateLShr(x, Constant::get(128)), i128);
+		auto y_hi = m_builder.CreateTrunc(m_builder.CreateLShr(y, Constant::get(128)), i128);
+
+		auto t1 = m_builder.CreateMul(m_builder.CreateZExt(x_lo, i128), m_builder.CreateZExt(y_lo, i128));
+		auto t2 = m_builder.CreateMul(m_builder.CreateZExt(x_lo, i128), m_builder.CreateZExt(y_mi, i128));
+		auto t3 = m_builder.CreateMul(m_builder.CreateZExt(x_lo, i128), y_hi);
+		auto t4 = m_builder.CreateMul(m_builder.CreateZExt(x_mi, i128), m_builder.CreateZExt(y_lo, i128));
+		auto t5 = m_builder.CreateMul(m_builder.CreateZExt(x_mi, i128), m_builder.CreateZExt(y_mi, i128));
+		auto t6 = m_builder.CreateMul(m_builder.CreateZExt(x_mi, i128), y_hi);
+		auto t7 = m_builder.CreateMul(x_hi, m_builder.CreateZExt(y_lo, i128));
+		auto t8 = m_builder.CreateMul(x_hi, m_builder.CreateZExt(y_mi, i128));
+
+		auto p = m_builder.CreateZExt(t1, i256);
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t2, i256), Constant::get(64)));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t3, i256), Constant::get(128)));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t4, i256), Constant::get(64)));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t5, i256), Constant::get(128)));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t6, i256), Constant::get(192)));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t7, i256), Constant::get(128)));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t8, i256), Constant::get(192)));
+		m_builder.CreateRet(p);
+	}
+	return func;
+}
+
+llvm::Function* Arith256::getMul512Func()
+{
+	auto& func = m_mul512;
+	if (!func)
+	{
+		auto i512 = m_builder.getIntNTy(512);
+		llvm::Type* argTypes[] = {Type::Word, Type::Word};
+		func = llvm::Function::Create(llvm::FunctionType::get(i512, argTypes, false), llvm::Function::PrivateLinkage, "mul512", getModule());
+
+		auto x = &func->getArgumentList().front();
+		x->setName("x");
+		auto y = x->getNextNode();
+		y->setName("y");
+
+		InsertPointGuard guard{m_builder};
+		auto bb = llvm::BasicBlock::Create(m_builder.getContext(), {}, func);
+		m_builder.SetInsertPoint(bb);
+		auto i128 = m_builder.getIntNTy(128);
+		auto i256 = Type::Word;
+		auto x_lo = m_builder.CreateZExt(m_builder.CreateTrunc(x, i128, "x.lo"), i256);
+		auto y_lo = m_builder.CreateZExt(m_builder.CreateTrunc(y, i128, "y.lo"), i256);
+		auto x_hi = m_builder.CreateZExt(m_builder.CreateTrunc(m_builder.CreateLShr(x, Constant::get(128)), i128, "x.hi"), i256);
+		auto y_hi = m_builder.CreateZExt(m_builder.CreateTrunc(m_builder.CreateLShr(y, Constant::get(128)), i128, "y.hi"), i256);
+
+		auto t1 = createCall(getMulFunc(), {x_lo, y_lo});
+		auto t2 = createCall(getMulFunc(), {x_lo, y_hi});
+		auto t3 = createCall(getMulFunc(), {x_hi, y_lo});
+		auto t4 = createCall(getMulFunc(), {x_hi, y_hi});
+
+		auto p = m_builder.CreateZExt(t1, i512);
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t2, i512), m_builder.getIntN(512, 128)));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t3, i512), m_builder.getIntN(512, 128)));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t4, i512), m_builder.getIntN(512, 256)));
+		m_builder.CreateRet(p);
+	}
+	return func;
 }
 
 llvm::Function* Arith256::getDivFunc(llvm::Type* _type)
@@ -85,6 +161,15 @@ llvm::Function* Arith256::getDivFunc(llvm::Type* _type)
 		auto i0 = m_builder.CreateNUWSub(yLz, rLz, "i0");
 		auto shlBy0 = m_builder.CreateICmpEQ(i0, zero);
 		auto y0 = m_builder.CreateShl(yArg, i0);
+		if (_type == m_builder.getIntNTy(512)) // Workaround for shl bug for long shifts
+		{
+			const auto treshold = m_builder.getIntN(512, 128);
+			auto highShift = m_builder.CreateICmpUGT(i0, treshold);
+			auto s = m_builder.CreateNUWSub(i0, treshold);
+			auto yhs = m_builder.CreateShl(yArg, treshold);
+			yhs = m_builder.CreateShl(yhs, s);
+			y0 = m_builder.CreateSelect(highShift, yhs, y0);
+		}
 		y0 = m_builder.CreateSelect(shlBy0, yArg, y0, "y0"); // Workaround for LLVM bug: shl by 0 produces wrong result
 		m_builder.CreateBr(loopBB);
 
@@ -135,7 +220,7 @@ llvm::Function* Arith256::getExpFunc()
 	if (!m_exp)
 	{
 		llvm::Type* argTypes[] = {Type::Word, Type::Word};
-		m_exp = llvm::Function::Create(llvm::FunctionType::get(Type::Word, argTypes, false), llvm::Function::PrivateLinkage, "arith.exp", getModule());
+		m_exp = llvm::Function::Create(llvm::FunctionType::get(Type::Word, argTypes, false), llvm::Function::PrivateLinkage, "exp", getModule());
 
 		auto base = &m_exp->getArgumentList().front();
 		base->setName("base");
@@ -159,9 +244,6 @@ llvm::Function* Arith256::getExpFunc()
 		auto returnBB = llvm::BasicBlock::Create(m_builder.getContext(), "Return", m_exp);
 
 		m_builder.SetInsertPoint(entryBB);
-		auto a1 = m_builder.CreateAlloca(Type::Word, nullptr, "a1");
-		auto a2 = m_builder.CreateAlloca(Type::Word, nullptr, "a2");
-		auto a3 = m_builder.CreateAlloca(Type::Word, nullptr, "a3");
 		m_builder.CreateBr(headerBB);
 
 		m_builder.SetInsertPoint(headerBB);
@@ -176,20 +258,14 @@ llvm::Function* Arith256::getExpFunc()
 		m_builder.CreateCondBr(eOdd, updateBB, continueBB);
 
 		m_builder.SetInsertPoint(updateBB);
-		m_builder.CreateStore(r, a1);
-		m_builder.CreateStore(b, a2);
-		createCall(m_mul, {a1, a2, a3});
-		auto r0 = m_builder.CreateLoad(a3, "r0");
+		auto r0 = createCall(getMulFunc(), {r, b});
 		m_builder.CreateBr(continueBB);
 
 		m_builder.SetInsertPoint(continueBB);
 		auto r1 = m_builder.CreatePHI(Type::Word, 2, "r1");
 		r1->addIncoming(r, bodyBB);
 		r1->addIncoming(r0, updateBB);
-		m_builder.CreateStore(b, a1);
-		m_builder.CreateStore(b, a2);
-		createCall(m_mul, {a1, a2, a3});
-		auto b1 = m_builder.CreateLoad(a3, "b1");
+		auto b1 = createCall(getMulFunc(), {b, b});
 		auto e1 = m_builder.CreateLShr(e, Constant::get(1), "e1");
 		m_builder.CreateBr(headerBB);
 
@@ -244,9 +320,6 @@ llvm::Function* Arith256::getMulModFunc()
 		m_mulmod = llvm::Function::Create(llvm::FunctionType::get(Type::Word, argTypes, false), llvm::Function::PrivateLinkage, "mulmod", getModule());
 
 		auto i512Ty = m_builder.getIntNTy(512);
-		llvm::Type* mul512ArgTypes[] = {Type::WordPtr, Type::WordPtr, i512Ty->getPointerTo()};
-		auto mul512 = llvm::Function::Create(llvm::FunctionType::get(Type::Void, mul512ArgTypes, false), llvm::Function::ExternalLinkage, "arith_mul512", getModule());
-
 		auto x = &m_mulmod->getArgumentList().front();
 		x->setName("x");
 		auto y = x->getNextNode();
@@ -258,32 +331,19 @@ llvm::Function* Arith256::getMulModFunc()
 
 		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), {}, m_mulmod);
 		m_builder.SetInsertPoint(entryBB);
-		auto a1 = m_builder.CreateAlloca(Type::Word);
-		auto a2 = m_builder.CreateAlloca(Type::Word);
-		auto a3 = m_builder.CreateAlloca(i512Ty);
-		m_builder.CreateStore(x, a1);
-		m_builder.CreateStore(y, a2);
-		createCall(mul512, {a1, a2, a3});
-		auto p = m_builder.CreateLoad(a3, "p");
+		auto p = createCall(getMul512Func(), {x, y});
 		auto m = m_builder.CreateZExt(mod, i512Ty, "m");
 		auto d = createCall(getDivFunc(i512Ty), {p, m});
 		auto r = m_builder.CreateExtractValue(d, 1, "r");
-		m_builder.CreateRet(m_builder.CreateTrunc(r, Type::Word));
+		r = m_builder.CreateTrunc(r, Type::Word);
+		m_builder.CreateRet(r);
 	}
 	return m_mulmod;
 }
 
-llvm::Value* Arith256::binaryOp(llvm::Function* _op, llvm::Value* _arg1, llvm::Value* _arg2)
-{
-	m_builder.CreateStore(_arg1, m_arg1);
-	m_builder.CreateStore(_arg2, m_arg2);
-	m_builder.CreateCall3(_op, m_arg1, m_arg2, m_result);
-	return m_builder.CreateLoad(m_result);
-}
-
 llvm::Value* Arith256::mul(llvm::Value* _arg1, llvm::Value* _arg2)
 {
-	return binaryOp(m_mul, _arg1, _arg2);
+	return createCall(getMulFunc(), {_arg1, _arg2});
 }
 
 std::pair<llvm::Value*, llvm::Value*> Arith256::div(llvm::Value* _arg1, llvm::Value* _arg2)
@@ -331,157 +391,6 @@ llvm::Value* Arith256::mulmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Valu
 	return createCall(getMulModFunc(), {_arg1, _arg2, _arg3});
 }
 
-namespace
-{
-#ifdef __SIZEOF_INT128__
-	using uint128 = __uint128_t;
-#else
-	struct uint128
-	{
-		uint64_t lo = 0;
-		uint64_t hi = 0;
-
-		uint128(uint64_t lo) : lo(lo) {}
-
-		uint128 operator+(uint128 a)
-		{
-			uint128 r = 0;
-			bool overflow = lo > std::numeric_limits<uint64_t>::max() - a.lo;
-			r.lo = lo + a.lo;
-			r.hi = hi + a.hi + overflow;
-			return r;
-		}
-
-		uint128 operator>>(int s)
-		{
-			assert(s == 64);
-			return hi;
-		}
-
-		uint128 operator<<(int s)
-		{
-			assert(s == 64);
-			uint128 r = 0;
-			r.hi = lo;
-			return r;
-		}
-
-		explicit operator uint64_t() { return lo; }
-
-		static uint128 mul(uint64_t a, uint64_t b)
-		{
-			auto x_lo = 0xFFFFFFFF & a;
-			auto y_lo = 0xFFFFFFFF & b;
-			auto x_hi = a >> 32;
-			auto y_hi = b >> 32;
-
-			auto t1 = x_lo * y_lo;
-			auto t2 = x_lo * y_hi;
-			auto t3 = x_hi * y_lo;
-			auto t4 = x_hi * y_hi;
-
-			auto lo = (uint32_t)t1;
-			auto mid = (uint64_t)(t1 >> 32) + (uint32_t)t2 + (uint32_t)t3;
-			auto hi = (uint64_t)(t2 >> 32) + (t3 >> 32) + t4 + (mid >> 32);
-
-			uint128 r = 0;
-			r.lo = (uint64_t)lo + (mid << 32);
-			r.hi = hi;
-			return r;
-		}
-
-		uint128 operator*(uint128 a)
-		{
-			auto t1 = mul(lo, a.lo);
-			auto t2 = mul(lo, a.hi);
-			auto t3 = mul(hi, a.lo);
-			return t1 + (t2 << 64) + (t3 << 64);
-		}
-	};
-#endif
-
-	struct uint256
-	{
-		uint64_t lo = 0;
-		uint64_t mid = 0;
-		uint128 hi = 0;
-
-		uint256(uint64_t lo, uint64_t mid, uint128 hi): lo(lo), mid(mid), hi(hi) {}
-		uint256(uint128 n)
-		{
-			lo = (uint64_t) n;
-			mid = (uint64_t) (n >> 64);
-		}
-
-		explicit operator uint128()
-		{
-			uint128 r = lo;
-			r = (r + ((uint128) mid)) << 64;
-			return r;
-		}
-
-		uint256 operator+(uint256 a)
-		{
-			auto _lo = (uint128) lo + a.lo;
-			auto _mid = (uint128) mid + a.mid + (_lo >> 64);
-			auto _hi = hi + a.hi + (_mid >> 64);
-			return {(uint64_t)_lo, (uint64_t)_mid, _hi};
-		}
-
-		uint256 lo2hi()
-		{
-			hi = (uint128)*this;
-			lo = 0;
-			mid = 0;
-			return *this;
-		}
-	};
-
-	struct uint512
-	{
-		uint128 lo;
-		uint128 mid;
-		uint256 hi;
-	};
-
-	uint256 mul(uint256 x, uint256 y)
-	{
-		auto t1 = (uint128) x.lo * y.lo;
-		auto t2 = (uint128) x.lo * y.mid;
-		auto t3 = (uint128) x.lo * y.hi;
-		auto t4 = (uint128) x.mid * y.lo;
-		auto t5 = (uint128) x.mid * y.mid;
-		auto t6 = (uint128) x.mid * y.hi;
-		auto t7 = x.hi * y.lo;
-		auto t8 = x.hi * y.mid;
-
-		auto lo = (uint64_t) t1;
-		auto m1 = (t1 >> 64) + (uint64_t) t2;
-		auto m2 = (uint64_t) m1;
-		auto mid = (uint128) m2 + (uint64_t) t4;
-		auto hi = (t2 >> 64) + t3 + (t4 >> 64) + t5 + (t6 << 64) + t7
-			 + (t8 << 64) + (m1 >> 64) + (mid >> 64);
-
-		return {lo, (uint64_t)mid, hi};
-	}
-
-	uint512 mul512(uint256 x, uint256 y)
-	{
-		auto x_lo = (uint128) x;
-		auto y_lo = (uint128) y;
-
-		auto t1 = mul(x_lo, y_lo);
-		auto t2 = mul(x_lo, y.hi);
-		auto t3 = mul(x.hi, y_lo);
-		auto t4 = mul(x.hi, y.hi);
-
-		auto lo = (uint128) t1;
-		auto mid = (uint256) t1.hi + (uint128) t2 + (uint128) t3;
-		auto hi = (uint256)t2.hi + t3.hi + t4 + mid.hi;
-
-		return {lo, (uint128)mid, hi};
-	}
-}
 
 }
 }
@@ -489,20 +398,9 @@ namespace
 
 extern "C"
 {
-	using namespace dev::eth::jit;
-
 	EXPORT void debug(uint64_t a, uint64_t b, uint64_t c, uint64_t d, char z)
 	{
-		std::cerr << "DEBUG " << z << ": " << d << c << b << a << std::endl;
-	}
-
-	EXPORT void arith_mul(uint256* _arg1, uint256* _arg2, uint256* o_result)
-	{
-		*o_result = mul(*_arg1, *_arg2);
-	}
-
-	EXPORT void arith_mul512(uint256* _arg1, uint256* _arg2, uint512* o_result)
-	{
-		*o_result = mul512(*_arg1, *_arg2);
+		std::cerr << "DEBUG " << std::dec << z << ": " //<< d << c << b << a
+				<< " ["	<< std::hex << std::setfill('0') << std::setw(16) << d << std::setw(16) << c << std::setw(16) << b << std::setw(16) << a << "]\n";
 	}
 }

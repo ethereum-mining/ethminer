@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <memory>
 #include <iostream>
 #include <jsonrpccpp/server.h>
 #include <libdevcrypto/Common.h>
@@ -35,6 +36,7 @@
 namespace dev
 {
 class WebThreeNetworkFace;
+class AccountHolder;
 class KeyPair;
 namespace eth
 {
@@ -110,6 +112,10 @@ public:
 	virtual Json::Value eth_getWork();
 	virtual bool eth_submitWork(std::string const& _nonce);
 
+	virtual int eth_register(std::string const& _address);
+	virtual bool eth_unregister(int _id);
+	virtual Json::Value eth_queuedTransactions(int _id);
+
 	virtual std::string db_get(std::string const& _name, std::string const& _key);
 	virtual std::string db_getString(std::string const& _name, std::string const& _key);
 	virtual bool db_put(std::string const& _name, std::string const& _key, std::string const& _value);
@@ -130,7 +136,7 @@ public:
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
 
 protected:
-	virtual bool authenticate(dev::eth::TransactionSkeleton const& _t);
+	virtual void authenticate(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
 
 protected:
 	virtual dev::eth::Interface* client() = 0;
@@ -138,11 +144,9 @@ protected:
 	virtual dev::WebThreeNetworkFace* network() = 0;
 	virtual dev::WebThreeStubDatabaseFace* db() = 0;
 
-	std::map<dev::Address, dev::KeyPair> m_accountsLookup;
-	std::vector<dev::Address> m_accounts;
-
 	std::map<dev::Public, dev::Secret> m_ids;
 	std::map<unsigned, dev::Public> m_shhWatches;
+	std::shared_ptr<dev::AccountHolder> m_accounts;
 };
 
 } //namespace dev

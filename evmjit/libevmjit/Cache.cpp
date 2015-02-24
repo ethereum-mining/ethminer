@@ -1,12 +1,19 @@
 #include "Cache.h"
-#include <unordered_map>
-#include <cassert>
+
 #include <iostream>
+#include <cassert>
+
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_os_ostream.h>
+#include "preprocessor/llvm_includes_end.h"
+
+#include "ExecutionEngine.h"
+#include "Utils.h"
 
 namespace dev
 {
@@ -15,23 +22,31 @@ namespace eth
 namespace jit
 {
 
-//#define LOG(...) std::cerr << "CACHE "
-#define LOG(...) std::ostream(nullptr)
-
-ObjectCache* Cache::getObjectCache()
-{
-	static ObjectCache objectCache;
-	return &objectCache;
-}
+//#define CACHE_LOG std::cerr << "CACHE "
+#define CACHE_LOG std::ostream(nullptr)
 
 namespace
 {
-	llvm::MemoryBuffer* lastObject;
+	llvm::MemoryBuffer* g_lastObject;
+	ExecutionEngineListener* g_listener;
+}
+
+ObjectCache* Cache::getObjectCache(ExecutionEngineListener* _listener)
+{
+	static ObjectCache objectCache;
+	g_listener = _listener;
+	return &objectCache;
 }
 
 std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 {
-	assert(!lastObject);
+	if (g_listener)
+		g_listener->stateChanged(ExecState::CacheLoad);
+
+	CACHE_LOG << id << ": search\n";
+	if (!CHECK(!g_lastObject))
+		g_lastObject = nullptr;
+
 	llvm::SmallString<256> cachePath;
 	llvm::sys::path::system_temp_directory(false, cachePath);
 	llvm::sys::path::append(cachePath, "evm_objs", id);
@@ -51,22 +66,31 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 #endif
 
 	if (auto r = llvm::MemoryBuffer::getFile(cachePath.str(), -1, false))
-		lastObject = llvm::MemoryBuffer::getMemBufferCopy(r.get()->getBuffer());
+		g_lastObject = llvm::MemoryBuffer::getMemBufferCopy(r.get()->getBuffer());
 	else if (r.getError() != std::make_error_code(std::errc::no_such_file_or_directory))
 		std::cerr << r.getError().message(); // TODO: Add log
 
-	if (lastObject)  // if object found create fake module
+	if (g_lastObject)  // if object found create fake module
 	{
-		auto module = std::unique_ptr<llvm::Module>(new llvm::Module(id, llvm::getGlobalContext()));
-		auto mainFuncType = llvm::FunctionType::get(llvm::IntegerType::get(llvm::getGlobalContext(), 32), {}, false);
-		llvm::Function::Create(mainFuncType, llvm::Function::ExternalLinkage, id, module.get());
+		CACHE_LOG << id << ": found\n";
+		auto&& context = llvm::getGlobalContext();
+		auto module = std::unique_ptr<llvm::Module>(new llvm::Module(id, context));
+		auto mainFuncType = llvm::FunctionType::get(llvm::Type::getVoidTy(context), {}, false);
+		auto mainFunc = llvm::Function::Create(mainFuncType, llvm::Function::ExternalLinkage, id, module.get());
+		auto bb = llvm::BasicBlock::Create(context, {}, mainFunc);
+		bb->getInstList().push_back(new llvm::UnreachableInst{context});
+		return module;
 	}
+	CACHE_LOG << id << ": not found\n";
 	return nullptr;
 }
 
 
 void ObjectCache::notifyObjectCompiled(llvm::Module const* _module, llvm::MemoryBuffer const* _object)
 {
+	if (g_listener)
+		g_listener->stateChanged(ExecState::CacheWrite);
+
 	auto&& id = _module->getModuleIdentifier();
 	llvm::SmallString<256> cachePath;
 	llvm::sys::path::system_temp_directory(false, cachePath);
@@ -77,15 +101,17 @@ void ObjectCache::notifyObjectCompiled(llvm::Module const* _module, llvm::Memory
 
 	llvm::sys::path::append(cachePath, id);
 
+	CACHE_LOG << id << ": write\n";
 	std::string error;
 	llvm::raw_fd_ostream cacheFile(cachePath.c_str(), error, llvm::sys::fs::F_None);
 	cacheFile << _object->getBuffer();
 }
 
-llvm::MemoryBuffer* ObjectCache::getObject(llvm::Module const*)
+llvm::MemoryBuffer* ObjectCache::getObject(llvm::Module const* _module)
 {
-	auto o = lastObject;
-	lastObject = nullptr;
+	CACHE_LOG << _module->getModuleIdentifier() << ": use\n";
+	auto o = g_lastObject;
+	g_lastObject = nullptr;
 	return o;
 }
 

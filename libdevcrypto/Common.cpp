@@ -44,6 +44,8 @@ bool dev::SignatureStruct::isValid() const
 	return true;
 }
 
+Address dev::ZeroAddress = Address();
+
 Public dev::toPublic(Secret const& _secret)
 {
 	Public p;

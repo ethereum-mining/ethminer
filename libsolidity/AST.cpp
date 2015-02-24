@@ -77,6 +77,9 @@ void ContractDefinition::checkTypeRequirements()
 	for (ASTPointer<FunctionDefinition> const& function: getDefinedFunctions())
 		function->checkTypeRequirements();
 
+	for (ASTPointer<VariableDeclaration> const& variable: m_stateVariables)
+		variable->checkTypeRequirements();
+
 	// check for hash collisions in function signatures
 	set<FixedHash<4>> hashes;
 	for (auto const& it: getInterfaceFunctionList())
@@ -274,15 +277,6 @@ TypePointer FunctionDefinition::getType(ContractDefinition const*) const
 
 void FunctionDefinition::checkTypeRequirements()
 {
-	// change all byte arrays parameters to point to calldata
-	if (getVisibility() == Visibility::External)
-		for (ASTPointer<VariableDeclaration> const& var: getParameters())
-		{
-			auto const& type = var->getType();
-			solAssert(!!type, "");
-			if (auto const* byteArrayType = dynamic_cast<ByteArrayType const*>(type.get()))
-				var->setType(byteArrayType->copyForLocation(ByteArrayType::Location::CallData));
-		}
 	for (ASTPointer<VariableDeclaration> const& var: getParameters() + getReturnParameters())
 		if (!var->getType()->canLiveOutsideStorage())
 			BOOST_THROW_EXCEPTION(var->createTypeError("Type is required to live outside storage."));
@@ -299,16 +293,20 @@ string FunctionDefinition::getCanonicalSignature() const
 
 bool VariableDeclaration::isLValue() const
 {
-	if (auto const* function = dynamic_cast<FunctionDefinition const*>(getScope()))
-		if (function->getVisibility() == Declaration::Visibility::External && isFunctionParameter())
-			return false;
-	return true;
+	// External function parameters are Read-Only
+	return !isExternalFunctionParameter();
 }
 
-bool VariableDeclaration::isFunctionParameter() const
+void VariableDeclaration::checkTypeRequirements()
+{
+	if (m_value)
+		m_value->checkTypeRequirements();
+}
+
+bool VariableDeclaration::isExternalFunctionParameter() const
 {
 	auto const* function = dynamic_cast<FunctionDefinition const*>(getScope());
-	if (!function)
+	if (!function || function->getVisibility() != Declaration::Visibility::External)
 		return false;
 	for (auto const& variable: function->getParameters())
 		if (variable.get() == this)
@@ -401,26 +399,26 @@ void Return::checkTypeRequirements()
 	m_expression->expectType(*m_returnParameters->getParameters().front()->getType());
 }
 
-void VariableDefinition::checkTypeRequirements()
+void VariableDeclarationStatement::checkTypeRequirements()
 {
 	// Variables can be declared without type (with "var"), in which case the first assignment
 	// sets the type.
 	// Note that assignments before the first declaration are legal because of the special scoping
 	// rules inherited from JavaScript.
-	if (m_value)
+	if (m_variable->getValue())
 	{
 		if (m_variable->getType())
-			m_value->expectType(*m_variable->getType());
+			m_variable->getValue()->expectType(*m_variable->getType());
 		else
 		{
 			// no type declared and no previous assignment, infer the type
-			m_value->checkTypeRequirements();
-			TypePointer type = m_value->getType();
+			m_variable->getValue()->checkTypeRequirements();
+			TypePointer type = m_variable->getValue()->getType();
 			if (type->getCategory() == Type::Category::IntegerConstant)
 			{
 				auto intType = dynamic_pointer_cast<IntegerConstantType const>(type)->getIntegerType();
 				if (!intType)
-					BOOST_THROW_EXCEPTION(m_value->createTypeError("Invalid integer constant " + type->toString()));
+					BOOST_THROW_EXCEPTION(m_variable->getValue()->createTypeError("Invalid integer constant " + type->toString()));
 				type = intType;
 			}
 			else if (type->getCategory() == Type::Category::Void)
@@ -429,7 +427,6 @@ void VariableDefinition::checkTypeRequirements()
 		}
 	}
 }
-
 void Assignment::checkTypeRequirements()
 {
 	m_leftHandSide->checkTypeRequirements();
@@ -606,19 +603,64 @@ void MemberAccess::checkTypeRequirements()
 	if (!m_type)
 		BOOST_THROW_EXCEPTION(createTypeError("Member \"" + *m_memberName + "\" not found or not "
 											  "visible in " + type.toString()));
-	m_isLValue = (type.getCategory() == Type::Category::Struct);
+	// This should probably move somewhere else.
+	if (type.getCategory() == Type::Category::Struct)
+		m_isLValue = true;
+	else if (type.getCategory() == Type::Category::Array)
+	{
+		auto const& arrayType(dynamic_cast<ArrayType const&>(type));
+		m_isLValue = (*m_memberName == "length" &&
+			arrayType.getLocation() != ArrayType::Location::CallData && arrayType.isDynamicallySized());
+	}
+	else
+		m_isLValue = false;
 }
 
 void IndexAccess::checkTypeRequirements()
 {
 	m_base->checkTypeRequirements();
-	if (m_base->getType()->getCategory() != Type::Category::Mapping)
-		BOOST_THROW_EXCEPTION(m_base->createTypeError("Indexed expression has to be a mapping (is " +
-													  m_base->getType()->toString() + ")"));
-	MappingType const& type = dynamic_cast<MappingType const&>(*m_base->getType());
-	m_index->expectType(*type.getKeyType());
-	m_type = type.getValueType();
-	m_isLValue = true;
+	switch (m_base->getType()->getCategory())
+	{
+	case Type::Category::Array:
+	{
+		ArrayType const& type = dynamic_cast<ArrayType const&>(*m_base->getType());
+		if (!m_index)
+			BOOST_THROW_EXCEPTION(createTypeError("Index expression cannot be omitted."));
+		m_index->expectType(IntegerType(256));
+		m_type = type.getBaseType();
+		m_isLValue = true;
+		break;
+	}
+	case Type::Category::Mapping:
+	{
+		MappingType const& type = dynamic_cast<MappingType const&>(*m_base->getType());
+		if (!m_index)
+			BOOST_THROW_EXCEPTION(createTypeError("Index expression cannot be omitted."));
+		m_index->expectType(*type.getKeyType());
+		m_type = type.getValueType();
+		m_isLValue = true;
+		break;
+	}
+	case Type::Category::TypeType:
+	{
+		TypeType const& type = dynamic_cast<TypeType const&>(*m_base->getType());
+		if (!m_index)
+			m_type = make_shared<TypeType>(make_shared<ArrayType>(ArrayType::Location::Memory, type.getActualType()));
+		else
+		{
+			m_index->checkTypeRequirements();
+			auto length = dynamic_cast<IntegerConstantType const*>(m_index->getType().get());
+			if (!length)
+				BOOST_THROW_EXCEPTION(m_index->createTypeError("Integer constant expected."));
+			m_type = make_shared<TypeType>(make_shared<ArrayType>(
+				ArrayType::Location::Memory, type.getActualType(), length->literalValue(nullptr)));
+		}
+		break;
+	}
+	default:
+		BOOST_THROW_EXCEPTION(m_base->createTypeError(
+			"Indexed expression has to be a type, mapping or array (is " + m_base->getType()->toString() + ")"));
+	}
 }
 
 void Identifier::checkTypeRequirements()
