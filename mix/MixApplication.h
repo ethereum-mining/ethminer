@@ -40,7 +40,7 @@ class MixApplication: public QApplication
 	Q_OBJECT
 
 public:
-	MixApplication(int _argc, char* _argv[]);
+	MixApplication(int& _argc, char* _argv[]);
 	virtual ~MixApplication();
 	AppContext* context() { return m_appContext.get(); }
 	QQmlApplicationEngine* engine() { return m_engine.get(); }
