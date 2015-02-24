@@ -48,7 +48,6 @@ string sL(float _x, float _y) { return toString(round(_x * 1000)) + "s (" + toSt
 
 MiningView::MiningView(QWidget* _p): QWidget(_p)
 {
-
 }
 
 void MiningView::appendStats(list<MineInfo> const& _i, MineProgress const& _p)
@@ -86,10 +85,10 @@ void MiningView::appendStats(list<MineInfo> const& _i, MineProgress const& _p)
 
 	for (auto& i: m_resets)
 		i -= o;
-	remove_if(m_resets.begin(), m_resets.end(), [](int i){return i < 0;});
+	m_resets.erase(remove_if(m_resets.begin(), m_resets.end(), [](int i){return i < 0;}), m_resets.end());
 	for (auto& i: m_completes)
 		i -= o;
-	remove_if(m_completes.begin(), m_completes.end(), [](int i){return i < 0;});
+	m_completes.erase(remove_if(m_completes.begin(), m_completes.end(), [](int i){return i < 0;}), m_completes.end());
 
 	m_progress = _p;
 	update();

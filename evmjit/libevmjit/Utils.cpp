@@ -1,4 +1,3 @@
-
 #include "Utils.h"
 
 namespace dev
