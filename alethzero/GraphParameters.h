@@ -37,8 +37,11 @@ static T graphParameters(T _min, T _max, unsigned _divisions, T* o_from = 0, T* 
 	T uMax = _max / _divisor;
 	if (uMax == uMin || !_divisions)
 	{
-		*o_from = 0;
-		*o_delta = 1;
+		if (o_delta && o_from)
+		{
+			*o_from = 0;
+			*o_delta = 1;
+		}
 		return 1;
 	}
 	long double l10 = std::log10((uMax - uMin) / T(_divisions) * 5.5f);

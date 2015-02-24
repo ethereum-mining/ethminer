@@ -46,13 +46,13 @@ class QVariableDefinition;
 struct TransactionSettings
 {
 	TransactionSettings() {}
-	TransactionSettings(QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
-		functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
-	TransactionSettings(u256 _value, u256 _gas, u256 _gasPrice):
-		value(_value), gas(_gas), gasPrice(_gasPrice) {}
+	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
+		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
 	TransactionSettings(QString const& _stdContractName, QString const& _stdContractUrl):
-		functionId(_stdContractName), stdContractUrl(_stdContractUrl) {}
+		contractId(_stdContractName), stdContractUrl(_stdContractUrl) {}
 
+	/// Contract name
+	QString contractId;
 	/// Contract function name
 	QString functionId;
 	/// Transaction value
@@ -121,8 +121,8 @@ public:
 	Q_PROPERTY(bool running MEMBER m_running NOTIFY runStateChanged)
 	/// @returns true if currently mining
 	Q_PROPERTY(bool mining MEMBER m_mining NOTIFY miningStateChanged)
-	/// @returns address of the last executed contract
-	Q_PROPERTY(QString contractAddress READ contractAddress NOTIFY contractAddressChanged)
+	/// @returns deployed contracts addresses
+	Q_PROPERTY(QVariantMap contractAddresses READ contractAddresses NOTIFY contractAddressesChanged)
 	/// ethereum.js RPC request entry point
 	/// @param _message RPC request in Json format
 	/// @returns RPC response in Json format
@@ -161,7 +161,7 @@ signals:
 	/// @param _message Error message
 	void runFailed(QString const& _message);
 	/// Contract address changed
-	void contractAddressChanged();
+	void contractAddressesChanged();
 	/// Execution state changed
 	void newBlock();
 	/// Execution state changed
@@ -177,7 +177,7 @@ signals:
 	void stateCleared();
 
 private:
-	QString contractAddress() const;
+	QVariantMap contractAddresses() const;
 	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
@@ -191,7 +191,8 @@ private:
 	std::unique_ptr<MixClient> m_client;
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
-	Address m_contractAddress;
+	std::map<QString, Address> m_contractAddresses;
+	std::map<Address, QString> m_contractNames;
 	std::map<QString, Address> m_stdContractAddresses;
 	std::map<Address, QString> m_stdContractNames;
 };

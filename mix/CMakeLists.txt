@@ -11,8 +11,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 aux_source_directory(. SRC_LIST)
 
-include_directories(..)
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
+include_directories(BEFORE ..)
 
 find_package (Qt5WebEngine QUIET)
 qt5_add_resources(UI_RESOURCES res.qrc)
@@ -71,4 +71,4 @@ eth_install_executable(${EXECUTABLE}
 #add qml asnd stdc files to project tree in Qt creator
 file(GLOB_RECURSE QMLFILES "qml/*.*")
 file(GLOB_RECURSE SOLFILES "stdc/*.*")
-add_custom_target(dummy SOURCES ${QMLFILES} ${SOLFILES})
+add_custom_target(mix_qml SOURCES ${QMLFILES} ${SOLFILES})
