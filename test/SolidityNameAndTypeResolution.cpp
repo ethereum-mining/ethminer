@@ -470,7 +470,7 @@ BOOST_AUTO_TEST_CASE(illegal_override_indirect)
 BOOST_AUTO_TEST_CASE(illegal_override_visibility)
 {
 	char const* text = R"(
-		contract B { function f() protected {} }
+		contract B { function f() internal {} }
 		contract C is B { function f() public {} }
 	)";
 	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
@@ -706,7 +706,7 @@ BOOST_AUTO_TEST_CASE(private_state_variable)
 					   "    uint64(2);\n"
 					   "  }\n"
 					   "uint256 private foo;\n"
-					   "uint256 protected bar;\n"
+					   "uint256 internal bar;\n"
 					   "}\n";
 
 	ASTPointer<SourceUnit> source;
@@ -717,7 +717,7 @@ BOOST_AUTO_TEST_CASE(private_state_variable)
 	function = retrieveFunctionBySignature(contract, "foo()");
 	BOOST_CHECK_MESSAGE(function == nullptr, "Accessor function of a private variable should not exist");
 	function = retrieveFunctionBySignature(contract, "bar()");
-	BOOST_CHECK_MESSAGE(function == nullptr, "Accessor function of a protected variable should not exist");
+	BOOST_CHECK_MESSAGE(function == nullptr, "Accessor function of an internal variable should not exist");
 }
 
 BOOST_AUTO_TEST_CASE(fallback_function)
@@ -832,11 +832,11 @@ BOOST_AUTO_TEST_CASE(access_to_default_function_visibility)
 	BOOST_CHECK_NO_THROW(parseTextAndResolveNames(text));
 }
 
-BOOST_AUTO_TEST_CASE(access_to_protected_function)
+BOOST_AUTO_TEST_CASE(access_to_internal_function)
 {
 	char const* text = R"(
 		contract c {
-			function f() protected {}
+			function f() internal {}
 		}
 		contract d {
 			function g() { c(0).f(); }
@@ -856,7 +856,7 @@ BOOST_AUTO_TEST_CASE(access_to_default_state_variable_visibility)
 	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
 }
 
-BOOST_AUTO_TEST_CASE(access_to_protected_state_variable)
+BOOST_AUTO_TEST_CASE(access_to_internal_state_variable)
 {
 	char const* text = R"(
 		contract c {
@@ -1081,6 +1081,108 @@ BOOST_AUTO_TEST_CASE(enum_duplicate_values)
 			}
 	)";
 	BOOST_CHECK_THROW(parseTextAndResolveNames(text), DeclarationError);
+}
+
+BOOST_AUTO_TEST_CASE(private_visibility)
+{
+	char const* sourceCode = R"(
+		contract base {
+			function f() private {}
+		}
+		contract derived is base {
+			function g() { f(); }
+		}
+		)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(sourceCode), DeclarationError);
+}
+
+BOOST_AUTO_TEST_CASE(private_visibility_via_explicit_base_access)
+{
+	char const* sourceCode = R"(
+		contract base {
+			function f() private {}
+		}
+		contract derived is base {
+			function g() { base.f(); }
+		}
+		)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(sourceCode), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(external_visibility)
+{
+	char const* sourceCode = R"(
+		contract c {
+			function f() external {}
+			function g() { f(); }
+		}
+		)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(sourceCode), DeclarationError);
+}
+
+BOOST_AUTO_TEST_CASE(external_base_visibility)
+{
+	char const* sourceCode = R"(
+		contract base {
+			function f() external {}
+		}
+		contract derived is base {
+			function g() { base.f(); }
+		}
+		)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(sourceCode), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(external_argument_assign)
+{
+	char const* sourceCode = R"(
+		contract c {
+			function f(uint a) external { a = 1; }
+		}
+		)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(sourceCode), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(external_argument_increment)
+{
+	char const* sourceCode = R"(
+		contract c {
+			function f(uint a) external { a++; }
+		}
+		)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(sourceCode), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(external_argument_delete)
+{
+	char const* sourceCode = R"(
+		contract c {
+			function f(uint a) external { delete a; }
+		}
+		)";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(sourceCode), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(test_for_bug_override_function_with_bytearray_type)
+{
+	char const* sourceCode = R"(
+		contract Vehicle {
+			function f(bytes _a) external returns (uint256 r) {r = 1;}
+		}
+		contract Bike is Vehicle {
+			function f(bytes _a) external returns (uint256 r) {r = 42;}
+		}
+		)";
+	BOOST_CHECK_NO_THROW(parseTextAndResolveNamesWithChecks(sourceCode));
+}
+
+BOOST_AUTO_TEST_CASE(array_with_nonconstant_length)
+{
+	char const* text = R"(
+		contract c {
+			function f(uint a) { uint8[a] x; }
+		})";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -21,56 +21,13 @@
  */
 
 #include "TestHelper.h"
+
 using namespace std;
 using namespace json_spirit;
 using namespace dev;
 using namespace dev::eth;
 
 namespace dev {  namespace test {
-
-RLPStream createRLPStreamFromTransactionFields(mObject& _tObj)
-{
-	//Construct Rlp of the given transaction
-	RLPStream rlpStream;
-	rlpStream.appendList(_tObj.size());
-
-	if (_tObj.count("nonce") > 0)
-		rlpStream << bigint(_tObj["nonce"].get_str());
-
-	if (_tObj.count("gasPrice") > 0)
-		rlpStream << bigint(_tObj["gasPrice"].get_str());
-
-	if (_tObj.count("gasLimit") > 0)
-		rlpStream << bigint(_tObj["gasLimit"].get_str());
-
-	if (_tObj.count("to") > 0)
-	{
-		if (_tObj["to"].get_str().empty())
-			rlpStream << "";
-		else
-			rlpStream << importByteArray(_tObj["to"].get_str());
-	}
-
-	if (_tObj.count("value") > 0)
-		rlpStream << bigint(_tObj["value"].get_str());
-
-	if (_tObj.count("data") > 0)
-		rlpStream << importData(_tObj);
-
-	if (_tObj.count("v") > 0)
-		rlpStream << bigint(_tObj["v"].get_str());
-
-	if (_tObj.count("r") > 0)
-		rlpStream << bigint(_tObj["r"].get_str());
-
-	if (_tObj.count("s") > 0)
-		rlpStream << bigint(_tObj["s"].get_str());
-
-	if (_tObj.count("extrafield") > 0)
-		rlpStream << bigint(_tObj["extrafield"].get_str());
-
-	return rlpStream;
-}
 
 void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 {
@@ -94,7 +51,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			catch(...)
 			{
 				BOOST_CHECK_MESSAGE(o.count("transaction") == 0, "A transaction object should not be defined because the RLP is invalid!");
-				return;
+				continue;
 			}
 
 			BOOST_REQUIRE(o.count("transaction") > 0);
@@ -115,7 +72,6 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 
 			Address addressReaded = Address(o["sender"].get_str());
 			BOOST_CHECK_MESSAGE(txFromFields.sender() == addressReaded || txFromRlp.sender() == addressReaded, "Signature address of sender does not match given sender address!");
-
 		}
 		else
 		{
@@ -141,6 +97,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 		}
 	}//for
 }//doTransactionTests
+
 } }// Namespace Close
 
 
@@ -149,6 +106,11 @@ BOOST_AUTO_TEST_SUITE(TransactionTests)
 BOOST_AUTO_TEST_CASE(TransactionTest)
 {
 	dev::test::executeTests("ttTransactionTest", "/TransactionTests", dev::test::doTransactionTests);
+}
+
+BOOST_AUTO_TEST_CASE(ttWrongRLPTransaction)
+{
+	dev::test::executeTests("ttWrongRLPTransaction", "/TransactionTests", dev::test::doTransactionTests);
 }
 
 BOOST_AUTO_TEST_CASE(tt10mbDataField)

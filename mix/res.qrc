@@ -10,12 +10,14 @@
         <file>qml/StateDialog.qml</file>
         <file>qml/StateList.qml</file>
         <file>qml/StateListModel.qml</file>
+        <file>qml/img/dappProjectIcon.png</file>
         <file>qml/img/jumpintoback.png</file>
         <file>qml/img/jumpintoforward.png</file>
         <file>qml/img/jumpoutback.png</file>
         <file>qml/img/jumpoutforward.png</file>
         <file>qml/img/jumpoverback.png</file>
         <file>qml/img/jumpoverforward.png</file>
+        <file>qml/img/jumpoverforwarddisabled.png</file>
         <file>qml/StepActionImage.qml</file>
         <file>qml/img/jumpintobackdisabled.png</file>
         <file>qml/img/jumpintoforwarddisabled.png</file>
@@ -99,5 +101,6 @@
         <file>qml/Style.qml</file>
         <file>qml/WebPreviewStyle.qml</file>
         <file>qml/img/available_updates.png</file>
+        <file>qml/DeploymentDialog.qml</file>
     </qresource>
 </RCC>

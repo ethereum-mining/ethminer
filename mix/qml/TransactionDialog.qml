@@ -10,7 +10,7 @@ import "."
 Window {
 	id: modalTransactionDialog
 	modality: Qt.ApplicationModal
-	width: 450
+	width: 520
 	height: (paramsModel.count > 0 ? 500 : 300)
 	visible: false
 	color: StateDialogStyle.generic.backgroundColor
@@ -20,9 +20,9 @@ Window {
 	property alias gas: gasValueEdit.gasValue;
 	property alias gasPrice: gasPriceField.value;
 	property alias transactionValue: valueField.value;
+	property string contractId: contractComboBox.currentValue();
 	property alias functionId: functionComboBox.currentText;
 	property var itemParams;
-	property bool isConstructorTransaction;
 	property bool useTransactionDefaultValue: false
 	property var qType;
 
@@ -39,38 +39,68 @@ Window {
 		gasValueEdit.gasValue = item.gas;
 		gasPriceField.value = item.gasPrice;
 		valueField.value = item.value;
+		var contractId = item.contractId;
 		var functionId = item.functionId;
-		isConstructorTransaction = item.executeConstructor;
-		rowFunction.visible = !item.executeConstructor;
+		rowFunction.visible = true;
 
 		itemParams = item.parameters !== undefined ? item.parameters : {};
-		functionsModel.clear();
-		var functionIndex = -1;
-		var functions = codeModel.code.contract.functions;
-		for (var f = 0; f < functions.length; f++) {
-			functionsModel.append({ text: functions[f].name });
-			if (functions[f].name === item.functionId)
-				functionIndex = f;
+
+		contractsModel.clear();
+		var contractIndex = -1;
+		var contracts = codeModel.contracts;
+		for (var c in contracts) {
+			contractsModel.append({ cid: c, text: contracts[c].contract.name });
+			if (contracts[c].contract.name === contractId)
+				contractIndex = contractsModel.count - 1;
 		}
+
+		if (contractIndex == -1 && contractsModel.count > 0)
+			contractIndex = 0; //@todo suggest unused contract
+		contractComboBox.currentIndex = contractIndex;
+
+		loadFunctions(contractComboBox.currentValue());
+
+		var functionIndex = -1;
+		for (var f = 0; f < functionsModel.count; f++)
+			if (functionsModel.get(f).text === item.functionId)
+				functionIndex = f;
 
 		if (functionIndex == -1 && functionsModel.count > 0)
 			functionIndex = 0; //@todo suggest unused function
 
 		functionComboBox.currentIndex = functionIndex;
+
 		paramsModel.clear();
-		if (!item.executeConstructor)
+		if (functionId !== contractComboBox.currentValue())
 			loadParameters();
-		else
-		{
-			var parameters = codeModel.code.contract.constructor.parameters;
-			for (var p = 0; p < parameters.length; p++)
-				loadParameter(parameters[p]);
+		else {
+			var contract = codeModel.contracts[contractId];
+			if (contract) {
+				var parameters = contract.contract.constructor.parameters;
+				for (var p = 0; p < parameters.length; p++)
+					loadParameter(parameters[p]);
+			}
 		}
 		modalTransactionDialog.setX((Screen.width - width) / 2);
 		modalTransactionDialog.setY((Screen.height - height) / 2);
 
 		visible = true;
 		valueField.focus = true;
+	}
+
+	function loadFunctions(contractId)
+	{
+		functionsModel.clear();
+		var contract = codeModel.contracts[contractId];
+		if (contract) {
+			var functions = codeModel.contracts[contractId].contract.functions;
+			for (var f = 0; f < functions.length; f++) {
+				functionsModel.append({ text: functions[f].name });
+			}
+		}
+		//append constructor
+		functionsModel.append({ text: contractId });
+
 	}
 
 	function loadParameter(parameter)
@@ -104,10 +134,15 @@ Window {
 		if (!paramsModel)
 			return;
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
-			var func = codeModel.code.contract.functions[functionComboBox.currentIndex];
-			var parameters = func.parameters;
-			for (var p = 0; p < parameters.length; p++)
-				loadParameter(parameters[p]);
+			var contract = codeModel.contracts[contractComboBox.currentValue()];
+			if (contract) {
+				var func = contract.contract.functions[functionComboBox.currentIndex];
+				if (func) {
+					var parameters = func.parameters;
+					for (var p = 0; p < parameters.length; p++)
+						loadParameter(parameters[p]);
+				}
+			}
 		}
 	}
 
@@ -140,23 +175,20 @@ Window {
 		if (!useTransactionDefaultValue)
 		{
 			item = {
+				contractId: transactionDialog.contractId,
 				functionId: transactionDialog.functionId,
 				gas: transactionDialog.gas,
 				gasPrice: transactionDialog.gasPrice,
 				value: transactionDialog.transactionValue,
 				parameters: {},
-				executeConstructor: isConstructorTransaction
 			};
 		}
 		else
 		{
 			item = TransactionHelper.defaultTransaction();
+			item.contractId = transactionDialog.contractId;
 			item.functionId = transactionDialog.functionId;
-			item.executeConstructor = isConstructorTransaction;
 		}
-
-		if (isConstructorTransaction)
-			item.functionId = qsTr("Constructor");
 
 		var orderedQType = [];
 		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
@@ -174,15 +206,37 @@ Window {
 		anchors.fill: parent
 		anchors.margins: 10
 
-		SourceSansProLight
-		{
-			id: lightFont
-		}
-
 		ColumnLayout {
 			id: dialogContent
 			anchors.top: parent.top
 			spacing: 10
+			RowLayout
+			{
+				id: rowContract
+				Layout.fillWidth: true
+				height: 150
+				DefaultLabel {
+					Layout.preferredWidth: 75
+					text: qsTr("Contract")
+				}
+				ComboBox {
+					id: contractComboBox
+					function currentValue() {
+						return (currentIndex >=0 && currentIndex < contractsModel.count) ? contractsModel.get(currentIndex).cid : "";
+					}
+					Layout.preferredWidth: 350
+					currentIndex: -1
+					textRole: "text"
+					editable: false
+					model: ListModel {
+						id: contractsModel
+					}
+					onCurrentIndexChanged: {
+						loadFunctions(currentValue());
+					}
+				}
+			}
+
 			RowLayout
 			{
 				id: rowFunction
@@ -203,9 +257,6 @@ Window {
 					}
 					onCurrentIndexChanged: {
 						loadParameters();
-					}
-					style: ComboBoxStyle {
-						font: lightFont.name
 					}
 				}
 			}
@@ -354,7 +405,7 @@ Window {
 										return boolViewComp;
 									else if (type.indexOf("string") !== -1)
 										return stringViewComp;
-									else if (type.indexOf("hash") !== -1)
+									else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
 										return hashViewComp;
 									else
 										return null;
