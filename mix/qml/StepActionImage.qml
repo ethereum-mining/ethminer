@@ -16,19 +16,26 @@ Rectangle {
 	{
 		buttonAction.enabled = state;
 		if (state)
-			debugImg.iconSource = enabledStateImg;
+			debugImage.source = enabledStateImg;
 		else
-			debugImg.iconSource = disableStateImg;
+			debugImage.source = disableStateImg;
 	}
 
 	Button
 	{
 		anchors.fill: parent
 		id: debugImg
-		iconSource: enabledStateImg
-		action: buttonAction
-		width: buttonActionContainer.width - 3
-		height: buttonActionContainer.height
+/*		iconSource: enabledStateImg
+*/		action: buttonAction
+	}
+
+	Image {
+		id: debugImage
+		source: enabledStateImg
+		anchors.centerIn: parent
+		fillMode: Image.PreserveAspectFit
+		width: 15
+		height: 15
 	}
 
 	Action {

@@ -22,6 +22,7 @@
 #include "BlockChain.h"
 
 #include <boost/filesystem.hpp>
+#include <test/JsonSpiritHeaders.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/FileSystem.h>
@@ -29,11 +30,13 @@
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
 #include <liblll/Compiler.h>
+#include "GenesisInfo.h"
 #include "State.h"
 #include "Defaults.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+namespace js = json_spirit;
 
 #define ETH_CATCH 1
 
