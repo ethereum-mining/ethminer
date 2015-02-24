@@ -13,7 +13,7 @@ set(CMAKE_AUTOMOC OFF)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 
-include_directories(..)
+include_directories(BEFORE ..)
 
 set(EXECUTABLE natspec)
 

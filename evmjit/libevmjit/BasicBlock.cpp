@@ -1,13 +1,14 @@
-
 #include "BasicBlock.h"
 
 #include <iostream>
 
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/raw_os_ostream.h>
+#include "preprocessor/llvm_includes_end.h"
 
 #include "Type.h"
 
@@ -18,13 +19,14 @@ namespace eth
 namespace jit
 {
 
-const char* BasicBlock::NamePrefix = "Instr.";
+static const char* jumpDestName = "JmpDst.";
+static const char* basicBlockName = "Instr.";
 
-BasicBlock::BasicBlock(bytes::const_iterator _begin, bytes::const_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest) :
+BasicBlock::BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest) :
+	m_firstInstrIdx{_firstInstrIdx},
 	m_begin(_begin),
 	m_end(_end),
-	// TODO: Add begin index to name
-	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), NamePrefix, _mainFunc)),
+	m_llvmBB(llvm::BasicBlock::Create(_mainFunc->getContext(), {isJumpDest ? jumpDestName : basicBlockName, std::to_string(_firstInstrIdx)}, _mainFunc)),
 	m_stack(*this),
 	m_builder(_builder),
 	m_isJumpDest(isJumpDest)
@@ -43,6 +45,7 @@ BasicBlock::LocalStack::LocalStack(BasicBlock& _owner) :
 
 void BasicBlock::LocalStack::push(llvm::Value* _value)
 {
+	assert(_value->getType() == Type::Word);
 	m_bblock.m_currentStack.push_back(_value);
 	m_bblock.m_tosOffset += 1;
 }
@@ -139,7 +142,7 @@ void BasicBlock::synchronizeLocalStack(Stack& _evmStack)
 	auto endIter = m_currentStack.end();
 
 	// Update (emit set()) changed values
-	for (int idx = m_currentStack.size() - 1 - m_tosOffset;
+	for (int idx = (int)m_currentStack.size() - 1 - m_tosOffset;
 		 currIter < endIter && idx >= 0;
 		 ++currIter, --idx)
 	{
@@ -306,7 +309,7 @@ void BasicBlock::linkLocalStacks(std::vector<BasicBlock*> basicBlocks, llvm::IRB
 		auto& initialStack = bblock.m_initialStack;
 		initialStack.erase(initialStack.begin(), initialStack.begin() + info.inputItems);
 		// Initial stack shrinks, so the size difference grows:
-		bblock.m_tosOffset += info.inputItems;
+		bblock.m_tosOffset += (int)info.inputItems;
 	}
 
 	// We must account for the items that were pushed directly to successor
@@ -319,7 +322,7 @@ void BasicBlock::linkLocalStacks(std::vector<BasicBlock*> basicBlocks, llvm::IRB
 
 		auto& exitStack = bblock.m_currentStack;
 		exitStack.erase(exitStack.end() - info.outputItems, exitStack.end());
-		bblock.m_tosOffset -= info.outputItems;
+		bblock.m_tosOffset -= (int)info.outputItems; // FIXME: Fix types
 	}
 }
 
