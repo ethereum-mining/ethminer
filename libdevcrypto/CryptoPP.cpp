@@ -134,7 +134,7 @@ bool Secp256k1::verify(Signature const& _signature, bytesConstRef _message)
 bool Secp256k1::verify(Public const& _p, Signature const& _sig, bytesConstRef _message, bool _hashed)
 {
 	// todo: verify w/o recovery (if faster)
-	return _p == _hashed ? recover(_sig, _message) : recover(_sig, sha3(_message).ref());
+	return (bool)_p == _hashed ? (bool)recover(_sig, _message) : (bool)recover(_sig, sha3(_message).ref());
 }
 
 Public Secp256k1::recover(Signature _signature, bytesConstRef _message)
