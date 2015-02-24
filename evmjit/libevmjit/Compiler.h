@@ -1,7 +1,4 @@
-
 #pragma once
-
-#include <llvm/IR/IRBuilder.h>
 
 #include "Common.h"
 #include "BasicBlock.h"
@@ -33,13 +30,13 @@ public:
 
 	Compiler(Options const& _options);
 
-	std::unique_ptr<llvm::Module> compile(bytes const& _bytecode, std::string const& _id);
+	std::unique_ptr<llvm::Module> compile(code_iterator _begin, code_iterator _end, std::string const& _id);
 
 private:
 
-	void createBasicBlocks(bytes const& _bytecode);
+	void createBasicBlocks(code_iterator _begin, code_iterator _end);
 
-	void compileBasicBlock(BasicBlock& _basicBlock, bytes const& _bytecode, class RuntimeManager& _runtimeManager, class Arith256& _arith, class Memory& _memory, class Ext& _ext, class GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock);
+	void compileBasicBlock(BasicBlock& _basicBlock, class RuntimeManager& _runtimeManager, class Arith256& _arith, class Memory& _memory, class Ext& _ext, class GasMeter& _gasMeter, llvm::BasicBlock* _nextBasicBlock);
 
 	llvm::BasicBlock* getJumpTableBlock();
 

@@ -1,6 +1,9 @@
 
+#pragma GCC diagnostic ignored "-Wconversion"
 #include "JitVM.h"
 #include <libevm/VM.h>
+#include <libevm/VMFactory.h>
+#include <libdevcrypto/SHA3.h>
 #include <evmjit/libevmjit/ExecutionEngine.h>
 #include "Utils.h"
 
@@ -11,22 +14,26 @@ namespace eth
 
 extern "C" void env_sload(); // fake declaration for linker symbol stripping workaround, see a call below
 
-bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
+bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 {
 	using namespace jit;
 
-	if (m_gas > std::numeric_limits<decltype(m_data.gas)>::max())
-		BOOST_THROW_EXCEPTION(OutOfGas()); // Do not accept requests with gas > 2^63 (int64 max) // TODO: Return "not accepted" exception to allow interpreted handle that
+	auto rejected = false;
+	// TODO: Rejecting transactions with gas limit > 2^63 can be used by attacker to take JIT out of scope
+	rejected |= m_gas > std::numeric_limits<decltype(m_data.gas)>::max(); // Do not accept requests with gas > 2^63 (int64 max)
+	rejected |= _ext.gasPrice > std::numeric_limits<decltype(m_data.gasPrice)>::max();
+	rejected |= _ext.currentBlock.number > std::numeric_limits<decltype(m_data.number)>::max();
+	rejected |= _ext.currentBlock.timestamp > std::numeric_limits<decltype(m_data.timestamp)>::max();
 
-	if (_ext.gasPrice > std::numeric_limits<decltype(m_data.gasPrice)>::max())
-		BOOST_THROW_EXCEPTION(OutOfGas());
-
-	if (_ext.currentBlock.number > std::numeric_limits<decltype(m_data.number)>::max())
-		BOOST_THROW_EXCEPTION(OutOfGas());
-
-	if (_ext.currentBlock.timestamp > std::numeric_limits<decltype(m_data.timestamp)>::max())
-		BOOST_THROW_EXCEPTION(OutOfGas());
-
+	if (rejected)
+	{
+		UNTESTED;
+		std::cerr << "Rejected\n";
+		VMFactory::setKind(VMKind::Interpreter);
+		m_fallbackVM = VMFactory::create(m_gas);
+		VMFactory::setKind(VMKind::JIT);
+		return m_fallbackVM->go(_ext, _onOp, _step);
+	}
 
 	m_data.gas 			= static_cast<decltype(m_data.gas)>(m_gas);
 	m_data.gasPrice		= static_cast<decltype(m_data.gasPrice)>(_ext.gasPrice);
@@ -43,9 +50,10 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const&, uint64_t)
 	m_data.timestamp 	= static_cast<decltype(m_data.timestamp)>(_ext.currentBlock.timestamp);
 	m_data.code     	= _ext.code.data();
 	m_data.codeSize 	= _ext.code.size();
+	m_data.codeHash		= eth2llvm(sha3(_ext.code));
 
 	auto env = reinterpret_cast<Env*>(&_ext);
-	auto exitCode = m_engine.run(_ext.code, &m_data, env);
+	auto exitCode = m_engine.run(&m_data, env);
 	switch (exitCode)
 	{
 	case ReturnCode::Suicide:

@@ -86,7 +86,7 @@ void NameAndTypeResolver::checkTypeRequirements(ContractDefinition& _contract)
 
 void NameAndTypeResolver::updateDeclaration(Declaration const& _declaration)
 {
-	m_scopes[nullptr].registerDeclaration(_declaration, true);
+	m_scopes[nullptr].registerDeclaration(_declaration, false, true);
 	solAssert(_declaration.getScope() == nullptr, "Updated declaration outside global scope.");
 }
 
@@ -110,8 +110,9 @@ void NameAndTypeResolver::importInheritedScope(ContractDefinition const& _base)
 	for (auto const& nameAndDeclaration: iterator->second.getDeclarations())
 	{
 		Declaration const* declaration = nameAndDeclaration.second;
-		// Import if it was declared in the base and is not the constructor
-		if (declaration->getScope() == &_base && declaration->getName() != _base.getName())
+		// Import if it was declared in the base, is not the constructor and is visible in derived classes
+		if (declaration->getScope() == &_base && declaration->getName() != _base.getName() &&
+				declaration->isVisibleInDerivedContracts())
 			m_currentScope->registerDeclaration(*declaration);
 	}
 }
@@ -266,12 +267,12 @@ void DeclarationRegistrationHelper::endVisit(ModifierDefinition&)
 	closeCurrentScope();
 }
 
-void DeclarationRegistrationHelper::endVisit(VariableDefinition& _variableDefinition)
+void DeclarationRegistrationHelper::endVisit(VariableDeclarationStatement& _variableDeclarationStatement)
 {
 	// Register the local variables with the function
 	// This does not fit here perfectly, but it saves us another AST visit.
-	solAssert(m_currentFunction, "Variable definition without function.");
-	m_currentFunction->addLocalVariable(_variableDefinition.getDeclaration());
+	solAssert(m_currentFunction, "Variable declaration without function.");
+	m_currentFunction->addLocalVariable(_variableDeclarationStatement.getDeclaration());
 }
 
 bool DeclarationRegistrationHelper::visit(VariableDeclaration& _declaration)
@@ -308,7 +309,7 @@ void DeclarationRegistrationHelper::closeCurrentScope()
 
 void DeclarationRegistrationHelper::registerDeclaration(Declaration& _declaration, bool _opensScope)
 {
-	if (!m_scopes[m_currentScope].registerDeclaration(_declaration))
+	if (!m_scopes[m_currentScope].registerDeclaration(_declaration, !_declaration.isVisibleInContract()))
 		BOOST_THROW_EXCEPTION(DeclarationError() << errinfo_sourceLocation(_declaration.getLocation())
 												 << errinfo_comment("Identifier already declared."));
 	//@todo the exception should also contain the location of the first declaration
@@ -332,7 +333,13 @@ void ReferencesResolver::endVisit(VariableDeclaration& _variable)
 	// or mapping
 	if (_variable.getTypeName())
 	{
-		_variable.setType(_variable.getTypeName()->toType());
+		TypePointer type = _variable.getTypeName()->toType();
+		// All array parameter types should point to call data
+		if (_variable.isExternalFunctionParameter())
+			if (auto const* arrayType = dynamic_cast<ArrayType const*>(type.get()))
+				type = arrayType->copyForLocation(ArrayType::Location::CallData);
+		_variable.setType(type);
+
 		if (!_variable.getType())
 			BOOST_THROW_EXCEPTION(_variable.getTypeName()->createTypeError("Invalid type name"));
 	}

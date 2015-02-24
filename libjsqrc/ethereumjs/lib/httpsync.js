@@ -27,18 +27,20 @@ if (process.env.NODE_ENV !== 'build') {
 
 var HttpSyncProvider = function (host) {
     this.handlers = [];
-    this.host = host || 'http://localhost:8080';
+    this.host = host || 'http://127.0.0.1:8080';
 };
 
 HttpSyncProvider.prototype.send = function (payload) {
     //var data = formatJsonRpcObject(payload);
-    
+
     var request = new XMLHttpRequest();
     request.open('POST', this.host, false);
     request.send(JSON.stringify(payload));
-    
-    // check request.status
+
     var result = request.responseText;
+    // check request.status
+    if(request.status !== 200)
+        return;
     return JSON.parse(result);
 };
 
