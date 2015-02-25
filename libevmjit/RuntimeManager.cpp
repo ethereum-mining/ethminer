@@ -52,6 +52,7 @@ llvm::StructType* RuntimeManager::getRuntimeType()
 			Type::EnvPtr,			// Env*
 			Type::BytePtr,			// memory data
 			Type::Word,				// memory size
+			Array::getType()
 		};
 		type = llvm::StructType::create(elems, "Runtime");
 	}
@@ -120,6 +121,14 @@ llvm::Value* RuntimeManager::getDataPtr()
 	auto dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 0), "data");
 	assert(dataPtr->getType() == getRuntimeDataType()->getPointerTo());
 	return dataPtr;
+}
+
+llvm::Value* RuntimeManager::getMem()
+{
+	auto rtPtr = getRuntimePtr();
+	auto memPtr = m_builder.CreateStructGEP(rtPtr, 4, "mem");
+	assert(memPtr->getType() == Array::getType()->getPointerTo());
+	return memPtr;
 }
 
 llvm::Value* RuntimeManager::getEnvPtr()
