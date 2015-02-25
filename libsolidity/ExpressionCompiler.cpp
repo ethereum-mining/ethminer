@@ -68,6 +68,7 @@ void ExpressionCompiler::appendStateVariableInitialization(CompilerContext& _con
 
 void ExpressionCompiler::appendStateVariableInitialization(VariableDeclaration const& _varDecl)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_varDecl);
 	LValue var = LValue(m_context);
 	var.fromDeclaration(_varDecl, _varDecl.getValue()->getLocation());
 	var.storeValue(*_varDecl.getType(), _varDecl.getLocation());
@@ -75,6 +76,7 @@ void ExpressionCompiler::appendStateVariableInitialization(VariableDeclaration c
 
 bool ExpressionCompiler::visit(Assignment const& _assignment)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_assignment);
 	_assignment.getRightHandSide().accept(*this);
 	if (_assignment.getType()->isValueType())
 		appendTypeConversion(*_assignment.getRightHandSide().getType(), *_assignment.getType());
@@ -99,6 +101,7 @@ bool ExpressionCompiler::visit(Assignment const& _assignment)
 
 bool ExpressionCompiler::visit(UnaryOperation const& _unaryOperation)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_unaryOperation);
 	//@todo type checking and creating code for an operator should be in the same place:
 	// the operator should know how to convert itself and to which types it applies, so
 	// put this code together with "Type::acceptsBinary/UnaryOperator" into a class that
@@ -163,6 +166,7 @@ bool ExpressionCompiler::visit(UnaryOperation const& _unaryOperation)
 
 bool ExpressionCompiler::visit(BinaryOperation const& _binaryOperation)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_binaryOperation);
 	Expression const& leftExpression = _binaryOperation.getLeftExpression();
 	Expression const& rightExpression = _binaryOperation.getRightExpression();
 	Type const& commonType = _binaryOperation.getCommonType();
@@ -209,6 +213,7 @@ bool ExpressionCompiler::visit(BinaryOperation const& _binaryOperation)
 
 bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_functionCall);
 	using Location = FunctionType::Location;
 	if (_functionCall.isTypeConversion())
 	{
@@ -426,6 +431,7 @@ bool ExpressionCompiler::visit(NewExpression const&)
 
 void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_memberAccess);
 	ASTString const& member = _memberAccess.getMemberName();
 	switch (_memberAccess.getExpression().getType()->getCategory())
 	{
@@ -562,6 +568,7 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 
 bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_indexAccess);
 	_indexAccess.getBaseExpression().accept(*this);
 
 	Type const& baseType = *_indexAccess.getBaseExpression().getType();
@@ -993,6 +1000,7 @@ void ExpressionCompiler::appendExpressionCopyToMemory(Type const& _expectedType,
 
 void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& _varDecl)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_varDecl);
 	FunctionType accessorType(_varDecl);
 
 	unsigned length = 0;
@@ -1029,7 +1037,7 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 					  << structType->getStorageOffsetOfMember(names[i])
 					  << eth::Instruction::ADD;
 			m_currentLValue = LValue(m_context, LValue::LValueType::Storage, types[i]);
-			m_currentLValue.retrieveValue(Location(), true);
+			m_currentLValue.retrieveValue(SourceLocation(), true);
 			solAssert(types[i]->getSizeOnStack() == 1, "Returning struct elements with stack size != 1 not yet implemented.");
 			m_context << eth::Instruction::SWAP1;
 			retSizeOnStack += types[i]->getSizeOnStack();
@@ -1041,7 +1049,7 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 		// simple value
 		solAssert(accessorType.getReturnParameterTypes().size() == 1, "");
 		m_currentLValue = LValue(m_context, LValue::LValueType::Storage, returnType);
-		m_currentLValue.retrieveValue(Location(), true);
+		m_currentLValue.retrieveValue(SourceLocation(), true);
 		retSizeOnStack = returnType->getSizeOnStack();
 	}
 	solAssert(retSizeOnStack <= 15, "Stack too deep.");
@@ -1062,7 +1070,7 @@ ExpressionCompiler::LValue::LValue(CompilerContext& _compilerContext, LValueType
 		m_size = unsigned(m_dataType->getSizeOnStack());
 }
 
-void ExpressionCompiler::LValue::fromDeclaration(Declaration const& _declaration, Location const& _location)
+void ExpressionCompiler::LValue::fromDeclaration(Declaration const& _declaration, SourceLocation const& _location)
 {
 	if (m_context->isLocalVariable(&_declaration))
 	{
@@ -1085,7 +1093,7 @@ void ExpressionCompiler::LValue::fromDeclaration(Declaration const& _declaration
 													  << errinfo_comment("Identifier type not supported or identifier not found."));
 }
 
-void ExpressionCompiler::LValue::retrieveValue(Location const& _location, bool _remove) const
+void ExpressionCompiler::LValue::retrieveValue(SourceLocation const& _location, bool _remove) const
 {
 	switch (m_type)
 	{
@@ -1134,7 +1142,7 @@ void ExpressionCompiler::LValue::retrieveValueFromStorage(bool _remove) const
 		}
 }
 
-void ExpressionCompiler::LValue::storeValue(Type const& _sourceType, Location const& _location, bool _move) const
+void ExpressionCompiler::LValue::storeValue(Type const& _sourceType, SourceLocation const& _location, bool _move) const
 {
 	switch (m_type)
 	{
@@ -1237,7 +1245,7 @@ void ExpressionCompiler::LValue::storeValue(Type const& _sourceType, Location co
 	}
 }
 
-void ExpressionCompiler::LValue::setToZero(Location const& _location) const
+void ExpressionCompiler::LValue::setToZero(SourceLocation const& _location) const
 {
 	switch (m_type)
 	{
