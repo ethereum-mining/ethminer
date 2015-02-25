@@ -80,7 +80,7 @@ public:
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
 
 	/// @returns true iff this is the empty hash.
-	operator bool() const { return ((Arith)*this) != 0; }
+	explicit operator bool() const { return ((Arith)*this) != 0; }
 
 	// The obvious comparison operators.
 	bool operator==(FixedHash const& _c) const { return m_data == _c.m_data; }

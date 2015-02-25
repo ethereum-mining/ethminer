@@ -81,7 +81,7 @@ public:
 	Address safeSender() const noexcept;
 
 	/// @returns true if transaction is non-null.
-	operator bool() const { return m_type != NullTransaction; }
+	explicit operator bool() const { return m_type != NullTransaction; }
 
 	/// @returns true if transaction is contract-creation.
 	bool isCreation() const { return m_type == ContractCreation; }
