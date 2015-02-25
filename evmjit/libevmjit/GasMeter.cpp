@@ -82,34 +82,36 @@ GasMeter::GasMeter(llvm::IRBuilder<>& _builder, RuntimeManager& _runtimeManager)
 	CompilerHelper(_builder),
 	m_runtimeManager(_runtimeManager)
 {
-	auto module = getModule();
-
-	llvm::Type* gasCheckArgs[] = {Type::RuntimePtr, Type::Gas};
-	m_gasCheckFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Void, gasCheckArgs, false), llvm::Function::PrivateLinkage, "gas.check", module);
-	InsertPointGuard guard(m_builder);
+	llvm::Type* gasCheckArgs[] = {Type::Gas->getPointerTo(), Type::Gas, Type::BytePtr};
+	m_gasCheckFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Void, gasCheckArgs, false), llvm::Function::PrivateLinkage, "gas.check", getModule());
+	m_gasCheckFunc->setDoesNotThrow();
+	m_gasCheckFunc->setDoesNotCapture(1);
 
 	auto checkBB = llvm::BasicBlock::Create(_builder.getContext(), "Check", m_gasCheckFunc);
-	auto outOfGasBB = llvm::BasicBlock::Create(_builder.getContext(), "OutOfGas", m_gasCheckFunc);
 	auto updateBB = llvm::BasicBlock::Create(_builder.getContext(), "Update", m_gasCheckFunc);
+	auto outOfGasBB = llvm::BasicBlock::Create(_builder.getContext(), "OutOfGas", m_gasCheckFunc);
 
-	auto rt = &m_gasCheckFunc->getArgumentList().front();
-	rt->setName("rt");
-	auto cost = rt->getNextNode();
+	auto gasPtr = &m_gasCheckFunc->getArgumentList().front();
+	gasPtr->setName("gasPtr");
+	auto cost = gasPtr->getNextNode();
 	cost->setName("cost");
+	auto jmpBuf = cost->getNextNode();
+	jmpBuf->setName("jmpBuf");
 
+	InsertPointGuard guard(m_builder);
 	m_builder.SetInsertPoint(checkBB);
-	auto gas = m_runtimeManager.getGas();
-	gas = m_builder.CreateNSWSub(gas, cost, "gasUpdated");
-	auto isOutOfGas = m_builder.CreateICmpSLT(gas, m_builder.getInt64(0), "isOutOfGas"); // gas < 0, with gas == 0 we can still do 0 cost instructions
-	m_builder.CreateCondBr(isOutOfGas, outOfGasBB, updateBB);
-
-	m_builder.SetInsertPoint(outOfGasBB);
-	m_runtimeManager.abort();
-	m_builder.CreateUnreachable();
+	auto gas = m_builder.CreateLoad(gasPtr, "gas");
+	auto gasUpdated = m_builder.CreateNSWSub(gas, cost, "gasUpdated");
+	auto gasOk = m_builder.CreateICmpSGE(gasUpdated, m_builder.getInt64(0), "gasOk"); // gas >= 0, with gas == 0 we can still do 0 cost instructions
+	m_builder.CreateCondBr(gasOk, updateBB, outOfGasBB, Type::expectTrue);
 
 	m_builder.SetInsertPoint(updateBB);
-	m_runtimeManager.setGas(gas);
+	m_builder.CreateStore(gasUpdated, gasPtr);
 	m_builder.CreateRetVoid();
+
+	m_builder.SetInsertPoint(outOfGasBB);
+	m_runtimeManager.abort(jmpBuf);
+	m_builder.CreateUnreachable();
 }
 
 void GasMeter::count(Instruction _inst)
@@ -117,7 +119,7 @@ void GasMeter::count(Instruction _inst)
 	if (!m_checkCall)
 	{
 		// Create gas check call with mocked block cost at begining of current cost-block
-		m_checkCall = createCall(m_gasCheckFunc, {m_runtimeManager.getRuntimePtr(), llvm::UndefValue::get(Type::Gas)});
+		m_checkCall = createCall(m_gasCheckFunc, {m_runtimeManager.getGasPtr(), llvm::UndefValue::get(Type::Gas), m_runtimeManager.getJmpBuf()});
 	}
 
 	m_blockCost += getStepCost(_inst);
@@ -134,7 +136,7 @@ void GasMeter::count(llvm::Value* _cost)
 	}
 
 	assert(_cost->getType() == Type::Gas);
-	createCall(m_gasCheckFunc, {m_runtimeManager.getRuntimePtr(), _cost});
+	createCall(m_gasCheckFunc, {m_runtimeManager.getGasPtr(), _cost, m_runtimeManager.getJmpBufExt()});
 }
 
 void GasMeter::countExp(llvm::Value* _exponent)
