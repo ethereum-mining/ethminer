@@ -27,7 +27,7 @@ llvm::Function* Memory::getRequireFunc()
 	auto& func = m_require;
 	if (!func)
 	{
-		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Word, Type::Word};
+		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Word, Type::Word, Type::BytePtr};
 		func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::PrivateLinkage, "mem.require", getModule());
 		auto rt = func->arg_begin();
 		rt->setName("rt");
@@ -35,6 +35,8 @@ llvm::Function* Memory::getRequireFunc()
 		offset->setName("offset");
 		auto size = offset->getNextNode();
 		size->setName("size");
+		auto jmpBuf = size->getNextNode();
+		jmpBuf->setName("jmpBuf");
 
 		llvm::Type* resizeArgs[] = {Type::RuntimePtr, Type::WordPtr};
 		auto resize = llvm::Function::Create(llvm::FunctionType::get(Type::BytePtr, resizeArgs, false), llvm::Function::ExternalLinkage, "mem_resize", getModule());
@@ -79,7 +81,7 @@ llvm::Function* Memory::getRequireFunc()
 		sizeRequired = m_builder.CreateMul(wordsRequired, Constant::get(32), "roundedSizeReq");
 		auto words = m_builder.CreateUDiv(currSize, Constant::get(32), "words");	// size is always 32*k
 		auto newWords = m_builder.CreateSub(wordsRequired, words, "addtionalWords");
-		m_gasMeter.countMemory(newWords);
+		m_gasMeter.countMemory(newWords, jmpBuf);
 		// Resize
 		m_builder.CreateStore(sizeRequired, sizePtr);
 		auto newData = m_builder.CreateCall2(resize, rt, sizePtr, "newData");
@@ -112,8 +114,6 @@ llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType, GasMet
 	auto index = rt->getNextNode();
 	index->setName("index");
 
-	auto valueSize = _valueType->getPrimitiveSizeInBits() / 8;
-	this->require(index, Constant::get(valueSize));
 	auto ptr = getBytePtr(index);
 	if (isWord)
 		ptr = m_builder.CreateBitCast(ptr, Type::WordPtr, "wordPtr");
@@ -163,16 +163,19 @@ llvm::Function* Memory::getStoreByteFunc()
 
 llvm::Value* Memory::loadWord(llvm::Value* _addr)
 {
+	require(_addr, Constant::get(Type::Word->getPrimitiveSizeInBits() / 8));
 	return createCall(getLoadWordFunc(), {getRuntimeManager().getRuntimePtr(), _addr});
 }
 
 void Memory::storeWord(llvm::Value* _addr, llvm::Value* _word)
 {
+	require(_addr, Constant::get(Type::Word->getPrimitiveSizeInBits() / 8));
 	createCall(getStoreWordFunc(), {getRuntimeManager().getRuntimePtr(), _addr, _word});
 }
 
 void Memory::storeByte(llvm::Value* _addr, llvm::Value* _word)
 {
+	require(_addr, Constant::get(Type::Byte->getPrimitiveSizeInBits() / 8));
 	auto byte = m_builder.CreateTrunc(_word, Type::Byte, "byte");
 	createCall(getStoreByteFunc(), {getRuntimeManager().getRuntimePtr(), _addr, byte});
 }
@@ -204,7 +207,7 @@ void Memory::require(llvm::Value* _offset, llvm::Value* _size)
 		if (!constant->getValue())
 			return;
 	}
-	createCall(getRequireFunc(), {getRuntimeManager().getRuntimePtr(), _offset, _size});
+	createCall(getRequireFunc(), {getRuntimeManager().getRuntimePtr(), _offset, _size, getRuntimeManager().getJmpBuf()});
 }
 
 void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value* _srcIdx,
