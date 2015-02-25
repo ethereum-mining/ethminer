@@ -101,6 +101,8 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, llvm::Value* _jmpBuf
 	auto rtPtr = getRuntimePtr();
 	m_dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 0), "data");
 	assert(m_dataPtr->getType() == Type::RuntimeDataPtr);
+	m_gasPtr = m_builder.CreateStructGEP(m_dataPtr, 0, "gas");
+	assert(m_gasPtr->getType() == Type::Gas->getPointerTo());
 	m_envPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 1), "env");
 	assert(m_envPtr->getType() == Type::EnvPtr);
 }
@@ -238,6 +240,10 @@ llvm::Value* RuntimeManager::getGas()
 
 llvm::Value* RuntimeManager::getGasPtr()
 {
+	if (getMainFunction())
+		return m_gasPtr;
+
+	// TODO: eliminated this case
 	return getPtr(RuntimeData::Gas);
 }
 
