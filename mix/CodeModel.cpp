@@ -25,7 +25,7 @@
 #include <QDebug>
 #include <QApplication>
 #include <QtQml>
-#include <libdevcore/SourceLocation.h>
+#include <libevmcore/SourceLocation.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libsolidity/InterfaceHandler.h>
