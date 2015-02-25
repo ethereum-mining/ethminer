@@ -425,8 +425,6 @@ function checkEthPath(dappUrl, callBack)
 {
 	var str = createString(dappUrl[0]);
 	var requests = [];
-	console.log(" ggg " + deploymentDialog.currentAccount);
-	console.log(" ggg " + deploymentDialog.eth);
 	requests.push({
 					  //register()
 					  jsonrpc: "2.0",
@@ -435,7 +433,6 @@ function checkEthPath(dappUrl, callBack)
 					  id: jsonRpcRequestId++
 				  });
 	rpcCall(requests, function (httpRequest, response) {
-		console.log("checking in path eth: found " + response);
 		var res = JSON.parse(response);
 		var addr = normalizeAddress(res[0].result);
 		if (addr === "")
@@ -478,7 +475,6 @@ function checkRegistration(dappUrl, addr, callBack)
 				  });
 
 	rpcCall(requests, function (httpRequest, response) {
-		console.log(" >> " +response);
 		var res = JSON.parse(response);
 		var nextAddr = normalizeAddress(res[1].result);
 		var errorTxt;
@@ -530,7 +526,6 @@ function checkRegistration(dappUrl, addr, callBack)
 				deploymentDialog.waitForTrCountToIncrement(function() {
 
 					var crLevel = createString(dappUrl[0]).encodeValueAsString();
-					console.log("registering " + dappUrl[0]);
 					requests.push({
 									  //setRegister()
 									  jsonrpc: "2.0",
@@ -613,7 +608,7 @@ function normalizeAddress(addr)
 	var i = 0;
 	for (var k in addr)
 	{
-		if (addr[k] !== "0")
+		if (addr[k] !== "0" || addr.length === 40)
 			break;
 		else
 		i++;
