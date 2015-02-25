@@ -154,6 +154,13 @@ llvm::Function* Array::createFreeFunc()
 	return func;
 }
 
+llvm::Type* Array::getType()
+{
+	llvm::Type* elementTys[] = {Type::WordPtr, Type::Size, Type::Size};
+	static auto arrayTy = llvm::StructType::create(elementTys, "Array");
+	return arrayTy;
+}
+
 Array::Array(llvm::IRBuilder<>& _builder, char const* _name) :
 	CompilerHelper(_builder),
 	m_pushFunc([this](){ return createArrayPushFunc(); }),
@@ -161,12 +168,19 @@ Array::Array(llvm::IRBuilder<>& _builder, char const* _name) :
 	m_getFunc([this](){ return createArrayGetFunc(); }),
 	m_freeFunc([this](){ return createFreeFunc(); })
 {
-	llvm::Type* elementTys[] = {Type::WordPtr, Type::Size, Type::Size};
-	static auto arrayTy = llvm::StructType::create(elementTys, "Array");
-
-	m_array = m_builder.CreateAlloca(arrayTy, nullptr, _name);
-	m_builder.CreateStore(llvm::ConstantAggregateZero::get(arrayTy), m_array);
+	m_array = m_builder.CreateAlloca(getType(), nullptr, _name);
+	m_builder.CreateStore(llvm::ConstantAggregateZero::get(getType()), m_array);
 }
+
+Array::Array(llvm::IRBuilder<>& _builder, llvm::Value* _array) :
+	CompilerHelper(_builder),
+	m_array(_array),
+	m_pushFunc([this](){ return createArrayPushFunc(); }),
+	m_setFunc([this](){ return createArraySetFunc(); }),
+	m_getFunc([this](){ return createArrayGetFunc(); }),
+	m_freeFunc([this](){ return createFreeFunc(); })
+{}
+
 
 void Array::pop(llvm::Value* _count)
 {

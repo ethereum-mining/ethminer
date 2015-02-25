@@ -33,6 +33,8 @@ public:
 	llvm::Value* getJmpBuf() { return m_jmpBuf; }
 	void setGas(llvm::Value* _gas);
 
+	llvm::Value* getMem();
+
 	void registerReturnData(llvm::Value* _index, llvm::Value* _size);
 	void registerSuicide(llvm::Value* _balanceAddress);
 

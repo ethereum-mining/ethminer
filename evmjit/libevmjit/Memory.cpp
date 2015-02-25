@@ -19,6 +19,7 @@ namespace jit
 
 Memory::Memory(RuntimeManager& _runtimeManager, GasMeter& _gasMeter):
 	RuntimeHelper(_runtimeManager),  // TODO: RuntimeHelper not needed
+	m_memory{getBuilder(), _runtimeManager.getMem()},
 	m_gasMeter(_gasMeter)
 {}
 
@@ -27,7 +28,7 @@ llvm::Function* Memory::getRequireFunc()
 	auto& func = m_require;
 	if (!func)
 	{
-		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Word, Type::Word, Type::BytePtr};
+		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Word, Type::Word, Type::BytePtr, Array::getType()->getPointerTo()};
 		func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::PrivateLinkage, "mem.require", getModule());
 		auto rt = func->arg_begin();
 		rt->setName("rt");
@@ -37,6 +38,8 @@ llvm::Function* Memory::getRequireFunc()
 		size->setName("size");
 		auto jmpBuf = size->getNextNode();
 		jmpBuf->setName("jmpBuf");
+		auto mem = jmpBuf->getNextNode();
+		mem->setName("mem");
 
 		llvm::Type* resizeArgs[] = {Type::RuntimePtr, Type::WordPtr};
 		auto resize = llvm::Function::Create(llvm::FunctionType::get(Type::BytePtr, resizeArgs, false), llvm::Function::ExternalLinkage, "mem_resize", getModule());
@@ -208,7 +211,7 @@ void Memory::require(llvm::Value* _offset, llvm::Value* _size)
 		if (!constant->getValue())
 			return;
 	}
-	createCall(getRequireFunc(), {getRuntimeManager().getRuntimePtr(), _offset, _size, getRuntimeManager().getJmpBuf()});
+	createCall(getRequireFunc(), {getRuntimeManager().getRuntimePtr(), _offset, _size, getRuntimeManager().getJmpBuf(), getRuntimeManager().getMem()});
 }
 
 void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value* _srcIdx,
