@@ -12,9 +12,10 @@ import "."
 
 
 Window {
+
 	id: modalDeploymentDialog
 	modality: Qt.ApplicationModal
-	width: 600
+	width: 800
 	height: 350
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
@@ -22,8 +23,9 @@ Window {
 	property string urlHintContract: "c83d3e22645fb015d02043a744921cc2f828c64d"
 	property string packageHash
 	property alias packageBase64: base64Value.text
-	property string eth: "afb7cdbd076674fd2c67f8a66518e3145b184ae4";
-	property string wallet: "c83d3e22645fb015d02043a744921cc2f828c64d";
+	property string eth: "4c3f7330690ed3657d3fa20fe5717b84010528ae";
+	property string yanndappRegistrar: "29a2e6d3c56ef7713a4e7229c3d1a23406f0161a";
+	property string currentAccount
 
 	color: Style.generic.layout.backgroundColor
 
@@ -34,6 +36,23 @@ Window {
 
 	function open()
 	{
+		var requests = [];
+		requests.push({
+						  //accounts
+						  jsonrpc: "2.0",
+						  method: "eth_accounts",
+						  params: null,
+						  id: 0
+					  });
+
+		TransactionHelper.rpcCall(requests, function(arg1, arg2)
+		{
+			modelAccounts.clear();
+			modelAccounts.append({ "id": JSON.parse(arg2)[0].result[0] })
+			modelAccounts.append({ "id": JSON.parse(arg2)[0].result[1] })
+			currentAccount = modelAccounts.get(0).id;
+		});
+
 		modalDeploymentDialog.setX((Screen.width - width) / 2);
 		modalDeploymentDialog.setY((Screen.height - height) / 2);
 		visible = true;
@@ -49,6 +68,46 @@ Window {
 		return h;
 	}
 
+	function waitForTrCountToIncrement(callBack)
+	{
+		poolLog.callBack = callBack;
+		poolLog.k = 0;
+		poolLog.start();
+	}
+
+	Timer
+	{
+		id: poolLog
+		property var callBack
+		property var k: -1
+		interval: 500
+		running: false
+		repeat: true
+		onTriggered: {
+			var requests = [];
+			var jsonRpcRequestId = 0;
+			requests.push({
+							  jsonrpc: "2.0",
+							  method: "eth_countAt",
+							  params: [ currentAccount ],
+							  id: jsonRpcRequestId++
+						  });
+			TransactionHelper.rpcCall(requests, function (httpRequest, response){
+				console.log(response);
+				response = response.replace(/,0+/, '');
+				console.log(response);
+				var count = JSON.parse(response)[0].result
+				if (k < parseInt(count) && k > 0)
+				{
+					stop();
+					callBack();
+				}
+				else
+					k = parseInt(JSON.parse(response)[0].result);
+			})
+		}
+	}
+
 	Rectangle
 	{
 		anchors.fill : parent
@@ -60,6 +119,22 @@ Window {
 			anchors.top: parent.top
 			anchors.left: parent.left
 			width: parent.width
+			DefaultLabel
+			{
+				text: qsTr("Account used to deploy:")
+			}
+
+			ComboBox {
+				id: comboAccounts
+				onCurrentIndexChanged : {
+					if (modelAccounts.count > 0)
+						currentAccount = modelAccounts.get(currentIndex).id;
+				}
+				model: ListModel {
+					id: modelAccounts
+				}
+			}
+
 			DefaultLabel
 			{
 				text: qsTr("Ethereum Application URL: ")
@@ -95,6 +170,20 @@ Window {
 				height: 60
 				enabled: base64Value.text != ""
 			}
+
+			DefaultLabel
+			{
+				text: qsTr("open package directory");
+				visible: projectModel.deploymentDir !== ""
+				MouseArea
+				{
+					anchors.fill: parent;
+					onClicked:
+					{
+						fileIo.openFileBrowser(projectModel.deploymentDir);
+					}
+				}
+			}
 		}
 
 		MessageDialog {
@@ -109,10 +198,19 @@ Window {
 			anchors.right: parent.right;
 			anchors.bottomMargin: 10
 			Button {
-				text: qsTr("Deploy to Ethereum");
+				text: qsTr("Deploy contract / Package resources");
 				tooltip: qsTr("Deploy contract and package resources files.")
 				onClicked: {
 					deployWarningDialog.open();
+				}
+			}
+
+			Button {
+				text: qsTr("Package resources only");
+				tooltip: qsTr("Package resources files.")
+				enabled: Object.keys(projectModel.deploymentAddresses).length > 0
+				onClicked: {
+					ProjectModelCode.startDeployProject(false);
 				}
 			}
 
@@ -137,27 +235,42 @@ Window {
 			}
 
 			Button {
-				text: qsTr("Check Ownership");
+				text: qsTr("Checking eth/yanndapp");
 				visible : false
 				onClicked: {
 					var requests = [];
-					var ethStr = QEtherHelper.createString("wallet");
-
-					var ethHash = QEtherHelper.createHash(eth);
+					var ethStr = QEtherHelper.createString("yanndapp");
 
 					requests.push({ //owner
-					jsonrpc: "2.0",
-					method: "eth_call",
-					params: [ { "to": '0x' + modalDeploymentDialog.eth, "data": "0xec7b9200" + ethStr.encodeValueAsString() } ],
-					id: 3
-				});
+									  jsonrpc: "2.0",
+									  method: "eth_call",
+									  params: [ { "to": '0x' + modalDeploymentDialog.eth, "data": "0xec7b9200" + ethStr.encodeValueAsString() } ], //check for yanndappRegistrar in eth
+									  id: 1
+								  });
 
-				requests.push({ //register
-					jsonrpc: "2.0",
-					method: "eth_call",
-					params: [ { "to":  '0x' + modalDeploymentDialog.eth, "data": "0x6be16bed" + ethStr.encodeValueAsString() } ],
-					id: 4
-				});
+					requests.push({ //register
+									  jsonrpc: "2.0",
+									  method: "eth_call",
+									  params: [ { "to":  '0x' + modalDeploymentDialog.eth, "data": "0x6be16bed" + ethStr.encodeValueAsString() } ], //getregister yanndappRegistrar in eth
+									  id: 2
+								  });
+
+
+					requests.push({ //getOwner
+									  jsonrpc: "2.0",
+									  method: "eth_call",
+									  params: [ { "to": '0x' + modalDeploymentDialog.yanndappRegistrar, "data": "0x893d20e8" } ], //check owner of this registrar
+									  id: 3
+								  });
+
+					/*requests.push({ //register
+									  jsonrpc: "2.0",
+									  method: "eth_call",
+									  params: [ { "to":  '0x' + modalDeploymentDialog.yanndappRegistrar, "data": "0x6be16bed" + ethStr.encodeValueAsString() } ],
+									  id: 2
+								  });*/
+
+
 
 					var jsonRpcUrl = "http://localhost:8080";
 					var rpcRequest = JSON.stringify(requests);
@@ -180,30 +293,76 @@ Window {
 				}
 			}
 
+			Button {
+				text: qsTr("add contracts");
+				visible : false
+				onClicked: {
+					 var jsonRpcRequestId = 0;
+					var requests = [];
+					requests.push({
+									  jsonrpc: "2.0",
+									  method: "eth_transact",
+									  params: [ { "gas": 20000, "code": "0x60056011565b600180601c6000396000f35b6008600081905550560000" } ],
+									  id: jsonRpcRequestId++
+								  });
+
+					var jsonRpcUrl = "http://localhost:8080";
+					var rpcRequest = JSON.stringify(requests);
+					var httpRequest = new XMLHttpRequest();
+					httpRequest.open("POST", jsonRpcUrl, true);
+					httpRequest.setRequestHeader("Content-type", "application/json");
+					httpRequest.setRequestHeader("Content-length", rpcRequest.length);
+					httpRequest.setRequestHeader("Connection", "close");
+					httpRequest.onreadystatechange = function() {
+						if (httpRequest.readyState === XMLHttpRequest.DONE) {
+							console.log(httpRequest.responseText);
+							var requests = [];
+
+							requests.push({
+											  jsonrpc: "2.0",
+											  method: "eth_transact",
+											  params: [ { "gas": 20000, "code": "0x60056011565b600180601c6000396000f35b6009600081905550560000" } ],
+											  id: jsonRpcRequestId++
+										  });
+							rpcRequest = JSON.stringify(requests);
+							httpRequest = new XMLHttpRequest();
+							httpRequest.open("POST", jsonRpcUrl, true);
+							httpRequest.setRequestHeader("Content-type", "application/json");
+							httpRequest.setRequestHeader("Content-length", rpcRequest.length);
+							httpRequest.setRequestHeader("Connection", "close");
+							httpRequest.onreadystatechange = function() {
+								if (httpRequest.readyState === XMLHttpRequest.DONE) {
+									console.log(httpRequest.responseText);
+								}
+							}
+							httpRequest.send(rpcRequest);
+						}
+					}
+					httpRequest.send(rpcRequest);
+				}
+			}
+
 
 			Button {
-				text: qsTr("Generate registrar init");
+				text: qsTr("Registering eth/yanndapp");
 				visible: false
 				onClicked: {
-					console.log("registering eth/wallet")
+					console.log("registering eth/yanndapp")
 					var jsonRpcRequestId = 0;
-
 					var requests = [];
-
-					var walletStr = QEtherHelper.createString("wallet");
+					var ydapp = QEtherHelper.createString("yanndapp");
 
 					requests.push({ //reserve
 									  jsonrpc: "2.0",
 									  method: "eth_transact",
-									  params: [ { "to": '0x' + modalDeploymentDialog.eth, "data": "0x1c83171b" + walletStr.encodeValueAsString() } ],
+									  params: [ { "gas": 2000, "to": '0x' + modalDeploymentDialog.eth, "data": "0x1c83171b" + ydapp.encodeValueAsString() } ],
 									  id: jsonRpcRequestId++
 								  });
-
 
 					requests.push({ //setRegister
 									  jsonrpc: "2.0",
 									  method: "eth_transact",
-									  params: [ { "to": '0x' + modalDeploymentDialog.eth, "data": "0x96077307" + walletStr.encodeValueAsString() + pad(wallet) } ],
+									  params: [ { "gas": 2000, "to": '0x' + modalDeploymentDialog.eth, "data": "0x96077307" + ydapp.encodeValueAsString() + modalDeploymentDialog.pad(modalDeploymentDialog.yanndappRegistrar) } ],
 									  id: jsonRpcRequestId++
 								  });
 
