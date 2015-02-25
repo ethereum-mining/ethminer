@@ -25,7 +25,6 @@ public:
 private:
 	RuntimeData& m_data;			///< Pointer to data. Expected by compiled contract.
 	Env& m_env;						///< Pointer to environment proxy. Expected by compiled contract.
-	void* m_currJmpBuf = nullptr;	///< Pointer to jump buffer. Expected by compiled contract.
 	byte* m_memoryData = nullptr;
 	i256 m_memorySize;
 	MemoryImpl m_memory;
