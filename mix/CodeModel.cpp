@@ -25,6 +25,7 @@
 #include <QDebug>
 #include <QApplication>
 #include <QtQml>
+#include <libevmcore/SourceLocation.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libsolidity/InterfaceHandler.h>
@@ -212,7 +213,7 @@ void CodeModel::runCompilationJob(int _jobId)
 	{
 		std::ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
-		solidity::Location const* location = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception);
+		SourceLocation const* location = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception);
 		QString message = QString::fromStdString(error.str());
 		CompiledContract* contract = nullptr;
 		if (location && location->sourceName.get() && (contract = contractByDocumentId(QString::fromStdString(*location->sourceName))))
