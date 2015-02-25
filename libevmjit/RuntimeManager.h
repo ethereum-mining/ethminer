@@ -31,6 +31,7 @@ public:
 	llvm::Value* getCodeSize();
 	llvm::Value* getCallDataSize();
 	llvm::Value* getJmpBuf() { return m_jmpBuf; }
+	llvm::Value* getJmpBufExt();
 	void setGas(llvm::Value* _gas);
 
 	void registerReturnData(llvm::Value* _index, llvm::Value* _size);
@@ -49,7 +50,6 @@ public:
 private:
 	llvm::Value* getPtr(RuntimeData::Index _index);
 	void set(RuntimeData::Index _index, llvm::Value* _value);
-	llvm::Value* getJmpBufExt();
 
 	llvm::Function* m_longjmp = nullptr;
 	llvm::Value* const m_jmpBuf;
