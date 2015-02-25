@@ -125,7 +125,7 @@ void GasMeter::count(Instruction _inst)
 	m_blockCost += getStepCost(_inst);
 }
 
-void GasMeter::count(llvm::Value* _cost)
+void GasMeter::count(llvm::Value* _cost, llvm::Value* _jmpBuf)
 {
 	if (_cost->getType() == Type::Word)
 	{
@@ -136,7 +136,7 @@ void GasMeter::count(llvm::Value* _cost)
 	}
 
 	assert(_cost->getType() == Type::Gas);
-	createCall(m_gasCheckFunc, {m_runtimeManager.getGasPtr(), _cost, m_runtimeManager.getJmpBufExt()});
+	createCall(m_gasCheckFunc, {m_runtimeManager.getGasPtr(), _cost, _jmpBuf ? _jmpBuf : m_runtimeManager.getJmpBuf()});
 }
 
 void GasMeter::countExp(llvm::Value* _exponent)
@@ -215,10 +215,10 @@ void GasMeter::commitCostBlock()
 	assert(m_blockCost == 0);
 }
 
-void GasMeter::countMemory(llvm::Value* _additionalMemoryInWords)
+void GasMeter::countMemory(llvm::Value* _additionalMemoryInWords, llvm::Value* _jmpBuf)
 {
 	static_assert(c_memoryGas == 1, "Memory gas cost has changed. Update GasMeter.");
-	count(_additionalMemoryInWords);
+	count(_additionalMemoryInWords, _jmpBuf);
 }
 
 void GasMeter::countCopy(llvm::Value* _copyWords)
