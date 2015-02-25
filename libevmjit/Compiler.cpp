@@ -9,7 +9,6 @@
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IntrinsicInst.h>
-#include <llvm/IR/MDBuilder.h>
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Instruction.h"
@@ -162,8 +161,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto abortBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Abort", m_mainFunc);
 
 	auto firstBB = m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.begin()->second.llvm();
-	auto expectTrue = llvm::MDBuilder{m_builder.getContext()}.createBranchWeights(1, 0);
-	m_builder.CreateCondBr(normalFlow, firstBB, abortBB, expectTrue);
+	m_builder.CreateCondBr(normalFlow, firstBB, abortBB, Type::expectTrue);
 
 	for (auto basicBlockPairIt = m_basicBlocks.begin(); basicBlockPairIt != m_basicBlocks.end(); ++basicBlockPairIt)
 	{
