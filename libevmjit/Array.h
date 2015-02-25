@@ -31,6 +31,7 @@ class Array : public CompilerHelper
 {
 public:
 	Array(llvm::IRBuilder<>& _builder, char const* _name);
+	Array(llvm::IRBuilder<>& _builder, llvm::Value* _array);
 
 	void push(llvm::Value* _value) { m_pushFunc.call(m_builder, {m_array, _value}); }
 	void set(llvm::Value* _index, llvm::Value* _value) { m_setFunc.call(m_builder, {m_array, _index, _value}); }
@@ -40,6 +41,8 @@ public:
 	void free() { m_freeFunc.call(m_builder, {m_array}); }
 
 	llvm::Value* getPointerTo() const { return m_array; }
+
+	static llvm::Type* getType();
 
 private:
 	llvm::Value* m_array = nullptr;
