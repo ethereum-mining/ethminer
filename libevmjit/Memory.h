@@ -30,7 +30,7 @@ public:
 private:
 	GasMeter& m_gasMeter;
 
-	llvm::Function* createFunc(bool _isStore, llvm::Type* _type, GasMeter& _gasMeter);
+	llvm::Function* createFunc(bool _isStore, llvm::Type* _type);
 
 	llvm::Function* getRequireFunc();
 	llvm::Function* getLoadWordFunc();

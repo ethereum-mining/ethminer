@@ -31,7 +31,6 @@ public:
 	llvm::Value* getCodeSize();
 	llvm::Value* getCallDataSize();
 	llvm::Value* getJmpBuf() { return m_jmpBuf; }
-	llvm::Value* getJmpBufExt();
 	void setGas(llvm::Value* _gas);
 
 	void registerReturnData(llvm::Value* _index, llvm::Value* _size);
@@ -40,7 +39,6 @@ public:
 	void exit(ReturnCode _returnCode);
 
 	void abort(llvm::Value* _jmpBuf);
-	void abort() { abort(getJmpBufExt()); }
 
 	void setStack(Stack& _stack) { m_stack = &_stack; }
 

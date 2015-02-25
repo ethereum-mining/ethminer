@@ -50,7 +50,6 @@ llvm::StructType* RuntimeManager::getRuntimeType()
 		{
 			Type::RuntimeDataPtr,	// data
 			Type::EnvPtr,			// Env*
-			Type::BytePtr,			// jmpbuf
 			Type::BytePtr,			// memory data
 			Type::Word,				// memory size
 		};
@@ -92,10 +91,6 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, llvm::Value* _jmpBuf
 	m_codeEnd(_codeEnd)
 {
 	m_longjmp = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::eh_sjlj_longjmp);
-
-	// save jmpBuf to be used in helper functions
-	auto ptr = m_builder.CreateStructGEP(getRuntimePtr(), 2);
-	m_builder.CreateStore(m_jmpBuf, ptr);
 
 	// Unpack data
 	auto rtPtr = getRuntimePtr();
@@ -154,7 +149,7 @@ void RuntimeManager::set(RuntimeData::Index _index, llvm::Value* _value)
 
 void RuntimeManager::registerReturnData(llvm::Value* _offset, llvm::Value* _size)
 {
-	auto memPtr = getBuilder().CreateStructGEP(getRuntimePtr(), 3);
+	auto memPtr = getBuilder().CreateStructGEP(getRuntimePtr(), 2);
 	auto mem = getBuilder().CreateLoad(memPtr, "memory");
 	auto idx = m_builder.CreateTrunc(_offset, Type::Size, "idx"); // Never allow memory index be a type bigger than i64 // TODO: Report bug & fix to LLVM
 	auto returnDataPtr = getBuilder().CreateGEP(mem, idx);
@@ -223,12 +218,6 @@ llvm::Value* RuntimeManager::getCallDataSize()
 	auto value = get(RuntimeData::CallDataSize);
 	assert(value->getType() == Type::Size);
 	return getBuilder().CreateZExt(value, Type::Word);
-}
-
-llvm::Value* RuntimeManager::getJmpBufExt()
-{
-	auto ptr = getBuilder().CreateStructGEP(getRuntimePtr(), 2);
-	return getBuilder().CreateLoad(ptr, "jmpBufExt");
 }
 
 llvm::Value* RuntimeManager::getGas()
