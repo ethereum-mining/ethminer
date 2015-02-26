@@ -58,6 +58,7 @@ public:
 
 private:
 	QString getHomePath() const;
+	QString pathFromUrl(QString const& _url);
 };
 
 }
