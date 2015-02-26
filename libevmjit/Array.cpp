@@ -250,9 +250,9 @@ void Array::pop(llvm::Value* _count)
 	m_builder.CreateStore(newSize, sizePtr);
 }
 
-llvm::Value* Array::size()
+llvm::Value* Array::size(llvm::Value* _array)
 {
-	auto sizePtr = m_builder.CreateStructGEP(m_array, 1, "sizePtr");
+	auto sizePtr = m_builder.CreateStructGEP(_array ? _array : m_array, 1, "sizePtr");
 	return m_builder.CreateLoad(sizePtr, "array.size");
 }
 
