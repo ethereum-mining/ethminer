@@ -56,7 +56,7 @@ public:
 	/// Compress a folder, @returns sha3 of the compressed file.
 	Q_INVOKABLE QStringList makePackage(QString const& _deploymentFolder);
 	/// Open a file browser
-	Q_INVOKABLE void openFileBrowser(QString _dir);
+	Q_INVOKABLE void openFileBrowser(QString const& _dir);
 
 private:
 	QString getHomePath() const;
