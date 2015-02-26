@@ -27,9 +27,6 @@
 
 #include <map>
 
-// Make sure boost/asio.hpp is included before windows.h.
-#include <boost/asio.hpp>
-
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>

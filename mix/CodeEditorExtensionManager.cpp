@@ -20,9 +20,6 @@
  * Ethereum IDE client.
  */
 
-// Make sure boost/asio.hpp is included before windows.h.
-#include <boost/asio.hpp>
-
 #include <QQuickItem>
 #include <QGraphicsObject>
 #include <QQmlEngine>
