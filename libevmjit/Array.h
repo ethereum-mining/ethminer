@@ -20,7 +20,7 @@ public:
 		m_creator(_creator)
 	{}
 
-	llvm::Value* call(llvm::IRBuilder<>& _builder, std::initializer_list<llvm::Value*> const& _args);
+	llvm::Value* call(llvm::IRBuilder<>& _builder, std::initializer_list<llvm::Value*> const& _args, llvm::Twine const& _name = {});
 
 private:
 	llvm::Function* m_func = nullptr;
@@ -40,6 +40,9 @@ public:
 	llvm::Value* size();
 	void free() { m_freeFunc.call(m_builder, {m_array}); }
 
+	void extend(llvm::Value* _arrayPtr, llvm::Value* _size);
+	llvm::Value* getPtr(llvm::Value* _arrayPtr, llvm::Value* _index) { return m_getPtrFunc.call(m_builder, {_arrayPtr, _index}); }
+
 	llvm::Value* getPointerTo() const { return m_array; }
 
 	static llvm::Type* getType();
@@ -47,15 +50,21 @@ public:
 private:
 	llvm::Value* m_array = nullptr;
 
-	LazyFunction m_pushFunc;
-	LazyFunction m_setFunc;
-	LazyFunction m_getFunc;
-	LazyFunction m_freeFunc;
-
 	llvm::Function* createArrayPushFunc();
 	llvm::Function* createArraySetFunc();
 	llvm::Function* createArrayGetFunc();
+	llvm::Function* createGetPtrFunc();
 	llvm::Function* createFreeFunc();
+	llvm::Function* createExtendFunc();
+	llvm::Function* getReallocFunc();
+
+	LazyFunction m_pushFunc = {[this](){ return createArrayPushFunc(); }}; // TODO: If works on MSVC, remove form initialization list
+	LazyFunction m_setFunc;
+	LazyFunction m_getPtrFunc = {[this](){ return createGetPtrFunc(); }};
+	LazyFunction m_getFunc;
+	LazyFunction m_freeFunc;
+	LazyFunction m_extendFunc = {[this](){ return createExtendFunc(); }};
+	LazyFunction m_reallocFunc = {[this](){ return getReallocFunc(); }};
 };
 
 }
