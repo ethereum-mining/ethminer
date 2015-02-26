@@ -153,7 +153,6 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	if (returnCode == ReturnCode::Return)
 	{
 		returnData = runtime.getReturnData();     // Save reference to return data
-		std::swap(m_memory, runtime.getMemory()); // Take ownership of memory
 	}
 	listener->stateChanged(ExecState::Finished);
 
