@@ -20,7 +20,6 @@
  */
 
 #include <queue>
-#include <boost/asio.hpp>
 #include <QtCore/QObject>
 #include <libdevcore/Guards.h>
 #include <libethcore/CommonJS.h>
