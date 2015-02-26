@@ -32,11 +32,10 @@ namespace dev
 {
 
 struct Exception;
-
+struct SourceLocation;
 namespace solidity
 {
 	class ASTNode;
-	struct Location;
 }
 
 namespace mix
@@ -74,7 +73,7 @@ public:
 	struct FormatRange
 	{
 		FormatRange(CodeHighlighterSettings::Token _t, int _start, int _length): token(_t), start(_start), length(_length) {}
-		FormatRange(CodeHighlighterSettings::Token _t, solidity::Location const& _location);
+		FormatRange(CodeHighlighterSettings::Token _t, SourceLocation const& _location);
 		bool operator<(FormatRange const& _other) const { return start < _other.start || (start == _other.start && length < _other.length); }
 
 		CodeHighlighterSettings::Token token;
