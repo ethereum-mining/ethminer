@@ -33,7 +33,7 @@
 
 using namespace dev::mix;
 
-MixApplication::MixApplication(int _argc, char* _argv[]):
+MixApplication::MixApplication(int& _argc, char* _argv[]):
 	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine()), m_appContext(new AppContext(m_engine.get()))
 {
 	setOrganizationName(tr("Ethereum"));
