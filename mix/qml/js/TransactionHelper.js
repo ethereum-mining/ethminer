@@ -27,7 +27,6 @@ function rpcCall(requests, callBack)
 				var errorText = qsTr("Deployment error: Error while registering Dapp ") + httpRequest.status;
 				console.log(errorText);
 				deploymentError(errorText);
-				return;
 			}
 			callBack(httpRequest.status, httpRequest.responseText)
 		}
