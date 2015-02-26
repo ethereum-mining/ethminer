@@ -257,7 +257,9 @@ LocalisedLogEntries Client::peekWatch(unsigned _watchId) const
 	Guard l(m_filterLock);
 
 	try {
+		cdebug << "peekWatch" << _watchId;
 		auto& w = m_watches.at(_watchId);
+		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 		w.lastPoll = chrono::system_clock::now();
 		return w.changes;
 	} catch (...) {}
@@ -271,7 +273,9 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	LocalisedLogEntries ret;
 
 	try {
+		cdebug << "checkWatch" << _watchId;
 		auto& w = m_watches.at(_watchId);
+		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 		std::swap(ret, w.changes);
 		w.lastPoll = chrono::system_clock::now();
 	} catch (...) {}
