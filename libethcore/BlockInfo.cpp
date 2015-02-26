@@ -134,7 +134,7 @@ void BlockInfo::populate(bytesConstRef _block, bool _checkNonce)
 	RLP header = root[0];
 
 	if (!header.isList())
-		BOOST_THROW_EXCEPTION(InvalidBlockFormat(0,header.data()) << errinfo_comment("block header needs to be a list"));
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat(0, header.data()) << errinfo_comment("block header needs to be a list"));
 	populateFromHeader(header, _checkNonce);
 
 	if (!root[1].isList())
@@ -191,7 +191,7 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 	if (!parentHash)
 		return c_genesisDifficulty;
 	else
-		return timestamp >= _parent.timestamp + (c_protocolVersion == 49 ? 5 : 8) ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10));
+		return max<u256>(1024, timestamp >= _parent.timestamp + (c_protocolVersion == 49 ? 5 : 8) ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10)));
 }
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
