@@ -293,7 +293,6 @@ function deployProject(force) {
 	deploymentDialog.open();
 }
 
-var codeTest = "";
 function startDeployProject(erasePrevious)
 {
 	var date = new Date();
@@ -308,52 +307,54 @@ function startDeployProject(erasePrevious)
 	console.log("Deploying " + deploymentId + " to " + jsonRpcUrl);
 	deploymentStarted();
 
-	var requests = [];
-	var requestNames = [];
+	var ctrNames = Object.keys(codeModel.contracts);
+	var ctrAddresses = {};
+	deployContracts(0, ctrAddresses, ctrNames, function (){
+		finalizeDeployment(deploymentId, ctrAddresses);
+	});
+}
 
-	for (var c in codeModel.contracts) { //TODO: order based on dependencies
-		var code = codeModel.contracts[c].codeHex;
-		requests.push({
-						  jsonrpc: "2.0",
-						  method: "eth_transact",
-						  params: [ { "from": deploymentDialog.currentAccount, "gas": 20000, "code": code /* "0x60056013565b61059e8061001d6000396000f35b33600081905550560060003560e060020a90048063019848921461009a578063449c2090146100af5780635d574e32146100cd5780635fd4b08a146100e1578063618242da146100f65780636be16bed1461010b5780636c4489b414610129578063893d20e8146101585780639607730714610173578063c284bc2a14610187578063e50f599a14610198578063e5811b35146101af578063ec7b9200146101cd57005b6100a560043561031b565b8060005260206000f35b6100ba6004356103a0565b80600160a060020a031660005260206000f35b6100db600435602435610537565b60006000f35b6100ec600435610529565b8060005260206000f35b6101016004356103dd565b8060005260206000f35b6101166004356103bd565b80600160a060020a031660005260206000f35b61013460043561034b565b82600160a060020a031660005281600160a060020a03166020528060405260606000f35b610160610341565b80600160a060020a031660005260206000f35b6101816004356024356102b4565b60006000f35b6101926004356103fd565b60006000f35b6101a96004356024356044356101f2565b60006000f35b6101ba6004356101eb565b80600160a060020a031660005260206000f35b6101d8600435610530565b80600160a060020a031660005260206000f35b6000919050565b600054600160a060020a031633600160a060020a031614610212576102af565b8160026000858152602001908152602001600020819055508061023457610287565b81600160a060020a0316837f680ad70765443c2967675ab0fb91a46350c01c6df59bf9a41ff8a8dd097464ec60006000a3826001600084600160a060020a03168152602001908152602001600020819055505b827f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b505050565b600054600160a060020a031633600160a060020a0316146102d457610317565b806002600084815260200190815260200160002060010181905550817f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b5050565b60006001600083600160a060020a03168152602001908152602001600020549050919050565b6000600054905090565b6000600060006002600085815260200190815260200160002054925060026000858152602001908152602001600020600101549150600260008581526020019081526020016000206002015490509193909250565b600060026000838152602001908152602001600020549050919050565b600060026000838152602001908152602001600020600101549050919050565b600060026000838152602001908152602001600020600201549050919050565b600054600160a060020a031633600160a060020a03161461041d57610526565b80600160006002600085815260200190815260200160002054600160a060020a031681526020019081526020016000205414610458576104d2565b6002600082815260200190815260200160002054600160a060020a0316817f680ad70765443c2967675ab0fb91a46350c01c6df59bf9a41ff8a8dd097464ec60006000a36000600160006002600085815260200190815260200160002054600160a060020a03168152602001908152602001600020819055505b6002600082815260200190815260200160002060008101600090556001810160009055600281016000905550807f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b50565b6000919050565b6000919050565b600054600160a060020a031633600160a060020a0316146105575761059a565b806002600084815260200190815260200160002060020181905550817f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b505056" */ } ],
-						  id: jsonRpcRequestId++
-					  });
-		requestNames.push(c);
-		codeTest = code;
-	}
-
-	var rpcRequest = JSON.stringify(requests);
-	var httpRequest = new XMLHttpRequest();
-	httpRequest.open("POST", jsonRpcUrl, true);
-	httpRequest.setRequestHeader("Content-type", "application/json");
-	httpRequest.setRequestHeader("Content-length", rpcRequest.length);
-	httpRequest.setRequestHeader("Connection", "close");
-	httpRequest.onreadystatechange = function() {
-		if (httpRequest.readyState === XMLHttpRequest.DONE) {
-			if (httpRequest.status === 200) {
-				var rpcResponse = JSON.parse(httpRequest.responseText);
-				console.log("crea" + httpRequest.responseText);
-				if (rpcResponse.length === requestNames.length) {
-					var contractAddresses = {};
-					for (var r = 0; r < rpcResponse.length; r++)
-						contractAddresses[requestNames[r]] = rpcResponse[r].result;
-
-					var txt = qsTr("Please wait while the contract is published ...")
-					deploymentStepChanged(txt);
-					console.log(txt);
-					deploymentDialog.waitForTrCountToIncrement(function() {
-						finalizeDeployment(deploymentId, contractAddresses);
-					});
-				}
-			} else {
-				var errorText = qsTr("Deployment error: RPC server HTTP status ") + httpRequest.status;
-				console.log(errorText);
-				deploymentError(errorText);
+function deployContracts(ctrIndex, ctrAddresses, ctrNames, callBack)
+{
+	var code = codeModel.contracts[ctrNames[ctrIndex]].codeHex;
+	var requests = [{
+						jsonrpc: "2.0",
+						method: "eth_transact",
+						params: [ { "from": deploymentDialog.currentAccount, "gas": deploymentDialog.gasToUse, "code": code } ],
+						id: 0
+					}];
+	rpcCall(requests, function (httpCall, response){
+		var txt = qsTr("Please wait while " + ctrNames[ctrIndex] + " is published ...")
+		deploymentStepChanged(txt);
+		console.log(txt);
+		ctrAddresses[ctrNames[ctrIndex]] = JSON.parse(response)[0].result
+		deploymentDialog.waitForTrCountToIncrement(function(status) {
+			if (status === -1)
+			{
+				trCountIncrementTimeOut();
+				return;
 			}
-		}
-	}
-	httpRequest.send(rpcRequest);
+			ctrIndex++;
+			if (ctrIndex < ctrNames.length)
+				deployContracts(ctrIndex, ctrAddresses, ctrNames, callBack);
+			else
+				callBack();
+		});
+	});
+}
+
+function checkNewLog()
+{
+	var requests = [];
+	requests.push({
+					  jsonrpc: "2.0",
+					  method: "eth_changed",
+					  params: [0],
+					  id: 0
+				  });
+	rpcCall(requests, function (httpRequest, response) {
+		console.log("eth log: " + response);
+	});
 }
 
 function finalizeDeployment(deploymentId, addresses) {
@@ -480,7 +481,7 @@ function checkRegistration(dappUrl, addr, callBack)
 		var errorTxt;
 		if (res[1].result === "0x")
 		{
-			errorTxt = qsTr("Error when creating new owned path. Please use the regsitration Dapp. Aborting");
+			errorTxt = qsTr("Error when creating new owned regsitrar. Please use the regsitration Dapp. Aborting");
 			deploymentError(errorTxt);
 			console.log(errorTxt);
 		}
@@ -500,7 +501,7 @@ function checkRegistration(dappUrl, addr, callBack)
 		}
 		else
 		{
-			var txt = qsTr("Creating sub domain " + dappUrl[0] +  " ...");
+			var txt = qsTr("Registering sub domain " + dappUrl[0] +  " ...");
 			console.log(txt);
 			deploymentStepChanged(txt);
 			//current registrar is owned => ownedregistrar creation and continue.
@@ -519,12 +520,16 @@ function checkRegistration(dappUrl, addr, callBack)
 				requests = [];
 				console.log('new created addr ' + newCtrAddress);
 
-				var txt = qsTr("Please wait while " + dappUrl[0] + " is creating ...");
+				var txt = qsTr("Please wait " + dappUrl[0] + " is registering ...");
 				deploymentStepChanged(txt);
 				console.log(txt);
 
-				deploymentDialog.waitForTrCountToIncrement(function() {
-
+				deploymentDialog.waitForTrCountToIncrement(function(status) {
+					if (status === -1)
+					{
+						trCountIncrementTimeOut();
+						return;
+					}
 					var crLevel = createString(dappUrl[0]).encodeValueAsString();
 					requests.push({
 									  //setRegister()
@@ -547,22 +552,11 @@ function checkRegistration(dappUrl, addr, callBack)
 	});
 }
 
-var filterId;
-function createFilter(callBack)
+function trCountIncrementTimeOut()
 {
-	var requests = [];
-	var jsonRpcRequestId = 0;
-	requests.push({
-					  jsonrpc: "2.0",
-					  method: "eth_newFilterString",
-					  params: [ "pending" ],
-					  id: jsonRpcRequestId++
-				  });
-	rpcCall(requests, function (httpRequest, response){
-		console.log(response);
-		filterId = JSON.parse(response)[0].result;
-		callBack(filterId);
-	})
+	var error = qsTr("Something went wrong during the deployment. Please verify the amount of gas for this transaction and check your balance.")
+	console.log(error);
+	deploymentError(error);
 }
 
 function registerContentHash(registrar, callBack)

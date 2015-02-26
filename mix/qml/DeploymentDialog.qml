@@ -15,7 +15,7 @@ Window {
 
 	id: modalDeploymentDialog
 	modality: Qt.ApplicationModal
-	width: 800
+	width: 930
 	height: 350
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
@@ -26,6 +26,7 @@ Window {
 	property string eth: "4c3f7330690ed3657d3fa20fe5717b84010528ae";
 	property string yanndappRegistrar: "29a2e6d3c56ef7713a4e7229c3d1a23406f0161a";
 	property string currentAccount
+	property alias gasToUse: gasToUseInput.text
 
 	color: Style.generic.layout.backgroundColor
 
@@ -36,26 +37,48 @@ Window {
 
 	function open()
 	{
-		var requests = [];
-		requests.push({
-						  //accounts
-						  jsonrpc: "2.0",
-						  method: "eth_accounts",
-						  params: null,
-						  id: 0
-					  });
+		modalDeploymentDialog.setX((Screen.width - width) / 2);
+		modalDeploymentDialog.setY((Screen.height - height) / 2);
+		visible = true;
+
+		var requests = [{
+							//accounts
+							jsonrpc: "2.0",
+							method: "eth_accounts",
+							params: null,
+							id: 0
+						}];
 
 		TransactionHelper.rpcCall(requests, function(arg1, arg2)
 		{
 			modelAccounts.clear();
-			modelAccounts.append({ "id": JSON.parse(arg2)[0].result[0] })
-			modelAccounts.append({ "id": JSON.parse(arg2)[0].result[1] })
-			currentAccount = modelAccounts.get(0).id;
-		});
+			var ids = JSON.parse(arg2)[0].result;
+			requests = [];
+			for (var k in ids)
+			{
+				modelAccounts.append({ "id": ids[k] })
+				requests.push({
+								  //accounts
+								  jsonrpc: "2.0",
+								  method: "eth_balanceAt",
+								  params: [ids[k]],
+								  id: k
+							  });
+			}
 
-		modalDeploymentDialog.setX((Screen.width - width) / 2);
-		modalDeploymentDialog.setY((Screen.height - height) / 2);
-		visible = true;
+			if (ids.length > 0)
+				currentAccount = modelAccounts.get(0).id;
+
+			TransactionHelper.rpcCall(requests, function (request, response){
+				var balanceRet = JSON.parse(response);
+				for (var k in balanceRet)
+				{
+					var ether = QEtherHelper.createEther(balanceRet[k].result, QEther.Wei);
+					comboAccounts.balances.push(ether.format());
+				}
+				balance.text = comboAccounts.balances[0];
+			});
+		});
 	}
 
 	function pad(h)
@@ -71,7 +94,8 @@ Window {
 	function waitForTrCountToIncrement(callBack)
 	{
 		poolLog.callBack = callBack;
-		poolLog.k = 0;
+		poolLog.k = -1;
+		poolLog.elapsed = 0;
 		poolLog.start();
 	}
 
@@ -79,11 +103,13 @@ Window {
 	{
 		id: poolLog
 		property var callBack
-		property var k: -1
+		property int k: -1
+		property int elapsed
 		interval: 500
 		running: false
 		repeat: true
 		onTriggered: {
+			elapsed += interval;
 			var requests = [];
 			var jsonRpcRequestId = 0;
 			requests.push({
@@ -93,14 +119,17 @@ Window {
 							  id: jsonRpcRequestId++
 						  });
 			TransactionHelper.rpcCall(requests, function (httpRequest, response){
-				console.log(response);
-				response = response.replace(/,0+/, '');
-				console.log(response);
+				response = response.replace(/,0+/, ''); // ==> result:27,00000000
 				var count = JSON.parse(response)[0].result
 				if (k < parseInt(count) && k > 0)
 				{
 					stop();
-					callBack();
+					callBack(1);
+				}
+				else if (elapsed > 25000)
+				{
+					stop();
+					callBack(-1);
 				}
 				else
 					k = parseInt(JSON.parse(response)[0].result);
@@ -124,16 +153,35 @@ Window {
 				text: qsTr("Account used to deploy:")
 			}
 
-			ComboBox {
-				id: comboAccounts
-				onCurrentIndexChanged : {
-					if (modelAccounts.count > 0)
-						currentAccount = modelAccounts.get(currentIndex).id;
+			Rectangle
+			{
+				width: 300
+				height: 25
+				color: "transparent"
+				ComboBox {
+					id: comboAccounts
+					property var balances: []
+					onCurrentIndexChanged : {
+						if (modelAccounts.count > 0)
+						{
+							currentAccount = modelAccounts.get(currentIndex).id;
+							balance.text = balances[currentIndex];
+						}
+					}
+					model: ListModel {
+						id: modelAccounts
+					}
 				}
-				model: ListModel {
-					id: modelAccounts
+
+				DefaultLabel
+				{
+					anchors.verticalCenter: parent.verticalCenter
+					anchors.left: comboAccounts.right
+					anchors.leftMargin: 20
+					id: balance;
 				}
 			}
+
 
 			DefaultLabel
 			{
@@ -159,6 +207,18 @@ Window {
 
 			DefaultLabel
 			{
+				text: qsTr("Amount of gas to use for each contract deployment: ")
+			}
+
+			DefaultTextField
+			{
+				text: "20000"
+				Layout.fillWidth: true
+				id: gasToUseInput
+			}
+
+			DefaultLabel
+			{
 				text: qsTr("Package (Base64): ")
 			}
 
@@ -169,20 +229,6 @@ Window {
 				id: base64Value
 				height: 60
 				enabled: base64Value.text != ""
-			}
-
-			DefaultLabel
-			{
-				text: qsTr("open package directory");
-				visible: projectModel.deploymentDir !== ""
-				MouseArea
-				{
-					anchors.fill: parent;
-					onClicked:
-					{
-						fileIo.openFileBrowser(projectModel.deploymentDir);
-					}
-				}
 			}
 		}
 
@@ -211,6 +257,14 @@ Window {
 				enabled: Object.keys(projectModel.deploymentAddresses).length > 0
 				onClicked: {
 					ProjectModelCode.startDeployProject(false);
+				}
+			}
+
+			Button {
+				text: qsTr("Open Package Directory");
+				enabled: projectModel.deploymentDir !== ""
+				onClicked: {
+					fileIo.openFileBrowser(projectModel.deploymentDir);
 				}
 			}
 
@@ -297,7 +351,7 @@ Window {
 				text: qsTr("add contracts");
 				visible : false
 				onClicked: {
-					 var jsonRpcRequestId = 0;
+					var jsonRpcRequestId = 0;
 					var requests = [];
 					requests.push({
 									  jsonrpc: "2.0",
