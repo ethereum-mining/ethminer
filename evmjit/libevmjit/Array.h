@@ -37,7 +37,7 @@ public:
 	void set(llvm::Value* _index, llvm::Value* _value) { m_setFunc.call(m_builder, {m_array, _index, _value}); }
 	llvm::Value* get(llvm::Value* _index) { return m_getFunc.call(m_builder, {m_array, _index}); }
 	void pop(llvm::Value* _count);
-	llvm::Value* size();
+	llvm::Value* size(llvm::Value* _array = nullptr);
 	void free() { m_freeFunc.call(m_builder, {m_array}); }
 
 	void extend(llvm::Value* _arrayPtr, llvm::Value* _size);
