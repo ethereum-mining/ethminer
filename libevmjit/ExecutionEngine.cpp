@@ -160,6 +160,11 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	if (g_stats)
 		statsCollector.stats.push_back(std::move(listener));
 
+	if (runtime.m_memData)
+	{
+		std::cerr << "MEM: " << (size_t) runtime.m_memData << " [" << runtime.m_memSize << ", " << runtime.m_memCap << "}\n";
+	}
+
 	return returnCode;
 }
 

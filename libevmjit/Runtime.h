@@ -27,6 +27,7 @@ private:
 	Env& m_env;						///< Pointer to environment proxy. Expected by compiled contract.
 	byte* m_memoryData = nullptr;
 	i256 m_memorySize;
+public:
 	byte* m_memData = nullptr;
 	uint64_t m_memSize = 0;
 	uint64_t m_memCap = 0;
