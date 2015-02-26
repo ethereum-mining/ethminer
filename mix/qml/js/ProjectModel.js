@@ -396,10 +396,10 @@ function finalizeDeployment(deploymentId, addresses) {
 	deploymentDialog.packageBase64 = packageRet[1];
 
 	var applicationUrlEth = deploymentDialog.applicationUrlEth;
+
 	applicationUrlEth = formatAppUrl(applicationUrlEth);
 
 	deploymentStepChanged(qsTr("Registering application on the Ethereum network ..."));
-	applicationUrlEth.splice(0, 1); //Remove eth (already exists).
 	applicationUrlEth.push(projectModel.projectTitle);
 	checkEthPath(applicationUrlEth, function () {
 		deploymentComplete();
@@ -435,7 +435,6 @@ function checkEthPath(dappUrl, callBack)
 		}
 	});
 }
-
 
 function checkRegistration(dappUrl, addr, callBack)
 {
@@ -477,7 +476,7 @@ function checkRegistration(dappUrl, addr, callBack)
 			deploymentError(errorTxt);
 			console.log(errorTxt);
 		}
-		else if (nextAddr !== "")
+		else if (nextAddr.replace(/0+/g, "") !== "")
 		{
 			dappUrl.splice(0, 1);
 			if (dappUrl.length > 0)
@@ -593,26 +592,21 @@ function normalizeAddress(addr)
 
 function formatAppUrl(url)
 {
-	var slash = url.indexOf("/");
-	var dot = url.indexOf(".");
-	if (slash === -1 && dot === -1)
-		return url;
-	if ((slash !== -1 && slash < dot) || dot === -1)
-		return url.split("/");
+	var ret;
+	if (url.indexOf("/") === -1)
+		ret = url.split('.').reverse();
 	else
 	{
-		var dotted;
-		var ret = [];
-		if (slash !== -1)
-		{
-			ret.push(url.split("/"));
-			dotted = ret[0].split(".");
-		}
-		else
-			dotted = url.split(".");
+		var slash = url.indexOf("/");
+		var left = url.substring(0, slash);
+		var leftA = left.split(".");
+		leftA.reverse();
 
-		for (var k in dotted)
-			ret.unshift(dotted[k]);
-		return ret;
+		var right = url.substring(slash + 1);
+		var rightA = right.split('/');
+		ret = leftA.concat(rightA);
 	}
+	if (ret[0].toLowerCase() === "eth")
+		ret.splice(0, 1);
+	return ret;
 }
