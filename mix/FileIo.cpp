@@ -40,7 +40,7 @@ using namespace dev;
 using namespace dev::crypto;
 using namespace dev::mix;
 
-void FileIo::openFileBrowser(QString _dir)
+void FileIo::openFileBrowser(QString const& _dir)
 {
 	QDesktopServices::openUrl(QUrl(_dir));
 }
