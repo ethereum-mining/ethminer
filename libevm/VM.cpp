@@ -38,8 +38,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 	auto gasForMem = [](bigint _size) -> bigint
 	{
 		bigint s = _size / 32;
-//		return (bigint)c_memoryGas * (s + s * s / 1024);
-		return (bigint)c_memoryGas * s;
+		return (bigint)c_memoryGas * (s + s * s / 1024);
 	};
 
 	if (m_jumpDests.empty())
