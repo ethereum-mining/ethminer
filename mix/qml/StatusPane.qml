@@ -35,17 +35,24 @@ Rectangle {
 		logslink.visible = false;
 	}
 
+	function errorMessage(text)
+	{
+		status.state = "error";
+		status.text = text
+		logslink.visible = false;
+	}
+
 	Connections {
 		target:clientModel
 		onRunStarted: infoMessage(qsTr("Running transactions..."));
-		onRunFailed: infoMessage(qsTr("Error running transactions"));
+		onRunFailed: errorMessage(qsTr("Error running transactions"));
 		onRunComplete: infoMessage(qsTr("Run complete"));
 		onNewBlock: infoMessage(qsTr("New block created"));
 	}
 	Connections {
 		target:projectModel
 		onDeploymentStarted: infoMessage(qsTr("Running deployment..."));
-		onDeploymentError: infoMessage(error);
+		onDeploymentError: errorMessage(error);
 		onDeploymentComplete: infoMessage(qsTr("Deployment complete"));
 		onDeploymentStepChanged: infoMessage(message);
 	}
