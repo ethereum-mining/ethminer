@@ -139,7 +139,7 @@ llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType)
 		auto memPtr = m_memory.getPtr(mem, m_builder.CreateTrunc(index, Type::Size));
 
 
-		llvm::Value* ret = m_builder.CreateLoad(ptr);
+		llvm::Value* ret = m_builder.CreateLoad(memPtr);
 		ret = Endianness::toNative(m_builder, ret);
 		m_builder.CreateRet(ret);
 	}
@@ -193,9 +193,8 @@ void Memory::storeByte(llvm::Value* _addr, llvm::Value* _word)
 
 llvm::Value* Memory::getData()
 {
-	auto rtPtr = getRuntimeManager().getRuntimePtr();
-	auto dataPtr = m_builder.CreateStructGEP(rtPtr, 2);
-	auto data = m_builder.CreateLoad(dataPtr, "data");
+	auto memPtr = m_builder.CreateBitCast(getRuntimeManager().getMem(), Type::BytePtr->getPointerTo());
+	auto data = m_builder.CreateLoad(memPtr, "data");
 	assert(data->getType() == Type::BytePtr);
 	return data;
 }
@@ -255,8 +254,10 @@ void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value*
 
 	auto src = m_builder.CreateGEP(_srcPtr, idx64, "src");
 	auto dstIdx = m_builder.CreateTrunc(_destMemIdx, Type::Size, "dstIdx"); // Never allow memory index be a type bigger than i64
-	auto dst = m_builder.CreateGEP(getData(), dstIdx, "dst");
+	auto dst = m_memory.getPtr(getRuntimeManager().getMem(), dstIdx);
+	auto dst2 = m_builder.CreateGEP(getData(), dstIdx, "dst2");
 	m_builder.CreateMemCpy(dst, src, bytesToCopy, 0);
+	m_builder.CreateMemCpy(dst2, src, bytesToCopy, 0);
 }
 
 }

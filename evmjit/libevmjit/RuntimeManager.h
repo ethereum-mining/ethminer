@@ -35,7 +35,7 @@ public:
 
 	llvm::Value* getMem();
 
-	void registerReturnData(llvm::Value* _index, llvm::Value* _size);
+	void registerReturnData(llvm::Value* _index, llvm::Value* _size); // TODO: Move to Memory.
 	void registerSuicide(llvm::Value* _balanceAddress);
 
 	void exit(ReturnCode _returnCode);
