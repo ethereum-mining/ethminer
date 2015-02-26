@@ -20,11 +20,11 @@ Window {
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
-	property string urlHintContract: "c83d3e22645fb015d02043a744921cc2f828c64d"
+	property string urlHintContract: "c83d3e22645fb015d02043a744921cc2f828c64d" /* TODO: replace with the good address */
 	property string packageHash
 	property alias packageBase64: base64Value.text
-	property string eth: "4c3f7330690ed3657d3fa20fe5717b84010528ae";
-	property string yanndappRegistrar: "29a2e6d3c56ef7713a4e7229c3d1a23406f0161a";
+	property string eth: "4c3f7330690ed3657d3fa20fe5717b84010528ae"; /* TODO: replace with the good address */
+	property string yanndappRegistrar: "29a2e6d3c56ef7713a4e7229c3d1a23406f0161a"; /* TODO: Only fur testing purpose. To remove when registrar contract will be deployed in genesis block */
 	property string currentAccount
 	property alias gasToUse: gasToUseInput.text
 
@@ -288,6 +288,7 @@ Window {
 				onClicked: close();
 			}
 
+			/* TODO: Only fur testing purpose. To remove when registrar contract will be deployed in genesis block */
 			Button {
 				text: qsTr("Checking eth/yanndapp");
 				visible : false
@@ -347,6 +348,7 @@ Window {
 				}
 			}
 
+			/* TODO: Only fur testing purpose. To remove when registrar contract will be deployed in genesis block */
 			Button {
 				text: qsTr("add contracts");
 				visible : false
@@ -396,7 +398,7 @@ Window {
 				}
 			}
 
-
+			/* TODO: Only fur testing purpose. To remove when registrar contract will be deployed in genesis block */
 			Button {
 				text: qsTr("Registering eth/yanndapp");
 				visible: false
