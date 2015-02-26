@@ -585,15 +585,10 @@ function registerToUrlHint()
 function normalizeAddress(addr)
 {
 	addr = addr.replace('0x', '');
-	var i = 0;
-	for (var k in addr)
-	{
-		if (addr[k] !== "0" || addr.length === 40)
-			break;
-		else
-		i++;
-	}
-	return addr.substring(i);
+	if (addr.length <= 40)
+		return addr;
+	var left = addr.length - 40;
+	return addr.substring(left);
 }
 
 function formatAppUrl(url)
