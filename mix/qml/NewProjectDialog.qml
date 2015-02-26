@@ -101,6 +101,8 @@ Window {
 			var u = createProjectFileDialog.fileUrl.toString();
 			if (u.indexOf("file://") == 0)
 				u = u.substring(7, u.length)
+				if (Qt.platform.os == "windows" && u.indexOf("/") == 0)
+					u = u.substring(1, u.length);
 			pathField.text = u;
 		}
 	}
