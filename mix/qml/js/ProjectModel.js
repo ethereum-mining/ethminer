@@ -343,20 +343,6 @@ function deployContracts(ctrIndex, ctrAddresses, ctrNames, callBack)
 	});
 }
 
-function checkNewLog()
-{
-	var requests = [];
-	requests.push({
-					  jsonrpc: "2.0",
-					  method: "eth_changed",
-					  params: [0],
-					  id: 0
-				  });
-	rpcCall(requests, function (httpRequest, response) {
-		console.log("eth log: " + response);
-	});
-}
-
 function finalizeDeployment(deploymentId, addresses) {
 	deploymentStepChanged(qsTr("Packaging application ..."));
 	var deploymentDir = projectPath + deploymentId + "/";
