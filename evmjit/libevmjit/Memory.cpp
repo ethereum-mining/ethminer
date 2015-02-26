@@ -41,9 +41,6 @@ llvm::Function* Memory::getRequireFunc()
 		auto mem = jmpBuf->getNextNode();
 		mem->setName("mem");
 
-		llvm::Type* resizeArgs[] = {Type::RuntimePtr, Type::WordPtr};
-		auto resize = llvm::Function::Create(llvm::FunctionType::get(Type::BytePtr, resizeArgs, false), llvm::Function::ExternalLinkage, "mem_resize", getModule());
-
 		auto preBB = llvm::BasicBlock::Create(func->getContext(), "Pre", func);
 		auto checkBB = llvm::BasicBlock::Create(func->getContext(), "Check", func);
 		auto resizeBB = llvm::BasicBlock::Create(func->getContext(), "Resize", func);
@@ -62,10 +59,8 @@ llvm::Function* Memory::getRequireFunc()
 		auto uaddRes = m_builder.CreateCall2(uaddWO, offset, size, "res");
 		auto sizeRequired = m_builder.CreateExtractValue(uaddRes, 0, "sizeReq");
 		auto overflow1 = m_builder.CreateExtractValue(uaddRes, 1, "overflow1");
-		auto rtPtr = getRuntimeManager().getRuntimePtr();
-		auto sizePtr = m_builder.CreateStructGEP(rtPtr, 3);
-		auto currSize = m_builder.CreateLoad(sizePtr, "currSize");
-		auto tooSmall = m_builder.CreateICmpULE(currSize, sizeRequired, "tooSmall");
+		auto currSize = m_memory.size(mem);
+		auto tooSmall = m_builder.CreateICmpULE(m_builder.CreateZExt(currSize, Type::Word), sizeRequired, "tooSmall");
 		auto resizeNeeded = m_builder.CreateOr(tooSmall, overflow1, "resizeNeeded");
 		m_builder.CreateCondBr(resizeNeeded, resizeBB, returnBB); // OPT branch weights?
 
@@ -79,14 +74,10 @@ llvm::Function* Memory::getRequireFunc()
 		wordsRequired = m_builder.CreateSelect(overflow, Constant::get(-1), wordsRequired);
 		wordsRequired = m_builder.CreateUDiv(wordsRequired, Constant::get(32), "wordsReq");
 		sizeRequired = m_builder.CreateMul(wordsRequired, Constant::get(32), "roundedSizeReq");
-		auto words = m_builder.CreateUDiv(currSize, Constant::get(32), "words");	// size is always 32*k
-		auto newWords = m_builder.CreateSub(wordsRequired, words, "addtionalWords");
+		auto words = m_builder.CreateUDiv(currSize, m_builder.getInt64(32), "words");	// size is always 32*k
+		auto newWords = m_builder.CreateSub(wordsRequired, m_builder.CreateZExt(words, Type::Word), "addtionalWords");
 		m_gasMeter.countMemory(newWords, jmpBuf);
 		// Resize
-		m_builder.CreateStore(sizeRequired, sizePtr);
-		auto newData = m_builder.CreateCall2(resize, rt, sizePtr, "newData");
-		auto dataPtr = m_builder.CreateStructGEP(rtPtr, 2);
-		m_builder.CreateStore(newData, dataPtr);
 		auto extendSize = m_builder.CreateTrunc(sizeRequired, Type::Size, "extendSize");
 		m_memory.extend(mem, extendSize);
 		m_builder.CreateBr(returnBB);
@@ -116,9 +107,6 @@ llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType)
 	auto index = rt->getNextNode();
 	index->setName("index");
 
-	auto ptr = getBytePtr(index);
-	if (isWord)
-		ptr = m_builder.CreateBitCast(ptr, Type::WordPtr, "wordPtr");
 	if (_isStore)
 	{
 		auto valueArg = index->getNextNode();
@@ -126,7 +114,6 @@ llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType)
 		auto mem = valueArg->getNextNode();
 		mem->setName("mem");
 		auto value = isWord ? Endianness::toBE(m_builder, valueArg) : valueArg;
-		m_builder.CreateStore(value, ptr);
 		auto memPtr = m_memory.getPtr(mem, m_builder.CreateTrunc(index, Type::Size));
 		auto valuePtr = m_builder.CreateBitCast(memPtr, _valueType->getPointerTo(), "valuePtr");
 		m_builder.CreateStore(value, valuePtr);
@@ -137,8 +124,6 @@ llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType)
 		auto mem = index->getNextNode();
 		mem->setName("mem");
 		auto memPtr = m_memory.getPtr(mem, m_builder.CreateTrunc(index, Type::Size));
-
-
 		llvm::Value* ret = m_builder.CreateLoad(memPtr);
 		ret = Endianness::toNative(m_builder, ret);
 		m_builder.CreateRet(ret);
@@ -201,11 +186,7 @@ llvm::Value* Memory::getData()
 
 llvm::Value* Memory::getSize()
 {
-	auto rtPtr = getRuntimeManager().getRuntimePtr();
-	auto sizePtr = m_builder.CreateStructGEP(rtPtr, 3);
-	auto size = m_builder.CreateLoad(sizePtr, "size");
-	assert(size->getType() == Type::Word);
-	return size;
+	return m_builder.CreateZExt(m_memory.size(), Type::Word, "msize"); // TODO: Allow placing i64 on stack
 }
 
 llvm::Value* Memory::getBytePtr(llvm::Value* _index)
@@ -262,18 +243,4 @@ void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value*
 
 }
 }
-}
-
-
-extern "C"
-{
-	using namespace dev::eth::jit;
-
-	EXPORT byte* mem_resize(Runtime* _rt, i256* _size)	// TODO: Use uint64 as size OR use realloc in LLVM IR
-	{
-		auto size = _size->a; // Trunc to 64-bit
-		auto& memory = _rt->getMemory();
-		memory.resize(size);
-		return memory.data();
-	}
 }

@@ -18,8 +18,6 @@ public:
 	Runtime(const Runtime&) = delete;
 	Runtime& operator=(const Runtime&) = delete;
 
-	MemoryImpl& getMemory() { return m_memory; }
-
 	bytes_ref getReturnData() const;
 
 private:
@@ -28,10 +26,9 @@ private:
 	byte* m_memoryData = nullptr;
 	i256 m_memorySize;
 public:
-	byte* m_memData = nullptr;
+	byte* m_memData = nullptr; // FIXME: Remember to free memory
 	uint64_t m_memSize = 0;
 	uint64_t m_memCap = 0;
-	MemoryImpl m_memory;
 };
 
 }
