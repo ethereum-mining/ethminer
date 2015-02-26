@@ -99,7 +99,7 @@ Item {
 		text:
 		{
 			if (Object.keys(projectModel.deploymentAddresses).length > 0)
-				return qsTr("This project has been already deployed to the network. Do you want to redeploy it? (Contract state will be reseted)")
+				return qsTr("This project has been already deployed to the network. Do you want to redeploy it? (Contract state will be reset)")
 			else
 				return qsTr("This action will deploy to the network. Do you want to deploy it?")
 		}
