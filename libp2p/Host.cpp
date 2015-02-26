@@ -25,8 +25,6 @@
 #include <thread>
 #include <mutex>
 
-// Make sure boost/asio.hpp is included before windows.h.
-#include <boost/asio.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include <libdevcore/Common.h>

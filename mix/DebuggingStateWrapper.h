@@ -22,6 +22,9 @@
 
 #pragma once
 
+// Make sure boost/asio.hpp is included before windows.h.
+#include <boost/asio.hpp>
+
 #include <QStringList>
 #include <QMap>
 #include <libdevcore/Common.h>

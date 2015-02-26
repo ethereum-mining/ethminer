@@ -22,9 +22,6 @@
 #include <QDebug>
 #include <QQmlApplicationEngine>
 
-// Make sure boost/asio.hpp is included before windows.h.
-#include <boost/asio.hpp>
-
 #include <libevm/VM.h>
 #include <libwebthree/WebThree.h>
 #include "Extension.h"

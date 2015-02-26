@@ -28,9 +28,6 @@
 #include <memory>
 #include <utility>
 
-// Make sure boost/asio.hpp is included before windows.h.
-#include <boost/asio.hpp>
-
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/RangeMask.h>
@@ -116,7 +113,7 @@ private:
 	bool m_dropped = false;					///< If true, we've already divested ourselves of this peer. We're just waiting for the reads & writes to fail before the shared_ptr goes OOS and the destructor kicks in.
 
 	PeerSessionInfo m_info;						///< Dynamic information about this peer.
-	
+
 	bool m_theyRequestedNodes = false;		///< Has the peer requested nodes from us without receiveing an answer from us?
 	bool m_weRequestedNodes = false;		///< Have we requested nodes from the peer and not received an answer yet?
 
