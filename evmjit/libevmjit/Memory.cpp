@@ -87,6 +87,8 @@ llvm::Function* Memory::getRequireFunc()
 		auto newData = m_builder.CreateCall2(resize, rt, sizePtr, "newData");
 		auto dataPtr = m_builder.CreateStructGEP(rtPtr, 2);
 		m_builder.CreateStore(newData, dataPtr);
+		auto extendSize = m_builder.CreateTrunc(sizeRequired, Type::Size, "extendSize");
+		m_memory.extend(mem, extendSize);
 		m_builder.CreateBr(returnBB);
 
 		// BB "Return"
@@ -100,8 +102,8 @@ llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType)
 {
 	auto isWord = _valueType == Type::Word;
 
-	llvm::Type* storeArgs[] = {Type::RuntimePtr, Type::Word, _valueType};
-	llvm::Type* loadArgs[] = {Type::RuntimePtr, Type::Word};
+	llvm::Type* storeArgs[] = {Type::RuntimePtr, Type::Word, _valueType, Array::getType()->getPointerTo()};
+	llvm::Type* loadArgs[] = {Type::RuntimePtr, Type::Word, Array::getType()->getPointerTo()};
 	auto name = _isStore ? isWord ? "mstore" : "mstore8" : "mload";
 	auto funcType = _isStore ? llvm::FunctionType::get(Type::Void, storeArgs, false) : llvm::FunctionType::get(Type::Word, loadArgs, false);
 	auto func = llvm::Function::Create(funcType, llvm::Function::PrivateLinkage, name, getModule());
@@ -119,15 +121,24 @@ llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType)
 		ptr = m_builder.CreateBitCast(ptr, Type::WordPtr, "wordPtr");
 	if (_isStore)
 	{
-		llvm::Value* value = index->getNextNode();
-		value->setName("value");
-		if (isWord)
-			value = Endianness::toBE(m_builder, value);
+		auto valueArg = index->getNextNode();
+		valueArg->setName("value");
+		auto mem = valueArg->getNextNode();
+		mem->setName("mem");
+		auto value = isWord ? Endianness::toBE(m_builder, valueArg) : valueArg;
 		m_builder.CreateStore(value, ptr);
+		auto memPtr = m_memory.getPtr(mem, m_builder.CreateTrunc(index, Type::Size));
+		auto valuePtr = m_builder.CreateBitCast(memPtr, _valueType->getPointerTo(), "valuePtr");
+		m_builder.CreateStore(value, valuePtr);
 		m_builder.CreateRetVoid();
 	}
 	else
 	{
+		auto mem = index->getNextNode();
+		mem->setName("mem");
+		auto memPtr = m_memory.getPtr(mem, m_builder.CreateTrunc(index, Type::Size));
+
+
 		llvm::Value* ret = m_builder.CreateLoad(ptr);
 		ret = Endianness::toNative(m_builder, ret);
 		m_builder.CreateRet(ret);
@@ -164,20 +175,20 @@ llvm::Function* Memory::getStoreByteFunc()
 llvm::Value* Memory::loadWord(llvm::Value* _addr)
 {
 	require(_addr, Constant::get(Type::Word->getPrimitiveSizeInBits() / 8));
-	return createCall(getLoadWordFunc(), {getRuntimeManager().getRuntimePtr(), _addr});
+	return createCall(getLoadWordFunc(), {getRuntimeManager().getRuntimePtr(), _addr, getRuntimeManager().getMem()});
 }
 
 void Memory::storeWord(llvm::Value* _addr, llvm::Value* _word)
 {
 	require(_addr, Constant::get(Type::Word->getPrimitiveSizeInBits() / 8));
-	createCall(getStoreWordFunc(), {getRuntimeManager().getRuntimePtr(), _addr, _word});
+	createCall(getStoreWordFunc(), {getRuntimeManager().getRuntimePtr(), _addr, _word, getRuntimeManager().getMem()});
 }
 
 void Memory::storeByte(llvm::Value* _addr, llvm::Value* _word)
 {
 	require(_addr, Constant::get(Type::Byte->getPrimitiveSizeInBits() / 8));
 	auto byte = m_builder.CreateTrunc(_word, Type::Byte, "byte");
-	createCall(getStoreByteFunc(), {getRuntimeManager().getRuntimePtr(), _addr, byte});
+	createCall(getStoreByteFunc(), {getRuntimeManager().getRuntimePtr(), _addr, byte, getRuntimeManager().getMem()});
 }
 
 llvm::Value* Memory::getData()
