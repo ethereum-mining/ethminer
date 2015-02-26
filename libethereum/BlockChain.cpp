@@ -209,6 +209,11 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	try
 #endif
 	{
+		RLP blockRLP(_block);
+
+		if (!blockRLP.isList())
+			BOOST_THROW_EXCEPTION(InvalidBlockFormat(0,blockRLP.data()) << errinfo_comment("block header needs to be a list"));
+
 		bi.populate(&_block);
 		bi.verifyInternals(&_block);
 	}
