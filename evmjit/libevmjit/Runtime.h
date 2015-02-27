@@ -13,16 +13,13 @@ using MemoryImpl = bytes;
 class Runtime
 {
 public:
-	Runtime(RuntimeData* _data, Env* _env);
-
-	Runtime(const Runtime&) = delete;
-	Runtime& operator=(const Runtime&) = delete;
+	void init(RuntimeData* _data, Env* _env);
 
 	bytes_ref getReturnData() const;
 
 private:
-	RuntimeData& m_data;			///< Pointer to data. Expected by compiled contract.
-	Env& m_env;						///< Pointer to environment proxy. Expected by compiled contract.
+	RuntimeData* m_data = nullptr;	///< Pointer to data. Expected by compiled contract.
+	Env* m_env = nullptr;			///< Pointer to environment proxy. Expected by compiled contract.
 	byte* m_memoryData = nullptr;
 	i256 m_memorySize;
 public:
