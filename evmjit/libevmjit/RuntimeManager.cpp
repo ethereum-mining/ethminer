@@ -5,6 +5,7 @@
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Stack.h"
+#include "Utils.h"
 
 namespace dev
 {
@@ -99,6 +100,8 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, llvm::Value* _jmpBuf
 	assert(m_dataPtr->getType() == Type::RuntimeDataPtr);
 	m_gasPtr = m_builder.CreateStructGEP(m_dataPtr, 0, "gas");
 	assert(m_gasPtr->getType() == Type::Gas->getPointerTo());
+	m_memPtr = m_builder.CreateStructGEP(rtPtr, 4, "mem");
+	assert(m_memPtr->getType() == Array::getType()->getPointerTo());
 	m_envPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 1), "env");
 	assert(m_envPtr->getType() == Type::EnvPtr);
 }
@@ -121,14 +124,6 @@ llvm::Value* RuntimeManager::getDataPtr()
 	auto dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 0), "data");
 	assert(dataPtr->getType() == getRuntimeDataType()->getPointerTo());
 	return dataPtr;
-}
-
-llvm::Value* RuntimeManager::getMem()
-{
-	auto rtPtr = getRuntimePtr();
-	auto memPtr = m_builder.CreateStructGEP(rtPtr, 4, "mem");
-	assert(memPtr->getType() == Array::getType()->getPointerTo());
-	return memPtr;
 }
 
 llvm::Value* RuntimeManager::getEnvPtr()
@@ -238,11 +233,14 @@ llvm::Value* RuntimeManager::getGas()
 
 llvm::Value* RuntimeManager::getGasPtr()
 {
-	if (getMainFunction())
-		return m_gasPtr;
+	assert(getMainFunction());
+	return m_gasPtr;
+}
 
-	// TODO: eliminated this case
-	return getPtr(RuntimeData::Gas);
+llvm::Value* RuntimeManager::getMem()
+{
+	assert(getMainFunction());
+	return m_memPtr;
 }
 
 void RuntimeManager::setGas(llvm::Value* _gas)
