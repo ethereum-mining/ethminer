@@ -555,7 +555,7 @@ function registerContentHash(registrar, callBack)
 					  //setContent()
 					  jsonrpc: "2.0",
 					  method: "eth_transact",
-					  params: [ { "from": deploymentDialog.currentAccount, "gas": "2000", "gasPrice": "10", "to": '0x' + registrar, "data": "0x5d574e32" + paramTitle.encodeValueAsString() + deploymentDialog.packageHash } ],
+					  params: [ { "from": deploymentDialog.currentAccount, "gas": 2000, "gasPrice": "10", "to": '0x' + registrar, "data": "0x5d574e32" + paramTitle.encodeValueAsString() + deploymentDialog.packageHash } ],
 					  id: jsonRpcRequestId++
 				  });
 	rpcCall(requests, function (httpRequest, response) {
@@ -572,7 +572,7 @@ function registerToUrlHint()
 					  //urlHint => suggestUrl
 					  jsonrpc: "2.0",
 					  method: "eth_transact",
-					  params: [ { "to": '0x' + deploymentDialog.urlHintContract, "data": "0x4983e19c" + deploymentDialog.packageHash + paramUrlHttp.encodeValueAsString() } ],
+					  params: [ { "to": '0x' + deploymentDialog.urlHintContract, "gas": 2000, "data": "0x4983e19c" + deploymentDialog.packageHash + paramUrlHttp.encodeValueAsString() } ],
 					  id: jsonRpcRequestId++
 				  });
 
