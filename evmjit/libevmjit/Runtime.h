@@ -14,6 +14,7 @@ class Runtime
 {
 public:
 	void init(RuntimeData* _data, Env* _env);
+	EXPORT ~Runtime();
 
 	bytes_ref getReturnData() const;
 
@@ -22,8 +23,7 @@ private:
 	Env* m_env = nullptr;			///< Pointer to environment proxy. Expected by compiled contract.
 	byte* m_memoryData = nullptr;
 	i256 m_memorySize;
-public:
-	byte* m_memData; // FIXME: Remember to free memory
+	byte* m_memData;
 	uint64_t m_memSize;
 	uint64_t m_memCap;
 };
