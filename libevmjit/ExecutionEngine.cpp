@@ -117,7 +117,8 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	static StatsCollector statsCollector;
 
 	auto mainFuncName = codeHash(_data->codeHash);
-	Runtime runtime(_data, _env);	// TODO: I don't know why but it must be created before getFunctionAddress() calls
+	Runtime runtime;
+	runtime.init(_data, _env);
 
 	auto entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
 	if (!entryFuncPtr)
