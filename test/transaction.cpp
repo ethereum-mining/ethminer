@@ -51,7 +51,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 			catch(...)
 			{
 				BOOST_CHECK_MESSAGE(o.count("transaction") == 0, "A transaction object should not be defined because the RLP is invalid!");
-				return;
+				continue;
 			}
 
 			BOOST_REQUIRE(o.count("transaction") > 0);
@@ -90,8 +90,9 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 
 				o["sender"] = toString(txFromFields.sender());
 			}
-			catch(...)
+			catch(Exception const& _e)
 			{
+				cnote << "Transaction Exception: " << diagnostic_information(_e);
 				o.erase(o.find("transaction"));
 			}
 		}
@@ -108,9 +109,28 @@ BOOST_AUTO_TEST_CASE(TransactionTest)
 	dev::test::executeTests("ttTransactionTest", "/TransactionTests", dev::test::doTransactionTests);
 }
 
+BOOST_AUTO_TEST_CASE(ttWrongRLPTransaction)
+{
+	dev::test::executeTests("ttWrongRLPTransaction", "/TransactionTests", dev::test::doTransactionTests);
+}
+
 BOOST_AUTO_TEST_CASE(tt10mbDataField)
 {
-	dev::test::executeTests("tt10mbDataField", "/TransactionTests", dev::test::doTransactionTests);
+	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
+	{
+		string arg = boost::unit_test::framework::master_test_suite().argv[i];
+		if (arg == "--bigdata" || arg == "--all")
+		{
+			auto start = chrono::steady_clock::now();
+
+			dev::test::executeTests("tt10mbDataField", "/TransactionTests", dev::test::doTransactionTests);
+
+			auto end = chrono::steady_clock::now();
+			auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
+			cnote << "test duration: " << duration.count() << " milliseconds.\n";
+		}
+	}
+
 }
 
 BOOST_AUTO_TEST_CASE(ttCreateTest)

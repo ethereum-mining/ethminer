@@ -26,6 +26,7 @@
 #include <functional>
 #include <libsolidity/ASTVisitor.h>
 #include <libsolidity/CompilerContext.h>
+#include <libevmcore/Assembly.h>
 
 namespace dev {
 namespace solidity {
@@ -41,6 +42,11 @@ public:
 	bytes getAssembledBytecode() { return m_context.getAssembledBytecode(m_optimize); }
 	bytes getRuntimeBytecode() { return m_runtimeContext.getAssembledBytecode(m_optimize);}
 	void streamAssembly(std::ostream& _stream) const { m_context.streamAssembly(_stream); }
+
+	/// @returns Assembly items of the normal compiler context
+	eth::AssemblyItems const& getAssemblyItems() const { return m_context.getAssembly().getItems(); }
+	/// @returns Assembly items of the runtime compiler context
+	eth::AssemblyItems const& getRuntimeAssemblyItems() const { return m_runtimeContext.getAssembly().getItems(); }
 
 private:
 	/// Registers the non-function objects inside the contract with the context.
@@ -69,7 +75,7 @@ private:
 	virtual bool visit(Continue const& _continue) override;
 	virtual bool visit(Break const& _break) override;
 	virtual bool visit(Return const& _return) override;
-	virtual bool visit(VariableDeclarationStatement const& _variableDefinition) override;
+	virtual bool visit(VariableDeclarationStatement const& _variableDeclarationStatement) override;
 	virtual bool visit(ExpressionStatement const& _expressionStatement) override;
 	virtual bool visit(PlaceholderStatement const&) override;
 
