@@ -82,7 +82,7 @@ ClientModel::ClientModel(AppContext* _context):
 	qRegisterMetaType<QInstruction*>("QInstruction");
 	qRegisterMetaType<QCode*>("QCode");
 	qRegisterMetaType<QCallData*>("QCallData");
-	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry");
+	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry*");
 
 	connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
@@ -325,6 +325,11 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 	debugDataReady(debugData);
 }
 
+void ClientModel::emptyRecord()
+{
+	debugDataReady(new QDebugData());
+}
+
 
 void ClientModel::debugRecord(unsigned _index)
 {
@@ -347,6 +352,18 @@ Address ClientModel::deployContract(bytes const& _code, TransactionSettings cons
 void ClientModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
 	m_client->transact(m_client->userAccount().secret(), _tr.value, _contract, _data, _tr.gas, _tr.gasPrice);
+}
+
+RecordLogEntry* ClientModel::lastBlock() const
+{
+	eth::BlockInfo blockInfo = m_client->blockInfo();
+	std::stringstream strGas;
+	strGas << blockInfo.gasUsed;
+	std::stringstream strNumber;
+	strNumber << blockInfo.number;
+	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(toHex(blockInfo.hash.ref()))), tr("Gas Used: ") + QString::fromStdString(strGas.str()), QString(), QString(), false, RecordLogEntry::RecordType::Block);
+	QQmlEngine::setObjectOwnership(record, QQmlEngine::JavaScriptOwnership);
+	return record;
 }
 
 void ClientModel::onStateReset()
@@ -424,7 +441,7 @@ void ClientModel::onNewTransaction()
 		}
 	}
 
-	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall());
+	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall(), RecordLogEntry::RecordType::Transaction);
 	QQmlEngine::setObjectOwnership(log, QQmlEngine::JavaScriptOwnership);
 	emit newRecord(log);
 }
