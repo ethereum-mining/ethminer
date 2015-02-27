@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vector>
 #include <tuple>
 #include <cstdint>
 
@@ -18,7 +17,6 @@ namespace jit
 {
 
 using byte = uint8_t;
-using bytes = std::vector<byte>;
 using bytes_ref = std::tuple<byte const*, size_t>;
 using code_iterator = byte const*;
 
