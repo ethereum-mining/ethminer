@@ -55,6 +55,7 @@ private:
 	llvm::Value* const m_jmpBuf;
 	llvm::Value* m_dataPtr = nullptr;
 	llvm::Value* m_gasPtr = nullptr;
+	llvm::Value* m_memPtr = nullptr;
 	llvm::Value* m_envPtr = nullptr;
 
 	code_iterator m_codeBegin = {};
