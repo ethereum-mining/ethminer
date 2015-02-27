@@ -27,6 +27,7 @@
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcrypto/FileSystem.h>
 #include "Session.h"
@@ -45,7 +46,7 @@ void HostNodeTableHandler::processEvent(NodeId const& _n, NodeTableEventType con
 	m_host.onNodeTableEvent(_n, _e);
 }
 
-Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork, bool _structuredLogging):
+Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork, StructuredLogger const* _structuredLogger):
 	Worker("p2p", 0),
 	m_restoreNetwork(_restoreNetwork.toBytes()),
 	m_clientVersion(_clientVersion),
@@ -55,7 +56,7 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, byte
 	m_tcp4Acceptor(m_ioService),
 	m_alias(networkAlias(_restoreNetwork)),
 	m_lastPing(chrono::steady_clock::time_point::min()),
-	m_structuredLogging(_structuredLogging)
+	m_structuredLogger(_structuredLogger)
 {
 	for (auto address: m_ifAddresses)
 		if (address.is_v4())
@@ -475,6 +476,10 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 			_p->m_lastDisconnect = NoDisconnect;
 			_p->m_lastConnected = std::chrono::system_clock::now();
 			_p->m_failedAttempts = 0;
+
+			if (m_structuredLogger)
+				m_structuredLogger->logP2PConnected(_p->id.abridged(), _p->peerEndpoint(), _p->m_lastConnected,
+													0);// TODO: num_connections
 
 			auto ps = make_shared<Session>(this, std::move(*s), _p);
 			ps->start();

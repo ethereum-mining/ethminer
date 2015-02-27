@@ -29,6 +29,7 @@
 #include <boost/algorithm/string/trim_all.hpp>
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
@@ -354,22 +355,25 @@ int main(int argc, char** argv)
 
 	cout << credits();
 
+	unique_ptr<StructuredLogger> structuredLogger(new StructuredLogger(structuredLogging));
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
+	std::string clientImplString = "Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
-		"Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : ""),
+		clientImplString,
 		dbPath,
 		false,
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
 		&nodesState,
 		miners,
-		structuredLogging
+		structuredLogger.get()
 		);
 	web3.setIdealPeerCount(peers);
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
-
+	if (structuredLogging)
+		structuredLogger->logStarting(clientImplString, dev::Version);
 	if (c)
 	{
 		c->setForceMining(forceMining);
@@ -530,7 +534,7 @@ int main(int argc, char** argv)
 					string sdata;
 
 					iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata;
-					
+
 					cnote << "Data:";
 					cnote << sdata;
 					bytes data = dev::eth::parseData(sdata);
@@ -613,7 +617,7 @@ int main(int argc, char** argv)
 						if (size > 0)
 							cwarn << "Invalid address length:" << size;
 					}
-					else 
+					else
 					{
 						auto const& bc =c->blockChain();
 						auto h = bc.currentHash();
@@ -635,7 +639,7 @@ int main(int argc, char** argv)
 							cwarn << "transaction rejected";
 						}
 					}
-				} 
+				}
 				else
 					cwarn << "Require parameters: send ADDRESS AMOUNT";
 			}
@@ -693,7 +697,7 @@ int main(int argc, char** argv)
 						cwarn << "Minimum gas amount is" << minGas;
 					else
 						c->transact(us.secret(), endowment, init, gas, gasPrice);
-				} 
+				}
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
 			}
@@ -811,7 +815,7 @@ int main(int argc, char** argv)
 					string hexSec;
 					iss >> hexSec;
 					us = KeyPair(h256(fromHex(hexSec)));
-				} 
+				}
 				else
 					cwarn << "Require parameter: setSecret HEXSECRETKEY";
 			}
@@ -852,7 +856,7 @@ int main(int argc, char** argv)
 					RLPStream config(2);
 					config << us.secret() << coinbase;
 					writeFile(path, config.out());
-				} 
+				}
 				else
 					cwarn << "Require parameter: exportConfig PATH";
 			}
@@ -868,10 +872,10 @@ int main(int argc, char** argv)
 						RLP config(b);
 						us = KeyPair(config[0].toHash<Secret>());
 						coinbase = config[1].toHash<Address>();
-					} 
+					}
 					else
 						cwarn << path << "has no content!";
-				} 
+				}
 				else
 					cwarn << "Require parameter: importConfig PATH";
 			}
