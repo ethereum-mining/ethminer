@@ -158,7 +158,6 @@ llvm::Value* Stack::get(size_t _index)
 void Stack::set(size_t _index, llvm::Value* _value)
 {
 	m_stack.set(m_builder.CreateSub(m_stack.size(), m_builder.getInt64(_index + 1)), _value);
-	//createCall(getSetFunc(), {m_runtimeManager.getRuntimePtr(), m_builder.getInt64(_index), _value});
 }
 
 void Stack::pop(size_t _count)
@@ -166,13 +165,11 @@ void Stack::pop(size_t _count)
 	// FIXME: Pop does not check for stack underflow but looks like not needed
 	//        We should place stack.require() check and begining of every BB
 	m_stack.pop(m_builder.getInt64(_count));
-	//createCall(getPopFunc(), {m_runtimeManager.getRuntimePtr(), m_builder.getInt64(_count), m_runtimeManager.getJmpBuf()});
 }
 
 void Stack::push(llvm::Value* _value)
 {
 	m_stack.push(_value);
-	//createCall(getPushFunc(), {m_runtimeManager.getRuntimePtr(), _value});
 }
 
 }
