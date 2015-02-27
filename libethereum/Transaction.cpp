@@ -36,11 +36,14 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 	RLP rlp(_rlpData);
 	try
 	{
+		if (!rlp.isList())
+			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("transaction RLP must be a list"));
+
 		m_nonce = rlp[field = 0].toInt<u256>();
 		m_gasPrice = rlp[field = 1].toInt<u256>();
 		m_gas = rlp[field = 2].toInt<u256>();
 		m_type = rlp[field = 3].isEmpty() ? ContractCreation : MessageCall;
-		m_receiveAddress = rlp[field = 3].toHash<Address>();
+		m_receiveAddress = rlp[field = 3].isEmpty() ? Address() : rlp[field = 3].toHash<Address>(RLP::VeryStrict);
 		m_value = rlp[field = 4].toInt<u256>();
 		m_data = rlp[field = 5].toBytes();
 		byte v = rlp[field = 6].toInt<byte>() - 27;

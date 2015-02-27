@@ -603,19 +603,64 @@ void MemberAccess::checkTypeRequirements()
 	if (!m_type)
 		BOOST_THROW_EXCEPTION(createTypeError("Member \"" + *m_memberName + "\" not found or not "
 											  "visible in " + type.toString()));
-	m_isLValue = (type.getCategory() == Type::Category::Struct);
+	// This should probably move somewhere else.
+	if (type.getCategory() == Type::Category::Struct)
+		m_isLValue = true;
+	else if (type.getCategory() == Type::Category::Array)
+	{
+		auto const& arrayType(dynamic_cast<ArrayType const&>(type));
+		m_isLValue = (*m_memberName == "length" &&
+			arrayType.getLocation() != ArrayType::Location::CallData && arrayType.isDynamicallySized());
+	}
+	else
+		m_isLValue = false;
 }
 
 void IndexAccess::checkTypeRequirements()
 {
 	m_base->checkTypeRequirements();
-	if (m_base->getType()->getCategory() != Type::Category::Mapping)
-		BOOST_THROW_EXCEPTION(m_base->createTypeError("Indexed expression has to be a mapping (is " +
-													  m_base->getType()->toString() + ")"));
-	MappingType const& type = dynamic_cast<MappingType const&>(*m_base->getType());
-	m_index->expectType(*type.getKeyType());
-	m_type = type.getValueType();
-	m_isLValue = true;
+	switch (m_base->getType()->getCategory())
+	{
+	case Type::Category::Array:
+	{
+		ArrayType const& type = dynamic_cast<ArrayType const&>(*m_base->getType());
+		if (!m_index)
+			BOOST_THROW_EXCEPTION(createTypeError("Index expression cannot be omitted."));
+		m_index->expectType(IntegerType(256));
+		m_type = type.getBaseType();
+		m_isLValue = true;
+		break;
+	}
+	case Type::Category::Mapping:
+	{
+		MappingType const& type = dynamic_cast<MappingType const&>(*m_base->getType());
+		if (!m_index)
+			BOOST_THROW_EXCEPTION(createTypeError("Index expression cannot be omitted."));
+		m_index->expectType(*type.getKeyType());
+		m_type = type.getValueType();
+		m_isLValue = true;
+		break;
+	}
+	case Type::Category::TypeType:
+	{
+		TypeType const& type = dynamic_cast<TypeType const&>(*m_base->getType());
+		if (!m_index)
+			m_type = make_shared<TypeType>(make_shared<ArrayType>(ArrayType::Location::Memory, type.getActualType()));
+		else
+		{
+			m_index->checkTypeRequirements();
+			auto length = dynamic_cast<IntegerConstantType const*>(m_index->getType().get());
+			if (!length)
+				BOOST_THROW_EXCEPTION(m_index->createTypeError("Integer constant expected."));
+			m_type = make_shared<TypeType>(make_shared<ArrayType>(
+				ArrayType::Location::Memory, type.getActualType(), length->literalValue(nullptr)));
+		}
+		break;
+	}
+	default:
+		BOOST_THROW_EXCEPTION(m_base->createTypeError(
+			"Indexed expression has to be a type, mapping or array (is " + m_base->getType()->toString() + ")"));
+	}
 }
 
 void Identifier::checkTypeRequirements()

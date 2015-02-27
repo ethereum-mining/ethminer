@@ -28,5 +28,9 @@ endif()
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
 
+if (WIN32)
+	add_custom_command(TARGET ${EXECUTABLE} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy ${MHD_DLL_RELEASE} "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}")
+endif()
+
 install( TARGETS ${EXECUTABLE} DESTINATION bin )
 
