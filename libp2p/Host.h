@@ -85,7 +85,7 @@ class Host: public Worker
 	
 public:
 	/// Start server, listening for connections on the given port.
-	Host(std::string const& _clientVersion, NetworkPreferences const& _n = NetworkPreferences(), bytesConstRef _restoreNetwork = bytesConstRef());
+	Host(std::string const& _clientVersion, NetworkPreferences const& _n = NetworkPreferences(), bytesConstRef _restoreNetwork = bytesConstRef(), bool _structuredLogging);
 
 	/// Will block on network process events.
 	virtual ~Host();
@@ -234,6 +234,7 @@ private:
 	std::chrono::steady_clock::time_point m_lastPing;						///< Time we sent the last ping to all peers.
 
 	bool m_accepting = false;
+	bool m_structuredLogging;
 };
 	
 }
