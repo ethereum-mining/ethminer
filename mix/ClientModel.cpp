@@ -82,7 +82,7 @@ ClientModel::ClientModel(AppContext* _context):
 	qRegisterMetaType<QInstruction*>("QInstruction");
 	qRegisterMetaType<QCode*>("QCode");
 	qRegisterMetaType<QCallData*>("QCallData");
-	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry");
+	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry*");
 
 	connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
@@ -347,6 +347,18 @@ Address ClientModel::deployContract(bytes const& _code, TransactionSettings cons
 void ClientModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
 	m_client->transact(m_client->userAccount().secret(), _tr.value, _contract, _data, _tr.gas, _tr.gasPrice);
+}
+
+RecordLogEntry* ClientModel::lastBlock() const
+{
+	eth::BlockInfo blockInfo = m_client->blockInfo();
+	std::stringstream strGas;
+	strGas << blockInfo.gasUsed;
+	std::stringstream strNumber;
+	strNumber << blockInfo.number;
+	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), QString(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(blockInfo.hash.abridged())), tr("Gas Used: ") + QString::fromStdString(strGas.str()), QString(), QString(), false);
+	QQmlEngine::setObjectOwnership(record, QQmlEngine::JavaScriptOwnership);
+	return record;
 }
 
 void ClientModel::onStateReset()

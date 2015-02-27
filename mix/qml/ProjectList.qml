@@ -26,11 +26,9 @@ Item {
 			Image {
 				id: projectIcon
 				source: "qrc:/qml/img/dappProjectIcon.png"
-				//sourceSize.height: 32
 				anchors.right: projectTitle.left
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.rightMargin: 6
-				//anchors.centerIn: parent
 				fillMode: Image.PreserveAspectFit
 				width: 32
 				height: 32
@@ -65,7 +63,7 @@ Item {
 		Rectangle
 		{
 			Layout.fillWidth: true
-			height: 10
+			height: 3
 			color: ProjectFilesStyle.documentsList.background
 		}
 
@@ -82,14 +80,24 @@ Item {
 				anchors.top: parent.top
 				width: parent.width
 				spacing: 0
-
 				Repeater {
 					model: [qsTr("Contracts"), qsTr("Javascript"), qsTr("Web Pages"), qsTr("Styles"), qsTr("Images"), qsTr("Misc")];
 					signal selected(string doc, string groupName)
+					property int incr: -1;
 					id: sectionRepeater
 					FilesSection
 					{
+						id: section;
 						sectionName: modelData
+						index:
+						{
+							for (var k in sectionRepeater.model)
+							{
+								if (sectionRepeater.model[k] === modelData)
+									return k;
+							}
+						}
+
 						model: sectionModel
 						selManager: sectionRepeater
 
@@ -119,7 +127,7 @@ Item {
 											ci++;
 										}
 									}
-								}	
+								}
 							}
 						}
 
@@ -170,10 +178,10 @@ Item {
 									projectModel.openDocument(newDoc.documentId);
 									sectionRepeater.selected(newDoc.documentId, modelData);
 								}
-
 							}
 						}
 					}
+
 				}
 			}
 		}

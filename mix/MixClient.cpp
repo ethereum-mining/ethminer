@@ -436,6 +436,12 @@ h256 MixClient::hashFromNumber(unsigned _number) const
 eth::BlockInfo MixClient::blockInfo(h256 _hash) const
 {
 	return BlockInfo(bc().block(_hash));
+
+}
+
+eth::BlockInfo MixClient::blockInfo() const
+{
+	return BlockInfo(bc().block());
 }
 
 eth::BlockDetails MixClient::blockDetails(h256 _hash) const
