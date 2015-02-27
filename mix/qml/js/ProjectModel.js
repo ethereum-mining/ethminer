@@ -309,8 +309,23 @@ function startDeployProject(erasePrevious)
 
 	var ctrNames = Object.keys(codeModel.contracts);
 	var ctrAddresses = {};
-	deployContracts(0, ctrAddresses, ctrNames, function (){
-		finalizeDeployment(deploymentId, ctrAddresses);
+	setDefaultBlock(0, function() {
+		deployContracts(0, ctrAddresses, ctrNames, function (){
+			finalizeDeployment(deploymentId, ctrAddresses);
+		});
+	});
+}
+
+function setDefaultBlock(val, callBack)
+{
+	var requests = [{
+						jsonrpc: "2.0",
+						method: "eth_setDefaultBlock",
+						params: [val],
+						id: 0
+					}];
+	rpcCall(requests, function (httpCall, response){
+		callBack();
 	});
 }
 
@@ -398,143 +413,143 @@ function finalizeDeployment(deploymentId, addresses) {
 	var applicationUrlEth = deploymentDialog.applicationUrlEth;
 
 	applicationUrlEth = formatAppUrl(applicationUrlEth);
-
 	deploymentStepChanged(qsTr("Registering application on the Ethereum network ..."));
-	applicationUrlEth.push(projectModel.projectTitle);
 	checkEthPath(applicationUrlEth, function () {
 		deploymentComplete();
 		deployRessourcesDialog.text = qsTr("Register Web Application to finalize deployment.");
 		deployRessourcesDialog.open();
+		setDefaultBlock(-1, function() {});
 	});
 }
 
 function checkEthPath(dappUrl, callBack)
 {
-	var str = createString(dappUrl[0]);
-	var requests = [];
-	requests.push({
-					  //register()
-					  jsonrpc: "2.0",
-					  method: "eth_call",
-					  params: [ { "from": deploymentDialog.currentAccount,  "to": '0x' + deploymentDialog.eth, "data": "0x6be16bed"  + str.encodeValueAsString() } ],
-					  id: jsonRpcRequestId++
-				  });
-	rpcCall(requests, function (httpRequest, response) {
-		var res = JSON.parse(response);
-		var addr = normalizeAddress(res[0].result);
-		if (addr === "")
-		{
-			var errorTxt = qsTr("Path does not exists " + JSON.stringify(dappUrl) + ". Please register using Registration Dapp. Aborting.");
-			deploymentError(errorTxt);
-			console.log(errorTxt);
-		}
-		else
-		{
-			dappUrl.splice(0, 1);
-			checkRegistration(dappUrl, addr, callBack);
-		}
-	});
+	if (dappUrl.length === 1)
+		registerContentHash(deploymentDialog.eth, callBack); // we directly create a dapp under the root registrar.
+	else
+	{
+		// the first owned reigstrar must have been created to follow the path.
+		var str = createString(dappUrl[0]);
+		var requests = [];
+		requests.push({
+						  //register()
+						  jsonrpc: "2.0",
+						  method: "eth_call",
+						  params: [ { "from": deploymentDialog.currentAccount,  "to": '0x' + deploymentDialog.eth, "data": "0x6be16bed"  + str.encodeValueAsString() } ],
+						  id: jsonRpcRequestId++
+					  });
+		rpcCall(requests, function (httpRequest, response) {
+			var res = JSON.parse(response);
+			var addr = normalizeAddress(res[0].result);
+			if (addr.replace(/0+/g, "") === "")
+			{
+				var errorTxt = qsTr("Path does not exists " + JSON.stringify(dappUrl) + ". Please register using Registration Dapp. Aborting.");
+				deploymentError(errorTxt);
+				console.log(errorTxt);
+			}
+			else
+			{
+				dappUrl.splice(0, 1);
+				checkRegistration(dappUrl, addr, callBack);
+			}
+		});
+	}
 }
 
 function checkRegistration(dappUrl, addr, callBack)
 {
-	var txt = qsTr("Checking " + JSON.stringify(dappUrl) + " ... in registrar " + addr);
-	deploymentStepChanged(txt);
-	console.log(txt);
-	var requests = [];
-	var registrar = {}
-	var str = createString(dappUrl[0]);
-	requests.push({
-					  //getOwner()
-					  jsonrpc: "2.0",
-					  method: "eth_call",
-					  params: [ { "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x893d20e8" } ],
-					  id: jsonRpcRequestId++
-				  });
+	if (dappUrl.length === 1)
+		registerContentHash(addr, callBack); // We do not create the register for the last part, just registering the content hash.
+	else
+	{
+		var txt = qsTr("Checking " + JSON.stringify(dappUrl) + " ... in registrar " + addr);
+		deploymentStepChanged(txt);
+		console.log(txt);
+		var requests = [];
+		var registrar = {}
+		var str = createString(dappUrl[0]);
+		requests.push({
+						  //getOwner()
+						  jsonrpc: "2.0",
+						  method: "eth_call",
+						  params: [ { "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x893d20e8" } ],
+						  id: jsonRpcRequestId++
+					  });
 
-	requests.push({
-					  //register()
-					  jsonrpc: "2.0",
-					  method: "eth_call",
-					  params: [ { "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x6be16bed"  + str.encodeValueAsString() } ],
-					  id: jsonRpcRequestId++
-				  });
+		requests.push({
+						  //register()
+						  jsonrpc: "2.0",
+						  method: "eth_call",
+						  params: [ { "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x6be16bed"  + str.encodeValueAsString() } ],
+						  id: jsonRpcRequestId++
+					  });
 
-	rpcCall(requests, function (httpRequest, response) {
-		var res = JSON.parse(response);
-		var nextAddr = normalizeAddress(res[1].result);
-		var errorTxt;
-		if (res[1].result === "0x")
-		{
-			errorTxt = qsTr("Error when creating new owned regsitrar. Please use the regsitration Dapp. Aborting");
-			deploymentError(errorTxt);
-			console.log(errorTxt);
-		}
-		else if (normalizeAddress(deploymentDialog.currentAccount) !== normalizeAddress(res[0].result))
-		{
-			errorTxt = qsTr("You are not the owner of " + dappUrl[0] + ". Aborting");
-			deploymentError(errorTxt);
-			console.log(errorTxt);
-		}
-		else if (nextAddr.replace(/0+/g, "") !== "")
-		{
-			dappUrl.splice(0, 1);
-			if (dappUrl.length > 0)
+		rpcCall(requests, function (httpRequest, response) {
+			var res = JSON.parse(response);
+			var nextAddr = normalizeAddress(res[1].result);
+			var errorTxt;
+			if (res[1].result === "0x")
+			{
+				errorTxt = qsTr("Error when creating new owned regsitrar. Please use the regsitration Dapp. Aborting");
+				deploymentError(errorTxt);
+				console.log(errorTxt);
+			}
+			else if (normalizeAddress(deploymentDialog.currentAccount) !== normalizeAddress(res[0].result))
+			{
+				errorTxt = qsTr("You are not the owner of " + dappUrl[0] + ". Aborting");
+				deploymentError(errorTxt);
+				console.log(errorTxt);
+			}
+			else if (nextAddr.replace(/0+/g, "") !== "")
+			{
+				dappUrl.splice(0, 1);
 				checkRegistration(dappUrl, nextAddr, callBack);
+			}
 			else
-				registerContentHash(addr, callBack);
-		}
-		else
-		{
-			var txt = qsTr("Registering sub domain " + dappUrl[0] +  " ...");
-			console.log(txt);
-			deploymentStepChanged(txt);
-			//current registrar is owned => ownedregistrar creation and continue.
-			requests = [];
-
-			requests.push({
-							  jsonrpc: "2.0",
-							  method: "eth_transact",
-							  params: [ { "from": deploymentDialog.currentAccount, "gas": 20000, "code": "0x60056013565b61059e8061001d6000396000f35b33600081905550560060003560e060020a90048063019848921461009a578063449c2090146100af5780635d574e32146100cd5780635fd4b08a146100e1578063618242da146100f65780636be16bed1461010b5780636c4489b414610129578063893d20e8146101585780639607730714610173578063c284bc2a14610187578063e50f599a14610198578063e5811b35146101af578063ec7b9200146101cd57005b6100a560043561031b565b8060005260206000f35b6100ba6004356103a0565b80600160a060020a031660005260206000f35b6100db600435602435610537565b60006000f35b6100ec600435610529565b8060005260206000f35b6101016004356103dd565b8060005260206000f35b6101166004356103bd565b80600160a060020a031660005260206000f35b61013460043561034b565b82600160a060020a031660005281600160a060020a03166020528060405260606000f35b610160610341565b80600160a060020a031660005260206000f35b6101816004356024356102b4565b60006000f35b6101926004356103fd565b60006000f35b6101a96004356024356044356101f2565b60006000f35b6101ba6004356101eb565b80600160a060020a031660005260206000f35b6101d8600435610530565b80600160a060020a031660005260206000f35b6000919050565b600054600160a060020a031633600160a060020a031614610212576102af565b8160026000858152602001908152602001600020819055508061023457610287565b81600160a060020a0316837f680ad70765443c2967675ab0fb91a46350c01c6df59bf9a41ff8a8dd097464ec60006000a3826001600084600160a060020a03168152602001908152602001600020819055505b827f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b505050565b600054600160a060020a031633600160a060020a0316146102d457610317565b806002600084815260200190815260200160002060010181905550817f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b5050565b60006001600083600160a060020a03168152602001908152602001600020549050919050565b6000600054905090565b6000600060006002600085815260200190815260200160002054925060026000858152602001908152602001600020600101549150600260008581526020019081526020016000206002015490509193909250565b600060026000838152602001908152602001600020549050919050565b600060026000838152602001908152602001600020600101549050919050565b600060026000838152602001908152602001600020600201549050919050565b600054600160a060020a031633600160a060020a03161461041d57610526565b80600160006002600085815260200190815260200160002054600160a060020a031681526020019081526020016000205414610458576104d2565b6002600082815260200190815260200160002054600160a060020a0316817f680ad70765443c2967675ab0fb91a46350c01c6df59bf9a41ff8a8dd097464ec60006000a36000600160006002600085815260200190815260200160002054600160a060020a03168152602001908152602001600020819055505b6002600082815260200190815260200160002060008101600090556001810160009055600281016000905550807f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b50565b6000919050565b6000919050565b600054600160a060020a031633600160a060020a0316146105575761059a565b806002600084815260200190815260200160002060020181905550817f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b505056" } ],
-							  id: jsonRpcRequestId++
-						  });
-
-			rpcCall(requests, function(httpRequest, response) {
-				console.log("crea2" + response);
-				var newCtrAddress = normalizeAddress(JSON.parse(response)[0].result);
-				requests = [];
-				console.log('new created addr ' + newCtrAddress);
-
-				var txt = qsTr("Please wait " + dappUrl[0] + " is registering ...");
-				deploymentStepChanged(txt);
+			{
+				var txt = qsTr("Registering sub domain " + dappUrl[0] +  " ...");
 				console.log(txt);
+				deploymentStepChanged(txt);
+				//current registrar is owned => ownedregistrar creation and continue.
+				requests = [];
 
-				deploymentDialog.waitForTrCountToIncrement(function(status) {
-					if (status === -1)
-					{
-						trCountIncrementTimeOut();
-						return;
-					}
-					var crLevel = createString(dappUrl[0]).encodeValueAsString();
-					requests.push({
-									  //setRegister()
-									  jsonrpc: "2.0",
-									  method: "eth_transact",
-									  params: [ { "from": deploymentDialog.currentAccount, "gas": 2000, "to": '0x' + addr, "data": "0x96077307" + crLevel + deploymentDialog.pad(newCtrAddress) } ],
-									  id: jsonRpcRequestId++
-								  });
+				requests.push({
+								  jsonrpc: "2.0",
+								  method: "eth_transact",
+								  params: [ { "from": deploymentDialog.currentAccount, "gas": 20000, "code": "0x60056013565b61059e8061001d6000396000f35b33600081905550560060003560e060020a90048063019848921461009a578063449c2090146100af5780635d574e32146100cd5780635fd4b08a146100e1578063618242da146100f65780636be16bed1461010b5780636c4489b414610129578063893d20e8146101585780639607730714610173578063c284bc2a14610187578063e50f599a14610198578063e5811b35146101af578063ec7b9200146101cd57005b6100a560043561031b565b8060005260206000f35b6100ba6004356103a0565b80600160a060020a031660005260206000f35b6100db600435602435610537565b60006000f35b6100ec600435610529565b8060005260206000f35b6101016004356103dd565b8060005260206000f35b6101166004356103bd565b80600160a060020a031660005260206000f35b61013460043561034b565b82600160a060020a031660005281600160a060020a03166020528060405260606000f35b610160610341565b80600160a060020a031660005260206000f35b6101816004356024356102b4565b60006000f35b6101926004356103fd565b60006000f35b6101a96004356024356044356101f2565b60006000f35b6101ba6004356101eb565b80600160a060020a031660005260206000f35b6101d8600435610530565b80600160a060020a031660005260206000f35b6000919050565b600054600160a060020a031633600160a060020a031614610212576102af565b8160026000858152602001908152602001600020819055508061023457610287565b81600160a060020a0316837f680ad70765443c2967675ab0fb91a46350c01c6df59bf9a41ff8a8dd097464ec60006000a3826001600084600160a060020a03168152602001908152602001600020819055505b827f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b505050565b600054600160a060020a031633600160a060020a0316146102d457610317565b806002600084815260200190815260200160002060010181905550817f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b5050565b60006001600083600160a060020a03168152602001908152602001600020549050919050565b6000600054905090565b6000600060006002600085815260200190815260200160002054925060026000858152602001908152602001600020600101549150600260008581526020019081526020016000206002015490509193909250565b600060026000838152602001908152602001600020549050919050565b600060026000838152602001908152602001600020600101549050919050565b600060026000838152602001908152602001600020600201549050919050565b600054600160a060020a031633600160a060020a03161461041d57610526565b80600160006002600085815260200190815260200160002054600160a060020a031681526020019081526020016000205414610458576104d2565b6002600082815260200190815260200160002054600160a060020a0316817f680ad70765443c2967675ab0fb91a46350c01c6df59bf9a41ff8a8dd097464ec60006000a36000600160006002600085815260200190815260200160002054600160a060020a03168152602001908152602001600020819055505b6002600082815260200190815260200160002060008101600090556001810160009055600281016000905550807f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b50565b6000919050565b6000919050565b600054600160a060020a031633600160a060020a0316146105575761059a565b806002600084815260200190815260200160002060020181905550817f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b505056" } ],
+								  id: jsonRpcRequestId++
+							  });
 
-					rpcCall(requests, function(){
-						dappUrl.splice(0, 1);
-						if (dappUrl.length > 0)
+				rpcCall(requests, function(httpRequest, response) {
+					var newCtrAddress = normalizeAddress(JSON.parse(response)[0].result);
+					requests = [];
+					var txt = qsTr("Please wait " + dappUrl[0] + " is registering ...");
+					deploymentStepChanged(txt);
+					console.log(txt);
+					deploymentDialog.waitForTrCountToIncrement(function(status) {
+						if (status === -1)
+						{
+							trCountIncrementTimeOut();
+							return;
+						}
+						var crLevel = createString(dappUrl[0]).encodeValueAsString();
+						requests.push({
+										  //setRegister()
+										  jsonrpc: "2.0",
+										  method: "eth_transact",
+										  params: [ { "from": deploymentDialog.currentAccount, "gas": 2000, "to": '0x' + addr, "data": "0x96077307" + crLevel + deploymentDialog.pad(newCtrAddress) } ],
+										  id: jsonRpcRequestId++
+									  });
+
+						rpcCall(requests, function(request, response){
+							dappUrl.splice(0, 1);
 							checkRegistration(dappUrl, newCtrAddress, callBack);
-						else
-							registerContentHash(addr, callBack);
+						});
 					});
 				});
-			});
-		}
-	});
+			}
+		});
+	}
 }
 
 function trCountIncrementTimeOut()
@@ -592,6 +607,11 @@ function normalizeAddress(addr)
 
 function formatAppUrl(url)
 {
+	if (url.toLowerCase().indexOf("eth://") === 0)
+		url = url.substring(6);
+	if (url === "")
+		return [projectModel.projectTitle];
+
 	var ret;
 	if (url.indexOf("/") === -1)
 		ret = url.split('.').reverse();
@@ -608,5 +628,6 @@ function formatAppUrl(url)
 	}
 	if (ret[0].toLowerCase() === "eth")
 		ret.splice(0, 1);
+	ret.push(projectModel.projectTitle);
 	return ret;
 }
