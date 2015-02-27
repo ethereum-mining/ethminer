@@ -33,6 +33,7 @@ var c = require('./const');
  */
 var requestManager = function() {
     var polls = [];
+    var timeout = null;
     var provider;
 
     var send = function (data) {
@@ -57,9 +58,11 @@ var requestManager = function() {
         provider = p;
     };
 
+    /*jshint maxparams:4 */
     var startPolling = function (data, pollId, callback, uninstall) {
         polls.push({data: data, id: pollId, callback: callback, uninstall: uninstall});
     };
+    /*jshint maxparams:3 */
 
     var stopPolling = function (pollId) {
         for (var i = polls.length; i--;) {
@@ -75,6 +78,12 @@ var requestManager = function() {
             poll.uninstall(poll.id); 
         });
         polls = [];
+
+        if (timeout) {
+            clearTimeout(timeout);
+            timeout = null;
+        }
+        poll();
     };
 
     var poll = function () {
@@ -85,7 +94,7 @@ var requestManager = function() {
             }
             data.callback(result);
         });
-        setTimeout(poll, c.ETH_POLLING_TIMEOUT);
+        timeout = setTimeout(poll, c.ETH_POLLING_TIMEOUT);
     };
     
     poll();
