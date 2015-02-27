@@ -325,6 +325,11 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 	debugDataReady(debugData);
 }
 
+void ClientModel::emptyRecord()
+{
+	debugDataReady(new QDebugData());
+}
+
 
 void ClientModel::debugRecord(unsigned _index)
 {
@@ -356,7 +361,7 @@ RecordLogEntry* ClientModel::lastBlock() const
 	strGas << blockInfo.gasUsed;
 	std::stringstream strNumber;
 	strNumber << blockInfo.number;
-	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), QString(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(blockInfo.hash.abridged())), tr("Gas Used: ") + QString::fromStdString(strGas.str()), QString(), QString(), false);
+	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(toHex(blockInfo.hash.ref()))), tr("Gas Used: ") + QString::fromStdString(strGas.str()), QString(), QString(), false, RecordLogEntry::RecordType::Block);
 	QQmlEngine::setObjectOwnership(record, QQmlEngine::JavaScriptOwnership);
 	return record;
 }
@@ -436,7 +441,7 @@ void ClientModel::onNewTransaction()
 		}
 	}
 
-	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall());
+	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall(), RecordLogEntry::RecordType::Transaction);
 	QQmlEngine::setObjectOwnership(log, QQmlEngine::JavaScriptOwnership);
 	emit newRecord(log);
 }
