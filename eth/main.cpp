@@ -97,38 +97,39 @@ void interactiveHelp()
 void help()
 {
 	cout
-        << "Usage eth [OPTIONS] <remote-host>" << endl
-        << "Options:" << endl
-        << "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
-		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
-        << "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
-        << "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
-        << "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
-		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
-		<< "    -h,--help  Show this help message and exit." << endl
-        << "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
+		<< "Usage eth [OPTIONS] <remote-host>" << endl
+		<< "Options:" << endl
+		<< "	-a,--address <addr>	 Set the coinbase (mining payout) address to addr (default: auto)." << endl
+		<< "	-b,--bootstrap	Connect to the default Ethereum peerserver." << endl
+		<< "	-c,--client-name <name>	 Add a name to your client's version string (default: blank)." << endl
+		<< "	-d,--db-path <path>	 Load database from path (default:	~/.ethereum " << endl
+		<< "						 <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+		<< "	-f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
+		<< "	-h,--help  Show this help message and exit." << endl
+		<< "	-i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #if ETH_JSONRPC
-		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
-		<< "    --json-rpc-port  Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
+		<< "	-j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
+		<< "	--json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
 #endif
-        << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
-		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
-		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
-		<< "    -L,--local-networking Use peers whose addresses are local." << endl
-		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
-        << "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
-        << "    -r,--remote <host>  Connect to remote host (default: none)." << endl
-        << "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
-		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
-        << "    -u,--public-ip <ip>  Force public ip to given (default; auto)." << endl
-        << "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
-        << "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
-        << "    -V,--version  Show the version and exit." << endl
+		<< "	-l,--listen <port>	Listen on the given port for incoming connected (default: 30303)." << endl
+		<< "	-m,--mining <on/off/number>	 Enable mining, optionally for a specified number of blocks (Default: off)" << endl
+		<< "	-n,--upnp <on/off>	Use upnp for NAT (default: on)." << endl
+		<< "	-L,--local-networking Use peers whose addresses are local." << endl
+		<< "	-o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
+		<< "	-p,--port <port>  Connect to remote port (default: 30303)." << endl
+		<< "	-r,--remote <host>	Connect to remote host (default: none)." << endl
+		<< "	-s,--secret <secretkeyhex>	Set the secret key for use with send command (default: auto)." << endl
+		<< "	--structured-logging Enables structured logging." << endl
+		<< "	-t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
+		<< "	-u,--public-ip <ip>	 Force public ip to given (default; auto)." << endl
+		<< "	-v,--verbosity <0 - 9>	Set the log verbosity from 0 to 9 (Default: 8)." << endl
+		<< "	-x,--peers <number>	 Attempt to connect to given number of peers (Default: 5)." << endl
+		<< "	-V,--version  Show the version and exit." << endl
 #if ETH_EVMJIT
-		<< "    --jit  Use EVM JIT (default: off)." << endl
+		<< "	--jit  Use EVM JIT (default: off)." << endl
 #endif
 		;
-        exit(0);
+		exit(0);
 }
 
 string credits(bool _interactive = false)
@@ -207,6 +208,7 @@ int main(int argc, char** argv)
 	bool useLocal = false;
 	bool forceMining = false;
 	bool jit = false;
+	bool structuredLogging = false;
 	string clientName;
 
 	// Init defaults
@@ -279,6 +281,8 @@ int main(int argc, char** argv)
 		}
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			us = KeyPair(h256(fromHex(argv[++i])));
+		else if ((arg == "--structured-logging") && i + 1 < argc)
+			structuredLogging = true;
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
 		else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
@@ -360,7 +364,8 @@ int main(int argc, char** argv)
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
 		&nodesState,
-		miners
+		miners,
+		structuredLogging
 		);
 	web3.setIdealPeerCount(peers);
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;

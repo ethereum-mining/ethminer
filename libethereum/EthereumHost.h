@@ -59,7 +59,7 @@ class EthereumHost: public p2p::HostCapability<EthereumPeer>, Worker
 
 public:
 	/// Start server, but don't listen.
-	EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId);
+	EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId, bool _structuredLogging);
 
 	/// Will block on network process events.
 	virtual ~EthereumHost();
@@ -111,6 +111,7 @@ private:
 	u256 m_networkId;
 
 	EthereumPeer* m_syncer = nullptr;	// TODO: switch to weak_ptr
+	bool m_structuredLogging;
 
 	DownloadMan m_man;
 
