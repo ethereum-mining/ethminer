@@ -59,7 +59,8 @@ void VersionChecker::setOk()
 	}
 }
 
-Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId, int miners):
+Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
+	u256 _networkId, int _miners, bool _structuredLogging):
 	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
@@ -67,10 +68,10 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 	m_preMine(Address(), m_stateDB),
 	m_postMine(Address(), m_stateDB)
 {
-	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
+	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId, _structuredLogging));
 
-	if (miners > -1)
-		setMiningThreads(miners);
+	if (_miners > -1)
+		setMiningThreads(_miners);
 	else
 		setMiningThreads();
 	if (_dbPath.size())
