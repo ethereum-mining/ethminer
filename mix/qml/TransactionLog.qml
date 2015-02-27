@@ -3,6 +3,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
+import org.ethereum.qml.RecordLogEntry 1.0
 
 Item {
 
@@ -133,7 +134,10 @@ Item {
 			}
 			onActivated:  {
 				var item = logTable.model.get(row);
-				clientModel.debugRecord(item.recordIndex);
+				if (item.type === RecordLogEntry.Transaction)
+					clientModel.debugRecord(item.recordIndex);
+				else
+					clientModel.emptyRecord();
 			}
 			Keys.onPressed: {
 				if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < logTable.model.count) {
@@ -159,11 +163,8 @@ Item {
 				callModel.append(_r);
 		}
 		onMiningComplete: {
-			var block = clientModel.lastBlock;
-			console.log(block);
-			fullModel.append(block);
-			console.log(JSON.stringify(block));
+			fullModel.append(clientModel.lastBlock);
+			transactionModel.append(clientModel.lastBlock);
 		}
 	}
-
 }

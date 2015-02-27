@@ -282,7 +282,7 @@ function deployProject(force) {
 
 	var date = new Date();
 	var deploymentId = date.toLocaleString(Qt.locale(), "ddMMyyHHmmsszzz");
-    var jsonRpcUrl = "http://127.0.0.1:8080";
+	var jsonRpcUrl = "http://127.0.0.1:8080";
 	console.log("Deploying " + deploymentId + " to " + jsonRpcUrl);
 	deploymentStarted();
 
@@ -369,7 +369,7 @@ function finalizeDeployment(deploymentId, addresses) {
 	//copy scripts
 	fileIo.copyFile("qrc:///js/bignumber.min.js", deploymentDir + "bignumber.min.js");
 	fileIo.copyFile("qrc:///js/webthree.js", deploymentDir + "ethereum.js");
-	deploymentAddress = address;
+	deploymentAddress = addresses;
 	saveProject();
 	deploymentComplete();
 }

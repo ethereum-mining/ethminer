@@ -36,10 +36,13 @@ Rectangle {
 
 	function update(data, giveFocus)
 	{
-		if (codeModel.hasContract)
+		if (data === null)
+			Debugger.init(null);
+		else if (data.states.length === 0)
+			Debugger.init(null);
+		else if (codeModel.hasContract)
 		{
-			if (data !== null)
-				Debugger.init(data);
+			Debugger.init(data);
 			debugScrollArea.visible = true;
 			compilationErrorArea.visible = false;
 			machineStates.visible = true;
