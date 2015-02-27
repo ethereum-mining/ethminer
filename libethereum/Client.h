@@ -44,6 +44,9 @@
 
 namespace dev
 {
+
+class StructuredLogger;
+
 namespace eth
 {
 
@@ -167,7 +170,7 @@ class Client: public MinerHost, public Interface, Worker
 public:
 	/// New-style Constructor.
 	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false,
-					u256 _networkId = 0, int _miners = -1, bool _structuredLogging = false);
+					u256 _networkId = 0, int _miners = -1, StructuredLogger const* _structuredLogger = nullptr);
 
 	/// Destructor.
 	virtual ~Client();
@@ -365,6 +368,7 @@ private:
 	std::map<h256, InstalledFilter> m_filters;
 	std::map<unsigned, ClientWatch> m_watches;
 
+	StructuredLogger const* m_structuredLogger;
 	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
 };
 

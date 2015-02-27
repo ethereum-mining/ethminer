@@ -27,6 +27,7 @@
 #include <boost/timer.hpp>
 #include <secp256k1/secp256k1.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
 #include <libevm/VMFactory.h>
@@ -801,12 +802,12 @@ bool State::completeMine(h256 const& _nonce)
 	m_currentBlock.nonce = _nonce;
 	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
 
-	completeMine();
+	completeMine(nullptr);
 
 	return true;
 }
 
-void State::completeMine()
+void State::completeMine(StructuredLogger const* _structuredLogger)
 {
 	cdebug << "Completing mine!";
 	// Got it!
@@ -820,6 +821,13 @@ void State::completeMine()
 	ret.swapOut(m_currentBytes);
 	m_currentBlock.hash = sha3(RLP(m_currentBytes)[0].data());
 	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
+	if (_structuredLogger)
+		_structuredLogger->logMinedNewBlock(
+			m_currentBlock.hash.abridged(),
+			m_currentBlock.nonce.abridged(),
+			"", //TODO: chain head hash here ??
+			m_currentBlock.parentHash.abridged()
+		);
 
 	// Quickly reset the transactions.
 	// TODO: Leave this in a better state than this limbo, or at least record that it's in limbo.

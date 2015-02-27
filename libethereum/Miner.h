@@ -32,6 +32,8 @@
 
 namespace dev
 {
+
+class StructuredLogger;
 namespace eth
 {
 
@@ -104,7 +106,7 @@ public:
 	~LocalMiner() { stop(); }
 
 	/// Setup its basics.
-	void setup(MinerHost* _host, unsigned _id = 0);
+	void setup(MinerHost* _host, unsigned _id = 0, StructuredLogger const* _structuredLogger = nullptr);
 
 	/// Start mining.
 	void start() { startWorking(); }
@@ -143,6 +145,7 @@ private:
 	mutable std::mutex x_mineInfo;			///< Lock for the mining progress & history.
 	MineProgress m_mineProgress;			///< What's our progress?
 	std::list<MineInfo> m_mineHistory;		///< What the history of our mining?
+	StructuredLogger const* m_structuredLogger;
 };
 
 }
