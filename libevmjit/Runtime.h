@@ -27,7 +27,7 @@ private:
 	i256 m_memorySize;
 public:
 	byte* m_memData = nullptr; // FIXME: Remember to free memory
-	uint64_t m_memSize = 0;
+	uint64_t m_memSize = 0;    // TODO: Init array in LLVM, to allow more optimization
 	uint64_t m_memCap = 0;
 };
 
