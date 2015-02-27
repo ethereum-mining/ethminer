@@ -187,10 +187,23 @@ Window {
 				text: qsTr("Ethereum Application URL: ")
 			}
 
-			DefaultTextField
+			Rectangle
 			{
 				Layout.fillWidth: true
-				id: applicationUrlEth
+				height: 25
+				color: "transparent"
+				DefaultTextField
+				{
+					width: 350
+					id: applicationUrlEth
+				}
+
+				DefaultLabel
+				{
+					anchors.verticalCenter: parent.verticalCenter;
+					anchors.left: applicationUrlEth.right
+					text: "/" + projectModel.projectTitle
+				}
 			}
 
 			DefaultLabel
