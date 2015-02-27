@@ -20,7 +20,7 @@ public:
 		m_creator(_creator)
 	{}
 
-	llvm::Value* call(llvm::IRBuilder<>& _builder, std::initializer_list<llvm::Value*> const& _args, llvm::Twine const& _name = {});
+	llvm::Value* call(llvm::IRBuilder<>& _builder, std::initializer_list<llvm::Value*> const& _args, llvm::Twine const& _name = "");
 
 private:
 	llvm::Function* m_func = nullptr;
