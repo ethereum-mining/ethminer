@@ -27,9 +27,9 @@
 #include <vector>
 #include <memory>
 #include <boost/noncopyable.hpp>
+#include <libevmcore/SourceLocation.h>
 #include <libsolidity/Utils.h>
 #include <libsolidity/ASTForward.h>
-#include <libsolidity/BaseTypes.h>
 #include <libsolidity/Token.h>
 #include <libsolidity/Types.h>
 #include <libsolidity/Exceptions.h>
@@ -51,7 +51,7 @@ class ASTConstVisitor;
 class ASTNode: private boost::noncopyable
 {
 public:
-	explicit ASTNode(Location const& _location): m_location(_location) {}
+	explicit ASTNode(SourceLocation const& _location): m_location(_location) {}
 
 	virtual ~ASTNode() {}
 
@@ -71,7 +71,7 @@ public:
 	}
 
 	/// Returns the source code location of this node.
-	Location const& getLocation() const { return m_location; }
+	SourceLocation const& getLocation() const { return m_location; }
 
 	/// Creates a @ref TypeError exception and decorates it with the location of the node and
 	/// the given description
@@ -85,7 +85,7 @@ public:
 	///@}
 
 private:
-	Location m_location;
+	SourceLocation m_location;
 };
 
 /**
@@ -94,7 +94,7 @@ private:
 class SourceUnit: public ASTNode
 {
 public:
-	SourceUnit(Location const& _location, std::vector<ASTPointer<ASTNode>> const& _nodes):
+	SourceUnit(SourceLocation const& _location, std::vector<ASTPointer<ASTNode>> const& _nodes):
 		ASTNode(_location), m_nodes(_nodes) {}
 
 	virtual void accept(ASTVisitor& _visitor) override;
@@ -114,7 +114,7 @@ private:
 class ImportDirective: public ASTNode
 {
 public:
-	ImportDirective(Location const& _location, ASTPointer<ASTString> const& _identifier):
+	ImportDirective(SourceLocation const& _location, ASTPointer<ASTString> const& _identifier):
 		ASTNode(_location), m_identifier(_identifier) {}
 
 	virtual void accept(ASTVisitor& _visitor) override;
@@ -133,9 +133,9 @@ class Declaration: public ASTNode
 {
 public:
 	/// Visibility ordered from restricted to unrestricted.
-	enum class Visibility { Default, Private, Inheritable, Public, External };
+	enum class Visibility { Default, Private, Internal, Public, External };
 
-	Declaration(Location const& _location, ASTPointer<ASTString> const& _name,
+	Declaration(SourceLocation const& _location, ASTPointer<ASTString> const& _name,
 				Visibility _visibility = Visibility::Default):
 		ASTNode(_location), m_name(_name), m_visibility(_visibility), m_scope(nullptr) {}
 
@@ -144,7 +144,7 @@ public:
 	Visibility getVisibility() const { return m_visibility == Visibility::Default ? getDefaultVisibility() : m_visibility; }
 	bool isPublic() const { return getVisibility() >= Visibility::Public; }
 	bool isVisibleInContract() const { return getVisibility() != Visibility::External; }
-	bool isVisibleInDerivedContracts() const { return isVisibleInContract() && getVisibility() >= Visibility::Inheritable; }
+	bool isVisibleInDerivedContracts() const { return isVisibleInContract() && getVisibility() >= Visibility::Internal; }
 
 	/// @returns the scope this declaration resides in. Can be nullptr if it is the global scope.
 	/// Available only after name and type resolution step.
@@ -205,7 +205,7 @@ protected:
 class ContractDefinition: public Declaration, public Documented
 {
 public:
-	ContractDefinition(Location const& _location,
+	ContractDefinition(SourceLocation const& _location,
 					   ASTPointer<ASTString> const& _name,
 					   ASTPointer<ASTString> const& _documentation,
 					   std::vector<ASTPointer<InheritanceSpecifier>> const& _baseContracts,
@@ -278,7 +278,7 @@ private:
 class InheritanceSpecifier: public ASTNode
 {
 public:
-	InheritanceSpecifier(Location const& _location, ASTPointer<Identifier> const& _baseName,
+	InheritanceSpecifier(SourceLocation const& _location, ASTPointer<Identifier> const& _baseName,
 						 std::vector<ASTPointer<Expression>> _arguments):
 		ASTNode(_location), m_baseName(_baseName), m_arguments(_arguments) {}
 
@@ -298,7 +298,7 @@ private:
 class StructDefinition: public Declaration
 {
 public:
-	StructDefinition(Location const& _location,
+	StructDefinition(SourceLocation const& _location,
 					 ASTPointer<ASTString> const& _name,
 					 std::vector<ASTPointer<VariableDeclaration>> const& _members):
 		Declaration(_location, _name), m_members(_members) {}
@@ -323,7 +323,7 @@ private:
 class EnumDefinition: public Declaration
 {
 public:
-	EnumDefinition(Location const& _location,
+	EnumDefinition(SourceLocation const& _location,
 				   ASTPointer<ASTString> const& _name,
 				   std::vector<ASTPointer<EnumValue>> const& _members):
 		Declaration(_location, _name), m_members(_members) {}
@@ -344,7 +344,7 @@ private:
 class EnumValue: public Declaration
 {
   public:
-	EnumValue(Location const& _location,
+	EnumValue(SourceLocation const& _location,
 			  ASTPointer<ASTString> const& _name):
 		Declaration(_location, _name) {}
 
@@ -361,7 +361,7 @@ class EnumValue: public Declaration
 class ParameterList: public ASTNode
 {
 public:
-	ParameterList(Location const& _location,
+	ParameterList(SourceLocation const& _location,
 				  std::vector<ASTPointer<VariableDeclaration>> const& _parameters):
 		ASTNode(_location), m_parameters(_parameters) {}
 	virtual void accept(ASTVisitor& _visitor) override;
@@ -376,7 +376,7 @@ private:
 class FunctionDefinition: public Declaration, public VariableScope, public Documented
 {
 public:
-	FunctionDefinition(Location const& _location, ASTPointer<ASTString> const& _name,
+	FunctionDefinition(SourceLocation const& _location, ASTPointer<ASTString> const& _name,
 					Declaration::Visibility _visibility, bool _isConstructor,
 					ASTPointer<ASTString> const& _documentation,
 					ASTPointer<ParameterList> const& _parameters,
@@ -431,7 +431,7 @@ private:
 class VariableDeclaration: public Declaration
 {
 public:
-	VariableDeclaration(Location const& _location, ASTPointer<TypeName> const& _type,
+	VariableDeclaration(SourceLocation const& _location, ASTPointer<TypeName> const& _type,
 							ASTPointer<ASTString> const& _name, ASTPointer<Expression> _value,
 							Visibility _visibility,
 							bool _isStateVar = false, bool _isIndexed = false):
@@ -441,7 +441,7 @@ public:
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 
-	TypeName const* getTypeName() const { return m_typeName.get(); }
+	TypeName* getTypeName() { return m_typeName.get(); }
 	ASTPointer<Expression> const& getValue() const { return m_value; }
 
 	/// Returns the declared or inferred type. Can be an empty pointer if no type was explicitly
@@ -459,7 +459,7 @@ public:
 	bool isIndexed() const { return m_isIndexed; }
 
 protected:
-	Visibility getDefaultVisibility() const override { return Visibility::Inheritable; }
+	Visibility getDefaultVisibility() const override { return Visibility::Internal; }
 
 private:
 	ASTPointer<TypeName> m_typeName;    ///< can be empty ("var")
@@ -476,7 +476,7 @@ private:
 class ModifierDefinition: public Declaration, public VariableScope, public Documented
 {
 public:
-	ModifierDefinition(Location const& _location,
+	ModifierDefinition(SourceLocation const& _location,
 					   ASTPointer<ASTString> const& _name,
 					   ASTPointer<ASTString> const& _documentation,
 					   ASTPointer<ParameterList> const& _parameters,
@@ -506,7 +506,7 @@ private:
 class ModifierInvocation: public ASTNode
 {
 public:
-	ModifierInvocation(Location const& _location, ASTPointer<Identifier> const& _name,
+	ModifierInvocation(SourceLocation const& _location, ASTPointer<Identifier> const& _name,
 					   std::vector<ASTPointer<Expression>> _arguments):
 		ASTNode(_location), m_modifierName(_name), m_arguments(_arguments) {}
 
@@ -529,7 +529,7 @@ private:
 class EventDefinition: public Declaration, public VariableScope, public Documented
 {
 public:
-	EventDefinition(Location const& _location,
+	EventDefinition(SourceLocation const& _location,
 					ASTPointer<ASTString> const& _name,
 					ASTPointer<ASTString> const& _documentation,
 					ASTPointer<ParameterList> const& _parameters):
@@ -560,7 +560,7 @@ class MagicVariableDeclaration: public Declaration
 {
 public:
 	MagicVariableDeclaration(ASTString const& _name, std::shared_ptr<Type const> const& _type):
-		Declaration(Location(), std::make_shared<ASTString>(_name)), m_type(_type) {}
+		Declaration(SourceLocation(), std::make_shared<ASTString>(_name)), m_type(_type) {}
 	virtual void accept(ASTVisitor&) override { BOOST_THROW_EXCEPTION(InternalCompilerError()
 							<< errinfo_comment("MagicVariableDeclaration used inside real AST.")); }
 	virtual void accept(ASTConstVisitor&) const override { BOOST_THROW_EXCEPTION(InternalCompilerError()
@@ -581,14 +581,14 @@ private:
 class TypeName: public ASTNode
 {
 public:
-	explicit TypeName(Location const& _location): ASTNode(_location) {}
+	explicit TypeName(SourceLocation const& _location): ASTNode(_location) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 
 	/// Retrieve the element of the type hierarchy this node refers to. Can return an empty shared
 	/// pointer until the types have been resolved using the @ref NameAndTypeResolver.
 	/// If it returns an empty shared pointer after that, this indicates that the type was not found.
-	virtual std::shared_ptr<Type const> toType() const = 0;
+	virtual std::shared_ptr<Type const> toType() = 0;
 };
 
 /**
@@ -598,14 +598,14 @@ public:
 class ElementaryTypeName: public TypeName
 {
 public:
-	explicit ElementaryTypeName(Location const& _location, Token::Value _type):
+	explicit ElementaryTypeName(SourceLocation const& _location, Token::Value _type):
 		TypeName(_location), m_type(_type)
 	{
 		solAssert(Token::isElementaryTypeName(_type), "");
 	}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual std::shared_ptr<Type const> toType() const override { return Type::fromElementaryTypeName(m_type); }
+	virtual std::shared_ptr<Type const> toType() override { return Type::fromElementaryTypeName(m_type); }
 
 	Token::Value getTypeName() const { return m_type; }
 
@@ -619,11 +619,11 @@ private:
 class UserDefinedTypeName: public TypeName
 {
 public:
-	UserDefinedTypeName(Location const& _location, ASTPointer<ASTString> const& _name):
+	UserDefinedTypeName(SourceLocation const& _location, ASTPointer<ASTString> const& _name):
 		TypeName(_location), m_name(_name), m_referencedDeclaration(nullptr) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual std::shared_ptr<Type const> toType() const override { return Type::fromUserDefinedTypeName(*this); }
+	virtual std::shared_ptr<Type const> toType() override { return Type::fromUserDefinedTypeName(*this); }
 
 	ASTString const& getName() const { return *m_name; }
 	void setReferencedDeclaration(Declaration const& _referencedDeclaration) { m_referencedDeclaration = &_referencedDeclaration; }
@@ -641,12 +641,12 @@ private:
 class Mapping: public TypeName
 {
 public:
-	Mapping(Location const& _location, ASTPointer<ElementaryTypeName> const& _keyType,
+	Mapping(SourceLocation const& _location, ASTPointer<ElementaryTypeName> const& _keyType,
 			ASTPointer<TypeName> const& _valueType):
 		TypeName(_location), m_keyType(_keyType), m_valueType(_valueType) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual std::shared_ptr<Type const> toType() const override { return Type::fromMapping(*this); }
+	virtual TypePointer toType() override { return Type::fromMapping(*m_keyType, *m_valueType); }
 
 	ElementaryTypeName const& getKeyType() const { return *m_keyType; }
 	TypeName const& getValueType() const { return *m_valueType; }
@@ -654,6 +654,27 @@ public:
 private:
 	ASTPointer<ElementaryTypeName> m_keyType;
 	ASTPointer<TypeName> m_valueType;
+};
+
+/**
+ * An array type, can be "typename[]" or "typename[<expression>]".
+ */
+class ArrayTypeName: public TypeName
+{
+public:
+	ArrayTypeName(SourceLocation const& _location, ASTPointer<TypeName> const& _baseType,
+			ASTPointer<Expression> const& _length):
+		TypeName(_location), m_baseType(_baseType), m_length(_length) {}
+	virtual void accept(ASTVisitor& _visitor) override;
+	virtual void accept(ASTConstVisitor& _visitor) const override;
+	virtual std::shared_ptr<Type const> toType() override { return Type::fromArrayTypeName(*m_baseType, m_length.get()); }
+
+	TypeName const& getBaseType() const { return *m_baseType; }
+	Expression const* getLength() const { return m_length.get(); }
+
+private:
+	ASTPointer<TypeName> m_baseType;
+	ASTPointer<Expression> m_length; ///< Length of the array, might be empty.
 };
 
 /// @}
@@ -668,7 +689,7 @@ private:
 class Statement: public ASTNode
 {
 public:
-	explicit Statement(Location const& _location): ASTNode(_location) {}
+	explicit Statement(SourceLocation const& _location): ASTNode(_location) {}
 
 	/// Check all type requirements, throws exception if some requirement is not met.
 	/// This includes checking that operators are applicable to their arguments but also that
@@ -682,7 +703,7 @@ public:
 class Block: public Statement
 {
 public:
-	Block(Location const& _location, std::vector<ASTPointer<Statement>> const& _statements):
+	Block(SourceLocation const& _location, std::vector<ASTPointer<Statement>> const& _statements):
 		Statement(_location), m_statements(_statements) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -700,7 +721,7 @@ private:
 class PlaceholderStatement: public Statement
 {
 public:
-	PlaceholderStatement(Location const& _location): Statement(_location) {}
+	PlaceholderStatement(SourceLocation const& _location): Statement(_location) {}
 
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -715,7 +736,7 @@ public:
 class IfStatement: public Statement
 {
 public:
-	IfStatement(Location const& _location, ASTPointer<Expression> const& _condition,
+	IfStatement(SourceLocation const& _location, ASTPointer<Expression> const& _condition,
 				ASTPointer<Statement> const& _trueBody, ASTPointer<Statement> const& _falseBody):
 		Statement(_location),
 		m_condition(_condition), m_trueBody(_trueBody), m_falseBody(_falseBody) {}
@@ -740,13 +761,13 @@ private:
 class BreakableStatement: public Statement
 {
 public:
-	BreakableStatement(Location const& _location): Statement(_location) {}
+	BreakableStatement(SourceLocation const& _location): Statement(_location) {}
 };
 
 class WhileStatement: public BreakableStatement
 {
 public:
-	WhileStatement(Location const& _location, ASTPointer<Expression> const& _condition,
+	WhileStatement(SourceLocation const& _location, ASTPointer<Expression> const& _condition,
 				   ASTPointer<Statement> const& _body):
 		BreakableStatement(_location), m_condition(_condition), m_body(_body) {}
 	virtual void accept(ASTVisitor& _visitor) override;
@@ -767,7 +788,7 @@ private:
 class ForStatement: public BreakableStatement
 {
 public:
-	ForStatement(Location const& _location,
+	ForStatement(SourceLocation const& _location,
 				 ASTPointer<Statement> const& _initExpression,
 				 ASTPointer<Expression> const& _conditionExpression,
 				 ASTPointer<ExpressionStatement> const& _loopExpression,
@@ -800,7 +821,7 @@ private:
 class Continue: public Statement
 {
 public:
-	Continue(Location const& _location): Statement(_location) {}
+	Continue(SourceLocation const& _location): Statement(_location) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 	virtual void checkTypeRequirements() override {}
@@ -809,7 +830,7 @@ public:
 class Break: public Statement
 {
 public:
-	Break(Location const& _location): Statement(_location) {}
+	Break(SourceLocation const& _location): Statement(_location) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 	virtual void checkTypeRequirements() override {}
@@ -818,7 +839,7 @@ public:
 class Return: public Statement
 {
 public:
-	Return(Location const& _location, ASTPointer<Expression> _expression):
+	Return(SourceLocation const& _location, ASTPointer<Expression> _expression):
 		Statement(_location), m_expression(_expression), m_returnParameters(nullptr) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -843,7 +864,7 @@ private:
 class VariableDeclarationStatement: public Statement
 {
 public:
-	VariableDeclarationStatement(Location const& _location, ASTPointer<VariableDeclaration> _variable):
+	VariableDeclarationStatement(SourceLocation const& _location, ASTPointer<VariableDeclaration> _variable):
 		Statement(_location), m_variable(_variable) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -862,7 +883,7 @@ private:
 class ExpressionStatement: public Statement
 {
 public:
-	ExpressionStatement(Location const& _location, ASTPointer<Expression> _expression):
+	ExpressionStatement(SourceLocation const& _location, ASTPointer<Expression> _expression):
 		Statement(_location), m_expression(_expression) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -887,7 +908,7 @@ private:
 class Expression: public ASTNode
 {
 public:
-	Expression(Location const& _location): ASTNode(_location) {}
+	Expression(SourceLocation const& _location): ASTNode(_location) {}
 	virtual void checkTypeRequirements() = 0;
 
 	std::shared_ptr<Type const> const& getType() const { return m_type; }
@@ -918,7 +939,7 @@ protected:
 class Assignment: public Expression
 {
 public:
-	Assignment(Location const& _location, ASTPointer<Expression> const& _leftHandSide,
+	Assignment(SourceLocation const& _location, ASTPointer<Expression> const& _leftHandSide,
 			   Token::Value _assignmentOperator, ASTPointer<Expression> const& _rightHandSide):
 		Expression(_location), m_leftHandSide(_leftHandSide),
 		m_assigmentOperator(_assignmentOperator), m_rightHandSide(_rightHandSide)
@@ -946,7 +967,7 @@ private:
 class UnaryOperation: public Expression
 {
 public:
-	UnaryOperation(Location const& _location, Token::Value _operator,
+	UnaryOperation(SourceLocation const& _location, Token::Value _operator,
 				   ASTPointer<Expression> const& _subExpression, bool _isPrefix):
 		Expression(_location), m_operator(_operator),
 		m_subExpression(_subExpression), m_isPrefix(_isPrefix)
@@ -974,7 +995,7 @@ private:
 class BinaryOperation: public Expression
 {
 public:
-	BinaryOperation(Location const& _location, ASTPointer<Expression> const& _left,
+	BinaryOperation(SourceLocation const& _location, ASTPointer<Expression> const& _left,
 					Token::Value _operator, ASTPointer<Expression> const& _right):
 		Expression(_location), m_left(_left), m_operator(_operator), m_right(_right)
 	{
@@ -1005,7 +1026,7 @@ private:
 class FunctionCall: public Expression
 {
 public:
-	FunctionCall(Location const& _location, ASTPointer<Expression> const& _expression,
+	FunctionCall(SourceLocation const& _location, ASTPointer<Expression> const& _expression,
 				 std::vector<ASTPointer<Expression>> const& _arguments, std::vector<ASTPointer<ASTString>> const& _names):
 		Expression(_location), m_expression(_expression), m_arguments(_arguments), m_names(_names) {}
 	virtual void accept(ASTVisitor& _visitor) override;
@@ -1032,7 +1053,7 @@ private:
 class NewExpression: public Expression
 {
 public:
-	NewExpression(Location const& _location, ASTPointer<Identifier> const& _contractName):
+	NewExpression(SourceLocation const& _location, ASTPointer<Identifier> const& _contractName):
 		Expression(_location), m_contractName(_contractName) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -1053,7 +1074,7 @@ private:
 class MemberAccess: public Expression
 {
 public:
-	MemberAccess(Location const& _location, ASTPointer<Expression> _expression,
+	MemberAccess(SourceLocation const& _location, ASTPointer<Expression> _expression,
 				 ASTPointer<ASTString> const& _memberName):
 		Expression(_location), m_expression(_expression), m_memberName(_memberName) {}
 	virtual void accept(ASTVisitor& _visitor) override;
@@ -1073,7 +1094,7 @@ private:
 class IndexAccess: public Expression
 {
 public:
-	IndexAccess(Location const& _location, ASTPointer<Expression> const& _base,
+	IndexAccess(SourceLocation const& _location, ASTPointer<Expression> const& _base,
 				ASTPointer<Expression> const& _index):
 		Expression(_location), m_base(_base), m_index(_index) {}
 	virtual void accept(ASTVisitor& _visitor) override;
@@ -1081,7 +1102,7 @@ public:
 	virtual void checkTypeRequirements() override;
 
 	Expression const& getBaseExpression() const { return *m_base; }
-	Expression const& getIndexExpression() const { return *m_index; }
+	Expression const* getIndexExpression() const { return m_index.get(); }
 
 private:
 	ASTPointer<Expression> m_base;
@@ -1095,7 +1116,7 @@ private:
 class PrimaryExpression: public Expression
 {
 public:
-	PrimaryExpression(Location const& _location): Expression(_location) {}
+	PrimaryExpression(SourceLocation const& _location): Expression(_location) {}
 };
 
 /**
@@ -1104,7 +1125,7 @@ public:
 class Identifier: public PrimaryExpression
 {
 public:
-	Identifier(Location const& _location, ASTPointer<ASTString> const& _name):
+	Identifier(SourceLocation const& _location, ASTPointer<ASTString> const& _name):
 		PrimaryExpression(_location), m_name(_name) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -1139,7 +1160,7 @@ private:
 class ElementaryTypeNameExpression: public PrimaryExpression
 {
 public:
-	ElementaryTypeNameExpression(Location const& _location, Token::Value _typeToken):
+	ElementaryTypeNameExpression(SourceLocation const& _location, Token::Value _typeToken):
 		PrimaryExpression(_location), m_typeToken(_typeToken)
 	{
 		solAssert(Token::isElementaryTypeName(_typeToken), "");
@@ -1168,7 +1189,7 @@ public:
 		Finney = Token::SubFinney,
 		Ether = Token::SubEther
 	};
-	Literal(Location const& _location, Token::Value _token,
+	Literal(SourceLocation const& _location, Token::Value _token,
 			ASTPointer<ASTString> const& _value,
 			SubDenomination _sub = SubDenomination::None):
 		PrimaryExpression(_location), m_token(_token), m_value(_value), m_subDenomination(_sub) {}

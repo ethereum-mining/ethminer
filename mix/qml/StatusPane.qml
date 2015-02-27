@@ -55,6 +55,7 @@ Rectangle {
 		onDeploymentStarted: infoMessage(qsTr("Running deployment..."));
 		onDeploymentError: errorMessage(error);
 		onDeploymentComplete: infoMessage(qsTr("Deployment complete"));
+		onDeploymentStepChanged: infoMessage(message);
 	}
 	Connections {
 		target: codeModel

@@ -155,6 +155,13 @@ bool ASTPrinter::visit(Mapping const& _node)
 	return goDeeper();
 }
 
+bool ASTPrinter::visit(ArrayTypeName const& _node)
+{
+	writeLine("ArrayTypeName");
+	printSourcePart(_node);
+	return goDeeper();
+}
+
 bool ASTPrinter::visit(Statement const& _node)
 {
 	writeLine("Statement");
@@ -419,6 +426,11 @@ void ASTPrinter::endVisit(Mapping const&)
 	m_indentation--;
 }
 
+void ASTPrinter::endVisit(ArrayTypeName const&)
+{
+	m_indentation--;
+}
+
 void ASTPrinter::endVisit(Statement const&)
 {
 	m_indentation--;
@@ -543,7 +555,7 @@ void ASTPrinter::printSourcePart(ASTNode const& _node)
 {
 	if (!m_source.empty())
 	{
-		Location const& location(_node.getLocation());
+		SourceLocation const& location(_node.getLocation());
 		*m_ostream << getIndentation() << "   Source: "
 				   << escaped(m_source.substr(location.start, location.end - location.start), false) << endl;
 	}

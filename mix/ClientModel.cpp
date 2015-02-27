@@ -387,7 +387,7 @@ void ClientModel::onNewTransaction()
 	QString function;
 	QString returned;
 
-	bool creation = tr.contractAddress != 0;
+	bool creation = (bool)tr.contractAddress;
 
 	//TODO: handle value transfer
 	FixedHash<4> functionHash;
@@ -420,7 +420,7 @@ void ClientModel::onNewTransaction()
 	if (creation)
 		returned = QString::fromStdString(toJS(tr.contractAddress));
 
-	Address contractAddress = tr.address != 0 ? tr.address : tr.contractAddress;
+	Address contractAddress = (bool)tr.address ? tr.address : tr.contractAddress;
 	auto contractAddressIter = m_contractNames.find(contractAddress);
 	if (contractAddressIter != m_contractNames.end())
 	{

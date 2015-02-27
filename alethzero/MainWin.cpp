@@ -1458,7 +1458,7 @@ void Main::on_debugCurrent_triggered()
 	}
 }
 
-void Main::on_debugDumpState_triggered(int _add)
+void Main::debugDumpState(int _add)
 {
 	if (auto item = ui->blocks->currentItem())
 	{
@@ -1477,11 +1477,6 @@ void Main::on_debugDumpState_triggered(int _add)
 			}
 		}
 	}
-}
-
-void Main::on_debugDumpStatePre_triggered()
-{
-	on_debugDumpState_triggered(0);
 }
 
 void Main::on_contracts_currentItemChanged()
@@ -1511,7 +1506,7 @@ void Main::on_contracts_currentItemChanged()
 	}
 }
 
-void Main::on_idealPeers_valueChanged()
+void Main::on_idealPeers_valueChanged(int)
 {
 	m_webThree->setIdealPeerCount(ui->idealPeers->value());
 }
@@ -1523,11 +1518,11 @@ void Main::on_ourAccounts_doubleClicked()
 	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
 }
 
-void Main::on_log_doubleClicked()
+/*void Main::on_log_doubleClicked()
 {
 	ui->log->setPlainText("");
 	m_logHistory.clear();
-}
+}*/
 
 void Main::on_accounts_doubleClicked()
 {
@@ -1634,7 +1629,7 @@ void Main::on_net_triggered()
 	{
 		web3()->setIdealPeerCount(ui->idealPeers->value());
 		web3()->setNetworkPreferences(netPrefs());
-		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : 0);
+		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : h256());
 		// TODO: p2p
 //		if (m_networkConfig.size()/* && ui->usePast->isChecked()*/)
 //			web3()->restoreNetwork(bytesConstRef((byte*)m_networkConfig.data(), m_networkConfig.size()));
