@@ -56,7 +56,7 @@ llvm::Function* Memory::getRequireFunc()
 
 		// BB "Check"
 		m_builder.SetInsertPoint(checkBB);
-		static const auto c_inputMax = uint64_t(2) << 40; // max value of blkSize and blkOffset that will not result in integer overflow in calculations below
+		static const auto c_inputMax = uint64_t(1) << 32; // max value of blkSize and blkOffset that will not result in integer overflow in calculations below
 		auto blkOffsetOk = m_builder.CreateICmpULE(blkOffset, Constant::get(c_inputMax), "blkOffsetOk");
 		auto blkO = m_builder.CreateSelect(blkOffsetOk, m_builder.CreateTrunc(blkOffset, Type::Size), m_builder.getInt64(c_inputMax), "bklO");
 		auto blkSizeOk = m_builder.CreateICmpULE(blkSize, Constant::get(c_inputMax), "blkSizeOk");
@@ -72,15 +72,15 @@ llvm::Function* Memory::getRequireFunc()
 		// BB "Resize"
 		m_builder.SetInsertPoint(resizeBB);
 		// Check gas first
-		auto sizeExt = m_builder.CreateNUWSub(sizeReq, sizeCur, "sizeExt");
-		auto sizeSum = m_builder.CreateNUWAdd(sizeReq, sizeCur, "sizeSum");
-		auto costL = m_builder.CreateLShr(sizeExt, 5, "costL");
-		auto costQ1 = m_builder.CreateLShr(sizeExt, 20, "costQ1");
-		auto costQ2 = m_builder.CreateLShr(sizeSum, 20, "costQ2");
-		auto costQ = m_builder.CreateNUWAdd(costQ1, costQ2, "costQ");
-		auto cost = m_builder.CreateNUWAdd(costL, costQ, "cost");
+		auto w1 = m_builder.CreateLShr(sizeReq, 5);
+		auto w1s = m_builder.CreateNUWMul(w1, w1);
+		auto c1 = m_builder.CreateAdd(w1, m_builder.CreateLShr(w1s, 10));
+		auto w0 = m_builder.CreateLShr(sizeCur, 5);
+		auto w0s = m_builder.CreateNUWMul(w0, w0);
+		auto c0 = m_builder.CreateAdd(w0, m_builder.CreateLShr(w0s, 10));
+		auto cc = m_builder.CreateNUWSub(c1, c0);
 		auto costOk = m_builder.CreateAnd(blkOffsetOk, blkSizeOk, "costOk");
-		auto c = m_builder.CreateSelect(costOk, costL, m_builder.getInt64(std::numeric_limits<int64_t>::max()), "c");
+		auto c = m_builder.CreateSelect(costOk, cc, m_builder.getInt64(std::numeric_limits<int64_t>::max()), "c");
 		m_gasMeter.countMemory(c, jmpBuf, gas);
 		// Resize
 		m_memory.extend(mem, sizeReq);
