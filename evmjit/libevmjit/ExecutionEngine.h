@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "RuntimeData.h"
+#include "Runtime.h"
 
 namespace dev
 {
@@ -49,6 +49,9 @@ public:
 
 	/// Reference to returned data (RETURN opcode used)
 	bytes_ref returnData;
+
+private:
+	Runtime m_runtime;
 };
 
 }
