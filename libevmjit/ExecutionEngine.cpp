@@ -117,8 +117,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	static StatsCollector statsCollector;
 
 	auto mainFuncName = codeHash(_data->codeHash);
-	Runtime runtime;
-	runtime.init(_data, _env);
+	m_runtime.init(_data, _env);
 
 	auto entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
 	if (!entryFuncPtr)
@@ -148,22 +147,16 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		return ReturnCode::LLVMLinkError;
 
 	listener->stateChanged(ExecState::Execution);
-	auto returnCode = entryFuncPtr(&runtime);
+	auto returnCode = entryFuncPtr(&m_runtime);
 	listener->stateChanged(ExecState::Return);
 
 	if (returnCode == ReturnCode::Return)
-	{
-		returnData = runtime.getReturnData();     // Save reference to return data
-	}
+		returnData = m_runtime.getReturnData();     // Save reference to return data
+
 	listener->stateChanged(ExecState::Finished);
 
 	if (g_stats)
 		statsCollector.stats.push_back(std::move(listener));
-
-	if (runtime.m_memData)
-	{
-		std::cerr << "MEM: " << (size_t) runtime.m_memData << " [" << runtime.m_memSize << ", " << runtime.m_memCap << "}\n";
-	}
 
 	return returnCode;
 }
