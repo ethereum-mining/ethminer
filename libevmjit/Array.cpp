@@ -239,7 +239,9 @@ Array::Array(llvm::IRBuilder<>& _builder, llvm::Value* _array) :
 	m_setFunc([this](){ return createArraySetFunc(); }),
 	m_getFunc([this](){ return createArrayGetFunc(); }),
 	m_freeFunc([this](){ return createFreeFunc(); })
-{}
+{
+	m_builder.CreateStore(llvm::ConstantAggregateZero::get(getType()), m_array);
+}
 
 
 void Array::pop(llvm::Value* _count)
