@@ -6,12 +6,9 @@ import QtQuick.Layouts 1.1
 
 Item {
 
-	property bool showLogs: true
 	property ListModel fullModel: ListModel{}
 	property ListModel transactionModel: ListModel{}
-	onShowLogsChanged: {
-		logTable.model = showLogs ? fullModel : transactionModel
-	}
+	property ListModel callModel: ListModel{}
 
 	Action {
 		id: addStateAction
@@ -78,13 +75,24 @@ Item {
 				action: mineAction
 			}
 
-			CheckBox {
-				id: recording
-				text: qsTr("Record transactions");
-				checked: true
-				Layout.fillWidth: true
+			ComboBox {
+				id: itemFilter
 
+				function getCurrentModel()
+				{
+					return currentIndex === 0 ? fullModel : currentIndex === 1 ? transactionModel : currentIndex === 2 ? callModel : fullModel;
+				}
 
+				model: ListModel {
+					ListElement { text: qsTr("Calls and Transactions"); value: 0;  }
+					ListElement { text: qsTr("Only Transactions"); value: 1;  }
+					ListElement { text: qsTr("Only Calls"); value: 2;  }
+				}
+
+				onCurrentIndexChanged:
+				{
+					logTable.model = itemFilter.getCurrentModel();
+				}
 			}
 		}
 		TableView {
@@ -141,14 +149,20 @@ Item {
 		onStateCleared: {
 			fullModel.clear();
 			transactionModel.clear();
+			callModel.clear();
 		}
 		onNewRecord: {
-			if (recording.checked)
-			{
-				fullModel.append(_r);
-				if (!_r.call)
-					transactionModel.append(_r);
-			}
+			fullModel.append(_r);
+			if (!_r.call)
+				transactionModel.append(_r);
+			else
+				callModel.append(_r);
+		}
+		onMiningComplete: {
+			var block = clientModel.lastBlock;
+			console.log(block);
+			fullModel.append(block);
+			console.log(JSON.stringify(block));
 		}
 	}
 

@@ -123,11 +123,12 @@ public:
 	Q_PROPERTY(bool mining MEMBER m_mining NOTIFY miningStateChanged)
 	/// @returns deployed contracts addresses
 	Q_PROPERTY(QVariantMap contractAddresses READ contractAddresses NOTIFY contractAddressesChanged)
+	// @returns the last block
+	Q_PROPERTY(RecordLogEntry* lastBlock READ lastBlock CONSTANT)
 	/// ethereum.js RPC request entry point
 	/// @param _message RPC request in Json format
 	/// @returns RPC response in Json format
 	Q_INVOKABLE QString apiCall(QString const& _message);
-
 	/// Simulate mining. Creates a new block
 	Q_INVOKABLE void mine();
 
@@ -177,6 +178,7 @@ signals:
 	void stateCleared();
 
 private:
+	RecordLogEntry* lastBlock() const;
 	QVariantMap contractAddresses() const;
 	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
@@ -199,3 +201,5 @@ private:
 
 }
 }
+
+Q_DECLARE_METATYPE(dev::mix::RecordLogEntry*)
