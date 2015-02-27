@@ -8,7 +8,6 @@ namespace eth
 {
 namespace jit
 {
-using MemoryImpl = bytes;
 
 class Runtime
 {
@@ -21,11 +20,9 @@ public:
 private:
 	RuntimeData* m_data = nullptr;	///< Pointer to data. Expected by compiled contract.
 	Env* m_env = nullptr;			///< Pointer to environment proxy. Expected by compiled contract.
-	byte* m_memoryData = nullptr;
-	i256 m_memorySize;
-	byte* m_memData;
-	uint64_t m_memSize;
-	uint64_t m_memCap;
+	byte* m_memData = nullptr;
+	uint64_t m_memSize = 0;
+	uint64_t m_memCap = 0;
 };
 
 }

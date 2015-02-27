@@ -51,9 +51,7 @@ llvm::StructType* RuntimeManager::getRuntimeType()
 		{
 			Type::RuntimeDataPtr,	// data
 			Type::EnvPtr,			// Env*
-			Type::BytePtr,			// memory data
-			Type::Word,				// memory size
-			Array::getType()
+			Array::getType()		// memory
 		};
 		type = llvm::StructType::create(elems, "Runtime");
 	}
@@ -100,7 +98,7 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, llvm::Value* _jmpBuf
 	assert(m_dataPtr->getType() == Type::RuntimeDataPtr);
 	m_gasPtr = m_builder.CreateStructGEP(m_dataPtr, 0, "gas");
 	assert(m_gasPtr->getType() == Type::Gas->getPointerTo());
-	m_memPtr = m_builder.CreateStructGEP(rtPtr, 4, "mem");
+	m_memPtr = m_builder.CreateStructGEP(rtPtr, 2, "mem");
 	assert(m_memPtr->getType() == Array::getType()->getPointerTo());
 	m_envPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 1), "env");
 	assert(m_envPtr->getType() == Type::EnvPtr);
