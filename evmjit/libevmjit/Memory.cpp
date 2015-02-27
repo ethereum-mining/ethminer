@@ -30,14 +30,15 @@ llvm::Function* Memory::getRequireFunc()
 	{
 		llvm::Type* argTypes[] = {Array::getType()->getPointerTo(), Type::Word, Type::Word, Type::BytePtr, Type::GasPtr};
 		func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::PrivateLinkage, "mem.require", getModule());
+		func->setDoesNotThrow();
 
 		auto mem = &func->getArgumentList().front();
 		mem->setName("mem");
-		auto offset = mem->getNextNode();
-		offset->setName("offset");
-		auto size = offset->getNextNode();
-		size->setName("size");
-		auto jmpBuf = size->getNextNode();
+		auto blkOffset = mem->getNextNode();
+		blkOffset->setName("blkOffset");
+		auto blkSize = blkOffset->getNextNode();
+		blkSize->setName("blkSize");
+		auto jmpBuf = blkSize->getNextNode();
 		jmpBuf->setName("jmpBuf");
 		auto gas = jmpBuf->getNextNode();
 		gas->setName("gas");
@@ -51,36 +52,38 @@ llvm::Function* Memory::getRequireFunc()
 
 		// BB "Pre": Ignore checks with size 0
 		m_builder.SetInsertPoint(preBB);
-		auto sizeIsZero = m_builder.CreateICmpEQ(size, Constant::get(0));
-		m_builder.CreateCondBr(sizeIsZero, returnBB, checkBB);
+		m_builder.CreateCondBr(m_builder.CreateICmpNE(blkSize, Constant::get(0)), checkBB, returnBB, Type::expectTrue);
 
 		// BB "Check"
 		m_builder.SetInsertPoint(checkBB);
-		auto uaddWO = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::uadd_with_overflow, Type::Word);
-		auto uaddRes = m_builder.CreateCall2(uaddWO, offset, size, "res");
-		auto sizeRequired = m_builder.CreateExtractValue(uaddRes, 0, "sizeReq");
-		auto overflow1 = m_builder.CreateExtractValue(uaddRes, 1, "overflow1");
-		auto currSize = m_memory.size(mem);
-		auto tooSmall = m_builder.CreateICmpULE(m_builder.CreateZExt(currSize, Type::Word), sizeRequired, "tooSmall");
-		auto resizeNeeded = m_builder.CreateOr(tooSmall, overflow1, "resizeNeeded");
-		m_builder.CreateCondBr(resizeNeeded, resizeBB, returnBB); // OPT branch weights?
+		static const auto c_inputMax = uint64_t(2) << 40; // max value of blkSize and blkOffset that will not result in integer overflow in calculations below
+		auto blkOffsetOk = m_builder.CreateICmpULE(blkOffset, Constant::get(c_inputMax), "blkOffsetOk");
+		auto blkO = m_builder.CreateSelect(blkOffsetOk, m_builder.CreateTrunc(blkOffset, Type::Size), m_builder.getInt64(c_inputMax), "bklO");
+		auto blkSizeOk = m_builder.CreateICmpULE(blkSize, Constant::get(c_inputMax), "blkSizeOk");
+		auto blkS = m_builder.CreateSelect(blkSizeOk, m_builder.CreateTrunc(blkSize, Type::Size), m_builder.getInt64(c_inputMax), "bklS");
+
+		auto sizeReq0 = m_builder.CreateNUWAdd(blkO, blkS, "sizeReq0");
+		auto sizeReq = m_builder.CreateAnd(m_builder.CreateNUWAdd(sizeReq0, m_builder.getInt64(31)), uint64_t(-1) << 5, "sizeReq"); // s' = ((s0 + 31) / 32) * 32
+		auto sizeCur = m_memory.size(mem);
+		auto sizeOk = m_builder.CreateICmpULE(sizeReq, sizeCur, "sizeOk");
+
+		m_builder.CreateCondBr(sizeOk, returnBB, resizeBB, Type::expectTrue);
 
 		// BB "Resize"
 		m_builder.SetInsertPoint(resizeBB);
 		// Check gas first
-		uaddRes = m_builder.CreateCall2(uaddWO, sizeRequired, Constant::get(31), "res");
-		auto wordsRequired = m_builder.CreateExtractValue(uaddRes, 0);
-		auto overflow2 = m_builder.CreateExtractValue(uaddRes, 1, "overflow2");
-		auto overflow = m_builder.CreateOr(overflow1, overflow2, "overflow");
-		wordsRequired = m_builder.CreateSelect(overflow, Constant::get(-1), wordsRequired);
-		wordsRequired = m_builder.CreateUDiv(wordsRequired, Constant::get(32), "wordsReq");
-		sizeRequired = m_builder.CreateMul(wordsRequired, Constant::get(32), "roundedSizeReq");
-		auto words = m_builder.CreateUDiv(currSize, m_builder.getInt64(32), "words");	// size is always 32*k
-		auto newWords = m_builder.CreateSub(wordsRequired, m_builder.CreateZExt(words, Type::Word), "addtionalWords");
-		m_gasMeter.countMemory(newWords, jmpBuf, gas);
+		auto sizeExt = m_builder.CreateNUWSub(sizeReq, sizeCur, "sizeExt");
+		auto sizeSum = m_builder.CreateNUWAdd(sizeReq, sizeCur, "sizeSum");
+		auto costL = m_builder.CreateLShr(sizeExt, 5, "costL");
+		auto costQ1 = m_builder.CreateLShr(sizeExt, 20, "costQ1");
+		auto costQ2 = m_builder.CreateLShr(sizeSum, 20, "costQ2");
+		auto costQ = m_builder.CreateNUWAdd(costQ1, costQ2, "costQ");
+		auto cost = m_builder.CreateNUWAdd(costL, costQ, "cost");
+		auto costOk = m_builder.CreateAnd(blkOffsetOk, blkSizeOk, "costOk");
+		auto c = m_builder.CreateSelect(costOk, costL, m_builder.getInt64(std::numeric_limits<int64_t>::max()), "c");
+		m_gasMeter.countMemory(c, jmpBuf, gas);
 		// Resize
-		auto extendSize = m_builder.CreateTrunc(sizeRequired, Type::Size, "extendSize");
-		m_memory.extend(mem, extendSize);
+		m_memory.extend(mem, sizeReq);
 		m_builder.CreateBr(returnBB);
 
 		// BB "Return"
