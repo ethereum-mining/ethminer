@@ -334,20 +334,19 @@ std::ostream& operator<<(std::ostream& _out, SpecificTrieDB<Generic, KeyType> co
 	return _out;
 }
 
-template <class _DB>
-class HashedGenericTrieDB: private SpecificTrieDB<GenericTrieDB<_DB>, h256>
+template <class DB>
+class SecureGenericTrieDB: private TrieDB<h256, DB>
 {
-	using Super = SpecificTrieDB<GenericTrieDB<_DB>, h256>;
+	using Super = TrieDB<h256, DB>;
 
 public:
-	using DB = _DB;
-
-	HashedGenericTrieDB(DB* _db = nullptr): Super(_db) {}
-	HashedGenericTrieDB(DB* _db, h256 _root): Super(_db, _root) {}
+	SecureGenericTrieDB(DB* _db): Super(_db) {}
+	SecureGenericTrieDB(DB* _db, h256 _root): Super(_db, _root) {}
 
 	using Super::open;
 	using Super::init;
 	using Super::setRoot;
+	using Super::haveRoot;
 
 	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
 	using Super::isNull;
@@ -360,83 +359,28 @@ public:
 	using Super::check;
 
 	std::string at(bytesConstRef _key) const { return Super::at(sha3(_key)); }
-	bool contains(bytesConstRef _key) { return Super::contains(sha3(_key)); }
 	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(sha3(_key), _value); }
 	void remove(bytesConstRef _key) { Super::remove(sha3(_key)); }
-
-	// empty from the PoV of the iterator interface; still need a basic iterator impl though.
-	class iterator
-	{
-	public:
-		using value_type = std::pair<bytesConstRef, bytesConstRef>;
-
-		iterator() {}
-		iterator(HashedGenericTrieDB const*) {}
-		iterator(HashedGenericTrieDB const*, bytesConstRef) {}
-
-		iterator& operator++() { return *this; }
-		value_type operator*() const { return value_type(); }
-		value_type operator->() const { return value_type(); }
-
-		bool operator==(iterator const&) const { return true; }
-		bool operator!=(iterator const&) const { return false; }
-
-		value_type at() const { return value_type(); }
-	};
-	iterator begin() const { return iterator(); }
-	iterator end() const { return iterator(); }
-	iterator lower_bound(bytesConstRef) const { return iterator(); }
+	bool contains(bytesConstRef _key) { return Super::contains(sha3(_key)); }
 };
 
-// Hashed & Basic
-template <class DB>
-class FatGenericTrieDB: public GenericTrieDB<DB>
+template <class KeyType, class DB>
+class SecureTrieDB: public SecureGenericTrieDB<DB>
 {
-	using Super = GenericTrieDB<DB>;
+	using Super = SecureGenericTrieDB<DB>;
 
 public:
-	FatGenericTrieDB(DB* _db): Super(_db), m_secure(_db) {}
-	FatGenericTrieDB(DB* _db, h256 _root) { open(_db, _root); }
+	SecureTrieDB(DB* _db): Super(_db) {}
+	SecureTrieDB(DB* _db, h256 _root): Super(_db, _root) {}
 
-	void open(DB* _db, h256 _root) { Super::open(_db); m_secure.open(_db); setRoot(_root); }
+	std::string operator[](KeyType _k) const { return at(_k); }
 
-	void init() { Super::init(); m_secure.init(); syncRoot(); }
-
-	void setRoot(h256 _root)
-	{
-		if (!m_secure.isNull())
-			Super::db()->removeAux(m_secure.root());
-		m_secure.setRoot(_root);
-		auto rb = Super::db()->lookupAux(m_secure.root());
-		auto r = h256(rb);
-		Super::setRoot(r);
-	}
-
-	h256 root() const { return m_secure.root(); }
-
-	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(_key, _value); m_secure.insert(_key, _value); syncRoot(); }
-	void remove(bytesConstRef _key) { Super::remove(_key); m_secure.remove(_key); syncRoot(); }
-
-	std::set<h256> leftOvers(std::ostream* = nullptr) const { return {}; }
-	bool check(bool) const { return m_secure.check(false) && Super::check(false); }
-
-private:
-	void syncRoot()
-	{
-		// Root changed. Need to record the mapping so we can determine on setRoot.
-		Super::db()->insertAux(m_secure.root(), Super::root().ref());
-	}
-
-	HashedGenericTrieDB<DB> m_secure;
+	bool contains(KeyType _k) const { return Super::contains(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
+	std::string at(KeyType _k) const { return Super::at(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
+	void insert(KeyType _k, bytesConstRef _value) { Super::insert(bytesConstRef((byte const*)&_k, sizeof(KeyType)), _value); }
+	void insert(KeyType _k, bytes const& _value) { insert(_k, bytesConstRef(&_value)); }
+	void remove(KeyType _k) { Super::remove(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
 };
-
-template <class KeyType, class DB> using TrieDB = SpecificTrieDB<GenericTrieDB<DB>, KeyType>;
-
-#if ETH_FATDB
-template <class KeyType, class DB> using SecureTrieDB = SpecificTrieDB<FatGenericTrieDB<DB>, KeyType>;
-#else
-template <class KeyType, class DB> using SecureTrieDB = SpecificTrieDB<HashedGenericTrieDB<DB>, KeyType>;
-#endif
 
 }
 
