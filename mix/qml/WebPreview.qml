@@ -26,7 +26,8 @@ Item {
 	function reload() {
 		if (initialized) {
 			updateContract();
-			webView.runJavaScript("reloadPage()");
+			//webView.runJavaScript("reloadPage()");
+			setPreviewUrl(urlInput.text);
 		}
 	}
 
@@ -55,11 +56,13 @@ Item {
 	}
 
 	function changePage() {
-		if (pageCombo.currentIndex >= 0 && pageCombo.currentIndex < pageListModel.count) {
+		setPreviewUrl(urlInput.text);
+		/*if (pageCombo.currentIndex >= 0 && pageCombo.currentIndex < pageListModel.count) {
+			urlInput.text = httpServer.url + "/" + pageListModel.get(pageCombo.currentIndex).documentId;
 			setPreviewUrl(httpServer.url + "/" + pageListModel.get(pageCombo.currentIndex).documentId);
 		} else {
 			setPreviewUrl("");
-		}
+		}*/
 	}
 	Connections {
 		target: appContext
@@ -98,24 +101,16 @@ Item {
 			updateDocument(documentId, function(i) { pageListModel.set(i, projectModel.getDocument(documentId)) } )
 		}
 
-		onDocumentOpened: {
-			if (!document.isHtml)
-				return;
-			for (var i = 0; i < pageListModel.count; i++) {
-				var doc = pageListModel.get(i);
-				if (doc.documentId === document.documentId) {
-					pageCombo.currentIndex = i;
-				}
-			}
-		}
-
 		onProjectLoading: {
 			for (var i = 0; i < target.listModel.count; i++) {
 				var document = target.listModel.get(i);
 				if (document.isHtml) {
 					pageListModel.append(document);
 					if (pageListModel.count === 1) //first page added
-						changePage();
+					{
+						urlInput.text = httpServer.url + "/" + document.documentId;
+						setPreviewUrl(httpServer.url + "/" + document.documentId);
+					}
 				}
 			}
 		}
@@ -151,13 +146,20 @@ Item {
 			else
 			{
 				//document request
+				if (urlPath === "/")
+					urlPath = "/index.html";
 				var documentId = urlPath.substr(urlPath.lastIndexOf("/") + 1);
 				var content = "";
 				if (projectModel.codeEditor.isDocumentOpen(documentId))
 					content = projectModel.codeEditor.getDocumentText(documentId);
 				else
-					content = fileIo.readFile(projectModel.getDocument(documentId).path);
-				if (documentId === pageListModel.get(pageCombo.currentIndex).documentId) {
+				{
+					var doc = projectModel.getDocument(documentId);
+					if (doc !== undefined)
+						content = fileIo.readFile(doc.path);
+				}
+
+				if (documentId === urlInput.text.replace(httpServer.url + "/", "")) {
 					//root page, inject deployment script
 					content = "<script>web3=parent.web3;contracts=parent.contracts;</script>\n" + content;
 					_request.setResponseContentType("text/html");
@@ -181,19 +183,23 @@ Item {
 				anchors.fill: parent
 				anchors.leftMargin: 3
 				spacing: 3
-				DefaultLabel {
-					text: qsTr("Preview of")
-					anchors.verticalCenter: parent.verticalCenter
-				}
 
-				ComboBox {
-					id: pageCombo
-					model: pageListModel
-					textRole: "name"
-					currentIndex: -1
-					onCurrentIndexChanged: changePage()
+				DefaultTextField
+				{
+					id: urlInput
 					anchors.verticalCenter: parent.verticalCenter
 					height: 21
+					width: 300
+					Keys.onEnterPressed:
+					{
+						setPreviewUrl(text);
+					}
+					Keys.onReturnPressed:
+					{
+						setPreviewUrl(text);
+					}
+
+					focus: true
 				}
 
 				Action {
