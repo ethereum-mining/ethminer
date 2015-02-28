@@ -32,6 +32,7 @@
 #include <libethcore/CommonEth.h>
 #include <libethcore/BlockInfo.h>
 #include <libdevcore/Guards.h>
+#include <libdevcore/StructuredLogger.h>
 #include "BlockDetails.h"
 #include "Account.h"
 #include "BlockQueue.h"
@@ -40,7 +41,6 @@ namespace ldb = leveldb;
 namespace dev
 {
 
-class StructuredLogger;
 class OverlayDB;
 
 namespace eth
@@ -80,15 +80,15 @@ public:
 	void process();
 
 	/// Sync the chain with any incoming blocks. All blocks should, if processed in order
-	h256s sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max, StructuredLogger const* _logger);
+	h256s sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max, StructuredLogger const& _logger);
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	h256s attemptImport(bytes const& _block, OverlayDB const& _stateDB, StructuredLogger const* _logger = nullptr) noexcept;
+	h256s attemptImport(bytes const& _block, OverlayDB const& _stateDB, StructuredLogger const& _logger = StructuredLogger()) noexcept;
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	h256s import(bytes const& _block, OverlayDB const& _stateDB, StructuredLogger const* _logger = nullptr);
+	h256s import(bytes const& _block, OverlayDB const& _stateDB, StructuredLogger const& _logger = StructuredLogger());
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 _hash) const;

@@ -33,6 +33,7 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libdevcore/RangeMask.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libdevcrypto/Common.h>
 #include "NodeTable.h"
 #include "HostCapability.h"
@@ -44,8 +45,6 @@ namespace bi = ba::ip;
 
 namespace dev
 {
-
-class StructuredLogger;
 
 namespace p2p
 {
@@ -88,7 +87,7 @@ class Host: public Worker
 public:
 	/// Start server, listening for connections on the given port.
 	Host(std::string const& _clientVersion, NetworkPreferences const& _n = NetworkPreferences(),
-		bytesConstRef _restoreNetwork = bytesConstRef(), StructuredLogger const* _structuredLogger = nullptr);
+		bytesConstRef _restoreNetwork = bytesConstRef(), StructuredLogger const& _structuredLogger = StructuredLogger());
 
 	/// Will block on network process events.
 	virtual ~Host();
@@ -235,7 +234,7 @@ private:
 	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
 
 	std::chrono::steady_clock::time_point m_lastPing;						///< Time we sent the last ping to all peers.
-	StructuredLogger const* m_structuredLogger;
+	StructuredLogger const& m_structuredLogger;
 	bool m_accepting = false;
 };
 

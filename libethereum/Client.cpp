@@ -25,7 +25,6 @@
 #include <thread>
 #include <boost/filesystem.hpp>
 #include <libdevcore/Log.h>
-#include <libdevcore/StructuredLogger.h>
 #include <libp2p/Host.h>
 #include "Defaults.h"
 #include "Executive.h"
@@ -61,7 +60,7 @@ void VersionChecker::setOk()
 }
 
 Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
-	u256 _networkId, int _miners, StructuredLogger const* _structuredLogger):
+	u256 _networkId, int _miners, StructuredLogger const& _structuredLogger):
 	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
@@ -70,7 +69,7 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 	m_postMine(Address(), m_stateDB),
 	m_structuredLogger(_structuredLogger)
 {
-	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId, _structuredLogger));
+	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
 	if (_miners > -1)
 		setMiningThreads(_miners);
@@ -418,8 +417,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	}
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
 //	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
-	if (m_structuredLogger)
-		m_structuredLogger->logTransactionReceived(t.sha3().abridged(), t.sender().abridged());
+	m_structuredLogger.logTransactionReceived(t.sha3().abridged(), t.sender().abridged());
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
 }
