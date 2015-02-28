@@ -35,6 +35,7 @@ namespace dev
 class StructuredLogger
 {
 public:
+	StructuredLogger(): m_enabled(false) {}
 	StructuredLogger(bool _enabled): m_enabled(_enabled) {}
 
 	void logStarting(std::string const& _clientImpl, const char* _ethVersion);
