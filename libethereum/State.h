@@ -94,9 +94,6 @@ public:
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	std::map<Address, u256> addresses() const;
 
-	/// @returns the address b such that b > @a _a .
-	Address nextActiveAddress(Address _a) const;
-
 	/// Get the header information on the present block.
 	BlockInfo const& info() const { return m_currentBlock; }
 
@@ -299,7 +296,7 @@ private:
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
-	TrieDB<Address, OverlayDB> m_state;			///< Our state tree, as an OverlayDB DB.
+	SecureTrieDB<Address, OverlayDB> m_state;	///< Our state tree, as an OverlayDB DB.
 	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
 	TransactionReceipts m_receipts;				///< The corresponding list of transaction receipts.
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
@@ -328,7 +325,7 @@ private:
 std::ostream& operator<<(std::ostream& _out, State const& _s);
 
 template <class DB>
-void commit(std::map<Address, Account> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
+void commit(std::map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
 {
 	for (auto const& i: _cache)
 		if (!i.second.isAlive())
@@ -345,7 +342,7 @@ void commit(std::map<Address, Account> const& _cache, DB& _db, TrieDB<Address, D
 			}
 			else
 			{
-				TrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
+				SecureTrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
 				for (auto const& j: i.second.storageOverlay())
 					if (j.second)
 						storageDB.insert(j.first, rlp(j.second));
