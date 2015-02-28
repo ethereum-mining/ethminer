@@ -45,7 +45,10 @@ public:
 	u256 balance() const;
 	u256 nonce() const;
 	bytes code() const;
+
+	// TODO: DEPRECATE.
 	std::map<u256, u256> storage() const;
+
 	AccountDiff diff(CachedAddressState const& _c);
 
 private:
