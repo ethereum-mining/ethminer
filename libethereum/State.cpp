@@ -168,18 +168,6 @@ State::~State()
 {
 }
 
-Address State::nextActiveAddress(Address _a) const
-{
-	auto it = m_state.lower_bound(_a);
-	if ((*it).first == _a)
-		++it;
-	if (it == m_state.end())
-		// exchange comments if we want to wraparound
-//		it = m_state.begin();
-		return Address();
-	return (*it).first;
-}
-
 StateDiff State::diff(State const& _c) const
 {
 	StateDiff ret;
@@ -188,13 +176,14 @@ StateDiff State::diff(State const& _c) const
 	std::set<Address> trieAds;
 	std::set<Address> trieAdsD;
 
-	auto trie = TrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&m_db), rootHash());
-	auto trieD = TrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_c.m_db), _c.rootHash());
+	auto trie = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&m_db), rootHash());
+	auto trieD = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_c.m_db), _c.rootHash());
 
-	for (auto i: trie)
-		ads.insert(i.first), trieAds.insert(i.first);
-	for (auto i: trieD)
-		ads.insert(i.first), trieAdsD.insert(i.first);
+	// TODO: fix
+//	for (auto i: trie)
+//		ads.insert(i.first), trieAds.insert(i.first);
+//	for (auto i: trieD)
+//		ads.insert(i.first), trieAdsD.insert(i.first);
 	for (auto i: m_cache)
 		ads.insert(i.first);
 	for (auto i: _c.m_cache)
@@ -356,9 +345,10 @@ map<Address, u256> State::addresses() const
 	for (auto i: m_cache)
 		if (i.second.isAlive())
 			ret[i.first] = i.second.balance();
-	for (auto const& i: m_state)
-		if (m_cache.find(i.first) == m_cache.end())
-			ret[i.first] = RLP(i.second)[1].toInt<u256>();
+	// TODO: fix.
+//	for (auto const& i: m_state)
+//		if (m_cache.find(i.first) == m_cache.end())
+//			ret[i.first] = RLP(i.second)[1].toInt<u256>();
 	return ret;
 }
 
@@ -591,9 +581,10 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	{
 		cwarn << "Bad state root!";
 		cnote << "Given to be:" << m_currentBlock.stateRoot;
-		cnote << TrieDB<Address, OverlayDB>(&m_db, m_currentBlock.stateRoot);
+		// TODO: Fix
+//		cnote << SecureTrieDB<Address, OverlayDB>(&m_db, m_currentBlock.stateRoot);
 		cnote << "Calculated to be:" << rootHash();
-		cnote << m_state;
+//		cnote << m_state;
 		cnote << *this;
 		// Rollback the trie.
 		m_db.rollback();
@@ -932,7 +923,7 @@ u256 State::storage(Address _id, u256 _memory) const
 		return mit->second;
 
 	// Not in the storage cache - go to the DB.
-	TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.baseRoot());			// promise we won't change the overlay! :)
+	SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.baseRoot());			// promise we won't change the overlay! :)
 	string payload = memdb.at(_memory);
 	u256 ret = payload.size() ? RLP(payload).toInt<u256>() : 0;
 	it->second.setStorage(_memory, ret);
@@ -950,9 +941,10 @@ map<u256, u256> State::storage(Address _id) const
 		// Pull out all values from trie storage.
 		if (it->second.baseRoot())
 		{
-			TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.baseRoot());		// promise we won't alter the overlay! :)
-			for (auto const& i: memdb)
-				ret[i.first] = RLP(i.second).toInt<u256>();
+			// TODO: fix
+//			SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.baseRoot());		// promise we won't alter the overlay! :)
+//			for (auto const& i: memdb)
+//				ret[i.first] = RLP(i.second).toInt<u256>();
 		}
 
 		// Then merge cached storage over the top.
@@ -1003,24 +995,24 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 				cwarn << "LEFTOVERS" << (e ? "[enforced" : "[unenforced") << "refs]";
 				cnote << "Left:" << lo;
 				cnote << "Keys:" << m_db.keys();
-				m_state.debugStructure(cerr);
+//				m_state.debugStructure(cerr);
 				return false;
 			}
 			// TODO: Enable once fixed.
-			for (auto const& i: m_state)
+/*			for (auto const& i: m_state)
 			{
 				RLP r(i.second);
-				TrieDB<h256, OverlayDB> storageDB(const_cast<OverlayDB*>(&m_db), r[2].toHash<h256>());	// promise not to alter OverlayDB.
+				SecureTrieDB<h256, OverlayDB> storageDB(const_cast<OverlayDB*>(&m_db), r[2].toHash<h256>());	// promise not to alter OverlayDB.
 				for (auto const& j: storageDB) { (void)j; }
 				if (!e && r[3].toHash<h256>() != EmptySHA3 && m_db.lookup(r[3].toHash<h256>()).empty())
 					return false;
-			}
+			}*/
 		}
 		catch (InvalidTrie const&)
 		{
 			cwarn << "BAD TRIE" << (e ? "[enforced" : "[unenforced") << "refs]";
 			cnote << m_db.keys();
-			m_state.debugStructure(cerr);
+//			m_state.debugStructure(cerr);
 			return false;
 		}
 	return true;
@@ -1187,9 +1179,10 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 				std::set<u256> cached;
 				if (r)
 				{
-					TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
-					for (auto const& j: memdb)
-						mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
+					SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+					// TODO: fix
+//					for (auto const& j: memdb)
+//						mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
 				}
 				if (cache)
 					for (auto const& j: cache->storageOverlay())
