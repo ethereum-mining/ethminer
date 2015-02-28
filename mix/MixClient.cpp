@@ -81,7 +81,7 @@ void MixClient::resetState(std::map<Secret, u256> _accounts)
 	m_watches.clear();
 
 	m_stateDB = OverlayDB();
-	TrieDB<Address, MemoryDB> accountState(&m_stateDB);
+	SecureTrieDB<Address, MemoryDB> accountState(&m_stateDB);
 	accountState.init();
 
 	std::map<Address, Account> genesisState;

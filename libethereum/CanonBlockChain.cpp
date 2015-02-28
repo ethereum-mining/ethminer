@@ -76,7 +76,7 @@ bytes CanonBlockChain::createGenesisBlock()
 	h256 stateRoot;
 	{
 		MemoryDB db;
-		TrieDB<Address, MemoryDB> state(&db);
+		SecureTrieDB<Address, MemoryDB> state(&db);
 		state.init();
 		dev::eth::commit(genesisState(), db, state);
 		stateRoot = state.root();
