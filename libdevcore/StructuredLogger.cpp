@@ -62,14 +62,14 @@ void StructuredLogger::logStarting(string const& _clientImpl, const char* _ethVe
 }
 
 void StructuredLogger::logP2PConnected(string const& _id, bi::tcp::endpoint const& _addr,
-	chrono::system_clock::time_point const& _ts, unsigned int _numConnections) const
+	chrono::system_clock::time_point const& _ts, string const& _remoteVersion, unsigned int _numConnections) const
 {
 	if (m_enabled)
 	{
 		std::stringstream addrStream;
 		addrStream << _addr;
 		Json::Value event;
-		event["remote_version_string"] = ""; //TODO
+		event["remote_version_string"] = _remoteVersion;
 		event["comment"] = "as soon as a successful connection to another node is established";
 		event["remote_addr"] = addrStream.str();
 		event["remote_id"] = _id;
