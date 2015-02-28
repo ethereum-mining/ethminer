@@ -79,7 +79,7 @@ void MixClient::resetState(u256 _balance)
 	m_watches.clear();
 
 	m_stateDB = OverlayDB();
-	TrieDB<Address, MemoryDB> accountState(&m_stateDB);
+	SecureTrieDB<Address, MemoryDB> accountState(&m_stateDB);
 	accountState.init();
 	std::map<Address, Account> genesisState = { std::make_pair(KeyPair(c_userAccountSecret).address(), Account(_balance, Account::NormalCreation)) };
 	dev::eth::commit(genesisState, static_cast<MemoryDB&>(m_stateDB), accountState);

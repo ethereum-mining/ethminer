@@ -325,6 +325,54 @@ std::ostream& operator<<(std::ostream& _out, TrieDB<KeyType, DB> const& _db)
 	return _out;
 }
 
+template <class DB>
+class SecureGenericTrieDB: private TrieDB<h256, DB>
+{
+	using Super = TrieDB<h256, DB>;
+
+public:
+	SecureGenericTrieDB(DB* _db): Super(_db) {}
+	SecureGenericTrieDB(DB* _db, h256 _root): Super(_db, _root) {}
+
+	using Super::open;
+	using Super::init;
+	using Super::setRoot;
+	using Super::haveRoot;
+
+	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
+	using Super::isNull;
+	/// True if the trie is initialised but empty (i.e. that the DB contains the root node which is empty).
+	using Super::isEmpty;
+
+	using Super::root;
+
+	using Super::leftOvers;
+	using Super::check;
+
+	std::string at(bytesConstRef _key) const { return Super::at(sha3(_key)); }
+	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(sha3(_key), _value); }
+	void remove(bytesConstRef _key) { Super::remove(sha3(_key)); }
+	bool contains(bytesConstRef _key) { return Super::contains(sha3(_key)); }
+};
+
+template <class KeyType, class DB>
+class SecureTrieDB: public SecureGenericTrieDB<DB>
+{
+	using Super = SecureGenericTrieDB<DB>;
+
+public:
+	SecureTrieDB(DB* _db): Super(_db) {}
+	SecureTrieDB(DB* _db, h256 _root): Super(_db, _root) {}
+
+	std::string operator[](KeyType _k) const { return at(_k); }
+
+	bool contains(KeyType _k) const { return Super::contains(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
+	std::string at(KeyType _k) const { return Super::at(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
+	void insert(KeyType _k, bytesConstRef _value) { Super::insert(bytesConstRef((byte const*)&_k, sizeof(KeyType)), _value); }
+	void insert(KeyType _k, bytes const& _value) { insert(_k, bytesConstRef(&_value)); }
+	void remove(KeyType _k) { Super::remove(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
+};
+
 }
 
 // Template implementations...
