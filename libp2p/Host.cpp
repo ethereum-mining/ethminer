@@ -159,6 +159,10 @@ void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
 	{
 		clog(NetNote) << "p2p.host.peer.register" << _s->m_peer->id.abridged();
+		m_structuredLogger.logP2PConnected(
+			_s->m_peer->id.abridged(), _s->m_peer->peerEndpoint(),
+			_s->m_peer->m_lastConnected,
+			0);// TODO: num_connections
 		RecursiveGuard l(x_sessions);
 		// TODO: temporary loose-coupling; if m_peers already has peer,
 		//       it is same as _s->m_peer. (fixing next PR)
@@ -475,9 +479,6 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 			_p->m_lastDisconnect = NoDisconnect;
 			_p->m_lastConnected = std::chrono::system_clock::now();
 			_p->m_failedAttempts = 0;
-
-			m_structuredLogger.logP2PConnected(_p->id.abridged(), _p->peerEndpoint(), _p->m_lastConnected,
-												0);// TODO: num_connections
 
 			auto ps = make_shared<Session>(this, std::move(*s), _p);
 			ps->start();
