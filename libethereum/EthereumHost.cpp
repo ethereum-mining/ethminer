@@ -38,15 +38,13 @@ using namespace dev;
 using namespace dev::eth;
 using namespace p2p;
 
-EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq,
-	u256 _networkId, bool _structuredLogging):
+EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId):
 	HostCapability<EthereumPeer>(),
 	Worker		("ethsync"),
 	m_chain		(_ch),
 	m_tq		(_tq),
 	m_bq		(_bq),
-	m_networkId	(_networkId),
-	m_structuredLogging	(_structuredLogging)
+	m_networkId	(_networkId)
 {
 	m_latestBlockSent = _ch.currentHash();
 }

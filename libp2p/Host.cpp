@@ -27,7 +27,6 @@
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
-#include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcrypto/FileSystem.h>
 #include "Session.h"
@@ -46,7 +45,7 @@ void HostNodeTableHandler::processEvent(NodeId const& _n, NodeTableEventType con
 	m_host.onNodeTableEvent(_n, _e);
 }
 
-Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork, StructuredLogger const* _structuredLogger):
+Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork, StructuredLogger const& _structuredLogger):
 	Worker("p2p", 0),
 	m_restoreNetwork(_restoreNetwork.toBytes()),
 	m_clientVersion(_clientVersion),
@@ -477,9 +476,8 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 			_p->m_lastConnected = std::chrono::system_clock::now();
 			_p->m_failedAttempts = 0;
 
-			if (m_structuredLogger)
-				m_structuredLogger->logP2PConnected(_p->id.abridged(), _p->peerEndpoint(), _p->m_lastConnected,
-													0);// TODO: num_connections
+			m_structuredLogger.logP2PConnected(_p->id.abridged(), _p->peerEndpoint(), _p->m_lastConnected,
+												0);// TODO: num_connections
 
 			auto ps = make_shared<Session>(this, std::move(*s), _p);
 			ps->start();

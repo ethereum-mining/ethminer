@@ -106,7 +106,7 @@ public:
 	WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean = false,
 				   std::set<std::string> const& _interfaces = {"eth", "shh"},
 				   p2p::NetworkPreferences const& _n = p2p::NetworkPreferences(),
-				   bytesConstRef _network = bytesConstRef(), int _miners = -1, StructuredLogger const* _structuredLogger = nullptr);
+				   bytesConstRef _network = bytesConstRef(), int _miners = -1, StructuredLogger const& _structuredLogger = StructuredLogger());
 
 	/// Destructor.
 	~WebThreeDirect();
