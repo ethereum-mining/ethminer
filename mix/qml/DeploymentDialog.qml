@@ -12,18 +12,20 @@ import "."
 
 
 Window {
+
 	id: modalDeploymentDialog
 	modality: Qt.ApplicationModal
-	width: 600
+	width: 930
 	height: 350
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
-	property string urlHintContract: "c83d3e22645fb015d02043a744921cc2f828c64d"
+	property string urlHintContract: "c83d3e22645fb015d02043a744921cc2f828c64d" /* TODO: replace with the good address */
 	property string packageHash
 	property alias packageBase64: base64Value.text
-	property string eth: "afb7cdbd076674fd2c67f8a66518e3145b184ae4";
-	property string wallet: "c83d3e22645fb015d02043a744921cc2f828c64d";
+	property string eth: "4c3f7330690ed3657d3fa20fe5717b84010528ae"; /* TODO: replace with the good address */
+	property string currentAccount
+	property alias gasToUse: gasToUseInput.text
 
 	color: Style.generic.layout.backgroundColor
 
@@ -37,6 +39,45 @@ Window {
 		modalDeploymentDialog.setX((Screen.width - width) / 2);
 		modalDeploymentDialog.setY((Screen.height - height) / 2);
 		visible = true;
+
+		var requests = [{
+							//accounts
+							jsonrpc: "2.0",
+							method: "eth_accounts",
+							params: null,
+							id: 0
+						}];
+
+		TransactionHelper.rpcCall(requests, function(arg1, arg2)
+		{
+			modelAccounts.clear();
+			var ids = JSON.parse(arg2)[0].result;
+			requests = [];
+			for (var k in ids)
+			{
+				modelAccounts.append({ "id": ids[k] })
+				requests.push({
+								  //accounts
+								  jsonrpc: "2.0",
+								  method: "eth_balanceAt",
+								  params: [ids[k]],
+								  id: k
+							  });
+			}
+
+			if (ids.length > 0)
+				currentAccount = modelAccounts.get(0).id;
+
+			TransactionHelper.rpcCall(requests, function (request, response){
+				var balanceRet = JSON.parse(response);
+				for (var k in balanceRet)
+				{
+					var ether = QEtherHelper.createEther(balanceRet[k].result, QEther.Wei);
+					comboAccounts.balances.push(ether.format());
+				}
+				balance.text = comboAccounts.balances[0];
+			});
+		});
 	}
 
 	function pad(h)
@@ -47,6 +88,52 @@ Window {
 			h = '0' + h;
 		}
 		return h;
+	}
+
+	function waitForTrCountToIncrement(callBack)
+	{
+		poolLog.callBack = callBack;
+		poolLog.k = -1;
+		poolLog.elapsed = 0;
+		poolLog.start();
+	}
+
+	Timer
+	{
+		id: poolLog
+		property var callBack
+		property int k: -1
+		property int elapsed
+		interval: 500
+		running: false
+		repeat: true
+		onTriggered: {
+			elapsed += interval;
+			var requests = [];
+			var jsonRpcRequestId = 0;
+			requests.push({
+							  jsonrpc: "2.0",
+							  method: "eth_countAt",
+							  params: [ currentAccount ],
+							  id: jsonRpcRequestId++
+						  });
+			TransactionHelper.rpcCall(requests, function (httpRequest, response){
+				response = response.replace(/,0+/, ''); // ==> result:27,00000000
+				var count = JSON.parse(response)[0].result
+				if (k < parseInt(count) && k > 0)
+				{
+					stop();
+					callBack(1);
+				}
+				else if (elapsed > 25000)
+				{
+					stop();
+					callBack(-1);
+				}
+				else
+					k = parseInt(JSON.parse(response)[0].result);
+			})
+		}
 	}
 
 	Rectangle
@@ -62,13 +149,61 @@ Window {
 			width: parent.width
 			DefaultLabel
 			{
+				text: qsTr("Account used to deploy:")
+			}
+
+			Rectangle
+			{
+				width: 300
+				height: 25
+				color: "transparent"
+				ComboBox {
+					id: comboAccounts
+					property var balances: []
+					onCurrentIndexChanged : {
+						if (modelAccounts.count > 0)
+						{
+							currentAccount = modelAccounts.get(currentIndex).id;
+							balance.text = balances[currentIndex];
+						}
+					}
+					model: ListModel {
+						id: modelAccounts
+					}
+				}
+
+				DefaultLabel
+				{
+					anchors.verticalCenter: parent.verticalCenter
+					anchors.left: comboAccounts.right
+					anchors.leftMargin: 20
+					id: balance;
+				}
+			}
+
+
+			DefaultLabel
+			{
 				text: qsTr("Ethereum Application URL: ")
 			}
 
-			DefaultTextField
+			Rectangle
 			{
 				Layout.fillWidth: true
-				id: applicationUrlEth
+				height: 25
+				color: "transparent"
+				DefaultTextField
+				{
+					width: 350
+					id: applicationUrlEth
+				}
+
+				DefaultLabel
+				{
+					anchors.verticalCenter: parent.verticalCenter;
+					anchors.left: applicationUrlEth.right
+					text: "/" + projectModel.projectTitle
+				}
 			}
 
 			DefaultLabel
@@ -80,6 +215,18 @@ Window {
 			{
 				Layout.fillWidth: true
 				id: applicationUrlHttp
+			}
+
+			DefaultLabel
+			{
+				text: qsTr("Amount of gas to use for each contract deployment: ")
+			}
+
+			DefaultTextField
+			{
+				text: "20000"
+				Layout.fillWidth: true
+				id: gasToUseInput
 			}
 
 			DefaultLabel
@@ -109,10 +256,27 @@ Window {
 			anchors.right: parent.right;
 			anchors.bottomMargin: 10
 			Button {
-				text: qsTr("Deploy to Ethereum");
+				text: qsTr("Deploy contract / Package resources");
 				tooltip: qsTr("Deploy contract and package resources files.")
 				onClicked: {
 					deployWarningDialog.open();
+				}
+			}
+
+			Button {
+				text: qsTr("Package resources only");
+				tooltip: qsTr("Package resources files.")
+				enabled: Object.keys(projectModel.deploymentAddresses).length > 0
+				onClicked: {
+					ProjectModelCode.startDeployProject(false);
+				}
+			}
+
+			Button {
+				text: qsTr("Open Package Directory");
+				enabled: projectModel.deploymentDir !== ""
+				onClicked: {
+					fileIo.openFileBrowser(projectModel.deploymentDir);
 				}
 			}
 
@@ -134,98 +298,6 @@ Window {
 			Button {
 				text: qsTr("Close");
 				onClicked: close();
-			}
-
-			Button {
-				text: qsTr("Check Ownership");
-				visible : false
-				onClicked: {
-					var requests = [];
-					var ethStr = QEtherHelper.createString("wallet");
-
-					var ethHash = QEtherHelper.createHash(eth);
-
-					requests.push({ //owner
-					jsonrpc: "2.0",
-					method: "eth_call",
-					params: [ { "to": '0x' + modalDeploymentDialog.eth, "data": "0xec7b9200" + ethStr.encodeValueAsString() } ],
-					id: 3
-				});
-
-				requests.push({ //register
-					jsonrpc: "2.0",
-					method: "eth_call",
-					params: [ { "to":  '0x' + modalDeploymentDialog.eth, "data": "0x6be16bed" + ethStr.encodeValueAsString() } ],
-					id: 4
-				});
-
-					var jsonRpcUrl = "http://localhost:8080";
-					var rpcRequest = JSON.stringify(requests);
-					var httpRequest = new XMLHttpRequest();
-					httpRequest.open("POST", jsonRpcUrl, true);
-					httpRequest.setRequestHeader("Content-type", "application/json");
-					httpRequest.setRequestHeader("Content-length", rpcRequest.length);
-					httpRequest.setRequestHeader("Connection", "close");
-					httpRequest.onreadystatechange = function() {
-						if (httpRequest.readyState === XMLHttpRequest.DONE) {
-							if (httpRequest.status === 200) {
-								console.log(httpRequest.responseText);
-							} else {
-								var errorText = qsTr("path registration failed ") + httpRequest.status;
-								console.log(errorText);
-							}
-						}
-					}
-					httpRequest.send(rpcRequest);
-				}
-			}
-
-
-			Button {
-				text: qsTr("Generate registrar init");
-				visible: false
-				onClicked: {
-					console.log("registering eth/wallet")
-					var jsonRpcRequestId = 0;
-
-					var requests = [];
-
-					var walletStr = QEtherHelper.createString("wallet");
-
-					requests.push({ //reserve
-									  jsonrpc: "2.0",
-									  method: "eth_transact",
-									  params: [ { "to": '0x' + modalDeploymentDialog.eth, "data": "0x1c83171b" + walletStr.encodeValueAsString() } ],
-									  id: jsonRpcRequestId++
-								  });
-
-
-					requests.push({ //setRegister
-									  jsonrpc: "2.0",
-									  method: "eth_transact",
-									  params: [ { "to": '0x' + modalDeploymentDialog.eth, "data": "0x96077307" + walletStr.encodeValueAsString() + pad(wallet) } ],
-									  id: jsonRpcRequestId++
-								  });
-
-					var jsonRpcUrl = "http://localhost:8080";
-					var rpcRequest = JSON.stringify(requests);
-					var httpRequest = new XMLHttpRequest();
-					httpRequest.open("POST", jsonRpcUrl, true);
-					httpRequest.setRequestHeader("Content-type", "application/json");
-					httpRequest.setRequestHeader("Content-length", rpcRequest.length);
-					httpRequest.setRequestHeader("Connection", "close");
-					httpRequest.onreadystatechange = function() {
-						if (httpRequest.readyState === XMLHttpRequest.DONE) {
-							if (httpRequest.status === 200) {
-								console.log(httpRequest.responseText);
-							} else {
-								var errorText = qsTr("path registration failed ") + httpRequest.status;
-								console.log(errorText);
-							}
-						}
-					}
-					httpRequest.send(rpcRequest);
-				}
 			}
 		}
 	}

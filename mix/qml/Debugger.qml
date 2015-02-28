@@ -12,7 +12,7 @@ Rectangle {
 	id: debugPanel
 
 	property alias transactionLog : transactionLog
-
+	property string compilationErrorMessage
 	objectName: "debugPanel"
 	color: "#ededed"
 	clip: true
@@ -23,24 +23,29 @@ Rectangle {
 			forceActiveFocus();
 	}
 
+	function displayCompilationErrorIfAny()
+	{
+		debugScrollArea.visible = false;
+		compilationErrorArea.visible = true;
+		machineStates.visible = false;
+		var errorInfo = ErrorLocationFormater.extractErrorInfo(compilationErrorMessage, false);
+		errorLocation.text = errorInfo.errorLocation;
+		errorDetail.text = errorInfo.errorDetail;
+		errorLine.text = errorInfo.errorLine;
+	}
+
 	function update(data, giveFocus)
 	{
-		if (statusPane && codeModel.hasContract)
+		if (data === null)
+			Debugger.init(null);
+		else if (data.states.length === 0)
+			Debugger.init(null);
+		else if (codeModel.hasContract)
 		{
 			Debugger.init(data);
 			debugScrollArea.visible = true;
 			compilationErrorArea.visible = false;
 			machineStates.visible = true;
-		}
-		else
-		{
-			debugScrollArea.visible = false;
-			compilationErrorArea.visible = true;
-			machineStates.visible = false;
-			var errorInfo = ErrorLocationFormater.extractErrorInfo(statusPane.result.compilerMessage, false);
-			errorLocation.text = errorInfo.errorLocation;
-			errorDetail.text = errorInfo.errorDetail;
-			errorLine.text = errorInfo.errorLine;
 		}
 		if (giveFocus)
 			forceActiveFocus();
@@ -55,7 +60,15 @@ Rectangle {
 
 	Connections {
 		target: codeModel
-		onCompilationComplete: update(null, false);
+		onCompilationComplete:
+		{
+			debugPanel.compilationErrorMessage = "";
+			update(null, false);
+		}
+
+		onCompilationError: {
+			debugPanel.compilationErrorMessage = _error;
+		}
 	}
 
 	Settings {
@@ -73,7 +86,7 @@ Rectangle {
 		visible: false;
 		id: compilationErrorArea
 		width: parent.width - 20
-		height: 500
+		height: 600
 		color: "#ededed"
 		anchors.left: parent.left
 		anchors.top: parent.top
@@ -82,7 +95,20 @@ Rectangle {
 		{
 			width: parent.width
 			anchors.top: parent.top
-			spacing: 25
+			spacing: 15
+			Rectangle
+			{
+				height: 15
+				Button {
+					text: qsTr("Back to Debugger")
+					onClicked: {
+						debugScrollArea.visible = true;
+						compilationErrorArea.visible = false;
+						machineStates.visible = true;
+					}
+				}
+			}
+
 			RowLayout
 			{
 				height: 100
