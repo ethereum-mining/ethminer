@@ -32,15 +32,8 @@ namespace dev
 namespace eth
 {
 
-const unsigned c_protocolVersion = 56;
-const unsigned c_databaseBaseVersion = 7;
-#if ETH_FATDB
-const unsigned c_databaseVersionModifier = 1000;
-#else
-const unsigned c_databaseVersionModifier = 0;
-#endif
-
-const unsigned c_databaseVersion = c_databaseBaseVersion + c_databaseVersionModifier;
+const unsigned c_protocolVersion = 55;
+const unsigned c_databaseVersion = 5;
 
 vector<pair<u256, string>> const& units()
 {
