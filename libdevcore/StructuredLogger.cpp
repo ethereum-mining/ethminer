@@ -80,7 +80,7 @@ void StructuredLogger::logP2PConnected(string const& _id, bi::tcp::endpoint cons
 	}
 }
 
-void StructuredLogger::logP2PDisconnected(string const& _id, unsigned int _numConnections, bi::tcp::endpoint const& _addr) const
+void StructuredLogger::logP2PDisconnected(string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections) const
 {
 	if (m_enabled)
 	{
