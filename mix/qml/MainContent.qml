@@ -75,6 +75,12 @@ Rectangle {
 		codeWebSplitter.orientation = (codeWebSplitter.orientation === Qt.Vertical ? Qt.Horizontal : Qt.Vertical);
 	}
 
+	function displayCompilationErrorIfAny()
+	{
+		rightView.visible = true;
+		rightView.displayCompilationErrorIfAny();
+	}
+
 	CodeEditorExtensionManager {
 		headerView: headerPaneTabs;
 	}
