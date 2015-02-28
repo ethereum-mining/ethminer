@@ -162,6 +162,7 @@ void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 		m_structuredLogger.logP2PConnected(
 			_s->m_peer->id.abridged(), _s->m_peer->peerEndpoint(),
 			_s->m_peer->m_lastConnected,
+			_s->m_info.clientVersion,
 			0);// TODO: num_connections
 		RecursiveGuard l(x_sessions);
 		// TODO: temporary loose-coupling; if m_peers already has peer,
