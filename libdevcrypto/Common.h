@@ -96,9 +96,9 @@ void encryptSym(Secret const& _k, bytesConstRef _plain, bytes& o_cipher);
 /// Symmetric decryption.
 bool decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
 
-h256 encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher);
-h256 encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher, h256 const& _iv);
-bool decryptSymNoAuth(Secret const& _k, h256 const& _iv, bytesConstRef _cipher, bytes& o_plaintext);
+h128 encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher);
+h128 encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher, h128 const& _iv);
+bool decryptSymNoAuth(Secret const& _k, h128 const& _iv, bytesConstRef _cipher, bytes& o_plaintext);
 
 /// Recovers Public key from signed message hash.
 Public recover(Signature const& _sig, h256 const& _hash);
