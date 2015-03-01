@@ -408,7 +408,7 @@ public:
 		Super::setRoot(h256(Super::db()->lookupAux(m_secure.root())));
 	}
 
-	h256 root() const { const_cast<FatGenericTrieDB*>(this)->syncRoot(); return m_secure.root(); }
+	h256 root() const { return m_secure.root(); }
 
 	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(_key, _value); m_secure.insert(_key, _value); syncRoot(); }
 	void remove(bytesConstRef _key) { Super::remove(_key); m_secure.remove(_key); syncRoot(); }
