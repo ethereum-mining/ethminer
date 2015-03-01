@@ -51,8 +51,8 @@ public:
 	bool kill(h256 _h);
 	void purge();
 
-	bytes lookupAux(h256 _h) const { return asBytes(lookup(h256(sha3(_h).ref().cropped(16), h256::AlignRight))); }
-	void insertAux(h256 _h, bytesConstRef _v) { return insert(h256(sha3(_h).ref().cropped(16), h256::AlignRight), _v); }
+	bytes lookupAux(h256 _h) const { auto h = aux(_h); return m_aux.count(h) ? m_aux.at(h) : bytes(); }
+	void insertAux(h256 _h, bytesConstRef _v) { m_auxKey = aux(_h); m_aux[m_auxKey] = _v.toBytes(); }
 
 	std::set<h256> keys() const;
 
@@ -61,7 +61,7 @@ protected:
 
 	std::map<h256, std::string> m_over;
 	std::map<h256, unsigned> m_refCount;
-	std::set<h256> m_auxActive;
+	h256 m_auxKey;
 	std::map<h256, bytes> m_aux;
 
 	mutable bool m_enforceRefs = false;
