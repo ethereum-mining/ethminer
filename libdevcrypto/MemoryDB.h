@@ -51,9 +51,8 @@ public:
 	bool kill(h256 _h);
 	void purge();
 
-	bytes lookupAux(h256 _h) const { auto h = aux(_h); return m_aux.count(h) ? m_aux.at(h) : bytes(); }
-	void removeAux(h256 _h) { m_auxActive.erase(aux(_h)); }
-	void insertAux(h256 _h, bytesConstRef _v) { auto h = aux(_h); m_auxActive.insert(h); m_aux[h] = _v.toBytes(); }
+	bytes lookupAux(h256 _h) const { return asBytes(lookup(h256(sha3(_h).ref().cropped(16), h256::AlignRight))); }
+	void insertAux(h256 _h, bytesConstRef _v) { return insert(h256(sha3(_h).ref().cropped(16), h256::AlignRight), _v); }
 
 	std::set<h256> keys() const;
 
