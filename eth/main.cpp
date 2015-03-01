@@ -282,7 +282,7 @@ int main(int argc, char** argv)
 		}
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			us = KeyPair(h256(fromHex(argv[++i])));
-		else if ((arg == "--structured-logging") && i + 1 < argc)
+		else if (arg == "--structured-logging")
 			structuredLogging = true;
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
@@ -355,7 +355,7 @@ int main(int argc, char** argv)
 
 	cout << credits();
 
-	unique_ptr<StructuredLogger> structuredLogger(new StructuredLogger(structuredLogging));
+	StructuredLogger structuredLogger(structuredLogging);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
@@ -368,12 +368,11 @@ int main(int argc, char** argv)
 		netPrefs,
 		&nodesState,
 		miners,
-		structuredLogger.get()
+		structuredLogger
 		);
 	web3.setIdealPeerCount(peers);
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
-	if (structuredLogging)
-		structuredLogger->logStarting(clientImplString, dev::Version);
+	structuredLogger.logStarting(clientImplString, dev::Version);
 	if (c)
 	{
 		c->setForceMining(forceMining);
