@@ -121,6 +121,7 @@ void help()
 		<< "	-r,--remote <host>	Connect to remote host (default: none)." << endl
 		<< "	-s,--secret <secretkeyhex>	Set the secret key for use with send command (default: auto)." << endl
 		<< "	--structured-logging Enables structured logging." << endl
+		<< "	--structured-logging-format <time-format> Give time format string for structured logging output." << endl
 		<< "	-t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
 		<< "	-u,--public-ip <ip>	 Force public ip to given (default; auto)." << endl
 		<< "	-v,--verbosity <0 - 9>	Set the log verbosity from 0 to 9 (Default: 8)." << endl
@@ -210,6 +211,7 @@ int main(int argc, char** argv)
 	bool forceMining = false;
 	bool jit = false;
 	bool structuredLogging = false;
+	string structuredLoggingFormat = "%Y-%m-%dT%H:%M:%S";
 	string clientName;
 
 	// Init defaults
@@ -282,6 +284,8 @@ int main(int argc, char** argv)
 		}
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			us = KeyPair(h256(fromHex(argv[++i])));
+		else if (arg == "--structured-logging-format" && i + 1 < argc)
+			structuredLoggingFormat = string(argv[++i]);
 		else if (arg == "--structured-logging")
 			structuredLogging = true;
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
@@ -355,7 +359,7 @@ int main(int argc, char** argv)
 
 	cout << credits();
 
-	StructuredLogger structuredLogger(structuredLogging);
+	StructuredLogger structuredLogger(structuredLogging, structuredLoggingFormat);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");

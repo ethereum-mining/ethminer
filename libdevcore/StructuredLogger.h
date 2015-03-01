@@ -34,12 +34,21 @@ namespace Json { class Value; }
 namespace dev
 {
 
+// TODO: Make the output stream configurable. stdout, stderr, file e.t.c.
 class StructuredLogger
 {
 public:
+	/// Default constructor, logging off
 	StructuredLogger(): m_enabled(false){}
-	StructuredLogger(bool _enabled, std::string const& _timeFormat = "%Y-%m-%dT%H:%M:%S"):
-	m_enabled(_enabled), m_timeFormat(_timeFormat) {}
+	/**
+	 * Initializes a structured logger object
+	 * @param _enabled        Whether logging is on or off
+	 * @param _timeFormat     A time format string as described here:
+	 *                        http://en.cppreference.com/w/cpp/chrono/c/strftime
+	 *                        with which to display timestamps
+	 */
+	StructuredLogger(bool _enabled, std::string const& _timeFormat):
+		m_enabled(_enabled), m_timeFormat(_timeFormat) {}
 
 	void logStarting(std::string const& _clientImpl, const char* _ethVersion) const;
 	void logP2PConnected(std::string const& _id, bi::tcp::endpoint const& _addr,
