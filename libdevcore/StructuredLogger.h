@@ -37,10 +37,11 @@ namespace dev
 class StructuredLogger
 {
 public:
-	StructuredLogger(): m_enabled(false) {}
-	StructuredLogger(bool _enabled): m_enabled(_enabled) {}
+	StructuredLogger(): m_enabled(false){}
+	StructuredLogger(bool _enabled, std::string const& _timeFormat = "%Y-%m-%dT%H:%M:%S"):
+	m_enabled(_enabled), m_timeFormat(_timeFormat) {}
 
-	void logStarting(std::string const& _clientImpl, const char* _ethVersion);
+	void logStarting(std::string const& _clientImpl, const char* _ethVersion) const;
 	void logP2PConnected(std::string const& _id, bi::tcp::endpoint const& _addr,
 		std::chrono::system_clock::time_point const& _ts, std::string const& _remoteVersion, unsigned int _numConnections) const;
 	void logP2PDisconnected(std::string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections) const;
@@ -53,10 +54,11 @@ public:
 	void logTransactionReceived(std::string const& _hash, std::string const& _remoteId) const;
 private:
 	/// @returns a string representation of a timepoint
-	char const* timePointToString(std::chrono::system_clock::time_point const& _ts) const;
-	void outputJson(Json::Value const* _value, std::string const& _name) const;
-	bool m_enabled;
+	std::string timePointToString(std::chrono::system_clock::time_point const& _ts) const;
+	void outputJson(Json::Value const& _value, std::string const& _name) const;
 
+	bool m_enabled;
+	std::string m_timeFormat = "%Y-%m-%dT%H:%M:%S";
 };
 
 }
