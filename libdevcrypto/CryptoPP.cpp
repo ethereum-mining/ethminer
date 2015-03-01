@@ -19,8 +19,9 @@
  * @date 2014
  */
 
-#include "CryptoPP.h"
 #include <libdevcore/Guards.h>
+#include "ECDHE.h"
+#include "CryptoPP.h"
 
 using namespace std;
 using namespace dev;
@@ -30,6 +31,113 @@ using namespace CryptoPP;
 static_assert(dev::Secret::size == 32, "Secret key must be 32 bytes.");
 static_assert(dev::Public::size == 64, "Public key must be 64 bytes.");
 static_assert(dev::Signature::size == 65, "Signature must be 65 bytes.");
+
+bytes Secp256k1::eciesKDF(Secret _z, bytes _s1, unsigned kdBitLen)
+{
+	// similar to go ecies implementation
+	
+	if (!_s1.size())
+	{
+		_s1.resize(1);
+		asserts(_s1[0] == 0);
+	}
+	
+	// for sha3, hash.blocksize is 1088 bits, but this might really be digest size
+	auto reps = ((kdBitLen + 7) * 8) / (32 * 8);
+	bytes ctr({0, 0, 0, 1});
+	bytes k;
+	CryptoPP::SHA256 ctx;
+	while (reps--)
+	{
+		ctx.Update(ctr.data(), ctr.size());
+		ctx.Update(_z.data(), Secret::size);
+		ctx.Update(_s1.data(), _s1.size());
+		// append hash to k
+		bytes digest(32);
+		ctx.Final(digest.data());
+		ctx.Restart();
+		
+		k.reserve(k.size() + h256::size);
+		move(digest.begin(), digest.end(), back_inserter(k));
+		
+		if (ctr[3]++ && ctr[3] != 0) {
+			continue;
+		} else if (ctr[2]++ && ctr[2] != 0) {
+			continue;
+		} else if (ctr[1]++ && ctr[1] != 0) {
+			continue;
+		} else
+			ctr[0]++;
+	}
+	
+	k.resize(kdBitLen / 8);
+	return move(k);
+}
+
+void Secp256k1::encryptECIES(Public const& _k, bytes& io_cipher)
+{
+	// similar to go ecies implementation
+	// todo: s1/s2/tag
+	
+	auto r = KeyPair::create();
+	h256 z;
+	ecdh::agree(r.sec(), _k, z);
+	auto key = eciesKDF(z, bytes(), 512);
+	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 32);
+	bytesRef mKey = bytesRef(&key).cropped(32, 32);
+	sha3(mKey, mKey);
+	
+	bytes cipherText;
+	encryptSymNoAuth(*(Secret*)eKey.data(), bytesConstRef(&io_cipher), cipherText, h128());
+	if (!cipherText.size())
+		return;
+	
+//	d := messageTag(params.Hash, Km, em, s2)
+//	copy(ct[len(Rb)+len(em):], d)
+	
+	bytes msg(1 + Public::size + cipherText.size() + 32);
+	msg[0] = 0x04;
+	r.pub().ref().copyTo(bytesRef(&msg).cropped(1, Public::size));
+	bytesRef msgCipherRef = bytesRef(&msg).cropped(1 + Public::size, cipherText.size());
+	bytesConstRef(&cipherText).copyTo(msgCipherRef);
+	
+	io_cipher.resize(msg.size());
+	io_cipher.swap(msg);
+}
+
+void eciesMessageTag()
+{
+	
+}
+
+void Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
+{
+	// similar to go ecies implementation
+	// todo: s1/s2
+
+	// io_cipher[0] must be 2, 3, or 4, else invalidpublickey
+	if (io_text[0] < 2 || io_text[0] > 4)
+		// invalid message: publickey
+		return;
+	
+	if (io_text.size() < (1 + Public::size + h256::size + 1))
+		// invalid message: length
+		return;
+
+	h256 z;
+	ecdh::agree(_k, *(Public*)(io_text.data()+1), z);
+	auto key = eciesKDF(z, bytes(), 512);
+	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 32);
+	bytesRef mKey = bytesRef(&key).cropped(32, 32);
+	sha3(mKey, mKey);
+	
+	bytes plain;
+	size_t cipherLen = io_text.size() - 1 - Public::size - h256::size;
+	bytesConstRef cipher(io_text.data() + 1 + Public::size, cipherLen);
+	decryptSymNoAuth(*(Secret*)eKey.data(), h128(), cipher, plain);
+	io_text.resize(plain.size());
+	io_text.swap(plain);
+}
 
 void Secp256k1::encrypt(Public const& _k, bytes& io_cipher)
 {

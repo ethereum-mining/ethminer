@@ -394,12 +394,12 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 		{
 			clog(NetConnect) << "devp2p.connect.egress sending auth";
 			// egress: tx auth
-			asserts(remote);
+			asserts((bool)remote);
 			auth.resize(Signature::size + h256::size + Public::size + h256::size + 1);
-			bytesConstRef sig(&auth[0], Signature::size);
-			bytesConstRef hepubk(&auth[Signature::size], h256::size);
-			bytesConstRef pubk(&auth[Signature::size + h256::size], Public::size);
-			bytesConstRef nonce(&auth[Signature::size + h256::size + Public::size], h256::size);
+			bytesRef sig(&auth[0], Signature::size);
+			bytesRef hepubk(&auth[Signature::size], h256::size);
+			bytesRef pubk(&auth[Signature::size + h256::size], Public::size);
+			bytesRef nonce(&auth[Signature::size + h256::size + Public::size], h256::size);
 			
 			// E(remote-pubk, S(ecdhe-random, ecdh-shared-secret^nonce) || H(ecdhe-random-pubk) || pubk || nonce || 0x0)
 			crypto::ecdh::agree(host->m_alias.sec(), remote, ss);
@@ -469,8 +469,8 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 			clog(NetConnect) << "devp2p.connect.ingress sending ack";
 			// ingress: tx ack
 			ack.resize(Public::size + h256::size + 1);
-			bytesConstRef epubk(&ack[0], Public::size);
-			bytesConstRef nonce(&ack[Public::size], h256::size);
+			bytesRef epubk(&ack[0], Public::size);
+			bytesRef nonce(&ack[Public::size], h256::size);
 			ecdhe.pubkey().ref().copyTo(epubk);
 			this->nonce.ref().copyTo(nonce);
 			ack[ack.size() - 1] = 0x0;
@@ -489,7 +489,7 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 			clog(NetConnect) << "devp2p.connect.ingress sending magic sequence";
 		PeerSecrets* k = new PeerSecrets;
 		bytes keyMaterialBytes(512);
-		bytesConstRef keyMaterial(&keyMaterialBytes);
+		bytesRef keyMaterial(&keyMaterialBytes);
 
 		ecdhe.agree(remoteEphemeral, ess);
 		ess.ref().copyTo(keyMaterial.cropped(0, h256::size));
@@ -521,10 +521,10 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 		// This test will be replaced with protocol-capabilities information (was Hello packet)
 		// TESTING: send encrypt magic sequence
 		bytes magic {0x22,0x40,0x08,0x91};
-		encryptSymNoAuth(k->encryptK, &magic, k->magicCipherAndMac, h256());
+		encryptSymNoAuth(k->encryptK, &magic, k->magicCipherAndMac, h128());
 		k->magicCipherAndMac.resize(k->magicCipherAndMac.size() + 32);
 		sha3mac(k->egressMac.ref(), &magic, k->egressMac.ref());
-		k->egressMac.ref().copyTo(bytesConstRef(&k->magicCipherAndMac).cropped(k->magicCipherAndMac.size() - 32, 32));
+		k->egressMac.ref().copyTo(bytesRef(&k->magicCipherAndMac).cropped(k->magicCipherAndMac.size() - 32, 32));
 		
 		clog(NetConnect) << "devp2p.connect.egress txrx magic sequence";
 		k->recvdMagicCipherAndMac.resize(k->magicCipherAndMac.size());
@@ -554,7 +554,7 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 				
 				/// capabilities handshake (encrypted magic sequence is placeholder)
 				bytes decryptedMagic;
-				decryptSymNoAuth(k->encryptK, h256(), &k->recvdMagicCipherAndMac, decryptedMagic);
+				decryptSymNoAuth(k->encryptK, h128(), &k->recvdMagicCipherAndMac, decryptedMagic);
 				if (decryptedMagic[0] == 0x22 && decryptedMagic[1] == 0x40 && decryptedMagic[2] == 0x08 && decryptedMagic[3] == 0x91)
 				{
 					shared_ptr<Peer> p;
