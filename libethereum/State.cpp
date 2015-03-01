@@ -224,7 +224,7 @@ void State::ensureCached(std::map<Address, Account>& _cache, Address _a, bool _r
 		if (state.isNull())
 			s = Account(0, Account::NormalCreation);
 		else
-			s = Account(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>());
+			s = Account(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>(), Account::Unchanged);
 		bool ok;
 		tie(it, ok) = _cache.insert(make_pair(_a, s));
 	}
@@ -625,7 +625,7 @@ void State::uncommitToMine()
 		if (!m_transactions.size())
 			m_state.setRoot(m_previousBlock.stateRoot);
 		else
-			m_state.setRoot(m_receipts[m_receipts.size() - 1].stateRoot());
+			m_state.setRoot(m_receipts.back().stateRoot());
 		m_db = m_lastTx;
 		paranoia("Uncommited to mine", true);
 		m_currentBlock.sha3Uncles = h256();
@@ -890,7 +890,7 @@ Address State::newContract(u256 _balance, bytes const& _code)
 		auto it = m_cache.find(ret);
 		if (it == m_cache.end())
 		{
-			m_cache[ret] = Account(0, _balance, EmptyTrie, h);
+			m_cache[ret] = Account(0, _balance, EmptyTrie, h, Account::Changed);
 			return ret;
 		}
 	}
@@ -1144,7 +1144,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 	_out << "--- " << _s.rootHash() << std::endl;
 	std::set<Address> d;
 	std::set<Address> dtr;
-	auto trie = TrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_s.m_db), _s.rootHash());
+	auto trie = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_s.m_db), _s.rootHash());
 	for (auto i: trie)
 		d.insert(i.first), dtr.insert(i.first);
 	for (auto i: _s.m_cache)
