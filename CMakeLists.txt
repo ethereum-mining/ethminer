@@ -19,6 +19,7 @@ function(createDefaultCacheConfig)
 	set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
 	set(JSONRPC ON CACHE BOOL "Build with jsonprc. default on")
 	set(EVMJIT OFF CACHE BOOL "Build a just-in-time compiler for EVM code (requires LLVM)")
+	set(FATDB OFF CACHE BOOL "Build with ability to list entries in the Trie. Doubles DB size, slows everything down, but good for looking at state diffs and trie contents.")
 endfunction()
 
 
@@ -42,6 +43,10 @@ function(configureProject)
 
 	if (EVMJIT)
 		add_definitions(-DETH_EVMJIT)
+	endif()
+
+	if (FATDB)
+		add_definitions(-DETH_FATDB)
 	endif()
 
 	if (HEADLESS)
@@ -110,7 +115,7 @@ cmake_policy(SET CMP0015 NEW)
 createDefaultCacheConfig()
 configureProject()
 message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
-message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}")
+message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}; FATDB: ${FATDB}")
 
 
 # Default TARGET_PLATFORM to "linux".
