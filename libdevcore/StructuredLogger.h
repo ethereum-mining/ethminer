@@ -51,6 +51,7 @@ public:
 		m_enabled(_enabled), m_timeFormat(_timeFormat) {}
 
 	void logStarting(std::string const& _clientImpl, const char* _ethVersion) const;
+	void logStopping(std::string const& _clientImpl, const char* _ethVersion) const;
 	void logP2PConnected(std::string const& _id, bi::tcp::endpoint const& _addr,
 		std::chrono::system_clock::time_point const& _ts, std::string const& _remoteVersion, unsigned int _numConnections) const;
 	void logP2PDisconnected(std::string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections) const;

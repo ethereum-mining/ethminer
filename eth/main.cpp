@@ -910,6 +910,7 @@ int main(int argc, char** argv)
 		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
+	structuredLogger.logStopping(clientImplString, dev::Version);
 	auto netData = web3.saveNetwork();
 	if (!netData.empty())
 		writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", netData);
