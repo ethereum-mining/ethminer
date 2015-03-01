@@ -81,6 +81,15 @@ public:
 	/// Decrypts text (replace input).
 	void decrypt(Secret const& _k, bytes& io_text);
 	
+	/// Temporary; to replace encrypt once interop w/go is passing.
+	void encryptECIES(Public const& _k, bytes& io_cipher);
+
+	/// Temporary; to replace decrypt once interop w/go is passing.
+	void decryptECIES(Secret const& _k, bytes& io_text);
+	
+	/// Key derivation function used by ECIES.
+	bytes eciesKDF(Secret _z, bytes _s1, unsigned kdBitLen = 256);
+	
 	/// @returns siganture of message.
 	Signature sign(Secret const& _k, bytesConstRef _message);
 	

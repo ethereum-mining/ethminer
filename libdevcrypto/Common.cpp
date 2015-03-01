@@ -94,24 +94,23 @@ bool dev::decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plain)
 	return decrypt(_k, _cipher, o_plain);
 }
 
-h256 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher)
+h128 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher)
 {
-	auto iv = Nonce::get();
+	h128 iv(Nonce::get());
 	return encryptSymNoAuth(_k, _plain, o_cipher, iv);
 }
 
-h256 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher, h256 const& _iv)
+h128 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher, h128 const& _iv)
 {
 	const int c_aesBlockLen = 16;
-	o_cipher.resize(_plain.size() + (c_aesBlockLen - (_plain.size() % c_aesBlockLen)) % c_aesBlockLen);
+	size_t extraBytes = _plain.size() % c_aesBlockLen;
+	size_t trimmedSize = _plain.size() - extraBytes;
+	size_t paddedSize = _plain.size() + ((16 - extraBytes) % 16);
+	o_cipher.resize(paddedSize);
 	
-	bytes underflowBytes(0);
-	auto size = _plain.size() - (_plain.size() % c_aesBlockLen);
-	if (o_cipher.size() > _plain.size())
-	{
-		underflowBytes.resize(c_aesBlockLen);
-		_plain.cropped(size, _plain.size() - size).copyTo(&underflowBytes);
-	}
+	bytes underflowBytes(16);
+	if (o_cipher.size() != _plain.size())
+		_plain.cropped(trimmedSize, extraBytes).copyTo(&underflowBytes);
 	
 	const int c_aesKeyLen = 32;
 	SecByteBlock key(_k.data(), c_aesKeyLen);
@@ -119,28 +118,28 @@ h256 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_ciph
 	{
 		CTR_Mode<AES>::Encryption e;
 		e.SetKeyWithIV(key, key.size(), _iv.data());
-		if (size)
-			e.ProcessData(o_cipher.data(), _plain.data(), _plain.size());
-		if (underflowBytes.size())
-			e.ProcessData(o_cipher.data(), underflowBytes.data(), underflowBytes.size());
+		if (trimmedSize)
+			e.ProcessData(o_cipher.data(), _plain.data(), trimmedSize);
+		if (extraBytes)
+			e.ProcessData(o_cipher.data() + trimmedSize, underflowBytes.data(), underflowBytes.size());
 		return _iv;
 	}
 	catch(CryptoPP::Exception& e)
 	{
 		cerr << e.what() << endl;
 		o_cipher.resize(0);
-		return h256();
+		return h128();
 	}
 }
 
-bool dev::decryptSymNoAuth(Secret const& _k, h256 const& _iv, bytesConstRef _cipher, bytes& o_plaintext)
+bool dev::decryptSymNoAuth(Secret const& _k, h128 const& _iv, bytesConstRef _cipher, bytes& o_plaintext)
 {
-	const int c_aesKeyLen = 32;
 	const int c_aesBlockLen = 16;
 	asserts(_cipher.size() % c_aesBlockLen == 0);
 	o_plaintext.resize(_cipher.size());
-	SecByteBlock key(_k.data(), c_aesKeyLen);
 	
+	const int c_aesKeyLen = 32;
+	SecByteBlock key(_k.data(), c_aesKeyLen);
 	try
 	{
 		CTR_Mode<AES>::Decryption d;
