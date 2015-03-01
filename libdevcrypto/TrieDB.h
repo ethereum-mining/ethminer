@@ -68,7 +68,7 @@ class GenericTrieDB
 public:
 	using DB = _DB;
 
-	GenericTrieDB(DB* _db): m_db(_db) {}
+	GenericTrieDB(DB* _db = nullptr): m_db(_db) {}
 	GenericTrieDB(DB* _db, h256 _root) { open(_db, _root); }
 	~GenericTrieDB() {}
 
@@ -294,7 +294,7 @@ public:
 	using DB = typename Generic::DB;
 	using KeyType = _KeyType;
 
-	SpecificTrieDB(DB* _db): Generic(_db) {}
+	SpecificTrieDB(DB* _db = nullptr): Generic(_db) {}
 	SpecificTrieDB(DB* _db, h256 _root): Generic(_db, _root) {}
 
 	std::string operator[](KeyType _k) const { return at(_k); }
@@ -342,7 +342,7 @@ class HashedGenericTrieDB: private SpecificTrieDB<GenericTrieDB<_DB>, h256>
 public:
 	using DB = _DB;
 
-	HashedGenericTrieDB(DB* _db): Super(_db) {}
+	HashedGenericTrieDB(DB* _db = nullptr): Super(_db) {}
 	HashedGenericTrieDB(DB* _db, h256 _root): Super(_db, _root) {}
 
 	using Super::open;
@@ -364,11 +364,28 @@ public:
 	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(sha3(_key), _value); }
 	void remove(bytesConstRef _key) { Super::remove(sha3(_key)); }
 
-	// empty from the PoV of the iterator interface.
-	using iterator = void*;
-	iterator begin() const { return nullptr; }
-	iterator end() const { return nullptr; }
-	iterator lower_bound(bytesConstRef) const { return end(); }
+	// empty from the PoV of the iterator interface; still need a basic iterator impl though.
+	class iterator
+	{
+	public:
+		using value_type = std::pair<bytesConstRef, bytesConstRef>;
+
+		iterator() {}
+		iterator(HashedGenericTrieDB const*) {}
+		iterator(HashedGenericTrieDB const*, bytesConstRef) {}
+
+		iterator& operator++() { return *this; }
+		value_type operator*() const { return value_type(); }
+		value_type operator->() const { return value_type(); }
+
+		bool operator==(iterator const&) const { return true; }
+		bool operator!=(iterator const&) const { return false; }
+
+		value_type at() const { return value_type(); }
+	};
+	iterator begin() const { return iterator(); }
+	iterator end() const { return iterator(); }
+	iterator lower_bound(bytesConstRef) const { return iterator(); }
 };
 
 // Hashed & Basic
@@ -411,7 +428,7 @@ private:
 
 template <class KeyType, class DB> using TrieDB = SpecificTrieDB<GenericTrieDB<DB>, KeyType>;
 
-#if ETH_FAT_DB
+#if ETH_FATDB
 template <class KeyType, class DB> using SecureTrieDB = SpecificTrieDB<FatGenericTrieDB<DB>, KeyType>;
 #else
 template <class KeyType, class DB> using SecureTrieDB = SpecificTrieDB<HashedGenericTrieDB<DB>, KeyType>;
