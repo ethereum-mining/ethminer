@@ -334,14 +334,36 @@ void commit(std::map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Addr
 				_state.remove(i.first);
 			else
 			{
-				SecureTrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
-				for (auto const& j: i.second.storageOverlay())
-					if (j.second)
-						storageDB.insert(j.first, rlp(j.second));
-					else
-						storageDB.remove(j.first);
-				assert(storageDB.root());
-				s.append(storageDB.root());
+				RLPStream s(4);
+				s << i.second.nonce() << i.second.balance();
+
+				if (i.second.storageOverlay().empty())
+				{
+					assert(i.second.baseRoot());
+					s.append(i.second.baseRoot());
+				}
+				else
+				{
+					SecureTrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
+					for (auto const& j: i.second.storageOverlay())
+						if (j.second)
+							storageDB.insert(j.first, rlp(j.second));
+						else
+							storageDB.remove(j.first);
+					assert(storageDB.root());
+					s.append(storageDB.root());
+				}
+
+				if (i.second.isFreshCode())
+				{
+					h256 ch = sha3(i.second.code());
+					_db.insert(ch, &i.second.code());
+					s << ch;
+				}
+				else
+					s << i.second.codeHash();
+
+				_state.insert(i.first, &s.out());
 			}
 		}
 }
