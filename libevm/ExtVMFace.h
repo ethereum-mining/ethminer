@@ -63,9 +63,10 @@ using LogEntries = std::vector<LogEntry>;
 struct LocalisedLogEntry: public LogEntry
 {
 	LocalisedLogEntry() {}
-	LocalisedLogEntry(LogEntry const& _le, unsigned _number): LogEntry(_le), number(_number) {}
+	LocalisedLogEntry(LogEntry const& _le, unsigned _number, h256 _sha3 = h256(u256(0))): LogEntry(_le), number(_number), sha3(_sha3) {}
 
 	unsigned number = 0;
+	h256 sha3;
 };
 
 using LocalisedLogEntries = std::vector<LocalisedLogEntry>;
