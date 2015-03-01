@@ -46,7 +46,7 @@ namespace js = json_spirit;
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.currentHash());
-	auto it = _bc.m_blocksDB->NewIterator(_bc.m_readOptions);
+	auto it = _bc.m_db->NewIterator(_bc.m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().ToString() != "best")
 		{
