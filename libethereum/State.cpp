@@ -180,11 +180,10 @@ StateDiff State::diff(State const& _c) const
 	auto trie = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&m_db), rootHash());
 	auto trieD = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_c.m_db), _c.rootHash());
 
-	// TODO: fix
-//	for (auto i: trie)
-//		ads.insert(i.first), trieAds.insert(i.first);
-//	for (auto i: trieD)
-//		ads.insert(i.first), trieAdsD.insert(i.first);
+	for (auto i: trie)
+		ads.insert(i.first), trieAds.insert(i.first);
+	for (auto i: trieD)
+		ads.insert(i.first), trieAdsD.insert(i.first);
 	for (auto i: m_cache)
 		ads.insert(i.first);
 	for (auto i: _c.m_cache)
@@ -346,10 +345,9 @@ map<Address, u256> State::addresses() const
 	for (auto i: m_cache)
 		if (i.second.isAlive())
 			ret[i.first] = i.second.balance();
-	// TODO: fix.
-//	for (auto const& i: m_state)
-//		if (m_cache.find(i.first) == m_cache.end())
-//			ret[i.first] = RLP(i.second)[1].toInt<u256>();
+	for (auto const& i: m_state)
+		if (m_cache.find(i.first) == m_cache.end())
+			ret[i.first] = RLP(i.second)[1].toInt<u256>();
 	return ret;
 }
 
@@ -949,10 +947,9 @@ map<u256, u256> State::storage(Address _id) const
 		// Pull out all values from trie storage.
 		if (it->second.baseRoot())
 		{
-			// TODO: fix
-//			SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.baseRoot());		// promise we won't alter the overlay! :)
-//			for (auto const& i: memdb)
-//				ret[i.first] = RLP(i.second).toInt<u256>();
+			SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.baseRoot());		// promise we won't alter the overlay! :)
+			for (auto const& i: memdb)
+				ret[i.first] = RLP(i.second).toInt<u256>();
 		}
 
 		// Then merge cached storage over the top.
@@ -1188,9 +1185,8 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 				if (r)
 				{
 					SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
-					// TODO: fix
-//					for (auto const& j: memdb)
-//						mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
+					for (auto const& j: memdb)
+						mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
 				}
 				if (cache)
 					for (auto const& j: cache->storageOverlay())
