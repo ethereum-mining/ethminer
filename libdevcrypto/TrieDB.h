@@ -68,7 +68,7 @@ class GenericTrieDB
 public:
 	using DB = _DB;
 
-	GenericTrieDB(DB* _db = nullptr): m_db(_db) {}
+	GenericTrieDB(DB* _db): m_db(_db) {}
 	GenericTrieDB(DB* _db, h256 _root) { open(_db, _root); }
 	~GenericTrieDB() {}
 
@@ -294,7 +294,7 @@ public:
 	using DB = typename Generic::DB;
 	using KeyType = _KeyType;
 
-	SpecificTrieDB(DB* _db = nullptr): Generic(_db) {}
+	SpecificTrieDB(DB* _db): Generic(_db) {}
 	SpecificTrieDB(DB* _db, h256 _root): Generic(_db, _root) {}
 
 	std::string operator[](KeyType _k) const { return at(_k); }
@@ -334,19 +334,20 @@ std::ostream& operator<<(std::ostream& _out, SpecificTrieDB<Generic, KeyType> co
 	return _out;
 }
 
-template <class DB>
-class SecureGenericTrieDB: private TrieDB<h256, DB>
+template <class _DB>
+class HashedGenericTrieDB: private SpecificTrieDB<GenericTrieDB<_DB>, h256>
 {
-	using Super = TrieDB<h256, DB>;
+	using Super = SpecificTrieDB<GenericTrieDB<_DB>, h256>;
 
 public:
-	SecureGenericTrieDB(DB* _db): Super(_db) {}
-	SecureGenericTrieDB(DB* _db, h256 _root): Super(_db, _root) {}
+	using DB = _DB;
+
+	HashedGenericTrieDB(DB* _db): Super(_db) {}
+	HashedGenericTrieDB(DB* _db, h256 _root): Super(_db, _root) {}
 
 	using Super::open;
 	using Super::init;
 	using Super::setRoot;
-	using Super::haveRoot;
 
 	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
 	using Super::isNull;
@@ -359,28 +360,62 @@ public:
 	using Super::check;
 
 	std::string at(bytesConstRef _key) const { return Super::at(sha3(_key)); }
+	bool contains(bytesConstRef _key) { return Super::contains(sha3(_key)); }
 	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(sha3(_key), _value); }
 	void remove(bytesConstRef _key) { Super::remove(sha3(_key)); }
-	bool contains(bytesConstRef _key) { return Super::contains(sha3(_key)); }
+
+	// empty from the PoV of the iterator interface.
+	using iterator = void*;
+	iterator begin() const { return nullptr; }
+	iterator end() const { return nullptr; }
+	iterator lower_bound(bytesConstRef) const { return end(); }
 };
 
-template <class KeyType, class DB>
-class SecureTrieDB: public SecureGenericTrieDB<DB>
+// Hashed & Basic
+template <class DB>
+class FatGenericTrieDB: public GenericTrieDB<DB>
 {
-	using Super = SecureGenericTrieDB<DB>;
+	using Super = GenericTrieDB<DB>;
 
 public:
-	SecureTrieDB(DB* _db): Super(_db) {}
-	SecureTrieDB(DB* _db, h256 _root): Super(_db, _root) {}
+	FatGenericTrieDB(DB* _db): Super(_db), m_secure(_db) {}
+	FatGenericTrieDB(DB* _db, h256 _root) { open(_db, _root); }
 
-	std::string operator[](KeyType _k) const { return at(_k); }
+	void open(DB* _db, h256 _root) { Super::open(_db); m_secure.open(_db); setRoot(_root); }
 
-	bool contains(KeyType _k) const { return Super::contains(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
-	std::string at(KeyType _k) const { return Super::at(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
-	void insert(KeyType _k, bytesConstRef _value) { Super::insert(bytesConstRef((byte const*)&_k, sizeof(KeyType)), _value); }
-	void insert(KeyType _k, bytes const& _value) { insert(_k, bytesConstRef(&_value)); }
-	void remove(KeyType _k) { Super::remove(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
+	void init() { Super::init(); m_secure.init(); syncRoot(); }
+
+	void setRoot(h256 _root)
+	{
+		m_secure.setRoot(_root);
+		Super::setRoot(h256(Super::db()->lookupAux(m_secure.root())));
+	}
+
+	h256 root() const { return m_secure.root(); }
+
+	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(_key, _value); m_secure.insert(_key, _value); syncRoot(); }
+	void remove(bytesConstRef _key) { Super::remove(_key); m_secure.remove(_key); syncRoot(); }
+
+	std::set<h256> leftOvers(std::ostream* = nullptr) const { return {}; }
+	bool check(bool) const { return m_secure.check(false) && Super::check(false); }
+
+private:
+	void syncRoot()
+	{
+		// Root changed. Need to record the mapping so we can determine on setRoot.
+		Super::db()->insertAux(m_secure.root(), Super::root().ref());
+	}
+
+	HashedGenericTrieDB<DB> m_secure;
 };
+
+template <class KeyType, class DB> using TrieDB = SpecificTrieDB<GenericTrieDB<DB>, KeyType>;
+
+#if ETH_FAT_DB
+template <class KeyType, class DB> using SecureTrieDB = SpecificTrieDB<FatGenericTrieDB<DB>, KeyType>;
+#else
+template <class KeyType, class DB> using SecureTrieDB = SpecificTrieDB<HashedGenericTrieDB<DB>, KeyType>;
+#endif
 
 }
 
