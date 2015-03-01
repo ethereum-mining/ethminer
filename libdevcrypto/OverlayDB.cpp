@@ -19,6 +19,7 @@
  * @date 2014
  */
 
+#include <leveldb/db.h>
 #include <libdevcore/Common.h>
 #include "OverlayDB.h"
 using namespace std;
@@ -51,9 +52,21 @@ void OverlayDB::commit()
 			if (m_refCount[i.first])
 				m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size()));
 		}
+		if (m_auxKey && m_aux.count(m_auxKey))
+			m_db->Put(m_writeOptions, m_auxKey.ref(), bytesConstRef(&m_aux[m_auxKey]));
 		m_over.clear();
 		m_refCount.clear();
 	}
+}
+
+bytes OverlayDB::lookupAux(h256 _h) const
+{
+	bytes ret = MemoryDB::lookupAux(_h);
+	if (!ret.empty())
+		return ret;
+	std::string v;
+	m_db->Get(m_readOptions, _h.ref(), &v);
+	return asBytes(v);
 }
 
 void OverlayDB::rollback()
