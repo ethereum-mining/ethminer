@@ -107,7 +107,7 @@ set<h256> MemoryDB::keys() const
 {
 	set<h256> ret;
 	for (auto const& i: m_refCount)
-		if (i.second)
+		if (i.second && h128(i.first.ref().cropped(0, 16)))
 			ret.insert(i.first);
 	return ret;
 }
