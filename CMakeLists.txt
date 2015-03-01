@@ -20,6 +20,7 @@ function(createDefaultCacheConfig)
 	set(JSONRPC ON CACHE BOOL "Build with jsonprc. default on")
 	set(EVMJIT OFF CACHE BOOL "Build a just-in-time compiler for EVM code (requires LLVM)")
 	set(FATDB OFF CACHE BOOL "Build with ability to list entries in the Trie. Doubles DB size, slows everything down, but good for looking at state diffs and trie contents.")
+	set(JUSTTESTS OFF CACHE BOOL "Build only for tests.")
 endfunction()
 
 
@@ -49,7 +50,7 @@ function(configureProject)
 		add_definitions(-DETH_FATDB)
 	endif()
 
-	if (HEADLESS)
+	if (HEADLESS OR JUSTTESTS)
 		add_definitions(-DETH_HEADLESS)
 	endif()
 endfunction()
@@ -153,8 +154,11 @@ if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 endif ()
 
 add_subdirectory(libsolidity)
-add_subdirectory(lllc)
-add_subdirectory(solc)
+
+if (NOT JUSTTESTS)
+	add_subdirectory(lllc)
+	add_subdirectory(solc)
+endif()
 
 if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
@@ -171,25 +175,30 @@ add_subdirectory(libethereum)
 
 add_subdirectory(libwebthree)
 add_subdirectory(test)
-add_subdirectory(eth)
 
-if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-	add_subdirectory(exp)
-endif ()
+if (NOT JUSTTESTS)
 
-# TODO check msvc
-if(NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
-	add_subdirectory(neth)
-endif ()
+	add_subdirectory(eth)
 
-if (NOT HEADLESS)
-	
-	add_subdirectory(libnatspec)
-	add_subdirectory(libjsqrc)
-	add_subdirectory(alethzero)
-	add_subdirectory(third)
-	add_subdirectory(mix)
-	
+	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
+		add_subdirectory(exp)
+	endif ()
+
+	# TODO check msvc
+	if(NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+		add_subdirectory(neth)
+	endif ()
+
+	if (NOT HEADLESS)
+
+		add_subdirectory(libnatspec)
+		add_subdirectory(libjsqrc)
+		add_subdirectory(alethzero)
+		add_subdirectory(third)
+		add_subdirectory(mix)
+
+	endif()
+
 endif()
 
 enable_testing()
