@@ -19,6 +19,8 @@
  * @date 2014
  */
 
+#include <leveldb/db.h>
+
 #include "BlockChain.h"
 
 #include <boost/filesystem.hpp>
@@ -43,14 +45,17 @@ namespace js = json_spirit;
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.currentHash());
-	auto it = _bc.m_extrasDB->NewIterator(_bc.m_readOptions);
+	auto it = _bc.m_db->NewIterator(_bc.m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().ToString() != "best")
 		{
-			string rlpString = it->value().ToString();
-			RLP r(rlpString);
-			BlockDetails d(r);
-			_out << toHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parent << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
+			try {
+				BlockInfo d(bytesConstRef(it->value()));
+				_out << toHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parentHash << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
+			}
+			catch (...) {
+				cwarn << "Invalid DB entry:" << toHex(it->key().ToString()) << " -> " << toHex(bytesConstRef(it->value()));
+			}
 		}
 	delete it;
 	return _out;
