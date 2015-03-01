@@ -66,6 +66,20 @@ void StructuredLogger::logStarting(string const& _clientImpl, const char* _ethVe
 	}
 }
 
+void StructuredLogger::logStopping(string const& _clientImpl, const char* _ethVersion) const
+{
+	if (m_enabled)
+	{
+		Json::Value event;
+		event["comment"] = "last event before termination of the client";
+		event["client_impl"] = _clientImpl;
+		event["eth_version"] = std::string(_ethVersion);
+		event["ts"] = timePointToString(std::chrono::system_clock::now());
+
+		outputJson(event, "stopping");
+	}
+}
+
 void StructuredLogger::logP2PConnected(string const& _id, bi::tcp::endpoint const& _addr,
 	chrono::system_clock::time_point const& _ts, string const& _remoteVersion, unsigned int _numConnections) const
 {
