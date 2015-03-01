@@ -20,6 +20,7 @@ function(createDefaultCacheConfig)
 	set(JSONRPC ON CACHE BOOL "Build with jsonprc. default on")
 	set(EVMJIT OFF CACHE BOOL "Build a just-in-time compiler for EVM code (requires LLVM)")
 	set(FATDB OFF CACHE BOOL "Build with ability to list entries in the Trie. Doubles DB size, slows everything down, but good for looking at state diffs and trie contents.")
+	set(JUSTTESTS OFF CACHE BOOL "Build only for tests.")
 endfunction()
 
 
@@ -49,7 +50,7 @@ function(configureProject)
 		add_definitions(-DETH_FATDB)
 	endif()
 
-	if (HEADLESS)
+	if (HEADLESS OR JUSTTESTS)
 		add_definitions(-DETH_HEADLESS)
 	endif()
 endfunction()
