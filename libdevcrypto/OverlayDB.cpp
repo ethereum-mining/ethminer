@@ -52,16 +52,8 @@ void OverlayDB::commit()
 			if (m_refCount[i.first])
 				m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size()));
 		}
-		for (auto const& i: m_auxActive)
-			if (m_aux.count(i))
-			{
-				m_db->Put(m_writeOptions, i.ref(), bytesConstRef(&m_aux[i]));
-				cdebug << "Committing aux: " << i;
-				m_aux.erase(i);
-			}
-		cdebug << "Discarding " << keysOf(m_aux);
-		m_auxActive.clear();
-		m_aux.clear();
+		if (m_auxKey && m_aux.count(m_auxKey))
+			m_db->Put(m_writeOptions, m_auxKey.ref(), bytesConstRef(&m_aux[m_auxKey]));
 		m_over.clear();
 		m_refCount.clear();
 	}
@@ -73,9 +65,7 @@ bytes OverlayDB::lookupAux(h256 _h) const
 	if (!ret.empty())
 		return ret;
 	std::string v;
-	m_db->Get(m_readOptions, aux(_h).ref(), &v);
-	if (v.empty())
-		cwarn << "Aux not found: " << _h;
+	m_db->Get(m_readOptions, _h.ref(), &v);
 	return asBytes(v);
 }
 
