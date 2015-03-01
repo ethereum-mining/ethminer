@@ -26,6 +26,7 @@
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
+#include "SHA3.h"
 
 namespace dev
 {
@@ -49,6 +50,9 @@ public:
 	void insert(h256 _h, bytesConstRef _v);
 	bool kill(h256 _h);
 	void purge();
+
+	bytes lookupAux(h256 _h) const { return asBytes(lookup(h256(sha3(_h).ref().cropped(16), h256::AlignRight))); }
+	void insertAux(h256 _h, bytesConstRef _v) { return insert(h256(sha3(_h).ref().cropped(16), h256::AlignRight), _v); }
 
 	std::set<h256> keys() const;
 
