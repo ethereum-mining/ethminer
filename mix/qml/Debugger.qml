@@ -54,8 +54,9 @@ Rectangle {
 			forceActiveFocus();
 	}
 
-	ListModel {
-		id: breakpointModel;
+	function setBreakpoints(bp)
+	{
+		Debugger.setBreakpoints(bp);
 	}
 
 	Connections {
@@ -67,7 +68,7 @@ Rectangle {
 
 	Connections {
 		target: codeModel
-		onCompilationComplete: update(null, false);
+		//onCompilationComplete: update(null, false);
 	}
 
 	Settings {
@@ -192,6 +193,18 @@ Rectangle {
 							spacing: 3
 							StepActionImage
 							{
+								id: runBackAction;
+								enabledStateImg: "qrc:/qml/img/jumpoutback.png"
+								disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
+								onClicked: Debugger.runBack()
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+Shift+F5"
+								buttonTooltip: qsTr("Run Back")
+							}
+
+							StepActionImage
+							{
 								id: jumpOutBackAction;
 								enabledStateImg: "qrc:/qml/img/jumpoutback.png"
 								disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
@@ -261,6 +274,20 @@ Rectangle {
 								buttonShortcut: "Shift+F11"
 								buttonTooltip: qsTr("Step Out Forward")
 							}
+
+							StepActionImage
+							{
+								id: runForwardAction
+								enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
+								disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
+								onClicked: Debugger.runForward()
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+F5"
+								buttonTooltip: qsTr("Run Forward")
+							}
+
+
 						}
 					}
 
