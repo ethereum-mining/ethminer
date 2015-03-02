@@ -2,15 +2,17 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
-import CodeEditorExtensionManager 1.0
+//import CodeEditorExtensionManager 1.0
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
 
 Item {
-	signal editorTextChanged
+	signal editorTextChanged;
+	signal breakpointsChanged;
 	property string currentText: ""
 	property string currentMode: ""
 	property bool initialized: false
+	property var currentBreakpoints: [];
 
 	function setText(text, mode) {
 		currentText = text;
@@ -39,6 +41,14 @@ Item {
 
 	function highlightExecution(location) {
 		editorBrowser.runJavaScript("highlightExecution(" + location.start + "," + location.end + ")");
+	}
+
+	function getBreakpoints() {
+		return currentBreakpoints;
+	}
+
+	function toggleBreakpoint() {
+		editorBrowser.runJavaScript("toggleBreakpoint()");
 	}
 
 	Connections {
@@ -84,6 +94,17 @@ Item {
 						});
 					}
 				});
+				editorBrowser.runJavaScript("getBreakpointsChanged()", function(result) {
+					if (result === true) {
+						editorBrowser.runJavaScript("getBreakpoints()" , function(bp) {
+							if (currentBreakpoints !== bp) {
+								currentBreakpoints = bp;
+								breakpointsChanged();
+							}
+						});
+					}
+				});
+
 			}
 		}
 	}

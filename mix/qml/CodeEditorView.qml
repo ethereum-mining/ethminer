@@ -7,6 +7,7 @@ Item {
 	id: codeEditorView
 	property string currentDocumentId: ""
 	signal documentEdit(string documentId)
+	signal breakpointsChanged(string documentId)
 
 	function getDocumentText(documentId) {
 		for (var i = 0; i < editorListModel.count; i++)	{
@@ -45,17 +46,49 @@ Item {
 			if (document.isContract)
 				codeModel.registerCodeChange(document.documentId, editor.getText());
 		});
+		editor.onBreakpointsChanged.connect(function() {
+			if (document.isContract)
+				breakpointsChanged(document.documentId);
+		});
 		editor.setText(data, document.syntaxMode);
 	}
 
+	function getEditor(documentId) {
+		for (var i = 0; i < editorListModel.count; i++)
+			if (editorListModel.get(i).documentId === documentId)
+				return editors.itemAt(i).item;
+		return null;
+	}
 
 	function highlightExecution(documentId, location) {
+		var editor = getEditor(documentId);
+		if (editor)
+			editor.highlightExecution(location);
+	}
+
+	function editingContract() {
 		for (var i = 0; i < editorListModel.count; i++)
-			if (editorListModel.get(i).documentId === documentId) {
-				var editor = editors.itemAt(i).item;
-				if (editor)
-					editor.highlightExecution(location);
+			if (editorListModel.get(i).documentId === currentDocumentId)
+				return editorListModel.get(i).isContract;
+		return false;
+	}
+
+	function getBreakpoints() {
+		var bpMap = {};
+		for (var i = 0; i < editorListModel.count; i++)  {
+			var documentId = editorListModel.get(i).documentId;
+			var editor = editors.itemAt(i).item;
+			if (editor) {
+				bpMap[documentId] = editor.getBreakpoints();
 			}
+		}
+		return bpMap;
+	}
+
+	function toggleBreakpoint() {
+		var editor = getEditor(currentDocumentId);
+		if (editor)
+			editor.toggleBreakpoint();
 	}
 
 	Component.onCompleted: projectModel.codeEditor = codeEditorView;

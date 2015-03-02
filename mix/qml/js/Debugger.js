@@ -7,6 +7,7 @@ var debugData = null;
 var codeMap = null;
 var locations = [];
 var locationMap = {};
+var breakpoints = {};
 
 function init(data)
 {
@@ -17,6 +18,7 @@ function init(data)
 	jumpOverBackAction.enabled(false);
 	jumpOverForwardAction.enabled(false);
 
+	//breakpoints = {};
 	if (data === null) {
 		statesList.model.clear();
 		statesSlider.maximumValue = 0;
@@ -50,8 +52,8 @@ function initLocations()
 	if (debugData.states.length === 0)
 		return;
 
-	var prevLocation = { start: -1, end: -1, documentId: "", state: 0 };
-	var nullLocation = { start: -1, end: -1, documentId: "", state: 0};
+	var nullLocation = { start: -1, end: -1, documentId: "", state: 0 };
+	var prevLocation = nullLocation;
 
 	for (var i = 0; i < debugData.states.length - 1; i++) {
 		var code = debugData.states[i].code;
@@ -63,6 +65,13 @@ function initLocations()
 		}
 		locationMap[i] = locations.length - 1;
 	}
+	locations.push({ start: -1, end: -1, documentId: code.documentId, state: i });
+	locationMap[debugData.states.length - 1] = locations.length - 1;
+}
+
+function setBreakpoints(bp)
+{
+	breakpoints = bp;
 }
 
 function srcMode()
@@ -72,7 +81,9 @@ function srcMode()
 
 function initSlider()
 {
-	if (srcMode()) {
+	if (!debugData)
+		statesSlider.maximumValue = 0;
+	else if (srcMode()) {
 		statesSlider.maximumValue = locations.length - 1;
 	} else {
 		statesSlider.maximumValue = debugData.states.length - 1;
@@ -114,7 +125,7 @@ function display(stateIndex)
 	if (stateIndex < 0)
 		stateIndex = 0;
 	if (stateIndex >= debugData.states.length)
-		stateIndex = debugData.state.length - 1;
+		stateIndex = debugData.states.length - 1;
 	if (debugData.states[stateIndex].codeIndex !== debugData.states[currentDisplayedState].codeIndex)
 		setupInstructions(stateIndex);
 	if (debugData.states[stateIndex].dataIndex !== debugData.states[currentDisplayedState].dataIndex)
@@ -158,6 +169,8 @@ function selectState(stateIndex)
 	jumpOverBackAction.enabled(stateIndex > 0);
 	jumpOutBackAction.enabled(state.levels.length > 1);
 	jumpOutForwardAction.enabled(state.levels.length > 1);
+	runForwardAction.enabled(stateIndex < debugData.states.length - 1)
+	runBackAction.enabled(stateIndex > 0);
 
 	var callStackData = [];
 	for (var l = 0; l < state.levels.length; l++) {
@@ -211,6 +224,18 @@ function isReturnInstruction(index)
 
 function breakpointHit(i)
 {
+	var bpLocations = breakpoints[debugData.states[i].code.documentId];
+	if (bpLocations) {
+		var location = debugData.states[i].code.locations[i];
+		if (location && location.start >=0 && location.end >= location.start) {
+			for (var b = 0; b < bpLocations.length; b++) {
+				var bpLocation = bpLocations[b];
+				if ((bpLocation.start >= location.start && bpLocation.start <= location.end) || (bpLocation.end >= location.start && bpLocation.end <= location.end) ||
+					(location.start >= bpLocation.start && location.start <= bpLocation.end) || (location.end >= bpLocation.start && location.end <= bpLocation.end))
+					return true;
+			}
+		}
+	}
 	return false;
 }
 
@@ -238,6 +263,24 @@ function stepOverForward()
 function stepIntoForward()
 {
 	moveSelection(1);
+}
+
+function runBack()
+{
+	var i = currentSelectedState - 1;
+	while (i > 0 && !breakpointHit(i)) {
+		--i;
+	}
+	selectState(i);
+}
+
+function runForward()
+{
+	var i = currentSelectedState + 1;
+	while (i < debugData.states.length - 1 && !breakpointHit(i)) {
+		++i;
+	}
+	selectState(i);
 }
 
 function stepOutBack()

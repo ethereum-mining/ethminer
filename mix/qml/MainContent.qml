@@ -26,6 +26,7 @@ Rectangle {
 	property alias projectViewVisible: projectList.visible
 	property alias runOnProjectLoad: mainSettings.runOnProjectLoad
 	property alias rightPane: rightView
+	property alias codeEditor: codeEditor
 	property bool webViewHorizontal: codeWebSplitter.orientation === Qt.Vertical //vertical splitter positions elements vertically, splits screen horizontally
 	property bool firstCompile: true
 
@@ -47,6 +48,12 @@ Rectangle {
 		}
 	}
 
+	Connections {
+		target: codeEditor
+		onBreakpointsChanged: {
+			rightPane.setBreakpoints(codeEditor.getBreakpoints());
+		}
+	}
 
 	function startQuickDebugging()
 	{
@@ -81,6 +88,11 @@ Rectangle {
 
 	function toggleWebPreviewOrientation() {
 		codeWebSplitter.orientation = (codeWebSplitter.orientation === Qt.Vertical ? Qt.Horizontal : Qt.Vertical);
+	}
+
+	//TODO: move this to debugger.js after refactoring, introduce events
+	function toggleBreakpoint() {
+		codeEditor.toggleBreakpoint();
 	}
 
 	CodeEditorExtensionManager {
