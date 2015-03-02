@@ -59,14 +59,24 @@ public:
 
 	void starting(std::string const& _clientImpl, const char* _ethVersion) const;
 	void stopping(std::string const& _clientImpl, const char* _ethVersion) const;
-	void p2pConnected(std::string const& _id, bi::tcp::endpoint const& _addr,
-		std::chrono::system_clock::time_point const& _ts, std::string const& _remoteVersion, unsigned int _numConnections) const;
+	void p2pConnected(std::string const& _id,
+		bi::tcp::endpoint const& _addr,
+		std::chrono::system_clock::time_point const& _ts,
+		std::string const& _remoteVersion,
+		unsigned int _numConnections) const;
 	void p2pDisconnected(std::string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections) const;
-	void minedNewBlock(std::string const& _hash, std::string const& _blockNumber,
-		std::string const& _chainHeadHash, std::string const& _prevHash) const;
-	void chainReceivedNewBlock(std::string const& _hash, std::string const& _blockNumber, std::string const& _chainHeadHash,
-		std::string const& _remoteID, std::string const& _prevHash) const;
-	void chainNewHead(std::string const& _hash, std::string const& _blockNumber, std::string const& _chainHeadHash,
+	void minedNewBlock(std::string const& _hash,
+		std::string const& _blockNumber,
+		std::string const& _chainHeadHash,
+		std::string const& _prevHash) const;
+	void chainReceivedNewBlock(std::string const& _hash,
+		std::string const& _blockNumber,
+		std::string const& _chainHeadHash,
+		std::string const& _remoteID,
+		std::string const& _prevHash) const;
+	void chainNewHead(std::string const& _hash,
+		std::string const& _blockNumber,
+		std::string const& _chainHeadHash,
 		std::string const& _prevHash) const;
 	void transactionReceived(std::string const& _hash, std::string const& _remoteId) const;
 private:

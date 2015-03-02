@@ -80,8 +80,11 @@ void StructuredLogger::stopping(string const& _clientImpl, const char* _ethVersi
 	}
 }
 
-void StructuredLogger::p2pConnected(string const& _id, bi::tcp::endpoint const& _addr,
-	chrono::system_clock::time_point const& _ts, string const& _remoteVersion, unsigned int _numConnections) const
+void StructuredLogger::p2pConnected(string const& _id,
+	bi::tcp::endpoint const& _addr,
+	chrono::system_clock::time_point const& _ts,
+	string const& _remoteVersion,
+	unsigned int _numConnections) const
 {
 	if (m_enabled)
 	{
@@ -114,8 +117,10 @@ void StructuredLogger::p2pDisconnected(string const& _id, bi::tcp::endpoint cons
 	}
 }
 
-void StructuredLogger::minedNewBlock(string const& _hash, string const& _blockNumber,
-	string const& _chainHeadHash, string const& _prevHash) const
+void StructuredLogger::minedNewBlock(string const& _hash,
+	string const& _blockNumber,
+	string const& _chainHeadHash,
+	string const& _prevHash) const
 {
 	if (m_enabled)
 	{
@@ -130,8 +135,11 @@ void StructuredLogger::minedNewBlock(string const& _hash, string const& _blockNu
 	}
 }
 
-void StructuredLogger::chainReceivedNewBlock(string const& _hash, string const& _blockNumber,
-	string const& _chainHeadHash, string const& _remoteID, string const& _prevHash) const
+void StructuredLogger::chainReceivedNewBlock(string const& _hash,
+	string const& _blockNumber,
+	string const& _chainHeadHash,
+	string const& _remoteID,
+	string const& _prevHash) const
 {
 	if (m_enabled)
 	{
@@ -147,8 +155,10 @@ void StructuredLogger::chainReceivedNewBlock(string const& _hash, string const& 
 	}
 }
 
-void StructuredLogger::chainNewHead(string const& _hash, string const& _blockNumber,
-	string const& _chainHeadHash, string const& _prevHash) const
+void StructuredLogger::chainNewHead(string const& _hash,
+	string const& _blockNumber,
+	string const& _chainHeadHash,
+	string const& _prevHash) const
 {
 	if (m_enabled)
 	{
