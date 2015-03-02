@@ -82,6 +82,22 @@ bool dev::decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
 	return true;
 }
 
+void dev::encryptECIES(Public const& _k, bytesConstRef _plain, bytes& o_cipher)
+{
+	bytes io = _plain.toBytes();
+	s_secp256k1.encryptECIES(_k, io);
+	o_cipher = std::move(io);
+}
+
+bool dev::decryptECIES(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
+{
+	bytes io = _cipher.toBytes();
+	if (!s_secp256k1.decryptECIES(_k, io))
+		return false;
+	o_plaintext = std::move(io);
+	return true;
+}
+
 void dev::encryptSym(Secret const& _k, bytesConstRef _plain, bytes& o_cipher)
 {
 	// TOOD: @alex @subtly do this properly.
