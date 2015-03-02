@@ -84,9 +84,8 @@ llvm::Twine getName(RuntimeData::Index _index)
 }
 }
 
-RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, llvm::Value* _jmpBuf, code_iterator _codeBegin, code_iterator _codeEnd):
+RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeBegin, code_iterator _codeEnd):
 	CompilerHelper(_builder),
-	m_jmpBuf(_jmpBuf),
 	m_codeBegin(_codeBegin),
 	m_codeEnd(_codeEnd)
 {
