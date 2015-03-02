@@ -277,13 +277,9 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	LocalisedLogEntries ret;
 
 	try {
-#if ETH_DEBUG
-		cdebug << "checkWatch" << _watchId;
-#endif
+//		cdebug << "checkWatch" << _watchId;
 		auto& w = m_watches.at(_watchId);
-#if ETH_DEBUG
-		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
-#endif
+//		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 		std::swap(ret, w.changes);
 		w.lastPoll = chrono::system_clock::now();
 	} catch (...) {}
