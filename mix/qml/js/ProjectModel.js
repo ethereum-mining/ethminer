@@ -64,7 +64,7 @@ function saveProject() {
 
 function loadProject(path) {
 	closeProject();
-	console.log("loading project at " + path);
+	console.log("Loading project at " + path);
 	var projectFile = path + projectFileName;
 	var json = fileIo.readFile(projectFile);
 	var projectData = JSON.parse(json);
@@ -185,7 +185,7 @@ function doCloseProject() {
 
 function doCreateProject(title, path) {
 	closeProject();
-	console.log("creating project " + title + " at " + path);
+	console.log("Creating project " + title + " at " + path);
 	if (path[path.length - 1] !== "/")
 		path += "/";
 	var dirPath = path + title + "/";
