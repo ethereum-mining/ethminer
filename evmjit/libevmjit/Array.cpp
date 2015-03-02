@@ -278,7 +278,11 @@ namespace
 		~AllocatedMemoryWatchdog()
 		{
 			if (!allocatedMemory.empty())
+			{
 				DLOG(mem) << allocatedMemory.size() << " MEM LEAKS!\n";
+				for (auto&& leak : allocatedMemory)
+					DLOG(mem) << "\t" << leak << "\n";
+			}
 		}
 	};
 
@@ -289,20 +293,20 @@ extern "C"
 {
 	using namespace dev::eth::jit;
 
-	EXPORT void* ext_realloc(void* _data, size_t _size)
+	EXPORT void* ext_realloc(void* _data, size_t _size) noexcept
 	{
 		//std::cerr << "REALLOC: " << _data << " [" << _size << "]" << std::endl;
 		auto newData = std::realloc(_data, _size);
 		if (_data != newData)
 		{
-			DLOG(mem) << "REALLOC: " << _data << " -> " << newData << " [" << _size << "]\n";
+			DLOG(mem) << "REALLOC: " << newData << " <- " << _data << " [" << _size << "]\n";
 			watchdog.allocatedMemory.erase(_data);
 			watchdog.allocatedMemory.insert(newData);
 		}
 		return newData;
 	}
 
-	EXPORT void ext_free(void* _data)
+	EXPORT void ext_free(void* _data) noexcept
 	{
 		std::free(_data);
 		if (_data)

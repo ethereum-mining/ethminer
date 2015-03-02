@@ -1,7 +1,5 @@
 #include "Runtime.h"
 
-#include <cstdlib>
-#include <iostream>
 #include <cassert>
 
 namespace dev
@@ -17,13 +15,12 @@ void Runtime::init(RuntimeData* _data, Env* _env)
 	m_env = _env;
 }
 
+extern "C" void ext_free(void* _data) noexcept;
+
 Runtime::~Runtime()
 {
 	if (m_memData)
-	{
-		std::cerr << "MEM: " << (size_t)m_memData << " [" << m_memSize << "]\n";
-		std::free(m_memData);
-	}
+		ext_free(m_memData); // Use helper free to check memory leaks
 }
 
 bytes_ref Runtime::getReturnData() const

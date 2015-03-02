@@ -16,7 +16,7 @@ class Stack;
 class RuntimeManager: public CompilerHelper
 {
 public:
-	RuntimeManager(llvm::IRBuilder<>& _builder, llvm::Value* _jmpBuf, code_iterator _codeBegin, code_iterator _codeEnd);
+	RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeBegin, code_iterator _codeEnd);
 
 	llvm::Value* getRuntimePtr();
 	llvm::Value* getDataPtr();
@@ -43,6 +43,7 @@ public:
 	void abort(llvm::Value* _jmpBuf);
 
 	void setStack(Stack& _stack) { m_stack = &_stack; }
+	void setJmpBuf(llvm::Value* _jmpBuf) { m_jmpBuf = _jmpBuf; }
 
 	static llvm::StructType* getRuntimeType();
 	static llvm::StructType* getRuntimeDataType();
@@ -52,7 +53,7 @@ private:
 	void set(RuntimeData::Index _index, llvm::Value* _value);
 
 	llvm::Function* m_longjmp = nullptr;
-	llvm::Value* const m_jmpBuf;
+	llvm::Value* m_jmpBuf = nullptr;
 	llvm::Value* m_dataPtr = nullptr;
 	llvm::Value* m_gasPtr = nullptr;
 	llvm::Value* m_memPtr = nullptr;
