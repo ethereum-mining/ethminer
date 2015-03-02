@@ -102,5 +102,6 @@
         <file>qml/WebPreviewStyle.qml</file>
         <file>qml/img/available_updates.png</file>
         <file>qml/DeploymentDialog.qml</file>
+        <file>qml/img/search_filled.png</file>
     </qresource>
 </RCC>
