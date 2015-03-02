@@ -252,6 +252,7 @@ struct PeerHandshake: public std::enable_shared_from_this<PeerHandshake>
 	friend class Host;
 	enum State
 	{
+		Error = -1,
 		New,				// New->AckAuth				[egress: tx auth, ingress: rx auth]
 		AckAuth,			// AckAuth->Authenticating	[egress: rx ack, ingress: tx ack]
 		Authenticating,	// Authenticating			[tx caps, rx caps, authenticate]

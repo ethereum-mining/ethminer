@@ -90,16 +90,17 @@ void Secp256k1::encryptECIES(Public const& _k, bytes& io_cipher)
 	if (!cipherText.size())
 		return;
 
-	bytes msg(1 + Public::size + cipherText.size() + 32);
+	bytes msg(1 + Public::size + h128::size + cipherText.size() + 32);
 	msg[0] = 0x04;
 	r.pub().ref().copyTo(bytesRef(&msg).cropped(1, Public::size));
-	bytesRef msgCipherRef = bytesRef(&msg).cropped(1 + Public::size, cipherText.size());
+	bytesRef msgCipherRef = bytesRef(&msg).cropped(1 + Public::size + h128::size, cipherText.size());
 	bytesConstRef(&cipherText).copyTo(msgCipherRef);
 	
 	// tag message
 	CryptoPP::HMAC<SHA256> ctx(mKey.data(), mKey.size());
-	ctx.Update(cipherText.data(), cipherText.size());
-	ctx.Final(msg.data() + 1 + Public::size + cipherText.size());
+	bytesConstRef cipherWithIV = bytesRef(&msg).cropped(1 + Public::size, h128::size + cipherText.size());
+	ctx.Update(cipherWithIV.data(), cipherWithIV.size());
+	ctx.Final(msg.data() + 1 + Public::size + cipherWithIV.size());
 	
 	io_cipher.resize(msg.size());
 	io_cipher.swap(msg);
@@ -114,7 +115,7 @@ bool Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
 		// invalid message: publickey
 		return false;
 	
-	if (io_text.size() < (1 + Public::size + h256::size + 1))
+	if (io_text.size() < (1 + Public::size + h128::size + 1 + h256::size))
 		// invalid message: length
 		return false;
 
@@ -126,13 +127,14 @@ bool Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
 	sha3(mKey, mKey);
 	
 	bytes plain;
-	size_t cipherLen = io_text.size() - 1 - Public::size - h256::size;
-	bytesConstRef cipher(io_text.data() + 1 + Public::size, cipherLen);
+	size_t cipherLen = io_text.size() - 1 - Public::size - h128::size - h256::size;
+	bytesConstRef cipherWithIV(io_text.data() + 1 + Public::size, h128::size + cipherLen);
+	bytesConstRef cipher = cipherWithIV.cropped(h128::size, cipherLen);
 	bytesConstRef msgMac(cipher.data() + cipher.size(), h256::size);
 	
 	// verify tag
 	CryptoPP::HMAC<SHA256> ctx(mKey.data(), mKey.size());
-	ctx.Update(cipher.data(), cipher.size());
+	ctx.Update(cipherWithIV.data(), cipherWithIV.size());
 	h256 mac;
 	ctx.Final(mac.data());
 	for (unsigned i = 0; i < h256::size; i++)

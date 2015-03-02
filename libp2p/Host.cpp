@@ -408,7 +408,7 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 			host->m_alias.pub().ref().copyTo(pubk);
 			this->nonce.ref().copyTo(nonce);
 			auth[auth.size() - 1] = 0x0;
-			encrypt(remote, &auth, authCipher);
+			encryptECIES(remote, &auth, authCipher);
 			
 			ba::async_write(*socket, ba::buffer(authCipher), [this, self](boost::system::error_code ec, std::size_t)
 			{
@@ -419,14 +419,21 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 		{
 			clog(NetConnect) << "devp2p.connect.ingress recving auth";
 			// ingress: rx auth
-			authCipher.resize(279);
-			ba::async_read(*socket, ba::buffer(authCipher, 279), [this, self](boost::system::error_code ec, std::size_t)
+			authCipher.resize(321);
+			ba::async_read(*socket, ba::buffer(authCipher, 321), [this, self](boost::system::error_code ec, std::size_t)
 			{
 				if (ec)
 					transition(ec);
 				else
 				{
-					decrypt(host->m_alias.sec(), bytesConstRef(&authCipher), auth);
+					if (!decryptECIES(host->m_alias.sec(), bytesConstRef(&authCipher), auth))
+					{
+						clog(NetWarn) << "devp2p.connect.egress recving auth decrypt failed";
+						nextState = Error;
+						transition();
+						return;
+					}
+					
 					bytesConstRef sig(&auth[0], Signature::size);
 					bytesConstRef hepubk(&auth[Signature::size], h256::size);
 					bytesConstRef pubk(&auth[Signature::size + h256::size], Public::size);
@@ -450,14 +457,21 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 		{
 			clog(NetConnect) << "devp2p.connect.egress recving ack";
 			// egress: rx ack
-			ackCipher.resize(182);
-			ba::async_read(*socket, ba::buffer(ackCipher, 182), [this, self](boost::system::error_code ec, std::size_t)
+			ackCipher.resize(225);
+			ba::async_read(*socket, ba::buffer(ackCipher, 225), [this, self](boost::system::error_code ec, std::size_t)
 			{
 				if (ec)
 					transition(ec);
 				else
 				{
-					decrypt(host->m_alias.sec(), bytesConstRef(&ackCipher), ack);
+					if (!decryptECIES(host->m_alias.sec(), bytesConstRef(&ackCipher), ack))
+					{
+						clog(NetWarn) << "devp2p.connect.egress recving ack decrypt failed";
+						nextState = Error;
+						transition();
+						return;
+					}
+					
 					bytesConstRef(&ack).cropped(0, Public::size).copyTo(remoteEphemeral.ref());
 					bytesConstRef(&ack).cropped(Public::size, h256::size).copyTo(remoteNonce.ref());
 					transition();
@@ -474,7 +488,7 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 			ecdhe.pubkey().ref().copyTo(epubk);
 			this->nonce.ref().copyTo(nonce);
 			ack[ack.size() - 1] = 0x0;
-			encrypt(remote, &ack, ackCipher);
+			encryptECIES(remote, &ack, ackCipher);
 			ba::async_write(*socket, ba::buffer(ackCipher), [this, self](boost::system::error_code ec, std::size_t)
 			{
 				transition(ec);
