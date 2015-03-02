@@ -59,6 +59,7 @@ Item {
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 	function deployProject() { ProjectModelCode.deployProject(false); }
 	function registerToUrlHint() { ProjectModelCode.registerToUrlHint(); }
+	function formatAppUrl() { ProjectModelCode.formatAppUrl(url); }
 
 	Connections {
 		target: appContext
