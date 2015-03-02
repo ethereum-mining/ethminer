@@ -47,8 +47,6 @@ namespace dev
 namespace mix
 {
 
-//const Secret c_defaultUserAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
-
 class RpcConnector: public jsonrpc::AbstractServerConnector
 {
 public:
@@ -89,7 +87,7 @@ ClientModel::ClientModel(AppContext* _context):
 	connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
 
-	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), std::vector<dev::KeyPair> { m_client->userAccount() }, m_client.get()));
+	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), m_client->userAccounts(), m_client.get()));
 	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
 	_context->appEngine()->rootContext()->setContextProperty("clientModel", this);
 }
@@ -138,13 +136,10 @@ void ClientModel::mine()
 	});
 }
 
-QString ClientModel::newAddress() const
+QString ClientModel::newAddress()
 {
-	KeyPair a = KeyPair.create();
-	return toHex(a.secret().ref());
-	//m_client.addBalance(a.address(), _balance, 0);
-	//emit accountCreated;
-	//return QString::fromStdString(toHex(a.address().ref()));
+	KeyPair a = KeyPair::create();
+	return QString::fromStdString(toHex(a.secret().ref()));
 }
 
 QVariantMap ClientModel::contractAddresses() const
@@ -157,13 +152,20 @@ QVariantMap ClientModel::contractAddresses() const
 
 void ClientModel::debugDeployment()
 {
-	executeSequence(std::vector<TransactionSettings>(), 10000000 * ether);
+	executeSequence(std::vector<TransactionSettings>(), std::map<Secret, u256>());
 }
 
 void ClientModel::setupState(QVariantMap _state)
 {
 	QVariantList balances = _state.value("balances").toList();
 	QVariantList transactions = _state.value("transactions").toList();
+
+	std::map<Secret, u256> accounts;
+	for (auto const& b: balances)
+	{
+		QVariantMap address = b.toMap();
+		accounts.insert(std::make_pair(Secret(address.value("secret").toString().toStdString()), (qvariant_cast<QEther*>(address.value("balance")))->toU256Wei()));
+	}
 
 	std::vector<TransactionSettings> transactionSequence;
 	for (auto const& t: transactions)
@@ -205,10 +207,10 @@ void ClientModel::setupState(QVariantMap _state)
 			transactionSequence.push_back(transactionSettings);
 		}
 	}
-	executeSequence(transactionSequence, balances);
+	executeSequence(transactionSequence, accounts);
 }
 
-void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, QVariantList _balances)
+void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Secret, u256> _balances)
 {
 	if (m_running)
 		BOOST_THROW_EXCEPTION(ExecutionStateException());
@@ -222,14 +224,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 	{
 		try
 		{
-			std::map balancesMap;
-			for (auto b: _balances)
-			{
-				QVariantMap address = b.toMap();
-				balancesMap.insert(std::make_pair(KeyPair(Secret(address.value("Secret").toString())).address(), Account(address.value("Balance").toString(), Account::NormalCreation)));
-			}
-
-			m_client->resetState(balancesMap);
+			m_client->resetState(_balances);
 			onStateReset();
 			for (TransactionSettings const& transaction: _sequence)
 			{
@@ -363,13 +358,13 @@ void ClientModel::showDebugError(QString const& _error)
 
 Address ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
 {
-	Address newAddress = m_client->transact(m_client->userAccount().secret(), _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice);
+	Address newAddress = m_client->transact(_ctrTransaction.sender, _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice);
 	return newAddress;
 }
 
 void ClientModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
-	m_client->transact(m_client->userAccount().secret(), _tr.value, _contract, _data, _tr.gas, _tr.gasPrice);
+	m_client->transact(_tr.sender, _tr.value, _contract, _data, _tr.gas, _tr.gasPrice);
 }
 
 RecordLogEntry* ClientModel::lastBlock() const
