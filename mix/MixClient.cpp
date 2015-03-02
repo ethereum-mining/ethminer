@@ -40,7 +40,6 @@ namespace dev
 namespace mix
 {
 
-const Secret c_userAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
 const u256 c_mixGenesisDifficulty = (u256) 1 << 4;
 
 class MixBlockChain: public dev::eth::BlockChain
@@ -71,7 +70,7 @@ MixClient::~MixClient()
 {
 }
 
-void MixClient::resetState(u256 _balance)
+void MixClient::resetState(std::map<Address, Account> _genesisState)
 {
 	WriteGuard l(x_state);
 	Guard fl(m_filterLock);
@@ -81,8 +80,7 @@ void MixClient::resetState(u256 _balance)
 	m_stateDB = OverlayDB();
 	TrieDB<Address, MemoryDB> accountState(&m_stateDB);
 	accountState.init();
-	std::map<Address, Account> genesisState = { std::make_pair(KeyPair(c_userAccountSecret).address(), Account(_balance, Account::NormalCreation)) };
-	dev::eth::commit(genesisState, static_cast<MemoryDB&>(m_stateDB), accountState);
+	dev::eth::commit(_genesisState, static_cast<MemoryDB&>(m_stateDB), accountState);
 	h256 stateRoot = accountState.root();
 	m_bc.reset();
 	m_bc.reset(new MixBlockChain(m_dbPath, stateRoot));

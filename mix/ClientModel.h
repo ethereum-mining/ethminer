@@ -27,6 +27,7 @@
 #include <map>
 #include <QString>
 #include <QVariantMap>
+#include "QBigInt.h"
 #include "MachineStates.h"
 
 namespace dev
@@ -151,6 +152,7 @@ public slots:
 	Q_INVOKABLE void debugRecord(unsigned _index);
 	/// Show the debugger for an empty record
 	Q_INVOKABLE void emptyRecord();
+	Q_INVOKABLE QString newAddress();
 
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
