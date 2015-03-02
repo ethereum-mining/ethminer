@@ -95,6 +95,12 @@ Rectangle {
 		codeEditor.toggleBreakpoint();
 	}
 
+	function displayCompilationErrorIfAny()
+	{
+		rightView.visible = true;
+		rightView.displayCompilationErrorIfAny();
+	}
+
 	CodeEditorExtensionManager {
 		headerView: headerPaneTabs;
 	}
@@ -217,7 +223,3 @@ Rectangle {
 		}
 	}
 }
-
-
-
-

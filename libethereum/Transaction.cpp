@@ -36,6 +36,9 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 	RLP rlp(_rlpData);
 	try
 	{
+		if (!rlp.isList())
+			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("transaction RLP must be a list"));
+
 		m_nonce = rlp[field = 0].toInt<u256>();
 		m_gasPrice = rlp[field = 1].toInt<u256>();
 		m_gas = rlp[field = 2].toInt<u256>();
