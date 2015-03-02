@@ -160,10 +160,11 @@ void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 	{
 		clog(NetNote) << "p2p.host.peer.register" << _s->m_peer->id.abridged();
 		StructLog.p2pConnected(
-			_s->m_peer->id.abridged(), _s->m_peer->peerEndpoint(),
+			_s->m_peer->id.abridged(),
+			_s->m_peer->peerEndpoint(),
 			_s->m_peer->m_lastConnected,
 			_s->m_info.clientVersion,
-			0);// TODO: num_connections
+			peerCount());
 		RecursiveGuard l(x_sessions);
 		// TODO: temporary loose-coupling; if m_peers already has peer,
 		//       it is same as _s->m_peer. (fixing next PR)

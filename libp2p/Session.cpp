@@ -471,7 +471,8 @@ void Session::disconnect(DisconnectReason _reason)
 	StructLog.p2pDisconnected(
 		m_info.id.abridged(),
 		m_peer->peerEndpoint(),
-		0);// TODO: num connections
+		m_server->peerCount()
+	);
 	if (m_socket.is_open())
 	{
 		RLPStream s;
