@@ -15,8 +15,8 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file Common.cpp
- * @author Gav Wood <i@gavwood.com>
  * @author Alex Leverington <nessence@gmail.com>
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
