@@ -29,8 +29,8 @@ Window {
 	function open(index, item, setDefault) {
 		stateIndex = index;
 		stateTitle = item.title;
-		//balanceField.value = item.balance;
 		transactionsModel.clear();
+
 		stateTransactions = [];
 		var transactions = item.transactions;
 		for (var t = 0; t < transactions.length; t++) {
@@ -38,8 +38,9 @@ Window {
 			stateTransactions.push(item.transactions[t]);
 		}
 
+		accountsModel.clear();
 		stateAccounts = [];
-		for (var k = 0; k < item.accounts; k++)
+		for (var k = 0; k < item.accounts.length; k++)
 		{
 			accountsModel.append(item.accounts[k]);
 			stateAccounts.push(item.accounts[k]);
@@ -62,7 +63,6 @@ Window {
 	function getItem() {
 		var item = {
 			title: stateDialog.stateTitle,
-			//balance: stateDialog.stateBalance,
 			transactions: [],
 			accounts: []
 		}
@@ -105,24 +105,38 @@ Window {
 					text: qsTr("Accounts")
 				}
 
-				Rectangle
+				Button
 				{
-					Button {
-						text: "add new accounts"
-						onClicked: accountsModel.newAccount("10000", QEther.Ether);
-					}
+					iconSource: "qrc:/qml/img/plus.png"
+					action: newAccountAction
+					width: 10
+					height: 10
+				}
+
+				Action {
+					id: newAccountAction
+					tooltip: qsTr("Add new Account")
+					onTriggered: accountsModel.newAccount("10000", QEther.Ether);
 				}
 
 				TableView
 				{
+					Layout.fillWidth: true
 					model: accountsModel
 					TableViewColumn {
 						role: "secret"
-						title: qsTr("Address")
+						title: qsTr("Secret")
 						width: 100
 						delegate: Item {
-							DefaultLabel {
-								text: styleData.value
+							Rectangle
+							{
+								height: 25
+								DefaultLabel {
+									anchors.verticalCenter: parent.verticalCenter
+									text:  {
+										return styleData.value.substring(0, 5) + '...';
+									}
+								}
 							}
 						}
 					}
@@ -135,10 +149,15 @@ Window {
 							Ether {
 								id: balanceField
 								edit: true
-								displayFormattedValue: true
+								displayFormattedValue: false
 								value: styleData.value
 							}
 						}
+					}
+					rowDelegate:
+						Rectangle {
+						color: "transparent"
+						height: 40;
 					}
 				}
 			}
@@ -242,8 +261,9 @@ Window {
 
 		function newAccount(_balance, _unit)
 		{
-			accountsModel.append({ secret: _secret, balance: QEtherHelper.createEther(_balance, _unit) });
-			stateAccounts.push({ secret: _secret, balance: QEtherHelper.createEther(_balance, _unit) });
+			var secret = clientModel.newAddress();
+			accountsModel.append({ secret: secret, balance: QEtherHelper.createEther(_balance, _unit) });
+			stateAccounts.push({ secret: secret, balance: QEtherHelper.createEther(_balance, _unit) });
 		}
 
 		function removeAccount(_i)
