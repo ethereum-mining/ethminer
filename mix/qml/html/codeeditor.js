@@ -60,3 +60,11 @@ setMode = function(mode) {
 setClipboardBase64 = function(text) {
 	clipboard = window.atob(text);
 };
+
+var executionMark;
+highlightExecution = function(start, end) {
+	if (executionMark)
+		executionMark.clear();
+	executionMark = editor.markText(editor.posFromIndex(start), editor.posFromIndex(end), { className: "CodeMirror-exechighlight" });
+	//executionMark = editor.markText(editor.posFromIndex(start), editor.posFromIndex(end), { css: "color: #fe3" });
+}

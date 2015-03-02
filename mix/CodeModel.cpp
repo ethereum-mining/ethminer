@@ -56,6 +56,8 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	m_contract.reset(new QContractDefinition(&contractDefinition));
 	QQmlEngine::setObjectOwnership(m_contract.get(), QQmlEngine::CppOwnership);
 	m_bytes = _compiler.getBytecode(_contractName.toStdString());
+	m_assemblyItems = _compiler.getRuntimeAssemblyItems(_contractName.toStdString());
+	m_constructorAssemblyItems = _compiler.getAssemblyItems(_contractName.toStdString());
 	dev::solidity::InterfaceHandler interfaceHandler;
 	m_contractInterface = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
 	if (m_contractInterface.isEmpty())
