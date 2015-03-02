@@ -132,6 +132,17 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto entryBlock = llvm::BasicBlock::Create(m_builder.getContext(), {}, m_mainFunc);
 	m_builder.SetInsertPoint(entryBlock);
 
+	createBasicBlocks(_begin, _end);
+
+	// Init runtime structures.
+	RuntimeManager runtimeManager(m_builder, _begin, _end);
+	GasMeter gasMeter(m_builder, runtimeManager);
+	Memory memory(runtimeManager, gasMeter);
+	Ext ext(runtimeManager, memory);
+	Stack stack(m_builder, runtimeManager);
+	runtimeManager.setStack(stack); // Runtime Manager will free stack memory
+	Arith256 arith(m_builder);
+
 	auto jmpBufWords = m_builder.CreateAlloca(Type::BytePtr, m_builder.getInt64(3), "jmpBuf.words");
 	auto frameaddress = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::frameaddress);
 	auto fp = m_builder.CreateCall(frameaddress, m_builder.getInt32(0), "fp");
@@ -144,17 +155,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto jmpBuf = m_builder.CreateBitCast(jmpBufWords, Type::BytePtr, "jmpBuf");
 	auto r = m_builder.CreateCall(setjmp, jmpBuf);
 	auto normalFlow = m_builder.CreateICmpEQ(r, m_builder.getInt32(0));
-
-	createBasicBlocks(_begin, _end);
-
-	// Init runtime structures.
-	RuntimeManager runtimeManager(m_builder, jmpBuf, _begin, _end);
-	GasMeter gasMeter(m_builder, runtimeManager);
-	Memory memory(runtimeManager, gasMeter);
-	Ext ext(runtimeManager, memory);
-	Stack stack(m_builder, runtimeManager);
-	runtimeManager.setStack(stack); // Runtime Manager will free stack memory
-	Arith256 arith(m_builder);
+	runtimeManager.setJmpBuf(jmpBuf);
 
 	// TODO: Create Stop basic block on demand
 	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
