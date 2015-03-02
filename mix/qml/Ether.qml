@@ -20,7 +20,7 @@ RowLayout {
 
 	function update()
 	{
-		if (value !== undefined)
+		if (value)
 		{
 			etherValueEdit.text = value.value;
 			selectUnit(value.unit);
@@ -54,7 +54,7 @@ RowLayout {
 		id: units
 		onCurrentTextChanged:
 		{
-			if (value !== undefined)
+			if (value)
 			{
 				value.setUnit(currentText);
 				formattedValue.text = value.format();

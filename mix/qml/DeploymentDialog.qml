@@ -267,7 +267,7 @@ Window {
 		MessageDialog {
 			id: errorDialog
 			standardButtons: StandardButton.Ok
-			icon: StandardIcon.Error
+			icon: StandardIcon.Critical
 		}
 
 		RowLayout

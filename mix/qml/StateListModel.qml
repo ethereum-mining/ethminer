@@ -15,8 +15,16 @@ Item {
 	function fromPlainStateItem(s) {
 		return {
 			title: s.title,
-			balance: QEtherHelper.createEther(s.balance.value, s.balance.unit),
-			transactions: s.transactions.map(fromPlainTransactionItem)
+			transactions: s.transactions.map(fromPlainTransactionItem),
+			accounts: s.accounts.map(fromPlainAccountItem)
+		};
+	}
+
+	function fromPlainAccountItem(t)
+	{
+		return {
+			secret: t.secret,
+			balance: QEtherHelper.createEther(t.balance.value, t.balance.unit)
 		};
 	}
 
@@ -26,7 +34,7 @@ Item {
 			functionId: t.functionId,
 			url: t.url,
 			value: QEtherHelper.createEther(t.value.value, t.value.unit),
-			gas: QEtherHelper.createBigInt(t.gas.value), //t.gas,//QEtherHelper.createEther(t.gas.value, t.gas.unit),
+			gas: QEtherHelper.createBigInt(t.gas.value),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
 			stdContract: t.stdContract,
 			parameters: {}
@@ -65,8 +73,8 @@ Item {
 	function toPlainStateItem(s) {
 		return {
 			title: s.title,
-			balance: { value: s.balance.value, unit: s.balance.unit },
-			transactions: s.transactions.map(toPlainTransactionItem)
+			transactions: s.transactions.map(toPlainTransactionItem),
+			accounts: s.accounts.map(toPlainAccountItem)
 		};
 	}
 
@@ -78,6 +86,17 @@ Item {
 				return params[k].declaration.type;
 		}
 		return '';
+	}
+
+	function toPlainAccountItem(t)
+	{
+		return {
+			secret: t.secret,
+			balance: {
+				value: t.balance.value,
+				unit: t.balance.unit
+			}
+		};
 	}
 
 	function toPlainTransactionItem(t) {
@@ -152,7 +171,7 @@ Item {
 
 	ListModel {
 		id: stateListModel
-		property string defaultSecret: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074"
+		property string defaultSecret: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169075"
 		property int defaultStateIndex: 0
 		signal defaultStateChanged;
 		signal stateListModelReady;
@@ -198,7 +217,6 @@ Item {
 				ctorTr.contractId = c;
 				item.transactions.push(ctorTr);
 			}
-
 			return item;
 		}
 
