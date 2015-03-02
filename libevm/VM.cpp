@@ -145,6 +145,10 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 4]);
 			break;
 
+		case Instruction::JUMPDEST:
+			runGas = 1;
+			break;
+
 		case Instruction::LOG0:
 		case Instruction::LOG1:
 		case Instruction::LOG2:
