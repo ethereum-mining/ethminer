@@ -19,22 +19,30 @@ Window {
 	color: StateDialogStyle.generic.backgroundColor
 
 	property alias stateTitle: titleField.text
-	property alias stateBalance: balanceField.value
+	//property alias stateBalance: balanceField.value
 	property alias isDefault: defaultCheckBox.checked
 	property int stateIndex
 	property var stateTransactions: []
+	property var stateAccounts: []
 	signal accepted
 
 	function open(index, item, setDefault) {
 		stateIndex = index;
 		stateTitle = item.title;
-		balanceField.value = item.balance;
+		//balanceField.value = item.balance;
 		transactionsModel.clear();
 		stateTransactions = [];
 		var transactions = item.transactions;
 		for (var t = 0; t < transactions.length; t++) {
 			transactionsModel.append(item.transactions[t]);
 			stateTransactions.push(item.transactions[t]);
+		}
+
+		stateAccounts = [];
+		for (var k = 0; k < item.accounts; k++)
+		{
+			accountsModel.append(item.accounts[k]);
+			stateAccounts.push(item.accounts[k]);
 		}
 
 		modalStateDialog.setX((Screen.width - width) / 2);
@@ -54,10 +62,12 @@ Window {
 	function getItem() {
 		var item = {
 			title: stateDialog.stateTitle,
-			balance: stateDialog.stateBalance,
-			transactions: []
+			//balance: stateDialog.stateBalance,
+			transactions: [],
+			accounts: []
 		}
 		item.transactions = stateTransactions;
+		item.accounts = stateAccounts;
 		return item;
 	}
 
@@ -92,13 +102,44 @@ Window {
 				Layout.fillWidth: true
 				DefaultLabel {
 					Layout.preferredWidth: 75
-					text: qsTr("Balance")
+					text: qsTr("Accounts")
 				}
-				Ether {
-					id: balanceField
-					edit: true
-					displayFormattedValue: true
-					Layout.fillWidth: true
+
+				Rectangle
+				{
+					Button {
+						text: "add new accounts"
+						onClicked: accountsModel.newAccount("10000", QEther.Ether);
+					}
+				}
+
+				TableView
+				{
+					model: accountsModel
+					TableViewColumn {
+						role: "secret"
+						title: qsTr("Address")
+						width: 100
+						delegate: Item {
+							DefaultLabel {
+								text: styleData.value
+							}
+						}
+					}
+
+					TableViewColumn {
+						role: "balance"
+						title: qsTr("Balance")
+						width: 200
+						delegate: Item {
+							Ether {
+								id: balanceField
+								edit: true
+								displayFormattedValue: true
+								value: styleData.value
+							}
+						}
+					}
 				}
 			}
 
@@ -193,6 +234,22 @@ Window {
 				text: qsTr("Cancel");
 				onClicked: close();
 			}
+		}
+	}
+
+	ListModel {
+		id: accountsModel
+
+		function newAccount(_balance, _unit)
+		{
+			accountsModel.append({ secret: _secret, balance: QEtherHelper.createEther(_balance, _unit) });
+			stateAccounts.push({ secret: _secret, balance: QEtherHelper.createEther(_balance, _unit) });
+		}
+
+		function removeAccount(_i)
+		{
+			accountsModel.remove(_i);
+			stateAccounts.splice(_i, 1);
 		}
 	}
 
