@@ -416,7 +416,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	}
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
 //	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
-	StructLog.transactionReceived(t.sha3().abridged(), t.sender().abridged());
+	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
 }

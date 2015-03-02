@@ -468,7 +468,7 @@ void Session::drop(DisconnectReason _reason)
 void Session::disconnect(DisconnectReason _reason)
 {
 	clogS(NetConnect) << "Disconnecting (our reason:" << reasonOf(_reason) << ")";
-	StructLog.p2pDisconnected(
+	StructuredLogger::p2pDisconnected(
 		m_info.id.abridged(),
 		m_peer->peerEndpoint(),
 		m_server->peerCount()

@@ -318,7 +318,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	}
 #endif
 
-	StructLog.chainReceivedNewBlock(
+	StructuredLogger::chainReceivedNewBlock(
 		bi.headerHash(WithoutNonce).abridged(),
 		bi.nonce.abridged(),
 		currentHash().abridged(),
@@ -338,7 +338,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		}
 		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
 		clog(BlockChainNote) << "   Imported and best" << td << ". Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(ret);
-		StructLog.chainNewHead(
+		StructuredLogger::chainNewHead(
 			bi.headerHash(WithoutNonce).abridged(),
 			bi.nonce.abridged(),
 			currentHash().abridged(),

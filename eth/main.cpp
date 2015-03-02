@@ -359,7 +359,7 @@ int main(int argc, char** argv)
 
 	cout << credits();
 
-	StructLog.initialize(structuredLogging, structuredLoggingFormat);
+	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
@@ -375,7 +375,7 @@ int main(int argc, char** argv)
 		);
 	web3.setIdealPeerCount(peers);
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
-	StructLog.starting(clientImplString, dev::Version);
+	StructuredLogger::starting(clientImplString, dev::Version);
 	if (c)
 	{
 		c->setForceMining(forceMining);
@@ -909,7 +909,7 @@ int main(int argc, char** argv)
 		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
-	StructLog.stopping(clientImplString, dev::Version);
+	StructuredLogger::stopping(clientImplString, dev::Version);
 	auto netData = web3.saveNetwork();
 	if (!netData.empty())
 		writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", netData);
