@@ -82,13 +82,19 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			BOOST_THROW_EXCEPTION(BadInstruction());
 
 		// FEES...
-		bigint runGas = c_tierStepGas[metric.gasPriceTier];
+		bigint runGas;
 		bigint newTempSize = m_temp.size();
 		bigint copySize = 0;
 
 		// should work, but just seems to result in immediate errorless exit on initial execution. yeah. weird.
 		//m_onFail = std::function<void()>(onOperation);
 
+		auto metric = c_metrics[(int)inst];
+		int gasPriceTier = metric.gasPriceTier;
+		if (gasPriceTier == InvalidTier)
+			BOOST_THROW_EXCEPTION(BadInstruction());
+		else
+			runGas = c_tierStepGas[metric.gasPriceTier];
 		require(metric.args);
 
 		auto onOperation = [&]()
@@ -145,10 +151,6 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 4]);
 			break;
 
-		case Instruction::JUMPDEST:
-			runGas = 1;
-			break;
-
 		case Instruction::LOG0:
 		case Instruction::LOG1:
 		case Instruction::LOG2:
@@ -164,7 +166,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 			runGas = (bigint)c_callGas + m_stack[m_stack.size() - 1];
-			if (inst != Instruction::CALLCODE && !_ext.exists(asAddress(m_stack[m_stack.size() - 2])))
+			if (!_ext.exists(asAddress(m_stack[m_stack.size() - 2])))
 				runGas += c_callNewAccountGas;
 			if (m_stack[m_stack.size() - 3] > 0)
 				runGas += c_callValueTransferGas;
