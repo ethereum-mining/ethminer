@@ -143,7 +143,6 @@ class QMachineState: public QObject
 	Q_PROPERTY(QVariantList levels READ levels CONSTANT)
 	Q_PROPERTY(unsigned codeIndex READ codeIndex CONSTANT)
 	Q_PROPERTY(unsigned dataIndex READ dataIndex CONSTANT)
-	//Q_PROPERTY(unsigned locationIndex READ locationIndex CONSTANT)
 
 public:
 	QMachineState(QObject* _owner, MachineState const& _state, QCode* _code, QCallData* _callData):
