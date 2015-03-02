@@ -52,14 +52,15 @@ void OverlayDB::commit()
 			if (m_refCount[i.first])
 				m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size()));
 		}
-		if (m_auxKey && m_aux.count(m_auxKey))
-		{
-			m_db->Put(m_writeOptions, m_auxKey.ref(), bytesConstRef(&m_aux[m_auxKey]));
-			cdebug << "Committing aux: " << m_auxKey;
-			m_aux.erase(m_auxKey);
-			cdebug << "Discarding " << keysOf(m_aux);
-		}
-		m_auxKey = h256();
+		for (auto const& i: m_auxActive)
+			if (m_aux.count(i))
+			{
+				m_db->Put(m_writeOptions, i.ref(), bytesConstRef(&m_aux[i]));
+				cdebug << "Committing aux: " << i;
+				m_aux.erase(i);
+			}
+		cdebug << "Discarding " << keysOf(m_aux);
+		m_auxActive.clear();
 		m_aux.clear();
 		m_over.clear();
 		m_refCount.clear();
