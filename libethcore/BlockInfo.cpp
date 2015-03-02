@@ -134,7 +134,7 @@ void BlockInfo::populate(bytesConstRef _block, bool _checkNonce)
 	RLP header = root[0];
 
 	if (!header.isList())
-		BOOST_THROW_EXCEPTION(InvalidBlockFormat(0,header.data()) << errinfo_comment("block header needs to be a list"));
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat(0, header.data()) << errinfo_comment("block header needs to be a list"));
 	populateFromHeader(header, _checkNonce);
 
 	if (!root[1].isList())
