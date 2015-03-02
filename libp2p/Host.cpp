@@ -27,6 +27,7 @@
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcrypto/FileSystem.h>
 #include "Session.h"
@@ -45,7 +46,7 @@ void HostNodeTableHandler::processEvent(NodeId const& _n, NodeTableEventType con
 	m_host.onNodeTableEvent(_n, _e);
 }
 
-Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork, StructuredLogger const& _structuredLogger):
+Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork):
 	Worker("p2p", 0),
 	m_restoreNetwork(_restoreNetwork.toBytes()),
 	m_clientVersion(_clientVersion),
@@ -54,8 +55,7 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, byte
 	m_ioService(2),
 	m_tcp4Acceptor(m_ioService),
 	m_alias(networkAlias(_restoreNetwork)),
-	m_lastPing(chrono::steady_clock::time_point::min()),
-	m_structuredLogger(_structuredLogger)
+	m_lastPing(chrono::steady_clock::time_point::min())
 {
 	for (auto address: m_ifAddresses)
 		if (address.is_v4())
@@ -159,7 +159,7 @@ void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
 	{
 		clog(NetNote) << "p2p.host.peer.register" << _s->m_peer->id.abridged();
-		m_structuredLogger.logP2PConnected(
+		StructLog.p2pConnected(
 			_s->m_peer->id.abridged(), _s->m_peer->peerEndpoint(),
 			_s->m_peer->m_lastConnected,
 			_s->m_info.clientVersion,

@@ -37,14 +37,14 @@ using namespace dev::shh;
 
 WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean,
 	std::set<std::string> const& _interfaces, NetworkPreferences const& _n,
-	bytesConstRef _network, int _miners, StructuredLogger const& _structuredLogger):
+	bytesConstRef _network, int _miners):
 		m_clientVersion(_clientVersion),
-		m_net(_clientVersion, _n, _network, _structuredLogger)
+		m_net(_clientVersion, _n, _network)
 {
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	if (_interfaces.count("eth"))
-		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean, 0, _miners, _structuredLogger));
+		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean, 0, _miners));
 
 	if (_interfaces.count("shh"))
 		m_whisper = m_net.registerCapability<WhisperHost>(new WhisperHost);

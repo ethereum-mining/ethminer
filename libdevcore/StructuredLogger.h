@@ -38,31 +38,42 @@ namespace dev
 class StructuredLogger
 {
 public:
-	/// Default constructor, logging off
-	StructuredLogger(): m_enabled(false){}
 	/**
-	 * Initializes a structured logger object
+	 * Initializes the structured logger object
 	 * @param _enabled        Whether logging is on or off
 	 * @param _timeFormat     A time format string as described here:
 	 *                        http://en.cppreference.com/w/cpp/chrono/c/strftime
 	 *                        with which to display timestamps
 	 */
-	StructuredLogger(bool _enabled, std::string const& _timeFormat):
-		m_enabled(_enabled), m_timeFormat(_timeFormat) {}
+	void initialize(bool _enabled, std::string const& _timeFormat)
+	{
+		m_enabled = _enabled;
+		m_timeFormat = _timeFormat;
+	}
 
-	void logStarting(std::string const& _clientImpl, const char* _ethVersion) const;
-	void logStopping(std::string const& _clientImpl, const char* _ethVersion) const;
-	void logP2PConnected(std::string const& _id, bi::tcp::endpoint const& _addr,
+	static StructuredLogger& get()
+	{
+		static StructuredLogger instance;
+		return instance;
+	}
+
+	void starting(std::string const& _clientImpl, const char* _ethVersion) const;
+	void stopping(std::string const& _clientImpl, const char* _ethVersion) const;
+	void p2pConnected(std::string const& _id, bi::tcp::endpoint const& _addr,
 		std::chrono::system_clock::time_point const& _ts, std::string const& _remoteVersion, unsigned int _numConnections) const;
-	void logP2PDisconnected(std::string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections) const;
-	void logMinedNewBlock(std::string const& _hash, std::string const& _blockNumber,
+	void p2pDisconnected(std::string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections) const;
+	void minedNewBlock(std::string const& _hash, std::string const& _blockNumber,
 		std::string const& _chainHeadHash, std::string const& _prevHash) const;
-	void logChainReceivedNewBlock(std::string const& _hash, std::string const& _blockNumber, std::string const& _chainHeadHash,
+	void chainReceivedNewBlock(std::string const& _hash, std::string const& _blockNumber, std::string const& _chainHeadHash,
 		std::string const& _remoteID, std::string const& _prevHash) const;
-	void logChainNewHead(std::string const& _hash, std::string const& _blockNumber, std::string const& _chainHeadHash,
+	void chainNewHead(std::string const& _hash, std::string const& _blockNumber, std::string const& _chainHeadHash,
 		std::string const& _prevHash) const;
-	void logTransactionReceived(std::string const& _hash, std::string const& _remoteId) const;
+	void transactionReceived(std::string const& _hash, std::string const& _remoteId) const;
 private:
+	// Singleton class, no copying
+	StructuredLogger() {}
+	StructuredLogger(StructuredLogger const&) = delete;
+	void operator=(StructuredLogger const&) = delete;
 	/// @returns a string representation of a timepoint
 	std::string timePointToString(std::chrono::system_clock::time_point const& _ts) const;
 	void outputJson(Json::Value const& _value, std::string const& _name) const;
@@ -70,5 +81,9 @@ private:
 	bool m_enabled;
 	std::string m_timeFormat = "%Y-%m-%dT%H:%M:%S";
 };
+
+/// Convenience macro to get the singleton instance
+/// Calling the logging functions becomes as simple as: StructLog.transactionReceived(...)
+#define StructLog StructuredLogger::get()
 
 }
