@@ -25,6 +25,7 @@
 
 #include <ctime>
 #include <json/json.h>
+#include "Guards.h"
 
 using namespace std;
 
@@ -36,7 +37,6 @@ string StructuredLogger::timePointToString(chrono::system_clock::time_point cons
 	// not using C++11 std::put_time due to gcc bug
 	// http://stackoverflow.com/questions/14136833/stdput-time-implementation-status-in-gcc
 
-	// TODO: Format it according to Log event Requirements
 	char buffer[64];
 	time_t time = chrono::system_clock::to_time_t(_ts);
 	tm* ptm = localtime(&time);
@@ -48,8 +48,10 @@ string StructuredLogger::timePointToString(chrono::system_clock::time_point cons
 void StructuredLogger::outputJson(Json::Value const& _value, std::string const& _name) const
 {
 	Json::Value event;
+	static Mutex s_lock;
+	Guard l(s_lock);
 	event[_name] = _value;
-	cout << event << endl;
+	cout << event << endl << flush;
 }
 
 void StructuredLogger::logStarting(string const& _clientImpl, const char* _ethVersion) const
@@ -57,7 +59,6 @@ void StructuredLogger::logStarting(string const& _clientImpl, const char* _ethVe
 	if (m_enabled)
 	{
 		Json::Value event;
-		event["comment"] = "one of the first log events, before any operation is started";
 		event["client_impl"] = _clientImpl;
 		event["eth_version"] = std::string(_ethVersion);
 		event["ts"] = timePointToString(std::chrono::system_clock::now());
@@ -71,7 +72,6 @@ void StructuredLogger::logStopping(string const& _clientImpl, const char* _ethVe
 	if (m_enabled)
 	{
 		Json::Value event;
-		event["comment"] = "last event before termination of the client";
 		event["client_impl"] = _clientImpl;
 		event["eth_version"] = std::string(_ethVersion);
 		event["ts"] = timePointToString(std::chrono::system_clock::now());
@@ -89,7 +89,6 @@ void StructuredLogger::logP2PConnected(string const& _id, bi::tcp::endpoint cons
 		addrStream << _addr;
 		Json::Value event;
 		event["remote_version_string"] = _remoteVersion;
-		event["comment"] = "as soon as a successful connection to another node is established";
 		event["remote_addr"] = addrStream.str();
 		event["remote_id"] = _id;
 		event["num_connections"] = Json::Value(_numConnections);
@@ -106,7 +105,6 @@ void StructuredLogger::logP2PDisconnected(string const& _id, bi::tcp::endpoint c
 		std::stringstream addrStream;
 		addrStream << _addr;
 		Json::Value event;
-		event["comment"] = "as soon as a disconnection from another node happened";
 		event["remote_addr"] = addrStream.str();
 		event["remote_id"] = _id;
 		event["num_connections"] = Json::Value(_numConnections);
@@ -122,7 +120,6 @@ void StructuredLogger::logMinedNewBlock(string const& _hash, string const& _bloc
 	if (m_enabled)
 	{
 		Json::Value event;
-		event["comment"] = "as soon as the block was mined, before adding as new head";
 		event["block_hash"] = _hash;
 		event["block_number"] = _blockNumber;
 		event["chain_head_hash"] = _chainHeadHash;
@@ -139,7 +136,6 @@ void StructuredLogger::logChainReceivedNewBlock(string const& _hash, string cons
 	if (m_enabled)
 	{
 		Json::Value event;
-		event["comment"] = "whenever a _new_ block is received, before adding";
 		event["block_hash"] = _hash;
 		event["block_number"] = _blockNumber;
 		event["chain_head_hash"] = _chainHeadHash;
@@ -157,7 +153,6 @@ void StructuredLogger::logChainNewHead(string const& _hash, string const& _block
 	if (m_enabled)
 	{
 		Json::Value event;
-		event["comment"] = "whenever head changes";
 		event["block_hash"] = _hash;
 		event["block_number"] = _blockNumber;
 		event["chain_head_hash"] = _chainHeadHash;
