@@ -80,15 +80,16 @@ public:
 		std::string const& _prevHash);
 	static void transactionReceived(std::string const& _hash, std::string const& _remoteId);
 private:
-	// Singleton class, no copying
-	StructuredLogger() {}
+	// Singleton class. Private default ctor and no copying
+	StructuredLogger() = default;
 	StructuredLogger(StructuredLogger const&) = delete;
 	void operator=(StructuredLogger const&) = delete;
+
 	/// @returns a string representation of a timepoint
 	static std::string timePointToString(std::chrono::system_clock::time_point const& _ts);
 	void outputJson(Json::Value const& _value, std::string const& _name) const;
 
-	bool m_enabled;
+	bool m_enabled = false;
 	std::string m_timeFormat = "%Y-%m-%dT%H:%M:%S";
 };
 
