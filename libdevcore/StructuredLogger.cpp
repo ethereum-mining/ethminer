@@ -54,7 +54,7 @@ void StructuredLogger::outputJson(Json::Value const& _value, std::string const& 
 	cout << event << endl << flush;
 }
 
-void StructuredLogger::logStarting(string const& _clientImpl, const char* _ethVersion) const
+void StructuredLogger::starting(string const& _clientImpl, const char* _ethVersion) const
 {
 	if (m_enabled)
 	{
@@ -67,7 +67,7 @@ void StructuredLogger::logStarting(string const& _clientImpl, const char* _ethVe
 	}
 }
 
-void StructuredLogger::logStopping(string const& _clientImpl, const char* _ethVersion) const
+void StructuredLogger::stopping(string const& _clientImpl, const char* _ethVersion) const
 {
 	if (m_enabled)
 	{
@@ -80,7 +80,7 @@ void StructuredLogger::logStopping(string const& _clientImpl, const char* _ethVe
 	}
 }
 
-void StructuredLogger::logP2PConnected(string const& _id, bi::tcp::endpoint const& _addr,
+void StructuredLogger::p2pConnected(string const& _id, bi::tcp::endpoint const& _addr,
 	chrono::system_clock::time_point const& _ts, string const& _remoteVersion, unsigned int _numConnections) const
 {
 	if (m_enabled)
@@ -98,7 +98,7 @@ void StructuredLogger::logP2PConnected(string const& _id, bi::tcp::endpoint cons
 	}
 }
 
-void StructuredLogger::logP2PDisconnected(string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections) const
+void StructuredLogger::p2pDisconnected(string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections) const
 {
 	if (m_enabled)
 	{
@@ -114,7 +114,7 @@ void StructuredLogger::logP2PDisconnected(string const& _id, bi::tcp::endpoint c
 	}
 }
 
-void StructuredLogger::logMinedNewBlock(string const& _hash, string const& _blockNumber,
+void StructuredLogger::minedNewBlock(string const& _hash, string const& _blockNumber,
 	string const& _chainHeadHash, string const& _prevHash) const
 {
 	if (m_enabled)
@@ -130,7 +130,7 @@ void StructuredLogger::logMinedNewBlock(string const& _hash, string const& _bloc
 	}
 }
 
-void StructuredLogger::logChainReceivedNewBlock(string const& _hash, string const& _blockNumber,
+void StructuredLogger::chainReceivedNewBlock(string const& _hash, string const& _blockNumber,
 	string const& _chainHeadHash, string const& _remoteID, string const& _prevHash) const
 {
 	if (m_enabled)
@@ -147,7 +147,7 @@ void StructuredLogger::logChainReceivedNewBlock(string const& _hash, string cons
 	}
 }
 
-void StructuredLogger::logChainNewHead(string const& _hash, string const& _blockNumber,
+void StructuredLogger::chainNewHead(string const& _hash, string const& _blockNumber,
 	string const& _chainHeadHash, string const& _prevHash) const
 {
 	if (m_enabled)
@@ -163,7 +163,7 @@ void StructuredLogger::logChainNewHead(string const& _hash, string const& _block
 	}
 }
 
-void StructuredLogger::logTransactionReceived(string const& _hash, string const& _remoteId) const
+void StructuredLogger::transactionReceived(string const& _hash, string const& _remoteId) const
 {
 	if (m_enabled)
 	{

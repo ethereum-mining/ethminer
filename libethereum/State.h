@@ -41,8 +41,6 @@
 namespace dev
 {
 
-class StructuredLogger;
-
 namespace test { class ImportTest; }
 
 namespace eth
@@ -141,7 +139,7 @@ public:
 	 * // unlock
 	 * @endcode
 	 */
-	void completeMine(StructuredLogger const* _structuredLogger = nullptr);
+	void completeMine();
 
 	/// Get the complete current block, including valid nonce.
 	/// Only valid after mine() returns true.

@@ -36,10 +36,9 @@ LocalMiner::LocalMiner(MinerHost* _host, unsigned _id):
 {
 }
 
-void LocalMiner::setup(MinerHost* _host, unsigned _id, StructuredLogger const* _structuredLogger)
+void LocalMiner::setup(MinerHost* _host, unsigned _id)
 {
 	m_host = _host;
-	m_structuredLogger = _structuredLogger;
 	setName("miner-" + toString(_id));
 }
 
@@ -80,7 +79,7 @@ void LocalMiner::doWork()
 			}
 			if (mineInfo.completed)
 			{
-				m_mineState.completeMine(m_structuredLogger);
+				m_mineState.completeMine();
 				m_host->onComplete();
 				m_miningStatus = Mined;
 			}

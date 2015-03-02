@@ -24,6 +24,7 @@
 #include <chrono>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include "Host.h"
 #include "Capability.h"
@@ -467,8 +468,10 @@ void Session::drop(DisconnectReason _reason)
 void Session::disconnect(DisconnectReason _reason)
 {
 	clogS(NetConnect) << "Disconnecting (our reason:" << reasonOf(_reason) << ")";
-	m_server->m_structuredLogger.logP2PDisconnected(m_info.id.abridged(), m_peer->peerEndpoint(),
-													0);// TODO: num connections
+	StructLog.p2pDisconnected(
+		m_info.id.abridged(),
+		m_peer->peerEndpoint(),
+		0);// TODO: num connections
 	if (m_socket.is_open())
 	{
 		RLPStream s;

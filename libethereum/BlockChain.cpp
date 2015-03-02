@@ -25,6 +25,7 @@
 #include <test/JsonSpiritHeaders.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/ProofOfWork.h>
@@ -152,7 +153,7 @@ inline string toString(h256s const& _bs)
 	return out.str();
 }
 
-h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max, StructuredLogger const& _logger)
+h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
 	_bq.tick(*this);
 
@@ -164,7 +165,7 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 	{
 		try
 		{
-			for (auto h: import(block, _stateDB, _logger))
+			for (auto h: import(block, _stateDB))
 				if (!_max--)
 					break;
 				else
@@ -187,11 +188,11 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 	return ret;
 }
 
-h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, StructuredLogger const& _logger) noexcept
+h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB) noexcept
 {
 	try
 	{
-		return import(_block, _stateDB, _logger);
+		return import(_block, _stateDB);
 	}
 	catch (...)
 	{
@@ -200,7 +201,7 @@ h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, 
 	}
 }
 
-h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, StructuredLogger const& _logger)
+h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 {
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;
@@ -317,7 +318,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, StructuredLo
 	}
 #endif
 
-	_logger.logChainReceivedNewBlock(
+	StructLog.chainReceivedNewBlock(
 		bi.headerHash(WithoutNonce).abridged(),
 		bi.nonce.abridged(),
 		currentHash().abridged(),
@@ -337,7 +338,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, StructuredLo
 		}
 		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
 		clog(BlockChainNote) << "   Imported and best" << td << ". Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(ret);
-		_logger.logChainNewHead(
+		StructLog.chainNewHead(
 			bi.headerHash(WithoutNonce).abridged(),
 			bi.nonce.abridged(),
 			currentHash().abridged(),
