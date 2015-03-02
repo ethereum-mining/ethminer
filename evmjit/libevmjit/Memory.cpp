@@ -56,7 +56,7 @@ llvm::Function* Memory::getRequireFunc()
 
 		// BB "Check"
 		m_builder.SetInsertPoint(checkBB);
-		static const auto c_inputMax = uint64_t(1) << 32; // max value of blkSize and blkOffset that will not result in integer overflow in calculations below
+		static const auto c_inputMax = uint64_t(1) << 33; // max value of blkSize and blkOffset that will not result in integer overflow in calculations below
 		auto blkOffsetOk = m_builder.CreateICmpULE(blkOffset, Constant::get(c_inputMax), "blkOffsetOk");
 		auto blkO = m_builder.CreateSelect(blkOffsetOk, m_builder.CreateTrunc(blkOffset, Type::Size), m_builder.getInt64(c_inputMax), "bklO");
 		auto blkSizeOk = m_builder.CreateICmpULE(blkSize, Constant::get(c_inputMax), "blkSizeOk");
