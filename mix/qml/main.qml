@@ -61,7 +61,7 @@ ApplicationWindow {
 			MenuItem { action: toggleTransactionLogAction }
 			MenuItem { action: toggleWebPreviewAction }
 			MenuItem { action: toggleWebPreviewOrientationAction }
-			MenuItem { action: toggleCallsInLog }
+			//MenuItem { action: toggleCallsInLog }
 		}
 	}
 
@@ -97,7 +97,7 @@ ApplicationWindow {
 
 	Action {
 		id: mineAction
-		text: qsTr("Mine")
+		text: qsTr("New Block")
 		shortcut: "Ctrl+M"
 		onTriggered: clientModel.mine();
 		enabled: codeModel.hasContract && !clientModel.running && !clientModel.mining
@@ -177,15 +177,6 @@ ApplicationWindow {
 		checkable: true
 		checked: mainContent.webViewHorizontal
 		onTriggered: mainContent.toggleWebPreviewOrientation();
-	}
-
-	Action {
-		id: toggleCallsInLog
-		text: qsTr("Show Calls in Transaction Log")
-		shortcut: ""
-		checkable: true
-		checked: mainContent.rightPane.transactionLog.showLogs
-		onTriggered: mainContent.rightPane.transactionLog.showLogs = !mainContent.rightPane.transactionLog.showLogs
 	}
 
 	Action {
