@@ -65,6 +65,7 @@ inline Integer secretToExponent(Secret const& _s) { return std::move(Integer(_s.
 
 /**
  * CryptoPP secp256k1 algorithms.
+ * @todo Collect ECIES methods into class.
  */
 class Secp256k1
 {	
@@ -85,7 +86,7 @@ public:
 	void encryptECIES(Public const& _k, bytes& io_cipher);
 
 	/// Temporary; to replace decrypt once interop w/go is passing.
-	void decryptECIES(Secret const& _k, bytes& io_text);
+	bool decryptECIES(Secret const& _k, bytes& io_text);
 	
 	/// Key derivation function used by ECIES.
 	bytes eciesKDF(Secret _z, bytes _s1, unsigned kdBitLen = 256);

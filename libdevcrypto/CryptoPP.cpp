@@ -34,7 +34,7 @@ static_assert(dev::Signature::size == 65, "Signature must be 65 bytes.");
 
 bytes Secp256k1::eciesKDF(Secret _z, bytes _s1, unsigned kdBitLen)
 {
-	// similar to go ecies implementation
+	// interop w/go ecies implementation
 	
 	if (!_s1.size())
 	{
@@ -76,9 +76,7 @@ bytes Secp256k1::eciesKDF(Secret _z, bytes _s1, unsigned kdBitLen)
 
 void Secp256k1::encryptECIES(Public const& _k, bytes& io_cipher)
 {
-	// similar to go ecies implementation
-	// todo: s1/s2/tag
-	
+	// interop w/go ecies implementation
 	auto r = KeyPair::create();
 	h256 z;
 	ecdh::agree(r.sec(), _k, z);
@@ -91,38 +89,34 @@ void Secp256k1::encryptECIES(Public const& _k, bytes& io_cipher)
 	encryptSymNoAuth(*(Secret*)eKey.data(), bytesConstRef(&io_cipher), cipherText, h128());
 	if (!cipherText.size())
 		return;
-	
-//	d := messageTag(params.Hash, Km, em, s2)
-//	copy(ct[len(Rb)+len(em):], d)
-	
+
 	bytes msg(1 + Public::size + cipherText.size() + 32);
 	msg[0] = 0x04;
 	r.pub().ref().copyTo(bytesRef(&msg).cropped(1, Public::size));
 	bytesRef msgCipherRef = bytesRef(&msg).cropped(1 + Public::size, cipherText.size());
 	bytesConstRef(&cipherText).copyTo(msgCipherRef);
 	
+	// tag message
+	CryptoPP::HMAC<SHA256> ctx(mKey.data(), mKey.size());
+	ctx.Update(cipherText.data(), cipherText.size());
+	ctx.Final(msg.data() + 1 + Public::size + cipherText.size());
+	
 	io_cipher.resize(msg.size());
 	io_cipher.swap(msg);
 }
 
-void eciesMessageTag()
+bool Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
 {
+	// interop w/go ecies implementation
 	
-}
-
-void Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
-{
-	// similar to go ecies implementation
-	// todo: s1/s2
-
 	// io_cipher[0] must be 2, 3, or 4, else invalidpublickey
 	if (io_text[0] < 2 || io_text[0] > 4)
 		// invalid message: publickey
-		return;
+		return false;
 	
 	if (io_text.size() < (1 + Public::size + h256::size + 1))
 		// invalid message: length
-		return;
+		return false;
 
 	h256 z;
 	ecdh::agree(_k, *(Public*)(io_text.data()+1), z);
@@ -134,9 +128,22 @@ void Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
 	bytes plain;
 	size_t cipherLen = io_text.size() - 1 - Public::size - h256::size;
 	bytesConstRef cipher(io_text.data() + 1 + Public::size, cipherLen);
+	bytesConstRef msgMac(cipher.data() + cipher.size(), h256::size);
+	
+	// verify tag
+	CryptoPP::HMAC<SHA256> ctx(mKey.data(), mKey.size());
+	ctx.Update(cipher.data(), cipher.size());
+	h256 mac;
+	ctx.Final(mac.data());
+	for (unsigned i = 0; i < h256::size; i++)
+		if (mac[i] != msgMac[i])
+			return false;
+	
 	decryptSymNoAuth(*(Secret*)eKey.data(), h128(), cipher, plain);
 	io_text.resize(plain.size());
 	io_text.swap(plain);
+	
+	return true;
 }
 
 void Secp256k1::encrypt(Public const& _k, bytes& io_cipher)
