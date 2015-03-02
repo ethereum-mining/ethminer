@@ -47,6 +47,8 @@ namespace dev
 namespace mix
 {
 
+//const Secret c_defaultUserAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
+
 class RpcConnector: public jsonrpc::AbstractServerConnector
 {
 public:
@@ -136,6 +138,15 @@ void ClientModel::mine()
 	});
 }
 
+QString ClientModel::newAddress() const
+{
+	KeyPair a = KeyPair.create();
+	return toHex(a.secret().ref());
+	//m_client.addBalance(a.address(), _balance, 0);
+	//emit accountCreated;
+	//return QString::fromStdString(toHex(a.address().ref()));
+}
+
 QVariantMap ClientModel::contractAddresses() const
 {
 	QVariantMap res;
@@ -151,7 +162,7 @@ void ClientModel::debugDeployment()
 
 void ClientModel::setupState(QVariantMap _state)
 {
-	u256 balance = (qvariant_cast<QEther*>(_state.value("balance")))->toU256Wei();
+	QVariantList balances = _state.value("balances").toList();
 	QVariantList transactions = _state.value("transactions").toList();
 
 	std::vector<TransactionSettings> transactionSequence;
@@ -194,10 +205,10 @@ void ClientModel::setupState(QVariantMap _state)
 			transactionSequence.push_back(transactionSettings);
 		}
 	}
-	executeSequence(transactionSequence, balance);
+	executeSequence(transactionSequence, balances);
 }
 
-void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance)
+void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, QVariantList _balances)
 {
 	if (m_running)
 		BOOST_THROW_EXCEPTION(ExecutionStateException());
@@ -211,7 +222,14 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 	{
 		try
 		{
-			m_client->resetState(_balance);
+			std::map balancesMap;
+			for (auto b: _balances)
+			{
+				QVariantMap address = b.toMap();
+				balancesMap.insert(std::make_pair(KeyPair(Secret(address.value("Secret").toString())).address(), Account(address.value("Balance").toString(), Account::NormalCreation)));
+			}
+
+			m_client->resetState(balancesMap);
 			onStateReset();
 			for (TransactionSettings const& transaction: _sequence)
 			{

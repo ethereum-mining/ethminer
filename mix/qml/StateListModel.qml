@@ -152,7 +152,7 @@ Item {
 
 	ListModel {
 		id: stateListModel
-
+		property string defaultSecret: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074"
 		property int defaultStateIndex: 0
 		signal defaultStateChanged;
 		signal stateListModelReady;
@@ -168,13 +168,17 @@ Item {
 		}
 
 		function createDefaultState() {
-			//var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
 			var ether = QEtherHelper.createEther("1000000", QEther.Ether);
 			var item = {
 				title: "",
-				balance: ether,
-				transactions: []
+				transactions: [],
+				accounts: []
 			};
+
+			item.accounts.push({
+								   secret: defaultSecret,
+								   balance: ether
+							   });
 
 			//add all stdc contracts
 			for (var i = 0; i < contractLibrary.model.count; i++) {
@@ -194,6 +198,7 @@ Item {
 				ctorTr.contractId = c;
 				item.transactions.push(ctorTr);
 			}
+
 			return item;
 		}
 
