@@ -10,3 +10,27 @@ function defaultTransaction()
 		parameters: {}
 	};
 }
+
+function rpcCall(requests, callBack)
+{
+	var jsonRpcUrl = "http://localhost:8080";
+	var rpcRequest = JSON.stringify(requests);
+	var httpRequest = new XMLHttpRequest();
+	httpRequest.open("POST", jsonRpcUrl, true);
+	httpRequest.setRequestHeader("Content-type", "application/json");
+	httpRequest.setRequestHeader("Content-length", rpcRequest.length);
+	httpRequest.setRequestHeader("Connection", "close");
+	httpRequest.onreadystatechange = function() {
+		if (httpRequest.readyState === XMLHttpRequest.DONE) {
+			if (httpRequest.status !== 200)
+			{
+				var errorText = qsTr("Deployment error: Error while registering Dapp ") + httpRequest.status;
+				console.log(errorText);
+				deploymentError(errorText);
+			}
+			callBack(httpRequest.status, httpRequest.responseText)
+		}
+	}
+	httpRequest.send(rpcRequest);
+}
+
