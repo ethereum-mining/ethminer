@@ -142,6 +142,9 @@ public:
 	/// Determine account's TX count.
 	virtual u256 txCount(Address) { return 0; }
 
+	/// Does the account exist?
+	virtual bool exists(Address) { return false; }
+
 	/// Suicide the associated contract and give proceeds to the given address.
 	virtual void suicide(Address) { sub.suicides.insert(myAddress); }
 
