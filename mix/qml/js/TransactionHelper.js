@@ -22,13 +22,14 @@ function rpcCall(requests, callBack)
 	httpRequest.setRequestHeader("Connection", "close");
 	httpRequest.onreadystatechange = function() {
 		if (httpRequest.readyState === XMLHttpRequest.DONE) {
-			if (httpRequest.status !== 200)
+			if (httpRequest.status !== 200 || httpRequest.responseText === "")
 			{
 				var errorText = qsTr("Deployment error: Error while registering Dapp ") + httpRequest.status;
 				console.log(errorText);
 				deploymentError(errorText);
 			}
-			callBack(httpRequest.status, httpRequest.responseText)
+			else
+				callBack(httpRequest.status, httpRequest.responseText)
 		}
 	}
 	httpRequest.send(rpcRequest);
