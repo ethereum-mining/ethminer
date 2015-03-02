@@ -20,25 +20,28 @@ namespace jit
 using byte = uint8_t;
 using bytes = std::vector<byte>;
 using bytes_ref = std::tuple<byte const*, size_t>;
-
-struct NoteChannel {};	// FIXME: Use some log library?
+using code_iterator = byte const*;
 
 enum class ReturnCode
 {
-	Stop = 0,
-	Return = 1,
+	// Success codes
+	Stop    = 0,
+	Return  = 1,
 	Suicide = 2,
 
-	OutOfGas = -1,
-	BadJumpDestination = -2,
-	StackTooSmall = -3,
-	BadInstruction = -4,
+	// Standard error codes
+	OutOfGas           = -1,
+	StackTooSmall      = -2,
+	BadJumpDestination = -3,
+	BadInstruction     = -4,
+	Rejected           = -5, ///< Input data (code, gas, block info, etc.) does not meet JIT requirement and execution request has been rejected
 
-	LLVMConfigError = -5,
-	LLVMCompileError = -6,
-	LLVMLinkError = -7,
+	// Internal error codes
+	LLVMConfigError    = -101,
+	LLVMCompileError   = -102,
+	LLVMLinkError      = -103,
 
-	UnexpectedException = -8,
+	UnexpectedException = -111,
 
 	LinkerWorkaround = -299,
 };
