@@ -75,7 +75,6 @@ Rectangle {
 		height: 30
 		color: "#fcfbfc"
 
-
 		Text {
 			anchors.verticalCenter: parent.verticalCenter
 			anchors.horizontalCenter: parent.horizontalCenter
@@ -118,27 +117,6 @@ Rectangle {
 
 		Button
 		{
-			anchors.verticalCenter: parent.verticalCenter
-			anchors.left: parent.right
-			anchors.leftMargin: 10
-			width: 38
-			height: 28
-			visible: false
-			text: qsTr("Log")
-			objectName: "status"
-			id: logslink
-			action: displayLogAction
-		}
-
-		Action {
-			id: displayLogAction
-			onTriggered: {
-				mainContent.displayCompilationErrorIfAny();
-			}
-		}
-
-		Button
-		{
 			anchors.fill: parent
 			id: toolTip
 			action: toolTipInfo
@@ -157,6 +135,25 @@ Rectangle {
 		}
 	}
 
+	Button
+	{
+		id: logslink
+		anchors.left: statusContainer.right
+		anchors.leftMargin: 9
+		visible: false
+		anchors.verticalCenter: parent.verticalCenter
+		action: displayLogAction
+		iconSource: "qrc:/qml/img/search_filled.png"
+	}
+
+	Action {
+		id: displayLogAction
+		tooltip: qsTr("Display Log")
+		onTriggered: {
+			mainContent.displayCompilationErrorIfAny();
+		}
+	}
+
 	Rectangle
 	{
 		color: "transparent"
@@ -167,9 +164,13 @@ Rectangle {
 		RowLayout
 		{
 			anchors.fill: parent
-			Rectangle {
+			anchors.top: statusHeader.top
+			anchors.right: statusHeader.right
+			Rectangle
+			{
 				color: "transparent"
 				anchors.fill: parent
+
 				Button
 				{
 					anchors.right: parent.right
