@@ -40,6 +40,7 @@ struct BadRLP: virtual RLPException {};
 struct NoNetworking: virtual Exception {};
 struct NoUPnPDevice: virtual Exception {};
 struct RootNotFound: virtual Exception {};
+struct BadRoot: virtual Exception {};
 struct FileError: virtual Exception {};
 struct InterfaceNotSupported: virtual Exception { public: InterfaceNotSupported(std::string _f): m_f("Interface " + _f + " not supported.") {} virtual const char* what() const noexcept { return m_f.c_str(); } private: std::string m_f; };
 
