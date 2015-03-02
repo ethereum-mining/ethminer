@@ -57,8 +57,8 @@ function initLocations()
 
 	for (var i = 0; i < debugData.states.length - 1; i++) {
 		var code = debugData.states[i].code;
-		var location = (code.documentId !== "") ? code.locations[i] : nullLocation;
-		if (location.start !== prevLocation.start || location.end !== prevLocation.end || code.documentId !== prevLocation.documentId)
+		var location = (code.documentId !== "") ? code.locations[codeStr(i)] : nullLocation;
+		if (location && (location.start !== prevLocation.start || location.end !== prevLocation.end || code.documentId !== prevLocation.documentId))
 		{
 			prevLocation = { start: location.start, end: location.end, documentId: code.documentId, state: i };
 			locations.push(prevLocation);
@@ -137,7 +137,7 @@ function display(stateIndex)
 	currentDisplayedState = stateIndex;
 	var docId = debugData.states[stateIndex].code.documentId;
 	if (docId)
-		debugExecuteLocation(docId, debugData.states[stateIndex].code.locations[stateIndex]);
+		debugExecuteLocation(docId, locations[locationMap[stateIndex]]);
 }
 
 function displayFrame(frameIndex)
@@ -226,7 +226,7 @@ function breakpointHit(i)
 {
 	var bpLocations = breakpoints[debugData.states[i].code.documentId];
 	if (bpLocations) {
-		var location = debugData.states[i].code.locations[i];
+		var location = locations[locationMap[i]];
 		if (location && location.start >=0 && location.end >= location.start) {
 			for (var b = 0; b < bpLocations.length; b++) {
 				var bpLocation = bpLocations[b];
