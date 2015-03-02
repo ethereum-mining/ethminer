@@ -57,43 +57,39 @@ public:
 		return instance;
 	}
 
-	void starting(std::string const& _clientImpl, const char* _ethVersion) const;
-	void stopping(std::string const& _clientImpl, const char* _ethVersion) const;
-	void p2pConnected(std::string const& _id,
+	static void starting(std::string const& _clientImpl, const char* _ethVersion);
+	static void stopping(std::string const& _clientImpl, const char* _ethVersion);
+	static void p2pConnected(std::string const& _id,
 		bi::tcp::endpoint const& _addr,
 		std::chrono::system_clock::time_point const& _ts,
 		std::string const& _remoteVersion,
-		unsigned int _numConnections) const;
-	void p2pDisconnected(std::string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections) const;
-	void minedNewBlock(std::string const& _hash,
+		unsigned int _numConnections);
+	static void p2pDisconnected(std::string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections);
+	static void minedNewBlock(std::string const& _hash,
 		std::string const& _blockNumber,
 		std::string const& _chainHeadHash,
-		std::string const& _prevHash) const;
-	void chainReceivedNewBlock(std::string const& _hash,
+		std::string const& _prevHash);
+	static void chainReceivedNewBlock(std::string const& _hash,
 		std::string const& _blockNumber,
 		std::string const& _chainHeadHash,
 		std::string const& _remoteID,
-		std::string const& _prevHash) const;
-	void chainNewHead(std::string const& _hash,
+		std::string const& _prevHash);
+	static void chainNewHead(std::string const& _hash,
 		std::string const& _blockNumber,
 		std::string const& _chainHeadHash,
-		std::string const& _prevHash) const;
-	void transactionReceived(std::string const& _hash, std::string const& _remoteId) const;
+		std::string const& _prevHash);
+	static void transactionReceived(std::string const& _hash, std::string const& _remoteId);
 private:
 	// Singleton class, no copying
 	StructuredLogger() {}
 	StructuredLogger(StructuredLogger const&) = delete;
 	void operator=(StructuredLogger const&) = delete;
 	/// @returns a string representation of a timepoint
-	std::string timePointToString(std::chrono::system_clock::time_point const& _ts) const;
+	static std::string timePointToString(std::chrono::system_clock::time_point const& _ts);
 	void outputJson(Json::Value const& _value, std::string const& _name) const;
 
 	bool m_enabled;
 	std::string m_timeFormat = "%Y-%m-%dT%H:%M:%S";
 };
-
-/// Convenience macro to get the singleton instance
-/// Calling the logging functions becomes as simple as: StructLog.transactionReceived(...)
-#define StructLog StructuredLogger::get()
 
 }
