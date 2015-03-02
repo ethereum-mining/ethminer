@@ -316,9 +316,7 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 			eth::AssemblyItems assemblyItems = !_t.isConstructor() ? compilerRes.assemblyItems() : compilerRes.constructorAssemblyItems();
 			QVariantList locations;
 			for (eth::AssemblyItem const& item: assemblyItems)
-			{
 				locations.push_back(QVariant::fromValue(new QSourceLocation(debugData, item.getLocation().start, item.getLocation().end)));
-			}
 			codes.back()->setLocations(compilerRes.documentId(), std::move(locations));
 		}
 	}
