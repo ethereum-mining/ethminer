@@ -1,12 +1,10 @@
-
 #include "RuntimeManager.h"
 
-#include <llvm/IR/GlobalVariable.h>
-#include <llvm/IR/Function.h>
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/IntrinsicInst.h>
+#include "preprocessor/llvm_includes_end.h"
 
-#include "RuntimeData.h"
-#include "Instruction.h"
+#include "Stack.h"
 
 namespace dev
 {
@@ -87,9 +85,17 @@ llvm::Twine getName(RuntimeData::Index _index)
 }
 }
 
-RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder): CompilerHelper(_builder)
+RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, llvm::Value* _jmpBuf, code_iterator _codeBegin, code_iterator _codeEnd):
+	CompilerHelper(_builder),
+	m_jmpBuf(_jmpBuf),
+	m_codeBegin(_codeBegin),
+	m_codeEnd(_codeEnd)
 {
-	m_longjmp = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::longjmp);
+	m_longjmp = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::eh_sjlj_longjmp);
+
+	// save jmpBuf to be used in helper functions
+	auto ptr = m_builder.CreateStructGEP(getRuntimePtr(), 2);
+	m_builder.CreateStore(m_jmpBuf, ptr);
 
 	// Unpack data
 	auto rtPtr = getRuntimePtr();
@@ -161,9 +167,18 @@ void RuntimeManager::registerSuicide(llvm::Value* _balanceAddress)
 	set(RuntimeData::SuicideDestAddress, _balanceAddress);
 }
 
-void RuntimeManager::raiseException(ReturnCode _returnCode)
+void RuntimeManager::exit(ReturnCode _returnCode)
 {
-	m_builder.CreateCall2(m_longjmp, getJmpBuf(), Constant::get(_returnCode));
+	if (m_stack)
+		m_stack->free();
+
+	m_builder.CreateRet(Constant::get(_returnCode));
+}
+
+void RuntimeManager::abort(llvm::Value* _jmpBuf)
+{
+	auto longjmp = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::eh_sjlj_longjmp);
+	createCall(longjmp, {_jmpBuf});
 }
 
 llvm::Value* RuntimeManager::get(Instruction _inst)
@@ -191,14 +206,14 @@ llvm::Value* RuntimeManager::getCallData()
 
 llvm::Value* RuntimeManager::getCode()
 {
-	return get(RuntimeData::Code);
+	// OPT Check what is faster
+	//return get(RuntimeData::Code);
+	return m_builder.CreateGlobalStringPtr({reinterpret_cast<char const*>(m_codeBegin), static_cast<size_t>(m_codeEnd - m_codeBegin)}, "code");
 }
 
 llvm::Value* RuntimeManager::getCodeSize()
 {
-	auto value = get(RuntimeData::CodeSize);
-	assert(value->getType() == Type::Size);
-	return getBuilder().CreateZExt(value, Type::Word);
+	return Constant::get(m_codeEnd - m_codeBegin);
 }
 
 llvm::Value* RuntimeManager::getCallDataSize()
@@ -208,23 +223,28 @@ llvm::Value* RuntimeManager::getCallDataSize()
 	return getBuilder().CreateZExt(value, Type::Word);
 }
 
-llvm::Value* RuntimeManager::getJmpBuf()
+llvm::Value* RuntimeManager::getJmpBufExt()
 {
-	auto ptr = getBuilder().CreateStructGEP(getRuntimePtr(), 2, "jmpbufPtr");
-	return getBuilder().CreateLoad(ptr, "jmpbuf");
+	auto ptr = getBuilder().CreateStructGEP(getRuntimePtr(), 2);
+	return getBuilder().CreateLoad(ptr, "jmpBufExt");
 }
 
 llvm::Value* RuntimeManager::getGas()
 {
-	auto value = get(RuntimeData::Gas);
-	assert(value->getType() == Type::Size);
-	return getBuilder().CreateZExt(value, Type::Word);
+	auto gas = get(RuntimeData::Gas);
+	assert(gas->getType() == Type::Gas);
+	return gas;
+}
+
+llvm::Value* RuntimeManager::getGasPtr()
+{
+	return getPtr(RuntimeData::Gas);
 }
 
 void RuntimeManager::setGas(llvm::Value* _gas)
 {
-	auto newGas = getBuilder().CreateTrunc(_gas, Type::Size);
-	set(RuntimeData::Gas, newGas);
+	assert(_gas->getType() == Type::Gas);
+	set(RuntimeData::Gas, _gas);
 }
 
 }
