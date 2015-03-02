@@ -39,6 +39,8 @@ llvm::Function* Arith256::getMulFunc()
 	{
 		llvm::Type* argTypes[] = {Type::Word, Type::Word};
 		func = llvm::Function::Create(llvm::FunctionType::get(Type::Word, argTypes, false), llvm::Function::PrivateLinkage, "mul", getModule());
+		func->setDoesNotThrow();
+		func->setDoesNotAccessMemory();
 
 		auto x = &func->getArgumentList().front();
 		x->setName("x");
@@ -51,12 +53,64 @@ llvm::Function* Arith256::getMulFunc()
 		auto i64 = Type::Size;
 		auto i128 = m_builder.getIntNTy(128);
 		auto i256 = Type::Word;
+		auto c64 = Constant::get(64);
+		auto c128 = Constant::get(128);
+		auto c192 = Constant::get(192);
+//		auto mask64 = Constant::get(-1);
+
+//		auto x1 = m_builder.CreateLShr(x, c64);
+//		auto y2 = m_builder.CreateLShr(y, c64);
+//		auto x3 = m_builder.CreateLShr(x, c128);
+//		auto y5 = m_builder.CreateLShr(y, c128);
+//		auto x4 = m_builder.CreateTrunc(x3, i128);
+//		auto y6 = m_builder.CreateTrunc(y5, i128);
+//		auto x9 = m_builder.CreateTrunc(x, i128);
+//		auto y7 = m_builder.CreateTrunc(y, i128);
+//
+//		auto y8 = m_builder.CreateAnd(y7, mask64);
+//		auto x10 = m_builder.CreateAnd(x9, mask64);
+//		auto m11 = m_builder.CreateMul(y8, x10);
+//		auto y12 = m_builder.CreateTrunc(y2, i128);
+//		auto y13 = m_builder.CreateAnd(y12, mask64);
+//		auto m14 = m_builder.CreateMul(y13, x10);
+//		auto m15 = m_builder.CreateMul(y6, x10);
+//		auto x16 = m_builder.CreateTrunc(x1, i128);
+//		auto x17 = m_builder.CreateAnd(x16, mask64);
+//		auto m18 = m_builder.CreateMul(x17, y8);
+//		auto m19 = m_builder.CreateMul(y13, x17);
+//		auto m20 = m_builder.CreateMul(x17, y6);
+//		auto m21 = m_builder.CreateMul(y8, x4);
+//		auto m22 = m_builder.CreateMul(y13, x4);
+//
+//		auto n23 = m_builder.CreateZExt(m11, i256);
+//		auto n24 = m_builder.CreateZExt(m14, i256);
+//		auto n25 = m_builder.CreateZExt(m15, i256);
+//		auto n26 = m_builder.CreateZExt(m18, i256);
+//		auto n27 = m_builder.CreateZExt(m19, i256);
+//		auto n28 = m_builder.CreateZExt(m20, i256);
+//		auto n29 = m_builder.CreateZExt(m21, i256);
+//		auto n30 = m_builder.CreateZExt(m22, i256);
+//
+//		auto p0 = m_builder.CreateNUWAdd(n25, n29);
+//		auto p1 = m_builder.CreateNUWAdd(p0, n27);
+//		auto p2 = m_builder.CreateShl(p1, c128);
+//		auto p3 = m_builder.CreateNUWAdd(n30, n28);
+//		auto p4 = m_builder.CreateShl(p3, c192);
+//		auto p5 = m_builder.CreateNUWAdd(n24, n26);
+//		auto p6 = m_builder.CreateShl(p5, c64);
+//
+//		auto p31 = m_builder.CreateOr(p2, n23);
+//		auto p32 = m_builder.CreateAdd(p31, p4);
+//		auto p33 = m_builder.CreateAdd(p32, p6);
+//
+//		m_builder.CreateRet(p33);
+
 		auto x_lo = m_builder.CreateTrunc(x, i64, "x.lo");
 		auto y_lo = m_builder.CreateTrunc(y, i64, "y.lo");
-		auto x_mi = m_builder.CreateTrunc(m_builder.CreateLShr(x, Constant::get(64)), i64);
-		auto y_mi = m_builder.CreateTrunc(m_builder.CreateLShr(y, Constant::get(64)), i64);
-		auto x_hi = m_builder.CreateTrunc(m_builder.CreateLShr(x, Constant::get(128)), i128);
-		auto y_hi = m_builder.CreateTrunc(m_builder.CreateLShr(y, Constant::get(128)), i128);
+		auto x_mi = m_builder.CreateTrunc(m_builder.CreateLShr(x, c64), i64);
+		auto y_mi = m_builder.CreateTrunc(m_builder.CreateLShr(y, c64), i64);
+		auto x_hi = m_builder.CreateTrunc(m_builder.CreateLShr(x, c128), i128);
+		auto y_hi = m_builder.CreateTrunc(m_builder.CreateLShr(y, c128), i128);
 
 		auto t1 = m_builder.CreateMul(m_builder.CreateZExt(x_lo, i128), m_builder.CreateZExt(y_lo, i128));
 		auto t2 = m_builder.CreateMul(m_builder.CreateZExt(x_lo, i128), m_builder.CreateZExt(y_mi, i128));
@@ -68,13 +122,13 @@ llvm::Function* Arith256::getMulFunc()
 		auto t8 = m_builder.CreateMul(x_hi, m_builder.CreateZExt(y_mi, i128));
 
 		auto p = m_builder.CreateZExt(t1, i256);
-		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t2, i256), Constant::get(64)));
-		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t3, i256), Constant::get(128)));
-		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t4, i256), Constant::get(64)));
-		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t5, i256), Constant::get(128)));
-		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t6, i256), Constant::get(192)));
-		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t7, i256), Constant::get(128)));
-		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t8, i256), Constant::get(192)));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t2, i256), c64));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t3, i256), c128));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t4, i256), c64));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t5, i256), c128));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t6, i256), c192));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t7, i256), c128));
+		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t8, i256), c192));
 		m_builder.CreateRet(p);
 	}
 	return func;
@@ -88,6 +142,8 @@ llvm::Function* Arith256::getMul512Func()
 		auto i512 = m_builder.getIntNTy(512);
 		llvm::Type* argTypes[] = {Type::Word, Type::Word};
 		func = llvm::Function::Create(llvm::FunctionType::get(i512, argTypes, false), llvm::Function::PrivateLinkage, "mul512", getModule());
+		func->setDoesNotThrow();
+		func->setDoesNotAccessMemory();
 
 		auto x = &func->getArgumentList().front();
 		x->setName("x");
@@ -131,6 +187,8 @@ llvm::Function* Arith256::getDivFunc(llvm::Type* _type)
 		auto retType = llvm::StructType::get(m_builder.getContext(), llvm::ArrayRef<llvm::Type*>{argTypes});
 		auto funcName = _type == Type::Word ? "div" : "div512";
 		func = llvm::Function::Create(llvm::FunctionType::get(retType, argTypes, false), llvm::Function::PrivateLinkage, funcName, getModule());
+		func->setDoesNotThrow();
+		func->setDoesNotAccessMemory();
 
 		auto zero = llvm::ConstantInt::get(_type, 0);
 		auto one = llvm::ConstantInt::get(_type, 1);
@@ -222,6 +280,8 @@ llvm::Function* Arith256::getExpFunc()
 	{
 		llvm::Type* argTypes[] = {Type::Word, Type::Word};
 		m_exp = llvm::Function::Create(llvm::FunctionType::get(Type::Word, argTypes, false), llvm::Function::PrivateLinkage, "exp", getModule());
+		m_exp->setDoesNotThrow();
+		m_exp->setDoesNotAccessMemory();
 
 		auto base = &m_exp->getArgumentList().front();
 		base->setName("base");
@@ -290,6 +350,8 @@ llvm::Function* Arith256::getAddModFunc()
 		auto i512Ty = m_builder.getIntNTy(512);
 		llvm::Type* argTypes[] = {Type::Word, Type::Word, Type::Word};
 		m_addmod = llvm::Function::Create(llvm::FunctionType::get(Type::Word, argTypes, false), llvm::Function::PrivateLinkage, "addmod", getModule());
+		m_addmod->setDoesNotThrow();
+		m_addmod->setDoesNotAccessMemory();
 
 		auto x = &m_addmod->getArgumentList().front();
 		x->setName("x");
@@ -319,6 +381,8 @@ llvm::Function* Arith256::getMulModFunc()
 	{
 		llvm::Type* argTypes[] = {Type::Word, Type::Word, Type::Word};
 		m_mulmod = llvm::Function::Create(llvm::FunctionType::get(Type::Word, argTypes, false), llvm::Function::PrivateLinkage, "mulmod", getModule());
+		m_mulmod->setDoesNotThrow();
+		m_mulmod->setDoesNotAccessMemory();
 
 		auto i512Ty = m_builder.getIntNTy(512);
 		auto x = &m_mulmod->getArgumentList().front();
