@@ -821,7 +821,7 @@ void State::completeMine()
 	ret.swapOut(m_currentBytes);
 	m_currentBlock.hash = sha3(RLP(m_currentBytes)[0].data());
 	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
-	StructLog.minedNewBlock(
+	StructuredLogger::minedNewBlock(
 		m_currentBlock.hash.abridged(),
 		m_currentBlock.nonce.abridged(),
 		"", //TODO: chain head hash here ??

@@ -159,7 +159,7 @@ void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 {
 	{
 		clog(NetNote) << "p2p.host.peer.register" << _s->m_peer->id.abridged();
-		StructLog.p2pConnected(
+		StructuredLogger::p2pConnected(
 			_s->m_peer->id.abridged(),
 			_s->m_peer->peerEndpoint(),
 			_s->m_peer->m_lastConnected,

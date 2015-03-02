@@ -32,7 +32,7 @@ using namespace std;
 namespace dev
 {
 
-string StructuredLogger::timePointToString(chrono::system_clock::time_point const& _ts) const
+string StructuredLogger::timePointToString(chrono::system_clock::time_point const& _ts)
 {
 	// not using C++11 std::put_time due to gcc bug
 	// http://stackoverflow.com/questions/14136833/stdput-time-implementation-status-in-gcc
@@ -40,7 +40,7 @@ string StructuredLogger::timePointToString(chrono::system_clock::time_point cons
 	char buffer[64];
 	time_t time = chrono::system_clock::to_time_t(_ts);
 	tm* ptm = localtime(&time);
-	if (strftime(buffer, sizeof(buffer), m_timeFormat.c_str(), ptm))
+	if (strftime(buffer, sizeof(buffer), get().m_timeFormat.c_str(), ptm))
 		return string(buffer);
 	return "";
 }
@@ -54,29 +54,29 @@ void StructuredLogger::outputJson(Json::Value const& _value, std::string const& 
 	cout << event << endl << flush;
 }
 
-void StructuredLogger::starting(string const& _clientImpl, const char* _ethVersion) const
+void StructuredLogger::starting(string const& _clientImpl, const char* _ethVersion)
 {
-	if (m_enabled)
+	if (get().m_enabled)
 	{
 		Json::Value event;
 		event["client_impl"] = _clientImpl;
 		event["eth_version"] = std::string(_ethVersion);
 		event["ts"] = timePointToString(std::chrono::system_clock::now());
 
-		outputJson(event, "starting");
+		get().outputJson(event, "starting");
 	}
 }
 
-void StructuredLogger::stopping(string const& _clientImpl, const char* _ethVersion) const
+void StructuredLogger::stopping(string const& _clientImpl, const char* _ethVersion)
 {
-	if (m_enabled)
+	if (get().m_enabled)
 	{
 		Json::Value event;
 		event["client_impl"] = _clientImpl;
 		event["eth_version"] = std::string(_ethVersion);
 		event["ts"] = timePointToString(std::chrono::system_clock::now());
 
-		outputJson(event, "stopping");
+		get().outputJson(event, "stopping");
 	}
 }
 
@@ -84,9 +84,9 @@ void StructuredLogger::p2pConnected(string const& _id,
 	bi::tcp::endpoint const& _addr,
 	chrono::system_clock::time_point const& _ts,
 	string const& _remoteVersion,
-	unsigned int _numConnections) const
+	unsigned int _numConnections)
 {
-	if (m_enabled)
+	if (get().m_enabled)
 	{
 		std::stringstream addrStream;
 		addrStream << _addr;
@@ -97,13 +97,13 @@ void StructuredLogger::p2pConnected(string const& _id,
 		event["num_connections"] = Json::Value(_numConnections);
 		event["ts"] = timePointToString(_ts);
 
-		outputJson(event, "p2p.connected");
+		get().outputJson(event, "p2p.connected");
 	}
 }
 
-void StructuredLogger::p2pDisconnected(string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections) const
+void StructuredLogger::p2pDisconnected(string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections)
 {
-	if (m_enabled)
+	if (get().m_enabled)
 	{
 		std::stringstream addrStream;
 		addrStream << _addr;
@@ -113,16 +113,16 @@ void StructuredLogger::p2pDisconnected(string const& _id, bi::tcp::endpoint cons
 		event["num_connections"] = Json::Value(_numConnections);
 		event["ts"] = timePointToString(chrono::system_clock::now());
 
-		outputJson(event, "p2p.disconnected");
+		get().outputJson(event, "p2p.disconnected");
 	}
 }
 
 void StructuredLogger::minedNewBlock(string const& _hash,
 	string const& _blockNumber,
 	string const& _chainHeadHash,
-	string const& _prevHash) const
+	string const& _prevHash)
 {
-	if (m_enabled)
+	if (get().m_enabled)
 	{
 		Json::Value event;
 		event["block_hash"] = _hash;
@@ -131,7 +131,7 @@ void StructuredLogger::minedNewBlock(string const& _hash,
 		event["ts"] = timePointToString(std::chrono::system_clock::now());
 		event["block_prev_hash"] = _prevHash;
 
-		outputJson(event, "eth.miner.new_block");
+		get().outputJson(event, "eth.miner.new_block");
 	}
 }
 
@@ -139,9 +139,9 @@ void StructuredLogger::chainReceivedNewBlock(string const& _hash,
 	string const& _blockNumber,
 	string const& _chainHeadHash,
 	string const& _remoteID,
-	string const& _prevHash) const
+	string const& _prevHash)
 {
-	if (m_enabled)
+	if (get().m_enabled)
 	{
 		Json::Value event;
 		event["block_hash"] = _hash;
@@ -151,16 +151,16 @@ void StructuredLogger::chainReceivedNewBlock(string const& _hash,
 		event["ts"] = timePointToString(chrono::system_clock::now());
 		event["block_prev_hash"] = _prevHash;
 
-		outputJson(event, "eth.chain.received.new_block");
+		get().outputJson(event, "eth.chain.received.new_block");
 	}
 }
 
 void StructuredLogger::chainNewHead(string const& _hash,
 	string const& _blockNumber,
 	string const& _chainHeadHash,
-	string const& _prevHash) const
+	string const& _prevHash)
 {
-	if (m_enabled)
+	if (get().m_enabled)
 	{
 		Json::Value event;
 		event["block_hash"] = _hash;
@@ -169,20 +169,20 @@ void StructuredLogger::chainNewHead(string const& _hash,
 		event["ts"] = timePointToString(chrono::system_clock::now());
 		event["block_prev_hash"] = _prevHash;
 
-		outputJson(event, "eth.miner.new_block");
+		get().outputJson(event, "eth.miner.new_block");
 	}
 }
 
-void StructuredLogger::transactionReceived(string const& _hash, string const& _remoteId) const
+void StructuredLogger::transactionReceived(string const& _hash, string const& _remoteId)
 {
-	if (m_enabled)
+	if (get().m_enabled)
 	{
 		Json::Value event;
 		event["tx_hash"] = _hash;
 		event["remote_id"] = _remoteId;
 		event["ts"] = timePointToString(chrono::system_clock::now());
 
-		outputJson(event, "eth.tx.received");
+		get().outputJson(event, "eth.tx.received");
 	}
 }
 
