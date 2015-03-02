@@ -18,7 +18,6 @@ function init(data)
 	jumpOverBackAction.enabled(false);
 	jumpOverForwardAction.enabled(false);
 
-	//breakpoints = {};
 	if (data === null) {
 		statesList.model.clear();
 		statesSlider.maximumValue = 0;
@@ -57,8 +56,8 @@ function initLocations()
 
 	for (var i = 0; i < debugData.states.length - 1; i++) {
 		var code = debugData.states[i].code;
-		var location = (code.documentId !== "") ? code.locations[codeStr(i)] : nullLocation;
-		if (location && (location.start !== prevLocation.start || location.end !== prevLocation.end || code.documentId !== prevLocation.documentId))
+		var location = code.documentId ? code.locations[codeStr(i)] : nullLocation;
+		if (location.start !== prevLocation.start || location.end !== prevLocation.end || code.documentId !== prevLocation.documentId)
 		{
 			prevLocation = { start: location.start, end: location.end, documentId: code.documentId, state: i };
 			locations.push(prevLocation);
@@ -151,9 +150,8 @@ function displayFrame(frameIndex)
 
 function select(index)
 {
-	if (srcMode()) {
+	if (srcMode())
 		selectState(locations[index].state);
-	}
 	else
 		selectState(index);
 }
@@ -222,19 +220,20 @@ function isReturnInstruction(index)
 	return state.instruction === "RETURN"
 }
 
+function locationsIntersect(l1, l2)
+{
+	return l1.start <= l2.end && l1.end >= l2.start;
+}
+
 function breakpointHit(i)
 {
 	var bpLocations = breakpoints[debugData.states[i].code.documentId];
 	if (bpLocations) {
 		var location = locations[locationMap[i]];
-		if (location && location.start >=0 && location.end >= location.start) {
-			for (var b = 0; b < bpLocations.length; b++) {
-				var bpLocation = bpLocations[b];
-				if ((bpLocation.start >= location.start && bpLocation.start <= location.end) || (bpLocation.end >= location.start && bpLocation.end <= location.end) ||
-					(location.start >= bpLocation.start && location.start <= bpLocation.end) || (location.end >= bpLocation.start && location.end <= bpLocation.end))
+		if (location.start >= 0 && location.end >= location.start)
+			for (var b = 0; b < bpLocations.length; b++)
+				if (locationsIntersect(location, bpLocations[b]))
 					return true;
-			}
-		}
 	}
 	return false;
 }
