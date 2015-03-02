@@ -404,8 +404,12 @@ public:
 
 	void setRoot(h256 _root)
 	{
+		if (!m_secure.isNull())
+			Super::db()->removeAux(m_secure.root());
 		m_secure.setRoot(_root);
-		Super::setRoot(h256(Super::db()->lookupAux(m_secure.root())));
+		auto rb = Super::db()->lookupAux(m_secure.root());
+		auto r = h256(rb);
+		Super::setRoot(r);
 	}
 
 	h256 root() const { return m_secure.root(); }
