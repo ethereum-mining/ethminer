@@ -75,21 +75,20 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 	{
 		// INSTRUCTION...
 		Instruction inst = (Instruction)_ext.getCode(m_curPC);
+		auto metric = c_metrics[(int)inst];
+		int gasPriceTier = metric.gasPriceTier;
+
+		if (gasPriceTier == InvalidTier)
+			BOOST_THROW_EXCEPTION(BadInstruction());
 
 		// FEES...
-		bigint runGas;
+		bigint runGas = c_tierStepGas[metric.gasPriceTier];
 		bigint newTempSize = m_temp.size();
 		bigint copySize = 0;
 
 		// should work, but just seems to result in immediate errorless exit on initial execution. yeah. weird.
 		//m_onFail = std::function<void()>(onOperation);
 
-		auto metric = c_metrics[(int)inst];
-		int gasPriceTier = metric.gasPriceTier;
-		if (gasPriceTier == InvalidTier)
-			BOOST_THROW_EXCEPTION(BadInstruction());
-		else
-			runGas = c_tierStepGas[metric.gasPriceTier];
 		require(metric.args);
 
 		auto onOperation = [&]()
@@ -186,7 +185,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 		newTempSize = (newTempSize + 31) / 32 * 32;
 		if (newTempSize > m_temp.size())
 			runGas += gasForMem(newTempSize) - gasForMem(m_temp.size());
-		runGas += c_copyGas * (copySize + 31) / 32;
+		runGas += c_copyGas * ((copySize + 31) / 32);
 
 		onOperation();
 //		if (_onOp)
