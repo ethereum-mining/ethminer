@@ -48,6 +48,16 @@ Item {
 		editor.setText(data, document.syntaxMode);
 	}
 
+
+	function highlightExecution(documentId, location) {
+		for (var i = 0; i < editorListModel.count; i++)
+			if (editorListModel.get(i).documentId === documentId) {
+				var editor = editors.itemAt(i).item;
+				if (editor)
+					editor.highlightExecution(location);
+			}
+	}
+
 	Component.onCompleted: projectModel.codeEditor = codeEditorView;
 
 	Connections {

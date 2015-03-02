@@ -11,7 +11,9 @@ import "."
 Rectangle {
 	id: debugPanel
 
-	property alias transactionLog : transactionLog
+	property alias transactionLog: transactionLog
+	signal debugExecuteLocation(string documentId, var location)
+	property bool assemblyMode: false
 
 	objectName: "debugPanel"
 	color: "#ededed"
@@ -22,6 +24,12 @@ Rectangle {
 		if (visible)
 			forceActiveFocus();
 	}
+
+	onAssemblyModeChanged:
+	{
+		Debugger.updateMode();
+	}
+
 
 	function update(data, giveFocus)
 	{
@@ -44,6 +52,10 @@ Rectangle {
 		}
 		if (giveFocus)
 			forceActiveFocus();
+	}
+
+	ListModel {
+		id: breakpointModel;
 	}
 
 	Connections {
@@ -173,7 +185,7 @@ Rectangle {
 						anchors.bottom: parent.bottom
 						anchors.left: parent.left
 						color: "transparent"
-						width: stateListContainer.width
+						width: parent.width * 0.4
 						RowLayout {
 							anchors.horizontalCenter: parent.horizontalCenter
 							id: jumpButtons
@@ -256,7 +268,7 @@ Rectangle {
 						anchors.top: parent.top
 						anchors.bottom: parent.bottom
 						anchors.right: parent.right
-						width: debugInfoContainer.width
+						width: parent.width * 0.6
 						color: "transparent"
 						Slider {
 							id: statesSlider
@@ -291,6 +303,7 @@ Rectangle {
 					height: 405
 					implicitHeight: 405
 					color: "transparent"
+					visible: assemblyMode
 
 					Rectangle
 					{

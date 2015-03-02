@@ -40,6 +40,14 @@ Rectangle {
 		}
 	}
 
+	Connections {
+		target: rightView
+		onDebugExecuteLocation: {
+			codeEditor.highlightExecution(documentId, location);
+		}
+	}
+
+
 	function startQuickDebugging()
 	{
 		ensureRightView();
@@ -168,6 +176,7 @@ Rectangle {
 						anchors.fill: parent
 						orientation: Qt.Vertical
 						CodeEditorView {
+							id: codeEditor
 							height: parent.height * 0.6
 							anchors.top: parent.top
 							Layout.fillWidth: true

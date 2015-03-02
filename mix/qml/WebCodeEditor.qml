@@ -37,6 +37,10 @@ Item {
 		}
 	}
 
+	function highlightExecution(location) {
+		editorBrowser.runJavaScript("highlightExecution(" + location.start + "," + location.end + ")");
+	}
+
 	Connections {
 		target: appContext
 		onClipboardChanged:	syncClipboard()
