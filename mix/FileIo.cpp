@@ -20,6 +20,9 @@
  * Ethereum IDE client.
  */
 
+#include <QDebug>
+#include <QDesktopServices>
+#include <QMimeDatabase>
 #include <QDirIterator>
 #include <QDir>
 #include <QFile>
@@ -36,6 +39,12 @@
 using namespace dev;
 using namespace dev::crypto;
 using namespace dev::mix;
+
+
+void FileIo::openFileBrowser(QString const& _dir)
+{
+	QDesktopServices::openUrl(QUrl(_dir));
+}
 
 QString FileIo::pathFromUrl(QString const& _url)
 {
@@ -126,6 +135,7 @@ QStringList FileIo::makePackage(QString const& _deploymentFolder)
 	dev::RLPStream rlpStr;
 	int k = 1;
 	std::vector<bytes> files;
+	QMimeDatabase mimeDb;
 	for (auto item: deployDir.entryInfoList(QDir::Files))
 	{
 		QFile qFile(item.filePath());
@@ -137,7 +147,7 @@ QStringList FileIo::makePackage(QString const& _deploymentFolder)
 			std::string path = fileInfo.fileName() == "index.html" ? "/" : fileInfo.fileName().toStdString();
 			jsonValue["path"] = path; //TODO: Manage relative sub folder
 			jsonValue["file"] = "/" + fileInfo.fileName().toStdString();
-			jsonValue["contentType"] = "text/html"; //TODO: manage multiple content type
+			jsonValue["contentType"] = mimeDb.mimeTypeForFile(qFile.fileName()).name().toStdString();
 			QByteArray a = qFile.readAll();
 			bytes data = bytes(a.begin(), a.end());
 			files.push_back(data);
