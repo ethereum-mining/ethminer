@@ -80,6 +80,20 @@ Window {
 		});
 	}
 
+	function stopForInputError(inError)
+	{
+		errorDialog.text = "";
+		if (inError.length > 0)
+		{
+			errorDialog.text = qsTr("The length of a string cannot exceed 32 characters.\nPlease verify the following value(s):\n\n")
+			for (var k in inError)
+				errorDialog.text += inError[k] + "\n";
+			errorDialog.open();
+			return true;
+		}
+		return false;
+	}
+
 	function pad(h)
 	{
 		// TODO move this to QHashType class
@@ -250,6 +264,12 @@ Window {
 			icon: StandardIcon.Warning
 		}
 
+		MessageDialog {
+			id: errorDialog
+			standardButtons: StandardButton.Ok
+			icon: StandardIcon.Error
+		}
+
 		RowLayout
 		{
 			anchors.bottom: parent.bottom
@@ -259,7 +279,15 @@ Window {
 				text: qsTr("Deploy contract / Package resources");
 				tooltip: qsTr("Deploy contract and package resources files.")
 				onClicked: {
-					deployWarningDialog.open();
+					var inError = [];
+					var ethUrl = ProjectModelCode.formatAppUrl(applicationUrlEth.text);
+					for (var k in ethUrl)
+					{
+						if (ethUrl[k].length > 32)
+							inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
+					}
+					if (!stopForInputError(inError))
+						deployWarningDialog.open();
 				}
 			}
 
@@ -287,10 +315,14 @@ Window {
 					if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
 					{
 						deployDialog.title = text;
-						deployDialog.text = qsTr("Please provide the link where the resources are stored and ensure the package is aleary built using the deployment step. ")
+						deployDialog.text = qsTr("Please provide the link where the resources are stored and ensure the package is aleary built using the deployment step.")
 						deployDialog.open();
+						return;
 					}
-					else
+					var inError = [];
+					if (applicationUrlHttp.text.length > 32)
+						inError.push(qsTr(applicationUrlHttp.text));
+					if (!stopForInputError(inError))
 						ProjectModelCode.registerToUrlHint();
 				}
 			}
