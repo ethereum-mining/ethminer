@@ -93,7 +93,7 @@ public:
 	/// True if the trie is initialised but empty (i.e. that the DB contains the root node which is empty).
 	bool isEmpty() const { return m_root == c_shaNull && node(m_root).size(); }
 
-	h256 root() const { assert(node(m_root).size()); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
+	h256 root() const { if (!node(m_root).size()) BOOST_THROW_EXCEPTION(BadRoot()); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
 	void debugPrint() {}
 
@@ -404,8 +404,12 @@ public:
 
 	void setRoot(h256 _root)
 	{
+		if (!m_secure.isNull())
+			Super::db()->removeAux(m_secure.root());
 		m_secure.setRoot(_root);
-		Super::setRoot(h256(Super::db()->lookupAux(m_secure.root())));
+		auto rb = Super::db()->lookupAux(m_secure.root());
+		auto r = h256(rb);
+		Super::setRoot(r);
 	}
 
 	h256 root() const { return m_secure.root(); }
