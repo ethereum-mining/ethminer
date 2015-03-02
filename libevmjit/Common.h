@@ -5,6 +5,8 @@
 
 #ifdef _MSC_VER
 #define EXPORT __declspec(dllexport)
+#define _ALLOW_KEYWORD_MACROS
+#define noexcept throw()
 #else
 #define EXPORT
 #endif
