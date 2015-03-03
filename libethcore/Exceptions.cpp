@@ -39,7 +39,7 @@ static boost::thread_specific_ptr<string> g_exceptionMessage;
 const char* InvalidBlockFormat::what() const noexcept { ETH_RETURN_STRING("Invalid block format: Bad field " + toString(m_f) + " (" + toHex(m_d) + ")"); }
 const char* UncleInChain::what() const noexcept { ETH_RETURN_STRING("Uncle in block already mentioned: Uncles " + toString(m_uncles) + " (" + m_block.abridged() + ")"); }
 const char* InvalidTransactionsHash::what() const noexcept { ETH_RETURN_STRING("Invalid transactions hash:  header says: " + toHex(m_head.ref()) + " block is:" + toHex(m_real.ref())); }
-const char* InvalidGasLimit::what() const noexcept { ETH_RETURN_STRING("Invalid gas limit (provided: " + toString(provided) + " minimum:" + toString(minimum) + " max:" + toString(maximum) + ")"); }
+const char* InvalidGasLimit::what() const noexcept { ETH_RETURN_STRING("Invalid gas limit (provided: " + toString(provided) + " default:" + toString(valid) + " givenDiff:" + toString(givenDiff) + " maxDiff:" + toString(maxDiff) + ")"); }
 const char* InvalidMinGasPrice::what() const noexcept { ETH_RETURN_STRING("Invalid minimum gas price (provided: " + toString(provided) + " limit:" + toString(limit) + ")"); }
 const char* InvalidNonce::what() const noexcept { ETH_RETURN_STRING("Invalid nonce (r: " + toString(required) + " c:" + toString(candidate) + ")"); }
 const char* InvalidBlockNonce::what() const noexcept { ETH_RETURN_STRING("Invalid nonce (h: " + toString(h) + " n:" + toString(n) + " d:" + toString(d) + ")"); }
