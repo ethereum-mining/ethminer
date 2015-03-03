@@ -47,8 +47,8 @@ class QVariableDefinition;
 struct TransactionSettings
 {
 	TransactionSettings() {}
-	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
-		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
+	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice, Secret _sender):
+		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice), sender(_sender) {}
 	TransactionSettings(QString const& _stdContractName, QString const& _stdContractUrl):
 		contractId(_stdContractName), stdContractUrl(_stdContractUrl) {}
 
