@@ -48,7 +48,7 @@ namespace dev
 
 namespace p2p
 {
-
+	
 class Host;
 
 class HostNodeTableHandler: public NodeTableEventHandler
@@ -63,7 +63,7 @@ private:
 
 	Host& m_host;
 };
-	
+
 /**
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
@@ -77,7 +77,10 @@ private:
 class Host: public Worker
 {
 	friend class HostNodeTableHandler;
+	
 	friend struct PeerHandshake;
+	friend struct RLPXHandshake;
+	
 	friend class Session;
 	friend class HostCapabilityFace;
 	
@@ -237,6 +240,8 @@ private:
 struct PeerSecrets
 {
 	friend struct PeerHandshake;
+	friend struct RLPXHandshake;
+	
 protected:
 	Secret encryptK;
 	Secret macK;
