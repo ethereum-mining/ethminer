@@ -35,11 +35,16 @@ using namespace dev::p2p;
 using namespace dev::eth;
 using namespace dev::shh;
 
-WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean,
-	std::set<std::string> const& _interfaces, NetworkPreferences const& _n,
-	bytesConstRef _network, int _miners):
-		m_clientVersion(_clientVersion),
-		m_net(_clientVersion, _n, _network)
+WebThreeDirect::WebThreeDirect(
+	std::string const& _clientVersion,
+	std::string const& _dbPath,
+	bool _forceClean,
+	std::set<std::string> const& _interfaces,
+	NetworkPreferences const& _n,
+	bytesConstRef _network, int _miners
+):
+	m_clientVersion(_clientVersion),
+	m_net(_clientVersion, _n, _network)
 {
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
