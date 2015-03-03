@@ -101,7 +101,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 		stateRoot = _header[field = 3].toHash<h256>();
 		transactionsRoot = _header[field = 4].toHash<h256>();
 		receiptsRoot = _header[field = 5].toHash<h256>();
-		logBloom = _header[field = 6].toHash<h512>();
+		logBloom = _header[field = 6].toHash<LogBloom>();
 		difficulty = _header[field = 7].toInt<u256>();
 		number = _header[field = 8].toInt<u256>();
 		gasLimit = _header[field = 9].toInt<u256>();
