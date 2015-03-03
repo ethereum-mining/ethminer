@@ -794,7 +794,7 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 				TransactionReceipt receipt = receipts[i];
 				if (_f.matches(receipt.bloom()))
 				{
-					auto sha3 = transaction(info.hash, i).sha3();
+					auto h = transaction(info.hash, i).sha3();
 					LogEntries le = _f.matches(receipt);
 					if (le.size())
 					{
@@ -806,7 +806,7 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 							if (s)
 								s--;
 							else
-								ret.insert(ret.begin(), LocalisedLogEntry(le[j], n, sha3));
+								ret.insert(ret.begin(), LocalisedLogEntry(le[j], n, h));
 						}
 					}
 				}
