@@ -23,6 +23,7 @@ Item {
 	function fromPlainAccountItem(t)
 	{
 		return {
+			name: t.name,
 			secret: t.secret,
 			balance: QEtherHelper.createEther(t.balance.value, t.balance.unit)
 		};
@@ -91,6 +92,7 @@ Item {
 	function toPlainAccountItem(t)
 	{
 		return {
+			name: t.name,
 			secret: t.secret,
 			balance: {
 				value: t.balance.value,
@@ -171,7 +173,6 @@ Item {
 
 	ListModel {
 		id: stateListModel
-		property string defaultSecret: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169075"
 		property int defaultStateIndex: 0
 		signal defaultStateChanged;
 		signal stateListModelReady;
@@ -186,18 +187,23 @@ Item {
 			};
 		}
 
+		function newAccount(_balance, _unit)
+		{
+			var secret = clientModel.newAddress();
+			var name = qsTr("Account") + " - " + secret.substring(0, 5);
+			return { name: name, secret: secret, balance: QEtherHelper.createEther(_balance, _unit) };
+		}
+
 		function createDefaultState() {
-			var ether = QEtherHelper.createEther("1000000", QEther.Ether);
 			var item = {
 				title: "",
 				transactions: [],
 				accounts: []
 			};
 
-			item.accounts.push({
-								   secret: defaultSecret,
-								   balance: ether
-							   });
+			item.accounts.push(newAccount("1000000", QEther.Ether));
+
+			console.log(JSON.stringify(item.accounts));
 
 			//add all stdc contracts
 			for (var i = 0; i < contractLibrary.model.count; i++) {

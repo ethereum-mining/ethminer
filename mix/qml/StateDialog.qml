@@ -12,7 +12,7 @@ Window {
 	id: modalStateDialog
 	modality: Qt.ApplicationModal
 
-	width: 520
+	width: 555
 	height: 480
 	title: qsTr("Edit State")
 	visible: false
@@ -41,8 +41,7 @@ Window {
 		accountsModel.clear();
 		stateAccounts = [];
 		for (var k = 0; k < item.accounts.length; k++)
-		{
-			accountsModel.append(item.accounts[k]);
+		{			accountsModel.append(item.accounts[k]);
 			stateAccounts.push(item.accounts[k]);
 		}
 
@@ -100,23 +99,35 @@ Window {
 			RowLayout
 			{
 				Layout.fillWidth: true
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Accounts")
-				}
 
-				Button
+				Rectangle
 				{
-					iconSource: "qrc:/qml/img/plus.png"
-					action: newAccountAction
-					width: 10
-					height: 10
-				}
+					Layout.preferredWidth: 75
+					DefaultLabel {
+						id: accountsLabel
+						Layout.preferredWidth: 75
+						text: qsTr("Accounts")
+					}
 
-				Action {
-					id: newAccountAction
-					tooltip: qsTr("Add new Account")
-					onTriggered: accountsModel.newAccount("10000", QEther.Ether);
+					Button
+					{
+						anchors.top: accountsLabel.bottom
+						anchors.topMargin: 10
+						iconSource: "qrc:/qml/img/plus.png"
+						action: newAccountAction
+					}
+
+					Action {
+						id: newAccountAction
+						tooltip: qsTr("Add new Account")
+						onTriggered:
+						{
+							var account = stateListModel.newAccount("1000000", QEther.Ether);
+							stateAccounts.push(account);
+							accountsModel.append(account);
+
+						}
+					}
 				}
 
 				TableView
@@ -124,9 +135,9 @@ Window {
 					Layout.fillWidth: true
 					model: accountsModel
 					TableViewColumn {
-						role: "secret"
-						title: qsTr("Secret")
-						width: 100
+						role: "name"
+						title: qsTr("Name")
+						width: 120
 						delegate: Item {
 							Rectangle
 							{
@@ -134,7 +145,7 @@ Window {
 								DefaultLabel {
 									anchors.verticalCenter: parent.verticalCenter
 									text:  {
-										return styleData.value.substring(0, 5) + '...';
+										return styleData.value
 									}
 								}
 							}
@@ -156,8 +167,8 @@ Window {
 					}
 					rowDelegate:
 						Rectangle {
-						color: "transparent"
-						height: 40;
+						color: styleData.alternate ? "transparent" : "#f0f0f0"
+						height: 30;
 					}
 				}
 			}
@@ -259,13 +270,6 @@ Window {
 	ListModel {
 		id: accountsModel
 
-		function newAccount(_balance, _unit)
-		{
-			var secret = clientModel.newAddress();
-			accountsModel.append({ secret: secret, balance: QEtherHelper.createEther(_balance, _unit) });
-			stateAccounts.push({ secret: secret, balance: QEtherHelper.createEther(_balance, _unit) });
-		}
-
 		function removeAccount(_i)
 		{
 			accountsModel.remove(_i);
@@ -277,6 +281,7 @@ Window {
 		id: transactionsModel
 
 		function editTransaction(index) {
+			transactionDialog.stateAccounts = stateAccounts;
 			transactionDialog.open(index, transactionsModel.get(index));
 		}
 
@@ -286,6 +291,7 @@ Window {
 			// https://bugreports.qt-project.org/browse/QTBUG-41327
 			// Second call to signal handler would just edit the item that was just created, no harm done
 			var item = TransactionHelper.defaultTransaction();
+			transactionDialog.stateAccounts = stateAccounts;
 			transactionDialog.open(transactionsModel.count, item);
 		}
 
