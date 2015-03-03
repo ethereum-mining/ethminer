@@ -419,8 +419,8 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 		{
 			clog(NetConnect) << "devp2p.connect.ingress recving auth";
 			// ingress: rx auth
-			authCipher.resize(321);
-			ba::async_read(*socket, ba::buffer(authCipher, 321), [this, self](boost::system::error_code ec, std::size_t)
+			authCipher.resize(307);
+			ba::async_read(*socket, ba::buffer(authCipher, 307), [this, self](boost::system::error_code ec, std::size_t)
 			{
 				if (ec)
 					transition(ec);
@@ -457,8 +457,8 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 		{
 			clog(NetConnect) << "devp2p.connect.egress recving ack";
 			// egress: rx ack
-			ackCipher.resize(225);
-			ba::async_read(*socket, ba::buffer(ackCipher, 225), [this, self](boost::system::error_code ec, std::size_t)
+			ackCipher.resize(210);
+			ba::async_read(*socket, ba::buffer(ackCipher, 210), [this, self](boost::system::error_code ec, std::size_t)
 			{
 				if (ec)
 					transition(ec);
@@ -532,13 +532,21 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 		bytesConstRef(&ingressCipher).copyTo(keyMaterial.cropped(h256::size, ingressCipher.size()));
 		k->ingressMac = sha3(keyMaterial);
 		
+		
+		
+		
 		// This test will be replaced with protocol-capabilities information (was Hello packet)
 		// TESTING: send encrypt magic sequence
 		bytes magic {0x22,0x40,0x08,0x91};
+		
+		
+		// rlpx encrypt
 		encryptSymNoAuth(k->encryptK, &magic, k->magicCipherAndMac, h128());
 		k->magicCipherAndMac.resize(k->magicCipherAndMac.size() + 32);
 		sha3mac(k->egressMac.ref(), &magic, k->egressMac.ref());
 		k->egressMac.ref().copyTo(bytesRef(&k->magicCipherAndMac).cropped(k->magicCipherAndMac.size() - 32, 32));
+		
+		
 		
 		clog(NetConnect) << "devp2p.connect.egress txrx magic sequence";
 		k->recvdMagicCipherAndMac.resize(k->magicCipherAndMac.size());
