@@ -133,7 +133,7 @@ State::State(State const& _s):
 
 void State::paranoia(std::string const& _when, bool _enforceRefs) const
 {
-#if ETH_PARANOIA
+#if ETH_PARANOIA && !ETH_FATDB
 	// TODO: variable on context; just need to work out when there should be no leftovers
 	// [in general this is hard since contract alteration will result in nodes in the DB that are no directly part of the state DB].
 	if (!isTrieGood(_enforceRefs, false))
@@ -1084,7 +1084,7 @@ u256 State::execute(LastHashes const& _lh, bytesConstRef _rlp, bytes* o_output, 
 
 	commit();
 
-#if ETH_PARANOIA
+#if ETH_PARANOIA && !ETH_FATDB
 	ctrace << "Executed; now" << rootHash();
 	ctrace << old.diff(*this);
 
