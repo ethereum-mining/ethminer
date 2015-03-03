@@ -120,9 +120,10 @@ bool Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
 	ecdh::agree(_k, *(Public*)(io_text.data()+1), z);
 	auto key = eciesKDF(z, bytes(), 64);
 	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 32);
-	bytesRef mKey = bytesRef(&key).cropped(16, 16);
+	bytesRef mKeyMaterial = bytesRef(&key).cropped(16, 16);
+	bytes mKey(32);
 	CryptoPP::SHA256 ctx;
-	ctx.Update(mKey.data(), mKey.size());
+	ctx.Update(mKeyMaterial.data(), mKeyMaterial.size());
 	ctx.Final(mKey.data());
 	
 	bytes plain;
@@ -140,7 +141,7 @@ bool Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
 	hmacctx.Final(mac.data());
 	for (unsigned i = 0; i < h256::size; i++)
 		if (mac[i] != msgMac[i])
-			0;
+			return false;
 	
 	decryptSymNoAuth(*(Secret*)eKey.data(), iv, cipherNoIV, plain);
 	io_text.resize(plain.size());
