@@ -11,10 +11,10 @@ Item {
 
 	property alias model: stateListModel
 	property var stateList: []
-	property string defaultAccount: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074"
+	property string defaultAccount: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074" //support for old project
 	function fromPlainStateItem(s) {
 		if (!s.accounts)
-			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether, defaultAccount)]; //support old project
+			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether, defaultAccount)]; //support for old project
 		return {
 			title: s.title,
 			transactions: s.transactions.map(fromPlainTransactionItem),
@@ -33,7 +33,7 @@ Item {
 
 	function fromPlainTransactionItem(t) {
 		if (!t.sender)
-			t.sender = defaultAccount; //support old project
+			t.sender = defaultAccount; //support for old project
 		var r = {
 			contractId: t.contractId,
 			functionId: t.functionId,
