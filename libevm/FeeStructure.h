@@ -50,6 +50,7 @@ extern u256 const c_logTopicGas;			///< Multiplied by the * of the LOG*, per LOG
 extern u256 const c_createGas;				///< Once per CREATE operation & contract-creation transaction.
 extern u256 const c_createDataGas;
 extern u256 const c_callGas;				///< Once per CALL operation & message call transaction.
+extern u256 const c_callStipend;			///< Free gas given at beginning of call.
 extern u256 const c_callNewAccountGas;		///< Paid for CALL when the destination address didn't exist prior.
 extern u256 const c_callValueTransferGas;	///< Paid for CALL when the value transfor is non-zero.
 extern u256 const c_suicideRefundGas;		///< Refunded following a suicide operation.
