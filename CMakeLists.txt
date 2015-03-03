@@ -21,6 +21,7 @@ function(createDefaultCacheConfig)
 	set(EVMJIT OFF CACHE BOOL "Build a just-in-time compiler for EVM code (requires LLVM)")
 	set(FATDB OFF CACHE BOOL "Build with ability to list entries in the Trie. Doubles DB size, slows everything down, but good for looking at state diffs and trie contents.")
 	set(JUSTTESTS OFF CACHE BOOL "Build only for tests.")
+	set(SOLIDITY ON CACHE BOOL "Build the Solidity language components (requried unless HEADLESS)")
 endfunction()
 
 
@@ -48,6 +49,10 @@ function(configureProject)
 
 	if (FATDB)
 		add_definitions(-DETH_FATDB)
+	endif()
+
+	if (SOLIDITY)
+		add_definitions(-DETH_SOLIDITY)
 	endif()
 
 	if (HEADLESS OR JUSTTESTS)
