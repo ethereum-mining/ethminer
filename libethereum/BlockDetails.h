@@ -57,11 +57,10 @@ struct BlockDetails
 struct BlockLogBlooms
 {
 	BlockLogBlooms() {}
-	BlockLogBlooms(RLP const& _r) { blooms = _r.toVector<LogBloom>(); size = _r.data().size(); }
-	bytes rlp() const { RLPStream s; s << blooms; size = s.out().size(); return s.out(); }
+	BlockLogBlooms(RLP const& _r) { blooms = _r.toVector<LogBloom>(); }
+	bytes rlp() const { RLPStream s; s << blooms; return s.out(); }
 
 	LogBlooms blooms;
-	mutable unsigned size;
 };
 
 struct BlockReceipts
