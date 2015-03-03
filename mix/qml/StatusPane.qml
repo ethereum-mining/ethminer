@@ -164,8 +164,6 @@ Rectangle {
 		RowLayout
 		{
 			anchors.fill: parent
-			anchors.top: statusHeader.top
-			anchors.right: statusHeader.right
 			Rectangle
 			{
 				color: "transparent"

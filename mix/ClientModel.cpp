@@ -38,6 +38,7 @@
 #include "QEther.h"
 #include "Web3Server.h"
 #include "ClientModel.h"
+#include "MixClient.h"
 
 using namespace dev;
 using namespace dev::eth;
@@ -87,7 +88,7 @@ ClientModel::ClientModel(AppContext* _context):
 	connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
 
-	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), std::vector<dev::KeyPair> { m_client->userAccount() }, m_client.get()));
+	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), m_client->userAccounts(), m_client.get()));
 	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
 	_context->appEngine()->rootContext()->setContextProperty("clientModel", this);
 }
@@ -136,6 +137,12 @@ void ClientModel::mine()
 	});
 }
 
+QString ClientModel::newAddress()
+{
+	KeyPair a = KeyPair::create();
+	return QString::fromStdString(toHex(a.secret().ref()));
+}
+
 QVariantMap ClientModel::contractAddresses() const
 {
 	QVariantMap res;
@@ -144,15 +151,17 @@ QVariantMap ClientModel::contractAddresses() const
 	return res;
 }
 
-void ClientModel::debugDeployment()
-{
-	executeSequence(std::vector<TransactionSettings>(), 10000000 * ether);
-}
-
 void ClientModel::setupState(QVariantMap _state)
 {
-	u256 balance = (qvariant_cast<QEther*>(_state.value("balance")))->toU256Wei();
+	QVariantList balances = _state.value("accounts").toList();
 	QVariantList transactions = _state.value("transactions").toList();
+
+	std::map<Secret, u256> accounts;
+	for (auto const& b: balances)
+	{
+		QVariantMap address = b.toMap();
+		accounts.insert(std::make_pair(Secret(address.value("secret").toString().toStdString()), (qvariant_cast<QEther*>(address.value("balance")))->toU256Wei()));
+	}
 
 	std::vector<TransactionSettings> transactionSequence;
 	for (auto const& t: transactions)
@@ -163,7 +172,7 @@ void ClientModel::setupState(QVariantMap _state)
 		u256 gas = boost::get<u256>(qvariant_cast<QBigInt*>(transaction.value("gas"))->internalValue());
 		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
 		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
-
+		QString sender = transaction.value("sender").toString();
 		bool isStdContract = (transaction.value("stdContract").toBool());
 		if (isStdContract)
 		{
@@ -173,6 +182,7 @@ void ClientModel::setupState(QVariantMap _state)
 			transactionSettings.gasPrice = 10000000000000;
 			transactionSettings.gas = 125000;
 			transactionSettings.value = 0;
+			transactionSettings.sender = Secret(sender.toStdString());
 			transactionSequence.push_back(transactionSettings);
 		}
 		else
@@ -180,7 +190,7 @@ void ClientModel::setupState(QVariantMap _state)
 			if (contractId.isEmpty() && m_context->codeModel()->hasContract()) //TODO: This is to support old project files, remove later
 				contractId = m_context->codeModel()->contracts().keys()[0];
 			QVariantList qParams = transaction.value("qType").toList();
-			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasPrice);
+			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasPrice, Secret(sender.toStdString()));
 
 			for (QVariant const& variant: qParams)
 			{
@@ -194,10 +204,10 @@ void ClientModel::setupState(QVariantMap _state)
 			transactionSequence.push_back(transactionSettings);
 		}
 	}
-	executeSequence(transactionSequence, balance);
+	executeSequence(transactionSequence, accounts);
 }
 
-void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance)
+void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Secret, u256> const& _balances)
 {
 	if (m_running)
 		BOOST_THROW_EXCEPTION(ExecutionStateException());
@@ -211,7 +221,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 	{
 		try
 		{
-			m_client->resetState(_balance);
+			m_client->resetState(_balances);
 			onStateReset();
 			for (TransactionSettings const& transaction: _sequence)
 			{
@@ -357,13 +367,13 @@ void ClientModel::showDebugError(QString const& _error)
 
 Address ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
 {
-	Address newAddress = m_client->transact(m_client->userAccount().secret(), _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice);
+	Address newAddress = m_client->transact(_ctrTransaction.sender, _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice);
 	return newAddress;
 }
 
 void ClientModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
-	m_client->transact(m_client->userAccount().secret(), _tr.value, _contract, _data, _tr.gas, _tr.gasPrice);
+	m_client->transact(_tr.sender, _tr.value, _contract, _data, _tr.gas, _tr.gasPrice);
 }
 
 RecordLogEntry* ClientModel::lastBlock() const

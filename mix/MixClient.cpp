@@ -40,7 +40,7 @@ namespace dev
 namespace mix
 {
 
-const Secret c_userAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
+const Secret c_defaultUserAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
 const u256 c_mixGenesisDifficulty = (u256) 1 << 4;
 
 class MixBlockChain: public dev::eth::BlockChain
@@ -62,16 +62,18 @@ public:
 };
 
 MixClient::MixClient(std::string const& _dbPath):
-	m_userAccount(c_userAccountSecret), m_dbPath(_dbPath), m_minigThreads(0)
+	m_dbPath(_dbPath), m_minigThreads(0)
 {
-	resetState(10000000 * ether);
+	std::map<Secret, u256> account;
+	account.insert(std::make_pair(c_defaultUserAccountSecret, 1000000 * ether));
+	resetState(account);
 }
 
 MixClient::~MixClient()
 {
 }
 
-void MixClient::resetState(u256 _balance)
+void MixClient::resetState(std::map<Secret, u256> _accounts)
 {
 	WriteGuard l(x_state);
 	Guard fl(m_filterLock);
@@ -81,12 +83,20 @@ void MixClient::resetState(u256 _balance)
 	m_stateDB = OverlayDB();
 	TrieDB<Address, MemoryDB> accountState(&m_stateDB);
 	accountState.init();
-	std::map<Address, Account> genesisState = { std::make_pair(KeyPair(c_userAccountSecret).address(), Account(_balance, Account::NormalCreation)) };
+
+	std::map<Address, Account> genesisState;
+	for (auto account: _accounts)
+	{
+		KeyPair a = KeyPair(account.first);
+		m_userAccounts.push_back(a);
+		genesisState.insert(std::make_pair(a.address(), Account(account.second, Account::NormalCreation)));
+	}
+
 	dev::eth::commit(genesisState, static_cast<MemoryDB&>(m_stateDB), accountState);
 	h256 stateRoot = accountState.root();
 	m_bc.reset();
 	m_bc.reset(new MixBlockChain(m_dbPath, stateRoot));
-	m_state = eth::State(m_userAccount.address(), m_stateDB, BaseState::Empty);
+	m_state = eth::State(genesisState.begin()->first , m_stateDB, BaseState::Empty);
 	m_state.sync(bc());
 	m_startState = m_state;
 	m_executions.clear();
