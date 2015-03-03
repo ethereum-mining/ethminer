@@ -58,8 +58,8 @@ u256 const dev::eth::c_quadCoeffDiv = 512;
 
 u256 const dev::eth::c_createDataGas = 200;
 u256 const dev::eth::c_txGas = 21000;
-u256 const dev::eth::c_txDataZeroGas = 37;
-u256 const dev::eth::c_txDataNonZeroGas = 2;
+u256 const dev::eth::c_txDataZeroGas = 4;
+u256 const dev::eth::c_txDataNonZeroGas = 68;
 
 u256 const dev::eth::c_copyGas = 3;
 
