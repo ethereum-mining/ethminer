@@ -11,8 +11,11 @@ import "."
 Rectangle {
 	id: debugPanel
 
-	property alias transactionLog : transactionLog
+	property alias transactionLog: transactionLog
+	signal debugExecuteLocation(string documentId, var location)
 	property string compilationErrorMessage
+	property bool assemblyMode: false
+
 	objectName: "debugPanel"
 	color: "#ededed"
 	clip: true
@@ -21,6 +24,11 @@ Rectangle {
 	{
 		if (visible)
 			forceActiveFocus();
+	}
+
+	onAssemblyModeChanged:
+	{
+		Debugger.updateMode();
 	}
 
 	function displayCompilationErrorIfAny()
@@ -51,6 +59,11 @@ Rectangle {
 			forceActiveFocus();
 	}
 
+	function setBreakpoints(bp)
+	{
+		Debugger.setBreakpoints(bp);
+	}
+
 	Connections {
 		target: clientModel
 		onDebugDataReady:  {
@@ -60,10 +73,8 @@ Rectangle {
 
 	Connections {
 		target: codeModel
-		onCompilationComplete:
-		{
+		onCompilationComplete: {
 			debugPanel.compilationErrorMessage = "";
-			update(null, false);
 		}
 
 		onCompilationError: {
@@ -199,11 +210,23 @@ Rectangle {
 						anchors.bottom: parent.bottom
 						anchors.left: parent.left
 						color: "transparent"
-						width: stateListContainer.width
+						width: parent.width * 0.4
 						RowLayout {
 							anchors.horizontalCenter: parent.horizontalCenter
 							id: jumpButtons
 							spacing: 3
+							StepActionImage
+							{
+								id: runBackAction;
+								enabledStateImg: "qrc:/qml/img/jumpoutback.png"
+								disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
+								onClicked: Debugger.runBack()
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+Shift+F5"
+								buttonTooltip: qsTr("Run Back")
+							}
+
 							StepActionImage
 							{
 								id: jumpOutBackAction;
@@ -275,6 +298,20 @@ Rectangle {
 								buttonShortcut: "Shift+F11"
 								buttonTooltip: qsTr("Step Out Forward")
 							}
+
+							StepActionImage
+							{
+								id: runForwardAction
+								enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
+								disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
+								onClicked: Debugger.runForward()
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+F5"
+								buttonTooltip: qsTr("Run Forward")
+							}
+
+
 						}
 					}
 
@@ -282,7 +319,7 @@ Rectangle {
 						anchors.top: parent.top
 						anchors.bottom: parent.bottom
 						anchors.right: parent.right
-						width: debugInfoContainer.width
+						width: parent.width * 0.6
 						color: "transparent"
 						Slider {
 							id: statesSlider
@@ -317,6 +354,7 @@ Rectangle {
 					height: 405
 					implicitHeight: 405
 					color: "transparent"
+					visible: assemblyMode
 
 					Rectangle
 					{
