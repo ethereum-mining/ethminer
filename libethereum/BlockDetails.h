@@ -55,10 +55,10 @@ struct BlockDetails
 struct BlockLogBlooms
 {
 	BlockLogBlooms() {}
-	BlockLogBlooms(RLP const& _r) { blooms = _r.toVector<h512>(); }
+	BlockLogBlooms(RLP const& _r) { blooms = _r.toVector<LogBloom>(); }
 	bytes rlp() const { RLPStream s; s << blooms; return s.out(); }
 
-	h512s blooms;
+	LogBlooms blooms;
 };
 
 struct BlockReceipts

@@ -44,8 +44,11 @@ std::string formatBalance(bigint const& _b);
 /// Get information concerning the currency denominations.
 std::vector<std::pair<u256, std::string>> const& units();
 
-/// The log bloom's size (512 bit).
-using LogBloom = h512;
+/// The log bloom's size (2048-bit).
+using LogBloom = h2048;
+
+/// Many log blooms.
+using LogBlooms = std::vector<LogBloom>;
 
 template <size_t n> inline u256 exp10()
 {
