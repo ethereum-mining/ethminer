@@ -193,7 +193,7 @@ signals:
 private:
 	RecordLogEntry* lastBlock() const;
 	QVariantMap contractAddresses() const;
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Secret, u256> _balances);
+	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Secret, u256> const& _balances);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	void onNewTransaction();

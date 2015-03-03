@@ -207,7 +207,7 @@ void ClientModel::setupState(QVariantMap _state)
 	executeSequence(transactionSequence, accounts);
 }
 
-void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Secret, u256> _balances)
+void ClientModel::executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Secret, u256> const& _balances)
 {
 	if (m_running)
 		BOOST_THROW_EXCEPTION(ExecutionStateException());
