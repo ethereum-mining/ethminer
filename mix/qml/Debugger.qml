@@ -11,7 +11,10 @@ import "."
 Rectangle {
 	id: debugPanel
 
-	property alias transactionLog : transactionLog
+	property alias transactionLog: transactionLog
+	signal debugExecuteLocation(string documentId, var location)
+	property string compilationErrorMessage
+	property bool assemblyMode: false
 
 	objectName: "debugPanel"
 	color: "#ededed"
@@ -23,27 +26,42 @@ Rectangle {
 			forceActiveFocus();
 	}
 
+	onAssemblyModeChanged:
+	{
+		Debugger.updateMode();
+	}
+
+	function displayCompilationErrorIfAny()
+	{
+		debugScrollArea.visible = false;
+		compilationErrorArea.visible = true;
+		machineStates.visible = false;
+		var errorInfo = ErrorLocationFormater.extractErrorInfo(compilationErrorMessage, false);
+		errorLocation.text = errorInfo.errorLocation;
+		errorDetail.text = errorInfo.errorDetail;
+		errorLine.text = errorInfo.errorLine;
+	}
+
 	function update(data, giveFocus)
 	{
-		if (statusPane && codeModel.hasContract)
+		if (data === null)
+			Debugger.init(null);
+		else if (data.states.length === 0)
+			Debugger.init(null);
+		else if (codeModel.hasContract)
 		{
 			Debugger.init(data);
 			debugScrollArea.visible = true;
 			compilationErrorArea.visible = false;
 			machineStates.visible = true;
 		}
-		else
-		{
-			debugScrollArea.visible = false;
-			compilationErrorArea.visible = true;
-			machineStates.visible = false;
-			var errorInfo = ErrorLocationFormater.extractErrorInfo(statusPane.result.compilerMessage, false);
-			errorLocation.text = errorInfo.errorLocation;
-			errorDetail.text = errorInfo.errorDetail;
-			errorLine.text = errorInfo.errorLine;
-		}
 		if (giveFocus)
 			forceActiveFocus();
+	}
+
+	function setBreakpoints(bp)
+	{
+		Debugger.setBreakpoints(bp);
 	}
 
 	Connections {
@@ -55,7 +73,13 @@ Rectangle {
 
 	Connections {
 		target: codeModel
-		onCompilationComplete: update(null, false);
+		onCompilationComplete: {
+			debugPanel.compilationErrorMessage = "";
+		}
+
+		onCompilationError: {
+			debugPanel.compilationErrorMessage = _error;
+		}
 	}
 
 	Settings {
@@ -73,7 +97,7 @@ Rectangle {
 		visible: false;
 		id: compilationErrorArea
 		width: parent.width - 20
-		height: 500
+		height: 600
 		color: "#ededed"
 		anchors.left: parent.left
 		anchors.top: parent.top
@@ -82,7 +106,20 @@ Rectangle {
 		{
 			width: parent.width
 			anchors.top: parent.top
-			spacing: 25
+			spacing: 15
+			Rectangle
+			{
+				height: 15
+				Button {
+					text: qsTr("Back to Debugger")
+					onClicked: {
+						debugScrollArea.visible = true;
+						compilationErrorArea.visible = false;
+						machineStates.visible = true;
+					}
+				}
+			}
+
 			RowLayout
 			{
 				height: 100
@@ -173,11 +210,23 @@ Rectangle {
 						anchors.bottom: parent.bottom
 						anchors.left: parent.left
 						color: "transparent"
-						width: stateListContainer.width
+						width: parent.width * 0.4
 						RowLayout {
 							anchors.horizontalCenter: parent.horizontalCenter
 							id: jumpButtons
 							spacing: 3
+							StepActionImage
+							{
+								id: runBackAction;
+								enabledStateImg: "qrc:/qml/img/jumpoutback.png"
+								disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
+								onClicked: Debugger.runBack()
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+Shift+F5"
+								buttonTooltip: qsTr("Run Back")
+							}
+
 							StepActionImage
 							{
 								id: jumpOutBackAction;
@@ -249,6 +298,20 @@ Rectangle {
 								buttonShortcut: "Shift+F11"
 								buttonTooltip: qsTr("Step Out Forward")
 							}
+
+							StepActionImage
+							{
+								id: runForwardAction
+								enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
+								disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
+								onClicked: Debugger.runForward()
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+F5"
+								buttonTooltip: qsTr("Run Forward")
+							}
+
+
 						}
 					}
 
@@ -256,7 +319,7 @@ Rectangle {
 						anchors.top: parent.top
 						anchors.bottom: parent.bottom
 						anchors.right: parent.right
-						width: debugInfoContainer.width
+						width: parent.width * 0.6
 						color: "transparent"
 						Slider {
 							id: statesSlider
@@ -291,6 +354,7 @@ Rectangle {
 					height: 405
 					implicitHeight: 405
 					color: "transparent"
+					visible: assemblyMode
 
 					Rectangle
 					{

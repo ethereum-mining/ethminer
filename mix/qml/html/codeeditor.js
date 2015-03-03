@@ -4,6 +4,7 @@ var editor = CodeMirror(document.body, {
 							//styleActiveLine: true,
 							matchBrackets: true,
 							autofocus: true,
+							gutters: ["CodeMirror-linenumbers", "breakpoints"]
 						});
 
 
@@ -13,6 +14,7 @@ editor.setOption("indentWithTabs", true);
 editor.setOption("fullScreen", true);
 
 editor.changeRegistered = false;
+editor.breakpointsChangeRegistered = false;
 
 editor.on("change", function(eMirror, object) {
 	editor.changeRegistered = true;
@@ -33,6 +35,28 @@ editor.setOption("extraKeys", {
 	}});
 }
 
+makeMarker = function() {
+  var marker = document.createElement("div");
+  marker.style.color = "#822";
+  marker.innerHTML = "●";
+  return marker;
+};
+
+toggleBreakpointLine = function(n) {
+	var info = editor.lineInfo(n);
+	editor.setGutterMarker(n, "breakpoints", info.gutterMarkers ? null : makeMarker());
+	editor.breakpointsChangeRegistered = true;
+}
+
+editor.on("gutterClick", function(cm, n) {
+	toggleBreakpointLine(n);
+});
+
+toggleBreakpoint = function() {
+	var line = editor.getCursor().line;
+	toggleBreakpointLine(line);
+}
+
 getTextChanged = function() {
 	return editor.changeRegistered;
 };
@@ -42,6 +66,25 @@ getText = function() {
 	return editor.getValue();
 };
 
+getBreakpointsChanged = function() {
+	return editor.changeRegistered || editor.breakpointsChangeRegistered;   //TODO: track new lines
+};
+
+getBreakpoints = function() {
+	var locations = [];
+	editor.breakpointsChangeRegistered = false;
+	var doc = editor.doc;
+	doc.iter(function(line) {
+		if (line.gutterMarkers && line.gutterMarkers["breakpoints"]) {
+			var l = doc.getLineNumber(line);
+			locations.push({
+				start: editor.indexFromPos({ line: l, ch: 0}),
+				end: editor.indexFromPos({ line: l + 1, ch: 0})
+			});;
+		}
+	});
+	return locations;
+};
 
 setTextBase64 = function(text) {
 	editor.setValue(window.atob(text));
@@ -60,3 +103,10 @@ setMode = function(mode) {
 setClipboardBase64 = function(text) {
 	clipboard = window.atob(text);
 };
+
+var executionMark;
+highlightExecution = function(start, end) {
+	if (executionMark)
+		executionMark.clear();
+	executionMark = editor.markText(editor.posFromIndex(start), editor.posFromIndex(end), { className: "CodeMirror-exechighlight" });
+}

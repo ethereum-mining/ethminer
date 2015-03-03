@@ -30,6 +30,7 @@
 #include <QHash>
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
+#include <libevmcore/Assembly.h>
 
 class QTextDocument;
 
@@ -70,7 +71,7 @@ class CompiledContract: public QObject
 	Q_PROPERTY(QContractDefinition* contract READ contract)
 	Q_PROPERTY(QString contractInterface READ contractInterface CONSTANT)
 	Q_PROPERTY(QString codeHex READ codeHex CONSTANT)
-	Q_PROPERTY(QString documentId MEMBER m_documentId CONSTANT)
+	Q_PROPERTY(QString documentId READ documentId CONSTANT)
 
 public:
 	/// Successful compilation result constructor
@@ -86,6 +87,11 @@ public:
 	QString codeHex() const;
 	/// @returns contract definition in JSON format
 	QString contractInterface() const { return m_contractInterface; }
+	/// @return assebly item locations
+	eth::AssemblyItems const& assemblyItems() const { return m_assemblyItems; }
+	eth::AssemblyItems const& constructorAssemblyItems() const { return m_constructorAssemblyItems; }
+	/// @returns contract source Id
+	QString documentId() const { return m_documentId; }
 
 private:
 	uint m_sourceHash;
@@ -94,6 +100,8 @@ private:
 	dev::bytes m_bytes;
 	QString m_contractInterface;
 	QString m_documentId;
+	eth::AssemblyItems m_assemblyItems;
+	eth::AssemblyItems m_constructorAssemblyItems;
 
 	friend class CodeModel;
 };
