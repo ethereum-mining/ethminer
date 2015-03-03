@@ -48,8 +48,6 @@ namespace dev
 namespace mix
 {
 
-const Secret c_defaultUserAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
-
 class RpcConnector: public jsonrpc::AbstractServerConnector
 {
 public:
@@ -159,7 +157,6 @@ void ClientModel::setupState(QVariantMap _state)
 	QVariantList transactions = _state.value("transactions").toList();
 
 	std::map<Secret, u256> accounts;
-	accounts.insert(std::make_pair(c_defaultUserAccountSecret, 10000 * ether)); //Default account, used to deploy config contracts.
 	for (auto const& b: balances)
 	{
 		QVariantMap address = b.toMap();
@@ -175,7 +172,7 @@ void ClientModel::setupState(QVariantMap _state)
 		u256 gas = boost::get<u256>(qvariant_cast<QBigInt*>(transaction.value("gas"))->internalValue());
 		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
 		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
-
+		QString sender = transaction.value("sender").toString();
 		bool isStdContract = (transaction.value("stdContract").toBool());
 		if (isStdContract)
 		{
@@ -185,7 +182,7 @@ void ClientModel::setupState(QVariantMap _state)
 			transactionSettings.gasPrice = 10000000000000;
 			transactionSettings.gas = 125000;
 			transactionSettings.value = 0;
-			transactionSettings.sender = c_defaultUserAccountSecret;
+			transactionSettings.sender = Secret(sender.toStdString());
 			transactionSequence.push_back(transactionSettings);
 		}
 		else
@@ -193,7 +190,7 @@ void ClientModel::setupState(QVariantMap _state)
 			if (contractId.isEmpty() && m_context->codeModel()->hasContract()) //TODO: This is to support old project files, remove later
 				contractId = m_context->codeModel()->contracts().keys()[0];
 			QVariantList qParams = transaction.value("qType").toList();
-			QString sender = transaction.value("sender").toString();
+
 			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasPrice, Secret(sender.toStdString()));
 
 			for (QVariant const& variant: qParams)

@@ -11,10 +11,10 @@ Item {
 
 	property alias model: stateListModel
 	property var stateList: []
-
+	property string defaultAccount: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074"
 	function fromPlainStateItem(s) {
 		if (!s.accounts)
-			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether)]; //support old project
+			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether, defaultAccount)]; //support old project
 		return {
 			title: s.title,
 			transactions: s.transactions.map(fromPlainTransactionItem),
@@ -32,6 +32,8 @@ Item {
 	}
 
 	function fromPlainTransactionItem(t) {
+		if (!t.sender)
+			t.sender = defaultAccount; //support old project
 		var r = {
 			contractId: t.contractId,
 			functionId: t.functionId,
@@ -40,7 +42,8 @@ Item {
 			gas: QEtherHelper.createBigInt(t.gas.value),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
 			stdContract: t.stdContract,
-			parameters: {}
+			parameters: {},
+			sender: t.sender
 		};
 		var qType = [];
 		for (var key in t.parameters)
@@ -189,11 +192,12 @@ Item {
 			};
 		}
 
-		function newAccount(_balance, _unit)
+		function newAccount(_balance, _unit, _secret)
 		{
-			var secret = clientModel.newAddress();
-			var name = qsTr("Account") + "-" + secret.substring(0, 4);
-			return { name: name, secret: secret, balance: QEtherHelper.createEther(_balance, _unit) };
+			if (!_secret)
+				_secret = clientModel.newAddress();
+			var name = qsTr("Account") + "-" + _secret.substring(0, 4);
+			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit) };
 		}
 
 		function createDefaultState() {
@@ -203,7 +207,7 @@ Item {
 				accounts: []
 			};
 
-			item.accounts.push(newAccount("1000000", QEther.Ether));
+			item.accounts.push(newAccount("1000000", QEther.Ether, defaultAccount));
 
 			//add all stdc contracts
 			for (var i = 0; i < contractLibrary.model.count; i++) {
@@ -213,6 +217,7 @@ Item {
 				contractTransaction.contractId = contractItem.name;
 				contractTransaction.functionId = contractItem.name;
 				contractTransaction.stdContract = true;
+				contractTransaction.sender = item.accounts[0].secret; // default account is used to deploy std contract.
 				item.transactions.push(contractTransaction);
 			};
 
@@ -221,6 +226,7 @@ Item {
 				var ctorTr = defaultTransactionItem();
 				ctorTr.functionId = c;
 				ctorTr.contractId = c;
+				ctorTr.sender = item.accounts[0].secret;
 				item.transactions.push(ctorTr);
 			}
 			return item;
