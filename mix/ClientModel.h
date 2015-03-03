@@ -145,8 +145,6 @@ public:
 	Q_INVOKABLE void mine();
 
 public slots:
-	/// Run the contract constructor and show debugger window.
-	void debugDeployment();
 	/// Setup state, run transaction sequence, show debugger for the last transaction
 	/// @param _state JS object with state configuration
 	void setupState(QVariantMap _state);

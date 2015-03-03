@@ -153,11 +153,6 @@ QVariantMap ClientModel::contractAddresses() const
 	return res;
 }
 
-void ClientModel::debugDeployment()
-{
-	executeSequence(std::vector<TransactionSettings>(), std::map<Secret, u256>());
-}
-
 void ClientModel::setupState(QVariantMap _state)
 {
 	QVariantList balances = _state.value("accounts").toList();
