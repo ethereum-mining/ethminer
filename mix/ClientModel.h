@@ -46,8 +46,8 @@ class QVariableDefinition;
 struct TransactionSettings
 {
 	TransactionSettings() {}
-	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
-		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
+	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice, Secret _sender):
+		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice), sender(_sender) {}
 	TransactionSettings(QString const& _stdContractName, QString const& _stdContractUrl):
 		contractId(_stdContractName), stdContractUrl(_stdContractUrl) {}
 
@@ -65,6 +65,8 @@ struct TransactionSettings
 	QList<QVariableDefinition*> parameterValues;
 	/// Standard contract url
 	QString stdContractUrl;
+	/// Sender
+	Secret sender;
 };
 
 
@@ -142,8 +144,6 @@ public:
 	Q_INVOKABLE void mine();
 
 public slots:
-	/// Run the contract constructor and show debugger window.
-	void debugDeployment();
 	/// Setup state, run transaction sequence, show debugger for the last transaction
 	/// @param _state JS object with state configuration
 	void setupState(QVariantMap _state);
@@ -151,6 +151,7 @@ public slots:
 	Q_INVOKABLE void debugRecord(unsigned _index);
 	/// Show the debugger for an empty record
 	Q_INVOKABLE void emptyRecord();
+	Q_INVOKABLE QString newAddress();
 
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
@@ -191,7 +192,7 @@ signals:
 private:
 	RecordLogEntry* lastBlock() const;
 	QVariantMap contractAddresses() const;
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
+	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Secret, u256> const& _balances);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	void onNewTransaction();

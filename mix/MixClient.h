@@ -42,8 +42,7 @@ public:
 	MixClient(std::string const& _dbPath);
 	virtual ~MixClient();
 	/// Reset state to the empty state with given balance.
-	void resetState(u256 _balance);
-	KeyPair const& userAccount() const { return m_userAccount; }
+	void resetState(std::map<Secret, u256> _accounts);
 	void mine();
 	ExecutionResult const& lastExecution() const;
 	ExecutionResults const& executions() const;
@@ -91,6 +90,7 @@ public:
 	bool submitNonce(h256 const&) override { return false; }
 	/// @returns the last mined block information
 	eth::BlockInfo blockInfo() const;
+	std::vector<KeyPair> userAccounts() { return m_userAccounts; }
 
 private:
 	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state, bool _call);
@@ -99,7 +99,7 @@ private:
 	MixBlockChain& bc() { return *m_bc; }
 	MixBlockChain const& bc() const { return *m_bc; }
 
-	KeyPair m_userAccount;
+	std::vector<KeyPair> m_userAccounts;
 	eth::State m_state;
 	eth::State m_startState;
 	OverlayDB m_stateDB;
