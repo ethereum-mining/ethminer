@@ -218,8 +218,8 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 		gasLimit > _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor)
 		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor, _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor));
 
-	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / 1024)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / 1024));
+	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / 2048)
+		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / 2048));
 
 	// Check timestamp is after previous timestamp.
 	if (parentHash)
