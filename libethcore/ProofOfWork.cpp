@@ -162,7 +162,7 @@ std::pair<MineInfo, Ethash::Proof> Ethash::mine(BlockInfo const& _header, unsign
 		if (val <= boundary)
 		{
 			ret.first.completed = true;
-			result.mixHash = *reinterpret_cast<h256 const*>(ethashReturn.mix_hash);
+			result.mixHash = h256(ethashReturn.mix_hash, h256::ConstructFromPointer);
 			result.nonce = u64(tryNonce);
 			break;
 		}
