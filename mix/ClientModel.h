@@ -27,7 +27,6 @@
 #include <map>
 #include <QString>
 #include <QVariantMap>
-#include "QBigInt.h"
 #include "MachineStates.h"
 
 namespace dev
