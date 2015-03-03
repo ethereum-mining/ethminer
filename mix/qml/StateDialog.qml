@@ -12,14 +12,13 @@ Window {
 	id: modalStateDialog
 	modality: Qt.ApplicationModal
 
-	width: 555
+	width: 570
 	height: 480
 	title: qsTr("Edit State")
 	visible: false
 	color: StateDialogStyle.generic.backgroundColor
 
 	property alias stateTitle: titleField.text
-	//property alias stateBalance: balanceField.value
 	property alias isDefault: defaultCheckBox.checked
 	property int stateIndex
 	property var stateTransactions: []
@@ -41,7 +40,8 @@ Window {
 		accountsModel.clear();
 		stateAccounts = [];
 		for (var k = 0; k < item.accounts.length; k++)
-		{			accountsModel.append(item.accounts[k]);
+		{
+			accountsModel.append(item.accounts[k]);
 			stateAccounts.push(item.accounts[k]);
 		}
 
@@ -125,13 +125,13 @@ Window {
 							var account = stateListModel.newAccount("1000000", QEther.Ether);
 							stateAccounts.push(account);
 							accountsModel.append(account);
-
 						}
 					}
 				}
 
 				TableView
 				{
+					id: accountsView
 					Layout.fillWidth: true
 					model: accountsModel
 					TableViewColumn {
@@ -142,8 +142,13 @@ Window {
 							Rectangle
 							{
 								height: 25
-								DefaultLabel {
+								width: parent.width
+								DefaultTextField {
 									anchors.verticalCenter: parent.verticalCenter
+									onTextChanged: {
+										if (styleData.row > -1)
+											stateAccounts[styleData.row].name = text;
+									}
 									text:  {
 										return styleData.value
 									}

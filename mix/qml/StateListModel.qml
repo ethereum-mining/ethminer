@@ -192,7 +192,7 @@ Item {
 		function newAccount(_balance, _unit)
 		{
 			var secret = clientModel.newAddress();
-			var name = qsTr("Account") + " - " + secret.substring(0, 5);
+			var name = qsTr("Account") + "-" + secret.substring(0, 4);
 			return { name: name, secret: secret, balance: QEtherHelper.createEther(_balance, _unit) };
 		}
 
@@ -204,8 +204,6 @@ Item {
 			};
 
 			item.accounts.push(newAccount("1000000", QEther.Ether));
-
-			console.log(JSON.stringify(item.accounts));
 
 			//add all stdc contracts
 			for (var i = 0; i < contractLibrary.model.count; i++) {
