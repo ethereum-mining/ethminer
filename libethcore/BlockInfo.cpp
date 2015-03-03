@@ -191,16 +191,19 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 	if (!parentHash)
 		return c_genesisDifficulty;
 	else
-		return max<u256>(1024, timestamp >= _parent.timestamp + (c_protocolVersion == 49 ? 5 : 8) ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10)));
+		return max<u256>(2048, timestamp >= _parent.timestamp + (c_protocolVersion == 49 ? 5 : 8) ? _parent.difficulty - (_parent.difficulty / 2048) : (_parent.difficulty + (_parent.difficulty / 2048)));
 }
+
+template <class N> inline N diff(N const& _a, N const& _b) { return max(_a, _b) - min(_a, _b); }
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
 {	// Check difficulty is correct given the two timestamps.
 	if (difficulty != calculateDifficulty(_parent))
 		BOOST_THROW_EXCEPTION(InvalidDifficulty());
 
-	if (gasLimit != calculateGasLimit(_parent))
-		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent)));
+	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / 1024)
+		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / 1024));
+
 
 	// Check timestamp is after previous timestamp.
 	if (parentHash)
