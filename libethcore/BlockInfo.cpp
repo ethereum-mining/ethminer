@@ -96,13 +96,13 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	int field = 0;
 	try
 	{
-		parentHash = _header[field = 0].toHash<h256>(RLP::VeryStrict);
-		sha3Uncles = _header[field = 1].toHash<h256>(RLP::VeryStrict);
-		coinbaseAddress = _header[field = 2].toHash<Address>(RLP::VeryStrict);
-		stateRoot = _header[field = 3].toHash<h256>(RLP::VeryStrict);
-		transactionsRoot = _header[field = 4].toHash<h256>(RLP::VeryStrict);
-		receiptsRoot = _header[field = 5].toHash<h256>(RLP::VeryStrict);
-		logBloom = _header[field = 6].toHash<LogBloom>(RLP::VeryStrict);
+		parentHash = _header[field = 0].toHash<h256>();
+		sha3Uncles = _header[field = 1].toHash<h256>();
+		coinbaseAddress = _header[field = 2].toHash<Address>();
+		stateRoot = _header[field = 3].toHash<h256>();
+		transactionsRoot = _header[field = 4].toHash<h256>();
+		receiptsRoot = _header[field = 5].toHash<h256>();
+		logBloom = _header[field = 6].toHash<LogBloom>();
 		difficulty = _header[field = 7].toInt<u256>();
 		number = _header[field = 8].toInt<u256>();
 		gasLimit = _header[field = 9].toInt<u256>();
