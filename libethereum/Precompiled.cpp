@@ -23,8 +23,8 @@
 
 #include <libdevcrypto/SHA3.h>
 #include <libdevcrypto/Common.h>
-#include <libethcore/Common.h>
-#include <libethcore/Params.h>
+#include <libethcore/CommonEth.h>
+#include <libevm/FeeStructure.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -83,10 +83,10 @@ static bytes identityCode(bytesConstRef _in)
 
 static const std::map<unsigned, PrecompiledAddress> c_precompiled =
 {
-	{ 1, { [](bytesConstRef) -> bigint { return (bigint)3000; }, ecrecoverCode }},
-	{ 2, { [](bytesConstRef i) -> bigint { return (bigint)60 + (i.size() + 31) / 32 * 12; }, sha256Code }},
-	{ 3, { [](bytesConstRef i) -> bigint { return (bigint)600 + (i.size() + 31) / 32 * 120; }, ripemd160Code }},
-	{ 4, { [](bytesConstRef i) -> bigint { return (bigint)15 + (i.size() + 31) / 32 * 3; }, identityCode }}
+	{ 1, { [](bytesConstRef) -> bigint { return c_ecrecoverGas; }, ecrecoverCode }},
+	{ 2, { [](bytesConstRef i) -> bigint { return c_sha256Gas + (i.size() + 31) / 32 * c_sha256WordGas; }, sha256Code }},
+	{ 3, { [](bytesConstRef i) -> bigint { return c_ripemd160Gas + (i.size() + 31) / 32 * c_ripemd160WordGas; }, ripemd160Code }},
+	{ 4, { [](bytesConstRef i) -> bigint { return c_identityGas + (i.size() + 31) / 32 * c_identityWordGas; }, identityCode }}
 };
 
 std::map<unsigned, PrecompiledAddress> const& dev::eth::precompiled()
