@@ -73,7 +73,7 @@ private:
 		CryptoPP::SHA3_256 ingressMac;
 	};
 	
-	void updateMAC(CryptoPP::SHA3_256& _mac);
+	void updateMAC(CryptoPP::SHA3_256& _mac, h128 const& _seed = h128());
 
 	CryptoPP::ECB_Mode<CryptoPP::Rijndael>::Encryption m_macUpdateEncryptor;
 	CryptoPP::SHA3_256 m_egressMac;
