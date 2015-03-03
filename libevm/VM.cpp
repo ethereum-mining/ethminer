@@ -563,21 +563,6 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			break;
 		case Instruction::JUMPDEST:
 			break;
-/*		case Instruction::LOG0:
-			_ext.log({}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
-			break;
-		case Instruction::LOG1:
-			_ext.log({m_stack[m_stack.size() - 1]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 2], (unsigned)m_stack[m_stack.size() - 3]));
-			break;
-		case Instruction::LOG2:
-			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 3], (unsigned)m_stack[m_stack.size() - 4]));
-			break;
-		case Instruction::LOG3:
-			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 3]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 4], (unsigned)m_stack[m_stack.size() - 5]));
-			break;
-		case Instruction::LOG4:
-			_ext.log({m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 3], m_stack[m_stack.size() - 4]}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 5], (unsigned)m_stack[m_stack.size() - 6]));
-			break;*/
 		case Instruction::LOG0:
 			_ext.log({}, bytesConstRef(m_temp.data() + (unsigned)m_stack[m_stack.size() - 1], (unsigned)m_stack[m_stack.size() - 2]));
 			m_stack.pop_back();
@@ -635,6 +620,8 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 		case Instruction::CALLCODE:
 		{
 			u256 gas = m_stack.back();
+			if (m_stack[m_stack.size() - 3] > 0)
+				gas += c_callStipend;
 			m_stack.pop_back();
 			Address receiveAddress = asAddress(m_stack.back());
 			m_stack.pop_back();
