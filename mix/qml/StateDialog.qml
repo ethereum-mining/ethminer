@@ -1,5 +1,6 @@
 import QtQuick 2.2
 import QtQuick.Controls 1.1
+import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
 import QtQuick.Controls.Styles 1.3
@@ -12,29 +13,37 @@ Window {
 	id: modalStateDialog
 	modality: Qt.ApplicationModal
 
-	width: 520
+	width: 590
 	height: 480
 	title: qsTr("Edit State")
 	visible: false
 	color: StateDialogStyle.generic.backgroundColor
 
 	property alias stateTitle: titleField.text
-	property alias stateBalance: balanceField.value
 	property alias isDefault: defaultCheckBox.checked
 	property int stateIndex
 	property var stateTransactions: []
+	property var stateAccounts: []
 	signal accepted
 
 	function open(index, item, setDefault) {
 		stateIndex = index;
 		stateTitle = item.title;
-		balanceField.value = item.balance;
 		transactionsModel.clear();
+
 		stateTransactions = [];
 		var transactions = item.transactions;
 		for (var t = 0; t < transactions.length; t++) {
 			transactionsModel.append(item.transactions[t]);
 			stateTransactions.push(item.transactions[t]);
+		}
+
+		accountsModel.clear();
+		stateAccounts = [];
+		for (var k = 0; k < item.accounts.length; k++)
+		{
+			accountsModel.append(item.accounts[k]);
+			stateAccounts.push(item.accounts[k]);
 		}
 
 		modalStateDialog.setX((Screen.width - width) / 2);
@@ -54,10 +63,11 @@ Window {
 	function getItem() {
 		var item = {
 			title: stateDialog.stateTitle,
-			balance: stateDialog.stateBalance,
-			transactions: []
+			transactions: [],
+			accounts: []
 		}
 		item.transactions = stateTransactions;
+		item.accounts = stateAccounts;
 		return item;
 	}
 
@@ -90,15 +100,112 @@ Window {
 			RowLayout
 			{
 				Layout.fillWidth: true
-				DefaultLabel {
+
+				Rectangle
+				{
 					Layout.preferredWidth: 75
-					text: qsTr("Balance")
+					DefaultLabel {
+						id: accountsLabel
+						Layout.preferredWidth: 75
+						text: qsTr("Accounts")
+					}
+
+					Button
+					{
+						anchors.top: accountsLabel.bottom
+						anchors.topMargin: 10
+						iconSource: "qrc:/qml/img/plus.png"
+						action: newAccountAction
+					}
+
+					Action {
+						id: newAccountAction
+						tooltip: qsTr("Add new Account")
+						onTriggered:
+						{
+							var account = stateListModel.newAccount("1000000", QEther.Ether);
+							stateAccounts.push(account);
+							accountsModel.append(account);
+						}
+					}
 				}
-				Ether {
-					id: balanceField
-					edit: true
-					displayFormattedValue: true
+
+				MessageDialog
+				{
+					id: alertAlreadyUsed
+					text: qsTr("This account is in use. You cannot remove it. The first account is used to deploy config contract and cannot be removed.")
+					icon: StandardIcon.Warning
+					standardButtons: StandardButton.Ok
+				}
+
+				TableView
+				{
+					id: accountsView
 					Layout.fillWidth: true
+					model: accountsModel
+					headerVisible: false
+					TableViewColumn {
+						role: "name"
+						title: qsTr("Name")
+						width: 150
+						delegate: Item {
+							RowLayout
+							{
+								height: 25
+								width: parent.width
+								Button
+								{
+									iconSource: "qrc:/qml/img/delete_sign.png"
+									action: deleteAccountAction
+								}
+
+								Action {
+									id: deleteAccountAction
+									tooltip: qsTr("Delete Account")
+									onTriggered:
+									{
+										if (transactionsModel.isUsed(stateAccounts[styleData.row].secret))
+											alertAlreadyUsed.open();
+										else
+										{
+											stateAccounts.splice(styleData.row, 1);
+											accountsModel.remove(styleData.row);
+										}
+									}
+								}
+
+								DefaultTextField {
+									anchors.verticalCenter: parent.verticalCenter
+									onTextChanged: {
+										if (styleData.row > -1)
+											stateAccounts[styleData.row].name = text;
+									}
+									text:  {
+										return styleData.value
+									}
+								}
+							}
+						}
+					}
+
+					TableViewColumn {
+						role: "balance"
+						title: qsTr("Balance")
+						width: 200
+						delegate: Item {
+							Ether {
+								id: balanceField
+								edit: true
+								displayFormattedValue: false
+								value: styleData.value
+							}
+						}
+					}
+					rowDelegate:
+						Rectangle {
+						color: styleData.alternate ? "transparent" : "#f0f0f0"
+						height: 30;
+					}
 				}
 			}
 
@@ -197,9 +304,20 @@ Window {
 	}
 
 	ListModel {
+		id: accountsModel
+
+		function removeAccount(_i)
+		{
+			accountsModel.remove(_i);
+			stateAccounts.splice(_i, 1);
+		}
+	}
+
+	ListModel {
 		id: transactionsModel
 
 		function editTransaction(index) {
+			transactionDialog.stateAccounts = stateAccounts;
 			transactionDialog.open(index, transactionsModel.get(index));
 		}
 
@@ -209,12 +327,23 @@ Window {
 			// https://bugreports.qt-project.org/browse/QTBUG-41327
 			// Second call to signal handler would just edit the item that was just created, no harm done
 			var item = TransactionHelper.defaultTransaction();
+			transactionDialog.stateAccounts = stateAccounts;
 			transactionDialog.open(transactionsModel.count, item);
 		}
 
 		function deleteTransaction(index) {
 			stateTransactions.splice(index, 1);
 			transactionsModel.remove(index);
+		}
+
+		function isUsed(secret)
+		{
+			for (var i in stateTransactions)
+			{
+				if (stateTransactions[i].sender === secret)
+					return true;
+			}
+			return false;
 		}
 	}
 
