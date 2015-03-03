@@ -22,7 +22,7 @@
 #include "Host.h"
 #include "Session.h"
 #include "Peer.h"
-#include "PeerHandshake.h"
+#include "RLPxHandshake.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -107,7 +107,7 @@ h128 RLPXFrameIO::ingressDigest()
 void RLPXFrameIO::updateEgressMACWithHeader(h128 const& _headerCipher)
 {
 	m_egressMac.Update(_headerCipher.data(), h128::size);
-	updateMAC(m_egressMac);
+	updateMAC(m_egressMac, *(h128*)_headerCipher.data());
 }
 
 void RLPXFrameIO::updateEgressMACWithEndOfFrame(bytesConstRef _cipher)
@@ -119,7 +119,7 @@ void RLPXFrameIO::updateEgressMACWithEndOfFrame(bytesConstRef _cipher)
 void RLPXFrameIO::updateIngressMACWithHeader(bytesConstRef _headerCipher)
 {
 	m_ingressMac.Update(_headerCipher.data(), h128::size);
-	updateMAC(m_ingressMac);
+	updateMAC(m_ingressMac, *(h128*)_headerCipher.data());
 }
 
 void RLPXFrameIO::updateIngressMACWithEndOfFrame(bytesConstRef _cipher)
@@ -128,7 +128,7 @@ void RLPXFrameIO::updateIngressMACWithEndOfFrame(bytesConstRef _cipher)
 	updateMAC(m_ingressMac);
 }
 
-void RLPXFrameIO::updateMAC(SHA3_256& _mac)
+void RLPXFrameIO::updateMAC(SHA3_256& _mac, h128 const& _seed)
 {
 	SHA3_256 prevDigest(_mac);
 	h128 prevDigestOut;
@@ -136,7 +136,7 @@ void RLPXFrameIO::updateMAC(SHA3_256& _mac)
 	
 	h128 encDigest;
 	m_macUpdateEncryptor.ProcessData(encDigest.data(), prevDigestOut.data(), h128::size);
-	encDigest ^= prevDigestOut;
+	encDigest ^= (!!_seed ? _seed : prevDigestOut);
 	
 	// update mac for final digest
 	_mac.Update(encDigest.data(), h256::size);
