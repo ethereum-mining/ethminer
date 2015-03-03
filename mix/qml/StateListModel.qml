@@ -13,6 +13,8 @@ Item {
 	property var stateList: []
 
 	function fromPlainStateItem(s) {
+		if (!s.accounts)
+			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether)]; //support old project
 		return {
 			title: s.title,
 			transactions: s.transactions.map(fromPlainTransactionItem),
