@@ -291,7 +291,7 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	return ret;
 }
 
-void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed)
+void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _sha3)
 {
 	Guard l(m_filterLock);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
@@ -303,7 +303,7 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& i
 			{
 				// filter catches them
 				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1));
+					i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1, _sha3));
 				io_changed.insert(i.first);
 			}
 		}
@@ -319,14 +319,16 @@ void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
 		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.logBloom))
 			// acceptable number & looks like block may contain a matching log entry.
-			for (TransactionReceipt const& tr: br.receipts)
+			for (size_t j = 0; j < br.receipts.size(); j++)
 			{
+				auto tr = br.receipts[j];
 				auto m = i.second.filter.matches(tr);
 				if (m.size())
 				{
+					auto sha3 = transaction(d.hash, j).sha3();
 					// filter catches them
 					for (LogEntry const& l: m)
-						i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number));
+						i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number, sha3));
 					io_changed.insert(i.first);
 				}
 			}
@@ -582,8 +584,9 @@ void Client::doWork()
 		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq);
 		if (newPendingReceipts.size())
 		{
-			for (auto i: newPendingReceipts)
-				appendFromNewPending(i, changeds);
+			for (size_t i = 0; i < newPendingReceipts.size(); i++)
+				appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
+			
 			changeds.insert(PendingChangedFilter);
 
 			if (isMining())
@@ -756,6 +759,7 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 		{
 			// Might have a transaction that contains a matching log.
 			TransactionReceipt const& tr = m_postMine.receipt(i);
+			auto sha3 = m_postMine.pending()[i].sha3();
 			LogEntries le = _f.matches(tr);
 			if (le.size())
 			{
@@ -763,7 +767,7 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 					if (s)
 						s--;
 					else
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin));
+						ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin, sha3));
 			}
 		}
 		begin = m_bc.number();
@@ -782,11 +786,15 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 		int total = 0;
 #endif
 		// check block bloom
-		if (_f.matches(m_bc.info(h).logBloom))
-			for (TransactionReceipt receipt: m_bc.receipts(h).receipts)
+		auto info = m_bc.info(h);
+		auto receipts = m_bc.receipts(h).receipts;
+		if (_f.matches(info.logBloom))
+			for (size_t i = 0; i < receipts.size(); i++)
 			{
+				TransactionReceipt receipt = receipts[i];
 				if (_f.matches(receipt.bloom()))
 				{
+					auto h = transaction(info.hash, i).sha3();
 					LogEntries le = _f.matches(receipt);
 					if (le.size())
 					{
@@ -798,7 +806,7 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 							if (s)
 								s--;
 							else
-								ret.insert(ret.begin(), LocalisedLogEntry(le[j], n));
+								ret.insert(ret.begin(), LocalisedLogEntry(le[j], n, h));
 						}
 					}
 				}
