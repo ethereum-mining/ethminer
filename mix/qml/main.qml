@@ -37,7 +37,6 @@ ApplicationWindow {
 		}
 		Menu {
 			title: qsTr("Deploy")
-			MenuItem { action: debugRunAction }
 			MenuItem { action: mineAction }
 			MenuSeparator {}
 			MenuItem { action: editStatesAction }
@@ -45,6 +44,12 @@ ApplicationWindow {
 			MenuItem { action: deployViaRpcAction }
 			MenuSeparator {}
 			MenuItem { action: toggleRunOnLoadAction }
+		}
+		Menu {
+			title: qsTr("Debug")
+			MenuItem { action: debugRunAction }
+			MenuSeparator {}
+			MenuItem { action: toggleAssemblyDebuggingAction }
 		}
 		Menu {
 			title: qsTr("Windows")
@@ -127,6 +132,15 @@ ApplicationWindow {
 		shortcut: "F5"
 		onTriggered: mainContent.startQuickDebugging()
 		enabled: codeModel.hasContract && !clientModel.running
+	}
+
+	Action {
+		id: toggleAssemblyDebuggingAction
+		text: qsTr("Show VM Code")
+		shortcut: "Ctrl+Alt+V"
+		onTriggered: mainContent.rightPane.assemblyMode = !mainContent.rightPane.assemblyMode;
+		checked: mainContent.rightPane.assemblyMode;
+		enabled: true
 	}
 
 	Action {
@@ -292,6 +306,14 @@ ApplicationWindow {
 		shortcut: "Ctrl+Shift+Tab"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.openPrevDocument();
+	}
+
+	Action {
+		id: toggleBreakpointAction
+		text: qsTr("Toggle Breakpoint")
+		shortcut: "F9"
+		enabled: mainContent.codeEditor.editingContract();
+		onTriggered: mainContent.toggleBreakpoint();
 	}
 
 	Action {
