@@ -75,11 +75,12 @@ void Secp256k1::encryptECIES(Public const& _k, bytes& io_cipher)
 	auto r = KeyPair::create();
 	h256 z;
 	ecdh::agree(r.sec(), _k, z);
-	auto key = eciesKDF(z, bytes(), 512);
-	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 32);
-	bytesRef mKey = bytesRef(&key).cropped(32, 32);
+	auto key = eciesKDF(z, bytes(), 32);
+	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 16);
+	bytesRef mKeyMaterial = bytesRef(&key).cropped(16, 16);
 	CryptoPP::SHA256 ctx;
-	ctx.Update(mKey.data(), mKey.size());
+	ctx.Update(mKeyMaterial.data(), mKeyMaterial.size());
+	bytes mKey(32);
 	ctx.Final(mKey.data());
 	
 	bytes cipherText;
@@ -119,7 +120,7 @@ bool Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
 	h256 z;
 	ecdh::agree(_k, *(Public*)(io_text.data()+1), z);
 	auto key = eciesKDF(z, bytes(), 64);
-	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 32);
+	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 16);
 	bytesRef mKeyMaterial = bytesRef(&key).cropped(16, 16);
 	bytes mKey(32);
 	CryptoPP::SHA256 ctx;
