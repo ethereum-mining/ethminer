@@ -32,22 +32,17 @@ static_assert(dev::Secret::size == 32, "Secret key must be 32 bytes.");
 static_assert(dev::Public::size == 64, "Public key must be 64 bytes.");
 static_assert(dev::Signature::size == 65, "Signature must be 65 bytes.");
 
-bytes Secp256k1::eciesKDF(Secret _z, bytes _s1, unsigned kdBitLen)
+bytes Secp256k1::eciesKDF(Secret _z, bytes _s1, unsigned kdByteLen)
 {
 	// interop w/go ecies implementation
 	
-	if (!_s1.size())
-	{
-		_s1.resize(1);
-		asserts(_s1[0] == 0);
-	}
-	
-	// for sha3, hash.blocksize is 1088 bits, but this might really be digest size
-	auto reps = ((kdBitLen + 7) * 8) / (32 * 8);
+	// for sha3, blocksize is 136 bytes
+	// for sha256, blocksize is 64 bytes
+	auto reps = ((kdByteLen + 7) * 8) / (64 * 8);
 	bytes ctr({0, 0, 0, 1});
 	bytes k;
 	CryptoPP::SHA256 ctx;
-	while (reps--)
+	for (unsigned i = 0; i <= reps; i++)
 	{
 		ctx.Update(ctr.data(), ctr.size());
 		ctx.Update(_z.data(), Secret::size);
@@ -70,7 +65,7 @@ bytes Secp256k1::eciesKDF(Secret _z, bytes _s1, unsigned kdBitLen)
 			ctr[0]++;
 	}
 	
-	k.resize(kdBitLen / 8);
+	k.resize(kdByteLen);
 	return move(k);
 }
 
@@ -83,7 +78,9 @@ void Secp256k1::encryptECIES(Public const& _k, bytes& io_cipher)
 	auto key = eciesKDF(z, bytes(), 512);
 	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 32);
 	bytesRef mKey = bytesRef(&key).cropped(32, 32);
-	sha3(mKey, mKey);
+	CryptoPP::SHA256 ctx;
+	ctx.Update(mKey.data(), mKey.size());
+	ctx.Final(mKey.data());
 	
 	bytes cipherText;
 	encryptSymNoAuth(*(Secret*)eKey.data(), bytesConstRef(&io_cipher), cipherText, h128());
@@ -97,10 +94,10 @@ void Secp256k1::encryptECIES(Public const& _k, bytes& io_cipher)
 	bytesConstRef(&cipherText).copyTo(msgCipherRef);
 	
 	// tag message
-	CryptoPP::HMAC<SHA256> ctx(mKey.data(), mKey.size());
+	CryptoPP::HMAC<SHA256> hmacctx(mKey.data(), mKey.size());
 	bytesConstRef cipherWithIV = bytesRef(&msg).cropped(1 + Public::size, h128::size + cipherText.size());
-	ctx.Update(cipherWithIV.data(), cipherWithIV.size());
-	ctx.Final(msg.data() + 1 + Public::size + cipherWithIV.size());
+	hmacctx.Update(cipherWithIV.data(), cipherWithIV.size());
+	hmacctx.Final(msg.data() + 1 + Public::size + cipherWithIV.size());
 	
 	io_cipher.resize(msg.size());
 	io_cipher.swap(msg);
@@ -121,27 +118,31 @@ bool Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
 
 	h256 z;
 	ecdh::agree(_k, *(Public*)(io_text.data()+1), z);
-	auto key = eciesKDF(z, bytes(), 512);
+	auto key = eciesKDF(z, bytes(), 64);
 	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 32);
-	bytesRef mKey = bytesRef(&key).cropped(32, 32);
-	sha3(mKey, mKey);
+	bytesRef mKey = bytesRef(&key).cropped(16, 16);
+	CryptoPP::SHA256 ctx;
+	ctx.Update(mKey.data(), mKey.size());
+	ctx.Final(mKey.data());
 	
 	bytes plain;
 	size_t cipherLen = io_text.size() - 1 - Public::size - h128::size - h256::size;
 	bytesConstRef cipherWithIV(io_text.data() + 1 + Public::size, h128::size + cipherLen);
-	bytesConstRef cipher = cipherWithIV.cropped(h128::size, cipherLen);
-	bytesConstRef msgMac(cipher.data() + cipher.size(), h256::size);
+	bytesConstRef cipherIV = cipherWithIV.cropped(0, h128::size);
+	bytesConstRef cipherNoIV = cipherWithIV.cropped(h128::size, cipherLen);
+	bytesConstRef msgMac(cipherNoIV.data() + cipherLen, h256::size);
+	h128 iv(cipherIV.toBytes());
 	
 	// verify tag
-	CryptoPP::HMAC<SHA256> ctx(mKey.data(), mKey.size());
-	ctx.Update(cipherWithIV.data(), cipherWithIV.size());
+	CryptoPP::HMAC<SHA256> hmacctx(mKey.data(), mKey.size());
+	hmacctx.Update(cipherWithIV.data(), cipherWithIV.size());
 	h256 mac;
-	ctx.Final(mac.data());
+	hmacctx.Final(mac.data());
 	for (unsigned i = 0; i < h256::size; i++)
 		if (mac[i] != msgMac[i])
-			return false;
+			0;
 	
-	decryptSymNoAuth(*(Secret*)eKey.data(), h128(), cipher, plain);
+	decryptSymNoAuth(*(Secret*)eKey.data(), iv, cipherNoIV, plain);
 	io_text.resize(plain.size());
 	io_text.swap(plain);
 	
