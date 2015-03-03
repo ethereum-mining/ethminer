@@ -41,6 +41,7 @@ namespace dev
 namespace mix
 {
 
+const Secret c_defaultUserAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
 const u256 c_mixGenesisDifficulty = (u256) 1 << 4;
 
 class MixBlockChain: public dev::eth::BlockChain
@@ -64,7 +65,9 @@ public:
 MixClient::MixClient(std::string const& _dbPath):
 	m_dbPath(_dbPath), m_minigThreads(0)
 {
-	//resetState();
+	std::map<Secret, u256> account;
+	account.insert(std::make_pair(c_defaultUserAccountSecret, 1000000 * ether));
+	resetState(account);
 }
 
 MixClient::~MixClient()

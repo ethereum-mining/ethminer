@@ -1,5 +1,6 @@
 import QtQuick 2.2
 import QtQuick.Controls 1.1
+import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
 import QtQuick.Controls.Styles 1.3
@@ -12,7 +13,7 @@ Window {
 	id: modalStateDialog
 	modality: Qt.ApplicationModal
 
-	width: 570
+	width: 590
 	height: 480
 	title: qsTr("Edit State")
 	visible: false
@@ -129,20 +130,50 @@ Window {
 					}
 				}
 
+				MessageDialog
+				{
+					id: alertAlreadyUsed
+					text: qsTr("This account is in use. You cannot remove it. The first account is used to deploy config contract and cannot be removed.")
+					icon: StandardIcon.Warning
+					standardButtons: StandardButton.Ok
+				}
+
 				TableView
 				{
 					id: accountsView
 					Layout.fillWidth: true
 					model: accountsModel
+					headerVisible: false
 					TableViewColumn {
 						role: "name"
 						title: qsTr("Name")
-						width: 120
+						width: 150
 						delegate: Item {
-							Rectangle
+							RowLayout
 							{
 								height: 25
 								width: parent.width
+								Button
+								{
+									iconSource: "qrc:/qml/img/delete_sign.png"
+									action: deleteAccountAction
+								}
+
+								Action {
+									id: deleteAccountAction
+									tooltip: qsTr("delete Account")
+									onTriggered:
+									{
+										if (transactionsModel.isUsed(stateAccounts[styleData.row].secret))
+											alertAlreadyUsed.open();
+										else
+										{
+											stateAccounts.splice(styleData.row, 1);
+											accountsModel.remove(styleData.row);
+										}
+									}
+								}
+
 								DefaultTextField {
 									anchors.verticalCenter: parent.verticalCenter
 									onTextChanged: {
@@ -303,6 +334,16 @@ Window {
 		function deleteTransaction(index) {
 			stateTransactions.splice(index, 1);
 			transactionsModel.remove(index);
+		}
+
+		function isUsed(secret)
+		{
+			for (var i in stateTransactions)
+			{
+				if (stateTransactions[i].sender === secret)
+					return true;
+			}
+			return false;
 		}
 	}
 
