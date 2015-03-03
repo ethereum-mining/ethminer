@@ -206,8 +206,8 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 	if (difficulty != calculateDifficulty(_parent))
 		BOOST_THROW_EXCEPTION(InvalidDifficulty());
 
-	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / 1024)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / 1024));
+	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / 2048)
+		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / 2048));
 
 	// Check timestamp is after previous timestamp.
 	if (parentHash)
