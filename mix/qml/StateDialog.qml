@@ -161,7 +161,7 @@ Window {
 
 								Action {
 									id: deleteAccountAction
-									tooltip: qsTr("delete Account")
+									tooltip: qsTr("Delete Account")
 									onTriggered:
 									{
 										if (transactionsModel.isUsed(stateAccounts[styleData.row].secret))
