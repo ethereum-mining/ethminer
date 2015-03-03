@@ -21,7 +21,6 @@
  */
 
 #include <vector>
-#include <QDebug>
 #include <libdevcore/Exceptions.h>
 #include <libethereum/CanonBlockChain.h>
 #include <libethereum/Transaction.h>
