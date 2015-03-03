@@ -74,5 +74,13 @@ extern u256 const c_ripemd160WordGas;
 extern u256 const c_identityGas;
 extern u256 const c_identityWordGas;
 
+extern u256 const c_ecrecoverGas;
+extern u256 const c_sha256Gas;
+extern u256 const c_sha256WordGas;
+extern u256 const c_ripemd160Gas;
+extern u256 const c_ripemd160WordGas;
+extern u256 const c_identityGas;
+extern u256 const c_identityWordGas;
+
 }
 }
