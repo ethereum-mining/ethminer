@@ -39,6 +39,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+#include "RLPxHandshake.h"
+
 HostNodeTableHandler::HostNodeTableHandler(Host& _host): m_host(_host) {}
 
 void HostNodeTableHandler::processEvent(NodeId const& _n, NodeTableEventType const& _e)
@@ -501,6 +503,7 @@ void PeerHandshake::transition(boost::system::error_code _ech)
 			clog(NetConnect) << "devp2p.connect.egress sending magic sequence";
 		else
 			clog(NetConnect) << "devp2p.connect.ingress sending magic sequence";
+
 		PeerSecrets* k = new PeerSecrets;
 		bytes keyMaterialBytes(512);
 		bytesRef keyMaterial(&keyMaterialBytes);
