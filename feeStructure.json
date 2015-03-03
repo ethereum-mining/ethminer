@@ -1,0 +1,38 @@
+{
+	"tierStepGas": [ 0, 2, 3, 5, 8, 10, 20 ],
+	"expGas": 10,
+	"expByteGas": 10,
+
+	"sha3Gas": 30,
+	"sha3WordGas": 6,
+
+	"sloadGas": 50,
+	"sstoreSetGas": 20000,
+	"sstoreResetGas": 5000,
+	"sstoreClearGas": 5000,
+	"sstoreRefundGas": 15000,
+	"jumpdestGas": 1,
+
+	"logGas": 375,
+	"logDataGas": 8,
+	"logTopicGas": 375,
+
+	"createGas": 32000,
+
+	"callGas": 40,
+	"callStipend": 2300,
+	"callValueTransferGas": 9000,
+	"callNewAccountGas": 25000,
+
+	"suicideRefundGas": 24000,
+
+	"memoryGas": 3,
+	"quadCoeffDiv": 512,
+
+	"createDataGas": 200,
+	"txGas": 21000,
+	"txDataZeroGas": 4,
+	"txDataNonZeroGas": 68,
+
+	"copyGas": 3,
+}
