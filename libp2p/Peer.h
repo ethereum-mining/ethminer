@@ -54,7 +54,9 @@ class Peer: public Node
 {
 	friend class Session;		/// Allows Session to update score and rating.
 	friend class Host;		/// For Host: saveNetwork(), restoreNetwork()
+
 	friend struct PeerHandshake;
+	friend struct RLPXHandshake;
 
 public:
 	bool isOffline() const { return !m_session.lock(); }
