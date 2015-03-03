@@ -53,6 +53,22 @@ private:
 	int m_processIndex;
 };
 
+
+class QSourceLocation: public QObject
+{
+	Q_OBJECT
+	Q_PROPERTY(int start MEMBER m_start CONSTANT)
+	Q_PROPERTY(int end MEMBER m_end CONSTANT)
+
+public:
+	QSourceLocation(QObject* _owner, int _start, int _end): QObject(_owner), m_start(_start), m_end(_end) {}
+
+private:
+	int m_start;
+	int m_end;
+};
+
+
 /**
  * @brief Shared container for lines
  */
@@ -60,12 +76,19 @@ class QCode: public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QVariantList instructions MEMBER m_instructions CONSTANT)
+	Q_PROPERTY(QVariantList locations MEMBER m_locations CONSTANT)
+	Q_PROPERTY(QString address MEMBER m_address CONSTANT)
+	Q_PROPERTY(QString documentId MEMBER m_document CONSTANT)
 
 public:
-	QCode(QObject* _owner, QVariantList&& _instrunctions): QObject(_owner), m_instructions(_instrunctions) {}
+	QCode(QObject* _owner, QString const& _address, QVariantList&& _instrunctions): QObject(_owner), m_instructions(_instrunctions), m_address(_address) {}
+	void setLocations(QString const& _document, QVariantList&& _locations) { m_document = _document; m_locations = _locations; }
 
 private:
 	QVariantList m_instructions;
+	QString m_address;
+	QString m_document;
+	QVariantList m_locations;
 };
 
 /**
@@ -110,7 +133,6 @@ class QMachineState: public QObject
 	Q_PROPERTY(QBigInt* gasCost READ gasCost CONSTANT)
 	Q_PROPERTY(QBigInt* gas READ gas CONSTANT)
 	Q_PROPERTY(QString instruction READ instruction CONSTANT)
-	Q_PROPERTY(QString address READ address CONSTANT)
 	Q_PROPERTY(QStringList debugStack READ debugStack CONSTANT)
 	Q_PROPERTY(QStringList debugStorage READ debugStorage CONSTANT)
 	Q_PROPERTY(QVariantList debugMemory READ debugMemory CONSTANT)
@@ -133,8 +155,6 @@ public:
 	unsigned codeIndex() { return m_state.codeIndex; }
 	/// Get the call data id
 	unsigned dataIndex() { return m_state.dataIndex; }
-	/// Get address for call stack
-	QString address();
 	/// Get gas cost.
 	QBigInt* gasCost();
 	/// Get gas used.
@@ -158,7 +178,7 @@ public:
 	/// Set the current processed machine state.
 	void setState(MachineState _state) { m_state = _state;  }
 	/// Convert all machine states in human readable code.
-	static QCode* getHumanReadableCode(QObject* _owner, bytes const& _code);
+	static QCode* getHumanReadableCode(QObject* _owner, const Address& _address, const bytes& _code);
 	/// Convert call data into human readable form
 	static QCallData* getDebugCallData(QObject* _owner, bytes const& _data);
 
