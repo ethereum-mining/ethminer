@@ -305,8 +305,21 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 	QDebugData* debugData = new QDebugData();
 	QQmlEngine::setObjectOwnership(debugData, QQmlEngine::JavaScriptOwnership);
 	QList<QCode*> codes;
-	for (bytes const& code: _t.executionCode)
-		codes.push_back(QMachineState::getHumanReadableCode(debugData, code));
+	for (MachineCode const& code: _t.executionCode)
+	{
+		codes.push_back(QMachineState::getHumanReadableCode(debugData, code.address, code.code));
+		//try to resolve contract for source level debugging
+		auto nameIter = m_contractNames.find(code.address);
+		if (nameIter != m_contractNames.end())
+		{
+			CompiledContract const& compilerRes = m_context->codeModel()->contract(nameIter->second);
+			eth::AssemblyItems assemblyItems = !_t.isConstructor() ? compilerRes.assemblyItems() : compilerRes.constructorAssemblyItems();
+			QVariantList locations;
+			for (eth::AssemblyItem const& item: assemblyItems)
+				locations.push_back(QVariant::fromValue(new QSourceLocation(debugData, item.getLocation().start, item.getLocation().end)));
+			codes.back()->setLocations(compilerRes.documentId(), std::move(locations));
+		}
+	}
 
 	QList<QCallData*> data;
 	for (bytes const& d: _t.transactionData)
@@ -329,7 +342,6 @@ void ClientModel::emptyRecord()
 {
 	debugDataReady(new QDebugData());
 }
-
 
 void ClientModel::debugRecord(unsigned _index)
 {

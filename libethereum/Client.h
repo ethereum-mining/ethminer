@@ -220,7 +220,7 @@ public:
 	/// @returns the length of the chain.
 	virtual unsigned number() const { return m_bc.number(); }
 
-	/// Get a map containing each of the pending transactions.
+	/// Get the list of pending transactions.
 	/// @TODO: Remove in favour of transactions().
 	virtual Transactions pending() const { return m_postMine.pending(); }
 
@@ -311,7 +311,7 @@ public:
 protected:
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed);
+	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _sha3);
 
 	/// Collate the changed filters for the hash of the given block.
 	/// Insert any filters that are activated into @a o_changed.
