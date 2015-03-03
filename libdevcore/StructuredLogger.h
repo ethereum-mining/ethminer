@@ -59,25 +59,33 @@ public:
 
 	static void starting(std::string const& _clientImpl, const char* _ethVersion);
 	static void stopping(std::string const& _clientImpl, const char* _ethVersion);
-	static void p2pConnected(std::string const& _id,
+	static void p2pConnected(
+		std::string const& _id,
 		bi::tcp::endpoint const& _addr,
 		std::chrono::system_clock::time_point const& _ts,
 		std::string const& _remoteVersion,
-		unsigned int _numConnections);
+		unsigned int _numConnections
+	);
 	static void p2pDisconnected(std::string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections);
-	static void minedNewBlock(std::string const& _hash,
+	static void minedNewBlock(
+		std::string const& _hash,
 		std::string const& _blockNumber,
 		std::string const& _chainHeadHash,
-		std::string const& _prevHash);
-	static void chainReceivedNewBlock(std::string const& _hash,
+		std::string const& _prevHash
+	);
+	static void chainReceivedNewBlock(
+		std::string const& _hash,
 		std::string const& _blockNumber,
 		std::string const& _chainHeadHash,
 		std::string const& _remoteID,
-		std::string const& _prevHash);
-	static void chainNewHead(std::string const& _hash,
+		std::string const& _prevHash
+	);
+	static void chainNewHead(
+		std::string const& _hash,
 		std::string const& _blockNumber,
 		std::string const& _chainHeadHash,
-		std::string const& _prevHash);
+		std::string const& _prevHash
+	);
 	static void transactionReceived(std::string const& _hash, std::string const& _remoteId);
 private:
 	// Singleton class. Private default ctor and no copying
