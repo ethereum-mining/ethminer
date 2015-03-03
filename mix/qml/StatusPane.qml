@@ -1,6 +1,7 @@
 import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
+import QtQuick.Controls.Styles 1.3
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
 
@@ -13,7 +14,7 @@ Rectangle {
 		if (!message)
 		{
 			status.state = "";
-			status.text = qsTr("Compile without errors.");
+			status.text = qsTr("Compile successfully.");
 			logslink.visible = false;
 			debugImg.state = "active";
 		}
@@ -35,17 +36,24 @@ Rectangle {
 		logslink.visible = false;
 	}
 
+	function errorMessage(text)
+	{
+		status.state = "error";
+		status.text = text
+		logslink.visible = false;
+	}
+
 	Connections {
 		target:clientModel
 		onRunStarted: infoMessage(qsTr("Running transactions..."));
-		onRunFailed: infoMessage(qsTr("Error running transactions"));
+		onRunFailed: errorMessage(qsTr("Error running transactions"));
 		onRunComplete: infoMessage(qsTr("Run complete"));
 		onNewBlock: infoMessage(qsTr("New block created"));
 	}
 	Connections {
 		target:projectModel
 		onDeploymentStarted: infoMessage(qsTr("Running deployment..."));
-		onDeploymentError: infoMessage(error);
+		onDeploymentError: errorMessage(error);
 		onDeploymentComplete: infoMessage(qsTr("Deployment complete"));
 		onDeploymentStepChanged: infoMessage(message);
 	}
@@ -57,6 +65,7 @@ Rectangle {
 
 	color: "transparent"
 	anchors.fill: parent
+
 	Rectangle {
 		id: statusContainer
 		anchors.horizontalCenter: parent.horizontalCenter
@@ -65,48 +74,83 @@ Rectangle {
 		width: 500
 		height: 30
 		color: "#fcfbfc"
-		RowLayout {
-			anchors.horizontalCenter: parent.horizontalCenter
+
+		Text {
 			anchors.verticalCenter: parent.verticalCenter
-			spacing: 5
-
-			Text {
-				font.pointSize: StatusPaneStyle.general.statusFontSize
-				height: 9
-				font.family: "sans serif"
-				objectName: "status"
-				id: status
-				states:[
-					State {
-						name: "error"
-						PropertyChanges {
-							target: status
-							color: "red"
-						}
-						PropertyChanges {
-							target: statusContainer
-							color: "#fffcd5"
-						}
+			anchors.horizontalCenter: parent.horizontalCenter
+			font.pointSize: StatusPaneStyle.general.statusFontSize
+			height: 15
+			font.family: "sans serif"
+			objectName: "status"
+			wrapMode: Text.WrapAnywhere
+			elide: Text.ElideRight
+			maximumLineCount: 1
+			clip: true
+			id: status
+			states: [
+				State {
+					name: "error"
+					PropertyChanges {
+						target: status
+						color: "red"
 					}
-				]
-			}
-
-			Text {
-				visible: false
-				font.pointSize: StatusPaneStyle.general.logLinkFontSize
-				height: 9
-				text: qsTr("See Log.")
-				font.family: "Monospace"
-				objectName: "status"
-				id: logslink
-				color: "#8c8a74"
-				MouseArea {
-					anchors.fill: parent
-					onClicked: {
-						mainContent.ensureRightView();
+					PropertyChanges {
+						target: statusContainer
+						color: "#fffcd5"
 					}
 				}
+			]
+			onTextChanged:
+			{
+				updateWidth()
+				toolTipInfo.tooltip = text;
 			}
+
+			function updateWidth()
+			{
+				if (text.length > 80)
+					width = parent.width - 10
+				else
+					width = undefined
+			}
+		}
+
+		Button
+		{
+			anchors.fill: parent
+			id: toolTip
+			action: toolTipInfo
+			text: ""
+			style:
+				ButtonStyle {
+				background:Rectangle {
+					color: "transparent"
+				}
+			}
+		}
+
+		Action {
+			id: toolTipInfo
+			tooltip: ""
+		}
+	}
+
+	Button
+	{
+		id: logslink
+		anchors.left: statusContainer.right
+		anchors.leftMargin: 9
+		visible: false
+		anchors.verticalCenter: parent.verticalCenter
+		action: displayLogAction
+		iconSource: "qrc:/qml/img/search_filled.png"
+	}
+
+	Action {
+		id: displayLogAction
+		tooltip: qsTr("Display Log")
+		onTriggered: {
+			mainContent.displayCompilationErrorIfAny();
 		}
 	}
 
@@ -120,9 +164,13 @@ Rectangle {
 		RowLayout
 		{
 			anchors.fill: parent
-			Rectangle {
+			anchors.top: statusHeader.top
+			anchors.right: statusHeader.right
+			Rectangle
+			{
 				color: "transparent"
 				anchors.fill: parent
+
 				Button
 				{
 					anchors.right: parent.right

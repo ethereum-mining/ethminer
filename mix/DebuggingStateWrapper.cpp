@@ -69,7 +69,7 @@ namespace
 	}
 }
 
-QCode* QMachineState::getHumanReadableCode(QObject* _owner, const bytes& _code)
+QCode* QMachineState::getHumanReadableCode(QObject* _owner, const Address& _address, const bytes& _code)
 {
 	QVariantList codeStr;
 	for (unsigned i = 0; i <= _code.size(); ++i)
@@ -96,7 +96,7 @@ QCode* QMachineState::getHumanReadableCode(QObject* _owner, const bytes& _code)
 			break;	// probably hit data segment
 		}
 	}
-	return new QCode(_owner, std::move(codeStr));
+	return new QCode(_owner, QString::fromStdString(toString(_address)), std::move(codeStr));
 }
 
 QBigInt* QMachineState::gasCost()
@@ -150,11 +150,6 @@ QVariantList QMachineState::levels()
 	for (unsigned l: m_state.levels)
 		levelList.push_back(l);
 	return levelList;
-}
-
-QString QMachineState::address()
-{
-	return QString::fromStdString(toString(m_state.address));
 }
 
 QString QMachineState::instruction()

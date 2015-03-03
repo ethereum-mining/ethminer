@@ -7,6 +7,7 @@ import Qt.labs.settings 1.0
 import "js/ProjectModel.js" as ProjectModelCode
 
 Item {
+
 	id: projectModel
 
 	signal projectClosed
@@ -33,6 +34,7 @@ Item {
 	property string projectTitle: ""
 	property string currentDocumentId: ""
 	property var deploymentAddresses: []
+	property string deploymentDir
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
 	property CodeEditorView codeEditor: null
@@ -57,6 +59,7 @@ Item {
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 	function deployProject() { ProjectModelCode.deployProject(false); }
 	function registerToUrlHint() { ProjectModelCode.registerToUrlHint(); }
+	function formatAppUrl() { ProjectModelCode.formatAppUrl(url); }
 
 	Connections {
 		target: appContext
@@ -93,28 +96,17 @@ Item {
 
 	MessageDialog {
 		id: deployWarningDialog
-		property bool redeploy
 		title: qsTr("Project")
 		text:
 		{
 			if (Object.keys(projectModel.deploymentAddresses).length > 0)
-			{
-				redeploy = true
-				standardButtons = StandardButton.Ok | StandardButton.Reset | StandardButton.Abort;
-				return qsTr("This project has been already deployed to the network. Do you want to repackage the resources only, or also reset the deployed contract to its initial state?")
-			}
+				return qsTr("This project has been already deployed to the network. Do you want to redeploy it? (Contract state will be reset)")
 			else
-			{
-				redeploy = false;
-				standardButtons = StandardButton.Ok | StandardButton.Abort;
 				return qsTr("This action will deploy to the network. Do you want to deploy it?")
-			}
 		}
 		icon: StandardIcon.Question
+		standardButtons: StandardButton.Ok | StandardButton.Abort
 		onAccepted: {
-			ProjectModelCode.startDeployProject(!redeploy);
-		}
-		onReset: {
 			ProjectModelCode.startDeployProject(true);
 		}
 	}
@@ -123,7 +115,6 @@ Item {
 		id: deployRessourcesDialog
 		title: qsTr("Project")
 		standardButtons: StandardButton.Ok
-		icon: StandardIcon.Info
 	}
 
 	DeploymentDialog
