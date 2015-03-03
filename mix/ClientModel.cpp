@@ -190,7 +190,6 @@ void ClientModel::setupState(QVariantMap _state)
 			if (contractId.isEmpty() && m_context->codeModel()->hasContract()) //TODO: This is to support old project files, remove later
 				contractId = m_context->codeModel()->contracts().keys()[0];
 			QVariantList qParams = transaction.value("qType").toList();
-
 			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasPrice, Secret(sender.toStdString()));
 
 			for (QVariant const& variant: qParams)
