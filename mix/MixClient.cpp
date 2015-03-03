@@ -107,7 +107,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	execution.setup(&rlp);
 	std::vector<MachineState> machineStates;
 	std::vector<unsigned> levels;
-	std::vector<bytes> codes;
+	std::vector<MachineCode> codes;
 	std::map<bytes const*, unsigned> codeIndexes;
 	std::vector<bytes> data;
 	std::map<bytesConstRef const*, unsigned> dataIndexes;
@@ -127,7 +127,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 			else
 			{
 				codeIndex = codes.size();
-				codes.push_back(ext.code);
+				codes.push_back(MachineCode({ext.myAddress, ext.code}));
 				codeIndexes[&ext.code] = codeIndex;
 			}
 			lastCode = &ext.code;
@@ -152,7 +152,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		else
 			levels.resize(ext.depth);
 
-		machineStates.emplace_back(MachineState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(),
+		machineStates.emplace_back(MachineState({steps, vm.curPC(), inst, newMemSize, vm.gas(),
 									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels, codeIndex, dataIndex}));
 	};
 
@@ -436,6 +436,12 @@ h256 MixClient::hashFromNumber(unsigned _number) const
 eth::BlockInfo MixClient::blockInfo(h256 _hash) const
 {
 	return BlockInfo(bc().block(_hash));
+
+}
+
+eth::BlockInfo MixClient::blockInfo() const
+{
+	return BlockInfo(bc().block());
 }
 
 eth::BlockDetails MixClient::blockDetails(h256 _hash) const
