@@ -486,10 +486,11 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	receiptsTrie.init();
 
 	LastHashes lh = getLastHashes(_bc, (unsigned)m_previousBlock.number);
+	RLP rlp(_block);
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
-	for (auto const& tr: RLP(_block)[1])
+	for (auto const& tr: rlp[1])
 	{
 		RLPStream k;
 		k << i;
@@ -503,17 +504,11 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		++i;
 	}
 
-	if (transactionsTrie.root() != m_currentBlock.transactionsRoot)
-	{
-		cwarn << "Bad transactions state root!";
-		BOOST_THROW_EXCEPTION(InvalidTransactionsStateRoot());
-	}
-
 	if (receiptsTrie.root() != m_currentBlock.receiptsRoot)
 	{
 		cwarn << "Bad receipts state root.";
 		cwarn << "Block:" << toHex(_block);
-		cwarn << "Block RLP:" << RLP(_block);
+		cwarn << "Block RLP:" << rlp;
 		cwarn << "Calculated: " << receiptsTrie.root();
 		for (unsigned j = 0; j < i; ++j)
 		{
@@ -548,10 +543,14 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	u256 tdIncrease = m_currentBlock.difficulty;
 
 	// Check uncles & apply their rewards to state.
+	if (rlp[2].itemCount() > 2)
+		BOOST_THROW_EXCEPTION(TooManyUncles());
+
 	set<h256> nonces = { m_currentBlock.nonce };
 	Addresses rewarded;
 	set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
-	for (auto const& i: RLP(_block)[2])
+
+	for (auto const& i: rlp[2])
 	{
 		if (knownUncles.count(sha3(i.data())))
 			BOOST_THROW_EXCEPTION(UncleInChain(knownUncles, sha3(i.data()) ));
@@ -699,7 +698,7 @@ void State::commitToMine(BlockChain const& _bc)
 //		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
 		set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
 		auto p = m_previousBlock.parentHash;
-		for (unsigned gen = 0; gen < 6 && p != _bc.genesisHash(); ++gen, p = _bc.details(p).parent)
+		for (unsigned gen = 0; gen < 6 && p != _bc.genesisHash() && unclesCount < 2; ++gen, p = _bc.details(p).parent)
 		{
 			auto us = _bc.details(p).children;
 			assert(us.size() >= 1);	// must be at least 1 child of our grandparent - it's our own parent!
@@ -710,6 +709,8 @@ void State::commitToMine(BlockChain const& _bc)
 					ubi.streamRLP(unclesData, WithNonce);
 					++unclesCount;
 					uncleAddresses.push_back(ubi.coinbaseAddress);
+					if (unclesCount == 2)
+						break;
 				}
 		}
 	}
