@@ -39,14 +39,15 @@ u256 const dev::eth::c_sstoreClearGas = 5000;
 u256 const dev::eth::c_sstoreRefundGas = 15000;
 u256 const dev::eth::c_jumpdestGas = 1;
 
-u256 const dev::eth::c_logGas = 2000;
+u256 const dev::eth::c_logGas = 375;
 u256 const dev::eth::c_logDataGas = 8;
-u256 const dev::eth::c_logTopicGas = 2000;
+u256 const dev::eth::c_logTopicGas = 375;
 
 u256 const dev::eth::c_createGas = 32000;
 
 u256 const dev::eth::c_callGas = 40;
-u256 const dev::eth::c_callValueTransferGas = 6700;
+u256 const dev::eth::c_callStipend = 2300;
+u256 const dev::eth::c_callValueTransferGas = 9000;
 u256 const dev::eth::c_callNewAccountGas = 25000;
 
 u256 const dev::eth::c_suicideRefundGas = 24000;
