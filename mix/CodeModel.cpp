@@ -25,7 +25,10 @@
 #include <QDebug>
 #include <QApplication>
 #include <QtQml>
+#include <libdevcore/Common.h>
 #include <libevmcore/SourceLocation.h>
+#include <libsolidity/AST.h>
+#include <libsolidity/ASTVisitor.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libsolidity/InterfaceHandler.h>
@@ -43,6 +46,91 @@ using namespace dev::mix;
 const std::set<std::string> c_predefinedContracts =
 	{ "Config", "Coin", "CoinReg", "coin", "service", "owned", "mortal", "NameReg", "named", "std", "configUser" };
 
+
+namespace
+{
+	using namespace dev::solidity;
+	class CollectDeclarationsVisitor: public ASTConstVisitor
+	{
+	public:
+		CollectDeclarationsVisitor(QHash<LocationPair, QString>* _functions, QHash<LocationPair, SolidityDeclaration>* _locals, QHash<unsigned, SolidityDeclaration>* _storage):
+		m_functions(_functions), m_locals(_locals), m_storage(_storage), m_functionScope(false), m_storageSlot(0) {}
+	private:
+		QHash<LocationPair, QString>* m_functions;
+		QHash<LocationPair, SolidityDeclaration>* m_locals;
+		QHash<unsigned, SolidityDeclaration>* m_storage;
+		bool m_functionScope;
+		uint m_storageSlot;
+
+		LocationPair nodeLocation(ASTNode const& _node)
+		{
+			return LocationPair(_node.getLocation().start, _node.getLocation().end);
+		}
+
+		SolidityType nodeType(Type const* type)
+		{
+			if (!type)
+				return SolidityType { SolidityType::Type::UnsignedInteger, 32 };
+			switch (type->getCategory())
+			{
+			case Type::Category::Integer:
+				{
+					IntegerType const* it = dynamic_cast<IntegerType const*>(type);
+					unsigned size = it->getNumBits() / 8;
+					SolidityType::Type typeCode = it->isAddress() ? SolidityType::Type::Address : it->isHash() ? SolidityType::Type::Hash : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
+					return SolidityType { typeCode, size };
+				}
+			case Type::Category::Bool:
+				return SolidityType { SolidityType::Type::Bool, type->getSizeOnStack() * 32 };
+			case Type::Category::String:
+				{
+					StaticStringType const* s = dynamic_cast<StaticStringType const*>(type);
+					return SolidityType { SolidityType::Type::String, static_cast<unsigned>(s->getNumBytes()) };
+				}
+			case Type::Category::Contract:
+				return SolidityType { SolidityType::Type::Address, type->getSizeOnStack() * 32 };
+			case Type::Category::Array:
+			case Type::Category::Enum:
+			case Type::Category::Function:
+			case Type::Category::IntegerConstant:
+			case Type::Category::Magic:
+			case Type::Category::Mapping:
+			case Type::Category::Modifier:
+			case Type::Category::Real:
+			case Type::Category::Struct:
+			case Type::Category::TypeType:
+			case Type::Category::Void:
+			default:
+				return SolidityType { SolidityType::Type::UnsignedInteger, 32 };
+			}
+		}
+
+		virtual bool visit(FunctionDefinition const& _node)
+		{
+			m_functions->insert(nodeLocation(_node), QString::fromStdString(_node.getName()));
+			m_functionScope = true;
+			return true;
+		}
+
+		virtual void endVisit(FunctionDefinition const&)
+		{
+			m_functionScope = false;
+		}
+
+		virtual bool visit(VariableDeclaration const& _node)
+		{
+			SolidityDeclaration decl;
+			decl.type = nodeType(_node.getType().get());
+			decl.name = QString::fromStdString(_node.getName());
+			if (m_functionScope)
+				m_locals->insert(nodeLocation(_node), decl);
+			else
+				m_storage->insert(m_storageSlot++, decl);
+			return true;
+		}
+	};
+}
+
 void BackgroundWorker::queueCodeChange(int _jobId)
 {
 	m_model->runCompilationJob(_jobId);
@@ -52,18 +140,23 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	QObject(nullptr),
 	m_sourceHash(qHash(_source))
 {
-	auto const& contractDefinition = _compiler.getContractDefinition(_contractName.toStdString());
+	std::string name = _contractName.toStdString();
+	auto const& contractDefinition = _compiler.getContractDefinition(name);
 	m_contract.reset(new QContractDefinition(&contractDefinition));
 	QQmlEngine::setObjectOwnership(m_contract.get(), QQmlEngine::CppOwnership);
 	m_bytes = _compiler.getBytecode(_contractName.toStdString());
-	m_assemblyItems = _compiler.getRuntimeAssemblyItems(_contractName.toStdString());
-	m_constructorAssemblyItems = _compiler.getAssemblyItems(_contractName.toStdString());
+	m_assemblyItems = _compiler.getRuntimeAssemblyItems(name);
+	m_constructorAssemblyItems = _compiler.getAssemblyItems(name);
+
 	dev::solidity::InterfaceHandler interfaceHandler;
 	m_contractInterface = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
 	if (m_contractInterface.isEmpty())
 		m_contractInterface = "[]";
 	if (contractDefinition.getLocation().sourceName.get())
 		m_documentId = QString::fromStdString(*contractDefinition.getLocation().sourceName);
+
+	CollectDeclarationsVisitor visitor(&m_functions, &m_locals, &m_storage);
+	contractDefinition.accept(visitor);
 }
 
 QString CompiledContract::codeHex() const
@@ -121,12 +214,11 @@ void CodeModel::reset(QVariantMap const& _documents)
 
 void CodeModel::registerCodeChange(QString const& _documentId, QString const& _code)
 {
-	{
-		Guard l(x_contractMap);
-		CompiledContract* contract = m_contractMap.value(_documentId);
-		if (contract != nullptr && contract->m_sourceHash == qHash(_code))
-			return;
+	CompiledContract* contract = contractByDocumentId(_documentId);
+	if (contract != nullptr && contract->m_sourceHash == qHash(_code))
+		return;
 
+	{
 		Guard pl(x_pendingContracts);
 		m_pendingContracts[_documentId] = _code;
 	}
@@ -196,7 +288,8 @@ void CodeModel::runCompilationJob(int _jobId)
 				if (c_predefinedContracts.count(n) != 0)
 					continue;
 				QString name = QString::fromStdString(n);
-				auto sourceIter = m_pendingContracts.find(name);
+				QString sourceName = QString::fromStdString(*cs.getContractDefinition(n).getLocation().sourceName);
+				auto sourceIter = m_pendingContracts.find(sourceName);
 				QString source = sourceIter != m_pendingContracts.end() ? sourceIter->second : QString();
 				CompiledContract* contract = new CompiledContract(cs, name, source);
 				QQmlEngine::setObjectOwnership(contract, QQmlEngine::CppOwnership);
