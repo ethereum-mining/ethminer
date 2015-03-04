@@ -31,8 +31,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-u256 dev::eth::c_genesisDifficulty = (u256)1 << 11;
-
 BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
 }
@@ -129,14 +127,8 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	if (gasUsed > gasLimit)
 		BOOST_THROW_EXCEPTION(TooMuchGasUsed() << RequirementError(bigint(gasLimit), bigint(gasUsed)) );
 
-	if (difficulty < c_minimumDifficulty)
-		BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError(bigint(c_minimumDifficulty), bigint(difficulty)) );
-
-	if (gasLimit < c_minGasLimit)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(c_minGasLimit), bigint(gasLimit)) );
-
 	if (number && extraData.size() > c_maximumExtraDataSize)
-		BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(extraData.size())));
+		BOOST_THROW_EXCEPTION(ExtraDataTooBig());
 }
 
 void BlockInfo::populate(bytesConstRef _block, bool _checkNonce)
@@ -192,7 +184,7 @@ void BlockInfo::populateFromParent(BlockInfo const& _parent)
 
 h256 BlockInfo::calculateSeedHash(BlockInfo const& _parent) const
 {
-	return number % 30 == 0 ? sha3(_parent.seedHash.asBytes()) : _parent.seedHash;
+	return number % c_epochDuration == 0 ? sha3(_parent.seedHash.asBytes()) : _parent.seedHash;
 }
 
 u256 BlockInfo::calculateGasLimit(BlockInfo const& _parent) const
@@ -208,7 +200,7 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 	if (!parentHash)
 		return (u256)c_genesisDifficulty;
 	else
-		return max<u256>(2048, timestamp >= _parent.timestamp + 8 ? _parent.difficulty - (_parent.difficulty / 2048) : (_parent.difficulty + (_parent.difficulty / 2048)));
+		return max<u256>(c_minimumDifficulty, timestamp >= _parent.timestamp + c_durationLimit ? _parent.difficulty - (_parent.difficulty / c_difficultyBoundDivisor) : (_parent.difficulty + (_parent.difficulty / c_difficultyBoundDivisor)));
 }
 
 template <class N> inline N diff(N const& _a, N const& _b) { return max(_a, _b) - min(_a, _b); }
@@ -223,8 +215,8 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 		gasLimit > _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor)
 		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor, _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor));
 
-	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / 2048)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / 2048));
+	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / c_gasLimitBoundDivisor)
+		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / c_gasLimitBoundDivisor));
 
 	if (seedHash != calculateSeedHash(_parent))
 		BOOST_THROW_EXCEPTION(InvalidSeedHash());

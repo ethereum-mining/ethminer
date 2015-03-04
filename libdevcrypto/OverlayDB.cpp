@@ -56,10 +56,8 @@ void OverlayDB::commit()
 			if (m_aux.count(i))
 			{
 				m_db->Put(m_writeOptions, i.ref(), bytesConstRef(&m_aux[i]));
-				cdebug << "Committing aux: " << i;
 				m_aux.erase(i);
 			}
-		cdebug << "Discarding " << keysOf(m_aux);
 		m_auxActive.clear();
 		m_aux.clear();
 		m_over.clear();
