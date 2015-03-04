@@ -28,7 +28,7 @@ endif()
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
 
-if (WIN32)
+if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
 	add_custom_command(TARGET ${EXECUTABLE} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy ${MHD_DLL_RELEASE} "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}")
 endif()
 
