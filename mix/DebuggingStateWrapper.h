@@ -23,12 +23,12 @@
 #pragma once
 
 #include <QStringList>
-#include <QMap>
+#include <QHash>
 #include <libdevcore/Common.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
+#include "MachineStates.h"
 #include "QVariableDefinition.h"
-#include "MixClient.h"
 #include "QBigInt.h"
 
 namespace dev
@@ -43,31 +43,38 @@ class QInstruction: public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QString line MEMBER m_line CONSTANT)
-	Q_PROPERTY(int processIndex MEMBER m_processIndex CONSTANT)
 
 public:
-	QInstruction(QObject* _owner, QString _line, int _processIndex): QObject(_owner), m_line(_line), m_processIndex(_processIndex) {}
+	QInstruction(QObject* _owner, QString _line): QObject(_owner), m_line(_line) {}
 
 private:
 	QString m_line;
-	int m_processIndex;
 };
 
-
-class QSourceLocation: public QObject
+/**
+ * @brief Solidity state
+ */
+class QSolState: public QObject
 {
 	Q_OBJECT
+	Q_PROPERTY(QStringList storage MEMBER m_storage CONSTANT)
+	Q_PROPERTY(QStringList callStack MEMBER m_callStack CONSTANT)
+	Q_PROPERTY(QStringList locals MEMBER m_locals CONSTANT)
 	Q_PROPERTY(int start MEMBER m_start CONSTANT)
 	Q_PROPERTY(int end MEMBER m_end CONSTANT)
 
 public:
-	QSourceLocation(QObject* _owner, int _start, int _end): QObject(_owner), m_start(_start), m_end(_end) {}
+	QSolState(QObject* _parent, QStringList const& _storage, QStringList const& _callStack, QStringList const& _locals, int _start, int _end):
+		QObject(_parent), m_storage(_storage), m_callStack(_callStack), m_locals(_locals), m_start(_start), m_end(_end)
+	{ }
 
 private:
+	QStringList m_storage;
+	QStringList m_callStack;
+	QStringList m_locals;
 	int m_start;
 	int m_end;
 };
-
 
 /**
  * @brief Shared container for lines
@@ -76,19 +83,17 @@ class QCode: public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(QVariantList instructions MEMBER m_instructions CONSTANT)
-	Q_PROPERTY(QVariantList locations MEMBER m_locations CONSTANT)
 	Q_PROPERTY(QString address MEMBER m_address CONSTANT)
 	Q_PROPERTY(QString documentId MEMBER m_document CONSTANT)
 
 public:
 	QCode(QObject* _owner, QString const& _address, QVariantList&& _instrunctions): QObject(_owner), m_instructions(_instrunctions), m_address(_address) {}
-	void setLocations(QString const& _document, QVariantList&& _locations) { m_document = _document; m_locations = _locations; }
+	void setDocument(QString const& _documentId) { m_document = _documentId; }
 
 private:
 	QVariantList m_instructions;
 	QString m_address;
 	QString m_document;
-	QVariantList m_locations;
 };
 
 /**
@@ -130,6 +135,7 @@ class QMachineState: public QObject
 	Q_OBJECT
 	Q_PROPERTY(int step READ step CONSTANT)
 	Q_PROPERTY(int curPC READ curPC CONSTANT)
+	Q_PROPERTY(int instructionIndex MEMBER m_instructionIndex CONSTANT)
 	Q_PROPERTY(QBigInt* gasCost READ gasCost CONSTANT)
 	Q_PROPERTY(QBigInt* gas READ gas CONSTANT)
 	Q_PROPERTY(QString instruction READ instruction CONSTANT)
@@ -143,10 +149,11 @@ class QMachineState: public QObject
 	Q_PROPERTY(QVariantList levels READ levels CONSTANT)
 	Q_PROPERTY(unsigned codeIndex READ codeIndex CONSTANT)
 	Q_PROPERTY(unsigned dataIndex READ dataIndex CONSTANT)
+	Q_PROPERTY(QObject* solidity MEMBER m_solState CONSTANT)
 
 public:
-	QMachineState(QObject* _owner, MachineState const& _state, QCode* _code, QCallData* _callData):
-		QObject(_owner), m_state(_state), m_code(_code), m_callData(_callData) {}
+	QMachineState(QObject* _owner, int _instructionIndex, MachineState const& _state, QCode* _code, QCallData* _callData, QSolState* _solState):
+		QObject(_owner), m_instructionIndex(_instructionIndex), m_state(_state), m_code(_code), m_callData(_callData), m_solState(_solState) { }
 	/// Get the step of this machine states.
 	int step() { return  (int)m_state.steps; }
 	/// Get the proccessed code index.
@@ -165,7 +172,7 @@ public:
 	QStringList debugStorage();
 	/// Get memory.
 	QVariantList debugMemory();
-	/// get end of debug information.
+	/// Get end of debug information.
 	QString endOfDebug();
 	/// Get the new memory size.
 	QBigInt* newMemSize();
@@ -174,18 +181,18 @@ public:
 	/// Get all previous steps.
 	QVariantList levels();
 	/// Get the current processed machine state.
-	MachineState state() { return m_state; }
-	/// Set the current processed machine state.
-	void setState(MachineState _state) { m_state = _state;  }
+	MachineState const& state() const { return m_state; }
 	/// Convert all machine states in human readable code.
-	static QCode* getHumanReadableCode(QObject* _owner, const Address& _address, const bytes& _code);
+	static QCode* getHumanReadableCode(QObject* _owner, const Address& _address, const bytes& _code, QHash<int, int>& o_codeMap);
 	/// Convert call data into human readable form
 	static QCallData* getDebugCallData(QObject* _owner, bytes const& _data);
 
 private:
+	int m_instructionIndex;
 	MachineState m_state;
 	QCode* m_code;
 	QCallData* m_callData;
+	QSolState* m_solState;
 };
 
 }
