@@ -1358,11 +1358,16 @@ void Main::on_blocks_currentItemChanged()
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></h5>";
 			s << "<br/>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>";
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
+			s << "<br/>Seed hash: <b>" << info.seedHash << "</b>";
+			s << "<br/>Mix hash: <b>" << info.mixHash << "</b>";
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
 			s << "<br/>Hash w/o nonce: <b>" << info.headerHash(WithoutNonce) << "</b>";
 			s << "<br/>Difficulty: <b>" << info.difficulty << "</b>";
 			if (info.number)
-				s << "<br/>Proof-of-Work: <b>" << ProofOfWork::eval(info) << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b>";
+			{
+				auto e = ProofOfWork::eval(info);
+				s << "<br/>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")";
+			}
 			else
 				s << "<br/>Proof-of-Work: <i>Phil has nothing to prove</i>";
 			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
@@ -1374,9 +1379,18 @@ void Main::on_blocks_currentItemChanged()
 			for (auto u: block[2])
 			{
 				BlockInfo uncle = BlockInfo::fromHeader(u.data());
-				s << "<br/><span style=\"margin-left: 2em\">&nbsp;</span>Hash: <b>" << uncle.hash << "</b>";
-				s << "<br/><span style=\"margin-left: 2em\">&nbsp;</span>Parent: <b>" << uncle.parentHash << "</b>";
-				s << "<br/><span style=\"margin-left: 2em\">&nbsp;</span>Number: <b>" << uncle.number << "</b>";
+				char const* line = "<br/><span style=\"margin-left: 2em\">&nbsp;</span>";
+				s << line << "Hash: <b>" << uncle.hash << "</b>";
+				s << line << "Parent: <b>" << uncle.parentHash << "</b>";
+				s << line << "Number: <b>" << uncle.number << "</b>";
+				s << line << "Coinbase: <b>" << pretty(uncle.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << uncle.coinbaseAddress;
+				s << line << "Seed hash: <b>" << uncle.seedHash << "</b>";
+				s << line << "Mix hash: <b>" << uncle.mixHash << "</b>";
+				s << line << "Nonce: <b>" << uncle.nonce << "</b>";
+				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutNonce) << "</b>";
+				s << line << "Difficulty: <b>" << uncle.difficulty << "</b>";
+				auto e = ProofOfWork::eval(uncle);
+				s << line << "Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / uncle.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")";
 			}
 			if (info.parentHash)
 				s << "<br/>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>";
