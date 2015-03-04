@@ -48,7 +48,7 @@
             { "name": "eth_logs", "params": [{}], "order": [], "returns": []},
 
             { "name": "eth_getWork", "params": [], "order": [], "returns": []},
-            { "name": "eth_submitWork", "params": [""], "order": [], "returns": true},
+            { "name": "eth_submitWork", "params": ["", ""], "order": [], "returns": true},
 
             { "name": "eth_register", "params": [""], "order": [], "returns": 0},
             { "name": "eth_unregister", "params": [0], "order": [], "returns": true},

@@ -20,12 +20,18 @@
  */
 
 #include <boost/detail/endian.hpp>
+#include <boost/filesystem.hpp>
 #include <chrono>
 #include <array>
 #include <random>
 #include <thread>
+#include <libdevcore/Guards.h>
+#include <libdevcore/Log.h>
 #include <libdevcrypto/CryptoPP.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libdevcore/Common.h>
+#include <libethash/ethash.h>
+#include "BlockInfo.h"
 #include "ProofOfWork.h"
 using namespace std;
 using namespace std::chrono;
@@ -35,72 +41,144 @@ namespace dev
 namespace eth
 {
 
-template <class _T>
-static inline void update(_T& _sha, u256 const& _value)
+class Ethasher
 {
-	int i = 0;
-	for (u256 v = _value; v; ++i, v >>= 8) {}
-	byte buf[32];
-	bytesRef bufRef(buf, i);
-	toBigEndian(_value, bufRef);
-	_sha.Update(buf, i);
+public:
+	Ethasher() {}
+
+	static Ethasher* get() { if (!s_this) s_this = new Ethasher(); return s_this; }
+
+	bytes const& cache(BlockInfo const& _header)
+	{
+		RecursiveGuard l(x_this);
+		if (!m_caches.count(_header.seedHash))
+		{
+			try {
+				boost::filesystem::create_directories(getDataDir() + "/ethashcache");
+			} catch (...) {}
+			std::string memoFile = getDataDir() + "/ethashcache/" + toHex(_header.seedHash.ref().cropped(0, 4)) + ".cache";
+			m_caches[_header.seedHash] = contents(memoFile);
+			if (m_caches[_header.seedHash].empty())
+			{
+				ethash_params p = params((unsigned)_header.number);
+				m_caches[_header.seedHash].resize(p.cache_size);
+				ethash_prep_light(m_caches[_header.seedHash].data(), &p, _header.seedHash.data());
+				writeFile(memoFile, m_caches[_header.seedHash]);
+			}
+		}
+		return m_caches[_header.seedHash];
+	}
+
+	byte const* full(BlockInfo const& _header)
+	{
+		RecursiveGuard l(x_this);
+		if (!m_fulls.count(_header.seedHash))
+		{
+			if (!m_fulls.empty())
+			{
+				delete [] m_fulls.begin()->second.data();
+				m_fulls.erase(m_fulls.begin());
+			}
+			std::string memoFile = getDataDir() + "/ethashcache/" + toHex(_header.seedHash.ref().cropped(0, 4)) + ".full";
+			m_fulls[_header.seedHash] = contentsNew(memoFile);
+			if (!m_fulls[_header.seedHash])
+			{
+				ethash_params p = params((unsigned)_header.number);
+				m_fulls[_header.seedHash] = bytesRef(new byte[p.full_size], p.full_size);
+				auto c = cache(_header);
+				ethash_prep_full(m_fulls[_header.seedHash].data(), &p, c.data());
+				writeFile(memoFile, m_fulls[_header.seedHash]);
+			}
+		}
+		return m_fulls[_header.seedHash].data();
+	}
+
+	static ethash_params params(BlockInfo const& _header)
+	{
+		return params((unsigned)_header.number);
+	}
+
+	static ethash_params params(unsigned _n)
+	{
+		ethash_params p;
+		p.cache_size = ethash_get_cachesize(_n);
+		p.full_size = ethash_get_datasize(_n);
+		return p;
+	}
+
+private:
+	static Ethasher* s_this;
+	RecursiveMutex x_this;
+	std::map<h256, bytes> m_caches;
+	std::map<h256, bytesRef> m_fulls;
+};
+
+Ethasher* Ethasher::s_this = nullptr;
+
+bool Ethash::verify(BlockInfo const& _header)
+{
+	bigint boundary = (bigint(1) << 256) / _header.difficulty;
+	u256 e(eval(_header, _header.nonce));
+	return e <= boundary;
 }
 
-template <class _T>
-static inline void update(_T& _sha, h256 const& _value)
+h256 Ethash::eval(BlockInfo const& _header, Nonce const& _nonce)
 {
-	int i = 0;
-	byte const* data = _value.data();
-	for (; i != 32 && data[i] == 0; ++i);
-	_sha.Update(data + i, 32 - i);
+	auto p = Ethasher::params(_header);
+	ethash_return_value r;
+	ethash_compute_light(&r, Ethasher::get()->cache(_header).data(), &p, _header.headerHash(WithoutNonce).data(), (uint64_t)(u64)_nonce);
+	return h256(r.result, h256::ConstructFromPointer);
 }
 
-template <class _T>
-static inline h256 get(_T& _sha)
+std::pair<MineInfo, Ethash::Proof> Ethash::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue, bool _turbo)
 {
-	h256 ret;
-	_sha.TruncatedFinal(&ret[0], 32);
+	auto h = _header.headerHash(WithoutNonce);
+	auto p = Ethasher::params(_header);
+	auto d = Ethasher::get()->full(_header);
+
+	std::pair<MineInfo, Proof> ret;
+	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data())));
+	uint64_t tryNonce = (uint64_t)(u64)(m_last = Nonce::random(s_eng));
+
+	bigint boundary = (bigint(1) << 256) / _header.difficulty;
+	ret.first.requirement = log2((double)boundary);
+
+	// 2^ 0      32      64      128      256
+	//   [--------*-------------------------]
+	//
+	// evaluate until we run out of time
+	auto startTime = std::chrono::steady_clock::now();
+	if (!_turbo)
+		std::this_thread::sleep_for(std::chrono::milliseconds(_msTimeout * 90 / 100));
+	double best = 1e99;	// high enough to be effectively infinity :)
+	Proof result;
+	ethash_return_value ethashReturn;
+	unsigned hashCount = 0;
+	for (; (std::chrono::steady_clock::now() - startTime) < std::chrono::milliseconds(_msTimeout) && _continue; tryNonce++, hashCount++)
+	{
+		ethash_compute_full(&ethashReturn, d, &p, h.data(), tryNonce);
+		u256 val(h256(ethashReturn.result, h256::ConstructFromPointer));
+		best = std::min<double>(best, log2((double)val));
+		if (val <= boundary)
+		{
+			ret.first.completed = true;
+			result.mixHash = *reinterpret_cast<h256 const*>(ethashReturn.mix_hash);
+			result.nonce = u64(tryNonce);
+			break;
+		}
+	}
+	ret.first.hashes = hashCount;
+	ret.first.best = best;
+	ret.second = result;
+
+	if (ret.first.completed)
+	{
+		BlockInfo test = _header;
+		assignResult(result, test);
+		assert(verify(test));
+	}
+
 	return ret;
-}
-
-h256 DaggerEvaluator::node(h256 const& _root, h256 const& _xn, uint_fast32_t _L, uint_fast32_t _i)
-{
-	if (_L == _i)
-		return _root;
-	u256 m = (_L == 9) ? 16 : 3;
-	CryptoPP::SHA3_256 bsha;
-	for (uint_fast32_t k = 0; k < m; ++k)
-	{
-		CryptoPP::SHA3_256 sha;
-		update(sha, _root);
-		update(sha, _xn);
-		update(sha, (u256)_L);
-		update(sha, (u256)_i);
-		update(sha, (u256)k);
-		uint_fast32_t pk = (uint_fast32_t)(u256)get(sha) & ((1 << ((_L - 1) * 3)) - 1);
-		auto u = node(_root, _xn, _L - 1, pk);
-		update(bsha, u);
-	}
-	return get(bsha);
-}
-
-h256 DaggerEvaluator::eval(h256 const& _root, h256 const& _nonce)
-{
-	h256 extranonce = (u256)_nonce >> 26;				// with xn = floor(n / 2^26) -> assuming this is with xn = floor(N / 2^26)
-	CryptoPP::SHA3_256 bsha;
-	for (uint_fast32_t k = 0; k < 4; ++k)
-	{
-		//sha256(D || xn || i || k)		-> sha256(D || xn || k)	- there's no 'i' here!
-		CryptoPP::SHA3_256 sha;
-		update(sha, _root);
-		update(sha, extranonce);
-		update(sha, _nonce);
-		update(sha, (u256)k);
-		uint_fast32_t pk = (uint_fast32_t)(u256)get(sha) & 0x1ffffff;	// mod 8^8 * 2  [ == mod 2^25 ?! ] [ == & ((1 << 25) - 1) ] [ == & 0x1ffffff ]
-		auto u = node(_root, extranonce, 9, pk);
-		update(bsha, u);
-	}
-	return get(bsha);
 }
 
 }
