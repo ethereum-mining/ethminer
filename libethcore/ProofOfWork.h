@@ -55,12 +55,17 @@ public:
 		Nonce nonce;
 		h256 mixHash;
 	};
+	struct Result
+	{
+		h256 value;
+		h256 mixHash;
+	};
 
-	static h256 eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
-	static h256 eval(BlockInfo const& _header, Nonce const& _nonce);
+	static Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
+	static Result eval(BlockInfo const& _header, Nonce const& _nonce);
 	static bool verify(BlockInfo const& _header);
 	std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
-	static void assignResult(Proof const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixBytes = _r.mixHash; }
+	static void assignResult(Proof const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
 
 protected:
 	Nonce m_last;
