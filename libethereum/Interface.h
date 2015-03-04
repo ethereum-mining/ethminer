@@ -25,7 +25,7 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
-#include <libevm/FeeStructure.h>
+#include <libethcore/Params.h>
 #include "LogFilter.h"
 #include "Transaction.h"
 #include "AccountDiff.h"
