@@ -22,6 +22,7 @@
 #pragma once
 
 #include <libdevcore/Exceptions.h>
+#include "CommonEth.h"
 
 namespace dev
 {
@@ -64,7 +65,7 @@ struct InvalidReceiptsStateRoot: virtual dev::Exception {};
 struct InvalidTimestamp: virtual dev::Exception {};
 struct InvalidLogBloom: virtual dev::Exception {};
 class InvalidNonce: virtual public dev::Exception { public: InvalidNonce(u256 _required = 0, u256 _candidate = 0): required(_required), candidate(_candidate) {} u256 required; u256 candidate; virtual const char* what() const noexcept; };
-class InvalidBlockNonce: virtual public dev::Exception { public: InvalidBlockNonce(h256 _h = h256(), h256 _n = h256(), u256 _d = 0): h(_h), n(_n), d(_d) {} h256 h; h256 n; u256 d; virtual const char* what() const noexcept; };
+class InvalidBlockNonce: virtual public dev::Exception { public: InvalidBlockNonce(h256 _h = h256(), Nonce _n = Nonce(), u256 _d = 0): h(_h), n(_n), d(_d) {} h256 h; Nonce n; u256 d; virtual const char* what() const noexcept; };
 struct InvalidParentHash: virtual dev::Exception {};
 struct InvalidNumber: virtual dev::Exception {};
 struct InvalidContractAddress: virtual public dev::Exception {};

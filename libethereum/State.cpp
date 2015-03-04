@@ -255,7 +255,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 			{
 				auto b = _bc.block(_block);
 				bi.populate(b);
-	//			bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
+//				bi.verifyInternals(_bc.block(_block));	// Unneeded - we already verify on import into the blockchain.
 				break;
 			}
 			catch (Exception const& _e)
@@ -546,7 +546,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	if (rlp[2].itemCount() > 2)
 		BOOST_THROW_EXCEPTION(TooManyUncles());
 
-	set<h256> nonces = { m_currentBlock.nonce };
+	set<Nonce> nonces = { m_currentBlock.nonce };
 	Addresses rewarded;
 	set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
 
@@ -773,23 +773,28 @@ MineInfo State::mine(unsigned _msTimeout, bool _turbo)
 
 	MineInfo ret;
 	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	tie(ret, m_currentBlock.nonce) = m_pow.mine(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.difficulty, _msTimeout, true, _turbo);
+	ProofOfWork::Proof r;
+	tie(ret, r) = m_pow.mine(m_currentBlock, _msTimeout, true, _turbo);
 
 	if (!ret.completed)
 		m_currentBytes.clear();
 	else
-		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
+	{
+		ProofOfWork::assignResult(r, m_currentBlock);
+		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
+	}
 
 	return ret;
 }
 
-bool State::completeMine(h256 const& _nonce)
+bool State::completeMine(ProofOfWork::Proof const& _nonce)
 {
-	if (!m_pow.verify(m_currentBlock.headerHash(WithoutNonce), _nonce, m_currentBlock.difficulty))
+	ProofOfWork::assignResult(_nonce, m_currentBlock);
+
+	if (!m_pow.verify(m_currentBlock))
 		return false;
 
-	m_currentBlock.nonce = _nonce;
-	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock.headerHash(WithoutNonce), m_currentBlock.nonce, m_currentBlock.difficulty);
+	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
 
 	completeMine();
 
