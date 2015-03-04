@@ -74,7 +74,7 @@ public:
 	u256 gasUsed;
 	u256 timestamp;
 	bytes extraData;
-	h256 mixBytes;
+	h256 mixHash;
 	h256 seedHash;
 	Nonce nonce;
 
@@ -105,7 +105,7 @@ public:
 				gasUsed == _cmp.gasUsed &&
 				timestamp == _cmp.timestamp &&
 				extraData == _cmp.extraData &&
-				mixBytes == _cmp.mixBytes &&
+				mixHash == _cmp.mixHash &&
 				seedHash == _cmp.seedHash &&
 				nonce == _cmp.nonce;
 	}
@@ -133,7 +133,7 @@ inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 {
 	_out << _bi.hash << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.transactionsRoot << " " <<
 			_bi.receiptsRoot << " " << _bi.logBloom << " " << _bi.difficulty << " " << _bi.number << " " << _bi.gasLimit << " " <<
-			_bi.gasUsed << " " << _bi.timestamp << " " << _bi.mixBytes << " " << _bi.seedHash << " " << _bi.nonce;
+			_bi.gasUsed << " " << _bi.timestamp << " " << _bi.mixHash << " " << _bi.seedHash << " " << _bi.nonce;
 	return _out;
 }
 
