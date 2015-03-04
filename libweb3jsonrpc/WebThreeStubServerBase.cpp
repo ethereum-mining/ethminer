@@ -24,6 +24,7 @@
 // Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 
+#include <libdevcore/CommonData.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/SourceReferenceFormatter.h>
@@ -389,11 +390,6 @@ double WebThreeStubServerBase::eth_uncleCountByNumber(int _number)
 	return client()->transactionCount(client()->hashFromNumber(_number));
 }
 
-int WebThreeStubServerBase::eth_defaultBlock()
-{
-	return client()->getDefault();
-}
-
 std::string WebThreeStubServerBase::eth_gasPrice()
 {
 	return toJS(10 * dev::eth::szabo);
@@ -425,7 +421,7 @@ bool WebThreeStubServerBase::shh_haveIdentity(std::string const& _id)
 	return m_ids.count(jsToPublic(_id)) > 0;
 }
 
-bool WebThreeStubServerBase::eth_listening()
+bool WebThreeStubServerBase::net_listening()
 {
 	return network()->isNetworkStarted();
 }
@@ -561,14 +557,14 @@ std::string WebThreeStubServerBase::eth_solidity(std::string const& _code)
 	return res;
 }
 
-int WebThreeStubServerBase::eth_number()
+string WebThreeStubServerBase::eth_blockNumber()
 {
-	return client()->number();
+	return toJS(client()->number());
 }
 
-int WebThreeStubServerBase::eth_peerCount()
+string WebThreeStubServerBase::net_peerCount()
 {
-	return network()->peerCount();
+	return toJS(network()->peerCount());
 }
 
 bool WebThreeStubServerBase::shh_post(Json::Value const& _json)
@@ -597,36 +593,6 @@ bool WebThreeStubServerBase::db_put(std::string const& _name, std::string const&
 bool WebThreeStubServerBase::db_putString(std::string const& _name, std::string const& _key, std::string const& _value)
 {
 	db()->put(_name, _key,_value);
-	return true;
-}
-
-bool WebThreeStubServerBase::eth_setCoinbase(std::string const& _address)
-{
-	client()->setAddress(jsToAddress(_address));
-	return true;
-}
-
-bool WebThreeStubServerBase::eth_setDefaultBlock(int _block)
-{
-	client()->setDefault(_block);
-	return true;
-}
-
-bool WebThreeStubServerBase::eth_setListening(bool _listening)
-{
-	if (_listening)
-		network()->startNetwork();
-	else
-		network()->stopNetwork();
-	return true;
-}
-
-bool WebThreeStubServerBase::eth_setMining(bool _mining)
-{
-	if (_mining)
-		client()->startMining();
-	else
-		client()->stopMining();
 	return true;
 }
 
