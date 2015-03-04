@@ -28,7 +28,7 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace CryptoPP;
 
-RLPXFrameIO::RLPXFrameIO(bool _originated, Secret const& _ephemeralShared, bytesConstRef _authCipher, bytesConstRef _ackCipher): m_keys(h128(), h128()), m_macUpdateEncryptor(sha3("test").data(), 16)
+RLPXFrameIO::RLPXFrameIO(RLPXHandshake& _init): m_macEnc()
 {
 	// we need:
 	// originated?
@@ -39,37 +39,53 @@ RLPXFrameIO::RLPXFrameIO(bool _originated, Secret const& _ephemeralShared, bytes
 	bytes keyMaterialBytes(512);
 	bytesRef keyMaterial(&keyMaterialBytes);
 
-//	ecdhe.agree(remoteEphemeral, ess);
-	_ephemeralShared.ref().copyTo(keyMaterial.cropped(0, h256::size));
-//	ss.ref().copyTo(keyMaterial.cropped(h256::size, h256::size));
-//	//		auto token = sha3(ssA);
-//	k->encryptK = sha3(keyMaterial);
-//	k->encryptK.ref().copyTo(keyMaterial.cropped(h256::size, h256::size));
-//	k->macK = sha3(keyMaterial);
-//	
-//	// Initiator egress-mac: sha3(mac-secret^recipient-nonce || auth-sent-init)
-//	//           ingress-mac: sha3(mac-secret^initiator-nonce || auth-recvd-ack)
-//	// Recipient egress-mac: sha3(mac-secret^initiator-nonce || auth-sent-ack)
-//	//           ingress-mac: sha3(mac-secret^recipient-nonce || auth-recvd-init)
-//	
-//	bytes const& egressCipher = _originated ? authCipher : ackCipher;
-//	keyMaterialBytes.resize(h256::size + egressCipher.size());
-//	keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
-//	(k->macK ^ remoteNonce).ref().copyTo(keyMaterial);
-//	bytesConstRef(&egressCipher).copyTo(keyMaterial.cropped(h256::size, egressCipher.size()));
-//	k->egressMac = sha3(keyMaterial);
-//	
-//	bytes const& ingressCipher = _originated ? ackCipher : authCipher;
-//	keyMaterialBytes.resize(h256::size + ingressCipher.size());
-//	keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
-//	(k->macK ^ nonce).ref().copyTo(keyMaterial);
-//	bytesConstRef(&ingressCipher).copyTo(keyMaterial.cropped(h256::size, ingressCipher.size()));
-//	k->ingressMac = sha3(keyMaterial);
+	// shared-secret = sha3(ecdhe-shared-secret || sha3(nonce || initiator-nonce))
+	Secret ephemeralShared;
+	_init.ecdhe.agree(_init.remoteEphemeral, ephemeralShared);
+	ephemeralShared.ref().copyTo(keyMaterial.cropped(0, h256::size));
+	h512 nonceMaterial;
+	h256& leftNonce = _init.originated ? _init.remoteNonce : _init.nonce;
+	h256& rightNonce = _init.originated ? _init.nonce : _init.remoteNonce;
+	leftNonce.ref().copyTo(nonceMaterial.ref().cropped(0, h256::size));
+	rightNonce.ref().copyTo(nonceMaterial.ref().cropped(h256::size, h256::size));
+	auto outRef(keyMaterial.cropped(h256::size, h256::size));
+	sha3(nonceMaterial.ref(), outRef); // output h(nonces)
+	
+	sha3(keyMaterial, outRef); // output shared-secret
+	// token: sha3(outRef)
+	
+	// aes-secret = sha3(ecdhe-shared-secret || shared-secret)
+	sha3(keyMaterial, outRef); // output aes-secret
+	m_frameEnc.SetKey(outRef.data(), h256::size);
 
+	// mac-secret = sha3(ecdhe-shared-secret || aes-secret)
+	sha3(keyMaterial, outRef); // output mac-secret
+	m_macEnc.SetKey(outRef.data(), h256::size);
+
+	// Initiator egress-mac: sha3(mac-secret^recipient-nonce || auth-sent-init)
+	//           ingress-mac: sha3(mac-secret^initiator-nonce || auth-recvd-ack)
+	// Recipient egress-mac: sha3(mac-secret^initiator-nonce || auth-sent-ack)
+	//           ingress-mac: sha3(mac-secret^recipient-nonce || auth-recvd-init)
+ 
+	(*(h256*)outRef.data() ^ _init.remoteNonce).ref().copyTo(keyMaterial);
+	bytes const& egressCipher = _init.originated ? _init.authCipher : _init.ackCipher;
+	keyMaterialBytes.resize(h256::size + egressCipher.size());
+	keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
+	bytesConstRef(&egressCipher).copyTo(keyMaterial.cropped(h256::size, egressCipher.size()));
+	m_egressMac.Update(keyMaterial.data(), keyMaterial.size());
+
+	// recover mac-secret by re-xoring remoteNonce
+	(*(h256*)outRef.data() ^ _init.remoteNonce ^ _init.nonce).ref().copyTo(keyMaterial);
+	bytes const& ingressCipher = _init.originated ? _init.ackCipher : _init.authCipher;
+	keyMaterialBytes.resize(h256::size + ingressCipher.size());
+	keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
+	bytesConstRef(&ingressCipher).copyTo(keyMaterial.cropped(h256::size, ingressCipher.size()));
+	m_ingressMac.Update(keyMaterial.data(), keyMaterial.size());
 }
 
 void RLPXFrameIO::writeFullPacketFrame(bytesConstRef _packet)
 {
+	RLPStream header;
 	
 }
 
@@ -135,7 +151,7 @@ void RLPXFrameIO::updateMAC(SHA3_256& _mac, h128 const& _seed)
 	prevDigest.TruncatedFinal(prevDigestOut.data(), h128::size);
 	
 	h128 encDigest;
-	m_macUpdateEncryptor.ProcessData(encDigest.data(), prevDigestOut.data(), h128::size);
+	m_macEnc.ProcessData(encDigest.data(), prevDigestOut.data(), h128::size);
 	encDigest ^= (!!_seed ? _seed : prevDigestOut);
 	
 	// update mac for final digest
@@ -152,8 +168,8 @@ void RLPXHandshake::generateAuth()
 	bytesRef nonce(&auth[Signature::size + h256::size + Public::size], h256::size);
 	
 	// E(remote-pubk, S(ecdhe-random, ecdh-shared-secret^nonce) || H(ecdhe-random-pubk) || pubk || nonce || 0x0)
-	crypto::ecdh::agree(host->m_alias.sec(), remote, ss);
-	sign(ecdhe.seckey(), ss ^ this->nonce).ref().copyTo(sig);
+//crypto::ecdh::agree(host->m_alias.sec(), remote, ss);
+//sign(ecdhe.seckey(), ss ^ this->nonce).ref().copyTo(sig);
 	sha3(ecdhe.pubkey().ref(), hepubk);
 	host->m_alias.pub().ref().copyTo(pubk);
 	this->nonce.ref().copyTo(nonce);
@@ -178,8 +194,8 @@ bool RLPXHandshake::decodeAuth()
 	pubk.copyTo(remote.ref());
 	nonce.copyTo(remoteNonce.ref());
 	
-	crypto::ecdh::agree(host->m_alias.sec(), remote, ss);
-	remoteEphemeral = recover(*(Signature*)sig.data(), ss ^ remoteNonce);
+//crypto::ecdh::agree(host->m_alias.sec(), remote, ss);
+//remoteEphemeral = recover(*(Signature*)sig.data(), ss ^ remoteNonce);
 	assert(sha3(remoteEphemeral) == *(h256*)hepubk.data());
 	return true;
 }
@@ -295,77 +311,49 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 			clog(NetConnect) << "p2p.connect.egress sending magic sequence";
 		else
 			clog(NetConnect) << "p2p.connect.ingress sending magic sequence";
-		PeerSecrets* k = new PeerSecrets;
-		bytes keyMaterialBytes(512);
-		bytesRef keyMaterial(&keyMaterialBytes);
-
-		ecdhe.agree(remoteEphemeral, ess);
-		ess.ref().copyTo(keyMaterial.cropped(0, h256::size));
-		ss.ref().copyTo(keyMaterial.cropped(h256::size, h256::size));
-		//		auto token = sha3(ssA);
-		k->encryptK = sha3(keyMaterial);
-		k->encryptK.ref().copyTo(keyMaterial.cropped(h256::size, h256::size));
-		k->macK = sha3(keyMaterial);
 		
-		// Initiator egress-mac: sha3(mac-secret^recipient-nonce || auth-sent-init)
-		//           ingress-mac: sha3(mac-secret^initiator-nonce || auth-recvd-ack)
-		// Recipient egress-mac: sha3(mac-secret^initiator-nonce || auth-sent-ack)
-		//           ingress-mac: sha3(mac-secret^recipient-nonce || auth-recvd-init)
+		RLPXFrameIO* io = new RLPXFrameIO(*this);
 		
-		bytes const& egressCipher = originated ? authCipher : ackCipher;
-		keyMaterialBytes.resize(h256::size + egressCipher.size());
-		keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
-		(k->macK ^ remoteNonce).ref().copyTo(keyMaterial);
-		bytesConstRef(&egressCipher).copyTo(keyMaterial.cropped(h256::size, egressCipher.size()));
-		k->egressMac = sha3(keyMaterial);
-		
-		bytes const& ingressCipher = originated ? ackCipher : authCipher;
-		keyMaterialBytes.resize(h256::size + ingressCipher.size());
-		keyMaterial.retarget(keyMaterialBytes.data(), keyMaterialBytes.size());
-		(k->macK ^ nonce).ref().copyTo(keyMaterial);
-		bytesConstRef(&ingressCipher).copyTo(keyMaterial.cropped(h256::size, ingressCipher.size()));
-		k->ingressMac = sha3(keyMaterial);
-		
-		// This test will be replaced with protocol-capabilities information (was Hello packet)
-		// TESTING: send encrypt magic sequence
-		bytes magic {0x22,0x40,0x08,0x91};
-		// rlpx encrypt
-		encryptSymNoAuth(k->encryptK, &magic, k->magicCipherAndMac, h128());
-		k->magicCipherAndMac.resize(k->magicCipherAndMac.size() + 32);
-		sha3mac(k->egressMac.ref(), &magic, k->egressMac.ref());
-		k->egressMac.ref().copyTo(bytesRef(&k->magicCipherAndMac).cropped(k->magicCipherAndMac.size() - 32, 32));
-		
-		clog(NetConnect) << "p2p.connect.egress txrx magic sequence";
-		k->recvdMagicCipherAndMac.resize(k->magicCipherAndMac.size());
-		
-		ba::async_write(*socket, ba::buffer(k->magicCipherAndMac), [this, self, k, magic](boost::system::error_code ec, std::size_t)
-		{
-			if (ec)
-			{
-				delete k;
-				transition(ec);
-				return;
-			}
-			
-			ba::async_read(*socket, ba::buffer(k->recvdMagicCipherAndMac, k->magicCipherAndMac.size()), [this, self, k, magic](boost::system::error_code ec, std::size_t)
-			{
-				if (originated)
-					clog(NetNote) << "p2p.connect.egress recving magic sequence";
-				else
-					clog(NetNote) << "p2p.connect.ingress recving magic sequence";
-				
-				if (ec)
-				{
-					delete k;
-					transition(ec);
-					return;
-				}
-				
-				/// capabilities handshake (encrypted magic sequence is placeholder)
-				bytes decryptedMagic;
-				decryptSymNoAuth(k->encryptK, h128(), &k->recvdMagicCipherAndMac, decryptedMagic);
-				if (decryptedMagic[0] == 0x22 && decryptedMagic[1] == 0x40 && decryptedMagic[2] == 0x08 && decryptedMagic[3] == 0x91)
-				{
+//		// This test will be replaced with protocol-capabilities information (was Hello packet)
+//		// TESTING: send encrypt magic sequence
+//		bytes magic {0x22,0x40,0x08,0x91};
+//		// rlpx encrypt
+//		encryptSymNoAuth(k->encryptK, &magic, k->magicCipherAndMac, h128());
+//		k->magicCipherAndMac.resize(k->magicCipherAndMac.size() + 32);
+//		sha3mac(k->egressMac.ref(), &magic, k->egressMac.ref());
+//		k->egressMac.ref().copyTo(bytesRef(&k->magicCipherAndMac).cropped(k->magicCipherAndMac.size() - 32, 32));
+//		
+//		clog(NetConnect) << "p2p.connect.egress txrx magic sequence";
+//		k->recvdMagicCipherAndMac.resize(k->magicCipherAndMac.size());
+//		
+//		ba::async_write(*socket, ba::buffer(k->magicCipherAndMac), [this, self, k, magic](boost::system::error_code ec, std::size_t)
+//		{
+//			if (ec)
+//			{
+//				delete k;
+//				transition(ec);
+//				return;
+//			}
+//			
+//			ba::async_read(*socket, ba::buffer(k->recvdMagicCipherAndMac, k->magicCipherAndMac.size()), [this, self, k, magic](boost::system::error_code ec, std::size_t)
+//			{
+//				if (originated)
+//					clog(NetNote) << "p2p.connect.egress recving magic sequence";
+//				else
+//					clog(NetNote) << "p2p.connect.ingress recving magic sequence";
+//				
+//				if (ec)
+//				{
+//					delete k;
+//					transition(ec);
+//					return;
+//				}
+//				
+//				/// capabilities handshake (encrypted magic sequence is placeholder)
+//				bytes decryptedMagic;
+//				decryptSymNoAuth(k->encryptK, h128(), &k->recvdMagicCipherAndMac, decryptedMagic);
+//				if (decryptedMagic[0] == 0x22 && decryptedMagic[1] == 0x40 && decryptedMagic[2] == 0x08 && decryptedMagic[3] == 0x91)
+//				{
 					shared_ptr<Peer> p;
 					p = host->m_peers[remote];
 					if (!p)
@@ -380,11 +368,11 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 
 					auto ps = std::make_shared<Session>(host, move(*socket), p);
 					ps->start();
-				}
+//				}
 				
 				// todo: PeerSession will take ownership of k and use it to encrypt wireline.
-				delete k;
-			});
-		});
+				delete io;
+//			});
+//		});
 	}
 }

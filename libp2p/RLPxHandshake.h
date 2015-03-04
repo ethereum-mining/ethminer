@@ -34,11 +34,13 @@ namespace dev
 {
 namespace p2p
 {
-	
+
+class RLPXHandshake;
+
 class RLPXFrameIO
 {
 public:
-	RLPXFrameIO(bool _originated, Secret const& _ephemeralShared, bytesConstRef _authCipher, bytesConstRef _ackCipher);
+	RLPXFrameIO(RLPXHandshake& _init);
 	
 	void writeFullPacketFrame(bytesConstRef _packet);
 	
@@ -61,29 +63,17 @@ public:
 	void updateIngressMACWithEndOfFrame(bytesConstRef _cipher);
 	
 private:
-	struct RLPXSecrets
-	{
-		// ideally this will be passed ecdhe-shared-secret, auth cipher, ack cpiher
-		RLPXSecrets(h128 const& encK, h128 const& macK): frameEnc(encK.data(), h128::size), macEnc(macK.data(), h128::size) {}
-		
-		CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption frameEnc;
-		CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption macEnc;
-		
-		CryptoPP::SHA3_256 egressMac;
-		CryptoPP::SHA3_256 ingressMac;
-	};
-	
 	void updateMAC(CryptoPP::SHA3_256& _mac, h128 const& _seed = h128());
 
-	CryptoPP::ECB_Mode<CryptoPP::Rijndael>::Encryption m_macUpdateEncryptor;
+	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameEnc;
+	CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption m_macEnc;
 	CryptoPP::SHA3_256 m_egressMac;
 	CryptoPP::SHA3_256 m_ingressMac;
-	
-	RLPXSecrets m_keys;
 };
 
 struct RLPXHandshake: public std::enable_shared_from_this<RLPXHandshake>
 {
+	friend class RLPXFrameIO;
 	friend class Host;
 	enum State
 	{
@@ -131,10 +121,7 @@ private:
 	bytes authCipher;
 	bytes ack;
 	bytes ackCipher;
-	
-	Secret ss;
-	Secret ess;
-	
+
 	crypto::ECDHE ecdhe;
 	h256 nonce;
 	

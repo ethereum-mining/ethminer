@@ -70,11 +70,11 @@ public:
 	Secret seckey() { return m_ephemeral.sec(); }
 	
 	/// Input public key for dh agreement, output generated shared secret.
-	void agree(Public const& _remoteEphemeral, Secret& o_sharedSecret);
+	void agree(Public const& _remoteEphemeral, Secret& o_sharedSecret) const;
 	
 protected:
-	KeyPair m_ephemeral;			///< Ephemeral keypair; generated.
-	Public m_remoteEphemeral;		///< Public key of remote; parameter.
+	KeyPair m_ephemeral;					///< Ephemeral keypair; generated.
+	mutable Public m_remoteEphemeral;		///< Public key of remote; parameter. Set once when agree is called, otherwise immutable.
 };
 
 /**

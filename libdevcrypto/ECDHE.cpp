@@ -34,7 +34,7 @@ void dev::crypto::ecdh::agree(Secret const& _s, Public const& _r, h256& o_s)
 	s_secp256k1.agree(_s, _r, o_s);
 }
 
-void ECDHE::agree(Public const& _remote, Secret& o_sharedSecret)
+void ECDHE::agree(Public const& _remote, Secret& o_sharedSecret) const
 {
 	if (m_remoteEphemeral)
 		// agreement can only occur once
