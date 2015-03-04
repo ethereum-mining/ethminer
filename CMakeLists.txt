@@ -150,6 +150,7 @@ if (EVMJIT)
 endif()
 
 add_subdirectory(libdevcore)
+add_subdirectory(rlp)
 add_subdirectory(libevmcore)
 add_subdirectory(liblll)
 
