@@ -35,6 +35,20 @@ void help()
 	cout
 		<< "Usage rlp [OPTIONS] [ <file> | -- ]" << endl
 		<< "Options:" << endl
+		<< "    -r,--render  Render the given RLP. Options:" << endl
+		<< "      --indent <string>  Use string as the level indentation (default '  ')." << endl
+		<< "      --hex-ints  Render integers in hex." << endl
+		<< "      --force-string  Force all data to be rendered as C-style strings." << endl
+		<< "      --force-escape  When rendering as C-style strings, force all characters to be escaped." << endl
+		<< "      --force-hex  Force all data to be rendered as raw hex." << endl
+		<< "    -l,--list-archive  List the items in the RLP list by hash and size." << endl
+		<< "    -e,--extract-archive  Extract all items in the RLP list, named by hash." << endl
+		<< "General options:" << endl
+		<< "    -L,--lenience  Try not to bomb out early if possible." << endl
+		<< "    -x,--hex,--base-16  Treat input RLP as hex encoded data." << endl
+		<< "    --64,--base-64  Treat input RLP as base-64 encoded data." << endl
+		<< "    -b,--bin,--base-256  Treat input RLP as raw binary data." << endl
+		<< "    -h,--help  Print this help message and exit." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		;
 	exit(0);
@@ -87,7 +101,7 @@ public:
 			m_out << "null";
 		else if (_d.isInt())
 			if (m_prefs.hexInts)
-				m_out << toHex(toCompactBigEndian(_d.toInt<bigint>(RLP::LaisezFaire)));
+				m_out << toHex(toCompactBigEndian(_d.toInt<bigint>(RLP::LaisezFaire), 1), 1);
 			else
 				m_out << _d.toInt<bigint>(RLP::LaisezFaire);
 		else if (_d.isData())
