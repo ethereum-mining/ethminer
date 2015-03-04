@@ -22,7 +22,7 @@
 #pragma once
 
 #include <libdevcore/Exceptions.h>
-#include "Common.h"
+#include "CommonEth.h"
 
 namespace dev
 {

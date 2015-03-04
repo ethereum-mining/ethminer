@@ -547,7 +547,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	if (rlp[2].itemCount() > 2)
 		BOOST_THROW_EXCEPTION(TooManyUncles());
 
-	set<h256> nonces = { m_currentBlock.nonce };
+	set<Nonce> nonces = { m_currentBlock.nonce };
 	Addresses rewarded;
 	set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
 
