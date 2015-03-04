@@ -504,10 +504,10 @@ pair<h256, u256> Client::getWork()
 	return make_pair(m_remoteMiner.workHash(), m_remoteMiner.difficulty());
 }
 
-bool Client::submitNonce(h256  const&_nonce)
+bool Client::submitWork(ProofOfWork::Proof const& _proof)
 {
 	Guard l(x_remoteMiner);
-	return m_remoteMiner.submitWork(_nonce);
+	return m_remoteMiner.submitWork(_proof);
 }
 
 void Client::doWork()

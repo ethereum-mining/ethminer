@@ -32,7 +32,7 @@ namespace dev
 namespace eth
 {
 
-const unsigned c_protocolVersion = 55;
+const unsigned c_protocolVersion = 56;
 const unsigned c_databaseVersion = 6 +
 #if ETH_FATDB
 	1000
