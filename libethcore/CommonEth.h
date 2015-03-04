@@ -66,5 +66,7 @@ static const u256 finney = exp10<15>();
 static const u256 szabo = exp10<12>();
 static const u256 wei = exp10<0>();
 
+using Nonce = h64;
+
 }
 }
