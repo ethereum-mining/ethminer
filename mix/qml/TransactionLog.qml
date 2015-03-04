@@ -38,6 +38,12 @@ Item {
 					if (codeModel.hasContract && !clientModel.running)
 						projectModel.stateListModel.debugDefaultState();
 				}
+				onProjectClosed:
+				{
+					fullModel.clear();
+					transactionModel.clear();
+					callModel.clear();
+				}
 			}
 
 			ComboBox {
