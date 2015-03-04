@@ -112,7 +112,7 @@ public:
 
 	/// Pass in a solution to the proof-of-work.
 	/// @returns true iff the given nonce is a proof-of-work for this State's block.
-	bool completeMine(h256 const& _nonce);
+	bool completeMine(ProofOfWork::Proof const& _result);
 
 	/// Attempt to find valid nonce for block that this state represents.
 	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
