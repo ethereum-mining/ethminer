@@ -118,16 +118,16 @@ Ethasher* Ethasher::s_this = nullptr;
 bool Ethash::verify(BlockInfo const& _header)
 {
 	bigint boundary = (bigint(1) << 256) / _header.difficulty;
-	u256 e(eval(_header, _header.nonce));
-	return e <= boundary;
+	auto e = eval(_header, _header.nonce);
+	return (u256)e.value <= boundary && e.mixHash == _header.mixHash;
 }
 
-h256 Ethash::eval(BlockInfo const& _header, Nonce const& _nonce)
+Ethash::Result Ethash::eval(BlockInfo const& _header, Nonce const& _nonce)
 {
 	auto p = Ethasher::params(_header);
 	ethash_return_value r;
 	ethash_compute_light(&r, Ethasher::get()->cache(_header).data(), &p, _header.headerHash(WithoutNonce).data(), (uint64_t)(u64)_nonce);
-	return h256(r.result, h256::ConstructFromPointer);
+	return Result{h256(r.result, h256::ConstructFromPointer), h256(r.mix_hash, h256::ConstructFromPointer)};
 }
 
 std::pair<MineInfo, Ethash::Proof> Ethash::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue, bool _turbo)
@@ -162,7 +162,7 @@ std::pair<MineInfo, Ethash::Proof> Ethash::mine(BlockInfo const& _header, unsign
 		if (val <= boundary)
 		{
 			ret.first.completed = true;
-			result.mixHash = *reinterpret_cast<h256 const*>(ethashReturn.mix_hash);
+			result.mixHash = h256(ethashReturn.mix_hash, h256::ConstructFromPointer);
 			result.nonce = u64(tryNonce);
 			break;
 		}

@@ -57,7 +57,7 @@ void BlockInfo::setEmpty()
 	timestamp = 0;
 	extraData.clear();
 	seedHash = h256();
-	mixBytes = h256();
+	mixHash = h256();
 	nonce = Nonce();
 	hash = headerHash(WithNonce);
 }
@@ -82,7 +82,7 @@ void BlockInfo::streamRLP(RLPStream& _s, IncludeNonce _n) const
 		<< parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot << receiptsRoot << logBloom
 		<< difficulty << number << gasLimit << gasUsed << timestamp << extraData << seedHash;
 	if (_n == WithNonce)
-		_s << mixBytes << nonce;
+		_s << mixHash << nonce;
 }
 
 h256 BlockInfo::headerHash(bytesConstRef _block)
@@ -111,7 +111,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 		timestamp = _header[field = 11].toInt<u256>();
 		extraData = _header[field = 12].toBytes();
 		seedHash = _header[field = 13].toHash<h256>();
-		mixBytes = _header[field = 14].toHash<h256>();
+		mixHash = _header[field = 14].toHash<h256>();
 		nonce = _header[field = 15].toHash<Nonce>();
 	}
 
@@ -180,7 +180,12 @@ void BlockInfo::populateFromParent(BlockInfo const& _parent)
 	gasLimit = calculateGasLimit(_parent);
 	gasUsed = 0;
 	difficulty = calculateDifficulty(_parent);
-	seedHash = number % 30 == 0 ? sha3(_parent.seedHash.asBytes() /*+ _parent.hash.asBytes()*/) : _parent.seedHash;
+	seedHash = calculateSeedHash(_parent);
+}
+
+h256 BlockInfo::calculateSeedHash(BlockInfo const& _parent) const
+{
+	return number % 30 == 0 ? sha3(_parent.seedHash.asBytes()) : _parent.seedHash;
 }
 
 u256 BlockInfo::calculateGasLimit(BlockInfo const& _parent) const
@@ -196,7 +201,7 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 	if (!parentHash)
 		return c_genesisDifficulty;
 	else
-		return max<u256>(2048, timestamp >= _parent.timestamp + (c_protocolVersion == 49 ? 5 : 8) ? _parent.difficulty - (_parent.difficulty / 2048) : (_parent.difficulty + (_parent.difficulty / 2048)));
+		return max<u256>(2048, timestamp >= _parent.timestamp + 8 ? _parent.difficulty - (_parent.difficulty / 2048) : (_parent.difficulty + (_parent.difficulty / 2048)));
 }
 
 template <class N> inline N diff(N const& _a, N const& _b) { return max(_a, _b) - min(_a, _b); }
@@ -208,6 +213,9 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 
 	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / 1024)
 		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / 1024));
+
+	if (seedHash != calculateSeedHash(_parent))
+		BOOST_THROW_EXCEPTION(InvalidSeedHash());
 
 	// Check timestamp is after previous timestamp.
 	if (parentHash)
