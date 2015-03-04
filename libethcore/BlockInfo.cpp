@@ -25,12 +25,11 @@
 #include <libethcore/CommonEth.h>
 #include "ProofOfWork.h"
 #include "Exceptions.h"
+#include "Params.h"
 #include "BlockInfo.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
-
-u256 dev::eth::c_genesisDifficulty = (u256)1 << 11;
 
 BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
@@ -128,7 +127,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	if (gasUsed > gasLimit)
 		BOOST_THROW_EXCEPTION(TooMuchGasUsed());
 
-	if (number && extraData.size() > 1024)
+	if (number && extraData.size() > c_maximumExtraDataSize)
 		BOOST_THROW_EXCEPTION(ExtraDataTooBig());
 }
 
@@ -185,23 +184,23 @@ void BlockInfo::populateFromParent(BlockInfo const& _parent)
 
 h256 BlockInfo::calculateSeedHash(BlockInfo const& _parent) const
 {
-	return number % 30 == 0 ? sha3(_parent.seedHash.asBytes()) : _parent.seedHash;
+	return number % c_epochDuration == 0 ? sha3(_parent.seedHash.asBytes()) : _parent.seedHash;
 }
 
 u256 BlockInfo::calculateGasLimit(BlockInfo const& _parent) const
 {
 	if (!parentHash)
-		return 1000000;
+		return c_genesisGasLimit;
 	else
-		return max<u256>(125000, (_parent.gasLimit * (1024 - 1) + (_parent.gasUsed * 6 / 5)) / 1024);
+		return max<u256>(c_minGasLimit, (_parent.gasLimit * (c_gasLimitBoundDivisor - 1) + (_parent.gasUsed * 6 / 5)) / c_gasLimitBoundDivisor);
 }
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 {
 	if (!parentHash)
-		return c_genesisDifficulty;
+		return (u256)c_genesisDifficulty;
 	else
-		return max<u256>(2048, timestamp >= _parent.timestamp + 8 ? _parent.difficulty - (_parent.difficulty / 2048) : (_parent.difficulty + (_parent.difficulty / 2048)));
+		return max<u256>(c_minimumDifficulty, timestamp >= _parent.timestamp + c_durationLimit ? _parent.difficulty - (_parent.difficulty / c_difficultyBoundDivisor) : (_parent.difficulty + (_parent.difficulty / c_difficultyBoundDivisor)));
 }
 
 template <class N> inline N diff(N const& _a, N const& _b) { return max(_a, _b) - min(_a, _b); }
@@ -211,8 +210,8 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 	if (difficulty != calculateDifficulty(_parent))
 		BOOST_THROW_EXCEPTION(InvalidDifficulty());
 
-	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / 2048)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / 2048));
+	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / c_gasLimitBoundDivisor)
+		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / c_gasLimitBoundDivisor));
 
 	if (seedHash != calculateSeedHash(_parent))
 		BOOST_THROW_EXCEPTION(InvalidSeedHash());
