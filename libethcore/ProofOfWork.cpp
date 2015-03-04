@@ -66,7 +66,6 @@ public:
 				writeFile(memoFile, m_caches[_header.seedHash]);
 			}
 		}
-		cdebug << "sha3 of cache: " << sha3(m_caches[_header.seedHash]);
 		return m_caches[_header.seedHash];
 	}
 
@@ -91,7 +90,6 @@ public:
 				writeFile(memoFile, m_fulls[_header.seedHash]);
 			}
 		}
-		cdebug << "sha3 of full pad: " << sha3(m_fulls[_header.seedHash]);
 		return m_fulls[_header.seedHash].data();
 	}
 
