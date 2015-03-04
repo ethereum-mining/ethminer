@@ -43,15 +43,13 @@ namespace dev
 
 /// Retrieve and returns the contents of the given file. If the file doesn't exist or isn't readable, returns an empty bytes.
 bytes contents(std::string const& _file);
-std::string contentsString(std::string const& _file);
 /// Retrieve and returns the allocated contents of the given file. If the file doesn't exist or isn't readable, returns nullptr. Don't forget to delete [] when finished.
 bytesRef contentsNew(std::string const& _file);
 
 /// Write the given binary data into the given file, replacing the file if it pre-exists.
-void writeFile(std::string const& _file, bytesConstRef _data);
+void writeFile(std::string const& _file, bytes const& _data);
 /// Write the given binary data into the given file, replacing the file if it pre-exists.
-inline void writeFile(std::string const& _file, bytes const& _data) { writeFile(_file, bytesConstRef(&_data)); }
-inline void writeFile(std::string const& _file, std::string const& _data) { writeFile(_file, bytesConstRef(_data)); }
+void writeFile(std::string const& _file, bytesConstRef _data);
 
 /// Nicely renders the given bytes to a string, optionally as HTML.
 /// @a _bytes: bytes array to be rendered as string. @a _width of a bytes line.
