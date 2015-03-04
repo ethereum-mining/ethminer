@@ -25,8 +25,10 @@
 #include <fstream>
 #include <iostream>
 #include <signal.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
+
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
