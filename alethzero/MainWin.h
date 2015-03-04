@@ -26,6 +26,7 @@
 #endif
 
 #include <map>
+
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QMutex>

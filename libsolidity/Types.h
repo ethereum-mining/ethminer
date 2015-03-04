@@ -30,6 +30,7 @@
 #include <libsolidity/Exceptions.h>
 #include <libsolidity/ASTForward.h>
 #include <libsolidity/Token.h>
+#include <libdevcore/UndefMacros.h>
 
 namespace dev
 {
@@ -66,7 +67,6 @@ public:
 private:
 	MemberMap m_memberTypes;
 };
-
 
 /**
  * Abstract base class that forms the root of the type hierarchy.
@@ -302,6 +302,7 @@ public:
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual bool operator==(const Type& _other) const override;
+	virtual unsigned getCalldataEncodedSize() const override;
 	virtual bool isDynamicallySized() const { return m_hasDynamicLength; }
 	virtual u256 getStorageSize() const override;
 	virtual unsigned getSizeOnStack() const override;

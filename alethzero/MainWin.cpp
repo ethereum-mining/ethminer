@@ -20,6 +20,10 @@
  */
 
 #include <fstream>
+
+// Make sure boost/asio.hpp is included before windows.h.
+#include <boost/asio.hpp>
+
 #include <QtNetwork/QNetworkReply>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
@@ -1382,11 +1386,16 @@ void Main::on_blocks_currentItemChanged()
 				s << "<br/>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>";
 			else
 				s << "<br/>Pre: <i>Nothing is before Phil</i>";
+			BlockReceipts receipts = ethereum()->blockChain().receipts(h);
+			unsigned ii = 0;
 			for (auto const& i: block[1])
-				s << "<br/>" << sha3(i.data()).abridged();// << ": <b>" << i[1].toHash<h256>() << "</b> [<b>" << i[2].toInt<u256>() << "</b> used]";
+			{
+				s << "<br/>" << sha3(i.data()).abridged() << ": <b>" << receipts.receipts[ii].stateRoot() << "</b> [<b>" << receipts.receipts[ii].gasUsed() << "</b> used]";
+				++ii;
+			}
 			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
 			s << "<br/>Dump: " Span(Mono) << toHex(block[0].data()) << "</span>";
-			s << "<div>Receipts-Hex: " Span(Mono) << toHex(ethereum()->blockChain().receipts(h).rlp()) << "</span></div>";
+			s << "<div>Receipts-Hex: " Span(Mono) << toHex(receipts.rlp()) << "</span></div>";
 		}
 		else
 		{

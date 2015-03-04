@@ -14,7 +14,7 @@
 # only look in default directories
 find_path(
 	JSON_RPC_CPP_INCLUDE_DIR 
-	NAMES jsonrpccpp/server.h
+	NAMES jsonrpccpp/server.h jsonrpc/server.h
 	PATH_SUFFIXES jsonrpc
 	DOC "json-rpc-cpp include dir"
 )

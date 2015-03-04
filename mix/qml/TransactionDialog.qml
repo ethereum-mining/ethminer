@@ -25,6 +25,7 @@ Window {
 	property var itemParams;
 	property bool useTransactionDefaultValue: false
 	property var qType;
+	property alias stateAccounts: senderComboBox.model
 
 	signal accepted;
 
@@ -44,6 +45,8 @@ Window {
 		rowFunction.visible = true;
 
 		itemParams = item.parameters !== undefined ? item.parameters : {};
+		if (item.sender)
+			senderComboBox.select(item.sender);
 
 		contractsModel.clear();
 		var contractIndex = -1;
@@ -190,6 +193,7 @@ Window {
 			item.functionId = transactionDialog.functionId;
 		}
 
+		item.sender = senderComboBox.model[senderComboBox.currentIndex].secret;
 		var orderedQType = [];
 		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
 			var parameter = transactionDialog.transactionParams.get(p);
@@ -210,6 +214,35 @@ Window {
 			id: dialogContent
 			anchors.top: parent.top
 			spacing: 10
+			RowLayout
+			{
+				id: rowSender
+				Layout.fillWidth: true
+				height: 150
+				DefaultLabel {
+					Layout.preferredWidth: 75
+					text: qsTr("Sender")
+				}
+				ComboBox {
+
+					function select(secret)
+					{
+						for (var i in model)
+							if (model[i].secret === secret)
+							{
+								currentIndex = i;
+								break;
+							}
+					}
+
+					id: senderComboBox
+					Layout.preferredWidth: 350
+					currentIndex: 0
+					textRole: "name"
+					editable: false
+				}
+			}
+
 			RowLayout
 			{
 				id: rowContract
