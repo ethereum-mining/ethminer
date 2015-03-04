@@ -105,5 +105,9 @@
         <file>qml/img/search_filled.png</file>
         <file>qml/img/help.png</file>
         <file>qml/img/openedfolder.png</file>
+        <file>qml/img/b64.png</file>
+        <file>qml/img/exit.png</file>
+        <file>qml/img/run.png</file>
+        <file>qml/img/note.png</file>
     </qresource>
 </RCC>
