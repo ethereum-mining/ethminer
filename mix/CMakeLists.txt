@@ -12,6 +12,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 
 find_package (Qt5WebEngine QUIET)
