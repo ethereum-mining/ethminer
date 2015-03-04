@@ -57,6 +57,7 @@ struct InvalidGasUsed: virtual dev::Exception {};
 class InvalidTransactionsHash: virtual public dev::Exception { public: InvalidTransactionsHash(h256 _head, h256 _real): m_head(_head), m_real(_real) {} h256 m_head; h256 m_real; virtual const char* what() const noexcept; };
 struct InvalidTransaction: virtual dev::Exception {};
 struct InvalidDifficulty: virtual dev::Exception {};
+struct InvalidSeedHash: virtual dev::Exception {};
 class InvalidGasLimit: virtual public dev::Exception { public: InvalidGasLimit(u256 _provided = 0, u256 _valid = 0, u256 _gD = 0, u256 _mD = 0): provided(_provided), valid(_valid), givenDiff(_gD), maxDiff(_mD) {} u256 provided; u256 valid; u256 givenDiff; u256 maxDiff; virtual const char* what() const noexcept; };
 class InvalidMinGasPrice: virtual public dev::Exception { public: InvalidMinGasPrice(u256 _provided = 0, u256 _limit = 0): provided(_provided), limit(_limit) {} u256 provided; u256 limit; virtual const char* what() const noexcept; };
 struct InvalidTransactionGasUsed: virtual dev::Exception {};
