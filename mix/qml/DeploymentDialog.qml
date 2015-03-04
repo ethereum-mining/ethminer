@@ -16,7 +16,7 @@ Window {
 	id: modalDeploymentDialog
 	modality: Qt.ApplicationModal
 	width: 735
-	height: 480
+	height: 335
 	maximumWidth: width
 	minimumWidth: width
 	maximumHeight: height
@@ -26,7 +26,7 @@ Window {
 	property alias applicationUrlHttp: applicationUrlHttp.text
 	property string urlHintContract: urlHintAddr.text
 	property string packageHash
-	property alias packageBase64: base64Value.text
+	property string packageBase64
 	property string eth: registrarAddr.text
 	property string currentAccount
 	property alias gasToUse: gasToUseInput.text
@@ -154,6 +154,11 @@ Window {
 		}
 	}
 
+	SourceSansProRegular
+	{
+		id: lightFont
+	}
+
 	Column
 	{
 		spacing: 5
@@ -166,12 +171,16 @@ Window {
 			Layout.preferredHeight: 500
 			RowLayout
 			{
-				DefaultLabel
+				Rectangle
 				{
-					text: qsTr("DEPLOYING")
-					font.italic: true
-					font.underline: true
-					Layout.preferredWidth: 356
+					Layout.preferredWidth: 357
+					DefaultLabel
+					{
+						text: qsTr("Deployment")
+						font.family: lightFont.name
+						font.underline: true
+						anchors.centerIn: parent
+					}
 				}
 
 				Button
@@ -185,6 +194,50 @@ Window {
 					tooltip: qsTr("Help")
 					onTriggered: {
 						Qt.openUrlExternally("https://github.com/ethereum/wiki/wiki/Mix:-The-DApp-IDE#deployment-to-network")
+					}
+				}
+
+				Button
+				{
+					action: openFolderAction
+					iconSource: "qrc:/qml/img/openedfolder.png"
+				}
+
+				Action {
+					id: openFolderAction
+					enabled: deploymentDialog.packageBase64 !== ""
+					tooltip: qsTr("Open Package Folder")
+					onTriggered: {
+						fileIo.openFileBrowser(projectModel.deploymentDir);
+					}
+				}
+
+				Button
+				{
+					action: b64Action
+					iconSource: "qrc:/qml/img/b64.png"
+				}
+
+				Action {
+					id: b64Action
+					enabled: deploymentDialog.packageBase64 !== ""
+					tooltip: qsTr("Copy Base64 convertion to ClipBoard")
+					onTriggered: {
+						appContext.toClipboard(deploymentDialog.packageBase64);
+					}
+				}
+
+				Button
+				{
+					action: exitAction
+					iconSource: "qrc:/qml/img/exit.png"
+				}
+
+				Action {
+					id: exitAction
+					tooltip: qsTr("Exit")
+					onTriggered: {
+						close()
 					}
 				}
 			}
@@ -274,28 +327,28 @@ Window {
 						text: "/" + projectModel.projectTitle
 					}
 				}
-
-				DefaultLabel
-				{
-					text: qsTr("Package (Base64): ")
-				}
-
-				TextArea
-				{
-					Layout.preferredWidth: 350
-					readOnly: true
-					id: base64Value
-					height: 60
-					enabled: base64Value.text != ""
-				}
 			}
 
-			Row
+			RowLayout
 			{
-				Button {
-					text: qsTr("Deploy");
+				Layout.fillWidth: true
+				Rectangle
+				{
+					Layout.preferredWidth: 357
+					color: "transparent"
+				}
+
+				Button
+				{
+					id: deployButton
+					action: runAction
+					iconSource: "qrc:/qml/img/run.png"
+				}
+
+				Action {
+					id: runAction
 					tooltip: qsTr("Deploy contract and package resources files.")
-					onClicked: {
+					onTriggered: {
 						var inError = [];
 						var ethUrl = ProjectModelCode.formatAppUrl(applicationUrlEth.text);
 						for (var k in ethUrl)
@@ -315,6 +368,7 @@ Window {
 
 				CheckBox
 				{
+					anchors.left: deployButton.right
 					id: contractRedeploy
 					enabled: Object.keys(projectModel.deploymentAddresses).length > 0
 					checked: Object.keys(projectModel.deploymentAddresses).length == 0
@@ -338,32 +392,16 @@ Window {
 			Layout.preferredHeight: 500
 			RowLayout
 			{
-				DefaultLabel
+				Layout.preferredHeight: 25
+				Rectangle
 				{
-					text: qsTr("REGISTERING")
-					font.italic: true
-					font.underline: true
 					Layout.preferredWidth: 356
-				}
-
-				Button
-				{
-					action: displayHelpAction
-					iconSource: "qrc:/qml/img/help.png"
-				}
-
-				Button
-				{
-					action: openFolderAction
-					iconSource: "qrc:/qml/img/openedfolder.png"
-				}
-
-				Action {
-					id: openFolderAction
-					enabled: deploymentDialog.packageBase64 !== ""
-					tooltip: qsTr("Open Package Folder")
-					onTriggered: {
-						fileIo.openFileBrowser(projectModel.deploymentDir);
+					DefaultLabel
+					{
+						text: qsTr("Registration")
+						font.family: lightFont.name
+						font.underline: true
+						anchors.centerIn: parent
 					}
 				}
 			}
@@ -389,7 +427,7 @@ Window {
 				DefaultLabel
 				{
 					Layout.preferredWidth: 355
-					text: qsTr("Web Application Ressources URL: ")
+					text: qsTr("Web Application Resources URL: ")
 				}
 
 				DefaultTextField
@@ -400,10 +438,16 @@ Window {
 				}
 			}
 
-			Rectangle
+			RowLayout
 			{
 				id: rowRegister
 				Layout.fillWidth: true
+
+				Rectangle
+				{
+					Layout.preferredWidth: 357
+					color: "transparent"
+				}
 
 				function isOkToRegister()
 				{
@@ -411,10 +455,15 @@ Window {
 				}
 
 				Button {
-					text: qsTr("Register");
-					tooltip: qsTr("Register hosted Web Application.")
+					action: registerAction
+					iconSource: "qrc:/qml/img/note.png"
+				}
+
+				Action {
+					id: registerAction
 					enabled: rowRegister.isOkToRegister()
-					onClicked: {
+					tooltip: qsTr("Register hosted Web Application.")
+					onTriggered: {
 						if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
 						{
 							deployDialog.title = text;
@@ -428,12 +477,6 @@ Window {
 						if (!stopForInputError(inError))
 							ProjectModelCode.registerToUrlHint();
 					}
-				}
-
-				Button {
-					anchors.right: parent.right
-					text: qsTr("Cancel");
-					onClicked: close();
 				}
 			}
 		}
