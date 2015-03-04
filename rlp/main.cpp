@@ -22,9 +22,11 @@
 #include <fstream>
 #include <iostream>
 #include <boost/algorithm/string.hpp>
+#include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
+#include "base64.h"
 using namespace std;
 using namespace dev;
 
@@ -33,21 +35,6 @@ void help()
 	cout
 		<< "Usage rlp [OPTIONS] [ <file> | -- ]" << endl
 		<< "Options:" << endl
-		<< "    -r,--render  Render the given RLP. Options:" << endl
-		<< "      --indent <string>  Use string as the level indentation (default '  ')." << endl
-		<< "      --hex-ints  Render integers in hex." << endl
-		<< "      --ascii-strings  Render data as C-style strings or hex depending on content being ASCII." << endl
-		<< "      --force-string  Force all data to be rendered as C-style strings." << endl
-		<< "      --force-escape  When rendering as C-style strings, force all characters to be escaped." << endl
-		<< "      --force-hex  Force all data to be rendered as raw hex." << endl
-		<< "    -l,--list-archive  List the items in the RLP list by hash and size." << endl
-		<< "    -e,--extract-archive  Extract all items in the RLP list, named by hash." << endl
-		<< "General options:" << endl
-		<< "    -L,--lenience  Try not to bomb out early if possible." << endl
-		<< "    -x,--hex,--base-16  Treat input RLP as hex encoded data." << endl
-		<< "    --64,--base-64  Treat input RLP as base-64 encoded data." << endl
-		<< "    -b,--bin,--base-256  Treat input RLP as raw binary data." << endl
-		<< "    -h,--help  Print this help message and exit." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		;
 	exit(0);
@@ -87,7 +74,7 @@ public:
 	{
 		string indent = "  ";
 		bool hexInts = false;
-		bool forceString = true;
+		bool forceString = false;
 		bool escapeAll = false;
 		bool forceHex = false;
 	};
@@ -100,7 +87,7 @@ public:
 			m_out << "null";
 		else if (_d.isInt())
 			if (m_prefs.hexInts)
-				m_out << toHex(toCompactBigEndian(_d.toInt<bigint>(RLP::LaisezFaire), 1), 1);
+				m_out << toHex(toCompactBigEndian(_d.toInt<bigint>(RLP::LaisezFaire)));
 			else
 				m_out << _d.toInt<bigint>(RLP::LaisezFaire);
 		else if (_d.isData())
@@ -151,8 +138,6 @@ int main(int argc, char** argv)
 			prefs.indent = argv[++i];
 		else if (arg == "--hex-ints")
 			prefs.hexInts = true;
-		else if (arg == "--ascii-strings")
-			prefs.forceString = prefs.forceHex = false;
 		else if (arg == "--force-string")
 			prefs.forceString = true;
 		else if (arg == "--force-hex")
@@ -219,7 +204,7 @@ int main(int argc, char** argv)
 		boost::algorithm::replace_all(s, " ", "");
 		boost::algorithm::replace_all(s, "\n", "");
 		boost::algorithm::replace_all(s, "\t", "");
-		b = fromBase64(s);
+		b = base64_decode(s);
 		break;
 	}
 	default:
@@ -229,60 +214,60 @@ int main(int argc, char** argv)
 
 	try
 	{
-		RLP rlp(b);
-		switch (mode)
+	RLP rlp(b);
+	switch (mode)
+	{
+	case Mode::ListArchive:
+	{
+		if (!rlp.isList())
 		{
-		case Mode::ListArchive:
+			cout << "Error: Invalid format; RLP data is not a list." << endl;
+			exit(1);
+		}
+		cout << rlp.itemCount() << " items:" << endl;
+		for (auto i: rlp)
 		{
-			if (!rlp.isList())
+			if (!i.isData())
 			{
-				cout << "Error: Invalid format; RLP data is not a list." << endl;
-				exit(1);
+				cout << "Error: Invalid format; RLP list item is not data." << endl;
+				if (!lenience)
+					exit(1);
 			}
-			cout << rlp.itemCount() << " items:" << endl;
-			for (auto i: rlp)
-			{
-				if (!i.isData())
-				{
-					cout << "Error: Invalid format; RLP list item is not data." << endl;
-					if (!lenience)
-						exit(1);
-				}
-				cout << "    " << i.size() << " bytes: " << sha3(i.data()) << endl;
-			}
-			break;
+			cout << "    " << i.size() << " bytes: " << sha3(i.data()) << endl;
 		}
-		case Mode::ExtractArchive:
+		break;
+	}
+	case Mode::ExtractArchive:
+	{
+		if (!rlp.isList())
 		{
-			if (!rlp.isList())
-			{
-				cout << "Error: Invalid format; RLP data is not a list." << endl;
-				exit(1);
-			}
-			cout << rlp.itemCount() << " items:" << endl;
-			for (auto i: rlp)
-			{
-				if (!i.isData())
-				{
-					cout << "Error: Invalid format; RLP list item is not data." << endl;
-					if (!lenience)
-						exit(1);
-				}
-				ofstream fout;
-				fout.open(toString(sha3(i.data())));
-				fout.write(reinterpret_cast<char const*>(i.data().data()), i.data().size());
-			}
-			break;
+			cout << "Error: Invalid format; RLP data is not a list." << endl;
+			exit(1);
 		}
-		case Mode::Render:
+		cout << rlp.itemCount() << " items:" << endl;
+		for (auto i: rlp)
 		{
-			RLPStreamer s(cout, prefs);
-			s.output(rlp);
-			cout << endl;
-			break;
+			if (!i.isData())
+			{
+				cout << "Error: Invalid format; RLP list item is not data." << endl;
+				if (!lenience)
+					exit(1);
+			}
+			ofstream fout;
+			fout.open(toString(sha3(i.data())));
+			fout.write(reinterpret_cast<char const*>(i.data().data()), i.data().size());
 		}
-		default:;
-		}
+		break;
+	}
+	case Mode::Render:
+	{
+		RLPStreamer s(cout, prefs);
+		s.output(rlp);
+		cout << endl;
+		break;
+	}
+	default:;
+	}
 	}
 	catch (...)
 	{
