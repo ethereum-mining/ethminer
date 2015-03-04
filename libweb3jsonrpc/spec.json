@@ -1,18 +1,14 @@
 [
             { "name": "web3_sha3", "params": [""], "order": [], "returns" : "" },
 
+            { "name": "net_peerCount", "params": [], "order": [], "returns" : "" },
+            { "name": "net_listening", "params": [], "order": [], "returns" : false },
+
             { "name": "eth_coinbase", "params": [], "order": [], "returns" : "" },
-            { "name": "eth_setCoinbase", "params": [""], "order": [], "returns" : true },
-            { "name": "eth_listening", "params": [], "order": [], "returns" : false },
-            { "name": "eth_setListening", "params": [false], "order" : [], "returns" : true },
             { "name": "eth_mining", "params": [], "order": [], "returns" : false },
-            { "name": "eth_setMining", "params": [false], "order" : [], "returns" : true },
             { "name": "eth_gasPrice", "params": [], "order": [], "returns" : "" },
             { "name": "eth_accounts", "params": [], "order": [], "returns" : [] },
-            { "name": "eth_peerCount", "params": [], "order": [], "returns" : 0 },
-            { "name": "eth_defaultBlock", "params": [], "order": [], "returns" : 0},
-            { "name": "eth_setDefaultBlock", "params": [0], "order": [], "returns" : true},
-            { "name": "eth_number", "params": [], "order": [], "returns" : 0},
+            { "name": "eth_blockNumber", "params": [], "order": [], "returns" : ""},
 
             { "name": "eth_balanceAt", "params": [""], "order": [], "returns" : ""},
             { "name": "eth_stateAt", "params": ["", ""], "order": [], "returns": ""},

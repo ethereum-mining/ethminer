@@ -68,37 +68,40 @@ public:
 	WebThreeStubServerBase(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts);
 
 	virtual std::string web3_sha3(std::string const& _param1);
+	
+	virtual std::string net_peerCount();
+	virtual bool net_listening();
+	
+	virtual std::string eth_coinbase();
+	virtual bool eth_mining();
+	virtual std::string eth_gasPrice();
 	virtual Json::Value eth_accounts();
+	virtual std::string eth_blockNumber();
+	
+	
 	virtual std::string eth_balanceAt(std::string const& _address);
 	virtual Json::Value eth_blockByHash(std::string const& _hash);
 	virtual Json::Value eth_blockByNumber(int _number);
 	virtual std::string eth_call(Json::Value const& _json);
 	virtual Json::Value eth_changed(int _id);
 	virtual std::string eth_codeAt(std::string const& _address);
-	virtual std::string eth_coinbase();
+
 	virtual Json::Value eth_compilers();
 	virtual double eth_countAt(std::string const& _address);
 	virtual double eth_transactionCountByHash(std::string const& _hash);
 	virtual double eth_transactionCountByNumber(int _number);
 	virtual double eth_uncleCountByHash(std::string const& _hash);
 	virtual double eth_uncleCountByNumber(int _number);
-	virtual int eth_defaultBlock();
-	virtual std::string eth_gasPrice();
+
 	virtual Json::Value eth_filterLogs(int _id);
 	virtual bool eth_flush();
 	virtual Json::Value eth_logs(Json::Value const& _json);
-	virtual bool eth_listening();
-	virtual bool eth_mining();
+
+
 	virtual int eth_newFilter(Json::Value const& _json);
 	virtual int eth_newFilterString(std::string const& _filter);
-	virtual int eth_number();
-	virtual int eth_peerCount();
-	virtual bool eth_setCoinbase(std::string const& _address);
-	virtual bool eth_setDefaultBlock(int _block);
-	virtual bool eth_setListening(bool _listening);
 	virtual std::string eth_lll(std::string const& _s);
 	virtual std::string eth_serpent(std::string const& _s);
-	virtual bool eth_setMining(bool _mining);
 	virtual std::string eth_solidity(std::string const& _code);
 	virtual std::string eth_stateAt(std::string const& _address, std::string const& _storage);
 	virtual Json::Value eth_storageAt(std::string const& _address);
