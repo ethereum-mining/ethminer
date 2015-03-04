@@ -39,7 +39,6 @@
 #include "CodeModel.h"
 #include "QEther.h"
 #include "Web3Server.h"
-#include "MixClient.h"
 #include "ClientModel.h"
 #include "MixClient.h"
 
