@@ -15,15 +15,19 @@ Window {
 
 	id: modalDeploymentDialog
 	modality: Qt.ApplicationModal
-	width: 930
-	height: 350
+	width: 735
+	height: 480
+	maximumWidth: width
+	minimumWidth: width
+	maximumHeight: height
+	minimumHeight: height
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
-	property string urlHintContract: "c83d3e22645fb015d02043a744921cc2f828c64d" /* TODO: replace with the good address */
+	property string urlHintContract: urlHintAddr.text
 	property string packageHash
 	property alias packageBase64: base64Value.text
-	property string eth: "4c3f7330690ed3657d3fa20fe5717b84010528ae"; /* TODO: replace with the good address */
+	property string eth: registrarAddr.text
 	property string currentAccount
 	property alias gasToUse: gasToUseInput.text
 
@@ -150,187 +154,300 @@ Window {
 		}
 	}
 
-	Rectangle
+	Column
 	{
-		anchors.fill : parent
+		spacing: 5
+		anchors.fill: parent
 		anchors.margins: 10
-		color: Style.generic.layout.backgroundColor
-		GridLayout
+		ColumnLayout
 		{
-			columns: 2
-			anchors.top: parent.top
-			anchors.left: parent.left
-			width: parent.width
-			DefaultLabel
+			id: containerDeploy
+			Layout.fillWidth: true
+			Layout.preferredHeight: 500
+			RowLayout
 			{
-				text: qsTr("Account used to deploy:")
-			}
+				DefaultLabel
+				{
+					text: qsTr("DEPLOYING")
+					font.italic: true
+					font.underline: true
+					Layout.preferredWidth: 356
+				}
 
-			Rectangle
-			{
-				width: 300
-				height: 25
-				color: "transparent"
-				ComboBox {
-					id: comboAccounts
-					property var balances: []
-					onCurrentIndexChanged : {
-						if (modelAccounts.count > 0)
-						{
-							currentAccount = modelAccounts.get(currentIndex).id;
-							balance.text = balances[currentIndex];
-						}
-					}
-					model: ListModel {
-						id: modelAccounts
+				Button
+				{
+					action: displayHelpAction
+					iconSource: "qrc:/qml/img/help.png"
+				}
+
+				Action {
+					id: displayHelpAction
+					tooltip: qsTr("Help")
+					onTriggered: {
+						Qt.openUrlExternally("https://github.com/ethereum/wiki/wiki/Mix:-The-DApp-IDE#deployment-to-network")
 					}
 				}
+			}
+
+			GridLayout
+			{
+				columns: 2
+				width: parent.width
 
 				DefaultLabel
 				{
-					anchors.verticalCenter: parent.verticalCenter
-					anchors.left: comboAccounts.right
-					anchors.leftMargin: 20
-					id: balance;
+					text: qsTr("Registrar address:")
 				}
-			}
 
-
-			DefaultLabel
-			{
-				text: qsTr("Ethereum Application URL: ")
-			}
-
-			Rectangle
-			{
-				Layout.fillWidth: true
-				height: 25
-				color: "transparent"
 				DefaultTextField
 				{
-					width: 350
-					id: applicationUrlEth
+					Layout.preferredWidth: 350
+					id: registrarAddr
 				}
 
 				DefaultLabel
 				{
-					anchors.verticalCenter: parent.verticalCenter;
-					anchors.left: applicationUrlEth.right
-					text: "/" + projectModel.projectTitle
+					text: qsTr("Account used to deploy:")
+				}
+
+				Rectangle
+				{
+					width: 300
+					height: 25
+					color: "transparent"
+					ComboBox {
+						id: comboAccounts
+						property var balances: []
+						onCurrentIndexChanged : {
+							if (modelAccounts.count > 0)
+							{
+								currentAccount = modelAccounts.get(currentIndex).id;
+								balance.text = balances[currentIndex];
+							}
+						}
+						model: ListModel {
+							id: modelAccounts
+						}
+					}
+
+					DefaultLabel
+					{
+						anchors.verticalCenter: parent.verticalCenter
+						anchors.left: comboAccounts.right
+						anchors.leftMargin: 20
+						id: balance;
+					}
+				}
+
+				DefaultLabel
+				{
+					text: qsTr("Amount of gas to use for each contract deployment: ")
+				}
+
+				DefaultTextField
+				{
+					text: "20000"
+					Layout.preferredWidth: 350
+					id: gasToUseInput
+				}
+
+				DefaultLabel
+				{
+					text: qsTr("Ethereum Application URL: ")
+				}
+
+				Rectangle
+				{
+					Layout.fillWidth: true
+					height: 25
+					color: "transparent"
+					DefaultTextField
+					{
+						width: 300
+						id: applicationUrlEth
+					}
+
+					DefaultLabel
+					{
+						anchors.verticalCenter: parent.verticalCenter;
+						anchors.left: applicationUrlEth.right
+						text: "/" + projectModel.projectTitle
+					}
+				}
+
+				DefaultLabel
+				{
+					text: qsTr("Package (Base64): ")
+				}
+
+				TextArea
+				{
+					Layout.preferredWidth: 350
+					readOnly: true
+					id: base64Value
+					height: 60
+					enabled: base64Value.text != ""
 				}
 			}
 
-			DefaultLabel
+			Row
 			{
-				text: qsTr("Web Application Ressources URL: ")
-			}
+				Button {
+					text: qsTr("Deploy");
+					tooltip: qsTr("Deploy contract and package resources files.")
+					onClicked: {
+						var inError = [];
+						var ethUrl = ProjectModelCode.formatAppUrl(applicationUrlEth.text);
+						for (var k in ethUrl)
+						{
+							if (ethUrl[k].length > 32)
+								inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
+						}
+						if (!stopForInputError(inError))
+						{
+							if (contractRedeploy.checked)
+								deployWarningDialog.open();
+							else
+								ProjectModelCode.startDeployProject(false);
+						}
+					}
+				}
 
-			DefaultTextField
-			{
-				Layout.fillWidth: true
-				id: applicationUrlHttp
-			}
-
-			DefaultLabel
-			{
-				text: qsTr("Amount of gas to use for each contract deployment: ")
-			}
-
-			DefaultTextField
-			{
-				text: "20000"
-				Layout.fillWidth: true
-				id: gasToUseInput
-			}
-
-			DefaultLabel
-			{
-				text: qsTr("Package (Base64): ")
-			}
-
-			TextArea
-			{
-				Layout.fillWidth: true
-				readOnly: true
-				id: base64Value
-				height: 60
-				enabled: base64Value.text != ""
+				CheckBox
+				{
+					id: contractRedeploy
+					enabled: Object.keys(projectModel.deploymentAddresses).length > 0
+					checked: Object.keys(projectModel.deploymentAddresses).length == 0
+					text: qsTr("Deploy Contract(s)")
+					anchors.verticalCenter: parent.verticalCenter
+				}
 			}
 		}
 
-		MessageDialog {
-			id: deployDialog
-			standardButtons: StandardButton.Ok
-			icon: StandardIcon.Warning
-		}
-
-		MessageDialog {
-			id: errorDialog
-			standardButtons: StandardButton.Ok
-			icon: StandardIcon.Critical
-		}
-
-		RowLayout
+		Rectangle
 		{
-			anchors.bottom: parent.bottom
-			anchors.right: parent.right;
-			anchors.bottomMargin: 10
-			Button {
-				text: qsTr("Deploy contract / Package resources");
-				tooltip: qsTr("Deploy contract and package resources files.")
-				onClicked: {
-					var inError = [];
-					var ethUrl = ProjectModelCode.formatAppUrl(applicationUrlEth.text);
-					for (var k in ethUrl)
-					{
-						if (ethUrl[k].length > 32)
-							inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
+			width: parent.width
+			height: 1
+			color: "#5891d3"
+		}
+
+		ColumnLayout
+		{
+			id: containerRegister
+			Layout.fillWidth: true
+			Layout.preferredHeight: 500
+			RowLayout
+			{
+				DefaultLabel
+				{
+					text: qsTr("REGISTERING")
+					font.italic: true
+					font.underline: true
+					Layout.preferredWidth: 356
+				}
+
+				Button
+				{
+					action: displayHelpAction
+					iconSource: "qrc:/qml/img/help.png"
+				}
+
+				Button
+				{
+					action: openFolderAction
+					iconSource: "qrc:/qml/img/openedfolder.png"
+				}
+
+				Action {
+					id: openFolderAction
+					enabled: deploymentDialog.packageBase64 !== ""
+					tooltip: qsTr("Open Package Folder")
+					onTriggered: {
+						fileIo.openFileBrowser(projectModel.deploymentDir);
 					}
-					if (!stopForInputError(inError))
-						deployWarningDialog.open();
 				}
 			}
 
-			Button {
-				text: qsTr("Package resources only");
-				tooltip: qsTr("Package resources files.")
-				enabled: Object.keys(projectModel.deploymentAddresses).length > 0
-				onClicked: {
-					ProjectModelCode.startDeployProject(false);
+			GridLayout
+			{
+				columns: 2
+				Layout.fillWidth: true
+
+				DefaultLabel
+				{
+					Layout.preferredWidth: 355
+					text: qsTr("Url hint address:")
+				}
+
+				DefaultTextField
+				{
+					Layout.preferredWidth: 350
+					id: urlHintAddr
+					enabled: rowRegister.isOkToRegister()
+				}
+
+				DefaultLabel
+				{
+					Layout.preferredWidth: 355
+					text: qsTr("Web Application Ressources URL: ")
+				}
+
+				DefaultTextField
+				{
+					Layout.preferredWidth: 350
+					id: applicationUrlHttp
+					enabled: rowRegister.isOkToRegister()
 				}
 			}
 
-			Button {
-				text: qsTr("Open Package Directory");
-				enabled: projectModel.deploymentDir !== ""
-				onClicked: {
-					fileIo.openFileBrowser(projectModel.deploymentDir);
-				}
-			}
+			Rectangle
+			{
+				id: rowRegister
+				Layout.fillWidth: true
 
-			Button {
-				text: qsTr("Register Web Application");
-				tooltip: qsTr("Register hosted Web Application.")
-				onClicked: {
-					if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
-					{
-						deployDialog.title = text;
-						deployDialog.text = qsTr("Please provide the link where the resources are stored and ensure the package is aleary built using the deployment step.")
-						deployDialog.open();
-						return;
+				function isOkToRegister()
+				{
+					return Object.keys(projectModel.deploymentAddresses).length > 0 && deploymentDialog.packageHash !== "";
+				}
+
+				Button {
+					text: qsTr("Register");
+					tooltip: qsTr("Register hosted Web Application.")
+					enabled: rowRegister.isOkToRegister()
+					onClicked: {
+						if (applicationUrlHttp.text === "" || deploymentDialog.packageHash === "")
+						{
+							deployDialog.title = text;
+							deployDialog.text = qsTr("Please provide the link where the resources are stored and ensure the package is aleary built using the deployment step.")
+							deployDialog.open();
+							return;
+						}
+						var inError = [];
+						if (applicationUrlHttp.text.length > 32)
+							inError.push(qsTr(applicationUrlHttp.text));
+						if (!stopForInputError(inError))
+							ProjectModelCode.registerToUrlHint();
 					}
-					var inError = [];
-					if (applicationUrlHttp.text.length > 32)
-						inError.push(qsTr(applicationUrlHttp.text));
-					if (!stopForInputError(inError))
-						ProjectModelCode.registerToUrlHint();
 				}
-			}
 
-			Button {
-				text: qsTr("Close");
-				onClicked: close();
+				Button {
+					anchors.right: parent.right
+					text: qsTr("Cancel");
+					onClicked: close();
+				}
 			}
 		}
+	}
+
+	MessageDialog {
+		id: deployDialog
+		standardButtons: StandardButton.Ok
+		icon: StandardIcon.Warning
+	}
+
+	MessageDialog {
+		id: errorDialog
+		standardButtons: StandardButton.Ok
+		icon: StandardIcon.Critical
 	}
 }
