@@ -11,6 +11,7 @@
 
 #include "ExecutionEngine.h"
 #include "Utils.h"
+#include "BuildInfo.gen.h"
 
 namespace dev
 {
@@ -23,6 +24,18 @@ namespace
 {
 	llvm::MemoryBuffer* g_lastObject;
 	ExecutionEngineListener* g_listener;
+	static const size_t c_versionStampLength = 32;
+
+	llvm::StringRef getLibVersionStamp()
+	{
+		static auto version = llvm::SmallString<c_versionStampLength>{};
+		if (version.empty())
+		{
+			version = EVMJIT_VERSION_FULL;
+			version.resize(c_versionStampLength);
+		}
+		return version;
+	}
 }
 
 ObjectCache* Cache::getObjectCache(ExecutionEngineListener* _listener)
@@ -45,24 +58,19 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 	llvm::sys::path::system_temp_directory(false, cachePath);
 	llvm::sys::path::append(cachePath, "evm_objs", id);
 
-#if defined(__GNUC__) && !defined(NDEBUG)
-	llvm::sys::fs::file_status st;
-	auto err = llvm::sys::fs::status(cachePath.str(), st);
-	if (err)
-		return nullptr;
-	auto mtime = st.getLastModificationTime().toEpochTime();
-
-	std::tm tm;
-	strptime(__DATE__ __TIME__, " %b %d %Y %H:%M:%S", &tm);
-	auto btime = (uint64_t)std::mktime(&tm);
-	if (btime > mtime)
-		return nullptr;
-#endif
-
 	if (auto r = llvm::MemoryBuffer::getFile(cachePath.str(), -1, false))
-		g_lastObject = llvm::MemoryBuffer::getMemBufferCopy(r.get()->getBuffer());
+	{
+		auto& buf = r.get();
+		auto objVersionStamp = buf->getBufferSize() >= c_versionStampLength ? llvm::StringRef{buf->getBufferEnd() - c_versionStampLength, c_versionStampLength} : llvm::StringRef{};
+		if (objVersionStamp == getLibVersionStamp())
+			g_lastObject = llvm::MemoryBuffer::getMemBufferCopy(r.get()->getBuffer());
+		else
+			DLOG(cache) << "Unmatched version: " << objVersionStamp.str() << ", expected " << getLibVersionStamp().str() << "\n";
+	}
 	else if (r.getError() != std::make_error_code(std::errc::no_such_file_or_directory))
-		std::cerr << r.getError().message(); // TODO: Add log
+	{
+		DLOG(cache) << r.getError().message(); // TODO: Add warning log
+	}
 
 	if (g_lastObject)  // if object found create fake module
 	{
@@ -91,14 +99,14 @@ void ObjectCache::notifyObjectCompiled(llvm::Module const* _module, llvm::Memory
 	llvm::sys::path::append(cachePath, "evm_objs");
 
 	if (llvm::sys::fs::create_directory(cachePath.str()))
-		return; // TODO: Add log
+		DLOG(cache) << "Cannot create cache dir " << cachePath.str().str() << "\n";
 
 	llvm::sys::path::append(cachePath, id);
 
 	DLOG(cache) << id << ": write\n";
 	std::string error;
 	llvm::raw_fd_ostream cacheFile(cachePath.c_str(), error, llvm::sys::fs::F_None);
-	cacheFile << _object->getBuffer();
+	cacheFile << _object->getBuffer() << getLibVersionStamp();
 }
 
 llvm::MemoryBuffer* ObjectCache::getObject(llvm::Module const* _module)
