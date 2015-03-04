@@ -164,7 +164,8 @@ void Host::registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps)
 			_s->m_peer->peerEndpoint(),
 			_s->m_peer->m_lastConnected,
 			_s->m_info.clientVersion,
-			peerCount());
+			peerCount()
+		);
 		RecursiveGuard l(x_sessions);
 		// TODO: temporary loose-coupling; if m_peers already has peer,
 		//       it is same as _s->m_peer. (fixing next PR)

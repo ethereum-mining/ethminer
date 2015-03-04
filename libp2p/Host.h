@@ -85,7 +85,8 @@ class Host: public Worker
 
 public:
 	/// Start server, listening for connections on the given port.
-	Host(std::string const& _clientVersion,
+	Host(
+		std::string const& _clientVersion,
 		NetworkPreferences const& _n = NetworkPreferences(),
 		bytesConstRef _restoreNetwork = bytesConstRef()
 	);
