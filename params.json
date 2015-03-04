@@ -1,5 +1,15 @@
 var x = {
-	"tierStepGas": { "v": [ 0, 2, 3, 5, 8, 10, 20 ], "d": "Once per operation, for a selection of them." },
+    "genesisDifficulty": { "v": 2048, "d": "Difficulty of the Genesis block." },
+    "maximumExtraDataSize": { "v": 1024, "d": "Maximum size extra data may be after Genesis." },
+    "epochDuration": { "v": 3000, "d": "Duration between proof-of-work epochs." },
+    "genesisGasLimit": { "v": 1000000, "d": "Gas limit of the Genesis block." },
+    "minGasLimit": { "v": 125000, "d": "Minimum the gas limit may ever be." },
+    "gasLimitBoundDivisor": { "v": 1024, "d": "The bound divisor of the gas limit, used in update calculations." },
+    "minimumDifficulty": { "v": 2048, "d": "The minimum that the difficulty may ever be." },
+    "difficultyBoundDivisor": { "v": 2048, "d": "The bound divisor of the difficulty, used in the update calculations." },
+    "durationLimit": { "v": 8, "d": "The decision boundary on the blocktime duration used to determine whether difficulty should go up or not." },
+
+    "tierStepGas": { "v": [ 0, 2, 3, 5, 8, 10, 20 ], "d": "Once per operation, for a selection of them." },
 	"expGas": { "v": 10, "d": "Once per EXP instuction." },
 	"expByteGas": { "v": 10, "d": "Times ceil(log256(exponent)) for the EXP instruction." },
 

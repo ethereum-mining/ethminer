@@ -30,8 +30,6 @@ namespace dev
 namespace eth
 {
 
-extern u256 c_genesisDifficulty;
-
 enum IncludeNonce
 {
 	WithoutNonce = 0,
