@@ -80,7 +80,8 @@ void StructuredLogger::stopping(string const& _clientImpl, const char* _ethVersi
 	}
 }
 
-void StructuredLogger::p2pConnected(string const& _id,
+void StructuredLogger::p2pConnected(
+	string const& _id,
 	bi::tcp::endpoint const& _addr,
 	chrono::system_clock::time_point const& _ts,
 	string const& _remoteVersion,
@@ -117,7 +118,8 @@ void StructuredLogger::p2pDisconnected(string const& _id, bi::tcp::endpoint cons
 	}
 }
 
-void StructuredLogger::minedNewBlock(string const& _hash,
+void StructuredLogger::minedNewBlock(
+	string const& _hash,
 	string const& _blockNumber,
 	string const& _chainHeadHash,
 	string const& _prevHash)
@@ -135,7 +137,8 @@ void StructuredLogger::minedNewBlock(string const& _hash,
 	}
 }
 
-void StructuredLogger::chainReceivedNewBlock(string const& _hash,
+void StructuredLogger::chainReceivedNewBlock(
+	string const& _hash,
 	string const& _blockNumber,
 	string const& _chainHeadHash,
 	string const& _remoteID,
@@ -155,7 +158,8 @@ void StructuredLogger::chainReceivedNewBlock(string const& _hash,
 	}
 }
 
-void StructuredLogger::chainNewHead(string const& _hash,
+void StructuredLogger::chainNewHead(
+	string const& _hash,
 	string const& _blockNumber,
 	string const& _chainHeadHash,
 	string const& _prevHash)

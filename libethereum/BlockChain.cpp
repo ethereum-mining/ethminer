@@ -323,7 +323,8 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		bi.nonce.abridged(),
 		currentHash().abridged(),
 		"", // TODO: remote id ??
-		bi.parentHash.abridged());
+		bi.parentHash.abridged()
+	);
 	//	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
 
 	h256s ret;
