@@ -221,7 +221,7 @@ public:
 	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const;
 	virtual LocalisedLogEntries checkWatch(unsigned _watchId);
 
-	virtual LocalisedLogEntries logs(unsigned _watchId) const { try { Guard l(m_filterLock); return logs(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return LocalisedLogEntries(); } }
+	virtual LocalisedLogEntries logs(unsigned _watchId) const;
 	virtual LocalisedLogEntries logs(LogFilter const& _filter) const;
 
 	// [EXTRA API]:
