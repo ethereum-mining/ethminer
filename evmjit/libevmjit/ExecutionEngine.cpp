@@ -3,6 +3,7 @@
 #include <array>
 #include <mutex>
 #include <iostream>
+#include <unordered_map>
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
@@ -119,7 +120,12 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	auto mainFuncName = codeHash(_data->codeHash);
 	m_runtime.init(_data, _env);
 
-	auto entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
+	EntryFuncPtr entryFuncPtr = nullptr;
+	static std::unordered_map<std::string, EntryFuncPtr> funcCache;
+	auto it = funcCache.find(mainFuncName);
+	if (it != funcCache.end())
+		entryFuncPtr = it->second;
+
 	if (!entryFuncPtr)
 	{
 		auto module = objectCache ? Cache::getObject(mainFuncName) : nullptr;
@@ -145,6 +151,8 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	}
 	if (!CHECK(entryFuncPtr))
 		return ReturnCode::LLVMLinkError;
+
+	funcCache[mainFuncName] = entryFuncPtr;
 
 	listener->stateChanged(ExecState::Execution);
 	auto returnCode = entryFuncPtr(&m_runtime);
