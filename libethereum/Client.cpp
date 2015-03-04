@@ -745,6 +745,16 @@ unsigned Client::uncleCount(h256 _blockHash) const
 	return b[2].itemCount();
 }
 
+LocalisedLogEntries Client::logs(unsigned _watchId) const
+{
+	try {
+		Guard l(m_filterLock);
+		return logs(m_filters.at(m_watches.at(_watchId).id).filter);
+	} catch (...) {
+		return LocalisedLogEntries();
+	}
+}
+
 LocalisedLogEntries Client::logs(LogFilter const& _f) const
 {
 	LocalisedLogEntries ret;
