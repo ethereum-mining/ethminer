@@ -1619,9 +1619,11 @@ BOOST_AUTO_TEST_CASE(gas_and_value_basic)
 			function sendAmount(uint amount) returns (uint256 bal) {
 				return h.getBalance.value(amount)();
 			}
-			function outOfGas() returns (bool flagBefore, bool flagAfter, uint myBal) {
-				flagBefore = h.getFlag();
-				h.setFlag.gas(2)(); // should fail due to OOG, return value can be garbage
+			function outOfGas() returns (bool ret) {
+				h.setFlag.gas(2)(); // should fail due to OOG
+				return true;
+			}
+			function checkState() returns (bool flagAfter, uint myBal) {
 				flagAfter = h.getFlag();
 				myBal = this.balance;
 			}
@@ -1630,7 +1632,8 @@ BOOST_AUTO_TEST_CASE(gas_and_value_basic)
 	compileAndRun(sourceCode, 20);
 	BOOST_REQUIRE(callContractFunction("sendAmount(uint256)", 5) == encodeArgs(5));
 	// call to helper should not succeed but amount should be transferred anyway
-	BOOST_REQUIRE(callContractFunction("outOfGas()", 5) == encodeArgs(false, false, 20 - 5));
+	BOOST_REQUIRE(callContractFunction("outOfGas()", 5) == bytes());
+	BOOST_REQUIRE(callContractFunction("checkState()", 5) == encodeArgs(false, 20 - 5));
 }
 
 BOOST_AUTO_TEST_CASE(value_complex)
@@ -2504,11 +2507,11 @@ BOOST_AUTO_TEST_CASE(struct_containing_bytes_copy_and_delete)
 	compileAndRun(sourceCode);
 	string data = "123456789012345678901234567890123";
 	BOOST_CHECK(m_state.storage(m_contractAddress).empty());
-	BOOST_CHECK(callContractFunction("set(uint256,bytes,uint256)", u256(data.length()), 12, data, 13) == encodeArgs(true));
+	BOOST_CHECK(callContractFunction("set(uint256,bytes,uint256)", 12, u256(data.length()), 13, data) == encodeArgs(true));
 	BOOST_CHECK(!m_state.storage(m_contractAddress).empty());
 	BOOST_CHECK(callContractFunction("copy()") == encodeArgs(true));
 	BOOST_CHECK(m_state.storage(m_contractAddress).empty());
-	BOOST_CHECK(callContractFunction("set(uint256,bytes,uint256)", u256(data.length()), 12, data, 13) == encodeArgs(true));
+	BOOST_CHECK(callContractFunction("set(uint256,bytes,uint256)", 12, u256(data.length()), 13, data) == encodeArgs(true));
 	BOOST_CHECK(!m_state.storage(m_contractAddress).empty());
 	BOOST_CHECK(callContractFunction("del()") == encodeArgs(true));
 	BOOST_CHECK(m_state.storage(m_contractAddress).empty());
@@ -2661,8 +2664,8 @@ BOOST_AUTO_TEST_CASE(bytes_in_arguments)
 	bytes calldata1 = encodeArgs(u256(innercalldata1.length()), 12, innercalldata1, 13);
 	string innercalldata2 = asString(FixedHash<4>(dev::sha3("g(uint256)")).asBytes() + encodeArgs(3));
 	bytes calldata = encodeArgs(
-		u256(innercalldata1.length()), u256(innercalldata2.length()),
-		12, innercalldata1, innercalldata2, 13);
+		12, u256(innercalldata1.length()), u256(innercalldata2.length()), 13,
+		innercalldata1, innercalldata2);
 	BOOST_CHECK(callContractFunction("test(uint256,bytes,bytes,uint256)", calldata)
 		== encodeArgs(12, (8 + 9) * 3, 13, u256(innercalldata1.length())));
 }

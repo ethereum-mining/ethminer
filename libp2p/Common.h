@@ -27,8 +27,11 @@
 #include <string>
 #include <set>
 #include <vector>
+
+// Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 #include <boost/asio/ip/tcp.hpp>
+
 #include <chrono>
 #include <libdevcrypto/Common.h>
 #include <libdevcore/Log.h>
