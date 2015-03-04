@@ -159,13 +159,13 @@ Rectangle {
 		color: "transparent"
 		width: 100
 		height: parent.height
-		anchors.top: statusHeader.top
-		anchors.right: statusHeader.right
+		anchors.top: parent.top
+		anchors.right: parent.right
 		RowLayout
 		{
 			anchors.fill: parent
-			anchors.top: statusHeader.top
-			anchors.right: statusHeader.right
+			anchors.top: parent.top
+			anchors.right: parent.right
 			Rectangle
 			{
 				color: "transparent"
