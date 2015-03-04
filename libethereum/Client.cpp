@@ -25,6 +25,7 @@
 #include <thread>
 #include <boost/filesystem.hpp>
 #include <libdevcore/Log.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libp2p/Host.h>
 #include "Defaults.h"
 #include "Executive.h"
@@ -59,7 +60,7 @@ void VersionChecker::setOk()
 	}
 }
 
-Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId, int miners):
+Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId, int _miners):
 	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
@@ -69,8 +70,8 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 {
 	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
-	if (miners > -1)
-		setMiningThreads(miners);
+	if (_miners > -1)
+		setMiningThreads(_miners);
 	else
 		setMiningThreads();
 	if (_dbPath.size())
@@ -417,6 +418,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	}
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
 //	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
 }

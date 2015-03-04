@@ -27,6 +27,7 @@
 #include <boost/timer.hpp>
 #include <secp256k1/secp256k1.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
 #include <libevm/VMFactory.h>
@@ -820,6 +821,12 @@ void State::completeMine()
 	ret.swapOut(m_currentBytes);
 	m_currentBlock.hash = sha3(RLP(m_currentBytes)[0].data());
 	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
+	StructuredLogger::minedNewBlock(
+		m_currentBlock.hash.abridged(),
+		m_currentBlock.nonce.abridged(),
+		"", //TODO: chain head hash here ??
+		m_currentBlock.parentHash.abridged()
+	);
 
 	// Quickly reset the transactions.
 	// TODO: Leave this in a better state than this limbo, or at least record that it's in limbo.
