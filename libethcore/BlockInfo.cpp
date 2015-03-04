@@ -31,6 +31,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+u256 dev::eth::c_genesisDifficulty = (u256)1 << 11;
+
 BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
 }
@@ -56,7 +58,7 @@ void BlockInfo::setEmpty()
 	timestamp = 0;
 	extraData.clear();
 	seedHash = h256();
-	mixHash = h256();
+	mixBytes = h256();
 	nonce = Nonce();
 	hash = headerHash(WithNonce);
 }
@@ -81,7 +83,7 @@ void BlockInfo::streamRLP(RLPStream& _s, IncludeNonce _n) const
 		<< parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot << receiptsRoot << logBloom
 		<< difficulty << number << gasLimit << gasUsed << timestamp << extraData << seedHash;
 	if (_n == WithNonce)
-		_s << mixHash << nonce;
+		_s << mixBytes << nonce;
 }
 
 h256 BlockInfo::headerHash(bytesConstRef _block)
@@ -109,9 +111,9 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 		gasUsed = _header[field = 10].toInt<u256>();
 		timestamp = _header[field = 11].toInt<u256>();
 		extraData = _header[field = 12].toBytes();
-		seedHash = _header[field = 13].toHash<h256>(RLP::VeryStrict);
-		mixHash = _header[field = 14].toHash<h256>(RLP::VeryStrict);
-		nonce = _header[field = 15].toHash<Nonce>(RLP::VeryStrict);
+		seedHash = _header[field = 13].toHash<h256>();
+		mixBytes = _header[field = 14].toHash<h256>();
+		nonce = _header[field = 15].toHash<Nonce>();
 	}
 
 	catch (Exception const& _e)
@@ -185,12 +187,7 @@ void BlockInfo::populateFromParent(BlockInfo const& _parent)
 	gasLimit = calculateGasLimit(_parent);
 	gasUsed = 0;
 	difficulty = calculateDifficulty(_parent);
-	seedHash = calculateSeedHash(_parent);
-}
-
-h256 BlockInfo::calculateSeedHash(BlockInfo const& _parent) const
-{
-	return number % c_epochDuration == 0 ? sha3(_parent.seedHash.asBytes()) : _parent.seedHash;
+	seedHash = number % 30 == 0 ? sha3(_parent.seedHash.asBytes() /*+ _parent.hash.asBytes()*/) : _parent.seedHash;
 }
 
 u256 BlockInfo::calculateGasLimit(BlockInfo const& _parent) const
@@ -223,7 +220,6 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 
 	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / 1024)
 		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / 1024));
-
 
 	// Check timestamp is after previous timestamp.
 	if (parentHash)
