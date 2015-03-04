@@ -60,7 +60,7 @@ function(configureProject)
 	endif()
 endfunction()
 
-
+set(CPPETHEREUM 1)
 
 function(createBuildInfo)
 	# Set build platform; to be written to BuildInfo.h
@@ -174,6 +174,7 @@ add_subdirectory(libp2p)
 add_subdirectory(libdevcrypto)
 add_subdirectory(libwhisper)
 
+add_subdirectory(libethash)
 add_subdirectory(libethcore)
 add_subdirectory(libevm)
 add_subdirectory(libethereum)

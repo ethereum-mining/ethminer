@@ -1366,7 +1366,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Hash w/o nonce: <b>" << info.headerHash(WithoutNonce) << "</b>";
 			s << "<br/>Difficulty: <b>" << info.difficulty << "</b>";
 			if (info.number)
-				s << "<br/>Proof-of-Work: <b>" << ProofOfWork::eval(info.headerHash(WithoutNonce), info.nonce) << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b>";
+				s << "<br/>Proof-of-Work: <b>" << ProofOfWork::eval(info) << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b>";
 			else
 				s << "<br/>Proof-of-Work: <i>Phil has nothing to prove</i>";
 			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
