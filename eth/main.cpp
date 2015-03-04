@@ -97,38 +97,38 @@ void interactiveHelp()
 void help()
 {
 	cout
-        << "Usage eth [OPTIONS] <remote-host>" << endl
-        << "Options:" << endl
-        << "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
+		<< "Usage eth [OPTIONS] <remote-host>" << endl
+		<< "Options:" << endl
+		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
-        << "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
-        << "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
-        << "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
+		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
+		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
 		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
-        << "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
+		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #if ETH_JSONRPC
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port  Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
 #endif
-        << "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
+		<< "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
 		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
 		<< "    -L,--local-networking Use peers whose addresses are local." << endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
-        << "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
-        << "    -r,--remote <host>  Connect to remote host (default: none)." << endl
-        << "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
+		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
+		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
+		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
-        << "    -u,--public-ip <ip>  Force public ip to given (default; auto)." << endl
-        << "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
-        << "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
-        << "    -V,--version  Show the version and exit." << endl
+		<< "    -u,--public-ip <ip>  Force public ip to given (default; auto)." << endl
+		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
+		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
+		<< "    -V,--version  Show the version and exit." << endl
 #if ETH_EVMJIT
 		<< "    --jit  Use EVM JIT (default: off)." << endl
 #endif
 		;
-        exit(0);
+		exit(0);
 }
 
 string credits(bool _interactive = false)
@@ -136,15 +136,14 @@ string credits(bool _interactive = false)
 	std::ostringstream cout;
 	cout
 		<< "Ethereum (++) " << dev::Version << endl
-		<< "  Code by Gav Wood, (c) 2013, 2014." << endl
+		<< "  Code by Gav Wood et al, (c) 2013, 2014, 2015." << endl
 		<< "  Based on a design by Vitalik Buterin." << endl << endl;
 
 	if (_interactive)
-	{
-		cout << "Type 'netstart 30303' to start networking" << endl;
-		cout << "Type 'connect " << Host::pocHost() << " 30303' to connect" << endl;
-		cout << "Type 'exit' to quit" << endl << endl;
-	}
+		cout
+			<< "Type 'netstart 30303' to start networking" << endl
+			<< "Type 'connect " << Host::pocHost() << " 30303' to connect" << endl
+			<< "Type 'exit' to quit" << endl << endl;
 	return cout.str();
 }
 
