@@ -36,6 +36,7 @@ void help()
 		<< "    -r,--render  Render the given RLP. Options:" << endl
 		<< "      --indent <string>  Use string as the level indentation (default '  ')." << endl
 		<< "      --hex-ints  Render integers in hex." << endl
+		<< "      --ascii-strings  Render data as C-style strings or hex depending on content being ASCII." << endl
 		<< "      --force-string  Force all data to be rendered as C-style strings." << endl
 		<< "      --force-escape  When rendering as C-style strings, force all characters to be escaped." << endl
 		<< "      --force-hex  Force all data to be rendered as raw hex." << endl
@@ -86,7 +87,7 @@ public:
 	{
 		string indent = "  ";
 		bool hexInts = false;
-		bool forceString = false;
+		bool forceString = true;
 		bool escapeAll = false;
 		bool forceHex = false;
 	};
@@ -150,6 +151,8 @@ int main(int argc, char** argv)
 			prefs.indent = argv[++i];
 		else if (arg == "--hex-ints")
 			prefs.hexInts = true;
+		else if (arg == "--ascii-strings")
+			prefs.forceString = prefs.forceHex = false;
 		else if (arg == "--force-string")
 			prefs.forceString = true;
 		else if (arg == "--force-hex")
