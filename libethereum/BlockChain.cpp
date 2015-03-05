@@ -45,7 +45,7 @@ namespace js = json_spirit;
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.currentHash());
-	auto it = _bc.m_db->NewIterator(_bc.m_readOptions);
+	auto it = _bc.m_blocksDB->NewIterator(_bc.m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().ToString() != "best")
 		{
@@ -102,9 +102,9 @@ void BlockChain::open(std::string _path, bool _killExisting)
 
 	ldb::Options o;
 	o.create_if_missing = true;
-	ldb::DB::Open(o, _path + "/blocks", &m_db);
+	ldb::DB::Open(o, _path + "/blocks", &m_blocksDB);
 	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
-	if (!m_db)
+	if (!m_blocksDB)
 		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
 	if (!m_extrasDB)
 		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
@@ -132,10 +132,10 @@ void BlockChain::close()
 {
 	cnote << "Closing blockchain DB";
 	delete m_extrasDB;
-	delete m_db;
+	delete m_blocksDB;
 	m_lastBlockHash = m_genesisHash;
 	m_details.clear();
-	m_cache.clear();
+	m_blocks.clear();
 }
 
 template <class T, class V>
@@ -295,6 +295,23 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_details[bi.parentHash].children.push_back(newHash);
 		}
 		{
+			WriteGuard l(x_blockHashes);
+			m_blockHashes[h256(bi.number)].value = newHash;
+		}
+		// Collate transaction hashes and remember who they were.
+		h256s tas;
+		{
+			RLP blockRLP(_block);
+			TransactionAddress ta;
+			ta.blockHash = newHash;
+			WriteGuard l(x_transactionAddresses);
+			for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
+			{
+				tas.push_back(sha3(blockRLP[1][ta.index].data()));
+				m_transactionAddresses[tas.back()] = ta;
+			}
+		}
+		{
 			WriteGuard l(x_logBlooms);
 			m_logBlooms[newHash] = blb;
 		}
@@ -303,17 +320,14 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_receipts[newHash] = br;
 		}
 
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 3), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 4), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 4), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
-		m_db->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
-		RLP blockRLP(_block);
-		TransactionAddress ta;
-		ta.blockHash = newHash;
-		for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
-			m_extrasDB->Put(m_writeOptions, toSlice(sha3(blockRLP[1][ta.index].data()), 5), (ldb::Slice)dev::ref(ta.rlp()));
+		m_blocksDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(h256(bi.number), ExtraBlockHash), (ldb::Slice)dev::ref(m_blockHashes[h256(bi.number)].rlp()));
+		for (auto const& h: tas)
+			m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
 
 #if ETH_PARANOIA
 		checkConsistency();
@@ -406,7 +420,7 @@ void BlockChain::checkConsistency()
 		WriteGuard l(x_details);
 		m_details.clear();
 	}
-	ldb::Iterator* it = m_db->NewIterator(m_readOptions);
+	ldb::Iterator* it = m_blocksDB->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().size() == 32)
 		{
@@ -449,12 +463,12 @@ bool BlockChain::isKnown(h256 _hash) const
 	if (_hash == m_genesisHash)
 		return true;
 	{
-		ReadGuard l(x_cache);
-		if (m_cache.count(_hash))
+		ReadGuard l(x_blocks);
+		if (m_blocks.count(_hash))
 			return true;
 	}
 	string d;
-	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
+	m_blocksDB->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
 	return !!d.size();
 }
 
@@ -464,14 +478,14 @@ bytes BlockChain::block(h256 _hash) const
 		return m_genesisBlock;
 
 	{
-		ReadGuard l(x_cache);
-		auto it = m_cache.find(_hash);
-		if (it != m_cache.end())
+		ReadGuard l(x_blocks);
+		auto it = m_blocks.find(_hash);
+		if (it != m_blocks.end())
 			return it->second;
 	}
 
 	string d;
-	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
+	m_blocksDB->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
 
 	if (!d.size())
 	{
@@ -479,18 +493,9 @@ bytes BlockChain::block(h256 _hash) const
 		return bytes();
 	}
 
-	WriteGuard l(x_cache);
-	m_cache[_hash].resize(d.size());
-	memcpy(m_cache[_hash].data(), d.data(), d.size());
+	WriteGuard l(x_blocks);
+	m_blocks[_hash].resize(d.size());
+	memcpy(m_blocks[_hash].data(), d.data(), d.size());
 
-	return m_cache[_hash];
-}
-
-h256 BlockChain::numberHash(unsigned _n) const
-{
-	if (!_n)
-		return genesisHash();
-	h256 ret = currentHash();
-	for (; _n < details().number; ++_n, ret = details(ret).parent) {}
-	return ret;
+	return m_blocks[_hash];
 }
