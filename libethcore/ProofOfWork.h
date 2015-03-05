@@ -27,7 +27,7 @@
 #include <thread>
 #include <cstdint>
 #include <libdevcrypto/SHA3.h>
-#include "CommonEth.h"
+#include "Common.h"
 #include "BlockInfo.h"
 
 #define FAKE_DAGGER 1
