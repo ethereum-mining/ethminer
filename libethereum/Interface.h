@@ -105,6 +105,7 @@ public:
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const = 0;
 	virtual unsigned transactionCount(h256 _blockHash) const = 0;
 	virtual unsigned uncleCount(h256 _blockHash) const = 0;
+	virtual Transactions transactions(h256 _blockHash) const = 0;
 
 	// [EXTRA API]:
 

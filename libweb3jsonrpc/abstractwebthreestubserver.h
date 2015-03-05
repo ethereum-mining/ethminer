@@ -32,8 +32,8 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("eth_sendTransaction", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_sendTransactionI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_call", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_callI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_flush", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::eth_flushI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getBlockByHashI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getBlockByNumberI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_BOOLEAN, NULL), &AbstractWebThreeStubServer::eth_getBlockByHashI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_BOOLEAN, NULL), &AbstractWebThreeStubServer::eth_getBlockByNumberI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getTransactionByHashI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionByBlockHashAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getTransactionByBlockHashAndIndexI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionByBlockNumberAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getTransactionByBlockNumberAndIndexI);
@@ -157,11 +157,11 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
         inline virtual void eth_getBlockByHashI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_getBlockByHash(request[0u].asString());
+            response = this->eth_getBlockByHash(request[0u].asString(), request[1u].asBool());
         }
         inline virtual void eth_getBlockByNumberI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_getBlockByNumber(request[0u].asString());
+            response = this->eth_getBlockByNumber(request[0u].asString(), request[1u].asBool());
         }
         inline virtual void eth_getTransactionByHashI(const Json::Value &request, Json::Value &response)
         {
@@ -310,8 +310,8 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual std::string eth_sendTransaction(const Json::Value& param1) = 0;
         virtual std::string eth_call(const Json::Value& param1) = 0;
         virtual bool eth_flush() = 0;
-        virtual Json::Value eth_getBlockByHash(const std::string& param1) = 0;
-        virtual Json::Value eth_getBlockByNumber(const std::string& param1) = 0;
+        virtual Json::Value eth_getBlockByHash(const std::string& param1, bool param2) = 0;
+        virtual Json::Value eth_getBlockByNumber(const std::string& param1, bool param2) = 0;
         virtual Json::Value eth_getTransactionByHash(const std::string& param1) = 0;
         virtual Json::Value eth_getTransactionByBlockHashAndIndex(const std::string& param1, const std::string& param2) = 0;
         virtual Json::Value eth_getTransactionByBlockNumberAndIndex(const std::string& param1, const std::string& param2) = 0;
