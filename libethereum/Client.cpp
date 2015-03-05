@@ -516,9 +516,18 @@ void Client::doWork()
 	{
 		if (m.isComplete())
 		{
-			cwork << "CHAIN <== postSTATE";
+			// TODO: enable a short-circuit option since we mined it. will need to get the end state from the miner.
+			auto lm = dynamic_cast<LocalMiner*>(&m);
 			h256s hs;
+			if (false && lm && !m_verifyOwnBlocks)
 			{
+				// TODO: implement
+				//m_bc.attemptImport(m_blockData(), m_stateDB, lm->state());
+				// TODO: derive hs from lm->state()
+			}
+			else
+			{
+				cwork << "CHAIN <== postSTATE";
 				WriteGuard l(x_stateDB);
 				hs = m_bc.attemptImport(m.blockData(), m_stateDB);
 			}
