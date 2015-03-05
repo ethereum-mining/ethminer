@@ -141,6 +141,7 @@ Main::Main(QWidget *parent) :
 	ui->configDock->close();
 	on_verbosity_valueChanged();
 
+	statusBar()->addPermanentWidget(ui->cacheUsage);
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->mineStatus);
@@ -1144,6 +1145,12 @@ void Main::on_refresh_triggered()
 	refreshAll();
 }
 
+void Main::refreshCache()
+{
+	BlockChain::Statistics s = ethereum()->blockChain().usage();
+	ui->cacheUsage->setText(QString("%1 bytes used").arg(s.memTotal()));
+}
+
 void Main::timerEvent(QTimerEvent*)
 {
 	// 7/18, Alex: aggregating timers, prelude to better threading?
@@ -1172,6 +1179,7 @@ void Main::timerEvent(QTimerEvent*)
 		interval = 0;
 		refreshNetwork();
 		refreshWhispers();
+		refreshCache();
 		poll();
 	}
 	else

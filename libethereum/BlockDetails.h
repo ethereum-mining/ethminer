@@ -46,28 +46,32 @@ struct BlockDetails
 	bool isNull() const { return !totalDifficulty; }
 	explicit operator bool() const { return !isNull(); }
 
-	unsigned number;			// TODO: remove?
+	unsigned number;
 	u256 totalDifficulty;
 	h256 parent;
 	h256s children;
+
+	mutable unsigned size;
 };
 
 struct BlockLogBlooms
 {
 	BlockLogBlooms() {}
-	BlockLogBlooms(RLP const& _r) { blooms = _r.toVector<LogBloom>(); }
-	bytes rlp() const { RLPStream s; s << blooms; return s.out(); }
+	BlockLogBlooms(RLP const& _r) { blooms = _r.toVector<LogBloom>(); size = _r.data().size(); }
+	bytes rlp() const { RLPStream s; s << blooms; size = s.out().size(); return s.out(); }
 
 	LogBlooms blooms;
+	mutable unsigned size;
 };
 
 struct BlockReceipts
 {
 	BlockReceipts() {}
-	BlockReceipts(RLP const& _r) { for (auto const& i: _r) receipts.emplace_back(i.data()); }
-	bytes rlp() const { RLPStream s(receipts.size()); for (TransactionReceipt const& i: receipts) i.streamRLP(s); return s.out(); }
+	BlockReceipts(RLP const& _r) { for (auto const& i: _r) receipts.emplace_back(i.data()); size = _r.data().size(); }
+	bytes rlp() const { RLPStream s(receipts.size()); for (TransactionReceipt const& i: receipts) i.streamRLP(s); size = s.out().size(); return s.out(); }
 
 	TransactionReceipts receipts;
+	mutable unsigned size;
 };
 
 struct BlockHash
@@ -77,6 +81,7 @@ struct BlockHash
 	bytes rlp() const { return dev::rlp(value); }
 
 	h256 value;
+	static const unsigned size = 65;
 };
 
 struct TransactionAddress
@@ -89,6 +94,8 @@ struct TransactionAddress
 
 	h256 blockHash;
 	unsigned index = 0;
+
+	static const unsigned size = 67;
 };
 
 using BlockDetailsHash = std::map<h256, BlockDetails>;
