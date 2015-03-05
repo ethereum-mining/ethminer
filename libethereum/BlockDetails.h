@@ -70,13 +70,27 @@ struct BlockReceipts
 	TransactionReceipts receipts;
 };
 
+struct TransactionAddress
+{
+	TransactionAddress() {}
+	TransactionAddress(RLP const& _rlp) { blockHash = _rlp[0].toHash<h256>(); index = _rlp[1].toInt<unsigned>(); }
+	bytes rlp() const { RLPStream s(2); s << blockHash << index; return s.out(); }
+
+	explicit operator bool() const { return !!blockHash; }
+
+	h256 blockHash;
+	unsigned index = 0;
+};
+
 using BlockDetailsHash = std::map<h256, BlockDetails>;
 using BlockLogBloomsHash = std::map<h256, BlockLogBlooms>;
 using BlockReceiptsHash = std::map<h256, BlockReceipts>;
+using TransactionAddressHash = std::map<h256, TransactionAddress>;
 
 static const BlockDetails NullBlockDetails;
 static const BlockLogBlooms NullBlockLogBlooms;
 static const BlockReceipts NullBlockReceipts;
+static const TransactionAddress NullTransactionAddress;
 
 }
 }
