@@ -46,7 +46,7 @@ namespace js = json_spirit;
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.currentHash());
-	auto it = _bc.m_db->NewIterator(_bc.m_readOptions);
+	auto it = _bc.m_blocksDB->NewIterator(_bc.m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().ToString() != "best")
 		{
@@ -346,17 +346,14 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_receipts[newHash] = br;
 		}
 
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 3), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 4), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 4), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
-		m_db->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
-		RLP blockRLP(_block);
-		TransactionAddress ta;
-		ta.blockHash = newHash;
-		for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
-			m_extrasDB->Put(m_writeOptions, toSlice(sha3(blockRLP[1][ta.index].data()), 5), (ldb::Slice)dev::ref(ta.rlp()));
+		m_blocksDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(h256(bi.number), ExtraBlockHash), (ldb::Slice)dev::ref(m_blockHashes[h256(bi.number)].rlp()));
+		for (auto const& h: tas)
+			m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
 
 #if ETH_PARANOIA
 		checkConsistency();
@@ -635,8 +632,6 @@ bytes BlockChain::block(h256 _hash) const
 	WriteGuard l(x_blocks);
 	m_blocks[_hash].resize(d.size());
 	memcpy(m_blocks[_hash].data(), d.data(), d.size());
-
-	noteUsed(_hash);
 
 	return m_blocks[_hash];
 }
