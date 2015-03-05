@@ -22,4 +22,4 @@ if (ETH_NODE AND ETH_NPM)
 	add_dependencies(jsqrc ethereumjs)
 endif()
 
-install( TARGETS jsqrc ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+install( TARGETS jsqrc RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )

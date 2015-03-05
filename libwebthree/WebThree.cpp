@@ -23,7 +23,9 @@
 
 #include <chrono>
 #include <thread>
+
 #include <boost/filesystem.hpp>
+
 #include <libdevcore/Log.h>
 #include <libp2p/Host.h>
 #include <libethereum/Defaults.h>
@@ -35,15 +37,21 @@ using namespace dev::p2p;
 using namespace dev::eth;
 using namespace dev::shh;
 
-WebThreeDirect::WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean, std::set<std::string> const& _interfaces, NetworkPreferences const& _n, bytesConstRef _network, int miners):
+WebThreeDirect::WebThreeDirect(
+	std::string const& _clientVersion,
+	std::string const& _dbPath,
+	bool _forceClean,
+	std::set<std::string> const& _interfaces,
+	NetworkPreferences const& _n,
+	bytesConstRef _network, int _miners
+):
 	m_clientVersion(_clientVersion),
 	m_net(_clientVersion, _n, _network)
 {
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	if (_interfaces.count("eth"))
-		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean, 0, miners));
-		
+		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean, 0, _miners));
 
 	if (_interfaces.count("shh"))
 		m_whisper = m_net.registerCapability<WhisperHost>(new WhisperHost);
