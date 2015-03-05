@@ -76,8 +76,33 @@ ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
 #endif
 }
 
+#if ETH_DEBUG
+static const chrono::system_clock::duration c_collectionDuration = chrono::seconds(15);
+static const unsigned c_collectionQueueSize = 2;
+static const unsigned c_maxCacheSize = 1024 * 1024 * 1;
+static const unsigned c_minCacheSize = 1;
+#else
+
+/// Duration between flushes.
+static const chrono::system_clock::duration c_collectionDuration = chrono::seconds(60);
+
+/// Length of death row (total time in cache is multiple of this and collection duration).
+static const unsigned c_collectionQueueSize = 20;
+
+/// Max size, above which we start forcing cache reduction.
+static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
+
+/// Min size, below which we don't bother flushing it.
+static const unsigned c_minCacheSize = 1024 * 1024 * 32;
+
+#endif
+
 BlockChain::BlockChain(bytes const& _genesisBlock, std::string _path, bool _killExisting)
 {
+	// initialise deathrow.
+	m_cacheUsage.resize(c_collectionQueueSize);
+	m_lastCollection = chrono::system_clock::now();
+
 	// Initialise with the genesis as the last block on the longest chain.
 	m_genesisBlock = _genesisBlock;
 	m_genesisHash = sha3(RLP(m_genesisBlock)[0].data());
@@ -428,6 +453,103 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 	return ret;
 }
 
+void BlockChain::noteUsed(h256 const& _h, unsigned _extra) const
+{
+	auto id = CacheID(_h, _extra);
+	Guard l(x_cacheUsage);
+	m_cacheUsage[0].insert(id);
+	if (m_cacheUsage[1].count(id))
+		m_cacheUsage[1].erase(id);
+	else
+		m_inUse.insert(id);
+}
+
+template <class T> static unsigned getHashSize(map<h256, T> const& _map)
+{
+	unsigned ret = 0;
+	for (auto const& i: _map)
+		ret += i.second.size + 64;
+	return ret;
+}
+
+void BlockChain::updateStats() const
+{
+	{
+		ReadGuard l1(x_blocks);
+		m_lastStats.memBlocks = 0;
+		for (auto const& i: m_blocks)
+			m_lastStats.memBlocks += i.second.size() + 64;
+	}
+	{
+		ReadGuard l2(x_details);
+		m_lastStats.memDetails = getHashSize(m_details);
+	}
+	{
+		ReadGuard l5(x_logBlooms);
+		m_lastStats.memLogBlooms = getHashSize(m_logBlooms);
+	}
+	{
+		ReadGuard l4(x_receipts);
+		m_lastStats.memReceipts = getHashSize(m_receipts);
+	}
+	{
+		ReadGuard l3(x_blockHashes);
+		m_lastStats.memBlockHashes = getHashSize(m_blockHashes);
+	}
+	{
+		ReadGuard l6(x_transactionAddresses);
+		m_lastStats.memTransactionAddresses = getHashSize(m_transactionAddresses);
+	}
+}
+
+void BlockChain::garbageCollect(bool _force)
+{
+	updateStats();
+
+	if (!_force && chrono::system_clock::now() < m_lastCollection + c_collectionDuration && m_lastStats.memTotal() < c_maxCacheSize)
+		return;
+	if (m_lastStats.memTotal() < c_minCacheSize)
+		return;
+
+	m_lastCollection = chrono::system_clock::now();
+
+	Guard l(x_cacheUsage);
+	WriteGuard l1(x_blocks);
+	WriteGuard l2(x_details);
+	WriteGuard l3(x_blockHashes);
+	WriteGuard l4(x_receipts);
+	WriteGuard l5(x_logBlooms);
+	WriteGuard l6(x_transactionAddresses);
+	for (CacheID const& id: m_cacheUsage.back())
+	{
+		m_inUse.erase(id);
+		// kill i from cache.
+		switch (id.second)
+		{
+		case (unsigned)-1:
+			m_blocks.erase(id.first);
+			break;
+		case ExtraDetails:
+			m_details.erase(id.first);
+			break;
+		case ExtraBlockHash:
+			m_blockHashes.erase(id.first);
+			break;
+		case ExtraReceipts:
+			m_receipts.erase(id.first);
+			break;
+		case ExtraLogBlooms:
+			m_logBlooms.erase(id.first);
+			break;
+		case ExtraTransactionAddress:
+			m_transactionAddresses.erase(id.first);
+			break;
+		}
+	}
+	m_cacheUsage.pop_back();
+	m_cacheUsage.push_front({});
+}
+
 void BlockChain::checkConsistency()
 {
 	{
@@ -510,6 +632,8 @@ bytes BlockChain::block(h256 _hash) const
 	WriteGuard l(x_blocks);
 	m_blocks[_hash].resize(d.size());
 	memcpy(m_blocks[_hash].data(), d.data(), d.size());
+
+	noteUsed(_hash);
 
 	return m_blocks[_hash];
 }

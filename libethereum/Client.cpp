@@ -635,6 +635,7 @@ void Client::doWork()
 			uninstallWatch(i);
 		m_lastGarbageCollection = chrono::system_clock::now();
 	}
+	m_bc.garbageCollect();
 }
 
 unsigned Client::numberOf(int _n) const

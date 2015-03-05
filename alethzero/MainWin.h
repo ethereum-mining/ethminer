@@ -212,6 +212,7 @@ private:
 	void refreshNetwork();
 	void refreshMining();
 	void refreshWhispers();
+	void refreshCache();
 
 	void refreshAll();
 	void refreshPending();
