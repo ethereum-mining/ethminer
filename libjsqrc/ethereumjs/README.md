@@ -1,7 +1,7 @@
 # Ethereum JavaScript API
 
 This is the Ethereum compatible [JavaScript API](https://github.com/ethereum/wiki/wiki/JavaScript-API)
-which implements the [Generic JSON RPC](https://github.com/ethereum/wiki/wiki/Generic-JSON-RPC) spec. It's available on npm as a node module and also for bower and component as an embeddable js
+which implements the [Generic JSON RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC) spec. It's available on npm as a node module and also for bower and component as an embeddable js
 
 [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![dependency status][dep-image]][dep-url] [![dev dependency status][dep-dev-image]][dep-dev-url][![Coverage Status][coveralls-image]][coveralls-url]
 
@@ -75,14 +75,13 @@ npm test
 
 **Please note this repo is in it's early stage.**
 
-If you'd like to run a WebSocket ethereum node check out
-[go-ethereum](https://github.com/ethereum/go-ethereum).
+If you'd like to run a Http ethereum node check out
+[cpp-ethereum](https://github.com/ethereum/cpp-ethereum).
 
-To install ethereum and spawn a node:
+Install ethereum and spawn a node:
 
 ```
-go get github.com/ethereum/go-ethereum/ethereum
-ethereum -ws -loglevel=4
+eth -j
 ```
 
 [npm-image]: https://badge.fury.io/js/ethereum.js.png

@@ -58,7 +58,10 @@ void Compiler::compileContract(ContractDefinition const& _contract,
 	while (!functions.empty())
 	{
 		for (Declaration const* function: functions)
+		{
+			m_context.setStackOffset(0);
 			function->accept(*this);
+		}
 		functions = m_context.getFunctionsWithoutCode();
 	}
 
@@ -74,41 +77,43 @@ void Compiler::initializeContext(ContractDefinition const& _contract,
 	m_context.setCompiledContracts(_contracts);
 	m_context.setInheritanceHierarchy(_contract.getLinearizedBaseContracts());
 	registerStateVariables(_contract);
+	m_context.resetVisitedNodes(&_contract);
 }
 
 void Compiler::packIntoContractCreator(ContractDefinition const& _contract, CompilerContext const& _runtimeContext)
 {
-	// arguments for base constructors, filled in derived-to-base order
-	map<ContractDefinition const*, vector<ASTPointer<Expression>> const*> baseArguments;
-
 	// Determine the arguments that are used for the base constructors.
 	std::vector<ContractDefinition const*> const& bases = _contract.getLinearizedBaseContracts();
 	for (ContractDefinition const* contract: bases)
+	{
+		if (FunctionDefinition const* constructor = contract->getConstructor())
+			for (auto const& modifier: constructor->getModifiers())
+			{
+				auto baseContract = dynamic_cast<ContractDefinition const*>(
+					modifier->getName()->getReferencedDeclaration());
+				if (baseContract)
+					if (m_baseArguments.count(baseContract->getConstructor()) == 0)
+						m_baseArguments[baseContract->getConstructor()] = &modifier->getArguments();
+			}
+
 		for (ASTPointer<InheritanceSpecifier> const& base: contract->getBaseContracts())
 		{
 			ContractDefinition const* baseContract = dynamic_cast<ContractDefinition const*>(
 						base->getName()->getReferencedDeclaration());
 			solAssert(baseContract, "");
-			if (baseArguments.count(baseContract) == 0)
-				baseArguments[baseContract] = &base->getArguments();
-		}
 
-	// Call constructors in base-to-derived order.
-	// The Constructor for the most derived contract is called later.
-	for (unsigned i = 1; i < bases.size(); i++)
-	{
-		ContractDefinition const* base = bases[bases.size() - i];
-		solAssert(base, "");
-		initializeStateVariables(*base);
-		FunctionDefinition const* baseConstructor = base->getConstructor();
-		if (!baseConstructor)
-			continue;
-		solAssert(baseArguments[base], "");
-		appendBaseConstructorCall(*baseConstructor, *baseArguments[base]);
+			if (m_baseArguments.count(baseContract->getConstructor()) == 0)
+				m_baseArguments[baseContract->getConstructor()] = &base->getArguments();
+		}
 	}
-	initializeStateVariables(_contract);
-	if (_contract.getConstructor())
-		appendConstructorCall(*_contract.getConstructor());
+	// Initialization of state variables in base-to-derived order.
+	for (ContractDefinition const* contract: boost::adaptors::reverse(bases))
+		initializeStateVariables(*contract);
+
+	if (FunctionDefinition const* constructor = _contract.getConstructor())
+		appendConstructor(*constructor);
+	else if (auto c = m_context.getNextConstructor(_contract))
+		appendBaseConstructor(*c);
 
 	eth::AssemblyItem sub = m_context.addSubroutine(_runtimeContext.getAssembly());
 	// stack contains sub size
@@ -125,20 +130,23 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 	}
 }
 
-void Compiler::appendBaseConstructorCall(FunctionDefinition const& _constructor,
-										 vector<ASTPointer<Expression>> const& _arguments)
+void Compiler::appendBaseConstructor(FunctionDefinition const& _constructor)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_constructor);
 	FunctionType constructorType(_constructor);
-	eth::AssemblyItem returnLabel = m_context.pushNewTag();
-	for (unsigned i = 0; i < _arguments.size(); ++i)
-		compileExpression(*_arguments[i], constructorType.getParameterTypes()[i]);
-	m_context.appendJumpTo(m_context.getFunctionEntryLabel(_constructor));
-	m_context << returnLabel;
+	if (!constructorType.getParameterTypes().empty())
+	{
+		std::vector<ASTPointer<Expression>> const* arguments = m_baseArguments[&_constructor];
+		solAssert(arguments, "");
+		for (unsigned i = 0; i < arguments->size(); ++i)
+			compileExpression(*(arguments->at(i)), constructorType.getParameterTypes()[i]);
+	}
+	_constructor.accept(*this);
 }
 
-void Compiler::appendConstructorCall(FunctionDefinition const& _constructor)
+void Compiler::appendConstructor(FunctionDefinition const& _constructor)
 {
-	eth::AssemblyItem returnTag = m_context.pushNewTag();
+	CompilerContext::LocationSetter locationSetter(m_context, &_constructor);
 	// copy constructor arguments from code to memory and then to stack, they are supplied after the actual program
 	unsigned argumentSize = 0;
 	for (ASTPointer<VariableDeclaration> const& var: _constructor.getParameters())
@@ -152,8 +160,7 @@ void Compiler::appendConstructorCall(FunctionDefinition const& _constructor)
 		m_context << eth::Instruction::CODECOPY;
 		appendCalldataUnpacker(FunctionType(_constructor).getParameterTypes(), true);
 	}
-	m_context.appendJumpTo(m_context.getFunctionEntryLabel(_constructor));
-	m_context << returnTag;
+	_constructor.accept(*this);
 }
 
 void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
@@ -198,42 +205,49 @@ void Compiler::appendCalldataUnpacker(TypePointers const& _typeParameters, bool 
 {
 	// We do not check the calldata size, everything is zero-padded.
 	unsigned offset(CompilerUtils::dataStartOffset);
-	bool const c_padToWords = true;
 
-	unsigned dynamicParameterCount = 0;
+	bigint parameterHeadEnd = offset;
 	for (TypePointer const& type: _typeParameters)
-		if (type->isDynamicallySized())
-			dynamicParameterCount++;
-	offset += dynamicParameterCount * 32;
-	unsigned currentDynamicParameter = 0;
+		parameterHeadEnd += type->isDynamicallySized() ? 32 :
+			CompilerUtils::getPaddedSize(type->getCalldataEncodedSize());
+	solAssert(parameterHeadEnd <= numeric_limits<unsigned>::max(), "Arguments too large.");
+
+	unsigned stackHeightOfPreviousDynamicArgument = 0;
+	ArrayType const* previousDynamicType = nullptr;
 	for (TypePointer const& type: _typeParameters)
-		if (type->isDynamicallySized())
+	{
+		switch (type->getCategory())
 		{
-			// value on stack: [calldata_offset] (only if we are already in dynamic mode)
-			if (currentDynamicParameter == 0)
-				// switch from static to dynamic
+		case Type::Category::Array:
+			if (type->isDynamicallySized())
+			{
+				// put on stack: data_offset length
+				unsigned newStackHeight = m_context.getStackHeight();
+				if (previousDynamicType)
+				{
+					// Retrieve data start offset by adding length to start offset of previous dynamic type
+					unsigned stackDepth = m_context.getStackHeight() - stackHeightOfPreviousDynamicArgument;
+					m_context << eth::dupInstruction(stackDepth) << eth::dupInstruction(stackDepth);
+					ArrayUtils(m_context).convertLengthToSize(*previousDynamicType);
+					m_context << u256(32) << eth::Instruction::MUL << eth::Instruction::ADD;
+				}
+				else
+					m_context << u256(parameterHeadEnd);
+				stackHeightOfPreviousDynamicArgument = newStackHeight;
+				previousDynamicType = &dynamic_cast<ArrayType const&>(*type);
+				offset += CompilerUtils(m_context).loadFromMemory(offset, IntegerType(256), !_fromMemory);
+			}
+			else
+			{
 				m_context << u256(offset);
-			// retrieve length
-			CompilerUtils(m_context).loadFromMemory(
-				CompilerUtils::dataStartOffset + currentDynamicParameter * 32,
-				IntegerType(256), !_fromMemory, c_padToWords);
-			// stack: offset length
-			// add 32-byte padding to copy of length
-			m_context << u256(32) << eth::Instruction::DUP1 << u256(31)
-				<< eth::Instruction::DUP4 << eth::Instruction::ADD
-				<< eth::Instruction::DIV << eth::Instruction::MUL;
-			// stack: offset length padded_length
-			m_context << eth::Instruction::DUP3 << eth::Instruction::ADD;
-			currentDynamicParameter++;
-			// stack: offset length next_calldata_offset
+				offset += CompilerUtils::getPaddedSize(type->getCalldataEncodedSize());
+			}
+			break;
+		default:
+			solAssert(!type->isDynamicallySized(), "Unknown dynamically sized type: " + type->toString());
+			offset += CompilerUtils(m_context).loadFromMemory(offset, *type, !_fromMemory, true);
 		}
-		else if (currentDynamicParameter == 0)
-			// we can still use static load
-			offset += CompilerUtils(m_context).loadFromMemory(offset, *type, !_fromMemory, c_padToWords);
-		else
-			CompilerUtils(m_context).loadFromMemoryDynamic(*type, !_fromMemory, c_padToWords);
-	if (dynamicParameterCount > 0)
-		m_context << eth::Instruction::POP;
+	}
 }
 
 void Compiler::appendReturnValuePacker(TypePointers const& _typeParameters)
@@ -247,7 +261,7 @@ void Compiler::appendReturnValuePacker(TypePointers const& _typeParameters)
 	for (TypePointer const& type: _typeParameters)
 	{
 		CompilerUtils(m_context).copyToStackTop(stackDepth, *type);
-		ExpressionCompiler::appendTypeConversion(m_context, *type, *type, true);
+		ExpressionCompiler(m_context, m_optimize).appendTypeConversion(*type, *type, true);
 		bool const c_padToWords = true;
 		dataOffset += CompilerUtils(m_context).storeInMemory(dataOffset, *type, c_padToWords);
 		stackDepth -= type->getSizeOnStack();
@@ -267,51 +281,61 @@ void Compiler::initializeStateVariables(ContractDefinition const& _contract)
 {
 	for (ASTPointer<VariableDeclaration> const& variable: _contract.getStateVariables())
 		if (variable->getValue())
-			ExpressionCompiler::appendStateVariableInitialization(m_context, *variable);
+			ExpressionCompiler(m_context, m_optimize).appendStateVariableInitialization(*variable);
 }
 
 bool Compiler::visit(VariableDeclaration const& _variableDeclaration)
 {
 	solAssert(_variableDeclaration.isStateVariable(), "Compiler visit to non-state variable declaration.");
+	CompilerContext::LocationSetter locationSetter(m_context, &_variableDeclaration);
 
 	m_context.startFunction(_variableDeclaration);
 	m_breakTags.clear();
 	m_continueTags.clear();
 
 	m_context << m_context.getFunctionEntryLabel(_variableDeclaration);
-	ExpressionCompiler::appendStateVariableAccessor(m_context, _variableDeclaration);
+	ExpressionCompiler(m_context, m_optimize).appendStateVariableAccessor(_variableDeclaration);
 
 	return false;
 }
 
 bool Compiler::visit(FunctionDefinition const& _function)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_function);
 	//@todo to simplify this, the calling convention could by changed such that
 	// caller puts: [retarg0] ... [retargm] [return address] [arg0] ... [argn]
 	// although note that this reduces the size of the visible stack
 
 	m_context.startFunction(_function);
+
+	// stack upon entry: [return address] [arg0] [arg1] ... [argn]
+	// reserve additional slots: [retarg0] ... [retargm] [localvar0] ... [localvarp]
+
+	unsigned parametersSize = CompilerUtils::getSizeOnStack(_function.getParameters());
+	if (!_function.isConstructor())
+		// adding 1 for return address.
+		m_context.adjustStackOffset(parametersSize + 1);
+	for (ASTPointer<VariableDeclaration const> const& variable: _function.getParameters())
+	{
+		m_context.addVariable(*variable, parametersSize);
+		parametersSize -= variable->getType()->getSizeOnStack();
+	}
+
+	for (ASTPointer<VariableDeclaration const> const& variable: _function.getReturnParameters())
+		m_context.addAndInitializeVariable(*variable);
+	for (VariableDeclaration const* localVariable: _function.getLocalVariables())
+		m_context.addAndInitializeVariable(*localVariable);
+
+	if (_function.isConstructor())
+		if (auto c = m_context.getNextConstructor(dynamic_cast<ContractDefinition const&>(*_function.getScope())))
+			appendBaseConstructor(*c);
+
 	m_returnTag = m_context.newTag();
 	m_breakTags.clear();
 	m_continueTags.clear();
 	m_stackCleanupForReturn = 0;
 	m_currentFunction = &_function;
 	m_modifierDepth = 0;
-
-	// stack upon entry: [return address] [arg0] [arg1] ... [argn]
-	// reserve additional slots: [retarg0] ... [retargm] [localvar0] ... [localvarp]
-
-	unsigned parametersSize = CompilerUtils::getSizeOnStack(_function.getParameters());
-	m_context.adjustStackOffset(parametersSize);
-	for (ASTPointer<VariableDeclaration const> const& variable: _function.getParameters())
-	{
-		m_context.addVariable(*variable, parametersSize);
-		parametersSize -= variable->getType()->getSizeOnStack();
-	}
-	for (ASTPointer<VariableDeclaration const> const& variable: _function.getReturnParameters())
-		m_context.addAndInitializeVariable(*variable);
-	for (VariableDeclaration const* localVariable: _function.getLocalVariables())
-		m_context.addAndInitializeVariable(*localVariable);
 
 	appendModifierOrFunctionCode();
 
@@ -347,15 +371,21 @@ bool Compiler::visit(FunctionDefinition const& _function)
 		}
 	//@todo assert that everything is in place now
 
-	m_context << eth::Instruction::JUMP;
+	for (ASTPointer<VariableDeclaration const> const& variable: _function.getParameters() + _function.getReturnParameters())
+		m_context.removeVariable(*variable);
+	for (VariableDeclaration const* localVariable: _function.getLocalVariables())
+		m_context.removeVariable(*localVariable);
 
+	m_context.adjustStackOffset(-c_returnValuesSize);
+	if (!_function.isConstructor())
+		m_context << eth::Instruction::JUMP;
 	return false;
 }
 
 bool Compiler::visit(IfStatement const& _ifStatement)
 {
 	StackHeightChecker checker(m_context);
-
+	CompilerContext::LocationSetter locationSetter(m_context, &_ifStatement);
 	compileExpression(_ifStatement.getCondition());
 	eth::AssemblyItem trueTag = m_context.appendConditionalJump();
 	if (_ifStatement.getFalseStatement())
@@ -372,7 +402,7 @@ bool Compiler::visit(IfStatement const& _ifStatement)
 bool Compiler::visit(WhileStatement const& _whileStatement)
 {
 	StackHeightChecker checker(m_context);
-
+	CompilerContext::LocationSetter locationSetter(m_context, &_whileStatement);
 	eth::AssemblyItem loopStart = m_context.newTag();
 	eth::AssemblyItem loopEnd = m_context.newTag();
 	m_continueTags.push_back(loopStart);
@@ -398,7 +428,7 @@ bool Compiler::visit(WhileStatement const& _whileStatement)
 bool Compiler::visit(ForStatement const& _forStatement)
 {
 	StackHeightChecker checker(m_context);
-
+	CompilerContext::LocationSetter locationSetter(m_context, &_forStatement);
 	eth::AssemblyItem loopStart = m_context.newTag();
 	eth::AssemblyItem loopEnd = m_context.newTag();
 	m_continueTags.push_back(loopStart);
@@ -433,15 +463,17 @@ bool Compiler::visit(ForStatement const& _forStatement)
 	return false;
 }
 
-bool Compiler::visit(Continue const&)
+bool Compiler::visit(Continue const& _continueStatement)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_continueStatement);
 	if (!m_continueTags.empty())
 		m_context.appendJumpTo(m_continueTags.back());
 	return false;
 }
 
-bool Compiler::visit(Break const&)
+bool Compiler::visit(Break const& _breakStatement)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_breakStatement);
 	if (!m_breakTags.empty())
 		m_context.appendJumpTo(m_breakTags.back());
 	return false;
@@ -449,6 +481,7 @@ bool Compiler::visit(Break const&)
 
 bool Compiler::visit(Return const& _return)
 {
+	CompilerContext::LocationSetter locationSetter(m_context, &_return);
 	//@todo modifications are needed to make this work with functions returning multiple values
 	if (Expression const* expression = _return.getExpression())
 	{
@@ -467,6 +500,7 @@ bool Compiler::visit(Return const& _return)
 bool Compiler::visit(VariableDeclarationStatement const& _variableDeclarationStatement)
 {
 	StackHeightChecker checker(m_context);
+	CompilerContext::LocationSetter locationSetter(m_context, &_variableDeclarationStatement);
 	if (Expression const* expression = _variableDeclarationStatement.getExpression())
 	{
 		compileExpression(*expression, _variableDeclarationStatement.getDeclaration().getType());
@@ -479,6 +513,7 @@ bool Compiler::visit(VariableDeclarationStatement const& _variableDeclarationSta
 bool Compiler::visit(ExpressionStatement const& _expressionStatement)
 {
 	StackHeightChecker checker(m_context);
+	CompilerContext::LocationSetter locationSetter(m_context, &_expressionStatement);
 	Expression const& expression = _expressionStatement.getExpression();
 	compileExpression(expression);
 	CompilerUtils(m_context).popStackElement(*expression.getType());
@@ -486,9 +521,10 @@ bool Compiler::visit(ExpressionStatement const& _expressionStatement)
 	return false;
 }
 
-bool Compiler::visit(PlaceholderStatement const&)
+bool Compiler::visit(PlaceholderStatement const& _placeholderStatement)
 {
 	StackHeightChecker checker(m_context);
+	CompilerContext::LocationSetter locationSetter(m_context, &_placeholderStatement);
 	++m_modifierDepth;
 	appendModifierOrFunctionCode();
 	--m_modifierDepth;
@@ -505,7 +541,17 @@ void Compiler::appendModifierOrFunctionCode()
 	{
 		ASTPointer<ModifierInvocation> const& modifierInvocation = m_currentFunction->getModifiers()[m_modifierDepth];
 
+		// constructor call should be excluded
+		if (dynamic_cast<ContractDefinition const*>(modifierInvocation->getName()->getReferencedDeclaration()))
+		{
+			++m_modifierDepth;
+			appendModifierOrFunctionCode();
+			--m_modifierDepth;
+			return;
+		}
+
 		ModifierDefinition const& modifier = m_context.getFunctionModifier(modifierInvocation->getName()->getName());
+		CompilerContext::LocationSetter locationSetter(m_context, &modifier);
 		solAssert(modifier.getParameters().size() == modifierInvocation->getArguments().size(), "");
 		for (unsigned i = 0; i < modifier.getParameters().size(); ++i)
 		{
@@ -530,9 +576,10 @@ void Compiler::appendModifierOrFunctionCode()
 
 void Compiler::compileExpression(Expression const& _expression, TypePointer const& _targetType)
 {
-	ExpressionCompiler::compileExpression(m_context, _expression, m_optimize);
+	ExpressionCompiler expressionCompiler(m_context, m_optimize);
+	expressionCompiler.compile(_expression);
 	if (_targetType)
-		ExpressionCompiler::appendTypeConversion(m_context, *_expression.getType(), *_targetType);
+		expressionCompiler.appendTypeConversion(*_expression.getType(), *_targetType);
 }
 
 }

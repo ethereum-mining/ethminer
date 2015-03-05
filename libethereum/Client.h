@@ -27,7 +27,9 @@
 #include <atomic>
 #include <string>
 #include <array>
+
 #include <boost/utility.hpp>
+
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
@@ -44,6 +46,7 @@
 
 namespace dev
 {
+
 namespace eth
 {
 
@@ -166,7 +169,13 @@ class Client: public MinerHost, public Interface, Worker
 
 public:
 	/// New-style Constructor.
-	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0, int miners = -1);
+	explicit Client(
+		p2p::Host* _host,
+		std::string const& _dbPath = std::string(),
+		bool _forceClean = false,
+		u256 _networkId = 0,
+		int _miners = -1
+	);
 
 	/// Destructor.
 	virtual ~Client();
@@ -220,7 +229,7 @@ public:
 	/// @returns the length of the chain.
 	virtual unsigned number() const { return m_bc.number(); }
 
-	/// Get a map containing each of the pending transactions.
+	/// Get the list of pending transactions.
 	/// @TODO: Remove in favour of transactions().
 	virtual Transactions pending() const { return m_postMine.pending(); }
 
@@ -311,7 +320,7 @@ public:
 protected:
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed);
+	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _sha3);
 
 	/// Collate the changed filters for the hash of the given block.
 	/// Insert any filters that are activated into @a o_changed.

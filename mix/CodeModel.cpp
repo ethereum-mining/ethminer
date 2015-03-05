@@ -25,6 +25,7 @@
 #include <QDebug>
 #include <QApplication>
 #include <QtQml>
+#include <libevmcore/SourceLocation.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libsolidity/InterfaceHandler.h>
@@ -55,6 +56,8 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	m_contract.reset(new QContractDefinition(&contractDefinition));
 	QQmlEngine::setObjectOwnership(m_contract.get(), QQmlEngine::CppOwnership);
 	m_bytes = _compiler.getBytecode(_contractName.toStdString());
+	m_assemblyItems = _compiler.getRuntimeAssemblyItems(_contractName.toStdString());
+	m_constructorAssemblyItems = _compiler.getAssemblyItems(_contractName.toStdString());
 	dev::solidity::InterfaceHandler interfaceHandler;
 	m_contractInterface = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
 	if (m_contractInterface.isEmpty())
@@ -212,7 +215,7 @@ void CodeModel::runCompilationJob(int _jobId)
 	{
 		std::ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
-		solidity::Location const* location = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception);
+		SourceLocation const* location = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception);
 		QString message = QString::fromStdString(error.str());
 		CompiledContract* contract = nullptr;
 		if (location && location->sourceName.get() && (contract = contractByDocumentId(QString::fromStdString(*location->sourceName))))

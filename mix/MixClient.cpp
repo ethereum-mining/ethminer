@@ -40,7 +40,7 @@ namespace dev
 namespace mix
 {
 
-const Secret c_userAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
+const Secret c_defaultUserAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
 const u256 c_mixGenesisDifficulty = (u256) 1 << 4;
 
 class MixBlockChain: public dev::eth::BlockChain
@@ -62,16 +62,18 @@ public:
 };
 
 MixClient::MixClient(std::string const& _dbPath):
-	m_userAccount(c_userAccountSecret), m_dbPath(_dbPath), m_minigThreads(0)
+	m_dbPath(_dbPath), m_minigThreads(0)
 {
-	resetState(10000000 * ether);
+	std::map<Secret, u256> account;
+	account.insert(std::make_pair(c_defaultUserAccountSecret, 1000000 * ether));
+	resetState(account);
 }
 
 MixClient::~MixClient()
 {
 }
 
-void MixClient::resetState(u256 _balance)
+void MixClient::resetState(std::map<Secret, u256> _accounts)
 {
 	WriteGuard l(x_state);
 	Guard fl(m_filterLock);
@@ -81,12 +83,20 @@ void MixClient::resetState(u256 _balance)
 	m_stateDB = OverlayDB();
 	TrieDB<Address, MemoryDB> accountState(&m_stateDB);
 	accountState.init();
-	std::map<Address, Account> genesisState = { std::make_pair(KeyPair(c_userAccountSecret).address(), Account(_balance, Account::NormalCreation)) };
+
+	std::map<Address, Account> genesisState;
+	for (auto account: _accounts)
+	{
+		KeyPair a = KeyPair(account.first);
+		m_userAccounts.push_back(a);
+		genesisState.insert(std::make_pair(a.address(), Account(account.second, Account::NormalCreation)));
+	}
+
 	dev::eth::commit(genesisState, static_cast<MemoryDB&>(m_stateDB), accountState);
 	h256 stateRoot = accountState.root();
 	m_bc.reset();
 	m_bc.reset(new MixBlockChain(m_dbPath, stateRoot));
-	m_state = eth::State(m_userAccount.address(), m_stateDB, BaseState::Empty);
+	m_state = eth::State(genesisState.begin()->first , m_stateDB, BaseState::Empty);
 	m_state.sync(bc());
 	m_startState = m_state;
 	m_executions.clear();
@@ -107,7 +117,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	execution.setup(&rlp);
 	std::vector<MachineState> machineStates;
 	std::vector<unsigned> levels;
-	std::vector<bytes> codes;
+	std::vector<MachineCode> codes;
 	std::map<bytes const*, unsigned> codeIndexes;
 	std::vector<bytes> data;
 	std::map<bytesConstRef const*, unsigned> dataIndexes;
@@ -127,7 +137,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 			else
 			{
 				codeIndex = codes.size();
-				codes.push_back(ext.code);
+				codes.push_back(MachineCode({ext.myAddress, ext.code}));
 				codeIndexes[&ext.code] = codeIndex;
 			}
 			lastCode = &ext.code;
@@ -152,7 +162,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		else
 			levels.resize(ext.depth);
 
-		machineStates.emplace_back(MachineState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(),
+		machineStates.emplace_back(MachineState({steps, vm.curPC(), inst, newMemSize, vm.gas(),
 									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels, codeIndex, dataIndex}));
 	};
 
@@ -436,6 +446,12 @@ h256 MixClient::hashFromNumber(unsigned _number) const
 eth::BlockInfo MixClient::blockInfo(h256 _hash) const
 {
 	return BlockInfo(bc().block(_hash));
+
+}
+
+eth::BlockInfo MixClient::blockInfo() const
+{
+	return BlockInfo(bc().block());
 }
 
 eth::BlockDetails MixClient::blockDetails(h256 _hash) const

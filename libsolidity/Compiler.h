@@ -26,6 +26,7 @@
 #include <functional>
 #include <libsolidity/ASTVisitor.h>
 #include <libsolidity/CompilerContext.h>
+#include <libevmcore/Assembly.h>
 
 namespace dev {
 namespace solidity {
@@ -42,6 +43,11 @@ public:
 	bytes getRuntimeBytecode() { return m_runtimeContext.getAssembledBytecode(m_optimize);}
 	void streamAssembly(std::ostream& _stream) const { m_context.streamAssembly(_stream); }
 
+	/// @returns Assembly items of the normal compiler context
+	eth::AssemblyItems const& getAssemblyItems() const { return m_context.getAssembly().getItems(); }
+	/// @returns Assembly items of the runtime compiler context
+	eth::AssemblyItems const& getRuntimeAssemblyItems() const { return m_runtimeContext.getAssembly().getItems(); }
+
 private:
 	/// Registers the non-function objects inside the contract with the context.
 	void initializeContext(ContractDefinition const& _contract,
@@ -49,9 +55,8 @@ private:
 	/// Adds the code that is run at creation time. Should be run after exchanging the run-time context
 	/// with a new and initialized context. Adds the constructor code.
 	void packIntoContractCreator(ContractDefinition const& _contract, CompilerContext const& _runtimeContext);
-	void appendBaseConstructorCall(FunctionDefinition const& _constructor,
-								   std::vector<ASTPointer<Expression>> const& _arguments);
-	void appendConstructorCall(FunctionDefinition const& _constructor);
+	void appendBaseConstructor(FunctionDefinition const& _constructor);
+	void appendConstructor(FunctionDefinition const& _constructor);
 	void appendFunctionSelector(ContractDefinition const& _contract);
 	/// Creates code that unpacks the arguments for the given function represented by a vector of TypePointers.
 	/// From memory if @a _fromMemory is true, otherwise from call data.
@@ -88,6 +93,8 @@ private:
 	unsigned m_modifierDepth = 0;
 	FunctionDefinition const* m_currentFunction;
 	unsigned m_stackCleanupForReturn; ///< this number of stack elements need to be removed before jump to m_returnTag
+	// arguments for base constructors, filled in derived-to-base order
+	std::map<FunctionDefinition const*, std::vector<ASTPointer<Expression>> const*> m_baseArguments;
 };
 
 }

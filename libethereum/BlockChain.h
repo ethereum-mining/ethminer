@@ -96,7 +96,7 @@ public:
 	BlockInfo info(h256 _hash) const { return BlockInfo(block(_hash)); }
 	BlockInfo info() const { return BlockInfo(block()); }
 
-	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
+	/// Get the familiar details concerning a block (or the most recent mined if none given). Thread-safe.
 	BlockDetails details(h256 _hash) const { return queryExtras<BlockDetails, 0>(_hash, m_details, x_details, NullBlockDetails); }
 	BlockDetails details() const { return details(currentHash()); }
 
