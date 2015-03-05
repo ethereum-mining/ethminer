@@ -79,6 +79,15 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	return res;
 }
 
+static Json::Value toJson(dev::eth::BlockInfo const& _bi, Transactions const& _ts)
+{
+	Json::Value res = toJson(_bi);
+	res["transactions"] = Json::Value(Json::arrayValue);
+	for (Transaction const& t: _ts)
+		res["transactions"].append(toJson(t));
+	return res;
+}
+
 static Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
 {
 	Json::Value res;
@@ -97,6 +106,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 
 	res["data"] = jsFromBinary(_e.data);
 	res["address"] = toJS(_e.address);
+	res["topic"] = Json::Value(Json::arrayValue);
 	for (auto const& t: _e.topics)
 		res["topic"].append(toJS(t));
 	res["number"] = _e.number;
@@ -223,6 +233,7 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["sent"] = (int)_e.sent();
 	res["ttl"] = (int)_e.ttl();
 	res["workProved"] = (int)_e.workProved();
+	res["topic"] = Json::Value(Json::arrayValue);
 	for (auto const& t: _e.topic())
 		res["topic"].append(toJS(t));
 	res["payload"] = toJS(_m.payload());
@@ -543,7 +554,7 @@ bool WebThreeStubServerBase::eth_flush()
 	return true;
 }
 
-Json::Value WebThreeStubServerBase::eth_getBlockByHash(string const& _blockHash)
+Json::Value WebThreeStubServerBase::eth_getBlockByHash(string const& _blockHash, bool _includeTransactions)
 {
 	h256 hash;
 	
@@ -556,10 +567,14 @@ Json::Value WebThreeStubServerBase::eth_getBlockByHash(string const& _blockHash)
 		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
+	if (_includeTransactions) {
+		return toJson(client()->blockInfo(hash), client()->transactions(hash));
+	}
+	
 	return toJson(client()->blockInfo(hash));
 }
 
-Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNumber)
+Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNumber, bool _includeTransactions)
 {
 	int number;
 	
@@ -572,7 +587,13 @@ Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNum
 		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
-	return toJson(client()->blockInfo(client()->hashFromNumber(number)));
+	h256 hash = client()->hashFromNumber(number);
+	
+	if (_includeTransactions) {
+		return toJson(client()->blockInfo(hash), client()->transactions(hash));
+	}
+	
+	return toJson(client()->blockInfo(hash));
 }
 
 Json::Value WebThreeStubServerBase::eth_getTransactionByHash(string const& _transactionHash)

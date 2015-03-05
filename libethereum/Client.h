@@ -240,6 +240,7 @@ public:
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const;
 	virtual unsigned transactionCount(h256 _blockHash) const;
 	virtual unsigned uncleCount(h256 _blockHash) const;
+	virtual Transactions transactions(h256 _blockHash) const;
 
 	/// Differences between transactions.
 	using Interface::diff;

@@ -89,8 +89,8 @@ public:
 	virtual std::string eth_sendTransaction(Json::Value const& _json);
 	virtual std::string eth_call(Json::Value const& _json);
 	virtual bool eth_flush();
-	virtual Json::Value eth_getBlockByHash(std::string const& _blockHash);
-	virtual Json::Value eth_getBlockByNumber(std::string const& _blockNumber);
+	virtual Json::Value eth_getBlockByHash(std::string const& _blockHash, bool _includeTransactions);
+	virtual Json::Value eth_getBlockByNumber(std::string const& _blockNumber, bool _includeTransactions);
 	virtual Json::Value eth_getTransactionByHash(std::string const& _transactionHash);
 	virtual Json::Value eth_getTransactionByBlockHashAndIndex(std::string const& _blockHash, std::string const& _transactionIndex);
 	virtual Json::Value eth_getTransactionByBlockNumberAndIndex(std::string const& _blockNumber, std::string const& _transactionIndex);
