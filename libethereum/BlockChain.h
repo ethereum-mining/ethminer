@@ -34,6 +34,7 @@
 #include <libdevcore/Guards.h>
 #include "BlockDetails.h"
 #include "Account.h"
+#include "Transaction.h"
 #include "BlockQueue.h"
 namespace ldb = leveldb;
 
@@ -60,6 +61,8 @@ struct BlockChainNote: public LogChannel { static const char* name() { return "=
 std::map<Address, Account> const& genesisState();
 
 ldb::Slice toSlice(h256 _h, unsigned _sub = 0);
+
+using TransactionHashes = h256s;
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
@@ -108,12 +111,19 @@ public:
 	BlockReceipts receipts(h256 _hash) const { return queryExtras<BlockReceipts, 4>(_hash, m_receipts, x_receipts, NullBlockReceipts); }
 	BlockReceipts receipts() const { return receipts(currentHash()); }
 
+	/// Get a list of transaction hashes for a given block. Thread-safe.
+	TransactionHashes transactionHashes(h256 _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[1]) ret.push_back(sha3(t.data())); return ret; }
+	TransactionHashes transactionHashes() const { return transactionHashes(currentHash()); }
+
 	/// Get a block (RLP format) for the given hash (or the most recent mined if none given). Thread-safe.
 	bytes block(h256 _hash) const;
 	bytes block() const { return block(currentHash()); }
 
+	/// Get a transaction from its hash. Thread-safe.
+	bytes transaction(h256 _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, 5>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytes(); return transaction(ta.blockHash, ta.index); }
+
 	/// Get a block's transaction (RLP format) for the given block hash (or the most recent mined if none given) & index. Thread-safe.
-	bytes transaction(h256 _hash, unsigned _i) const { bytes b = block(_hash); return RLP(b)[1][_i].data().toBytes(); }
+	bytes transaction(h256 _blockHash, unsigned _i) const { bytes b = block(_blockHash); return RLP(b)[1][_i].data().toBytes(); }
 	bytes transaction(unsigned _i) const { return transaction(currentHash(), _i); }
 
 	/// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
@@ -185,6 +195,8 @@ private:
 	mutable BlockLogBloomsHash m_logBlooms;
 	mutable boost::shared_mutex x_receipts;
 	mutable BlockReceiptsHash m_receipts;
+	mutable boost::shared_mutex x_transactionAddresses;
+	mutable TransactionAddressHash m_transactionAddresses;
 	mutable boost::shared_mutex x_cache;
 	mutable std::map<h256, bytes> m_cache;
 
