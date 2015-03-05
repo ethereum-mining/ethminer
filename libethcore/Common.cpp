@@ -14,12 +14,12 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CommonEth.cpp
+/** @file Common.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "CommonEth.h"
+#include "Common.h"
 #include <random>
 #include <libdevcrypto/SHA3.h>
 #include "Exceptions.h"

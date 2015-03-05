@@ -23,7 +23,7 @@
 #pragma once
 
 #include <QObject>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include "QBigInt.h"
 
 namespace dev
