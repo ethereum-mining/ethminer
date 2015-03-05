@@ -106,9 +106,9 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 
 	res["data"] = jsFromBinary(_e.data);
 	res["address"] = toJS(_e.address);
-	res["topic"] = Json::Value(Json::arrayValue);
+	res["topics"] = Json::Value(Json::arrayValue);
 	for (auto const& t: _e.topics)
-		res["topic"].append(toJS(t));
+		res["topics"].append(toJS(t));
 	res["number"] = _e.number;
 	res["hash"] = toJS(_e.sha3);
 	return res;
@@ -153,17 +153,13 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 		else
 			filter.address(jsToAddress(_json["address"].asString()));
 	}
-	if (!_json["topic"].empty())
+	if (!_json["topics"].empty())
 	{
 		unsigned i = 0;
-		for (auto t: _json["topic"])
+		for (auto t: _json["topics"])
 		{
-			// array in array?
-			if (t.isArray())
-				for (auto tt: t)
-					filter.topic(i, jsToFixed<32>(tt.asString()));
-			else
-				filter.topic(i, jsToFixed<32>(t.asString()));
+			for (auto tt: t)
+				filter.topic(i, jsToFixed<32>(tt.asString()));
 			i++;
 		}
 	}
@@ -190,16 +186,14 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 
 	if (!_json["ttl"].empty())
 		ttl = jsToInt(_json["ttl"].asString());
+	
 	if (!_json["workToProve"].empty())
 		workToProve = jsToInt(_json["workToProve"].asString());
-	if (!_json["topic"].empty())
-	{
-		if (_json["topic"].isString())
-			bt.shift(jsToBytes(_json["topic"].asString()));
-		else
-			for (auto i: _json["topic"])
-				bt.shift(jsToBytes(i.asString()));
-	}
+	
+	if (!_json["topics"].empty())
+		for (auto i: _json["topics"])
+			bt.shift(jsToBytes(i.asString()));
+	
 	return _m.seal(_from, bt, ttl, workToProve);
 }
 
@@ -211,14 +205,10 @@ static pair<shh::FullTopic, Public> toWatch(Json::Value const& _json)
 	if (!_json["to"].empty())
 		to = jsToPublic(_json["to"].asString());
 
-	if (!_json["topic"].empty())
-	{
-		if (_json["topic"].isString())
-			bt.shift(jsToBytes(_json["topic"].asString()));
-		else
-			for (auto i: _json["topic"])
-				bt.shift(jsToBytes(i.asString()));
-	}
+	if (!_json["topics"].empty())
+		for (auto i: _json["topics"])
+			bt.shift(jsToBytes(i.asString()));
+	
 	return make_pair(bt, to);
 }
 
@@ -230,9 +220,9 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["sent"] = toJS(_e.sent());
 	res["ttl"] = toJS(_e.ttl());
 	res["workProved"] = toJS(_e.workProved());
-	res["topic"] = Json::Value(Json::arrayValue);
+	res["topics"] = Json::Value(Json::arrayValue);
 	for (auto const& t: _e.topic())
-		res["topic"].append(toJS(t));
+		res["topics"].append(toJS(t));
 	res["payload"] = toJS(_m.payload());
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
