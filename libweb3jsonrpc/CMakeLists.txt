@@ -14,6 +14,7 @@ include_directories(BEFORE ..)
 include_directories(${MHD_INCLUDE_DIRS})
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 include_directories(${LEVELDB_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXECUTABLE web3jsonrpc)
 
@@ -52,7 +53,7 @@ if (ETH_JSON_RPC_STUB)
 	add_dependencies(${EXECUTABLE} jsonrpcstub)
 endif()
 
-install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
 
 

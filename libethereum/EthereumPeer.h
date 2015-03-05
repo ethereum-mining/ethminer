@@ -26,6 +26,10 @@
 #include <set>
 #include <memory>
 #include <utility>
+
+// Make sure boost/asio.hpp is included before windows.h.
+#include <boost/asio.hpp>
+
 #include <libdevcore/RLP.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/RangeMask.h>

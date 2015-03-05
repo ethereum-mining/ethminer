@@ -19,6 +19,9 @@
  * @date 2015
  */
 
+// Make sure boost/asio.hpp is included before windows.h.
+#include <boost/asio.hpp>
+
 #include "Transact.h"
 
 #include <fstream>
