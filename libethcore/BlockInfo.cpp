@@ -203,8 +203,6 @@ u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 		return max<u256>(c_minimumDifficulty, timestamp >= _parent.timestamp + c_durationLimit ? _parent.difficulty - (_parent.difficulty / c_difficultyBoundDivisor) : (_parent.difficulty + (_parent.difficulty / c_difficultyBoundDivisor)));
 }
 
-template <class N> inline N diff(N const& _a, N const& _b) { return max(_a, _b) - min(_a, _b); }
-
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
 {
 	// Check difficulty is correct given the two timestamps.
@@ -215,8 +213,9 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 		gasLimit > _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor)
 		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor, _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor));
 
-	if (diff(gasLimit, _parent.gasLimit) <= _parent.gasLimit / c_gasLimitBoundDivisor)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent), diff(gasLimit, _parent.gasLimit), _parent.gasLimit / c_gasLimitBoundDivisor));
+	if (gasLimit < _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor ||
+		gasLimit > _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor)
+		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor, _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor));
 
 	if (seedHash != calculateSeedHash(_parent))
 		BOOST_THROW_EXCEPTION(InvalidSeedHash());
