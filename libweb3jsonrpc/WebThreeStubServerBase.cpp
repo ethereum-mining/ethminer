@@ -239,6 +239,13 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	return res;
 }
 
+static int toBlockNumber(string const& _string)
+{
+	if (_string.compare("latest") == 0)
+		return -1;
+	return jsToInt(_string);
+}
+
 WebThreeStubServerBase::WebThreeStubServerBase(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts):
 	AbstractWebThreeStubServer(_conn), m_accounts(make_shared<AccountHolder>(std::bind(&WebThreeStubServerBase::client, this)))
 {
@@ -304,7 +311,7 @@ std::string WebThreeStubServerBase::eth_getBalance(string const& _address, strin
 	try
 	{
 		address = jsToAddress(_address);
-		number = jsToInt(_blockNumber);
+		number = toBlockNumber(_blockNumber);
 	}
 	catch (...)
 	{
@@ -323,7 +330,7 @@ Json::Value WebThreeStubServerBase::eth_getStorage(string const& _address, strin
 	try
 	{
 		address = jsToAddress(_address);
-		number = jsToInt(_blockNumber);
+		number = toBlockNumber(_blockNumber);
 	}
 	catch (...)
 	{
@@ -344,7 +351,7 @@ std::string WebThreeStubServerBase::eth_getStorageAt(string const& _address, str
 	{
 		address = jsToAddress(_address);
 		position = jsToU256(_position);
-		number = jsToInt(_blockNumber);
+		number = toBlockNumber(_blockNumber);
 	}
 	catch (...)
 	{
@@ -363,7 +370,7 @@ string WebThreeStubServerBase::eth_getTransactionCount(string const& _address, s
 	try
 	{
 		address = jsToAddress(_address);
-		number = jsToInt(_blockNumber);
+		number = toBlockNumber(_blockNumber);
 	}
 	catch (...)
 	{
@@ -396,7 +403,7 @@ string WebThreeStubServerBase::eth_getBlockTransactionCountByNumber(string const
 	
 	try
 	{
-		number = jsToInt(_blockNumber);
+		number = toBlockNumber(_blockNumber);
 	}
 	catch (...)
 	{
@@ -428,7 +435,7 @@ string WebThreeStubServerBase::eth_getUncleCountByBlockNumber(string const& _blo
 	
 	try
 	{
-		number = jsToInt(_blockNumber);
+		number = toBlockNumber(_blockNumber);
 	}
 	catch (...)
 	{
@@ -446,7 +453,7 @@ std::string WebThreeStubServerBase::eth_getData(string const& _address, string c
 	try
 	{
 		address = jsToAddress(_address);
-		number = jsToInt(_blockNumber);
+		number = toBlockNumber(_blockNumber);
 	}
 	catch (...)
 	{
@@ -577,7 +584,7 @@ Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNum
 	
 	try
 	{
-		number = jsToInt(_blockNumber);
+		number = toBlockNumber(_blockNumber);
 	}
 	catch (...)
 	{
@@ -672,7 +679,7 @@ Json::Value WebThreeStubServerBase::eth_getUncleByBlockNumberAndIndex(string con
 	
 	try
 	{
-		number = jsToInt(_blockNumber);
+		number = toBlockNumber(_blockNumber);
 		index = jsToInt(_uncleIndex);
 	}
 	catch (...)
