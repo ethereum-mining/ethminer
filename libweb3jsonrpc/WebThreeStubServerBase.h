@@ -91,25 +91,26 @@ public:
 	virtual bool eth_flush();
 	virtual Json::Value eth_getBlockByHash(std::string const& _blockHash);
 	virtual Json::Value eth_getBlockByNumber(std::string const& _blockNumber);
-	
+	virtual Json::Value eth_getTransactionByHash(std::string const& _transactionHash);
+	virtual Json::Value eth_getTransactionByBlockHashAndIndex(std::string const& _blockHash, std::string const& _transactionIndex);
+	virtual Json::Value eth_getTransactionByBlockNumberAndIndex(std::string const& _blockNumber, std::string const& _transactionIndex);
+	virtual Json::Value eth_getUncleByBlockHashAndIndex(std::string const& _blockHash, std::string const& _uncleIndex);
+	virtual Json::Value eth_getUncleByBlockNumberAndIndex(std::string const& _blockNumber, std::string const& _uncleIndex);
+	virtual Json::Value eth_getCompilers();
+	virtual std::string eth_compileLLL(std::string const& _s);
+	virtual std::string eth_compileSerpent(std::string const& _s);
+	virtual std::string eth_compileSolidity(std::string const& _code);
 	
 	
 	virtual Json::Value eth_changed(int _id);
-	virtual Json::Value eth_compilers();
-
 	virtual Json::Value eth_filterLogs(int _id);
 	virtual Json::Value eth_logs(Json::Value const& _json);
 
 
 	virtual int eth_newFilter(Json::Value const& _json);
 	virtual int eth_newFilterString(std::string const& _filter);
-	virtual std::string eth_lll(std::string const& _s);
-	virtual std::string eth_serpent(std::string const& _s);
-	virtual std::string eth_solidity(std::string const& _code);
-	virtual Json::Value eth_transactionByHash(std::string const& _hash, int _i);
-	virtual Json::Value eth_transactionByNumber(int  _number, int _i);
-	virtual Json::Value eth_uncleByHash(std::string const& _hash, int _i);
-	virtual Json::Value eth_uncleByNumber(int _number, int _i);
+
+
 	virtual bool eth_uninstallFilter(int _id);
 
 	virtual Json::Value eth_getWork();
