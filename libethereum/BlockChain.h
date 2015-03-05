@@ -62,7 +62,16 @@ std::map<Address, Account> const& genesisState();
 
 ldb::Slice toSlice(h256 _h, unsigned _sub = 0);
 
+using BlocksHash = std::map<h256, bytes>;
 using TransactionHashes = h256s;
+
+enum {
+	ExtraDetails = 0,
+	ExtraBlockHash,
+	ExtraTransactionAddress,
+	ExtraLogBlooms,
+	ExtraReceipts
+};
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
@@ -119,12 +128,11 @@ public:
 	TransactionHashes transactionHashes(h256 _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[1]) ret.push_back(sha3(t.data())); return ret; }
 	TransactionHashes transactionHashes() const { return transactionHashes(currentHash()); }
 
-	/// Get a block (RLP format) for the given hash (or the most recent mined if none given). Thread-safe.
-	bytes block(h256 _hash) const;
-	bytes block() const { return block(currentHash()); }
+	/// Get a list of transaction hashes for a given block. Thread-safe.
+	h256 numberHash(u256 _index) const { if (!_index) return genesisHash(); return queryExtras<BlockHash, ExtraBlockHash>(h256(_index), m_blockHashes, x_blockHashes, NullBlockHash).value; }
 
 	/// Get a transaction from its hash. Thread-safe.
-	bytes transaction(h256 _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, 5>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytes(); return transaction(ta.blockHash, ta.index); }
+	bytes transaction(h256 _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytes(); return transaction(ta.blockHash, ta.index); }
 
 	/// Get a block's transaction (RLP format) for the given block hash (or the most recent mined if none given) & index. Thread-safe.
 	bytes transaction(h256 _blockHash, unsigned _i) const { bytes b = block(_blockHash); return RLP(b)[1][_i].data().toBytes(); }
@@ -163,20 +171,18 @@ public:
 
 	struct Statistics
 	{
-		unsigned memBlocks;
 		unsigned memDetails;
 		unsigned memLogBlooms;
 		unsigned memReceipts;
 		unsigned memTransactionAddresses;
-		unsigned memBlockHashes;
-		unsigned memTotal() const { return memBlocks + memDetails + memLogBlooms + memReceipts + memTransactionAddresses + memBlockHashes; }
+		unsigned memCache;
 	};
 
 	/// @returns statistics about memory usage.
-	Statistics usage(bool _freshen = false) const { if (_freshen) updateStats(); return m_lastStats; }
+	Statistics usage() const;
 
 	/// Deallocate unused data.
-	void garbageCollect(bool _force = false);
+	void garbageCollect();
 
 private:
 	void open(std::string _path, bool _killExisting = false);
@@ -209,9 +215,9 @@ private:
 	void checkConsistency();
 
 	/// The caches of the disk DB and their locks.
-	mutable SharedMutex x_blocks;
+	mutable boost::shared_mutex x_blocks;
 	mutable BlocksHash m_blocks;
-	mutable SharedMutex x_details;
+	mutable boost::shared_mutex x_details;
 	mutable BlockDetailsHash m_details;
 	mutable SharedMutex x_logBlooms;
 	mutable BlockLogBloomsHash m_logBlooms;
@@ -219,8 +225,8 @@ private:
 	mutable BlockReceiptsHash m_receipts;
 	mutable boost::shared_mutex x_transactionAddresses;
 	mutable TransactionAddressHash m_transactionAddresses;
-	mutable boost::shared_mutex x_cache;
-	mutable std::map<h256, bytes> m_cache;
+	mutable boost::shared_mutex x_blockHashes;
+	mutable BlockHashHash m_blockHashes;
 
 	/// The disk DBs. Thread-safe, so no need for locks.
 	ldb::DB* m_blocksDB;

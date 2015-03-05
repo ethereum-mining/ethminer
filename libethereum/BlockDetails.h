@@ -97,6 +97,15 @@ struct TransactionAddress
 	static const unsigned size = 67;
 };
 
+struct BlockHash
+{
+	BlockHash() {}
+	BlockHash(RLP const& _r) { value = _r.toHash<h256>(); }
+	bytes rlp() const { return dev::rlp(value); }
+
+	h256 value;
+};
+
 struct TransactionAddress
 {
 	TransactionAddress() {}
@@ -113,11 +122,13 @@ using BlockDetailsHash = std::map<h256, BlockDetails>;
 using BlockLogBloomsHash = std::map<h256, BlockLogBlooms>;
 using BlockReceiptsHash = std::map<h256, BlockReceipts>;
 using TransactionAddressHash = std::map<h256, TransactionAddress>;
+using BlockHashHash = std::map<h256, BlockHash>;
 
 static const BlockDetails NullBlockDetails;
 static const BlockLogBlooms NullBlockLogBlooms;
 static const BlockReceipts NullBlockReceipts;
 static const TransactionAddress NullTransactionAddress;
+static const BlockHash NullBlockHash;
 
 }
 }
