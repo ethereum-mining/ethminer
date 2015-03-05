@@ -77,9 +77,12 @@ public:
 	virtual std::string eth_gasPrice();
 	virtual Json::Value eth_accounts();
 	virtual std::string eth_blockNumber();
+	virtual std::string eth_getBalance(std::string const& _address, std::string const& _blockNumber);
+	virtual Json::Value eth_getStorage(std::string const& _address, std::string const& _blockNumber);
 	
 	
-	virtual std::string eth_balanceAt(std::string const& _address);
+	virtual std::string eth_stateAt(std::string const& _address, std::string const& _storage);
+
 	virtual Json::Value eth_blockByHash(std::string const& _hash);
 	virtual Json::Value eth_blockByNumber(int _number);
 	virtual std::string eth_call(Json::Value const& _json);
@@ -103,8 +106,6 @@ public:
 	virtual std::string eth_lll(std::string const& _s);
 	virtual std::string eth_serpent(std::string const& _s);
 	virtual std::string eth_solidity(std::string const& _code);
-	virtual std::string eth_stateAt(std::string const& _address, std::string const& _storage);
-	virtual Json::Value eth_storageAt(std::string const& _address);
 	virtual std::string eth_transact(Json::Value const& _json);
 	virtual Json::Value eth_transactionByHash(std::string const& _hash, int _i);
 	virtual Json::Value eth_transactionByNumber(int  _number, int _i);
