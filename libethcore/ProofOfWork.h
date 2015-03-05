@@ -49,20 +49,12 @@ struct MineInfo
 class Ethash
 {
 public:
-	// bit-compatible with ethash_return_value
 	struct Proof
 	{
 		Nonce nonce;
 		h256 mixHash;
 	};
-	struct Result
-	{
-		h256 value;
-		h256 mixHash;
-	};
 
-	static Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
-	static Result eval(BlockInfo const& _header, Nonce const& _nonce);
 	static bool verify(BlockInfo const& _header);
 	std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
 	static void assignResult(Proof const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
@@ -78,9 +70,7 @@ public:
 	using Proof = Nonce;
 
 	static bool verify(BlockInfo const& _header) { return (bigint)(u256)Evaluator::eval(_header.headerHash(WithoutNonce), _header.nonce) <= (bigint(1) << 256) / _header.difficulty; }
-
 	inline std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
-
 	static void assignResult(Proof const& _r, BlockInfo& _header) { _header.nonce = _r; }
 
 protected:

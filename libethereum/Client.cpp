@@ -516,9 +516,18 @@ void Client::doWork()
 	{
 		if (m.isComplete())
 		{
-			cwork << "CHAIN <== postSTATE";
+			// TODO: enable a short-circuit option since we mined it. will need to get the end state from the miner.
+			auto lm = dynamic_cast<LocalMiner*>(&m);
 			h256s hs;
+			if (false && lm && !m_verifyOwnBlocks)
 			{
+				// TODO: implement
+				//m_bc.attemptImport(m_blockData(), m_stateDB, lm->state());
+				// TODO: derive hs from lm->state()
+			}
+			else
+			{
+				cwork << "CHAIN <== postSTATE";
 				WriteGuard l(x_stateDB);
 				hs = m_bc.attemptImport(m.blockData(), m_stateDB);
 			}
@@ -605,7 +614,7 @@ void Client::doWork()
 	this_thread::sleep_for(chrono::milliseconds(100));
 	if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(5))
 	{
-		// garbage collect on watches
+		// watches garbage collection
 		vector<unsigned> toUninstall;
 		{
 			Guard l(m_filterLock);
@@ -618,6 +627,10 @@ void Client::doWork()
 		}
 		for (auto i: toUninstall)
 			uninstallWatch(i);
+
+		// blockchain GC
+		m_bc.garbageCollect();
+
 		m_lastGarbageCollection = chrono::system_clock::now();
 	}
 }
