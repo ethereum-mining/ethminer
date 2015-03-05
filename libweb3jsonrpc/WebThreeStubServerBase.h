@@ -122,8 +122,7 @@ public:
 	virtual std::string shh_addToGroup(std::string const& _group, std::string const& _who);
 	virtual std::string shh_newFilter(Json::Value const& _json);
 	virtual bool shh_uninstallFilter(std::string const& _filterId);
-	
-	virtual Json::Value shh_changed(std::string const& _filterId);
+	virtual Json::Value shh_getFilterChanges(std::string const& _filterId);
 	virtual Json::Value shh_getMessages(std::string const& _filterId);
 	
 	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
