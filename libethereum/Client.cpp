@@ -614,7 +614,7 @@ void Client::doWork()
 	this_thread::sleep_for(chrono::milliseconds(100));
 	if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(5))
 	{
-		// garbage collect on watches
+		// watches garbage collection
 		vector<unsigned> toUninstall;
 		{
 			Guard l(m_filterLock);
@@ -627,9 +627,12 @@ void Client::doWork()
 		}
 		for (auto i: toUninstall)
 			uninstallWatch(i);
+
+		// blockchain GC
+		m_bc.garbageCollect();
+
 		m_lastGarbageCollection = chrono::system_clock::now();
 	}
-	m_bc.garbageCollect();
 }
 
 unsigned Client::numberOf(int _n) const
