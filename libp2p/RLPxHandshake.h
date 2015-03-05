@@ -35,10 +35,12 @@ namespace dev
 namespace p2p
 {
 
+class Session;
 class RLPXHandshake;
 
 class RLPXFrameIO
 {
+	friend class Session;
 public:
 	RLPXFrameIO(RLPXHandshake const& _init);
 	
@@ -74,7 +76,6 @@ private:
 	bi::tcp::socket* m_socket;
 };
 
-// TODO: change properties to m_
 class RLPXHandshake: public std::enable_shared_from_this<RLPXHandshake>
 {
 public:
@@ -91,12 +92,12 @@ public:
 	};
 
 	/// Handshake for ingress connection. Takes ownership of socket.
-	RLPXHandshake(Host* _host, bi::tcp::socket* _socket): host(_host), socket(std::move(_socket)), originated(false) { crypto::Nonce::get().ref().copyTo(nonce.ref()); }
+	RLPXHandshake(Host* _host, bi::tcp::socket* _socket): m_host(_host), m_socket(std::move(_socket)), m_originated(false) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
 	
 	/// Handshake for egress connection to _remote. Takes ownership of socket.
-	RLPXHandshake(Host* _host, bi::tcp::socket* _socket, NodeId _remote): host(_host), remote(_remote), socket(std::move(_socket)), originated(true) { crypto::Nonce::get().ref().copyTo(nonce.ref()); }
+	RLPXHandshake(Host* _host, bi::tcp::socket* _socket, NodeId _remote): m_host(_host), m_remote(_remote), m_socket(std::move(_socket)), m_originated(true) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
 	
-	~RLPXHandshake() { delete socket; }
+	~RLPXHandshake() { delete m_socket; }
 
 	void start() { transition(); }
 	
@@ -111,32 +112,32 @@ protected:
 	void transition(boost::system::error_code _ech = boost::system::error_code());
 
 	/// Current state of handshake.
-	State nextState = New;
+	State m_nextState = New;
 	
-	Host* host;
+	Host* m_host;
 	
 	/// Node id of remote host for socket.
-	NodeId remote;
+	NodeId m_remote;
 	
-	bi::tcp::socket* socket;
-	bool originated = false;
+	bi::tcp::socket* m_socket;
+	bool m_originated = false;
 	
 	/// Buffers for encoded and decoded handshake phases
-	bytes auth;
-	bytes authCipher;
-	bytes ack;
-	bytes ackCipher;
-	bytes handshakeOutBuffer;
-	bytes handshakeInBuffer;
+	bytes m_auth;
+	bytes m_authCipher;
+	bytes m_ack;
+	bytes m_ackCipher;
+	bytes m_handshakeOutBuffer;
+	bytes m_handshakeInBuffer;
 	
-	crypto::ECDHE ecdhe;
-	h256 nonce;
+	crypto::ECDHE m_ecdhe;
+	h256 m_nonce;
 	
-	Public remoteEphemeral;
-	h256 remoteNonce;
+	Public m_remoteEphemeral;
+	h256 m_remoteNonce;
 	
 	/// Frame IO is used to read frame for last step of handshake authentication.
-	std::unique_ptr<RLPXFrameIO> io;
+	std::unique_ptr<RLPXFrameIO> m_io;
 };
 	
 }

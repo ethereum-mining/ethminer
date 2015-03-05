@@ -157,7 +157,7 @@ unsigned Host::protocolVersion() const
 	return 4;
 }
 
-bool Host::startPeerSession(Public const& _id, RLP const& _rlp, bi::tcp::socket *_socket)
+bool Host::startPeerSession(Public const& _id, RLP const& _rlp, bi::tcp::socket *_socket, RLPXFrameIO* _io)
 {
 	/// Get or create Peer
 	shared_ptr<Peer> p;
@@ -187,7 +187,7 @@ bool Host::startPeerSession(Public const& _id, RLP const& _rlp, bi::tcp::socket 
 	clog(NetMessageSummary) << "Hello: " << clientVersion << "V[" << protocolVersion << "]" << _id.abridged() << showbase << capslog.str() << dec << listenPort;
 	
 	// create session so disconnects are managed
-	auto ps = make_shared<Session>(this, move(*_socket), p, PeerSessionInfo({_id, clientVersion, _socket->remote_endpoint().address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[3].toSet<CapDesc>(), 0, map<string, string>()}));
+	auto ps = make_shared<Session>(this, move(*_io), p, PeerSessionInfo({_id, clientVersion, _socket->remote_endpoint().address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[3].toSet<CapDesc>(), 0, map<string, string>()}));
 	if (protocolVersion != this->protocolVersion())
 	{
 		ps->disconnect(IncompatibleProtocol);
