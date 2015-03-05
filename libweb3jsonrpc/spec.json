@@ -32,36 +32,29 @@
             { "name": "eth_compileLLL", "params": [""], "order": [], "returns": ""},
             { "name": "eth_compileSerpent", "params": [""], "order": [], "returns": ""},
             { "name": "eth_compileSolidity", "params": [""], "order": [], "returns": ""},
-
-
-            { "name": "eth_newFilter", "params": [{}], "order": [], "returns": 0},
-            { "name": "eth_newFilterString", "params": [""], "order": [], "returns": 0},
-            { "name": "eth_uninstallFilter", "params": [0], "order": [], "returns": true},
-            { "name": "eth_changed", "params": [0], "order": [], "returns": []},
-            { "name": "eth_filterLogs", "params": [0], "order": [], "returns": []},
-            { "name": "eth_logs", "params": [{}], "order": [], "returns": []},
-
+            { "name": "eth_newFilter", "params": [{}], "order": [], "returns": ""},
+            { "name": "eth_newBlockFilter", "params": [""], "order": [], "returns": ""},
+            { "name": "eth_uninstallFilter", "params": [""], "order": [], "returns": true},
+            { "name": "eth_getFilterChanges", "params": [""], "order": [], "returns": []},
+            { "name": "eth_getFilterLogs", "params": [""], "order": [], "returns": []},
+            { "name": "eth_getLogs", "params": [{}], "order": [], "returns": []},
             { "name": "eth_getWork", "params": [], "order": [], "returns": []},
             { "name": "eth_submitWork", "params": [""], "order": [], "returns": true},
-
-            { "name": "eth_register", "params": [""], "order": [], "returns": 0},
-            { "name": "eth_unregister", "params": [0], "order": [], "returns": true},
-            { "name": "eth_queuedTransactions", "params": [0], "order": [], "returns": []},
+            { "name": "eth_register", "params": [""], "order": [], "returns": ""},
+            { "name": "eth_unregister", "params": [""], "order": [], "returns": true},
+            { "name": "eth_queuedTransactions", "params": [""], "order": [], "returns": []},
 
             { "name": "db_put", "params": ["", "", ""], "order": [], "returns": true},
             { "name": "db_get", "params": ["", ""], "order": [], "returns": ""},
-            { "name": "db_putString", "params": ["", "", ""], "order": [], "returns": true},
-            { "name": "db_getString", "params": ["", ""], "order": [], "returns": ""},
 
             { "name": "shh_post", "params": [{}], "order": [], "returns": true},
             { "name": "shh_newIdentity", "params": [], "order": [], "returns": ""},
-            { "name": "shh_haveIdentity", "params": [""], "order": [], "returns": false},
+            { "name": "shh_hasIdentity", "params": [""], "order": [], "returns": false},
             { "name": "shh_newGroup", "params": ["", ""], "order": [], "returns": ""},
             { "name": "shh_addToGroup", "params": ["", ""], "order": [], "returns": ""},
-            
-            { "name": "shh_newFilter", "params": [{}], "order": [], "returns": 0},
-            { "name": "shh_uninstallFilter", "params": [0], "order": [], "returns": true},
-            { "name": "shh_changed", "params": [0], "order": [], "returns": []},
-            { "name": "shh_getMessages", "params": [0], "order": [], "returns": []}
+            { "name": "shh_newFilter", "params": [{}], "order": [], "returns": ""},
+            { "name": "shh_uninstallFilter", "params": [""], "order": [], "returns": true},
+            { "name": "shh_changed", "params": [""], "order": [], "returns": []},
+            { "name": "shh_getMessages", "params": [""], "order": [], "returns": []}
 ]
 

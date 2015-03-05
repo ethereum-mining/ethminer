@@ -677,7 +677,7 @@ Json::Value WebThreeStubServerBase::eth_getCompilers()
 }
 
 
-std::string WebThreeStubServerBase::eth_compileLLL(std::string const& _code)
+string WebThreeStubServerBase::eth_compileLLL(string const& _code)
 {
 	// TODO throw here jsonrpc errors
 	string res;
@@ -687,7 +687,7 @@ std::string WebThreeStubServerBase::eth_compileLLL(std::string const& _code)
 	return res;
 }
 
-std::string WebThreeStubServerBase::eth_compileSerpent(std::string const& _code)
+string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 {
 	// TODO throw here jsonrpc errors
 	string res;
@@ -708,7 +708,7 @@ std::string WebThreeStubServerBase::eth_compileSerpent(std::string const& _code)
 	return res;
 }
 
-std::string WebThreeStubServerBase::eth_compileSolidity(std::string const& _code)
+string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
 {
 	// TOOD throw here jsonrpc errors
 	string res;
@@ -730,62 +730,105 @@ std::string WebThreeStubServerBase::eth_compileSolidity(std::string const& _code
 	return res;
 }
 
-std::string WebThreeStubServerBase::shh_addToGroup(std::string const& _group, std::string const& _who)
+string WebThreeStubServerBase::eth_newFilter(Json::Value const& _json)
 {
-	(void)_group;
-	(void)_who;
-	return "";
+	LogFilter filter;
+	
+	try
+	{
+		filter = toLogFilter(_json);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return toJS(client()->installWatch(filter));
 }
 
-Json::Value WebThreeStubServerBase::eth_changed(int _id)
+string WebThreeStubServerBase::eth_newBlockFilter(string const& _filter)
 {
-	auto entries = client()->checkWatch(_id);
+	h256 filter;
+	
+	if (_filter.compare("chain") == 0)
+		filter = dev::eth::ChainChangedFilter;
+	else if (_filter.compare("pending") == 0)
+		filter = dev::eth::PendingChangedFilter;
+	else
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	
+	return toJS(client()->installWatch(filter));
+}
+
+bool WebThreeStubServerBase::eth_uninstallFilter(string const& _filterId)
+{
+	unsigned id;
+	
+	try
+	{
+		id = jsToInt(_filterId);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	// TODO: throw an error if there is no watch with given id?
+	client()->uninstallWatch(id);
+	return true;
+}
+
+Json::Value WebThreeStubServerBase::eth_getFilterChanges(string const& _filterId)
+{
+	unsigned id;
+	
+	try
+	{
+		id = jsToInt(_filterId);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	// TODO: throw an error if there is no watch with given id?
+	auto entries = client()->checkWatch(id);
 	if (entries.size())
-		cnote << "FIRING WATCH" << _id << entries.size();
+		cnote << "FIRING WATCH" << id << entries.size();
 	return toJson(entries);
 }
 
-std::string WebThreeStubServerBase::db_get(std::string const& _name, std::string const& _key)
+Json::Value WebThreeStubServerBase::eth_getFilterLogs(string const& _filterId)
 {
-	string ret = db()->get(_name, _key);
-	return toJS(dev::asBytes(ret));
+	unsigned id;
+	
+	try
+	{
+		id = jsToInt(_filterId);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	// TODO: throw an error if there is no watch with given id?
+	return toJson(client()->logs(id));
 }
 
-Json::Value WebThreeStubServerBase::eth_filterLogs(int _id)
+Json::Value WebThreeStubServerBase::eth_getLogs(Json::Value const& _json)
 {
-	return toJson(client()->logs(_id));
-}
-
-Json::Value WebThreeStubServerBase::eth_logs(Json::Value const& _json)
-{
-	return toJson(client()->logs(toLogFilter(_json)));
-}
-
-std::string WebThreeStubServerBase::db_getString(std::string const& _name, std::string const& _key)
-{
-	return db()->get(_name, _key);;
-}
-
-bool WebThreeStubServerBase::shh_haveIdentity(std::string const& _id)
-{
-	return m_ids.count(jsToPublic(_id)) > 0;
-}
-
-int WebThreeStubServerBase::eth_newFilter(Json::Value const& _json)
-{
-	unsigned ret = -1;
-	ret = client()->installWatch(toLogFilter(_json));
-	return ret;
-}
-
-int WebThreeStubServerBase::eth_newFilterString(std::string const& _filter)
-{
-	unsigned ret = -1;
-	if (_filter.compare("chain") == 0)
-		ret = client()->installWatch(dev::eth::ChainChangedFilter);
-	else if (_filter.compare("pending") == 0)
-		ret = client()->installWatch(dev::eth::PendingChangedFilter);
-	return ret;
+	LogFilter filter;
+	
+	try
+	{
+		filter = toLogFilter(_json);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return toJson(client()->logs(filter));
 }
 
 Json::Value WebThreeStubServerBase::eth_getWork()
@@ -797,133 +840,252 @@ Json::Value WebThreeStubServerBase::eth_getWork()
 	return ret;
 }
 
-bool WebThreeStubServerBase::eth_submitWork(std::string const& _nonce)
+bool WebThreeStubServerBase::eth_submitWork(string const& _nonce)
 {
-	return client()->submitNonce(jsToFixed<32>(_nonce));
+	h256 nonce;
+	
+	try
+	{
+		nonce = jsToFixed<32>(_nonce);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return client()->submitNonce(nonce);
 }
 
-int WebThreeStubServerBase::eth_register(std::string const& _address)
+string WebThreeStubServerBase::eth_register(string const& _address)
 {
-	return m_accounts->addProxyAccount(jsToAddress(_address));
+	Address address;
+	
+	try
+	{
+		address = jsToAddress(_address);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return toJS(m_accounts->addProxyAccount(address));
 }
 
-bool WebThreeStubServerBase::eth_unregister(int _id)
+bool WebThreeStubServerBase::eth_unregister(string const& _accountId)
 {
-	return m_accounts->removeProxyAccount(_id);
+	unsigned id;
+	
+	try
+	{
+		id = jsToInt(_accountId);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+
+	// TODO: throw an error on no account with given id
+	return m_accounts->removeProxyAccount(id);
 }
 
-Json::Value WebThreeStubServerBase::eth_queuedTransactions(int _id)
+Json::Value WebThreeStubServerBase::eth_queuedTransactions(string const& _accountId)
 {
+	unsigned id;
+	
+	try
+	{
+		id = jsToInt(_accountId);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+
+	// TODO: throw an error on no account with given id
 	Json::Value ret(Json::arrayValue);
-	for (TransactionSkeleton const& t: m_accounts->getQueuedTransactions(_id))
+	for (TransactionSkeleton const& t: m_accounts->getQueuedTransactions(id))
 		ret.append(toJson(t));
-	m_accounts->clearQueue(_id);
+	m_accounts->clearQueue(id);
 	return ret;
 }
 
-std::string WebThreeStubServerBase::shh_newGroup(std::string const& _id, std::string const& _who)
+bool WebThreeStubServerBase::db_put(string const& _name, string const& _key, string const& _value)
 {
-	(void)_id;
-	(void)_who;
-	return "";
+	db()->put(_name, _key,_value);
+	return true;
 }
 
-std::string WebThreeStubServerBase::shh_newIdentity()
+string WebThreeStubServerBase::db_get(string const& _name, string const& _key)
 {
-//	cnote << this << m_ids;
-	KeyPair kp = KeyPair::create();
-	m_ids[kp.pub()] = kp.secret();
-	return toJS(kp.pub());
+	return db()->get(_name, _key);;
 }
 
 bool WebThreeStubServerBase::shh_post(Json::Value const& _json)
 {
-	shh::Message m = toMessage(_json);
+	shh::Message m;
+	try
+	{
+		m = toMessage(_json);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
 	Secret from;
-
 	if (m.from() && m_ids.count(m.from()))
 	{
 		cwarn << "Silently signing message from identity" << m.from().abridged() << ": User validation hook goes here.";
 		// TODO: insert validification hook here.
 		from = m_ids[m.from()];
 	}
-
+	
 	face()->inject(toSealed(_json, m, from));
 	return true;
 }
 
-bool WebThreeStubServerBase::db_put(std::string const& _name, std::string const& _key, std::string const& _value)
+std::string WebThreeStubServerBase::shh_newIdentity()
 {
-	string v = asString(jsToBytes(_value));
-	db()->put(_name, _key, v);
-	return true;
+	KeyPair kp = KeyPair::create();
+	m_ids[kp.pub()] = kp.secret();
+	return toJS(kp.pub());
 }
 
-bool WebThreeStubServerBase::db_putString(std::string const& _name, std::string const& _key, std::string const& _value)
+bool WebThreeStubServerBase::shh_hasIdentity(string const& _identity)
 {
-	db()->put(_name, _key,_value);
-	return true;
+	Public identity;
+	
+	try
+	{
+		identity = jsToPublic(_identity);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return m_ids.count(identity) > 0;
 }
 
-Json::Value WebThreeStubServerBase::shh_changed(int _id)
-{
-	Json::Value ret(Json::arrayValue);
-	auto pub = m_shhWatches[_id];
-	if (!pub || m_ids.count(pub))
-		for (h256 const& h: face()->checkWatch(_id))
-		{
-			auto e = face()->envelope(h);
-			shh::Message m;
-			if (pub)
-			{
-				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
-				m = e.open(face()->fullTopic(_id), m_ids[pub]);
-			}
-			else
-				m = e.open(face()->fullTopic(_id));
-			if (!m)
-				continue;
-			ret.append(toJson(h, e, m));
-		}
 
-	return ret;
+string WebThreeStubServerBase::shh_newGroup(string const& _id, string const& _who)
+{
+	(void)_id;
+	(void)_who;
+	return "";
 }
 
-Json::Value WebThreeStubServerBase::shh_getMessages(int _id)
+string WebThreeStubServerBase::shh_addToGroup(std::string const& _group, string const& _who)
 {
-	Json::Value ret(Json::arrayValue);
-	auto pub = m_shhWatches[_id];
-	if (!pub || m_ids.count(pub))
-		for (h256 const& h: face()->watchMessages(_id))
-		{
-			auto e = face()->envelope(h);
-			shh::Message m;
-			if (pub)
-			{
-				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
-				m = e.open(face()->fullTopic(_id), m_ids[pub]);
-			}
-			else
-				m = e.open(face()->fullTopic(_id));
-			if (!m)
-				continue;
-			ret.append(toJson(h, e, m));
-		}
-	return ret;
+	(void)_group;
+	(void)_who;
+	return "";
 }
 
-int WebThreeStubServerBase::shh_newFilter(Json::Value const& _json)
+string WebThreeStubServerBase::shh_newFilter(Json::Value const& _json)
 {
-	auto w = toWatch(_json);
+	pair<shh::FullTopic, Public> w;
+	
+	try
+	{
+		w = toWatch(_json);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
 	auto ret = face()->installWatch(w.first);
 	m_shhWatches.insert(make_pair(ret, w.second));
+	return toJS(ret);
+}
+
+
+bool WebThreeStubServerBase::shh_uninstallFilter(string const& _filterId)
+{
+	int id;
+	
+	try
+	{
+		id = jsToInt(_filterId);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	face()->uninstallWatch(id);
+	return true;
+}
+
+Json::Value WebThreeStubServerBase::shh_changed(string const& _filterId)
+{
+	int id;
+	
+	try
+	{
+		id = jsToInt(_filterId);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	Json::Value ret(Json::arrayValue);
+	auto pub = m_shhWatches[id];
+	if (!pub || m_ids.count(pub))
+		for (h256 const& h: face()->checkWatch(id))
+		{
+			auto e = face()->envelope(h);
+			shh::Message m;
+			if (pub)
+			{
+				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
+				m = e.open(face()->fullTopic(id), m_ids[pub]);
+			}
+			else
+				m = e.open(face()->fullTopic(id));
+			if (!m)
+				continue;
+			ret.append(toJson(h, e, m));
+		}
+
 	return ret;
 }
 
-bool WebThreeStubServerBase::shh_uninstallFilter(int _id)
+Json::Value WebThreeStubServerBase::shh_getMessages(string const& _filterId)
 {
-	face()->uninstallWatch(_id);
-	return true;
+	int id;
+	
+	try
+	{
+		id = jsToInt(_filterId);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	Json::Value ret(Json::arrayValue);
+	auto pub = m_shhWatches[id];
+	if (!pub || m_ids.count(pub))
+		for (h256 const& h: face()->watchMessages(id))
+		{
+			auto e = face()->envelope(h);
+			shh::Message m;
+			if (pub)
+			{
+				cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
+				m = e.open(face()->fullTopic(id), m_ids[pub]);
+			}
+			else
+				m = e.open(face()->fullTopic(id));
+			if (!m)
+				continue;
+			ret.append(toJson(h, e, m));
+		}
+	return ret;
 }
 
 void WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t, bool _toProxy)
@@ -934,12 +1096,6 @@ void WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t, bool _t
 		client()->transact(m_accounts->secretKey(_t.from), _t.value, _t.to, _t.data, _t.gas, _t.gasPrice);
 	else
 		client()->transact(m_accounts->secretKey(_t.from), _t.value, _t.data, _t.gas, _t.gasPrice);
-}
-
-bool WebThreeStubServerBase::eth_uninstallFilter(int _id)
-{
-	client()->uninstallWatch(_id);
-	return true;
 }
 
 void WebThreeStubServerBase::setAccounts(const std::vector<KeyPair>& _accounts)
