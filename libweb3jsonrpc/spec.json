@@ -23,17 +23,16 @@
             { "name": "eth_flush", "params": [], "order": [], "returns" : true},
             { "name": "eth_getBlockByHash", "params": [""],"order": [], "returns": {}},
             { "name": "eth_getBlockByNumber", "params": [""],"order": [], "returns": {}},
+            { "name": "eth_getTransactionByHash", "params": [""], "order": [], "returns": {}},
+            { "name": "eth_getTransactionByBlockHashAndIndex", "params": ["", ""], "order": [], "returns": {}},
+            { "name": "eth_getTransactionByBlockNumberAndIndex", "params": ["", ""], "order": [], "returns": {}},
+            { "name": "eth_getUncleByBlockHashAndIndex", "params": ["", ""], "order": [], "returns": {}},
+            { "name": "eth_getUncleByBlockNumberAndIndex", "params": ["", ""], "order": [], "returns": {}},
+            { "name": "eth_getCompilers", "params": [], "order": [], "returns": []},
+            { "name": "eth_compileLLL", "params": [""], "order": [], "returns": ""},
+            { "name": "eth_compileSerpent", "params": [""], "order": [], "returns": ""},
+            { "name": "eth_compileSolidity", "params": [""], "order": [], "returns": ""},
 
-
-            { "name": "eth_transactionByHash", "params": ["", 0], "order": [], "returns": {}},
-            { "name": "eth_transactionByNumber", "params": [0, 0], "order": [], "returns": {}},
-            { "name": "eth_uncleByHash", "params": ["", 0], "order": [], "returns": {}},
-            { "name": "eth_uncleByNumber", "params": [0, 0], "order": [], "returns": {}},
-
-            { "name": "eth_compilers", "params": [], "order": [], "returns": []},
-            { "name": "eth_lll", "params": [""], "order": [], "returns": ""},
-            { "name": "eth_solidity", "params": [""], "order": [], "returns": ""},
-            { "name": "eth_serpent", "params": [""], "order": [], "returns": ""},
 
             { "name": "eth_newFilter", "params": [{}], "order": [], "returns": 0},
             { "name": "eth_newFilterString", "params": [""], "order": [], "returns": 0},

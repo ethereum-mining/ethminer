@@ -34,14 +34,15 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("eth_flush", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::eth_flushI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getBlockByHashI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getBlockByNumberI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_transactionByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_transactionByHashI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_transactionByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_INTEGER,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_transactionByNumberI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_uncleByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_uncleByHashI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_uncleByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_INTEGER,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_uncleByNumberI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_compilers", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::eth_compilersI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_lll", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_lllI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_solidity", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_solidityI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_serpent", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_serpentI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getTransactionByHashI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionByBlockHashAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getTransactionByBlockHashAndIndexI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionByBlockNumberAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getTransactionByBlockNumberAndIndexI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getUncleByBlockHashAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getUncleByBlockHashAndIndexI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getUncleByBlockNumberAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getUncleByBlockNumberAndIndexI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getCompilers", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::eth_getCompilersI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_compileLLL", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_compileLLLI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_compileSerpent", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_compileSerpentI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_compileSolidity", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_compileSolidityI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_newFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_newFilterI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_newFilterString", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_newFilterStringI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_uninstallFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_uninstallFilterI);
@@ -164,38 +165,42 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->eth_getBlockByNumber(request[0u].asString());
         }
-        inline virtual void eth_transactionByHashI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_getTransactionByHashI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_transactionByHash(request[0u].asString(), request[1u].asInt());
+            response = this->eth_getTransactionByHash(request[0u].asString());
         }
-        inline virtual void eth_transactionByNumberI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_getTransactionByBlockHashAndIndexI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_transactionByNumber(request[0u].asInt(), request[1u].asInt());
+            response = this->eth_getTransactionByBlockHashAndIndex(request[0u].asString(), request[1u].asString());
         }
-        inline virtual void eth_uncleByHashI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_getTransactionByBlockNumberAndIndexI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_uncleByHash(request[0u].asString(), request[1u].asInt());
+            response = this->eth_getTransactionByBlockNumberAndIndex(request[0u].asString(), request[1u].asString());
         }
-        inline virtual void eth_uncleByNumberI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_getUncleByBlockHashAndIndexI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_uncleByNumber(request[0u].asInt(), request[1u].asInt());
+            response = this->eth_getUncleByBlockHashAndIndex(request[0u].asString(), request[1u].asString());
         }
-        inline virtual void eth_compilersI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_getUncleByBlockNumberAndIndexI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->eth_getUncleByBlockNumberAndIndex(request[0u].asString(), request[1u].asString());
+        }
+        inline virtual void eth_getCompilersI(const Json::Value &request, Json::Value &response)
         {
             (void)request;
-            response = this->eth_compilers();
+            response = this->eth_getCompilers();
         }
-        inline virtual void eth_lllI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_compileLLLI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_lll(request[0u].asString());
+            response = this->eth_compileLLL(request[0u].asString());
         }
-        inline virtual void eth_solidityI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_compileSerpentI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_solidity(request[0u].asString());
+            response = this->eth_compileSerpent(request[0u].asString());
         }
-        inline virtual void eth_serpentI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_compileSolidityI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_serpent(request[0u].asString());
+            response = this->eth_compileSolidity(request[0u].asString());
         }
         inline virtual void eth_newFilterI(const Json::Value &request, Json::Value &response)
         {
@@ -317,14 +322,15 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual bool eth_flush() = 0;
         virtual Json::Value eth_getBlockByHash(const std::string& param1) = 0;
         virtual Json::Value eth_getBlockByNumber(const std::string& param1) = 0;
-        virtual Json::Value eth_transactionByHash(const std::string& param1, int param2) = 0;
-        virtual Json::Value eth_transactionByNumber(int param1, int param2) = 0;
-        virtual Json::Value eth_uncleByHash(const std::string& param1, int param2) = 0;
-        virtual Json::Value eth_uncleByNumber(int param1, int param2) = 0;
-        virtual Json::Value eth_compilers() = 0;
-        virtual std::string eth_lll(const std::string& param1) = 0;
-        virtual std::string eth_solidity(const std::string& param1) = 0;
-        virtual std::string eth_serpent(const std::string& param1) = 0;
+        virtual Json::Value eth_getTransactionByHash(const std::string& param1) = 0;
+        virtual Json::Value eth_getTransactionByBlockHashAndIndex(const std::string& param1, const std::string& param2) = 0;
+        virtual Json::Value eth_getTransactionByBlockNumberAndIndex(const std::string& param1, const std::string& param2) = 0;
+        virtual Json::Value eth_getUncleByBlockHashAndIndex(const std::string& param1, const std::string& param2) = 0;
+        virtual Json::Value eth_getUncleByBlockNumberAndIndex(const std::string& param1, const std::string& param2) = 0;
+        virtual Json::Value eth_getCompilers() = 0;
+        virtual std::string eth_compileLLL(const std::string& param1) = 0;
+        virtual std::string eth_compileSerpent(const std::string& param1) = 0;
+        virtual std::string eth_compileSolidity(const std::string& param1) = 0;
         virtual int eth_newFilter(const Json::Value& param1) = 0;
         virtual int eth_newFilterString(const std::string& param1) = 0;
         virtual bool eth_uninstallFilter(int param1) = 0;
