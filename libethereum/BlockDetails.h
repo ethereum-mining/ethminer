@@ -46,37 +46,69 @@ struct BlockDetails
 	bool isNull() const { return !totalDifficulty; }
 	explicit operator bool() const { return !isNull(); }
 
-	unsigned number;			// TODO: remove?
+	unsigned number;
 	u256 totalDifficulty;
 	h256 parent;
 	h256s children;
+
+	mutable unsigned size;
 };
 
 struct BlockLogBlooms
 {
 	BlockLogBlooms() {}
-	BlockLogBlooms(RLP const& _r) { blooms = _r.toVector<LogBloom>(); }
-	bytes rlp() const { RLPStream s; s << blooms; return s.out(); }
+	BlockLogBlooms(RLP const& _r) { blooms = _r.toVector<LogBloom>(); size = _r.data().size(); }
+	bytes rlp() const { RLPStream s; s << blooms; size = s.out().size(); return s.out(); }
 
 	LogBlooms blooms;
+	mutable unsigned size;
 };
 
 struct BlockReceipts
 {
 	BlockReceipts() {}
-	BlockReceipts(RLP const& _r) { for (auto const& i: _r) receipts.emplace_back(i.data()); }
-	bytes rlp() const { RLPStream s(receipts.size()); for (TransactionReceipt const& i: receipts) i.streamRLP(s); return s.out(); }
+	BlockReceipts(RLP const& _r) { for (auto const& i: _r) receipts.emplace_back(i.data()); size = _r.data().size(); }
+	bytes rlp() const { RLPStream s(receipts.size()); for (TransactionReceipt const& i: receipts) i.streamRLP(s); size = s.out().size(); return s.out(); }
 
 	TransactionReceipts receipts;
+	mutable unsigned size;
+};
+
+struct BlockHash
+{
+	BlockHash() {}
+	BlockHash(RLP const& _r) { value = _r.toHash<h256>(); }
+	bytes rlp() const { return dev::rlp(value); }
+
+	h256 value;
+	static const unsigned size = 65;
+};
+
+struct TransactionAddress
+{
+	TransactionAddress() {}
+	TransactionAddress(RLP const& _rlp) { blockHash = _rlp[0].toHash<h256>(); index = _rlp[1].toInt<unsigned>(); }
+	bytes rlp() const { RLPStream s(2); s << blockHash << index; return s.out(); }
+
+	explicit operator bool() const { return !!blockHash; }
+
+	h256 blockHash;
+	unsigned index = 0;
+
+	static const unsigned size = 67;
 };
 
 using BlockDetailsHash = std::map<h256, BlockDetails>;
 using BlockLogBloomsHash = std::map<h256, BlockLogBlooms>;
 using BlockReceiptsHash = std::map<h256, BlockReceipts>;
+using TransactionAddressHash = std::map<h256, TransactionAddress>;
+using BlockHashHash = std::map<h256, BlockHash>;
 
 static const BlockDetails NullBlockDetails;
 static const BlockLogBlooms NullBlockLogBlooms;
 static const BlockReceipts NullBlockReceipts;
+static const TransactionAddress NullTransactionAddress;
+static const BlockHash NullBlockHash;
 
 }
 }

@@ -36,6 +36,7 @@
 #endif
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/CommonJS.h>
+#include <libethcore/Ethasher.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libsolidity/Scanner.h>
@@ -136,6 +137,7 @@ Main::Main(QWidget *parent) :
 	ui->configDock->close();
 	on_verbosity_valueChanged();
 
+	statusBar()->addPermanentWidget(ui->cacheUsage);
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->mineStatus);
@@ -1139,6 +1141,44 @@ void Main::on_refresh_triggered()
 	refreshAll();
 }
 
+static std::string niceUsed(unsigned _n)
+{
+	static const vector<std::string> c_units = { "bytes", "KB", "MB", "GB", "TB", "PB" };
+	unsigned u = 0;
+	while (_n > 10240)
+	{
+		_n /= 1024;
+		u++;
+	}
+	if (_n > 1000)
+		return toString(_n / 1000) + "." + toString((min<unsigned>(949, _n % 1000) + 50) / 100) + " " + c_units[u + 1];
+	else
+		return toString(_n) + " " + c_units[u];
+}
+
+void Main::refreshCache()
+{
+	BlockChain::Statistics s = ethereum()->blockChain().usage();
+	QString t;
+	auto f = [&](unsigned n, QString l)
+	{
+		t += ("%1 " + l).arg(QString::fromStdString(niceUsed(n)));
+	};
+	f(s.memTotal(), "total");
+	t += " (";
+	f(s.memBlocks, "blocks");
+	t += ", ";
+	f(s.memReceipts, "receipts");
+	t += ", ";
+	f(s.memLogBlooms, "blooms");
+	t += ", ";
+	f(s.memBlockHashes + s.memTransactionAddresses, "hashes");
+	t += ", ";
+	f(s.memDetails, "family");
+	t += ")";
+	ui->cacheUsage->setText(t);
+}
+
 void Main::timerEvent(QTimerEvent*)
 {
 	// 7/18, Alex: aggregating timers, prelude to better threading?
@@ -1167,6 +1207,7 @@ void Main::timerEvent(QTimerEvent*)
 		interval = 0;
 		refreshNetwork();
 		refreshWhispers();
+		refreshCache();
 		poll();
 	}
 	else
@@ -1365,7 +1406,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Difficulty: <b>" << info.difficulty << "</b>";
 			if (info.number)
 			{
-				auto e = ProofOfWork::eval(info);
+				auto e = Ethasher::eval(info);
 				s << "<br/>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")";
 			}
 			else
@@ -1389,7 +1430,7 @@ void Main::on_blocks_currentItemChanged()
 				s << line << "Nonce: <b>" << uncle.nonce << "</b>";
 				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutNonce) << "</b>";
 				s << line << "Difficulty: <b>" << uncle.difficulty << "</b>";
-				auto e = ProofOfWork::eval(uncle);
+				auto e = Ethasher::eval(uncle);
 				s << line << "Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / uncle.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")";
 			}
 			if (info.parentHash)

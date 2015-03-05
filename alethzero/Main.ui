@@ -39,6 +39,13 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_7">
       <item>
+       <widget class="QLabel" name="cacheUsage">
+        <property name="text">
+         <string>0 bytes used</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="balance">
         <property name="text">
          <string>0 wei</string>
