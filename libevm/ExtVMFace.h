@@ -28,7 +28,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
 #include <libevmcore/Instruction.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libethcore/BlockInfo.h>
 
 namespace dev
