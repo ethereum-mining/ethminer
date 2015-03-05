@@ -27,7 +27,7 @@
 #include <atomic>
 #include <libdevcore/Common.h>
 #include <libdevcore/Worker.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include "State.h"
 
 namespace dev

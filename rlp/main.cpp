@@ -22,11 +22,9 @@
 #include <fstream>
 #include <iostream>
 #include <boost/algorithm/string.hpp>
-#include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
-#include "base64.h"
 using namespace std;
 using namespace dev;
 
@@ -218,7 +216,7 @@ int main(int argc, char** argv)
 		boost::algorithm::replace_all(s, " ", "");
 		boost::algorithm::replace_all(s, "\n", "");
 		boost::algorithm::replace_all(s, "\t", "");
-		b = base64_decode(s);
+		b = fromBase64(s);
 		break;
 	}
 	default:
@@ -228,60 +226,60 @@ int main(int argc, char** argv)
 
 	try
 	{
-	RLP rlp(b);
-	switch (mode)
-	{
-	case Mode::ListArchive:
-	{
-		if (!rlp.isList())
+		RLP rlp(b);
+		switch (mode)
 		{
-			cout << "Error: Invalid format; RLP data is not a list." << endl;
-			exit(1);
-		}
-		cout << rlp.itemCount() << " items:" << endl;
-		for (auto i: rlp)
+		case Mode::ListArchive:
 		{
-			if (!i.isData())
+			if (!rlp.isList())
 			{
-				cout << "Error: Invalid format; RLP list item is not data." << endl;
-				if (!lenience)
-					exit(1);
+				cout << "Error: Invalid format; RLP data is not a list." << endl;
+				exit(1);
 			}
-			cout << "    " << i.size() << " bytes: " << sha3(i.data()) << endl;
-		}
-		break;
-	}
-	case Mode::ExtractArchive:
-	{
-		if (!rlp.isList())
-		{
-			cout << "Error: Invalid format; RLP data is not a list." << endl;
-			exit(1);
-		}
-		cout << rlp.itemCount() << " items:" << endl;
-		for (auto i: rlp)
-		{
-			if (!i.isData())
+			cout << rlp.itemCount() << " items:" << endl;
+			for (auto i: rlp)
 			{
-				cout << "Error: Invalid format; RLP list item is not data." << endl;
-				if (!lenience)
-					exit(1);
+				if (!i.isData())
+				{
+					cout << "Error: Invalid format; RLP list item is not data." << endl;
+					if (!lenience)
+						exit(1);
+				}
+				cout << "    " << i.size() << " bytes: " << sha3(i.data()) << endl;
 			}
-			ofstream fout;
-			fout.open(toString(sha3(i.data())));
-			fout.write(reinterpret_cast<char const*>(i.data().data()), i.data().size());
+			break;
 		}
-		break;
-	}
-	case Mode::Render:
-	{
-		RLPStreamer s(cout, prefs);
-		s.output(rlp);
-		cout << endl;
-		break;
-	}
-	default:;
-	}
+		case Mode::ExtractArchive:
+		{
+			if (!rlp.isList())
+			{
+				cout << "Error: Invalid format; RLP data is not a list." << endl;
+				exit(1);
+			}
+			cout << rlp.itemCount() << " items:" << endl;
+			for (auto i: rlp)
+			{
+				if (!i.isData())
+				{
+					cout << "Error: Invalid format; RLP list item is not data." << endl;
+					if (!lenience)
+						exit(1);
+				}
+				ofstream fout;
+				fout.open(toString(sha3(i.data())));
+				fout.write(reinterpret_cast<char const*>(i.data().data()), i.data().size());
+			}
+			break;
+		}
+		case Mode::Render:
+		{
+			RLPStreamer s(cout, prefs);
+			s.output(rlp);
+			cout << endl;
+			break;
+		}
+		default:;
+		}
 	}
 	catch (...)
 	{

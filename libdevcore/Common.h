@@ -119,6 +119,12 @@ inline unsigned int toLog2(u256 _x)
 	return ret;
 }
 
+template <class N>
+inline N diff(N const& _a, N const& _b)
+{
+	return std::max(_a, _b) - std::min(_a, _b);
+}
+
 /// RAII utility class whose destructor calls a given function.
 class ScopeGuard {
 public:
