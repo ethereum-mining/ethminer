@@ -24,6 +24,7 @@
 // Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 
+#include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonData.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
@@ -248,6 +249,31 @@ std::string WebThreeStubServerBase::web3_sha3(std::string const& _param1)
 	return toJS(sha3(jsToBytes(_param1)));
 }
 
+string WebThreeStubServerBase::net_peerCount()
+{
+	return toJS(network()->peerCount());
+}
+
+bool WebThreeStubServerBase::net_listening()
+{
+	return network()->isNetworkStarted();
+}
+
+std::string WebThreeStubServerBase::eth_coinbase()
+{
+	return toJS(client()->address());
+}
+
+bool WebThreeStubServerBase::eth_mining()
+{
+	return client()->isMining();
+}
+
+std::string WebThreeStubServerBase::eth_gasPrice()
+{
+	return toJS(10 * dev::eth::szabo);
+}
+
 Json::Value WebThreeStubServerBase::eth_accounts()
 {
 	Json::Value ret(Json::arrayValue);
@@ -256,16 +282,55 @@ Json::Value WebThreeStubServerBase::eth_accounts()
 	return ret;
 }
 
+string WebThreeStubServerBase::eth_blockNumber()
+{
+	return toJS(client()->number());
+}
+
+
+std::string WebThreeStubServerBase::eth_getBalance(string const& _address, string const& _blockNumber)
+{
+	Address address;
+	int number;
+	
+	try
+	{
+		address = jsToAddress(_address);
+		number = jsToInt(_blockNumber);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return toJS(client()->balanceAt(address, number));
+}
+
+
+Json::Value WebThreeStubServerBase::eth_getStorage(string const& _address, std::string const& _blockNumber)
+{
+	Address address;
+	int number;
+	
+	try
+	{
+		address = jsToAddress(_address);
+		number = jsToInt(_blockNumber);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	//TODO: fix this naming !
+	return toJson(client()->storageAt(address, number));
+}
+
 std::string WebThreeStubServerBase::shh_addToGroup(std::string const& _group, std::string const& _who)
 {
 	(void)_group;
 	(void)_who;
 	return "";
-}
-
-std::string WebThreeStubServerBase::eth_balanceAt(string const& _address)
-{
-	return toJS(client()->balanceAt(jsToAddress(_address), client()->getDefault()));
 }
 
 Json::Value WebThreeStubServerBase::eth_blockByHash(std::string const& _hash)
@@ -360,11 +425,6 @@ std::string WebThreeStubServerBase::eth_codeAt(string const& _address)
 	return jsFromBinary(client()->codeAt(jsToAddress(_address), client()->getDefault()));
 }
 
-std::string WebThreeStubServerBase::eth_coinbase()
-{
-	return toJS(client()->address());
-}
-
 double WebThreeStubServerBase::eth_countAt(string const& _address)
 {
 	return (double)(uint64_t)client()->countAt(jsToAddress(_address), client()->getDefault());
@@ -388,11 +448,6 @@ double WebThreeStubServerBase::eth_uncleCountByHash(std::string const& _hash)
 double WebThreeStubServerBase::eth_uncleCountByNumber(int _number)
 {
 	return client()->transactionCount(client()->hashFromNumber(_number));
-}
-
-std::string WebThreeStubServerBase::eth_gasPrice()
-{
-	return toJS(10 * dev::eth::szabo);
 }
 
 std::string WebThreeStubServerBase::db_get(std::string const& _name, std::string const& _key)
@@ -419,16 +474,6 @@ std::string WebThreeStubServerBase::db_getString(std::string const& _name, std::
 bool WebThreeStubServerBase::shh_haveIdentity(std::string const& _id)
 {
 	return m_ids.count(jsToPublic(_id)) > 0;
-}
-
-bool WebThreeStubServerBase::net_listening()
-{
-	return network()->isNetworkStarted();
-}
-
-bool WebThreeStubServerBase::eth_mining()
-{
-	return client()->isMining();
 }
 
 int WebThreeStubServerBase::eth_newFilter(Json::Value const& _json)
@@ -557,16 +602,6 @@ std::string WebThreeStubServerBase::eth_solidity(std::string const& _code)
 	return res;
 }
 
-string WebThreeStubServerBase::eth_blockNumber()
-{
-	return toJS(client()->number());
-}
-
-string WebThreeStubServerBase::net_peerCount()
-{
-	return toJS(network()->peerCount());
-}
-
 bool WebThreeStubServerBase::shh_post(Json::Value const& _json)
 {
 	shh::Message m = toMessage(_json);
@@ -660,11 +695,6 @@ bool WebThreeStubServerBase::shh_uninstallFilter(int _id)
 std::string WebThreeStubServerBase::eth_stateAt(string const& _address, string const& _storage)
 {
 	return toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), client()->getDefault()));
-}
-
-Json::Value WebThreeStubServerBase::eth_storageAt(string const& _address)
-{
-	return toJson(client()->storageAt(jsToAddress(_address)));
 }
 
 std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)

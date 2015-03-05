@@ -105,6 +105,11 @@ template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_i
 
 inline u256 jsToU256(std::string const& _s) { return jsToInt<32>(_s); }
 
+inline int jsToInt(std::string const& _s)
+{
+	return std::stoi(_s, nullptr, 16);
+}
+
 inline std::string jsToDecimal(std::string const& _s)
 {
 	return dev::toString(jsToU256(_s));
