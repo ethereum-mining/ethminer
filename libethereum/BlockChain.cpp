@@ -633,5 +633,7 @@ bytes BlockChain::block(h256 _hash) const
 	m_blocks[_hash].resize(d.size());
 	memcpy(m_blocks[_hash].data(), d.data(), d.size());
 
+	noteUsed(_hash);
+
 	return m_blocks[_hash];
 }
