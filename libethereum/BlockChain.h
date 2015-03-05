@@ -171,18 +171,20 @@ public:
 
 	struct Statistics
 	{
+		unsigned memBlocks;
 		unsigned memDetails;
 		unsigned memLogBlooms;
 		unsigned memReceipts;
 		unsigned memTransactionAddresses;
-		unsigned memCache;
+		unsigned memBlockHashes;
+		unsigned memTotal() const { return memBlocks + memDetails + memLogBlooms + memReceipts + memTransactionAddresses + memBlockHashes; }
 	};
 
 	/// @returns statistics about memory usage.
-	Statistics usage() const;
+	Statistics usage(bool _freshen = false) const { if (_freshen) updateStats(); return m_lastStats; }
 
 	/// Deallocate unused data.
-	void garbageCollect();
+	void garbageCollect(bool _force = false);
 
 private:
 	void open(std::string _path, bool _killExisting = false);
@@ -215,18 +217,28 @@ private:
 	void checkConsistency();
 
 	/// The caches of the disk DB and their locks.
-	mutable boost::shared_mutex x_blocks;
+	mutable SharedMutex x_blocks;
 	mutable BlocksHash m_blocks;
-	mutable boost::shared_mutex x_details;
+	mutable SharedMutex x_details;
 	mutable BlockDetailsHash m_details;
 	mutable SharedMutex x_logBlooms;
 	mutable BlockLogBloomsHash m_logBlooms;
 	mutable SharedMutex x_receipts;
 	mutable BlockReceiptsHash m_receipts;
-	mutable boost::shared_mutex x_transactionAddresses;
+	mutable SharedMutex x_transactionAddresses;
 	mutable TransactionAddressHash m_transactionAddresses;
-	mutable boost::shared_mutex x_blockHashes;
+	mutable SharedMutex x_blockHashes;
 	mutable BlockHashHash m_blockHashes;
+
+	using CacheID = std::pair<h256, unsigned>;
+	mutable Mutex x_cacheUsage;
+	mutable std::deque<std::set<CacheID>> m_cacheUsage;
+	mutable std::set<CacheID> m_inUse;
+	void noteUsed(h256 const& _h, unsigned _extra = (unsigned)-1) const;
+	std::chrono::system_clock::time_point m_lastCollection;
+
+	void updateStats() const;
+	mutable Statistics m_lastStats;
 
 	/// The disk DBs. Thread-safe, so no need for locks.
 	ldb::DB* m_blocksDB;
