@@ -575,6 +575,161 @@ Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNum
 	return toJson(client()->blockInfo(client()->hashFromNumber(number)));
 }
 
+Json::Value WebThreeStubServerBase::eth_getTransactionByHash(string const& _transactionHash)
+{
+	h256 hash;
+	
+	try
+	{
+		hash = jsToFixed<32>(_transactionHash);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+//	return toJson(client()->transaction(hash, index));
+	// TODO:
+	return "";
+}
+
+Json::Value WebThreeStubServerBase::eth_getTransactionByBlockHashAndIndex(string const& _blockHash, string const& _transactionIndex)
+{
+	h256 hash;
+	unsigned index;
+	
+	try
+	{
+		hash = jsToFixed<32>(_blockHash);
+		index = jsToInt(_transactionIndex);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return toJson(client()->transaction(hash, index));
+}
+
+Json::Value WebThreeStubServerBase::eth_getTransactionByBlockNumberAndIndex(string const& _blockNumber, string const& _transactionIndex)
+{
+	int number;
+	unsigned index;
+	
+	try
+	{
+		number = jsToInt(_blockNumber);
+		index = jsToInt(_transactionIndex);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return toJson(client()->transaction(client()->hashFromNumber(number), index));
+}
+
+Json::Value WebThreeStubServerBase::eth_getUncleByBlockHashAndIndex(string const& _blockHash, string const& _uncleIndex)
+{
+	h256 hash;
+	unsigned index;
+	
+	try
+	{
+		hash = jsToFixed<32>(_blockHash);
+		index = jsToInt(_uncleIndex);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return toJson(client()->uncle(hash, index));
+}
+
+Json::Value WebThreeStubServerBase::eth_getUncleByBlockNumberAndIndex(string const& _blockNumber, string const& _uncleIndex)
+{
+	int number;
+	unsigned index;
+	
+	try
+	{
+		number = jsToInt(_blockNumber);
+		index = jsToInt(_uncleIndex);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return toJson(client()->uncle(client()->hashFromNumber(number), index));
+}
+
+Json::Value WebThreeStubServerBase::eth_getCompilers()
+{
+	Json::Value ret(Json::arrayValue);
+	ret.append("lll");
+	ret.append("solidity");
+#ifndef _MSC_VER
+	ret.append("serpent");
+#endif
+	return ret;
+}
+
+
+std::string WebThreeStubServerBase::eth_compileLLL(std::string const& _code)
+{
+	// TODO throw here jsonrpc errors
+	string res;
+	vector<string> errors;
+	res = toJS(dev::eth::compileLLL(_code, true, &errors));
+	cwarn << "LLL compilation errors: " << errors;
+	return res;
+}
+
+std::string WebThreeStubServerBase::eth_compileSerpent(std::string const& _code)
+{
+	// TODO throw here jsonrpc errors
+	string res;
+#ifndef _MSC_VER
+	try
+	{
+		res = toJS(dev::asBytes(::compile(_code)));
+	}
+	catch (string err)
+	{
+		cwarn << "Solidity compilation error: " << err;
+	}
+	catch (...)
+	{
+		cwarn << "Uncought serpent compilation exception";
+	}
+#endif
+	return res;
+}
+
+std::string WebThreeStubServerBase::eth_compileSolidity(std::string const& _code)
+{
+	// TOOD throw here jsonrpc errors
+	string res;
+	dev::solidity::CompilerStack compiler;
+	try
+	{
+		res = toJS(compiler.compile(_code, true));
+	}
+	catch (dev::Exception const& exception)
+	{
+		ostringstream error;
+		solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
+		cwarn << "Solidity compilation error: " << error.str();
+	}
+	catch (...)
+	{
+		cwarn << "Uncought solidity compilation exception";
+	}
+	return res;
+}
+
 std::string WebThreeStubServerBase::shh_addToGroup(std::string const& _group, std::string const& _who)
 {
 	(void)_group;
@@ -681,67 +836,6 @@ std::string WebThreeStubServerBase::shh_newIdentity()
 	return toJS(kp.pub());
 }
 
-Json::Value WebThreeStubServerBase::eth_compilers()
-{
-	Json::Value ret(Json::arrayValue);
-	ret.append("lll");
-	ret.append("solidity");
-#ifndef _MSC_VER
-	ret.append("serpent");
-#endif
-	return ret;
-}
-
-std::string WebThreeStubServerBase::eth_lll(std::string const& _code)
-{
-	string res;
-	vector<string> errors;
-	res = toJS(dev::eth::compileLLL(_code, true, &errors));
-	cwarn << "LLL compilation errors: " << errors;
-	return res;
-}
-
-std::string WebThreeStubServerBase::eth_serpent(std::string const& _code)
-{
-	string res;
-#ifndef _MSC_VER
-	try
-	{
-		res = toJS(dev::asBytes(::compile(_code)));
-	}
-	catch (string err)
-	{
-		cwarn << "Solidity compilation error: " << err;
-	}
-	catch (...)
-	{
-		cwarn << "Uncought serpent compilation exception";
-	}
-#endif
-	return res;
-}
-
-std::string WebThreeStubServerBase::eth_solidity(std::string const& _code)
-{
-	string res;
-	dev::solidity::CompilerStack compiler;
-	try
-	{
-		res = toJS(compiler.compile(_code, true));
-	}
-	catch (dev::Exception const& exception)
-	{
-		ostringstream error;
-		solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
-		cwarn << "Solidity compilation error: " << error.str();
-	}
-	catch (...)
-	{
-		cwarn << "Uncought solidity compilation exception";
-	}
-	return res;
-}
-
 bool WebThreeStubServerBase::shh_post(Json::Value const& _json)
 {
 	shh::Message m = toMessage(_json);
@@ -840,26 +934,6 @@ void WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t, bool _t
 		client()->transact(m_accounts->secretKey(_t.from), _t.value, _t.to, _t.data, _t.gas, _t.gasPrice);
 	else
 		client()->transact(m_accounts->secretKey(_t.from), _t.value, _t.data, _t.gas, _t.gasPrice);
-}
-
-Json::Value WebThreeStubServerBase::eth_transactionByHash(std::string const& _hash, int _i)
-{
-	return toJson(client()->transaction(jsToFixed<32>(_hash), _i));
-}
-
-Json::Value WebThreeStubServerBase::eth_transactionByNumber(int _number, int _i)
-{
-	return toJson(client()->transaction(client()->hashFromNumber(_number), _i));
-}
-
-Json::Value WebThreeStubServerBase::eth_uncleByHash(std::string const& _hash, int _i)
-{
-	return toJson(client()->uncle(jsToFixed<32>(_hash), _i));
-}
-
-Json::Value WebThreeStubServerBase::eth_uncleByNumber(int _number, int _i)
-{
-	return toJson(client()->uncle(client()->hashFromNumber(_number), _i));
 }
 
 bool WebThreeStubServerBase::eth_uninstallFilter(int _id)
