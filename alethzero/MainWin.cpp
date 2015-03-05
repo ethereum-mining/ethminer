@@ -1141,10 +1141,42 @@ void Main::on_refresh_triggered()
 	refreshAll();
 }
 
+static std::string niceUsed(unsigned _n)
+{
+	static const vector<std::string> c_units = { "bytes", "KB", "MB", "GB", "TB", "PB" };
+	unsigned u = 0;
+	while (_n > 10240)
+	{
+		_n /= 1024;
+		u++;
+	}
+	if (_n > 1000)
+		return toString(_n / 1000) + "." + toString((min<unsigned>(949, _n % 1000) + 50) / 100) + " " + c_units[u + 1];
+	else
+		return toString(_n) + " " + c_units[u];
+}
+
 void Main::refreshCache()
 {
 	BlockChain::Statistics s = ethereum()->blockChain().usage();
-	ui->cacheUsage->setText(QString("%1 bytes used").arg(s.memTotal()));
+	QString t;
+	auto f = [&](unsigned n, QString l)
+	{
+		t += ("%1 " + l).arg(QString::fromStdString(niceUsed(n)));
+	};
+	f(s.memTotal(), "total");
+	t += " (";
+	f(s.memBlocks, "blocks");
+	t += ", ";
+	f(s.memReceipts, "receipts");
+	t += ", ";
+	f(s.memLogBlooms, "blooms");
+	t += ", ";
+	f(s.memBlockHashes + s.memTransactionAddresses, "hashes");
+	t += ", ";
+	f(s.memDetails, "family");
+	t += ")";
+	ui->cacheUsage->setText(t);
 }
 
 void Main::timerEvent(QTimerEvent*)
