@@ -745,6 +745,16 @@ unsigned Client::uncleCount(h256 _blockHash) const
 	return b[2].itemCount();
 }
 
+Transactions Client::transactions(h256 _blockHash) const
+{
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	Transactions res;
+	for (unsigned i = 0; i < b[1].itemCount(); i++)
+		res.emplace_back(b[1][i].data(), CheckSignature::Range);
+	return res;
+}
+
 LocalisedLogEntries Client::logs(unsigned _watchId) const
 {
 	try {
