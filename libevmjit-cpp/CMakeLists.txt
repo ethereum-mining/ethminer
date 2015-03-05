@@ -4,8 +4,9 @@ set(TARGET_NAME evmjit-cpp)
 find_package(Boost REQUIRED)
 
 set(SOURCES
-    Env.cpp     
+    Env.cpp
     JitVM.cpp   JitVM.h
+    Utils.h
 )
 source_group("" FILES ${SOURCES})
 
