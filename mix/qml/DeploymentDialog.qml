@@ -16,7 +16,7 @@ Window {
 	id: modalDeploymentDialog
 	modality: Qt.ApplicationModal
 	width: 735
-	height: 335
+	height: 320
 	maximumWidth: width
 	minimumWidth: width
 	maximumHeight: height
@@ -221,7 +221,7 @@ Window {
 				Action {
 					id: b64Action
 					enabled: deploymentDialog.packageBase64 !== ""
-					tooltip: qsTr("Copy Base64 convertion to ClipBoard")
+					tooltip: qsTr("Copy Base64 conversion to ClipBoard")
 					onTriggered: {
 						appContext.toClipboard(deploymentDialog.packageBase64);
 					}
@@ -249,7 +249,7 @@ Window {
 
 				DefaultLabel
 				{
-					text: qsTr("Registrar address:")
+					text: qsTr("Root Registrar address:")
 				}
 
 				DefaultTextField
@@ -316,15 +316,20 @@ Window {
 					color: "transparent"
 					DefaultTextField
 					{
-						width: 300
+						width: 200
 						id: applicationUrlEth
+						onTextChanged: {
+							appUrlFormatted.text = ProjectModelCode.formatAppUrl(text).join('/');
+						}
 					}
 
 					DefaultLabel
 					{
+						id: appUrlFormatted
 						anchors.verticalCenter: parent.verticalCenter;
 						anchors.left: applicationUrlEth.right
-						text: "/" + projectModel.projectTitle
+						font.italic: true
+						font.pointSize: Style.absoluteSize(-1)
 					}
 				}
 			}
@@ -347,7 +352,7 @@ Window {
 
 				Action {
 					id: runAction
-					tooltip: qsTr("Deploy contract and package resources files.")
+					tooltip: qsTr("Deploy contract(s) and Package resources files.")
 					onTriggered: {
 						var inError = [];
 						var ethUrl = ProjectModelCode.formatAppUrl(applicationUrlEth.text);
@@ -414,7 +419,7 @@ Window {
 				DefaultLabel
 				{
 					Layout.preferredWidth: 355
-					text: qsTr("Url hint address:")
+					text: qsTr("URL Hint contract address:")
 				}
 
 				DefaultTextField
