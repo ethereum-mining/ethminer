@@ -26,14 +26,14 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionCount", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getTransactionCountI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockTransactionCountByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getBlockTransactionCountByHashI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockTransactionCountByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getBlockTransactionCountByNumberI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_uncleCountByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_REAL, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_uncleCountByHashI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_uncleCountByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_REAL, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_uncleCountByNumberI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_codeAt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_codeAtI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_transact", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_transactI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getUncleCountByBlockHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getUncleCountByBlockHashI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getUncleCountByBlockNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getUncleCountByBlockNumberI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getData", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getDataI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_sendTransaction", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_sendTransactionI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_call", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_callI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_flush", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::eth_flushI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_blockByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_blockByHashI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_blockByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_blockByNumberI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getBlockByHashI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getBlockByNumberI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_transactionByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_transactionByHashI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_transactionByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_INTEGER,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_transactionByNumberI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_uncleByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_INTEGER, NULL), &AbstractWebThreeStubServer::eth_uncleByHashI);
@@ -131,21 +131,21 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->eth_getBlockTransactionCountByNumber(request[0u].asString());
         }
-        inline virtual void eth_uncleCountByHashI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_getUncleCountByBlockHashI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_uncleCountByHash(request[0u].asString());
+            response = this->eth_getUncleCountByBlockHash(request[0u].asString());
         }
-        inline virtual void eth_uncleCountByNumberI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_getUncleCountByBlockNumberI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_uncleCountByNumber(request[0u].asInt());
+            response = this->eth_getUncleCountByBlockNumber(request[0u].asString());
         }
-        inline virtual void eth_codeAtI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_getDataI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_codeAt(request[0u].asString());
+            response = this->eth_getData(request[0u].asString(), request[1u].asString());
         }
-        inline virtual void eth_transactI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_sendTransactionI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_transact(request[0u]);
+            response = this->eth_sendTransaction(request[0u]);
         }
         inline virtual void eth_callI(const Json::Value &request, Json::Value &response)
         {
@@ -156,13 +156,13 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             (void)request;
             response = this->eth_flush();
         }
-        inline virtual void eth_blockByHashI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_getBlockByHashI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_blockByHash(request[0u].asString());
+            response = this->eth_getBlockByHash(request[0u].asString());
         }
-        inline virtual void eth_blockByNumberI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_getBlockByNumberI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_blockByNumber(request[0u].asInt());
+            response = this->eth_getBlockByNumber(request[0u].asString());
         }
         inline virtual void eth_transactionByHashI(const Json::Value &request, Json::Value &response)
         {
@@ -309,14 +309,14 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual std::string eth_getTransactionCount(const std::string& param1, const std::string& param2) = 0;
         virtual std::string eth_getBlockTransactionCountByHash(const std::string& param1) = 0;
         virtual std::string eth_getBlockTransactionCountByNumber(const std::string& param1) = 0;
-        virtual double eth_uncleCountByHash(const std::string& param1) = 0;
-        virtual double eth_uncleCountByNumber(int param1) = 0;
-        virtual std::string eth_codeAt(const std::string& param1) = 0;
-        virtual std::string eth_transact(const Json::Value& param1) = 0;
+        virtual std::string eth_getUncleCountByBlockHash(const std::string& param1) = 0;
+        virtual std::string eth_getUncleCountByBlockNumber(const std::string& param1) = 0;
+        virtual std::string eth_getData(const std::string& param1, const std::string& param2) = 0;
+        virtual std::string eth_sendTransaction(const Json::Value& param1) = 0;
         virtual std::string eth_call(const Json::Value& param1) = 0;
         virtual bool eth_flush() = 0;
-        virtual Json::Value eth_blockByHash(const std::string& param1) = 0;
-        virtual Json::Value eth_blockByNumber(int param1) = 0;
+        virtual Json::Value eth_getBlockByHash(const std::string& param1) = 0;
+        virtual Json::Value eth_getBlockByNumber(const std::string& param1) = 0;
         virtual Json::Value eth_transactionByHash(const std::string& param1, int param2) = 0;
         virtual Json::Value eth_transactionByNumber(int param1, int param2) = 0;
         virtual Json::Value eth_uncleByHash(const std::string& param1, int param2) = 0;

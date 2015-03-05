@@ -15,18 +15,16 @@
             { "name": "eth_getTransactionCount", "params": ["", ""], "order": [], "returns" : ""},
             { "name": "eth_getBlockTransactionCountByHash", "params": [""], "order": [], "returns" : ""},
             { "name": "eth_getBlockTransactionCountByNumber", "params": [""], "order": [], "returns" : ""},
-
-
-            { "name": "eth_uncleCountByHash", "params": [""], "order": [], "returns" : 0.0},
-            { "name": "eth_uncleCountByNumber", "params": [0], "order": [], "returns" : 0.0},
-            { "name": "eth_codeAt", "params": [""], "order": [], "returns": ""},
-
-            { "name": "eth_transact", "params": [{}], "order": [], "returns": ""},
+            { "name": "eth_getUncleCountByBlockHash", "params": [""], "order": [], "returns" : ""},
+            { "name": "eth_getUncleCountByBlockNumber", "params": [""], "order": [], "returns" : ""},
+            { "name": "eth_getData", "params": ["", ""], "order": [], "returns": ""},
+            { "name": "eth_sendTransaction", "params": [{}], "order": [], "returns": ""},
             { "name": "eth_call", "params": [{}], "order": [], "returns": ""},
             { "name": "eth_flush", "params": [], "order": [], "returns" : true},
+            { "name": "eth_getBlockByHash", "params": [""],"order": [], "returns": {}},
+            { "name": "eth_getBlockByNumber", "params": [""],"order": [], "returns": {}},
 
-            { "name": "eth_blockByHash", "params": [""],"order": [], "returns": {}},
-            { "name": "eth_blockByNumber", "params": [0],"order": [], "returns": {}},
+
             { "name": "eth_transactionByHash", "params": ["", 0], "order": [], "returns": {}},
             { "name": "eth_transactionByNumber", "params": [0, 0], "order": [], "returns": {}},
             { "name": "eth_uncleByHash", "params": ["", 0], "order": [], "returns": {}},
