@@ -281,7 +281,7 @@ RLPStream& Session::prep(RLPStream& _s, PacketType _id, unsigned _args)
 
 RLPStream& Session::prep(RLPStream& _s)
 {
-	return _s.appendRaw(bytes(8, 0));
+	return _s.appendRaw(bytes(4, 0));
 }
 
 void Session::sealAndSend(RLPStream& _s)
@@ -294,14 +294,12 @@ void Session::sealAndSend(RLPStream& _s)
 
 bool Session::checkPacket(bytesConstRef _msg)
 {
-	if (_msg.size() < 8)
+	if (_msg.size() < 5)
 		return false;
-	if (!(_msg[0] == 0x22 && _msg[1] == 0x40 && _msg[2] == 0x08 && _msg[3] == 0x91))
+	uint32_t len = ((_msg[0] * 256 + _msg[1]) * 256 + _msg[2]) * 256 + _msg[3];
+	if (_msg.size() != len + 4)
 		return false;
-	uint32_t len = ((_msg[4] * 256 + _msg[5]) * 256 + _msg[6]) * 256 + _msg[7];
-	if (_msg.size() != len + 8)
-		return false;
-	RLP r(_msg.cropped(8));
+	RLP r(_msg.cropped(4));
 	if (r.actualSize() != len)
 		return false;
 	return true;
@@ -314,7 +312,7 @@ void Session::send(bytesConstRef _msg)
 
 void Session::send(bytes&& _msg)
 {
-	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(8));
+	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(4));
 
 	if (!checkPacket(bytesConstRef(&_msg)))
 		clogS(NetWarn) << "INVALID PACKET CONSTRUCTED!";
@@ -410,68 +408,53 @@ void Session::start()
 
 void Session::doRead()
 {
-	// ignore packets received while waiting to disconnect
+	// ignore packets received while waiting to disconnect.
 	if (m_dropped)
 		return;
 	
 	auto self(shared_from_this());
 	m_socket.async_read_some(boost::asio::buffer(m_data), [this,self](boost::system::error_code ec, std::size_t length)
 	{
-		// If error is end of file, ignore
 		if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 		{
-			// got here with length of 1241...
 			clogS(NetWarn) << "Error reading: " << ec.message();
 			drop(TCPError);
 		}
 		else if (ec && length == 0)
-		{
 			return;
-		}
 		else
 		{
 			try
 			{
 				m_incoming.resize(m_incoming.size() + length);
 				memcpy(m_incoming.data() + m_incoming.size() - length, m_data.data(), length);
-				while (m_incoming.size() > 8)
+				
+				// 4 bytes for length header
+				const uint32_t c_hLen = 4;
+				while (m_incoming.size() > c_hLen)
 				{
-					if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
+					// break if data recvd is less than expected size of packet.
+					uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data(), c_hLen));
+					uint32_t tlen = c_hLen + len;
+					if (m_incoming.size() < tlen)
+						break;
+					bytesConstRef frame(m_incoming.data(), tlen);
+					bytesConstRef packet = frame.cropped(c_hLen);
+					if (!checkPacket(frame))
 					{
-						clogS(NetWarn) << "INVALID SYNCHRONISATION TOKEN; expected = 22400891; received = " << toHex(bytesConstRef(m_incoming.data(), 4));
+						cerr << "Received " << packet.size() << ": " << toHex(packet) << endl;
+						clogS(NetWarn) << "INVALID MESSAGE RECEIVED";
 						disconnect(BadProtocol);
 						return;
 					}
 					else
 					{
-						uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));
-						uint32_t tlen = len + 8;
-						if (m_incoming.size() < tlen)
-							break;
-
-						// enough has come in.
-						auto data = bytesConstRef(m_incoming.data(), tlen);
-						if (!checkPacket(data))
-						{
-							cerr << "Received " << len << ": " << toHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
-							clogS(NetWarn) << "INVALID MESSAGE RECEIVED";
-							disconnect(BadProtocol);
-							return;
-						}
-						else
-						{
-							RLP r(data.cropped(8));
-							if (!interpret(r))
-							{
-								// error - bad protocol
-								clogS(NetWarn) << "Couldn't interpret packet." << RLP(r);
-								// Just wasting our bandwidth - perhaps reduce rating?
-								//return;
-							}
-						}
-						memmove(m_incoming.data(), m_incoming.data() + tlen, m_incoming.size() - tlen);
-						m_incoming.resize(m_incoming.size() - tlen);
+						RLP r(packet);
+						if (!interpret(r))
+							clogS(NetWarn) << "Couldn't interpret packet." << RLP(r);
 					}
+					memmove(m_incoming.data(), m_incoming.data() + tlen, m_incoming.size() - tlen);
+					m_incoming.resize(m_incoming.size() - tlen);
 				}
 				doRead();
 			}
