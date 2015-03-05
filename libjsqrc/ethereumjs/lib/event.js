@@ -22,6 +22,7 @@
 
 var abi = require('./abi');
 var utils = require('./utils');
+var signature = require('./signature');
 
 /// filter inputs array && returns only indexed (or not) inputs
 /// @param inputs array
@@ -60,14 +61,14 @@ var indexedParamsToTopics = function (event, indexed) {
     });
 };
 
-var inputParser = function (address, signature, event) {
+var inputParser = function (address, sign, event) {
     
     // valid options are 'earliest', 'latest', 'offset' and 'max', as defined for 'eth.watch'
     return function (indexed, options) {
         var o = options || {};
         o.address = address;
         o.topic = [];
-        o.topic.push(signature);
+        o.topic.push(sign);
         if (indexed) {
             o.topic = o.topic.concat(indexedParamsToTopics(event, indexed));
         }
@@ -81,9 +82,9 @@ var getArgumentsObject = function (inputs, indexed, notIndexed) {
     return inputs.reduce(function (acc, current) {
         var value;
         if (current.indexed)
-            value = indexed.splice(0, 1)[0];
+            value = indexedCopy.splice(0, 1)[0];
         else
-            value = notIndexed.splice(0, 1)[0];
+            value = notIndexedCopy.splice(0, 1)[0];
 
         acc[current.name] = value;
         return acc;
@@ -96,6 +97,7 @@ var outputParser = function (event) {
         var result = {
             event: utils.extractDisplayName(event.name),
             number: output.number,
+            hash: output.hash,
             args: {}
         };
 
@@ -119,8 +121,8 @@ var outputParser = function (event) {
 
 var getMatchingEvent = function (events, payload) {
     for (var i = 0; i < events.length; i++) {
-        var signature = abi.eventSignatureFromAscii(events[i].name); 
-        if (signature === payload.topic[0]) {
+        var sign = signature.eventSignatureFromAscii(events[i].name); 
+        if (sign === payload.topic[0]) {
             return events[i];
         }
     }

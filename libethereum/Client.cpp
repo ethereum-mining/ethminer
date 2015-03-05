@@ -25,6 +25,7 @@
 #include <thread>
 #include <boost/filesystem.hpp>
 #include <libdevcore/Log.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libp2p/Host.h>
 #include "Defaults.h"
 #include "Executive.h"
@@ -59,7 +60,7 @@ void VersionChecker::setOk()
 	}
 }
 
-Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId, int miners):
+Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId, int _miners):
 	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
@@ -69,8 +70,8 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 {
 	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
-	if (miners > -1)
-		setMiningThreads(miners);
+	if (_miners > -1)
+		setMiningThreads(_miners);
 	else
 		setMiningThreads();
 	if (_dbPath.size())
@@ -257,7 +258,13 @@ LocalisedLogEntries Client::peekWatch(unsigned _watchId) const
 	Guard l(m_filterLock);
 
 	try {
+#if ETH_DEBUG
+		cdebug << "peekWatch" << _watchId;
+#endif
 		auto& w = m_watches.at(_watchId);
+#if ETH_DEBUG
+		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+#endif
 		w.lastPoll = chrono::system_clock::now();
 		return w.changes;
 	} catch (...) {}
@@ -271,7 +278,13 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	LocalisedLogEntries ret;
 
 	try {
+#if ETH_DEBUG
+		cdebug << "checkWatch" << _watchId;
+#endif
 		auto& w = m_watches.at(_watchId);
+#if ETH_DEBUG
+		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+#endif
 		std::swap(ret, w.changes);
 		w.lastPoll = chrono::system_clock::now();
 	} catch (...) {}
@@ -279,7 +292,7 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	return ret;
 }
 
-void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed)
+void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _sha3)
 {
 	Guard l(m_filterLock);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
@@ -291,7 +304,7 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& i
 			{
 				// filter catches them
 				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1));
+					i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1, _sha3));
 				io_changed.insert(i.first);
 			}
 		}
@@ -307,14 +320,16 @@ void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
 		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.logBloom))
 			// acceptable number & looks like block may contain a matching log entry.
-			for (TransactionReceipt const& tr: br.receipts)
+			for (size_t j = 0; j < br.receipts.size(); j++)
 			{
+				auto tr = br.receipts[j];
 				auto m = i.second.filter.matches(tr);
 				if (m.size())
 				{
+					auto sha3 = transaction(d.hash, j).sha3();
 					// filter catches them
 					for (LogEntry const& l: m)
-						i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number));
+						i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number, sha3));
 					io_changed.insert(i.first);
 				}
 			}
@@ -403,6 +418,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	}
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
 //	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
 	cnote << "New transaction " << t;
 	m_tq.attemptImport(t.rlp());
 }
@@ -570,8 +586,9 @@ void Client::doWork()
 		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq);
 		if (newPendingReceipts.size())
 		{
-			for (auto i: newPendingReceipts)
-				appendFromNewPending(i, changeds);
+			for (size_t i = 0; i < newPendingReceipts.size(); i++)
+				appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
+			
 			changeds.insert(PendingChangedFilter);
 
 			if (isMining())
@@ -744,6 +761,7 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 		{
 			// Might have a transaction that contains a matching log.
 			TransactionReceipt const& tr = m_postMine.receipt(i);
+			auto sha3 = m_postMine.pending()[i].sha3();
 			LogEntries le = _f.matches(tr);
 			if (le.size())
 			{
@@ -751,7 +769,7 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 					if (s)
 						s--;
 					else
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin));
+						ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin, sha3));
 			}
 		}
 		begin = m_bc.number();
@@ -770,11 +788,15 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 		int total = 0;
 #endif
 		// check block bloom
-		if (_f.matches(m_bc.info(h).logBloom))
-			for (TransactionReceipt receipt: m_bc.receipts(h).receipts)
+		auto info = m_bc.info(h);
+		auto receipts = m_bc.receipts(h).receipts;
+		if (_f.matches(info.logBloom))
+			for (size_t i = 0; i < receipts.size(); i++)
 			{
+				TransactionReceipt receipt = receipts[i];
 				if (_f.matches(receipt.bloom()))
 				{
+					auto h = transaction(info.hash, i).sha3();
 					LogEntries le = _f.matches(receipt);
 					if (le.size())
 					{
@@ -786,7 +808,7 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 							if (s)
 								s--;
 							else
-								ret.insert(ret.begin(), LocalisedLogEntry(le[j], n));
+								ret.insert(ret.begin(), LocalisedLogEntry(le[j], n, h));
 						}
 					}
 				}

@@ -32,6 +32,7 @@
 
 namespace dev
 {
+
 namespace eth
 {
 

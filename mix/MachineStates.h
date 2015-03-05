@@ -42,7 +42,6 @@ namespace mix
 	struct MachineState
 	{
 		uint64_t steps;
-		dev::Address address;
 		dev::u256 curPC;
 		dev::eth::Instruction inst;
 		dev::bigint newMemSize;
@@ -57,6 +56,15 @@ namespace mix
 	};
 
 	/**
+	* @brief Executed conract code info
+	*/
+	struct MachineCode
+	{
+		dev::Address address;
+		bytes code;
+	};
+
+	/**
 	* @brief Store information about a machine states.
 	*/
 	struct ExecutionResult
@@ -65,7 +73,7 @@ namespace mix
 
 		std::vector<MachineState> machineStates;
 		std::vector<bytes> transactionData;
-		std::vector<bytes> executionCode;
+		std::vector<MachineCode> executionCode;
 		bytes returnValue;
 		dev::Address address;
 		dev::Address sender;
@@ -74,6 +82,7 @@ namespace mix
 		unsigned transactionIndex;
 
 		bool isCall() const { return transactionIndex == std::numeric_limits<unsigned>::max(); }
+		bool isConstructor() const { return !isCall() && !address; }
 	};
 
 	using ExecutionResults = std::vector<ExecutionResult>;

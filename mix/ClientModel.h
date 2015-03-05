@@ -46,8 +46,8 @@ class QVariableDefinition;
 struct TransactionSettings
 {
 	TransactionSettings() {}
-	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice):
-		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice) {}
+	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, u256 _gasPrice, Secret _sender):
+		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasPrice(_gasPrice), sender(_sender) {}
 	TransactionSettings(QString const& _stdContractName, QString const& _stdContractUrl):
 		contractId(_stdContractName), stdContractUrl(_stdContractUrl) {}
 
@@ -65,6 +65,8 @@ struct TransactionSettings
 	QList<QVariableDefinition*> parameterValues;
 	/// Standard contract url
 	QString stdContractUrl;
+	/// Sender
+	Secret sender;
 };
 
 
@@ -72,6 +74,7 @@ struct TransactionSettings
 class RecordLogEntry: public QObject
 {
 	Q_OBJECT
+	Q_ENUMS(RecordType)
 	/// Recording index
 	Q_PROPERTY(unsigned recordIndex MEMBER m_recordIndex CONSTANT)
 	/// Human readable transaction bloack and transaction index
@@ -88,13 +91,20 @@ class RecordLogEntry: public QObject
 	Q_PROPERTY(QString returned MEMBER m_returned CONSTANT)
 	/// true if call, false if transaction
 	Q_PROPERTY(bool call MEMBER m_call CONSTANT)
-
+	/// @returns record type
+	Q_PROPERTY(RecordType type MEMBER m_type CONSTANT)
 
 public:
+	enum RecordType
+	{
+		Transaction,
+		Block
+	};
+
 	RecordLogEntry():
-		m_recordIndex(0), m_call(false) {}
-	RecordLogEntry(unsigned _recordIndex, QString _transactionIndex, QString _contract, QString _function, QString _value, QString _address, QString _returned, bool _call):
-		m_recordIndex(_recordIndex), m_transactionIndex(_transactionIndex), m_contract(_contract), m_function(_function), m_value(_value), m_address(_address), m_returned(_returned), m_call(_call) {}
+		m_recordIndex(0), m_call(false), m_type(RecordType::Transaction) {}
+	RecordLogEntry(unsigned _recordIndex, QString _transactionIndex, QString _contract, QString _function, QString _value, QString _address, QString _returned, bool _call, RecordType _type):
+		m_recordIndex(_recordIndex), m_transactionIndex(_transactionIndex), m_contract(_contract), m_function(_function), m_value(_value), m_address(_address), m_returned(_returned), m_call(_call), m_type(_type) {}
 
 private:
 	unsigned m_recordIndex;
@@ -105,6 +115,7 @@ private:
 	QString m_address;
 	QString m_returned;
 	bool m_call;
+	RecordType m_type;
 };
 
 /**
@@ -123,22 +134,24 @@ public:
 	Q_PROPERTY(bool mining MEMBER m_mining NOTIFY miningStateChanged)
 	/// @returns deployed contracts addresses
 	Q_PROPERTY(QVariantMap contractAddresses READ contractAddresses NOTIFY contractAddressesChanged)
+	// @returns the last block
+	Q_PROPERTY(RecordLogEntry* lastBlock READ lastBlock CONSTANT)
 	/// ethereum.js RPC request entry point
 	/// @param _message RPC request in Json format
 	/// @returns RPC response in Json format
 	Q_INVOKABLE QString apiCall(QString const& _message);
-
 	/// Simulate mining. Creates a new block
 	Q_INVOKABLE void mine();
 
 public slots:
-	/// Run the contract constructor and show debugger window.
-	void debugDeployment();
 	/// Setup state, run transaction sequence, show debugger for the last transaction
 	/// @param _state JS object with state configuration
 	void setupState(QVariantMap _state);
 	/// Show the debugger for a specified record
 	Q_INVOKABLE void debugRecord(unsigned _index);
+	/// Show the debugger for an empty record
+	Q_INVOKABLE void emptyRecord();
+	Q_INVOKABLE QString newAddress();
 
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
@@ -177,8 +190,9 @@ signals:
 	void stateCleared();
 
 private:
+	RecordLogEntry* lastBlock() const;
 	QVariantMap contractAddresses() const;
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, u256 _balance);
+	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Secret, u256> const& _balances);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	void onNewTransaction();
@@ -199,3 +213,5 @@ private:
 
 }
 }
+
+Q_DECLARE_METATYPE(dev::mix::RecordLogEntry*)

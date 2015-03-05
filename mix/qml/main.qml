@@ -37,7 +37,6 @@ ApplicationWindow {
 		}
 		Menu {
 			title: qsTr("Deploy")
-			MenuItem { action: debugRunAction }
 			MenuItem { action: mineAction }
 			MenuSeparator {}
 			MenuItem { action: editStatesAction }
@@ -45,6 +44,12 @@ ApplicationWindow {
 			MenuItem { action: deployViaRpcAction }
 			MenuSeparator {}
 			MenuItem { action: toggleRunOnLoadAction }
+		}
+		Menu {
+			title: qsTr("Debug")
+			MenuItem { action: debugRunAction }
+			MenuSeparator {}
+			MenuItem { action: toggleAssemblyDebuggingAction }
 		}
 		Menu {
 			title: qsTr("Windows")
@@ -56,7 +61,7 @@ ApplicationWindow {
 			MenuItem { action: toggleTransactionLogAction }
 			MenuItem { action: toggleWebPreviewAction }
 			MenuItem { action: toggleWebPreviewOrientationAction }
-			MenuItem { action: toggleCallsInLog }
+			//MenuItem { action: toggleCallsInLog }
 		}
 	}
 
@@ -92,7 +97,7 @@ ApplicationWindow {
 
 	Action {
 		id: mineAction
-		text: qsTr("Mine")
+		text: qsTr("New Block")
 		shortcut: "Ctrl+M"
 		onTriggered: clientModel.mine();
 		enabled: codeModel.hasContract && !clientModel.running && !clientModel.mining
@@ -130,6 +135,15 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: toggleAssemblyDebuggingAction
+		text: qsTr("Show VM Code")
+		shortcut: "Ctrl+Alt+V"
+		onTriggered: mainContent.rightPane.assemblyMode = !mainContent.rightPane.assemblyMode;
+		checked: mainContent.rightPane.assemblyMode;
+		enabled: true
+	}
+
+	Action {
 		id: toggleWebPreviewAction
 		text: qsTr("Show Web View")
 		shortcut: "F2"
@@ -163,15 +177,6 @@ ApplicationWindow {
 		checkable: true
 		checked: mainContent.webViewHorizontal
 		onTriggered: mainContent.toggleWebPreviewOrientation();
-	}
-
-	Action {
-		id: toggleCallsInLog
-		text: qsTr("Show Calls in Transaction Log")
-		shortcut: ""
-		checkable: true
-		checked: mainContent.rightPane.transactionLog.showLogs
-		onTriggered: mainContent.rightPane.transactionLog.showLogs = !mainContent.rightPane.transactionLog.showLogs
 	}
 
 	Action {
@@ -301,6 +306,14 @@ ApplicationWindow {
 		shortcut: "Ctrl+Shift+Tab"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.openPrevDocument();
+	}
+
+	Action {
+		id: toggleBreakpointAction
+		text: qsTr("Toggle Breakpoint")
+		shortcut: "F9"
+		enabled: mainContent.codeEditor.editingContract();
+		onTriggered: mainContent.toggleBreakpoint();
 	}
 
 	Action {

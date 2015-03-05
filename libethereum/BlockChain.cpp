@@ -25,6 +25,7 @@
 #include <test/JsonSpiritHeaders.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/ProofOfWork.h>
@@ -209,6 +210,11 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	try
 #endif
 	{
+		RLP blockRLP(_block);
+
+		if (!blockRLP.isList())
+			BOOST_THROW_EXCEPTION(InvalidBlockFormat(0, blockRLP.data()) << errinfo_comment("block header needs to be a list"));
+
 		bi.populate(&_block);
 		bi.verifyInternals(&_block);
 	}
@@ -312,6 +318,13 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	}
 #endif
 
+	StructuredLogger::chainReceivedNewBlock(
+		bi.headerHash(WithoutNonce).abridged(),
+		bi.nonce.abridged(),
+		currentHash().abridged(),
+		"", // TODO: remote id ??
+		bi.parentHash.abridged()
+	);
 	//	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
 
 	h256s ret;
@@ -326,6 +339,12 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		}
 		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
 		clog(BlockChainNote) << "   Imported and best" << td << ". Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(ret);
+		StructuredLogger::chainNewHead(
+			bi.headerHash(WithoutNonce).abridged(),
+			bi.nonce.abridged(),
+			currentHash().abridged(),
+			bi.parentHash.abridged()
+		);
 	}
 	else
 	{
