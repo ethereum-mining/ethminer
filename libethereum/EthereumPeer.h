@@ -29,7 +29,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/RangeMask.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libp2p/Capability.h>
 #include "CommonNet.h"
 #include "DownloadMan.h"
