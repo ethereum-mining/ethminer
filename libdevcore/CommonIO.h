@@ -36,6 +36,7 @@
 #include <string>
 #include <iostream>
 #include "Common.h"
+#include "Base64.h"
 
 namespace dev
 {

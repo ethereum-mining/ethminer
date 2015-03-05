@@ -23,7 +23,7 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
-#include "CommonEth.h"
+#include "Common.h"
 
 namespace dev
 {

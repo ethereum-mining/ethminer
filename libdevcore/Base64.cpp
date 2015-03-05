@@ -23,13 +23,11 @@
 
    René Nyffenegger rene.nyffenegger@adp-gmbh.ch
 */
-/// code found on http://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
-/// originally by René Nyffenegger, modified by some other guy and then again by Gav Wood.
+/// Adapted from code found on http://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
+/// Originally by René Nyffenegger, modified by some other guy and then devified by Gav Wood.
 
-#include "base64.h"
-
+#include "Base64.h"
 #include <iostream>
-
 using namespace std;
 using namespace dev;
 
@@ -42,7 +40,7 @@ static inline bool is_base64(byte c) {
 	return (isalnum(c) || (c == '+') || (c == '/'));
 }
 
-std::string dev::base64_encode(bytesConstRef _in) {
+std::string dev::toBase64(bytesConstRef _in) {
 	std::string ret;
 	int i = 0;
 	int j = 0;
@@ -86,7 +84,7 @@ std::string dev::base64_encode(bytesConstRef _in) {
 	return ret;
 }
 
-bytes dev::base64_decode(std::string const& encoded_string) {
+bytes dev::fromBase64(std::string const& encoded_string) {
 	int in_len = encoded_string.size();
 	int i = 0;
 	int j = 0;

@@ -23,8 +23,9 @@
 
    René Nyffenegger rene.nyffenegger@adp-gmbh.ch
 */
-/// code found on http://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
-/// originally by René Nyffenegger, modified by some other guy and then again by Gav Wood.
+/// Adapted from code found on http://stackoverflow.com/questions/180947/base64-decode-snippet-in-c
+/// Originally by René Nyffenegger.
+/// DEVified by Gav Wood.
 #pragma once
 
 #include <vector>
@@ -34,7 +35,7 @@
 namespace dev
 {
 
-std::string base64_encode(bytesConstRef _in);
-bytes base64_decode(std::string const& _in);
+std::string toBase64(bytesConstRef _in);
+bytes fromBase64(std::string const& _in);
 
 }
