@@ -9,10 +9,10 @@
             { "name": "eth_gasPrice", "params": [], "order": [], "returns" : "" },
             { "name": "eth_accounts", "params": [], "order": [], "returns" : [] },
             { "name": "eth_blockNumber", "params": [], "order": [], "returns" : ""},
+            { "name": "eth_getBalance", "params": ["", ""], "order": [], "returns" : ""},
+            { "name": "eth_getStorage", "params": ["", ""], "order": [], "returns": {}},
 
-            { "name": "eth_balanceAt", "params": [""], "order": [], "returns" : ""},
             { "name": "eth_stateAt", "params": ["", ""], "order": [], "returns": ""},
-            { "name": "eth_storageAt", "params": [""], "order": [], "returns": {}},
             { "name": "eth_countAt", "params": [""], "order": [], "returns" : 0.0},
             { "name": "eth_transactionCountByHash", "params": [""], "order": [], "returns" : 0.0},
             { "name": "eth_transactionCountByNumber", "params": [0], "order": [], "returns" : 0.0},
