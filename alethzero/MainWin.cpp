@@ -36,6 +36,7 @@
 #endif
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/CommonJS.h>
+#include <libethcore/Ethasher.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libsolidity/Scanner.h>
@@ -1365,7 +1366,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>Difficulty: <b>" << info.difficulty << "</b>";
 			if (info.number)
 			{
-				auto e = ProofOfWork::eval(info);
+				auto e = Ethasher::eval(info);
 				s << "<br/>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")";
 			}
 			else
@@ -1389,7 +1390,7 @@ void Main::on_blocks_currentItemChanged()
 				s << line << "Nonce: <b>" << uncle.nonce << "</b>";
 				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutNonce) << "</b>";
 				s << line << "Difficulty: <b>" << uncle.difficulty << "</b>";
-				auto e = ProofOfWork::eval(uncle);
+				auto e = Ethasher::eval(uncle);
 				s << line << "Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / uncle.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")";
 			}
 			if (info.parentHash)
