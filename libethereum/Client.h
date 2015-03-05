@@ -368,6 +368,7 @@ private:
 	bool m_paranoia = false;				///< Should we be paranoid about our state?
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
+	bool m_verifyOwnBlocks = true;			///< Shoudl be verify blocks that we mined?
 
 	mutable Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;
