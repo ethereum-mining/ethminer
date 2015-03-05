@@ -36,11 +36,11 @@ using namespace dev::p2p;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Peer> const& _n):
+Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info):
 	m_server(_s),
-	m_socket(std::move(_socket)),
+	m_socket(move(_socket)),
 	m_peer(_n),
-	m_info({NodeId(), "?", m_socket.remote_endpoint().address().to_string(), 0, chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()}),
+	m_info(_info),
 	m_ping(chrono::steady_clock::time_point::max())
 {
 	m_lastReceived = m_connect = chrono::steady_clock::now();
@@ -151,86 +151,6 @@ bool Session::interpret(RLP const& _r)
 
 	switch ((PacketType)_r[0].toInt<unsigned>())
 	{
-	case HelloPacket:
-	{
-		// TODO: P2P first pass, implement signatures. if signature fails, drop connection. if egress, flag node's endpoint as stale.
-		// Move auth to Host so we consolidate authentication logic and eschew peer deduplication logic.
-		// Move all node-lifecycle information into Host.
-		// Finalize peer-lifecycle properties vs node lifecycle.
-		
-		m_protocolVersion = _r[1].toInt<unsigned>();
-		auto clientVersion = _r[2].toString();
-		auto caps = _r[3].toVector<CapDesc>();
-		auto listenPort = _r[4].toInt<unsigned short>();
-		auto id = _r[5].toHash<NodeId>();
-
-		// clang error (previously: ... << hex << caps ...)
-		// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
-		stringstream capslog;
-		for (auto cap: caps)
-			capslog << "(" << cap.first << "," << dec << cap.second << ")";
-
-		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << id.abridged() << showbase << capslog.str() << dec << listenPort;
-
-		if (m_server->id() == id)
-		{
-			// Already connected.
-			clogS(NetWarn) << "Connected to ourself under a false pretext. We were told this peer was id" << id.abridged();
-			disconnect(LocalIdentity);
-			return true;
-		}
-
-		// if peer and connection have id, check for UnexpectedIdentity
-		if (!id)
-		{
-			disconnect(NullIdentity);
-			return true;
-		}
-		else if (!m_peer->id)
-		{
-			m_peer->id = id;
-			m_peer->endpoint.tcp.port(listenPort);
-		}
-		else if (m_peer->id != id)
-		{
-			// TODO p2p: FIXME. Host should catch this and reattempt adding node to table.
-			m_peer->id = id;
-			m_peer->m_score = 0;
-			m_peer->m_rating = 0;
-//			disconnect(UnexpectedIdentity);
-//			return true;
-		}
-
-		if (m_server->havePeerSession(id))
-		{
-			// Already connected.
-			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
-			// Possible that two nodes continually connect to each other with exact same timing.
-			this_thread::sleep_for(chrono::milliseconds(rand() % 100));
-			disconnect(DuplicatePeer);
-			return true;
-		}
-		
-		if (m_peer->isOffline())
-			m_peer->m_lastConnected = chrono::system_clock::now();
-
-		if (m_protocolVersion != m_server->protocolVersion())
-		{
-			disconnect(IncompatibleProtocol);
-			return true;
-		}
-		
-		m_info.clientVersion = clientVersion;
-		m_info.host = m_socket.remote_endpoint().address().to_string();
-		m_info.port = listenPort;
-		m_info.lastPing = std::chrono::steady_clock::duration();
-		m_info.caps = _r[3].toSet<CapDesc>();
-		m_info.socket = (unsigned)m_socket.native_handle();
-		m_info.notes = map<string, string>();
-
-		m_server->registerPeer(shared_from_this(), caps);
-		break;
-	}
 	case DisconnectPacket:
 	{
 		string reason = "Unspecified";
@@ -478,14 +398,6 @@ void Session::disconnect(DisconnectReason _reason)
 
 void Session::start()
 {
-	RLPStream s;
-	prep(s, HelloPacket, 5)
-					<< m_server->protocolVersion()
-					<< m_server->m_clientVersion
-					<< m_server->caps()
-					<< m_server->m_tcpPublic.port()
-					<< m_server->id();
-	sealAndSend(s);
 	ping();
 	doRead();
 }
