@@ -40,21 +40,21 @@ class RLPXHandshake;
 class RLPXFrameIO
 {
 public:
-	RLPXFrameIO(RLPXHandshake& _init);
+	RLPXFrameIO(RLPXHandshake const& _init);
 	
-	void writeFullPacketFrame(bytesConstRef _packet);
+	void writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes);
+
+	/// Authenticates and decrypts header in-place.
+	bool authAndDecryptHeader(h256& io_cipherWithMac);
 	
-	void writeHeader(bi::tcp::socket* _socket, h128 const& _header);
-	
-	void write(bi::tcp::socket* _socket, bytesConstRef _in, bool _eof = false);
-	
-	bool read(bytesConstRef _in, bytes& o_out);
+	/// Authenticates and decrypts frame in-place.
+	bool authAndDecryptFrame(bytesRef io_cipherWithMac);
 	
 	h128 egressDigest();
 	
 	h128 ingressDigest();
 	
-	void updateEgressMACWithHeader(h128 const& _headerCipher);
+	void updateEgressMACWithHeader(bytesConstRef _headerCipher);
 	
 	void updateEgressMACWithEndOfFrame(bytesConstRef _cipher);
 	
@@ -66,21 +66,28 @@ private:
 	void updateMAC(CryptoPP::SHA3_256& _mac, h128 const& _seed = h128());
 
 	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameEnc;
+	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameDec;
 	CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption m_macEnc;
 	CryptoPP::SHA3_256 m_egressMac;
 	CryptoPP::SHA3_256 m_ingressMac;
+	
+	bi::tcp::socket* m_socket;
 };
 
-struct RLPXHandshake: public std::enable_shared_from_this<RLPXHandshake>
+// TODO: change properties to m_
+class RLPXHandshake: public std::enable_shared_from_this<RLPXHandshake>
 {
+public:
 	friend class RLPXFrameIO;
-	friend class Host;
+	
 	enum State
 	{
 		Error = -1,
 		New,				// New->AckAuth				[egress: tx auth, ingress: rx auth]
-		AckAuth,			// AckAuth->Authenticating	[egress: rx ack, ingress: tx ack]
-		Authenticating,	// Authenticating			[tx caps, rx caps, authenticate]
+		AckAuth,			// AckAuth->WriteHello		[egress: rx ack, ingress: tx ack]
+		WriteHello,		// WriteHello				[tx caps, rx caps, writehello]
+		ReadHello,
+		StartSession
 	};
 
 	/// Handshake for ingress connection. Takes ownership of socket.
@@ -91,20 +98,18 @@ struct RLPXHandshake: public std::enable_shared_from_this<RLPXHandshake>
 	
 	~RLPXHandshake() { delete socket; }
 
-protected:
 	void start() { transition(); }
 	
-	void generateAuth();
-	bool decodeAuth();
+protected:
+	void writeAuth();
+	void readAuth();
 	
-	void generateAck();
-	bool decodeAck();
+	void writeAck();
+	void readAck();
 	
-	bytes frame(bytesConstRef _packet);
-
-private:
+	void error();
 	void transition(boost::system::error_code _ech = boost::system::error_code());
-	
+
 	/// Current state of handshake.
 	State nextState = New;
 	
@@ -121,12 +126,17 @@ private:
 	bytes authCipher;
 	bytes ack;
 	bytes ackCipher;
-
+	bytes handshakeOutBuffer;
+	bytes handshakeInBuffer;
+	
 	crypto::ECDHE ecdhe;
 	h256 nonce;
 	
 	Public remoteEphemeral;
 	h256 remoteNonce;
+	
+	/// Frame IO is used to read frame for last step of handshake authentication.
+	std::unique_ptr<RLPXFrameIO> io;
 };
 	
 }

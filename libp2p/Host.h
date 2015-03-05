@@ -77,9 +77,7 @@ private:
 class Host: public Worker
 {
 	friend class HostNodeTableHandler;
-	
-	friend struct PeerHandshake;
-	friend struct RLPXHandshake;
+	friend class RLPXHandshake;
 	
 	friend class Session;
 	friend class HostCapabilityFace;
@@ -109,8 +107,6 @@ public:
 	bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(std::make_pair(T::staticName(), T::staticVersion()))); } catch (...) { return nullptr; } }
-	
-	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
 	
 	void addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort, unsigned short _udpPort);
 	
@@ -149,7 +145,8 @@ public:
 
 	NodeId id() const { return m_alias.pub(); }
 
-	void registerPeer(std::shared_ptr<Session> _s, CapDescs const& _caps);
+	/// Validates and starts peer session, taking ownership of _socket. Disconnects and returns false upon error.
+	bool startPeerSession(Public const& _id, RLP const& _hello, bi::tcp::socket *_socket);
 
 protected:
 	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);
@@ -158,6 +155,8 @@ protected:
 	void restoreNetwork(bytesConstRef _b);
 	
 private:
+	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
+	
 	/// Populate m_peerAddresses with available public addresses.
 	void determinePublic(std::string const& _publicAddress, bool _upnp);
 	
@@ -232,74 +231,6 @@ private:
 	std::chrono::steady_clock::time_point m_lastPing;						///< Time we sent the last ping to all peers.
 
 	bool m_accepting = false;
-};
-	
-/**
- * @brief Key material and derived secrets for TCP peer connection.
- */
-struct PeerSecrets
-{
-	friend struct PeerHandshake;
-	friend struct RLPXHandshake;
-	
-protected:
-	Secret encryptK;
-	Secret macK;
-	h256 egressMac;
-	h256 ingressMac;
-	
-	bytes magicCipherAndMac;
-	bytes recvdMagicCipherAndMac;
-};
-
-struct PeerHandshake: public std::enable_shared_from_this<PeerHandshake>
-{
-	friend class Host;
-	enum State
-	{
-		Error = -1,
-		New,				// New->AckAuth				[egress: tx auth, ingress: rx auth]
-		AckAuth,			// AckAuth->Authenticating	[egress: rx ack, ingress: tx ack]
-		Authenticating,	// Authenticating			[tx caps, rx caps, authenticate]
-	};
-
-	/// Handshake for ingress connection. Takes ownership of socket.
-	PeerHandshake(Host* _host, bi::tcp::socket* _socket): host(_host), socket(std::move(_socket)), originated(false) { crypto::Nonce::get().ref().copyTo(nonce.ref()); }
-	
-	/// Handshake for egress connection to _remote. Takes ownership of socket.
-	PeerHandshake(Host* _host, bi::tcp::socket* _socket, NodeId _remote): host(_host), socket(std::move(_socket)), originated(true), remote(_remote) { crypto::Nonce::get().ref().copyTo(nonce.ref()); }
-	
-	~PeerHandshake() { delete socket; }
-
-protected:
-	void start() { transition(); }
-
-private:
-	void transition(boost::system::error_code _ech = boost::system::error_code());
-	
-	/// Current state of handshake.
-	State nextState = New;
-	
-	Host* host;
-	
-	/// Node id of remote host for socket.
-	NodeId remote;
-	
-	bi::tcp::socket* socket;
-	bool originated = false;
-	
-	bytes auth;
-	bytes authCipher;
-	bytes ack;
-	bytes ackCipher;
-	Secret ss;
-	Secret ess;
-	
-	crypto::ECDHE ecdhe;
-	h256 nonce;
-	
-	Public remoteEphemeral;
-	h256 remoteNonce;
 };
 	
 }
