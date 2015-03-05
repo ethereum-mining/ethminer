@@ -346,7 +346,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		else
 			clog(NetConnect) << "p2p.connect.ingress sending capabilities handshake";
 		
-		io = new RLPXFrameIO(*this);
+		io.reset(new RLPXFrameIO(*this));
 
 		// old packet format
 		// 5 arguments, HelloPacket
@@ -431,7 +431,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 							return;
 						}
 						
-						// todo: handover RLPFrameIO
+						// todo: memory management of RLPFrameIO
 						host->startPeerSession(remote, rlp, socket);
 					}
 				});

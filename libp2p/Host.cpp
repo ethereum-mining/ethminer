@@ -28,6 +28,7 @@
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
 #include <libdevcrypto/FileSystem.h>
 #include "Session.h"
@@ -61,7 +62,7 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, byte
 	for (auto address: m_ifAddresses)
 		if (address.is_v4())
 			clog(NetNote) << "IP Address: " << address << " = " << (isPrivateAddress(address) ? "[LOCAL]" : "[PEER]");
-	
+
 	clog(NetNote) << "Id:" << id();
 }
 
@@ -90,11 +91,11 @@ void Host::stop()
 			return;
 		m_run = false;
 	}
-	
+
 	// wait for m_timer to reset (indicating network scheduler has stopped)
 	while (!!m_timer)
 		this_thread::sleep_for(chrono::milliseconds(50));
-	
+
 	// stop worker thread
 	stopWorking();
 }
@@ -103,12 +104,12 @@ void Host::doneWorking()
 {
 	// reset ioservice (allows manually polling network, below)
 	m_ioService.reset();
-	
+
 	// shutdown acceptor
 	m_tcp4Acceptor.cancel();
 	if (m_tcp4Acceptor.is_open())
 		m_tcp4Acceptor.close();
-	
+
 	// There maybe an incoming connection which started but hasn't finished.
 	// Wait for acceptor to end itself instead of assuming it's complete.
 	// This helps ensure a peer isn't stopped at the same time it's starting
@@ -135,17 +136,17 @@ void Host::doneWorking()
 		}
 		if (!n)
 			break;
-		
+
 		// poll so that peers send out disconnect packets
 		m_ioService.poll();
 	}
-	
+
 	// stop network (again; helpful to call before subsequent reset())
 	m_ioService.stop();
-	
+
 	// reset network (allows reusing ioservice in future)
 	m_ioService.reset();
-	
+
 	// finally, clear out peers (in case they're lingering)
 	RecursiveGuard l(x_sessions);
 	m_sessions.clear();
@@ -207,7 +208,6 @@ bool Host::startPeerSession(Public const& _id, RLP const& _rlp, bi::tcp::socket 
 		m_sessions[_id] = ps;
 	}
 	ps->start();
-	
 	unsigned o = (unsigned)UserPacket;
 	for (auto const& i: caps)
 		if (haveCapability(i))
@@ -215,6 +215,10 @@ bool Host::startPeerSession(Public const& _id, RLP const& _rlp, bi::tcp::socket 
 			ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps.get(), o));
 			o += m_capabilities[i]->messageCount();
 		}
+	clog(NetNote) << "p2p.host.peer.register" << _id.abridged();
+	StructuredLogger::p2pConnected(_id.abridged(), ps->m_peer->peerEndpoint(), ps->m_peer->m_lastConnected, clientVersion, peerCount());
+
+	return true;
 }
 
 void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
@@ -223,7 +227,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 	if (_e == NodeEntryAdded)
 	{
 		clog(NetNote) << "p2p.host.nodeTable.events.nodeEntryAdded " << _n;
-		
+
 		auto n = m_nodeTable->node(_n);
 		if (n)
 		{
@@ -240,12 +244,12 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 					p->endpoint = NodeIPEndpoint(n.endpoint.udp, n.endpoint.tcp);
 					p->required = n.required;
 					m_peers[_n] = p;
-					
+
 					clog(NetNote) << "p2p.host.peers.events.peersAdded " << _n << p->endpoint.tcp.address() << p->endpoint.udp.address();
 				}
 				p->endpoint.tcp = n.endpoint.tcp;
 			}
-			
+
 			// TODO: Implement similar to discover. Attempt connecting to nodes
 			//       until ideal peer count is reached; if all nodes are tried,
 			//       repeat. Notably, this is an integrated process such that
@@ -261,7 +265,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 	else if (_e == NodeEntryRemoved)
 	{
 		clog(NetNote) << "p2p.host.nodeTable.events.nodeEntryRemoved " << _n;
-		
+
 		RecursiveGuard l(x_sessions);
 		m_peers.erase(_n);
 	}
@@ -283,7 +287,7 @@ void Host::seal(bytes& _b)
 void Host::determinePublic(string const& _publicAddress, bool _upnp)
 {
 	m_peerAddresses.clear();
-	
+
 	// no point continuing if there are no interface addresses or valid listen port
 	if (!m_ifAddresses.size() || m_listenPort < 1)
 		return;
@@ -292,7 +296,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 	for (auto addr: m_ifAddresses)
 		if ((m_netPrefs.localNetworking || !isPrivateAddress(addr)) && !isLocalHostAddress(addr))
 			m_peerAddresses.insert(addr);
-	
+
 	// if user supplied address is a public address then we use it
 	// if user supplied address is private, and localnetworking is enabled, we use it
 	bi::address reqPublicAddr(bi::address(_publicAddress.empty() ? bi::address() : bi::address::from_string(_publicAddress)));
@@ -306,7 +310,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 		m_tcpPublic = reqPublic;
 		return;
 	}
-	
+
 	// if address wasn't provided, then use first public ipv4 address found
 	for (auto addr: m_peerAddresses)
 		if (addr.is_v4() && !isPrivateAddress(addr))
@@ -314,7 +318,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 			m_tcpPublic = bi::tcp::endpoint(*m_peerAddresses.begin(), m_listenPort);
 			return;
 		}
-	
+
 	// or find address via upnp
 	if (_upnp)
 	{
@@ -338,7 +342,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 					m_tcpPublic = bi::tcp::endpoint(addr, m_listenPort);
 					return;
 				}
-	
+
 	// otherwise address is unspecified
 	m_tcpPublic = bi::tcp::endpoint(bi::address(), m_listenPort);
 }
@@ -346,7 +350,7 @@ void Host::determinePublic(string const& _publicAddress, bool _upnp)
 void Host::runAcceptor()
 {
 	assert(m_listenPort > 0);
-	
+
 	if (m_run && !m_accepting)
 	{
 		clog(NetConnect) << "Listening on local port " << m_listenPort << " (public: " << m_tcpPublic << ")";
@@ -367,17 +371,16 @@ void Host::runAcceptor()
 		// It's possible for an accepted connection to return an error in which
 		// case the socket may be open and must be closed to prevent asio from
 		// processing socket events after socket is deallocated.
-		
+
 		bi::tcp::socket *s = new bi::tcp::socket(m_ioService);
 		m_tcp4Acceptor.async_accept(*s, [=](boost::system::error_code ec)
 		{
-			// if no error code, doHandshake takes ownership
+			// if no error code
 			bool success = false;
 			if (!ec)
 			{
 				try
 				{
-					// doHandshake takes ownersihp of *s via std::move
 					// incoming connection; we don't yet know nodeid
 					auto handshake = make_shared<RLPXHandshake>(this, s);
 					handshake->start();
@@ -392,7 +395,7 @@ void Host::runAcceptor()
 					clog(NetWarn) << "ERROR: " << _e.what();
 				}
 			}
-			
+
 			// asio doesn't close socket on error
 			if (!success)
 			{
@@ -406,7 +409,6 @@ void Host::runAcceptor()
 			}
 
 			m_accepting = false;
-			
 			if (ec.value() < 1)
 				runAcceptor();
 		});
@@ -427,16 +429,16 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 		this_thread::sleep_for(chrono::milliseconds(50));
 	if (!m_run)
 		return;
-	
+
 	if (_tcpPeerPort < 30300 || _tcpPeerPort > 30305)
 		cwarn << "Non-standard port being recorded: " << _tcpPeerPort;
-	
+
 	if (_tcpPeerPort >= /*49152*/32768)
 	{
 		cwarn << "Private port being recorded - setting to 0";
 		_tcpPeerPort = 0;
 	}
-	
+
 	boost::system::error_code ec;
 	bi::address addr = bi::address::from_string(_addr, ec);
 	if (ec)
@@ -463,20 +465,20 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 			this_thread::sleep_for(chrono::milliseconds(50));
 	if (!m_run)
 		return;
-	
+
 	if (havePeerSession(_p->id))
 	{
 		clog(NetWarn) << "Aborted connect. Node already connected.";
 		return;
 	}
-	
+
 	if (!m_nodeTable->haveNode(_p->id))
 	{
 		clog(NetWarn) << "Aborted connect. Node not in node table.";
 		m_nodeTable->addNode(*_p.get());
 		return;
 	}
-	
+
 	// prevent concurrently connecting to a node
 	Peer *nptr = _p.get();
 	{
@@ -485,7 +487,7 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 			return;
 		m_pendingPeerConns.insert(nptr);
 	}
-	
+
 	clog(NetConnect) << "Attempting connection to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "from" << id().abridged();
 	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
 	s->async_connect(_p->peerEndpoint(), [=](boost::system::error_code const& ec)
@@ -539,22 +541,22 @@ void Host::run(boost::system::error_code const&)
 	{
 		// reset NodeTable
 		m_nodeTable.reset();
-		
+
 		// stopping io service allows running manual network operations for shutdown
 		// and also stops blocking worker thread, allowing worker thread to exit
 		m_ioService.stop();
-		
+
 		// resetting timer signals network that nothing else can be scheduled to run
 		m_timer.reset();
 		return;
 	}
-	
+
 	m_nodeTable->processEvents();
-	
+
 	for (auto p: m_sessions)
 		if (auto pp = p.second.lock())
 			pp->serviceNodesRequest();
-	
+
 //	keepAlivePeers();
 //	disconnectLatePeers();
 
@@ -568,15 +570,15 @@ void Host::run(boost::system::error_code const&)
 				connect(p.second);
 				break;
 			}
-	
+
 	if (c < m_idealPeerCount)
 		m_nodeTable->discover();
-	
+
 	auto runcb = [this](boost::system::error_code const& error) { run(error); };
 	m_timer->expires_from_now(boost::posix_time::milliseconds(c_timerInterval));
 	m_timer->async_wait(runcb);
 }
-			
+
 void Host::startedWorking()
 {
 	asserts(!m_timer);
@@ -590,33 +592,33 @@ void Host::startedWorking()
 		m_timer.reset(new boost::asio::deadline_timer(m_ioService));
 		m_run = true;
 	}
-	
+
 	// try to open acceptor (todo: ipv6)
 	m_listenPort = Network::tcp4Listen(m_tcp4Acceptor, m_netPrefs.listenPort);
-	
+
 	// start capability threads
 	for (auto const& h: m_capabilities)
 		h.second->onStarting();
-	
+
 	// determine public IP, but only if we're able to listen for connections
 	// todo: GUI when listen is unavailable in UI
 	if (m_listenPort)
 	{
 		determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
-		
+
 		if (m_listenPort > 0)
 			runAcceptor();
 	}
 	else
 		clog(NetNote) << "p2p.start.notice id:" << id().abridged() << "Listen port is invalid or unavailable. Node Table using default port (30303).";
-	
+
 	// TODO: add m_tcpPublic endpoint; sort out endpoint stuff for nodetable
 	m_nodeTable.reset(new NodeTable(m_ioService, m_alias, m_listenPort > 0 ? m_listenPort : 30303));
 	m_nodeTable->setEventHandler(new HostNodeTableHandler(*this));
 	restoreNetwork(&m_restoreNetwork);
-	
+
 	clog(NetNote) << "p2p.started id:" << id().abridged();
-	
+
 	run(boost::system::error_code());
 }
 
@@ -630,7 +632,7 @@ void Host::keepAlivePeers()
 {
 	if (chrono::steady_clock::now() - c_keepAliveInterval < m_lastPing)
 		return;
-	
+
 	RecursiveGuard l(x_sessions);
 	for (auto p: m_sessions)
 		if (auto pp = p.second.lock())
@@ -665,7 +667,7 @@ bytes Host::saveNetwork() const
 				peers.push_back(*p.second);
 	}
 	peers.sort();
-	
+
 	RLPStream network;
 	int count = 0;
 	{
@@ -707,7 +709,7 @@ bytes Host::saveNetwork() const
 			count++;
 		}
 	}
-	
+
 	RLPStream ret(3);
 	ret << 1 << m_alias.secret();
 	ret.appendList(count).appendRaw(network.out(), count);
@@ -719,7 +721,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 	// nodes can only be added if network is added
 	if (!isStarted())
 		BOOST_THROW_EXCEPTION(NetworkStartRequired());
-	
+
 	RecursiveGuard l(x_sessions);
 	RLP r(_b);
 	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<int>() == 1)

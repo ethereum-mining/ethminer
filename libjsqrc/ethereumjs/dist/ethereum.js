@@ -22,7 +22,6 @@ require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof requ
  * @date 2014
  */
 
-var web3 = require('./web3'); 
 var utils = require('./utils');
 var types = require('./types');
 var c = require('./const');
@@ -41,11 +40,11 @@ var arrayType = function (type) {
 var dynamicTypeBytes = function (type, value) {
     // TODO: decide what to do with array of strings
     if (arrayType(type) || type === 'string')    // only string itself that is dynamic; stringX is static length.
-        return f.formatInputInt(value.length); 
+        return f.formatInputInt(value.length);
     return "";
 };
 
-var inputTypes = types.inputTypes(); 
+var inputTypes = types.inputTypes();
 
 /// Formats input params to bytes
 /// @param abi contract method inputs
@@ -53,14 +52,16 @@ var inputTypes = types.inputTypes();
 /// @returns bytes representation of input params
 var formatInput = function (inputs, params) {
     var bytes = "";
-    var padding = c.ETH_PADDING * 2;
+    var toAppendConstant = "";
+    var toAppendArrayContent = "";
 
-    /// first we iterate in search for dynamic 
+    /// first we iterate in search for dynamic
     inputs.forEach(function (input, index) {
         bytes += dynamicTypeBytes(input.type, params[index]);
     });
 
     inputs.forEach(function (input, i) {
+        /*jshint maxcomplexity:5 */
         var typeMatch = false;
         for (var j = 0; j < inputTypes.length && !typeMatch; j++) {
             typeMatch = inputTypes[j].type(inputs[i].type, params[i]);
@@ -70,17 +71,19 @@ var formatInput = function (inputs, params) {
         }
 
         var formatter = inputTypes[j - 1].format;
-        var toAppend = "";
 
         if (arrayType(inputs[i].type))
-            toAppend = params[i].reduce(function (acc, curr) {
+            toAppendArrayContent += params[i].reduce(function (acc, curr) {
                 return acc + formatter(curr);
             }, "");
+        else if (inputs[i].type === 'string')
+            toAppendArrayContent += formatter(params[i]);
         else
-            toAppend = formatter(params[i]);
-
-        bytes += toAppend; 
+            toAppendConstant += formatter(params[i]);
     });
+
+    bytes += toAppendConstant + toAppendArrayContent;
+
     return bytes;
 };
 
@@ -90,14 +93,14 @@ var dynamicBytesLength = function (type) {
     return 0;
 };
 
-var outputTypes = types.outputTypes(); 
+var outputTypes = types.outputTypes();
 
 /// Formats output bytes back to param list
 /// @param contract abi method outputs
-/// @param bytes representtion of output 
-/// @returns array of output params 
+/// @param bytes representtion of output
+/// @returns array of output params
 var formatOutput = function (outs, output) {
-    
+
     output = output.slice(2);
     var result = [];
     var padding = c.ETH_PADDING * 2;
@@ -105,11 +108,12 @@ var formatOutput = function (outs, output) {
     var dynamicPartLength = outs.reduce(function (acc, curr) {
         return acc + dynamicBytesLength(curr.type);
     }, 0);
-    
+
     var dynamicPart = output.slice(0, dynamicPartLength);
     output = output.slice(dynamicPartLength);
 
     outs.forEach(function (out, i) {
+        /*jshint maxcomplexity:6 */
         var typeMatch = false;
         for (var j = 0; j < outputTypes.length && !typeMatch; j++) {
             typeMatch = outputTypes[j].type(outs[i].type);
@@ -125,13 +129,13 @@ var formatOutput = function (outs, output) {
             dynamicPart = dynamicPart.slice(padding);
             var array = [];
             for (var k = 0; k < size; k++) {
-                array.push(formatter(output.slice(0, padding))); 
+                array.push(formatter(output.slice(0, padding)));
                 output = output.slice(padding);
             }
             result.push(array);
         }
         else if (types.prefixedType('string')(outs[i].type)) {
-            dynamicPart = dynamicPart.slice(padding); 
+            dynamicPart = dynamicPart.slice(padding);
             result.push(formatter(output.slice(0, padding)));
             output = output.slice(padding);
         } else {
@@ -149,14 +153,14 @@ var formatOutput = function (outs, output) {
 var inputParser = function (json) {
     var parser = {};
     json.forEach(function (method) {
-        var displayName = utils.extractDisplayName(method.name); 
+        var displayName = utils.extractDisplayName(method.name);
         var typeName = utils.extractTypeName(method.name);
 
         var impl = function () {
             var params = Array.prototype.slice.call(arguments);
             return formatInput(method.inputs, params);
         };
-       
+
         if (parser[displayName] === undefined) {
             parser[displayName] = impl;
         }
@@ -173,7 +177,7 @@ var outputParser = function (json) {
     var parser = {};
     json.forEach(function (method) {
 
-        var displayName = utils.extractDisplayName(method.name); 
+        var displayName = utils.extractDisplayName(method.name);
         var typeName = utils.extractTypeName(method.name);
 
         var impl = function (output) {
@@ -190,27 +194,14 @@ var outputParser = function (json) {
     return parser;
 };
 
-/// @param function/event name for which we want to get signature
-/// @returns signature of function/event with given name
-var signatureFromAscii = function (name) {
-    return web3.sha3(web3.fromAscii(name)).slice(0, 2 + c.ETH_SIGNATURE_LENGTH * 2);
-};
-
-var eventSignatureFromAscii = function (name) {
-    return web3.sha3(web3.fromAscii(name));
-};
-
 module.exports = {
     inputParser: inputParser,
     outputParser: outputParser,
     formatInput: formatInput,
-    formatOutput: formatOutput,
-    signatureFromAscii: signatureFromAscii,
-    eventSignatureFromAscii: eventSignatureFromAscii
+    formatOutput: formatOutput
 };
 
-
-},{"./const":2,"./formatters":8,"./types":14,"./utils":15,"./web3":17}],2:[function(require,module,exports){
+},{"./const":2,"./formatters":8,"./types":15,"./utils":16}],2:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -296,7 +287,7 @@ var web3 = require('./web3');
 var abi = require('./abi');
 var utils = require('./utils');
 var eventImpl = require('./event');
-var filter = require('./filter');
+var signature = require('./signature');
 
 var exportNatspecGlobals = function (vars) {
     // it's used byt natspec.js
@@ -342,13 +333,14 @@ var addFunctionsToContract = function (contract, desc, address) {
         var typeName = utils.extractTypeName(method.name);
 
         var impl = function () {
+            /*jshint maxcomplexity:7 */
             var params = Array.prototype.slice.call(arguments);
-            var signature = abi.signatureFromAscii(method.name);
+            var sign = signature.functionSignatureFromAscii(method.name);
             var parsed = inputParser[displayName][typeName].apply(null, params);
 
             var options = contract._options || {};
             options.to = address;
-            options.data = signature + parsed;
+            options.data = sign + parsed;
             
             var isTransact = contract._isTransact === true || (contract._isTransact !== false && !method.constant);
             var collapse = options.collapse !== false;
@@ -402,7 +394,7 @@ var addEventRelatedPropertiesToContract = function (contract, desc, address) {
     Object.defineProperty(contract, 'topic', {
         get: function() {
             return utils.filterEvents(desc).map(function (e) {
-                return abi.eventSignatureFromAscii(e.name);
+                return signature.eventSignatureFromAscii(e.name);
             });
         }
     });
@@ -415,8 +407,8 @@ var addEventsToContract = function (contract, desc, address) {
 
         var impl = function () {
             var params = Array.prototype.slice.call(arguments);
-            var signature = abi.eventSignatureFromAscii(e.name);
-            var event = eventImpl.inputParser(address, signature, e);
+            var sign = signature.eventSignatureFromAscii(e.name);
+            var event = eventImpl.inputParser(address, sign, e);
             var o = event.apply(null, params);
             var outputFormatter = function (data) {
                 var parser = eventImpl.outputParser(e);
@@ -489,7 +481,7 @@ var contract = function (address, desc) {
 module.exports = contract;
 
 
-},{"./abi":1,"./event":6,"./filter":7,"./utils":15,"./web3":17}],4:[function(require,module,exports){
+},{"./abi":1,"./event":6,"./signature":14,"./utils":16,"./web3":18}],4:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -638,6 +630,7 @@ module.exports = {
 
 var abi = require('./abi');
 var utils = require('./utils');
+var signature = require('./signature');
 
 /// filter inputs array && returns only indexed (or not) inputs
 /// @param inputs array
@@ -676,14 +669,14 @@ var indexedParamsToTopics = function (event, indexed) {
     });
 };
 
-var inputParser = function (address, signature, event) {
+var inputParser = function (address, sign, event) {
     
     // valid options are 'earliest', 'latest', 'offset' and 'max', as defined for 'eth.watch'
     return function (indexed, options) {
         var o = options || {};
         o.address = address;
         o.topic = [];
-        o.topic.push(signature);
+        o.topic.push(sign);
         if (indexed) {
             o.topic = o.topic.concat(indexedParamsToTopics(event, indexed));
         }
@@ -697,9 +690,9 @@ var getArgumentsObject = function (inputs, indexed, notIndexed) {
     return inputs.reduce(function (acc, current) {
         var value;
         if (current.indexed)
-            value = indexed.splice(0, 1)[0];
+            value = indexedCopy.splice(0, 1)[0];
         else
-            value = notIndexed.splice(0, 1)[0];
+            value = notIndexedCopy.splice(0, 1)[0];
 
         acc[current.name] = value;
         return acc;
@@ -712,6 +705,7 @@ var outputParser = function (event) {
         var result = {
             event: utils.extractDisplayName(event.name),
             number: output.number,
+            hash: output.hash,
             args: {}
         };
 
@@ -735,8 +729,8 @@ var outputParser = function (event) {
 
 var getMatchingEvent = function (events, payload) {
     for (var i = 0; i < events.length; i++) {
-        var signature = abi.eventSignatureFromAscii(events[i].name); 
-        if (signature === payload.topic[0]) {
+        var sign = signature.eventSignatureFromAscii(events[i].name); 
+        if (sign === payload.topic[0]) {
             return events[i];
         }
     }
@@ -751,7 +745,7 @@ module.exports = {
 };
 
 
-},{"./abi":1,"./utils":15}],7:[function(require,module,exports){
+},{"./abi":1,"./signature":14,"./utils":16}],7:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -847,7 +841,7 @@ var filter = function(options, implementation, formatter) {
         return implementation.getMessages(filterId);
     };
     
-    var uninstall = function (callback) {
+    var uninstall = function () {
         implementation.stopPolling(filterId);
         implementation.uninstallFilter(filterId);
         callbacks = [];
@@ -909,6 +903,7 @@ var padLeft = function (string, chars, sign) {
 /// If the value is floating point, round it down
 /// @returns right-aligned byte representation of int
 var formatInputInt = function (value) {
+    /*jshint maxcomplexity:7 */
     var padding = c.ETH_PADDING * 2;
     if (value instanceof BigNumber || typeof value === 'number') {
         if (typeof value === 'number')
@@ -1022,7 +1017,7 @@ module.exports = {
 };
 
 
-},{"./const":2,"./utils":15}],9:[function(require,module,exports){
+},{"./const":2,"./utils":16}],9:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -1210,6 +1205,7 @@ var c = require('./const');
  */
 var requestManager = function() {
     var polls = [];
+    var timeout = null;
     var provider;
 
     var send = function (data) {
@@ -1234,9 +1230,11 @@ var requestManager = function() {
         provider = p;
     };
 
+    /*jshint maxparams:4 */
     var startPolling = function (data, pollId, callback, uninstall) {
         polls.push({data: data, id: pollId, callback: callback, uninstall: uninstall});
     };
+    /*jshint maxparams:3 */
 
     var stopPolling = function (pollId) {
         for (var i = polls.length; i--;) {
@@ -1252,6 +1250,12 @@ var requestManager = function() {
             poll.uninstall(poll.id); 
         });
         polls = [];
+
+        if (timeout) {
+            clearTimeout(timeout);
+            timeout = null;
+        }
+        poll();
     };
 
     var poll = function () {
@@ -1262,7 +1266,7 @@ var requestManager = function() {
             }
             data.callback(result);
         });
-        setTimeout(poll, c.ETH_POLLING_TIMEOUT);
+        timeout = setTimeout(poll, c.ETH_POLLING_TIMEOUT);
     };
     
     poll();
@@ -1319,6 +1323,50 @@ module.exports = {
 
 
 },{}],14:[function(require,module,exports){
+/*
+    This file is part of ethereum.js.
+
+    ethereum.js is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    ethereum.js is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/** @file signature.js
+ * @authors:
+ *   Marek Kotewicz <marek@ethdev.com>
+ * @date 2015
+ */
+
+var web3 = require('./web3'); 
+var c = require('./const');
+
+/// @param function name for which we want to get signature
+/// @returns signature of function with given name
+var functionSignatureFromAscii = function (name) {
+    return web3.sha3(web3.fromAscii(name)).slice(0, 2 + c.ETH_SIGNATURE_LENGTH * 2);
+};
+
+/// @param event name for which we want to get signature
+/// @returns signature of event with given name
+var eventSignatureFromAscii = function (name) {
+    return web3.sha3(web3.fromAscii(name));
+};
+
+module.exports = {
+    functionSignatureFromAscii: functionSignatureFromAscii,
+    eventSignatureFromAscii: eventSignatureFromAscii
+};
+
+
+},{"./const":2,"./web3":18}],15:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -1399,7 +1447,7 @@ module.exports = {
 };
 
 
-},{"./formatters":8}],15:[function(require,module,exports){
+},{"./formatters":8}],16:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -1509,6 +1557,7 @@ var filterEvents = function (json) {
 /// TODO: use BigNumber.js to parse int
 /// TODO: add tests for it!
 var toEth = function (str) {
+     /*jshint maxcomplexity:7 */
     var val = typeof str === "string" ? str.indexOf('0x') === 0 ? parseInt(str.substr(2), 16) : parseInt(str) : str;
     var unit = 0;
     var units = c.ETH_UNITS;
@@ -1543,7 +1592,7 @@ module.exports = {
 };
 
 
-},{"./const":2}],16:[function(require,module,exports){
+},{"./const":2}],17:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -1594,7 +1643,7 @@ module.exports = {
 };
 
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 /*
     This file is part of ethereum.js.
 
@@ -1677,12 +1726,14 @@ var setupProperties = function (obj, properties) {
     });
 };
 
+/*jshint maxparams:4 */
 var startPolling = function (method, id, callback, uninstall) {
     web3.manager.startPolling({
         method: method, 
         params: [id]
     }, id,  callback, uninstall); 
 };
+/*jshint maxparams:3 */
 
 var stopPolling = function (id) {
     web3.manager.stopPolling(id);
@@ -1740,12 +1791,14 @@ var web3 = {
         /// @param indexed is optional, this is an object with optional event indexed params
         /// @param options is optional, this is an object with optional event options ('max'...)
         /// TODO: fix it, 4 params? no way
+        /*jshint maxparams:4 */
         watch: function (fil, indexed, options, formatter) {
             if (fil._isEvent) {
                 return fil(indexed, options);
             }
             return filter(fil, ethWatch, formatter);
         }
+        /*jshint maxparams:3 */
     },
 
     /// db object prototype
@@ -1781,7 +1834,7 @@ setupMethods(shhWatch, watches.shh());
 module.exports = web3;
 
 
-},{"./db":4,"./eth":5,"./filter":7,"./requestmanager":12,"./shh":13,"./utils":15,"./watches":16}],"web3":[function(require,module,exports){
+},{"./db":4,"./eth":5,"./filter":7,"./requestmanager":12,"./shh":13,"./utils":16,"./watches":17}],"web3":[function(require,module,exports){
 var web3 = require('./lib/web3');
 web3.providers.HttpSyncProvider = require('./lib/httpsync');
 web3.providers.QtSyncProvider = require('./lib/qtsync');
@@ -1790,7 +1843,7 @@ web3.abi = require('./lib/abi');
 
 module.exports = web3;
 
-},{"./lib/abi":1,"./lib/contract":3,"./lib/httpsync":9,"./lib/qtsync":11,"./lib/web3":17}]},{},["web3"])
+},{"./lib/abi":1,"./lib/contract":3,"./lib/httpsync":9,"./lib/qtsync":11,"./lib/web3":18}]},{},["web3"])
 
 
 //# sourceMappingURL=ethereum.js.map

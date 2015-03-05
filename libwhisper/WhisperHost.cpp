@@ -58,7 +58,7 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 {
 	cnote << this << ": inject: " << _m.expiry() << _m.ttl() << _m.topic() << toHex(_m.data());
 
-	if (_m.expiry() <= time(0))
+	if (_m.expiry() <= (unsigned)time(0))
 		return;
 
 	auto h = _m.sha3();
@@ -171,7 +171,7 @@ void WhisperHost::cleanup()
 {
 	// remove old messages.
 	// should be called every now and again.
-	auto now = time(0);
+	unsigned now = (unsigned)time(0);
 	WriteGuard l(x_messages);
 	for (auto it = m_expiryQueue.begin(); it != m_expiryQueue.end() && it->first <= now; it = m_expiryQueue.erase(it))
 		m_messages.erase(it->second);

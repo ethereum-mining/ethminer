@@ -27,7 +27,7 @@
 #ifndef DEBUG_BREAK_H
 #define DEBUG_BREAK_H
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__MINGW32__)
 
 #define debug_break __debugbreak
 

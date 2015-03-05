@@ -20,6 +20,7 @@
  */
 
 #include <QObject>
+
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/Scanner.h>
