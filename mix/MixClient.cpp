@@ -493,6 +493,16 @@ unsigned MixClient::uncleCount(h256 _blockHash) const
 	return b[2].itemCount();
 }
 
+Transactions MixClient::transactions(h256 _blockHash) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	Transactions res;
+	for (unsigned i = 0; i < b[1].itemCount(); i++)
+		res.emplace_back(b[1][i].data(), CheckSignature::Range);
+	return res;
+}
+
 unsigned MixClient::number() const
 {
 	return bc().number();
