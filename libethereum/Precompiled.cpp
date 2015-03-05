@@ -23,7 +23,7 @@
 
 #include <libdevcrypto/SHA3.h>
 #include <libdevcrypto/Common.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libethcore/Params.h>
 using namespace std;
 using namespace dev;
