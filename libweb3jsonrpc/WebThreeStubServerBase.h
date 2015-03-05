@@ -83,21 +83,21 @@ public:
 	virtual std::string eth_getTransactionCount(std::string const& _address, std::string const& _blockNumber);
 	virtual std::string eth_getBlockTransactionCountByHash(std::string const& _blockHash);
 	virtual std::string eth_getBlockTransactionCountByNumber(std::string const& _blockNumber);
-	
-	
-	virtual Json::Value eth_blockByHash(std::string const& _hash);
-	virtual Json::Value eth_blockByNumber(int _number);
+	virtual std::string eth_getUncleCountByBlockHash(std::string const& _blockHash);
+	virtual std::string eth_getUncleCountByBlockNumber(std::string const& _blockNumber);
+	virtual std::string eth_getData(std::string const& _address, std::string const& _blockNumber);
+	virtual std::string eth_sendTransaction(Json::Value const& _json);
 	virtual std::string eth_call(Json::Value const& _json);
+	virtual bool eth_flush();
+	virtual Json::Value eth_getBlockByHash(std::string const& _blockHash);
+	virtual Json::Value eth_getBlockByNumber(std::string const& _blockNumber);
+	
+	
+	
 	virtual Json::Value eth_changed(int _id);
-	virtual std::string eth_codeAt(std::string const& _address);
-
 	virtual Json::Value eth_compilers();
 
-	virtual double eth_uncleCountByHash(std::string const& _hash);
-	virtual double eth_uncleCountByNumber(int _number);
-
 	virtual Json::Value eth_filterLogs(int _id);
-	virtual bool eth_flush();
 	virtual Json::Value eth_logs(Json::Value const& _json);
 
 
@@ -106,7 +106,6 @@ public:
 	virtual std::string eth_lll(std::string const& _s);
 	virtual std::string eth_serpent(std::string const& _s);
 	virtual std::string eth_solidity(std::string const& _code);
-	virtual std::string eth_transact(Json::Value const& _json);
 	virtual Json::Value eth_transactionByHash(std::string const& _hash, int _i);
 	virtual Json::Value eth_transactionByNumber(int  _number, int _i);
 	virtual Json::Value eth_uncleByHash(std::string const& _hash, int _i);
