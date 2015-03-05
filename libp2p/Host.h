@@ -40,6 +40,7 @@
 #include "HostCapability.h"
 #include "Network.h"
 #include "Peer.h"
+#include "RLPxHandshake.h"
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = ba::ip;
@@ -69,8 +70,7 @@ private:
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
  *
- * @todo handshake: gracefully disconnect peer if peer already connected
- * @todo abstract socket -> IPConnection
+ * @todo cleanup startPeerSession
  * @todo determinePublic: ipv6, udp
  * @todo handle conflict if addNode/requireNode called and Node already exists w/conflicting tcp or udp port
  * @todo per-session keepalive/ping instead of broadcast; set ping-timeout via median-latency
@@ -151,7 +151,7 @@ public:
 	NodeId id() const { return m_alias.pub(); }
 
 	/// Validates and starts peer session, taking ownership of _socket. Disconnects and returns false upon error.
-	bool startPeerSession(Public const& _id, RLP const& _hello, bi::tcp::socket *_socket);
+	bool startPeerSession(Public const& _id, RLP const& _hello, bi::tcp::socket* _socket, RLPXFrameIO* _io);
 
 protected:
 	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);

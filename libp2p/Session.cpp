@@ -37,9 +37,11 @@ using namespace dev::p2p;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info):
+Session::Session(Host* _s, RLPXFrameIO _io, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info):
 	m_server(_s),
-	m_socket(move(_socket)),
+#warning fixme
+	m_socket(move(*_io.m_socket)),
+	m_io(move(_io)),
 	m_peer(_n),
 	m_info(_info),
 	m_ping(chrono::steady_clock::time_point::max())
