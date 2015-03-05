@@ -307,7 +307,13 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
 		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 3), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
 		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 4), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 4), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
 		m_db->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
+		RLP blockRLP(_block);
+		TransactionAddress ta;
+		ta.blockHash = newHash;
+		for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
+			m_extrasDB->Put(m_writeOptions, toSlice(sha3(blockRLP[1][ta.index].data()), 5), (ldb::Slice)dev::ref(ta.rlp()));
 
 #if ETH_PARANOIA
 		checkConsistency();
