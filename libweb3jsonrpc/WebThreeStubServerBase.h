@@ -79,10 +79,12 @@ public:
 	virtual std::string eth_blockNumber();
 	virtual std::string eth_getBalance(std::string const& _address, std::string const& _blockNumber);
 	virtual Json::Value eth_getStorage(std::string const& _address, std::string const& _blockNumber);
+	virtual std::string eth_getStorageAt(std::string const& _address, std::string const& _position, std::string const& _blockNumber);
+	virtual std::string eth_getTransactionCount(std::string const& _address, std::string const& _blockNumber);
+	virtual std::string eth_getBlockTransactionCountByHash(std::string const& _blockHash);
+	virtual std::string eth_getBlockTransactionCountByNumber(std::string const& _blockNumber);
 	
 	
-	virtual std::string eth_stateAt(std::string const& _address, std::string const& _storage);
-
 	virtual Json::Value eth_blockByHash(std::string const& _hash);
 	virtual Json::Value eth_blockByNumber(int _number);
 	virtual std::string eth_call(Json::Value const& _json);
@@ -90,9 +92,7 @@ public:
 	virtual std::string eth_codeAt(std::string const& _address);
 
 	virtual Json::Value eth_compilers();
-	virtual double eth_countAt(std::string const& _address);
-	virtual double eth_transactionCountByHash(std::string const& _hash);
-	virtual double eth_transactionCountByNumber(int _number);
+
 	virtual double eth_uncleCountByHash(std::string const& _hash);
 	virtual double eth_uncleCountByNumber(int _number);
 

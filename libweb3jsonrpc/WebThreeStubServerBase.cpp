@@ -307,7 +307,7 @@ std::string WebThreeStubServerBase::eth_getBalance(string const& _address, strin
 }
 
 
-Json::Value WebThreeStubServerBase::eth_getStorage(string const& _address, std::string const& _blockNumber)
+Json::Value WebThreeStubServerBase::eth_getStorage(string const& _address, string const& _blockNumber)
 {
 	Address address;
 	int number;
@@ -324,6 +324,77 @@ Json::Value WebThreeStubServerBase::eth_getStorage(string const& _address, std::
 	
 	//TODO: fix this naming !
 	return toJson(client()->storageAt(address, number));
+}
+
+std::string WebThreeStubServerBase::eth_getStorageAt(string const& _address, string const& _position, string const& _blockNumber)
+{
+	Address address;
+	u256 position;
+	int number;
+	
+	try
+	{
+		address = jsToAddress(_address);
+		position = jsToU256(_position);
+		number = jsToInt(_blockNumber);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	//TODO: fix this naming !
+	return toJS(client()->stateAt(address, position, number));
+}
+
+string WebThreeStubServerBase::eth_getTransactionCount(string const& _address, string const& _blockNumber)
+{
+	Address address;
+	int number;
+	
+	try
+	{
+		address = jsToAddress(_address);
+		number = jsToInt(_blockNumber);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return toJS(client()->countAt(address, number));
+}
+
+string WebThreeStubServerBase::eth_getBlockTransactionCountByHash(std::string const& _blockHash)
+{
+	h256 hash;
+	try
+	{
+		hash = jsToFixed<32>(_blockHash);
+	}
+	catch (...)
+	{
+			throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return toJS(client()->transactionCount(hash));
+}
+
+
+string WebThreeStubServerBase::eth_getBlockTransactionCountByNumber(string const& _blockNumber)
+{
+	int number;
+	
+	try
+	{
+		number = jsToInt(_blockNumber);
+	}
+	catch (...)
+	{
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+	}
+	
+	return toJS(client()->transactionCount(client()->hashFromNumber(number)));
 }
 
 std::string WebThreeStubServerBase::shh_addToGroup(std::string const& _group, std::string const& _who)
@@ -423,21 +494,6 @@ Json::Value WebThreeStubServerBase::eth_changed(int _id)
 std::string WebThreeStubServerBase::eth_codeAt(string const& _address)
 {
 	return jsFromBinary(client()->codeAt(jsToAddress(_address), client()->getDefault()));
-}
-
-double WebThreeStubServerBase::eth_countAt(string const& _address)
-{
-	return (double)(uint64_t)client()->countAt(jsToAddress(_address), client()->getDefault());
-}
-
-double WebThreeStubServerBase::eth_transactionCountByHash(std::string const& _hash)
-{
-	return client()->transactionCount(jsToFixed<32>(_hash));
-}
-
-double WebThreeStubServerBase::eth_transactionCountByNumber(int _number)
-{
-	return client()->transactionCount(client()->hashFromNumber(_number));
 }
 
 double WebThreeStubServerBase::eth_uncleCountByHash(std::string const& _hash)
@@ -690,11 +746,6 @@ bool WebThreeStubServerBase::shh_uninstallFilter(int _id)
 {
 	face()->uninstallWatch(_id);
 	return true;
-}
-
-std::string WebThreeStubServerBase::eth_stateAt(string const& _address, string const& _storage)
-{
-	return toJS(client()->stateAt(jsToAddress(_address), jsToU256(_storage), client()->getDefault()));
 }
 
 std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
