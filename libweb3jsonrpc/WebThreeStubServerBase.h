@@ -100,41 +100,32 @@ public:
 	virtual std::string eth_compileLLL(std::string const& _s);
 	virtual std::string eth_compileSerpent(std::string const& _s);
 	virtual std::string eth_compileSolidity(std::string const& _code);
-	
-	
-	virtual Json::Value eth_changed(int _id);
-	virtual Json::Value eth_filterLogs(int _id);
-	virtual Json::Value eth_logs(Json::Value const& _json);
-
-
-	virtual int eth_newFilter(Json::Value const& _json);
-	virtual int eth_newFilterString(std::string const& _filter);
-
-
-	virtual bool eth_uninstallFilter(int _id);
-
+	virtual std::string eth_newFilter(Json::Value const& _json);
+	virtual std::string eth_newBlockFilter(std::string const& _filter);
+	virtual bool eth_uninstallFilter(std::string const& _filterId);
+	virtual Json::Value eth_getFilterChanges(std::string const& _filterId);
+	virtual Json::Value eth_getFilterLogs(std::string const& _filterId);
+	virtual Json::Value eth_getLogs(Json::Value const& _json);
 	virtual Json::Value eth_getWork();
 	virtual bool eth_submitWork(std::string const& _nonce);
-
-	virtual int eth_register(std::string const& _address);
-	virtual bool eth_unregister(int _id);
-	virtual Json::Value eth_queuedTransactions(int _id);
-
-	virtual std::string db_get(std::string const& _name, std::string const& _key);
-	virtual std::string db_getString(std::string const& _name, std::string const& _key);
+	virtual std::string eth_register(std::string const& _address);
+	virtual bool eth_unregister(std::string const& _accountId);
+	virtual Json::Value eth_queuedTransactions(std::string const& _accountId);
+	
 	virtual bool db_put(std::string const& _name, std::string const& _key, std::string const& _value);
-	virtual bool db_putString(std::string const& _name, std::string const& _key, std::string const& _value);
+	virtual std::string db_get(std::string const& _name, std::string const& _key);
 
-	virtual std::string shh_addToGroup(std::string const& _group, std::string const& _who);
-	virtual Json::Value shh_changed(int _id);
-	virtual Json::Value shh_getMessages(int _id);
-	virtual bool shh_haveIdentity(std::string const& _id);
-	virtual int shh_newFilter(Json::Value const& _json);
-	virtual std::string shh_newGroup(std::string const& _id, std::string const& _who);
-	virtual std::string shh_newIdentity();
 	virtual bool shh_post(Json::Value const& _json);
-	virtual bool shh_uninstallFilter(int _id);
-
+	virtual std::string shh_newIdentity();
+	virtual bool shh_hasIdentity(std::string const& _identity);
+	virtual std::string shh_newGroup(std::string const& _id, std::string const& _who);
+	virtual std::string shh_addToGroup(std::string const& _group, std::string const& _who);
+	virtual std::string shh_newFilter(Json::Value const& _json);
+	virtual bool shh_uninstallFilter(std::string const& _filterId);
+	
+	virtual Json::Value shh_changed(std::string const& _filterId);
+	virtual Json::Value shh_getMessages(std::string const& _filterId);
+	
 	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
 	void setIdentities(std::vector<dev::KeyPair> const& _ids);
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
