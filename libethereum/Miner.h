@@ -130,6 +130,9 @@ public:
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory() { Guard l(x_mineInfo); auto ret = m_mineHistory; m_mineHistory.clear(); return ret; }
 
+	/// @returns the state on which we mined.
+	State const& state() const { return m_mineState; }
+
 private:
 	/// Do some work on the mining.
 	virtual void doWork();
