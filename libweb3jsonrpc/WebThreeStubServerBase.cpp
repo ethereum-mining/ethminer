@@ -57,9 +57,9 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 	res["stateRoot"] = toJS(_bi.stateRoot);
 	res["transactionsRoot"] = toJS(_bi.transactionsRoot);
 	res["difficulty"] = toJS(_bi.difficulty);
-	res["number"] = (int)_bi.number;
-	res["gasLimit"] = (int)_bi.gasLimit;
-	res["timestamp"] = (int)_bi.timestamp;
+	res["number"] = toJS(_bi.number);
+	res["gasLimit"] = toJS(_bi.gasLimit);
+	res["timestamp"] = toJS(_bi.timestamp);
 	res["extraData"] = jsFromBinary(_bi.extraData);
 	res["nonce"] = toJS(_bi.nonce);
 	return res;
@@ -72,7 +72,7 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	res["input"] = jsFromBinary(_t.data());
 	res["to"] = toJS(_t.receiveAddress());
 	res["from"] = toJS(_t.safeSender());
-	res["gas"] = (int)_t.gas();
+	res["gas"] = toJS(_t.gas());
 	res["gasPrice"] = toJS(_t.gasPrice());
 	res["nonce"] = toJS(_t.nonce());
 	res["value"] = toJS(_t.value());
@@ -136,34 +136,33 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 	if (!_json.isObject() || _json.empty())
 		return filter;
 
-	if (_json["earliest"].isInt())
-		filter.withEarliest(_json["earliest"].asInt());
-	if (_json["latest"].isInt())
-		filter.withLatest(_json["lastest"].asInt());
-	if (_json["max"].isInt())
-		filter.withMax(_json["max"].asInt());
-	if (_json["skip"].isInt())
-		filter.withSkip(_json["skip"].asInt());
+	// check only !empty. it should throw exceptions if input params are incorrect
+	if (!_json["earliest"].empty())
+		filter.withEarliest(jsToInt(_json["earliest"].asString()));
+	if (!_json["latest"].empty())
+		filter.withLatest(jsToInt(_json["latest"].asString()));
+	if (!_json["max"].empty())
+		filter.withMax(jsToInt(_json["max"].asString()));
+	if (!_json["skip"].empty())
+		filter.withSkip(jsToInt(_json["skip"].asString()));
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
-		{
 			for (auto i : _json["address"])
-				if (i.isString())
-					filter.address(jsToAddress(i.asString()));
-		}
-		else if (_json["address"].isString())
+				filter.address(jsToAddress(i.asString()));
+		else
 			filter.address(jsToAddress(_json["address"].asString()));
 	}
-	if (!_json["topic"].empty() && _json["topic"].isArray())
+	if (!_json["topic"].empty())
 	{
 		unsigned i = 0;
 		for (auto t: _json["topic"])
 		{
+			// array in array?
 			if (t.isArray())
 				for (auto tt: t)
 					filter.topic(i, jsToFixed<32>(tt.asString()));
-			else if (t.isString())
+			else
 				filter.topic(i, jsToFixed<32>(t.asString()));
 			i++;
 		}
@@ -174,11 +173,11 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 static shh::Message toMessage(Json::Value const& _json)
 {
 	shh::Message ret;
-	if (_json["from"].isString())
+	if (!_json["from"].empty())
 		ret.setFrom(jsToPublic(_json["from"].asString()));
-	if (_json["to"].isString())
+	if (!_json["to"].empty())
 		ret.setTo(jsToPublic(_json["to"].asString()));
-	if (_json["payload"].isString())
+	if (!_json["payload"].empty())
 		ret.setPayload(jsToBytes(_json["payload"].asString()));
 	return ret;
 }
@@ -189,18 +188,17 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	unsigned workToProve = 50;
 	shh::BuildTopic bt;
 
-	if (_json["ttl"].isInt())
-		ttl = _json["ttl"].asInt();
-	if (_json["workToProve"].isInt())
-		workToProve = _json["workToProve"].asInt();
+	if (!_json["ttl"].empty())
+		ttl = jsToInt(_json["ttl"].asString());
+	if (!_json["workToProve"].empty())
+		workToProve = jsToInt(_json["workToProve"].asString());
 	if (!_json["topic"].empty())
 	{
 		if (_json["topic"].isString())
 			bt.shift(jsToBytes(_json["topic"].asString()));
-		else if (_json["topic"].isArray())
+		else
 			for (auto i: _json["topic"])
-				if (i.isString())
-					bt.shift(jsToBytes(i.asString()));
+				bt.shift(jsToBytes(i.asString()));
 	}
 	return _m.seal(_from, bt, ttl, workToProve);
 }
@@ -210,17 +208,16 @@ static pair<shh::FullTopic, Public> toWatch(Json::Value const& _json)
 	shh::BuildTopic bt;
 	Public to;
 
-	if (_json["to"].isString())
+	if (!_json["to"].empty())
 		to = jsToPublic(_json["to"].asString());
 
 	if (!_json["topic"].empty())
 	{
 		if (_json["topic"].isString())
 			bt.shift(jsToBytes(_json["topic"].asString()));
-		else if (_json["topic"].isArray())
+		else
 			for (auto i: _json["topic"])
-				if (i.isString())
-					bt.shift(jsToBytes(i.asString()));
+				bt.shift(jsToBytes(i.asString()));
 	}
 	return make_pair(bt, to);
 }
@@ -229,10 +226,10 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 {
 	Json::Value res;
 	res["hash"] = toJS(_h);
-	res["expiry"] = (int)_e.expiry();
-	res["sent"] = (int)_e.sent();
-	res["ttl"] = (int)_e.ttl();
-	res["workProved"] = (int)_e.workProved();
+	res["expiry"] = toJS(_e.expiry());
+	res["sent"] = toJS(_e.sent());
+	res["ttl"] = toJS(_e.ttl());
+	res["workProved"] = toJS(_e.workProved());
 	res["topic"] = Json::Value(Json::arrayValue);
 	for (auto const& t: _e.topic())
 		res["topic"].append(toJS(t));
@@ -465,26 +462,26 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 	if (!_json.isObject() || _json.empty())
 		return ret;
 	
-	if (_json["from"].isString())
+	if (!_json["from"].empty())
 		ret.from = jsToAddress(_json["from"].asString());
-	if (_json["to"].isString())
+	if (!_json["to"].empty())
 		ret.to = jsToAddress(_json["to"].asString());
 	else
 		ret.creation = true;
 	
-	if (_json["value"].isString())
+	if (!_json["value"].empty())
 		ret.value = jsToU256(_json["value"].asString());
 
-	if (_json["gas"].isString())
+	if (!_json["gas"].empty())
 		ret.gas = jsToU256(_json["gas"].asString());
 
-	if (_json["gasPrice"].isString())
+	if (!_json["gasPrice"].empty())
 		ret.gasPrice = jsToU256(_json["gasPrice"].asString());
 
-	if (_json["data"].isString())							// ethereum.js has preconstructed the data array
+	if (!_json["data"].empty())							// ethereum.js has preconstructed the data array
 		ret.data = jsToBytes(_json["data"].asString());
 	
-	if (_json["code"].isString())
+	if (!_json["code"].empty())
 		ret.data = jsToBytes(_json["code"].asString());
 	return ret;
 }
