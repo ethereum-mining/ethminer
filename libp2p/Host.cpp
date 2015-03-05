@@ -154,7 +154,7 @@ void Host::doneWorking()
 
 unsigned Host::protocolVersion() const
 {
-	return 3;
+	return 4;
 }
 
 bool Host::startPeerSession(Public const& _id, RLP const& _rlp, bi::tcp::socket *_socket)
@@ -273,15 +273,11 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 
 void Host::seal(bytes& _b)
 {
-	_b[0] = 0x22;
-	_b[1] = 0x40;
-	_b[2] = 0x08;
-	_b[3] = 0x91;
-	uint32_t len = (uint32_t)_b.size() - 8;
-	_b[4] = (len >> 24) & 0xff;
-	_b[5] = (len >> 16) & 0xff;
-	_b[6] = (len >> 8) & 0xff;
-	_b[7] = len & 0xff;
+	uint32_t len = (uint32_t)_b.size() - 4;
+	_b[0] = (len >> 24) & 0xff;
+	_b[1] = (len >> 16) & 0xff;
+	_b[2] = (len >> 8) & 0xff;
+	_b[3] = len & 0xff;
 }
 
 void Host::determinePublic(string const& _publicAddress, bool _upnp)

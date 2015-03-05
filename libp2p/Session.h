@@ -71,8 +71,6 @@ public:
 	static RLPStream& prep(RLPStream& _s, PacketType _t, unsigned _args = 0);
 	static RLPStream& prep(RLPStream& _s);
 	void sealAndSend(RLPStream& _s);
-	void send(bytes&& _msg);
-	void send(bytesConstRef _msg);
 
 	int rating() const;
 	void addRating(unsigned _r);
@@ -85,6 +83,9 @@ public:
 	void serviceNodesRequest();
 
 private:
+	void send(bytes&& _msg);
+	void send(bytesConstRef _msg);
+	
 	/// Drop the connection for the reason @a _r.
 	void drop(DisconnectReason _r);
 
