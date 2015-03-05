@@ -54,7 +54,7 @@
             { "name": "shh_addToGroup", "params": ["", ""], "order": [], "returns": ""},
             { "name": "shh_newFilter", "params": [{}], "order": [], "returns": ""},
             { "name": "shh_uninstallFilter", "params": [""], "order": [], "returns": true},
-            { "name": "shh_changed", "params": [""], "order": [], "returns": []},
+            { "name": "shh_getFilterChanges", "params": [""], "order": [], "returns": []},
             { "name": "shh_getMessages", "params": [""], "order": [], "returns": []}
 ]
 
