@@ -22,7 +22,7 @@
 #include "Utility.h"
 
 #include <boost/regex.hpp>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libdevcrypto/SHA3.h>
 using namespace std;
 using namespace dev;
