@@ -27,7 +27,9 @@
 #include <atomic>
 #include <string>
 #include <array>
+
 #include <boost/utility.hpp>
+
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
@@ -44,6 +46,7 @@
 
 namespace dev
 {
+
 namespace eth
 {
 
@@ -166,7 +169,13 @@ class Client: public MinerHost, public Interface, Worker
 
 public:
 	/// New-style Constructor.
-	explicit Client(p2p::Host* _host, std::string const& _dbPath = std::string(), bool _forceClean = false, u256 _networkId = 0, int miners = -1);
+	explicit Client(
+		p2p::Host* _host,
+		std::string const& _dbPath = std::string(),
+		bool _forceClean = false,
+		u256 _networkId = 0,
+		int _miners = -1
+	);
 
 	/// Destructor.
 	virtual ~Client();
