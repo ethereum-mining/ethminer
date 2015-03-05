@@ -63,7 +63,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("shh_addToGroup", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::shh_addToGroupI);
             this->bindAndAddMethod(jsonrpc::Procedure("shh_newFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::shh_newFilterI);
             this->bindAndAddMethod(jsonrpc::Procedure("shh_uninstallFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::shh_uninstallFilterI);
-            this->bindAndAddMethod(jsonrpc::Procedure("shh_changed", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::shh_changedI);
+            this->bindAndAddMethod(jsonrpc::Procedure("shh_getFilterChanges", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::shh_getFilterChangesI);
             this->bindAndAddMethod(jsonrpc::Procedure("shh_getMessages", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::shh_getMessagesI);
         }
 
@@ -282,9 +282,9 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->shh_uninstallFilter(request[0u].asString());
         }
-        inline virtual void shh_changedI(const Json::Value &request, Json::Value &response)
+        inline virtual void shh_getFilterChangesI(const Json::Value &request, Json::Value &response)
         {
-            response = this->shh_changed(request[0u].asString());
+            response = this->shh_getFilterChanges(request[0u].asString());
         }
         inline virtual void shh_getMessagesI(const Json::Value &request, Json::Value &response)
         {
@@ -341,7 +341,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual std::string shh_addToGroup(const std::string& param1, const std::string& param2) = 0;
         virtual std::string shh_newFilter(const Json::Value& param1) = 0;
         virtual bool shh_uninstallFilter(const std::string& param1) = 0;
-        virtual Json::Value shh_changed(const std::string& param1) = 0;
+        virtual Json::Value shh_getFilterChanges(const std::string& param1) = 0;
         virtual Json::Value shh_getMessages(const std::string& param1) = 0;
 };
 

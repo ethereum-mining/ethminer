@@ -1037,7 +1037,7 @@ bool WebThreeStubServerBase::shh_uninstallFilter(string const& _filterId)
 	return true;
 }
 
-Json::Value WebThreeStubServerBase::shh_changed(string const& _filterId)
+Json::Value WebThreeStubServerBase::shh_getFilterChanges(string const& _filterId)
 {
 	int id;
 	
