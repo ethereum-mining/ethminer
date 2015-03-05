@@ -85,6 +85,7 @@ public:
 	static h256 headerHash(bytes const& _block) { return headerHash(&_block); }
 	static h256 headerHash(bytesConstRef _block);
 
+	static BlockInfo fromHeader(bytes const& _block) { return fromHeader(bytesConstRef(&_block)); }
 	static BlockInfo fromHeader(bytesConstRef _block);
 
 	explicit operator bool() const { return timestamp != Invalid256; }
