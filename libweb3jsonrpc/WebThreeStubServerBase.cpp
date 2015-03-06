@@ -88,6 +88,15 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi, Transactions const& _t
 	return res;
 }
 
+static Json::Value toJson(dev::eth::BlockInfo const& _bi, TransactionHashes const& _ts)
+{
+	Json::Value res = toJson(_bi);
+	res["transactions"] = Json::Value(Json::arrayValue);
+	for (h256 const& t: _ts)
+		res["transactions"].append(toJS(t));
+	return res;
+}
+
 static Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
 {
 	Json::Value res;
@@ -565,7 +574,7 @@ Json::Value WebThreeStubServerBase::eth_getBlockByHash(string const& _blockHash,
 		return toJson(client()->blockInfo(hash), client()->transactions(hash));
 	}
 	
-	return toJson(client()->blockInfo(hash));
+	return toJson(client()->blockInfo(hash), client()->transactionHashes(hash));
 }
 
 Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNumber, bool _includeTransactions)
@@ -603,9 +612,7 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByHash(string const& _tran
 		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
-//	return toJson(client()->transaction(hash, index));
-	// TODO:
-	return "";
+	return toJson(client()->transaction(hash));
 }
 
 Json::Value WebThreeStubServerBase::eth_getTransactionByBlockHashAndIndex(string const& _blockHash, string const& _transactionIndex)

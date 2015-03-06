@@ -724,6 +724,11 @@ bytes Client::codeAt(Address _a, int _block) const
 	return asOf(_block).code(_a);
 }
 
+Transaction Client::transaction(h256 _transactionHash) const
+{
+	return Transaction(m_bc.transaction(_transactionHash), CheckSignature::Range);
+}
+
 Transaction Client::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = m_bc.block(_blockHash);
@@ -766,6 +771,11 @@ Transactions Client::transactions(h256 _blockHash) const
 	for (unsigned i = 0; i < b[1].itemCount(); i++)
 		res.emplace_back(b[1][i].data(), CheckSignature::Range);
 	return res;
+}
+
+TransactionHashes Client::transactionHashes(h256 _blockHash) const
+{
+	return m_bc.transactionHashes(_blockHash);
 }
 
 LocalisedLogEntries Client::logs(unsigned _watchId) const
