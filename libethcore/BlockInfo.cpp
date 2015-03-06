@@ -131,7 +131,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 		BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError(bigint(c_minimumDifficulty), bigint(difficulty)) );
 
 	if (gasLimit < c_minGasLimit)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(c_minGasLimit), bigint(gasLimit)) );
+		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, c_minGasLimit, c_minGasLimit) << RequirementError(bigint(c_minGasLimit), bigint(gasLimit)) );
 
 	if (number && extraData.size() > c_maximumExtraDataSize)
 		BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(extraData.size())));
