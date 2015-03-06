@@ -22,15 +22,14 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/TrieDB.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include "ProofOfWork.h"
 #include "Exceptions.h"
+#include "Params.h"
 #include "BlockInfo.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
-
-u256 dev::eth::c_genesisDifficulty = (u256)1 << 17;
 
 BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
@@ -56,7 +55,9 @@ void BlockInfo::setEmpty()
 	gasUsed = 0;
 	timestamp = 0;
 	extraData.clear();
-	nonce = h256();
+	seedHash = h256();
+	mixHash = h256();
+	nonce = Nonce();
 	hash = headerHash(WithNonce);
 }
 
@@ -76,11 +77,11 @@ h256 BlockInfo::headerHash(IncludeNonce _n) const
 
 void BlockInfo::streamRLP(RLPStream& _s, IncludeNonce _n) const
 {
-	_s.appendList(_n == WithNonce ? 14 : 13)
+	_s.appendList(_n == WithNonce ? 16 : 14)
 		<< parentHash << sha3Uncles << coinbaseAddress << stateRoot << transactionsRoot << receiptsRoot << logBloom
-		<< difficulty << number << gasLimit << gasUsed << timestamp << extraData;
+		<< difficulty << number << gasLimit << gasUsed << timestamp << extraData << seedHash;
 	if (_n == WithNonce)
-		_s << nonce;
+		_s << mixHash << nonce;
 }
 
 h256 BlockInfo::headerHash(bytesConstRef _block)
@@ -95,20 +96,22 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	int field = 0;
 	try
 	{
-		parentHash = _header[field = 0].toHash<h256>();
-		sha3Uncles = _header[field = 1].toHash<h256>();
-		coinbaseAddress = _header[field = 2].toHash<Address>();
-		stateRoot = _header[field = 3].toHash<h256>();
-		transactionsRoot = _header[field = 4].toHash<h256>();
-		receiptsRoot = _header[field = 5].toHash<h256>();
-		logBloom = _header[field = 6].toHash<h512>();
+		parentHash = _header[field = 0].toHash<h256>(RLP::VeryStrict);
+		sha3Uncles = _header[field = 1].toHash<h256>(RLP::VeryStrict);
+		coinbaseAddress = _header[field = 2].toHash<Address>(RLP::VeryStrict);
+		stateRoot = _header[field = 3].toHash<h256>(RLP::VeryStrict);
+		transactionsRoot = _header[field = 4].toHash<h256>(RLP::VeryStrict);
+		receiptsRoot = _header[field = 5].toHash<h256>(RLP::VeryStrict);
+		logBloom = _header[field = 6].toHash<LogBloom>(RLP::VeryStrict);
 		difficulty = _header[field = 7].toInt<u256>();
 		number = _header[field = 8].toInt<u256>();
 		gasLimit = _header[field = 9].toInt<u256>();
 		gasUsed = _header[field = 10].toInt<u256>();
 		timestamp = _header[field = 11].toInt<u256>();
 		extraData = _header[field = 12].toBytes();
-		nonce = _header[field = 13].toHash<h256>();
+		seedHash = _header[field = 13].toHash<h256>(RLP::VeryStrict);
+		mixHash = _header[field = 14].toHash<h256>(RLP::VeryStrict);
+		nonce = _header[field = 15].toHash<Nonce>(RLP::VeryStrict);
 	}
 
 	catch (Exception const& _e)
@@ -118,14 +121,20 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	}
 
 	// check it hashes according to proof of work or that it's the genesis block.
-	if (_checkNonce && parentHash && !ProofOfWork::verify(headerHash(WithoutNonce), nonce, difficulty))
+	if (_checkNonce && parentHash && !ProofOfWork::verify(*this))
 		BOOST_THROW_EXCEPTION(InvalidBlockNonce(headerHash(WithoutNonce), nonce, difficulty));
 
 	if (gasUsed > gasLimit)
-		BOOST_THROW_EXCEPTION(TooMuchGasUsed());
+		BOOST_THROW_EXCEPTION(TooMuchGasUsed() << RequirementError(bigint(gasLimit), bigint(gasUsed)) );
 
-	if (number && extraData.size() > 1024)
-		BOOST_THROW_EXCEPTION(ExtraDataTooBig());
+	if (difficulty < c_minimumDifficulty)
+		BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError(bigint(c_minimumDifficulty), bigint(difficulty)) );
+
+	if (gasLimit < c_minGasLimit)
+		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, c_minGasLimit, c_minGasLimit) << RequirementError(bigint(c_minGasLimit), bigint(gasLimit)) );
+
+	if (number && extraData.size() > c_maximumExtraDataSize)
+		BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(extraData.size())));
 }
 
 void BlockInfo::populate(bytesConstRef _block, bool _checkNonce)
@@ -176,31 +185,42 @@ void BlockInfo::populateFromParent(BlockInfo const& _parent)
 	gasLimit = calculateGasLimit(_parent);
 	gasUsed = 0;
 	difficulty = calculateDifficulty(_parent);
+	seedHash = calculateSeedHash(_parent);
+}
+
+h256 BlockInfo::calculateSeedHash(BlockInfo const& _parent) const
+{
+	return number % c_epochDuration == 0 ? sha3(_parent.seedHash.asBytes()) : _parent.seedHash;
 }
 
 u256 BlockInfo::calculateGasLimit(BlockInfo const& _parent) const
 {
 	if (!parentHash)
-		return 1000000;
+		return c_genesisGasLimit;
 	else
-		return max<u256>(125000, (_parent.gasLimit * (1024 - 1) + (_parent.gasUsed * 6 / 5)) / 1024);
+		return max<u256>(c_minGasLimit, (_parent.gasLimit * (c_gasLimitBoundDivisor - 1) + (_parent.gasUsed * 6 / 5)) / c_gasLimitBoundDivisor);
 }
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
 {
 	if (!parentHash)
-		return c_genesisDifficulty;
+		return (u256)c_genesisDifficulty;
 	else
-		return max<u256>(1024, timestamp >= _parent.timestamp + (c_protocolVersion == 49 ? 5 : 8) ? _parent.difficulty - (_parent.difficulty >> 10) : (_parent.difficulty + (_parent.difficulty >> 10)));
+		return max<u256>(c_minimumDifficulty, timestamp >= _parent.timestamp + c_durationLimit ? _parent.difficulty - (_parent.difficulty / c_difficultyBoundDivisor) : (_parent.difficulty + (_parent.difficulty / c_difficultyBoundDivisor)));
 }
 
 void BlockInfo::verifyParent(BlockInfo const& _parent) const
-{	// Check difficulty is correct given the two timestamps.
+{
+	// Check difficulty is correct given the two timestamps.
 	if (difficulty != calculateDifficulty(_parent))
-		BOOST_THROW_EXCEPTION(InvalidDifficulty());
+		BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError((bigint)calculateDifficulty(_parent), (bigint)difficulty));
 
-	if (gasLimit != calculateGasLimit(_parent))
-		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, calculateGasLimit(_parent)));
+	if (gasLimit < _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor ||
+		gasLimit > _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor)
+		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor, _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor));
+
+	if (seedHash != calculateSeedHash(_parent))
+		BOOST_THROW_EXCEPTION(InvalidSeedHash());
 
 	// Check timestamp is after previous timestamp.
 	if (parentHash)

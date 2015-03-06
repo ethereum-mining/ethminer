@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CommonEth.h
+/** @file Common.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  *
@@ -44,8 +44,11 @@ std::string formatBalance(bigint const& _b);
 /// Get information concerning the currency denominations.
 std::vector<std::pair<u256, std::string>> const& units();
 
-/// The log bloom's size (512 bit).
-using LogBloom = h512;
+/// The log bloom's size (2048-bit).
+using LogBloom = h2048;
+
+/// Many log blooms.
+using LogBlooms = std::vector<LogBloom>;
 
 template <size_t n> inline u256 exp10()
 {
@@ -62,6 +65,8 @@ static const u256 ether = exp10<18>();
 static const u256 finney = exp10<15>();
 static const u256 szabo = exp10<12>();
 static const u256 wei = exp10<0>();
+
+using Nonce = h64;
 
 }
 }

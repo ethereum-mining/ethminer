@@ -96,7 +96,10 @@ template <class _T, class _Out>
 inline void toBigEndian(_T _val, _Out& o_out)
 {
 	for (auto i = o_out.size(); i-- != 0; _val >>= 8)
-		o_out[i] = (typename _Out::value_type)(uint8_t)_val;
+	{
+		_T v = _val & (_T)0xff;
+		o_out[i] = (typename _Out::value_type)(uint8_t)v;
+	}
 }
 
 /// Converts a big-endian byte-stream represented on a templated collection to a templated integer value.
