@@ -37,6 +37,8 @@ namespace dev
 namespace eth
 {
 
+using TransactionHashes = h256s;
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -101,11 +103,13 @@ public:
 	virtual h256 hashFromNumber(unsigned _number) const = 0;
 	virtual BlockInfo blockInfo(h256 _hash) const = 0;
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
+	virtual Transaction transaction(h256 _transactionHash) const = 0;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const = 0;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const = 0;
 	virtual unsigned transactionCount(h256 _blockHash) const = 0;
 	virtual unsigned uncleCount(h256 _blockHash) const = 0;
 	virtual Transactions transactions(h256 _blockHash) const = 0;
+	virtual TransactionHashes transactionHashes(h256 _blockHash) const = 0;
 
 	// [EXTRA API]:
 

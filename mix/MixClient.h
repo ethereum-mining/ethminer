@@ -68,11 +68,13 @@ public:
 	h256 hashFromNumber(unsigned _number) const override;
 	eth::BlockInfo blockInfo(h256 _hash) const override;
 	eth::BlockDetails blockDetails(h256 _hash) const override;
+	eth::Transaction transaction(h256 _transactionHash) const override;
 	eth::Transaction transaction(h256 _blockHash, unsigned _i) const override;
 	eth::BlockInfo uncle(h256 _blockHash, unsigned _i) const override;
 	unsigned transactionCount(h256 _blockHash) const override;
 	unsigned uncleCount(h256 _blockHash) const override;
 	eth::Transactions transactions(h256 _blockHash) const override;
+	eth::TransactionHashes transactionHashes(h256 _blockHash) const override;
 	unsigned number() const override;
 	eth::Transactions pending() const override;
 	eth::StateDiff diff(unsigned _txi, h256 _block) const override;
