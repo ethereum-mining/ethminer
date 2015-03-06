@@ -547,7 +547,7 @@ void BlockChain::garbageCollect(bool _force)
 		}
 	}
 	m_cacheUsage.pop_back();
-	m_cacheUsage.push_front({});
+	m_cacheUsage.push_front(std::set<CacheID>{});
 }
 
 void BlockChain::checkConsistency()
