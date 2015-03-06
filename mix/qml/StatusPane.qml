@@ -8,6 +8,7 @@ import "."
 Rectangle {
 	id: statusHeader
 	objectName: "statusPane"
+	property variant webPreview
 
 	function updateStatus(message)
 	{
@@ -15,7 +16,6 @@ Rectangle {
 		{
 			status.state = "";
 			status.text = qsTr("Compile successfully.");
-			logslink.visible = false;
 			debugImg.state = "active";
 		}
 		else
@@ -23,39 +23,52 @@ Rectangle {
 			status.state = "error";
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(message, true);
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
-			logslink.visible = true;
 			debugImg.state = "";
 		}
 		debugRunActionIcon.enabled = codeModel.hasContract;
 	}
 
-	function infoMessage(text)
+	function infoMessage(text, type)
 	{
 		status.state = "";
 		status.text = text
-		logslink.visible = false;
+		logPane.push("info",type, text);
 	}
 
-	function errorMessage(text)
+	function warningMessage(text, type)
+	{
+		status.state = "";
+		status.text = text
+		logPane.push("warning", type, text);
+	}
+
+	function errorMessage(text, type)
 	{
 		status.state = "error";
 		status.text = text
-		logslink.visible = false;
+		logPane.push("error", type, text);
+	}
+
+	Connections {
+		target: webPreview
+		onJavaScriptErrorMessage: errorMessage(_content, "javascript")
+		onJavaScriptWarningMessage: warningMessage(_content, "javascript")
+		onJavaScriptInfoMessage: infoMessage(_content, "javascript")
 	}
 
 	Connections {
 		target:clientModel
-		onRunStarted: infoMessage(qsTr("Running transactions..."));
-		onRunFailed: errorMessage(qsTr("Error running transactions: " + _message));
-		onRunComplete: infoMessage(qsTr("Run complete"));
-		onNewBlock: infoMessage(qsTr("New block created"));
+		onRunStarted: infoMessage(qsTr("Running transactions..."), "run");
+		onRunFailed: errorMessage(qsTr("Error running transactions: " + _message), "run");
+		onRunComplete: infoMessage(qsTr("Run complete"), "run");
+		onNewBlock: infoMessage(qsTr("New block created"), "state");
 	}
 	Connections {
 		target:projectModel
-		onDeploymentStarted: infoMessage(qsTr("Running deployment..."));
-		onDeploymentError: errorMessage(error);
-		onDeploymentComplete: infoMessage(qsTr("Deployment complete"));
-		onDeploymentStepChanged: infoMessage(message);
+		onDeploymentStarted: infoMessage(qsTr("Running deployment..."), "deployment");
+		onDeploymentError: errorMessage(error, "deployment");
+		onDeploymentComplete: infoMessage(qsTr("Deployment complete"), "deployment");
+		onDeploymentStepChanged: infoMessage(message, "deployment");
 	}
 	Connections {
 		target: codeModel
@@ -133,6 +146,53 @@ Rectangle {
 			id: toolTipInfo
 			tooltip: ""
 		}
+
+		Rectangle
+		{
+			function toggle()
+			{
+				if (logsContainer.state === "opened")
+					logsContainer.state = "closed"
+				else
+					logsContainer.state = "opened";
+			}
+
+			id: logsContainer
+			width: 1000
+			height: 0
+			anchors.topMargin: 2
+			anchors.top: statusContainer.bottom
+			anchors.horizontalCenter: parent.horizontalCenter
+			visible: false
+			Component.onCompleted:
+			{
+				var top = logsContainer;
+				while (top.parent)
+					top = top.parent
+				var coordinates = logsContainer.mapToItem(top, 0, 0)
+				logsContainer.parent = top;
+				logsContainer.x = coordinates.x
+				logsContainer.y = coordinates.y
+			}
+			LogsPane
+			{
+				id: logPane
+			}
+			states: [
+				State {
+					name: "opened";
+					PropertyChanges { target: logsContainer; height: 500; visible: true }
+				},
+				State {
+					name: "closed";
+					PropertyChanges { target: logsContainer; height: 0; visible: false }
+				}
+			]
+			transitions: Transition {
+					 NumberAnimation { properties: "height"; easing.type: Easing.InOutQuad; duration: 200 }
+					 NumberAnimation { properties: "visible"; easing.type: Easing.InOutQuad; duration: 200 }
+				 }
+		}
 	}
 
 	Button
@@ -140,7 +200,6 @@ Rectangle {
 		id: logslink
 		anchors.left: statusContainer.right
 		anchors.leftMargin: 9
-		visible: false
 		anchors.verticalCenter: parent.verticalCenter
 		action: displayLogAction
 		iconSource: "qrc:/qml/img/search_filled.png"
@@ -150,7 +209,9 @@ Rectangle {
 		id: displayLogAction
 		tooltip: qsTr("Display Log")
 		onTriggered: {
-			mainContent.displayCompilationErrorIfAny();
+			logsContainer.toggle();
+			//if (status.state === "error" && logPane.front().type === "run")
+			//	mainContent.displayCompilationErrorIfAny();
 		}
 	}
 

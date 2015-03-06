@@ -109,5 +109,9 @@
         <file>qml/img/exit.png</file>
         <file>qml/img/run.png</file>
         <file>qml/img/note.png</file>
+        <file>qml/LogsPane.qml</file>
+        <file>qml/LogsWindow.qml</file>
+        <file>qml/img/copy.png</file>
+        <file>qml/img/broom.png</file>
     </qresource>
 </RCC>
