@@ -102,13 +102,7 @@
            <widget class="QLineEdit" name="urlEdit"/>
           </item>
           <item>
-           <widget class="QWebView" name="webView">
-            <property name="url">
-             <url>
-              <string>about:blank</string>
-             </url>
-            </property>
-           </widget>
+           <widget class="QWebEngineView" name="webView" native="true"/>
           </item>
          </layout>
         </widget>
@@ -1691,6 +1685,12 @@ font-size: 14pt</string>
    <header>DownloadView.h</header>
    <container>1</container>
   </customwidget>
+  <customwidget>
+   <class>QWebEngineView</class>
+   <extends>QWidget</extends>
+   <header location="global">QtWebEngineWidgets/QWebEngineView</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>shhTo</tabstop>
@@ -1705,7 +1705,6 @@ font-size: 14pt</string>
   <tabstop>jsConsole</tabstop>
   <tabstop>tabWidget</tabstop>
   <tabstop>urlEdit</tabstop>
-  <tabstop>webView</tabstop>
   <tabstop>idealPeers</tabstop>
   <tabstop>forceAddress</tabstop>
   <tabstop>port</tabstop>
