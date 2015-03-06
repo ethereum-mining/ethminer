@@ -55,13 +55,13 @@ bytes Secp256k1::eciesKDF(Secret _z, bytes _s1, unsigned kdByteLen)
 		k.reserve(k.size() + h256::size);
 		move(digest.begin(), digest.end(), back_inserter(k));
 		
-		if (ctr[3]++ && ctr[3] != 0) {
+		if (ctr[3]++ && ctr[3] != 0)
 			continue;
-		} else if (ctr[2]++ && ctr[2] != 0) {
+		else if (ctr[2]++ && ctr[2] != 0)
 			continue;
-		} else if (ctr[1]++ && ctr[1] != 0) {
+		else if (ctr[1]++ && ctr[1] != 0)
 			continue;
-		} else
+		else
 			ctr[0]++;
 	}
 	
@@ -85,7 +85,7 @@ void Secp256k1::encryptECIES(Public const& _k, bytes& io_cipher)
 	
 	bytes cipherText;
 	encryptSymNoAuth(*(Secret*)eKey.data(), bytesConstRef(&io_cipher), cipherText, h128());
-	if (!cipherText.size())
+	if (cipherText.empty())
 		return;
 
 	bytes msg(1 + Public::size + h128::size + cipherText.size() + 32);
