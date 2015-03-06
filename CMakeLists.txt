@@ -212,7 +212,7 @@ if (NOT JUSTTESTS)
 
 		if (ETH_HAVE_WEBENGINE)
 			add_subdirectory(alethzero)
-			add_subdirectory(third)
+#			add_subdirectory(third)	// reenable once not qtwebkit.
 		endif()
 
 		add_subdirectory(mix)
