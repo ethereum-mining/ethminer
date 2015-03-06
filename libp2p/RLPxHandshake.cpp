@@ -166,7 +166,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		else
 			clog(NetConnect) << "p2p.connect.ingress sending capabilities handshake";
 
-		m_io.reset(new RLPXFrameIO(*this));
+		m_io = new RLPXFrameIO(*this);
 
 		// old packet format
 		// 5 arguments, HelloPacket
@@ -193,14 +193,14 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		
 		// read frame header
 		m_handshakeInBuffer.resize(h256::size);
-		ba::async_read(m_socket->ref(), boost::asio::buffer(m_handshakeInBuffer, h256::size), [this,self](boost::system::error_code ec, std::size_t length)
+		ba::async_read(m_socket->ref(), boost::asio::buffer(m_handshakeInBuffer, h256::size), [this, self](boost::system::error_code ec, std::size_t length)
 		{
 			if (ec)
 				transition(ec);
 			else
 			{
 				/// authenticate and decrypt header
-				if (!m_io->authAndDecryptHeader(*(h256*)m_handshakeInBuffer.data()))
+				if (!m_io->authAndDecryptHeader(bytesRef(m_handshakeInBuffer.data(), h256::size)))
 				{
 					m_nextState = Error;
 					transition();
@@ -215,7 +215,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 				if (frameSize > 1024)
 				{
 					// all future frames: 16777216
-					clog(NetWarn) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame is too large";
+					clog(NetWarn) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame is too large" << frameSize;
 					m_nextState = Error;
 					transition();
 					return;
@@ -251,7 +251,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 							return;
 						}
 
-						m_host->startPeerSession(m_remote, rlp, m_io.get(), m_socket->remoteEndpoint());
+						m_host->startPeerSession(m_remote, rlp, m_io, m_socket->remoteEndpoint());
 					}
 				});
 			}
