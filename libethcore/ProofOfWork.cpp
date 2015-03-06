@@ -20,12 +20,18 @@
  */
 
 #include <boost/detail/endian.hpp>
+#include <boost/filesystem.hpp>
 #include <chrono>
 #include <array>
 #include <random>
 #include <thread>
+#include <libdevcore/Guards.h>
+#include <libdevcore/Log.h>
 #include <libdevcrypto/CryptoPP.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libdevcore/Common.h>
+#include "BlockInfo.h"
+#include "Ethasher.h"
 #include "ProofOfWork.h"
 using namespace std;
 using namespace std::chrono;
@@ -35,72 +41,56 @@ namespace dev
 namespace eth
 {
 
-template <class _T>
-static inline void update(_T& _sha, u256 const& _value)
+bool Ethash::verify(BlockInfo const& _header)
 {
-	int i = 0;
-	for (u256 v = _value; v; ++i, v >>= 8) {}
-	byte buf[32];
-	bytesRef bufRef(buf, i);
-	toBigEndian(_value, bufRef);
-	_sha.Update(buf, i);
+	return Ethasher::verify(_header);
 }
 
-template <class _T>
-static inline void update(_T& _sha, h256 const& _value)
+std::pair<MineInfo, Ethash::Proof> Ethash::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue, bool _turbo)
 {
-	int i = 0;
-	byte const* data = _value.data();
-	for (; i != 32 && data[i] == 0; ++i);
-	_sha.Update(data + i, 32 - i);
-}
+	Ethasher::Miner m(_header);
 
-template <class _T>
-static inline h256 get(_T& _sha)
-{
-	h256 ret;
-	_sha.TruncatedFinal(&ret[0], 32);
+	std::pair<MineInfo, Proof> ret;
+	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data())));
+	uint64_t tryNonce = (uint64_t)(u64)(m_last = Nonce::random(s_eng));
+
+	bigint boundary = (bigint(1) << 256) / _header.difficulty;
+	ret.first.requirement = log2((double)boundary);
+
+	// 2^ 0      32      64      128      256
+	//   [--------*-------------------------]
+	//
+	// evaluate until we run out of time
+	auto startTime = std::chrono::steady_clock::now();
+	if (!_turbo)
+		std::this_thread::sleep_for(std::chrono::milliseconds(_msTimeout * 90 / 100));
+	double best = 1e99;	// high enough to be effectively infinity :)
+	Proof result;
+	unsigned hashCount = 0;
+	for (; (std::chrono::steady_clock::now() - startTime) < std::chrono::milliseconds(_msTimeout) && _continue; tryNonce++, hashCount++)
+	{
+		u256 val(m.mine(tryNonce));
+		best = std::min<double>(best, log2((double)val));
+		if (val <= boundary)
+		{
+			ret.first.completed = true;
+			result.mixHash = m.lastMixHash();
+			result.nonce = u64(tryNonce);
+			break;
+		}
+	}
+	ret.first.hashes = hashCount;
+	ret.first.best = best;
+	ret.second = result;
+
+	if (ret.first.completed)
+	{
+		BlockInfo test = _header;
+		assignResult(result, test);
+		assert(verify(test));
+	}
+
 	return ret;
-}
-
-h256 DaggerEvaluator::node(h256 const& _root, h256 const& _xn, uint_fast32_t _L, uint_fast32_t _i)
-{
-	if (_L == _i)
-		return _root;
-	u256 m = (_L == 9) ? 16 : 3;
-	CryptoPP::SHA3_256 bsha;
-	for (uint_fast32_t k = 0; k < m; ++k)
-	{
-		CryptoPP::SHA3_256 sha;
-		update(sha, _root);
-		update(sha, _xn);
-		update(sha, (u256)_L);
-		update(sha, (u256)_i);
-		update(sha, (u256)k);
-		uint_fast32_t pk = (uint_fast32_t)(u256)get(sha) & ((1 << ((_L - 1) * 3)) - 1);
-		auto u = node(_root, _xn, _L - 1, pk);
-		update(bsha, u);
-	}
-	return get(bsha);
-}
-
-h256 DaggerEvaluator::eval(h256 const& _root, h256 const& _nonce)
-{
-	h256 extranonce = (u256)_nonce >> 26;				// with xn = floor(n / 2^26) -> assuming this is with xn = floor(N / 2^26)
-	CryptoPP::SHA3_256 bsha;
-	for (uint_fast32_t k = 0; k < 4; ++k)
-	{
-		//sha256(D || xn || i || k)		-> sha256(D || xn || k)	- there's no 'i' here!
-		CryptoPP::SHA3_256 sha;
-		update(sha, _root);
-		update(sha, extranonce);
-		update(sha, _nonce);
-		update(sha, (u256)k);
-		uint_fast32_t pk = (uint_fast32_t)(u256)get(sha) & 0x1ffffff;	// mod 8^8 * 2  [ == mod 2^25 ?! ] [ == & ((1 << 25) - 1) ] [ == & 0x1ffffff ]
-		auto u = node(_root, extranonce, 9, pk);
-		update(bsha, u);
-	}
-	return get(bsha);
 }
 
 }

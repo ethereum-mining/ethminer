@@ -609,6 +609,8 @@ function formatAppUrl(url)
 {
 	if (url.toLowerCase().indexOf("eth://") === 0)
 		url = url.substring(6);
+	if (url.toLowerCase().indexOf(projectModel.projectTitle + ".") === 0)
+		url = url.substring(projectModel.projectTitle.length + 1);
 	if (url === "")
 		return [projectModel.projectTitle];
 

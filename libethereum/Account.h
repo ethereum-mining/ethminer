@@ -76,27 +76,39 @@ public:
 		ContractConception
 	};
 
+	/// Changedness of account to create.
+	enum Changedness
+	{
+		/// Account starts as though it has been changed.
+		Changed,
+		/// Account starts as though it has not been changed.
+		Unchanged
+	};
+
 	/// Construct a dead Account.
 	Account() {}
 
 	/// Construct an alive Account, with given endowment, for either a normal (non-contract) account or for a
 	/// contract account in the
 	/// conception phase, where the code is not yet known.
-	Account(u256 _balance, NewAccountType _t): m_isAlive(true), m_balance(_balance), m_codeHash(_t == NormalCreation ? EmptySHA3 : c_contractConceptionCodeHash) {}
+	Account(u256 _balance, NewAccountType _t, Changedness _c = Changed): m_isAlive(true), m_isUnchanged(_c == Unchanged), m_balance(_balance), m_codeHash(_t == NormalCreation ? EmptySHA3 : c_contractConceptionCodeHash) {}
 	/// Explicit constructor for wierd cases of construction of a normal account.
-	Account(u256 _nonce, u256 _balance): m_isAlive(true), m_nonce(_nonce), m_balance(_balance) {}
+	Account(u256 _nonce, u256 _balance, Changedness _c = Changed): m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(_nonce), m_balance(_balance) {}
 
 	/// Explicit constructor for wierd cases of construction or a contract account.
-	Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash): m_isAlive(true), m_nonce(_nonce), m_balance(_balance), m_storageRoot(_contractRoot), m_codeHash(_codeHash) { assert(_contractRoot); }
+	Account(u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, Changedness _c): m_isAlive(true), m_isUnchanged(_c == Unchanged), m_nonce(_nonce), m_balance(_balance), m_storageRoot(_contractRoot), m_codeHash(_codeHash) { assert(_contractRoot); }
 
 
 	/// Kill this account. Useful for the suicide opcode. Following this call, isAlive() returns false.
-	void kill() { m_isAlive = false; m_storageOverlay.clear(); m_codeHash = EmptySHA3; m_storageRoot = EmptyTrie; m_balance = 0; m_nonce = 0; }
+	void kill() { m_isAlive = false; m_storageOverlay.clear(); m_codeHash = EmptySHA3; m_storageRoot = EmptyTrie; m_balance = 0; m_nonce = 0; changed(); }
 
 	/// @returns true iff this object represents an account in the state. Returns false if this object
 	/// represents an account that should no longer exist in the trie (an account that never existed or was
 	/// suicided).
 	bool isAlive() const { return m_isAlive; }
+
+	/// @returns true if the account is unchanged from creation.
+	bool isDirty() const { return !m_isUnchanged; }
 
 
 	/// @returns the balance of this account. Can be altered in place.
@@ -106,7 +118,7 @@ public:
 	u256 const& balance() const { return m_balance; }
 
 	/// Increments the balance of this account by the given amount. It's a bigint, so can be negative.
-	void addBalance(bigint _i) { m_balance = (u256)((bigint)m_balance + _i); }
+	void addBalance(bigint _i) { if (!_i) return; m_balance = (u256)((bigint)m_balance + _i); changed(); }
 
 	/// @returns the nonce of the account. Can be altered in place.
 	u256& nonce() { return m_nonce; }
@@ -115,7 +127,7 @@ public:
 	u256 const& nonce() const { return m_nonce; }
 
 	/// Increment the nonce of the account by one.
-	void incNonce() { m_nonce++; }
+	void incNonce() { m_nonce++; changed(); }
 
 
 	/// @returns the root of the trie (whose nodes are stored in the state db externally to this class)
@@ -127,7 +139,7 @@ public:
 
 	/// Set a key/value pair in the account's storage. This actually goes into the overlay, for committing
 	/// to the trie later.
-	void setStorage(u256 _p, u256 _v) { m_storageOverlay[_p] = _v; }
+	void setStorage(u256 _p, u256 _v) { m_storageOverlay[_p] = _v; changed(); }
 
 	/// @returns true if we are in the contract-conception state and setCode is valid to call.
 	bool isFreshCode() const { return m_codeHash == c_contractConceptionCodeHash; }
@@ -140,8 +152,8 @@ public:
 	h256 codeHash() const { assert(!isFreshCode()); return m_codeHash; }
 
 	/// Sets the code of the account. Must only be called when isFreshCode() returns true.
-	void setCode(bytes&& _code) { assert(isFreshCode()); m_codeCache = _code; }
-	void setCode(bytes const& _code) { assert(isFreshCode()); m_codeCache = _code; }
+	void setCode(bytes&& _code) { assert(isFreshCode()); m_codeCache = _code; changed(); }
+	void setCode(bytes const& _code) { assert(isFreshCode()); m_codeCache = _code; changed(); }
 
 	/// @returns true if the account's code is available through code().
 	bool codeCacheValid() const { return m_codeHash == EmptySHA3 || m_codeHash == c_contractConceptionCodeHash || m_codeCache.size(); }
@@ -154,8 +166,14 @@ public:
 	bytes const& code() const { assert(codeCacheValid()); return m_codeCache; }
 
 private:
+	/// Note that we've altered the account.
+	void changed() { m_isUnchanged = false; }
+
 	/// Is this account existant? If not, it represents a deleted account.
 	bool m_isAlive = false;
+
+	/// True if we've not made any alteration to the account having been given it's properties directly.
+	bool m_isUnchanged = false;
 
 	/// Account's nonce.
 	u256 m_nonce = 0;
