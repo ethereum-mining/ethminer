@@ -58,15 +58,14 @@ class InvalidTransactionsHash: virtual public dev::Exception { public: InvalidTr
 struct InvalidTransaction: virtual dev::Exception {};
 struct InvalidDifficulty: virtual dev::Exception {};
 struct InvalidSeedHash: virtual dev::Exception {};
-class InvalidGasLimit: virtual public dev::Exception { public: InvalidGasLimit(u256 _provided = 0, u256 _n = 0, u256 _x = 0): provided(_provided), minimum(_n), maximum(_x) {} u256 provided; u256 minimum; u256 maximum; virtual const char* what() const noexcept; };
-class InvalidMinGasPrice: virtual public dev::Exception { public: InvalidMinGasPrice(u256 _provided = 0, u256 _limit = 0): provided(_provided), limit(_limit) {} u256 provided; u256 limit; virtual const char* what() const noexcept; };
+class InvalidGasLimit: virtual public dev::Exception { public: InvalidGasLimit(u256 _provided, u256 _n, u256 _x); u256 provided; u256 minimum; u256 maximum; };
 struct InvalidTransactionGasUsed: virtual dev::Exception {};
 struct InvalidTransactionsStateRoot: virtual dev::Exception {};
 struct InvalidReceiptsStateRoot: virtual dev::Exception {};
 struct InvalidTimestamp: virtual dev::Exception {};
 struct InvalidLogBloom: virtual dev::Exception {};
-class InvalidNonce: virtual public dev::Exception { public: InvalidNonce(u256 _required = 0, u256 _candidate = 0): required(_required), candidate(_candidate) {} u256 required; u256 candidate; virtual const char* what() const noexcept; };
-class InvalidBlockNonce: virtual public dev::Exception { public: InvalidBlockNonce(h256 _h = h256(), Nonce _n = Nonce(), u256 _d = 0): h(_h), n(_n), d(_d) {} h256 h; Nonce n; u256 d; virtual const char* what() const noexcept; };
+class InvalidNonce: virtual public dev::Exception { public: InvalidNonce(u256 _required, u256 _candidate); u256 required; u256 candidate; };
+class InvalidBlockNonce: virtual public dev::Exception { public: InvalidBlockNonce(h256 _h, Nonce _n, u256 _d); h256 h; Nonce n; u256 d; };
 struct InvalidParentHash: virtual dev::Exception {};
 struct InvalidNumber: virtual dev::Exception {};
 struct InvalidContractAddress: virtual public dev::Exception {};
