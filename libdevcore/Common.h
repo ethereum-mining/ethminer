@@ -65,6 +65,7 @@ using bytesConstRef = vector_ref<byte const>;
 
 // Numeric types.
 using bigint = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<>>;
+using u64 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<64, 64, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 using u128 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<128, 128, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 using u256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 using s256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
@@ -116,6 +117,12 @@ inline unsigned int toLog2(u256 _x)
 	unsigned ret;
 	for (ret = 0; _x >>= 1; ++ret) {}
 	return ret;
+}
+
+template <class N>
+inline N diff(N const& _a, N const& _b)
+{
+	return std::max(_a, _b) - std::min(_a, _b);
 }
 
 /// RAII utility class whose destructor calls a given function.

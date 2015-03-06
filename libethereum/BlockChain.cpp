@@ -19,6 +19,8 @@
  * @date 2014
  */
 
+#include <leveldb/db.h>
+
 #include "BlockChain.h"
 
 #include <boost/filesystem.hpp>
@@ -44,14 +46,17 @@ namespace js = json_spirit;
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.currentHash());
-	auto it = _bc.m_extrasDB->NewIterator(_bc.m_readOptions);
+	auto it = _bc.m_blocksDB->NewIterator(_bc.m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().ToString() != "best")
 		{
-			string rlpString = it->value().ToString();
-			RLP r(rlpString);
-			BlockDetails d(r);
-			_out << toHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parent << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
+			try {
+				BlockInfo d(bytesConstRef(it->value()));
+				_out << toHex(it->key().ToString()) << ":   " << d.number << " @ " << d.parentHash << (cmp == it->key().ToString() ? "  BEST" : "") << std::endl;
+			}
+			catch (...) {
+				cwarn << "Invalid DB entry:" << toHex(it->key().ToString()) << " -> " << toHex(bytesConstRef(it->value()));
+			}
 		}
 	delete it;
 	return _out;
@@ -71,8 +76,33 @@ ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
 #endif
 }
 
+#if ETH_DEBUG
+static const chrono::system_clock::duration c_collectionDuration = chrono::seconds(15);
+static const unsigned c_collectionQueueSize = 2;
+static const unsigned c_maxCacheSize = 1024 * 1024 * 1;
+static const unsigned c_minCacheSize = 1;
+#else
+
+/// Duration between flushes.
+static const chrono::system_clock::duration c_collectionDuration = chrono::seconds(60);
+
+/// Length of death row (total time in cache is multiple of this and collection duration).
+static const unsigned c_collectionQueueSize = 20;
+
+/// Max size, above which we start forcing cache reduction.
+static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
+
+/// Min size, below which we don't bother flushing it.
+static const unsigned c_minCacheSize = 1024 * 1024 * 32;
+
+#endif
+
 BlockChain::BlockChain(bytes const& _genesisBlock, std::string _path, bool _killExisting)
 {
+	// initialise deathrow.
+	m_cacheUsage.resize(c_collectionQueueSize);
+	m_lastCollection = chrono::system_clock::now();
+
 	// Initialise with the genesis as the last block on the longest chain.
 	m_genesisBlock = _genesisBlock;
 	m_genesisHash = sha3(RLP(m_genesisBlock)[0].data());
@@ -98,9 +128,9 @@ void BlockChain::open(std::string _path, bool _killExisting)
 
 	ldb::Options o;
 	o.create_if_missing = true;
-	ldb::DB::Open(o, _path + "/blocks", &m_db);
+	ldb::DB::Open(o, _path + "/blocks", &m_blocksDB);
 	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
-	if (!m_db)
+	if (!m_blocksDB)
 		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
 	if (!m_extrasDB)
 		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
@@ -128,10 +158,10 @@ void BlockChain::close()
 {
 	cnote << "Closing blockchain DB";
 	delete m_extrasDB;
-	delete m_db;
+	delete m_blocksDB;
 	m_lastBlockHash = m_genesisHash;
 	m_details.clear();
-	m_cache.clear();
+	m_blocks.clear();
 }
 
 template <class T, class V>
@@ -291,6 +321,23 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_details[bi.parentHash].children.push_back(newHash);
 		}
 		{
+			WriteGuard l(x_blockHashes);
+			m_blockHashes[h256(bi.number)].value = newHash;
+		}
+		// Collate transaction hashes and remember who they were.
+		h256s tas;
+		{
+			RLP blockRLP(_block);
+			TransactionAddress ta;
+			ta.blockHash = newHash;
+			WriteGuard l(x_transactionAddresses);
+			for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
+			{
+				tas.push_back(sha3(blockRLP[1][ta.index].data()));
+				m_transactionAddresses[tas.back()] = ta;
+			}
+		}
+		{
 			WriteGuard l(x_logBlooms);
 			m_logBlooms[newHash] = blb;
 		}
@@ -299,11 +346,14 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_receipts[newHash] = br;
 		}
 
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 3), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, 4), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
-		m_db->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
+		m_blocksDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(h256(bi.number), ExtraBlockHash), (ldb::Slice)dev::ref(m_blockHashes[h256(bi.number)].rlp()));
+		for (auto const& h: tas)
+			m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
+		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
 
 #if ETH_PARANOIA
 		checkConsistency();
@@ -403,13 +453,110 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 	return ret;
 }
 
+void BlockChain::noteUsed(h256 const& _h, unsigned _extra) const
+{
+	auto id = CacheID(_h, _extra);
+	Guard l(x_cacheUsage);
+	m_cacheUsage[0].insert(id);
+	if (m_cacheUsage[1].count(id))
+		m_cacheUsage[1].erase(id);
+	else
+		m_inUse.insert(id);
+}
+
+template <class T> static unsigned getHashSize(map<h256, T> const& _map)
+{
+	unsigned ret = 0;
+	for (auto const& i: _map)
+		ret += i.second.size + 64;
+	return ret;
+}
+
+void BlockChain::updateStats() const
+{
+	{
+		ReadGuard l1(x_blocks);
+		m_lastStats.memBlocks = 0;
+		for (auto const& i: m_blocks)
+			m_lastStats.memBlocks += i.second.size() + 64;
+	}
+	{
+		ReadGuard l2(x_details);
+		m_lastStats.memDetails = getHashSize(m_details);
+	}
+	{
+		ReadGuard l5(x_logBlooms);
+		m_lastStats.memLogBlooms = getHashSize(m_logBlooms);
+	}
+	{
+		ReadGuard l4(x_receipts);
+		m_lastStats.memReceipts = getHashSize(m_receipts);
+	}
+	{
+		ReadGuard l3(x_blockHashes);
+		m_lastStats.memBlockHashes = getHashSize(m_blockHashes);
+	}
+	{
+		ReadGuard l6(x_transactionAddresses);
+		m_lastStats.memTransactionAddresses = getHashSize(m_transactionAddresses);
+	}
+}
+
+void BlockChain::garbageCollect(bool _force)
+{
+	updateStats();
+
+	if (!_force && chrono::system_clock::now() < m_lastCollection + c_collectionDuration && m_lastStats.memTotal() < c_maxCacheSize)
+		return;
+	if (m_lastStats.memTotal() < c_minCacheSize)
+		return;
+
+	m_lastCollection = chrono::system_clock::now();
+
+	Guard l(x_cacheUsage);
+	WriteGuard l1(x_blocks);
+	WriteGuard l2(x_details);
+	WriteGuard l3(x_blockHashes);
+	WriteGuard l4(x_receipts);
+	WriteGuard l5(x_logBlooms);
+	WriteGuard l6(x_transactionAddresses);
+	for (CacheID const& id: m_cacheUsage.back())
+	{
+		m_inUse.erase(id);
+		// kill i from cache.
+		switch (id.second)
+		{
+		case (unsigned)-1:
+			m_blocks.erase(id.first);
+			break;
+		case ExtraDetails:
+			m_details.erase(id.first);
+			break;
+		case ExtraBlockHash:
+			m_blockHashes.erase(id.first);
+			break;
+		case ExtraReceipts:
+			m_receipts.erase(id.first);
+			break;
+		case ExtraLogBlooms:
+			m_logBlooms.erase(id.first);
+			break;
+		case ExtraTransactionAddress:
+			m_transactionAddresses.erase(id.first);
+			break;
+		}
+	}
+	m_cacheUsage.pop_back();
+	m_cacheUsage.push_front(std::set<CacheID>{});
+}
+
 void BlockChain::checkConsistency()
 {
 	{
 		WriteGuard l(x_details);
 		m_details.clear();
 	}
-	ldb::Iterator* it = m_db->NewIterator(m_readOptions);
+	ldb::Iterator* it = m_blocksDB->NewIterator(m_readOptions);
 	for (it->SeekToFirst(); it->Valid(); it->Next())
 		if (it->key().size() == 32)
 		{
@@ -452,12 +599,12 @@ bool BlockChain::isKnown(h256 _hash) const
 	if (_hash == m_genesisHash)
 		return true;
 	{
-		ReadGuard l(x_cache);
-		if (m_cache.count(_hash))
+		ReadGuard l(x_blocks);
+		if (m_blocks.count(_hash))
 			return true;
 	}
 	string d;
-	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
+	m_blocksDB->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
 	return !!d.size();
 }
 
@@ -467,14 +614,14 @@ bytes BlockChain::block(h256 _hash) const
 		return m_genesisBlock;
 
 	{
-		ReadGuard l(x_cache);
-		auto it = m_cache.find(_hash);
-		if (it != m_cache.end())
+		ReadGuard l(x_blocks);
+		auto it = m_blocks.find(_hash);
+		if (it != m_blocks.end())
 			return it->second;
 	}
 
 	string d;
-	m_db->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
+	m_blocksDB->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
 
 	if (!d.size())
 	{
@@ -482,18 +629,11 @@ bytes BlockChain::block(h256 _hash) const
 		return bytes();
 	}
 
-	WriteGuard l(x_cache);
-	m_cache[_hash].resize(d.size());
-	memcpy(m_cache[_hash].data(), d.data(), d.size());
+	WriteGuard l(x_blocks);
+	m_blocks[_hash].resize(d.size());
+	memcpy(m_blocks[_hash].data(), d.data(), d.size());
 
-	return m_cache[_hash];
-}
+	noteUsed(_hash);
 
-h256 BlockChain::numberHash(unsigned _n) const
-{
-	if (!_n)
-		return genesisHash();
-	h256 ret = currentHash();
-	for (; _n < details().number; ++_n, ret = details(ret).parent) {}
-	return ret;
+	return m_blocks[_hash];
 }

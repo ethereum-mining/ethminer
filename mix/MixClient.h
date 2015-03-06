@@ -88,7 +88,7 @@ public:
 	bool isMining() override;
 	eth::MineProgress miningProgress() const override;
 	std::pair<h256, u256> getWork() override { return std::pair<h256, u256>(); }
-	bool submitNonce(h256 const&) override { return false; }
+	bool submitWork(eth::ProofOfWork::Proof const&) override { return false; }
 	/// @returns the last mined block information
 	eth::BlockInfo blockInfo() const;
 	std::vector<KeyPair> userAccounts() { return m_userAccounts; }

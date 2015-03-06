@@ -27,20 +27,20 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-#if ALL_COMPILERS_ARE_CPP11
-#define ETH_RETURN_STRING(S) thread_local static string s_what; s_what = S; return s_what.c_str();
-#elsif USE_BOOST_TLS
-static boost::thread_specific_ptr<string> g_exceptionMessage;
-#define ETH_RETURN_STRING(S) if (!g_exceptionMessage.get()); g_exceptionMessage.reset(new string); *g_exceptionMessage.get() = S; return g_exceptionMessage.get()->c_str();
-#else
-#define ETH_RETURN_STRING(S) m_message = S; return m_message.c_str();
-#endif
+InvalidBlockFormat::InvalidBlockFormat(int _f, bytesConstRef _d):
+	Exception("Invalid block format: Bad field " + toString(_f) + " (" + toHex(_d) + ")"), f(_f), d(_d.toBytes()) {}
 
-const char* InvalidBlockFormat::what() const noexcept { ETH_RETURN_STRING("Invalid block format: Bad field " + toString(m_f) + " (" + toHex(m_d) + ")"); }
-const char* UncleInChain::what() const noexcept { ETH_RETURN_STRING("Uncle in block already mentioned: Uncles " + toString(m_uncles) + " (" + m_block.abridged() + ")"); }
-const char* InvalidTransactionsHash::what() const noexcept { ETH_RETURN_STRING("Invalid transactions hash:  header says: " + toHex(m_head.ref()) + " block is:" + toHex(m_real.ref())); }
-const char* InvalidGasLimit::what() const noexcept { ETH_RETURN_STRING("Invalid gas limit (provided: " + toString(provided) + " valid:" + toString(valid) + ")"); }
-const char* InvalidMinGasPrice::what() const noexcept { ETH_RETURN_STRING("Invalid minimum gas price (provided: " + toString(provided) + " limit:" + toString(limit) + ")"); }
-const char* InvalidNonce::what() const noexcept { ETH_RETURN_STRING("Invalid nonce (r: " + toString(required) + " c:" + toString(candidate) + ")"); }
-const char* InvalidBlockNonce::what() const noexcept { ETH_RETURN_STRING("Invalid nonce (h: " + toString(h) + " n:" + toString(n) + " d:" + toString(d) + ")"); }
+UncleInChain::UncleInChain(h256Set _uncles, h256 _block):
+	Exception("Uncle in block already mentioned: Uncles " + toString(_uncles) + " (" + _block.abridged() + ")"), uncles(_uncles), block(_block) {}
 
+InvalidTransactionsHash::InvalidTransactionsHash(h256 _head, h256 _real):
+	Exception("Invalid transactions hash:  header says: " + toHex(_head.ref()) + " block is:" + toHex(_real.ref())), head(_head), real(_real) {}
+
+InvalidGasLimit::InvalidGasLimit(u256 _provided, u256 _n, u256 _x):
+	Exception("Invalid gas limit (provided: " + toString(provided) + " minimum:" + toString(minimum) + " max:" + toString(maximum) + ")"), provided(_provided), minimum(_n), maximum(_x) {}
+
+InvalidNonce::InvalidNonce(u256 _required, u256 _candidate):
+	Exception("Invalid nonce (r: " + toString(_required) + " c:" + toString(_candidate) + ")"), required(_required), candidate(_candidate) {}
+
+InvalidBlockNonce::InvalidBlockNonce(h256 _h, Nonce _n, u256 _d):
+	Exception("Invalid nonce (h: " + toString(h) + " n:" + toString(n) + " d:" + toString(d) + ")"), h(_h), n(_n), d(_d) {}

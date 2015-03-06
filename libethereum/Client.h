@@ -34,7 +34,7 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
-#include <libevm/FeeStructure.h>
+#include <libethcore/Params.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
 #include "TransactionQueue.h"
@@ -148,7 +148,7 @@ public:
 	h256 workHash() const { return m_state.info().headerHash(IncludeNonce::WithoutNonce); }
 	u256 const& difficulty() const { return m_state.info().difficulty; }
 
-	bool submitWork(h256 const& _nonce) { return (m_isComplete = m_state.completeMine(_nonce)); }
+	bool submitWork(ProofOfWork::Proof const& _result) { return (m_isComplete = m_state.completeMine(_result)); }
 
 	virtual bool isComplete() const override { return m_isComplete; }
 	virtual bytes const& blockData() const { return m_state.blockData(); }
@@ -304,8 +304,8 @@ public:
 	/// Update to the latest transactions and get hash of the current block to be mined minus the
 	/// nonce (the 'work hash') and the difficulty to be met.
 	virtual std::pair<h256, u256> getWork() override;
-	/// Submit the nonce for the proof-of-work.
-	virtual bool submitNonce(h256  const&_nonce) override;
+	/// Submit the proof for the proof-of-work.
+	virtual bool submitWork(ProofOfWork::Proof const& _proof) override;
 
 	// Debug stuff:
 
@@ -369,6 +369,7 @@ private:
 	bool m_paranoia = false;				///< Should we be paranoid about our state?
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
+	bool m_verifyOwnBlocks = true;			///< Shoudl be verify blocks that we mined?
 
 	mutable Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;
