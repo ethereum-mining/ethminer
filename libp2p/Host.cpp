@@ -157,7 +157,7 @@ unsigned Host::protocolVersion() const
 	return 4;
 }
 
-bool Host::startPeerSession(Public const& _id, RLP const& _rlp, bi::tcp::socket *_socket, RLPXFrameIO* _io)
+bool Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint)
 {
 	/// Get or create Peer
 	shared_ptr<Peer> p;
@@ -172,7 +172,7 @@ bool Host::startPeerSession(Public const& _id, RLP const& _rlp, bi::tcp::socket 
 		p->m_lastConnected = std::chrono::system_clock::now();
 	p->m_failedAttempts = 0;
 	// TODO: update pendingconns w/session-weak-ptr for graceful shutdown (otherwise this line isn't safe)
-	p->endpoint.tcp.address(_socket->remote_endpoint().address());
+	p->endpoint.tcp.address(_endpoint.address());
 
 	auto protocolVersion = _rlp[1].toInt<unsigned>();
 	auto clientVersion = _rlp[2].toString();
@@ -187,7 +187,7 @@ bool Host::startPeerSession(Public const& _id, RLP const& _rlp, bi::tcp::socket 
 	clog(NetMessageSummary) << "Hello: " << clientVersion << "V[" << protocolVersion << "]" << _id.abridged() << showbase << capslog.str() << dec << listenPort;
 	
 	// create session so disconnects are managed
-	auto ps = make_shared<Session>(this, move(*_io), p, PeerSessionInfo({_id, clientVersion, _socket->remote_endpoint().address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[3].toSet<CapDesc>(), 0, map<string, string>()}));
+	auto ps = make_shared<Session>(this, move(*_io), p, PeerSessionInfo({_id, clientVersion, _endpoint.address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[3].toSet<CapDesc>(), 0, map<string, string>()}));
 	if (protocolVersion != this->protocolVersion())
 	{
 		ps->disconnect(IncompatibleProtocol);
@@ -368,8 +368,8 @@ void Host::runAcceptor()
 		// case the socket may be open and must be closed to prevent asio from
 		// processing socket events after socket is deallocated.
 
-		bi::tcp::socket *s = new bi::tcp::socket(m_ioService);
-		m_tcp4Acceptor.async_accept(*s, [=](boost::system::error_code ec)
+		auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
+		m_tcp4Acceptor.async_accept(socket->ref(), [=](boost::system::error_code ec)
 		{
 			// if no error code
 			bool success = false;
@@ -378,7 +378,7 @@ void Host::runAcceptor()
 				try
 				{
 					// incoming connection; we don't yet know nodeid
-					auto handshake = make_shared<RLPXHandshake>(this, s);
+					auto handshake = make_shared<RLPXHandshake>(this, socket);
 					handshake->start();
 					success = true;
 				}
@@ -392,18 +392,9 @@ void Host::runAcceptor()
 				}
 			}
 
-			// asio doesn't close socket on error
 			if (!success)
-			{
-				if (s->is_open())
-				{
-					boost::system::error_code ec;
-					s->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-					s->close();
-				}
-				delete s;
-			}
-
+				socket->ref().close();
+			
 			m_accepting = false;
 			if (ec.value() < 1)
 				runAcceptor();
@@ -485,20 +476,19 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 	}
 
 	clog(NetConnect) << "Attempting connection to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "from" << id().abridged();
-	bi::tcp::socket* s = new bi::tcp::socket(m_ioService);
-	s->async_connect(_p->peerEndpoint(), [=](boost::system::error_code const& ec)
+	auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
+	socket->ref().async_connect(_p->peerEndpoint(), [=](boost::system::error_code const& ec)
 	{
 		if (ec)
 		{
 			clog(NetConnect) << "Connection refused to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "(" << ec.message() << ")";
 			_p->m_lastDisconnect = TCPError;
 			_p->m_lastAttempted = std::chrono::system_clock::now();
-			delete s;
 		}
 		else
 		{
 			clog(NetConnect) << "Connected to" << _p->id.abridged() << "@" << _p->peerEndpoint();
-			auto handshake = make_shared<RLPXHandshake>(this, s, _p->id);
+			auto handshake = make_shared<RLPXHandshake>(this, socket, _p->id);
 			handshake->start();
 		}
 		Guard l(x_pendingNodeConns);

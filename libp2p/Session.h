@@ -16,6 +16,7 @@
 */
 /** @file Session.h
  * @author Gav Wood <i@gavwood.com>
+ * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  */
 
@@ -104,8 +105,8 @@ private:
 
 	Host* m_server;							///< The host that owns us. Never null.
 
-	mutable bi::tcp::socket m_socket;		///< Socket for the peer's connection. Mutable to ask for native_handle().
 	RLPXFrameIO m_io;						///< Transport over which packets are sent.
+	bi::tcp::socket& m_socket;				///< Socket for the peer's connection.
 	Mutex x_writeQueue;						///< Mutex for the write queue.
 	std::deque<bytes> m_writeQueue;			///< The write queue.
 	std::array<byte, 65536> m_data;			///< Buffer for ingress packet data.
