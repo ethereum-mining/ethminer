@@ -154,7 +154,7 @@ void Host::doneWorking()
 
 unsigned Host::protocolVersion() const
 {
-	return 4;
+	return 3;
 }
 
 bool Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint)
@@ -174,10 +174,10 @@ bool Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	// TODO: update pendingconns w/session-weak-ptr for graceful shutdown (otherwise this line isn't safe)
 	p->endpoint.tcp.address(_endpoint.address());
 
-	auto protocolVersion = _rlp[1].toInt<unsigned>();
-	auto clientVersion = _rlp[2].toString();
-	auto caps = _rlp[3].toVector<CapDesc>();
-	auto listenPort = _rlp[4].toInt<unsigned short>();
+	auto protocolVersion = _rlp[0].toInt<unsigned>();
+	auto clientVersion = _rlp[1].toString();
+	auto caps = _rlp[2].toVector<CapDesc>();
+	auto listenPort = _rlp[3].toInt<unsigned short>();
 	
 	// clang error (previously: ... << hex << caps ...)
 	// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
@@ -187,7 +187,7 @@ bool Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	clog(NetMessageSummary) << "Hello: " << clientVersion << "V[" << protocolVersion << "]" << _id.abridged() << showbase << capslog.str() << dec << listenPort;
 	
 	// create session so disconnects are managed
-	auto ps = make_shared<Session>(this, _io, p, PeerSessionInfo({_id, clientVersion, _endpoint.address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[3].toSet<CapDesc>(), 0, map<string, string>()}));
+	auto ps = make_shared<Session>(this, _io, p, PeerSessionInfo({_id, clientVersion, _endpoint.address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>()}));
 	if (protocolVersion != this->protocolVersion())
 	{
 		ps->disconnect(IncompatibleProtocol);
@@ -203,8 +203,6 @@ bool Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 			ps->disconnect(DuplicatePeer);
 			return false;
 		}
-		
-		clog(NetNote) << "p2p.host.peer.register" << _id.abridged();
 		m_sessions[_id] = ps;
 	}
 	ps->start();
@@ -217,7 +215,6 @@ bool Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 		}
 	clog(NetNote) << "p2p.host.peer.register" << _id.abridged();
 	StructuredLogger::p2pConnected(_id.abridged(), ps->m_peer->peerEndpoint(), ps->m_peer->m_lastConnected, clientVersion, peerCount());
-
 	return true;
 }
 
@@ -269,10 +266,6 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 		RecursiveGuard l(x_sessions);
 		m_peers.erase(_n);
 	}
-}
-
-void Host::seal(bytes& _b)
-{
 }
 
 void Host::determinePublic(string const& _publicAddress, bool _upnp)

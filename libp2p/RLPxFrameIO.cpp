@@ -96,7 +96,6 @@ void RLPXFrameIO::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
 {
 	// _packet = type || rlpList()
 
-	// current/old packet format: prep(_s).appendList(_args + 1).append((unsigned)_id);
 	RLPStream header;
 	uint32_t len = (uint32_t)_packet.size();
 	header.appendRaw(bytes({byte((len >> 16) & 0xff), byte((len >> 8) & 0xff), byte(len & 0xff)}));
@@ -105,10 +104,10 @@ void RLPXFrameIO::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
 	
 	// TODO: SECURITY check that header is <= 16 bytes
 
-	bytes headerWithMac(32);
-	bytes headerBytes(16);
-	bytesConstRef(&header.out()).copyTo(&headerBytes);
-	m_frameEnc.ProcessData(headerWithMac.data(), headerBytes.data(), 16);
+	bytes headerWithMac;
+	header.swapOut(headerWithMac);
+	headerWithMac.resize(32);
+	m_frameEnc.ProcessData(headerWithMac.data(), headerWithMac.data(), 16);
 	updateEgressMACWithHeader(bytesConstRef(&headerWithMac).cropped(0, 16));
 	egressDigest().ref().copyTo(bytesRef(&headerWithMac).cropped(h128::size,h128::size));
 
@@ -131,7 +130,8 @@ bool RLPXFrameIO::authAndDecryptHeader(bytesRef io)
 	asserts(io.size() == h256::size);
 	updateIngressMACWithHeader(io);
 	bytesConstRef macRef = io.cropped(h128::size, h128::size);
-	if (*(h128*)macRef.data() != ingressDigest())
+	h128 expected = ingressDigest();
+	if (*(h128*)macRef.data() != expected)
 		return false;
 	m_frameDec.ProcessData(io.data(), io.data(), h128::size);
 	return true;
