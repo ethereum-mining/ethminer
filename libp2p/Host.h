@@ -40,7 +40,7 @@
 #include "HostCapability.h"
 #include "Network.h"
 #include "Peer.h"
-#include "RLPxHandshake.h"
+#include "RLPxFrameIO.h"
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = ba::ip;
@@ -150,8 +150,8 @@ public:
 
 	NodeId id() const { return m_alias.pub(); }
 
-	/// Validates and starts peer session, taking ownership of _socket. Disconnects and returns false upon error.
-	bool startPeerSession(Public const& _id, RLP const& _hello, bi::tcp::socket* _socket, RLPXFrameIO* _io);
+	/// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.
+	bool startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint);
 
 protected:
 	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);
