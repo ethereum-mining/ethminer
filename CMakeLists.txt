@@ -200,8 +200,14 @@ if (NOT JUSTTESTS)
 
 		add_subdirectory(libnatspec)
 		add_subdirectory(libjsqrc)
-		add_subdirectory(alethzero)
-		add_subdirectory(third)
+
+		find_package (Qt5WebEngine QUIET)
+		if ("${Qt5WebEngine_VERSION_STRING}" VERSION_GREATER "5.3.0")
+			set (ETH_HAVE_WEBENGINE TRUE)
+			add_subdirectory(alethzero)
+			add_subdirectory(third)
+		endif()
+
 		add_subdirectory(mix)
 
 	endif()
