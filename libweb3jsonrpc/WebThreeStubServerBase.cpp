@@ -43,9 +43,9 @@
 #include "AccountHolder.h"
 
 using namespace std;
+using namespace jsonrpc;
 using namespace dev;
 using namespace dev::eth;
-
 
 static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 {
@@ -131,7 +131,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntries const& _es)	// commented
 	return res;
 }
 
-static Json::Value toJson(std::map<u256, u256> const& _storage)
+static Json::Value toJson(map<u256, u256> const& _storage)
 {
 	Json::Value res(Json::objectValue);
 	for (auto i: _storage)
@@ -245,20 +245,20 @@ static int toBlockNumber(string const& _string)
 	return jsToInt(_string);
 }
 
-WebThreeStubServerBase::WebThreeStubServerBase(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts):
-	AbstractWebThreeStubServer(_conn), m_accounts(make_shared<AccountHolder>(std::bind(&WebThreeStubServerBase::client, this)))
+WebThreeStubServerBase::WebThreeStubServerBase(AbstractServerConnector& _conn, vector<dev::KeyPair> const& _accounts):
+	AbstractWebThreeStubServer(_conn), m_accounts(make_shared<AccountHolder>(bind(&WebThreeStubServerBase::client, this)))
 {
 	m_accounts->setAccounts(_accounts);
 }
 
-void WebThreeStubServerBase::setIdentities(std::vector<dev::KeyPair> const& _ids)
+void WebThreeStubServerBase::setIdentities(vector<dev::KeyPair> const& _ids)
 {
 	m_ids.clear();
 	for (auto i: _ids)
 		m_ids[i.pub()] = i.secret();
 }
 
-std::string WebThreeStubServerBase::web3_sha3(std::string const& _param1)
+string WebThreeStubServerBase::web3_sha3(string const& _param1)
 {
 	return toJS(sha3(jsToBytes(_param1)));
 }
@@ -273,7 +273,7 @@ bool WebThreeStubServerBase::net_listening()
 	return network()->isNetworkStarted();
 }
 
-std::string WebThreeStubServerBase::eth_coinbase()
+string WebThreeStubServerBase::eth_coinbase()
 {
 	return toJS(client()->address());
 }
@@ -283,7 +283,7 @@ bool WebThreeStubServerBase::eth_mining()
 	return client()->isMining();
 }
 
-std::string WebThreeStubServerBase::eth_gasPrice()
+string WebThreeStubServerBase::eth_gasPrice()
 {
 	return toJS(10 * dev::eth::szabo);
 }
@@ -302,7 +302,7 @@ string WebThreeStubServerBase::eth_blockNumber()
 }
 
 
-std::string WebThreeStubServerBase::eth_getBalance(string const& _address, string const& _blockNumber)
+string WebThreeStubServerBase::eth_getBalance(string const& _address, string const& _blockNumber)
 {
 	Address address;
 	int number;
@@ -314,7 +314,7 @@ std::string WebThreeStubServerBase::eth_getBalance(string const& _address, strin
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJS(client()->balanceAt(address, number));
@@ -333,14 +333,14 @@ Json::Value WebThreeStubServerBase::eth_getStorage(string const& _address, strin
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	//TODO: fix this naming !
 	return toJson(client()->storageAt(address, number));
 }
 
-std::string WebThreeStubServerBase::eth_getStorageAt(string const& _address, string const& _position, string const& _blockNumber)
+string WebThreeStubServerBase::eth_getStorageAt(string const& _address, string const& _position, string const& _blockNumber)
 {
 	Address address;
 	u256 position;
@@ -354,7 +354,7 @@ std::string WebThreeStubServerBase::eth_getStorageAt(string const& _address, str
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	//TODO: fix this naming !
@@ -373,13 +373,13 @@ string WebThreeStubServerBase::eth_getTransactionCount(string const& _address, s
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJS(client()->countAt(address, number));
 }
 
-string WebThreeStubServerBase::eth_getBlockTransactionCountByHash(std::string const& _blockHash)
+string WebThreeStubServerBase::eth_getBlockTransactionCountByHash(string const& _blockHash)
 {
 	h256 hash;
 	
@@ -389,7 +389,7 @@ string WebThreeStubServerBase::eth_getBlockTransactionCountByHash(std::string co
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJS(client()->transactionCount(hash));
@@ -406,13 +406,13 @@ string WebThreeStubServerBase::eth_getBlockTransactionCountByNumber(string const
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJS(client()->transactionCount(client()->hashFromNumber(number)));
 }
 
-string WebThreeStubServerBase::eth_getUncleCountByBlockHash(std::string const& _blockHash)
+string WebThreeStubServerBase::eth_getUncleCountByBlockHash(string const& _blockHash)
 {
 	h256 hash;
 	
@@ -422,7 +422,7 @@ string WebThreeStubServerBase::eth_getUncleCountByBlockHash(std::string const& _
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJS(client()->uncleCount(hash));
@@ -438,13 +438,13 @@ string WebThreeStubServerBase::eth_getUncleCountByBlockNumber(string const& _blo
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJS(client()->uncleCount(client()->hashFromNumber(number)));
 }
 
-std::string WebThreeStubServerBase::eth_getData(string const& _address, string const& _blockNumber)
+string WebThreeStubServerBase::eth_getData(string const& _address, string const& _blockNumber)
 {
 	Address address;
 	int number;
@@ -456,7 +456,7 @@ std::string WebThreeStubServerBase::eth_getData(string const& _address, string c
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return jsFromBinary(client()->codeAt(address, number));
@@ -492,7 +492,7 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 	return ret;
 }
 
-std::string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
+string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 {
 	TransactionSkeleton t;
 	
@@ -502,10 +502,10 @@ std::string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
-	std::string ret;
+	string ret;
 	if (!t.from)
 		t.from = m_accounts->getDefaultTransactAccount();
 	if (t.creation)
@@ -524,7 +524,7 @@ std::string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json
 }
 
 
-std::string WebThreeStubServerBase::eth_call(Json::Value const& _json)
+string WebThreeStubServerBase::eth_call(Json::Value const& _json)
 {
 	TransactionSkeleton t;
 	
@@ -534,10 +534,10 @@ std::string WebThreeStubServerBase::eth_call(Json::Value const& _json)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
-	std::string ret;
+	string ret;
 	if (!t.from)
 		t.from = m_accounts->getDefaultTransactAccount();
 	if (!m_accounts->isRealAccount(t.from))
@@ -567,7 +567,7 @@ Json::Value WebThreeStubServerBase::eth_getBlockByHash(string const& _blockHash,
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	if (_includeTransactions) {
@@ -587,7 +587,7 @@ Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNum
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	h256 hash = client()->hashFromNumber(number);
@@ -609,7 +609,7 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByHash(string const& _tran
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJson(client()->transaction(hash));
@@ -627,7 +627,7 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockHashAndIndex(string
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJson(client()->transaction(hash, index));
@@ -645,7 +645,7 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockNumberAndIndex(stri
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJson(client()->transaction(client()->hashFromNumber(number), index));
@@ -663,7 +663,7 @@ Json::Value WebThreeStubServerBase::eth_getUncleByBlockHashAndIndex(string const
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJson(client()->uncle(hash, index));
@@ -681,7 +681,7 @@ Json::Value WebThreeStubServerBase::eth_getUncleByBlockNumberAndIndex(string con
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJson(client()->uncle(client()->hashFromNumber(number), index));
@@ -762,7 +762,7 @@ string WebThreeStubServerBase::eth_newFilter(Json::Value const& _json)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJS(client()->installWatch(filter));
@@ -777,7 +777,7 @@ string WebThreeStubServerBase::eth_newBlockFilter(string const& _filter)
 	else if (_filter.compare("pending") == 0)
 		filter = dev::eth::PendingChangedFilter;
 	else
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	
 	return toJS(client()->installWatch(filter));
 }
@@ -792,7 +792,7 @@ bool WebThreeStubServerBase::eth_uninstallFilter(string const& _filterId)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	// TODO: throw an error if there is no watch with given id?
@@ -810,7 +810,7 @@ Json::Value WebThreeStubServerBase::eth_getFilterChanges(string const& _filterId
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	// TODO: throw an error if there is no watch with given id?
@@ -830,7 +830,7 @@ Json::Value WebThreeStubServerBase::eth_getFilterLogs(string const& _filterId)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	// TODO: throw an error if there is no watch with given id?
@@ -847,7 +847,7 @@ Json::Value WebThreeStubServerBase::eth_getLogs(Json::Value const& _json)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJson(client()->logs(filter));
@@ -862,7 +862,7 @@ Json::Value WebThreeStubServerBase::eth_getWork()
 	return ret;
 }
 
-bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, std::string const& _mixHash)
+bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, string const& _mixHash)
 {
 	
 	Nonce nonce;
@@ -875,7 +875,7 @@ bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, std::string co
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return client()->submitWork(ProofOfWork::Proof{nonce, mixHash});
@@ -891,7 +891,7 @@ string WebThreeStubServerBase::eth_register(string const& _address)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJS(m_accounts->addProxyAccount(address));
@@ -907,7 +907,7 @@ bool WebThreeStubServerBase::eth_unregister(string const& _accountId)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 
 	// TODO: throw an error on no account with given id
@@ -924,7 +924,7 @@ Json::Value WebThreeStubServerBase::eth_queuedTransactions(string const& _accoun
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 
 	// TODO: throw an error on no account with given id
@@ -955,7 +955,7 @@ bool WebThreeStubServerBase::shh_post(Json::Value const& _json)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	Secret from;
@@ -970,7 +970,7 @@ bool WebThreeStubServerBase::shh_post(Json::Value const& _json)
 	return true;
 }
 
-std::string WebThreeStubServerBase::shh_newIdentity()
+string WebThreeStubServerBase::shh_newIdentity()
 {
 	KeyPair kp = KeyPair::create();
 	m_ids[kp.pub()] = kp.secret();
@@ -987,7 +987,7 @@ bool WebThreeStubServerBase::shh_hasIdentity(string const& _identity)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return m_ids.count(identity) > 0;
@@ -1001,7 +1001,7 @@ string WebThreeStubServerBase::shh_newGroup(string const& _id, string const& _wh
 	return "";
 }
 
-string WebThreeStubServerBase::shh_addToGroup(std::string const& _group, string const& _who)
+string WebThreeStubServerBase::shh_addToGroup(string const& _group, string const& _who)
 {
 	(void)_group;
 	(void)_who;
@@ -1018,7 +1018,7 @@ string WebThreeStubServerBase::shh_newFilter(Json::Value const& _json)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	auto ret = face()->installWatch(w.first);
@@ -1037,7 +1037,7 @@ bool WebThreeStubServerBase::shh_uninstallFilter(string const& _filterId)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	face()->uninstallWatch(id);
@@ -1054,7 +1054,7 @@ Json::Value WebThreeStubServerBase::shh_getFilterChanges(string const& _filterId
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	Json::Value ret(Json::arrayValue);
@@ -1089,7 +1089,7 @@ Json::Value WebThreeStubServerBase::shh_getMessages(string const& _filterId)
 	}
 	catch (...)
 	{
-		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	Json::Value ret(Json::arrayValue);
@@ -1123,7 +1123,7 @@ void WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t, bool _t
 		client()->transact(m_accounts->secretKey(_t.from), _t.value, _t.data, _t.gas, _t.gasPrice);
 }
 
-void WebThreeStubServerBase::setAccounts(const std::vector<KeyPair>& _accounts)
+void WebThreeStubServerBase::setAccounts(const vector<KeyPair>& _accounts)
 {
 	m_accounts->setAccounts(_accounts);
 }
