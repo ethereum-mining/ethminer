@@ -31,7 +31,7 @@
 namespace dev
 {
 
-extern std::mt19937_64 s_fixedHashEngine;
+extern std::random_device s_fixedHashEngine;
 
 /// Fixed-size raw-byte array container type, with an API optimised for storing hashes.
 /// Transparently converts to/from the corresponding arithmetic type; this will
