@@ -236,11 +236,13 @@ public:
 	virtual h256 hashFromNumber(unsigned _number) const { return m_bc.numberHash(_number); }
 	virtual BlockInfo blockInfo(h256 _hash) const { return BlockInfo(m_bc.block(_hash)); }
 	virtual BlockDetails blockDetails(h256 _hash) const { return m_bc.details(_hash); }
+	virtual Transaction transaction(h256 _transactionHash) const;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const;
 	virtual unsigned transactionCount(h256 _blockHash) const;
 	virtual unsigned uncleCount(h256 _blockHash) const;
 	virtual Transactions transactions(h256 _blockHash) const;
+	virtual TransactionHashes transactionHashes(h256 _blockHash) const;
 
 	/// Differences between transactions.
 	using Interface::diff;

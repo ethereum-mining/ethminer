@@ -462,6 +462,11 @@ eth::BlockDetails MixClient::blockDetails(h256 _hash) const
 	return bc().details(_hash);
 }
 
+Transaction MixClient::transaction(h256 _transactionHash) const
+{
+	return Transaction(bc().transaction(_transactionHash), CheckSignature::Range);
+}
+
 eth::Transaction MixClient::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = bc().block(_blockHash);
@@ -504,6 +509,11 @@ Transactions MixClient::transactions(h256 _blockHash) const
 	for (unsigned i = 0; i < b[1].itemCount(); i++)
 		res.emplace_back(b[1][i].data(), CheckSignature::Range);
 	return res;
+}
+
+TransactionHashes MixClient::transactionHashes(h256 _blockHash) const
+{
+	return bc().transactionHashes(_blockHash);
 }
 
 unsigned MixClient::number() const
