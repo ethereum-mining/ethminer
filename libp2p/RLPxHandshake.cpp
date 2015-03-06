@@ -171,7 +171,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		// old packet format
 		// 5 arguments, HelloPacket
 		RLPStream s;
-		s.appendList(5 + 1).append((unsigned)0)
+		s.append((unsigned)0).appendList(5)
 		<< m_host->protocolVersion()
 		<< m_host->m_clientVersion
 		<< m_host->caps()
@@ -233,7 +233,8 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 						transition(ec);
 					else
 					{
-						if (!m_io->authAndDecryptFrame(bytesRef(&m_handshakeInBuffer)))
+						bytesRef frame(&m_handshakeInBuffer);
+						if (!m_io->authAndDecryptFrame(frame))
 						{
 							clog(NetWarn) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: decrypt failed";
 							m_nextState = Error;
@@ -241,8 +242,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 							return;
 						}
 						
-						RLP rlp(m_handshakeInBuffer);
-						auto packetType = (PacketType)rlp[0].toInt<unsigned>();
+						PacketType packetType = (PacketType)(frame[0] == 0x80 ? 0x0 : frame[0]);
 						if (packetType != 0)
 						{
 							clog(NetWarn) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: invalid packet type";
@@ -251,6 +251,9 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 							return;
 						}
 
+						clog(NetNote) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: success. starting session.";
+						
+						RLP rlp(frame.cropped(1));
 						m_host->startPeerSession(m_remote, rlp, m_io, m_socket->remoteEndpoint());
 					}
 				});

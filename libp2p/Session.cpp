@@ -278,14 +278,13 @@ void Session::ping()
 
 RLPStream& Session::prep(RLPStream& _s, PacketType _id, unsigned _args)
 {
-	return _s.appendRaw(bytes(1, _id)).appendList(_args);
+	return _s.append((unsigned)_id).appendList(_args);
 }
 
 void Session::sealAndSend(RLPStream& _s)
 {
 	bytes b;
 	_s.swapOut(b);
-	m_server->seal(b);
 	send(move(b));
 }
 
@@ -300,11 +299,6 @@ bool Session::checkPacket(bytesConstRef _msg)
 		return false;
 	return true;
 }
-
-//void Session::send(bytesConstRef _msg)
-//{
-//	send(_msg.toBytes());
-//}
 
 void Session::send(bytes&& _msg)
 {

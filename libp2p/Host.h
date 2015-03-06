@@ -176,8 +176,6 @@ private:
 	/// Called only from startedWorking().
 	void runAcceptor();
 
-	void seal(bytes& _b);
-
 	/// Called by Worker. Not thread-safe; to be called only by worker.
 	virtual void startedWorking();
 	/// Called by startedWorking. Not thread-safe; to be called only be Worker.
