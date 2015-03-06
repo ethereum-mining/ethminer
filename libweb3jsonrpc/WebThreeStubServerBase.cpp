@@ -380,7 +380,7 @@ string WebThreeStubServerBase::eth_getBlockTransactionCountByHash(std::string co
 	}
 	catch (...)
 	{
-			throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
+		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
 	return toJS(client()->transactionCount(hash));
