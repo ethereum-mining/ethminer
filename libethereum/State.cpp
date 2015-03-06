@@ -427,7 +427,10 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, bo
 				}
 				catch (InvalidNonce const& in)
 				{
-					if (in.required > in.candidate)
+					bigint const* req = get_error_info<errinfo_required>(in);
+					bigint const* got = get_error_info<errinfo_got>(in);
+
+					if (*req > *got)
 					{
 						// too old
 						_tq.drop(i.first);
@@ -554,7 +557,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	for (auto const& i: rlp[2])
 	{
 		if (knownUncles.count(sha3(i.data())))
-			BOOST_THROW_EXCEPTION(UncleInChain(knownUncles, sha3(i.data()) ));
+			BOOST_THROW_EXCEPTION(UncleInChain() << errinfo_comment("Uncle in block already mentioned") << errinfo_data(toString(knownUncles)) << errinfo_hash256(sha3(i.data())) );
 
 		BlockInfo uncle = BlockInfo::fromHeader(i.data());
 		if (nonces.count(uncle.nonce))

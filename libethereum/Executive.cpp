@@ -66,7 +66,7 @@ bool Executive::setup()
 	if (m_t.nonce() != nonceReq)
 	{
 		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
-		BOOST_THROW_EXCEPTION(InvalidNonce(nonceReq, m_t.nonce()));
+		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
 	}
 
 	// Check gas cost is enough.
