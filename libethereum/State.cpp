@@ -427,8 +427,8 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, bo
 				}
 				catch (InvalidNonce const& in)
 				{
-					bigint const* req = get_error_info<errinfo_required>(in);
-					bigint const* got = get_error_info<errinfo_got>(in);
+					bigint const* req = boost::get_error_info<errinfo_required>(in);
+					bigint const* got = boost::get_error_info<errinfo_got>(in);
 
 					if (*req > *got)
 					{
