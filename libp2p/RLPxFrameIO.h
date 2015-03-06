@@ -86,15 +86,18 @@ protected:
 private:
 	void updateMAC(CryptoPP::SHA3_256& _mac, bytesConstRef _seed = bytesConstRef());
 
+	CryptoPP::SecByteBlock m_frameEncKey;
+	CryptoPP::SecByteBlock m_frameDecKey;
 	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameEnc;
 	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameDec;
-	Mutex x_macEnc;
+	CryptoPP::SecByteBlock m_macEncKey;
 	CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption m_macEnc;
+	Mutex x_macEnc;
 	CryptoPP::SHA3_256 m_egressMac;
 	CryptoPP::SHA3_256 m_ingressMac;
 	
 	std::shared_ptr<RLPXSocket> m_socket;
 };
-	
+
 }
 }
