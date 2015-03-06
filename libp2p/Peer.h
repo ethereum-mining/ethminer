@@ -29,7 +29,7 @@ namespace dev
 
 namespace p2p
 {
-	
+
 /**
  * @brief Representation of connectivity state and all other pertinent Peer metadata.
  * A Peer represents connectivity between two nodes, which in this case, are the host
