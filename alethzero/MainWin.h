@@ -76,8 +76,6 @@ public:
 	bool confirm() const;
 	NatSpecFace* natSpec() { return &m_natSpecDB; }
 
-	QVariant evalRaw(QString const& _js);
-
 	QString pretty(dev::Address _a) const override;
 	QString prettyU256(dev::u256 _n) const override;
 	QString render(dev::Address _a) const override;

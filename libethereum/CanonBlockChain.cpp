@@ -43,6 +43,7 @@ namespace js = json_spirit;
 std::map<Address, Account> const& dev::eth::genesisState()
 {
 	static std::map<Address, Account> s_ret;
+
 	if (s_ret.empty())
 	{
 		js::mValue val;
@@ -65,6 +66,8 @@ std::map<Address, Account> const& dev::eth::genesisState()
 	}
 	return s_ret;
 }
+
+// TODO: place Registry in here.
 
 std::unique_ptr<BlockInfo> CanonBlockChain::s_genesis;
 boost::shared_mutex CanonBlockChain::x_genesis;
