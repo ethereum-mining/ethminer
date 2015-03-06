@@ -855,20 +855,23 @@ Json::Value WebThreeStubServerBase::eth_getWork()
 	return ret;
 }
 
-bool WebThreeStubServerBase::eth_submitWork(string const& _nonce)
+bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, std::string const& _mixHash)
 {
-	h256 nonce;
+	
+	Nonce nonce;
+	h256 mixHash;
 	
 	try
 	{
-		nonce = jsToFixed<32>(_nonce);
+		nonce = jsToFixed<Nonce::size>(_nonce);
+		mixHash = jsToFixed<32>(_mixHash);
 	}
 	catch (...)
 	{
 		throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS);
 	}
 	
-	return client()->submitNonce(nonce);
+	return client()->submitWork(ProofOfWork::Proof{nonce, mixHash});
 }
 
 string WebThreeStubServerBase::eth_register(string const& _address)

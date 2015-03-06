@@ -23,7 +23,7 @@
 
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 
 namespace dev
 {

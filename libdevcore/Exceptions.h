@@ -31,7 +31,14 @@
 namespace dev
 {
 // base class for all exceptions
-struct Exception: virtual std::exception, virtual boost::exception { mutable std::string m_message; };
+struct Exception: virtual std::exception, virtual boost::exception
+{
+	Exception(std::string _message = {}) : m_message(std::move(_message)) {}
+	const char* what() const noexcept override { return m_message.c_str(); }
+
+private:
+	std::string m_message;
+};
 
 struct BadHexCharacter: virtual Exception {};
 struct RLPException: virtual Exception {};
@@ -40,8 +47,9 @@ struct BadRLP: virtual RLPException {};
 struct NoNetworking: virtual Exception {};
 struct NoUPnPDevice: virtual Exception {};
 struct RootNotFound: virtual Exception {};
+struct BadRoot: virtual Exception {};
 struct FileError: virtual Exception {};
-struct InterfaceNotSupported: virtual Exception { public: InterfaceNotSupported(std::string _f): m_f("Interface " + _f + " not supported.") {} virtual const char* what() const noexcept { return m_f.c_str(); } private: std::string m_f; };
+struct InterfaceNotSupported: virtual Exception { public: InterfaceNotSupported(std::string _f): Exception("Interface " + _f + " not supported.") {} };
 
 // error information to be added to exceptions
 using errinfo_invalidSymbol = boost::error_info<struct tag_invalidSymbol, char>;
