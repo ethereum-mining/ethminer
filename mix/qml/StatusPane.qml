@@ -87,6 +87,24 @@ Rectangle {
 		width: 500
 		height: 30
 		color: "#fcfbfc"
+		states: [
+			State {
+				name: "logsOpened"
+				PropertyChanges {
+					target: statusContainer
+					border.color: "#808080"
+					border.width: 1
+				}
+			},
+			State {
+				name: "logsClosed"
+				PropertyChanges {
+					target: statusContainer
+					border.color: "#808080"
+					border.width: 0
+				}
+			}
+		]
 
 		Text {
 			anchors.verticalCenter: parent.verticalCenter
@@ -152,18 +170,25 @@ Rectangle {
 			function toggle()
 			{
 				if (logsContainer.state === "opened")
+				{
+					statusContainer.state = "logsClosed";
 					logsContainer.state = "closed"
+				}
 				else
+				{
+					statusContainer.state = "logsOpened";
 					logsContainer.state = "opened";
+				}
 			}
 
 			id: logsContainer
 			width: 1000
 			height: 0
-			anchors.topMargin: 2
+			//anchors.topMargin:
 			anchors.top: statusContainer.bottom
 			anchors.horizontalCenter: parent.horizontalCenter
 			visible: false
+			radius: 5
 			Component.onCompleted:
 			{
 				var top = logsContainer;
