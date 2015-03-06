@@ -33,8 +33,8 @@ namespace dev
 // base class for all exceptions
 struct Exception: virtual std::exception, virtual boost::exception
 {
-	Exception(std::string _message = {}) : m_message(std::move(_message)) {}
-	const char* what() const noexcept override { return m_message.c_str(); }
+	Exception(std::string _message = {}): m_message(std::move(_message)) {}
+	const char* what() const noexcept override { return m_message.empty() ? std::exception::what() : m_message.c_str(); }
 
 private:
 	std::string m_message;
@@ -57,5 +57,9 @@ using errinfo_wrongAddress = boost::error_info<struct tag_address, std::string>;
 using errinfo_comment = boost::error_info<struct tag_comment, std::string>;
 using errinfo_required = boost::error_info<struct tag_required, bigint>;
 using errinfo_got = boost::error_info<struct tag_got, bigint>;
+using errinfo_min = boost::error_info<struct tag_min, bigint>;
+using errinfo_max = boost::error_info<struct tag_max, bigint>;
 using RequirementError = boost::tuple<errinfo_required, errinfo_got>;
+using errinfo_hash256 = boost::error_info<struct tag_hash, h256>;
+using HashMismatchError = boost::tuple<errinfo_hash256, errinfo_hash256>;
 }
