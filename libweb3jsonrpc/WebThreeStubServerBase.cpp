@@ -146,14 +146,14 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 		return filter;
 
 	// check only !empty. it should throw exceptions if input params are incorrect
-	if (!_json["earliest"].empty())
-		filter.withEarliest(jsToInt(_json["earliest"].asString()));
-	if (!_json["latest"].empty())
-		filter.withLatest(jsToInt(_json["latest"].asString()));
-	if (!_json["max"].empty())
-		filter.withMax(jsToInt(_json["max"].asString()));
-	if (!_json["skip"].empty())
-		filter.withSkip(jsToInt(_json["skip"].asString()));
+	if (!_json["fromBlock"].empty())
+		filter.withEarliest(jsToInt(_json["fromBlock"].asString()));
+	if (!_json["toBlock"].empty())
+		filter.withLatest(jsToInt(_json["toBlock"].asString()));
+	if (!_json["limit"].empty())
+		filter.withMax(jsToInt(_json["limit"].asString()));
+	if (!_json["offset"].empty())
+		filter.withSkip(jsToInt(_json["offset"].asString()));
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
