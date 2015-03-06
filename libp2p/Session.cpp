@@ -16,6 +16,7 @@
 */
 /** @file Session.cpp
  * @author Gav Wood <i@gavwood.com>
+ * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  */
 
@@ -39,9 +40,8 @@ using namespace dev::p2p;
 
 Session::Session(Host* _s, RLPXFrameIO _io, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info):
 	m_server(_s),
-#warning fixme
-	m_socket(move(*_io.m_socket)),
 	m_io(move(_io)),
+	m_socket(m_io.socket()),
 	m_peer(_n),
 	m_info(_info),
 	m_ping(chrono::steady_clock::time_point::max())

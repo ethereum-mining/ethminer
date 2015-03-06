@@ -26,6 +26,7 @@
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/ECDHE.h>
 #include <libdevcrypto/CryptoPP.h>
+#include "RLPxFrameIO.h"
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
@@ -35,52 +36,9 @@ namespace dev
 namespace p2p
 {
 
-class Session;
-class RLPXHandshake;
-
-class RLPXFrameIO
-{
-	friend class Session;
-public:
-	RLPXFrameIO(RLPXHandshake const& _init);
-	
-	void writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes);
-
-	/// Authenticates and decrypts header in-place.
-	bool authAndDecryptHeader(h256& io_cipherWithMac);
-	
-	/// Authenticates and decrypts frame in-place.
-	bool authAndDecryptFrame(bytesRef io_cipherWithMac);
-	
-	h128 egressDigest();
-	
-	h128 ingressDigest();
-	
-	void updateEgressMACWithHeader(bytesConstRef _headerCipher);
-	
-	void updateEgressMACWithEndOfFrame(bytesConstRef _cipher);
-	
-	void updateIngressMACWithHeader(bytesConstRef _headerCipher);
-	
-	void updateIngressMACWithEndOfFrame(bytesConstRef _cipher);
-	
-private:
-	void updateMAC(CryptoPP::SHA3_256& _mac, h128 const& _seed = h128());
-
-	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameEnc;
-	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameDec;
-	CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption m_macEnc;
-	CryptoPP::SHA3_256 m_egressMac;
-	CryptoPP::SHA3_256 m_ingressMac;
-	
-	bi::tcp::socket* m_socket;
-};
-
 class RLPXHandshake: public std::enable_shared_from_this<RLPXHandshake>
 {
-public:
 	friend class RLPXFrameIO;
-	
 	enum State
 	{
 		Error = -1,
@@ -90,17 +48,18 @@ public:
 		ReadHello,
 		StartSession
 	};
-
+	
+public:
 	/// Handshake for ingress connection. Takes ownership of socket.
-	RLPXHandshake(Host* _host, bi::tcp::socket* _socket): m_host(_host), m_socket(std::move(_socket)), m_originated(false) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
+	RLPXHandshake(Host* _host, std::shared_ptr<RLPXSocket> const& _socket): m_host(_host), m_originated(false), m_socket(_socket) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
 	
 	/// Handshake for egress connection to _remote. Takes ownership of socket.
-	RLPXHandshake(Host* _host, bi::tcp::socket* _socket, NodeId _remote): m_host(_host), m_remote(_remote), m_socket(std::move(_socket)), m_originated(true) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
-	
-	~RLPXHandshake() { delete m_socket; }
+	RLPXHandshake(Host* _host, std::shared_ptr<RLPXSocket> const& _socket, NodeId _remote): m_host(_host), m_remote(_remote), m_originated(true), m_socket(_socket) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
+
+	~RLPXHandshake() {}
 
 	void start() { transition(); }
-	
+
 protected:
 	void writeAuth();
 	void readAuth();
@@ -118,8 +77,6 @@ protected:
 	
 	/// Node id of remote host for socket.
 	NodeId m_remote;
-	
-	bi::tcp::socket* m_socket;
 	bool m_originated = false;
 	
 	/// Buffers for encoded and decoded handshake phases
@@ -138,6 +95,7 @@ protected:
 	
 	/// Frame IO is used to read frame for last step of handshake authentication.
 	std::unique_ptr<RLPXFrameIO> m_io;
+	std::shared_ptr<RLPXSocket> m_socket;
 };
 	
 }
