@@ -177,6 +177,15 @@ public:
 		int _miners = -1
 	);
 
+	explicit Client(
+		p2p::Host* _host,
+		u256 _weiPerCent,
+		std::string const& _dbPath = std::string(),
+		bool _forceClean = false,
+		u256 _networkId = 0,
+		int _miners = -1
+	);
+
 	/// Destructor.
 	virtual ~Client();
 
@@ -352,6 +361,7 @@ private:
 	CanonBlockChain m_bc;					///< Maintains block database.
 	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
+	GasPricer m_gp;							///< The gas pricer.
 
 	mutable SharedMutex x_stateDB;			///< Lock on the state DB, effectively a lock on m_postMine.
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
@@ -368,7 +378,9 @@ private:
 	bool m_paranoia = false;				///< Should we be paranoid about our state?
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
-	bool m_verifyOwnBlocks = true;			///< Shoudl be verify blocks that we mined?
+	bool m_verifyOwnBlocks = true;			///< Should be verify blocks that we mined?
+
+
 
 	mutable Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;

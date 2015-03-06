@@ -64,10 +64,38 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
+	m_gp(u256("60000000000000")),
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
 	m_preMine(Address(), m_stateDB),
 	m_postMine(Address(), m_stateDB)
 {
+	m_gp.updateQuartiles(m_bc);
+
+	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
+
+	if (_miners > -1)
+		setMiningThreads(_miners);
+	else
+		setMiningThreads();
+	if (_dbPath.size())
+		Defaults::setDBPath(_dbPath);
+	m_vc.setOk();
+	doWork();
+
+	startWorking();
+}
+
+Client::Client(p2p::Host* _extNet, u256 weiPerCent, std::string const& _dbPath, bool _forceClean, u256 _networkId, int _miners):
+	Worker("eth"),
+	m_vc(_dbPath),
+	m_bc(_dbPath, !m_vc.ok() || _forceClean),
+	m_gp(weiPerCent),
+	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
+	m_preMine(Address(), m_stateDB),
+	m_postMine(Address(), m_stateDB)
+{
+	m_gp.updateQuartiles(m_bc);
+
 	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
 	if (_miners > -1)
@@ -592,7 +620,7 @@ void Client::doWork()
 
 		// returns h256s as blooms, once for each transaction.
 		cwork << "postSTATE <== TQ";
-		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq);
+		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq, m_gp);
 		if (newPendingReceipts.size())
 		{
 			for (size_t i = 0; i < newPendingReceipts.size(); i++)
