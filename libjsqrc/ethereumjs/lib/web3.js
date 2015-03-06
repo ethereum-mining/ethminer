@@ -141,6 +141,14 @@ var web3 = {
             };
         },
 
+        canary: function (abi) {
+            return function(addr) {
+                // Default to address of Config. TODO: rremove prior to genesis.
+                addr = addr || '0xc6d9d2cd449a754c494264e1809c50e34d64562b';
+                return addr;
+            };
+        },
+
         /// @param filter may be a string, object or event
         /// @param indexed is optional, this is an object with optional event indexed params
         /// @param options is optional, this is an object with optional event options ('max'...)
