@@ -187,7 +187,7 @@ bool Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	clog(NetMessageSummary) << "Hello: " << clientVersion << "V[" << protocolVersion << "]" << _id.abridged() << showbase << capslog.str() << dec << listenPort;
 	
 	// create session so disconnects are managed
-	auto ps = make_shared<Session>(this, move(*_io), p, PeerSessionInfo({_id, clientVersion, _endpoint.address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[3].toSet<CapDesc>(), 0, map<string, string>()}));
+	auto ps = make_shared<Session>(this, _io, p, PeerSessionInfo({_id, clientVersion, _endpoint.address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[3].toSet<CapDesc>(), 0, map<string, string>()}));
 	if (protocolVersion != this->protocolVersion())
 	{
 		ps->disconnect(IncompatibleProtocol);
@@ -273,11 +273,6 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 
 void Host::seal(bytes& _b)
 {
-	uint32_t len = (uint32_t)_b.size() - 4;
-	_b[0] = (len >> 24) & 0xff;
-	_b[1] = (len >> 16) & 0xff;
-	_b[2] = (len >> 8) & 0xff;
-	_b[3] = len & 0xff;
 }
 
 void Host::determinePublic(string const& _publicAddress, bool _upnp)

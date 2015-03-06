@@ -38,10 +38,10 @@ using namespace dev::p2p;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-Session::Session(Host* _s, RLPXFrameIO _io, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info):
+Session::Session(Host* _s, RLPXFrameIO* _io, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info):
 	m_server(_s),
-	m_io(move(_io)),
-	m_socket(m_io.socket()),
+	m_io(_io),
+	m_socket(m_io->socket()),
 	m_peer(_n),
 	m_info(_info),
 	m_ping(chrono::steady_clock::time_point::max())
@@ -67,6 +67,7 @@ Session::~Session()
 		}
 	}
 	catch (...){}
+	delete m_io;
 }
 
 NodeId Session::id() const
@@ -144,21 +145,21 @@ void Session::serviceNodesRequest()
 	addNote("peers", "done");
 }
 
-bool Session::interpret(RLP const& _r)
+bool Session::interpret(PacketType _t, RLP const& _r)
 {
 	m_lastReceived = chrono::steady_clock::now();
 
-	clogS(NetRight) << _r;
+	clogS(NetRight) << _t << _r;
 	try		// Generic try-catch block designed to capture RLP format errors - TODO: give decent diagnostics, make a bit more specific over what is caught.
 	{
 
-	switch ((PacketType)_r[0].toInt<unsigned>())
+	switch (_t)
 	{
 	case DisconnectPacket:
 	{
 		string reason = "Unspecified";
-		auto r = (DisconnectReason)_r[1].toInt<int>();
-		if (!_r[1].isInt())
+		auto r = (DisconnectReason)_r[0].toInt<int>();
+		if (!_r[0].isInt())
 			drop(BadProtocol);
 		else
 		{
@@ -197,7 +198,7 @@ bool Session::interpret(RLP const& _r)
 			
 		clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
 		m_weRequestedNodes = false;
-		for (unsigned i = 1; i < _r.itemCount(); ++i)
+		for (unsigned i = 0; i < _r.itemCount(); ++i)
 		{
 			bi::address peerAddress;
 			if (_r[i][0].size() == 16)
@@ -247,12 +248,11 @@ bool Session::interpret(RLP const& _r)
 		break;
 	default:
 	{
-		auto id = _r[0].toInt<unsigned>();
 		for (auto const& i: m_capabilities)
-			if (id >= i.second->m_idOffset && id - i.second->m_idOffset < i.second->hostCapability()->messageCount())
+			if (_t >= i.second->m_idOffset && _t - i.second->m_idOffset < i.second->hostCapability()->messageCount())
 			{
 				if (i.second->m_enabled)
-					return i.second->interpret(id - i.second->m_idOffset, _r);
+					return i.second->interpret(_t - i.second->m_idOffset, _r);
 				else
 					return true;
 			}
@@ -278,12 +278,7 @@ void Session::ping()
 
 RLPStream& Session::prep(RLPStream& _s, PacketType _id, unsigned _args)
 {
-	return prep(_s).appendList(_args + 1).append((unsigned)_id);
-}
-
-RLPStream& Session::prep(RLPStream& _s)
-{
-	return _s.appendRaw(bytes(4, 0));
+	return _s.appendRaw(bytes(1, _id)).appendList(_args);
 }
 
 void Session::sealAndSend(RLPStream& _s)
@@ -296,32 +291,32 @@ void Session::sealAndSend(RLPStream& _s)
 
 bool Session::checkPacket(bytesConstRef _msg)
 {
-	if (_msg.size() < 5)
+	if (_msg.size() < 2)
 		return false;
-	uint32_t len = ((_msg[0] * 256 + _msg[1]) * 256 + _msg[2]) * 256 + _msg[3];
-	if (_msg.size() != len + 4)
+	if (_msg[0] > 0x7f)
 		return false;
-	RLP r(_msg.cropped(4));
-	if (r.actualSize() != len)
+	RLP r(_msg.cropped(1));
+	if (r.actualSize() + 1 != _msg.size())
 		return false;
 	return true;
 }
 
-void Session::send(bytesConstRef _msg)
-{
-	send(_msg.toBytes());
-}
+//void Session::send(bytesConstRef _msg)
+//{
+//	send(_msg.toBytes());
+//}
 
 void Session::send(bytes&& _msg)
 {
-	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(4));
+	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(1));
 
-	if (!checkPacket(bytesConstRef(&_msg)))
+	bytesConstRef msg(&_msg);
+	if (!checkPacket(msg))
 		clogS(NetWarn) << "INVALID PACKET CONSTRUCTED!";
 
 	if (!m_socket.is_open())
 		return;
-
+	
 	bool doWrite = false;
 	{
 		Guard l(x_writeQueue);
@@ -336,6 +331,7 @@ void Session::send(bytes&& _msg)
 void Session::write()
 {
 	const bytes& bytes = m_writeQueue[0];
+	m_io->writeSingleFramePacket(&bytes, m_writeQueue[0]);
 	auto self(shared_from_this());
 	ba::async_write(m_socket, ba::buffer(bytes), [this, self](boost::system::error_code ec, std::size_t /*length*/)
 	{
@@ -415,7 +411,7 @@ void Session::doRead()
 		return;
 	
 	auto self(shared_from_this());
-	m_socket.async_read_some(boost::asio::buffer(m_data), [this,self](boost::system::error_code ec, std::size_t length)
+	ba::async_read(m_socket, boost::asio::buffer(m_data, h256::size), [this,self](boost::system::error_code ec, std::size_t length)
 	{
 		if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 		{
@@ -426,50 +422,66 @@ void Session::doRead()
 			return;
 		else
 		{
-			try
+			/// authenticate and decrypt header
+			bytesRef header(m_data.data(), h256::size);
+			if (!m_io->authAndDecryptHeader(header))
 			{
-				m_incoming.resize(m_incoming.size() + length);
-				memcpy(m_incoming.data() + m_incoming.size() - length, m_data.data(), length);
-				
-				// 4 bytes for length header
-				const uint32_t c_hLen = 4;
-				while (m_incoming.size() > c_hLen)
+				clog(NetWarn) << "header decrypt failed";
+				drop(BadProtocol); // todo: better error
+				return;
+			}
+
+			/// check frame size
+			uint32_t frameSize = (m_data[0] * 256 + m_data[1]) * 256 + m_data[2];
+			if (frameSize > 16777216)
+			{
+				clog(NetWarn) << "frame size too large";
+				drop(BadProtocol);
+				return;
+			}
+			
+			/// rlp of header has protocol-type, sequence-id[, total-packet-size]
+			bytes headerRLP(13);
+			bytesConstRef(m_data.data(), h128::size).cropped(3).copyTo(&headerRLP);
+			
+			/// read padded frame and mac
+			auto tlen = frameSize + ((16 - (frameSize % 16)) % 16) + h128::size;
+			ba::async_read(m_socket, boost::asio::buffer(m_data, tlen), [this, self, headerRLP, frameSize, tlen](boost::system::error_code ec, std::size_t length)
+			{
+				if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 				{
-					// break if data recvd is less than expected size of packet.
-					uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data(), c_hLen));
-					uint32_t tlen = c_hLen + len;
-					if (m_incoming.size() < tlen)
-						break;
-					bytesConstRef frame(m_incoming.data(), tlen);
-					bytesConstRef packet = frame.cropped(c_hLen);
+					clogS(NetWarn) << "Error reading: " << ec.message();
+					drop(TCPError);
+				}
+				else if (ec && length == 0)
+					return;
+				else
+				{
+					if (!m_io->authAndDecryptFrame(bytesRef(m_data.data(), tlen)))
+					{
+						clog(NetWarn) << "frame decrypt failed";
+						drop(BadProtocol); // todo: better error
+						return;
+					}
+					
+					bytesConstRef frame(m_data.data(), frameSize);
 					if (!checkPacket(frame))
 					{
-						cerr << "Received " << packet.size() << ": " << toHex(packet) << endl;
+						cerr << "Received " << frame.size() << ": " << toHex(frame) << endl;
 						clogS(NetWarn) << "INVALID MESSAGE RECEIVED";
 						disconnect(BadProtocol);
 						return;
 					}
 					else
 					{
-						RLP r(packet);
-						if (!interpret(r))
+						auto packetType = (PacketType)RLP(frame.cropped(0, 1)).toInt<unsigned>();
+						RLP r(frame.cropped(1));
+						if (!interpret(packetType, r))
 							clogS(NetWarn) << "Couldn't interpret packet." << RLP(r);
 					}
-					memmove(m_incoming.data(), m_incoming.data() + tlen, m_incoming.size() - tlen);
-					m_incoming.resize(m_incoming.size() - tlen);
+					doRead();
 				}
-				doRead();
-			}
-			catch (Exception const& _e)
-			{
-				clogS(NetWarn) << "ERROR: " << diagnostic_information(_e);
-				drop(BadProtocol);
-			}
-			catch (std::exception const& _e)
-			{
-				clogS(NetWarn) << "ERROR: " << _e.what();
-				drop(BadProtocol);
-			}
+			});
 		}
 	});
 }

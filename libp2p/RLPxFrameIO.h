@@ -26,6 +26,7 @@
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/ECDHE.h>
 #include <libdevcrypto/CryptoPP.h>
+#include <libdevcore/Guards.h>
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
@@ -57,11 +58,12 @@ class RLPXFrameIO
 	friend class Session;
 public:
 	RLPXFrameIO(RLPXHandshake const& _init);
+	~RLPXFrameIO() {}
 	
 	void writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes);
 
 	/// Authenticates and decrypts header in-place.
-	bool authAndDecryptHeader(h256& io_cipherWithMac);
+	bool authAndDecryptHeader(bytesRef io_cipherWithMac);
 	
 	/// Authenticates and decrypts frame in-place.
 	bool authAndDecryptFrame(bytesRef io_cipherWithMac);
@@ -82,10 +84,11 @@ protected:
 	bi::tcp::socket& socket() { return m_socket->ref(); }
 	
 private:
-	void updateMAC(CryptoPP::SHA3_256& _mac, h128 const& _seed = h128());
+	void updateMAC(CryptoPP::SHA3_256& _mac, bytesConstRef _seed = bytesConstRef());
 
 	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameEnc;
 	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameDec;
+	Mutex x_macEnc;
 	CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption m_macEnc;
 	CryptoPP::SHA3_256 m_egressMac;
 	CryptoPP::SHA3_256 m_ingressMac;

@@ -45,7 +45,7 @@ void Capability::disable(std::string const& _problem)
 
 RLPStream& Capability::prep(RLPStream& _s, unsigned _id, unsigned _args)
 {
-	return Session::prep(_s).appendList(_args + 1).append(_id + m_idOffset);
+	return _s.appendRaw(bytes(1, _id + m_idOffset)).appendList(_args);
 }
 
 void Capability::sealAndSend(RLPStream& _s)

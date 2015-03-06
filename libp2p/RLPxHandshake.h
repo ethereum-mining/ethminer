@@ -94,7 +94,7 @@ protected:
 	h256 m_remoteNonce;
 	
 	/// Frame IO is used to read frame for last step of handshake authentication.
-	std::unique_ptr<RLPXFrameIO> m_io;
+	RLPXFrameIO* m_io;
 	std::shared_ptr<RLPXSocket> m_socket;
 };
 	
