@@ -27,7 +27,8 @@
 #include <thread>
 #include <cstdint>
 #include <libdevcrypto/SHA3.h>
-#include "CommonEth.h"
+#include "Common.h"
+#include "BlockInfo.h"
 
 #define FAKE_DAGGER 1
 
@@ -45,47 +46,58 @@ struct MineInfo
 	bool completed = false;
 };
 
+class Ethash
+{
+public:
+	struct Proof
+	{
+		Nonce nonce;
+		h256 mixHash;
+	};
+
+	static bool verify(BlockInfo const& _header);
+	std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
+	static void assignResult(Proof const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
+
+protected:
+	Nonce m_last;
+};
+
 template <class Evaluator>
 class ProofOfWorkEngine: public Evaluator
 {
 public:
-	static bool verify(h256 const& _root, h256 const& _nonce, u256 const& _difficulty) { return (bigint)(u256)Evaluator::eval(_root, _nonce) <= (bigint(1) << 256) / _difficulty; }
+	using Proof = Nonce;
 
-	inline std::pair<MineInfo, h256> mine(h256 const& _root, u256 const& _difficulty, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
+	static bool verify(BlockInfo const& _header) { return (bigint)(u256)Evaluator::eval(_header.headerHash(WithoutNonce), _header.nonce) <= (bigint(1) << 256) / _header.difficulty; }
+	inline std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
+	static void assignResult(Proof const& _r, BlockInfo& _header) { _header.nonce = _r; }
 
 protected:
-	h256 m_last;
+	Nonce m_last;
 };
 
 class SHA3Evaluator
 {
 public:
-	static h256 eval(h256 const& _root, h256 const& _nonce) { h256 b[2] = { _root, _nonce }; return sha3(bytesConstRef((byte const*)&b[0], 64)); }
-};
-
-// TODO: class ARPoWEvaluator
-
-class DaggerEvaluator
-{
-public:
-	static h256 eval(h256 const& _root, h256 const& _nonce);
-
-private:
-	static h256 node(h256 const& _root, h256 const& _xn, uint_fast32_t _L, uint_fast32_t _i);
+	static h256 eval(h256 const& _root, Nonce const& _nonce) { h256 b[2] = { _root, h256(_nonce) }; return sha3(bytesConstRef((byte const*)&b[0], 64)); }
 };
 
 using SHA3ProofOfWork = ProofOfWorkEngine<SHA3Evaluator>;
 
-using ProofOfWork = SHA3ProofOfWork;
+using ProofOfWork = Ethash;
 
 template <class Evaluator>
-std::pair<MineInfo, h256> ProofOfWorkEngine<Evaluator>::mine(h256 const& _root, u256 const& _difficulty, unsigned _msTimeout, bool _continue, bool _turbo)
+std::pair<MineInfo, typename ProofOfWorkEngine<Evaluator>::Proof> ProofOfWorkEngine<Evaluator>::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue, bool _turbo)
 {
-	std::pair<MineInfo, h256> ret;
-	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data())));
-	u256 s = (m_last = h256::random(s_eng));
+	auto headerHashWithoutNonce = _header.headerHash(WithoutNonce);
+	auto difficulty = _header.difficulty;
 
-	bigint d = (bigint(1) << 256) / _difficulty;
+	std::pair<MineInfo, Nonce> ret;
+	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data())));
+	Nonce::Arith s = (m_last = Nonce::random(s_eng));
+
+	bigint d = (bigint(1) << 256) / difficulty;
 	ret.first.requirement = log2((double)d);
 
 	// 2^ 0      32      64      128      256
@@ -96,12 +108,12 @@ std::pair<MineInfo, h256> ProofOfWorkEngine<Evaluator>::mine(h256 const& _root, 
 	if (!_turbo)
 		std::this_thread::sleep_for(std::chrono::milliseconds(_msTimeout * 90 / 100));
 	double best = 1e99;	// high enough to be effectively infinity :)
-	h256 solution;
+	ProofOfWorkEngine<Evaluator>::Proof solution;
 	unsigned h = 0;
 	for (; (std::chrono::steady_clock::now() - startTime) < std::chrono::milliseconds(_msTimeout) && _continue; s++, h++)
 	{
-		solution = (h256)s;
-		auto e = (bigint)(u256)Evaluator::eval(_root, solution);
+		solution = (ProofOfWorkEngine<Evaluator>::Proof)s;
+		auto e = (bigint)(u256)Evaluator::eval(headerHashWithoutNonce, solution);
 		best = std::min<double>(best, log2((double)e));
 		if (e <= d)
 		{
@@ -114,7 +126,11 @@ std::pair<MineInfo, h256> ProofOfWorkEngine<Evaluator>::mine(h256 const& _root, 
 	ret.second = solution;
 
 	if (ret.first.completed)
-		assert(verify(_root, solution, _difficulty));
+	{
+		BlockInfo test = _header;
+		assignResult(solution, test);
+		assert(verify(test));
+	}
 
 	return ret;
 }
