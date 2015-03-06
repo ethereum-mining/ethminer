@@ -120,8 +120,17 @@ cmake_policy(SET CMP0015 NEW)
 
 createDefaultCacheConfig()
 configureProject()
+
+# TODO: Move to some other place / remove once we make Qt5.4 mandatory.
+find_package (Qt5WebEngine QUIET)
+if ("${Qt5WebEngine_VERSION_STRING}" VERSION_GREATER "5.3.0")
+	set (ETH_HAVE_WEBENGINE 1)
+else()
+	set (ETH_HAVE_WEBENGINE 0)
+endif()
+
 message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
-message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}; FATDB: ${FATDB}")
+message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}; FATDB: ${FATDB}; CHROMIUM: ${ETH_HAVE_WEBENGINE}")
 
 
 # Default TARGET_PLATFORM to "linux".
@@ -200,8 +209,12 @@ if (NOT JUSTTESTS)
 
 		add_subdirectory(libnatspec)
 		add_subdirectory(libjsqrc)
-		add_subdirectory(alethzero)
-		add_subdirectory(third)
+
+		if (ETH_HAVE_WEBENGINE)
+			add_subdirectory(alethzero)
+			add_subdirectory(third)
+		endif()
+
 		add_subdirectory(mix)
 
 	endif()

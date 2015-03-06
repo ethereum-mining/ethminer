@@ -26,6 +26,7 @@
 #include <leveldb/db.h>
 #pragma warning(pop)
 
+#include <deque>
 #include <chrono>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
