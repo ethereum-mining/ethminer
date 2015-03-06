@@ -74,14 +74,14 @@ llvm::Function* Memory::getRequireFunc()
 		// Check gas first
 		auto w1 = m_builder.CreateLShr(sizeReq, 5);
 		auto w1s = m_builder.CreateNUWMul(w1, w1);
-		auto c1 = m_builder.CreateAdd(w1, m_builder.CreateLShr(w1s, 10));
+		auto c1 = m_builder.CreateAdd(m_builder.CreateNUWMul(w1, m_builder.getInt64(3)), m_builder.CreateLShr(w1s, 9));
 		auto w0 = m_builder.CreateLShr(sizeCur, 5);
 		auto w0s = m_builder.CreateNUWMul(w0, w0);
-		auto c0 = m_builder.CreateAdd(w0, m_builder.CreateLShr(w0s, 10));
+		auto c0 = m_builder.CreateAdd(m_builder.CreateNUWMul(w0, m_builder.getInt64(3)), m_builder.CreateLShr(w0s, 9));
 		auto cc = m_builder.CreateNUWSub(c1, c0);
 		auto costOk = m_builder.CreateAnd(blkOffsetOk, blkSizeOk, "costOk");
 		auto c = m_builder.CreateSelect(costOk, cc, m_builder.getInt64(std::numeric_limits<int64_t>::max()), "c");
-		m_gasMeter.countMemory(c, jmpBuf, gas);
+		m_gasMeter.count(c, jmpBuf, gas);
 		// Resize
 		m_memory.extend(mem, sizeReq);
 		m_builder.CreateBr(returnBB);
