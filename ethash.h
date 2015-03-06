@@ -14,6 +14,7 @@
   You should have received a copy of the GNU General Public License
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 /** @file ethash.h
 * @date 2015
 */
@@ -25,9 +26,10 @@
 #include <stddef.h>
 #include "compiler.h"
 
-#define REVISION 19
+#define REVISION 20
 #define DAGSIZE_BYTES_INIT 1073741824U // 2**30
-#define DAG_GROWTH 113000000U
+#define DAG_GROWTH 8388608U            // 2**23
+#define CACHE_MULTIPLIER 1024
 #define EPOCH_LENGTH 30000U
 #define MIX_BYTES 128
 #define DAG_PARENTS 256
