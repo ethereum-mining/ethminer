@@ -324,8 +324,8 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	case GetTransactionsPacket: break;	// DEPRECATED.
 	case TransactionsPacket:
 	{
-		clogS(NetMessageSummary) << "Transactions (" << dec << (_r.itemCount() - 1) << "entries)";
-		addRating(_r.itemCount() - 1);
+		clogS(NetMessageSummary) << "Transactions (" << dec << _r.itemCount() << "entries)";
+		addRating(_r.itemCount());
 		Guard l(x_knownTransactions);
 		for (unsigned i = 0; i < _r.itemCount(); ++i)
 		{
@@ -355,14 +355,14 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case BlockHashesPacket:
 	{
-		clogS(NetMessageSummary) << "BlockHashes (" << dec << (_r.itemCount() - 1) << "entries)" << (_r.itemCount() - 1 ? "" : ": NoMoreHashes");
+		clogS(NetMessageSummary) << "BlockHashes (" << dec << _r.itemCount() << "entries)" << (_r.itemCount() ? "" : ": NoMoreHashes");
 
 		if (m_asking != Asking::Hashes)
 		{
 			cwarn << "Peer giving us hashes when we didn't ask for them.";
 			break;
 		}
-		if (_r.itemCount() == 1)
+		if (_r.itemCount() == 0)
 		{
 			transition(Asking::Blocks);
 			return true;
@@ -384,7 +384,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case GetBlocksPacket:
 	{
-		clogS(NetMessageSummary) << "GetBlocks (" << dec << (_r.itemCount() - 1) << "entries)";
+		clogS(NetMessageSummary) << "GetBlocks (" << dec << _r.itemCount() << "entries)";
 		// return the requested blocks.
 		bytes rlp;
 		unsigned n = 0;
@@ -404,12 +404,12 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case BlocksPacket:
 	{
-		clogS(NetMessageSummary) << "Blocks (" << dec << (_r.itemCount() - 1) << "entries)" << (_r.itemCount() - 1 ? "" : ": NoMoreBlocks");
+		clogS(NetMessageSummary) << "Blocks (" << dec << _r.itemCount() << "entries)" << (_r.itemCount() ? "" : ": NoMoreBlocks");
 
 		if (m_asking != Asking::Blocks)
 			clogS(NetWarn) << "Unexpected Blocks received!";
 
-		if (_r.itemCount() == 1)
+		if (_r.itemCount() == 0)
 		{
 			// Got to this peer's latest block - just give up.
 			transition(Asking::Nothing);
@@ -470,7 +470,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		auto h = BlockInfo::headerHash(_r[0].data());
 		clogS(NetMessageSummary) << "NewBlock: " << h.abridged();
 
-		if (_r.itemCount() != 3)
+		if (_r.itemCount() != 2)
 			disable("NewBlock without 2 data fields.");
 		else
 		{
