@@ -417,7 +417,7 @@ public:
 	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(_key, _value); m_secure.insert(_key, _value); syncRoot(); }
 	void remove(bytesConstRef _key) { Super::remove(_key); m_secure.remove(_key); syncRoot(); }
 
-	std::set<h256> leftOvers(std::ostream* = nullptr) const { return {}; }
+	std::set<h256> leftOvers(std::ostream* = nullptr) const { return std::set<h256>{}; }
 	bool check(bool) const { return m_secure.check(false) && Super::check(false); }
 
 private:
