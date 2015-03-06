@@ -12,6 +12,9 @@ Item {
 	id: webPreview
 	property string pendingPageUrl: ""
 	property bool initialized: false
+	signal javaScriptErrorMessage(string _content)
+	signal javaScriptWarningMessage(string _content)
+	signal javaScriptInfoMessage(string _content)
 
 	function setPreviewUrl(url) {
 		if (!initialized)
@@ -240,7 +243,13 @@ Item {
 				id: webView
 				experimental.settings.localContentCanAccessRemoteUrls: true
 				onJavaScriptConsoleMessage: {
-					console.log(sourceID + ":" + lineNumber + ":" + message);
+					var info = sourceID + ":" + lineNumber + ":" + message;
+					if (level === 0)
+						webPreview.javaScriptInfoMessage(info);
+					else if (level === 1)
+						webPreview.javaScriptErrorMessage(info);
+					else if (level === 2)
+						webPreview.javaScriptErrorMessage(info);
 				}
 				onLoadingChanged: {
 					if (!loading) {

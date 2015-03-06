@@ -102,7 +102,7 @@ Rectangle {
 	}
 
 	CodeEditorExtensionManager {
-		headerView: headerPaneTabs;
+		//headerView: headerPaneTabs;
 	}
 
 	Settings {
@@ -133,16 +133,10 @@ Rectangle {
 				}
 				id: headerPaneContainer
 				anchors.fill: parent
-				TabView {
-					id: headerPaneTabs
-					tabsVisible: false
-					antialiasing: true
+				StatusPane
+				{
 					anchors.fill: parent
-					style: TabViewStyle {
-						frameOverlap: 1
-						tab: Rectangle {}
-						frame: Rectangle { color: "transparent" }
-					}
+					webPreview: webPreview
 				}
 			}
 		}
