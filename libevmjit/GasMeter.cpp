@@ -17,52 +17,112 @@ namespace jit
 namespace // Helper functions
 {
 
-int64_t const c_stepGas = 1;
-int64_t const c_balanceGas = 20;
-int64_t const c_sha3Gas = 10;
-int64_t const c_sha3WordGas = 10;
-int64_t const c_sloadGas = 20;
-int64_t const c_sstoreSetGas = 300;
-int64_t const c_sstoreResetGas = 100;
-int64_t const c_sstoreRefundGas = 100;
-int64_t const c_createGas = 100;
-int64_t const c_createDataGas = 5;
-int64_t const c_callGas = 20;
-int64_t const c_expGas = 1;
-int64_t const c_expByteGas = 1;
-int64_t const c_memoryGas = 1;
-int64_t const c_txDataZeroGas = 1;
-int64_t const c_txDataNonZeroGas = 5;
-int64_t const c_txGas = 500;
-int64_t const c_logGas = 32;
-int64_t const c_logDataGas = 1;
-int64_t const c_logTopicGas = 32;
-int64_t const c_copyGas = 1;
+int64_t const c_stepGas[] = {0, 2, 3, 5, 8, 10, 20};
+int64_t const c_expByteGas = 10;
+int64_t const c_sha3Gas = 30;
+int64_t const c_sha3WordGas = 6;
+int64_t const c_sloadGas = 50;
+int64_t const c_sstoreSetGas = 20000;
+int64_t const c_sstoreResetGas = 5000;
+int64_t const c_jumpdestGas = 1;
+int64_t const c_logGas = 375;
+int64_t const c_logTopicGas = 375;
+int64_t const c_logDataGas = 8;
+int64_t const c_callGas = 40;
+int64_t const c_createGas = 23000;
+int64_t const c_memoryGas = 3;
+int64_t const c_copyGas = 3;
 
 int64_t getStepCost(Instruction inst)
 {
 	switch (inst)
 	{
-	default: // Assumes instruction code is valid
-		return c_stepGas;
-
+	// Tier 0
 	case Instruction::STOP:
+	case Instruction::RETURN:
 	case Instruction::SUICIDE:
 	case Instruction::SSTORE: // Handle cost of SSTORE separately in GasMeter::countSStore()
-		return 0;
+		return c_stepGas[0];
 
-	case Instruction::EXP:		return c_expGas;
+	// Tier 1
+	case Instruction::ADDRESS:
+	case Instruction::ORIGIN:
+	case Instruction::CALLER:
+	case Instruction::CALLVALUE:
+	case Instruction::CALLDATASIZE:
+	case Instruction::CODESIZE:
+	case Instruction::GASPRICE:
+	case Instruction::COINBASE:
+	case Instruction::TIMESTAMP:
+	case Instruction::NUMBER:
+	case Instruction::DIFFICULTY:
+	case Instruction::GASLIMIT:
+	case Instruction::POP:
+	case Instruction::PC:
+	case Instruction::MSIZE:
+	case Instruction::GAS:
+		return c_stepGas[1];
 
-	case Instruction::SLOAD:	return c_sloadGas;
+	// Tier 2
+	case Instruction::ADD:
+	case Instruction::SUB:
+	case Instruction::LT:
+	case Instruction::GT:
+	case Instruction::SLT:
+	case Instruction::SGT:
+	case Instruction::EQ:
+	case Instruction::ISZERO:
+	case Instruction::AND:
+	case Instruction::OR:
+	case Instruction::XOR:
+	case Instruction::NOT:
+	case Instruction::BYTE:
+	case Instruction::CALLDATALOAD:
+	case Instruction::CALLDATACOPY:
+	case Instruction::CODECOPY:
+	case Instruction::MLOAD:
+	case Instruction::MSTORE:
+	case Instruction::MSTORE8:
+	case Instruction::ANY_PUSH:
+	case Instruction::ANY_DUP:
+	case Instruction::ANY_SWAP:
+		return c_stepGas[2];
 
-	case Instruction::SHA3:		return c_sha3Gas;
+	// Tier 3
+	case Instruction::MUL:
+	case Instruction::DIV:
+	case Instruction::SDIV:
+	case Instruction::MOD:
+	case Instruction::SMOD:
+	case Instruction::SIGNEXTEND:
+		return c_stepGas[3];
 
-	case Instruction::BALANCE:	return c_balanceGas;
+	// Tier 4
+	case Instruction::ADDMOD:
+	case Instruction::MULMOD:
+	case Instruction::JUMP:
+		return c_stepGas[4];
 
-	case Instruction::CALL:
-	case Instruction::CALLCODE:	return c_callGas;
+	// Tier 5
+	case Instruction::EXP:
+	case Instruction::JUMPI:
+		return c_stepGas[5];
 
-	case Instruction::CREATE:	return c_createGas;
+	// Tier 6
+	case Instruction::BALANCE:
+	case Instruction::EXTCODESIZE:
+	case Instruction::EXTCODECOPY:
+	case Instruction::BLOCKHASH:
+		return c_stepGas[6];
+
+	case Instruction::SHA3:
+		return c_sha3Gas;
+
+	case Instruction::SLOAD:
+		return c_sloadGas;
+
+	case Instruction::JUMPDEST:
+		return c_jumpdestGas;
 
 	case Instruction::LOG0:
 	case Instruction::LOG1:
@@ -73,7 +133,16 @@ int64_t getStepCost(Instruction inst)
 		auto numTopics = static_cast<int64_t>(inst) - static_cast<int64_t>(Instruction::LOG0);
 		return c_logGas + numTopics * c_logTopicGas;
 	}
+
+	case Instruction::CALL:
+	case Instruction::CALLCODE:
+		return c_callGas;
+
+	case Instruction::CREATE:
+		return c_createGas;
 	}
+
+	return 0; // TODO: Add UNREACHABLE macro
 }
 
 }
@@ -152,7 +221,7 @@ void GasMeter::countExp(llvm::Value* _exponent)
 	auto lz = m_builder.CreateTrunc(lz256, Type::Gas, "lz");
 	auto sigBits = m_builder.CreateSub(m_builder.getInt64(256), lz, "sigBits");
 	auto sigBytes = m_builder.CreateUDiv(m_builder.CreateAdd(sigBits, m_builder.getInt64(7)), m_builder.getInt64(8));
-	count(sigBytes);
+	count(m_builder.CreateNUWMul(sigBytes, m_builder.getInt64(c_expByteGas)));
 }
 
 void GasMeter::countSStore(Ext& _ext, llvm::Value* _index, llvm::Value* _newValue)
@@ -173,8 +242,8 @@ void GasMeter::countLogData(llvm::Value* _dataLength)
 {
 	assert(m_checkCall);
 	assert(m_blockCost > 0); // LOGn instruction is already counted
-	static_assert(c_logDataGas == 1, "Log data gas cost has changed. Update GasMeter.");
-	count(_dataLength);
+	static_assert(c_logDataGas != 1, "Log data gas cost has changed. Update GasMeter.");
+	count(m_builder.CreateNUWMul(_dataLength, Constant::get(c_logDataGas))); // TODO: Use i64
 }
 
 void GasMeter::countSha3Data(llvm::Value* _dataLength)
@@ -217,14 +286,14 @@ void GasMeter::commitCostBlock()
 
 void GasMeter::countMemory(llvm::Value* _additionalMemoryInWords, llvm::Value* _jmpBuf, llvm::Value* _gasPtr)
 {
-	static_assert(c_memoryGas == 1, "Memory gas cost has changed. Update GasMeter.");
+	static_assert(c_memoryGas != 1, "Memory gas cost has changed. Update GasMeter.");
 	count(_additionalMemoryInWords, _jmpBuf, _gasPtr);
 }
 
 void GasMeter::countCopy(llvm::Value* _copyWords)
 {
-	static_assert(c_copyGas == 1, "Copy gas cost has changed. Update GasMeter.");
-	count(_copyWords);
+	static_assert(c_copyGas != 1, "Copy gas cost has changed. Update GasMeter.");
+	count(m_builder.CreateNUWMul(_copyWords, m_builder.getInt64(c_copyGas)));
 }
 
 }
