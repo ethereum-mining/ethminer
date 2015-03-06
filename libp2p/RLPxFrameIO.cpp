@@ -57,12 +57,16 @@ RLPXFrameIO::RLPXFrameIO(RLPXHandshake const& _init): m_socket(_init.m_socket)
 	
 	// aes-secret = sha3(ecdhe-shared-secret || shared-secret)
 	sha3(keyMaterial, outRef); // output aes-secret
-	m_frameEnc.SetKeyWithIV(outRef.data(), h128::size, h128().data());
-	m_frameDec.SetKeyWithIV(outRef.data(), h128::size, h128().data());
+	SecByteBlock aesSecretEnc(outRef.data(), h128::size);
+	SecByteBlock aesSecretDec(outRef.data(), h128::size);
+	SecByteBlock emptyIV(h128::size);
+	m_frameEnc.SetKeyWithIV(aesSecretEnc, h128::size, emptyIV);
+	m_frameDec.SetKeyWithIV(aesSecretDec, h128::size, emptyIV);
 
 	// mac-secret = sha3(ecdhe-shared-secret || aes-secret)
 	sha3(keyMaterial, outRef); // output mac-secret
-	m_macEnc.SetKey(outRef.data(), h128::size);
+	SecByteBlock macSecret(outRef.data(), h128::size);
+	m_macEnc.SetKey(macSecret, h128::size);
 
 	// Initiator egress-mac: sha3(mac-secret^recipient-nonce || auth-sent-init)
 	//           ingress-mac: sha3(mac-secret^initiator-nonce || auth-recvd-ack)
@@ -91,16 +95,17 @@ void RLPXFrameIO::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
 
 	// current/old packet format: prep(_s).appendList(_args + 1).append((unsigned)_id);
 	RLPStream header;
-	header.appendRaw(bytes({byte(_packet.size() >> 16), byte(_packet.size() >> 8), byte(_packet.size())}));
+	uint32_t len = (uint32_t)_packet.size();
+	header.appendRaw(bytes({byte((len >> 16) & 0xff), byte((len >> 8) & 0xff), byte(len & 0xff)}));
 	// zeroHeader: []byte{0xC2, 0x80, 0x80}. Should be rlpList(protocolType,seqId,totalPacketSize).
 	header.appendRaw(bytes({0xc2,0x80,0x80}));
 	
 	// TODO: SECURITY check that header is <= 16 bytes
-	
-	bytes headerWithMac;
-	header.swapOut(headerWithMac);
-	headerWithMac.resize(32);
-	m_frameEnc.ProcessData(headerWithMac.data(), headerWithMac.data(), 16);
+
+	bytes headerWithMac(32);
+	bytes headerBytes(16);
+	bytesConstRef(&header.out()).copyTo(&headerBytes);
+	m_frameEnc.ProcessData(headerWithMac.data(), headerBytes.data(), 16);
 	updateEgressMACWithHeader(bytesConstRef(&headerWithMac).cropped(0, 16));
 	egressDigest().ref().copyTo(bytesRef(&headerWithMac).cropped(h128::size,h128::size));
 
@@ -116,17 +121,16 @@ void RLPXFrameIO::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
 	updateEgressMACWithEndOfFrame(packetWithPaddingRef);
 	bytesRef macRef(o_bytes.data() + 32 + _packet.size() + padding, h128::size);
 	egressDigest().ref().copyTo(macRef);
-	clog(NetConnect) << "SENT FRAME " << _packet.size() << *(h128*)macRef.data();
-	clog(NetConnect) << "FRAME TAIL " << *(h128*)(o_bytes.data() + 32 + _packet.size() + padding);
 }
 
-bool RLPXFrameIO::authAndDecryptHeader(h256& io)
+bool RLPXFrameIO::authAndDecryptHeader(bytesRef io)
 {
-	updateIngressMACWithHeader(io.ref());
-	bytesConstRef macRef = io.ref().cropped(h128::size, h128::size);
+	asserts(io.size() == h256::size);
+	updateIngressMACWithHeader(io);
+	bytesConstRef macRef = io.cropped(h128::size, h128::size);
 	if (*(h128*)macRef.data() != ingressDigest())
 		return false;
-	m_frameDec.ProcessData(io.data(), io.data(), 16);
+	m_frameDec.ProcessData(io.data(), io.data(), h128::size);
 	return true;
 }
 
@@ -159,7 +163,7 @@ h128 RLPXFrameIO::ingressDigest()
 
 void RLPXFrameIO::updateEgressMACWithHeader(bytesConstRef _headerCipher)
 {
-	updateMAC(m_egressMac, *(h128*)_headerCipher.data());
+	updateMAC(m_egressMac, _headerCipher.cropped(0, 16));
 }
 
 void RLPXFrameIO::updateEgressMACWithEndOfFrame(bytesConstRef _cipher)
@@ -170,13 +174,12 @@ void RLPXFrameIO::updateEgressMACWithEndOfFrame(bytesConstRef _cipher)
 		SHA3_256 prev(m_egressMac);
 		h128 digest;
 		prev.TruncatedFinal(digest.data(), h128::size);
-		clog(NetConnect) << "EGRESS FRAMEMAC " << _cipher.size() << digest;
 	}
 }
 
 void RLPXFrameIO::updateIngressMACWithHeader(bytesConstRef _headerCipher)
 {
-	updateMAC(m_ingressMac, *(h128*)_headerCipher.data());
+	updateMAC(m_ingressMac, _headerCipher.cropped(0, 16));
 }
 
 void RLPXFrameIO::updateIngressMACWithEndOfFrame(bytesConstRef _cipher)
@@ -187,20 +190,28 @@ void RLPXFrameIO::updateIngressMACWithEndOfFrame(bytesConstRef _cipher)
 		SHA3_256 prev(m_ingressMac);
 		h128 digest;
 		prev.TruncatedFinal(digest.data(), h128::size);
-		clog(NetConnect) << "INGRESS FRAMEMAC " << _cipher.size() << digest;
 	}
 }
 
-void RLPXFrameIO::updateMAC(SHA3_256& _mac, h128 const& _seed)
+void RLPXFrameIO::updateMAC(SHA3_256& _mac, bytesConstRef _seed)
 {
+	if (_seed.size() && _seed.size() != h128::size)
+		asserts(false);
+
 	SHA3_256 prevDigest(_mac);
-	h128 prevDigestOut;
-	prevDigest.TruncatedFinal(prevDigestOut.data(), h128::size);
-	
-	h128 encDigest;
-	m_macEnc.ProcessData(encDigest.data(), prevDigestOut.data(), h128::size);
-	encDigest ^= (!!_seed ? _seed : prevDigestOut);
-	
+	h128 encDigest(h128::size);
+	prevDigest.TruncatedFinal(encDigest.data(), h128::size);
+	h128 prevDigestOut = encDigest;
+
+	{
+		Guard l(x_macEnc);
+		m_macEnc.ProcessData(encDigest.data(), encDigest.data(), 16);
+	}
+	if (_seed.size())
+		encDigest ^= *(h128*)_seed.data();
+	else
+		encDigest ^= *(h128*)prevDigestOut.data();
+
 	// update mac for final digest
 	_mac.Update(encDigest.data(), h128::size);
 }
