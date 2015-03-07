@@ -626,6 +626,9 @@ int main(int argc, char** argv)
 
 					iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata;
 
+					if (!gasPrice)
+						gasPrice = gasPricer->bid(priority);
+
 					cnote << "Data:";
 					cnote << sdata;
 					bytes data = dev::eth::parseData(sdata);
