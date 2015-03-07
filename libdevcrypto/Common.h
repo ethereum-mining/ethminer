@@ -96,19 +96,19 @@ void encryptSym(Secret const& _k, bytesConstRef _plain, bytes& o_cipher);
 /// Symmetric decryption.
 bool decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
 
-/// Encrypt payload using ECIES standard with AES-CTR. TODO: move into class.
+/// Encrypt payload using ECIES standard with AES128-CTR.
 void encryptECIES(Public const& _k, bytesConstRef _plain, bytes& o_cipher);
 	
-/// Decrypt payload using ECIES standard with AES-CTR. TODO: move into class.
+/// Decrypt payload using ECIES standard with AES128-CTR.
 bool decryptECIES(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
 	
-/// Encrypts payload with random IV using AES-CTR. TODO: prefix IV.
+/// Encrypts payload with random IV/ctr using AES128-CTR.
 h128 encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher);
 
-/// Encrypts payload with specified IV using AES-CTR TODO: prefix IV.
+/// Encrypts payload with specified IV/ctr using AES128-CTR.
 h128 encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher, h128 const& _iv);
 	
-/// Decrypts payload with specified IV TODO: prefix IV.
+/// Decrypts payload with specified IV/ctr.
 bool decryptSymNoAuth(Secret const& _k, h128 const& _iv, bytesConstRef _cipher, bytes& o_plaintext);
 
 /// Recovers Public key from signed message hash.

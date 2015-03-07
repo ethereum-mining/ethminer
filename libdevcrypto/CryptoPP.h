@@ -76,19 +76,19 @@ public:
 	
 	void toPublic(Secret const& _s, Public& o_public) { exponentToPublic(Integer(_s.data(), sizeof(_s)), o_public); }
 	
-	/// Encrypts text (replace input).
+	/// Encrypts text (replace input). (ECIES w/XOR)
 	void encrypt(Public const& _k, bytes& io_cipher);
 	
-	/// Decrypts text (replace input).
+	/// Decrypts text (replace input). (ECIES w/XOR)
 	void decrypt(Secret const& _k, bytes& io_text);
 	
-	/// Temporary; to replace encrypt once interop w/go is passing.
+	/// Encrypts text (replace input). (ECIES w/AES128-CTR)
 	void encryptECIES(Public const& _k, bytes& io_cipher);
 
-	/// Temporary; to replace decrypt once interop w/go is passing.
+	/// Decrypts text (replace input). (ECIES w/AES128-CTR)
 	bool decryptECIES(Secret const& _k, bytes& io_text);
 	
-	/// Key derivation function used by ECIES.
+	/// Key derivation function used by encryptECIES and decryptECIES.
 	bytes eciesKDF(Secret _z, bytes _s1, unsigned kdBitLen = 256);
 	
 	/// @returns siganture of message.
