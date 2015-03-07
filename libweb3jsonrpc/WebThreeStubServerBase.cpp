@@ -461,9 +461,9 @@ Json::Value WebThreeStubServerBase::eth_getWork()
 	return ret;
 }
 
-bool WebThreeStubServerBase::eth_submitWork(std::string const& _nonce)
+bool WebThreeStubServerBase::eth_submitWork(std::string const& _nonce, std::string const& _mixHash)
 {
-	return client()->submitNonce(jsToFixed<32>(_nonce));
+	return client()->submitWork(ProofOfWork::Proof{jsToFixed<Nonce::size>(_nonce), jsToFixed<32>(_mixHash)});
 }
 
 int WebThreeStubServerBase::eth_register(std::string const& _address)
@@ -710,7 +710,7 @@ std::string WebThreeStubServerBase::eth_transact(Json::Value const& _json)
 	if (t.creation)
 		ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
 	if (!t.gasPrice)
-		t.gasPrice = 10 * dev::eth::szabo;
+		t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
 
