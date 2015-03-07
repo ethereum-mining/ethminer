@@ -372,28 +372,6 @@ void Main::load(QString _s)
 {
 	QString contents = QString::fromStdString(dev::asString(dev::contents(_s.toStdString())));
 	ui->webView->page()->runJavaScript(contents);
-	/*
-	QFile fin(_s);
-	if (!fin.open(QFile::ReadOnly))
-		return;
-	QString line;
-	while (!fin.atEnd())
-	{
-		QString l = QString::fromUtf8(fin.readLine());
-		line.append(l);
-		if (line.count('"') % 2)
-		{
-			line.chop(1);
-		}
-		else if (line.endsWith("\\\n"))
-			line.chop(2);
-		else
-		{
-			ui->webView->page()->currentFrame()->evaluateJavaScript(line);
-			//eval(line);
-			line.clear();
-		}
-	}*/
 }
 
 void Main::on_newTransaction_triggered()
@@ -472,37 +450,17 @@ static Public stringToPublic(QString const& _a)
 		return Public();
 }
 
-//static Address g_newNameReg;
-
 QString Main::pretty(dev::Address _a) const
 {
-/*	static map<Address, QString> s_memos;
+	auto g_newNameReg = getNameReg();
 
-	if (!s_memos.count(_a))
-	{*/
-//		if (!g_newNameReg)
-			auto g_newNameReg = getNameReg();
-
-		if (g_newNameReg)
-		{
-			QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(g_newNameReg, abiIn("nameOf(address)", _a)))));
-//			s_memos[_a] = s;
-			if (s.size())
-				return s;
-		}
-/*	}
-	else
-		if (s_memos[_a].size())
-			return s_memos[_a];*/
-
+	if (g_newNameReg)
+	{
+		QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(g_newNameReg, abiIn("nameOf(address)", _a)))));
+		if (s.size())
+			return s;
+	}
 	h256 n;
-/*
-	if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
-		n = ethereum()->stateAt(nameReg, (u160)(_a));
-
-	if (!n)
-		n = ethereum()->stateAt(m_nameReg, (u160)(_a));
-*/
 	return fromRaw(n);
 }
 
@@ -527,41 +485,13 @@ Address Main::fromString(QString const& _n) const
 	if (_n == "(Create Contract)")
 		return Address();
 
-/*	static map<QString, Address> s_memos;
-
-	if (!s_memos.count(_n))
-	{*/
-//		if (!g_newNameReg)
-			auto g_newNameReg = getNameReg();
-
-		if (g_newNameReg)
-		{
-			Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn("addressOf(string32)", ::fromString(_n.toStdString()))));
-//			s_memos[_n] = a;
-			if (a)
-				return a;
-		}
-/*	}
-	else
-		if (s_memos[_n])
-			return s_memos[_n];
-
-	string sn = _n.toStdString();
-	if (sn.size() > 32)
-		sn.resize(32);
-	h256 n;
-	memcpy(n.data(), sn.data(), sn.size());
-	memset(n.data() + sn.size(), 0, 32 - sn.size());
-	if (_n.size())
+	auto g_newNameReg = getNameReg();
+	if (g_newNameReg)
 	{
-		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
-			if (h256 a = ethereum()->stateAt(nameReg, n))
-				return right160(a);
-
-		if (h256 a = ethereum()->stateAt(m_nameReg, n))
-			return right160(a);
-	}*/
-
+		Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn("addressOf(string32)", ::fromString(_n.toStdString()))));
+		if (a)
+			return a;
+	}
 	if (_n.size() == 40)
 	{
 		try
@@ -594,13 +524,6 @@ QString Main::lookup(QString const& _a) const
 		sn = sha3(sn, false);
 	h256 n;
 	memcpy(n.data(), sn.data(), sn.size());
-
-/*	string sn2 = _a.toStdString();
-	if (sn2.size() > 32)
-		sn2 = sha3(sn2, false);
-	h256 n2;
-	memcpy(n2.data(), sn2.data(), sn2.size());
-*/
 
 	h256 ret;
 	// TODO: fix with the new DNSreg contract
@@ -1038,31 +961,6 @@ void Main::refreshBlockCount()
 	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 PV%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(c_protocolVersion).arg(c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
 }
 
-static bool blockMatch(string const& _f, BlockDetails const& _b, h256 _h, CanonBlockChain const& _bc)
-{
-	try
-	{
-		if (_f.size() > 1 && _f.size() < 10 && _f[0] == '#' && stoul(_f.substr(1)) == _b.number)
-			return true;
-	}
-	catch (...) {}
-	if (toHex(_h.ref()).find(_f) != string::npos)
-		return true;
-	BlockInfo bi(_bc.block(_h));
-	string info = toHex(bi.stateRoot.ref()) + " " + toHex(bi.coinbaseAddress.ref()) + " " + toHex(bi.transactionsRoot.ref()) + " " + toHex(bi.sha3Uncles.ref());
-	if (info.find(_f) != string::npos)
-		return true;
-	return false;
-}
-
-static bool transactionMatch(string const& _f, Transaction const& _t)
-{
-	string info = toHex(_t.receiveAddress().ref()) + " " + toHex(_t.sha3().ref()) + " " + toHex(_t.sha3(eth::WithoutSignature).ref()) + " " + toHex(_t.sender().ref());
-	if (info.find(_f) != string::npos)
-		return true;
-	return false;
-}
-
 void Main::on_turboMining_triggered()
 {
 	ethereum()->setTurboMining(ui->turboMining->isChecked());
@@ -1072,55 +970,81 @@ void Main::refreshBlockChain()
 {
 	cwatch << "refreshBlockChain()";
 
+	// TODO: keep the same thing highlighted.
+	// TODO: refactor into MVC
+	// TODO: use get by hash/number
+	// TODO: transactions, log addresses, log topics
+
+	auto const& bc = ethereum()->blockChain();
+	QStringList filters = ui->blockChainFilter->text().toLower().split(QRegExp("\\s+"), QString::SkipEmptyParts);
+
+	h256Set blocks;
+	for (QString f: filters)
+		if (f.size() == 64)
+		{
+			h256 h(f.toStdString());
+			if (bc.isKnown(h))
+				blocks.insert(h);
+		}
+		else if (f.toLongLong() <= bc.number())
+			blocks.insert(bc.numberHash(u256(f.toLongLong())));
+		/*else if (f.size() == 40)
+		{
+			Address h(f[0]);
+			if (bc.(h))
+				blocks.insert(h);
+		}*/
+
 	QByteArray oldSelected = ui->blocks->count() ? ui->blocks->currentItem()->data(Qt::UserRole).toByteArray() : QByteArray();
 	ui->blocks->clear();
-
-	string filter = ui->blockChainFilter->text().toLower().toStdString();
-	auto const& bc = ethereum()->blockChain();
-	unsigned i = (ui->showAll->isChecked() || !filter.empty()) ? (unsigned)-1 : 10;
-	for (auto h = bc.currentHash(); bc.details(h) && i; h = bc.details(h).parent, --i)
-	{
+	auto showBlock = [&](h256 const& h) {
 		auto d = bc.details(h);
-		auto bm = blockMatch(filter, d, h, bc);
-		if (bm)
-		{
-			QListWidgetItem* blockItem = new QListWidgetItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), ui->blocks);
-			auto hba = QByteArray((char const*)h.data(), h.size);
-			blockItem->setData(Qt::UserRole, hba);
-			if (oldSelected == hba)
-				blockItem->setSelected(true);
-		}
+		QListWidgetItem* blockItem = new QListWidgetItem(QString("#%1 %2").arg(d.number).arg(h.abridged().c_str()), ui->blocks);
+		auto hba = QByteArray((char const*)h.data(), h.size);
+		blockItem->setData(Qt::UserRole, hba);
+		if (oldSelected == hba)
+			blockItem->setSelected(true);
+
 		int n = 0;
 		auto b = bc.block(h);
 		for (auto const& i: RLP(b)[1])
 		{
 			Transaction t(i.data(), CheckSignature::Sender);
-			if (bm || transactionMatch(filter, t))
-			{
-				QString s = t.receiveAddress() ?
-					QString("    %2 %5> %3: %1 [%4]")
-						.arg(formatBalance(t.value()).c_str())
-						.arg(render(t.safeSender()))
-						.arg(render(t.receiveAddress()))
-						.arg((unsigned)t.nonce())
-						.arg(ethereum()->codeAt(t.receiveAddress()).size() ? '*' : '-') :
-					QString("    %2 +> %3: %1 [%4]")
-						.arg(formatBalance(t.value()).c_str())
-						.arg(render(t.safeSender()))
-						.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce())))))
-						.arg((unsigned)t.nonce());
-				QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
-				auto hba = QByteArray((char const*)h.data(), h.size);
-				txItem->setData(Qt::UserRole, hba);
-				txItem->setData(Qt::UserRole + 1, n);
-				if (oldSelected == hba)
-					txItem->setSelected(true);
-			}
+			QString s = t.receiveAddress() ?
+				QString("    %2 %5> %3: %1 [%4]")
+					.arg(formatBalance(t.value()).c_str())
+					.arg(render(t.safeSender()))
+					.arg(render(t.receiveAddress()))
+					.arg((unsigned)t.nonce())
+					.arg(ethereum()->codeAt(t.receiveAddress()).size() ? '*' : '-') :
+				QString("    %2 +> %3: %1 [%4]")
+					.arg(formatBalance(t.value()).c_str())
+					.arg(render(t.safeSender()))
+					.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce())))))
+					.arg((unsigned)t.nonce());
+			QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
+			auto hba = QByteArray((char const*)h.data(), h.size);
+			txItem->setData(Qt::UserRole, hba);
+			txItem->setData(Qt::UserRole + 1, n);
+			if (oldSelected == hba)
+				txItem->setSelected(true);
 			n++;
 		}
-		if (h == bc.genesisHash())
-			break;
+	};
+
+	if (filters.empty())
+	{
+		unsigned i = ui->showAll->isChecked() ? (unsigned)-1 : 10;
+		for (auto h = bc.currentHash(); bc.details(h) && i; h = bc.details(h).parent, --i)
+		{
+			showBlock(h);
+			if (h == bc.genesisHash())
+				break;
+		}
 	}
+	else
+		for (auto const& h: blocks)
+			showBlock(h);
 
 	if (!ui->blocks->currentItem())
 		ui->blocks->setCurrentRow(0);
