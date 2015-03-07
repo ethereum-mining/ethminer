@@ -24,7 +24,7 @@
 #include <boost/thread.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libdevcore/Guards.h>
 
 namespace dev
