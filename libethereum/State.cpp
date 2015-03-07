@@ -464,45 +464,6 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, Ga
 	return ret;
 }
 
-void GasPricer::updateQuartiles(BlockChain const& _bc)
-{
-	unsigned c = 0;
-	h256 p = _bc.currentHash();
-
-	map<u256, unsigned> dist;
-	unsigned total;
-	while (c < 1000 && p)
-	{
-		BlockInfo bi = _bc.info(p);
-		if (bi.transactionsRoot != EmptyTrie)
-		{
-			auto bb = _bc.block(p);
-			RLP r(bb);
-			BlockReceipts brs(_bc.receipts(bi.hash));
-			for (unsigned i = 0; i < r[1].size(); ++i)
-			{
-				auto gu = brs.receipts[i].gasUsed();
-				dist[Transaction(r[1][i].data(), CheckSignature::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
-				total += (unsigned)gu;
-			}
-		}
-		p = bi.parentHash;
-		++c;
-	}
-	if (total > 0)
-	{
-		unsigned t = 0;
-		unsigned q = 1;
-		for (auto const& i: dist)
-		{
-			for (; t <= total * q / 4 && t + i.second > total * q / 4; ++q)
-				m_quartiles[q - 1] = i.first;
-			if (q > 3)
-				break;
-		}
-	}
-}
-
 u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
