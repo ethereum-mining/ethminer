@@ -236,6 +236,10 @@ bool Executive::go(OnOpFunc const& _onOp)
 
 void Executive::finalize()
 {
+	// Accumulate refunds for suicides.
+	if (m_ext)
+		m_ext->sub.refunds += c_suicideRefundGas * m_ext->sub.suicides.size();
+
 	// SSTORE refunds...
 	// must be done before the miner gets the fees.
 	if (m_ext)
