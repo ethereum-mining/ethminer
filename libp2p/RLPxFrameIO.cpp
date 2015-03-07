@@ -120,7 +120,7 @@ void RLPXFrameIO::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
 	if (padding)
 		m_frameEnc.ProcessData(paddingRef.data(), paddingRef.data(), padding);
 	bytesRef packetWithPaddingRef(o_bytes.data() + 32, _packet.size() + padding);
-	updateEgressMACWithEndOfFrame(packetWithPaddingRef);
+	updateEgressMACWithFrame(packetWithPaddingRef);
 	bytesRef macRef(o_bytes.data() + 32 + _packet.size() + padding, h128::size);
 	egressDigest().ref().copyTo(macRef);
 }
@@ -140,7 +140,7 @@ bool RLPXFrameIO::authAndDecryptHeader(bytesRef io)
 bool RLPXFrameIO::authAndDecryptFrame(bytesRef io)
 {
 	bytesRef cipherText(io.cropped(0, io.size() - h128::size));
-	updateIngressMACWithEndOfFrame(cipherText);
+	updateIngressMACWithFrame(cipherText);
 	bytesConstRef frameMac(io.data() + io.size() - h128::size, h128::size);
 	if (*(h128*)frameMac.data() != ingressDigest())
 		return false;
@@ -169,15 +169,10 @@ void RLPXFrameIO::updateEgressMACWithHeader(bytesConstRef _headerCipher)
 	updateMAC(m_egressMac, _headerCipher.cropped(0, 16));
 }
 
-void RLPXFrameIO::updateEgressMACWithEndOfFrame(bytesConstRef _cipher)
+void RLPXFrameIO::updateEgressMACWithFrame(bytesConstRef _cipher)
 {
 	m_egressMac.Update(_cipher.data(), _cipher.size());
 	updateMAC(m_egressMac);
-	{
-		SHA3_256 prev(m_egressMac);
-		h128 digest;
-		prev.TruncatedFinal(digest.data(), h128::size);
-	}
 }
 
 void RLPXFrameIO::updateIngressMACWithHeader(bytesConstRef _headerCipher)
@@ -185,15 +180,10 @@ void RLPXFrameIO::updateIngressMACWithHeader(bytesConstRef _headerCipher)
 	updateMAC(m_ingressMac, _headerCipher.cropped(0, 16));
 }
 
-void RLPXFrameIO::updateIngressMACWithEndOfFrame(bytesConstRef _cipher)
+void RLPXFrameIO::updateIngressMACWithFrame(bytesConstRef _cipher)
 {
 	m_ingressMac.Update(_cipher.data(), _cipher.size());
 	updateMAC(m_ingressMac);
-	{
-		SHA3_256 prev(m_ingressMac);
-		h128 digest;
-		prev.TruncatedFinal(digest.data(), h128::size);
-	}
 }
 
 void RLPXFrameIO::updateMAC(SHA3_256& _mac, bytesConstRef _seed)
