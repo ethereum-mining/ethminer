@@ -64,10 +64,38 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
+	m_gp(u256("60000000000000")),
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
 	m_preMine(Address(), m_stateDB),
 	m_postMine(Address(), m_stateDB)
 {
+	m_gp.updateQuartiles(m_bc);
+
+	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
+
+	if (_miners > -1)
+		setMiningThreads(_miners);
+	else
+		setMiningThreads();
+	if (_dbPath.size())
+		Defaults::setDBPath(_dbPath);
+	m_vc.setOk();
+	doWork();
+
+	startWorking();
+}
+
+Client::Client(p2p::Host* _extNet, u256 weiPerCent, std::string const& _dbPath, bool _forceClean, u256 _networkId, int _miners):
+	Worker("eth"),
+	m_vc(_dbPath),
+	m_bc(_dbPath, !m_vc.ok() || _forceClean),
+	m_gp(weiPerCent),
+	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
+	m_preMine(Address(), m_stateDB),
+	m_postMine(Address(), m_stateDB)
+{
+	m_gp.updateQuartiles(m_bc);
+
 	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
 	if (_miners > -1)
@@ -278,11 +306,11 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	LocalisedLogEntries ret;
 
 	try {
-#if ETH_DEBUG
+#if ETH_DEBUG && 0
 		cdebug << "checkWatch" << _watchId;
 #endif
 		auto& w = m_watches.at(_watchId);
-#if ETH_DEBUG
+#if ETH_DEBUG && 0
 		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 #endif
 		std::swap(ret, w.changes);
@@ -503,10 +531,10 @@ pair<h256, u256> Client::getWork()
 	return make_pair(m_remoteMiner.workHash(), m_remoteMiner.difficulty());
 }
 
-bool Client::submitNonce(h256  const&_nonce)
+bool Client::submitWork(ProofOfWork::Proof const& _proof)
 {
 	Guard l(x_remoteMiner);
-	return m_remoteMiner.submitWork(_nonce);
+	return m_remoteMiner.submitWork(_proof);
 }
 
 void Client::doWork()
@@ -520,9 +548,18 @@ void Client::doWork()
 	{
 		if (m.isComplete())
 		{
-			cwork << "CHAIN <== postSTATE";
+			// TODO: enable a short-circuit option since we mined it. will need to get the end state from the miner.
+			auto lm = dynamic_cast<LocalMiner*>(&m);
 			h256s hs;
+			if (false && lm && !m_verifyOwnBlocks)
 			{
+				// TODO: implement
+				//m_bc.attemptImport(m_blockData(), m_stateDB, lm->state());
+				// TODO: derive hs from lm->state()
+			}
+			else
+			{
+				cwork << "CHAIN <== postSTATE";
 				WriteGuard l(x_stateDB);
 				hs = m_bc.attemptImport(m.blockData(), m_stateDB);
 			}
@@ -583,7 +620,7 @@ void Client::doWork()
 
 		// returns h256s as blooms, once for each transaction.
 		cwork << "postSTATE <== TQ";
-		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq);
+		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq, m_gp);
 		if (newPendingReceipts.size())
 		{
 			for (size_t i = 0; i < newPendingReceipts.size(); i++)
@@ -610,7 +647,7 @@ void Client::doWork()
 	this_thread::sleep_for(chrono::milliseconds(100));
 	if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(5))
 	{
-		// garbage collect on watches
+		// watches garbage collection
 		vector<unsigned> toUninstall;
 		{
 			Guard l(m_filterLock);
@@ -623,6 +660,10 @@ void Client::doWork()
 		}
 		for (auto i: toUninstall)
 			uninstallWatch(i);
+
+		// blockchain GC
+		m_bc.garbageCollect();
+
 		m_lastGarbageCollection = chrono::system_clock::now();
 	}
 }

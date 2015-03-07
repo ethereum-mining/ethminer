@@ -33,7 +33,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/RangeMask.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libp2p/Capability.h>
 #include "CommonNet.h"
 #include "DownloadMan.h"
@@ -131,7 +131,7 @@ private:
 	DownloadSub m_sub;
 
 	/// Have we received a GetTransactions packet that we haven't yet answered?
-	bool m_requireTransactions;
+	bool m_requireTransactions = false;
 
 	Mutex x_knownBlocks;
 	h256Set m_knownBlocks;					///< Blocks that the peer already knows about (that don't need to be sent to them).

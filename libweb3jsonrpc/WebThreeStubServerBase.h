@@ -110,7 +110,7 @@ public:
 	virtual bool eth_uninstallFilter(int _id);
 
 	virtual Json::Value eth_getWork();
-	virtual bool eth_submitWork(std::string const& _nonce);
+	virtual bool eth_submitWork(std::string const& _nonce, std::string const& _mixHash);
 
 	virtual int eth_register(std::string const& _address);
 	virtual bool eth_unregister(int _id);

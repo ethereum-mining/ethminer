@@ -32,7 +32,7 @@
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
 #include <libdevcore/RLP.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
 #include <libwebthree/WebThree.h>
@@ -75,8 +75,6 @@ public:
 
 	bool confirm() const;
 	NatSpecFace* natSpec() { return &m_natSpecDB; }
-
-	QVariant evalRaw(QString const& _js);
 
 	QString pretty(dev::Address _a) const override;
 	QString prettyU256(dev::u256 _n) const override;
@@ -212,6 +210,7 @@ private:
 	void refreshNetwork();
 	void refreshMining();
 	void refreshWhispers();
+	void refreshCache();
 
 	void refreshAll();
 	void refreshPending();
