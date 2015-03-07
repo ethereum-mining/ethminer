@@ -120,8 +120,8 @@ if (NOT HEADLESS)
 	find_package (Qt5Qml REQUIRED)
 	find_package (Qt5Network REQUIRED)
 	find_package (Qt5Widgets REQUIRED)
-	find_package (Qt5WebKit REQUIRED)
-	find_package (Qt5WebKitWidgets REQUIRED)
+	find_package (Qt5WebEngine REQUIRED)
+	find_package (Qt5WebEngineWidgets REQUIRED)
 
 	# we need to find path to macdeployqt on mac
 	if (APPLE)

@@ -400,7 +400,7 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged)
+TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
 	TransactionReceipts ret;
@@ -414,16 +414,20 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, bo
 		for (auto const& i: ts)
 			if (!m_transactionSet.count(i.first))
 			{
-				// don't have it yet! Execute it now.
 				try
 				{
-					uncommitToMine();
-//					boost::timer t;
-					execute(lh, i.second);
-					ret.push_back(m_receipts.back());
-					_tq.noteGood(i);
-					++goodTxs;
-//					cnote << "TX took:" << t.elapsed() * 1000;
+					Transaction t(i.second, CheckSignature::Sender);
+					if (t.gasPrice() >= _gp.ask(*this))
+					{
+						// don't have it yet! Execute it now.
+						uncommitToMine();
+	//					boost::timer t;
+						execute(lh, i.second);
+						ret.push_back(m_receipts.back());
+						_tq.noteGood(i);
+						++goodTxs;
+	//					cnote << "TX took:" << t.elapsed() * 1000;
+					}
 				}
 				catch (InvalidNonce const& in)
 				{
@@ -460,12 +464,51 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, bo
 	return ret;
 }
 
+void GasPricer::updateQuartiles(BlockChain const& _bc)
+{
+	unsigned c = 0;
+	h256 p = _bc.currentHash();
+
+	map<u256, unsigned> dist;
+	unsigned total;
+	while (c < 1000 && p)
+	{
+		BlockInfo bi = _bc.info(p);
+		if (bi.transactionsRoot != EmptyTrie)
+		{
+			auto bb = _bc.block(p);
+			RLP r(bb);
+			BlockReceipts brs(_bc.receipts(bi.hash));
+			for (unsigned i = 0; i < r[1].size(); ++i)
+			{
+				auto gu = brs.receipts[i].gasUsed();
+				dist[Transaction(r[1][i].data(), CheckSignature::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
+				total += (unsigned)gu;
+			}
+		}
+		p = bi.parentHash;
+		++c;
+	}
+	if (total > 0)
+	{
+		unsigned t = 0;
+		unsigned q = 1;
+		for (auto const& i: dist)
+		{
+			for (; t <= total * q / 4 && t + i.second > total * q / 4; ++q)
+				m_quartiles[q - 1] = i.first;
+			if (q > 3)
+				break;
+		}
+	}
+}
+
 u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
 
 #if !ETH_RELEASE
-	BlockInfo bi(_block, _checkNonce);
+	BlockInfo bi(_block, _checkNonce ? CheckEverything : IgnoreNonce);
 	assert(m_previousBlock.hash == bi.parentHash);
 	assert(m_currentBlock.parentHash == bi.parentHash);
 	assert(rootHash() == m_previousBlock.stateRoot);
@@ -475,7 +518,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		BOOST_THROW_EXCEPTION(InvalidParentHash());
 
 	// Populate m_currentBlock with the correct values.
-	m_currentBlock.populate(_block, _checkNonce);
+	m_currentBlock.populate(_block, _checkNonce ? CheckEverything : IgnoreNonce);
 	m_currentBlock.verifyInternals(_block);
 
 //	cnote << "playback begins:" << m_state.root();

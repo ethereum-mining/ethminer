@@ -511,7 +511,7 @@ string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 	if (t.creation)
 		ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
 	if (!t.gasPrice)
-		t.gasPrice = 10 * dev::eth::szabo;
+		t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
 	

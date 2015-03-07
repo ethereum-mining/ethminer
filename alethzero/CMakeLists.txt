@@ -41,8 +41,6 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} Qt5::Widgets)
-target_link_libraries(${EXECUTABLE} Qt5::WebKit)
-target_link_libraries(${EXECUTABLE} Qt5::WebKitWidgets)
 target_link_libraries(${EXECUTABLE} Qt5::WebEngine)
 target_link_libraries(${EXECUTABLE} Qt5::WebEngineWidgets)
 target_link_libraries(${EXECUTABLE} webthree)

@@ -55,6 +55,8 @@ struct StateSafeExceptions: public LogChannel { static const char* name() { retu
 
 enum class BaseState { Empty, CanonGenesis };
 
+class GasPricer;
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -147,7 +149,7 @@ public:
 	/// @returns a list of receipts one for each transaction placed from the queue into the state.
 	/// @a o_transactionQueueChanged boolean pointer, the value of which will be set to true if the transaction queue
 	/// changed and the pointer is non-null
-	TransactionReceipts sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged = nullptr);
+	TransactionReceipts sync(BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, bool* o_transactionQueueChanged = nullptr);
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
@@ -367,6 +369,32 @@ void commit(std::map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Addr
 			}
 		}
 }
+
+enum class TransactionPriority
+{
+	Low = 0,
+	Medium = 1,
+	High = 2
+};
+
+class GasPricer
+{
+public:
+	explicit GasPricer(u256 _weiPerCent): m_weiPerCent(_weiPerCent) {}
+
+	u256 ask(State const&) const { return m_weiPerCent * m_centsPerBlock / m_gasPerBlock; }
+	u256 bid(TransactionPriority _p = TransactionPriority::Medium) const { return m_quartiles[(int)_p]; }
+
+	void updateRefPrice(u256 _weiPerCent) { m_weiPerCent = _weiPerCent; }
+	void updateRefRequirement(u256 _centsPerBlock) { m_centsPerBlock = _centsPerBlock; }
+	void updateQuartiles(BlockChain const& _bc);
+
+private:
+	u256 m_weiPerCent;
+	u256 m_centsPerBlock = 15;
+	u256 m_gasPerBlock = 1000000;
+	std::array<u256, 100> m_quartiles;
+};
 
 }
 }
