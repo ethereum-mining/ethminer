@@ -79,9 +79,9 @@ static inline int ethash_check_difficulty(
     // Difficulty is big endian
     for (int i = 0; i < 32; i++) {
         if (hash[i] == difficulty[i]) continue;
-        return hash[i] < difficulty[i];
+		return hash[i] < difficulty[i];
     }
-    return 0;
+	return 1;
 }
 
 int ethash_quick_check_difficulty(
