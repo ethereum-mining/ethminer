@@ -104,9 +104,8 @@ void RLPXFrameIO::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
 	
 	// TODO: SECURITY check that header is <= 16 bytes
 
-	bytes headerWithMac;
-	header.swapOut(headerWithMac);
-	headerWithMac.resize(32);
+	bytes headerWithMac(h256::size);
+	bytesConstRef(&header.out()).copyTo(bytesRef(&headerWithMac));
 	m_frameEnc.ProcessData(headerWithMac.data(), headerWithMac.data(), 16);
 	updateEgressMACWithHeader(bytesConstRef(&headerWithMac).cropped(0, 16));
 	egressDigest().ref().copyTo(bytesRef(&headerWithMac).cropped(h128::size,h128::size));

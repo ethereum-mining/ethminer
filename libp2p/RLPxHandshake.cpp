@@ -133,6 +133,8 @@ void RLPXHandshake::error()
 {
 	clog(NetConnect) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Failed)";
 	m_socket->close();
+	if (m_io != nullptr)
+		delete m_io;
 }
 
 void RLPXHandshake::transition(boost::system::error_code _ech)
@@ -175,7 +177,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		<< m_host->protocolVersion()
 		<< m_host->m_clientVersion
 		<< m_host->caps()
-		<< m_host->m_tcpPublic.port()
+		<< m_host->listenPort()
 		<< m_host->id();
 		bytes packet;
 		s.swapOut(packet);
@@ -252,7 +254,6 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 						}
 
 						clog(NetNote) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: success. starting session.";
-						
 						RLP rlp(frame.cropped(1));
 						m_host->startPeerSession(m_remote, rlp, m_io, m_socket->remoteEndpoint());
 					}
