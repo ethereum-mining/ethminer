@@ -41,6 +41,12 @@ class RLPXHandshake;
 /**
  * @brief Encoder/decoder transport for RLPx connections established by RLPXHandshake.
  * Managed (via shared_ptr) socket for use by RLPXHandshake and RLPXFrameIO.
+ *
+ * Thread Safety
+ * Distinct Objects: Safe.
+ * Shared objects: Unsafe.
+ * * an instance method must not be called concurrently
+ * * a writeSingleFramePacket can be called concurrent to authAndDecryptHeader OR authAndDecryptFrame
  */
 class RLPXSocket: public std::enable_shared_from_this<RLPXSocket>
 {
