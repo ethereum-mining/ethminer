@@ -195,7 +195,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		
 		// read frame header
 		m_handshakeInBuffer.resize(h256::size);
-		ba::async_read(m_socket->ref(), boost::asio::buffer(m_handshakeInBuffer, h256::size), [this, self](boost::system::error_code ec, std::size_t length)
+		ba::async_read(m_socket->ref(), boost::asio::buffer(m_handshakeInBuffer, h256::size), [this, self](boost::system::error_code ec, std::size_t)
 		{
 			if (ec)
 				transition(ec);
@@ -229,7 +229,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 				
 				/// read padded frame and mac
 				m_handshakeInBuffer.resize(frameSize + ((16 - (frameSize % 16)) % 16) + h128::size);
-				ba::async_read(m_socket->ref(), boost::asio::buffer(m_handshakeInBuffer, m_handshakeInBuffer.size()), [this, self, headerRLP](boost::system::error_code ec, std::size_t length)
+				ba::async_read(m_socket->ref(), boost::asio::buffer(m_handshakeInBuffer, m_handshakeInBuffer.size()), [this, self, headerRLP](boost::system::error_code ec, std::size_t)
 				{
 					if (ec)
 						transition(ec);
