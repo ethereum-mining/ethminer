@@ -38,6 +38,10 @@ namespace p2p
 	
 class RLPXHandshake;
 
+/**
+ * @brief Encoder/decoder transport for RLPx connections established by RLPXHandshake.
+ * Managed (via shared_ptr) socket for use by RLPXHandshake and RLPXFrameIO.
+ */
 class RLPXSocket: public std::enable_shared_from_this<RLPXSocket>
 {
 public:
@@ -53,48 +57,68 @@ protected:
 	bi::tcp::socket m_socket;
 };
 
+/**
+ * @brief Encoder/decoder transport for RLPx connections established by RLPXHandshake.
+ *
+ * Thread Safety 
+ * Distinct Objects: Safe.
+ * Shared objects: Unsafe.
+ */
 class RLPXFrameIO
 {
 	friend class Session;
 public:
+	/// Constructor.
+	/// Requires instance of RLPXHandshake which has completed first two phases of handshake.
 	RLPXFrameIO(RLPXHandshake const& _init);
 	~RLPXFrameIO() {}
 	
+	/// Encrypt _packet as RLPx frame.
 	void writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes);
 
-	/// Authenticates and decrypts header in-place.
+	/// Authenticate and decrypt header in-place.
 	bool authAndDecryptHeader(bytesRef io_cipherWithMac);
 	
-	/// Authenticates and decrypts frame in-place.
+	/// Authenticate and decrypt frame in-place.
 	bool authAndDecryptFrame(bytesRef io_cipherWithMac);
 	
+	/// Return first 16 bytes of current digest from egress mac.
 	h128 egressDigest();
-	
+
+	/// Return first 16 bytes of current digest from ingress mac.
 	h128 ingressDigest();
 	
+protected:
+	/// Update state of egress MAC with frame header.
 	void updateEgressMACWithHeader(bytesConstRef _headerCipher);
+
+	/// Update state of egress MAC with frame.
+	void updateEgressMACWithFrame(bytesConstRef _cipher);
 	
-	void updateEgressMACWithEndOfFrame(bytesConstRef _cipher);
-	
+	/// Update state of ingress MAC with frame header.
 	void updateIngressMACWithHeader(bytesConstRef _headerCipher);
 	
-	void updateIngressMACWithEndOfFrame(bytesConstRef _cipher);
+	/// Update state of ingress MAC with frame.
+	void updateIngressMACWithFrame(bytesConstRef _cipher);
 	
-protected:
 	bi::tcp::socket& socket() { return m_socket->ref(); }
 	
 private:
+	/// Update state of _mac.
 	void updateMAC(CryptoPP::SHA3_256& _mac, bytesConstRef _seed = bytesConstRef());
 
-	CryptoPP::SecByteBlock m_frameEncKey;
-	CryptoPP::SecByteBlock m_frameDecKey;
-	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameEnc;
-	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameDec;
-	CryptoPP::SecByteBlock m_macEncKey;
-	CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption m_macEnc;
-	Mutex x_macEnc;
-	CryptoPP::SHA3_256 m_egressMac;
-	CryptoPP::SHA3_256 m_ingressMac;
+	CryptoPP::SecByteBlock m_frameEncKey;						///< Key for m_frameEnc
+	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameEnc;	///< Encoder for egress plaintext.
+	
+	CryptoPP::SecByteBlock m_frameDecKey;						///< Key for m_frameDec
+	CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption m_frameDec;	///< Decoder for egress plaintext.
+	
+	CryptoPP::SecByteBlock m_macEncKey;						/// Key for m_macEnd
+	CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption m_macEnc;	/// One-way coder used by updateMAC for ingress and egress MAC updates.
+	Mutex x_macEnc;											/// Mutex
+	
+	CryptoPP::SHA3_256 m_egressMac;			///< State of MAC for egress ciphertext.
+	CryptoPP::SHA3_256 m_ingressMac;			///< State of MAC for ingress ciphertext.
 	
 	std::shared_ptr<RLPXSocket> m_socket;
 };
