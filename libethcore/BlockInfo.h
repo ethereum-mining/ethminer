@@ -36,6 +36,13 @@ enum IncludeNonce
 	WithNonce = 1
 };
 
+enum Strictness
+{
+	CheckEverything,
+	IgnoreNonce,
+	CheckNothing
+};
+
 /** @brief Encapsulation of a block header.
  * Class to contain all of a block header's data. It is able to parse a block header and populate
  * from some given RLP block serialisation with the static fromHeader(), through the method
@@ -79,14 +86,14 @@ public:
 	Nonce nonce;
 
 	BlockInfo();
-	explicit BlockInfo(bytes const& _block): BlockInfo(&_block) {}
-	explicit BlockInfo(bytesConstRef _block, bool _checkNonce = true);
+	explicit BlockInfo(bytes const& _block, Strictness _s = CheckEverything): BlockInfo(&_block, _s) {}
+	explicit BlockInfo(bytesConstRef _block, Strictness _s = CheckEverything);
 
 	static h256 headerHash(bytes const& _block) { return headerHash(&_block); }
 	static h256 headerHash(bytesConstRef _block);
 
-	static BlockInfo fromHeader(bytes const& _block) { return fromHeader(bytesConstRef(&_block)); }
-	static BlockInfo fromHeader(bytesConstRef _block);
+	static BlockInfo fromHeader(bytes const& _block, Strictness _s = CheckEverything) { return fromHeader(bytesConstRef(&_block), _s); }
+	static BlockInfo fromHeader(bytesConstRef _block, Strictness _s = CheckEverything);
 
 	explicit operator bool() const { return timestamp != Invalid256; }
 
@@ -113,9 +120,9 @@ public:
 
 	void setEmpty();
 
-	void populateFromHeader(RLP const& _header, bool _checkNonce = true);
-	void populate(bytesConstRef _block, bool _checkNonce = true);
-	void populate(bytes const& _block, bool _checkNonce = true) { populate(&_block, _checkNonce); }
+	void populateFromHeader(RLP const& _header, Strictness _s = CheckEverything);
+	void populate(bytesConstRef _block, Strictness _s = CheckEverything);
+	void populate(bytes const& _block, Strictness _s = CheckEverything) { populate(&_block, _s); }
 	void verifyInternals(bytesConstRef _block) const;
 	void verifyParent(BlockInfo const& _parent) const;
 	void populateFromParent(BlockInfo const& parent);
