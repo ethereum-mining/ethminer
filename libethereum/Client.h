@@ -168,7 +168,6 @@ public:
 	void setRefPrice(u256 _weiPerRef) { m_weiPerRef = _weiPerRef; }
 	void setRefBlockFees(u256 _refsPerBlock) { m_refsPerBlock = _refsPerBlock; }
 
-protected:
 	u256 ask(State const&) const override { return m_weiPerRef * m_refsPerBlock / m_gasPerBlock; }
 	u256 bid(TransactionPriority _p = TransactionPriority::Medium) const override { return m_octiles[(int)_p] > 0 ? m_octiles[(int)_p] : (m_weiPerRef * m_refsPerBlock / m_gasPerBlock); }
 
