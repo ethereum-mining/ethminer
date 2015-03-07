@@ -25,7 +25,6 @@
 #include <memory>
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/ECDHE.h>
-#include <libdevcrypto/CryptoPP.h>
 #include "RLPxFrameIO.h"
 #include "Common.h"
 namespace ba = boost::asio;

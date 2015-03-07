@@ -85,8 +85,7 @@ public:
 
 private:
 	void send(bytes&& _msg);
-//	void send(bytesConstRef _msg);
-	
+
 	/// Drop the connection for the reason @a _r.
 	void drop(DisconnectReason _r);
 
