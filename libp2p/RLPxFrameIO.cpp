@@ -57,19 +57,19 @@ RLPXFrameIO::RLPXFrameIO(RLPXHandshake const& _init): m_socket(_init.m_socket)
 	
 	// aes-secret = sha3(ecdhe-shared-secret || shared-secret)
 	sha3(keyMaterial, outRef); // output aes-secret
-	m_frameEncKey.resize(h128::size);
-	memcpy(m_frameEncKey.data(), outRef.data(), h128::size);
-	m_frameDecKey.resize(h128::size);
-	memcpy(m_frameDecKey.data(), outRef.data(), h128::size);
+	m_frameEncKey.resize(h256::size);
+	memcpy(m_frameEncKey.data(), outRef.data(), h256::size);
+	m_frameDecKey.resize(h256::size);
+	memcpy(m_frameDecKey.data(), outRef.data(), h256::size);
 	h128 iv;
-	m_frameEnc.SetKeyWithIV(m_frameEncKey, h128::size, iv.data());
-	m_frameDec.SetKeyWithIV(m_frameDecKey, h128::size, iv.data());
+	m_frameEnc.SetKeyWithIV(m_frameEncKey, h256::size, iv.data());
+	m_frameDec.SetKeyWithIV(m_frameDecKey, h256::size, iv.data());
 
 	// mac-secret = sha3(ecdhe-shared-secret || aes-secret)
 	sha3(keyMaterial, outRef); // output mac-secret
-	m_macEncKey.resize(h128::size);
-	memcpy(m_macEncKey.data(), outRef.data(), h128::size);
-	m_macEnc.SetKey(m_macEncKey, h128::size);
+	m_macEncKey.resize(h256::size);
+	memcpy(m_macEncKey.data(), outRef.data(), h256::size);
+	m_macEnc.SetKey(m_macEncKey, h256::size);
 
 	// Initiator egress-mac: sha3(mac-secret^recipient-nonce || auth-sent-init)
 	//           ingress-mac: sha3(mac-secret^initiator-nonce || auth-recvd-ack)
