@@ -129,9 +129,9 @@ h128 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_ciph
 		e.ProcessData(o_cipher.data(), _plain.data(), _plain.size());
 		return _iv;
 	}
-	catch(CryptoPP::Exception& e)
+	catch (CryptoPP::Exception& _e)
 	{
-		cerr << e.what() << endl;
+		cerr << _e.what() << endl;
 		o_cipher.resize(0);
 		return h128();
 	}
@@ -150,9 +150,9 @@ bool dev::decryptSymNoAuth(Secret const& _k, h128 const& _iv, bytesConstRef _cip
 		d.ProcessData(o_plaintext.data(), _cipher.data(), _cipher.size());
 		return true;
 	}
-	catch(CryptoPP::Exception& e)
+	catch (CryptoPP::Exception& _e)
 	{
-		cerr << e.what() << endl;
+		cerr << _e.what() << endl;
 		o_plaintext.resize(0);
 		return false;
 	}
