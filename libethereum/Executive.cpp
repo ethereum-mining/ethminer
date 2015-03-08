@@ -176,7 +176,7 @@ OnOpFunc Executive::simpleTrace()
 		o << endl << "    STACK" << endl;
 		for (auto i: vm.stack())
 			o << (h256)i << endl;
-		o << "    MEMORY" << endl << (vm.memory().size() > 1000) ? " mem size greater than 1000 bytes " : memDump(vm.memory());
+		o << "    MEMORY" << endl << ((vm.memory().size() > 1000) ? " mem size greater than 1000 bytes " : memDump(vm.memory()));
 		o << "    STORAGE" << endl;
 		for (auto const& i: ext.state().storage(ext.myAddress))
 			o << showbase << hex << i.first << ": " << i.second << endl;
