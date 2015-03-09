@@ -76,16 +76,16 @@ public:
 	
 	void toPublic(Secret const& _s, Public& o_public) { exponentToPublic(Integer(_s.data(), sizeof(_s)), o_public); }
 	
-	/// Encrypts text (replace input). (ECIES w/XOR)
+	/// Encrypts text (replace input). (ECIES w/XOR-SHA1)
 	void encrypt(Public const& _k, bytes& io_cipher);
 	
-	/// Decrypts text (replace input). (ECIES w/XOR)
+	/// Decrypts text (replace input). (ECIES w/XOR-SHA1)
 	void decrypt(Secret const& _k, bytes& io_text);
 	
-	/// Encrypts text (replace input). (ECIES w/AES128-CTR)
+	/// Encrypts text (replace input). (ECIES w/AES128-CTR-SHA256)
 	void encryptECIES(Public const& _k, bytes& io_cipher);
 
-	/// Decrypts text (replace input). (ECIES w/AES128-CTR)
+	/// Decrypts text (replace input). (ECIES w/AES128-CTR-SHA256)
 	bool decryptECIES(Secret const& _k, bytes& io_text);
 	
 	/// Key derivation function used by encryptECIES and decryptECIES.
