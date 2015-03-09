@@ -14,7 +14,7 @@
   You should have received a copy of the GNU General Public License
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file dash.cpp
+/** @file internal.c
 * @author Tim Hughes <tim@twistedfury.com>
 * @author Matthew Wampler-Doty
 * @date 2015
@@ -68,10 +68,10 @@ void static ethash_compute_cache_nodes(
             uint32_t const idx = nodes[i].words[0] % num_nodes;
             node data;
             data = nodes[(num_nodes - 1 + i) % num_nodes];
-			for (unsigned w = 0; w != NODE_WORDS; ++w)
-			{
-				data.words[w] ^= nodes[idx].words[w];
-			}
+            for (unsigned w = 0; w != NODE_WORDS; ++w)
+            {
+                data.words[w] ^= nodes[idx].words[w];
+            }
             SHA3_512(nodes[i].bytes, data.bytes, sizeof(data));
         }
     }
@@ -103,9 +103,9 @@ void ethash_calculate_dag_item(
     node const *cache_nodes = (node const *) cache->mem;
     node const *init = &cache_nodes[node_index % num_parent_nodes];
 
-	memcpy(ret, init, sizeof(node));
-	ret->words[0] ^= node_index;
-	SHA3_512(ret->bytes, ret->bytes, sizeof(node));
+    memcpy(ret, init, sizeof(node));
+    ret->words[0] ^= node_index;
+    SHA3_512(ret->bytes, ret->bytes, sizeof(node));
 
 #if defined(_M_X64) && ENABLE_SSE
     __m128i const fnv_prime = _mm_set1_epi32(FNV_PRIME);
@@ -116,11 +116,11 @@ void ethash_calculate_dag_item(
 #endif
 
     for (unsigned i = 0; i != DAG_PARENTS; ++i)
-	{
+    {
         uint32_t parent_index = ((node_index ^ i)*FNV_PRIME ^ ret->words[i % NODE_WORDS]) % num_parent_nodes;
         node const *parent = &cache_nodes[parent_index];
 
-		#if defined(_M_X64) && ENABLE_SSE
+        #if defined(_M_X64) && ENABLE_SSE
         {
             xmm0 = _mm_mullo_epi32(xmm0, fnv_prime);
             xmm1 = _mm_mullo_epi32(xmm1, fnv_prime);
@@ -143,10 +143,10 @@ void ethash_calculate_dag_item(
                 ret->words[w] = fnv_hash(ret->words[w], parent->words[w]);
             }
         }
-		#endif
+        #endif
     }
 
-	SHA3_512(ret->bytes, ret->bytes, sizeof(node));
+    SHA3_512(ret->bytes, ret->bytes, sizeof(node));
 }
 
 void ethash_compute_full_data(
@@ -204,11 +204,11 @@ static void ethash_hash(
 
 
     for (unsigned i = 0; i != ACCESSES; ++i)
-	{
+    {
         uint32_t const index = ((s_mix->words[0] ^ i)*FNV_PRIME ^ mix->words[i % MIX_WORDS]) % num_full_pages;
 
         for (unsigned n = 0; n != MIX_NODES; ++n)
-		{
+        {
             const node * dag_node = &full_nodes[MIX_NODES * index + n];
 
             if (!full_nodes) {
@@ -217,7 +217,7 @@ static void ethash_hash(
                 dag_node = &tmp_node;
             }
 
-			#if defined(_M_X64) && ENABLE_SSE
+            #if defined(_M_X64) && ENABLE_SSE
             {
                 __m128i fnv_prime = _mm_set1_epi32(FNV_PRIME);
                 __m128i xmm0 = _mm_mullo_epi32(fnv_prime, mix[n].xmm[0]);
@@ -240,15 +240,15 @@ static void ethash_hash(
 
     }
 
-	// compress mix
-	for (unsigned w = 0; w != MIX_WORDS; w += 4)
-	{
-		uint32_t reduction = mix->words[w+0];
-		reduction = reduction*FNV_PRIME ^ mix->words[w+1];
-		reduction = reduction*FNV_PRIME ^ mix->words[w+2];
-		reduction = reduction*FNV_PRIME ^ mix->words[w+3];
-		mix->words[w/4] = reduction;
-	}
+    // compress mix
+    for (unsigned w = 0; w != MIX_WORDS; w += 4)
+    {
+        uint32_t reduction = mix->words[w+0];
+        reduction = reduction*FNV_PRIME ^ mix->words[w+1];
+        reduction = reduction*FNV_PRIME ^ mix->words[w+2];
+        reduction = reduction*FNV_PRIME ^ mix->words[w+3];
+        mix->words[w/4] = reduction;
+    }
 
 #if BYTE_ORDER != LITTLE_ENDIAN
     for (unsigned w = 0; w != MIX_WORDS/4; ++w) {
@@ -258,7 +258,7 @@ static void ethash_hash(
 
     memcpy(ret->mix_hash, mix->bytes, 32);
     // final Keccak hash
-    SHA3_256(ret->result, s_mix->bytes, 64+32);	// Keccak-256(s + compressed_mix)
+    SHA3_256(ret->result, s_mix->bytes, 64+32); // Keccak-256(s + compressed_mix)
 }
 
 void ethash_quick_hash(

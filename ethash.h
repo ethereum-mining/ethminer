@@ -32,6 +32,7 @@
 #define CACHE_MULTIPLIER 1024
 #define EPOCH_LENGTH 30000U
 #define MIX_BYTES 128
+#define HASH_BYTES 64
 #define DAG_PARENTS 256
 #define CACHE_ROUNDS 3
 #define ACCESSES 64
@@ -60,7 +61,7 @@ static inline void ethash_params_init(ethash_params *params, const uint32_t bloc
 }
 
 typedef struct ethash_cache {
-	void *mem;
+    void *mem;
 } ethash_cache;
 
 void ethash_mkcache(ethash_cache *cache, ethash_params const *params, const uint8_t seed[32]);
