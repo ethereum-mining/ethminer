@@ -310,7 +310,7 @@ void Session::send(bytes&& _msg)
 
 	if (!m_socket.is_open())
 		return;
-	
+
 	bool doWrite = false;
 	{
 		Guard l(x_writeQueue);
