@@ -86,18 +86,16 @@ extern "C"
 		if (*io_gas < 0)
 			return false;
 
+		auto ret = false;
+		auto callGas = u256{_callGas};
 		if (_env->balance(_env->myAddress) >= value && _env->depth < 1024)
 		{
 			_env->subBalance(value);
-			auto inRef = bytesConstRef{_inBeg, _inSize};
-			auto outRef = bytesRef{_outBeg, _outSize};
-			u256 callGas = _callGas;
-			auto ret = _env->call(receiveAddress, value, inRef, callGas, outRef, {}, {}, codeAddress);
-			*io_gas += static_cast<int64_t>(callGas); // It is never more than initial _callGas
-			return ret;
+			ret = _env->call(receiveAddress, value, {_inBeg, _inSize}, callGas, {_outBeg, _outSize}, {}, {}, codeAddress);
 		}
 
-		return false;
+		*io_gas += static_cast<int64_t>(callGas); // it is never more than initial _callGas
+		return ret;
 	}
 
 	EXPORT void env_sha3(byte* _begin, uint64_t _size, h256* o_hash)
