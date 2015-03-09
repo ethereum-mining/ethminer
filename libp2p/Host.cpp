@@ -544,7 +544,11 @@ void Host::run(boost::system::error_code const&)
 			pp->serviceNodesRequest();
 
 	keepAlivePeers();
-//	disconnectLatePeers();
+	
+	// At this time peers will be disconnected based on natural TCP timeout.
+	// disconnectLatePeers needs to be updated for the assumption that Session
+	// is always live and to ensure reputation and fallback timers are properly
+	// updated. // disconnectLatePeers();
 
 	if (peerCount() < m_idealPeerCount)
 	{
