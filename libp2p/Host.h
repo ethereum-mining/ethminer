@@ -151,7 +151,7 @@ public:
 	NodeId id() const { return m_alias.pub(); }
 
 	/// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.
-	bool startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint);
+	void startPeerSession(Public const& _id, RLP const& _hello, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint);
 
 protected:
 	void onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e);
@@ -224,6 +224,9 @@ private:
 	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
 	mutable std::map<NodeId, std::weak_ptr<Session>> m_sessions;
 	mutable RecursiveMutex x_sessions;
+	
+	std::list<std::weak_ptr<RLPXHandshake>> m_connecting;					///< Pending connections.
+	Mutex x_connecting;
 
 	unsigned m_idealPeerCount = 5;										///< Ideal number of peers to be connected to.
 
