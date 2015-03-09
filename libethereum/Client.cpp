@@ -67,7 +67,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 	m_gasPerBlock = _bc.info(p).gasLimit;
 
 	map<u256, unsigned> dist;
-	unsigned total;
+	unsigned total = 0;
 	while (c < 1000 && p)
 	{
 		BlockInfo bi = _bc.info(p);
