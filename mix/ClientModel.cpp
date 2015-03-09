@@ -37,7 +37,6 @@
 #include "QVariableDefinition.h"
 #include "ContractCallDataEncoder.h"
 #include "CodeModel.h"
-#include "ClientModel.h"
 #include "QEther.h"
 #include "Web3Server.h"
 #include "ClientModel.h"
@@ -318,19 +317,28 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 	QDebugData* debugData = new QDebugData();
 	QQmlEngine::setObjectOwnership(debugData, QQmlEngine::JavaScriptOwnership);
 	QList<QCode*> codes;
+	QList<QHash<int, int>> codeMaps;
+	QList<AssemblyItems> codeItems;
+	QList<CompiledContract const*> contracts;
 	for (MachineCode const& code: _t.executionCode)
 	{
-		codes.push_back(QMachineState::getHumanReadableCode(debugData, code.address, code.code));
+		QHash<int, int> codeMap;
+		codes.push_back(QMachineState::getHumanReadableCode(debugData, code.address, code.code, codeMap));
+		codeMaps.push_back(std::move(codeMap));
 		//try to resolve contract for source level debugging
 		auto nameIter = m_contractNames.find(code.address);
 		if (nameIter != m_contractNames.end())
 		{
 			CompiledContract const& compilerRes = m_context->codeModel()->contract(nameIter->second);
 			eth::AssemblyItems assemblyItems = !_t.isConstructor() ? compilerRes.assemblyItems() : compilerRes.constructorAssemblyItems();
-			QVariantList locations;
-			for (eth::AssemblyItem const& item: assemblyItems)
-				locations.push_back(QVariant::fromValue(new QSourceLocation(debugData, item.getLocation().start, item.getLocation().end)));
-			codes.back()->setLocations(compilerRes.documentId(), std::move(locations));
+			codes.back()->setDocument(compilerRes.documentId());
+			codeItems.push_back(std::move(assemblyItems));
+			contracts.push_back(&compilerRes);
+		}
+		else
+		{
+			codeItems.push_back(AssemblyItems());
+			contracts.push_back(nullptr);
 		}
 	}
 
@@ -339,16 +347,75 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 		data.push_back(QMachineState::getDebugCallData(debugData, d));
 
 	QVariantList states;
+	QStringList solCallStack;
+	std::map<int, SolidityDeclaration> solLocals; //<stack pos, declaration>
+	QList<int> returnStack;
+
+	unsigned prevInstructionIndex = 0;
 	for (MachineState const& s: _t.machineStates)
-		states.append(QVariant::fromValue(new QMachineState(debugData, s, codes[s.codeIndex], data[s.dataIndex])));
+	{
+		int instructionIndex = codeMaps[s.codeIndex][static_cast<unsigned>(s.curPC)];
+		QSolState* solState = nullptr;
+		if (!codeItems[s.codeIndex].empty() && contracts[s.codeIndex])
+		{
+			CompiledContract const* contract = contracts[s.codeIndex];
+			AssemblyItem const& instruction = codeItems[s.codeIndex][instructionIndex];
+
+			if (instruction.type() == dev::eth::Push && !instruction.data())
+			{
+				//register new local variable initialization
+				auto localIter = contract->locals().find(LocationPair(instruction.getLocation().start, instruction.getLocation().end));
+				if (localIter != contract->locals().end())
+					solLocals[s.stack.size()] = localIter.value();
+			}
+
+			if (instruction.type() == dev::eth::Tag) //TODO: use annotations
+			{
+				//track calls into functions
+				auto functionIter = contract->functions().find(LocationPair(instruction.getLocation().start, instruction.getLocation().end));
+				if (functionIter != contract->functions().end())
+				{
+					QString functionName = functionIter.value();
+					solCallStack.push_back(functionName);
+					returnStack.push_back(prevInstructionIndex + 1);
+				}
+				else if (!returnStack.empty() && instructionIndex == returnStack.back())
+				{
+					returnStack.pop_back();
+					solCallStack.pop_back();
+				}
+			}
+
+			//format solidity context values
+			QStringList	locals;
+			for(auto l: solLocals)
+				if (l.first < (int)s.stack.size())
+					locals.push_back(l.second.name + "\t" + formatValue(l.second.type, s.stack[l.first]));
+
+			QStringList	storage;
+			for(auto st: s.storage)
+			{
+				if (st.first < std::numeric_limits<unsigned>::max())
+				{
+					auto storageIter = contract->storage().find(static_cast<unsigned>(st.first));
+					if (storageIter != contract->storage().end())
+						storage.push_back(storageIter.value().name + "\t" + formatValue(storageIter.value().type, st.second));
+				}
+			}
+			prevInstructionIndex = instructionIndex;
+			solState = new QSolState(debugData, storage, solCallStack, locals, instruction.getLocation().start, instruction.getLocation().end);
+		}
+
+		states.append(QVariant::fromValue(new QMachineState(debugData, instructionIndex, s, codes[s.codeIndex], data[s.dataIndex], solState)));
+	}
 
 	debugData->setStates(std::move(states));
-
-	//QList<QVariableDefinition*> returnParameters;
-	//returnParameters = encoder.decode(f->returnParameters(), debuggingContent.returnValue);
-
-	//collect states for last transaction
 	debugDataReady(debugData);
+}
+
+QString ClientModel::formatValue(SolidityType const&, dev::u256 const& _value)
+{
+	return QString::fromStdString(prettyU256(_value));
 }
 
 void ClientModel::emptyRecord()
