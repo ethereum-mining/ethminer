@@ -243,7 +243,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		RLP blockRLP(_block);
 
 		if (!blockRLP.isList())
-			BOOST_THROW_EXCEPTION(InvalidBlockFormat(0, blockRLP.data()) << errinfo_comment("block header needs to be a list"));
+			BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block header needs to be a list") << BadFieldError(0, blockRLP.data().toString()));
 
 		bi.populate(&_block);
 		bi.verifyInternals(&_block);
@@ -547,7 +547,7 @@ void BlockChain::garbageCollect(bool _force)
 		}
 	}
 	m_cacheUsage.pop_back();
-	m_cacheUsage.push_front({});
+	m_cacheUsage.push_front(std::set<CacheID>{});
 }
 
 void BlockChain::checkConsistency()

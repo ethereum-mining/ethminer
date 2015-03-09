@@ -22,11 +22,13 @@
 #include <fstream>
 #include <iostream>
 #include <boost/algorithm/string.hpp>
+#include "../test/JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
 using namespace std;
 using namespace dev;
+namespace js = json_spirit;
 
 void help()
 {
@@ -42,6 +44,7 @@ void help()
 		<< "      --force-hex  Force all data to be rendered as raw hex." << endl
 		<< "    -l,--list-archive  List the items in the RLP list by hash and size." << endl
 		<< "    -e,--extract-archive  Extract all items in the RLP list, named by hash." << endl
+		<< "    -c,--create  Given a simplified JSON string, output the RLP." << endl
 		<< "General options:" << endl
 		<< "    -L,--lenience  Try not to bomb out early if possible." << endl
 		<< "    -x,--hex,--base-16  Treat input RLP as hex encoded data." << endl
@@ -63,6 +66,7 @@ enum class Mode {
 	ListArchive,
 	ExtractArchive,
 	Render,
+	Create
 };
 
 enum class Encoding {
@@ -74,6 +78,10 @@ enum class Encoding {
 
 bool isAscii(string const& _s)
 {
+	// Always hex-encode anything beginning with 0x to avoid ambiguity.
+	if (_s.size() >= 2 && _s.substr(0, 2) == "0x")
+		return false;
+
 	for (char c: _s)
 		if (c < 32)
 			return false;
@@ -87,6 +95,7 @@ public:
 	{
 		string indent = "  ";
 		bool hexInts = false;
+		bool hexPrefix = true;
 		bool forceString = true;
 		bool escapeAll = false;
 		bool forceHex = false;
@@ -100,14 +109,14 @@ public:
 			m_out << "null";
 		else if (_d.isInt())
 			if (m_prefs.hexInts)
-				m_out << toHex(toCompactBigEndian(_d.toInt<bigint>(RLP::LaisezFaire), 1), 1);
+				m_out << (m_prefs.hexPrefix ? "0x" : "") << toHex(toCompactBigEndian(_d.toInt<bigint>(RLP::LaisezFaire), 1), 1);
 			else
 				m_out << _d.toInt<bigint>(RLP::LaisezFaire);
 		else if (_d.isData())
 			if (m_prefs.forceString || (!m_prefs.forceHex && isAscii(_d.toString())))
 				m_out << escaped(_d.toString(), m_prefs.escapeAll);
 			else
-				m_out << toHex(_d.data());
+				m_out << (m_prefs.hexPrefix ? "0x" : "") << toHex(_d.data());
 		else if (_d.isList())
 		{
 			m_out << "[";
@@ -147,6 +156,8 @@ int main(int argc, char** argv)
 			help();
 		else if (arg == "-r" || arg == "--render")
 			mode = Mode::Render;
+		else if (arg == "-c" || arg == "--create")
+			mode = Mode::Create;
 		else if ((arg == "-i" || arg == "--indent") && argc > i)
 			prefs.indent = argv[++i];
 		else if (arg == "--hex-ints")
@@ -183,48 +194,53 @@ int main(int argc, char** argv)
 			in.push_back((byte)i);
 	else
 		in = contents(inputFile);
-	if (encoding == Encoding::Auto)
-	{
-		encoding = Encoding::Hex;
-		for (char b: in)
-			if (b != '\n' && b != ' ' && b != '\t')
-			{
-				if (encoding == Encoding::Hex && (b < '0' || b > '9' ) && (b < 'a' || b > 'f' ) && (b < 'A' || b > 'F' ))
-				{
-					cerr << "'" << b << "':" << (int)b << endl;
-					encoding = Encoding::Base64;
-				}
-				if (encoding == Encoding::Base64 && (b < '0' || b > '9' ) && (b < 'a' || b > 'z' ) && (b < 'A' || b > 'Z' ) && b != '+' && b != '/')
-				{
-					encoding = Encoding::Binary;
-					break;
-				}
-			}
-	}
+
 	bytes b;
-	switch (encoding)
+
+	if (mode != Mode::Create)
 	{
-	case Encoding::Hex:
-	{
-		string s = asString(in);
-		boost::algorithm::replace_all(s, " ", "");
-		boost::algorithm::replace_all(s, "\n", "");
-		boost::algorithm::replace_all(s, "\t", "");
-		b = fromHex(s);
-		break;
-	}
-	case Encoding::Base64:
-	{
-		string s = asString(in);
-		boost::algorithm::replace_all(s, " ", "");
-		boost::algorithm::replace_all(s, "\n", "");
-		boost::algorithm::replace_all(s, "\t", "");
-		b = fromBase64(s);
-		break;
-	}
-	default:
-		swap(b, in);
-		break;
+		if (encoding == Encoding::Auto)
+		{
+			encoding = Encoding::Hex;
+			for (char b: in)
+				if (b != '\n' && b != ' ' && b != '\t')
+				{
+					if (encoding == Encoding::Hex && (b < '0' || b > '9' ) && (b < 'a' || b > 'f' ) && (b < 'A' || b > 'F' ))
+					{
+						cerr << "'" << b << "':" << (int)b << endl;
+						encoding = Encoding::Base64;
+					}
+					if (encoding == Encoding::Base64 && (b < '0' || b > '9' ) && (b < 'a' || b > 'z' ) && (b < 'A' || b > 'Z' ) && b != '+' && b != '/')
+					{
+						encoding = Encoding::Binary;
+						break;
+					}
+				}
+		}
+		switch (encoding)
+		{
+		case Encoding::Hex:
+		{
+			string s = asString(in);
+			boost::algorithm::replace_all(s, " ", "");
+			boost::algorithm::replace_all(s, "\n", "");
+			boost::algorithm::replace_all(s, "\t", "");
+			b = fromHex(s);
+			break;
+		}
+		case Encoding::Base64:
+		{
+			string s = asString(in);
+			boost::algorithm::replace_all(s, " ", "");
+			boost::algorithm::replace_all(s, "\n", "");
+			boost::algorithm::replace_all(s, "\t", "");
+			b = fromBase64(s);
+			break;
+		}
+		default:
+			swap(b, in);
+			break;
+		}
 	}
 
 	try
@@ -279,6 +295,77 @@ int main(int argc, char** argv)
 			RLPStreamer s(cout, prefs);
 			s.output(rlp);
 			cout << endl;
+			break;
+		}
+		case Mode::Create:
+		{
+			vector<js::mValue> v(1);
+			try {
+				js::read_string(asString(in), v[0]);
+			}
+			catch (...)
+			{
+				cerr << "Error: Invalid format; bad JSON." << endl;
+				exit(1);
+			}
+			RLPStream out;
+			while (!v.empty())
+			{
+				auto vb = v.back();
+				v.pop_back();
+				switch (vb.type())
+				{
+				case js::array_type:
+				{
+					js::mArray a = vb.get_array();
+					out.appendList(a.size());
+					for (int i = a.size() - 1; i >= 0; --i)
+						v.push_back(a[i]);
+					break;
+				}
+				case js::str_type:
+				{
+					string const& s = vb.get_str();
+					if (s.size() >= 2 && s.substr(0, 2) == "0x")
+						out << fromHex(s);
+					else
+					{
+						// assume it's a normal JS escaped string.
+						bytes ss;
+						ss.reserve(s.size());
+						for (unsigned i = 0; i < s.size(); ++i)
+							if (s[i] == '\\' && i + 1 < s.size())
+							{
+								if (s[++i] == 'x' && i + 2 < s.size())
+									ss.push_back(fromHex(s.substr(i, 2))[0]);
+							}
+							else if (s[i] != '\\')
+								ss.push_back((byte)s[i]);
+						out << ss;
+					}
+					break;
+				}
+				case js::int_type:
+					out << vb.get_int();
+					break;
+				default:
+					cerr << "ERROR: Unsupported type in JSON." << endl;
+					if (!lenience)
+						exit(1);
+				}
+			}
+			switch (encoding)
+			{
+			case Encoding::Hex: case Encoding::Auto:
+				cout << toHex(out.out()) << endl;
+				break;
+			case Encoding::Base64:
+				cout << toBase64(&out.out()) << endl;
+				break;
+			case Encoding::Binary:
+				cout.write((char const*)out.out().data(), out.out().size());
+				break;
+			}
 			break;
 		}
 		default:;
