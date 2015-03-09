@@ -226,7 +226,7 @@ private:
 	mutable RecursiveMutex x_sessions;
 	
 	std::list<std::weak_ptr<RLPXHandshake>> m_connecting;					///< Pending connections.
-	Mutex x_connecting;
+	Mutex x_connecting;													///< Mutex for m_connecting.
 
 	unsigned m_idealPeerCount = 5;										///< Ideal number of peers to be connected to.
 

@@ -319,13 +319,14 @@ bool Secp256k1::verifySecret(Secret const& _s, Public& _p)
 
 void Secp256k1::agree(Secret const& _s, Public const& _r, h256& o_s)
 {
-	(void)o_s;
-	(void)_s;
+	// TODO: mutex ASN1::secp256k1() singleton
+	// Creating Domain is non-const for m_oid and m_oid is not thread-safe
 	ECDH<ECP>::Domain d(ASN1::secp256k1());
 	assert(d.AgreedValueLength() == sizeof(o_s));
 	byte remote[65] = {0x04};
 	memcpy(&remote[1], _r.data(), 64);
-	assert(d.Agree(o_s.data(), _s.data(), remote));
+	bool result = d.Agree(o_s.data(), _s.data(), remote);
+	assert(result);
 }
 
 void Secp256k1::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& o_p)
