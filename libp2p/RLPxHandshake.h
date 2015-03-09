@@ -72,6 +72,8 @@ public:
 	/// Start handshake.
 	void start() { transition(); }
 
+	void cancel() { m_nextState = Error; }
+	
 protected:
 	/// Write Auth message to socket and transitions to AckAuth.
 	void writeAuth();

@@ -168,6 +168,8 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		else
 			clog(NetConnect) << "p2p.connect.ingress sending capabilities handshake";
 
+		/// This pointer will be freed if there is an error otherwise
+		/// it will be passed to Host which will take ownership.
 		m_io = new RLPXFrameIO(*this);
 
 		// old packet format
