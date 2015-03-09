@@ -24,6 +24,7 @@ int64_t const c_sha3WordGas = 6;
 int64_t const c_sloadGas = 50;
 int64_t const c_sstoreSetGas = 20000;
 int64_t const c_sstoreResetGas = 5000;
+int64_t const c_sstoreClearGas = 5000;
 int64_t const c_jumpdestGas = 1;
 int64_t const c_logGas = 375;
 int64_t const c_logTopicGas = 375;
@@ -228,13 +229,10 @@ void GasMeter::countSStore(Ext& _ext, llvm::Value* _index, llvm::Value* _newValu
 {
 	auto oldValue = _ext.sload(_index);
 	auto oldValueIsZero = m_builder.CreateICmpEQ(oldValue, Constant::get(0), "oldValueIsZero");
-	auto newValueIsZero = m_builder.CreateICmpEQ(_newValue, Constant::get(0), "newValueIsZero");
-	auto oldValueIsntZero = m_builder.CreateICmpNE(oldValue, Constant::get(0), "oldValueIsntZero");
 	auto newValueIsntZero = m_builder.CreateICmpNE(_newValue, Constant::get(0), "newValueIsntZero");
 	auto isInsert = m_builder.CreateAnd(oldValueIsZero, newValueIsntZero, "isInsert");
-	auto isDelete = m_builder.CreateAnd(oldValueIsntZero, newValueIsZero, "isDelete");
+	static_assert(c_sstoreResetGas == c_sstoreClearGas, "Update SSTORE gas cost");
 	auto cost = m_builder.CreateSelect(isInsert, m_builder.getInt64(c_sstoreSetGas), m_builder.getInt64(c_sstoreResetGas), "cost");
-	cost = m_builder.CreateSelect(isDelete, m_builder.getInt64(0), cost, "cost");
 	count(cost);
 }
 
