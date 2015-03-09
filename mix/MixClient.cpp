@@ -46,15 +46,18 @@ const u256 c_mixGenesisDifficulty = (u256) 1 << 4;
 class MixBlockChain: public dev::eth::BlockChain
 {
 public:
-	MixBlockChain(std::string const& _path, h256 _stateRoot):  BlockChain(createGenesisBlock(_stateRoot), _path, true)
+	MixBlockChain(std::string const& _path, h256 _stateRoot):
+		BlockChain(createGenesisBlock(_stateRoot), _path, true)
 	{
 	}
 
 	static bytes createGenesisBlock(h256 _stateRoot)
 	{
 		RLPStream block(3);
-		block.appendList(14)
-				<< h256() << EmptyListSHA3 << h160() << _stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_mixGenesisDifficulty << 0 << 1000000 << 0 << (unsigned)0 << std::string() << sha3(bytes(1, 42));
+		block.appendList(16)
+			<< h256() << EmptyListSHA3 << h160() << _stateRoot << EmptyTrie << EmptyTrie
+			<< LogBloom() << c_mixGenesisDifficulty << 0 << 1000000 << 0 << (unsigned)0
+			<< std::string() << h256() << h256() << h64(u64(42));
 		block.appendRaw(RLPEmptyList);
 		block.appendRaw(RLPEmptyList);
 		return block.out();
@@ -81,7 +84,7 @@ void MixClient::resetState(std::map<Secret, u256> _accounts)
 	m_watches.clear();
 
 	m_stateDB = OverlayDB();
-	TrieDB<Address, MemoryDB> accountState(&m_stateDB);
+	SecureTrieDB<Address, MemoryDB> accountState(&m_stateDB);
 	accountState.init();
 
 	std::map<Address, Account> genesisState;

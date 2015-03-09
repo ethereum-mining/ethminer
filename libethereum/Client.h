@@ -34,7 +34,7 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
-#include <libevm/FeeStructure.h>
+#include <libethcore/Params.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
 #include "TransactionQueue.h"
@@ -148,7 +148,7 @@ public:
 	h256 workHash() const { return m_state.info().headerHash(IncludeNonce::WithoutNonce); }
 	u256 const& difficulty() const { return m_state.info().difficulty; }
 
-	bool submitWork(h256 const& _nonce) { return (m_isComplete = m_state.completeMine(_nonce)); }
+	bool submitWork(ProofOfWork::Proof const& _result) { return (m_isComplete = m_state.completeMine(_result)); }
 
 	virtual bool isComplete() const override { return m_isComplete; }
 	virtual bytes const& blockData() const { return m_state.blockData(); }
@@ -158,6 +158,26 @@ public:
 private:
 	bool m_isComplete = false;
 	State m_state;
+};
+
+class BasicGasPricer: public GasPricer
+{
+public:
+	explicit BasicGasPricer(u256 _weiPerRef, u256 _refsPerBlock): m_weiPerRef(_weiPerRef), m_refsPerBlock(_refsPerBlock) {}
+
+	void setRefPrice(u256 _weiPerRef) { m_weiPerRef = _weiPerRef; }
+	void setRefBlockFees(u256 _refsPerBlock) { m_refsPerBlock = _refsPerBlock; }
+
+	u256 ask(State const&) const override { return m_weiPerRef * m_refsPerBlock / m_gasPerBlock; }
+	u256 bid(TransactionPriority _p = TransactionPriority::Medium) const override { return m_octiles[(int)_p] > 0 ? m_octiles[(int)_p] : (m_weiPerRef * m_refsPerBlock / m_gasPerBlock); }
+
+	void update(BlockChain const& _bc) override;
+
+private:
+	u256 m_weiPerRef;
+	u256 m_refsPerBlock;
+	u256 m_gasPerBlock = 1000000;
+	std::array<u256, 9> m_octiles;
 };
 
 /**
@@ -177,8 +197,20 @@ public:
 		int _miners = -1
 	);
 
+	explicit Client(
+		p2p::Host* _host,
+		std::shared_ptr<GasPricer> _gpForAdoption,		// pass it in with new.
+		std::string const& _dbPath = std::string(),
+		bool _forceClean = false,
+		u256 _networkId = 0,
+		int _miners = -1
+	);
+
 	/// Destructor.
 	virtual ~Client();
+
+	/// Resets the gas pricer to some other object.
+	void setGasPricer(std::shared_ptr<GasPricer> _gp) { m_gp = _gp; }
 
 	/// Submits the given message-call transaction.
 	virtual void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
@@ -303,8 +335,8 @@ public:
 	/// Update to the latest transactions and get hash of the current block to be mined minus the
 	/// nonce (the 'work hash') and the difficulty to be met.
 	virtual std::pair<h256, u256> getWork() override;
-	/// Submit the nonce for the proof-of-work.
-	virtual bool submitNonce(h256  const&_nonce) override;
+	/// Submit the proof for the proof-of-work.
+	virtual bool submitWork(ProofOfWork::Proof const& _proof) override;
 
 	// Debug stuff:
 
@@ -352,6 +384,7 @@ private:
 	CanonBlockChain m_bc;					///< Maintains block database.
 	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
+	std::shared_ptr<GasPricer> m_gp;		///< The gas pricer.
 
 	mutable SharedMutex x_stateDB;			///< Lock on the state DB, effectively a lock on m_postMine.
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
@@ -368,6 +401,9 @@ private:
 	bool m_paranoia = false;				///< Should we be paranoid about our state?
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
+	bool m_verifyOwnBlocks = true;			///< Should be verify blocks that we mined?
+
+
 
 	mutable Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;

@@ -107,7 +107,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 void BlockQueue::tick(BlockChain const& _bc)
 {
 	unsigned t = time(0);
-	for (auto i = m_future.begin(); i != m_future.end() && i->first < time(0); ++i)
+	for (auto i = m_future.begin(); i != m_future.end() && i->first < t; ++i)
 		import(&(i->second), _bc);
 
 	WriteGuard l(m_lock);

@@ -23,7 +23,7 @@
 
 #include <map>
 #include <functional>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libevm/ExtVMFace.h>
 #include "State.h"
 
@@ -68,6 +68,9 @@ public:
 
 	/// Determine account's TX count.
 	virtual u256 txCount(Address _a) override final { return m_s.transactionsFrom(_a); }
+
+	/// Does the account exist?
+	virtual bool exists(Address _a) override final { return m_s.addressInUse(_a); }
 
 	/// Suicide the associated contract to the given address.
 	virtual void suicide(Address _a) override final
