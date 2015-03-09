@@ -755,7 +755,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 		{
-			auto callGas256 = stack.pop();
+			auto callGas = stack.pop();
 			auto codeAddress = stack.pop();
 			auto value = stack.pop();
 			auto inOff = stack.pop();
@@ -773,13 +773,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			if (inst == Instruction::CALLCODE)
 				receiveAddress = _runtimeManager.get(RuntimeData::Address);
 
-			auto gas = _runtimeManager.getGas();
-			_gasMeter.count(callGas256);
-			auto callGas = m_builder.CreateTrunc(callGas256, Type::Gas);
-			auto gasLeft = m_builder.CreateNSWSub(gas, callGas);
-			_runtimeManager.setGas(callGas);
-			auto ret = _ext.call(receiveAddress, value, inOff, inSize, outOff, outSize, codeAddress);
-			_gasMeter.giveBack(gasLeft);
+			auto ret = _ext.call(callGas, receiveAddress, value, inOff, inSize, outOff, outSize, codeAddress);
+			_gasMeter.count(m_builder.getInt64(0), _runtimeManager.getJmpBuf(), _runtimeManager.getGasPtr());
 			stack.push(ret);
 			break;
 		}

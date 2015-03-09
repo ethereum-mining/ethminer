@@ -29,7 +29,7 @@ int64_t const c_logGas = 375;
 int64_t const c_logTopicGas = 375;
 int64_t const c_logDataGas = 8;
 int64_t const c_callGas = 40;
-int64_t const c_createGas = 23000;
+int64_t const c_createGas = 32000;
 int64_t const c_memoryGas = 3;
 int64_t const c_copyGas = 3;
 
