@@ -74,6 +74,9 @@ void interactiveHelp()
 		<< "    jsonstop  Stops the JSON-RPC server." << endl
 		<< "    connect <addr> <port>  Connects to a specific peer." << endl
 		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
+		<< "    setetherprice <p>  Resets the ether price." << endl
+		<< "    setpriority <p>  Resets the transaction priority." << endl
+		<< "    minestart  Starts mining." << endl
 		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
@@ -85,12 +88,12 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
-		<< "    listAccounts  List the accounts on the network." << endl
-		<< "    listContracts  List the contracts on the network." << endl
-		<< "    setSecret <secret>  Set the secret to the hex secret key." <<endl
-		<< "    setAddress <addr>  Set the coinbase (mining payout) address." <<endl
-		<< "    exportConfig <path>  Export the config (.RLP) to the path provided." <<endl
-		<< "    importConfig <path>  Import the config (.RLP) from the path provided." <<endl
+		<< "    listaccounts  List the accounts on the network." << endl
+		<< "    listcontracts  List the contracts on the network." << endl
+		<< "    setsecret <secret>  Set the secret to the hex secret key." <<endl
+		<< "    setaddress <addr>  Set the coinbase (mining payout) address." <<endl
+		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." <<endl
+		<< "    importconfig <path>  Import the config (.RLP) from the path provided." <<endl
 		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
@@ -104,9 +107,11 @@ void help()
 		<< "Options:" << endl
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
+		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (Default: 15)." << endl
 		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
 		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
@@ -115,11 +120,12 @@ void help()
 		<< "	--json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
 #endif
 		<< "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
+		<< "    -L,--local-networking Use peers whose addresses are local." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
 		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
-		<< "    -L,--local-networking Use peers whose addresses are local." << endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
 		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
+		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
 		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
@@ -128,7 +134,7 @@ void help()
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 #if ETH_EVMJIT
-		<< "	--jit  Use EVM JIT (default: off)." << endl
+		<< "    --jit  Use EVM JIT (default: off)." << endl
 #endif
 		;
 		exit(0);
@@ -212,6 +218,9 @@ int main(int argc, char** argv)
 	bool structuredLogging = false;
 	string structuredLoggingFormat = "%Y-%m-%dT%H:%M:%S";
 	string clientName;
+	TransactionPriority priority = TransactionPriority::Medium;
+	double etherPrice = 30.679;
+	double blockFees = 15.0;
 
 	// Init defaults
 	Defaults::get();
@@ -289,6 +298,48 @@ int main(int argc, char** argv)
 			structuredLogging = true;
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
+		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
+		{
+			try {
+				blockFees = stof(argv[++i]);
+			}
+			catch (...) {
+				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
+				return -1;
+			}
+		}
+		else if ((arg == "-e" || arg == "--ether-price") && i + 1 < argc)
+		{
+			try {
+				etherPrice = stof(argv[++i]);
+			}
+			catch (...) {
+				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
+				return -1;
+			}
+		}
+		else if ((arg == "-P" || arg == "--priority") && i + 1 < argc)
+		{
+			string m = boost::to_lower_copy(string(argv[++i]));
+			if (m == "lowest")
+				priority = TransactionPriority::Lowest;
+			else if (m == "low")
+				priority = TransactionPriority::Low;
+			else if (m == "medium" || m == "mid" || m == "default" || m == "normal")
+				priority = TransactionPriority::Medium;
+			else if (m == "high")
+				priority = TransactionPriority::High;
+			else if (m == "highest")
+				priority = TransactionPriority::Highest;
+			else
+				try {
+					priority = (TransactionPriority)(max(0, min(100, stoi(m))) * 8 / 100);
+				}
+				catch (...) {
+					cerr << "Unknown " << arg << " option: " << m << endl;
+					return -1;
+				}
+		}
 		else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -301,7 +352,7 @@ int main(int argc, char** argv)
 					mining = stoi(m);
 				}
 				catch (...) {
-					cerr << "Unknown -m/--mining option: " << m << endl;
+					cerr << "Unknown " << arg << " option: " << m << endl;
 					return -1;
 				}
 		}
@@ -373,10 +424,12 @@ int main(int argc, char** argv)
 		miners
 		);
 	web3.setIdealPeerCount(peers);
+	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
 	StructuredLogger::starting(clientImplString, dev::Version);
 	if (c)
 	{
+		c->setGasPricer(gasPricer);
 		c->setForceMining(forceMining);
 		c->setAddress(coinbase);
 	}
@@ -435,6 +488,7 @@ int main(int argc, char** argv)
 			istringstream iss(l);
 			string cmd;
 			iss >> cmd;
+			boost::to_lower(cmd);
 			if (cmd == "netstart")
 			{
 				iss >> netPrefs.listenPort;
@@ -465,6 +519,42 @@ int main(int argc, char** argv)
 				string enable;
 				iss >> enable;
 				c->setForceMining(isTrue(enable));
+			}
+			else if (c && cmd == "setblockfees")
+			{
+				iss >> blockFees;
+				gasPricer->setRefBlockFees(u256(blockFees * 1000));
+				cout << "Block fees: " << blockFees << endl;
+			}
+			else if (c && cmd == "setetherprice")
+			{
+				iss >> etherPrice;
+				gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+				cout << "ether Price: " << etherPrice << endl;
+			}
+			else if (c && cmd == "setpriority")
+			{
+				string m;
+				iss >> m;
+				boost::to_lower(m);
+				if (m == "lowest")
+					priority = TransactionPriority::Lowest;
+				else if (m == "low")
+					priority = TransactionPriority::Low;
+				else if (m == "medium" || m == "mid" || m == "default" || m == "normal")
+					priority = TransactionPriority::Medium;
+				else if (m == "high")
+					priority = TransactionPriority::High;
+				else if (m == "highest")
+					priority = TransactionPriority::Highest;
+				else
+					try {
+						priority = (TransactionPriority)(max(0, min(100, stoi(m))) * 8 / 100);
+					}
+					catch (...) {
+						cerr << "Unknown priority: " << m << endl;
+					}
+				cout << "Priority: " << (int)priority << "/8" << endl;
 			}
 			else if (cmd == "verbosity")
 			{
@@ -536,6 +626,9 @@ int main(int argc, char** argv)
 
 					iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata;
 
+					if (!gasPrice)
+						gasPrice = gasPricer->bid(priority);
+
 					cnote << "Data:";
 					cnote << sdata;
 					bytes data = dev::eth::parseData(sdata);
@@ -582,7 +675,7 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: transact ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
-			else if (c && cmd == "listContracts")
+			else if (c && cmd == "listcontracts")
 			{
 				auto acs =c->addresses();
 				string ss;
@@ -593,7 +686,7 @@ int main(int argc, char** argv)
 						cout << ss << endl;
 					}
 			}
-			else if (c && cmd == "listAccounts")
+			else if (c && cmd == "listaccounts")
 			{
 				auto acs =c->addresses();
 				string ss;
@@ -809,7 +902,7 @@ int main(int argc, char** argv)
 					}
 				}
 			}
-			else if (cmd == "setSecret")
+			else if (cmd == "setsecret")
 			{
 				if (iss.peek() != -1)
 				{
@@ -820,7 +913,7 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameter: setSecret HEXSECRETKEY";
 			}
-			else if (cmd == "setAddress")
+			else if (cmd == "setaddress")
 			{
 				if (iss.peek() != -1)
 				{
@@ -848,7 +941,7 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameter: setAddress HEXADDRESS";
 			}
-			else if (cmd == "exportConfig")
+			else if (cmd == "exportconfig")
 			{
 				if (iss.peek() != -1)
 				{
@@ -861,7 +954,7 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameter: exportConfig PATH";
 			}
-			else if (cmd == "importConfig")
+			else if (cmd == "importconfig")
 			{
 				if (iss.peek() != -1)
 				{
