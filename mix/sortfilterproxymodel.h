@@ -58,7 +58,8 @@ class SortFilterProxyModel : public QSortFilterProxyModel
 	Q_PROPERTY(QByteArray sortRole READ sortRole WRITE setSortRole)
 	Q_PROPERTY(Qt::SortOrder sortOrder READ sortOrder WRITE setSortOrder)
 
-	Q_PROPERTY(QByteArray filterRole READ filterRole WRITE setFilterRole)
+	Q_PROPERTY(QString filterContent READ filterContent WRITE setFilterContent)
+	Q_PROPERTY(QString filterType READ filterType WRITE setFilterType)
 	Q_PROPERTY(QString filterString READ filterString WRITE setFilterString)
 	Q_PROPERTY(FilterSyntax filterSyntax READ filterSyntax WRITE setFilterSyntax)
 
@@ -75,9 +76,14 @@ public:
 
 	void setSortOrder(Qt::SortOrder order);
 
-	QByteArray filterRole() const;
-	void setFilterRole(const QByteArray &role);
+	QString filterContent() const;
+	void setFilterContent(const QString &_content);
+	QString filterType() const;
+	void setFilterType(const QString &_type);
 
+	/*QStringList filterRoles() const;
+	void setFilterRoles(const QStringList &roles);
+*/
 	QString filterString() const;
 	void setFilterString(const QString &filter);
 
@@ -100,6 +106,12 @@ protected:
 	int roleKey(const QByteArray &role) const;
 	QHash<int, QByteArray> roleNames() const;
 	bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const;
+
+private:
+	QRegExp m_filterType;
+	QRegExp m_filterContent;
+	const QString type = "type";
+	const QString content = "content";
 };
 
 }
