@@ -47,6 +47,7 @@ namespace eth
 {
 
 class BlockChain;
+class State;
 
 struct StateChat: public LogChannel { static const char* name() { return "-S-"; } static const int verbosity = 4; };
 struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
@@ -55,7 +56,32 @@ struct StateSafeExceptions: public LogChannel { static const char* name() { retu
 
 enum class BaseState { Empty, CanonGenesis };
 
-class GasPricer;
+enum class TransactionPriority
+{
+	Lowest = 0,
+	Low = 2,
+	Medium = 4,
+	High = 6,
+	Highest = 8
+};
+
+class GasPricer
+{
+public:
+	GasPricer() {}
+
+	virtual u256 ask(State const&) const = 0;
+	virtual u256 bid(TransactionPriority _p = TransactionPriority::Medium) const = 0;
+
+	virtual void update(BlockChain const&) {}
+};
+
+class TrivialGasPricer: public GasPricer
+{
+protected:
+	u256 ask(State const&) const override { return 10 * szabo; }
+	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return 10 * szabo; }
+};
 
 /**
  * @brief Model of the current state of the ledger.
@@ -153,6 +179,7 @@ public:
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
+	/// Returns the last few block hashes of the current chain.
 	LastHashes getLastHashes(BlockChain const& _bc, unsigned _n) const;
 
 	/// Execute a given transaction.
@@ -369,32 +396,6 @@ void commit(std::map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Addr
 			}
 		}
 }
-
-enum class TransactionPriority
-{
-	Low = 0,
-	Medium = 1,
-	High = 2
-};
-
-class GasPricer
-{
-public:
-	explicit GasPricer(u256 _weiPerCent): m_weiPerCent(_weiPerCent) {}
-
-	u256 ask(State const&) const { return m_weiPerCent * m_centsPerBlock / m_gasPerBlock; }
-	u256 bid(TransactionPriority _p = TransactionPriority::Medium) const { return m_quartiles[(int)_p]; }
-
-	void updateRefPrice(u256 _weiPerCent) { m_weiPerCent = _weiPerCent; }
-	void updateRefRequirement(u256 _centsPerBlock) { m_centsPerBlock = _centsPerBlock; }
-	void updateQuartiles(BlockChain const& _bc);
-
-private:
-	u256 m_weiPerCent;
-	u256 m_centsPerBlock = 15;
-	u256 m_gasPerBlock = 1000000;
-	std::array<u256, 100> m_quartiles;
-};
 
 }
 }
