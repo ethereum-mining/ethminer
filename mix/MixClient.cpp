@@ -41,7 +41,7 @@ namespace mix
 {
 
 const Secret c_defaultUserAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
-const u256 c_mixGenesisDifficulty = (u256) 1 << 4;
+const u256 c_mixGenesisDifficulty = c_minimumDifficulty; //TODO: make it lower for Mix somehow
 
 class MixBlockChain: public dev::eth::BlockChain
 {
