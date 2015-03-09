@@ -14,12 +14,12 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file CommonEth.cpp
+/** @file Common.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#include "CommonEth.h"
+#include "Common.h"
 #include <random>
 #include <libdevcrypto/SHA3.h>
 #include "Exceptions.h"
@@ -32,8 +32,15 @@ namespace dev
 namespace eth
 {
 
-const unsigned c_protocolVersion = 54;
-const unsigned c_databaseVersion = 5;
+const unsigned c_protocolVersion = 56;
+const unsigned c_databaseBaseVersion = 7;
+#if ETH_FATDB
+const unsigned c_databaseVersionModifier = 1000;
+#else
+const unsigned c_databaseVersionModifier = 0;
+#endif
+
+const unsigned c_databaseVersion = c_databaseBaseVersion + c_databaseVersionModifier;
 
 vector<pair<u256, string>> const& units()
 {

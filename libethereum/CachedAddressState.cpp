@@ -56,9 +56,9 @@ std::map<u256, u256> CachedAddressState::storage() const
 	std::map<u256, u256> ret;
 	if (m_r)
 	{
-		TrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(m_o), m_r[2].toHash<h256>());		// promise we won't alter the overlay! :)
-		for (auto const& j: memdb)
-			ret[j.first] = RLP(j.second).toInt<u256>();
+		SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(m_o), m_r[2].toHash<h256>());		// promise we won't alter the overlay! :)
+//		for (auto const& j: memdb)
+//			ret[j.first] = RLP(j.second).toInt<u256>();
 	}
 	if (m_s)
 		for (auto const& j: m_s->storageOverlay())
