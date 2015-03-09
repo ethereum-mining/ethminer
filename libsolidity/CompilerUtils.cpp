@@ -33,25 +33,37 @@ namespace solidity
 
 const unsigned int CompilerUtils::dataStartOffset = 4;
 
-unsigned CompilerUtils::loadFromMemory(unsigned _offset, Type const& _type,
-	bool _fromCalldata, bool _padToWordBoundaries)
+unsigned CompilerUtils::loadFromMemory(
+	unsigned _offset,
+	Type const& _type,
+	bool _fromCalldata,
+	bool _padToWordBoundaries
+)
 {
 	solAssert(_type.getCategory() != Type::Category::Array, "Unable to statically load dynamic type.");
 	m_context << u256(_offset);
 	return loadFromMemoryHelper(_type, _fromCalldata, _padToWordBoundaries);
 }
 
-void CompilerUtils::loadFromMemoryDynamic(Type const& _type, bool _fromCalldata, bool _padToWordBoundaries)
+void CompilerUtils::loadFromMemoryDynamic(
+	Type const& _type,
+	bool _fromCalldata,
+	bool _padToWordBoundaries,
+	bool _keepUpdatedMemoryOffset
+)
 {
 	solAssert(_type.getCategory() != Type::Category::Array, "Arrays not yet implemented.");
-	m_context << eth::Instruction::DUP1;
+	if (_keepUpdatedMemoryOffset)
+		m_context << eth::Instruction::DUP1;
 	unsigned numBytes = loadFromMemoryHelper(_type, _fromCalldata, _padToWordBoundaries);
-	// update memory counter
-	for (unsigned i = 0; i < _type.getSizeOnStack(); ++i)
-		m_context << eth::swapInstruction(1 + i);
-	m_context << u256(numBytes) << eth::Instruction::ADD;
+	if (_keepUpdatedMemoryOffset)
+	{
+		// update memory counter
+		for (unsigned i = 0; i < _type.getSizeOnStack(); ++i)
+			m_context << eth::swapInstruction(1 + i);
+		m_context << u256(numBytes) << eth::Instruction::ADD;
+	}
 }
-
 
 unsigned CompilerUtils::storeInMemory(unsigned _offset, Type const& _type, bool _padToWordBoundaries)
 {
@@ -80,7 +92,7 @@ void CompilerUtils::storeInMemoryDynamic(Type const& _type, bool _padToWordBound
 		}
 		else
 		{
-			solAssert(type.getLocation() == ArrayType::Location::Storage, "Memory byte arrays not yet implemented.");
+			solAssert(type.getLocation() == ArrayType::Location::Storage, "Memory arrays not yet implemented.");
 			m_context << eth::Instruction::DUP1 << eth::Instruction::SLOAD;
 			// stack here: memory_offset storage_offset length_bytes
 			// jump to end if length is zero
@@ -134,12 +146,11 @@ void CompilerUtils::moveToStackVariable(VariableDeclaration const& _variable)
 		m_context << eth::swapInstruction(stackPosition - size + 1) << eth::Instruction::POP;
 }
 
-void CompilerUtils::copyToStackTop(unsigned _stackDepth, Type const& _type)
+void CompilerUtils::copyToStackTop(unsigned _stackDepth, unsigned _itemSize)
 {
 	if (_stackDepth > 16)
 		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_comment("Stack too deep."));
-	unsigned const size = _type.getSizeOnStack();
-	for (unsigned i = 0; i < size; ++i)
+	for (unsigned i = 0; i < _itemSize; ++i)
 		m_context << eth::dupInstruction(_stackDepth);
 }
 
@@ -166,8 +177,7 @@ void CompilerUtils::computeHashStatic(Type const& _type, bool _padToWordBoundari
 
 unsigned CompilerUtils::loadFromMemoryHelper(Type const& _type, bool _fromCalldata, bool _padToWordBoundaries)
 {
-	unsigned _encodedSize = _type.getCalldataEncodedSize();
-	unsigned numBytes = _padToWordBoundaries ? getPaddedSize(_encodedSize) : _encodedSize;
+	unsigned numBytes = _type.getCalldataEncodedSize(_padToWordBoundaries);
 	bool leftAligned = _type.getCategory() == Type::Category::String;
 	if (numBytes == 0)
 		m_context << eth::Instruction::POP << u256(0);
@@ -191,8 +201,7 @@ unsigned CompilerUtils::loadFromMemoryHelper(Type const& _type, bool _fromCallda
 
 unsigned CompilerUtils::prepareMemoryStore(Type const& _type, bool _padToWordBoundaries) const
 {
-	unsigned _encodedSize = _type.getCalldataEncodedSize();
-	unsigned numBytes = _padToWordBoundaries ? getPaddedSize(_encodedSize) : _encodedSize;
+	unsigned numBytes = _type.getCalldataEncodedSize(_padToWordBoundaries);
 	bool leftAligned = _type.getCategory() == Type::Category::String;
 	if (numBytes == 0)
 		m_context << eth::Instruction::POP;
