@@ -12,6 +12,7 @@ Rectangle
 		_content = _content.replace(/\n/g, " ")
 		logsModel.insert(0, { "type": _type, "date": Qt.formatDateTime(new Date(), "hh:mm:ss dd.MM.yyyy"), "content": _content, "level": _level });
 	}
+
 	anchors.fill: parent
 	radius: 5
 	color: "#f7f7f7"
@@ -150,10 +151,24 @@ Rectangle
 				}
 			}
 		}
+
+		DefaultTextField
+		{
+			id: searchBox
+			height: 30
+			anchors.verticalCenter: parent.verticalCenter
+			width: 200
+			font.family: "sans serif"
+			font.pointSize: Style.absoluteSize(-3)
+			onTextChanged: {
+				proxyModel.search(text);
+			}
+		}
 	}
 
 	ListModel {
 		id: logsModel
+
 	}
 
 	TableView {
@@ -171,17 +186,41 @@ Rectangle
 		model: SortFilterProxyModel {
 			id: proxyModel
 			source: logsModel
+			property var roles: ["-", "javascript", "run", "state"]
+
+			Component.onCompleted: {
+				filterType = regEx(proxyModel.roles);
+			}
+
+			function search(_value)
+			{
+				filterContent = _value;
+			}
 
 			function toogleFilter(_value)
 			{
-				if (filterString.indexOf('_' + _value) !== -1)
-					filterString = filterString.replace('_' + _value, _value);
-				else
-					filterString = filterString.replace(_value, '_' + _value);
+				var count = roles.length;
+				for (var i in roles)
+				{
+					if (roles[i] === _value)
+					{
+						roles.splice(i, 1);
+						break;
+					}
+				}
+				if (count === roles.length)
+					roles.push(_value);
+
+				filterType = regEx(proxyModel.roles);
 			}
 
-			filterRole: "type"
-			filterString: "(?:javascript|run|state)"
+			function regEx(_value)
+			{
+				console.log("(?:" + roles.join('|') + ")");
+				return "(?:" + roles.join('|') + ")";
+			}
+			filterType: "(?:javascript|run|state)"
+			filterContent: ""
 			filterSyntax: SortFilterProxyModel.RegExp
 			filterCaseSensitivity: Qt.CaseInsensitive
 		}
@@ -214,20 +253,7 @@ Rectangle
 			text: styleData.value;
 			font.family: "sans serif"
 			font.pointSize: Style.absoluteSize(-1)
-			color: {
-				if (styleData.row > -1)
-				{
-					var l = logsModel.get(styleData.row).level
-					if (l === "error")
-						return "red"
-					else if (l === "warning")
-						return "orange"
-					else if (l === "info")
-						return "#808080"
-				}
-				else
-					return "#808080"
-			}
+			color: "#808080"
 		}
 	}
 }
