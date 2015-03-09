@@ -49,7 +49,7 @@ extern "C" {
 //              While[! PrimeQ[i], i--];
 //              Sow[i*MixBytes]; j++]]]][[2]][[1]]
 
-static const size_t dag_sizes[] = {
+static const size_t dag_sizes[2048] = {
         1073739904U, 1082130304U, 1090514816U, 1098906752U, 1107293056U,
         1115684224U, 1124070016U, 1132461952U, 1140849536U, 1149232768U,
         1157627776U, 1166013824U, 1174404736U, 1182786944U, 1191180416U,
@@ -478,7 +478,7 @@ static const size_t dag_sizes[] = {
 //         While[! PrimeQ[i], i--];
 //         Sow[i*HashBytes]; j++]]]][[2]][[1]]
 
-const size_t cache_sizes[] = {
+const size_t cache_sizes[2048] = {
         1048384U, 1055552U, 1064512U, 1072832U, 1080896U, 1089344U, 1096768U,
         1104448U, 1113664U, 1121216U, 1130176U, 1138624U, 1146304U, 1155008U,
         1162816U, 1171264U, 1179328U, 1187392U, 1195456U, 1203392U, 1210816U,
