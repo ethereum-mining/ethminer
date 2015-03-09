@@ -60,16 +60,58 @@ void VersionChecker::setOk()
 	}
 }
 
+void BasicGasPricer::update(BlockChain const& _bc)
+{
+	unsigned c = 0;
+	h256 p = _bc.currentHash();
+	m_gasPerBlock = _bc.info(p).gasLimit;
+
+	map<u256, unsigned> dist;
+	unsigned total = 0;
+	while (c < 1000 && p)
+	{
+		BlockInfo bi = _bc.info(p);
+		if (bi.transactionsRoot != EmptyTrie)
+		{
+			auto bb = _bc.block(p);
+			RLP r(bb);
+			BlockReceipts brs(_bc.receipts(bi.hash));
+			for (unsigned i = 0; i < r[1].size(); ++i)
+			{
+				auto gu = brs.receipts[i].gasUsed();
+				dist[Transaction(r[1][i].data(), CheckSignature::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
+				total += (unsigned)gu;
+			}
+		}
+		p = bi.parentHash;
+		++c;
+	}
+	if (total > 0)
+	{
+		unsigned t = 0;
+		unsigned q = 1;
+		m_octiles[0] = dist.begin()->first;
+		for (auto const& i: dist)
+		{
+			for (; t <= total * q / 8 && t + i.second > total * q / 8; ++q)
+				m_octiles[q] = i.first;
+			if (q > 7)
+				break;
+		}
+		m_octiles[8] = dist.rbegin()->first;
+	}
+}
+
 Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId, int _miners):
 	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
-	m_gp(u256("60000000000000")),
+	m_gp(new TrivialGasPricer),
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
 	m_preMine(Address(), m_stateDB),
 	m_postMine(Address(), m_stateDB)
 {
-	m_gp.updateQuartiles(m_bc);
+	m_gp->update(m_bc);
 
 	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
@@ -85,16 +127,16 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 	startWorking();
 }
 
-Client::Client(p2p::Host* _extNet, u256 weiPerCent, std::string const& _dbPath, bool _forceClean, u256 _networkId, int _miners):
+Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string const& _dbPath, bool _forceClean, u256 _networkId, int _miners):
 	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, !m_vc.ok() || _forceClean),
-	m_gp(weiPerCent),
+	m_gp(_gp),
 	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
 	m_preMine(Address(), m_stateDB),
 	m_postMine(Address(), m_stateDB)
 {
-	m_gp.updateQuartiles(m_bc);
+	m_gp->update(m_bc);
 
 	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
@@ -620,7 +662,7 @@ void Client::doWork()
 
 		// returns h256s as blooms, once for each transaction.
 		cwork << "postSTATE <== TQ";
-		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq, m_gp);
+		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq, *m_gp);
 		if (newPendingReceipts.size())
 		{
 			for (size_t i = 0; i < newPendingReceipts.size(); i++)
