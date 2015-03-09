@@ -68,17 +68,11 @@ Rectangle {
 			var formatted = _message.match(/(?:<dev::eth::)(.+)(?:>)/);
 			if (formatted.length > 1)
 				formatted = formatted[1] + ": ";
-			var exceptionInfos = _message.match(/(tag_)(.+)/g);
-			console.log("hh " + exceptionInfos.length);
+			else
+				return _message;
+			var exceptionInfos = _message.match(/(?:tag_)(.+)/g);
 			for (var k in exceptionInfos)
-			{
-				formatted += " " + exceptionInfos[k].replace("*]", "").replace("tag_", "");
-				console.log(k);
-				if (k === exceptionInfos.length - 1)
-					formatted += "."
-				else
-					formatted += ","
-			}
+				formatted += " " + exceptionInfos[k].replace("*]", "").replace("tag_", "") + " - ";
 			return formatted;
 		}
 	}
