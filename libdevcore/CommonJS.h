@@ -38,12 +38,12 @@ template <unsigned S> std::string toJS(FixedHash<S> const& _h)
 
 template <unsigned N> std::string toJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n)
 {
-	return "0x" + toHex(toCompactBigEndian(_n));
+	return "0x" + toHex(toCompactBigEndian(_n, 1));
 }
 
-inline std::string toJS(dev::bytes const& _n)
+inline std::string toJS(bytes const& _n)
 {
-	return "0x" + dev::toHex(_n);
+	return "0x" + toHex(_n);
 }
 
 template< typename T >std::string toJS( T const& i )
@@ -81,7 +81,7 @@ template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)
 
 inline std::string jsToFixed(double _s)
 {
-	return toJS(dev::u256(_s * (double)(dev::u256(1) << 128)));
+	return toJS(u256(_s * (double)(u256(1) << 128)));
 }
 
 template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> jsToInt(std::string const& _s)
@@ -106,13 +106,13 @@ inline int jsToInt(std::string const& _s)
 
 inline std::string jsToDecimal(std::string const& _s)
 {
-	return dev::toString(jsToU256(_s));
+	return toString(jsToU256(_s));
 }
 
-inline std::string jsFromBinary(dev::bytes _s, unsigned _padding = 32)
+inline std::string jsFromBinary(bytes _s, unsigned _padding = 32)
 {
 	_s.resize(std::max<unsigned>(_s.size(), _padding));
-	return "0x" + dev::toHex(_s);
+	return "0x" + toHex(_s);
 }
 
 inline std::string jsFromBinary(std::string const& _s, unsigned _padding = 32)
@@ -122,7 +122,7 @@ inline std::string jsFromBinary(std::string const& _s, unsigned _padding = 32)
 
 inline double jsFromFixed(std::string const& _s)
 {
-	return (double)jsToU256(_s) / (double)(dev::u256(1) << 128);
+	return (double)jsToU256(_s) / (double)(u256(1) << 128);
 }
 
 }
