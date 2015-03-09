@@ -4,7 +4,6 @@
 var currentSelectedState = null;
 var currentDisplayedState = null;
 var debugData = null;
-var codeMap = null;
 var locations = [];
 var locationMap = {};
 var breakpoints = {};
@@ -56,7 +55,7 @@ function initLocations()
 
 	for (var i = 0; i < debugData.states.length - 1; i++) {
 		var code = debugData.states[i].code;
-		var location = code.documentId ? code.locations[codeStr(i)] : nullLocation;
+		var location = code.documentId ? debugData.states[i].solidity : nullLocation;
 		if (location.start !== prevLocation.start || location.end !== prevLocation.end || code.documentId !== prevLocation.documentId)
 		{
 			prevLocation = { start: location.start, end: location.end, documentId: code.documentId, state: i };
@@ -65,6 +64,7 @@ function initLocations()
 		locationMap[i] = locations.length - 1;
 	}
 	locations.push({ start: -1, end: -1, documentId: code.documentId, state: i });
+
 	locationMap[debugData.states.length - 1] = locations.length - 1;
 }
 
@@ -93,12 +93,10 @@ function initSlider()
 function setupInstructions(stateIndex)
 {
 	var instructions = debugData.states[stateIndex].code.instructions;
-	codeMap = {};
 	statesList.model.clear();
-	for (var i = 0; i < instructions.length; i++) {
+	for (var i = 0; i < instructions.length; i++)
 		statesList.model.append(instructions[i]);
-		codeMap[instructions[i].processIndex] = i;
-	}
+
 	callDataDump.listModel = debugData.states[stateIndex].callData.items;
 }
 
@@ -129,14 +127,14 @@ function display(stateIndex)
 		setupInstructions(stateIndex);
 	if (debugData.states[stateIndex].dataIndex !== debugData.states[currentDisplayedState].dataIndex)
 		setupCallData(stateIndex);
-	var codeLine = codeStr(stateIndex);
 	var state = debugData.states[stateIndex];
+	var codeLine = state.instructionIndex;
 	highlightSelection(codeLine);
 	completeCtxInformation(state);
 	currentDisplayedState = stateIndex;
 	var docId = debugData.states[stateIndex].code.documentId;
 	if (docId)
-		debugExecuteLocation(docId, locations[locationMap[stateIndex]]);
+		debugExecuteLocation(docId, debugData.states[stateIndex].solidity);
 }
 
 function displayFrame(frameIndex)
@@ -183,12 +181,6 @@ function selectState(stateIndex)
 		statesSlider.value = stateIndex;
 }
 
-function codeStr(stateIndex)
-{
-	var state = debugData.states[stateIndex];
-	return codeMap[state.curPC];
-}
-
 function highlightSelection(index)
 {
 	statesList.positionViewAtRow(index, ListView.Center);
@@ -206,6 +198,15 @@ function completeCtxInformation(state)
 	stack.listModel = state.debugStack;
 	storage.listModel = state.debugStorage;
 	memoryDump.listModel = state.debugMemory;
+	if (state.solidity) {
+		solLocals.listModel = state.solidity.locals;
+		solStorage.listModel = state.solidity.storage;
+		solCallStack.listModel = state.solidity.callStack;
+	} else {
+		solLocals.listModel = [];
+		solStorage.listModel = [];
+		solCallStack.listModel = [];
+	}
 }
 
 function isCallInstruction(index)
@@ -229,7 +230,7 @@ function breakpointHit(i)
 {
 	var bpLocations = breakpoints[debugData.states[i].code.documentId];
 	if (bpLocations) {
-		var location = locations[locationMap[i]];
+		var location = debugData.states[i].solidity;
 		if (location.start >= 0 && location.end >= location.start)
 			for (var b = 0; b < bpLocations.length; b++)
 				if (locationsIntersect(location, bpLocations[b]))
