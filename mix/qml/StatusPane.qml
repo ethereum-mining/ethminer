@@ -59,9 +59,28 @@ Rectangle {
 	Connections {
 		target:clientModel
 		onRunStarted: infoMessage(qsTr("Running transactions..."), "run");
-		onRunFailed: errorMessage(qsTr("Error running transactions: " + _message), "run");
+		onRunFailed: errorMessage(format(_message), "run");
 		onRunComplete: infoMessage(qsTr("Run complete"), "run");
 		onNewBlock: infoMessage(qsTr("New block created"), "state");
+
+		function format(_message)
+		{
+			var formatted = _message.match(/(?:<dev::eth::)(.+)(?:>)/);
+			if (formatted.length > 1)
+				formatted = formatted[1] + ": ";
+			var exceptionInfos = _message.match(/(tag_)(.+)/g);
+			console.log("hh " + exceptionInfos.length);
+			for (var k in exceptionInfos)
+			{
+				formatted += " " + exceptionInfos[k].replace("*]", "").replace("tag_", "");
+				console.log(k);
+				if (k === exceptionInfos.length - 1)
+					formatted += "."
+				else
+					formatted += ","
+			}
+			return formatted;
+		}
 	}
 	Connections {
 		target:projectModel
@@ -82,7 +101,7 @@ Rectangle {
 	Rectangle {
 		id: statusContainer
 		anchors.horizontalCenter: parent.horizontalCenter
-		anchors.verticalCenter: parent.verticalCenter
+		anchors.verticalCenter: parent.verticalCenterw
 		radius: 3
 		width: 500
 		height: 30
