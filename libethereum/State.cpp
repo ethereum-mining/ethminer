@@ -400,7 +400,7 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged)
+TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, bool* o_transactionQueueChanged)
 {
 	// TRANSACTIONS
 	TransactionReceipts ret;
@@ -414,20 +414,27 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, bo
 		for (auto const& i: ts)
 			if (!m_transactionSet.count(i.first))
 			{
-				// don't have it yet! Execute it now.
 				try
 				{
-					uncommitToMine();
-//					boost::timer t;
-					execute(lh, i.second);
-					ret.push_back(m_receipts.back());
-					_tq.noteGood(i);
-					++goodTxs;
-//					cnote << "TX took:" << t.elapsed() * 1000;
+					Transaction t(i.second, CheckSignature::Sender);
+					if (t.gasPrice() >= _gp.ask(*this))
+					{
+						// don't have it yet! Execute it now.
+						uncommitToMine();
+	//					boost::timer t;
+						execute(lh, i.second);
+						ret.push_back(m_receipts.back());
+						_tq.noteGood(i);
+						++goodTxs;
+	//					cnote << "TX took:" << t.elapsed() * 1000;
+					}
 				}
 				catch (InvalidNonce const& in)
 				{
-					if (in.required > in.candidate)
+					bigint const* req = boost::get_error_info<errinfo_required>(in);
+					bigint const* got = boost::get_error_info<errinfo_got>(in);
+
+					if (*req > *got)
 					{
 						// too old
 						_tq.drop(i.first);
@@ -462,7 +469,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	// m_currentBlock is assumed to be prepopulated and reset.
 
 #if !ETH_RELEASE
-	BlockInfo bi(_block, _checkNonce);
+	BlockInfo bi(_block, _checkNonce ? CheckEverything : IgnoreNonce);
 	assert(m_previousBlock.hash == bi.parentHash);
 	assert(m_currentBlock.parentHash == bi.parentHash);
 	assert(rootHash() == m_previousBlock.stateRoot);
@@ -472,7 +479,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		BOOST_THROW_EXCEPTION(InvalidParentHash());
 
 	// Populate m_currentBlock with the correct values.
-	m_currentBlock.populate(_block, _checkNonce);
+	m_currentBlock.populate(_block, _checkNonce ? CheckEverything : IgnoreNonce);
 	m_currentBlock.verifyInternals(_block);
 
 //	cnote << "playback begins:" << m_state.root();
@@ -554,7 +561,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	for (auto const& i: rlp[2])
 	{
 		if (knownUncles.count(sha3(i.data())))
-			BOOST_THROW_EXCEPTION(UncleInChain(knownUncles, sha3(i.data()) ));
+			BOOST_THROW_EXCEPTION(UncleInChain() << errinfo_comment("Uncle in block already mentioned") << errinfo_data(toString(knownUncles)) << errinfo_hash256(sha3(i.data())) );
 
 		BlockInfo uncle = BlockInfo::fromHeader(i.data());
 		if (nonces.count(uncle.nonce))

@@ -47,6 +47,7 @@ namespace eth
 {
 
 class BlockChain;
+class State;
 
 struct StateChat: public LogChannel { static const char* name() { return "-S-"; } static const int verbosity = 4; };
 struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
@@ -54,6 +55,33 @@ struct StateDetail: public LogChannel { static const char* name() { return "/S/"
 struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
 
 enum class BaseState { Empty, CanonGenesis };
+
+enum class TransactionPriority
+{
+	Lowest = 0,
+	Low = 2,
+	Medium = 4,
+	High = 6,
+	Highest = 8
+};
+
+class GasPricer
+{
+public:
+	GasPricer() {}
+
+	virtual u256 ask(State const&) const = 0;
+	virtual u256 bid(TransactionPriority _p = TransactionPriority::Medium) const = 0;
+
+	virtual void update(BlockChain const&) {}
+};
+
+class TrivialGasPricer: public GasPricer
+{
+protected:
+	u256 ask(State const&) const override { return 10 * szabo; }
+	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return 10 * szabo; }
+};
 
 /**
  * @brief Model of the current state of the ledger.
@@ -147,10 +175,11 @@ public:
 	/// @returns a list of receipts one for each transaction placed from the queue into the state.
 	/// @a o_transactionQueueChanged boolean pointer, the value of which will be set to true if the transaction queue
 	/// changed and the pointer is non-null
-	TransactionReceipts sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged = nullptr);
+	TransactionReceipts sync(BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, bool* o_transactionQueueChanged = nullptr);
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
+	/// Returns the last few block hashes of the current chain.
 	LastHashes getLastHashes(BlockChain const& _bc, unsigned _n) const;
 
 	/// Execute a given transaction.

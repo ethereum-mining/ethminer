@@ -66,7 +66,7 @@ bool Executive::setup()
 	if (m_t.nonce() != nonceReq)
 	{
 		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
-		BOOST_THROW_EXCEPTION(InvalidNonce(nonceReq, m_t.nonce()));
+		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
 	}
 
 	// Check gas cost is enough.
@@ -176,7 +176,7 @@ OnOpFunc Executive::simpleTrace()
 		o << endl << "    STACK" << endl;
 		for (auto i: vm.stack())
 			o << (h256)i << endl;
-		o << "    MEMORY" << endl << (vm.memory().size() > 1000) ? " mem size greater than 1000 bytes " : memDump(vm.memory());
+		o << "    MEMORY" << endl << ((vm.memory().size() > 1000) ? " mem size greater than 1000 bytes " : memDump(vm.memory()));
 		o << "    STORAGE" << endl;
 		for (auto const& i: ext.state().storage(ext.myAddress))
 			o << showbase << hex << i.first << ": " << i.second << endl;
@@ -236,6 +236,10 @@ bool Executive::go(OnOpFunc const& _onOp)
 
 void Executive::finalize()
 {
+	// Accumulate refunds for suicides.
+	if (m_ext)
+		m_ext->sub.refunds += c_suicideRefundGas * m_ext->sub.suicides.size();
+
 	// SSTORE refunds...
 	// must be done before the miner gets the fees.
 	if (m_ext)

@@ -120,8 +120,12 @@ cmake_policy(SET CMP0015 NEW)
 
 createDefaultCacheConfig()
 configureProject()
+
+# Force chromium.
+set (ETH_HAVE_WEBENGINE 1)
+
 message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
-message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}; FATDB: ${FATDB}")
+message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}; FATDB: ${FATDB}; CHROMIUM: ${ETH_HAVE_WEBENGINE}")
 
 
 # Default TARGET_PLATFORM to "linux".
@@ -200,8 +204,12 @@ if (NOT JUSTTESTS)
 
 		add_subdirectory(libnatspec)
 		add_subdirectory(libjsqrc)
-		add_subdirectory(alethzero)
-		add_subdirectory(third)
+
+		if (ETH_HAVE_WEBENGINE)
+			add_subdirectory(alethzero)
+#			add_subdirectory(third)	// reenable once not qtwebkit.
+		endif()
+
 		add_subdirectory(mix)
 
 	endif()
