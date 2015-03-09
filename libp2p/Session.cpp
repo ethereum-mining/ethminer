@@ -403,7 +403,7 @@ void Session::doRead()
 	// ignore packets received while waiting to disconnect.
 	if (m_dropped)
 		return;
-	
+
 	auto self(shared_from_this());
 	ba::async_read(m_socket, boost::asio::buffer(m_data, h256::size), [this,self](boost::system::error_code ec, std::size_t length)
 	{
@@ -427,7 +427,7 @@ void Session::doRead()
 
 			/// check frame size
 			uint32_t frameSize = (m_data[0] * 256 + m_data[1]) * 256 + m_data[2];
-			if (frameSize > 16777216)
+			if (frameSize >= (uint32_t)1 << 24)
 			{
 				clog(NetWarn) << "frame size too large";
 				drop(BadProtocol);

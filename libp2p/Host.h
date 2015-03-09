@@ -50,7 +50,7 @@ namespace dev
 
 namespace p2p
 {
-	
+
 class Host;
 
 class HostNodeTableHandler: public NodeTableEventHandler
