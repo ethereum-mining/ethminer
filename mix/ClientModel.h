@@ -41,6 +41,7 @@ class QEther;
 class QDebugData;
 class MixClient;
 class QVariableDefinition;
+struct SolidityType;
 
 /// Backend transaction config class
 struct TransactionSettings
@@ -198,6 +199,7 @@ private:
 	void onNewTransaction();
 	void onStateReset();
 	void showDebuggerForTransaction(ExecutionResult const& _t);
+	QString formatValue(SolidityType const& _type, dev::u256 const& _value);
 
 	AppContext* m_context;
 	std::atomic<bool> m_running;
