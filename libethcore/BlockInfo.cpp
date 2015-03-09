@@ -35,9 +35,9 @@ BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
 }
 
-BlockInfo::BlockInfo(bytesConstRef _block, bool _checkNonce)
+BlockInfo::BlockInfo(bytesConstRef _block, Strictness _s)
 {
-	populate(_block, _checkNonce);
+	populate(_block, _s);
 }
 
 void BlockInfo::setEmpty()
@@ -61,10 +61,10 @@ void BlockInfo::setEmpty()
 	hash = headerHash(WithNonce);
 }
 
-BlockInfo BlockInfo::fromHeader(bytesConstRef _block)
+BlockInfo BlockInfo::fromHeader(bytesConstRef _block, Strictness _s)
 {
 	BlockInfo ret;
-	ret.populateFromHeader(RLP(_block));
+	ret.populateFromHeader(RLP(_block), _s);
 	return ret;
 }
 
@@ -89,7 +89,7 @@ h256 BlockInfo::headerHash(bytesConstRef _block)
 	return sha3(RLP(_block)[0].data());
 }
 
-void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
+void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s)
 {
 	hash = dev::sha3(_header.data());
 
@@ -121,35 +121,38 @@ void BlockInfo::populateFromHeader(RLP const& _header, bool _checkNonce)
 	}
 
 	// check it hashes according to proof of work or that it's the genesis block.
-	if (_checkNonce && parentHash && !ProofOfWork::verify(*this))
-		BOOST_THROW_EXCEPTION(InvalidBlockNonce(headerHash(WithoutNonce), nonce, difficulty));
+	if (_s == CheckEverything && parentHash && !ProofOfWork::verify(*this))
+		BOOST_THROW_EXCEPTION(InvalidBlockNonce() << errinfo_hash256(headerHash(WithoutNonce)) << errinfo_nonce(nonce) << errinfo_difficulty(difficulty));
 
-	if (gasUsed > gasLimit)
-		BOOST_THROW_EXCEPTION(TooMuchGasUsed() << RequirementError(bigint(gasLimit), bigint(gasUsed)) );
+	if (_s != CheckNothing)
+	{
+		if (gasUsed > gasLimit)
+			BOOST_THROW_EXCEPTION(TooMuchGasUsed() << RequirementError(bigint(gasLimit), bigint(gasUsed)) );
 
-	if (difficulty < c_minimumDifficulty)
-		BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError(bigint(c_minimumDifficulty), bigint(difficulty)) );
+		if (difficulty < c_minimumDifficulty)
+			BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError(bigint(c_minimumDifficulty), bigint(difficulty)) );
 
-	if (gasLimit < c_minGasLimit)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, c_minGasLimit, c_minGasLimit) << RequirementError(bigint(c_minGasLimit), bigint(gasLimit)) );
+		if (gasLimit < c_minGasLimit)
+			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(c_minGasLimit), bigint(gasLimit)) );
 
-	if (number && extraData.size() > c_maximumExtraDataSize)
-		BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(extraData.size())));
+		if (number && extraData.size() > c_maximumExtraDataSize)
+			BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(c_maximumExtraDataSize), bigint(extraData.size())));
+	}
 }
 
-void BlockInfo::populate(bytesConstRef _block, bool _checkNonce)
+void BlockInfo::populate(bytesConstRef _block, Strictness _s)
 {
 	RLP root(_block);
 	RLP header = root[0];
 
 	if (!header.isList())
-		BOOST_THROW_EXCEPTION(InvalidBlockFormat(0, header.data()) << errinfo_comment("block header needs to be a list"));
-	populateFromHeader(header, _checkNonce);
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block header needs to be a list") << BadFieldError(0, header.data().toString()));
+	populateFromHeader(header, _s);
 
 	if (!root[1].isList())
-		BOOST_THROW_EXCEPTION(InvalidBlockFormat(1, root[1].data()));
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block transactions need to be a list") << BadFieldError(1, root[1].data().toString()));
 	if (!root[2].isList())
-		BOOST_THROW_EXCEPTION(InvalidBlockFormat(2, root[2].data()));
+		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block uncles need to be a list") << BadFieldError(2, root[2].data().toString()));
 }
 
 void BlockInfo::verifyInternals(bytesConstRef _block) const
@@ -171,7 +174,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 		++i;
 	}
 	if (transactionsRoot != t.root())
-		BOOST_THROW_EXCEPTION(InvalidTransactionsHash(t.root(), transactionsRoot));
+		BOOST_THROW_EXCEPTION(InvalidTransactionsHash() << HashMismatchError(t.root(), transactionsRoot));
 
 	if (sha3Uncles != sha3(root[2].data()))
 		BOOST_THROW_EXCEPTION(InvalidUnclesHash());
@@ -217,7 +220,7 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 
 	if (gasLimit < _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor ||
 		gasLimit > _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit(gasLimit, _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor, _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor));
+		BOOST_THROW_EXCEPTION(InvalidGasLimit() << errinfo_min((bigint)_parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor) << errinfo_got((bigint)gasLimit) << errinfo_max((bigint)_parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor));
 
 	if (seedHash != calculateSeedHash(_parent))
 		BOOST_THROW_EXCEPTION(InvalidSeedHash());
