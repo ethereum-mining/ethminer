@@ -20,8 +20,6 @@
 * @date 2015
 */
 
-// TODO: Update this after ~3.5 years
-
 #pragma once
 
 #include <stdint.h>
@@ -33,7 +31,7 @@ extern "C" {
 
 #include <stdint.h>
 
-// 2048 Epochs worth of tabulated DAG sizes
+// 2048 Epochs (~20 years) worth of tabulated DAG sizes
 
 // Generated with the following Mathematica Code:
 
