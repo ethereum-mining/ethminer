@@ -598,7 +598,7 @@ Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNum
 		return toJson(client()->blockInfo(hash), client()->transactions(hash));
 	}
 	
-	return toJson(client()->blockInfo(hash));
+	return toJson(client()->blockInfo(hash), client()->transactionHashes(hash));
 }
 
 Json::Value WebThreeStubServerBase::eth_getTransactionByHash(string const& _transactionHash)
