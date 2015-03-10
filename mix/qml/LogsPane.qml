@@ -15,9 +15,9 @@ Rectangle
 
 	anchors.fill: parent
 	radius: 5
-	color: "#f7f7f7"
-	border.color: "#808080"
-	border.width: 1
+	color: LogsPaneStyle.generic.layout.backgroundColor
+	border.color: LogsPaneStyle.generic.layout.borderColor
+	border.width: LogsPaneStyle.generic.layout.borderWidth
 	ColumnLayout {
 		z: 2
 		height: parent.height
@@ -26,14 +26,14 @@ Rectangle
 		Row
 		{
 			id: rowAction
-			Layout.preferredHeight: 35
-			height: 35
-			anchors.leftMargin: 10
+			Layout.preferredHeight: LogsPaneStyle.generic.layout.headerHeight
+			height: LogsPaneStyle.generic.layout.headerHeight
+			anchors.leftMargin: LogsPaneStyle.generic.layout.leftMargin
 			anchors.left: parent.left
-			spacing: 5
+			spacing: LogsPaneStyle.generic.layout.headerButtonSpacing
 			Button
 			{
-				height: 30
+				height: LogsPaneStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
 				action: clearAction
 				iconSource: "qrc:/qml/img/broom.png"
@@ -50,7 +50,7 @@ Rectangle
 
 			Button
 			{
-				height: 30
+				height: LogsPaneStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
 				action: copytoClipBoardAction
 				iconSource: "qrc:/qml/img/copy.png"
@@ -81,7 +81,7 @@ Rectangle
 			ToolButton {
 				id: javascriptButton
 				checkable: true
-				height: 30
+				height: LogsPaneStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
 				checked: true
 				onCheckedChanged: {
@@ -89,212 +89,212 @@ Rectangle
 				}
 				tooltip: qsTr("JavaScript")
 				style:
-				ButtonStyle {
+					ButtonStyle {
 					label:
 						Item {
 						DefaultLabel {
-							font.family: "sans serif"
+							font.family: LogsPaneStyle.generic.layout.logLabelFont
 							font.pointSize: Style.absoluteSize(-3)
-							color: "#5391d8"
+							color: LogsPaneStyle.generic.layout.logLabelColor
 							anchors.centerIn: parent
 							text: qsTr("JavaScript")
 						}
 					}
+				}
 			}
-		}
 
-		ToolButton {
-			id: runButton
-			checkable: true
-			height: 30
-			anchors.verticalCenter: parent.verticalCenter
-			checked: true
-			onCheckedChanged: {
-				proxyModel.toogleFilter("run")
-			}
-			tooltip: qsTr("Run")
-			style:
-			ButtonStyle {
-				label:
-					Item {
-					DefaultLabel {
-						font.family: "sans serif"
-						font.pointSize: Style.absoluteSize(-3)
-						color: "#5391d8"
-						anchors.centerIn: parent
-						text: qsTr("Run")
+			ToolButton {
+				id: runButton
+				checkable: true
+				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				anchors.verticalCenter: parent.verticalCenter
+				checked: true
+				onCheckedChanged: {
+					proxyModel.toogleFilter("run")
+				}
+				tooltip: qsTr("Run")
+				style:
+					ButtonStyle {
+					label:
+						Item {
+						DefaultLabel {
+							font.family: LogsPaneStyle.generic.layout.logLabelFont
+							font.pointSize: Style.absoluteSize(-3)
+							color: LogsPaneStyle.generic.layout.logLabelColor
+							anchors.centerIn: parent
+							text: qsTr("Run")
+						}
 					}
 				}
 			}
-		}
 
-		ToolButton {
-			id: stateButton
-			checkable: true
-			height: 30
-			anchors.verticalCenter: parent.verticalCenter
-			checked: true
-			onCheckedChanged: {
-				proxyModel.toogleFilter("state")
-			}
-			tooltip: qsTr("State")
-			style:
-			ButtonStyle {
-				label:
-					Item {
-					DefaultLabel {
-						font.family: "sans serif"
-						font.pointSize: Style.absoluteSize(-3)
-						color: "#5391d8"
-						anchors.centerIn: parent
-						text: qsTr("State")
+			ToolButton {
+				id: stateButton
+				checkable: true
+				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				anchors.verticalCenter: parent.verticalCenter
+				checked: true
+				onCheckedChanged: {
+					proxyModel.toogleFilter("state")
+				}
+				tooltip: qsTr("State")
+				style:
+					ButtonStyle {
+					label:
+						Item {
+						DefaultLabel {
+							font.family: LogsPaneStyle.generic.layout.logLabelFont
+							font.pointSize: Style.absoluteSize(-3)
+							color: "#5391d8"
+							anchors.centerIn: parent
+							text: qsTr("State")
+						}
 					}
 				}
 			}
-		}
 
-		ToolButton {
-			id: compilationButton
-			checkable: true
-			height: 30
-			anchors.verticalCenter: parent.verticalCenter
-			checked: false
-			onCheckedChanged: {
-				proxyModel.toogleFilter("compilation")
-			}
-			tooltip: qsTr("Compilation")
-			style:
-			ButtonStyle {
-				label:
-					Item {
-					DefaultLabel {
-						font.family: "sans serif"
-						font.pointSize: Style.absoluteSize(-3)
-						color: "#5391d8"
-						anchors.centerIn: parent
-						text: qsTr("Compilation")
+			ToolButton {
+				id: compilationButton
+				checkable: true
+				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				anchors.verticalCenter: parent.verticalCenter
+				checked: false
+				onCheckedChanged: {
+					proxyModel.toogleFilter("compilation")
+				}
+				tooltip: qsTr("Compilation")
+				style:
+					ButtonStyle {
+					label:
+						Item {
+						DefaultLabel {
+							font.family: LogsPaneStyle.generic.layout.logLabelFont
+							font.pointSize: Style.absoluteSize(-3)
+							color: "#5391d8"
+							anchors.centerIn: parent
+							text: qsTr("Compilation")
+						}
 					}
 				}
 			}
-		}
 
-		DefaultTextField
-		{
-			id: searchBox
-			height: 30
-			anchors.verticalCenter: parent.verticalCenter
-			width: 200
-			font.family: "sans serif"
-			font.pointSize: Style.absoluteSize(-3)
-			font.italic: true
-			onTextChanged: {
-				proxyModel.search(text);
-			}
-		}
-	}
-
-	ListModel {
-		id: logsModel
-	}
-
-	TableView {
-		id: logsTable
-		clip: true
-		Layout.fillWidth: true
-		Layout.preferredHeight: parent.height - rowAction.height
-		headerVisible : false
-		onDoubleClicked:
-		{
-			var log = logsModel.get((logsTable.currentRow));
-			if (log)
-				appContext.toClipboard(log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content);
-		}
-
-		model: SortFilterProxyModel {
-			id: proxyModel
-			source: logsModel
-			property var roles: ["-", "javascript", "run", "state"]
-
-			Component.onCompleted: {
-				filterType = regEx(proxyModel.roles);
-			}
-
-			function search(_value)
+			DefaultTextField
 			{
-				filterContent = _value;
+				id: searchBox
+				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				anchors.verticalCenter: parent.verticalCenter
+				width: LogsPaneStyle.generic.layout.headerInputWidth
+				font.family: LogsPaneStyle.generic.layout.logLabelFont
+				font.pointSize: Style.absoluteSize(-3)
+				font.italic: true
+				onTextChanged: {
+					proxyModel.search(text);
+				}
+			}
+		}
+
+		ListModel {
+			id: logsModel
+		}
+
+		TableView {
+			id: logsTable
+			clip: true
+			Layout.fillWidth: true
+			Layout.preferredHeight: parent.height - rowAction.height
+			headerVisible : false
+			onDoubleClicked:
+			{
+				var log = logsModel.get((logsTable.currentRow));
+				if (log)
+					appContext.toClipboard(log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content);
 			}
 
-			function toogleFilter(_value)
-			{
-				var count = roles.length;
-				for (var i in roles)
+			model: SortFilterProxyModel {
+				id: proxyModel
+				source: logsModel
+				property var roles: ["-", "javascript", "run", "state"]
+
+				Component.onCompleted: {
+					filterType = regEx(proxyModel.roles);
+				}
+
+				function search(_value)
 				{
-					if (roles[i] === _value)
-					{
-						roles.splice(i, 1);
-						break;
-					}
+					filterContent = _value;
 				}
-				if (count === roles.length)
-					roles.push(_value);
 
-				filterType = regEx(proxyModel.roles);
+				function toogleFilter(_value)
+				{
+					var count = roles.length;
+					for (var i in roles)
+					{
+						if (roles[i] === _value)
+						{
+							roles.splice(i, 1);
+							break;
+						}
+					}
+					if (count === roles.length)
+						roles.push(_value);
+
+					filterType = regEx(proxyModel.roles);
+				}
+
+				function regEx(_value)
+				{
+					return "(?:" + roles.join('|') + ")";
+				}
+
+				filterType: "(?:javascript|run|state)"
+				filterContent: ""
+				filterSyntax: SortFilterProxyModel.RegExp
+				filterCaseSensitivity: Qt.CaseInsensitive
 			}
-
-			function regEx(_value)
+			TableViewColumn
 			{
-				return "(?:" + roles.join('|') + ")";
+				role: "date"
+				title: qsTr("date")
+				width: LogsPaneStyle.generic.layout.dateWidth
+				delegate: itemDelegate
+			}
+			TableViewColumn
+			{
+				role: "type"
+				title: qsTr("type")
+				width: LogsPaneStyle.generic.layout.typeWidth
+				delegate: itemDelegate
+			}
+			TableViewColumn
+			{
+				role: "content"
+				title: qsTr("content")
+				width: LogsPaneStyle.generic.layout.contentWidth
+				delegate: itemDelegate
 			}
 
-			filterType: "(?:javascript|run|state)"
-			filterContent: ""
-			filterSyntax: SortFilterProxyModel.RegExp
-			filterCaseSensitivity: Qt.CaseInsensitive
-		}
-		TableViewColumn
-		{
-			role: "date"
-			title: qsTr("date")
-			width: 150
-			delegate: itemDelegate
-		}
-		TableViewColumn
-		{
-			role: "type"
-			title: qsTr("type")
-			width: 80
-			delegate: itemDelegate
-		}
-		TableViewColumn
-		{
-			role: "content"
-			title: qsTr("content")
-			width: 700
-			delegate: itemDelegate
-		}
-
-		rowDelegate: Item {
-			Rectangle {
-				width: logsTable.width - 4
-				height: 17
-				color: styleData.alternate ? "transparent" : "#f0f0f0"
+			rowDelegate: Item {
+				Rectangle {
+					width: logsTable.width - 4
+					height: 17
+					color: styleData.alternate ? "transparent" : "#f0f0f0"
+				}
 			}
 		}
-	}
 
-	Component {
-		id: itemDelegate
-		DefaultLabel {
-			text: styleData.value;
-			font.family: "sans serif"
-			font.pointSize: Style.absoluteSize(-1)
-			color: {
-				if (proxyModel.get(styleData.row).level === "error")
-					return "red"
-				else
-					return "#808080"
+		Component {
+			id: itemDelegate
+			DefaultLabel {
+				text: styleData.value;
+				font.family: LogsPaneStyle.generic.layout.logLabelFont
+				font.pointSize: Style.absoluteSize(-1)
+				color: {
+					if (proxyModel.get(styleData.row).level === "error")
+						return "red"
+					else
+						return "#808080"
+				}
 			}
 		}
 	}
-}
 }
