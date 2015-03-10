@@ -23,6 +23,7 @@ QtObject {
 			property int dateWidth: 150
 			property int typeWidth: 80
 			property int contentWidth: 700
+			property string logAlternateColor: "#f0f0f0"
 		}
 	}
 }
