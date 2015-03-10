@@ -290,9 +290,11 @@ Rectangle
 				font.pointSize: Style.absoluteSize(-1)
 				color: {
 					if (proxyModel.get(styleData.row).level === "error")
-						return "red"
+						return "red";
+					else if (proxyModel.get(styleData.row).level === "warning")
+						return "orange";
 					else
-						return "#808080"
+						return "#808080";
 				}
 			}
 		}
