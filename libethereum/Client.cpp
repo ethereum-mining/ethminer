@@ -493,7 +493,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	m_tq.attemptImport(t.rlp());
 }
 
-bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
 {
 	bytes out;
 	try
@@ -503,7 +503,7 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 	//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 		{
 			ReadGuard l(x_stateDB);
-			temp = m_postMine;
+			temp = asOf(_blockNumber);
 			n = temp.transactionsFrom(toAddress(_secret));
 		}
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);

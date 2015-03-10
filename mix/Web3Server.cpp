@@ -67,9 +67,9 @@ std::string Web3Server::eth_sendTransaction(Json::Value const& _json)
 	return ret;
 }
 
-std::string Web3Server::eth_call(Json::Value const& _json)
+std::string Web3Server::eth_call(Json::Value const& _json, std::string const& _blockNumber)
 {
-	std::string ret = WebThreeStubServerBase::eth_call(_json);
+	std::string ret = WebThreeStubServerBase::eth_call(_json, _blockNumber);
 	emit newTransaction();
 	return ret;
 }
