@@ -273,6 +273,13 @@ void ethash_quick_hash(
     SHA3_256(return_hash, buf, 64 + 32);
 }
 
+void ethash_get_seedhash(uint8_t seedhash[32], const uint32_t block_number) {
+    memset(seedhash,0,32);
+    const uint32_t epochs = block_number / EPOCH_LENGTH;
+    for (uint32_t i = 0 ; i < epochs ; ++i)
+        SHA3_256(seedhash, seedhash, 32);
+}
+
 int ethash_quick_check_difficulty(
         const uint8_t header_hash[32],
         const uint64_t nonce,
