@@ -38,7 +38,7 @@
 #include "QVariableDefinition.h"
 #include "HttpServer.h"
 #include "AppContext.h"
-#include "sortfilterproxymodel.h"
+#include "Sortfilterproxymodel.h"
 
 using namespace dev;
 using namespace dev::eth;
