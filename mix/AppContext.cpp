@@ -22,7 +22,6 @@
  * - KeyEventManager
  */
 
-#include <QSortFilterProxyModel>
 #include <QMessageBox>
 #include <QClipboard>
 #include <QQmlComponent>
@@ -38,7 +37,7 @@
 #include "QVariableDefinition.h"
 #include "HttpServer.h"
 #include "AppContext.h"
-#include "Sortfilterproxymodel.h"
+#include "SortFilterProxyModel.h"
 
 using namespace dev;
 using namespace dev::eth;

@@ -21,7 +21,7 @@
  */
 
 
-#include "Sortfilterproxymodel.h"
+#include "SortFilterProxyModel.h"
 #include <QtDebug>
 #include <QtQml>
 
@@ -29,8 +29,8 @@ using namespace dev::mix;
 
 SortFilterProxyModel::SortFilterProxyModel(QObject* _parent) : QSortFilterProxyModel(_parent)
 {
-	connect(this, SIGNAL(rowsInserted(QModelIndex,int,int)), this, SIGNAL(countChanged()));
-	connect(this, SIGNAL(rowsRemoved(QModelIndex,int,int)), this, SIGNAL(countChanged()));
+	connect(this, &SortFilterProxyModel::rowsInserted, this, &SortFilterProxyModel::countChanged);
+	connect(this, &SortFilterProxyModel::rowsRemoved, this, &SortFilterProxyModel::countChanged);
 }
 
 int SortFilterProxyModel::count() const
@@ -45,7 +45,7 @@ QObject* SortFilterProxyModel::source() const
 
 void SortFilterProxyModel::setSource(QObject* _source)
 {
-	setSourceModel(qobject_cast<QAbstractItemModel *>(_source));
+	setSourceModel(qobject_cast<QAbstractItemModel*>(_source));
 }
 
 QByteArray SortFilterProxyModel::sortRole() const
@@ -87,10 +87,12 @@ QJSValue SortFilterProxyModel::get(int _idx) const
 {
 	QJSEngine *engine = qmlEngine(this);
 	QJSValue value = engine->newObject();
-	if (_idx >= 0 && _idx < count()) {
+	if (_idx >= 0 && _idx < count())
+	{
 		QHash<int, QByteArray> roles = roleNames();
 		QHashIterator<int, QByteArray> it(roles);
-		while (it.hasNext()) {
+		while (it.hasNext())
+		{
 			it.next();
 			value.setProperty(QString::fromUtf8(it.value()), data(index(_idx, 0), it.key()).toString());
 		}
@@ -102,7 +104,8 @@ int SortFilterProxyModel::roleKey(QByteArray const& _role) const
 {
 	QHash<int, QByteArray> roles = roleNames();
 	QHashIterator<int, QByteArray> it(roles);
-	while (it.hasNext()) {
+	while (it.hasNext())
+	{
 		it.next();
 		if (it.value() == _role)
 			return it.key();
@@ -119,12 +122,10 @@ QHash<int, QByteArray> SortFilterProxyModel::roleNames() const
 
 bool SortFilterProxyModel::filterAcceptsRow(int _sourceRow, QModelIndex const& _sourceParent) const
 {
-
-	QRegExp rx = filterRegExp();
-	QAbstractItemModel *model = sourceModel();
+	QAbstractItemModel* model = sourceModel();
 	QModelIndex sourceIndex = model->index(_sourceRow, 0, _sourceParent);
-		if (!sourceIndex.isValid())
-			return true;
+	if (!sourceIndex.isValid())
+		return true;
 
 	QString keyType = model->data(sourceIndex, roleKey(type.toUtf8())).toString();
 	QString keyContent = model->data(sourceIndex, roleKey(content.toUtf8())).toString();
