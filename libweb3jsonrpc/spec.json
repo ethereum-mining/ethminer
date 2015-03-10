@@ -19,7 +19,7 @@
             { "name": "eth_getUncleCountByBlockNumber", "params": [""], "order": [], "returns" : ""},
             { "name": "eth_getData", "params": ["", ""], "order": [], "returns": ""},
             { "name": "eth_sendTransaction", "params": [{}], "order": [], "returns": ""},
-            { "name": "eth_call", "params": [{}], "order": [], "returns": ""},
+            { "name": "eth_call", "params": [{}, ""], "order": [], "returns": ""},
             { "name": "eth_flush", "params": [], "order": [], "returns" : true},
             { "name": "eth_getBlockByHash", "params": ["", false],"order": [], "returns": {}},
             { "name": "eth_getBlockByNumber", "params": ["", false],"order": [], "returns": {}},

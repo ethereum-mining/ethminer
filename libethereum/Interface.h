@@ -67,7 +67,7 @@ public:
 	virtual void flushTransactions() = 0;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
+	virtual bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, int _blockNumber = 0) = 0;
 
 	// [STATE-QUERY API]
 
