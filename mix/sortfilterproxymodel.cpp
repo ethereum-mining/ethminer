@@ -44,7 +44,7 @@
 
 using namespace dev::mix;
 
-SortFilterProxyModel::SortFilterProxyModel(QObject *parent) : QSortFilterProxyModel(parent)
+SortFilterProxyModel::SortFilterProxyModel(QObject* _parent) : QSortFilterProxyModel(_parent)
 {
 	connect(this, SIGNAL(rowsInserted(QModelIndex,int,int)), this, SIGNAL(countChanged()));
 	connect(this, SIGNAL(rowsRemoved(QModelIndex,int,int)), this, SIGNAL(countChanged()));
@@ -55,14 +55,14 @@ int SortFilterProxyModel::count() const
 	return rowCount();
 }
 
-QObject *SortFilterProxyModel::source() const
+QObject* SortFilterProxyModel::source() const
 {
 	return sourceModel();
 }
 
-void SortFilterProxyModel::setSource(QObject *source)
+void SortFilterProxyModel::setSource(QObject* _source)
 {
-	setSourceModel(qobject_cast<QAbstractItemModel *>(source));
+	setSourceModel(qobject_cast<QAbstractItemModel *>(_source));
 }
 
 QByteArray SortFilterProxyModel::sortRole() const
@@ -70,34 +70,24 @@ QByteArray SortFilterProxyModel::sortRole() const
 	return roleNames().value(QSortFilterProxyModel::sortRole());
 }
 
-void SortFilterProxyModel::setSortRole(const QByteArray &role)
+void SortFilterProxyModel::setSortRole(QByteArray const& _role)
 {
-	QSortFilterProxyModel::setSortRole(roleKey(role));
+	QSortFilterProxyModel::setSortRole(roleKey(_role));
 }
 
-void SortFilterProxyModel::setSortOrder(Qt::SortOrder order)
+void SortFilterProxyModel::setSortOrder(Qt::SortOrder _order)
 {
-	QSortFilterProxyModel::sort(0, order);
+	QSortFilterProxyModel::sort(0, _order);
 }
-
-/*QByteArray SortFilterProxyModel::filterRole() const
-{
-	return roleNames().value(QSortFilterProxyModel::filterRole());
-}*/
-
-/*void SortFilterProxyModel::setFilterRole(const QByteArray &role)
-{
-	QSortFilterProxyModel::setFilterRole(roleKey(role));
-}*/
 
 QString SortFilterProxyModel::filterString() const
 {
 	return filterRegExp().pattern();
 }
 
-void SortFilterProxyModel::setFilterString(const QString &filter)
+void SortFilterProxyModel::setFilterString(QString const& _filter)
 {
-	setFilterRegExp(QRegExp(filter, filterCaseSensitivity(), static_cast<QRegExp::PatternSyntax>(filterSyntax())));
+	setFilterRegExp(QRegExp(_filter, filterCaseSensitivity(), static_cast<QRegExp::PatternSyntax>(filterSyntax())));
 }
 
 SortFilterProxyModel::FilterSyntax SortFilterProxyModel::filterSyntax() const
@@ -105,33 +95,33 @@ SortFilterProxyModel::FilterSyntax SortFilterProxyModel::filterSyntax() const
 	return static_cast<FilterSyntax>(filterRegExp().patternSyntax());
 }
 
-void SortFilterProxyModel::setFilterSyntax(SortFilterProxyModel::FilterSyntax syntax)
+void SortFilterProxyModel::setFilterSyntax(SortFilterProxyModel::FilterSyntax _syntax)
 {
-	setFilterRegExp(QRegExp(filterString(), filterCaseSensitivity(), static_cast<QRegExp::PatternSyntax>(syntax)));
+	setFilterRegExp(QRegExp(filterString(), filterCaseSensitivity(), static_cast<QRegExp::PatternSyntax>(_syntax)));
 }
 
-QJSValue SortFilterProxyModel::get(int idx) const
+QJSValue SortFilterProxyModel::get(int _idx) const
 {
 	QJSEngine *engine = qmlEngine(this);
 	QJSValue value = engine->newObject();
-	if (idx >= 0 && idx < count()) {
+	if (_idx >= 0 && _idx < count()) {
 		QHash<int, QByteArray> roles = roleNames();
 		QHashIterator<int, QByteArray> it(roles);
 		while (it.hasNext()) {
 			it.next();
-			value.setProperty(QString::fromUtf8(it.value()), data(index(idx, 0), it.key()).toString());
+			value.setProperty(QString::fromUtf8(it.value()), data(index(_idx, 0), it.key()).toString());
 		}
 	}
 	return value;
 }
 
-int SortFilterProxyModel::roleKey(const QByteArray &role) const
+int SortFilterProxyModel::roleKey(QByteArray const& _role) const
 {
 	QHash<int, QByteArray> roles = roleNames();
 	QHashIterator<int, QByteArray> it(roles);
 	while (it.hasNext()) {
 		it.next();
-		if (it.value() == role)
+		if (it.value() == _role)
 			return it.key();
 	}
 	return -1;
@@ -139,62 +129,26 @@ int SortFilterProxyModel::roleKey(const QByteArray &role) const
 
 QHash<int, QByteArray> SortFilterProxyModel::roleNames() const
 {
-	if (QAbstractItemModel *source = sourceModel())
+	if (QAbstractItemModel* source = sourceModel())
 		return source->roleNames();
 	return QHash<int, QByteArray>();
 }
 
-bool SortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
+bool SortFilterProxyModel::filterAcceptsRow(int _sourceRow, QModelIndex const& _sourceParent) const
 {
-	/*QRegExp rx = filterRegExp();
-	if (rx.isEmpty())
-		return true;
-	QAbstractItemModel *model = sourceModel();
-
-	if (filterRole().isEmpty()) {
-		QHash<int, QByteArray> roles = roleNames();
-		QHashIterator<int, QByteArray> it(roles);
-		while (it.hasNext()) {
-			it.next();
-			QModelIndex sourceIndex = model->index(sourceRow, 0, sourceParent);
-			QString key = model->data(sourceIndex, it.key()).toString();
-			if (key.contains(rx))data
-				return true;
-		}
-		return false;
-	}*/
 
 	QRegExp rx = filterRegExp();
 	QAbstractItemModel *model = sourceModel();
-	QModelIndex sourceIndex = model->index(sourceRow, 0, sourceParent);
+	QModelIndex sourceIndex = model->index(_sourceRow, 0, _sourceParent);
 		if (!sourceIndex.isValid())
 			return true;
 
 	QString keyType = model->data(sourceIndex, roleKey(type.toUtf8())).toString();
 	QString keyContent = model->data(sourceIndex, roleKey(content.toUtf8())).toString();
-
 	return keyType.contains(m_filterType) && keyContent.contains(m_filterContent);
-/*
-	for (auto filter: filterRoles())
-	{
-		QString key = model->data(sourceIndex, roleKey(filter.toUtf8())).toString();
-		if (!key.contains(rx))
-			return false;
-	}
-	return true;
-	QModelIndex sourceIndex = model->index(sourceRow, 0, sourceParent);
-	if (!sourceIndex.isValid())
-		return true;
-	for (auto role: filterR)
-	{
-		QString key = model->data(sourceIndex, roleKey(role)).toString();
-		if (key.contains(rx))
-			return true;
-	}
-	return false;*/
 }
 
-void SortFilterProxyModel::setFilterType(const QString &_type)
+void SortFilterProxyModel::setFilterType(QString const& _type)
 {
 	m_filterType = QRegExp(_type, filterCaseSensitivity(), static_cast<QRegExp::PatternSyntax>(filterSyntax()));
 	setFilterRegExp(_type);
@@ -205,7 +159,7 @@ QString SortFilterProxyModel::filterType() const
 	return m_filterType.pattern();
 }
 
-void SortFilterProxyModel::setFilterContent(const QString &_content)
+void SortFilterProxyModel::setFilterContent(QString const& _content)
 {
 	m_filterContent = QRegExp(_content, filterCaseSensitivity(), static_cast<QRegExp::PatternSyntax>(filterSyntax()));
 	setFilterRegExp(_content);
