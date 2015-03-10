@@ -19,7 +19,6 @@
  * @date 2015
  */
 
-#pragma GCC diagnostic ignored "-Wpedantic" //QtWebEngineWidgets/qwebenginecertificateerror.h:78:348: error: extra ';'
 #include "WebPage.h"
 
 void WebPage::javaScriptConsoleMessage(QWebEnginePage::JavaScriptConsoleMessageLevel _level, const QString& _message, int _lineNumber, const QString& _sourceID)
