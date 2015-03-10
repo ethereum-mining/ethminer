@@ -105,7 +105,6 @@ function loadProject(path) {
 			contractSources[doc.documentId] = fileIo.readFile(doc.path);
 	}
 	codeModel.reset(contractSources);
-
 }
 
 function addFile(fileName) {

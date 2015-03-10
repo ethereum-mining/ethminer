@@ -164,6 +164,8 @@ public:
 	/// Find a contract by document id
 	/// @returns CompiledContract object or null if not found
 	Q_INVOKABLE CompiledContract* contractByDocumentId(QString _documentId) const;
+	/// Reset code model
+	Q_INVOKABLE void reset() { reset(QVariantMap()); }
 
 signals:
 	/// Emited on compilation state change
