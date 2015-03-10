@@ -12,9 +12,7 @@ Item {
 	id: webPreview
 	property string pendingPageUrl: ""
 	property bool initialized: false
-	signal javaScriptErrorMessage(string _content)
-	signal javaScriptWarningMessage(string _content)
-	signal javaScriptInfoMessage(string _content)
+	signal javaScriptMessage(var _level, string _sourceId, var _lineNb, string _content)
 
 	function setPreviewUrl(url) {
 		if (!initialized)
@@ -201,7 +199,6 @@ Item {
 					{
 						setPreviewUrl(text);
 					}
-
 					focus: true
 				}
 
@@ -219,7 +216,9 @@ Item {
 					anchors.verticalCenter: parent.verticalCenter
 					width: 21
 					height: 21
+					focus: true
 				}
+
 				CheckBox {
 					id: autoReloadOnSave
 					checked: true
@@ -230,6 +229,7 @@ Item {
 							text: qsTr("Auto reload on save")
 						}
 					}
+					focus: true
 				}
 			}
 		}
@@ -243,13 +243,7 @@ Item {
 				id: webView
 				experimental.settings.localContentCanAccessRemoteUrls: true
 				onJavaScriptConsoleMessage: {
-					var info = sourceID + ":" + lineNumber + ":" + message;
-					if (level === 0)
-						webPreview.javaScriptInfoMessage(info);
-					else if (level === 1)
-						webPreview.javaScriptErrorMessage(info);
-					else if (level === 2)
-						webPreview.javaScriptErrorMessage(info);
+					webPreview.javaScriptMessage(level, sourceID, lineNumber, message);
 				}
 				onLoadingChanged: {
 					if (!loading) {

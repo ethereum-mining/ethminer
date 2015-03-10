@@ -24,6 +24,7 @@ Rectangle {
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(message, true);
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
 			debugImg.state = "";
+			errorMessage(status.text, "Compilation");
 		}
 		debugRunActionIcon.enabled = codeModel.hasContract;
 	}
@@ -51,17 +52,27 @@ Rectangle {
 
 	Connections {
 		target: webPreview
-		onJavaScriptErrorMessage: errorMessage(_content, "javascript")
-		onJavaScriptWarningMessage: warningMessage(_content, "javascript")
-		onJavaScriptInfoMessage: infoMessage(_content, "javascript")
+		onJavaScriptMessage:
+		{
+			if (_level === 0)
+				infoMessage(_content, "JavaScript")
+			else
+			{
+				var message = _sourceId.substring(_sourceId.lastIndexOf("/") + 1) + " - " + qsTr("line") + " " + _lineNb + " - " + _content;
+				if (_level === 1)
+					warningMessage(message, "JavaScript")
+				else if (_level === 2)
+					errorMessage(message, "JavaScript")
+			}
+		}
 	}
 
 	Connections {
 		target:clientModel
-		onRunStarted: infoMessage(qsTr("Running transactions..."), "run");
-		onRunFailed: errorMessage(format(_message), "run");
-		onRunComplete: infoMessage(qsTr("Run complete"), "run");
-		onNewBlock: infoMessage(qsTr("New block created"), "state");
+		onRunStarted: infoMessage(qsTr("Running transactions..."), "Run");
+		onRunFailed: errorMessage(format(_message), "Run");
+		onRunComplete: infoMessage(qsTr("Run complete"), "Run");
+		onNewBlock: infoMessage(qsTr("New block created"), "State");
 
 		function format(_message)
 		{
@@ -72,16 +83,16 @@ Rectangle {
 				return _message;
 			var exceptionInfos = _message.match(/(?:tag_)(.+)/g);
 			for (var k in exceptionInfos)
-				formatted += " " + exceptionInfos[k].replace("*]", "").replace("tag_", "") + " - ";
+				formatted += " " + exceptionInfos[k].replace("*]", "").replace("tag_", "").replace("=", "");
 			return formatted;
 		}
 	}
 	Connections {
 		target:projectModel
-		onDeploymentStarted: infoMessage(qsTr("Running deployment..."), "deployment");
-		onDeploymentError: errorMessage(error, "deployment");
-		onDeploymentComplete: infoMessage(qsTr("Deployment complete"), "deployment");
-		onDeploymentStepChanged: infoMessage(message, "deployment");
+		onDeploymentStarted: infoMessage(qsTr("Running deployment..."), "Deployment");
+		onDeploymentError: errorMessage(error, "Deployment");
+		onDeploymentComplete: infoMessage(qsTr("Deployment complete"), "Deployment");
+		onDeploymentStepChanged: infoMessage(message, "Deployment");
 	}
 	Connections {
 		target: codeModel
@@ -95,7 +106,7 @@ Rectangle {
 	Rectangle {
 		id: statusContainer
 		anchors.horizontalCenter: parent.horizontalCenter
-		anchors.verticalCenter: parent.verticalCenterw
+		anchors.verticalCenter: parent.verticalCenter
 		radius: 3
 		width: 500
 		height: 30
@@ -171,6 +182,12 @@ Rectangle {
 					color: "transparent"
 				}
 			}
+			MouseArea {
+				anchors.fill: parent
+				onClicked: {
+					logsContainer.toggle();
+				}
+			}
 		}
 
 		Action {
@@ -189,15 +206,17 @@ Rectangle {
 				}
 				else
 				{
-					statusContainer.state = "logsOpened";
+					statusContainer.state = "'logsOpened";
 					logsContainer.state = "opened";
+					logsContainer.focus = true;
+					forceActiveFocus();
 				}
 			}
 
 			id: logsContainer
 			width: 1000
 			height: 0
-			//anchors.topMargin:
+			anchors.topMargin: 10
 			anchors.top: statusContainer.bottom
 			anchors.horizontalCenter: parent.horizontalCenter
 			visible: false
@@ -233,26 +252,6 @@ Rectangle {
 		}
 	}
 
-	Button
-	{
-		id: logslink
-		anchors.left: statusContainer.right
-		anchors.leftMargin: 9
-		anchors.verticalCenter: parent.verticalCenter
-		action: displayLogAction
-		iconSource: "qrc:/qml/img/search_filled.png"
-	}
-
-	Action {
-		id: displayLogAction
-		tooltip: qsTr("Display Log")
-		onTriggered: {
-			logsContainer.toggle();
-			//if (status.state === "error" && logPane.front().type === "run")
-			//	mainContent.displayCompilationErrorIfAny();
-		}
-	}
-
 	Rectangle
 	{
 		color: "transparent"
@@ -267,7 +266,6 @@ Rectangle {
 			{
 				color: "transparent"
 				anchors.fill: parent
-
 				Button
 				{
 					anchors.right: parent.right

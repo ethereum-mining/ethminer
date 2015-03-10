@@ -35,8 +35,8 @@ Rectangle {
 		onCompilationComplete: {
 			if (firstCompile) {
 				firstCompile = false;
-			if (runOnProjectLoad)
-				startQuickDebugging();
+				if (runOnProjectLoad)
+					startQuickDebugging();
 			}
 		}
 	}
@@ -102,7 +102,6 @@ Rectangle {
 	}
 
 	CodeEditorExtensionManager {
-		//headerView: headerPaneTabs;
 	}
 
 	Settings {
@@ -116,6 +115,7 @@ Rectangle {
 
 	ColumnLayout
 	{
+		id: mainColumn
 		anchors.fill: parent
 		spacing: 0
 		Rectangle {
@@ -141,7 +141,7 @@ Rectangle {
 			}
 		}
 
-		Rectangle{
+		Rectangle {
 			Layout.fillWidth: true
 			height: 1
 			color: "#8c8c8c"
@@ -162,9 +162,9 @@ Rectangle {
 			{
 				anchors.fill: parent
 				handleDelegate: Rectangle {
-				   width: 1
-				   height: 1
-				   color: "#8c8c8c"
+					width: 1
+					height: 1
+					color: "#8c8c8c"
 				}
 				orientation: Qt.Horizontal
 
@@ -174,16 +174,18 @@ Rectangle {
 					Layout.minimumWidth: 250
 					Layout.fillHeight: true
 				}
+
 				Rectangle {
 					id: contentView
 					Layout.fillHeight: true
 					Layout.fillWidth: true
+
 					SplitView {
-						 handleDelegate: Rectangle {
+						handleDelegate: Rectangle {
 							width: 1
 							height: 1
 							color: "#8c8c8c"
-						 }
+						}
 						id: codeWebSplitter
 						anchors.fill: parent
 						orientation: Qt.Vertical
