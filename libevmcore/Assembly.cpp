@@ -77,6 +77,20 @@ int AssemblyItem::deposit() const
 	return 0;
 }
 
+string AssemblyItem::getJumpTypeAsString() const
+{
+	switch (m_jumpType)
+	{
+	case JumpType::IntoFunction:
+		return "[in]";
+	case JumpType::OutOfFunction:
+		return "[out]";
+	case JumpType::Ordinary:
+	default:
+		return "";
+	}
+}
+
 unsigned Assembly::bytesRequired() const
 {
 	for (unsigned br = 1;; ++br)
@@ -196,7 +210,7 @@ string Assembly::getLocationFromSources(StringMap const& _sourceCodes, SourceLoc
 	return move(cut);
 }
 
-ostream& Assembly::streamRLP(ostream& _out, string const& _prefix, StringMap const& _sourceCodes) const
+ostream& Assembly::stream(ostream& _out, string const& _prefix, StringMap const& _sourceCodes) const
 {
 	_out << _prefix << ".code:" << endl;
 	for (AssemblyItem const& i: m_items)
@@ -205,7 +219,7 @@ ostream& Assembly::streamRLP(ostream& _out, string const& _prefix, StringMap con
 		switch (i.m_type)
 		{
 		case Operation:
-			_out << "  " << instructionInfo((Instruction)(byte)i.m_data).name;
+			_out << "  " << instructionInfo((Instruction)(byte)i.m_data).name  << "\t" << i.getJumpTypeAsString();
 			break;
 		case Push:
 			_out << "  PUSH " << i.m_data;
@@ -240,7 +254,7 @@ ostream& Assembly::streamRLP(ostream& _out, string const& _prefix, StringMap con
 		default:
 			BOOST_THROW_EXCEPTION(InvalidOpcode());
 		}
-		_out << string("\t\t") << getLocationFromSources(_sourceCodes, i.getLocation()) << endl;
+		_out << "\t\t" << getLocationFromSources(_sourceCodes, i.getLocation()) << endl;
 	}
 
 	if (!m_data.empty() || !m_subs.empty())
@@ -252,7 +266,7 @@ ostream& Assembly::streamRLP(ostream& _out, string const& _prefix, StringMap con
 		for (size_t i = 0; i < m_subs.size(); ++i)
 		{
 			_out << _prefix << "  " << hex << i << ": " << endl;
-			m_subs[i].streamRLP(_out, _prefix + "  ", _sourceCodes);
+			m_subs[i].stream(_out, _prefix + "  ", _sourceCodes);
 		}
 	}
 	return _out;
