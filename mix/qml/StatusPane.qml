@@ -38,7 +38,7 @@ Rectangle {
 
 	function warningMessage(text, type)
 	{
-		status.state = "";
+		status.state = "warning";
 		status.text = text
 		logPane.push("warning", type, text);
 	}
@@ -148,6 +148,17 @@ Rectangle {
 					PropertyChanges {
 						target: status
 						color: "red"
+					}
+					PropertyChanges {
+						target: statusContainer
+						color: "#fffcd5"
+					}
+				},
+				State {
+					name: "warning"
+					PropertyChanges {
+						target: status
+						color: "orange"
 					}
 					PropertyChanges {
 						target: statusContainer
