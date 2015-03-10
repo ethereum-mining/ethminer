@@ -116,7 +116,7 @@ Rectangle {
 				name: "logsOpened"
 				PropertyChanges {
 					target: statusContainer
-					border.color: "#808080"
+					border.color: "#5391d8"
 					border.width: 1
 				}
 			},
@@ -124,7 +124,7 @@ Rectangle {
 				name: "logsClosed"
 				PropertyChanges {
 					target: statusContainer
-					border.color: "#808080"
+					border.color: "#5391d8"
 					border.width: 0
 				}
 			}
@@ -206,7 +206,7 @@ Rectangle {
 				}
 				else
 				{
-					statusContainer.state = "'logsOpened";
+					statusContainer.state = "logsOpened";
 					logsContainer.state = "opened";
 					logsContainer.focus = true;
 					forceActiveFocus();
