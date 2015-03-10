@@ -64,7 +64,7 @@ Item {
 	Connections {
 		target: appContext
 		onAppLoaded: {
-			if (projectSettings.lastProjectPath)
+			if (projectSettings.lastProjectPath && projectSettings.lastProjectPath !== "")
 				projectModel.loadProject(projectSettings.lastProjectPath)
 		}
 	}
@@ -128,6 +128,14 @@ Item {
 
 	StateListModel {
 		id: projectStateListModel
+	}
+
+	Connections
+	{
+		target: projectModel
+		onProjectClosed: {
+			projectSettings.lastProjectPath = "";
+		}
 	}
 
 	Settings {
