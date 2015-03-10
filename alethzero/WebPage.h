@@ -22,7 +22,10 @@
 #pragma once
 
 #include <QString>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic" //QtWebEngineWidgets/qwebenginecertificateerror.h:78:348: error: extra ';'
 #include <QtWebEngineWidgets/QWebEnginePage>
+#pragma GCC diagnostic pop
 
 class WebPage: public QWebEnginePage
 {
