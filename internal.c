@@ -114,7 +114,7 @@ void ethash_calculate_dag_item(
     __m128i xmm3 = ret->xmm[3];
 #endif
 
-    for (unsigned i = 0; i != DAG_PARENTS; ++i) {
+    for (unsigned i = 0; i != DATASET_PARENTS; ++i) {
         uint32_t parent_index = ((node_index ^ i) * FNV_PRIME ^ ret->words[i % NODE_WORDS]) % num_parent_nodes;
         node const *parent = &cache_nodes[parent_index];
 
@@ -274,9 +274,9 @@ void ethash_quick_hash(
 }
 
 void ethash_get_seedhash(uint8_t seedhash[32], const uint32_t block_number) {
-    memset(seedhash,0,32);
+    memset(seedhash, 0, 32);
     const uint32_t epochs = block_number / EPOCH_LENGTH;
-    for (uint32_t i = 0 ; i < epochs ; ++i)
+    for (uint32_t i = 0; i < epochs; ++i)
         SHA3_256(seedhash, seedhash, 32);
 }
 
