@@ -277,7 +277,7 @@ Rectangle
 				Rectangle {
 					width: logsTable.width - 4
 					height: 17
-					color: styleData.alternate ? "transparent" : "#f0f0f0"
+					color: styleData.alternate ? "transparent" : LogsPaneStyle.generic.layout.logAlternateColor
 				}
 			}
 		}
