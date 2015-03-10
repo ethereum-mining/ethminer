@@ -19,6 +19,7 @@ Rectangle
 	border.color: "#808080"
 	border.width: 1
 	ColumnLayout {
+		z: 2
 		height: parent.height
 		width: parent.width
 		spacing: 0
@@ -152,6 +153,31 @@ Rectangle
 			}
 		}
 
+		ToolButton {
+			id: compilationButton
+			checkable: true
+			height: 30
+			anchors.verticalCenter: parent.verticalCenter
+			checked: false
+			onCheckedChanged: {
+				proxyModel.toogleFilter("compilation")
+			}
+			tooltip: qsTr("Compilation")
+			style:
+			ButtonStyle {
+				label:
+					Item {
+					DefaultLabel {
+						font.family: "sans serif"
+						font.pointSize: Style.absoluteSize(-3)
+						color: "#5391d8"
+						anchors.centerIn: parent
+						text: qsTr("Compilation")
+					}
+				}
+			}
+		}
+
 		DefaultTextField
 		{
 			id: searchBox
@@ -160,6 +186,7 @@ Rectangle
 			width: 200
 			font.family: "sans serif"
 			font.pointSize: Style.absoluteSize(-3)
+			font.italic: true
 			onTextChanged: {
 				proxyModel.search(text);
 			}
@@ -168,7 +195,6 @@ Rectangle
 
 	ListModel {
 		id: logsModel
-
 	}
 
 	TableView {
@@ -180,7 +206,8 @@ Rectangle
 		onDoubleClicked:
 		{
 			var log = logsModel.get((logsTable.currentRow));
-			appContext.toClipboard(log.type + " " + log.level + " " + log.date + " " + log.content);
+			if (log)
+				appContext.toClipboard(log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content);
 		}
 
 		model: SortFilterProxyModel {
@@ -216,9 +243,9 @@ Rectangle
 
 			function regEx(_value)
 			{
-				console.log("(?:" + roles.join('|') + ")");
 				return "(?:" + roles.join('|') + ")";
 			}
+
 			filterType: "(?:javascript|run|state)"
 			filterContent: ""
 			filterSyntax: SortFilterProxyModel.RegExp
@@ -235,7 +262,7 @@ Rectangle
 		{
 			role: "type"
 			title: qsTr("type")
-			width: 100
+			width: 80
 			delegate: itemDelegate
 		}
 		TableViewColumn
@@ -245,6 +272,14 @@ Rectangle
 			width: 700
 			delegate: itemDelegate
 		}
+
+		rowDelegate: Item {
+			Rectangle {
+				width: logsTable.width - 4
+				height: 17
+				color: styleData.alternate ? "transparent" : "#f0f0f0"
+			}
+		}
 	}
 
 	Component {
@@ -253,7 +288,12 @@ Rectangle
 			text: styleData.value;
 			font.family: "sans serif"
 			font.pointSize: Style.absoluteSize(-1)
-			color: "#808080"
+			color: {
+				if (proxyModel.get(styleData.row).level === "error")
+					return "red"
+				else
+					return "#808080"
+			}
 		}
 	}
 }
