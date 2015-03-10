@@ -242,6 +242,8 @@ static int toBlockNumber(string const& _string)
 {
 	if (_string.compare("latest") == 0)
 		return -1;
+	if (_string.compare("pending") == 0)
+		return 0;
 	return jsToInt(_string);
 }
 
