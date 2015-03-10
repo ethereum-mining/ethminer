@@ -19,11 +19,11 @@
  * @date 2015
  */
 
+#include "DappHost.h"
+#include <QUrl>
 #include <microhttpd.h>
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
-#include <QUrl>
-#include "DappHost.h"
 
 using namespace dev;
 
@@ -61,7 +61,6 @@ void DappHost::sendOptionsResponse(MHD_Connection* _connection)
 {
 	MHD_Response *result = MHD_create_response_from_data(0, NULL, 0, 1);
 	MHD_add_response_header(result, "Allow", "GET, OPTIONS");
-	//MHD_add_response_header(result, "Access-Control-Allow-Origin", "*");
 	MHD_add_response_header(result, "Access-Control-Allow-Headers", "origin, content-type, accept");
 	MHD_add_response_header(result, "DAV", "1");
 	MHD_queue_response(_connection, MHD_HTTP_OK, result);
@@ -109,7 +108,6 @@ void DappHost::sendResponse(std::string const& _url, MHD_Connection* _connection
 	MHD_Response *result = MHD_create_response_from_data(response.size(), const_cast<byte*>(response.data()), 0, 1);
 	if (!contentType.empty())
 		MHD_add_response_header(result, "Content-Type", contentType.c_str());
-	//MHD_add_response_header(result, "Access-Control-Allow-Origin", "*");
 	MHD_queue_response(_connection, code, result);
 	MHD_destroy_response(result);
 }
