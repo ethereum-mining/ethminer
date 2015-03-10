@@ -46,7 +46,7 @@ signals:
 protected:
 	virtual Json::Value eth_getFilterChanges(std::string const& _filterId) override;
 	virtual std::string eth_sendTransaction(Json::Value const& _json) override;
-	virtual std::string eth_call(Json::Value const& _json) override;
+	virtual std::string eth_call(Json::Value const& _json, std::string const& _blockNumber) override;
 
 private:
 	dev::eth::Interface* client() override { return m_client; }
