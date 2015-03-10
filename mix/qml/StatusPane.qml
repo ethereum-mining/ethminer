@@ -33,7 +33,7 @@ Rectangle {
 	{
 		status.state = "";
 		status.text = text
-		logPane.push("info",type, text);
+		logPane.push("info", type, text);
 	}
 
 	function warningMessage(text, type)
@@ -61,7 +61,7 @@ Rectangle {
 				var message = _sourceId.substring(_sourceId.lastIndexOf("/") + 1) + " - " + qsTr("line") + " " + _lineNb + " - " + _content;
 				if (_level === 1)
 					warningMessage(message, "JavaScript")
-				else if (_level === 2)
+				else
 					errorMessage(message, "JavaScript")
 			}
 		}
