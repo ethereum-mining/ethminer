@@ -774,7 +774,7 @@ string WebThreeStubServerBase::eth_newBlockFilter(string const& _filter)
 {
 	h256 filter;
 	
-	if (_filter.compare("chain") == 0)
+	if (_filter.compare("chain") == 0 || _filter.compare("latest") == 0)
 		filter = dev::eth::ChainChangedFilter;
 	else if (_filter.compare("pending") == 0)
 		filter = dev::eth::PendingChangedFilter;
