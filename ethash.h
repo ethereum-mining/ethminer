@@ -69,10 +69,24 @@ void ethash_compute_full_data(void *mem, ethash_params const *params, ethash_cac
 void ethash_full(ethash_return_value *ret, void const *full_mem, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce);
 void ethash_light(ethash_return_value *ret, ethash_cache const *cache, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce);
 
-static inline void ethash_prep_light(void *cache, ethash_params const *params, const uint8_t seed[32]) { ethash_cache c; c.mem = cache; ethash_mkcache(&c, params, seed); }
-static inline void ethash_compute_light(ethash_return_value *ret, void const *cache, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce) { ethash_cache c; c.mem = (void*)cache; ethash_light(ret, &c, params, header_hash, nonce); }
-static inline void ethash_prep_full(void *full, ethash_params const *params, void const *cache) { ethash_cache c; c.mem = (void*)cache; ethash_compute_full_data(full, params, &c); }
-static inline void ethash_compute_full(ethash_return_value *ret, void const *full, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce) { ethash_full(ret, full, params, header_hash, nonce); }
+static inline void ethash_prep_light(void *cache, ethash_params const *params, const uint8_t seed[32]) {
+    ethash_cache c;
+    c.mem = cache;
+    ethash_mkcache(&c, params, seed);
+}
+static inline void ethash_compute_light(ethash_return_value *ret, void const *cache, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce) {
+    ethash_cache c;
+    c.mem = (void *) cache;
+    ethash_light(ret, &c, params, header_hash, nonce);
+}
+static inline void ethash_prep_full(void *full, ethash_params const *params, void const *cache) {
+    ethash_cache c;
+    c.mem = (void *) cache;
+    ethash_compute_full_data(full, params, &c);
+}
+static inline void ethash_compute_full(ethash_return_value *ret, void const *full, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce) {
+    ethash_full(ret, full, params, header_hash, nonce);
+}
 
 static inline int ethash_check_difficulty(
         const uint8_t hash[32],
