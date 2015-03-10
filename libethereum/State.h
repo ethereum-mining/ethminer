@@ -314,7 +314,7 @@ private:
 	u256 enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce = true);
 
 	/// Finalise the block, applying the earned rewards.
-	void applyRewards(Addresses const& _uncleAddresses);
+	void applyRewards(std::vector<BlockInfo> const& _uncleBlockHeaders);
 
 	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_receipts.size() ? m_receipts.back().gasUsed() : 0; }
