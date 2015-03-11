@@ -39,7 +39,7 @@ namespace eth
 // TODO: OPTIMISE: constructors take bytes, RLP used only in necessary classes.
 
 static const unsigned c_bloomIndexSize = 16;
-static const unsigned c_bloomIndexLevels = 6;
+static const unsigned c_bloomIndexLevels = 2;
 
 struct BlockDetails
 {
