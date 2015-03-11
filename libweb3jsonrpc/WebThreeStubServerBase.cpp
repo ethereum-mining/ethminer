@@ -911,7 +911,7 @@ bool WebThreeStubServerBase::eth_unregister(string const& _accountId)
 	return m_accounts->removeProxyAccount(id);
 }
 
-Json::Value WebThreeStubServerBase::eth_queuedTransactions(string const& _accountId)
+Json::Value WebThreeStubServerBase::eth_fetchQueuedTransactions(string const& _accountId)
 {
 	unsigned id;
 	
