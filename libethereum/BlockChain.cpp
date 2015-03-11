@@ -610,15 +610,26 @@ static inline unsigned ceilDiv(unsigned n, unsigned d) { return n / (n + d - 1);
 static inline unsigned floorDivPow(unsigned n, unsigned a, unsigned b) { return n / upow(a, b); }
 static inline unsigned ceilDivPow(unsigned n, unsigned a, unsigned b) { return ceilDiv(n, upow(a, b)); }
 
+// Level 1
+// [xxx.            ]
+
+// Level 0
+// [.x............F.]
+// [........x.......]
+// [T.............x.]
+// [............    ]
+
+// F = 14. T = 32
+
 vector<unsigned> BlockChain::withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest) const
 {
 	vector<unsigned> ret;
 
 	// start from the top-level
-	unsigned u = upow(c_bloomIndexSize, c_bloomIndexLevels - 1);
+	unsigned u = upow(c_bloomIndexSize, c_bloomIndexLevels);
 
 	// run through each of the top-level blockbloom blocks
-	for (unsigned index = _earliest / u; index < ceilDiv(_latest, u); ++index)
+	for (unsigned index = _earliest / u; index <= ceilDiv(_latest, u); ++index)				// 0
 		ret += withBlockBloom(_b, _earliest, _latest, c_bloomIndexLevels - 1, index);
 
 	return ret;
@@ -626,12 +637,33 @@ vector<unsigned> BlockChain::withBlockBloom(LogBloom const& _b, unsigned _earlie
 
 vector<unsigned> BlockChain::withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest, unsigned _level, unsigned _index) const
 {
+	// 14, 32, 1, 0
+		// 14, 32, 0, 0
+		// 14, 32, 0, 1
+		// 14, 32, 0, 2
+
 	vector<unsigned> ret;
 
-//	unsigned u = upow(c_bloomIndexSize, _level);
+	unsigned uCourse = upow(c_bloomIndexSize, _level + 1);
+	// 256
+		// 16
+	unsigned uFine = upow(c_bloomIndexSize, _level);
+	// 16
+		// 1
+
+	unsigned obegin = _index == _earliest / uCourse ? _earliest / uFine % c_bloomIndexSize : 0;
+	// 0
+		// 14
+		// 0
+		// 0
+	unsigned oend = _index == _latest / uCourse ? (_latest / uFine) % c_bloomIndexSize + 1 : c_bloomIndexSize;
+	// 3
+		// 16
+		// 16
+		// 1
 
 	BlocksBlooms bb = blocksBlooms(_level, _index);
-	for (unsigned o = 0; o < 256; ++o)	// TODO: crop.
+	for (unsigned o = obegin; o < oend; ++o)
 		if (bb.blooms[o].contains(_b))
 		{
 			// This level has something like what we want.
