@@ -154,14 +154,6 @@ public:
 		}
 	};
 
-	inline FixedHash<32> bloom() const
-	{
-		FixedHash<32> ret;
-		for (auto i: m_data)
-			ret[i / 8] |= 1 << (i % 8);
-		return ret;
-	}
-
 	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h)
 	{
 		return (*this |= _h.template nbloom<P, N>());
