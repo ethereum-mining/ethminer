@@ -1,7 +1,7 @@
 import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
-import QtQuick.Controls 1.1
+import QtQuick.Controls 1.0
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
@@ -274,6 +274,13 @@ Item {
 			}
 		}
 
+		Rectangle
+		{
+			Layout.preferredHeight: 1
+			Layout.preferredWidth: parent.width
+			color: "#808080"
+		}
+
 		SplitView
 		{
 			Layout.preferredWidth: parent.width
@@ -309,7 +316,7 @@ Item {
 					if (expressionInput.text === "" || expressionInput.text === qsTr("Expression"))
 						return;
 					webView.runJavaScript("executeJavaScript(\"" + expressionInput.text.replace(/"/g, '\\"') + "\")", function(result) {
-						resultTextArea.text = result + "\n\n" + resultTextArea.text;
+						resultTextArea.text = "> " + result + "\n\n" + resultTextArea.text;
 						expressionInput.text = "";
 					});
 				}
@@ -328,6 +335,7 @@ Item {
 
 					Action {
 						id: clearAction
+						enabled: resultTextArea.text !== ""
 						tooltip: qsTr("Clear")
 						onTriggered: {
 							resultTextArea.text = "";
@@ -356,6 +364,8 @@ Item {
 						{
 							if (!focus && text == "")
 								text = qsTr("Expression");
+							if (focus && text === qsTr("Expression"))
+								text = "";
 						}
 
 						style: TextFieldStyle {
