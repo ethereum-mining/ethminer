@@ -387,21 +387,20 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 			}
 
 			//format solidity context values
-			QStringList	locals;
+			QStringList locals;
 			for(auto l: solLocals)
 				if (l.first < (int)s.stack.size())
 					locals.push_back(l.second.name + "\t" + formatValue(l.second.type, s.stack[l.first]));
 
-			QStringList	storage;
+			QStringList storage;
 			for(auto st: s.storage)
-			{
 				if (st.first < std::numeric_limits<unsigned>::max())
 				{
 					auto storageIter = contract->storage().find(static_cast<unsigned>(st.first));
 					if (storageIter != contract->storage().end())
 						storage.push_back(storageIter.value().name + "\t" + formatValue(storageIter.value().type, st.second));
 				}
-			}
+
 			prevInstructionIndex = instructionIndex;
 			solState = new QSolState(debugData, storage, solCallStack, locals, instruction.getLocation().start, instruction.getLocation().end);
 		}

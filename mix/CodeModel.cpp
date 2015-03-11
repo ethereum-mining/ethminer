@@ -49,86 +49,87 @@ const std::set<std::string> c_predefinedContracts =
 
 namespace
 {
-	using namespace dev::solidity;
-	class CollectDeclarationsVisitor: public ASTConstVisitor
+using namespace dev::solidity;
+class CollectDeclarationsVisitor: public ASTConstVisitor
+{
+public:
+	CollectDeclarationsVisitor(QHash<LocationPair, QString>* _functions, QHash<LocationPair, SolidityDeclaration>* _locals, QHash<unsigned, SolidityDeclaration>* _storage):
+	m_functions(_functions), m_locals(_locals), m_storage(_storage), m_functionScope(false), m_storageSlot(0) {}
+private:
+	LocationPair nodeLocation(ASTNode const& _node)
 	{
-	public:
-		CollectDeclarationsVisitor(QHash<LocationPair, QString>* _functions, QHash<LocationPair, SolidityDeclaration>* _locals, QHash<unsigned, SolidityDeclaration>* _storage):
-		m_functions(_functions), m_locals(_locals), m_storage(_storage), m_functionScope(false), m_storageSlot(0) {}
-	private:
-		QHash<LocationPair, QString>* m_functions;
-		QHash<LocationPair, SolidityDeclaration>* m_locals;
-		QHash<unsigned, SolidityDeclaration>* m_storage;
-		bool m_functionScope;
-		uint m_storageSlot;
+		return LocationPair(_node.getLocation().start, _node.getLocation().end);
+	}
 
-		LocationPair nodeLocation(ASTNode const& _node)
+	SolidityType nodeType(Type const* _type)
+	{
+		if (!_type)
+			return SolidityType { SolidityType::Type::UnsignedInteger, 32 };
+		switch (_type->getCategory())
 		{
-			return LocationPair(_node.getLocation().start, _node.getLocation().end);
-		}
-
-		SolidityType nodeType(Type const* _type)
-		{
-			if (!_type)
-				return SolidityType { SolidityType::Type::UnsignedInteger, 32 };
-			switch (_type->getCategory())
+		case Type::Category::Integer:
 			{
-			case Type::Category::Integer:
-				{
-					IntegerType const* it = dynamic_cast<IntegerType const*>(_type);
-					unsigned size = it->getNumBits() / 8;
-					SolidityType::Type typeCode = it->isAddress() ? SolidityType::Type::Address : it->isHash() ? SolidityType::Type::Hash : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
-					return SolidityType { typeCode, size };
-				}
-			case Type::Category::Bool:
-				return SolidityType { SolidityType::Type::Bool, _type->getSizeOnStack() * 32 };
-			case Type::Category::String:
-				{
-					StaticStringType const* s = dynamic_cast<StaticStringType const*>(_type);
-					return SolidityType { SolidityType::Type::String, static_cast<unsigned>(s->getNumBytes()) };
-				}
-			case Type::Category::Contract:
-				return SolidityType { SolidityType::Type::Address, _type->getSizeOnStack() * 32 };
-			case Type::Category::Array:
-			case Type::Category::Enum:
-			case Type::Category::Function:
-			case Type::Category::IntegerConstant:
-			case Type::Category::Magic:
-			case Type::Category::Mapping:
-			case Type::Category::Modifier:
-			case Type::Category::Real:
-			case Type::Category::Struct:
-			case Type::Category::TypeType:
-			case Type::Category::Void:
-			default:
-				return SolidityType { SolidityType::Type::UnsignedInteger, 32 };
+				IntegerType const* it = dynamic_cast<IntegerType const*>(_type);
+				unsigned size = it->getNumBits() / 8;
+				SolidityType::Type typeCode = it->isAddress() ? SolidityType::Type::Address : it->isHash() ? SolidityType::Type::Hash : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
+				return SolidityType { typeCode, size };
 			}
+		case Type::Category::Bool:
+			return SolidityType { SolidityType::Type::Bool, _type->getSizeOnStack() * 32 };
+		case Type::Category::String:
+			{
+				StaticStringType const* s = dynamic_cast<StaticStringType const*>(_type);
+				return SolidityType { SolidityType::Type::String, static_cast<unsigned>(s->getNumBytes()) };
+			}
+		case Type::Category::Contract:
+			return SolidityType { SolidityType::Type::Address, _type->getSizeOnStack() * 32 };
+		case Type::Category::Array:
+		case Type::Category::Enum:
+		case Type::Category::Function:
+		case Type::Category::IntegerConstant:
+		case Type::Category::Magic:
+		case Type::Category::Mapping:
+		case Type::Category::Modifier:
+		case Type::Category::Real:
+		case Type::Category::Struct:
+		case Type::Category::TypeType:
+		case Type::Category::Void:
+		default:
+			return SolidityType { SolidityType::Type::UnsignedInteger, 32 };
 		}
+	}
 
-		virtual bool visit(FunctionDefinition const& _node)
-		{
-			m_functions->insert(nodeLocation(_node), QString::fromStdString(_node.getName()));
-			m_functionScope = true;
-			return true;
-		}
+	virtual bool visit(FunctionDefinition const& _node)
+	{
+		m_functions->insert(nodeLocation(_node), QString::fromStdString(_node.getName()));
+		m_functionScope = true;
+		return true;
+	}
 
-		virtual void endVisit(FunctionDefinition const&)
-		{
-			m_functionScope = false;
-		}
+	virtual void endVisit(FunctionDefinition const&)
+	{
+		m_functionScope = false;
+	}
 
-		virtual bool visit(VariableDeclaration const& _node)
-		{
-			SolidityDeclaration decl;
-			decl.type = nodeType(_node.getType().get());
-			decl.name = QString::fromStdString(_node.getName());
-			if (m_functionScope)
-				m_locals->insert(nodeLocation(_node), decl);
-			else
-				m_storage->insert(m_storageSlot++, decl);
-			return true;
-		}
-	};
+	virtual bool visit(VariableDeclaration const& _node)
+	{
+		SolidityDeclaration decl;
+		decl.type = nodeType(_node.getType().get());
+		decl.name = QString::fromStdString(_node.getName());
+		if (m_functionScope)
+			m_locals->insert(nodeLocation(_node), decl);
+		else
+			m_storage->insert(m_storageSlot++, decl);
+		return true;
+	}
+
+private:
+	QHash<LocationPair, QString>* m_functions;
+	QHash<LocationPair, SolidityDeclaration>* m_locals;
+	QHash<unsigned, SolidityDeclaration>* m_storage;
+	bool m_functionScope;
+	uint m_storageSlot;
+};
 }
 
 void BackgroundWorker::queueCodeChange(int _jobId)
