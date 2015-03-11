@@ -850,12 +850,14 @@ TransactionHashes Client::transactionHashes(h256 _blockHash) const
 
 LocalisedLogEntries Client::logs(unsigned _watchId) const
 {
+	LogFilter f;
 	try {
 		Guard l(m_filterLock);
-		return logs(m_filters.at(m_watches.at(_watchId).id).filter);
+		f = m_filters.at(m_watches.at(_watchId).id).filter;
 	} catch (...) {
 		return LocalisedLogEntries();
 	}
+	return logs(f);
 }
 
 LocalisedLogEntries Client::logs(LogFilter const& _f) const
