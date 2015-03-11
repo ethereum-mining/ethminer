@@ -163,15 +163,8 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 			filter.address(jsToAddress(_json["address"].asString()));
 	}
 	if (!_json["topics"].empty())
-	{
-		unsigned i = 0;
-		for (auto t: _json["topics"])
-		{
-			for (auto tt: t)
-				filter.topic(i, jsToFixed<32>(tt.asString()));
-			i++;
-		}
-	}
+		for (unsigned i = 0; i < _json["topics"].size(); i++)
+			filter.topic(i, jsToFixed<32>(_json["topics"][i].asString()));
 	return filter;
 }
 
