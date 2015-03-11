@@ -110,7 +110,7 @@ public:
 	virtual bool eth_submitWork(std::string const& _nonce, std::string const& _mixHash);
 	virtual std::string eth_register(std::string const& _address);
 	virtual bool eth_unregister(std::string const& _accountId);
-	virtual Json::Value eth_queuedTransactions(std::string const& _accountId);
+	virtual Json::Value eth_fetchQueuedTransactions(std::string const& _accountId);
 	
 	virtual bool db_put(std::string const& _name, std::string const& _key, std::string const& _value);
 	virtual std::string db_get(std::string const& _name, std::string const& _key);

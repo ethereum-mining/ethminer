@@ -42,7 +42,7 @@
             { "name": "eth_submitWork", "params": ["", ""], "order": [], "returns": true},
             { "name": "eth_register", "params": [""], "order": [], "returns": ""},
             { "name": "eth_unregister", "params": [""], "order": [], "returns": true},
-            { "name": "eth_queuedTransactions", "params": [""], "order": [], "returns": []},
+            { "name": "eth_fetchQueuedTransactions", "params": [""], "order": [], "returns": []},
 
             { "name": "db_put", "params": ["", "", ""], "order": [], "returns": true},
             { "name": "db_get", "params": ["", ""], "order": [], "returns": ""},

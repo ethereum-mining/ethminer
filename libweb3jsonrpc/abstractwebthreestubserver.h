@@ -53,7 +53,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("eth_submitWork", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_submitWorkI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_register", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_registerI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_unregister", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_unregisterI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_queuedTransactions", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_queuedTransactionsI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_fetchQueuedTransactions", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_fetchQueuedTransactionsI);
             this->bindAndAddMethod(jsonrpc::Procedure("db_put", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::db_putI);
             this->bindAndAddMethod(jsonrpc::Procedure("db_get", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::db_getI);
             this->bindAndAddMethod(jsonrpc::Procedure("shh_post", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::shh_postI);
@@ -241,9 +241,9 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->eth_unregister(request[0u].asString());
         }
-        inline virtual void eth_queuedTransactionsI(const Json::Value &request, Json::Value &response)
+        inline virtual void eth_fetchQueuedTransactionsI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_queuedTransactions(request[0u].asString());
+            response = this->eth_fetchQueuedTransactions(request[0u].asString());
         }
         inline virtual void db_putI(const Json::Value &request, Json::Value &response)
         {
@@ -331,7 +331,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual bool eth_submitWork(const std::string& param1, const std::string& param2) = 0;
         virtual std::string eth_register(const std::string& param1) = 0;
         virtual bool eth_unregister(const std::string& param1) = 0;
-        virtual Json::Value eth_queuedTransactions(const std::string& param1) = 0;
+        virtual Json::Value eth_fetchQueuedTransactions(const std::string& param1) = 0;
         virtual bool db_put(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
         virtual std::string db_get(const std::string& param1, const std::string& param2) = 0;
         virtual bool shh_post(const Json::Value& param1) = 0;
