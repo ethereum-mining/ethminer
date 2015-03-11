@@ -26,7 +26,7 @@
 #include <stddef.h>
 #include "compiler.h"
 
-#define REVISION 20
+#define REVISION 22
 #define DATASET_BYTES_INIT 1073741824U // 2**30
 #define DATASET_BYTES_GROWTH 8388608U  // 2**23
 #define CACHE_MULTIPLIER 1024
