@@ -1000,7 +1000,7 @@ void Main::refreshBlockChain()
 	// TODO: keep the same thing highlighted.
 	// TODO: refactor into MVC
 	// TODO: use get by hash/number
-	// TODO: transactions, log addresses, log topics
+	// TODO: transactions
 
 	auto const& bc = ethereum()->blockChain();
 	QStringList filters = ui->blockChainFilter->text().toLower().split(QRegExp("\\s+"), QString::SkipEmptyParts);
