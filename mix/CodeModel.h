@@ -37,10 +37,7 @@ class QTextDocument;
 namespace dev
 {
 
-namespace solidity
-{
-	class CompilerStack;
-}
+namespace solidity { class CompilerStack; }
 
 namespace mix
 {
