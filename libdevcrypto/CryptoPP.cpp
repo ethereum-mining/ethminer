@@ -319,8 +319,7 @@ void Secp256k1::agree(Secret const& _s, Public const& _r, h256& o_s)
 	assert(d.AgreedValueLength() == sizeof(o_s));
 	byte remote[65] = {0x04};
 	memcpy(&remote[1], _r.data(), 64);
-	bool result = d.Agree(o_s.data(), _s.data(), remote);
-	assert(result);
+	d.Agree(o_s.data(), _s.data(), remote);
 }
 
 void Secp256k1::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& o_p)
