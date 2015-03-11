@@ -38,7 +38,8 @@ init = function(url) {
 
 executeJavaScript = function(script) {
 	var preview = document.getElementById('preview');
-	return preview.contentWindow.eval(script);
+	var obj = preview.contentWindow.eval(script);
+	return JSON.stringify(obj);
 }
 
 </script>
