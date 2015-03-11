@@ -1,7 +1,7 @@
 import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
-import QtQuick.Controls 1.0
+import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
@@ -219,6 +219,14 @@ Item {
 					focus: true
 				}
 
+				Rectangle
+				{
+					width: 1
+					height: parent.height - 10
+					color: "#808080"
+					anchors.verticalCenter: parent.verticalCenter
+				}
+
 				CheckBox {
 					id: autoReloadOnSave
 					checked: true
@@ -231,15 +239,49 @@ Item {
 					}
 					focus: true
 				}
+
+				Rectangle
+				{
+					width: 1
+					height: parent.height - 10
+					color: "#808080"
+					anchors.verticalCenter: parent.verticalCenter
+				}
+
+				Button
+				{
+					height: 28
+					anchors.verticalCenter: parent.verticalCenter
+					action: expressionAction
+					iconSource: "qrc:/qml/img/console.png"
+				}
+
+				Action {
+					id: expressionAction
+					tooltip: qsTr("Expressions")
+					onTriggered:
+					{
+						expressionPanel.visible = !expressionPanel.visible;
+						if (expressionPanel.visible)
+						{
+							webView.width = webView.parent.width - 350
+							expressionInput.forceActiveFocus();
+						}
+						else
+							webView.width = webView.parent.width
+					}
+				}
 			}
 		}
 
-		Rectangle
+		SplitView
 		{
 			Layout.preferredWidth: parent.width
 			Layout.fillHeight: true
 			WebEngineView {
-				anchors.fill: parent
+				Layout.fillHeight: true
+				width: parent.width
+				Layout.preferredWidth: parent.width
 				id: webView
 				experimental.settings.localContentCanAccessRemoteUrls: true
 				onJavaScriptConsoleMessage: {
@@ -251,6 +293,197 @@ Item {
 						webView.runJavaScript("init(\"" + httpServer.url + "/rpc/\")");
 						if (pendingPageUrl)
 							setPreviewUrl(pendingPageUrl);
+					}
+				}
+			}
+
+			ListModel {
+				id: javaScriptExpressionModel
+			}
+
+			Column {
+				id: expressionPanel
+				width: 350
+				Layout.preferredWidth: 350
+				Layout.fillHeight: true
+				spacing: 0
+				visible: false
+				function addExpression()
+				{
+					if (expressionInput.text === "" || expressionInput.text === qsTr("Expression"))
+						return;
+					webView.runJavaScript("executeJavaScript(\"" + expressionInput.text.replace(/"/g, '\\"') + "\")", function(result) {
+						javaScriptExpressionModel.insert(0, { expression: expressionInput.text, result: result });
+						expressionInput.text = "";
+					});
+				}
+
+				DefaultTextField {
+					id: expressionInput
+					width: parent.width
+					height: 20
+					font.family: "sans serif"
+					font.italic: true
+					font.pointSize: Style.absoluteSize(-3)
+					Keys.onEnterPressed:
+					{
+						parent.addExpression();
+					}
+
+					Keys.onReturnPressed:
+					{
+						parent.addExpression();
+					}
+
+					onFocusChanged:
+					{
+						if (!focus && text == "")
+							text = qsTr("Expression");
+					}
+					style: TextFieldStyle {
+						background: Rectangle {
+							color: "transparent"
+						}
+					}
+				}
+
+				TableView
+				{
+					width: parent.width
+					height: webView.height - expressionInput.height
+					model: javaScriptExpressionModel
+					headerVisible: true
+					rowDelegate:
+						Rectangle {
+						id: rowExpressions
+						height: 20
+						color: styleData.alternate ? "transparent" : "#f0f0f0"
+					}
+
+					onDoubleClicked:
+					{
+						var log = model.get(currentRow);
+						if (log)
+							appContext.toClipboard(log.expression + "\t" + log.result);
+					}
+
+					TableViewColumn {
+						id: expression
+						title: "Expression"
+						role: "expression"
+						width: 2 * (350 / 3)
+						resizable: true
+						delegate: Rectangle {
+							color: "transparent"
+							height: 20
+							width: 2 * (350 / 3)
+							MouseArea
+							{
+								anchors.fill: parent
+								hoverEnabled: true
+								onHoveredChanged:
+								{
+									deleteBtn.visible = containsMouse
+								}
+							}
+
+							Button
+							{
+								id: deleteBtn
+								iconSource: "qrc:/qml/img/delete_sign.png"
+								action: deleteExpressionAction
+								height: 18
+								width: 18
+								visible: false
+							}
+
+							Action {
+								id: deleteExpressionAction
+								tooltip: qsTr("Delete Expression")
+								onTriggered:
+								{
+									javaScriptExpressionModel.remove(styleData.row);
+								}
+							}
+
+
+							DefaultTextField {
+								text:  styleData.value
+								font.family: "sans serif"
+								font.pointSize: Style.absoluteSize(-2)
+								anchors.verticalCenter: parent.verticalCenter
+								width: parent.width - deleteBtn.width
+								anchors.left: deleteBtn.right
+								anchors.leftMargin: 1
+
+								MouseArea
+								{
+									anchors.fill: parent
+									hoverEnabled: true
+									onHoveredChanged:
+									{
+										deleteBtn.visible = containsMouse
+									}
+									onClicked:
+									{
+										parent.forceActiveFocus();
+									}
+								}
+
+								function updateExpression()
+								{
+									if (text === "")
+										javaScriptExpressionModel.remove(styleData.row);
+									else
+									{
+										javaScriptExpressionModel.get(styleData.row).expression = text;
+										webView.runJavaScript("executeJavaScript(\"" + text.replace(/"/g, '\\"') + "\")", function(result) {
+											javaScriptExpressionModel.get(styleData.row).result = result;
+										});
+									}
+								}
+
+								Keys.onEnterPressed:
+								{
+									updateExpression();
+								}
+
+								Keys.onReturnPressed:
+								{
+									updateExpression();
+								}
+
+								style: TextFieldStyle {
+									background: Rectangle {
+										color: "transparent"
+									}
+								}
+							}
+						}
+					}
+
+					TableViewColumn {
+						id: result
+						title: "Result"
+						role: "result"
+						width: 350 / 3 - 5
+						resizable: true
+						delegate: Rectangle {
+							color: "transparent"
+							height: 20
+							DefaultLabel {
+								text: {
+									var item = javaScriptExpressionModel.get(styleData.row);
+									if (item !== undefined && item.result !== undefined)
+										return item.result;
+									else
+										return "-";
+								}
+								font.family: "sans serif"
+								font.pointSize: Style.absoluteSize(-2)
+								anchors.verticalCenter: parent.verticalCenter
+							}
+						}
 					}
 				}
 			}
