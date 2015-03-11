@@ -223,7 +223,7 @@ Item {
 				{
 					width: 1
 					height: parent.height - 10
-					color: "#808080"
+					color: WebPreviewStyle.general.fontName
 					anchors.verticalCenter: parent.verticalCenter
 				}
 
@@ -244,7 +244,7 @@ Item {
 				{
 					width: 1
 					height: parent.height - 10
-					color: "#808080"
+					color: WebPreviewStyle.general.fontName
 					anchors.verticalCenter: parent.verticalCenter
 				}
 
@@ -278,7 +278,7 @@ Item {
 		{
 			Layout.preferredHeight: 1
 			Layout.preferredWidth: parent.width
-			color: "#808080"
+			color: WebPreviewStyle.general.separatorColor
 		}
 
 		SplitView
@@ -346,7 +346,7 @@ Item {
 						id: expressionInput
 						width: parent.width - 15
 						height: 20
-						font.family: "sans serif"
+						font.family: WebPreviewStyle.general.fontName
 						font.italic: true
 						font.pointSize: Style.absoluteSize(-3)
 						anchors.verticalCenter: parent.verticalCenter
@@ -383,7 +383,7 @@ Item {
 					id: resultTextArea
 					width: expressionPanel.width
 					wrapMode: Text.Wrap
-					font.family: "sans serif"
+					font.family: WebPreviewStyle.general.fontName
 					font.pointSize: Style.absoluteSize(-3)
 					backgroundVisible: true
 					style: TextAreaStyle {
