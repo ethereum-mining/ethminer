@@ -22,11 +22,12 @@
  */
 
 #include "StructuredLogger.h"
-
 #include <ctime>
+#include <boost/asio/ip/tcp.hpp>
 #include <json/json.h>
 #include "Guards.h"
 
+namespace ba = boost::asio;
 using namespace std;
 
 namespace dev

@@ -134,6 +134,7 @@ Item {
 		onProjectClosed: {
 			stateListModel.clear();
 			stateList = [];
+			codeModel.reset();
 		}
 		onProjectLoading: stateListModel.loadStatesFromProject(projectData);
 		onProjectSaving: {
@@ -148,6 +149,7 @@ Item {
 			state.title = qsTr("Default");
 			projectData.states = [ state ];
 			projectData.defaultStateIndex = 0;
+			stateListModel.loadStatesFromProject(projectData);
 		}
 	}
 
@@ -264,6 +266,7 @@ Item {
 				defaultStateIndex--;
 
 			save();
+
 		}
 
 		function save() {
@@ -284,6 +287,8 @@ Item {
 			else
 				defaultStateIndex = 0;
 			var items = projectData.states;
+			stateListModel.clear();
+			stateList = [];
 			for(var i = 0; i < items.length; i++) {
 				var item = fromPlainStateItem(items[i]);
 				stateListModel.append(item);
