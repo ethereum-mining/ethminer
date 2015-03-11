@@ -60,7 +60,7 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 	res["number"] = toJS(_bi.number);
 	res["gasLimit"] = toJS(_bi.gasLimit);
 	res["timestamp"] = toJS(_bi.timestamp);
-	res["extraData"] = jsFromBinary(_bi.extraData);
+	res["extraData"] = toJS(_bi.extraData);
 	res["nonce"] = toJS(_bi.nonce);
 	return res;
 }
@@ -69,7 +69,7 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 {
 	Json::Value res;
 	res["hash"] = toJS(_t.sha3());
-	res["input"] = jsFromBinary(_t.data());
+	res["input"] = toJS(_t.data());
 	res["to"] = toJS(_t.receiveAddress());
 	res["from"] = toJS(_t.safeSender());
 	res["gas"] = toJS(_t.gas());
@@ -105,7 +105,7 @@ static Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
 	res["gas"] = toJS(_t.gas);
 	res["gasPrice"] = toJS(_t.gasPrice);
 	res["value"] = toJS(_t.value);
-	res["data"] = jsFromBinary(_t.data);
+	res["data"] = toJS(_t.data, 32);
 	return res;
 }
 
@@ -113,7 +113,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 {
 	Json::Value res;
 
-	res["data"] = jsFromBinary(_e.data);
+	res["data"] = toJS(_e.data);
 	res["address"] = toJS(_e.address);
 	res["topics"] = Json::Value(Json::arrayValue);
 	for (auto const& t: _e.topics)
@@ -461,7 +461,7 @@ string WebThreeStubServerBase::eth_getData(string const& _address, string const&
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
 	
-	return jsFromBinary(client()->codeAt(address, number));
+	return toJS(client()->codeAt(address, number));
 }
 
 static TransactionSkeleton toTransaction(Json::Value const& _json)
