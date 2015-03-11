@@ -41,9 +41,11 @@ template <unsigned N> std::string toJS(boost::multiprecision::number<boost::mult
 	return "0x" + toHex(toCompactBigEndian(_n, 1));
 }
 
-inline std::string toJS(bytes const& _n)
+inline std::string toJS(bytes const& _n, std::size_t _padding = 0)
 {
-	return "0x" + toHex(_n);
+	bytes n = _n;
+	n.resize(std::max<unsigned>(n.size(), _padding));
+	return "0x" + toHex(n);
 }
 
 template< typename T >std::string toJS( T const& i )
@@ -107,22 +109,6 @@ inline int jsToInt(std::string const& _s)
 inline std::string jsToDecimal(std::string const& _s)
 {
 	return toString(jsToU256(_s));
-}
-
-inline std::string jsFromBinary(bytes _s, unsigned _padding = 32)
-{
-	_s.resize(std::max<unsigned>(_s.size(), _padding));
-	return "0x" + toHex(_s);
-}
-
-inline std::string jsFromBinary(std::string const& _s, unsigned _padding = 32)
-{
-	return jsFromBinary(asBytes(_s), _padding);
-}
-
-inline double jsFromFixed(std::string const& _s)
-{
-	return (double)jsToU256(_s) / (double)(u256(1) << 128);
 }
 
 }
