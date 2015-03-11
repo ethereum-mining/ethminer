@@ -871,14 +871,16 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 		int total = 0;
 #endif
 		// check block bloom
-		auto info = m_bc.info(h);
-		auto receipts = m_bc.receipts(h).receipts;
-		if (_f.matches(info.logBloom))
+		auto blockBloom = m_bc.blockBloom(n);
+		if (_f.matches(blockBloom))
+		{
+			auto receipts = m_bc.receipts(h).receipts;
 			for (size_t i = 0; i < receipts.size(); i++)
 			{
 				TransactionReceipt receipt = receipts[i];
 				if (_f.matches(receipt.bloom()))
 				{
+					auto info = m_bc.info(h);
 					auto h = transaction(info.hash, i).sha3();
 					LogEntries le = _f.matches(receipt);
 					if (le.size())
@@ -901,6 +903,7 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 #endif
 			}
 #if ETH_DEBUG
+		}
 		else
 			skipped++;
 #endif
