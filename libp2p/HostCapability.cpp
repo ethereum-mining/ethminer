@@ -27,11 +27,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-void HostCapabilityFace::seal(bytes& _b)
-{
-	m_host->seal(_b);
-}
-
 std::vector<std::pair<std::shared_ptr<Session>,std::shared_ptr<Peer>>> HostCapabilityFace::peerSessions() const
 {
 	RecursiveGuard l(m_host->x_sessions);
