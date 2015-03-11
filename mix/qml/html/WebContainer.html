@@ -17,7 +17,7 @@ reloadPage = function() {
 
 updateContracts = function(contracts) {
 	if (window.web3) {
-	    window.web3.reset();
+		window.web3.reset();
 		window.contracts = {};
 		for (var c in contracts) {
 			var contract = window.web3.eth.contract(contracts[c].address, contracts[c].interface);
@@ -35,6 +35,11 @@ init = function(url) {
 	window.web3 = web3;
 	web3.setProvider(new web3.providers.HttpSyncProvider(url));
 };
+
+executeJavaScript = function(script) {
+	var preview = document.getElementById('preview');
+	return preview.contentWindow.eval(script);
+}
 
 </script>
 
