@@ -555,7 +555,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		BOOST_THROW_EXCEPTION(TooManyUncles());
 
 	set<Nonce> nonces = { m_currentBlock.nonce };
-	Addresses rewarded;
+	vector<BlockInfo> rewarded;
 	set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
 
 	for (auto const& i: rlp[2])
@@ -574,7 +574,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 
 		nonces.insert(uncle.nonce);
 		tdIncrease += uncle.difficulty;
-		rewarded.push_back(uncle.coinbaseAddress);
+		rewarded.push_back(uncle);
 	}
 	applyRewards(rewarded);
 
@@ -696,7 +696,7 @@ void State::commitToMine(BlockChain const& _bc)
 
 	m_lastTx = m_db;
 
-	Addresses uncleAddresses;
+	vector<BlockInfo> uncleBlockHeaders;
 
 	RLPStream unclesData;
 	unsigned unclesCount = 0;
@@ -716,7 +716,7 @@ void State::commitToMine(BlockChain const& _bc)
 					BlockInfo ubi(_bc.block(u));
 					ubi.streamRLP(unclesData, WithNonce);
 					++unclesCount;
-					uncleAddresses.push_back(ubi.coinbaseAddress);
+					uncleBlockHeaders.push_back(ubi);
 					if (unclesCount == 2)
 						break;
 				}
@@ -760,7 +760,7 @@ void State::commitToMine(BlockChain const& _bc)
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
 
 	// Apply rewards last of all.
-	applyRewards(uncleAddresses);
+	applyRewards(uncleBlockHeaders);
 
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
@@ -1148,12 +1148,12 @@ State State::fromPending(unsigned _i) const
 	return ret;
 }
 
-void State::applyRewards(Addresses const& _uncleAddresses)
+void State::applyRewards(vector<BlockInfo> const& _uncleBlockHeaders)
 {
 	u256 r = m_blockReward;
-	for (auto const& i: _uncleAddresses)
+	for (auto const& i: _uncleBlockHeaders)
 	{
-		addBalance(i, m_blockReward * 15 / 16);
+		addBalance(i.coinbaseAddress, m_blockReward * (8 + i.number - m_currentBlock.number) / 8);
 		r += m_blockReward / 32;
 	}
 	addBalance(m_currentBlock.coinbaseAddress, r);
