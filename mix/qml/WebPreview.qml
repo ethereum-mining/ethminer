@@ -223,7 +223,7 @@ Item {
 				{
 					width: 1
 					height: parent.height - 10
-					color: WebPreviewStyle.general.fontName
+					color: WebPreviewStyle.general.separatorColor
 					anchors.verticalCenter: parent.verticalCenter
 				}
 
@@ -244,7 +244,7 @@ Item {
 				{
 					width: 1
 					height: parent.height - 10
-					color: WebPreviewStyle.general.fontName
+					color: WebPreviewStyle.general.separatorColor
 					anchors.verticalCenter: parent.verticalCenter
 				}
 
