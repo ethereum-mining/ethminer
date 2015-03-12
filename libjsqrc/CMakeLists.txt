@@ -12,7 +12,7 @@ qt5_add_resources(JSQRC js.qrc)
 add_library(jsqrc STATIC ${JSQRC})
 target_link_libraries(jsqrc Qt5::Core)
 
-if (ETH_NODE AND ETH_NPM)
+if (USENPM)
 	add_custom_target(ethereumjs)
 	add_custom_command(TARGET ethereumjs
 		POST_BUILD
