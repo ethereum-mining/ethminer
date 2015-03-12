@@ -313,8 +313,10 @@ Item {
 				visible: false
 				function addExpression()
 				{
-					if (expressionInput.text === "" || expressionInput.text === qsTr("Expression"))
+					if (expressionInput.text === "")
 						return;
+					expressionInput.history.unshift(expressionInput.text);
+					expressionInput.index = -1;
 					webView.runJavaScript("executeJavaScript(\"" + expressionInput.text.replace(/"/g, '\\"') + "\")", function(result) {
 						resultTextArea.text = "> " + result + "\n\n" + resultTextArea.text;
 						expressionInput.text = "";
@@ -350,6 +352,31 @@ Item {
 						font.italic: true
 						font.pointSize: Style.absoluteSize(-3)
 						anchors.verticalCenter: parent.verticalCenter
+
+						property var history: []
+						property int index: -1
+
+						function displayCache(incr)
+						{
+							index = index + incr;
+							if (history.length - 1 < index || index < 0)
+							{
+								if (incr === 1)
+									index = 0;
+								else
+									index = history.length - 1;
+							}
+							expressionInput.text = history[index];
+						}
+
+						Keys.onDownPressed: {
+							displayCache(1);
+						}
+
+						Keys.onUpPressed: {
+							displayCache(-1);
+						}
+
 						Keys.onEnterPressed:
 						{
 							expressionPanel.addExpression();
