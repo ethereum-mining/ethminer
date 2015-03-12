@@ -39,7 +39,7 @@ init = function(url) {
 executeJavaScript = function(script) {
 	var preview = document.getElementById('preview');
 	var obj = preview.contentWindow.eval(script);
-	return JSON.stringify(obj);
+	return JSON.stringify(obj, null, 2);
 }
 
 </script>
