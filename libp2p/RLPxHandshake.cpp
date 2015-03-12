@@ -98,7 +98,7 @@ void RLPXHandshake::readAuth()
 		}
 		else
 		{
-			clog(NetWarn) << "p2p.connect.egress recving auth decrypt failed for" << m_socket->remoteEndpoint();
+			clog(NetConnect) << "p2p.connect.ingress recving auth decrypt failed for" << m_socket->remoteEndpoint();
 			m_nextState = Error;
 			transition();
 		}
@@ -122,7 +122,7 @@ void RLPXHandshake::readAck()
 		}
 		else
 		{
-			clog(NetWarn) << "p2p.connect.egress recving ack decrypt failed for " << m_socket->remoteEndpoint();
+			clog(NetConnect) << "p2p.connect.egress recving ack decrypt failed for " << m_socket->remoteEndpoint();
 			m_nextState = Error;
 			transition();
 		}
@@ -162,11 +162,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 	else if (m_nextState == WriteHello)
 	{
 		m_nextState = ReadHello;
-		
-		if (m_originated)
-			clog(NetConnect) << "p2p.connect.egress sending capabilities handshake";
-		else
-			clog(NetConnect) << "p2p.connect.ingress sending capabilities handshake";
+		clog(NetConnect) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "sending capabilities handshake";
 
 		/// This pointer will be freed if there is an error otherwise
 		/// it will be passed to Host which will take ownership.
