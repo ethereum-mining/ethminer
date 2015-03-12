@@ -64,6 +64,8 @@ profile
 DerivedData
 project.pbxproj
 
+# JetBrains stuff
+.idea/
 
 doc/html
 *.autosave
