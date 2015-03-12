@@ -71,7 +71,7 @@ ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
 	static boost::thread_specific_ptr<h256> t_h;
 	if (!t_h.get())
 		t_h.reset(new h256);
-	*t_h = _h ^ h256(u256(_sub));
+	*t_h = _h ^ sha3(h256(u256(_sub)));
 	return ldb::Slice((char const*)t_h.get(), 32);
 #endif
 }
