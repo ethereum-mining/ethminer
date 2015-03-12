@@ -540,7 +540,7 @@ void Main::timerEvent(QTimerEvent*)
 
 	for (auto const& i: m_handlers)
 	{
-		auto ls = ethereum()->checkWatch(i.first);
+		auto ls = ethereum()->checkWatchSafe(i.first);
 		if (ls.size())
 			i.second(ls);
 	}
