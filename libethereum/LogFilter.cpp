@@ -79,7 +79,7 @@ vector<LogBloom> LogFilter::bloomPossibilities() const
 	vector<LogBloom> ret;
 	// TODO proper combinatorics.
 	for (auto i: m_addresses)
-		ret.push_back(LogBloom().shiftBloom<3, 32>(dev::sha3(i)));
+		ret.push_back(LogBloom().shiftBloom<3>(dev::sha3(i)));
 	return ret;
 }
 
