@@ -26,10 +26,11 @@
 #include <stddef.h>
 #include "compiler.h"
 
-#define REVISION 22
+#define REVISION 23
 #define DATASET_BYTES_INIT 1073741824U // 2**30
 #define DATASET_BYTES_GROWTH 8388608U  // 2**23
-#define CACHE_MULTIPLIER 1024
+#define CACHE_BYTES_INIT 1073741824U // 2**24
+#define CACHE_BYTES_GROWTH 131072U  // 2**17
 #define EPOCH_LENGTH 30000U
 #define MIX_BYTES 128
 #define HASH_BYTES 64
