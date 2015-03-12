@@ -25,11 +25,12 @@
 #include <array>
 #include <random>
 #include <thread>
+#include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcrypto/FileSystem.h>
-#include <libdevcore/Common.h>
+#include <libethcore/Params.h>
 #include <libethash/ethash.h>
 #include "BlockInfo.h"
 #include "Ethasher.h"
@@ -49,19 +50,19 @@ bytes const& Ethasher::cache(BlockInfo const& _header)
 		throw std::invalid_argument( error.str() );
  	}
 
-	if (!m_caches.count(_header.seedHash))
+	if (!m_caches.count(_header.seedHash()))
 	{
 		ethash_params p = params((unsigned)_header.number);
-		m_caches[_header.seedHash].resize(p.cache_size);
-		ethash_prep_light(m_caches[_header.seedHash].data(), &p, _header.seedHash.data());
+		m_caches[_header.seedHash()].resize(p.cache_size);
+		ethash_prep_light(m_caches[_header.seedHash()].data(), &p, _header.seedHash().data());
 	}
-	return m_caches[_header.seedHash];
+	return m_caches[_header.seedHash()];
 }
 
 bytesConstRef Ethasher::full(BlockInfo const& _header)
 {
 	RecursiveGuard l(x_this);
-	if (!m_fulls.count(_header.seedHash))
+	if (!m_fulls.count(_header.seedHash()))
 	{
 		if (!m_fulls.empty())
 		{
@@ -71,18 +72,18 @@ bytesConstRef Ethasher::full(BlockInfo const& _header)
 		try {
 			boost::filesystem::create_directories(getDataDir() + "/ethashcache");
 		} catch (...) {}
-		std::string memoFile = getDataDir() + "/ethashcache/" + toHex(_header.seedHash.ref().cropped(0, 4)) + ".full";
-		m_fulls[_header.seedHash] = contentsNew(memoFile);
-		if (!m_fulls[_header.seedHash])
+		std::string memoFile = getDataDir() + "/ethashcache/" + toHex(_header.seedHash().ref().cropped(0, 4)) + ".full";
+		m_fulls[_header.seedHash()] = contentsNew(memoFile);
+		if (!m_fulls[_header.seedHash()])
 		{
 			ethash_params p = params((unsigned)_header.number);
-			m_fulls[_header.seedHash] = bytesRef(new byte[p.full_size], p.full_size);
+			m_fulls[_header.seedHash()] = bytesRef(new byte[p.full_size], p.full_size);
 			auto c = cache(_header);
-			ethash_prep_full(m_fulls[_header.seedHash].data(), &p, c.data());
-			writeFile(memoFile, m_fulls[_header.seedHash]);
+			ethash_prep_full(m_fulls[_header.seedHash()].data(), &p, c.data());
+			writeFile(memoFile, m_fulls[_header.seedHash()]);
 		}
 	}
-	return m_fulls[_header.seedHash];
+	return m_fulls[_header.seedHash()];
 }
 
 ethash_params Ethasher::params(BlockInfo const& _header)
