@@ -68,10 +68,12 @@ public:
 	WebThreeStubServerBase(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts);
 
 	virtual std::string web3_sha3(std::string const& _param1);
-	
+	virtual std::string web3_clientVersion() { return "C++ (ethereum-cpp)"; }
+
+	virtual std::string net_version() { return ""; }
 	virtual std::string net_peerCount();
 	virtual bool net_listening();
-	
+
 	virtual std::string eth_coinbase();
 	virtual bool eth_mining();
 	virtual std::string eth_gasPrice();
