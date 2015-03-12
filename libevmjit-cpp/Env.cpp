@@ -78,7 +78,7 @@ extern "C"
 
 		if (value > 0) // value transfer
 		{
-			assert(c_callValueTransferGas > c_callStipend && "Overflow possible");
+			/*static*/ assert(c_callValueTransferGas > c_callStipend && "Overflow possible");
 			*io_gas -= static_cast<int64_t>(c_callValueTransferGas); // no underflow
 			_callGas += static_cast<int64_t>(c_callStipend); // overflow possibility, but in the same time *io_gas < 0
 		}

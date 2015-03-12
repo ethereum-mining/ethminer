@@ -68,9 +68,7 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 			DLOG(cache) << "Unmatched version: " << objVersionStamp.str() << ", expected " << getLibVersionStamp().str() << "\n";
 	}
 	else if (r.getError() != std::make_error_code(std::errc::no_such_file_or_directory))
-	{
 		DLOG(cache) << r.getError().message(); // TODO: Add warning log
-	}
 
 	if (g_lastObject)  // if object found create fake module
 	{
