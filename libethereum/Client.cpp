@@ -493,7 +493,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	m_tq.attemptImport(t.rlp());
 }
 
-bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
 {
 	bytes out;
 	try
@@ -503,7 +503,7 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 	//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 		{
 			ReadGuard l(x_stateDB);
-			temp = m_postMine;
+			temp = asOf(_blockNumber);
 			n = temp.transactionsFrom(toAddress(_secret));
 		}
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
@@ -794,6 +794,11 @@ bytes Client::codeAt(Address _a, int _block) const
 	return asOf(_block).code(_a);
 }
 
+Transaction Client::transaction(h256 _transactionHash) const
+{
+	return Transaction(m_bc.transaction(_transactionHash), CheckSignature::Range);
+}
+
 Transaction Client::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = m_bc.block(_blockHash);
@@ -826,6 +831,33 @@ unsigned Client::uncleCount(h256 _blockHash) const
 	auto bl = m_bc.block(_blockHash);
 	RLP b(bl);
 	return b[2].itemCount();
+}
+
+Transactions Client::transactions(h256 _blockHash) const
+{
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	Transactions res;
+	for (unsigned i = 0; i < b[1].itemCount(); i++)
+		res.emplace_back(b[1][i].data(), CheckSignature::Range);
+	return res;
+}
+
+TransactionHashes Client::transactionHashes(h256 _blockHash) const
+{
+	return m_bc.transactionHashes(_blockHash);
+}
+
+LocalisedLogEntries Client::logs(unsigned _watchId) const
+{
+	LogFilter f;
+	try {
+		Guard l(m_filterLock);
+		f = m_filters.at(m_watches.at(_watchId).id).filter;
+	} catch (...) {
+		return LocalisedLogEntries();
+	}
+	return logs(f);
 }
 
 LocalisedLogEntries Client::logs(LogFilter const& _f) const

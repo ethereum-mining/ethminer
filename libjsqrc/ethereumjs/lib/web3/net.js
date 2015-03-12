@@ -14,44 +14,28 @@
     You should have received a copy of the GNU Lesser General Public License
     along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file const.js
+/** @file eth.js
  * @authors:
  *   Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  */
 
-/// required to define ETH_BIGNUMBER_ROUNDING_MODE
-if (process.env.NODE_ENV !== 'build') {
-    var BigNumber = require('bignumber.js'); // jshint ignore:line
-}
+var utils = require('../utils/utils');
 
-var ETH_UNITS = [ 
-    'wei', 
-    'Kwei', 
-    'Mwei', 
-    'Gwei', 
-    'szabo', 
-    'finney', 
-    'ether', 
-    'grand', 
-    'Mether', 
-    'Gether', 
-    'Tether', 
-    'Pether', 
-    'Eether', 
-    'Zether', 
-    'Yether', 
-    'Nether', 
-    'Dether', 
-    'Vether', 
-    'Uether' 
+/// @returns an array of objects describing web3.eth api methods
+var methods = [
+    // { name: 'getBalance', call: 'eth_balanceAt', outputFormatter: formatters.convertToBigNumber},
 ];
 
+/// @returns an array of objects describing web3.eth api properties
+var properties = [
+    { name: 'listening', getter: 'net_listening'},
+    { name: 'peerCount', getter: 'net_peerCount', outputFormatter: utils.toDecimal },
+];
+
+
 module.exports = {
-    ETH_PADDING: 32,
-    ETH_SIGNATURE_LENGTH: 4,
-    ETH_UNITS: ETH_UNITS,
-    ETH_BIGNUMBER_ROUNDING_MODE: { ROUNDING_MODE: BigNumber.ROUND_DOWN },
-    ETH_POLLING_TIMEOUT: 1000
+    methods: methods,
+    properties: properties
 };
 
