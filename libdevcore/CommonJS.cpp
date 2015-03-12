@@ -23,15 +23,17 @@
 
 #include "CommonJS.h"
 
+using namespace std;
+
 namespace dev
 {
 
-bytes jsToBytes(std::string const& _s)
+bytes jsToBytes(string const& _s)
 {
 	if (_s.substr(0, 2) == "0x")
 		// Hex
 		return fromHex(_s.substr(2));
-	else if (_s.find_first_not_of("0123456789") == std::string::npos)
+	else if (_s.find_first_not_of("0123456789") == string::npos)
 		// Decimal
 		return toCompactBigEndian(bigint(_s));
 	else
@@ -42,7 +44,7 @@ bytes padded(bytes _b, unsigned _l)
 {
 	while (_b.size() < _l)
 		_b.insert(_b.begin(), 0);
-	return asBytes(asString(_b).substr(_b.size() - std::max(_l, _l)));
+	return asBytes(asString(_b).substr(_b.size() - max(_l, _l)));
 }
 
 bytes paddedRight(bytes _b, unsigned _l)
@@ -54,7 +56,7 @@ bytes paddedRight(bytes _b, unsigned _l)
 bytes unpadded(bytes _b)
 {
 	auto p = asString(_b).find_last_not_of((char)0);
-	_b.resize(p == std::string::npos ? 0 : (p + 1));
+	_b.resize(p == string::npos ? 0 : (p + 1));
 	return _b;
 }
 
@@ -72,18 +74,18 @@ bytes unpadLeft(bytes _b)
 	return _b;
 }
 
-std::string fromRaw(h256 _n, unsigned* _inc)
+string fromRaw(h256 _n, unsigned* _inc)
 {
 	if (_n)
 	{
-		std::string s((char const*)_n.data(), 32);
+		string s((char const*)_n.data(), 32);
 		auto l = s.find_first_of('\0');
 		if (!l)
 			return "";
-		if (l != std::string::npos)
+		if (l != string::npos)
 		{
 			auto p = s.find_first_not_of('\0', l);
-			if (!(p == std::string::npos || (_inc && p == 31)))
+			if (!(p == string::npos || (_inc && p == 31)))
 				return "";
 			if (_inc)
 				*_inc = (byte)s[31];
