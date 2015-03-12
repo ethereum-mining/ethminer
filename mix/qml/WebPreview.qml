@@ -12,6 +12,7 @@ Item {
 	id: webPreview
 	property string pendingPageUrl: ""
 	property bool initialized: false
+	signal javaScriptMessage(var _level, string _sourceId, var _lineNb, string _content)
 
 	function setPreviewUrl(url) {
 		if (!initialized)
@@ -198,7 +199,6 @@ Item {
 					{
 						setPreviewUrl(text);
 					}
-
 					focus: true
 				}
 
@@ -216,7 +216,9 @@ Item {
 					anchors.verticalCenter: parent.verticalCenter
 					width: 21
 					height: 21
+					focus: true
 				}
+
 				CheckBox {
 					id: autoReloadOnSave
 					checked: true
@@ -227,6 +229,7 @@ Item {
 							text: qsTr("Auto reload on save")
 						}
 					}
+					focus: true
 				}
 			}
 		}
@@ -240,7 +243,7 @@ Item {
 				id: webView
 				experimental.settings.localContentCanAccessRemoteUrls: true
 				onJavaScriptConsoleMessage: {
-					console.log(sourceID + ":" + lineNumber + ":" + message);
+					webPreview.javaScriptMessage(level, sourceID, lineNumber, message);
 				}
 				onLoadingChanged: {
 					if (!loading) {

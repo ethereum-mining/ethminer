@@ -57,8 +57,6 @@ protected:
 	virtual void onStarting() {}
 	virtual void onStopping() {}
 
-	void seal(bytes& _b);
-
 private:
 	Host* m_host = nullptr;
 };

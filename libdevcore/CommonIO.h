@@ -35,6 +35,7 @@
 #include <sstream>
 #include <string>
 #include <iostream>
+#include <chrono_io/chrono_io>
 #include "Common.h"
 #include "Base64.h"
 
