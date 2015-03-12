@@ -22,6 +22,7 @@ function(createDefaultCacheConfig)
 	set(FATDB OFF CACHE BOOL "Build with ability to list entries in the Trie. Doubles DB size, slows everything down, but good for looking at state diffs and trie contents.")
 	set(JUSTTESTS OFF CACHE BOOL "Build only for tests.")
 	set(SOLIDITY ON CACHE BOOL "Build the Solidity language components (requried unless HEADLESS)")
+	set(USENPM OFF CACHE BOOL "Use npm to recompile ethereum.js if it was changed")
 endfunction()
 
 
@@ -125,7 +126,7 @@ configureProject()
 set (ETH_HAVE_WEBENGINE 1)
 
 message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
-message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}; FATDB: ${FATDB}; CHROMIUM: ${ETH_HAVE_WEBENGINE}")
+message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}; FATDB: ${FATDB}; CHROMIUM: ${ETH_HAVE_WEBENGINE}; USENPM: ${USENPM}")
 
 
 # Default TARGET_PLATFORM to "linux".

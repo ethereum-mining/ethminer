@@ -19,7 +19,6 @@
  * @date 2014
  */
 
-#define QWEBENGINEINSPECTOR 1
 #include <fstream>
 
 // Make sure boost/asio.hpp is included before windows.h.
@@ -68,6 +67,9 @@
 #include "OurWebThreeStubServer.h"
 #include "Transact.h"
 #include "Debugger.h"
+#include "DappLoader.h"
+#include "DappHost.h"
+#include "WebPage.h"
 #include "ui_Main.h"
 using namespace std;
 using namespace dev;
@@ -116,7 +118,9 @@ Address c_newConfig = Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main),
-	m_transact(this, this)
+	m_transact(this, this),
+	m_dappLoader(nullptr),
+	m_webPage(nullptr)
 {
 	QtWebEngine::initialize();
 	setWindowFlags(Qt::Window);
@@ -166,10 +170,12 @@ Main::Main(QWidget *parent) :
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 
+	WebPage* webPage= new WebPage(this);
+	m_webPage = webPage;
+	connect(webPage, &WebPage::consoleMessage, [this](QString const& _msg) { Main::addConsoleMessage(_msg, QString()); });
+	ui->webView->setPage(m_webPage);
 	connect(ui->webView, &QWebEngineView::loadFinished, [this]()
 	{
-//		f->disconnect();
-//		f->addToJavaScriptWindowObject("env", this, QWebFrame::QtOwnership);
 		auto f = ui->webView->page();
 		f->runJavaScript(contentsOfQResource(":/js/bignumber.min.js"));
 		f->runJavaScript(contentsOfQResource(":/js/webthree.js"));
@@ -181,6 +187,9 @@ Main::Main(QWidget *parent) :
 		ui->tabWidget->setTabText(0, ui->webView->title());
 	});
 
+	m_dappHost.reset(new DappHost(8081));
+	m_dappLoader = new DappLoader(this, web3());
+	connect(m_dappLoader, &DappLoader::dappReady, this, &Main::dappLoaded);
 //	ui->webView->page()->settings()->setAttribute(QWebEngineSettings::DeveloperExtrasEnabled, true);
 //	QWebEngineInspector* inspector = new QWebEngineInspector();
 //	inspector->setPage(page);
@@ -425,18 +434,23 @@ void Main::eval(QString const& _js)
 				s = "<span style=\"color: #840\">" + jsonEv.toString().toHtmlEscaped() + "</span>";
 			else
 				s = "<span style=\"color: #888\">unknown type</span>";
-			m_consoleHistory.push_back(qMakePair(_js, s));
-			s = "<html><body style=\"margin: 0;\">" Div(Mono "position: absolute; bottom: 0; border: 0px; margin: 0px; width: 100%");
-			for (auto const& i: m_consoleHistory)
-				s +=	"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em; color: #888; font-weight: bold\">&gt;</span><span style=\"color: #35d\">" + i.first.toHtmlEscaped() + "</span></div>"
-						"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em\">&nbsp;</span><span>" + i.second + "</span></div>";
-			s += "</div></body></html>";
-			ui->jsConsole->setHtml(s);
+			addConsoleMessage(_js, s);
 		};
 		ui->webView->page()->runJavaScript("JSON.stringify(___RET)", f2);
 	};
 	auto c = (_js.startsWith("{") || _js.startsWith("if ") || _js.startsWith("if(")) ? _js : ("___RET=(" + _js + ")");
 	ui->webView->page()->runJavaScript(c, f);
+}
+
+void Main::addConsoleMessage(QString const& _js, QString const& _s)
+{
+	m_consoleHistory.push_back(qMakePair(_js, _s));
+	QString r = "<html><body style=\"margin: 0;\">" Div(Mono "position: absolute; bottom: 0; border: 0px; margin: 0px; width: 100%");
+	for (auto const& i: m_consoleHistory)
+		r +=	"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em; color: #888; font-weight: bold\">&gt;</span><span style=\"color: #35d\">" + i.first.toHtmlEscaped() + "</span></div>"
+				"<div style=\"border-bottom: 1 solid #eee; width: 100%\"><span style=\"float: left; width: 1em\">&nbsp;</span><span>" + i.second + "</span></div>";
+	r += "</div></body></html>";
+	ui->jsConsole->setHtml(r);
 }
 
 static Public stringToPublic(QString const& _a)
@@ -780,15 +794,28 @@ void Main::on_jitvm_triggered()
 void Main::on_urlEdit_returnPressed()
 {
 	QString s = ui->urlEdit->text();
-	QRegExp r("([a-z]+://)?([^/]*)(.*)");
-	if (r.exactMatch(s))
-		if (r.cap(2).isEmpty())
-			s = (r.cap(1).isEmpty() ? "file://" : r.cap(1)) + r.cap(3);
+	QUrl url(s);
+	if (url.scheme().isEmpty() || url.scheme() == "eth")
+	{
+		try
+		{
+			//try do resolve dapp url
+			m_dappLoader->loadDapp(s);
+		}
+		catch (...)
+		{
+			qWarning() << boost::current_exception_diagnostic_information().c_str();
+		}
+	}
+
+	if (url.scheme().isEmpty())
+		if (url.path().indexOf('/') < url.path().indexOf('.'))
+			url.setScheme("file");
 		else
-			s = (r.cap(1).isEmpty() ? "http://" : r.cap(1)) + lookup(r.cap(2)) + r.cap(3);
-	else{}
-	qDebug() << s;
-	ui->webView->setUrl(s);
+			url.setScheme("http");
+	else {}
+	qDebug() << url.toString();
+	ui->webView->page()->setUrl(url);
 }
 
 void Main::on_nameReg_textChanged()
@@ -973,7 +1000,7 @@ void Main::refreshBlockChain()
 	// TODO: keep the same thing highlighted.
 	// TODO: refactor into MVC
 	// TODO: use get by hash/number
-	// TODO: transactions, log addresses, log topics
+	// TODO: transactions
 
 	auto const& bc = ethereum()->blockChain();
 	QStringList filters = ui->blockChainFilter->text().toLower().split(QRegExp("\\s+"), QString::SkipEmptyParts);
@@ -985,15 +1012,17 @@ void Main::refreshBlockChain()
 			h256 h(f.toStdString());
 			if (bc.isKnown(h))
 				blocks.insert(h);
+			for (auto const& b: bc.withBlockBloom(LogBloom().shiftBloom<3, 32>(sha3(h)), 0, -1))
+				blocks.insert(bc.numberHash(b));
 		}
 		else if (f.toLongLong() <= bc.number())
 			blocks.insert(bc.numberHash(u256(f.toLongLong())));
-		/*else if (f.size() == 40)
+		else if (f.size() == 40)
 		{
-			Address h(f[0]);
-			if (bc.(h))
-				blocks.insert(h);
-		}*/
+			Address h(f.toStdString());
+			for (auto const& b: bc.withBlockBloom(LogBloom().shiftBloom<3, 32>(sha3(h)), 0, -1))
+				blocks.insert(bc.numberHash(b));
+		}
 
 	QByteArray oldSelected = ui->blocks->count() ? ui->blocks->currentItem()->data(Qt::UserRole).toByteArray() : QByteArray();
 	ui->blocks->clear();
@@ -1834,4 +1863,10 @@ void Main::refreshWhispers()
 		QString item = QString("[%1 - %2s] *%3 %5 %4").arg(t).arg(e.ttl()).arg(e.workProved()).arg(toString(e.topic()).c_str()).arg(msg);
 		ui->whispers->addItem(item);
 	}
+}
+
+void Main::dappLoaded(Dapp& _dapp)
+{
+	QUrl url = m_dappHost->hostDapp(std::move(_dapp));
+	ui->webView->page()->setUrl(url);
 }

@@ -71,7 +71,8 @@ enum {
 	ExtraBlockHash,
 	ExtraTransactionAddress,
 	ExtraLogBlooms,
-	ExtraReceipts
+	ExtraReceipts,
+	ExtraBlocksBlooms
 };
 
 /**
@@ -132,6 +133,26 @@ public:
 	/// Get a list of transaction hashes for a given block. Thread-safe.
 	h256 numberHash(u256 _index) const { if (!_index) return genesisHash(); return queryExtras<BlockHash, ExtraBlockHash>(h256(_index), m_blockHashes, x_blockHashes, NullBlockHash).value; }
 
+	/** Get the block blooms for a number of blocks. Thread-safe.
+	 * @returns the object pertaining to the blocks:
+	 * level 0:
+	 * 0x, 0x + 1, .. (1x - 1)
+	 * 1x, 1x + 1, .. (2x - 1)
+	 * ...
+	 * (255x .. (256x - 1))
+	 * level 1:
+	 * 0x .. (1x - 1), 1x .. (2x - 1), ..., (255x .. (256x - 1))
+	 * 256x .. (257x - 1), 257x .. (258x - 1), ..., (511x .. (512x - 1))
+	 * ...
+	 * level n, index i, offset o:
+	 * i * (x ^ n) + o * x ^ (n - 1)
+	 */
+	BlocksBlooms blocksBlooms(unsigned _level, unsigned _index) const { return blocksBlooms(chunkId(_level, _index)); }
+	BlocksBlooms blocksBlooms(h256 const& _chunkId) const { return queryExtras<BlocksBlooms, ExtraBlocksBlooms>(_chunkId, m_blocksBlooms, x_blocksBlooms, NullBlocksBlooms); }
+	LogBloom blockBloom(unsigned _number) const { return blocksBlooms(chunkId(0, _number / c_bloomIndexSize)).blooms[_number % c_bloomIndexSize]; }
+	std::vector<unsigned> withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest) const;
+	std::vector<unsigned> withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest, unsigned _topLevel, unsigned _index) const;
+
 	/// Get a transaction from its hash. Thread-safe.
 	bytes transaction(h256 _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytes(); return transaction(ta.blockHash, ta.index); }
 
@@ -188,6 +209,8 @@ public:
 	void garbageCollect(bool _force = false);
 
 private:
+	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
+
 	void open(std::string _path, bool _killExisting = false);
 	void close();
 
@@ -230,6 +253,8 @@ private:
 	mutable TransactionAddressHash m_transactionAddresses;
 	mutable SharedMutex x_blockHashes;
 	mutable BlockHashHash m_blockHashes;
+	mutable SharedMutex x_blocksBlooms;
+	mutable BlocksBloomsHash m_blocksBlooms;
 
 	using CacheID = std::pair<h256, unsigned>;
 	mutable Mutex x_cacheUsage;

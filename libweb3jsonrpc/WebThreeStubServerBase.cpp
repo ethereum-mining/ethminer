@@ -128,10 +128,6 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 		filter.withEarliest(_json["earliest"].asInt());
 	if (_json["latest"].isInt())
 		filter.withLatest(_json["lastest"].asInt());
-	if (_json["max"].isInt())
-		filter.withMax(_json["max"].asInt());
-	if (_json["skip"].isInt())
-		filter.withSkip(_json["skip"].asInt());
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
