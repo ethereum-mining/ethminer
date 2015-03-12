@@ -54,10 +54,10 @@ public:
 	static bytes createGenesisBlock(h256 _stateRoot)
 	{
 		RLPStream block(3);
-		block.appendList(16)
+		block.appendList(15)
 			<< h256() << EmptyListSHA3 << h160() << _stateRoot << EmptyTrie << EmptyTrie
 			<< LogBloom() << c_mixGenesisDifficulty << 0 << 1000000 << 0 << (unsigned)0
-			<< std::string() << h256() << h256() << h64(u64(42));
+			<< std::string() << h256() << h64(u64(42));
 		block.appendRaw(RLPEmptyList);
 		block.appendRaw(RLPEmptyList);
 		return block.out();
