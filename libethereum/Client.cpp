@@ -493,7 +493,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	m_tq.attemptImport(t.rlp());
 }
 
-bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
 {
 	bytes out;
 	try
@@ -503,7 +503,7 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 	//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 		{
 			ReadGuard l(x_stateDB);
-			temp = m_postMine;
+			temp = asOf(_blockNumber);
 			n = temp.transactionsFrom(toAddress(_secret));
 		}
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
@@ -794,6 +794,11 @@ bytes Client::codeAt(Address _a, int _block) const
 	return asOf(_block).code(_a);
 }
 
+Transaction Client::transaction(h256 _transactionHash) const
+{
+	return Transaction(m_bc.transaction(_transactionHash), CheckSignature::Range);
+}
+
 Transaction Client::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = m_bc.block(_blockHash);
@@ -828,13 +833,38 @@ unsigned Client::uncleCount(h256 _blockHash) const
 	return b[2].itemCount();
 }
 
+Transactions Client::transactions(h256 _blockHash) const
+{
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	Transactions res;
+	for (unsigned i = 0; i < b[1].itemCount(); i++)
+		res.emplace_back(b[1][i].data(), CheckSignature::Range);
+	return res;
+}
+
+TransactionHashes Client::transactionHashes(h256 _blockHash) const
+{
+	return m_bc.transactionHashes(_blockHash);
+}
+
+LocalisedLogEntries Client::logs(unsigned _watchId) const
+{
+	LogFilter f;
+	try {
+		Guard l(m_filterLock);
+		f = m_filters.at(m_watches.at(_watchId).id).filter;
+	} catch (...) {
+		return LocalisedLogEntries();
+	}
+	return logs(f);
+}
+
 LocalisedLogEntries Client::logs(LogFilter const& _f) const
 {
 	LocalisedLogEntries ret;
 	unsigned begin = min<unsigned>(m_bc.number() + 1, (unsigned)_f.latest());
 	unsigned end = min(m_bc.number(), min(begin, (unsigned)_f.earliest()));
-	unsigned m = _f.max();
-	unsigned s = _f.skip();
 
 	// Handle pending transactions differently as they're not on the block chain.
 	if (begin > m_bc.number())
@@ -847,68 +877,52 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 			auto sha3 = m_postMine.pending()[i].sha3();
 			LogEntries le = _f.matches(tr);
 			if (le.size())
-			{
-				for (unsigned j = 0; j < le.size() && ret.size() != m; ++j)
-					if (s)
-						s--;
-					else
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin, sha3));
-			}
+				for (unsigned j = 0; j < le.size(); ++j)
+					ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin, sha3));
 		}
 		begin = m_bc.number();
 	}
 
+	set<unsigned> matchingBlocks;
+	for (auto const& i: _f.bloomPossibilities())
+		for (auto u: m_bc.withBlockBloom(i, end, begin))
+			matchingBlocks.insert(u);
+
 #if ETH_DEBUG
-	// fill these params
-	unsigned skipped = 0;
 	unsigned falsePos = 0;
 #endif
-	auto h = m_bc.numberHash(begin);
-	unsigned n = begin;
-	for (; ret.size() != m && n != end; n--, h = m_bc.details(h).parent)
+	for (auto n: matchingBlocks)
 	{
 #if ETH_DEBUG
 		int total = 0;
 #endif
-		// check block bloom
-		auto info = m_bc.info(h);
+		auto h = m_bc.numberHash(n);
 		auto receipts = m_bc.receipts(h).receipts;
-		if (_f.matches(info.logBloom))
-			for (size_t i = 0; i < receipts.size(); i++)
+		for (size_t i = 0; i < receipts.size(); i++)
+		{
+			TransactionReceipt receipt = receipts[i];
+			if (_f.matches(receipt.bloom()))
 			{
-				TransactionReceipt receipt = receipts[i];
-				if (_f.matches(receipt.bloom()))
+				auto info = m_bc.info(h);
+				auto h = transaction(info.hash, i).sha3();
+				LogEntries le = _f.matches(receipt);
+				if (le.size())
 				{
-					auto h = transaction(info.hash, i).sha3();
-					LogEntries le = _f.matches(receipt);
-					if (le.size())
-					{
 #if ETH_DEBUG
-						total += le.size();
+					total += le.size();
 #endif
-						for (unsigned j = 0; j < le.size() && ret.size() != m; ++j)
-						{
-							if (s)
-								s--;
-							else
-								ret.insert(ret.begin(), LocalisedLogEntry(le[j], n, h));
-						}
-					}
+					for (unsigned j = 0; j < le.size(); ++j)
+						ret.insert(ret.begin(), LocalisedLogEntry(le[j], n, h));
 				}
-#if ETH_DEBUG
-				if (!total)
-					falsePos++;
-#endif
 			}
 #if ETH_DEBUG
-		else
-			skipped++;
+			if (!total)
+				falsePos++;
 #endif
-		if (n == end)
-			break;
+		}
 	}
 #if ETH_DEBUG
-	cdebug << (begin - n) << "searched; " << skipped << "skipped; " << falsePos << "false +ves";
+	cdebug << matchingBlocks.size() << "searched from" << (end - begin) << "skipped; " << falsePos << "false +ves";
 #endif
 	return ret;
 }

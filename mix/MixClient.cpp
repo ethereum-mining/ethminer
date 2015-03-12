@@ -274,13 +274,13 @@ void MixClient::flushTransactions()
 {
 }
 
-bytes MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+bytes MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
 {
 	u256 n;
 	State temp;
 	{
 		ReadGuard lr(x_state);
-		temp = m_state;
+		temp = asOf(_blockNumber);
 		n = temp.transactionsFrom(toAddress(_secret));
 	}
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
@@ -331,7 +331,6 @@ eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 	unsigned lastBlock = bc().number();
 	unsigned block = std::min<unsigned>(lastBlock, (unsigned)_f.latest());
 	unsigned end = std::min(lastBlock, std::min(block, (unsigned)_f.earliest()));
-	unsigned skip = _f.skip();
 	// Pending transactions
 	if (block > bc().number())
 	{
@@ -341,9 +340,8 @@ eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 			// Might have a transaction that contains a matching log.
 			TransactionReceipt const& tr = m_state.receipt(i);
 			LogEntries logEntries = _f.matches(tr);
-			for (unsigned entry = 0; entry < logEntries.size() && ret.size() != _f.max(); ++entry)
+			for (unsigned entry = 0; entry < logEntries.size(); ++entry)
 				ret.insert(ret.begin(), LocalisedLogEntry(logEntries[entry], block));
-			skip -= std::min(skip, static_cast<unsigned>(logEntries.size()));
 		}
 		block = bc().number();
 	}
@@ -355,12 +353,8 @@ eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 		if (_f.matches(bc().info(h).logBloom))
 			for (TransactionReceipt receipt: bc().receipts(h).receipts)
 				if (_f.matches(receipt.bloom()))
-				{
-					LogEntries logEntries = _f.matches(receipt);
-					for (unsigned entry = skip; entry < logEntries.size() && ret.size() != _f.max(); ++entry)
-						ret.insert(ret.begin(), LocalisedLogEntry(logEntries[entry], block));
-					skip -= std::min(skip, static_cast<unsigned>(logEntries.size()));
-				}
+					for (auto const& e: _f.matches(receipt))
+						ret.insert(ret.begin(), LocalisedLogEntry(e, block));
 		h = bc().details(h).parent;
 	}
 	return ret;
@@ -462,6 +456,11 @@ eth::BlockDetails MixClient::blockDetails(h256 _hash) const
 	return bc().details(_hash);
 }
 
+Transaction MixClient::transaction(h256 _transactionHash) const
+{
+	return Transaction(bc().transaction(_transactionHash), CheckSignature::Range);
+}
+
 eth::Transaction MixClient::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = bc().block(_blockHash);
@@ -494,6 +493,21 @@ unsigned MixClient::uncleCount(h256 _blockHash) const
 	auto bl = bc().block(_blockHash);
 	RLP b(bl);
 	return b[2].itemCount();
+}
+
+Transactions MixClient::transactions(h256 _blockHash) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	Transactions res;
+	for (unsigned i = 0; i < b[1].itemCount(); i++)
+		res.emplace_back(b[1][i].data(), CheckSignature::Range);
+	return res;
+}
+
+TransactionHashes MixClient::transactionHashes(h256 _blockHash) const
+{
+	return bc().transactionHashes(_blockHash);
 }
 
 unsigned MixClient::number() const
