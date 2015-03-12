@@ -45,18 +45,9 @@ bytes const& Ethasher::cache(BlockInfo const& _header)
 	RecursiveGuard l(x_this);
 	if (!m_caches.count(_header.seedHash))
 	{
-		try {
-			boost::filesystem::create_directories(getDataDir() + "/ethashcache");
-		} catch (...) {}
-		std::string memoFile = getDataDir() + "/ethashcache/" + toHex(_header.seedHash.ref().cropped(0, 4)) + ".cache";
-		m_caches[_header.seedHash] = contents(memoFile);
-		if (m_caches[_header.seedHash].empty())
-		{
-			ethash_params p = params((unsigned)_header.number);
-			m_caches[_header.seedHash].resize(p.cache_size);
-			ethash_prep_light(m_caches[_header.seedHash].data(), &p, _header.seedHash.data());
-			writeFile(memoFile, m_caches[_header.seedHash]);
-		}
+		ethash_params p = params((unsigned)_header.number);
+		m_caches[_header.seedHash].resize(p.cache_size);
+		ethash_prep_light(m_caches[_header.seedHash].data(), &p, _header.seedHash.data());
 	}
 	return m_caches[_header.seedHash];
 }
@@ -71,6 +62,9 @@ bytesConstRef Ethasher::full(BlockInfo const& _header)
 			delete [] m_fulls.begin()->second.data();
 			m_fulls.erase(m_fulls.begin());
 		}
+		try {
+			boost::filesystem::create_directories(getDataDir() + "/ethashcache");
+		} catch (...) {}
 		std::string memoFile = getDataDir() + "/ethashcache/" + toHex(_header.seedHash.ref().cropped(0, 4)) + ".full";
 		m_fulls[_header.seedHash] = contentsNew(memoFile);
 		if (!m_fulls[_header.seedHash])

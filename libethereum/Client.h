@@ -46,7 +46,6 @@
 
 namespace dev
 {
-
 namespace eth
 {
 

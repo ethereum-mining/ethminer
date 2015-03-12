@@ -331,7 +331,6 @@ eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 	unsigned lastBlock = bc().number();
 	unsigned block = std::min<unsigned>(lastBlock, (unsigned)_f.latest());
 	unsigned end = std::min(lastBlock, std::min(block, (unsigned)_f.earliest()));
-	unsigned skip = _f.skip();
 	// Pending transactions
 	if (block > bc().number())
 	{
@@ -341,9 +340,8 @@ eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 			// Might have a transaction that contains a matching log.
 			TransactionReceipt const& tr = m_state.receipt(i);
 			LogEntries logEntries = _f.matches(tr);
-			for (unsigned entry = 0; entry < logEntries.size() && ret.size() != _f.max(); ++entry)
+			for (unsigned entry = 0; entry < logEntries.size(); ++entry)
 				ret.insert(ret.begin(), LocalisedLogEntry(logEntries[entry], block));
-			skip -= std::min(skip, static_cast<unsigned>(logEntries.size()));
 		}
 		block = bc().number();
 	}
@@ -355,12 +353,8 @@ eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 		if (_f.matches(bc().info(h).logBloom))
 			for (TransactionReceipt receipt: bc().receipts(h).receipts)
 				if (_f.matches(receipt.bloom()))
-				{
-					LogEntries logEntries = _f.matches(receipt);
-					for (unsigned entry = skip; entry < logEntries.size() && ret.size() != _f.max(); ++entry)
-						ret.insert(ret.begin(), LocalisedLogEntry(logEntries[entry], block));
-					skip -= std::min(skip, static_cast<unsigned>(logEntries.size()));
-				}
+					for (auto const& e: _f.matches(receipt))
+						ret.insert(ret.begin(), LocalisedLogEntry(e, block));
 		h = bc().details(h).parent;
 	}
 	return ret;
