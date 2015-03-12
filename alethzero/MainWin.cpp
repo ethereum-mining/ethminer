@@ -1355,7 +1355,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></h5>";
 			s << "<br/>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>";
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
-			s << "<br/>Seed hash: <b>" << info.seedHash << "</b>";
+			s << "<br/>Seed hash: <b>" << info.seedHash() << "</b>";
 			s << "<br/>Mix hash: <b>" << info.mixHash << "</b>";
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
 			s << "<br/>Hash w/o nonce: <b>" << info.headerHash(WithoutNonce) << "</b>";
@@ -1381,7 +1381,7 @@ void Main::on_blocks_currentItemChanged()
 				s << line << "Parent: <b>" << uncle.parentHash << "</b>";
 				s << line << "Number: <b>" << uncle.number << "</b>";
 				s << line << "Coinbase: <b>" << pretty(uncle.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << uncle.coinbaseAddress;
-				s << line << "Seed hash: <b>" << uncle.seedHash << "</b>";
+				s << line << "Seed hash: <b>" << uncle.seedHash() << "</b>";
 				s << line << "Mix hash: <b>" << uncle.mixHash << "</b>";
 				s << line << "Nonce: <b>" << uncle.nonce << "</b>";
 				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutNonce) << "</b>";
