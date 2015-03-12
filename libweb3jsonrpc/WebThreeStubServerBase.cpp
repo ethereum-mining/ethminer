@@ -554,7 +554,7 @@ Json::Value WebThreeStubServerBase::eth_getBlockByHash(string const& _blockHash,
 {
 	try
 	{
-		auto h = jsToFixed<32>(_hash);
+		auto h = jsToFixed<32>(_blockHash);
 		if (_includeTransactions)
 			return toJson(client()->blockInfo(h), client()->transactions(h));
 		else
@@ -570,7 +570,7 @@ Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNum
 {
 	try
 	{
-		auto h = client()->hashFromNumber(number);
+		auto h = client()->hashFromNumber(jsToInt(_blockNumber));
 		if (_includeTransactions)
 			return toJson(client()->blockInfo(h), client()->transactions(h));
 		else
@@ -751,7 +751,8 @@ Json::Value WebThreeStubServerBase::eth_getFilterChanges(string const& _filterId
 {
 	try
 	{
-		auto entries = client()->checkWatch(jsToInt(_filterId));
+		int id = jsToInt(_filterId);
+		auto entries = client()->checkWatch(id);
 		if (entries.size())
 			cnote << "FIRING WATCH" << id << entries.size();
 		return toJson(entries);
@@ -932,12 +933,12 @@ string WebThreeStubServerBase::shh_newFilter(Json::Value const& _json)
 	}
 }
 
-
 bool WebThreeStubServerBase::shh_uninstallFilter(string const& _filterId)
 {
 	try
 	{
 		face()->uninstallWatch(jsToInt(_filterId));
+		return true;
 	}
 	catch (...)
 	{
