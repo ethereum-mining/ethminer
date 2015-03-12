@@ -95,8 +95,8 @@ public:
 	virtual unsigned installWatch(LogFilter const& _filter) = 0;
 	virtual unsigned installWatch(h256 _filterId) = 0;
 	virtual bool uninstallWatch(unsigned _watchId) = 0;
-	LocalisedLogEntries peekWatchSafe(unsigned _watchId) const { try { return peekWatch(_watchId); } catch (...) { return LocalisedLogEntries; } }
-	LocalisedLogEntries checkWatchSafe(unsigned _watchId) { try { return checkWatch(_watchId); } catch (...) { return LocalisedLogEntries; } }
+	LocalisedLogEntries peekWatchSafe(unsigned _watchId) const { try { return peekWatch(_watchId); } catch (...) { return LocalisedLogEntries(); } }
+	LocalisedLogEntries checkWatchSafe(unsigned _watchId) { try { return checkWatch(_watchId); } catch (...) { return LocalisedLogEntries(); } }
 	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const = 0;
 	virtual LocalisedLogEntries checkWatch(unsigned _watchId) = 0;
 

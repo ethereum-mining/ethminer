@@ -328,7 +328,7 @@ LocalisedLogEntries Client::peekWatch(unsigned _watchId) const
 {
 	Guard l(m_filterLock);
 
-if ETH_DEBUG
+#if ETH_DEBUG
 	cdebug << "peekWatch" << _watchId;
 #endif
 	auto& w = m_watches.at(_watchId);
