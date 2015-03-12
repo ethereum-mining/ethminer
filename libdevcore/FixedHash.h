@@ -87,6 +87,8 @@ public:
 	bool operator!=(FixedHash const& _c) const { return m_data != _c.m_data; }
 	bool operator<(FixedHash const& _c) const { for (unsigned i = 0; i < N; ++i) if (m_data[i] < _c.m_data[i]) return true; else if (m_data[i] > _c.m_data[i]) return false; return false; }
 	bool operator>=(FixedHash const& _c) const { return !operator<(_c); }
+	bool operator<=(FixedHash const& _c) const { return operator==(_c) || operator<(_c); }
+	bool operator>(FixedHash const& _c) const { return !operator<=(_c); }
 
 	// The obvious binary operators.
 	FixedHash& operator^=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] ^= _c.m_data[i]; return *this; }
