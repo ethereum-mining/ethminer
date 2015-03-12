@@ -25,6 +25,17 @@
 #include <stddef.h>
 #include "compiler.h"
 
+#define ETHASH_REVISION 19
+#define ETHASH_DAGSIZE_BYTES_INIT 1073741824U // 2**30
+#define ETHASH_DAG_GROWTH 113000000U
+#define ETHASH_EPOCH_LENGTH 30000U
+#define ETHASH_MIX_BYTES 128
+#define ETHASH_DAG_PARENTS 256
+#define ETHASH_CACHE_ROUNDS 3
+#define ETHASH_ACCESSES 64
+
+// *********************
+// TODO: Remove once other code moved over to compliant naming scheme.
 #define REVISION 19
 #define DAGSIZE_BYTES_INIT 1073741824U // 2**30
 #define DAG_GROWTH 113000000U
@@ -33,6 +44,7 @@
 #define DAG_PARENTS 256
 #define CACHE_ROUNDS 3
 #define ACCESSES 64
+// *********************
 
 #ifdef __cplusplus
 extern "C" {
