@@ -37,12 +37,6 @@ void ethash_calculate_dag_item(
         ethash_cache const *cache
 );
 
-void ethash_quick_hash(
-        uint8_t return_hash[32],
-        const uint8_t header_hash[32],
-        const uint64_t nonce,
-        const uint8_t mix_hash[32]);
-
 #ifdef __cplusplus
 }
 #endif
