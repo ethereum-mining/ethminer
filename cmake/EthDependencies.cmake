@@ -134,14 +134,24 @@ if (NOT HEADLESS)
 		message(" - windeployqt path: ${WINDEPLOYQT_APP}")
 	endif()
 
-# TODO check node && npm version
-	find_program(ETH_NODE node)
-	string(REGEX REPLACE "node" "" ETH_NODE_DIRECTORY ${ETH_NODE})
-	message(" - nodejs location : ${ETH_NODE}")
+	if (USENPM)
 
-	find_program(ETH_NPM npm)
-	string(REGEX REPLACE "npm" "" ETH_NPM_DIRECTORY ${ETH_NPM})
-	message(" - npm location    : ${ETH_NPM}")
+		# TODO check node && npm version
+		find_program(ETH_NODE node)
+		string(REGEX REPLACE "node" "" ETH_NODE_DIRECTORY ${ETH_NODE})
+		message(" - nodejs location : ${ETH_NODE}")
+
+		find_program(ETH_NPM npm)
+		string(REGEX REPLACE "npm" "" ETH_NPM_DIRECTORY ${ETH_NPM})
+		message(" - npm location    : ${ETH_NPM}")
+
+		if (NOT ETH_NODE)
+			message(FATAL_ERROR "node not found!")
+		endif()
+		if (NOT ETH_NPM)
+			message(FATAL_ERROR "npm not found!")
+		endif()
+	endif()
 
 endif() #HEADLESS
 
