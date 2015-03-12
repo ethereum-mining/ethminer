@@ -65,7 +65,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
 {
 #if ALL_COMPILERS_ARE_CPP11_COMPLIANT
-	static thread_local h256 h = _h ^ h256(u256(_sub));
+	static thread_local h256 h = _h ^ sha3(h256(u256(_sub)));
 	return ldb::Slice((char const*)&h, 32);
 #else
 	static boost::thread_specific_ptr<h256> t_h;
@@ -140,7 +140,7 @@ void BlockChain::open(std::string _path, bool _killExisting)
 		// Insert details of genesis block.
 		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {});
 		auto r = m_details[m_genesisHash].rlp();
-		m_extrasDB->Put(m_writeOptions, ldb::Slice((char const*)&m_genesisHash, 32), (ldb::Slice)dev::ref(r));
+		m_extrasDB->Put(m_writeOptions, toSlice(m_genesisHash, ExtraDetails), (ldb::Slice)dev::ref(r));
 	}
 
 	checkConsistency();
@@ -703,7 +703,7 @@ bool BlockChain::isKnown(h256 _hash) const
 			return true;
 	}
 	string d;
-	m_blocksDB->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
+	m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
 	return !!d.size();
 }
 
@@ -720,7 +720,7 @@ bytes BlockChain::block(h256 _hash) const
 	}
 
 	string d;
-	m_blocksDB->Get(m_readOptions, ldb::Slice((char const*)&_hash, 32), &d);
+	m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
 
 	if (!d.size())
 	{
