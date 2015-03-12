@@ -265,12 +265,22 @@ std::string WebThreeStubServerBase::eth_balanceAt(string const& _address)
 
 Json::Value WebThreeStubServerBase::eth_blockByHash(std::string const& _hash)
 {
-	return toJson(client()->blockInfo(jsToFixed<32>(_hash)));
+	BlockInfo bi;
+	try {
+		bi = client()->blockInfo(jsToFixed<32>(_hash));
+	}
+	catch (...) {}
+	return toJson(bi);
 }
 
 Json::Value WebThreeStubServerBase::eth_blockByNumber(int _number)
 {
-	return toJson(client()->blockInfo(client()->hashFromNumber(_number)));
+	BlockInfo bi;
+	try {
+		bi = client()->blockInfo(client()->hashFromNumber(_number));
+	}
+	catch (...) {}
+	return toJson(bi);
 }
 
 static TransactionSkeleton toTransaction(Json::Value const& _json)
