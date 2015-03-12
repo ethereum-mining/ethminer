@@ -23,6 +23,7 @@ function(createDefaultCacheConfig)
 	set(JUSTTESTS OFF CACHE BOOL "Build only for tests.")
 	set(SOLIDITY ON CACHE BOOL "Build the Solidity language components (requried unless HEADLESS)")
 	set(USENPM OFF CACHE BOOL "Use npm to recompile ethereum.js if it was changed")
+	set(ETHASHCL OFF CACHE BOOL "Build in support for GPU mining via OpenCL")
 endfunction()
 
 
@@ -43,6 +44,10 @@ function(configureProject)
 			message(FATAL_ERROR "VM tracing requires debug.")
 		endif ()
 	endif ()
+
+	if (ETHASHCL)
+		add_definitions(-DETH_ETHASHCL)
+	endif()
 
 	if (EVMJIT)
 		add_definitions(-DETH_EVMJIT)
@@ -181,6 +186,10 @@ add_subdirectory(libdevcrypto)
 add_subdirectory(libwhisper)
 
 add_subdirectory(libethash)
+if (ETHASHCL)
+	add_subdirectory(libethash-cl)
+endif ()
+
 add_subdirectory(libethcore)
 add_subdirectory(libevm)
 add_subdirectory(libethereum)
