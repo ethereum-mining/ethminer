@@ -1000,7 +1000,7 @@ void Main::refreshBlockChain()
 	// TODO: keep the same thing highlighted.
 	// TODO: refactor into MVC
 	// TODO: use get by hash/number
-	// TODO: transactions, log addresses, log topics
+	// TODO: transactions
 
 	auto const& bc = ethereum()->blockChain();
 	QStringList filters = ui->blockChainFilter->text().toLower().split(QRegExp("\\s+"), QString::SkipEmptyParts);
@@ -1012,15 +1012,17 @@ void Main::refreshBlockChain()
 			h256 h(f.toStdString());
 			if (bc.isKnown(h))
 				blocks.insert(h);
+			for (auto const& b: bc.withBlockBloom(LogBloom().shiftBloom<3, 32>(sha3(h)), 0, -1))
+				blocks.insert(bc.numberHash(b));
 		}
 		else if (f.toLongLong() <= bc.number())
 			blocks.insert(bc.numberHash(u256(f.toLongLong())));
-		/*else if (f.size() == 40)
+		else if (f.size() == 40)
 		{
-			Address h(f[0]);
-			if (bc.(h))
-				blocks.insert(h);
-		}*/
+			Address h(f.toStdString());
+			for (auto const& b: bc.withBlockBloom(LogBloom().shiftBloom<3, 32>(sha3(h)), 0, -1))
+				blocks.insert(bc.numberHash(b));
+		}
 
 	QByteArray oldSelected = ui->blocks->count() ? ui->blocks->currentItem()->data(Qt::UserRole).toByteArray() : QByteArray();
 	ui->blocks->clear();

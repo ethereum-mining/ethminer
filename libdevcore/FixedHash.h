@@ -154,25 +154,17 @@ public:
 		}
 	};
 
-	inline FixedHash<32> bloom() const
-	{
-		FixedHash<32> ret;
-		for (auto i: m_data)
-			ret[i / 8] |= 1 << (i % 8);
-		return ret;
-	}
-
 	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h)
 	{
-		return (*this |= _h.template nbloom<P, N>());
+		return (*this |= _h.template bloom<P, N>());
 	}
 
 	template <unsigned P, unsigned M> inline bool containsBloom(FixedHash<M> const& _h)
 	{
-		return contains(_h.template nbloom<P, N>());
+		return contains(_h.template bloom<P, N>());
 	}
 
-	template <unsigned P, unsigned M> inline FixedHash<M> nbloom() const
+	template <unsigned P, unsigned M> inline FixedHash<M> bloom() const
 	{
 		static const unsigned c_bloomBits = M * 8;
 		unsigned mask = c_bloomBits - 1;
