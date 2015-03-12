@@ -205,7 +205,7 @@ Rectangle
 			headerVisible : false
 			onDoubleClicked:
 			{
-				var log = logsModel.get((logsTable.currentRow));
+				var log = logsModel.get(logsTable.currentRow);
 				if (log)
 					appContext.toClipboard(log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content);
 			}
