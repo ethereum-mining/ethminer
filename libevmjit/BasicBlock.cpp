@@ -351,8 +351,8 @@ void BasicBlock::dump(std::ostream& _out, bool _dotOutput)
 	}
 
 	out << (_dotOutput ? "| " : "Instructions:\n");
-	//for (auto ins = m_llvmBB->begin(); ins != m_llvmBB->end(); ++ins)
-	//	out << *ins << (_dotOutput ? "\\l" : "\n");
+	for (auto ins = m_llvmBB->begin(); ins != m_llvmBB->end(); ++ins)
+		out << *ins << (_dotOutput ? "\\l" : "\n");
 
 	if (! _dotOutput)
 		out << "Current stack (offset = " << m_tosOffset << "):\n";
