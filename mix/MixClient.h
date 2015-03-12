@@ -52,7 +52,7 @@ public:
 	Address transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice) override;
 	void inject(bytesConstRef _rlp) override;
 	void flushTransactions() override;
-	bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice) override;
+	bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber) override;
 	u256 balanceAt(Address _a, int _block) const override;
 	u256 countAt(Address _a, int _block) const override;
 	u256 stateAt(Address _a, u256 _l, int _block) const override;
@@ -68,10 +68,13 @@ public:
 	h256 hashFromNumber(unsigned _number) const override;
 	eth::BlockInfo blockInfo(h256 _hash) const override;
 	eth::BlockDetails blockDetails(h256 _hash) const override;
+	eth::Transaction transaction(h256 _transactionHash) const override;
 	eth::Transaction transaction(h256 _blockHash, unsigned _i) const override;
 	eth::BlockInfo uncle(h256 _blockHash, unsigned _i) const override;
 	unsigned transactionCount(h256 _blockHash) const override;
 	unsigned uncleCount(h256 _blockHash) const override;
+	eth::Transactions transactions(h256 _blockHash) const override;
+	eth::TransactionHashes transactionHashes(h256 _blockHash) const override;
 	unsigned number() const override;
 	eth::Transactions pending() const override;
 	eth::StateDiff diff(unsigned _txi, h256 _block) const override;
