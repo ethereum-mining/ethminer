@@ -1012,7 +1012,7 @@ void Main::refreshBlockChain()
 			h256 h(f.toStdString());
 			if (bc.isKnown(h))
 				blocks.insert(h);
-			for (auto const& b: bc.withBlockBloom(LogBloom().shiftBloom<3, 32>(sha3(h)), 0, -1))
+			for (auto const& b: bc.withBlockBloom(LogBloom().shiftBloom<3>(sha3(h)), 0, -1))
 				blocks.insert(bc.numberHash(b));
 		}
 		else if (f.toLongLong() <= bc.number())
@@ -1020,7 +1020,7 @@ void Main::refreshBlockChain()
 		else if (f.size() == 40)
 		{
 			Address h(f.toStdString());
-			for (auto const& b: bc.withBlockBloom(LogBloom().shiftBloom<3, 32>(sha3(h)), 0, -1))
+			for (auto const& b: bc.withBlockBloom(LogBloom().shiftBloom<3>(sha3(h)), 0, -1))
 				blocks.insert(bc.numberHash(b));
 		}
 
@@ -1351,7 +1351,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<h3>" << h << "</h3>";
 			s << "<h4>#" << info.number;
 			s << "&nbsp;&emsp;&nbsp;<b>" << timestamp << "</b></h4>";
-			s << "<br/>D/TD: <b>2^" << log2((double)info.difficulty) << "</b>/<b>2^" << log2((double)details.totalDifficulty) << "</b>";
+			s << "<br/>D/TD: <b>" << info.difficulty << "</b>/<b>" << details.totalDifficulty << "</b> = 2^" << log2((double)info.difficulty) << "/2^" << log2((double)details.totalDifficulty);
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></h5>";
 			s << "<br/>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>";
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
@@ -1364,10 +1364,13 @@ void Main::on_blocks_currentItemChanged()
 			{
 				auto e = Ethasher::eval(info);
 				s << "<br/>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")";
+				s << "<br/>Parent: <b>" << info.parentHash << "</b>";
 			}
 			else
+			{
 				s << "<br/>Proof-of-Work: <i>Phil has nothing to prove</i>";
-			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
+				s << "<br/>Parent: <i>It was a virgin birth</i>";
+			}
 //			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
 			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
@@ -1426,15 +1429,12 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
 			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
 			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
-			if (tx.isCreation())
+			if (!tx.data().empty())
 			{
-				if (tx.data().size())
+				if (tx.isCreation())
 					s << "<h4>Code</h4>" << disassemble(tx.data());
-			}
-			else
-			{
-				if (tx.data().size())
-					s << dev::memDump(tx.data(), 16, true);
+				else
+					s << "<h4>Data</h4>" << dev::memDump(tx.data(), 16, true);
 			}
 			s << "<div>Hex: " Span(Mono) << toHex(block[1][txi].data()) << "</span></div>";
 			s << "<hr/>";
@@ -1442,7 +1442,7 @@ void Main::on_blocks_currentItemChanged()
 			auto r = receipt.rlp();
 			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 			s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
-			s << renderDiff(ethereum()->diff(txi, h));
+			s << "<h4>Diff</h4>" << renderDiff(ethereum()->diff(txi, h));
 			ui->debugCurrent->setEnabled(true);
 			ui->debugDumpState->setEnabled(true);
 			ui->debugDumpStatePre->setEnabled(true);
