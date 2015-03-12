@@ -324,20 +324,22 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			WriteGuard l(x_blockHashes);
 			m_blockHashes[h256(bi.number)].value = newHash;
 		}
+		h256s alteredBlooms;
 		{
 			WriteGuard l(x_blocksBlooms);
 			LogBloom blockBloom = bi.logBloom;
-			blockBloom.shiftBloom<3, 32>(sha3(bi.coinbaseAddress.ref()));
+			blockBloom.shiftBloom<3>(sha3(bi.coinbaseAddress.ref()));
 			unsigned index = (unsigned)bi.number;
 			for (unsigned level = 0; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
 			{
-				unsigned i = index / c_bloomIndexSize % c_bloomIndexSize;
+				unsigned i = index / c_bloomIndexSize;
 				unsigned o = index % c_bloomIndexSize;
-				m_blocksBlooms[chunkId(level, i)].blooms[o] |= blockBloom;
+				alteredBlooms.push_back(chunkId(level, i));
+				m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
 			}
 		}
 		// Collate transaction hashes and remember who they were.
-		h256s tas;
+		h256s newTransactionAddresses;
 		{
 			RLP blockRLP(_block);
 			TransactionAddress ta;
@@ -345,8 +347,8 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			WriteGuard l(x_transactionAddresses);
 			for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
 			{
-				tas.push_back(sha3(blockRLP[1][ta.index].data()));
-				m_transactionAddresses[tas.back()] = ta;
+				newTransactionAddresses.push_back(sha3(blockRLP[1][ta.index].data()));
+				m_transactionAddresses[newTransactionAddresses.back()] = ta;
 			}
 		}
 		{
@@ -369,11 +371,12 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(h256(bi.number), ExtraBlockHash), (ldb::Slice)dev::ref(m_blockHashes[h256(bi.number)].rlp()));
-			for (auto const& h: tas)
+			for (auto const& h: newTransactionAddresses)
 				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
-			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraBlocksBlooms), (ldb::Slice)dev::ref(m_blocksBlooms[newHash].rlp()));
+			for (auto const& h: alteredBlooms)
+				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraBlocksBlooms), (ldb::Slice)dev::ref(m_blocksBlooms[h].rlp()));
 		}
 
 #if ETH_PARANOIA
