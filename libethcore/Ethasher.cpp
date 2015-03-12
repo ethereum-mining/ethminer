@@ -100,17 +100,19 @@ ethash_params Ethasher::params(unsigned _n)
 
 bool Ethasher::verify(BlockInfo const& _header)
 {
-	if (_header.number >= EPOCH_LENGTH * 2048) return false;
-	bigint boundary = (bigint(1) << 256) / _header.difficulty;
-	uint8_t quick_hash_out[32];
+	if (_header.number >= ETHASH_EPOCH_LENGTH * 2048)
+		return false;
+	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
+	uint8_t quickHashOut[32];
 	ethash_quick_hash(
-			quick_hash_out,
-			_header.headerHash(WithoutNonce).data(),
-			(uint64_t) (u64) _header.nonce,
-			_header.mixHash.data()
+		quickHashOut,
+		_header.headerHash(WithoutNonce).data(),
+		(uint64_t)(u64)_header.nonce,
+		_header.mixHash.data()
 	);
-	h256 quick_hash_out256 = h256(quick_hash_out, h256::ConstructFromPointer);
-	if (quick_hash_out256 > boundary) return false;
+	h256 quickHashOut256 = h256(quickHashOut, h256::ConstructFromPointer);
+	if (quickHashOut256 > boundary)
+		return false;
 	auto e = eval(_header, _header.nonce);
 	return (u256)e.value <= boundary && e.mixHash == _header.mixHash;
 }
