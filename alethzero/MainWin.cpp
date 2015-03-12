@@ -1276,7 +1276,10 @@ void Main::on_transactionQueue_currentItemChanged()
 		}
 		s << "<div>Hex: " Span(Mono) << toHex(tx.rlp()) << "</span></div>";
 		s << "<hr/>";
-		s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+		if (!!receipt.bloom())
+			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+		else
+			s << "<div>Log Bloom: <i>Uneventful</i></div>";
 		auto r = receipt.rlp();
 		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 		s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
@@ -1372,7 +1375,10 @@ void Main::on_blocks_currentItemChanged()
 				s << "<br/>Parent: <i>It was a virgin birth</i>";
 			}
 //			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
-			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
+			if (!!info.logBloom)
+				s << "<div>Log Bloom: " << info.logBloom << "</div>";
+			else
+				s << "<div>Log Bloom: <i>Uneventful</i></div>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Receipts: @<b>" << info.receiptsRoot << "</b>:";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
@@ -1438,7 +1444,10 @@ void Main::on_blocks_currentItemChanged()
 			}
 			s << "<div>Hex: " Span(Mono) << toHex(block[1][txi].data()) << "</span></div>";
 			s << "<hr/>";
-			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+			if (!!receipt.bloom())
+				s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+			else
+				s << "<div>Log Bloom: <i>Uneventful</i></div>";
 			auto r = receipt.rlp();
 			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 			s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
