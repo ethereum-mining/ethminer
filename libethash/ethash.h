@@ -82,11 +82,11 @@ static inline int ethash_check_difficulty(
 	return 1;
 }
 
-int ethash_quick_check_difficulty(
+void ethash_quick_hash(
+        uint8_t return_hash[32],
         const uint8_t header_hash[32],
         const uint64_t nonce,
-        const uint8_t mix_hash[32],
-        const uint8_t difficulty[32]);
+        const uint8_t mix_hash[32]);
 
 #ifdef __cplusplus
 }

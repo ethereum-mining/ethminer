@@ -43,6 +43,12 @@ Ethasher* dev::eth::Ethasher::s_this = nullptr;
 bytes const& Ethasher::cache(BlockInfo const& _header)
 {
 	RecursiveGuard l(x_this);
+	if (_header.number > EPOCH_LENGTH*2048) {
+		std::ostringstream error;
+		error << "block number is too high; max is " << EPOCH_LENGTH*2048 << "(was " << _header.number << ")";
+		throw std::invalid_argument( error.str() );
+ 	}
+
 	if (!m_caches.count(_header.seedHash))
 	{
 		ethash_params p = params((unsigned)_header.number);
@@ -94,7 +100,17 @@ ethash_params Ethasher::params(unsigned _n)
 
 bool Ethasher::verify(BlockInfo const& _header)
 {
+	if (_header.number >= EPOCH_LENGTH * 2048) return false;
 	bigint boundary = (bigint(1) << 256) / _header.difficulty;
+	uint8_t quick_hash_out[32];
+	ethash_quick_hash(
+			quick_hash_out,
+			_header.headerHash(WithoutNonce).data(),
+			(uint64_t) (u64) _header.nonce,
+			_header.mixHash.data()
+	);
+	h256 quick_hash_out256 = h256(quick_hash_out, h256::ConstructFromPointer);
+	if (quick_hash_out256 > boundary) return false;
 	auto e = eval(_header, _header.nonce);
 	return (u256)e.value <= boundary && e.mixHash == _header.mixHash;
 }
@@ -106,4 +122,3 @@ Ethasher::Result Ethasher::eval(BlockInfo const& _header, Nonce const& _nonce)
 	ethash_compute_light(&r, Ethasher::get()->cache(_header).data(), &p, _header.headerHash(WithoutNonce).data(), (uint64_t)(u64)_nonce);
 	return Result{h256(r.result, h256::ConstructFromPointer), h256(r.mix_hash, h256::ConstructFromPointer)};
 }
-
