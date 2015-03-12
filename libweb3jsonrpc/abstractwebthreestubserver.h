@@ -13,6 +13,8 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         AbstractWebThreeStubServer(jsonrpc::AbstractServerConnector &conn, jsonrpc::serverVersion_t type = jsonrpc::JSONRPC_SERVER_V2) : jsonrpc::AbstractServer<AbstractWebThreeStubServer>(conn, type)
         {
             this->bindAndAddMethod(jsonrpc::Procedure("web3_sha3", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::web3_sha3I);
+            this->bindAndAddMethod(jsonrpc::Procedure("web3_clientVersion", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::web3_clientVersionI);
+            this->bindAndAddMethod(jsonrpc::Procedure("net_version", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::net_versionI);
             this->bindAndAddMethod(jsonrpc::Procedure("net_peerCount", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::net_peerCountI);
             this->bindAndAddMethod(jsonrpc::Procedure("net_listening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::net_listeningI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_coinbase", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_coinbaseI);
@@ -70,6 +72,16 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         inline virtual void web3_sha3I(const Json::Value &request, Json::Value &response)
         {
             response = this->web3_sha3(request[0u].asString());
+        }
+        inline virtual void web3_clientVersionI(const Json::Value &request, Json::Value &response)
+        {
+            (void)request;
+            response = this->web3_clientVersion();
+        }
+        inline virtual void net_versionI(const Json::Value &request, Json::Value &response)
+        {
+            (void)request;
+            response = this->net_version();
         }
         inline virtual void net_peerCountI(const Json::Value &request, Json::Value &response)
         {
@@ -291,6 +303,8 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             response = this->shh_getMessages(request[0u].asString());
         }
         virtual std::string web3_sha3(const std::string& param1) = 0;
+        virtual std::string web3_clientVersion() = 0;
+        virtual std::string net_version() = 0;
         virtual std::string net_peerCount() = 0;
         virtual bool net_listening() = 0;
         virtual std::string eth_coinbase() = 0;

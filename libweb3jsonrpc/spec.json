@@ -1,6 +1,8 @@
 [
             { "name": "web3_sha3", "params": [""], "order": [], "returns" : "" },
+            { "name": "web3_clientVersion", "params": [], "order": [], "returns" : "" },
 
+            { "name": "net_version", "params": [], "order": [], "returns" : "" },
             { "name": "net_peerCount", "params": [], "order": [], "returns" : "" },
             { "name": "net_listening", "params": [], "order": [], "returns" : false },
 
