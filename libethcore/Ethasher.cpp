@@ -43,20 +43,17 @@ Ethasher* dev::eth::Ethasher::s_this = nullptr;
 bytes const& Ethasher::cache(BlockInfo const& _header)
 {
 	RecursiveGuard l(x_this);
+	if (_header.number > EPOCH_LENGTH*2048) {
+		std::ostringstream error;
+		error << "block number is too high; max is " << EPOCH_LENGTH*2048 << "(was " << _header.number << ")";
+		throw std::invalid_argument( error.str() );
+ 	}
+
 	if (!m_caches.count(_header.seedHash))
 	{
-		try {
-			boost::filesystem::create_directories(getDataDir() + "/ethashcache");
-		} catch (...) {}
-		std::string memoFile = getDataDir() + "/ethashcache/" + toHex(_header.seedHash.ref().cropped(0, 4)) + ".cache";
-		m_caches[_header.seedHash] = contents(memoFile);
-		if (m_caches[_header.seedHash].empty())
-		{
-			ethash_params p = params((unsigned)_header.number);
-			m_caches[_header.seedHash].resize(p.cache_size);
-			ethash_prep_light(m_caches[_header.seedHash].data(), &p, _header.seedHash.data());
-			writeFile(memoFile, m_caches[_header.seedHash]);
-		}
+		ethash_params p = params((unsigned)_header.number);
+		m_caches[_header.seedHash].resize(p.cache_size);
+		ethash_prep_light(m_caches[_header.seedHash].data(), &p, _header.seedHash.data());
 	}
 	return m_caches[_header.seedHash];
 }
@@ -71,6 +68,9 @@ bytesConstRef Ethasher::full(BlockInfo const& _header)
 			delete [] m_fulls.begin()->second.data();
 			m_fulls.erase(m_fulls.begin());
 		}
+		try {
+			boost::filesystem::create_directories(getDataDir() + "/ethashcache");
+		} catch (...) {}
 		std::string memoFile = getDataDir() + "/ethashcache/" + toHex(_header.seedHash.ref().cropped(0, 4)) + ".full";
 		m_fulls[_header.seedHash] = contentsNew(memoFile);
 		if (!m_fulls[_header.seedHash])
@@ -100,7 +100,19 @@ ethash_params Ethasher::params(unsigned _n)
 
 bool Ethasher::verify(BlockInfo const& _header)
 {
-	bigint boundary = (bigint(1) << 256) / _header.difficulty;
+	if (_header.number >= ETHASH_EPOCH_LENGTH * 2048)
+		return false;
+	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
+	uint8_t quickHashOut[32];
+	ethash_quick_hash(
+		quickHashOut,
+		_header.headerHash(WithoutNonce).data(),
+		(uint64_t)(u64)_header.nonce,
+		_header.mixHash.data()
+	);
+	h256 quickHashOut256 = h256(quickHashOut, h256::ConstructFromPointer);
+	if (quickHashOut256 > boundary)
+		return false;
 	auto e = eval(_header, _header.nonce);
 	return (u256)e.value <= boundary && e.mixHash == _header.mixHash;
 }
@@ -112,4 +124,3 @@ Ethasher::Result Ethasher::eval(BlockInfo const& _header, Nonce const& _nonce)
 	ethash_compute_light(&r, Ethasher::get()->cache(_header).data(), &p, _header.headerHash(WithoutNonce).data(), (uint64_t)(u64)_nonce);
 	return Result{h256(r.result, h256::ConstructFromPointer), h256(r.mix_hash, h256::ConstructFromPointer)};
 }
-

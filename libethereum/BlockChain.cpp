@@ -324,6 +324,18 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			WriteGuard l(x_blockHashes);
 			m_blockHashes[h256(bi.number)].value = newHash;
 		}
+		{
+			WriteGuard l(x_blocksBlooms);
+			LogBloom blockBloom = bi.logBloom;
+			blockBloom.shiftBloom<3, 32>(sha3(bi.coinbaseAddress.ref()));
+			unsigned index = (unsigned)bi.number;
+			for (unsigned level = 0; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
+			{
+				unsigned i = index / c_bloomIndexSize % c_bloomIndexSize;
+				unsigned o = index % c_bloomIndexSize;
+				m_blocksBlooms[chunkId(level, i)].blooms[o] |= blockBloom;
+			}
+		}
 		// Collate transaction hashes and remember who they were.
 		h256s tas;
 		{
@@ -346,14 +358,23 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_receipts[newHash] = br;
 		}
 
-		m_blocksDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(h256(bi.number), ExtraBlockHash), (ldb::Slice)dev::ref(m_blockHashes[h256(bi.number)].rlp()));
-		for (auto const& h: tas)
-			m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
-		m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
+		{
+			ReadGuard l1(x_blocksBlooms);
+			ReadGuard l2(x_details);
+			ReadGuard l3(x_blockHashes);
+			ReadGuard l4(x_receipts);
+			ReadGuard l5(x_logBlooms);
+			ReadGuard l6(x_transactionAddresses);
+			m_blocksDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
+			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
+			m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
+			m_extrasDB->Put(m_writeOptions, toSlice(h256(bi.number), ExtraBlockHash), (ldb::Slice)dev::ref(m_blockHashes[h256(bi.number)].rlp()));
+			for (auto const& h: tas)
+				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
+			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
+			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
+			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraBlocksBlooms), (ldb::Slice)dev::ref(m_blocksBlooms[newHash].rlp()));
+		}
 
 #if ETH_PARANOIA
 		checkConsistency();
@@ -475,29 +496,30 @@ template <class T> static unsigned getHashSize(map<h256, T> const& _map)
 void BlockChain::updateStats() const
 {
 	{
-		ReadGuard l1(x_blocks);
+		ReadGuard l(x_blocks);
 		m_lastStats.memBlocks = 0;
 		for (auto const& i: m_blocks)
 			m_lastStats.memBlocks += i.second.size() + 64;
 	}
 	{
-		ReadGuard l2(x_details);
+		ReadGuard l(x_details);
 		m_lastStats.memDetails = getHashSize(m_details);
 	}
 	{
-		ReadGuard l5(x_logBlooms);
-		m_lastStats.memLogBlooms = getHashSize(m_logBlooms);
+		ReadGuard l1(x_logBlooms);
+		ReadGuard l2(x_blocksBlooms);
+		m_lastStats.memLogBlooms = getHashSize(m_logBlooms) + getHashSize(m_blocksBlooms);
 	}
 	{
-		ReadGuard l4(x_receipts);
+		ReadGuard l(x_receipts);
 		m_lastStats.memReceipts = getHashSize(m_receipts);
 	}
 	{
-		ReadGuard l3(x_blockHashes);
+		ReadGuard l(x_blockHashes);
 		m_lastStats.memBlockHashes = getHashSize(m_blockHashes);
 	}
 	{
-		ReadGuard l6(x_transactionAddresses);
+		ReadGuard l(x_transactionAddresses);
 		m_lastStats.memTransactionAddresses = getHashSize(m_transactionAddresses);
 	}
 }
@@ -520,6 +542,7 @@ void BlockChain::garbageCollect(bool _force)
 	WriteGuard l4(x_receipts);
 	WriteGuard l5(x_logBlooms);
 	WriteGuard l6(x_transactionAddresses);
+	WriteGuard l7(x_blocksBlooms);
 	for (CacheID const& id: m_cacheUsage.back())
 	{
 		m_inUse.erase(id);
@@ -543,6 +566,9 @@ void BlockChain::garbageCollect(bool _force)
 			break;
 		case ExtraTransactionAddress:
 			m_transactionAddresses.erase(id.first);
+			break;
+		case ExtraBlocksBlooms:
+			m_blocksBlooms.erase(id.first);
 			break;
 		}
 	}
@@ -577,6 +603,76 @@ void BlockChain::checkConsistency()
 			}
 		}
 	delete it;
+}
+
+static inline unsigned upow(unsigned a, unsigned b) { while (b-- > 0) a *= a; return a; }
+static inline unsigned ceilDiv(unsigned n, unsigned d) { return n / (n + d - 1); }
+static inline unsigned floorDivPow(unsigned n, unsigned a, unsigned b) { return n / upow(a, b); }
+static inline unsigned ceilDivPow(unsigned n, unsigned a, unsigned b) { return ceilDiv(n, upow(a, b)); }
+
+// Level 1
+// [xxx.            ]
+
+// Level 0
+// [.x............F.]
+// [........x.......]
+// [T.............x.]
+// [............    ]
+
+// F = 14. T = 32
+
+vector<unsigned> BlockChain::withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest) const
+{
+	vector<unsigned> ret;
+
+	// start from the top-level
+	unsigned u = upow(c_bloomIndexSize, c_bloomIndexLevels);
+
+	// run through each of the top-level blockbloom blocks
+	for (unsigned index = _earliest / u; index <= ceilDiv(_latest, u); ++index)				// 0
+		ret += withBlockBloom(_b, _earliest, _latest, c_bloomIndexLevels - 1, index);
+
+	return ret;
+}
+
+vector<unsigned> BlockChain::withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest, unsigned _level, unsigned _index) const
+{
+	// 14, 32, 1, 0
+		// 14, 32, 0, 0
+		// 14, 32, 0, 1
+		// 14, 32, 0, 2
+
+	vector<unsigned> ret;
+
+	unsigned uCourse = upow(c_bloomIndexSize, _level + 1);
+	// 256
+		// 16
+	unsigned uFine = upow(c_bloomIndexSize, _level);
+	// 16
+		// 1
+
+	unsigned obegin = _index == _earliest / uCourse ? _earliest / uFine % c_bloomIndexSize : 0;
+	// 0
+		// 14
+		// 0
+		// 0
+	unsigned oend = _index == _latest / uCourse ? (_latest / uFine) % c_bloomIndexSize + 1 : c_bloomIndexSize;
+	// 3
+		// 16
+		// 16
+		// 1
+
+	BlocksBlooms bb = blocksBlooms(_level, _index);
+	for (unsigned o = obegin; o < oend; ++o)
+		if (bb.blooms[o].contains(_b))
+		{
+			// This level has something like what we want.
+			if (_level > 0)
+				ret += withBlockBloom(_b, _earliest, _latest, _level - 1, o + _index * c_bloomIndexSize);
+			else
+				ret.push_back(o + _index * c_bloomIndexSize);
+		}
+	return ret;
 }
 
 h256Set BlockChain::allUnclesFrom(h256 _parent) const
