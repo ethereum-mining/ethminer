@@ -323,12 +323,12 @@ public:
 	virtual unsigned miningThreads() const { ReadGuard l(x_localMiners); return m_localMiners.size(); }
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	virtual void startMining() { startWorking(); ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); }
+	virtual void startMining() { startWorking(); { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); } }
 	/// Stop mining.
 	/// NOT thread-safe
-	virtual void stopMining() { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); }
+	virtual void stopMining() { { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); } }
 	/// Are we mining now?
-	virtual bool isMining() { ReadGuard l(x_localMiners); return m_localMiners.size() && m_localMiners[0].isRunning(); }
+	virtual bool isMining() { { ReadGuard l(x_localMiners); if (!m_localMiners.empty() && m_localMiners[0].isRunning()) return true; } return false; }
 	/// Check the progress of the mining.
 	virtual MineProgress miningProgress() const;
 	/// Get and clear the mining history.
@@ -404,8 +404,6 @@ private:
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
 	bool m_verifyOwnBlocks = true;			///< Should be verify blocks that we mined?
-
-
 
 	mutable Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;

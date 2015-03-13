@@ -411,8 +411,11 @@ void Client::setForceMining(bool _enable)
 void Client::setMiningThreads(unsigned _threads)
 {
 	stopMining();
-
+#if ETH_ETHASHCL
+	unsigned t = 1;
+#else
 	auto t = _threads ? _threads : thread::hardware_concurrency();
+#endif
 	WriteGuard l(x_localMiners);
 	m_localMiners.clear();
 	m_localMiners.resize(t);
