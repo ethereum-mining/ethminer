@@ -344,9 +344,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			if ((bigint)m_stack.back() + 31 < _ext.data.size())
 				m_stack.back() = (u256)*(h256 const*)(_ext.data.data() + (size_t)m_stack.back());
 			else if ((bigint)m_stack.back() >= _ext.data.size())
-			{
 				m_stack.back() = u256();
-			}
 			else
 			{
 				h256 r;
