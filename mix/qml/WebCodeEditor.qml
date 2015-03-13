@@ -51,7 +51,7 @@ Item {
 		editorBrowser.runJavaScript("toggleBreakpoint()");
 	}
 
-	function changeGenerator() {
+	function changeGeneration() {
 		editorBrowser.runJavaScript("changeGeneration()", function(result) {});
 	}
 
@@ -80,7 +80,7 @@ Item {
 				runJavaScript("getTextChanged()", function(result) { });
 				pollTimer.running = true;
 				syncClipboard();
-				parent.changeGenerator();
+				parent.changeGeneration();
 			}
 		}
 

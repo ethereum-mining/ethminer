@@ -53,15 +53,17 @@ Item {
 				breakpointsChanged(document.documentId);
 		});
 		editor.setText(data, document.syntaxMode);
-		editor.onIsCleanChanged.connect(function(){
+		editor.onIsCleanChanged.connect(function() {
 			isCleanChanged(editor.isClean, document.documentId);
 		});
 	}
 
 	function getEditor(documentId) {
 		for (var i = 0; i < editorListModel.count; i++)
+		{
 			if (editorListModel.get(i).documentId === documentId)
 				return editors.itemAt(i).item;
+		}
 		return null;
 	}
 
@@ -96,10 +98,10 @@ Item {
 			editor.toggleBreakpoint();
 	}
 
-	function resetEditStatus() {
-		var editor = getEditor(currentDocumentId);
+	function resetEditStatus(docId) {
+		var editor = getEditor(docId);
 		if (editor)
-			editor.changeGenerator();
+			editor.changeGeneration();
 	}
 
 	Component.onCompleted: projectModel.codeEditor = codeEditorView;
@@ -109,18 +111,19 @@ Item {
 		onDocumentOpened: {
 			openDocument(document);
 		}
+
 		onProjectSaving: {
 			for (var i = 0; i < editorListModel.count; i++)
 			{
-				fileIo.writeFile(editorListModel.get(i).path, editors.itemAt(i).item.getText());
-				resetEditStatus();
+				var doc = editorListModel.get(i);
+				fileIo.writeFile(doc.path, editors.itemAt(i).item.getText());
+				resetEditStatus(doc.documentId);
 			}
 		}
 
 		onProjectClosed: {
-			for (var i = 0; i < editorListModel.count; i++)	{
+			for (var i = 0; i < editorListModel.count; i++)
 				editors.itemAt(i).visible = false;
-			}
 			editorListModel.clear();
 			currentDocumentId = "";
 		}
@@ -128,10 +131,11 @@ Item {
 		onDocumentSaving: {
 			for (var i = 0; i < editorListModel.count; i++)
 			{
-				if (editorListModel.get(i).path === document)
+				var doc = editorListModel.get(i);
+				if (doc.path === document)
 				{
 					fileIo.writeFile(document, editors.itemAt(i).item.getText());
-					resetEditStatus();
+					resetEditStatus(doc.documentId);
 					break;
 				}
 			}
@@ -165,13 +169,15 @@ Item {
 			onVisibleChanged: {
 				loadIfNotLoaded()
 				if (visible && item)
-					loader.item.setFocus();
-				if (visible && changed)
 				{
-					changed = false;
-					messageDialog.item = loader.item;
-					messageDialog.doc = editorListModel.get(index);
-					messageDialog.open();
+					loader.item.setFocus();
+					if (changed)
+					{
+						changed = false;
+						messageDialog.item = loader.item;
+						messageDialog.doc = editorListModel.get(index);
+						messageDialog.open();
+					}
 				}
 			}
 			Component.onCompleted: {
@@ -185,6 +191,8 @@ Item {
 			{
 				target: projectModel
 				onDocumentChanged: {
+					if (!item)
+						return;
 					if (currentDocumentId == documentId)
 					{
 						messageDialog.item = loader.item;
@@ -197,7 +205,7 @@ Item {
 			}
 
 			function loadIfNotLoaded () {
-				if(visible && !active) {
+				if (visible && !active) {
 					active = true;
 				}
 			}

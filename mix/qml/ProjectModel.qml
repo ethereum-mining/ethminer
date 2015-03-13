@@ -32,7 +32,6 @@ Item {
 	property bool isEmpty: (projectPath === "")
 	readonly property string projectFileName: ".mix"
 
-	property bool haveUnsavedChanges: false
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
@@ -41,6 +40,7 @@ Item {
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
 	property CodeEditorView codeEditor: null
+	property var unsavedFiles: []
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
@@ -76,7 +76,15 @@ Item {
 	Connections {
 		target: codeEditor
 		onIsCleanChanged: {
+			for (var i in unsavedFiles)
+			{
+				if (unsavedFiles[i] === documentId && isClean)
+					unsavedFiles.splice(i, 1);
+			}
+			if (!isClean)
+				unsavedFiles.push(documentId);
 			isCleanChanged(isClean, documentId);
+			console.log(JSON.stringify(unsavedFiles));
 		}
 	}
 
@@ -105,14 +113,15 @@ Item {
 	MessageDialog {
 		id: saveMessageDialog
 		title: qsTr("Project")
-		text: qsTr("Do you want to save changes?")
-		standardButtons: StandardButton.Ok | StandardButton.Cancel
+		text: qsTr("Some files require to be saved. Do you want to save changes?");
+		standardButtons: StandardButton.Yes | StandardButton.No | StandardButton.Cancel
 		icon: StandardIcon.Question
-		onAccepted: {
+		onYes: {
 			projectModel.saveAll();
 			ProjectModelCode.doCloseProject();
 		}
-		onRejected: {
+		onRejected: {}
+		onNo: {
 			ProjectModelCode.doCloseProject();
 		}
 	}
@@ -158,6 +167,7 @@ Item {
 		target: projectModel
 		onProjectClosed: {
 			projectSettings.lastProjectPath = "";
+			projectPath = "";
 		}
 	}
 

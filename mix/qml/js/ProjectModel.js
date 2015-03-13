@@ -44,7 +44,7 @@ function createProject() {
 
 function closeProject() {
 	if (!isEmpty) {
-		if (haveUnsavedChanges)
+		if (unsavedFiles.length > 0)
 			saveMessageDialog.open();
 		else
 			doCloseProject();
@@ -193,7 +193,6 @@ function doCloseProject() {
 	projectListModel.clear();
 	projectPath = "";
 	currentDocumentId = "";
-	fileIo.stopFilesWatcher();
 	projectClosed();
 }
 
