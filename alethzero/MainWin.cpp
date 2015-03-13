@@ -478,7 +478,6 @@ QString Main::pretty(dev::Address _a) const
 	return fromRaw(n);
 }
 
-
 template <size_t N> inline string toBase36(FixedHash<N> const& _h)
 {
 	static char const* c_alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
