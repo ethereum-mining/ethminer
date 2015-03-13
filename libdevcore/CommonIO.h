@@ -35,7 +35,7 @@
 #include <sstream>
 #include <string>
 #include <iostream>
-#include <chrono_io/chrono_io>
+#include <chrono>
 #include "Common.h"
 #include "Base64.h"
 
@@ -75,6 +75,27 @@ template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, 
 template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::unordered_set<T, U> const& _e);
 template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::multimap<T, U> const& _e);
 template <class _S, class _T> _S& operator<<(_S& _out, std::shared_ptr<_T> const& _p);
+
+template <class T> inline std::string toString(std::chrono::time_point<T> const& _e, std::string _format = "")
+{
+	unsigned long milliSecondsSinceEpoch = std::chrono::duration_cast<std::chrono::milliseconds>(_e.time_since_epoch()).count();
+	auto const durationSinceEpoch = std::chrono::milliseconds(milliSecondsSinceEpoch);
+	std::chrono::time_point<std::chrono::system_clock> const tpAfterDuration(durationSinceEpoch);
+
+	tm timeValue;
+	auto time = std::chrono::system_clock::to_time_t(tpAfterDuration);
+#ifdef _WIN32
+	gmtime_s(&timeValue, &time);
+#else
+	gmtime_r(&time, &timeValue);
+#endif
+
+	unsigned const millisRemainder = milliSecondsSinceEpoch % 1000;
+	char buffer[1024];
+	if (strftime(buffer, sizeof(buffer), _format.c_str(), &timeValue))
+		return std::string(buffer) + "." + (millisRemainder < 1 ? "000" : millisRemainder < 10 ? "00" : millisRemainder < 100 ? "0" : "") + std::to_string(millisRemainder) + "Z";
+	return std::string();
+}
 
 template <class S, class T>
 inline S& streamout(S& _out, std::vector<T> const& _e)

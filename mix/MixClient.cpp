@@ -54,10 +54,10 @@ public:
 	static bytes createGenesisBlock(h256 _stateRoot)
 	{
 		RLPStream block(3);
-		block.appendList(16)
+		block.appendList(15)
 			<< h256() << EmptyListSHA3 << h160() << _stateRoot << EmptyTrie << EmptyTrie
-			<< LogBloom() << c_mixGenesisDifficulty << 0 << 1000000 << 0 << (unsigned)0
-			<< std::string() << h256() << h256() << h64(u64(42));
+			<< LogBloom() << c_mixGenesisDifficulty << 0 << c_genesisGasLimit << 0 << (unsigned)0
+			<< std::string() << h256() << h64(u64(42));
 		block.appendRaw(RLPEmptyList);
 		block.appendRaw(RLPEmptyList);
 		return block.out();
@@ -274,13 +274,13 @@ void MixClient::flushTransactions()
 {
 }
 
-bytes MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+bytes MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
 {
 	u256 n;
 	State temp;
 	{
 		ReadGuard lr(x_state);
-		temp = m_state;
+		temp = asOf(_blockNumber);
 		n = temp.transactionsFrom(toAddress(_secret));
 	}
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
@@ -388,13 +388,13 @@ unsigned MixClient::installWatch(eth::LogFilter const& _f)
 	return installWatch(h);
 }
 
-void MixClient::uninstallWatch(unsigned _i)
+bool MixClient::uninstallWatch(unsigned _i)
 {
 	Guard l(m_filterLock);
 
 	auto it = m_watches.find(_i);
 	if (it == m_watches.end())
-		return;
+		return false;
 	auto id = it->second.id;
 	m_watches.erase(it);
 
@@ -402,6 +402,8 @@ void MixClient::uninstallWatch(unsigned _i)
 	if (fit != m_filters.end())
 		if (!--fit->second.refCount)
 			m_filters.erase(fit);
+
+	return true;
 }
 
 void MixClient::noteChanged(h256Set const& _filters)
@@ -456,6 +458,11 @@ eth::BlockDetails MixClient::blockDetails(h256 _hash) const
 	return bc().details(_hash);
 }
 
+Transaction MixClient::transaction(h256 _transactionHash) const
+{
+	return Transaction(bc().transaction(_transactionHash), CheckSignature::Range);
+}
+
 eth::Transaction MixClient::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = bc().block(_blockHash);
@@ -488,6 +495,21 @@ unsigned MixClient::uncleCount(h256 _blockHash) const
 	auto bl = bc().block(_blockHash);
 	RLP b(bl);
 	return b[2].itemCount();
+}
+
+Transactions MixClient::transactions(h256 _blockHash) const
+{
+	auto bl = bc().block(_blockHash);
+	RLP b(bl);
+	Transactions res;
+	for (unsigned i = 0; i < b[1].itemCount(); i++)
+		res.emplace_back(b[1][i].data(), CheckSignature::Range);
+	return res;
+}
+
+TransactionHashes MixClient::transactionHashes(h256 _blockHash) const
+{
+	return bc().transactionHashes(_blockHash);
 }
 
 unsigned MixClient::number() const
