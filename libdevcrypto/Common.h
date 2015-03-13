@@ -45,7 +45,7 @@ using Signature = h520;
 
 struct SignatureStruct
 {
-	SignatureStruct() {}
+	SignatureStruct() = default;
 	SignatureStruct(Signature const& _s) { *(h520*)this = _s; }
 	SignatureStruct(h256 const& _r, h256 const& _s, byte _v): r(_r), s(_s), v(_v) {}
 	operator Signature() const { return *(h520 const*)this; }
@@ -55,7 +55,7 @@ struct SignatureStruct
 
 	h256 r;
 	h256 s;
-	byte v;
+	byte v = 0;
 };
 
 /// An Ethereum address: 20 bytes.
