@@ -25,6 +25,15 @@ Qt.include("TransactionHelper.js")
 var htmlTemplate = "<html>\n<head>\n<script>\n</script>\n</head>\n<body>\n<script>\n</script>\n</body>\n</html>";
 var contractTemplate = "contract Contract {\n}\n";
 
+function saveCurrentDocument()
+{
+	documentSaving(projectPath + currentDocumentId);
+	var doc = projectListModel.get(getDocumentIndex(currentDocumentId));
+	if (doc.isContract)
+		contractSaved(currentDocumentId);
+	documentSaved(currentDocumentId);
+}
+
 function saveAll() {
 	saveProject();
 }
@@ -55,7 +64,7 @@ function saveProject() {
 			deploymentDir: projectModel.deploymentDir
 		};
 		for (var i = 0; i < projectListModel.count; i++)
-			projectData.files.push(projectListModel.get(i).fileName)
+			projectData.files.push(projectListModel.get(i).fileName);
 		projectSaving(projectData);
 		var json = JSON.stringify(projectData, null, "\t");
 		var projectFile = projectPath + projectFileName;
@@ -105,7 +114,6 @@ function loadProject(path) {
 			contractSources[doc.documentId] = fileIo.readFile(doc.path);
 	}
 	codeModel.reset(contractSources);
-
 }
 
 function addFile(fileName) {
@@ -132,6 +140,7 @@ function addFile(fileName) {
 	};
 
 	projectListModel.append(docData);
+	fileIo.watchFileChanged(p);
 	return docData.documentId;
 }
 
@@ -184,6 +193,7 @@ function doCloseProject() {
 	projectListModel.clear();
 	projectPath = "";
 	currentDocumentId = "";
+	fileIo.stopFilesWatcher();
 	projectClosed();
 }
 
@@ -247,6 +257,7 @@ function removeDocument(documentId) {
 	var document = projectListModel.get(i);
 	if (!document.isContract) {
 		projectListModel.remove(i);
+		fileIo.stopWatching(projectPath+ documentId);
 		documentRemoved(documentId);
 	}
 }

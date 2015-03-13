@@ -86,8 +86,7 @@ Item {
 
 	Connections {
 		target: projectModel
-		//onProjectSaved : reloadOnSave();
-		//onDocumentSaved: reloadOnSave();
+
 		onDocumentAdded: {
 			var document = projectModel.getDocument(documentId)
 			if (document.isHtml)
@@ -113,6 +112,12 @@ Item {
 					}
 				}
 			}
+		}
+
+		onDocumentSaved:
+		{
+			if (!projectModel.getDocument(documentId).isContract)
+				reloadOnSave();
 		}
 
 		onProjectClosed: {

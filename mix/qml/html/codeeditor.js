@@ -18,7 +18,6 @@ editor.breakpointsChangeRegistered = false;
 
 editor.on("change", function(eMirror, object) {
 	editor.changeRegistered = true;
-
 });
 
 var mac = /Mac/.test(navigator.platform);
@@ -109,4 +108,15 @@ highlightExecution = function(start, end) {
 	if (executionMark)
 		executionMark.clear();
 	executionMark = editor.markText(editor.posFromIndex(start), editor.posFromIndex(end), { className: "CodeMirror-exechighlight" });
+}
+
+var changeId;
+changeGeneration = function()
+{
+	changeId = editor.changeGeneration(true);
+}
+
+isClean = function()
+{
+	return editor.isClean(changeId);
 }

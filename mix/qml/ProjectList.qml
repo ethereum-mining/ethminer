@@ -67,8 +67,6 @@ Item {
 			color: ProjectFilesStyle.documentsList.background
 		}
 
-
-
 		Rectangle
 		{
 			Layout.fillWidth: true
@@ -83,6 +81,7 @@ Item {
 				Repeater {
 					model: [qsTr("Contracts"), qsTr("Javascript"), qsTr("Web Pages"), qsTr("Styles"), qsTr("Images"), qsTr("Misc")];
 					signal selected(string doc, string groupName)
+					signal isCleanChanged(string doc, string groupName, var isClean)
 					property int incr: -1;
 					id: sectionRepeater
 					FilesSection
@@ -142,6 +141,17 @@ Item {
 									var item = projectModel.listModel.get(k);
 									if (item.groupName === modelData)
 										sectionModel.append(item);
+								}
+							}
+
+							onIsCleanChanged: {
+								for (var si = 0; si < sectionModel.count; si++) {
+									var document = sectionModel.get(si);
+									if (documentId === document.documentId && document.groupName === modelData)
+									{
+										selManager.isCleanChanged(documentId, modelData, isClean);
+										break;
+									}
 								}
 							}
 
