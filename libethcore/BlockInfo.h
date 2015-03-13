@@ -127,7 +127,7 @@ public:
 	void populateFromParent(BlockInfo const& parent);
 
 	u256 calculateDifficulty(BlockInfo const& _parent) const;
-	u256 calculateGasLimit(BlockInfo const& _parent) const;
+	u256 selectGasLimit(BlockInfo const& _parent) const;
 	h256 seedHash() const;
 
 	/// sha3 of the header only.

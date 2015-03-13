@@ -192,17 +192,18 @@ void BlockInfo::populateFromParent(BlockInfo const& _parent)
 	stateRoot = _parent.stateRoot;
 	parentHash = _parent.hash;
 	number = _parent.number + 1;
-	gasLimit = calculateGasLimit(_parent);
+	gasLimit = selectGasLimit(_parent);
 	gasUsed = 0;
 	difficulty = calculateDifficulty(_parent);
 }
 
-u256 BlockInfo::calculateGasLimit(BlockInfo const& _parent) const
+u256 BlockInfo::selectGasLimit(BlockInfo const& _parent) const
 {
 	if (!parentHash)
 		return c_genesisGasLimit;
 	else
-		return max<u256>(c_minGasLimit, (_parent.gasLimit * (c_gasLimitBoundDivisor - 1) + (_parent.gasUsed * 6 / 5)) / c_gasLimitBoundDivisor);
+		// target minimum of 3141592
+		return max<u256>(max<u256>(c_minGasLimit, 3141592), (_parent.gasLimit * (c_gasLimitBoundDivisor - 1) + (_parent.gasUsed * 6 / 5)) / c_gasLimitBoundDivisor);
 }
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
@@ -219,7 +220,8 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 	if (difficulty != calculateDifficulty(_parent))
 		BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError((bigint)calculateDifficulty(_parent), (bigint)difficulty));
 
-	if (gasLimit < _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor ||
+	if (gasLimit < c_minGasLimit ||
+		gasLimit < _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor ||
 		gasLimit > _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor)
 		BOOST_THROW_EXCEPTION(InvalidGasLimit() << errinfo_min((bigint)_parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor) << errinfo_got((bigint)gasLimit) << errinfo_max((bigint)_parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor));
 
