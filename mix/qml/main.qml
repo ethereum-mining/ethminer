@@ -24,6 +24,7 @@ ApplicationWindow {
 			MenuItem { action: openProjectAction }
 			MenuSeparator {}
 			MenuItem { action: saveAllFilesAction }
+			MenuItem { action: saveCurrentDocument }
 			MenuSeparator {}
 			MenuItem { action: addExistingFileAction }
 			MenuItem { action: addNewJsFileAction }
@@ -92,7 +93,12 @@ ApplicationWindow {
 		id: exitAppAction
 		text: qsTr("Exit")
 		shortcut: "Ctrl+Q"
-		onTriggered: Qt.quit();
+		onTriggered:
+		{
+			if (projectModel.projectPath !== "")
+				projectModel.closeProject()
+			Qt.quit();
+		}
 	}
 
 	Action {
@@ -279,6 +285,14 @@ ApplicationWindow {
 	Action {
 		id: saveAllFilesAction
 		text: qsTr("Save All")
+		shortcut: "Ctrl+A"
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.saveAll();
+	}
+
+	Action {
+		id: saveCurrentDocument
+		text: qsTr("Save Current Document")
 		shortcut: "Ctrl+S"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.saveCurrentDocument();
