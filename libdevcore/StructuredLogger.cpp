@@ -22,9 +22,10 @@
  */
 
 #include "StructuredLogger.h"
-#include <ctime>
 #include <boost/asio/ip/tcp.hpp>
 #include <json/json.h>
+
+#include <libdevcore/CommonIO.h>
 #include "Guards.h"
 
 namespace ba = boost::asio;
@@ -32,19 +33,6 @@ using namespace std;
 
 namespace dev
 {
-
-string StructuredLogger::timePointToString(chrono::system_clock::time_point const& _ts)
-{
-	// not using C++11 std::put_time due to gcc bug
-	// http://stackoverflow.com/questions/14136833/stdput-time-implementation-status-in-gcc
-
-	char buffer[64];
-	time_t time = chrono::system_clock::to_time_t(_ts);
-	tm* ptm = localtime(&time);
-	if (strftime(buffer, sizeof(buffer), get().m_timeFormat.c_str(), ptm))
-		return string(buffer);
-	return "";
-}
 
 void StructuredLogger::outputJson(Json::Value const& _value, std::string const& _name) const
 {
@@ -62,7 +50,7 @@ void StructuredLogger::starting(string const& _clientImpl, const char* _ethVersi
 		Json::Value event;
 		event["client_impl"] = _clientImpl;
 		event["eth_version"] = std::string(_ethVersion);
-		event["ts"] = timePointToString(std::chrono::system_clock::now());
+		event["ts"] = dev::toString(chrono::system_clock::now(), get().m_timeFormat.c_str());
 
 		get().outputJson(event, "starting");
 	}
@@ -75,7 +63,7 @@ void StructuredLogger::stopping(string const& _clientImpl, const char* _ethVersi
 		Json::Value event;
 		event["client_impl"] = _clientImpl;
 		event["eth_version"] = std::string(_ethVersion);
-		event["ts"] = timePointToString(std::chrono::system_clock::now());
+		event["ts"] = dev::toString(chrono::system_clock::now(), get().m_timeFormat.c_str());
 
 		get().outputJson(event, "stopping");
 	}
@@ -97,7 +85,7 @@ void StructuredLogger::p2pConnected(
 		event["remote_addr"] = addrStream.str();
 		event["remote_id"] = _id;
 		event["num_connections"] = Json::Value(_numConnections);
-		event["ts"] = timePointToString(_ts);
+		event["ts"] = dev::toString(_ts, get().m_timeFormat.c_str());
 
 		get().outputJson(event, "p2p.connected");
 	}
@@ -113,7 +101,7 @@ void StructuredLogger::p2pDisconnected(string const& _id, bi::tcp::endpoint cons
 		event["remote_addr"] = addrStream.str();
 		event["remote_id"] = _id;
 		event["num_connections"] = Json::Value(_numConnections);
-		event["ts"] = timePointToString(chrono::system_clock::now());
+		event["ts"] = dev::toString(chrono::system_clock::now(), get().m_timeFormat.c_str());
 
 		get().outputJson(event, "p2p.disconnected");
 	}
@@ -131,7 +119,7 @@ void StructuredLogger::minedNewBlock(
 		event["block_hash"] = _hash;
 		event["block_number"] = _blockNumber;
 		event["chain_head_hash"] = _chainHeadHash;
-		event["ts"] = timePointToString(std::chrono::system_clock::now());
+		event["ts"] = dev::toString(chrono::system_clock::now(), get().m_timeFormat.c_str());
 		event["block_prev_hash"] = _prevHash;
 
 		get().outputJson(event, "eth.miner.new_block");
@@ -152,7 +140,7 @@ void StructuredLogger::chainReceivedNewBlock(
 		event["block_number"] = _blockNumber;
 		event["chain_head_hash"] = _chainHeadHash;
 		event["remote_id"] = _remoteID;
-		event["ts"] = timePointToString(chrono::system_clock::now());
+		event["ts"] = dev::toString(chrono::system_clock::now(), get().m_timeFormat.c_str());
 		event["block_prev_hash"] = _prevHash;
 
 		get().outputJson(event, "eth.chain.received.new_block");
@@ -171,7 +159,7 @@ void StructuredLogger::chainNewHead(
 		event["block_hash"] = _hash;
 		event["block_number"] = _blockNumber;
 		event["chain_head_hash"] = _chainHeadHash;
-		event["ts"] = timePointToString(chrono::system_clock::now());
+		event["ts"] = dev::toString(chrono::system_clock::now(), get().m_timeFormat.c_str());
 		event["block_prev_hash"] = _prevHash;
 
 		get().outputJson(event, "eth.miner.new_block");
@@ -185,7 +173,7 @@ void StructuredLogger::transactionReceived(string const& _hash, string const& _r
 		Json::Value event;
 		event["tx_hash"] = _hash;
 		event["remote_id"] = _remoteId;
-		event["ts"] = timePointToString(chrono::system_clock::now());
+		event["ts"] = dev::toString(chrono::system_clock::now(), get().m_timeFormat.c_str());
 
 		get().outputJson(event, "eth.tx.received");
 	}
