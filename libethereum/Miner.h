@@ -164,8 +164,6 @@ private:
 	/// Do some work on the mining.
 	virtual void doWork();
 
-	MinerHost* m_host = nullptr;			///< Our host.
-
 	enum MiningStatus { Waiting, Preparing, Mining, Mined, Stopping, Stopped };
 	MiningStatus m_miningStatus = Waiting;	///< TODO: consider mutex/atomic variable.
 	State m_mineState;						///< The state on which we are mining, generally equivalent to m_postMine.
