@@ -478,10 +478,84 @@ QString Main::pretty(dev::Address _a) const
 	return fromRaw(n);
 }
 
+
+template <size_t N> inline string toBase36(FixedHash<N> const& _h)
+{
+	static char const* c_alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	typename FixedHash<N>::Arith a = _h;
+	std::string ret;
+	for (; a > 0; a /= 36)
+		ret = c_alphabet[(unsigned)a % 36] + ret;
+	return ret;
+}
+
+template <size_t N> inline FixedHash<N> fromBase36(string const& _h)
+{
+	typename FixedHash<N>::Arith ret = 0;
+	for (char c: _h)
+		ret = ret * 36 + (c < 'A' ? c - '0' : (c - 'A' + 10));
+	return ret;
+}
+
+static string iban(std::string _c, std::string _d)
+{
+	boost::to_upper(_c);
+	boost::to_upper(_d);
+	auto totStr = _d + _c + "00";
+	bigint tot = 0;
+	for (char x: totStr)
+		if (x >= 'A')
+			tot = tot * 100 + x - 'A' + 10;
+		else
+			tot = tot * 10 + x - '0';
+	unsigned check = (unsigned)(u256)(98 - tot % 97);
+	ostringstream out;
+	out << _c << setfill('0') << setw(2) << check << _d;
+	return out.str();
+}
+
+static std::pair<string, string> fromIban(std::string _iban)
+{
+	if (_iban.size() < 4)
+		return std::make_pair(string(), string());
+	boost::to_upper(_iban);
+	std::string c = _iban.substr(0, 2);
+	std::string d = _iban.substr(4);
+	if (iban(c, d) != _iban)
+		return std::make_pair(string(), string());
+	return make_pair(c, d);
+}
+
+static string directICAP(dev::Address _a)
+{
+	if (!!_a[0])
+		return string();
+	std::string d = toBase36<Address::size>(_a);
+	while (d.size() < 30)
+		d = "0" + d;
+	return iban("XT", d);
+}
+
+static Address fromICAP(std::string const& _s)
+{
+	std::string country;
+	std::string data;
+	std::tie(country, data) = fromIban(_s);
+	if (country.empty())
+		return Address();
+	if (country == "XT" && data.size() == 30)
+		// Direct ICAP
+		return fromBase36<Address::size>(data);
+	// TODO: Indirect ICAP
+	return Address();
+}
+
 QString Main::render(dev::Address _a) const
 {
 	QString p = pretty(_a);
-	if (!p.isNull())
+	if (!_a[0])
+		p += QString(p.isEmpty() ? "" : " ") + QString::fromStdString(directICAP(_a));
+	if (!p.isEmpty())
 		return p + " (" + QString::fromStdString(_a.abridged()) + ")";
 	return QString::fromStdString(_a.abridged());
 }
@@ -524,6 +598,8 @@ Address Main::fromString(QString const& _n) const
 			return Address();
 		}
 	}
+	else if (Address a = fromICAP(_n.toStdString()))
+		return a;
 	else
 		return Address();
 }
@@ -1719,9 +1795,9 @@ bool beginsWith(Address _a, bytes const& _b)
 void Main::on_newAccount_triggered()
 {
 	bool ok = true;
-	enum { NoVanity = 0, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour, StringMatch };
-	QStringList items = {"No vanity (instant)", "Two pairs first (a few seconds)", "Two pairs first and second (a few minutes)", "Three pairs first (a few minutes)", "Four pairs first (several hours)", "Specific hex string"};
-	unsigned v = items.QList<QString>::indexOf(QInputDialog::getItem(this, "Vanity Key?", "Would you a vanity key? This could take several hours.", items, 0, false, &ok));
+	enum { NoVanity = 0, DirectICAP, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour, StringMatch };
+	QStringList items = {"No vanity (instant)", "Direct ICAP address", "Two pairs first (a few seconds)", "Two pairs first and second (a few minutes)", "Three pairs first (a few minutes)", "Four pairs first (several hours)", "Specific hex string"};
+	unsigned v = items.QList<QString>::indexOf(QInputDialog::getItem(this, "Vanity Key?", "Would you a vanity key? This could take several hours.", items, 1, false, &ok));
 	if (!ok)
 		return;
 
@@ -1747,6 +1823,7 @@ void Main::on_newAccount_triggered()
 			lp = KeyPair::create();
 			auto a = lp.address();
 			if (v == NoVanity ||
+				(v == DirectICAP && !a[0]) ||
 				(v == FirstTwo && a[0] == a[1]) ||
 				(v == FirstTwoNextTwo && a[0] == a[1] && a[2] == a[3]) ||
 				(v == FirstThree && a[0] == a[1] && a[1] == a[2]) ||
