@@ -37,6 +37,8 @@ namespace dev
 namespace eth
 {
 
+using TransactionHashes = h256s;
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -65,7 +67,7 @@ public:
 	virtual void flushTransactions() = 0;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
+	virtual bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, int _blockNumber = 0) = 0;
 
 	// [STATE-QUERY API]
 
@@ -92,7 +94,9 @@ public:
 	/// Install, uninstall and query watches.
 	virtual unsigned installWatch(LogFilter const& _filter) = 0;
 	virtual unsigned installWatch(h256 _filterId) = 0;
-	virtual void uninstallWatch(unsigned _watchId) = 0;
+	virtual bool uninstallWatch(unsigned _watchId) = 0;
+	LocalisedLogEntries peekWatchSafe(unsigned _watchId) const { try { return peekWatch(_watchId); } catch (...) { return LocalisedLogEntries(); } }
+	LocalisedLogEntries checkWatchSafe(unsigned _watchId) { try { return checkWatch(_watchId); } catch (...) { return LocalisedLogEntries(); } }
 	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const = 0;
 	virtual LocalisedLogEntries checkWatch(unsigned _watchId) = 0;
 
@@ -101,10 +105,13 @@ public:
 	virtual h256 hashFromNumber(unsigned _number) const = 0;
 	virtual BlockInfo blockInfo(h256 _hash) const = 0;
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
+	virtual Transaction transaction(h256 _transactionHash) const = 0;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const = 0;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const = 0;
 	virtual unsigned transactionCount(h256 _blockHash) const = 0;
 	virtual unsigned uncleCount(h256 _blockHash) const = 0;
+	virtual Transactions transactions(h256 _blockHash) const = 0;
+	virtual TransactionHashes transactionHashes(h256 _blockHash) const = 0;
 
 	// [EXTRA API]:
 

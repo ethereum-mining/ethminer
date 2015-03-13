@@ -282,7 +282,7 @@ unsigned Client::installWatch(LogFilter const& _f)
 	return installWatch(h);
 }
 
-void Client::uninstallWatch(unsigned _i)
+bool Client::uninstallWatch(unsigned _i)
 {
 	cwatch << "XXX" << _i;
 
@@ -290,7 +290,7 @@ void Client::uninstallWatch(unsigned _i)
 
 	auto it = m_watches.find(_i);
 	if (it == m_watches.end())
-		return;
+		return false;
 	auto id = it->second.id;
 	m_watches.erase(it);
 
@@ -301,6 +301,7 @@ void Client::uninstallWatch(unsigned _i)
 			cwatch << "*X*" << fit->first << ":" << fit->second.filter;
 			m_filters.erase(fit);
 		}
+	return true;
 }
 
 void Client::noteChanged(h256Set const& _filters)
@@ -327,19 +328,15 @@ LocalisedLogEntries Client::peekWatch(unsigned _watchId) const
 {
 	Guard l(m_filterLock);
 
-	try {
 #if ETH_DEBUG
-		cdebug << "peekWatch" << _watchId;
+	cdebug << "peekWatch" << _watchId;
 #endif
-		auto& w = m_watches.at(_watchId);
+	auto& w = m_watches.at(_watchId);
 #if ETH_DEBUG
-		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+	cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 #endif
-		w.lastPoll = chrono::system_clock::now();
-		return w.changes;
-	} catch (...) {}
-
-	return LocalisedLogEntries();
+	w.lastPoll = chrono::system_clock::now();
+	return w.changes;
 }
 
 LocalisedLogEntries Client::checkWatch(unsigned _watchId)
@@ -347,17 +344,15 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	Guard l(m_filterLock);
 	LocalisedLogEntries ret;
 
-	try {
 #if ETH_DEBUG && 0
-		cdebug << "checkWatch" << _watchId;
+	cdebug << "checkWatch" << _watchId;
 #endif
-		auto& w = m_watches.at(_watchId);
+	auto& w = m_watches.at(_watchId);
 #if ETH_DEBUG && 0
-		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+	cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 #endif
-		std::swap(ret, w.changes);
-		w.lastPoll = chrono::system_clock::now();
-	} catch (...) {}
+	std::swap(ret, w.changes);
+	w.lastPoll = chrono::system_clock::now();
 
 	return ret;
 }
@@ -493,7 +488,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	m_tq.attemptImport(t.rlp());
 }
 
-bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
 {
 	bytes out;
 	try
@@ -503,7 +498,7 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 	//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 		{
 			ReadGuard l(x_stateDB);
-			temp = m_postMine;
+			temp = asOf(_blockNumber);
 			n = temp.transactionsFrom(toAddress(_secret));
 		}
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
@@ -794,6 +789,11 @@ bytes Client::codeAt(Address _a, int _block) const
 	return asOf(_block).code(_a);
 }
 
+Transaction Client::transaction(h256 _transactionHash) const
+{
+	return Transaction(m_bc.transaction(_transactionHash), CheckSignature::Range);
+}
+
 Transaction Client::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = m_bc.block(_blockHash);
@@ -826,6 +826,36 @@ unsigned Client::uncleCount(h256 _blockHash) const
 	auto bl = m_bc.block(_blockHash);
 	RLP b(bl);
 	return b[2].itemCount();
+}
+
+Transactions Client::transactions(h256 _blockHash) const
+{
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	Transactions res;
+	for (unsigned i = 0; i < b[1].itemCount(); i++)
+		res.emplace_back(b[1][i].data(), CheckSignature::Range);
+	return res;
+}
+
+TransactionHashes Client::transactionHashes(h256 _blockHash) const
+{
+	return m_bc.transactionHashes(_blockHash);
+}
+
+LocalisedLogEntries Client::logs(unsigned _watchId) const
+{
+	LogFilter f;
+	try
+	{
+		Guard l(m_filterLock);
+		f = m_filters.at(m_watches.at(_watchId).id).filter;
+	}
+	catch (...)
+	{
+		return LocalisedLogEntries();
+	}
+	return logs(f);
 }
 
 LocalisedLogEntries Client::logs(LogFilter const& _f) const
