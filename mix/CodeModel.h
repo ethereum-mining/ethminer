@@ -72,10 +72,9 @@ struct SolidityType
 	{
 		SignedInteger,
 		UnsignedInteger,
-		Hash,
 		Bool,
 		Address,
-		String,
+		FixedBytes,
 	};
 	Type type;
 	unsigned size; //bytes
