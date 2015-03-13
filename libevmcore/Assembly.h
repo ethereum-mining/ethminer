@@ -42,6 +42,8 @@ class AssemblyItem
 	friend class Assembly;
 
 public:
+	enum class JumpType { Ordinary, IntoFunction, OutOfFunction };
+
 	AssemblyItem(u256 _push): m_type(Push), m_data(_push) {}
 	AssemblyItem(Instruction _i): m_type(Operation), m_data((byte)_i) {}
 	AssemblyItem(AssemblyItemType _type, u256 _data = 0): m_type(_type), m_data(_data) {}
@@ -58,13 +60,18 @@ public:
 	int deposit() const;
 
 	bool match(AssemblyItem const& _i) const { return _i.m_type == UndefinedItem || (m_type == _i.m_type && (m_type != Operation || m_data == _i.m_data)); }
-	void setLocation(SourceLocation const& _location) { m_location = _location;}
+	void setLocation(SourceLocation const& _location) { m_location = _location; }
 	SourceLocation const& getLocation() const { return m_location; }
+
+	void setJumpType(JumpType _jumpType) { m_jumpType = _jumpType; }
+	JumpType getJumpType() const { return m_jumpType; }
+	std::string getJumpTypeAsString() const;
 
 private:
 	AssemblyItemType m_type;
 	u256 m_data;
 	SourceLocation m_location;
+	JumpType m_jumpType = JumpType::Ordinary;
 };
 
 using AssemblyItems = std::vector<AssemblyItem>;
@@ -81,16 +88,16 @@ public:
 	AssemblyItem newTag() { return AssemblyItem(Tag, m_usedTags++); }
 	AssemblyItem newPushTag() { return AssemblyItem(PushTag, m_usedTags++); }
 	AssemblyItem newData(bytes const& _data) { h256 h = (u256)std::hash<std::string>()(asString(_data)); m_data[h] = _data; return AssemblyItem(PushData, h); }
-	AssemblyItem newSub(Assembly const& _sub) { h256 h = h256::random(s_fixedHashEngine); m_subs[h] = _sub; return AssemblyItem(PushSub, h); }
+	AssemblyItem newSub(Assembly const& _sub) { m_subs.push_back(_sub); return AssemblyItem(PushSub, m_subs.size() - 1); }
 	AssemblyItem newPushString(std::string const& _data) { h256 h = (u256)std::hash<std::string>()(_data); m_strings[h] = _data; return AssemblyItem(PushString, h); }
-	AssemblyItem newPushSubSize(h256 const& _subId) { return AssemblyItem(PushSubSize, _subId); }
+	AssemblyItem newPushSubSize(u256 const& _subId) { return AssemblyItem(PushSubSize, _subId); }
 
 	AssemblyItem append() { return append(newTag()); }
 	void append(Assembly const& _a);
 	void append(Assembly const& _a, int _deposit);
-	AssemblyItem const& append(AssemblyItem const& _i, SourceLocation const& _location = SourceLocation());
-	AssemblyItem const& append(std::string const& _data, SourceLocation const& _location = SourceLocation()) { return append(newPushString(_data), _location); }
-	AssemblyItem const& append(bytes const& _data, SourceLocation const& _location = SourceLocation()) { return append(newData(_data), _location); }
+	AssemblyItem const& append(AssemblyItem const& _i);
+	AssemblyItem const& append(std::string const& _data) { return append(newPushString(_data)); }
+	AssemblyItem const& append(bytes const& _data) { return append(newData(_data)); }
 	AssemblyItem appendSubSize(Assembly const& _a) { auto ret = newSub(_a); append(newPushSubSize(ret.data())); return ret; }
 	/// Pushes the final size of the current assembly itself. Use this when the code is modified
 	/// after compilation and CODESIZE is not an option.
@@ -100,9 +107,7 @@ public:
 	AssemblyItem appendJumpI() { auto ret = append(newPushTag()); append(Instruction::JUMPI); return ret; }
 	AssemblyItem appendJump(AssemblyItem const& _tag) { auto ret = append(_tag.pushTag()); append(Instruction::JUMP); return ret; }
 	AssemblyItem appendJumpI(AssemblyItem const& _tag) { auto ret = append(_tag.pushTag()); append(Instruction::JUMPI); return ret; }
-
 	template <class T> Assembly& operator<<(T const& _d) { append(_d); return *this; }
-
 	AssemblyItems const& getItems() const { return m_items; }
 	AssemblyItem const& back() const { return m_items.back(); }
 	std::string backString() const { return m_items.size() && m_items.back().m_type == PushString ? m_strings.at((h256)m_items.back().m_data) : std::string(); }
@@ -116,35 +121,39 @@ public:
 	void popTo(int _deposit) { while (m_deposit > _deposit) append(Instruction::POP); }
 
 	void injectStart(AssemblyItem const& _i);
-
-	std::string out() const { std::stringstream ret; streamRLP(ret); return ret.str(); }
-
+	std::string out() const { std::stringstream ret; stream(ret); return ret.str(); }
 	int deposit() const { return m_deposit; }
 	void adjustDeposit(int _adjustment) { m_deposit += _adjustment; if (asserts(m_deposit >= 0)) BOOST_THROW_EXCEPTION(InvalidDeposit()); }
 	void setDeposit(int _deposit) { m_deposit = _deposit; if (asserts(m_deposit >= 0)) BOOST_THROW_EXCEPTION(InvalidDeposit()); }
 
+	/// Changes the source location used for each appended item.
+	void setSourceLocation(SourceLocation const& _location) { m_currentSourceLocation = _location; }
+
 	bytes assemble() const;
 	Assembly& optimise(bool _enable);
-	std::ostream& streamRLP(std::ostream& _out, std::string const& _prefix = "") const;
+	std::ostream& stream(std::ostream& _out, std::string const& _prefix = "", const StringMap &_sourceCodes = StringMap()) const;
 
-private:
+protected:
+	std::string getLocationFromSources(StringMap const& _sourceCodes, SourceLocation const& _location) const;
 	void donePath() { if (m_totalDeposit != INT_MAX && m_totalDeposit != m_deposit) BOOST_THROW_EXCEPTION(InvalidDeposit()); }
 	unsigned bytesRequired() const;
 
 	unsigned m_usedTags = 0;
 	AssemblyItems m_items;
 	mutable std::map<h256, bytes> m_data;
-	std::map<h256, Assembly> m_subs;
+	std::vector<Assembly> m_subs;
 	std::map<h256, std::string> m_strings;
 
 	int m_deposit = 0;
 	int m_baseDeposit = 0;
 	int m_totalDeposit = 0;
+
+	SourceLocation m_currentSourceLocation;
 };
 
 inline std::ostream& operator<<(std::ostream& _out, Assembly const& _a)
 {
-	_a.streamRLP(_out);
+	_a.stream(_out);
 	return _out;
 }
 

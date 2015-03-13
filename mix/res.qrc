@@ -103,11 +103,18 @@
         <file>qml/img/available_updates.png</file>
         <file>qml/DeploymentDialog.qml</file>
         <file>qml/img/search_filled.png</file>
+        <file>qml/StorageView.qml</file>
+        <file>qml/CallStack.qml</file>
         <file>qml/img/help.png</file>
         <file>qml/img/openedfolder.png</file>
         <file>qml/img/b64.png</file>
         <file>qml/img/exit.png</file>
         <file>qml/img/run.png</file>
         <file>qml/img/note.png</file>
+        <file>qml/LogsPane.qml</file>
+        <file>qml/img/copy.png</file>
+        <file>qml/img/broom.png</file>
+        <file>qml/LogsPaneStyle.qml</file>
+        <file>qml/img/console.png</file>
     </qresource>
 </RCC>

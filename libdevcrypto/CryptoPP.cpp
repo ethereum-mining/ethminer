@@ -19,8 +19,9 @@
  * @date 2014
  */
 
-#include "CryptoPP.h"
 #include <libdevcore/Guards.h>
+#include "ECDHE.h"
+#include "CryptoPP.h"
 
 using namespace std;
 using namespace dev;
@@ -30,6 +31,119 @@ using namespace CryptoPP;
 static_assert(dev::Secret::size == 32, "Secret key must be 32 bytes.");
 static_assert(dev::Public::size == 64, "Public key must be 64 bytes.");
 static_assert(dev::Signature::size == 65, "Signature must be 65 bytes.");
+
+bytes Secp256k1::eciesKDF(Secret _z, bytes _s1, unsigned kdByteLen)
+{
+	// interop w/go ecies implementation
+	
+	// for sha3, blocksize is 136 bytes
+	// for sha256, blocksize is 64 bytes
+	auto reps = ((kdByteLen + 7) * 8) / (64 * 8);
+	bytes ctr({0, 0, 0, 1});
+	bytes k;
+	CryptoPP::SHA256 ctx;
+	for (unsigned i = 0; i <= reps; i++)
+	{
+		ctx.Update(ctr.data(), ctr.size());
+		ctx.Update(_z.data(), Secret::size);
+		ctx.Update(_s1.data(), _s1.size());
+		// append hash to k
+		bytes digest(32);
+		ctx.Final(digest.data());
+		ctx.Restart();
+		
+		k.reserve(k.size() + h256::size);
+		move(digest.begin(), digest.end(), back_inserter(k));
+		
+		if (++ctr[3] || ++ctr[2] || ++ctr[1] || ++ctr[0])
+			continue;
+	}
+	
+	k.resize(kdByteLen);
+	return move(k);
+}
+
+void Secp256k1::encryptECIES(Public const& _k, bytes& io_cipher)
+{
+	// interop w/go ecies implementation
+	auto r = KeyPair::create();
+	h256 z;
+	ecdh::agree(r.sec(), _k, z);
+	auto key = eciesKDF(z, bytes(), 32);
+	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 16);
+	bytesRef mKeyMaterial = bytesRef(&key).cropped(16, 16);
+	CryptoPP::SHA256 ctx;
+	ctx.Update(mKeyMaterial.data(), mKeyMaterial.size());
+	bytes mKey(32);
+	ctx.Final(mKey.data());
+	
+	bytes cipherText;
+	encryptSymNoAuth(*(Secret*)eKey.data(), bytesConstRef(&io_cipher), cipherText, h128());
+	if (cipherText.empty())
+		return;
+
+	bytes msg(1 + Public::size + h128::size + cipherText.size() + 32);
+	msg[0] = 0x04;
+	r.pub().ref().copyTo(bytesRef(&msg).cropped(1, Public::size));
+	bytesRef msgCipherRef = bytesRef(&msg).cropped(1 + Public::size + h128::size, cipherText.size());
+	bytesConstRef(&cipherText).copyTo(msgCipherRef);
+	
+	// tag message
+	CryptoPP::HMAC<SHA256> hmacctx(mKey.data(), mKey.size());
+	bytesConstRef cipherWithIV = bytesRef(&msg).cropped(1 + Public::size, h128::size + cipherText.size());
+	hmacctx.Update(cipherWithIV.data(), cipherWithIV.size());
+	hmacctx.Final(msg.data() + 1 + Public::size + cipherWithIV.size());
+	
+	io_cipher.resize(msg.size());
+	io_cipher.swap(msg);
+}
+
+bool Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
+{
+	// interop w/go ecies implementation
+	
+	// io_cipher[0] must be 2, 3, or 4, else invalidpublickey
+	if (io_text[0] < 2 || io_text[0] > 4)
+		// invalid message: publickey
+		return false;
+	
+	if (io_text.size() < (1 + Public::size + h128::size + 1 + h256::size))
+		// invalid message: length
+		return false;
+
+	h256 z;
+	ecdh::agree(_k, *(Public*)(io_text.data()+1), z);
+	auto key = eciesKDF(z, bytes(), 64);
+	bytesConstRef eKey = bytesConstRef(&key).cropped(0, 16);
+	bytesRef mKeyMaterial = bytesRef(&key).cropped(16, 16);
+	bytes mKey(32);
+	CryptoPP::SHA256 ctx;
+	ctx.Update(mKeyMaterial.data(), mKeyMaterial.size());
+	ctx.Final(mKey.data());
+	
+	bytes plain;
+	size_t cipherLen = io_text.size() - 1 - Public::size - h128::size - h256::size;
+	bytesConstRef cipherWithIV(io_text.data() + 1 + Public::size, h128::size + cipherLen);
+	bytesConstRef cipherIV = cipherWithIV.cropped(0, h128::size);
+	bytesConstRef cipherNoIV = cipherWithIV.cropped(h128::size, cipherLen);
+	bytesConstRef msgMac(cipherNoIV.data() + cipherLen, h256::size);
+	h128 iv(cipherIV.toBytes());
+	
+	// verify tag
+	CryptoPP::HMAC<SHA256> hmacctx(mKey.data(), mKey.size());
+	hmacctx.Update(cipherWithIV.data(), cipherWithIV.size());
+	h256 mac;
+	hmacctx.Final(mac.data());
+	for (unsigned i = 0; i < h256::size; i++)
+		if (mac[i] != msgMac[i])
+			return false;
+	
+	decryptSymNoAuth(*(Secret*)eKey.data(), iv, cipherNoIV, plain);
+	io_text.resize(plain.size());
+	io_text.swap(plain);
+	
+	return true;
+}
 
 void Secp256k1::encrypt(Public const& _k, bytes& io_cipher)
 {
@@ -199,13 +313,13 @@ bool Secp256k1::verifySecret(Secret const& _s, Public& _p)
 
 void Secp256k1::agree(Secret const& _s, Public const& _r, h256& o_s)
 {
-	(void)o_s;
-	(void)_s;
-	ECDH<ECP>::Domain d(m_oid);
+	// TODO: mutex ASN1::secp256k1() singleton
+	// Creating Domain is non-const for m_oid and m_oid is not thread-safe
+	ECDH<ECP>::Domain d(ASN1::secp256k1());
 	assert(d.AgreedValueLength() == sizeof(o_s));
 	byte remote[65] = {0x04};
 	memcpy(&remote[1], _r.data(), 64);
-	assert(d.Agree(o_s.data(), _s.data(), remote));
+	d.Agree(o_s.data(), _s.data(), remote);
 }
 
 void Secp256k1::exportPublicKey(CryptoPP::DL_PublicKey_EC<CryptoPP::ECP> const& _k, Public& o_p)

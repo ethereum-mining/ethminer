@@ -41,8 +41,11 @@ public:
 						 std::map<ContractDefinition const*, bytes const*> const& _contracts);
 	bytes getAssembledBytecode() { return m_context.getAssembledBytecode(m_optimize); }
 	bytes getRuntimeBytecode() { return m_runtimeContext.getAssembledBytecode(m_optimize);}
-	void streamAssembly(std::ostream& _stream) const { m_context.streamAssembly(_stream); }
-
+	/// @arg _sourceCodes is the map of input files to source code strings
+	void streamAssembly(std::ostream& _stream, StringMap const& _sourceCodes = StringMap()) const
+	{
+		m_context.streamAssembly(_stream, _sourceCodes);
+	}
 	/// @returns Assembly items of the normal compiler context
 	eth::AssemblyItems const& getAssemblyItems() const { return m_context.getAssembly().getItems(); }
 	/// @returns Assembly items of the runtime compiler context
@@ -91,8 +94,8 @@ private:
 	std::vector<eth::AssemblyItem> m_continueTags; ///< tag to jump to for a "continue" statement
 	eth::AssemblyItem m_returnTag; ///< tag to jump to for a "return" statement
 	unsigned m_modifierDepth = 0;
-	FunctionDefinition const* m_currentFunction;
-	unsigned m_stackCleanupForReturn; ///< this number of stack elements need to be removed before jump to m_returnTag
+	FunctionDefinition const* m_currentFunction = nullptr;
+	unsigned m_stackCleanupForReturn = 0; ///< this number of stack elements need to be removed before jump to m_returnTag
 	// arguments for base constructors, filled in derived-to-base order
 	std::map<FunctionDefinition const*, std::vector<ASTPointer<Expression>> const*> m_baseArguments;
 };

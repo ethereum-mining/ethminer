@@ -19,6 +19,11 @@ function(createDefaultCacheConfig)
 	set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
 	set(JSONRPC ON CACHE BOOL "Build with jsonprc. default on")
 	set(EVMJIT OFF CACHE BOOL "Build a just-in-time compiler for EVM code (requires LLVM)")
+	set(FATDB OFF CACHE BOOL "Build with ability to list entries in the Trie. Doubles DB size, slows everything down, but good for looking at state diffs and trie contents.")
+	set(JUSTTESTS OFF CACHE BOOL "Build only for tests.")
+	set(SOLIDITY ON CACHE BOOL "Build the Solidity language components (requried unless HEADLESS)")
+	set(USENPM OFF CACHE BOOL "Use npm to recompile ethereum.js if it was changed")
+	set(ETHASHCL OFF CACHE BOOL "Build in support for GPU mining via OpenCL")
 endfunction()
 
 
@@ -40,16 +45,28 @@ function(configureProject)
 		endif ()
 	endif ()
 
+	if (ETHASHCL)
+		add_definitions(-DETH_ETHASHCL)
+	endif()
+
 	if (EVMJIT)
 		add_definitions(-DETH_EVMJIT)
 	endif()
 
-	if (HEADLESS)
+	if (FATDB)
+		add_definitions(-DETH_FATDB)
+	endif()
+
+	if (SOLIDITY)
+		add_definitions(-DETH_SOLIDITY)
+	endif()
+
+	if (HEADLESS OR JUSTTESTS)
 		add_definitions(-DETH_HEADLESS)
 	endif()
 endfunction()
 
-
+set(CPPETHEREUM 1)
 
 function(createBuildInfo)
 	# Set build platform; to be written to BuildInfo.h
@@ -109,8 +126,12 @@ cmake_policy(SET CMP0015 NEW)
 
 createDefaultCacheConfig()
 configureProject()
+
+# Force chromium.
+set (ETH_HAVE_WEBENGINE 1)
+
 message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
-message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}")
+message("-- VMTRACE: ${VMTRACE}; PARANOIA: ${PARANOIA}; HEADLESS: ${HEADLESS}; JSONRPC: ${JSONRPC}; EVMJIT: ${EVMJIT}; FATDB: ${FATDB}; CHROMIUM: ${ETH_HAVE_WEBENGINE}; USENPM: ${USENPM}")
 
 
 # Default TARGET_PLATFORM to "linux".
@@ -139,6 +160,7 @@ if (EVMJIT)
 endif()
 
 add_subdirectory(libdevcore)
+add_subdirectory(rlp)
 add_subdirectory(libevmcore)
 add_subdirectory(liblll)
 
@@ -148,8 +170,11 @@ if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 endif ()
 
 add_subdirectory(libsolidity)
-add_subdirectory(lllc)
-add_subdirectory(solc)
+
+if (NOT JUSTTESTS)
+	add_subdirectory(lllc)
+	add_subdirectory(solc)
+endif()
 
 if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
@@ -160,31 +185,45 @@ add_subdirectory(libp2p)
 add_subdirectory(libdevcrypto)
 add_subdirectory(libwhisper)
 
+add_subdirectory(libethash)
+if (ETHASHCL)
+	add_subdirectory(libethash-cl)
+endif ()
+
 add_subdirectory(libethcore)
 add_subdirectory(libevm)
 add_subdirectory(libethereum)
 
 add_subdirectory(libwebthree)
 add_subdirectory(test)
-add_subdirectory(eth)
 
-if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
-	add_subdirectory(exp)
-endif ()
+if (NOT JUSTTESTS)
 
-# TODO check msvc
-if(NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
-	add_subdirectory(neth)
-endif ()
+	add_subdirectory(eth)
 
-if (NOT HEADLESS)
-	
-	add_subdirectory(libnatspec)
-	add_subdirectory(libjsqrc)
-	add_subdirectory(alethzero)
-	add_subdirectory(third)
-	add_subdirectory(mix)
-	
+	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
+		add_subdirectory(exp)
+	endif ()
+
+	# TODO check msvc
+	if(NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+		add_subdirectory(neth)
+	endif ()
+
+	if (NOT HEADLESS)
+
+		add_subdirectory(libnatspec)
+		add_subdirectory(libjsqrc)
+
+		if (ETH_HAVE_WEBENGINE)
+			add_subdirectory(alethzero)
+#			add_subdirectory(third)	// reenable once not qtwebkit.
+		endif()
+
+		add_subdirectory(mix)
+
+	endif()
+
 endif()
 
 enable_testing()

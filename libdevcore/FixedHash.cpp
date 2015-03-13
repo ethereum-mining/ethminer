@@ -25,4 +25,4 @@
 using namespace std;
 using namespace dev;
 
-std::mt19937_64 dev::s_fixedHashEngine(time(0));
+std::random_device dev::s_fixedHashEngine;

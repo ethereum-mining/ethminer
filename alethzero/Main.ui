@@ -39,6 +39,13 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_7">
       <item>
+       <widget class="QLabel" name="cacheUsage">
+        <property name="text">
+         <string>0 bytes used</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="balance">
         <property name="text">
          <string>0 wei</string>
@@ -95,13 +102,7 @@
            <widget class="QLineEdit" name="urlEdit"/>
           </item>
           <item>
-           <widget class="QWebView" name="webView">
-            <property name="url">
-             <url>
-              <string>about:blank</string>
-             </url>
-            </property>
-           </widget>
+           <widget class="QWebEngineView" name="webView" native="true"/>
           </item>
          </layout>
         </widget>
@@ -806,13 +807,7 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QWebView" name="jsConsole">
-       <property name="url">
-        <url>
-         <string>about:blank</string>
-        </url>
-       </property>
-      </widget>
+      <widget class="QWebEngineView" name="jsConsole" native="true"/>
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_9">
@@ -1668,11 +1663,6 @@ font-size: 14pt</string>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
   <customwidget>
-   <class>QWebView</class>
-   <extends>QWidget</extends>
-   <header>QtWebKitWidgets/QWebView</header>
-  </customwidget>
-  <customwidget>
    <class>MiningView</class>
    <extends>QWidget</extends>
    <header>MiningView.h</header>
@@ -1682,6 +1672,12 @@ font-size: 14pt</string>
    <class>DownloadView</class>
    <extends>QWidget</extends>
    <header>DownloadView.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QWebEngineView</class>
+   <extends>QWidget</extends>
+   <header location="global">QtWebEngineWidgets/QWebEngineView</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
@@ -1695,10 +1691,8 @@ font-size: 14pt</string>
   <tabstop>log</tabstop>
   <tabstop>post</tabstop>
   <tabstop>verbosity</tabstop>
-  <tabstop>jsConsole</tabstop>
   <tabstop>tabWidget</tabstop>
   <tabstop>urlEdit</tabstop>
-  <tabstop>webView</tabstop>
   <tabstop>idealPeers</tabstop>
   <tabstop>forceAddress</tabstop>
   <tabstop>port</tabstop>
