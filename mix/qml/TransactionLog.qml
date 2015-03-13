@@ -32,10 +32,19 @@ Item {
 
 			Connections
 			{
+				id: compilationStatus
+				target: codeModel
+				property bool compilationComplete: false
+				onCompilationComplete: compilationComplete = true
+				onCompilationError: compilationComplete = false
+			}
+
+			Connections
+			{
 				target: projectModel
 				onProjectSaved:
 				{
-					if (codeModel.hasContract && !clientModel.running)
+					if (compilationStatus.compilationComplete && codeModel.hasContract && !clientModel.running)
 						projectModel.stateListModel.debugDefaultState();
 				}
 				onProjectClosed:
@@ -43,6 +52,10 @@ Item {
 					fullModel.clear();
 					transactionModel.clear();
 					callModel.clear();
+				}
+				onContractSaved: {
+					if (compilationStatus.compilationComplete && codeModel.hasContract && !clientModel.running)
+						projectModel.stateListModel.debugDefaultState();
 				}
 			}
 

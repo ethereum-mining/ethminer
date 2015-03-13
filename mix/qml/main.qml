@@ -281,7 +281,7 @@ ApplicationWindow {
 		text: qsTr("Save All")
 		shortcut: "Ctrl+S"
 		enabled: !projectModel.isEmpty
-		onTriggered: projectModel.saveAll();
+		onTriggered: projectModel.saveCurrentDocument();
 	}
 
 	Action {
