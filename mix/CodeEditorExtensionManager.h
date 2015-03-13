@@ -49,8 +49,6 @@ class CodeEditorExtensionManager: public QObject
 public:
 	CodeEditorExtensionManager();
 	~CodeEditorExtensionManager();
-	/// Initialize all extensions.
-	void initExtensions();
 	/// Initialize extension.
 	void initExtension(std::shared_ptr<Extension>);
 	/// Set current tab view

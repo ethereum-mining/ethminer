@@ -21,6 +21,8 @@
 
 #include "Assembly.h"
 
+#include <fstream>
+
 #include <libdevcore/Log.h>
 
 using namespace std;
@@ -75,6 +77,20 @@ int AssemblyItem::deposit() const
 	return 0;
 }
 
+string AssemblyItem::getJumpTypeAsString() const
+{
+	switch (m_jumpType)
+	{
+	case JumpType::IntoFunction:
+		return "[in]";
+	case JumpType::OutOfFunction:
+		return "[out]";
+	case JumpType::Ordinary:
+	default:
+		return "";
+	}
+}
+
 unsigned Assembly::bytesRequired() const
 {
 	for (unsigned br = 1;; ++br)
@@ -97,6 +113,8 @@ void Assembly::append(Assembly const& _a)
 	{
 		if (i.type() == Tag || i.type() == PushTag)
 			i.m_data += m_usedTags;
+		else if (i.type() == PushSub || i.type() == PushSubSize)
+			i.m_data += m_subs.size();
 		append(i);
 	}
 	m_deposit = newDeposit;
@@ -106,7 +124,7 @@ void Assembly::append(Assembly const& _a)
 	for (auto const& i: _a.m_strings)
 		m_strings.insert(i);
 	for (auto const& i: _a.m_subs)
-		m_subs.insert(i);
+		m_subs.push_back(i);
 
 	assert(!_a.m_baseDeposit);
 	assert(!_a.m_totalDeposit);
@@ -171,69 +189,95 @@ ostream& dev::eth::operator<<(ostream& _out, AssemblyItemsConstRef _i)
 	return _out;
 }
 
-ostream& Assembly::streamRLP(ostream& _out, string const& _prefix) const
+string Assembly::getLocationFromSources(StringMap const& _sourceCodes, SourceLocation const& _location) const
+{
+	if (_location.isEmpty() || _sourceCodes.empty() || _location.start >= _location.end || _location.start < 0)
+		return "";
+
+	auto it = _sourceCodes.find(*_location.sourceName);
+	if (it == _sourceCodes.end())
+		return "";
+
+	string const& source = it->second;
+	if (size_t(_location.start) >= source.size())
+		return "";
+
+	string cut = source.substr(_location.start, _location.end - _location.start);
+	auto newLinePos = cut.find_first_of("\n");
+	if (newLinePos != string::npos)
+		cut = cut.substr(0, newLinePos) + "...";
+
+	return move(cut);
+}
+
+ostream& Assembly::stream(ostream& _out, string const& _prefix, StringMap const& _sourceCodes) const
 {
 	_out << _prefix << ".code:" << endl;
 	for (AssemblyItem const& i: m_items)
+	{
+		_out << _prefix;
 		switch (i.m_type)
 		{
 		case Operation:
-			_out << _prefix << "  " << instructionInfo((Instruction)(byte)i.m_data).name << endl;
+			_out << "  " << instructionInfo((Instruction)(byte)i.m_data).name  << "\t" << i.getJumpTypeAsString();
 			break;
 		case Push:
-			_out << _prefix << "  PUSH " << i.m_data << endl;
+			_out << "  PUSH " << i.m_data;
 			break;
 		case PushString:
-			_out << _prefix << "  PUSH \"" << m_strings.at((h256)i.m_data) << "\"" << endl;
+			_out << "  PUSH \"" << m_strings.at((h256)i.m_data) << "\"";
 			break;
 		case PushTag:
-			_out << _prefix << "  PUSH [tag" << i.m_data << "]" << endl;
+			_out << "  PUSH [tag" << i.m_data << "]";
 			break;
 		case PushSub:
-			_out << _prefix << "  PUSH [$" << h256(i.m_data).abridged() << "]" << endl;
+			_out << "  PUSH [$" << h256(i.m_data).abridged() << "]";
 			break;
 		case PushSubSize:
-			_out << _prefix << "  PUSH #[$" << h256(i.m_data).abridged() << "]" << endl;
+			_out << "  PUSH #[$" << h256(i.m_data).abridged() << "]";
 			break;
 		case PushProgramSize:
-			_out << _prefix << "  PUSHSIZE" << endl;
+			_out << "  PUSHSIZE";
 			break;
 		case Tag:
-			_out << _prefix << "tag" << i.m_data << ": " << endl << _prefix << "  JUMPDEST" << endl;
+			_out << "tag" << i.m_data << ": " << endl << _prefix << "  JUMPDEST";
 			break;
 		case PushData:
-			_out << _prefix << "  PUSH [" << hex << (unsigned)i.m_data << "]" << endl;
+			_out << "  PUSH [" << hex << (unsigned)i.m_data << "]";
 			break;
 		case NoOptimizeBegin:
-			_out << _prefix << "DoNotOptimze{{" << endl;
+			_out << "DoNotOptimze{{";
 			break;
 		case NoOptimizeEnd:
-			_out << _prefix << "DoNotOptimze}}" << endl;
+			_out << "DoNotOptimze}}";
 			break;
 		default:
 			BOOST_THROW_EXCEPTION(InvalidOpcode());
 		}
+		_out << "\t\t" << getLocationFromSources(_sourceCodes, i.getLocation()) << endl;
+	}
 
 	if (!m_data.empty() || !m_subs.empty())
 	{
 		_out << _prefix << ".data:" << endl;
 		for (auto const& i: m_data)
-			if (!m_subs.count(i.first))
+			if (u256(i.first) >= m_subs.size())
 				_out << _prefix << "  " << hex << (unsigned)(u256)i.first << ": " << toHex(i.second) << endl;
-		for (auto const& i: m_subs)
+		for (size_t i = 0; i < m_subs.size(); ++i)
 		{
-			_out << _prefix << "  " << hex << (unsigned)(u256)i.first << ": " << endl;
-			i.second.streamRLP(_out, _prefix + "  ");
+			_out << _prefix << "  " << hex << i << ": " << endl;
+			m_subs[i].stream(_out, _prefix + "  ", _sourceCodes);
 		}
 	}
 	return _out;
 }
 
-AssemblyItem const& Assembly::append(AssemblyItem const& _i, SourceLocation const& _location)
+AssemblyItem const& Assembly::append(AssemblyItem const& _i)
 {
 	m_deposit += _i.deposit();
 	m_items.push_back(_i);
-	m_items.back().setLocation(_location);
+	if (m_items.back().getLocation().isEmpty() && !m_currentSourceLocation.isEmpty())
+		m_items.back().setLocation(m_currentSourceLocation);
 	return back();
 }
 
@@ -465,8 +509,8 @@ Assembly& Assembly::optimise(bool _enable)
 
 	copt << total << " optimisations done.";
 
-	for (auto& i: m_subs)
-	  i.second.optimise(true);
+	for (auto& sub: m_subs)
+	  sub.optimise(true);
 
 	return *this;
 }
@@ -483,8 +527,8 @@ bytes Assembly::assemble() const
 	unsigned bytesPerTag = dev::bytesRequired(totalBytes);
 	byte tagPush = (byte)Instruction::PUSH1 - 1 + bytesPerTag;
 
-	for (auto const& i: m_subs)
-		m_data[i.first] = i.second.assemble();
+	for (size_t i = 0; i < m_subs.size(); ++i)
+		m_data[u256(i)] = m_subs[i].assemble();
 
 	unsigned bytesRequiredIncludingData = bytesRequired();
 	unsigned bytesPerDataRef = dev::bytesRequired(bytesRequiredIncludingData);

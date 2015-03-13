@@ -69,7 +69,7 @@ namespace test
 struct ValueTooLarge: virtual Exception {};
 bigint const c_max256plus1 = bigint(1) << 256;
 
-ImportTest::ImportTest(json_spirit::mObject& _o, bool isFiller): m_TestObject(_o)
+ImportTest::ImportTest(json_spirit::mObject& _o, bool isFiller) : m_statePre(Address(_o["env"].get_obj()["currentCoinbase"].get_str()), OverlayDB(), eth::BaseState::Empty),  m_statePost(Address(_o["env"].get_obj()["currentCoinbase"].get_str()), OverlayDB(), eth::BaseState::Empty), m_TestObject(_o)
 {
 	importEnv(_o["env"].get_obj());
 	importState(_o["pre"].get_obj(), m_statePre);
@@ -181,52 +181,35 @@ void ImportTest::exportTest(bytes const& _output, State const& _statePost)
 	m_TestObject["logs"] = exportLog(_statePost.pending().size() ? _statePost.log(0) : LogEntries());
 
 	// export post state
-	json_spirit::mObject postState;
 
-	std::map<Address, Account> genesis = genesisState();
-
-	for (auto const& a: _statePost.addresses())
-	{
-		if (genesis.count(a.first))
-			continue;
-
-		json_spirit::mObject o;
-		o["balance"] = toString(_statePost.balance(a.first));
-		o["nonce"] = toString(_statePost.transactionsFrom(a.first));
-		{
-			json_spirit::mObject store;
-			for (auto const& s: _statePost.storage(a.first))
-				store["0x"+toHex(toCompactBigEndian(s.first))] = "0x"+toHex(toCompactBigEndian(s.second));
-			o["storage"] = store;
-		}
-		o["code"] = "0x" + toHex(_statePost.code(a.first));
-
-		postState[toString(a.first)] = o;
-	}
-	m_TestObject["post"] = json_spirit::mValue(postState);
+	m_TestObject["post"] = fillJsonWithState(_statePost);
+	m_TestObject["postStateRoot"] = toHex(_statePost.rootHash().asBytes());
 
 	// export pre state
-	json_spirit::mObject preState;
+	m_TestObject["pre"] = fillJsonWithState(m_statePre);
+}
 
-	for (auto const& a: m_statePre.addresses())
+json_spirit::mObject fillJsonWithState(State _state)
+{
+	// export pre state
+	json_spirit::mObject oState;
+
+	for (auto const& a: _state.addresses())
 	{
-		if (genesis.count(a.first))
-			continue;
-
 		json_spirit::mObject o;
-		o["balance"] = toString(m_statePre.balance(a.first));
-		o["nonce"] = toString(m_statePre.transactionsFrom(a.first));
+		o["balance"] = toString(_state.balance(a.first));
+		o["nonce"] = toString(_state.transactionsFrom(a.first));
 		{
 			json_spirit::mObject store;
-			for (auto const& s: m_statePre.storage(a.first))
+			for (auto const& s: _state.storage(a.first))
 				store["0x"+toHex(toCompactBigEndian(s.first))] = "0x"+toHex(toCompactBigEndian(s.second));
 			o["storage"] = store;
 		}
-		o["code"] = "0x" + toHex(m_statePre.code(a.first));
+		o["code"] = "0x" + toHex(_state.code(a.first));
 
-		preState[toString(a.first)] = o;
+		oState[toString(a.first)] = o;
 	}
-	m_TestObject["pre"] = json_spirit::mValue(preState);
+	return oState;
 }
 
 u256 toInt(json_spirit::mValue const& _v)
@@ -456,8 +439,6 @@ void userDefinedTest(string testTypeFlag, std::function<void(json_spirit::mValue
 			}
 			g_logVerbosity = currentVerbosity;
 		}
-		else
-			continue;
 	}
 }
 
@@ -466,32 +447,27 @@ void executeTests(const string& _name, const string& _testPathAppendix, std::fun
 	string testPath = getTestPath();
 	testPath += _testPathAppendix;
 
-	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
+	if (Options::get().fillTests)
 	{
-		string arg = boost::unit_test::framework::master_test_suite().argv[i];
-		if (arg == "--filltests")
+		try
 		{
-			try
-			{
-				cnote << "Populating tests...";
-				json_spirit::mValue v;
-				boost::filesystem::path p(__FILE__);
-				boost::filesystem::path dir = p.parent_path();
-				string s = asString(dev::contents(dir.string() + "/" + _name + "Filler.json"));
-				BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + dir.string() + "/" + _name + "Filler.json is empty.");
-				json_spirit::read_string(s, v);
-				doTests(v, true);
-				writeFile(testPath + "/" + _name + ".json", asBytes(json_spirit::write_string(v, true)));
-			}
-			catch (Exception const& _e)
-			{
-				BOOST_ERROR("Failed filling test with Exception: " << diagnostic_information(_e));
-			}
-			catch (std::exception const& _e)
-			{
-				BOOST_ERROR("Failed filling test with Exception: " << _e.what());
-			}
-			break;
+			cnote << "Populating tests...";
+			json_spirit::mValue v;
+			boost::filesystem::path p(__FILE__);
+			boost::filesystem::path dir = p.parent_path();
+			string s = asString(dev::contents(dir.string() + "/" + _name + "Filler.json"));
+			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + dir.string() + "/" + _name + "Filler.json is empty.");
+			json_spirit::read_string(s, v);
+			doTests(v, true);
+			writeFile(testPath + "/" + _name + ".json", asBytes(json_spirit::write_string(v, true)));
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed filling test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed filling test with Exception: " << _e.what());
 		}
 	}
 
@@ -558,19 +534,48 @@ RLPStream createRLPStreamFromTransactionFields(json_spirit::mObject& _tObj)
 	return rlpStream;
 }
 
-void processCommandLineOptions()
+Options::Options()
 {
 	auto argc = boost::unit_test::framework::master_test_suite().argc;
 	auto argv = boost::unit_test::framework::master_test_suite().argv;
 
-	for (auto i =  0; i < argc; ++i)
+	for (auto i = 0; i < argc; ++i)
 	{
-		if (std::string(argv[i]) == "--jit")
+		auto arg = std::string{argv[i]};
+		if (arg == "--jit")
 		{
+			jit = true;
 			eth::VMFactory::setKind(eth::VMKind::JIT);
-			break;
+		}
+		else if (arg == "--vmtrace")
+			vmtrace = true;
+		else if (arg == "--filltests")
+			fillTests = true;
+		else if (arg == "--performance")
+			performance = true;
+		else if (arg == "--quadratic")
+			quadratic = true;
+		else if (arg == "--memory")
+			memory = true;
+		else if (arg == "--inputlimits")
+			inputLimits = true;
+		else if (arg == "--bigdata")
+			bigData = true;
+		else if (arg == "--all")
+		{
+			performance = true;
+			quadratic = true;
+			memory = true;
+			inputLimits = true;
+			bigData = true;
 		}
 	}
+}
+
+Options const& Options::get()
+{
+	static Options instance;
+	return instance;
 }
 
 LastHashes lastHashes(u256 _currentBlockNumber)

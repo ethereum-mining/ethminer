@@ -32,7 +32,7 @@
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
 #include <libdevcore/RLP.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
 #include <libwebthree/WebThree.h>
@@ -54,8 +54,11 @@ namespace jsonrpc {
 class HttpServer;
 }
 
-class QQuickView;
+class QWebEnginePage;
 class OurWebThreeStubServer;
+class DappLoader;
+class DappHost;
+struct Dapp;
 
 using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
 
@@ -75,8 +78,6 @@ public:
 
 	bool confirm() const;
 	NatSpecFace* natSpec() { return &m_natSpecDB; }
-
-	QVariant evalRaw(QString const& _js);
 
 	QString pretty(dev::Address _a) const override;
 	QString prettyU256(dev::u256 _n) const override;
@@ -101,6 +102,7 @@ public slots:
 
 private slots:
 	void eval(QString const& _js);
+	void addConsoleMessage(QString const& _js, QString const& _s);
 
 	// Application
 	void on_about_triggered();
@@ -174,6 +176,9 @@ private slots:
 	void refreshBlockChain();
 	void addNewId(QString _ids);
 
+	// Dapps
+	void dappLoaded(Dapp& _dapp); //qt does not support rvalue refs for signals
+
 signals:
 	void poll();
 
@@ -212,6 +217,7 @@ private:
 	void refreshNetwork();
 	void refreshMining();
 	void refreshWhispers();
+	void refreshCache();
 
 	void refreshAll();
 	void refreshPending();
@@ -235,8 +241,6 @@ private:
 	QString m_privateChain;
 	dev::Address m_nameReg;
 
-	QNetworkAccessManager m_webCtrl;
-
 	QList<QPair<QString, QString>> m_consoleHistory;
 	QMutex m_logLock;
 	QString m_logHistory;
@@ -249,4 +253,7 @@ private:
 	NatspecHandler m_natSpecDB;
 
 	Transact m_transact;
+	std::unique_ptr<DappHost> m_dappHost;
+	DappLoader* m_dappLoader;
+	QWebEnginePage* m_webPage;
 };

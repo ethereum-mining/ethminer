@@ -12,6 +12,7 @@ Item {
 	id: webPreview
 	property string pendingPageUrl: ""
 	property bool initialized: false
+	signal javaScriptMessage(var _level, string _sourceId, var _lineNb, string _content)
 
 	function setPreviewUrl(url) {
 		if (!initialized)
@@ -203,7 +204,6 @@ Item {
 					{
 						setPreviewUrl(text);
 					}
-
 					focus: true
 				}
 
@@ -221,7 +221,17 @@ Item {
 					anchors.verticalCenter: parent.verticalCenter
 					width: 21
 					height: 21
+					focus: true
 				}
+
+				Rectangle
+				{
+					width: 1
+					height: parent.height - 10
+					color: WebPreviewStyle.general.separatorColor
+					anchors.verticalCenter: parent.verticalCenter
+				}
+
 				CheckBox {
 					id: autoReloadOnSave
 					checked: true
@@ -232,20 +242,62 @@ Item {
 							text: qsTr("Auto reload on save")
 						}
 					}
+					focus: true
+				}
+
+				Rectangle
+				{
+					width: 1
+					height: parent.height - 10
+					color: WebPreviewStyle.general.separatorColor
+					anchors.verticalCenter: parent.verticalCenter
+				}
+
+				Button
+				{
+					height: 28
+					anchors.verticalCenter: parent.verticalCenter
+					action: expressionAction
+					iconSource: "qrc:/qml/img/console.png"
+				}
+
+				Action {
+					id: expressionAction
+					tooltip: qsTr("Expressions")
+					onTriggered:
+					{
+						expressionPanel.visible = !expressionPanel.visible;
+						if (expressionPanel.visible)
+						{
+							webView.width = webView.parent.width - 350
+							expressionInput.forceActiveFocus();
+						}
+						else
+							webView.width = webView.parent.width
+					}
 				}
 			}
 		}
 
 		Rectangle
 		{
+			Layout.preferredHeight: 1
+			Layout.preferredWidth: parent.width
+			color: WebPreviewStyle.general.separatorColor
+		}
+
+		SplitView
+		{
 			Layout.preferredWidth: parent.width
 			Layout.fillHeight: true
 			WebEngineView {
-				anchors.fill: parent
+				Layout.fillHeight: true
+				width: parent.width
+				Layout.preferredWidth: parent.width
 				id: webView
 				experimental.settings.localContentCanAccessRemoteUrls: true
 				onJavaScriptConsoleMessage: {
-					console.log(sourceID + ":" + lineNumber + ":" + message);
+					webPreview.javaScriptMessage(level, sourceID, lineNumber, message);
 				}
 				onLoadingChanged: {
 					if (!loading) {
@@ -256,6 +308,123 @@ Item {
 					}
 				}
 			}
+
+			Column {
+				id: expressionPanel
+				width: 350
+				Layout.preferredWidth: 350
+				Layout.fillHeight: true
+				spacing: 0
+				visible: false
+				function addExpression()
+				{
+					if (expressionInput.text === "")
+						return;
+					expressionInput.history.unshift(expressionInput.text);
+					expressionInput.index = -1;
+					webView.runJavaScript("executeJavaScript(\"" + expressionInput.text.replace(/"/g, '\\"') + "\")", function(result) {
+						resultTextArea.text = "> " + result + "\n\n" + resultTextArea.text;
+						expressionInput.text = "";
+					});
+				}
+
+				Row
+				{
+					id: rowConsole
+					width: parent.width
+					Button
+					{
+						height: 22
+						width: 22
+						action: clearAction
+						iconSource: "qrc:/qml/img/broom.png"
+					}
+
+					Action {
+						id: clearAction
+						enabled: resultTextArea.text !== ""
+						tooltip: qsTr("Clear")
+						onTriggered: {
+							resultTextArea.text = "";
+						}
+					}
+
+					DefaultTextField {
+						id: expressionInput
+						width: parent.width - 15
+						height: 20
+						font.family: WebPreviewStyle.general.fontName
+						font.italic: true
+						font.pointSize: Style.absoluteSize(-3)
+						anchors.verticalCenter: parent.verticalCenter
+
+						property var history: []
+						property int index: -1
+
+						function displayCache(incr)
+						{
+							index = index + incr;
+							if (history.length - 1 < index || index < 0)
+							{
+								if (incr === 1)
+									index = 0;
+								else
+									index = history.length - 1;
+							}
+							expressionInput.text = history[index];
+						}
+
+						Keys.onDownPressed: {
+							displayCache(1);
+						}
+
+						Keys.onUpPressed: {
+							displayCache(-1);
+						}
+
+						Keys.onEnterPressed:
+						{
+							expressionPanel.addExpression();
+						}
+
+						Keys.onReturnPressed:
+						{
+							expressionPanel.addExpression();
+						}
+
+						onFocusChanged:
+						{
+							if (!focus && text == "")
+								text = qsTr("Expression");
+							if (focus && text === qsTr("Expression"))
+								text = "";
+						}
+
+						style: TextFieldStyle {
+							background: Rectangle {
+								color: "transparent"
+							}
+						}
+					}
+				}
+
+				TextArea {
+					Layout.fillHeight: true
+					height: parent.height - rowConsole.height
+					readOnly: true
+					id: resultTextArea
+					width: expressionPanel.width
+					wrapMode: Text.Wrap
+					font.family: WebPreviewStyle.general.fontName
+					font.pointSize: Style.absoluteSize(-3)
+					backgroundVisible: true
+					style: TextAreaStyle {
+						backgroundColor: "#f0f0f0"
+					}
+				}
+			}
 		}
 	}
 }
+
+

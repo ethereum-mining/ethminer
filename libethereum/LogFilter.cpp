@@ -30,13 +30,13 @@ using namespace dev::eth;
 std::ostream& dev::eth::operator<<(std::ostream& _out, LogFilter const& _s)
 {
 	// TODO
-	_out << "(@" << _s.m_addresses << "#" << _s.m_topics << ">" << _s.m_earliest << "-" << _s.m_latest << "< +" << _s.m_skip << "^" << _s.m_max << ")";
+	_out << "(@" << _s.m_addresses << "#" << _s.m_topics << ">" << _s.m_earliest << "-" << _s.m_latest << "< )";
 	return _out;
 }
 
 void LogFilter::streamRLP(RLPStream& _s) const
 {
-	_s.appendList(6) << m_addresses << m_topics << m_earliest << m_latest << m_max << m_skip;
+	_s.appendList(4) << m_addresses << m_topics << m_earliest << m_latest;
 }
 
 h256 LogFilter::sha3() const
@@ -71,6 +71,16 @@ bool LogFilter::matches(LogBloom _bloom) const
 bool LogFilter::matches(State const& _s, unsigned _i) const
 {
 	return matches(_s.receipt(_i)).size() > 0;
+}
+
+vector<LogBloom> LogFilter::bloomPossibilities() const
+{
+	// return combination of each of the addresses/topics
+	vector<LogBloom> ret;
+	// TODO proper combinatorics.
+	for (auto i: m_addresses)
+		ret.push_back(LogBloom().shiftBloom<3>(dev::sha3(i)));
+	return ret;
 }
 
 LogEntries LogFilter::matches(TransactionReceipt const& _m) const

@@ -28,7 +28,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
 #include <libevmcore/Instruction.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libethcore/BlockInfo.h>
 
 namespace dev
@@ -47,9 +47,9 @@ struct LogEntry
 	LogBloom bloom() const
 	{
 		LogBloom ret;
-		ret.shiftBloom<3, 32>(sha3(address.ref()));
+		ret.shiftBloom<3>(sha3(address.ref()));
 		for (auto t: topics)
-			ret.shiftBloom<3, 32>(sha3(t.ref()));
+			ret.shiftBloom<3>(sha3(t.ref()));
 		return ret;
 	}
 
@@ -142,6 +142,9 @@ public:
 
 	/// Determine account's TX count.
 	virtual u256 txCount(Address) { return 0; }
+
+	/// Does the account exist?
+	virtual bool exists(Address) { return false; }
 
 	/// Suicide the associated contract and give proceeds to the given address.
 	virtual void suicide(Address) { sub.suicides.insert(myAddress); }
