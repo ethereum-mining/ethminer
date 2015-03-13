@@ -161,6 +161,7 @@ QStringList FileIo::makePackage(QString const& _deploymentFolder)
 	}
 	rlpStr.appendList(k);
 
+	manifest["entries"] = entries;
 	std::stringstream jsonStr;
 	jsonStr << manifest;
 	QByteArray b =  QString::fromStdString(jsonStr.str()).toUtf8();
@@ -169,7 +170,6 @@ QStringList FileIo::makePackage(QString const& _deploymentFolder)
 	for (unsigned int k = 0; k < files.size(); k++)
 		rlpStr.append(files.at(k));
 
-	manifest["entries"] = entries;
 	bytes dapp = rlpStr.out();
 	dev::h256 dappHash = dev::sha3(dapp);
 	//encrypt

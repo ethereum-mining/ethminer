@@ -37,6 +37,7 @@
 #include "QVariableDefinition.h"
 #include "HttpServer.h"
 #include "AppContext.h"
+#include "SortFilterProxyModel.h"
 
 using namespace dev;
 using namespace dev::eth;
@@ -74,6 +75,7 @@ void AppContext::load()
 	qmlRegisterType<QBoolType>("org.ethereum.qml.QBoolType", 1, 0, "QBoolType");
 	qmlRegisterType<QVariableDeclaration>("org.ethereum.qml.QVariableDeclaration", 1, 0, "QVariableDeclaration");
 	qmlRegisterType<RecordLogEntry>("org.ethereum.qml.RecordLogEntry", 1, 0, "RecordLogEntry");
+	qmlRegisterType<SortFilterProxyModel>("org.ethereum.qml.SortFilterProxyModel", 1, 0, "SortFilterProxyModel");
 	QQmlComponent projectModelComponent(m_applicationEngine, QUrl("qrc:/qml/ProjectModel.qml"));
 	QObject* projectModel = projectModelComponent.create();
 	if (projectModelComponent.isError())
@@ -86,6 +88,7 @@ void AppContext::load()
 	m_applicationEngine->rootContext()->setContextProperty("projectModel", projectModel);
 	qmlRegisterType<CodeEditorExtensionManager>("CodeEditorExtensionManager", 1, 0, "CodeEditorExtensionManager");
 	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
+
 	m_applicationEngine->load(QUrl("qrc:/qml/main.qml"));
 	QWindow *window = qobject_cast<QWindow*>(m_applicationEngine->rootObjects().at(0));
 	window->setIcon(QIcon(":/res/mix_256x256x32.png"));

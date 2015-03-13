@@ -8,6 +8,7 @@ import "."
 Rectangle {
 	id: statusHeader
 	objectName: "statusPane"
+	property variant webPreview
 
 	function updateStatus(message)
 	{
@@ -15,7 +16,6 @@ Rectangle {
 		{
 			status.state = "";
 			status.text = qsTr("Compile successfully.");
-			logslink.visible = false;
 			debugImg.state = "active";
 		}
 		else
@@ -23,39 +23,76 @@ Rectangle {
 			status.state = "error";
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(message, true);
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
-			logslink.visible = true;
 			debugImg.state = "";
+			errorMessage(status.text, "Compilation");
 		}
 		debugRunActionIcon.enabled = codeModel.hasContract;
 	}
 
-	function infoMessage(text)
+	function infoMessage(text, type)
 	{
 		status.state = "";
 		status.text = text
-		logslink.visible = false;
+		logPane.push("info", type, text);
 	}
 
-	function errorMessage(text)
+	function warningMessage(text, type)
+	{
+		status.state = "warning";
+		status.text = text
+		logPane.push("warning", type, text);
+	}
+
+	function errorMessage(text, type)
 	{
 		status.state = "error";
 		status.text = text
-		logslink.visible = false;
+		logPane.push("error", type, text);
+	}
+
+	Connections {
+		target: webPreview
+		onJavaScriptMessage:
+		{
+			if (_level === 0)
+				infoMessage(_content, "JavaScript")
+			else
+			{
+				var message = _sourceId.substring(_sourceId.lastIndexOf("/") + 1) + " - " + qsTr("line") + " " + _lineNb + " - " + _content;
+				if (_level === 1)
+					warningMessage(message, "JavaScript")
+				else
+					errorMessage(message, "JavaScript")
+			}
+		}
 	}
 
 	Connections {
 		target:clientModel
-		onRunStarted: infoMessage(qsTr("Running transactions..."));
-		onRunFailed: errorMessage(qsTr("Error running transactions: " + _message));
-		onRunComplete: infoMessage(qsTr("Run complete"));
-		onNewBlock: infoMessage(qsTr("New block created"));
+		onRunStarted: infoMessage(qsTr("Running transactions..."), "Run");
+		onRunFailed: errorMessage(format(_message), "Run");
+		onRunComplete: infoMessage(qsTr("Run complete"), "Run");
+		onNewBlock: infoMessage(qsTr("New block created"), "State");
+
+		function format(_message)
+		{
+			var formatted = _message.match(/(?:<dev::eth::)(.+)(?:>)/);
+			if (formatted.length > 1)
+				formatted = formatted[1] + ": ";
+			else
+				return _message;
+			var exceptionInfos = _message.match(/(?:tag_)(.+)/g);
+			for (var k in exceptionInfos)
+				formatted += " " + exceptionInfos[k].replace("*]", "").replace("tag_", "").replace("=", "");
+			return formatted;
+		}
 	}
 	Connections {
 		target:projectModel
-		onDeploymentStarted: infoMessage(qsTr("Running deployment..."));
-		onDeploymentError: errorMessage(error);
-		onDeploymentComplete: infoMessage(qsTr("Deployment complete"));
-		onDeploymentStepChanged: infoMessage(message);
+		onDeploymentStarted: infoMessage(qsTr("Running deployment..."), "Deployment");
+		onDeploymentError: errorMessage(error, "Deployment");
+		onDeploymentComplete: infoMessage(qsTr("Deployment complete"), "Deployment");
+		onDeploymentStepChanged: infoMessage(message, "Deployment");
 	}
 	Connections {
 		target: codeModel
@@ -74,6 +111,24 @@ Rectangle {
 		width: 500
 		height: 30
 		color: "#fcfbfc"
+		states: [
+			State {
+				name: "logsOpened"
+				PropertyChanges {
+					target: statusContainer
+					border.color: "#5391d8"
+					border.width: 1
+				}
+			},
+			State {
+				name: "logsClosed"
+				PropertyChanges {
+					target: statusContainer
+					border.color: "#5391d8"
+					border.width: 0
+				}
+			}
+		]
 
 		Text {
 			anchors.verticalCenter: parent.verticalCenter
@@ -93,6 +148,17 @@ Rectangle {
 					PropertyChanges {
 						target: status
 						color: "red"
+					}
+					PropertyChanges {
+						target: statusContainer
+						color: "#fffcd5"
+					}
+				},
+				State {
+					name: "warning"
+					PropertyChanges {
+						target: status
+						color: "orange"
 					}
 					PropertyChanges {
 						target: statusContainer
@@ -127,30 +193,73 @@ Rectangle {
 					color: "transparent"
 				}
 			}
+			MouseArea {
+				anchors.fill: parent
+				onClicked: {
+					logsContainer.toggle();
+				}
+			}
 		}
 
 		Action {
 			id: toolTipInfo
 			tooltip: ""
 		}
-	}
 
-	Button
-	{
-		id: logslink
-		anchors.left: statusContainer.right
-		anchors.leftMargin: 9
-		visible: false
-		anchors.verticalCenter: parent.verticalCenter
-		action: displayLogAction
-		iconSource: "qrc:/qml/img/search_filled.png"
-	}
+		Rectangle
+		{
+			function toggle()
+			{
+				if (logsContainer.state === "opened")
+				{
+					statusContainer.state = "logsClosed";
+					logsContainer.state = "closed"
+				}
+				else
+				{
+					statusContainer.state = "logsOpened";
+					logsContainer.state = "opened";
+					logsContainer.focus = true;
+					forceActiveFocus();
+				}
+			}
 
-	Action {
-		id: displayLogAction
-		tooltip: qsTr("Display Log")
-		onTriggered: {
-			mainContent.displayCompilationErrorIfAny();
+			id: logsContainer
+			width: 1000
+			height: 0
+			anchors.topMargin: 10
+			anchors.top: statusContainer.bottom
+			anchors.horizontalCenter: parent.horizontalCenter
+			visible: false
+			radius: 5
+			Component.onCompleted:
+			{
+				var top = logsContainer;
+				while (top.parent)
+					top = top.parent
+				var coordinates = logsContainer.mapToItem(top, 0, 0)
+				logsContainer.parent = top;
+				logsContainer.x = coordinates.x
+				logsContainer.y = coordinates.y
+			}
+			LogsPane
+			{
+				id: logPane
+			}
+			states: [
+				State {
+					name: "opened";
+					PropertyChanges { target: logsContainer; height: 500; visible: true }
+				},
+				State {
+					name: "closed";
+					PropertyChanges { target: logsContainer; height: 0; visible: false }
+				}
+			]
+			transitions: Transition {
+					 NumberAnimation { properties: "height"; easing.type: Easing.InOutQuad; duration: 200 }
+					 NumberAnimation { properties: "visible"; easing.type: Easing.InOutQuad; duration: 200 }
+				 }
 		}
 	}
 
@@ -159,8 +268,8 @@ Rectangle {
 		color: "transparent"
 		width: 100
 		height: parent.height
-		anchors.top: statusHeader.top
-		anchors.right: statusHeader.right
+		anchors.top: parent.top
+		anchors.right: parent.right
 		RowLayout
 		{
 			anchors.fill: parent
@@ -168,7 +277,6 @@ Rectangle {
 			{
 				color: "transparent"
 				anchors.fill: parent
-
 				Button
 				{
 					anchors.right: parent.right

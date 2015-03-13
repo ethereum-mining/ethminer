@@ -64,6 +64,29 @@ private:
 	CodeModel* m_model;
 };
 
+using LocationPair = QPair<int, int>;
+
+struct SolidityType
+{
+	enum class Type //TODO: arrays and structs
+	{
+		SignedInteger,
+		UnsignedInteger,
+		Hash,
+		Bool,
+		Address,
+		String,
+	};
+	Type type;
+	unsigned size; //bytes
+};
+
+struct SolidityDeclaration
+{
+	QString name;
+	SolidityType type;
+};
+
 ///Compilation result model. Contains all the compiled contract data required by UI
 class CompiledContract: public QObject
 {
@@ -93,6 +116,10 @@ public:
 	/// @returns contract source Id
 	QString documentId() const { return m_documentId; }
 
+	QHash<LocationPair, QString> const& functions() const { return m_functions; }
+	QHash<LocationPair, SolidityDeclaration> const& locals() const { return m_locals; }
+	QHash<unsigned, SolidityDeclaration> const& storage() const { return m_storage; }
+
 private:
 	uint m_sourceHash;
 	std::shared_ptr<QContractDefinition> m_contract;
@@ -102,10 +129,12 @@ private:
 	QString m_documentId;
 	eth::AssemblyItems m_assemblyItems;
 	eth::AssemblyItems m_constructorAssemblyItems;
+	QHash<LocationPair, QString> m_functions;
+	QHash<LocationPair, SolidityDeclaration> m_locals;
+	QHash<unsigned, SolidityDeclaration> m_storage;
 
 	friend class CodeModel;
 };
-
 
 using ContractMap = QHash<QString, CompiledContract*>;
 
@@ -135,6 +164,8 @@ public:
 	/// Find a contract by document id
 	/// @returns CompiledContract object or null if not found
 	Q_INVOKABLE CompiledContract* contractByDocumentId(QString _documentId) const;
+	/// Reset code model
+	Q_INVOKABLE void reset() { reset(QVariantMap()); }
 
 signals:
 	/// Emited on compilation state change

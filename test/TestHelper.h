@@ -44,12 +44,64 @@ void connectClients(Client& c1, Client& c2);
 namespace test
 {
 
+/// Make sure that no Exception is thrown during testing. If one is thrown show its info and fail the test.
+/// Our version of BOOST_REQUIRE_NO_THROW()
+/// @param _statenent    The statement for which to make sure no exceptions are thrown
+/// @param _message       A message to act as a prefix to the expression's error information
+#define ETH_TEST_REQUIRE_NO_THROW(_statement, _message)				\
+	do																	\
+	{																	\
+		try															\
+		{																\
+			BOOST_TEST_PASSPOINT();										\
+			_statement;												\
+		}																\
+		catch (boost::exception const& _e)								\
+		{																\
+			auto msg = std::string(_message " due to an exception thrown by " \
+				BOOST_STRINGIZE(_statement) "\n") + boost::diagnostic_information(_e); \
+			BOOST_CHECK_IMPL(false, msg, REQUIRE, CHECK_MSG);			\
+		}																\
+		catch (...)														\
+		{																\
+			BOOST_CHECK_IMPL(false, "Unknown exception thrown by "		\
+				BOOST_STRINGIZE(_statement), REQUIRE, CHECK_MSG);		\
+		}																\
+	}																	\
+	while (0)
+
+/// Check if an Exception is thrown during testing. If one is thrown show its info and continue the test
+/// Our version of BOOST_CHECK_NO_THROW()
+/// @param _statement    The statement for which to make sure no exceptions are thrown
+/// @param _message       A message to act as a prefix to the expression's error information
+#define ETH_TEST_CHECK_NO_THROW(_statement, _message)					\
+	do																	\
+	{																	\
+		try															\
+		{																\
+			BOOST_TEST_PASSPOINT();										\
+			_statement;												\
+		}																\
+		catch (boost::exception const& _e)								\
+		{																\
+			auto msg = std::string(_message " due to an exception thrown by " \
+				BOOST_STRINGIZE(_statement) "\n") + boost::diagnostic_information(_e); \
+			BOOST_CHECK_IMPL(false, msg, CHECK, CHECK_MSG);				\
+		}																\
+		catch (...)														\
+		{																\
+			BOOST_CHECK_IMPL(false, "Unknown exception thrown by "		\
+				BOOST_STRINGIZE(_statement), CHECK, CHECK_MSG );		\
+		}																\
+	}																	\
+	while (0)
+
+
 class ImportTest
 {
 public:
-	ImportTest(json_spirit::mObject& _o) : m_TestObject(_o) {}
+	ImportTest(json_spirit::mObject& _o) : m_statePre(Address(), OverlayDB(), eth::BaseState::Empty),  m_statePost(Address(), OverlayDB(), eth::BaseState::Empty), m_TestObject(_o) {}
 	ImportTest(json_spirit::mObject& _o, bool isFiller);
-
 	// imports
 	void importEnv(json_spirit::mObject& _o);
 	void importState(json_spirit::mObject& _o, eth::State& _state);
@@ -63,6 +115,13 @@ public:
 
 private:
 	json_spirit::mObject& m_TestObject;
+};
+
+class ZeroGasPricer: public eth::GasPricer
+{
+protected:
+	u256 ask(eth::State const&) const override { return 0; }
+	u256 bid(eth::TransactionPriority = eth::TransactionPriority::Medium) const override { return 0; }
 };
 
 // helping functions
@@ -82,8 +141,8 @@ void executeTests(const std::string& _name, const std::string& _testPathAppendix
 std::string getTestPath();
 void userDefinedTest(std::string testTypeFlag, std::function<void(json_spirit::mValue&, bool)> doTests);
 RLPStream createRLPStreamFromTransactionFields(json_spirit::mObject& _tObj);
-void processCommandLineOptions();
 eth::LastHashes lastHashes(u256 _currentBlockNumber);
+json_spirit::mObject fillJsonWithState(eth::State _state);
 
 template<typename mapType>
 void checkAddresses(mapType& _expectedAddrs, mapType& _resultAddrs)
@@ -97,6 +156,32 @@ void checkAddresses(mapType& _expectedAddrs, mapType& _resultAddrs)
 	}
 	BOOST_CHECK(_expectedAddrs == _resultAddrs);
 }
+
+class Options
+{
+public:
+	bool jit = false;		///< Use JIT
+	bool vmtrace = false;	///< Create EVM execution tracer // TODO: Link with log verbosity?
+	bool showTimes = false;	///< Print test groups execution times
+	bool fillTests = false; ///< Create JSON test files from execution results
+
+	/// Test selection
+	/// @{
+	bool performance = false;
+	bool quadratic = false;
+	bool memory = false;
+	bool inputLimits = false;
+	bool bigData = false;
+	/// @}
+
+	/// Get reference to options
+	/// The first time used, options are parsed
+	static Options const& get();
+
+private:
+	Options();
+	Options(Options const&) = delete;
+};
 
 }
 }

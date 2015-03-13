@@ -51,14 +51,6 @@ void CodeEditorExtensionManager::loadEditor(QQuickItem* _editor)
 		return;
 }
 
-void CodeEditorExtensionManager::initExtensions()
-{
-	std::shared_ptr<StatusPane> output = std::make_shared<StatusPane>(m_appContext);
-	QObject::connect(m_appContext->codeModel(), &CodeModel::compilationComplete, this, &CodeEditorExtensionManager::applyCodeHighlight);
-
-	initExtension(output);
-}
-
 void CodeEditorExtensionManager::initExtension(std::shared_ptr<Extension> _ext)
 {
 	if (!_ext->contentUrl().isEmpty())
@@ -93,5 +85,4 @@ void CodeEditorExtensionManager::setRightView(QQuickItem* _rightView)
 void CodeEditorExtensionManager::setHeaderView(QQuickItem* _headerView)
 {
 	m_headerView = _headerView;
-	initExtensions(); //TODO: move this to a proper place
 }
