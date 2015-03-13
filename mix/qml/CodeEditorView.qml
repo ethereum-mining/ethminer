@@ -2,12 +2,14 @@ import QtQuick 2.0
 import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
+import QtQuick.Dialogs 1.1
 
 Item {
 	id: codeEditorView
 	property string currentDocumentId: ""
 	signal documentEdit(string documentId)
 	signal breakpointsChanged(string documentId)
+	signal isCleanChanged(var isClean, string documentId)
 
 	function getDocumentText(documentId) {
 		for (var i = 0; i < editorListModel.count; i++)	{
@@ -51,6 +53,9 @@ Item {
 				breakpointsChanged(document.documentId);
 		});
 		editor.setText(data, document.syntaxMode);
+		editor.onIsCleanChanged.connect(function(){
+			isCleanChanged(editor.isClean, document.documentId);
+		});
 	}
 
 	function getEditor(documentId) {
@@ -91,6 +96,12 @@ Item {
 			editor.toggleBreakpoint();
 	}
 
+	function resetEditStatus() {
+		var editor = getEditor(currentDocumentId);
+		if (editor)
+			editor.changeGenerator();
+	}
+
 	Component.onCompleted: projectModel.codeEditor = codeEditorView;
 
 	Connections {
@@ -100,14 +111,43 @@ Item {
 		}
 		onProjectSaving: {
 			for (var i = 0; i < editorListModel.count; i++)
+			{
 				fileIo.writeFile(editorListModel.get(i).path, editors.itemAt(i).item.getText());
+				resetEditStatus();
+			}
 		}
+
 		onProjectClosed: {
 			for (var i = 0; i < editorListModel.count; i++)	{
 				editors.itemAt(i).visible = false;
 			}
 			editorListModel.clear();
 			currentDocumentId = "";
+		}
+
+		onDocumentSaving: {
+			for (var i = 0; i < editorListModel.count; i++)
+			{
+				if (editorListModel.get(i).path === document)
+				{
+					fileIo.writeFile(document, editors.itemAt(i).item.getText());
+					resetEditStatus();
+					break;
+				}
+			}
+		}
+	}
+
+	MessageDialog
+	{
+		id: messageDialog
+		title: qsTr("File Changed")
+		text: qsTr("This file has been changed outside of the editor. Do you want to reload it?")
+		standardButtons: StandardButton.Yes | StandardButton.No
+		property variant item
+		property variant doc
+		onYes: {
+			doLoadDocument(item, doc);
 		}
 	}
 
@@ -121,16 +161,39 @@ Item {
 			anchors.fill:  parent
 			source: "CodeEditor.qml"
 			visible: (index >= 0 && index < editorListModel.count && currentDocumentId === editorListModel.get(index).documentId)
+			property bool changed: false
 			onVisibleChanged: {
 				loadIfNotLoaded()
 				if (visible && item)
 					loader.item.setFocus();
+				if (visible && changed)
+				{
+					changed = false;
+					messageDialog.item = loader.item;
+					messageDialog.doc = editorListModel.get(index);
+					messageDialog.open();
+				}
 			}
 			Component.onCompleted: {
 				loadIfNotLoaded()
 			}
 			onLoaded: {
 				doLoadDocument(loader.item, editorListModel.get(index))
+			}
+
+			Connections
+			{
+				target: projectModel
+				onDocumentChanged: {
+					if (currentDocumentId == documentId)
+					{
+						messageDialog.item = loader.item;
+						messageDialog.doc = editorListModel.get(index);
+						messageDialog.open();
+					}
+					else
+						changed = true;
+				}
 			}
 
 			function loadIfNotLoaded () {

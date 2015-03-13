@@ -7,12 +7,13 @@ import Qt.labs.settings 1.0
 import "js/ProjectModel.js" as ProjectModelCode
 
 Item {
-
 	id: projectModel
 
 	signal projectClosed
 	signal projectLoading(var projectData)
 	signal projectLoaded()
+	signal documentSaving(var document)
+	signal documentChanged(var document)
 	signal documentOpened(var document)
 	signal documentRemoved(var documentId)
 	signal documentUpdated(var documentId) //renamed
@@ -21,10 +22,12 @@ Item {
 	signal projectSaved()
 	signal newProject(var projectData)
 	signal documentSaved(var documentId)
+	signal contractSaved(var documentId)
 	signal deploymentStarted()
 	signal deploymentStepChanged(string message)
 	signal deploymentComplete()
 	signal deploymentError(string error)
+	signal isCleanChanged(var isClean, string documentId)
 
 	property bool isEmpty: (projectPath === "")
 	readonly property string projectFileName: ".mix"
@@ -41,6 +44,7 @@ Item {
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
+	function saveCurrentDocument() { ProjectModelCode.saveCurrentDocument(); }
 	function createProject() { ProjectModelCode.createProject(); }
 	function closeProject() { ProjectModelCode.closeProject(); }
 	function saveProject() { ProjectModelCode.saveProject(); }
@@ -69,6 +73,13 @@ Item {
 		}
 	}
 
+	Connections {
+		target: codeEditor
+		onIsCleanChanged: {
+			isCleanChanged(isClean, documentId);
+		}
+	}
+
 	NewProjectDialog {
 		id: newProjectDialog
 		visible: false
@@ -76,6 +87,18 @@ Item {
 			var title = newProjectDialog.projectTitle;
 			var path = newProjectDialog.projectPath;
 			ProjectModelCode.doCreateProject(title, path);
+		}
+	}
+
+	Connections
+	{
+		target: fileIo
+		property bool saving: false
+		onFileChanged:
+		{
+			fileIo.watchFileChanged(_filePath);
+			if (_filePath.indexOf(currentDocumentId, _filePath.length - currentDocumentId.length))
+				documentChanged(_filePath);
 		}
 	}
 
