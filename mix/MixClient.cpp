@@ -56,7 +56,7 @@ public:
 		RLPStream block(3);
 		block.appendList(15)
 			<< h256() << EmptyListSHA3 << h160() << _stateRoot << EmptyTrie << EmptyTrie
-			<< LogBloom() << c_mixGenesisDifficulty << 0 << 1000000 << 0 << (unsigned)0
+			<< LogBloom() << c_mixGenesisDifficulty << 0 << c_genesisGasLimit << 0 << (unsigned)0
 			<< std::string() << h256() << h64(u64(42));
 		block.appendRaw(RLPEmptyList);
 		block.appendRaw(RLPEmptyList);

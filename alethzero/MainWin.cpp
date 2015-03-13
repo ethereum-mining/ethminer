@@ -532,7 +532,7 @@ static string directICAP(dev::Address _a)
 	std::string d = toBase36<Address::size>(_a);
 	while (d.size() < 30)
 		d = "0" + d;
-	return iban("XT", d);
+	return iban("XE", d);
 }
 
 static Address fromICAP(std::string const& _s)
@@ -542,7 +542,7 @@ static Address fromICAP(std::string const& _s)
 	std::tie(country, data) = fromIban(_s);
 	if (country.empty())
 		return Address();
-	if (country == "XT" && data.size() == 30)
+	if (country == "XE" && data.size() == 30)
 		// Direct ICAP
 		return fromBase36<Address::size>(data);
 	// TODO: Indirect ICAP
