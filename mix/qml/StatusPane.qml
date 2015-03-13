@@ -77,11 +77,15 @@ Rectangle {
 		function format(_message)
 		{
 			var formatted = _message.match(/(?:<dev::eth::)(.+)(?:>)/);
+			if (formatted === null)
+				formatted = _message.match(/(?:<dev::)(.+)(?:>)/);
 			if (formatted.length > 1)
-				formatted = formatted[1] + ": ";
+				formatted = formatted[1];
 			else
 				return _message;
 			var exceptionInfos = _message.match(/(?:tag_)(.+)/g);
+			if (exceptionInfos !== null && exceptionInfos.length > 0)
+				formatted += ": "
 			for (var k in exceptionInfos)
 				formatted += " " + exceptionInfos[k].replace("*]", "").replace("tag_", "").replace("=", "");
 			return formatted;
