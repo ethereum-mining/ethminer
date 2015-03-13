@@ -115,5 +115,6 @@
         <file>qml/img/copy.png</file>
         <file>qml/img/broom.png</file>
         <file>qml/LogsPaneStyle.qml</file>
+        <file>qml/img/console.png</file>
     </qresource>
 </RCC>
