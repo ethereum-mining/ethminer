@@ -435,7 +435,7 @@ string WebThreeStubServerBase::eth_getUncleCountByBlockNumber(string const& _blo
 	return toJS(client()->uncleCount(client()->hashFromNumber(number)));
 }
 
-string WebThreeStubServerBase::eth_getData(string const& _address, string const& _blockNumber)
+string WebThreeStubServerBase::eth_getCode(string const& _address, string const& _blockNumber)
 {
 	Address address;
 	int number;
