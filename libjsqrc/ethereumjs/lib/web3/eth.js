@@ -74,7 +74,6 @@ var uncleCountCall = function (args) {
 var methods = [
     { name: 'getBalance', call: 'eth_getBalance', addDefaultblock: 2,
         outputFormatter: formatters.convertToBigNumber},
-    { name: 'getStorage', call: 'eth_getStorage', addDefaultblock: 2},
     { name: 'getStorageAt', call: 'eth_getStorageAt', addDefaultblock: 3,
         inputFormatter: utils.toHex},
 	{ name: 'getCode', call: 'eth_getCode', addDefaultblock: 2},
