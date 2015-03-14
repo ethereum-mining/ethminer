@@ -24,8 +24,6 @@ endif()
 
 install( TARGETS jsqrc RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 
-file(GLOB_RECURSE SOLFILES "ethereumjs/lib/solidity/*.js")
-file(GLOB_RECURSE UTILSFILES "ethereumjs/lib/utils/*.js")
-file(GLOB_RECURSE WEB3FILES "ethereumjs/lib/web3/*.js")
-add_custom_target(aux_js SOURCES ${SOLFILES} ${UTILSFILES} ${WEB3FILES})
+file(GLOB_RECURSE JSFILES "ethereumjs/lib/*.js")
+add_custom_target(aux_js SOURCES ${JSFILES})
 
