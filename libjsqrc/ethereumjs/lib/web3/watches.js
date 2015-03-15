@@ -14,22 +14,36 @@
     You should have received a copy of the GNU Lesser General Public License
     along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file db.js
+/** @file watches.js
  * @authors:
  *   Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  */
 
-/// @returns an array of objects describing web3.db api methods
-var methods = function () {
+/// @returns an array of objects describing web3.eth.filter api methods
+var eth = function () {
+    var newFilter = function (args) {
+        return typeof args[0] === 'string' ? 'eth_newBlockFilter' : 'eth_newFilter';
+    };
+
     return [
-    { name: 'put', call: 'db_put' },
-    { name: 'get', call: 'db_get' },
-    { name: 'putString', call: 'db_putString' },
-    { name: 'getString', call: 'db_getString' }
+    { name: 'newFilter', call: newFilter },
+    { name: 'uninstallFilter', call: 'eth_uninstallFilter' },
+    { name: 'getLogs', call: 'eth_getFilterLogs' }
+    ];
+};
+
+/// @returns an array of objects describing web3.shh.watch api methods
+var shh = function () {
+    return [
+    { name: 'newFilter', call: 'shh_newFilter' },
+    { name: 'uninstallFilter', call: 'shh_uninstallFilter' },
+    { name: 'getLogs', call: 'shh_getMessages' }
     ];
 };
 
 module.exports = {
-    methods: methods
+    eth: eth,
+    shh: shh
 };
+

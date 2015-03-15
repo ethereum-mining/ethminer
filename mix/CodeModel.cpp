@@ -318,17 +318,17 @@ SolidityType CodeModel::nodeType(solidity::Type const* _type)
 		{
 			IntegerType const* it = dynamic_cast<IntegerType const*>(_type);
 			r.size = it->getNumBits() / 8;
-			r.type = it->isAddress() ? SolidityType::Type::Address : it->isHash() ? SolidityType::Type::Hash : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
+			r.type = it->isAddress() ? SolidityType::Type::Address : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
 		}
 		break;
 	case Type::Category::Bool:
 		r.type = SolidityType::Type::Bool;
 		break;
-	case Type::Category::String:
+	case Type::Category::FixedBytes:
 		{
-			StaticStringType const* s = dynamic_cast<StaticStringType const*>(_type);
-			r.type = SolidityType::Type::String;
-			r.size = static_cast<unsigned>(s->getNumBytes());
+			FixedBytesType const* b = dynamic_cast<FixedBytesType const*>(_type);
+			r.type = SolidityType::Type::Bytes;
+			r.size = static_cast<unsigned>(b->getNumBytes());
 		}
 	case Type::Category::Contract:
 		r.type = SolidityType::Type::Address;

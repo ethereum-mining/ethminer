@@ -263,7 +263,7 @@ unsigned Main::installWatch(LogFilter const& _tf, WatchHandler const& _f)
 
 unsigned Main::installWatch(dev::h256 _tf, WatchHandler const& _f)
 {
-	auto ret = ethereum()->installWatch(_tf);
+	auto ret = ethereum()->installWatch(_tf, Reaping::Manual);
 	m_handlers[ret] = _f;
 	return ret;
 }
@@ -478,10 +478,83 @@ QString Main::pretty(dev::Address _a) const
 	return fromRaw(n);
 }
 
+template <size_t N> inline string toBase36(FixedHash<N> const& _h)
+{
+	static char const* c_alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	typename FixedHash<N>::Arith a = _h;
+	std::string ret;
+	for (; a > 0; a /= 36)
+		ret = c_alphabet[(unsigned)a % 36] + ret;
+	return ret;
+}
+
+template <size_t N> inline FixedHash<N> fromBase36(string const& _h)
+{
+	typename FixedHash<N>::Arith ret = 0;
+	for (char c: _h)
+		ret = ret * 36 + (c < 'A' ? c - '0' : (c - 'A' + 10));
+	return ret;
+}
+
+static string iban(std::string _c, std::string _d)
+{
+	boost::to_upper(_c);
+	boost::to_upper(_d);
+	auto totStr = _d + _c + "00";
+	bigint tot = 0;
+	for (char x: totStr)
+		if (x >= 'A')
+			tot = tot * 100 + x - 'A' + 10;
+		else
+			tot = tot * 10 + x - '0';
+	unsigned check = (unsigned)(u256)(98 - tot % 97);
+	ostringstream out;
+	out << _c << setfill('0') << setw(2) << check << _d;
+	return out.str();
+}
+
+static std::pair<string, string> fromIban(std::string _iban)
+{
+	if (_iban.size() < 4)
+		return std::make_pair(string(), string());
+	boost::to_upper(_iban);
+	std::string c = _iban.substr(0, 2);
+	std::string d = _iban.substr(4);
+	if (iban(c, d) != _iban)
+		return std::make_pair(string(), string());
+	return make_pair(c, d);
+}
+
+static string directICAP(dev::Address _a)
+{
+	if (!!_a[0])
+		return string();
+	std::string d = toBase36<Address::size>(_a);
+	while (d.size() < 30)
+		d = "0" + d;
+	return iban("XE", d);
+}
+
+static Address fromICAP(std::string const& _s)
+{
+	std::string country;
+	std::string data;
+	std::tie(country, data) = fromIban(_s);
+	if (country.empty())
+		return Address();
+	if (country == "XE" && data.size() == 30)
+		// Direct ICAP
+		return fromBase36<Address::size>(data);
+	// TODO: Indirect ICAP
+	return Address();
+}
+
 QString Main::render(dev::Address _a) const
 {
 	QString p = pretty(_a);
-	if (!p.isNull())
+	if (!_a[0])
+		p += QString(p.isEmpty() ? "" : " ") + QString::fromStdString(directICAP(_a));
+	if (!p.isEmpty())
 		return p + " (" + QString::fromStdString(_a.abridged()) + ")";
 	return QString::fromStdString(_a.abridged());
 }
@@ -524,6 +597,8 @@ Address Main::fromString(QString const& _n) const
 			return Address();
 		}
 	}
+	else if (Address a = fromICAP(_n.toStdString()))
+		return a;
 	else
 		return Address();
 }
@@ -1000,7 +1075,7 @@ void Main::refreshBlockChain()
 	// TODO: keep the same thing highlighted.
 	// TODO: refactor into MVC
 	// TODO: use get by hash/number
-	// TODO: transactions, log addresses, log topics
+	// TODO: transactions
 
 	auto const& bc = ethereum()->blockChain();
 	QStringList filters = ui->blockChainFilter->text().toLower().split(QRegExp("\\s+"), QString::SkipEmptyParts);
@@ -1012,15 +1087,17 @@ void Main::refreshBlockChain()
 			h256 h(f.toStdString());
 			if (bc.isKnown(h))
 				blocks.insert(h);
+			for (auto const& b: bc.withBlockBloom(LogBloom().shiftBloom<3>(sha3(h)), 0, -1))
+				blocks.insert(bc.numberHash(b));
 		}
 		else if (f.toLongLong() <= bc.number())
 			blocks.insert(bc.numberHash(u256(f.toLongLong())));
-		/*else if (f.size() == 40)
+		else if (f.size() == 40)
 		{
-			Address h(f[0]);
-			if (bc.(h))
-				blocks.insert(h);
-		}*/
+			Address h(f.toStdString());
+			for (auto const& b: bc.withBlockBloom(LogBloom().shiftBloom<3>(sha3(h)), 0, -1))
+				blocks.insert(bc.numberHash(b));
+		}
 
 	QByteArray oldSelected = ui->blocks->count() ? ui->blocks->currentItem()->data(Qt::UserRole).toByteArray() : QByteArray();
 	ui->blocks->clear();
@@ -1169,7 +1246,7 @@ void Main::timerEvent(QTimerEvent*)
 
 	for (auto const& i: m_handlers)
 	{
-		auto ls = ethereum()->checkWatch(i.first);
+		auto ls = ethereum()->checkWatchSafe(i.first);
 		if (ls.size())
 		{
 			cnote << "FIRING WATCH" << i.first << ls.size();
@@ -1274,7 +1351,10 @@ void Main::on_transactionQueue_currentItemChanged()
 		}
 		s << "<div>Hex: " Span(Mono) << toHex(tx.rlp()) << "</span></div>";
 		s << "<hr/>";
-		s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+		if (!!receipt.bloom())
+			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+		else
+			s << "<div>Log Bloom: <i>Uneventful</i></div>";
 		auto r = receipt.rlp();
 		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 		s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
@@ -1349,11 +1429,11 @@ void Main::on_blocks_currentItemChanged()
 			s << "<h3>" << h << "</h3>";
 			s << "<h4>#" << info.number;
 			s << "&nbsp;&emsp;&nbsp;<b>" << timestamp << "</b></h4>";
-			s << "<br/>D/TD: <b>2^" << log2((double)info.difficulty) << "</b>/<b>2^" << log2((double)details.totalDifficulty) << "</b>";
+			s << "<br/>D/TD: <b>" << info.difficulty << "</b>/<b>" << details.totalDifficulty << "</b> = 2^" << log2((double)info.difficulty) << "/2^" << log2((double)details.totalDifficulty);
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></h5>";
 			s << "<br/>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>";
 			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
-			s << "<br/>Seed hash: <b>" << info.seedHash << "</b>";
+			s << "<br/>Seed hash: <b>" << info.seedHash() << "</b>";
 			s << "<br/>Mix hash: <b>" << info.mixHash << "</b>";
 			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
 			s << "<br/>Hash w/o nonce: <b>" << info.headerHash(WithoutNonce) << "</b>";
@@ -1362,12 +1442,18 @@ void Main::on_blocks_currentItemChanged()
 			{
 				auto e = Ethasher::eval(info);
 				s << "<br/>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")";
+				s << "<br/>Parent: <b>" << info.parentHash << "</b>";
 			}
 			else
+			{
 				s << "<br/>Proof-of-Work: <i>Phil has nothing to prove</i>";
-			s << "<br/>Parent: <b>" << info.parentHash << "</b>";
+				s << "<br/>Parent: <i>It was a virgin birth</i>";
+			}
 //			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
-			s << "<br/>Log Bloom: <b>" << info.logBloom << "</b>";
+			if (!!info.logBloom)
+				s << "<div>Log Bloom: " << info.logBloom << "</div>";
+			else
+				s << "<div>Log Bloom: <i>Uneventful</i></div>";
 			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
 			s << "<br/>Receipts: @<b>" << info.receiptsRoot << "</b>:";
 			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
@@ -1379,7 +1465,7 @@ void Main::on_blocks_currentItemChanged()
 				s << line << "Parent: <b>" << uncle.parentHash << "</b>";
 				s << line << "Number: <b>" << uncle.number << "</b>";
 				s << line << "Coinbase: <b>" << pretty(uncle.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << uncle.coinbaseAddress;
-				s << line << "Seed hash: <b>" << uncle.seedHash << "</b>";
+				s << line << "Seed hash: <b>" << uncle.seedHash() << "</b>";
 				s << line << "Mix hash: <b>" << uncle.mixHash << "</b>";
 				s << line << "Nonce: <b>" << uncle.nonce << "</b>";
 				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutNonce) << "</b>";
@@ -1424,23 +1510,23 @@ void Main::on_blocks_currentItemChanged()
 			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
 			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
 			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
-			if (tx.isCreation())
+			if (!tx.data().empty())
 			{
-				if (tx.data().size())
+				if (tx.isCreation())
 					s << "<h4>Code</h4>" << disassemble(tx.data());
-			}
-			else
-			{
-				if (tx.data().size())
-					s << dev::memDump(tx.data(), 16, true);
+				else
+					s << "<h4>Data</h4>" << dev::memDump(tx.data(), 16, true);
 			}
 			s << "<div>Hex: " Span(Mono) << toHex(block[1][txi].data()) << "</span></div>";
 			s << "<hr/>";
-			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+			if (!!receipt.bloom())
+				s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
+			else
+				s << "<div>Log Bloom: <i>Uneventful</i></div>";
 			auto r = receipt.rlp();
 			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 			s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
-			s << renderDiff(ethereum()->diff(txi, h));
+			s << "<h4>Diff</h4>" << renderDiff(ethereum()->diff(txi, h));
 			ui->debugCurrent->setEnabled(true);
 			ui->debugDumpState->setEnabled(true);
 			ui->debugDumpStatePre->setEnabled(true);
@@ -1708,9 +1794,9 @@ bool beginsWith(Address _a, bytes const& _b)
 void Main::on_newAccount_triggered()
 {
 	bool ok = true;
-	enum { NoVanity = 0, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour, StringMatch };
-	QStringList items = {"No vanity (instant)", "Two pairs first (a few seconds)", "Two pairs first and second (a few minutes)", "Three pairs first (a few minutes)", "Four pairs first (several hours)", "Specific hex string"};
-	unsigned v = items.QList<QString>::indexOf(QInputDialog::getItem(this, "Vanity Key?", "Would you a vanity key? This could take several hours.", items, 0, false, &ok));
+	enum { NoVanity = 0, DirectICAP, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour, StringMatch };
+	QStringList items = {"No vanity (instant)", "Direct ICAP address", "Two pairs first (a few seconds)", "Two pairs first and second (a few minutes)", "Three pairs first (a few minutes)", "Four pairs first (several hours)", "Specific hex string"};
+	unsigned v = items.QList<QString>::indexOf(QInputDialog::getItem(this, "Vanity Key?", "Would you a vanity key? This could take several hours.", items, 1, false, &ok));
 	if (!ok)
 		return;
 
@@ -1736,6 +1822,7 @@ void Main::on_newAccount_triggered()
 			lp = KeyPair::create();
 			auto a = lp.address();
 			if (v == NoVanity ||
+				(v == DirectICAP && !a[0]) ||
 				(v == FirstTwo && a[0] == a[1]) ||
 				(v == FirstTwoNextTwo && a[0] == a[1] && a[2] == a[3]) ||
 				(v == FirstThree && a[0] == a[1] && a[1] == a[2]) ||

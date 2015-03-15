@@ -14,29 +14,23 @@
     You should have received a copy of the GNU Lesser General Public License
     along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file signature.js
+/** @file db.js
  * @authors:
  *   Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  */
 
-var web3 = require('./web3'); 
-var c = require('./const');
 
-/// @param function name for which we want to get signature
-/// @returns signature of function with given name
-var functionSignatureFromAscii = function (name) {
-    return web3.sha3(web3.fromAscii(name)).slice(0, 2 + c.ETH_SIGNATURE_LENGTH * 2);
-};
-
-/// @param event name for which we want to get signature
-/// @returns signature of event with given name
-var eventSignatureFromAscii = function (name) {
-    return web3.sha3(web3.fromAscii(name));
+/// @returns an array of objects describing web3.db api methods
+var methods = function () {
+    return [
+    { name: 'putString', call: 'db_putString'},
+    { name: 'getString', call: 'db_getString'},
+    { name: 'putHex', call: 'db_putHex'},
+    { name: 'getHex', call: 'db_getHex'}
+    ];
 };
 
 module.exports = {
-    functionSignatureFromAscii: functionSignatureFromAscii,
-    eventSignatureFromAscii: eventSignatureFromAscii
+    methods: methods
 };
-
