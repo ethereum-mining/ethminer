@@ -61,44 +61,6 @@ private:
 		return LocationPair(_node.getLocation().start, _node.getLocation().end);
 	}
 
-	SolidityType nodeType(Type const* _type)
-	{
-		if (!_type)
-			return SolidityType { SolidityType::Type::UnsignedInteger, 32 };
-		switch (_type->getCategory())
-		{
-		case Type::Category::Integer:
-			{
-				IntegerType const* it = dynamic_cast<IntegerType const*>(_type);
-				unsigned size = it->getNumBits() / 8;
-				SolidityType::Type typeCode = it->isAddress() ? SolidityType::Type::Address : it->isHash() ? SolidityType::Type::Hash : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
-				return SolidityType { typeCode, size };
-			}
-		case Type::Category::Bool:
-			return SolidityType { SolidityType::Type::Bool, _type->getSizeOnStack() * 32 };
-		case Type::Category::String:
-			{
-				StaticStringType const* s = dynamic_cast<StaticStringType const*>(_type);
-				return SolidityType { SolidityType::Type::String, static_cast<unsigned>(s->getNumBytes()) };
-			}
-		case Type::Category::Contract:
-			return SolidityType { SolidityType::Type::Address, _type->getSizeOnStack() * 32 };
-		case Type::Category::Array:
-		case Type::Category::Enum:
-		case Type::Category::Function:
-		case Type::Category::IntegerConstant:
-		case Type::Category::Magic:
-		case Type::Category::Mapping:
-		case Type::Category::Modifier:
-		case Type::Category::Real:
-		case Type::Category::Struct:
-		case Type::Category::TypeType:
-		case Type::Category::Void:
-		default:
-			return SolidityType { SolidityType::Type::UnsignedInteger, 32 };
-		}
-	}
-
 	virtual bool visit(FunctionDefinition const& _node)
 	{
 		m_functions->insert(nodeLocation(_node), QString::fromStdString(_node.getName()));
@@ -114,7 +76,7 @@ private:
 	virtual bool visit(VariableDeclaration const& _node)
 	{
 		SolidityDeclaration decl;
-		decl.type = nodeType(_node.getType().get());
+		decl.type = CodeModel::nodeType(_node.getType().get());
 		decl.name = QString::fromStdString(_node.getName());
 		if (m_functionScope)
 			m_locals->insert(nodeLocation(_node), decl);
@@ -143,7 +105,7 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 {
 	std::string name = _contractName.toStdString();
 	auto const& contractDefinition = _compiler.getContractDefinition(name);
-	m_contract.reset(new QContractDefinition(&contractDefinition));
+	m_contract.reset(new QContractDefinition(nullptr, &contractDefinition));
 	QQmlEngine::setObjectOwnership(m_contract.get(), QQmlEngine::CppOwnership);
 	m_bytes = _compiler.getBytecode(_contractName.toStdString());
 	m_assemblyItems = _compiler.getRuntimeAssemblyItems(name);
@@ -343,5 +305,70 @@ dev::bytes const& CodeModel::getStdContractCode(const QString& _contractName, co
 		m_compiledContracts.insert(std::make_pair(QString::fromStdString(name), std::move(code)));
 	}
 	return m_compiledContracts.at(_contractName);
+}
+
+SolidityType CodeModel::nodeType(solidity::Type const* _type)
+{
+	SolidityType r { SolidityType::Type::UnsignedInteger, 32, false, false, QString::fromStdString(_type->toString()), std::vector<SolidityDeclaration>(), std::vector<QString>() };
+	if (!_type)
+		return r;
+	switch (_type->getCategory())
+	{
+	case Type::Category::Integer:
+		{
+			IntegerType const* it = dynamic_cast<IntegerType const*>(_type);
+			r.size = it->getNumBits() / 8;
+			r.type = it->isAddress() ? SolidityType::Type::Address : it->isHash() ? SolidityType::Type::Hash : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
+		}
+		break;
+	case Type::Category::Bool:
+		r.type = SolidityType::Type::Bool;
+		break;
+	case Type::Category::String:
+		{
+			StaticStringType const* s = dynamic_cast<StaticStringType const*>(_type);
+			r.type = SolidityType::Type::String;
+			r.size = static_cast<unsigned>(s->getNumBytes());
+		}
+	case Type::Category::Contract:
+		r.type = SolidityType::Type::Address;
+		break;
+	case Type::Category::Array:
+		{
+			ArrayType const* array = dynamic_cast<ArrayType const*>(_type);
+			SolidityType elementType = nodeType(array->getBaseType().get());
+			r = elementType;
+			r.array = true;
+		}
+		break;
+	case Type::Category::Enum:
+		{
+			r.type = SolidityType::Type::Enum;
+			EnumType const* e = dynamic_cast<EnumType const*>(_type);
+			for(auto const& enumValue: e->getEnumDefinition().getMembers())
+				r.enumNames.push_back(QString::fromStdString(enumValue->getName()));
+		}
+		break;
+	case Type::Category::Struct:
+		{
+			r.type = SolidityType::Type::Struct;
+			StructType const* s = dynamic_cast<StructType const*>(_type);
+			for(auto const& structMember: s->getMembers())
+				r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.first), nodeType(structMember.second.get()) });
+		}
+		break;
+	case Type::Category::Function:
+	case Type::Category::IntegerConstant:
+	case Type::Category::Magic:
+	case Type::Category::Mapping:
+	case Type::Category::Modifier:
+	case Type::Category::Real:
+	case Type::Category::TypeType:
+	case Type::Category::Void:
+	default:
+		break;
+		//BOOST_THROW_EXCEPTION(dev::Exception() << errinfo_comment("Unsupported solidityType: " + _type->toString()));
+	}
+	return r;
 }
 

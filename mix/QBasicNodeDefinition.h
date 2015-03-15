@@ -35,10 +35,10 @@ class QBasicNodeDefinition: public QObject
 	Q_PROPERTY(QString name READ name CONSTANT)
 
 public:
-	QBasicNodeDefinition(): QObject() {}
+	QBasicNodeDefinition(QObject* _parent = nullptr): QObject(_parent) {}
 	~QBasicNodeDefinition() {}
-	QBasicNodeDefinition(solidity::Declaration const* _d): QObject(), m_name(QString::fromStdString(_d->getName())) {}
-	QBasicNodeDefinition(std::string const& _name): QObject(), m_name(QString::fromStdString(_name)) {}
+	QBasicNodeDefinition(QObject* _parent, solidity::Declaration const* _d): QObject(_parent), m_name(QString::fromStdString(_d->getName())) {}
+	QBasicNodeDefinition(QObject* _parent, std::string const& _name): QObject(_parent), m_name(QString::fromStdString(_name)) {}
 	/// Get the name of the node.
 	QString name() const { return m_name; }
 

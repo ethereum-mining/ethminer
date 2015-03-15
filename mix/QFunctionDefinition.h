@@ -38,8 +38,9 @@ class QFunctionDefinition: public QBasicNodeDefinition
 	Q_PROPERTY(QQmlListProperty<dev::mix::QVariableDeclaration> parameters READ parameters)
 
 public:
-	QFunctionDefinition() {}
-	QFunctionDefinition(solidity::FunctionTypePointer const& _f);
+	QFunctionDefinition(){}
+	QFunctionDefinition(QObject* _parent): QBasicNodeDefinition(_parent) {}
+	QFunctionDefinition(QObject* _parent, solidity::FunctionTypePointer const& _f);
 	/// Get all input parameters of this function.
 	QList<QVariableDeclaration*> const& parametersList() const { return m_parameters; }
 	/// Get all input parameters of this function as QML property.

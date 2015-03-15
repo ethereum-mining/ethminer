@@ -41,38 +41,13 @@ Item {
 			value: QEtherHelper.createEther(t.value.value, t.value.unit),
 			gas: QEtherHelper.createBigInt(t.gas.value),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
-			stdContract: t.stdContract,
+			stdContract: t.stdContract ? true : false,
 			parameters: {},
 			sender: t.sender
 		};
-		var qType = [];
 		for (var key in t.parameters)
-		{
-			r.parameters[key] = t.parameters[key].value;
-			var type = t.parameters[key].type;
-			var varComponent;
-			if (type.indexOf("int") !== -1)
-				varComponent = Qt.createComponent("qrc:/qml/QIntType.qml");
-			else if (type.indexOf("real") !== -1)
-				varComponent = Qt.createComponent("qrc:/qml/QRealType.qml");
-			else if (type.indexOf("string") !== -1 || type.indexOf("text") !== -1)
-				varComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
-			else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
-				varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
-			else if (type.indexOf("bool") !== -1)
-				varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
-			else {
-				console.log("Unknown parameter type: " + type);
-				continue;
-			}
+			r.parameters[key] = t.parameters[key];
 
-			var param = varComponent.createObject(stateListModel);
-			var dec = Qt.createComponent("qrc:/qml/QVariableDeclaration.qml");
-			param.setDeclaration(dec.createObject(stateListModel, { "type": type }));
-			param.setValue(r.parameters[key]);
-			qType.push(param);
-		}
-		r.qType = qType;
 		return r;
 	}
 
@@ -118,14 +93,7 @@ Item {
 			parameters: {}
 		};
 		for (var key in t.parameters)
-		{
-			var param = {
-				name: key,
-				value: t.parameters[key],
-				type: getParamType(key, t.qType)
-			}
-			r.parameters[key] = param;
-		}
+			r.parameters[key] = t.parameters[key];
 		return r;
 	}
 
