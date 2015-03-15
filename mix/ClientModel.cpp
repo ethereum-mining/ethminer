@@ -71,16 +71,11 @@ ClientModel::ClientModel(AppContext* _context):
 	m_context(_context), m_running(false), m_rpcConnector(new RpcConnector())
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
-	qRegisterMetaType<QIntType*>("QIntType*");
-	qRegisterMetaType<QStringType*>("QStringType*");
-	qRegisterMetaType<QRealType*>("QRealType*");
-	qRegisterMetaType<QHashType*>("QHashType*");
-	qRegisterMetaType<QEther*>("QEther*");
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
-	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
 	qRegisterMetaType<QList<QVariableDefinition*>>("QList<QVariableDefinition*>");
 	qRegisterMetaType<QList<QVariableDeclaration*>>("QList<QVariableDeclaration*>");
 	qRegisterMetaType<QVariableDeclaration*>("QVariableDeclaration*");
+	qRegisterMetaType<QSolidityType*>("QSolidityType*");
 	qRegisterMetaType<QMachineState*>("QMachineState");
 	qRegisterMetaType<QInstruction*>("QInstruction");
 	qRegisterMetaType<QCode*>("QCode");
@@ -191,7 +186,7 @@ void ClientModel::setupState(QVariantMap _state)
 		{
 			if (contractId.isEmpty() && m_context->codeModel()->hasContract()) //TODO: This is to support old project files, remove later
 				contractId = m_context->codeModel()->contracts().keys()[0];
-			QVariantList qParams = transaction.value("qType").toList();
+			QVariantList qParams = transaction.value("parameters").toList();
 			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasPrice, Secret(sender.toStdString()));
 
 			for (QVariant const& variant: qParams)
@@ -525,9 +520,10 @@ void ClientModel::onNewTransaction()
 			{
 				function = funcDef->name();
 				ContractCallDataEncoder encoder;
-				QList<QVariableDefinition*> returnValues = encoder.decode(funcDef->returnParameters(), tr.returnValue);
-				for (auto const& var: returnValues)
-					returned += var->value() + " | ";
+				QStringList returnValues = encoder.decode(funcDef->returnParameters(), tr.returnValue);
+				returned += "(";
+				returned += returnValues.join(", ");
+				returned += ")";
 			}
 		}
 	}

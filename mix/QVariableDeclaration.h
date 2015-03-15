@@ -20,34 +20,77 @@
  */
 
 #include <QDebug>
-#include <QStringList>
-#include <libsolidity/AST.h>
+#include <QVariantList>
 #include "QBasicNodeDefinition.h"
+#include "SolidityType.h"
 
 #pragma once
+
+namespace solidity
+{
+class Type;
+class VariableDeclaration;
+}
 
 namespace dev
 {
 namespace mix
 {
 
+class QSolidityType: public QObject
+{
+	Q_OBJECT
+	Q_PROPERTY(int type READ type CONSTANT) //qml does not support enum properties
+	Q_PROPERTY(int size READ size CONSTANT)
+	Q_PROPERTY(QString name READ name CONSTANT)
+	Q_PROPERTY(QVariantList members READ members CONSTANT)
+
+public:
+	QSolidityType() {}
+	QSolidityType(QObject* _parent, SolidityType const& _type);
+	using Type = SolidityType::Type;
+	enum QmlType //TODO: arrays and structs
+	{
+		SignedInteger,
+		UnsignedInteger,
+		Hash,
+		Bool,
+		Address,
+		String,
+		Enum,
+		Struct
+	};
+
+	Q_ENUMS(QmlType)
+	Type type() const { return m_type; }
+	int size() const { return m_size; }
+	QString name() const { return m_name; }
+	QVariantList members() const { return m_members; }
+
+private:
+	Type m_type;
+	int m_size;
+	QString m_name;
+	QVariantList m_members;
+};
+
 class QVariableDeclaration: public QBasicNodeDefinition
 {
 	Q_OBJECT
-	Q_PROPERTY(QString type READ type WRITE setType)
+	Q_PROPERTY(QSolidityType* type READ type CONSTANT)
 
 public:
 	QVariableDeclaration() {}
-	QVariableDeclaration(solidity::VariableDeclaration const* _v): QBasicNodeDefinition(_v), m_type(QString::fromStdString(_v->getType()->toString())) {}
-	QVariableDeclaration(std::string const& _name, std::string const& _type): QBasicNodeDefinition(_name), m_type(QString::fromStdString(_type)) {}
-	QString type() const { return m_type; }
-	void setType(QString _type) { m_type = _type; }
+	QVariableDeclaration(QObject* _parent, solidity::VariableDeclaration const* _v);
+	QVariableDeclaration(QObject* _parent, std::string const& _name,  SolidityType const& _type);
+	QVariableDeclaration(QObject* _parent, std::string const& _name,  solidity::Type const* _type);
+	QSolidityType* type() const { return m_type; }
+	void setType(QSolidityType* _type) { m_type = _type; }
 
 private:
-	QString m_type;
+	QSolidityType* m_type;
 };
 
-}
-}
 
-Q_DECLARE_METATYPE(dev::mix::QVariableDeclaration*)
+}
+}

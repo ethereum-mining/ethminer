@@ -49,33 +49,85 @@ void ContractCallDataEncoder::push(bytes const& _b)
 	m_encodedData.insert(m_encodedData.end(), _b.begin(), _b.end());
 }
 
-QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& _returnParameters, bytes _value)
+bigint ContractCallDataEncoder::decodeInt(dev::bytes const& _rawValue)
+{
+	dev::u256 un = dev::fromBigEndian<dev::u256>(_rawValue);
+	if (un >> 255)
+		return (-s256(~un + 1));
+	return un;
+}
+
+dev::bytes ContractCallDataEncoder::encodeInt(QString const& _str)
+{
+	dev::bigint i(_str.toStdString());
+	bytes ret(32);
+	toBigEndian((u256)i, ret);
+	return ret;
+}
+
+QString ContractCallDataEncoder::toString(dev::bigint const& _int)
+{
+	std::stringstream str;
+	str << std::dec << _int;
+	return QString::fromStdString(str.str());
+}
+
+dev::bytes ContractCallDataEncoder::encodeBool(QString const& _str)
+{
+	bytes b(1);
+	b[0] = _str == "1" || _str.toLower() == "true " ? 1 : 0;
+	return padded(b, 32);
+}
+
+bool ContractCallDataEncoder::decodeBool(dev::bytes const& _rawValue)
+{
+	byte ret = _rawValue.at(_rawValue.size() - 1);
+	return (ret != 0);
+}
+
+QString ContractCallDataEncoder::toString(bool _b)
+{
+	return _b ? "true" : "false";
+}
+
+dev::bytes ContractCallDataEncoder::encodeBytes(QString const& _str)
+{
+	QByteArray bytesAr = _str.toLocal8Bit();
+	bytes r = bytes(bytesAr.begin(), bytesAr.end());
+	return padded(r, 32);
+}
+
+dev::bytes ContractCallDataEncoder::decodeBytes(dev::bytes const& _rawValue)
+{
+	return _rawValue;
+}
+
+QString ContractCallDataEncoder::toString(dev::bytes const& _b)
+{
+	return QString::fromStdString(dev::toJS(_b));
+}
+
+QStringList ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& _returnParameters, bytes _value)
 {
 	bytesConstRef value(&_value);
 	bytes rawParam(32);
-	QList<QVariableDefinition*> r;
+	QStringList r;
 	for (int k = 0; k <_returnParameters.length(); k++)
 	{
+		value.populate(&rawParam);
+		value =  value.cropped(32);
 		QVariableDeclaration* dec = static_cast<QVariableDeclaration*>(_returnParameters.at(k));
-		QVariableDefinition* def = nullptr;
-		if (dec->type().contains("int"))
-			def = new QIntType(dec, QString());
-		else if (dec->type().contains("real"))
-			def = new QRealType(dec, QString());
-		else if (dec->type().contains("bool"))
-			def = new QBoolType(dec, QString());
-		else if (dec->type().contains("string") || dec->type().contains("text"))
-			def = new QStringType(dec, QString());
-		else if (dec->type().contains("hash") || dec->type().contains("address"))
-			def = new QHashType(dec, QString());
+		QSolidityType::Type type = dec->type()->type();
+		if (type == QSolidityType::Type::SignedInteger || type == QSolidityType::Type::UnsignedInteger)
+			r.append(toString(decodeInt(rawParam)));
+		else if (type == QSolidityType::Type::Bool)
+			r.append(toString(decodeBool(rawParam)));
+		else if (type == QSolidityType::Type::String || type == QSolidityType::Type::Hash)
+			r.append(toString(decodeBytes(rawParam)));
+		else if (type == QSolidityType::Type::Struct)
+			r.append("struct"); //TODO
 		else
 			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Parameter declaration not found"));
-
-		value.populate(&rawParam);
-		def->decodeValue(rawParam);
-		r.push_back(def);
-		value =  value.cropped(32);
-		qDebug() << "decoded return value : " << dec->type() << " " << def->value();
 	}
 	return r;
 }

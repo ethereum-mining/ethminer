@@ -44,11 +44,22 @@ public:
 	/// Encode hash of the function to call.
 	void encode(QFunctionDefinition const* _function);
 	/// Decode variable in order to be sent to QML view.
-	QList<QVariableDefinition*> decode(QList<QVariableDeclaration*> const& _dec, bytes _value);
+	QStringList decode(QList<QVariableDeclaration*> const& _dec, bytes _value);
 	/// Get all encoded data encoded by encode function.
 	bytes encodedData();
 	/// Push the given @a _b to the current param context.
 	void push(bytes const& _b);
+
+private:
+	bigint decodeInt(dev::bytes const& _rawValue);
+	dev::bytes encodeInt(QString const& _str);
+	QString toString(dev::bigint const& _int);
+	dev::bytes encodeBool(QString const& _str);
+	bool decodeBool(dev::bytes const& _rawValue);
+	QString toString(bool _b);
+	dev::bytes encodeBytes(QString const& _str);
+	dev::bytes decodeBytes(dev::bytes const& _rawValue);
+	QString toString(dev::bytes const& _b);
 
 private:
 	bytes m_encodedData;
