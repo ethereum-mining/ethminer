@@ -249,13 +249,13 @@ void Client::clearPending()
 	noteChanged(changeds);
 }
 
-unsigned Client::installWatch(h256 _h)
+unsigned Client::installWatch(h256 _h, Reaping _r)
 {
 	unsigned ret;
 	{
 		Guard l(m_filterLock);
 		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
-		m_watches[ret] = ClientWatch(_h);
+		m_watches[ret] = ClientWatch(_h, _r);
 		cwatch << "+++" << ret << _h.abridged();
 	}
 	auto ch = logs(ret);
@@ -268,7 +268,7 @@ unsigned Client::installWatch(h256 _h)
 	return ret;
 }
 
-unsigned Client::installWatch(LogFilter const& _f)
+unsigned Client::installWatch(LogFilter const& _f, Reaping _r)
 {
 	h256 h = _f.sha3();
 	{
@@ -279,10 +279,10 @@ unsigned Client::installWatch(LogFilter const& _f)
 			m_filters.insert(make_pair(h, _f));
 		}
 	}
-	return installWatch(h);
+	return installWatch(h, _r);
 }
 
-void Client::uninstallWatch(unsigned _i)
+bool Client::uninstallWatch(unsigned _i)
 {
 	cwatch << "XXX" << _i;
 
@@ -290,7 +290,7 @@ void Client::uninstallWatch(unsigned _i)
 
 	auto it = m_watches.find(_i);
 	if (it == m_watches.end())
-		return;
+		return false;
 	auto id = it->second.id;
 	m_watches.erase(it);
 
@@ -301,6 +301,7 @@ void Client::uninstallWatch(unsigned _i)
 			cwatch << "*X*" << fit->first << ":" << fit->second.filter;
 			m_filters.erase(fit);
 		}
+	return true;
 }
 
 void Client::noteChanged(h256Set const& _filters)
@@ -327,19 +328,15 @@ LocalisedLogEntries Client::peekWatch(unsigned _watchId) const
 {
 	Guard l(m_filterLock);
 
-	try {
 #if ETH_DEBUG
-		cdebug << "peekWatch" << _watchId;
+	cdebug << "peekWatch" << _watchId;
 #endif
-		auto& w = m_watches.at(_watchId);
+	auto& w = m_watches.at(_watchId);
 #if ETH_DEBUG
-		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+	cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 #endif
-		w.lastPoll = chrono::system_clock::now();
-		return w.changes;
-	} catch (...) {}
-
-	return LocalisedLogEntries();
+	w.lastPoll = chrono::system_clock::now();
+	return w.changes;
 }
 
 LocalisedLogEntries Client::checkWatch(unsigned _watchId)
@@ -347,17 +344,15 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	Guard l(m_filterLock);
 	LocalisedLogEntries ret;
 
-	try {
 #if ETH_DEBUG && 0
-		cdebug << "checkWatch" << _watchId;
+	cdebug << "checkWatch" << _watchId;
 #endif
-		auto& w = m_watches.at(_watchId);
+	auto& w = m_watches.at(_watchId);
 #if ETH_DEBUG && 0
-		cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+	cdebug << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 #endif
-		std::swap(ret, w.changes);
-		w.lastPoll = chrono::system_clock::now();
-	} catch (...) {}
+	std::swap(ret, w.changes);
+	w.lastPoll = chrono::system_clock::now();
 
 	return ret;
 }
@@ -416,8 +411,11 @@ void Client::setForceMining(bool _enable)
 void Client::setMiningThreads(unsigned _threads)
 {
 	stopMining();
-
+#if ETH_ETHASHCL
+	unsigned t = 1;
+#else
 	auto t = _threads ? _threads : thread::hardware_concurrency();
+#endif
 	WriteGuard l(x_localMiners);
 	m_localMiners.clear();
 	m_localMiners.resize(t);
@@ -493,7 +491,7 @@ void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _
 	m_tq.attemptImport(t.rlp());
 }
 
-bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
 {
 	bytes out;
 	try
@@ -503,7 +501,7 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 	//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 		{
 			ReadGuard l(x_stateDB);
-			temp = m_postMine;
+			temp = asOf(_blockNumber);
 			n = temp.transactionsFrom(toAddress(_secret));
 		}
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
@@ -694,7 +692,7 @@ void Client::doWork()
 		{
 			Guard l(m_filterLock);
 			for (auto key: keysOf(m_watches))
-				if (chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(20))
+				if (m_watches[key].lastPoll != chrono::system_clock::time_point::max() && chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(20))
 				{
 					toUninstall.push_back(key);
 					cnote << "GC: Uninstall" << key << "(" << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - m_watches[key].lastPoll).count() << "s old)";
@@ -794,6 +792,11 @@ bytes Client::codeAt(Address _a, int _block) const
 	return asOf(_block).code(_a);
 }
 
+Transaction Client::transaction(h256 _transactionHash) const
+{
+	return Transaction(m_bc.transaction(_transactionHash), CheckSignature::Range);
+}
+
 Transaction Client::transaction(h256 _blockHash, unsigned _i) const
 {
 	auto bl = m_bc.block(_blockHash);
@@ -828,13 +831,41 @@ unsigned Client::uncleCount(h256 _blockHash) const
 	return b[2].itemCount();
 }
 
+Transactions Client::transactions(h256 _blockHash) const
+{
+	auto bl = m_bc.block(_blockHash);
+	RLP b(bl);
+	Transactions res;
+	for (unsigned i = 0; i < b[1].itemCount(); i++)
+		res.emplace_back(b[1][i].data(), CheckSignature::Range);
+	return res;
+}
+
+TransactionHashes Client::transactionHashes(h256 _blockHash) const
+{
+	return m_bc.transactionHashes(_blockHash);
+}
+
+LocalisedLogEntries Client::logs(unsigned _watchId) const
+{
+	LogFilter f;
+	try
+	{
+		Guard l(m_filterLock);
+		f = m_filters.at(m_watches.at(_watchId).id).filter;
+	}
+	catch (...)
+	{
+		return LocalisedLogEntries();
+	}
+	return logs(f);
+}
+
 LocalisedLogEntries Client::logs(LogFilter const& _f) const
 {
 	LocalisedLogEntries ret;
 	unsigned begin = min<unsigned>(m_bc.number() + 1, (unsigned)_f.latest());
 	unsigned end = min(m_bc.number(), min(begin, (unsigned)_f.earliest()));
-	unsigned m = _f.max();
-	unsigned s = _f.skip();
 
 	// Handle pending transactions differently as they're not on the block chain.
 	if (begin > m_bc.number())
@@ -847,68 +878,52 @@ LocalisedLogEntries Client::logs(LogFilter const& _f) const
 			auto sha3 = m_postMine.pending()[i].sha3();
 			LogEntries le = _f.matches(tr);
 			if (le.size())
-			{
-				for (unsigned j = 0; j < le.size() && ret.size() != m; ++j)
-					if (s)
-						s--;
-					else
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin, sha3));
-			}
+				for (unsigned j = 0; j < le.size(); ++j)
+					ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin, sha3));
 		}
 		begin = m_bc.number();
 	}
 
+	set<unsigned> matchingBlocks;
+	for (auto const& i: _f.bloomPossibilities())
+		for (auto u: m_bc.withBlockBloom(i, end, begin))
+			matchingBlocks.insert(u);
+
 #if ETH_DEBUG
-	// fill these params
-	unsigned skipped = 0;
 	unsigned falsePos = 0;
 #endif
-	auto h = m_bc.numberHash(begin);
-	unsigned n = begin;
-	for (; ret.size() != m && n != end; n--, h = m_bc.details(h).parent)
+	for (auto n: matchingBlocks)
 	{
 #if ETH_DEBUG
 		int total = 0;
 #endif
-		// check block bloom
-		auto info = m_bc.info(h);
+		auto h = m_bc.numberHash(n);
 		auto receipts = m_bc.receipts(h).receipts;
-		if (_f.matches(info.logBloom))
-			for (size_t i = 0; i < receipts.size(); i++)
+		for (size_t i = 0; i < receipts.size(); i++)
+		{
+			TransactionReceipt receipt = receipts[i];
+			if (_f.matches(receipt.bloom()))
 			{
-				TransactionReceipt receipt = receipts[i];
-				if (_f.matches(receipt.bloom()))
+				auto info = m_bc.info(h);
+				auto h = transaction(info.hash, i).sha3();
+				LogEntries le = _f.matches(receipt);
+				if (le.size())
 				{
-					auto h = transaction(info.hash, i).sha3();
-					LogEntries le = _f.matches(receipt);
-					if (le.size())
-					{
 #if ETH_DEBUG
-						total += le.size();
+					total += le.size();
 #endif
-						for (unsigned j = 0; j < le.size() && ret.size() != m; ++j)
-						{
-							if (s)
-								s--;
-							else
-								ret.insert(ret.begin(), LocalisedLogEntry(le[j], n, h));
-						}
-					}
+					for (unsigned j = 0; j < le.size(); ++j)
+						ret.insert(ret.begin(), LocalisedLogEntry(le[j], n, h));
 				}
-#if ETH_DEBUG
-				if (!total)
-					falsePos++;
-#endif
 			}
 #if ETH_DEBUG
-		else
-			skipped++;
+			if (!total)
+				falsePos++;
 #endif
-		if (n == end)
-			break;
+		}
 	}
 #if ETH_DEBUG
-	cdebug << (begin - n) << "searched; " << skipped << "skipped; " << falsePos << "false +ves";
+	cdebug << matchingBlocks.size() << "searched from" << (end - begin) << "skipped; " << falsePos << "false +ves";
 #endif
 	return ret;
 }

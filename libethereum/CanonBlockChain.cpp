@@ -85,8 +85,8 @@ bytes CanonBlockChain::createGenesisBlock()
 		stateRoot = state.root();
 	}
 
-	block.appendList(16)
-			<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << 1000000 << 0 << (unsigned)0 << string() << h256() << h256() << Nonce(u64(42));
+	block.appendList(15)
+			<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << c_genesisGasLimit << 0 << (unsigned)0 << string() << h256() << Nonce(u64(42));
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();

@@ -46,7 +46,6 @@
 
 namespace dev
 {
-
 namespace eth
 {
 
@@ -93,7 +92,7 @@ static const LocalisedLogEntry InitialChange(SpecialLogEntry, 0);
 struct ClientWatch
 {
 	ClientWatch(): lastPoll(std::chrono::system_clock::now()) {}
-	explicit ClientWatch(h256 _id): id(_id), lastPoll(std::chrono::system_clock::now()) {}
+	explicit ClientWatch(h256 _id, Reaping _r): id(_id), lastPoll(_r == Reaping::Automatic ? std::chrono::system_clock::now() : std::chrono::system_clock::time_point::max()) {}
 
 	h256 id;
 	LocalisedLogEntries changes = LocalisedLogEntries{ InitialChange };
@@ -226,7 +225,7 @@ public:
 	virtual void flushTransactions();
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+	virtual bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, int _blockNumber = 0);
 
 	/// Makes the given call. Nothing is recorded into the state. This cheats by creating a null address and endowing it with a lot of ETH.
 	virtual bytes call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether);
@@ -247,13 +246,13 @@ public:
 	virtual bytes codeAt(Address _a, int _block) const;
 	virtual std::map<u256, u256> storageAt(Address _a, int _block) const;
 
-	virtual unsigned installWatch(LogFilter const& _filter);
-	virtual unsigned installWatch(h256 _filterId);
-	virtual void uninstallWatch(unsigned _watchId);
+	virtual unsigned installWatch(LogFilter const& _filter, Reaping _r = Reaping::Automatic) override;
+	virtual unsigned installWatch(h256 _filterId, Reaping _r = Reaping::Automatic) override;
+	virtual bool uninstallWatch(unsigned _watchId) override;
 	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const;
 	virtual LocalisedLogEntries checkWatch(unsigned _watchId);
 
-	virtual LocalisedLogEntries logs(unsigned _watchId) const { try { Guard l(m_filterLock); return logs(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return LocalisedLogEntries(); } }
+	virtual LocalisedLogEntries logs(unsigned _watchId) const;
 	virtual LocalisedLogEntries logs(LogFilter const& _filter) const;
 
 	// [EXTRA API]:
@@ -268,10 +267,13 @@ public:
 	virtual h256 hashFromNumber(unsigned _number) const { return m_bc.numberHash(_number); }
 	virtual BlockInfo blockInfo(h256 _hash) const { return BlockInfo(m_bc.block(_hash)); }
 	virtual BlockDetails blockDetails(h256 _hash) const { return m_bc.details(_hash); }
+	virtual Transaction transaction(h256 _transactionHash) const;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const;
 	virtual unsigned transactionCount(h256 _blockHash) const;
 	virtual unsigned uncleCount(h256 _blockHash) const;
+	virtual Transactions transactions(h256 _blockHash) const;
+	virtual TransactionHashes transactionHashes(h256 _blockHash) const;
 
 	/// Differences between transactions.
 	using Interface::diff;
@@ -321,12 +323,12 @@ public:
 	virtual unsigned miningThreads() const { ReadGuard l(x_localMiners); return m_localMiners.size(); }
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	virtual void startMining() { startWorking(); ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); }
+	virtual void startMining() { startWorking(); { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); } }
 	/// Stop mining.
 	/// NOT thread-safe
-	virtual void stopMining() { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); }
+	virtual void stopMining() { { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); } }
 	/// Are we mining now?
-	virtual bool isMining() { ReadGuard l(x_localMiners); return m_localMiners.size() && m_localMiners[0].isRunning(); }
+	virtual bool isMining() { { ReadGuard l(x_localMiners); if (!m_localMiners.empty() && m_localMiners[0].isRunning()) return true; } return false; }
 	/// Check the progress of the mining.
 	virtual MineProgress miningProgress() const;
 	/// Get and clear the mining history.
@@ -402,8 +404,6 @@ private:
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
 	bool m_verifyOwnBlocks = true;			///< Should be verify blocks that we mined?
-
-
 
 	mutable Mutex m_filterLock;
 	std::map<h256, InstalledFilter> m_filters;
