@@ -42,7 +42,7 @@ struct SolidityType
 		Hash,
 		Bool,
 		Address,
-		String,
+		Bytes,
 		Enum,
 		Struct
 	};
