@@ -122,7 +122,7 @@ QStringList ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& 
 			r.append(toString(decodeInt(rawParam)));
 		else if (type == QSolidityType::Type::Bool)
 			r.append(toString(decodeBool(rawParam)));
-		else if (type == QSolidityType::Type::String || type == QSolidityType::Type::Hash)
+		else if (type == QSolidityType::Type::Bytes || type == QSolidityType::Type::Hash)
 			r.append(toString(decodeBytes(rawParam)));
 		else if (type == QSolidityType::Type::Struct)
 			r.append("struct"); //TODO
