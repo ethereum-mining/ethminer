@@ -42,45 +42,10 @@ Item
 					text: "="
 					Layout.preferredWidth: 15
 				}
-	/*
-				Component.onCompleted:  {
-					var t = type.type;
-					var src = undefined;
-					if (t === QSolidityType.SignedInteger || t === QSolidityType.UnsignedInteger)
-						src = "qrc:/qml/QIntTypeView.qml"
-					else if (t === QSolidityType.Bool)
-						src = "qrc:/qml/QBoolTypeView.qml"
-					else if (t === QSolidityType.String)
-						src = "qrc:/qml/QStringTypeView.qml"
-					else if (t === QSolidityType.Hash || t === QSolidityType.Address)
-						src = "qrc:/qml/QHashTypeView.qml"
-					else if (t === QSolidityType.Struct)
-						src = "qrc:/qml/StructView.qml";
-					else
-						return null;
-
-					typeLoader.setSource(src, {
-							height: 20,
-							width: 150,
-							value: typeLoader.getCurrent().value
-					});
-					console.log(src);
-				}
-	*/
 				Loader
 				{
 					id: typeLoader
 					Layout.preferredWidth: 150
-
-					/*
-					Binding {
-					  target: typeLoader.item
-					  property: "membersModel"
-					  value: type.members
-					  when: typeLoader.status === Loader.Ready
-					}*/
-
-
 					sourceComponent:
 					{
 						var t = modelData.type.type;
@@ -88,7 +53,7 @@ Item
 							return Qt.createComponent("qrc:/qml/QIntTypeView.qml");
 						else if (t === QSolidityType.Bool)
 							return Qt.createComponent("qrc:/qml/QBoolTypeView.qml");
-						else if (t === QSolidityType.String)
+						else if (t === QSolidityType.Bytes)
 							return Qt.createComponent("qrc:/qml/QStringTypeView.qml");
 						else if (t === QSolidityType.Hash || t === QSolidityType.Address)
 							return Qt.createComponent("qrc:/qml/QHashTypeView.qml");
@@ -124,57 +89,6 @@ Item
 							return {};
 						return "";
 					}
-
-					Component
-					{
-						id: intViewComp
-						QIntTypeView
-						{
-							height: 20
-							width: 150
-							id: intView
-						}
-					}
-
-					Component
-					{
-						id: boolViewComp
-						QBoolTypeView
-						{
-							height: 20
-							width: 150
-							id: boolView
-							defaultValue: "1"
-							Component.onCompleted:
-							{
-								var current = getValue()
-								(current === "" ? text = defaultValue : text = current);
-							}
-						}
-					}
-
-					Component
-					{
-						id: stringViewComp
-						QStringTypeView
-						{
-							height: 20
-							width: 150
-							id: stringView
-						}
-					}
-
-					Component
-					{
-						id: hashViewComp
-						QHashTypeView
-						{
-							height: 20
-							width: 150
-							id: hashView
-						}
-					}
-
 				}
 			}
 		}
