@@ -67,6 +67,7 @@ enum Strictness
 struct BlockInfo
 {
 public:
+	// TODO: make them all private!
 	h256 hash;						///< SHA3 hash of the block header! Not serialised (the only member not contained in a block header).
 	h256 parentHash;
 	h256 sha3Uncles;
@@ -82,7 +83,6 @@ public:
 	u256 timestamp;
 	bytes extraData;
 	h256 mixHash;
-	h256 seedHash;
 	Nonce nonce;
 
 	BlockInfo();
@@ -113,7 +113,6 @@ public:
 				timestamp == _cmp.timestamp &&
 				extraData == _cmp.extraData &&
 				mixHash == _cmp.mixHash &&
-				seedHash == _cmp.seedHash &&
 				nonce == _cmp.nonce;
 	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
@@ -128,19 +127,22 @@ public:
 	void populateFromParent(BlockInfo const& parent);
 
 	u256 calculateDifficulty(BlockInfo const& _parent) const;
-	u256 calculateGasLimit(BlockInfo const& _parent) const;
-	h256 calculateSeedHash(BlockInfo const& _parent) const;
+	u256 selectGasLimit(BlockInfo const& _parent) const;
+	h256 const& seedHash() const;
 
 	/// sha3 of the header only.
 	h256 headerHash(IncludeNonce _n) const;
 	void streamRLP(RLPStream& _s, IncludeNonce _n) const;
+
+private:
+	mutable h256 m_seedHash;
 };
 
 inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 {
 	_out << _bi.hash << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.transactionsRoot << " " <<
 			_bi.receiptsRoot << " " << _bi.logBloom << " " << _bi.difficulty << " " << _bi.number << " " << _bi.gasLimit << " " <<
-			_bi.gasUsed << " " << _bi.timestamp << " " << _bi.mixHash << " " << _bi.seedHash << " " << _bi.nonce;
+			_bi.gasUsed << " " << _bi.timestamp << " " << _bi.mixHash << " " << _bi.nonce << " (" << _bi.seedHash() << ")";
 	return _out;
 }
 

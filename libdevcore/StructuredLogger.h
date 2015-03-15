@@ -98,8 +98,6 @@ private:
 	StructuredLogger(StructuredLogger const&) = delete;
 	void operator=(StructuredLogger const&) = delete;
 
-	/// @returns a string representation of a timepoint
-	static std::string timePointToString(std::chrono::system_clock::time_point const& _ts);
 	void outputJson(Json::Value const& _value, std::string const& _name) const;
 
 	bool m_enabled = false;

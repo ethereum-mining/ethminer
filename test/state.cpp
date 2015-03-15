@@ -41,7 +41,7 @@ namespace dev {  namespace test {
 
 void doStateTests(json_spirit::mValue& v, bool _fillin)
 {
-	processCommandLineOptions();
+	Options::get(); // process command line options
 
 	for (auto& i: v.get_obj())
 	{
@@ -130,6 +130,11 @@ BOOST_AUTO_TEST_CASE(stSystemOperationsTest)
 	dev::test::executeTests("stSystemOperationsTest", "/StateTests", dev::test::doStateTests);
 }
 
+BOOST_AUTO_TEST_CASE(stCallCreateCallCodeTest)
+{
+	dev::test::executeTests("stCallCreateCallCodeTest", "/StateTests", dev::test::doStateTests);
+}
+
 BOOST_AUTO_TEST_CASE(stPreCompiledContracts)
 {
 	dev::test::executeTests("stPreCompiledContracts", "/StateTests", dev::test::doStateTests);
@@ -172,48 +177,40 @@ BOOST_AUTO_TEST_CASE(stBlockHashTest)
 
 BOOST_AUTO_TEST_CASE(stQuadraticComplexityTest)
 {
-	   for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
-	   {
-			   string arg = boost::unit_test::framework::master_test_suite().argv[i];
-			   if (arg == "--quadratic" || arg == "--all")
-			   {
-					   auto start = chrono::steady_clock::now();
+	if (test::Options::get().quadratic)
+	{
+		auto start = chrono::steady_clock::now();
 
-					   dev::test::executeTests("stQuadraticComplexityTest", "/StateTests", dev::test::doStateTests);
+		dev::test::executeTests("stQuadraticComplexityTest", "/StateTests", dev::test::doStateTests);
 
-					   auto end = chrono::steady_clock::now();
-					   auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
-					   cnote << "test duration: " << duration.count() << " milliseconds.\n";
-			   }
-	   }
+		auto end = chrono::steady_clock::now();
+		auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
+		cnote << "test duration: " << duration.count() << " milliseconds.\n";
+	}
 }
 
 BOOST_AUTO_TEST_CASE(stMemoryStressTest)
 {
-	   for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
-	   {
-			   string arg = boost::unit_test::framework::master_test_suite().argv[i];
-			   if (arg == "--memory" || arg == "--all")
-			   {
-					   auto start = chrono::steady_clock::now();
+	if (test::Options::get().memory)
+	{
+		auto start = chrono::steady_clock::now();
 
-					   dev::test::executeTests("stMemoryStressTest", "/StateTests", dev::test::doStateTests);
+		dev::test::executeTests("stMemoryStressTest", "/StateTests", dev::test::doStateTests);
 
-					   auto end = chrono::steady_clock::now();
-					   auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
-					   cnote << "test duration: " << duration.count() << " milliseconds.\n";
-			   }
-	   }
+		auto end = chrono::steady_clock::now();
+		auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
+		cnote << "test duration: " << duration.count() << " milliseconds.\n";
+	}
 }
 
- BOOST_AUTO_TEST_CASE(stSolidityTest)
- {
-		dev::test::executeTests("stSolidityTest", "/StateTests", dev::test::doStateTests);
- }
+BOOST_AUTO_TEST_CASE(stSolidityTest)
+{
+	dev::test::executeTests("stSolidityTest", "/StateTests", dev::test::doStateTests);
+}
 
 BOOST_AUTO_TEST_CASE(stMemoryTest)
 {
-	   dev::test::executeTests("stMemoryTest", "/StateTests", dev::test::doStateTests);
+	dev::test::executeTests("stMemoryTest", "/StateTests", dev::test::doStateTests);
 }
 
 
@@ -247,6 +244,39 @@ BOOST_AUTO_TEST_CASE(stCreateTest)
 			{
 				BOOST_ERROR("Failed state test with Exception: " << _e.what());
 			}
+		}
+	}
+}
+
+BOOST_AUTO_TEST_CASE(stRandom)
+{
+	string testPath = dev::test::getTestPath();
+	testPath += "/StateTests/RandomTests";
+
+	vector<boost::filesystem::path> testFiles;
+	boost::filesystem::directory_iterator iterator(testPath);
+	for(; iterator != boost::filesystem::directory_iterator(); ++iterator)
+		if (boost::filesystem::is_regular_file(iterator->path()) && iterator->path().extension() == ".json")
+			testFiles.push_back(iterator->path());
+
+	for (auto& path: testFiles)
+	{
+		try
+		{
+			cnote << "Testing ..." << path.filename();
+			json_spirit::mValue v;
+			string s = asString(dev::contents(path.string()));
+			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Content of " + path.string() + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
+			json_spirit::read_string(s, v);
+			dev::test::doStateTests(v, false);
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
 		}
 	}
 }

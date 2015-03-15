@@ -550,14 +550,22 @@ void Host::run(boost::system::error_code const&)
 	// is always live and to ensure reputation and fallback timers are properly
 	// updated. // disconnectLatePeers();
 
-	if (peerCount() < m_idealPeerCount)
+	auto openSlots = m_idealPeerCount - peerCount();
+	if (openSlots > 0)
 	{
-		for (auto p: m_peers)
-			if (p.second->shouldReconnect())
-			{
-				connect(p.second);
+		list<shared_ptr<Peer>> toConnect;
+		{
+			RecursiveGuard l(x_sessions);
+			for (auto p: m_peers)
+				if (p.second->shouldReconnect())
+					toConnect.push_back(p.second);
+		}
+		
+		for (auto p: toConnect)
+			if (openSlots--)
+				connect(p);
+			else
 				break;
-			}
 		
 		m_nodeTable->discover();
 	}

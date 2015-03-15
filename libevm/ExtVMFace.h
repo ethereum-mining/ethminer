@@ -47,9 +47,9 @@ struct LogEntry
 	LogBloom bloom() const
 	{
 		LogBloom ret;
-		ret.shiftBloom<3, 32>(sha3(address.ref()));
+		ret.shiftBloom<3>(sha3(address.ref()));
 		for (auto t: topics)
-			ret.shiftBloom<3, 32>(sha3(t.ref()));
+			ret.shiftBloom<3>(sha3(t.ref()));
 		return ret;
 	}
 

@@ -31,7 +31,7 @@ namespace eth
 u256 const c_genesisDifficulty = 131072;
 u256 const c_maximumExtraDataSize = 1024;
 u256 const c_epochDuration = 3000;
-u256 const c_genesisGasLimit = 1000000;
+u256 const c_genesisGasLimit = 3141592;
 u256 const c_minGasLimit = 125000;
 u256 const c_gasLimitBoundDivisor = 1024;
 u256 const c_minimumDifficulty = 131072;
