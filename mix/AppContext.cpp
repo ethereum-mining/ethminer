@@ -68,14 +68,10 @@ void AppContext::load()
 	m_applicationEngine->rootContext()->setContextProperty("fileIo", m_fileIo.get());
 	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
 	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
-	qmlRegisterType<QIntType>("org.ethereum.qml.QIntType", 1, 0, "QIntType");
-	qmlRegisterType<QRealType>("org.ethereum.qml.QRealType", 1, 0, "QRealType");
-	qmlRegisterType<QStringType>("org.ethereum.qml.QStringType", 1, 0, "QStringType");
-	qmlRegisterType<QHashType>("org.ethereum.qml.QHashType", 1, 0, "QHashType");
-	qmlRegisterType<QBoolType>("org.ethereum.qml.QBoolType", 1, 0, "QBoolType");
 	qmlRegisterType<QVariableDeclaration>("org.ethereum.qml.QVariableDeclaration", 1, 0, "QVariableDeclaration");
 	qmlRegisterType<RecordLogEntry>("org.ethereum.qml.RecordLogEntry", 1, 0, "RecordLogEntry");
 	qmlRegisterType<SortFilterProxyModel>("org.ethereum.qml.SortFilterProxyModel", 1, 0, "SortFilterProxyModel");
+	qmlRegisterType<QSolidityType>("org.ethereum.qml.QSolidityType", 1, 0, "QSolidityType");
 	QQmlComponent projectModelComponent(m_applicationEngine, QUrl("qrc:/qml/ProjectModel.qml"));
 	QObject* projectModel = projectModelComponent.create();
 	if (projectModelComponent.isError())

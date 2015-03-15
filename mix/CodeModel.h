@@ -31,13 +31,18 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
 #include <libevmcore/Assembly.h>
+#include "SolidityType.h"
 
 class QTextDocument;
 
 namespace dev
 {
 
-namespace solidity { class CompilerStack; }
+namespace solidity
+{
+class CompilerStack;
+class Type;
+}
 
 namespace mix
 {
@@ -62,27 +67,6 @@ private:
 };
 
 using LocationPair = QPair<int, int>;
-
-struct SolidityType
-{
-	enum class Type //TODO: arrays and structs
-	{
-		SignedInteger,
-		UnsignedInteger,
-		Hash,
-		Bool,
-		Address,
-		String,
-	};
-	Type type;
-	unsigned size; //bytes
-};
-
-struct SolidityDeclaration
-{
-	QString name;
-	SolidityType type;
-};
 
 ///Compilation result model. Contains all the compiled contract data required by UI
 class CompiledContract: public QObject
@@ -163,6 +147,8 @@ public:
 	Q_INVOKABLE CompiledContract* contractByDocumentId(QString _documentId) const;
 	/// Reset code model
 	Q_INVOKABLE void reset() { reset(QVariantMap()); }
+	/// Convert solidity type info to mix type
+	static SolidityType nodeType(solidity::Type const* _type);
 
 signals:
 	/// Emited on compilation state change

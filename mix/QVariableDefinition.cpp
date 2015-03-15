@@ -24,6 +24,7 @@
 #include "QVariableDefinition.h"
 
 using namespace dev::mix;
+/*
 int QVariableDefinitionList::rowCount(const QModelIndex& _parent) const
 {
 	Q_UNUSED(_parent);
@@ -56,9 +57,6 @@ QVariableDefinition* QVariableDefinitionList::val(int _idx)
 	return m_def.at(_idx);
 }
 
-/*
- * QIntType
- */
 void QIntType::setValue(dev::bigint _value)
 {
 	m_bigIntvalue = _value;
@@ -84,9 +82,6 @@ void QIntType::decodeValue(dev::bytes const& _rawValue)
 		setValue(un);
 }
 
-/*
- * QHashType
- */
 dev::bytes QHashType::encodeValue()
 {
 	QByteArray bytesAr = value().toLocal8Bit();
@@ -100,9 +95,6 @@ void QHashType::decodeValue(dev::bytes const& _rawValue)
 	setValue(QString::fromStdString(_ret));
 }
 
-/*
- * QRealType
- */
 dev::bytes QRealType::encodeValue()
 {
 	return bytes();
@@ -113,9 +105,6 @@ void QRealType::decodeValue(dev::bytes const& _rawValue)
 	Q_UNUSED(_rawValue);
 }
 
-/*
- * QStringType
- */
 dev::bytes QStringType::encodeValue()
 {
 	QByteArray b = value().toUtf8();
@@ -128,9 +117,6 @@ void QStringType::decodeValue(dev::bytes const& _rawValue)
 	setValue(QString::fromUtf8((char*)_rawValue.data()));
 }
 
-/*
- * QBoolType
- */
 dev::bytes QBoolType::encodeValue()
 {
 	return padded(jsToBytes(value().toStdString()), 32);
@@ -143,3 +129,4 @@ void QBoolType::decodeValue(dev::bytes const& _rawValue)
 	m_boolValue = boolRet;
 	m_value = m_boolValue ? "1" : "0";
 }
+*/
