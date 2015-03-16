@@ -173,6 +173,9 @@ Rectangle {
 					width: 350
 					Layout.minimumWidth: 250
 					Layout.fillHeight: true
+					Connections {
+						target: projectModel.codeEditor
+					}
 				}
 
 				Rectangle {

@@ -141,33 +141,52 @@ Rectangle
 					color: isSelected ? ProjectFilesStyle.documentsList.highlightColor : "transparent"
 					property bool isSelected
 					property bool renameMode
-					Text {
-						id: nameText
-						height: parent.height
-						visible: !renameMode
-						color: rootItem.isSelected ? ProjectFilesStyle.documentsList.selectedColor : ProjectFilesStyle.documentsList.color
-						text: name;
-						font.family: fileNameFont.name
-						font.pointSize: ProjectFilesStyle.documentsList.fontSize
+
+					Row {
+						spacing: 3
 						anchors.verticalCenter: parent.verticalCenter
-						verticalAlignment:  Text.AlignVCenter
+						anchors.fill: parent
 						anchors.left: parent.left
 						anchors.leftMargin: ProjectFilesStyle.general.leftMargin + 2
-						width: parent.width
-						Connections
-						{
-							target: selManager
-							onSelected: {
-								if (groupName != sectionName)
-									rootItem.isSelected = false;
-								else if (doc === documentId)
-									rootItem.isSelected = true;
-								else
-									rootItem.isSelected = false;
+						Text {
+							id: nameText
+							height: parent.height
+							visible: !renameMode
+							color: rootItem.isSelected ? ProjectFilesStyle.documentsList.selectedColor : ProjectFilesStyle.documentsList.color
+							text: name;
+							font.family: fileNameFont.name
+							font.pointSize: ProjectFilesStyle.documentsList.fontSize
+							verticalAlignment:  Text.AlignVCenter
 
-								if (rootItem.isSelected && section.state === "hidden")
-									section.state = "";
+							Connections
+							{
+								target: selManager
+								onSelected: {
+									if (groupName != sectionName)
+										rootItem.isSelected = false;
+									else if (doc === documentId)
+										rootItem.isSelected = true;
+									else
+										rootItem.isSelected = false;
+
+									if (rootItem.isSelected && section.state === "hidden")
+										section.state = "";
+								}
+								onIsCleanChanged: {
+									if (groupName === sectionName && doc === documentId)
+										editStatusLabel.visible = !isClean;
+								}
 							}
+						}
+
+						DefaultLabel {
+							id: editStatusLabel
+							visible: false
+							color: rootItem.isSelected ? ProjectFilesStyle.documentsList.selectedColor : ProjectFilesStyle.documentsList.color
+							verticalAlignment:  Text.AlignVCenter
+							text: "*"
+							width: 10
+							height: parent.height
 						}
 					}
 
