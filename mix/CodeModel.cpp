@@ -28,6 +28,7 @@
 #include <libdevcore/Common.h>
 #include <libevmcore/SourceLocation.h>
 #include <libsolidity/AST.h>
+#include <libsolidity/Types.h>
 #include <libsolidity/ASTVisitor.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
@@ -308,7 +309,7 @@ dev::bytes const& CodeModel::getStdContractCode(const QString& _contractName, co
 	return m_compiledContracts.at(_contractName);
 }
 
-SolidityType CodeModel::nodeType(solidity::Type const* _type)
+SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 {
 	SolidityType r { SolidityType::Type::UnsignedInteger, 32, false, false, QString::fromStdString(_type->toString()), std::vector<SolidityDeclaration>(), std::vector<QString>() };
 	if (!_type)
