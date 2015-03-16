@@ -11,6 +11,8 @@ ColumnLayout {
 	property bool enableSelection: false;
 	property real storedHeight: 0;
 	property Component itemDelegate
+	property Component componentDelegate
+	property alias item: loader.item
 	signal rowActivated(int index)
 	spacing: 0
 
@@ -91,43 +93,54 @@ ColumnLayout {
 				}
 			}
 		]
-		TableView {
-			clip: true;
-			alternatingRowColors: false
+		Loader
+		{
+			id: loader
 			anchors.top: parent.top
 			anchors.left: parent.left
 			anchors.topMargin: 3
 			anchors.leftMargin: 3
 			width: parent.width - 3
 			height: parent.height - 6
-			model: listModel
-			selectionMode: enableSelection ? SelectionMode.SingleSelection : SelectionMode.NoSelection
-			headerDelegate: null
-			itemDelegate: root.itemDelegate
-			onHeightChanged:  {
-				if (height <= 0 && collapsible) {
-					if (storedHeight <= 0)
-						storedHeight = 200;
-					storageContainer.state = "collapsed";
+			sourceComponent: componentDelegate ? componentDelegate : table
+		}
+		Component
+		{
+			id: table
+			TableView
+			{
+				clip: true;
+				alternatingRowColors: false
+				anchors.fill: parent
+				model: listModel
+				selectionMode: enableSelection ? SelectionMode.SingleSelection : SelectionMode.NoSelection
+				headerDelegate: null
+				itemDelegate: root.itemDelegate
+				onHeightChanged:  {
+					if (height <= 0 && collapsible) {
+						if (storedHeight <= 0)
+							storedHeight = 200;
+						storageContainer.state = "collapsed";
+					}
+					else if (height > 0 && storageContainer.state == "collapsed") {
+						//TODO: fix increasing size
+						//storageContainer.state = "";
+					}
 				}
-				else if (height > 0 && storageContainer.state == "collapsed") {
-					//TODO: fix increasing size
-					//storageContainer.state = "";
+				onActivated: rowActivated(row);
+				Keys.onPressed: {
+					if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < listModel.length) {
+						var str = "";
+						for (var i = 0; i < listModel.length; i++)
+							str += listModel[i] + "\n";
+						appContext.toClipboard(str);
+					}
 				}
-			}
-			onActivated: rowActivated(row);
-			Keys.onPressed: {
-				if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < listModel.length) {
-					var str = "";
-					for (var i = 0; i < listModel.length; i++)
-						str += listModel[i] + "\n";
-					appContext.toClipboard(str);
-				}
-			}
 
-			TableViewColumn {
-				role: "modelData"
-				width: parent.width
+				TableViewColumn {
+					role: "modelData"
+					width: parent.width
+				}
 			}
 		}
 	}

@@ -44,13 +44,8 @@
         <file>qml/EtherValue.qml</file>
         <file>qml/BigIntValue.qml</file>
         <file>qml/QVariableDefinition.qml</file>
-        <file>qml/QBoolType.qml</file>
-        <file>qml/QHashType.qml</file>
-        <file>qml/QIntType.qml</file>
-        <file>qml/QRealType.qml</file>
         <file>qml/js/QEtherHelper.js</file>
         <file>qml/js/TransactionHelper.js</file>
-        <file>qml/QStringType.qml</file>
         <file>qml/QBoolTypeView.qml</file>
         <file>qml/QIntTypeView.qml</file>
         <file>qml/QRealTypeView.qml</file>
@@ -115,6 +110,8 @@
         <file>qml/img/copy.png</file>
         <file>qml/img/broom.png</file>
         <file>qml/LogsPaneStyle.qml</file>
+        <file>qml/StructView.qml</file>
         <file>qml/img/console.png</file>
+        <file>qml/VariablesView.qml</file>
     </qresource>
 </RCC>
