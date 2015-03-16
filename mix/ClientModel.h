@@ -63,7 +63,7 @@ struct TransactionSettings
 	/// Gas price
 	u256 gasPrice;
 	/// Mapping from contract function parameter name to value
-	QList<QVariableDefinition*> parameterValues;
+	QVariantMap parameterValues;
 	/// Standard contract url
 	QString stdContractUrl;
 	/// Sender
@@ -199,7 +199,7 @@ private:
 	void onNewTransaction();
 	void onStateReset();
 	void showDebuggerForTransaction(ExecutionResult const& _t);
-	QString formatValue(SolidityType const& _type, dev::u256 const& _value);
+	QVariant formatValue(SolidityType const& _type, dev::u256 const& _value);
 
 	AppContext* m_context;
 	std::atomic<bool> m_running;
