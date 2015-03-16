@@ -8,7 +8,6 @@ Column
 	id: root
 	property alias members: repeater.model  //js array
 	property var value : { x: "333" }
-	property int level: 0
 	Layout.fillWidth: true
 
 	Repeater
@@ -65,7 +64,6 @@ Column
 					var pname = members[index].name;
 					var vals = value;
 					if (ptype.category === QSolidityType.Struct && !item.members) {
-						item.level = level + 1;
 						item.value = getValue();
 						item.members = ptype.members;
 					}

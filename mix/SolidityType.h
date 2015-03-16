@@ -33,13 +33,14 @@ namespace mix
 
 struct SolidityDeclaration;
 
+//Type info extracted from solidity AST
 struct SolidityType
 {
-	enum Type //TODO: arrays and structs
+	enum Type //keep in sync with QSolidity::Type
 	{
 		SignedInteger,
 		UnsignedInteger,
-		Hash,
+		Hash, //TODO: remove
 		Bool,
 		Address,
 		Bytes,
@@ -47,12 +48,12 @@ struct SolidityType
 		Struct
 	};
 	Type type;
-	unsigned size; //bytes,
+	unsigned size; //in bytes,
 	bool array;
 	bool dynamicSize;
 	QString name;
-	std::vector<SolidityDeclaration> members;
-	std::vector<QString> enumNames;
+	std::vector<SolidityDeclaration> members; //for struct
+	std::vector<QString> enumNames; //for enum
 };
 
 struct SolidityDeclaration

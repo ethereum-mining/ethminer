@@ -371,7 +371,6 @@ SolidityType CodeModel::nodeType(solidity::Type const* _type)
 	case Type::Category::Void:
 	default:
 		break;
-		//BOOST_THROW_EXCEPTION(dev::Exception() << errinfo_comment("Unsupported solidityType: " + _type->toString()));
 	}
 	return r;
 }

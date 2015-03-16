@@ -355,9 +355,7 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 				//register new local variable initialization
 				auto localIter = contract->locals().find(LocationPair(instruction.getLocation().start, instruction.getLocation().end));
 				if (localIter != contract->locals().end())
-				{
 					solLocals[s.stack.size()] = new QVariableDeclaration(debugData, localIter.value().name.toStdString(), localIter.value().type);
-				}
 			}
 
 			if (instruction.type() == dev::eth::Tag)
