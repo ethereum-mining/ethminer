@@ -25,6 +25,16 @@ Qt.include("TransactionHelper.js")
 var htmlTemplate = "<html>\n<head>\n<script>\n</script>\n</head>\n<body>\n<script>\n</script>\n</body>\n</html>";
 var contractTemplate = "contract Contract {\n}\n";
 
+function saveCurrentDocument()
+{
+	var doc = projectListModel.get(getDocumentIndex(currentDocumentId));
+	documentSaving(doc);
+	if (doc.isContract)
+		contractSaved(currentDocumentId);
+	else
+		documentSaved(currentDocumentId);
+}
+
 function saveAll() {
 	saveProject();
 }
@@ -33,16 +43,35 @@ function createProject() {
 	newProjectDialog.open();
 }
 
-function closeProject() {
+function closeProject(callBack) {
 	if (!isEmpty) {
-		if (haveUnsavedChanges)
+		if (unsavedFiles.length > 0)
+		{
+			saveMessageDialog.callBack = callBack;
 			saveMessageDialog.open();
+		}
 		else
+		{
 			doCloseProject();
+			if (callBack)
+				callBack();
+		}
 	}
 }
 
 function saveProject() {
+	if (!isEmpty) {
+		var projectData = saveProjectFile();
+		if (projectData !== null)
+		{
+			projectSaving(projectData);
+			projectSaved();
+		}
+	}
+}
+
+function saveProjectFile()
+{
 	if (!isEmpty) {
 		var projectData = {
 			files: [],
@@ -55,13 +84,14 @@ function saveProject() {
 			deploymentDir: projectModel.deploymentDir
 		};
 		for (var i = 0; i < projectListModel.count; i++)
-			projectData.files.push(projectListModel.get(i).fileName)
-		projectSaving(projectData);
+			projectData.files.push(projectListModel.get(i).fileName);
+
 		var json = JSON.stringify(projectData, null, "\t");
 		var projectFile = projectPath + projectFileName;
 		fileIo.writeFile(projectFile, json);
-		projectSaved();
+		return projectData;
 	}
+	return null;
 }
 
 function loadProject(path) {
@@ -131,6 +161,8 @@ function addFile(fileName) {
 	};
 
 	projectListModel.append(docData);
+	saveProjectFile();
+	fileIo.watchFileChanged(p);
 	return docData.documentId;
 }
 
@@ -141,6 +173,17 @@ function getDocumentIndex(documentId)
 			return i;
 	console.error("Cant find document " + documentId);
 	return -1;
+}
+
+function getDocumentByPath(_path)
+{
+	for (var i = 0; i < projectListModel.count; i++)
+	{
+		var doc = projectListModel.get(i);
+		if (doc.path.indexOf(_path) !== -1)
+			return doc.documentId;
+	}
+	return null;
 }
 
 function openDocument(documentId) {
@@ -226,12 +269,16 @@ function renameDocument(documentId, newName) {
 	var i = getDocumentIndex(documentId);
 	var document = projectListModel.get(i);
 	if (!document.isContract) {
+		fileIo.stopWatching(document.path);
 		var sourcePath = document.path;
 		var destPath = projectPath + newName;
 		fileIo.moveFile(sourcePath, destPath);
 		document.path = destPath;
 		document.name = newName;
+		document.fileName = newName;
 		projectListModel.set(i, document);
+		fileIo.watchFileChanged(destPath);
+		saveProjectFile();
 		documentUpdated(documentId);
 	}
 }

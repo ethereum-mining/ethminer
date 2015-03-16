@@ -87,8 +87,7 @@ Item {
 
 	Connections {
 		target: projectModel
-		//onProjectSaved : reloadOnSave();
-		//onDocumentSaved: reloadOnSave();
+
 		onDocumentAdded: {
 			var document = projectModel.getDocument(documentId)
 			if (document.isHtml)
@@ -99,7 +98,13 @@ Item {
 		}
 
 		onDocumentUpdated: {
-			updateDocument(documentId, function(i) { pageListModel.set(i, projectModel.getDocument(documentId)) } )
+			var document = projectModel.getDocument(documentId);
+			for (var i = 0; i < pageListModel.count; i++)
+				if (pageListModel.get(i).documentId === documentId)
+				{
+					pageListModel.set(i, document);
+					break;
+				}
 		}
 
 		onProjectLoading: {
@@ -114,6 +119,12 @@ Item {
 					}
 				}
 			}
+		}
+
+		onDocumentSaved:
+		{
+			if (!projectModel.getDocument(documentId).isContract)
+				reloadOnSave();
 		}
 
 		onProjectClosed: {
