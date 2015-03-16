@@ -295,162 +295,99 @@ string WebThreeStubServerBase::eth_blockNumber()
 
 string WebThreeStubServerBase::eth_getBalance(string const& _address, string const& _blockNumber)
 {
-	Address address;
-	int number;
-	
 	try
 	{
-		address = jsToAddress(_address);
-		number = toBlockNumber(_blockNumber);
+		return toJS(client()->balanceAt(jsToAddress(_address), toBlockNumber(_blockNumber)));
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-	return toJS(client()->balanceAt(address, number));
-}
-
-
-Json::Value WebThreeStubServerBase::eth_getStorage(string const& _address, string const& _blockNumber)
-{
-	Address address;
-	int number;
-	
-	try
-	{
-		address = jsToAddress(_address);
-		number = toBlockNumber(_blockNumber);
-	}
-	catch (...)
-	{
-		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-	}
-	
-	//TODO: fix this naming !
-	return toJson(client()->storageAt(address, number));
 }
 
 string WebThreeStubServerBase::eth_getStorageAt(string const& _address, string const& _position, string const& _blockNumber)
 {
-	Address address;
-	u256 position;
-	int number;
-	
 	try
 	{
-		address = jsToAddress(_address);
-		position = jsToU256(_position);
-		number = toBlockNumber(_blockNumber);
+		return toJS(client()->stateAt(jsToAddress(_address), jsToU256(_position), toBlockNumber(_blockNumber)));
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-	//TODO: fix this naming !
-	return toJS(client()->stateAt(address, position, number));
 }
 
 string WebThreeStubServerBase::eth_getTransactionCount(string const& _address, string const& _blockNumber)
 {
-	Address address;
-	int number;
-	
 	try
 	{
-		address = jsToAddress(_address);
-		number = toBlockNumber(_blockNumber);
+		return toJS(client()->countAt(jsToAddress(_address), toBlockNumber(_blockNumber)));
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-	return toJS(client()->countAt(address, number));
 }
 
 string WebThreeStubServerBase::eth_getBlockTransactionCountByHash(string const& _blockHash)
 {
-	h256 hash;
-	
 	try
 	{
-		hash = jsToFixed<32>(_blockHash);
+		return toJS(client()->transactionCount(jsToFixed<32>(_blockHash)));
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-	return toJS(client()->transactionCount(hash));
 }
 
 
 string WebThreeStubServerBase::eth_getBlockTransactionCountByNumber(string const& _blockNumber)
 {
-	int number;
-	
 	try
 	{
-		number = toBlockNumber(_blockNumber);
+		return toJS(client()->transactionCount(client()->hashFromNumber(toBlockNumber(_blockNumber))));
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-	return toJS(client()->transactionCount(client()->hashFromNumber(number)));
 }
 
 string WebThreeStubServerBase::eth_getUncleCountByBlockHash(string const& _blockHash)
 {
-	h256 hash;
-	
 	try
 	{
-		hash = jsToFixed<32>(_blockHash);
+		return toJS(client()->uncleCount(jsToFixed<32>(_blockHash)));
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-	return toJS(client()->uncleCount(hash));
 }
 
 string WebThreeStubServerBase::eth_getUncleCountByBlockNumber(string const& _blockNumber)
 {
-	int number;
-	
 	try
 	{
-		number = toBlockNumber(_blockNumber);
+		return toJS(client()->uncleCount(client()->hashFromNumber(toBlockNumber(_blockNumber))));
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-	return toJS(client()->uncleCount(client()->hashFromNumber(number)));
 }
 
-string WebThreeStubServerBase::eth_getData(string const& _address, string const& _blockNumber)
+string WebThreeStubServerBase::eth_getCode(string const& _address, string const& _blockNumber)
 {
-	Address address;
-	int number;
-	
 	try
 	{
-		address = jsToAddress(_address);
-		number = toBlockNumber(_blockNumber);
+		return toJS(client()->codeAt(jsToAddress(_address), toBlockNumber(_blockNumber)));
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-	return toJS(client()->codeAt(address, number));
 }
 
 static TransactionSkeleton toTransaction(Json::Value const& _json)

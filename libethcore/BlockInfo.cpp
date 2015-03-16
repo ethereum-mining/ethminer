@@ -61,7 +61,7 @@ void BlockInfo::setEmpty()
 	hash = headerHash(WithNonce);
 }
 
-h256 BlockInfo::seedHash() const
+h256 const& BlockInfo::seedHash() const
 {
 	if (!m_seedHash)
 		for (u256 n = number; n >= c_epochDuration; n -= c_epochDuration)
