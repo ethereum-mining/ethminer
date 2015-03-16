@@ -17,6 +17,25 @@ ApplicationWindow {
 	minimumHeight: 300
 	title: qsTr("Mix")
 
+	Connections
+	{
+		target: mainApplication
+		onClosing:
+		{
+			mainApplication.close();
+			close.accepted = false;
+		}
+	}
+
+	function close()
+	{
+		projectModel.appIsClosing = true;
+		if (projectModel.projectPath !== "")
+			projectModel.closeProject(function() { Qt.quit(); })
+		else
+			Qt.quit();
+	}
+
 	menuBar: MenuBar {
 		Menu {
 			title: qsTr("File")
@@ -24,6 +43,7 @@ ApplicationWindow {
 			MenuItem { action: openProjectAction }
 			MenuSeparator {}
 			MenuItem { action: saveAllFilesAction }
+			MenuItem { action: saveCurrentDocument }
 			MenuSeparator {}
 			MenuItem { action: addExistingFileAction }
 			MenuItem { action: addNewJsFileAction }
@@ -92,7 +112,10 @@ ApplicationWindow {
 		id: exitAppAction
 		text: qsTr("Exit")
 		shortcut: "Ctrl+Q"
-		onTriggered: Qt.quit();
+		onTriggered:
+		{
+			mainApplication.close();
+		}
 	}
 
 	Action {
@@ -279,9 +302,17 @@ ApplicationWindow {
 	Action {
 		id: saveAllFilesAction
 		text: qsTr("Save All")
-		shortcut: "Ctrl+S"
+		shortcut: "Ctrl+Shift+A"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.saveAll();
+	}
+
+	Action {
+		id: saveCurrentDocument
+		text: qsTr("Save Current Document")
+		shortcut: "Ctrl+S"
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.saveCurrentDocument();
 	}
 
 	Action {

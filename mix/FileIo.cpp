@@ -20,6 +20,7 @@
  * Ethereum IDE client.
  */
 
+#include <QFileSystemWatcher>
 #include <QDebug>
 #include <QDesktopServices>
 #include <QMimeDatabase>
@@ -40,6 +41,10 @@ using namespace dev;
 using namespace dev::crypto;
 using namespace dev::mix;
 
+FileIo::FileIo(): m_watcher(new QFileSystemWatcher(this))
+{
+	connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &FileIo::fileChanged);
+}
 
 void FileIo::openFileBrowser(QString const& _dir)
 {
@@ -87,7 +92,9 @@ QString FileIo::readFile(QString const& _url)
 
 void FileIo::writeFile(QString const& _url, QString const& _data)
 {
-	QFile file(pathFromUrl(_url));
+	QString path = pathFromUrl(_url);
+	m_watcher->removePath(path);
+	QFile file(path);
 	if (file.open(QIODevice::WriteOnly | QIODevice::Text))
 	{
 		QTextStream stream(&file);
@@ -95,6 +102,7 @@ void FileIo::writeFile(QString const& _url, QString const& _data)
 	}
 	else
 		error(tr("Error writing file %1").arg(_url));
+	m_watcher->addPath(path);
 }
 
 void FileIo::copyFile(QString const& _sourceUrl, QString const& _destUrl)
@@ -191,3 +199,12 @@ QStringList FileIo::makePackage(QString const& _deploymentFolder)
 	return ret;
 }
 
+void FileIo::watchFileChanged(QString const& _path)
+{
+	m_watcher->addPath(pathFromUrl(_path));
+}
+
+void FileIo::stopWatching(QString const& _path)
+{
+	m_watcher->removePath(pathFromUrl(_path));
+}

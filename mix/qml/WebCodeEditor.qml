@@ -6,8 +6,9 @@ import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
 
 Item {
-	signal editorTextChanged;
-	signal breakpointsChanged;
+	signal editorTextChanged
+	signal breakpointsChanged
+	property bool isClean: true
 	property string currentText: ""
 	property string currentMode: ""
 	property bool initialized: false
@@ -50,6 +51,10 @@ Item {
 		editorBrowser.runJavaScript("toggleBreakpoint()");
 	}
 
+	function changeGeneration() {
+		editorBrowser.runJavaScript("changeGeneration()", function(result) {});
+	}
+
 	Connections {
 		target: appContext
 		onClipboardChanged:	syncClipboard()
@@ -75,6 +80,7 @@ Item {
 				runJavaScript("getTextChanged()", function(result) { });
 				pollTimer.running = true;
 				syncClipboard();
+				parent.changeGeneration();
 			}
 		}
 
@@ -103,7 +109,9 @@ Item {
 						});
 					}
 				});
-
+				editorBrowser.runJavaScript("isClean()", function(result) {
+					isClean = result;
+				});
 			}
 		}
 	}
