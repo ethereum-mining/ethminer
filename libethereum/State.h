@@ -68,7 +68,8 @@ enum class TransactionPriority
 class GasPricer
 {
 public:
-	GasPricer() {}
+	GasPricer() = default;
+	virtual ~GasPricer() = default;
 
 	virtual u256 ask(State const&) const = 0;
 	virtual u256 bid(TransactionPriority _p = TransactionPriority::Medium) const = 0;
