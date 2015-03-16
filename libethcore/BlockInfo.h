@@ -128,7 +128,7 @@ public:
 
 	u256 calculateDifficulty(BlockInfo const& _parent) const;
 	u256 selectGasLimit(BlockInfo const& _parent) const;
-	h256 seedHash() const;
+	h256 const& seedHash() const;
 
 	/// sha3 of the header only.
 	h256 headerHash(IncludeNonce _n) const;
