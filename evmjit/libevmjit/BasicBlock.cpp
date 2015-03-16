@@ -137,32 +137,36 @@ void BasicBlock::synchronizeLocalStack(Stack& _evmStack)
 {
 	auto blockTerminator = m_llvmBB->getTerminator();
 	assert(blockTerminator != nullptr);
-	m_builder.SetInsertPoint(blockTerminator);
-
-	auto currIter = m_currentStack.begin();
-	auto endIter = m_currentStack.end();
-
-	// Update (emit set()) changed values
-	for (int idx = (int)m_currentStack.size() - 1 - m_tosOffset;
-		 currIter < endIter && idx >= 0;
-		 ++currIter, --idx)
+	if (blockTerminator->getOpcode() != llvm::Instruction::Ret)
 	{
-		assert(static_cast<size_t>(idx) < m_initialStack.size());
-		if (*currIter != m_initialStack[idx]) // value needs update
-			_evmStack.set(static_cast<size_t>(idx), *currIter);
-	}
+		// Not needed in case of ret instruction. Ret also invalidates the stack.
+		m_builder.SetInsertPoint(blockTerminator);
 
-	if (m_tosOffset < 0)
-	{
-		// Pop values
-		_evmStack.pop(static_cast<size_t>(-m_tosOffset));
-	}
+		auto currIter = m_currentStack.begin();
+		auto endIter = m_currentStack.end();
 
-	// Push new values
-	for (; currIter < endIter; ++currIter)
-	{
-		assert(*currIter != nullptr);
-		_evmStack.push(*currIter);
+		// Update (emit set()) changed values
+		for (int idx = (int)m_currentStack.size() - 1 - m_tosOffset;
+			 currIter < endIter && idx >= 0;
+			 ++currIter, --idx)
+		{
+			assert(static_cast<size_t>(idx) < m_initialStack.size());
+			if (*currIter != m_initialStack[idx]) // value needs update
+				_evmStack.set(static_cast<size_t>(idx), *currIter);
+		}
+
+		if (m_tosOffset < 0)
+		{
+			// Pop values
+			_evmStack.pop(static_cast<size_t>(-m_tosOffset));
+		}
+
+		// Push new values
+		for (; currIter < endIter; ++currIter)
+		{
+			assert(*currIter != nullptr);
+			_evmStack.push(*currIter);
+		}
 	}
 
 	// Emit get() for all (used) values from the initial stack
