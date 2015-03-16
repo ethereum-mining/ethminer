@@ -69,7 +69,7 @@ DappLocation DappLoader::resolveAppUri(QString const& _uri)
 	while (address && partIndex < parts.length())
 	{
 		lastAddress = address;
-		string32 name = { 0 };
+		string32 name = ZeroString32;
 		QByteArray utf8 = parts[partIndex].toUtf8();
 		std::copy(utf8.data(), utf8.data() + utf8.size(), name.data());
 		address = abiOut<Address>(web3()->ethereum()->call(address, abiIn("addr(string32)", name)));
