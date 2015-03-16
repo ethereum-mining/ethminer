@@ -113,7 +113,6 @@ highlightExecution = function(start, end) {
 var changeId;
 changeGeneration = function()
 {
-	console.log("");
 	changeId = editor.changeGeneration(true);
 }
 

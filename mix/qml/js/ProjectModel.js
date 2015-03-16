@@ -31,7 +31,8 @@ function saveCurrentDocument()
 	var doc = projectListModel.get(getDocumentIndex(currentDocumentId));
 	if (doc.isContract)
 		contractSaved(currentDocumentId);
-	documentSaved(currentDocumentId);
+	else
+		documentSaved(currentDocumentId);
 }
 
 function saveAll() {
@@ -42,12 +43,18 @@ function createProject() {
 	newProjectDialog.open();
 }
 
-function closeProject() {
+function closeProject(callBack) {
 	if (!isEmpty) {
 		if (unsavedFiles.length > 0)
+		{
+			saveMessageDialog.callBack = callBack;
 			saveMessageDialog.open();
+		}
 		else
+		{
 			doCloseProject();
+			callBack();
+		}
 	}
 }
 
