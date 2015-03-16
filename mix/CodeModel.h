@@ -148,7 +148,7 @@ public:
 	/// Reset code model
 	Q_INVOKABLE void reset() { reset(QVariantMap()); }
 	/// Convert solidity type info to mix type
-	static SolidityType nodeType(solidity::Type const* _type);
+	static SolidityType nodeType(dev::solidity::Type const* _type);
 
 signals:
 	/// Emited on compilation state change

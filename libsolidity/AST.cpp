@@ -189,7 +189,7 @@ vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getIn
 		for (ContractDefinition const* contract: getLinearizedBaseContracts())
 		{
 			for (ASTPointer<FunctionDefinition> const& f: contract->getDefinedFunctions())
-				if (f->isPublic() && !f->isConstructor() && !f->getName().empty() && functionsSeen.count(f->getName()) == 0)
+				if (functionsSeen.count(f->getName()) == 0 && f->isPartOfExternalInterface())
 				{
 					functionsSeen.insert(f->getName());
 					FixedHash<4> hash(dev::sha3(f->getCanonicalSignature()));
@@ -197,7 +197,7 @@ vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getIn
 				}
 
 			for (ASTPointer<VariableDeclaration> const& v: contract->getStateVariables())
-				if (v->isPublic() && functionsSeen.count(v->getName()) == 0)
+				if (functionsSeen.count(v->getName()) == 0 && v->isPartOfExternalInterface())
 				{
 					FunctionType ftype(*v);
 					functionsSeen.insert(v->getName());
@@ -322,8 +322,8 @@ string FunctionDefinition::getCanonicalSignature() const
 
 bool VariableDeclaration::isLValue() const
 {
-	// External function parameters are Read-Only
-	return !isExternalFunctionParameter();
+	// External function parameters and constant declared variables are Read-Only
+	return !isExternalFunctionParameter() && !m_isConstant;
 }
 
 void VariableDeclaration::checkTypeRequirements()
@@ -332,6 +332,13 @@ void VariableDeclaration::checkTypeRequirements()
 	// sets the type.
 	// Note that assignments before the first declaration are legal because of the special scoping
 	// rules inherited from JavaScript.
+	if (m_isConstant)
+	{
+		if (!dynamic_cast<ContractDefinition const*>(getScope()))
+			BOOST_THROW_EXCEPTION(createTypeError("Illegal use of \"constant\" specifier."));
+		if ((m_type && !m_type->isValueType()) || !m_value)
+			BOOST_THROW_EXCEPTION(createTypeError("Unitialized \"constant\" variable."));
+	}
 	if (!m_value)
 		return;
 	if (m_type)
