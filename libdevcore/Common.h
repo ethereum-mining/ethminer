@@ -87,7 +87,7 @@ using strings = std::vector<std::string>;
 
 // Fixed-length string types.
 using string32 = std::array<char, 32>;
-static const string32 ZeroString32 = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static const string32 ZeroString32 = {{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }};
 
 // Null/Invalid values for convenience.
 static const u256 Invalid256 = ~(u256)0;
