@@ -13,14 +13,12 @@ contract Config is mortal {
 		if (tx.origin != owner)
 			return;
 		services[id] = service;
-		log1(0, bytes32(id));
 	}
 
 	function unregister(uint id) {
 		if (msg.sender != owner && services[id] != msg.sender)
 			return;
 		services[id] = address(0);
-		log1(0, bytes32(id));
 	}
 
 	function lookup(uint service) constant returns(address a) {
@@ -68,8 +66,6 @@ contract NameReg is owned, NameRegister {
 		toName[this] = "NameReg";
 		toAddress["NameReg"] = this;
 		Config(addrConfig).register(1, this);
-		//log1(0, bytes32(addrConfig));
-		//log1(0, bytes32(this));
 	}
 
 	function register(bytes32 name) {
@@ -82,14 +78,12 @@ contract NameReg is owned, NameRegister {
 
 		toName[msg.sender] = name;
 		toAddress[name] = msg.sender;
-		//log1(0, bytes32(msg.sender));
 	}
 
 	function unregister() {
 		bytes32 n = toName[msg.sender];
 		if (n == "")
 			return;
-		//log1(0, bytes32(toAddress[n]));
 		toName[msg.sender] = "";
 		toAddress[n] = address(0);
 	}
