@@ -29,7 +29,7 @@ using namespace dev::eth;
 bool ExtVM::call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, u256& io_gas, bytesRef _out, OnOpFunc const& _onOp, Address _myAddressOverride, Address _codeAddressOverride)
 {
 	Executive e(m_s, lastHashes, depth + 1);
-	if (!e.call(_receiveAddress, _codeAddressOverride ? _codeAddressOverride : _receiveAddress, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, io_gas, origin))
+	if (!e.call(_receiveAddress, _codeAddressOverride, _myAddressOverride ? _myAddressOverride : myAddress, _txValue, gasPrice, _txData, io_gas, origin))
 	{
 		e.go(_onOp);
 		e.accrueSubState(sub);
