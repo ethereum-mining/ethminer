@@ -44,6 +44,8 @@ Item {
 				target: projectModel
 				onProjectSaved:
 				{
+					if (projectModel.appIsClosing)
+						return;
 					if (compilationStatus.compilationComplete && codeModel.hasContract && !clientModel.running)
 						projectModel.stateListModel.debugDefaultState();
 				}

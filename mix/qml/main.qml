@@ -95,9 +95,9 @@ ApplicationWindow {
 		shortcut: "Ctrl+Q"
 		onTriggered:
 		{
+			projectModel.appIsClosing = true;
 			if (projectModel.projectPath !== "")
-				projectModel.closeProject()
-			Qt.quit();
+				projectModel.closeProject(function() { Qt.quit(); })
 		}
 	}
 

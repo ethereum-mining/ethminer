@@ -32,6 +32,7 @@ Item {
 	property bool isEmpty: (projectPath === "")
 	readonly property string projectFileName: ".mix"
 
+	property bool appIsClosing: false
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
@@ -46,7 +47,7 @@ Item {
 	function saveAll() { ProjectModelCode.saveAll(); }
 	function saveCurrentDocument() { ProjectModelCode.saveCurrentDocument(); }
 	function createProject() { ProjectModelCode.createProject(); }
-	function closeProject() { ProjectModelCode.closeProject(); }
+	function closeProject(callBack) { ProjectModelCode.closeProject(callBack); }
 	function saveProject() { ProjectModelCode.saveProject(); }
 	function loadProject(path) { ProjectModelCode.loadProject(path); }
 	function newHtmlFile() { ProjectModelCode.newHtmlFile(); }
@@ -84,7 +85,6 @@ Item {
 			if (!isClean)
 				unsavedFiles.push(documentId);
 			isCleanChanged(isClean, documentId);
-			console.log(JSON.stringify(unsavedFiles));
 		}
 	}
 
@@ -116,13 +116,16 @@ Item {
 		text: qsTr("Some files require to be saved. Do you want to save changes?");
 		standardButtons: StandardButton.Yes | StandardButton.No | StandardButton.Cancel
 		icon: StandardIcon.Question
+		property var callBack;
 		onYes: {
 			projectModel.saveAll();
 			ProjectModelCode.doCloseProject();
+			callBack();
 		}
 		onRejected: {}
 		onNo: {
 			ProjectModelCode.doCloseProject();
+			callBack();
 		}
 	}
 

@@ -117,6 +117,15 @@ Item {
 			{
 				var doc = editorListModel.get(i);
 				fileIo.writeFile(doc.path, editors.itemAt(i).item.getText());
+			}
+		}
+
+		onProjectSaved: {
+			if (projectModel.appIsClosing)
+				return;
+			for (var i = 0; i < editorListModel.count; i++)
+			{
+				var doc = editorListModel.get(i);
 				resetEditStatus(doc.documentId);
 			}
 		}
@@ -128,6 +137,14 @@ Item {
 			currentDocumentId = "";
 		}
 
+		onDocumentSaved: {
+			resetEditStatus(documentId);
+		}
+
+		onContractSaved: {
+			resetEditStatus(documentId);
+		}
+
 		onDocumentSaving: {
 			for (var i = 0; i < editorListModel.count; i++)
 			{
@@ -135,7 +152,6 @@ Item {
 				if (doc.path === document)
 				{
 					fileIo.writeFile(document, editors.itemAt(i).item.getText());
-					resetEditStatus(doc.documentId);
 					break;
 				}
 			}
