@@ -17,6 +17,7 @@
 /** @file eth.js
  * @authors:
  *   Marek Kotewicz <marek@ethdev.com>
+ *   Fabian Vogelsteller <fabian@ethdev.com>
  * @date 2015
  */
 
@@ -74,10 +75,9 @@ var uncleCountCall = function (args) {
 var methods = [
     { name: 'getBalance', call: 'eth_getBalance', addDefaultblock: 2,
         outputFormatter: formatters.convertToBigNumber},
-    { name: 'getStorage', call: 'eth_getStorage', addDefaultblock: 2},
     { name: 'getStorageAt', call: 'eth_getStorageAt', addDefaultblock: 3,
         inputFormatter: utils.toHex},
-    { name: 'getData', call: 'eth_getData', addDefaultblock: 2},
+	{ name: 'getCode', call: 'eth_getCode', addDefaultblock: 2},
     { name: 'getBlock', call: blockCall,
         outputFormatter: formatters.outputBlockFormatter,
         inputFormatter: [utils.toHex, function(param){ return (!param) ? false : true; }]},
@@ -102,7 +102,7 @@ var methods = [
         inputFormatter: formatters.inputTransactionFormatter },
     { name: 'call', call: 'eth_call', addDefaultblock: 2,
         inputFormatter: formatters.inputCallFormatter },
-    { name: 'compile.solidity', call: 'eth_compileSolidity', inputFormatter: utils.toHex },
+    { name: 'compile.solidity', call: 'eth_compileSolidity' },
     { name: 'compile.lll', call: 'eth_compileLLL', inputFormatter: utils.toHex },
     { name: 'compile.serpent', call: 'eth_compileSerpent', inputFormatter: utils.toHex },
     { name: 'flush', call: 'eth_flush' },
@@ -112,7 +112,7 @@ var methods = [
     { name: 'stateAt', call: 'eth_stateAt', newMethod: 'eth.getStorageAt' },
     { name: 'storageAt', call: 'eth_storageAt', newMethod: 'eth.getStorage' },
     { name: 'countAt', call: 'eth_countAt', newMethod: 'eth.getTransactionCount' },
-    { name: 'codeAt', call: 'eth_codeAt', newMethod: 'eth.getData' },
+	{ name: 'codeAt', call: 'eth_codeAt', newMethod: 'eth.getCode' },
     { name: 'transact', call: 'eth_transact', newMethod: 'eth.sendTransaction' },
     { name: 'block', call: blockCall, newMethod: 'eth.getBlock' },
     { name: 'transaction', call: transactionFromBlockCall, newMethod: 'eth.getTransaction' },

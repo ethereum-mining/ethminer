@@ -56,4 +56,5 @@ endif()
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
 
+add_custom_target(aux_json SOURCES "spec.json")
 
