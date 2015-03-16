@@ -20,7 +20,8 @@ updateContracts = function(contracts) {
 		window.web3.reset();
 		window.contracts = {};
 		for (var c in contracts) {
-			var contract = window.web3.eth.contract(contracts[c].address, contracts[c].interface);
+			var contractProto = window.web3.eth.contract(contracts[c].interface);
+			var contract = new contractProto(contracts[c].address);
 			window.contracts[c] = {
 				address: c.address,
 				interface: c.interface,
