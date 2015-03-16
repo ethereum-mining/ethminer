@@ -98,7 +98,13 @@ Item {
 		}
 
 		onDocumentUpdated: {
-			updateDocument(documentId, function(i) { pageListModel.set(i, projectModel.getDocument(documentId)) } )
+			var document = projectModel.getDocument(documentId);
+			for (var i = 0; i < pageListModel.count; i++)
+				if (pageListModel.get(i).documentId === documentId)
+				{
+					pageListModel.set(i, document);
+					break;
+				}
 		}
 
 		onProjectLoading: {

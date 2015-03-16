@@ -22,9 +22,10 @@
 
 #pragma once
 
-#include <QFileSystemWatcher>
 #include <libdevcore/CommonData.h>
 #include <QObject>
+
+class QFileSystemWatcher;
 
 namespace dev
 {
@@ -44,7 +45,7 @@ signals:
 	void fileChanged(QString const& _filePath);
 
 public:
-	FileIo(): m_watcher(new QFileSystemWatcher(this)) { connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &FileIo::fileChanged); }
+	FileIo();
 	/// Create a directory if it does not exist. Signals on failure.
 	Q_INVOKABLE void makeDir(QString const& _url);
 	/// Read file contents to a string. Signals on failure.

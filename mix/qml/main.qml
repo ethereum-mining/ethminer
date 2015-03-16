@@ -302,7 +302,7 @@ ApplicationWindow {
 	Action {
 		id: saveAllFilesAction
 		text: qsTr("Save All")
-		shortcut: "Ctrl+A"
+		shortcut: "Ctrl+Shift+A"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.saveAll();
 	}

@@ -41,6 +41,11 @@ using namespace dev;
 using namespace dev::crypto;
 using namespace dev::mix;
 
+FileIo::FileIo(): m_watcher(new QFileSystemWatcher(this))
+{
+	connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &FileIo::fileChanged);
+}
+
 void FileIo::openFileBrowser(QString const& _dir)
 {
 	QDesktopServices::openUrl(QUrl(_dir));

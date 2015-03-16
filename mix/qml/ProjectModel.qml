@@ -13,7 +13,7 @@ Item {
 	signal projectLoading(var projectData)
 	signal projectLoaded()
 	signal documentSaving(var document)
-	signal documentChanged(var document)
+	signal documentChanged(var documentId)
 	signal documentOpened(var document)
 	signal documentRemoved(var documentId)
 	signal documentUpdated(var documentId) //renamed
@@ -105,8 +105,8 @@ Item {
 		onFileChanged:
 		{
 			fileIo.watchFileChanged(_filePath);
-			if (_filePath.indexOf(currentDocumentId, _filePath.length - currentDocumentId.length))
-				documentChanged(_filePath);
+			var documentId = ProjectModelCode.getDocumentByPath(_filePath);
+			documentChanged(documentId);
 		}
 	}
 
@@ -120,12 +120,14 @@ Item {
 		onYes: {
 			projectModel.saveAll();
 			ProjectModelCode.doCloseProject();
-			callBack();
+			if (callBack)
+				callBack();
 		}
 		onRejected: {}
 		onNo: {
 			ProjectModelCode.doCloseProject();
-			callBack();
+			if (callBack)
+				callBack();
 		}
 	}
 
