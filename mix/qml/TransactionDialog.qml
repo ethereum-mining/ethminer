@@ -11,7 +11,7 @@ Window {
 	id: modalTransactionDialog
 	modality: Qt.ApplicationModal
 	width: 520
-	height: 500;//(paramsModel.count > 0 ? 500 : 300)
+	height: 500;
 	visible: false
 	color: StateDialogStyle.generic.backgroundColor
 	title: qsTr("Edit Transaction")
@@ -25,7 +25,6 @@ Window {
 	property var paramsModel: [];
 	property bool useTransactionDefaultValue: false
 	property alias stateAccounts: senderComboBox.model
-
 	signal accepted;
 
 	function open(index, item) {
@@ -87,6 +86,9 @@ Window {
 
 		visible = true;
 		valueField.focus = true;
+		modalTransactionDialog.height = (paramsModel.length > 0 ? 500 : 300);
+		paramLabel.visible = paramsModel.length > 0;
+		paramScroll.visible = paramsModel.length > 0;
 	}
 
 	function loadFunctions(contractId)
@@ -326,16 +328,15 @@ Window {
 				id: paramLabel
 				text: qsTr("Parameters:")
 				Layout.preferredWidth: 75
-				visible: true;//paramsModel.length > 0
 			}
 
 			ScrollView
 			{
+				id: paramScroll
 				anchors.top: paramLabel.bottom
 				anchors.topMargin: 10
 				Layout.fillWidth: true
 				Layout.fillHeight: true
-				visible: true;//paramsModel.length > 0
 				StructView
 				{
 					id: typeLoader
