@@ -32,6 +32,9 @@
 
 #define FAKE_DAGGER 1
 
+class ethash_cl_miner;
+struct ethash_cl_search_hook;
+
 namespace dev
 {
 namespace eth
@@ -46,7 +49,7 @@ struct MineInfo
 	bool completed = false;
 };
 
-class Ethash
+class EthashCPU
 {
 public:
 	struct Proof
@@ -62,6 +65,36 @@ public:
 protected:
 	Nonce m_last;
 };
+
+#if ETH_ETHASHCL
+class EthashCL
+{
+public:
+	struct Proof
+	{
+		Nonce nonce;
+		h256 mixHash;
+	};
+
+	EthashCL();
+	~EthashCL();
+
+	static bool verify(BlockInfo const& _header);
+	std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
+	static void assignResult(Proof const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
+
+protected:
+	Nonce m_last;
+	BlockInfo m_lastHeader;
+	Nonce m_mined;
+	std::unique_ptr<ethash_cl_miner> m_miner;
+	std::unique_ptr<ethash_cl_search_hook> m_hook;
+};
+
+using Ethash = EthashCL;
+#else
+using Ethash = EthashCPU;
+#endif
 
 template <class Evaluator>
 class ProofOfWorkEngine: public Evaluator

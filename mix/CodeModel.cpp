@@ -77,15 +77,15 @@ namespace
 				{
 					IntegerType const* it = dynamic_cast<IntegerType const*>(_type);
 					unsigned size = it->getNumBits() / 8;
-					SolidityType::Type typeCode = it->isAddress() ? SolidityType::Type::Address : it->isHash() ? SolidityType::Type::Hash : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
+					SolidityType::Type typeCode = it->isAddress() ? SolidityType::Type::Address : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
 					return SolidityType { typeCode, size };
 				}
 			case Type::Category::Bool:
 				return SolidityType { SolidityType::Type::Bool, _type->getSizeOnStack() * 32 };
-			case Type::Category::String:
+			case Type::Category::FixedBytes:
 				{
-					StaticStringType const* s = dynamic_cast<StaticStringType const*>(_type);
-					return SolidityType { SolidityType::Type::String, static_cast<unsigned>(s->getNumBytes()) };
+					FixedBytesType const* s = dynamic_cast<FixedBytesType const*>(_type);
+					return SolidityType { SolidityType::Type::FixedBytes, static_cast<unsigned>(s->getNumBytes()) };
 				}
 			case Type::Category::Contract:
 				return SolidityType { SolidityType::Type::Address, _type->getSizeOnStack() * 32 };

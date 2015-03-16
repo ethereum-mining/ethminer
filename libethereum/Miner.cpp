@@ -31,15 +31,15 @@ using namespace dev::eth;
 Miner::~Miner() {}
 
 LocalMiner::LocalMiner(MinerHost* _host, unsigned _id):
-	Worker("miner-" + toString(_id)),
-	m_host(_host)
+	AsyncMiner(_host, _id),
+	Worker("miner-" + toString(_id))
 {
 }
 
 void LocalMiner::setup(MinerHost* _host, unsigned _id)
 {
-	m_host = _host;
-	setName("miner-" + toString(_id));
+	AsyncMiner::setup(_host, _id);
+	setName("miner-" + toString(m_id));
 }
 
 void LocalMiner::doWork()
