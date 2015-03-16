@@ -39,6 +39,12 @@ namespace eth
 
 using TransactionHashes = h256s;
 
+enum class Reaping
+{
+	Automatic,
+	Manual
+};
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -92,8 +98,8 @@ public:
 	virtual LocalisedLogEntries logs(LogFilter const& _filter) const = 0;
 
 	/// Install, uninstall and query watches.
-	virtual unsigned installWatch(LogFilter const& _filter) = 0;
-	virtual unsigned installWatch(h256 _filterId) = 0;
+	virtual unsigned installWatch(LogFilter const& _filter, Reaping _r = Reaping::Automatic) = 0;
+	virtual unsigned installWatch(h256 _filterId, Reaping _r = Reaping::Automatic) = 0;
 	virtual bool uninstallWatch(unsigned _watchId) = 0;
 	LocalisedLogEntries peekWatchSafe(unsigned _watchId) const { try { return peekWatch(_watchId); } catch (...) { return LocalisedLogEntries(); } }
 	LocalisedLogEntries checkWatchSafe(unsigned _watchId) { try { return checkWatch(_watchId); } catch (...) { return LocalisedLogEntries(); } }
