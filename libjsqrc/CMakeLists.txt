@@ -23,3 +23,7 @@ if (USENPM)
 endif()
 
 install( TARGETS jsqrc RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+
+file(GLOB_RECURSE JSFILES "ethereumjs/lib/*.js")
+add_custom_target(aux_js SOURCES ${JSFILES})
+

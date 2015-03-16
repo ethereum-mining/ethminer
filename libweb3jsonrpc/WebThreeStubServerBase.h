@@ -80,14 +80,13 @@ public:
 	virtual Json::Value eth_accounts();
 	virtual std::string eth_blockNumber();
 	virtual std::string eth_getBalance(std::string const& _address, std::string const& _blockNumber);
-	virtual Json::Value eth_getStorage(std::string const& _address, std::string const& _blockNumber);
 	virtual std::string eth_getStorageAt(std::string const& _address, std::string const& _position, std::string const& _blockNumber);
 	virtual std::string eth_getTransactionCount(std::string const& _address, std::string const& _blockNumber);
 	virtual std::string eth_getBlockTransactionCountByHash(std::string const& _blockHash);
 	virtual std::string eth_getBlockTransactionCountByNumber(std::string const& _blockNumber);
 	virtual std::string eth_getUncleCountByBlockHash(std::string const& _blockHash);
 	virtual std::string eth_getUncleCountByBlockNumber(std::string const& _blockNumber);
-	virtual std::string eth_getData(std::string const& _address, std::string const& _blockNumber);
+	virtual std::string eth_getCode(std::string const& _address, std::string const& _blockNumber);
 	virtual std::string eth_sendTransaction(Json::Value const& _json);
 	virtual std::string eth_call(Json::Value const& _json, std::string const& _blockNumber);
 	virtual bool eth_flush();
