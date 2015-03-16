@@ -373,7 +373,7 @@ Window {
 			{
 				iconSource: "qrc:/qml/img/edit.png"
 				action: editAction
-				visible: !stdContract
+				visible: stdContract === false
 				width: 10
 				height: 10
 				Action {

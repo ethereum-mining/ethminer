@@ -4,8 +4,10 @@ import QtQuick.Controls 1.3
 Item
 {
 	id: editRoot
-	property string text
+	property string value
 	property string defaultValue
+	height: 20
+	width: 150
 
 	Rectangle {
 		anchors.fill: parent
@@ -14,10 +16,10 @@ Item
 			property bool inited: false
 			Component.onCompleted:
 			{
-				if (text === "")
+				if (value === "")
 					currentIndex = parseInt(defaultValue);
 				else
-					currentIndex = parseInt(text);
+					currentIndex = parseInt(value);
 				inited = true
 			}
 
@@ -26,7 +28,7 @@ Item
 			onCurrentIndexChanged:
 			{
 				if (inited)
-					text = comboModel.get(currentIndex).value;
+					value = comboModel.get(currentIndex).value;
 			}
 			model: ListModel
 			{
