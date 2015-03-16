@@ -317,6 +317,7 @@ ASTPointer<VariableDeclaration> Parser::parseVariableDeclaration(
 			nodeFactory.setEndPositionFromNode(type);
 	}
 	bool isIndexed = false;
+	bool isDeclaredConst = false;
 	ASTPointer<ASTString> identifier;
 	Token::Value token = m_scanner->getCurrentToken();
 	Declaration::Visibility visibility(Declaration::Visibility::Default);
@@ -327,7 +328,13 @@ ASTPointer<VariableDeclaration> Parser::parseVariableDeclaration(
 		isIndexed = true;
 		m_scanner->next();
 	}
+	if (token == Token::Const)
+	{
+		isDeclaredConst = true;
+		m_scanner->next();
+	}
 	nodeFactory.markEndPosition();
+
 	if (_options.allowEmptyName && m_scanner->getCurrentToken() != Token::Identifier)
 	{
 		identifier = make_shared<ASTString>("");
@@ -348,7 +355,7 @@ ASTPointer<VariableDeclaration> Parser::parseVariableDeclaration(
 	}
 	return nodeFactory.createNode<VariableDeclaration>(type, identifier, value,
 									visibility, _options.isStateVariable,
-									isIndexed);
+									isIndexed, isDeclaredConst);
 }
 
 ASTPointer<ModifierDefinition> Parser::parseModifierDefinition()
@@ -913,6 +920,7 @@ Parser::LookAheadInfo Parser::peekStatementType() const
 	// In all other cases, we have an expression statement.
 	Token::Value token(m_scanner->getCurrentToken());
 	bool mightBeTypeName = (Token::isElementaryTypeName(token) || token == Token::Identifier);
+
 	if (token == Token::Mapping || token == Token::Var ||
 			(mightBeTypeName && m_scanner->peekNextToken() == Token::Identifier))
 		return LookAheadInfo::VariableDeclarationStatement;
