@@ -33,6 +33,7 @@ namespace mix
 class QFunctionDefinition;
 class QVariableDeclaration;
 class QVariableDefinition;
+class QSolidityType;
 
 /**
  * @brief Encode/Decode data to be sent to a transaction or to be displayed in a view.
@@ -43,15 +44,32 @@ public:
 	ContractCallDataEncoder() {}
 	/// Encode hash of the function to call.
 	void encode(QFunctionDefinition const* _function);
+	/// Encode data for corresponding type
+	void encode(QVariant const& _data, SolidityType const& _type);
 	/// Decode variable in order to be sent to QML view.
-	QList<QVariableDefinition*> decode(QList<QVariableDeclaration*> const& _dec, bytes _value);
+	QStringList decode(QList<QVariableDeclaration*> const& _dec, bytes _value);
+	/// Decode single variable
+	QVariant decode(SolidityType const& _type, bytes const& _value);
 	/// Get all encoded data encoded by encode function.
 	bytes encodedData();
 	/// Push the given @a _b to the current param context.
 	void push(bytes const& _b);
 
 private:
+	unsigned encodeSingleItem(QVariant const& _data, SolidityType const& _type, bytes& _dest);
+	bigint decodeInt(dev::bytes const& _rawValue);
+	dev::bytes encodeInt(QString const& _str);
+	QString toString(dev::bigint const& _int);
+	dev::bytes encodeBool(QString const& _str);
+	bool decodeBool(dev::bytes const& _rawValue);
+	QString toString(bool _b);
+	dev::bytes encodeBytes(QString const& _str);
+	dev::bytes decodeBytes(dev::bytes const& _rawValue);
+	QString toString(dev::bytes const& _b);
+
+private:
 	bytes m_encodedData;
+	bytes m_dynamicData;
 };
 
 }

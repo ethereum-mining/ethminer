@@ -71,16 +71,11 @@ ClientModel::ClientModel(AppContext* _context):
 	m_context(_context), m_running(false), m_rpcConnector(new RpcConnector())
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
-	qRegisterMetaType<QIntType*>("QIntType*");
-	qRegisterMetaType<QStringType*>("QStringType*");
-	qRegisterMetaType<QRealType*>("QRealType*");
-	qRegisterMetaType<QHashType*>("QHashType*");
-	qRegisterMetaType<QEther*>("QEther*");
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
-	qRegisterMetaType<QVariableDefinitionList*>("QVariableDefinitionList*");
 	qRegisterMetaType<QList<QVariableDefinition*>>("QList<QVariableDefinition*>");
 	qRegisterMetaType<QList<QVariableDeclaration*>>("QList<QVariableDeclaration*>");
 	qRegisterMetaType<QVariableDeclaration*>("QVariableDeclaration*");
+	qRegisterMetaType<QSolidityType*>("QSolidityType*");
 	qRegisterMetaType<QMachineState*>("QMachineState");
 	qRegisterMetaType<QInstruction*>("QInstruction");
 	qRegisterMetaType<QCode*>("QCode");
@@ -191,14 +186,8 @@ void ClientModel::setupState(QVariantMap _state)
 		{
 			if (contractId.isEmpty() && m_context->codeModel()->hasContract()) //TODO: This is to support old project files, remove later
 				contractId = m_context->codeModel()->contracts().keys()[0];
-			QVariantList qParams = transaction.value("qType").toList();
 			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasPrice, Secret(sender.toStdString()));
-
-			for (QVariant const& variant: qParams)
-			{
-				QVariableDefinition* param = qvariant_cast<QVariableDefinition*>(variant);
-				transactionSettings.parameterValues.push_back(param);
-			}
+			transactionSettings.parameterValues = transaction.value("parameters").toMap();
 
 			if (contractId == functionId || functionId == "Constructor")
 				transactionSettings.functionId.clear();
@@ -256,11 +245,11 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 						BOOST_THROW_EXCEPTION(FunctionNotFoundException() << FunctionName(transaction.functionId.toStdString()));
 					if (!transaction.functionId.isEmpty())
 						encoder.encode(f);
-					for (int p = 0; p < transaction.parameterValues.size(); p++)
+					for (QVariableDeclaration const* p: f->parametersList())
 					{
-						if (f->parametersList().size() <= p || f->parametersList().at(p)->type() != transaction.parameterValues.at(p)->declaration()->type())
-							BOOST_THROW_EXCEPTION(ParameterChangedException() << FunctionName(transaction.functionId.toStdString()));
-						encoder.push(transaction.parameterValues.at(p)->encodeValue());
+						QSolidityType const* type = p->type();
+						QVariant value = transaction.parameterValues.value(p->name());
+						encoder.encode(value, type->type());
 					}
 
 					if (transaction.functionId.isEmpty() || transaction.functionId == transaction.contractId)
@@ -347,9 +336,9 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 		data.push_back(QMachineState::getDebugCallData(debugData, d));
 
 	QVariantList states;
-	QStringList solCallStack;
-	std::map<int, SolidityDeclaration> solLocals; //<stack pos, declaration>
-	QList<int> returnStack;
+	QVariantList solCallStack;
+	std::map<int, QVariableDeclaration*> solLocals; //<stack pos, decl>
+	std::map<QString, QVariableDeclaration*> storageDeclarations; //<name, decl>
 
 	unsigned prevInstructionIndex = 0;
 	for (MachineState const& s: _t.machineStates)
@@ -366,44 +355,60 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 				//register new local variable initialization
 				auto localIter = contract->locals().find(LocationPair(instruction.getLocation().start, instruction.getLocation().end));
 				if (localIter != contract->locals().end())
-					solLocals[s.stack.size()] = localIter.value();
+					solLocals[s.stack.size()] = new QVariableDeclaration(debugData, localIter.value().name.toStdString(), localIter.value().type);
 			}
 
-			if (instruction.type() == dev::eth::Tag) //TODO: use annotations
+			if (instruction.type() == dev::eth::Tag)
 			{
 				//track calls into functions
+				AssemblyItem const& prevInstruction = codeItems[s.codeIndex][prevInstructionIndex];
 				auto functionIter = contract->functions().find(LocationPair(instruction.getLocation().start, instruction.getLocation().end));
-				if (functionIter != contract->functions().end())
-				{
-					QString functionName = functionIter.value();
-					solCallStack.push_back(functionName);
-					returnStack.push_back(prevInstructionIndex + 1);
-				}
-				else if (!returnStack.empty() && instructionIndex == returnStack.back())
-				{
-					returnStack.pop_back();
+				if (functionIter != contract->functions().end() && ((prevInstruction.getJumpType() == AssemblyItem::JumpType::IntoFunction) || solCallStack.empty()))
+					solCallStack.push_back(QVariant::fromValue(functionIter.value()));
+				else if (prevInstruction.getJumpType() == AssemblyItem::JumpType::OutOfFunction && !solCallStack.empty())
 					solCallStack.pop_back();
-				}
 			}
 
 			//format solidity context values
-			QStringList	locals;
+			QVariantMap locals;
+			QVariantList localDeclarations;
+			QVariantMap localValues;
 			for(auto l: solLocals)
 				if (l.first < (int)s.stack.size())
-					locals.push_back(l.second.name + "\t" + formatValue(l.second.type, s.stack[l.first]));
+				{
+					localDeclarations.push_back(QVariant::fromValue(l.second));
+					localValues[l.second->name()] = formatValue(l.second->type()->type(), s.stack[l.first]);
+				}
+			locals["variables"] = localDeclarations;
+			locals["values"] = localValues;
 
-			QStringList	storage;
+			QVariantMap storage;
+			QVariantList storageDeclarationList;
+			QVariantMap storageValues;
 			for(auto st: s.storage)
-			{
 				if (st.first < std::numeric_limits<unsigned>::max())
 				{
 					auto storageIter = contract->storage().find(static_cast<unsigned>(st.first));
 					if (storageIter != contract->storage().end())
-						storage.push_back(storageIter.value().name + "\t" + formatValue(storageIter.value().type, st.second));
+					{
+						QVariableDeclaration* storageDec = nullptr;
+						auto decIter = storageDeclarations.find(storageIter.value().name);
+						if (decIter != storageDeclarations.end())
+							storageDec = decIter->second;
+						else
+						{
+							storageDec = new QVariableDeclaration(debugData, storageIter.value().name.toStdString(), storageIter.value().type);
+							storageDeclarations[storageDec->name()] = storageDec;
+						}
+						storageDeclarationList.push_back(QVariant::fromValue(storageDec));
+						storageValues[storageDec->name()] = formatValue(storageDec->type()->type(), st.second);
+					}
 				}
-			}
+			storage["variables"] = storageDeclarationList;
+			storage["values"] = storageValues;
+
 			prevInstructionIndex = instructionIndex;
-			solState = new QSolState(debugData, storage, solCallStack, locals, instruction.getLocation().start, instruction.getLocation().end);
+			solState = new QSolState(debugData, std::move(storage), std::move(solCallStack), std::move(locals), instruction.getLocation().start, instruction.getLocation().end);
 		}
 
 		states.append(QVariant::fromValue(new QMachineState(debugData, instructionIndex, s, codes[s.codeIndex], data[s.dataIndex], solState)));
@@ -413,9 +418,12 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 	debugDataReady(debugData);
 }
 
-QString ClientModel::formatValue(SolidityType const&, dev::u256 const& _value)
+QVariant ClientModel::formatValue(SolidityType const& _type, dev::u256 const& _value)
 {
-	return QString::fromStdString(prettyU256(_value));
+	ContractCallDataEncoder decoder;
+	bytes val = toBigEndian(_value);
+	QVariant res = decoder.decode(_type, val);
+	return res;
 }
 
 void ClientModel::emptyRecord()
@@ -526,9 +534,10 @@ void ClientModel::onNewTransaction()
 			{
 				function = funcDef->name();
 				ContractCallDataEncoder encoder;
-				QList<QVariableDefinition*> returnValues = encoder.decode(funcDef->returnParameters(), tr.returnValue);
-				for (auto const& var: returnValues)
-					returned += var->value() + " | ";
+				QStringList returnValues = encoder.decode(funcDef->returnParameters(), tr.returnValue);
+				returned += "(";
+				returned += returnValues.join(", ");
+				returned += ")";
 			}
 		}
 	}

@@ -574,7 +574,7 @@ Rectangle {
 						Layout.maximumHeight: 800
 						onHeightChanged: machineStates.updateHeight();
 						visible: !assemblyMode
-						StorageView {
+						VariablesView {
 							title : qsTr("Locals")
 							anchors.fill: parent
 							id: solLocals
@@ -589,7 +589,7 @@ Rectangle {
 						Layout.maximumHeight: 800
 						onHeightChanged: machineStates.updateHeight();
 						visible: !assemblyMode
-						StorageView {
+						VariablesView {
 							title : qsTr("Members")
 							anchors.fill: parent
 							id: solStorage

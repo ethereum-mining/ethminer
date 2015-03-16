@@ -11,26 +11,23 @@ Window {
 	id: modalTransactionDialog
 	modality: Qt.ApplicationModal
 	width: 520
-	height: (paramsModel.count > 0 ? 500 : 300)
+	height: 500;
 	visible: false
 	color: StateDialogStyle.generic.backgroundColor
 	title: qsTr("Edit Transaction")
 	property int transactionIndex
-	property alias transactionParams: paramsModel;
 	property alias gas: gasValueEdit.gasValue;
 	property alias gasPrice: gasPriceField.value;
 	property alias transactionValue: valueField.value;
 	property string contractId: contractComboBox.currentValue();
 	property alias functionId: functionComboBox.currentText;
-	property var itemParams;
+	property var paramValues;
+	property var paramsModel: [];
 	property bool useTransactionDefaultValue: false
-	property var qType;
 	property alias stateAccounts: senderComboBox.model
-
 	signal accepted;
 
 	function open(index, item) {
-		qType = [];
 		rowFunction.visible = !useTransactionDefaultValue;
 		rowValue.visible = !useTransactionDefaultValue;
 		rowGas.visible = !useTransactionDefaultValue;
@@ -44,7 +41,7 @@ Window {
 		var functionId = item.functionId;
 		rowFunction.visible = true;
 
-		itemParams = item.parameters !== undefined ? item.parameters : {};
+		paramValues = item.parameters !== undefined ? item.parameters : {};
 		if (item.sender)
 			senderComboBox.select(item.sender);
 
@@ -73,15 +70,15 @@ Window {
 
 		functionComboBox.currentIndex = functionIndex;
 
-		paramsModel.clear();
+		paramsModel = [];
 		if (functionId !== contractComboBox.currentValue())
 			loadParameters();
 		else {
 			var contract = codeModel.contracts[contractId];
 			if (contract) {
-				var parameters = contract.contract.constructor.parameters;
-				for (var p = 0; p < parameters.length; p++)
-					loadParameter(parameters[p]);
+				var params = contract.contract.constructor.parameters;
+				for (var p = 0; p < params.length; p++)
+					loadParameter(params[p]);
 			}
 		}
 		modalTransactionDialog.setX((Screen.width - width) / 2);
@@ -89,6 +86,9 @@ Window {
 
 		visible = true;
 		valueField.focus = true;
+		modalTransactionDialog.height = (paramsModel.length > 0 ? 500 : 300);
+		paramLabel.visible = paramsModel.length > 0;
+		paramScroll.visible = paramsModel.length > 0;
 	}
 
 	function loadFunctions(contractId)
@@ -110,32 +110,11 @@ Window {
 	{
 		var type = parameter.type;
 		var pname = parameter.name;
-		var varComponent;
-
-		if (type.indexOf("int") !== -1)
-			varComponent = Qt.createComponent("qrc:/qml/QIntType.qml");
-		else if (type.indexOf("real") !== -1)
-			varComponent = Qt.createComponent("qrc:/qml/QRealType.qml");
-		else if (type.indexOf("string") !== -1 || type.indexOf("text") !== -1)
-			varComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
-		else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
-			varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
-		else if (type.indexOf("bool") !== -1)
-			varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
-
-		var param = varComponent.createObject(modalTransactionDialog);
-		var value = itemParams[pname] !== undefined ? itemParams[pname] : "";
-
-		param.setValue(value);
-		param.setDeclaration(parameter);
-		qType.push({ name: pname, value: param });
-		paramsModel.append({ name: pname, type: type, value: value });
+		paramsModel.push({ name: pname, type: type });
 	}
 
 	function loadParameters() {
-		paramsModel.clear();
-		if (!paramsModel)
-			return;
+		paramsModel = []
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
 			var contract = codeModel.contracts[contractComboBox.currentValue()];
 			if (contract) {
@@ -147,29 +126,16 @@ Window {
 				}
 			}
 		}
-	}
+		typeLoader.value = {}
+		typeLoader.members = []
+		typeLoader.value = paramValues;
+		typeLoader.members = paramsModel;
 
-	function param(name)
-	{
-		for (var k = 0; k < paramsModel.count; k++)
-		{
-			if (paramsModel.get(k).name === name)
-				return paramsModel.get(k);
-		}
 	}
 
 	function close()
 	{
 		visible = false;
-	}
-
-	function qTypeParam(name)
-	{
-		for (var k in qType)
-		{
-			if (qType[k].name === name)
-				return qType[k].value;
-		}
 	}
 
 	function getItem()
@@ -194,15 +160,7 @@ Window {
 		}
 
 		item.sender = senderComboBox.model[senderComboBox.currentIndex].secret;
-		var orderedQType = [];
-		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
-			var parameter = transactionDialog.transactionParams.get(p);
-			var qtypeParam = qTypeParam(parameter.name);
-			qtypeParam.setValue(parameter.value);
-			orderedQType.push(qtypeParam);
-			item.parameters[parameter.name] = parameter.value;
-		}
-		item.qType = orderedQType;
+		item.parameters = paramValues;
 		return item;
 	}
 
@@ -370,145 +328,27 @@ Window {
 				id: paramLabel
 				text: qsTr("Parameters:")
 				Layout.preferredWidth: 75
-				visible: paramsModel.count > 0
 			}
 
 			ScrollView
 			{
+				id: paramScroll
 				anchors.top: paramLabel.bottom
 				anchors.topMargin: 10
-				Layout.preferredWidth: 350
+				Layout.fillWidth: true
 				Layout.fillHeight: true
-				visible: paramsModel.count > 0
-				Column
+				StructView
 				{
-					id: paramRepeater
-					Layout.fillWidth: true
-					Layout.fillHeight: true
-					spacing: 3
-					Repeater
-					{
-						height: 20 * paramsModel.count
-						model: paramsModel
-						visible: paramsModel.count > 0
-						RowLayout
-						{
-							id: row
-							Layout.fillWidth: true
-							height: 20
-							DefaultLabel {
-								id: typeLabel
-								text: type
-								Layout.preferredWidth: 50
-							}
-
-							DefaultLabel {
-								id: nameLabel
-								text: name
-								Layout.preferredWidth: 80
-							}
-
-							DefaultLabel {
-								id: equalLabel
-								text: "="
-								Layout.preferredWidth: 15
-							}
-
-							Loader
-							{
-								id: typeLoader
-								Layout.preferredWidth: 150
-								function getCurrent()
-								{
-									return modalTransactionDialog.param(name);
-								}
-
-								Connections {
-									target: typeLoader.item
-									onTextChanged: {
-										typeLoader.getCurrent().value = typeLoader.item.text;
-									}
-								}
-
-								sourceComponent:
-								{
-									if (type.indexOf("int") !== -1)
-										return intViewComp;
-									else if (type.indexOf("bool") !== -1)
-										return boolViewComp;
-									else if (type.indexOf("string") !== -1)
-										return stringViewComp;
-									else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
-										return hashViewComp;
-									else
-										return null;
-								}
-
-								Component
-								{
-									id: intViewComp
-									QIntTypeView
-									{
-										height: 20
-										width: 150
-										id: intView
-										text: typeLoader.getCurrent().value
-									}
-								}
-
-								Component
-								{
-									id: boolViewComp
-									QBoolTypeView
-									{
-										height: 20
-										width: 150
-										id: boolView
-										defaultValue: "1"
-										Component.onCompleted:
-										{
-											var current = typeLoader.getCurrent().value;
-											(current === "" ? text = defaultValue : text = current);
-										}
-									}
-								}
-
-								Component
-								{
-									id: stringViewComp
-									QStringTypeView
-									{
-										height: 20
-										width: 150
-										id: stringView
-										text:
-										{
-											return typeLoader.getCurrent().value
-										}
-									}
-								}
-
-								Component
-								{
-									id: hashViewComp
-									QHashTypeView
-									{
-										height: 20
-										width: 150
-										id: hashView
-										text: typeLoader.getCurrent().value
-									}
-								}
-							}
-						}
-					}
+					id: typeLoader
+					Layout.preferredWidth: 150
+					members: paramsModel;
 				}
 			}
 
 			CommonSeparator
 			{
 				Layout.fillWidth: true
-				visible: paramsModel.count > 0
+				visible: paramsModel.length > 0
 			}
 		}
 
@@ -529,9 +369,5 @@ Window {
 				onClicked: close();
 			}
 		}
-	}
-
-	ListModel {
-		id: paramsModel
 	}
 }
