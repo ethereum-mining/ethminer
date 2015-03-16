@@ -37,6 +37,7 @@ namespace dev
 namespace mix
 {
 
+/// UI wrapper around solidity type
 class QSolidityType: public QObject
 {
 	Q_OBJECT
@@ -49,7 +50,7 @@ public:
 	QSolidityType() {}
 	QSolidityType(QObject* _parent, SolidityType const& _type);
 	using Type = SolidityType::Type;
-	enum QmlType //TODO: arrays and structs
+	enum QmlType //TODO: Q_ENUMS does not support enum forwarding. Keep in sync with SolidityType::Type
 	{
 		SignedInteger,
 		UnsignedInteger,
@@ -72,6 +73,7 @@ private:
 	SolidityType m_type;
 };
 
+/// UI wrapper around declaration (name + type)
 class QVariableDeclaration: public QBasicNodeDefinition
 {
 	Q_OBJECT

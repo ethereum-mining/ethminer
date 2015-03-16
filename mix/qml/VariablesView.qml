@@ -32,7 +32,7 @@ DebugInfoList
 	function setData(members, values)  {
 		storage.item.value = {};
 		storage.item.members = [];
-		storage.item.value = values;
+		storage.item.value = values; //TODO: use a signal for this?
 		storage.item.members = members;
 	}
 }
