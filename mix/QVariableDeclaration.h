@@ -40,7 +40,7 @@ namespace mix
 class QSolidityType: public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(int type READ type CONSTANT) //qml does not support enum properties
+	Q_PROPERTY(int category READ category CONSTANT) //qml does not support enum properties
 	Q_PROPERTY(int size READ size CONSTANT)
 	Q_PROPERTY(QString name READ name CONSTANT)
 	Q_PROPERTY(QVariantList members READ members CONSTANT)
@@ -56,22 +56,20 @@ public:
 		Hash,
 		Bool,
 		Address,
-		String,
+		Bytes,
 		Enum,
 		Struct
 	};
 
 	Q_ENUMS(QmlType)
-	Type type() const { return m_type; }
-	int size() const { return m_size; }
-	QString name() const { return m_name; }
-	QVariantList members() const { return m_members; }
+	SolidityType const& type() const { return m_type; }
+	Type category() const { return m_type.type; }
+	int size() const { return m_type.size; }
+	QString name() const { return m_type.name; }
+	QVariantList members() const;
 
 private:
-	Type m_type;
-	int m_size;
-	QString m_name;
-	QVariantList m_members;
+	SolidityType m_type;
 };
 
 class QVariableDeclaration: public QBasicNodeDefinition

@@ -107,6 +107,7 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	auto const& contractDefinition = _compiler.getContractDefinition(name);
 	m_contract.reset(new QContractDefinition(nullptr, &contractDefinition));
 	QQmlEngine::setObjectOwnership(m_contract.get(), QQmlEngine::CppOwnership);
+	m_contract->moveToThread(QApplication::instance()->thread());
 	m_bytes = _compiler.getBytecode(_contractName.toStdString());
 	m_assemblyItems = _compiler.getRuntimeAssemblyItems(name);
 	m_constructorAssemblyItems = _compiler.getAssemblyItems(name);
@@ -312,6 +313,7 @@ SolidityType CodeModel::nodeType(solidity::Type const* _type)
 	SolidityType r { SolidityType::Type::UnsignedInteger, 32, false, false, QString::fromStdString(_type->toString()), std::vector<SolidityDeclaration>(), std::vector<QString>() };
 	if (!_type)
 		return r;
+	r.dynamicSize = _type->isDynamicallySized();
 	switch (_type->getCategory())
 	{
 	case Type::Category::Integer:
@@ -336,8 +338,10 @@ SolidityType CodeModel::nodeType(solidity::Type const* _type)
 	case Type::Category::Array:
 		{
 			ArrayType const* array = dynamic_cast<ArrayType const*>(_type);
-			SolidityType elementType = nodeType(array->getBaseType().get());
-			r = elementType;
+			if (array->isByteArray())
+				r.type = SolidityType::Type::Bytes;
+			else
+				r = nodeType(array->getBaseType().get());
 			r.array = true;
 		}
 		break;

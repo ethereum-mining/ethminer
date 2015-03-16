@@ -110,8 +110,8 @@
         <file>qml/img/copy.png</file>
         <file>qml/img/broom.png</file>
         <file>qml/LogsPaneStyle.qml</file>
-        <file>qml/SolidityTypeConverter.qml</file>
         <file>qml/StructView.qml</file>
         <file>qml/img/console.png</file>
+        <file>qml/VariablesView.qml</file>
     </qresource>
 </RCC>
