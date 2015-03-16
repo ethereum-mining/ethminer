@@ -1404,6 +1404,48 @@ BOOST_AUTO_TEST_CASE(test_byte_is_alias_of_byte1)
 	ETH_TEST_REQUIRE_NO_THROW(parseTextAndResolveNames(text), "Type resolving failed");
 }
 
+BOOST_AUTO_TEST_CASE(assigning_value_to_const_variable)
+{
+	char const* text = R"(
+		contract Foo {
+			function changeIt() { x = 9; }
+			uint constant x = 56;
+	})";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(complex_const_variable)
+{
+	//for now constant specifier is valid only for uint bytesXX and enums
+	char const* text = R"(
+		contract Foo {
+			mapping(uint => bool) constant mapVar;
+	})";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(uninitialized_const_variable)
+{
+	char const* text = R"(
+		contract Foo {
+			uint constant y;
+	})";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), TypeError);
+}
+
+BOOST_AUTO_TEST_CASE(local_const_variable)
+{
+	char const* text = R"(
+		contract Foo {
+			function localConst() returns (uint ret)
+			{
+				uint constant local = 4;
+				return local;
+			}
+	})";
+	BOOST_CHECK_THROW(parseTextAndResolveNames(text), ParserError);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }

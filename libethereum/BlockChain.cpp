@@ -610,8 +610,8 @@ void BlockChain::checkConsistency()
 
 static inline unsigned upow(unsigned a, unsigned b) { while (b-- > 0) a *= a; return a; }
 static inline unsigned ceilDiv(unsigned n, unsigned d) { return n / (n + d - 1); }
-static inline unsigned floorDivPow(unsigned n, unsigned a, unsigned b) { return n / upow(a, b); }
-static inline unsigned ceilDivPow(unsigned n, unsigned a, unsigned b) { return ceilDiv(n, upow(a, b)); }
+//static inline unsigned floorDivPow(unsigned n, unsigned a, unsigned b) { return n / upow(a, b); }
+//static inline unsigned ceilDivPow(unsigned n, unsigned a, unsigned b) { return ceilDiv(n, upow(a, b)); }
 
 // Level 1
 // [xxx.            ]
