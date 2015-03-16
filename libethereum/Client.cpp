@@ -249,13 +249,13 @@ void Client::clearPending()
 	noteChanged(changeds);
 }
 
-unsigned Client::installWatch(h256 _h)
+unsigned Client::installWatch(h256 _h, Reaping _r)
 {
 	unsigned ret;
 	{
 		Guard l(m_filterLock);
 		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
-		m_watches[ret] = ClientWatch(_h);
+		m_watches[ret] = ClientWatch(_h, _r);
 		cwatch << "+++" << ret << _h.abridged();
 	}
 	auto ch = logs(ret);
@@ -268,7 +268,7 @@ unsigned Client::installWatch(h256 _h)
 	return ret;
 }
 
-unsigned Client::installWatch(LogFilter const& _f)
+unsigned Client::installWatch(LogFilter const& _f, Reaping _r)
 {
 	h256 h = _f.sha3();
 	{
@@ -279,7 +279,7 @@ unsigned Client::installWatch(LogFilter const& _f)
 			m_filters.insert(make_pair(h, _f));
 		}
 	}
-	return installWatch(h);
+	return installWatch(h, _r);
 }
 
 bool Client::uninstallWatch(unsigned _i)
@@ -692,7 +692,7 @@ void Client::doWork()
 		{
 			Guard l(m_filterLock);
 			for (auto key: keysOf(m_watches))
-				if (chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(20))
+				if (m_watches[key].lastPoll != chrono::system_clock::time_point::max() && chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(20))
 				{
 					toUninstall.push_back(key);
 					cnote << "GC: Uninstall" << key << "(" << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - m_watches[key].lastPoll).count() << "s old)";

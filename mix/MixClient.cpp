@@ -40,6 +40,8 @@ namespace dev
 namespace mix
 {
 
+// TODO: merge as much as possible with the Client.cpp into a mutually inherited base class.
+
 const Secret c_defaultUserAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
 const u256 c_mixGenesisDifficulty = c_minimumDifficulty; //TODO: make it lower for Mix somehow
 
@@ -360,13 +362,13 @@ eth::LocalisedLogEntries MixClient::logs(eth::LogFilter const& _f) const
 	return ret;
 }
 
-unsigned MixClient::installWatch(h256 _h)
+unsigned MixClient::installWatch(h256 _h, eth::Reaping _r)
 {
 	unsigned ret;
 	{
 		Guard l(m_filterLock);
 		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
-		m_watches[ret] = ClientWatch(_h);
+		m_watches[ret] = ClientWatch(_h, _r);
 	}
 	auto ch = logs(ret);
 	if (ch.empty())
@@ -378,14 +380,14 @@ unsigned MixClient::installWatch(h256 _h)
 	return ret;
 }
 
-unsigned MixClient::installWatch(eth::LogFilter const& _f)
+unsigned MixClient::installWatch(eth::LogFilter const& _f, eth::Reaping _r)
 {
 	h256 h = _f.sha3();
 	{
 		Guard l(m_filterLock);
 		m_filters.insert(std::make_pair(h, _f));
 	}
-	return installWatch(h);
+	return installWatch(h, _r);
 }
 
 bool MixClient::uninstallWatch(unsigned _i)
