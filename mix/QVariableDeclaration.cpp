@@ -47,17 +47,20 @@ QVariableDeclaration::QVariableDeclaration(QObject* _parent, std::string const& 
 
 QSolidityType::QSolidityType(QObject* _parent, SolidityType const& _type):
 	QObject(_parent),
-	m_type(_type.type),
-	m_size(_type.size),
-	m_name(_type.name)
+	m_type(_type)
 {
-	if (_type.type == Type::Struct)
-		for (auto const& structMember: _type.members)
-			m_members.push_back(QVariant::fromValue(new QVariableDeclaration(_parent, structMember.name.toStdString(), structMember.type)));
+}
 
-	if (_type.type == Type::Enum)
-		for (auto const& enumName: _type.enumNames)
-			m_members.push_back(QVariant::fromValue(enumName));
+QVariantList QSolidityType::members() const
+{
+	QVariantList members;
+	if (m_type.type == Type::Struct)
+		for (auto const& structMember: m_type.members)
+			members.push_back(QVariant::fromValue(new QVariableDeclaration(parent(), structMember.name.toStdString(), structMember.type)));
+	if (m_type.type == Type::Enum)
+		for (auto const& enumName: m_type.enumNames)
+			members.push_back(QVariant::fromValue(enumName));
+	return members;
 }
 
 }

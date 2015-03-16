@@ -199,12 +199,12 @@ function completeCtxInformation(state)
 	storage.listModel = state.debugStorage;
 	memoryDump.listModel = state.debugMemory;
 	if (state.solidity) {
-		solLocals.listModel = state.solidity.locals;
-		solStorage.listModel = state.solidity.storage;
+		solLocals.setData(state.solidity.locals.variables, state.solidity.locals.values);
+		solStorage.setData(state.solidity.storage.variables, state.solidity.storage.values);
 		solCallStack.listModel = state.solidity.callStack;
 	} else {
-		solLocals.listModel = [];
-		solStorage.listModel = [];
+		solLocals.setData([], {});
+		solStorage.setData([], {});
 		solCallStack.listModel = [];
 	}
 }

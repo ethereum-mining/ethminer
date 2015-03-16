@@ -77,7 +77,7 @@ Window {
 		else {
 			var contract = codeModel.contracts[contractId];
 			if (contract) {
-				var params = contract.contract.constructor.params;
+				var params = contract.contract.constructor.parameters;
 				for (var p = 0; p < params.length; p++)
 					loadParameter(params[p]);
 			}
@@ -125,22 +125,11 @@ Window {
 			}
 		}
 		typeLoader.value = {}
-		typeLoader.membersModel = []
+		typeLoader.members = []
 		typeLoader.value = paramValues;
-		typeLoader.membersModel = paramsModel;
+		typeLoader.members = paramsModel;
 
 	}
-
-	/*
-	function param(name)
-	{
-		for (var k = 0; k < paramsModel.length; k++)
-		{
-			if (paramsModel[k].name === name)
-				return paramsModel[k];
-		}
-	}
-	*/
 
 	function close()
 	{
@@ -344,22 +333,14 @@ Window {
 			{
 				anchors.top: paramLabel.bottom
 				anchors.topMargin: 10
-				Layout.preferredWidth: 350
+				Layout.fillWidth: true
 				Layout.fillHeight: true
 				visible: true;//paramsModel.length > 0
-				Column
+				StructView
 				{
-					id: paramRepeater
-					Layout.fillWidth: true
-					Layout.fillHeight: true
-					spacing: 3
-
-					StructView
-					{
-						id: typeLoader
-						Layout.preferredWidth: 150
-						membersModel: paramsModel;
-					}
+					id: typeLoader
+					Layout.preferredWidth: 150
+					members: paramsModel;
 				}
 			}
 
