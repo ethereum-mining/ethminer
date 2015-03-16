@@ -17,6 +17,25 @@ ApplicationWindow {
 	minimumHeight: 300
 	title: qsTr("Mix")
 
+	Connections
+	{
+		target: mainApplication
+		onClosing:
+		{
+			mainApplication.close();
+			close.accepted = false;
+		}
+	}
+
+	function close()
+	{
+		projectModel.appIsClosing = true;
+		if (projectModel.projectPath !== "")
+			projectModel.closeProject(function() { Qt.quit(); })
+		else
+			Qt.quit();
+	}
+
 	menuBar: MenuBar {
 		Menu {
 			title: qsTr("File")
@@ -95,9 +114,7 @@ ApplicationWindow {
 		shortcut: "Ctrl+Q"
 		onTriggered:
 		{
-			projectModel.appIsClosing = true;
-			if (projectModel.projectPath !== "")
-				projectModel.closeProject(function() { Qt.quit(); })
+			mainApplication.close();
 		}
 	}
 
