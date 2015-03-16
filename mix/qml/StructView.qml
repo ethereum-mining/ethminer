@@ -7,7 +7,7 @@ Column
 {
 	id: root
 	property alias members: repeater.model  //js array
-	property var value : { x: "333" }
+	property var value : { }
 	Layout.fillWidth: true
 
 	Repeater
