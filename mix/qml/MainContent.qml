@@ -175,7 +175,6 @@ Rectangle {
 					Layout.fillHeight: true
 					Connections {
 						target: projectModel.codeEditor
-
 					}
 				}
 
