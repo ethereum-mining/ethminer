@@ -149,9 +149,9 @@ Item {
 			for (var i = 0; i < editorListModel.count; i++)
 			{
 				var doc = editorListModel.get(i);
-				if (doc.path === document)
+				if (doc.path === document.path)
 				{
-					fileIo.writeFile(document, editors.itemAt(i).item.getText());
+					fileIo.writeFile(document.path, editors.itemAt(i).item.getText());
 					break;
 				}
 			}
@@ -168,6 +168,7 @@ Item {
 		property variant doc
 		onYes: {
 			doLoadDocument(item, doc);
+			resetEditStatus(doc.documentId);
 		}
 	}
 
@@ -209,14 +210,28 @@ Item {
 				onDocumentChanged: {
 					if (!item)
 						return;
-					if (currentDocumentId == documentId)
+					var current = editorListModel.get(index);
+					if (documentId === current.documentId)
 					{
-						messageDialog.item = loader.item;
-						messageDialog.doc = editorListModel.get(index);
-						messageDialog.open();
+						if (currentDocumentId === current.documentId)
+						{
+							messageDialog.item = loader.item;
+							messageDialog.doc = editorListModel.get(index);
+							messageDialog.open();
+						}
+						else
+							changed = true
 					}
-					else
-						changed = true;
+				}
+
+				onDocumentUpdated: {
+					var document = projectModel.getDocument(documentId);
+					for (var i = 0; i < editorListModel.count; i++)
+						if (editorListModel.get(i).documentId === documentId)
+						{
+							editorListModel.set(i, document);
+							break;
+						}
 				}
 			}
 
