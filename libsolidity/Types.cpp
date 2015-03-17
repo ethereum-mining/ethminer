@@ -35,6 +35,81 @@ namespace dev
 namespace solidity
 {
 
+void StorageOffsets::computeOffsets(TypePointers const& _types)
+{
+	bigint slotOffset = 0;
+	unsigned byteOffset = 0;
+	map<size_t, pair<u256, unsigned>> offsets;
+	for (size_t i = 0; i < _types.size(); ++i)
+	{
+		TypePointer const& type = _types[i];
+		if (!type->canBeStored())
+			continue;
+		if (byteOffset + type->getStorageBytes() > 32)
+		{
+			// would overflow, go to next slot
+			++slotOffset;
+			byteOffset = 0;
+		}
+		if (slotOffset >= bigint(1) << 256)
+			BOOST_THROW_EXCEPTION(TypeError() << errinfo_comment("Object too large for storage."));
+		offsets[i] = make_pair(u256(slotOffset), byteOffset);
+		solAssert(type->getStorageSize() >= 1, "Invalid storage size.");
+		if (type->getStorageSize() == 1 && byteOffset + type->getStorageBytes() <= 32)
+			byteOffset += type->getStorageBytes();
+		else
+		{
+			slotOffset += type->getStorageSize();
+			byteOffset = 0;
+		}
+	}
+	if (byteOffset > 0)
+		++slotOffset;
+	if (slotOffset >= bigint(1) << 256)
+		BOOST_THROW_EXCEPTION(TypeError() << errinfo_comment("Object too large for storage."));
+	m_storageSize = u256(slotOffset);
+	swap(m_offsets, offsets);
+}
+
+pair<u256, unsigned> const* StorageOffsets::getOffset(size_t _index) const
+{
+	if (m_offsets.count(_index))
+		return &m_offsets.at(_index);
+	else
+		return nullptr;
+}
+
+MemberList& MemberList::operator=(MemberList&& _other)
+{
+	m_memberTypes = std::move(_other.m_memberTypes);
+	m_storageOffsets = std::move(_other.m_storageOffsets);
+	return *this;
+}
+
+std::pair<u256, unsigned> const* MemberList::getMemberStorageOffset(string const& _name) const
+{
+	if (!m_storageOffsets)
+	{
+		TypePointers memberTypes;
+		memberTypes.reserve(m_memberTypes.size());
+		for (auto const& nameAndType: m_memberTypes)
+			memberTypes.push_back(nameAndType.second);
+		m_storageOffsets.reset(new StorageOffsets());
+		m_storageOffsets->computeOffsets(memberTypes);
+	}
+	for (size_t index = 0; index < m_memberTypes.size(); ++index)
+		if (m_memberTypes[index].first == _name)
+			return m_storageOffsets->getOffset(index);
+	return nullptr;
+}
+
+u256 const& MemberList::getStorageSize() const
+{
+	// trigger lazy computation
+	getMemberStorageOffset("");
+	return m_storageOffsets->getStorageSize();
+}
+
 TypePointer Type::fromElementaryTypeName(Token::Value _typeToken)
 {
 	char const* tokenCstr = Token::toString(_typeToken);
@@ -149,7 +224,7 @@ TypePointer Type::commonType(TypePointer const& _a, TypePointer const& _b)
 		return TypePointer();
 }
 
-const MemberList Type::EmptyMemberList = MemberList();
+const MemberList Type::EmptyMemberList;
 
 IntegerType::IntegerType(int _bits, IntegerType::Modifier _modifier):
 	m_bits(_bits), m_modifier(_modifier)
@@ -235,10 +310,11 @@ TypePointer IntegerType::binaryOperatorResult(Token::Value _operator, TypePointe
 	return commonType;
 }
 
-const MemberList IntegerType::AddressMemberList =
-	MemberList({{"balance", make_shared<IntegerType >(256)},
-				{"call", make_shared<FunctionType>(strings(), strings(), FunctionType::Location::Bare, true)},
-				{"send", make_shared<FunctionType>(strings{"uint"}, strings{}, FunctionType::Location::Send)}});
+const MemberList IntegerType::AddressMemberList({
+	{"balance", make_shared<IntegerType >(256)},
+	{"call", make_shared<FunctionType>(strings(), strings(), FunctionType::Location::Bare, true)},
+	{"send", make_shared<FunctionType>(strings{"uint"}, strings{}, FunctionType::Location::Send)}
+});
 
 IntegerConstantType::IntegerConstantType(Literal const& _literal)
 {
@@ -644,6 +720,9 @@ unsigned ArrayType::getSizeOnStack() const
 	if (m_location == Location::CallData)
 		// offset [length] (stack top)
 		return 1 + (isDynamicallySized() ? 1 : 0);
+	else if (m_location == Location::Storage)
+		// storage_key storage_offset
+		return 2;
 	else
 		// offset
 		return 1;
@@ -672,7 +751,7 @@ shared_ptr<ArrayType> ArrayType::copyForLocation(ArrayType::Location _location) 
 	return copy;
 }
 
-const MemberList ArrayType::s_arrayTypeMemberList = MemberList({{"length", make_shared<IntegerType>(256)}});
+const MemberList ArrayType::s_arrayTypeMemberList({{"length", make_shared<IntegerType>(256)}});
 
 bool ContractType::operator==(Type const& _other) const
 {
@@ -748,12 +827,7 @@ bool StructType::operator==(Type const& _other) const
 
 u256 StructType::getStorageSize() const
 {
-	bigint size = 0;
-	for (pair<string, TypePointer> const& member: getMembers())
-		size += member.second->getStorageSize();
-	if (size >= bigint(1) << 256)
-		BOOST_THROW_EXCEPTION(TypeError() << errinfo_comment("Struct too large for storage."));
-	return max<u256>(1, u256(size));
+	return max<u256>(1, getMembers().getStorageSize());
 }
 
 bool StructType::canLiveOutsideStorage() const
@@ -782,17 +856,11 @@ MemberList const& StructType::getMembers() const
 	return *m_members;
 }
 
-u256 StructType::getStorageOffsetOfMember(string const& _name) const
+pair<u256, unsigned> const& StructType::getStorageOffsetsOfMember(string const& _name) const
 {
-	//@todo cache member offset?
-	u256 offset;
-	for (ASTPointer<VariableDeclaration> const& variable: m_struct.getMembers())
-	{
-		if (variable->getName() == _name)
-			return offset;
-		offset += variable->getType()->getStorageSize();
-	}
-	BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Storage offset of non-existing member requested."));
+	auto const* offsets = getMembers().getMemberStorageOffset(_name);
+	solAssert(offsets, "Storage offset of non-existing member requested.");
+	return *offsets;
 }
 
 TypePointer EnumType::unaryOperatorResult(Token::Value _operator) const
@@ -806,6 +874,15 @@ bool EnumType::operator==(Type const& _other) const
 		return false;
 	EnumType const& other = dynamic_cast<EnumType const&>(_other);
 	return other.m_enum == m_enum;
+}
+
+unsigned EnumType::getStorageBytes() const
+{
+	size_t elements = m_enum.getMembers().size();
+	if (elements <= 1)
+		return 1;
+	else
+		return dev::bytesRequired(elements - 1);
 }
 
 string EnumType::toString() const
@@ -952,6 +1029,13 @@ string FunctionType::toString() const
 	return name + ")";
 }
 
+u256 FunctionType::getStorageSize() const
+{
+	BOOST_THROW_EXCEPTION(
+		InternalCompilerError()
+			<< errinfo_comment("Storage size of non-storable function type requested."));
+}
+
 unsigned FunctionType::getSizeOnStack() const
 {
 	Location location = m_location;
@@ -1074,12 +1158,26 @@ string MappingType::toString() const
 	return "mapping(" + getKeyType()->toString() + " => " + getValueType()->toString() + ")";
 }
 
+u256 VoidType::getStorageSize() const
+{
+	BOOST_THROW_EXCEPTION(
+		InternalCompilerError()
+			<< errinfo_comment("Storage size of non-storable void type requested."));
+}
+
 bool TypeType::operator==(Type const& _other) const
 {
 	if (_other.getCategory() != getCategory())
 		return false;
 	TypeType const& other = dynamic_cast<TypeType const&>(_other);
 	return *getActualType() == *other.getActualType();
+}
+
+u256 TypeType::getStorageSize() const
+{
+	BOOST_THROW_EXCEPTION(
+		InternalCompilerError()
+			<< errinfo_comment("Storage size of non-storable type type requested."));
 }
 
 MemberList const& TypeType::getMembers() const
@@ -1119,6 +1217,13 @@ ModifierType::ModifierType(const ModifierDefinition& _modifier)
 	swap(params, m_parameterTypes);
 }
 
+u256 ModifierType::getStorageSize() const
+{
+	BOOST_THROW_EXCEPTION(
+		InternalCompilerError()
+			<< errinfo_comment("Storage size of non-storable type type requested."));
+}
+
 bool ModifierType::operator==(Type const& _other) const
 {
 	if (_other.getCategory() != getCategory())
@@ -1149,23 +1254,29 @@ MagicType::MagicType(MagicType::Kind _kind):
 	switch (m_kind)
 	{
 	case Kind::Block:
-		m_members = MemberList({{"coinbase", make_shared<IntegerType>(0, IntegerType::Modifier::Address)},
-								{"timestamp", make_shared<IntegerType>(256)},
-								{"blockhash", make_shared<FunctionType>(strings{"uint"}, strings{"bytes32"}, FunctionType::Location::BlockHash)},
-								{"difficulty", make_shared<IntegerType>(256)},
-								{"number", make_shared<IntegerType>(256)},
-								{"gaslimit", make_shared<IntegerType>(256)}});
+		m_members = move(MemberList({
+			{"coinbase", make_shared<IntegerType>(0, IntegerType::Modifier::Address)},
+			{"timestamp", make_shared<IntegerType>(256)},
+			{"blockhash", make_shared<FunctionType>(strings{"uint"}, strings{"bytes32"}, FunctionType::Location::BlockHash)},
+			{"difficulty", make_shared<IntegerType>(256)},
+			{"number", make_shared<IntegerType>(256)},
+			{"gaslimit", make_shared<IntegerType>(256)}
+		}));
 		break;
 	case Kind::Message:
-		m_members = MemberList({{"sender", make_shared<IntegerType>(0, IntegerType::Modifier::Address)},
-								{"gas", make_shared<IntegerType>(256)},
-								{"value", make_shared<IntegerType>(256)},
-								{"data", make_shared<ArrayType>(ArrayType::Location::CallData)},
-								{"sig", make_shared<FixedBytesType>(4)}});
+		m_members = move(MemberList({
+			{"sender", make_shared<IntegerType>(0, IntegerType::Modifier::Address)},
+			{"gas", make_shared<IntegerType>(256)},
+			{"value", make_shared<IntegerType>(256)},
+			{"data", make_shared<ArrayType>(ArrayType::Location::CallData)},
+			{"sig", make_shared<FixedBytesType>(4)}
+		}));
 		break;
 	case Kind::Transaction:
-		m_members = MemberList({{"origin", make_shared<IntegerType>(0, IntegerType::Modifier::Address)},
-								{"gasprice", make_shared<IntegerType>(256)}});
+		m_members = move(MemberList({
+			{"origin", make_shared<IntegerType>(0, IntegerType::Modifier::Address)},
+			{"gasprice", make_shared<IntegerType>(256)}
+		}));
 		break;
 	default:
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unknown kind of magic."));
