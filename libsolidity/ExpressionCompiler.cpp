@@ -67,9 +67,10 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 		length += CompilerUtils(m_context).storeInMemory(length, *paramType, true);
 
 	// retrieve the position of the variable
-	m_context << m_context.getStorageLocationOfVariable(_varDecl);
-	TypePointer returnType = _varDecl.getType();
+	auto const& location = m_context.getStorageLocationOfVariable(_varDecl);
+	m_context << location.first;
 
+	TypePointer returnType = _varDecl.getType();
 	for (TypePointer const& paramType: paramTypes)
 	{
 		// move offset to memory
@@ -90,9 +91,10 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 		// struct
 		for (size_t i = 0; i < names.size(); ++i)
 		{
-			m_context << eth::Instruction::DUP1
-					  << structType->getStorageOffsetOfMember(names[i])
-					  << eth::Instruction::ADD;
+			if (types[i]->getCategory() == Type::Category::Mapping)
+				continue;
+			pair<u256, unsigned> const& offsets = structType->getStorageOffsetsOfMember(names[i]);
+			m_context << eth::Instruction::DUP1 << u256(offsets.first) << eth::Instruction::ADD << u256(offsets.second);
 			StorageItem(m_context, *types[i]).retrieveValue(SourceLocation(), true);
 			solAssert(types[i]->getSizeOnStack() == 1, "Returning struct elements with stack size != 1 not yet implemented.");
 			m_context << eth::Instruction::SWAP1;
@@ -104,6 +106,7 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 	{
 		// simple value
 		solAssert(accessorType.getReturnParameterTypes().size() == 1, "");
+		m_context << u256(location.second);
 		StorageItem(m_context, *returnType).retrieveValue(SourceLocation(), true);
 		retSizeOnStack = returnType->getSizeOnStack();
 	}
@@ -280,23 +283,24 @@ bool ExpressionCompiler::visit(UnaryOperation const& _unaryOperation)
 	case Token::Dec: // -- (pre- or postfix)
 		solAssert(!!m_currentLValue, "LValue not retrieved.");
 		m_currentLValue->retrieveValue(_unaryOperation.getLocation());
-		solAssert(m_currentLValue->sizeOnStack() <= 1, "Not implemented.");
 		if (!_unaryOperation.isPrefixOperation())
 		{
-			if (m_currentLValue->sizeOnStack() == 1)
-				m_context << eth::Instruction::SWAP1 << eth::Instruction::DUP2;
-			else
-				m_context << eth::Instruction::DUP1;
+			// store value for later
+			solAssert(_unaryOperation.getType()->getSizeOnStack() == 1, "Stack size != 1 not implemented.");
+			m_context << eth::Instruction::DUP1;
+			if (m_currentLValue->sizeOnStack() > 0)
+				for (unsigned i = 1 + m_currentLValue->sizeOnStack(); i > 0; --i)
+					m_context << eth::swapInstruction(i);
 		}
 		m_context << u256(1);
 		if (_unaryOperation.getOperator() == Token::Inc)
 			m_context << eth::Instruction::ADD;
 		else
-			m_context << eth::Instruction::SWAP1 << eth::Instruction::SUB; // @todo avoid the swap
-		// Stack for prefix: [ref] (*ref)+-1
-		// Stack for postfix: *ref [ref] (*ref)+-1
-		if (m_currentLValue->sizeOnStack() == 1)
-			m_context << eth::Instruction::SWAP1;
+			m_context << eth::Instruction::SWAP1 << eth::Instruction::SUB;
+		// Stack for prefix: [ref...] (*ref)+-1
+		// Stack for postfix: *ref [ref...] (*ref)+-1
+		for (unsigned i = m_currentLValue->sizeOnStack(); i > 0; --i)
+			m_context << eth::swapInstruction(i);
 		m_currentLValue->storeValue(
 			*_unaryOperation.getType(), _unaryOperation.getLocation(),
 			!_unaryOperation.isPrefixOperation());
@@ -661,7 +665,9 @@ void ExpressionCompiler::endVisit(MemberAccess const& _memberAccess)
 	case Type::Category::Struct:
 	{
 		StructType const& type = dynamic_cast<StructType const&>(*_memberAccess.getExpression().getType());
-		m_context << type.getStorageOffsetOfMember(member) << eth::Instruction::ADD;
+		m_context << eth::Instruction::POP; // structs always align to new slot
+		pair<u256, unsigned> const& offsets = type.getStorageOffsetsOfMember(member);
+		m_context << offsets.first << eth::Instruction::ADD << u256(offsets.second);
 		setLValueToStorageItem(_memberAccess);
 		break;
 	}
@@ -729,20 +735,22 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 	Type const& baseType = *_indexAccess.getBaseExpression().getType();
 	if (baseType.getCategory() == Type::Category::Mapping)
 	{
+		// storage byte offset is ignored for mappings, it should be zero.
+		m_context << eth::Instruction::POP;
+		// stack: storage_base_ref
 		Type const& keyType = *dynamic_cast<MappingType const&>(baseType).getKeyType();
-		m_context << u256(0);
+		m_context << u256(0); // memory position
 		solAssert(_indexAccess.getIndexExpression(), "Index expression expected.");
 		appendExpressionCopyToMemory(keyType, *_indexAccess.getIndexExpression());
-		solAssert(baseType.getSizeOnStack() == 1,
-				  "Unexpected: Not exactly one stack slot taken by subscriptable expression.");
 		m_context << eth::Instruction::SWAP1;
 		appendTypeMoveToMemory(IntegerType(256));
 		m_context << u256(0) << eth::Instruction::SHA3;
+		m_context << u256(0);
 		setLValueToStorageItem( _indexAccess);
 	}
 	else if (baseType.getCategory() == Type::Category::Array)
 	{
-		// stack layout: <base_ref> [<length>] <index>
+		// stack layout: <base_ref> [storage_byte_offset] [<length>] <index>
 		ArrayType const& arrayType = dynamic_cast<ArrayType const&>(baseType);
 		solAssert(_indexAccess.getIndexExpression(), "Index expression expected.");
 		ArrayType::Location location = arrayType.getLocation();
@@ -758,9 +766,11 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 		else if (location == ArrayType::Location::CallData)
 			// length is stored on the stack
 			m_context << eth::Instruction::SWAP1;
+		else if (location == ArrayType::Location::Storage)
+			m_context << eth::Instruction::DUP3 << load;
 		else
 			m_context << eth::Instruction::DUP2 << load;
-		// stack: <base_ref> <index> <length>
+		// stack: <base_ref> [storage_byte_offset] <index> <length>
 		// check out-of-bounds access
 		m_context << eth::Instruction::DUP2 << eth::Instruction::LT;
 		eth::AssemblyItem legalAccess = m_context.appendConditionalJump();
@@ -768,7 +778,7 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 		m_context << eth::Instruction::STOP;
 
 		m_context << legalAccess;
-		// stack: <base_ref> <index>
+		// stack: <base_ref> [storage_byte_offset] <index>
 		if (arrayType.isByteArray())
 			// byte array is packed differently, especially in storage
 			switch (location)
@@ -776,14 +786,15 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 			case ArrayType::Location::Storage:
 				// byte array index storage lvalue on stack (goal):
 				// <ref> <byte_number> = <base_ref + index / 32> <index % 32>
-				m_context << u256(32) << eth::Instruction::SWAP2;
+				m_context << u256(32) << eth::Instruction::SWAP3;
 				CompilerUtils(m_context).computeHashStatic();
-				// stack: 32 index data_ref
+				// stack: 32 storage_byte_offset index data_ref
 				m_context
-					<< eth::Instruction::DUP3 << eth::Instruction::DUP3
+					<< eth::Instruction::DUP4 << eth::Instruction::DUP3
 					<< eth::Instruction::DIV << eth::Instruction::ADD
-				// stack: 32 index (data_ref + index / 32)
-					<< eth::Instruction::SWAP2 << eth::Instruction::SWAP1 << eth::Instruction::MOD;
+				// stack: 32 storage_byte_offset index (data_ref + index / 32)
+					<< eth::Instruction::SWAP3 << eth::Instruction::SWAP2
+					<< eth::Instruction::POP << eth::Instruction::MOD;
 				setLValue<StorageByteArrayElement>(_indexAccess);
 				break;
 			case ArrayType::Location::CallData:
@@ -797,6 +808,10 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 			}
 		else
 		{
+			// stack: <base_ref> [storage_byte_offset] <index>
+			if (location == ArrayType::Location::Storage)
+				//@todo use byte offset, remove it for now
+				m_context << eth::Instruction::SWAP1 << eth::Instruction::POP;
 			u256 elementSize =
 				location == ArrayType::Location::Storage ?
 					arrayType.getBaseType()->getStorageSize() :
@@ -822,6 +837,7 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 					CompilerUtils(m_context).loadFromMemoryDynamic(*arrayType.getBaseType(), true, true, false);
 				break;
 			case ArrayType::Location::Storage:
+				m_context << u256(0); // @todo
 				setLValueToStorageItem(_indexAccess);
 				break;
 			case ArrayType::Location::Memory:
@@ -1141,7 +1157,7 @@ void ExpressionCompiler::setLValueFromDeclaration(Declaration const& _declaratio
 	if (m_context.isLocalVariable(&_declaration))
 		setLValue<StackVariable>(_expression, _declaration);
 	else if (m_context.isStateVariable(&_declaration))
-			setLValue<StorageItem>(_expression, _declaration);
+		setLValue<StorageItem>(_expression, _declaration);
 	else
 		BOOST_THROW_EXCEPTION(InternalCompilerError()
 			<< errinfo_sourceLocation(_expression.getLocation())
