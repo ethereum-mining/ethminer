@@ -93,6 +93,7 @@ void CompilerUtils::storeInMemoryDynamic(Type const& _type, bool _padToWordBound
 		else
 		{
 			solAssert(type.getLocation() == ArrayType::Location::Storage, "Memory arrays not yet implemented.");
+			m_context << eth::Instruction::POP; //@todo
 			m_context << eth::Instruction::DUP1 << eth::Instruction::SLOAD;
 			// stack here: memory_offset storage_offset length_bytes
 			// jump to end if length is zero
@@ -197,7 +198,6 @@ unsigned CompilerUtils::loadFromMemoryHelper(Type const& _type, bool _fromCallda
 
 	return numBytes;
 }
-
 
 unsigned CompilerUtils::prepareMemoryStore(Type const& _type, bool _padToWordBoundaries) const
 {
