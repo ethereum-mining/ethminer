@@ -237,7 +237,7 @@ void Transact::rejigData()
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
 		ui->gas->setEnabled(true);
-		if (ui->gas->value() == ui->gas->minimum() && src.size())
+		if (ui->gas->value() == ui->gas->minimum() && !src.empty())
 			ui->gas->setValue((int)(m_ethereum->postState().gasLimitRemaining() / 10));
 	}
 	else
