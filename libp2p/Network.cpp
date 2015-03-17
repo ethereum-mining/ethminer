@@ -154,7 +154,7 @@ bi::tcp::endpoint Network::traverseNAT(std::vector<bi::address> const& _ifAddres
 		upnp = new UPnP;
 	}
 	// let m_upnp continue as null - we handle it properly.
-	catch (NoUPnPDevice) {}
+	catch (...) {}
 
 	bi::tcp::endpoint upnpep;
 	if (upnp && upnp->isValid())
