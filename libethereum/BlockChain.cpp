@@ -431,9 +431,7 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 {
 	//	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
 	if (!_from || !_to)
-	{
 		return h256s();
-	}
 	h256s ret;
 	h256s back;
 	unsigned fn = details(_from).number;
