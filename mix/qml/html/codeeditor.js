@@ -1,10 +1,16 @@
 
+CodeMirror.commands.autocomplete = function(cm) {
+		CodeMirror.showHint(cm, CodeMirror.hint.anyword);
+}
+
 var editor = CodeMirror(document.body, {
 							lineNumbers: true,
 							//styleActiveLine: true,
 							matchBrackets: true,
 							autofocus: true,
-							gutters: ["CodeMirror-linenumbers", "breakpoints"]
+							gutters: ["CodeMirror-linenumbers", "breakpoints"],
+							extraKeys: { "Ctrl-Space": "autocomplete" },
+							autoCloseBrackets: true
 						});
 
 
