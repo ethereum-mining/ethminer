@@ -505,6 +505,10 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		return false;
 	}
 	}
+	catch (Exception const& _e)
+	{
+		clogS(NetWarn) << "Peer causing an Exception:" << _e.what() << _r;
+	}
 	catch (std::exception const& _e)
 	{
 		clogS(NetWarn) << "Peer causing an exception:" << _e.what() << _r;
