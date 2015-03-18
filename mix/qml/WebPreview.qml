@@ -292,7 +292,7 @@ Item {
 			color: WebPreviewStyle.general.separatorColor
 		}
 
-		SplitView
+		Splitter
 		{
 			Layout.preferredWidth: parent.width
 			Layout.fillHeight: true
