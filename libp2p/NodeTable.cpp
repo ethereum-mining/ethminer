@@ -425,8 +425,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				if (!evictionEntry)
 				{
 					if (auto n = nodeEntry(nodeid))
-						if (n->pending)
-							n->pending = false;
+						n->pending = false;
 				}
 				else if (m_pubkDiscoverPings.count(_from.address()))
 					m_pubkDiscoverPings.erase(_from.address());
