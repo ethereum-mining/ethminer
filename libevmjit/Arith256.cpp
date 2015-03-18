@@ -456,40 +456,42 @@ llvm::Value* Arith256::exp(llvm::Value* _arg1, llvm::Value* _arg2)
 
 llvm::Value* Arith256::addmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3)
 {
-	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
-	{
-		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
-		{
-			if (auto c3 = llvm::dyn_cast<llvm::ConstantInt>(_arg3))
-			{
-				if (!c3->getValue())
-					return Constant::get(0);
-				auto s = c1->getValue().zext(256+64) + c2->getValue().zext(256+64);
-				auto r = s.urem(c3->getValue().zext(256+64)).trunc(256);
-				return Constant::get(r);
-			}
-		}
-	}
+	// FIXME: Disabled because of llvm::APInt::urem bug
+//	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
+//	{
+//		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
+//		{
+//			if (auto c3 = llvm::dyn_cast<llvm::ConstantInt>(_arg3))
+//			{
+//				if (!c3->getValue())
+//					return Constant::get(0);
+//				auto s = c1->getValue().zext(256+64) + c2->getValue().zext(256+64);
+//				auto r = s.urem(c3->getValue().zext(256+64)).trunc(256);
+//				return Constant::get(r);
+//			}
+//		}
+//	}
 
 	return createCall(getAddModFunc(), {_arg1, _arg2, _arg3});
 }
 
 llvm::Value* Arith256::mulmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3)
 {
-	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
-	{
-		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
-		{
-			if (auto c3 = llvm::dyn_cast<llvm::ConstantInt>(_arg3))
-			{
-				if (!c3->getValue())
-					return Constant::get(0);
-				auto p = c1->getValue().zext(512) * c2->getValue().zext(512);
-				auto r = p.urem(c3->getValue().zext(512)).trunc(256);
-				return Constant::get(r);
-			}
-		}
-	}
+	// FIXME: Disabled because of llvm::APInt::urem bug
+//	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
+//	{
+//		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
+//		{
+//			if (auto c3 = llvm::dyn_cast<llvm::ConstantInt>(_arg3))
+//			{
+//				if (!c3->getValue())
+//					return Constant::get(0);
+//				auto p = c1->getValue().zext(512) * c2->getValue().zext(512);
+//				auto r = p.urem(c3->getValue().zext(512)).trunc(256);
+//				return Constant::get(r);
+//			}
+//		}
+//	}
 
 	return createCall(getMulModFunc(), {_arg1, _arg2, _arg3});
 }
