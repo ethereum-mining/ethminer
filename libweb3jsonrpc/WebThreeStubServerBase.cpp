@@ -953,9 +953,9 @@ void WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t, bool _t
 	if (_toProxy)
 		m_accounts->queueTransaction(_t);
 	else if (_t.to)
-		client()->transact(m_accounts->secretKey(_t.from), _t.value, _t.to, _t.data, _t.gas, _t.gasPrice);
+		client()->submitTransaction(m_accounts->secretKey(_t.from), _t.value, _t.to, _t.data, _t.gas, _t.gasPrice);
 	else
-		client()->transact(m_accounts->secretKey(_t.from), _t.value, _t.data, _t.gas, _t.gasPrice);
+		client()->submitTransaction(m_accounts->secretKey(_t.from), _t.value, _t.data, _t.gas, _t.gasPrice);
 }
 
 void WebThreeStubServerBase::setAccounts(const vector<KeyPair>& _accounts)

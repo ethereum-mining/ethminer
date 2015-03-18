@@ -284,7 +284,7 @@ void Transact::on_send_clicked()
 			{
 				// If execution is a contract creation, add Natspec to
 				// a local Natspec LEVELDB
-				ethereum()->transact(s, value(), m_data, ui->gas->value(), gasPrice());
+				ethereum()->submitTransaction(s, value(), m_data, ui->gas->value(), gasPrice());
 				string src = ui->data->toPlainText().toStdString();
 				if (sourceIsSolidity(src))
 					try
@@ -304,7 +304,7 @@ void Transact::on_send_clicked()
 				return;
 			}
 			else
-				ethereum()->transact(s, value(), m_context->fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
+				ethereum()->submitTransaction(s, value(), m_context->fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
 			return;
 		}
 	QMessageBox::critical(this, "Transaction Failed", "Couldn't make transaction: no single account contains at least the required amount.");

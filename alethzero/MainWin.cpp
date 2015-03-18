@@ -818,7 +818,7 @@ void Main::on_importKeyFile_triggered()
 					m_myKeys.push_back(KeyPair::create());
 					keysChanged();
 				}
-				ethereum()->transact(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_myKeys.back().address(), {}, c_txGas, gasPrice());
+				ethereum()->submitTransaction(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_myKeys.back().address(), {}, c_txGas, gasPrice());
 			}
 			else
 				QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
