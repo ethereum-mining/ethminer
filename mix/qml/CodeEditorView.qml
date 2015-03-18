@@ -116,7 +116,9 @@ Item {
 			for (var i = 0; i < editorListModel.count; i++)
 			{
 				var doc = editorListModel.get(i);
-				fileIo.writeFile(doc.path, editors.itemAt(i).item.getText());
+				var editor = editors.itemAt(i).item;
+				if (editor)
+					fileIo.writeFile(doc.path, item.getText());
 			}
 		}
 

@@ -19,6 +19,7 @@ namespace jit
 
 Memory::Memory(RuntimeManager& _runtimeManager, GasMeter& _gasMeter):
 	RuntimeHelper(_runtimeManager),  // TODO: RuntimeHelper not needed
+	m_memory{getBuilder(), _runtimeManager.getMem()},
 	m_gasMeter(_gasMeter)
 {}
 
@@ -27,20 +28,20 @@ llvm::Function* Memory::getRequireFunc()
 	auto& func = m_require;
 	if (!func)
 	{
-		llvm::Type* argTypes[] = {Type::RuntimePtr, Type::Word, Type::Word};
+		llvm::Type* argTypes[] = {Array::getType()->getPointerTo(), Type::Word, Type::Word, Type::BytePtr, Type::GasPtr};
 		func = llvm::Function::Create(llvm::FunctionType::get(Type::Void, argTypes, false), llvm::Function::PrivateLinkage, "mem.require", getModule());
-		auto rt = func->arg_begin();
-		rt->setName("rt");
-		auto offset = rt->getNextNode();
-		offset->setName("offset");
-		auto size = offset->getNextNode();
-		size->setName("size");
+		func->setDoesNotThrow();
 
-		llvm::Type* resizeArgs[] = {Type::RuntimePtr, Type::WordPtr};
-		auto resize = llvm::Function::Create(llvm::FunctionType::get(Type::BytePtr, resizeArgs, false), llvm::Function::ExternalLinkage, "mem_resize", getModule());
-		llvm::AttrBuilder attrBuilder;
-		attrBuilder.addAttribute(llvm::Attribute::NoAlias).addAttribute(llvm::Attribute::NoCapture).addAttribute(llvm::Attribute::NonNull).addAttribute(llvm::Attribute::ReadOnly);
-		resize->setAttributes(llvm::AttributeSet::get(resize->getContext(), 1, attrBuilder));
+		auto mem = &func->getArgumentList().front();
+		mem->setName("mem");
+		auto blkOffset = mem->getNextNode();
+		blkOffset->setName("blkOffset");
+		auto blkSize = blkOffset->getNextNode();
+		blkSize->setName("blkSize");
+		auto jmpBuf = blkSize->getNextNode();
+		jmpBuf->setName("jmpBuf");
+		auto gas = jmpBuf->getNextNode();
+		gas->setName("gas");
 
 		auto preBB = llvm::BasicBlock::Create(func->getContext(), "Pre", func);
 		auto checkBB = llvm::BasicBlock::Create(func->getContext(), "Check", func);
@@ -51,40 +52,38 @@ llvm::Function* Memory::getRequireFunc()
 
 		// BB "Pre": Ignore checks with size 0
 		m_builder.SetInsertPoint(preBB);
-		auto sizeIsZero = m_builder.CreateICmpEQ(size, Constant::get(0));
-		m_builder.CreateCondBr(sizeIsZero, returnBB, checkBB);
+		m_builder.CreateCondBr(m_builder.CreateICmpNE(blkSize, Constant::get(0)), checkBB, returnBB, Type::expectTrue);
 
 		// BB "Check"
 		m_builder.SetInsertPoint(checkBB);
-		auto uaddWO = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::uadd_with_overflow, Type::Word);
-		auto uaddRes = m_builder.CreateCall2(uaddWO, offset, size, "res");
-		auto sizeRequired = m_builder.CreateExtractValue(uaddRes, 0, "sizeReq");
-		auto overflow1 = m_builder.CreateExtractValue(uaddRes, 1, "overflow1");
-		auto rtPtr = getRuntimeManager().getRuntimePtr();
-		auto sizePtr = m_builder.CreateStructGEP(rtPtr, 4);
-		auto currSize = m_builder.CreateLoad(sizePtr, "currSize");
-		auto tooSmall = m_builder.CreateICmpULE(currSize, sizeRequired, "tooSmall");
-		auto resizeNeeded = m_builder.CreateOr(tooSmall, overflow1, "resizeNeeded");
-		m_builder.CreateCondBr(resizeNeeded, resizeBB, returnBB); // OPT branch weights?
+		static const auto c_inputMax = uint64_t(1) << 33; // max value of blkSize and blkOffset that will not result in integer overflow in calculations below
+		auto blkOffsetOk = m_builder.CreateICmpULE(blkOffset, Constant::get(c_inputMax), "blkOffsetOk");
+		auto blkO = m_builder.CreateSelect(blkOffsetOk, m_builder.CreateTrunc(blkOffset, Type::Size), m_builder.getInt64(c_inputMax), "bklO");
+		auto blkSizeOk = m_builder.CreateICmpULE(blkSize, Constant::get(c_inputMax), "blkSizeOk");
+		auto blkS = m_builder.CreateSelect(blkSizeOk, m_builder.CreateTrunc(blkSize, Type::Size), m_builder.getInt64(c_inputMax), "bklS");
+
+		auto sizeReq0 = m_builder.CreateNUWAdd(blkO, blkS, "sizeReq0");
+		auto sizeReq = m_builder.CreateAnd(m_builder.CreateNUWAdd(sizeReq0, m_builder.getInt64(31)), uint64_t(-1) << 5, "sizeReq"); // s' = ((s0 + 31) / 32) * 32
+		auto sizeCur = m_memory.size(mem);
+		auto sizeOk = m_builder.CreateICmpULE(sizeReq, sizeCur, "sizeOk");
+
+		m_builder.CreateCondBr(sizeOk, returnBB, resizeBB, Type::expectTrue);
 
 		// BB "Resize"
 		m_builder.SetInsertPoint(resizeBB);
 		// Check gas first
-		uaddRes = m_builder.CreateCall2(uaddWO, sizeRequired, Constant::get(31), "res");
-		auto wordsRequired = m_builder.CreateExtractValue(uaddRes, 0);
-		auto overflow2 = m_builder.CreateExtractValue(uaddRes, 1, "overflow2");
-		auto overflow = m_builder.CreateOr(overflow1, overflow2, "overflow");
-		wordsRequired = m_builder.CreateSelect(overflow, Constant::get(-1), wordsRequired);
-		wordsRequired = m_builder.CreateUDiv(wordsRequired, Constant::get(32), "wordsReq");
-		sizeRequired = m_builder.CreateMul(wordsRequired, Constant::get(32), "roundedSizeReq");
-		auto words = m_builder.CreateUDiv(currSize, Constant::get(32), "words");	// size is always 32*k
-		auto newWords = m_builder.CreateSub(wordsRequired, words, "addtionalWords");
-		m_gasMeter.countMemory(newWords);
+		auto w1 = m_builder.CreateLShr(sizeReq, 5);
+		auto w1s = m_builder.CreateNUWMul(w1, w1);
+		auto c1 = m_builder.CreateAdd(m_builder.CreateNUWMul(w1, m_builder.getInt64(3)), m_builder.CreateLShr(w1s, 9));
+		auto w0 = m_builder.CreateLShr(sizeCur, 5);
+		auto w0s = m_builder.CreateNUWMul(w0, w0);
+		auto c0 = m_builder.CreateAdd(m_builder.CreateNUWMul(w0, m_builder.getInt64(3)), m_builder.CreateLShr(w0s, 9));
+		auto cc = m_builder.CreateNUWSub(c1, c0);
+		auto costOk = m_builder.CreateAnd(blkOffsetOk, blkSizeOk, "costOk");
+		auto c = m_builder.CreateSelect(costOk, cc, m_builder.getInt64(std::numeric_limits<int64_t>::max()), "c");
+		m_gasMeter.count(c, jmpBuf, gas);
 		// Resize
-		m_builder.CreateStore(sizeRequired, sizePtr);
-		auto newData = m_builder.CreateCall2(resize, rt, sizePtr, "newData");
-		auto dataPtr = m_builder.CreateStructGEP(rtPtr, 3);
-		m_builder.CreateStore(newData, dataPtr);
+		m_memory.extend(mem, sizeReq);
 		m_builder.CreateBr(returnBB);
 
 		// BB "Return"
@@ -94,12 +93,12 @@ llvm::Function* Memory::getRequireFunc()
 	return func;
 }
 
-llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType, GasMeter&)
+llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType)
 {
 	auto isWord = _valueType == Type::Word;
 
-	llvm::Type* storeArgs[] = {Type::RuntimePtr, Type::Word, _valueType};
-	llvm::Type* loadArgs[] = {Type::RuntimePtr, Type::Word};
+	llvm::Type* storeArgs[] = {Array::getType()->getPointerTo(), Type::Word, _valueType};
+	llvm::Type* loadArgs[] = {Array::getType()->getPointerTo(), Type::Word};
 	auto name = _isStore ? isWord ? "mstore" : "mstore8" : "mload";
 	auto funcType = _isStore ? llvm::FunctionType::get(Type::Void, storeArgs, false) : llvm::FunctionType::get(Type::Word, loadArgs, false);
 	auto func = llvm::Function::Create(funcType, llvm::Function::PrivateLinkage, name, getModule());
@@ -107,28 +106,25 @@ llvm::Function* Memory::createFunc(bool _isStore, llvm::Type* _valueType, GasMet
 	InsertPointGuard guard(m_builder); // Restores insert point at function exit
 
 	m_builder.SetInsertPoint(llvm::BasicBlock::Create(func->getContext(), {}, func));
-	auto rt = func->arg_begin();
-	rt->setName("rt");
-	auto index = rt->getNextNode();
+	auto mem = &func->getArgumentList().front();
+	mem->setName("mem");
+	auto index = mem->getNextNode();
 	index->setName("index");
 
-	auto valueSize = _valueType->getPrimitiveSizeInBits() / 8;
-	this->require(index, Constant::get(valueSize));
-	auto ptr = getBytePtr(index);
-	if (isWord)
-		ptr = m_builder.CreateBitCast(ptr, Type::WordPtr, "wordPtr");
 	if (_isStore)
 	{
-		llvm::Value* value = index->getNextNode();
-		value->setName("value");
-		if (isWord)
-			value = Endianness::toBE(m_builder, value);
-		m_builder.CreateStore(value, ptr);
+		auto valueArg = index->getNextNode();
+		valueArg->setName("value");
+		auto value = isWord ? Endianness::toBE(m_builder, valueArg) : valueArg;
+		auto memPtr = m_memory.getPtr(mem, m_builder.CreateTrunc(index, Type::Size));
+		auto valuePtr = m_builder.CreateBitCast(memPtr, _valueType->getPointerTo(), "valuePtr");
+		m_builder.CreateStore(value, valuePtr);
 		m_builder.CreateRetVoid();
 	}
 	else
 	{
-		llvm::Value* ret = m_builder.CreateLoad(ptr);
+		auto memPtr = m_memory.getPtr(mem, m_builder.CreateTrunc(index, Type::Size));
+		llvm::Value* ret = m_builder.CreateLoad(memPtr);
 		ret = Endianness::toNative(m_builder, ret);
 		m_builder.CreateRet(ret);
 	}
@@ -140,7 +136,7 @@ llvm::Function* Memory::getLoadWordFunc()
 {
 	auto& func = m_loadWord;
 	if (!func)
-		func = createFunc(false, Type::Word, m_gasMeter);
+		func = createFunc(false, Type::Word);
 	return func;
 }
 
@@ -148,7 +144,7 @@ llvm::Function* Memory::getStoreWordFunc()
 {
 	auto& func = m_storeWord;
 	if (!func)
-		func = createFunc(true, Type::Word, m_gasMeter);
+		func = createFunc(true, Type::Word);
 	return func;
 }
 
@@ -156,39 +152,41 @@ llvm::Function* Memory::getStoreByteFunc()
 {
 	auto& func = m_storeByte;
 	if (!func)
-		func = createFunc(true, Type::Byte, m_gasMeter);
+		func = createFunc(true, Type::Byte);
 	return func;
 }
 
 
 llvm::Value* Memory::loadWord(llvm::Value* _addr)
 {
-	return createCall(getLoadWordFunc(), {getRuntimeManager().getRuntimePtr(), _addr});
+	require(_addr, Constant::get(Type::Word->getPrimitiveSizeInBits() / 8));
+	return createCall(getLoadWordFunc(), {getRuntimeManager().getMem(), _addr});
 }
 
 void Memory::storeWord(llvm::Value* _addr, llvm::Value* _word)
 {
-	createCall(getStoreWordFunc(), {getRuntimeManager().getRuntimePtr(), _addr, _word});
+	require(_addr, Constant::get(Type::Word->getPrimitiveSizeInBits() / 8));
+	createCall(getStoreWordFunc(), {getRuntimeManager().getMem(), _addr, _word});
 }
 
 void Memory::storeByte(llvm::Value* _addr, llvm::Value* _word)
 {
+	require(_addr, Constant::get(Type::Byte->getPrimitiveSizeInBits() / 8));
 	auto byte = m_builder.CreateTrunc(_word, Type::Byte, "byte");
-	createCall(getStoreByteFunc(), {getRuntimeManager().getRuntimePtr(), _addr, byte});
+	createCall(getStoreByteFunc(), {getRuntimeManager().getMem(), _addr, byte});
 }
 
 llvm::Value* Memory::getData()
 {
-	auto rtPtr = getRuntimeManager().getRuntimePtr();
-	auto dataPtr = m_builder.CreateStructGEP(rtPtr, 3);
-	return m_builder.CreateLoad(dataPtr, "data");
+	auto memPtr = m_builder.CreateBitCast(getRuntimeManager().getMem(), Type::BytePtr->getPointerTo());
+	auto data = m_builder.CreateLoad(memPtr, "data");
+	assert(data->getType() == Type::BytePtr);
+	return data;
 }
 
 llvm::Value* Memory::getSize()
 {
-	auto rtPtr = getRuntimeManager().getRuntimePtr();
-	auto sizePtr = m_builder.CreateStructGEP(rtPtr, 4);
-	return m_builder.CreateLoad(sizePtr, "size");
+	return m_builder.CreateZExt(m_memory.size(), Type::Word, "msize"); // TODO: Allow placing i64 on stack
 }
 
 llvm::Value* Memory::getBytePtr(llvm::Value* _index)
@@ -204,7 +202,7 @@ void Memory::require(llvm::Value* _offset, llvm::Value* _size)
 		if (!constant->getValue())
 			return;
 	}
-	createCall(getRequireFunc(), {getRuntimeManager().getRuntimePtr(), _offset, _size});
+	createCall(getRequireFunc(), {getRuntimeManager().getMem(), _offset, _size, getRuntimeManager().getJmpBuf(), getRuntimeManager().getGasPtr()});
 }
 
 void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value* _srcIdx,
@@ -233,28 +231,18 @@ void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value*
 	auto dataLeftSize = m_builder.CreateNUWSub(size64, idx64);
 	auto outOfBound = m_builder.CreateICmpUGT(reqBytes, dataLeftSize);
 	auto bytesToCopyInner = m_builder.CreateSelect(outOfBound, dataLeftSize, reqBytes);
-	auto bytesToCopy = m_builder.CreateSelect(isOutsideData, m_builder.getInt64(0), bytesToCopyInner);
+	auto bytesToCopy = m_builder.CreateSelect(isOutsideData, m_builder.getInt64(0), bytesToCopyInner, "bytesToCopy");
+	auto bytesToZero = m_builder.CreateNUWSub(reqBytes, bytesToCopy, "bytesToZero");
 
 	auto src = m_builder.CreateGEP(_srcPtr, idx64, "src");
 	auto dstIdx = m_builder.CreateTrunc(_destMemIdx, Type::Size, "dstIdx"); // Never allow memory index be a type bigger than i64
-	auto dst = m_builder.CreateGEP(getData(), dstIdx, "dst");
+	auto padIdx = m_builder.CreateNUWAdd(dstIdx, bytesToCopy, "padIdx");
+	auto dst = m_memory.getPtr(getRuntimeManager().getMem(), dstIdx);
+	auto pad = m_memory.getPtr(getRuntimeManager().getMem(), padIdx);
 	m_builder.CreateMemCpy(dst, src, bytesToCopy, 0);
+	m_builder.CreateMemSet(pad, m_builder.getInt8(0), bytesToZero, 0);
 }
 
 }
 }
-}
-
-
-extern "C"
-{
-	using namespace dev::eth::jit;
-
-	EXPORT byte* mem_resize(Runtime* _rt, i256* _size)	// TODO: Use uint64 as size OR use realloc in LLVM IR
-	{
-		auto size = _size->a; // Trunc to 64-bit
-		auto& memory = _rt->getMemory();
-		memory.resize(size);
-		return memory.data();
-	}
 }
