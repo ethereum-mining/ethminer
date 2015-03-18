@@ -167,6 +167,10 @@ Item {
 				}
 			}
 		}
+		Rectangle {
+			height: 6
+			color: "transparent"
+		}
 	}
 
 	Connections {
