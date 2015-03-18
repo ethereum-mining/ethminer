@@ -22,6 +22,7 @@ namespace jit
 
 namespace
 {
+	CacheMode g_mode;
 	llvm::MemoryBuffer* g_lastObject;
 	ExecutionEngineListener* g_listener;
 	static const size_t c_versionStampLength = 32;
@@ -38,15 +39,31 @@ namespace
 	}
 }
 
-ObjectCache* Cache::getObjectCache(ExecutionEngineListener* _listener)
+ObjectCache* Cache::getObjectCache(CacheMode _mode, ExecutionEngineListener* _listener)
 {
 	static ObjectCache objectCache;
+	g_mode = _mode;
 	g_listener = _listener;
 	return &objectCache;
 }
 
+void Cache::clear()
+{
+	using namespace llvm::sys;
+	llvm::SmallString<256> cachePath;
+	path::system_temp_directory(false, cachePath);
+	path::append(cachePath, "evm_objs");
+
+	std::error_code err;
+	for (auto it = fs::directory_iterator{cachePath.str(), err}; it != fs::directory_iterator{}; it.increment(err))
+		fs::remove(it->path());
+}
+
 std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 {
+	if (g_mode != CacheMode::on && g_mode != CacheMode::read)
+		return nullptr;
+
 	if (g_listener)
 		g_listener->stateChanged(ExecState::CacheLoad);
 
@@ -88,6 +105,10 @@ std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)
 
 void ObjectCache::notifyObjectCompiled(llvm::Module const* _module, llvm::MemoryBuffer const* _object)
 {
+	// Only in "on" and "write" mode
+	if (g_mode != CacheMode::on && g_mode != CacheMode::write)
+		return;
+
 	if (g_listener)
 		g_listener->stateChanged(ExecState::CacheWrite);
 
