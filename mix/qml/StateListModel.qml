@@ -107,7 +107,7 @@ Item {
 			codeModel.reset();
 		}
 		onProjectLoading: stateListModel.loadStatesFromProject(projectData);
-		onProjectSaving: {
+		onProjectFileSaving: {
 			projectData.states = []
 			for(var i = 0; i < stateListModel.count; i++) {
 				projectData.states.push(toPlainStateItem(stateList[i]));

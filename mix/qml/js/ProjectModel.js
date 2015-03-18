@@ -61,6 +61,7 @@ function closeProject(callBack) {
 
 function saveProject() {
 	if (!isEmpty) {
+		projectSaving();
 		var projectData = saveProjectFile();
 		if (projectData !== null)
 		{
@@ -85,10 +86,11 @@ function saveProjectFile()
 		for (var i = 0; i < projectListModel.count; i++)
 			projectData.files.push(projectListModel.get(i).fileName);
 
-		projectSaving(projectData);
+		projectFileSaving(projectData);
 		var json = JSON.stringify(projectData, null, "\t");
 		var projectFile = projectPath + projectFileName;
 		fileIo.writeFile(projectFile, json);
+		projectFileSaved(projectData);
 		return projectData;
 	}
 	return null;

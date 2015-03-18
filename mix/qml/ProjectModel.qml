@@ -18,8 +18,10 @@ Item {
 	signal documentRemoved(var documentId)
 	signal documentUpdated(var documentId) //renamed
 	signal documentAdded(var documentId)
-	signal projectSaving(var projectData)
+	signal projectSaving()
+	signal projectFileSaving(var projectData)
 	signal projectSaved()
+	signal projectFileSaved()
 	signal newProject(var projectData)
 	signal documentSaved(var documentId)
 	signal contractSaved(var documentId)
