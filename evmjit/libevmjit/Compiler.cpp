@@ -516,7 +516,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			auto val = stack.pop();
 			static_cast<void>(val);
 			// Generate a dummy use of val to make sure that a get(0) will be emitted at this point,
-			// so that StackTooSmall will be thrown
+			// so that StackUnderflow will be thrown
 			// m_builder.CreateICmpEQ(val, val, "dummy");
 			break;
 		}
