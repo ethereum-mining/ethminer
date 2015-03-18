@@ -8,6 +8,7 @@ ColumnLayout {
 	property string title
 	property variant listModel;
 	property bool collapsible;
+	property bool collapsed;
 	property bool enableSelection: false;
 	property real storedHeight: 0;
 	property Component itemDelegate
@@ -19,18 +20,20 @@ ColumnLayout {
 	function collapse()
 	{
 		storedHeight = childrenRect.height;
-		storageContainer.state = "collapsed";
+		storageContainer.collapse();
 	}
 
 	function show()
 	{
-		storageContainer.state = "";
+		storageContainer.expand();
 	}
 
 	Component.onCompleted:
 	{
 		if (storageContainer.parent.parent.height === 25)
-			storageContainer.state = "collapsed";
+			storageContainer.collapse();
+		else
+			storageContainer.expand();
 	}
 
 	RowLayout {
@@ -59,15 +62,15 @@ ColumnLayout {
 			onClicked: {
 				if (collapsible)
 				{
-					if (storageContainer.state == "collapsed")
+					if (collapsed)
 					{
-						storageContainer.state = "";
+						storageContainer.expand();
 						storageContainer.parent.parent.height = storedHeight;
 					}
 					else
 					{
 						storedHeight = root.childrenRect.height;
-						storageContainer.state = "collapsed";
+						storageContainer.collapse();
 					}
 				}
 			}
@@ -80,19 +83,19 @@ ColumnLayout {
 		border.color: "#deddd9"
 		Layout.fillWidth: true
 		Layout.fillHeight: true
-		states: [
-			State {
-				name: "collapsed"
-				PropertyChanges {
-					target: storageImgArrow
-					source: "qrc:/qml/img/closedtriangleindicator.png"
-				}
-				PropertyChanges {
-					target: storageContainer.parent.parent
-					height: 25
-				}
-			}
-		]
+
+		function collapse() {
+			storageImgArrow.source = "qrc:/qml/img/closedtriangleindicator.png";
+			if (storageContainer.parent.parent.height > 25)
+				storageContainer.parent.parent.height = 25;
+			collapsed = true;
+		}
+
+		function expand() {
+			storageImgArrow.source = "qrc:/qml/img/opentriangleindicator.png";
+			collapsed = false;
+		}
+
 		Loader
 		{
 			id: loader
@@ -102,6 +105,17 @@ ColumnLayout {
 			anchors.leftMargin: 3
 			width: parent.width - 3
 			height: parent.height - 6
+			onHeightChanged:  {
+				if (height <= 0 && collapsible) {
+					if (storedHeight <= 0)
+						storedHeight = 200;
+					storageContainer.collapse();
+				}
+				else if (height > 0 && collapsed) {
+					storageContainer.expand();
+				}
+			}
+
 			sourceComponent: componentDelegate ? componentDelegate : table
 		}
 		Component
@@ -116,17 +130,6 @@ ColumnLayout {
 				selectionMode: enableSelection ? SelectionMode.SingleSelection : SelectionMode.NoSelection
 				headerDelegate: null
 				itemDelegate: root.itemDelegate
-				onHeightChanged:  {
-					if (height <= 0 && collapsible) {
-						if (storedHeight <= 0)
-							storedHeight = 200;
-						storageContainer.state = "collapsed";
-					}
-					else if (height > 0 && storageContainer.state == "collapsed") {
-						//TODO: fix increasing size
-						//storageContainer.state = "";
-					}
-				}
 				onActivated: rowActivated(row);
 				Keys.onPressed: {
 					if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < listModel.length) {

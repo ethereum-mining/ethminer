@@ -170,7 +170,7 @@ Rectangle {
 		TransactionLog {
 			id: transactionLog
 			Layout.fillWidth: true
-			Layout.minimumHeight: 60
+			Layout.minimumHeight: 120
 			height: 250
 			anchors.top: parent.top
 			anchors.left: parent.left
@@ -233,6 +233,7 @@ Rectangle {
 								height: 30
 								buttonShortcut: "Ctrl+Shift+F5"
 								buttonTooltip: qsTr("Run Back")
+								visible: false
 							}
 
 							StepActionImage
@@ -245,6 +246,7 @@ Rectangle {
 								height: 30
 								buttonShortcut: "Ctrl+Shift+F11"
 								buttonTooltip: qsTr("Step Out Back")
+								visible: false
 							}
 
 							StepActionImage

@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC OFF)
 
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
 else()
-	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Wconversion -Wno-unknown-pragmas")
+	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Wconversion -Wno-sign-conversion -Wno-unknown-pragmas")
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
@@ -22,7 +22,7 @@ if(LLVM_DIR OR APPLE)	# local LLVM build
 	message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 	add_definitions(${LLVM_DEFINITIONS})
 	# TODO: bitwriter is needed only for evmcc
-	llvm_map_components_to_libnames(LLVM_LIBS core support mcjit x86asmparser x86codegen bitwriter)
+	llvm_map_components_to_libnames(LLVM_LIBS core support mcjit x86asmparser x86codegen bitwriter ipo)
 else()
 	# Workaround for Ubuntu broken LLVM package
 	message(STATUS "Using llvm-3.5-dev package from Ubuntu. If does not work, build LLVM and set -DLLVM_DIR=llvm-build/share/llvm/cmake")
