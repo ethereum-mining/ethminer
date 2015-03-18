@@ -2,23 +2,39 @@
 
 #include <iostream>
 
-#include "Common.h"
-
-namespace dev
-{
-namespace eth
-{
-namespace jit
-{
-
-struct JIT: public NoteChannel  { static const char* name() { return "JIT"; } };
-
-//#define clog(CHANNEL) std::cerr
-#define clog(CHANNEL) std::ostream(nullptr)
-
 // The same as assert, but expression is always evaluated and result returned
 #define CHECK(expr) (assert(expr), expr)
 
+#if !defined(NDEBUG) // Debug
+
+namespace dev
+{
+namespace evmjit
+{
+
+std::ostream& getLogStream(char const* _channel);
+
 }
 }
+
+#define DLOG(CHANNEL) ::dev::evmjit::getLogStream(#CHANNEL)
+
+#else // Release
+
+namespace dev
+{
+namespace evmjit
+{
+
+struct Voider
+{
+	void operator=(std::ostream const&) {}
+};
+
 }
+}
+
+
+#define DLOG(CHANNEL) true ? (void)0 : ::dev::evmjit::Voider{} = std::cerr
+
+#endif

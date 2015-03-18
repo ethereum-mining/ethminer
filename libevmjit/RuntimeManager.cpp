@@ -4,6 +4,9 @@
 #include <llvm/IR/IntrinsicInst.h>
 #include "preprocessor/llvm_includes_end.h"
 
+#include "Stack.h"
+#include "Utils.h"
+
 namespace dev
 {
 namespace eth
@@ -48,9 +51,7 @@ llvm::StructType* RuntimeManager::getRuntimeType()
 		{
 			Type::RuntimeDataPtr,	// data
 			Type::EnvPtr,			// Env*
-			Type::BytePtr,			// jmpbuf
-			Type::BytePtr,			// memory data
-			Type::Word,				// memory size
+			Array::getType()		// memory
 		};
 		type = llvm::StructType::create(elems, "Runtime");
 	}
@@ -83,22 +84,21 @@ llvm::Twine getName(RuntimeData::Index _index)
 }
 }
 
-RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, llvm::Value* _jmpBuf, code_iterator _codeBegin, code_iterator _codeEnd):
+RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeBegin, code_iterator _codeEnd):
 	CompilerHelper(_builder),
-	m_jmpBuf(_jmpBuf),
 	m_codeBegin(_codeBegin),
 	m_codeEnd(_codeEnd)
 {
 	m_longjmp = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::eh_sjlj_longjmp);
 
-	// save jmpBuf to be used in helper functions
-	auto ptr = m_builder.CreateStructGEP(getRuntimePtr(), 2);
-	m_builder.CreateStore(m_jmpBuf, ptr, "jmpBufExt");
-
 	// Unpack data
 	auto rtPtr = getRuntimePtr();
 	m_dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 0), "data");
 	assert(m_dataPtr->getType() == Type::RuntimeDataPtr);
+	m_gasPtr = m_builder.CreateStructGEP(m_dataPtr, 0, "gas");
+	assert(m_gasPtr->getType() == Type::Gas->getPointerTo());
+	m_memPtr = m_builder.CreateStructGEP(rtPtr, 2, "mem");
+	assert(m_memPtr->getType() == Array::getType()->getPointerTo());
 	m_envPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 1), "env");
 	assert(m_envPtr->getType() == Type::EnvPtr);
 }
@@ -150,7 +150,7 @@ void RuntimeManager::set(RuntimeData::Index _index, llvm::Value* _value)
 
 void RuntimeManager::registerReturnData(llvm::Value* _offset, llvm::Value* _size)
 {
-	auto memPtr = getBuilder().CreateStructGEP(getRuntimePtr(), 3);
+	auto memPtr = m_builder.CreateBitCast(getMem(), Type::BytePtr->getPointerTo());
 	auto mem = getBuilder().CreateLoad(memPtr, "memory");
 	auto idx = m_builder.CreateTrunc(_offset, Type::Size, "idx"); // Never allow memory index be a type bigger than i64 // TODO: Report bug & fix to LLVM
 	auto returnDataPtr = getBuilder().CreateGEP(mem, idx);
@@ -163,6 +163,14 @@ void RuntimeManager::registerReturnData(llvm::Value* _offset, llvm::Value* _size
 void RuntimeManager::registerSuicide(llvm::Value* _balanceAddress)
 {
 	set(RuntimeData::SuicideDestAddress, _balanceAddress);
+}
+
+void RuntimeManager::exit(ReturnCode _returnCode)
+{
+	if (m_stack)
+		m_stack->free();
+
+	m_builder.CreateRet(Constant::get(_returnCode));
 }
 
 void RuntimeManager::abort(llvm::Value* _jmpBuf)
@@ -213,12 +221,6 @@ llvm::Value* RuntimeManager::getCallDataSize()
 	return getBuilder().CreateZExt(value, Type::Word);
 }
 
-llvm::Value* RuntimeManager::getJmpBufExt()
-{
-	auto ptr = getBuilder().CreateStructGEP(getRuntimePtr(), 2);
-	return getBuilder().CreateLoad(ptr, "jmpBufExt");
-}
-
 llvm::Value* RuntimeManager::getGas()
 {
 	auto gas = get(RuntimeData::Gas);
@@ -228,7 +230,14 @@ llvm::Value* RuntimeManager::getGas()
 
 llvm::Value* RuntimeManager::getGasPtr()
 {
-	return getPtr(RuntimeData::Gas);
+	assert(getMainFunction());
+	return m_gasPtr;
+}
+
+llvm::Value* RuntimeManager::getMem()
+{
+	assert(getMainFunction());
+	return m_memPtr;
 }
 
 void RuntimeManager::setGas(llvm::Value* _gas)
