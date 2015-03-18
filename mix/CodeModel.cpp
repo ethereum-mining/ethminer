@@ -129,8 +129,7 @@ QString CompiledContract::codeHex() const
 	return QString::fromStdString(toJS(m_bytes));
 }
 
-CodeModel::CodeModel(QObject* _parent):
-	QObject(_parent),
+CodeModel::CodeModel():
 	m_compiling(false),
 	m_codeHighlighterSettings(new CodeHighlighterSettings()),
 	m_backgroundWorker(this),

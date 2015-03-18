@@ -69,8 +69,8 @@ Item {
 	function formatAppUrl() { ProjectModelCode.formatAppUrl(url); }
 
 	Connections {
-		target: appContext
-		onAppLoaded: {
+		target: mainApplication
+		onLoaded: {
 			if (projectSettings.lastProjectPath && projectSettings.lastProjectPath !== "")
 				projectModel.loadProject(projectSettings.lastProjectPath)
 		}
@@ -173,7 +173,6 @@ Item {
 	{
 		target: projectModel
 		onProjectClosed: {
-			projectSettings.lastProjectPath = "";
 			projectPath = "";
 		}
 	}
