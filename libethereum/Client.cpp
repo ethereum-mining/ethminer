@@ -475,7 +475,7 @@ void Client::setupState(State& _s)
 		_s.commitToMine(m_bc);
 }
 
-void Client::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+void Client::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	startWorking();
 
@@ -539,7 +539,7 @@ bytes Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u2
 	return bytes();
 }
 
-Address Client::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
+Address Client::submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
 	startWorking();
 
