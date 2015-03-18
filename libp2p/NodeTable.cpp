@@ -70,10 +70,6 @@ shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, bi::udp::endpoint 
 
 shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 {
-	// TODO: Filter private addresses (After requirePeer() is added to Host and tests and Neighbors are updated)
-//	if (isPrivateAddress(_node.endpoint.udp.address()) || isPrivateAddress(_node.endpoint.tcp.address()))
-//		return move(shared_ptr<NodeEntry>());
-
 	// ping address if nodeid is empty
 	if (!_node.id)
 	{
