@@ -231,14 +231,16 @@ void Memory::copyBytes(llvm::Value* _srcPtr, llvm::Value* _srcSize, llvm::Value*
 	auto dataLeftSize = m_builder.CreateNUWSub(size64, idx64);
 	auto outOfBound = m_builder.CreateICmpUGT(reqBytes, dataLeftSize);
 	auto bytesToCopyInner = m_builder.CreateSelect(outOfBound, dataLeftSize, reqBytes);
-	auto bytesToCopy = m_builder.CreateSelect(isOutsideData, m_builder.getInt64(0), bytesToCopyInner);
+	auto bytesToCopy = m_builder.CreateSelect(isOutsideData, m_builder.getInt64(0), bytesToCopyInner, "bytesToCopy");
+	auto bytesToZero = m_builder.CreateNUWSub(reqBytes, bytesToCopy, "bytesToZero");
 
 	auto src = m_builder.CreateGEP(_srcPtr, idx64, "src");
 	auto dstIdx = m_builder.CreateTrunc(_destMemIdx, Type::Size, "dstIdx"); // Never allow memory index be a type bigger than i64
+	auto padIdx = m_builder.CreateNUWAdd(dstIdx, bytesToCopy, "padIdx");
 	auto dst = m_memory.getPtr(getRuntimeManager().getMem(), dstIdx);
-	auto dst2 = m_builder.CreateGEP(getData(), dstIdx, "dst2");
+	auto pad = m_memory.getPtr(getRuntimeManager().getMem(), padIdx);
 	m_builder.CreateMemCpy(dst, src, bytesToCopy, 0);
-	m_builder.CreateMemCpy(dst2, src, bytesToCopy, 0);
+	m_builder.CreateMemSet(pad, m_builder.getInt8(0), bytesToZero, 0);
 }
 
 }
