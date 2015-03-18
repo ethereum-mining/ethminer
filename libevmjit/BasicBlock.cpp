@@ -155,11 +155,9 @@ void BasicBlock::synchronizeLocalStack(Stack& _evmStack)
 				_evmStack.set(static_cast<size_t>(idx), *currIter);
 		}
 
+		// Pop values
 		if (m_tosOffset < 0)
-		{
-			// Pop values
 			_evmStack.pop(static_cast<size_t>(-m_tosOffset));
-		}
 
 		// Push new values
 		for (; currIter < endIter; ++currIter)
