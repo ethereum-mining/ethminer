@@ -84,6 +84,12 @@ protected:
 	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return 10 * szabo; }
 };
 
+enum class Permanence
+{
+	Reverted,
+	Committed
+};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -185,10 +191,10 @@ public:
 
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	u256 execute(BlockChain const& _bc, bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true);
-	u256 execute(BlockChain const& _bc, bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
-	u256 execute(LastHashes const& _lh, bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true) { return execute(_lh, &_rlp, o_output, _commit); }
-	u256 execute(LastHashes const& _lh, bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
+	ExecutionResult execute(BlockChain const& _bc, bytes const& _rlp, Permanence _p = Permanence::Committed);
+	ExecutionResult execute(BlockChain const& _bc, bytesConstRef _rlp, Permanence _p = Permanence::Committed);
+	ExecutionResult execute(LastHashes const& _lh, bytes const& _rlp, Permanence _p = Permanence::Committed) { return execute(_lh, &_rlp, _p); }
+	ExecutionResult execute(LastHashes const& _lh, bytesConstRef _rlp, Permanence _p = Permanence::Committed);
 
 	/// Get the remaining gas limit in this block.
 	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }

@@ -33,7 +33,7 @@ enum class ReturnCode
 
 	// Standard error codes
 	OutOfGas           = -1,
-	StackTooSmall      = -2,
+	StackUnderflow      = -2,
 	BadJumpDestination = -3,
 	BadInstruction     = -4,
 	Rejected           = -5, ///< Input data (code, gas, block info, etc.) does not meet JIT requirement and execution request has been rejected

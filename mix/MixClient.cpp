@@ -175,7 +175,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	execution.finalize();
 
 	ExecutionResult d;
-	d.returnValue = execution.out().toVector();
+	d.result = execution.executionResult();
 	d.machineStates = machineStates;
 	d.executionCode = std::move(codes);
 	d.transactionData = std::move(data);
@@ -191,7 +191,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	// execute on a state
 	if (!_call)
 	{
-		_state.execute(lastHashes, rlp, nullptr, true);
+		_state.execute(lastHashes, rlp);
 		// collect watches
 		h256Set changed;
 		Guard l(m_filterLock);
@@ -276,7 +276,7 @@ void MixClient::flushTransactions()
 {
 }
 
-bytes MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
+dev::eth::ExecutionResult MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
 {
 	u256 n;
 	State temp;
@@ -289,7 +289,23 @@ bytes MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _
 	bytes rlp = t.rlp();
 	WriteGuard lw(x_state); //TODO: lock is required only for last execution state
 	executeTransaction(t, temp, true);
-	return lastExecution().returnValue;
+	return lastExecution().result;
+}
+
+dev::eth::ExecutionResult MixClient::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
+{
+	u256 n;
+	State temp;
+	{
+		ReadGuard lr(x_state);
+		temp = asOf(_blockNumber);
+		n = temp.transactionsFrom(toAddress(_secret));
+	}
+	Transaction t(_value, _gasPrice, _gas, _data, n, _secret);
+	bytes rlp = t.rlp();
+	WriteGuard lw(x_state); //TODO: lock is required only for last execution state
+	executeTransaction(t, temp, true);
+	return lastExecution().result;
 }
 
 u256 MixClient::balanceAt(Address _a, int _block) const

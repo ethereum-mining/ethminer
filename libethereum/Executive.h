@@ -101,7 +101,10 @@ public:
 	/// @returns the new address for the created contract in the CREATE operation.
 	h160 newAddress() const { return m_newAddress; }
 	/// @returns true iff the operation ended with a VM exception.
-	bool excepted() const { return m_excepted; }
+	bool excepted() const { return m_excepted != TransactionException::None; }
+
+	/// Get the above in an amalgamated fashion.
+	ExecutionResult executionResult() const { return ExecutionResult(gasUsed(), m_excepted, m_newAddress, m_out, m_codeDeposit); }
 
 private:
 	bool setup();
@@ -116,7 +119,8 @@ private:
 
 	unsigned m_depth = 0;				///< The context's call-depth.
 	bool m_isCreation = false;			///< True if the transaction creates a contract, or if create() is called.
-	bool m_excepted = false;			///< True if the VM execution resulted in an exception.
+	CodeDeposit m_codeDeposit = CodeDeposit::None;	///< True if an attempted deposit failed due to lack of gas.
+	TransactionException m_excepted = TransactionException::None;	///< Details if the VM's execution resulted in an exception.
 	u256 m_endGas;						///< The final amount of gas for the transaction.
 
 	Transaction m_t;					///< The original transaction. Set by setup().
