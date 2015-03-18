@@ -20,18 +20,21 @@
 		var text = editor.getLine(line), m;
 		while (m = re.exec(text)) {
 		  if (line == cur.line && m[0] === curWord) continue;
-		  if ((!curWord || m[0].lastIndexOf(curWord, 0) == 0) && !Object.prototype.hasOwnProperty.call(seen, m[0])) {
+		  if ((!curWord || m[0].lastIndexOf(curWord, 0) === 0) && !Object.prototype.hasOwnProperty.call(seen, m[0])) {
 			seen[m[0]] = true;
-			list.push(m[0]);
+			list.push({ text: m[0] });
 		  }
 		}
 	  }
 	}
-
-	for (var key in solidityKeywords())
+	if (editor.getMode().name === "solidity")
 	{
-		if (curWord === false || key.indexOf(curWord, 0) === 0)
-			list.push(key);
+		list = addSolToken(curWord, list, solCurrency(), solCurrency);
+		list = addSolToken(curWord, list, solKeywords(), solKeywords);
+		list = addSolToken(curWord, list, solStdContract(), solStdContract);
+		list = addSolToken(curWord, list, solTime(), solTime);
+		list = addSolToken(curWord, list, solTypes(), solTypes);
+		list = addSolToken(curWord, list, solMisc(), solMisc);
 	}
 
 	return {list: list, from: CodeMirror.Pos(cur.line, start), to: CodeMirror.Pos(cur.line, end)};
@@ -39,35 +42,20 @@
 })();
 
 
-solidityKeywords = function(list)
+function addSolToken(curWord, list, tokens, type)
 {
-	var keywords = { "address":true, "indexed":true, "event":true, "delete":true, "break":true, "case":true, "constant":true, "continue":true, "contract":true, "default":true,
-		  "do":true, "else":true, "is":true, "for":true, "function":true, "if":true, "import":true, "mapping":true, "new":true,
-		  "public":true, "private":true, "return":true, "returns":true, "struct":true, "switch":true, "var":true, "while":true,
-		  "int":true, "uint":true, "hash":true, "bool":true, "string":true, "string0":true, "text":true, "real":true,
-		  "ureal":true,
-		  "owned":true,
-		  "onlyowner":true,
-		  "named":true,
-		  "mortal":true,
-		  "coin":true
-	  };
-
-	for (var i = 1; i <= 32; i++) {
-		  keywords["int" + i * 8] = true;
-		  keywords["uint" + i * 8] = true;
-		  keywords["hash" + i * 8] = true;
-		  keywords["string" + i] = true;
-	};
-
-	keywords["true"] = true;
-	keywords["false"] = true;
-	keywords["null"] = true;
-	keywords["Config"] = true;
-	keywords["NameReg"] = true;
-	keywords["CoinReg"] = true;
-
-	return keywords;
+	for (var key in tokens)
+	{
+		if (curWord === false || key.indexOf(curWord, 0) === 0)
+		{
+			var token = { text: key };
+			token.render = function(elt, data, cur)
+			{
+				elt.className = elt.className + " " + type.name.toLowerCase();
+				elt.appendChild(document.createTextNode(cur.displayText || cur.text));
+			}
+			list.push(token);
+		}
+	}
+	return list;
 }
-
-
