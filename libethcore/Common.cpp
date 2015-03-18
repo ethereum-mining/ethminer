@@ -22,6 +22,7 @@
 #include "Common.h"
 #include <random>
 #include <libdevcrypto/SHA3.h>
+#include "Ethasher.h"
 #include "Exceptions.h"
 using namespace std;
 using namespace dev;
@@ -32,15 +33,16 @@ namespace dev
 namespace eth
 {
 
+const unsigned c_ethashVersion = c_ethashRevision;
 const unsigned c_protocolVersion = 58;
 const unsigned c_databaseBaseVersion = 8;
 #if ETH_FATDB
-const unsigned c_databaseVersionModifier = 1000;
+const unsigned c_databaseVersionModifier = 1;
 #else
 const unsigned c_databaseVersionModifier = 0;
 #endif
 
-const unsigned c_databaseVersion = c_databaseBaseVersion + c_databaseVersionModifier;
+const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionModifier << 8) + (c_ethashVersion << 9);
 
 vector<pair<u256, string>> const& units()
 {

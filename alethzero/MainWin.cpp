@@ -1059,8 +1059,7 @@ void Main::refreshBlockCount()
 {
 	cwatch << "refreshBlockCount()";
 	auto d = ethereum()->blockChain().details();
-	auto diff = BlockInfo(ethereum()->blockChain().block()).difficulty;
-	ui->blockCount->setText(QString("%6 #%1 @%3 T%2 PV%4 D%5").arg(d.number).arg(toLog2(d.totalDifficulty)).arg(toLog2(diff)).arg(c_protocolVersion).arg(c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet"));
+	ui->blockCount->setText(QString("%4 #%1 PV%2 D%3 H%5").arg(d.number).arg(c_protocolVersion).arg(c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(c_ethashVersion));
 }
 
 void Main::on_turboMining_triggered()
@@ -1429,63 +1428,64 @@ void Main::on_blocks_currentItemChanged()
 			s << "<h3>" << h << "</h3>";
 			s << "<h4>#" << info.number;
 			s << "&nbsp;&emsp;&nbsp;<b>" << timestamp << "</b></h4>";
-			s << "<br/>D/TD: <b>" << info.difficulty << "</b>/<b>" << details.totalDifficulty << "</b> = 2^" << log2((double)info.difficulty) << "/2^" << log2((double)details.totalDifficulty);
-			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></h5>";
-			s << "<br/>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>";
-			s << "<br/>Coinbase: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << info.coinbaseAddress;
-			s << "<br/>Seed hash: <b>" << info.seedHash() << "</b>";
-			s << "<br/>Mix hash: <b>" << info.mixHash << "</b>";
-			s << "<br/>Nonce: <b>" << info.nonce << "</b>";
-			s << "<br/>Hash w/o nonce: <b>" << info.headerHash(WithoutNonce) << "</b>";
-			s << "<br/>Difficulty: <b>" << info.difficulty << "</b>";
+			s << "<div>D/TD: <b>" << info.difficulty << "</b>/<b>" << details.totalDifficulty << "</b> = 2^" << log2((double)info.difficulty) << "/2^" << log2((double)details.totalDifficulty) << "</div>";
+			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></div>";
+			s << "<div>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>" << "</div>";
+			s << "<div>Beneficiary: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << " " << info.coinbaseAddress << "</b>" << "</div>";
+			s << "<div>Seed hash: <b>" << info.seedHash() << "</b>" << "</div>";
+			s << "<div>Mix hash: <b>" << info.mixHash << "</b>" << "</div>";
+			s << "<div>Nonce: <b>" << info.nonce << "</b>" << "</div>";
+			s << "<div>Hash w/o nonce: <b>" << info.headerHash(WithoutNonce) << "</b>" << "</div>";
+			s << "<div>Difficulty: <b>" << info.difficulty << "</b>" << "</div>";
 			if (info.number)
 			{
 				auto e = Ethasher::eval(info);
-				s << "<br/>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")";
-				s << "<br/>Parent: <b>" << info.parentHash << "</b>";
+				s << "<div>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
+				s << "<div>Parent: <b>" << info.parentHash << "</b>" << "</div>";
 			}
 			else
 			{
-				s << "<br/>Proof-of-Work: <i>Phil has nothing to prove</i>";
-				s << "<br/>Parent: <i>It was a virgin birth</i>";
+				s << "<div>Proof-of-Work: <b><i>Phil has nothing to prove</i></b></div>";
+				s << "<div>Parent: <b><i>It was a virgin birth</i></b></div>";
 			}
-//			s << "<br/>Bloom: <b>" << details.bloom << "</b>";
+//			s << "<div>Bloom: <b>" << details.bloom << "</b>";
 			if (!!info.logBloom)
 				s << "<div>Log Bloom: " << info.logBloom << "</div>";
 			else
 				s << "<div>Log Bloom: <i>Uneventful</i></div>";
-			s << "<br/>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>";
-			s << "<br/>Receipts: @<b>" << info.receiptsRoot << "</b>:";
-			s << "<br/>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>";
+			s << "<div>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>" << "</div>";
+			s << "<div>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>" << "</div>";
 			for (auto u: block[2])
 			{
 				BlockInfo uncle = BlockInfo::fromHeader(u.data());
-				char const* line = "<br/><span style=\"margin-left: 2em\">&nbsp;</span>";
-				s << line << "Hash: <b>" << uncle.hash << "</b>";
-				s << line << "Parent: <b>" << uncle.parentHash << "</b>";
-				s << line << "Number: <b>" << uncle.number << "</b>";
-				s << line << "Coinbase: <b>" << pretty(uncle.coinbaseAddress).toHtmlEscaped().toStdString() << "</b> " << uncle.coinbaseAddress;
-				s << line << "Seed hash: <b>" << uncle.seedHash() << "</b>";
-				s << line << "Mix hash: <b>" << uncle.mixHash << "</b>";
-				s << line << "Nonce: <b>" << uncle.nonce << "</b>";
-				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutNonce) << "</b>";
-				s << line << "Difficulty: <b>" << uncle.difficulty << "</b>";
+				char const* line = "<div><span style=\"margin-left: 2em\">&nbsp;</span>";
+				s << line << "Hash: <b>" << uncle.hash << "</b>" << "</div>";
+				s << line << "Parent: <b>" << uncle.parentHash << "</b>" << "</div>";
+				s << line << "Number: <b>" << uncle.number << "</b>" << "</div>";
+				s << line << "Coinbase: <b>" << pretty(uncle.coinbaseAddress).toHtmlEscaped().toStdString() << " " << uncle.coinbaseAddress << "</b>" << "</div>";
+				s << line << "Seed hash: <b>" << uncle.seedHash() << "</b>" << "</div>";
+				s << line << "Mix hash: <b>" << uncle.mixHash << "</b>" << "</div>";
+				s << line << "Nonce: <b>" << uncle.nonce << "</b>" << "</div>";
+				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutNonce) << "</b>" << "</div>";
+				s << line << "Difficulty: <b>" << uncle.difficulty << "</b>" << "</div>";
 				auto e = Ethasher::eval(uncle);
-				s << line << "Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / uncle.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")";
+				s << line << "Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / uncle.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
 			}
 			if (info.parentHash)
-				s << "<br/>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>";
+				s << "<div>Pre: <b>" << BlockInfo(ethereum()->blockChain().block(info.parentHash)).stateRoot << "</b>" << "</div>";
 			else
-				s << "<br/>Pre: <i>Nothing is before Phil</i>";
+				s << "<div>Pre: <b><i>Nothing is before Phil</i></b>" << "</div>";
+
+			s << "<div>Receipts: @<b>" << info.receiptsRoot << "</b>:" << "</div>";
 			BlockReceipts receipts = ethereum()->blockChain().receipts(h);
 			unsigned ii = 0;
 			for (auto const& i: block[1])
 			{
-				s << "<br/>" << sha3(i.data()).abridged() << ": <b>" << receipts.receipts[ii].stateRoot() << "</b> [<b>" << receipts.receipts[ii].gasUsed() << "</b> used]";
+				s << "<div>" << sha3(i.data()).abridged() << ": <b>" << receipts.receipts[ii].stateRoot() << "</b> [<b>" << receipts.receipts[ii].gasUsed() << "</b> used]" << "</div>";
 				++ii;
 			}
-			s << "<br/>Post: <b>" << info.stateRoot << "</b>";
-			s << "<br/>Dump: " Span(Mono) << toHex(block[0].data()) << "</span>";
+			s << "<div>Post: <b>" << info.stateRoot << "</b>" << "</div>";
+			s << "<div>Dump: " Span(Mono) << toHex(block[0].data()) << "</span>" << "</div>";
 			s << "<div>Receipts-Hex: " Span(Mono) << toHex(receipts.rlp()) << "</span></div>";
 		}
 		else
@@ -1497,19 +1497,19 @@ void Main::on_blocks_currentItemChanged()
 			TransactionReceipt receipt = ethereum()->blockChain().receipts(h).receipts[txi];
 			s << "<h3>" << th << "</h3>";
 			s << "<h4>" << h << "[<b>" << txi << "</b>]</h4>";
-			s << "<br/>From: <b>" << pretty(ss).toHtmlEscaped().toStdString() << "</b> " << ss;
+			s << "<div>From: <b>" << pretty(ss).toHtmlEscaped().toStdString() << " " << ss << "</b>" << "</div>";
 			if (tx.isCreation())
-				s << "<br/>Creates: <b>" << pretty(right160(th)).toHtmlEscaped().toStdString() << "</b> " << right160(th);
+				s << "<div>Creates: <b>" << pretty(right160(th)).toHtmlEscaped().toStdString() << "</b> " << right160(th) << "</div>";
 			else
-				s << "<br/>To: <b>" << pretty(tx.receiveAddress()).toHtmlEscaped().toStdString() << "</b> " << tx.receiveAddress();
-			s << "<br/>Value: <b>" << formatBalance(tx.value()) << "</b>";
-			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce() << "</b>";
-			s << "<br/>Gas price: <b>" << formatBalance(tx.gasPrice()) << "</b>";
-			s << "<br/>Gas: <b>" << tx.gas() << "</b>";
-			s << "<br/>V: <b>" << hex << nouppercase << (int)tx.signature().v << " + 27</b>";
-			s << "<br/>R: <b>" << hex << nouppercase << tx.signature().r << "</b>";
-			s << "<br/>S: <b>" << hex << nouppercase << tx.signature().s << "</b>";
-			s << "<br/>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>";
+				s << "<div>To: <b>" << pretty(tx.receiveAddress()).toHtmlEscaped().toStdString() << "</b> " << tx.receiveAddress() << "</div>";
+			s << "<div>Value: <b>" << formatBalance(tx.value()) << "</b>" << "</div>";
+			s << "&nbsp;&emsp;&nbsp;#<b>" << tx.nonce() << "</b>" << "</div>";
+			s << "<div>Gas price: <b>" << formatBalance(tx.gasPrice()) << "</b>" << "</div>";
+			s << "<div>Gas: <b>" << tx.gas() << "</b>" << "</div>";
+			s << "<div>V: <b>" << hex << nouppercase << (int)tx.signature().v << " + 27</b>" << "</div>";
+			s << "<div>R: <b>" << hex << nouppercase << tx.signature().r << "</b>" << "</div>";
+			s << "<div>S: <b>" << hex << nouppercase << tx.signature().s << "</b>" << "</div>";
+			s << "<div>Msg: <b>" << tx.sha3(eth::WithoutSignature) << "</b>" << "</div>";
 			if (!tx.data().empty())
 			{
 				if (tx.isCreation())
@@ -1522,7 +1522,7 @@ void Main::on_blocks_currentItemChanged()
 			if (!!receipt.bloom())
 				s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
 			else
-				s << "<div>Log Bloom: <i>Uneventful</i></div>";
+				s << "<div>Log Bloom: <b><i>Uneventful</i></b></div>";
 			auto r = receipt.rlp();
 			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 			s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";

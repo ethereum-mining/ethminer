@@ -27,6 +27,7 @@
 #include <memory>
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Common.h>
+#include <libdevcore/Assertions.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
