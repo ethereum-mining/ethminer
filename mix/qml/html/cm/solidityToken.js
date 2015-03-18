@@ -25,5 +25,5 @@ function solTypes()
 
 function solMisc()
 {
-	return { "true": true, "false": true, "null": true, "funtion": true, "contract": true };
+	return { "true": true, "false": true, "null": true };
 }
