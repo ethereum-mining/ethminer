@@ -1,8 +1,9 @@
 #include "ExecutionEngine.h"
 
 #include <array>
-#include <cstdlib>	// env options
+#include <mutex>
 #include <iostream>
+#include <unordered_map>
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
@@ -12,10 +13,13 @@
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/Host.h>
+#include <llvm/Support/CommandLine.h>
+#include <llvm/Support/ManagedStatic.h>
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Runtime.h"
 #include "Compiler.h"
+#include "Optimizer.h"
 #include "Cache.h"
 #include "ExecStats.h"
 #include "Utils.h"
@@ -48,42 +52,58 @@ std::string codeHash(i256 const& _hash)
 	return str;
 }
 
-bool getEnvOption(char const* _name, bool _default)
+void printVersion()
 {
-	auto var = std::getenv(_name);
-	if (!var)
-		return _default;
-	return std::strtol(var, nullptr, 10) != 0;
+	std::cout << "Ethereum EVM JIT Compiler (http://github.com/ethereum/evmjit):\n"
+			  << "  EVMJIT version " << EVMJIT_VERSION << "\n"
+#ifdef NDEBUG
+			  << "  Optimized build, " EVMJIT_VERSION_FULL "\n"
+#else
+			  << "  DEBUG build, " EVMJIT_VERSION_FULL "\n"
+#endif
+			  << "  Built " << __DATE__ << " (" << __TIME__ << ")\n"
+			  << std::endl;
 }
 
-bool showInfo()
+namespace cl = llvm::cl;
+cl::opt<bool> g_optimize{"O", cl::desc{"Optimize"}};
+cl::opt<CacheMode> g_cache{"cache", cl::desc{"Cache compiled EVM code on disk"},
+	cl::values(
+		clEnumValN(CacheMode::on,    "1", "Enabled"),
+		clEnumValN(CacheMode::off,   "0", "Disabled"),
+		clEnumValN(CacheMode::read,  "r", "Read only. No new objects are added to cache."),
+		clEnumValN(CacheMode::write, "w", "Write only. No objects are loaded from cache."),
+		clEnumValN(CacheMode::clear, "c", "Clear the cache storage. Cache is disabled."),
+		clEnumValEnd)};
+cl::opt<bool> g_stats{"st", cl::desc{"Statistics"}};
+cl::opt<bool> g_dump{"dump", cl::desc{"Dump LLVM IR module"}};
+
+void parseOptions()
 {
-	auto show = getEnvOption("EVMJIT_INFO", false);
-	if (show)
-	{
-		std::cout << "The Ethereum EVM JIT " EVMJIT_VERSION_FULL " LLVM " LLVM_VERSION << std::endl;
-	}
-	return show;
+	static llvm::llvm_shutdown_obj shutdownObj{};
+	cl::AddExtraVersionPrinter(printVersion);
+	cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
 }
 
 }
+
 
 ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 {
-	static auto debugDumpModule = getEnvOption("EVMJIT_DUMP", false);
-	static auto objectCacheEnabled = getEnvOption("EVMJIT_CACHE", true);
-	static auto statsCollectingEnabled = getEnvOption("EVMJIT_STATS", false);
-	static auto infoShown = showInfo();
-	(void) infoShown;
+	static std::once_flag flag;
+	std::call_once(flag, parseOptions);
 
 	std::unique_ptr<ExecStats> listener{new ExecStats};
 	listener->stateChanged(ExecState::Started);
 
-	auto objectCache = objectCacheEnabled ? Cache::getObjectCache(listener.get()) : nullptr;
+	auto objectCache = (g_cache != CacheMode::off && g_cache != CacheMode::clear) ? Cache::getObjectCache(g_cache, listener.get()) : nullptr;
 
 	static std::unique_ptr<llvm::ExecutionEngine> ee;
 	if (!ee)
 	{
+		if (g_cache == CacheMode::clear)
+			Cache::clear();
+
 		llvm::InitializeNativeTarget();
 		llvm::InitializeNativeTargetAsmPrinter();
 
@@ -91,7 +111,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		llvm::EngineBuilder builder(module.get());
 		builder.setEngineKind(llvm::EngineKind::JIT);
 		builder.setUseMCJIT(true);
-		builder.setOptLevel(llvm::CodeGenOpt::None);
+		builder.setOptLevel(g_optimize ? llvm::CodeGenOpt::Default : llvm::CodeGenOpt::None);
 
 		auto triple = llvm::Triple(llvm::sys::getProcessTriple());
 		if (triple.getOS() == llvm::Triple::OSType::Win32)
@@ -108,9 +128,14 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	static StatsCollector statsCollector;
 
 	auto mainFuncName = codeHash(_data->codeHash);
-	Runtime runtime(_data, _env);	// TODO: I don't know why but it must be created before getFunctionAddress() calls
+	m_runtime.init(_data, _env);
 
-	auto entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
+	EntryFuncPtr entryFuncPtr = nullptr;
+	static std::unordered_map<std::string, EntryFuncPtr> funcCache;
+	auto it = funcCache.find(mainFuncName);
+	if (it != funcCache.end())
+		entryFuncPtr = it->second;
+
 	if (!entryFuncPtr)
 	{
 		auto module = objectCache ? Cache::getObject(mainFuncName) : nullptr;
@@ -118,9 +143,15 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		{
 			listener->stateChanged(ExecState::Compilation);
 			assert(_data->code || !_data->codeSize); //TODO: Is it good idea to execute empty code?
-			module = Compiler({}).compile(_data->code, _data->code + _data->codeSize, mainFuncName);
+			module = Compiler{{}}.compile(_data->code, _data->code + _data->codeSize, mainFuncName);
+
+			if (g_optimize)
+			{
+				listener->stateChanged(ExecState::Optimization);
+				optimize(*module);
+			}
 		}
-		if (debugDumpModule)
+		if (g_dump)
 			module->dump();
 
 		ee->addModule(module.get());
@@ -131,18 +162,18 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	if (!CHECK(entryFuncPtr))
 		return ReturnCode::LLVMLinkError;
 
+	funcCache[mainFuncName] = entryFuncPtr;
+
 	listener->stateChanged(ExecState::Execution);
-	auto returnCode = entryFuncPtr(&runtime);
+	auto returnCode = entryFuncPtr(&m_runtime);
 	listener->stateChanged(ExecState::Return);
 
 	if (returnCode == ReturnCode::Return)
-	{
-		returnData = runtime.getReturnData();     // Save reference to return data
-		std::swap(m_memory, runtime.getMemory()); // Take ownership of memory
-	}
+		returnData = m_runtime.getReturnData();     // Save reference to return data
+
 	listener->stateChanged(ExecState::Finished);
 
-	if (statsCollectingEnabled)
+	if (g_stats)
 		statsCollector.stats.push_back(std::move(listener));
 
 	return returnCode;
