@@ -19,11 +19,13 @@
  * @date 2015
  */
 
+#include "RLPxFrameIO.h"
+#include <libdevcore/Assertions.h>
 #include "Host.h"
 #include "Session.h"
 #include "Peer.h"
 #include "RLPxHandshake.h"
-#include "RLPxFrameIO.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
