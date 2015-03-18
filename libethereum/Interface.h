@@ -60,11 +60,11 @@ public:
 	// [TRANSACTION API]
 
 	/// Submits the given message-call transaction.
-	virtual void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
+	virtual void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
 
 	/// Submits a new contract-creation transaction.
 	/// @returns the new contract's address (assuming it all goes through).
-	virtual Address transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
+	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
 
 	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
 	virtual void inject(bytesConstRef _rlp) = 0;

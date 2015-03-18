@@ -247,7 +247,7 @@ State MixClient::asOf(int _block) const
 		return State(m_stateDB, bc(), bc().numberHash(_block));
 }
 
-void MixClient::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+void MixClient::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	WriteGuard l(x_state);
 	u256 n = m_state.transactionsFrom(toAddress(_secret));
@@ -255,7 +255,7 @@ void MixClient::transact(Secret _secret, u256 _value, Address _dest, bytes const
 	executeTransaction(t, m_state, false);
 }
 
-Address MixClient::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
+Address MixClient::submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
 	WriteGuard l(x_state);
 	u256 n = m_state.transactionsFrom(toAddress(_secret));
