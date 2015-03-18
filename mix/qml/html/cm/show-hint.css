@@ -37,3 +37,27 @@
   background: #4a90e2;
   color: white;
 }
+
+.solcurrency {
+  color: red;
+}
+
+.solkeywords {
+  color: brown;
+}
+
+.solstdcontract {
+  color: blue;
+}
+
+.soltime {
+  color: green;
+}
+
+.soltypes {
+  color: orange;
+}
+
+.solMisc {
+  color: grey;
+}

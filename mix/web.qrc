@@ -25,5 +25,6 @@
         <file>qml/html/cm/show-hint.js</file>
         <file>qml/html/cm/show-hint.css</file>
         <file>qml/html/cm/closebrackets.js</file>
+        <file>qml/html/cm/solidityToken.js</file>
     </qresource>
 </RCC>
