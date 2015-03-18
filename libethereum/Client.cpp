@@ -491,9 +491,9 @@ void Client::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes
 	m_tq.attemptImport(t.rlp());
 }
 
-bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
+ExecutionResult Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
 {
-	bytes out;
+	ExecutionResult ret;
 	try
 	{
 		u256 n;
@@ -505,18 +505,41 @@ bytes Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _dat
 			n = temp.transactionsFrom(toAddress(_secret));
 		}
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
-		u256 gasUsed = temp.execute(m_bc, t.rlp(), &out, false);
-		(void)gasUsed; // TODO: do something with gasused which it returns.
+		ret = temp.execute(m_bc, t.rlp(), Permanence::Reverted);
 	}
 	catch (...)
 	{
 		// TODO: Some sort of notification of failure.
 	}
-	return out;
+	return ret;
 }
 
-bytes Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u256 _gasPrice)
+ExecutionResult Client::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
 {
+	ExecutionResult ret;
+	try
+	{
+		u256 n;
+		State temp;
+	//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
+		{
+			ReadGuard l(x_stateDB);
+			temp = asOf(_blockNumber);
+			n = temp.transactionsFrom(toAddress(_secret));
+		}
+		Transaction t(_value, _gasPrice, _gas, _data, n, _secret);
+		ret = temp.execute(m_bc, t.rlp(), Permanence::Reverted);
+	}
+	catch (...)
+	{
+		// TODO: Some sort of notification of failure.
+	}
+	return ret;
+}
+
+ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u256 _gasPrice)
+{
+	ExecutionResult ret;
 	try
 	{
 		State temp;
@@ -527,16 +550,14 @@ bytes Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u2
 		}
 		Executive e(temp, LastHashes(), 0);
 		if (!e.call(_dest, _dest, Address(), _value, _gasPrice, &_data, _gas, Address()))
-		{
 			e.go();
-			return e.out().toBytes();
-		}
+		ret = e.executionResult();
 	}
 	catch (...)
 	{
 		// TODO: Some sort of notification of failure.
 	}
-	return bytes();
+	return ret;
 }
 
 Address Client::submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)

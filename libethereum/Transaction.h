@@ -44,6 +44,46 @@ enum class CheckSignature
 	Sender
 };
 
+enum class TransactionException
+{
+	None = 0,
+	Unknown,
+	InvalidSignature,
+	InvalidNonce,
+	NotEnoughCash,
+	OutOfGasBase,			///< Too little gas to pay for the base transaction cost.
+	BlockGasLimitReached,
+	BadInstruction,
+	BadJumpDestination,
+	OutOfGas,				///< Ran out of gas executing code of the transaction.
+	StackUnderflow
+};
+
+enum class CodeDeposit
+{
+	None = 0,
+	Failed,
+	Success
+};
+
+class VMException;
+
+TransactionException toTransactionException(VMException const& _e);
+
+/// Description of the result of executing a transaction.
+struct ExecutionResult
+{
+	ExecutionResult() = default;
+	ExecutionResult(u256 _gasUsed, TransactionException _excepted, Address _newAddress, bytesConstRef _output, CodeDeposit _codeDeposit): gasUsed(_gasUsed), excepted(_excepted), newAddress(_newAddress), output(_output.toBytes()), codeDeposit(_codeDeposit) {}
+	u256 gasUsed;
+	TransactionException excepted = TransactionException::Unknown;
+	Address newAddress;
+	bytes output;
+	CodeDeposit codeDeposit = CodeDeposit::None;
+};
+
+std::ostream& operator<<(std::ostream& _out, ExecutionResult const& _er);
+
 /// Encodes a transaction, ready to be exported to or freshly imported from RLP.
 class Transaction
 {

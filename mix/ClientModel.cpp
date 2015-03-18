@@ -534,7 +534,7 @@ void ClientModel::onNewTransaction()
 			{
 				function = funcDef->name();
 				ContractCallDataEncoder encoder;
-				QStringList returnValues = encoder.decode(funcDef->returnParameters(), tr.returnValue);
+				QStringList returnValues = encoder.decode(funcDef->returnParameters(), tr.result.output);
 				returned += "(";
 				returned += returnValues.join(", ");
 				returned += ")";
