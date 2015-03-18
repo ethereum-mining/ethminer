@@ -221,9 +221,11 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 				{
 					//std contract
 					dev::bytes const& stdContractCode = m_context->codeModel()->getStdContractCode(transaction.contractId, transaction.stdContractUrl);
-					Address address = deployContract(stdContractCode, transaction);
-					m_stdContractAddresses[transaction.contractId] = address;
-					m_stdContractNames[address] = transaction.contractId;
+					TransactionSettings stdTransaction = transaction;
+					stdTransaction.gas = 500000;// TODO: get this from std contracts library
+					Address address = deployContract(stdContractCode, stdTransaction);
+					m_stdContractAddresses[stdTransaction.contractId] = address;
+					m_stdContractNames[address] = stdTransaction.contractId;
 				}
 				else
 				{
@@ -296,7 +298,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 
 void ClientModel::showDebugger()
 {
-	ExecutionResult const& last = m_client->lastExecution();
+	ExecutionResult last = m_client->lastExecution();
 	showDebuggerForTransaction(last);
 }
 
@@ -433,7 +435,7 @@ void ClientModel::emptyRecord()
 
 void ClientModel::debugRecord(unsigned _index)
 {
-	ExecutionResult const& e = m_client->executions().at(_index);
+	ExecutionResult e = m_client->execution(_index);
 	showDebuggerForTransaction(e);
 }
 
@@ -479,7 +481,7 @@ void ClientModel::onNewTransaction()
 {
 	ExecutionResult const& tr = m_client->lastExecution();
 	unsigned block = m_client->number() + 1;
-	unsigned recordIndex = m_client->executions().size() - 1;
+	unsigned recordIndex = tr.executonIndex;
 	QString transactionIndex = tr.isCall() ? QObject::tr("Call") : QString("%1:%2").arg(block).arg(tr.transactionIndex);
 	QString address = QString::fromStdString(toJS(tr.address));
 	QString value =  QString::fromStdString(dev::toString(tr.value));
@@ -503,6 +505,7 @@ void ClientModel::onNewTransaction()
 		}
 		else
 			function = QObject::tr("Constructor");
+		address = QObject::tr("(Create contract)");
 	}
 	else
 	{

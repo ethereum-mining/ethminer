@@ -163,6 +163,8 @@ signals:
 	void codeChanged();
 	/// Emitted if there are any changes in the contract interface
 	void contractInterfaceChanged(QString _documentId);
+	/// Emitted if there is a new contract compiled for the first time
+	void newContractCompiled(QString _documentId);
 
 public slots:
 	/// Update code model on source code change
