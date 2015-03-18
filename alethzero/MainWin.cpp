@@ -1431,7 +1431,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<div>D/TD: <b>" << info.difficulty << "</b>/<b>" << details.totalDifficulty << "</b> = 2^" << log2((double)info.difficulty) << "/2^" << log2((double)details.totalDifficulty) << "</div>";
 			s << "&nbsp;&emsp;&nbsp;Children: <b>" << details.children.size() << "</b></div>";
 			s << "<div>Gas used/limit: <b>" << info.gasUsed << "</b>/<b>" << info.gasLimit << "</b>" << "</div>";
-			s << "<div>Benefactor: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << " " << info.coinbaseAddress << "</b>" << "</div>";
+			s << "<div>Beneficiary: <b>" << pretty(info.coinbaseAddress).toHtmlEscaped().toStdString() << " " << info.coinbaseAddress << "</b>" << "</div>";
 			s << "<div>Seed hash: <b>" << info.seedHash() << "</b>" << "</div>";
 			s << "<div>Mix hash: <b>" << info.mixHash << "</b>" << "</div>";
 			s << "<div>Nonce: <b>" << info.nonce << "</b>" << "</div>";
