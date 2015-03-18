@@ -12,6 +12,15 @@ namespace jit
 {
 class ExecutionEngineListener;
 
+enum class CacheMode
+{
+	on,
+	off,
+	read,
+	write,
+	clear
+};
+
 class ObjectCache : public llvm::ObjectCache
 {
 public:
@@ -29,8 +38,11 @@ public:
 class Cache
 {
 public:
-	static ObjectCache* getObjectCache(ExecutionEngineListener* _listener);
+	static ObjectCache* getObjectCache(CacheMode _mode, ExecutionEngineListener* _listener);
 	static std::unique_ptr<llvm::Module> getObject(std::string const& id);
+
+	/// Clears cache storage
+	static void clear();
 };
 
 }
