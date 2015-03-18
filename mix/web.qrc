@@ -21,5 +21,11 @@
         <file>qml/html/cm/dialog.js</file>
         <file>qml/html/cm/search.js</file>
         <file>qml/html/cm/searchcursor.js</file>
+        <file>qml/html/cm/anyword-hint.js</file>
+        <file>qml/html/cm/show-hint.js</file>
+        <file>qml/html/cm/show-hint.css</file>
+        <file>qml/html/cm/closebrackets.js</file>
+        <file>qml/html/cm/solidityToken.js</file>
+        <file>qml/html/cm/javascript-hint.js</file>
     </qresource>
 </RCC>
