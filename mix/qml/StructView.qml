@@ -7,7 +7,7 @@ Column
 {
 	id: root
 	property alias members: repeater.model  //js array
-	property var value : { }
+	property var value: ({})
 	Layout.fillWidth: true
 
 	Repeater
@@ -24,13 +24,13 @@ Column
 				height: 20
 				id: typeLabel
 				text: modelData.type.name
-				Layout.preferredWidth: 50
+				Layout.preferredWidth: 60
 			}
 
 			DefaultLabel {
 				id: nameLabel
 				text: modelData.name
-				Layout.preferredWidth: 80
+				Layout.preferredWidth: 100
 			}
 
 			DefaultLabel {

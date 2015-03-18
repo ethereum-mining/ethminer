@@ -6,12 +6,14 @@ import QtQuick.Window 2.2
 import QtQuick.Layouts 1.1
 import org.ethereum.qml.QEther 1.0
 import "js/QEtherHelper.js" as QEtherHelper
+import "js/TransactionHelper.js" as TransactionHelper
 
 Item {
 
 	property alias model: stateListModel
 	property var stateList: []
 	property string defaultAccount: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074" //support for old project
+
 	function fromPlainStateItem(s) {
 		if (!s.accounts)
 			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether, defaultAccount)]; //support for old project
@@ -105,7 +107,7 @@ Item {
 			codeModel.reset();
 		}
 		onProjectLoading: stateListModel.loadStatesFromProject(projectData);
-		onProjectSaving: {
+		onProjectFileSaving: {
 			projectData.states = []
 			for(var i = 0; i < stateListModel.count; i++) {
 				projectData.states.push(toPlainStateItem(stateList[i]));
@@ -118,6 +120,13 @@ Item {
 			projectData.states = [ state ];
 			projectData.defaultStateIndex = 0;
 			stateListModel.loadStatesFromProject(projectData);
+		}
+	}
+
+	Connections {
+		target: codeModel
+		onNewContractCompiled: {
+			stateListModel.addNewContracts();
 		}
 	}
 
@@ -154,12 +163,7 @@ Item {
 		signal stateRun(int index)
 
 		function defaultTransactionItem() {
-			return {
-				value: QEtherHelper.createEther("100", QEther.Wei),
-				gas: QEtherHelper.createBigInt("125000"),
-				gasPrice: QEtherHelper.createEther("10000000000000", QEther.Wei),
-				stdContract: false
-			};
+			return TransactionHelper.defaultTransaction();
 		}
 
 		function newAccount(_balance, _unit, _secret)
@@ -200,6 +204,32 @@ Item {
 				item.transactions.push(ctorTr);
 			}
 			return item;
+		}
+
+		function addNewContracts() {
+			//add new contracts for all states
+			for(var c in codeModel.contracts) {
+				for (var s = 0; s < stateListModel.count; s++) {
+					var state = stateList[s];//toPlainStateItem(stateListModel.get(s));
+					for (var t = 0; t < state.transactions.length; t++) {
+						var transaction = state.transactions[t];
+						if (transaction.functionId === c && transaction.contractId === c)
+							break;
+					}
+					if (t === state.transactions.length) {
+						//append this contract
+						var ctorTr = defaultTransactionItem();
+						ctorTr.functionId = c;
+						ctorTr.contractId = c;
+						ctorTr.sender = state.accounts[0].secret;
+						state.transactions.push(ctorTr);
+						var item = state;//fromPlainStateItem(state);
+						stateListModel.set(s, item);
+						stateList[s] = item;
+					}
+				}
+			}
+			save();
 		}
 
 		function addState() {

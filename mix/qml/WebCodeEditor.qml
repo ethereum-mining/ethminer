@@ -40,7 +40,8 @@ Item {
 	}
 
 	function highlightExecution(location) {
-		editorBrowser.runJavaScript("highlightExecution(" + location.start + "," + location.end + ")");
+		if (initialized)
+			editorBrowser.runJavaScript("highlightExecution(" + location.start + "," + location.end + ")");
 	}
 
 	function getBreakpoints() {
@@ -48,11 +49,13 @@ Item {
 	}
 
 	function toggleBreakpoint() {
-		editorBrowser.runJavaScript("toggleBreakpoint()");
+		if (initialized)
+			editorBrowser.runJavaScript("toggleBreakpoint()");
 	}
 
 	function changeGeneration() {
-		editorBrowser.runJavaScript("changeGeneration()", function(result) {});
+		if (initialized)
+			editorBrowser.runJavaScript("changeGeneration()", function(result) {});
 	}
 
 	Connections {
