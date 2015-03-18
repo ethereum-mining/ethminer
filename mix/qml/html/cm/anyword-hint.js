@@ -27,6 +27,7 @@
 		}
 	  }
 	}
+
 	if (editor.getMode().name === "solidity")
 	{
 		list = addSolToken(curWord, list, solCurrency(), solCurrency);

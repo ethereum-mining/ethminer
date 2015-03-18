@@ -1,8 +1,3 @@
-
-CodeMirror.commands.autocomplete = function(cm) {
-		CodeMirror.showHint(cm, CodeMirror.hint.anyword);
-}
-
 var editor = CodeMirror(document.body, {
 							lineNumbers: true,
 							//styleActiveLine: true,
@@ -12,7 +7,6 @@ var editor = CodeMirror(document.body, {
 							extraKeys: { "Ctrl-Space": "autocomplete" },
 							autoCloseBrackets: true
 						});
-
 
 editor.setOption("theme", "solarized dark");
 editor.setOption("indentUnit", 4);
@@ -103,6 +97,19 @@ setText = function(text) {
 
 setMode = function(mode) {
 	this.editor.setOption("mode", mode);
+
+	if (mode === "javascript")
+	{
+		CodeMirror.commands.autocomplete = function(cm) {
+				CodeMirror.showHint(cm, CodeMirror.hint.anyword); // TODO change to a proper JavaScript language completion
+		}
+	}
+	else if (mode === "solidity")
+	{
+		CodeMirror.commands.autocomplete = function(cm) {
+				CodeMirror.showHint(cm, CodeMirror.hint.anyword);
+		}
+	}
 };
 
 setClipboardBase64 = function(text) {
