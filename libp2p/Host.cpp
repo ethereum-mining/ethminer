@@ -177,14 +177,14 @@ unsigned Host::protocolVersion() const
 
 void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint)
 {
-	/// Get or create Peer
 	shared_ptr<Peer> p;
-	p = m_peers[_id];
-	if (!p)
+	if (!m_peers.count(_id))
 	{
-		p.reset(new Peer()); // this maybe redundant
+		p.reset(new Peer());
 		p->id = _id;
 	}
+	else
+		p = m_peers[_id];
 	p->m_lastDisconnect = NoDisconnect;
 	if (p->isOffline())
 		p->m_lastConnected = std::chrono::system_clock::now();
@@ -277,9 +277,9 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 				connect(p);
 		}
 	}
-	else if (_e == NodeEntryRemoved)
+	else if (_e == NodeEntryDropped)
 	{
-		clog(NetNote) << "p2p.host.nodeTable.events.nodeEntryRemoved " << _n;
+		clog(NetNote) << "p2p.host.nodeTable.events.NodeEntryDropped " << _n;
 
 		RecursiveGuard l(x_sessions);
 		m_peers.erase(_n);
