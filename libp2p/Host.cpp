@@ -176,11 +176,14 @@ unsigned Host::protocolVersion() const
 
 void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint)
 {
-	shared_ptr<Peer> p(new Peer());
-	if (m_peers.count(_id))
-		p = m_peers[_id];
-	else
+	shared_ptr<Peer> p;
+	if (!m_peers.count(_id))
+	{
+		p.reset(new Peer());
 		p->id = _id;
+	}
+	else
+		p = m_peers[_id];
 	p->m_lastDisconnect = NoDisconnect;
 	if (p->isOffline())
 		p->m_lastConnected = std::chrono::system_clock::now();
