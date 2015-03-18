@@ -125,7 +125,7 @@ Item {
 
 			TableViewColumn {
 				role: "transactionIndex"
-				title: qsTr("Index")
+				title: qsTr("#")
 				width: 40
 			}
 			TableViewColumn {
@@ -145,8 +145,8 @@ Item {
 			}
 			TableViewColumn {
 				role: "address"
-				title: qsTr("Address")
-				width: 120
+				title: qsTr("Destination")
+				width: 130
 			}
 			TableViewColumn {
 				role: "returned"

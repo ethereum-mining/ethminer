@@ -262,6 +262,8 @@ void CodeModel::runCompilationJob(int _jobId)
 				CompiledContract* prevContract = m_contractMap.value(name);
 				if (prevContract != nullptr && prevContract->contractInterface() != result[name]->contractInterface())
 					emit contractInterfaceChanged(name);
+				if (prevContract == nullptr)
+					emit newContractCompiled(name);
 			}
 			releaseContracts();
 			m_contractMap.swap(result);
