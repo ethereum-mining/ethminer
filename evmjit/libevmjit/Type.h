@@ -40,6 +40,9 @@ struct Type
 	static llvm::PointerType* RuntimeDataPtr;
 	static llvm::PointerType* RuntimePtr;
 
+	// TODO: Redesign static LLVM objects
+	static llvm::MDNode* expectTrue;
+
 	static void init(llvm::LLVMContext& _context);
 };
 
