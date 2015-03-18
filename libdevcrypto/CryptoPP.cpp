@@ -20,6 +20,7 @@
  */
 
 #include <libdevcore/Guards.h>
+#include <libdevcore/Assertions.h>
 #include "ECDHE.h"
 #include "CryptoPP.h"
 

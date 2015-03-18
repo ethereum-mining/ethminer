@@ -62,23 +62,40 @@ extern "C"
 			*o_address = {};
 	}
 
-	EXPORT bool env_call(ExtVMFace* _env, int64_t* io_gas, h256* _receiveAddress, i256* _value, byte* _inBeg, uint64_t _inSize, byte* _outBeg, uint64_t _outSize, h256* _codeAddress)
+	EXPORT bool env_call(ExtVMFace* _env, int64_t* io_gas, int64_t _callGas, h256* _receiveAddress, i256* _value, byte* _inBeg, uint64_t _inSize, byte* _outBeg, uint64_t _outSize, h256* _codeAddress)
 	{
 		auto value = llvm2eth(*_value);
+		auto receiveAddress = right160(*_receiveAddress);
+		auto codeAddress = right160(*_codeAddress);
+		const auto isCall = receiveAddress == codeAddress; // OPT: The same address pointer can be used if not CODECALL
+
+		*io_gas -= _callGas;
+		if (*io_gas < 0)
+			return false;
+
+		if (isCall && !_env->exists(receiveAddress))
+			*io_gas -= static_cast<int64_t>(c_callNewAccountGas); // no underflow, *io_gas non-negative before
+
+		if (value > 0) // value transfer
+		{
+			/*static*/ assert(c_callValueTransferGas > c_callStipend && "Overflow possible");
+			*io_gas -= static_cast<int64_t>(c_callValueTransferGas); // no underflow
+			_callGas += static_cast<int64_t>(c_callStipend); // overflow possibility, but in the same time *io_gas < 0
+		}
+
+		if (*io_gas < 0)
+			return false;
+
+		auto ret = false;
+		auto callGas = u256{_callGas};
 		if (_env->balance(_env->myAddress) >= value && _env->depth < 1024)
 		{
 			_env->subBalance(value);
-			auto receiveAddress = right160(*_receiveAddress);
-			auto inRef = bytesConstRef{_inBeg, _inSize};
-			auto outRef = bytesRef{_outBeg, _outSize};
-			auto codeAddress = right160(*_codeAddress);
-			u256 gas = *io_gas;
-			auto ret = _env->call(receiveAddress, value, inRef, gas, outRef, {}, {}, codeAddress);
-			*io_gas = static_cast<int64_t>(gas);
-			return ret;
+			ret = _env->call(receiveAddress, value, {_inBeg, _inSize}, callGas, {_outBeg, _outSize}, {}, {}, codeAddress);
 		}
 
-		return false;
+		*io_gas += static_cast<int64_t>(callGas); // it is never more than initial _callGas
+		return ret;
 	}
 
 	EXPORT void env_sha3(byte* _begin, uint64_t _size, h256* o_hash)
