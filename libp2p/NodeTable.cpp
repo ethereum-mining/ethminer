@@ -309,7 +309,7 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 			Guard l(x_state);
 			NodeBucket& s = bucket_UNSAFE(node.get());
 			bool removed = false;
-			s.nodes.remove_if([&node, &removed](weak_ptr<NodeEntry> n)
+			s.nodes.remove_if([&node, &removed](weak_ptr<NodeEntry> const& n)
 			{
 				if (n.lock() == node)
 					removed = true;
