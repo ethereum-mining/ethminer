@@ -158,14 +158,9 @@ Rectangle {
 				property alias rightViewWidth: rightView.width
 			}
 
-			SplitView
+			Splitter
 			{
 				anchors.fill: parent
-				handleDelegate: Rectangle {
-					width: 1
-					height: 1
-					color: "#8c8c8c"
-				}
 				orientation: Qt.Horizontal
 
 				ProjectList	{
@@ -183,12 +178,7 @@ Rectangle {
 					Layout.fillHeight: true
 					Layout.fillWidth: true
 
-					SplitView {
-						handleDelegate: Rectangle {
-							width: 1
-							height: 1
-							color: "#8c8c8c"
-						}
+					Splitter {
 						id: codeWebSplitter
 						anchors.fill: parent
 						orientation: Qt.Vertical
