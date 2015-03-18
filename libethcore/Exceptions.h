@@ -67,6 +67,7 @@ struct InvalidReceiptsStateRoot: virtual dev::Exception {};
 struct InvalidTimestamp: virtual dev::Exception {};
 struct InvalidLogBloom: virtual dev::Exception {};
 class InvalidNonce: virtual public dev::Exception {};
+class InvalidBlockHeaderItemCount: virtual public dev::Exception {};
 class InvalidBlockNonce: virtual public dev::Exception {};
 struct InvalidParentHash: virtual dev::Exception {};
 struct InvalidNumber: virtual dev::Exception {};
