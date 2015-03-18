@@ -19,22 +19,26 @@
  * @date 2014
  */
 
-#include <QDebug>
+#include "MixApplication.h"
 #include <QQmlApplicationEngine>
-
+#include <QUrl>
+#include <QIcon>
 #ifdef ETH_HAVE_WEBENGINE
 #include <QtWebEngine/QtWebEngine>
 #endif
-
-#include "MixApplication.h"
-#include "AppContext.h"
-
-#include <QMenuBar>
+#include "CodeModel.h"
+#include "ClientModel.h"
+#include "FileIo.h"
+#include "QEther.h"
+#include "QVariableDeclaration.h"
+#include "SortFilterProxyModel.h"
+#include "Clipboard.h"
+#include "HttpServer.h"
 
 using namespace dev::mix;
 
 MixApplication::MixApplication(int& _argc, char* _argv[]):
-	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine()), m_appContext(new AppContext(m_engine.get()))
+	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine())
 {
 	setOrganizationName(tr("Ethereum"));
 	setOrganizationDomain(tr("ethereum.org"));
@@ -43,8 +47,26 @@ MixApplication::MixApplication(int& _argc, char* _argv[]):
 #ifdef ETH_HAVE_WEBENGINE
 	QtWebEngine::initialize();
 #endif
-	QObject::connect(this, SIGNAL(lastWindowClosed()), context(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
-	m_appContext->load();
+
+	QFont f;
+	m_engine->rootContext()->setContextProperty("systemPointSize", f.pointSize());
+	qmlRegisterType<CodeModel>("org.ethereum.qml.CodeModel", 1, 0, "CodeModel");
+	qmlRegisterType<ClientModel>("org.ethereum.qml.ClientModel", 1, 0, "ClientModel");
+	qmlRegisterType<FileIo>("org.ethereum.qml.FileIo", 1, 0, "FileIo");
+	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
+	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
+	qmlRegisterType<QVariableDeclaration>("org.ethereum.qml.QVariableDeclaration", 1, 0, "QVariableDeclaration");
+	qmlRegisterType<RecordLogEntry>("org.ethereum.qml.RecordLogEntry", 1, 0, "RecordLogEntry");
+	qmlRegisterType<SortFilterProxyModel>("org.ethereum.qml.SortFilterProxyModel", 1, 0, "SortFilterProxyModel");
+	qmlRegisterType<QSolidityType>("org.ethereum.qml.QSolidityType", 1, 0, "QSolidityType");
+	qmlRegisterType<Clipboard>("org.ethereum.qml.Clipboard", 1, 0, "Clipboard");
+	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
+	qRegisterMetaType<CodeModel*>("CodeModel*");
+	qRegisterMetaType<ClientModel*>("ClientModel*");
+
+	m_engine->load(QUrl("qrc:/qml/main.qml"));
+	QWindow *window = qobject_cast<QWindow*>(m_engine->rootObjects().at(0));
+	window->setIcon(QIcon(":/res/mix_256x256x32.png"));
 }
 
 MixApplication::~MixApplication()
