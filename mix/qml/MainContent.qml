@@ -2,7 +2,6 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
-import CodeEditorExtensionManager 1.0
 import Qt.labs.settings 1.0
 import org.ethereum.qml.QEther 1.0
 import "js/QEtherHelper.js" as QEtherHelper
@@ -99,9 +98,6 @@ Rectangle {
 	{
 		rightView.visible = true;
 		rightView.displayCompilationErrorIfAny();
-	}
-
-	CodeEditorExtensionManager {
 	}
 
 	Settings {

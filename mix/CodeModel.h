@@ -125,7 +125,7 @@ class CodeModel: public QObject
 	Q_OBJECT
 
 public:
-	CodeModel(QObject* _parent);
+	CodeModel();
 	~CodeModel();
 
 	Q_PROPERTY(QVariantMap contracts READ contracts NOTIFY codeChanged)
