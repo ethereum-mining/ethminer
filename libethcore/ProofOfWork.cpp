@@ -23,6 +23,7 @@
 #include <boost/filesystem.hpp>
 #include <chrono>
 #include <array>
+#include <thread>
 #include <random>
 #include <thread>
 #include <libdevcore/Guards.h>
@@ -80,11 +81,12 @@ std::pair<MineInfo, EthashCPU::Proof> EthashCPU::mine(BlockInfo const& _header, 
 	Ethasher::Miner m(_header);
 
 	std::pair<MineInfo, Proof> ret;
-	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data())));
+	auto tid = std::this_thread::get_id();
+	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data()) + std::hash<decltype(tid)>()(tid)));
 	uint64_t tryNonce = (uint64_t)(u64)(m_last = Nonce::random(s_eng));
 
-	bigint boundary = (bigint(1) << 256) / _header.difficulty;
-	ret.first.requirement = log2((double)boundary);
+	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
+	ret.first.requirement = log2((double)(u256)boundary);
 
 	// 2^ 0      32      64      128      256
 	//   [--------*-------------------------]
@@ -98,13 +100,17 @@ std::pair<MineInfo, EthashCPU::Proof> EthashCPU::mine(BlockInfo const& _header, 
 	unsigned hashCount = 0;
 	for (; (std::chrono::steady_clock::now() - startTime) < std::chrono::milliseconds(_msTimeout) && _continue; tryNonce++, hashCount++)
 	{
-		u256 val(m.mine(tryNonce));
-		best = std::min<double>(best, log2((double)val));
+		h256 val(m.mine(tryNonce));
+		best = std::min<double>(best, log2((double)(u256)val));
 		if (val <= boundary)
 		{
 			ret.first.completed = true;
+			assert(Ethasher::eval(_header, (Nonce)(u64)tryNonce).value == val);
 			result.mixHash = m.lastMixHash();
 			result.nonce = u64(tryNonce);
+			BlockInfo test = _header;
+			assignResult(result, test);
+			assert(verify(test));
 			break;
 		}
 	}
