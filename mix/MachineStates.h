@@ -80,6 +80,7 @@ namespace mix
 		dev::Address contractAddress;
 		dev::u256 value;
 		unsigned transactionIndex;
+		unsigned executonIndex = 0;
 
 		bool isCall() const { return transactionIndex == std::numeric_limits<unsigned>::max(); }
 		bool isConstructor() const { return !isCall() && !address; }

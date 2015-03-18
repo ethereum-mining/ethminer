@@ -44,8 +44,8 @@ public:
 	/// Reset state to the empty state with given balance.
 	void resetState(std::map<Secret, u256> _accounts);
 	void mine();
-	ExecutionResult const& lastExecution() const;
-	ExecutionResults const& executions() const;
+	ExecutionResult lastExecution() const;
+	ExecutionResult execution(unsigned _index) const;
 
 	//dev::eth::Interface
 	void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice) override;
@@ -108,6 +108,7 @@ private:
 	OverlayDB m_stateDB;
 	std::auto_ptr<MixBlockChain> m_bc;
 	mutable boost::shared_mutex x_state;
+	mutable boost::shared_mutex x_executions;
 	mutable std::mutex m_filterLock;
 	std::map<h256, dev::eth::InstalledFilter> m_filters;
 	std::map<unsigned, dev::eth::ClientWatch> m_watches;
