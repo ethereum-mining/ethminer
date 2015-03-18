@@ -236,7 +236,7 @@ void BasicBlock::linkLocalStacks(std::vector<BasicBlock*> basicBlocks, llvm::IRB
 		for (auto predIt = llvm::pred_begin(bb); predIt != llvm::pred_end(bb); ++predIt)
 		{
 			auto predInfoEntry = cfg.find(*predIt);
-			if (predInfoEntry != cfg.end())
+			if (predInfoEntry != cfg.end()) // FIXME: It is wrong - will skip entry block
 				info.predecessors.push_back(&predInfoEntry->second);
 		}
 	}
@@ -257,6 +257,9 @@ void BasicBlock::linkLocalStacks(std::vector<BasicBlock*> basicBlocks, llvm::IRB
 		for (auto& pair : cfg)
 		{
 			auto& info = pair.second;
+
+			if (&info.bblock == basicBlocks.front())
+				info.inputItems = 0; // we cannot use phi nodes for first block as it is a successor of entry block
 
 			if (info.predecessors.empty())
 				info.inputItems = 0; // no consequences for other blocks, so leave valuesChanged false
