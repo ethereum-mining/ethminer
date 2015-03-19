@@ -223,7 +223,6 @@ Item {
 							changed = true;
 							state.transactions[t] = transaction;
 						}
-
 					}
 					stateListModel.set(s, state);
 					stateList[s] = state;

@@ -129,6 +129,24 @@ Item {
 									}
 								}
 							}
+
+							onCompilationComplete: {
+								if (modelData === "Contracts") {
+									var ci = 0;
+									for (var si = 0; si < projectModel.listModel.count; si++) {
+										var document = projectModel.listModel.get(si);
+										if (document.isContract) {
+											var compiledDoc = codeModel.contractByDocumentId(document.documentId);
+											if (compiledDoc && compiledDoc.documentId === document.documentId && compiledDoc.contract.name !== document.name) {
+												document.name = compiledDoc.contract.name;
+												projectModel.listModel.set(si, document);
+												sectionModel.set(ci, document);
+											}
+											ci++;
+										}
+									}
+								}
+							}
 						}
 
 						Connections {
