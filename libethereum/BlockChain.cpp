@@ -26,6 +26,7 @@
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
 #include <libdevcore/Common.h>
+#include <libdevcore/Assertions.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libdevcrypto/FileSystem.h>

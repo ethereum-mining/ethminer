@@ -27,6 +27,7 @@
 #include <boost/timer.hpp>
 #include <secp256k1/secp256k1.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/Assertions.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
@@ -1048,18 +1049,18 @@ LastHashes State::getLastHashes(BlockChain const& _bc, unsigned _n) const
 	return ret;
 }
 
-u256 State::execute(BlockChain const& _bc, bytes const& _rlp, bytes* o_output, bool _commit)
+ExecutionResult State::execute(BlockChain const& _bc, bytes const& _rlp, Permanence _p)
 {
-	return execute(getLastHashes(_bc, _bc.number()), &_rlp, o_output, _commit);
+	return execute(getLastHashes(_bc, _bc.number()), &_rlp, _p);
 }
 
-u256 State::execute(BlockChain const& _bc, bytesConstRef _rlp, bytes* o_output, bool _commit)
+ExecutionResult State::execute(BlockChain const& _bc, bytesConstRef _rlp, Permanence _p)
 {
-	return execute(getLastHashes(_bc, _bc.number()), _rlp, o_output, _commit);
+	return execute(getLastHashes(_bc, _bc.number()), _rlp, _p);
 }
 
 // TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
-u256 State::execute(LastHashes const& _lh, bytesConstRef _rlp, bytes* o_output, bool _commit)
+ExecutionResult State::execute(LastHashes const& _lh, bytesConstRef _rlp, Permanence _p)
 {
 #ifndef ETH_RELEASE
 	commit();	// get an updated hash
@@ -1093,41 +1094,38 @@ u256 State::execute(LastHashes const& _lh, bytesConstRef _rlp, bytes* o_output, 
 	ctrace << old.diff(*this);
 #endif
 
-	if (o_output)
-		*o_output = e.out().toBytes();
-
-	if (!_commit)
-	{
+	if (_p == Permanence::Reverted)
 		m_cache.clear();
-		return e.gasUsed();
-	}
-
-	commit();
-
-#if ETH_PARANOIA && !ETH_FATDB
-	ctrace << "Executed; now" << rootHash();
-	ctrace << old.diff(*this);
-
-	paranoia("after execution commit.", true);
-
-	if (e.t().receiveAddress())
+	else
 	{
-		EnforceRefs r(m_db, true);
-		if (storageRoot(e.t().receiveAddress()) && m_db.lookup(storageRoot(e.t().receiveAddress())).empty())
+		commit();
+	
+#if ETH_PARANOIA && !ETH_FATDB
+		ctrace << "Executed; now" << rootHash();
+		ctrace << old.diff(*this);
+	
+		paranoia("after execution commit.", true);
+	
+		if (e.t().receiveAddress())
 		{
-			cwarn << "TRIE immediately after execution; no node for receiveAddress";
-			BOOST_THROW_EXCEPTION(InvalidTrie());
+			EnforceRefs r(m_db, true);
+			if (storageRoot(e.t().receiveAddress()) && m_db.lookup(storageRoot(e.t().receiveAddress())).empty())
+			{
+				cwarn << "TRIE immediately after execution; no node for receiveAddress";
+				BOOST_THROW_EXCEPTION(InvalidTrie());
+			}
 		}
-	}
 #endif
+	
+		// TODO: CHECK TRIE after level DB flush to make sure exactly the same.
+	
+		// Add to the user-originated transactions that we've executed.
+		m_transactions.push_back(e.t());
+		m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()));
+		m_transactionSet.insert(e.t().sha3());
+	}
 
-	// TODO: CHECK TRIE after level DB flush to make sure exactly the same.
-
-	// Add to the user-originated transactions that we've executed.
-	m_transactions.push_back(e.t());
-	m_receipts.push_back(TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs()));
-	m_transactionSet.insert(e.t().sha3());
-	return e.gasUsed();
+	return e.executionResult();
 }
 
 State State::fromPending(unsigned _i) const

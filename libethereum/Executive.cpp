@@ -53,7 +53,16 @@ void Executive::accrueSubState(SubState& _parentContext)
 bool Executive::setup(bytesConstRef _rlp)
 {
 	// Entry point for a user-executed transaction.
-	m_t = Transaction(_rlp, CheckSignature::Sender);
+	try
+	{
+		m_t = Transaction(_rlp, CheckSignature::Sender);
+	}
+	catch (...)
+	{
+		clog(StateDetail) << "Invalid Signature";
+		m_excepted = TransactionException::InvalidSignature;
+		throw;
+	}
 	return setup();
 }
 
@@ -66,6 +75,7 @@ bool Executive::setup()
 	if (m_t.nonce() != nonceReq)
 	{
 		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
+		m_excepted = TransactionException::InvalidNonce;
 		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
 	}
 
@@ -120,7 +130,7 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 		if (_gas < g)
 		{
 			m_endGas = 0;
-			m_excepted = true;
+			m_excepted = TransactionException::OutOfGasBase;
 		}
 		else
 		{
@@ -200,9 +210,15 @@ bool Executive::go(OnOpFunc const& _onOp)
 			if (m_isCreation)
 			{
 				if (m_out.size() * c_createDataGas <= m_endGas)
+				{
+					m_codeDeposit = CodeDeposit::Success;
 					m_endGas -= m_out.size() * c_createDataGas;
+				}
 				else
+				{
+					m_codeDeposit = CodeDeposit::Failed;
 					m_out.reset();
+				}
 				m_s.m_cache[m_newAddress].setCode(m_out.toBytes());
 			}
 		}
@@ -214,7 +230,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			clog(StateSafeExceptions) << "Safe VM Exception. " << diagnostic_information(_e);
 			m_endGas = 0;
-			m_excepted = true;
+			m_excepted = toTransactionException(_e);
 			m_ext->revert();
 		}
 		catch (Exception const& _e)

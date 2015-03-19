@@ -83,7 +83,7 @@ void Ethereum::connect(std::string const& _seedHost, unsigned short _port)
 {
 }
 
-void Ethereum::transact(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+void Ethereum::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 }
 
@@ -92,7 +92,7 @@ bytes Ethereum::call(Secret _secret, u256 _value, Address _dest, bytes const& _d
 	return bytes();
 }
 
-Address Ethereum::transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
+Address Ethereum::submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
 {
 	return Address();
 }
