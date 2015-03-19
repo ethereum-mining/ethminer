@@ -40,7 +40,7 @@ Rectangle {
 		var errorInfo = ErrorLocationFormater.extractErrorInfo(compilationErrorMessage, false);
 		errorLocation.text = errorInfo.errorLocation;
 		errorDetail.text = errorInfo.errorDetail;
-		errorLine.text = errorInfo.errorLine;
+		errorLine.text = errorInfo.line;
 	}
 
 	function update(data, giveFocus)

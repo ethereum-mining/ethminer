@@ -169,3 +169,8 @@ view-port
 	background: rgba(255, 255, 255, 0.10);
 }
 
+/* Error annotation */
+.CodeMirror-errorannotation {
+	background: red;
+}
+
