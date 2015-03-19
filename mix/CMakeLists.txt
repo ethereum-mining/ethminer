@@ -16,7 +16,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 
 find_package (Qt5WebEngine QUIET)
-qt5_add_resources(UI_RESOURCES res.qrc)
+qt5_add_resources(UI_RESOURCES res.qrc qml.qrc)
 
 file(GLOB HEADERS "*.h")
 

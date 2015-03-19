@@ -5,8 +5,8 @@ Item {
 	property alias model: contractListModel;
 
 	Connections {
-		target: appContext
-		Component.onCompleted: {
+		target: mainApplication
+		onLoaded: {
 
 			//TODO: load a list, dependencies, ets, from external files
 			contractListModel.append({

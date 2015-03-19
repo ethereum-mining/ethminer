@@ -118,7 +118,7 @@ Item {
 				var doc = editorListModel.get(i);
 				var editor = editors.itemAt(i).item;
 				if (editor)
-					fileIo.writeFile(doc.path, item.getText());
+					fileIo.writeFile(doc.path, editor.getText());
 			}
 		}
 

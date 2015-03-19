@@ -136,7 +136,7 @@ ColumnLayout {
 						var str = "";
 						for (var i = 0; i < listModel.length; i++)
 							str += listModel[i] + "\n";
-						appContext.toClipboard(str);
+						clipboard.text = str;
 					}
 				}
 
