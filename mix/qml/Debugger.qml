@@ -22,8 +22,8 @@ Rectangle {
 
 	onVisibleChanged:
 	{
-		//if (visible)
-		//	forceActiveFocus();
+		if (visible)
+			forceActiveFocus();
 	}
 
 	onAssemblyModeChanged:
