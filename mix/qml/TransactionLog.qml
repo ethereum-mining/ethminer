@@ -61,7 +61,7 @@ Item {
 				}
 			}
 
-			ComboBox {
+			/*ComboBox {
 				id: statesCombo
 				model: projectModel.stateListModel
 				width: 150
@@ -77,7 +77,24 @@ Item {
 							statesCombo.currentIndex = index;
 					}
 				}
-			}
+			}*/
+			            StatesComboBox
+            {
+                id: statesCombo
+                items:projectModel.stateListModel
+                onSelectItem: console.log("Combobox Select Item: " + item )
+                onEditItem: console.log("Combobox Edit Item: " + item )
+                colorItem: "black"
+                colorSelect: "yellow"
+                color: "gray"
+                Connections {
+                    target: projectModel.stateListModel
+                    onStateRun: {
+                        if (statesCombo.selectedIndex !== index)
+                            statesCombo.selectedIndex = index;
+                    }
+                }
+            }
 			Button
 			{
 				anchors.rightMargin: 9
