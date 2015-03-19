@@ -22,23 +22,23 @@ editor.on("change", function(eMirror, object) {
 
 var mac = /Mac/.test(navigator.platform);
 if (mac === true) {
-editor.setOption("extraKeys", {
-	"Cmd-V": function(cm) {
-		cm.replaceSelection(clipboard);
-	},
-	"Cmd-X": function(cm) {
-		window.document.execCommand("cut");
-	},
-	"Cmd-C": function(cm) {
-		window.document.execCommand("copy");
-	}});
+	editor.setOption("extraKeys", {
+						 "Cmd-V": function(cm) {
+							 cm.replaceSelection(clipboard);
+						 },
+						 "Cmd-X": function(cm) {
+							 window.document.execCommand("cut");
+						 },
+						 "Cmd-C": function(cm) {
+							 window.document.execCommand("copy");
+						 }});
 }
 
 makeMarker = function() {
-  var marker = document.createElement("div");
-  marker.style.color = "#822";
-  marker.innerHTML = "●";
-  return marker;
+	var marker = document.createElement("div");
+	marker.style.color = "#822";
+	marker.innerHTML = "●";
+	return marker;
 };
 
 toggleBreakpointLine = function(n) {
@@ -77,9 +77,9 @@ getBreakpoints = function() {
 		if (line.gutterMarkers && line.gutterMarkers["breakpoints"]) {
 			var l = doc.getLineNumber(line);
 			locations.push({
-				start: editor.indexFromPos({ line: l, ch: 0}),
-				end: editor.indexFromPos({ line: l + 1, ch: 0})
-			});;
+							   start: editor.indexFromPos({ line: l, ch: 0}),
+							   end: editor.indexFromPos({ line: l + 1, ch: 0})
+						   });;
 		}
 	});
 	return locations;
@@ -101,13 +101,13 @@ setMode = function(mode) {
 	if (mode === "javascript")
 	{
 		CodeMirror.commands.autocomplete = function(cm) {
-				CodeMirror.showHint(cm, CodeMirror.hint.anyword); // TODO change to a proper JavaScript language completion
+			CodeMirror.showHint(cm, CodeMirror.hint.anyword); // TODO change to a proper JavaScript language completion
 		}
 	}
 	else if (mode === "solidity")
 	{
 		CodeMirror.commands.autocomplete = function(cm) {
-				CodeMirror.showHint(cm, CodeMirror.hint.anyword);
+			CodeMirror.showHint(cm, CodeMirror.hint.anyword);
 		}
 	}
 };
@@ -132,4 +132,37 @@ changeGeneration = function()
 isClean = function()
 {
 	return editor.isClean(changeId);
+}
+
+var errorMark;
+var compilationCompleteBool = true;
+compilationError = function(line, column, content)
+{
+	compilationCompleteBool = false;
+	window.setTimeout(function(){
+		if (errorMark)
+			errorMark.clear();
+		if (compilationCompleteBool)
+			return;
+		line = parseInt(line);
+		column = parseInt(column);
+		if (line > 0)
+			line = line - 1;
+		if (column > 0)
+			column = column - 1;
+
+		var separators = [' ', '\\\+', '-', ';', '\\\(', '\\\{',  '\\\}', '\\\)', '\\*', '/', ':', '\\\?'];
+		var errorPart = editor.getLine(line).substring(column);
+		var incrMark = column + errorPart.split(new RegExp(separators.join('|'), 'g'))[0].length;
+		if (incrMark === column)
+			incrMark = column + 1;
+		errorMark = editor.markText({ line: line, ch: column }, { line: line, ch: incrMark }, { className: "CodeMirror-errorannotation" });
+	}, 1000)
+}
+
+compilationComplete = function()
+{
+	if (errorMark)
+		errorMark.clear();
+	compilationCompleteBool = true;
 }
