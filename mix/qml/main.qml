@@ -7,9 +7,15 @@ import QtQuick.Window 2.1
 import QtQuick.PrivateWidgets 1.1
 import Qt.labs.settings 1.0
 import org.ethereum.qml.QEther 1.0
+import org.ethereum.qml.CodeModel 1.0
+import org.ethereum.qml.ClientModel 1.0
+import org.ethereum.qml.FileIo 1.0
+import org.ethereum.qml.Clipboard 1.0
 
 ApplicationWindow {
+
 	id: mainApplication
+	signal loaded;
 	visible: true
 	width: 1200
 	height: 800
@@ -17,8 +23,28 @@ ApplicationWindow {
 	minimumHeight: 300
 	title: qsTr("Mix")
 
-	Connections
-	{
+	CodeModel {
+		id: codeModel
+	}
+
+	ClientModel {
+		id: clientModel
+		codeModel: codeModel
+	}
+
+	ProjectModel {
+		id: projectModel
+	}
+
+	FileIo {
+		id: fileIo
+	}
+
+	Clipboard {
+		id: clipboard
+	}
+
+	Connections {
 		target: mainApplication
 		onClosing:
 		{
@@ -27,8 +53,11 @@ ApplicationWindow {
 		}
 	}
 
-	function close()
-	{
+	Component.onCompleted:  {
+		loaded();
+	}
+
+	function close() {
 		projectModel.appIsClosing = true;
 		if (projectModel.projectPath !== "")
 			projectModel.closeProject(function() { Qt.quit(); })

@@ -1,55 +1,40 @@
 /*
 	This file is part of cpp-ethereum.
-
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
-
 	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
-
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file ConstantCompilationControl.cpp
+/** @file Clipboard.cpp
  * @author Yann yann@ethdev.com
- * @date 2014
- * Ethereum IDE client.
+ * @date 2015
  */
 
-#include <QQmlContext>
-#include <QQuickItem>
-#include <QtCore/QFileInfo>
+#include "Clipboard.h"
 #include <QApplication>
-#include <QQmlApplicationEngine>
-#include <QtCore/QtCore>
-#include <QDebug>
-#include "StatusPane.h"
-#include "QContractDefinition.h"
-#include "AppContext.h"
-#include "CodeModel.h"
+#include <QClipboard>
 
 using namespace dev::mix;
 
-StatusPane::StatusPane(AppContext* _context): Extension(_context, ExtensionDisplayBehavior::HeaderView)
+Clipboard::Clipboard()
 {
-	_context->appEngine()->rootContext()->setContextProperty("statusPane", this);
+	connect(QApplication::clipboard(), &QClipboard::dataChanged, [this] { emit clipboardChanged();});
 }
 
-QString StatusPane::contentUrl() const
+QString Clipboard::text() const
 {
-	return QStringLiteral("qrc:/qml/StatusPane.qml");
+	QClipboard *clipboard = QApplication::clipboard();
+	return clipboard->text();
 }
 
-QString StatusPane::title() const
+void Clipboard::setText(QString _text)
 {
-	return QApplication::tr("compiler");
+	QClipboard *clipboard = QApplication::clipboard();
+	clipboard->setText(_text);
 }
-
-void StatusPane::start() const
-{
-}
-

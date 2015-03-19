@@ -58,16 +58,11 @@ Item {
 
 	function changePage() {
 		setPreviewUrl(urlInput.text);
-		/*if (pageCombo.currentIndex >= 0 && pageCombo.currentIndex < pageListModel.count) {
-			urlInput.text = httpServer.url + "/" + pageListModel.get(pageCombo.currentIndex).documentId;
-			setPreviewUrl(httpServer.url + "/" + pageListModel.get(pageCombo.currentIndex).documentId);
-		} else {
-			setPreviewUrl("");
-		}*/
 	}
+
 	Connections {
-		target: appContext
-		onAppLoaded: {
+		target: mainApplication
+		onLoaded: {
 			//We need to load the container using file scheme so that web security would allow loading local files in iframe
 			var containerPage = fileIo.readFile("qrc:///qml/html/WebContainer.html");
 			webView.loadHtml(containerPage, httpServer.url + "/WebContainer.html")
@@ -292,7 +287,7 @@ Item {
 			color: WebPreviewStyle.general.separatorColor
 		}
 
-		SplitView
+		Splitter
 		{
 			Layout.preferredWidth: parent.width
 			Layout.fillHeight: true
