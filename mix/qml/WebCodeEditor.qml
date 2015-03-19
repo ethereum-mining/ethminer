@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
+import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Item {
 	signal editorTextChanged
@@ -83,7 +84,19 @@ Item {
 				runJavaScript("getTextChanged()", function(result) { });
 				pollTimer.running = true;
 				syncClipboard();
+				if (currentMode === "solidity")
+				{
+					codeModel.onCompilationComplete.connect(function(){
+						runJavaScript("compilationComplete()", function(result) { });
+					});
+
+					codeModel.onCompilationError.connect(function(error){
+						var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);
+						runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
+					});
+				}
 				parent.changeGeneration();
+
 			}
 		}
 
