@@ -9,8 +9,10 @@
         <file>qml/ProjectList.qml</file>
         <file>qml/StateDialog.qml</file>
         <file>qml/StateList.qml</file>
+        <file>qml/StatesComboBox.qml</file>
         <file>qml/StateListModel.qml</file>
         <file>qml/img/dappProjectIcon.png</file>
+        <file>qml/img/edit_combox.png</file>	
         <file>qml/img/jumpintoback.png</file>
         <file>qml/img/jumpintoforward.png</file>
         <file>qml/img/jumpoutback.png</file>
