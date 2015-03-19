@@ -258,11 +258,16 @@ void CodeModel::runCompilationJob(int _jobId)
 				CompiledContract* contract = new CompiledContract(cs, name, source);
 				QQmlEngine::setObjectOwnership(contract, QQmlEngine::CppOwnership);
 				result[name] = contract;
-				CompiledContract* prevContract = m_contractMap.value(name);
+				CompiledContract* prevContract = nullptr;
+				for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
+					if (c.value()->documentId() == contract->documentId())
+						prevContract = c.value();
 				if (prevContract != nullptr && prevContract->contractInterface() != result[name]->contractInterface())
 					emit contractInterfaceChanged(name);
 				if (prevContract == nullptr)
 					emit newContractCompiled(name);
+				else if (prevContract->contract()->name() != name)
+					emit contractRenamed(contract->documentId(), prevContract->contract()->name(), name);
 			}
 			releaseContracts();
 			m_contractMap.swap(result);
