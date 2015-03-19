@@ -27,5 +27,16 @@
         <file>qml/html/cm/closebrackets.js</file>
         <file>qml/html/cm/solidityToken.js</file>
         <file>qml/html/cm/javascript-hint.js</file>
+        <file>qml/html/cm/tern.js</file>
+        <file>qml/html/cm/ecma5spec.js</file>
+        <file>qml/html/cm/comment.js</file>
+        <file>qml/html/cm/def.js</file>
+        <file>qml/html/cm/doc_comment.js</file>
+        <file>qml/html/cm/infer.js</file>
+        <file>qml/html/cm/signal.js</file>
+        <file>qml/html/cm/ternserver.js</file>
+        <file>qml/html/cm/acorn.js</file>
+        <file>qml/html/cm/acorn_loose.js</file>
+        <file>qml/html/cm/walk.js</file>
     </qresource>
 </RCC>
