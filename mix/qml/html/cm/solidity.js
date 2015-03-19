@@ -12,32 +12,10 @@
 CodeMirror.defineMode("solidity", function(config) {
   var indentUnit = config.indentUnit;
 
-  var keywords = { "address":true, "indexed":true, "event":true, "delete":true, "break":true, "case":true, "constant":true, "continue":true, "contract":true, "default":true,
-		"do":true, "else":true, "is":true, "for":true, "function":true, "if":true, "import":true, "mapping":true, "new":true,
-		"public":true, "private":true, "return":true, "returns":true, "struct":true, "switch":true, "var":true, "while":true,
-		"int":true, "uint":true, "hash":true, "bool":true, "string":true, "string0":true, "text":true, "real":true,
-		"ureal":true,
-
-        "owned":true,
-        "onlyowner":true,
-        "named":true,
-        "mortal":true,
-        "coin":true,
-	};
-
-  for (var i = 1; i <= 32; i++) {
-		keywords["int" + i * 8] = true;
-		keywords["uint" + i * 8] = true;
-		keywords["hash" + i * 8] = true;
-		keywords["string" + i] = true;
-  };
-
-  var atoms = {
-    "true":true, "false":true, "null":true,
-      "Config":true,
-      "NameReg":true,
-      "CoinReg":true,
-  };
+  var types = solTypes();
+  var stdContract = solStdContract();
+  var keywords = solKeywords();
+  var atoms = solMisc();
 
   var isOperatorChar = /[+\-*&^%:=<>!|\/]/;
 
@@ -84,6 +62,8 @@ CodeMirror.defineMode("solidity", function(config) {
 	  return "keyword";
 	}
 	if (atoms.propertyIsEnumerable(cur)) return "atom";
+	if (types.propertyIsEnumerable(cur)) return "variable-2";
+	if (stdContract.propertyIsEnumerable(cur)) return "variable-3";
 	return "variable";
   }
 

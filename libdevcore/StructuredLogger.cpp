@@ -38,9 +38,10 @@ void StructuredLogger::outputJson(Json::Value const& _value, std::string const& 
 {
 	Json::Value event;
 	static Mutex s_lock;
+	Json::FastWriter fastWriter;
 	Guard l(s_lock);
 	event[_name] = _value;
-	cout << event << endl << flush;
+	cout << fastWriter.write(event) << endl;
 }
 
 void StructuredLogger::starting(string const& _clientImpl, const char* _ethVersion)

@@ -659,7 +659,7 @@ int main(int argc, char** argv)
 						{
 							Secret secret = h256(fromHex(sechex));
 							Address dest = h160(fromHex(hexAddr));
-							c->transact(secret, amount, dest, data, gas, gasPrice);
+							c->submitTransaction(secret, amount, dest, data, gas, gasPrice);
 						}
 						catch (BadHexCharacter& _e)
 						{
@@ -673,7 +673,7 @@ int main(int argc, char** argv)
 					}
 				}
 				else
-					cwarn << "Require parameters: transact ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
+					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
 			else if (c && cmd == "listcontracts")
 			{
@@ -721,7 +721,7 @@ int main(int argc, char** argv)
 						try
 						{
 							Address dest = h160(fromHex(hexAddr, ThrowType::Throw));
-							c->transact(us.secret(), amount, dest, bytes(), minGas);
+							c->submitTransaction(us.secret(), amount, dest, bytes(), minGas);
 						}
 						catch (BadHexCharacter& _e)
 						{
@@ -790,7 +790,7 @@ int main(int argc, char** argv)
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is" << minGas;
 					else
-						c->transact(us.secret(), endowment, init, gas, gasPrice);
+						c->submitTransaction(us.secret(), endowment, init, gas, gasPrice);
 				}
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";

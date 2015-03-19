@@ -69,8 +69,8 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 		BOOST_THROW_EXCEPTION(BadJumpDestination());
 	case ReturnCode::OutOfGas:
 		BOOST_THROW_EXCEPTION(OutOfGas());
-	case ReturnCode::StackTooSmall:
-		BOOST_THROW_EXCEPTION(StackTooSmall());
+	case ReturnCode::StackUnderflow:
+		BOOST_THROW_EXCEPTION(StackUnderflow());
 	case ReturnCode::BadInstruction:
 		BOOST_THROW_EXCEPTION(BadInstruction());
 	case ReturnCode::LinkerWorkaround:	// never happens

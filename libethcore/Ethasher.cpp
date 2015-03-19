@@ -29,9 +29,9 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
 #include <libdevcrypto/CryptoPP.h>
+#include <libdevcrypto/SHA3.h>
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/Params.h>
-#include <libethash/ethash.h>
 #include "BlockInfo.h"
 #include "Ethasher.h"
 using namespace std;
@@ -44,9 +44,10 @@ Ethasher* dev::eth::Ethasher::s_this = nullptr;
 bytes const& Ethasher::cache(BlockInfo const& _header)
 {
 	RecursiveGuard l(x_this);
-	if (_header.number > EPOCH_LENGTH*2048) {
+	if (_header.number > c_ethashEpochLength * 2048)
+	{
 		std::ostringstream error;
-		error << "block number is too high; max is " << EPOCH_LENGTH*2048 << "(was " << _header.number << ")";
+		error << "block number is too high; max is " << c_ethashEpochLength * 2048 << "(was " << _header.number << ")";
 		throw std::invalid_argument( error.str() );
  	}
 
@@ -72,7 +73,11 @@ bytesConstRef Ethasher::full(BlockInfo const& _header)
 		try {
 			boost::filesystem::create_directories(getDataDir() + "/ethashcache");
 		} catch (...) {}
-		std::string memoFile = getDataDir() + "/ethashcache/" + toHex(_header.seedHash().ref().cropped(0, 4)) + ".full";
+
+		std::string memoFile = getDataDir() + "/ethashcache/full";
+		auto info = rlpList(c_ethashRevision, _header.seedHash());
+		if (boost::filesystem::exists(memoFile) && contents(memoFile + ".info") != info)
+			boost::filesystem::remove(memoFile);
 		m_fulls[_header.seedHash()] = contentsNew(memoFile);
 		if (!m_fulls[_header.seedHash()])
 		{
@@ -81,6 +86,7 @@ bytesConstRef Ethasher::full(BlockInfo const& _header)
 			auto c = cache(_header);
 			ethash_prep_full(m_fulls[_header.seedHash()].data(), &p, c.data());
 			writeFile(memoFile, m_fulls[_header.seedHash()]);
+			writeFile(memoFile + ".info", info);
 		}
 	}
 	return m_fulls[_header.seedHash()];
@@ -101,21 +107,20 @@ ethash_params Ethasher::params(unsigned _n)
 
 bool Ethasher::verify(BlockInfo const& _header)
 {
-	if (_header.number >= ETHASH_EPOCH_LENGTH * 2048)
+	if (_header.number >= c_ethashEpochLength * 2048)
 		return false;
+
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
-	uint8_t quickHashOut[32];
-	ethash_quick_hash(
-		quickHashOut,
+
+	// should be equivalent to:
+	auto r = eval(_header);
+	return r.mixHash == _header.mixHash && r.value <= boundary;
+
+	return ethash_quick_check_difficulty(
 		_header.headerHash(WithoutNonce).data(),
 		(uint64_t)(u64)_header.nonce,
-		_header.mixHash.data()
-	);
-	h256 quickHashOut256 = h256(quickHashOut, h256::ConstructFromPointer);
-	if (quickHashOut256 > boundary)
-		return false;
-	auto e = eval(_header, _header.nonce);
-	return (u256)e.value <= boundary && e.mixHash == _header.mixHash;
+		_header.mixHash.data(),
+		boundary.data());
 }
 
 Ethasher::Result Ethasher::eval(BlockInfo const& _header, Nonce const& _nonce)
@@ -123,5 +128,6 @@ Ethasher::Result Ethasher::eval(BlockInfo const& _header, Nonce const& _nonce)
 	auto p = Ethasher::params(_header);
 	ethash_return_value r;
 	ethash_compute_light(&r, Ethasher::get()->cache(_header).data(), &p, _header.headerHash(WithoutNonce).data(), (uint64_t)(u64)_nonce);
+//	cdebug << "Ethasher::eval sha3(cache):" << sha3(Ethasher::get()->cache(_header)) << "hh:" << _header.headerHash(WithoutNonce) << "nonce:" << _nonce << " => " << h256(r.result, h256::ConstructFromPointer);
 	return Result{h256(r.result, h256::ConstructFromPointer), h256(r.mix_hash, h256::ConstructFromPointer)};
 }

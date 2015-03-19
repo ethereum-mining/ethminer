@@ -72,20 +72,19 @@ DappLocation DappLoader::resolveAppUri(QString const& _uri)
 		string32 name = ZeroString32;
 		QByteArray utf8 = parts[partIndex].toUtf8();
 		std::copy(utf8.data(), utf8.data() + utf8.size(), name.data());
-		address = abiOut<Address>(web3()->ethereum()->call(address, abiIn("addr(string32)", name)));
+		address = abiOut<Address>(web3()->ethereum()->call(address, abiIn("addr(string32)", name)).output);
 		domainParts.append(parts[partIndex]);
 		if (!address)
 		{
 			//we have the address of the last part, try to get content hash
-			contentHash = abiOut<h256>(web3()->ethereum()->call(lastAddress, abiIn("content(string32)", name)));
+			contentHash = abiOut<h256>(web3()->ethereum()->call(lastAddress, abiIn("content(string32)", name)).output);
 			if (!contentHash)
 				throw dev::Exception() << errinfo_comment("Can't resolve address");
 		}
 		++partIndex;
 	}
 
-
-	string32 contentUrl = abiOut<string32>(web3()->ethereum()->call(c_urlHint, abiIn("url(hash256)", contentHash)));
+	string32 contentUrl = abiOut<string32>(web3()->ethereum()->call(c_urlHint, abiIn("url(hash256)", contentHash)).output);
 	QString domain = domainParts.join('/');
 	parts.erase(parts.begin(), parts.begin() + partIndex);
 	QString path = parts.join('/');

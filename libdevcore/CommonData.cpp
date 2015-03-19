@@ -39,7 +39,7 @@ std::string dev::escaped(std::string const& _s, bool _all)
 			ret += "\\\"";
 		else if (i == '\\' && !_all)
 			ret += "\\\\";
-		else if (prettyEscapes.count(i))
+		else if (prettyEscapes.count(i) && !_all)
 		{
 			ret += '\\';
 			ret += prettyEscapes.find(i)->second;
