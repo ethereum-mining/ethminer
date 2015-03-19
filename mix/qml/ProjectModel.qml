@@ -51,6 +51,7 @@ Item {
 	function createProject() { ProjectModelCode.createProject(); }
 	function closeProject(callBack) { ProjectModelCode.closeProject(callBack); }
 	function saveProject() { ProjectModelCode.saveProject(); }
+	function saveProjectFile() { ProjectModelCode.saveProjectFile(); }
 	function loadProject(path) { ProjectModelCode.loadProject(path); }
 	function newHtmlFile() { ProjectModelCode.newHtmlFile(); }
 	function newJsFile() { ProjectModelCode.newJsFile(); }

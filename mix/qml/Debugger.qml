@@ -22,8 +22,8 @@ Rectangle {
 
 	onVisibleChanged:
 	{
-		if (visible)
-			forceActiveFocus();
+		//if (visible)
+		//	forceActiveFocus();
 	}
 
 	onAssemblyModeChanged:
@@ -68,7 +68,7 @@ Rectangle {
 	Connections {
 		target: clientModel
 		onDebugDataReady:  {
-			update(_debugData, true);
+			update(_debugData, false);
 		}
 	}
 

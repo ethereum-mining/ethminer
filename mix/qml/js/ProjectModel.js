@@ -44,18 +44,16 @@ function createProject() {
 }
 
 function closeProject(callBack) {
-	if (!isEmpty) {
-		if (unsavedFiles.length > 0)
-		{
-			saveMessageDialog.callBack = callBack;
-			saveMessageDialog.open();
-		}
-		else
-		{
-			doCloseProject();
-			if (callBack)
-				callBack();
-		}
+	if (!isEmpty && unsavedFiles.length > 0)
+	{
+		saveMessageDialog.callBack = callBack;
+		saveMessageDialog.open();
+	}
+	else
+	{
+		doCloseProject();
+		if (callBack)
+			callBack();
 	}
 }
 
@@ -97,46 +95,47 @@ function saveProjectFile()
 }
 
 function loadProject(path) {
-	closeProject();
-	console.log("Loading project at " + path);
-	var projectFile = path + projectFileName;
-	var json = fileIo.readFile(projectFile);
-	var projectData = JSON.parse(json);
-	if (projectData.deploymentDir)
-		projectModel.deploymentDir = projectData.deploymentDir
-	if (projectData.packageHash)
-		deploymentDialog.packageHash =  projectData.packageHash
-	if (projectData.packageBase64)
-		deploymentDialog.packageBase64 =  projectData.packageBase64
-	if (projectData.applicationUrlEth)
-		deploymentDialog.applicationUrlEth = projectData.applicationUrlEth
-	if (projectData.applicationUrlHttp)
-		deploymentDialog.applicationUrlHttp = projectData.applicationUrlHttp
-	if (!projectData.title) {
-		var parts = path.split("/");
-		projectData.title = parts[parts.length - 2];
-	}
-	deploymentAddresses = projectData.deploymentAddresses ? projectData.deploymentAddresses : [];
-	projectTitle = projectData.title;
-	projectPath = path;
-	if (!projectData.files)
-		projectData.files = [];
+	closeProject(function() {
+		console.log("Loading project at " + path);
+		var projectFile = path + projectFileName;
+		var json = fileIo.readFile(projectFile);
+		var projectData = JSON.parse(json);
+		if (projectData.deploymentDir)
+			projectModel.deploymentDir = projectData.deploymentDir
+		if (projectData.packageHash)
+			deploymentDialog.packageHash =  projectData.packageHash
+		if (projectData.packageBase64)
+			deploymentDialog.packageBase64 =  projectData.packageBase64
+		if (projectData.applicationUrlEth)
+			deploymentDialog.applicationUrlEth = projectData.applicationUrlEth
+		if (projectData.applicationUrlHttp)
+			deploymentDialog.applicationUrlHttp = projectData.applicationUrlHttp
+		if (!projectData.title) {
+			var parts = path.split("/");
+			projectData.title = parts[parts.length - 2];
+		}
+		deploymentAddresses = projectData.deploymentAddresses ? projectData.deploymentAddresses : [];
+		projectTitle = projectData.title;
+		projectPath = path;
+		if (!projectData.files)
+			projectData.files = [];
 
-	for(var i = 0; i < projectData.files.length; i++) {
-		addFile(projectData.files[i]);
-	}
-	projectSettings.lastProjectPath = path;
-	projectLoading(projectData);
-	projectLoaded()
+		for(var i = 0; i < projectData.files.length; i++) {
+			addFile(projectData.files[i]);
+		}
+		projectSettings.lastProjectPath = path;
+		projectLoading(projectData);
+		projectLoaded()
 
-	//TODO: move this to codemodel
-	var contractSources = {};
-	for (var d = 0; d < listModel.count; d++) {
-		var doc = listModel.get(d);
-		if (doc.isContract)
-			contractSources[doc.documentId] = fileIo.readFile(doc.path);
-	}
-	codeModel.reset(contractSources);
+		//TODO: move this to codemodel
+		var contractSources = {};
+		for (var d = 0; d < listModel.count; d++) {
+			var doc = listModel.get(d);
+			if (doc.isContract)
+				contractSources[doc.documentId] = fileIo.readFile(doc.path);
+		}
+		codeModel.reset(contractSources);
+	});
 }
 
 function addFile(fileName) {
@@ -163,7 +162,6 @@ function addFile(fileName) {
 	};
 
 	projectListModel.append(docData);
-	saveProjectFile();
 	fileIo.watchFileChanged(p);
 	return docData.documentId;
 }
@@ -232,27 +230,28 @@ function doCloseProject() {
 }
 
 function doCreateProject(title, path) {
-	closeProject();
-	console.log("Creating project " + title + " at " + path);
-	if (path[path.length - 1] !== "/")
-		path += "/";
-	var dirPath = path + title + "/";
-	fileIo.makeDir(dirPath);
-	var projectFile = dirPath + projectFileName;
+	closeProject(function() {
+		console.log("Creating project " + title + " at " + path);
+		if (path[path.length - 1] !== "/")
+			path += "/";
+		var dirPath = path + title + "/";
+		fileIo.makeDir(dirPath);
+		var projectFile = dirPath + projectFileName;
 
-	var indexFile = "index.html";
-	var contractsFile = "contract.sol";
-	var projectData = {
-		title: title,
-		files: [ contractsFile, indexFile ]
-	};
-	//TODO: copy from template
-	fileIo.writeFile(dirPath + indexFile, htmlTemplate);
-	fileIo.writeFile(dirPath + contractsFile, contractTemplate);
-	newProject(projectData);
-	var json = JSON.stringify(projectData, null, "\t");
-	fileIo.writeFile(projectFile, json);
-	loadProject(dirPath);
+		var indexFile = "index.html";
+		var contractsFile = "contract.sol";
+		var projectData = {
+			title: title,
+			files: [ contractsFile, indexFile ]
+		};
+		//TODO: copy from template
+		fileIo.writeFile(dirPath + indexFile, htmlTemplate);
+		fileIo.writeFile(dirPath + contractsFile, contractTemplate);
+		newProject(projectData);
+		var json = JSON.stringify(projectData, null, "\t");
+		fileIo.writeFile(projectFile, json);
+		loadProject(dirPath);
+	});
 }
 
 function doAddExistingFiles(files) {
@@ -263,6 +262,7 @@ function doAddExistingFiles(files) {
 		if (sourcePath !== destPath)
 			fileIo.copyFile(sourcePath, destPath);
 		var id = addFile(sourceFileName);
+		saveProjectFile();
 		documentAdded(id)
 	}
 }
@@ -321,6 +321,7 @@ function createAndAddFile(name, extension, content) {
 	var filePath = projectPath + fileName;
 	fileIo.writeFile(filePath, content);
 	var id = addFile(fileName);
+	saveProjectFile();
 	documentAdded(id);
 }
 

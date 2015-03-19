@@ -180,7 +180,10 @@ void CodeModel::registerCodeChange(QString const& _documentId, QString const& _c
 {
 	CompiledContract* contract = contractByDocumentId(_documentId);
 	if (contract != nullptr && contract->m_sourceHash == qHash(_code))
+	{
+		emit compilationComplete();
 		return;
+	}
 
 	{
 		Guard pl(x_pendingContracts);
