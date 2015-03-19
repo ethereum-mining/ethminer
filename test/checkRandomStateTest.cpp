@@ -21,6 +21,7 @@
  */
 
 #include <libdevcore/Common.h>
+#include <libdevcore/Assertions.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Log.h>
 #include <libevm/VMFactory.h>
@@ -87,7 +88,7 @@ bool doStateTest(mValue& _v)
 
 		try
 		{
-			theState.execute(lastHashes(importer.m_environment.currentBlock.number), tx, &output);
+			output = theState.execute(lastHashes(importer.m_environment.currentBlock.number), tx).output;
 		}
 		catch (Exception const& _e)
 		{

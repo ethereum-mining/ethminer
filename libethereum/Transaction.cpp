@@ -21,14 +21,35 @@
 
 #include <libdevcore/vector_ref.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/CommonIO.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Exceptions.h>
+#include <libevm/VMFace.h>
 #include "Transaction.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
 #define ETH_ADDRESS_DEBUG 0
+
+std::ostream& dev::eth::operator<<(std::ostream& _out, ExecutionResult const& _er)
+{
+	_out << "{" << _er.gasUsed << ", " << _er.newAddress << ", " << toHex(_er.output) << "}";
+	return _out;
+}
+
+TransactionException dev::eth::toTransactionException(VMException const& _e)
+{
+	if (!!dynamic_cast<BadInstruction const*>(&_e))
+		return TransactionException::BadInstruction;
+	if (!!dynamic_cast<BadJumpDestination const*>(&_e))
+		return TransactionException::BadJumpDestination;
+	if (!!dynamic_cast<OutOfGas const*>(&_e))
+		return TransactionException::OutOfGas;
+	if (!!dynamic_cast<StackUnderflow const*>(&_e))
+		return TransactionException::StackUnderflow;
+	return TransactionException::Unknown;
+}
 
 Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 {

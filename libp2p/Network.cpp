@@ -29,6 +29,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include <libdevcore/Common.h>
+#include <libdevcore/Assertions.h>
 #include <libdevcore/CommonIO.h>
 #include <libethcore/Exceptions.h>
 #include "Common.h"

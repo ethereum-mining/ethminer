@@ -23,6 +23,7 @@
 #include <boost/filesystem.hpp>
 #include <chrono>
 #include <array>
+#include <thread>
 #include <random>
 #include <thread>
 #include <libdevcore/Guards.h>
@@ -32,6 +33,32 @@
 #include <libdevcore/Common.h>
 #if ETH_ETHASHCL
 #include <libethash-cl/ethash_cl_miner.h>
+#define ETHASH_REVISION REVISION
+#define ETHASH_DATASET_BYTES_INIT DATASET_BYTES_INIT
+#define ETHASH_DATASET_BYTES_GROWTH DATASET_BYTES_GROWTH
+#define ETHASH_CACHE_BYTES_INIT CACHE_BYTES_INIT
+#define ETHASH_CACHE_BYTES_GROWTH CACHE_BYTES_GROWTH
+#define ETHASH_DAGSIZE_BYTES_INIT DAGSIZE_BYTES_INIT
+#define ETHASH_DAG_GROWTH DAG_GROWTH
+#define ETHASH_EPOCH_LENGTH EPOCH_LENGTH
+#define ETHASH_MIX_BYTES MIX_BYTES
+#define ETHASH_HASH_BYTES HASH_BYTES
+#define ETHASH_DATASET_PARENTS DATASET_PARENTS
+#define ETHASH_CACHE_ROUNDS CACHE_ROUNDS
+#define ETHASH_ACCESSES ACCESSES
+#undef REVISION
+#undef DATASET_BYTES_INIT
+#undef DATASET_BYTES_GROWTH
+#undef CACHE_BYTES_INIT
+#undef CACHE_BYTES_GROWTH
+#undef DAGSIZE_BYTES_INIT
+#undef DAG_GROWTH
+#undef EPOCH_LENGTH
+#undef MIX_BYTES
+#undef HASH_BYTES
+#undef DATASET_PARENTS
+#undef CACHE_ROUNDS
+#undef ACCESSES
 #endif
 #include "BlockInfo.h"
 #include "Ethasher.h"
@@ -54,11 +81,12 @@ std::pair<MineInfo, EthashCPU::Proof> EthashCPU::mine(BlockInfo const& _header, 
 	Ethasher::Miner m(_header);
 
 	std::pair<MineInfo, Proof> ret;
-	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data())));
+	auto tid = std::this_thread::get_id();
+	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data()) + std::hash<decltype(tid)>()(tid)));
 	uint64_t tryNonce = (uint64_t)(u64)(m_last = Nonce::random(s_eng));
 
-	bigint boundary = (bigint(1) << 256) / _header.difficulty;
-	ret.first.requirement = log2((double)boundary);
+	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
+	ret.first.requirement = log2((double)(u256)boundary);
 
 	// 2^ 0      32      64      128      256
 	//   [--------*-------------------------]
@@ -72,13 +100,17 @@ std::pair<MineInfo, EthashCPU::Proof> EthashCPU::mine(BlockInfo const& _header, 
 	unsigned hashCount = 0;
 	for (; (std::chrono::steady_clock::now() - startTime) < std::chrono::milliseconds(_msTimeout) && _continue; tryNonce++, hashCount++)
 	{
-		u256 val(m.mine(tryNonce));
-		best = std::min<double>(best, log2((double)val));
+		h256 val(m.mine(tryNonce));
+		best = std::min<double>(best, log2((double)(u256)val));
 		if (val <= boundary)
 		{
 			ret.first.completed = true;
+			assert(Ethasher::eval(_header, (Nonce)(u64)tryNonce).value == val);
 			result.mixHash = m.lastMixHash();
 			result.nonce = u64(tryNonce);
+			BlockInfo test = _header;
+			assignResult(result, test);
+			assert(verify(test));
 			break;
 		}
 	}

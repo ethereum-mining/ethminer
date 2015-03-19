@@ -736,7 +736,7 @@ int main(int argc, char** argv)
 					{
 						Secret secret = h256(fromHex(sechex, ThrowType::Throw));
 						Address dest = h160(fromHex(fields[0], ThrowType::Throw));
-						c->transact(secret, amount, dest, data, gas, gasPrice);
+						c->submitTransaction(secret, amount, dest, data, gas, gasPrice);
 					}
 					catch (BadHexCharacter& _e)
 					{
@@ -787,7 +787,7 @@ int main(int argc, char** argv)
 					try
 					{
 						Address dest = h160(fromHex(fields[0], ThrowType::Throw));
-						c->transact(us.secret(), amount, dest, bytes(), minGas);
+						c->submitTransaction(us.secret(), amount, dest, bytes(), minGas);
 					}
 					catch (BadHexCharacter& _e)
 					{
@@ -880,7 +880,7 @@ int main(int argc, char** argv)
 					cwarn << "Minimum gas amount is" << minGas;
 				else
 				{
-					c->transact(us.secret(), endowment, init, gas);
+					c->submitTransaction(us.secret(), endowment, init, gas);
 				}
 			}
 		}

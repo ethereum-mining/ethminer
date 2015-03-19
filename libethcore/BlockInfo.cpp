@@ -104,6 +104,8 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s)
 	int field = 0;
 	try
 	{
+		if (_header.itemCount() != 15)
+			throw InvalidBlockHeaderItemCount();
 		parentHash = _header[field = 0].toHash<h256>(RLP::VeryStrict);
 		sha3Uncles = _header[field = 1].toHash<h256>(RLP::VeryStrict);
 		coinbaseAddress = _header[field = 2].toHash<Address>(RLP::VeryStrict);

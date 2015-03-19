@@ -5,11 +5,6 @@ extern "C"
 
 using namespace dev::eth::jit;
 
-#ifdef _MSC_VER
-#define _ALLOW_KEYWORD_MACROS
-#define noexcept throw()
-#endif
-
 EXPORT void* evmjit_create() noexcept
 {
 	// TODO: Make sure ExecutionEngine constructor does not throw
