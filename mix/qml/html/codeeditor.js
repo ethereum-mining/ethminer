@@ -4,9 +4,9 @@ var editor = CodeMirror(document.body, {
 							matchBrackets: true,
 							autofocus: true,
 							gutters: ["CodeMirror-linenumbers", "breakpoints"],
-							extraKeys: { "Ctrl-Space": "autocomplete" },
 							autoCloseBrackets: true
 						});
+var ternServer;
 
 editor.setOption("theme", "solarized dark");
 editor.setOption("indentUnit", 4);
@@ -100,15 +100,27 @@ setMode = function(mode) {
 
 	if (mode === "javascript")
 	{
-		CodeMirror.commands.autocomplete = function(cm) {
-				CodeMirror.showHint(cm, CodeMirror.hint.anyword); // TODO change to a proper JavaScript language completion
-		}
+		ternServer = new CodeMirror.TernServer({defs: [ ecma5Spec() ]});
+		editor.setOption("extraKeys", {
+							 "Ctrl-Space": function(cm) { ternServer.complete(cm); },
+							 "Ctrl-I": function(cm) { ternServer.showType(cm); },
+							 "Ctrl-O": function(cm) { ternServer.showDocs(cm); },
+							 "Alt-.": function(cm) { ternServer.jumpToDef(cm); },
+							 "Alt-,": function(cm) { ternServer.jumpBack(cm); },
+							 "Ctrl-Q": function(cm) { ternServer.rename(cm); },
+							 "Ctrl-.": function(cm) { ternServer.selectName(cm); },
+							 "'.'": function(cm) { setTimeout(function() { ternServer.complete(cm); }, 100); throw CodeMirror.Pass; }
+						 })
+		editor.on("cursorActivity", function(cm) { ternServer.updateArgHints(cm); });
 	}
 	else if (mode === "solidity")
 	{
 		CodeMirror.commands.autocomplete = function(cm) {
 				CodeMirror.showHint(cm, CodeMirror.hint.anyword);
 		}
+		editor.setOption("extraKeys", {
+							 "Ctrl-Space": "autocomplete"
+						 })
 	}
 };
 
