@@ -111,15 +111,16 @@ Item {
 
 						Connections {
 							target: codeModel
-							onCompilationComplete: {
-								if (modelData === "Contracts") {
+							onContractRenamed: {
+								if (modelData === "Contracts")
+								{
 									var ci = 0;
 									for (var si = 0; si < projectModel.listModel.count; si++) {
 										var document = projectModel.listModel.get(si);
 										if (document.isContract) {
 											var compiledDoc = codeModel.contractByDocumentId(document.documentId);
-											if (compiledDoc && compiledDoc.documentId === document.documentId && compiledDoc.contract.name !== document.name) {
-												document.name = compiledDoc.contract.name;
+											if (_documentId === document.documentId && _newName !== document.name) {
+												document.name = _newName;
 												projectModel.listModel.set(si, document);
 												sectionModel.set(ci, document);
 											}
