@@ -35,9 +35,9 @@ namespace dev
 
 // String conversion functions, mainly to/from hex/nibble/byte representations.
 
-enum class ThrowType
+enum class WhenError
 {
-	NoThrow = 0,
+	DontThrow = 0,
 	Throw = 1,
 };
 
@@ -59,8 +59,8 @@ int fromHex(char _i);
 
 /// Converts a (printable) ASCII hex string into the corresponding byte stream.
 /// @example fromHex("41626261") == asBytes("Abba")
-/// If _throw = ThrowType::NoThrow, it replaces bad hex characters with 0's, otherwise it will throw an exception.
-bytes fromHex(std::string const& _s, ThrowType _throw = ThrowType::NoThrow);
+/// If _throw = ThrowType::DontThrow, it replaces bad hex characters with 0's, otherwise it will throw an exception.
+bytes fromHex(std::string const& _s, WhenError _throw = WhenError::DontThrow);
 
 #if 0
 std::string toBase58(bytesConstRef _data);
