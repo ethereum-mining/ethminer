@@ -13,7 +13,7 @@ function ErrorAnnotation(editor, line, column, content)
 
 ErrorAnnotation.prototype.init = function()
 {
-	var separators = ['\\\+', '-', ';', '\\\(', '\\\{',  '\\\}', '\\\)', '\\*', '/', ':', '\\\?'];
+	var separators = [';', ',', '\\\(', '\\\{',  '\\\}', '\\\)', ':'];
 	var errorPart = editor.getLine(this.line).substring(this.column);
 	var incrMark = this.column + errorPart.split(new RegExp(separators.join('|'), 'g'))[0].length;
 	if (incrMark === this.column)
