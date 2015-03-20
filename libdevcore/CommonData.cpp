@@ -78,7 +78,7 @@ int dev::fromHex(char _i)
 	BOOST_THROW_EXCEPTION(BadHexCharacter() << errinfo_invalidSymbol(_i));
 }
 
-bytes dev::fromHex(std::string const& _s, ThrowType _throw)
+bytes dev::fromHex(std::string const& _s, WhenError _throw)
 {
 	unsigned s = (_s[0] == '0' && _s[1] == 'x') ? 2 : 0;
 	std::vector<uint8_t> ret;
@@ -96,7 +96,7 @@ bytes dev::fromHex(std::string const& _s, ThrowType _throw)
 #ifndef BOOST_NO_EXCEPTIONS
 			cwarn << boost::current_exception_diagnostic_information(); 
 #endif
-			if (_throw == ThrowType::Throw)
+			if (_throw == WhenError::Throw)
 				throw;
 		}
 	for (unsigned i = s; i < _s.size(); i += 2)
@@ -109,7 +109,7 @@ bytes dev::fromHex(std::string const& _s, ThrowType _throw)
 #ifndef BOOST_NO_EXCEPTIONS
 			cwarn << boost::current_exception_diagnostic_information();
 #endif
-			if (_throw == ThrowType::Throw)
+			if (_throw == WhenError::Throw)
 				throw;
 		}
 	return ret;

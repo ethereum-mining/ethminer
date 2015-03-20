@@ -66,7 +66,7 @@ enum class CodeDeposit
 	Success
 };
 
-class VMException;
+struct VMException;
 
 TransactionException toTransactionException(VMException const& _e);
 
