@@ -3,7 +3,7 @@ function ErrorAnnotation(editor, line, column, content)
 	this.opened = false;
 	this.line = line;
 	this.column = column;
-	this.content = content;
+	this.content = content.replace("Contract Error:", "");
 	this.editor = editor;
 	this.errorMark = null;
 	this.lineWidget = null;
@@ -13,7 +13,7 @@ function ErrorAnnotation(editor, line, column, content)
 
 ErrorAnnotation.prototype.init = function()
 {
-	var separators = [' ', '\\\+', '-', ';', '\\\(', '\\\{',  '\\\}', '\\\)', '\\*', '/', ':', '\\\?'];
+	var separators = ['\\\+', '-', ';', '\\\(', '\\\{',  '\\\}', '\\\)', '\\*', '/', ':', '\\\?'];
 	var errorPart = editor.getLine(this.line).substring(this.column);
 	var incrMark = this.column + errorPart.split(new RegExp(separators.join('|'), 'g'))[0].length;
 	if (incrMark === this.column)
@@ -27,7 +27,7 @@ ErrorAnnotation.prototype.open = function()
 	node.id = "annotation"
 	node.innerHTML = this.content;
 	node.className = "CodeMirror-errorannotation-context";
-	this.lineWidget = this.editor.addLineWidget(this.errorMark.find().from.line, node, { coverGutter: true });
+	this.lineWidget = this.editor.addLineWidget(this.errorMark.find().from.line, node, { coverGutter: false });
 	this.opened = true;
 }
 
