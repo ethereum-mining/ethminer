@@ -373,7 +373,7 @@ int main(int argc, char** argv)
 		{
 			try
 			{
-				coinbase = h160(fromHex(argv[++i], ThrowType::Throw));
+				coinbase = h160(fromHex(argv[++i], WhenError::Throw));
 			}
 			catch (BadHexCharacter& _e)
 			{
@@ -734,8 +734,8 @@ int main(int argc, char** argv)
 				{
 					try
 					{
-						Secret secret = h256(fromHex(sechex, ThrowType::Throw));
-						Address dest = h160(fromHex(fields[0], ThrowType::Throw));
+						Secret secret = h256(fromHex(sechex, WhenError::Throw));
+						Address dest = h160(fromHex(fields[0], WhenError::Throw));
 						c->submitTransaction(secret, amount, dest, data, gas, gasPrice);
 					}
 					catch (BadHexCharacter& _e)
@@ -786,7 +786,7 @@ int main(int argc, char** argv)
 					u256 minGas = (u256)Client::txGas(bytes(), 0);
 					try
 					{
-						Address dest = h160(fromHex(fields[0], ThrowType::Throw));
+						Address dest = h160(fromHex(fields[0], WhenError::Throw));
 						c->submitTransaction(us.secret(), amount, dest, bytes(), minGas);
 					}
 					catch (BadHexCharacter& _e)
@@ -852,7 +852,7 @@ int main(int argc, char** argv)
 					stringstream ssc;
 					try
 					{
-						init = fromHex(sinit, ThrowType::Throw);
+						init = fromHex(sinit, WhenError::Throw);
 					}
 					catch (BadHexCharacter& _e)
 					{

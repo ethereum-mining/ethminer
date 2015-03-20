@@ -583,7 +583,7 @@ Address Main::fromString(QString const& _n) const
 	{
 		try
 		{
-			return Address(fromHex(_n.toStdString(), ThrowType::Throw));
+			return Address(fromHex(_n.toStdString(), WhenError::Throw));
 		}
 		catch (BadHexCharacter& _e)
 		{
@@ -1388,7 +1388,7 @@ void Main::on_inject_triggered()
 	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
 	try
 	{
-		bytes b = fromHex(s.toStdString(), ThrowType::Throw);
+		bytes b = fromHex(s.toStdString(), WhenError::Throw);
 		ethereum()->inject(&b);
 	}
 	catch (BadHexCharacter& _e)

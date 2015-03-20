@@ -273,10 +273,9 @@ int main(int argc, char** argv)
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
-		{
 			try
 			{
-				coinbase = h160(fromHex(argv[++i], ThrowType::Throw));
+				coinbase = h160(fromHex(argv[++i], WhenError::Throw));
 			}
 			catch (BadHexCharacter& _e)
 			{
@@ -289,7 +288,6 @@ int main(int argc, char** argv)
 				cwarn << "coinbase rejected";
 				break;
 			}
-		}
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			us = KeyPair(h256(fromHex(argv[++i])));
 		else if (arg == "--structured-logging-format" && i + 1 < argc)
@@ -300,20 +298,24 @@ int main(int argc, char** argv)
 			dbPath = argv[++i];
 		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
-			try {
+			try
+			{
 				blockFees = stof(argv[++i]);
 			}
-			catch (...) {
+			catch (...)
+			{
 				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
 				return -1;
 			}
 		}
 		else if ((arg == "-e" || arg == "--ether-price") && i + 1 < argc)
 		{
-			try {
+			try
+			{
 				etherPrice = stof(argv[++i]);
 			}
-			catch (...) {
+			catch (...)
+			{
 				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
 				return -1;
 			}
@@ -434,7 +436,8 @@ int main(int argc, char** argv)
 		c->setAddress(coinbase);
 	}
 
-	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
+	cout << "Transaction Signer: " << us.address() << endl;
+	cout << "Mining Benefactor: " << coinbase << endl;
 	web3.startNetwork();
 
 	if (bootstrap)
@@ -720,7 +723,7 @@ int main(int argc, char** argv)
 						u256 minGas = (u256)Client::txGas(bytes(), 0);
 						try
 						{
-							Address dest = h160(fromHex(hexAddr, ThrowType::Throw));
+							Address dest = h160(fromHex(hexAddr, WhenError::Throw));
 							c->submitTransaction(us.secret(), amount, dest, bytes(), minGas);
 						}
 						catch (BadHexCharacter& _e)
@@ -764,7 +767,7 @@ int main(int argc, char** argv)
 						stringstream ssc;
 						try
 						{
-							init = fromHex(sinit, ThrowType::Throw);
+							init = fromHex(sinit, WhenError::Throw);
 						}
 						catch (BadHexCharacter& _e)
 						{
@@ -925,7 +928,7 @@ int main(int argc, char** argv)
 					{
 						try
 						{
-							coinbase = h160(fromHex(hexAddr, ThrowType::Throw));
+							coinbase = h160(fromHex(hexAddr, WhenError::Throw));
 						}
 						catch (BadHexCharacter& _e)
 						{
