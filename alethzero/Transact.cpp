@@ -284,6 +284,7 @@ void Transact::on_send_clicked()
 			{
 				// If execution is a contract creation, add Natspec to
 				// a local Natspec LEVELDB
+				ExecutionResult er = ethereum()->create(s, value(), m_data, ui->gas->value(), gasPrice());
 				ethereum()->submitTransaction(s, value(), m_data, ui->gas->value(), gasPrice());
 				string src = ui->data->toPlainText().toStdString();
 				if (sourceIsSolidity(src))
