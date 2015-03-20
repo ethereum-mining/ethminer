@@ -134,14 +134,12 @@ isClean = function()
 	return editor.isClean(changeId);
 }
 
-var errorMark;
+var annotation = null;
 var compilationCompleteBool = true;
 compilationError = function(line, column, content)
 {
 	compilationCompleteBool = false;
 	window.setTimeout(function(){
-		if (errorMark)
-			errorMark.clear();
 		if (compilationCompleteBool)
 			return;
 		line = parseInt(line);
@@ -150,19 +148,17 @@ compilationError = function(line, column, content)
 			line = line - 1;
 		if (column > 0)
 			column = column - 1;
-
-		var separators = [' ', '\\\+', '-', ';', '\\\(', '\\\{',  '\\\}', '\\\)', '\\*', '/', ':', '\\\?'];
-		var errorPart = editor.getLine(line).substring(column);
-		var incrMark = column + errorPart.split(new RegExp(separators.join('|'), 'g'))[0].length;
-		if (incrMark === column)
-			incrMark = column + 1;
-		errorMark = editor.markText({ line: line, ch: column }, { line: line, ch: incrMark }, { className: "CodeMirror-errorannotation" });
-	}, 1000)
+		if (annotation == null)
+			annotation = new ErrorAnnotation(editor, line, column, content);
+	}, 500)
 }
 
 compilationComplete = function()
 {
-	if (errorMark)
-		errorMark.clear();
+	if (annotation !== null)
+	{
+		annotation.detroy();
+		annotation = null;
+	}
 	compilationCompleteBool = true;
 }
