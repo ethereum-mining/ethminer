@@ -171,15 +171,15 @@ view-port
 
 /* Error annotation */
 .CodeMirror-errorannotation {
-	background: rgb(255, 255, 170);
-	color: red !important;
+	background: #b58900;
+	color: #dc322f !important;
 }
 
 .CodeMirror-errorannotation-context {
 	font-family: monospace;
 	font-size: small;
-	color: red;
-	background: rgb(255, 255, 170);
+	color: #dc322f;
+	background: #b58900;
 	padding: 2px;
 }
 
