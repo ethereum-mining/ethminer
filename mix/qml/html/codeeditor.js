@@ -148,8 +148,14 @@ compilationError = function(line, column, content)
 			line = line - 1;
 		if (column > 0)
 			column = column - 1;
+
 		if (annotation == null)
 			annotation = new ErrorAnnotation(editor, line, column, content);
+		else if (annotation.line !== line || annotation.column !== column || annotation.content !== content)
+		{
+			annotation.destroy();
+			annotation = new ErrorAnnotation(editor, line, column, content);
+		}
 	}, 500)
 }
 
@@ -157,7 +163,7 @@ compilationComplete = function()
 {
 	if (annotation !== null)
 	{
-		annotation.detroy();
+		annotation.destroy();
 		annotation = null;
 	}
 	compilationCompleteBool = true;

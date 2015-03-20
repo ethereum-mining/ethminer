@@ -1,8 +1,8 @@
-function ErrorAnnotation(editor, line, col, content)
+function ErrorAnnotation(editor, line, column, content)
 {
 	this.opened = false;
 	this.line = line;
-	this.col = col;
+	this.column = column;
 	this.content = content;
 	this.editor = editor;
 	this.errorMark = null;
@@ -14,11 +14,11 @@ function ErrorAnnotation(editor, line, col, content)
 ErrorAnnotation.prototype.init = function()
 {
 	var separators = [' ', '\\\+', '-', ';', '\\\(', '\\\{',  '\\\}', '\\\)', '\\*', '/', ':', '\\\?'];
-	var errorPart = editor.getLine(this.line).substring(this.col);
-	var incrMark = this.col + errorPart.split(new RegExp(separators.join('|'), 'g'))[0].length;
-	if (incrMark === this.col)
-		incrMark = this.col + 1;
-	this.errorMark = editor.markText({ line: this.line, ch: this.col }, { line: this.line, ch: incrMark }, { className: "CodeMirror-errorannotation", inclusiveRight: true });
+	var errorPart = editor.getLine(this.line).substring(this.column);
+	var incrMark = this.column + errorPart.split(new RegExp(separators.join('|'), 'g'))[0].length;
+	if (incrMark === this.column)
+		incrMark = this.column + 1;
+	this.errorMark = editor.markText({ line: this.line, ch: this.column }, { line: this.line, ch: incrMark }, { className: "CodeMirror-errorannotation", inclusiveRight: true });
 }
 
 ErrorAnnotation.prototype.open = function()
@@ -26,7 +26,7 @@ ErrorAnnotation.prototype.open = function()
 	var node = document.createElement("div");
 	node.id = "annotation"
 	node.innerHTML = this.content;
-	node.className = "CodeMirror-errorannotation-context"
+	node.className = "CodeMirror-errorannotation-context";
 	this.lineWidget = this.editor.addLineWidget(this.errorMark.find().from.line, node, { coverGutter: true });
 	this.opened = true;
 }
@@ -37,7 +37,7 @@ ErrorAnnotation.prototype.close = function()
 	this.opened = false;
 }
 
-ErrorAnnotation.prototype.detroy = function()
+ErrorAnnotation.prototype.destroy = function()
 {
 	if (this.opened)
 		this.close();
