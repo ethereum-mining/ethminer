@@ -57,7 +57,7 @@ private slots:
 	void on_cancel_clicked() { close(); }
 
 private:
-	dev::eth::Client* ethereum() { return m_ethereum; }
+	dev::eth::Client* ethereum() const { return m_ethereum; }
 	void rejigData();
 
 	void updateDestination();
@@ -69,14 +69,15 @@ private:
 	dev::u256 gasPrice() const;
 
 	std::string getFunctionHashes(dev::solidity::CompilerStack const& _compiler, std::string const& _contractName = std::string());
+	dev::Secret findSecret(dev::u256 _totalReq) const;
 
-	Ui::Transact* ui;
+	Ui::Transact* ui = nullptr;
 
-	unsigned m_backupGas;
+	unsigned m_backupGas = 0;
 	dev::bytes m_data;
 
 	QList<dev::KeyPair> m_myKeys;
-	dev::eth::Client* m_ethereum;
-	Context* m_context;
-	NatSpecFace* m_natSpecDB;
+	dev::eth::Client* m_ethereum = nullptr;
+	Context* m_context = nullptr;
+	NatSpecFace* m_natSpecDB = nullptr;
 };
