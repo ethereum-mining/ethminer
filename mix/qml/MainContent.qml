@@ -2,7 +2,6 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
-import CodeEditorExtensionManager 1.0
 import Qt.labs.settings 1.0
 import org.ethereum.qml.QEther 1.0
 import "js/QEtherHelper.js" as QEtherHelper
@@ -101,9 +100,6 @@ Rectangle {
 		rightView.displayCompilationErrorIfAny();
 	}
 
-	CodeEditorExtensionManager {
-	}
-
 	Settings {
 		id: mainSettings
 		property alias codeWebOrientation: codeWebSplitter.orientation
@@ -158,14 +154,9 @@ Rectangle {
 				property alias rightViewWidth: rightView.width
 			}
 
-			SplitView
+			Splitter
 			{
 				anchors.fill: parent
-				handleDelegate: Rectangle {
-					width: 1
-					height: 1
-					color: "#8c8c8c"
-				}
 				orientation: Qt.Horizontal
 
 				ProjectList	{
@@ -183,12 +174,7 @@ Rectangle {
 					Layout.fillHeight: true
 					Layout.fillWidth: true
 
-					SplitView {
-						handleDelegate: Rectangle {
-							width: 1
-							height: 1
-							color: "#8c8c8c"
-						}
+					Splitter {
 						id: codeWebSplitter
 						anchors.fill: parent
 						orientation: Qt.Vertical

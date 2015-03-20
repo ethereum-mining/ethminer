@@ -223,7 +223,7 @@ Window {
 					enabled: deploymentDialog.packageBase64 !== ""
 					tooltip: qsTr("Copy Base64 conversion to ClipBoard")
 					onTriggered: {
-						appContext.toClipboard(deploymentDialog.packageBase64);
+						clipboard.text = deploymentDialog.packageBase64;
 					}
 				}
 
