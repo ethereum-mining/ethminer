@@ -315,7 +315,7 @@ struct PingNode: RLPXDatagram<PingNode>
 
 	static const uint8_t type = 1;
 
-	unsigned version = 1;
+	unsigned version = 2;
 	std::string ipAddress;
 	unsigned port;
 	unsigned expiration;
