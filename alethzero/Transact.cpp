@@ -165,6 +165,8 @@ void Transact::on_destination_currentTextChanged(QString)
 
 void Transact::rejigData()
 {
+	if (!ethereum())
+		return;
 	if (isCreation())
 	{
 		string src = ui->data->toPlainText().toStdString();
@@ -226,19 +228,61 @@ void Transact::rejigData()
 			}
 		}
 		QString errs;
+		qint64 gasNeeded = 0;
 		if (errors.size())
 		{
 			errs = "<h4>Errors</h4>";
 			for (auto const& i: errors)
 				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
 		}
+		else
+		{
+			if (true)
+			{
+				auto s = findSecret(value() + ethereum()->gasLimitRemaining() * gasPrice());
+				if (!s)
+					errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> No single account contains enough gas.</div>";
+					// TODO: use account with most balance anyway.
+				else
+				{
+					ExecutionResult er = ethereum()->create(s, value(), m_data, ethereum()->gasLimitRemaining(), gasPrice());
+					gasNeeded = (qint64)er.gasUsed;
+
+					if (er.excepted != TransactionException::None)
+					{
+						string exErr;
+						switch (er.excepted)
+						{
+						case TransactionException::Unknown: exErr = "Unknown error"; break;
+						case TransactionException::InvalidSignature: exErr = "Permanent Abort: Invalid transaction signature"; break;
+						case TransactionException::InvalidNonce: exErr = "Transient Abort: Invalid transaction nonce"; break;
+						case TransactionException::NotEnoughCash: exErr = "Transient Abort: Not enough cash to pay for transaction"; break;
+						case TransactionException::OutOfGasBase: exErr = "Permanent Abort: Not enough gas to consider transaction"; break;
+						case TransactionException::BlockGasLimitReached: exErr = "Transient Abort: Gas limit of block reached"; break;
+						case TransactionException::BadInstruction: exErr = "VM Error: Attempt to execute invalid instruction"; break;
+						case TransactionException::BadJumpDestination: exErr = "VM Error: Attempt to jump to invalid destination"; break;
+						case TransactionException::OutOfGas: exErr = "VM Error: Out of gas"; break;
+						case TransactionException::StackUnderflow: exErr = "VM Error: Stack underflow"; break;
+						default:;
+						}
+						errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> " + QString::fromStdString(exErr) + "</div";
+					}
+					if (er.codeDeposit == CodeDeposit::Failed)
+						errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> Code deposit failed due to insufficient gas</div>";
+				}
+			}
+			else
+				gasNeeded = (qint64)Interface::txGas(m_data, 0);
+		}
+
 		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped() + "<h4>Hex</h4>" Div(Mono) + QString::fromStdString(toHex(m_data)) + "</div>");
-		ui->gas->setMinimum((qint64)Interface::txGas(m_data, 0));
+
+		ui->gas->setMinimum(gasNeeded);
 		if (!ui->gas->isEnabled())
 			ui->gas->setValue(m_backupGas);
 		ui->gas->setEnabled(true);
-		if (ui->gas->value() == ui->gas->minimum() && !src.empty())
-			ui->gas->setValue((int)(m_ethereum->postState().gasLimitRemaining() / 10));
+//		if (ui->gas->value() == ui->gas->minimum() && !src.empty())
+//			ui->gas->setValue((int)(m_ethereum->postState().gasLimitRemaining() / 10));
 	}
 	else
 	{
@@ -273,6 +317,15 @@ void Transact::rejigData()
 	updateFee();
 }
 
+Secret Transact::findSecret(u256 _totalReq) const
+{
+	if (ethereum())
+		for (auto const& i: m_myKeys)
+			if (ethereum()->balanceAt(i.address(), 0) >= _totalReq)
+				return i.secret();
+	return Secret();
+}
+
 void Transact::on_send_clicked()
 {
 	u256 totalReq = value() + fee();
@@ -284,7 +337,6 @@ void Transact::on_send_clicked()
 			{
 				// If execution is a contract creation, add Natspec to
 				// a local Natspec LEVELDB
-				ExecutionResult er = ethereum()->create(s, value(), m_data, ui->gas->value(), gasPrice());
 				ethereum()->submitTransaction(s, value(), m_data, ui->gas->value(), gasPrice());
 				string src = ui->data->toPlainText().toStdString();
 				if (sourceIsSolidity(src))
