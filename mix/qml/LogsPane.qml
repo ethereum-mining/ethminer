@@ -67,7 +67,7 @@ Rectangle
 						var log = logsModel.get(k);
 						content += log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content + "\n";
 					}
-					appContext.toClipboard(content);
+					clipboard.text = content;
 				}
 			}
 
@@ -207,7 +207,7 @@ Rectangle
 			{
 				var log = logsModel.get(logsTable.currentRow);
 				if (log)
-					appContext.toClipboard(log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content);
+					clipboard.text = (log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content);
 			}
 
 			model: SortFilterProxyModel {
