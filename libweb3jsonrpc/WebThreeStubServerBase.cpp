@@ -139,7 +139,7 @@ static Json::Value toJson(map<u256, u256> const& _storage)
 	return res;
 }
 
-static unsigned jsToBlockIndex(std::string const& _js)
+static unsigned toBlockNumber(std::string const& _js)
 {
 	if (_js == "latest")
 		return LatestBlock;
@@ -159,9 +159,9 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 
 	// check only !empty. it should throw exceptions if input params are incorrect
 	if (!_json["fromBlock"].empty())
-		filter.withEarliest(jsToBlockIndex(_json["fromBlock"].asString()));
+		filter.withEarliest(toBlockNumber(_json["fromBlock"].asString()));
 	if (!_json["toBlock"].empty())
-		filter.withLatest(jsToBlockIndex(_json["toBlock"].asString()));
+		filter.withLatest(toBlockNumber(_json["toBlock"].asString()));
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
@@ -237,16 +237,6 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
 	return res;
-}
-
-// TODO: convert to jsToBlockNumber, downstream. too.
-static int toBlockNumber(string const& _string)
-{
-	if (_string.compare("latest") == 0)
-		return -1;
-	if (_string.compare("pending") == 0)
-		return 0;
-	return jsToInt(_string);
 }
 
 WebThreeStubServerBase::WebThreeStubServerBase(AbstractServerConnector& _conn, vector<dev::KeyPair> const& _accounts):

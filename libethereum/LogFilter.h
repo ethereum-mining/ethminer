@@ -42,15 +42,6 @@ std::ostream& operator<<(std::ostream& _out, dev::eth::LogFilter const& _s);
 
 class State;
 
-enum class RelativeBlock
-{
-	Latest,
-	Pending
-};
-
-static const unsigned LatestBlock = (unsigned)-2;
-static const unsigned PendingBlock = (unsigned)-1;
-
 class LogFilter
 {
 public:

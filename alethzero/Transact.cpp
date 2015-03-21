@@ -301,7 +301,7 @@ void Transact::rejigData()
 		auto to = m_context->fromString(ui->destination->currentText());
 		QString natspec;
 		QString errs;
-		if (ethereum()->codeAt(to, 0).size())
+		if (ethereum()->codeAt(to, PendingBlock).size())
 		{
 			string userNotice = m_natSpecDB->getUserNotice(ethereum()->postState().codeHash(to), m_data);
 			if (userNotice.empty())
@@ -362,7 +362,7 @@ Secret Transact::findSecret(u256 _totalReq) const
 {
 	if (ethereum())
 		for (auto const& i: m_myKeys)
-			if (ethereum()->balanceAt(i.address(), 0) >= _totalReq)
+			if (ethereum()->balanceAt(i.address(), PendingBlock) >= _totalReq)
 				return i.secret();
 	return Secret();
 }

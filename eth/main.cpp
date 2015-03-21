@@ -687,7 +687,7 @@ int main(int argc, char** argv)
 				auto acs =c->addresses();
 				string ss;
 				for (auto const& i: acs)
-					if ( c->codeAt(i, 0).size())
+					if ( c->codeAt(i, PendingBlock).size())
 					{
 						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
 						cout << ss << endl;
@@ -698,7 +698,7 @@ int main(int argc, char** argv)
 				auto acs =c->addresses();
 				string ss;
 				for (auto const& i: acs)
-					if ( c->codeAt(i, 0).empty())
+					if ( c->codeAt(i, PendingBlock).empty())
 					{
 						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
 						cout << ss << endl;
@@ -890,10 +890,10 @@ int main(int argc, char** argv)
 
 					try
 					{
-						auto storage =c->storageAt(h, 0);
+						auto storage =c->storageAt(h, PendingBlock);
 						for (auto const& i: storage)
 							s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-						s << endl << disassemble( c->codeAt(h, 0)) << endl;
+						s << endl << disassemble( c->codeAt(h, PendingBlock)) << endl;
 
 						string outFile = getDataDir() + "/" + rechex + ".evm";
 						ofstream ofs;
