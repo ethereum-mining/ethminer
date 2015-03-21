@@ -139,6 +139,18 @@ static Json::Value toJson(map<u256, u256> const& _storage)
 	return res;
 }
 
+static unsigned jsToBlockIndex(std::string const& _js)
+{
+	if (_js == "latest")
+		return LatestBlock;
+	else if (_js == "earliest")
+		return 0;
+	else if (_js == "pending")
+		return PendingBlock;
+	else
+		return (unsigned)jsToInt(_js);
+}
+
 static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
 {
 	dev::eth::LogFilter filter;
@@ -147,9 +159,9 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 
 	// check only !empty. it should throw exceptions if input params are incorrect
 	if (!_json["fromBlock"].empty())
-		filter.withEarliest(jsToInt(_json["fromBlock"].asString()));
+		filter.withEarliest(jsToBlockIndex(_json["fromBlock"].asString()));
 	if (!_json["toBlock"].empty())
-		filter.withLatest(jsToInt(_json["toBlock"].asString()));
+		filter.withLatest(jsToBlockIndex(_json["toBlock"].asString()));
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
@@ -227,6 +239,7 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	return res;
 }
 
+// TODO: convert to jsToBlockNumber, downstream. too.
 static int toBlockNumber(string const& _string)
 {
 	if (_string.compare("latest") == 0)

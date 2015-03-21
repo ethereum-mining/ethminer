@@ -369,39 +369,37 @@ Secret Transact::findSecret(u256 _totalReq) const
 
 void Transact::on_send_clicked()
 {
-	u256 totalReq = value() + fee();
-	for (auto const& i: m_myKeys)
-		if (ethereum()->balanceAt(i.address(), 0) >= totalReq)
-		{
-			Secret s = i.secret();
-			if (isCreation())
+	Secret s = findSecret(value() + fee());
+	if (!s)
+	{
+		QMessageBox::critical(this, "Transaction Failed", "Couldn't make transaction: no single account contains at least the required amount.");
+		return;
+	}
+
+	if (isCreation())
+	{
+		// If execution is a contract creation, add Natspec to
+		// a local Natspec LEVELDB
+		ethereum()->submitTransaction(s, value(), m_data, ui->gas->value(), gasPrice());
+		string src = ui->data->toPlainText().toStdString();
+		if (sourceIsSolidity(src))
+			try
 			{
-				// If execution is a contract creation, add Natspec to
-				// a local Natspec LEVELDB
-				ethereum()->submitTransaction(s, value(), m_data, ui->gas->value(), gasPrice());
-				string src = ui->data->toPlainText().toStdString();
-				if (sourceIsSolidity(src))
-					try
-					{
-						dev::solidity::CompilerStack compiler(true);
-						m_data = compiler.compile(src, ui->optimize->isChecked());
-						for (string const& s: compiler.getContractNames())
-						{
-							h256 contractHash = compiler.getContractCodeHash(s);
-							m_natSpecDB->add(contractHash, compiler.getMetadata(s, dev::solidity::DocumentationType::NatspecUser));
-						}
-					}
-					catch (...)
-					{
-					}
-				close();
-				return;
+				dev::solidity::CompilerStack compiler(true);
+				m_data = compiler.compile(src, ui->optimize->isChecked());
+				for (string const& s: compiler.getContractNames())
+				{
+					h256 contractHash = compiler.getContractCodeHash(s);
+					m_natSpecDB->add(contractHash, compiler.getMetadata(s, dev::solidity::DocumentationType::NatspecUser));
+				}
 			}
-			else
-				ethereum()->submitTransaction(s, value(), m_context->fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
-			return;
-		}
-	QMessageBox::critical(this, "Transaction Failed", "Couldn't make transaction: no single account contains at least the required amount.");
+			catch (...)
+			{
+			}
+	}
+	else
+		ethereum()->submitTransaction(s, value(), m_context->fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
+	close();
 }
 
 void Transact::on_debug_clicked()
