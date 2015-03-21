@@ -30,6 +30,6 @@ namespace dev
 {
 
 /// @returns the path for user data.
-std::string getDataDir();
+std::string getDataDir(std::string _prefix = "ethereum");
 
 }
