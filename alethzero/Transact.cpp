@@ -163,6 +163,25 @@ void Transact::on_destination_currentTextChanged(QString)
 //	updateFee();
 }
 
+static std::string toString(TransactionException _te)
+{
+	switch (_te)
+	{
+	case TransactionException::Unknown: return "Unknown error";
+	case TransactionException::InvalidSignature: return "Permanent Abort: Invalid transaction signature";
+	case TransactionException::InvalidNonce: return "Transient Abort: Invalid transaction nonce";
+	case TransactionException::NotEnoughCash: return "Transient Abort: Not enough cash to pay for transaction";
+	case TransactionException::OutOfGasBase: return "Permanent Abort: Not enough gas to consider transaction";
+	case TransactionException::BlockGasLimitReached: return "Transient Abort: Gas limit of block reached";
+	case TransactionException::BadInstruction: return "VM Error: Attempt to execute invalid instruction";
+	case TransactionException::BadJumpDestination: return "VM Error: Attempt to jump to invalid destination";
+	case TransactionException::OutOfGas: return "VM Error: Out of gas";
+	case TransactionException::OutOfStack: return "VM Error: VM stack limit reached during execution";
+	case TransactionException::StackUnderflow: return "VM Error: Stack underflow";
+	default:; return std::string();
+	}
+}
+
 void Transact::rejigData()
 {
 	if (!ethereum())
@@ -247,26 +266,11 @@ void Transact::rejigData()
 				{
 					ExecutionResult er = ethereum()->create(s, value(), m_data, ethereum()->gasLimitRemaining(), gasPrice());
 					gasNeeded = (qint64)er.gasUsed;
+					auto base = (qint64)Interface::txGas(m_data, 0);
+					errs += QString("<div class=\"info\"><span class=\"icon\">INFO</span> Gas required: %1 base, %2 init</div>").arg(base).arg((qint64)er.gasUsed - base);
 
 					if (er.excepted != TransactionException::None)
-					{
-						string exErr;
-						switch (er.excepted)
-						{
-						case TransactionException::Unknown: exErr = "Unknown error"; break;
-						case TransactionException::InvalidSignature: exErr = "Permanent Abort: Invalid transaction signature"; break;
-						case TransactionException::InvalidNonce: exErr = "Transient Abort: Invalid transaction nonce"; break;
-						case TransactionException::NotEnoughCash: exErr = "Transient Abort: Not enough cash to pay for transaction"; break;
-						case TransactionException::OutOfGasBase: exErr = "Permanent Abort: Not enough gas to consider transaction"; break;
-						case TransactionException::BlockGasLimitReached: exErr = "Transient Abort: Gas limit of block reached"; break;
-						case TransactionException::BadInstruction: exErr = "VM Error: Attempt to execute invalid instruction"; break;
-						case TransactionException::BadJumpDestination: exErr = "VM Error: Attempt to jump to invalid destination"; break;
-						case TransactionException::OutOfGas: exErr = "VM Error: Out of gas"; break;
-						case TransactionException::StackUnderflow: exErr = "VM Error: Stack underflow"; break;
-						default:;
-						}
-						errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> " + QString::fromStdString(exErr) + "</div";
-					}
+						errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> " + QString::fromStdString(toString(er.excepted)) + "</div>";
 					if (er.codeDeposit == CodeDeposit::Failed)
 						errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> Code deposit failed due to insufficient gas</div>";
 				}
@@ -277,18 +281,26 @@ void Transact::rejigData()
 
 		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped() + "<h4>Hex</h4>" Div(Mono) + QString::fromStdString(toHex(m_data)) + "</div>");
 
-		ui->gas->setMinimum(gasNeeded);
-		if (!ui->gas->isEnabled())
-			ui->gas->setValue(m_backupGas);
+		if (ui->gas->value() == ui->gas->minimum())
+		{
+			ui->gas->setMinimum(gasNeeded);
+			ui->gas->setValue(gasNeeded);
+		}
+		else
+			ui->gas->setMinimum(gasNeeded);
+//		if (!ui->gas->isEnabled())
+//			ui->gas->setValue(m_backupGas);
 		ui->gas->setEnabled(true);
 //		if (ui->gas->value() == ui->gas->minimum() && !src.empty())
 //			ui->gas->setValue((int)(m_ethereum->postState().gasLimitRemaining() / 10));
 	}
 	else
 	{
+		auto base = (qint64)Interface::txGas(m_data, 0);
 		m_data = parseData(ui->data->toPlainText().toStdString());
 		auto to = m_context->fromString(ui->destination->currentText());
 		QString natspec;
+		QString errs;
 		if (ethereum()->codeAt(to, 0).size())
 		{
 			string userNotice = m_natSpecDB->getUserNotice(ethereum()->postState().codeHash(to), m_data);
@@ -299,7 +311,35 @@ void Transact::rejigData()
 				NatspecExpressionEvaluator evaluator;
 				natspec = evaluator.evalExpression(QString::fromStdString(userNotice));
 			}
-			ui->gas->setMinimum((qint64)Interface::txGas(m_data, 1));
+
+			qint64 gasNeeded = 0;
+			if (true)
+			{
+				auto s = findSecret(value() + ethereum()->gasLimitRemaining() * gasPrice());
+				if (!s)
+					errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> No single account contains enough gas.</div>";
+					// TODO: use account with most balance anyway.
+				else
+				{
+					ExecutionResult er = ethereum()->call(s, value(), to, m_data, ethereum()->gasLimitRemaining(), gasPrice());
+					gasNeeded = (qint64)er.gasUsed;
+					errs += QString("<div class=\"info\"><span class=\"icon\">INFO</span> Gas required: %1 base, %2 exec</div>").arg(base).arg((qint64)er.gasUsed - base);
+
+					if (er.excepted != TransactionException::None)
+						errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> " + QString::fromStdString(toString(er.excepted)) + "</div>";
+				}
+			}
+			else
+				gasNeeded = (qint64)Interface::txGas(m_data, 0);
+
+			if (ui->gas->value() == ui->gas->minimum())
+			{
+				ui->gas->setMinimum(gasNeeded);
+				ui->gas->setValue(gasNeeded);
+			}
+			else
+				ui->gas->setMinimum(gasNeeded);
+
 			if (!ui->gas->isEnabled())
 				ui->gas->setValue(m_backupGas);
 			ui->gas->setEnabled(true);
@@ -309,10 +349,11 @@ void Transact::rejigData()
 			natspec += "Destination not a contract.";
 			if (ui->gas->isEnabled())
 				m_backupGas = ui->gas->value();
-			ui->gas->setValue((qint64)Interface::txGas(m_data));
+			ui->gas->setMinimum(base);
+			ui->gas->setValue(base);
 			ui->gas->setEnabled(false);
 		}
-		ui->code->setHtml("<h3>NatSpec</h3>" + natspec + "<h3>Dump</h3>" + QString::fromStdString(dev::memDump(m_data, 8, true)) + "<h3>Hex</h3>" + Div(Mono) + QString::fromStdString(toHex(m_data)) + "</div>");
+		ui->code->setHtml(errs + "<h3>NatSpec</h3>" + natspec + "<h3>Dump</h3>" + QString::fromStdString(dev::memDump(m_data, 8, true)) + "<h3>Hex</h3>" + Div(Mono) + QString::fromStdString(toHex(m_data)) + "</div>");
 	}
 	updateFee();
 }
