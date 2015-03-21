@@ -37,6 +37,7 @@ u256 const c_gasLimitBoundDivisor = 1024;
 u256 const c_minimumDifficulty = 131072;
 u256 const c_difficultyBoundDivisor = 2048;
 u256 const c_durationLimit = 8;
+u256 const c_stackLimit = 1024;
 u256 const c_tierStepGas[] = {0, 2, 3, 5, 8, 10, 20, 0};
 u256 const c_expGas = 10;
 u256 const c_expByteGas = 10;
