@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <string>
+#include <libethcore/Common.h>
 #include <libethereum/Interface.h>
 #include <libethereum/Client.h>
 #include "MachineStates.h"
@@ -52,13 +53,13 @@ public:
 	Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice) override;
 	void inject(bytesConstRef _rlp) override;
 	void flushTransactions() override;
-	dev::eth::ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber) override;
-	dev::eth::ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber) override;
-	u256 balanceAt(Address _a, int _block) const override;
-	u256 countAt(Address _a, int _block) const override;
-	u256 stateAt(Address _a, u256 _l, int _block) const override;
-	bytes codeAt(Address _a, int _block) const override;
-	std::map<u256, u256> storageAt(Address _a, int _block) const override;
+	dev::eth::ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, eth::BlockNumber _blockNumber) override;
+	dev::eth::ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, eth::BlockNumber _blockNumber) override;
+	u256 balanceAt(Address _a, eth::BlockNumber _block) const override;
+	u256 countAt(Address _a, eth::BlockNumber _block) const override;
+	u256 stateAt(Address _a, u256 _l, eth::BlockNumber _block) const override;
+	bytes codeAt(Address _a, eth::BlockNumber _block) const override;
+	std::map<u256, u256> storageAt(Address _a, eth::BlockNumber _block) const override;
 	eth::LocalisedLogEntries logs(unsigned _watchId) const override;
 	eth::LocalisedLogEntries logs(eth::LogFilter const& _filter) const override;
 	unsigned installWatch(eth::LogFilter const& _filter, eth::Reaping _r = eth::Reaping::Automatic) override;
@@ -79,8 +80,8 @@ public:
 	unsigned number() const override;
 	eth::Transactions pending() const override;
 	eth::StateDiff diff(unsigned _txi, h256 _block) const override;
-	eth::StateDiff diff(unsigned _txi, int _block) const override;
-	Addresses addresses(int _block) const override;
+	eth::StateDiff diff(unsigned _txi, eth::BlockNumber _block) const override;
+	Addresses addresses(eth::BlockNumber _block) const override;
 	u256 gasLimitRemaining() const override;
 	void setAddress(Address _us) override;
 	Address address() const override;

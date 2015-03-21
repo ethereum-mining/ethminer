@@ -59,7 +59,6 @@ struct InvalidGasUsed: virtual dev::Exception {};
 class InvalidTransactionsHash: virtual public dev::Exception {};
 struct InvalidTransaction: virtual dev::Exception {};
 struct InvalidDifficulty: virtual dev::Exception {};
-struct InvalidSeedHash: virtual dev::Exception {};
 class InvalidGasLimit: virtual public dev::Exception {};
 struct InvalidTransactionGasUsed: virtual dev::Exception {};
 struct InvalidTransactionsStateRoot: virtual dev::Exception {};

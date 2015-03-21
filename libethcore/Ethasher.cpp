@@ -71,10 +71,10 @@ bytesConstRef Ethasher::full(BlockInfo const& _header)
 			m_fulls.erase(m_fulls.begin());
 		}
 		try {
-			boost::filesystem::create_directories(getDataDir() + "/ethashcache");
+			boost::filesystem::create_directories(getDataDir("ethash"));
 		} catch (...) {}
 
-		std::string memoFile = getDataDir() + "/ethashcache/full";
+		std::string memoFile = getDataDir("ethash") + "/full";
 		auto info = rlpList(c_ethashRevision, _header.seedHash());
 		if (boost::filesystem::exists(memoFile) && contents(memoFile + ".info") != info)
 			boost::filesystem::remove(memoFile);

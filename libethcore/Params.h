@@ -38,6 +38,7 @@ extern u256 const c_gasLimitBoundDivisor;
 extern u256 const c_minimumDifficulty;
 extern u256 const c_difficultyBoundDivisor;
 extern u256 const c_durationLimit;
+extern u256 const c_stackLimit;
 
 extern u256 const c_tierStepGas[8];			///< Once per operation, for a selection of them.
 extern u256 const c_expGas;					///< Once per EXP instuction.
