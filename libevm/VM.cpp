@@ -36,6 +36,7 @@ struct InstructionMetric
 {
 	int gasPriceTier;
 	int args;
+	int ret;
 };
 
 static array<InstructionMetric, 256> metrics()
@@ -46,6 +47,7 @@ static array<InstructionMetric, 256> metrics()
 		InstructionInfo inst = instructionInfo((Instruction)i);
 		s_ret[i].gasPriceTier = inst.gasPriceTier;
 		s_ret[i].args = inst.args;
+		s_ret[i].ret = inst.ret;
 	}
 	return s_ret;
 }
@@ -91,7 +93,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 		// should work, but just seems to result in immediate errorless exit on initial execution. yeah. weird.
 		//m_onFail = std::function<void()>(onOperation);
 
-		require(metric.args);
+		require(metric.args, metric.ret);
 
 		auto onOperation = [&]()
 		{
@@ -185,40 +187,6 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			runGas = c_expGas + c_expByteGas * (32 - (h256(expon).firstBitSet() / 8));
 			break;
 		}
-		case Instruction::PUSH1:
-		case Instruction::PUSH2:
-		case Instruction::PUSH3:
-		case Instruction::PUSH4:
-		case Instruction::PUSH5:
-		case Instruction::PUSH6:
-		case Instruction::PUSH7:
-		case Instruction::PUSH8:
-		case Instruction::PUSH9:
-		case Instruction::PUSH10:
-		case Instruction::PUSH11:
-		case Instruction::PUSH12:
-		case Instruction::PUSH13:
-		case Instruction::PUSH14:
-		case Instruction::PUSH15:
-		case Instruction::PUSH16:
-		case Instruction::PUSH17:
-		case Instruction::PUSH18:
-		case Instruction::PUSH19:
-		case Instruction::PUSH20:
-		case Instruction::PUSH21:
-		case Instruction::PUSH22:
-		case Instruction::PUSH23:
-		case Instruction::PUSH24:
-		case Instruction::PUSH25:
-		case Instruction::PUSH26:
-		case Instruction::PUSH27:
-		case Instruction::PUSH28:
-		case Instruction::PUSH29:
-		case Instruction::PUSH30:
-		case Instruction::PUSH31:
-		case Instruction::PUSH32:
-			if (m_stack.size() > c_stackLimit)
-				BOOST_THROW_EXCEPTION(OutOfStack());
 		default:;
 		}
 
