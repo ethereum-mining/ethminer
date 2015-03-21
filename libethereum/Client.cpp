@@ -491,7 +491,7 @@ void Client::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes
 	m_tq.attemptImport(t.rlp());
 }
 
-ExecutionResult Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
+ExecutionResult Client::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
 {
 	ExecutionResult ret;
 	try
@@ -514,7 +514,7 @@ ExecutionResult Client::call(Secret _secret, u256 _value, Address _dest, bytes c
 	return ret;
 }
 
-ExecutionResult Client::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
+ExecutionResult Client::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
 {
 	ExecutionResult ret;
 	try
@@ -739,12 +739,12 @@ unsigned Client::numberOf(int _n) const
 		return m_bc.details().number + max(-(int)m_bc.details().number, 1 + _n);
 }
 
-State Client::asOf(int _h) const
+State Client::asOf(unsigned _h) const
 {
 	ReadGuard l(x_stateDB);
-	if (_h == 0)
+	if (_h == PendingBlock)
 		return m_postMine;
-	else if (_h == -1)
+	else if (_h == LatestBlock)
 		return m_preMine;
 	else
 		return State(m_stateDB, m_bc, m_bc.numberHash(numberOf(_h)));
@@ -768,7 +768,7 @@ eth::State Client::state(unsigned _txi) const
 	return m_postMine.fromPending(_txi);
 }
 
-StateDiff Client::diff(unsigned _txi, int _block) const
+StateDiff Client::diff(unsigned _txi, BlockNumber _block) const
 {
 	State st = asOf(_block);
 	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
@@ -780,7 +780,7 @@ StateDiff Client::diff(unsigned _txi, h256 _block) const
 	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
 }
 
-std::vector<Address> Client::addresses(int _block) const
+std::vector<Address> Client::addresses(BlockNumber _block) const
 {
 	vector<Address> ret;
 	for (auto const& i: asOf(_block).addresses())
@@ -788,27 +788,27 @@ std::vector<Address> Client::addresses(int _block) const
 	return ret;
 }
 
-u256 Client::balanceAt(Address _a, int _block) const
+u256 Client::balanceAt(Address _a, BlockNumber _block) const
 {
 	return asOf(_block).balance(_a);
 }
 
-std::map<u256, u256> Client::storageAt(Address _a, int _block) const
+std::map<u256, u256> Client::storageAt(Address _a, BlockNumber _block) const
 {
 	return asOf(_block).storage(_a);
 }
 
-u256 Client::countAt(Address _a, int _block) const
+u256 Client::countAt(Address _a, BlockNumber _block) const
 {
 	return asOf(_block).transactionsFrom(_a);
 }
 
-u256 Client::stateAt(Address _a, u256 _l, int _block) const
+u256 Client::stateAt(Address _a, u256 _l, BlockNumber _block) const
 {
 	return asOf(_block).storage(_a, _l);
 }
 
-bytes Client::codeAt(Address _a, int _block) const
+bytes Client::codeAt(Address _a, BlockNumber _block) const
 {
 	return asOf(_block).code(_a);
 }

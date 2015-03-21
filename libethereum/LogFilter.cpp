@@ -46,7 +46,7 @@ h256 LogFilter::sha3() const
 	return dev::sha3(s.out());
 }
 
-static bool isNoLater(RelativeBlock _logBlockRelation, u256 _logBlockNumber, int _latest)
+static bool isNoLater(RelativeBlock _logBlockRelation, u256 _logBlockNumber, unsigned _latest)
 {
 	if (_latest == PendingBlock)
 		return true;
@@ -56,7 +56,7 @@ static bool isNoLater(RelativeBlock _logBlockRelation, u256 _logBlockNumber, int
 		return _logBlockNumber <= _latest;
 }
 
-static bool isNoEarlier(RelativeBlock _logBlockRelation, u256 _logBlockNumber, int _earliest)
+static bool isNoEarlier(RelativeBlock _logBlockRelation, u256 _logBlockNumber, unsigned _earliest)
 {
 	if (_earliest == PendingBlock)
 		return _logBlockRelation == RelativeBlock::Pending;
