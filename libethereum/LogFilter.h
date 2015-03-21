@@ -45,14 +45,15 @@ class State;
 class LogFilter
 {
 public:
-	LogFilter(int _earliest = 0, int _latest = -1): m_earliest(_earliest), m_latest(_latest) {}
+	LogFilter(unsigned _earliest = 0, unsigned _latest = PendingBlock): m_earliest(_earliest), m_latest(_latest) {}
 
 	void streamRLP(RLPStream& _s) const;
 	h256 sha3() const;
 
-	int earliest() const { return m_earliest; }
-	int latest() const { return m_latest; }
+	unsigned earliest() const { return m_earliest; }
+	unsigned latest() const { return m_latest; }
 
+	bool envelops(RelativeBlock _logBlockRelation, u256 _logBlockNumber) const;
 	std::vector<LogBloom> bloomPossibilities() const;
 	bool matches(LogBloom _bloom) const;
 	bool matches(State const& _s, unsigned _i) const;
@@ -68,8 +69,8 @@ public:
 private:
 	AddressSet m_addresses;
 	std::array<h256Set, 4> m_topics;
-	int m_earliest = 0;
-	int m_latest = -1;
+	unsigned m_earliest = 0;
+	unsigned m_latest = LatestBlock;
 };
 
 }

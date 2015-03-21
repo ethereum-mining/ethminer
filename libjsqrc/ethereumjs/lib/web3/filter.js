@@ -64,16 +64,6 @@ var getOptions = function (options) {
         options.toBlock = options.latest;
     }
 
-    if (options.skip) {
-        console.warn('"skip" is deprecated, is "offset" instead');
-        options.offset = options.skip;
-    }
-
-    if (options.max) {
-        console.warn('"max" is deprecated, is "limit" instead');
-        options.limit = options.max;
-    }
-
     // make sure topics, get converted to hex
     if(options.topics instanceof Array) {
         options.topics = options.topics.map(function(topic){
@@ -81,13 +71,18 @@ var getOptions = function (options) {
         });
     }
 
+	var asBlockNumber = function(n) {
+		if (n == null)
+			return null;
+		if (n == 'latest' || n == 'pending')
+			return n;
+		return utils.toHex(n);
+	};
 
     // evaluate lazy properties
     return {
-        fromBlock: utils.toHex(options.fromBlock),
-        toBlock: utils.toHex(options.toBlock),
-        limit: utils.toHex(options.limit),
-        offset: utils.toHex(options.offset),
+		fromBlock: asBlockNumber(options.fromBlock),
+		toBlock: asBlockNumber(options.toBlock),
         to: options.to,
         address: options.address,
         topics: options.topics
@@ -112,9 +107,9 @@ var filter = function(options, implementation, formatter) {
     // call the callbacks
     var onMessages = function (messages) {
         messages.forEach(function (message) {
-            message = formatter ? formatter(message) : message;
+			message = formatter ? formatter(message) : message;
             callbacks.forEach(function (callback) {
-                callback(message);
+				callback(message);
             });
         });
     };
