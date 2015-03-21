@@ -2048,7 +2048,6 @@ var filter = function(options, implementation, formatter) {
     // call the callbacks
     var onMessages = function (messages) {
         messages.forEach(function (message) {
-			console.log("Got message: " + JSON.stringify(message));
 			message = formatter ? formatter(message) : message;
             callbacks.forEach(function (callback) {
 				callback(message);

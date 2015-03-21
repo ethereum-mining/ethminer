@@ -103,7 +103,7 @@ void interactiveHelp()
 void help()
 {
 	cout
-		<< "Usage eth [OPTIONS] <remote-host>" << endl
+		<< "Usage eth [OPTIONS]" << endl
 		<< "Options:" << endl
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
@@ -407,7 +407,10 @@ int main(int argc, char** argv)
 		else if (arg == "-V" || arg == "--version")
 			version();
 		else
-			remoteHost = argv[i];
+		{
+			cerr << "Invalid argument: " << arg << endl;
+			exit(-1);
+		}
 	}
 
 	if (!clientName.empty())
