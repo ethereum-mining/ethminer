@@ -357,11 +357,11 @@ LocalisedLogEntries Client::checkWatch(unsigned _watchId)
 	return ret;
 }
 
-void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _sha3)
+void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _transactionHash)
 {
 	Guard l(m_filterLock);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
-		if ((unsigned)i.second.filter.latest() > m_bc.number())
+		if (i.second.filter.envelops(RelativeBlock::Pending, m_bc.number() + 1))
 		{
 			// acceptable number.
 			auto m = i.second.filter.matches(_receipt);
@@ -369,7 +369,7 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& i
 			{
 				// filter catches them
 				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1, _sha3));
+					i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1, _transactionHash));
 				io_changed.insert(i.first);
 			}
 		}
@@ -383,7 +383,7 @@ void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 
 	Guard l(m_filterLock);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
-		if ((unsigned)i.second.filter.latest() >= d.number && (unsigned)i.second.filter.earliest() <= d.number && i.second.filter.matches(d.logBloom))
+		if (i.second.filter.envelops(RelativeBlock::Latest, d.number) && i.second.filter.matches(d.logBloom))
 			// acceptable number & looks like block may contain a matching log entry.
 			for (size_t j = 0; j < br.receipts.size(); j++)
 			{
@@ -391,10 +391,10 @@ void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 				auto m = i.second.filter.matches(tr);
 				if (m.size())
 				{
-					auto sha3 = transaction(d.hash, j).sha3();
+					auto transactionHash = transaction(d.hash, j).sha3();
 					// filter catches them
 					for (LogEntry const& l: m)
-						i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number, sha3));
+						i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number, transactionHash));
 					io_changed.insert(i.first);
 				}
 			}
