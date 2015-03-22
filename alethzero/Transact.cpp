@@ -186,6 +186,7 @@ void Transact::rejigData()
 {
 	if (!ethereum())
 		return;
+	m_allGood = true;
 	if (isCreation())
 	{
 		string src = ui->data->toPlainText().toStdString();
@@ -210,11 +211,11 @@ void Transact::rejigData()
 			{
 				ostringstream error;
 				solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
-				solidity = "<h4>Solidity</h4><pre>" + QString::fromStdString(error.str()).toHtmlEscaped() + "</pre>";
+				errors.push_back("Solidity: " + error.str());
 			}
 			catch (...)
 			{
-				solidity = "<h4>Solidity</h4><pre>Uncaught exception.</pre>";
+				errors.push_back("Solidity: Uncaught exception");
 			}
 		}
 #ifndef _MSC_VER
@@ -223,8 +224,6 @@ void Transact::rejigData()
 			try
 			{
 				m_data = dev::asBytes(::compile(src));
-				for (auto& i: errors)
-					i = "(LLL " + i + ")";
 			}
 			catch (string const& err)
 			{
@@ -237,22 +236,18 @@ void Transact::rejigData()
 			m_data = compileLLL(src, ui->optimize->isChecked(), &errors);
 			if (errors.empty())
 			{
-				auto asmcode = compileLLLToAsm(src, false);
-				lll = "<h4>Pre</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
-				if (ui->optimize->isChecked())
-				{
-					asmcode = compileLLLToAsm(src, true);
-					lll = "<h4>Opt</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>" + lll;
-				}
+				auto asmcode = compileLLLToAsm(src, ui->optimize->isChecked());
+				lll = "<h4>LLL</h4><pre>" + QString::fromStdString(asmcode).toHtmlEscaped() + "</pre>";
 			}
 		}
-		QString errs;
+		QString htmlErrors;
 		qint64 gasNeeded = 0;
 		if (errors.size())
 		{
-			errs = "<h4>Errors</h4>";
+			htmlErrors = "<h4>Errors</h4>";
 			for (auto const& i: errors)
-				errs.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
+				htmlErrors.append("<div style=\"border-left: 6px solid #c00; margin-top: 2px\">" + QString::fromStdString(i).toHtmlEscaped() + "</div>");
+			m_allGood = false;
 		}
 		else
 		{
@@ -260,26 +255,32 @@ void Transact::rejigData()
 			{
 				auto s = findSecret(value() + ethereum()->gasLimitRemaining() * gasPrice());
 				if (!s)
-					errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> No single account contains enough gas.</div>";
+					htmlErrors += "<div class=\"error\"><span class=\"icon\">WARNING</span> No single account contains a comfortable amount of gas.</div>";
 					// TODO: use account with most balance anyway.
 				else
 				{
 					ExecutionResult er = ethereum()->create(s, value(), m_data, ethereum()->gasLimitRemaining(), gasPrice());
 					gasNeeded = (qint64)er.gasUsed;
 					auto base = (qint64)Interface::txGas(m_data, 0);
-					errs += QString("<div class=\"info\"><span class=\"icon\">INFO</span> Gas required: %1 base, %2 init</div>").arg(base).arg((qint64)er.gasUsed - base);
+					htmlErrors += QString("<div class=\"info\"><span class=\"icon\">INFO</span> Gas required: %1 base, %2 init</div>").arg(base).arg((qint64)er.gasUsed - base);
 
 					if (er.excepted != TransactionException::None)
-						errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> " + QString::fromStdString(toString(er.excepted)) + "</div>";
+					{
+						htmlErrors += "<div class=\"error\"><span class=\"icon\">ERROR</span> " + QString::fromStdString(toString(er.excepted)) + "</div>";
+						m_allGood = false;
+					}
 					if (er.codeDeposit == CodeDeposit::Failed)
-						errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> Code deposit failed due to insufficient gas</div>";
+					{
+						htmlErrors += "<div class=\"error\"><span class=\"icon\">ERROR</span> Code deposit failed due to insufficient gas</div>";
+						m_allGood = false;
+					}
 				}
 			}
 			else
 				gasNeeded = (qint64)Interface::txGas(m_data, 0);
 		}
 
-		ui->code->setHtml(errs + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped() + "<h4>Hex</h4>" Div(Mono) + QString::fromStdString(toHex(m_data)) + "</div>");
+		ui->code->setHtml(htmlErrors + lll + solidity + "<h4>Code</h4>" + QString::fromStdString(disassemble(m_data)).toHtmlEscaped() + "<h4>Hex</h4>" Div(Mono) + QString::fromStdString(toHex(m_data)) + "</div>");
 
 		if (ui->gas->value() == ui->gas->minimum())
 		{
@@ -296,6 +297,7 @@ void Transact::rejigData()
 	}
 	else
 	{
+		m_allGood = true;
 		auto base = (qint64)Interface::txGas(m_data, 0);
 		m_data = parseData(ui->data->toPlainText().toStdString());
 		auto to = m_context->fromString(ui->destination->currentText());
@@ -326,7 +328,10 @@ void Transact::rejigData()
 					errs += QString("<div class=\"info\"><span class=\"icon\">INFO</span> Gas required: %1 base, %2 exec</div>").arg(base).arg((qint64)er.gasUsed - base);
 
 					if (er.excepted != TransactionException::None)
+					{
 						errs += "<div class=\"error\"><span class=\"icon\">ERROR</span> " + QString::fromStdString(toString(er.excepted)) + "</div>";
+						m_allGood = false;
+					}
 				}
 			}
 			else
@@ -356,6 +361,8 @@ void Transact::rejigData()
 		ui->code->setHtml(errs + "<h3>NatSpec</h3>" + natspec + "<h3>Dump</h3>" + QString::fromStdString(dev::memDump(m_data, 8, true)) + "<h3>Hex</h3>" + Div(Mono) + QString::fromStdString(toHex(m_data)) + "</div>");
 	}
 	updateFee();
+
+	ui->send->setEnabled(m_allGood);
 }
 
 Secret Transact::findSecret(u256 _totalReq) const
