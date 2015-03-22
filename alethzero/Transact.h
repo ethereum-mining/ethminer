@@ -80,4 +80,5 @@ private:
 	dev::eth::Client* m_ethereum = nullptr;
 	Context* m_context = nullptr;
 	NatSpecFace* m_natSpecDB = nullptr;
+	bool m_allGood = false;
 };
