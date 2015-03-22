@@ -477,7 +477,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			case PingNode::type:
 			{
 				PingNode in = PingNode::fromBytesConstRef(_from, rlpBytes);
-				if (in.version != c_protocolVersion)
+				if (in.version != dev::p2p::c_protocolVersion)
 				{
 					if (auto n = nodeEntry(nodeid))
 						dropNode(n);
