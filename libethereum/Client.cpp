@@ -40,7 +40,7 @@ VersionChecker::VersionChecker(string const& _dbPath):
 {
 	auto protocolContents = contents(m_path + "/protocol");
 	auto databaseContents = contents(m_path + "/database");
-	m_ok = RLP(protocolContents).toInt<unsigned>(RLP::LaisezFaire) == c_protocolVersion && RLP(databaseContents).toInt<unsigned>(RLP::LaisezFaire) == c_databaseVersion;
+	m_ok = RLP(protocolContents).toInt<unsigned>(RLP::LaisezFaire) == eth::c_protocolVersion && RLP(databaseContents).toInt<unsigned>(RLP::LaisezFaire) == c_databaseVersion;
 }
 
 void VersionChecker::setOk()
@@ -55,7 +55,7 @@ void VersionChecker::setOk()
 		{
 			cwarn << "Unhandled exception! Failed to create directory: " << m_path << "\n" << boost::current_exception_diagnostic_information();
 		}
-		writeFile(m_path + "/protocol", rlp(c_protocolVersion));
+		writeFile(m_path + "/protocol", rlp(eth::c_protocolVersion));
 		writeFile(m_path + "/database", rlp(c_databaseVersion));
 	}
 }
