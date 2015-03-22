@@ -49,8 +49,14 @@ Rectangle {
     signal editItem(real item);
 
     property variant items;
-    property alias selectedItem: chosenItemText.text;
-    property alias selectedIndex: listView.currentRow;
+    readonly property alias selectedItem: chosenItemText.text;
+    readonly property alias selectedIndex: listView.currentRow;
+    function setSelectedIndex(index)
+    {
+        listView.currentRow = index;
+        chosenItemText.text = statesComboBox.items.get(0).title;
+    }
+
     signal comboClicked;
 
     property variant colorItem;
@@ -64,12 +70,12 @@ Rectangle {
         color: statesComboBox.color;
         smooth:true;
         Text {
+            id:chosenItemText
             anchors.top: parent.top;
             anchors.left: parent.left;
             anchors.margins: 2;
             color: statesComboBox.colorItem;
-            id:chosenItemText
-            text:statesComboBox.items.get(0).title;
+            text:""
             smooth:true
         }
 
@@ -96,7 +102,7 @@ Rectangle {
             height:500;
             width:statesComboBox.width;
             model: statesComboBox.items
-            currentRow: 0
+            currentRow: -1
             headerVisible: false;
             backgroundVisible: false
             alternatingRowColors : false;
@@ -162,7 +168,7 @@ Rectangle {
                             else {
                                 statesComboBox.state = ""
                                 var prevSelection = chosenItemText.text
-                                chosenItemText.text = modelData
+                                chosenItemText.text = styleData.value
                                 if(chosenItemText.text != prevSelection)
                                     statesComboBox.comboClicked();
                                 listView.currentRow = styleData.row;
@@ -179,7 +185,4 @@ Rectangle {
         PropertyChanges { target: dropDownList; height:20*statesComboBox.items.count }
     }
 
-    transitions: Transition {
-        NumberAnimation { target: dropDownList; properties: "height"; easing.type: Easing.OutExpo; duration: 1000 }
-    }
 }
