@@ -708,7 +708,7 @@ bytes Host::saveNetwork() const
 	}
 
 	RLPStream ret(3);
-	ret << 1 << m_alias.secret();
+	ret << 2 << m_alias.secret();
 	ret.appendList(count).appendRaw(network.out(), count);
 	return ret.out();
 }
@@ -721,7 +721,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 
 	RecursiveGuard l(x_sessions);
 	RLP r(_b);
-	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<int>() == 1)
+	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<int>() == 2)
 	{
 		// r[0] = version
 		// r[1] = key
