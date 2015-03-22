@@ -135,9 +135,6 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	using EvictionTimeout = std::pair<std::pair<NodeId, TimePoint>, NodeId>;	///< First NodeId may be evicted and replaced with second NodeId.
 
 public:
-	/// Version of Discovery protocol
-	static unsigned const c_version = 2;
-	
 	/// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
 	NodeTable(ba::io_service& _io, KeyPair _alias, bi::address const& _udpAddress, uint16_t _udpPort = 30303);
 	~NodeTable();
@@ -319,7 +316,7 @@ struct PingNode: RLPXDatagram<PingNode>
 
 	static const uint8_t type = 1;
 
-	unsigned version = 2;
+	unsigned version = c_protocolVersion;
 	std::string ipAddress;
 	unsigned port;
 	unsigned expiration;
