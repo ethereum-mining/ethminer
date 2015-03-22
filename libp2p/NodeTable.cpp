@@ -27,11 +27,11 @@ using namespace dev::p2p;
 NodeEntry::NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src.id,_pubk)) {}
 NodeEntry::NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp): Node(_pubk, NodeIPEndpoint(_udp)), distance(NodeTable::distance(_src.id,_pubk)) {}
 
-NodeTable::NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udp):
-	m_node(Node(_alias.pub(), bi::udp::endpoint())),
+NodeTable::NodeTable(ba::io_service& _io, KeyPair _alias, bi::address const& _udpAddress, uint16_t _udp):
+	m_node(Node(_alias.pub(), bi::udp::endpoint(_udpAddress, _udp))),
 	m_secret(_alias.sec()),
 	m_io(_io),
-	m_socket(new NodeSocket(m_io, *this, _udp)),
+	m_socket(new NodeSocket(m_io, *this, m_node.endpoint.udp)),
 	m_socketPointer(m_socket.get()),
 	m_bucketRefreshTimer(m_io),
 	m_evictionCheckTimer(m_io)
