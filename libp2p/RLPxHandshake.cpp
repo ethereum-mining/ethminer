@@ -172,7 +172,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		// 5 arguments, HelloPacket
 		RLPStream s;
 		s.append((unsigned)0).appendList(5)
-		<< m_host->protocolVersion()
+		<< dev::p2p::c_protocolVersion
 		<< m_host->m_clientVersion
 		<< m_host->caps()
 		<< m_host->listenPort()
