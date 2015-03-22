@@ -94,12 +94,6 @@ public:
 	/// Will block on network process events.
 	virtual ~Host();
 
-	/// Interval at which Host::run will call keepAlivePeers to ping peers.
-	std::chrono::seconds const c_keepAliveInterval = std::chrono::seconds(30);
-
-	/// Disconnect timeout after failure to respond to keepAlivePeers ping.
-	std::chrono::milliseconds const c_keepAliveTimeOut = std::chrono::milliseconds(1000);
-
 	/// Default host for current version of client.
 	static std::string pocHost();
 
