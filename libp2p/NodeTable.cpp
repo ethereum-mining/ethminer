@@ -443,7 +443,10 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 						n->pending = false;
 				}
 				else if (m_pubkDiscoverPings.count(_from.address()))
+				{
 					m_pubkDiscoverPings.erase(_from.address());
+					addNode(nodeid, _from, bi::tcp::endpoint(_from.address(), _from.port()));
+				}
 				else
 					return; // unsolicited pong; don't note node as active
 				
