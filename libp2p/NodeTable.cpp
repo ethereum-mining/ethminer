@@ -340,7 +340,7 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 					s.nodes.push_back(node);
 					s.touch();
 					
-					if (!removed)
+					if (!removed && m_nodeEventHandler)
 						m_nodeEventHandler->appendEvent(node->id, NodeEntryAdded);
 				}
 			}
@@ -349,7 +349,7 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 				s.nodes.push_back(node);
 				s.touch();
 				
-				if (!removed)
+				if (!removed && m_nodeEventHandler)
 					m_nodeEventHandler->appendEvent(node->id, NodeEntryAdded);
 			}
 		}
