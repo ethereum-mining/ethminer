@@ -97,9 +97,6 @@ public:
 	/// Default host for current version of client.
 	static std::string pocHost();
 
-	/// Basic peer network protocol version.
-	unsigned protocolVersion() const;
-
 	/// Register a peer-capability; all new peer connections will have this capability.
 	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; auto ret = std::shared_ptr<T>(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
 
