@@ -709,7 +709,7 @@ bytes Host::saveNetwork() const
 	}
 
 	RLPStream ret(3);
-	ret << c_protocolVersion << m_alias.secret();
+	ret << dev::p2p::c_protocolVersion << m_alias.secret();
 	ret.appendList(count).appendRaw(network.out(), count);
 	return ret.out();
 }
@@ -722,7 +722,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 
 	RecursiveGuard l(x_sessions);
 	RLP r(_b);
-	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<unsigned>() == c_protocolVersion)
+	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<unsigned>() == dev::p2p::c_protocolVersion)
 	{
 		// r[0] = version
 		// r[1] = key
