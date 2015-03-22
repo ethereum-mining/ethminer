@@ -134,7 +134,7 @@ string credits()
 void version()
 {
 	cout << "neth version " << dev::Version << endl;
-	cout << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
+	cout << "eth network protocol version: " << dev::eth::c_protocolVersion << endl;
 	cout << "Client database version: " << dev::eth::c_databaseVersion << endl;
 	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
