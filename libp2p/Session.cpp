@@ -51,6 +51,7 @@ Session::Session(Host* _s, RLPXFrameIO* _io, std::shared_ptr<Peer> const& _n, Pe
 
 Session::~Session()
 {
+	clogS(NetMessageSummary) << "Closing Peer Session :-(";
 	m_peer->m_lastConnected = m_peer->m_lastAttempted - chrono::seconds(1);
 
 	// Read-chain finished for one reason or another.
