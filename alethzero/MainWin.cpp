@@ -145,7 +145,7 @@ Main::Main(QWidget *parent) :
 	cerr << "Block Hash: " << CanonBlockChain::genesis().hash << endl;
 	cerr << "Block RLP: " << RLP(block) << endl;
 	cerr << "Block Hex: " << toHex(block) << endl;
-	cerr << "Network protocol version: " << c_protocolVersion << endl;
+	cerr << "eth Network protocol version: " << eth::c_protocolVersion << endl;
 	cerr << "Client database version: " << c_databaseVersion << endl;
 
 	ui->configDock->close();
@@ -1059,7 +1059,7 @@ void Main::refreshBlockCount()
 {
 	cwatch << "refreshBlockCount()";
 	auto d = ethereum()->blockChain().details();
-	ui->blockCount->setText(QString("%4 #%1 PV%2 D%3 H%5").arg(d.number).arg(c_protocolVersion).arg(c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(c_ethashVersion));
+	ui->blockCount->setText(QString("%4 #%1 PV%2 D%3 H%5").arg(d.number).arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(c_ethashVersion));
 }
 
 void Main::on_turboMining_triggered()
