@@ -68,7 +68,7 @@ private:
 	dev::u256 value() const;
 	dev::u256 gasPrice() const;
 
-	std::string getFunctionHashes(dev::solidity::CompilerStack const& _compiler, std::string const& _contractName = std::string());
+	std::string natspecNotice(dev::Address _to, dev::bytes const& _data);
 	dev::Secret findSecret(dev::u256 _totalReq) const;
 
 	Ui::Transact* ui = nullptr;
@@ -80,4 +80,5 @@ private:
 	dev::eth::Client* m_ethereum = nullptr;
 	Context* m_context = nullptr;
 	NatSpecFace* m_natSpecDB = nullptr;
+	bool m_allGood = false;
 };
