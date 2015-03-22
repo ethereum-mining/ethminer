@@ -176,11 +176,6 @@ void Host::doneWorking()
 	m_sessions.clear();
 }
 
-unsigned Host::protocolVersion() const
-{
-	return 3;
-}
-
 void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint)
 {
 	shared_ptr<Peer> p;
@@ -211,7 +206,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	
 	// create session so disconnects are managed
 	auto ps = make_shared<Session>(this, _io, p, PeerSessionInfo({_id, clientVersion, _endpoint.address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>()}));
-	if (protocolVersion != this->protocolVersion())
+	if (protocolVersion != dev::p2p::c_protocolVersion)
 	{
 		ps->disconnect(IncompatibleProtocol);
 		return;
@@ -714,7 +709,7 @@ bytes Host::saveNetwork() const
 	}
 
 	RLPStream ret(3);
-	ret << NodeTable::c_version << m_alias.secret();
+	ret << c_protocolVersion << m_alias.secret();
 	ret.appendList(count).appendRaw(network.out(), count);
 	return ret.out();
 }
@@ -727,7 +722,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 
 	RecursiveGuard l(x_sessions);
 	RLP r(_b);
-	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<int>() == NodeTable::c_version)
+	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<unsigned>() == c_protocolVersion)
 	{
 		// r[0] = version
 		// r[1] = key
