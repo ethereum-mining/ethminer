@@ -136,7 +136,7 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 
 public:
 	/// Version of Discovery protocol
-	static unsigned const s_version = 2;
+	static unsigned const c_version = 2;
 	
 	/// Constructor requiring host for I/O, credentials, and IP Address,port to listen on.
 	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udpPort = 30303);
