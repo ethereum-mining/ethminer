@@ -260,7 +260,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 					p->required = n.required;
 					m_peers[_n] = p;
 
-					clog(NetNote) << "p2p.host.peers.events.peersAdded " << _n << p->endpoint.tcp.address() << p->endpoint.udp.address();
+					clog(NetNote) << "p2p.host.peers.events.peersAdded " << _n << "udp:" << p->endpoint.udp.address() << "tcp:" << p->endpoint.tcp.address();
 				}
 				p->endpoint.tcp = n.endpoint.tcp;
 			}
@@ -474,6 +474,7 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 			clog(NetConnect) << "Connection refused to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "(" << ec.message() << ")";
 			_p->m_lastDisconnect = TCPError;
 			_p->m_lastAttempted = std::chrono::system_clock::now();
+			_p->m_failedAttempts++;
 		}
 		else
 		{
@@ -741,6 +742,13 @@ void Host::restoreNetwork(bytesConstRef _b)
 				tcp = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
 				udp = bi::udp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
 			}
+			
+			// skip private addresses
+			// todo: to support private addresseses entries must be stored
+			//       and managed externally by host rather than nodetable.
+			if (isPrivateAddress(tcp.address()) || isPrivateAddress(udp.address()))
+				continue;
+			
 			auto id = (NodeId)i[2];
 			if (i.itemCount() == 3)
 				m_nodeTable->addNode(id, udp, tcp);
