@@ -42,6 +42,12 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+/// Interval at which Host::run will call keepAlivePeers to ping peers.
+std::chrono::seconds const c_keepAliveInterval = std::chrono::seconds(30);
+
+/// Disconnect timeout after failure to respond to keepAlivePeers ping.
+std::chrono::milliseconds const c_keepAliveTimeOut = std::chrono::milliseconds(1000);
+
 HostNodeTableHandler::HostNodeTableHandler(Host& _host): m_host(_host) {}
 
 void HostNodeTableHandler::processEvent(NodeId const& _n, NodeTableEventType const& _e)
