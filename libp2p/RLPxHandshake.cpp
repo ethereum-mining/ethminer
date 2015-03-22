@@ -264,6 +264,9 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 	m_idleTimer.async_wait([this, self](boost::system::error_code const& _ec)
 	{
 		if (!_ec)
+		{
+			clog(NetWarn) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Timeout)";
 			cancel();
+		}
 	});
 }
