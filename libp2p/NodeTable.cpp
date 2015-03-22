@@ -463,6 +463,13 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			case PingNode::type:
 			{
 				PingNode in = PingNode::fromBytesConstRef(_from, rlpBytes);
+				if (in.version != 0x2)
+				{
+					if (auto n = nodeEntry(nodeid))
+						dropNode(n);
+					return;
+				}
+				
 				addNode(nodeid, _from, bi::tcp::endpoint(bi::address::from_string(in.ipAddress), in.port));
 				
 				Pong p(_from);
