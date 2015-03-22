@@ -138,8 +138,8 @@ public:
 	/// Version of Discovery protocol
 	static unsigned const c_version = 2;
 	
-	/// Constructor requiring host for I/O, credentials, and IP Address,port to listen on.
-	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udpPort = 30303);
+	/// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
+	NodeTable(ba::io_service& _io, KeyPair _alias, bi::address const& _udpAddress, uint16_t _udpPort = 30303);
 	~NodeTable();
 
 	/// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
