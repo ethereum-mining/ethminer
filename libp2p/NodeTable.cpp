@@ -87,7 +87,8 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 	// ping address if nodeid is empty
 	if (!_node.id)
 	{
-		m_pubkDiscoverPings[m_node.endpoint.udp.address()] = std::chrono::steady_clock::now();
+		clog(NodeTableConnect) << "Sending public key discovery Ping to" << _node.endpoint.udp << "(Advertising:" << m_node.endpoint.udp << ")";
+		m_pubkDiscoverPings[_node.endpoint.udp.address()] = std::chrono::steady_clock::now();
 		PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
 		p.sign(m_secret);
 		m_socketPointer->send(p);
