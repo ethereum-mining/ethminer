@@ -70,6 +70,20 @@ shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, bi::udp::endpoint 
 
 shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 {
+	if (_node.endpoint.udp.address().to_string() == "0.0.0.0" || _node.endpoint.tcp.address().to_string() == "0.0.0.0")
+	{
+		string ptype;
+		if (_node.endpoint.udp.address().to_string() != "0.0.0.0")
+			ptype = "TCP";
+		else if (_node.endpoint.tcp.address().to_string() != "0.0.0.0")
+			ptype = "UDP";
+		else
+			ptype = "TCP,UDP";
+		
+		clog(NodeTableWarn) << "addNode Failed. Invalid" << ptype << "address 0.0.0.0 for" << _node.id.abridged();
+		return move(shared_ptr<NodeEntry>());
+	}
+	
 	// ping address if nodeid is empty
 	if (!_node.id)
 	{
