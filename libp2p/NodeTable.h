@@ -316,13 +316,13 @@ struct PingNode: RLPXDatagram<PingNode>
 
 	static const uint8_t type = 1;
 
-	unsigned version = dev::p2p::c_protocolVersion;
+	unsigned version = 0;
 	std::string ipAddress;
 	unsigned port;
 	unsigned expiration;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = r[0].toString(); port = r[1].toInt<unsigned>(); expiration = r[2].toInt<unsigned>(); }
+	void streamRLP(RLPStream& _s) const { _s.appendList(4); _s << dev::p2p::c_protocolVersion << ipAddress << port << expiration; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); version = r[0].toInt<unsigned>(); ipAddress = r[1].toString(); port = r[2].toInt<unsigned>(); expiration = r[3].toInt<unsigned>(); }
 };
 
 /**
