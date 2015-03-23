@@ -56,6 +56,7 @@ enum class TransactionException
 	BadInstruction,
 	BadJumpDestination,
 	OutOfGas,				///< Ran out of gas executing code of the transaction.
+	OutOfStack,				///< Ran out of stack executing code of the transaction.
 	StackUnderflow
 };
 
@@ -66,7 +67,7 @@ enum class CodeDeposit
 	Success
 };
 
-class VMException;
+struct VMException;
 
 TransactionException toTransactionException(VMException const& _e);
 
@@ -75,7 +76,7 @@ struct ExecutionResult
 {
 	ExecutionResult() = default;
 	ExecutionResult(u256 _gasUsed, TransactionException _excepted, Address _newAddress, bytesConstRef _output, CodeDeposit _codeDeposit): gasUsed(_gasUsed), excepted(_excepted), newAddress(_newAddress), output(_output.toBytes()), codeDeposit(_codeDeposit) {}
-	u256 gasUsed;
+	u256 gasUsed = 0;
 	TransactionException excepted = TransactionException::Unknown;
 	Address newAddress;
 	bytes output;

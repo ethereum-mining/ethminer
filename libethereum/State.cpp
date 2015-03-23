@@ -1040,7 +1040,7 @@ LastHashes State::getLastHashes(BlockChain const& _bc, unsigned _n) const
 {
 	LastHashes ret;
 	ret.resize(256);
-	if (c_protocolVersion > 49)
+	if (eth::c_protocolVersion > 49)
 	{
 		ret[0] = _bc.numberHash(_n);
 		for (unsigned i = 1; i < 256; ++i)

@@ -145,7 +145,7 @@ Main::Main(QWidget *parent) :
 	cerr << "Block Hash: " << CanonBlockChain::genesis().hash << endl;
 	cerr << "Block RLP: " << RLP(block) << endl;
 	cerr << "Block Hex: " << toHex(block) << endl;
-	cerr << "Network protocol version: " << c_protocolVersion << endl;
+	cerr << "eth Network protocol version: " << eth::c_protocolVersion << endl;
 	cerr << "Client database version: " << c_databaseVersion << endl;
 
 	ui->configDock->close();
@@ -162,7 +162,7 @@ Main::Main(QWidget *parent) :
 	QSettings s("ethereum", "alethzero");
 	m_networkConfig = s.value("peers").toByteArray();
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
-	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir() + "/AlethZero", false, {"eth", "shh"}, p2p::NetworkPreferences(), network));
+	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), false, {"eth", "shh"}, p2p::NetworkPreferences(), network));
 
 	m_httpConnector.reset(new jsonrpc::HttpServer(8080));
 	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), keysAsVector(m_myKeys), this));
@@ -312,7 +312,7 @@ void Main::installBalancesWatch()
 	Address coinsAddr = getCurrencies();
 
 	// TODO: Update for new currencies reg.
-	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
+	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, PendingBlock); ++i)
 		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
 		for (auto c: altCoins)
@@ -583,7 +583,7 @@ Address Main::fromString(QString const& _n) const
 	{
 		try
 		{
-			return Address(fromHex(_n.toStdString(), ThrowType::Throw));
+			return Address(fromHex(_n.toStdString(), WhenError::Throw));
 		}
 		catch (BadHexCharacter& _e)
 		{
@@ -616,10 +616,10 @@ QString Main::lookup(QString const& _a) const
 
 	h256 ret;
 	// TODO: fix with the new DNSreg contract
-//	if (h160 dnsReg = (u160)ethereum()->stateAt(c_config, 4, 0))
+//	if (h160 dnsReg = (u160)ethereum()->stateAt(c_config, 4, PendingBlock))
 //		ret = ethereum()->stateAt(dnsReg, n);
 /*	if (!ret)
-		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0, 0))
+		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0, PendingBlock))
 			ret = ethereum()->stateAt(nameReg, n2);
 */
 	if (ret && !((u256)ret >> 32))
@@ -907,7 +907,7 @@ void Main::on_nameReg_textChanged()
 
 void Main::on_preview_triggered()
 {
-	ethereum()->setDefault(ui->preview->isChecked() ? 0 : -1);
+	ethereum()->setDefault(ui->preview->isChecked() ? PendingBlock : LatestBlock);
 	refreshAll();
 }
 
@@ -937,7 +937,7 @@ void Main::refreshBalances()
 	u256 totalBalance = 0;
 /*	map<Address, tuple<QString, u256, u256>> altCoins;
 	Address coinsAddr = getCurrencies();
-	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
+	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, PendingBlock); ++i)
 	{
 		auto n = ethereum()->stateAt(coinsAddr, i + 1);
 		auto addr = right160(ethereum()->stateAt(coinsAddr, n));
@@ -1059,7 +1059,7 @@ void Main::refreshBlockCount()
 {
 	cwatch << "refreshBlockCount()";
 	auto d = ethereum()->blockChain().details();
-	ui->blockCount->setText(QString("%4 #%1 PV%2 D%3 H%5").arg(d.number).arg(c_protocolVersion).arg(c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(c_ethashVersion));
+	ui->blockCount->setText(QString("%4 #%1 PV%2 D%3 H%5").arg(d.number).arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(c_ethashVersion));
 }
 
 void Main::on_turboMining_triggered()
@@ -1357,7 +1357,7 @@ void Main::on_transactionQueue_currentItemChanged()
 		auto r = receipt.rlp();
 		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 		s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
-		s << renderDiff(ethereum()->diff(i, 0));
+		s << renderDiff(ethereum()->diff(i, PendingBlock));
 //		s << "Pre: " << fs.rootHash() << "<br/>";
 //		s << "Post: <b>" << ts.rootHash() << "</b>";
 	}
@@ -1388,7 +1388,7 @@ void Main::on_inject_triggered()
 	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
 	try
 	{
-		bytes b = fromHex(s.toStdString(), ThrowType::Throw);
+		bytes b = fromHex(s.toStdString(), WhenError::Throw);
 		ethereum()->inject(&b);
 	}
 	catch (BadHexCharacter& _e)
@@ -1550,7 +1550,7 @@ void Main::on_debugCurrent_triggered()
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
 			bytes t = ethereum()->blockChain().transaction(h, txi);
 			State s(ethereum()->state(txi, h));
-			Executive e(s, ethereum()->blockChain(), 0);
+			Executive e(s, ethereum()->blockChain(), PendingBlock);
 			Debugger dw(this, this);
 			dw.populate(e, Transaction(t, CheckSignature::Sender));
 			dw.exec();

@@ -283,7 +283,7 @@ void MixClient::flushTransactions()
 {
 }
 
-dev::eth::ExecutionResult MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
+dev::eth::ExecutionResult MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
 {
 	u256 n;
 	State temp;
@@ -299,7 +299,7 @@ dev::eth::ExecutionResult MixClient::call(Secret _secret, u256 _value, Address _
 	return lastExecution().result;
 }
 
-dev::eth::ExecutionResult MixClient::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, int _blockNumber)
+dev::eth::ExecutionResult MixClient::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
 {
 	u256 n;
 	State temp;
@@ -315,27 +315,27 @@ dev::eth::ExecutionResult MixClient::create(Secret _secret, u256 _value, bytes c
 	return lastExecution().result;
 }
 
-u256 MixClient::balanceAt(Address _a, int _block) const
+u256 MixClient::balanceAt(Address _a, BlockNumber _block) const
 {
 	return asOf(_block).balance(_a);
 }
 
-u256 MixClient::countAt(Address _a, int _block) const
+u256 MixClient::countAt(Address _a, BlockNumber _block) const
 {
 	return asOf(_block).transactionsFrom(_a);
 }
 
-u256 MixClient::stateAt(Address _a, u256 _l, int _block) const
+u256 MixClient::stateAt(Address _a, u256 _l, BlockNumber _block) const
 {
 	return asOf(_block).storage(_a, _l);
 }
 
-bytes MixClient::codeAt(Address _a, int _block) const
+bytes MixClient::codeAt(Address _a, BlockNumber _block) const
 {
 	return asOf(_block).code(_a);
 }
 
-std::map<u256, u256> MixClient::storageAt(Address _a, int _block) const
+std::map<u256, u256> MixClient::storageAt(Address _a, BlockNumber _block) const
 {
 	return asOf(_block).storage(_a);
 }
@@ -567,13 +567,13 @@ eth::StateDiff MixClient::diff(unsigned _txi, h256 _block) const
 	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
 }
 
-eth::StateDiff MixClient::diff(unsigned _txi, int _block) const
+eth::StateDiff MixClient::diff(unsigned _txi, BlockNumber _block) const
 {
 	State st = asOf(_block);
 	return st.fromPending(_txi).diff(st.fromPending(_txi + 1));
 }
 
-Addresses MixClient::addresses(int _block) const
+Addresses MixClient::addresses(BlockNumber _block) const
 {
 	Addresses ret;
 	for (auto const& i: asOf(_block).addresses())
