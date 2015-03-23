@@ -69,7 +69,7 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 		m_receiveAddress = rlp[field = 3].isEmpty() ? Address() : rlp[field = 3].toHash<Address>(RLP::VeryStrict);
 		m_value = rlp[field = 4].toInt<u256>();
 
-		if (rlp[field = 5].isList())
+		if (!rlp[field = 5].isData())
 			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("transaction data RLP must be an array"));
 
 		m_data = rlp[field = 5].toBytes();
