@@ -43,8 +43,8 @@ extern "C" {
 #endif
 
 typedef struct ethash_params {
-    size_t full_size;               // Size of full data set (in bytes, multiple of mix size (128)).
-    size_t cache_size;              // Size of compute cache (in bytes, multiple of node size (64)).
+    uint64_t full_size;               // Size of full data set (in bytes, multiple of mix size (128)).
+    uint64_t cache_size;              // Size of compute cache (in bytes, multiple of node size (64)).
 } ethash_params;
 
 typedef struct ethash_return_value {
@@ -52,8 +52,8 @@ typedef struct ethash_return_value {
     uint8_t mix_hash[32];
 } ethash_return_value;
 
-size_t ethash_get_datasize(const uint32_t block_number);
-size_t ethash_get_cachesize(const uint32_t block_number);
+uint64_t ethash_get_datasize(const uint32_t block_number);
+uint64_t ethash_get_cachesize(const uint32_t block_number);
 
 // initialize the parameters
 static inline void ethash_params_init(ethash_params *params, const uint32_t block_number) {
