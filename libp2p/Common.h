@@ -48,6 +48,9 @@ class RLPStream;
 namespace p2p
 {
 
+/// Peer network protocol version.
+extern const unsigned c_protocolVersion;
+	
 using NodeId = h512;
 
 bool isPrivateAddress(bi::address const& _addressToCheck);
