@@ -1,65 +1,5 @@
 <RCC>
     <qresource prefix="/">
-        <file>qml/main.qml</file>
-        <file>qml/AlertMessageDialog.qml</file>
-        <file>qml/BasicMessage.qml</file>
-        <file>qml/Debugger.qml</file>
-        <file>qml/MainContent.qml</file>
-        <file>qml/ModalDialog.qml</file>
-        <file>qml/ProjectList.qml</file>
-        <file>qml/StateDialog.qml</file>
-        <file>qml/StateList.qml</file>
-        <file>qml/StateListModel.qml</file>
-        <file>qml/img/dappProjectIcon.png</file>
-        <file>qml/img/jumpintoback.png</file>
-        <file>qml/img/jumpintoforward.png</file>
-        <file>qml/img/jumpoutback.png</file>
-        <file>qml/img/jumpoutforward.png</file>
-        <file>qml/img/jumpoverback.png</file>
-        <file>qml/img/jumpoverforward.png</file>
-        <file>qml/img/jumpoverforwarddisabled.png</file>
-        <file>qml/StepActionImage.qml</file>
-        <file>qml/img/jumpintobackdisabled.png</file>
-        <file>qml/img/jumpintoforwarddisabled.png</file>
-        <file>qml/img/jumpoutbackdisabled.png</file>
-        <file>qml/img/jumpoutforwarddisabled.png</file>
-        <file>qml/img/jumpoverbackdisabled.png</file>
-        <file>qml/DebugBasicInfo.qml</file>
-        <file>qml/js/ErrorLocationFormater.js</file>
-        <file>qml/img/closedtriangleindicator.png</file>
-        <file>qml/img/opentriangleindicator.png</file>
-        <file>qml/img/bugiconactive.png</file>
-        <file>qml/img/bugiconinactive.png</file>
-        <file>qml/DebugInfoList.qml</file>
-        <file>qml/ItemDelegateDataDump.qml</file>
-        <file>qml/StatusPane.qml</file>
-        <file>qml/TabStyle.qml</file>
-        <file>qml/TransactionDialog.qml</file>
-        <file>qml/js/Debugger.js</file>
-        <file>qml/NewProjectDialog.qml</file>
-        <file>qml/ProjectModel.qml</file>
-        <file>qml/CodeEditorView.qml</file>
-        <file>qml/js/ProjectModel.js</file>
-        <file>qml/Ether.qml</file>
-        <file>qml/EtherValue.qml</file>
-        <file>qml/BigIntValue.qml</file>
-        <file>qml/QVariableDefinition.qml</file>
-        <file>qml/js/QEtherHelper.js</file>
-        <file>qml/js/TransactionHelper.js</file>
-        <file>qml/QBoolTypeView.qml</file>
-        <file>qml/QIntTypeView.qml</file>
-        <file>qml/QRealTypeView.qml</file>
-        <file>qml/QStringTypeView.qml</file>
-        <file>qml/QHashTypeView.qml</file>
-        <file>qml/ContractLibrary.qml</file>
-        <file>stdc/config.sol</file>
-        <file>stdc/namereg.sol</file>
-        <file>stdc/std.sol</file>
-        <file>qml/TransactionLog.qml</file>
-        <file>res/mix_256x256x32.png</file>
-        <file>qml/QVariableDeclaration.qml</file>
-        <file>qml/qmldir</file>
-        <file>qml/FilesSection.qml</file>
         <file>qml/fonts/SourceSansPro-Black.ttf</file>
         <file>qml/fonts/SourceSansPro-BlackIt.ttf</file>
         <file>qml/fonts/SourceSansPro-Bold.ttf</file>
@@ -75,43 +15,43 @@
         <file>qml/fonts/SourceSerifPro-Bold.ttf</file>
         <file>qml/fonts/SourceSerifPro-Regular.ttf</file>
         <file>qml/fonts/SourceSerifPro-Semibold.ttf</file>
+        <file>qml/img/available_updates.png</file>
+        <file>qml/img/b64.png</file>
+        <file>qml/img/broom.png</file>
+        <file>qml/img/bugiconactive.png</file>
+        <file>qml/img/bugiconinactive.png</file>
+        <file>qml/img/closedtriangleindicator.png</file>
         <file>qml/img/closedtriangleindicator_filesproject.png</file>
-        <file>qml/img/opentriangleindicator_filesproject.png</file>
-        <file>qml/img/projecticon.png</file>
-        <file>qml/SourceSansProRegular.qml</file>
-        <file>qml/SourceSansProBold.qml</file>
-        <file>qml/SourceSansProLight.qml</file>
-        <file>qml/StateDialogStyle.qml</file>
-        <file>qml/ProjectFilesStyle.qml</file>
-        <file>qml/DebuggerPaneStyle.qml</file>
-        <file>qml/CodeEditorStyle.qml</file>
-        <file>qml/StatusPaneStyle.qml</file>
-        <file>qml/StateStyle.qml</file>
-        <file>qml/img/plus.png</file>
+        <file>qml/img/console.png</file>
+        <file>qml/img/copy.png</file>
+        <file>qml/img/dappProjectIcon.png</file>
         <file>qml/img/delete_sign.png</file>
         <file>qml/img/edit.png</file>
-        <file>qml/DefaultLabel.qml</file>
-        <file>qml/DefaultTextField.qml</file>
-        <file>qml/CommonSeparator.qml</file>
-        <file>qml/Style.qml</file>
-        <file>qml/WebPreviewStyle.qml</file>
-        <file>qml/img/available_updates.png</file>
-        <file>qml/DeploymentDialog.qml</file>
-        <file>qml/img/search_filled.png</file>
-        <file>qml/StorageView.qml</file>
-        <file>qml/CallStack.qml</file>
-        <file>qml/img/help.png</file>
-        <file>qml/img/openedfolder.png</file>
-        <file>qml/img/b64.png</file>
         <file>qml/img/exit.png</file>
-        <file>qml/img/run.png</file>
+        <file>qml/img/help.png</file>
+        <file>qml/img/jumpintoback.png</file>
+        <file>qml/img/jumpintobackdisabled.png</file>
+        <file>qml/img/jumpintoforward.png</file>
+        <file>qml/img/jumpintoforwarddisabled.png</file>
+        <file>qml/img/jumpoutback.png</file>
+        <file>qml/img/jumpoutbackdisabled.png</file>
+        <file>qml/img/jumpoutforward.png</file>
+        <file>qml/img/jumpoutforwarddisabled.png</file>
+        <file>qml/img/jumpoverback.png</file>
+        <file>qml/img/jumpoverbackdisabled.png</file>
+        <file>qml/img/jumpoverforward.png</file>
+        <file>qml/img/jumpoverforwarddisabled.png</file>
         <file>qml/img/note.png</file>
-        <file>qml/LogsPane.qml</file>
-        <file>qml/img/copy.png</file>
-        <file>qml/img/broom.png</file>
-        <file>qml/LogsPaneStyle.qml</file>
-        <file>qml/StructView.qml</file>
-        <file>qml/img/console.png</file>
-        <file>qml/VariablesView.qml</file>
+        <file>qml/img/openedfolder.png</file>
+        <file>qml/img/opentriangleindicator.png</file>
+        <file>qml/img/opentriangleindicator_filesproject.png</file>
+        <file>qml/img/plus.png</file>
+        <file>qml/img/projecticon.png</file>
+        <file>qml/img/run.png</file>
+        <file>qml/img/search_filled.png</file>
+        <file>res/mix_256x256x32.png</file>
+        <file>stdc/config.sol</file>
+        <file>stdc/namereg.sol</file>
+        <file>stdc/std.sol</file>
     </qresource>
 </RCC>

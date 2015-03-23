@@ -56,6 +56,7 @@ enum class TransactionException
 	BadInstruction,
 	BadJumpDestination,
 	OutOfGas,				///< Ran out of gas executing code of the transaction.
+	OutOfStack,				///< Ran out of stack executing code of the transaction.
 	StackUnderflow
 };
 
@@ -66,7 +67,7 @@ enum class CodeDeposit
 	Success
 };
 
-class VMException;
+struct VMException;
 
 TransactionException toTransactionException(VMException const& _e);
 

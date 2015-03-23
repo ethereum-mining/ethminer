@@ -113,6 +113,10 @@ public:
 	enum { maxDatagramSize = MaxDatagramSize };
 	static_assert(maxDatagramSize < 65507, "UDP datagrams cannot be larger than 65507 bytes");
 
+	/// Create socket for specific endpoint.
+	UDPSocket(ba::io_service& _io, UDPSocketEvents& _host, bi::udp::endpoint _endpoint): m_host(_host), m_endpoint(_endpoint), m_socket(_io) { m_started.store(false); m_closed.store(true); };
+
+	/// Create socket which listens to all ports.
 	UDPSocket(ba::io_service& _io, UDPSocketEvents& _host, unsigned _port): m_host(_host), m_endpoint(bi::udp::v4(), _port), m_socket(_io) { m_started.store(false); m_closed.store(true); };
 	virtual ~UDPSocket() { disconnect(); }
 

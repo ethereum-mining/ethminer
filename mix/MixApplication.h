@@ -33,8 +33,6 @@ namespace dev
 namespace mix
 {
 
-class AppContext;
-
 class MixApplication: public QApplication
 {
 	Q_OBJECT
@@ -42,12 +40,10 @@ class MixApplication: public QApplication
 public:
 	MixApplication(int& _argc, char* _argv[]);
 	virtual ~MixApplication();
-	AppContext* context() { return m_appContext.get(); }
 	QQmlApplicationEngine* engine() { return m_engine.get(); }
 
 private:
 	std::unique_ptr<QQmlApplicationEngine> m_engine;
-	std::unique_ptr<AppContext> m_appContext;
 };
 
 }
