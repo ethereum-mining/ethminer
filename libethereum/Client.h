@@ -225,11 +225,11 @@ public:
 	virtual void flushTransactions() override;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, int _blockNumber = 0) override;
+	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock) override;
 
 	/// Does the given creation. Nothing is recorded into the state.
 	/// @returns the pair of the Address of the created contract together with its code.
-	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, int _blockNumber = 0) override;
+	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock) override;
 
 	/// Makes the given call. Nothing is recorded into the state. This cheats by creating a null address and endowing it with a lot of ETH.
 	ExecutionResult call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether);
@@ -244,11 +244,11 @@ public:
 	using Interface::codeAt;
 	using Interface::storageAt;
 
-	virtual u256 balanceAt(Address _a, int _block) const;
-	virtual u256 countAt(Address _a, int _block) const;
-	virtual u256 stateAt(Address _a, u256 _l, int _block) const;
-	virtual bytes codeAt(Address _a, int _block) const;
-	virtual std::map<u256, u256> storageAt(Address _a, int _block) const;
+	virtual u256 balanceAt(Address _a, BlockNumber _block) const;
+	virtual u256 countAt(Address _a, BlockNumber _block) const;
+	virtual u256 stateAt(Address _a, u256 _l, BlockNumber _block) const;
+	virtual bytes codeAt(Address _a, BlockNumber _block) const;
+	virtual std::map<u256, u256> storageAt(Address _a, BlockNumber _block) const;
 
 	virtual unsigned installWatch(LogFilter const& _filter, Reaping _r = Reaping::Automatic) override;
 	virtual unsigned installWatch(h256 _filterId, Reaping _r = Reaping::Automatic) override;
@@ -282,11 +282,11 @@ public:
 	/// Differences between transactions.
 	using Interface::diff;
 	virtual StateDiff diff(unsigned _txi, h256 _block) const;
-	virtual StateDiff diff(unsigned _txi, int _block) const;
+	virtual StateDiff diff(unsigned _txi, BlockNumber _block) const;
 
 	/// Get a list of all active addresses.
 	using Interface::addresses;
-	virtual std::vector<Address> addresses(int _block) const;
+	virtual std::vector<Address> addresses(BlockNumber _block) const;
 
 	/// Get the remaining gas limit in this block.
 	virtual u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
@@ -380,10 +380,8 @@ private:
 	virtual bool turbo() const { return m_turboMining; }
 	virtual bool force() const { return m_forceMining; }
 
-	/// Return the actual block number of the block with the given int-number (positive is the same, INT_MIN is genesis block, < 0 is negative age, thus -1 is most recently mined, 0 is pending.
-	unsigned numberOf(int _b) const;
-
-	State asOf(int _h) const;
+	/// Returns the state object for the full block (i.e. the terminal state) for index _h.
+	/// Works properly with LatestBlock and PendingBlock.
 	State asOf(unsigned _h) const;
 
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.

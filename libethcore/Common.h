@@ -71,5 +71,16 @@ static const u256 wei = exp10<0>();
 
 using Nonce = h64;
 
+using BlockNumber = unsigned;
+
+static const BlockNumber LatestBlock = (BlockNumber)-2;
+static const BlockNumber PendingBlock = (BlockNumber)-1;
+
+enum class RelativeBlock: BlockNumber
+{
+	Latest = LatestBlock,
+	Pending = PendingBlock
+};
+
 }
 }
