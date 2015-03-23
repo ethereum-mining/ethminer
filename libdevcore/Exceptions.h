@@ -44,6 +44,8 @@ struct BadHexCharacter: virtual Exception {};
 struct RLPException: virtual Exception {};
 struct BadCast: virtual RLPException {};
 struct BadRLP: virtual RLPException {};
+struct OversizeRLP: virtual RLPException {};
+struct UndersizeRLP: virtual RLPException {};
 struct NoNetworking: virtual Exception {};
 struct NoUPnPDevice: virtual Exception {};
 struct RootNotFound: virtual Exception {};
