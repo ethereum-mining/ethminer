@@ -560,7 +560,7 @@ void Host::run(boost::system::error_code const&)
 		{
 			RecursiveGuard l(x_sessions);
 			for (auto p: m_peers)
-				if (p.second->shouldReconnect())
+				if (p.second->shouldReconnect() && !havePeerSession(p.second->id))
 					toConnect.push_back(p.second);
 		}
 		
