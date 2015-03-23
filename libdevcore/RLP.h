@@ -62,20 +62,34 @@ static const byte c_rlpListIndLenZero = c_rlpListStart + c_rlpListImmLenCount - 
 class RLP
 {
 public:
+	/// Conversion flags
+	enum
+	{
+		AllowNonCanon = 1,
+		ThrowOnFail = 4,
+		FailIfTooBig = 8,
+		FailIfTooSmall = 16,
+		Strict = ThrowOnFail | FailIfTooBig,
+		VeryStrict = ThrowOnFail | FailIfTooBig | FailIfTooSmall,
+		LaisezFaire = AllowNonCanon
+	};
+
+	using Strictness = int;
+
 	/// Construct a null node.
 	RLP() {}
 
 	/// Construct a node of value given in the bytes.
-	explicit RLP(bytesConstRef _d): m_data(_d) {}
+	explicit RLP(bytesConstRef _d, Strictness _s = VeryStrict);
 
 	/// Construct a node of value given in the bytes.
-	explicit RLP(bytes const& _d): m_data(&_d) {}
+	explicit RLP(bytes const& _d, Strictness _s = VeryStrict): RLP(&_d, _s) {}
 
 	/// Construct a node to read RLP data in the bytes given.
-	RLP(byte const* _b, unsigned _s): m_data(bytesConstRef(_b, _s)) {}
+	RLP(byte const* _b, unsigned _s, Strictness _st = VeryStrict): RLP(bytesConstRef(_b, _s), _st) {}
 
 	/// Construct a node to read RLP data in the string.
-	explicit RLP(std::string const& _s): m_data(bytesConstRef((byte const*)_s.data(), _s.size())) {}
+	explicit RLP(std::string const& _s, Strictness _st = VeryStrict): RLP(bytesConstRef((byte const*)_s.data(), _s.size()), _st) {}
 
 	/// The bare data of the RLP.
 	bytesConstRef data() const { return m_data; }
@@ -235,18 +249,6 @@ public:
 		}
 		return ret;
 	}
-
-	/// Int conversion flags
-	enum
-	{
-		AllowNonCanon = 1,
-		ThrowOnFail = 4,
-		FailIfTooBig = 8,
-		FailIfTooSmall = 16,
-		Strict = ThrowOnFail | FailIfTooBig,
-		VeryStrict = ThrowOnFail | FailIfTooBig | FailIfTooSmall,
-		LaisezFaire = AllowNonCanon
-	};
 
 	/// Converts to int of type given; if isString(), decodes as big-endian bytestream. @returns 0 if not an int or string.
 	template <class _T = unsigned> _T toInt(int _flags = Strict) const
