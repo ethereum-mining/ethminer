@@ -73,16 +73,16 @@ public:
 	virtual void flushTransactions() = 0;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, int _blockNumber = 0) = 0;
+	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = 0) = 0;
 
 	/// Does the given creation. Nothing is recorded into the state.
 	/// @returns the pair of the Address of the created contract together with its code.
-	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, int _blockNumber = 0) = 0;
+	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = 0) = 0;
 
 	// [STATE-QUERY API]
 
 	int getDefault() const { return m_default; }
-	void setDefault(int _block) { m_default = _block; }
+	void setDefault(BlockNumber _block) { m_default = _block; }
 
 	u256 balanceAt(Address _a) const { return balanceAt(_a, m_default); }
 	u256 countAt(Address _a) const { return countAt(_a, m_default); }
@@ -90,11 +90,11 @@ public:
 	bytes codeAt(Address _a) const { return codeAt(_a, m_default); }
 	std::map<u256, u256> storageAt(Address _a) const { return storageAt(_a, m_default); }
 
-	virtual u256 balanceAt(Address _a, int _block) const = 0;
-	virtual u256 countAt(Address _a, int _block) const = 0;
-	virtual u256 stateAt(Address _a, u256 _l, int _block) const = 0;
-	virtual bytes codeAt(Address _a, int _block) const = 0;
-	virtual std::map<u256, u256> storageAt(Address _a, int _block) const = 0;
+	virtual u256 balanceAt(Address _a, BlockNumber _block) const = 0;
+	virtual u256 countAt(Address _a, BlockNumber _block) const = 0;
+	virtual u256 stateAt(Address _a, u256 _l, BlockNumber _block) const = 0;
+	virtual bytes codeAt(Address _a, BlockNumber _block) const = 0;
+	virtual std::map<u256, u256> storageAt(Address _a, BlockNumber _block) const = 0;
 
 	// [LOGS API]
 	
@@ -135,11 +135,11 @@ public:
 	/// Differences between transactions.
 	StateDiff diff(unsigned _txi) const { return diff(_txi, m_default); }
 	virtual StateDiff diff(unsigned _txi, h256 _block) const = 0;
-	virtual StateDiff diff(unsigned _txi, int _block) const = 0;
+	virtual StateDiff diff(unsigned _txi, BlockNumber _block) const = 0;
 
 	/// Get a list of all active addresses.
 	virtual Addresses addresses() const { return addresses(m_default); }
-	virtual Addresses addresses(int _block) const = 0;
+	virtual Addresses addresses(BlockNumber _block) const = 0;
 
 	/// Get the fee associated for a transaction with the given data.
 	template <class T> static bigint txGas(T const& _data, u256 _gas = 0) { bigint ret = c_txGas + _gas; for (auto i: _data) ret += i ? c_txDataNonZeroGas : c_txDataZeroGas; return ret; }
@@ -177,7 +177,7 @@ public:
 	virtual MineProgress miningProgress() const = 0;
 
 protected:
-	int m_default = -1;
+	int m_default = PendingBlock;
 };
 
 class Watch;

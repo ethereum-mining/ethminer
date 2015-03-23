@@ -139,7 +139,7 @@ void RLPXHandshake::error()
 
 void RLPXHandshake::transition(boost::system::error_code _ech)
 {
-	if (_ech || m_nextState == Error)
+	if (_ech || m_nextState == Error || m_cancel)
 		return error();
 	
 	auto self(shared_from_this());
@@ -172,7 +172,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		// 5 arguments, HelloPacket
 		RLPStream s;
 		s.append((unsigned)0).appendList(5)
-		<< m_host->protocolVersion()
+		<< dev::p2p::c_protocolVersion
 		<< m_host->m_clientVersion
 		<< m_host->caps()
 		<< m_host->listenPort()
@@ -259,4 +259,14 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 			}
 		});
 	}
+	
+	m_idleTimer.expires_from_now(c_timeout);
+	m_idleTimer.async_wait([this, self](boost::system::error_code const& _ec)
+	{
+		if (!_ec)
+		{
+			clog(NetWarn) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Timeout)";
+			cancel();
+		}
+	});
 }

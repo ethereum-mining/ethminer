@@ -103,7 +103,7 @@ void interactiveHelp()
 void help()
 {
 	cout
-		<< "Usage eth [OPTIONS] <remote-host>" << endl
+		<< "Usage eth [OPTIONS]" << endl
 		<< "Options:" << endl
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
@@ -119,6 +119,7 @@ void help()
 		<< "	-j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "	--json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
 #endif
+		<< "    -K,--kill-blockchain  First kill the blockchain." << endl
 		<< "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
 		<< "    -L,--local-networking Use peers whose addresses are local." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
@@ -159,7 +160,7 @@ string credits(bool _interactive = false)
 void version()
 {
 	cout << "eth version " << dev::Version << endl;
-	cout << "Network protocol version: " << dev::eth::c_protocolVersion << endl;
+	cout << "eth network protocol version: " << dev::eth::c_protocolVersion << endl;
 	cout << "Client database version: " << dev::eth::c_databaseVersion << endl;
 	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
@@ -214,6 +215,7 @@ int main(int argc, char** argv)
 	bool upnp = true;
 	bool useLocal = false;
 	bool forceMining = false;
+	bool killChain = false;
 	bool jit = false;
 	bool structuredLogging = false;
 	string structuredLoggingFormat = "%Y-%m-%dT%H:%M:%S";
@@ -270,13 +272,14 @@ int main(int argc, char** argv)
 		}
 		else if (arg == "-L" || arg == "--local-networking")
 			useLocal = true;
+		else if (arg == "-K" || arg == "--kill-blockchain")
+			killChain = true;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
-		{
 			try
 			{
-				coinbase = h160(fromHex(argv[++i], ThrowType::Throw));
+				coinbase = h160(fromHex(argv[++i], WhenError::Throw));
 			}
 			catch (BadHexCharacter& _e)
 			{
@@ -289,7 +292,6 @@ int main(int argc, char** argv)
 				cwarn << "coinbase rejected";
 				break;
 			}
-		}
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			us = KeyPair(h256(fromHex(argv[++i])));
 		else if (arg == "--structured-logging-format" && i + 1 < argc)
@@ -300,20 +302,24 @@ int main(int argc, char** argv)
 			dbPath = argv[++i];
 		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
-			try {
+			try
+			{
 				blockFees = stof(argv[++i]);
 			}
-			catch (...) {
+			catch (...)
+			{
 				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
 				return -1;
 			}
 		}
 		else if ((arg == "-e" || arg == "--ether-price") && i + 1 < argc)
 		{
-			try {
+			try
+			{
 				etherPrice = stof(argv[++i]);
 			}
-			catch (...) {
+			catch (...)
+			{
 				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
 				return -1;
 			}
@@ -401,7 +407,10 @@ int main(int argc, char** argv)
 		else if (arg == "-V" || arg == "--version")
 			version();
 		else
-			remoteHost = argv[i];
+		{
+			cerr << "Invalid argument: " << arg << endl;
+			exit(-1);
+		}
 	}
 
 	if (!clientName.empty())
@@ -417,7 +426,7 @@ int main(int argc, char** argv)
 	dev::WebThreeDirect web3(
 		clientImplString,
 		dbPath,
-		false,
+		killChain,
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
 		&nodesState,
@@ -434,7 +443,8 @@ int main(int argc, char** argv)
 		c->setAddress(coinbase);
 	}
 
-	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
+	cout << "Transaction Signer: " << us.address() << endl;
+	cout << "Mining Benefactor: " << coinbase << endl;
 	web3.startNetwork();
 
 	if (bootstrap)
@@ -680,7 +690,7 @@ int main(int argc, char** argv)
 				auto acs =c->addresses();
 				string ss;
 				for (auto const& i: acs)
-					if ( c->codeAt(i, 0).size())
+					if ( c->codeAt(i, PendingBlock).size())
 					{
 						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
 						cout << ss << endl;
@@ -691,7 +701,7 @@ int main(int argc, char** argv)
 				auto acs =c->addresses();
 				string ss;
 				for (auto const& i: acs)
-					if ( c->codeAt(i, 0).empty())
+					if ( c->codeAt(i, PendingBlock).empty())
 					{
 						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
 						cout << ss << endl;
@@ -720,7 +730,7 @@ int main(int argc, char** argv)
 						u256 minGas = (u256)Client::txGas(bytes(), 0);
 						try
 						{
-							Address dest = h160(fromHex(hexAddr, ThrowType::Throw));
+							Address dest = h160(fromHex(hexAddr, WhenError::Throw));
 							c->submitTransaction(us.secret(), amount, dest, bytes(), minGas);
 						}
 						catch (BadHexCharacter& _e)
@@ -764,7 +774,7 @@ int main(int argc, char** argv)
 						stringstream ssc;
 						try
 						{
-							init = fromHex(sinit, ThrowType::Throw);
+							init = fromHex(sinit, WhenError::Throw);
 						}
 						catch (BadHexCharacter& _e)
 						{
@@ -883,10 +893,10 @@ int main(int argc, char** argv)
 
 					try
 					{
-						auto storage =c->storageAt(h, 0);
+						auto storage =c->storageAt(h, PendingBlock);
 						for (auto const& i: storage)
 							s << "@" << showbase << hex << i.first << "    " << showbase << hex << i.second << endl;
-						s << endl << disassemble( c->codeAt(h, 0)) << endl;
+						s << endl << disassemble( c->codeAt(h, PendingBlock)) << endl;
 
 						string outFile = getDataDir() + "/" + rechex + ".evm";
 						ofstream ofs;
@@ -925,7 +935,7 @@ int main(int argc, char** argv)
 					{
 						try
 						{
-							coinbase = h160(fromHex(hexAddr, ThrowType::Throw));
+							coinbase = h160(fromHex(hexAddr, WhenError::Throw));
 						}
 						catch (BadHexCharacter& _e)
 						{

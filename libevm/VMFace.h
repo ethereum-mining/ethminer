@@ -31,6 +31,7 @@ struct BreakPointHit: virtual VMException {};
 struct BadInstruction: virtual VMException {};
 struct BadJumpDestination: virtual VMException {};
 struct OutOfGas: virtual VMException {};
+struct OutOfStack: virtual VMException {};
 struct StackUnderflow: virtual VMException {};
 
 /// EVM Virtual Machine interface
