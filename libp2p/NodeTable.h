@@ -288,6 +288,8 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
 	return _out;
 }
 
+struct InvalidRLP: public Exception {};
+
 /**
  * Ping packet: Sent to check if node is alive.
  * PingNode is cached and regenerated after expiration - t, where t is timeout.
@@ -321,8 +323,8 @@ struct PingNode: RLPXDatagram<PingNode>
 	unsigned port;
 	unsigned expiration;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(4); _s << dev::p2p::c_protocolVersion << ipAddress << port << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); version = r[0].toInt<unsigned>(); ipAddress = r[1].toString(); port = r[2].toInt<unsigned>(); expiration = r[3].toInt<unsigned>(); }
+	void streamRLP(RLPStream& _s) const override;
+	void interpretRLP(bytesConstRef _bytes) override;
 };
 
 /**

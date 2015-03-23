@@ -578,3 +578,29 @@ void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 	m_bucketRefreshTimer.async_wait(runcb);
 }
 
+void PingNode::streamRLP(RLPStream& _s) const
+{
+	_s.appendList(4);
+	_s << dev::p2p::c_protocolVersion << ipAddress << port << expiration;
+}
+
+void PingNode::interpretRLP(bytesConstRef _bytes)
+{
+	RLP r(_bytes);
+	if (r.itemCountStrict() == 3)
+	{
+		version = 2;
+		ipAddress = r[0].toString();
+		port = r[1].toInt<unsigned>(RLP::Strict);
+		expiration = r[2].toInt<unsigned>(RLP::Strict);
+	}
+	else if (r.itemCountStrict() == 4)
+	{
+		version = r[0].toInt<unsigned>(RLP::Strict);
+		ipAddress = r[1].toString();
+		port = r[2].toInt<unsigned>(RLP::Strict);
+		expiration = r[3].toInt<unsigned>(RLP::Strict);
+	}
+	else
+		BOOST_THROW_EXCEPTION(InvalidRLP());
+}
