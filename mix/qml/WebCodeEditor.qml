@@ -92,7 +92,10 @@ Item {
 
 					codeModel.onCompilationError.connect(function(error){
 						var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);
-						runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
+						if (errorInfo.line && errorInfo.column)
+							runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
+						else
+							runJavaScript("compilationComplete()", function(result) { });
 					});
 				}
 				parent.changeGeneration();
