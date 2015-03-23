@@ -112,18 +112,20 @@ static Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
 static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 {
 	Json::Value res;
-
-	res["data"] = toJS(_e.data);
-	res["address"] = toJS(_e.address);
-	res["topics"] = Json::Value(Json::arrayValue);
-	for (auto const& t: _e.topics)
-		res["topics"].append(toJS(t));
-	res["number"] = _e.number;
-	res["hash"] = toJS(_e.sha3);
+	if (_e.transactionHash)
+	{
+		res["data"] = toJS(_e.data);
+		res["address"] = toJS(_e.address);
+		res["topics"] = Json::Value(Json::arrayValue);
+		for (auto const& t: _e.topics)
+			res["topics"].append(toJS(t));
+		res["number"] = _e.number;
+		res["hash"] = toJS(_e.transactionHash);
+	}
 	return res;
 }
 
-static Json::Value toJson(dev::eth::LocalisedLogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
+static Json::Value toJson(dev::eth::LocalisedLogEntries const& _es)
 {
 	Json::Value res(Json::arrayValue);
 	for (dev::eth::LocalisedLogEntry const& e: _es)
@@ -139,6 +141,18 @@ static Json::Value toJson(map<u256, u256> const& _storage)
 	return res;
 }
 
+static unsigned toBlockNumber(std::string const& _js)
+{
+	if (_js == "latest")
+		return LatestBlock;
+	else if (_js == "earliest")
+		return 0;
+	else if (_js == "pending")
+		return PendingBlock;
+	else
+		return (unsigned)jsToInt(_js);
+}
+
 static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
 {
 	dev::eth::LogFilter filter;
@@ -147,9 +161,9 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 
 	// check only !empty. it should throw exceptions if input params are incorrect
 	if (!_json["fromBlock"].empty())
-		filter.withEarliest(jsToInt(_json["fromBlock"].asString()));
+		filter.withEarliest(toBlockNumber(_json["fromBlock"].asString()));
 	if (!_json["toBlock"].empty())
-		filter.withLatest(jsToInt(_json["toBlock"].asString()));
+		filter.withLatest(toBlockNumber(_json["toBlock"].asString()));
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
@@ -225,15 +239,6 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
 	return res;
-}
-
-static int toBlockNumber(string const& _string)
-{
-	if (_string.compare("latest") == 0)
-		return -1;
-	if (_string.compare("pending") == 0)
-		return 0;
-	return jsToInt(_string);
 }
 
 WebThreeStubServerBase::WebThreeStubServerBase(AbstractServerConnector& _conn, vector<dev::KeyPair> const& _accounts):
@@ -476,7 +481,7 @@ string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& 
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
-	ret = toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, number));
+	ret = toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, number).output);
 	
 	return ret;
 }
