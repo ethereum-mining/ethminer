@@ -48,6 +48,7 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i):
 
 EthereumPeer::~EthereumPeer()
 {
+	clogS(NetMessageSummary) << "Aborting Sync :-(";
 	abortSync();
 }
 

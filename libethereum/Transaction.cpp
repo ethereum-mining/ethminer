@@ -46,6 +46,8 @@ TransactionException dev::eth::toTransactionException(VMException const& _e)
 		return TransactionException::BadJumpDestination;
 	if (!!dynamic_cast<OutOfGas const*>(&_e))
 		return TransactionException::OutOfGas;
+	if (!!dynamic_cast<OutOfStack const*>(&_e))
+		return TransactionException::OutOfStack;
 	if (!!dynamic_cast<StackUnderflow const*>(&_e))
 		return TransactionException::StackUnderflow;
 	return TransactionException::Unknown;
