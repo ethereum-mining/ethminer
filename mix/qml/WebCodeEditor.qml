@@ -35,7 +35,7 @@ Item {
 
 	function syncClipboard() {
 		if (Qt.platform.os == "osx") {
-			var text = appContext.clipboard;
+			var text = clipboard.text;
 			editorBrowser.runJavaScript("setClipboardBase64(\"" + Qt.btoa(text) + "\")");
 		}
 	}
@@ -60,7 +60,7 @@ Item {
 	}
 
 	Connections {
-		target: appContext
+		target: clipboard
 		onClipboardChanged:	syncClipboard()
 	}
 

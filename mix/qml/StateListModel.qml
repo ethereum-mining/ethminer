@@ -128,6 +128,9 @@ Item {
 		onNewContractCompiled: {
 			stateListModel.addNewContracts();
 		}
+		onContractRenamed: {
+			stateListModel.renameContracts(_oldName, _newName);
+		}
 	}
 
 	StateDialog {
@@ -206,11 +209,35 @@ Item {
 			return item;
 		}
 
-		function addNewContracts() {
-			//add new contracts for all states
+		function renameContracts(oldName, newName) {
+			var changed = false;
 			for(var c in codeModel.contracts) {
 				for (var s = 0; s < stateListModel.count; s++) {
-					var state = stateList[s];//toPlainStateItem(stateListModel.get(s));
+					var state = stateList[s];
+					for (var t = 0; t < state.transactions.length; t++) {
+						var transaction = state.transactions[t];
+						if (transaction.contractId === oldName) {
+							transaction.contractId = newName;
+							if (transaction.functionId === oldName)
+								transaction.functionId = newName;
+							changed = true;
+							state.transactions[t] = transaction;
+						}
+					}
+					stateListModel.set(s, state);
+					stateList[s] = state;
+				}
+			}
+			if (changed)
+				save();
+		}
+
+		function addNewContracts() {
+			//add new contracts for all states
+			var changed = false;
+			for(var c in codeModel.contracts) {
+				for (var s = 0; s < stateListModel.count; s++) {
+					var state = stateList[s];
 					for (var t = 0; t < state.transactions.length; t++) {
 						var transaction = state.transactions[t];
 						if (transaction.functionId === c && transaction.contractId === c)
@@ -223,13 +250,14 @@ Item {
 						ctorTr.contractId = c;
 						ctorTr.sender = state.accounts[0].secret;
 						state.transactions.push(ctorTr);
-						var item = state;//fromPlainStateItem(state);
-						stateListModel.set(s, item);
-						stateList[s] = item;
+						changed = true;
+						stateListModel.set(s, state);
+						stateList[s] = state;
 					}
 				}
 			}
-			save();
+			if (changed)
+				save();
 		}
 
 		function addState() {

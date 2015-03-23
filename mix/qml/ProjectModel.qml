@@ -51,6 +51,7 @@ Item {
 	function createProject() { ProjectModelCode.createProject(); }
 	function closeProject(callBack) { ProjectModelCode.closeProject(callBack); }
 	function saveProject() { ProjectModelCode.saveProject(); }
+	function saveProjectFile() { ProjectModelCode.saveProjectFile(); }
 	function loadProject(path) { ProjectModelCode.loadProject(path); }
 	function newHtmlFile() { ProjectModelCode.newHtmlFile(); }
 	function newJsFile() { ProjectModelCode.newJsFile(); }
@@ -69,8 +70,8 @@ Item {
 	function formatAppUrl() { ProjectModelCode.formatAppUrl(url); }
 
 	Connections {
-		target: appContext
-		onAppLoaded: {
+		target: mainApplication
+		onLoaded: {
 			if (projectSettings.lastProjectPath && projectSettings.lastProjectPath !== "")
 				projectModel.loadProject(projectSettings.lastProjectPath)
 		}
@@ -173,7 +174,6 @@ Item {
 	{
 		target: projectModel
 		onProjectClosed: {
-			projectSettings.lastProjectPath = "";
 			projectPath = "";
 		}
 	}

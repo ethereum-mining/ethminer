@@ -212,13 +212,13 @@ void Main::installWatches()
 void Main::installNameRegWatch()
 {
 	ethereum()->uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(dev::eth::LogFilter().address(u160(ethereum()->stateAt(c_config, 0))), [=](LocalisedLogEntries const&){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(dev::eth::LogFilter().address(u160(ethereum()->stateAt(c_config, PendingBlock))), [=](LocalisedLogEntries const&){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
 	ethereum()->uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(dev::eth::LogFilter().address(u160(ethereum()->stateAt(c_config, 1))), [=](LocalisedLogEntries const&){ onCurrenciesChange(); });
+	m_currenciesFilter = installWatch(dev::eth::LogFilter().address(u160(ethereum()->stateAt(c_config, LatestBlock))), [=](LocalisedLogEntries const&){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
@@ -226,8 +226,8 @@ void Main::installBalancesWatch()
 	dev::eth::LogFilter tf;
 
 	vector<Address> altCoins;
-	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
-	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
+	Address coinsAddr = right160(ethereum()->stateAt(c_config, LatestBlock));
+	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, PendingBlock); ++i)
 		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
 		for (auto c: altCoins)
@@ -294,7 +294,7 @@ QString Main::pretty(dev::Address _a) const
 {
 	h256 n;
 
-	if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
+	if (h160 nameReg = (u160)ethereum()->stateAt(c_config, PendingBlock))
 		n = ethereum()->stateAt(nameReg, (u160)(_a));
 
 	return fromRaw(n);
@@ -321,7 +321,7 @@ Address Main::fromString(QString const& _a) const
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
 	{
-		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
+		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, PendingBlock))
 			if (h256 a = ethereum()->stateAt(nameReg, n))
 				return right160(a);
 	}
@@ -350,10 +350,10 @@ QString Main::lookup(QString const& _a) const
 */
 
 	h256 ret;
-	if (h160 dnsReg = (u160)ethereum()->stateAt(c_config, 4, 0))
+	if (h160 dnsReg = (u160)ethereum()->stateAt(c_config, 4, PendingBlock))
 		ret = ethereum()->stateAt(dnsReg, n);
 /*	if (!ret)
-		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0, 0))
+		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0, PendingBlock))
 			ret = ethereum()->stateAt(nameReg, n2);
 */
 	if (ret && !((u256)ret >> 32))
@@ -476,8 +476,8 @@ void Main::refreshBalances()
 	ui->ourAccounts->clear();
 	u256 totalBalance = 0;
 	map<Address, pair<QString, u256>> altCoins;
-	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
-	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
+	Address coinsAddr = right160(ethereum()->stateAt(c_config, LatestBlock));
+	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, PendingBlock); ++i)
 		altCoins[right160(ethereum()->stateAt(coinsAddr, ethereum()->stateAt(coinsAddr, i + 1)))] = make_pair(fromRaw(ethereum()->stateAt(coinsAddr, i + 1)), 0);
 	for (auto i: m_myKeys)
 	{

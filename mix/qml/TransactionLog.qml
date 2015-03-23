@@ -163,9 +163,13 @@ Item {
 			Keys.onPressed: {
 				if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < logTable.model.count) {
 					var item = logTable.model.get(currentRow);
-					appContext.toClipboard(item.returned);
+					clipboard.text = item.returned;
 				}
 			}
+		}
+		Rectangle {
+			height: 6
+			color: "transparent"
 		}
 	}
 
