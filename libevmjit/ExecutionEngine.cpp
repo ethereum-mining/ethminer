@@ -4,6 +4,8 @@
 #include <mutex>
 #include <iostream>
 #include <unordered_map>
+#include <cstdlib>
+#include <cstring>
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
@@ -82,7 +84,19 @@ void parseOptions()
 {
 	static llvm::llvm_shutdown_obj shutdownObj{};
 	cl::AddExtraVersionPrinter(printVersion);
-	cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
+	//cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
+
+	// FIXME: LLVM workaround:
+	// Manually select instruction scheduler other than "source".
+	// "source" scheduler has a bug: http://llvm.org/bugs/show_bug.cgi?id=22304
+	auto envLine = std::getenv("EVMJIT");
+	auto commandLine = std::string{"evmjit "} + (envLine ? envLine : "") + " -pre-RA-sched=list-burr\0";
+	char const* argv[100] = {nullptr, };
+	auto arg = std::strtok(&*commandLine.begin(), " ");
+	auto i = 0;
+	for (; i < sizeof(argv) / sizeof(argv[0]) && arg; ++i, arg = std::strtok(nullptr, " "))
+		argv[i] = arg;
+	cl::ParseCommandLineOptions(i, argv, "Ethereum EVM JIT Compiler");
 }
 
 }
