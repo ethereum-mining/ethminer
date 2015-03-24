@@ -24,8 +24,7 @@
 		list = addSolToken(curWord, list, seen, solMisc(), solMisc);
 	}
 
-	seen = solKeywords();
-
+	var previousWord = "";
 	var re = new RegExp(word.source, "g");
 	for (var dir = -1; dir <= 1; dir += 2) {
 	  var line = cur.line, endLine = Math.min(Math.max(line + dir * range, editor.firstLine()), editor.lastLine()) + dir;
@@ -35,12 +34,15 @@
 		  if (line == cur.line && m[0] === curWord) continue;
 		  if ((!curWord || m[0].lastIndexOf(curWord, 0) === 0) && !Object.prototype.hasOwnProperty.call(seen, m[0])) {
 			seen[m[0]] = true;
-			list.push({ text: m[0] });
+			var w = { text: m[0] };
+			checkDeclaration(previousWord, "Contract", w);
+			checkDeclaration(previousWord, "Function", w);
+			list.push(w);
 		  }
+		  previousWord = m[0];
 		}
 	  }
 	}
-
 	return {list: list, from: CodeMirror.Pos(cur.line, start), to: CodeMirror.Pos(cur.line, end)};
   });
 })();
@@ -57,19 +59,35 @@ function addSolToken(curWord, list, seen, tokens, type)
 			var token = { text: key };
 			token.render = function(elt, data, cur)
 			{
-				var container = document.createElement("div");
-				var word = document.createElement("div");
-				word.className = type.name.toLowerCase() + " solToken";
-				word.appendChild(document.createTextNode(cur.displayText || cur.text));
-				var typeDiv = document.createElement("type");
-				typeDiv.appendChild(document.createTextNode(keywordsTypeName[type.name.toLowerCase()]));
-				typeDiv.className = "solTokenType";
-				container.appendChild(word);
-				container.appendChild(typeDiv);
-				elt.appendChild(container);
+				render(elt, data, cur, type.name.toLowerCase(), keywordsTypeName[type.name.toLowerCase()]);
 			}
 			list.push(token);
 		}
 	}
 	return list;
+}
+
+function render(elt, data, cur, csstype, type)
+{
+	var container = document.createElement("div");
+	var word = document.createElement("div");
+	word.className = csstype + " solToken";
+	word.appendChild(document.createTextNode(cur.displayText || cur.text));
+	var typeDiv = document.createElement("type");
+	typeDiv.appendChild(document.createTextNode(type));
+	typeDiv.className = "solTokenType";
+	container.appendChild(word);
+	container.appendChild(typeDiv);
+	elt.appendChild(container);
+}
+
+function checkDeclaration(previousToken, target, current)
+{
+	if (previousToken.toLowerCase() === target.toLowerCase())
+	{
+		current.render = function(elt, data, cur)
+		{
+			render(elt, data, cur, "sol" + target, target);
+		}
+	}
 }
