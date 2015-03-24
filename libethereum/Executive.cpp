@@ -152,11 +152,7 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 	else
 		m_endGas = _gas;
 
-	cdebug << m_s;
-	State prev = m_s;
 	m_s.transferBalance(_senderAddress, _receiveAddress, _value);
-	cdebug << m_s;
-	cdebug << m_s.diff(prev);
 
 	return !m_ext;
 }
