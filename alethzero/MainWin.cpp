@@ -907,7 +907,7 @@ void Main::on_nameReg_textChanged()
 
 void Main::on_preview_triggered()
 {
-	ethereum()->setDefault(ui->preview->isChecked() ? 0 : -1);
+	ethereum()->setDefault(ui->preview->isChecked() ? PendingBlock : LatestBlock);
 	refreshAll();
 }
 

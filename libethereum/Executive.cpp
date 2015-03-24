@@ -116,9 +116,9 @@ bool Executive::setup()
 	m_s.subBalance(m_t.sender(), gasCost);
 
 	if (m_t.isCreation())
-		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)gasCost, &m_t.data(), m_t.sender());
+		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)gasRequired, &m_t.data(), m_t.sender());
 	else
-		return call(m_t.receiveAddress(), m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)gasCost, m_t.sender());
+		return call(m_t.receiveAddress(), m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)gasRequired, m_t.sender());
 }
 
 bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
@@ -152,7 +152,11 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 	else
 		m_endGas = _gas;
 
+	cdebug << m_s;
+	State prev = m_s;
 	m_s.transferBalance(_senderAddress, _receiveAddress, _value);
+	cdebug << m_s;
+	cdebug << m_s.diff(prev);
 
 	return !m_ext;
 }
