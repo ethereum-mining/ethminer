@@ -64,7 +64,8 @@ Item {
             {
                 id: statesCombo
                 items:projectModel.stateListModel
-                onSelectItem: console.log("Combobox Select Item: " + item )
+                //onSelectItem: console.log("Combobox Select Item: " + item )
+                onSelectCreate: projectModel.stateListModel.addState();
                 onEditItem: projectModel.stateListModel.editState(item)
                 colorItem: "black"
                 colorSelect: "blue"
@@ -77,7 +78,7 @@ Item {
                     }
                 }
             }
-            Button
+            /*Button
             {
                 anchors.rightMargin: 9
                 anchors.verticalCenter: parent.verticalCenter
@@ -88,7 +89,7 @@ Item {
                 anchors.rightMargin: 9
                 anchors.verticalCenter: parent.verticalCenter
                 action: addStateAction
-            }
+            }*/
             Button
             {
                 anchors.rightMargin: 9
