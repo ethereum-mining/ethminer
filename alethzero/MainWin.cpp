@@ -164,7 +164,11 @@ Main::Main(QWidget *parent) :
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), false, {"eth", "shh"}, p2p::NetworkPreferences(), network));
 
-	m_httpConnector.reset(new jsonrpc::HttpServer(8080));
+#if ETH_DEBUG
+	m_httpConnector.reset(new jsonrpc::HttpServer(8080, "", "", 1));
+#else
+	m_httpConnector.reset(new jsonrpc::HttpServer(8080, "", "", 4));
+#endif
 	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), keysAsVector(m_myKeys), this));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
