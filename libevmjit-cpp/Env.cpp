@@ -52,7 +52,6 @@ extern "C"
 		auto endowment = llvm2eth(*_endowment);
 		if (_env->balance(_env->myAddress) >= endowment && _env->depth < 1024)
 		{
-			_env->subBalance(endowment);
 			u256 gas = *io_gas;
 			h256 address(_env->create(endowment, gas, {_initBeg, _initSize}, {}), h256::AlignRight);
 			*io_gas = static_cast<int64_t>(gas);
@@ -89,10 +88,7 @@ extern "C"
 		auto ret = false;
 		auto callGas = u256{_callGas};
 		if (_env->balance(_env->myAddress) >= value && _env->depth < 1024)
-		{
-			_env->subBalance(value);
 			ret = _env->call(receiveAddress, value, {_inBeg, _inSize}, callGas, {_outBeg, _outSize}, {}, {}, codeAddress);
-		}
 
 		*io_gas += static_cast<int64_t>(callGas); // it is never more than initial _callGas
 		return ret;
