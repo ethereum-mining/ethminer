@@ -219,6 +219,14 @@ public:
 	 */
 	void subBalance(Address _id, bigint _value);
 
+	/**
+	 * @brief Transfers "the balance @a _value between two accounts.
+	 * @param _from Account from which @a _value will be deducted.
+	 * @param _to Account to which @a _value will be added.
+	 * @param _value Amount to be transferred.
+	 */
+	void transferBalance(Address _from, Address _to, u256 _value) { subBalance(_from, _value); addBalance(_to, _value); }
+
 	/// Get the root of the storage of an account.
 	h256 storageRoot(Address _contract) const;
 
