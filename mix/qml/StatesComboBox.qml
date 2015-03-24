@@ -47,6 +47,7 @@ Rectangle {
 
     signal selectItem(real item);
     signal editItem(real item);
+    signal selectCreate();
 
     property variant items;
     readonly property alias selectedItem: chosenItemText.text;
@@ -86,7 +87,7 @@ Rectangle {
             }
         }
     }
-
+//ToDo: We need scrollbar for items
     Rectangle {
         id:dropDownList
         width:statesComboBox.width;
@@ -96,93 +97,123 @@ Rectangle {
         anchors.top: chosenItem.bottom;
         anchors.margins: 2;
         color: statesComboBox.color
+        ColumnLayout{
+            spacing: 2
+            TableView {
+                id:listView
+                height:20;
+                implicitHeight: 0
+                width:statesComboBox.width;
+                model: statesComboBox.items
+                horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff;
+                currentRow: -1
+                headerVisible: false;
+                backgroundVisible: false
+                alternatingRowColors : false;
+                frameVisible: false
 
-        TableView {
-            id:listView
-            height:500;
-            width:statesComboBox.width;
-            model: statesComboBox.items
-            currentRow: -1
-            headerVisible: false;
-            backgroundVisible: false
-            alternatingRowColors : false;
-            frameVisible: false
+                TableViewColumn {
+                    role: "title"
+                    title: ""
+                    width: statesComboBox.width;
+                    delegate: mainItemDelegate
+                }
 
-            TableViewColumn {
-                role: "title"
-                title: ""
-                width: statesComboBox.width;
-                delegate: mainItemDelegate
-                //elideMode: Text.ElideNone
-            }
+                Component {
+                    id: mainItemDelegate
+                    Item{
+                        id: itemDelegate
+                        width:statesComboBox.width;
+                        height: statesComboBox.height;
+                        Text {
+                            id: textItemid
+                            text: styleData.value
+                            color: statesComboBox.colorItem;
+                            anchors.top: parent.top;
+                            anchors.left: parent.left;
+                            anchors.margins: 5;
 
-            Component {
-                id: mainItemDelegate
-                Item{
-                    id: itemDelegate
+                        }
+                        Rectangle
+                        {
+                            id: spaceItemid
+                            anchors.top: textItemid.top;
+                            anchors.left: textItemid.right
+                            width: parent.width - textItemid.width - imageItemid.width - textItemid.anchors.margins- textItemid.anchors.margins
+                        }
+                        Image {
+                            id: imageItemid
+                            height:20
+                            width:20;
+                            visible: false;
+                            fillMode: Image.PreserveAspectFit
+                            source: "img/edit_combox.png"
+                            anchors.top: spaceItemid.top;
+                            anchors.left: spaceItemid.right;
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent;
+                            hoverEnabled : true
+
+                            onEntered: {
+                                imageItemid.visible = true;
+                                textItemid.color = statesComboBox.colorSelect;
+                            }
+                            onExited: {
+                                imageItemid.visible = false;
+                                textItemid.color = statesComboBox.colorItem;
+                            }
+                            onClicked: {
+                                if (mouseX > imageItemid.x && mouseX < imageItemid.x+ imageItemid.width
+                                        && mouseY > imageItemid.y && mouseY < imageItemid.y+ imageItemid.height)
+                                    statesComboBox.editItem(styleData.row);
+                                else {
+                                    statesComboBox.state = ""
+                                    var prevSelection = chosenItemText.text
+                                    chosenItemText.text = styleData.value
+                                    listView.currentRow = styleData.row;
+                                    statesComboBox.selectItem(styleData.row);
+                                }
+                            }
+                        }
+                    }//Item
+                }//Component
+            }//Table View
+            RowLayout{
+                Rectangle{
+                    width: 1
+                }
+                Text{
+                    id:createStateText
                     width:statesComboBox.width;
                     height: statesComboBox.height;
-                    Text {
-                        id: textItemid
-                        text: styleData.value
-                        color: statesComboBox.colorItem;
-                        anchors.top: parent.top;
-                        anchors.left: parent.left;
-                        anchors.margins: 5;
-
-                    }
-                    Rectangle
+                    font.pointSize: 10
+                    text:"Create State ..."
+                    MouseArea
                     {
-                        id: spaceItemid
-                        anchors.top: textItemid.top;
-                        anchors.left: textItemid.right
-                        width: parent.width - textItemid.width - imageItemid.width - textItemid.anchors.margins- textItemid.anchors.margins
-                    }
-                    Image {
-                        id: imageItemid
-                        height:20
-                        width:20;
-                        visible: false;
-                        fillMode: Image.PreserveAspectFit
-                        source: "img/edit_combox.png"
-                        anchors.top: spaceItemid.top;
-                        anchors.left: spaceItemid.right;
-                    }
-
-                    MouseArea {
                         anchors.fill: parent;
                         hoverEnabled : true
 
                         onEntered: {
-                            imageItemid.visible = true;
-                            textItemid.color = statesComboBox.colorSelect;
+                            createStateText.color = statesComboBox.colorSelect;
                         }
                         onExited: {
-                            imageItemid.visible = false;
-                            textItemid.color = statesComboBox.colorItem;
+                            createStateText.color = statesComboBox.colorItem;
                         }
                         onClicked: {
-                            if (mouseX > imageItemid.x && mouseX < imageItemid.x+ imageItemid.width
-                                    && mouseY > imageItemid.y && mouseY < imageItemid.y+ imageItemid.height)
-                              statesComboBox.editItem(styleData.row);
-                            else {
-                                statesComboBox.state = ""
-                                var prevSelection = chosenItemText.text
-                                chosenItemText.text = styleData.value
-                                if(chosenItemText.text != prevSelection)
-                                    statesComboBox.comboClicked();
-                                listView.currentRow = styleData.row;
-                                statesComboBox.selectItem(styleData.row);
-                            }
+                            statesComboBox.state = ""
+                            statesComboBox.selectCreate();
                         }
                     }
-                }//Item
-            }//Component
+                }
+            }
         }
     }
     states: State {
         name: "dropDown";
-        PropertyChanges { target: dropDownList; height:20*statesComboBox.items.count }
+        PropertyChanges { target: dropDownList; height:(20*(statesComboBox.items.count+1)) }
+        PropertyChanges { target:listView; height:20; implicitHeight: (20*(statesComboBox.items.count)) }
     }
 
 }
