@@ -547,6 +547,7 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 		{
 			ReadGuard l(x_stateDB);
 			temp = m_postMine;
+			temp.addBalance(Address(), _value + _gasPrice * _gas);
 		}
 		Executive e(temp, LastHashes(), 0);
 		if (!e.call(_dest, _dest, Address(), _value, _gasPrice, &_data, _gas, Address()))
