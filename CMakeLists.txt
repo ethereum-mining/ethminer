@@ -19,6 +19,12 @@ set(FILES 	util.c
           	fnv.h
           	data_sizes.h)
 
+if (MSVC)
+	list(APPEND FILES io_win32.c)
+else()
+	list(APPEND FILES io_posix.c)
+endif()
+
 if (NOT CRYPTOPP_FOUND)
 	find_package(CryptoPP 5.6.2)
 endif()
