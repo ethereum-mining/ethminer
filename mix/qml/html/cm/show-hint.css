@@ -31,33 +31,53 @@
   white-space: pre;
   color: black;
   cursor: pointer;
+  padding-left: 20px;
+  padding-top: 3px;
+  padding-bottom: 3px;
 }
 
 .CodeMirror-hint-active {
   background: #4a90e2;
-  color: white;
+  color: white !important;
+}
+
+.CodeMirror-hint-active .solToken,
+.CodeMirror-hint-active .solTokenType
+{
+  color: white !important;
 }
 
 .solcurrency {
-  color: red;
+  color: #b58900;
 }
 
 .solkeywords {
-  color: brown;
+  color: #cb4b16;
 }
 
 .solstdcontract {
-  color: blue;
+  color: #d33682;
 }
 
 .soltime {
-  color: green;
+  color: #268bd2;
 }
 
 .soltypes {
-  color: orange;
+  color: #2aa198;
 }
 
 .solMisc {
-  color: grey;
+  color: #859900;
+}
+
+.solToken {
+  float: left;
+}
+
+.solTokenType
+{
+  font-style: italic;
+  color: #808080;
+  float: right;
 }
