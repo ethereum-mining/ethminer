@@ -91,10 +91,11 @@ void parseOptions()
 	// "source" scheduler has a bug: http://llvm.org/bugs/show_bug.cgi?id=22304
 	auto envLine = std::getenv("EVMJIT");
 	auto commandLine = std::string{"evmjit "} + (envLine ? envLine : "") + " -pre-RA-sched=list-burr\0";
-	char const* argv[100] = {nullptr, };
+	static const auto c_maxArgs = 20;
+	char const* argv[c_maxArgs] = {nullptr, };
 	auto arg = std::strtok(&*commandLine.begin(), " ");
 	auto i = 0;
-	for (; i < sizeof(argv) / sizeof(argv[0]) && arg; ++i, arg = std::strtok(nullptr, " "))
+	for (; i < c_maxArgs && arg; ++i, arg = std::strtok(nullptr, " "))
 		argv[i] = arg;
 	cl::ParseCommandLineOptions(i, argv, "Ethereum EVM JIT Compiler");
 }
