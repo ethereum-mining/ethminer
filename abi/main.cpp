@@ -302,10 +302,9 @@ int main(int argc, char** argv)
 		if (abi.empty())
 		{
 			if (!method.empty())
-				ret = FixedHash<32>(sha3(method)).asBytes();
-			if (method.empty())
-				for (tuple<bytes, ABIType, Format> const& arg: args)
-					ret += aligned(get<0>(arg), get<1>(arg), get<2>(arg), 32);
+				ret = FixedHash<4>(sha3(method)).asBytes();
+			for (tuple<bytes, ABIType, Format> const& arg: args)
+				ret += aligned(get<0>(arg), get<1>(arg), get<2>(arg), 32);
 		}
 		else
 		{
