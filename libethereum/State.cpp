@@ -342,6 +342,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 
 map<Address, u256> State::addresses() const
 {
+#if ETH_FATDB
 	map<Address, u256> ret;
 	for (auto i: m_cache)
 		if (i.second.isAlive())
@@ -350,6 +351,9 @@ map<Address, u256> State::addresses() const
 		if (m_cache.find(i.first) == m_cache.end())
 			ret[i.first] = RLP(i.second)[1].toInt<u256>();
 	return ret;
+#else
+	throw InterfaceNotSupported("State::addresses()");
+#endif
 }
 
 void State::resetCurrent()
