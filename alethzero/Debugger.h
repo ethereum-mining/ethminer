@@ -22,7 +22,7 @@
 #pragma once
 
 #include <libdevcore/RLP.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
 #include <QDialog>

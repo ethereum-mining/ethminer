@@ -26,7 +26,7 @@
 #include <libsolidity/Scanner.h>
 #include <libsolidity/Parser.h>
 #include <libsolidity/Exceptions.h>
-#include <boost/test/unit_test.hpp>
+#include "TestHelper.h"
 
 using namespace std;
 
@@ -50,22 +50,6 @@ ASTPointer<ContractDefinition> parseText(std::string const& _source)
 	return ASTPointer<ContractDefinition>();
 }
 
-ASTPointer<ContractDefinition> parseTextExplainError(std::string const& _source)
-{
-	try
-	{
-		return parseText(_source);
-	}
-	catch (Exception const& exception)
-	{
-		// LTODO: Print the error in a kind of a better way?
-		// In absence of CompilerStack we can't use SourceReferenceFormatter
-		cout << "Exception while parsing: " << diagnostic_information(exception);
-		// rethrow to signal test failure
-		throw exception;
-	}
-}
-
 static void checkFunctionNatspec(ASTPointer<FunctionDefinition> _function,
 								 std::string const& _expectedDoc)
 {
@@ -84,7 +68,7 @@ BOOST_AUTO_TEST_CASE(smoke_test)
 	char const* text = "contract test {\n"
 					   "  uint256 stateVariable1;\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed.");
 }
 
 BOOST_AUTO_TEST_CASE(missing_variable_name_in_declaration)
@@ -99,11 +83,11 @@ BOOST_AUTO_TEST_CASE(empty_function)
 {
 	char const* text = "contract test {\n"
 					   "  uint256 stateVar;\n"
-					   "  function functionName(hash160 arg1, address addr) constant\n"
+					   "  function functionName(bytes20 arg1, address addr) constant\n"
 					   "    returns (int id)\n"
 					   "  { }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed.");
 }
 
 BOOST_AUTO_TEST_CASE(no_function_params)
@@ -112,16 +96,16 @@ BOOST_AUTO_TEST_CASE(no_function_params)
 					   "  uint256 stateVar;\n"
 					   "  function functionName() {}\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed.");
 }
 
 BOOST_AUTO_TEST_CASE(single_function_param)
 {
 	char const* text = "contract test {\n"
 					   "  uint256 stateVar;\n"
-					   "  function functionName(hash hashin) returns (hash hashout) {}\n"
+					   "  function functionName(bytes32 input) returns (bytes32 out) {}\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed.");
 }
 
 BOOST_AUTO_TEST_CASE(missing_parameter_name_in_named_args)
@@ -149,11 +133,11 @@ BOOST_AUTO_TEST_CASE(function_natspec_documentation)
 	char const* text = "contract test {\n"
 					   "  uint256 stateVar;\n"
 					   "  /// This is a test function\n"
-					   "  function functionName(hash hashin) returns (hash hashout) {}\n"
+					   "  function functionName(bytes32 input) returns (bytes32 out) {}\n"
 					   "}\n";
-	BOOST_REQUIRE_NO_THROW(contract = parseText(text));
+	ETH_TEST_REQUIRE_NO_THROW(contract = parseText(text), "Parsing failed");
 	auto functions = contract->getDefinedFunctions();
-	BOOST_REQUIRE_NO_THROW(function = functions.at(0));
+	ETH_TEST_REQUIRE_NO_THROW(function = functions.at(0), "Failed to retrieve function");
 	checkFunctionNatspec(function, "This is a test function");
 }
 
@@ -164,11 +148,11 @@ BOOST_AUTO_TEST_CASE(function_normal_comments)
 	char const* text = "contract test {\n"
 					   "  uint256 stateVar;\n"
 					   "  // We won't see this comment\n"
-					   "  function functionName(hash hashin) returns (hash hashout) {}\n"
+					   "  function functionName(bytes32 input) returns (bytes32 out) {}\n"
 					   "}\n";
-	BOOST_REQUIRE_NO_THROW(contract = parseText(text));
+	ETH_TEST_REQUIRE_NO_THROW(contract = parseText(text), "Parsing failed");
 	auto functions = contract->getDefinedFunctions();
-	BOOST_REQUIRE_NO_THROW(function = functions.at(0));
+	ETH_TEST_REQUIRE_NO_THROW(function = functions.at(0), "Failed to retrieve function");
 	BOOST_CHECK_MESSAGE(function->getDocumentation() == nullptr,
 						"Should not have gotten a Natspecc comment for this function");
 }
@@ -180,28 +164,28 @@ BOOST_AUTO_TEST_CASE(multiple_functions_natspec_documentation)
 	char const* text = "contract test {\n"
 					   "  uint256 stateVar;\n"
 					   "  /// This is test function 1\n"
-					   "  function functionName1(hash hashin) returns (hash hashout) {}\n"
+					   "  function functionName1(bytes32 input) returns (bytes32 out) {}\n"
 					   "  /// This is test function 2\n"
-					   "  function functionName2(hash hashin) returns (hash hashout) {}\n"
+					   "  function functionName2(bytes32 input) returns (bytes32 out) {}\n"
 					   "  // nothing to see here\n"
-					   "  function functionName3(hash hashin) returns (hash hashout) {}\n"
+					   "  function functionName3(bytes32 input) returns (bytes32 out) {}\n"
 					   "  /// This is test function 4\n"
-					   "  function functionName4(hash hashin) returns (hash hashout) {}\n"
+					   "  function functionName4(bytes32 input) returns (bytes32 out) {}\n"
 					   "}\n";
-	BOOST_REQUIRE_NO_THROW(contract = parseText(text));
+	ETH_TEST_REQUIRE_NO_THROW(contract = parseText(text), "Parsing failed");
 	auto functions = contract->getDefinedFunctions();
 
-	BOOST_REQUIRE_NO_THROW(function = functions.at(0));
+	ETH_TEST_REQUIRE_NO_THROW(function = functions.at(0), "Failed to retrieve function");
 	checkFunctionNatspec(function, "This is test function 1");
 
-	BOOST_REQUIRE_NO_THROW(function = functions.at(1));
+	ETH_TEST_REQUIRE_NO_THROW(function = functions.at(1), "Failed to retrieve function");
 	checkFunctionNatspec(function, "This is test function 2");
 
-	BOOST_REQUIRE_NO_THROW(function = functions.at(2));
+	ETH_TEST_REQUIRE_NO_THROW(function = functions.at(2), "Failed to retrieve function");
 	BOOST_CHECK_MESSAGE(function->getDocumentation() == nullptr,
 						"Should not have gotten natspec comment for functionName3()");
 
-	BOOST_REQUIRE_NO_THROW(function = functions.at(3));
+	ETH_TEST_REQUIRE_NO_THROW(function = functions.at(3), "Failed to retrieve function");
 	checkFunctionNatspec(function, "This is test function 4");
 }
 
@@ -213,12 +197,12 @@ BOOST_AUTO_TEST_CASE(multiline_function_documentation)
 					   "  uint256 stateVar;\n"
 					   "  /// This is a test function\n"
 					   "  /// and it has 2 lines\n"
-					   "  function functionName1(hash hashin) returns (hash hashout) {}\n"
+					   "  function functionName1(bytes32 input) returns (bytes32 out) {}\n"
 					   "}\n";
-	BOOST_REQUIRE_NO_THROW(contract = parseText(text));
+	ETH_TEST_REQUIRE_NO_THROW(contract = parseText(text), "Parsing failed");
 	auto functions = contract->getDefinedFunctions();
 
-	BOOST_REQUIRE_NO_THROW(function = functions.at(0));
+	ETH_TEST_REQUIRE_NO_THROW(function = functions.at(0), "Failed to retrieve function");
 	checkFunctionNatspec(function, "This is a test function\n"
 						 " and it has 2 lines");
 }
@@ -233,20 +217,20 @@ BOOST_AUTO_TEST_CASE(natspec_comment_in_function_body)
 					   "    var b;\n"
 					   "    /// I should not interfere with actual natspec comments\n"
 					   "    uint256 c;\n"
-					   "    mapping(address=>hash) d;\n"
-					   "    string name = \"Solidity\";"
+					   "    mapping(address=>bytes32) d;\n"
+					   "    bytes7 name = \"Solidity\";"
 					   "  }\n"
 					   "  /// This is a test function\n"
 					   "  /// and it has 2 lines\n"
-					   "  function fun(hash hashin) returns (hash hashout) {}\n"
+					   "  function fun(bytes32 input) returns (bytes32 out) {}\n"
 					   "}\n";
-	BOOST_REQUIRE_NO_THROW(contract = parseText(text));
+	ETH_TEST_REQUIRE_NO_THROW(contract = parseText(text), "Parsing failed");
 	auto functions = contract->getDefinedFunctions();
 
-	BOOST_REQUIRE_NO_THROW(function = functions.at(0));
+	ETH_TEST_REQUIRE_NO_THROW(function = functions.at(0), "Failed to retrieve function");
 	checkFunctionNatspec(function, "fun1 description");
 
-	BOOST_REQUIRE_NO_THROW(function = functions.at(1));
+	ETH_TEST_REQUIRE_NO_THROW(function = functions.at(1), "Failed to retrieve function");
 	checkFunctionNatspec(function, "This is a test function\n"
 						 " and it has 2 lines");
 }
@@ -262,14 +246,14 @@ BOOST_AUTO_TEST_CASE(natspec_docstring_between_keyword_and_signature)
 					   "    var b;\n"
 					   "    /// I should not interfere with actual natspec comments\n"
 					   "    uint256 c;\n"
-					   "    mapping(address=>hash) d;\n"
-					   "    string name = \"Solidity\";"
+					   "    mapping(address=>bytes32) d;\n"
+					   "    bytes7 name = \"Solidity\";"
 					   "  }\n"
 					   "}\n";
-	BOOST_REQUIRE_NO_THROW(contract = parseText(text));
+	ETH_TEST_REQUIRE_NO_THROW(contract = parseText(text), "Parsing failed");
 	auto functions = contract->getDefinedFunctions();
 
-	BOOST_REQUIRE_NO_THROW(function = functions.at(0));
+	ETH_TEST_REQUIRE_NO_THROW(function = functions.at(0), "Failed to retrieve function");
 	BOOST_CHECK_MESSAGE(!function->getDocumentation(),
 						"Shouldn't get natspec docstring for this function");
 }
@@ -285,14 +269,14 @@ BOOST_AUTO_TEST_CASE(natspec_docstring_after_signature)
 					   "    var b;\n"
 					   "    /// I should not interfere with actual natspec comments\n"
 					   "    uint256 c;\n"
-					   "    mapping(address=>hash) d;\n"
-					   "    string name = \"Solidity\";"
+					   "    mapping(address=>bytes32) d;\n"
+					   "    bytes7 name = \"Solidity\";"
 					   "  }\n"
 					   "}\n";
-	BOOST_REQUIRE_NO_THROW(contract = parseText(text));
+	ETH_TEST_REQUIRE_NO_THROW(contract = parseText(text), "Parsing failed");
 	auto functions = contract->getDefinedFunctions();
 
-	BOOST_REQUIRE_NO_THROW(function = functions.at(0));
+	ETH_TEST_REQUIRE_NO_THROW(function = functions.at(0), "Failed to retrieve function");
 	BOOST_CHECK_MESSAGE(!function->getDocumentation(),
 						"Shouldn't get natspec docstring for this function");
 }
@@ -306,15 +290,15 @@ BOOST_AUTO_TEST_CASE(struct_definition)
 					   "    uint256 count;\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(mapping)
 {
 	char const* text = "contract test {\n"
-					   "  mapping(address => string) names;\n"
+					   "  mapping(address => bytes32) names;\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(mapping_in_struct)
@@ -323,10 +307,10 @@ BOOST_AUTO_TEST_CASE(mapping_in_struct)
 					   "  struct test_struct {\n"
 					   "    address addr;\n"
 					   "    uint256 count;\n"
-					   "    mapping(hash => test_struct) self_reference;\n"
+					   "    mapping(bytes32 => test_struct) self_reference;\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(mapping_to_mapping_in_struct)
@@ -334,10 +318,10 @@ BOOST_AUTO_TEST_CASE(mapping_to_mapping_in_struct)
 	char const* text = "contract test {\n"
 					   "  struct test_struct {\n"
 					   "    address addr;\n"
-					   "    mapping (uint64 => mapping (hash => uint)) complex_mapping;\n"
+					   "    mapping (uint64 => mapping (bytes32 => uint)) complex_mapping;\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(variable_definition)
@@ -346,11 +330,11 @@ BOOST_AUTO_TEST_CASE(variable_definition)
 					   "  function fun(uint256 a) {\n"
 					   "    var b;\n"
 					   "    uint256 c;\n"
-					   "    mapping(address=>hash) d;\n"
+					   "    mapping(address=>bytes32) d;\n"
 					   "    customtype varname;\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(variable_definition_with_initialization)
@@ -359,12 +343,46 @@ BOOST_AUTO_TEST_CASE(variable_definition_with_initialization)
 					   "  function fun(uint256 a) {\n"
 					   "    var b = 2;\n"
 					   "    uint256 c = 0x87;\n"
-					   "    mapping(address=>hash) d;\n"
-					   "    string name = \"Solidity\";"
+					   "    mapping(address=>bytes32) d;\n"
+					   "    bytes7 name = \"Solidity\";"
 					   "    customtype varname;\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
+}
+
+BOOST_AUTO_TEST_CASE(variable_definition_in_function_parameter)
+{
+	char const* text = R"(
+		contract test {
+			function fun(var a) {}
+		}
+	)";
+	BOOST_CHECK_THROW(parseText(text), ParserError);
+}
+
+BOOST_AUTO_TEST_CASE(variable_definition_in_mapping)
+{
+	char const* text = R"(
+		contract test {
+			function fun() {
+				mapping(var=>bytes32) d;
+			}
+		}
+	)";
+	BOOST_CHECK_THROW(parseText(text), ParserError);
+}
+
+BOOST_AUTO_TEST_CASE(variable_definition_in_function_return)
+{
+	char const* text = R"(
+		contract test {
+			function fun() returns(var d) {
+				return 1;
+			}
+		}
+	)";
+	BOOST_CHECK_THROW(parseText(text), ParserError);
 }
 
 BOOST_AUTO_TEST_CASE(operator_expression)
@@ -374,7 +392,7 @@ BOOST_AUTO_TEST_CASE(operator_expression)
 					   "    uint256 x = (1 + 4) || false && (1 - 12) + -9;\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(complex_expression)
@@ -384,7 +402,7 @@ BOOST_AUTO_TEST_CASE(complex_expression)
 					   "    uint256 x = (1 + 4).member(++67)[a/=9] || true;\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(exp_expression)
@@ -395,7 +413,7 @@ BOOST_AUTO_TEST_CASE(exp_expression)
 				uint256 x = 3 ** a;
 			}
 		})";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(while_loop)
@@ -405,7 +423,7 @@ BOOST_AUTO_TEST_CASE(while_loop)
 					   "    while (true) { uint256 x = 1; break; continue; } x = 9;\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(for_loop_vardef_initexpr)
@@ -416,7 +434,7 @@ BOOST_AUTO_TEST_CASE(for_loop_vardef_initexpr)
 					   "    { uint256 x = i; break; continue; }\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseTextExplainError(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(for_loop_simple_initexpr)
@@ -428,7 +446,7 @@ BOOST_AUTO_TEST_CASE(for_loop_simple_initexpr)
 					   "    { uint256 x = i; break; continue; }\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseTextExplainError(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(for_loop_simple_noexpr)
@@ -440,7 +458,7 @@ BOOST_AUTO_TEST_CASE(for_loop_simple_noexpr)
 					   "    { uint256 x = i; break; continue; }\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseTextExplainError(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(for_loop_single_stmt_body)
@@ -452,7 +470,7 @@ BOOST_AUTO_TEST_CASE(for_loop_single_stmt_body)
 					   "        continue;\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseTextExplainError(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(if_statement)
@@ -462,7 +480,7 @@ BOOST_AUTO_TEST_CASE(if_statement)
 					   "    if (a >= 8) return 2; else { var b = 7; }\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(else_if_statement)
@@ -472,7 +490,7 @@ BOOST_AUTO_TEST_CASE(else_if_statement)
 					   "    if (a < 0) b = 0x67; else if (a == 0) b = 0x12; else b = 0x78;\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(statement_starting_with_type_conversion)
@@ -480,9 +498,21 @@ BOOST_AUTO_TEST_CASE(statement_starting_with_type_conversion)
 	char const* text = "contract test {\n"
 					   "  function fun() {\n"
 					   "    uint64(2);\n"
+					   "    uint64[7](3);\n"
+					   "    uint64[](3);\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
+}
+
+BOOST_AUTO_TEST_CASE(type_conversion_to_dynamic_array)
+{
+	char const* text = "contract test {\n"
+					   "  function fun() {\n"
+					   "    var x = uint64[](3);\n"
+					   "  }\n"
+					   "}\n";
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(import_directive)
@@ -493,7 +523,7 @@ BOOST_AUTO_TEST_CASE(import_directive)
 					   "    uint64(2);\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(multiple_contracts)
@@ -508,7 +538,7 @@ BOOST_AUTO_TEST_CASE(multiple_contracts)
 					   "    uint64(2);\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(multiple_contracts_and_imports)
@@ -526,7 +556,7 @@ BOOST_AUTO_TEST_CASE(multiple_contracts_and_imports)
 					   "  }\n"
 					   "}\n"
 					   "import \"ghi\";\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(contract_inheritance)
@@ -541,7 +571,7 @@ BOOST_AUTO_TEST_CASE(contract_inheritance)
 					   "    uint64(2);\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(contract_multiple_inheritance)
@@ -556,7 +586,7 @@ BOOST_AUTO_TEST_CASE(contract_multiple_inheritance)
 					   "    uint64(2);\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(contract_multiple_inheritance_with_arguments)
@@ -571,7 +601,7 @@ BOOST_AUTO_TEST_CASE(contract_multiple_inheritance_with_arguments)
 					   "    uint64(2);\n"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(placeholder_in_function_context)
@@ -582,7 +612,7 @@ BOOST_AUTO_TEST_CASE(placeholder_in_function_context)
 					   "    return _ + 1;"
 					   "  }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(modifier)
@@ -590,7 +620,7 @@ BOOST_AUTO_TEST_CASE(modifier)
 	char const* text = "contract c {\n"
 					   "  modifier mod { if (msg.sender == 0) _ }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(modifier_arguments)
@@ -598,7 +628,7 @@ BOOST_AUTO_TEST_CASE(modifier_arguments)
 	char const* text = "contract c {\n"
 					   "  modifier mod(uint a) { if (msg.sender == a) _ }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(modifier_invocation)
@@ -608,7 +638,7 @@ BOOST_AUTO_TEST_CASE(modifier_invocation)
 					   "  modifier mod2 { if (msg.sender == 2) _ }\n"
 					   "  function f() mod1(7) mod2 { }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(fallback_function)
@@ -616,7 +646,7 @@ BOOST_AUTO_TEST_CASE(fallback_function)
 	char const* text = "contract c {\n"
 					   "  function() { }\n"
 					   "}\n";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(event)
@@ -625,25 +655,25 @@ BOOST_AUTO_TEST_CASE(event)
 		contract c {
 			event e();
 		})";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(event_arguments)
 {
 	char const* text = R"(
 		contract c {
-			event e(uint a, string32 s);
+			event e(uint a, bytes32 s);
 		})";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(event_arguments_indexed)
 {
 	char const* text = R"(
 		contract c {
-			event e(uint a, string32 indexed s, bool indexed b);
+			event e(uint a, bytes32 indexed s, bool indexed b);
 		})";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(visibility_specifiers)
@@ -651,22 +681,22 @@ BOOST_AUTO_TEST_CASE(visibility_specifiers)
 	char const* text = R"(
 		contract c {
 			uint private a;
-			uint inheritable b;
+			uint internal b;
 			uint public c;
 			uint d;
 			function f() {}
 			function f_priv() private {}
 			function f_public() public {}
-			function f_inheritable() inheritable {}
+			function f_internal() internal {}
 		})";
-	BOOST_CHECK_NO_THROW(parseText(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(multiple_visibility_specifiers)
 {
 	char const* text = R"(
 		contract c {
-			uint private inheritable a;
+			uint private internal a;
 		})";
 	BOOST_CHECK_THROW(parseText(text), ParserError);
 }
@@ -687,7 +717,7 @@ BOOST_AUTO_TEST_CASE(literal_constants_with_ether_subdenominations)
 			uint256 c;
 			uint256 d;
 		})";
-	BOOST_CHECK_NO_THROW(parseTextExplainError(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(literal_constants_with_ether_subdenominations_in_expressions)
@@ -700,7 +730,7 @@ BOOST_AUTO_TEST_CASE(literal_constants_with_ether_subdenominations_in_expression
 			}
 			uint256 a;
 		})";
-	BOOST_CHECK_NO_THROW(parseTextExplainError(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(enum_valid_declaration)
@@ -714,7 +744,7 @@ BOOST_AUTO_TEST_CASE(enum_valid_declaration)
 			}
 			uint256 a;
 		})";
-	BOOST_CHECK_NO_THROW(parseTextExplainError(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(empty_enum_declaration)
@@ -723,7 +753,7 @@ BOOST_AUTO_TEST_CASE(empty_enum_declaration)
 		contract c {
 			enum foo { }
 		})";
-	BOOST_CHECK_NO_THROW(parseTextExplainError(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(malformed_enum_declaration)
@@ -741,7 +771,7 @@ BOOST_AUTO_TEST_CASE(external_function)
 		contract c {
 			function x() external {}
 		})";
-	BOOST_CHECK_NO_THROW(parseTextExplainError(text));
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
 }
 
 BOOST_AUTO_TEST_CASE(external_variable)
@@ -750,6 +780,54 @@ BOOST_AUTO_TEST_CASE(external_variable)
 		contract c {
 			uint external x;
 		})";
+	BOOST_CHECK_THROW(parseText(text), ParserError);
+}
+
+BOOST_AUTO_TEST_CASE(arrays_in_storage)
+{
+	char const* text = R"(
+		contract c {
+			uint[10] a;
+			uint[] a2;
+			struct x { uint[2**20] b; y[0] c; }
+			struct y { uint d; mapping(uint=>x)[] e; }
+		})";
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
+}
+
+BOOST_AUTO_TEST_CASE(arrays_in_events)
+{
+	char const* text = R"(
+		contract c {
+			event e(uint[10] a, bytes7[8] indexed b, c[3] x);
+		})";
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
+}
+
+BOOST_AUTO_TEST_CASE(arrays_in_expressions)
+{
+	char const* text = R"(
+		contract c {
+			function f() { c[10] a = 7; uint8[10 * 2] x; }
+		})";
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
+}
+
+BOOST_AUTO_TEST_CASE(multi_arrays)
+{
+	char const* text = R"(
+		contract c {
+			mapping(uint => mapping(uint => int8)[8][][9])[] x;
+		})";
+	ETH_TEST_CHECK_NO_THROW(parseText(text), "Parsing failed");
+}
+
+BOOST_AUTO_TEST_CASE(constant_is_keyword)
+{
+	char const* text = R"(
+		contract Foo {
+			uint constant = 4;
+	})";
 	BOOST_CHECK_THROW(parseText(text), ParserError);
 }
 

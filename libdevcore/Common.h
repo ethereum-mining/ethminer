@@ -44,7 +44,6 @@
 #pragma warning(pop)
 #pragma GCC diagnostic pop
 #include "vector_ref.h"
-#include "debugbreak.h"
 
 // CryptoPP defines byte in the global namespace, so must we.
 using byte = uint8_t;
@@ -65,6 +64,7 @@ using bytesConstRef = vector_ref<byte const>;
 
 // Numeric types.
 using bigint = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<>>;
+using u64 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<64, 64, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 using u128 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<128, 128, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 using u256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 using s256 =  boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
@@ -86,6 +86,7 @@ using strings = std::vector<std::string>;
 
 // Fixed-length string types.
 using string32 = std::array<char, 32>;
+static const string32 ZeroString32 = {{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }};
 
 // Null/Invalid values for convenience.
 static const u256 Invalid256 = ~(u256)0;
@@ -118,6 +119,12 @@ inline unsigned int toLog2(u256 _x)
 	return ret;
 }
 
+template <class N>
+inline N diff(N const& _a, N const& _b)
+{
+	return std::max(_a, _b) - std::min(_a, _b);
+}
+
 /// RAII utility class whose destructor calls a given function.
 class ScopeGuard {
 public:
@@ -126,46 +133,5 @@ public:
 private:
 	std::function<void(void)> m_f;
 };
-
-// Assertions...
-
-#if defined(_MSC_VER)
-#define ETH_FUNC __FUNCSIG__
-#elif defined(__GNUC__)
-#define ETH_FUNC __PRETTY_FUNCTION__
-#else
-#define ETH_FUNC __func__
-#endif
-
-#define asserts(A) ::dev::assertAux(A, #A, __LINE__, __FILE__, ETH_FUNC)
-#define assertsEqual(A, B) ::dev::assertEqualAux(A, B, #A, #B, __LINE__, __FILE__, ETH_FUNC)
-
-inline bool assertAux(bool _a, char const* _aStr, unsigned _line, char const* _file, char const* _func)
-{
-	bool ret = _a;
-	if (!ret)
-	{
-		std::cerr << "Assertion failed:" << _aStr << " [func=" << _func << ", line=" << _line << ", file=" << _file << "]" << std::endl;
-#if ETH_DEBUG
-		debug_break();
-#endif
-	}
-	return !ret;
-}
-
-template<class A, class B>
-inline bool assertEqualAux(A const& _a, B const& _b, char const* _aStr, char const* _bStr, unsigned _line, char const* _file, char const* _func)
-{
-	bool ret = _a == _b;
-	if (!ret)
-	{
-		std::cerr << "Assertion failed: " << _aStr << " == " << _bStr << " [func=" << _func << ", line=" << _line << ", file=" << _file << "]" << std::endl;
-		std::cerr << "   Fail equality: " << _a << "==" << _b << std::endl;
-#if ETH_DEBUG
-		debug_break();
-#endif
-	}
-	return !ret;
-}
 
 }

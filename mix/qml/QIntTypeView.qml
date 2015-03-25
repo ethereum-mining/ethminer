@@ -1,9 +1,12 @@
 import QtQuick 2.0
+import QtQuick.Layouts 1.1
 
 Item
 {
-	property alias text: textinput.text
+	property alias value: textinput.text
 	id: editRoot
+	height: 20
+	width: 150
 
 	SourceSansProBold
 	{
@@ -16,7 +19,7 @@ Item
 		color: "#f7f7f7"
 		TextInput {
 			id: textinput
-			text: text
+			text: value
 			anchors.fill: parent
 			font.family: boldFont.name
 			clip: true

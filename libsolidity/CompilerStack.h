@@ -26,12 +26,22 @@
 #include <ostream>
 #include <string>
 #include <memory>
+#include <vector>
 #include <boost/noncopyable.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
 
-namespace dev {
-namespace solidity {
+namespace dev
+{
+
+namespace eth
+{
+class AssemblyItem;
+using AssemblyItems = std::vector<AssemblyItem>;
+}
+
+namespace solidity
+{
 
 // forward declarations
 class Scanner;
@@ -49,8 +59,6 @@ enum class DocumentationType: uint8_t
 	ABISolidityInterface
 };
 
-extern const std::map<std::string, std::string> StandardSources;
-
 /**
  * Easy to use and self-contained Solidity compiler with as few header dependencies as possible.
  * It holds state and can be used to either step through the compilation stages (and abort e.g.
@@ -60,12 +68,12 @@ class CompilerStack: boost::noncopyable
 {
 public:
 	/// Creates a new compiler stack. Adds standard sources if @a _addStandardSources.
-	explicit CompilerStack(bool _addStandardSources = false);
+	explicit CompilerStack(bool _addStandardSources = true);
 
 	/// Adds a source object (e.g. file) to the parser. After this, parse has to be called again.
 	/// @returns true if a source object by the name already existed and was replaced.
-	void addSources(std::map<std::string, std::string> const& _nameContents) { for (auto const& i: _nameContents) addSource(i.first, i.second); }
-	bool addSource(std::string const& _name, std::string const& _content);
+	void addSources(StringMap const& _nameContents, bool _isLibrary = false) { for (auto const& i: _nameContents) addSource(i.first, i.second, _isLibrary); }
+	bool addSource(std::string const& _name, std::string const& _content, bool _isLibrary = false);
 	void setSource(std::string const& _sourceCode);
 	/// Parses all source units that were added
 	void parse();
@@ -85,12 +93,17 @@ public:
 	bytes const& getBytecode(std::string const& _contractName = "") const;
 	/// @returns the runtime bytecode for the contract, i.e. the code that is returned by the constructor.
 	bytes const& getRuntimeBytecode(std::string const& _contractName = "") const;
+	/// @returns normal contract assembly items
+	eth::AssemblyItems const& getAssemblyItems(std::string const& _contractName = "") const;
+	/// @returns runtime contract assembly items
+	eth::AssemblyItems const& getRuntimeAssemblyItems(std::string const& _contractName = "") const;
 	/// @returns hash of the runtime bytecode for the contract, i.e. the code that is returned by the constructor.
 	dev::h256 getContractCodeHash(std::string const& _contractName = "") const;
 
 	/// Streams a verbose version of the assembly to @a _outStream.
+	/// @arg _sourceCodes is the map of input files to source code strings
 	/// Prerequisite: Successful compilation.
-	void streamAssembly(std::ostream& _outStream, std::string const& _contractName = "") const;
+	void streamAssembly(std::ostream& _outStream, std::string const& _contractName = "", StringMap _sourceCodes = StringMap()) const;
 
 	/// Returns a string representing the contract interface in JSON.
 	/// Prerequisite: Successful call to parse or compile.
@@ -125,7 +138,8 @@ private:
 		std::shared_ptr<Scanner> scanner;
 		std::shared_ptr<SourceUnit> ast;
 		std::string interface;
-		void reset() { scanner.reset(); ast.reset(); interface.clear(); }
+		bool isLibrary = false;
+		void reset() { scanner.reset(); ast.reset(); interface.clear(); isLibrary = false;}
 	};
 
 	struct Contract
@@ -142,10 +156,6 @@ private:
 
 		Contract();
 	};
-
-	/// Expand source code with preprocessor-like includes.
-	/// @todo Replace with better framework.
-	std::string expanded(std::string const& _sourceCode);
 
 	void reset(bool _keepSources = false);
 	void resolveImports();

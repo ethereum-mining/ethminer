@@ -26,11 +26,9 @@ Item {
 			Image {
 				id: projectIcon
 				source: "qrc:/qml/img/dappProjectIcon.png"
-				//sourceSize.height: 32
 				anchors.right: projectTitle.left
 				anchors.verticalCenter: parent.verticalCenter
 				anchors.rightMargin: 6
-				//anchors.centerIn: parent
 				fillMode: Image.PreserveAspectFit
 				width: 32
 				height: 32
@@ -65,11 +63,9 @@ Item {
 		Rectangle
 		{
 			Layout.fillWidth: true
-			height: 10
+			height: 3
 			color: ProjectFilesStyle.documentsList.background
 		}
-
-
 
 		Rectangle
 		{
@@ -82,14 +78,25 @@ Item {
 				anchors.top: parent.top
 				width: parent.width
 				spacing: 0
-
 				Repeater {
 					model: [qsTr("Contracts"), qsTr("Javascript"), qsTr("Web Pages"), qsTr("Styles"), qsTr("Images"), qsTr("Misc")];
 					signal selected(string doc, string groupName)
+					signal isCleanChanged(string doc, string groupName, var isClean)
+					property int incr: -1;
 					id: sectionRepeater
 					FilesSection
 					{
+						id: section;
 						sectionName: modelData
+						index:
+						{
+							for (var k in sectionRepeater.model)
+							{
+								if (sectionRepeater.model[k] === modelData)
+									return k;
+							}
+						}
+
 						model: sectionModel
 						selManager: sectionRepeater
 
@@ -104,6 +111,25 @@ Item {
 
 						Connections {
 							target: codeModel
+							onContractRenamed: {
+								if (modelData === "Contracts")
+								{
+									var ci = 0;
+									for (var si = 0; si < projectModel.listModel.count; si++) {
+										var document = projectModel.listModel.get(si);
+										if (document.isContract) {
+											var compiledDoc = codeModel.contractByDocumentId(document.documentId);
+											if (_documentId === document.documentId && _newName !== document.name) {
+												document.name = _newName;
+												projectModel.listModel.set(si, document);
+												sectionModel.set(ci, document);
+											}
+											ci++;
+										}
+									}
+								}
+							}
+
 							onCompilationComplete: {
 								if (modelData === "Contracts") {
 									var ci = 0;
@@ -119,7 +145,7 @@ Item {
 											ci++;
 										}
 									}
-								}	
+								}
 							}
 						}
 
@@ -134,6 +160,17 @@ Item {
 									var item = projectModel.listModel.get(k);
 									if (item.groupName === modelData)
 										sectionModel.append(item);
+								}
+							}
+
+							onIsCleanChanged: {
+								for (var si = 0; si < sectionModel.count; si++) {
+									var document = sectionModel.get(si);
+									if (documentId === document.documentId && document.groupName === modelData)
+									{
+										selManager.isCleanChanged(documentId, modelData, isClean);
+										break;
+									}
 								}
 							}
 
@@ -170,10 +207,10 @@ Item {
 									projectModel.openDocument(newDoc.documentId);
 									sectionRepeater.selected(newDoc.documentId, modelData);
 								}
-
 							}
 						}
 					}
+
 				}
 			}
 		}

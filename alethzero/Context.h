@@ -25,7 +25,7 @@
 #include <vector>
 #include <QString>
 #include <QList>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 
 class QComboBox;
 

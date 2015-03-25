@@ -43,6 +43,7 @@ namespace js = json_spirit;
 std::map<Address, Account> const& dev::eth::genesisState()
 {
 	static std::map<Address, Account> s_ret;
+
 	if (s_ret.empty())
 	{
 		js::mValue val;
@@ -66,6 +67,8 @@ std::map<Address, Account> const& dev::eth::genesisState()
 	return s_ret;
 }
 
+// TODO: place Registry in here.
+
 std::unique_ptr<BlockInfo> CanonBlockChain::s_genesis;
 boost::shared_mutex CanonBlockChain::x_genesis;
 
@@ -76,14 +79,14 @@ bytes CanonBlockChain::createGenesisBlock()
 	h256 stateRoot;
 	{
 		MemoryDB db;
-		TrieDB<Address, MemoryDB> state(&db);
+		SecureTrieDB<Address, MemoryDB> state(&db);
 		state.init();
 		dev::eth::commit(genesisState(), db, state);
 		stateRoot = state.root();
 	}
 
-	block.appendList(14)
-			<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << 1000000 << 0 << (unsigned)0 << string() << sha3(bytes(1, 42));
+	block.appendList(15)
+			<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << c_genesisGasLimit << 0 << (unsigned)0 << string() << h256() << Nonce(u64(42));
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();

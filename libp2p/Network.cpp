@@ -27,7 +27,9 @@
 #endif
 
 #include <boost/algorithm/string.hpp>
+
 #include <libdevcore/Common.h>
+#include <libdevcore/Assertions.h>
 #include <libdevcore/CommonIO.h>
 #include <libethcore/Exceptions.h>
 #include "Common.h"
@@ -46,7 +48,7 @@ std::vector<bi::address> Network::getInterfaceAddresses()
 	WSAData wsaData;
 	if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0)
 		BOOST_THROW_EXCEPTION(NoNetworking());
-	
+
 	char ac[80];
 	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR)
 	{
@@ -54,7 +56,7 @@ std::vector<bi::address> Network::getInterfaceAddresses()
 		WSACleanup();
 		BOOST_THROW_EXCEPTION(NoNetworking());
 	}
-	
+
 	struct hostent* phe = gethostbyname(ac);
 	if (phe == 0)
 	{
@@ -62,7 +64,7 @@ std::vector<bi::address> Network::getInterfaceAddresses()
 		WSACleanup();
 		BOOST_THROW_EXCEPTION(NoNetworking());
 	}
-	
+
 	for (int i = 0; phe->h_addr_list[i] != 0; ++i)
 	{
 		struct in_addr addr;
@@ -72,18 +74,18 @@ std::vector<bi::address> Network::getInterfaceAddresses()
 		if (!isLocalHostAddress(address))
 			addresses.push_back(address.to_v4());
 	}
-	
+
 	WSACleanup();
 #else
 	ifaddrs* ifaddr;
 	if (getifaddrs(&ifaddr) == -1)
 		BOOST_THROW_EXCEPTION(NoNetworking());
-	
+
 	for (auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
 	{
 		if (!ifa->ifa_addr || string(ifa->ifa_name) == "lo0")
 			continue;
-		
+
 		if (ifa->ifa_addr->sa_family == AF_INET)
 		{
 			in_addr addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
@@ -102,12 +104,12 @@ std::vector<bi::address> Network::getInterfaceAddresses()
 				addresses.push_back(address);
 		}
 	}
-	
+
 	if (ifaddr!=NULL)
 		freeifaddrs(ifaddr);
-	
+
 #endif
-	
+
 	return std::move(addresses);
 }
 
@@ -134,7 +136,7 @@ int Network::tcp4Listen(bi::tcp::acceptor& _acceptor, unsigned short _listenPort
 				// both attempts failed
 				cwarn << "Couldn't start accepting connections on host. Something very wrong with network?\n" << boost::current_exception_diagnostic_information();
 			}
-			
+
 			// first attempt failed
 			_acceptor.close();
 			continue;
@@ -146,15 +148,15 @@ int Network::tcp4Listen(bi::tcp::acceptor& _acceptor, unsigned short _listenPort
 bi::tcp::endpoint Network::traverseNAT(std::vector<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr)
 {
 	asserts(_listenPort != 0);
-	
+
 	UPnP* upnp = nullptr;
 	try
 	{
 		upnp = new UPnP;
 	}
 	// let m_upnp continue as null - we handle it properly.
-	catch (NoUPnPDevice) {}
-	
+	catch (...) {}
+
 	bi::tcp::endpoint upnpep;
 	if (upnp && upnp->isValid())
 	{
@@ -178,7 +180,7 @@ bi::tcp::endpoint Network::traverseNAT(std::vector<bi::address> const& _ifAddres
 		}
 		else
 			clog(NetWarn) << "Couldn't punch through NAT (or no NAT in place).";
-		
+
 		if (upnp)
 			delete upnp;
 	}

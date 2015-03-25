@@ -28,10 +28,11 @@
 #include <memory>
 #include <utility>
 #include <thread>
+
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libdevcore/RangeMask.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libp2p/Common.h>
 #include "CommonNet.h"
 #include "EthereumPeer.h"
@@ -94,7 +95,7 @@ private:
 	h256Set neededBlocks(h256Set const& _exclude);
 
 	///	Check to see if the network peer-state initialisation has happened.
-	bool isInitialised() const { return m_latestBlockSent; }
+	bool isInitialised() const { return (bool)m_latestBlockSent; }
 
 	/// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
 	bool ensureInitialised();

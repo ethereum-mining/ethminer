@@ -23,7 +23,7 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/Diff.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 
 namespace dev
 {

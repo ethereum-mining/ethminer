@@ -13,6 +13,7 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ..)
 include_directories(${LEVELDB_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXECUTABLE whisper)
 
@@ -32,5 +33,5 @@ target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} p2p)
 target_link_libraries(${EXECUTABLE} secp256k1)
 
-install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )

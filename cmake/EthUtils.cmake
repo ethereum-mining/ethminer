@@ -22,3 +22,43 @@ macro(replace_if_different SOURCE DST)
 	endif()
 endmacro()
 
+macro(eth_add_test NAME) 
+
+	# parse arguments here
+	set(commands)
+	set(current_command "")
+	foreach (arg ${ARGN})
+		if (arg STREQUAL "ARGS")
+			if (current_command)
+				list(APPEND commands ${current_command})
+			endif()
+			set(current_command "")
+		else ()
+			set(current_command "${current_command} ${arg}")
+		endif()
+	endforeach(arg)
+	list(APPEND commands ${current_command})
+
+	message(STATUS "test: ${NAME} | ${commands}")
+
+	# create tests
+	set(index 0)
+	list(LENGTH commands count)
+	while (index LESS count)
+		list(GET commands ${index} test_arguments)
+
+		set(run_test "--run_test=${NAME}")
+		add_test(NAME "${NAME}.${index}" COMMAND testeth ${run_test} ${test_arguments})
+		
+		math(EXPR index "${index} + 1")
+	endwhile(index LESS count)
+
+	# add target to run them
+	add_custom_target("test.${NAME}"
+		DEPENDS testeth
+		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+		COMMAND ${CMAKE_COMMAND} -DETH_TEST_NAME="${NAME}" -DCTEST_COMMAND="${CTEST_COMMAND}" -P "${ETH_SCRIPTS_DIR}/runtest.cmake"
+	)
+
+endmacro()
+

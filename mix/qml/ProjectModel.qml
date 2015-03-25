@@ -12,35 +12,46 @@ Item {
 	signal projectClosed
 	signal projectLoading(var projectData)
 	signal projectLoaded()
+	signal documentSaving(var document)
+	signal documentChanged(var documentId)
 	signal documentOpened(var document)
 	signal documentRemoved(var documentId)
 	signal documentUpdated(var documentId) //renamed
 	signal documentAdded(var documentId)
-	signal projectSaving(var projectData)
+	signal projectSaving()
+	signal projectFileSaving(var projectData)
 	signal projectSaved()
+	signal projectFileSaved()
 	signal newProject(var projectData)
 	signal documentSaved(var documentId)
+	signal contractSaved(var documentId)
 	signal deploymentStarted()
+	signal deploymentStepChanged(string message)
 	signal deploymentComplete()
 	signal deploymentError(string error)
+	signal isCleanChanged(var isClean, string documentId)
 
 	property bool isEmpty: (projectPath === "")
 	readonly property string projectFileName: ".mix"
 
-	property bool haveUnsavedChanges: false
+	property bool appIsClosing: false
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
-	property string deploymentAddress: ""
+	property var deploymentAddresses: []
+	property string deploymentDir
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
 	property CodeEditorView codeEditor: null
+	property var unsavedFiles: []
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
+	function saveCurrentDocument() { ProjectModelCode.saveCurrentDocument(); }
 	function createProject() { ProjectModelCode.createProject(); }
-	function closeProject() { ProjectModelCode.closeProject(); }
+	function closeProject(callBack) { ProjectModelCode.closeProject(callBack); }
 	function saveProject() { ProjectModelCode.saveProject(); }
+	function saveProjectFile() { ProjectModelCode.saveProjectFile(); }
 	function loadProject(path) { ProjectModelCode.loadProject(path); }
 	function newHtmlFile() { ProjectModelCode.newHtmlFile(); }
 	function newJsFile() { ProjectModelCode.newJsFile(); }
@@ -55,12 +66,28 @@ Item {
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 	function deployProject() { ProjectModelCode.deployProject(false); }
+	function registerToUrlHint() { ProjectModelCode.registerToUrlHint(); }
+	function formatAppUrl() { ProjectModelCode.formatAppUrl(url); }
 
 	Connections {
-		target: appContext
-		onAppLoaded: {
-			if (projectSettings.lastProjectPath)
+		target: mainApplication
+		onLoaded: {
+			if (projectSettings.lastProjectPath && projectSettings.lastProjectPath !== "")
 				projectModel.loadProject(projectSettings.lastProjectPath)
+		}
+	}
+
+	Connections {
+		target: codeEditor
+		onIsCleanChanged: {
+			for (var i in unsavedFiles)
+			{
+				if (unsavedFiles[i] === documentId && isClean)
+					unsavedFiles.splice(i, 1);
+			}
+			if (!isClean)
+				unsavedFiles.push(documentId);
+			isCleanChanged(isClean, documentId);
 		}
 	}
 
@@ -74,30 +101,65 @@ Item {
 		}
 	}
 
+	Connections
+	{
+		target: fileIo
+		property bool saving: false
+		onFileChanged:
+		{
+			fileIo.watchFileChanged(_filePath);
+			var documentId = ProjectModelCode.getDocumentByPath(_filePath);
+			documentChanged(documentId);
+		}
+	}
+
 	MessageDialog {
 		id: saveMessageDialog
 		title: qsTr("Project")
-		text: qsTr("Do you want to save changes?")
-		standardButtons: StandardButton.Ok | StandardButton.Cancel
+		text: qsTr("Some files require to be saved. Do you want to save changes?");
+		standardButtons: StandardButton.Yes | StandardButton.No | StandardButton.Cancel
 		icon: StandardIcon.Question
-		onAccepted: {
+		property var callBack;
+		onYes: {
 			projectModel.saveAll();
 			ProjectModelCode.doCloseProject();
+			if (callBack)
+				callBack();
 		}
-		onRejected: {
+		onRejected: {}
+		onNo: {
 			ProjectModelCode.doCloseProject();
+			if (callBack)
+				callBack();
 		}
 	}
 
 	MessageDialog {
 		id: deployWarningDialog
 		title: qsTr("Project")
-		text: qsTr("This project has been already deployed to the network. Do you want to re-deploy it?")
-		standardButtons: StandardButton.Ok | StandardButton.Cancel
-		icon: StandardIcon.Question
-		onAccepted: {
-			ProjectModelCode.deployProject(true);
+		text:
+		{
+			if (Object.keys(projectModel.deploymentAddresses).length > 0)
+				return qsTr("This project has been already deployed to the network. Do you want to redeploy it? (Contract state will be reset)")
+			else
+				return qsTr("This action will deploy to the network. Do you want to deploy it?")
 		}
+		icon: StandardIcon.Question
+		standardButtons: StandardButton.Ok | StandardButton.Abort
+		onAccepted: {
+			ProjectModelCode.startDeployProject(true);
+		}
+	}
+
+	MessageDialog {
+		id: deployRessourcesDialog
+		title: qsTr("Project")
+		standardButtons: StandardButton.Ok
+	}
+
+	DeploymentDialog
+	{
+		id: deploymentDialog
 	}
 
 	ListModel {
@@ -106,6 +168,14 @@ Item {
 
 	StateListModel {
 		id: projectStateListModel
+	}
+
+	Connections
+	{
+		target: projectModel
+		onProjectClosed: {
+			projectPath = "";
+		}
 	}
 
 	Settings {

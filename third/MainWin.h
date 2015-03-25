@@ -28,7 +28,7 @@
 #include <QtCore/QMutex>
 #include <QtWidgets/QMainWindow>
 #include <libdevcore/RLP.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libethereum/State.h>
 
 namespace Ui {

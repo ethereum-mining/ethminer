@@ -13,6 +13,10 @@ aux_source_directory(. SRC_LIST)
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
+
+find_package (Qt5WebEngine QUIET)
+find_package (Qt5WebEngineWidgets QUIET)
 
 qt5_wrap_ui(ui_Main.h Main.ui)
 qt5_wrap_ui(ui_Debugger.h Debugger.ui)
@@ -37,8 +41,8 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} Qt5::Widgets)
-target_link_libraries(${EXECUTABLE} Qt5::WebKit)
-target_link_libraries(${EXECUTABLE} Qt5::WebKitWidgets)
+target_link_libraries(${EXECUTABLE} Qt5::WebEngine)
+target_link_libraries(${EXECUTABLE} Qt5::WebEngineWidgets)
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} evm)
@@ -52,11 +56,12 @@ target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} web3jsonrpc)
 target_link_libraries(${EXECUTABLE} jsqrc)
 target_link_libraries(${EXECUTABLE} natspec)
+target_link_libraries(${EXECUTABLE} ${MHD_LIBRARIES})
 
 if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
 	target_link_libraries(${EXECUTABLE} serpent)
 endif()
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
-eth_install_executable(${EXECUTABLE})
+eth_install_executable(${EXECUTABLE} DLLS ${MHD_DLL_RELEASE})
 

@@ -20,12 +20,48 @@
  */
 
 #include <boost/detail/endian.hpp>
+#include <boost/filesystem.hpp>
 #include <chrono>
 #include <array>
+#include <thread>
 #include <random>
 #include <thread>
+#include <libdevcore/Guards.h>
+#include <libdevcore/Log.h>
 #include <libdevcrypto/CryptoPP.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libdevcore/Common.h>
+#if ETH_ETHASHCL
+#include <libethash-cl/ethash_cl_miner.h>
+#define ETHASH_REVISION REVISION
+#define ETHASH_DATASET_BYTES_INIT DATASET_BYTES_INIT
+#define ETHASH_DATASET_BYTES_GROWTH DATASET_BYTES_GROWTH
+#define ETHASH_CACHE_BYTES_INIT CACHE_BYTES_INIT
+#define ETHASH_CACHE_BYTES_GROWTH CACHE_BYTES_GROWTH
+#define ETHASH_DAGSIZE_BYTES_INIT DAGSIZE_BYTES_INIT
+#define ETHASH_DAG_GROWTH DAG_GROWTH
+#define ETHASH_EPOCH_LENGTH EPOCH_LENGTH
+#define ETHASH_MIX_BYTES MIX_BYTES
+#define ETHASH_HASH_BYTES HASH_BYTES
+#define ETHASH_DATASET_PARENTS DATASET_PARENTS
+#define ETHASH_CACHE_ROUNDS CACHE_ROUNDS
+#define ETHASH_ACCESSES ACCESSES
+#undef REVISION
+#undef DATASET_BYTES_INIT
+#undef DATASET_BYTES_GROWTH
+#undef CACHE_BYTES_INIT
+#undef CACHE_BYTES_GROWTH
+#undef DAGSIZE_BYTES_INIT
+#undef DAG_GROWTH
+#undef EPOCH_LENGTH
+#undef MIX_BYTES
+#undef HASH_BYTES
+#undef DATASET_PARENTS
+#undef CACHE_ROUNDS
+#undef ACCESSES
+#endif
+#include "BlockInfo.h"
+#include "Ethasher.h"
 #include "ProofOfWork.h"
 using namespace std;
 using namespace std::chrono;
@@ -35,73 +71,170 @@ namespace dev
 namespace eth
 {
 
-template <class _T>
-static inline void update(_T& _sha, u256 const& _value)
+bool EthashCPU::verify(BlockInfo const& _header)
 {
-	int i = 0;
-	for (u256 v = _value; v; ++i, v >>= 8) {}
-	byte buf[32];
-	bytesRef bufRef(buf, i);
-	toBigEndian(_value, bufRef);
-	_sha.Update(buf, i);
+	return Ethasher::verify(_header);
 }
 
-template <class _T>
-static inline void update(_T& _sha, h256 const& _value)
+std::pair<MineInfo, EthashCPU::Proof> EthashCPU::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue, bool _turbo)
 {
-	int i = 0;
-	byte const* data = _value.data();
-	for (; i != 32 && data[i] == 0; ++i);
-	_sha.Update(data + i, 32 - i);
-}
+	Ethasher::Miner m(_header);
 
-template <class _T>
-static inline h256 get(_T& _sha)
-{
-	h256 ret;
-	_sha.TruncatedFinal(&ret[0], 32);
+	std::pair<MineInfo, Proof> ret;
+	auto tid = std::this_thread::get_id();
+	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data()) + std::hash<decltype(tid)>()(tid)));
+	uint64_t tryNonce = (uint64_t)(u64)(m_last = Nonce::random(s_eng));
+
+	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
+	ret.first.requirement = log2((double)(u256)boundary);
+
+	// 2^ 0      32      64      128      256
+	//   [--------*-------------------------]
+	//
+	// evaluate until we run out of time
+	auto startTime = std::chrono::steady_clock::now();
+	if (!_turbo)
+		std::this_thread::sleep_for(std::chrono::milliseconds(_msTimeout * 90 / 100));
+	double best = 1e99;	// high enough to be effectively infinity :)
+	Proof result;
+	unsigned hashCount = 0;
+	for (; (std::chrono::steady_clock::now() - startTime) < std::chrono::milliseconds(_msTimeout) && _continue; tryNonce++, hashCount++)
+	{
+		h256 val(m.mine(tryNonce));
+		best = std::min<double>(best, log2((double)(u256)val));
+		if (val <= boundary)
+		{
+			ret.first.completed = true;
+			assert(Ethasher::eval(_header, (Nonce)(u64)tryNonce).value == val);
+			result.mixHash = m.lastMixHash();
+			result.nonce = u64(tryNonce);
+			BlockInfo test = _header;
+			assignResult(result, test);
+			assert(verify(test));
+			break;
+		}
+	}
+	ret.first.hashes = hashCount;
+	ret.first.best = best;
+	ret.second = result;
+
+	if (ret.first.completed)
+	{
+		BlockInfo test = _header;
+		assignResult(result, test);
+		assert(verify(test));
+	}
+
 	return ret;
 }
 
-h256 DaggerEvaluator::node(h256 const& _root, h256 const& _xn, uint_fast32_t _L, uint_fast32_t _i)
+#if ETH_ETHASHCL
+
+/*
+struct ethash_cl_search_hook
 {
-	if (_L == _i)
-		return _root;
-	u256 m = (_L == 9) ? 16 : 3;
-	CryptoPP::SHA3_256 bsha;
-	for (uint_fast32_t k = 0; k < m; ++k)
+	// reports progress, return true to abort
+	virtual bool found(uint64_t const* nonces, uint32_t count) = 0;
+	virtual bool searched(uint64_t start_nonce, uint32_t count) = 0;
+};
+
+class ethash_cl_miner
+{
+public:
+	ethash_cl_miner();
+
+	bool init(ethash_params const& params, const uint8_t seed[32], unsigned workgroup_size = 64);
+
+	void hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);
+	void search(uint8_t const* header, uint64_t target, search_hook& hook);
+};
+*/
+
+struct EthashCLHook: public ethash_cl_search_hook
+{
+	virtual bool found(uint64_t const* _nonces, uint32_t _count)
 	{
-		CryptoPP::SHA3_256 sha;
-		update(sha, _root);
-		update(sha, _xn);
-		update(sha, (u256)_L);
-		update(sha, (u256)_i);
-		update(sha, (u256)k);
-		uint_fast32_t pk = (uint_fast32_t)(u256)get(sha) & ((1 << ((_L - 1) * 3)) - 1);
-		auto u = node(_root, _xn, _L - 1, pk);
-		update(bsha, u);
+		Guard l(x_all);
+		for (unsigned i = 0; i < _count; ++i)
+			found.push_back((Nonce)(u64)_nonces[i]);
+		if (abort)
+		{
+			aborted = true;
+			return true;
+		}
+		return false;
 	}
-	return get(bsha);
+
+	virtual bool searched(uint64_t _startNonce, uint32_t _count)
+	{
+		Guard l(x_all);
+		total += _count;
+		last = _startNonce + _count;
+		if (abort)
+		{
+			aborted = true;
+			return true;
+		}
+		return false;
+	}
+
+	vector<Nonce> fetchFound() { vector<Nonce> ret; Guard l(x_all); std::swap(ret, found); return ret; }
+	uint64_t fetchTotal() { Guard l(x_all); auto ret = total; total = 0; return ret; }
+
+	Mutex x_all;
+	vector<Nonce> found;
+	uint64_t total;
+	uint64_t last;
+	bool abort = false;
+	bool aborted = false;
+};
+
+EthashCL::EthashCL():
+	m_miner(new ethash_cl_miner),
+	m_hook(new EthashCLHook)
+{
 }
 
-h256 DaggerEvaluator::eval(h256 const& _root, h256 const& _nonce)
+EthashCL::~EthashCL()
 {
-	h256 extranonce = (u256)_nonce >> 26;				// with xn = floor(n / 2^26) -> assuming this is with xn = floor(N / 2^26)
-	CryptoPP::SHA3_256 bsha;
-	for (uint_fast32_t k = 0; k < 4; ++k)
-	{
-		//sha256(D || xn || i || k)		-> sha256(D || xn || k)	- there's no 'i' here!
-		CryptoPP::SHA3_256 sha;
-		update(sha, _root);
-		update(sha, extranonce);
-		update(sha, _nonce);
-		update(sha, (u256)k);
-		uint_fast32_t pk = (uint_fast32_t)(u256)get(sha) & 0x1ffffff;	// mod 8^8 * 2  [ == mod 2^25 ?! ] [ == & ((1 << 25) - 1) ] [ == & 0x1ffffff ]
-		auto u = node(_root, extranonce, 9, pk);
-		update(bsha, u);
-	}
-	return get(bsha);
+	m_hook->abort = true;
+	for (unsigned timeout = 0; timeout < 100 && !m_hook->aborted; ++timeout)
+		std::this_thread::sleep_for(chrono::milliseconds(30));
+	if (!m_hook->aborted)
+		cwarn << "Couldn't abort. Abandoning OpenCL process.";
 }
+
+bool EthashCL::verify(BlockInfo const& _header)
+{
+	return Ethasher::verify(_header);
+}
+
+std::pair<MineInfo, Ethash::Proof> EthashCL::mine(BlockInfo const& _header, unsigned _msTimeout, bool, bool)
+{
+	if (m_lastHeader.seedHash() != _header.seedHash())
+	{
+		m_miner->init(Ethasher::params(_header), _header.seedHash().data());
+		// TODO: reinit probably won't work when seed changes.
+	}
+	if (m_lastHeader != _header)
+	{
+		static std::random_device s_eng;
+		uint64_t tryNonce = (uint64_t)(u64)(m_last = Nonce::random(s_eng));
+		m_miner->search(_header.headerHash(WithoutNonce).data(), tryNonce, *m_hook);
+	}
+	m_lastHeader = _header;
+
+	std::this_thread::sleep_for(chrono::milliseconds(_msTimeout));
+	auto found = m_hook->fetchFound();
+	if (!found.empty())
+	{
+		h256 mixHash; // ?????
+		return std::make_pair(MineInfo{0.0, 1e99, 0, true}, EthashCL::Proof((Nonce)(u64)found[0], mixHash));
+	}
+	return std::make_pair(MineInfo{0.0, 1e99, 0, false}, EthashCL::Proof());
+}
+
+#endif
 
 }
 }

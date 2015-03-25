@@ -163,3 +163,9 @@ view-port
 .cm-s-solarized.cm-s-light .CodeMirror-activeline-background {
   background: rgba(0, 0, 0, 0.10);
 }
+
+/* Code execution */
+.CodeMirror-exechighlight {
+	background: rgba(255, 255, 255, 0.10);
+}
+

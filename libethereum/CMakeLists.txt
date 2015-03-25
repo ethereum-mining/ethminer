@@ -13,6 +13,7 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ..)
 include_directories(${LEVELDB_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXECUTABLE ethereum)
 
@@ -35,6 +36,14 @@ target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 
-install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+if (ETHASHCL)
+	target_link_libraries(${EXECUTABLE} ethash-cl)
+endif ()
+
+if (CMAKE_COMPILER_IS_MINGW)
+	target_link_libraries(${EXECUTABLE} ssp shlwapi)
+endif()
+
+install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
 

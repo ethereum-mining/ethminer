@@ -1,8 +1,0 @@
-
-(asm 
-123
-SSTORE
-SLOAD
-123
-SUB
-)

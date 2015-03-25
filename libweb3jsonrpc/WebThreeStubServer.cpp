@@ -21,7 +21,10 @@
  * @date 2014
  */
 
+// Make sure boost/asio.hpp is included before windows.h.
+#include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
+
 #include <libwebthree/WebThree.h>
 #include <libdevcrypto/FileSystem.h>
 #include "WebThreeStubServer.h"

@@ -32,12 +32,15 @@
 using namespace std;
 using namespace dev;
 
-std::string dev::getDataDir()
+std::string dev::getDataDir(std::string _prefix)
 {
+	if (_prefix.empty())
+		_prefix = "ethereum";
 #ifdef _WIN32
+	_prefix[0] = toupper(_prefix[0]);
 	char path[1024] = "";
 	if (SHGetSpecialFolderPathA(NULL, path, CSIDL_APPDATA, true))
-		return (boost::filesystem::path(path) / "Ethereum").string();
+		return (boost::filesystem::path(path) / _prefix).string();
 	else
 	{
 	#ifndef _MSC_VER // todo?
@@ -57,7 +60,7 @@ std::string dev::getDataDir()
 	// This eventually needs to be put in proper wrapper (to support sandboxing)
 	return (dataDirPath / "Library/Application Support/Ethereum").string();
 #else
-	return (dataDirPath / ".ethereum").string();
+	return (dataDirPath / ("." + _prefix)).string();
 #endif
 #endif
 }

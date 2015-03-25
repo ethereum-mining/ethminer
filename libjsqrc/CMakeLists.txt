@@ -12,7 +12,7 @@ qt5_add_resources(JSQRC js.qrc)
 add_library(jsqrc STATIC ${JSQRC})
 target_link_libraries(jsqrc Qt5::Core)
 
-if (ETH_NODE AND ETH_NPM)
+if (USENPM)
 	add_custom_target(ethereumjs)
 	add_custom_command(TARGET ethereumjs
 		POST_BUILD
@@ -22,4 +22,8 @@ if (ETH_NODE AND ETH_NPM)
 	add_dependencies(jsqrc ethereumjs)
 endif()
 
-install( TARGETS jsqrc ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+install( TARGETS jsqrc RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+
+file(GLOB_RECURSE JSFILES "ethereumjs/lib/*.js")
+add_custom_target(aux_js SOURCES ${JSFILES})
+

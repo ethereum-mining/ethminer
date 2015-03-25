@@ -55,21 +55,21 @@ void Web3Server::put(std::string const& _name, std::string const& _key, std::str
 	m_db[k] = _value;
 }
 
-Json::Value Web3Server::eth_changed(int _id)
+Json::Value Web3Server::eth_getFilterChanges(std::string const& _filterId)
 {
-	return WebThreeStubServerBase::eth_changed(_id);
+	return WebThreeStubServerBase::eth_getFilterChanges(_filterId);
 }
 
-std::string Web3Server::eth_transact(Json::Value const& _json)
+std::string Web3Server::eth_sendTransaction(Json::Value const& _json)
 {
-	std::string ret = WebThreeStubServerBase::eth_transact(_json);
+	std::string ret = WebThreeStubServerBase::eth_sendTransaction(_json);
 	emit newTransaction();
 	return ret;
 }
 
-std::string Web3Server::eth_call(Json::Value const& _json)
+std::string Web3Server::eth_call(Json::Value const& _json, std::string const& _blockNumber)
 {
-	std::string ret = WebThreeStubServerBase::eth_call(_json);
+	std::string ret = WebThreeStubServerBase::eth_call(_json, _blockNumber);
 	emit newTransaction();
 	return ret;
 }

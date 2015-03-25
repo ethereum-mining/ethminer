@@ -6,67 +6,58 @@ import QtQuick.Window 2.2
 import QtQuick.Layouts 1.1
 import org.ethereum.qml.QEther 1.0
 import "js/QEtherHelper.js" as QEtherHelper
+import "js/TransactionHelper.js" as TransactionHelper
 
 Item {
 
 	property alias model: stateListModel
 	property var stateList: []
+	property string defaultAccount: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074" //support for old project
 
 	function fromPlainStateItem(s) {
+		if (!s.accounts)
+			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether, defaultAccount)]; //support for old project
 		return {
 			title: s.title,
-			balance: QEtherHelper.createEther(s.balance.value, s.balance.unit),
-			transactions: s.transactions.map(fromPlainTransactionItem)
+			transactions: s.transactions.map(fromPlainTransactionItem),
+			accounts: s.accounts.map(fromPlainAccountItem)
+		};
+	}
+
+	function fromPlainAccountItem(t)
+	{
+		return {
+			name: t.name,
+			secret: t.secret,
+			balance: QEtherHelper.createEther(t.balance.value, t.balance.unit)
 		};
 	}
 
 	function fromPlainTransactionItem(t) {
+		if (!t.sender)
+			t.sender = defaultAccount; //support for old project
 		var r = {
 			contractId: t.contractId,
 			functionId: t.functionId,
 			url: t.url,
 			value: QEtherHelper.createEther(t.value.value, t.value.unit),
-			gas: QEtherHelper.createBigInt(t.gas.value), //t.gas,//QEtherHelper.createEther(t.gas.value, t.gas.unit),
+			gas: QEtherHelper.createBigInt(t.gas.value),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
-			stdContract: t.stdContract,
-			parameters: {}
+			stdContract: t.stdContract ? true : false,
+			parameters: {},
+			sender: t.sender
 		};
-		var qType = [];
 		for (var key in t.parameters)
-		{
-			r.parameters[key] = t.parameters[key].value;
-			var type = t.parameters[key].type;
-			var varComponent;
-			if (type.indexOf("int") !== -1)
-				varComponent = Qt.createComponent("qrc:/qml/QIntType.qml");
-			else if (type.indexOf("real") !== -1)
-				varComponent = Qt.createComponent("qrc:/qml/QRealType.qml");
-			else if (type.indexOf("string") !== -1 || type.indexOf("text") !== -1)
-				varComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
-			else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
-				varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
-			else if (type.indexOf("bool") !== -1)
-				varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
-			else {
-				console.log("Unknown parameter type: " + type);
-				continue;
-			}
+			r.parameters[key] = t.parameters[key];
 
-			var param = varComponent.createObject(stateListModel);
-			var dec = Qt.createComponent("qrc:/qml/QVariableDeclaration.qml");
-			param.setDeclaration(dec.createObject(stateListModel, { "type": type }));
-			param.setValue(r.parameters[key]);
-			qType.push(param);
-		}
-		r.qType = qType;
 		return r;
 	}
 
 	function toPlainStateItem(s) {
 		return {
 			title: s.title,
-			balance: { value: s.balance.value, unit: s.balance.unit },
-			transactions: s.transactions.map(toPlainTransactionItem)
+			transactions: s.transactions.map(toPlainTransactionItem),
+			accounts: s.accounts.map(toPlainAccountItem)
 		};
 	}
 
@@ -78,6 +69,18 @@ Item {
 				return params[k].declaration.type;
 		}
 		return '';
+	}
+
+	function toPlainAccountItem(t)
+	{
+		return {
+			name: t.name,
+			secret: t.secret,
+			balance: {
+				value: t.balance.value,
+				unit: t.balance.unit
+			}
+		};
 	}
 
 	function toPlainTransactionItem(t) {
@@ -92,14 +95,7 @@ Item {
 			parameters: {}
 		};
 		for (var key in t.parameters)
-		{
-			var param = {
-				name: key,
-				value: t.parameters[key],
-				type: getParamType(key, t.qType)
-			}
-			r.parameters[key] = param;
-		}
+			r.parameters[key] = t.parameters[key];
 		return r;
 	}
 
@@ -108,9 +104,10 @@ Item {
 		onProjectClosed: {
 			stateListModel.clear();
 			stateList = [];
+			codeModel.reset();
 		}
 		onProjectLoading: stateListModel.loadStatesFromProject(projectData);
-		onProjectSaving: {
+		onProjectFileSaving: {
 			projectData.states = []
 			for(var i = 0; i < stateListModel.count; i++) {
 				projectData.states.push(toPlainStateItem(stateList[i]));
@@ -122,6 +119,17 @@ Item {
 			state.title = qsTr("Default");
 			projectData.states = [ state ];
 			projectData.defaultStateIndex = 0;
+			stateListModel.loadStatesFromProject(projectData);
+		}
+	}
+
+	Connections {
+		target: codeModel
+		onNewContractCompiled: {
+			stateListModel.addNewContracts();
+		}
+		onContractRenamed: {
+			stateListModel.renameContracts(_oldName, _newName);
 		}
 	}
 
@@ -152,29 +160,31 @@ Item {
 
 	ListModel {
 		id: stateListModel
-
 		property int defaultStateIndex: 0
 		signal defaultStateChanged;
 		signal stateListModelReady;
 		signal stateRun(int index)
 
 		function defaultTransactionItem() {
-			return {
-				value: QEtherHelper.createEther("100", QEther.Wei),
-				gas: QEtherHelper.createBigInt("125000"),
-				gasPrice: QEtherHelper.createEther("10000000000000", QEther.Wei),
-				stdContract: false
-			};
+			return TransactionHelper.defaultTransaction();
+		}
+
+		function newAccount(_balance, _unit, _secret)
+		{
+			if (!_secret)
+				_secret = clientModel.newAddress();
+			var name = qsTr("Account") + "-" + _secret.substring(0, 4);
+			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit) };
 		}
 
 		function createDefaultState() {
-			//var ether = QEtherHelper.createEther("100000000000000000000000000", QEther.Wei);
-			var ether = QEtherHelper.createEther("1000000", QEther.Ether);
 			var item = {
 				title: "",
-				balance: ether,
-				transactions: []
+				transactions: [],
+				accounts: []
 			};
+
+			item.accounts.push(newAccount("1000000", QEther.Ether, defaultAccount));
 
 			//add all stdc contracts
 			for (var i = 0; i < contractLibrary.model.count; i++) {
@@ -184,6 +194,7 @@ Item {
 				contractTransaction.contractId = contractItem.name;
 				contractTransaction.functionId = contractItem.name;
 				contractTransaction.stdContract = true;
+				contractTransaction.sender = item.accounts[0].secret; // default account is used to deploy std contract.
 				item.transactions.push(contractTransaction);
 			};
 
@@ -192,9 +203,61 @@ Item {
 				var ctorTr = defaultTransactionItem();
 				ctorTr.functionId = c;
 				ctorTr.contractId = c;
+				ctorTr.sender = item.accounts[0].secret;
 				item.transactions.push(ctorTr);
 			}
 			return item;
+		}
+
+		function renameContracts(oldName, newName) {
+			var changed = false;
+			for(var c in codeModel.contracts) {
+				for (var s = 0; s < stateListModel.count; s++) {
+					var state = stateList[s];
+					for (var t = 0; t < state.transactions.length; t++) {
+						var transaction = state.transactions[t];
+						if (transaction.contractId === oldName) {
+							transaction.contractId = newName;
+							if (transaction.functionId === oldName)
+								transaction.functionId = newName;
+							changed = true;
+							state.transactions[t] = transaction;
+						}
+					}
+					stateListModel.set(s, state);
+					stateList[s] = state;
+				}
+			}
+			if (changed)
+				save();
+		}
+
+		function addNewContracts() {
+			//add new contracts for all states
+			var changed = false;
+			for(var c in codeModel.contracts) {
+				for (var s = 0; s < stateListModel.count; s++) {
+					var state = stateList[s];
+					for (var t = 0; t < state.transactions.length; t++) {
+						var transaction = state.transactions[t];
+						if (transaction.functionId === c && transaction.contractId === c)
+							break;
+					}
+					if (t === state.transactions.length) {
+						//append this contract
+						var ctorTr = defaultTransactionItem();
+						ctorTr.functionId = c;
+						ctorTr.contractId = c;
+						ctorTr.sender = state.accounts[0].secret;
+						state.transactions.push(ctorTr);
+						changed = true;
+						stateListModel.set(s, state);
+						stateList[s] = state;
+					}
+				}
+			}
+			if (changed)
+				save();
 		}
 
 		function addState() {
@@ -229,6 +292,7 @@ Item {
 				defaultStateIndex--;
 
 			save();
+
 		}
 
 		function save() {
@@ -249,6 +313,8 @@ Item {
 			else
 				defaultStateIndex = 0;
 			var items = projectData.states;
+			stateListModel.clear();
+			stateList = [];
 			for(var i = 0; i < items.length; i++) {
 				var item = fromPlainStateItem(items[i]);
 				stateListModel.append(item);

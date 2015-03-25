@@ -30,7 +30,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/ProofOfWork.h>
-#include <libevm/FeeStructure.h>
+#include <libethcore/Params.h>
 #include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
 #include "Account.h"
@@ -41,12 +41,13 @@
 namespace dev
 {
 
-namespace test { class ImportTest; }
+namespace test { class ImportTest; class StateLoader; }
 
 namespace eth
 {
 
 class BlockChain;
+class State;
 
 struct StateChat: public LogChannel { static const char* name() { return "-S-"; } static const int verbosity = 4; };
 struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
@@ -54,6 +55,40 @@ struct StateDetail: public LogChannel { static const char* name() { return "/S/"
 struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
 
 enum class BaseState { Empty, CanonGenesis };
+
+enum class TransactionPriority
+{
+	Lowest = 0,
+	Low = 2,
+	Medium = 4,
+	High = 6,
+	Highest = 8
+};
+
+class GasPricer
+{
+public:
+	GasPricer() = default;
+	virtual ~GasPricer() = default;
+
+	virtual u256 ask(State const&) const = 0;
+	virtual u256 bid(TransactionPriority _p = TransactionPriority::Medium) const = 0;
+
+	virtual void update(BlockChain const&) {}
+};
+
+class TrivialGasPricer: public GasPricer
+{
+protected:
+	u256 ask(State const&) const override { return 10 * szabo; }
+	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return 10 * szabo; }
+};
+
+enum class Permanence
+{
+	Reverted,
+	Committed
+};
 
 /**
  * @brief Model of the current state of the ledger.
@@ -64,6 +99,7 @@ class State
 {
 	friend class ExtVM;
 	friend class dev::test::ImportTest;
+	friend class dev::test::StateLoader;
 	friend class Executive;
 
 public:
@@ -92,10 +128,8 @@ public:
 	OverlayDB const& db() const { return m_db; }
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
+	/// @throws InterfaceNotSupported if compiled without ETH_FATDB.
 	std::map<Address, u256> addresses() const;
-
-	/// @returns the address b such that b > @a _a .
-	Address nextActiveAddress(Address _a) const;
 
 	/// Get the header information on the present block.
 	BlockInfo const& info() const { return m_currentBlock; }
@@ -115,7 +149,7 @@ public:
 
 	/// Pass in a solution to the proof-of-work.
 	/// @returns true iff the given nonce is a proof-of-work for this State's block.
-	bool completeMine(h256 const& _nonce);
+	bool completeMine(ProofOfWork::Proof const& _result);
 
 	/// Attempt to find valid nonce for block that this state represents.
 	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
@@ -150,18 +184,19 @@ public:
 	/// @returns a list of receipts one for each transaction placed from the queue into the state.
 	/// @a o_transactionQueueChanged boolean pointer, the value of which will be set to true if the transaction queue
 	/// changed and the pointer is non-null
-	TransactionReceipts sync(BlockChain const& _bc, TransactionQueue& _tq, bool* o_transactionQueueChanged = nullptr);
+	TransactionReceipts sync(BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, bool* o_transactionQueueChanged = nullptr);
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
+	/// Returns the last few block hashes of the current chain.
 	LastHashes getLastHashes(BlockChain const& _bc, unsigned _n) const;
 
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	u256 execute(BlockChain const& _bc, bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true);
-	u256 execute(BlockChain const& _bc, bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
-	u256 execute(LastHashes const& _lh, bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true) { return execute(_lh, &_rlp, o_output, _commit); }
-	u256 execute(LastHashes const& _lh, bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
+	ExecutionResult execute(BlockChain const& _bc, bytes const& _rlp, Permanence _p = Permanence::Committed);
+	ExecutionResult execute(BlockChain const& _bc, bytesConstRef _rlp, Permanence _p = Permanence::Committed);
+	ExecutionResult execute(LastHashes const& _lh, bytes const& _rlp, Permanence _p = Permanence::Committed) { return execute(_lh, &_rlp, _p); }
+	ExecutionResult execute(LastHashes const& _lh, bytesConstRef _rlp, Permanence _p = Permanence::Committed);
 
 	/// Get the remaining gas limit in this block.
 	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
@@ -185,6 +220,14 @@ public:
 	 * @note We use bigint here as we don't want any accidental problems with negative numbers.
 	 */
 	void subBalance(Address _id, bigint _value);
+
+	/**
+	 * @brief Transfers "the balance @a _value between two accounts.
+	 * @param _from Account from which @a _value will be deducted.
+	 * @param _to Account to which @a _value will be added.
+	 * @param _value Amount to be transferred.
+	 */
+	void transferBalance(Address _from, Address _to, u256 _value) { subBalance(_from, _value); addBalance(_to, _value); }
 
 	/// Get the root of the storage of an account.
 	h256 storageRoot(Address _contract) const;
@@ -288,7 +331,7 @@ private:
 	u256 enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce = true);
 
 	/// Finalise the block, applying the earned rewards.
-	void applyRewards(Addresses const& _uncleAddresses);
+	void applyRewards(std::vector<BlockInfo> const& _uncleBlockHeaders);
 
 	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_receipts.size() ? m_receipts.back().gasUsed() : 0; }
@@ -299,7 +342,7 @@ private:
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
-	TrieDB<Address, OverlayDB> m_state;			///< Our state tree, as an OverlayDB DB.
+	SecureTrieDB<Address, OverlayDB> m_state;	///< Our state tree, as an OverlayDB DB.
 	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
 	TransactionReceipts m_receipts;				///< The corresponding list of transaction receipts.
 	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
@@ -328,43 +371,46 @@ private:
 std::ostream& operator<<(std::ostream& _out, State const& _s);
 
 template <class DB>
-void commit(std::map<Address, Account> const& _cache, DB& _db, TrieDB<Address, DB>& _state)
+void commit(std::map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
 {
 	for (auto const& i: _cache)
-		if (!i.second.isAlive())
-			_state.remove(i.first);
-		else
+		if (i.second.isDirty())
 		{
-			RLPStream s(4);
-			s << i.second.nonce() << i.second.balance();
-
-			if (i.second.storageOverlay().empty())
-			{
-				assert(i.second.baseRoot());
-				s.append(i.second.baseRoot());
-			}
+			if (!i.second.isAlive())
+				_state.remove(i.first);
 			else
 			{
-				TrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
-				for (auto const& j: i.second.storageOverlay())
-					if (j.second)
-						storageDB.insert(j.first, rlp(j.second));
-					else
-						storageDB.remove(j.first);
-				assert(storageDB.root());
-				s.append(storageDB.root());
-			}
+				RLPStream s(4);
+				s << i.second.nonce() << i.second.balance();
 
-			if (i.second.isFreshCode())
-			{
-				h256 ch = sha3(i.second.code());
-				_db.insert(ch, &i.second.code());
-				s << ch;
-			}
-			else
-				s << i.second.codeHash();
+				if (i.second.storageOverlay().empty())
+				{
+					assert(i.second.baseRoot());
+					s.append(i.second.baseRoot());
+				}
+				else
+				{
+					SecureTrieDB<h256, DB> storageDB(&_db, i.second.baseRoot());
+					for (auto const& j: i.second.storageOverlay())
+						if (j.second)
+							storageDB.insert(j.first, rlp(j.second));
+						else
+							storageDB.remove(j.first);
+					assert(storageDB.root());
+					s.append(storageDB.root());
+				}
 
-			_state.insert(i.first, &s.out());
+				if (i.second.isFreshCode())
+				{
+					h256 ch = sha3(i.second.code());
+					_db.insert(ch, &i.second.code());
+					s << ch;
+				}
+				else
+					s << i.second.codeHash();
+
+				_state.insert(i.first, &s.out());
+			}
 		}
 }
 

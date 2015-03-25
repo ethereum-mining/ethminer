@@ -30,6 +30,8 @@
 #include <QHash>
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
+#include <libevmcore/Assembly.h>
+#include "SolidityType.h"
 
 class QTextDocument;
 
@@ -38,7 +40,8 @@ namespace dev
 
 namespace solidity
 {
-	class CompilerStack;
+class CompilerStack;
+class Type;
 }
 
 namespace mix
@@ -63,6 +66,8 @@ private:
 	CodeModel* m_model;
 };
 
+using LocationPair = QPair<int, int>;
+
 ///Compilation result model. Contains all the compiled contract data required by UI
 class CompiledContract: public QObject
 {
@@ -70,7 +75,7 @@ class CompiledContract: public QObject
 	Q_PROPERTY(QContractDefinition* contract READ contract)
 	Q_PROPERTY(QString contractInterface READ contractInterface CONSTANT)
 	Q_PROPERTY(QString codeHex READ codeHex CONSTANT)
-	Q_PROPERTY(QString documentId MEMBER m_documentId CONSTANT)
+	Q_PROPERTY(QString documentId READ documentId CONSTANT)
 
 public:
 	/// Successful compilation result constructor
@@ -86,6 +91,15 @@ public:
 	QString codeHex() const;
 	/// @returns contract definition in JSON format
 	QString contractInterface() const { return m_contractInterface; }
+	/// @return assebly item locations
+	eth::AssemblyItems const& assemblyItems() const { return m_assemblyItems; }
+	eth::AssemblyItems const& constructorAssemblyItems() const { return m_constructorAssemblyItems; }
+	/// @returns contract source Id
+	QString documentId() const { return m_documentId; }
+
+	QHash<LocationPair, QString> const& functions() const { return m_functions; }
+	QHash<LocationPair, SolidityDeclaration> const& locals() const { return m_locals; }
+	QHash<unsigned, SolidityDeclaration> const& storage() const { return m_storage; }
 
 private:
 	uint m_sourceHash;
@@ -94,10 +108,14 @@ private:
 	dev::bytes m_bytes;
 	QString m_contractInterface;
 	QString m_documentId;
+	eth::AssemblyItems m_assemblyItems;
+	eth::AssemblyItems m_constructorAssemblyItems;
+	QHash<LocationPair, QString> m_functions;
+	QHash<LocationPair, SolidityDeclaration> m_locals;
+	QHash<unsigned, SolidityDeclaration> m_storage;
 
 	friend class CodeModel;
 };
-
 
 using ContractMap = QHash<QString, CompiledContract*>;
 
@@ -107,7 +125,7 @@ class CodeModel: public QObject
 	Q_OBJECT
 
 public:
-	CodeModel(QObject* _parent);
+	CodeModel();
 	~CodeModel();
 
 	Q_PROPERTY(QVariantMap contracts READ contracts NOTIFY codeChanged)
@@ -127,6 +145,10 @@ public:
 	/// Find a contract by document id
 	/// @returns CompiledContract object or null if not found
 	Q_INVOKABLE CompiledContract* contractByDocumentId(QString _documentId) const;
+	/// Reset code model
+	Q_INVOKABLE void reset() { reset(QVariantMap()); }
+	/// Convert solidity type info to mix type
+	static SolidityType nodeType(dev::solidity::Type const* _type);
 
 signals:
 	/// Emited on compilation state change
@@ -141,6 +163,10 @@ signals:
 	void codeChanged();
 	/// Emitted if there are any changes in the contract interface
 	void contractInterfaceChanged(QString _documentId);
+	/// Emitted if there is a new contract compiled for the first time
+	void newContractCompiled(QString _documentId);
+	/// Emitted if a contract name has been changed
+	void contractRenamed(QString _documentId, QString _oldName, QString _newName);
 
 public slots:
 	/// Update code model on source code change

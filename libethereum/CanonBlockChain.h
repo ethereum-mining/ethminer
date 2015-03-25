@@ -29,7 +29,7 @@
 #include <mutex>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libethcore/BlockInfo.h>
 #include <libdevcore/Guards.h>
 #include "BlockDetails.h"

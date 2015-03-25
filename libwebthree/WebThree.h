@@ -25,7 +25,11 @@
 #include <mutex>
 #include <list>
 #include <atomic>
+
+// Make sure boost/asio.hpp is included before windows.h.
+#include <boost/asio.hpp>
 #include <boost/utility.hpp>
+
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
@@ -103,7 +107,15 @@ class WebThreeDirect : public WebThreeNetworkFace
 public:
 	/// Constructor for private instance. If there is already another process on the machine using @a _dbPath, then this will throw an exception.
 	/// ethereum() may be safely static_cast()ed to a eth::Client*.
-	WebThreeDirect(std::string const& _clientVersion, std::string const& _dbPath, bool _forceClean = false, std::set<std::string> const& _interfaces = {"eth", "shh"}, p2p::NetworkPreferences const& _n = p2p::NetworkPreferences(), bytesConstRef _network = bytesConstRef(), int miners = -1);
+	WebThreeDirect(
+		std::string const& _clientVersion,
+		std::string const& _dbPath,
+		bool _forceClean = false,
+		std::set<std::string> const& _interfaces = {"eth", "shh"},
+		p2p::NetworkPreferences const& _n = p2p::NetworkPreferences(),
+		bytesConstRef _network = bytesConstRef(),
+		int _miners = -1
+	);
 
 	/// Destructor.
 	~WebThreeDirect();
@@ -152,7 +164,7 @@ public:
 
 	/// Stop the network subsystem.
 	void stopNetwork() override { m_net.stop(); }
-	
+
 	/// Is network working? there may not be any peers yet.
 	bool isNetworkStarted() const override { return m_net.isStarted(); }
 

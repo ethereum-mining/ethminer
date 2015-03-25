@@ -5,3 +5,4 @@ singleton DebuggerPaneStyle 1.0 DebuggerPaneStyle.qml
 singleton StateStyle 1.0 StateStyle.qml
 singleton StatusPaneStyle 1.0 StatusPaneStyle.qml
 singleton WebPreviewStyle 1.0 WebPreviewStyle.qml
+singleton LogsPaneStyle 1.0 LogsPaneStyle.qml

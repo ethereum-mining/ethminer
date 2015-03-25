@@ -20,11 +20,12 @@
  * vm test functions.
  */
 
-#include <chrono>
 #include <boost/filesystem.hpp>
+
 #include <libethereum/Executive.h>
 #include <libevm/VMFactory.h>
 #include "vm.h"
+#include "Stats.h"
 
 using namespace std;
 using namespace json_spirit;
@@ -286,7 +287,7 @@ eth::OnOpFunc FakeExtVM::simpleTrace()
 			/*add the storage*/
 			Object storage;
 			for (auto const& i: std::get<2>(ext.addresses.find(ext.myAddress)->second))
-				storage.push_back(Pair( (string)i.first , (string)i.second));			
+				storage.push_back(Pair( (string)i.first , (string)i.second));
 
 			/*add all the other details*/
 			o_step.push_back(Pair("storage", storage));
@@ -310,11 +311,12 @@ namespace dev { namespace test {
 
 void doVMTests(json_spirit::mValue& v, bool _fillin)
 {
-	processCommandLineOptions();
+	if (Options::get().stats)
+		Listener::registerListener(Stats::get());
 
 	for (auto& i: v.get_obj())
 	{
-		cnote << i.first;
+		std::cout << "  " << i.first << "\n";
 		mObject& o = i.second.get_obj();
 
 		BOOST_REQUIRE(o.count("env") > 0);
@@ -338,16 +340,21 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		bytes output;
 		u256 gas;
 		bool vmExceptionOccured = false;
-		auto startTime = std::chrono::high_resolution_clock::now();
 		try
 		{
 			auto vm = eth::VMFactory::create(fev.gas);
-			output = vm->go(fev, fev.simpleTrace()).toBytes();
+			auto vmtrace = Options::get().vmtrace ? fev.simpleTrace() : OnOpFunc{};
+			auto outputRef = bytesConstRef{};
+			{
+				Listener::ExecTimeGuard guard{i.first};
+				outputRef = vm->go(fev, vmtrace);
+			}
+			output = outputRef.toBytes();
 			gas = vm->gas();
 		}
 		catch (VMException const&)
 		{
-			cnote << "Safe VM Exception";
+			std::cout << "    Safe VM Exception\n";
 			vmExceptionOccured = true;
 		}
 		catch (Exception const& _e)
@@ -359,21 +366,6 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		{
 			cnote << "VM did throw an exception: " << _e.what();
 			BOOST_ERROR("Failed VM Test with Exception: " << _e.what());
-		}
-
-		auto endTime = std::chrono::high_resolution_clock::now();
-		auto argc = boost::unit_test::framework::master_test_suite().argc;
-		auto argv = boost::unit_test::framework::master_test_suite().argv;
-		for (auto i = 0; i < argc; ++i)
-		{	       
-			if (std::string(argv[i]) == "--show-times")
-			{
-				auto testDuration = endTime - startTime;
-				cnote << "Execution time: "
-				      << std::chrono::duration_cast<std::chrono::milliseconds>(testDuration).count()
-				      << " ms";
-				break;
-			}
 		}
 
 		// delete null entries in storage for the sake of comparison
@@ -515,48 +507,26 @@ BOOST_AUTO_TEST_CASE(vmSystemOperationsTest)
 
 BOOST_AUTO_TEST_CASE(vmPerformanceTest)
 {
-	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
-	{
-		string arg = boost::unit_test::framework::master_test_suite().argv[i];
-		if (arg == "--performance")
-		{
-			auto start = chrono::steady_clock::now();
-
-			dev::test::executeTests("vmPerformanceTest", "/VMTests", dev::test::doVMTests);
-
-			auto end = chrono::steady_clock::now();
-			auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
-			cnote << "test duration: " << duration.count() << " milliseconds.\n";
-		}
-	}
+	if (test::Options::get().performance)
+		dev::test::executeTests("vmPerformanceTest", "/VMTests", dev::test::doVMTests);
 }
 
 BOOST_AUTO_TEST_CASE(vmInputLimitsTest1)
 {
-	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
-	{
-		string arg = boost::unit_test::framework::master_test_suite().argv[i];
-		if (arg == "--inputlimits")
-		{
-			auto start = chrono::steady_clock::now();
-
-			dev::test::executeTests("vmInputLimitsTest1", "/VMTests", dev::test::doVMTests);
-
-			auto end = chrono::steady_clock::now();
-			auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
-			cnote << "test duration: " << duration.count() << " milliseconds.\n";
-		}
-	}
+	if (test::Options::get().inputLimits)
+		dev::test::executeTests("vmInputLimits1", "/VMTests", dev::test::doVMTests);
 }
 
 BOOST_AUTO_TEST_CASE(vmInputLimitsTest2)
 {
-	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
-	{
-		string arg = boost::unit_test::framework::master_test_suite().argv[i];
-		if (arg == "--inputlimits")
-			dev::test::executeTests("vmInputLimitsTest2", "/VMTests", dev::test::doVMTests);
-	}
+	if (test::Options::get().inputLimits)
+		dev::test::executeTests("vmInputLimits2", "/VMTests", dev::test::doVMTests);
+}
+
+BOOST_AUTO_TEST_CASE(vmInputLimitsLightTest)
+{
+	if (test::Options::get().inputLimits)
+		dev::test::executeTests("vmInputLimitsLight", "/VMTests", dev::test::doVMTests);
 }
 
 BOOST_AUTO_TEST_CASE(vmRandom)
@@ -574,7 +544,7 @@ BOOST_AUTO_TEST_CASE(vmRandom)
 	{
 		try
 		{
-			cnote << "Testing ..." << path.filename();
+			std::cout << "TEST " << path.filename() << "\n";
 			json_spirit::mValue v;
 			string s = asString(dev::contents(path.string()));
 			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Content of " + path.string() + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
@@ -592,9 +562,9 @@ BOOST_AUTO_TEST_CASE(vmRandom)
 	}
 }
 
-BOOST_AUTO_TEST_CASE(userDefinedFileVM)
+BOOST_AUTO_TEST_CASE(userDefinedFile)
 {
-	dev::test::userDefinedTest("--vmtest", dev::test::doVMTests);
+	dev::test::userDefinedTest("--singletest", dev::test::doVMTests);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
