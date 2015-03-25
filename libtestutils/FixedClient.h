@@ -30,6 +30,10 @@ namespace dev
 namespace test
 {
 
+/**
+ * @brief mvp implementation of ClientBase
+ * Doesn't support mining interface
+ */
 class FixedClient: public dev::eth::ClientBase
 {
 public:
