@@ -246,7 +246,7 @@ void Client::clearPending()
 
 void Client::noteChanged(h256Set const& _filters)
 {
-	Guard l(m_filterLock);
+	Guard l(x_filtersWatches);
 	if (_filters.size())
 		cnote << "noteChanged(" << _filters << ")";
 	// accrue all changes left in each filter into the watches.
@@ -266,7 +266,7 @@ void Client::noteChanged(h256Set const& _filters)
 
 void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _transactionHash)
 {
-	Guard l(m_filterLock);
+	Guard l(x_filtersWatches);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
 		if (i.second.filter.envelops(RelativeBlock::Pending, m_bc.number() + 1))
 		{
@@ -288,7 +288,7 @@ void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 	auto d = m_bc.info(_block);
 	auto br = m_bc.receipts(_block);
 
-	Guard l(m_filterLock);
+	Guard l(x_filtersWatches);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
 		if (i.second.filter.envelops(RelativeBlock::Latest, d.number) && i.second.filter.matches(d.logBloom))
 			// acceptable number & looks like block may contain a matching log entry.
@@ -535,7 +535,7 @@ void Client::doWork()
 		// watches garbage collection
 		vector<unsigned> toUninstall;
 		{
-			Guard l(m_filterLock);
+			Guard l(x_filtersWatches);
 			for (auto key: keysOf(m_watches))
 				if (m_watches[key].lastPoll != chrono::system_clock::time_point::max() && chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(20))
 				{
@@ -553,18 +553,7 @@ void Client::doWork()
 	}
 }
 
-State Client::asOf(BlockNumber _h) const
-{
-	ReadGuard l(x_stateDB);
-	if (_h == PendingBlock)
-		return m_postMine;
-	else if (_h == LatestBlock)
-		return m_preMine;
-
-	return State(m_stateDB, bc(), bc().numberHash(_h));
-}
-
-State Client::asOf(h256 _block) const
+State Client::asOf(h256 const& _block) const
 {
 	ReadGuard l(x_stateDB);
 	return State(m_stateDB, bc(), _block);
