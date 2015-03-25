@@ -14,18 +14,15 @@
   You should have received a copy of the GNU General Public License
   along with ethash.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file io_posix.c
+/** @file io_win32.c
  * @author Lefteris Karapetsas <lefteris@ethdev.com>
  * @date 2015
  */
 
 #include "io.h"
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <direct.h>
 #include <errno.h>
-#include <libgen.h>
 #include <stdio.h>
-#include <unistd.h>
 
 enum ethash_io_rc ethash_io_prepare(char const *dirname, uint32_t block_number)
 {
@@ -33,8 +30,8 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, uint32_t block_number)
     char expect_buffer[DAG_MEMO_BYTESIZE];
     enum ethash_io_rc ret = ETHASH_IO_FAIL;
 
-    // assert directory exists, full owner permissions and read/search for others
-    int rc = mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    // assert directory exists
+    int rc = _mkdir(dirname);
     if (rc == -1 && errno != EEXIST) {
         goto end;
     }
@@ -59,7 +56,7 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, uint32_t block_number)
     ethash_io_serialize_info(REVISION, block_number, expect_buffer);
     if (memcmp(read_buffer, expect_buffer, DAG_MEMO_BYTESIZE) != 0) {
         // we have different memo contents so delete the memo file
-        if (unlink(memofile) != 0) {
+        if (_unlink(memofile) != 0) {
             ret = ETHASH_IO_MEMO_MISMATCH;
             goto close;
         }

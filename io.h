@@ -28,16 +28,57 @@
 extern "C" {
 #endif
 
+static const char DAG_FILE_NAME[] = "full";
+static const char DAG_MEMO_NAME[] = "full.info";
+static const unsigned int DAG_MEMO_BYTESIZE = 36;
+
+/// Possible return values of @see ethash_io_prepare
+enum ethash_io_rc {
+    ETHASH_IO_FAIL = 0,      ///< There has been an IO failure
+    ETHASH_IO_MEMO_MISMATCH, ///< Memo file either did not exist or there was content mismatch
+    ETHASH_IO_MEMO_MATCH,    ///< Memo file existed and contents matched. No need to do anything
+};
+
 /**
  * Prepares io for ethash
+ *
+ * Create the DAG directory if it does not exist, and check if the memo file matches.
+ * If it does not match then it's deleted to pave the way for @ref ethash_io_write()
+ *
  * @param dirname        A null terminated c-string of the path of the ethash
  *                       data directory. If it does not exist it's created.
  * @param block_number   The current block number. Used in seedhash calculation.
- * @returns              True if all went fine, and false if there was any kind
- *                       of error
+ * @return               For possible return values @see enum ethash_io_rc
  */
-bool ethash_io_prepare(char const *dirname, uint32_t block_number);
-void ethash_io_write();
+enum ethash_io_rc ethash_io_prepare(char const *dirname, uint32_t block_number);
+/**
+ * Fully computes data and writes it to the file on disk.
+ *
+ * This function should be called after @see ethash_io_prepare() and only if
+ * its return value is @c ETHASH_IO_MEMO_MISMATCH. Will write both the full data
+ * and the memo file.
+ *
+ * @param[in] dirname        A null terminated c-string of the path of the ethash
+ *                           data directory. Has to exist.
+ * @param[in] block_number   The current block number.
+ * @param[in] cache          The cache data. Would have usually been calulated by
+ *                           @see ethash_prep_light().
+ * @param[out] data          Pass a pointer to uint8_t by reference here. If the
+ *                           function is succesfull then this point to the allocated
+ *                           data calculated by @see ethash_prep_full(). Memory
+ *                           ownership is transfered to the callee. Remember that
+ *                           you eventually need to free this with a call to free().
+ * @param[out] data_size     Pass a size_t by value. If the function is succesfull
+ *                           then this will contain the number of bytes allocated
+ *                           for @a data.
+ * @return                   True for success and false in case of failure.
+ */
+bool ethash_io_write(char const *dirname,
+                     uint32_t block_number,
+                     void const* cache,
+                     uint8_t **data,
+                     size_t *data_size);
+
 static inline void ethash_io_serialize_info(uint32_t revision,
                                             uint32_t block_number,
                                             char *output)
@@ -45,6 +86,21 @@ static inline void ethash_io_serialize_info(uint32_t revision,
     // if .info is only consumed locally we don't really care about endianess
     memcpy(output, &revision, 4);
     ethash_get_seedhash((uint8_t*)(output + 4), block_number);
+}
+
+static inline char *ethash_io_create_filename(char const *dirname,
+                                              char const* filename,
+                                              size_t filename_length)
+{
+    char *name = malloc(strlen(dirname) + filename_length);
+    if (!name) {
+        return NULL;
+    }
+
+    name[0] = '\0';
+    strcat(name, dirname);
+    strcat(name, filename);
+    return name;
 }
 
 

@@ -12,6 +12,7 @@ endif()
 
 set(FILES 	util.c
           	util.h
+          	io.c
           	internal.c
           	ethash.h
           	endian.h
