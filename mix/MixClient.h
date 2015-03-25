@@ -25,8 +25,7 @@
 
 #include <vector>
 #include <string>
-#include <libethcore/Common.h>
-#include <libethereum/Interface.h>
+#include <libethereum/ClientBase.h>
 #include <libethereum/Client.h>
 #include "MachineStates.h"
 
@@ -35,9 +34,15 @@ namespace dev
 namespace mix
 {
 
-class MixBlockChain;
+class MixBlockChain: public dev::eth::BlockChain
+{
+public:
+	MixBlockChain(std::string const& _path, h256 _stateRoot): BlockChain(createGenesisBlock(_stateRoot), _path, true) {}
 
-class MixClient: public dev::eth::Interface
+	static bytes createGenesisBlock(h256 _stateRoot);
+};
+
+class MixClient: public dev::eth::ClientBase
 {
 public:
 	MixClient(std::string const& _dbPath);
@@ -48,43 +53,12 @@ public:
 	ExecutionResult lastExecution() const;
 	ExecutionResult execution(unsigned _index) const;
 
-	//dev::eth::Interface
 	void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice) override;
 	Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice) override;
-	void inject(bytesConstRef _rlp) override;
-	void flushTransactions() override;
-	dev::eth::ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, eth::BlockNumber _blockNumber) override;
-	dev::eth::ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, eth::BlockNumber _blockNumber) override;
-	u256 balanceAt(Address _a, eth::BlockNumber _block) const override;
-	u256 countAt(Address _a, eth::BlockNumber _block) const override;
-	u256 stateAt(Address _a, u256 _l, eth::BlockNumber _block) const override;
-	bytes codeAt(Address _a, eth::BlockNumber _block) const override;
-	std::map<u256, u256> storageAt(Address _a, eth::BlockNumber _block) const override;
-	eth::LocalisedLogEntries logs(unsigned _watchId) const override;
-	eth::LocalisedLogEntries logs(eth::LogFilter const& _filter) const override;
-	unsigned installWatch(eth::LogFilter const& _filter, eth::Reaping _r = eth::Reaping::Automatic) override;
-	unsigned installWatch(h256 _filterId, eth::Reaping _r = eth::Reaping::Automatic) override;
-	bool uninstallWatch(unsigned _watchId) override;
-	eth::LocalisedLogEntries peekWatch(unsigned _watchId) const override;
-	eth::LocalisedLogEntries checkWatch(unsigned _watchId) override;
-	h256 hashFromNumber(unsigned _number) const override;
-	eth::BlockInfo blockInfo(h256 _hash) const override;
-	eth::BlockDetails blockDetails(h256 _hash) const override;
-	eth::Transaction transaction(h256 _transactionHash) const override;
-	eth::Transaction transaction(h256 _blockHash, unsigned _i) const override;
-	eth::BlockInfo uncle(h256 _blockHash, unsigned _i) const override;
-	unsigned transactionCount(h256 _blockHash) const override;
-	unsigned uncleCount(h256 _blockHash) const override;
-	eth::Transactions transactions(h256 _blockHash) const override;
-	eth::TransactionHashes transactionHashes(h256 _blockHash) const override;
-	unsigned number() const override;
-	eth::Transactions pending() const override;
-	eth::StateDiff diff(unsigned _txi, h256 _block) const override;
-	eth::StateDiff diff(unsigned _txi, eth::BlockNumber _block) const override;
-	Addresses addresses(eth::BlockNumber _block) const override;
-	u256 gasLimitRemaining() const override;
+	dev::eth::ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, eth::BlockNumber _blockNumber = eth::PendingBlock) override;
+	dev::eth::ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * eth::szabo, eth::BlockNumber _blockNumber = eth::PendingBlock) override;
+
 	void setAddress(Address _us) override;
-	Address address() const override;
 	void setMiningThreads(unsigned _threads) override;
 	unsigned miningThreads() const override;
 	void startMining() override;
@@ -93,16 +67,27 @@ public:
 	eth::MineProgress miningProgress() const override;
 	std::pair<h256, u256> getWork() override { return std::pair<h256, u256>(); }
 	bool submitWork(eth::ProofOfWork::Proof const&) override { return false; }
+	virtual void flushTransactions() override {}
+
 	/// @returns the last mined block information
+	using Interface::blockInfo; // to remove warning about hiding virtual function
 	eth::BlockInfo blockInfo() const;
 	std::vector<KeyPair> userAccounts() { return m_userAccounts; }
+
+protected:
+	virtual dev::eth::BlockChain& bc() { return *m_bc; }
+
+	/// InterfaceStub methods
+	virtual dev::eth::State asOf(eth::BlockNumber _block) const override;
+	virtual dev::eth::State asOf(h256 _block) const override;
+	virtual dev::eth::BlockChain const& bc() const override { return *m_bc; }
+	virtual dev::eth::State preMine() const override { ReadGuard l(x_state);  return m_startState; }
+	virtual dev::eth::State postMine() const override { ReadGuard l(x_state); return m_state; }
+	virtual void prepareForTransaction() override {}
 
 private:
 	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state, bool _call);
 	void noteChanged(h256Set const& _filters);
-	dev::eth::State asOf(int _block) const;
-	MixBlockChain& bc() { return *m_bc; }
-	MixBlockChain const& bc() const { return *m_bc; }
 
 	std::vector<KeyPair> m_userAccounts;
 	eth::State m_state;
@@ -111,9 +96,6 @@ private:
 	std::auto_ptr<MixBlockChain> m_bc;
 	mutable boost::shared_mutex x_state;
 	mutable boost::shared_mutex x_executions;
-	mutable std::mutex m_filterLock;
-	std::map<h256, dev::eth::InstalledFilter> m_filters;
-	std::map<unsigned, dev::eth::ClientWatch> m_watches;
 	ExecutionResults m_executions;
 	std::string m_dbPath;
 	unsigned m_minigThreads;
