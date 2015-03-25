@@ -138,6 +138,7 @@ public:
 	virtual StateDiff diff(unsigned _txi, BlockNumber _block) const = 0;
 
 	/// Get a list of all active addresses.
+	/// NOTE: This only works when compiled with ETH_FATDB; otherwise will throw InterfaceNotSupported.
 	virtual Addresses addresses() const { return addresses(m_default); }
 	virtual Addresses addresses(BlockNumber _block) const = 0;
 
