@@ -25,16 +25,7 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
-eth::State FixedClient::asOf(BlockNumber _h) const
-{
-	ReadGuard l(x_stateDB);
-	if (_h == PendingBlock || _h == LatestBlock)
-		return m_state;
-	
-	return State(m_state.db(), bc(), bc().numberHash(_h));
-}
-
-eth::State FixedClient::asOf(h256 _h) const
+eth::State FixedClient::asOf(h256 const& _h) const
 {
 	ReadGuard l(x_stateDB);
 	return State(m_state.db(), bc(), _h);
