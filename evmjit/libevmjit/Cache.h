@@ -1,8 +1,14 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 
 #include <llvm/ExecutionEngine/ObjectCache.h>
+
+namespace llvm
+{
+	class ExecutionEngine;
+}
 
 namespace dev
 {
@@ -18,7 +24,8 @@ enum class CacheMode
 	off,
 	read,
 	write,
-	clear
+	clear,
+	preload
 };
 
 class ObjectCache : public llvm::ObjectCache
@@ -43,6 +50,9 @@ public:
 
 	/// Clears cache storage
 	static void clear();
+
+	/// Loads all available cached objects to ExecutionEngine
+	static void preload(llvm::ExecutionEngine& _ee, std::unordered_map<std::string, uint64_t>& _funcCache);
 };
 
 }
