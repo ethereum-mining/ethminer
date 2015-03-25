@@ -40,7 +40,7 @@ public:
 	ShortLivingDirectory(std::string const& _path = getRandomPath());
 	~ShortLivingDirectory();
 
-	std::string const& path() { return m_path; }
+	std::string const& path() const { return m_path; }
 
 private:
 	std::string m_path;
