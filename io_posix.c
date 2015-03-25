@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-enum ethash_io_rc ethash_io_prepare(char const *dirname, uint32_t block_number)
+enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_blockhash_t seedhash)
 {
     char read_buffer[DAG_MEMO_BYTESIZE];
     char expect_buffer[DAG_MEMO_BYTESIZE];
@@ -56,7 +56,7 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, uint32_t block_number)
         goto close;
     }
 
-    ethash_io_serialize_info(REVISION, block_number, expect_buffer);
+    ethash_io_serialize_info(REVISION, seedhash, expect_buffer);
     if (memcmp(read_buffer, expect_buffer, DAG_MEMO_BYTESIZE) != 0) {
         // we have different memo contents so delete the memo file
         if (unlink(memofile) != 0) {

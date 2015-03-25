@@ -28,6 +28,8 @@
 extern "C" {
 #endif
 
+typedef struct ethash_blockhash { uint8_t b[32]; } ethash_blockhash_t;
+
 static const char DAG_FILE_NAME[] = "full";
 static const char DAG_MEMO_NAME[] = "full.info";
 static const unsigned int DAG_MEMO_BYTESIZE = 36;
@@ -47,10 +49,10 @@ enum ethash_io_rc {
  *
  * @param dirname        A null terminated c-string of the path of the ethash
  *                       data directory. If it does not exist it's created.
- * @param block_number   The current block number. Used in seedhash calculation.
+ * @param seedhash       The seedhash of the current block number
  * @return               For possible return values @see enum ethash_io_rc
  */
-enum ethash_io_rc ethash_io_prepare(char const *dirname, uint32_t block_number);
+enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_blockhash_t seedhash);
 /**
  * Fully computes data and writes it to the file on disk.
  *
@@ -80,12 +82,12 @@ bool ethash_io_write(char const *dirname,
                      size_t *data_size);
 
 static inline void ethash_io_serialize_info(uint32_t revision,
-                                            uint32_t block_number,
+                                            ethash_blockhash_t seed_hash,
                                             char *output)
 {
     // if .info is only consumed locally we don't really care about endianess
     memcpy(output, &revision, 4);
-    ethash_get_seedhash((uint8_t*)(output + 4), block_number);
+    memcpy(output + 4, &seed_hash, 32);
 }
 
 static inline char *ethash_io_create_filename(char const *dirname,

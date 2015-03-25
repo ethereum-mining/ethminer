@@ -60,6 +60,7 @@ bool ethash_io_write(char const *dirname,
 {
     ethash_params p;
     char info_buffer[DAG_MEMO_BYTESIZE];
+    ethash_blockhash_t seedhash;
 
 	p.cache_size = ethash_get_cachesize(block_number);
 	p.full_size = ethash_get_datasize(block_number);
@@ -74,7 +75,8 @@ bool ethash_io_write(char const *dirname,
         goto fail_free;
     }
 
-    ethash_io_serialize_info(REVISION, block_number, info_buffer);
+    ethash_get_seedhash((uint8_t*)&seedhash, block_number);
+    ethash_io_serialize_info(REVISION, seedhash, info_buffer);
     if (!ethash_io_write_file(dirname, PASS_ARR(DAG_MEMO_NAME), info_buffer, DAG_MEMO_BYTESIZE)) {
         goto fail_free;
     }
