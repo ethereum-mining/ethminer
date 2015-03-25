@@ -30,6 +30,9 @@ if (APPLE)
 	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/usr/local/opt/qt5")
 endif()
 
+find_program(CTEST_COMMAND ctest)
+message(STATUS "ctest path: ${CTEST_COMMAND}")
+
 # Dependencies must have a version number, to ensure reproducible build. The version provided here is the one that is in the extdep repository. If you use system libraries, version numbers may be different.
 
 find_package (CryptoPP 5.6.2 EXACT REQUIRED)
