@@ -178,6 +178,7 @@ endif()
 
 if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
+	add_subdirectory(ethrpctest)
 endif()
 
 add_subdirectory(secp256k1)
