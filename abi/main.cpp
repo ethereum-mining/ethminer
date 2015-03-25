@@ -164,7 +164,7 @@ tuple<bytes, ABIType, Format> fromUser(std::string const& _arg, Tristate _prefix
 	string val;
 	if (_typing == Tristate::True || (_typing == Tristate::Mu && _arg.find(':') != string::npos))
 	{
-		if (_arg.find(':') != string::npos)
+		if (_arg.find(':') == string::npos)
 			throw InvalidUserString();
 		type = ABIType(_arg.substr(0, _arg.find(':')));
 		val = _arg.substr(_arg.find(':') + 1);
@@ -247,6 +247,7 @@ int main(int argc, char** argv)
 	Tristate typePrefix = Tristate::Mu;
 	bool clearZeroes = false;
 	bool clearNulls = false;
+	bool verbose = false;
 	int outputIndex = -1;
 	vector<tuple<bytes, ABIType, Format>> args;
 
@@ -275,12 +276,16 @@ int main(int argc, char** argv)
 			clearZeroes = true;
 		else if (arg == "-n" || arg == "--no-nulls")
 			clearNulls = true;
+		else if (arg == "-v" || arg == "--verbose")
+			verbose = true;
 		else if (arg == "-x" || arg == "--hex")
 			encoding = Encoding::Hex;
 		else if (arg == "-d" || arg == "--decimal" || arg == "--dec")
 			encoding = Encoding::Decimal;
 		else if (arg == "-b" || arg == "--binary" || arg == "--bin")
 			encoding = Encoding::Binary;
+		else if (arg == "-v" || arg == "--verbose")
+			version();
 		else if (arg == "-V" || arg == "--version")
 			version();
 		else if (method.empty())
@@ -302,7 +307,14 @@ int main(int argc, char** argv)
 		if (abi.empty())
 		{
 			if (!method.empty())
-				ret = FixedHash<4>(sha3(method)).asBytes();
+			{
+				string methodArgs;
+				for (auto const& arg: args)
+					methodArgs += (methodArgs.empty() ? "" : ",") + get<1>(arg).canon();
+				ret = FixedHash<4>(sha3(method + "(" + methodArgs + ")")).asBytes();
+				if (verbose)
+					cerr << "Method signature: " << (method + "(" + methodArgs + ")") << endl;
+			}
 			for (tuple<bytes, ABIType, Format> const& arg: args)
 				ret += aligned(get<0>(arg), get<1>(arg), get<2>(arg), 32);
 		}
