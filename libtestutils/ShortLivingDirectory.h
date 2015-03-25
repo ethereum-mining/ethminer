@@ -22,20 +22,25 @@
 #pragma once
 
 #include <string>
+#include "Common.h"
 
 namespace dev
 {
 namespace test
 {
 
+/**
+ * @brief temporary directory implementation
+ * It creates temporary directory in the given path. On dealloc it removes the directory
+ * @throws if the given path already exists, throws an exception
+ */
 class ShortLivingDirectory
 {
 public:
-	ShortLivingDirectory();
-	ShortLivingDirectory(std::string const& _path);
+	ShortLivingDirectory(std::string const& _path = getRandomPath());
 	~ShortLivingDirectory();
 
-	std::string path(){ return m_path; }
+	std::string const& path() { return m_path; }
 
 private:
 	std::string m_path;

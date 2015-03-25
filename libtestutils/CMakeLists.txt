@@ -11,9 +11,7 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(BEFORE ..)
-include_directories(${MHD_INCLUDE_DIRS})
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
-include_directories(${LEVELDB_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 
 set(EXECUTABLE testutils)
@@ -26,18 +24,10 @@ else()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
 
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ${Boost_FILESYSTEM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${MHD_LIBRARIES})
-
-target_link_libraries(${EXECUTABLE} webthree)
-target_link_libraries(${EXECUTABLE} secp256k1)
-target_link_libraries(${EXECUTABLE} solidity)
-
-if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
-	target_link_libraries(${EXECUTABLE} serpent)
-endif()
+target_link_libraries(${EXECUTABLE} ethereum)
+target_link_libraries(${EXECUTABLE} web3jsonrpc)
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
