@@ -254,8 +254,8 @@ protected:
 	
 	/// Returns the state object for the full block (i.e. the terminal state) for index _h.
 	/// Works properly with LatestBlock and PendingBlock.
-	virtual State asOf(BlockNumber _h) const override;
-	virtual State asOf(h256 _block) const override;
+	using ClientBase::asOf;
+	virtual State asOf(h256 const& _block) const override;
 	virtual State preMine() const override { ReadGuard l(x_stateDB); return m_preMine; }
 	virtual State postMine() const override { ReadGuard l(x_stateDB); return m_postMine; }
 	virtual void prepareForTransaction() override;

@@ -47,6 +47,13 @@ using namespace jsonrpc;
 using namespace dev;
 using namespace dev::eth;
 
+#if ETH_DEBUG
+const unsigned dev::SensibleHttpThreads = 1;
+#else
+const unsigned dev::SensibleHttpThreads = 4;
+#endif
+const unsigned dev::SensibleHttpPort = 8080;
+
 static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 {
 	Json::Value res;
