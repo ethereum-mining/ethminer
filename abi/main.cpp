@@ -39,8 +39,10 @@ void help()
 		<< "      abi dec -a <abi.json> [ <signature> | <unique_method_name> ]" << endl
 		<< "Options:" << endl
 		<< "    -a,--abi-file <filename>  Specify the JSON ABI file." << endl
+		<< "Input options (enc mode):" << endl
+		<< "    -p,--prefix  Require all arguments to be prefixed 0x (hex), . (decimal), # (binary)." << endl
 		<< "Output options (dec mode):" << endl
-		<< "    -i,--index <n>  When decoding, output only the nth (counting from 0) return value." << endl
+		<< "    -i,--index <n>  Output only the nth (counting from 0) return value." << endl
 		<< "    -d,--decimal  All data should be displayed as decimal." << endl
 		<< "    -x,--hex  Display all data as hex." << endl
 		<< "    -b,--binary  Display all data as binary." << endl
@@ -72,16 +74,57 @@ enum class Encoding {
 	Binary,
 };
 
+struct InvalidUserString: public Exception {};
+
+pair<bytes, bool> fromUser(std::string const& _arg, bool _requirePrefix)
+{
+	if (_requirePrefix)
+	{
+		if (_arg.substr(0, 2) == "0x")
+			return make_pair(fromHex(_arg), false);
+		if (_arg.substr(0, 1) == ".")
+			return make_pair(toCompactBigEndian(bigint(_arg.substr(1))), false);
+		if (_arg.substr(0, 1) == "#")
+			return make_pair(asBytes(_arg.substr(1)), true);
+		throw InvalidUserString();
+	}
+	else
+	{
+		if (_arg.substr(0, 2) == "0x")
+			return make_pair(fromHex(_arg), false);
+		if (_arg.find_first_not_of("0123456789"))
+			return make_pair(toCompactBigEndian(bigint(_arg)), false);
+		return make_pair(asBytes(_arg), true);
+	}
+}
+
+bytes aligned(bytes const& _b, bool _left, unsigned _length)
+{
+	bytes ret = _b;
+	while (ret.size() < _length)
+		if (_left)
+			ret.push_back(0);
+		else
+			ret.insert(ret.begin(), 0);
+	while (ret.size() > _length)
+		if (_left)
+			ret.pop_back();
+		else
+			ret.erase(ret.begin());
+	return ret;
+}
+
 int main(int argc, char** argv)
 {
 	Encoding encoding = Encoding::Auto;
 	Mode mode = Mode::Encode;
 	string abiFile;
-	string methodName;
-	bool outputPrefix = false;
+	string method;
+	bool prefix = false;
 	bool clearZeroes = false;
 	bool clearNulls = false;
 	int outputIndex = -1;
+	vector<pair<bytes, bool>> args;
 
 	for (int i = 1; i < argc; ++i)
 	{
@@ -97,7 +140,7 @@ int main(int argc, char** argv)
 		else if ((arg == "-i" || arg == "--index") && argc > i)
 			outputIndex = atoi(argv[++i]);
 		else if (arg == "-p" || arg == "--prefix")
-			outputPrefix = true;
+			prefix = true;
 		else if (arg == "-z" || arg == "--no-zeroes")
 			clearZeroes = true;
 		else if (arg == "-n" || arg == "--no-nulls")
@@ -110,8 +153,10 @@ int main(int argc, char** argv)
 			encoding = Encoding::Binary;
 		else if (arg == "-V" || arg == "--version")
 			version();
+		else if (method.empty())
+			method = arg;
 		else
-			methodName = arg;
+			args.push_back(fromUser(arg, prefix));
 	}
 
 	string abi;
@@ -123,14 +168,26 @@ int main(int argc, char** argv)
 
 	if (mode == Mode::Encode)
 	{
-		(void)encoding;
-		(void)outputPrefix;
-		(void)clearZeroes;
-		(void)clearNulls;
-		(void)outputIndex;
+		if (abi.empty())
+		{
+			bytes ret;
+			if (!method.empty())
+				ret = FixedHash<32>(sha3(method)).asBytes();
+			if (method.empty())
+				for (pair<bytes, bool> const& arg: args)
+					ret += aligned(arg.first, arg.second, 32);
+		}
+		else
+		{
+			// TODO: read abi.
+		}
 	}
 	else if (mode == Mode::Decode)
 	{
+		(void)encoding;
+		(void)clearZeroes;
+		(void)clearNulls;
+		(void)outputIndex;
 	}
 
 	return 0;
