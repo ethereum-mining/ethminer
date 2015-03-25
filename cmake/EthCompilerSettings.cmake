@@ -44,7 +44,8 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4221")
 	# warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification 
 	# warning LNK4099: pdb was not found with lib
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ignore:4099,4075")
+	# stack size 16MB
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ignore:4099,4075 /STACK:16777216")
 	# windows likes static
 	set(ETH_STATIC 1)
 

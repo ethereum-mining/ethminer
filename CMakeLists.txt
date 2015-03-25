@@ -160,7 +160,6 @@ if (EVMJIT)
 endif()
 
 add_subdirectory(libdevcore)
-add_subdirectory(rlp)
 add_subdirectory(libevmcore)
 add_subdirectory(liblll)
 
@@ -201,6 +200,8 @@ add_subdirectory(test)
 
 if (NOT JUSTTESTS)
 
+	add_subdirectory(rlp)
+	add_subdirectory(abi)
 	add_subdirectory(eth)
 
 	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
