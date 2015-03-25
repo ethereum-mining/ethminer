@@ -34,14 +34,19 @@ namespace js = json_spirit;
 void help()
 {
 	cout
-		<< "Usage abi enc <signature> (<arg1>, (<arg2>, ... ))" << endl
-		<< "      abi enc -a <abi.json> <unique_method_name> (<arg1>, (<arg2>, ... ))" << endl
+		<< "Usage abi enc <method_name> (<arg1>, (<arg2>, ... ))" << endl
+		<< "      abi enc -a <abi.json> <method_name> (<arg1>, (<arg2>, ... ))" << endl
 		<< "      abi dec -a <abi.json> [ <signature> | <unique_method_name> ]" << endl
 		<< "Options:" << endl
 		<< "    -a,--abi-file <filename>  Specify the JSON ABI file." << endl
-		<< "Input options (enc mode):" << endl
-		<< "    -p,--prefix  Require all arguments to be prefixed 0x (hex), . (decimal), # (binary)." << endl
-		<< "Output options (dec mode):" << endl
+		<< "    -h,--help  Print this help message and exit." << endl
+		<< "    -V,--version  Show the version and exit." << endl
+		<< "Input options:" << endl
+		<< "    -p,--prefix  Require all input formats to be prefixed e.g. 0x for hex, . for decimal, @ for binary." << endl
+		<< "    -P,--no-prefix  Require no input format to be prefixed." << endl
+		<< "    -t,--typing  Require all arguments to be typed e.g. b32: (bytes32), u64: (uint64), b[]: (byte[]), i: (int256)." << endl
+		<< "    -T,--no-typing  Require no arguments to be typed." << endl
+		<< "Output options:" << endl
 		<< "    -i,--index <n>  Output only the nth (counting from 0) return value." << endl
 		<< "    -d,--decimal  All data should be displayed as decimal." << endl
 		<< "    -x,--hex  Display all data as hex." << endl
@@ -49,9 +54,6 @@ void help()
 		<< "    -p,--prefix  Prefix by a base identifier." << endl
 		<< "    -z,--no-zeroes  Remove any leading zeroes from the data." << endl
 		<< "    -n,--no-nulls  Remove any trailing nulls from the data." << endl
-		<< "General options:" << endl
-		<< "    -h,--help  Print this help message and exit." << endl
-		<< "    -V,--version  Show the version and exit." << endl
 		;
 	exit(0);
 }
@@ -62,52 +64,173 @@ void version()
 	exit(0);
 }
 
-enum class Mode {
+enum class Mode
+{
 	Encode,
 	Decode
 };
 
-enum class Encoding {
+enum class Encoding
+{
 	Auto,
 	Decimal,
 	Hex,
 	Binary,
 };
 
-struct InvalidUserString: public Exception {};
-
-pair<bytes, bool> fromUser(std::string const& _arg, bool _requirePrefix)
+enum class Tristate
 {
-	if (_requirePrefix)
+	False = false,
+	True = true,
+	Mu
+};
+
+enum class Format
+{
+	Binary,
+	Hex,
+	Decimal
+};
+
+struct InvalidUserString: public Exception {};
+struct InvalidFormat: public Exception {};
+
+enum class Base
+{
+	Unknown,
+	Bytes,
+	Address,
+	Int,
+	Uint,
+	Fixed
+};
+
+struct ABIType
+{
+	Base base = Base::Unknown;
+	unsigned size = 0;
+	unsigned ssize = 0;
+	vector<int> dims;
+	ABIType() = default;
+	ABIType(std::string const& _s)
 	{
-		if (_arg.substr(0, 2) == "0x")
-			return make_pair(fromHex(_arg), false);
-		if (_arg.substr(0, 1) == ".")
-			return make_pair(toCompactBigEndian(bigint(_arg.substr(1))), false);
-		if (_arg.substr(0, 1) == "#")
-			return make_pair(asBytes(_arg.substr(1)), true);
-		throw InvalidUserString();
+		if (_s.size() < 1)
+			return;
+		switch (_s[0])
+		{
+		case 'b': base = Base::Bytes; break;
+		case 'a': base = Base::Address; break;
+		case 'i': base = Base::Int; break;
+		case 'u': base = Base::Uint; break;
+		case 'f': base = Base::Fixed; break;
+		default: throw InvalidFormat();
+		}
+		if (_s.size() < 2)
+			return;
+		if (_s.find_first_of('x') == string::npos)
+			size = stoi(_s.substr(1));
+		else
+		{
+			size = stoi(_s.substr(1, _s.find_first_of('x') - 1));
+			ssize = stoi(_s.substr(_s.find_first_of('x') + 1));
+		}
+	}
+
+	string canon() const
+	{
+		string ret;
+		switch (base)
+		{
+		case Base::Bytes: ret = "bytes" + toString(size); break;
+		case Base::Address: ret = "address"; break;
+		case Base::Int: ret = "int" + toString(size); break;
+		case Base::Uint: ret = "uint" + toString(size); break;
+		case Base::Fixed: ret = "fixed" + toString(size) + "x" + toString(ssize); break;
+		default: throw InvalidFormat();
+		}
+		for (int i: dims)
+			ret += "[" + ((i > -1) ? toString(i) : "") + "]";
+		return ret;
+	}
+
+	void noteHexInput(unsigned _nibbles) { if (base == Base::Unknown) { if (_nibbles == 40) base = Base::Address; else { base = Base::Bytes; size = _nibbles / 2; } } }
+	void noteBinaryInput() { if (base == Base::Unknown) { base = Base::Bytes; size = 32; } }
+	void noteDecimalInput() { if (base == Base::Unknown) { base = Base::Uint; size = 32; } }
+};
+
+tuple<bytes, ABIType, Format> fromUser(std::string const& _arg, Tristate _prefix, Tristate _typing)
+{
+	ABIType type;
+	string val;
+	if (_typing == Tristate::True || (_typing == Tristate::Mu && _arg.find(':') != string::npos))
+	{
+		if (_arg.find(':') != string::npos)
+			throw InvalidUserString();
+		type = ABIType(_arg.substr(0, _arg.find(':')));
+		val = _arg.substr(_arg.find(':') + 1);
 	}
 	else
+		val = _arg;
+
+	if (_prefix != Tristate::False)
 	{
-		if (_arg.substr(0, 2) == "0x")
-			return make_pair(fromHex(_arg), false);
-		if (_arg.find_first_not_of("0123456789"))
-			return make_pair(toCompactBigEndian(bigint(_arg)), false);
-		return make_pair(asBytes(_arg), true);
+		if (val.substr(0, 2) == "0x")
+		{
+			type.noteHexInput(val.size() - 2);
+			return make_tuple(fromHex(val), type, Format::Hex);
+		}
+		if (val.substr(0, 1) == ".")
+		{
+			type.noteDecimalInput();
+			return make_tuple(toCompactBigEndian(bigint(val.substr(1))), type, Format::Decimal);
+		}
+		if (val.substr(0, 1) == "@")
+		{
+			type.noteBinaryInput();
+			return make_tuple(asBytes(val.substr(1)), type, Format::Binary);
+		}
+	}
+	if (_prefix != Tristate::True)
+	{
+		if (_arg.find_first_not_of("0123456789") == string::npos)
+		{
+			type.noteDecimalInput();
+			return make_tuple(toCompactBigEndian(bigint(val)), type, Format::Decimal);
+		}
+		if (_arg.find_first_not_of("0123456789abcdefABCDEF") == string::npos)
+		{
+			type.noteHexInput(val.size());
+			return make_tuple(fromHex(val), type, Format::Hex);
+		}
+		type.noteBinaryInput();
+		return make_tuple(asBytes(_arg), type, Format::Binary);
+	}
+	throw InvalidUserString();
+}
+
+void userOutput(ostream& _out, bytes const& _data, Encoding _e)
+{
+	switch (_e)
+	{
+	case Encoding::Binary:
+		_out.write((char const*)_data.data(), _data.size());
+		break;
+	default:
+		_out << toHex(_data) << endl;
 	}
 }
 
-bytes aligned(bytes const& _b, bool _left, unsigned _length)
+bytes aligned(bytes const& _b, ABIType _t, Format _f, unsigned _length)
 {
+	(void)_t;
 	bytes ret = _b;
 	while (ret.size() < _length)
-		if (_left)
+		if (_f == Format::Binary)
 			ret.push_back(0);
 		else
 			ret.insert(ret.begin(), 0);
 	while (ret.size() > _length)
-		if (_left)
+		if (_f == Format::Binary)
 			ret.pop_back();
 		else
 			ret.erase(ret.begin());
@@ -120,11 +243,12 @@ int main(int argc, char** argv)
 	Mode mode = Mode::Encode;
 	string abiFile;
 	string method;
-	bool prefix = false;
+	Tristate prefix = Tristate::Mu;
+	Tristate typePrefix = Tristate::Mu;
 	bool clearZeroes = false;
 	bool clearNulls = false;
 	int outputIndex = -1;
-	vector<pair<bytes, bool>> args;
+	vector<tuple<bytes, ABIType, Format>> args;
 
 	for (int i = 1; i < argc; ++i)
 	{
@@ -140,7 +264,13 @@ int main(int argc, char** argv)
 		else if ((arg == "-i" || arg == "--index") && argc > i)
 			outputIndex = atoi(argv[++i]);
 		else if (arg == "-p" || arg == "--prefix")
-			prefix = true;
+			prefix = Tristate::True;
+		else if (arg == "-P" || arg == "--no-prefix")
+			prefix = Tristate::False;
+		else if (arg == "-t" || arg == "--typing")
+			typePrefix = Tristate::True;
+		else if (arg == "-T" || arg == "--no-typing")
+			typePrefix = Tristate::False;
 		else if (arg == "-z" || arg == "--no-zeroes")
 			clearZeroes = true;
 		else if (arg == "-n" || arg == "--no-nulls")
@@ -156,7 +286,7 @@ int main(int argc, char** argv)
 		else if (method.empty())
 			method = arg;
 		else
-			args.push_back(fromUser(arg, prefix));
+			args.push_back(fromUser(arg, prefix, typePrefix));
 	}
 
 	string abi;
@@ -168,22 +298,24 @@ int main(int argc, char** argv)
 
 	if (mode == Mode::Encode)
 	{
+		bytes ret;
 		if (abi.empty())
 		{
-			bytes ret;
 			if (!method.empty())
 				ret = FixedHash<32>(sha3(method)).asBytes();
 			if (method.empty())
-				for (pair<bytes, bool> const& arg: args)
-					ret += aligned(arg.first, arg.second, 32);
+				for (tuple<bytes, ABIType, Format> const& arg: args)
+					ret += aligned(get<0>(arg), get<1>(arg), get<2>(arg), 32);
 		}
 		else
 		{
 			// TODO: read abi.
 		}
+		userOutput(cout, ret, encoding);
 	}
 	else if (mode == Mode::Decode)
 	{
+		// TODO: read abi to determine output format.
 		(void)encoding;
 		(void)clearZeroes;
 		(void)clearNulls;
