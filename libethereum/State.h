@@ -127,6 +127,7 @@ public:
 	OverlayDB const& db() const { return m_db; }
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
+	/// @throws InterfaceNotSupported if compiled without ETH_FATDB.
 	std::map<Address, u256> addresses() const;
 
 	/// Get the header information on the present block.

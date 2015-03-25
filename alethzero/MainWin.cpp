@@ -135,6 +135,11 @@ Main::Main(QWidget *parent) :
 //		ui->log->addItem(QString::fromStdString(s));
 	};
 
+#if !ETH_FATDB
+	ui->dockWidgetAccounts->hide();
+	ui->dockWidgetContracts->hide();
+#endif
+
 #if ETH_DEBUG
 	m_servers.append("localhost:30300");
 #endif
@@ -1036,6 +1041,7 @@ void Main::refreshPending()
 
 void Main::refreshAccounts()
 {
+#if ETH_FATDB
 	cwatch << "refreshAccounts()";
 	ui->accounts->clear();
 	ui->contracts->clear();
@@ -1053,6 +1059,7 @@ void Main::refreshAccounts()
 						->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
 			}
 		}
+#endif
 }
 
 void Main::refreshBlockCount()
@@ -1626,16 +1633,22 @@ void Main::on_ourAccounts_doubleClicked()
 
 void Main::on_accounts_doubleClicked()
 {
-	auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
-	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
+	if (!ui->accounts->isEmpty())
+	{
+		auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
+		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
+		qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
+	}
 }
 
 void Main::on_contracts_doubleClicked()
 {
-	auto hba = ui->contracts->currentItem()->data(Qt::UserRole).toByteArray();
-	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
+	if (!ui->contracts->isEmpty())
+	{
+		auto hba = ui->contracts->currentItem()->data(Qt::UserRole).toByteArray();
+		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
+		qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
+	}
 }
 
 static shh::FullTopic topicFromText(QString _s)
