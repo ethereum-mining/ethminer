@@ -57,9 +57,9 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, uint32_t block_number)
     if (memcmp(read_buffer, expect_buffer, DAG_MEMO_BYTESIZE) != 0) {
         // we have different memo contents so delete the memo file
         if (_unlink(memofile) != 0) {
-            ret = ETHASH_IO_MEMO_MISMATCH;
             goto close;
         }
+        ret = ETHASH_IO_MEMO_MISMATCH;
     }
 
     ret = ETHASH_IO_MEMO_MATCH;
