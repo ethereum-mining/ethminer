@@ -43,8 +43,8 @@ public:
 	// stub
 	virtual void flushTransactions() override {}
 	virtual eth::BlockChain const& bc() const override { return m_bc; }
-	virtual eth::State asOf(eth::BlockNumber _h) const override;
-	virtual eth::State asOf(h256 _h) const override;
+	using ClientBase::asOf;
+	virtual eth::State asOf(h256 const& _h) const override;
 	virtual eth::State preMine() const override { ReadGuard l(x_stateDB); return m_state; }
 	virtual eth::State postMine() const override { ReadGuard l(x_stateDB); return m_state; }
 	virtual void prepareForTransaction() override {}
