@@ -76,17 +76,21 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QVariant const& _data, Solidi
 	unsigned const alignSize = 32;
 	QString src = _data.toString();
 	bytes result;
-	if (src.length() >= 2 && ((src.startsWith("\"") && src.endsWith("\"")) || (src.startsWith("\'") && src.endsWith("\'"))))
-	{
+
+	if ((src.startsWith("\"") && src.endsWith("\"")) || (src.startsWith("\'") && src.endsWith("\'")))
 		src = src.remove(src.length() - 1, 1).remove(0, 1);
-		QByteArray bytesAr = src.toLocal8Bit();
-		result = bytes(bytesAr.begin(), bytesAr.end());
-	}
-	else if (src.startsWith("0x"))
+
+	QRegExp rx("[a-z]+");
+	if (src.startsWith("0x"))
 	{
 		result = fromHex(src.toStdString().substr(2));
 		if (_type.type != SolidityType::Type::Bytes)
 			result = padded(result, alignSize);
+	}
+	else if (rx.indexIn(src.toLower(), 0) != -1)
+	{
+		QByteArray bytesAr = src.toLocal8Bit();
+		result = bytes(bytesAr.begin(), bytesAr.end());
 	}
 	else
 	{
