@@ -50,7 +50,7 @@ using namespace dev::eth;
 static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 {
 	Json::Value res;
-	res["hash"] = boost::lexical_cast<string>(_bi.hash);
+	res["hash"] = toJS(_bi.hash);
 	res["parentHash"] = toJS(_bi.parentHash);
 	res["sha3Uncles"] = toJS(_bi.sha3Uncles);
 	res["miner"] = toJS(_bi.coinbaseAddress);
@@ -58,10 +58,12 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 	res["transactionsRoot"] = toJS(_bi.transactionsRoot);
 	res["difficulty"] = toJS(_bi.difficulty);
 	res["number"] = toJS(_bi.number);
+	res["gasUsed"] = toJS(_bi.gasUsed);
 	res["gasLimit"] = toJS(_bi.gasLimit);
 	res["timestamp"] = toJS(_bi.timestamp);
 	res["extraData"] = toJS(_bi.extraData);
 	res["nonce"] = toJS(_bi.nonce);
+	res["logsBloom"] = toJS(_bi.logBloom);
 	return res;
 }
 
@@ -79,18 +81,24 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	return res;
 }
 
-static Json::Value toJson(dev::eth::BlockInfo const& _bi, Transactions const& _ts)
+static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us, Transactions const& _ts)
 {
 	Json::Value res = toJson(_bi);
+	res["uncles"] = Json::Value(Json::arrayValue);
+	for (h256 h: _us)
+		res["uncles"].append(toJS(h));
 	res["transactions"] = Json::Value(Json::arrayValue);
 	for (Transaction const& t: _ts)
 		res["transactions"].append(toJson(t));
 	return res;
 }
 
-static Json::Value toJson(dev::eth::BlockInfo const& _bi, TransactionHashes const& _ts)
+static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us, TransactionHashes const& _ts)
 {
 	Json::Value res = toJson(_bi);
+	res["uncles"] = Json::Value(Json::arrayValue);
+	for (h256 h: _us)
+		res["uncles"].append(toJS(h));
 	res["transactions"] = Json::Value(Json::arrayValue);
 	for (h256 const& t: _ts)
 		res["transactions"].append(toJS(t));
@@ -387,7 +395,7 @@ string WebThreeStubServerBase::eth_getCode(string const& _address, string const&
 {
 	try
 	{
-		return toJS(client()->codeAt(jsToAddress(_address), toBlockNumber(_blockNumber)));
+		return toJS(client()->codeAt(jsToAddress(_address), toBlockNumber(_blockNumber)), 1);
 	}
 	catch (...)
 	{
@@ -498,9 +506,9 @@ Json::Value WebThreeStubServerBase::eth_getBlockByHash(string const& _blockHash,
 	{
 		auto h = jsToFixed<32>(_blockHash);
 		if (_includeTransactions)
-			return toJson(client()->blockInfo(h), client()->transactions(h));
+			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactions(h));
 		else
-			return toJson(client()->blockInfo(h), client()->transactionHashes(h));
+			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactionHashes(h));
 	}
 	catch (...)
 	{
@@ -514,9 +522,9 @@ Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNum
 	{
 		auto h = client()->hashFromNumber(jsToInt(_blockNumber));
 		if (_includeTransactions)
-			return toJson(client()->blockInfo(h), client()->transactions(h));
+			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactions(h));
 		else
-			return toJson(client()->blockInfo(h), client()->transactionHashes(h));
+			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactionHashes(h));
 	}
 	catch (...)
 	{
