@@ -163,7 +163,14 @@ void UDPSocket<Handler, MaxDatagramSize>::connect()
 		return;
 
 	m_socket.open(bi::udp::v4());
-	m_socket.bind(m_endpoint);
+	try
+	{
+		m_socket.bind(m_endpoint);
+	}
+	catch (...)
+	{
+		m_socket.bind(bi::udp::endpoint(bi::udp::v4(), m_endpoint.port()));
+	}
 
 	// clear write queue so reconnect doesn't send stale messages
 	Guard l(x_sendQ);
