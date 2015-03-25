@@ -136,8 +136,8 @@ Main::Main(QWidget *parent) :
 	};
 
 #if !ETH_FATDB
-	ui->dockWidgetAccounts->hide();
-	ui->dockWidgetContracts->hide();
+	delete ui->dockWidget_accounts;
+	delete ui->dockWidget_contracts;
 #endif
 
 #if ETH_DEBUG
@@ -1633,7 +1633,7 @@ void Main::on_ourAccounts_doubleClicked()
 
 void Main::on_accounts_doubleClicked()
 {
-	if (!ui->accounts->isEmpty())
+	if (ui->accounts->count())
 	{
 		auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
 		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
@@ -1643,7 +1643,7 @@ void Main::on_accounts_doubleClicked()
 
 void Main::on_contracts_doubleClicked()
 {
-	if (!ui->contracts->isEmpty())
+	if (ui->contracts->count())
 	{
 		auto hba = ui->contracts->currentItem()->data(Qt::UserRole).toByteArray();
 		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
