@@ -126,7 +126,7 @@ public:
 	virtual Addresses addresses(BlockNumber _block) const override;
 	virtual u256 gasLimitRemaining() const override;
 
-	// Set the coinbase address
+	/// Set the coinbase address
 	virtual void setAddress(Address _us) override; 
 
 	/// Get the coinbase address
@@ -143,21 +143,24 @@ public:
 	virtual std::pair<h256, u256> getWork() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::getWork")); }
 	virtual bool submitWork(eth::ProofOfWork::Proof const&) override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::submitWork")); }
 
-protected:
+	State asOf(BlockNumber _h) const;
 
+protected:
+	/// The interface that must be implemented in any class deriving this.
+	/// {
 	virtual BlockChain const& bc() const = 0;
-	virtual State asOf(BlockNumber _h) const = 0;
-	virtual State asOf(h256 _h) const = 0;
+	virtual State asOf(h256 const& _h) const = 0;
 	virtual State preMine() const = 0;
 	virtual State postMine() const = 0;
 	virtual void prepareForTransaction() = 0;
+	/// }
 
-	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
+	TransactionQueue m_tq;							///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 
 	// filters
-	mutable Mutex m_filterLock;
-	std::map<h256, InstalledFilter> m_filters;
-	std::map<unsigned, ClientWatch> m_watches;
+	mutable Mutex x_filtersWatches;					///< Our lock.
+	std::map<h256, InstalledFilter> m_filters;		///< The dictionary of filters that are active.
+	std::map<unsigned, ClientWatch> m_watches;		///< Each and every watch - these reference a filter.
 
 };
 
