@@ -29,11 +29,14 @@ namespace dev
 namespace test
 {
 
+/**
+ * @brief Friend of State, loads State from given JSON object
+ */
 class StateLoader
 {
 public:
 	StateLoader(Json::Value const& _json);
-	eth::State state() { return m_state; }
+	eth::State const& state() { return m_state; }
 
 private:
 	eth::State m_state;
