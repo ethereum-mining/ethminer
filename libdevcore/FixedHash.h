@@ -31,7 +31,7 @@
 namespace dev
 {
 
-extern std::mt19937_64 s_fixedHashEngine;
+extern std::random_device s_fixedHashEngine;
 
 /// Fixed-size raw-byte array container type, with an API optimised for storing hashes.
 /// Transparently converts to/from the corresponding arithmetic type; this will
@@ -53,7 +53,7 @@ public:
 	enum ConstructFromStringType { FromHex, FromBinary };
 
 	/// Method to convert from a string.
-	enum ConstructFromHashType { AlignLeft, AlignRight };
+	enum ConstructFromHashType { AlignLeft, AlignRight, FailIfDifferent };
 
 	/// Construct an empty hash.
 	FixedHash() { m_data.fill(0); }
@@ -65,28 +65,30 @@ public:
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
 
 	/// Explicitly construct, copying from a byte array.
-	explicit FixedHash(bytes const& _b) { if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N)); }
+	explicit FixedHash(bytes const& _b, ConstructFromHashType _t = FailIfDifferent) { if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N)); else { m_data.fill(0); if (_t != FailIfDifferent) { auto c = std::min<unsigned>(_b.size(), N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _b[_t == AlignRight ? _b.size() - 1 - i : i]; } } }
 
 	/// Explicitly construct, copying from a byte array.
-	explicit FixedHash(bytesConstRef _b) { if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N)); }
+	explicit FixedHash(bytesConstRef _b, ConstructFromHashType _t = FailIfDifferent) { if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N)); else { m_data.fill(0); if (_t != FailIfDifferent) { auto c = std::min<unsigned>(_b.size(), N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _b[_t == AlignRight ? _b.size() - 1 - i : i]; } } }
 
 	/// Explicitly construct, copying from a bytes in memory with given pointer.
 	explicit FixedHash(byte const* _bs, ConstructFromPointerType) { memcpy(m_data.data(), _bs, N); }
 
 	/// Explicitly construct, copying from a  string.
-	explicit FixedHash(std::string const& _s, ConstructFromStringType _t = FromHex): FixedHash(_t == FromHex ? fromHex(_s) : dev::asBytes(_s)) {}
+	explicit FixedHash(std::string const& _s, ConstructFromStringType _t = FromHex, ConstructFromHashType _ht = FailIfDifferent): FixedHash(_t == FromHex ? fromHex(_s) : dev::asBytes(_s), _ht) {}
 
 	/// Convert to arithmetic type.
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
 
 	/// @returns true iff this is the empty hash.
-	operator bool() const { return ((Arith)*this) != 0; }
+	explicit operator bool() const { return ((Arith)*this) != 0; }
 
 	// The obvious comparison operators.
 	bool operator==(FixedHash const& _c) const { return m_data == _c.m_data; }
 	bool operator!=(FixedHash const& _c) const { return m_data != _c.m_data; }
-	bool operator<(FixedHash const& _c) const { return m_data < _c.m_data; }
-	bool operator>=(FixedHash const& _c) const { return m_data >= _c.m_data; }
+	bool operator<(FixedHash const& _c) const { for (unsigned i = 0; i < N; ++i) if (m_data[i] < _c.m_data[i]) return true; else if (m_data[i] > _c.m_data[i]) return false; return false; }
+	bool operator>=(FixedHash const& _c) const { return !operator<(_c); }
+	bool operator<=(FixedHash const& _c) const { return operator==(_c) || operator<(_c); }
+	bool operator>(FixedHash const& _c) const { return !operator<=(_c); }
 
 	// The obvious binary operators.
 	FixedHash& operator^=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] ^= _c.m_data[i]; return *this; }
@@ -154,25 +156,17 @@ public:
 		}
 	};
 
-	inline FixedHash<32> bloom() const
-	{
-		FixedHash<32> ret;
-		for (auto i: m_data)
-			ret[i / 8] |= 1 << (i % 8);
-		return ret;
-	}
-
 	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h)
 	{
-		return (*this |= _h.template nbloom<P, N>());
+		return (*this |= _h.template bloom<P, N>());
 	}
 
 	template <unsigned P, unsigned M> inline bool containsBloom(FixedHash<M> const& _h)
 	{
-		return contains(_h.template nbloom<P, N>());
+		return contains(_h.template bloom<P, N>());
 	}
 
-	template <unsigned P, unsigned M> inline FixedHash<M> nbloom() const
+	template <unsigned P, unsigned M> inline FixedHash<M> bloom() const
 	{
 		static const unsigned c_bloomBits = M * 8;
 		unsigned mask = c_bloomBits - 1;
@@ -240,11 +234,14 @@ inline std::ostream& operator<<(std::ostream& _out, FixedHash<N> const& _h)
 }
 
 // Common types of FixedHash.
+using h2048 = FixedHash<256>;
+using h1024 = FixedHash<128>;
 using h520 = FixedHash<65>;
 using h512 = FixedHash<64>;
 using h256 = FixedHash<32>;
 using h160 = FixedHash<20>;
 using h128 = FixedHash<16>;
+using h64 = FixedHash<8>;
 using h512s = std::vector<h512>;
 using h256s = std::vector<h256>;
 using h160s = std::vector<h160>;

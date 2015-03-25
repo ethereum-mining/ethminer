@@ -1,10 +1,14 @@
 
 #pragma GCC diagnostic ignored "-Wconversion"
+
 #include "JitVM.h"
+
+#include <libdevcore/Log.h>
+#include <libdevcrypto/SHA3.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
-#include <libdevcrypto/SHA3.h>
 #include <evmjit/libevmjit/ExecutionEngine.h>
+
 #include "Utils.h"
 
 namespace dev
@@ -27,12 +31,13 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 
 	if (rejected)
 	{
-		UNTESTED;
-		std::cerr << "Rejected\n";
+		cwarn << "Execution rejected by EVM JIT (gas limit: " << m_gas << "), executing with interpreter";
 		VMFactory::setKind(VMKind::Interpreter);
 		m_fallbackVM = VMFactory::create(m_gas);
 		VMFactory::setKind(VMKind::JIT);
-		return m_fallbackVM->go(_ext, _onOp, _step);
+		auto&& output = m_fallbackVM->go(_ext, _onOp, _step);
+		m_gas = m_fallbackVM->gas(); // copy remaining gas, Executive expects it
+		return output;
 	}
 
 	m_data.gas 			= static_cast<decltype(m_data.gas)>(m_gas);
@@ -64,8 +69,8 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 		BOOST_THROW_EXCEPTION(BadJumpDestination());
 	case ReturnCode::OutOfGas:
 		BOOST_THROW_EXCEPTION(OutOfGas());
-	case ReturnCode::StackTooSmall:
-		BOOST_THROW_EXCEPTION(StackTooSmall());
+	case ReturnCode::StackUnderflow:
+		BOOST_THROW_EXCEPTION(StackUnderflow());
 	case ReturnCode::BadInstruction:
 		BOOST_THROW_EXCEPTION(BadInstruction());
 	case ReturnCode::LinkerWorkaround:	// never happens

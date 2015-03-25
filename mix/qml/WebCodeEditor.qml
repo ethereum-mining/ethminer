@@ -2,15 +2,17 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
-import CodeEditorExtensionManager 1.0
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
 
 Item {
 	signal editorTextChanged
+	signal breakpointsChanged
+	property bool isClean: true
 	property string currentText: ""
 	property string currentMode: ""
 	property bool initialized: false
+	property var currentBreakpoints: [];
 
 	function setText(text, mode) {
 		currentText = text;
@@ -32,13 +34,32 @@ Item {
 
 	function syncClipboard() {
 		if (Qt.platform.os == "osx") {
-			var text = appContext.clipboard;
+			var text = clipboard.text;
 			editorBrowser.runJavaScript("setClipboardBase64(\"" + Qt.btoa(text) + "\")");
 		}
 	}
 
+	function highlightExecution(location) {
+		if (initialized)
+			editorBrowser.runJavaScript("highlightExecution(" + location.start + "," + location.end + ")");
+	}
+
+	function getBreakpoints() {
+		return currentBreakpoints;
+	}
+
+	function toggleBreakpoint() {
+		if (initialized)
+			editorBrowser.runJavaScript("toggleBreakpoint()");
+	}
+
+	function changeGeneration() {
+		if (initialized)
+			editorBrowser.runJavaScript("changeGeneration()", function(result) {});
+	}
+
 	Connections {
-		target: appContext
+		target: clipboard
 		onClipboardChanged:	syncClipboard()
 	}
 
@@ -62,6 +83,7 @@ Item {
 				runJavaScript("getTextChanged()", function(result) { });
 				pollTimer.running = true;
 				syncClipboard();
+				parent.changeGeneration();
 			}
 		}
 
@@ -79,6 +101,19 @@ Item {
 							editorTextChanged();
 						});
 					}
+				});
+				editorBrowser.runJavaScript("getBreakpointsChanged()", function(result) {
+					if (result === true) {
+						editorBrowser.runJavaScript("getBreakpoints()" , function(bp) {
+							if (currentBreakpoints !== bp) {
+								currentBreakpoints = bp;
+								breakpointsChanged();
+							}
+						});
+					}
+				});
+				editorBrowser.runJavaScript("isClean()", function(result) {
+					isClean = result;
 				});
 			}
 		}

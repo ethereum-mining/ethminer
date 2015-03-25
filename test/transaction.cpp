@@ -48,10 +48,17 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 				if (!txFromRlp.signature().isValid())
 					BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("transaction from RLP signature is invalid") );
 			}
+			catch(Exception const& _e)
+			{
+				cnote << i.first;
+				cnote << "Transaction Exception: " << diagnostic_information(_e);
+				BOOST_CHECK_MESSAGE(o.count("transaction") == 0, "A transaction object should not be defined because the RLP is invalid!");
+				continue;
+			}
 			catch(...)
 			{
 				BOOST_CHECK_MESSAGE(o.count("transaction") == 0, "A transaction object should not be defined because the RLP is invalid!");
-				return;
+				continue;
 			}
 
 			BOOST_REQUIRE(o.count("transaction") > 0);
@@ -90,8 +97,9 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 
 				o["sender"] = toString(txFromFields.sender());
 			}
-			catch(...)
+			catch(Exception const& _e)
 			{
+				cnote << "Transaction Exception: " << diagnostic_information(_e);
 				o.erase(o.find("transaction"));
 			}
 		}
@@ -103,14 +111,28 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 
 BOOST_AUTO_TEST_SUITE(TransactionTests)
 
-BOOST_AUTO_TEST_CASE(TransactionTest)
+BOOST_AUTO_TEST_CASE(ttTransactionTest)
 {
 	dev::test::executeTests("ttTransactionTest", "/TransactionTests", dev::test::doTransactionTests);
 }
 
+BOOST_AUTO_TEST_CASE(ttWrongRLPTransaction)
+{
+	dev::test::executeTests("ttWrongRLPTransaction", "/TransactionTests", dev::test::doTransactionTests);
+}
+
 BOOST_AUTO_TEST_CASE(tt10mbDataField)
 {
-	dev::test::executeTests("tt10mbDataField", "/TransactionTests", dev::test::doTransactionTests);
+	if (test::Options::get().bigData)
+	{
+		auto start = chrono::steady_clock::now();
+
+		dev::test::executeTests("tt10mbDataField", "/TransactionTests", dev::test::doTransactionTests);
+
+		auto end = chrono::steady_clock::now();
+		auto duration(chrono::duration_cast<chrono::milliseconds>(end - start));
+		cnote << "test duration: " << duration.count() << " milliseconds.\n";
+	}
 }
 
 BOOST_AUTO_TEST_CASE(ttCreateTest)
@@ -147,9 +169,9 @@ BOOST_AUTO_TEST_CASE(ttCreateTest)
 	}
 }
 
-BOOST_AUTO_TEST_CASE(userDefinedFileTT)
+BOOST_AUTO_TEST_CASE(userDefinedFile)
 {
-	dev::test::userDefinedTest("--ttTest", dev::test::doTransactionTests);
+	dev::test::userDefinedTest("--singletest", dev::test::doTransactionTests);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

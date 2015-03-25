@@ -35,25 +35,23 @@ static QString contentsOfQResource(string const& _res)
 	return in.readAll();
 }
 
-NatspecExpressionEvaluator::NatspecExpressionEvaluator(QString const& _abi, QString const& _method, QString const& _params)
+NatspecExpressionEvaluator::NatspecExpressionEvaluator(QString const& _abi, QString const& _transaction, QString const& _method)
+: m_abi(_abi), m_transaction(_transaction), m_method(_method)
 {
 	Q_INIT_RESOURCE(natspec);
 	QJSValue result = m_engine.evaluate(contentsOfQResource(":/natspec/natspec.js"));
 	if (result.isError())
 		BOOST_THROW_EXCEPTION(FileError());
-
-	m_engine.evaluate("globals.abi = " + _abi);
-	m_engine.evaluate("globals.method = " + _method);
-	m_engine.evaluate("globals.params = " + _params);
+	
+	m_engine.evaluate("var natspec = require('natspec')");
 }
 
 QString NatspecExpressionEvaluator::evalExpression(QString const& _expression)
 {
-	QJSValue result = m_engine.evaluate("evaluateExpression(\"" + _expression + "\")");
-	if (result.isError())
-	{
-		cerr << "Could not evaluate expression: \"" << _expression.toStdString() << "\"" << endl;
-		return _expression;
-	}
+	QString call = "";
+	if (!m_abi.isEmpty() && !m_transaction.isEmpty() && !m_method.isEmpty())
+		call = ", {abi:" + m_abi + ", transaction:" + m_transaction + ", method: '" + m_method + "' }";
+	
+	QJSValue result = m_engine.evaluate("natspec.evaluateExpressionSafe(\"" + _expression + "\"" + call + ")");
 	return result.toString();
 }

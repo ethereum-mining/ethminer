@@ -2,7 +2,6 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
-import CodeEditorExtensionManager 1.0
 import Qt.labs.settings 1.0
 import org.ethereum.qml.QEther 1.0
 import "js/QEtherHelper.js" as QEtherHelper
@@ -26,6 +25,7 @@ Rectangle {
 	property alias projectViewVisible: projectList.visible
 	property alias runOnProjectLoad: mainSettings.runOnProjectLoad
 	property alias rightPane: rightView
+	property alias codeEditor: codeEditor
 	property bool webViewHorizontal: codeWebSplitter.orientation === Qt.Vertical //vertical splitter positions elements vertically, splits screen horizontally
 	property bool firstCompile: true
 
@@ -34,9 +34,23 @@ Rectangle {
 		onCompilationComplete: {
 			if (firstCompile) {
 				firstCompile = false;
-			if (runOnProjectLoad)
-				startQuickDebugging();
+				if (runOnProjectLoad)
+					startQuickDebugging();
 			}
+		}
+	}
+
+	Connections {
+		target: rightView
+		onDebugExecuteLocation: {
+			codeEditor.highlightExecution(documentId, location);
+		}
+	}
+
+	Connections {
+		target: codeEditor
+		onBreakpointsChanged: {
+			rightPane.setBreakpoints(codeEditor.getBreakpoints());
 		}
 	}
 
@@ -75,8 +89,15 @@ Rectangle {
 		codeWebSplitter.orientation = (codeWebSplitter.orientation === Qt.Vertical ? Qt.Horizontal : Qt.Vertical);
 	}
 
-	CodeEditorExtensionManager {
-		headerView: headerPaneTabs;
+	//TODO: move this to debugger.js after refactoring, introduce events
+	function toggleBreakpoint() {
+		codeEditor.toggleBreakpoint();
+	}
+
+	function displayCompilationErrorIfAny()
+	{
+		rightView.visible = true;
+		rightView.displayCompilationErrorIfAny();
 	}
 
 	Settings {
@@ -90,6 +111,7 @@ Rectangle {
 
 	ColumnLayout
 	{
+		id: mainColumn
 		anchors.fill: parent
 		spacing: 0
 		Rectangle {
@@ -107,21 +129,15 @@ Rectangle {
 				}
 				id: headerPaneContainer
 				anchors.fill: parent
-				TabView {
-					id: headerPaneTabs
-					tabsVisible: false
-					antialiasing: true
+				StatusPane
+				{
 					anchors.fill: parent
-					style: TabViewStyle {
-						frameOverlap: 1
-						tab: Rectangle {}
-						frame: Rectangle { color: "transparent" }
-					}
+					webPreview: webPreview
 				}
 			}
 		}
 
-		Rectangle{
+		Rectangle {
 			Layout.fillWidth: true
 			height: 1
 			color: "#8c8c8c"
@@ -138,14 +154,9 @@ Rectangle {
 				property alias rightViewWidth: rightView.width
 			}
 
-			SplitView
+			Splitter
 			{
 				anchors.fill: parent
-				handleDelegate: Rectangle {
-				   width: 1
-				   height: 1
-				   color: "#8c8c8c"
-				}
 				orientation: Qt.Horizontal
 
 				ProjectList	{
@@ -153,21 +164,22 @@ Rectangle {
 					width: 350
 					Layout.minimumWidth: 250
 					Layout.fillHeight: true
+					Connections {
+						target: projectModel.codeEditor
+					}
 				}
+
 				Rectangle {
 					id: contentView
 					Layout.fillHeight: true
 					Layout.fillWidth: true
-					SplitView {
-						 handleDelegate: Rectangle {
-							width: 1
-							height: 1
-							color: "#8c8c8c"
-						 }
+
+					Splitter {
 						id: codeWebSplitter
 						anchors.fill: parent
 						orientation: Qt.Vertical
 						CodeEditorView {
+							id: codeEditor
 							height: parent.height * 0.6
 							anchors.top: parent.top
 							Layout.fillWidth: true
@@ -196,7 +208,3 @@ Rectangle {
 		}
 	}
 }
-
-
-
-

@@ -29,6 +29,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libdevcore/Common.h>
 #include <libdevcrypto/Common.h>
 #include <libevmcore/Instruction.h>
+#include <libethereum/Transaction.h>
 #include <libethereum/TransactionReceipt.h>
 
 namespace dev
@@ -42,7 +43,6 @@ namespace mix
 	struct MachineState
 	{
 		uint64_t steps;
-		dev::Address address;
 		dev::u256 curPC;
 		dev::eth::Instruction inst;
 		dev::bigint newMemSize;
@@ -57,6 +57,15 @@ namespace mix
 	};
 
 	/**
+	* @brief Executed conract code info
+	*/
+	struct MachineCode
+	{
+		dev::Address address;
+		bytes code;
+	};
+
+	/**
 	* @brief Store information about a machine states.
 	*/
 	struct ExecutionResult
@@ -65,15 +74,17 @@ namespace mix
 
 		std::vector<MachineState> machineStates;
 		std::vector<bytes> transactionData;
-		std::vector<bytes> executionCode;
-		bytes returnValue;
+		std::vector<MachineCode> executionCode;
+		dev::eth::ExecutionResult result;
 		dev::Address address;
 		dev::Address sender;
 		dev::Address contractAddress;
 		dev::u256 value;
 		unsigned transactionIndex;
+		unsigned executonIndex = 0;
 
 		bool isCall() const { return transactionIndex == std::numeric_limits<unsigned>::max(); }
+		bool isConstructor() const { return !isCall() && !address; }
 	};
 
 	using ExecutionResults = std::vector<ExecutionResult>;

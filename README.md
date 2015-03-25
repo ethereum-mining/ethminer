@@ -1,5 +1,7 @@
 ## Ethereum C++ Client.
 
+[![Join the chat at https://gitter.im/ethereum/cpp-ethereum](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereum/cpp-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 By Gav Wood et al, 2013, 2014, 2015.
 
           | Linux   | OSX | Windows

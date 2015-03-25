@@ -77,6 +77,9 @@ void ContractDefinition::checkTypeRequirements()
 	for (ASTPointer<FunctionDefinition> const& function: getDefinedFunctions())
 		function->checkTypeRequirements();
 
+	for (ASTPointer<VariableDeclaration> const& variable: m_stateVariables)
+		variable->checkTypeRequirements();
+
 	// check for hash collisions in function signatures
 	set<FixedHash<4>> hashes;
 	for (auto const& it: getInterfaceFunctionList())
@@ -186,7 +189,7 @@ vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getIn
 		for (ContractDefinition const* contract: getLinearizedBaseContracts())
 		{
 			for (ASTPointer<FunctionDefinition> const& f: contract->getDefinedFunctions())
-				if (f->isPublic() && !f->isConstructor() && !f->getName().empty() && functionsSeen.count(f->getName()) == 0)
+				if (functionsSeen.count(f->getName()) == 0 && f->isPartOfExternalInterface())
 				{
 					functionsSeen.insert(f->getName());
 					FixedHash<4> hash(dev::sha3(f->getCanonicalSignature()));
@@ -194,7 +197,7 @@ vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getIn
 				}
 
 			for (ASTPointer<VariableDeclaration> const& v: contract->getStateVariables())
-				if (v->isPublic() && functionsSeen.count(v->getName()) == 0)
+				if (functionsSeen.count(v->getName()) == 0 && v->isPartOfExternalInterface())
 				{
 					FunctionType ftype(*v);
 					functionsSeen.insert(v->getName());
@@ -204,6 +207,33 @@ vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getIn
 		}
 	}
 	return *m_interfaceFunctionList;
+}
+
+vector<Declaration const*> const& ContractDefinition::getInheritableMembers() const
+{
+	if (!m_inheritableMembers)
+	{
+		set<string> memberSeen;
+		m_inheritableMembers.reset(new vector<Declaration const*>());
+		auto addInheritableMember = [&](Declaration const* _decl)
+		{
+			if (memberSeen.count(_decl->getName()) == 0 && _decl->isVisibleInDerivedContracts())
+			{
+				memberSeen.insert(_decl->getName());
+				m_inheritableMembers->push_back(_decl);
+			}
+		};
+
+		for (ASTPointer<FunctionDefinition> const& f: getDefinedFunctions())
+			addInheritableMember(f.get());
+
+		for (ASTPointer<VariableDeclaration> const& v: getStateVariables())
+			addInheritableMember(v.get());
+
+		for (ASTPointer<StructDefinition> const& s: getDefinedStructs())
+			addInheritableMember(s.get());
+	}
+	return *m_inheritableMembers;
 }
 
 TypePointer EnumValue::getType(ContractDefinition const*) const
@@ -278,7 +308,9 @@ void FunctionDefinition::checkTypeRequirements()
 		if (!var->getType()->canLiveOutsideStorage())
 			BOOST_THROW_EXCEPTION(var->createTypeError("Type is required to live outside storage."));
 	for (ASTPointer<ModifierInvocation> const& modifier: m_functionModifiers)
-		modifier->checkTypeRequirements();
+		modifier->checkTypeRequirements(isConstructor() ?
+			dynamic_cast<ContractDefinition const&>(*getScope()).getBaseContracts() :
+			vector<ASTPointer<InheritanceSpecifier>>());
 
 	m_body->checkTypeRequirements();
 }
@@ -290,8 +322,43 @@ string FunctionDefinition::getCanonicalSignature() const
 
 bool VariableDeclaration::isLValue() const
 {
-	// External function parameters are Read-Only
-	return !isExternalFunctionParameter();
+	// External function parameters and constant declared variables are Read-Only
+	return !isExternalFunctionParameter() && !m_isConstant;
+}
+
+void VariableDeclaration::checkTypeRequirements()
+{
+	// Variables can be declared without type (with "var"), in which case the first assignment
+	// sets the type.
+	// Note that assignments before the first declaration are legal because of the special scoping
+	// rules inherited from JavaScript.
+	if (m_isConstant)
+	{
+		if (!dynamic_cast<ContractDefinition const*>(getScope()))
+			BOOST_THROW_EXCEPTION(createTypeError("Illegal use of \"constant\" specifier."));
+		if ((m_type && !m_type->isValueType()) || !m_value)
+			BOOST_THROW_EXCEPTION(createTypeError("Unitialized \"constant\" variable."));
+	}
+	if (!m_value)
+		return;
+	if (m_type)
+		m_value->expectType(*m_type);
+	else
+	{
+		// no type declared and no previous assignment, infer the type
+		m_value->checkTypeRequirements();
+		TypePointer type = m_value->getType();
+		if (type->getCategory() == Type::Category::IntegerConstant)
+		{
+			auto intType = dynamic_pointer_cast<IntegerConstantType const>(type)->getIntegerType();
+			if (!intType)
+				BOOST_THROW_EXCEPTION(m_value->createTypeError("Invalid integer constant " + type->toString() + "."));
+			type = intType;
+		}
+		else if (type->getCategory() == Type::Category::Void)
+			BOOST_THROW_EXCEPTION(createTypeError("Variable cannot have void type."));
+		m_type = type;
+	}
 }
 
 bool VariableDeclaration::isExternalFunctionParameter() const
@@ -315,19 +382,34 @@ void ModifierDefinition::checkTypeRequirements()
 	m_body->checkTypeRequirements();
 }
 
-void ModifierInvocation::checkTypeRequirements()
+void ModifierInvocation::checkTypeRequirements(vector<ASTPointer<InheritanceSpecifier>> const& _bases)
 {
 	m_modifierName->checkTypeRequirements();
 	for (ASTPointer<Expression> const& argument: m_arguments)
 		argument->checkTypeRequirements();
 
-	ModifierDefinition const* modifier = dynamic_cast<ModifierDefinition const*>(m_modifierName->getReferencedDeclaration());
-	solAssert(modifier, "Function modifier not found.");
-	vector<ASTPointer<VariableDeclaration>> const& parameters = modifier->getParameters();
-	if (parameters.size() != m_arguments.size())
+	auto declaration = m_modifierName->getReferencedDeclaration();
+	vector<ASTPointer<VariableDeclaration>> emptyParameterList;
+	vector<ASTPointer<VariableDeclaration>> const* parameters = nullptr;
+	if (auto modifier = dynamic_cast<ModifierDefinition const*>(declaration))
+		parameters = &modifier->getParameters();
+	else
+		// check parameters for Base constructors
+		for (auto const& base: _bases)
+			if (declaration == base->getName()->getReferencedDeclaration())
+			{
+				if (auto referencedConstructor = dynamic_cast<ContractDefinition const&>(*declaration).getConstructor())
+					parameters = &referencedConstructor->getParameters();
+				else
+					parameters = &emptyParameterList;
+				break;
+			}
+	if (!parameters)
+		BOOST_THROW_EXCEPTION(createTypeError("Referenced declaration is neither modifier nor base class."));
+	if (parameters->size() != m_arguments.size())
 		BOOST_THROW_EXCEPTION(createTypeError("Wrong argument count for modifier invocation."));
 	for (size_t i = 0; i < m_arguments.size(); ++i)
-		if (!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameters[i]->getType()))
+		if (!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*(*parameters)[i]->getType()))
 			BOOST_THROW_EXCEPTION(createTypeError("Invalid type for argument in modifier invocation."));
 }
 
@@ -390,33 +472,9 @@ void Return::checkTypeRequirements()
 	m_expression->expectType(*m_returnParameters->getParameters().front()->getType());
 }
 
-void VariableDefinition::checkTypeRequirements()
+void VariableDeclarationStatement::checkTypeRequirements()
 {
-	// Variables can be declared without type (with "var"), in which case the first assignment
-	// sets the type.
-	// Note that assignments before the first declaration are legal because of the special scoping
-	// rules inherited from JavaScript.
-	if (m_value)
-	{
-		if (m_variable->getType())
-			m_value->expectType(*m_variable->getType());
-		else
-		{
-			// no type declared and no previous assignment, infer the type
-			m_value->checkTypeRequirements();
-			TypePointer type = m_value->getType();
-			if (type->getCategory() == Type::Category::IntegerConstant)
-			{
-				auto intType = dynamic_pointer_cast<IntegerConstantType const>(type)->getIntegerType();
-				if (!intType)
-					BOOST_THROW_EXCEPTION(m_value->createTypeError("Invalid integer constant " + type->toString()));
-				type = intType;
-			}
-			else if (type->getCategory() == Type::Category::Void)
-				BOOST_THROW_EXCEPTION(m_variable->createTypeError("var cannot be void type"));
-			m_variable->setType(type);
-		}
-	}
+	m_variable->checkTypeRequirements();
 }
 
 void Assignment::checkTypeRequirements()
@@ -595,19 +653,67 @@ void MemberAccess::checkTypeRequirements()
 	if (!m_type)
 		BOOST_THROW_EXCEPTION(createTypeError("Member \"" + *m_memberName + "\" not found or not "
 											  "visible in " + type.toString()));
-	m_isLValue = (type.getCategory() == Type::Category::Struct);
+	// This should probably move somewhere else.
+	if (type.getCategory() == Type::Category::Struct)
+		m_isLValue = true;
+	else if (type.getCategory() == Type::Category::Array)
+	{
+		auto const& arrayType(dynamic_cast<ArrayType const&>(type));
+		m_isLValue = (*m_memberName == "length" &&
+			arrayType.getLocation() != ArrayType::Location::CallData && arrayType.isDynamicallySized());
+	}
+	else
+		m_isLValue = false;
 }
 
 void IndexAccess::checkTypeRequirements()
 {
 	m_base->checkTypeRequirements();
-	if (m_base->getType()->getCategory() != Type::Category::Mapping)
-		BOOST_THROW_EXCEPTION(m_base->createTypeError("Indexed expression has to be a mapping (is " +
-													  m_base->getType()->toString() + ")"));
-	MappingType const& type = dynamic_cast<MappingType const&>(*m_base->getType());
-	m_index->expectType(*type.getKeyType());
-	m_type = type.getValueType();
-	m_isLValue = true;
+	switch (m_base->getType()->getCategory())
+	{
+	case Type::Category::Array:
+	{
+		ArrayType const& type = dynamic_cast<ArrayType const&>(*m_base->getType());
+		if (!m_index)
+			BOOST_THROW_EXCEPTION(createTypeError("Index expression cannot be omitted."));
+		m_index->expectType(IntegerType(256));
+		if (type.isByteArray())
+			m_type = make_shared<FixedBytesType>(1);
+		else
+			m_type = type.getBaseType();
+		m_isLValue = type.getLocation() != ArrayType::Location::CallData;
+		break;
+	}
+	case Type::Category::Mapping:
+	{
+		MappingType const& type = dynamic_cast<MappingType const&>(*m_base->getType());
+		if (!m_index)
+			BOOST_THROW_EXCEPTION(createTypeError("Index expression cannot be omitted."));
+		m_index->expectType(*type.getKeyType());
+		m_type = type.getValueType();
+		m_isLValue = true;
+		break;
+	}
+	case Type::Category::TypeType:
+	{
+		TypeType const& type = dynamic_cast<TypeType const&>(*m_base->getType());
+		if (!m_index)
+			m_type = make_shared<TypeType>(make_shared<ArrayType>(ArrayType::Location::Memory, type.getActualType()));
+		else
+		{
+			m_index->checkTypeRequirements();
+			auto length = dynamic_cast<IntegerConstantType const*>(m_index->getType().get());
+			if (!length)
+				BOOST_THROW_EXCEPTION(m_index->createTypeError("Integer constant expected."));
+			m_type = make_shared<TypeType>(make_shared<ArrayType>(
+				ArrayType::Location::Memory, type.getActualType(), length->literalValue(nullptr)));
+		}
+		break;
+	}
+	default:
+		BOOST_THROW_EXCEPTION(m_base->createTypeError(
+			"Indexed expression has to be a type, mapping or array (is " + m_base->getType()->toString() + ")"));
+	}
 }
 
 void Identifier::checkTypeRequirements()

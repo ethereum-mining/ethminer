@@ -12,6 +12,7 @@ Item {
 	id: webPreview
 	property string pendingPageUrl: ""
 	property bool initialized: false
+	signal javaScriptMessage(var _level, string _sourceId, var _lineNb, string _content)
 
 	function setPreviewUrl(url) {
 		if (!initialized)
@@ -26,7 +27,8 @@ Item {
 	function reload() {
 		if (initialized) {
 			updateContract();
-			webView.runJavaScript("reloadPage()");
+			//webView.runJavaScript("reloadPage()");
+			setPreviewUrl(urlInput.text);
 		}
 	}
 
@@ -55,15 +57,12 @@ Item {
 	}
 
 	function changePage() {
-		if (pageCombo.currentIndex >= 0 && pageCombo.currentIndex < pageListModel.count) {
-			setPreviewUrl(httpServer.url + "/" + pageListModel.get(pageCombo.currentIndex).documentId);
-		} else {
-			setPreviewUrl("");
-		}
+		setPreviewUrl(urlInput.text);
 	}
+
 	Connections {
-		target: appContext
-		onAppLoaded: {
+		target: mainApplication
+		onLoaded: {
 			//We need to load the container using file scheme so that web security would allow loading local files in iframe
 			var containerPage = fileIo.readFile("qrc:///qml/html/WebContainer.html");
 			webView.loadHtml(containerPage, httpServer.url + "/WebContainer.html")
@@ -83,8 +82,7 @@ Item {
 
 	Connections {
 		target: projectModel
-		//onProjectSaved : reloadOnSave();
-		//onDocumentSaved: reloadOnSave();
+
 		onDocumentAdded: {
 			var document = projectModel.getDocument(documentId)
 			if (document.isHtml)
@@ -95,18 +93,13 @@ Item {
 		}
 
 		onDocumentUpdated: {
-			updateDocument(documentId, function(i) { pageListModel.set(i, projectModel.getDocument(documentId)) } )
-		}
-
-		onDocumentOpened: {
-			if (!document.isHtml)
-				return;
-			for (var i = 0; i < pageListModel.count; i++) {
-				var doc = pageListModel.get(i);
-				if (doc.documentId === document.documentId) {
-					pageCombo.currentIndex = i;
+			var document = projectModel.getDocument(documentId);
+			for (var i = 0; i < pageListModel.count; i++)
+				if (pageListModel.get(i).documentId === documentId)
+				{
+					pageListModel.set(i, document);
+					break;
 				}
-			}
 		}
 
 		onProjectLoading: {
@@ -115,9 +108,18 @@ Item {
 				if (document.isHtml) {
 					pageListModel.append(document);
 					if (pageListModel.count === 1) //first page added
-						changePage();
+					{
+						urlInput.text = httpServer.url + "/" + document.documentId;
+						setPreviewUrl(httpServer.url + "/" + document.documentId);
+					}
 				}
 			}
+		}
+
+		onDocumentSaved:
+		{
+			if (!projectModel.getDocument(documentId).isContract)
+				reloadOnSave();
 		}
 
 		onProjectClosed: {
@@ -151,13 +153,20 @@ Item {
 			else
 			{
 				//document request
+				if (urlPath === "/")
+					urlPath = "/index.html";
 				var documentId = urlPath.substr(urlPath.lastIndexOf("/") + 1);
 				var content = "";
 				if (projectModel.codeEditor.isDocumentOpen(documentId))
 					content = projectModel.codeEditor.getDocumentText(documentId);
 				else
-					content = fileIo.readFile(projectModel.getDocument(documentId).path);
-				if (documentId === pageListModel.get(pageCombo.currentIndex).documentId) {
+				{
+					var doc = projectModel.getDocument(documentId);
+					if (doc !== undefined)
+						content = fileIo.readFile(doc.path);
+				}
+
+				if (documentId === urlInput.text.replace(httpServer.url + "/", "")) {
 					//root page, inject deployment script
 					content = "<script>web3=parent.web3;contracts=parent.contracts;</script>\n" + content;
 					_request.setResponseContentType("text/html");
@@ -181,19 +190,22 @@ Item {
 				anchors.fill: parent
 				anchors.leftMargin: 3
 				spacing: 3
-				DefaultLabel {
-					text: qsTr("Preview of")
-					anchors.verticalCenter: parent.verticalCenter
-				}
 
-				ComboBox {
-					id: pageCombo
-					model: pageListModel
-					textRole: "name"
-					currentIndex: -1
-					onCurrentIndexChanged: changePage()
+				DefaultTextField
+				{
+					id: urlInput
 					anchors.verticalCenter: parent.verticalCenter
 					height: 21
+					width: 300
+					Keys.onEnterPressed:
+					{
+						setPreviewUrl(text);
+					}
+					Keys.onReturnPressed:
+					{
+						setPreviewUrl(text);
+					}
+					focus: true
 				}
 
 				Action {
@@ -210,7 +222,17 @@ Item {
 					anchors.verticalCenter: parent.verticalCenter
 					width: 21
 					height: 21
+					focus: true
 				}
+
+				Rectangle
+				{
+					width: 1
+					height: parent.height - 10
+					color: WebPreviewStyle.general.separatorColor
+					anchors.verticalCenter: parent.verticalCenter
+				}
+
 				CheckBox {
 					id: autoReloadOnSave
 					checked: true
@@ -221,20 +243,62 @@ Item {
 							text: qsTr("Auto reload on save")
 						}
 					}
+					focus: true
+				}
+
+				Rectangle
+				{
+					width: 1
+					height: parent.height - 10
+					color: WebPreviewStyle.general.separatorColor
+					anchors.verticalCenter: parent.verticalCenter
+				}
+
+				Button
+				{
+					height: 28
+					anchors.verticalCenter: parent.verticalCenter
+					action: expressionAction
+					iconSource: "qrc:/qml/img/console.png"
+				}
+
+				Action {
+					id: expressionAction
+					tooltip: qsTr("Expressions")
+					onTriggered:
+					{
+						expressionPanel.visible = !expressionPanel.visible;
+						if (expressionPanel.visible)
+						{
+							webView.width = webView.parent.width - 350
+							expressionInput.forceActiveFocus();
+						}
+						else
+							webView.width = webView.parent.width
+					}
 				}
 			}
 		}
 
 		Rectangle
 		{
+			Layout.preferredHeight: 1
+			Layout.preferredWidth: parent.width
+			color: WebPreviewStyle.general.separatorColor
+		}
+
+		Splitter
+		{
 			Layout.preferredWidth: parent.width
 			Layout.fillHeight: true
 			WebEngineView {
-				anchors.fill: parent
+				Layout.fillHeight: true
+				width: parent.width
+				Layout.preferredWidth: parent.width
 				id: webView
 				experimental.settings.localContentCanAccessRemoteUrls: true
 				onJavaScriptConsoleMessage: {
-					console.log(sourceID + ":" + lineNumber + ":" + message);
+					webPreview.javaScriptMessage(level, sourceID, lineNumber, message);
 				}
 				onLoadingChanged: {
 					if (!loading) {
@@ -245,6 +309,123 @@ Item {
 					}
 				}
 			}
+
+			Column {
+				id: expressionPanel
+				width: 350
+				Layout.preferredWidth: 350
+				Layout.fillHeight: true
+				spacing: 0
+				visible: false
+				function addExpression()
+				{
+					if (expressionInput.text === "")
+						return;
+					expressionInput.history.unshift(expressionInput.text);
+					expressionInput.index = -1;
+					webView.runJavaScript("executeJavaScript(\"" + expressionInput.text.replace(/"/g, '\\"') + "\")", function(result) {
+						resultTextArea.text = "> " + result + "\n\n" + resultTextArea.text;
+						expressionInput.text = "";
+					});
+				}
+
+				Row
+				{
+					id: rowConsole
+					width: parent.width
+					Button
+					{
+						height: 22
+						width: 22
+						action: clearAction
+						iconSource: "qrc:/qml/img/broom.png"
+					}
+
+					Action {
+						id: clearAction
+						enabled: resultTextArea.text !== ""
+						tooltip: qsTr("Clear")
+						onTriggered: {
+							resultTextArea.text = "";
+						}
+					}
+
+					DefaultTextField {
+						id: expressionInput
+						width: parent.width - 15
+						height: 20
+						font.family: WebPreviewStyle.general.fontName
+						font.italic: true
+						font.pointSize: Style.absoluteSize(-3)
+						anchors.verticalCenter: parent.verticalCenter
+
+						property var history: []
+						property int index: -1
+
+						function displayCache(incr)
+						{
+							index = index + incr;
+							if (history.length - 1 < index || index < 0)
+							{
+								if (incr === 1)
+									index = 0;
+								else
+									index = history.length - 1;
+							}
+							expressionInput.text = history[index];
+						}
+
+						Keys.onDownPressed: {
+							displayCache(1);
+						}
+
+						Keys.onUpPressed: {
+							displayCache(-1);
+						}
+
+						Keys.onEnterPressed:
+						{
+							expressionPanel.addExpression();
+						}
+
+						Keys.onReturnPressed:
+						{
+							expressionPanel.addExpression();
+						}
+
+						onFocusChanged:
+						{
+							if (!focus && text == "")
+								text = qsTr("Expression");
+							if (focus && text === qsTr("Expression"))
+								text = "";
+						}
+
+						style: TextFieldStyle {
+							background: Rectangle {
+								color: "transparent"
+							}
+						}
+					}
+				}
+
+				TextArea {
+					Layout.fillHeight: true
+					height: parent.height - rowConsole.height
+					readOnly: true
+					id: resultTextArea
+					width: expressionPanel.width
+					wrapMode: Text.Wrap
+					font.family: WebPreviewStyle.general.fontName
+					font.pointSize: Style.absoluteSize(-3)
+					backgroundVisible: true
+					style: TextAreaStyle {
+						backgroundColor: "#f0f0f0"
+					}
+				}
+			}
 		}
 	}
 }
+
+

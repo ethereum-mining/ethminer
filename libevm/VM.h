@@ -23,11 +23,11 @@
 
 #include <unordered_map>
 #include <libdevcore/Exceptions.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
-#include "FeeStructure.h"
+#include <libethcore/Params.h>
 #include "VMFace.h"
 
 namespace dev
@@ -56,7 +56,7 @@ public:
 
 	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
 
-	void require(u256 _n) { if (m_stack.size() < _n) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(StackTooSmall() << RequirementError((bigint)_n, (bigint)m_stack.size())); } }
+	void require(u256 _n, u256 _d) { if (m_stack.size() < _n) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(StackUnderflow() << RequirementError((bigint)_n, (bigint)m_stack.size())); } if (m_stack.size() - _n + _d >= c_stackLimit) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(OutOfStack() << RequirementError((bigint)(_d - _n), (bigint)m_stack.size())); } }
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
 
 	u256 curPC() const { return m_curPC; }

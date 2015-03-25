@@ -14,7 +14,67 @@
         }
     },
 
-    "WrongVRSTestVl27" : {
+    "V_overflow32bit" : {
+        "transaction" :
+        {
+            "data" : "0x5544",
+            "gasLimit" : "2000",
+            "gasPrice" : "1",
+            "nonce" : "3",
+            "to" : "b94f5374fce5edbc8e2a8697c15331677e6ebf0b",
+            "value" : "10",
+            "v" : "4294967323",
+            "r" : "0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a",
+            "s" : "0x8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3"
+        }
+    },
+
+    "V_overflow32bitSigned" : {
+        "transaction" :
+        {
+            "data" : "0x5544",
+            "gasLimit" : "2000",
+            "gasPrice" : "1",
+            "nonce" : "3",
+            "to" : "b94f5374fce5edbc8e2a8697c15331677e6ebf0b",
+            "value" : "10",
+            "v" : "2147483647",
+            "r" : "0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a",
+            "s" : "0x8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3"
+        }
+    },
+
+    "V_overflow64bit" : {
+        "transaction" :
+        {
+            "data" : "0x5544",
+            "gasLimit" : "2000",
+            "gasPrice" : "1",
+            "nonce" : "3",
+            "to" : "b94f5374fce5edbc8e2a8697c15331677e6ebf0b",
+            "value" : "10",
+            "v" : "18446744073709551643",
+            "r" : "0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a",
+            "s" : "0x8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3"
+        }
+    },
+
+    "V_overflow64bitSigned" : {
+        "transaction" :
+        {
+            "data" : "0x5544",
+            "gasLimit" : "2000",
+            "gasPrice" : "1",
+            "nonce" : "3",
+            "to" : "b94f5374fce5edbc8e2a8697c15331677e6ebf0b",
+            "value" : "10",
+            "v" : "18446744073709551388",
+            "r" : "0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a",
+            "s" : "0x8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3"
+        }
+    },
+
+    "WrongVRSTestVEqual26" : {
         "transaction" :
         {
             "data" : "",
@@ -29,7 +89,22 @@
         }
     },
 
-    "WrongVRSTestVge31" : {
+    "WrongVRSTestVEqual29" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "2000",
+            "gasPrice" : "1",
+            "nonce" : "0",
+            "to" : "b94f5374fce5edbc8e2a8697c15331677e6ebf0b",
+            "value" : "10",
+            "v" : "29",
+            "r" : "0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a",
+            "s" : "0x8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3"
+        }
+    },
+
+    "WrongVRSTestVEqual31" : {
         "transaction" :
         {
             "data" : "",
@@ -39,6 +114,21 @@
             "to" : "b94f5374fce5edbc8e2a8697c15331677e6ebf0b",
             "value" : "10",
             "v" : "31",
+            "r" : "0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a",
+            "s" : "0x8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3"
+        }
+    },
+
+    "WrongVRSTestVOverflow" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "2000",
+            "gasPrice" : "1",
+            "nonce" : "0",
+            "to" : "b94f5374fce5edbc8e2a8697c15331677e6ebf0b",
+            "value" : "10",
+            "v" : "310",
             "r" : "0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a",
             "s" : "0x8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3"
         }
@@ -64,6 +154,22 @@
         "transaction" :
         {
             "data" : "",
+            "gasLimit" : "850",
+            "gasPrice" : "1",
+            "nonce" : "0",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+            "value" : "10",
+            "v" : "27",
+            "r" : "0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
+            "s" : "secretkey 45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8",
+            "s" : "0xefffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804"
+        }
+    },
+
+    "DataTest" : {
+        "transaction" :
+        {
+            "data" : "0x0358ac39584bc98a7c979f984b03",
             "gasLimit" : "850",
             "gasPrice" : "1",
             "nonce" : "0",
@@ -136,7 +242,22 @@
         }
     },
 
-    "TransactionWithSvalueOverflow" : {
+    "TransactionWithSvalueHigh" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "850",
+            "gasPrice" : "1",
+            "nonce" : "0",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+            "value" : "11",
+            "v" : "27",
+            "r" : "0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
+            "s" : "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
+        }
+    },
+
+    "TransactionWithSvalueTooHigh" : {
         "transaction" :
         {
             "data" : "",
@@ -151,7 +272,52 @@
         }
     },
 
+    "TransactionWithSvalueOverflow" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "850",
+            "gasPrice" : "1",
+            "nonce" : "0",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+            "value" : "11",
+            "v" : "27",
+            "r" : "0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
+            "s" : "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f0000"
+        }
+    },
+
     "TransactionWithRvalueOverflow" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "850",
+            "gasPrice" : "1",
+            "nonce" : "0",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+            "value" : "11",
+            "v" : "27",
+            "r" : "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd03641410000",
+            "s" : "0xefffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804"
+        }
+    },
+
+    "TransactionWithRvalueHigh" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "850",
+            "gasPrice" : "1",
+            "nonce" : "0",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+            "value" : "11",
+            "v" : "27",
+            "r" : "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140",
+            "s" : "0x8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3"
+        }
+    },
+
+    "TransactionWithRvalueTooHigh" : {
         "transaction" :
         {
             "data" : "",
@@ -166,6 +332,51 @@
         }
     },
 
+    "TransactionWithRvalueWrongSize" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "850",
+            "gasPrice" : "1",
+            "nonce" : "0",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+            "value" : "11",
+            "v" : "27",
+            "r" : "0xebaaedce6af48a03bbfd25e8cd0364141",
+            "s" : "0xefffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804"
+        }
+    },
+
+   "TransactionWithSvalueWrongSize" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "850",
+            "gasPrice" : "1",
+            "nonce" : "0",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+            "value" : "11",
+            "v" : "27",
+            "r" : "0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a",
+            "s" : "0xef0b28ad43601b4ab949f53faa07bd2c804"
+        }
+    },
+
+    "TransactionWithHihghNonce" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "850",
+            "gasPrice" : "1",
+            "nonce" : "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+            "value" : "0",
+            "v" : "27",
+            "r" : "0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
+            "s" : "0xefffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804"
+        }
+    },
+
     "TransactionWithNonceOverflow" : {
         "transaction" :
         {
@@ -175,6 +386,51 @@
             "nonce" : "115792089237316195423570985008687907853269984665640564039457584007913129639936",
             "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
             "value" : "11",
+            "v" : "27",
+            "r" : "0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
+            "s" : "0xefffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804"
+        }
+    },
+
+    "TransactionWithHihghGas" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+            "gasPrice" : "1",
+            "nonce" : "0",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+            "value" : "0",
+            "v" : "27",
+            "r" : "0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
+            "s" : "0xefffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804"
+        }
+    },
+
+   "TransactionWithHihghGasPrice" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "1000",
+            "gasPrice" : "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+            "nonce" : "0",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+            "value" : "0",
+            "v" : "27",
+            "r" : "0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
+            "s" : "0xefffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804"
+        }
+    },
+
+   "TransactionWithGasLimitxPriceOverflow" : {
+        "transaction" :
+        {
+            "data" : "",
+            "gasLimit" : "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+            "gasPrice" : "100000000000000000",
+            "nonce" : "0",
+            "to" : "095e7baea6a6c7c4c2dfeb977efac326af552d87",
+            "value" : "0",
             "v" : "27",
             "r" : "0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
             "s" : "0xefffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804"
@@ -294,7 +550,7 @@
             "gasPrice" : "1",
             "nonce" : "0xffdc5",
             "to" : "b94f5374fce5edbc8e2a8697c15331677e6ebf0b",
-            "value" : "0xfffdc12c",
+            "value" : "4294820140",
             "v" : "28",
             "r" : "0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a",
             "s" : "0x8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3"
@@ -313,6 +569,34 @@
             "v" : "28",
             "r" : "0x98ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4a",
             "s" : "0x8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3"
+        }
+    },
+
+    "unpadedRValue": {
+        "transaction": {
+            "nonce": "13",
+            "gasPrice": "0x09184e72a000",
+            "gasLimit": "0x2710",
+            "to": "7c47ef93268a311f4cad0c750724299e9b72c268",
+            "data": "0x379607f50000000000000000000000000000000000000000000000000000000000000005",
+            "r": "0x006ab6dda9f4df56ea45583af36660329147f1753f3724ea5eb9ed83e812ca77",
+            "s": "0x495701e230667832c8999e884e366a61028633ecf951e8cd66d119f381ae5718",
+            "v": "28",
+            "value": ""
+        }
+    },
+
+    "libsecp256k1test": {
+        "transaction": {
+            "nonce": "",
+            "gasPrice": "0x09184e72a000",
+            "gasLimit": "0x1388",
+            "to": "",
+            "data": "",
+            "r": "44",
+            "s": "4",
+            "v": "27",
+            "value": ""
         }
     }
 }

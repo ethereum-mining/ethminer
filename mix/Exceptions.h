@@ -39,6 +39,7 @@ struct InvalidBlockException: virtual Exception {};
 struct FunctionNotFoundException: virtual Exception {};
 struct ExecutionStateException: virtual Exception {};
 struct ParameterChangedException: virtual Exception {};
+struct OutOfGasException: virtual Exception {};
 
 using QmlErrorInfo = boost::error_info<struct tagQmlError, QQmlError>;
 using FileError = boost::error_info<struct tagFileError, std::string>;

@@ -21,8 +21,10 @@
 
 #include <libdevcore/vector_ref.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/CommonIO.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Exceptions.h>
+#include <libevm/VMFace.h>
 #include "Transaction.h"
 using namespace std;
 using namespace dev;
@@ -30,18 +32,46 @@ using namespace dev::eth;
 
 #define ETH_ADDRESS_DEBUG 0
 
+std::ostream& dev::eth::operator<<(std::ostream& _out, ExecutionResult const& _er)
+{
+	_out << "{" << _er.gasUsed << ", " << _er.newAddress << ", " << toHex(_er.output) << "}";
+	return _out;
+}
+
+TransactionException dev::eth::toTransactionException(VMException const& _e)
+{
+	if (!!dynamic_cast<BadInstruction const*>(&_e))
+		return TransactionException::BadInstruction;
+	if (!!dynamic_cast<BadJumpDestination const*>(&_e))
+		return TransactionException::BadJumpDestination;
+	if (!!dynamic_cast<OutOfGas const*>(&_e))
+		return TransactionException::OutOfGas;
+	if (!!dynamic_cast<OutOfStack const*>(&_e))
+		return TransactionException::OutOfStack;
+	if (!!dynamic_cast<StackUnderflow const*>(&_e))
+		return TransactionException::StackUnderflow;
+	return TransactionException::Unknown;
+}
+
 Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 {
 	int field = 0;
 	RLP rlp(_rlpData);
 	try
 	{
+		if (!rlp.isList())
+			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("transaction RLP must be a list"));
+
 		m_nonce = rlp[field = 0].toInt<u256>();
 		m_gasPrice = rlp[field = 1].toInt<u256>();
 		m_gas = rlp[field = 2].toInt<u256>();
 		m_type = rlp[field = 3].isEmpty() ? ContractCreation : MessageCall;
-		m_receiveAddress = rlp[field = 3].toHash<Address>();
+		m_receiveAddress = rlp[field = 3].isEmpty() ? Address() : rlp[field = 3].toHash<Address>(RLP::VeryStrict);
 		m_value = rlp[field = 4].toInt<u256>();
+
+		if (!rlp[field = 5].isData())
+			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("transaction data RLP must be an array"));
+
 		m_data = rlp[field = 5].toBytes();
 		byte v = rlp[field = 6].toInt<byte>() - 27;
 		h256 r = rlp[field = 7].toInt<u256>();

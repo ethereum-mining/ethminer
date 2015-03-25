@@ -4,7 +4,9 @@
 var currentSelectedState = null;
 var currentDisplayedState = null;
 var debugData = null;
-var codeMap = null;
+var locations = [];
+var locationMap = {};
+var breakpoints = {};
 
 function init(data)
 {
@@ -22,6 +24,8 @@ function init(data)
 		currentSelectedState = null;
 		currentDisplayedState = null;
 		debugData = null;
+		locations = [];
+		locationMap = {};
 		return;
 	}
 
@@ -30,20 +34,69 @@ function init(data)
 	currentDisplayedState = 0;
 	setupInstructions(currentSelectedState);
 	setupCallData(currentSelectedState);
-	statesSlider.maximumValue = data.states.length - 1;
+	initLocations();
+	initSlider();
+	selectState(currentSelectedState);
+}
+
+function updateMode()
+{
+	initSlider();
+}
+
+function initLocations()
+{
+	locations = [];
+	if (debugData.states.length === 0)
+		return;
+
+	var nullLocation = { start: -1, end: -1, documentId: "", state: 0 };
+	var prevLocation = nullLocation;
+
+	for (var i = 0; i < debugData.states.length - 1; i++) {
+		var code = debugData.states[i].code;
+		var location = code.documentId ? debugData.states[i].solidity : nullLocation;
+		if (location.start !== prevLocation.start || location.end !== prevLocation.end || code.documentId !== prevLocation.documentId)
+		{
+			prevLocation = { start: location.start, end: location.end, documentId: code.documentId, state: i };
+			locations.push(prevLocation);
+		}
+		locationMap[i] = locations.length - 1;
+	}
+	locations.push({ start: -1, end: -1, documentId: code.documentId, state: i });
+
+	locationMap[debugData.states.length - 1] = locations.length - 1;
+}
+
+function setBreakpoints(bp)
+{
+	breakpoints = bp;
+}
+
+function srcMode()
+{
+	return !assemblyMode && locations.length;
+}
+
+function initSlider()
+{
+	if (!debugData)
+		statesSlider.maximumValue = 0;
+	else if (srcMode()) {
+		statesSlider.maximumValue = locations.length - 1;
+	} else {
+		statesSlider.maximumValue = debugData.states.length - 1;
+	}
 	statesSlider.value = 0;
-	select(currentSelectedState);
 }
 
 function setupInstructions(stateIndex)
 {
 	var instructions = debugData.states[stateIndex].code.instructions;
-	codeMap = {};
 	statesList.model.clear();
-	for (var i = 0; i < instructions.length; i++) {
+	for (var i = 0; i < instructions.length; i++)
 		statesList.model.append(instructions[i]);
-		codeMap[instructions[i].processIndex] = i;
-	}
+
 	callDataDump.listModel = debugData.states[stateIndex].callData.items;
 }
 
@@ -54,11 +107,13 @@ function setupCallData(stateIndex)
 
 function moveSelection(incr)
 {
-	var prevState = currentSelectedState;
-	if (currentSelectedState + incr >= 0)
-	{
-		if (currentSelectedState + incr < debugData.states.length)
-			select(currentSelectedState + incr);
+	if (srcMode()) {
+		var locationIndex = locationMap[currentSelectedState];
+		if (locationIndex + incr >= 0 && locationIndex + incr < locations.length)
+			selectState(locations[locationIndex + incr].state);
+	} else {
+		if (currentSelectedState + incr >= 0 && currentSelectedState + incr < debugData.states.length)
+			selectState(currentSelectedState + incr);
 	}
 }
 
@@ -67,16 +122,19 @@ function display(stateIndex)
 	if (stateIndex < 0)
 		stateIndex = 0;
 	if (stateIndex >= debugData.states.length)
-		stateIndex = debugData.state.length - 1;
+		stateIndex = debugData.states.length - 1;
 	if (debugData.states[stateIndex].codeIndex !== debugData.states[currentDisplayedState].codeIndex)
 		setupInstructions(stateIndex);
 	if (debugData.states[stateIndex].dataIndex !== debugData.states[currentDisplayedState].dataIndex)
 		setupCallData(stateIndex);
-	var codeLine = codeStr(stateIndex);
 	var state = debugData.states[stateIndex];
+	var codeLine = state.instructionIndex;
 	highlightSelection(codeLine);
 	completeCtxInformation(state);
 	currentDisplayedState = stateIndex;
+	var docId = debugData.states[stateIndex].code.documentId;
+	if (docId)
+		debugExecuteLocation(docId, debugData.states[stateIndex].solidity);
 }
 
 function displayFrame(frameIndex)
@@ -88,32 +146,39 @@ function displayFrame(frameIndex)
 		display(state.levels[frameIndex - 1]);
 }
 
-function select(stateIndex)
+function select(index)
+{
+	if (srcMode())
+		selectState(locations[index].state);
+	else
+		selectState(index);
+}
+
+function selectState(stateIndex)
 {
 	display(stateIndex);
 	currentSelectedState = stateIndex;
 	var state = debugData.states[stateIndex];
-	statesSlider.value = stateIndex;
 	jumpIntoForwardAction.enabled(stateIndex < debugData.states.length - 1)
 	jumpIntoBackAction.enabled(stateIndex > 0);
 	jumpOverForwardAction.enabled(stateIndex < debugData.states.length - 1);
 	jumpOverBackAction.enabled(stateIndex > 0);
 	jumpOutBackAction.enabled(state.levels.length > 1);
 	jumpOutForwardAction.enabled(state.levels.length > 1);
+	runForwardAction.enabled(stateIndex < debugData.states.length - 1)
+	runBackAction.enabled(stateIndex > 0);
 
 	var callStackData = [];
 	for (var l = 0; l < state.levels.length; l++) {
-		var address = debugData.states[state.levels[l] + 1].address;
+		var address = debugData.states[state.levels[l] + 1].code.address;
 		callStackData.push(address);
 	}
-	callStackData.push(debugData.states[0].address);
+	callStackData.push(debugData.states[0].code.address);
 	callStack.listModel = callStackData;
-}
-
-function codeStr(stateIndex)
-{
-	var state = debugData.states[stateIndex];
-	return codeMap[state.curPC];
+	if (srcMode())
+		statesSlider.value = locationMap[stateIndex];
+	else
+		statesSlider.value = stateIndex;
 }
 
 function highlightSelection(index)
@@ -133,6 +198,15 @@ function completeCtxInformation(state)
 	stack.listModel = state.debugStack;
 	storage.listModel = state.debugStorage;
 	memoryDump.listModel = state.debugMemory;
+	if (state.solidity) {
+		solLocals.setData(state.solidity.locals.variables, state.solidity.locals.values);
+		solStorage.setData(state.solidity.storage.variables, state.solidity.storage.values);
+		solCallStack.listModel = state.solidity.callStack;
+	} else {
+		solLocals.setData([], {});
+		solStorage.setData([], {});
+		solCallStack.listModel = [];
+	}
 }
 
 function isCallInstruction(index)
@@ -145,6 +219,24 @@ function isReturnInstruction(index)
 {
 	var state = debugData.states[index];
 	return state.instruction === "RETURN"
+}
+
+function locationsIntersect(l1, l2)
+{
+	return l1.start <= l2.end && l1.end >= l2.start;
+}
+
+function breakpointHit(i)
+{
+	var bpLocations = breakpoints[debugData.states[i].code.documentId];
+	if (bpLocations) {
+		var location = debugData.states[i].solidity;
+		if (location.start >= 0 && location.end >= location.start)
+			for (var b = 0; b < bpLocations.length; b++)
+				if (locationsIntersect(location, bpLocations[b]))
+					return true;
+	}
+	return false;
 }
 
 function stepIntoBack()
@@ -173,25 +265,48 @@ function stepIntoForward()
 	moveSelection(1);
 }
 
+function runBack()
+{
+	var i = currentSelectedState - 1;
+	while (i > 0 && !breakpointHit(i)) {
+		--i;
+	}
+	selectState(i);
+}
+
+function runForward()
+{
+	var i = currentSelectedState + 1;
+	while (i < debugData.states.length - 1 && !breakpointHit(i)) {
+		++i;
+	}
+	selectState(i);
+}
+
 function stepOutBack()
 {
 	var i = currentSelectedState - 1;
 	var depth = 0;
-	while (--i >= 0)
+	while (--i >= 0) {
+		if (breakpointHit(i))
+			break;
 		if (isCallInstruction(i))
 			if (depth == 0)
 				break;
 			else depth--;
 		else if (isReturnInstruction(i))
 			depth++;
-	select(i);
+	}
+	selectState(i);
 }
 
 function stepOutForward()
 {
 	var i = currentSelectedState;
 	var depth = 0;
-	while (++i < debugData.states.length)
+	while (++i < debugData.states.length) {
+		if (breakpointHit(i))
+			break;
 		if (isReturnInstruction(i))
 			if (depth == 0)
 				break;
@@ -199,7 +314,8 @@ function stepOutForward()
 				depth--;
 		else if (isCallInstruction(i))
 			depth++;
-	select(i + 1);
+	}
+	selectState(i + 1);
 }
 
 function jumpTo(value)

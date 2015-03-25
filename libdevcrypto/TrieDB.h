@@ -62,17 +62,21 @@ extern const h256 EmptyTrie;
  * assert(t.isEmpty());
  * @endcode
  */
-template <class DB>
+template <class _DB>
 class GenericTrieDB
 {
 public:
-	GenericTrieDB(DB* _db): m_db(_db) {}
+	using DB = _DB;
+
+	GenericTrieDB(DB* _db = nullptr): m_db(_db) {}
 	GenericTrieDB(DB* _db, h256 _root) { open(_db, _root); }
 	~GenericTrieDB() {}
 
+	void open(DB* _db) { m_db = _db; }
 	void open(DB* _db, h256 _root) { m_db = _db; setRoot(_root); }
 
-	void init();
+	void init() { setRoot(insertNode(&RLPNull)); assert(node(m_root).size()); }
+
 	void setRoot(h256 _root)
 	{
 		m_root = _root;
@@ -83,14 +87,13 @@ public:
 		if (!node(m_root).size())
 			BOOST_THROW_EXCEPTION(RootNotFound());
 	}
-	bool haveRoot(h256 _root, bool _enforceRefs = true) { return _root == c_shaNull ? true : m_db->lookup(_root, _enforceRefs).size(); }
 
 	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
 	bool isNull() const { return !node(m_root).size(); }
 	/// True if the trie is initialised but empty (i.e. that the DB contains the root node which is empty).
 	bool isEmpty() const { return m_root == c_shaNull && node(m_root).size(); }
 
-	h256 root() const { assert(node(m_root).size()); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
+	h256 root() const { if (!node(m_root).size()) BOOST_THROW_EXCEPTION(BadRoot()); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
 	void debugPrint() {}
 
@@ -211,6 +214,9 @@ public:
 
 	iterator lower_bound(bytesConstRef _key) const { return iterator(this, _key); }
 
+protected:
+	DB* db() const { return m_db; }
+
 private:
 	RLPStream& streamNode(RLPStream& _s, bytes const& _b);
 
@@ -281,30 +287,33 @@ std::ostream& operator<<(std::ostream& _out, GenericTrieDB<DB> const& _db)
 	return _out;
 }
 
-template <class KeyType, class DB>
-class TrieDB: public GenericTrieDB<DB>
+template <class Generic, class _KeyType>
+class SpecificTrieDB: public Generic
 {
 public:
-	TrieDB(DB* _db): GenericTrieDB<DB>(_db) {}
-	TrieDB(DB* _db, h256 _root): GenericTrieDB<DB>(_db, _root) {}
+	using DB = typename Generic::DB;
+	using KeyType = _KeyType;
+
+	SpecificTrieDB(DB* _db = nullptr): Generic(_db) {}
+	SpecificTrieDB(DB* _db, h256 _root): Generic(_db, _root) {}
 
 	std::string operator[](KeyType _k) const { return at(_k); }
 
-	bool contains(KeyType _k) const { return GenericTrieDB<DB>::contains(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
-	std::string at(KeyType _k) const { return GenericTrieDB<DB>::at(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
-	void insert(KeyType _k, bytesConstRef _value) { GenericTrieDB<DB>::insert(bytesConstRef((byte const*)&_k, sizeof(KeyType)), _value); }
+	bool contains(KeyType _k) const { return Generic::contains(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
+	std::string at(KeyType _k) const { return Generic::at(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
+	void insert(KeyType _k, bytesConstRef _value) { Generic::insert(bytesConstRef((byte const*)&_k, sizeof(KeyType)), _value); }
 	void insert(KeyType _k, bytes const& _value) { insert(_k, bytesConstRef(&_value)); }
-	void remove(KeyType _k) { GenericTrieDB<DB>::remove(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
+	void remove(KeyType _k) { Generic::remove(bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
 
-	class iterator: public GenericTrieDB<DB>::iterator
+	class iterator: public Generic::iterator
 	{
 	public:
-		using Super = typename GenericTrieDB<DB>::iterator;
+		using Super = typename Generic::iterator;
 		using value_type = std::pair<KeyType, bytesConstRef>;
 
 		iterator() {}
-		iterator(TrieDB const* _db): Super(_db) {}
-		iterator(TrieDB const* _db, bytesConstRef _k): Super(_db, _k) {}
+		iterator(Generic const* _db): Super(_db) {}
+		iterator(Generic const* _db, bytesConstRef _k): Super(_db, _k) {}
 
 		value_type operator*() const { return at(); }
 		value_type operator->() const { return at(); }
@@ -317,13 +326,117 @@ public:
 	iterator lower_bound(KeyType _k) const { return iterator(this, bytesConstRef((byte const*)&_k, sizeof(KeyType))); }
 };
 
-template <class KeyType, class DB>
-std::ostream& operator<<(std::ostream& _out, TrieDB<KeyType, DB> const& _db)
+template <class Generic, class KeyType>
+std::ostream& operator<<(std::ostream& _out, SpecificTrieDB<Generic, KeyType> const& _db)
 {
 	for (auto const& i: _db)
 		_out << i.first << ": " << escaped(i.second.toString(), false) << std::endl;
 	return _out;
 }
+
+template <class _DB>
+class HashedGenericTrieDB: private SpecificTrieDB<GenericTrieDB<_DB>, h256>
+{
+	using Super = SpecificTrieDB<GenericTrieDB<_DB>, h256>;
+
+public:
+	using DB = _DB;
+
+	HashedGenericTrieDB(DB* _db = nullptr): Super(_db) {}
+	HashedGenericTrieDB(DB* _db, h256 _root): Super(_db, _root) {}
+
+	using Super::open;
+	using Super::init;
+	using Super::setRoot;
+
+	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
+	using Super::isNull;
+	/// True if the trie is initialised but empty (i.e. that the DB contains the root node which is empty).
+	using Super::isEmpty;
+
+	using Super::root;
+
+	using Super::leftOvers;
+	using Super::check;
+
+	std::string at(bytesConstRef _key) const { return Super::at(sha3(_key)); }
+	bool contains(bytesConstRef _key) { return Super::contains(sha3(_key)); }
+	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(sha3(_key), _value); }
+	void remove(bytesConstRef _key) { Super::remove(sha3(_key)); }
+
+	// empty from the PoV of the iterator interface; still need a basic iterator impl though.
+	class iterator
+	{
+	public:
+		using value_type = std::pair<bytesConstRef, bytesConstRef>;
+
+		iterator() {}
+		iterator(HashedGenericTrieDB const*) {}
+		iterator(HashedGenericTrieDB const*, bytesConstRef) {}
+
+		iterator& operator++() { return *this; }
+		value_type operator*() const { return value_type(); }
+		value_type operator->() const { return value_type(); }
+
+		bool operator==(iterator const&) const { return true; }
+		bool operator!=(iterator const&) const { return false; }
+
+		value_type at() const { return value_type(); }
+	};
+	iterator begin() const { return iterator(); }
+	iterator end() const { return iterator(); }
+	iterator lower_bound(bytesConstRef) const { return iterator(); }
+};
+
+// Hashed & Basic
+template <class DB>
+class FatGenericTrieDB: public GenericTrieDB<DB>
+{
+	using Super = GenericTrieDB<DB>;
+
+public:
+	FatGenericTrieDB(DB* _db): Super(_db), m_secure(_db) {}
+	FatGenericTrieDB(DB* _db, h256 _root) { open(_db, _root); }
+
+	void open(DB* _db, h256 _root) { Super::open(_db); m_secure.open(_db); setRoot(_root); }
+
+	void init() { Super::init(); m_secure.init(); syncRoot(); }
+
+	void setRoot(h256 _root)
+	{
+		if (!m_secure.isNull())
+			Super::db()->removeAux(m_secure.root());
+		m_secure.setRoot(_root);
+		auto rb = Super::db()->lookupAux(m_secure.root());
+		auto r = h256(rb);
+		Super::setRoot(r);
+	}
+
+	h256 root() const { return m_secure.root(); }
+
+	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(_key, _value); m_secure.insert(_key, _value); syncRoot(); }
+	void remove(bytesConstRef _key) { Super::remove(_key); m_secure.remove(_key); syncRoot(); }
+
+	std::set<h256> leftOvers(std::ostream* = nullptr) const { return std::set<h256>{}; }
+	bool check(bool) const { return m_secure.check(false) && Super::check(false); }
+
+private:
+	void syncRoot()
+	{
+		// Root changed. Need to record the mapping so we can determine on setRoot.
+		Super::db()->insertAux(m_secure.root(), Super::root().ref());
+	}
+
+	HashedGenericTrieDB<DB> m_secure;
+};
+
+template <class KeyType, class DB> using TrieDB = SpecificTrieDB<GenericTrieDB<DB>, KeyType>;
+
+#if ETH_FATDB
+template <class KeyType, class DB> using SecureTrieDB = SpecificTrieDB<FatGenericTrieDB<DB>, KeyType>;
+#else
+template <class KeyType, class DB> using SecureTrieDB = SpecificTrieDB<HashedGenericTrieDB<DB>, KeyType>;
+#endif
 
 }
 
@@ -593,7 +706,7 @@ template <class DB> void GenericTrieDB<DB>::iterator::next()
 	}
 }
 
-template <class KeyType, class DB> typename TrieDB<KeyType, DB>::iterator::value_type TrieDB<KeyType, DB>::iterator::at() const
+template <class KeyType, class DB> typename SpecificTrieDB<KeyType, DB>::iterator::value_type SpecificTrieDB<KeyType, DB>::iterator::at() const
 {
 	auto p = Super::at();
 	value_type ret;
@@ -601,13 +714,6 @@ template <class KeyType, class DB> typename TrieDB<KeyType, DB>::iterator::value
 	memcpy(&ret.first, p.first.data(), sizeof(KeyType));
 	ret.second = p.second;
 	return ret;
-}
-
-template <class DB> void GenericTrieDB<DB>::init()
-{
-	m_root = insertNode(&RLPNull);
-//	std::cout << "Initialised root to " << m_root << std::endl;
-	assert(node(m_root).size());
 }
 
 template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesConstRef _value)

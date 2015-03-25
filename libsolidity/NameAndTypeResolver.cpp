@@ -267,12 +267,12 @@ void DeclarationRegistrationHelper::endVisit(ModifierDefinition&)
 	closeCurrentScope();
 }
 
-void DeclarationRegistrationHelper::endVisit(VariableDefinition& _variableDefinition)
+void DeclarationRegistrationHelper::endVisit(VariableDeclarationStatement& _variableDeclarationStatement)
 {
 	// Register the local variables with the function
 	// This does not fit here perfectly, but it saves us another AST visit.
-	solAssert(m_currentFunction, "Variable definition without function.");
-	m_currentFunction->addLocalVariable(_variableDefinition.getDeclaration());
+	solAssert(m_currentFunction, "Variable declaration without function.");
+	m_currentFunction->addLocalVariable(_variableDeclarationStatement.getDeclaration());
 }
 
 bool DeclarationRegistrationHelper::visit(VariableDeclaration& _declaration)
@@ -334,10 +334,10 @@ void ReferencesResolver::endVisit(VariableDeclaration& _variable)
 	if (_variable.getTypeName())
 	{
 		TypePointer type = _variable.getTypeName()->toType();
-		// All byte array parameter types should point to call data
+		// All array parameter types should point to call data
 		if (_variable.isExternalFunctionParameter())
-			if (auto const* byteArrayType = dynamic_cast<ByteArrayType const*>(type.get()))
-				type = byteArrayType->copyForLocation(ByteArrayType::Location::CallData);
+			if (auto const* arrayType = dynamic_cast<ArrayType const*>(type.get()))
+				type = arrayType->copyForLocation(ArrayType::Location::CallData);
 		_variable.setType(type);
 
 		if (!_variable.getType())

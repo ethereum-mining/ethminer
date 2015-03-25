@@ -59,6 +59,7 @@ public:
 	virtual bool visit(ElementaryTypeName&) { return true; }
 	virtual bool visit(UserDefinedTypeName&) { return true; }
 	virtual bool visit(Mapping&) { return true; }
+	virtual bool visit(ArrayTypeName&) { return true; }
 	virtual bool visit(Statement&) { return true; }
 	virtual bool visit(Block&) { return true; }
 	virtual bool visit(PlaceholderStatement&) { return true; }
@@ -69,7 +70,7 @@ public:
 	virtual bool visit(Continue&) { return true; }
 	virtual bool visit(Break&) { return true; }
 	virtual bool visit(Return&) { return true; }
-	virtual bool visit(VariableDefinition&) { return true; }
+	virtual bool visit(VariableDeclarationStatement&) { return true; }
 	virtual bool visit(ExpressionStatement&) { return true; }
 	virtual bool visit(Expression&) { return true; }
 	virtual bool visit(Assignment&) { return true; }
@@ -102,6 +103,7 @@ public:
 	virtual void endVisit(ElementaryTypeName&) { }
 	virtual void endVisit(UserDefinedTypeName&) { }
 	virtual void endVisit(Mapping&) { }
+	virtual void endVisit(ArrayTypeName&) { }
 	virtual void endVisit(Statement&) { }
 	virtual void endVisit(Block&) { }
 	virtual void endVisit(PlaceholderStatement&) { }
@@ -112,7 +114,7 @@ public:
 	virtual void endVisit(Continue&) { }
 	virtual void endVisit(Break&) { }
 	virtual void endVisit(Return&) { }
-	virtual void endVisit(VariableDefinition&) { }
+	virtual void endVisit(VariableDeclarationStatement&) { }
 	virtual void endVisit(ExpressionStatement&) { }
 	virtual void endVisit(Expression&) { }
 	virtual void endVisit(Assignment&) { }
@@ -149,6 +151,7 @@ public:
 	virtual bool visit(ElementaryTypeName const&) { return true; }
 	virtual bool visit(UserDefinedTypeName const&) { return true; }
 	virtual bool visit(Mapping const&) { return true; }
+	virtual bool visit(ArrayTypeName const&) { return true; }
 	virtual bool visit(Statement const&) { return true; }
 	virtual bool visit(Block const&) { return true; }
 	virtual bool visit(PlaceholderStatement const&) { return true; }
@@ -159,7 +162,7 @@ public:
 	virtual bool visit(Continue const&) { return true; }
 	virtual bool visit(Break const&) { return true; }
 	virtual bool visit(Return const&) { return true; }
-	virtual bool visit(VariableDefinition const&) { return true; }
+	virtual bool visit(VariableDeclarationStatement const&) { return true; }
 	virtual bool visit(ExpressionStatement const&) { return true; }
 	virtual bool visit(Expression const&) { return true; }
 	virtual bool visit(Assignment const&) { return true; }
@@ -192,6 +195,7 @@ public:
 	virtual void endVisit(ElementaryTypeName const&) { }
 	virtual void endVisit(UserDefinedTypeName const&) { }
 	virtual void endVisit(Mapping const&) { }
+	virtual void endVisit(ArrayTypeName const&) { }
 	virtual void endVisit(Statement const&) { }
 	virtual void endVisit(Block const&) { }
 	virtual void endVisit(PlaceholderStatement const&) { }
@@ -202,7 +206,7 @@ public:
 	virtual void endVisit(Continue const&) { }
 	virtual void endVisit(Break const&) { }
 	virtual void endVisit(Return const&) { }
-	virtual void endVisit(VariableDefinition const&) { }
+	virtual void endVisit(VariableDeclarationStatement const&) { }
 	virtual void endVisit(ExpressionStatement const&) { }
 	virtual void endVisit(Expression const&) { }
 	virtual void endVisit(Assignment const&) { }

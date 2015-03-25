@@ -20,6 +20,9 @@
  */
 
 #include <fstream>
+
+#include <boost/algorithm/string.hpp>
+
 #include <QtNetwork/QNetworkReply>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
@@ -27,7 +30,6 @@
 #include <QtWebKitWidgets/QWebFrame>
 #include <QtGui/QClipboard>
 #include <QtCore/QtCore>
-#include <boost/algorithm/string.hpp>
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #include <libdevcrypto/FileSystem.h>
@@ -112,7 +114,7 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->mineStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
-	
+
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 
 	bytesConstRef networkConfig((byte*)m_networkConfig.data(), m_networkConfig.size());
@@ -124,7 +126,7 @@ Main::Main(QWidget *parent) :
 //	m_server = unique_ptr<WebThreeStubServer>(new WebThreeStubServer(m_httpConnector, *web3(), keysAsVector(m_myKeys)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
-	
+
 	connect(ui->webView, &QWebView::loadStarted, [this]()
 	{
 		QWebFrame* f = ui->webView->page()->mainFrame();
@@ -138,16 +140,16 @@ Main::Main(QWidget *parent) :
 			f->evaluateJavaScript(contentsOfQResource(":/js/setup.js"));
 		});
 	});
-	
+
 	connect(ui->webView, &QWebView::loadFinished, [=]()
 	{
 	});
-	
+
 	connect(ui->webView, &QWebView::titleChanged, [=]()
 	{
 		ui->tabWidget->setTabText(0, ui->webView->title());
 	});
-	
+
 	readSettings();
 
 	installWatches();
@@ -210,13 +212,13 @@ void Main::installWatches()
 void Main::installNameRegWatch()
 {
 	ethereum()->uninstallWatch(m_nameRegFilter);
-	m_nameRegFilter = installWatch(dev::eth::LogFilter().address(u160(ethereum()->stateAt(c_config, 0))), [=](LocalisedLogEntries const&){ onNameRegChange(); });
+	m_nameRegFilter = installWatch(dev::eth::LogFilter().address(u160(ethereum()->stateAt(c_config, PendingBlock))), [=](LocalisedLogEntries const&){ onNameRegChange(); });
 }
 
 void Main::installCurrenciesWatch()
 {
 	ethereum()->uninstallWatch(m_currenciesFilter);
-	m_currenciesFilter = installWatch(dev::eth::LogFilter().address(u160(ethereum()->stateAt(c_config, 1))), [=](LocalisedLogEntries const&){ onCurrenciesChange(); });
+	m_currenciesFilter = installWatch(dev::eth::LogFilter().address(u160(ethereum()->stateAt(c_config, LatestBlock))), [=](LocalisedLogEntries const&){ onCurrenciesChange(); });
 }
 
 void Main::installBalancesWatch()
@@ -224,8 +226,8 @@ void Main::installBalancesWatch()
 	dev::eth::LogFilter tf;
 
 	vector<Address> altCoins;
-	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
-	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
+	Address coinsAddr = right160(ethereum()->stateAt(c_config, LatestBlock));
+	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, PendingBlock); ++i)
 		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
 	for (auto i: m_myKeys)
 		for (auto c: altCoins)
@@ -292,7 +294,7 @@ QString Main::pretty(dev::Address _a) const
 {
 	h256 n;
 
-	if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
+	if (h160 nameReg = (u160)ethereum()->stateAt(c_config, PendingBlock))
 		n = ethereum()->stateAt(nameReg, (u160)(_a));
 
 	return fromRaw(n);
@@ -319,7 +321,7 @@ Address Main::fromString(QString const& _a) const
 	memset(n.data() + sn.size(), 0, 32 - sn.size());
 	if (_a.size())
 	{
-		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0))
+		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, PendingBlock))
 			if (h256 a = ethereum()->stateAt(nameReg, n))
 				return right160(a);
 	}
@@ -348,10 +350,10 @@ QString Main::lookup(QString const& _a) const
 */
 
 	h256 ret;
-	if (h160 dnsReg = (u160)ethereum()->stateAt(c_config, 4, 0))
+	if (h160 dnsReg = (u160)ethereum()->stateAt(c_config, 4, PendingBlock))
 		ret = ethereum()->stateAt(dnsReg, n);
 /*	if (!ret)
-		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0, 0))
+		if (h160 nameReg = (u160)ethereum()->stateAt(c_config, 0, PendingBlock))
 			ret = ethereum()->stateAt(nameReg, n2);
 */
 	if (ret && !((u256)ret >> 32))
@@ -474,8 +476,8 @@ void Main::refreshBalances()
 	ui->ourAccounts->clear();
 	u256 totalBalance = 0;
 	map<Address, pair<QString, u256>> altCoins;
-	Address coinsAddr = right160(ethereum()->stateAt(c_config, 1));
-	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, 0); ++i)
+	Address coinsAddr = right160(ethereum()->stateAt(c_config, LatestBlock));
+	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, PendingBlock); ++i)
 		altCoins[right160(ethereum()->stateAt(coinsAddr, ethereum()->stateAt(coinsAddr, i + 1)))] = make_pair(fromRaw(ethereum()->stateAt(coinsAddr, i + 1)), 0);
 	for (auto i: m_myKeys)
 	{
@@ -521,7 +523,7 @@ void Main::timerEvent(QTimerEvent*)
 	// 7/18, Alex: aggregating timers, prelude to better threading?
 	// Runs much faster on slower dual-core processors
 	static int interval = 100;
-	
+
 	// refresh mining every 200ms
 	if (interval / 100 % 2 == 0)
 		refreshMining();
@@ -538,7 +540,7 @@ void Main::timerEvent(QTimerEvent*)
 
 	for (auto const& i: m_handlers)
 	{
-		auto ls = ethereum()->checkWatch(i.first);
+		auto ls = ethereum()->checkWatchSafe(i.first);
 		if (ls.size())
 			i.second(ls);
 	}

@@ -23,7 +23,7 @@
 
 #include <map>
 #include <functional>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include <libevm/ExtVMFace.h>
 #include "State.h"
 
@@ -69,6 +69,9 @@ public:
 	/// Determine account's TX count.
 	virtual u256 txCount(Address _a) override final { return m_s.transactionsFrom(_a); }
 
+	/// Does the account exist?
+	virtual bool exists(Address _a) override final { return m_s.addressInUse(_a); }
+
 	/// Suicide the associated contract to the given address.
 	virtual void suicide(Address _a) override final
 	{
@@ -79,7 +82,11 @@ public:
 
 	/// Revert any changes made (by any of the other calls).
 	/// @TODO check call site for the parent manifest being discarded.
-	virtual void revert() override final { m_s.m_cache = m_origCache; sub.clear(); }
+	virtual void revert() override final
+	{
+		m_s.m_cache = m_origCache;
+		sub.clear();
+	}
 
 	State& state() const { return m_s; }
 

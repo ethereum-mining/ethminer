@@ -11,6 +11,7 @@ QtObject {
 	property QtObject generic: QtObject {
 		property QtObject layout: QtObject {
 			property string separatorColor: "#808080"
+			property string backgroundColor: "#ededed"
 		}
 		property QtObject size: QtObject {
 			property string titlePointSize: absoluteSize(0)

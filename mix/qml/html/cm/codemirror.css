@@ -8,6 +8,10 @@
   font-size:12px
 }
 
+/* BREAKPOINTS */
+.breakpoints {width: .8em;}
+.breakpoint { color: #822; }
+
 /* PADDING */
 
 .CodeMirror-lines {
