@@ -32,7 +32,8 @@ namespace test
 {
 
 /**
- * @brief - loads the blockchain from json, creates temporary directory to store it, removes this temporary directory on dealloc
+ * @brief Should be used to load test blockchain from json file
+ * Loads the blockchain from json, creates temporary directory to store it, removes the directory on dealloc
  */
 class BlockChainLoader
 {
