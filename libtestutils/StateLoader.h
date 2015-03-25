@@ -29,6 +29,9 @@ namespace dev
 namespace test
 {
 
+/**
+ * @brief Friend of State, loads State from given JSON object
+ */
 class StateLoader
 {
 public:
