@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file ShortLivingDirectory.h
+/** @file TransientDirectory.h
  * @author Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  */
@@ -34,13 +34,13 @@ namespace test
  * It creates temporary directory in the given path. On dealloc it removes the directory
  * @throws if the given path already exists, throws an exception
  */
-class ShortLivingDirectory
+class TransientDirectory
 {
 public:
-	ShortLivingDirectory(std::string const& _path = getRandomPath());
-	~ShortLivingDirectory();
+	TransientDirectory(std::string const& _path = getRandomPath());
+	~TransientDirectory();
 
-	std::string const& path() { return m_path; }
+	std::string const& path() const { return m_path; }
 
 private:
 	std::string m_path;
