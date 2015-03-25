@@ -52,9 +52,6 @@ protected:
 
 	RLPStream& prep(RLPStream& _s, unsigned _id, unsigned _args = 0);
 	void sealAndSend(RLPStream& _s);
-	void send(bytes&& _msg);
-	void send(bytesConstRef _msg);
-
 	void addRating(unsigned _r);
 
 private:

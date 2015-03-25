@@ -57,6 +57,24 @@ string dev::memDump(bytes const& _bytes, unsigned _width, bool _html)
 	return ret.str();
 }
 
+// Don't forget to delete[] later.
+bytesRef dev::contentsNew(std::string const& _file)
+{
+	std::ifstream is(_file, std::ifstream::binary);
+	if (!is)
+		return bytesRef();
+	// get length of file:
+	is.seekg (0, is.end);
+	streamoff length = is.tellg();
+	if (length == 0) // return early, MSVC does not like reading 0 bytes
+		return bytesRef();
+	is.seekg (0, is.beg);
+	bytesRef ret(new byte[length], length);
+	is.read((char*)ret.data(), length);
+	is.close();
+	return ret;
+}
+
 bytes dev::contents(std::string const& _file)
 {
 	std::ifstream is(_file, std::ifstream::binary);
@@ -66,7 +84,7 @@ bytes dev::contents(std::string const& _file)
 	is.seekg (0, is.end);
 	streamoff length = is.tellg();
 	if (length == 0) // return early, MSVC does not like reading 0 bytes
-		return {};
+		return bytes();
 	is.seekg (0, is.beg);
 	bytes ret(length);
 	is.read((char*)ret.data(), length);
@@ -74,8 +92,26 @@ bytes dev::contents(std::string const& _file)
 	return ret;
 }
 
-void dev::writeFile(std::string const& _file, bytes const& _data)
+string dev::contentsString(std::string const& _file)
 {
-	ofstream(_file, ios::trunc).write((char const*)_data.data(), _data.size());
+	std::ifstream is(_file, std::ifstream::binary);
+	if (!is)
+		return string();
+	// get length of file:
+	is.seekg (0, is.end);
+	streamoff length = is.tellg();
+	if (length == 0) // return early, MSVC does not like reading 0 bytes
+		return string();
+	is.seekg (0, is.beg);
+	string ret;
+	ret.resize(length);
+	is.read((char*)ret.data(), length);
+	is.close();
+	return ret;
+}
+
+void dev::writeFile(std::string const& _file, bytesConstRef _data)
+{
+	ofstream(_file, ios::trunc|ios::binary).write((char const*)_data.data(), _data.size());
 }
 

@@ -21,7 +21,7 @@
 
 #include "Context.h"
 #include <QComboBox>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;

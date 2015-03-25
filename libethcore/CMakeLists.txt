@@ -22,9 +22,10 @@ else()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
 
+target_link_libraries(${EXECUTABLE} ethash)
 target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} devcore)
 
-install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
 

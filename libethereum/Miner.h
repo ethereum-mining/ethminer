@@ -27,11 +27,12 @@
 #include <atomic>
 #include <libdevcore/Common.h>
 #include <libdevcore/Worker.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 #include "State.h"
 
 namespace dev
 {
+
 namespace eth
 {
 
@@ -73,6 +74,32 @@ public:
 	virtual bytes const& blockData() const = 0;
 };
 
+class AsyncMiner: public Miner
+{
+public:
+	/// Null constructor.
+	AsyncMiner(): m_host(nullptr) {}
+
+	/// Constructor.
+	AsyncMiner(MinerHost* _host, unsigned _id = 0): m_host(_host), m_id(_id) {}
+
+	/// Setup its basics.
+	void setup(MinerHost* _host, unsigned _id = 0) { m_host = _host; m_id = _id; }
+
+	/// Start mining.
+	virtual void start() {}
+
+	/// Stop mining.
+	virtual void stop() {}
+
+	/// @returns true iff the mining has been start()ed. It may still not be actually mining, depending on the host's turbo() & force().
+	virtual bool isRunning() { return false; }
+
+protected:
+	MinerHost* m_host = nullptr;			///< Our host.
+	unsigned m_id = 0;						///< Our unique id.
+};
+
 /**
  * @brief Implements Miner.
  * To begin mining, use start() & stop(). noteStateChange() can be used to reset the mining and set up the
@@ -85,11 +112,11 @@ public:
  * @threadsafe
  * @todo Signal Miner to restart once with condition variables.
  */
-class LocalMiner: public Miner, Worker
+class LocalMiner: public AsyncMiner, Worker
 {
 public:
 	/// Null constructor.
-	LocalMiner(): m_host(nullptr) {}
+	LocalMiner() {}
 
 	/// Constructor.
 	LocalMiner(MinerHost* _host, unsigned _id = 0);
@@ -130,11 +157,12 @@ public:
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory() { Guard l(x_mineInfo); auto ret = m_mineHistory; m_mineHistory.clear(); return ret; }
 
+	/// @returns the state on which we mined.
+	State const& state() const { return m_mineState; }
+
 private:
 	/// Do some work on the mining.
 	virtual void doWork();
-
-	MinerHost* m_host = nullptr;			///< Our host.
 
 	enum MiningStatus { Waiting, Preparing, Mining, Mined, Stopping, Stopped };
 	MiningStatus m_miningStatus = Waiting;	///< TODO: consider mutex/atomic variable.

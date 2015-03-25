@@ -22,6 +22,7 @@
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/test/unit_test.hpp>
+
 #include "JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
 #include <libethereum/CanonBlockChain.h>
@@ -30,6 +31,7 @@
 #include <libethereum/Defaults.h>
 #include <libevm/VM.h>
 #include "TestHelper.h"
+#include "Stats.h"
 
 using namespace std;
 using namespace json_spirit;
@@ -40,11 +42,12 @@ namespace dev {  namespace test {
 
 void doStateTests(json_spirit::mValue& v, bool _fillin)
 {
-	processCommandLineOptions();
+	if (Options::get().stats)
+		Listener::registerListener(Stats::get());
 
 	for (auto& i: v.get_obj())
 	{
-		cerr << i.first << endl;
+		std::cout << "  " << i.first << "\n";
 		mObject& o = i.second.get_obj();
 
 		BOOST_REQUIRE(o.count("env") > 0);
@@ -59,19 +62,27 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 
 		try
 		{
-			theState.execute(lastHashes(importer.m_environment.currentBlock.number), tx, &output);
+			Listener::ExecTimeGuard guard{i.first};
+			output = theState.execute(lastHashes(importer.m_environment.currentBlock.number), tx).output;
 		}
 		catch (Exception const& _e)
 		{
-			cnote << "state execution did throw an exception: " << diagnostic_information(_e);
+			cnote << "Exception:\n" << diagnostic_information(_e);
+			theState.commit();
 		}
 		catch (std::exception const& _e)
 		{
-			cnote << "state execution did throw an exception: " << _e.what();
+			cnote << "state execution exception: " << _e.what();
 		}
 
 		if (_fillin)
+		{
+#if ETH_FATDB
 			importer.exportTest(output, theState);
+#else
+			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("You can not fill tests when FATDB is switched off"));
+#endif
+		}
 		else
 		{
 			BOOST_REQUIRE(o.count("post") > 0);
@@ -84,6 +95,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 			checkLog(theState.pending().size() ? theState.log(0) : LogEntries(), importer.m_environment.sub.logs);
 
 			// check addresses
+#if ETH_FATDB
 			auto expectedAddrs = importer.m_statePost.addresses();
 			auto resultAddrs = theState.addresses();
 			for (auto& expectedPair : expectedAddrs)
@@ -102,6 +114,8 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 				}
 			}
 			checkAddresses<map<Address, u256> >(expectedAddrs, resultAddrs);
+#endif
+			BOOST_CHECK_MESSAGE(theState.rootHash() == h256(o["postStateRoot"].get_str()), "wrong post state root");
 		}
 	}
 }
@@ -117,6 +131,11 @@ BOOST_AUTO_TEST_CASE(stExample)
 BOOST_AUTO_TEST_CASE(stSystemOperationsTest)
 {
 	dev::test::executeTests("stSystemOperationsTest", "/StateTests", dev::test::doStateTests);
+}
+
+BOOST_AUTO_TEST_CASE(stCallCreateCallCodeTest)
+{
+	dev::test::executeTests("stCallCreateCallCodeTest", "/StateTests", dev::test::doStateTests);
 }
 
 BOOST_AUTO_TEST_CASE(stPreCompiledContracts)
@@ -159,10 +178,28 @@ BOOST_AUTO_TEST_CASE(stBlockHashTest)
 	dev::test::executeTests("stBlockHashTest", "/StateTests", dev::test::doStateTests);
 }
 
+BOOST_AUTO_TEST_CASE(stQuadraticComplexityTest)
+{
+	if (test::Options::get().quadratic)
+		dev::test::executeTests("stQuadraticComplexityTest", "/StateTests", dev::test::doStateTests);
+}
+
+BOOST_AUTO_TEST_CASE(stMemoryStressTest)
+{
+	if (test::Options::get().memory)
+		dev::test::executeTests("stMemoryStressTest", "/StateTests", dev::test::doStateTests);
+}
+
 BOOST_AUTO_TEST_CASE(stSolidityTest)
 {
 	dev::test::executeTests("stSolidityTest", "/StateTests", dev::test::doStateTests);
 }
+
+BOOST_AUTO_TEST_CASE(stMemoryTest)
+{
+	dev::test::executeTests("stMemoryTest", "/StateTests", dev::test::doStateTests);
+}
+
 
 BOOST_AUTO_TEST_CASE(stCreateTest)
 {
@@ -198,9 +235,42 @@ BOOST_AUTO_TEST_CASE(stCreateTest)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(stRandom)
+{
+	string testPath = dev::test::getTestPath();
+	testPath += "/StateTests/RandomTests";
+
+	vector<boost::filesystem::path> testFiles;
+	boost::filesystem::directory_iterator iterator(testPath);
+	for(; iterator != boost::filesystem::directory_iterator(); ++iterator)
+		if (boost::filesystem::is_regular_file(iterator->path()) && iterator->path().extension() == ".json")
+			testFiles.push_back(iterator->path());
+
+	for (auto& path: testFiles)
+	{
+		try
+		{
+			cnote << "Testing ..." << path.filename();
+			json_spirit::mValue v;
+			string s = asString(dev::contents(path.string()));
+			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Content of " + path.string() + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
+			json_spirit::read_string(s, v);
+			dev::test::doStateTests(v, false);
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
+		}
+	}
+}
+
 BOOST_AUTO_TEST_CASE(userDefinedFileState)
 {
-	dev::test::userDefinedTest("--statetest", dev::test::doStateTests);
+	dev::test::userDefinedTest("--singletest", dev::test::doStateTests);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

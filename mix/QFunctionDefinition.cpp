@@ -28,15 +28,15 @@
 using namespace dev::solidity;
 using namespace dev::mix;
 
-QFunctionDefinition::QFunctionDefinition(dev::solidity::FunctionTypePointer const& _f): QBasicNodeDefinition(&_f->getDeclaration()), m_hash(dev::sha3(_f->getCanonicalSignature()))
+QFunctionDefinition::QFunctionDefinition(QObject* _parent, dev::solidity::FunctionTypePointer const& _f): QBasicNodeDefinition(_parent, &_f->getDeclaration()), m_hash(dev::sha3(_f->getCanonicalSignature()))
 {
 	auto paramNames = _f->getParameterNames();
-	auto paramTypes = _f->getParameterTypeNames();
+	auto paramTypes = _f->getParameterTypes();
 	auto returnNames = _f->getReturnParameterNames();
-	auto returnTypes = _f->getReturnParameterTypeNames();
+	auto returnTypes = _f->getReturnParameterTypes();
 	for (unsigned i = 0; i < paramNames.size(); ++i)
-		m_parameters.append(new QVariableDeclaration(paramNames[i], paramTypes[i]));
+		m_parameters.append(new QVariableDeclaration(_parent, paramNames[i], paramTypes[i].get()));
 
 	for (unsigned i = 0; i < returnNames.size(); ++i)
-		m_returnParameters.append(new QVariableDeclaration(returnNames[i], returnTypes[i]));
+		m_returnParameters.append(new QVariableDeclaration(_parent, returnNames[i], returnTypes[i].get()));
 }

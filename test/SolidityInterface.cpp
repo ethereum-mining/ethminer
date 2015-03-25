@@ -20,7 +20,7 @@
  * Unit tests for generating source interfaces for Solidity contracts.
  */
 
-#include <boost/test/unit_test.hpp>
+#include "TestHelper.h"
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/AST.h>
 
@@ -42,15 +42,15 @@ public:
 	ContractDefinition const& checkInterface(string const& _code, string const& _contractName = "")
 	{
 		m_code = _code;
-		BOOST_REQUIRE_NO_THROW(m_compilerStack.parse(_code));
+		ETH_TEST_REQUIRE_NO_THROW(m_compilerStack.parse(_code), "Parsing failed");
 		m_interface = m_compilerStack.getMetadata("", DocumentationType::ABISolidityInterface);
-		BOOST_REQUIRE_NO_THROW(m_reCompiler.parse(m_interface));
+		ETH_TEST_REQUIRE_NO_THROW(m_reCompiler.parse(m_interface), "Interface parsing failed");
 		return m_reCompiler.getContractDefinition(_contractName);
 	}
 
 	string getSourcePart(ASTNode const& _node) const
 	{
-		Location location = _node.getLocation();
+		SourceLocation location = _node.getLocation();
 		BOOST_REQUIRE(!location.isEmpty());
 		return m_interface.substr(location.start, location.end - location.start);
 	}
@@ -84,10 +84,10 @@ BOOST_AUTO_TEST_CASE(single_function)
 BOOST_AUTO_TEST_CASE(single_constant_function)
 {
 	ContractDefinition const& contract = checkInterface(
-			"contract test { function f(uint a) constant returns(hash8 x) { 1==2; } }");
+			"contract test { function f(uint a) constant returns(bytes1 x) { 1==2; } }");
 	BOOST_REQUIRE_EQUAL(1, contract.getDefinedFunctions().size());
 	BOOST_CHECK_EQUAL(getSourcePart(*contract.getDefinedFunctions().front()),
-					  "function f(uint256 a)constant returns(hash8 x){}");
+					  "function f(uint256 a)constant returns(bytes1 x){}");
 }
 
 BOOST_AUTO_TEST_CASE(multiple_functions)
@@ -128,15 +128,15 @@ BOOST_AUTO_TEST_CASE(inheritance)
 	char const* sourceCode =
 	"	contract Base { \n"
 	"		function baseFunction(uint p) returns (uint i) { return p; } \n"
-	"		event baseEvent(string32 indexed evtArgBase); \n"
+	"		event baseEvent(bytes32 indexed evtArgBase); \n"
 	"	} \n"
 	"	contract Derived is Base { \n"
-	"		function derivedFunction(string32 p) returns (string32 i) { return p; } \n"
+	"		function derivedFunction(bytes32 p) returns (bytes32 i) { return p; } \n"
 	"		event derivedEvent(uint indexed evtArgDerived); \n"
 	"	}";
 	ContractDefinition const& contract = checkInterface(sourceCode);
 	set<string> expectedFunctions({"function baseFunction(uint256 p)returns(uint256 i){}",
-								   "function derivedFunction(string32 p)returns(string32 i){}"});
+								   "function derivedFunction(bytes32 p)returns(bytes32 i){}"});
 	BOOST_REQUIRE_EQUAL(2, contract.getDefinedFunctions().size());
 	BOOST_CHECK(expectedFunctions == set<string>({getSourcePart(*contract.getDefinedFunctions().at(0)),
 												  getSourcePart(*contract.getDefinedFunctions().at(1))}));

@@ -13,14 +13,12 @@ contract Config is mortal {
 		if (tx.origin != owner)
 			return;
 		services[id] = service;
-		log1(0, id);
 	}
 
 	function unregister(uint id) {
 		if (msg.sender != owner && services[id] != msg.sender)
 			return;
 		services[id] = address(0);
-		log1(0, id);
 	}
 
 	function lookup(uint service) constant returns(address a) {
@@ -56,8 +54,8 @@ web3.eth.contract(addrConfig, abiConfig).lookup(1).call().then(function(r){ addr
 //   Gav Wood <g@ethdev.com>
 
 contract NameRegister {
-	function getAddress(string32 _name) constant returns (address o_owner) {}
-	function getName(address _owner) constant returns (string32 o_name) {}
+	function getAddress(bytes32 _name) constant returns (address o_owner) {}
+	function getName(address _owner) constant returns (bytes32 o_name) {}
 }
 
 contract NameReg is owned, NameRegister {
@@ -68,11 +66,9 @@ contract NameReg is owned, NameRegister {
 		toName[this] = "NameReg";
 		toAddress["NameReg"] = this;
 		Config(addrConfig).register(1, this);
-		log1(0, hash256(addrConfig));
-		log1(0, hash256(this));
 	}
 
-	function register(string32 name) {
+	function register(bytes32 name) {
 		// Don't allow the same name to be overwritten.
 		if (toAddress[name] != address(0))
 			return;
@@ -82,41 +78,39 @@ contract NameReg is owned, NameRegister {
 
 		toName[msg.sender] = name;
 		toAddress[name] = msg.sender;
-		log1(0, hash256(msg.sender));
 	}
 
 	function unregister() {
-		string32 n = toName[msg.sender];
+		bytes32 n = toName[msg.sender];
 		if (n == "")
 			return;
-		log1(0, hash256(toAddress[n]));
 		toName[msg.sender] = "";
 		toAddress[n] = address(0);
 	}
 
-	function addressOf(string32 name) constant returns (address addr) {
+	function addressOf(bytes32 name) constant returns (address addr) {
 		return toAddress[name];
 	}
 
-	function nameOf(address addr) constant returns (string32 name) {
+	function nameOf(address addr) constant returns (bytes32 name) {
 		return toName[addr];
 	}
 
-	mapping (address => string32) toName;
-	mapping (string32 => address) toAddress;
+	mapping (address => bytes32) toName;
+	mapping (bytes32 => address) toAddress;
 }
 
 
 /*
 
 // Solidity Interface:
-contract NameReg{function kill(){}function register(string32 name){}function addressOf(string32 name)constant returns(address addr){}function unregister(){}function nameOf(address addr)constant returns(string32 name){}}
+contract NameReg{function kill(){}function register(bytes32 name){}function addressOf(bytes32 name)constant returns(address addr){}function unregister(){}function nameOf(address addr)constant returns(bytes32 name){}}
 
 // Example Solidity use:
 NameReg(addrNameReg).register("Some Contract");
 
 // JS Interface:
-var abiNameReg = [{"constant":true,"inputs":[{"name":"name","type":"string32"}],"name":"addressOf","outputs":[{"name":"addr","type":"address"}]},{"constant":false,"inputs":[],"name":"kill","outputs":[]},{"constant":true,"inputs":[{"name":"addr","type":"address"}],"name":"nameOf","outputs":[{"name":"name","type":"string32"}]},{"constant":false,"inputs":[{"name":"name","type":"string32"}],"name":"register","outputs":[]},{"constant":false,"inputs":[],"name":"unregister","outputs":[]}];
+var abiNameReg = [{"constant":true,"inputs":[{"name":"name","type":"bytes32"}],"name":"addressOf","outputs":[{"name":"addr","type":"address"}]},{"constant":false,"inputs":[],"name":"kill","outputs":[]},{"constant":true,"inputs":[{"name":"addr","type":"address"}],"name":"nameOf","outputs":[{"name":"name","type":"bytes32"}]},{"constant":false,"inputs":[{"name":"name","type":"bytes32"}],"name":"register","outputs":[]},{"constant":false,"inputs":[],"name":"unregister","outputs":[]}];
 
 // Example JS use:
 web3.eth.contract(addrNameReg, abiNameReg).register("My Name").transact();

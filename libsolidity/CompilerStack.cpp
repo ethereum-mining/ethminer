@@ -41,14 +41,14 @@ namespace solidity
 {
 
 const map<string, string> StandardSources = map<string, string>{
-	{"coin", R"(import "CoinReg";import "Config";import "configUser";contract coin is configUser{function coin(string3 name, uint denom) {CoinReg(Config(configAddr()).lookup(3)).register(name, denom);}})"},
+	{"coin", R"(import "CoinReg";import "Config";import "configUser";contract coin is configUser{function coin(bytes3 name, uint denom) {CoinReg(Config(configAddr()).lookup(3)).register(name, denom);}})"},
 	{"Coin", R"(contract Coin{function isApprovedFor(address _target,address _proxy)constant returns(bool _r){}function isApproved(address _proxy)constant returns(bool _r){}function sendCoinFrom(address _from,uint256 _val,address _to){}function coinBalanceOf(address _a)constant returns(uint256 _r){}function sendCoin(uint256 _val,address _to){}function coinBalance()constant returns(uint256 _r){}function approve(address _a){}})"},
-	{"CoinReg", R"(contract CoinReg{function count()constant returns(uint256 r){}function info(uint256 i)constant returns(address addr,string3 name,uint256 denom){}function register(string3 name,uint256 denom){}function unregister(){}})"},
+	{"CoinReg", R"(contract CoinReg{function count()constant returns(uint256 r){}function info(uint256 i)constant returns(address addr,bytes3 name,uint256 denom){}function register(bytes3 name,uint256 denom){}function unregister(){}})"},
 	{"configUser", R"(contract configUser{function configAddr()constant returns(address a){ return 0xc6d9d2cd449a754c494264e1809c50e34d64562b;}})"},
 	{"Config", R"(contract Config{function lookup(uint256 service)constant returns(address a){}function kill(){}function unregister(uint256 id){}function register(uint256 id,address service){}})"},
 	{"mortal", R"(import "owned";contract mortal is owned {function kill() { if (msg.sender == owner) suicide(owner); }})"},
-	{"named", R"(import "Config";import "NameReg";import "configUser";contract named is configUser {function named(string32 name) {NameReg(Config(configAddr()).lookup(1)).register(name);}})"},
-	{"NameReg", R"(contract NameReg{function register(string32 name){}function addressOf(string32 name)constant returns(address addr){}function unregister(){}function nameOf(address addr)constant returns(string32 name){}})"},
+	{"named", R"(import "Config";import "NameReg";import "configUser";contract named is configUser {function named(bytes32 name) {NameReg(Config(configAddr()).lookup(1)).register(name);}})"},
+	{"NameReg", R"(contract NameReg{function register(bytes32 name){}function addressOf(bytes32 name)constant returns(address addr){}function unregister(){}function nameOf(address addr)constant returns(bytes32 name){}})"},
 	{"owned", R"(contract owned{function owned(){owner = msg.sender;}modifier onlyowner(){if(msg.sender==owner)_}address owner;})"},
 	{"service", R"(import "Config";import "configUser";contract service is configUser{function service(uint _n){Config(configAddr()).register(_n, this);}})"},
 	{"std", R"(import "owned";import "mortal";import "Config";import "configUser";import "NameReg";import "named";)"}
@@ -58,21 +58,22 @@ CompilerStack::CompilerStack(bool _addStandardSources):
 	m_addStandardSources(_addStandardSources), m_parseSuccessful(false)
 {
 	if (m_addStandardSources)
-		addSources(StandardSources);
+		addSources(StandardSources, true); // add them as libraries
 }
 
-bool CompilerStack::addSource(string const& _name, string const& _content)
+bool CompilerStack::addSource(string const& _name, string const& _content, bool _isLibrary)
 {
 	bool existed = m_sources.count(_name) != 0;
 	reset(true);
-	m_sources[_name].scanner = make_shared<Scanner>(CharStream(expanded(_content)), _name);
+	m_sources[_name].scanner = make_shared<Scanner>(CharStream(_content), _name);
+	m_sources[_name].isLibrary = _isLibrary;
 	return existed;
 }
 
 void CompilerStack::setSource(string const& _sourceCode)
 {
 	reset();
-	addSource("", expanded(_sourceCode));
+	addSource("", _sourceCode);
 }
 
 void CompilerStack::parse()
@@ -126,57 +127,6 @@ vector<string> CompilerStack::getContractNames() const
 	return contractNames;
 }
 
-////// BEGIN: TEMPORARY ONLY
-///
-/// NOTE: THIS INVALIDATES SOURCE POINTERS AND CAN CRASH THE COMPILER
-///
-/// remove once import works properly and we have genesis contracts
-
-string CompilerStack::expanded(string const& _sourceCode)
-{
-	const map<string, string> c_standardSources = map<string, string>{
-		{ "Config", "contract Config{function lookup(uint256 service)constant returns(address a){}function kill(){}function unregister(uint256 id){}function register(uint256 id,address service){}}" },
-		{ "Coin", "contract Coin{function isApprovedFor(address _target,address _proxy)constant returns(bool _r){}function isApproved(address _proxy)constant returns(bool _r){}function sendCoinFrom(address _from,uint256 _val,address _to){}function coinBalanceOf(address _a)constant returns(uint256 _r){}function sendCoin(uint256 _val,address _to){}function coinBalance()constant returns(uint256 _r){}function approve(address _a){}}"},
-		{ "CoinReg", "contract CoinReg{function count()constant returns(uint256 r){}function info(uint256 i)constant returns(address addr,string3 name,uint256 denom){}function register(string3 name,uint256 denom){}function unregister(){}}" },
-		{ "coin", "#require CoinReg\ncontract coin {function coin(string3 name, uint denom) {CoinReg(Config().lookup(3)).register(name, denom);}}" },
-		{ "service", "#require Config\ncontract service{function service(uint _n){Config().register(_n, this);}}" },
-		{ "owned", "contract owned{function owned(){owner = msg.sender;}modifier onlyowner(){if(msg.sender==owner)_}address owner;}" },
-		{ "mortal", "#require owned\ncontract mortal is owned {function kill() { if (msg.sender == owner) suicide(owner); }}" },
-		{ "NameReg", "contract NameReg{function register(string32 name){}function addressOf(string32 name)constant returns(address addr){}function unregister(){}function nameOf(address addr)constant returns(string32 name){}}" },
-		{ "named", "#require Config NameReg\ncontract named {function named(string32 name) {NameReg(Config().lookup(1)).register(name);}}" },
-		{ "std", "#require owned mortal Config NameReg named" },
-	};
-
-	string sub;
-	set<string> got;
-	function<string(string const&)> localExpanded;
-	localExpanded = [&](string const& s) -> string
-	{
-		string ret = s;
-		for (size_t p = 0; p != string::npos;)
-			if ((p = ret.find("#require ")) != string::npos)
-			{
-				string n = ret.substr(p + 9, ret.find_first_of('\n', p + 9) - p - 9);
-				ret.replace(p, n.size() + 9, "");
-				vector<string> rs;
-				boost::split(rs, n, boost::is_any_of(" \t,"), boost::token_compress_on);
-				for (auto const& r: rs)
-					if (!got.count(r))
-					{
-						if (c_standardSources.count(r))
-							sub.append("\n" + localExpanded(c_standardSources.at(r)) + "\n");
-						got.insert(r);
-					}
-			}
-			// TODO: remove once we have genesis contracts.
-			else if ((p = ret.find("Config()")) != string::npos)
-				ret.replace(p, 8, "Config(0xc6d9d2cd449a754c494264e1809c50e34d64562b)");
-		return ret;
-	};
-	return sub + localExpanded(_sourceCode);
-}
-
-////// END: TEMPORARY ONLY
 
 void CompilerStack::compile(bool _optimize)
 {
@@ -205,6 +155,16 @@ bytes const& CompilerStack::compile(string const& _sourceCode, bool _optimize)
 	return getBytecode();
 }
 
+eth::AssemblyItems const& CompilerStack::getAssemblyItems(string const& _contractName) const
+{
+	return getContract(_contractName).compiler->getAssemblyItems();
+}
+
+eth::AssemblyItems const& CompilerStack::getRuntimeAssemblyItems(string const& _contractName) const
+{
+	return getContract(_contractName).compiler->getRuntimeAssemblyItems();
+}
+
 bytes const& CompilerStack::getBytecode(string const& _contractName) const
 {
 	return getContract(_contractName).bytecode;
@@ -220,9 +180,9 @@ dev::h256 CompilerStack::getContractCodeHash(string const& _contractName) const
 	return dev::sha3(getRuntimeBytecode(_contractName));
 }
 
-void CompilerStack::streamAssembly(ostream& _outStream, string const& _contractName) const
+void CompilerStack::streamAssembly(ostream& _outStream, string const& _contractName, StringMap _sourceCodes) const
 {
-	getContract(_contractName).compiler->streamAssembly(_outStream);
+	getContract(_contractName).compiler->streamAssembly(_outStream, _sourceCodes);
 }
 
 string const& CompilerStack::getInterface(string const& _contractName) const
@@ -328,7 +288,8 @@ void CompilerStack::resolveImports()
 	};
 
 	for (auto const& sourcePair: m_sources)
-		toposort(&sourcePair.second);
+		if (!sourcePair.second.isLibrary)
+			toposort(&sourcePair.second);
 
 	swap(m_sourceOrder, sourceOrder);
 }

@@ -23,7 +23,7 @@
 
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
-#include <libethcore/CommonEth.h>
+#include <libethcore/Common.h>
 
 namespace dev
 {
@@ -43,6 +43,48 @@ enum class CheckSignature
 	Range,
 	Sender
 };
+
+enum class TransactionException
+{
+	None = 0,
+	Unknown,
+	InvalidSignature,
+	InvalidNonce,
+	NotEnoughCash,
+	OutOfGasBase,			///< Too little gas to pay for the base transaction cost.
+	BlockGasLimitReached,
+	BadInstruction,
+	BadJumpDestination,
+	OutOfGas,				///< Ran out of gas executing code of the transaction.
+	OutOfStack,				///< Ran out of stack executing code of the transaction.
+	StackUnderflow
+};
+
+enum class CodeDeposit
+{
+	None = 0,
+	Failed,
+	Success
+};
+
+struct VMException;
+
+TransactionException toTransactionException(VMException const& _e);
+
+/// Description of the result of executing a transaction.
+struct ExecutionResult
+{
+	ExecutionResult() = default;
+	ExecutionResult(u256 _gasUsed, TransactionException _excepted, Address _newAddress, bytesConstRef _output, CodeDeposit _codeDeposit, u256 _gasRefund): gasUsed(_gasUsed), excepted(_excepted), newAddress(_newAddress), output(_output.toBytes()), codeDeposit(_codeDeposit), gasRefunded(_gasRefund) {}
+	u256 gasUsed = 0;
+	TransactionException excepted = TransactionException::Unknown;
+	Address newAddress;
+	bytes output;
+	CodeDeposit codeDeposit = CodeDeposit::None;
+	u256 gasRefunded = 0;
+};
+
+std::ostream& operator<<(std::ostream& _out, ExecutionResult const& _er);
 
 /// Encodes a transaction, ready to be exported to or freshly imported from RLP.
 class Transaction
@@ -81,7 +123,7 @@ public:
 	Address safeSender() const noexcept;
 
 	/// @returns true if transaction is non-null.
-	operator bool() const { return m_type != NullTransaction; }
+	explicit operator bool() const { return m_type != NullTransaction; }
 
 	/// @returns true if transaction is contract-creation.
 	bool isCreation() const { return m_type == ContractCreation; }

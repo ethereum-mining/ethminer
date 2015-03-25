@@ -25,4 +25,4 @@ using namespace dev;
 using namespace dev::eth;
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
-namespace { char dummy; };
+namespace { char dummy; }

@@ -10,5 +10,7 @@ QtObject {
 
 	property QtObject general: QtObject {
 		property string headerBackgroundColor: "#f0f0f0"
+		property string separatorColor: "#808080"
+		property string fontName: "sans serif"
 	}
 }

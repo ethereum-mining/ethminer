@@ -58,6 +58,7 @@ public:
 	bool visit(ElementaryTypeName const& _node) override;
 	bool visit(UserDefinedTypeName const& _node) override;
 	bool visit(Mapping const& _node) override;
+	bool visit(ArrayTypeName const& _node) override;
 	bool visit(Statement const& _node) override;
 	bool visit(Block const& _node) override;
 	bool visit(PlaceholderStatement const& _node) override;
@@ -68,7 +69,7 @@ public:
 	bool visit(Continue const& _node) override;
 	bool visit(Break const& _node) override;
 	bool visit(Return const& _node) override;
-	bool visit(VariableDefinition const& _node) override;
+	bool visit(VariableDeclarationStatement const& _node) override;
 	bool visit(ExpressionStatement const& _node) override;
 	bool visit(Expression const& _node) override;
 	bool visit(Assignment const& _node) override;
@@ -99,6 +100,7 @@ public:
 	void endVisit(ElementaryTypeName const&) override;
 	void endVisit(UserDefinedTypeName const&) override;
 	void endVisit(Mapping const&) override;
+	void endVisit(ArrayTypeName const&) override;
 	void endVisit(Statement const&) override;
 	void endVisit(Block const&) override;
 	void endVisit(PlaceholderStatement const&) override;
@@ -109,7 +111,7 @@ public:
 	void endVisit(Continue const&) override;
 	void endVisit(Break const&) override;
 	void endVisit(Return const&) override;
-	void endVisit(VariableDefinition const&) override;
+	void endVisit(VariableDeclarationStatement const&) override;
 	void endVisit(ExpressionStatement const&) override;
 	void endVisit(Expression const&) override;
 	void endVisit(Assignment const&) override;

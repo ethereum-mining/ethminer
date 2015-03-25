@@ -7,15 +7,63 @@ import QtQuick.Window 2.1
 import QtQuick.PrivateWidgets 1.1
 import Qt.labs.settings 1.0
 import org.ethereum.qml.QEther 1.0
+import org.ethereum.qml.CodeModel 1.0
+import org.ethereum.qml.ClientModel 1.0
+import org.ethereum.qml.FileIo 1.0
+import org.ethereum.qml.Clipboard 1.0
 
 ApplicationWindow {
+
 	id: mainApplication
+	signal loaded;
 	visible: true
 	width: 1200
 	height: 800
 	minimumWidth: 400
 	minimumHeight: 300
 	title: qsTr("Mix")
+
+	CodeModel {
+		id: codeModel
+	}
+
+	ClientModel {
+		id: clientModel
+		codeModel: codeModel
+	}
+
+	ProjectModel {
+		id: projectModel
+	}
+
+	FileIo {
+		id: fileIo
+	}
+
+	Clipboard {
+		id: clipboard
+	}
+
+	Connections {
+		target: mainApplication
+		onClosing:
+		{
+			mainApplication.close();
+			close.accepted = false;
+		}
+	}
+
+	Component.onCompleted:  {
+		loaded();
+	}
+
+	function close() {
+		projectModel.appIsClosing = true;
+		if (projectModel.projectPath !== "")
+			projectModel.closeProject(function() { Qt.quit(); })
+		else
+			Qt.quit();
+	}
 
 	menuBar: MenuBar {
 		Menu {
@@ -24,6 +72,7 @@ ApplicationWindow {
 			MenuItem { action: openProjectAction }
 			MenuSeparator {}
 			MenuItem { action: saveAllFilesAction }
+			MenuItem { action: saveCurrentDocument }
 			MenuSeparator {}
 			MenuItem { action: addExistingFileAction }
 			MenuItem { action: addNewJsFileAction }
@@ -37,7 +86,6 @@ ApplicationWindow {
 		}
 		Menu {
 			title: qsTr("Deploy")
-			MenuItem { action: debugRunAction }
 			MenuItem { action: mineAction }
 			MenuSeparator {}
 			MenuItem { action: editStatesAction }
@@ -45,6 +93,12 @@ ApplicationWindow {
 			MenuItem { action: deployViaRpcAction }
 			MenuSeparator {}
 			MenuItem { action: toggleRunOnLoadAction }
+		}
+		Menu {
+			title: qsTr("Debug")
+			MenuItem { action: debugRunAction }
+			MenuSeparator {}
+			MenuItem { action: toggleAssemblyDebuggingAction }
 		}
 		Menu {
 			title: qsTr("Windows")
@@ -56,7 +110,7 @@ ApplicationWindow {
 			MenuItem { action: toggleTransactionLogAction }
 			MenuItem { action: toggleWebPreviewAction }
 			MenuItem { action: toggleWebPreviewOrientationAction }
-			MenuItem { action: toggleCallsInLog }
+			//MenuItem { action: toggleCallsInLog }
 		}
 	}
 
@@ -87,12 +141,15 @@ ApplicationWindow {
 		id: exitAppAction
 		text: qsTr("Exit")
 		shortcut: "Ctrl+Q"
-		onTriggered: Qt.quit();
+		onTriggered:
+		{
+			mainApplication.close();
+		}
 	}
 
 	Action {
 		id: mineAction
-		text: qsTr("Mine")
+		text: qsTr("New Block")
 		shortcut: "Ctrl+M"
 		onTriggered: clientModel.mine();
 		enabled: codeModel.hasContract && !clientModel.running && !clientModel.mining
@@ -130,6 +187,15 @@ ApplicationWindow {
 	}
 
 	Action {
+		id: toggleAssemblyDebuggingAction
+		text: qsTr("Show VM Code")
+		shortcut: "Ctrl+Alt+V"
+		onTriggered: mainContent.rightPane.assemblyMode = !mainContent.rightPane.assemblyMode;
+		checked: mainContent.rightPane.assemblyMode;
+		enabled: true
+	}
+
+	Action {
 		id: toggleWebPreviewAction
 		text: qsTr("Show Web View")
 		shortcut: "F2"
@@ -163,15 +229,6 @@ ApplicationWindow {
 		checkable: true
 		checked: mainContent.webViewHorizontal
 		onTriggered: mainContent.toggleWebPreviewOrientation();
-	}
-
-	Action {
-		id: toggleCallsInLog
-		text: qsTr("Show Calls in Transaction Log")
-		shortcut: ""
-		checkable: true
-		checked: mainContent.rightPane.transactionLog.showLogs
-		onTriggered: mainContent.rightPane.transactionLog.showLogs = !mainContent.rightPane.transactionLog.showLogs
 	}
 
 	Action {
@@ -274,9 +331,17 @@ ApplicationWindow {
 	Action {
 		id: saveAllFilesAction
 		text: qsTr("Save All")
-		shortcut: "Ctrl+S"
+		shortcut: "Ctrl+Shift+A"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.saveAll();
+	}
+
+	Action {
+		id: saveCurrentDocument
+		text: qsTr("Save Current Document")
+		shortcut: "Ctrl+S"
+		enabled: !projectModel.isEmpty
+		onTriggered: projectModel.saveCurrentDocument();
 	}
 
 	Action {
@@ -301,6 +366,14 @@ ApplicationWindow {
 		shortcut: "Ctrl+Shift+Tab"
 		enabled: !projectModel.isEmpty
 		onTriggered: projectModel.openPrevDocument();
+	}
+
+	Action {
+		id: toggleBreakpointAction
+		text: qsTr("Toggle Breakpoint")
+		shortcut: "F9"
+		enabled: mainContent.codeEditor.editingContract();
+		onTriggered: mainContent.toggleBreakpoint();
 	}
 
 	Action {

@@ -25,7 +25,9 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <fstream>
 #include <cstdint>
+
 #include <boost/test/unit_test.hpp>
+
 #include <json_spirit/json_spirit.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/CommonIO.h>
@@ -50,6 +52,7 @@ public:
 
 	virtual u256 store(u256 _n) override { return std::get<2>(addresses[myAddress])[_n]; }
 	virtual void setStore(u256 _n, u256 _v) override { std::get<2>(addresses[myAddress])[_n] = _v; }
+	virtual bool exists(Address _a) override { return !!addresses.count(_a); }
 	virtual u256 balance(Address _a) override { return std::get<0>(addresses[_a]); }
 	virtual void subBalance(u256 _a) override { std::get<0>(addresses[myAddress]) -= _a; }
 	virtual u256 txCount(Address _a) override { return std::get<1>(addresses[_a]); }

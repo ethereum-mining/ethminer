@@ -196,16 +196,24 @@ void FunctionDefinition::accept(ASTConstVisitor& _visitor) const
 void VariableDeclaration::accept(ASTVisitor& _visitor)
 {
 	if (_visitor.visit(*this))
+	{
 		if (m_typeName)
 			m_typeName->accept(_visitor);
+		if (m_value)
+			m_value->accept(_visitor);
+	}
 	_visitor.endVisit(*this);
 }
 
 void VariableDeclaration::accept(ASTConstVisitor& _visitor) const
 {
 	if (_visitor.visit(*this))
+	{
 		if (m_typeName)
 			m_typeName->accept(_visitor);
+		if (m_value)
+			m_value->accept(_visitor);
+	}
 	_visitor.endVisit(*this);
 }
 
@@ -315,6 +323,28 @@ void Mapping::accept(ASTConstVisitor& _visitor) const
 	{
 		m_keyType->accept(_visitor);
 		m_valueType->accept(_visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
+void ArrayTypeName::accept(ASTVisitor& _visitor)
+{
+	if (_visitor.visit(*this))
+	{
+		m_baseType->accept(_visitor);
+		if (m_length)
+			m_length->accept(_visitor);
+	}
+	_visitor.endVisit(*this);
+}
+
+void ArrayTypeName::accept(ASTConstVisitor& _visitor) const
+{
+	if (_visitor.visit(*this))
+	{
+		m_baseType->accept(_visitor);
+		if (m_length)
+			m_length->accept(_visitor);
 	}
 	_visitor.endVisit(*this);
 }
@@ -475,25 +505,17 @@ void ExpressionStatement::accept(ASTConstVisitor& _visitor) const
 	_visitor.endVisit(*this);
 }
 
-void VariableDefinition::accept(ASTVisitor& _visitor)
+void VariableDeclarationStatement::accept(ASTVisitor& _visitor)
 {
 	if (_visitor.visit(*this))
-	{
 		m_variable->accept(_visitor);
-		if (m_value)
-			m_value->accept(_visitor);
-	}
 	_visitor.endVisit(*this);
 }
 
-void VariableDefinition::accept(ASTConstVisitor& _visitor) const
+void VariableDeclarationStatement::accept(ASTConstVisitor& _visitor) const
 {
 	if (_visitor.visit(*this))
-	{
 		m_variable->accept(_visitor);
-		if (m_value)
-			m_value->accept(_visitor);
-	}
 	_visitor.endVisit(*this);
 }
 
@@ -604,7 +626,8 @@ void IndexAccess::accept(ASTVisitor& _visitor)
 	if (_visitor.visit(*this))
 	{
 		m_base->accept(_visitor);
-		m_index->accept(_visitor);
+		if (m_index)
+			m_index->accept(_visitor);
 	}
 	_visitor.endVisit(*this);
 }
@@ -614,7 +637,8 @@ void IndexAccess::accept(ASTConstVisitor& _visitor) const
 	if (_visitor.visit(*this))
 	{
 		m_base->accept(_visitor);
-		m_index->accept(_visitor);
+		if (m_index)
+			m_index->accept(_visitor);
 	}
 	_visitor.endVisit(*this);
 }

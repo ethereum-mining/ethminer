@@ -24,6 +24,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+const unsigned dev::p2p::c_protocolVersion = 3;
+
 // Helper function to determine if an address falls within one of the reserved ranges
 // For V4:
 // Class A "10.*", Class B "172.[16->31].*", Class C "192.168.*"

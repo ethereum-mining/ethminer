@@ -51,6 +51,8 @@ public:
 	bool exists(h256 _h) const;
 	void kill(h256 _h);
 
+	bytes lookupAux(h256 _h) const;
+
 private:
 	using MemoryDB::clear;
 

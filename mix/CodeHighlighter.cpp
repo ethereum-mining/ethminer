@@ -64,7 +64,7 @@ namespace
 	};
 }
 
-CodeHighlighter::FormatRange::FormatRange(CodeHighlighterSettings::Token _t, dev::solidity::Location const& _location):
+CodeHighlighter::FormatRange::FormatRange(CodeHighlighterSettings::Token _t, dev::SourceLocation const& _location):
 	token(_t), start(_location.start), length(_location.end - _location.start)
 {}
 
@@ -101,7 +101,7 @@ void CodeHighlighter::processAST(dev::solidity::ASTNode const& _ast)
 
 void CodeHighlighter::processError(dev::Exception const& _exception)
 {
-	Location const* location = boost::get_error_info<errinfo_sourceLocation>(_exception);
+	SourceLocation const* location = boost::get_error_info<errinfo_sourceLocation>(_exception);
 	if (location)
 		m_formats.push_back(FormatRange(CodeHighlighterSettings::CompilationError, *location));
 }

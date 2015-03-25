@@ -20,7 +20,7 @@
  * Unit tests for the solidity compiler JSON Interface output.
  */
 
-#include <boost/test/unit_test.hpp>
+#include "TestHelper.h"
 #include <libsolidity/CompilerStack.h>
 #include <json/json.h>
 #include <libdevcore/Exceptions.h>
@@ -39,15 +39,7 @@ public:
 
 	void checkInterface(std::string const& _code, std::string const& _expectedInterfaceString)
 	{
-		try
-		{
-			m_compilerStack.parse(_code);
-		}
-		catch(boost::exception const& _e)
-		{
-			auto msg = std::string("Parsing contract failed with: ") + boost::diagnostic_information(_e);
-			BOOST_FAIL(msg);
-		}
+		ETH_TEST_REQUIRE_NO_THROW(m_compilerStack.parse(_code), "Parsing contract failed");
 		std::string generatedInterfaceString = m_compilerStack.getMetadata("", DocumentationType::ABIInterface);
 		Json::Value generatedInterface;
 		m_reader.parse(generatedInterfaceString, generatedInterface);
@@ -317,6 +309,7 @@ BOOST_AUTO_TEST_CASE(events)
 	{
 		"name": "e1",
 		"type": "event",
+		"anonymous": false,
 		"inputs": [
 		{
 			"indexed": false,
@@ -333,6 +326,7 @@ BOOST_AUTO_TEST_CASE(events)
 	{
 		"name": "e2",
 		"type": "event",
+		"anonymous": false,
 		"inputs": []
 	}
 
@@ -341,16 +335,33 @@ BOOST_AUTO_TEST_CASE(events)
 	checkInterface(sourceCode, interface);
 }
 
+BOOST_AUTO_TEST_CASE(events_anonymous)
+{
+	char const* sourceCode = "contract test {\n"
+	"  event e() anonymous; \n"
+	"}\n";
+	char const* interface = R"([
+	{
+		"name": "e",
+		"type": "event",
+		"anonymous": true,
+		"inputs": []
+	}
+
+	])";
+
+	checkInterface(sourceCode, interface);
+}
 
 BOOST_AUTO_TEST_CASE(inherited)
 {
 	char const* sourceCode =
 	"	contract Base { \n"
 	"		function baseFunction(uint p) returns (uint i) { return p; } \n"
-	"		event baseEvent(string32 indexed evtArgBase); \n"
+	"		event baseEvent(bytes32 indexed evtArgBase); \n"
 	"	} \n"
 	"	contract Derived is Base { \n"
-	"		function derivedFunction(string32 p) returns (string32 i) { return p; } \n"
+	"		function derivedFunction(bytes32 p) returns (bytes32 i) { return p; } \n"
 	"		event derivedEvent(uint indexed evtArgDerived); \n"
 	"	}";
 
@@ -377,17 +388,18 @@ BOOST_AUTO_TEST_CASE(inherited)
 		"inputs":
 		[{
 			"name": "p",
-			"type": "string32"
+			"type": "bytes32"
 		}],
 		"outputs":
 		[{
 			"name": "i",
-			"type": "string32"
+			"type": "bytes32"
 		}]
 	},
 	{
 		"name": "derivedEvent",
 		"type": "event",
+		"anonymous": false,
 		"inputs":
 		[{
 			"indexed": true,
@@ -398,11 +410,12 @@ BOOST_AUTO_TEST_CASE(inherited)
 	{
 		"name": "baseEvent",
 		"type": "event",
+		"anonymous": false,
 		"inputs":
 		[{
 			"indexed": true,
 			"name": "evtArgBase",
-			"type": "string32"
+			"type": "bytes32"
 		}]
 	}])";
 

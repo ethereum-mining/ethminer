@@ -1,9 +1,12 @@
 {
   "name": "ethereum.js",
   "namespace": "ethereum",
-  "version": "0.0.15",
+  "version": "0.1.2",
   "description": "Ethereum Compatible JavaScript API",
-  "main": ["./dist/ethereum.js", "./dist/ethereum.min.js"],
+  "main": [
+    "./dist/ethereum.js",
+    "./dist/ethereum.min.js"
+  ],
   "dependencies": {
     "bignumber.js": ">=2.0.0"
   },
@@ -30,6 +33,11 @@
       "name": "Marian Oancea",
       "email": "marian@ethdev.com",
       "homepage": "https://github.com/cubedro"
+    },
+    {
+      "name": "Fabian Vogelsteller",
+      "email": "fabian@ethdev.com",
+      "homepage": "https://github.com/frozeman"
     }
   ],
   "license": "LGPL-3.0",
@@ -38,6 +46,8 @@
     "lib",
     "node_modules",
     "package.json",
+    "package.js",
+    ".versions",
     ".bowerrc",
     ".editorconfig",
     ".gitignore",

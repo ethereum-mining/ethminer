@@ -12,6 +12,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSTATICLIB")
 
 aux_source_directory(. SRC_LIST)
 
+include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 include_directories(${Boost_INCLUDE_DIRS})
 
@@ -27,6 +28,7 @@ endif()
 
 target_link_libraries(${EXECUTABLE} ${Boost_THREAD_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${Boost_SYSTEM_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
 
 # transitive dependencies for windows executables
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -42,6 +44,6 @@ elseif (UNIX)
 	target_link_libraries(${EXECUTABLE} ${CMAKE_THREAD_LIBS_INIT})
 endif()
 
-install( TARGETS ${EXECUTABLE} ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
+install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
 
