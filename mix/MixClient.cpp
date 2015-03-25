@@ -58,7 +58,7 @@ bytes MixBlockChain::createGenesisBlock(h256 _stateRoot)
 }
 
 MixClient::MixClient(std::string const& _dbPath):
-	m_dbPath(_dbPath), m_minigThreads(0)
+	m_dbPath(_dbPath), m_miningThreads(0)
 {
 	std::map<Secret, u256> account;
 	account.insert(std::make_pair(c_defaultUserAccountSecret, 1000000 * ether));
@@ -72,7 +72,7 @@ MixClient::~MixClient()
 void MixClient::resetState(std::map<Secret, u256> _accounts)
 {
 	WriteGuard l(x_state);
-	Guard fl(m_filterLock);
+	Guard fl(x_filtersWatches);
 	m_filters.clear();
 	m_watches.clear();
 
@@ -188,7 +188,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
 		// collect watches
 		h256Set changed;
-		Guard l(m_filterLock);
+		Guard l(x_filtersWatches);
 		for (std::pair<h256 const, eth::InstalledFilter>& i: m_filters)
 			if ((unsigned)i.second.filter.latest() > bc().number())
 			{
@@ -234,18 +234,7 @@ ExecutionResult MixClient::execution(unsigned _index) const
 	return m_executions.at(_index);
 }
 
-State MixClient::asOf(BlockNumber _block) const
-{
-	ReadGuard l(x_state);
-	if (_block == PendingBlock)
-		return m_state;
-	else if (_block == LatestBlock)
-		return m_startState;
-	
-	return State(m_stateDB, bc(), bc().numberHash(_block));
-}
-
-State MixClient::asOf(h256 _block) const
+State MixClient::asOf(h256 const& _block) const
 {
 	ReadGuard l(x_state);
 	return State(m_stateDB, bc(), _block);
@@ -325,12 +314,12 @@ void MixClient::setAddress(Address _us)
 
 void MixClient::setMiningThreads(unsigned _threads)
 {
-	m_minigThreads = _threads;
+	m_miningThreads = _threads;
 }
 
 unsigned MixClient::miningThreads() const
 {
-	return m_minigThreads;
+	return m_miningThreads;
 }
 
 void MixClient::startMining()
