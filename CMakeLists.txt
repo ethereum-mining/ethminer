@@ -195,6 +195,7 @@ add_subdirectory(libevm)
 add_subdirectory(libethereum)
 
 add_subdirectory(libwebthree)
+add_subdirectory(libtestutils)
 add_subdirectory(test)
 
 if (NOT JUSTTESTS)
