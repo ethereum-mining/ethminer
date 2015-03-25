@@ -34,7 +34,6 @@ namespace test
 {
 dev::eth::BlockInfo toBlockInfo(Json::Value const& _json);
 bytes toGenesisBlock(Json::Value const& _json);
-
 }
 }
 
