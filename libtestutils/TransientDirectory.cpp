@@ -14,20 +14,20 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file ShortLivingDirectory.cpp
+/** @file TransientDirectory.cpp
  * @author Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  */
 
 #include <boost/filesystem.hpp>
 #include <libdevcore/Exceptions.h>
-#include "ShortLivingDirectory.h"
+#include "TransientDirectory.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::test;
 
-ShortLivingDirectory::ShortLivingDirectory(std::string const& _path) : m_path(_path)
+TransientDirectory::TransientDirectory(std::string const& _path) : m_path(_path)
 {
 	// we never ever want to delete a directory (including all its contents) that we did not create ourselves.
 	if (boost::filesystem::exists(m_path))
@@ -36,7 +36,7 @@ ShortLivingDirectory::ShortLivingDirectory(std::string const& _path) : m_path(_p
 	boost::filesystem::create_directories(m_path);
 }
 
-ShortLivingDirectory::~ShortLivingDirectory()
+TransientDirectory::~TransientDirectory()
 {
 	boost::filesystem::remove_all(m_path);
 }
