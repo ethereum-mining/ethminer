@@ -104,7 +104,7 @@ public:
 	bool excepted() const { return m_excepted != TransactionException::None; }
 
 	/// Get the above in an amalgamated fashion.
-	ExecutionResult executionResult() const { return ExecutionResult(gasUsed(), m_excepted, m_newAddress, m_out, m_codeDeposit); }
+	ExecutionResult executionResult() const;
 
 private:
 	bool setup();
