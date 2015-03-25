@@ -22,6 +22,7 @@
 #pragma once
 
 #include <string>
+#include "Common.h"
 
 namespace dev
 {
@@ -31,11 +32,10 @@ namespace test
 class ShortLivingDirectory
 {
 public:
-	ShortLivingDirectory();
-	ShortLivingDirectory(std::string const& _path);
+	ShortLivingDirectory(std::string const& _path = getRandomPath());
 	~ShortLivingDirectory();
 
-	std::string path(){ return m_path; }
+	std::string const& path() { return m_path; }
 
 private:
 	std::string m_path;
