@@ -29,6 +29,15 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+State ClientBase::asOf(BlockNumber _h) const
+{
+	if (_h == PendingBlock)
+		return postMine();
+	else if (_h == LatestBlock)
+		return preMine();
+	return asOf(bc().numberHash(_h));
+}
+
 void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	prepareForTransaction();
@@ -123,7 +132,7 @@ LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 	LogFilter f;
 	try
 	{
-		Guard l(m_filterLock);
+		Guard l(x_filtersWatches);
 		f = m_filters.at(m_watches.at(_watchId).id).filter;
 	}
 	catch (...)
@@ -196,7 +205,7 @@ unsigned ClientBase::installWatch(LogFilter const& _f, Reaping _r)
 {
 	h256 h = _f.sha3();
 	{
-		Guard l(m_filterLock);
+		Guard l(x_filtersWatches);
 		if (!m_filters.count(h))
 		{
 			cwatch << "FFF" << _f << h.abridged();
@@ -210,7 +219,7 @@ unsigned ClientBase::installWatch(h256 _h, Reaping _r)
 {
 	unsigned ret;
 	{
-		Guard l(m_filterLock);
+		Guard l(x_filtersWatches);
 		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 		m_watches[ret] = ClientWatch(_h, _r);
 		cwatch << "+++" << ret << _h.abridged();
@@ -219,7 +228,7 @@ unsigned ClientBase::installWatch(h256 _h, Reaping _r)
 	if (ch.empty())
 		ch.push_back(InitialChange);
 	{
-		Guard l(m_filterLock);
+		Guard l(x_filtersWatches);
 		swap(m_watches[ret].changes, ch);
 	}
 	return ret;
@@ -229,7 +238,7 @@ bool ClientBase::uninstallWatch(unsigned _i)
 {
 	cwatch << "XXX" << _i;
 	
-	Guard l(m_filterLock);
+	Guard l(x_filtersWatches);
 	
 	auto it = m_watches.find(_i);
 	if (it == m_watches.end())
@@ -249,7 +258,7 @@ bool ClientBase::uninstallWatch(unsigned _i)
 
 LocalisedLogEntries ClientBase::peekWatch(unsigned _watchId) const
 {
-	Guard l(m_filterLock);
+	Guard l(x_filtersWatches);
 	
 	cwatch << "peekWatch" << _watchId;
 	auto& w = m_watches.at(_watchId);
@@ -260,7 +269,7 @@ LocalisedLogEntries ClientBase::peekWatch(unsigned _watchId) const
 
 LocalisedLogEntries ClientBase::checkWatch(unsigned _watchId)
 {
-	Guard l(m_filterLock);
+	Guard l(x_filtersWatches);
 	LocalisedLogEntries ret;
 	
 	cwatch << "checkWatch" << _watchId;
