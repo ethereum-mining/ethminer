@@ -49,8 +49,9 @@ message(" - Jsoncpp header: ${JSONCPP_INCLUDE_DIRS}")
 message(" - Jsoncpp lib   : ${JSONCPP_LIBRARIES}")
 
 # TODO get rid of -DETH_JSONRPC
+# TODO add EXACT once we commit ourselves to cmake 3.x
 if (JSONRPC)
-	find_package (json_rpc_cpp 0.4 EXACT REQUIRED)
+	find_package (json_rpc_cpp 0.4 REQUIRED)
 	message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
 	message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 	add_definitions(-DETH_JSONRPC)
