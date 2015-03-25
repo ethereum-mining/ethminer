@@ -89,6 +89,7 @@ void MixClient::resetState(std::map<Secret, u256> _accounts)
 	SecureTrieDB<Address, MemoryDB> accountState(&m_stateDB);
 	accountState.init();
 
+	m_userAccounts.clear();
 	std::map<Address, Account> genesisState;
 	for (auto account: _accounts)
 	{
@@ -243,15 +244,15 @@ ExecutionResult MixClient::execution(unsigned _index) const
 	return m_executions.at(_index);
 }
 
-State MixClient::asOf(int _block) const
+State MixClient::asOf(BlockNumber _h) const
 {
 	ReadGuard l(x_state);
-	if (_block == 0)
-		return m_state;
-	else if (_block == -1)
+	if (_h == PendingBlock)
 		return m_startState;
+	else if (_h == LatestBlock)
+		return m_state;
 	else
-		return State(m_stateDB, bc(), bc().numberHash(_block));
+		return State(m_stateDB, bc(), bc().numberHash(_h));
 }
 
 void MixClient::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
