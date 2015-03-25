@@ -38,7 +38,8 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# disable decorated name length exceeded, name was truncated (4503)
 	# disable warning C4535: calling _set_se_translator() requires /EHa (for boost tests)
 	# declare Windows XP requirement
-	add_compile_options(/MP /EHsc /wd4068 /wd4996 /wd4503 -D_WIN32_WINNT=0x0501)
+	# undefine windows.h MAX && MIN macros cause it cause conflicts with std::min && std::max functions
+	add_compile_options(/MP /EHsc /wd4068 /wd4996 /wd4503 -D_WIN32_WINNT=0x0501 /DNOMINMAX)
 	# disable empty object file warning
 	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4221")
 	# warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification 
