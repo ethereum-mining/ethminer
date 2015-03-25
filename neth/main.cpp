@@ -474,7 +474,11 @@ int main(int argc, char** argv)
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
-		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+#if ETH_DEBUG
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", 1));
+#else
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", 4));
+#endif
 		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
@@ -625,7 +629,11 @@ int main(int argc, char** argv)
 		{
 			if (jsonrpc < 0)
 				jsonrpc = 8080;
-			jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+#if ETH_DEBUG
+			jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", 1));
+#else
+			jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", 4));
+#endif
 			jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 			jsonrpcServer->setIdentities({us});
 			jsonrpcServer->StartListening();

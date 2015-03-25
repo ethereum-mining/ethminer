@@ -117,7 +117,7 @@ void help()
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #if ETH_JSONRPC
 		<< "	-j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
-		<< "	--json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
+		<< "	--json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
 		<< "    -K,--kill-blockchain  First kill the blockchain." << endl
 		<< "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
@@ -370,7 +370,7 @@ int main(int argc, char** argv)
 			interactive = true;
 #if ETH_JSONRPC
 		else if ((arg == "-j" || arg == "--json-rpc"))
-			jsonrpc = jsonrpc == -1 ? 8080 : jsonrpc;
+			jsonrpc = jsonrpc == -1 ? SensibleHttpPort : jsonrpc;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
 #endif
@@ -457,7 +457,7 @@ int main(int argc, char** argv)
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
-		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
 		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
@@ -582,8 +582,8 @@ int main(int argc, char** argv)
 			else if (cmd == "jsonstart")
 			{
 				if (jsonrpc < 0)
-					jsonrpc = 8080;
-				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+					jsonrpc = SensibleHttpPort;
+				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
 				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 				jsonrpcServer->setIdentities({us});
 				jsonrpcServer->StartListening();
