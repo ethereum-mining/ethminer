@@ -120,9 +120,8 @@ bool Executive::setup()
 bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
 {
 	m_isCreation = false;
+	m_excepted = TransactionException::None;
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
-	m_s.addBalance(_receiveAddress, _value);
-
 	auto it = !(_codeAddress & ~h160(0xffffffff)) ? precompiled().find((unsigned)(u160)_codeAddress) : precompiled().end();
 	if (it != precompiled().end())
 	{
@@ -147,6 +146,10 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 	}
 	else
 		m_endGas = _gas;
+
+	if (m_excepted == TransactionException::None)
+		m_s.addBalance(_receiveAddress, _value);
+
 	return !m_ext;
 }
 
@@ -158,20 +161,21 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	// we delete it explicitly if we decide we need to revert.
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
 
-	// Set up new account...
+	// Execute _init.
+	if (!_init.empty())
+	{
+		m_vm = VMFactory::create(_gas);
+		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
+	}
+
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
 
-	// Execute _init.
 	if (_init.empty())
 	{
 		m_s.m_cache[m_newAddress].setCode({});
 		m_endGas = _gas;
 	}
-	else
-	{
-		m_vm = VMFactory::create(_gas);
-		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
-	}
+
 	return !m_ext;
 }
 

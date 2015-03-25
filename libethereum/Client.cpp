@@ -729,16 +729,6 @@ void Client::doWork()
 	}
 }
 
-unsigned Client::numberOf(int _n) const
-{
-	if (_n > 0)
-		return _n;
-	else if (_n == GenesisBlock)
-		return 0;
-	else
-		return m_bc.details().number + max(-(int)m_bc.details().number, 1 + _n);
-}
-
 State Client::asOf(unsigned _h) const
 {
 	ReadGuard l(x_stateDB);
@@ -747,7 +737,7 @@ State Client::asOf(unsigned _h) const
 	else if (_h == LatestBlock)
 		return m_preMine;
 	else
-		return State(m_stateDB, m_bc, m_bc.numberHash(numberOf(_h)));
+		return State(m_stateDB, m_bc, m_bc.numberHash(_h));
 }
 
 State Client::state(unsigned _txi, h256 _block) const
