@@ -24,6 +24,12 @@
 #include <libdevcore/Exceptions.h>
 #include <libweb3jsonrpc/WebThreeStubServerBase.h>
 
+/**
+ * @brief dummy JSON-RPC api implementation
+ * Should be used for test purposes only
+ * Supports eth && db interfaces
+ * Doesn't support shh && net interfaces
+ */
 class FixedWebThreeServer: public dev::WebThreeStubServerBase, public dev::WebThreeStubDatabaseFace
 {
 public:
