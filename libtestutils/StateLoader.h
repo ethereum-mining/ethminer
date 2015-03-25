@@ -36,7 +36,7 @@ class StateLoader
 {
 public:
 	StateLoader(Json::Value const& _json);
-	eth::State const& state() { return m_state; }
+	eth::State const& state() const { return m_state; }
 
 private:
 	eth::State m_state;
