@@ -380,9 +380,6 @@ private:
 	virtual bool turbo() const { return m_turboMining; }
 	virtual bool force() const { return m_forceMining; }
 
-	/// Return the actual block number of the block with the given int-number (positive is the same, INT_MIN is genesis block, < 0 is negative age, thus -1 is most recently mined, 0 is pending.
-	unsigned numberOf(int _b) const;
-
 	/// Returns the state object for the full block (i.e. the terminal state) for index _h.
 	/// Works properly with LatestBlock and PendingBlock.
 	State asOf(unsigned _h) const;

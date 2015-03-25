@@ -87,7 +87,8 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 	// ping address if nodeid is empty
 	if (!_node.id)
 	{
-		m_pubkDiscoverPings[m_node.endpoint.udp.address()] = std::chrono::steady_clock::now();
+		clog(NodeTableConnect) << "Sending public key discovery Ping to" << _node.endpoint.udp << "(Advertising:" << m_node.endpoint.udp << ")";
+		m_pubkDiscoverPings[_node.endpoint.udp.address()] = std::chrono::steady_clock::now();
 		PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
 		p.sign(m_secret);
 		m_socketPointer->send(p);
@@ -442,7 +443,10 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 						n->pending = false;
 				}
 				else if (m_pubkDiscoverPings.count(_from.address()))
+				{
 					m_pubkDiscoverPings.erase(_from.address());
+					addNode(nodeid, _from, bi::tcp::endpoint(_from.address(), _from.port()));
+				}
 				else
 					return; // unsolicited pong; don't note node as active
 				
@@ -574,3 +578,29 @@ void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 	m_bucketRefreshTimer.async_wait(runcb);
 }
 
+void PingNode::streamRLP(RLPStream& _s) const
+{
+	_s.appendList(4);
+	_s << dev::p2p::c_protocolVersion << ipAddress << port << expiration;
+}
+
+void PingNode::interpretRLP(bytesConstRef _bytes)
+{
+	RLP r(_bytes);
+	if (r.itemCountStrict() == 3)
+	{
+		version = 2;
+		ipAddress = r[0].toString();
+		port = r[1].toInt<unsigned>(RLP::Strict);
+		expiration = r[2].toInt<unsigned>(RLP::Strict);
+	}
+	else if (r.itemCountStrict() == 4)
+	{
+		version = r[0].toInt<unsigned>(RLP::Strict);
+		ipAddress = r[1].toString();
+		port = r[2].toInt<unsigned>(RLP::Strict);
+		expiration = r[3].toInt<unsigned>(RLP::Strict);
+	}
+	else
+		BOOST_THROW_EXCEPTION(InvalidRLP());
+}
