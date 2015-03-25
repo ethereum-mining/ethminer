@@ -30,9 +30,8 @@ using namespace dev::test;
 ShortLivingDirectory::ShortLivingDirectory(std::string const& _path) : m_path(_path)
 {
 	// we never ever want to delete a directory (including all its contents) that we did not create ourselves.
-	if (boost::filesystem::exists(m_path)) {
+	if (boost::filesystem::exists(m_path))
 		BOOST_THROW_EXCEPTION(FileError());
-	}
 
 	boost::filesystem::create_directories(m_path);
 }
