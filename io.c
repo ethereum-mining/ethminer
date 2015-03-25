@@ -62,11 +62,11 @@ bool ethash_io_write(char const *dirname,
     char info_buffer[DAG_MEMO_BYTESIZE];
     ethash_blockhash_t seedhash;
 
-	p.cache_size = ethash_get_cachesize(block_number);
-	p.full_size = ethash_get_datasize(block_number);
+    p.cache_size = ethash_get_cachesize(block_number);
+    p.full_size = ethash_get_datasize(block_number);
     // allocate the bytes
     uint8_t *temp_data_ptr = malloc(p.full_size);
-    if (!(*temp_data_ptr)) {
+    if (!*temp_data_ptr) {
         goto end;
     }
     ethash_prep_full(temp_data_ptr, &p, cache);
