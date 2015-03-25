@@ -100,7 +100,7 @@ public:
 private:
 	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state, bool _call);
 	void noteChanged(h256Set const& _filters);
-	dev::eth::State asOf(int _block) const;
+	dev::eth::State asOf(eth::BlockNumber _block) const;
 	MixBlockChain& bc() { return *m_bc; }
 	MixBlockChain const& bc() const { return *m_bc; }
 
