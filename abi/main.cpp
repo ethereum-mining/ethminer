@@ -108,7 +108,7 @@ enum class Base
 struct ABIType
 {
 	Base base = Base::Unknown;
-	unsigned size = 0;
+	unsigned size = 32;
 	unsigned ssize = 0;
 	vector<int> dims;
 	ABIType() = default;
@@ -126,7 +126,13 @@ struct ABIType
 		default: throw InvalidFormat();
 		}
 		if (_s.size() < 2)
+		{
+			if (base == Base::Fixed)
+				size = ssize = 16;
+			else
+				size = 32;
 			return;
+		}
 		if (_s.find_first_of('x') == string::npos)
 			size = stoi(_s.substr(1));
 		else
