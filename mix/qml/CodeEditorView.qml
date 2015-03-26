@@ -67,8 +67,8 @@ Item {
 		return null;
 	}
 
-	function highlightExecution(documentId, location) {
-
+	function highlightExecution(documentId, location)
+	{
 		var editor = getEditor(documentId);
 		if (editor)
 		{
@@ -81,15 +81,12 @@ Item {
 
 	// Execution is not in the current document. Try:
 	// Open targeted document and hightlight (TODO) or
-	// Relevant hightlighting on the current document
+	// Warn user that file is not available
 	function findAndHightlight(start, end, sourceName)
 	{
 		var editor = getEditor(currentDocumentId);
 		if (editor)
-		{
-			var sourceIndex = editor.getText().indexOf(sourceName);
-			highlightExecution(currentDocumentId, { start: sourceIndex, end: sourceIndex + sourceName.length, sourceName: currentDocumentId });
-		}
+			editor.showWarning(qsTr("Currently debugging in " + sourceName + ". Source not available."));
 	}
 
 	function editingContract() {
