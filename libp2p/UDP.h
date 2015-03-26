@@ -77,7 +77,7 @@ template <class T>
 struct RLPXDatagram: public RLPXDatagramFace
 {
 	RLPXDatagram(bi::udp::endpoint const& _ep): RLPXDatagramFace(_ep) {}
-	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
+	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { try { T t(_ep); t.interpretRLP(_bytes); return std::move(t); } catch(...) { T t(_ep); return std::move(t); } }
 	uint8_t packetType() { return T::type; }
 };
 
@@ -113,6 +113,10 @@ public:
 	enum { maxDatagramSize = MaxDatagramSize };
 	static_assert(maxDatagramSize < 65507, "UDP datagrams cannot be larger than 65507 bytes");
 
+	/// Create socket for specific endpoint.
+	UDPSocket(ba::io_service& _io, UDPSocketEvents& _host, bi::udp::endpoint _endpoint): m_host(_host), m_endpoint(_endpoint), m_socket(_io) { m_started.store(false); m_closed.store(true); };
+
+	/// Create socket which listens to all ports.
 	UDPSocket(ba::io_service& _io, UDPSocketEvents& _host, unsigned _port): m_host(_host), m_endpoint(bi::udp::v4(), _port), m_socket(_io) { m_started.store(false); m_closed.store(true); };
 	virtual ~UDPSocket() { disconnect(); }
 
@@ -159,7 +163,14 @@ void UDPSocket<Handler, MaxDatagramSize>::connect()
 		return;
 
 	m_socket.open(bi::udp::v4());
-	m_socket.bind(m_endpoint);
+	try
+	{
+		m_socket.bind(m_endpoint);
+	}
+	catch (...)
+	{
+		m_socket.bind(bi::udp::endpoint(bi::udp::v4(), m_endpoint.port()));
+	}
 
 	// clear write queue so reconnect doesn't send stale messages
 	Guard l(x_sendQ);
