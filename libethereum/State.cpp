@@ -342,6 +342,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 
 map<Address, u256> State::addresses() const
 {
+#if ETH_FATDB
 	map<Address, u256> ret;
 	for (auto i: m_cache)
 		if (i.second.isAlive())
@@ -350,6 +351,9 @@ map<Address, u256> State::addresses() const
 		if (m_cache.find(i.first) == m_cache.end())
 			ret[i.first] = RLP(i.second)[1].toInt<u256>();
 	return ret;
+#else
+	throw InterfaceNotSupported("State::addresses()");
+#endif
 }
 
 void State::resetCurrent()
@@ -1040,7 +1044,7 @@ LastHashes State::getLastHashes(BlockChain const& _bc, unsigned _n) const
 {
 	LastHashes ret;
 	ret.resize(256);
-	if (c_protocolVersion > 49)
+	if (eth::c_protocolVersion > 49)
 	{
 		ret[0] = _bc.numberHash(_n);
 		for (unsigned i = 1; i < 256; ++i)

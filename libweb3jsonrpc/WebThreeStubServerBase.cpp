@@ -47,10 +47,17 @@ using namespace jsonrpc;
 using namespace dev;
 using namespace dev::eth;
 
+#if ETH_DEBUG
+const unsigned dev::SensibleHttpThreads = 1;
+#else
+const unsigned dev::SensibleHttpThreads = 4;
+#endif
+const unsigned dev::SensibleHttpPort = 8080;
+
 static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 {
 	Json::Value res;
-	res["hash"] = boost::lexical_cast<string>(_bi.hash);
+	res["hash"] = toJS(_bi.hash);
 	res["parentHash"] = toJS(_bi.parentHash);
 	res["sha3Uncles"] = toJS(_bi.sha3Uncles);
 	res["miner"] = toJS(_bi.coinbaseAddress);
@@ -58,10 +65,12 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 	res["transactionsRoot"] = toJS(_bi.transactionsRoot);
 	res["difficulty"] = toJS(_bi.difficulty);
 	res["number"] = toJS(_bi.number);
+	res["gasUsed"] = toJS(_bi.gasUsed);
 	res["gasLimit"] = toJS(_bi.gasLimit);
 	res["timestamp"] = toJS(_bi.timestamp);
 	res["extraData"] = toJS(_bi.extraData);
 	res["nonce"] = toJS(_bi.nonce);
+	res["logsBloom"] = toJS(_bi.logBloom);
 	return res;
 }
 
@@ -79,18 +88,24 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	return res;
 }
 
-static Json::Value toJson(dev::eth::BlockInfo const& _bi, Transactions const& _ts)
+static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us, Transactions const& _ts)
 {
 	Json::Value res = toJson(_bi);
+	res["uncles"] = Json::Value(Json::arrayValue);
+	for (h256 h: _us)
+		res["uncles"].append(toJS(h));
 	res["transactions"] = Json::Value(Json::arrayValue);
 	for (Transaction const& t: _ts)
 		res["transactions"].append(toJson(t));
 	return res;
 }
 
-static Json::Value toJson(dev::eth::BlockInfo const& _bi, TransactionHashes const& _ts)
+static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us, TransactionHashes const& _ts)
 {
 	Json::Value res = toJson(_bi);
+	res["uncles"] = Json::Value(Json::arrayValue);
+	for (h256 h: _us)
+		res["uncles"].append(toJS(h));
 	res["transactions"] = Json::Value(Json::arrayValue);
 	for (h256 const& t: _ts)
 		res["transactions"].append(toJS(t));
@@ -112,18 +127,20 @@ static Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
 static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 {
 	Json::Value res;
-
-	res["data"] = toJS(_e.data);
-	res["address"] = toJS(_e.address);
-	res["topics"] = Json::Value(Json::arrayValue);
-	for (auto const& t: _e.topics)
-		res["topics"].append(toJS(t));
-	res["number"] = _e.number;
-	res["hash"] = toJS(_e.sha3);
+	if (_e.transactionHash)
+	{
+		res["data"] = toJS(_e.data);
+		res["address"] = toJS(_e.address);
+		res["topics"] = Json::Value(Json::arrayValue);
+		for (auto const& t: _e.topics)
+			res["topics"].append(toJS(t));
+		res["number"] = _e.number;
+		res["hash"] = toJS(_e.transactionHash);
+	}
 	return res;
 }
 
-static Json::Value toJson(dev::eth::LocalisedLogEntries const& _es)	// commented to avoid warning. Uncomment once in use @ poC-7.
+static Json::Value toJson(dev::eth::LocalisedLogEntries const& _es)
 {
 	Json::Value res(Json::arrayValue);
 	for (dev::eth::LocalisedLogEntry const& e: _es)
@@ -139,6 +156,18 @@ static Json::Value toJson(map<u256, u256> const& _storage)
 	return res;
 }
 
+static unsigned toBlockNumber(std::string const& _js)
+{
+	if (_js == "latest")
+		return LatestBlock;
+	else if (_js == "earliest")
+		return 0;
+	else if (_js == "pending")
+		return PendingBlock;
+	else
+		return (unsigned)jsToInt(_js);
+}
+
 static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
 {
 	dev::eth::LogFilter filter;
@@ -147,9 +176,9 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 
 	// check only !empty. it should throw exceptions if input params are incorrect
 	if (!_json["fromBlock"].empty())
-		filter.withEarliest(jsToInt(_json["fromBlock"].asString()));
+		filter.withEarliest(toBlockNumber(_json["fromBlock"].asString()));
 	if (!_json["toBlock"].empty())
-		filter.withLatest(jsToInt(_json["toBlock"].asString()));
+		filter.withLatest(toBlockNumber(_json["toBlock"].asString()));
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
@@ -225,15 +254,6 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	res["from"] = toJS(_m.from());
 	res["to"] = toJS(_m.to());
 	return res;
-}
-
-static int toBlockNumber(string const& _string)
-{
-	if (_string.compare("latest") == 0)
-		return -1;
-	if (_string.compare("pending") == 0)
-		return 0;
-	return jsToInt(_string);
 }
 
 WebThreeStubServerBase::WebThreeStubServerBase(AbstractServerConnector& _conn, vector<dev::KeyPair> const& _accounts):
@@ -382,7 +402,7 @@ string WebThreeStubServerBase::eth_getCode(string const& _address, string const&
 {
 	try
 	{
-		return toJS(client()->codeAt(jsToAddress(_address), toBlockNumber(_blockNumber)));
+		return toJS(client()->codeAt(jsToAddress(_address), toBlockNumber(_blockNumber)), 1);
 	}
 	catch (...)
 	{
@@ -476,7 +496,7 @@ string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& 
 		t.gasPrice = 10 * dev::eth::szabo;
 	if (!t.gas)
 		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
-	ret = toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, number));
+	ret = toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, number).output);
 	
 	return ret;
 }
@@ -493,9 +513,9 @@ Json::Value WebThreeStubServerBase::eth_getBlockByHash(string const& _blockHash,
 	{
 		auto h = jsToFixed<32>(_blockHash);
 		if (_includeTransactions)
-			return toJson(client()->blockInfo(h), client()->transactions(h));
+			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactions(h));
 		else
-			return toJson(client()->blockInfo(h), client()->transactionHashes(h));
+			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactionHashes(h));
 	}
 	catch (...)
 	{
@@ -509,9 +529,9 @@ Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNum
 	{
 		auto h = client()->hashFromNumber(jsToInt(_blockNumber));
 		if (_includeTransactions)
-			return toJson(client()->blockInfo(h), client()->transactions(h));
+			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactions(h));
 		else
-			return toJson(client()->blockInfo(h), client()->transactionHashes(h));
+			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactionHashes(h));
 	}
 	catch (...)
 	{
