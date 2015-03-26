@@ -70,9 +70,7 @@ private:
  * @brief The Host class
  * Capabilities should be registered prior to startNetwork, since m_capabilities is not thread-safe.
  *
- * @todo cleanup startPeerSession
  * @todo determinePublic: ipv6, udp
- * @todo handle conflict if addNode/requireNode called and Node already exists w/conflicting tcp or udp port
  * @todo per-session keepalive/ping instead of broadcast; set ping-timeout via median-latency
  */
 class Host: public Worker
@@ -106,7 +104,13 @@ public:
 
 	/// Add node as a peer candidate. Node is added if discovery ping is successful and table has capacity.
 	void addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort, unsigned short _udpPort);
+	
+	/// Create Peer and attempt keeping peer connected.
+	void requirePeer(NodeId const& _node, std::string const& _addr, unsigned short _port);
 
+//	/// Note peer as no longer being required.
+//	void relinquishPeer(NodeId const& _node);
+	
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
 
@@ -211,6 +215,8 @@ private:
 
 	/// Shared storage of Peer objects. Peers are created or destroyed on demand by the Host. Active sessions maintain a shared_ptr to a Peer;
 	std::map<NodeId, std::shared_ptr<Peer>> m_peers;
+	
+	std::list<std::shared_ptr<boost::asio::deadline_timer>> m_timers;
 
 	/// The nodes to which we are currently connected. Used by host to service peer requests and keepAlivePeers and for shutdown. (see run())
 	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
