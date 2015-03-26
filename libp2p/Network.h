@@ -37,15 +37,7 @@ namespace dev
 namespace p2p
 {
 
-struct NetworkPreferences
-{
-	NetworkPreferences(unsigned short p = 30303, std::string i = std::string(), bool u = true, bool l = false): listenPort(p), publicIP(i), upnp(u), localNetworking(l) {}
-
-	unsigned short listenPort = 30303;
-	std::string publicIP;
-	bool upnp = true;
-	bool localNetworking = false;
-};
+struct NetworkPreferences;
 
 /**
  * @brief Network Class
@@ -55,14 +47,29 @@ class Network
 {
 public:
 	/// @returns public and private interface addresses
-	static std::vector<bi::address> getInterfaceAddresses();
+	static std::set<bi::address> getInterfaceAddresses();
 	
 	/// Try to bind and listen on _listenPort, else attempt net-allocated port.
-	static int tcp4Listen(bi::tcp::acceptor& _acceptor, unsigned short _listenPort);
+	static int tcp4Listen(bi::tcp::acceptor& _acceptor, NetworkPreferences const& _netPrefs);
 
 	/// Return public endpoint of upnp interface. If successful o_upnpifaddr will be a private interface address and endpoint will contain public address and port.
-	static bi::tcp::endpoint traverseNAT(std::vector<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr);
+	static bi::tcp::endpoint traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr);
 };
 
+struct NetworkPreferences
+{
+	// Network Preferences with unspecified Public IP
+	NetworkPreferences(unsigned short p = 30303, std::string i = std::string(), bool u = true, bool l = false): listenPort(p), listenIPAddress(i), publicIPAddress(), traverseNAT(u) {}
+	
+	// Network Preferences with intended Public IP
+	NetworkPreferences(std::string publicIP, unsigned short p = 30303, std::string i = std::string(), bool u = true, bool l = false): listenPort(p), listenIPAddress(i), publicIPAddress(publicIP), traverseNAT(u) { if (!publicIPAddress.empty() && !isPublicAddress(publicIPAddress)) BOOST_THROW_EXCEPTION(InvalidPublicIPAddress()); }
+
+	unsigned short listenPort = 30303;
+	std::string listenIPAddress;
+	std::string publicIPAddress;
+
+	bool traverseNAT = true;
+};
+	
 }
 }
