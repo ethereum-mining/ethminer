@@ -70,17 +70,11 @@ shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, bi::udp::endpoint 
 
 shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 {
-	if (_node.endpoint.udp.address().to_string() == "0.0.0.0" || _node.endpoint.tcp.address().to_string() == "0.0.0.0")
+	// re-enable tcp checks when NAT hosts are handled by discover
+	// we handle when tcp endpoint is 0 below
+	if (_node.endpoint.udp.address().to_string() == "0.0.0.0")
 	{
-		string ptype;
-		if (_node.endpoint.udp.address().to_string() != "0.0.0.0")
-			ptype = "TCP";
-		else if (_node.endpoint.tcp.address().to_string() != "0.0.0.0")
-			ptype = "UDP";
-		else
-			ptype = "TCP,UDP";
-		
-		clog(NodeTableWarn) << "addNode Failed. Invalid" << ptype << "address 0.0.0.0 for" << _node.id.abridged();
+		clog(NodeTableWarn) << "addNode Failed. Invalid UDP address 0.0.0.0 for" << _node.id.abridged();
 		return move(shared_ptr<NodeEntry>());
 	}
 	
@@ -106,7 +100,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 	
 	// TODO: SECURITY - Temporary until packets are updated.
 	NodeIPEndpoint ep(_node.endpoint.udp, _node.endpoint.tcp);
-	if (!isPublicAddress(ep.tcp.address()))
+	if (!isPublicAddress(ep.tcp.address()) && isPublicAddress(ep.udp.address()))
 		ep.tcp.address(_node.endpoint.udp.address());
 	shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, ep));
 	m_nodes[_node.id] = ret;
@@ -327,7 +321,7 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 		// (for the rare case where NAT port is mapped but
 		node->endpoint.udp.address(_endpoint.address());
 		node->endpoint.udp.port(_endpoint.port());
-		if (!isPublicAddress(node->endpoint.tcp.address()))
+		if (!isPublicAddress(node->endpoint.tcp.address()) && isPublicAddress(node->endpoint.udp.address()))
 			node->endpoint.tcp.address(_endpoint.address());
 		
 		shared_ptr<NodeEntry> contested;
