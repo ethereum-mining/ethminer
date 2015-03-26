@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>qml/AlertMessageDialog.qml</file>
+        <file>qml/Application.qml</file>
         <file>qml/BasicMessage.qml</file>
         <file>qml/BigIntValue.qml</file>
         <file>qml/CallStack.qml</file>
@@ -59,7 +60,6 @@
         <file>qml/js/ProjectModel.js</file>
         <file>qml/js/QEtherHelper.js</file>
         <file>qml/js/TransactionHelper.js</file>
-        <file>qml/main.qml</file>
         <file>qml/qmldir</file>
     </qresource>
 </RCC>
