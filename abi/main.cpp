@@ -205,6 +205,23 @@ struct ABIType
 	void noteDecimalInput() { if (base == Base::Unknown) { base = Base::Uint; size = 32; } }
 };
 
+bytes aligned(bytes const& _b, ABIType _t, Format _f, unsigned _length)
+{
+	(void)_t;
+	bytes ret = _b;
+	while (ret.size() < _length)
+		if (_f == Format::Binary)
+			ret.push_back(0);
+		else
+			ret.insert(ret.begin(), 0);
+	while (ret.size() > _length)
+		if (_f == Format::Binary)
+			ret.pop_back();
+		else
+			ret.erase(ret.begin());
+	return ret;
+}
+
 tuple<bytes, ABIType, Format> fromUser(std::string const& _arg, Tristate _prefix, Tristate _typing)
 {
 	ABIType type;
@@ -260,7 +277,7 @@ struct ABIMethod
 	string name;
 	vector<ABIType> ins;
 	vector<ABIType> outs;
-	bool isConstant;
+	bool isConstant = false;
 
 	// isolation *IS* documentation.
 
@@ -284,6 +301,12 @@ struct ABIMethod
 			}
 	}
 
+	ABIMethod(string const& _name, vector<ABIType> const& _args)
+	{
+		name = _name;
+		ins = _args;
+	}
+
 	string sig() const
 	{
 		string methodArgs;
@@ -292,24 +315,123 @@ struct ABIMethod
 		return name + "(" + methodArgs + ")";
 	}
 	FixedHash<4> id() const { return FixedHash<4>(sha3(sig())); }
+
+	std::string solidityDeclaration() const
+	{
+		ostringstream ss;
+		ss << "function " << name << "(";
+		int f = 0;
+		for (ABIType const& i: ins)
+			ss << (f++ ? ", " : "") << i.canon() << " " << i.name;
+		ss << ") ";
+		if (isConstant)
+			ss << "constant ";
+		if (!outs.empty())
+		{
+			ss << "returns (";
+			f = 0;
+			for (ABIType const& i: outs)
+				ss << (f ? ", " : "") << i.canon() << " " << i.name;
+			ss << ")";
+		}
+		return ss.str();
+	}
+
+	bytes encode(vector<pair<bytes, Format>> const& _params) const
+	{
+		bytes ret = name.empty() ? bytes() : id().asBytes();
+		unsigned pi = 0;
+		vector<unsigned> inArity;
+		for (ABIType const& i: ins)
+		{
+			unsigned arity = 1;
+			for (auto j: i.dims)
+				if (j == -1)
+				{
+					ret += aligned(_params[pi].first, ABIType(), Format::Decimal, 32);
+					arity *= fromBigEndian<uint>(_params[pi].first);
+					pi++;
+				}
+				else
+					arity *= j;
+			inArity.push_back(arity);
+		}
+		unsigned ii = 0;
+		for (ABIType const& i: ins)
+		{
+			for (unsigned j = 0; j < inArity[ii]; ++j)
+			{
+				ret += aligned(_params[pi].first, i, _params[pi].second, (i.base == Base::Bytes && i.size == 1) ? 1 : 32);
+				++pi;
+			}
+			++ii;
+			while (ret.size() % 32 != 0)
+				ret.push_back(0);
+		}
+		return ret;
+	}
 };
 
-using ABI = map<FixedHash<4>, ABIMethod>;
-
-ABI readABI(std::string const& _json)
+string canonSig(string const& _name, vector<ABIType> const& _args)
 {
-	ABI ret;
-	js::mValue v;
-	js::read_string(_json, v);
-	for (auto const& i: v.get_array())
+	string methodArgs;
+	for (auto const& arg: _args)
+		methodArgs += (methodArgs.empty() ? "" : ",") + arg.canon();
+	return _name + "(" + methodArgs + ")";
+}
+
+struct UnknownMethod: public Exception {};
+struct OverloadedMethod: public Exception {};
+
+class ABI
+{
+public:
+	ABI() = default;
+	ABI(std::string const& _json)
 	{
-		js::mObject o = i.get_obj();
-		if (o["type"].get_str() != "function")
-			continue;
-		ABIMethod m(o);
-		ret[m.id()] = m;
+		js::mValue v;
+		js::read_string(_json, v);
+		for (auto const& i: v.get_array())
+		{
+			js::mObject o = i.get_obj();
+			if (o["type"].get_str() != "function")
+				continue;
+			ABIMethod m(o);
+			m_methods[m.id()] = m;
+		}
 	}
-	return ret;
+
+	ABIMethod method(string _nameOrSig, vector<ABIType> const& _args) const
+	{
+		auto id = FixedHash<4>(sha3(_nameOrSig));
+		if (!m_methods.count(id))
+			id = FixedHash<4>(sha3(canonSig(_nameOrSig, _args)));
+		if (!m_methods.count(id))
+			for (auto const& m: m_methods)
+				if (m.second.name == _nameOrSig)
+				{
+					if (m_methods.count(id))
+						throw OverloadedMethod();
+					id = m.first;
+				}
+		if (m_methods.count(id))
+			return m_methods.at(id);
+		throw UnknownMethod();
+	}
+
+	friend ostream& operator<<(ostream& _out, ABI const& _abi);
+
+private:
+	map<FixedHash<4>, ABIMethod> m_methods;
+};
+
+ostream& operator<<(ostream& _out, ABI const& _abi)
+{
+	_out << "contract {" << endl;
+	for (auto const& i: _abi.m_methods)
+		_out << "  " << i.second.solidityDeclaration() << "; // " << i.first.abridged() << endl;
+	_out << "}" << endl;
+	return _out;
 }
 
 void userOutput(ostream& _out, bytes const& _data, Encoding _e)
@@ -324,20 +446,11 @@ void userOutput(ostream& _out, bytes const& _data, Encoding _e)
 	}
 }
 
-bytes aligned(bytes const& _b, ABIType _t, Format _f, unsigned _length)
+template <unsigned n, class T> vector<typename std::remove_reference<decltype(get<n>(T()))>::type> retrieve(vector<T> const& _t)
 {
-	(void)_t;
-	bytes ret = _b;
-	while (ret.size() < _length)
-		if (_f == Format::Binary)
-			ret.push_back(0);
-		else
-			ret.insert(ret.begin(), 0);
-	while (ret.size() > _length)
-		if (_f == Format::Binary)
-			ret.pop_back();
-		else
-			ret.erase(ret.begin());
+	vector<typename std::remove_reference<decltype(get<n>(T()))>::type> ret;
+	for (T const& i: _t)
+		ret.push_back(get<n>(i));
 	return ret;
 }
 
@@ -353,7 +466,8 @@ int main(int argc, char** argv)
 	bool clearNulls = false;
 	bool verbose = false;
 	int outputIndex = -1;
-	vector<tuple<bytes, ABIType, Format>> args;
+	vector<pair<bytes, Format>> params;
+	vector<ABIType> args;
 
 	for (int i = 1; i < argc; ++i)
 	{
@@ -395,7 +509,11 @@ int main(int argc, char** argv)
 		else if (method.empty())
 			method = arg;
 		else
-			args.push_back(fromUser(arg, prefix, typePrefix));
+		{
+			auto u = fromUser(arg, prefix, typePrefix);
+			args.push_back(get<1>(u));
+			params.push_back(make_pair(get<0>(u), get<2>(u)));
+		}
 	}
 
 	string abiData;
@@ -407,43 +525,24 @@ int main(int argc, char** argv)
 
 	if (mode == Mode::Encode)
 	{
-		bytes ret;
+		ABIMethod m;
 		if (abiData.empty())
-		{
-			if (!method.empty())
-			{
-				string methodArgs;
-				for (auto const& arg: args)
-					methodArgs += (methodArgs.empty() ? "" : ",") + get<1>(arg).canon();
-				ret = FixedHash<4>(sha3(method + "(" + methodArgs + ")")).asBytes();
-				if (verbose)
-					cerr << "Method signature: " << (method + "(" + methodArgs + ")") << endl;
-			}
-			for (tuple<bytes, ABIType, Format> const& arg: args)
-				ret += aligned(get<0>(arg), get<1>(arg), get<2>(arg), 32);
-		}
+			m = ABIMethod(method, args);
 		else
 		{
-			ABI abi = readABI(abiData);
+			ABI abi(abiData);
 			if (verbose)
+				cerr << "ABI:" << endl << abi;
+			try {
+				m = abi.method(method, args);
+			}
+			catch(...)
 			{
-				cerr << "ABI:" << endl;
-				for (auto const& i: abi)
-				{
-					ABIMethod const& m = i.second;
-					cerr << "  " << i.first.abridged() << ": function " << m.name;
-					int f = 0;
-					for (ABIType const& i: m.ins)
-						cerr << (f++ ? ", " : "(") << i.canon() << " " << i.name;
-					cerr << ") returns (";
-					f = 0;
-					for (ABIType const& i: m.outs)
-						cerr << (f ? ", " : "(") << i.canon() << " " << i.name;
-					cerr << ")" << endl;
-				}
+				cerr << "Unknown method in ABI." << endl;
+				exit(-1);
 			}
 		}
-		userOutput(cout, ret, encoding);
+		userOutput(cout, m.encode(params), encoding);
 	}
 	else if (mode == Mode::Decode)
 	{
