@@ -16,7 +16,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 
 find_package (Qt5WebEngine QUIET)
-qt5_add_resources(UI_RESOURCES res.qrc qml.qrc)
+qt5_add_resources(UI_RESOURCES res.qrc qml.qrc test.qrc)
 
 file(GLOB HEADERS "*.h")
 
@@ -37,32 +37,18 @@ eth_add_executable(${EXECUTABLE}
 	UI_RESOURCES ${UI_RESOURCES}
 )
 
-target_link_libraries(${EXECUTABLE} Qt5::Core)
-target_link_libraries(${EXECUTABLE} Qt5::Gui)
-target_link_libraries(${EXECUTABLE} Qt5::Widgets)
-target_link_libraries(${EXECUTABLE} Qt5::Network)
-target_link_libraries(${EXECUTABLE} Qt5::Quick)
-target_link_libraries(${EXECUTABLE} Qt5::Qml)
-target_link_libraries(${EXECUTABLE} webthree)
-target_link_libraries(${EXECUTABLE} ethereum)
-target_link_libraries(${EXECUTABLE} evm)
-target_link_libraries(${EXECUTABLE} ethcore)
-target_link_libraries(${EXECUTABLE} devcrypto)
-target_link_libraries(${EXECUTABLE} secp256k1)
-if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
-target_link_libraries(${EXECUTABLE} serpent)
-endif()
-target_link_libraries(${EXECUTABLE} lll)
-target_link_libraries(${EXECUTABLE} solidity)
-target_link_libraries(${EXECUTABLE} evmcore)
-target_link_libraries(${EXECUTABLE} devcore)
-target_link_libraries(${EXECUTABLE} jsqrc)
-target_link_libraries(${EXECUTABLE} web3jsonrpc)
+find_package(Qt5QuickTest REQUIRED)
+find_package(Qt5Test REQUIRED)
 
+set(LIBRARIES "Qt5::Core;Qt5::Gui;Qt5::Widgets;Qt5::Network;Qt5::Quick;Qt5::Qml;webthree;ethereum;evm;ethcore;devcrypto;solidity;evmcore;devcore;jsqrc;web3jsonrpc")
 if (${ETH_HAVE_WEBENGINE})
 	add_definitions(-DETH_HAVE_WEBENGINE)
-	target_link_libraries(${EXECUTABLE} Qt5::WebEngine)
+	list(APPEND LIBRARIES "Qt5::WebEngine")
 endif()
+	list(APPEND LIBRARIES "Qt5::QuickTest")
+	list(APPEND LIBRARIES "Qt5::Test")
+
+target_link_libraries(${EXECUTABLE} ${LIBRARIES})
 
 # eth_install_executable is defined in cmake/EthExecutableHelper.cmake
 eth_install_executable(${EXECUTABLE}
@@ -71,5 +57,15 @@ eth_install_executable(${EXECUTABLE}
 
 #add qml asnd stdc files to project tree in Qt creator
 file(GLOB_RECURSE QMLFILES "qml/*.*")
+file(GLOB_RECURSE TESTFILE "test/*.*")
 file(GLOB_RECURSE SOLFILES "stdc/*.*")
-add_custom_target(mix_qml SOURCES ${QMLFILES} ${SOLFILES})
+add_custom_target(mix_qml SOURCES ${QMLFILES} ${SOLFILES} ${TESTFILES})
+
+
+#test target
+#set(TEST_EXECUTABLE mix_test)
+#qt5_add_resources(UI_RESOURCES test.qrc)
+#add_executable(${TEST_EXECUTABLE} ${UI_RESOURCES} ${SRC_LIST} ${HEADERS})
+
+
+

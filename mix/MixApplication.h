@@ -33,12 +33,29 @@ namespace dev
 namespace mix
 {
 
+class ApplicationService: public QObject
+{
+	Q_OBJECT
+	Q_PROPERTY(int systemPointSize READ systemPointSize CONSTANT)
+
+public:
+	ApplicationService();
+	int systemPointSize() const { return m_systemPointSize; }
+public slots:
+	bool waitForSignal(QObject* _item, QString _signalName, int _timeout);
+
+private:
+	int m_systemPointSize = 0;
+};
+
+
 class MixApplication: public QApplication
 {
 	Q_OBJECT
 
 public:
 	MixApplication(int& _argc, char* _argv[]);
+	static void initialize();
 	virtual ~MixApplication();
 	QQmlApplicationEngine* engine() { return m_engine.get(); }
 

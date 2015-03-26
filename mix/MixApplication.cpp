@@ -23,6 +23,10 @@
 #include <QQmlApplicationEngine>
 #include <QUrl>
 #include <QIcon>
+#include <QFont>
+#include <QtTest/QSignalSpy>
+#include <QElapsedTimer>
+#include <QtTest/QTest>
 #ifdef ETH_HAVE_WEBENGINE
 #include <QtWebEngine/QtWebEngine>
 #endif
@@ -37,21 +41,73 @@
 
 using namespace dev::mix;
 
+ApplicationService::ApplicationService()
+{
+#ifdef ETH_HAVE_WEBENGINE
+	QtWebEngine::initialize();
+#endif
+	QFont f;
+	m_systemPointSize = f.pointSize();
+}
+
+
+#include <QMetaMethod>
+
+bool ApplicationService::waitForSignal(QObject* _item, QString _signalName, int _timeout)
+{
+	QSignalSpy spy(_item,  ("2" + _signalName.toStdString()).c_str());
+	QMetaObject const* mo = _item->metaObject();
+
+	QStringList methods;
+
+	for(int i = mo->methodOffset(); i < mo->methodCount(); ++i) {
+		if (mo->method(i).methodType() == QMetaMethod::Signal) {
+			methods << QString::fromLatin1(mo->method(i).methodSignature());
+		}
+	}
+
+	QElapsedTimer timer;
+	timer.start();
+
+	while (!spy.size()) {
+		int remaining = _timeout - int(timer.elapsed());
+		if (remaining <= 0)
+			break;
+		QCoreApplication::processEvents(QEventLoop::AllEvents, remaining);
+		QCoreApplication::sendPostedEvents(0, QEvent::DeferredDelete);
+		QTest::qSleep(10);
+	}
+
+	return spy.size();
+}
+
 MixApplication::MixApplication(int& _argc, char* _argv[]):
 	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine())
+{
+	initialize();
+	//m_engine->load(QUrl("qrc:/qml/main.qml"));
+	m_engine->load(QUrl("qrc:/test/TestMain.qml"));
+
+
+	if (!m_engine->rootObjects().empty())
+	{
+		QWindow *window = qobject_cast<QWindow*>(m_engine->rootObjects().at(0));
+		if (window)
+			window->setIcon(QIcon(":/res/mix_256x256x32.png"));
+	}
+}
+
+
+void MixApplication::initialize()
 {
 	setOrganizationName(tr("Ethereum"));
 	setOrganizationDomain(tr("ethereum.org"));
 	setApplicationName(tr("Mix"));
 	setApplicationVersion("0.1");
-#ifdef ETH_HAVE_WEBENGINE
-	QtWebEngine::initialize();
-#endif
 
-	QFont f;
-	m_engine->rootContext()->setContextProperty("systemPointSize", f.pointSize());
 	qmlRegisterType<CodeModel>("org.ethereum.qml.CodeModel", 1, 0, "CodeModel");
 	qmlRegisterType<ClientModel>("org.ethereum.qml.ClientModel", 1, 0, "ClientModel");
+	qmlRegisterType<ApplicationService>("org.ethereum.qml.ApplicationService", 1, 0, "ApplicationService");
 	qmlRegisterType<FileIo>("org.ethereum.qml.FileIo", 1, 0, "FileIo");
 	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
 	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
@@ -63,10 +119,7 @@ MixApplication::MixApplication(int& _argc, char* _argv[]):
 	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
 	qRegisterMetaType<CodeModel*>("CodeModel*");
 	qRegisterMetaType<ClientModel*>("ClientModel*");
-
-	m_engine->load(QUrl("qrc:/qml/main.qml"));
-	QWindow *window = qobject_cast<QWindow*>(m_engine->rootObjects().at(0));
-	window->setIcon(QIcon(":/res/mix_256x256x32.png"));
+	qRegisterMetaType<ClientModel*>("ClientModel*");
 }
 
 MixApplication::~MixApplication()

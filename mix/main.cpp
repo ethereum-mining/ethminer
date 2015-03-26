@@ -24,6 +24,10 @@
 #include <stdlib.h>
 #include "MixApplication.h"
 #include "Exceptions.h"
+
+#include <QtQuickTest/quicktest.h>
+
+
 using namespace dev::mix;
 
 int main(int _argc, char* _argv[])
@@ -43,8 +47,15 @@ int main(int _argc, char* _argv[])
 #endif
 	try
 	{
-		MixApplication app(_argc, _argv);
-		return app.exec();
+
+		//
+		MixApplication::initialize();
+		//MixApplication app(_argc, _argv);
+		return quick_test_main(_argc, _argv, "mix", "/home/arkady/src/cpp-ethereum/mix/test/TestMain.qml");
+
+
+		//MixApplication app(_argc, _argv);
+		//return app.exec();
 	}
 	catch (boost::exception const& _e)
 	{
