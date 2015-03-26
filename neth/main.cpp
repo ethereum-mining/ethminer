@@ -127,6 +127,10 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
+		<< "    setblockfees <n>  Set the block fee profit in the reference unit e.g. ¢ (Default: 15)" << endl
+		<< "    setetherprice <p>  Resets the ether price." << endl
+		<< "    setpriority <p>  Resets the transaction priority." << endl
 		<< "    reset  Resets ncurses windows" << endl
 		<< "    exit  Exits the application." << endl;
 }
@@ -711,6 +715,42 @@ int main(int argc, char** argv)
 			iss >> enable;
 			c->setForceMining(isTrue(enable));
 		}
+		else if (c && cmd == "setblockfees")
+		{
+			iss >> blockFees;
+			gasPricer->setRefBlockFees(u256(blockFees * 1000));
+			cout << "Block fees: " << blockFees << endl;
+		}
+		else if (c && cmd == "setetherprice")
+		{
+			iss >> etherPrice;
+			gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+			cout << "ether Price: " << etherPrice << endl;
+		}
+		else if (c && cmd == "setpriority")
+		{
+			string m;
+			iss >> m;
+			boost::to_lower(m);
+			if (m == "lowest")
+				priority = TransactionPriority::Lowest;
+			else if (m == "low")
+				priority = TransactionPriority::Low;
+			else if (m == "medium" || m == "mid" || m == "default" || m == "normal")
+				priority = TransactionPriority::Medium;
+			else if (m == "high")
+				priority = TransactionPriority::High;
+			else if (m == "highest")
+				priority = TransactionPriority::Highest;
+			else
+				try {
+					priority = (TransactionPriority)(max(0, min(100, stoi(m))) * 8 / 100);
+				}
+				catch (...) {
+					cerr << "Unknown priority: " << m << endl;
+				}
+			cout << "Priority: " << (int)priority << "/8" << endl;
+		}
 		else if (cmd == "verbosity")
 		{
 			if (iss.peek() != -1)
@@ -815,6 +855,8 @@ int main(int argc, char** argv)
 				stringstream ssp;
 				ssp << fields[2];
 				ssp >> gasPrice;
+				if (!gasPrice)
+					gasPrice = gasPricer->bid(priority);
 				string sechex = fields[4];
 				string sdata = fields[5];
 				cnote << "Data:";
