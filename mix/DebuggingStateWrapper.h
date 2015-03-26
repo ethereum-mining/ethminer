@@ -65,10 +65,11 @@ class QSolState: public QObject
 	Q_PROPERTY(QVariantMap locals MEMBER m_locals CONSTANT)
 	Q_PROPERTY(int start MEMBER m_start CONSTANT)
 	Q_PROPERTY(int end MEMBER m_end CONSTANT)
+	Q_PROPERTY(QString sourceName MEMBER m_sourceName CONSTANT)
 
 public:
-	QSolState(QObject* _parent, QVariantMap&& _storage, QVariantList&& _callStack, QVariantMap&& _locals, int _start, int _end):
-		QObject(_parent), m_storage(_storage), m_callStack(_callStack), m_locals(_locals), m_start(_start), m_end(_end)
+	QSolState(QObject* _parent, QVariantMap&& _storage, QVariantList&& _callStack, QVariantMap&& _locals, int _start, int _end, QString _sourceName):
+		QObject(_parent), m_storage(_storage), m_callStack(_callStack), m_locals(_locals), m_start(_start), m_end(_end), m_sourceName(_sourceName)
 	{ }
 
 private:
@@ -77,6 +78,7 @@ private:
 	QVariantMap m_locals;
 	int m_start;
 	int m_end;
+	QString m_sourceName;
 };
 
 /**
