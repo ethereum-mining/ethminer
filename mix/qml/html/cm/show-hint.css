@@ -47,30 +47,6 @@
   color: white !important;
 }
 
-.solcurrency {
-  color: #b58900;
-}
-
-.solkeywords {
-  color: #cb4b16;
-}
-
-.solstdcontract {
-  color: #d33682;
-}
-
-.soltime {
-  color: #268bd2;
-}
-
-.soltypes {
-  color: #2aa198;
-}
-
-.solMisc {
-  color: #859900;
-}
-
 .solToken {
   float: left;
 }
