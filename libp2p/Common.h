@@ -54,7 +54,11 @@ extern const unsigned c_protocolVersion;
 using NodeId = h512;
 
 bool isPrivateAddress(bi::address const& _addressToCheck);
+bool isPrivateAddress(std::string const& _addressToCheck);
 bool isLocalHostAddress(bi::address const& _addressToCheck);
+bool isLocalHostAddress(std::string const& _addressToCheck);
+bool isPublicAddress(bi::address const& _addressToCheck);
+bool isPublicAddress(std::string const& _addressToCheck);
 
 class UPnP;
 class Capability;
@@ -62,6 +66,8 @@ class Host;
 class Session;
 
 struct NetworkStartRequired: virtual dev::Exception {};
+struct InvalidPublicIPAddress: virtual dev::Exception {};
+struct InvalidHostIPAddress: virtual dev::Exception {};
 
 struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
 struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
