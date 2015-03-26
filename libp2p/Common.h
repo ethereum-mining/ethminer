@@ -175,7 +175,7 @@ struct Node
 	virtual NodeId const& address() const { return id; }
 	virtual Public const& publicKey() const { return id; }
 	
-	/// Replace TCP address with UDP address if TCP addr is private and UDP is public. Temp. until protocol update.
+	/// Adopt UDP address for TCP if TCP isn't public and UDP is. (to be removed when protocol is updated for nat)
 	void cullEndpoint();
 	
 	NodeId id;
