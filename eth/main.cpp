@@ -92,10 +92,10 @@ void interactiveHelp()
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
 #endif
-		<< "    setsecret <secret>  Set the secret to the hex secret key." <<endl
-		<< "    setaddress <addr>  Set the coinbase (mining payout) address." <<endl
-		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." <<endl
-		<< "    importconfig <path>  Import the config (.RLP) from the path provided." <<endl
+		<< "    setsecret <secret>  Set the secret to the hex secret key." << endl
+		<< "    setaddress <addr>  Set the coinbase (mining payout) address." << endl
+		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." << endl
+		<< "    importconfig <path>  Import the config (.RLP) from the path provided." << endl
 		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
