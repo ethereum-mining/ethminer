@@ -21,6 +21,7 @@
  */
 #include <fstream>
 #include <iostream>
+#include <boost/regex.hpp>
 #include <boost/algorithm/string.hpp>
 #include "../test/JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
@@ -105,13 +106,45 @@ enum class Base
 	Fixed
 };
 
+static const map<Base, string> s_bases =
+{
+	{ Base::Bytes, "bytes" },
+	{ Base::Address, "address" },
+	{ Base::Int, "int" },
+	{ Base::Uint, "uint" },
+	{ Base::Fixed, "fixed" }
+};
+
 struct ABIType
 {
 	Base base = Base::Unknown;
 	unsigned size = 32;
 	unsigned ssize = 0;
 	vector<int> dims;
+	string name;
 	ABIType() = default;
+	ABIType(std::string const& _type, std::string const& _name):
+		name(_name)
+	{
+		string rest;
+		for (auto const& i: s_bases)
+			if (boost::algorithm::starts_with(_type, i.second))
+			{
+				base = i.first;
+				rest = _type.substr(i.second.size());
+			}
+		if (base == Base::Unknown)
+			throw InvalidFormat();
+		boost::regex r("(\\d*)(x(\\d+))?((\\[\\d*\\])*)");
+		boost::smatch res;
+		boost::regex_match(rest, res, r);
+		size = res[1].length() > 0 ? stoi(res[1]) : 0;
+		ssize = res[3].length() > 0 ? stoi(res[3]) : 0;
+		boost::regex r2("\\[(\\d*)\\](.*)");
+		for (rest = res[4]; boost::regex_match(rest, res, r2); rest = res[2])
+			dims.push_back(!res[1].length() ? -1 : stoi(res[1]));
+	}
+
 	ABIType(std::string const& _s)
 	{
 		if (_s.size() < 1)
@@ -133,13 +166,21 @@ struct ABIType
 				size = 32;
 			return;
 		}
-		if (_s.find_first_of('x') == string::npos)
-			size = stoi(_s.substr(1));
+		strings d;
+		boost::algorithm::split(d, _s, boost::is_any_of("*"));
+		string s = d[0];
+		if (s.find_first_of('x') == string::npos)
+			size = stoi(s.substr(1));
 		else
 		{
-			size = stoi(_s.substr(1, _s.find_first_of('x') - 1));
-			ssize = stoi(_s.substr(_s.find_first_of('x') + 1));
+			size = stoi(s.substr(1, s.find_first_of('x') - 1));
+			ssize = stoi(s.substr(s.find_first_of('x') + 1));
 		}
+		for (unsigned i = 1; i < d.size(); ++i)
+			if (d[i].empty())
+				dims.push_back(-1);
+			else
+				dims.push_back(stoi(d[i]));
 	}
 
 	string canon() const
@@ -185,7 +226,7 @@ tuple<bytes, ABIType, Format> fromUser(std::string const& _arg, Tristate _prefix
 			type.noteHexInput(val.size() - 2);
 			return make_tuple(fromHex(val), type, Format::Hex);
 		}
-		if (val.substr(0, 1) == ".")
+		if (val.substr(0, 1) == "+")
 		{
 			type.noteDecimalInput();
 			return make_tuple(toCompactBigEndian(bigint(val.substr(1))), type, Format::Decimal);
@@ -212,6 +253,63 @@ tuple<bytes, ABIType, Format> fromUser(std::string const& _arg, Tristate _prefix
 		return make_tuple(asBytes(_arg), type, Format::Binary);
 	}
 	throw InvalidUserString();
+}
+
+struct ABIMethod
+{
+	string name;
+	vector<ABIType> ins;
+	vector<ABIType> outs;
+	bool isConstant;
+
+	// isolation *IS* documentation.
+
+	ABIMethod() = default;
+
+	ABIMethod(js::mObject _o)
+	{
+		name = _o["name"].get_str();
+		isConstant = _o["constant"].get_bool();
+		if (_o.count("inputs"))
+			for (auto const& i: _o["inputs"].get_array())
+			{
+				js::mObject a = i.get_obj();
+				ins.push_back(ABIType(a["type"].get_str(), a["name"].get_str()));
+			}
+		if (_o.count("outputs"))
+			for (auto const& i: _o["outputs"].get_array())
+			{
+				js::mObject a = i.get_obj();
+				outs.push_back(ABIType(a["type"].get_str(), a["name"].get_str()));
+			}
+	}
+
+	string sig() const
+	{
+		string methodArgs;
+		for (auto const& arg: ins)
+			methodArgs += (methodArgs.empty() ? "" : ",") + arg.canon();
+		return name + "(" + methodArgs + ")";
+	}
+	FixedHash<4> id() const { return FixedHash<4>(sha3(sig())); }
+};
+
+using ABI = map<FixedHash<4>, ABIMethod>;
+
+ABI readABI(std::string const& _json)
+{
+	ABI ret;
+	js::mValue v;
+	js::read_string(_json, v);
+	for (auto const& i: v.get_array())
+	{
+		js::mObject o = i.get_obj();
+		if (o["type"].get_str() != "function")
+			continue;
+		ABIMethod m(o);
+		ret[m.id()] = m;
+	}
+	return ret;
 }
 
 void userOutput(ostream& _out, bytes const& _data, Encoding _e)
@@ -300,17 +398,17 @@ int main(int argc, char** argv)
 			args.push_back(fromUser(arg, prefix, typePrefix));
 	}
 
-	string abi;
+	string abiData;
 	if (abiFile == "--")
 		for (int i = cin.get(); i != -1; i = cin.get())
-			abi.push_back((char)i);
+			abiData.push_back((char)i);
 	else if (!abiFile.empty())
-		abi = contentsString(abiFile);
+		abiData = contentsString(abiFile);
 
 	if (mode == Mode::Encode)
 	{
 		bytes ret;
-		if (abi.empty())
+		if (abiData.empty())
 		{
 			if (!method.empty())
 			{
@@ -326,7 +424,24 @@ int main(int argc, char** argv)
 		}
 		else
 		{
-			// TODO: read abi.
+			ABI abi = readABI(abiData);
+			if (verbose)
+			{
+				cerr << "ABI:" << endl;
+				for (auto const& i: abi)
+				{
+					ABIMethod const& m = i.second;
+					cerr << "  " << i.first.abridged() << ": function " << m.name;
+					int f = 0;
+					for (ABIType const& i: m.ins)
+						cerr << (f++ ? ", " : "(") << i.canon() << " " << i.name;
+					cerr << ") returns (";
+					f = 0;
+					for (ABIType const& i: m.outs)
+						cerr << (f ? ", " : "(") << i.canon() << " " << i.name;
+					cerr << ")" << endl;
+				}
+			}
 		}
 		userOutput(cout, ret, encoding);
 	}
