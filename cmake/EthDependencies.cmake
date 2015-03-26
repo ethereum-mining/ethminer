@@ -117,14 +117,17 @@ if (NOT HEADLESS)
 # find all of the Qt packages
 # remember to use 'Qt' instead of 'QT', cause unix is case sensitive
 # TODO make headless client optional
-	find_package (Qt5Core REQUIRED)
-	find_package (Qt5Gui REQUIRED)
-	find_package (Qt5Quick REQUIRED)
-	find_package (Qt5Qml REQUIRED)
-	find_package (Qt5Network REQUIRED)
-	find_package (Qt5Widgets REQUIRED)
-	find_package (Qt5WebEngine REQUIRED)
-	find_package (Qt5WebEngineWidgets REQUIRED)
+
+	set (ETH_QT_VERSION 5.4)
+
+	find_package (Qt5Core ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5Gui ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5Quick ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5Qml ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5Network ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5Widgets ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5WebEngine ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5WebEngineWidgets ${ETH_QT_VERSION} REQUIRED)
 
 	# we need to find path to macdeployqt on mac
 	if (APPLE)

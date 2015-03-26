@@ -27,6 +27,7 @@
         <file>qml/html/cm/closebrackets.js</file>
         <file>qml/html/cm/solidityToken.js</file>
         <file>qml/html/cm/javascript-hint.js</file>
+        <file>qml/html/cm/errorannotation.js</file>
         <file>qml/html/cm/tern.js</file>
         <file>qml/html/cm/ecma5spec.js</file>
         <file>qml/html/cm/comment.js</file>
