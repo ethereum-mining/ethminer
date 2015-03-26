@@ -287,67 +287,53 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 	}
 }
 
-void Host::determinePublic(string const& _publicAddress, bool _upnp)
+void Host::determinePublic(NetworkPreferences const& _netPrefs)
 {
-	m_peerAddresses.clear();
-
-	// no point continuing if there are no interface addresses or valid listen port
-	if (!m_ifAddresses.size() || m_listenPort < 1)
-		return;
-
-	// populate interfaces we'll listen on (eth listens on all interfaces); ignores local
-	for (auto addr: m_ifAddresses)
-		if ((m_netPrefs.localNetworking || !isPrivateAddress(addr)) && !isLocalHostAddress(addr))
-			m_peerAddresses.insert(addr);
-
-	// if user supplied address is a public address then we use it
-	// if user supplied address is private, and localnetworking is enabled, we use it
-	bi::address reqPublicAddr(bi::address(_publicAddress.empty() ? bi::address() : bi::address::from_string(_publicAddress)));
-	bi::tcp::endpoint reqPublic(reqPublicAddr, m_listenPort);
-	bool isprivate = isPrivateAddress(reqPublicAddr);
-	bool ispublic = !isprivate && !isLocalHostAddress(reqPublicAddr);
-	if (!reqPublicAddr.is_unspecified() && (ispublic || (isprivate && m_netPrefs.localNetworking)))
+	// set m_tcpPublic := listenIP (if public) > public > upnp > unspecified address.
+	
+	auto ifAddresses = Network::getInterfaceAddresses();
+	auto laddr = bi::address::from_string(_netPrefs.listenIPAddress);
+	auto lset = !laddr.is_unspecified();
+	auto paddr = bi::address::from_string(_netPrefs.publicIPAddress);
+	auto pset = !paddr.is_unspecified();
+	
+	bool listenIsPublic = lset && isPublicAddress(laddr);
+	bool publicIsHost = !lset && pset && ifAddresses.count(paddr);
+	
+	bi::tcp::endpoint ep(bi::address(), _netPrefs.listenPort);
+	if (_netPrefs.traverseNAT && listenIsPublic)
 	{
-		if (!m_peerAddresses.count(reqPublicAddr))
-			m_peerAddresses.insert(reqPublicAddr);
-		m_tcpPublic = reqPublic;
-		return;
+		clog(NetNote) << "Listen address set to Public address:" << laddr << ". UPnP disabled.";
+		ep.address(laddr);
 	}
-
-	// if address wasn't provided, then use first public ipv4 address found
-	for (auto addr: m_peerAddresses)
-		if (addr.is_v4() && !isPrivateAddress(addr))
-		{
-			m_tcpPublic = bi::tcp::endpoint(*m_peerAddresses.begin(), m_listenPort);
-			return;
-		}
-
-	// or find address via upnp
-	if (_upnp)
+	else if (_netPrefs.traverseNAT && publicIsHost)
 	{
-		bi::address upnpifaddr;
-		bi::tcp::endpoint upnpep = Network::traverseNAT(m_ifAddresses, m_listenPort, upnpifaddr);
-		if (!upnpep.address().is_unspecified() && !upnpifaddr.is_unspecified())
+		clog(NetNote) << "Public address set to Host configured address:" << paddr << ". UPnP disabled.";
+		ep.address(paddr);
+	}
+	else if (_netPrefs.traverseNAT)
+	{
+		bi::address natIFAddr;
+		if (lset && ifAddresses.count(laddr))
+			ep = Network::traverseNAT(std::set<bi::address>({laddr}), _netPrefs.listenPort, natIFAddr);
+		else
+			ep = Network::traverseNAT(ifAddresses, _netPrefs.listenPort, natIFAddr);
+		
+		if (lset && natIFAddr != laddr)
+			// if listen address is set we use it, even if upnp returns different
+			clog(NetWarn) << "Listen address" << laddr << "differs from local address" << natIFAddr << "returned by UPnP!";
+		
+		if (pset && ep.address() != paddr)
 		{
-			if (!m_peerAddresses.count(upnpep.address()))
-				m_peerAddresses.insert(upnpep.address());
-			m_tcpPublic = upnpep;
-			return;
+			// if public address is set we advertise it, even if upnp returns different
+			clog(NetWarn) << "Specified public address" << paddr << "differs from external address" << ep.address() << "returned by UPnP!";
+			ep.address(paddr);
 		}
 	}
+	else if (pset)
+		ep.address(paddr);
 
-	// or if no address provided, use private ipv4 address if local networking is enabled
-	if (reqPublicAddr.is_unspecified())
-		if (m_netPrefs.localNetworking)
-			for (auto addr: m_peerAddresses)
-				if (addr.is_v4() && isPrivateAddress(addr))
-				{
-					m_tcpPublic = bi::tcp::endpoint(addr, m_listenPort);
-					return;
-				}
-
-	// otherwise address is unspecified
-	m_tcpPublic = bi::tcp::endpoint(bi::address(), m_listenPort);
+	m_tcpPublic = ep;
 }
 
 void Host::runAcceptor()
