@@ -40,7 +40,7 @@ Rectangle {
 		var errorInfo = ErrorLocationFormater.extractErrorInfo(compilationErrorMessage, false);
 		errorLocation.text = errorInfo.errorLocation;
 		errorDetail.text = errorInfo.errorDetail;
-		errorLine.text = errorInfo.errorLine;
+		errorLine.text = errorInfo.line;
 	}
 
 	function update(data, giveFocus)
@@ -242,7 +242,6 @@ Rectangle {
 								height: 30
 								buttonShortcut: "Ctrl+Shift+F11"
 								buttonTooltip: qsTr("Step Out Back")
-								visible: false
 							}
 
 							StepActionImage
@@ -315,9 +314,8 @@ Rectangle {
 								height: 30
 								buttonShortcut: "Ctrl+F5"
 								buttonTooltip: qsTr("Run Forward")
+								visible: false
 							}
-
-
 						}
 					}
 
