@@ -44,6 +44,11 @@ u256 Executive::gasUsed() const
 	return m_t.gas() - m_endGas;
 }
 
+ExecutionResult Executive::executionResult() const
+{
+	return ExecutionResult(gasUsed(), m_excepted, m_newAddress, m_out, m_codeDeposit, m_ext ? m_ext->sub.refunds : 0);
+}
+
 void Executive::accrueSubState(SubState& _parentContext)
 {
 	if (m_ext)
