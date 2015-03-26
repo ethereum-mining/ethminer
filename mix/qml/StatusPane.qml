@@ -24,7 +24,6 @@ Rectangle {
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(message, true);
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
 			debugImg.state = "";
-			errorMessage(status.text, "Compilation");
 		}
 		debugRunActionIcon.enabled = codeModel.hasContract;
 	}

@@ -350,10 +350,6 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 			CompiledContract const* contract = contracts[s.codeIndex];
 			AssemblyItem const& instruction = codeItems[s.codeIndex][instructionIndex];
 
-			std::stringstream str;
-			str << instruction.getLocation().sourceName;
-			qDebug() <<  QString::fromStdString(str.str());
-
 			if (instruction.type() == dev::eth::Push && !instruction.data())
 			{
 				//register new local variable initialization
@@ -380,8 +376,11 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 			for(auto l: solLocals)
 				if (l.first < (int)s.stack.size())
 				{
+					if (l.second->type()->name().startsWith("mapping"))
+						break; //mapping type not yet managed
 					localDeclarations.push_back(QVariant::fromValue(l.second));
 					localValues[l.second->name()] = formatValue(l.second->type()->type(), s.stack[l.first]);
+
 				}
 			locals["variables"] = localDeclarations;
 			locals["values"] = localValues;
@@ -404,6 +403,8 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 							storageDec = new QVariableDeclaration(debugData, storageIter.value().name.toStdString(), storageIter.value().type);
 							storageDeclarations[storageDec->name()] = storageDec;
 						}
+						if (storageDec->type()->name().startsWith("mapping"))
+							break; //mapping type not yet managed
 						storageDeclarationList.push_back(QVariant::fromValue(storageDec));
 						storageValues[storageDec->name()] = formatValue(storageDec->type()->type(), st.second);
 					}
@@ -412,7 +413,7 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 			storage["values"] = storageValues;
 
 			prevInstructionIndex = instructionIndex;
-			solState = new QSolState(debugData, std::move(storage), std::move(solCallStack), std::move(locals), instruction.getLocation().start, instruction.getLocation().end);
+			solState = new QSolState(debugData, std::move(storage), std::move(solCallStack), std::move(locals), instruction.getLocation().start, instruction.getLocation().end, QString::fromUtf8(instruction.getLocation().sourceName->c_str()));
 		}
 
 		states.append(QVariant::fromValue(new QMachineState(debugData, instructionIndex, s, codes[s.codeIndex], data[s.dataIndex], solState)));

@@ -88,9 +88,6 @@ protected:
 private:
 	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state, bool _call);
 	void noteChanged(h256Set const& _filters);
-	dev::eth::State asOf(eth::BlockNumber _block) const;
-	MixBlockChain& bc() { return *m_bc; }
-	MixBlockChain const& bc() const { return *m_bc; }
 
 	std::vector<KeyPair> m_userAccounts;
 	eth::State m_state;
