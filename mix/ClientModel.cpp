@@ -380,7 +380,6 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 						break; //mapping type not yet managed
 					localDeclarations.push_back(QVariant::fromValue(l.second));
 					localValues[l.second->name()] = formatValue(l.second->type()->type(), s.stack[l.first]);
-
 				}
 			locals["variables"] = localDeclarations;
 			locals["values"] = localValues;
