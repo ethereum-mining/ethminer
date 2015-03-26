@@ -242,7 +242,12 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 								break;
 							}
 					if (!f)
-						BOOST_THROW_EXCEPTION(FunctionNotFoundException() << FunctionName(transaction.functionId.toStdString()));
+					{
+						emit runFailed("Function '" + transaction.functionId + tr("' not found. Please check transactions or the contract code."));
+						m_running = false;
+						emit runStateChanged();
+						return;
+					}
 					if (!transaction.functionId.isEmpty())
 						encoder.encode(f);
 					for (QVariableDeclaration const* p: f->parametersList())
@@ -269,7 +274,12 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 					{
 						auto contractAddressIter = m_contractAddresses.find(transaction.contractId);
 						if (contractAddressIter == m_contractAddresses.end())
-							BOOST_THROW_EXCEPTION(dev::Exception() << dev::errinfo_comment("Contract not deployed: " + transaction.contractId.toStdString()));
+						{
+							emit runFailed("Contract '" + transaction.contractId + tr(" not deployed.") + "' " + tr(" Cannot call ") + transaction.functionId);
+							m_running = false;
+							emit runStateChanged();
+							return;
+						}
 						callContract(contractAddressIter->second, encoder.encodedData(), transaction);
 					}
 				}
@@ -283,7 +293,6 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 			std::cerr << boost::current_exception_diagnostic_information();
 			emit runFailed(QString::fromStdString(boost::current_exception_diagnostic_information()));
 		}
-
 		catch(std::exception const& e)
 		{
 			std::cerr << boost::current_exception_diagnostic_information();
