@@ -155,7 +155,7 @@ private:
 	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
 	
 	/// Determines and sets m_tcpPublic to publicly advertised address.
-	void determinePublic(NetworkPreferences const& _netPrefs);
+	void determinePublic();
 
 	void connect(std::shared_ptr<Peer> const& _p);
 
