@@ -54,6 +54,7 @@ enum ethash_io_rc {
  * @return               For possible return values @see enum ethash_io_rc
  */
 enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_blockhash_t seedhash);
+
 /**
  * Fully computes data and writes it to the file on disk.
  *
