@@ -154,8 +154,8 @@ protected:
 private:
 	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
 	
-	/// Populate m_peerAddresses with available public addresses.
-	void determinePublic(std::string const& _publicAddress, bool _upnp);
+	/// Determines and sets m_tcpPublic to publicly advertised address.
+	void determinePublic(NetworkPreferences const& _netPrefs);
 
 	void connect(std::shared_ptr<Peer> const& _p);
 
@@ -192,7 +192,7 @@ private:
 	NetworkPreferences m_netPrefs;										///< Network settings.
 
 	/// Interface addresses (private, public)
-	std::vector<bi::address> m_ifAddresses;								///< Interface addresses.
+	std::set<bi::address> m_ifAddresses;								///< Interface addresses.
 
 	int m_listenPort = -1;												///< What port are we listening on. -1 means binding failed or acceptor hasn't been initialized.
 
@@ -221,8 +221,6 @@ private:
 	Mutex x_connecting;													///< Mutex for m_connecting.
 
 	unsigned m_idealPeerCount = 5;										///< Ideal number of peers to be connected to.
-
-	std::set<bi::address> m_peerAddresses;									///< Public addresses that peers (can) know us by.
 
 	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
 
