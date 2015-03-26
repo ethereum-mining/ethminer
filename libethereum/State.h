@@ -41,7 +41,7 @@
 namespace dev
 {
 
-namespace test { class ImportTest; }
+namespace test { class ImportTest; class StateLoader; }
 
 namespace eth
 {
@@ -99,6 +99,7 @@ class State
 {
 	friend class ExtVM;
 	friend class dev::test::ImportTest;
+	friend class dev::test::StateLoader;
 	friend class Executive;
 
 public:
@@ -127,6 +128,7 @@ public:
 	OverlayDB const& db() const { return m_db; }
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
+	/// @throws InterfaceNotSupported if compiled without ETH_FATDB.
 	std::map<Address, u256> addresses() const;
 
 	/// Get the header information on the present block.

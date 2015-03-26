@@ -350,6 +350,10 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 			CompiledContract const* contract = contracts[s.codeIndex];
 			AssemblyItem const& instruction = codeItems[s.codeIndex][instructionIndex];
 
+			std::stringstream str;
+			str << instruction.getLocation().sourceName;
+			qDebug() <<  QString::fromStdString(str.str());
+
 			if (instruction.type() == dev::eth::Push && !instruction.data())
 			{
 				//register new local variable initialization
