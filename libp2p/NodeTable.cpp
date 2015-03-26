@@ -98,12 +98,9 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 			return m_nodes[_node.id];
 	}
 	
-	// TODO: SECURITY - Temporary until packets are updated.
-	NodeIPEndpoint ep(_node.endpoint.udp, _node.endpoint.tcp);
-	if (!isPublicAddress(ep.tcp.address()) && isPublicAddress(ep.udp.address()))
-		ep.tcp.address(_node.endpoint.udp.address());
-	shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, ep));
+	shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, NodeIPEndpoint(_node.endpoint.udp, _node.endpoint.tcp)));
 	m_nodes[_node.id] = ret;
+	ret->cullEndpoint();
 	PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
 	p.sign(m_secret);
 	m_socketPointer->send(p);
@@ -315,14 +312,9 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 	if (!!node && !node->pending)
 	{
 		clog(NodeTableConnect) << "Noting active node:" << _pubk.abridged() << _endpoint.address().to_string() << ":" << _endpoint.port();
-		
-		// TODO: SECURITY - Temporary until packets are updated.
-		// update udp endpoint and override tcp endpoint if tcp endpoint isn't public
-		// (for the rare case where NAT port is mapped but
 		node->endpoint.udp.address(_endpoint.address());
 		node->endpoint.udp.port(_endpoint.port());
-		if (!isPublicAddress(node->endpoint.tcp.address()) && isPublicAddress(node->endpoint.udp.address()))
-			node->endpoint.tcp.address(_endpoint.address());
+		node->cullEndpoint();
 		
 		shared_ptr<NodeEntry> contested;
 		{

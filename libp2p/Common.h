@@ -175,6 +175,9 @@ struct Node
 	virtual NodeId const& address() const { return id; }
 	virtual Public const& publicKey() const { return id; }
 	
+	/// Replace TCP address with UDP address if TCP addr is private and UDP is public. Temp. until protocol update.
+	void cullEndpoint();
+	
 	NodeId id;
 	
 	/// Endpoints by which we expect to reach node.

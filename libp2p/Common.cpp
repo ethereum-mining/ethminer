@@ -109,3 +109,9 @@ std::string p2p::reasonOf(DisconnectReason _r)
 	default: return "Unknown reason.";
 	}
 }
+
+void Node::cullEndpoint()
+{
+	if (!isPublicAddress(endpoint.tcp.address()) && isPublicAddress(endpoint.udp.address()))
+		endpoint.tcp.address(endpoint.udp.address());
+}
