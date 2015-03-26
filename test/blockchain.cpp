@@ -72,6 +72,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		// create new "genesis" block
 		RLPStream rlpGenesisBlock = createFullBlockFromHeader(biGenesisBlock);
 		biGenesisBlock.verifyInternals(&rlpGenesisBlock.out());
+		o["genesisRLP"] = "0x" + toHex(rlpGenesisBlock.out());
 
 		// construct blockchain
 		BlockChain bc(rlpGenesisBlock.out(), string(), true);
@@ -114,6 +115,15 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 						vBiUncles.push_back(vBiUncles[vBiUncles.size()-1]);
 						continue;
 					}
+
+					if (uncleHeaderObj.count("sameAsBlock"))
+					{
+						writeBlockHeaderToJson(uncleHeaderObj_pre, vBiBlocks[(size_t)toInt(uncleHeaderObj["sameAsBlock"])]);
+						aUncleList.push_back(uncleHeaderObj_pre);
+						vBiUncles.push_back(vBiBlocks[(size_t)toInt(uncleHeaderObj["sameAsBlock"])]);
+						continue;
+					}
+
 					BlockInfo uncleBlockFromFields = constructBlock(uncleHeaderObj);
 
 					// make uncle header valid
@@ -653,9 +663,9 @@ BOOST_AUTO_TEST_CASE(bcUncleTest)
 	dev::test::executeTests("bcUncleTest", "/BlockTests", dev::test::doBlockchainTests);
 }
 
-BOOST_AUTO_TEST_CASE(userDefinedFileBc)
+BOOST_AUTO_TEST_CASE(userDefinedFile)
 {
-	dev::test::userDefinedTest("--bctest", dev::test::doBlockchainTests);
+	dev::test::userDefinedTest("--singletest", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
