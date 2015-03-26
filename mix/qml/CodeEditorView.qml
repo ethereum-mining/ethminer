@@ -68,9 +68,28 @@ Item {
 	}
 
 	function highlightExecution(documentId, location) {
+
 		var editor = getEditor(documentId);
 		if (editor)
-			editor.highlightExecution(location);
+		{
+			if (documentId !== location.sourceName)
+				findAndHightlight(location.start, location.end, location.sourceName)
+			else
+				editor.highlightExecution(location);
+		}
+	}
+
+	// Execution is not in the current document. Try:
+	// Open targeted document and hightlight (TODO) or
+	// Relevant hightlighting on the current document
+	function findAndHightlight(start, end, sourceName)
+	{
+		var editor = getEditor(currentDocumentId);
+		if (editor)
+		{
+			var sourceIndex = editor.getText().indexOf(sourceName);
+			highlightExecution(currentDocumentId, { start: sourceIndex, end: sourceIndex + sourceName.length, sourceName: currentDocumentId });
+		}
 	}
 
 	function editingContract() {
