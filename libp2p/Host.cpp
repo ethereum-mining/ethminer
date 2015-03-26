@@ -287,37 +287,37 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 	}
 }
 
-void Host::determinePublic(NetworkPreferences const& _netPrefs)
+void Host::determinePublic()
 {
 	// set m_tcpPublic := listenIP (if public) > public > upnp > unspecified address.
 	
 	auto ifAddresses = Network::getInterfaceAddresses();
-	auto laddr = bi::address::from_string(_netPrefs.listenIPAddress);
+	auto laddr = m_netPrefs.listenIPAddress.empty() ? bi::address() : bi::address::from_string(m_netPrefs.listenIPAddress);
 	auto lset = !laddr.is_unspecified();
-	auto paddr = bi::address::from_string(_netPrefs.publicIPAddress);
+	auto paddr = m_netPrefs.publicIPAddress.empty() ? bi::address() : bi::address::from_string(m_netPrefs.publicIPAddress);
 	auto pset = !paddr.is_unspecified();
 	
 	bool listenIsPublic = lset && isPublicAddress(laddr);
 	bool publicIsHost = !lset && pset && ifAddresses.count(paddr);
 	
-	bi::tcp::endpoint ep(bi::address(), _netPrefs.listenPort);
-	if (_netPrefs.traverseNAT && listenIsPublic)
+	bi::tcp::endpoint ep(bi::address(), m_netPrefs.listenPort);
+	if (m_netPrefs.traverseNAT && listenIsPublic)
 	{
 		clog(NetNote) << "Listen address set to Public address:" << laddr << ". UPnP disabled.";
 		ep.address(laddr);
 	}
-	else if (_netPrefs.traverseNAT && publicIsHost)
+	else if (m_netPrefs.traverseNAT && publicIsHost)
 	{
 		clog(NetNote) << "Public address set to Host configured address:" << paddr << ". UPnP disabled.";
 		ep.address(paddr);
 	}
-	else if (_netPrefs.traverseNAT)
+	else if (m_netPrefs.traverseNAT)
 	{
 		bi::address natIFAddr;
 		if (lset && ifAddresses.count(laddr))
-			ep = Network::traverseNAT(std::set<bi::address>({laddr}), _netPrefs.listenPort, natIFAddr);
+			ep = Network::traverseNAT(std::set<bi::address>({laddr}), m_netPrefs.listenPort, natIFAddr);
 		else
-			ep = Network::traverseNAT(ifAddresses, _netPrefs.listenPort, natIFAddr);
+			ep = Network::traverseNAT(ifAddresses, m_netPrefs.listenPort, natIFAddr);
 		
 		if (lset && natIFAddr != laddr)
 			// if listen address is set we use it, even if upnp returns different
@@ -583,13 +583,13 @@ void Host::startedWorking()
 		h.second->onStarting();
 	
 	// try to open acceptor (todo: ipv6)
-	m_listenPort = Network::tcp4Listen(m_tcp4Acceptor, m_netPrefs.listenPort);
+	m_listenPort = Network::tcp4Listen(m_tcp4Acceptor, m_netPrefs);
 
 	// determine public IP, but only if we're able to listen for connections
 	// todo: GUI when listen is unavailable in UI
 	if (m_listenPort)
 	{
-		determinePublic(m_netPrefs.publicIP, m_netPrefs.upnp);
+		determinePublic();
 
 		if (m_listenPort > 0)
 			runAcceptor();
