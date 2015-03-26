@@ -88,8 +88,10 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
+#if ETH_FATDB
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
+#endif
 		<< "    setsecret <secret>  Set the secret to the hex secret key." <<endl
 		<< "    setaddress <addr>  Set the coinbase (mining payout) address." <<endl
 		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." <<endl
@@ -685,6 +687,7 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
+#if ETH_FATDB
 			else if (c && cmd == "listcontracts")
 			{
 				auto acs =c->addresses();
@@ -707,6 +710,7 @@ int main(int argc, char** argv)
 						cout << ss << endl;
 					}
 			}
+#endif
 			else if (c && cmd == "send")
 			{
 				if (iss.peek() != -1)
