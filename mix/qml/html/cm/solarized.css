@@ -169,3 +169,16 @@ view-port
 	background: rgba(255, 255, 255, 0.10);
 }
 
+/* Error annotation */
+.CodeMirror-errorannotation {
+	border-bottom: 1px solid #b58900;
+}
+
+.CodeMirror-errorannotation-context {
+	font-family: monospace;
+	font-size: small;
+	color: #586e75;
+	background: #b58900;
+	padding: 2px;
+}
+
