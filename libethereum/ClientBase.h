@@ -131,7 +131,7 @@ public:
 	virtual u256 gasLimitRemaining() const override;
 
 	/// Set the coinbase address
-	virtual void setAddress(Address _us) override; 
+	virtual void setAddress(Address _us) = 0;
 
 	/// Get the coinbase address
 	virtual Address address() const override;

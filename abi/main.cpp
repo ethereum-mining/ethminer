@@ -202,6 +202,20 @@ struct ABIType
 		return ret;
 	}
 
+	bool isBytes() const { return base == Base::Bytes && !size; }
+
+	string render(bytes const& _data) const
+	{
+		if (base == Base::Uint)
+			return toString(fromBigEndian<u256>(_data));
+		else if (base == Base::Int)
+			return toString((s256)fromBigEndian<u256>(_data));
+		else if (base == Base::Address)
+			return toString(Address(h256(_data)));
+		else
+			return toHex(_data);
+	}
+
 	void noteHexInput(unsigned _nibbles) { if (base == Base::Unknown) { if (_nibbles == 40) base = Base::Address; else { base = Base::Bytes; size = _nibbles / 2; } } }
 	void noteBinaryInput() { if (base == Base::Unknown) { base = Base::Bytes; size = 32; } }
 	void noteDecimalInput() { if (base == Base::Unknown) { base = Base::Uint; size = 32; } }
@@ -341,6 +355,9 @@ struct ABIMethod
 
 	bytes encode(vector<pair<bytes, Format>> const& _params) const
 	{
+		// ALL WRONG!!!!
+		// INARITIES SHOULD BE HEIRARCHICAL!
+
 		bytes ret = name.empty() ? bytes() : id().asBytes();
 		unsigned pi = 0;
 		vector<unsigned> inArity;
@@ -356,6 +373,9 @@ struct ABIMethod
 				}
 				else
 					arity *= j;
+			if (i.isBytes())
+				for (unsigned i = 0; i < arity; ++i)
+
 			inArity.push_back(arity);
 		}
 		unsigned ii = 0;
@@ -382,6 +402,52 @@ struct ABIMethod
 		stringstream out;
 		if (_index == -1)
 			out << "[";
+		unsigned di = 0;
+		vector<ABIType> souts;
+		vector<unsigned> catDims;
+		for (ABIType a: outs)
+		{
+			unsigned q = 1;
+			for (auto& i: a.dims)
+			{
+				for (unsigned j = 0; j < q; ++j)
+					if (i == -1)
+					{
+						catDims.push_back(fromBigEndian<unsigned>(bytesConstRef(&_data).cropped(di, 32)));
+						di += 32;
+					}
+				q *= i;
+			}
+			if (a.isBytes())
+			souts.push_back(a);
+		}
+		for (ABIType const& a: souts)
+		{
+			auto put = [&]() {
+				out << a.render(bytesConstRef(&_data).cropped(di, 32).toBytes()) << ", ";
+				di += 32;
+			};
+			function<void(vector<int>)> putDim = [&](vector<int> addr) {
+				if (addr.size() == a.dims.size())
+					put();
+				else
+				{
+					out << "[";
+					auto d = addr;
+					addr.push_back(0);
+					for (addr.back() = 0; addr.back() < a.dims[addr.size() - 1]; ++addr.back())
+					{
+						if (addr.back())
+							out << ", ";
+						putDim(addr);
+					}
+					out << "]";
+				}
+			};
+			putDim(vector<int>());
+			if (_index == -1)
+				out << ", ";
+		}
 		(void)_data;
 		if (_index == -1)
 			out << "]";
