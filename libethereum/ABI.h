@@ -24,6 +24,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/CommonData.h>
+#include <libdevcrypto/SHA3.h>
 
 namespace dev
 {
