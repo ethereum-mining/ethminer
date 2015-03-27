@@ -44,7 +44,7 @@ namespace mix
 
 const Secret c_defaultUserAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
 const u256 c_mixGenesisDifficulty = c_minimumDifficulty; //TODO: make it lower for Mix somehow
-	
+
 bytes MixBlockChain::createGenesisBlock(h256 _stateRoot)
 {
 	RLPStream block(3);
@@ -80,6 +80,7 @@ void MixClient::resetState(std::map<Secret, u256> _accounts)
 	SecureTrieDB<Address, MemoryDB> accountState(&m_stateDB);
 	accountState.init();
 
+	m_userAccounts.clear();
 	std::map<Address, Account> genesisState;
 	for (auto account: _accounts)
 	{
@@ -260,8 +261,8 @@ Address MixClient::submitTransaction(Secret _secret, u256 _endowment, bytes cons
 
 dev::eth::ExecutionResult MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
 {
-	
-	State temp = asOf(_blockNumber);
+	(void)_blockNumber;
+	State temp = asOf(eth::PendingBlock);
 	u256 n = temp.transactionsFrom(toAddress(_secret));
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
 	bytes rlp = t.rlp();
@@ -272,11 +273,12 @@ dev::eth::ExecutionResult MixClient::call(Secret _secret, u256 _value, Address _
 
 dev::eth::ExecutionResult MixClient::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
 {
+	(void)_blockNumber;
 	u256 n;
 	State temp;
 	{
 		ReadGuard lr(x_state);
-		temp = asOf(_blockNumber);
+		temp = asOf(eth::PendingBlock);
 		n = temp.transactionsFrom(toAddress(_secret));
 	}
 	Transaction t(_value, _gasPrice, _gas, _data, n, _secret);
