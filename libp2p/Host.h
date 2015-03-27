@@ -106,10 +106,10 @@ public:
 	void addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort, unsigned short _udpPort);
 	
 	/// Create Peer and attempt keeping peer connected.
-	void requirePeer(NodeId const& _node, std::string const& _addr, unsigned short _port);
+	void requirePeer(NodeId const& _node, std::string const& _udpAddr, unsigned short _udpPort, std::string const& _tcpAddr = "", unsigned short _tcpPort = 0);
 
-//	/// Note peer as no longer being required.
-//	void relinquishPeer(NodeId const& _node);
+	/// Note peer as no longer being required.
+	void relinquishPeer(NodeId const& _node);
 	
 	/// Set ideal number of peers.
 	void setIdealPeerCount(unsigned _n) { m_idealPeerCount = _n; }
@@ -215,6 +215,10 @@ private:
 
 	/// Shared storage of Peer objects. Peers are created or destroyed on demand by the Host. Active sessions maintain a shared_ptr to a Peer;
 	std::map<NodeId, std::shared_ptr<Peer>> m_peers;
+	
+	/// Peers we try to connect regardless of p2p network.
+	std::set<NodeId> m_requiredPeers;
+	Mutex x_requiredPeers;
 	
 	std::list<std::shared_ptr<boost::asio::deadline_timer>> m_timers;
 
