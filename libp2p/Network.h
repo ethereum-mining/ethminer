@@ -58,16 +58,18 @@ public:
 
 struct NetworkPreferences
 {
-	// Network Preferences with unspecified Public IP
-	NetworkPreferences(unsigned short p = 30303, std::string i = std::string(), bool u = true, bool l = false): listenPort(p), listenIPAddress(i), publicIPAddress(), traverseNAT(u) {}
+	// Default Network Preferences
+	NetworkPreferences(unsigned short lp = 30303): listenPort(lp) {}
+	
+	// Network Preferences with specific Listen IP
+	NetworkPreferences(std::string l, unsigned short lp = 30303, bool u = true): publicIPAddress(), listenIPAddress(l), listenPort(lp), traverseNAT(u) {}
 	
 	// Network Preferences with intended Public IP
-	NetworkPreferences(std::string publicIP, unsigned short p = 30303, std::string i = std::string(), bool u = true, bool l = false): listenPort(p), listenIPAddress(i), publicIPAddress(publicIP), traverseNAT(u) { if (!publicIPAddress.empty() && !isPublicAddress(publicIPAddress)) BOOST_THROW_EXCEPTION(InvalidPublicIPAddress()); }
+	NetworkPreferences(std::string publicIP, std::string l = std::string(), unsigned short lp = 30303, bool u = true): publicIPAddress(publicIP), listenIPAddress(l), listenPort(lp), traverseNAT(u) { if (!publicIPAddress.empty() && !isPublicAddress(publicIPAddress)) BOOST_THROW_EXCEPTION(InvalidPublicIPAddress()); }
 
-	unsigned short listenPort = 30303;
-	std::string listenIPAddress;
 	std::string publicIPAddress;
-
+	std::string listenIPAddress;
+	unsigned short listenPort = 30303;
 	bool traverseNAT = true;
 };
 	
