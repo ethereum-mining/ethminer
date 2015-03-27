@@ -51,7 +51,11 @@ struct ClientWatch
 	explicit ClientWatch(h256 _id, Reaping _r): id(_id), lastPoll(_r == Reaping::Automatic ? std::chrono::system_clock::now() : std::chrono::system_clock::time_point::max()) {}
 
 	h256 id;
+#if INITIAL_STATE_AS_CHANGES
 	LocalisedLogEntries changes = LocalisedLogEntries{ InitialChange };
+#else
+	LocalisedLogEntries changes;
+#endif
 	mutable std::chrono::system_clock::time_point lastPoll = std::chrono::system_clock::now();
 };
 
@@ -161,7 +165,6 @@ protected:
 	mutable Mutex x_filtersWatches;					///< Our lock.
 	std::map<h256, InstalledFilter> m_filters;		///< The dictionary of filters that are active.
 	std::map<unsigned, ClientWatch> m_watches;		///< Each and every watch - these reference a filter.
-
 };
 
 }}
