@@ -162,6 +162,8 @@ struct ABIType
 		{
 			if (base == Base::Fixed)
 				size = ssize = 16;
+			else if (base == Base::Address || base == Base::Bytes)
+				size = 0;
 			else
 				size = 32;
 			return;
@@ -188,7 +190,7 @@ struct ABIType
 		string ret;
 		switch (base)
 		{
-		case Base::Bytes: ret = "bytes" + toString(size); break;
+		case Base::Bytes: ret = "bytes" + (size > 0 ? toString(size) : ""); break;
 		case Base::Address: ret = "address"; break;
 		case Base::Int: ret = "int" + toString(size); break;
 		case Base::Uint: ret = "uint" + toString(size); break;
@@ -361,14 +363,29 @@ struct ABIMethod
 		{
 			for (unsigned j = 0; j < inArity[ii]; ++j)
 			{
-				ret += aligned(_params[pi].first, i, _params[pi].second, (i.base == Base::Bytes && i.size == 1) ? 1 : 32);
+				if (i.base == Base::Bytes && !i.size)
+				{
+					ret += _params[pi].first;
+					while (ret.size() % 32 != 0)
+						ret.push_back(0);
+				}
+				else
+					ret += aligned(_params[pi].first, i, _params[pi].second, 32);
 				++pi;
 			}
 			++ii;
-			while (ret.size() % 32 != 0)
-				ret.push_back(0);
 		}
 		return ret;
+	}
+	string decode(bytes const& _data, int _index = -1)
+	{
+		stringstream out;
+		if (_index == -1)
+			out << "[";
+		(void)_data;
+		if (_index == -1)
+			out << "]";
+		return out.str();
 	}
 };
 
@@ -517,10 +534,7 @@ int main(int argc, char** argv)
 	}
 
 	string abiData;
-	if (abiFile == "--")
-		for (int i = cin.get(); i != -1; i = cin.get())
-			abiData.push_back((char)i);
-	else if (!abiFile.empty())
+	if (abiFile.empty())
 		abiData = contentsString(abiFile);
 
 	if (mode == Mode::Encode)
@@ -546,6 +560,31 @@ int main(int argc, char** argv)
 	}
 	else if (mode == Mode::Decode)
 	{
+		if (abiData.empty())
+		{
+			cerr << "Please specify an ABI file." << endl;
+			exit(-1);
+		}
+		else
+		{
+			ABI abi(abiData);
+			ABIMethod m;
+			if (verbose)
+				cerr << "ABI:" << endl << abi;
+			try {
+				m = abi.method(method, args);
+			}
+			catch(...)
+			{
+				cerr << "Unknown method in ABI." << endl;
+				exit(-1);
+			}
+			string encoded;
+			for (int i = cin.get(); i != -1; i = cin.get())
+				encoded.push_back((char)i);
+			cout << m.decode(fromHex(encoded));
+		}
+
 		// TODO: read abi to determine output format.
 		(void)encoding;
 		(void)clearZeroes;
