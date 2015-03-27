@@ -4,7 +4,8 @@ var editor = CodeMirror(document.body, {
 							matchBrackets: true,
 							autofocus: true,
 							gutters: ["CodeMirror-linenumbers", "breakpoints"],
-							autoCloseBrackets: true
+							autoCloseBrackets: true,
+							styleSelectedText: true
 						});
 var ternServer;
 
