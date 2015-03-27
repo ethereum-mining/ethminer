@@ -263,6 +263,7 @@ unsigned Main::installWatch(LogFilter const& _tf, WatchHandler const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
+	_f(LocalisedLogEntries());
 	return ret;
 }
 
@@ -270,6 +271,7 @@ unsigned Main::installWatch(dev::h256 _tf, WatchHandler const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf, Reaping::Manual);
 	m_handlers[ret] = _f;
+	_f(LocalisedLogEntries());
 	return ret;
 }
 
