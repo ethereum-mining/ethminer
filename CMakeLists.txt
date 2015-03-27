@@ -229,9 +229,6 @@ if (NOT JUSTTESTS)
 
 endif()
 
-enable_testing()
-add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
-
 #unset(TARGET_PLATFORM CACHE)
 
 if (WIN32)
