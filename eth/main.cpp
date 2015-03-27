@@ -77,7 +77,6 @@ void interactiveHelp()
 		<< "    setetherprice <p>  Resets the ether price." << endl
 		<< "    setpriority <p>  Resets the transaction priority." << endl
 		<< "    minestart  Starts mining." << endl
-		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
 		<< "    address  Gives the current address." << endl
@@ -88,12 +87,14 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
+#if ETH_FATDB
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
-		<< "    setsecret <secret>  Set the secret to the hex secret key." <<endl
-		<< "    setaddress <addr>  Set the coinbase (mining payout) address." <<endl
-		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." <<endl
-		<< "    importconfig <path>  Import the config (.RLP) from the path provided." <<endl
+#endif
+		<< "    setsecret <secret>  Set the secret to the hex secret key." << endl
+		<< "    setaddress <addr>  Set the coinbase (mining payout) address." << endl
+		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." << endl
+		<< "    importconfig <path>  Import the config (.RLP) from the path provided." << endl
 		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
@@ -117,7 +118,7 @@ void help()
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #if ETH_JSONRPC
 		<< "	-j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
-		<< "	--json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
+		<< "	--json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
 		<< "    -K,--kill-blockchain  First kill the blockchain." << endl
 		<< "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
@@ -370,7 +371,7 @@ int main(int argc, char** argv)
 			interactive = true;
 #if ETH_JSONRPC
 		else if ((arg == "-j" || arg == "--json-rpc"))
-			jsonrpc = jsonrpc == -1 ? 8080 : jsonrpc;
+			jsonrpc = jsonrpc == -1 ? SensibleHttpPort : jsonrpc;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
 #endif
@@ -457,7 +458,7 @@ int main(int argc, char** argv)
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
-		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
 		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
@@ -582,8 +583,8 @@ int main(int argc, char** argv)
 			else if (cmd == "jsonstart")
 			{
 				if (jsonrpc < 0)
-					jsonrpc = 8080;
-				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+					jsonrpc = SensibleHttpPort;
+				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
 				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 				jsonrpcServer->setIdentities({us});
 				jsonrpcServer->StartListening();
@@ -685,6 +686,7 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
+#if ETH_FATDB
 			else if (c && cmd == "listcontracts")
 			{
 				auto acs =c->addresses();
@@ -707,6 +709,7 @@ int main(int argc, char** argv)
 						cout << ss << endl;
 					}
 			}
+#endif
 			else if (c && cmd == "send")
 			{
 				if (iss.peek() != -1)
