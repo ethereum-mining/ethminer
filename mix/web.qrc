@@ -39,5 +39,6 @@
         <file>qml/html/cm/acorn.js</file>
         <file>qml/html/cm/acorn_loose.js</file>
         <file>qml/html/cm/walk.js</file>
+        <file>qml/html/cm/mark-selection.js</file>
     </qresource>
 </RCC>

@@ -171,6 +171,8 @@ public:
 
 	// Mining stuff:
 
+	void setAddress(Address _us) { WriteGuard l(x_stateDB); m_preMine.setAddress(_us); }
+
 	/// Check block validity prior to mining.
 	bool miningParanoia() const { return m_paranoia; }
 	/// Change whether we check block validity prior to mining.
