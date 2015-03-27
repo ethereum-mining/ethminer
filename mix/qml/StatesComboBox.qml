@@ -23,6 +23,7 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.0
 import QtQuick.Layouts 1.1
+import QtGraphicalEffects 1.0
 
 Rectangle {
     id:statesComboBox
@@ -40,7 +41,13 @@ Rectangle {
                 break;
         }
         var coordinates = dropDownList.mapToItem(top, 0, 0)
+        //the order is important
+        dropDownShowdowList.parent = top;
         dropDownList.parent = top;
+
+        dropDownShowdowList.x = coordinates.x
+        dropDownShowdowList.y = coordinates.y
+
         dropDownList.x = coordinates.x
         dropDownList.y = coordinates.y
     }
@@ -48,7 +55,7 @@ Rectangle {
     signal selectItem(real item);
     signal editItem(real item);
     signal selectCreate();
-
+    property variant rowHeight:25;
     property variant items;
     readonly property alias selectedItem: chosenItemText.text;
     readonly property alias selectedIndex: listView.currentRow;
@@ -87,16 +94,30 @@ Rectangle {
             }
         }
     }
-//ToDo: We need scrollbar for items
+
+    Rectangle {
+        id:dropDownShowdowList
+        width:statesComboBox.width;
+        opacity: 0.3
+        height:0;
+        clip:true;
+        radius:4;
+        anchors.top: chosenItem.top;
+        anchors.margins: 2;
+        color: "gray"
+    }
+    //ToDo: We need scrollbar for items
     Rectangle {
         id:dropDownList
         width:statesComboBox.width;
         height:0;
         clip:true;
         radius:4;
-        anchors.top: chosenItem.bottom;
+        anchors.top: chosenItem.top;
         anchors.margins: 2;
         color: statesComboBox.color
+
+
         ColumnLayout{
             spacing: 2
             TableView {
@@ -118,10 +139,13 @@ Rectangle {
                     width: statesComboBox.width;
                     delegate: mainItemDelegate
                 }
-
+                rowDelegate:  Rectangle {
+                    width:statesComboBox.width;
+                    height: statesComboBox.rowHeight;
+                }
                 Component {
                     id: mainItemDelegate
-                    Item{
+                    Rectangle {
                         id: itemDelegate
                         width:statesComboBox.width;
                         height: statesComboBox.height;
@@ -134,22 +158,16 @@ Rectangle {
                             anchors.margins: 5;
 
                         }
-                        Rectangle
-                        {
-                            id: spaceItemid
-                            anchors.top: textItemid.top;
-                            anchors.left: textItemid.right
-                            width: parent.width - textItemid.width - imageItemid.width - textItemid.anchors.margins- textItemid.anchors.margins
-                        }
                         Image {
                             id: imageItemid
                             height:20
                             width:20;
+                            anchors.right:parent.right
+                            anchors.top: parent.top;
+                            anchors.margins: 5;
                             visible: false;
                             fillMode: Image.PreserveAspectFit
                             source: "img/edit_combox.png"
-                            anchors.top: spaceItemid.top;
-                            anchors.left: spaceItemid.right;
                         }
 
                         MouseArea {
@@ -180,6 +198,7 @@ Rectangle {
                     }//Item
                 }//Component
             }//Table View
+
             RowLayout{
                 Rectangle{
                     width: 1
@@ -188,7 +207,7 @@ Rectangle {
                     id:createStateText
                     width:statesComboBox.width;
                     height: statesComboBox.height;
-                    font.pointSize: 10
+                    font.bold: true
                     text:"Create State ..."
                     MouseArea
                     {
@@ -208,12 +227,14 @@ Rectangle {
                     }
                 }
             }
+
         }
     }
     states: State {
         name: "dropDown";
-        PropertyChanges { target: dropDownList; height:(20*(statesComboBox.items.count+1)) }
-        PropertyChanges { target:listView; height:20; implicitHeight: (20*(statesComboBox.items.count)) }
+        PropertyChanges { target: dropDownList; height:(statesComboBox.rowHeight*(statesComboBox.items.count+1)) }
+        PropertyChanges { target: dropDownShowdowList; width:statesComboBox.width+3; height:(statesComboBox.rowHeight*(statesComboBox.items.count+1))+3 }
+        PropertyChanges { target:listView; height:20; implicitHeight: (statesComboBox.rowHeight*(statesComboBox.items.count)) }
     }
 
 }

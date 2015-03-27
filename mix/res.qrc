@@ -12,7 +12,7 @@
         <file>qml/StatesComboBox.qml</file>
         <file>qml/StateListModel.qml</file>
         <file>qml/img/dappProjectIcon.png</file>
-        <file>qml/img/edit_combox.png</file>	
+        <file>qml/img/edit_combox.png</file>
         <file>qml/img/jumpintoback.png</file>
         <file>qml/img/jumpintoforward.png</file>
         <file>qml/img/jumpoutback.png</file>
@@ -115,5 +115,9 @@
         <file>qml/StructView.qml</file>
         <file>qml/img/console.png</file>
         <file>qml/VariablesView.qml</file>
+        <file>qml/img/play_button2x.png</file>
+        <file>qml/img/play_button.png</file>
+        <file>qml/img/pause_button2x.png</file>
+        <file>qml/img/pause_button.png</file>
     </qresource>
 </RCC>
