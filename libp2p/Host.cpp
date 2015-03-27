@@ -521,6 +521,9 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 				Guard l(x_connecting);
 				m_connecting.push_back(handshake);
 			}
+			
+			// preempt setting failedAttempts; this value is cleared upon success
+			_p->m_failedAttempts++;
 			handshake->start();
 		}
 		
@@ -647,6 +650,7 @@ void Host::startedWorking()
 	else
 		clog(NetNote) << "p2p.start.notice id:" << id().abridged() << "Listen port is invalid or unavailable. Node Table using default port (30303).";
 
+	// this doesn't work unless local-networking is enabled because the port is -1
 	m_nodeTable.reset(new NodeTable(m_ioService, m_alias, bi::address::from_string(listenAddress()), listenPort() > 0 ? listenPort() : 30303));
 	m_nodeTable->setEventHandler(new HostNodeTableHandler(*this));
 	restoreNetwork(&m_restoreNetwork);
