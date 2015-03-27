@@ -393,11 +393,6 @@ u256 ClientBase::gasLimitRemaining() const
 	return postMine().gasLimitRemaining();
 }
 
-void ClientBase::setAddress(Address _us)
-{
-	preMine().setAddress(_us);
-}
-
 Address ClientBase::address() const
 {
 	return preMine().address();
