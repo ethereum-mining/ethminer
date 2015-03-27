@@ -166,7 +166,7 @@ view-port
 
 /* Code execution */
 .CodeMirror-exechighlight {
-	background: rgba(255, 255, 255, 0.10);
+	background: #eee8d5;
 }
 
 /* Error annotation */
@@ -181,4 +181,6 @@ view-port
 	background: #b58900;
 	padding: 2px;
 }
+
+span.CodeMirror-selectedtext { color: #586e75 !important; }
 
