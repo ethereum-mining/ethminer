@@ -21,14 +21,14 @@
 
 #pragma once
 
+#include <libdevcore/Common.h>
+#include <libdevcore/FixedHash.h>
+#include <libdevcore/CommonData.h>
+
 namespace dev
 {
 namespace eth
 {
-
-#include <libdevcore/Common.h>
-#include <libdevcore/FixedHash.h>
-#include <libdevcore/CommonData.h>
 
 template <class T> struct ABISerialiser {};
 template <unsigned N> struct ABISerialiser<FixedHash<N>> { static bytes serialise(FixedHash<N> const& _t) { static_assert(N <= 32, "Cannot serialise hash > 32 bytes."); static_assert(N > 0, "Cannot serialise zero-length hash."); return bytes(32 - N, 0) + _t.asBytes(); } };
