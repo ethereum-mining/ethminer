@@ -423,6 +423,53 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 		if (m_nodeTable) m_nodeTable->addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(addr, _udpNodePort), bi::tcp::endpoint(addr, _tcpPeerPort))));
 }
 
+void Host::requirePeer(NodeId const& _n, std::string const& _addr, unsigned short _port)
+{
+	auto addr = bi::address::from_string(_addr);
+	Node node(_n, NodeIPEndpoint(bi::udp::endpoint(addr, _port), bi::tcp::endpoint(addr, _port)));
+	if (_n)
+	{
+		// add or replace peer
+		shared_ptr<Peer> p;
+		RecursiveGuard l(x_sessions);
+		if (m_peers.count(_n))
+			p = m_peers[_n];
+		else
+		{
+			// TODO p2p: construct peer from node
+			p.reset(new Peer());
+			p->id = _n;
+			p->endpoint = NodeIPEndpoint(node.endpoint.udp, node.endpoint.tcp);
+			p->required = true;
+			m_peers[_n] = p;
+		}
+		p->endpoint.udp = node.endpoint.udp;
+		p->endpoint.tcp = node.endpoint.tcp;
+	}
+	else if (m_nodeTable)
+	{
+		shared_ptr<boost::asio::deadline_timer> t(new boost::asio::deadline_timer(m_ioService));
+		m_timers.push_back(t);
+		
+		m_nodeTable->addNode(node);
+		t->expires_from_now(boost::posix_time::milliseconds(600));
+		t->async_wait([this, _n](boost::system::error_code const& _ec)
+		{
+			if (!_ec && m_nodeTable)
+				if (auto n =  m_nodeTable->node(_n))
+					if (!m_peers.count(_n))
+					{
+						shared_ptr<Peer> p(new Peer());
+						p->id = _n;
+						p->endpoint = n.endpoint;
+						p->required = true;
+						RecursiveGuard l(x_sessions);
+						m_peers[_n] = p;
+					}
+		});
+	}
+}
+
 void Host::connect(std::shared_ptr<Peer> const& _p)
 {
 	if (!m_run)
