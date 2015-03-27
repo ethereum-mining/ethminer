@@ -77,7 +77,6 @@ void interactiveHelp()
 		<< "    setetherprice <p>  Resets the ether price." << endl
 		<< "    setpriority <p>  Resets the transaction priority." << endl
 		<< "    minestart  Starts mining." << endl
-		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
 		<< "    address  Gives the current address." << endl
@@ -88,12 +87,14 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
+#if ETH_FATDB
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
-		<< "    setsecret <secret>  Set the secret to the hex secret key." <<endl
-		<< "    setaddress <addr>  Set the coinbase (mining payout) address." <<endl
-		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." <<endl
-		<< "    importconfig <path>  Import the config (.RLP) from the path provided." <<endl
+#endif
+		<< "    setsecret <secret>  Set the secret to the hex secret key." << endl
+		<< "    setaddress <addr>  Set the coinbase (mining payout) address." << endl
+		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." << endl
+		<< "    importconfig <path>  Import the config (.RLP) from the path provided." << endl
 		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
@@ -685,6 +686,7 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
+#if ETH_FATDB
 			else if (c && cmd == "listcontracts")
 			{
 				auto acs =c->addresses();
@@ -707,6 +709,7 @@ int main(int argc, char** argv)
 						cout << ss << endl;
 					}
 			}
+#endif
 			else if (c && cmd == "send")
 			{
 				if (iss.peek() != -1)

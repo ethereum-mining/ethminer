@@ -16,12 +16,15 @@ function extractErrorInfo(raw, shortMessage)
 	{
 		_return.errorLocation = ErrorLocationFormater.formatLocation(reg[0], shortMessage);
 		_return.errorDetail = detail.replace(reg[0], "");
+		_return.line = reg[0].split(':')[1];
+		_return.column = reg[0].split(':')[2];
 	}
 	else
 	{
 		_return.errorLocation = "";
 		_return.errorDetail = detail;
+		_return.line = "";
+		_return.column = "";
 	}
-	_return.errorLine = raw.split('\n')[1];
 	return _return;
 }
