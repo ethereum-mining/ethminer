@@ -592,12 +592,12 @@ void Host::startedWorking()
 		m_run = true;
 	}
 
-	// try to open acceptor (todo: ipv6)
-	m_listenPort = Network::tcp4Listen(m_tcp4Acceptor, m_netPrefs.listenPort);
-
-	// start capability threads
+	// start capability threads (ready for incoming connections)
 	for (auto const& h: m_capabilities)
 		h.second->onStarting();
+	
+	// try to open acceptor (todo: ipv6)
+	m_listenPort = Network::tcp4Listen(m_tcp4Acceptor, m_netPrefs.listenPort);
 
 	// determine public IP, but only if we're able to listen for connections
 	// todo: GUI when listen is unavailable in UI
