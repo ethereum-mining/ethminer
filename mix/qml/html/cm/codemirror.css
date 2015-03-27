@@ -304,12 +304,12 @@ div.CodeMirror-cursors {
 @media print {
   /* Hide the cursor when printing */
   .CodeMirror div.CodeMirror-cursors {
-    visibility: hidden;
+	visibility: hidden;
   }
 }
 
 /* See issue #2901 */
 .cm-tab-wrap-hack:after { content: ''; }
 
-/* Help users use markselection to safely style text background */
-span.CodeMirror-selectedtext { background: none; }
+/* Help users use markselection to safely style text background
+span.CodeMirror-selectedtext { color: #586e75; } */
