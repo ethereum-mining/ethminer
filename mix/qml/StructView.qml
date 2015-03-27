@@ -24,24 +24,24 @@ Column
 				height: 20
 				id: typeLabel
 				text: modelData.type.name
-				Layout.preferredWidth: 60
+				anchors.verticalCenter: parent.verticalCenter
 			}
 
 			DefaultLabel {
 				id: nameLabel
 				text: modelData.name
-				Layout.preferredWidth: 100
+				anchors.verticalCenter: parent.verticalCenter
 			}
 
 			DefaultLabel {
 				id: equalLabel
 				text: "="
-				Layout.preferredWidth: 15
+				anchors.verticalCenter: parent.verticalCenter
 			}
 			Loader
 			{
 				id: typeLoader
-				Layout.preferredWidth: 150
+				anchors.verticalCenter: parent.verticalCenter
 				sourceComponent:
 				{
 					var t = modelData.type.category;
@@ -63,7 +63,8 @@ Column
 					var ptype = members[index].type;
 					var pname = members[index].name;
 					var vals = value;
-					if (ptype.category === QSolidityType.Struct && !item.members) {
+					if (ptype.category === QSolidityType.Struct && !item.members)
+					{
 						item.value = getValue();
 						item.members = ptype.members;
 					}

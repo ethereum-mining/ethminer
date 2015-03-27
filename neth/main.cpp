@@ -1152,7 +1152,7 @@ int main(int argc, char** argv)
 					break;
 			}
 
-
+#if ETH_FATDB
 			// Contracts and addresses
 			y = 1;
 			auto acs = c->addresses();
@@ -1181,6 +1181,10 @@ int main(int argc, char** argv)
 					if (y > height * 3 / 5 - 4)
 						break;
 				}
+#else
+			mvwaddnstr(contractswin, 1, x, "build with ETH_FATDB to list contracts", qwidth);
+			mvwaddnstr(addswin, 1, x, "build with ETH_FATDB to list addresses", width / 2 - 4);
+#endif
 
 			// Peers
 			y = 1;
