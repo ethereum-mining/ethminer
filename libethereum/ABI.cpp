@@ -14,25 +14,14 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file Exceptions.h
- * @author Christian <c@ethdev.com>
+/** @file ABI.cpp
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
-#pragma once
+#include "ABI.h"
 
-#include <libdevcore/Exceptions.h>
+using namespace std;
+using namespace dev;
+using namespace dev::eth;
 
-namespace dev
-{
-namespace eth
-{
-
-struct AssemblyException: virtual Exception {};
-struct InvalidDeposit: virtual AssemblyException {};
-struct InvalidOpcode: virtual AssemblyException {};
-struct OptimizerException: virtual AssemblyException {};
-struct StackTooDeepException: virtual OptimizerException {};
-
-}
-}
