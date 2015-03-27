@@ -251,7 +251,8 @@ void Main::addNewId(QString _ids)
 
 NetworkPreferences Main::netPrefs() const
 {
-	return NetworkPreferences(ui->port->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), ui->localNetworking->isChecked());
+	return NetworkPreferences(ui->forcePublicIP->text().toStdString(), ui->listenIP->text().toStdString(), ui->port->value(), ui->upnp->isChecked());
+//	return NetworkPreferences(ui->port->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), ui->localNetworking->isChecked());
 }
 
 void Main::onKeysChanged()
@@ -675,9 +676,10 @@ void Main::writeSettings()
 	}
 
 	s.setValue("upnp", ui->upnp->isChecked());
-	s.setValue("forceAddress", ui->forceAddress->text());
+#warning fixme
+//	s.setValue("forceAddress", ui->forceAddress->text());
 	s.setValue("usePast", ui->usePast->isChecked());
-	s.setValue("localNetworking", ui->localNetworking->isChecked());
+//	s.setValue("localNetworking", ui->localNetworking->isChecked());
 	s.setValue("forceMining", ui->forceMining->isChecked());
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("natSpec", ui->natSpec->isChecked());
@@ -744,9 +746,10 @@ void Main::readSettings(bool _skipGeometry)
 	}
 
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
-	ui->forceAddress->setText(s.value("forceAddress", "").toString());
+#warning fixme
+//	ui->forceAddress->setText(s.value("forceAddress", "").toString());
 	ui->usePast->setChecked(s.value("usePast", true).toBool());
-	ui->localNetworking->setChecked(s.value("localNetworking", true).toBool());
+//	ui->localNetworking->setChecked(s.value("localNetworking", true).toBool());
 	ui->forceMining->setChecked(s.value("forceMining", false).toBool());
 	on_forceMining_triggered();
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
