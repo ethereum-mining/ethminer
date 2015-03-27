@@ -15,7 +15,6 @@ Item
 	Rectangle {
 		anchors.fill: parent
 		radius: 4
-		color: "#f7f7f7"
 		TextInput {
 			id: textinput
 			text: value
