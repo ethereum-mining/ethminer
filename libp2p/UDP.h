@@ -77,7 +77,7 @@ template <class T>
 struct RLPXDatagram: public RLPXDatagramFace
 {
 	RLPXDatagram(bi::udp::endpoint const& _ep): RLPXDatagramFace(_ep) {}
-	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
+	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { try { T t(_ep); t.interpretRLP(_bytes); return std::move(t); } catch(...) { T t(_ep); return std::move(t); } }
 	uint8_t packetType() { return T::type; }
 };
 
@@ -163,7 +163,14 @@ void UDPSocket<Handler, MaxDatagramSize>::connect()
 		return;
 
 	m_socket.open(bi::udp::v4());
-	m_socket.bind(m_endpoint);
+	try
+	{
+		m_socket.bind(m_endpoint);
+	}
+	catch (...)
+	{
+		m_socket.bind(bi::udp::endpoint(bi::udp::v4(), m_endpoint.port()));
+	}
 
 	// clear write queue so reconnect doesn't send stale messages
 	Guard l(x_sendQ);

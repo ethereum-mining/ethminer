@@ -560,7 +560,7 @@ void Host::run(boost::system::error_code const&)
 		{
 			RecursiveGuard l(x_sessions);
 			for (auto p: m_peers)
-				if (p.second->shouldReconnect())
+				if (p.second->shouldReconnect() && !havePeerSession(p.second->id))
 					toConnect.push_back(p.second);
 		}
 		
@@ -592,12 +592,12 @@ void Host::startedWorking()
 		m_run = true;
 	}
 
-	// try to open acceptor (todo: ipv6)
-	m_listenPort = Network::tcp4Listen(m_tcp4Acceptor, m_netPrefs.listenPort);
-
-	// start capability threads
+	// start capability threads (ready for incoming connections)
 	for (auto const& h: m_capabilities)
 		h.second->onStarting();
+	
+	// try to open acceptor (todo: ipv6)
+	m_listenPort = Network::tcp4Listen(m_tcp4Acceptor, m_netPrefs.listenPort);
 
 	// determine public IP, but only if we're able to listen for connections
 	// todo: GUI when listen is unavailable in UI
