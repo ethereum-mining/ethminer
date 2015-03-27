@@ -112,15 +112,19 @@ bool Ethasher::verify(BlockInfo const& _header)
 
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
-	// should be equivalent to:
-	auto r = eval(_header);
-	return r.mixHash == _header.mixHash && r.value <= boundary;
-
-	return ethash_quick_check_difficulty(
+	bool ret = ethash_quick_check_difficulty(
 		_header.headerHash(WithoutNonce).data(),
 		(uint64_t)(u64)_header.nonce,
 		_header.mixHash.data(),
 		boundary.data());
+
+#if ETH_DEBUG
+	// should be equivalent to:
+	auto result = eval(_header);
+	assert((result.mixHash == _header.mixHash && result.value <= boundary) == ret);
+#endif
+
+	return ret;
 }
 
 Ethasher::Result Ethasher::eval(BlockInfo const& _header, Nonce const& _nonce)

@@ -65,6 +65,7 @@ ldb::Slice toSlice(h256 _h, unsigned _sub = 0);
 
 using BlocksHash = std::map<h256, bytes>;
 using TransactionHashes = h256s;
+using UncleHashes = h256s;
 
 enum {
 	ExtraDetails = 0,
@@ -130,7 +131,10 @@ public:
 	TransactionHashes transactionHashes(h256 _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[1]) ret.push_back(sha3(t.data())); return ret; }
 	TransactionHashes transactionHashes() const { return transactionHashes(currentHash()); }
 
-	/// Get a list of transaction hashes for a given block. Thread-safe.
+	/// Get a list of uncle hashes for a given block. Thread-safe.
+	UncleHashes uncleHashes(h256 _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[2]) ret.push_back(sha3(t.data())); return ret; }
+	UncleHashes uncleHashes() const { return uncleHashes(currentHash()); }
+	
 	h256 numberHash(u256 _index) const { if (!_index) return genesisHash(); return queryExtras<BlockHash, ExtraBlockHash>(h256(_index), m_blockHashes, x_blockHashes, NullBlockHash).value; }
 
 	/** Get the block blooms for a number of blocks. Thread-safe.

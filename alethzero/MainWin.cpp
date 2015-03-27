@@ -135,6 +135,11 @@ Main::Main(QWidget *parent) :
 //		ui->log->addItem(QString::fromStdString(s));
 	};
 
+#if !ETH_FATDB
+	delete ui->dockWidget_accounts;
+	delete ui->dockWidget_contracts;
+#endif
+
 #if ETH_DEBUG
 	m_servers.append("localhost:30300");
 #endif
@@ -164,7 +169,7 @@ Main::Main(QWidget *parent) :
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), false, {"eth", "shh"}, p2p::NetworkPreferences(), network));
 
-	m_httpConnector.reset(new jsonrpc::HttpServer(8080));
+	m_httpConnector.reset(new jsonrpc::HttpServer(SensibleHttpPort, "", "", dev::SensibleHttpThreads));
 	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), keysAsVector(m_myKeys), this));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
@@ -258,6 +263,7 @@ unsigned Main::installWatch(LogFilter const& _tf, WatchHandler const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf);
 	m_handlers[ret] = _f;
+	_f(LocalisedLogEntries());
 	return ret;
 }
 
@@ -265,6 +271,7 @@ unsigned Main::installWatch(dev::h256 _tf, WatchHandler const& _f)
 {
 	auto ret = ethereum()->installWatch(_tf, Reaping::Manual);
 	m_handlers[ret] = _f;
+	_f(LocalisedLogEntries());
 	return ret;
 }
 
@@ -907,7 +914,7 @@ void Main::on_nameReg_textChanged()
 
 void Main::on_preview_triggered()
 {
-	ethereum()->setDefault(ui->preview->isChecked() ? 0 : -1);
+	ethereum()->setDefault(ui->preview->isChecked() ? PendingBlock : LatestBlock);
 	refreshAll();
 }
 
@@ -1036,6 +1043,7 @@ void Main::refreshPending()
 
 void Main::refreshAccounts()
 {
+#if ETH_FATDB
 	cwatch << "refreshAccounts()";
 	ui->accounts->clear();
 	ui->contracts->clear();
@@ -1053,6 +1061,7 @@ void Main::refreshAccounts()
 						->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
 			}
 		}
+#endif
 }
 
 void Main::refreshBlockCount()
@@ -1626,16 +1635,22 @@ void Main::on_ourAccounts_doubleClicked()
 
 void Main::on_accounts_doubleClicked()
 {
-	auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
-	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
+	if (ui->accounts->count())
+	{
+		auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
+		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
+		qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
+	}
 }
 
 void Main::on_contracts_doubleClicked()
 {
-	auto hba = ui->contracts->currentItem()->data(Qt::UserRole).toByteArray();
-	auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-	qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
+	if (ui->contracts->count())
+	{
+		auto hba = ui->contracts->currentItem()->data(Qt::UserRole).toByteArray();
+		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
+		qApp->clipboard()->setText(QString::fromStdString(toHex(h.asArray())));
+	}
 }
 
 static shh::FullTopic topicFromText(QString _s)
