@@ -349,7 +349,7 @@ struct ABIMethod
 				if (j == -1)
 				{
 					ret += aligned(_params[pi].first, ABIType(), Format::Decimal, 32);
-					arity *= fromBigEndian<uint>(_params[pi].first);
+					arity *= fromBigEndian<unsigned>(_params[pi].first);
 					pi++;
 				}
 				else
