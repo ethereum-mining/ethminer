@@ -134,6 +134,8 @@ highlightExecution = function(start, end) {
 		executionMark.clear();
 	if (start === 0 && end + 1 === editor.getValue().length)
 		return; // Do not hightlight the whole document.
+	if (debugWarning)
+		debugWarning.clear();
 	executionMark = editor.markText(editor.posFromIndex(start), editor.posFromIndex(end), { className: "CodeMirror-exechighlight" });
 }
 
@@ -146,6 +148,20 @@ changeGeneration = function()
 isClean = function()
 {
 	return editor.isClean(changeId);
+}
+
+var debugWarning = null;
+showWarning = function(content)
+{
+	if (executionMark)
+		executionMark.clear();
+	if (debugWarning)
+		debugWarning.clear();
+	var node = document.createElement("div");
+	node.id = "annotation"
+	node.innerHTML = content;
+	node.className = "CodeMirror-errorannotation-context";
+	debugWarning = editor.addLineWidget(0, node, { coverGutter: false, above: true });
 }
 
 var annotation = null;
