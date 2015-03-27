@@ -423,28 +423,39 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 		if (m_nodeTable) m_nodeTable->addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(addr, _udpNodePort), bi::tcp::endpoint(addr, _tcpPeerPort))));
 }
 
-void Host::requirePeer(NodeId const& _n, std::string const& _addr, unsigned short _port)
+void Host::relinquishPeer(NodeId const& _node)
 {
-	auto addr = bi::address::from_string(_addr);
-	Node node(_n, NodeIPEndpoint(bi::udp::endpoint(addr, _port), bi::tcp::endpoint(addr, _port)));
+	Guard l(x_requiredPeers);
+	if (m_requiredPeers.count(_node))
+		m_requiredPeers.erase(_node);
+}
+
+void Host::requirePeer(NodeId const& _n, std::string const& _udpAddr, unsigned short _udpPort, std::string const& _tcpAddr, unsigned short _tcpPort)
+{
+	auto naddr = bi::address::from_string(_udpAddr);
+	auto paddr = _tcpAddr.empty() ? naddr : bi::address::from_string(_tcpAddr);
+	auto udp = bi::udp::endpoint(naddr, _udpPort);
+	auto tcp = bi::tcp::endpoint(paddr, _tcpPort ? _tcpPort : _udpPort);
+	Node node(_n, NodeIPEndpoint(udp, tcp));
 	if (_n)
 	{
 		// add or replace peer
 		shared_ptr<Peer> p;
-		RecursiveGuard l(x_sessions);
-		if (m_peers.count(_n))
-			p = m_peers[_n];
-		else
 		{
-			// TODO p2p: construct peer from node
-			p.reset(new Peer());
-			p->id = _n;
-			p->endpoint = NodeIPEndpoint(node.endpoint.udp, node.endpoint.tcp);
-			p->required = true;
-			m_peers[_n] = p;
+			RecursiveGuard l(x_sessions);
+			if (m_peers.count(_n))
+				p = m_peers[_n];
+			else
+			{
+				p.reset(new Peer());
+				p->id = _n;
+				p->required = true;
+				m_peers[_n] = p;
+			}
+			p->endpoint.udp = node.endpoint.udp;
+			p->endpoint.tcp = node.endpoint.tcp;
 		}
-		p->endpoint.udp = node.endpoint.udp;
-		p->endpoint.tcp = node.endpoint.tcp;
+		connect(p);
 	}
 	else if (m_nodeTable)
 	{
@@ -456,16 +467,8 @@ void Host::requirePeer(NodeId const& _n, std::string const& _addr, unsigned shor
 		t->async_wait([this, _n](boost::system::error_code const& _ec)
 		{
 			if (!_ec && m_nodeTable)
-				if (auto n =  m_nodeTable->node(_n))
-					if (!m_peers.count(_n))
-					{
-						shared_ptr<Peer> p(new Peer());
-						p->id = _n;
-						p->endpoint = n.endpoint;
-						p->required = true;
-						RecursiveGuard l(x_sessions);
-						m_peers[_n] = p;
-					}
+				if (auto n = m_nodeTable->node(_n))
+					requirePeer(n.id, n.endpoint.udp.address().to_string(), n.endpoint.udp.port(), n.endpoint.tcp.address().to_string(), n.endpoint.tcp.port());
 		});
 	}
 }
