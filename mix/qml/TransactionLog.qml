@@ -6,7 +6,6 @@ import QtQuick.Layouts 1.1
 import org.ethereum.qml.RecordLogEntry 1.0
 
 Item {
-
     property ListModel fullModel: ListModel{}
     property ListModel transactionModel: ListModel{}
     property ListModel callModel: ListModel{}
@@ -25,11 +24,29 @@ Item {
         enabled: codeModel.hasContract && !clientModel.running && statesCombo.selectedIndex >= 0 && projectModel.stateListModel.count > 0;
         onTriggered: projectModel.stateListModel.editState(statesCombo.selectedIndex);
     }
+    Action {
+        id: playAndPauseAction
+        checkable: true;
+        checked: false;
+        iconSource: "qrc:/qml/img/play_button.png"
+        onToggled: {
+            if (checked)
+            {
+                this.iconSource = "qrc:/qml/img/pause_button2x.png"
+                console.log("play");
+            }else{
+                this.iconSource = "qrc:/qml/img/play_button2x.png"
+                console.log("pause");
+            }
+        }
+        enabled: true
+    }
 
     ColumnLayout {
         anchors.fill: parent
         RowLayout {
-
+            anchors.right: parent.right
+            anchors.left: parent.left
             Connections
             {
                 id: compilationStatus
@@ -78,18 +95,6 @@ Item {
                     }
                 }
             }
-            /*Button
-            {
-                anchors.rightMargin: 9
-                anchors.verticalCenter: parent.verticalCenter
-                action: editStateAction
-            }
-            Button
-            {
-                anchors.rightMargin: 9
-                anchors.verticalCenter: parent.verticalCenter
-                action: addStateAction
-            }*/
             Button
             {
                 anchors.rightMargin: 9
@@ -115,6 +120,14 @@ Item {
                 {
                     logTable.model = itemFilter.getCurrentModel();
                 }
+            }
+            Button
+            {
+                id: playPauseBtn
+                anchors.right: parent.right
+                anchors.rightMargin: 1
+                anchors.verticalCenter: parent.verticalCenter
+                action: playAndPauseAction
             }
         }
         TableView {
