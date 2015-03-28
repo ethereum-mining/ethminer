@@ -66,10 +66,6 @@ Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, byte
 	m_alias(networkAlias(_restoreNetwork)),
 	m_lastPing(chrono::steady_clock::time_point::min())
 {
-	for (auto address: m_ifAddresses)
-		if (address.is_v4())
-			clog(NetNote) << "IP Address: " << address << " = " << (isPrivateAddress(address) ? "[LOCAL]" : "[PEER]");
-
 	clog(NetNote) << "Id:" << id();
 }
 
@@ -387,7 +383,7 @@ string Host::pocHost()
 	return "poc-" + strs[1] + ".ethdev.com";
 }
 
-void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPeerPort, unsigned short _udpNodePort)
+void Host::addNode(NodeId const& _node, bi::address const& _addr, unsigned short _udpNodePort, unsigned short _tcpPeerPort)
 {
 	// TODO: p2p clean this up (bring tested acceptor code over from network branch)
 	while (isWorking() && !m_run)
@@ -403,37 +399,14 @@ void Host::addNode(NodeId const& _node, std::string const& _addr, unsigned short
 		cwarn << "Private port being recorded - setting to 0";
 		_tcpPeerPort = 0;
 	}
-
-	boost::system::error_code ec;
-	bi::address addr = bi::address::from_string(_addr, ec);
-	if (ec)
-	{
-		bi::tcp::resolver *r = new bi::tcp::resolver(m_ioService);
-		r->async_resolve({_addr, toString(_tcpPeerPort)}, [=](boost::system::error_code const& _ec, bi::tcp::resolver::iterator _epIt)
-		{
-			if (!_ec)
-			{
-				bi::tcp::endpoint tcp = *_epIt;
-				if (m_nodeTable) m_nodeTable->addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(tcp.address(), _udpNodePort), tcp)));
-			}
-			delete r;
-		});
-	}
-	else
-		if (m_nodeTable) m_nodeTable->addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(addr, _udpNodePort), bi::tcp::endpoint(addr, _tcpPeerPort))));
+	
+	if (m_nodeTable) m_nodeTable->addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(_addr, _udpNodePort), bi::tcp::endpoint(_addr, _tcpPeerPort))));
 }
 
-void Host::relinquishPeer(NodeId const& _node)
+void Host::requirePeer(NodeId const& _n, bi::address const& _udpAddr, unsigned short _udpPort, bi::address const& _tcpAddr, unsigned short _tcpPort)
 {
-	Guard l(x_requiredPeers);
-	if (m_requiredPeers.count(_node))
-		m_requiredPeers.erase(_node);
-}
-
-void Host::requirePeer(NodeId const& _n, std::string const& _udpAddr, unsigned short _udpPort, std::string const& _tcpAddr, unsigned short _tcpPort)
-{
-	auto naddr = bi::address::from_string(_udpAddr);
-	auto paddr = _tcpAddr.empty() ? naddr : bi::address::from_string(_tcpAddr);
+	auto naddr = _udpAddr;
+	auto paddr = _tcpAddr.is_unspecified() ? naddr : _tcpAddr;
 	auto udp = bi::udp::endpoint(naddr, _udpPort);
 	auto tcp = bi::tcp::endpoint(paddr, _tcpPort ? _tcpPort : _udpPort);
 	Node node(_n, NodeIPEndpoint(udp, tcp));
@@ -468,9 +441,16 @@ void Host::requirePeer(NodeId const& _n, std::string const& _udpAddr, unsigned s
 		{
 			if (!_ec && m_nodeTable)
 				if (auto n = m_nodeTable->node(_n))
-					requirePeer(n.id, n.endpoint.udp.address().to_string(), n.endpoint.udp.port(), n.endpoint.tcp.address().to_string(), n.endpoint.tcp.port());
+					requirePeer(n.id, n.endpoint.udp.address(), n.endpoint.udp.port(), n.endpoint.tcp.address(), n.endpoint.tcp.port());
 		});
 	}
+}
+
+void Host::relinquishPeer(NodeId const& _node)
+{
+	Guard l(x_requiredPeers);
+	if (m_requiredPeers.count(_node))
+		m_requiredPeers.erase(_node);
 }
 
 void Host::connect(std::shared_ptr<Peer> const& _p)
@@ -760,6 +740,9 @@ void Host::restoreNetwork(bytesConstRef _b)
 	if (!isStarted())
 		BOOST_THROW_EXCEPTION(NetworkStartRequired());
 
+	if (m_dropPeers)
+		return;
+	
 	RecursiveGuard l(x_sessions);
 	RLP r(_b);
 	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<unsigned>() == dev::p2p::c_protocolVersion)

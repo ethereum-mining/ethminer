@@ -54,6 +54,9 @@ public:
 
 	/// Return public endpoint of upnp interface. If successful o_upnpifaddr will be a private interface address and endpoint will contain public address and port.
 	static bi::tcp::endpoint traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr);
+	
+	/// Resolve "host:port" string as TCP endpoint. Returns unspecified endpoint on failure.
+	static bi::tcp::endpoint resolveHost(ba::io_service& _ioService, std::string const& _host);
 };
 
 struct NetworkPreferences

@@ -195,7 +195,7 @@ private:
 	/* todo: replace boost::posix_time; change constants to upper camelcase */
 	boost::posix_time::milliseconds const c_evictionCheckInterval = boost::posix_time::milliseconds(75);	///< Interval at which eviction timeouts are checked.
 	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
-	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
+	std::chrono::milliseconds const c_bucketRefresh = std::chrono::milliseconds(112500);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
 
 	struct NodeBucket
 	{
