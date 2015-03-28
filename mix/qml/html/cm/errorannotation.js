@@ -23,12 +23,15 @@ ErrorAnnotation.prototype.init = function()
 
 ErrorAnnotation.prototype.open = function()
 {
-	var node = document.createElement("div");
-	node.id = "annotation"
-	node.innerHTML = this.content;
-	node.className = "CodeMirror-errorannotation-context";
-	this.lineWidget = this.editor.addLineWidget(this.errorMark.find().from.line, node, { coverGutter: false });
-	this.opened = true;
+	if (this.errorMark.find())
+	{
+		var node = document.createElement("div");
+		node.id = "annotation"
+		node.innerHTML = this.content;
+		node.className = "CodeMirror-errorannotation-context";
+		this.lineWidget = this.editor.addLineWidget(this.errorMark.find().from.line, node, { coverGutter: false });
+		this.opened = true;
+	}
 }
 
 ErrorAnnotation.prototype.close = function()
