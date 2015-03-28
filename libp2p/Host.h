@@ -222,10 +222,6 @@ private:
 	/// Peers we try to connect regardless of p2p network.
 	std::set<NodeId> m_requiredPeers;
 	Mutex x_requiredPeers;
-	
-	/// Deadline timers used for isolated network events. GC'd by run.
-	std::list<std::shared_ptr<boost::asio::deadline_timer>> m_timers;
-	Mutex x_timers;
 
 	/// The nodes to which we are currently connected. Used by host to service peer requests and keepAlivePeers and for shutdown. (see run())
 	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
@@ -238,6 +234,10 @@ private:
 	unsigned m_idealPeerCount = 5;										///< Ideal number of peers to be connected to.
 
 	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
+	
+	/// Deadline timers used for isolated network events. GC'd by run.
+	std::list<std::shared_ptr<boost::asio::deadline_timer>> m_timers;
+	Mutex x_timers;
 
 	std::chrono::steady_clock::time_point m_lastPing;						///< Time we sent the last ping to all peers.
 	bool m_accepting = false;
