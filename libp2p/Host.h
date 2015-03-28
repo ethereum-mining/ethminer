@@ -223,7 +223,9 @@ private:
 	std::set<NodeId> m_requiredPeers;
 	Mutex x_requiredPeers;
 	
+	/// Deadline timers used for isolated network events. GC'd by run.
 	std::list<std::shared_ptr<boost::asio::deadline_timer>> m_timers;
+	Mutex x_timers;
 
 	/// The nodes to which we are currently connected. Used by host to service peer requests and keepAlivePeers and for shutdown. (see run())
 	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.

@@ -560,6 +560,13 @@ void Host::run(boost::system::error_code const&)
 		Guard l(x_connecting);
 		m_connecting.remove_if([](std::weak_ptr<RLPXHandshake> h){ return h.lock(); });
 	}
+	{
+		Guard l(x_timers);
+		m_timers.remove_if([](std::shared_ptr<boost::asio::deadline_timer> t)
+		{
+			return t->expires_from_now().total_milliseconds() > 0;
+		});
+	}
 	
 	for (auto p: m_sessions)
 		if (auto pp = p.second.lock())
