@@ -47,6 +47,11 @@ Item {
 			editorBrowser.runJavaScript("highlightExecution(" + location.start + "," + location.end + ")");
 	}
 
+	function showWarning(content) {
+		if (initialized)
+			editorBrowser.runJavaScript("showWarning('" + content + "')");
+	}
+
 	function getBreakpoints() {
 		return currentBreakpoints;
 	}
