@@ -37,7 +37,22 @@ namespace dev
 namespace p2p
 {
 
-struct NetworkPreferences;
+struct NetworkPreferences
+{
+	// Default Network Preferences
+	NetworkPreferences(unsigned short lp = 30303): listenPort(lp) {}
+	
+	// Network Preferences with specific Listen IP
+	NetworkPreferences(std::string l, unsigned short lp = 30303, bool u = true): publicIPAddress(), listenIPAddress(l), listenPort(lp), traverseNAT(u) {}
+	
+	// Network Preferences with intended Public IP
+	NetworkPreferences(std::string publicIP, std::string l = std::string(), unsigned short lp = 30303, bool u = true): publicIPAddress(publicIP), listenIPAddress(l), listenPort(lp), traverseNAT(u) { if (!publicIPAddress.empty() && !isPublicAddress(publicIPAddress)) BOOST_THROW_EXCEPTION(InvalidPublicIPAddress()); }
+
+	std::string publicIPAddress;
+	std::string listenIPAddress;
+	unsigned short listenPort = 30303;
+	bool traverseNAT = true;
+};
 
 /**
  * @brief Network Class
@@ -57,23 +72,6 @@ public:
 	
 	/// Resolve "host:port" string as TCP endpoint. Returns unspecified endpoint on failure.
 	static bi::tcp::endpoint resolveHost(ba::io_service& _ioService, std::string const& _host);
-};
-
-struct NetworkPreferences
-{
-	// Default Network Preferences
-	NetworkPreferences(unsigned short lp = 30303): listenPort(lp) {}
-	
-	// Network Preferences with specific Listen IP
-	NetworkPreferences(std::string l, unsigned short lp = 30303, bool u = true): publicIPAddress(), listenIPAddress(l), listenPort(lp), traverseNAT(u) {}
-	
-	// Network Preferences with intended Public IP
-	NetworkPreferences(std::string publicIP, std::string l = std::string(), unsigned short lp = 30303, bool u = true): publicIPAddress(publicIP), listenIPAddress(l), listenPort(lp), traverseNAT(u) { if (!publicIPAddress.empty() && !isPublicAddress(publicIPAddress)) BOOST_THROW_EXCEPTION(InvalidPublicIPAddress()); }
-
-	std::string publicIPAddress;
-	std::string listenIPAddress;
-	unsigned short listenPort = 30303;
-	bool traverseNAT = true;
 };
 	
 }
