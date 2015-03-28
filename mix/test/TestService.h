@@ -14,42 +14,38 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file QBasicNodeDefinition.h
- * @author Yann yann@ethdev.com
- * @date 2014
+/** @file TestService.h
+ * @author Arkadiy Paronyan arkadiy@ethdev.com
+ * @date 2015
+ * Ethereum IDE client.
  */
 
 #pragma once
 
-#include <string>
 #include <QObject>
+
+class QWindow;
 
 namespace dev
 {
-
-namespace solidity
-{
-class Declaration;
-}
-
 namespace mix
 {
 
-class QBasicNodeDefinition: public QObject
+class TestService: public QObject
 {
 	Q_OBJECT
-	Q_PROPERTY(QString name READ name CONSTANT)
 
-public:
-	QBasicNodeDefinition(QObject* _parent = nullptr): QObject(_parent) {}
-	~QBasicNodeDefinition() {}
-	QBasicNodeDefinition(QObject* _parent, solidity::Declaration const* _d);
-	QBasicNodeDefinition(QObject* _parent, std::string const& _name);
-	/// Get the name of the node.
-	QString name() const { return m_name; }
+public slots:
+	bool waitForSignal(QObject* _item, QString _signalName, int _timeout);
+	bool keyPress(int _key, int _modifiers, int _delay);
+	bool keyRelease(int _key, int _modifiers, int _delay);
+	bool keyClick(int _key, int _modifiers, int _delay);
+	bool keyPressChar(QString const& _character, int _modifiers, int _delay);
+	bool keyReleaseChar(QString const& _character, int _modifiers, int _delay);
+	bool keyClickChar(QString const& _character, int _modifiers, int _delay);
 
 private:
-	QString m_name;
+	QWindow* eventWindow();
 };
 
 }

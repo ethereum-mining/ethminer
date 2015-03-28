@@ -60,6 +60,10 @@ Item {
 		setPreviewUrl(urlInput.text);
 	}
 
+	WebPreviewStyle {
+		id: webPreviewStyle
+	}
+
 	Connections {
 		target: mainApplication
 		onLoaded: {
@@ -182,7 +186,7 @@ Item {
 		Rectangle
 		{
 			anchors.leftMargin: 4
-			color: WebPreviewStyle.general.headerBackgroundColor
+			color: webPreviewStyle.general.headerBackgroundColor
 			Layout.preferredWidth: parent.width
 			Layout.preferredHeight: 32
 			Row {
@@ -229,7 +233,7 @@ Item {
 				{
 					width: 1
 					height: parent.height - 10
-					color: WebPreviewStyle.general.separatorColor
+					color: webPreviewStyle.general.separatorColor
 					anchors.verticalCenter: parent.verticalCenter
 				}
 
@@ -250,7 +254,7 @@ Item {
 				{
 					width: 1
 					height: parent.height - 10
-					color: WebPreviewStyle.general.separatorColor
+					color: webPreviewStyle.general.separatorColor
 					anchors.verticalCenter: parent.verticalCenter
 				}
 
@@ -284,7 +288,7 @@ Item {
 		{
 			Layout.preferredHeight: 1
 			Layout.preferredWidth: parent.width
-			color: WebPreviewStyle.general.separatorColor
+			color: webPreviewStyle.general.separatorColor
 		}
 
 		Splitter
@@ -354,9 +358,9 @@ Item {
 						id: expressionInput
 						width: parent.width - 15
 						height: 20
-						font.family: WebPreviewStyle.general.fontName
+						font.family: webPreviewStyle.general.fontName
 						font.italic: true
-						font.pointSize: Style.absoluteSize(-3)
+						font.pointSize: appStyle.absoluteSize(-3)
 						anchors.verticalCenter: parent.verticalCenter
 
 						property var history: []
@@ -416,8 +420,8 @@ Item {
 					id: resultTextArea
 					width: expressionPanel.width
 					wrapMode: Text.Wrap
-					font.family: WebPreviewStyle.general.fontName
-					font.pointSize: Style.absoluteSize(-3)
+					font.family: webPreviewStyle.general.fontName
+					font.pointSize: appStyle.absoluteSize(-3)
 					backgroundVisible: true
 					style: TextAreaStyle {
 						backgroundColor: "#f0f0f0"

@@ -16,7 +16,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 
 find_package (Qt5WebEngine QUIET)
-qt5_add_resources(UI_RESOURCES res.qrc qml.qrc test.qrc)
+qt5_add_resources(UI_RESOURCES res.qrc qml.qrc)
 
 file(GLOB HEADERS "*.h")
 
@@ -37,16 +37,12 @@ eth_add_executable(${EXECUTABLE}
 	UI_RESOURCES ${UI_RESOURCES}
 )
 
-find_package(Qt5QuickTest REQUIRED)
-find_package(Qt5Test REQUIRED)
 
 set(LIBRARIES "Qt5::Core;Qt5::Gui;Qt5::Widgets;Qt5::Network;Qt5::Quick;Qt5::Qml;webthree;ethereum;evm;ethcore;devcrypto;solidity;evmcore;devcore;jsqrc;web3jsonrpc")
 if (${ETH_HAVE_WEBENGINE})
 	add_definitions(-DETH_HAVE_WEBENGINE)
 	list(APPEND LIBRARIES "Qt5::WebEngine")
 endif()
-	list(APPEND LIBRARIES "Qt5::QuickTest")
-	list(APPEND LIBRARIES "Qt5::Test")
 
 target_link_libraries(${EXECUTABLE} ${LIBRARIES})
 
@@ -57,15 +53,22 @@ eth_install_executable(${EXECUTABLE}
 
 #add qml asnd stdc files to project tree in Qt creator
 file(GLOB_RECURSE QMLFILES "qml/*.*")
-file(GLOB_RECURSE TESTFILE "test/*.*")
+file(GLOB_RECURSE TESTFILES "test/qml/*.*")
 file(GLOB_RECURSE SOLFILES "stdc/*.*")
 add_custom_target(mix_qml SOURCES ${QMLFILES} ${SOLFILES} ${TESTFILES})
 
-
 #test target
-#set(TEST_EXECUTABLE mix_test)
-#qt5_add_resources(UI_RESOURCES test.qrc)
-#add_executable(${TEST_EXECUTABLE} ${UI_RESOURCES} ${SRC_LIST} ${HEADERS})
+find_package(Qt5QuickTest REQUIRED)
+find_package(Qt5Test REQUIRED)
+set(TEST_EXECUTABLE mix_test)
+list(APPEND LIBRARIES "Qt5::QuickTest")
+list(APPEND LIBRARIES "Qt5::Test")
+list(REMOVE_ITEM SRC_LIST "./main.cpp")
+aux_source_directory(test SRC_LIST)
+file(GLOB HEADERS "test/*.h")
+add_executable(${TEST_EXECUTABLE} ${UI_RESOURCES} ${SRC_LIST} ${HEADERS})
+target_link_libraries(${TEST_EXECUTABLE} ${LIBRARIES})
+set_target_properties(${TEST_EXECUTABLE} PROPERTIES EXCLUDE_FROM_ALL 1 EXCLUDE_FROM_DEFAULT_BUILD 1)
 
 
 

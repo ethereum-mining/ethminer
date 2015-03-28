@@ -37,12 +37,16 @@ class ApplicationService: public QObject
 {
 	Q_OBJECT
 	Q_PROPERTY(int systemPointSize READ systemPointSize CONSTANT)
+	Q_PROPERTY(bool haveWebEngine READ haveWebEngine CONSTANT)
 
 public:
 	ApplicationService();
 	int systemPointSize() const { return m_systemPointSize; }
-public slots:
-	bool waitForSignal(QObject* _item, QString _signalName, int _timeout);
+#ifdef ETH_HAVE_WEBENGINE
+	bool haveWebEngine() const { return true; }
+#else
+	bool haveWebEngine() const { return false; }
+#endif
 
 private:
 	int m_systemPointSize = 0;

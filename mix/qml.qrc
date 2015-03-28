@@ -60,6 +60,5 @@
         <file>qml/js/ProjectModel.js</file>
         <file>qml/js/QEtherHelper.js</file>
         <file>qml/js/TransactionHelper.js</file>
-        <file>qml/qmldir</file>
     </qresource>
 </RCC>

@@ -7,12 +7,14 @@ import QtWebEngine.experimental 1.0
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Item {
-	signal editorTextChanged
 	signal breakpointsChanged
+	signal editorTextChanged
+	signal loadComplete
 	property bool isClean: true
 	property string currentText: ""
 	property string currentMode: ""
 	property bool initialized: false
+	property bool unloaded: false
 	property var currentBreakpoints: [];
 
 	function setText(text, mode) {
@@ -78,7 +80,7 @@ Item {
 
 		onLoadingChanged:
 		{
-			if (!loading) {
+			if (!loading && !unloaded && editorBrowser) {
 				initialized = true;
 				setText(currentText, currentMode);
 				runJavaScript("getTextChanged()", function(result) { });
@@ -87,19 +89,19 @@ Item {
 				if (currentMode === "solidity")
 				{
 					codeModel.onCompilationComplete.connect(function(){
-						runJavaScript("compilationComplete()", function(result) { });
+						editorBrowser.runJavaScript("compilationComplete()", function(result) { });
 					});
 
 					codeModel.onCompilationError.connect(function(error){
 						var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);
 						if (errorInfo.line && errorInfo.column)
-							runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
+							editorBrowser.runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
 						else
-							runJavaScript("compilationComplete()", function(result) { });
+							editorBrowser.runJavaScript("compilationComplete()", function(result) { });
 					});
 				}
 				parent.changeGeneration();
-
+				loadComplete();
 			}
 		}
 
@@ -110,6 +112,8 @@ Item {
 			running: false
 			repeat: true
 			onTriggered: {
+				if (unloaded)
+					return;
 				editorBrowser.runJavaScript("getTextChanged()", function(result) {
 					if (result === true) {
 						editorBrowser.runJavaScript("getText()" , function(textValue) {

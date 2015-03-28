@@ -17,7 +17,7 @@ Window {
 	height: 480
 	title: qsTr("Edit State")
 	visible: false
-	color: StateDialogStyle.generic.backgroundColor
+	color: stateDialogStyle.generic.backgroundColor
 
 	property alias stateTitle: titleField.text
 	property alias isDefault: defaultCheckBox.checked
@@ -69,6 +69,10 @@ Window {
 		item.transactions = stateTransactions;
 		item.accounts = stateAccounts;
 		return item;
+	}
+
+	StateDialogStyle {
+		id: stateDialogStyle
 	}
 
 	ColumnLayout {
