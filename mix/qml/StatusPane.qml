@@ -50,6 +50,10 @@ Rectangle {
 		logPane.push("error", type, text);
 	}
 
+	StatusPaneStyle {
+		id: statusPaneStyle
+	}
+
 	Connections {
 		target: webPreview
 		onJavaScriptMessage:
@@ -137,7 +141,7 @@ Rectangle {
 		Text {
 			anchors.verticalCenter: parent.verticalCenter
 			anchors.horizontalCenter: parent.horizontalCenter
-			font.pointSize: StatusPaneStyle.general.statusFontSize
+			font.pointSize: statusPaneStyle.general.statusFontSize
 			height: 15
 			font.family: "sans serif"
 			objectName: "status"

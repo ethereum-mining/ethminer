@@ -55,6 +55,10 @@ ApplicationWindow {
 		id: clipboard
 	}
 
+	Style {
+		id: appStyle
+	}
+
 	Connections {
 		target: mainApplication
 		onClosing:

@@ -44,6 +44,7 @@ Item {
 	property var stateListModel: projectStateListModel.model
 	property CodeEditorView codeEditor: null
 	property var unsavedFiles: []
+	property alias newProjectDialog: newProjectDialog
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }

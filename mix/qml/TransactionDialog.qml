@@ -13,7 +13,7 @@ Window {
 	width: 520
 	height: 500;
 	visible: false
-	color: StateDialogStyle.generic.backgroundColor
+	color: transactionDialogStyle.generic.backgroundColor
 	title: qsTr("Edit Transaction")
 	property int transactionIndex
 	property alias gas: gasValueEdit.gasValue;
@@ -162,6 +162,10 @@ Window {
 		item.sender = senderComboBox.model[senderComboBox.currentIndex].secret;
 		item.parameters = paramValues;
 		return item;
+	}
+
+	StateDialogStyle {
+		id: transactionDialogStyle
 	}
 
 	ColumnLayout {

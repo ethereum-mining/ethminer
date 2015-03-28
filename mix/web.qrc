@@ -8,7 +8,7 @@
         <file>qml/html/cm/codemirror.js</file>
         <file>qml/html/cm/javascript.js</file>
         <file>qml/html/cm/matchbrackets.js</file>
-        <file alias="qml/CodeEditor.qml">qml/WebCodeEditor.qml</file>
+		<file>qml/WebCodeEditor.qml</file>
         <file>qml/html/codeeditor.js</file>
         <file>qml/html/cm/fullscreen.css</file>
         <file>qml/html/cm/fullscreen.js</file>
