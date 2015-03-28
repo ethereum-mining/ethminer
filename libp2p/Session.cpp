@@ -237,7 +237,7 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 
 			// OK passed all our checks. Assume it's good.
 			addRating(1000);
-			m_server->addNode(id, ep.address().to_string(), ep.port(), ep.port());
+			m_server->addNode(id, ep.address(), ep.port(), ep.port());
 			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 			CONTINUE:;
 			LAMEPEER:;

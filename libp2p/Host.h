@@ -94,6 +94,9 @@ public:
 
 	/// Default host for current version of client.
 	static std::string pocHost();
+	
+	/// Resolve "host:port" or "ip:port" string as TCP endpoint. Returns unspecified endpoint on failure.
+	static bi::tcp::endpoint resolveHost(Host& _host, std::string const& _addr) { return Network::resolveHost(_host.m_ioService, _addr); }
 
 	/// Register a peer-capability; all new peer connections will have this capability.
 	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; auto ret = std::shared_ptr<T>(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
@@ -103,10 +106,10 @@ public:
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(std::make_pair(T::staticName(), T::staticVersion()))); } catch (...) { return nullptr; } }
 
 	/// Add node as a peer candidate. Node is added if discovery ping is successful and table has capacity.
-	void addNode(NodeId const& _node, std::string const& _addr, unsigned short _tcpPort, unsigned short _udpPort);
+	void addNode(NodeId const& _node, bi::address const& _addr, unsigned short _udpPort, unsigned short _tcpPort);
 	
 	/// Create Peer and attempt keeping peer connected.
-	void requirePeer(NodeId const& _node, std::string const& _udpAddr, unsigned short _udpPort, std::string const& _tcpAddr = "", unsigned short _tcpPort = 0);
+	void requirePeer(NodeId const& _node, bi::address const& _udpAddr, unsigned short _udpPort, bi::address const& _tcpAddr = bi::address(), unsigned short _tcpPort = 0);
 
 	/// Note peer as no longer being required.
 	void relinquishPeer(NodeId const& _node);
@@ -132,7 +135,7 @@ public:
 	// TODO: P2P this should be combined with peers into a HostStat object of some kind; coalesce data, as it's only used for status information.
 	Peers getPeers() const { RecursiveGuard l(x_sessions); Peers ret; for (auto const& i: m_peers) ret.push_back(*i.second); return ret; }
 
-	void setNetworkPreferences(NetworkPreferences const& _p) { auto had = isStarted(); if (had) stop(); m_netPrefs = _p; if (had) start(); }
+	void setNetworkPreferences(NetworkPreferences const& _p, bool _dropPeers = false) { m_dropPeers = _dropPeers; auto had = isStarted(); if (had) stop(); m_netPrefs = _p; if (had) start(); }
 
 	/// Start network. @threadsafe
 	void start();
@@ -236,6 +239,7 @@ private:
 
 	std::chrono::steady_clock::time_point m_lastPing;						///< Time we sent the last ping to all peers.
 	bool m_accepting = false;
+	bool m_dropPeers = false;
 };
 
 }

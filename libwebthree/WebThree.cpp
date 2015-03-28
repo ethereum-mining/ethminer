@@ -27,7 +27,6 @@
 #include <boost/filesystem.hpp>
 
 #include <libdevcore/Log.h>
-#include <libp2p/Host.h>
 #include <libethereum/Defaults.h>
 #include <libethereum/EthereumHost.h>
 #include <libwhisper/WhisperHost.h>
@@ -73,12 +72,12 @@ WebThreeDirect::~WebThreeDirect()
 	m_ethereum.reset();
 }
 
-void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n)
+void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers)
 {
 	auto had = haveNetwork();
 	if (had)
 		stopNetwork();
-	m_net.setNetworkPreferences(_n);
+	m_net.setNetworkPreferences(_n, _dropPeers);
 	if (had)
 		startNetwork();
 }
@@ -103,7 +102,14 @@ bytes WebThreeDirect::saveNetwork()
 	return m_net.saveNetwork();
 }
 
-void WebThreeDirect::connect(std::string const& _seedHost, unsigned short _port)
+void WebThreeDirect::addNode(NodeId const& _node, bi::tcp::endpoint const& _host)
 {
-	m_net.addNode(NodeId(), _seedHost, _port, _port);
+	m_net.addNode(_node, _host.address(), _host.port(), _host.port());
 }
+
+void WebThreeDirect::requirePeer(NodeId const& _node, bi::tcp::endpoint const& _host)
+{
+	m_net.requirePeer(_node, _host.address(), _host.port());
+}
+
+

@@ -572,9 +572,9 @@ int main(int argc, char** argv)
 	web3.startNetwork();
 
 	if (bootstrap)
-		web3.connect(Host::pocHost());
+		web3.addNode(p2p::NodeId(), Host::pocHost());
 	if (remoteHost.size())
-		web3.connect(remoteHost, remotePort);
+		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 	if (c && mining)
 		c->startMining();
 
@@ -699,7 +699,7 @@ int main(int argc, char** argv)
 			string addr;
 			unsigned port;
 			iss >> addr >> port;
-			web3.connect(addr, (short)port);
+			web3.addNode(p2p::NodeId(), addr + ":" + toString(port ? port : p2p::c_defaultIPPort));
 		}
 		else if (cmd == "netstop")
 		{

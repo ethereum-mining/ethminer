@@ -27,6 +27,7 @@
 #endif
 
 #include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 #include <libdevcore/Common.h>
 #include <libdevcore/Assertions.h>
@@ -206,3 +207,27 @@ bi::tcp::endpoint Network::traverseNAT(std::set<bi::address> const& _ifAddresses
 
 	return upnpep;
 }
+
+bi::tcp::endpoint Network::resolveHost(ba::io_service& _ioService, string const& _addr)
+{
+	vector<string> split;
+	boost::split(split, _addr, boost::is_any_of(":"));
+	unsigned port = split.size() > 1 ? stoi(split[1]) : c_defaultIPPort;
+
+	bi::tcp::endpoint ep(bi::address(), port);
+	boost::system::error_code ec;
+	bi::address address = bi::address::from_string(split[0], ec);
+	if (!ec)
+		ep.address(address);
+	else
+	{
+		boost::system::error_code ec;
+		// resolve returns an iterator (host can resolve to multiple addresses)
+		bi::tcp::resolver r(_ioService);
+		auto it = r.resolve({split[0], toString(port)}, ec);
+		if (!ec)
+			ep = *it;
+	}
+	return ep;
+}
+
