@@ -10,6 +10,7 @@ Item {
 	signal documentEdit(string documentId)
 	signal breakpointsChanged(string documentId)
 	signal isCleanChanged(var isClean, string documentId)
+	signal loadComplete
 
 	function getDocumentText(documentId) {
 		for (var i = 0; i < editorListModel.count; i++)	{
@@ -43,6 +44,9 @@ Item {
 
 	function doLoadDocument(editor, document) {
 		var data = fileIo.readFile(document.path);
+		editor.onLoadComplete.connect(function() {
+			loadComplete();
+		});
 		editor.onEditorTextChanged.connect(function() {
 			documentEdit(document.documentId);
 			if (document.isContract)
@@ -160,6 +164,11 @@ Item {
 		}
 	}
 
+	CodeEditorStyle
+	{
+		id: style;
+	}
+
 	MessageDialog
 	{
 		id: messageDialog
@@ -177,12 +186,16 @@ Item {
 	Repeater {
 		id: editors
 		model: editorListModel
+		onItemRemoved: {
+			console.log("unloaded");
+			item.item.unloaded = true;
+		}
 		delegate: Loader {
 			id: loader
 			active: false
 			asynchronous: true
 			anchors.fill:  parent
-			source: "CodeEditor.qml"
+			source: appService.haveWebEngine ? "WebCodeEditor.qml" : "CodeEditor.qml"
 			visible: (index >= 0 && index < editorListModel.count && currentDocumentId === editorListModel.get(index).documentId)
 			property bool changed: false
 			onVisibleChanged: {

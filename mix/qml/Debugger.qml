@@ -65,6 +65,10 @@ Rectangle {
 		Debugger.setBreakpoints(bp);
 	}
 
+	DebuggerPaneStyle {
+		id: dbgStyle
+	}
+
 	Connections {
 		target: clientModel
 		onDebugDataReady:  {
@@ -422,7 +426,7 @@ Rectangle {
 										color: "#b2b3ae"
 										text: styleData.value.split(' ')[0]
 										font.family: "monospace"
-										font.pointSize: DebuggerPaneStyle.general.basicFontSize
+										font.pointSize: dbgStyle.general.basicFontSize
 										wrapMode: Text.NoWrap
 										id: id
 									}
@@ -432,7 +436,7 @@ Rectangle {
 										color: styleData.selected ? "white" : "black"
 										font.family: "monospace"
 										text: styleData.value.replace(styleData.value.split(' ')[0], '')
-										font.pointSize: DebuggerPaneStyle.general.basicFontSize
+										font.pointSize: dbgStyle.general.basicFontSize
 									}
 								}
 							}
@@ -505,7 +509,7 @@ Rectangle {
 												font.family: "monospace"
 												color: "#4a4a4a"
 												text: styleData.row;
-												font.pointSize: DebuggerPaneStyle.general.basicFontSize
+												font.pointSize: dbgStyle.general.basicFontSize
 											}
 										}
 
@@ -523,7 +527,7 @@ Rectangle {
 												anchors.verticalCenter: parent.verticalCenter
 												color: "#4a4a4a"
 												text: styleData.value
-												font.pointSize: DebuggerPaneStyle.general.basicFontSize
+												font.pointSize: dbgStyle.general.basicFontSize
 											}
 										}
 									}

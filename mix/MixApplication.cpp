@@ -24,9 +24,6 @@
 #include <QUrl>
 #include <QIcon>
 #include <QFont>
-#include <QtTest/QSignalSpy>
-#include <QElapsedTimer>
-#include <QtTest/QTest>
 #ifdef ETH_HAVE_WEBENGINE
 #include <QtWebEngine/QtWebEngine>
 #endif
@@ -50,45 +47,10 @@ ApplicationService::ApplicationService()
 	m_systemPointSize = f.pointSize();
 }
 
-
-#include <QMetaMethod>
-
-bool ApplicationService::waitForSignal(QObject* _item, QString _signalName, int _timeout)
-{
-	QSignalSpy spy(_item,  ("2" + _signalName.toStdString()).c_str());
-	QMetaObject const* mo = _item->metaObject();
-
-	QStringList methods;
-
-	for(int i = mo->methodOffset(); i < mo->methodCount(); ++i) {
-		if (mo->method(i).methodType() == QMetaMethod::Signal) {
-			methods << QString::fromLatin1(mo->method(i).methodSignature());
-		}
-	}
-
-	QElapsedTimer timer;
-	timer.start();
-
-	while (!spy.size()) {
-		int remaining = _timeout - int(timer.elapsed());
-		if (remaining <= 0)
-			break;
-		QCoreApplication::processEvents(QEventLoop::AllEvents, remaining);
-		QCoreApplication::sendPostedEvents(0, QEvent::DeferredDelete);
-		QTest::qSleep(10);
-	}
-
-	return spy.size();
-}
-
 MixApplication::MixApplication(int& _argc, char* _argv[]):
 	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine())
 {
-	initialize();
-	//m_engine->load(QUrl("qrc:/qml/main.qml"));
-	m_engine->load(QUrl("qrc:/test/TestMain.qml"));
-
-
+	m_engine->load(QUrl("qrc:/qml/Application.qml"));
 	if (!m_engine->rootObjects().empty())
 	{
 		QWindow *window = qobject_cast<QWindow*>(m_engine->rootObjects().at(0));
@@ -100,6 +62,17 @@ MixApplication::MixApplication(int& _argc, char* _argv[]):
 
 void MixApplication::initialize()
 {
+#if __linux
+	//work around ubuntu appmenu-qt5 bug
+	//https://bugs.launchpad.net/ubuntu/+source/appmenu-qt5/+bug/1323853
+	putenv((char*)"QT_QPA_PLATFORMTHEME=");
+	putenv((char*)"QSG_RENDER_LOOP=threaded");
+#endif
+#if (defined(_WIN32) || defined(_WIN64))
+	if (!getenv("OPENSSL_CONF"))
+		putenv((char*)"OPENSSL_CONF=c:\\");
+#endif
+
 	setOrganizationName(tr("Ethereum"));
 	setOrganizationDomain(tr("ethereum.org"));
 	setApplicationName(tr("Mix"));

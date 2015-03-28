@@ -3,7 +3,6 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.SortFilterProxyModel 1.0
-import "."
 
 Rectangle
 {
@@ -13,11 +12,16 @@ Rectangle
 		logsModel.insert(0, { "type": _type, "date": Qt.formatDateTime(new Date(), "hh:mm:ss dd.MM.yyyy"), "content": _content, "level": _level });
 	}
 
+	LogsPaneStyle {
+		id: logStyle
+	}
+
+	id: root
 	anchors.fill: parent
 	radius: 5
-	color: LogsPaneStyle.generic.layout.backgroundColor
-	border.color: LogsPaneStyle.generic.layout.borderColor
-	border.width: LogsPaneStyle.generic.layout.borderWidth
+	color: logStyle.generic.layout.backgroundColor
+	border.color: logStyle.generic.layout.borderColor
+	border.width: logStyle.generic.layout.borderWidth
 	ColumnLayout {
 		z: 2
 		height: parent.height
@@ -26,14 +30,14 @@ Rectangle
 		Row
 		{
 			id: rowAction
-			Layout.preferredHeight: LogsPaneStyle.generic.layout.headerHeight
-			height: LogsPaneStyle.generic.layout.headerHeight
-			anchors.leftMargin: LogsPaneStyle.generic.layout.leftMargin
+			Layout.preferredHeight: logStyle.generic.layout.headerHeight
+			height: logStyle.generic.layout.headerHeight
+			anchors.leftMargin: logStyle.generic.layout.leftMargin
 			anchors.left: parent.left
-			spacing: LogsPaneStyle.generic.layout.headerButtonSpacing
+			spacing: logStyle.generic.layout.headerButtonSpacing
 			Button
 			{
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				height: logStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
 				action: clearAction
 				iconSource: "qrc:/qml/img/broom.png"
@@ -50,7 +54,7 @@ Rectangle
 
 			Button
 			{
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				height: logStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
 				action: copytoClipBoardAction
 				iconSource: "qrc:/qml/img/copy.png"
@@ -81,7 +85,7 @@ Rectangle
 			ToolButton {
 				id: javascriptButton
 				checkable: true
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				height: logStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
 				checked: true
 				onCheckedChanged: {
@@ -93,9 +97,9 @@ Rectangle
 					label:
 						Item {
 						DefaultLabel {
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							font.pointSize: Style.absoluteSize(-3)
-							color: LogsPaneStyle.generic.layout.logLabelColor
+							font.family: logStyle.generic.layout.logLabelFont
+							font.pointSize: appStyle.absoluteSize(-3)
+							color: logStyle.generic.layout.logLabelColor
 							anchors.centerIn: parent
 							text: qsTr("JavaScript")
 						}
@@ -106,7 +110,7 @@ Rectangle
 			ToolButton {
 				id: runButton
 				checkable: true
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				height: logStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
 				checked: true
 				onCheckedChanged: {
@@ -118,9 +122,9 @@ Rectangle
 					label:
 						Item {
 						DefaultLabel {
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							font.pointSize: Style.absoluteSize(-3)
-							color: LogsPaneStyle.generic.layout.logLabelColor
+							font.family: logStyle.generic.layout.logLabelFont
+							font.pointSize: appStyle.absoluteSize(-3)
+							color: logStyle.generic.layout.logLabelColor
 							anchors.centerIn: parent
 							text: qsTr("Run")
 						}
@@ -131,7 +135,7 @@ Rectangle
 			ToolButton {
 				id: stateButton
 				checkable: true
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				height: logStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
 				checked: true
 				onCheckedChanged: {
@@ -143,8 +147,8 @@ Rectangle
 					label:
 						Item {
 						DefaultLabel {
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							font.pointSize: Style.absoluteSize(-3)
+							font.family: logStyle.generic.layout.logLabelFont
+							font.pointSize: appStyle.absoluteSize(-3)
 							color: "#5391d8"
 							anchors.centerIn: parent
 							text: qsTr("State")
@@ -156,7 +160,7 @@ Rectangle
 			ToolButton {
 				id: compilationButton
 				checkable: true
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				height: logStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
 				checked: false
 				onCheckedChanged: {
@@ -168,8 +172,8 @@ Rectangle
 					label:
 						Item {
 						DefaultLabel {
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							font.pointSize: Style.absoluteSize(-3)
+							font.family: logStyle.generic.layout.logLabelFont
+							font.pointSize: appStyle.absoluteSize(-3)
 							color: "#5391d8"
 							anchors.centerIn: parent
 							text: qsTr("Compilation")
@@ -181,11 +185,11 @@ Rectangle
 			DefaultTextField
 			{
 				id: searchBox
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				height: logStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
-				width: LogsPaneStyle.generic.layout.headerInputWidth
-				font.family: LogsPaneStyle.generic.layout.logLabelFont
-				font.pointSize: Style.absoluteSize(-3)
+				width: logStyle.generic.layout.headerInputWidth
+				font.family: logStyle.generic.layout.logLabelFont
+				font.pointSize: appStyle.absoluteSize(-3)
 				font.italic: true
 				onTextChanged: {
 					proxyModel.search(text);
@@ -255,21 +259,21 @@ Rectangle
 			{
 				role: "date"
 				title: qsTr("date")
-				width: LogsPaneStyle.generic.layout.dateWidth
+				width: logStyle.generic.layout.dateWidth
 				delegate: itemDelegate
 			}
 			TableViewColumn
 			{
 				role: "type"
 				title: qsTr("type")
-				width: LogsPaneStyle.generic.layout.typeWidth
+				width: logStyle.generic.layout.typeWidth
 				delegate: itemDelegate
 			}
 			TableViewColumn
 			{
 				role: "content"
 				title: qsTr("content")
-				width: LogsPaneStyle.generic.layout.contentWidth
+				width: logStyle.generic.layout.contentWidth
 				delegate: itemDelegate
 			}
 
@@ -277,7 +281,7 @@ Rectangle
 				Rectangle {
 					width: logsTable.width - 4
 					height: 17
-					color: styleData.alternate ? "transparent" : LogsPaneStyle.generic.layout.logAlternateColor
+					color: styleData.alternate ? "transparent" : logStyle.generic.layout.logAlternateColor
 				}
 			}
 		}
@@ -286,8 +290,8 @@ Rectangle
 			id: itemDelegate
 			DefaultLabel {
 				text: styleData.value;
-				font.family: LogsPaneStyle.generic.layout.logLabelFont
-				font.pointSize: Style.absoluteSize(-1)
+				font.family: logStyle.generic.layout.logLabelFont
+				font.pointSize: appStyle.absoluteSize(-1)
 				color: {
 					if (proxyModel.get(styleData.row).level === "error")
 						return "red";
