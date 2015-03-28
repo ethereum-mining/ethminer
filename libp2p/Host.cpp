@@ -400,7 +400,8 @@ void Host::addNode(NodeId const& _node, bi::address const& _addr, unsigned short
 		_tcpPeerPort = 0;
 	}
 	
-	if (m_nodeTable) m_nodeTable->addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(_addr, _udpNodePort), bi::tcp::endpoint(_addr, _tcpPeerPort))));
+	if (m_nodeTable)
+		m_nodeTable->addNode(Node(_node, NodeIPEndpoint(bi::udp::endpoint(_addr, _udpNodePort), bi::tcp::endpoint(_addr, _tcpPeerPort))));
 }
 
 void Host::requirePeer(NodeId const& _n, bi::address const& _udpAddr, unsigned short _udpPort, bi::address const& _tcpAddr, unsigned short _tcpPort)
