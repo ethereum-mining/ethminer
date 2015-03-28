@@ -250,14 +250,14 @@ void Client::noteChanged(h256Set const& _filters)
 	if (_filters.size())
 		cnote << "noteChanged(" << _filters << ")";
 	// accrue all changes left in each filter into the watches.
-	for (auto& i: m_watches)
-		if (_filters.count(i.second.id))
+	for (auto& w: m_watches)
+		if (_filters.count(w.second.id))
 		{
-			cwatch << "!!!" << i.first << i.second.id;
-			if (m_filters.count(i.second.id))
-				i.second.changes += m_filters.at(i.second.id).changes;
-			else
-				i.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, 0));
+			cwatch << "!!!" << w.first << w.second.id;
+			if (m_filters.count(w.second.id))	// Normal filtering watch
+				w.second.changes += m_filters.at(w.second.id).changes;
+			else								// Special ('pending'/'latest') watch
+				w.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, 0));
 		}
 	// clear the filters now.
 	for (auto& i: m_filters)

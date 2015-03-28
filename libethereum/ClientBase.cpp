@@ -224,6 +224,7 @@ unsigned ClientBase::installWatch(h256 _h, Reaping _r)
 		m_watches[ret] = ClientWatch(_h, _r);
 		cwatch << "+++" << ret << _h.abridged();
 	}
+#if INITIAL_STATE_AS_CHANGES
 	auto ch = logs(ret);
 	if (ch.empty())
 		ch.push_back(InitialChange);
@@ -231,6 +232,7 @@ unsigned ClientBase::installWatch(h256 _h, Reaping _r)
 		Guard l(x_filtersWatches);
 		swap(m_watches[ret].changes, ch);
 	}
+#endif
 	return ret;
 }
 
@@ -260,9 +262,9 @@ LocalisedLogEntries ClientBase::peekWatch(unsigned _watchId) const
 {
 	Guard l(x_filtersWatches);
 	
-	cwatch << "peekWatch" << _watchId;
+//	cwatch << "peekWatch" << _watchId;
 	auto& w = m_watches.at(_watchId);
-	cwatch << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+//	cwatch << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 	w.lastPoll = chrono::system_clock::now();
 	return w.changes;
 }
@@ -272,9 +274,9 @@ LocalisedLogEntries ClientBase::checkWatch(unsigned _watchId)
 	Guard l(x_filtersWatches);
 	LocalisedLogEntries ret;
 	
-	cwatch << "checkWatch" << _watchId;
+//	cwatch << "checkWatch" << _watchId;
 	auto& w = m_watches.at(_watchId);
-	cwatch << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+//	cwatch << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 	std::swap(ret, w.changes);
 	w.lastPoll = chrono::system_clock::now();
 	
@@ -389,11 +391,6 @@ Addresses ClientBase::addresses(BlockNumber _block) const
 u256 ClientBase::gasLimitRemaining() const
 {
 	return postMine().gasLimitRemaining();
-}
-
-void ClientBase::setAddress(Address _us)
-{
-	preMine().setAddress(_us);
 }
 
 Address ClientBase::address() const
