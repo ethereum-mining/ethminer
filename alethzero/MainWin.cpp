@@ -252,11 +252,30 @@ void Main::addNewId(QString _ids)
 
 NetworkPreferences Main::netPrefs() const
 {
+	auto listenip = ui->listenIP->text().toStdString();
+	try
+	{
+		listenip = bi::address::from_string(listenip).to_string();
+	}
+	catch (...)
+	{
+		listenip = "";
+	}
+	
 	auto publicip = ui->forcePublicIP->text().toStdString();
+	try
+	{
+		publicip = bi::address::from_string(publicip).to_string();
+	}
+	catch (...)
+	{
+		publicip = "";
+	}
+	
 	if (isPublicAddress(publicip))
 		return NetworkPreferences(publicip, ui->listenIP->text().toStdString(), ui->port->value(), ui->upnp->isChecked());
 	else
-		return NetworkPreferences(ui->listenIP->text().toStdString(), ui->port->value(), ui->upnp->isChecked());
+		return NetworkPreferences(listenip, ui->port->value(), ui->upnp->isChecked());
 }
 
 void Main::onKeysChanged()
