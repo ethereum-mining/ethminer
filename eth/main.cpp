@@ -421,8 +421,7 @@ int main(int argc, char** argv)
 
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
-#warning fixme
-	NetworkPreferences netPrefs(listenPort);
+	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
 	std::string clientImplString = "Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
@@ -450,9 +449,9 @@ int main(int argc, char** argv)
 	web3.startNetwork();
 
 	if (bootstrap)
-		web3.connect(Host::pocHost());
+		web3.addNode(p2p::NodeId(), Host::pocHost());
 	if (remoteHost.size())
-		web3.connect(remoteHost, remotePort);
+		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 
 #if ETH_JSONRPC
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
@@ -512,7 +511,7 @@ int main(int argc, char** argv)
 				string addr;
 				unsigned port;
 				iss >> addr >> port;
-				web3.connect(addr, (short)port);
+				web3.addNode(p2p::NodeId(), addr + ":" + toString(port ? port : p2p::c_defaultIPPort));
 			}
 			else if (cmd == "netstop")
 			{

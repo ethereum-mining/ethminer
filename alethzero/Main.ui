@@ -134,7 +134,7 @@
     <addaction name="go"/>
     <addaction name="separator"/>
     <addaction name="upnp"/>
-    <addaction name="usePast"/>
+    <addaction name="dropPeers"/>
     <addaction name="net"/>
     <addaction name="connect"/>
    </widget>
@@ -283,7 +283,7 @@
        </widget>
        <widget class="QWidget" name="layoutWidget">
         <layout class="QGridLayout" name="gridLayout_2">
-         <item row="1" column="0">
+         <item row="3" column="0">
           <widget class="QLabel" name="label">
            <property name="text">
             <string>&amp;Listen on</string>
@@ -303,7 +303,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="2">
+         <item row="3" column="2">
           <widget class="QSpinBox" name="port">
            <property name="minimum">
             <number>1024</number>
@@ -316,17 +316,7 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="0">
-          <widget class="QLabel" name="label_4">
-           <property name="text">
-            <string>&amp;Client Name</string>
-           </property>
-           <property name="buddy">
-            <cstring>clientName</cstring>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
+         <item row="3" column="1">
           <widget class="QLineEdit" name="listenIP">
            <property name="inputMask">
             <string/>
@@ -336,13 +326,6 @@
            </property>
            <property name="placeholderText">
             <string>Automatic</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1" colspan="2">
-          <widget class="QLineEdit" name="clientName">
-           <property name="placeholderText">
-            <string>Anonymous</string>
            </property>
           </widget>
          </item>
@@ -356,17 +339,34 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="1">
+         <item row="5" column="1">
           <widget class="QLineEdit" name="forcePublicIP">
            <property name="placeholderText">
             <string>Automatic</string>
            </property>
           </widget>
          </item>
-         <item row="3" column="0">
+         <item row="5" column="0">
           <widget class="QLabel" name="label_2">
            <property name="text">
             <string>Public IP</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>&amp;Client Name</string>
+           </property>
+           <property name="buddy">
+            <cstring>clientName</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLineEdit" name="clientName">
+           <property name="placeholderText">
+            <string>Anonymous</string>
            </property>
           </widget>
          </item>
@@ -1456,12 +1456,12 @@ font-size: 14pt</string>
     <string>Show &amp;Anonymous Accounts</string>
    </property>
   </action>
-  <action name="usePast">
+  <action name="dropPeers">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Use &amp;Past Peers</string>
+    <string>&amp;Drop Past Peers</string>
    </property>
   </action>
   <action name="loadJS">
@@ -1709,7 +1709,6 @@ font-size: 14pt</string>
   <tabstop>idealPeers</tabstop>
   <tabstop>listenIP</tabstop>
   <tabstop>port</tabstop>
-  <tabstop>clientName</tabstop>
   <tabstop>transactionQueue</tabstop>
   <tabstop>pendingInfo</tabstop>
   <tabstop>blockChainFilter</tabstop>
