@@ -28,7 +28,7 @@ Connect::Connect(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::Connect)
 {
-    reset();
+    ui->setupUi(this);
 }
 
 Connect::~Connect()
@@ -43,7 +43,8 @@ void Connect::setEnvironment(QStringList const& _nodes)
 
 void Connect::reset()
 {
-	ui->setupUi(this);
+	ui->nodeId->clear();
+	ui->required->setChecked(false);
 }
 
 QString Connect::host()
