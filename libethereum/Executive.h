@@ -41,10 +41,21 @@ struct VMTraceChannel: public LogChannel { static const char* name() { return "E
  * @brief Message-call/contract-creation executor; useful for executing transactions.
  *
  * Two ways of using this class - either as a transaction executive or a CALL/CREATE executive.
- * In the first use, after construction, begin with setup() and end with finalize(). Call go()
- * after setup() only if it returns false.
+ *
+ * In the first use, after construction, begin with initialize(), then execute() and end with finalize(). Call go()
+ * after execute() only if it returns false.
+ *
  * In the second use, after construction, begin with call() or create() and end with
  * accrueSubState(). Call go() after call()/create() only if it returns false.
+ *
+ * Example:
+ * @code
+ * Executive e(state, blockchain, 0);
+ * e.initialize(transaction);
+ * if (!e.execute())
+ *    e.go();
+ * e.finalize();
+ * @endcode
  */
 class Executive
 {
@@ -59,17 +70,17 @@ public:
 	Executive(Executive const&) = delete;
 	void operator=(Executive) = delete;
 
-	/// Set up the executive for evaluating a transaction. You must call finalize() following this.
-	/// @returns true iff go() must be called (and thus a VM execution in required).
-	bool setup(bytesConstRef _transaction);
-	/// Set up the executive for evaluating a transaction. You must call finalize() following this.
-	/// @returns true iff go() must be called (and thus a VM execution in required).
-	bool setup(Transaction const& _transaction) { m_t = _transaction; return setup(); }
-	/// Finalise a transaction previously set up with setup().
-	/// @warning Only valid after setup(), and possibly go().
+	/// Initializes the executive for evaluating a transaction. You must call finalize() at some point following this.
+	void initialize(bytesConstRef _transaction) { initialize(Transaction(_transaction, CheckSignature::None)); }
+	void initialize(Transaction const& _transaction);
+	/// Finalise a transaction previously set up with initialize().
+	/// @warning Only valid after initialize() and execute(), and possibly go().
 	void finalize();
-	/// @returns the transaction from setup().
-	/// @warning Only valid after setup().
+	/// Begins execution of a transaction. You must call finalize() following this.
+	/// @returns true if the transaction is done, false if go() must be called.
+	bool execute();
+	/// @returns the transaction from initialize().
+	/// @warning Only valid after initialize().
 	Transaction const& t() const { return m_t; }
 	/// @returns the log entries created by this operation.
 	/// @warning Only valid after finalise().
@@ -107,7 +118,7 @@ public:
 	ExecutionResult executionResult() const;
 
 private:
-	bool setup();
+	bool prime();
 
 	State& m_s;							///< The state to which this operation/transaction is applied.
 	LastHashes m_lastHashes;
@@ -125,6 +136,10 @@ private:
 
 	Transaction m_t;					///< The original transaction. Set by setup().
 	LogEntries m_logs;					///< The log entries created by this transaction. Set by finalize().
+
+	bigint m_gasRequired;
+	bigint m_gasCost;
+	bigint m_totalCost;
 };
 
 }

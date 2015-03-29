@@ -112,7 +112,8 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 
 	State execState = _state;
 	Executive execution(execState, lastHashes, 0);
-	execution.setup(&rlp);
+	execution.initialize(&rlp);
+	execution.execute();
 	std::vector<MachineState> machineStates;
 	std::vector<unsigned> levels;
 	std::vector<MachineCode> codes;
@@ -184,7 +185,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	// execute on a state
 	if (!_call)
 	{
-		_state.execute(lastHashes, rlp);
+		_state.execute(lastHashes, _t);
 		if (_t.isCreation() && _state.code(d.contractAddress).empty())
 			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
 		// collect watches
