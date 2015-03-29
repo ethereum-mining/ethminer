@@ -74,7 +74,7 @@ std::string dev::test::toTestFilePath(std::string const& _filename)
 std::string dev::test::getRandomPath()
 {
 	std::stringstream stream;
-	stream << getDataDir() << "/EthereumTests/" << randomNumber();
+	stream << getDataDir("EthereumTests") << "/" << randomNumber();
 	return stream.str();
 }
 
