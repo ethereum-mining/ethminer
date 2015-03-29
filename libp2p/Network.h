@@ -43,10 +43,10 @@ struct NetworkPreferences
 	NetworkPreferences(unsigned short lp = 30303): listenPort(lp) {}
 	
 	// Network Preferences with specific Listen IP
-	NetworkPreferences(std::string l, unsigned short lp = 30303, bool u = true): publicIPAddress(), listenIPAddress(l), listenPort(lp), traverseNAT(u) {}
+	NetworkPreferences(std::string const& l, unsigned short lp = 30303, bool u = true): publicIPAddress(), listenIPAddress(l), listenPort(lp), traverseNAT(u) {}
 	
 	// Network Preferences with intended Public IP
-	NetworkPreferences(std::string publicIP, std::string l = std::string(), unsigned short lp = 30303, bool u = true): publicIPAddress(publicIP), listenIPAddress(l), listenPort(lp), traverseNAT(u) { if (!publicIPAddress.empty() && !isPublicAddress(publicIPAddress)) BOOST_THROW_EXCEPTION(InvalidPublicIPAddress()); }
+	NetworkPreferences(std::string const& publicIP, std::string const& l = std::string(), unsigned short lp = 30303, bool u = true): publicIPAddress(publicIP), listenIPAddress(l), listenPort(lp), traverseNAT(u) { if (!publicIPAddress.empty() && !isPublicAddress(publicIPAddress)) BOOST_THROW_EXCEPTION(InvalidPublicIPAddress()); }
 
 	std::string publicIPAddress;
 	std::string listenIPAddress;
