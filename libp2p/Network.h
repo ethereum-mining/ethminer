@@ -68,7 +68,7 @@ public:
 	static int tcp4Listen(bi::tcp::acceptor& _acceptor, NetworkPreferences const& _netPrefs);
 
 	/// Return public endpoint of upnp interface. If successful o_upnpifaddr will be a private interface address and endpoint will contain public address and port.
-	static bi::tcp::endpoint traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr);
+	static bi::tcp::endpoint traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpInterfaceAddr);
 	
 	/// Resolve "host:port" string as TCP endpoint. Returns unspecified endpoint on failure.
 	static bi::tcp::endpoint resolveHost(std::string const& _host);
