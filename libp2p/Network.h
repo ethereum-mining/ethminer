@@ -71,7 +71,7 @@ public:
 	static bi::tcp::endpoint traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr);
 	
 	/// Resolve "host:port" string as TCP endpoint. Returns unspecified endpoint on failure.
-	static bi::tcp::endpoint resolveHost(ba::io_service& _ioService, std::string const& _host);
+	static bi::tcp::endpoint resolveHost(std::string const& _host);
 };
 	
 }
