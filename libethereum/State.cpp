@@ -421,9 +421,9 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, Ga
 			{
 				try
 				{
-					Transaction t(i.second, CheckSignature::Sender);
-					if (t.gasPrice() >= _gp.ask(*this))
+					if (Transaction(i.second, CheckSignature::Range).gasPrice() >= _gp.ask(*this))
 					{
+						Transaction t(i.second, CheckSignature::Sender);
 						// don't have it yet! Execute it now.
 						uncommitToMine();
 	//					boost::timer t;
