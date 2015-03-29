@@ -37,7 +37,8 @@ namespace test
 class TransientDirectory
 {
 public:
-	TransientDirectory(std::string const& _path = getRandomPath());
+	TransientDirectory();
+	TransientDirectory(std::string const& _path);
 	~TransientDirectory();
 
 	std::string const& path() const { return m_path; }
