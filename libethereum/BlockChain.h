@@ -140,7 +140,7 @@ public:
 	h256 numberHash(unsigned _i) const { if (!_i) return genesisHash(); return queryExtras<BlockHash, ExtraBlockHash>(h256(u256(_i)), m_blockHashes, x_blockHashes, NullBlockHash).value; }
 
 	/// Get the last N hashes for a given block. (N is determined by the LastHashes type.)
-	LastHashes lastHashes() const { return lastHashes(number() - 1); }
+	LastHashes lastHashes() const { return lastHashes(number()); }
 	LastHashes lastHashes(unsigned _i) const;
 
 	/** Get the block blooms for a number of blocks. Thread-safe.
