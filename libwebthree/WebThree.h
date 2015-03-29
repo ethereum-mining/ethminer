@@ -145,7 +145,7 @@ public:
 	virtual void addNode(p2p::NodeId const& _node, bi::tcp::endpoint const& _hostEndpoint) override;
 	
 	/// Add node to connect to.
-	void addNode(p2p::NodeId const& _node, std::string const& _hostString) { addNode(_node, resolveHost(_hostString)); }
+	void addNode(p2p::NodeId const& _node, std::string const& _hostString) { addNode(_node, p2p::Network::resolveHost(_hostString)); }
 	
 	/// Add node to connect to.
 	void addNode(bi::tcp::endpoint const& _endpoint) { addNode(p2p::NodeId(), _endpoint); }
@@ -157,11 +157,8 @@ public:
 	void requirePeer(p2p::NodeId const& _node, bi::tcp::endpoint const& _endpoint) override;
 
 	/// Require connection to peer.
-	void requirePeer(p2p::NodeId const& _node, std::string const& _hostString) { requirePeer(_node, resolveHost(_hostString)); }
-	
-	/// Resolve "host[:port]" string as TCP endpoint. Returns unspecified endpoint on failure.
-	bi::tcp::endpoint resolveHost(std::string const& _host) { return haveNetwork() ? p2p::Host::resolveHost(m_net, _host) : bi::tcp::endpoint(); }
-	
+	void requirePeer(p2p::NodeId const& _node, std::string const& _hostString) { requirePeer(_node, p2p::Network::resolveHost(_hostString)); }
+
 	/// Save peers
 	dev::bytes saveNetwork() override;
 
