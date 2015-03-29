@@ -35,19 +35,19 @@ public:
 	explicit Connect(QWidget* _parent = 0);
 	~Connect();
 
-	/// Populate host chooser with default host entries
+	/// Populate host chooser with default host entries.
 	void setEnvironment(QStringList const& _nodes);
 
-	/// clear dialogue inputs
+	/// Clear dialogue inputs.
 	void reset();
 
-	/// @returns host string chosen or entered
+	/// @returns the host string, as chosen or entered by the user. Assumed to be "hostOrIP:port" (:port is optional).
 	QString host();
 	
-	/// @returns NodeId entered
+	/// @returns the identity of the node, as entered by the user. Assumed to be a 64-character hex string.
 	QString nodeId();
 	
-	/// @returns true if Required is checked
+	/// @returns true if Required is checked by the user, indicating that the host is a required Peer.
 	bool required();
 
 private:
