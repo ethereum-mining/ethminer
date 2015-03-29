@@ -118,8 +118,6 @@ public:
 	ExecutionResult executionResult() const;
 
 private:
-	bool prime();
-
 	State& m_s;							///< The state to which this operation/transaction is applied.
 	LastHashes m_lastHashes;
 	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required.
