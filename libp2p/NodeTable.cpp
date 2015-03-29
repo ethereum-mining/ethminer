@@ -555,8 +555,8 @@ void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 	if (connected)
 	{
 		NodeId randNodeId;
-		crypto::Nonce::get().ref().copyTo(randNodeId.ref().cropped(0,h256::size));
-		crypto::Nonce::get().ref().copyTo(randNodeId.ref().cropped(h256::size,h256::size));
+		crypto::Nonce::get().ref().copyTo(randNodeId.ref().cropped(0, h256::size));
+		crypto::Nonce::get().ref().copyTo(randNodeId.ref().cropped(h256::size, h256::size));
 		discover(randNodeId);
 	}
 

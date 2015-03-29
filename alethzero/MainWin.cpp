@@ -252,30 +252,30 @@ void Main::addNewId(QString _ids)
 
 NetworkPreferences Main::netPrefs() const
 {
-	auto listenip = ui->listenIP->text().toStdString();
+	auto listenIP = ui->listenIP->text().toStdString();
 	try
 	{
-		listenip = bi::address::from_string(listenip).to_string();
+		listenIP = bi::address::from_string(listenIP).to_string();
 	}
 	catch (...)
 	{
-		listenip = "";
+		listenIP = "";
 	}
 	
-	auto publicip = ui->forcePublicIP->text().toStdString();
+	auto publicIP = ui->forcePublicIP->text().toStdString();
 	try
 	{
-		publicip = bi::address::from_string(publicip).to_string();
+		publicIP = bi::address::from_string(publicIP).to_string();
 	}
 	catch (...)
 	{
-		publicip = "";
+		publicIP = "";
 	}
 	
-	if (isPublicAddress(publicip))
-		return NetworkPreferences(publicip, ui->listenIP->text().toStdString(), ui->port->value(), ui->upnp->isChecked());
+	if (isPublicAddress(publicIP))
+		return NetworkPreferences(publicIP, ui->listenIP->text().toStdString(), ui->port->value(), ui->upnp->isChecked());
 	else
-		return NetworkPreferences(listenip, ui->port->value(), ui->upnp->isChecked());
+		return NetworkPreferences(listenIP, ui->port->value(), ui->upnp->isChecked());
 }
 
 void Main::onKeysChanged()
@@ -1790,21 +1790,20 @@ void Main::on_connect_triggered()
 	if (m_connect.exec() == QDialog::Accepted)
 	{
 		bool required = m_connect.required();
-		string host(m_connect.host().toUtf8().constData());
-		NodeId nodeid;
+		string host(m_connect.host().toStdString());
+		NodeId nodeID;
 		try
 		{
-			string nstr(m_connect.nodeId().toUtf8().constData());
-			nodeid = NodeId(fromHex(nstr));
+			nodeID = NodeId(fromHex(m_connect.nodeId().toStdString()));
 		}
 		catch (BadHexCharacter()) {}
 		
 		m_connect.reset();
 		
 		if (required)
-			web3()->requirePeer(nodeid, host);
+			web3()->requirePeer(nodeID, host);
 		else
-			web3()->addNode(nodeid, host);
+			web3()->addNode(nodeID, host);
 	}
 }
 
