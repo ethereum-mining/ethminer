@@ -131,10 +131,19 @@ void BlockChain::open(std::string _path, bool _killExisting)
 	o.create_if_missing = true;
 	ldb::DB::Open(o, _path + "/blocks", &m_blocksDB);
 	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
-	if (!m_blocksDB)
-		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
-	if (!m_extrasDB)
-		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
+	if (!m_blocksDB || !m_extrasDB)
+	{
+		if (boost::filesystem::space(_path + "/blocks").available < 1024)
+		{
+			cwarn << "Not enough available space found on hard drive. Please free some up and then re-run. Bailing.";
+			BOOST_THROW_EXCEPTION(NotEnoughAvailableSpace());
+		}
+		else
+		{
+			cwarn << "Database already open. You appear to have another instance of ethereum running. Bailing.";
+			BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
+		}
+	}
 
 	if (!details(m_genesisHash))
 	{
