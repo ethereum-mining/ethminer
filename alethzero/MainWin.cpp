@@ -259,7 +259,7 @@ NetworkPreferences Main::netPrefs() const
 	}
 	catch (...)
 	{
-		listenIP = "";
+		listenIP.clear();
 	}
 	
 	auto publicIP = ui->forcePublicIP->text().toStdString();
@@ -269,11 +269,11 @@ NetworkPreferences Main::netPrefs() const
 	}
 	catch (...)
 	{
-		publicIP = "";
+		publicIP.clear();
 	}
 	
 	if (isPublicAddress(publicIP))
-		return NetworkPreferences(publicIP, ui->listenIP->text().toStdString(), ui->port->value(), ui->upnp->isChecked());
+		return NetworkPreferences(publicIP, listenIP, ui->port->value(), ui->upnp->isChecked());
 	else
 		return NetworkPreferences(listenIP, ui->port->value(), ui->upnp->isChecked());
 }
@@ -1796,7 +1796,7 @@ void Main::on_connect_triggered()
 		{
 			nodeID = NodeId(fromHex(m_connect.nodeId().toStdString()));
 		}
-		catch (BadHexCharacter()) {}
+		catch (BadHexCharacter&) {}
 		
 		m_connect.reset();
 		

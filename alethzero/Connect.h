@@ -35,17 +35,21 @@ public:
 	explicit Connect(QWidget* _parent = 0);
 	~Connect();
 
+	/// Populate host chooser with default host entries
 	void setEnvironment(QStringList const& _nodes);
 
 	/// clear dialogue inputs
 	void reset();
 
-	// Form field values:
-	
+	/// @returns host string chosen or entered
 	QString host();
+	
+	/// @returns NodeId entered
 	QString nodeId();
+	
+	/// @returns true if Required is checked
 	bool required();
 
 private:
-    Ui::Connect* ui;
+	Ui::Connect* ui;
 };
