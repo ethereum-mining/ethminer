@@ -835,11 +835,8 @@ int main(int argc, char** argv)
 					Executive e(state, c->blockChain(), 0);
 					Transaction t = state.pending()[index];
 					state = state.fromPending(index);
-					bytes r = t.rlp();
 					try
 					{
-						e.setup(&r);
-
 						OnOpFunc oof;
 						if (format == "pretty")
 							oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
@@ -872,7 +869,9 @@ int main(int argc, char** argv)
 										f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
 								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
 							};
-						e.go(oof);
+						e.initialize(t);
+						if (!e.execute())
+							e.go(oof);
 						e.finalize();
 					}
 					catch(Exception const& _e)

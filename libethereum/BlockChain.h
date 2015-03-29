@@ -30,9 +30,10 @@
 #include <chrono>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
+#include <libdevcore/Guards.h>
 #include <libethcore/Common.h>
 #include <libethcore/BlockInfo.h>
-#include <libdevcore/Guards.h>
+#include <libevm/ExtVMFace.h>
 #include "BlockDetails.h"
 #include "Account.h"
 #include "Transaction.h"
@@ -61,7 +62,7 @@ struct BlockChainNote: public LogChannel { static const char* name() { return "=
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
 std::map<Address, Account> const& genesisState();
 
-ldb::Slice toSlice(h256 _h, unsigned _sub = 0);
+ldb::Slice toSlice(h256 const& _h, unsigned _sub = 0);
 
 using BlocksHash = std::map<h256, bytes>;
 using TransactionHashes = h256s;
@@ -105,37 +106,42 @@ public:
 	h256s import(bytes const& _block, OverlayDB const& _stateDB);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
-	bool isKnown(h256 _hash) const;
+	bool isKnown(h256 const& _hash) const;
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
-	BlockInfo info(h256 _hash) const { return BlockInfo(block(_hash)); }
+	BlockInfo info(h256 const& _hash) const { return BlockInfo(block(_hash)); }
 	BlockInfo info() const { return BlockInfo(block()); }
 
 	/// Get a block (RLP format) for the given hash (or the most recent mined if none given). Thread-safe.
-	bytes block(h256 _hash) const;
+	bytes block(h256 const& _hash) const;
 	bytes block() const { return block(currentHash()); }
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
-	BlockDetails details(h256 _hash) const { return queryExtras<BlockDetails, ExtraDetails>(_hash, m_details, x_details, NullBlockDetails); }
+	BlockDetails details(h256 const& _hash) const { return queryExtras<BlockDetails, ExtraDetails>(_hash, m_details, x_details, NullBlockDetails); }
 	BlockDetails details() const { return details(currentHash()); }
 
 	/// Get the transactions' log blooms of a block (or the most recent mined if none given). Thread-safe.
-	BlockLogBlooms logBlooms(h256 _hash) const { return queryExtras<BlockLogBlooms, ExtraLogBlooms>(_hash, m_logBlooms, x_logBlooms, NullBlockLogBlooms); }
+	BlockLogBlooms logBlooms(h256 const& _hash) const { return queryExtras<BlockLogBlooms, ExtraLogBlooms>(_hash, m_logBlooms, x_logBlooms, NullBlockLogBlooms); }
 	BlockLogBlooms logBlooms() const { return logBlooms(currentHash()); }
 
 	/// Get the transactions' receipts of a block (or the most recent mined if none given). Thread-safe.
-	BlockReceipts receipts(h256 _hash) const { return queryExtras<BlockReceipts, ExtraReceipts>(_hash, m_receipts, x_receipts, NullBlockReceipts); }
+	BlockReceipts receipts(h256 const& _hash) const { return queryExtras<BlockReceipts, ExtraReceipts>(_hash, m_receipts, x_receipts, NullBlockReceipts); }
 	BlockReceipts receipts() const { return receipts(currentHash()); }
 
 	/// Get a list of transaction hashes for a given block. Thread-safe.
-	TransactionHashes transactionHashes(h256 _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[1]) ret.push_back(sha3(t.data())); return ret; }
+	TransactionHashes transactionHashes(h256 const& _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[1]) ret.push_back(sha3(t.data())); return ret; }
 	TransactionHashes transactionHashes() const { return transactionHashes(currentHash()); }
 
 	/// Get a list of uncle hashes for a given block. Thread-safe.
-	UncleHashes uncleHashes(h256 _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[2]) ret.push_back(sha3(t.data())); return ret; }
+	UncleHashes uncleHashes(h256 const& _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[2]) ret.push_back(sha3(t.data())); return ret; }
 	UncleHashes uncleHashes() const { return uncleHashes(currentHash()); }
 	
-	h256 numberHash(u256 _index) const { if (!_index) return genesisHash(); return queryExtras<BlockHash, ExtraBlockHash>(h256(_index), m_blockHashes, x_blockHashes, NullBlockHash).value; }
+	/// Get the hash for a given block's number.
+	h256 numberHash(unsigned _i) const { if (!_i) return genesisHash(); return queryExtras<BlockHash, ExtraBlockHash>(h256(u256(_i)), m_blockHashes, x_blockHashes, NullBlockHash).value; }
+
+	/// Get the last N hashes for a given block. (N is determined by the LastHashes type.)
+	LastHashes lastHashes() const { return lastHashes(number() - 1); }
+	LastHashes lastHashes(unsigned _i) const;
 
 	/** Get the block blooms for a number of blocks. Thread-safe.
 	 * @returns the object pertaining to the blocks:
@@ -158,15 +164,15 @@ public:
 	std::vector<unsigned> withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest, unsigned _topLevel, unsigned _index) const;
 
 	/// Get a transaction from its hash. Thread-safe.
-	bytes transaction(h256 _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytes(); return transaction(ta.blockHash, ta.index); }
-	std::pair<h256, unsigned> transactionLocation(h256 _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return std::pair<h256, unsigned>(h256(), 0); return std::make_pair(ta.blockHash, ta.index); }
+	bytes transaction(h256 const& _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytes(); return transaction(ta.blockHash, ta.index); }
+	std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return std::pair<h256, unsigned>(h256(), 0); return std::make_pair(ta.blockHash, ta.index); }
 
 	/// Get a block's transaction (RLP format) for the given block hash (or the most recent mined if none given) & index. Thread-safe.
-	bytes transaction(h256 _blockHash, unsigned _i) const { bytes b = block(_blockHash); return RLP(b)[1][_i].data().toBytes(); }
+	bytes transaction(h256 const& _blockHash, unsigned _i) const { bytes b = block(_blockHash); return RLP(b)[1][_i].data().toBytes(); }
 	bytes transaction(unsigned _i) const { return transaction(currentHash(), _i); }
 
 	/// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
-	unsigned number(h256 _hash) const { return details(_hash).number; }
+	unsigned number(h256 const& _hash) const { return details(_hash).number; }
 	unsigned number() const { return number(currentHash()); }
 
 	/// Get a given block (RLP format). Thread-safe.
@@ -178,7 +184,7 @@ public:
 	/// Get all blocks not allowed as uncles given a parent (i.e. featured as uncles/main in parent, parent + 1, ... parent + 5).
 	/// @returns set including the header-hash of every parent (including @a _parent) up to and including generation +5
 	/// togther with all their quoted uncles.
-	h256Set allUnclesFrom(h256 _parent) const;
+	h256Set allUnclesFrom(h256 const& _parent) const;
 
 	/** @returns the hash of all blocks between @a _from and @a _to, all blocks are ordered first by a number of
 	 * blocks that are parent-to-child, then two sibling blocks, then a number of blocks that are child-to-parent.
@@ -194,7 +200,7 @@ public:
 	 * treeRoute(1b, 2a) == { 1b, 1a, 2a }; // *o_common == g
 	 * @endcode
 	 */
-	h256s treeRoute(h256 _from, h256 _to, h256* o_common = nullptr, bool _pre = true, bool _post = true) const;
+	h256s treeRoute(h256 const& _from, h256 const& _to, h256* o_common = nullptr, bool _pre = true, bool _post = true) const;
 
 	struct Statistics
 	{
@@ -219,7 +225,7 @@ private:
 	void open(std::string _path, bool _killExisting = false);
 	void close();
 
-	template<class T, unsigned N> T queryExtras(h256 _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n) const
+	template<class T, unsigned N> T queryExtras(h256 const& _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n) const
 	{
 		{
 			ReadGuard l(_x);
@@ -267,6 +273,11 @@ private:
 	mutable std::set<CacheID> m_inUse;
 	void noteUsed(h256 const& _h, unsigned _extra = (unsigned)-1) const;
 	std::chrono::system_clock::time_point m_lastCollection;
+
+	void noteCanonChanged() const { Guard l(x_lastLastHashes); m_lastLastHashes.clear(); }
+	mutable Mutex x_lastLastHashes;
+	mutable LastHashes m_lastLastHashes;
+	mutable unsigned m_lastLastHashesNumber = (unsigned)-1;
 
 	void updateStats() const;
 	mutable Statistics m_lastStats;
