@@ -165,7 +165,7 @@ int Network::tcp4Listen(bi::tcp::acceptor& _acceptor, NetworkPreferences const& 
 	return retport;
 }
 
-bi::tcp::endpoint Network::traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr)
+bi::tcp::endpoint Network::traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpInterfaceAddr)
 {
 	asserts(_listenPort != 0);
 
@@ -177,26 +177,26 @@ bi::tcp::endpoint Network::traverseNAT(std::set<bi::address> const& _ifAddresses
 	// let m_upnp continue as null - we handle it properly.
 	catch (...) {}
 
-	bi::tcp::endpoint upnpep;
+	bi::tcp::endpoint upnpEP;
 	if (upnp && upnp->isValid())
 	{
-		bi::address paddr;
+		bi::address pAddr;
 		int extPort = 0;
 		for (auto const& addr: _ifAddresses)
 			if (addr.is_v4() && isPrivateAddress(addr) && (extPort = upnp->addRedirect(addr.to_string().c_str(), _listenPort)))
 			{
-				paddr = addr;
+				pAddr = addr;
 				break;
 			}
 
-		auto eip = upnp->externalIP();
-		bi::address eipaddr(bi::address::from_string(eip));
-		if (extPort && eip != string("0.0.0.0") && !isPrivateAddress(eipaddr))
+		auto eIP = upnp->externalIP();
+		bi::address eIPAddr(bi::address::from_string(eIP));
+		if (extPort && eIP != string("0.0.0.0") && !isPrivateAddress(eIPAddr))
 		{
 			clog(NetNote) << "Punched through NAT and mapped local port" << _listenPort << "onto external port" << extPort << ".";
-			clog(NetNote) << "External addr:" << eip;
-			o_upnpifaddr = paddr;
-			upnpep = bi::tcp::endpoint(eipaddr, (unsigned short)extPort);
+			clog(NetNote) << "External addr:" << eIP;
+			o_upnpInterfaceAddr = pAddr;
+			upnpEP = bi::tcp::endpoint(eIPAddr, (unsigned short)extPort);
 		}
 		else
 			clog(NetWarn) << "Couldn't punch through NAT (or no NAT in place).";
@@ -205,7 +205,7 @@ bi::tcp::endpoint Network::traverseNAT(std::set<bi::address> const& _ifAddresses
 			delete upnp;
 	}
 
-	return upnpep;
+	return upnpEP;
 }
 
 bi::tcp::endpoint Network::resolveHost(string const& _addr)
