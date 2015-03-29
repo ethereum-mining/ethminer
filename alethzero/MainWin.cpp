@@ -1362,7 +1362,7 @@ void Main::on_transactionQueue_currentItemChanged()
 		if (!!receipt.bloom())
 			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
 		else
-			s << "<div>Log Bloom: <i>Uneventful</i></div>";
+			s << "<div>Log Bloom: <b><i>Uneventful</i></b></div>";
 		auto r = receipt.rlp();
 		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 		s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
@@ -1461,7 +1461,7 @@ void Main::on_blocks_currentItemChanged()
 			if (!!info.logBloom)
 				s << "<div>Log Bloom: " << info.logBloom << "</div>";
 			else
-				s << "<div>Log Bloom: <i>Uneventful</i></div>";
+				s << "<div>Log Bloom: <b><i>Uneventful</i></b></div>";
 			s << "<div>Transactions: <b>" << block[1].itemCount() << "</b> @<b>" << info.transactionsRoot << "</b>" << "</div>";
 			s << "<div>Uncles: <b>" << block[2].itemCount() << "</b> @<b>" << info.sha3Uncles << "</b>" << "</div>";
 			for (auto u: block[2])
