@@ -94,9 +94,6 @@ public:
 
 	/// Default host for current version of client.
 	static std::string pocHost();
-	
-	/// Resolve "host:port" or "ip:port" string as TCP endpoint. Returns unspecified endpoint on failure.
-	static bi::tcp::endpoint resolveHost(Host& _host, std::string const& _addr) { return Network::resolveHost(_host.m_ioService, _addr); }
 
 	/// Register a peer-capability; all new peer connections will have this capability.
 	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; auto ret = std::shared_ptr<T>(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
