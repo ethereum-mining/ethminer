@@ -214,7 +214,7 @@ bi::tcp::endpoint Network::resolveHost(string const& _addr)
 	
 	vector<string> split;
 	boost::split(split, _addr, boost::is_any_of(":"));
-	unsigned port = split.size() > 1 ? stoi(split[1]) : c_defaultIPPort;
+	unsigned port = split.size() > 1 ? stoi(split[1]) : dev::p2p::c_defaultIPPort;
 
 	bi::tcp::endpoint ep(bi::address(), port);
 	boost::system::error_code ec;
