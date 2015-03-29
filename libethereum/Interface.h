@@ -71,11 +71,13 @@ public:
 	virtual void flushTransactions() = 0;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = 0) = 0;
+	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber) = 0;
+	ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) { return call(_secret, _value, _dest, _data, _gas, _gasPrice, m_default); }
 
 	/// Does the given creation. Nothing is recorded into the state.
 	/// @returns the pair of the Address of the created contract together with its code.
-	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = 0) = 0;
+	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber) = 0;
+	ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) { return create(_secret, _value, _data, _gas, _gasPrice, m_default); }
 
 	// [STATE-QUERY API]
 

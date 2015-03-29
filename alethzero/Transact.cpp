@@ -316,7 +316,7 @@ void Transact::rejigData()
 		return;
 	}
 	else
-		gasNeeded = min<qint64>((qint64)ethereum()->gasLimitRemaining(), (qint64)((b - value()) / gasPrice()));
+		gasNeeded = (qint64)min<bigint>(ethereum()->gasLimitRemaining(), ((b - value()) / gasPrice()));
 
 	// Dry-run execution to determine gas requirement and any execution errors
 	Address to;
@@ -326,7 +326,7 @@ void Transact::rejigData()
 	else
 	{
 		to = m_context->fromString(ui->destination->currentText());
-		er = ethereum()->call(s, value(), to, m_data, ethereum()->gasLimitRemaining(), gasPrice());
+		er = ethereum()->call(s, value(), to, m_data, gasNeeded, gasPrice());
 	}
 	gasNeeded = (qint64)(er.gasUsed + er.gasRefunded);
 	htmlInfo = QString("<div class=\"info\"><span class=\"icon\">INFO</span> Gas required: %1 total = %2 base, %3 exec [%4 refunded later]</div>").arg(gasNeeded).arg(baseGas).arg(gasNeeded - baseGas).arg((qint64)er.gasRefunded) + htmlInfo;
