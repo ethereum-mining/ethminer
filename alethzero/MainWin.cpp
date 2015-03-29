@@ -1099,7 +1099,7 @@ void Main::refreshBlockChain()
 				blocks.insert(bc.numberHash(b));
 		}
 		else if (f.toLongLong() <= bc.number())
-			blocks.insert(bc.numberHash(u256(f.toLongLong())));
+			blocks.insert(bc.numberHash((unsigned)f.toLongLong()));
 		else if (f.size() == 40)
 		{
 			Address h(f.toStdString());
