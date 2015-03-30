@@ -67,7 +67,7 @@ Rectangle
 						var log = logsModel.get(k);
 						content += log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content + "\n";
 					}
-					appContext.toClipboard(content);
+					clipboard.text = content;
 				}
 			}
 
@@ -153,31 +153,6 @@ Rectangle
 				}
 			}
 
-			ToolButton {
-				id: compilationButton
-				checkable: true
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
-				anchors.verticalCenter: parent.verticalCenter
-				checked: false
-				onCheckedChanged: {
-					proxyModel.toogleFilter("compilation")
-				}
-				tooltip: qsTr("Compilation")
-				style:
-					ButtonStyle {
-					label:
-						Item {
-						DefaultLabel {
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							font.pointSize: Style.absoluteSize(-3)
-							color: "#5391d8"
-							anchors.centerIn: parent
-							text: qsTr("Compilation")
-						}
-					}
-				}
-			}
-
 			DefaultTextField
 			{
 				id: searchBox
@@ -207,7 +182,7 @@ Rectangle
 			{
 				var log = logsModel.get(logsTable.currentRow);
 				if (log)
-					appContext.toClipboard(log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content);
+					clipboard.text = (log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content);
 			}
 
 			model: SortFilterProxyModel {

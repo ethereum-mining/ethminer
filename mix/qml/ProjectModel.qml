@@ -35,6 +35,7 @@ Item {
 	readonly property string projectFileName: ".mix"
 
 	property bool appIsClosing: false
+	property bool projectIsClosing: false
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
@@ -51,6 +52,7 @@ Item {
 	function createProject() { ProjectModelCode.createProject(); }
 	function closeProject(callBack) { ProjectModelCode.closeProject(callBack); }
 	function saveProject() { ProjectModelCode.saveProject(); }
+	function saveProjectFile() { ProjectModelCode.saveProjectFile(); }
 	function loadProject(path) { ProjectModelCode.loadProject(path); }
 	function newHtmlFile() { ProjectModelCode.newHtmlFile(); }
 	function newJsFile() { ProjectModelCode.newJsFile(); }
@@ -69,8 +71,8 @@ Item {
 	function formatAppUrl() { ProjectModelCode.formatAppUrl(url); }
 
 	Connections {
-		target: appContext
-		onAppLoaded: {
+		target: mainApplication
+		onLoaded: {
 			if (projectSettings.lastProjectPath && projectSettings.lastProjectPath !== "")
 				projectModel.loadProject(projectSettings.lastProjectPath)
 		}
@@ -120,13 +122,17 @@ Item {
 		icon: StandardIcon.Question
 		property var callBack;
 		onYes: {
+			projectIsClosing = true;
 			projectModel.saveAll();
+			unsavedFiles = [];
 			ProjectModelCode.doCloseProject();
 			if (callBack)
 				callBack();
 		}
 		onRejected: {}
 		onNo: {
+			projectIsClosing = true;
+			unsavedFiles = [];
 			ProjectModelCode.doCloseProject();
 			if (callBack)
 				callBack();
@@ -173,7 +179,6 @@ Item {
 	{
 		target: projectModel
 		onProjectClosed: {
-			projectSettings.lastProjectPath = "";
 			projectPath = "";
 		}
 	}

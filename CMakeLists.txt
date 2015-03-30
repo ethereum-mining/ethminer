@@ -160,7 +160,6 @@ if (EVMJIT)
 endif()
 
 add_subdirectory(libdevcore)
-add_subdirectory(rlp)
 add_subdirectory(libevmcore)
 add_subdirectory(liblll)
 
@@ -178,6 +177,7 @@ endif()
 
 if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
+	add_subdirectory(ethrpctest)
 endif()
 
 add_subdirectory(secp256k1)
@@ -195,10 +195,13 @@ add_subdirectory(libevm)
 add_subdirectory(libethereum)
 
 add_subdirectory(libwebthree)
+add_subdirectory(libtestutils)
 add_subdirectory(test)
 
 if (NOT JUSTTESTS)
 
+	add_subdirectory(rlp)
+	add_subdirectory(abi)
 	add_subdirectory(eth)
 
 	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
@@ -225,9 +228,6 @@ if (NOT JUSTTESTS)
 	endif()
 
 endif()
-
-enable_testing()
-add_test(NAME alltests WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth)
 
 #unset(TARGET_PLATFORM CACHE)
 

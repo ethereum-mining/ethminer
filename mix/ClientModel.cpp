@@ -21,6 +21,7 @@
 // Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 
+#include "ClientModel.h"
 #include <QtConcurrent/QtConcurrent>
 #include <QDebug>
 #include <QQmlContext>
@@ -29,7 +30,6 @@
 #include <jsonrpccpp/server.h>
 #include <libethcore/CommonJS.h>
 #include <libethereum/Transaction.h>
-#include "AppContext.h"
 #include "DebuggingStateWrapper.h"
 #include "Exceptions.h"
 #include "QContractDefinition.h"
@@ -39,7 +39,6 @@
 #include "CodeModel.h"
 #include "QEther.h"
 #include "Web3Server.h"
-#include "ClientModel.h"
 #include "MixClient.h"
 
 using namespace dev;
@@ -67,8 +66,8 @@ private:
 };
 
 
-ClientModel::ClientModel(AppContext* _context):
-	m_context(_context), m_running(false), m_rpcConnector(new RpcConnector())
+ClientModel::ClientModel():
+	m_running(false), m_rpcConnector(new RpcConnector())
 {
 	qRegisterMetaType<QBigInt*>("QBigInt*");
 	qRegisterMetaType<QVariableDefinition*>("QVariableDefinition*");
@@ -87,7 +86,6 @@ ClientModel::ClientModel(AppContext* _context):
 
 	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), m_client->userAccounts(), m_client.get()));
 	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
-	_context->appEngine()->rootContext()->setContextProperty("clientModel", this);
 }
 
 ClientModel::~ClientModel()
@@ -184,8 +182,8 @@ void ClientModel::setupState(QVariantMap _state)
 		}
 		else
 		{
-			if (contractId.isEmpty() && m_context->codeModel()->hasContract()) //TODO: This is to support old project files, remove later
-				contractId = m_context->codeModel()->contracts().keys()[0];
+			if (contractId.isEmpty() && m_codeModel->hasContract()) //TODO: This is to support old project files, remove later
+				contractId = m_codeModel->contracts().keys()[0];
 			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasPrice, Secret(sender.toStdString()));
 			transactionSettings.parameterValues = transaction.value("parameters").toMap();
 
@@ -220,7 +218,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 				if (!transaction.stdContractUrl.isEmpty())
 				{
 					//std contract
-					dev::bytes const& stdContractCode = m_context->codeModel()->getStdContractCode(transaction.contractId, transaction.stdContractUrl);
+					dev::bytes const& stdContractCode = m_codeModel->getStdContractCode(transaction.contractId, transaction.stdContractUrl);
 					TransactionSettings stdTransaction = transaction;
 					stdTransaction.gas = 500000;// TODO: get this from std contracts library
 					Address address = deployContract(stdContractCode, stdTransaction);
@@ -230,7 +228,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 				else
 				{
 					//encode data
-					CompiledContract const& compilerRes = m_context->codeModel()->contract(transaction.contractId);
+					CompiledContract const& compilerRes = m_codeModel->contract(transaction.contractId);
 					QFunctionDefinition const* f = nullptr;
 					bytes contractCode = compilerRes.bytes();
 					std::shared_ptr<QContractDefinition> contractDef = compilerRes.sharedContract();
@@ -244,7 +242,12 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 								break;
 							}
 					if (!f)
-						BOOST_THROW_EXCEPTION(FunctionNotFoundException() << FunctionName(transaction.functionId.toStdString()));
+					{
+						emit runFailed("Function '" + transaction.functionId + tr("' not found. Please check transactions or the contract code."));
+						m_running = false;
+						emit runStateChanged();
+						return;
+					}
 					if (!transaction.functionId.isEmpty())
 						encoder.encode(f);
 					for (QVariableDeclaration const* p: f->parametersList())
@@ -271,7 +274,12 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 					{
 						auto contractAddressIter = m_contractAddresses.find(transaction.contractId);
 						if (contractAddressIter == m_contractAddresses.end())
-							BOOST_THROW_EXCEPTION(dev::Exception() << dev::errinfo_comment("Contract not deployed: " + transaction.contractId.toStdString()));
+						{
+							emit runFailed("Contract '" + transaction.contractId + tr(" not deployed.") + "' " + tr(" Cannot call ") + transaction.functionId);
+							m_running = false;
+							emit runStateChanged();
+							return;
+						}
 						callContract(contractAddressIter->second, encoder.encodedData(), transaction);
 					}
 				}
@@ -285,7 +293,6 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 			std::cerr << boost::current_exception_diagnostic_information();
 			emit runFailed(QString::fromStdString(boost::current_exception_diagnostic_information()));
 		}
-
 		catch(std::exception const& e)
 		{
 			std::cerr << boost::current_exception_diagnostic_information();
@@ -320,7 +327,7 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 		auto nameIter = m_contractNames.find(code.address);
 		if (nameIter != m_contractNames.end())
 		{
-			CompiledContract const& compilerRes = m_context->codeModel()->contract(nameIter->second);
+			CompiledContract const& compilerRes = m_codeModel->contract(nameIter->second);
 			eth::AssemblyItems assemblyItems = !_t.isConstructor() ? compilerRes.assemblyItems() : compilerRes.constructorAssemblyItems();
 			codes.back()->setDocument(compilerRes.documentId());
 			codeItems.push_back(std::move(assemblyItems));
@@ -378,6 +385,8 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 			for(auto l: solLocals)
 				if (l.first < (int)s.stack.size())
 				{
+					if (l.second->type()->name().startsWith("mapping"))
+						break; //mapping type not yet managed
 					localDeclarations.push_back(QVariant::fromValue(l.second));
 					localValues[l.second->name()] = formatValue(l.second->type()->type(), s.stack[l.first]);
 				}
@@ -402,6 +411,8 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 							storageDec = new QVariableDeclaration(debugData, storageIter.value().name.toStdString(), storageIter.value().type);
 							storageDeclarations[storageDec->name()] = storageDec;
 						}
+						if (storageDec->type()->name().startsWith("mapping"))
+							break; //mapping type not yet managed
 						storageDeclarationList.push_back(QVariant::fromValue(storageDec));
 						storageValues[storageDec->name()] = formatValue(storageDec->type()->type(), st.second);
 					}
@@ -410,7 +421,7 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 			storage["values"] = storageValues;
 
 			prevInstructionIndex = instructionIndex;
-			solState = new QSolState(debugData, std::move(storage), std::move(solCallStack), std::move(locals), instruction.getLocation().start, instruction.getLocation().end);
+			solState = new QSolState(debugData, std::move(storage), std::move(solCallStack), std::move(locals), instruction.getLocation().start, instruction.getLocation().end, QString::fromUtf8(instruction.getLocation().sourceName->c_str()));
 		}
 
 		states.append(QVariant::fromValue(new QMachineState(debugData, instructionIndex, s, codes[s.codeIndex], data[s.dataIndex], solState)));
@@ -437,12 +448,6 @@ void ClientModel::debugRecord(unsigned _index)
 {
 	ExecutionResult e = m_client->execution(_index);
 	showDebuggerForTransaction(e);
-}
-
-void ClientModel::showDebugError(QString const& _error)
-{
-	//TODO: change that to a signal
-	m_context->displayMessageDialog(tr("Debugger"), _error);
 }
 
 Address ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
@@ -527,7 +532,7 @@ void ClientModel::onNewTransaction()
 	auto contractAddressIter = m_contractNames.find(contractAddress);
 	if (contractAddressIter != m_contractNames.end())
 	{
-		CompiledContract const& compilerRes = m_context->codeModel()->contract(contractAddressIter->second);
+		CompiledContract const& compilerRes = m_codeModel->contract(contractAddressIter->second);
 		const QContractDefinition* def = compilerRes.contract();
 		contract = def->name();
 		if (abi)
