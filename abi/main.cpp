@@ -264,12 +264,12 @@ struct ABIType
 	{
 		bytes ret = _b;
 		while (ret.size() < _length)
-			if (_f == Format::Binary)
+			if (base == Base::Bytes || (base == Base::Unknown && _f == Format::Binary))
 				ret.push_back(0);
 			else
 				ret.insert(ret.begin(), 0);
 		while (ret.size() > _length)
-			if (_f == Format::Binary)
+			if (base == Base::Bytes || (base == Base::Unknown && _f == Format::Binary))
 				ret.pop_back();
 			else
 				ret.erase(ret.begin());
@@ -303,7 +303,7 @@ tuple<bytes, ABIType, Format> fromUser(std::string const& _arg, Tristate _prefix
 			type.noteDecimalInput();
 			return make_tuple(toCompactBigEndian(bigint(val.substr(1))), type, Format::Decimal);
 		}
-		if (val.substr(0, 1) == "@")
+		if (val.substr(0, 1) == "'")
 		{
 			type.noteBinaryInput();
 			return make_tuple(asBytes(val.substr(1)), type, Format::Binary);
@@ -335,6 +335,7 @@ tuple<bytes, ABIType, Format> fromUser(std::string const& _arg, Tristate _prefix
 	throw InvalidUserString();
 }
 
+struct ExpectedAdditionalParameter: public Exception {};
 struct ExpectedOpen: public Exception {};
 struct ExpectedClose: public Exception {};
 
@@ -394,10 +395,10 @@ struct ABIMethod
 			ss << "constant ";
 		if (!outs.empty())
 		{
-			ss << "returns (";
+			ss << "returns(";
 			f = 0;
 			for (ABIType const& i: outs)
-				ss << (f ? ", " : "") << i.canon() << " " << i.name;
+				ss << (f++ ? ", " : "") << i.canon() << " " << i.name;
 			ss << ")";
 		}
 		return ss.str();
@@ -417,11 +418,15 @@ struct ABIMethod
 
 		for (ABIType const& a: ins)
 		{
+			if (pi >= _params.size())
+				throw ExpectedAdditionalParameter();
 			auto put = [&]() {
 				if (a.isBytes())
 					ret += h256(u256(_params[pi].first.size())).asBytes();
 				suffix += a.unrender(_params[pi].first, _params[pi].second);
 				pi++;
+				if (pi >= _params.size())
+					throw ExpectedAdditionalParameter();
 			};
 			function<void(vector<int>, unsigned)> putDim = [&](vector<int> addr, unsigned q) {
 				if (addr.size() == a.dims.size())
@@ -430,13 +435,14 @@ struct ABIMethod
 				{
 					if (_params[pi].second != Format::Open)
 						throw ExpectedOpen();
+					++pi;
 					int l = a.dims[addr.size()];
 					if (l == -1)
 					{
 						// read ahead in params and discover the arity.
 						unsigned depth = 0;
 						l = 0;
-						for (unsigned pi2 = pi + 1; depth || _params[pi2].second != Format::Close;)
+						for (unsigned pi2 = pi; depth || _params[pi2].second != Format::Close;)
 						{
 							if (_params[pi2].second == Format::Open)
 								++depth;
@@ -454,6 +460,7 @@ struct ABIMethod
 						putDim(addr, q);
 					if (_params[pi].second != Format::Close)
 						throw ExpectedClose();
+					++pi;
 				}
 			};
 			putDim(vector<int>(), 1);
@@ -463,8 +470,6 @@ struct ABIMethod
 	string decode(bytes const& _data, int _index, EncodingPrefs _ep)
 	{
 		stringstream out;
-		if (_index == -1)
-			out << "[";
 		unsigned di = 0;
 		vector<unsigned> catDims;
 		for (ABIType const& a: outs)
@@ -481,7 +486,6 @@ struct ABIMethod
 					put();
 				else
 				{
-					out << "[";
 					int l = a.dims[addr.size()];
 					if (l == -1)
 					{
@@ -492,7 +496,6 @@ struct ABIMethod
 					q *= l;
 					for (addr.push_back(0); addr.back() < l; ++addr.back())
 						putDim(addr, q);
-					out << "]";
 				}
 			};
 			putDim(vector<int>(), 1);
@@ -500,12 +503,20 @@ struct ABIMethod
 		unsigned d = 0;
 		for (ABIType const& a: outs)
 		{
+			if (_index == -1 && out.tellp() > 0)
+				out << ", ";
 			auto put = [&]() {
-				unsigned l = 32;
 				if (a.isBytes())
-					l = (catDims[d++] + 31 / 32) * 32;
-				out << a.render(bytesConstRef(&_data).cropped(di, l).toBytes(), _ep) << ", ";
-				di += l;
+				{
+					out << a.render(bytesConstRef(&_data).cropped(di, catDims[d]).toBytes(), _ep);
+					di += ((catDims[d] + 31) / 32) * 32;
+					d++;
+				}
+				else
+				{
+					out << a.render(bytesConstRef(&_data).cropped(di, 32).toBytes(), _ep);
+					di += 32;
+				}
 			};
 			function<void(vector<int>)> putDim = [&](vector<int> addr) {
 				if (addr.size() == a.dims.size())
@@ -527,22 +538,22 @@ struct ABIMethod
 				}
 			};
 			putDim(vector<int>());
-			if (_index == -1)
-				out << ", ";
 		}
-		(void)_data;
-		if (_index == -1)
-			out << "]";
 		return out.str();
 	}
 };
 
 string canonSig(string const& _name, vector<ABIType> const& _args)
 {
-	string methodArgs;
-	for (auto const& arg: _args)
-		methodArgs += (methodArgs.empty() ? "" : ",") + arg.canon();
-	return _name + "(" + methodArgs + ")";
+	try {
+		string methodArgs;
+		for (auto const& arg: _args)
+			methodArgs += (methodArgs.empty() ? "" : ",") + arg.canon();
+		return _name + "(" + methodArgs + ")";
+	}
+	catch (...) {
+		return string();
+	}
 }
 
 struct UnknownMethod: public Exception {};
@@ -632,6 +643,7 @@ int main(int argc, char** argv)
 	int outputIndex = -1;
 	vector<pair<bytes, Format>> params;
 	vector<ABIType> args;
+	string incoming;
 
 	for (int i = 1; i < argc; ++i)
 	{
@@ -656,8 +668,6 @@ int main(int argc, char** argv)
 			typePrefix = Tristate::True;
 		else if (arg == "-T" || arg == "--no-typing")
 			typePrefix = Tristate::False;
-		else if (arg == "-v" || arg == "--verbose")
-			verbose = true;
 		else if (arg == "-x" || arg == "--hex")
 			prefs.e = Encoding::Hex;
 		else if (arg == "-d" || arg == "--decimal" || arg == "--dec")
@@ -665,21 +675,23 @@ int main(int argc, char** argv)
 		else if (arg == "-b" || arg == "--binary" || arg == "--bin")
 			prefs.e = Encoding::Binary;
 		else if (arg == "-v" || arg == "--verbose")
-			version();
+			verbose = true;
 		else if (arg == "-V" || arg == "--version")
 			version();
 		else if (method.empty())
 			method = arg;
-		else
+		else if (mode == Mode::Encode)
 		{
 			auto u = fromUser(arg, formatPrefix, typePrefix);
 			args.push_back(get<1>(u));
 			params.push_back(make_pair(get<0>(u), get<2>(u)));
 		}
+		else if (mode == Mode::Decode)
+			incoming += arg;
 	}
 
 	string abiData;
-	if (abiFile.empty())
+	if (!abiFile.empty())
 		abiData = contentsString(abiFile);
 
 	if (mode == Mode::Encode)
@@ -695,13 +707,30 @@ int main(int argc, char** argv)
 			try {
 				m = abi.method(method, args);
 			}
-			catch(...)
+			catch (...)
 			{
 				cerr << "Unknown method in ABI." << endl;
 				exit(-1);
 			}
 		}
-		userOutput(cout, m.encode(params), encoding);
+		try {
+			userOutput(cout, m.encode(params), encoding);
+		}
+		catch (ExpectedAdditionalParameter const&)
+		{
+			cerr << "Expected additional parameter in input." << endl;
+			exit(-1);
+		}
+		catch (ExpectedOpen const&)
+		{
+			cerr << "Expected open-bracket '[' in input." << endl;
+			exit(-1);
+		}
+		catch (ExpectedClose const&)
+		{
+			cerr << "Expected close-bracket ']' in input." << endl;
+			exit(-1);
+		}
 	}
 	else if (mode == Mode::Decode)
 	{
@@ -725,9 +754,14 @@ int main(int argc, char** argv)
 				exit(-1);
 			}
 			string encoded;
-			for (int i = cin.get(); i != -1; i = cin.get())
-				encoded.push_back((char)i);
-			cout << m.decode(fromHex(encoded), outputIndex, prefs);
+			if (incoming == "--" || incoming.empty())
+				for (int i = cin.get(); i != -1; i = cin.get())
+					encoded.push_back((char)i);
+			else
+			{
+				encoded = contentsString(incoming);
+			}
+			cout << m.decode(fromHex(boost::trim_copy(encoded)), outputIndex, prefs) << endl;
 		}
 	}
 

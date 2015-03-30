@@ -39,7 +39,8 @@ public:
 	size_t size() const { return m_count; }
 	bool empty() const { return !m_count; }
 	vector_ref<_T> next() const { return vector_ref<_T>(m_data + m_count, m_count); }
-	vector_ref<_T> cropped(size_t _begin, size_t _count = ~size_t(0)) const { if (m_data && _begin + std::max(size_t(0), _count) <= m_count) return vector_ref<_T>(m_data + _begin, _count == ~size_t(0) ? m_count - _begin : _count); else return vector_ref<_T>(); }
+	vector_ref<_T> cropped(size_t _begin, size_t _count) const { if (m_data && _begin + _count <= m_count) return vector_ref<_T>(m_data + _begin, _count == ~size_t(0) ? m_count - _begin : _count); else return vector_ref<_T>(); }
+	vector_ref<_T> cropped(size_t _begin) const { if (m_data && _begin <= m_count) return vector_ref<_T>(m_data + _begin, m_count - _begin); else return vector_ref<_T>(); }
 	void retarget(_T* _d, size_t _s) { m_data = _d; m_count = _s; }
 	void retarget(std::vector<_T> const& _t) { m_data = _t.data(); m_count = _t.size(); }
 	void copyTo(vector_ref<typename std::remove_const<_T>::type> _t) const { memcpy(_t.data(), m_data, std::min(_t.size(), m_count) * sizeof(_T)); }
