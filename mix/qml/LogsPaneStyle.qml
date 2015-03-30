@@ -11,8 +11,6 @@ QtObject {
 	property QtObject generic: QtObject {
 		property QtObject layout: QtObject {
 			property string backgroundColor: "#f7f7f7"
-			property string borderColor: "#5391d8"
-			property int borderWidth: 1
 			property int headerHeight: 35
 			property int headerButtonSpacing: 5
 			property int leftMargin: 10
@@ -20,9 +18,9 @@ QtObject {
 			property string logLabelColor: "#5391d8"
 			property string logLabelFont: "sans serif"
 			property int headerInputWidth: 200
-			property int dateWidth: 150
-			property int typeWidth: 80
-			property int contentWidth: 700
+			property int dateWidth: 70
+			property int typeWidth: 70
+			property int contentWidth: 250
 			property string logAlternateColor: "#f0f0f0"
 		}
 	}
