@@ -62,7 +62,9 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_blockhash_t seed
  *
  * @param[in] dirname        A null terminated c-string of the path of the ethash
  *                           data directory. Has to exist.
- * @param[in] block_number   The current block number.
+ * @param[in] params         An ethash_params object containing the full size
+ *                           and the cache size
+ * @param[in] seedhash       The seedhash of the current block number
  * @param[in] cache          The cache data. Would have usually been calulated by
  *                           @see ethash_prep_light().
  * @param[out] data          Pass a pointer to uint8_t by reference here. If the
@@ -76,7 +78,8 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_blockhash_t seed
  * @return                   True for success and false in case of failure.
  */
 bool ethash_io_write(char const *dirname,
-                     uint32_t block_number,
+                     ethash_params const* params,
+                     ethash_blockhash_t seedhash,
                      void const* cache,
                      uint8_t **data,
                      size_t *data_size);
@@ -94,7 +97,8 @@ static inline char *ethash_io_create_filename(char const *dirname,
                                               char const* filename,
                                               size_t filename_length)
 {
-    char *name = malloc(strlen(dirname) + filename_length);
+    // in C the cast is not needed, but a C++ compiler will complain for invalid conversion
+    char *name = (char*)malloc(strlen(dirname) + filename_length);
     if (!name) {
         return NULL;
     }

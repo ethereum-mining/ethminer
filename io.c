@@ -53,36 +53,31 @@ free_name:
 }
 
 bool ethash_io_write(char const *dirname,
-                     uint32_t block_number,
+                     ethash_params const* params,
+                     ethash_blockhash_t seedhash,
                      void const* cache,
                      uint8_t **data,
                      size_t *data_size)
 {
-    ethash_params p;
     char info_buffer[DAG_MEMO_BYTESIZE];
-    ethash_blockhash_t seedhash;
-
-    p.cache_size = ethash_get_cachesize(block_number);
-    p.full_size = ethash_get_datasize(block_number);
     // allocate the bytes
-    uint8_t *temp_data_ptr = malloc(p.full_size);
-    if (!*temp_data_ptr) {
+    uint8_t *temp_data_ptr = malloc(params->full_size);
+    if (!temp_data_ptr) {
         goto end;
     }
-    ethash_prep_full(temp_data_ptr, &p, cache);
+    ethash_compute_full_data(temp_data_ptr, params, cache);
 
-    if (!ethash_io_write_file(dirname, PASS_ARR(DAG_FILE_NAME), temp_data_ptr, p.full_size)) {
+    if (!ethash_io_write_file(dirname, PASS_ARR(DAG_FILE_NAME), temp_data_ptr, params->full_size)) {
         goto fail_free;
     }
 
-    ethash_get_seedhash((uint8_t*)&seedhash, block_number);
     ethash_io_serialize_info(REVISION, seedhash, info_buffer);
     if (!ethash_io_write_file(dirname, PASS_ARR(DAG_MEMO_NAME), info_buffer, DAG_MEMO_BYTESIZE)) {
         goto fail_free;
     }
 
     *data = temp_data_ptr;
-    *data_size = p.full_size;
+    *data_size = params->full_size;
     return true;
 
 fail_free:
