@@ -310,10 +310,7 @@ void Host::determinePublic()
 	else if (m_netPrefs.traverseNAT)
 	{
 		bi::address natIFAddr;
-		if (lset && ifAddresses.count(laddr))
-			ep = Network::traverseNAT(std::set<bi::address>({laddr}), m_netPrefs.listenPort, natIFAddr);
-		else
-			ep = Network::traverseNAT(ifAddresses, m_netPrefs.listenPort, natIFAddr);
+		ep = Network::traverseNAT(lset && ifAddresses.count(laddr) ? std::set<bi::address>({laddr}) : ifAddresses, m_netPrefs.listenPort, natIFAddr);
 		
 		if (lset && natIFAddr != laddr)
 			// if listen address is set, Host will use it, even if upnp returns different
