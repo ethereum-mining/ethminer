@@ -12,6 +12,7 @@ Item {
 	id: webPreview
 	property string pendingPageUrl: ""
 	property bool initialized: false
+	property alias urlInput: urlInput
 	signal javaScriptMessage(var _level, string _sourceId, var _lineNb, string _content)
 
 	function setPreviewUrl(url) {
