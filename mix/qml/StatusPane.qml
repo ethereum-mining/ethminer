@@ -24,7 +24,6 @@ Rectangle {
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(message, true);
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
 			debugImg.state = "";
-			errorMessage(status.text, "Compilation");
 		}
 		debugRunActionIcon.enabled = codeModel.hasContract;
 	}
@@ -77,9 +76,9 @@ Rectangle {
 		function format(_message)
 		{
 			var formatted = _message.match(/(?:<dev::eth::)(.+)(?:>)/);
-			if (formatted === null)
+			if (formatted)
 				formatted = _message.match(/(?:<dev::)(.+)(?:>)/);
-			if (formatted.length > 1)
+			if (formatted && formatted.length > 1)
 				formatted = formatted[1];
 			else
 				return _message;

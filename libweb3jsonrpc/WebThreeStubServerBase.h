@@ -48,6 +48,9 @@ namespace shh
 class Interface;
 }
 
+extern const unsigned SensibleHttpThreads;
+extern const unsigned SensibleHttpPort;
+
 class WebThreeStubDatabaseFace
 {
 public:

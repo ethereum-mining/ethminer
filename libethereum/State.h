@@ -41,7 +41,7 @@
 namespace dev
 {
 
-namespace test { class ImportTest; }
+namespace test { class ImportTest; class StateLoader; }
 
 namespace eth
 {
@@ -99,6 +99,7 @@ class State
 {
 	friend class ExtVM;
 	friend class dev::test::ImportTest;
+	friend class dev::test::StateLoader;
 	friend class Executive;
 
 public:
@@ -127,6 +128,7 @@ public:
 	OverlayDB const& db() const { return m_db; }
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
+	/// @throws InterfaceNotSupported if compiled without ETH_FATDB.
 	std::map<Address, u256> addresses() const;
 
 	/// Get the header information on the present block.
@@ -186,15 +188,9 @@ public:
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
-	/// Returns the last few block hashes of the current chain.
-	LastHashes getLastHashes(BlockChain const& _bc, unsigned _n) const;
-
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	ExecutionResult execute(BlockChain const& _bc, bytes const& _rlp, Permanence _p = Permanence::Committed);
-	ExecutionResult execute(BlockChain const& _bc, bytesConstRef _rlp, Permanence _p = Permanence::Committed);
-	ExecutionResult execute(LastHashes const& _lh, bytes const& _rlp, Permanence _p = Permanence::Committed) { return execute(_lh, &_rlp, _p); }
-	ExecutionResult execute(LastHashes const& _lh, bytesConstRef _rlp, Permanence _p = Permanence::Committed);
+	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed);
 
 	/// Get the remaining gas limit in this block.
 	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
@@ -218,6 +214,14 @@ public:
 	 * @note We use bigint here as we don't want any accidental problems with negative numbers.
 	 */
 	void subBalance(Address _id, bigint _value);
+
+	/**
+	 * @brief Transfers "the balance @a _value between two accounts.
+	 * @param _from Account from which @a _value will be deducted.
+	 * @param _to Account to which @a _value will be added.
+	 * @param _value Amount to be transferred.
+	 */
+	void transferBalance(Address _from, Address _to, u256 _value) { subBalance(_from, _value); addBalance(_to, _value); }
 
 	/// Get the root of the storage of an account.
 	h256 storageRoot(Address _contract) const;

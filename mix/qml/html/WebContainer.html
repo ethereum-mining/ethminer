@@ -23,9 +23,9 @@ updateContracts = function(contracts) {
 			var contractProto = window.web3.eth.contract(contracts[c].interface);
 			var contract = new contractProto(contracts[c].address);
 			window.contracts[c] = {
-				address: c.address,
-				interface: c.interface,
-				contract: contract,
+				address: contracts[c].address,
+				interface: contracts[c].interface,
+				contract: contract
 			};
 		}
 	}

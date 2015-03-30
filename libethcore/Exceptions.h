@@ -38,6 +38,7 @@ using errinfo_difficulty = boost::error_info<struct tag_difficulty, u256>;
 using BadFieldError = boost::tuple<errinfo_field, errinfo_data>;
 
 struct DatabaseAlreadyOpen: virtual dev::Exception {};
+struct NotEnoughAvailableSpace: virtual dev::Exception {};
 struct NotEnoughCash: virtual dev::Exception {};
 struct GasPriceTooLow: virtual dev::Exception {};
 struct BlockGasLimitReached: virtual dev::Exception {};
