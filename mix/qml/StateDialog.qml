@@ -21,6 +21,8 @@ Window {
 
 	property alias stateTitle: titleField.text
 	property alias isDefault: defaultCheckBox.checked
+	property alias model: transactionsModel
+	property alias transactionDialog: transactionDialog
 	property int stateIndex
 	property var stateTransactions: []
 	property var stateAccounts: []

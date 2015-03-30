@@ -7,13 +7,14 @@ import QtQuick.Dialogs 1.1
 Item {
 	id: codeEditorView
 	property string currentDocumentId: ""
+	property int openDocCount: 0
 	signal documentEdit(string documentId)
 	signal breakpointsChanged(string documentId)
 	signal isCleanChanged(var isClean, string documentId)
 	signal loadComplete
 
 	function getDocumentText(documentId) {
-		for (var i = 0; i < editorListModel.count; i++)	{
+		for (var i = 0; i < openDocCount; i++)	{
 			if (editorListModel.get(i).documentId === documentId) {
 				return editors.itemAt(i).item.getText();
 			}
@@ -22,7 +23,7 @@ Item {
 	}
 
 	function isDocumentOpen(documentId) {
-		for (var i = 0; i < editorListModel.count; i++)
+		for (var i = 0; i < openDocCount; i++)
 			if (editorListModel.get(i).documentId === documentId &&
 					editors.itemAt(i).item)
 				return true;
@@ -35,11 +36,20 @@ Item {
 	}
 
 	function loadDocument(document) {
-		for (var i = 0; i < editorListModel.count; i++)
+		for (var i = 0; i < openDocCount; i++)
 			if (editorListModel.get(i).documentId === document.documentId)
 				return; //already open
 
-		editorListModel.append(document);
+		if (editorListModel.count <= openDocCount)
+			editorListModel.append(document);
+		else
+		{
+			editorListModel.set(openDocCount, document);
+			editors.itemAt(openDocCount).visible = true;
+			doLoadDocument(editors.itemAt(openDocCount).item, editorListModel.get(openDocCount))
+		}
+		openDocCount++;
+
 	}
 
 	function doLoadDocument(editor, document) {
@@ -63,7 +73,7 @@ Item {
 	}
 
 	function getEditor(documentId) {
-		for (var i = 0; i < editorListModel.count; i++)
+		for (var i = 0; i < openDocCount; i++)
 		{
 			if (editorListModel.get(i).documentId === documentId)
 				return editors.itemAt(i).item;
@@ -94,7 +104,7 @@ Item {
 	}
 
 	function editingContract() {
-		for (var i = 0; i < editorListModel.count; i++)
+		for (var i = 0; i < openDocCount; i++)
 			if (editorListModel.get(i).documentId === currentDocumentId)
 				return editorListModel.get(i).isContract;
 		return false;
@@ -102,7 +112,7 @@ Item {
 
 	function getBreakpoints() {
 		var bpMap = {};
-		for (var i = 0; i < editorListModel.count; i++)  {
+		for (var i = 0; i < openDocCount; i++)  {
 			var documentId = editorListModel.get(i).documentId;
 			var editor = editors.itemAt(i).item;
 			if (editor) {
@@ -133,7 +143,7 @@ Item {
 		}
 
 		onProjectSaving: {
-			for (var i = 0; i < editorListModel.count; i++)
+			for (var i = 0; i < openDocCount; i++)
 			{
 				var doc = editorListModel.get(i);
 				var editor = editors.itemAt(i).item;
@@ -145,7 +155,7 @@ Item {
 		onProjectSaved: {
 			if (projectModel.appIsClosing || projectModel.projectIsClosing)
 				return;
-			for (var i = 0; i < editorListModel.count; i++)
+			for (var i = 0; i < openDocCount; i++)
 			{
 				var doc = editorListModel.get(i);
 				resetEditStatus(doc.documentId);
@@ -155,8 +165,9 @@ Item {
 		onProjectClosed: {
 			for (var i = 0; i < editorListModel.count; i++)
 				editors.itemAt(i).visible = false;
-			editorListModel.clear();
+			//editorListModel.clear();
 			currentDocumentId = "";
+			openDocCount = 0;
 		}
 
 		onDocumentSaved: {
