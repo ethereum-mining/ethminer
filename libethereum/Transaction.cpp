@@ -46,6 +46,8 @@ TransactionException dev::eth::toTransactionException(VMException const& _e)
 		return TransactionException::BadJumpDestination;
 	if (!!dynamic_cast<OutOfGas const*>(&_e))
 		return TransactionException::OutOfGas;
+	if (!!dynamic_cast<OutOfStack const*>(&_e))
+		return TransactionException::OutOfStack;
 	if (!!dynamic_cast<StackUnderflow const*>(&_e))
 		return TransactionException::StackUnderflow;
 	return TransactionException::Unknown;
@@ -66,6 +68,10 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 		m_type = rlp[field = 3].isEmpty() ? ContractCreation : MessageCall;
 		m_receiveAddress = rlp[field = 3].isEmpty() ? Address() : rlp[field = 3].toHash<Address>(RLP::VeryStrict);
 		m_value = rlp[field = 4].toInt<u256>();
+
+		if (!rlp[field = 5].isData())
+			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("transaction data RLP must be an array"));
+
 		m_data = rlp[field = 5].toBytes();
 		byte v = rlp[field = 6].toInt<byte>() - 27;
 		h256 r = rlp[field = 7].toInt<u256>();

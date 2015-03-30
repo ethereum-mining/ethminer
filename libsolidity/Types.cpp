@@ -20,13 +20,13 @@
  * Solidity data types
  */
 
+#include <libsolidity/Types.h>
+#include <limits>
+#include <boost/range/adaptor/reversed.hpp>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/CommonData.h>
 #include <libsolidity/Utils.h>
-#include <libsolidity/Types.h>
 #include <libsolidity/AST.h>
-
-#include <limits>
 
 using namespace std;
 
@@ -184,6 +184,8 @@ TypePointer Type::fromArrayTypeName(TypeName& _baseTypeName, Expression* _length
 	TypePointer baseType = _baseTypeName.toType();
 	if (!baseType)
 		BOOST_THROW_EXCEPTION(_baseTypeName.createTypeError("Invalid type name."));
+	if (baseType->getStorageBytes() == 0)
+		BOOST_THROW_EXCEPTION(_baseTypeName.createTypeError("Illegal base type of storage size zero for array."));
 	if (_length)
 	{
 		if (!_length->getType())
@@ -536,14 +538,8 @@ bool FixedBytesType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 
 bool FixedBytesType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 {
-	if (_convertTo.getCategory() == Category::Integer)
-	{
-		IntegerType const& convertTo = dynamic_cast<IntegerType const&>(_convertTo);
-		if (m_bytes * 8 <= convertTo.getNumBits())
-			return true;
-	}
-
-	return _convertTo.getCategory() == Category::Contract ||
+	return _convertTo.getCategory() == Category::Integer ||
+		_convertTo.getCategory() == Category::Contract ||
 		_convertTo.getCategory() == getCategory();
 }
 
@@ -706,13 +702,21 @@ u256 ArrayType::getStorageSize() const
 {
 	if (isDynamicallySized())
 		return 1;
-	else
+
+	bigint size;
+	unsigned baseBytes = getBaseType()->getStorageBytes();
+	if (baseBytes == 0)
+		size = 1;
+	else if (baseBytes < 32)
 	{
-		bigint size = bigint(getLength()) * getBaseType()->getStorageSize();
-		if (size >= bigint(1) << 256)
-			BOOST_THROW_EXCEPTION(TypeError() << errinfo_comment("Array too large for storage."));
-		return max<u256>(1, u256(size));
+		unsigned itemsPerSlot = 32 / baseBytes;
+		size = (bigint(getLength()) + (itemsPerSlot - 1)) / itemsPerSlot;
 	}
+	else
+		size = bigint(getLength()) * getBaseType()->getStorageSize();
+	if (size >= bigint(1) << 256)
+		BOOST_THROW_EXCEPTION(TypeError() << errinfo_comment("Array too large for storage."));
+	return max<u256>(1, u256(size));
 }
 
 unsigned ArrayType::getSizeOnStack() const
@@ -736,6 +740,23 @@ string ArrayType::toString() const
 	if (!isDynamicallySized())
 		ret += getLength().str();
 	return ret + "]";
+}
+
+TypePointer ArrayType::externalType() const
+{
+	if (m_location != Location::CallData)
+		return TypePointer();
+	if (m_isByteArray)
+		return shared_from_this();
+	if (!m_baseType->externalType())
+		return TypePointer();
+	if (m_baseType->getCategory() == Category::Array && m_baseType->isDynamicallySized())
+		return TypePointer();
+
+	if (isDynamicallySized())
+		return std::make_shared<ArrayType>(Location::CallData, m_baseType->externalType());
+	else
+		return std::make_shared<ArrayType>(Location::CallData, m_baseType->externalType(), m_length);
 }
 
 shared_ptr<ArrayType> ArrayType::copyForLocation(ArrayType::Location _location) const
@@ -810,6 +831,26 @@ u256 ContractType::getFunctionIdentifier(string const& _functionName) const
 			return FixedHash<4>::Arith(it.first);
 
 	return Invalid256;
+}
+
+vector<tuple<VariableDeclaration const*, u256, unsigned>> ContractType::getStateVariables() const
+{
+	vector<VariableDeclaration const*> variables;
+	for (ContractDefinition const* contract: boost::adaptors::reverse(m_contract.getLinearizedBaseContracts()))
+		for (ASTPointer<VariableDeclaration> const& variable: contract->getStateVariables())
+			if (!variable->isConstant())
+				variables.push_back(variable.get());
+	TypePointers types;
+	for (auto variable: variables)
+		types.push_back(variable->getType());
+	StorageOffsets offsets;
+	offsets.computeOffsets(types);
+
+	vector<tuple<VariableDeclaration const*, u256, unsigned>> variablesAndOffsets;
+	for (size_t index = 0; index < variables.size(); ++index)
+		if (auto const* offset = offsets.getOffset(index))
+			variablesAndOffsets.push_back(make_tuple(variables[index], offset->first, offset->second));
+	return variablesAndOffsets;
 }
 
 TypePointer StructType::unaryOperatorResult(Token::Value _operator) const
@@ -1057,6 +1098,19 @@ unsigned FunctionType::getSizeOnStack() const
 	return size;
 }
 
+TypePointer FunctionType::externalType() const
+{
+	TypePointers paramTypes;
+	TypePointers retParamTypes;
+
+	for (auto it = m_parameterTypes.cbegin(); it != m_parameterTypes.cend(); ++it)
+		paramTypes.push_back((*it)->externalType());
+	for (auto it = m_returnParameterTypes.cbegin(); it != m_returnParameterTypes.cend(); ++it)
+		retParamTypes.push_back((*it)->externalType());
+
+	return make_shared<FunctionType>(paramTypes, retParamTypes, m_location, m_arbitraryParameters);
+}
+
 MemberList const& FunctionType::getMembers() const
 {
 	switch (m_location)
@@ -1086,7 +1140,7 @@ MemberList const& FunctionType::getMembers() const
 	}
 }
 
-string FunctionType::getCanonicalSignature(std::string const& _name) const
+string FunctionType::externalSignature(std::string const& _name) const
 {
 	std::string funcName = _name;
 	if (_name == "")
@@ -1096,8 +1150,12 @@ string FunctionType::getCanonicalSignature(std::string const& _name) const
 	}
 	string ret = funcName + "(";
 
-	for (auto it = m_parameterTypes.cbegin(); it != m_parameterTypes.cend(); ++it)
-		ret += (*it)->toString() + (it + 1 == m_parameterTypes.cend() ? "" : ",");
+	TypePointers externalParameterTypes = dynamic_cast<FunctionType const&>(*externalType()).getParameterTypes();
+	for (auto it = externalParameterTypes.cbegin(); it != externalParameterTypes.cend(); ++it)
+	{
+		solAssert(!!(*it), "Parameter should have external type");
+		ret += (*it)->toString() + (it + 1 == externalParameterTypes.cend() ? "" : ",");
+	}
 
 	return ret + ")";
 }

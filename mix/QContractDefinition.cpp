@@ -21,14 +21,13 @@
 
 #include <QObject>
 
+#include "QContractDefinition.h"
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/Parser.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/NameAndTypeResolver.h>
-#include "AppContext.h"
-#include "QContractDefinition.h"
 using namespace dev::solidity;
 using namespace dev::mix;
 

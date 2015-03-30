@@ -131,7 +131,14 @@ void RLPXHandshake::readAck()
 
 void RLPXHandshake::error()
 {
-	clog(NetConnect) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Failed)";
+	m_idleTimer.cancel();
+	
+	auto connected = m_socket->isConnected();
+	if (connected && !m_socket->remoteEndpoint().address().is_unspecified())
+		clog(NetConnect) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Failed)";
+	else
+		clog(NetConnect) << "Handshake Failed (Connection reset by peer)";
+
 	m_socket->close();
 	if (m_io != nullptr)
 		delete m_io;
@@ -139,8 +146,11 @@ void RLPXHandshake::error()
 
 void RLPXHandshake::transition(boost::system::error_code _ech)
 {
-	if (_ech || m_nextState == Error)
+	if (_ech || m_nextState == Error || m_cancel)
+	{
+		clog(NetConnect) << "Handshake Failed (I/O Error:" << _ech.message() << ")";
 		return error();
+	}
 	
 	auto self(shared_from_this());
 	if (m_nextState == New)
@@ -172,7 +182,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		// 5 arguments, HelloPacket
 		RLPStream s;
 		s.append((unsigned)0).appendList(5)
-		<< m_host->protocolVersion()
+		<< dev::p2p::c_protocolVersion
 		<< m_host->m_clientVersion
 		<< m_host->caps()
 		<< m_host->listenPort()
@@ -252,11 +262,22 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 						}
 
 						clog(NetNote) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: success. starting session.";
-						RLP rlp(frame.cropped(1));
+						RLP rlp(frame.cropped(1), RLP::ThrowOnFail | RLP::FailIfTooSmall);
 						m_host->startPeerSession(m_remote, rlp, m_io, m_socket->remoteEndpoint());
 					}
 				});
 			}
 		});
 	}
+	
+	m_idleTimer.expires_from_now(c_timeout);
+	m_idleTimer.async_wait([this, self](boost::system::error_code const& _ec)
+	{
+		if (!_ec)
+		{
+			if (!m_socket->remoteEndpoint().address().is_unspecified())
+				clog(NetWarn) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Timeout)";
+			cancel();
+		}
+	});
 }

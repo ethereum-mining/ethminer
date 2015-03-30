@@ -187,6 +187,10 @@ public:
 																		 "for type without literals."));
 	}
 
+	/// @returns a type suitable for outside of Solidity, i.e. for contract types it returns address.
+	/// If there is no such type, returns an empty shared pointer.
+	virtual TypePointer externalType() const { return TypePointer(); }
+
 protected:
 	/// Convenience object used when returning an empty member list.
 	static const MemberList EmptyMemberList;
@@ -217,9 +221,11 @@ public:
 	virtual unsigned getStorageBytes() const override { return m_bits / 8; }
 	virtual bool isValueType() const override { return true; }
 
-	virtual MemberList const& getMembers() const { return isAddress() ? AddressMemberList : EmptyMemberList; }
+	virtual MemberList const& getMembers() const override { return isAddress() ? AddressMemberList : EmptyMemberList; }
 
 	virtual std::string toString() const override;
+
+	virtual TypePointer externalType() const override { return shared_from_this(); }
 
 	int getNumBits() const { return m_bits; }
 	bool isAddress() const { return m_modifier == Modifier::Address; }
@@ -292,6 +298,7 @@ public:
 
 	virtual std::string toString() const override { return "bytes" + dev::toString(m_bytes); }
 	virtual u256 literalValue(Literal const* _literal) const override;
+	virtual TypePointer externalType() const override { return shared_from_this(); }
 
 	int getNumBytes() const { return m_bytes; }
 
@@ -311,12 +318,13 @@ public:
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual TypePointer binaryOperatorResult(Token::Value _operator, TypePointer const& _other) const override;
 
-	virtual unsigned getCalldataEncodedSize(bool _padded) const { return _padded ? 32 : 1; }
+	virtual unsigned getCalldataEncodedSize(bool _padded) const override{ return _padded ? 32 : 1; }
 	virtual unsigned getStorageBytes() const override { return 1; }
 	virtual bool isValueType() const override { return true; }
 
 	virtual std::string toString() const override { return "bool"; }
 	virtual u256 literalValue(Literal const* _literal) const override;
+	virtual TypePointer externalType() const override { return shared_from_this(); }
 };
 
 /**
@@ -335,13 +343,22 @@ public:
 
 	/// Constructor for a byte array ("bytes")
 	explicit ArrayType(Location _location):
-		m_location(_location), m_isByteArray(true), m_baseType(std::make_shared<IntegerType>(8)) {}
+		m_location(_location),
+		m_isByteArray(true),
+		m_baseType(std::make_shared<FixedBytesType>(8))
+	{}
 	/// Constructor for a dynamically sized array type ("type[]")
 	ArrayType(Location _location, const TypePointer &_baseType):
-		m_location(_location), m_baseType(_baseType) {}
+		m_location(_location),
+		m_baseType(_baseType)
+	{}
 	/// Constructor for a fixed-size array type ("type[20]")
 	ArrayType(Location _location, const TypePointer &_baseType, u256 const& _length):
-		m_location(_location), m_baseType(_baseType), m_hasDynamicLength(false), m_length(_length) {}
+		m_location(_location),
+		m_baseType(_baseType),
+		m_hasDynamicLength(false),
+		m_length(_length)
+	{}
 
 	virtual bool isImplicitlyConvertibleTo(Type const& _convertTo) const override;
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
@@ -352,6 +369,7 @@ public:
 	virtual unsigned getSizeOnStack() const override;
 	virtual std::string toString() const override;
 	virtual MemberList const& getMembers() const override { return s_arrayTypeMemberList; }
+	virtual TypePointer externalType() const override;
 
 	Location getLocation() const { return m_location; }
 	bool isByteArray() const { return m_isByteArray; }
@@ -391,6 +409,7 @@ public:
 	virtual std::string toString() const override;
 
 	virtual MemberList const& getMembers() const override;
+	virtual TypePointer externalType() const override { return std::make_shared<IntegerType>(160, IntegerType::Modifier::Address); }
 
 	bool isSuper() const { return m_super; }
 	ContractDefinition const& getContractDefinition() const { return m_contract; }
@@ -402,6 +421,10 @@ public:
 	/// @returns the identifier of the function with the given name or Invalid256 if such a name does
 	/// not exist.
 	u256 getFunctionIdentifier(std::string const& _functionName) const;
+
+	/// @returns a list of all state variables (including inherited) of the contract and their
+	/// offsets in storage.
+	std::vector<std::tuple<VariableDeclaration const*, u256, unsigned>> getStateVariables() const;
 
 private:
 	ContractDefinition const& m_contract;
@@ -455,6 +478,7 @@ public:
 	virtual bool isValueType() const override { return true; }
 
 	virtual bool isExplicitlyConvertibleTo(Type const& _convertTo) const override;
+	virtual TypePointer externalType() const override { return std::make_shared<IntegerType>(8 * int(getStorageBytes())); }
 
 	EnumDefinition const& getEnumDefinition() const { return m_enum; }
 	/// @returns the value that the string has in the Enum
@@ -487,6 +511,9 @@ public:
 						  Bare };
 
 	virtual Category getCategory() const override { return Category::Function; }
+
+	virtual TypePointer externalType() const override;
+
 	explicit FunctionType(FunctionDefinition const& _function, bool _isInternal = true);
 	explicit FunctionType(VariableDeclaration const& _varDecl);
 	explicit FunctionType(EventDefinition const& _event);
@@ -526,10 +553,10 @@ public:
 	virtual MemberList const& getMembers() const override;
 
 	Location const& getLocation() const { return m_location; }
-	/// @returns the canonical signature of this function type given the function name
+	/// @returns the external signature of this function type given the function name
 	/// If @a _name is not provided (empty string) then the @c m_declaration member of the
 	/// function type is used
-	std::string getCanonicalSignature(std::string const& _name = "") const;
+	std::string externalSignature(std::string const& _name = "") const;
 	Declaration const& getDeclaration() const
 	{
 		solAssert(m_declaration, "Requested declaration from a FunctionType that has none");

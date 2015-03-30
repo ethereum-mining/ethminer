@@ -125,7 +125,7 @@ class CodeModel: public QObject
 	Q_OBJECT
 
 public:
-	CodeModel(QObject* _parent);
+	CodeModel();
 	~CodeModel();
 
 	Q_PROPERTY(QVariantMap contracts READ contracts NOTIFY codeChanged)
@@ -165,6 +165,8 @@ signals:
 	void contractInterfaceChanged(QString _documentId);
 	/// Emitted if there is a new contract compiled for the first time
 	void newContractCompiled(QString _documentId);
+	/// Emitted if a contract name has been changed
+	void contractRenamed(QString _documentId, QString _oldName, QString _newName);
 
 public slots:
 	/// Update code model on source code change

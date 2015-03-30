@@ -40,7 +40,7 @@ Rectangle {
 		var errorInfo = ErrorLocationFormater.extractErrorInfo(compilationErrorMessage, false);
 		errorLocation.text = errorInfo.errorLocation;
 		errorDetail.text = errorInfo.errorDetail;
-		errorLine.text = errorInfo.errorLine;
+		errorLine.text = errorInfo.line;
 	}
 
 	function update(data, giveFocus)
@@ -68,7 +68,7 @@ Rectangle {
 	Connections {
 		target: clientModel
 		onDebugDataReady:  {
-			update(_debugData, true);
+			update(_debugData, false);
 		}
 	}
 
@@ -158,19 +158,15 @@ Rectangle {
 		}
 	}
 
-	SplitView {
+	Splitter {
 		id: debugScrollArea
 		anchors.fill: parent
 		orientation: Qt.Vertical
-		handleDelegate: Rectangle {
-			height: machineStates.sideMargin
-			color: "transparent"
-		}
 
 		TransactionLog {
 			id: transactionLog
 			Layout.fillWidth: true
-			Layout.minimumHeight: 120
+			Layout.minimumHeight: 130
 			height: 250
 			anchors.top: parent.top
 			anchors.left: parent.left
@@ -246,7 +242,6 @@ Rectangle {
 								height: 30
 								buttonShortcut: "Ctrl+Shift+F11"
 								buttonTooltip: qsTr("Step Out Back")
-								visible: false
 							}
 
 							StepActionImage
@@ -319,9 +314,8 @@ Rectangle {
 								height: 30
 								buttonShortcut: "Ctrl+F5"
 								buttonTooltip: qsTr("Run Forward")
+								visible: false
 							}
-
-
 						}
 					}
 

@@ -4,9 +4,10 @@ var editor = CodeMirror(document.body, {
 							matchBrackets: true,
 							autofocus: true,
 							gutters: ["CodeMirror-linenumbers", "breakpoints"],
-							extraKeys: { "Ctrl-Space": "autocomplete" },
-							autoCloseBrackets: true
+							autoCloseBrackets: true,
+							styleSelectedText: true
 						});
+var ternServer;
 
 editor.setOption("theme", "solarized dark");
 editor.setOption("indentUnit", 4);
@@ -22,23 +23,23 @@ editor.on("change", function(eMirror, object) {
 
 var mac = /Mac/.test(navigator.platform);
 if (mac === true) {
-editor.setOption("extraKeys", {
-	"Cmd-V": function(cm) {
-		cm.replaceSelection(clipboard);
-	},
-	"Cmd-X": function(cm) {
-		window.document.execCommand("cut");
-	},
-	"Cmd-C": function(cm) {
-		window.document.execCommand("copy");
-	}});
+	editor.setOption("extraKeys", {
+						 "Cmd-V": function(cm) {
+							 cm.replaceSelection(clipboard);
+						 },
+						 "Cmd-X": function(cm) {
+							 window.document.execCommand("cut");
+						 },
+						 "Cmd-C": function(cm) {
+							 window.document.execCommand("copy");
+						 }});
 }
 
 makeMarker = function() {
-  var marker = document.createElement("div");
-  marker.style.color = "#822";
-  marker.innerHTML = "●";
-  return marker;
+	var marker = document.createElement("div");
+	marker.style.color = "#822";
+	marker.innerHTML = "●";
+	return marker;
 };
 
 toggleBreakpointLine = function(n) {
@@ -77,9 +78,9 @@ getBreakpoints = function() {
 		if (line.gutterMarkers && line.gutterMarkers["breakpoints"]) {
 			var l = doc.getLineNumber(line);
 			locations.push({
-				start: editor.indexFromPos({ line: l, ch: 0}),
-				end: editor.indexFromPos({ line: l + 1, ch: 0})
-			});;
+							   start: editor.indexFromPos({ line: l, ch: 0}),
+							   end: editor.indexFromPos({ line: l + 1, ch: 0})
+						   });;
 		}
 	});
 	return locations;
@@ -100,15 +101,27 @@ setMode = function(mode) {
 
 	if (mode === "javascript")
 	{
-		CodeMirror.commands.autocomplete = function(cm) {
-				CodeMirror.showHint(cm, CodeMirror.hint.anyword); // TODO change to a proper JavaScript language completion
-		}
+		ternServer = new CodeMirror.TernServer({defs: [ ecma5Spec() ]});
+		editor.setOption("extraKeys", {
+							 "Ctrl-Space": function(cm) { ternServer.complete(cm); },
+							 "Ctrl-I": function(cm) { ternServer.showType(cm); },
+							 "Ctrl-O": function(cm) { ternServer.showDocs(cm); },
+							 "Alt-.": function(cm) { ternServer.jumpToDef(cm); },
+							 "Alt-,": function(cm) { ternServer.jumpBack(cm); },
+							 "Ctrl-Q": function(cm) { ternServer.rename(cm); },
+							 "Ctrl-.": function(cm) { ternServer.selectName(cm); },
+							 "'.'": function(cm) { setTimeout(function() { ternServer.complete(cm); }, 100); throw CodeMirror.Pass; }
+						 })
+		editor.on("cursorActivity", function(cm) { ternServer.updateArgHints(cm); });
 	}
 	else if (mode === "solidity")
 	{
 		CodeMirror.commands.autocomplete = function(cm) {
-				CodeMirror.showHint(cm, CodeMirror.hint.anyword);
+			CodeMirror.showHint(cm, CodeMirror.hint.anyword);
 		}
+		editor.setOption("extraKeys", {
+							 "Ctrl-Space": "autocomplete"
+						 })
 	}
 };
 
@@ -120,6 +133,10 @@ var executionMark;
 highlightExecution = function(start, end) {
 	if (executionMark)
 		executionMark.clear();
+	if (start === 0 && end + 1 === editor.getValue().length)
+		return; // Do not hightlight the whole document.
+	if (debugWarning)
+		debugWarning.clear();
 	executionMark = editor.markText(editor.posFromIndex(start), editor.posFromIndex(end), { className: "CodeMirror-exechighlight" });
 }
 
@@ -132,4 +149,53 @@ changeGeneration = function()
 isClean = function()
 {
 	return editor.isClean(changeId);
+}
+
+var debugWarning = null;
+showWarning = function(content)
+{
+	if (executionMark)
+		executionMark.clear();
+	if (debugWarning)
+		debugWarning.clear();
+	var node = document.createElement("div");
+	node.id = "annotation"
+	node.innerHTML = content;
+	node.className = "CodeMirror-errorannotation-context";
+	debugWarning = editor.addLineWidget(0, node, { coverGutter: false, above: true });
+}
+
+var annotation = null;
+var compilationCompleteBool = true;
+compilationError = function(line, column, content)
+{
+	compilationCompleteBool = false;
+	window.setTimeout(function(){
+		if (compilationCompleteBool)
+			return;
+		line = parseInt(line);
+		column = parseInt(column);
+		if (line > 0)
+			line = line - 1;
+		if (column > 0)
+			column = column - 1;
+
+		if (annotation == null)
+			annotation = new ErrorAnnotation(editor, line, column, content);
+		else if (annotation.line !== line || annotation.column !== column || annotation.content !== content)
+		{
+			annotation.destroy();
+			annotation = new ErrorAnnotation(editor, line, column, content);
+		}
+	}, 500)
+}
+
+compilationComplete = function()
+{
+	if (annotation !== null)
+	{
+		annotation.destroy();
+		annotation = null;
+	}
+	compilationCompleteBool = true;
 }

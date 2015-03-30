@@ -1,47 +1,32 @@
 /*
 	This file is part of cpp-ethereum.
+
 	cpp-ethereum is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
+
 	cpp-ethereum is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
+
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
-*/
-/** @file ConstantCompilationControl.h
- * @author Yann yann@ethdev.com
- * @date 2014
- * Ethereum IDE client.
+ */
+/** @file FixedClient.cpp
+ * @author Marek Kotewicz <marek@ethdev.com>
+ * @date 2015
  */
 
-#pragma once
+#include "FixedClient.h"
 
-#include "Extension.h"
+using namespace dev;
+using namespace dev::eth;
+using namespace dev::test;
 
-namespace dev
+eth::State FixedClient::asOf(h256 const& _h) const
 {
-namespace mix
-{
-
-/**
- * @brief Extension which display assembly code of the contract being edited.
- */
-class StatusPane: public Extension
-{
-	Q_OBJECT
-
-public:
-	StatusPane(AppContext* _appContext);
-	~StatusPane() {}
-	void start() const override;
-	QString title() const override;
-	QString contentUrl() const override;
-
-public slots:
-};
-
-}
+	ReadGuard l(x_stateDB);
+	return State(m_state.db(), bc(), _h);
 }

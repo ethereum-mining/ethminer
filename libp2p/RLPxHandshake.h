@@ -62,17 +62,18 @@ class RLPXHandshake: public std::enable_shared_from_this<RLPXHandshake>
 	
 public:
 	/// Setup incoming connection.
-	RLPXHandshake(Host* _host, std::shared_ptr<RLPXSocket> const& _socket): m_host(_host), m_originated(false), m_socket(_socket) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
+	RLPXHandshake(Host* _host, std::shared_ptr<RLPXSocket> const& _socket): m_host(_host), m_originated(false), m_socket(_socket), m_idleTimer(m_socket->ref().get_io_service()) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
 	
 	/// Setup outbound connection.
-	RLPXHandshake(Host* _host, std::shared_ptr<RLPXSocket> const& _socket, NodeId _remote): m_host(_host), m_remote(_remote), m_originated(true), m_socket(_socket) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
+	RLPXHandshake(Host* _host, std::shared_ptr<RLPXSocket> const& _socket, NodeId _remote): m_host(_host), m_remote(_remote), m_originated(true), m_socket(_socket), m_idleTimer(m_socket->ref().get_io_service()) { crypto::Nonce::get().ref().copyTo(m_nonce.ref()); }
 
 	~RLPXHandshake() {}
 
 	/// Start handshake.
 	void start() { transition(); }
 
-	void cancel() { m_nextState = Error; }
+	/// Cancels handshake preventing
+	void cancel() { m_cancel = true; }
 	
 protected:
 	/// Write Auth message to socket and transitions to AckAuth.
@@ -93,7 +94,11 @@ protected:
 	/// Performs transition for m_nextState.
 	void transition(boost::system::error_code _ech = boost::system::error_code());
 
+	/// Timeout for remote to respond to transition events. Enforced by m_idleTimer and refreshed by transition().
+	boost::posix_time::milliseconds const c_timeout = boost::posix_time::milliseconds(1800);
+
 	State m_nextState = New;			///< Current or expected state of transition.
+	bool m_cancel = false;			///< Will be set to true if connection was canceled.
 	
 	Host* m_host;					///< Host which provides m_alias, protocolVersion(), m_clientVersion, caps(), and TCP listenPort().
 	
@@ -119,7 +124,8 @@ protected:
 	/// Passed onto Host which will take ownership.
 	RLPXFrameIO* m_io = nullptr;
 	
-	std::shared_ptr<RLPXSocket> m_socket;	///< Socket.
+	std::shared_ptr<RLPXSocket> m_socket;		///< Socket.
+	boost::asio::deadline_timer m_idleTimer;	///< Timer which enforces c_timeout.
 };
 	
 }
