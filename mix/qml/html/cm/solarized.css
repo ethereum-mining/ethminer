@@ -16,14 +16,14 @@ http://ethanschoonover.com/solarized/img/solarized-palette.png
 .solarized.base1 { color: #93a1a1; }
 .solarized.base2 { color: #eee8d5; }
 .solarized.base3  { color: #fdf6e3; }
-.solarized.solar-yellow  { color: #b58900; }
-.solarized.solar-orange  { color: #cb4b16; }
+.solarized.solar-yellow, .solcurrency  { color: #b58900; }
+.solarized.solar-orange, .solkeywords  { color: #cb4b16; }
 .solarized.solar-red { color: #dc322f; }
-.solarized.solar-magenta { color: #d33682; }
+.solarized.solar-magenta, .solstdcontract { color: #d33682; }
 .solarized.solar-violet  { color: #6c71c4; }
-.solarized.solar-blue { color: #268bd2; }
-.solarized.solar-cyan { color: #2aa198; }
-.solarized.solar-green { color: #859900; }
+.solarized.solar-blue, .soltime { color: #268bd2; }
+.solarized.solar-cyan, .soltypes { color: #2aa198; }
+.solarized.solar-green, .solMisc { color: #859900; }
 
 /* Color scheme for code-mirror */
 
@@ -166,6 +166,20 @@ view-port
 
 /* Code execution */
 .CodeMirror-exechighlight {
-	background: rgba(255, 255, 255, 0.10);
+	background: #eee8d5;
 }
 
+/* Error annotation */
+.CodeMirror-errorannotation {
+	border-bottom: 1px solid #b58900;
+}
+
+.CodeMirror-errorannotation-context {
+	font-family: monospace;
+	font-size: small;
+	color: #586e75;
+	background: #b58900;
+	padding: 2px;
+}
+
+span.CodeMirror-selectedtext { color: #586e75 !important; }

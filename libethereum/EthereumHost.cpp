@@ -178,7 +178,7 @@ void EthereumHost::maintainTransactions()
 			for (auto const& i: m_tq.transactions())
 				if (ep->m_requireTransactions || (!m_transactionsSent.count(i.first) && !ep->m_knownTransactions.count(i.first)))
 				{
-					b += i.second;
+					b += i.second.rlp();
 					++n;
 					m_transactionsSent.insert(i.first);
 				}

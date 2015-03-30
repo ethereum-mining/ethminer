@@ -195,7 +195,7 @@ private:
 	/* todo: replace boost::posix_time; change constants to upper camelcase */
 	boost::posix_time::milliseconds const c_evictionCheckInterval = boost::posix_time::milliseconds(75);	///< Interval at which eviction timeouts are checked.
 	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
-	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
+	std::chrono::milliseconds const c_bucketRefresh = std::chrono::milliseconds(112500);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
 
 	struct NodeBucket
 	{
@@ -288,6 +288,8 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
 	return _out;
 }
 
+struct InvalidRLP: public Exception {};
+
 /**
  * Ping packet: Sent to check if node is alive.
  * PingNode is cached and regenerated after expiration - t, where t is timeout.
@@ -316,13 +318,13 @@ struct PingNode: RLPXDatagram<PingNode>
 
 	static const uint8_t type = 1;
 
-	unsigned version = dev::p2p::c_protocolVersion;
+	unsigned version = 0;
 	std::string ipAddress;
 	unsigned port;
 	unsigned expiration;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = r[0].toString(); port = r[1].toInt<unsigned>(); expiration = r[2].toInt<unsigned>(); }
+	void streamRLP(RLPStream& _s) const override;
+	void interpretRLP(bytesConstRef _bytes) override;
 };
 
 /**
