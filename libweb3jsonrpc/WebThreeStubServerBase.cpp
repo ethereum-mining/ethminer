@@ -79,7 +79,7 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	Json::Value res;
 	res["hash"] = toJS(_t.sha3());
 	res["input"] = toJS(_t.data());
-	res["to"] = toJS(_t.receiveAddress());
+	res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
 	res["from"] = toJS(_t.safeSender());
 	res["gas"] = toJS(_t.gas());
 	res["gasPrice"] = toJS(_t.gasPrice());
@@ -115,7 +115,7 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us
 static Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
 {
 	Json::Value res;
-	res["to"] = toJS(_t.to);
+	res["to"] = _t.creation ? Json::Value() : toJS(_t.to);
 	res["from"] = toJS(_t.from);
 	res["gas"] = toJS(_t.gas);
 	res["gasPrice"] = toJS(_t.gasPrice);
@@ -418,7 +418,7 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 	
 	if (!_json["from"].empty())
 		ret.from = jsToAddress(_json["from"].asString());
-	if (!_json["to"].empty())
+	if (!_json["to"].empty() && _json["to"].asString() != "0x")
 		ret.to = jsToAddress(_json["to"].asString());
 	else
 		ret.creation = true;
