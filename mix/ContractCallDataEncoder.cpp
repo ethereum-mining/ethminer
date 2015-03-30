@@ -91,6 +91,7 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QVariant const& _data, Solidi
 	{
 		QByteArray bytesAr = src.toLocal8Bit();
 		result = bytes(bytesAr.begin(), bytesAr.end());
+		result = paddedRight(result, alignSize);
 	}
 	else
 	{
@@ -101,7 +102,7 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QVariant const& _data, Solidi
 
 	unsigned dataSize = _type.dynamicSize ? result.size() : alignSize;
 	_dest.insert(_dest.end(), result.begin(), result.end());
-	if (_dest.size() % alignSize != 0)
+	if ((_dest.size() - 4) % alignSize != 0)
 		_dest.resize((_dest.size() & ~(alignSize - 1)) + alignSize);
 	return dataSize;
 }
