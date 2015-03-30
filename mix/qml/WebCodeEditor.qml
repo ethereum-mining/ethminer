@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
+import org.ethereum.qml.Clipboard 1.0
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Item {
@@ -66,6 +67,11 @@ Item {
 	function changeGeneration() {
 		if (initialized && editorBrowser)
 			editorBrowser.runJavaScript("changeGeneration()", function(result) {});
+	}
+
+	Clipboard
+	{
+		id: clipboard
 	}
 
 	Connections {
