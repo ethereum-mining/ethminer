@@ -42,15 +42,16 @@ public:
 
 public slots:
 	bool waitForSignal(QObject* _item, QString _signalName, int _timeout);
-	bool keyPress(int _key, int _modifiers, int _delay);
-	bool keyRelease(int _key, int _modifiers, int _delay);
-	bool keyClick(int _key, int _modifiers, int _delay);
-	bool keyPressChar(QString const& _character, int _modifiers, int _delay);
-	bool keyReleaseChar(QString const& _character, int _modifiers, int _delay);
-	bool keyClickChar(QString const& _character, int _modifiers, int _delay);
+	bool keyPress(QObject* _item, int _key, int _modifiers, int _delay);
+	bool keyRelease(QObject* _item, int _key, int _modifiers, int _delay);
+	bool keyClick(QObject* _item, int _key, int _modifiers, int _delay);
+	bool keyPressChar(QObject* _item, QString const& _character, int _modifiers, int _delay);
+	bool keyReleaseChar(QObject* _item, QString const& _character, int _modifiers, int _delay);
+	bool keyClickChar(QObject* _item, QString const& _character, int _modifiers, int _delay);
+	bool mouseClick(QObject* _item, qreal _x, qreal _y, int _button, int _modifiers, int _delay);
 
 private:
-	QWindow* eventWindow();
+	QWindow* eventWindow(QObject* _item);
 	QObject* m_targetWindow;
 };
 
