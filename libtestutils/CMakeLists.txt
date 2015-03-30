@@ -18,6 +18,11 @@ set(EXECUTABLE testutils)
 
 file(GLOB HEADERS "*.h")
 
+if (NOT JSONRPC)
+	list(REMOVE_ITEM SRC_LIST "./FixedWebThreeServer.cpp")
+	list(REMOVE_ITEM HEADERS "./FixedWebThreeServer.h")
+endif()
+
 if (ETH_STATIC)
 	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
 else()

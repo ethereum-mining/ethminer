@@ -35,6 +35,7 @@ Item {
 	readonly property string projectFileName: ".mix"
 
 	property bool appIsClosing: false
+	property bool projectIsClosing: false
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
@@ -122,13 +123,17 @@ Item {
 		icon: StandardIcon.Question
 		property var callBack;
 		onYes: {
+			projectIsClosing = true;
 			projectModel.saveAll();
+			unsavedFiles = [];
 			ProjectModelCode.doCloseProject();
 			if (callBack)
 				callBack();
 		}
 		onRejected: {}
 		onNo: {
+			projectIsClosing = true;
+			unsavedFiles = [];
 			ProjectModelCode.doCloseProject();
 			if (callBack)
 				callBack();

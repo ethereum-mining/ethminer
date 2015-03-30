@@ -63,7 +63,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 	return _out;
 }
 
-ldb::Slice dev::eth::toSlice(h256 _h, unsigned _sub)
+ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
 {
 #if ALL_COMPILERS_ARE_CPP11_COMPLIANT
 	static thread_local h256 h = _h ^ sha3(h256(u256(_sub)));
@@ -131,10 +131,19 @@ void BlockChain::open(std::string _path, bool _killExisting)
 	o.create_if_missing = true;
 	ldb::DB::Open(o, _path + "/blocks", &m_blocksDB);
 	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
-	if (!m_blocksDB)
-		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
-	if (!m_extrasDB)
-		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
+	if (!m_blocksDB || !m_extrasDB)
+	{
+		if (boost::filesystem::space(_path + "/blocks").available < 1024)
+		{
+			cwarn << "Not enough available space found on hard drive. Please free some up and then re-run. Bailing.";
+			BOOST_THROW_EXCEPTION(NotEnoughAvailableSpace());
+		}
+		else
+		{
+			cwarn << "Database already open. You appear to have another instance of ethereum running. Bailing.";
+			BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
+		}
+	}
 
 	if (!details(m_genesisHash))
 	{
@@ -182,6 +191,19 @@ inline string toString(h256s const& _bs)
 		out << i.abridged() << ", ";
 	out << "]";
 	return out.str();
+}
+
+LastHashes BlockChain::lastHashes(unsigned _n) const
+{
+	Guard l(x_lastLastHashes);
+	if (m_lastLastHashesNumber != _n || m_lastLastHashes.empty())
+	{
+		m_lastLastHashes.resize(256);
+		for (unsigned i = 0; i < 256; ++i)
+			m_lastLastHashes[i] = _n >= i ? numberHash(_n - i) : h256();
+		m_lastLastHashesNumber = _n;
+	}
+	return m_lastLastHashes;
 }
 
 h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
@@ -412,6 +434,9 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			WriteGuard l(x_lastBlockHash);
 			m_lastBlockHash = newHash;
 		}
+
+		noteCanonChanged();
+
 		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
 		clog(BlockChainNote) << "   Imported and best" << td << ". Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(ret);
 		StructuredLogger::chainNewHead(
@@ -428,7 +453,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	return ret;
 }
 
-h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, bool _post) const
+h256s BlockChain::treeRoute(h256 const& _from, h256 const& _to, h256* o_common, bool _pre, bool _post) const
 {
 	//	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
 	if (!_from || !_to)
@@ -438,38 +463,40 @@ h256s BlockChain::treeRoute(h256 _from, h256 _to, h256* o_common, bool _pre, boo
 	unsigned fn = details(_from).number;
 	unsigned tn = details(_to).number;
 	//	cdebug << "treeRoute" << fn << "..." << tn;
+	h256 from = _from;
 	while (fn > tn)
 	{
 		if (_pre)
-			ret.push_back(_from);
-		_from = details(_from).parent;
+			ret.push_back(from);
+		from = details(from).parent;
 		fn--;
 		//		cdebug << "from:" << fn << _from.abridged();
 	}
+	h256 to = _to;
 	while (fn < tn)
 	{
 		if (_post)
-			back.push_back(_to);
-		_to = details(_to).parent;
+			back.push_back(to);
+		to = details(to).parent;
 		tn--;
 		//		cdebug << "to:" << tn << _to.abridged();
 	}
-	while (_from != _to)
+	while (from != to)
 	{
-		assert(_from);
-		assert(_to);
-		_from = details(_from).parent;
-		_to = details(_to).parent;
+		assert(from);
+		assert(to);
+		from = details(from).parent;
+		to = details(to).parent;
 		if (_pre)
-			ret.push_back(_from);
+			ret.push_back(from);
 		if (_post)
-			back.push_back(_to);
+			back.push_back(to);
 		fn--;
 		tn--;
 		//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
 	}
 	if (o_common)
-		*o_common = _from;
+		*o_common = from;
 	ret.reserve(ret.size() + back.size());
 	for (auto it = back.cbegin(); it != back.cend(); ++it)
 		ret.push_back(*it);
@@ -677,7 +704,7 @@ vector<unsigned> BlockChain::withBlockBloom(LogBloom const& _b, unsigned _earlie
 	return ret;
 }
 
-h256Set BlockChain::allUnclesFrom(h256 _parent) const
+h256Set BlockChain::allUnclesFrom(h256 const& _parent) const
 {
 	// Get all uncles cited given a parent (i.e. featured as uncles/main in parent, parent + 1, ... parent + 5).
 	h256Set ret;
@@ -692,7 +719,7 @@ h256Set BlockChain::allUnclesFrom(h256 _parent) const
 	return ret;
 }
 
-bool BlockChain::isKnown(h256 _hash) const
+bool BlockChain::isKnown(h256 const& _hash) const
 {
 	if (_hash == m_genesisHash)
 		return true;
@@ -706,7 +733,7 @@ bool BlockChain::isKnown(h256 _hash) const
 	return !!d.size();
 }
 
-bytes BlockChain::block(h256 _hash) const
+bytes BlockChain::block(h256 const& _hash) const
 {
 	if (_hash == m_genesisHash)
 		return m_genesisBlock;

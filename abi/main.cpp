@@ -43,8 +43,8 @@ void help()
 		<< "    -h,--help  Print this help message and exit." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "Input options:" << endl
-		<< "    -p,--prefix  Require all input formats to be prefixed e.g. 0x for hex, . for decimal, @ for binary." << endl
-		<< "    -P,--no-prefix  Require no input format to be prefixed." << endl
+		<< "    -f,--format-prefix  Require all input formats to be prefixed e.g. 0x for hex, . for decimal, @ for binary." << endl
+		<< "    -F,--no-format-prefix  Require no input format to be prefixed." << endl
 		<< "    -t,--typing  Require all arguments to be typed e.g. b32: (bytes32), u64: (uint64), b[]: (byte[]), i: (int256)." << endl
 		<< "    -T,--no-typing  Require no arguments to be typed." << endl
 		<< "Output options:" << endl
@@ -53,8 +53,6 @@ void help()
 		<< "    -x,--hex  Display all data as hex." << endl
 		<< "    -b,--binary  Display all data as binary." << endl
 		<< "    -p,--prefix  Prefix by a base identifier." << endl
-		<< "    -z,--no-zeroes  Remove any leading zeroes from the data." << endl
-		<< "    -n,--no-nulls  Remove any trailing nulls from the data." << endl
 		;
 	exit(0);
 }
@@ -90,7 +88,9 @@ enum class Format
 {
 	Binary,
 	Hex,
-	Decimal
+	Decimal,
+	Open,
+	Close
 };
 
 struct InvalidUserString: public Exception {};
@@ -113,6 +113,12 @@ static const map<Base, string> s_bases =
 	{ Base::Int, "int" },
 	{ Base::Uint, "uint" },
 	{ Base::Fixed, "fixed" }
+};
+
+struct EncodingPrefs
+{
+	Encoding e = Encoding::Auto;
+	bool prefix = true;
 };
 
 struct ABIType
@@ -204,39 +210,72 @@ struct ABIType
 
 	bool isBytes() const { return base == Base::Bytes && !size; }
 
-	string render(bytes const& _data) const
+	string render(bytes const& _data, EncodingPrefs _e) const
 	{
-		if (base == Base::Uint)
-			return toString(fromBigEndian<u256>(_data));
-		else if (base == Base::Int)
-			return toString((s256)fromBigEndian<u256>(_data));
+		if (base == Base::Uint || base == Base::Int)
+		{
+			if (_e.e == Encoding::Hex)
+				return (_e.prefix ? "0x" : "") + toHex(toCompactBigEndian(fromBigEndian<bigint>(bytesConstRef(&_data).cropped(32 - size / 8))));
+			else
+			{
+				bigint i = fromBigEndian<bigint>(bytesConstRef(&_data).cropped(32 - size / 8));
+				if (base == Base::Int && i > (bigint(1) << (size - 1)))
+					i -= (bigint(1) << size);
+				return toString(i);
+			}
+		}
 		else if (base == Base::Address)
-			return toString(Address(h256(_data)));
+		{
+			Address a = Address(h256(_data), Address::AlignRight);
+			return _e.e == Encoding::Binary ? asString(a.asBytes()) : ((_e.prefix ? "0x" : "") + toString(a));
+		}
+		else if (isBytes())
+		{
+			return _e.e == Encoding::Binary ? asString(_data) : ((_e.prefix ? "0x" : "") + toHex(_data));
+		}
+		else if (base == Base::Bytes)
+		{
+			bytesConstRef b(&_data);
+			b = b.cropped(0, size);
+			return _e.e == Encoding::Binary ? asString(b) : ((_e.prefix ? "0x" : "") + toHex(b));
+		}
 		else
-			return toHex(_data);
+			throw InvalidFormat();
+	}
+
+	bytes unrender(bytes const& _data, Format _f) const
+	{
+		if (isBytes())
+		{
+			auto ret = _data;
+			while (ret.size() % 32 != 0)
+				ret.push_back(0);
+			return ret;
+		}
+		else
+			return aligned(_data, _f, 32);
 	}
 
 	void noteHexInput(unsigned _nibbles) { if (base == Base::Unknown) { if (_nibbles == 40) base = Base::Address; else { base = Base::Bytes; size = _nibbles / 2; } } }
 	void noteBinaryInput() { if (base == Base::Unknown) { base = Base::Bytes; size = 32; } }
 	void noteDecimalInput() { if (base == Base::Unknown) { base = Base::Uint; size = 32; } }
-};
 
-bytes aligned(bytes const& _b, ABIType _t, Format _f, unsigned _length)
-{
-	(void)_t;
-	bytes ret = _b;
-	while (ret.size() < _length)
-		if (_f == Format::Binary)
-			ret.push_back(0);
-		else
-			ret.insert(ret.begin(), 0);
-	while (ret.size() > _length)
-		if (_f == Format::Binary)
-			ret.pop_back();
-		else
-			ret.erase(ret.begin());
-	return ret;
-}
+	bytes aligned(bytes const& _b, Format _f, unsigned _length) const
+	{
+		bytes ret = _b;
+		while (ret.size() < _length)
+			if (_f == Format::Binary)
+				ret.push_back(0);
+			else
+				ret.insert(ret.begin(), 0);
+		while (ret.size() > _length)
+			if (_f == Format::Binary)
+				ret.pop_back();
+			else
+				ret.erase(ret.begin());
+		return ret;
+	}
+};
 
 tuple<bytes, ABIType, Format> fromUser(std::string const& _arg, Tristate _prefix, Tristate _typing)
 {
@@ -269,24 +308,35 @@ tuple<bytes, ABIType, Format> fromUser(std::string const& _arg, Tristate _prefix
 			type.noteBinaryInput();
 			return make_tuple(asBytes(val.substr(1)), type, Format::Binary);
 		}
+		if (val == "[")
+			return make_tuple(bytes(), type, Format::Open);
+		if (val == "]")
+			return make_tuple(bytes(), type, Format::Close);
 	}
 	if (_prefix != Tristate::True)
 	{
-		if (_arg.find_first_not_of("0123456789") == string::npos)
+		if (val.find_first_not_of("0123456789") == string::npos)
 		{
 			type.noteDecimalInput();
 			return make_tuple(toCompactBigEndian(bigint(val)), type, Format::Decimal);
 		}
-		if (_arg.find_first_not_of("0123456789abcdefABCDEF") == string::npos)
+		if (val.find_first_not_of("0123456789abcdefABCDEF") == string::npos)
 		{
 			type.noteHexInput(val.size());
 			return make_tuple(fromHex(val), type, Format::Hex);
 		}
+		if (val == "[")
+			return make_tuple(bytes(), type, Format::Open);
+		if (val == "]")
+			return make_tuple(bytes(), type, Format::Close);
 		type.noteBinaryInput();
-		return make_tuple(asBytes(_arg), type, Format::Binary);
+		return make_tuple(asBytes(val), type, Format::Binary);
 	}
 	throw InvalidUserString();
 }
+
+struct ExpectedOpen: public Exception {};
+struct ExpectedClose: public Exception {};
 
 struct ABIMethod
 {
@@ -355,77 +405,107 @@ struct ABIMethod
 
 	bytes encode(vector<pair<bytes, Format>> const& _params) const
 	{
-		// ALL WRONG!!!!
-		// INARITIES SHOULD BE HEIRARCHICAL!
-
 		bytes ret = name.empty() ? bytes() : id().asBytes();
-		unsigned pi = 0;
-		vector<unsigned> inArity;
-		for (ABIType const& i: ins)
-		{
-			unsigned arity = 1;
-			for (auto j: i.dims)
-				if (j == -1)
-				{
-					ret += aligned(_params[pi].first, ABIType(), Format::Decimal, 32);
-					arity *= fromBigEndian<unsigned>(_params[pi].first);
-					pi++;
-				}
-				else
-					arity *= j;
-			if (i.isBytes())
-				for (unsigned i = 0; i < arity; ++i)
+		bytes suffix;
 
-			inArity.push_back(arity);
-		}
-		unsigned ii = 0;
-		for (ABIType const& i: ins)
+		// int int[] int
+		// example: 42 [ 1 2 3 ] 69
+		// int[2][][3]
+		// example: [ [ [ 1 2 3 ] [ 4 5 6 ] ] [ ] ]
+
+		unsigned pi = 0;
+
+		for (ABIType const& a: ins)
 		{
-			for (unsigned j = 0; j < inArity[ii]; ++j)
-			{
-				if (i.base == Base::Bytes && !i.size)
-				{
-					ret += _params[pi].first;
-					while (ret.size() % 32 != 0)
-						ret.push_back(0);
-				}
+			auto put = [&]() {
+				if (a.isBytes())
+					ret += h256(u256(_params[pi].first.size())).asBytes();
+				suffix += a.unrender(_params[pi].first, _params[pi].second);
+				pi++;
+			};
+			function<void(vector<int>, unsigned)> putDim = [&](vector<int> addr, unsigned q) {
+				if (addr.size() == a.dims.size())
+					put();
 				else
-					ret += aligned(_params[pi].first, i, _params[pi].second, 32);
-				++pi;
-			}
-			++ii;
+				{
+					if (_params[pi].second != Format::Open)
+						throw ExpectedOpen();
+					int l = a.dims[addr.size()];
+					if (l == -1)
+					{
+						// read ahead in params and discover the arity.
+						unsigned depth = 0;
+						l = 0;
+						for (unsigned pi2 = pi + 1; depth || _params[pi2].second != Format::Close;)
+						{
+							if (_params[pi2].second == Format::Open)
+								++depth;
+							if (_params[pi2].second == Format::Close)
+								--depth;
+							if (!depth)
+								++l;
+							if (++pi2 == _params.size())
+								throw ExpectedClose();
+						}
+						ret += h256(u256(l)).asBytes();
+					}
+					q *= l;
+					for (addr.push_back(0); addr.back() < l; ++addr.back())
+						putDim(addr, q);
+					if (_params[pi].second != Format::Close)
+						throw ExpectedClose();
+				}
+			};
+			putDim(vector<int>(), 1);
 		}
-		return ret;
+		return ret + suffix;
 	}
-	string decode(bytes const& _data, int _index = -1)
+	string decode(bytes const& _data, int _index, EncodingPrefs _ep)
 	{
 		stringstream out;
 		if (_index == -1)
 			out << "[";
 		unsigned di = 0;
-		vector<ABIType> souts;
 		vector<unsigned> catDims;
-		for (ABIType a: outs)
-		{
-			unsigned q = 1;
-			for (auto& i: a.dims)
-			{
-				for (unsigned j = 0; j < q; ++j)
-					if (i == -1)
-					{
-						catDims.push_back(fromBigEndian<unsigned>(bytesConstRef(&_data).cropped(di, 32)));
-						di += 32;
-					}
-				q *= i;
-			}
-			if (a.isBytes())
-			souts.push_back(a);
-		}
-		for (ABIType const& a: souts)
+		for (ABIType const& a: outs)
 		{
 			auto put = [&]() {
-				out << a.render(bytesConstRef(&_data).cropped(di, 32).toBytes()) << ", ";
-				di += 32;
+				if (a.isBytes())
+				{
+					catDims.push_back(fromBigEndian<unsigned>(bytesConstRef(&_data).cropped(di, 32)));
+					di += 32;
+				}
+			};
+			function<void(vector<int>, unsigned)> putDim = [&](vector<int> addr, unsigned q) {
+				if (addr.size() == a.dims.size())
+					put();
+				else
+				{
+					out << "[";
+					int l = a.dims[addr.size()];
+					if (l == -1)
+					{
+						l = fromBigEndian<unsigned>(bytesConstRef(&_data).cropped(di, 32));
+						catDims.push_back(l);
+						di += 32;
+					}
+					q *= l;
+					for (addr.push_back(0); addr.back() < l; ++addr.back())
+						putDim(addr, q);
+					out << "]";
+				}
+			};
+			putDim(vector<int>(), 1);
+		}
+		unsigned d = 0;
+		for (ABIType const& a: outs)
+		{
+			auto put = [&]() {
+				unsigned l = 32;
+				if (a.isBytes())
+					l = (catDims[d++] + 31 / 32) * 32;
+				out << a.render(bytesConstRef(&_data).cropped(di, l).toBytes(), _ep) << ", ";
+				di += l;
 			};
 			function<void(vector<int>)> putDim = [&](vector<int> addr) {
 				if (addr.size() == a.dims.size())
@@ -433,9 +513,11 @@ struct ABIMethod
 				else
 				{
 					out << "[";
-					auto d = addr;
 					addr.push_back(0);
-					for (addr.back() = 0; addr.back() < a.dims[addr.size() - 1]; ++addr.back())
+					int l = a.dims[addr.size() - 1];
+					if (l == -1)
+						l = catDims[d++];
+					for (addr.back() = 0; addr.back() < l; ++addr.back())
 					{
 						if (addr.back())
 							out << ", ";
@@ -543,10 +625,9 @@ int main(int argc, char** argv)
 	Mode mode = Mode::Encode;
 	string abiFile;
 	string method;
-	Tristate prefix = Tristate::Mu;
+	Tristate formatPrefix = Tristate::Mu;
 	Tristate typePrefix = Tristate::Mu;
-	bool clearZeroes = false;
-	bool clearNulls = false;
+	EncodingPrefs prefs;
 	bool verbose = false;
 	int outputIndex = -1;
 	vector<pair<bytes, Format>> params;
@@ -566,25 +647,23 @@ int main(int argc, char** argv)
 		else if ((arg == "-i" || arg == "--index") && argc > i)
 			outputIndex = atoi(argv[++i]);
 		else if (arg == "-p" || arg == "--prefix")
-			prefix = Tristate::True;
-		else if (arg == "-P" || arg == "--no-prefix")
-			prefix = Tristate::False;
+			prefs.prefix = true;
+		else if (arg == "-f" || arg == "--format-prefix")
+			formatPrefix = Tristate::True;
+		else if (arg == "-F" || arg == "--no-format-prefix")
+			formatPrefix = Tristate::False;
 		else if (arg == "-t" || arg == "--typing")
 			typePrefix = Tristate::True;
 		else if (arg == "-T" || arg == "--no-typing")
 			typePrefix = Tristate::False;
-		else if (arg == "-z" || arg == "--no-zeroes")
-			clearZeroes = true;
-		else if (arg == "-n" || arg == "--no-nulls")
-			clearNulls = true;
 		else if (arg == "-v" || arg == "--verbose")
 			verbose = true;
 		else if (arg == "-x" || arg == "--hex")
-			encoding = Encoding::Hex;
+			prefs.e = Encoding::Hex;
 		else if (arg == "-d" || arg == "--decimal" || arg == "--dec")
-			encoding = Encoding::Decimal;
+			prefs.e = Encoding::Decimal;
 		else if (arg == "-b" || arg == "--binary" || arg == "--bin")
-			encoding = Encoding::Binary;
+			prefs.e = Encoding::Binary;
 		else if (arg == "-v" || arg == "--verbose")
 			version();
 		else if (arg == "-V" || arg == "--version")
@@ -593,7 +672,7 @@ int main(int argc, char** argv)
 			method = arg;
 		else
 		{
-			auto u = fromUser(arg, prefix, typePrefix);
+			auto u = fromUser(arg, formatPrefix, typePrefix);
 			args.push_back(get<1>(u));
 			params.push_back(make_pair(get<0>(u), get<2>(u)));
 		}
@@ -648,14 +727,8 @@ int main(int argc, char** argv)
 			string encoded;
 			for (int i = cin.get(); i != -1; i = cin.get())
 				encoded.push_back((char)i);
-			cout << m.decode(fromHex(encoded));
+			cout << m.decode(fromHex(encoded), outputIndex, prefs);
 		}
-
-		// TODO: read abi to determine output format.
-		(void)encoding;
-		(void)clearZeroes;
-		(void)clearNulls;
-		(void)outputIndex;
 	}
 
 	return 0;
