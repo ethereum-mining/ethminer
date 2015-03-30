@@ -80,28 +80,32 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QVariant const& _data, Solidi
 	if ((src.startsWith("\"") && src.endsWith("\"")) || (src.startsWith("\'") && src.endsWith("\'")))
 		src = src.remove(src.length() - 1, 1).remove(0, 1);
 
-	QRegExp rx("[a-z]+");
 	if (src.startsWith("0x"))
 	{
 		result = fromHex(src.toStdString().substr(2));
 		if (_type.type != SolidityType::Type::Bytes)
 			result = padded(result, alignSize);
 	}
-	else if (rx.indexIn(src.toLower(), 0) != -1)
-	{
-		QByteArray bytesAr = src.toLocal8Bit();
-		result = bytes(bytesAr.begin(), bytesAr.end());
-	}
 	else
 	{
-		bigint i(src.toStdString());
-		result = bytes(alignSize);
-		toBigEndian((u256)i, result);
+		try
+		{
+			bigint i(src.toStdString());
+			result = bytes(alignSize);
+			toBigEndian((u256)i, result);
+		}
+		catch (std::exception const& ex)
+		{
+			// manage input as a string.
+			QByteArray bytesAr = src.toLocal8Bit();
+			result = bytes(bytesAr.begin(), bytesAr.end());
+			result = paddedRight(result, alignSize);
+		}
 	}
 
 	unsigned dataSize = _type.dynamicSize ? result.size() : alignSize;
 	_dest.insert(_dest.end(), result.begin(), result.end());
-	if (_dest.size() % alignSize != 0)
+	if ((_dest.size() - 4) % alignSize != 0)
 		_dest.resize((_dest.size() & ~(alignSize - 1)) + alignSize);
 	return dataSize;
 }
@@ -158,7 +162,11 @@ dev::bytes ContractCallDataEncoder::decodeBytes(dev::bytes const& _rawValue)
 
 QString ContractCallDataEncoder::toString(dev::bytes const& _b)
 {
-	return QString::fromStdString(dev::toJS(_b));
+	QString str;
+	if (asString(_b, str))
+		return  "\"" + str +  "\" " + QString::fromStdString(dev::toJS(_b));
+	else
+		return QString::fromStdString(dev::toJS(_b));
 }
 
 
@@ -195,4 +203,18 @@ QStringList ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& 
 		r.append(decode(type, rawParam).toString());
 	}
 	return r;
+}
+
+
+bool ContractCallDataEncoder::asString(dev::bytes const& _b, QString& _str)
+{
+	dev::bytes bunPad = unpadded(_b);
+	for (unsigned i = 0; i < bunPad.size(); i++)
+	{
+		if (bunPad.at(i) < 9 || bunPad.at(i) > 127)
+			return false;
+		else
+			_str += QString::fromStdString(dev::toJS(bunPad.at(i))).replace("0x", "");
+	}
+	return true;
 }
