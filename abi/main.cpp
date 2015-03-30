@@ -264,12 +264,12 @@ struct ABIType
 	{
 		bytes ret = _b;
 		while (ret.size() < _length)
-			if (_f == Format::Binary)
+			if (base == Base::Bytes || (base == Base::Unknown && _f == Format::Binary))
 				ret.push_back(0);
 			else
 				ret.insert(ret.begin(), 0);
 		while (ret.size() > _length)
-			if (_f == Format::Binary)
+			if (base == Base::Bytes || (base == Base::Unknown && _f == Format::Binary))
 				ret.pop_back();
 			else
 				ret.erase(ret.begin());
