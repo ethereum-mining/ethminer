@@ -25,10 +25,11 @@ using namespace dev;
 using namespace dev::p2p;
 
 const unsigned dev::p2p::c_protocolVersion = 3;
+const unsigned dev::p2p::c_defaultIPPort = 30303;
 
 bool p2p::isPublicAddress(std::string const& _addressToCheck)
 {
-	return isPublicAddress(bi::address::from_string(_addressToCheck));
+	return _addressToCheck.empty() ? false : isPublicAddress(bi::address::from_string(_addressToCheck));
 }
 
 bool p2p::isPublicAddress(bi::address const& _addressToCheck)
@@ -67,7 +68,7 @@ bool p2p::isPrivateAddress(bi::address const& _addressToCheck)
 
 bool p2p::isPrivateAddress(std::string const& _addressToCheck)
 {
-	return isPrivateAddress(bi::address::from_string(_addressToCheck));
+	return _addressToCheck.empty() ? false : isPrivateAddress(bi::address::from_string(_addressToCheck));
 }
 
 // Helper function to determine if an address is localhost
@@ -86,7 +87,7 @@ bool p2p::isLocalHostAddress(bi::address const& _addressToCheck)
 
 bool p2p::isLocalHostAddress(std::string const& _addressToCheck)
 {
-	return isLocalHostAddress(bi::address::from_string(_addressToCheck));
+	return _addressToCheck.empty() ? false : isLocalHostAddress(bi::address::from_string(_addressToCheck));
 }
 
 std::string p2p::reasonOf(DisconnectReason _r)

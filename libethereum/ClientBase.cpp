@@ -73,7 +73,7 @@ ExecutionResult ClientBase::call(Secret _secret, u256 _value, Address _dest, byt
 		State temp = asOf(_blockNumber);
 		u256 n = temp.transactionsFrom(toAddress(_secret));
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
-		ret = temp.execute(bc(), t.rlp(), Permanence::Reverted);
+		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
 	}
 	catch (...)
 	{
@@ -92,7 +92,7 @@ ExecutionResult ClientBase::create(Secret _secret, u256 _value, bytes const& _da
 		//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 		
 		Transaction t(_value, _gasPrice, _gas, _data, n, _secret);
-		ret = temp.execute(bc(), t.rlp(), Permanence::Reverted);
+		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
 	}
 	catch (...)
 	{

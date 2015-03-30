@@ -67,7 +67,8 @@ void Debugger::populate(dev::eth::Executive& _executive, dev::eth::Transaction c
 bool DebugSession::populate(dev::eth::Executive& _executive, dev::eth::Transaction const& _transaction)
 {
 	try {
-		if (_executive.setup(_transaction))
+		_executive.initialize(_transaction);
+		if (_executive.execute())
 			return false;
 	}
 	catch (...)
