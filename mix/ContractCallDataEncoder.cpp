@@ -163,7 +163,7 @@ dev::bytes ContractCallDataEncoder::decodeBytes(dev::bytes const& _rawValue)
 QString ContractCallDataEncoder::toString(dev::bytes const& _b)
 {
 	QString str;
-	if (isString(_b, str))
+	if (asString(_b, str))
 		return  "\"" + str +  "\" " + QString::fromStdString(dev::toJS(_b));
 	else
 		return QString::fromStdString(dev::toJS(_b));
@@ -206,7 +206,7 @@ QStringList ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& 
 }
 
 
-bool ContractCallDataEncoder::isString(dev::bytes const& _b, QString& _str)
+bool ContractCallDataEncoder::asString(dev::bytes const& _b, QString& _str)
 {
 	dev::bytes bunPad = unpadded(_b);
 	for (unsigned i = 0; i < bunPad.size(); i++)
