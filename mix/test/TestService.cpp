@@ -33,6 +33,56 @@ namespace dev
 namespace mix
 {
 
+enum MouseAction { MousePress, MouseRelease, MouseClick, MouseDoubleClick, MouseMove };
+
+static void mouseEvent(MouseAction _action, QWindow* _window, QObject* _item, Qt::MouseButton _button, Qt::KeyboardModifiers _stateKey, QPointF _pos, int _delay=-1)
+{
+	if (_delay == -1 || _delay < 30)
+		_delay = 30;
+	if (_delay > 0)
+		QTest::qWait(_delay);
+
+	if (_action == MouseClick) {
+		mouseEvent(MousePress, _window, _item, _button, _stateKey, _pos);
+		mouseEvent(MouseRelease, _window, _item, _button, _stateKey, _pos);
+		return;
+	}
+
+	QPoint pos = _pos.toPoint();
+	QQuickItem *sgitem = qobject_cast<QQuickItem *>(_item);
+	if (sgitem)
+		pos = sgitem->mapToScene(_pos).toPoint();
+
+	_stateKey &= static_cast<unsigned int>(Qt::KeyboardModifierMask);
+
+	QMouseEvent me(QEvent::User, QPoint(), Qt::LeftButton, _button, _stateKey);
+	switch (_action)
+	{
+		case MousePress:
+			me = QMouseEvent(QEvent::MouseButtonPress, pos, _window->mapToGlobal(pos), _button, _button, _stateKey);
+			break;
+		case MouseRelease:
+			me = QMouseEvent(QEvent::MouseButtonRelease, pos, _window->mapToGlobal(pos), _button, 0, _stateKey);
+			break;
+		case MouseDoubleClick:
+			me = QMouseEvent(QEvent::MouseButtonDblClick, pos, _window->mapToGlobal(pos), _button, _button, _stateKey);
+			break;
+		case MouseMove:
+			// with move event the _button is NoButton, but 'buttons' holds the currently pressed buttons
+			me = QMouseEvent(QEvent::MouseMove, pos, _window->mapToGlobal(pos), Qt::NoButton, _button, _stateKey);
+			break;
+		default:
+			break;
+	}
+	QSpontaneKeyEvent::setSpontaneous(&me);
+	if (!qApp->notify(_window, &me)) {
+		static const char *mouseActionNames[] =
+			{ "MousePress", "MouseRelease", "MouseClick", "MouseDoubleClick", "MouseMove" };
+		QString warning = QString::fromLatin1("Mouse event \"%1\" not accepted by receiving window");
+		QWARN(warning.arg(QString::fromLatin1(mouseActionNames[static_cast<int>(_action)])).toLatin1().data());
+	}
+}
+
 bool TestService::waitForSignal(QObject* _item, QString _signalName, int _timeout)
 {
 	QSignalSpy spy(_item,  ("2" + _signalName.toStdString()).c_str());
@@ -61,48 +111,54 @@ bool TestService::waitForSignal(QObject* _item, QString _signalName, int _timeou
 	return spy.size();
 }
 
-bool TestService::keyPress(int _key, int _modifiers, int _delay)
+bool TestService::keyPress(QObject* _item, int _key, int _modifiers, int _delay)
 {
-	QWindow *window = eventWindow();
+	QWindow *window = eventWindow(_item);
 	QTest::keyPress(window, Qt::Key(_key), Qt::KeyboardModifiers(_modifiers), _delay);
 	return true;
 }
 
-bool TestService::keyRelease(int _key, int _modifiers, int _delay)
+bool TestService::keyRelease(QObject* _item, int _key, int _modifiers, int _delay)
 {
-	QWindow *window = eventWindow();
+	QWindow *window = eventWindow(_item);
 	QTest::keyRelease(window, Qt::Key(_key), Qt::KeyboardModifiers(_modifiers), _delay);
 	return true;
 }
 
-bool TestService::keyClick(int _key, int _modifiers, int _delay)
+bool TestService::keyClick(QObject* _item, int _key, int _modifiers, int _delay)
 {
-	QWindow *window = eventWindow();
+	QWindow *window = eventWindow(_item);
 	QTest::keyClick(window, Qt::Key(_key), Qt::KeyboardModifiers(_modifiers), _delay);
 	return true;
 }
 
-bool TestService::keyPressChar(QString const& _character, int _modifiers, int _delay)
+bool TestService::keyPressChar(QObject* _item, QString const& _character, int _modifiers, int _delay)
 {
-	QTEST_ASSERT(_character.length() == 1);
-	QWindow *window = eventWindow();
+	QWindow *window = eventWindow(_item);
 	QTest::keyPress(window, _character[0].toLatin1(), Qt::KeyboardModifiers(_modifiers), _delay);
 	return true;
 }
 
-bool TestService::keyReleaseChar(QString const& _character, int _modifiers, int _delay)
+bool TestService::keyReleaseChar(QObject* _item, QString const& _character, int _modifiers, int _delay)
 {
-	QTEST_ASSERT(_character.length() == 1);
-	QWindow *window = eventWindow();
+	QWindow *window = eventWindow(_item);
 	QTest::keyRelease(window, _character[0].toLatin1(), Qt::KeyboardModifiers(_modifiers), _delay);
 	return true;
 }
 
-bool TestService::keyClickChar(QString const& _character, int _modifiers, int _delay)
+bool TestService::keyClickChar(QObject* _item, QString const& _character, int _modifiers, int _delay)
 {
-	QTEST_ASSERT(_character.length() == 1);
-	QWindow *window = eventWindow();
+	QWindow *window = eventWindow(_item);
 	QTest::keyClick(window, _character[0].toLatin1(), Qt::KeyboardModifiers(_modifiers), _delay);
+	return true;
+}
+
+bool TestService::mouseClick(QObject* _item, qreal _x, qreal _y, int _button, int _modifiers, int _delay)
+{
+	QWindow* window = qobject_cast<QWindow*>(_item);
+	if (!window)
+		window = eventWindow(_item);
+	mouseEvent(MouseClick, window, _item, Qt::MouseButton(_button), Qt::KeyboardModifiers(_modifiers), QPointF(_x, _y), _delay);
 	return true;
 }
 
@@ -114,15 +170,21 @@ void TestService::setTargetWindow(QObject* _window)
 	window->requestActivate();
 }
 
-QWindow* TestService::eventWindow()
+QWindow* TestService::eventWindow(QObject* _item)
 {
-	QQuickWindow* window = qobject_cast<QQuickWindow*>(m_targetWindow);
+	QQuickItem* item = qobject_cast<QQuickItem *>(_item);
+	if (item && item->window())
+		return item->window();
+
+	QQuickWindow* window = qobject_cast<QQuickWindow*>(_item);
+	if (!window)
+		window = qobject_cast<QQuickWindow*>(m_targetWindow);
 	if (window)
 	{
 		window->requestActivate();
 		return window;
 	}
-	QQuickItem* item = qobject_cast<QQuickItem*>(m_targetWindow);
+	item = qobject_cast<QQuickItem*>(m_targetWindow);
 	if (item)
 		return item->window();
 	return 0;

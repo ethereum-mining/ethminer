@@ -58,6 +58,11 @@ Window {
 		forceActiveFocus();
 	}
 
+	function acceptAndClose() {
+		close();
+		accepted();
+	}
+
 	function close() {
 		visible = false;
 	}
@@ -298,8 +303,7 @@ Window {
 			Button {
 				text: qsTr("OK");
 				onClicked: {
-					close();
-					accepted();
+					acceptAndClose();
 				}
 			}
 			Button {
