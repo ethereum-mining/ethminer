@@ -203,7 +203,6 @@ Item {
 		id: editors
 		model: editorListModel
 		onItemRemoved: {
-			console.log("unloaded");
 			item.item.unloaded = true;
 		}
 		delegate: Loader {
