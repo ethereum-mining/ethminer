@@ -80,24 +80,27 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QVariant const& _data, Solidi
 	if ((src.startsWith("\"") && src.endsWith("\"")) || (src.startsWith("\'") && src.endsWith("\'")))
 		src = src.remove(src.length() - 1, 1).remove(0, 1);
 
-	QRegExp rx("[a-z]+");
 	if (src.startsWith("0x"))
 	{
 		result = fromHex(src.toStdString().substr(2));
 		if (_type.type != SolidityType::Type::Bytes)
 			result = padded(result, alignSize);
 	}
-	else if (rx.indexIn(src.toLower(), 0) != -1)
-	{
-		QByteArray bytesAr = src.toLocal8Bit();
-		result = bytes(bytesAr.begin(), bytesAr.end());
-		result = paddedRight(result, alignSize);
-	}
 	else
 	{
-		bigint i(src.toStdString());
-		result = bytes(alignSize);
-		toBigEndian((u256)i, result);
+		try
+		{
+			bigint i(src.toStdString());
+			result = bytes(alignSize);
+			toBigEndian((u256)i, result);
+		}
+		catch (std::exception const& ex)
+		{
+			// manage input as a string.
+			QByteArray bytesAr = src.toLocal8Bit();
+			result = bytes(bytesAr.begin(), bytesAr.end());
+			result = paddedRight(result, alignSize);
+		}
 	}
 
 	unsigned dataSize = _type.dynamicSize ? result.size() : alignSize;
@@ -161,7 +164,7 @@ QString ContractCallDataEncoder::toString(dev::bytes const& _b)
 {
 	QString str;
 	if (isString(_b, str))
-		return "- " + str +  " - " + QString::fromStdString(dev::toJS(_b));
+		return  "\"" + str +  "\" " + QString::fromStdString(dev::toJS(_b));
 	else
 		return QString::fromStdString(dev::toJS(_b));
 }
@@ -208,8 +211,7 @@ bool ContractCallDataEncoder::isString(dev::bytes const& _b, QString& _str)
 	dev::bytes bunPad = unpadded(_b);
 	for (unsigned i = 0; i < bunPad.size(); i++)
 	{
-		u256 value(bunPad.at(i));
-		if (value > 127)
+		if (bunPad.at(i) < 9 || bunPad.at(i) > 127)
 			return false;
 		else
 			_str += QString::fromStdString(dev::toJS(bunPad.at(i))).replace("0x", "");
