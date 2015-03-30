@@ -29,7 +29,9 @@ else()
 	qt5_add_resources(UI_RESOURCES noweb.qrc)
 endif()
 
-add_definitions(-DQT_QML_DEBUG)
+if (CMAKE_BUILD_TYPE EQUAL "DEBUG")
+	add_definitions(-DQT_QML_DEBUG)
+endif()
 
 # eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 eth_add_executable(${EXECUTABLE} 

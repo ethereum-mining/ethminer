@@ -25,7 +25,6 @@ TestCase
 		waitForRendering(mainApplication.mainContent, 10000);
 		mainApplication.projectModel.createProject();
 		var projectDlg = mainApplication.projectModel.newProjectDialog;
-		//if (ts.waitForSignal(projectDlg, "visibleChanged", 1000))
 		projectDlg.projectTitle = "TestProject";
 		projectDlg.pathFieldText = "/tmp/MixTest"; //TODO: get platform temp path
 		projectDlg.acceptAndClose();
@@ -33,11 +32,23 @@ TestCase
 		wait(300);
 	}
 
+	function editContract(c)
+	{
+		mainApplication.mainContent.codeEditor.getEditor("contract.sol").setText(c);
+		ts.keyPressChar("S", Qt.ControlModifier, 200); //Ctrl+S
+		if (!ts.waitForSignal(mainApplication.codeModel, "compilationComplete()", 5000))
+			fail("not compiled");
+	}
+
+	function clickElemet(el)
+	{
+		mouseClick(el, 0, 0, Qt.LeftButton, Qt.NoModifier, 10)
+	}
+
 	function test_defaultTransactionSequence()
 	{
 		newProject();
-		mainApplication.mainContent.codeEditor.getEditor("contract.sol").setText(
-		//ts.typeString(
+		editContract(
 		"contract Contract {\r" +
 		"	function Contract() {\r" +
 		"		uint x = 69;\r" +
@@ -50,33 +61,49 @@ TestCase
 		"	uint z;\r" +
 		"}\r"
 		);
-		ts.keyPressChar("S", Qt.ControlModifier, 200); //Ctrl+S
-		if (!ts.waitForSignal(mainApplication.codeModel, "compilationComplete()", 5000))
-			fail("not compiled");
 		tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel, "count", 3);
 	}
 
-	function test_ConstructorParameters()
+	function test_transactionWithParameter()
 	{
 		newProject();
-		mainApplication.mainContent.codeEditor.getEditor("contract.sol").setText(
-		//ts.typeString(
+		editContract(
 		"contract Contract {\r" +
 		"	function Contract(uint256 x) {\r" +
 		"		z = x;\r" +
-		"		}\r" +
 		"	}\r" +
 		"	function getZ() returns(uint256) {\r" +
 		"		return z;\r" +
-		"		}\r" +
 		"	}\r" +
 		"	uint z;\r" +
 		"}\r"
 		);
-		ts.keyPressChar("S", Qt.ControlModifier, 200); //Ctrl+S
-		if (!ts.waitForSignal(mainApplication.codeModel, "compilationComplete()", 5000))
-			fail("not compiled");
-		tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel, "count", 3);
+		mainApplication.projectModel.stateListModel.editState(0);
+		mainApplication.projectModel.stateDialog.model.editTransaction(2);
+		//TODO: edit transaction params and check results
+	}
+
+	function test_constructorParameters()
+	{
+		newProject();
+		editContract(
+		"contract Contract {\r" +
+		"	function setZ(uint256 x) {\r" +
+		"		z = x;\r" +
+		"	}\r" +
+		"	function getZ() returns(uint256) {\r" +
+		"		return z;\r" +
+		"	}\r" +
+		"	uint z;\r" +
+		"}\r"
+		);
+		mainApplication.projectModel.stateListModel.editState(0);
+		mainApplication.projectModel.stateDialog.model.addTransaction();
+		var transactionDialog = mainApplication.projectModel.stateDialog.transactionDialog;
+		transactionDialog.functionId = "setZ";
+
+
+		//TODO: edit transaction params and check results
 	}
 
 	Application
