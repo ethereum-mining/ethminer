@@ -77,7 +77,7 @@ template <class T>
 struct RLPXDatagram: public RLPXDatagramFace
 {
 	RLPXDatagram(bi::udp::endpoint const& _ep): RLPXDatagramFace(_ep) {}
-	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { T t(_ep); t.interpretRLP(_bytes); return std::move(t); }
+	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { try { T t(_ep); t.interpretRLP(_bytes); return std::move(t); } catch(...) { T t(_ep); return std::move(t); } }
 	uint8_t packetType() { return T::type; }
 };
 
@@ -163,7 +163,14 @@ void UDPSocket<Handler, MaxDatagramSize>::connect()
 		return;
 
 	m_socket.open(bi::udp::v4());
-	m_socket.bind(m_endpoint);
+	try
+	{
+		m_socket.bind(m_endpoint);
+	}
+	catch (...)
+	{
+		m_socket.bind(bi::udp::endpoint(bi::udp::v4(), m_endpoint.port()));
+	}
 
 	// clear write queue so reconnect doesn't send stale messages
 	Guard l(x_sendQ);
@@ -196,7 +203,10 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
 	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
 	m_socket.async_receive_from(boost::asio::buffer(m_recvData), m_recvEndpoint, [this, self](boost::system::error_code _ec, size_t _len)
 	{
-		if (_ec)
+		// ASIO Safety: It is possible that ASIO will call lambda w/o an error
+		// and after the socket has been disconnected. Checking m_closed
+		// guarantees that m_host will not be called after disconnect().
+		if (_ec || m_closed)
 			return disconnectWithError(_ec);
 
 		assert(_len);
@@ -215,7 +225,7 @@ void UDPSocket<Handler, MaxDatagramSize>::doWrite()
 	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
 	m_socket.async_send_to(boost::asio::buffer(datagram.data), datagram.endpoint(), [this, self](boost::system::error_code _ec, std::size_t)
 	{
-		if (_ec)
+		if (_ec || m_closed)
 			return disconnectWithError(_ec);
 		else
 		{

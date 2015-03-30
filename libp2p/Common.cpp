@@ -25,6 +25,17 @@ using namespace dev;
 using namespace dev::p2p;
 
 const unsigned dev::p2p::c_protocolVersion = 3;
+const unsigned dev::p2p::c_defaultIPPort = 30303;
+
+bool p2p::isPublicAddress(std::string const& _addressToCheck)
+{
+	return _addressToCheck.empty() ? false : isPublicAddress(bi::address::from_string(_addressToCheck));
+}
+
+bool p2p::isPublicAddress(bi::address const& _addressToCheck)
+{
+	return !(isPrivateAddress(_addressToCheck) || isLocalHostAddress(_addressToCheck));
+}
 
 // Helper function to determine if an address falls within one of the reserved ranges
 // For V4:
@@ -55,6 +66,11 @@ bool p2p::isPrivateAddress(bi::address const& _addressToCheck)
 	return false;
 }
 
+bool p2p::isPrivateAddress(std::string const& _addressToCheck)
+{
+	return _addressToCheck.empty() ? false : isPrivateAddress(bi::address::from_string(_addressToCheck));
+}
+
 // Helper function to determine if an address is localhost
 bool p2p::isLocalHostAddress(bi::address const& _addressToCheck)
 {
@@ -67,6 +83,11 @@ bool p2p::isLocalHostAddress(bi::address const& _addressToCheck)
 	};
 	
 	return find(c_rejectAddresses.begin(), c_rejectAddresses.end(), _addressToCheck) != c_rejectAddresses.end();
+}
+
+bool p2p::isLocalHostAddress(std::string const& _addressToCheck)
+{
+	return _addressToCheck.empty() ? false : isLocalHostAddress(bi::address::from_string(_addressToCheck));
 }
 
 std::string p2p::reasonOf(DisconnectReason _r)
@@ -88,4 +109,10 @@ std::string p2p::reasonOf(DisconnectReason _r)
 	case NoDisconnect: return "(No disconnect has happened.)";
 	default: return "Unknown reason.";
 	}
+}
+
+void Node::cullEndpoint()
+{
+	if (!isPublicAddress(endpoint.tcp.address()) && isPublicAddress(endpoint.udp.address()))
+		endpoint.tcp.address(endpoint.udp.address());
 }

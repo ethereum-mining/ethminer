@@ -40,6 +40,7 @@
 #include "Context.h"
 #include "Transact.h"
 #include "NatspecHandler.h"
+#include "Connect.h"
 
 namespace Ui {
 class Main;
@@ -256,4 +257,6 @@ private:
 	std::unique_ptr<DappHost> m_dappHost;
 	DappLoader* m_dappLoader;
 	QWebEnginePage* m_webPage;
+	
+	Connect m_connect;
 };

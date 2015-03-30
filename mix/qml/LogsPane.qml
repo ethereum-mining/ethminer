@@ -258,32 +258,7 @@ Rectangle
 				}
 			}
 
-			ToolButton {
-				id: compilationButton
-				checkable: true
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
-				anchors.verticalCenter: parent.verticalCenter
-				checked: false
-				onCheckedChanged: {
-					proxyModel.toogleFilter("compilation")
-				}
-				tooltip: qsTr("Compilation")
-				style:
-					ButtonStyle {
-					label:
-						Item {
-						DefaultLabel {
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							font.pointSize: Style.absoluteSize(-3)
-							color: "#5391d8"
-							anchors.centerIn: parent
-							text: qsTr("Compilation")
-						}
-					}
-				}
-			}
-
-			/*DefaultTextField
+			DefaultTextField
 			{
 				id: searchBox
 				height: LogsPaneStyle.generic.layout.headerButtonHeight
@@ -295,7 +270,7 @@ Rectangle
 				onTextChanged: {
 					proxyModel.search(text);
 				}
-			}*/
+			}
 		}
 	}
 }
