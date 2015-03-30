@@ -240,7 +240,7 @@ byte toByte(json_spirit::mValue const& _v)
 
 bytes importByteArray(std::string const& _str)
 {
-	return fromHex(_str.substr(0, 2) == "0x" ? _str.substr(2) : _str, ThrowType::Throw);
+	return fromHex(_str.substr(0, 2) == "0x" ? _str.substr(2) : _str, WhenError::Throw);
 }
 
 bytes importData(json_spirit::mObject& _o)
@@ -372,22 +372,6 @@ void checkCallCreates(eth::Transactions _resultCallCreates, eth::Transactions _e
 		BOOST_CHECK(_resultCallCreates[i].gas() == _expectedCallCreates[i].gas());
 		BOOST_CHECK(_resultCallCreates[i].value() == _expectedCallCreates[i].value());
 	}
-}
-
-std::string getTestPath()
-{
-	string testPath;
-	const char* ptestPath = getenv("ETHEREUM_TEST_PATH");
-
-	if (ptestPath == NULL)
-	{
-		cnote << " could not find environment variable ETHEREUM_TEST_PATH \n";
-		testPath = "../../../tests";
-	}
-	else
-		testPath = ptestPath;
-
-	return testPath;
 }
 
 void userDefinedTest(string testTypeFlag, std::function<void(json_spirit::mValue&, bool)> doTests)

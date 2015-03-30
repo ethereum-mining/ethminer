@@ -71,10 +71,10 @@ bytesConstRef Ethasher::full(BlockInfo const& _header)
 			m_fulls.erase(m_fulls.begin());
 		}
 		try {
-			boost::filesystem::create_directories(getDataDir() + "/ethashcache");
+			boost::filesystem::create_directories(getDataDir("ethash"));
 		} catch (...) {}
 
-		std::string memoFile = getDataDir() + "/ethashcache/full";
+		std::string memoFile = getDataDir("ethash") + "/full";
 		auto info = rlpList(c_ethashRevision, _header.seedHash());
 		if (boost::filesystem::exists(memoFile) && contents(memoFile + ".info") != info)
 			boost::filesystem::remove(memoFile);
@@ -112,15 +112,31 @@ bool Ethasher::verify(BlockInfo const& _header)
 
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
-	// should be equivalent to:
-	auto r = eval(_header);
-	return r.mixHash == _header.mixHash && r.value <= boundary;
-
-	return ethash_quick_check_difficulty(
+	bool ret = ethash_quick_check_difficulty(
 		_header.headerHash(WithoutNonce).data(),
 		(uint64_t)(u64)_header.nonce,
 		_header.mixHash.data(),
 		boundary.data());
+
+#if ETH_DEBUG
+	auto result = eval(_header);
+	if ((result.value <= boundary && result.mixHash == _header.mixHash) != ret)
+	{
+		cwarn << "Assertion failure coming: evaluated result gives different outcome to ethash_quick_check_difficulty";
+		cwarn << "headerHash:" << _header.headerHash(WithoutNonce);
+		cwarn << "nonce:" << _header.nonce;
+		cwarn << "mixHash:" << _header.mixHash;
+		cwarn << "difficulty:" << _header.difficulty;
+		cwarn << "boundary:" << boundary;
+		cwarn << "result.value:" << result.value;
+		cwarn << "result.mixHash:" << result.mixHash;
+	}
+	assert((result.value <= boundary) == ret);
+	if (result.value <= boundary)
+		assert(result.mixHash == _header.mixHash);
+#endif
+
+	return ret;
 }
 
 Ethasher::Result Ethasher::eval(BlockInfo const& _header, Nonce const& _nonce)

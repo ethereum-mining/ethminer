@@ -67,10 +67,26 @@ Item {
 		return null;
 	}
 
-	function highlightExecution(documentId, location) {
+	function highlightExecution(documentId, location)
+	{
 		var editor = getEditor(documentId);
 		if (editor)
-			editor.highlightExecution(location);
+		{
+			if (documentId !== location.sourceName)
+				findAndHightlight(location.start, location.end, location.sourceName)
+			else
+				editor.highlightExecution(location);
+		}
+	}
+
+	// Execution is not in the current document. Try:
+	// Open targeted document and hightlight (TODO) or
+	// Warn user that file is not available
+	function findAndHightlight(start, end, sourceName)
+	{
+		var editor = getEditor(currentDocumentId);
+		if (editor)
+			editor.showWarning(qsTr("Currently debugging in " + sourceName + ". Source not available."));
 	}
 
 	function editingContract() {
@@ -118,12 +134,12 @@ Item {
 				var doc = editorListModel.get(i);
 				var editor = editors.itemAt(i).item;
 				if (editor)
-					fileIo.writeFile(doc.path, item.getText());
+					fileIo.writeFile(doc.path, editor.getText());
 			}
 		}
 
 		onProjectSaved: {
-			if (projectModel.appIsClosing)
+			if (projectModel.appIsClosing || projectModel.projectIsClosing)
 				return;
 			for (var i = 0; i < editorListModel.count; i++)
 			{

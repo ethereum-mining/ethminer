@@ -36,6 +36,7 @@ struct InstructionMetric
 {
 	int gasPriceTier;
 	int args;
+	int ret;
 };
 
 static array<InstructionMetric, 256> metrics()
@@ -46,12 +47,15 @@ static array<InstructionMetric, 256> metrics()
 		InstructionInfo inst = instructionInfo((Instruction)i);
 		s_ret[i].gasPriceTier = inst.gasPriceTier;
 		s_ret[i].args = inst.args;
+		s_ret[i].ret = inst.ret;
 	}
 	return s_ret;
 }
 
 bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
+	m_stack.reserve((unsigned)c_stackLimit);
+
 	static const array<InstructionMetric, 256> c_metrics = metrics();
 
 	auto memNeed = [](u256 _offset, dev::u256 _size) { return _size ? (bigint)_offset + _size : (bigint)0; };
@@ -89,7 +93,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 		// should work, but just seems to result in immediate errorless exit on initial execution. yeah. weird.
 		//m_onFail = std::function<void()>(onOperation);
 
-		require(metric.args);
+		require(metric.args, metric.ret);
 
 		auto onOperation = [&]()
 		{
@@ -610,10 +614,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.pop_back();
 
 			if (_ext.balance(_ext.myAddress) >= endowment && _ext.depth < 1024)
-			{
-				_ext.subBalance(endowment);
 				m_stack.push_back((u160)_ext.create(endowment, m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
-			}
 			else
 				m_stack.push_back(0);
 			break;
@@ -640,10 +641,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.pop_back();
 
 			if (_ext.balance(_ext.myAddress) >= value && _ext.depth < 1024)
-			{
-				_ext.subBalance(value);
 				m_stack.push_back(_ext.call(inst == Instruction::CALL ? receiveAddress : _ext.myAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, {}, receiveAddress));
-			}
 			else
 				m_stack.push_back(0);
 

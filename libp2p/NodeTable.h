@@ -135,7 +135,8 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	using EvictionTimeout = std::pair<std::pair<NodeId, TimePoint>, NodeId>;	///< First NodeId may be evicted and replaced with second NodeId.
 
 public:
-	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udpPort = 30303);
+	/// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
+	NodeTable(ba::io_service& _io, KeyPair _alias, bi::address const& _udpAddress, uint16_t _udpPort = 30303);
 	~NodeTable();
 
 	/// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
@@ -194,7 +195,7 @@ private:
 	/* todo: replace boost::posix_time; change constants to upper camelcase */
 	boost::posix_time::milliseconds const c_evictionCheckInterval = boost::posix_time::milliseconds(75);	///< Interval at which eviction timeouts are checked.
 	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
-	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
+	std::chrono::milliseconds const c_bucketRefresh = std::chrono::milliseconds(112500);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
 
 	struct NodeBucket
 	{
@@ -287,6 +288,8 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
 	return _out;
 }
 
+struct InvalidRLP: public Exception {};
+
 /**
  * Ping packet: Sent to check if node is alive.
  * PingNode is cached and regenerated after expiration - t, where t is timeout.
@@ -315,13 +318,13 @@ struct PingNode: RLPXDatagram<PingNode>
 
 	static const uint8_t type = 1;
 
-	unsigned version = 1;
+	unsigned version = 0;
 	std::string ipAddress;
 	unsigned port;
 	unsigned expiration;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = r[0].toString(); port = r[1].toInt<unsigned>(); expiration = r[2].toInt<unsigned>(); }
+	void streamRLP(RLPStream& _s) const override;
+	void interpretRLP(bytesConstRef _bytes) override;
 };
 
 /**

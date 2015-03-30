@@ -121,14 +121,6 @@ Item {
                     logTable.model = itemFilter.getCurrentModel();
                 }
             }
-            Button
-            {
-                id: playPauseBtn
-                anchors.right: parent.right
-                anchors.rightMargin: 1
-                anchors.verticalCenter: parent.verticalCenter
-                action: playAndPauseAction
-            }
         }
         TableView {
             id: logTable
@@ -181,7 +173,6 @@ Item {
             }
         }
     }
-
     Connections {
         target: clientModel
         onStateCleared: {

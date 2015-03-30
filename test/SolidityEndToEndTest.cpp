@@ -1127,45 +1127,43 @@ BOOST_AUTO_TEST_CASE(type_conversions_cleanup)
 														   0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00, 0x11, 0x22,
 														   0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0x00, 0x11, 0x22}));
 }
-
+// fixed bytes to fixed bytes conversion tests
 BOOST_AUTO_TEST_CASE(convert_fixed_bytes_to_fixed_bytes_smaller_size)
 {
 	char const* sourceCode = R"(
 		contract Test {
-			function pipeTrough(bytes3 input) returns (bytes2 ret) {
+			function bytesToBytes(bytes4 input) returns (bytes2 ret) {
 				return bytes2(input);
 			}
 		})";
 	compileAndRun(sourceCode);
-	BOOST_CHECK(callContractFunction("pipeTrough(bytes3)", "abc") == encodeArgs("ab"));
+	BOOST_CHECK(callContractFunction("bytesToBytes(bytes4)", "abcd") == encodeArgs("ab"));
 }
 
-BOOST_AUTO_TEST_CASE(convert_uint_to_fixed_bytes_same_size)
+BOOST_AUTO_TEST_CASE(convert_fixed_bytes_to_fixed_bytes_greater_size)
 {
 	char const* sourceCode = R"(
 		contract Test {
-			function uintToBytes(uint256 h) returns (bytes32 s) {
-				return bytes32(h);
+			function bytesToBytes(bytes2 input) returns (bytes4 ret) {
+				return bytes4(input);
 			}
 		})";
 	compileAndRun(sourceCode);
-	u256 a("0x6162630000000000000000000000000000000000000000000000000000000000");
-	BOOST_CHECK(callContractFunction("uintToBytes(uint256)", a) == encodeArgs(a));
+	BOOST_CHECK(callContractFunction("bytesToBytes(bytes2)", "ab") == encodeArgs("ab"));
 }
 
-BOOST_AUTO_TEST_CASE(convert_uint_to_fixed_bytes_different_size)
+BOOST_AUTO_TEST_CASE(convert_fixed_bytes_to_fixed_bytes_same_size)
 {
 	char const* sourceCode = R"(
 		contract Test {
-			function uintToBytes(uint160 h) returns (bytes20 s) {
-				return bytes20(h);
+			function bytesToBytes(bytes4 input) returns (bytes4 ret) {
+				return bytes4(input);
 			}
 		})";
 	compileAndRun(sourceCode);
-	BOOST_CHECK(callContractFunction("uintToBytes(uint160)",
-			u160("0x6161626361626361626361616263616263616263")) == encodeArgs(string("aabcabcabcaabcabcabc")));
+	BOOST_CHECK(callContractFunction("bytesToBytes(bytes4)", "abcd") == encodeArgs("abcd"));
 }
-
+// fixed bytes to uint conversion tests
 BOOST_AUTO_TEST_CASE(convert_fixed_bytes_to_uint_same_size)
 {
 	char const* sourceCode = R"(
@@ -1179,21 +1177,7 @@ BOOST_AUTO_TEST_CASE(convert_fixed_bytes_to_uint_same_size)
 		encodeArgs(u256("0x6162633200000000000000000000000000000000000000000000000000000000")));
 }
 
-BOOST_AUTO_TEST_CASE(convert_fixed_bytes_to_uint_different_size)
-{
-	char const* sourceCode = R"(
-		contract Test {
-			function bytesToUint(bytes20 s) returns (uint160 h) {
-				return uint160(s);
-			}
-		})";
-	compileAndRun(sourceCode);
-	BOOST_CHECK(callContractFunction("bytesToUint(bytes20)", string("aabcabcabcaabcabcabc")) ==
-		encodeArgs(u160("0x6161626361626361626361616263616263616263")));
-}
-
-
-BOOST_AUTO_TEST_CASE(convert_fixed_bytes_to_uint_different_min_size)
+BOOST_AUTO_TEST_CASE(convert_fixed_bytes_to_uint_same_min_size)
 {
 	char const* sourceCode = R"(
 		contract Test {
@@ -1206,8 +1190,46 @@ BOOST_AUTO_TEST_CASE(convert_fixed_bytes_to_uint_different_min_size)
 		encodeArgs(u256("0x61")));
 }
 
+BOOST_AUTO_TEST_CASE(convert_fixed_bytes_to_uint_smaller_size)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function bytesToUint(bytes4 s) returns (uint16 h) {
+				return uint16(s);
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("bytesToUint(bytes4)", string("abcd")) ==
+		encodeArgs(u256("0x6364")));
+}
 
-BOOST_AUTO_TEST_CASE(convert_uint_to_fixed_bytes_different_min_size)
+BOOST_AUTO_TEST_CASE(convert_fixed_bytes_to_uint_greater_size)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function bytesToUint(bytes4 s) returns (uint64 h) {
+				return uint64(s);
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("bytesToUint(bytes4)", string("abcd")) ==
+		encodeArgs(u256("0x61626364")));
+}
+// uint fixed bytes conversion tests
+BOOST_AUTO_TEST_CASE(convert_uint_to_fixed_bytes_same_size)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function uintToBytes(uint256 h) returns (bytes32 s) {
+				return bytes32(h);
+			}
+		})";
+	compileAndRun(sourceCode);
+	u256 a("0x6162630000000000000000000000000000000000000000000000000000000000");
+	BOOST_CHECK(callContractFunction("uintToBytes(uint256)", a) == encodeArgs(a));
+}
+
+BOOST_AUTO_TEST_CASE(convert_uint_to_fixed_bytes_same_min_size)
 {
 	char const* sourceCode = R"(
 		contract Test {
@@ -1218,6 +1240,32 @@ BOOST_AUTO_TEST_CASE(convert_uint_to_fixed_bytes_different_min_size)
 	compileAndRun(sourceCode);
 	BOOST_CHECK(callContractFunction("UintToBytes(uint8)", u256("0x61")) ==
 		encodeArgs(string("a")));
+}
+
+BOOST_AUTO_TEST_CASE(convert_uint_to_fixed_bytes_smaller_size)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function uintToBytes(uint32 h) returns (bytes2 s) {
+				return bytes2(h);
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("uintToBytes(uint32)",
+			u160("0x61626364")) == encodeArgs(string("cd")));
+}
+
+BOOST_AUTO_TEST_CASE(convert_uint_to_fixed_bytes_greater_size)
+{
+	char const* sourceCode = R"(
+		contract Test {
+			function UintToBytes(uint16 h) returns (bytes8 s) {
+				return bytes8(h);
+			}
+		})";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("UintToBytes(uint16)", u256("0x6162")) ==
+                encodeArgs(string("\0\0\0\0\0\0ab", 8)));
 }
 
 BOOST_AUTO_TEST_CASE(send_ether)
@@ -3040,6 +3088,123 @@ BOOST_AUTO_TEST_CASE(array_copy_storage_storage_static_dynamic)
 	BOOST_CHECK(callContractFunction("test()") == encodeArgs(9, 4));
 }
 
+BOOST_AUTO_TEST_CASE(array_copy_different_packing)
+{
+	char const* sourceCode = R"(
+		contract c {
+			bytes8[] data1; // 4 per slot
+			bytes10[] data2; // 3 per slot
+			function test() returns (bytes10 a, bytes10 b, bytes10 c, bytes10 d, bytes10 e) {
+				data1.length = 9;
+				for (uint i = 0; i < data1.length; ++i)
+					data1[i] = bytes8(i);
+				data2 = data1;
+				a = data2[1];
+				b = data2[2];
+				c = data2[3];
+				d = data2[4];
+				e = data2[5];
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("test()") == encodeArgs(
+		asString(fromHex("0000000000000001")),
+		asString(fromHex("0000000000000002")),
+		asString(fromHex("0000000000000003")),
+		asString(fromHex("0000000000000004")),
+		asString(fromHex("0000000000000005"))
+	));
+}
+
+BOOST_AUTO_TEST_CASE(array_copy_target_simple)
+{
+	char const* sourceCode = R"(
+		contract c {
+			bytes8[9] data1; // 4 per slot
+			bytes17[10] data2; // 1 per slot, no offset counter
+			function test() returns (bytes17 a, bytes17 b, bytes17 c, bytes17 d, bytes17 e) {
+				for (uint i = 0; i < data1.length; ++i)
+					data1[i] = bytes8(i);
+				data2[8] = data2[9] = 2;
+				data2 = data1;
+				a = data2[1];
+				b = data2[2];
+				c = data2[3];
+				d = data2[4];
+				e = data2[9];
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("test()") == encodeArgs(
+		asString(fromHex("0000000000000001")),
+		asString(fromHex("0000000000000002")),
+		asString(fromHex("0000000000000003")),
+		asString(fromHex("0000000000000004")),
+		asString(fromHex("0000000000000000"))
+	));
+}
+
+BOOST_AUTO_TEST_CASE(array_copy_target_leftover)
+{
+	// test that leftover elements in the last slot of target are correctly cleared during assignment
+	char const* sourceCode = R"(
+		contract c {
+			byte[10] data1;
+			bytes2[32] data2;
+			function test() returns (uint check, uint res1, uint res2) {
+				uint i;
+				for (i = 0; i < data2.length; ++i)
+					data2[i] = 0xffff;
+				check = uint(data2[31]) * 0x10000 | uint(data2[14]);
+				for (i = 0; i < data1.length; ++i)
+					data1[i] = byte(uint8(1 + i));
+				data2 = data1;
+				for (i = 0; i < 16; ++i)
+					res1 |= uint(data2[i]) * 0x10000**i;
+				for (i = 0; i < 16; ++i)
+					res2 |= uint(data2[16 + i]) * 0x10000**i;
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("test()") == encodeArgs(
+		u256("0xffffffff"),
+		asString(fromHex("0000000000000000""000000000a000900""0800070006000500""0400030002000100")),
+		asString(fromHex("0000000000000000""0000000000000000""0000000000000000""0000000000000000"))
+	));
+}
+
+BOOST_AUTO_TEST_CASE(array_copy_target_leftover2)
+{
+	// since the copy always copies whole slots, we have to make sure that the source size maxes
+	// out a whole slot and at the same time there are still elements left in the target at that point
+	char const* sourceCode = R"(
+		contract c {
+			bytes8[4] data1; // fits into one slot
+			bytes10[6] data2; // 4 elements need two slots
+			function test() returns (bytes10 r1, bytes10 r2, bytes10 r3) {
+				data1[0] = 1;
+				data1[1] = 2;
+				data1[2] = 3;
+				data1[3] = 4;
+				for (uint i = 0; i < data2.length; ++i)
+					data2[i] = bytes10(0xffff00 | (1 + i));
+				data2 = data1;
+				r1 = data2[3];
+				r2 = data2[4];
+				r3 = data2[5];
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("test()") == encodeArgs(
+		asString(fromHex("0000000000000004")),
+		asString(fromHex("0000000000000000")),
+		asString(fromHex("0000000000000000"))
+	));
+}
 BOOST_AUTO_TEST_CASE(array_copy_storage_storage_struct)
 {
 	char const* sourceCode = R"(
@@ -3166,7 +3331,7 @@ BOOST_AUTO_TEST_CASE(array_copy_nested_array)
 	char const* sourceCode = R"(
 		contract c {
 			uint[4][] a;
-			uint[5][] b;
+			uint[10][] b;
 			uint[][] c;
 			function test(uint[2][] d) external returns (uint) {
 				a = d;
@@ -3430,6 +3595,30 @@ BOOST_AUTO_TEST_CASE(packed_storage_structs_delete)
 	compileAndRun(sourceCode);
 	BOOST_CHECK(callContractFunction("test()") == encodeArgs(1));
 	BOOST_CHECK(m_state.storage(m_contractAddress).empty());
+}
+
+BOOST_AUTO_TEST_CASE(packed_storage_structs_with_bytes0)
+{
+	char const* sourceCode = R"(
+		contract C {
+			struct str { uint8 a; bytes0 b; uint8 c; }
+			uint8 a;
+			bytes0 x;
+			uint8 b;
+			str data;
+			function test() returns (bool) {
+				a = 2;
+				b = 3;
+				data.a = 4;
+				data.c = 5;
+				delete x;
+				delete data.b;
+				return a == 2 && b == 3 && data.a == 4 && data.c == 5;
+			}
+		}
+	)";
+	compileAndRun(sourceCode);
+	BOOST_CHECK(callContractFunction("test()") == encodeArgs(true));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

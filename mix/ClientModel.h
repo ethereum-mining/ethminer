@@ -34,13 +34,13 @@ namespace dev
 namespace mix
 {
 
-class AppContext;
 class Web3Server;
 class RpcConnector;
 class QEther;
 class QDebugData;
 class MixClient;
 class QVariableDefinition;
+class CodeModel;
 struct SolidityType;
 
 /// Backend transaction config class
@@ -127,7 +127,7 @@ class ClientModel: public QObject
 	Q_OBJECT
 
 public:
-	ClientModel(AppContext* _context);
+	ClientModel();
 	~ClientModel();
 	/// @returns true if currently executing contract code
 	Q_PROPERTY(bool running MEMBER m_running NOTIFY runStateChanged)
@@ -143,6 +143,8 @@ public:
 	Q_INVOKABLE QString apiCall(QString const& _message);
 	/// Simulate mining. Creates a new block
 	Q_INVOKABLE void mine();
+	/// Get/set code model. Should be set from qml
+	Q_PROPERTY(CodeModel* codeModel MEMBER m_codeModel)
 
 public slots:
 	/// Setup state, run transaction sequence, show debugger for the last transaction
@@ -157,8 +159,6 @@ public slots:
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
 	void showDebugger();
-	/// Update UI with transaction run error.
-	void showDebugError(QString const& _error);
 
 signals:
 	/// Transaction execution started
@@ -201,7 +201,6 @@ private:
 	void showDebuggerForTransaction(ExecutionResult const& _t);
 	QVariant formatValue(SolidityType const& _type, dev::u256 const& _value);
 
-	AppContext* m_context;
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;
 	std::unique_ptr<MixClient> m_client;
@@ -211,6 +210,7 @@ private:
 	std::map<Address, QString> m_contractNames;
 	std::map<QString, Address> m_stdContractAddresses;
 	std::map<Address, QString> m_stdContractNames;
+	CodeModel* m_codeModel = nullptr;
 };
 
 }
