@@ -19,10 +19,11 @@ Item {
 
 	function setText(text, mode) {
 		currentText = text;
-		currentMode = mode;
+		if(mode !== undefined)
+			currentMode = mode;
 		if (initialized) {
 			editorBrowser.runJavaScript("setTextBase64(\"" + Qt.btoa(text) + "\")");
-			editorBrowser.runJavaScript("setMode(\"" + mode + "\")");
+			editorBrowser.runJavaScript("setMode(\"" + currentMode + "\")");
 		}
 		setFocus();
 	}
@@ -94,15 +95,19 @@ Item {
 				if (currentMode === "solidity")
 				{
 					codeModel.onCompilationComplete.connect(function(){
-						editorBrowser.runJavaScript("compilationComplete()", function(result) { });
+						if (editorBrowser)
+							editorBrowser.runJavaScript("compilationComplete()", function(result) { });
 					});
 
 					codeModel.onCompilationError.connect(function(error){
-						var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);
-						if (errorInfo.line && errorInfo.column)
-							editorBrowser.runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
-						else
-							editorBrowser.runJavaScript("compilationComplete()", function(result) { });
+						if (editorBrowser)
+						{
+							var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);
+							if (errorInfo.line && errorInfo.column)
+								editorBrowser.runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
+							else
+								editorBrowser.runJavaScript("compilationComplete()", function(result) { });
+						}
 					});
 				}
 				parent.changeGeneration();

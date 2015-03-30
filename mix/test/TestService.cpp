@@ -23,6 +23,8 @@
 #include "TestService.h"
 #include <QtTest/QSignalSpy>
 #include <QElapsedTimer>
+#include <QQuickItem>
+#include <QQuickWindow>
 #include <QtTest/QTest>
 #include <QtTest/qtestkeyboard.h>
 
@@ -104,8 +106,25 @@ bool TestService::keyClickChar(QString const& _character, int _modifiers, int _d
 	return true;
 }
 
+void TestService::setTargetWindow(QObject* _window)
+{
+	QQuickWindow* window = qobject_cast<QQuickWindow*>(_window);
+	if (window)
+		m_targetWindow = window;
+	window->requestActivate();
+}
+
 QWindow* TestService::eventWindow()
 {
+	QQuickWindow* window = qobject_cast<QQuickWindow*>(m_targetWindow);
+	if (window)
+	{
+		window->requestActivate();
+		return window;
+	}
+	QQuickItem* item = qobject_cast<QQuickItem*>(m_targetWindow);
+	if (item)
+		return item->window();
 	return 0;
 }
 

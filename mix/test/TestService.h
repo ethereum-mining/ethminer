@@ -34,6 +34,11 @@ namespace mix
 class TestService: public QObject
 {
 	Q_OBJECT
+	Q_PROPERTY(QObject* targetWindow READ targetWindow WRITE setTargetWindow)
+
+public:
+	QObject* targetWindow() const { return m_targetWindow; }
+	void setTargetWindow(QObject* _window);
 
 public slots:
 	bool waitForSignal(QObject* _item, QString _signalName, int _timeout);
@@ -46,6 +51,7 @@ public slots:
 
 private:
 	QWindow* eventWindow();
+	QObject* m_targetWindow;
 };
 
 }
