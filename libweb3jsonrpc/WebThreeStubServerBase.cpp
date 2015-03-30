@@ -79,7 +79,7 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 	Json::Value res;
 	res["hash"] = toJS(_t.sha3());
 	res["input"] = toJS(_t.data());
-	res["to"] = _t.isCreation() ? "0x" : toJS(_t.receiveAddress());
+	res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
 	res["from"] = toJS(_t.safeSender());
 	res["gas"] = toJS(_t.gas());
 	res["gasPrice"] = toJS(_t.gasPrice());
@@ -115,7 +115,7 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us
 static Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
 {
 	Json::Value res;
-	res["to"] = _t.creation ? "0x" : toJS(_t.to);
+	res["to"] = _t.creation ? Json::Value() : toJS(_t.to);
 	res["from"] = toJS(_t.from);
 	res["gas"] = toJS(_t.gas);
 	res["gasPrice"] = toJS(_t.gasPrice);
