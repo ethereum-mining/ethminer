@@ -28,6 +28,7 @@
 //pragma GCC diagnostic ignored "-Werror=pedantic"
 #include <QtNetwork/QNetworkReply>
 #include <QtWidgets/QFileDialog>
+#include <QtWidgets/QDialog>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>
 #include <QtWebEngine/QtWebEngine>
@@ -141,7 +142,7 @@ Main::Main(QWidget *parent) :
 #endif
 
 #if ETH_DEBUG
-	m_servers.append("localhost:30300");
+	m_servers.append("127.0.0.1:30300");
 #endif
 	m_servers.append(QString::fromStdString(Host::pocHost() + ":30303"));
 
@@ -251,7 +252,30 @@ void Main::addNewId(QString _ids)
 
 NetworkPreferences Main::netPrefs() const
 {
-	return NetworkPreferences(ui->port->value(), ui->forceAddress->text().toStdString(), ui->upnp->isChecked(), ui->localNetworking->isChecked());
+	auto listenIP = ui->listenIP->text().toStdString();
+	try
+	{
+		listenIP = bi::address::from_string(listenIP).to_string();
+	}
+	catch (...)
+	{
+		listenIP.clear();
+	}
+	
+	auto publicIP = ui->forcePublicIP->text().toStdString();
+	try
+	{
+		publicIP = bi::address::from_string(publicIP).to_string();
+	}
+	catch (...)
+	{
+		publicIP.clear();
+	}
+	
+	if (isPublicAddress(publicIP))
+		return NetworkPreferences(publicIP, listenIP, ui->port->value(), ui->upnp->isChecked());
+	else
+		return NetworkPreferences(listenIP, ui->port->value(), ui->upnp->isChecked());
 }
 
 void Main::onKeysChanged()
@@ -675,9 +699,7 @@ void Main::writeSettings()
 	}
 
 	s.setValue("upnp", ui->upnp->isChecked());
-	s.setValue("forceAddress", ui->forceAddress->text());
-	s.setValue("usePast", ui->usePast->isChecked());
-	s.setValue("localNetworking", ui->localNetworking->isChecked());
+	s.setValue("forceAddress", ui->forcePublicIP->text());
 	s.setValue("forceMining", ui->forceMining->isChecked());
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("natSpec", ui->natSpec->isChecked());
@@ -685,6 +707,7 @@ void Main::writeSettings()
 	s.setValue("showAllAccounts", ui->showAllAccounts->isChecked());
 	s.setValue("clientName", ui->clientName->text());
 	s.setValue("idealPeers", ui->idealPeers->value());
+	s.setValue("listenIP", ui->listenIP->text());
 	s.setValue("port", ui->port->value());
 	s.setValue("url", ui->urlEdit->text());
 	s.setValue("privateChain", m_privateChain);
@@ -744,9 +767,8 @@ void Main::readSettings(bool _skipGeometry)
 	}
 
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
-	ui->forceAddress->setText(s.value("forceAddress", "").toString());
-	ui->usePast->setChecked(s.value("usePast", true).toBool());
-	ui->localNetworking->setChecked(s.value("localNetworking", true).toBool());
+	ui->forcePublicIP->setText(s.value("forceAddress", "").toString());
+	ui->dropPeers->setChecked(false);
 	ui->forceMining->setChecked(s.value("forceMining", false).toBool());
 	on_forceMining_triggered();
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
@@ -757,6 +779,7 @@ void Main::readSettings(bool _skipGeometry)
 	if (ui->clientName->text().isEmpty())
 		ui->clientName->setText(QInputDialog::getText(nullptr, "Enter identity", "Enter a name that will identify you on the peer network"));
 	ui->idealPeers->setValue(s.value("idealPeers", ui->idealPeers->value()).toInt());
+	ui->listenIP->setText(s.value("listenIP", "").toString());
 	ui->port->setValue(s.value("port", ui->port->value()).toInt());
 	ui->nameReg->setText(s.value("nameReg", "").toString());
 	m_privateChain = s.value("privateChain", "").toString();
@@ -1743,11 +1766,8 @@ void Main::on_net_triggered()
 	if (ui->net->isChecked())
 	{
 		web3()->setIdealPeerCount(ui->idealPeers->value());
-		web3()->setNetworkPreferences(netPrefs());
+		web3()->setNetworkPreferences(netPrefs(), ui->dropPeers->isChecked());
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : h256());
-		// TODO: p2p
-//		if (m_networkConfig.size()/* && ui->usePast->isChecked()*/)
-//			web3()->restoreNetwork(bytesConstRef((byte*)m_networkConfig.data(), m_networkConfig.size()));
 		web3()->startNetwork();
 		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
 	}
@@ -1765,13 +1785,25 @@ void Main::on_connect_triggered()
 		ui->net->setChecked(true);
 		on_net_triggered();
 	}
-	bool ok = false;
-	QString s = QInputDialog::getItem(this, "Connect to a Network Peer", "Enter a peer to which a connection may be made:", m_servers, m_servers.count() ? rand() % m_servers.count() : 0, true, &ok);
-	if (ok && s.contains(":"))
+	
+	m_connect.setEnvironment(m_servers);
+	if (m_connect.exec() == QDialog::Accepted)
 	{
-		string host = s.section(":", 0, 0).toStdString();
-		unsigned short port = s.section(":", 1).toInt();
-		web3()->connect(host, port);
+		bool required = m_connect.required();
+		string host(m_connect.host().toStdString());
+		NodeId nodeID;
+		try
+		{
+			nodeID = NodeId(fromHex(m_connect.nodeId().toStdString()));
+		}
+		catch (BadHexCharacter&) {}
+		
+		m_connect.reset();
+		
+		if (required)
+			web3()->requirePeer(nodeID, host);
+		else
+			web3()->addNode(nodeID, host);
 	}
 }
 
@@ -1882,7 +1914,7 @@ void Main::on_go_triggered()
 		ui->net->setChecked(true);
 		on_net_triggered();
 	}
-	web3()->connect(Host::pocHost());
+	web3()->addNode(p2p::NodeId(), Host::pocHost());
 }
 
 QString Main::prettyU256(dev::u256 _n) const
