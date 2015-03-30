@@ -44,6 +44,7 @@ Column
 				anchors.verticalCenter: parent.verticalCenter
 				sourceComponent:
 				{
+					console.log("loading param");
 					var t = modelData.type.category;
 					if (t === QSolidityType.SignedInteger || t === QSolidityType.UnsignedInteger)
 						return Qt.createComponent("qrc:/qml/QIntTypeView.qml");
