@@ -101,6 +101,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 	shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, NodeIPEndpoint(_node.endpoint.udp, _node.endpoint.tcp)));
 	m_nodes[_node.id] = ret;
 	ret->cullEndpoint();
+	clog(NodeTableConnect) << "addNode pending for" << m_node.endpoint.udp << m_node.endpoint.tcp;
 	PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
 	p.sign(m_secret);
 	m_socketPointer->send(p);
@@ -450,6 +451,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 						return; // unsolicited pong; don't note node as active
 				}
 				
+				clog(NodeTableConnect) << "PONG from " << nodeid.abridged() << _from;
 				break;
 			}
 				
@@ -550,31 +552,16 @@ void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 
 	clog(NodeTableEvent) << "refreshing buckets";
 	bool connected = m_socketPointer->isOpen();
-	bool refreshed = false;
 	if (connected)
 	{
-		Guard l(x_state);
-		for (auto& d: m_state)
-			if (chrono::steady_clock::now() - d.modified > c_bucketRefresh)
-			{
-				d.touch();
-				while (!d.nodes.empty())
-				{
-					auto n = d.nodes.front();
-					if (auto p = n.lock())
-					{
-						refreshed = true;
-						ping(p.get());
-						break;
-					}
-					d.nodes.pop_front();
-				}
-			}
+		NodeId randNodeId;
+		crypto::Nonce::get().ref().copyTo(randNodeId.ref().cropped(0, h256::size));
+		crypto::Nonce::get().ref().copyTo(randNodeId.ref().cropped(h256::size, h256::size));
+		discover(randNodeId);
 	}
 
-	unsigned nextRefresh = connected ? (refreshed ? 200 : c_bucketRefresh.count()*1000) : 10000;
 	auto runcb = [this](boost::system::error_code const& error) { doRefreshBuckets(error); };
-	m_bucketRefreshTimer.expires_from_now(boost::posix_time::milliseconds(nextRefresh));
+	m_bucketRefreshTimer.expires_from_now(boost::posix_time::milliseconds(c_bucketRefresh.count()));
 	m_bucketRefreshTimer.async_wait(runcb);
 }
 

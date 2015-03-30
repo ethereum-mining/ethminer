@@ -50,7 +50,8 @@ namespace p2p
 
 /// Peer network protocol version.
 extern const unsigned c_protocolVersion;
-	
+extern const unsigned c_defaultIPPort;
+
 using NodeId = h512;
 
 bool isPrivateAddress(bi::address const& _addressToCheck);
