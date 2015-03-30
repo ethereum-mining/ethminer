@@ -91,6 +91,7 @@ Rectangle {
 			return formatted;
 		}
 	}
+
 	Connections {
 		target:projectModel
 		onDeploymentStarted: infoMessage(qsTr("Running deployment..."), "Deployment");
@@ -112,28 +113,9 @@ Rectangle {
 		anchors.horizontalCenter: parent.horizontalCenter
 		anchors.verticalCenter: parent.verticalCenter
 		radius: 3
-		width: 500
+		width: 650
 		height: 30
 		color: "#fcfbfc"
-		states: [
-			State {
-				name: "logsOpened"
-				PropertyChanges {
-					target: statusContainer
-					border.color: "#5391d8"
-					border.width: 1
-				}
-			},
-			State {
-				name: "logsClosed"
-				PropertyChanges {
-					target: statusContainer
-					border.color: "#5391d8"
-					border.width: 0
-				}
-			}
-		]
-
 		Text {
 			anchors.verticalCenter: parent.verticalCenter
 			anchors.horizontalCenter: parent.horizontalCenter
@@ -215,40 +197,45 @@ Rectangle {
 			function toggle()
 			{
 				if (logsContainer.state === "opened")
-				{
-					statusContainer.state = "logsClosed";
 					logsContainer.state = "closed"
-				}
 				else
 				{
-					statusContainer.state = "logsOpened";
 					logsContainer.state = "opened";
 					logsContainer.focus = true;
+					calCoord();
 					forceActiveFocus();
 				}
 			}
 
 			id: logsContainer
-			width: 1000
-			height: 0
+			width: 650
+			//height: 0
 			anchors.topMargin: 10
 			anchors.top: statusContainer.bottom
+			//anchors.left: statusContainer.left
 			anchors.horizontalCenter: parent.horizontalCenter
 			visible: false
 			radius: 5
 			Component.onCompleted:
 			{
+				calCoord();
+			}
+
+			function calCoord()
+			{
 				var top = logsContainer;
 				while (top.parent)
 					top = top.parent
-				var coordinates = logsContainer.mapToItem(top, 0, 0)
+				var coordinates = logsContainer.mapToItem(top, 0, 0);
 				logsContainer.parent = top;
-				logsContainer.x = coordinates.x
-				logsContainer.y = coordinates.y
+				//logsContainer.x = coordinates.x + 150;
+				logsContainer.y = coordinates.y;
+				console.log(logsContainer.x);
 			}
+
 			LogsPane
 			{
-				id: logPane
+				id: logPane;
 			}
 			states: [
 				State {
