@@ -13,39 +13,51 @@
 
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
- */
-/** @file TransientDirectory.h
- * @author Marek Kotewicz <marek@ethdev.com>
+*/
+/** @file Connect.cpp
+ * @author Alex Leverington <nessence@gmail.com>
  * @date 2015
  */
 
-#pragma once
+#include "Connect.h"
 
-#include <string>
-#include "Common.h"
+#include <libp2p/Host.h>
+#include "ui_Connect.h"
 
-namespace dev
+Connect::Connect(QWidget *parent) :
+	QDialog(parent),
+	ui(new Ui::Connect)
 {
-namespace test
-{
-
-/**
- * @brief temporary directory implementation
- * It creates temporary directory in the given path. On dealloc it removes the directory
- * @throws if the given path already exists, throws an exception
- */
-class TransientDirectory
-{
-public:
-	TransientDirectory();
-	TransientDirectory(std::string const& _path);
-	~TransientDirectory();
-
-	std::string const& path() const { return m_path; }
-
-private:
-	std::string m_path;
-};
-
+	ui->setupUi(this);
 }
+
+Connect::~Connect()
+{
+	delete ui;
+}
+
+void Connect::setEnvironment(QStringList const& _nodes)
+{
+	ui->host->addItems(_nodes);
+}
+
+void Connect::reset()
+{
+	ui->nodeId->clear();
+	ui->required->setChecked(false);
+}
+
+QString Connect::host()
+{
+	return ui->host->currentText();
+}
+
+QString Connect::nodeId()
+{
+	return ui->nodeId->text();
+}
+
+bool Connect::required()
+{
+	return ui->required->isChecked();
 }

@@ -143,7 +143,7 @@ Item {
 		}
 
 		onProjectSaved: {
-			if (projectModel.appIsClosing)
+			if (projectModel.appIsClosing || projectModel.projectIsClosing)
 				return;
 			for (var i = 0; i < editorListModel.count; i++)
 			{

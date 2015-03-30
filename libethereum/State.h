@@ -188,15 +188,9 @@ public:
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
-	/// Returns the last few block hashes of the current chain.
-	LastHashes getLastHashes(BlockChain const& _bc, unsigned _n) const;
-
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	ExecutionResult execute(BlockChain const& _bc, bytes const& _rlp, Permanence _p = Permanence::Committed);
-	ExecutionResult execute(BlockChain const& _bc, bytesConstRef _rlp, Permanence _p = Permanence::Committed);
-	ExecutionResult execute(LastHashes const& _lh, bytes const& _rlp, Permanence _p = Permanence::Committed) { return execute(_lh, &_rlp, _p); }
-	ExecutionResult execute(LastHashes const& _lh, bytesConstRef _rlp, Permanence _p = Permanence::Committed);
+	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed);
 
 	/// Get the remaining gas limit in this block.
 	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }

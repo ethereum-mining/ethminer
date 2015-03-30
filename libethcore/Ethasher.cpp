@@ -119,9 +119,21 @@ bool Ethasher::verify(BlockInfo const& _header)
 		boundary.data());
 
 #if ETH_DEBUG
-	// should be equivalent to:
 	auto result = eval(_header);
-	assert((result.mixHash == _header.mixHash && result.value <= boundary) == ret);
+	if ((result.value <= boundary && result.mixHash == _header.mixHash) != ret)
+	{
+		cwarn << "Assertion failure coming: evaluated result gives different outcome to ethash_quick_check_difficulty";
+		cwarn << "headerHash:" << _header.headerHash(WithoutNonce);
+		cwarn << "nonce:" << _header.nonce;
+		cwarn << "mixHash:" << _header.mixHash;
+		cwarn << "difficulty:" << _header.difficulty;
+		cwarn << "boundary:" << boundary;
+		cwarn << "result.value:" << result.value;
+		cwarn << "result.mixHash:" << result.mixHash;
+	}
+	assert((result.value <= boundary) == ret);
+	if (result.value <= boundary)
+		assert(result.mixHash == _header.mixHash);
 #endif
 
 	return ret;

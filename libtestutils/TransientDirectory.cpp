@@ -22,12 +22,16 @@
 #include <boost/filesystem.hpp>
 #include <libdevcore/Exceptions.h>
 #include "TransientDirectory.h"
-
 using namespace std;
 using namespace dev;
 using namespace dev::test;
 
-TransientDirectory::TransientDirectory(std::string const& _path) : m_path(_path)
+TransientDirectory::TransientDirectory():
+	TransientDirectory((boost::filesystem::temp_directory_path() / "eth_transient" / toString(FixedHash<4>::random())).string())
+{}
+
+TransientDirectory::TransientDirectory(std::string const& _path):
+	m_path(_path)
 {
 	// we never ever want to delete a directory (including all its contents) that we did not create ourselves.
 	if (boost::filesystem::exists(m_path))
