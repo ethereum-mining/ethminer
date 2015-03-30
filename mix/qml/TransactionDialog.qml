@@ -81,6 +81,7 @@ Window {
 					loadParameter(params[p]);
 			}
 		}
+		initTypeLoader();
 		modalTransactionDialog.setX((Screen.width - width) / 2);
 		modalTransactionDialog.setY((Screen.height - height) / 2);
 
@@ -126,11 +127,15 @@ Window {
 				}
 			}
 		}
+		initTypeLoader();
+	}
+
+	function initTypeLoader()
+	{
 		typeLoader.value = {}
 		typeLoader.members = []
 		typeLoader.value = paramValues;
 		typeLoader.members = paramsModel;
-
 	}
 
 	function close()
