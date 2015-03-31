@@ -45,7 +45,7 @@ Rectangle {
 	function errorMessage(text, type)
 	{
 		status.state = "error";
-		status.text = text
+		status.text = text;
 		logPane.push("error", type, text);
 	}
 
@@ -76,7 +76,7 @@ Rectangle {
 		function format(_message)
 		{
 			var formatted = _message.match(/(?:<dev::eth::)(.+)(?:>)/);
-			if (formatted)
+			if (!formatted)
 				formatted = _message.match(/(?:<dev::)(.+)(?:>)/);
 			if (formatted && formatted.length > 1)
 				formatted = formatted[1];
@@ -207,11 +207,9 @@ Rectangle {
 			}
 
 			id: logsContainer
-			width: 650
-			//height: 0
-			anchors.topMargin: 10
+			width: 750
+			anchors.topMargin: -30
 			anchors.top: statusContainer.bottom
-			//anchors.left: statusContainer.left
 			anchors.horizontalCenter: parent.horizontalCenter
 			visible: false
 			radius: 5
@@ -227,9 +225,8 @@ Rectangle {
 					top = top.parent
 				var coordinates = logsContainer.mapToItem(top, 0, 0);
 				logsContainer.parent = top;
-				//logsContainer.x = coordinates.x + 150;
+				logsContainer.x = coordinates.x + 150;
 				logsContainer.y = coordinates.y;
-				console.log(logsContainer.x);
 			}
 
 			LogsPane
