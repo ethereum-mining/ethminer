@@ -692,14 +692,13 @@ bytes Host::saveNetwork() const
 	for (auto const& p: peers)
 	{
 		// Only save peers which have connected within 2 days, with properly-advertised port and public IP address
+		// todo: e2e ipv6 support
 		bi::tcp::endpoint endpoint(p.peerEndpoint());
+		if (!endpoint.address().is_v4())
+			continue;
+		
 		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && endpoint.port() > 0 && endpoint.port() < /*49152*/32768 && p.id != id() && !isPrivateAddress(p.endpoint.udp.address()) && !isPrivateAddress(endpoint.address()))
 		{
-			// todo: e2e ipv6 support
-			if (endpoint.address().is_v4())
-				network << endpoint.address().to_v4().to_bytes();
-				continue;
-
 			network.appendList(10);
 			network << endpoint.port() << p.id << p.required
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastConnected.time_since_epoch()).count()
@@ -729,7 +728,7 @@ bytes Host::saveNetwork() const
 	RLPStream ret(3);
 	ret << dev::p2p::c_protocolVersion << m_alias.secret();
 	ret.appendList(count);
-	if (count)
+	if (!!count)
 		ret.appendRaw(network.out(), count);
 	return ret.out();
 }
