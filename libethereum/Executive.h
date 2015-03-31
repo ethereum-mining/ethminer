@@ -128,6 +128,8 @@ private:
 
 	unsigned m_depth = 0;				///< The context's call-depth.
 	bool m_isCreation = false;			///< True if the transaction creates a contract, or if create() is called.
+	unsigned m_depositSize = 0;			///< Amount of code of the creation's attempted deposit.
+	u256 m_gasForDeposit;				///< Amount of gas remaining for the code deposit phase.
 	CodeDeposit m_codeDeposit = CodeDeposit::None;	///< True if an attempted deposit failed due to lack of gas.
 	TransactionException m_excepted = TransactionException::None;	///< Details if the VM's execution resulted in an exception.
 	u256 m_endGas;						///< The final amount of gas for the transaction.

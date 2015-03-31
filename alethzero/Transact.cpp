@@ -338,7 +338,7 @@ void Transact::rejigData()
 	}
 	if (er.codeDeposit == CodeDeposit::Failed)
 	{
-		bail("<div class=\"error\"><span class=\"icon\">ERROR</span> Code deposit failed due to insufficient gas</div>");
+		bail("<div class=\"error\"><span class=\"icon\">ERROR</span> Code deposit failed due to insufficient gas; " + QString::fromStdString(toString(er.gasForDeposit)) + " GAS &lt; " + QString::fromStdString(toString(er.depositSize)) + " bytes * " + QString::fromStdString(toString(c_createDataGas)) + "GAS/byte</div>");
 		return;
 	}
 
