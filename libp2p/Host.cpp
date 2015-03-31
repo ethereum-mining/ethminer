@@ -728,7 +728,9 @@ bytes Host::saveNetwork() const
 
 	RLPStream ret(3);
 	ret << dev::p2p::c_protocolVersion << m_alias.secret();
-	ret.appendList(count).appendRaw(network.out(), count);
+	ret.appendList(count);
+	if (count)
+		ret.appendRaw(network.out(), count);
 	return ret.out();
 }
 
@@ -769,7 +771,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 			{
 				shared_ptr<Peer> p = make_shared<Peer>();
 				p->id = id;
-				p->required = i[2].toInt<unsigned>();
+				p->required = i[3].toInt<bool>();
 				p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
 				p->m_lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
 				p->m_failedAttempts = i[6].toInt<unsigned>();
