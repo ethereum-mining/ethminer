@@ -1774,6 +1774,7 @@ void Main::on_net_triggered()
 	else
 	{
 		ui->downloadView->setDownloadMan(nullptr);
+		writeSettings();
 		web3()->stopNetwork();
 	}
 }
