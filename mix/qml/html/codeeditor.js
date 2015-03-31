@@ -113,6 +113,7 @@ setMode = function(mode) {
 		}
 		extraKeys["Ctrl-Space"] = "autocomplete";
 	}
+	editor.setOption("extraKeys", extraKeys);
 };
 
 setClipboardBase64 = function(text) {
