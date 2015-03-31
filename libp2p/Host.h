@@ -96,7 +96,7 @@ public:
 	static std::string pocHost();
 
 	/// Register a peer-capability; all new peer connections will have this capability.
-	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; auto ret = std::shared_ptr<T>(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
+	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; std::shared_ptr<T> ret(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
 
 	bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
