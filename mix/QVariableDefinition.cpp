@@ -26,6 +26,7 @@ namespace dev
 {
 namespace mix
 {
+
 QString QVariableDefinition::encodeValueAsString()
 {
 	return QString::fromStdString(dev::toHex(encodeValue()));

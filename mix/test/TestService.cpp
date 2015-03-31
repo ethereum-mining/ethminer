@@ -35,21 +35,22 @@ namespace mix
 
 enum MouseAction { MousePress, MouseRelease, MouseClick, MouseDoubleClick, MouseMove };
 
-static void mouseEvent(MouseAction _action, QWindow* _window, QObject* _item, Qt::MouseButton _button, Qt::KeyboardModifiers _stateKey, QPointF _pos, int _delay=-1)
+static void mouseEvent(MouseAction _action, QWindow* _window, QObject* _item, Qt::MouseButton _button, Qt::KeyboardModifiers _stateKey, QPointF _pos, int _delay = -1)
 {
 	if (_delay == -1 || _delay < 30)
 		_delay = 30;
 	if (_delay > 0)
 		QTest::qWait(_delay);
 
-	if (_action == MouseClick) {
+	if (_action == MouseClick)
+	{
 		mouseEvent(MousePress, _window, _item, _button, _stateKey, _pos);
 		mouseEvent(MouseRelease, _window, _item, _button, _stateKey, _pos);
 		return;
 	}
 
 	QPoint pos = _pos.toPoint();
-	QQuickItem *sgitem = qobject_cast<QQuickItem *>(_item);
+	QQuickItem* sgitem = qobject_cast<QQuickItem*>(_item);
 	if (sgitem)
 		pos = sgitem->mapToScene(_pos).toPoint();
 
@@ -58,26 +59,26 @@ static void mouseEvent(MouseAction _action, QWindow* _window, QObject* _item, Qt
 	QMouseEvent me(QEvent::User, QPoint(), Qt::LeftButton, _button, _stateKey);
 	switch (_action)
 	{
-		case MousePress:
-			me = QMouseEvent(QEvent::MouseButtonPress, pos, _window->mapToGlobal(pos), _button, _button, _stateKey);
-			break;
-		case MouseRelease:
-			me = QMouseEvent(QEvent::MouseButtonRelease, pos, _window->mapToGlobal(pos), _button, 0, _stateKey);
-			break;
-		case MouseDoubleClick:
-			me = QMouseEvent(QEvent::MouseButtonDblClick, pos, _window->mapToGlobal(pos), _button, _button, _stateKey);
-			break;
-		case MouseMove:
-			// with move event the _button is NoButton, but 'buttons' holds the currently pressed buttons
-			me = QMouseEvent(QEvent::MouseMove, pos, _window->mapToGlobal(pos), Qt::NoButton, _button, _stateKey);
-			break;
-		default:
-			break;
+	case MousePress:
+		me = QMouseEvent(QEvent::MouseButtonPress, pos, _window->mapToGlobal(pos), _button, _button, _stateKey);
+		break;
+	case MouseRelease:
+		me = QMouseEvent(QEvent::MouseButtonRelease, pos, _window->mapToGlobal(pos), _button, 0, _stateKey);
+		break;
+	case MouseDoubleClick:
+		me = QMouseEvent(QEvent::MouseButtonDblClick, pos, _window->mapToGlobal(pos), _button, _button, _stateKey);
+		break;
+	case MouseMove:
+		// with move event the _button is NoButton, but 'buttons' holds the currently pressed buttons
+		me = QMouseEvent(QEvent::MouseMove, pos, _window->mapToGlobal(pos), Qt::NoButton, _button, _stateKey);
+		break;
+	default:
+		break;
 	}
 	QSpontaneKeyEvent::setSpontaneous(&me);
-	if (!qApp->notify(_window, &me)) {
-		static const char *mouseActionNames[] =
-			{ "MousePress", "MouseRelease", "MouseClick", "MouseDoubleClick", "MouseMove" };
+	if (!qApp->notify(_window, &me))
+	{
+		static const char* mouseActionNames[] = { "MousePress", "MouseRelease", "MouseClick", "MouseDoubleClick", "MouseMove" };
 		QString warning = QString::fromLatin1("Mouse event \"%1\" not accepted by receiving window");
 		QWARN(warning.arg(QString::fromLatin1(mouseActionNames[static_cast<int>(_action)])).toLatin1().data());
 	}
@@ -85,21 +86,20 @@ static void mouseEvent(MouseAction _action, QWindow* _window, QObject* _item, Qt
 
 bool TestService::waitForSignal(QObject* _item, QString _signalName, int _timeout)
 {
-	QSignalSpy spy(_item,  ("2" + _signalName.toStdString()).c_str());
+	QSignalSpy spy(_item, ("2" + _signalName.toStdString()).c_str());
 	QMetaObject const* mo = _item->metaObject();
 
 	QStringList methods;
 
-	for(int i = mo->methodOffset(); i < mo->methodCount(); ++i) {
-		if (mo->method(i).methodType() == QMetaMethod::Signal) {
+	for (int i = mo->methodOffset(); i < mo->methodCount(); ++i)
+		if (mo->method(i).methodType() == QMetaMethod::Signal)
 			methods << QString::fromLatin1(mo->method(i).methodSignature());
-		}
-	}
 
 	QElapsedTimer timer;
 	timer.start();
 
-	while (!spy.size()) {
+	while (!spy.size())
+	{
 		int remaining = _timeout - int(timer.elapsed());
 		if (remaining <= 0)
 			break;
@@ -113,42 +113,42 @@ bool TestService::waitForSignal(QObject* _item, QString _signalName, int _timeou
 
 bool TestService::keyPress(QObject* _item, int _key, int _modifiers, int _delay)
 {
-	QWindow *window = eventWindow(_item);
+	QWindow* window = eventWindow(_item);
 	QTest::keyPress(window, Qt::Key(_key), Qt::KeyboardModifiers(_modifiers), _delay);
 	return true;
 }
 
 bool TestService::keyRelease(QObject* _item, int _key, int _modifiers, int _delay)
 {
-	QWindow *window = eventWindow(_item);
+	QWindow* window = eventWindow(_item);
 	QTest::keyRelease(window, Qt::Key(_key), Qt::KeyboardModifiers(_modifiers), _delay);
 	return true;
 }
 
 bool TestService::keyClick(QObject* _item, int _key, int _modifiers, int _delay)
 {
-	QWindow *window = eventWindow(_item);
+	QWindow* window = eventWindow(_item);
 	QTest::keyClick(window, Qt::Key(_key), Qt::KeyboardModifiers(_modifiers), _delay);
 	return true;
 }
 
 bool TestService::keyPressChar(QObject* _item, QString const& _character, int _modifiers, int _delay)
 {
-	QWindow *window = eventWindow(_item);
+	QWindow* window = eventWindow(_item);
 	QTest::keyPress(window, _character[0].toLatin1(), Qt::KeyboardModifiers(_modifiers), _delay);
 	return true;
 }
 
 bool TestService::keyReleaseChar(QObject* _item, QString const& _character, int _modifiers, int _delay)
 {
-	QWindow *window = eventWindow(_item);
+	QWindow* window = eventWindow(_item);
 	QTest::keyRelease(window, _character[0].toLatin1(), Qt::KeyboardModifiers(_modifiers), _delay);
 	return true;
 }
 
 bool TestService::keyClickChar(QObject* _item, QString const& _character, int _modifiers, int _delay)
 {
-	QWindow *window = eventWindow(_item);
+	QWindow* window = eventWindow(_item);
 	QTest::keyClick(window, _character[0].toLatin1(), Qt::KeyboardModifiers(_modifiers), _delay);
 	return true;
 }
@@ -172,7 +172,7 @@ void TestService::setTargetWindow(QObject* _window)
 
 QWindow* TestService::eventWindow(QObject* _item)
 {
-	QQuickItem* item = qobject_cast<QQuickItem *>(_item);
+	QQuickItem* item = qobject_cast<QQuickItem*>(_item);
 	if (item && item->window())
 		return item->window();
 
