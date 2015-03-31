@@ -75,16 +75,29 @@ TransactionException toTransactionException(VMException const& _e);
 struct ExecutionResult
 {
 	ExecutionResult() = default;
-	ExecutionResult(u256 _gasUsed, TransactionException _excepted, Address _newAddress, bytesConstRef _output, CodeDeposit _codeDeposit, u256 _gasRefund): gasUsed(_gasUsed), excepted(_excepted), newAddress(_newAddress), output(_output.toBytes()), codeDeposit(_codeDeposit), gasRefunded(_gasRefund) {}
+	ExecutionResult(u256 const& _gasUsed, TransactionException _excepted, Address const& _newAddress, bytesConstRef _output, CodeDeposit _codeDeposit, u256 const& _gasRefund, unsigned _depositSize, u256 const& _gasForDeposit):
+		gasUsed(_gasUsed),
+		excepted(_excepted),
+		newAddress(_newAddress),
+		output(_output.toBytes()),
+		codeDeposit(_codeDeposit),
+		gasRefunded(_gasRefund),
+		depositSize(_depositSize),
+		gasForDeposit(_gasForDeposit)
+	{}
 	u256 gasUsed = 0;
 	TransactionException excepted = TransactionException::Unknown;
 	Address newAddress;
 	bytes output;
 	CodeDeposit codeDeposit = CodeDeposit::None;
 	u256 gasRefunded = 0;
+	unsigned depositSize = 0;
+	u256 gasForDeposit;
 };
 
 std::ostream& operator<<(std::ostream& _out, ExecutionResult const& _er);
+
+static const Address NullAddress;
 
 /// Encodes a transaction, ready to be exported to or freshly imported from RLP.
 class Transaction
@@ -94,16 +107,16 @@ public:
 	Transaction() {}
 
 	/// Constructs a signed message-call transaction.
-	Transaction(u256 _value, u256 _gasPrice, u256 _gas, Address const& _dest, bytes const& _data, u256 _nonce, Secret const& _secret): m_type(MessageCall), m_nonce(_nonce), m_value(_value), m_receiveAddress(_dest), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) { sign(_secret); }
+	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret): m_type(MessageCall), m_nonce(_nonce), m_value(_value), m_receiveAddress(_dest), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) { sign(_secret); }
 
 	/// Constructs a signed contract-creation transaction.
-	Transaction(u256 _value, u256 _gasPrice, u256 _gas, bytes const& _data, u256 _nonce, Secret const& _secret): m_type(ContractCreation), m_nonce(_nonce), m_value(_value), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) { sign(_secret); }
+	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data, u256 const& _nonce, Secret const& _secret): m_type(ContractCreation), m_nonce(_nonce), m_value(_value), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) { sign(_secret); }
 
 	/// Constructs an unsigned message-call transaction.
-	Transaction(u256 _value, u256 _gasPrice, u256 _gas, Address const& _dest, bytes const& _data): m_type(MessageCall), m_value(_value), m_receiveAddress(_dest), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
+	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data): m_type(MessageCall), m_value(_value), m_receiveAddress(_dest), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
 
 	/// Constructs an unsigned contract-creation transaction.
-	Transaction(u256 _value, u256 _gasPrice, u256 _gas, bytes const& _data): m_type(ContractCreation), m_value(_value), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
+	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data): m_type(ContractCreation), m_value(_value), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
 
 	/// Constructs a transaction from the given RLP.
 	explicit Transaction(bytesConstRef _rlp, CheckSignature _checkSig);
@@ -118,9 +131,9 @@ public:
 	bool operator!=(Transaction const& _c) const { return !operator==(_c); }
 
 	/// @returns sender of the transaction from the signature (and hash).
-	Address sender() const;
+	Address const& sender() const;
 	/// Like sender() but will never throw. @returns a null Address if the signature is invalid.
-	Address safeSender() const noexcept;
+	Address const& safeSender() const noexcept;
 
 	/// @returns true if transaction is non-null.
 	explicit operator bool() const { return m_type != NullTransaction; }

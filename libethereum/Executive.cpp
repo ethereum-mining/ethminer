@@ -46,7 +46,7 @@ u256 Executive::gasUsed() const
 
 ExecutionResult Executive::executionResult() const
 {
-	return ExecutionResult(gasUsed(), m_excepted, m_newAddress, m_out, m_codeDeposit, m_ext ? m_ext->sub.refunds : 0);
+	return ExecutionResult(gasUsed(), m_excepted, m_newAddress, m_out, m_codeDeposit, m_ext ? m_ext->sub.refunds : 0, m_depositSize, m_gasForDeposit);
 }
 
 void Executive::accrueSubState(SubState& _parentContext)
@@ -221,6 +221,8 @@ bool Executive::go(OnOpFunc const& _onOp)
 
 			if (m_isCreation)
 			{
+				m_gasForDeposit = m_endGas;
+				m_depositSize = m_out.size();
 				if (m_out.size() * c_createDataGas <= m_endGas)
 				{
 					m_codeDeposit = CodeDeposit::Success;
@@ -228,6 +230,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 				}
 				else
 				{
+
 					m_codeDeposit = CodeDeposit::Failed;
 					m_out.reset();
 				}
