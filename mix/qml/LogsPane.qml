@@ -15,10 +15,11 @@ Rectangle
 
 	anchors.fill: parent
 	radius: 5
-	color: LogsPaneStyle.generic.layout.backgroundColor
-	ColumnLayout {
+	color: "transparent"
+	id: logsPane
+	Column {
 		z: 2
-		height: parent.height
+		height: parent.height - rowAction.height
 		width: parent.width
 		spacing: 0
 
@@ -26,90 +27,128 @@ Rectangle
 			id: logsModel
 		}
 
-		TableView {
-			id: logsTable
-			clip: true
-			Layout.fillWidth: true
-			Layout.preferredHeight: parent.height - rowAction.height
-			headerVisible : false
-			onDoubleClicked:
+		ScrollView
+		{
+			id: scrollView
+			height: parent.height
+			width: parent.width
+			horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff
+			ColumnLayout
 			{
-				var log = logsModel.get(logsTable.currentRow);
-				if (log)
-					clipboard.text = (log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content);
-			}
+				id: logsRect
+				spacing: 0
+				Repeater {
+					clip: true
+					model: SortFilterProxyModel {
+						id: proxyModel
+						source: logsModel
+						property var roles: ["-", "javascript", "run", "state"]
 
-			model: SortFilterProxyModel {
-				id: proxyModel
-				source: logsModel
-				property var roles: ["-", "javascript", "run", "state"]
+						Component.onCompleted: {
+							filterType = regEx(proxyModel.roles);
+						}
 
-				Component.onCompleted: {
-					filterType = regEx(proxyModel.roles);
-				}
-
-				function search(_value)
-				{
-					filterContent = _value;
-				}
-
-				function toogleFilter(_value)
-				{
-					var count = roles.length;
-					for (var i in roles)
-					{
-						if (roles[i] === _value)
+						function search(_value)
 						{
-							roles.splice(i, 1);
-							break;
+							filterContent = _value;
+						}
+
+						function toogleFilter(_value)
+						{
+							var count = roles.length;
+							for (var i in roles)
+							{
+								if (roles[i] === _value)
+								{
+									roles.splice(i, 1);
+									break;
+								}
+							}
+							if (count === roles.length)
+								roles.push(_value);
+
+							filterType = regEx(proxyModel.roles);
+						}
+
+						function regEx(_value)
+						{
+							return "(?:" + roles.join('|') + ")";
+						}
+
+						filterType: "(?:javascript|run|state)"
+						filterContent: ""
+						filterSyntax: SortFilterProxyModel.RegExp
+						filterCaseSensitivity: Qt.CaseInsensitive
+					}
+
+					Rectangle
+					{
+						width: 750
+						height: 30
+						color:
+						{
+							if (level === "warning" || level === "error")
+								return "#fffcd5";
+							else
+								return index % 2 === 0 ? "transparent" : LogsPaneStyle.generic.layout.logAlternateColor;
+						}
+
+
+						DefaultLabel {
+							text: date;
+							font.family: LogsPaneStyle.generic.layout.logLabelFont
+							width: LogsPaneStyle.generic.layout.dateWidth
+							font.pointSize: Style.absoluteSize(-1)
+							anchors.left: parent.left
+							anchors.leftMargin: 15
+							anchors.verticalCenter: parent.verticalCenter
+							color: {
+								parent.getColor(level);
+							}
+						}
+
+						DefaultLabel {
+							text: type;
+							font.family: LogsPaneStyle.generic.layout.logLabelFont
+							width: LogsPaneStyle.generic.layout.typeWidth
+							font.pointSize: Style.absoluteSize(-1)
+							anchors.left: parent.left
+							anchors.leftMargin: 100
+							anchors.verticalCenter: parent.verticalCenter
+							color: {
+								parent.getColor(level);
+							}
+						}
+
+						DefaultLabel {
+							text: content;
+							font.family: LogsPaneStyle.generic.layout.logLabelFont
+							width: LogsPaneStyle.generic.layout.contentWidth
+							font.pointSize: Style.absoluteSize(-1)
+							anchors.verticalCenter: parent.verticalCenter
+							anchors.left: parent.left
+							anchors.leftMargin: 190
+							color: {
+								parent.getColor(level);
+							}
+						}
+
+						function getColor()
+						{
+							if (level === "error")
+								return "red";
+							else if (level === "warning")
+								return "orange";
+							else
+								return "#808080";
 						}
 					}
-					if (count === roles.length)
-						roles.push(_value);
-
-					filterType = regEx(proxyModel.roles);
-				}
-
-				function regEx(_value)
-				{
-					return "(?:" + roles.join('|') + ")";
-				}
-
-				filterType: "(?:javascript|run|state)"
-				filterContent: ""
-				filterSyntax: SortFilterProxyModel.RegExp
-				filterCaseSensitivity: Qt.CaseInsensitive
-			}
-			TableViewColumn
-			{
-				role: "date"
-				title: qsTr("date")
-				width: LogsPaneStyle.generic.layout.dateWidth
-				delegate: itemDelegate
-			}
-			TableViewColumn
-			{
-				role: "type"
-				title: qsTr("type")
-				width: LogsPaneStyle.generic.layout.typeWidth
-				delegate: itemDelegate
-			}
-			TableViewColumn
-			{
-				role: "content"
-				title: qsTr("content")
-				width: LogsPaneStyle.generic.layout.contentWidth
-				delegate: itemDelegate
-			}
-
-			rowDelegate: Item {
-				Rectangle {
-					width: logsTable.width - 4
-					height: 17
-					color: styleData.alternate ? "transparent" : LogsPaneStyle.generic.layout.logAlternateColor
 				}
 			}
+
+
 		}
+
 
 		Component {
 			id: itemDelegate
@@ -128,58 +167,43 @@ Rectangle
 			}
 		}
 
+	}
+
+	Rectangle
+	{
+		gradient: Gradient {
+			GradientStop { position: 0.0; color: "#f1f1f1" }
+			GradientStop { position: 1.0; color: "#d9d7da" }
+		}
+		Layout.preferredHeight: LogsPaneStyle.generic.layout.headerHeight
+		height: LogsPaneStyle.generic.layout.headerHeight
+		width: logsPane.width
+		anchors.bottom: parent.bottom
 		Row
 		{
 			id: rowAction
-			Layout.preferredHeight: LogsPaneStyle.generic.layout.headerHeight
-			height: LogsPaneStyle.generic.layout.headerHeight
 			anchors.leftMargin: LogsPaneStyle.generic.layout.leftMargin
 			anchors.left: parent.left
 			spacing: LogsPaneStyle.generic.layout.headerButtonSpacing
-			Button
+			height: parent.height
+			Rectangle
 			{
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				color: "transparent"
+				height: 20
+				width: 50
 				anchors.verticalCenter: parent.verticalCenter
-				action: clearAction
-				iconSource: "qrc:/qml/img/broom.png"
-			}
-
-			Action {
-				id: clearAction
-				enabled: logsModel.count > 0
-				tooltip: qsTr("Clear")
-				onTriggered: {
-					logsModel.clear()
-				}
-			}
-
-			Button
-			{
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
-				anchors.verticalCenter: parent.verticalCenter
-				action: copytoClipBoardAction
-				iconSource: "qrc:/qml/img/copy.png"
-			}
-
-			Action {
-				id: copytoClipBoardAction
-				enabled: logsModel.count > 0
-				tooltip: qsTr("Copy to Clipboard")
-				onTriggered: {
-					var content = "";
-					for (var k = 0; k < logsModel.count; k++)
-					{
-						var log = logsModel.get(k);
-						content += log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content + "\n";
-					}
-					clipboard.text = content;
+				DefaultLabel
+				{
+					color: "#808080"
+					font.family: LogsPaneStyle.generic.layout.logLabelFont
+					text: qsTr("Show:")
 				}
 			}
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
-				height: parent.height - 10
+				height: parent.height
 				color : "#808080"
 			}
 
@@ -187,6 +211,7 @@ Rectangle
 				id: javascriptButton
 				checkable: true
 				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				width: 20
 				anchors.verticalCenter: parent.verticalCenter
 				checked: true
 				onCheckedChanged: {
@@ -202,16 +227,28 @@ Rectangle
 							font.pointSize: Style.absoluteSize(-3)
 							color: LogsPaneStyle.generic.layout.logLabelColor
 							anchors.centerIn: parent
-							text: qsTr("JavaScript")
+							text: qsTr("JS")
 						}
 					}
+					background:
+						Rectangle {
+						color: javascriptButton.checked ? "#cfcfcf" : "transparent"
+					}
 				}
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 1;
+				height: parent.height
+				color : "#808080"
 			}
 
 			ToolButton {
 				id: runButton
 				checkable: true
 				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				width: 30
 				anchors.verticalCenter: parent.verticalCenter
 				checked: true
 				onCheckedChanged: {
@@ -230,7 +267,18 @@ Rectangle
 							text: qsTr("Run")
 						}
 					}
+					background:
+						Rectangle {
+						color: runButton.checked ? "#cfcfcf" : "transparent"
+					}
 				}
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 1;
+				height: parent.height
+				color : "#808080"
 			}
 
 			ToolButton {
@@ -238,6 +286,7 @@ Rectangle
 				checkable: true
 				height: LogsPaneStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
+				width: 35
 				checked: true
 				onCheckedChanged: {
 					proxyModel.toogleFilter("state")
@@ -250,25 +299,143 @@ Rectangle
 						DefaultLabel {
 							font.family: LogsPaneStyle.generic.layout.logLabelFont
 							font.pointSize: Style.absoluteSize(-3)
-							color: "#5391d8"
+							color: LogsPaneStyle.generic.layout.logLabelColor
 							anchors.centerIn: parent
 							text: qsTr("State")
 						}
 					}
+					background:
+						Rectangle {
+						color: stateButton.checked ? "#cfcfcf" : "transparent"
+					}
+				}
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 1;
+				height: parent.height
+				color : "#808080"
+			}
+		}
+
+		Row
+		{
+			height: parent.height
+			anchors.right: parent.right
+			anchors.rightMargin: 4
+			spacing: 4
+			Button
+			{
+				id: clearButton
+				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				anchors.verticalCenter: parent.verticalCenter
+				action: hideAction
+				iconSource: "qrc:/qml/img/cleariconactive.png"
+				style:
+					ButtonStyle {
+					background:
+						Rectangle {
+						height: LogsPaneStyle.generic.layout.headerButtonHeight
+						implicitHeight: LogsPaneStyle.generic.layout.headerButtonHeight
+						color: "transparent"
+					}
+				}
+			}
+
+			Image {
+				id: clearImage
+				source: "qrc:/qml/img/cleariconactive.png"
+				anchors.centerIn: parent
+				fillMode: Image.PreserveAspectFit
+				width: 30
+				height: 30
+			}
+
+			Button
+			{
+				id: exitButton
+				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				anchors.verticalCenter: parent.verticalCenter
+				action: exitAction
+				iconSource: "qrc:/qml/img/exit.png"
+				style:
+					ButtonStyle {
+					background:
+						Rectangle {
+						height: LogsPaneStyle.generic.layout.headerButtonHeight
+						color: "transparent"
+					}
+				}
+			}
+
+			Button
+			{
+				id: copyButton
+				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				anchors.verticalCenter: parent.verticalCenter
+				action: copytoClipBoardAction
+				iconSource: "qrc:/qml/img/copyiconactive.png"
+				style:
+					ButtonStyle {
+					background:
+						Rectangle {
+						height: LogsPaneStyle.generic.layout.headerButtonHeight
+						color: "transparent"
+					}
+				}
+			}
+
+			Action {
+				id: clearAction
+				tooltip: qsTr("Hide")
+				onTriggered: {
+					logsPane.parent.toggle();
+				}
+			}
+
+			Action {
+				id: hideAction
+				enabled: logsModel.count > 0
+				tooltip: qsTr("Clear")
+				onTriggered: {
+					logsModel.clear()
+				}
+			}
+
+			Action {
+				id: copytoClipBoardAction
+				enabled: logsModel.count > 0
+				tooltip: qsTr("Copy to Clipboard")
+				onTriggered: {
+					var content = "";
+					for (var k = 0; k < logsModel.count; k++)
+					{
+						var log = logsModel.get(k);
+						content += log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content + "\n";
+					}
+					clipboard.text = content;
 				}
 			}
 
 			DefaultTextField
 			{
 				id: searchBox
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				height: LogsPaneStyle.generic.layout.headerButtonHeight - 5
 				anchors.verticalCenter: parent.verticalCenter
-				width: LogsPaneStyle.generic.layout.headerInputWidth
+				width: LogsPaneStyle.generic.layout.headerInputWidth - 40
 				font.family: LogsPaneStyle.generic.layout.logLabelFont
 				font.pointSize: Style.absoluteSize(-3)
 				font.italic: true
+				text: qsTr("Search")
 				onTextChanged: {
 					proxyModel.search(text);
+				}
+				style:
+					TextFieldStyle {
+					background: Rectangle {
+						radius: 10
+					}
 				}
 			}
 		}
