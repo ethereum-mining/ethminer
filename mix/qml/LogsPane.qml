@@ -189,12 +189,13 @@ Rectangle
 			Rectangle
 			{
 				color: "transparent"
-				height: 20
-				width: 50
-				anchors.verticalCenter: parent.verticalCenter
+				height: parent.height
+				width: 40
 				DefaultLabel
 				{
+					anchors.verticalCenter: parent.verticalCenter
 					color: "#808080"
+					font.pointSize: Style.absoluteSize(-3)
 					font.family: LogsPaneStyle.generic.layout.logLabelFont
 					text: qsTr("Show:")
 				}
@@ -204,7 +205,7 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color : "#808080"
+				color : "transparent"
 			}
 
 			ToolButton {
@@ -232,7 +233,7 @@ Rectangle
 					}
 					background:
 						Rectangle {
-						color: javascriptButton.checked ? "#cfcfcf" : "transparent"
+						color: javascriptButton.checked ? "#dcdcdc" : "transparent"
 					}
 				}
 			}
@@ -241,7 +242,14 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color : "#808080"
+				color : "#d3d0d0"
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 1;
+				height: parent.height
+				color : "#f2f1f2"
 			}
 
 			ToolButton {
@@ -269,7 +277,7 @@ Rectangle
 					}
 					background:
 						Rectangle {
-						color: runButton.checked ? "#cfcfcf" : "transparent"
+						color: runButton.checked ? "#dcdcdc" : "transparent"
 					}
 				}
 			}
@@ -278,7 +286,14 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color : "#808080"
+				color : "#d3d0d0"
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 1;
+				height: parent.height
+				color : "#f2f1f2"
 			}
 
 			ToolButton {
@@ -306,7 +321,7 @@ Rectangle
 					}
 					background:
 						Rectangle {
-						color: stateButton.checked ? "#cfcfcf" : "transparent"
+						color: stateButton.checked ? "#dcdcdc" : "transparent"
 					}
 				}
 			}
@@ -315,7 +330,14 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color : "#808080"
+				color : "#d3d0d0"
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 1;
+				height: parent.height
+				color : "#f2f1f2"
 			}
 		}
 
@@ -323,98 +345,97 @@ Rectangle
 		{
 			height: parent.height
 			anchors.right: parent.right
-			anchors.rightMargin: 4
-			spacing: 4
-			Button
+			anchors.rightMargin: 10
+			spacing: 10
+			Rectangle
 			{
-				id: clearButton
 				height: LogsPaneStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
-				action: hideAction
-				iconSource: "qrc:/qml/img/cleariconactive.png"
-				style:
-					ButtonStyle {
-					background:
-						Rectangle {
-						height: LogsPaneStyle.generic.layout.headerButtonHeight
-						implicitHeight: LogsPaneStyle.generic.layout.headerButtonHeight
-						color: "transparent"
+				color: "transparent"
+				width: 20
+				Button
+				{
+					id: clearButton
+					action: clearAction
+					anchors.fill: parent
+					anchors.verticalCenter: parent.verticalCenter
+					height: 25
+					style:
+						ButtonStyle {
+						background:
+							Rectangle {
+							height: LogsPaneStyle.generic.layout.headerButtonHeight
+							implicitHeight: LogsPaneStyle.generic.layout.headerButtonHeight
+							color: "transparent"
+						}
+					}
+				}
+
+				Image {
+					id: clearImage
+					source: "qrc:/qml/img/cleariconactive.png"
+					anchors.centerIn: parent
+					fillMode: Image.PreserveAspectFit
+					width: 20
+					height: 20
+				}
+
+				Action {
+					id: clearAction
+					enabled: logsModel.count > 0
+					tooltip: qsTr("Clear")
+					onTriggered: {
+						logsModel.clear();
 					}
 				}
 			}
 
-			Image {
-				id: clearImage
-				source: "qrc:/qml/img/cleariconactive.png"
-				anchors.centerIn: parent
-				fillMode: Image.PreserveAspectFit
-				width: 30
-				height: 30
-			}
-
-			Button
+			Rectangle
 			{
-				id: exitButton
 				height: LogsPaneStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
-				action: exitAction
-				iconSource: "qrc:/qml/img/exit.png"
-				style:
-					ButtonStyle {
-					background:
-						Rectangle {
-						height: LogsPaneStyle.generic.layout.headerButtonHeight
-						color: "transparent"
+				color: "transparent"
+				width: 20
+				Button
+				{
+					id: copyButton
+					action: copyAction
+					anchors.fill: parent
+					anchors.verticalCenter: parent.verticalCenter
+					height: 25
+					style:
+						ButtonStyle {
+						background:
+							Rectangle {
+							height: LogsPaneStyle.generic.layout.headerButtonHeight
+							implicitHeight: LogsPaneStyle.generic.layout.headerButtonHeight
+							color: "transparent"
+						}
 					}
 				}
-			}
 
-			Button
-			{
-				id: copyButton
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
-				anchors.verticalCenter: parent.verticalCenter
-				action: copytoClipBoardAction
-				iconSource: "qrc:/qml/img/copyiconactive.png"
-				style:
-					ButtonStyle {
-					background:
-						Rectangle {
-						height: LogsPaneStyle.generic.layout.headerButtonHeight
-						color: "transparent"
+				Image {
+					id: copyImage
+					source: "qrc:/qml/img/copyiconactive.png"
+					anchors.centerIn: parent
+					fillMode: Image.PreserveAspectFit
+					width: 20
+					height: 20
+				}
+
+				Action {
+					id: copyAction
+					enabled: logsModel.count > 0
+					tooltip: qsTr("Copy to Clipboard")
+					onTriggered: {
+						var content = "";
+						for (var k = 0; k < logsModel.count; k++)
+						{
+							var log = logsModel.get(k);
+							content += log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content + "\n";
+						}
+						clipboard.text = content;
 					}
-				}
-			}
-
-			Action {
-				id: clearAction
-				tooltip: qsTr("Hide")
-				onTriggered: {
-					logsPane.parent.toggle();
-				}
-			}
-
-			Action {
-				id: hideAction
-				enabled: logsModel.count > 0
-				tooltip: qsTr("Clear")
-				onTriggered: {
-					logsModel.clear()
-				}
-			}
-
-			Action {
-				id: copytoClipBoardAction
-				enabled: logsModel.count > 0
-				tooltip: qsTr("Copy to Clipboard")
-				onTriggered: {
-					var content = "";
-					for (var k = 0; k < logsModel.count; k++)
-					{
-						var log = logsModel.get(k);
-						content += log.type + "\t" + log.level + "\t" + log.date + "\t" + log.content + "\n";
-					}
-					clipboard.text = content;
 				}
 			}
 
@@ -427,14 +448,69 @@ Rectangle
 				font.family: LogsPaneStyle.generic.layout.logLabelFont
 				font.pointSize: Style.absoluteSize(-3)
 				font.italic: true
-				text: qsTr("Search")
-				onTextChanged: {
-					proxyModel.search(text);
+				text: qsTr(" - Search - ")
+				onFocusChanged:
+				{
+					if (!focus && text === "")
+						text = qsTr(" - Search - ");
+					else if (focus && text === qsTr(" - Search - "))
+						text = "";
 				}
+
+				onTextChanged: {
+					if (text === qsTr(" - Search - "))
+						proxyModel.search("");
+					else
+						proxyModel.search(text);
+				}
+
 				style:
 					TextFieldStyle {
 					background: Rectangle {
 						radius: 10
+					}
+				}
+			}
+
+
+			Rectangle
+			{
+				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				anchors.verticalCenter: parent.verticalCenter
+				color: "transparent"
+				width: 20
+				Button
+				{
+					id: hideButton
+					action: hideAction
+					anchors.fill: parent
+					anchors.verticalCenter: parent.verticalCenter
+					height: 25
+					style:
+						ButtonStyle {
+						background:
+							Rectangle {
+							height: LogsPaneStyle.generic.layout.headerButtonHeight
+							implicitHeight: LogsPaneStyle.generic.layout.headerButtonHeight
+							color: "transparent"
+						}
+					}
+				}
+
+				Image {
+					id: hideImage
+					source: "qrc:/qml/img/exit.png"
+					anchors.centerIn: parent
+					fillMode: Image.PreserveAspectFit
+					width: 20
+					height: 20
+				}
+
+				Action {
+					id: hideAction
+					tooltip: qsTr("Exit")
+					onTriggered: {
+						logsPane.parent.toggle();
 					}
 				}
 			}

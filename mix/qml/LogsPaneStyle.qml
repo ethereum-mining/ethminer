@@ -12,7 +12,7 @@ QtObject {
 		property QtObject layout: QtObject {
 			property string backgroundColor: "#f7f7f7"
 			property int headerHeight: 30
-			property int headerButtonSpacing: 1
+			property int headerButtonSpacing: 0
 			property int leftMargin: 10
 			property int headerButtonHeight: 30
 			property string logLabelColor: "#808080"
