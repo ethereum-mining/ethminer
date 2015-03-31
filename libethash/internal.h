@@ -15,7 +15,7 @@ extern "C" {
 
 // compile time settings
 #define NODE_WORDS (64/4)
-#define MIX_WORDS (MIX_BYTES/4)
+#define MIX_WORDS (ETHASH_MIX_BYTES/4)
 #define MIX_NODES (MIX_WORDS / NODE_WORDS)
 #include <stdint.h>
 
@@ -34,7 +34,7 @@ void ethash_calculate_dag_item(
         node *const ret,
         const unsigned node_index,
         ethash_params const *params,
-        ethash_cache const *cache
+		void const *cache
 );
 
 void ethash_quick_hash(
