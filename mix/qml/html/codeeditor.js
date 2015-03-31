@@ -22,17 +22,11 @@ editor.on("change", function(eMirror, object) {
 });
 
 var mac = /Mac/.test(navigator.platform);
+var extraKeys = {};
 if (mac === true) {
-	editor.setOption("extraKeys", {
-						 "Cmd-V": function(cm) {
-							 cm.replaceSelection(clipboard);
-						 },
-						 "Cmd-X": function(cm) {
-							 window.document.execCommand("cut");
-						 },
-						 "Cmd-C": function(cm) {
-							 window.document.execCommand("copy");
-						 }});
+	extraKeys["Cmd-V"] = function(cm) { cm.replaceSelection(clipboard); };
+	extraKeys["Cmd-X"] = function(cm) { window.document.execCommand("cut"); };
+	extraKeys["Cmd-C"] = function(cm) { window.document.execCommand("copy"); };
 }
 
 makeMarker = function() {
@@ -102,16 +96,14 @@ setMode = function(mode) {
 	if (mode === "javascript")
 	{
 		ternServer = new CodeMirror.TernServer({defs: [ ecma5Spec() ]});
-		editor.setOption("extraKeys", {
-							 "Ctrl-Space": function(cm) { ternServer.complete(cm); },
-							 "Ctrl-I": function(cm) { ternServer.showType(cm); },
-							 "Ctrl-O": function(cm) { ternServer.showDocs(cm); },
-							 "Alt-.": function(cm) { ternServer.jumpToDef(cm); },
-							 "Alt-,": function(cm) { ternServer.jumpBack(cm); },
-							 "Ctrl-Q": function(cm) { ternServer.rename(cm); },
-							 "Ctrl-.": function(cm) { ternServer.selectName(cm); },
-							 "'.'": function(cm) { setTimeout(function() { ternServer.complete(cm); }, 100); throw CodeMirror.Pass; }
-						 })
+		extraKeys["Ctrl-Space"] = function(cm) { ternServer.complete(cm); };
+		extraKeys["Ctrl-I"] = function(cm) { ternServer.showType(cm); };
+		extraKeys["Ctrl-O"] = function(cm) { ternServer.showDocs(cm); };
+		extraKeys["Alt-."] = function(cm) { ternServer.jumpToDef(cm); };
+		extraKeys["Alt-,"] = function(cm) { ternServer.jumpBack(cm); };
+		extraKeys["Ctrl-Q"] = function(cm) { ternServer.rename(cm); };
+		extraKeys["Ctrl-."] = function(cm) { ternServer.selectName(cm); };
+		extraKeys["'.'"] = function(cm) { setTimeout(function() { ternServer.complete(cm); }, 100); throw CodeMirror.Pass; };
 		editor.on("cursorActivity", function(cm) { ternServer.updateArgHints(cm); });
 	}
 	else if (mode === "solidity")
@@ -119,10 +111,9 @@ setMode = function(mode) {
 		CodeMirror.commands.autocomplete = function(cm) {
 			CodeMirror.showHint(cm, CodeMirror.hint.anyword);
 		}
-		editor.setOption("extraKeys", {
-							 "Ctrl-Space": "autocomplete"
-						 })
+		extraKeys["Ctrl-Space"] = "autocomplete";
 	}
+	editor.setOption("extraKeys", extraKeys);
 };
 
 setClipboardBase64 = function(text) {
@@ -199,3 +190,5 @@ compilationComplete = function()
 	}
 	compilationCompleteBool = true;
 }
+
+editor.setOption("extraKeys", extraKeys);
