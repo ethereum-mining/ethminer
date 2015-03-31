@@ -373,7 +373,7 @@ Rectangle
 
 				Image {
 					id: clearImage
-					source: "qrc:/qml/img/cleariconactive.png"
+					source: clearAction.enabled ? "qrc:/qml/img/cleariconactive.png" : "qrc:/qml/img/clearicon.png"
 					anchors.centerIn: parent
 					fillMode: Image.PreserveAspectFit
 					width: 20
@@ -416,7 +416,7 @@ Rectangle
 
 				Image {
 					id: copyImage
-					source: "qrc:/qml/img/copyiconactive.png"
+					source: copyAction.enabled ? "qrc:/qml/img/copyiconactive.png" : "qrc:/qml/img/copyicon.png"
 					anchors.centerIn: parent
 					fillMode: Image.PreserveAspectFit
 					width: 20
