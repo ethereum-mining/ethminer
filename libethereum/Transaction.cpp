@@ -88,12 +88,12 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 	}
 	catch (Exception& _e)
 	{
-		_e << errinfo_name("invalid transaction format") << BadFieldError(field,toHex(rlp[field].data().toBytes()));
+		_e << errinfo_name("invalid transaction format") << BadFieldError(field, toHex(rlp[field].data().toBytes()));
 		throw;
 	}
 }
 
-Address Transaction::safeSender() const noexcept
+Address const& Transaction::safeSender() const noexcept
 {
 	try
 	{
@@ -102,11 +102,11 @@ Address Transaction::safeSender() const noexcept
 	catch (...)
 	{
 		cwarn << "safeSender() did throw an exception: " <<  boost::current_exception_diagnostic_information();
-		return Address();
+		return NullAddress;
 	}
 }
 
-Address Transaction::sender() const
+Address const& Transaction::sender() const
 {
 	if (!m_sender)
 	{
