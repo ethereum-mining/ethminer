@@ -73,7 +73,7 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_blockhash_t seed
  *                           data calculated by @see ethash_prep_full(). Memory
  *                           ownership is transfered to the callee. Remember that
  *                           you eventually need to free this with a call to free().
- * @param[out] data_size     Pass a size_t by value. If the function is succesfull
+ * @param[out] data_size     Pass a uint64_t by value. If the function is succesfull
  *                           then this will contain the number of bytes allocated
  *                           for @a data.
  * @return                   True for success and false in case of failure.
@@ -83,7 +83,7 @@ bool ethash_io_write(char const *dirname,
                      ethash_blockhash_t seedhash,
                      void const* cache,
                      uint8_t **data,
-                     size_t *data_size);
+                     uint64_t *data_size);
 
 static inline void ethash_io_serialize_info(uint32_t revision,
                                             ethash_blockhash_t seed_hash,
