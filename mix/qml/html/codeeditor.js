@@ -124,8 +124,6 @@ var executionMark;
 highlightExecution = function(start, end) {
 	if (executionMark)
 		executionMark.clear();
-	if (start === 0 && end + 1 === editor.getValue().length)
-		return; // Do not hightlight the whole document.
 	if (debugWarning)
 		debugWarning.clear();
 	executionMark = editor.markText(editor.posFromIndex(start), editor.posFromIndex(end), { className: "CodeMirror-exechighlight" });
