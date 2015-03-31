@@ -31,33 +31,29 @@
   white-space: pre;
   color: black;
   cursor: pointer;
+  padding-left: 20px;
+  padding-top: 3px;
+  padding-bottom: 3px;
 }
 
 .CodeMirror-hint-active {
   background: #4a90e2;
-  color: white;
+  color: white !important;
 }
 
-.solcurrency {
-  color: red;
+.CodeMirror-hint-active .solToken,
+.CodeMirror-hint-active .solTokenType
+{
+  color: white !important;
 }
 
-.solkeywords {
-  color: brown;
+.solToken {
+  float: left;
 }
 
-.solstdcontract {
-  color: blue;
-}
-
-.soltime {
-  color: green;
-}
-
-.soltypes {
-  color: orange;
-}
-
-.solMisc {
-  color: grey;
+.solTokenType
+{
+  font-style: italic;
+  color: #808080;
+  float: right;
 }
