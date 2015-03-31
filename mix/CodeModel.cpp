@@ -93,7 +93,23 @@ private:
 	bool m_functionScope;
 	uint m_storageSlot;
 };
+
+dev::eth::AssemblyItems filterLocations(dev::eth::AssemblyItems const& _locations, dev::solidity::ContractDefinition const& _contract, QHash<LocationPair, QString> _functions)
+{
+	dev::eth::AssemblyItems result;
+	result.reserve(_locations.size());
+	std::string sourceName = *_contract.getLocation().sourceName;
+	for (dev::eth::AssemblyItem item : _locations)
+	{
+		dev::SourceLocation const& l = item.getLocation();
+		if (sourceName != *l.sourceName || _contract.getLocation() == l || _functions.contains(LocationPair(l.start, l.end)))
+			item.setLocation(dev::SourceLocation(-1, -1, l.sourceName));
+		result.push_back(item);
+	}
+	return result;
 }
+
+} //namespace
 
 void BackgroundWorker::queueCodeChange(int _jobId)
 {
@@ -105,13 +121,11 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	m_sourceHash(qHash(_source))
 {
 	std::string name = _contractName.toStdString();
-	auto const& contractDefinition = _compiler.getContractDefinition(name);
+	ContractDefinition const& contractDefinition = _compiler.getContractDefinition(name);
 	m_contract.reset(new QContractDefinition(nullptr, &contractDefinition));
 	QQmlEngine::setObjectOwnership(m_contract.get(), QQmlEngine::CppOwnership);
 	m_contract->moveToThread(QApplication::instance()->thread());
 	m_bytes = _compiler.getBytecode(_contractName.toStdString());
-	m_assemblyItems = _compiler.getRuntimeAssemblyItems(name);
-	m_constructorAssemblyItems = _compiler.getAssemblyItems(name);
 
 	dev::solidity::InterfaceHandler interfaceHandler;
 	m_contractInterface = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
@@ -122,6 +136,8 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 
 	CollectDeclarationsVisitor visitor(&m_functions, &m_locals, &m_storage);
 	contractDefinition.accept(visitor);
+	m_assemblyItems = filterLocations(_compiler.getRuntimeAssemblyItems(name), contractDefinition, m_functions);
+	m_constructorAssemblyItems = filterLocations(_compiler.getAssemblyItems(name), contractDefinition, m_functions);
 }
 
 QString CompiledContract::codeHex() const
