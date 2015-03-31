@@ -10,38 +10,6 @@ Item {
     property ListModel transactionModel: ListModel{}
     property ListModel callModel: ListModel{}
 
-    Action {
-        id: addStateAction
-        text: "Add State"
-        shortcut: "Ctrl+Alt+T"
-        enabled: codeModel.hasContract && !clientModel.running;
-        onTriggered: projectModel.stateListModel.addState();
-    }
-    Action {
-        id: editStateAction
-        text: "Edit State"
-        shortcut: "Ctrl+Alt+T"
-        enabled: codeModel.hasContract && !clientModel.running && statesCombo.selectedIndex >= 0 && projectModel.stateListModel.count > 0;
-        onTriggered: projectModel.stateListModel.editState(statesCombo.selectedIndex);
-    }
-    Action {
-        id: playAndPauseAction
-        checkable: true;
-        checked: false;
-        iconSource: "qrc:/qml/img/play_button.png"
-        onToggled: {
-            if (checked)
-            {
-                this.iconSource = "qrc:/qml/img/pause_button2x.png"
-                console.log("play");
-            }else{
-                this.iconSource = "qrc:/qml/img/play_button2x.png"
-                console.log("pause");
-            }
-        }
-        enabled: true
-    }
-
     ColumnLayout {
         anchors.fill: parent
         RowLayout {
@@ -80,8 +48,7 @@ Item {
             StatesComboBox
             {
                 id: statesCombo
-                items:projectModel.stateListModel
-                //onSelectItem: console.log("Combobox Select Item: " + item )
+                items: projectModel.stateListModel
                 onSelectCreate: projectModel.stateListModel.addState();
                 onEditItem: projectModel.stateListModel.editState(item)
                 colorItem: "black"

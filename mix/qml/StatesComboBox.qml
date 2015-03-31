@@ -26,9 +26,9 @@ import QtQuick.Layouts 1.1
 import QtGraphicalEffects 1.0
 
 Rectangle {
-    id:statesComboBox
+    id: statesComboBox
 
-    width:200;
+    width: 200;
     height: 20;
 
     Component.onCompleted:
@@ -72,19 +72,19 @@ Rectangle {
 
     smooth:true;
     Rectangle {
-        id:chosenItem
-        width:parent.width;
-        height:statesComboBox.height;
-        color: statesComboBox.color;
-        smooth:true;
+        id: chosenItem
+        width: parent.width;
+        height: statesComboBox.height;
+        color:  statesComboBox.color;
+        smooth: true;
         Text {
-            id:chosenItemText
+            id: chosenItemText
             anchors.top: parent.top;
             anchors.left: parent.left;
             anchors.margins: 2;
             color: statesComboBox.colorItem;
-            text:""
-            smooth:true
+            text: ""
+            smooth: true
         }
 
         MouseArea {
@@ -96,35 +96,34 @@ Rectangle {
     }
 
     Rectangle {
-        id:dropDownShowdowList
-        width:statesComboBox.width;
+        id: dropDownShowdowList
+        width: statesComboBox.width;
         opacity: 0.3
-        height:0;
-        clip:true;
-        radius:4;
+        height: 0;
+        clip: true;
+        radius: 4;
         anchors.top: chosenItem.top;
         anchors.margins: 2;
         color: "gray"
     }
     //ToDo: We need scrollbar for items
     Rectangle {
-        id:dropDownList
-        width:statesComboBox.width;
-        height:0;
-        clip:true;
-        radius:4;
+        id: dropDownList
+        width: statesComboBox.width;
+        height: 0;
+        clip: true;
+        radius: 4;
         anchors.top: chosenItem.top;
         anchors.margins: 2;
         color: statesComboBox.color
 
-
-        ColumnLayout{
+        ColumnLayout {
             spacing: 2
             TableView {
-                id:listView
-                height:20;
+                id: listView
+                height: 20;
                 implicitHeight: 0
-                width:statesComboBox.width;
+                width: statesComboBox.width;
                 model: statesComboBox.items
                 horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff;
                 currentRow: -1
@@ -140,14 +139,14 @@ Rectangle {
                     delegate: mainItemDelegate
                 }
                 rowDelegate:  Rectangle {
-                    width:statesComboBox.width;
+                    width: statesComboBox.width;
                     height: statesComboBox.rowHeight;
                 }
                 Component {
                     id: mainItemDelegate
                     Rectangle {
                         id: itemDelegate
-                        width:statesComboBox.width;
+                        width: statesComboBox.width;
                         height: statesComboBox.height;
                         Text {
                             id: textItemid
@@ -156,13 +155,12 @@ Rectangle {
                             anchors.top: parent.top;
                             anchors.left: parent.left;
                             anchors.margins: 5;
-
                         }
                         Image {
                             id: imageItemid
-                            height:20
-                            width:20;
-                            anchors.right:parent.right
+                            height: 20
+                            width: 20;
+                            anchors.right: parent.right
                             anchors.top: parent.top;
                             anchors.margins: 5;
                             visible: false;
@@ -199,20 +197,20 @@ Rectangle {
                 }//Component
             }//Table View
 
-            RowLayout{
-                Rectangle{
+            RowLayout {
+                Rectangle {
                     width: 1
                 }
                 Text{
-                    id:createStateText
-                    width:statesComboBox.width;
+                    id: createStateText
+                    width: statesComboBox.width;
                     height: statesComboBox.height;
                     font.bold: true
-                    text:"Create State ..."
+                    text: "Create State ..."
                     MouseArea
                     {
                         anchors.fill: parent;
-                        hoverEnabled : true
+                        hoverEnabled: true
 
                         onEntered: {
                             createStateText.color = statesComboBox.colorSelect;
@@ -232,9 +230,9 @@ Rectangle {
     }
     states: State {
         name: "dropDown";
-        PropertyChanges { target: dropDownList; height:(statesComboBox.rowHeight*(statesComboBox.items.count+1)) }
-        PropertyChanges { target: dropDownShowdowList; width:statesComboBox.width+3; height:(statesComboBox.rowHeight*(statesComboBox.items.count+1))+3 }
-        PropertyChanges { target:listView; height:20; implicitHeight: (statesComboBox.rowHeight*(statesComboBox.items.count)) }
+        PropertyChanges { target: dropDownList; height: (statesComboBox.rowHeight*(statesComboBox.items.count+1)) }
+        PropertyChanges { target: dropDownShowdowList; width: statesComboBox.width+3; height: (statesComboBox.rowHeight*(statesComboBox.items.count+1))+3 }
+        PropertyChanges { target: listView; height: 20; implicitHeight: (statesComboBox.rowHeight*(statesComboBox.items.count)) }
     }
 
 }
