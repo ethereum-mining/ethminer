@@ -111,22 +111,36 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 	m_state(&m_db),
 	m_blockReward(c_blockReward)
 {
-	// TODO THINK: is this necessary?
-	m_state.init();
-
 	auto b = _bc.block(_h);
-	BlockInfo bi;
-	BlockInfo bip;
-	if (_h)
-		bi.populate(b);
-	if (bi && bi.number)
-		bip.populate(_bc.block(bi.parentHash));
-	if (!_h || !bip)
-		return;
-	m_ourAddress = bi.coinbaseAddress;
+	BlockInfo bi(b);
 
-	sync(_bc, bi.parentHash, bip);
-	enact(&b, _bc);
+	if (!bi)
+	{
+		// Might be worth throwing here.
+		cwarn << "Invalid block given for state population: " << _h;
+		return;
+	}
+
+	if (bi.number)
+	{
+		// Non-genesis:
+
+		// 1. Start at parent's end state (state root).
+		BlockInfo bip;
+		bip.populate(_bc.block(bi.parentHash));
+		sync(_bc, bi.parentHash, bip);
+
+		// 2. Enact the block's transactions onto this state.
+		m_ourAddress = bi.coinbaseAddress;
+		enact(&b, _bc);
+	}
+	else
+	{
+		// Genesis required:
+		// We know there are no transactions, so just populate directly.
+		m_state.init();
+		sync(_bc, _h, bi);
+	}
 }
 
 State::State(State const& _s):
@@ -711,7 +725,7 @@ void State::commitToMine(BlockChain const& _bc)
 	uncommitToMine();
 
 //	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
-#ifdef ETH_PARANOIA
+#if  ETH_PARANOIA && 0
 	commit();
 	cnote << "Pre-reward stateRoot:" << m_state.root();
 #endif
