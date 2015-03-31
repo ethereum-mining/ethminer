@@ -52,16 +52,32 @@ public:
 		Id id;
 		AssemblyItem const* item;
 		Ids arguments;
+		unsigned sequenceNumber; ///< Storage modification sequence, only used for SLOAD/SSTORE instructions.
+		/// Behaves as if this was a tuple of (item->type(), item->data(), arguments, sequenceNumber).
 		bool operator<(Expression const& _other) const;
 	};
 
 	/// Retrieves the id of the expression equivalence class resulting from the given item applied to the
 	/// given classes, might also create a new one.
-	Id find(AssemblyItem const& _item, Ids const& _arguments = {});
+	/// @param _copyItem if true, copies the assembly item to an internal storage instead of just
+	/// keeping a pointer.
+	/// The @a _sequenceNumber indicates the current storage or memory access sequence.
+	Id find(
+		AssemblyItem const& _item,
+		Ids const& _arguments = {},
+		bool _copyItem = true,
+		unsigned _sequenceNumber = 0
+	);
 	/// @returns the canonical representative of an expression class.
 	Expression const& representative(Id _id) const { return m_representatives.at(_id); }
 	/// @returns the number of classes.
 	Id size() const { return m_representatives.size(); }
+
+	/// @returns true if the values of the given classes are known to be different (on every input).
+	/// @note that this function might still return false for some different inputs.
+	bool knownToBeDifferent(Id _a, Id _b);
+	/// Similar to @a knownToBeDifferent but require that abs(_a - b) >= 32.
+	bool knownToBeDifferentBy32(Id _a, Id _b);
 
 	std::string fullDAGToString(Id _id) const;
 
@@ -78,6 +94,8 @@ private:
 
 	/// Expression equivalence class representatives - we only store one item of an equivalence.
 	std::vector<Expression> m_representatives;
+	/// All expression ever encountered.
+	std::set<Expression> m_expressions;
 	std::vector<std::shared_ptr<AssemblyItem>> m_spareAssemblyItem;
 };
 
