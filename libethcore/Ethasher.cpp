@@ -112,17 +112,24 @@ bool Ethasher::verify(BlockInfo const& _header)
 
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
-	bool ret = ethash_quick_check_difficulty(
+	bool quick = ethash_quick_check_difficulty(
 		_header.headerHash(WithoutNonce).data(),
 		(uint64_t)(u64)_header.nonce,
 		_header.mixHash.data(),
 		boundary.data());
 
-#if ETH_DEBUG
+#if !ETH_DEBUG
+	if (!quick)
+		return false;
+#endif
+
 	auto result = eval(_header);
-	if ((result.value <= boundary && result.mixHash == _header.mixHash) != ret)
+	bool slow = result.value <= boundary && result.mixHash == _header.mixHash;
+
+#if ETH_DEBUG
+	if (!quick && slow)
 	{
-		cwarn << "Assertion failure coming: evaluated result gives different outcome to ethash_quick_check_difficulty";
+		cwarn << "WARNING: evaluated result gives true whereas ethash_quick_check_difficulty gives false.";
 		cwarn << "headerHash:" << _header.headerHash(WithoutNonce);
 		cwarn << "nonce:" << _header.nonce;
 		cwarn << "mixHash:" << _header.mixHash;
@@ -131,12 +138,9 @@ bool Ethasher::verify(BlockInfo const& _header)
 		cwarn << "result.value:" << result.value;
 		cwarn << "result.mixHash:" << result.mixHash;
 	}
-	assert((result.value <= boundary) == ret);
-	if (result.value <= boundary)
-		assert(result.mixHash == _header.mixHash);
 #endif
 
-	return ret;
+	return slow;
 }
 
 Ethasher::Result Ethasher::eval(BlockInfo const& _header, Nonce const& _nonce)
