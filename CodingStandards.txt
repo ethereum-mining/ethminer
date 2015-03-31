@@ -13,7 +13,7 @@ c. Don't use braces for condition-body one-liners.
 d. Never place condition bodies on same line as condition.
 e. Space between first paren and keyword, but *not* following first paren or preceeding final paren.
 f. No spaces when fewer than intra-expression three parens together; when three or more, space according to clarity.
-g. No spaces for subscripting.
+g. No spaces for subscripting or unary operators.
 h. No space before ':' but one after it, except in the ternary operator: one on both sides.
 i. Space all other operators.
 j. Braces, when used, always have their own lines and are at same indentation level as "parent" scope.
