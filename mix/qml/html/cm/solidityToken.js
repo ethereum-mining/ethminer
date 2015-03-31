@@ -27,3 +27,15 @@ function solMisc()
 {
 	return { "true": true, "false": true, "null": true };
 }
+
+function keywordsName()
+{
+	var keywords = {};
+	keywords[solCurrency.name.toLowerCase()] = "Currency";
+	keywords[solKeywords.name.toLowerCase()] = "Keyword";
+	keywords[solStdContract.name.toLowerCase()] = "Contract";
+	keywords[solTime.name.toLowerCase()] = "Time";
+	keywords[solTypes.name.toLowerCase()] = "Type";
+	keywords[solMisc.name.toLowerCase()] = "Misc";
+	return keywords;
+}
