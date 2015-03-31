@@ -35,7 +35,7 @@ using namespace dev::eth;
 
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
-	m_lastHashes(_s.getLastHashes(_bc, (unsigned)_s.info().number - 1)),
+	m_lastHashes(_bc.lastHashes((unsigned)_s.info().number - 1)),
 	m_depth(_level)
 {}
 
@@ -44,62 +44,22 @@ u256 Executive::gasUsed() const
 	return m_t.gas() - m_endGas;
 }
 
+ExecutionResult Executive::executionResult() const
+{
+	return ExecutionResult(gasUsed(), m_excepted, m_newAddress, m_out, m_codeDeposit, m_ext ? m_ext->sub.refunds : 0, m_depositSize, m_gasForDeposit);
+}
+
 void Executive::accrueSubState(SubState& _parentContext)
 {
 	if (m_ext)
 		_parentContext += m_ext->sub;
 }
 
-bool Executive::setup(bytesConstRef _rlp)
+void Executive::initialize(Transaction const& _transaction)
 {
-	// Entry point for a user-executed transaction.
-	try
-	{
-		m_t = Transaction(_rlp, CheckSignature::Sender);
-	}
-	catch (...)
-	{
-		clog(StateDetail) << "Invalid Signature";
-		m_excepted = TransactionException::InvalidSignature;
-		throw;
-	}
-	return setup();
-}
+	m_t = _transaction;
 
-bool Executive::setup()
-{
-	// Entry point for a user-executed transaction.
-
-	// Avoid invalid transactions.
-	auto nonceReq = m_s.transactionsFrom(m_t.sender());
-	if (m_t.nonce() != nonceReq)
-	{
-		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
-		m_excepted = TransactionException::InvalidNonce;
-		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
-	}
-
-	// Check gas cost is enough.
-	auto gasRequired = Interface::txGas(m_t.data());
-
-	if (m_t.gas() < gasRequired)
-	{
-		clog(StateDetail) << "Not enough gas to pay for the transaction: Require >" << gasRequired << " Got" << m_t.gas();
-		m_excepted = TransactionException::OutOfGas;
-		BOOST_THROW_EXCEPTION(OutOfGas() << RequirementError((bigint)gasRequired, (bigint)m_t.gas()));
-	}
-
-	bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
-	bigint totalCost = m_t.value() + gasCost;
-
-	// Avoid unaffordable transactions.
-	if (m_s.balance(m_t.sender()) < totalCost)
-	{
-		clog(StateDetail) << "Not enough cash: Require >" << totalCost << " Got" << m_s.balance(m_t.sender());
-		m_excepted = TransactionException::NotEnoughCash;
-		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender())));
-	}
-
+	// Avoid transactions that would take us beyond the block gas limit.
 	u256 startGasUsed = m_s.gasUsed();
 	if (startGasUsed + (bigint)m_t.gas() > m_s.m_currentBlock.gasLimit)
 	{
@@ -108,17 +68,60 @@ bool Executive::setup()
 		BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementError((bigint)(m_s.m_currentBlock.gasLimit - startGasUsed), (bigint)m_t.gas()));
 	}
 
+	// Check gas cost is enough.
+	m_gasRequired = Interface::txGas(m_t.data());
+	if (m_t.gas() < m_gasRequired)
+	{
+		clog(StateDetail) << "Not enough gas to pay for the transaction: Require >" << m_gasRequired << " Got" << m_t.gas();
+		m_excepted = TransactionException::OutOfGas;
+		BOOST_THROW_EXCEPTION(OutOfGas() << RequirementError((bigint)m_gasRequired, (bigint)m_t.gas()));
+	}
+
+	// Avoid invalid transactions.
+	u256 nonceReq;
+	try
+	{
+		nonceReq = m_s.transactionsFrom(m_t.sender());
+	}
+	catch (...)
+	{
+		clog(StateDetail) << "Invalid Signature";
+		m_excepted = TransactionException::InvalidSignature;
+		throw;
+	}
+	if (m_t.nonce() != nonceReq)
+	{
+		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
+		m_excepted = TransactionException::InvalidNonce;
+		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
+	}
+
+	// Avoid unaffordable transactions.
+	m_gasCost = (bigint)m_t.gas() * m_t.gasPrice();
+	m_totalCost = m_t.value() + m_gasCost;
+	if (m_s.balance(m_t.sender()) < m_totalCost)
+	{
+		clog(StateDetail) << "Not enough cash: Require >" << m_totalCost << " Got" << m_s.balance(m_t.sender());
+		m_excepted = TransactionException::NotEnoughCash;
+		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(m_totalCost, (bigint)m_s.balance(m_t.sender())));
+	}
+}
+
+bool Executive::execute()
+{
+	// Entry point for a user-executed transaction.
+
 	// Increment associated nonce for sender.
 	m_s.noteSending(m_t.sender());
 
 	// Pay...
-	clog(StateDetail) << "Paying" << formatBalance(u256(gasCost)) << "from sender for gas (" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
-	m_s.subBalance(m_t.sender(), gasCost);
+	clog(StateDetail) << "Paying" << formatBalance(u256(m_gasCost)) << "from sender for gas (" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
+	m_s.subBalance(m_t.sender(), m_gasCost);
 
 	if (m_t.isCreation())
-		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)gasRequired, &m_t.data(), m_t.sender());
+		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_gasRequired, &m_t.data(), m_t.sender());
 	else
-		return call(m_t.receiveAddress(), m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)gasRequired, m_t.sender());
+		return call(m_t.receiveAddress(), m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_gasRequired, m_t.sender());
 }
 
 bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
@@ -218,6 +221,8 @@ bool Executive::go(OnOpFunc const& _onOp)
 
 			if (m_isCreation)
 			{
+				m_gasForDeposit = m_endGas;
+				m_depositSize = m_out.size();
 				if (m_out.size() * c_createDataGas <= m_endGas)
 				{
 					m_codeDeposit = CodeDeposit::Success;
@@ -225,6 +230,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 				}
 				else
 				{
+
 					m_codeDeposit = CodeDeposit::Failed;
 					m_out.reset();
 				}

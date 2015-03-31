@@ -30,6 +30,9 @@ if (APPLE)
 	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/usr/local/opt/qt5")
 endif()
 
+find_program(CTEST_COMMAND ctest)
+message(STATUS "ctest path: ${CTEST_COMMAND}")
+
 # Dependencies must have a version number, to ensure reproducible build. The version provided here is the one that is in the extdep repository. If you use system libraries, version numbers may be different.
 
 find_package (CryptoPP 5.6.2 EXACT REQUIRED)
@@ -45,16 +48,10 @@ find_package (Jsoncpp 0.60 REQUIRED)
 message(" - Jsoncpp header: ${JSONCPP_INCLUDE_DIRS}")
 message(" - Jsoncpp lib   : ${JSONCPP_LIBRARIES}")
 
-# TODO the JsonRpcCpp package does not yet check for correct version number
-# json-rpc-cpp support is currently not mandatory
-# TODO make headless client optional
 # TODO get rid of -DETH_JSONRPC
+# TODO add EXACT once we commit ourselves to cmake 3.x
 if (JSONRPC)
-
-	find_package (JsonRpcCpp 0.3.2)
-	if (NOT JSON_RPC_CPP_FOUND)
-		message (FATAL_ERROR "JSONRPC 0.3.2. not found")
-	endif()
+	find_package (json_rpc_cpp 0.4 REQUIRED)
 	message (" - json-rpc-cpp header: ${JSON_RPC_CPP_INCLUDE_DIRS}")
 	message (" - json-rpc-cpp lib   : ${JSON_RPC_CPP_LIBRARIES}")
 	add_definitions(-DETH_JSONRPC)
@@ -114,14 +111,17 @@ if (NOT HEADLESS)
 # find all of the Qt packages
 # remember to use 'Qt' instead of 'QT', cause unix is case sensitive
 # TODO make headless client optional
-	find_package (Qt5Core REQUIRED)
-	find_package (Qt5Gui REQUIRED)
-	find_package (Qt5Quick REQUIRED)
-	find_package (Qt5Qml REQUIRED)
-	find_package (Qt5Network REQUIRED)
-	find_package (Qt5Widgets REQUIRED)
-	find_package (Qt5WebEngine REQUIRED)
-	find_package (Qt5WebEngineWidgets REQUIRED)
+
+	set (ETH_QT_VERSION 5.4)
+
+	find_package (Qt5Core ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5Gui ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5Quick ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5Qml ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5Network ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5Widgets ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5WebEngine ${ETH_QT_VERSION} REQUIRED)
+	find_package (Qt5WebEngineWidgets ${ETH_QT_VERSION} REQUIRED)
 
 	# we need to find path to macdeployqt on mac
 	if (APPLE)

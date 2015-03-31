@@ -342,6 +342,7 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 			r.type = SolidityType::Type::Bytes;
 			r.size = static_cast<unsigned>(b->getNumBytes());
 		}
+		break;
 	case Type::Category::Contract:
 		r.type = SolidityType::Type::Address;
 		break;

@@ -141,6 +141,7 @@ public:
 		return ret;
 	}
 
+	/// @returns a random valued object.
 	static FixedHash random() { return random(s_fixedHashEngine); }
 
 	/// A generic std::hash compatible function object.
