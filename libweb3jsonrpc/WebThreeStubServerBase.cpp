@@ -284,6 +284,11 @@ bool WebThreeStubServerBase::net_listening()
 	return network()->isNetworkStarted();
 }
 
+string WebThreeStubServerBase::eth_protocolVersion()
+{
+	return toJS(eth::c_protocolVersion);
+}
+
 string WebThreeStubServerBase::eth_coinbase()
 {
 	return toJS(client()->address());
