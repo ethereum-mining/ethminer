@@ -678,9 +678,6 @@ void Host::disconnectLatePeers()
 
 bytes Host::saveNetwork() const
 {
-	if (!m_nodeTable)
-		return bytes();
-
 	std::list<Peer> peers;
 	{
 		RecursiveGuard l(x_sessions);
@@ -692,27 +689,23 @@ bytes Host::saveNetwork() const
 
 	RLPStream network;
 	int count = 0;
+	for (auto const& p: peers)
 	{
-		RecursiveGuard l(x_sessions);
-		for (auto const& p: peers)
+		// Only save peers which have connected within 2 days, with properly-advertised port and public IP address
+		bi::tcp::endpoint endpoint(p.peerEndpoint());
+		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && endpoint.port() > 0 && endpoint.port() < /*49152*/32768 && p.id != id() && !isPrivateAddress(p.endpoint.udp.address()) && !isPrivateAddress(endpoint.address()))
 		{
-			// TODO: alpha: Figure out why it ever shares these ports.//p.address.port() >= 30300 && p.address.port() <= 30305 &&
-			// TODO: alpha: if/how to save private addresses
-			// Only save peers which have connected within 2 days, with properly-advertised port and public IP address
-			if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && p.peerEndpoint().port() > 0 && p.peerEndpoint().port() < /*49152*/32768 && p.id != id() && !isPrivateAddress(p.endpoint.udp.address()) && !isPrivateAddress(p.endpoint.tcp.address()))
-			{
-				network.appendList(10);
-				if (p.peerEndpoint().address().is_v4())
-					network << p.peerEndpoint().address().to_v4().to_bytes();
-				else
-					network << p.peerEndpoint().address().to_v6().to_bytes();
-				// TODO: alpha: replace 0 with trust-state of node
-				network << p.peerEndpoint().port() << p.id << 0
-					<< chrono::duration_cast<chrono::seconds>(p.m_lastConnected.time_since_epoch()).count()
-					<< chrono::duration_cast<chrono::seconds>(p.m_lastAttempted.time_since_epoch()).count()
-					<< p.m_failedAttempts << (unsigned)p.m_lastDisconnect << p.m_score << p.m_rating;
-				count++;
-			}
+			// todo: e2e ipv6 support
+			if (endpoint.address().is_v4())
+				network << endpoint.address().to_v4().to_bytes();
+				continue;
+
+			network.appendList(10);
+			network << endpoint.port() << p.id << p.required
+				<< chrono::duration_cast<chrono::seconds>(p.m_lastConnected.time_since_epoch()).count()
+				<< chrono::duration_cast<chrono::seconds>(p.m_lastAttempted.time_since_epoch()).count()
+				<< p.m_failedAttempts << (unsigned)p.m_lastDisconnect << p.m_score << p.m_rating;
+			count++;
 		}
 	}
 
@@ -731,6 +724,7 @@ bytes Host::saveNetwork() const
 			count++;
 		}
 	}
+	// else: TODO: use previous configuration if available
 
 	RLPStream ret(3);
 	ret << dev::p2p::c_protocolVersion << m_alias.secret();
@@ -757,22 +751,14 @@ void Host::restoreNetwork(bytesConstRef _b)
 
 		for (auto i: r[2])
 		{
+			// todo: e2e ipv6 support
+			// bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
+			if (i[0].itemCount() != 4)
+				continue;
 			bi::tcp::endpoint tcp;
 			bi::udp::endpoint udp;
-			if (i[0].itemCount() == 4)
-			{
-				tcp = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
-				udp = bi::udp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
-			}
-			else
-			{
-				tcp = bi::tcp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
-				udp = bi::udp::endpoint(bi::address_v6(i[0].toArray<byte, 16>()), i[1].toInt<short>());
-			}
-			
-			// skip private addresses
-			// todo: to support private addresseses entries must be stored
-			//       and managed externally by host rather than nodetable.
+			tcp = bi::tcp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
+			udp = bi::udp::endpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>());
 			if (isPrivateAddress(tcp.address()) || isPrivateAddress(udp.address()))
 				continue;
 			
@@ -783,6 +769,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 			{
 				shared_ptr<Peer> p = make_shared<Peer>();
 				p->id = id;
+				p->required = i[2].toInt<unsigned>();
 				p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
 				p->m_lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
 				p->m_failedAttempts = i[6].toInt<unsigned>();
@@ -792,7 +779,10 @@ void Host::restoreNetwork(bytesConstRef _b)
 				p->endpoint.tcp = tcp;
 				p->endpoint.udp = udp;
 				m_peers[p->id] = p;
-				m_nodeTable->addNode(*p.get());
+				if (p->required)
+					requirePeer(p->id, p->endpoint.udp.address(), p->endpoint.udp.port());
+				else
+					m_nodeTable->addNode(*p.get());
 			}
 		}
 	}
@@ -801,7 +791,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 KeyPair Host::networkAlias(bytesConstRef _b)
 {
 	RLP r(_b);
-	if (r.itemCount() == 3 && r[0].isInt() && r[0].toInt<int>() == 1)
+	if (r.itemCount() == 3 && r[0].isInt() && r[0].toInt<unsigned>() == dev::p2p::c_protocolVersion)
 		return move(KeyPair(move(Secret(r[1].toBytes()))));
 	else
 		return move(KeyPair::create());
