@@ -172,7 +172,7 @@ function getDocumentIndex(documentId)
 	for (var i = 0; i < projectListModel.count; i++)
 		if (projectListModel.get(i).documentId === documentId)
 			return i;
-	console.error("Cant find document " + documentId);
+	console.error("Can't find document " + documentId);
 	return -1;
 }
 
@@ -289,6 +289,14 @@ function renameDocument(documentId, newName) {
 function getDocument(documentId) {
 	var i = getDocumentIndex(documentId);
 	return projectListModel.get(i);
+}
+
+function getDocumentIdByName(fileName)
+{
+	for (var i = 0; i < projectListModel.count; i++)
+		if (projectListModel.get(i).fileName === fileName)
+			return projectListModel.get(i).documentId;
+	return null;
 }
 
 function removeDocument(documentId) {
