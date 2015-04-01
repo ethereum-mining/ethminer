@@ -725,7 +725,7 @@ void State::commitToMine(BlockChain const& _bc)
 	uncommitToMine();
 
 //	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
-#ifdef ETH_PARANOIA
+#if  ETH_PARANOIA && 0
 	commit();
 	cnote << "Pre-reward stateRoot:" << m_state.root();
 #endif

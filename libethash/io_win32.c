@@ -53,7 +53,7 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_blockhash_t seed
         goto close;
     }
 
-    ethash_io_serialize_info(REVISION, seedhash, expect_buffer);
+    ethash_io_serialize_info(ETHASH_REVISION, seedhash, expect_buffer);
     if (memcmp(read_buffer, expect_buffer, DAG_MEMO_BYTESIZE) != 0) {
         // we have different memo contents so delete the memo file
         if (_unlink(memofile) != 0) {
