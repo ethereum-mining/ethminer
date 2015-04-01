@@ -489,9 +489,8 @@ Rectangle
 			DefaultTextField
 			{
 				id: searchBox
-				height: LogsPaneStyle.generic.layout.headerButtonHeight - 5
 				anchors.verticalCenter: parent.verticalCenter
-				width: LogsPaneStyle.generic.layout.headerInputWidth - 40
+				width: LogsPaneStyle.generic.layout.headerInputWidth - 50
 				font.family: LogsPaneStyle.generic.layout.logLabelFont
 				font.pointSize: Style.absoluteSize(-3)
 				font.italic: true
