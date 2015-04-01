@@ -98,11 +98,10 @@ dev::eth::AssemblyItems filterLocations(dev::eth::AssemblyItems const& _location
 {
 	dev::eth::AssemblyItems result;
 	result.reserve(_locations.size());
-	std::string sourceName = *_contract.getLocation().sourceName;
 	for (dev::eth::AssemblyItem item : _locations)
 	{
 		dev::SourceLocation const& l = item.getLocation();
-		if (sourceName != *l.sourceName || _contract.getLocation() == l || _functions.contains(LocationPair(l.start, l.end)))
+		if (_contract.getLocation() == l || _functions.contains(LocationPair(l.start, l.end)))
 			item.setLocation(dev::SourceLocation(-1, -1, l.sourceName));
 		result.push_back(item);
 	}
