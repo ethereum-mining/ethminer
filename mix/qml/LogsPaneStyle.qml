@@ -15,7 +15,7 @@ QtObject {
 			property int headerButtonSpacing: 0
 			property int leftMargin: 10
 			property int headerButtonHeight: 30
-			property string logLabelColor: "#808080"
+			property string logLabelColor: "#4a4a4a"
 			property string logLabelFont: "sans serif"
 			property int headerInputWidth: 200
 			property int dateWidth: 70
