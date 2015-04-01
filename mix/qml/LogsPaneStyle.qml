@@ -20,7 +20,7 @@ QtObject {
 			property int headerInputWidth: 200
 			property int dateWidth: 70
 			property int typeWidth: 90
-			property int contentWidth: 250
+			property int contentWidth: 560
 			property string logAlternateColor: "#f6f5f6"
 		}
 	}

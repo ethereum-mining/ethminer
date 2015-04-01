@@ -13,6 +13,11 @@ Rectangle
 		logsModel.insert(0, { "type": _type, "date": Qt.formatDateTime(new Date(), "hh:mm:ss"), "content": _content, "level": _level });
 	}
 
+	Keys.onEscapePressed:
+	{
+		parent.toggle();
+	}
+
 	anchors.fill: parent
 	radius: 5
 	color: "transparent"
@@ -33,7 +38,7 @@ Rectangle
 			height: parent.height
 			width: parent.width
 			horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff
-			ColumnLayout
+			Column
 			{
 				id: logsRect
 				spacing: 0
@@ -93,6 +98,26 @@ Rectangle
 								return index % 2 === 0 ? "transparent" : LogsPaneStyle.generic.layout.logAlternateColor;
 						}
 
+						MouseArea
+						{
+							anchors.fill: parent
+							onClicked:
+							{
+								if (logContent.elide === Text.ElideNone)
+								{
+									logContent.elide = Text.ElideRight;
+									logContent.wrapMode = Text.NoWrap
+									parent.height = 30;
+								}
+								else
+								{
+									logContent.elide = Text.ElideNone;
+									logContent.wrapMode = Text.WordWrap;
+									parent.height = logContent.lineCount * 30;
+								}
+							}
+						}
+
 
 						DefaultLabel {
 							text: date;
@@ -120,12 +145,16 @@ Rectangle
 							}
 						}
 
-						DefaultLabel {
+						Text {
+							id: logContent
 							text: content;
 							font.family: LogsPaneStyle.generic.layout.logLabelFont
 							width: LogsPaneStyle.generic.layout.contentWidth
 							font.pointSize: Style.absoluteSize(-1)
 							anchors.verticalCenter: parent.verticalCenter
+							elide: Text.ElideRight
+
+							maximumLineCount: 10
 							anchors.left: parent.left
 							anchors.leftMargin: 190
 							color: {
@@ -145,10 +174,7 @@ Rectangle
 					}
 				}
 			}
-
-
 		}
-
 
 		Component {
 			id: itemDelegate
@@ -166,7 +192,6 @@ Rectangle
 				}
 			}
 		}
-
 	}
 
 	Rectangle
@@ -377,7 +402,7 @@ Rectangle
 					anchors.centerIn: parent
 					fillMode: Image.PreserveAspectFit
 					width: 20
-					height: 20
+					height: 25
 				}
 
 				Action {
@@ -420,7 +445,7 @@ Rectangle
 					anchors.centerIn: parent
 					fillMode: Image.PreserveAspectFit
 					width: 20
-					height: 20
+					height: 25
 				}
 
 				Action {
@@ -503,7 +528,7 @@ Rectangle
 					anchors.centerIn: parent
 					fillMode: Image.PreserveAspectFit
 					width: 20
-					height: 20
+					height: 25
 				}
 
 				Action {
