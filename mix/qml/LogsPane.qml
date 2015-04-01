@@ -106,7 +106,7 @@ Rectangle
 						{
 							var cl;
 							if (level === "warning" || level === "error")
-								cl = "#fffcd5";
+								cl = LogsPaneStyle.generic.layout.errorColor;
 							else
 								cl = index % 2 === 0 ? "transparent" : LogsPaneStyle.generic.layout.logAlternateColor;
 							if (index === 0)
@@ -165,7 +165,7 @@ Rectangle
 						Text {
 							id: logContent
 							text: content;
-							font.family: "sans serif"
+							font.family: LogsPaneStyle.generic.layout.logLabelFont
 							width: LogsPaneStyle.generic.layout.contentWidth
 							font.pointSize: Style.absoluteSize(-1)
 							anchors.verticalCenter: parent.verticalCenter
@@ -234,7 +234,7 @@ Rectangle
 				DefaultLabel
 				{
 					anchors.verticalCenter: parent.verticalCenter
-					color: "#808080"
+					color: LogsPaneStyle.generic.layout.logLabelColor
 					font.pointSize: Style.absoluteSize(-3)
 					font.family: LogsPaneStyle.generic.layout.logLabelFont
 					text: qsTr("Show:")
@@ -245,14 +245,14 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color : "#d3d0d0"
+				color: LogsPaneStyle.generic.layout.buttonSeparatorColor1
 			}
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
 				width: 2;
 				height: parent.height
-				color : "#f2f1f2"
+				color: LogsPaneStyle.generic.layout.buttonSeparatorColor2
 			}
 
 			ToolButton {
@@ -280,7 +280,7 @@ Rectangle
 					}
 					background:
 						Rectangle {
-						color: javascriptButton.checked ? "#dcdcdc" : "transparent"
+						color: javascriptButton.checked ? LogsPaneStyle.generic.layout.buttonSelected : "transparent"
 					}
 				}
 			}
@@ -289,14 +289,14 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color : "#d3d0d0"
+				color: LogsPaneStyle.generic.layout.buttonSeparatorColor1
 			}
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
 				width: 2;
 				height: parent.height
-				color : "#f2f1f2"
+				color: LogsPaneStyle.generic.layout.buttonSeparatorColor2
 			}
 
 			ToolButton {
@@ -324,7 +324,7 @@ Rectangle
 					}
 					background:
 						Rectangle {
-						color: runButton.checked ? "#dcdcdc" : "transparent"
+						color: runButton.checked ? LogsPaneStyle.generic.layout.buttonSelected : "transparent"
 					}
 				}
 			}
@@ -333,14 +333,14 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color: "#d3d0d0"
+				color: LogsPaneStyle.generic.layout.buttonSeparatorColor1
 			}
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
 				width: 2;
 				height: parent.height
-				color: "#f2f1f2"
+				color: LogsPaneStyle.generic.layout.buttonSeparatorColor2
 			}
 
 			ToolButton {
@@ -368,7 +368,7 @@ Rectangle
 					}
 					background:
 						Rectangle {
-						color: stateButton.checked ? "#dcdcdc" : "transparent"
+						color: stateButton.checked ? LogsPaneStyle.generic.layout.buttonSelected : "transparent"
 					}
 				}
 			}
@@ -377,14 +377,14 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color : "#d3d0d0"
+				color: LogsPaneStyle.generic.layout.buttonSeparatorColor1
 			}
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
 				width: 2;
 				height: parent.height
-				color : "#f2f1f2"
+				color: LogsPaneStyle.generic.layout.buttonSeparatorColor2
 			}
 		}
 
