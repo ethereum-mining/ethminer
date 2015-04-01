@@ -22,6 +22,10 @@ QtObject {
 			property int typeWidth: 90
 			property int contentWidth: 560
 			property string logAlternateColor: "#f6f5f6"
+			property string errorColor: "#fffcd5"
+			property string buttonSeparatorColor1: "#d3d0d0"
+			property string buttonSeparatorColor2: "#f2f1f2"
+			property string buttonSelected: "#dcdcdc"
 		}
 	}
 }
