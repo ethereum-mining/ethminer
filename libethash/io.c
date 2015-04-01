@@ -71,7 +71,7 @@ bool ethash_io_write(char const *dirname,
         goto fail_free;
     }
 
-    ethash_io_serialize_info(REVISION, seedhash, info_buffer);
+    ethash_io_serialize_info(ETHASH_REVISION, seedhash, info_buffer);
     if (!ethash_io_write_file(dirname, PASS_ARR(DAG_MEMO_NAME), info_buffer, DAG_MEMO_BYTESIZE)) {
         goto fail_free;
     }
