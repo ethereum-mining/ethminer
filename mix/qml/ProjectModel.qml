@@ -64,6 +64,7 @@ Item {
 	function renameDocument(documentId, newName) { ProjectModelCode.renameDocument(documentId, newName); }
 	function removeDocument(documentId) { ProjectModelCode.removeDocument(documentId); }
 	function getDocument(documentId) { return ProjectModelCode.getDocument(documentId); }
+	function getDocumentIdByName(documentName) { return ProjectModelCode.getDocumentIdByName(documentName); }
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 	function deployProject() { ProjectModelCode.deployProject(false); }

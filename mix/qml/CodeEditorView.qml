@@ -11,15 +11,6 @@ Item {
 	signal breakpointsChanged(string documentId)
 	signal isCleanChanged(var isClean, string documentId)
 
-	function getDocumentIdByName(fileName)
-	{
-		for (var i = 0; i < editorListModel.count; i++)	{
-			if (editorListModel.get(i).fileName === fileName) {
-				return editorListModel.get(i).documentId;
-			}
-		}
-		return null;
-	}
 
 	function getDocumentText(documentId) {
 		for (var i = 0; i < editorListModel.count; i++)	{
