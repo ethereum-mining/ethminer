@@ -7,19 +7,29 @@ import "."
 
 Rectangle
 {
+	property variant currentStatus;
 	function push(_level, _type, _content)
 	{
 		_content = _content.replace(/\n/g, " ")
 		logsModel.insert(0, { "type": _type, "date": Qt.formatDateTime(new Date(), "hh:mm:ss"), "content": _content, "level": _level });
 	}
 
-	Keys.onEscapePressed:
+	onVisibleChanged:
 	{
-		parent.toggle();
+		if (visible && (logsModel.count === 0 || (logsModel.get(0).date !== currentStatus.date && logsModel.get(0).content !== currentStatus.content)))
+			logsModel.insert(0, { "type": currentStatus.type, "date": currentStatus.date, "content": currentStatus.content, "level": currentStatus.level });
+		else if (!visible)
+		{
+			for (var k = 0; k < logsModel.count; k++)
+			{
+				if (logsModel.get(k).type === "Comp") //do not keep compilation logs.
+					logsModel.remove(k);
+			}
+		}
 	}
 
 	anchors.fill: parent
-	radius: 5
+	radius: 10
 	color: "transparent"
 	id: logsPane
 	Column {
@@ -43,11 +53,13 @@ Rectangle
 				id: logsRect
 				spacing: 0
 				Repeater {
+					id: logsRepeater
 					clip: true
+					property string frontColor: "transparent"
 					model: SortFilterProxyModel {
 						id: proxyModel
 						source: logsModel
-						property var roles: ["-", "javascript", "run", "state"]
+						property var roles: ["-", "javascript", "run", "state", "comp"]
 
 						Component.onCompleted: {
 							filterType = regEx(proxyModel.roles);
@@ -80,7 +92,7 @@ Rectangle
 							return "(?:" + roles.join('|') + ")";
 						}
 
-						filterType: "(?:javascript|run|state)"
+						filterType: "(?:javascript|run|state|comp)"
 						filterContent: ""
 						filterSyntax: SortFilterProxyModel.RegExp
 						filterCaseSensitivity: Qt.CaseInsensitive
@@ -92,11 +104,16 @@ Rectangle
 						height: 30
 						color:
 						{
+							var cl;
 							if (level === "warning" || level === "error")
-								return "#fffcd5";
+								cl = "#fffcd5";
 							else
-								return index % 2 === 0 ? "transparent" : LogsPaneStyle.generic.layout.logAlternateColor;
+								cl = index % 2 === 0 ? "transparent" : LogsPaneStyle.generic.layout.logAlternateColor;
+							if (index === 0)
+								logsRepeater.frontColor = cl;
+							return cl;
 						}
+
 
 						MouseArea
 						{
@@ -148,13 +165,11 @@ Rectangle
 						Text {
 							id: logContent
 							text: content;
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
+							font.family: "sans serif"
 							width: LogsPaneStyle.generic.layout.contentWidth
 							font.pointSize: Style.absoluteSize(-1)
 							anchors.verticalCenter: parent.verticalCenter
 							elide: Text.ElideRight
-
-							maximumLineCount: 10
 							anchors.left: parent.left
 							anchors.leftMargin: 190
 							color: {
@@ -230,7 +245,14 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color : "transparent"
+				color : "#d3d0d0"
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 2;
+				height: parent.height
+				color : "#f2f1f2"
 			}
 
 			ToolButton {
@@ -272,7 +294,7 @@ Rectangle
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
-				width: 1;
+				width: 2;
 				height: parent.height
 				color : "#f2f1f2"
 			}
@@ -311,14 +333,14 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color : "#d3d0d0"
+				color: "#d3d0d0"
 			}
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
-				width: 1;
+				width: 2;
 				height: parent.height
-				color : "#f2f1f2"
+				color: "#f2f1f2"
 			}
 
 			ToolButton {
@@ -360,7 +382,7 @@ Rectangle
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
-				width: 1;
+				width: 2;
 				height: parent.height
 				color : "#f2f1f2"
 			}
@@ -541,4 +563,5 @@ Rectangle
 			}
 		}
 	}
+
 }
