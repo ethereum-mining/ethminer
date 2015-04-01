@@ -112,7 +112,7 @@ Rectangle {
 		anchors.horizontalCenter: parent.horizontalCenter
 		anchors.verticalCenter: parent.verticalCenter
 		radius: 3
-		width: 650
+		width: 600
 		height: 30
 		color: "#fcfbfc"
 		Text {
@@ -201,8 +201,8 @@ Rectangle {
 				{
 					logsContainer.state = "opened";
 					logsContainer.focus = true;
-					calCoord();
 					forceActiveFocus();
+					calCoord();
 				}
 			}
 
@@ -213,10 +213,6 @@ Rectangle {
 			anchors.horizontalCenter: parent.horizontalCenter
 			visible: false
 			radius: 5
-			Component.onCompleted:
-			{
-				calCoord();
-			}
 
 			function calCoord()
 			{
@@ -225,7 +221,7 @@ Rectangle {
 					top = top.parent
 				var coordinates = logsContainer.mapToItem(top, 0, 0);
 				logsContainer.parent = top;
-				logsContainer.x = coordinates.x + 150;
+				logsContainer.x = coordinates.x;
 				logsContainer.y = coordinates.y;
 			}
 
