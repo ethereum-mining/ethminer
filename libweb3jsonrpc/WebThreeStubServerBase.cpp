@@ -402,7 +402,7 @@ string WebThreeStubServerBase::eth_getCode(string const& _address, string const&
 {
 	try
 	{
-		return toJS(client()->codeAt(jsToAddress(_address), toBlockNumber(_blockNumber)), 1);
+		return toJS(client()->codeAt(jsToAddress(_address), toBlockNumber(_blockNumber)));
 	}
 	catch (...)
 	{
