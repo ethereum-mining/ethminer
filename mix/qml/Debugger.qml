@@ -220,31 +220,31 @@ Rectangle {
 							id: jumpButtons
 							spacing: 3
 
-                            StepActionImage
-                            {
-                                id: playAction
-                                enabledStateImg: "qrc:/qml/img/play_button.png"
-                                disableStateImg: "qrc:/qml/img/play_button.png"
-                                onClicked: console.log("play");
-                                width: 30
-                                height: 30
-                                buttonShortcut: "Ctrl+Shift+F8"
-                                buttonTooltip: qsTr("Play")
-                                visible: true
-                            }
+							StepActionImage
+							{
+								id: playAction
+								enabledStateImg: "qrc:/qml/img/play_button.png"
+								disableStateImg: "qrc:/qml/img/play_button.png"
+								onClicked: console.log("play");
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+Shift+F8"
+								buttonTooltip: qsTr("Play")
+								visible: true
+							}
 
-                            StepActionImage
-                            {
-                                id: pauseAction
-                                enabledStateImg: "qrc:/qml/img/pause_button.png"
-                                disableStateImg: "qrc:/qml/img/pause_button.png"
-                                onClicked: console.log("pause");
-                                width: 30
-                                height: 30
-                                buttonShortcut: "Ctrl+Shift+F9"
-                                buttonTooltip: qsTr("Pause")
-                                visible: true
-                            }
+							StepActionImage
+							{
+								id: pauseAction
+								enabledStateImg: "qrc:/qml/img/pause_button.png"
+								disableStateImg: "qrc:/qml/img/pause_button.png"
+								onClicked: console.log("pause");
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+Shift+F9"
+								buttonTooltip: qsTr("Pause")
+								visible: true
+							}
 
 							StepActionImage
 							{
