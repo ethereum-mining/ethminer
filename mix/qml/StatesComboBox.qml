@@ -29,7 +29,7 @@ Rectangle {
 	id: statesComboBox
 
 	width: 200
-	height: 20
+	height: 23
 
 	Component.onCompleted: {
 		var top = dropDownList
@@ -53,7 +53,7 @@ Rectangle {
 	signal selectItem(real item)
 	signal editItem(real item)
 	signal selectCreate
-	property variant rowHeight: 25
+	property int rowHeight: 25
 	property variant items
 	property alias selectedItem: chosenItemText.text
 	property alias selectedIndex: listView.currentRow
@@ -67,21 +67,31 @@ Rectangle {
 	property variant colorItem
 	property variant colorSelect
 
+	SourceSansProRegular
+	{
+		id: regularFont
+	}
+
+	SourceSansProBold
+	{
+		id: boldFont
+	}
+
 	smooth: true
 	Rectangle {
 		id: chosenItem
 		width: parent.width
 		height: statesComboBox.height
 		color: statesComboBox.color
-		smooth: true
+
 		Text {
 			id: chosenItemText
-			anchors.top: parent.top
 			anchors.left: parent.left
-			anchors.margins: 2
+			anchors.leftMargin: 10
+			anchors.verticalCenter: parent.verticalCenter
 			color: statesComboBox.colorItem
 			text: ""
-			smooth: true
+			font.family: regularFont.name
 		}
 
 		MouseArea {
@@ -111,7 +121,7 @@ Rectangle {
 		clip: true
 		radius: 4
 		anchors.top: chosenItem.top
-		anchors.margins: 2
+		anchors.topMargin: 23
 		color: statesComboBox.color
 
 		ColumnLayout {
@@ -151,7 +161,9 @@ Rectangle {
 							color: statesComboBox.colorItem
 							anchors.top: parent.top
 							anchors.left: parent.left
-							anchors.margins: 5
+							anchors.leftMargin: 10
+							anchors.topMargin: 5
+							font.family: regularFont.name
 						}
 						Image {
 							id: imageItemid
@@ -197,15 +209,18 @@ Rectangle {
 			} //Table View
 
 			RowLayout {
-				Rectangle {
-					width: 1
-				}
+				anchors.top: listView.bottom
+				anchors.topMargin: 4
+				anchors.left: parent.left
+				anchors.leftMargin: 10
 				Text {
 					id: createStateText
 					width: statesComboBox.width
 					height: statesComboBox.height
-					font.bold: true
+					font.family: boldFont.name
+					color: "#808080"
 					text: qsTr("Create State ...")
+					font.weight: Font.DemiBold
 					MouseArea {
 						anchors.fill: parent
 						hoverEnabled: true
