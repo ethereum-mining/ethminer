@@ -37,7 +37,6 @@ Rectangle
 		height: parent.height - rowAction.height
 		width: parent.width
 		spacing: 0
-
 		ListModel {
 			id: logsModel
 		}
@@ -100,7 +99,7 @@ Rectangle
 
 					Rectangle
 					{
-						width: 750
+						width: LogsPaneStyle.generic.layout.dateWidth + LogsPaneStyle.generic.layout.contentWidth + LogsPaneStyle.generic.layout.typeWidth
 						height: 30
 						color:
 						{
@@ -171,7 +170,7 @@ Rectangle
 							anchors.verticalCenter: parent.verticalCenter
 							elide: Text.ElideRight
 							anchors.left: parent.left
-							anchors.leftMargin: 190
+							anchors.leftMargin: 230
 							color: {
 								parent.getColor(level);
 							}
@@ -486,38 +485,58 @@ Rectangle
 				}
 			}
 
-			DefaultTextField
+			Rectangle
 			{
-				id: searchBox
+				width: 120
+				radius: 10
+				height: 25
+				color: "white"
 				anchors.verticalCenter: parent.verticalCenter
-				width: LogsPaneStyle.generic.layout.headerInputWidth - 50
-				font.family: LogsPaneStyle.generic.layout.logLabelFont
-				font.pointSize: Style.absoluteSize(-3)
-				font.italic: true
-				text: qsTr(" - Search - ")
-				onFocusChanged:
+
+				Image
 				{
-					if (!focus && text === "")
-						text = qsTr(" - Search - ");
-					else if (focus && text === qsTr(" - Search - "))
-						text = "";
+					id: searchImg
+					source: "qrc:/qml/img/searchicon.png"
+					fillMode: Image.PreserveAspectFit
+					width: 20
+					height: 25
+					z: 3
 				}
 
-				onTextChanged: {
-					if (text === qsTr(" - Search - "))
-						proxyModel.search("");
-					else
-						proxyModel.search(text);
-				}
+				DefaultTextField
+				{
+					id: searchBox
+					z: 2
+					width: 100
+					anchors.left: searchImg.right
+					anchors.leftMargin: -7
+					font.family: LogsPaneStyle.generic.layout.logLabelFont
+					font.pointSize: Style.absoluteSize(-3)
+					font.italic: true
+					text: qsTr(" - Search - ")
+					onFocusChanged:
+					{
+						if (!focus && text === "")
+							text = qsTr(" - Search - ");
+						else if (focus && text === qsTr(" - Search - "))
+							text = "";
+					}
 
-				style:
-					TextFieldStyle {
-					background: Rectangle {
-						radius: 10
+					onTextChanged: {
+						if (text === qsTr(" - Search - "))
+							proxyModel.search("");
+						else
+							proxyModel.search(text);
+					}
+
+					style:
+						TextFieldStyle {
+						background: Rectangle {
+							radius: 10
+						}
 					}
 				}
 			}
-
 
 			Rectangle
 			{
