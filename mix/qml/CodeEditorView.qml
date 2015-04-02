@@ -13,6 +13,7 @@ Item {
 	signal isCleanChanged(var isClean, string documentId)
 	signal loadComplete
 
+
 	function getDocumentText(documentId) {
 		for (var i = 0; i < openDocCount; i++)	{
 			if (editorListModel.get(i).documentId === documentId) {
