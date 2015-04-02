@@ -9,7 +9,7 @@ Rectangle {
 	id: statusHeader
 	objectName: "statusPane"
 	property variant webPreview
-
+	property alias currentStatus: logPane.currentStatus
 	function updateStatus(message)
 	{
 		if (!message)
@@ -17,6 +17,7 @@ Rectangle {
 			status.state = "";
 			status.text = qsTr("Compile successfully.");
 			debugImg.state = "active";
+			currentStatus = { "type": "Comp", "date": Qt.formatDateTime(new Date(), "hh:mm:ss"), "content": status.text, "level": "info" }
 		}
 		else
 		{
@@ -24,6 +25,7 @@ Rectangle {
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(message, true);
 			status.text = errorInfo.errorLocation + " " + errorInfo.errorDetail;
 			debugImg.state = "";
+			currentStatus = { "type": "Comp", "date": Qt.formatDateTime(new Date(), "hh:mm:ss"), "content": status.text, "level": "error" }
 		}
 		debugRunActionIcon.enabled = codeModel.hasContract;
 	}
@@ -33,6 +35,7 @@ Rectangle {
 		status.state = "";
 		status.text = text
 		logPane.push("info", type, text);
+		currentStatus = { "type": type, "date": Qt.formatDateTime(new Date(), "hh:mm:ss"), "content": text, "level": "info" }
 	}
 
 	function warningMessage(text, type)
@@ -40,13 +43,15 @@ Rectangle {
 		status.state = "warning";
 		status.text = text
 		logPane.push("warning", type, text);
+		currentStatus = { "type": type, "date": Qt.formatDateTime(new Date(), "hh:mm:ss"), "content": text, "level": "warning" }
 	}
 
 	function errorMessage(text, type)
 	{
 		status.state = "error";
-		status.text = text
+		status.text = text;
 		logPane.push("error", type, text);
+		currentStatus = { "type": type, "date": Qt.formatDateTime(new Date(), "hh:mm:ss"), "content": text, "level": "error" }
 	}
 
 	StatusPaneStyle {
@@ -80,7 +85,7 @@ Rectangle {
 		function format(_message)
 		{
 			var formatted = _message.match(/(?:<dev::eth::)(.+)(?:>)/);
-			if (formatted)
+			if (!formatted)
 				formatted = _message.match(/(?:<dev::)(.+)(?:>)/);
 			if (formatted && formatted.length > 1)
 				formatted = formatted[1];
@@ -94,6 +99,7 @@ Rectangle {
 			return formatted;
 		}
 	}
+
 	Connections {
 		target:projectModel
 		onDeploymentStarted: infoMessage(qsTr("Running deployment..."), "Deployment");
@@ -115,32 +121,13 @@ Rectangle {
 		anchors.horizontalCenter: parent.horizontalCenter
 		anchors.verticalCenter: parent.verticalCenter
 		radius: 3
-		width: 500
+		width: 600
 		height: 30
 		color: "#fcfbfc"
-		states: [
-			State {
-				name: "logsOpened"
-				PropertyChanges {
-					target: statusContainer
-					border.color: "#5391d8"
-					border.width: 1
-				}
-			},
-			State {
-				name: "logsClosed"
-				PropertyChanges {
-					target: statusContainer
-					border.color: "#5391d8"
-					border.width: 0
-				}
-			}
-		]
-
 		Text {
 			anchors.verticalCenter: parent.verticalCenter
 			anchors.horizontalCenter: parent.horizontalCenter
-			font.pointSize: statusPaneStyle.general.statusFontSize
+			font.pointSize: appStyle.absoluteSize(-1)
 			height: 15
 			font.family: "sans serif"
 			objectName: "status"
@@ -219,40 +206,39 @@ Rectangle {
 			{
 				if (logsContainer.state === "opened")
 				{
-					statusContainer.state = "logsClosed";
 					logsContainer.state = "closed"
 				}
 				else
 				{
-					statusContainer.state = "logsOpened";
 					logsContainer.state = "opened";
 					logsContainer.focus = true;
 					forceActiveFocus();
+					calCoord();
 				}
 			}
 
 			id: logsContainer
-			width: 1000
-			height: 0
-			anchors.topMargin: 10
+			width: 750
 			anchors.top: statusContainer.bottom
-			anchors.horizontalCenter: parent.horizontalCenter
+			anchors.topMargin: 4
 			visible: false
-			radius: 5
-			Component.onCompleted:
+			radius: 10
+
+			function calCoord()
 			{
 				var top = logsContainer;
 				while (top.parent)
 					top = top.parent
-				var coordinates = logsContainer.mapToItem(top, 0, 0)
+				var coordinates = logsContainer.mapToItem(top, 0, 0);
 				logsContainer.parent = top;
-				logsContainer.x = coordinates.x
-				logsContainer.y = coordinates.y
+				logsContainer.x = status.x + statusContainer.x - LogsPaneStyle.generic.layout.dateWidth - LogsPaneStyle.generic.layout.typeWidth + 70
 			}
+
 			LogsPane
 			{
-				id: logPane
+				id: logPane;
 			}
+
 			states: [
 				State {
 					name: "opened";
@@ -261,12 +247,13 @@ Rectangle {
 				State {
 					name: "closed";
 					PropertyChanges { target: logsContainer; height: 0; visible: false }
+					PropertyChanges { target: statusContainer; width: 600; height: 30 }
 				}
 			]
 			transitions: Transition {
 					 NumberAnimation { properties: "height"; easing.type: Easing.InOutQuad; duration: 200 }
-					 NumberAnimation { properties: "visible"; easing.type: Easing.InOutQuad; duration: 200 }
-				 }
+					 NumberAnimation { target: logsContainer;  properties: "visible"; easing.type: Easing.InOutQuad; duration: 200 }
+			}
 		}
 	}
 
