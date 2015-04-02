@@ -155,18 +155,19 @@ Item {
 				//document request
 				if (urlPath === "/")
 					urlPath = "/index.html";
-				var documentId = urlPath.substr(urlPath.lastIndexOf("/") + 1);
+				var documentName = urlPath.substr(urlPath.lastIndexOf("/") + 1);
+				var documentId = projectModel.getDocumentIdByName(documentName);
 				var content = "";
 				if (projectModel.codeEditor.isDocumentOpen(documentId))
 					content = projectModel.codeEditor.getDocumentText(documentId);
 				else
 				{
 					var doc = projectModel.getDocument(documentId);
-					if (doc !== undefined)
+					if (doc)
 						content = fileIo.readFile(doc.path);
 				}
 
-				if (documentId === urlInput.text.replace(httpServer.url + "/", "")) {
+				if (documentName === urlInput.text.replace(httpServer.url + "/", "")) {
 					//root page, inject deployment script
 					content = "<script>web3=parent.web3;contracts=parent.contracts;</script>\n" + content;
 					_request.setResponseContentType("text/html");
