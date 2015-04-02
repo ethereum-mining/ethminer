@@ -54,8 +54,8 @@ using namespace dev::solidity;
 class CollectDeclarationsVisitor: public ASTConstVisitor
 {
 public:
-	CollectDeclarationsVisitor(QHash<LocationPair, QString>* _functions, QHash<LocationPair, SolidityDeclaration>* _locals, QHash<unsigned, SolidityDeclaration>* _storage):
-	m_functions(_functions), m_locals(_locals), m_storage(_storage), m_functionScope(false), m_storageSlot(0) {}
+	CollectDeclarationsVisitor(QHash<LocationPair, QString>* _functions, QHash<LocationPair, SolidityDeclaration>* _locals):
+	m_functions(_functions), m_locals(_locals), m_functionScope(false) {}
 private:
 	LocationPair nodeLocation(ASTNode const& _node)
 	{
@@ -79,19 +79,17 @@ private:
 		SolidityDeclaration decl;
 		decl.type = CodeModel::nodeType(_node.getType().get());
 		decl.name = QString::fromStdString(_node.getName());
+		decl.slot = 0;
+		decl.offset = 0;
 		if (m_functionScope)
 			m_locals->insert(nodeLocation(_node), decl);
-		else
-			m_storage->insert(m_storageSlot++, decl);
 		return true;
 	}
 
 private:
 	QHash<LocationPair, QString>* m_functions;
 	QHash<LocationPair, SolidityDeclaration>* m_locals;
-	QHash<unsigned, SolidityDeclaration>* m_storage;
 	bool m_functionScope;
-	uint m_storageSlot;
 };
 
 dev::eth::AssemblyItems filterLocations(dev::eth::AssemblyItems const& _locations, dev::solidity::ContractDefinition const& _contract, QHash<LocationPair, QString> _functions)
@@ -107,6 +105,24 @@ dev::eth::AssemblyItems filterLocations(dev::eth::AssemblyItems const& _location
 	}
 	return result;
 }
+
+QHash<unsigned, SolidityDeclarations> collectStorage(dev::solidity::ContractDefinition const& _contract)
+{
+	QHash<unsigned, SolidityDeclarations> result;
+	dev::solidity::ContractType const* contractType = dynamic_cast<dev::solidity::ContractType const*>(_contract.getType(nullptr).get());
+	if (!contractType)
+		return result;
+
+	for (auto v : contractType->getStateVariables())
+	{
+		dev::solidity::VariableDeclaration const* declaration = std::get<0>(v);
+		dev::u256 slot = std::get<1>(v);
+		unsigned offset = std::get<2>(v);
+		result[static_cast<unsigned>(slot)].push_back(SolidityDeclaration { QString::fromStdString(declaration->getName()), CodeModel::nodeType(declaration->getType().get()), slot, offset });
+	}
+	return result;
+}
+
 
 } //namespace
 
@@ -133,7 +149,8 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	if (contractDefinition.getLocation().sourceName.get())
 		m_documentId = QString::fromStdString(*contractDefinition.getLocation().sourceName);
 
-	CollectDeclarationsVisitor visitor(&m_functions, &m_locals, &m_storage);
+	CollectDeclarationsVisitor visitor(&m_functions, &m_locals);
+	m_storage = collectStorage(contractDefinition);
 	contractDefinition.accept(visitor);
 	m_assemblyItems = filterLocations(_compiler.getRuntimeAssemblyItems(name), contractDefinition, m_functions);
 	m_constructorAssemblyItems = filterLocations(_compiler.getAssemblyItems(name), contractDefinition, m_functions);
@@ -335,7 +352,7 @@ dev::bytes const& CodeModel::getStdContractCode(const QString& _contractName, co
 
 SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 {
-	SolidityType r { SolidityType::Type::UnsignedInteger, 32, false, false, QString::fromStdString(_type->toString()), std::vector<SolidityDeclaration>(), std::vector<QString>() };
+	SolidityType r { SolidityType::Type::UnsignedInteger, 32, 1, false, false, QString::fromStdString(_type->toString()), std::vector<SolidityDeclaration>(), std::vector<QString>() };
 	if (!_type)
 		return r;
 	r.dynamicSize = _type->isDynamicallySized();
@@ -367,7 +384,12 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 			if (array->isByteArray())
 				r.type = SolidityType::Type::Bytes;
 			else
-				r = nodeType(array->getBaseType().get());
+			{
+				SolidityType elementType = nodeType(array->getBaseType().get());
+				elementType.name = r.name;
+				r = elementType;
+			}
+			r.count = static_cast<unsigned>(array->getLength());
 			r.array = true;
 		}
 		break;
@@ -384,7 +406,10 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 			r.type = SolidityType::Type::Struct;
 			StructType const* s = dynamic_cast<StructType const*>(_type);
 			for(auto const& structMember: s->getMembers())
-				r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.first), nodeType(structMember.second.get()) });
+			{
+				auto slotAndOffset = s->getStorageOffsetsOfMember(structMember.first);
+				r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.first), nodeType(structMember.second.get()), slotAndOffset.first, slotAndOffset.second });
+			}
 		}
 		break;
 	case Type::Category::Function:

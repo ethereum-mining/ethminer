@@ -200,6 +200,7 @@ private:
 	void onStateReset();
 	void showDebuggerForTransaction(ExecutionResult const& _t);
 	QVariant formatValue(SolidityType const& _type, dev::u256 const& _value);
+	QVariant formatStorageValue(SolidityType const& _type, std::map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
 
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;
