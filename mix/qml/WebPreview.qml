@@ -156,7 +156,7 @@ Item {
 				if (urlPath === "/")
 					urlPath = "/index.html";
 				var documentName = urlPath.substr(urlPath.lastIndexOf("/") + 1);
-				var documentId = projectModel.codeEditor.getDocumentIdByName(documentName);
+				var documentId = projectModel.getDocumentIdByName(documentName);
 				var content = "";
 				if (projectModel.codeEditor.isDocumentOpen(documentId))
 					content = projectModel.codeEditor.getDocumentText(documentId);
