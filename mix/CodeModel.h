@@ -99,7 +99,7 @@ public:
 
 	QHash<LocationPair, QString> const& functions() const { return m_functions; }
 	QHash<LocationPair, SolidityDeclaration> const& locals() const { return m_locals; }
-	QHash<unsigned, SolidityDeclaration> const& storage() const { return m_storage; }
+	QHash<unsigned, SolidityDeclarations> const& storage() const { return m_storage; }
 
 private:
 	uint m_sourceHash;
@@ -112,7 +112,7 @@ private:
 	eth::AssemblyItems m_constructorAssemblyItems;
 	QHash<LocationPair, QString> m_functions;
 	QHash<LocationPair, SolidityDeclaration> m_locals;
-	QHash<unsigned, SolidityDeclaration> m_storage;
+	QHash<unsigned, SolidityDeclarations> m_storage;
 
 	friend class CodeModel;
 };
