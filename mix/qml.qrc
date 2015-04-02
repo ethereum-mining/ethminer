@@ -48,7 +48,8 @@
         <file>qml/StatusPaneStyle.qml</file>
         <file>qml/StepActionImage.qml</file>
         <file>qml/StorageView.qml</file>
-        <file>qml/StructView.qml</file>
+		<file>qml/StatesComboBox.qml</file>
+		<file>qml/StructView.qml</file>
         <file>qml/Style.qml</file>
         <file>qml/TabStyle.qml</file>
         <file>qml/TransactionDialog.qml</file>
