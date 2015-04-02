@@ -9,11 +9,11 @@ import "."
 Dialog {
 	id: stateListContainer
 	modality: Qt.WindowModal
-
+	standardButtons: StandardButton.Close
 	width: 640
 	height: 480
-
 	visible: false
+	onRejected: {}
 	contentItem: Rectangle {
 		anchors.fill: parent
 		ColumnLayout
@@ -26,6 +26,7 @@ Dialog {
 				model: projectModel.stateListModel
 				itemDelegate: renderDelegate
 				headerDelegate: null
+				frameVisible: false
 				TableViewColumn {
 					role: "title"
 					title: qsTr("State")
@@ -33,9 +34,18 @@ Dialog {
 				}
 			}
 
-			Button {
+			Row{
+				spacing: 5
 				anchors.bottom: parent.bottom
-				action: addStateAction
+				anchors.right: parent.right
+				anchors.rightMargin: 10
+				Button {
+					action: addStateAction
+				}
+
+				Button {
+					action: closeAction
+				}
 			}
 		}
 	}
@@ -72,12 +82,21 @@ Dialog {
 		}
 	}
 
-	Action {
-		id: addStateAction
-		text: "&Add State"
-		shortcut: "Ctrl+T"
-		enabled: codeModel.hasContract && !clientModel.running;
-		onTriggered: list.model.addState();
+	Row
+	{
+		Action {
+			id: addStateAction
+			text: qsTr("Add State")
+			shortcut: "Ctrl+T"
+			enabled: codeModel.hasContract && !clientModel.running;
+			onTriggered: list.model.addState();
+		}
+
+		Action {
+			id: closeAction
+			text: qsTr("Close")
+			onTriggered: stateListContainer.close();
+		}
 	}
 }
 
