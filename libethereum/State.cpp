@@ -60,7 +60,18 @@ OverlayDB State::openDB(std::string _path, bool _killExisting)
 	ldb::DB* db = nullptr;
 	ldb::DB::Open(o, _path + "/state", &db);
 	if (!db)
-		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
+	{
+		if (boost::filesystem::space(_path + "/state").available < 1024)
+		{
+			cwarn << "Not enough available space found on hard drive. Please free some up and then re-run. Bailing.";
+			BOOST_THROW_EXCEPTION(NotEnoughAvailableSpace());
+		}
+		else
+		{
+			cwarn << "Database already open. You appear to have another instance of ethereum running. Bailing.";
+			BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
+		}
+	}
 
 	cnote << "Opened state DB.";
 	return OverlayDB(db);
@@ -100,22 +111,36 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 	m_state(&m_db),
 	m_blockReward(c_blockReward)
 {
-	// TODO THINK: is this necessary?
-	m_state.init();
-
 	auto b = _bc.block(_h);
-	BlockInfo bi;
-	BlockInfo bip;
-	if (_h)
-		bi.populate(b);
-	if (bi && bi.number)
-		bip.populate(_bc.block(bi.parentHash));
-	if (!_h || !bip)
-		return;
-	m_ourAddress = bi.coinbaseAddress;
+	BlockInfo bi(b);
 
-	sync(_bc, bi.parentHash, bip);
-	enact(&b, _bc);
+	if (!bi)
+	{
+		// Might be worth throwing here.
+		cwarn << "Invalid block given for state population: " << _h;
+		return;
+	}
+
+	if (bi.number)
+	{
+		// Non-genesis:
+
+		// 1. Start at parent's end state (state root).
+		BlockInfo bip;
+		bip.populate(_bc.block(bi.parentHash));
+		sync(_bc, bi.parentHash, bip);
+
+		// 2. Enact the block's transactions onto this state.
+		m_ourAddress = bi.coinbaseAddress;
+		enact(&b, _bc);
+	}
+	else
+	{
+		// Genesis required:
+		// We know there are no transactions, so just populate directly.
+		m_state.init();
+		sync(_bc, _h, bi);
+	}
 }
 
 State::State(State const& _s):
@@ -342,6 +367,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 
 map<Address, u256> State::addresses() const
 {
+#if ETH_FATDB
 	map<Address, u256> ret;
 	for (auto i: m_cache)
 		if (i.second.isAlive())
@@ -350,6 +376,9 @@ map<Address, u256> State::addresses() const
 		if (m_cache.find(i.first) == m_cache.end())
 			ret[i.first] = RLP(i.second)[1].toInt<u256>();
 	return ret;
+#else
+	throw InterfaceNotSupported("State::addresses()");
+#endif
 }
 
 void State::resetCurrent()
@@ -384,8 +413,7 @@ bool State::cull(TransactionQueue& _tq) const
 		{
 			try
 			{
-				Transaction t(i.second, CheckSignature::Sender);
-				if (t.nonce() <= transactionsFrom(t.sender()))
+				if (i.second.nonce() <= transactionsFrom(i.second.sender()))
 				{
 					_tq.drop(i.first);
 					ret = true;
@@ -407,7 +435,7 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, Ga
 	TransactionReceipts ret;
 	auto ts = _tq.transactions();
 
-	auto lh = getLastHashes(_bc, _bc.number());
+	LastHashes lh;
 
 	for (int goodTxs = 1; goodTxs;)
 	{
@@ -417,12 +445,11 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, Ga
 			{
 				try
 				{
-					Transaction t(i.second, CheckSignature::Sender);
-					if (t.gasPrice() >= _gp.ask(*this))
+					if (i.second.gasPrice() >= _gp.ask(*this))
 					{
-						// don't have it yet! Execute it now.
-						uncommitToMine();
 	//					boost::timer t;
+						if (lh.empty())
+							lh = _bc.lastHashes();
 						execute(lh, i.second);
 						ret.push_back(m_receipts.back());
 						_tq.noteGood(i);
@@ -430,6 +457,7 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, Ga
 	//					cnote << "TX took:" << t.elapsed() * 1000;
 					}
 				}
+#if ETH_DEBUG
 				catch (InvalidNonce const& in)
 				{
 					bigint const* req = boost::get_error_info<errinfo_required>(in);
@@ -445,13 +473,19 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, Ga
 					else
 						_tq.setFuture(i);
 				}
+				catch (BlockGasLimitReached const& e)
+				{
+					_tq.setFuture(i);
+				}
+#endif
 				catch (Exception const& _e)
 				{
 					// Something else went wrong - drop it.
 					_tq.drop(i.first);
 					if (o_transactionQueueChanged)
 						*o_transactionQueueChanged = true;
-					cwarn << "Sync went wrong\n" << diagnostic_information(_e);
+					cnote << "Dropping invalid transaction:";
+					cnote << diagnostic_information(_e);
 				}
 				catch (std::exception const&)
 				{
@@ -459,6 +493,7 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, Ga
 					_tq.drop(i.first);
 					if (o_transactionQueueChanged)
 						*o_transactionQueueChanged = true;
+					cnote << "Transaction caused low-level exception :(";
 				}
 			}
 	}
@@ -494,7 +529,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
 	receiptsTrie.init();
 
-	LastHashes lh = getLastHashes(_bc, (unsigned)m_previousBlock.number);
+	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
 	RLP rlp(_block);
 
 	// All ok with the block generally. Play back the transactions now...
@@ -505,7 +540,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		k << i;
 
 		transactionsTrie.insert(&k.out(), tr.data());
-		execute(lh, tr.data());
+		execute(lh, Transaction(tr.data(), CheckSignature::Sender));
 
 		RLPStream receiptrlp;
 		m_receipts.back().streamRLP(receiptrlp);
@@ -690,7 +725,7 @@ void State::commitToMine(BlockChain const& _bc)
 	uncommitToMine();
 
 //	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
-#ifdef ETH_PARANOIA
+#if  ETH_PARANOIA && 0
 	commit();
 	cnote << "Pre-reward stateRoot:" << m_state.root();
 #endif
@@ -1036,56 +1071,34 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 	return true;
 }
 
-LastHashes State::getLastHashes(BlockChain const& _bc, unsigned _n) const
+ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Permanence _p)
 {
-	LastHashes ret;
-	ret.resize(256);
-	if (eth::c_protocolVersion > 49)
-	{
-		ret[0] = _bc.numberHash(_n);
-		for (unsigned i = 1; i < 256; ++i)
-			ret[i] = ret[i - 1] ? _bc.details(ret[i - 1]).parent : h256();
-	}
-	return ret;
-}
-
-ExecutionResult State::execute(BlockChain const& _bc, bytes const& _rlp, Permanence _p)
-{
-	return execute(getLastHashes(_bc, _bc.number()), &_rlp, _p);
-}
-
-ExecutionResult State::execute(BlockChain const& _bc, bytesConstRef _rlp, Permanence _p)
-{
-	return execute(getLastHashes(_bc, _bc.number()), _rlp, _p);
-}
-
-// TODO: maintain node overlay revisions for stateroots -> each commit gives a stateroot + OverlayDB; allow overlay copying for rewind operations.
-ExecutionResult State::execute(LastHashes const& _lh, bytesConstRef _rlp, Permanence _p)
-{
-#ifndef ETH_RELEASE
-	commit();	// get an updated hash
-#endif
-
-	paranoia("start of execution.", true);
-
-	State old(*this);
 #if ETH_PARANOIA
+	paranoia("start of execution.", true);
+	State old(*this);
 	auto h = rootHash();
 #endif
 
+	// Create and initialize the executive. This will throw fairly cheaply and quickly if the
+	// transaction is bad in any way.
 	Executive e(*this, _lh, 0);
-	e.setup(_rlp);
+	e.initialize(_t);
 
+	// Uncommitting is a non-trivial operation - only do it once we've verified as much of the
+	// transaction as possible.
+	uncommitToMine();
+
+	// OK - transaction looks valid - execute.
 	u256 startGasUsed = gasUsed();
-
 #if ETH_PARANOIA
 	ctrace << "Executing" << e.t() << "on" << h;
 	ctrace << toHex(e.t().rlp());
 #endif
+	if (!e.execute())
 #if ETH_VMTRACE
-	e.go(e.simpleTrace());
+		e.go(e.simpleTrace());
 #else
-	e.go();
+		e.go();
 #endif
 	e.finalize();
 

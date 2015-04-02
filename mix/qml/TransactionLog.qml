@@ -6,30 +6,16 @@ import QtQuick.Layouts 1.1
 import org.ethereum.qml.RecordLogEntry 1.0
 
 Item {
-
 	property ListModel fullModel: ListModel{}
 	property ListModel transactionModel: ListModel{}
 	property ListModel callModel: ListModel{}
-
-	Action {
-		id: addStateAction
-		text: "Add State"
-		shortcut: "Ctrl+Alt+T"
-		enabled: codeModel.hasContract && !clientModel.running;
-		onTriggered: projectModel.stateListModel.addState();
-	}
-	Action {
-		id: editStateAction
-		text: "Edit State"
-		shortcut: "Ctrl+Alt+T"
-		enabled: codeModel.hasContract && !clientModel.running && statesCombo.currentIndex >= 0 && projectModel.stateListModel.count > 0;
-		onTriggered: projectModel.stateListModel.editState(statesCombo.currentIndex);
-	}
+	property int selectedStateIndex: statesCombo.selectedIndex
 
 	ColumnLayout {
 		anchors.fill: parent
 		RowLayout {
-
+			anchors.right: parent.right
+			anchors.left: parent.left
 			Connections
 			{
 				id: compilationStatus
@@ -44,7 +30,7 @@ Item {
 				target: projectModel
 				onProjectSaved:
 				{
-					if (projectModel.appIsClosing)
+					if (projectModel.appIsClosing || projectModel.projectIsClosing)
 						return;
 					if (compilationStatus.compilationComplete && codeModel.hasContract && !clientModel.running)
 						projectModel.stateListModel.debugDefaultState();
@@ -61,34 +47,22 @@ Item {
 				}
 			}
 
-			ComboBox {
+			StatesComboBox
+			{
 				id: statesCombo
-				model: projectModel.stateListModel
-				width: 150
-				editable: false
-				textRole: "title"
-				onActivated:  {
-					model.runState(index);
-				}
+				items: projectModel.stateListModel
+				onSelectCreate: projectModel.stateListModel.addState();
+				onEditItem: projectModel.stateListModel.editState(item)
+				colorItem: "#808080"
+				colorSelect: "#4a90e2"
+				color: "white"
 				Connections {
 					target: projectModel.stateListModel
 					onStateRun: {
-						if (statesCombo.currentIndex !== index)
-							statesCombo.currentIndex = index;
+						if (statesCombo.selectedIndex !== index)
+							statesCombo.setSelectedIndex( index );
 					}
 				}
-			}
-			Button
-			{
-				anchors.rightMargin: 9
-				anchors.verticalCenter: parent.verticalCenter
-				action: editStateAction
-			}
-			Button
-			{
-				anchors.rightMargin: 9
-				anchors.verticalCenter: parent.verticalCenter
-				action: addStateAction
 			}
 			Button
 			{
@@ -163,16 +137,11 @@ Item {
 			Keys.onPressed: {
 				if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < logTable.model.count) {
 					var item = logTable.model.get(currentRow);
-					clipboard.text = item.returned;
+					appContext.toClipboard(item.returned);
 				}
 			}
 		}
-		Rectangle {
-			height: 6
-			color: "transparent"
-		}
 	}
-
 	Connections {
 		target: clientModel
 		onStateCleared: {

@@ -63,9 +63,12 @@ public:
 	/// Same as peers().size(), but more efficient.
 	virtual size_t peerCount() const = 0;
 
-	/// Connect to a particular peer.
-	virtual void connect(std::string const& _seedHost, unsigned short _port) = 0;
-
+	/// Add node to connect to.
+	virtual void addNode(p2p::NodeId const& _node, bi::tcp::endpoint const& _hostEndpoint) = 0;
+	
+	/// Require connection to peer.
+	virtual void requirePeer(p2p::NodeId const& _node, bi::tcp::endpoint const& _endpoint) = 0;
+	
 	/// Save peers
 	virtual dev::bytes saveNetwork() = 0;
 
@@ -74,7 +77,7 @@ public:
 
 	virtual bool haveNetwork() const = 0;
 
-	virtual void setNetworkPreferences(p2p::NetworkPreferences const& _n) = 0;
+	virtual void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers) = 0;
 
 	virtual p2p::NodeId id() const = 0;
 
@@ -137,22 +140,34 @@ public:
 
 	/// Same as peers().size(), but more efficient.
 	size_t peerCount() const override;
+	
+	/// Add node to connect to.
+	virtual void addNode(p2p::NodeId const& _node, bi::tcp::endpoint const& _hostEndpoint) override;
+	
+	/// Add node to connect to.
+	void addNode(p2p::NodeId const& _node, std::string const& _hostString) { addNode(_node, p2p::Network::resolveHost(_hostString)); }
+	
+	/// Add node to connect to.
+	void addNode(bi::tcp::endpoint const& _endpoint) { addNode(p2p::NodeId(), _endpoint); }
 
-	/// Connect to a particular peer.
-	void connect(std::string const& _seedHost, unsigned short _port = 30303) override;
+	/// Add node to connect to.
+	void addNode(std::string const& _hostString) { addNode(p2p::NodeId(), _hostString); }
+	
+	/// Require connection to peer.
+	void requirePeer(p2p::NodeId const& _node, bi::tcp::endpoint const& _endpoint) override;
+
+	/// Require connection to peer.
+	void requirePeer(p2p::NodeId const& _node, std::string const& _hostString) { requirePeer(_node, p2p::Network::resolveHost(_hostString)); }
 
 	/// Save peers
 	dev::bytes saveNetwork() override;
-
-//	/// Restore peers
-//	void restoreNetwork(bytesConstRef _saved) override;
 
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n) override;
 
 	bool haveNetwork() const override { return m_net.isStarted(); }
 
-	void setNetworkPreferences(p2p::NetworkPreferences const& _n) override;
+	void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers = false) override;
 
 	p2p::NodeId id() const override { return m_net.id(); }
 

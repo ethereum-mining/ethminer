@@ -77,7 +77,6 @@ void interactiveHelp()
 		<< "    setetherprice <p>  Resets the ether price." << endl
 		<< "    setpriority <p>  Resets the transaction priority." << endl
 		<< "    minestart  Starts mining." << endl
-		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
 		<< "    address  Gives the current address." << endl
@@ -88,12 +87,14 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
+#if ETH_FATDB
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
-		<< "    setsecret <secret>  Set the secret to the hex secret key." <<endl
-		<< "    setaddress <addr>  Set the coinbase (mining payout) address." <<endl
-		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." <<endl
-		<< "    importconfig <path>  Import the config (.RLP) from the path provided." <<endl
+#endif
+		<< "    setsecret <secret>  Set the secret to the hex secret key." << endl
+		<< "    setaddress <addr>  Set the coinbase (mining payout) address." << endl
+		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." << endl
+		<< "    importconfig <path>  Import the config (.RLP) from the path provided." << endl
 		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
@@ -117,11 +118,12 @@ void help()
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #if ETH_JSONRPC
 		<< "	-j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
-		<< "	--json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
+		<< "	--json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
 		<< "    -K,--kill-blockchain  First kill the blockchain." << endl
-		<< "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
-		<< "    -L,--local-networking Use peers whose addresses are local." << endl
+		<< "       --listen-ip <port>  Listen on the given port for incoming connections (default: 30303)." << endl
+		<< "    -l,--listen <ip>  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
+		<< "    -u,--public-ip <ip>  Force public ip to given (default: auto)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
 		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
@@ -130,7 +132,6 @@ void help()
 		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
-		<< "    -u,--public-ip <ip>  Force public ip to given (default; auto)." << endl
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
@@ -198,7 +199,9 @@ enum class NodeMode
 
 int main(int argc, char** argv)
 {
+	string listenIP;
 	unsigned short listenPort = 30303;
+	string publicIP;
 	string remoteHost;
 	unsigned short remotePort = 30303;
 	string dbPath;
@@ -210,10 +213,8 @@ int main(int argc, char** argv)
 #if ETH_JSONRPC
 	int jsonrpc = -1;
 #endif
-	string publicIP;
 	bool bootstrap = false;
 	bool upnp = true;
-	bool useLocal = false;
 	bool forceMining = false;
 	bool killChain = false;
 	bool jit = false;
@@ -249,7 +250,9 @@ int main(int argc, char** argv)
 	for (int i = 1; i < argc; ++i)
 	{
 		string arg = argv[i];
-		if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
+		if (arg == "--listen-ip" && i + 1 < argc)
+			listenIP = argv[++i];
+		else if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
 			listenPort = (short)atoi(argv[++i]);
 		else if ((arg == "-u" || arg == "--public-ip" || arg == "--public") && i + 1 < argc)
 			publicIP = argv[++i];
@@ -270,8 +273,6 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
-		else if (arg == "-L" || arg == "--local-networking")
-			useLocal = true;
 		else if (arg == "-K" || arg == "--kill-blockchain")
 			killChain = true;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
@@ -370,7 +371,7 @@ int main(int argc, char** argv)
 			interactive = true;
 #if ETH_JSONRPC
 		else if ((arg == "-j" || arg == "--json-rpc"))
-			jsonrpc = jsonrpc == -1 ? 8080 : jsonrpc;
+			jsonrpc = jsonrpc == -1 ? SensibleHttpPort : jsonrpc;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
 #endif
@@ -420,7 +421,7 @@ int main(int argc, char** argv)
 
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
-	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
+	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
 	std::string clientImplString = "Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
@@ -448,16 +449,16 @@ int main(int argc, char** argv)
 	web3.startNetwork();
 
 	if (bootstrap)
-		web3.connect(Host::pocHost());
+		web3.addNode(p2p::NodeId(), Host::pocHost());
 	if (remoteHost.size())
-		web3.connect(remoteHost, remotePort);
+		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 
 #if ETH_JSONRPC
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
-		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
 		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
@@ -510,7 +511,7 @@ int main(int argc, char** argv)
 				string addr;
 				unsigned port;
 				iss >> addr >> port;
-				web3.connect(addr, (short)port);
+				web3.addNode(p2p::NodeId(), addr + ":" + toString(port ? port : p2p::c_defaultIPPort));
 			}
 			else if (cmd == "netstop")
 			{
@@ -582,8 +583,8 @@ int main(int argc, char** argv)
 			else if (cmd == "jsonstart")
 			{
 				if (jsonrpc < 0)
-					jsonrpc = 8080;
-				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+					jsonrpc = SensibleHttpPort;
+				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
 				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 				jsonrpcServer->setIdentities({us});
 				jsonrpcServer->StartListening();
@@ -685,6 +686,7 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
+#if ETH_FATDB
 			else if (c && cmd == "listcontracts")
 			{
 				auto acs =c->addresses();
@@ -707,6 +709,7 @@ int main(int argc, char** argv)
 						cout << ss << endl;
 					}
 			}
+#endif
 			else if (c && cmd == "send")
 			{
 				if (iss.peek() != -1)
@@ -832,11 +835,8 @@ int main(int argc, char** argv)
 					Executive e(state, c->blockChain(), 0);
 					Transaction t = state.pending()[index];
 					state = state.fromPending(index);
-					bytes r = t.rlp();
 					try
 					{
-						e.setup(&r);
-
 						OnOpFunc oof;
 						if (format == "pretty")
 							oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
@@ -869,7 +869,9 @@ int main(int argc, char** argv)
 										f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
 								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
 							};
-						e.go(oof);
+						e.initialize(t);
+						if (!e.execute())
+							e.go(oof);
 						e.finalize();
 					}
 					catch(Exception const& _e)
