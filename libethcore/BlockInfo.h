@@ -80,7 +80,7 @@ public:
 	u256 number;
 	u256 gasLimit;
 	u256 gasUsed;
-	u256 timestamp;
+	u256 timestamp = Invalid256;
 	bytes extraData;
 	h256 mixHash;
 	Nonce nonce;
