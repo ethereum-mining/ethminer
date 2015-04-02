@@ -1,12 +1,12 @@
 import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.1
-import QtQuick.Dialogs 1.1
+import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
 import "."
 
-Window {
+Dialog {
 	id: stateListContainer
 	modality: Qt.WindowModal
 
@@ -14,26 +14,29 @@ Window {
 	height: 480
 
 	visible: false
-	ColumnLayout
-	{
+	contentItem: Rectangle {
 		anchors.fill: parent
-		TableView {
-			id: list
-			Layout.fillHeight: true
-			Layout.fillWidth: true
-			model: projectModel.stateListModel
-			itemDelegate: renderDelegate
-			headerDelegate: null
-			TableViewColumn {
-				role: "title"
-				title: qsTr("State")
-				width: list.width
+		ColumnLayout
+		{
+			anchors.fill: parent
+			TableView {
+				id: list
+				Layout.fillHeight: true
+				Layout.fillWidth: true
+				model: projectModel.stateListModel
+				itemDelegate: renderDelegate
+				headerDelegate: null
+				TableViewColumn {
+					role: "title"
+					title: qsTr("State")
+					width: list.width
+				}
 			}
-		}
 
-		Button {
-			anchors.bottom: parent.bottom
-			action: addStateAction
+			Button {
+				anchors.bottom: parent.bottom
+				action: addStateAction
+			}
 		}
 	}
 
