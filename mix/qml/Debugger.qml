@@ -225,24 +225,24 @@ Rectangle {
 								id: playAction
 								enabledStateImg: "qrc:/qml/img/play_button.png"
 								disableStateImg: "qrc:/qml/img/play_button.png"
-								onClicked: console.log("play");
+								onClicked: projectModel.stateListModel.runState(transactionLog.selectedStateIndex)
 								width: 30
 								height: 30
 								buttonShortcut: "Ctrl+Shift+F8"
-								buttonTooltip: qsTr("Play")
+								buttonTooltip: qsTr("Start Debugging")
 								visible: true
 							}
 
 							StepActionImage
 							{
 								id: pauseAction
-								enabledStateImg: "qrc:/qml/img/pause_button.png"
-								disableStateImg: "qrc:/qml/img/pause_button.png"
-								onClicked: console.log("pause");
+								enabledStateImg: "qrc:/qml/img/stop_button2x.png"
+								disableStateImg: "qrc:/qml/img/stop_button2x.png"
+								onClicked: Debugger.init(null);
 								width: 30
 								height: 30
 								buttonShortcut: "Ctrl+Shift+F9"
-								buttonTooltip: qsTr("Pause")
+								buttonTooltip: qsTr("Stop Debugging")
 								visible: true
 							}
 
