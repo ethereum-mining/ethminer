@@ -1,6 +1,6 @@
 import QtQuick 2.2
 import QtQuick.Controls 1.1
-import QtQuick.Dialogs 1.1
+import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
 import QtQuick.Controls.Styles 1.3
@@ -9,7 +9,7 @@ import "js/QEtherHelper.js" as QEtherHelper
 import "js/TransactionHelper.js" as TransactionHelper
 import "."
 
-Window {
+Dialog {
 	id: modalStateDialog
 	modality: Qt.ApplicationModal
 
@@ -17,7 +17,6 @@ Window {
 	height: 480
 	title: qsTr("Edit State")
 	visible: false
-	color: StateDialogStyle.generic.backgroundColor
 
 	property alias stateTitle: titleField.text
 	property alias isDefault: defaultCheckBox.checked
@@ -46,9 +45,6 @@ Window {
 			stateAccounts.push(item.accounts[k]);
 		}
 
-		modalStateDialog.setX((Screen.width - width) / 2);
-		modalStateDialog.setY((Screen.height - height) / 2);
-
 		visible = true;
 		isDefault = setDefault;
 		titleField.focus = true;
@@ -70,235 +66,238 @@ Window {
 		item.accounts = stateAccounts;
 		return item;
 	}
-
-	ColumnLayout {
+	contentItem:
+	Rectangle {
+		color: StateDialogStyle.generic.backgroundColor
 		anchors.fill: parent
-		anchors.margins: 10
 		ColumnLayout {
-			id: dialogContent
-			anchors.top: parent.top
-
-			RowLayout
-			{
-				Layout.fillWidth: true
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Title")
-				}
-				DefaultTextField
+			anchors.fill: parent
+			anchors.margins: 10
+			ColumnLayout {
+				id: dialogContent
+				anchors.top: parent.top
+				RowLayout
 				{
-					id: titleField
+					Layout.fillWidth: true
+					DefaultLabel {
+						Layout.preferredWidth: 75
+						text: qsTr("Title")
+					}
+					DefaultTextField
+					{
+						id: titleField
+						Layout.fillWidth: true
+					}
+				}
+
+				CommonSeparator
+				{
+					Layout.fillWidth: true
+				}
+
+				RowLayout
+				{
+					Layout.fillWidth: true
+
+					Rectangle
+					{
+						Layout.preferredWidth: 75
+						DefaultLabel {
+							id: accountsLabel
+							Layout.preferredWidth: 75
+							text: qsTr("Accounts")
+						}
+
+						Button
+						{
+							anchors.top: accountsLabel.bottom
+							anchors.topMargin: 10
+							iconSource: "qrc:/qml/img/plus.png"
+							action: newAccountAction
+						}
+
+						Action {
+							id: newAccountAction
+							tooltip: qsTr("Add new Account")
+							onTriggered:
+							{
+								var account = stateListModel.newAccount("1000000", QEther.Ether);
+								stateAccounts.push(account);
+								accountsModel.append(account);
+							}
+						}
+					}
+
+					MessageDialog
+					{
+						id: alertAlreadyUsed
+						text: qsTr("This account is in use. You cannot remove it. The first account is used to deploy config contract and cannot be removed.")
+						icon: StandardIcon.Warning
+						standardButtons: StandardButton.Ok
+					}
+
+					TableView
+					{
+						id: accountsView
+						Layout.fillWidth: true
+						model: accountsModel
+						headerVisible: false
+						TableViewColumn {
+							role: "name"
+							title: qsTr("Name")
+							width: 150
+							delegate: Item {
+								RowLayout
+								{
+									height: 25
+									width: parent.width
+									Button
+									{
+										iconSource: "qrc:/qml/img/delete_sign.png"
+										action: deleteAccountAction
+									}
+
+									Action {
+										id: deleteAccountAction
+										tooltip: qsTr("Delete Account")
+										onTriggered:
+										{
+											if (transactionsModel.isUsed(stateAccounts[styleData.row].secret))
+												alertAlreadyUsed.open();
+											else
+											{
+												stateAccounts.splice(styleData.row, 1);
+												accountsModel.remove(styleData.row);
+											}
+										}
+									}
+
+									DefaultTextField {
+										anchors.verticalCenter: parent.verticalCenter
+										onTextChanged: {
+											if (styleData.row > -1)
+												stateAccounts[styleData.row].name = text;
+										}
+										text:  {
+											return styleData.value
+										}
+									}
+								}
+							}
+						}
+
+						TableViewColumn {
+							role: "balance"
+							title: qsTr("Balance")
+							width: 200
+							delegate: Item {
+								Ether {
+									id: balanceField
+									edit: true
+									displayFormattedValue: false
+									value: styleData.value
+								}
+							}
+						}
+						rowDelegate:
+							Rectangle {
+							color: styleData.alternate ? "transparent" : "#f0f0f0"
+							height: 30;
+						}
+					}
+				}
+
+				CommonSeparator
+				{
+					Layout.fillWidth: true
+				}
+
+				RowLayout
+				{
+					Layout.fillWidth: true
+					DefaultLabel {
+						Layout.preferredWidth: 75
+						text: qsTr("Default")
+					}
+					CheckBox {
+						id: defaultCheckBox
+						Layout.fillWidth: true
+					}
+				}
+
+				CommonSeparator
+				{
 					Layout.fillWidth: true
 				}
 			}
 
-			CommonSeparator
-			{
-				Layout.fillWidth: true
-			}
-
-			RowLayout
-			{
-				Layout.fillWidth: true
-
-				Rectangle
+			ColumnLayout {
+				anchors.top: dialogContent.bottom
+				anchors.topMargin: 5
+				spacing: 0
+				RowLayout
 				{
-					Layout.preferredWidth: 75
+					Layout.preferredWidth: 150
 					DefaultLabel {
-						id: accountsLabel
-						Layout.preferredWidth: 75
-						text: qsTr("Accounts")
+						text: qsTr("Transactions: ")
 					}
 
 					Button
 					{
-						anchors.top: accountsLabel.bottom
-						anchors.topMargin: 10
 						iconSource: "qrc:/qml/img/plus.png"
-						action: newAccountAction
+						action: newTrAction
+						width: 10
+						height: 10
+						anchors.right: parent.right
 					}
 
 					Action {
-						id: newAccountAction
-						tooltip: qsTr("Add new Account")
-						onTriggered:
-						{
-							var account = stateListModel.newAccount("1000000", QEther.Ether);
-							stateAccounts.push(account);
-							accountsModel.append(account);
-						}
+						id: newTrAction
+						tooltip: qsTr("Create a new transaction")
+						onTriggered: transactionsModel.addTransaction()
 					}
 				}
 
-				MessageDialog
-				{
-					id: alertAlreadyUsed
-					text: qsTr("This account is in use. You cannot remove it. The first account is used to deploy config contract and cannot be removed.")
-					icon: StandardIcon.Warning
-					standardButtons: StandardButton.Ok
-				}
-
-				TableView
-				{
-					id: accountsView
-					Layout.fillWidth: true
-					model: accountsModel
-					headerVisible: false
-					TableViewColumn {
-						role: "name"
-						title: qsTr("Name")
-						width: 150
-						delegate: Item {
-							RowLayout
-							{
-								height: 25
-								width: parent.width
-								Button
-								{
-									iconSource: "qrc:/qml/img/delete_sign.png"
-									action: deleteAccountAction
-								}
-
-								Action {
-									id: deleteAccountAction
-									tooltip: qsTr("Delete Account")
-									onTriggered:
-									{
-										if (transactionsModel.isUsed(stateAccounts[styleData.row].secret))
-											alertAlreadyUsed.open();
-										else
-										{
-											stateAccounts.splice(styleData.row, 1);
-											accountsModel.remove(styleData.row);
-										}
-									}
-								}
-
-								DefaultTextField {
-									anchors.verticalCenter: parent.verticalCenter
-									onTextChanged: {
-										if (styleData.row > -1)
-											stateAccounts[styleData.row].name = text;
-									}
-									text:  {
-										return styleData.value
-									}
-								}
-							}
-						}
-					}
-
-					TableViewColumn {
-						role: "balance"
-						title: qsTr("Balance")
-						width: 200
-						delegate: Item {
-							Ether {
-								id: balanceField
-								edit: true
-								displayFormattedValue: false
-								value: styleData.value
-							}
-						}
-					}
-					rowDelegate:
-						Rectangle {
-						color: styleData.alternate ? "transparent" : "#f0f0f0"
-						height: 30;
-					}
-				}
-			}
-
-			CommonSeparator
-			{
-				Layout.fillWidth: true
-			}
-
-			RowLayout
-			{
-				Layout.fillWidth: true
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Default")
-				}
-				CheckBox {
-					id: defaultCheckBox
-					Layout.fillWidth: true
-				}
-			}
-
-			CommonSeparator
-			{
-				Layout.fillWidth: true
-			}
-		}
-
-		ColumnLayout {
-			anchors.top: dialogContent.bottom
-			anchors.topMargin: 5
-			spacing: 0
-			RowLayout
-			{
-				Layout.preferredWidth: 150
-				DefaultLabel {
-					text: qsTr("Transactions: ")
-				}
-
-				Button
-				{
-					iconSource: "qrc:/qml/img/plus.png"
-					action: newTrAction
-					width: 10
-					height: 10
-					anchors.right: parent.right
-				}
-
-				Action {
-					id: newTrAction
-					tooltip: qsTr("Create a new transaction")
-					onTriggered: transactionsModel.addTransaction()
-				}
-			}
-
-			ScrollView
-			{
-				Layout.fillHeight: true
-				Layout.preferredWidth: 300
-				Column
+				ScrollView
 				{
 					Layout.fillHeight: true
-					Repeater
+					Layout.preferredWidth: 300
+					Column
 					{
-						id: trRepeater
-						model: transactionsModel
-						delegate: transactionRenderDelegate
-						visible: transactionsModel.count > 0
-						height: 20 * transactionsModel.count
+						Layout.fillHeight: true
+						Repeater
+						{
+							id: trRepeater
+							model: transactionsModel
+							delegate: transactionRenderDelegate
+							visible: transactionsModel.count > 0
+							height: 20 * transactionsModel.count
+						}
 					}
 				}
-			}
 
-			CommonSeparator
-			{
-				Layout.fillWidth: true
-			}
-		}
-
-		RowLayout
-		{
-			anchors.bottom: parent.bottom
-			anchors.right: parent.right;
-
-			Button {
-				text: qsTr("OK");
-				onClicked: {
-					close();
-					accepted();
+				CommonSeparator
+				{
+					Layout.fillWidth: true
 				}
 			}
-			Button {
-				text: qsTr("Cancel");
-				onClicked: close();
+
+			RowLayout
+			{
+				anchors.bottom: parent.bottom
+				anchors.right: parent.right;
+
+				Button {
+					text: qsTr("OK");
+					onClicked: {
+						close();
+						accepted();
+					}
+				}
+				Button {
+					text: qsTr("Cancel");
+					onClicked: close();
+				}
 			}
 		}
 	}
