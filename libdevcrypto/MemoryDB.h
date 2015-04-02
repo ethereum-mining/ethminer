@@ -32,8 +32,10 @@ namespace dev
 {
 
 struct DBChannel: public LogChannel  { static const char* name() { return "TDB"; } static const int verbosity = 18; };
+struct DBWarn: public LogChannel  { static const char* name() { return "TDB"; } static const int verbosity = 1; };
 
 #define dbdebug clog(DBChannel)
+#define dbwarn clog(DBWarn)
 
 class MemoryDB
 {

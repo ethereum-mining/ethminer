@@ -40,7 +40,7 @@ Rectangle {
 		var errorInfo = ErrorLocationFormater.extractErrorInfo(compilationErrorMessage, false);
 		errorLocation.text = errorInfo.errorLocation;
 		errorDetail.text = errorInfo.errorDetail;
-		errorLine.text = errorInfo.errorLine;
+		errorLine.text = errorInfo.line;
 	}
 
 	function update(data, giveFocus)
@@ -219,6 +219,33 @@ Rectangle {
 							anchors.horizontalCenter: parent.horizontalCenter
 							id: jumpButtons
 							spacing: 3
+
+							StepActionImage
+							{
+								id: playAction
+								enabledStateImg: "qrc:/qml/img/play_button.png"
+								disableStateImg: "qrc:/qml/img/play_button.png"
+								onClicked: projectModel.stateListModel.runState(transactionLog.selectedStateIndex)
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+Shift+F8"
+								buttonTooltip: qsTr("Start Debugging")
+								visible: true
+							}
+
+							StepActionImage
+							{
+								id: pauseAction
+								enabledStateImg: "qrc:/qml/img/stop_button2x.png"
+								disableStateImg: "qrc:/qml/img/stop_button2x.png"
+								onClicked: Debugger.init(null);
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+Shift+F9"
+								buttonTooltip: qsTr("Stop Debugging")
+								visible: true
+							}
+
 							StepActionImage
 							{
 								id: runBackAction;
@@ -242,7 +269,6 @@ Rectangle {
 								height: 30
 								buttonShortcut: "Ctrl+Shift+F11"
 								buttonTooltip: qsTr("Step Out Back")
-								visible: false
 							}
 
 							StepActionImage
@@ -315,9 +341,8 @@ Rectangle {
 								height: 30
 								buttonShortcut: "Ctrl+F5"
 								buttonTooltip: qsTr("Run Forward")
+								visible: false
 							}
-
-
 						}
 					}
 

@@ -51,6 +51,7 @@ function closeProject(callBack) {
 	}
 	else
 	{
+		projectIsClosing = true;
 		doCloseProject();
 		if (callBack)
 			callBack();
@@ -96,45 +97,45 @@ function saveProjectFile()
 
 function loadProject(path) {
 	closeProject(function() {
-		console.log("Loading project at " + path);
-		var projectFile = path + projectFileName;
-		var json = fileIo.readFile(projectFile);
-		var projectData = JSON.parse(json);
-		if (projectData.deploymentDir)
-			projectModel.deploymentDir = projectData.deploymentDir
-		if (projectData.packageHash)
-			deploymentDialog.packageHash =  projectData.packageHash
-		if (projectData.packageBase64)
-			deploymentDialog.packageBase64 =  projectData.packageBase64
-		if (projectData.applicationUrlEth)
-			deploymentDialog.applicationUrlEth = projectData.applicationUrlEth
-		if (projectData.applicationUrlHttp)
-			deploymentDialog.applicationUrlHttp = projectData.applicationUrlHttp
-		if (!projectData.title) {
-			var parts = path.split("/");
-			projectData.title = parts[parts.length - 2];
-		}
-		deploymentAddresses = projectData.deploymentAddresses ? projectData.deploymentAddresses : [];
-		projectTitle = projectData.title;
-		projectPath = path;
-		if (!projectData.files)
-			projectData.files = [];
+			console.log("Loading project at " + path);
+			var projectFile = path + projectFileName;
+			var json = fileIo.readFile(projectFile);
+			var projectData = JSON.parse(json);
+			if (projectData.deploymentDir)
+				projectModel.deploymentDir = projectData.deploymentDir
+			if (projectData.packageHash)
+				deploymentDialog.packageHash =  projectData.packageHash
+			if (projectData.packageBase64)
+				deploymentDialog.packageBase64 =  projectData.packageBase64
+			if (projectData.applicationUrlEth)
+				deploymentDialog.applicationUrlEth = projectData.applicationUrlEth
+			if (projectData.applicationUrlHttp)
+				deploymentDialog.applicationUrlHttp = projectData.applicationUrlHttp
+			if (!projectData.title) {
+				var parts = path.split("/");
+				projectData.title = parts[parts.length - 2];
+			}
+			deploymentAddresses = projectData.deploymentAddresses ? projectData.deploymentAddresses : [];
+			projectTitle = projectData.title;
+			projectPath = path;
+			if (!projectData.files)
+				projectData.files = [];
 
-		for(var i = 0; i < projectData.files.length; i++) {
-			addFile(projectData.files[i]);
-		}
-		projectSettings.lastProjectPath = path;
-		projectLoading(projectData);
-		projectLoaded()
+			for(var i = 0; i < projectData.files.length; i++) {
+				addFile(projectData.files[i]);
+			}
+			projectSettings.lastProjectPath = path;
+			projectLoading(projectData);
+			projectLoaded()
 
-		//TODO: move this to codemodel
-		var contractSources = {};
-		for (var d = 0; d < listModel.count; d++) {
-			var doc = listModel.get(d);
-			if (doc.isContract)
-				contractSources[doc.documentId] = fileIo.readFile(doc.path);
-		}
-		codeModel.reset(contractSources);
+			//TODO: move this to codemodel
+			var contractSources = {};
+			for (var d = 0; d < listModel.count; d++) {
+				var doc = listModel.get(d);
+				if (doc.isContract)
+					contractSources[doc.documentId] = fileIo.readFile(doc.path);
+			}
+			codeModel.reset(contractSources);
 	});
 }
 
@@ -171,7 +172,7 @@ function getDocumentIndex(documentId)
 	for (var i = 0; i < projectListModel.count; i++)
 		if (projectListModel.get(i).documentId === documentId)
 			return i;
-	console.error("Cant find document " + documentId);
+	console.error("Can't find document " + documentId);
 	return -1;
 }
 
@@ -288,6 +289,14 @@ function renameDocument(documentId, newName) {
 function getDocument(documentId) {
 	var i = getDocumentIndex(documentId);
 	return projectListModel.get(i);
+}
+
+function getDocumentIdByName(fileName)
+{
+	for (var i = 0; i < projectListModel.count; i++)
+		if (projectListModel.get(i).fileName === fileName)
+			return projectListModel.get(i).documentId;
+	return null;
 }
 
 function removeDocument(documentId) {
