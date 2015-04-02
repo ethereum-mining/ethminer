@@ -35,6 +35,7 @@ Item {
 	readonly property string projectFileName: ".mix"
 
 	property bool appIsClosing: false
+	property bool projectIsClosing: false
 	property string projectPath: ""
 	property string projectTitle: ""
 	property string currentDocumentId: ""
@@ -63,6 +64,7 @@ Item {
 	function renameDocument(documentId, newName) { ProjectModelCode.renameDocument(documentId, newName); }
 	function removeDocument(documentId) { ProjectModelCode.removeDocument(documentId); }
 	function getDocument(documentId) { return ProjectModelCode.getDocument(documentId); }
+	function getDocumentIdByName(documentName) { return ProjectModelCode.getDocumentIdByName(documentName); }
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
 	function deployProject() { ProjectModelCode.deployProject(false); }
@@ -121,13 +123,17 @@ Item {
 		icon: StandardIcon.Question
 		property var callBack;
 		onYes: {
+			projectIsClosing = true;
 			projectModel.saveAll();
+			unsavedFiles = [];
 			ProjectModelCode.doCloseProject();
 			if (callBack)
 				callBack();
 		}
 		onRejected: {}
 		onNo: {
+			projectIsClosing = true;
+			unsavedFiles = [];
 			ProjectModelCode.doCloseProject();
 			if (callBack)
 				callBack();

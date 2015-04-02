@@ -31,12 +31,15 @@
 
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
+#include <libdevcore/StructuredLogger.h>
+#include <libevm/VM.h>
+#include <libevm/VMFactory.h>
 #include <libethereum/All.h>
+#include <libwebthree/WebThree.h>
 #if ETH_JSONRPC
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
-#include <libwebthree/WebThree.h>
 #include "BuildInfo.h"
 
 #undef KEY_EVENT // from windows.h
@@ -68,26 +71,37 @@ void help()
 		<< "Usage neth [OPTIONS]" << endl
 		<< "Options:" << endl
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
+		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
+		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (Default: 15)." << endl
 		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
+		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
 #if ETH_JSONRPC
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port  Specify JSON-RPC server port (implies '-j', default: 8080)." << endl
 #endif
-		<< "    -l,--listen <port>  Listen on the given port for incoming connected (default: 30303)." << endl
+		<< "    -K,--kill-blockchain  First kill the blockchain." << endl
+		<< "       --listen-ip <ip>  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
+		<< "    -l,--listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
+		<< "    -u,--public-ip <ip>  Force public ip to given (default; auto)." << endl
 		<< "    -m,--mining <on/off>  Enable mining (default: off)" << endl
 		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
 		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
+		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
 		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
-		<< "    -u,--public-ip <ip>  Force public ip to given (default; auto)." << endl
 		<< "    -v,--verbosity <0..9>  Set the log verbosity from 0 to 9 (tmp forced to 1)." << endl
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 5)." << endl
-		<< "    -V,--version  Show the version and exit." << endl;
+		<< "    -V,--version  Show the version and exit." << endl
+#if ETH_EVMJIT
+		<< "    --jit  Use EVM JIT (default: off)." << endl
+#endif
+		;
 		exit(0);
 }
 
@@ -113,6 +127,10 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    inspect <contract> Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    verbosity (<level>)  Gets or sets verbosity level." << endl
+		<< "    setblockfees <n>  Set the block fee profit in the reference unit e.g. ¢ (Default: 15)" << endl
+		<< "    setetherprice <p>  Resets the ether price." << endl
+		<< "    setpriority <p>  Resets the transaction priority." << endl
 		<< "    reset  Resets ncurses windows" << endl
 		<< "    exit  Exits the application." << endl;
 }
@@ -303,7 +321,9 @@ enum class NodeMode
 
 int main(int argc, char** argv)
 {
+	string listenIP;
 	unsigned short listenPort = 30303;
+	string publicIP;
 	string remoteHost;
 	unsigned short remotePort = 30303;
 	string dbPath;
@@ -314,12 +334,17 @@ int main(int argc, char** argv)
 #if ETH_JSONRPC
 	int jsonrpc = 8080;
 #endif
-	string publicIP;
 	bool bootstrap = false;
 	bool upnp = true;
-	bool useLocal = false;
 	bool forceMining = false;
+	bool killChain = false;
+	bool jit = false;
+	bool structuredLogging = false;
+	string structuredLoggingFormat = "%Y-%m-%dT%H:%M:%S";
 	string clientName;
+	TransactionPriority priority = TransactionPriority::Medium;
+	double etherPrice = 30.679;
+	double blockFees = 15.0;
 
 	// Init defaults
 	Defaults::get();
@@ -346,7 +371,9 @@ int main(int argc, char** argv)
 	for (int i = 1; i < argc; ++i)
 	{
 		string arg = argv[i];
-		if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
+		if (arg == "--listen-ip" && i + 1 < argc)
+			listenIP = argv[++i];
+		else if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
 			listenPort = (short)atoi(argv[++i]);
 		else if ((arg == "-u" || arg == "--public-ip" || arg == "--public") && i + 1 < argc)
 			publicIP = argv[++i];
@@ -367,6 +394,8 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "-K" || arg == "--kill-blockchain")
+			killChain = true;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
@@ -389,8 +418,58 @@ int main(int argc, char** argv)
 		}
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			us = KeyPair(h256(fromHex(argv[++i])));
+		else if (arg == "--structured-logging-format" && i + 1 < argc)
+			structuredLoggingFormat = string(argv[++i]);
+		else if (arg == "--structured-logging")
+			structuredLogging = true;
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
+		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
+		{
+			try
+			{
+				blockFees = stof(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
+				return -1;
+			}
+		}
+		else if ((arg == "-e" || arg == "--ether-price") && i + 1 < argc)
+		{
+			try
+			{
+				etherPrice = stof(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
+				return -1;
+			}
+		}
+		else if ((arg == "-P" || arg == "--priority") && i + 1 < argc)
+		{
+			string m = boost::to_lower_copy(string(argv[++i]));
+			if (m == "lowest")
+				priority = TransactionPriority::Lowest;
+			else if (m == "low")
+				priority = TransactionPriority::Low;
+			else if (m == "medium" || m == "mid" || m == "default" || m == "normal")
+				priority = TransactionPriority::Medium;
+			else if (m == "high")
+				priority = TransactionPriority::High;
+			else if (m == "highest")
+				priority = TransactionPriority::Highest;
+			else
+				try {
+					priority = (TransactionPriority)(max(0, min(100, stoi(m))) * 8 / 100);
+				}
+				catch (...) {
+					cerr << "Unknown " << arg << " option: " << m << endl;
+					return -1;
+				}
+		}
 		else if ((arg == "-m" || arg == "--mining") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -423,6 +502,28 @@ int main(int argc, char** argv)
 			peers = atoi(argv[++i]);
 		else if ((arg == "-t" || arg == "--miners") && i + 1 < argc)
 			miners = atoi(argv[++i]);
+		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
+		{
+			string m = argv[++i];
+			if (m == "full")
+				mode = NodeMode::Full;
+			else if (m == "peer")
+				mode = NodeMode::PeerServer;
+			else
+			{
+				cerr << "Unknown mode: " << m << endl;
+				return -1;
+			}
+		}
+		else if (arg == "--jit")
+		{
+#if ETH_EVMJIT
+			jit = true;
+#else
+			cerr << "EVM JIT not enabled" << endl;
+			return -1;
+#endif
+		}
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
@@ -434,39 +535,47 @@ int main(int argc, char** argv)
 		}
 	}
 
+	
+	
 	if (!clientName.empty())
 		clientName += "/";
 
 	cout << credits();
-	NetworkPreferences netPrefs(listenPort, publicIP, upnp, useLocal);
+
+	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat);
+	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
+	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
+	std::string clientImplString = "NEthereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
-		"NEthereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM),
+		clientImplString,
 		dbPath,
-		false,
+		killChain,
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
 		&nodesState,
 		miners
 		);
 	web3.setIdealPeerCount(peers);
+	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
-
+	StructuredLogger::starting(clientImplString, dev::Version);
 	if (c)
 	{
+		c->setGasPricer(gasPricer);
 		c->setForceMining(forceMining);
 		c->setAddress(coinbase);
 	}
 
-	cout << "Address: " << endl << toHex(us.address().asArray()) << endl;
-
+	cout << "Transaction Signer: " << us.address() << endl;
+	cout << "Mining Benefactor: " << coinbase << endl;
 	web3.startNetwork();
 
 	if (bootstrap)
-		web3.connect(Host::pocHost());
+		web3.addNode(p2p::NodeId(), Host::pocHost());
 	if (remoteHost.size())
-		web3.connect(remoteHost, remotePort);
-	if (mining)
+		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
+	if (c && mining)
 		c->startMining();
 
 #if ETH_JSONRPC
@@ -474,7 +583,7 @@ int main(int argc, char** argv)
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
-		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
 		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
@@ -580,7 +689,9 @@ int main(int argc, char** argv)
 		{
 			unsigned port;
 			iss >> port;
-			web3.setNetworkPreferences(NetworkPreferences((short)port, publicIP, upnp));
+			if (port)
+				netPrefs.listenPort = port;
+			web3.setNetworkPreferences(netPrefs);
 			web3.startNetwork();
 		}
 		else if (cmd == "connect")
@@ -588,7 +699,7 @@ int main(int argc, char** argv)
 			string addr;
 			unsigned port;
 			iss >> addr >> port;
-			web3.connect(addr, (short)port);
+			web3.addNode(p2p::NodeId(), addr + ":" + toString(port ? port : p2p::c_defaultIPPort));
 		}
 		else if (cmd == "netstop")
 		{
@@ -608,6 +719,42 @@ int main(int argc, char** argv)
 			iss >> enable;
 			c->setForceMining(isTrue(enable));
 		}
+		else if (c && cmd == "setblockfees")
+		{
+			iss >> blockFees;
+			gasPricer->setRefBlockFees(u256(blockFees * 1000));
+			cout << "Block fees: " << blockFees << endl;
+		}
+		else if (c && cmd == "setetherprice")
+		{
+			iss >> etherPrice;
+			gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+			cout << "ether Price: " << etherPrice << endl;
+		}
+		else if (c && cmd == "setpriority")
+		{
+			string m;
+			iss >> m;
+			boost::to_lower(m);
+			if (m == "lowest")
+				priority = TransactionPriority::Lowest;
+			else if (m == "low")
+				priority = TransactionPriority::Low;
+			else if (m == "medium" || m == "mid" || m == "default" || m == "normal")
+				priority = TransactionPriority::Medium;
+			else if (m == "high")
+				priority = TransactionPriority::High;
+			else if (m == "highest")
+				priority = TransactionPriority::Highest;
+			else
+				try {
+					priority = (TransactionPriority)(max(0, min(100, stoi(m))) * 8 / 100);
+				}
+				catch (...) {
+					cerr << "Unknown priority: " << m << endl;
+				}
+			cout << "Priority: " << (int)priority << "/8" << endl;
+		}
 		else if (cmd == "verbosity")
 		{
 			if (iss.peek() != -1)
@@ -625,7 +772,11 @@ int main(int argc, char** argv)
 		{
 			if (jsonrpc < 0)
 				jsonrpc = 8080;
-			jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc));
+#if ETH_DEBUG
+			jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", 1));
+#else
+			jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", 4));
+#endif
 			jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
 			jsonrpcServer->setIdentities({us});
 			jsonrpcServer->StartListening();
@@ -647,7 +798,7 @@ int main(int argc, char** argv)
 			ccout << "Current secret:" << endl;
 			ccout << toHex(us.secret().asArray()) << endl;
 		}
-		else if (cmd == "block")
+		else if (c && cmd == "block")
 		{
 			unsigned n = c->blockChain().details().number;
 			ccout << "Current block # ";
@@ -660,13 +811,13 @@ int main(int argc, char** argv)
 					<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 					<< endl;
 		}
-		else if (cmd == "balance")
+		else if (c && cmd == "balance")
 		{
 			u256 balance = c->balanceAt(us.address());
 			ccout << "Current balance:" << endl;
 			ccout << toString(balance) << endl;
 		}
-		else if (cmd == "transact")
+		else if (c && cmd == "transact")
 		{
 			auto const& bc = c->blockChain();
 			auto h = bc.currentHash();
@@ -708,6 +859,8 @@ int main(int argc, char** argv)
 				stringstream ssp;
 				ssp << fields[2];
 				ssp >> gasPrice;
+				if (!gasPrice)
+					gasPrice = gasPricer->bid(priority);
 				string sechex = fields[4];
 				string sdata = fields[5];
 				cnote << "Data:";
@@ -753,7 +906,7 @@ int main(int argc, char** argv)
 				}
 			}
 		}
-		else if (cmd == "send")
+		else if (c && cmd == "send")
 		{
 			vector<string> s;
 			s.push_back("Address");
@@ -804,7 +957,7 @@ int main(int argc, char** argv)
 				}
 			}
 		}
-		else if (cmd == "contract")
+		else if (c && cmd == "contract")
 		{
 			auto const& bc = c->blockChain();
 			auto h = bc.currentHash();
@@ -887,7 +1040,7 @@ int main(int argc, char** argv)
 				}
 			}
 		}
-		else if (cmd == "inspect")
+		else if (c && cmd == "inspect")
 		{
 			string rechex;
 			iss >> rechex;
@@ -933,111 +1086,123 @@ int main(int argc, char** argv)
 			interactiveHelp();
 		else if (cmd == "exit")
 			break;
+		else if (cmd != "")
+			cwarn << "Unrecognised command. Type 'help' for a list of available commands.";
 
 		// Clear cmd at each pass
 		cmd = "";
 
 
-		// Lock to prevent corrupt block-chain errors
-		auto const& bc = c->blockChain();
-		ccout << "Genesis hash: " << bc.genesisHash() << endl;
+		// Contracts and addresses count / offset
+		int cc = 1;
+		int ca = 0;
 
-		// Blocks
-		y = 1;
-		for (auto h = bc.currentHash(); h != bc.genesisHash(); h = bc.details(h).parent)
-		{
-			auto d = bc.details(h);
-			string s = "# " + std::to_string(d.number) + ' ' +  toString(h); // .abridged();
-			mvwaddnstr(blockswin, y++, x, s.c_str(), qwidth);
+		if (c) {
+			// Lock to prevent corrupt block-chain errors
+			auto const& bc = c->blockChain();
+			ccout << "Genesis hash: " << bc.genesisHash() << endl;
 
-			auto b = bc.block(h);
-			for (auto const& i: RLP(b)[1])
+			// Blocks
+			y = 1;
+			for (auto h = bc.currentHash(); h != bc.genesisHash(); h = bc.details(h).parent)
 			{
-				Transaction t(i.data(), CheckSignature::Sender);
+				auto d = bc.details(h);
+				string s = "# " + std::to_string(d.number) + ' ' +  toString(h); // .abridged();
+				mvwaddnstr(blockswin, y++, x, s.c_str(), qwidth);
+
+				auto b = bc.block(h);
+				for (auto const& i: RLP(b)[1])
+				{
+					Transaction t(i.data(), CheckSignature::Sender);
+					auto s = t.receiveAddress() ?
+						boost::format("  %1% %2%> %3%: %4% [%5%]") %
+							toString(t.safeSender()) %
+							(c->codeAt(t.receiveAddress(), PendingBlock).size() ? '*' : '-') %
+							toString(t.receiveAddress()) %
+							toString(formatBalance(t.value())) %
+							toString((unsigned)t.nonce()) :
+						boost::format("  %1% +> %2%: %3% [%4%]") %
+							toString(t.safeSender()) %
+							toString(right160(sha3(rlpList(t.safeSender(), t.nonce())))) %
+							toString(formatBalance(t.value())) %
+							toString((unsigned)t.nonce());
+					mvwaddnstr(blockswin, y++, x, s.str().c_str(), qwidth - 2);
+					if (y > qheight - 2)
+						break;
+				}
+				if (y > qheight - 2)
+					break;
+			}
+
+
+			// Pending
+			y = 1;
+			for (Transaction const& t: c->pending())
+			{
 				auto s = t.receiveAddress() ?
-					boost::format("  %1% %2%> %3%: %4% [%5%]") %
+					boost::format("%1% %2%> %3%: %4% [%5%]") %
 						toString(t.safeSender()) %
 						(c->codeAt(t.receiveAddress(), PendingBlock).size() ? '*' : '-') %
 						toString(t.receiveAddress()) %
 						toString(formatBalance(t.value())) %
 						toString((unsigned)t.nonce()) :
-					boost::format("  %1% +> %2%: %3% [%4%]") %
+					boost::format("%1% +> %2%: %3% [%4%]") %
 						toString(t.safeSender()) %
 						toString(right160(sha3(rlpList(t.safeSender(), t.nonce())))) %
 						toString(formatBalance(t.value())) %
 						toString((unsigned)t.nonce());
-				mvwaddnstr(blockswin, y++, x, s.str().c_str(), qwidth - 2);
-				if (y > qheight - 2)
+				mvwaddnstr(pendingwin, y++, x, s.str().c_str(), qwidth);
+				if (y > height * 1 / 5 - 2)
 					break;
 			}
-			if (y > qheight - 2)
-				break;
-		}
 
+#if ETH_FATDB
+			// Contracts and addresses
+			y = 1;
+			auto acs = c->addresses();
+			ca = acs.size();
+			for (auto const& i: acs)
+				if (c->codeAt(i, PendingBlock).size())
+				{
+					auto s = boost::format("%1%%2% : %3% [%4%]") %
+						toString(i) %
+						pretty(i, c->postState()) %
+						toString(formatBalance(c->balanceAt(i))) %
+						toString((unsigned)c->countAt(i, PendingBlock));
+					mvwaddnstr(contractswin, cc++, x, s.str().c_str(), qwidth);
+					if (cc > qheight - 2)
+						break;
+				}
+			for (auto const& i: acs)
+				if (c->codeAt(i, PendingBlock).empty())
+				{
+					auto s = boost::format("%1%%2% : %3% [%4%]") %
+						toString(i) %
+						pretty(i, c->postState()) %
+						toString(formatBalance(c->balanceAt(i))) %
+						toString((unsigned)c->countAt(i, PendingBlock));
+					mvwaddnstr(addswin, y++, x, s.str().c_str(), width / 2 - 4);
+					if (y > height * 3 / 5 - 4)
+						break;
+				}
+#else
+			mvwaddnstr(contractswin, 1, x, "build with ETH_FATDB to list contracts", qwidth);
+			mvwaddnstr(addswin, 1, x, "build with ETH_FATDB to list addresses", width / 2 - 4);
+#endif
 
-		// Pending
-		y = 1;
-		for (Transaction const& t: c->pending())
-		{
-			auto s = t.receiveAddress() ?
-				boost::format("%1% %2%> %3%: %4% [%5%]") %
-					toString(t.safeSender()) %
-					(c->codeAt(t.receiveAddress(), PendingBlock).size() ? '*' : '-') %
-					toString(t.receiveAddress()) %
-					toString(formatBalance(t.value())) %
-					toString((unsigned)t.nonce()) :
-				boost::format("%1% +> %2%: %3% [%4%]") %
-					toString(t.safeSender()) %
-					toString(right160(sha3(rlpList(t.safeSender(), t.nonce())))) %
-					toString(formatBalance(t.value())) %
-					toString((unsigned)t.nonce());
-			mvwaddnstr(pendingwin, y++, x, s.str().c_str(), qwidth);
-			if (y > height * 1 / 5 - 2)
-				break;
-		}
-
-
-		// Contracts and addresses
-		y = 1;
-		int cc = 1;
-		auto acs = c->addresses();
-		for (auto const& i: acs)
-			if (c->codeAt(i, PendingBlock).size())
+			// Peers
+			y = 1;
+			for (PeerSessionInfo const& i: web3.peers())
 			{
-				auto s = boost::format("%1%%2% : %3% [%4%]") %
-					toString(i) %
-					pretty(i, c->postState()) %
-					toString(formatBalance(c->balanceAt(i))) %
-					toString((unsigned)c->countAt(i, PendingBlock));
-				mvwaddnstr(contractswin, cc++, x, s.str().c_str(), qwidth);
-				if (cc > qheight - 2)
+				auto s = boost::format("%1% ms - %2%:%3% - %4%") %
+					toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) %
+					i.host %
+					toString(i.port) %
+					i.clientVersion;
+				mvwaddnstr(peerswin, y++, x, s.str().c_str(), qwidth);
+				if (y > height * 2 / 5 - 4)
 					break;
 			}
-		for (auto const& i: acs)
-			if (c->codeAt(i, PendingBlock).empty())
-			{
-				auto s = boost::format("%1%%2% : %3% [%4%]") %
-					toString(i) %
-					pretty(i, c->postState()) %
-					toString(formatBalance(c->balanceAt(i))) %
-					toString((unsigned)c->countAt(i, PendingBlock));
-				mvwaddnstr(addswin, y++, x, s.str().c_str(), width / 2 - 4);
-				if (y > height * 3 / 5 - 4)
-					break;
-			}
-
-		// Peers
-		y = 1;
-		for (PeerSessionInfo const& i: web3.peers())
-		{
-			auto s = boost::format("%1% ms - %2%:%3% - %4%") %
-				toString(chrono::duration_cast<chrono::milliseconds>(i.lastPing).count()) %
-				i.host %
-				toString(i.port) %
-				i.clientVersion;
-			mvwaddnstr(peerswin, y++, x, s.str().c_str(), qwidth);
-			if (y > height * 2 / 5 - 4)
-				break;
 		}
 
 		box(consolewin, 0, 0);
@@ -1050,31 +1215,41 @@ int main(int argc, char** argv)
 
 		// Balance
 		stringstream ssb;
-		u256 balance = c->balanceAt(us.address());
-		ssb << "Balance: " << formatBalance(balance);
+		u256 balance;
+		if (c)
+			balance = c->balanceAt(us.address());
+		ssb << "Balance: ";
+		if (c)
+			ssb << formatBalance(balance);
 		mvwprintw(consolewin, 0, x, ssb.str().c_str());
 
 		// Block
 		mvwprintw(blockswin, 0, x, "Block # ");
-		unsigned n = c->blockChain().details().number;
-		mvwprintw(blockswin, 0, 10, toString(n).c_str());
+		if (c) {
+			unsigned n = c->blockChain().details().number;
+			mvwprintw(blockswin, 0, 10, toString(n).c_str());
+		}
 
 		// Pending
-		string pc;
-		pc = "Pending: " + toString(c->pending().size());
-		mvwprintw(pendingwin, 0, x, pc.c_str());
+		stringstream pc;
+		pc << "Pending: ";
+		if (c)
+			pc << toString(c->pending().size());
+		else
+			pc << 0;
+		mvwprintw(pendingwin, 0, x, pc.str().c_str());
 
 		// Contracts
-		string sc = "Contracts: ";
-		sc += toString(cc - 1);
-		mvwprintw(contractswin, 0, x, sc.c_str());
+		stringstream sc;
+		sc << "Contracts: " << cc - 1;
+		mvwprintw(contractswin, 0, x, sc.str().c_str());
 
 		// Peers
 		mvwprintw(peerswin, 0, x, "Peers: ");
 		mvwprintw(peerswin, 0, 9, toString(web3.peers().size()).c_str());
 
 		// Mining flag
-		if (c->isMining())
+		if (c && c->isMining())
 		{
 			mvwprintw(consolewin, qheight - 1, width / 4 - 11, "Mining ON");
 			dev::eth::MineProgress p = c->miningProgress();
@@ -1087,9 +1262,9 @@ int main(int argc, char** argv)
 		wmove(consolewin, 1, x);
 
 		// Addresses
-		string ac;
-		ac = "Addresses: " + toString(acs.size());
-		mvwprintw(addswin, 0, x, ac.c_str());
+		stringstream ac;
+		ac << "Addresses: " << ca;
+		mvwprintw(addswin, 0, x, ac.str().c_str());
 
 
 		wrefresh(consolewin);
