@@ -9,11 +9,9 @@ import "."
 Dialog {
 	id: stateListContainer
 	modality: Qt.WindowModal
-	standardButtons: StandardButton.Close
 	width: 640
 	height: 480
 	visible: false
-	onRejected: {}
 	contentItem: Rectangle {
 		anchors.fill: parent
 		ColumnLayout
