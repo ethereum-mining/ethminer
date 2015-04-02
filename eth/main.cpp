@@ -117,8 +117,8 @@ void help()
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #if ETH_JSONRPC
-		<< "	-j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
-		<< "	--json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
+		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
+		<< "    --json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
 		<< "    -K,--kill-blockchain  First kill the blockchain." << endl
 		<< "       --listen-ip <port>  Listen on the given port for incoming connections (default: 30303)." << endl
