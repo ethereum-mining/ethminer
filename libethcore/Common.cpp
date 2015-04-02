@@ -34,7 +34,7 @@ namespace eth
 {
 
 const unsigned c_ethashVersion = c_ethashRevision;
-const unsigned c_protocolVersion = 59;
+const unsigned c_protocolVersion = 60;
 const unsigned c_databaseBaseVersion = 8;
 #if ETH_FATDB
 const unsigned c_databaseVersionModifier = 1;
