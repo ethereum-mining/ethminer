@@ -163,7 +163,7 @@ ApplicationWindow {
 		id: editStatesAction
 		text: qsTr("Edit States")
 		shortcut: "Ctrl+Alt+E"
-		onTriggered: stateList.show();
+		onTriggered: stateList.open();
 	}
 
 	Connections {
