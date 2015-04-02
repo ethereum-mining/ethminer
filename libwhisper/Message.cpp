@@ -58,10 +58,10 @@ Message::Message(Envelope const& _e, FullTopic const& _fk, Secret const& _s)
 			// get key from decrypted topic key: just xor
 			h256 tk = h256(bytesConstRef(&(_e.data())).cropped(32 * topicIndex, 32));
 			bytesConstRef cipherText = bytesConstRef(&(_e.data())).cropped(32 * _e.topic().size());
-			cnote << "Decrypting(" << topicIndex << "): " << topicSecret << tk << (topicSecret ^ tk) << toHex(cipherText);
+//			cdebug << "Decrypting(" << topicIndex << "): " << topicSecret << tk << (topicSecret ^ tk) << toHex(cipherText);
 			if (!decryptSym(topicSecret ^ tk, cipherText, b))
 				return;
-			cnote << "Got: " << toHex(b);
+//			cdebug << "Got: " << toHex(b);
 		}
 
 		if (populate(b))

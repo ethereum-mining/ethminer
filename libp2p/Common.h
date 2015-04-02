@@ -50,11 +50,16 @@ namespace p2p
 
 /// Peer network protocol version.
 extern const unsigned c_protocolVersion;
-	
+extern const unsigned c_defaultIPPort;
+
 using NodeId = h512;
 
 bool isPrivateAddress(bi::address const& _addressToCheck);
+bool isPrivateAddress(std::string const& _addressToCheck);
 bool isLocalHostAddress(bi::address const& _addressToCheck);
+bool isLocalHostAddress(std::string const& _addressToCheck);
+bool isPublicAddress(bi::address const& _addressToCheck);
+bool isPublicAddress(std::string const& _addressToCheck);
 
 class UPnP;
 class Capability;
@@ -62,6 +67,8 @@ class Host;
 class Session;
 
 struct NetworkStartRequired: virtual dev::Exception {};
+struct InvalidPublicIPAddress: virtual dev::Exception {};
+struct InvalidHostIPAddress: virtual dev::Exception {};
 
 struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
 struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
@@ -168,6 +175,9 @@ struct Node
 	
 	virtual NodeId const& address() const { return id; }
 	virtual Public const& publicKey() const { return id; }
+	
+	/// Adopt UDP address for TCP if TCP isn't public and UDP is. (to be removed when protocol is updated for nat)
+	void cullEndpoint();
 	
 	NodeId id;
 	

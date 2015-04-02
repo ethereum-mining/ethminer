@@ -21,6 +21,7 @@
  */
 
 #include <algorithm>
+#include <boost/range/adaptor/reversed.hpp>
 #include <libsolidity/Utils.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/ASTVisitor.h>
@@ -52,6 +53,7 @@ void ContractDefinition::checkTypeRequirements()
 		baseSpecifier->checkTypeRequirements();
 
 	checkIllegalOverrides();
+	checkAbstractFunctions();
 
 	FunctionDefinition const* constructor = getConstructor();
 	if (constructor && !constructor->getReturnParameters().empty())
@@ -60,6 +62,7 @@ void ContractDefinition::checkTypeRequirements()
 
 	FunctionDefinition const* fallbackFunction = nullptr;
 	for (ASTPointer<FunctionDefinition> const& function: getDefinedFunctions())
+	{
 		if (function->getName().empty())
 		{
 			if (fallbackFunction)
@@ -71,6 +74,9 @@ void ContractDefinition::checkTypeRequirements()
 					BOOST_THROW_EXCEPTION(fallbackFunction->getParameterList().createTypeError("Fallback function cannot take parameters."));
 			}
 		}
+		if (!function->isFullyImplemented())
+			setFullyImplemented(false);
+	}
 	for (ASTPointer<ModifierDefinition> const& modifier: getFunctionModifiers())
 		modifier->checkTypeRequirements();
 
@@ -88,7 +94,7 @@ void ContractDefinition::checkTypeRequirements()
 		if (hashes.count(hash))
 			BOOST_THROW_EXCEPTION(createTypeError(
 									  std::string("Function signature hash collision for ") +
-									  it.second->getCanonicalSignature()));
+									  it.second->externalSignature()));
 		hashes.insert(hash);
 	}
 }
@@ -122,6 +128,28 @@ FunctionDefinition const* ContractDefinition::getFallbackFunction() const
 			if (f->getName().empty())
 				return f.get();
 	return nullptr;
+}
+
+void ContractDefinition::checkAbstractFunctions()
+{
+	map<string, bool> functions;
+
+	// Search from base to derived
+	for (ContractDefinition const* contract: boost::adaptors::reverse(getLinearizedBaseContracts()))
+		for (ASTPointer<FunctionDefinition> const& function: contract->getDefinedFunctions())
+		{
+			string const& name = function->getName();
+			if (!function->isFullyImplemented() && functions.count(name) && functions[name])
+				BOOST_THROW_EXCEPTION(function->createTypeError("Redeclaring an already implemented function as abstract"));
+			functions[name] = function->isFullyImplemented();
+		}
+
+	for (auto const& it: functions)
+		if (!it.second)
+		{
+			setFullyImplemented(false);
+			break;
+		}
 }
 
 void ContractDefinition::checkIllegalOverrides() const
@@ -192,7 +220,7 @@ vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getIn
 				if (functionsSeen.count(f->getName()) == 0 && f->isPartOfExternalInterface())
 				{
 					functionsSeen.insert(f->getName());
-					FixedHash<4> hash(dev::sha3(f->getCanonicalSignature()));
+					FixedHash<4> hash(dev::sha3(f->externalSignature()));
 					m_interfaceFunctionList->push_back(make_pair(hash, make_shared<FunctionType>(*f, false)));
 				}
 
@@ -200,8 +228,9 @@ vector<pair<FixedHash<4>, FunctionTypePointer>> const& ContractDefinition::getIn
 				if (functionsSeen.count(v->getName()) == 0 && v->isPartOfExternalInterface())
 				{
 					FunctionType ftype(*v);
+					solAssert(v->getType().get(), "");
 					functionsSeen.insert(v->getName());
-					FixedHash<4> hash(dev::sha3(ftype.getCanonicalSignature(v->getName())));
+					FixedHash<4> hash(dev::sha3(ftype.externalSignature(v->getName())));
 					m_interfaceFunctionList->push_back(make_pair(hash, make_shared<FunctionType>(*v)));
 				}
 		}
@@ -305,19 +334,29 @@ TypePointer FunctionDefinition::getType(ContractDefinition const*) const
 void FunctionDefinition::checkTypeRequirements()
 {
 	for (ASTPointer<VariableDeclaration> const& var: getParameters() + getReturnParameters())
+	{
 		if (!var->getType()->canLiveOutsideStorage())
 			BOOST_THROW_EXCEPTION(var->createTypeError("Type is required to live outside storage."));
+		if (getVisibility() >= Visibility::Public && !(var->getType()->externalType()))
+		{
+			// todo delete when will be implemented arrays as parameter type in internal functions
+			if (getVisibility() == Visibility::Public && var->getType()->getCategory() == Type::Category::Array)
+				BOOST_THROW_EXCEPTION(var->createTypeError("Arrays only implemented for external functions."));
+			else
+				BOOST_THROW_EXCEPTION(var->createTypeError("Internal type is not allowed for public and external functions."));
+		}
+	}
 	for (ASTPointer<ModifierInvocation> const& modifier: m_functionModifiers)
 		modifier->checkTypeRequirements(isConstructor() ?
 			dynamic_cast<ContractDefinition const&>(*getScope()).getBaseContracts() :
 			vector<ASTPointer<InheritanceSpecifier>>());
-
-	m_body->checkTypeRequirements();
+	if (m_body)
+		m_body->checkTypeRequirements();
 }
 
-string FunctionDefinition::getCanonicalSignature() const
+string FunctionDefinition::externalSignature() const
 {
-	return FunctionType(*this).getCanonicalSignature(getName());
+	return FunctionType(*this).externalSignature(getName());
 }
 
 bool VariableDeclaration::isLValue() const
@@ -342,7 +381,14 @@ void VariableDeclaration::checkTypeRequirements()
 	if (!m_value)
 		return;
 	if (m_type)
+	{
 		m_value->expectType(*m_type);
+		if (m_isStateVariable && !m_type->externalType() && getVisibility() >= Visibility::Public)
+			BOOST_THROW_EXCEPTION(createTypeError("Internal type is not allowed for state variables."));
+
+		if (!FunctionType(*this).externalType())
+			BOOST_THROW_EXCEPTION(createTypeError("Internal type is not allowed for public state variables."));
+	}
 	else
 	{
 		// no type declared and no previous assignment, infer the type
@@ -422,6 +468,8 @@ void EventDefinition::checkTypeRequirements()
 			numIndexed++;
 		if (!var->getType()->canLiveOutsideStorage())
 			BOOST_THROW_EXCEPTION(var->createTypeError("Type is required to live outside storage."));
+		if (!var->getType()->externalType())
+			BOOST_THROW_EXCEPTION(var->createTypeError("Internal type is not allowed as event parameter type."));
 	}
 	if (numIndexed > 3)
 		BOOST_THROW_EXCEPTION(createTypeError("More than 3 indexed arguments for event."));
@@ -639,6 +687,8 @@ void NewExpression::checkTypeRequirements()
 	m_contract = dynamic_cast<ContractDefinition const*>(m_contractName->getReferencedDeclaration());
 	if (!m_contract)
 		BOOST_THROW_EXCEPTION(createTypeError("Identifier is not a contract."));
+	if (!m_contract->isFullyImplemented())
+		BOOST_THROW_EXCEPTION(m_contract->createTypeError("Trying to create an instance of an abstract contract."));
 	shared_ptr<ContractType const> contractType = make_shared<ContractType>(*m_contract);
 	TypePointers const& parameterTypes = contractType->getConstructorType()->getParameterTypes();
 	m_type = make_shared<FunctionType>(parameterTypes, TypePointers{contractType},

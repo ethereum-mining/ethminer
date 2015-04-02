@@ -66,6 +66,7 @@ private:
 	dev::bytes encodeBytes(QString const& _str);
 	dev::bytes decodeBytes(dev::bytes const& _rawValue);
 	QString toString(dev::bytes const& _b);
+	bool asString(dev::bytes const& _b, QString& _str);
 
 private:
 	bytes m_encodedData;
