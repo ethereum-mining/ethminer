@@ -112,6 +112,6 @@ string dev::contentsString(std::string const& _file)
 
 void dev::writeFile(std::string const& _file, bytesConstRef _data)
 {
-	ofstream(_file, ios::trunc).write((char const*)_data.data(), _data.size());
+	ofstream(_file, ios::trunc|ios::binary).write((char const*)_data.data(), _data.size());
 }
 

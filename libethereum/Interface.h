@@ -38,6 +38,7 @@ namespace eth
 {
 
 using TransactionHashes = h256s;
+using UncleHashes = h256s;
 
 enum class Reaping
 {
@@ -66,18 +67,17 @@ public:
 	/// @returns the new contract's address (assuming it all goes through).
 	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
 
-	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
-	virtual void inject(bytesConstRef _rlp) = 0;
-
 	/// Blocks until all pending transactions have been processed.
 	virtual void flushTransactions() = 0;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = 0) = 0;
+	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber) = 0;
+	ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) { return call(_secret, _value, _dest, _data, _gas, _gasPrice, m_default); }
 
 	/// Does the given creation. Nothing is recorded into the state.
 	/// @returns the pair of the Address of the created contract together with its code.
-	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = 0) = 0;
+	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber) = 0;
+	ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) { return create(_secret, _value, _data, _gas, _gasPrice, m_default); }
 
 	// [STATE-QUERY API]
 
@@ -118,6 +118,7 @@ public:
 	virtual Transaction transaction(h256 _transactionHash) const = 0;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const = 0;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const = 0;
+	virtual UncleHashes uncleHashes(h256 _blockHash) const = 0;
 	virtual unsigned transactionCount(h256 _blockHash) const = 0;
 	virtual unsigned uncleCount(h256 _blockHash) const = 0;
 	virtual Transactions transactions(h256 _blockHash) const = 0;
@@ -138,6 +139,7 @@ public:
 	virtual StateDiff diff(unsigned _txi, BlockNumber _block) const = 0;
 
 	/// Get a list of all active addresses.
+	/// NOTE: This only works when compiled with ETH_FATDB; otherwise will throw InterfaceNotSupported.
 	virtual Addresses addresses() const { return addresses(m_default); }
 	virtual Addresses addresses(BlockNumber _block) const = 0;
 

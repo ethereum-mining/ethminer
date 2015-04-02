@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
+import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Item {
 	signal editorTextChanged
@@ -17,7 +18,7 @@ Item {
 	function setText(text, mode) {
 		currentText = text;
 		currentMode = mode;
-		if (initialized) {
+		if (initialized && editorBrowser) {
 			editorBrowser.runJavaScript("setTextBase64(\"" + Qt.btoa(text) + "\")");
 			editorBrowser.runJavaScript("setMode(\"" + mode + "\")");
 		}
@@ -25,7 +26,8 @@ Item {
 	}
 
 	function setFocus() {
-		editorBrowser.forceActiveFocus();
+		if (editorBrowser)
+			editorBrowser.forceActiveFocus();
 	}
 
 	function getText() {
@@ -33,15 +35,20 @@ Item {
 	}
 
 	function syncClipboard() {
-		if (Qt.platform.os == "osx") {
+		if (Qt.platform.os == "osx" && editorBrowser) {
 			var text = clipboard.text;
 			editorBrowser.runJavaScript("setClipboardBase64(\"" + Qt.btoa(text) + "\")");
 		}
 	}
 
 	function highlightExecution(location) {
-		if (initialized)
+		if (initialized && editorBrowser)
 			editorBrowser.runJavaScript("highlightExecution(" + location.start + "," + location.end + ")");
+	}
+
+	function showWarning(content) {
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("showWarning('" + content + "')");
 	}
 
 	function getBreakpoints() {
@@ -49,12 +56,12 @@ Item {
 	}
 
 	function toggleBreakpoint() {
-		if (initialized)
+		if (initialized && editorBrowser)
 			editorBrowser.runJavaScript("toggleBreakpoint()");
 	}
 
 	function changeGeneration() {
-		if (initialized)
+		if (initialized && editorBrowser)
 			editorBrowser.runJavaScript("changeGeneration()", function(result) {});
 	}
 
@@ -75,16 +82,45 @@ Item {
 			console.log("editor: " + sourceID + ":" + lineNumber + ":" + message);
 		}
 
+		Component.onDestruction:
+		{
+			codeModel.onCompilationComplete.disconnect(compilationComplete);
+			codeModel.onCompilationError.disconnect(compilationError);
+		}
+
 		onLoadingChanged:
 		{
-			if (!loading) {
+			if (!loading && editorBrowser) {
 				initialized = true;
 				setText(currentText, currentMode);
 				runJavaScript("getTextChanged()", function(result) { });
 				pollTimer.running = true;
 				syncClipboard();
+				if (currentMode === "solidity")
+				{
+					codeModel.onCompilationComplete.connect(compilationComplete);
+					codeModel.onCompilationError.connect(compilationError);
+				}
 				parent.changeGeneration();
 			}
+		}
+
+
+		function compilationComplete()
+		{
+			if (editorBrowser)
+				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
+		}
+
+		function compilationError(error)
+		{
+			if (!editorBrowser || !error)
+				return;
+			var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);
+			if (errorInfo.line && errorInfo.column)
+				editorBrowser.runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
+			else
+				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
 		}
 
 		Timer
@@ -94,6 +130,8 @@ Item {
 			running: false
 			repeat: true
 			onTriggered: {
+				if (!editorBrowser)
+					return;
 				editorBrowser.runJavaScript("getTextChanged()", function(result) {
 					if (result === true) {
 						editorBrowser.runJavaScript("getText()" , function(textValue) {
