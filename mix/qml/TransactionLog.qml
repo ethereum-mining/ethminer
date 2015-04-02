@@ -9,6 +9,7 @@ Item {
 	property ListModel fullModel: ListModel{}
 	property ListModel transactionModel: ListModel{}
 	property ListModel callModel: ListModel{}
+	property int selectedStateIndex: statesCombo.selectedIndex
 
 	ColumnLayout {
 		anchors.fill: parent
@@ -45,14 +46,15 @@ Item {
 						projectModel.stateListModel.debugDefaultState();
 				}
 			}
+
 			StatesComboBox
 			{
 				id: statesCombo
 				items: projectModel.stateListModel
 				onSelectCreate: projectModel.stateListModel.addState();
 				onEditItem: projectModel.stateListModel.editState(item)
-				colorItem: "black"
-				colorSelect: "blue"
+				colorItem: "#808080"
+				colorSelect: "#4a90e2"
 				color: "white"
 				Connections {
 					target: projectModel.stateListModel
