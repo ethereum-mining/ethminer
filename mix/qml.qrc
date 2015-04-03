@@ -61,5 +61,6 @@
         <file>qml/js/TransactionHelper.js</file>
         <file>qml/main.qml</file>
         <file>qml/qmldir</file>
+        <file>qml/StatesComboBox.qml</file>
     </qresource>
 </RCC>
