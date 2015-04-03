@@ -40,16 +40,23 @@ VersionChecker::VersionChecker(string const& _dbPath):
 {
 	bytes statusBytes = contents(m_path + "/status");
 	RLP status(statusBytes);
-	auto protocolVersion = (unsigned)status[0];
-	auto minorProtocolVersion = (unsigned)status[1];
-	auto databaseVersion = (unsigned)status[2];
-	m_action =
-		protocolVersion != eth::c_protocolVersion || databaseVersion != c_databaseVersion ?
-			WithExisting::Kill
-		: minorProtocolVersion != eth::c_minorProtocolVersion ?
-			WithExisting::Verify
-		:
-			WithExisting::Trust;
+	try
+	{
+		auto protocolVersion = (unsigned)status[0];
+		auto minorProtocolVersion = (unsigned)status[1];
+		auto databaseVersion = (unsigned)status[2];
+		m_action =
+			protocolVersion != eth::c_protocolVersion || databaseVersion != c_databaseVersion ?
+				WithExisting::Kill
+			: minorProtocolVersion != eth::c_minorProtocolVersion ?
+				WithExisting::Verify
+			:
+				WithExisting::Trust;
+	}
+	catch (...)
+	{
+		m_action = WithExisting::Kill;
+	}
 }
 
 void VersionChecker::setOk()
