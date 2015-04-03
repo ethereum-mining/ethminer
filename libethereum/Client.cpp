@@ -38,14 +38,23 @@ using namespace p2p;
 VersionChecker::VersionChecker(string const& _dbPath):
 	m_path(_dbPath.size() ? _dbPath : Defaults::dbPath())
 {
-	auto protocolContents = contents(m_path + "/protocol");
-	auto databaseContents = contents(m_path + "/database");
-	m_ok = RLP(protocolContents).toInt<unsigned>(RLP::LaisezFaire) == eth::c_protocolVersion && RLP(databaseContents).toInt<unsigned>(RLP::LaisezFaire) == c_databaseVersion;
+	bytes statusBytes = contents(m_path + "/status");
+	RLP status(statusBytes);
+	auto protocolVersion = (unsigned)status[0];
+	auto minorProtocolVersion = (unsigned)status[1];
+	auto databaseVersion = (unsigned)status[2];
+	m_action =
+		protocolVersion != eth::c_protocolVersion || databaseVersion != c_databaseVersion ?
+			WithExisting::Kill
+		: minorProtocolVersion != eth::c_minorProtocolVersion ?
+			WithExisting::Verify
+		:
+			WithExisting::Trust;
 }
 
 void VersionChecker::setOk()
 {
-	if (!m_ok)
+	if (m_action != WithExisting::Trust)
 	{
 		try
 		{
@@ -55,8 +64,7 @@ void VersionChecker::setOk()
 		{
 			cwarn << "Unhandled exception! Failed to create directory: " << m_path << "\n" << boost::current_exception_diagnostic_information();
 		}
-		writeFile(m_path + "/protocol", rlp(eth::c_protocolVersion));
-		writeFile(m_path + "/database", rlp(c_databaseVersion));
+		writeFile(m_path + "/status", rlpList(eth::c_protocolVersion, eth::c_minorProtocolVersion, c_databaseVersion));
 	}
 }
 
@@ -102,12 +110,12 @@ void BasicGasPricer::update(BlockChain const& _bc)
 	}
 }
 
-Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId, int _miners):
+Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId, int _miners):
 	Worker("eth"),
 	m_vc(_dbPath),
-	m_bc(_dbPath, !m_vc.ok() || _forceClean),
+	m_bc(_dbPath, max(m_vc.action(), _forceAction)),
 	m_gp(new TrivialGasPricer),
-	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
+	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
 	m_preMine(Address(), m_stateDB),
 	m_postMine(Address(), m_stateDB)
 {
@@ -127,12 +135,12 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 	startWorking();
 }
 
-Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string const& _dbPath, bool _forceClean, u256 _networkId, int _miners):
+Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId, int _miners):
 	Worker("eth"),
 	m_vc(_dbPath),
-	m_bc(_dbPath, !m_vc.ok() || _forceClean),
+	m_bc(_dbPath, max(m_vc.action(), _forceAction)),
 	m_gp(_gp),
-	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
+	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
 	m_preMine(Address(), m_stateDB),
 	m_postMine(Address(), m_stateDB)
 {
@@ -202,9 +210,9 @@ void Client::killChain()
 	{
 		WriteGuard l(x_stateDB);
 		m_stateDB = OverlayDB();
-		m_stateDB = State::openDB(Defaults::dbPath(), true);
+		m_stateDB = State::openDB(Defaults::dbPath(), WithExisting::Kill);
 	}
-	m_bc.reopen(Defaults::dbPath(), true);
+	m_bc.reopen(Defaults::dbPath(), WithExisting::Kill);
 
 	m_preMine = State(Address(), m_stateDB);
 	m_postMine = State(Address(), m_stateDB);

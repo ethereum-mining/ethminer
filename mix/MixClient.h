@@ -37,7 +37,7 @@ namespace mix
 class MixBlockChain: public dev::eth::BlockChain
 {
 public:
-	MixBlockChain(std::string const& _path, h256 _stateRoot): BlockChain(createGenesisBlock(_stateRoot), _path, true) {}
+	MixBlockChain(std::string const& _path, h256 _stateRoot): BlockChain(createGenesisBlock(_stateRoot), _path, WithExisting::Kill) {}
 
 	static bytes createGenesisBlock(h256 _stateRoot);
 };
