@@ -55,8 +55,8 @@ std::map<Address, Account> const& genesisState();
 class CanonBlockChain: public BlockChain
 {
 public:
-		CanonBlockChain(bool _killExisting = false): CanonBlockChain(std::string(), _killExisting) {}
-		CanonBlockChain(std::string _path, bool _killExisting = false);
+		CanonBlockChain(WithExisting _we = WithExisting::Trust): CanonBlockChain(std::string(), _we) {}
+		CanonBlockChain(std::string const& _path, WithExisting _we = WithExisting::Trust);
 		~CanonBlockChain() {}
 
 		/// @returns the genesis block header.
