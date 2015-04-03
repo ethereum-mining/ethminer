@@ -65,10 +65,10 @@ public:
 	VersionChecker(std::string const& _dbPath);
 
 	void setOk();
-	bool ok() const { return m_ok; }
+	WithExisting action() const { return m_action; }
 
 private:
-	bool m_ok;
+	WithExisting m_action;
 	std::string m_path;
 };
 
@@ -126,7 +126,7 @@ public:
 	explicit Client(
 		p2p::Host* _host,
 		std::string const& _dbPath = std::string(),
-		bool _forceClean = false,
+		WithExisting _forceAction = WithExisting::Trust,
 		u256 _networkId = 0,
 		int _miners = -1
 	);
@@ -135,7 +135,7 @@ public:
 		p2p::Host* _host,
 		std::shared_ptr<GasPricer> _gpForAdoption,		// pass it in with new.
 		std::string const& _dbPath = std::string(),
-		bool _forceClean = false,
+		WithExisting _forceAction = WithExisting::Trust,
 		u256 _networkId = 0,
 		int _miners = -1
 	);
