@@ -519,14 +519,14 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 h256s BlockChain::treeRoute(h256 const& _from, h256 const& _to, h256* o_common, bool _pre, bool _post) const
 {
-	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
+//	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
 	if (!_from || !_to)
 		return h256s();
 	h256s ret;
 	h256s back;
 	unsigned fn = details(_from).number;
 	unsigned tn = details(_to).number;
-	cdebug << "treeRoute" << fn << "..." << tn;
+//	cdebug << "treeRoute" << fn << "..." << tn;
 	h256 from = _from;
 	while (fn > tn)
 	{
@@ -534,7 +534,7 @@ h256s BlockChain::treeRoute(h256 const& _from, h256 const& _to, h256* o_common, 
 			ret.push_back(from);
 		from = details(from).parent;
 		fn--;
-		cdebug << "from:" << fn << _from.abridged();
+//		cdebug << "from:" << fn << _from.abridged();
 	}
 	h256 to = _to;
 	while (fn < tn)
@@ -543,7 +543,7 @@ h256s BlockChain::treeRoute(h256 const& _from, h256 const& _to, h256* o_common, 
 			back.push_back(to);
 		to = details(to).parent;
 		tn--;
-		cdebug << "to:" << tn << _to.abridged();
+//		cdebug << "to:" << tn << _to.abridged();
 	}
 	while (from != to)
 	{
