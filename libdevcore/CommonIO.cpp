@@ -75,6 +75,23 @@ bytesRef dev::contentsNew(std::string const& _file)
 	return ret;
 }
 
+// Don't forget to delete[] later.
+uint64_t dev::contentsToBuffer(std::string const& _file, void * buf)
+{
+	std::ifstream is(_file, std::ifstream::binary);
+	if (!is)
+		return 0;
+	// get length of file:
+	is.seekg(0, is.end);
+	streamoff length = is.tellg();
+	if (length == 0) // return early, MSVC does not like reading 0 bytes
+		return 0;
+	is.seekg(0, is.beg);
+	is.read((char*)buf, length);
+	is.close();
+	return (uint64_t)length;
+}
+
 bytes dev::contents(std::string const& _file)
 {
 	std::ifstream is(_file, std::ifstream::binary);
