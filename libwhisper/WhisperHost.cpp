@@ -82,8 +82,8 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 	// TODO p2p: capability-based rating
 	for (auto i: peerSessions())
 	{
-		auto w = i.first->cap<WhisperPeer>();
-		if (w.get() == _p)
+		auto w = i.first->cap<WhisperPeer>().get();
+		if (w == _p)
 			w->addRating(1);
 		else
 			w->noteNewMessage(h, _m);
