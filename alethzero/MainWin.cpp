@@ -1582,7 +1582,7 @@ void Main::on_debugCurrent_triggered()
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
 			bytes t = ethereum()->blockChain().transaction(h, txi);
 			State s(ethereum()->state(txi, h));
-			Executive e(s, ethereum()->blockChain(), PendingBlock);
+			Executive e(s, ethereum()->blockChain());
 			Debugger dw(this, this);
 			dw.populate(e, Transaction(t, CheckSignature::Sender));
 			dw.exec();
