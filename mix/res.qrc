@@ -61,5 +61,7 @@
         <file>qml/img/cleariconactive.png</file>
         <file>qml/img/copyicon.png</file>
         <file>qml/img/copyiconactive.png</file>
+        <file>qml/img/searchicon.png</file>
+        <file>qml/img/stop_button2x.png</file>
     </qresource>
 </RCC>

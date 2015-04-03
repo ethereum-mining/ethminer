@@ -58,6 +58,7 @@ struct FutureTime: virtual Exception {};
 
 struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 7; };
 struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 4; };
+struct BlockChainWarn: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 1; };
 
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
 std::map<Address, Account> const& genesisState();
@@ -77,6 +78,8 @@ enum {
 	ExtraBlocksBlooms
 };
 
+using ProgressCallback = std::function<void(unsigned, unsigned)>;
+
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  * @threadsafe
@@ -85,10 +88,11 @@ enum {
 class BlockChain
 {
 public:
-	BlockChain(bytes const& _genesisBlock, std::string _path, bool _killExisting);
+	BlockChain(bytes const& _genesisBlock, std::string _path, WithExisting _we, ProgressCallback const& _p = ProgressCallback());
 	~BlockChain();
 
-	void reopen(std::string _path, bool _killExisting = false) { close(); open(_path, _killExisting); }
+	/// Attempt a database re-open.
+	void reopen(std::string const& _path, WithExisting _we = WithExisting::Trust) { close(); open(_path, _we); }
 
 	/// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
 	/// To be called from main loop every 100ms or so.
@@ -186,6 +190,10 @@ public:
 	/// togther with all their quoted uncles.
 	h256Set allUnclesFrom(h256 const& _parent) const;
 
+	/// Run through database and verify all blocks by reevaluating.
+	/// Will call _progress with the progress in this operation first param done, second total.
+	void rebuild(std::string const& _path, ProgressCallback const& _progress = std::function<void(unsigned, unsigned)>());
+
 	/** @returns the hash of all blocks between @a _from and @a _to, all blocks are ordered first by a number of
 	 * blocks that are parent-to-child, then two sibling blocks, then a number of blocks that are child-to-parent.
 	 *
@@ -222,10 +230,10 @@ public:
 private:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
-	void open(std::string _path, bool _killExisting = false);
+	void open(std::string const& _path, WithExisting _we = WithExisting::Trust);
 	void close();
 
-	template<class T, unsigned N> T queryExtras(h256 const& _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n) const
+	template<class T, unsigned N> T queryExtras(h256 const& _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const
 	{
 		{
 			ReadGuard l(_x);
@@ -235,7 +243,7 @@ private:
 		}
 
 		std::string s;
-		m_extrasDB->Get(m_readOptions, toSlice(_h, N), &s);
+		(_extrasDB ? _extrasDB : m_extrasDB)->Get(m_readOptions, toSlice(_h, N), &s);
 		if (s.empty())
 		{
 //			cout << "Not found in DB: " << _h << endl;

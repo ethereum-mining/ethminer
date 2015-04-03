@@ -25,17 +25,13 @@
 #include <mutex>
 #include <list>
 #include <atomic>
-
-// Make sure boost/asio.hpp is included before windows.h.
-#include <boost/asio.hpp>
+#include <boost/asio.hpp> // Make sure boost/asio.hpp is included before windows.h.
 #include <boost/utility.hpp>
-
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Exceptions.h>
 #include <libp2p/Host.h>
-
 #include <libwhisper/WhisperHost.h>
 #include <libethereum/Client.h>
 
@@ -113,7 +109,7 @@ public:
 	WebThreeDirect(
 		std::string const& _clientVersion,
 		std::string const& _dbPath,
-		bool _forceClean = false,
+		WithExisting _we = WithExisting::Trust,
 		std::set<std::string> const& _interfaces = {"eth", "shh"},
 		p2p::NetworkPreferences const& _n = p2p::NetworkPreferences(),
 		bytesConstRef _network = bytesConstRef(),
