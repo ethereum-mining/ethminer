@@ -46,13 +46,13 @@ using namespace dev::eth;
 
 static const u256 c_blockReward = 1500 * finney;
 
-OverlayDB State::openDB(std::string _path, bool _killExisting)
+OverlayDB State::openDB(std::string _path, WithExisting _we)
 {
 	if (_path.empty())
 		_path = Defaults::get()->m_dbPath;
 	boost::filesystem::create_directory(_path);
 
-	if (_killExisting)
+	if (_we == WithExisting::Kill)
 		boost::filesystem::remove_all(_path + "/state");
 
 	ldb::Options o;

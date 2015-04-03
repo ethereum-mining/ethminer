@@ -98,7 +98,7 @@ static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 #endif
 
-BlockChain::BlockChain(bytes const& _genesisBlock, std::string _path, bool _killExisting)
+BlockChain::BlockChain(bytes const& _genesisBlock, std::string _path, WithExisting _we, ProgressCallback const& _p)
 {
 	// initialise deathrow.
 	m_cacheUsage.resize(c_collectionQueueSize);
@@ -108,7 +108,9 @@ BlockChain::BlockChain(bytes const& _genesisBlock, std::string _path, bool _kill
 	m_genesisBlock = _genesisBlock;
 	m_genesisHash = sha3(RLP(m_genesisBlock)[0].data());
 
-	open(_path, _killExisting);
+	open(_path, _we);
+	if (_we == WithExisting::Verify)
+		rebuild(_path, _p);
 }
 
 BlockChain::~BlockChain()
@@ -116,24 +118,23 @@ BlockChain::~BlockChain()
 	close();
 }
 
-void BlockChain::open(std::string _path, bool _killExisting)
+void BlockChain::open(std::string const& _path, WithExisting _we)
 {
-	if (_path.empty())
-		_path = Defaults::get()->m_dbPath;
-	boost::filesystem::create_directories(_path);
-	if (_killExisting)
+	std::string path = _path.empty() ? Defaults::get()->m_dbPath : _path;
+	boost::filesystem::create_directories(path);
+	if (_we == WithExisting::Kill)
 	{
-		boost::filesystem::remove_all(_path + "/blocks");
-		boost::filesystem::remove_all(_path + "/details");
+		boost::filesystem::remove_all(path + "/blocks");
+		boost::filesystem::remove_all(path + "/details");
 	}
 
 	ldb::Options o;
 	o.create_if_missing = true;
-	ldb::DB::Open(o, _path + "/blocks", &m_blocksDB);
-	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
+	ldb::DB::Open(o, path + "/blocks", &m_blocksDB);
+	ldb::DB::Open(o, path + "/details", &m_extrasDB);
 	if (!m_blocksDB || !m_extrasDB)
 	{
-		if (boost::filesystem::space(_path + "/blocks").available < 1024)
+		if (boost::filesystem::space(path + "/blocks").available < 1024)
 		{
 			cwarn << "Not enough available space found on hard drive. Please free some up and then re-run. Bailing.";
 			BOOST_THROW_EXCEPTION(NotEnoughAvailableSpace());
@@ -158,7 +159,6 @@ void BlockChain::open(std::string _path, bool _killExisting)
 	// TODO: Implement ability to rebuild details map from DB.
 	std::string l;
 	m_extrasDB->Get(m_readOptions, ldb::Slice("best"), &l);
-
 	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
 
 	cnote << "Opened blockchain DB. Latest: " << currentHash();
@@ -172,6 +172,53 @@ void BlockChain::close()
 	m_lastBlockHash = m_genesisHash;
 	m_details.clear();
 	m_blocks.clear();
+}
+
+void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, unsigned)> const& _progress)
+{
+	unsigned originalNumber = number();
+
+	// Keep extras DB around, but under a temp name
+	delete m_extrasDB;
+	m_extrasDB = nullptr;
+	boost::filesystem::rename(_path + "/details", _path + "/details.old");
+	ldb::DB* oldExtrasDB;
+	ldb::Options o;
+	o.create_if_missing = true;
+	ldb::DB::Open(o, _path + "/details.old", &oldExtrasDB);
+	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
+
+	// Open a fresh state DB
+	OverlayDB db = State::openDB(_path, WithExisting::Kill);
+
+	// Clear all memos ready for replay.
+	m_details.clear();
+	m_logBlooms.clear();
+	m_receipts.clear();
+	m_transactionAddresses.clear();
+	m_blockHashes.clear();
+	m_blocksBlooms.clear();
+	m_lastLastHashes.clear();
+	m_lastBlockHash = genesisHash();
+
+	for (unsigned d = 0; d < originalNumber; ++d)
+	{
+		try
+		{
+			import(block(queryExtras<BlockHash, ExtraBlockHash>(h256(u256(d)), m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value), db);
+		}
+		catch (...)
+		{
+			// Failed to import - stop here.
+			break;
+		}
+
+		if (_progress)
+			_progress(d, originalNumber);
+	}
+
+	delete oldExtrasDB;
+	boost::filesystem::remove_all(_path + "/details.old");
 }
 
 template <class T, class V>
@@ -414,10 +461,20 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 #endif
 	}
 #if ETH_CATCH
-	catch (Exception const& _e)
+	catch (InvalidNonce const& _e)
 	{
 		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(_e);
 		_e << errinfo_comment("Malformed block ");
+		throw;
+	}
+	catch (Exception const& _e)
+	{
+		clog(BlockChainWarn) << "   Malformed block: " << diagnostic_information(_e);
+		_e << errinfo_comment("Malformed block ");
+		clog(BlockChainWarn) << "Block: " << bi.hash;
+		clog(BlockChainWarn) << bi;
+		clog(BlockChainWarn) << "Block parent: " << bi.parentHash;
+		clog(BlockChainWarn) << BlockInfo(block(bi.parentHash));
 		throw;
 	}
 #endif
@@ -462,14 +519,14 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 h256s BlockChain::treeRoute(h256 const& _from, h256 const& _to, h256* o_common, bool _pre, bool _post) const
 {
-	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
+//	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
 	if (!_from || !_to)
 		return h256s();
 	h256s ret;
 	h256s back;
 	unsigned fn = details(_from).number;
 	unsigned tn = details(_to).number;
-	cdebug << "treeRoute" << fn << "..." << tn;
+//	cdebug << "treeRoute" << fn << "..." << tn;
 	h256 from = _from;
 	while (fn > tn)
 	{
@@ -477,7 +534,7 @@ h256s BlockChain::treeRoute(h256 const& _from, h256 const& _to, h256* o_common, 
 			ret.push_back(from);
 		from = details(from).parent;
 		fn--;
-		cdebug << "from:" << fn << _from.abridged();
+//		cdebug << "from:" << fn << _from.abridged();
 	}
 	h256 to = _to;
 	while (fn < tn)
@@ -486,7 +543,7 @@ h256s BlockChain::treeRoute(h256 const& _from, h256 const& _to, h256* o_common, 
 			back.push_back(to);
 		to = details(to).parent;
 		tn--;
-		cdebug << "to:" << tn << _to.abridged();
+//		cdebug << "to:" << tn << _to.abridged();
 	}
 	while (from != to)
 	{

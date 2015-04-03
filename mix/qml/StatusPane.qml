@@ -227,7 +227,7 @@ Rectangle {
 					top = top.parent
 				var coordinates = logsContainer.mapToItem(top, 0, 0);
 				logsContainer.parent = top;
-				logsContainer.x = status.x + statusContainer.x - LogsPaneStyle.generic.layout.dateWidth - LogsPaneStyle.generic.layout.typeWidth - 30
+				logsContainer.x = status.x + statusContainer.x - LogsPaneStyle.generic.layout.dateWidth - LogsPaneStyle.generic.layout.typeWidth + 70
 			}
 
 			LogsPane
@@ -239,7 +239,6 @@ Rectangle {
 				State {
 					name: "opened";
 					PropertyChanges { target: logsContainer; height: 500; visible: true }
-					PropertyChanges { target: statusContainer; width: 100; height: 25 }
 				},
 				State {
 					name: "closed";
@@ -250,7 +249,6 @@ Rectangle {
 			transitions: Transition {
 					 NumberAnimation { properties: "height"; easing.type: Easing.InOutQuad; duration: 200 }
 					 NumberAnimation { target: logsContainer;  properties: "visible"; easing.type: Easing.InOutQuad; duration: 200 }
-					 NumberAnimation { target: statusContainer;  properties: "width"; easing.type: Easing.InOutQuad; duration: 500 }
 			}
 		}
 	}
