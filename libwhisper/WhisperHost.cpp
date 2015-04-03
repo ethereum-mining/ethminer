@@ -83,9 +83,9 @@ void WhisperHost::inject(Envelope const& _m, WhisperPeer* _p)
 	for (auto i: peerSessions())
 	{
 		auto w = i.first->cap<WhisperPeer>();
-		if (!!w && w.get() == _p)
+		if (w.get() == _p)
 			w->addRating(1);
-		else if(!!w)
+		else
 			w->noteNewMessage(h, _m);
 	}
 }
@@ -162,10 +162,8 @@ void WhisperHost::uninstallWatch(unsigned _i)
 
 void WhisperHost::doWork()
 {
-	for (auto& i: peerSessions())
-		if (auto w = i.first->cap<WhisperPeer>())
-			if (!!w)
-				i.first->cap<WhisperPeer>()->sendMessages();
+	for (auto i: peerSessions())
+		i.first->cap<WhisperPeer>()->sendMessages();
 	cleanup();
 }
 
