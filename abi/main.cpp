@@ -436,7 +436,7 @@ struct ABIMethod
 					if (_params[pi].second != Format::Open)
 						throw ExpectedOpen();
 					++pi;
-					int l = a.dims[addr.size()];
+					int l = a.dims[a.dims.size() - 1 - addr.size()];
 					if (l == -1)
 					{
 						// read ahead in params and discover the arity.
@@ -486,7 +486,7 @@ struct ABIMethod
 					put();
 				else
 				{
-					int l = a.dims[addr.size()];
+					int l = a.dims[a.dims.size() - 1 - addr.size()];
 					if (l == -1)
 					{
 						l = fromBigEndian<unsigned>(bytesConstRef(&_data).cropped(di, 32));
@@ -525,7 +525,7 @@ struct ABIMethod
 				{
 					out << "[";
 					addr.push_back(0);
-					int l = a.dims[addr.size() - 1];
+					int l = a.dims[a.dims.size() - 1 - (addr.size() - 1)];
 					if (l == -1)
 						l = catDims[d++];
 					for (addr.back() = 0; addr.back() < l; ++addr.back())
