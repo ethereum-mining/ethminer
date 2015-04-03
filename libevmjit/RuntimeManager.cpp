@@ -127,7 +127,7 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeB
 	m_builder.SetInsertPoint(checkBB);
 	auto currSize = m_builder.CreateLoad(currSizePtr, "cur");
 	auto maxSize = m_builder.CreateNUWAdd(currSize, max, "maxSize");
-	auto ok = m_builder.CreateICmpULT(maxSize, m_builder.getInt64(1024), "ok");
+	auto ok = m_builder.CreateICmpULE(maxSize, m_builder.getInt64(1024), "ok");
 	m_builder.CreateCondBr(ok, updateBB, outOfStackBB, Type::expectTrue);
 
 	m_builder.SetInsertPoint(updateBB);
