@@ -48,6 +48,10 @@ std::string contentsString(std::string const& _file);
 /// Retrieve and returns the allocated contents of the given file. If the file doesn't exist or isn't readable, returns nullptr. Don't forget to delete [] when finished.
 bytesRef contentsNew(std::string const& _file);
 
+/// Retrieve and returns the allocated contents of the given file and load into buffer. Used to fill mapped OpenCL buffer. 
+uint64_t contentsToBuffer(std::string const& _file, void * buf);
+
+
 /// Write the given binary data into the given file, replacing the file if it pre-exists.
 void writeFile(std::string const& _file, bytesConstRef _data);
 /// Write the given binary data into the given file, replacing the file if it pre-exists.
