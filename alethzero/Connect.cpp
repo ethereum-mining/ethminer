@@ -38,13 +38,14 @@ Connect::~Connect()
 
 void Connect::setEnvironment(QStringList const& _nodes)
 {
-	ui->host->addItems(_nodes);
+	if (ui->host->count() == 0)
+		ui->host->addItems(_nodes);
 }
 
 void Connect::reset()
 {
 	ui->nodeId->clear();
-	ui->required->setChecked(false);
+	ui->required->setChecked(true);
 }
 
 QString Connect::host()

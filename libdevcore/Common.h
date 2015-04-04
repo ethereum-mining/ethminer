@@ -134,4 +134,20 @@ private:
 	std::function<void(void)> m_f;
 };
 
+enum class WithExisting: int
+{
+	Trust = 0,
+	Verify,
+	Kill
+};
+
+}
+
+namespace std {
+
+inline dev::WithExisting max(dev::WithExisting _a, dev::WithExisting _b)
+{
+	return static_cast<dev::WithExisting>(max(static_cast<int>(_a), static_cast<int>(_b)));
+}
+
 }
