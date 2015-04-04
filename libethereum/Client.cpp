@@ -120,7 +120,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId, int _miners):
 	Worker("eth"),
 	m_vc(_dbPath),
-	m_bc(_dbPath, max(m_vc.action(), _forceAction)),
+	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "..." << endl; }),
 	m_gp(new TrivialGasPricer),
 	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
 	m_preMine(Address(), m_stateDB),
@@ -145,7 +145,7 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _for
 Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId, int _miners):
 	Worker("eth"),
 	m_vc(_dbPath),
-	m_bc(_dbPath, max(m_vc.action(), _forceAction)),
+	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
 	m_gp(_gp),
 	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
 	m_preMine(Address(), m_stateDB),
