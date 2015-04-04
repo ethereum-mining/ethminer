@@ -92,6 +92,6 @@ bytes CanonBlockChain::createGenesisBlock()
 	return block.out();
 }
 
-CanonBlockChain::CanonBlockChain(std::string const& _path, WithExisting _we): BlockChain(CanonBlockChain::createGenesisBlock(), _path, _we)
+CanonBlockChain::CanonBlockChain(std::string const& _path, WithExisting _we, ProgressCallback const& _pc): BlockChain(CanonBlockChain::createGenesisBlock(), _path, _we, _pc)
 {
 }
