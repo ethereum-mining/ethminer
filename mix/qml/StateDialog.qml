@@ -17,10 +17,12 @@ Window {
 	height: 480
 	title: qsTr("Edit State")
 	visible: false
-	color: StateDialogStyle.generic.backgroundColor
+	color: stateDialogStyle.generic.backgroundColor
 
 	property alias stateTitle: titleField.text
 	property alias isDefault: defaultCheckBox.checked
+	property alias model: transactionsModel
+	property alias transactionDialog: transactionDialog
 	property int stateIndex
 	property var stateTransactions: []
 	property var stateAccounts: []
@@ -56,6 +58,11 @@ Window {
 		forceActiveFocus();
 	}
 
+	function acceptAndClose() {
+		close();
+		accepted();
+	}
+
 	function close() {
 		visible = false;
 	}
@@ -69,6 +76,10 @@ Window {
 		item.transactions = stateTransactions;
 		item.accounts = stateAccounts;
 		return item;
+	}
+
+	StateDialogStyle {
+		id: stateDialogStyle
 	}
 
 	ColumnLayout {
@@ -292,8 +303,7 @@ Window {
 			Button {
 				text: qsTr("OK");
 				onClicked: {
-					close();
-					accepted();
+					acceptAndClose();
 				}
 			}
 			Button {
