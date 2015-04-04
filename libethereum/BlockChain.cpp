@@ -314,6 +314,8 @@ h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, 
 
 h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 {
+	//@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
+
 #if ETH_TIMED_IMPORTS
 	boost::timer total;
 	double preliminaryChecks;
@@ -438,7 +440,6 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 			m_receipts[newHash] = br;
 		}
 
-		// TODO: FIX: URGENT!!!!! only put these into database when the block is on the main chain.
 #if ETH_TIMED_IMPORTS
 		collation = t.elapsed();
 		t.restart();
@@ -453,7 +454,6 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
-
 		}
 
 #if ETH_TIMED_IMPORTS
@@ -508,8 +508,13 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 
 		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
 
-		// TODO: go through ret backwards until hash != last.parent and update m_transactionAddresses, m_blockHashes
-		// THEN: update database with them.
+		// Most of the time these two will be equal - only when we're doing a chain revert will they not be
+		if (common != last)
+			// If we are reverting previous blocks, we need to clear their blooms (in particular, to
+			// rebuild any higher level blooms that they contributed to).
+			clearBlockBlooms(number(common) + 1, number(last) + 1);
+
+		// Go through ret backwards until hash != last.parent and update m_transactionAddresses, m_blockHashes
 		for (auto i = ret.rbegin(); i != ret.rend() && *i != common; ++i)
 		{
 			auto b = block(*i);
@@ -526,6 +531,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 					unsigned i = index / c_bloomIndexSize;
 					unsigned o = index % c_bloomIndexSize;
 					alteredBlooms.push_back(chunkId(level, i));
+					blocksBlooms(alteredBlooms.back());
 					m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
 				}
 			}
@@ -547,6 +553,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 				m_blockHashes[h256(bi.number)].value = bi.hash;
 			}
 
+			// Update database with them.
 			ReadGuard l1(x_blocksBlooms);
 			ReadGuard l3(x_blockHashes);
 			ReadGuard l6(x_transactionAddresses);
@@ -583,6 +590,48 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 #endif
 
 	return ret;
+}
+
+void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
+{
+	//   ... c c c c c c c c c c C o o o o o o
+	//   ...                               /=15        /=21
+	// L0...| ' | ' | ' | ' | ' | ' | ' | 'b|x'x|x'x|x'e| /=11
+	// L1...|   '   |   '   |   '   |   ' b | x ' x | x ' e |   /=6
+	// L2...|       '       |       '   b   |   x   '   x   |   e   /=3
+	// L3...|               '       b       |       x       '       e
+	// model: c_bloomIndexLevels = 4, c_bloomIndexSize = 2
+
+	//   ...                               /=15        /=21
+	// L0...| ' ' ' | ' ' ' | ' ' ' | ' ' 'b|x'x'x'x|x'e' ' |
+	// L1...|       '       '       '   b   |   x   '   x   '   e   '       |
+	// L2...|               b               '               x               '                e              '                               |
+	// model: c_bloomIndexLevels = 2, c_bloomIndexSize = 4
+
+	// algorithm doesn't have the best memoisation coherence, but eh well...
+
+	unsigned beginDirty = _begin;
+	unsigned endDirty = _end;
+	for (unsigned level = 0; level < c_bloomIndexLevels; level++, beginDirty /= c_bloomIndexSize, endDirty = (endDirty - 1) / c_bloomIndexSize + 1)
+	{
+		// compute earliest & latest index for each level, rebuild from previous levels.
+		for (unsigned item = beginDirty; item != endDirty; ++item)
+		{
+			unsigned bunch = item / c_bloomIndexSize;
+			unsigned offset = item % c_bloomIndexSize;
+			auto id = chunkId(level, bunch);
+			LogBloom acc;
+			if (!!level)
+			{
+				// rebuild the bloom from the previous (lower) level (if there is one).
+				auto lowerChunkId = chunkId(level - 1, item);
+				for (auto const& bloom: blocksBlooms(lowerChunkId).blooms)
+					acc |= bloom;
+			}
+			blocksBlooms(id);	// make sure it has been memoized.
+			m_blocksBlooms[id].blooms[offset] = acc;
+		}
+	}
 }
 
 tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const& _to, bool _common, bool _pre, bool _post) const
