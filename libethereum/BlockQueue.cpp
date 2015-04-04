@@ -114,13 +114,29 @@ void BlockQueue::tick(BlockChain const& _bc)
 	m_future.erase(m_future.begin(), m_future.upper_bound(t));
 }
 
-void BlockQueue::drain(std::vector<bytes>& o_out)
+template <class T> T advanced(T _t, unsigned _n)
+{
+	std::advance(_t, _n);
+	return _t;
+}
+
+void BlockQueue::drain(std::vector<bytes>& o_out, unsigned _max)
 {
 	WriteGuard l(m_lock);
 	if (m_drainingSet.empty())
 	{
-		swap(o_out, m_ready);
-		swap(m_drainingSet, m_readySet);
+		o_out.resize(min<unsigned>(_max, m_ready.size()));
+		for (unsigned i = 0; i < o_out.size(); ++i)
+			swap(o_out[i], m_ready[i]);
+		m_ready.erase(m_ready.begin(), advanced(m_ready.begin(), o_out.size()));
+		for (auto const& bs: o_out)
+		{
+			auto h = sha3(bs);
+			m_drainingSet.insert(h);
+			m_readySet.erase(h);
+		}
+//		swap(o_out, m_ready);
+//		swap(m_drainingSet, m_readySet);
 	}
 }
 

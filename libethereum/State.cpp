@@ -43,6 +43,7 @@ using namespace dev;
 using namespace dev::eth;
 
 #define ctrace clog(StateTrace)
+#define ETH_TIMED_ENACTMENTS 0
 
 static const u256 c_blockReward = 1500 * finney;
 
@@ -353,16 +354,48 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 
 u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc)
 {
+#if ETH_TIMED_ENACTMENTS
+	boost::timer t;
+	double populateVerify;
+	double populateGrand;
+	double syncReset;
+	double enactment;
+#endif
+
 	// Check family:
 	BlockInfo biParent(_bc.block(_bi.parentHash));
 	_bi.verifyParent(biParent);
+
+#if ETH_TIMED_ENACTMENTS
+	populateVerify = t.elapsed();
+	t.restart();
+#endif
+
 	BlockInfo biGrandParent;
 	if (biParent.number)
 		biGrandParent.populate(_bc.block(biParent.parentHash));
+
+#if ETH_TIMED_ENACTMENTS
+	populateGrand = t.elapsed();
+	t.restart();
+#endif
+
 	sync(_bc, _bi.parentHash);
 	resetCurrent();
+
+#if ETH_TIMED_ENACTMENTS
+	syncReset = t.elapsed();
+	t.restart();
+#endif
+
 	m_previousBlock = biParent;
-	return enact(_block, _bc);
+	auto ret = enact(_block, _bc);
+
+#if ETH_TIMED_ENACTMENTS
+	enactment = t.elapsed();
+	cnote << "popVer/popGrand/syncReset/enactment = " << populateVerify << "/" << populateGrand << "/" << syncReset << "/" << enactment;
+#endif
+	return ret;
 }
 
 map<Address, u256> State::addresses() const

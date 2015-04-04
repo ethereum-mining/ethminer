@@ -103,11 +103,11 @@ public:
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	h256s attemptImport(bytes const& _block, OverlayDB const& _stateDB) noexcept;
+	h256s attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _force = false) noexcept;
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	h256s import(bytes const& _block, OverlayDB const& _stateDB);
+	h256s import(bytes const& _block, OverlayDB const& _stateDB, bool _force = false);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 const& _hash) const;
