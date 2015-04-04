@@ -2,7 +2,6 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.1
 import QtQuick.Layouts 1.1
-import "."
 
 DebugInfoList
 {
@@ -37,7 +36,7 @@ DebugInfoList
 					anchors.leftMargin: 5
 					color: "#4a4a4a"
 					text: styleData.row;
-					font.pointSize: DebuggerPaneStyle.general.basicFontSize
+					font.pointSize: dbgStyle.general.basicFontSize
 					width: parent.width - 5
 					elide: Text.ElideRight
 				}
@@ -58,7 +57,7 @@ DebugInfoList
 					color: "#4a4a4a"
 					text: styleData.value;
 					elide: Text.ElideRight
-					font.pointSize: DebuggerPaneStyle.general.basicFontSize
+					font.pointSize: dbgStyle.general.basicFontSize
 				}
 			}
 		}

@@ -24,31 +24,36 @@ Item {
 	id: contentView
 	width: parent.width
 	height: parent.height * 0.7
-		Rectangle {
-			id: lineColumn
-			property int rowHeight: codeEditor.font.pixelSize + 3
-			color: "#202020"
-			width: 50
-			height: parent.height
-			Column {
-				y: -codeEditor.flickableItem.contentY + 4
-				width: parent.width
-				Repeater {
-					model: Math.max(codeEditor.lineCount + 2, (lineColumn.height/lineColumn.rowHeight))
-					delegate: Text {
-						id: text
-						color: codeEditor.textColor
-						font: codeEditor.font
-						width: lineColumn.width - 4
-						horizontalAlignment: Text.AlignRight
-						verticalAlignment: Text.AlignVCenter
-						height: lineColumn.rowHeight
-						renderType: Text.NativeRendering
-						text: index + 1
-					}
+
+	CodeEditorStyle {
+		id: style
+	}
+
+	Rectangle {
+		id: lineColumn
+		property int rowHeight: codeEditor.font.pixelSize + 3
+		color: "#202020"
+		width: 50
+		height: parent.height
+		Column {
+			y: -codeEditor.flickableItem.contentY + 4
+			width: parent.width
+			Repeater {
+				model: Math.max(codeEditor.lineCount + 2, (lineColumn.height/lineColumn.rowHeight))
+				delegate: Text {
+					id: text
+					color: codeEditor.textColor
+					font: codeEditor.font
+					width: lineColumn.width - 4
+					horizontalAlignment: Text.AlignRight
+					verticalAlignment: Text.AlignVCenter
+					height: lineColumn.rowHeight
+					renderType: Text.NativeRendering
+					text: index + 1
 				}
 			}
 		}
+	}
 
 	TextArea {
 		id: codeEditor
@@ -66,7 +71,7 @@ Item {
 
 		height: parent.height
 		font.family: "Monospace"
-		font.pointSize: CodeEditorStyle.general.basicFontSize
+		font.pointSize: style.general.basicFontSize
 		width: parent.width
 
 		tabChangesFocus: false
