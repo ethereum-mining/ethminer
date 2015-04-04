@@ -42,7 +42,9 @@ class WebThreeStubServer: public dev::WebThreeStubServerBase, public dev::WebThr
 {
 public:
 	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
-	
+
+	virtual std::string web3_clientVersion();
+
 private:
 	virtual dev::eth::Interface* client() override;
 	virtual std::shared_ptr<dev::shh::Interface> face() override;
