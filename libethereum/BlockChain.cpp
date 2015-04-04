@@ -522,16 +522,19 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 			// Collate logs into blooms.
 			h256s alteredBlooms;
 			{
-				WriteGuard l(x_blocksBlooms);
 				LogBloom blockBloom = bi.logBloom;
 				blockBloom.shiftBloom<3>(sha3(bi.coinbaseAddress.ref()));
-				unsigned index = (unsigned)bi.number;
-				for (unsigned level = 0; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
+
+				// Pre-memoize everything we need before locking x_blocksBlooms
+				for (unsigned level = 0, index = (unsigned)bi.number; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
+					blocksBlooms(chunkId(level, index / c_bloomIndexSize));
+
+				WriteGuard l(x_blocksBlooms);
+				for (unsigned level = 0, index = (unsigned)bi.number; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
 				{
 					unsigned i = index / c_bloomIndexSize;
 					unsigned o = index % c_bloomIndexSize;
 					alteredBlooms.push_back(chunkId(level, i));
-					blocksBlooms(alteredBlooms.back());
 					m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
 				}
 			}
