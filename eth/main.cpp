@@ -117,8 +117,8 @@ void help()
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 #if ETH_JSONRPC
-		<< "	-j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
-		<< "	--json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
+		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
+		<< "    --json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
 		<< "    -K,--kill-blockchain  First kill the blockchain." << endl
 		<< "       --listen-ip <port>  Listen on the given port for incoming connections (default: 30303)." << endl
@@ -129,6 +129,7 @@ void help()
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
 		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
+		<< "    -R,--rebuild-blockchain  First rebuild the blockchain from the existing database." << endl
 		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
@@ -168,7 +169,7 @@ void version()
 }
 
 Address c_config = Address("ccdeac59d35627b7de09332e819d5159e7bb7250");
-string pretty(h160 _a, dev::eth::State _st)
+string pretty(h160 _a, dev::eth::State const& _st)
 {
 	string ns;
 	h256 n;
@@ -216,7 +217,7 @@ int main(int argc, char** argv)
 	bool bootstrap = false;
 	bool upnp = true;
 	bool forceMining = false;
-	bool killChain = false;
+	WithExisting killChain = WithExisting::Trust;
 	bool jit = false;
 	bool structuredLogging = false;
 	string structuredLoggingFormat = "%Y-%m-%dT%H:%M:%S";
@@ -274,7 +275,9 @@ int main(int argc, char** argv)
 			}
 		}
 		else if (arg == "-K" || arg == "--kill-blockchain")
-			killChain = true;
+			killChain = WithExisting::Kill;
+		else if (arg == "-B" || arg == "--rebuild-blockchain")
+			killChain = WithExisting::Verify;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
