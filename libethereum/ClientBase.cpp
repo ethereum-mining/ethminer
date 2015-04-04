@@ -265,7 +265,8 @@ LocalisedLogEntries ClientBase::peekWatch(unsigned _watchId) const
 //	cwatch << "peekWatch" << _watchId;
 	auto& w = m_watches.at(_watchId);
 //	cwatch << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
-	w.lastPoll = chrono::system_clock::now();
+	if (w.lastPoll != chrono::system_clock::time_point::max())
+		w.lastPoll = chrono::system_clock::now();
 	return w.changes;
 }
 
@@ -278,8 +279,9 @@ LocalisedLogEntries ClientBase::checkWatch(unsigned _watchId)
 	auto& w = m_watches.at(_watchId);
 //	cwatch << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 	std::swap(ret, w.changes);
-	w.lastPoll = chrono::system_clock::now();
-	
+	if (w.lastPoll != chrono::system_clock::time_point::max())
+		w.lastPoll = chrono::system_clock::now();
+
 	return ret;
 }
 
