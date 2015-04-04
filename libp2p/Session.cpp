@@ -46,6 +46,7 @@ Session::Session(Host* _s, RLPXFrameIO* _io, std::shared_ptr<Peer> const& _n, Pe
 	m_info(_info),
 	m_ping(chrono::steady_clock::time_point::max())
 {
+	m_peer->m_lastDisconnect = NoDisconnect;
 	m_lastReceived = m_connect = chrono::steady_clock::now();
 }
 
