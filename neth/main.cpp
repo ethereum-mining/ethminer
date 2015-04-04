@@ -550,7 +550,7 @@ int main(int argc, char** argv)
 	dev::WebThreeDirect web3(
 		clientImplString,
 		dbPath,
-		killChain,
+		killChain ? WithExisting::Kill : WithExisting::Trust,
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
 		&nodesState,
