@@ -221,7 +221,6 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 				}
 		m_sessions[_id] = ps;
 	}
-	ps->start();
 	unsigned o = (unsigned)UserPacket;
 	for (auto const& i: caps)
 		if (haveCapability(i))
@@ -229,6 +228,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 			ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps.get(), o));
 			o += m_capabilities[i]->messageCount();
 		}
+	ps->start();
 	clog(NetNote) << "p2p.host.peer.register" << _id.abridged();
 	StructuredLogger::p2pConnected(_id.abridged(), ps->m_peer->peerEndpoint(), ps->m_peer->m_lastConnected, clientVersion, peerCount());
 }
