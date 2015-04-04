@@ -61,9 +61,9 @@ public:
 	/// Notes that time has moved on and some blocks that used to be "in the future" may no be valid.
 	void tick(BlockChain const& _bc);
 
-	/// Grabs the blocks that are ready, giving them in the correct order for insertion into the chain.
+	/// Grabs at most @a _max of the blocks that are ready, giving them in the correct order for insertion into the chain.
 	/// Don't forget to call doneDrain() once you're done importing.
-	void drain(std::vector<bytes>& o_out);
+	void drain(std::vector<bytes>& o_out, unsigned _max);
 
 	/// Must be called after a drain() call. Notes that the drained blocks have been imported into the blockchain, so we can forget about them.
 	void doneDrain() { WriteGuard l(m_lock); m_drainingSet.clear(); }
