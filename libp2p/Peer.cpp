@@ -44,6 +44,7 @@ unsigned Peer::fallbackSeconds() const
 		return 30 * (m_failedAttempts + 1);
 	case UselessPeer:
 	case TooManyPeers:
+		return 25 * (m_failedAttempts + 1);
 	case ClientQuit:
 		return 15 * (m_failedAttempts + 1);
 	case NoDisconnect:
