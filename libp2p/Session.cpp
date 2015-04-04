@@ -358,16 +358,13 @@ void Session::drop(DisconnectReason _reason)
 		}
 		catch (...) {}
 
-	if (m_peer)
+	if (m_peer->m_lastDisconnect == NoDisconnect && (_reason == ClientQuit || _reason == DisconnectRequested))
+		m_peer->m_failedAttempts = 0;
+	m_peer->m_lastDisconnect = _reason;
+	if (_reason == BadProtocol)
 	{
-		if (_reason != m_peer->m_lastDisconnect || _reason == NoDisconnect || _reason == ClientQuit || _reason == DisconnectRequested)
-			m_peer->m_failedAttempts = 0;
-		m_peer->m_lastDisconnect = _reason;
-		if (_reason == BadProtocol)
-		{
-			m_peer->m_rating /= 2;
-			m_peer->m_score /= 2;
-		}
+		m_peer->m_rating /= 2;
+		m_peer->m_score /= 2;
 	}
 	m_dropped = true;
 }
