@@ -19,10 +19,10 @@
  * @date 2014
  */
 
-#include <leveldb/db.h>
-
 #include "BlockChain.h"
 
+#include <leveldb/db.h>
+#include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
 #include <libdevcore/Common.h>
@@ -43,6 +43,7 @@ using namespace dev::eth;
 namespace js = json_spirit;
 
 #define ETH_CATCH 1
+#define ETH_TIMED_IMPORTS 0
 
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
@@ -174,6 +175,8 @@ void BlockChain::close()
 	m_blocks.clear();
 }
 
+#define IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
+
 void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, unsigned)> const& _progress)
 {
 	unsigned originalNumber = number();
@@ -181,6 +184,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	// Keep extras DB around, but under a temp name
 	delete m_extrasDB;
 	m_extrasDB = nullptr;
+	IGNORE_EXCEPTIONS(boost::filesystem::remove_all(_path + "/details.old"));
 	boost::filesystem::rename(_path + "/details", _path + "/details.old");
 	ldb::DB* oldExtrasDB;
 	ldb::Options o;
@@ -189,7 +193,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
 
 	// Open a fresh state DB
-	OverlayDB db = State::openDB(_path, WithExisting::Kill);
+	State s(Address(), State::openDB(_path, WithExisting::Kill), BaseState::CanonGenesis);
 
 	// Clear all memos ready for replay.
 	m_details.clear();
@@ -201,11 +205,21 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	m_lastLastHashes.clear();
 	m_lastBlockHash = genesisHash();
 
-	for (unsigned d = 0; d < originalNumber; ++d)
+	h256 lastHash = genesisHash();
+	for (unsigned d = 1; d < originalNumber; ++d)
 	{
 		try
 		{
-			import(block(queryExtras<BlockHash, ExtraBlockHash>(h256(u256(d)), m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value), db);
+			bytes b = block(queryExtras<BlockHash, ExtraBlockHash>(h256(u256(d)), m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value);
+
+			BlockInfo bi(b);
+			if (bi.parentHash != lastHash)
+			{
+				cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash.abridged() << "#" << d << " -> parent is" << bi.parentHash.abridged() << "; expected" << lastHash.abridged() << "#" << (d - 1);
+				return;
+			}
+			lastHash = bi.hash;
+			import(b, s.db(), true);
 		}
 		catch (...)
 		{
@@ -258,7 +272,7 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 	_bq.tick(*this);
 
 	vector<bytes> blocks;
-	_bq.drain(blocks);
+	_bq.drain(blocks, _max);
 
 	h256s ret;
 	for (auto const& block: blocks)
@@ -266,10 +280,7 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 		try
 		{
 			for (auto h: import(block, _stateDB))
-				if (!_max--)
-					break;
-				else
-					ret.push_back(h);
+				ret.push_back(h);
 		}
 		catch (UnknownParent)
 		{
@@ -288,11 +299,11 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 	return ret;
 }
 
-h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB) noexcept
+h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _force) noexcept
 {
 	try
 	{
-		return import(_block, _stateDB);
+		return import(_block, _stateDB, _force);
 	}
 	catch (...)
 	{
@@ -301,8 +312,18 @@ h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB) 
 	}
 }
 
-h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
+h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 {
+#if ETH_TIMED_IMPORTS
+	boost::timer total;
+	double preliminaryChecks;
+	double enactment;
+	double collation;
+	double writing;
+	double checkBest;
+	boost::timer t;
+#endif
+
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;
 
@@ -329,7 +350,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	auto newHash = BlockInfo::headerHash(_block);
 
 	// Check block doesn't already exist first!
-	if (isKnown(newHash))
+	if (isKnown(newHash) && !_force)
 	{
 		clog(BlockChainNote) << newHash << ": Not new.";
 		BOOST_THROW_EXCEPTION(AlreadyHaveBlock());
@@ -362,6 +383,11 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 	clog(BlockChainNote) << "Attempting import of " << newHash.abridged() << "...";
 
+#if ETH_TIMED_IMPORTS
+	preliminaryChecks = t.elapsed();
+	t.restart();
+#endif
+
 	u256 td;
 #if ETH_CATCH
 	try
@@ -371,6 +397,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// Get total difficulty increase and update state, checking it.
 		State s(bi.coinbaseAddress, _db);
 		auto tdIncrease = s.enactOn(&_block, bi, *this);
+
 		BlockLogBlooms blb;
 		BlockReceipts br;
 		for (unsigned i = 0; i < s.pending().size(); ++i)
@@ -380,6 +407,11 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		}
 		s.cleanup(true);
 		td = pd.totalDifficulty + tdIncrease;
+
+#if ETH_TIMED_IMPORTS
+		enactment = t.elapsed();
+		t.restart();
+#endif
 
 #if ETH_PARANOIA
 		checkConsistency();
@@ -397,10 +429,6 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_details[newHash] = BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {});
 			m_details[bi.parentHash].children.push_back(newHash);
 		}
-		{
-			WriteGuard l(x_blockHashes);
-			m_blockHashes[h256(bi.number)].value = newHash;
-		}
 		h256s alteredBlooms;
 		{
 			WriteGuard l(x_blocksBlooms);
@@ -415,6 +443,16 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 				m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
 			}
 		}
+		{
+			WriteGuard l(x_logBlooms);
+			m_logBlooms[newHash] = blb;
+		}
+		{
+			WriteGuard l(x_receipts);
+			m_receipts[newHash] = br;
+		}
+
+		// TODO: FIX: URGENT!!!!! only put these into database when the block is on the main chain.
 		// Collate transaction hashes and remember who they were.
 		h256s newTransactionAddresses;
 		{
@@ -429,13 +467,14 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			}
 		}
 		{
-			WriteGuard l(x_logBlooms);
-			m_logBlooms[newHash] = blb;
+			WriteGuard l(x_blockHashes);
+			m_blockHashes[h256(bi.number)].value = newHash;
 		}
-		{
-			WriteGuard l(x_receipts);
-			m_receipts[newHash] = br;
-		}
+
+#if ETH_TIMED_IMPORTS
+		collation = t.elapsed();
+		t.restart();
+#endif
 
 		{
 			ReadGuard l1(x_blocksBlooms);
@@ -455,6 +494,11 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			for (auto const& h: alteredBlooms)
 				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraBlocksBlooms), (ldb::Slice)dev::ref(m_blocksBlooms[h].rlp()));
 		}
+
+#if ETH_TIMED_IMPORTS
+		writing = t.elapsed();
+		t.restart();
+#endif
 
 #if ETH_PARANOIA
 		checkConsistency();
@@ -514,6 +558,17 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	{
 		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
 	}
+
+#if ETH_TIMED_IMPORTS
+	checkBest = t.elapsed();
+	cnote << "Import took:" << total.elapsed();
+	cnote << "preliminaryChecks:" << preliminaryChecks;
+	cnote << "enactment:" << enactment;
+	cnote << "collation:" << collation;
+	cnote << "writing:" << writing;
+	cnote << "checkBest:" << checkBest;
+#endif
+
 	return ret;
 }
 
