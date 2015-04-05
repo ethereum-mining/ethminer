@@ -138,6 +138,12 @@ QString ClientModel::newAddress()
 	return QString::fromStdString(toHex(a.secret().ref()));
 }
 
+QString ClientModel::encodeAbiString(QString _string)
+{
+	ContractCallDataEncoder encoder;
+	return QString::fromStdString(toHex(encoder.encodeBytes(_string)));
+}
+
 QVariantMap ClientModel::contractAddresses() const
 {
 	QVariantMap res;

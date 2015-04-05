@@ -367,23 +367,8 @@ function startDeployProject(erasePrevious)
 
 	var ctrNames = Object.keys(codeModel.contracts);
 	var ctrAddresses = {};
-	setDefaultBlock(0, function() {
-		deployContracts(0, ctrAddresses, ctrNames, function (){
-			finalizeDeployment(deploymentId, ctrAddresses);
-		});
-	});
-}
-
-function setDefaultBlock(val, callBack)
-{
-	var requests = [{
-						jsonrpc: "2.0",
-						method: "eth_setDefaultBlock",
-						params: [val],
-						id: 0
-					}];
-	rpcCall(requests, function (httpCall, response){
-		callBack();
+	deployContracts(0, ctrAddresses, ctrNames, function (){
+		finalizeDeployment(deploymentId, ctrAddresses);
 	});
 }
 
@@ -461,6 +446,7 @@ function finalizeDeployment(deploymentId, addresses) {
 	var packageRet = fileIo.makePackage(deploymentDir);
 	deploymentDialog.packageHash = packageRet[0];
 	deploymentDialog.packageBase64 = packageRet[1];
+	deploymentDialog.localPackageUrl = packageRet[2] + "?hash=" + packageRet[0];
 
 	var applicationUrlEth = deploymentDialog.applicationUrlEth;
 
@@ -468,9 +454,8 @@ function finalizeDeployment(deploymentId, addresses) {
 	deploymentStepChanged(qsTr("Registering application on the Ethereum network ..."));
 	checkEthPath(applicationUrlEth, function () {
 		deploymentComplete();
-		deployRessourcesDialog.text = qsTr("Register Web Application to finalize deployment.");
-		deployRessourcesDialog.open();
-		setDefaultBlock(-1, function() {});
+		deployResourcesDialog.text = qsTr("Register Web Application to finalize deployment.");
+		deployResourcesDialog.open();
 	});
 }
 
@@ -617,12 +602,12 @@ function registerContentHash(registrar, callBack)
 	deploymentStepChanged(txt);
 	console.log(txt);
 	var requests = [];
-	var paramTitle = createString(projectModel.projectTitle);
+	var paramTitle = clientModel.encodeAbiString(projectModel.projectTitle);
 	requests.push({
 					  //setContent()
 					  jsonrpc: "2.0",
 					  method: "eth_sendTransaction",
-					  params: [ { "from": deploymentDialog.currentAccount, "gas": 30000, "gasPrice": "10", "to": '0x' + registrar, "data": "0x5d574e32" + paramTitle.encodeValueAsString() + deploymentDialog.packageHash } ],
+					  params: [ { "from": deploymentDialog.currentAccount, "gas": 30000, "gasPrice": "10", "to": '0x' + registrar, "data": "0x5d574e32" + paramTitle + deploymentDialog.packageHash } ],
 					  id: jsonRpcRequestId++
 				  });
 	rpcCall(requests, function (httpRequest, response) {
