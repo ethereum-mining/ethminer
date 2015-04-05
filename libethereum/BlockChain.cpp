@@ -21,6 +21,9 @@
 
 #include "BlockChain.h"
 
+#if ETH_PROFILING_GPERF
+#include <gperftools/profiler.h>
+#endif
 #include <leveldb/db.h>
 #include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
@@ -33,6 +36,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
+#include <libethcore/Ethasher.h>
 #include <liblll/Compiler.h>
 #include "GenesisInfo.h"
 #include "State.h"
@@ -64,7 +68,7 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 	return _out;
 }
 
-ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
+ldb::Slice dev::eth::oldToSlice(h256 const& _h, unsigned _sub)
 {
 #if ALL_COMPILERS_ARE_CPP11_COMPLIANT
 	static thread_local h256 h = _h ^ sha3(h256(u256(_sub)));
@@ -75,6 +79,21 @@ ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
 		t_h.reset(new h256);
 	*t_h = _h ^ sha3(h256(u256(_sub)));
 	return ldb::Slice((char const*)t_h.get(), 32);
+#endif
+}
+
+ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
+{
+#if ALL_COMPILERS_ARE_CPP11_COMPLIANT
+	static thread_local h256 h = _h ^ sha3(h256(u256(_sub)));
+	return ldb::Slice((char const*)&h, 32);
+#else
+	static boost::thread_specific_ptr<FixedHash<33>> t_h;
+	if (!t_h.get())
+		t_h.reset(new FixedHash<33>);
+	*t_h = FixedHash<33>(_h);
+	(*t_h)[32] = (uint8_t)_sub;
+	return (ldb::Slice)t_h->ref();//(char const*)t_h.get(), 32);
 #endif
 }
 
@@ -147,7 +166,7 @@ void BlockChain::open(std::string const& _path, WithExisting _we)
 		}
 	}
 
-	if (!details(m_genesisHash))
+	if (_we != WithExisting::Verify && !details(m_genesisHash))
 	{
 		// Insert details of genesis block.
 		m_details[m_genesisHash] = BlockDetails(0, c_genesisDifficulty, h256(), {});
@@ -155,7 +174,9 @@ void BlockChain::open(std::string const& _path, WithExisting _we)
 		m_extrasDB->Put(m_writeOptions, toSlice(m_genesisHash, ExtraDetails), (ldb::Slice)dev::ref(r));
 	}
 
+#if ETH_PARANOIA
 	checkConsistency();
+#endif
 
 	// TODO: Implement ability to rebuild details map from DB.
 	std::string l;
@@ -179,6 +200,11 @@ void BlockChain::close()
 
 void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, unsigned)> const& _progress)
 {
+#if ETH_PROFILING_GPERF
+	ProfilerStart("BlockChain_rebuild.log");
+#endif
+
+//	unsigned originalNumber = (unsigned)BlockInfo(oldBlock(m_lastBlockHash)).number;
 	unsigned originalNumber = number();
 
 	// Keep extras DB around, but under a temp name
@@ -193,7 +219,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
 
 	// Open a fresh state DB
-	State s(Address(), State::openDB(_path, WithExisting::Kill), BaseState::CanonGenesis);
+	State s(State::openDB(_path, WithExisting::Kill), BaseState::CanonGenesis);
 
 	// Clear all memos ready for replay.
 	m_details.clear();
@@ -206,19 +232,28 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	m_lastBlockHash = genesisHash();
 
 	h256 lastHash = genesisHash();
+	boost::timer t;
 	for (unsigned d = 1; d < originalNumber; ++d)
 	{
+		if (!(d % 1000))
+		{
+			cerr << "\n1000 blocks in " << t.elapsed() << "s = " << (1000.0 / t.elapsed()) << "b/s" << endl;
+			t.restart();
+		}
 		try
 		{
 			bytes b = block(queryExtras<BlockHash, ExtraBlockHash>(h256(u256(d)), m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value);
 
 			BlockInfo bi(b);
+			if (bi.number % c_ethashEpochLength == 1)
+				Ethasher::get()->full(bi);
+
 			if (bi.parentHash != lastHash)
 			{
-				cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash.abridged() << "#" << d << " -> parent is" << bi.parentHash.abridged() << "; expected" << lastHash.abridged() << "#" << (d - 1);
+				cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash().abridged() << "#" << d << " -> parent is" << bi.parentHash.abridged() << "; expected" << lastHash.abridged() << "#" << (d - 1);
 				return;
 			}
-			lastHash = bi.hash;
+			lastHash = bi.hash();
 			import(b, s.db(), true);
 		}
 		catch (...)
@@ -230,6 +265,10 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 		if (_progress)
 			_progress(d, originalNumber);
 	}
+
+#if ETH_PROFILING_GPERF
+	ProfilerStop();
+#endif
 
 	delete oldExtrasDB;
 	boost::filesystem::remove_all(_path + "/details.old");
@@ -267,7 +306,7 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 	return m_lastLastHashes;
 }
 
-h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
+pair<h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
 	_bq.tick(*this);
 
@@ -295,8 +334,8 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 		catch (...)
 		{}
 	}
-	_bq.doneDrain();
-	return ret;
+	bool yetMore = _bq.doneDrain();
+	return make_pair(ret, yetMore);
 }
 
 h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _force) noexcept
@@ -397,7 +436,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 	{
 		// Check transactions are valid and that they result in a state equivalent to our state_root.
 		// Get total difficulty increase and update state, checking it.
-		State s(bi.coinbaseAddress, _db);
+		State s(_db);	//, bi.coinbaseAddress
 		auto tdIncrease = s.enactOn(&_block, bi, *this);
 
 		BlockLogBlooms blb;
@@ -476,7 +515,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 	{
 		clog(BlockChainWarn) << "   Malformed block: " << diagnostic_information(_e);
 		_e << errinfo_comment("Malformed block ");
-		clog(BlockChainWarn) << "Block: " << bi.hash;
+		clog(BlockChainWarn) << "Block: " << bi.hash();
 		clog(BlockChainWarn) << bi;
 		clog(BlockChainWarn) << "Block parent: " << bi.parentHash;
 		clog(BlockChainWarn) << BlockInfo(block(bi.parentHash));
@@ -543,7 +582,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 			{
 				RLP blockRLP(b);
 				TransactionAddress ta;
-				ta.blockHash = bi.hash;
+				ta.blockHash = bi.hash();
 				WriteGuard l(x_transactionAddresses);
 				for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
 				{
@@ -553,7 +592,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 			}
 			{
 				WriteGuard l(x_blockHashes);
-				m_blockHashes[h256(bi.number)].value = bi.hash;
+				m_blockHashes[h256(bi.number)].value = bi.hash();
 			}
 
 			// Update database with them.
@@ -932,6 +971,36 @@ bytes BlockChain::block(h256 const& _hash) const
 
 	string d;
 	m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
+
+	if (!d.size())
+	{
+		cwarn << "Couldn't find requested block:" << _hash.abridged();
+		return bytes();
+	}
+
+	WriteGuard l(x_blocks);
+	m_blocks[_hash].resize(d.size());
+	memcpy(m_blocks[_hash].data(), d.data(), d.size());
+
+	noteUsed(_hash);
+
+	return m_blocks[_hash];
+}
+
+bytes BlockChain::oldBlock(h256 const& _hash) const
+{
+	if (_hash == m_genesisHash)
+		return m_genesisBlock;
+
+	{
+		ReadGuard l(x_blocks);
+		auto it = m_blocks.find(_hash);
+		if (it != m_blocks.end())
+			return it->second;
+	}
+
+	string d;
+	m_blocksDB->Get(m_readOptions, oldToSlice(_hash), &d);
 
 	if (!d.size())
 	{

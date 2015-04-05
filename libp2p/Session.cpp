@@ -77,12 +77,14 @@ NodeId Session::id() const
 	return m_peer ? m_peer->id : NodeId();
 }
 
-void Session::addRating(unsigned _r)
+void Session::addRating(int _r)
 {
 	if (m_peer)
 	{
 		m_peer->m_rating += _r;
 		m_peer->m_score += _r;
+		if (_r >= 0)
+			m_peer->noteSessionGood();
 	}
 }
 
