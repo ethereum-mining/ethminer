@@ -69,10 +69,10 @@ h256 const& BlockInfo::seedHash() const
 	return m_seedHash;
 }
 
-BlockInfo BlockInfo::fromHeader(bytesConstRef _block, Strictness _s)
+BlockInfo BlockInfo::fromHeader(bytesConstRef _header, Strictness _s)
 {
 	BlockInfo ret;
-	ret.populateFromHeader(RLP(_block), _s);
+	ret.populateFromHeader(RLP(_header), _s);
 	return ret;
 }
 

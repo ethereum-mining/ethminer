@@ -11,7 +11,11 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	set(ETH_SHARED 1)
 
 	if (PROFILING)
-		set(CMAKE_CXX_FLAGS "-pg -g ${CMAKE_CXX_FLAGS}")
+		set(CMAKE_CXX_FLAGS "-g ${CMAKE_CXX_FLAGS}")
+		add_definitions(-DETH_PROFILING_GPERF)
+		set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lprofiler")
+#		set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -lprofiler")
+		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lprofiler")
 	endif ()
 
 	execute_process(

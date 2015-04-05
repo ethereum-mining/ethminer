@@ -86,14 +86,14 @@ public:
 	Nonce nonce;
 
 	BlockInfo();
-	explicit BlockInfo(bytes const& _block, Strictness _s = CheckEverything): BlockInfo(&_block, _s) {}
-	explicit BlockInfo(bytesConstRef _block, Strictness _s = CheckEverything);
+	explicit BlockInfo(bytes const& _block, Strictness _s = IgnoreNonce): BlockInfo(&_block, _s) {}
+	explicit BlockInfo(bytesConstRef _block, Strictness _s = IgnoreNonce);
 
 	static h256 headerHash(bytes const& _block) { return headerHash(&_block); }
 	static h256 headerHash(bytesConstRef _block);
 
-	static BlockInfo fromHeader(bytes const& _block, Strictness _s = CheckEverything) { return fromHeader(bytesConstRef(&_block), _s); }
-	static BlockInfo fromHeader(bytesConstRef _block, Strictness _s = CheckEverything);
+	static BlockInfo fromHeader(bytes const& _header, Strictness _s = IgnoreNonce) { return fromHeader(bytesConstRef(&_header), _s); }
+	static BlockInfo fromHeader(bytesConstRef _header, Strictness _s = IgnoreNonce);
 
 	explicit operator bool() const { return timestamp != Invalid256; }
 
@@ -119,9 +119,9 @@ public:
 
 	void setEmpty();
 
-	void populateFromHeader(RLP const& _header, Strictness _s = CheckEverything);
-	void populate(bytesConstRef _block, Strictness _s = CheckEverything);
-	void populate(bytes const& _block, Strictness _s = CheckEverything) { populate(&_block, _s); }
+	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreNonce);
+	void populate(bytesConstRef _block, Strictness _s = IgnoreNonce);
+	void populate(bytes const& _block, Strictness _s = IgnoreNonce) { populate(&_block, _s); }
 	void verifyInternals(bytesConstRef _block) const;
 	void verifyParent(BlockInfo const& _parent) const;
 	void populateFromParent(BlockInfo const& parent);
