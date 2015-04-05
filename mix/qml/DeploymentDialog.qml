@@ -131,8 +131,8 @@ Window {
 			var jsonRpcRequestId = 0;
 			requests.push({
 							  jsonrpc: "2.0",
-							  method: "eth_countAt",
-							  params: [ currentAccount ],
+							  method: "eth_getTransactionCount",
+							  params: [ currentAccount, "pending" ],
 							  id: jsonRpcRequestId++
 						  });
 			TransactionHelper.rpcCall(requests, function (httpRequest, response){
