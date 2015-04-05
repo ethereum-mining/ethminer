@@ -14,34 +14,24 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
+/** @file QVariableDefinition.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
- * Ethereum IDE client.
  */
 
-#include <iostream>
-#include <stdlib.h>
-#include <boost/exception/exception.hpp>
-#include <boost/exception/diagnostic_information.hpp>
-#include "MixApplication.h"
+#include "QVariableDefinition.h"
+#include <libdevcore/CommonJS.h>
 
-using namespace dev::mix;
-
-int main(int _argc, char* _argv[])
+namespace dev
 {
-	try
-	{
-		MixApplication::initialize();
-		MixApplication app(_argc, _argv);
-		return app.exec();
-	}
-	catch (boost::exception const& _e)
-	{
-		std::cerr << boost::diagnostic_information(_e);
-	}
-	catch (std::exception const& _e)
-	{
-		std::cerr << _e.what();
-	}
+namespace mix
+{
+
+QString QVariableDefinition::encodeValueAsString()
+{
+	return QString::fromStdString(dev::toHex(encodeValue()));
 }
+
+}
+}
+
