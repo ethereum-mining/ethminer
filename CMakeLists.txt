@@ -203,12 +203,23 @@ if (PROFILING)
 else ()
 	set(PROFILING OFF)
 endif ()
-if (NOT CMAKE_BUILD_TYPE)
+
+# Default CMAKE_BUILD_TYPE to "Release".
+set(CMAKE_BUILD_TYPE CACHE STRING "Relase")
+if ("x${CMAKE_BUILD_TYPE}" STREQUAL "x")
 	set(CMAKE_BUILD_TYPE "Release")
 endif ()
 
-message(STATUS "CMake Version: ${CMAKE_VERSION}")
+# Default TARGET_PLATFORM to "linux".
+set(TARGET_PLATFORM CACHE STRING "linux")
+if ("x${TARGET_PLATFORM}" STREQUAL "x")
+	set(TARGET_PLATFORM "linux")
+endif ()
+
+message("------------------------------------------------------------------------")
+message("-- CMake Version                                             ${CMAKE_VERSION}")
 message("-- Build type                               CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}")
+message("-- Target platform                          TARGET_PLATFORM  ${TARGET_PLATFORM}")
 message("-- VM execution tracing                     VMTRACE          ${VMTRACE}")
 message("-- Profiling support                        PROFILING        ${PROFILING}")
 message("-- Additional (SLOW) database checking      PARANOIA         ${PARANOIA}")
@@ -225,12 +236,6 @@ message("-- Build with support for Chromium                           ${ETH_HAVE
 message("------------------------------------------------------------------------")
 message("")
 
-
-# Default TARGET_PLATFORM to "linux".
-set(TARGET_PLATFORM CACHE STRING "linux")
-if ("x${TARGET_PLATFORM}" STREQUAL "x")
-	set(TARGET_PLATFORM "linux")
-endif ()
 
 if ("${TARGET_PLATFORM}" STREQUAL "linux")
 	set(CMAKE_THREAD_LIBS_INIT pthread)
@@ -260,11 +265,15 @@ if (SERPENT)
 	add_subdirectory(sc)
 endif ()
 
-add_subdirectory(libsolidity)
+if (SOLIDITY)
+	add_subdirectory(libsolidity)
+endif ()
 
 if (NOT JUSTTESTS)
 	add_subdirectory(lllc)
-	add_subdirectory(solc)
+	if (SOLIDITY)
+		add_subdirectory(solc)
+	endif ()
 endif()
 
 if (JSONRPC)
