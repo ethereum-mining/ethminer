@@ -155,7 +155,9 @@ void BlockChain::open(std::string const& _path, WithExisting _we)
 		m_extrasDB->Put(m_writeOptions, toSlice(m_genesisHash, ExtraDetails), (ldb::Slice)dev::ref(r));
 	}
 
+#if ETH_PARANOIA
 	checkConsistency();
+#endif
 
 	// TODO: Implement ability to rebuild details map from DB.
 	std::string l;
@@ -175,10 +177,15 @@ void BlockChain::close()
 	m_blocks.clear();
 }
 
+#include <gperftools/profiler.h>
 #define IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
 
 void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, unsigned)> const& _progress)
 {
+#if ETH_PROFILING_GPERF
+	ProfilerStart("BlockChain_rebuild.log");
+#endif
+
 	unsigned originalNumber = number();
 
 	// Keep extras DB around, but under a temp name
@@ -206,10 +213,14 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	m_lastBlockHash = genesisHash();
 
 	h256 lastHash = genesisHash();
+	boost::timer t;
 	for (unsigned d = 1; d < originalNumber; ++d)
 	{
-		if (originalNumber > 1000)
-			exit(0);
+		if (!(d % 1000))
+		{
+			cerr << "\n1000 blocks in " << t.elapsed() << "s = " << (1000.0 / t.elapsed()) << "b/s" << endl;
+			t.restart();
+		}
 		try
 		{
 			bytes b = block(queryExtras<BlockHash, ExtraBlockHash>(h256(u256(d)), m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value);
@@ -232,6 +243,10 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 		if (_progress)
 			_progress(d, originalNumber);
 	}
+
+#if ETH_PROFILING_GPERF
+	ProfilerStop();
+#endif
 
 	delete oldExtrasDB;
 	boost::filesystem::remove_all(_path + "/details.old");
