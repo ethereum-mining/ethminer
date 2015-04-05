@@ -4,23 +4,27 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
+import org.ethereum.qml.Clipboard 1.0
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Item {
-	signal editorTextChanged
 	signal breakpointsChanged
+	signal editorTextChanged
+	signal loadComplete
 	property bool isClean: true
 	property string currentText: ""
 	property string currentMode: ""
 	property bool initialized: false
+	property bool unloaded: false
 	property var currentBreakpoints: [];
 
 	function setText(text, mode) {
 		currentText = text;
-		currentMode = mode;
+		if (mode !== undefined)
+			currentMode = mode;
 		if (initialized && editorBrowser) {
 			editorBrowser.runJavaScript("setTextBase64(\"" + Qt.btoa(text) + "\")");
-			editorBrowser.runJavaScript("setMode(\"" + mode + "\")");
+			editorBrowser.runJavaScript("setMode(\"" + currentMode + "\")");
 		}
 		setFocus();
 	}
@@ -63,6 +67,11 @@ Item {
 	function changeGeneration() {
 		if (initialized && editorBrowser)
 			editorBrowser.runJavaScript("changeGeneration()", function(result) {});
+	}
+
+	Clipboard
+	{
+		id: clipboard
 	}
 
 	Connections {
@@ -133,7 +142,7 @@ Item {
 				if (!editorBrowser)
 					return;
 				editorBrowser.runJavaScript("getTextChanged()", function(result) {
-					if (result === true) {
+					if (result === true && editorBrowser) {
 						editorBrowser.runJavaScript("getText()" , function(textValue) {
 							currentText = textValue;
 							editorTextChanged();
@@ -141,7 +150,7 @@ Item {
 					}
 				});
 				editorBrowser.runJavaScript("getBreakpointsChanged()", function(result) {
-					if (result === true) {
+					if (result === true && editorBrowser) {
 						editorBrowser.runJavaScript("getBreakpoints()" , function(bp) {
 							if (currentBreakpoints !== bp) {
 								currentBreakpoints = bp;

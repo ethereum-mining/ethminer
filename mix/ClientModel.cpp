@@ -90,6 +90,7 @@ ClientModel::ClientModel():
 
 ClientModel::~ClientModel()
 {
+	m_runFuture.waitForFinished();
 }
 
 QString ClientModel::apiCall(QString const& _message)
@@ -113,7 +114,7 @@ void ClientModel::mine()
 	m_mining = true;
 	emit miningStarted();
 	emit miningStateChanged();
-	QtConcurrent::run([=]()
+	m_runFuture = QtConcurrent::run([=]()
 	{
 		try
 		{
@@ -206,7 +207,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 	emit runStateChanged();
 
 	//run sequence
-	QtConcurrent::run([=]()
+	m_runFuture = QtConcurrent::run([=]()
 	{
 		try
 		{

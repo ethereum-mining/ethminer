@@ -54,6 +54,10 @@ Rectangle {
 		currentStatus = { "type": type, "date": Qt.formatDateTime(new Date(), "hh:mm:ss"), "content": text, "level": "error" }
 	}
 
+	StatusPaneStyle {
+		id: statusPaneStyle
+	}
+
 	Connections {
 		target: webPreview
 		onJavaScriptMessage:
@@ -123,7 +127,7 @@ Rectangle {
 		Text {
 			anchors.verticalCenter: parent.verticalCenter
 			anchors.horizontalCenter: parent.horizontalCenter
-			font.pointSize: Style.absoluteSize(-1)
+			font.pointSize: appStyle.absoluteSize(-1)
 			height: 15
 			font.family: "sans serif"
 			objectName: "status"

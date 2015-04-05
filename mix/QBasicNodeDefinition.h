@@ -21,11 +21,17 @@
 
 #pragma once
 
+#include <string>
 #include <QObject>
-#include <libsolidity/AST.h>
 
 namespace dev
 {
+
+namespace solidity
+{
+class Declaration;
+}
+
 namespace mix
 {
 
@@ -37,8 +43,8 @@ class QBasicNodeDefinition: public QObject
 public:
 	QBasicNodeDefinition(QObject* _parent = nullptr): QObject(_parent) {}
 	~QBasicNodeDefinition() {}
-	QBasicNodeDefinition(QObject* _parent, solidity::Declaration const* _d): QObject(_parent), m_name(QString::fromStdString(_d->getName())) {}
-	QBasicNodeDefinition(QObject* _parent, std::string const& _name): QObject(_parent), m_name(QString::fromStdString(_name)) {}
+	QBasicNodeDefinition(QObject* _parent, solidity::Declaration const* _d);
+	QBasicNodeDefinition(QObject* _parent, std::string const& _name);
 	/// Get the name of the node.
 	QString name() const { return m_name; }
 
