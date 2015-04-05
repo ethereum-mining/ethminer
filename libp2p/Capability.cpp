@@ -53,7 +53,7 @@ void Capability::sealAndSend(RLPStream& _s)
 	m_session->sealAndSend(_s);
 }
 
-void Capability::addRating(unsigned _r)
+void Capability::addRating(int _r)
 {
 	m_session->addRating(_r);
 }

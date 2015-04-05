@@ -99,7 +99,7 @@ public:
 	void process();
 
 	/// Sync the chain with any incoming blocks. All blocks should, if processed in order
-	h256s sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
+	std::pair<h256s, bool> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
