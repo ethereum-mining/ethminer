@@ -267,7 +267,7 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 	return m_lastLastHashes;
 }
 
-h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
+pair<h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
 	_bq.tick(*this);
 
@@ -295,8 +295,8 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 		catch (...)
 		{}
 	}
-	_bq.doneDrain();
-	return ret;
+	bool yetMore = _bq.doneDrain();
+	return make_pair(ret, yetMore);
 }
 
 h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _force) noexcept

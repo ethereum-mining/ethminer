@@ -120,7 +120,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId, int _miners):
 	Worker("eth"),
 	m_vc(_dbPath),
-	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "..." << endl; }),
+	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
 	m_gp(new TrivialGasPricer),
 	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
 	m_preMine(Address(), m_stateDB),
@@ -441,6 +441,8 @@ void Client::doWork()
 {
 	// TODO: Use condition variable rather than polling.
 
+	bool stillGotWork = false;
+
 	cworkin << "WORK";
 	h256Set changeds;
 
@@ -496,7 +498,10 @@ void Client::doWork()
 		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
 		x_stateDB.unlock();
-		h256s newBlocks = m_bc.sync(m_bq, db, 100);	// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
+		h256s newBlocks;
+		bool sgw;
+		tie(newBlocks, sgw) = m_bc.sync(m_bq, db, 100);	// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
+		stillGotWork = stillGotWork | sgw;
 		if (newBlocks.size())
 		{
 			for (auto i: newBlocks)
@@ -544,7 +549,9 @@ void Client::doWork()
 	noteChanged(changeds);
 	cworkout << "WORK";
 
-	this_thread::sleep_for(chrono::milliseconds(100));
+	if (!stillGotWork)
+		this_thread::sleep_for(chrono::milliseconds(100));
+
 	if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(5))
 	{
 		// watches garbage collection
@@ -601,7 +608,7 @@ void Client::inject(bytesConstRef _rlp)
 {
 	startWorking();
 	
-	m_tq.attemptImport(_rlp);
+	m_tq.import(_rlp);
 }
 
 void Client::flushTransactions()

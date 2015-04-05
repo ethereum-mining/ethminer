@@ -44,7 +44,7 @@ void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, b
 	
 	u256 n = postMine().transactionsFrom(toAddress(_secret));
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
-	m_tq.attemptImport(t.rlp());
+	m_tq.import(t.rlp());
 	
 	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
 	cnote << "New transaction " << t;
@@ -56,7 +56,7 @@ Address ClientBase::submitTransaction(Secret _secret, u256 _endowment, bytes con
 	
 	u256 n = postMine().transactionsFrom(toAddress(_secret));
 	Transaction t(_endowment, _gasPrice, _gas, _init, n, _secret);
-	m_tq.attemptImport(t.rlp());
+	m_tq.import(t.rlp());
 
 	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
 	cnote << "New transaction " << t;
