@@ -23,8 +23,8 @@
 
 #include <boost/thread.hpp>
 #include <libdevcore/Common.h>
-#include "libethcore/Common.h"
 #include <libdevcore/Guards.h>
+#include "libethcore/Common.h"
 #include "Transaction.h"
 
 namespace dev
@@ -34,6 +34,7 @@ namespace eth
 
 class BlockChain;
 
+
 /**
  * @brief A queue of Transactions, each stored as RLP.
  * @threadsafe
@@ -41,9 +42,8 @@ class BlockChain;
 class TransactionQueue
 {
 public:
-	bool attemptImport(bytesConstRef _tx) { try { import(_tx); return true; } catch (...) { return false; } }
-	bool attemptImport(bytes const& _tx) { return attemptImport(&_tx); }
-	bool import(bytesConstRef _tx);
+	ImportResult import(bytes const& _tx) { return import(&_tx); }
+	ImportResult import(bytesConstRef _tx);
 
 	void drop(h256 _txHash);
 

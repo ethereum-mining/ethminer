@@ -326,15 +326,27 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	case TransactionsPacket:
 	{
 		clogS(NetMessageSummary) << "Transactions (" << dec << _r.itemCount() << "entries)";
-		addRating(_r.itemCount());
 		Guard l(x_knownTransactions);
 		for (unsigned i = 0; i < _r.itemCount(); ++i)
 		{
 			auto h = sha3(_r[i].data());
 			m_knownTransactions.insert(h);
-			if (!host()->m_tq.import(_r[i].data()))
+			ImportResult ir = host()->m_tq.import(_r[i].data());
+			switch (ir)
+			{
+			case ImportResult::Malformed:
+				addRating(-100);
+				break;
+			case ImportResult::AlreadyKnown:
 				// if we already had the transaction, then don't bother sending it on.
+				addRating(0);
+				break;
+			case ImportResult::Success:
+				addRating(100);
 				host()->m_transactionsSent.insert(h);
+				break;
+			default:;
+			}
 		}
 		break;
 	}
@@ -352,6 +364,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		for (unsigned i = 0; i < c && p; ++i, p = host()->m_chain.details(p).parent)
 			s << p;
 		sealAndSend(s);
+		addRating(0);
 		break;
 	}
 	case BlockHashesPacket:
@@ -370,6 +383,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		}
 		for (unsigned i = 0; i < _r.itemCount(); ++i)
 		{
+			addRating(1);
 			auto h = _r[i].toHash<h256>();
 			if (host()->m_chain.isKnown(h))
 			{
@@ -398,6 +412,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 				++n;
 			}
 		}
+		addRating(0);
 		RLPStream s;
 		prep(s, BlocksPacket, n).appendRaw(rlp, n);
 		sealAndSend(s);
@@ -497,6 +512,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 				setNeedsSyncing(h, _r[1].toInt<u256>());
 				break;
 			}
+
 			Guard l(x_knownBlocks);
 			m_knownBlocks.insert(h);
 		}
