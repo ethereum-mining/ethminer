@@ -193,11 +193,26 @@ Manifest DappLoader::loadManifest(std::string const& _manifest)
 
 void DappLoader::loadDapp(QString const& _uri)
 {
+	QUrl uri(_uri);
 	QUrl contentUri;
-	DappLocation location = resolveAppUri(_uri);
-	QUrl uri(location.contentUri);
-	QNetworkRequest request(uri);
-	m_uriHashes[uri] = location.contentHash;
+	h256 hash;
+	if (uri.path().endsWith(".dapp") && uri.query().startsWith("hash="))
+	{
+		contentUri = uri;
+		QString query = uri.query();
+		query.remove("hash=");
+		if (!query.startsWith("0x"))
+			query.insert(0, "0x");
+		hash = jsToFixed<32>(query.toStdString());
+	}
+	else
+	{
+		DappLocation location = resolveAppUri(_uri);
+		contentUri = location.contentUri;
+		hash = location.contentHash;
+	}
+	QNetworkRequest request(contentUri);
+	m_uriHashes[uri] = hash;
 	m_net.get(request);
 }
 

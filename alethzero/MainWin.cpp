@@ -900,7 +900,7 @@ void Main::on_urlEdit_returnPressed()
 {
 	QString s = ui->urlEdit->text();
 	QUrl url(s);
-	if (url.scheme().isEmpty() || url.scheme() == "eth")
+	if (url.scheme().isEmpty() || url.scheme() == "eth" || url.path().endsWith(".dapp"))
 	{
 		try
 		{
