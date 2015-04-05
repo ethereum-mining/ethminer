@@ -11,7 +11,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	set(ETH_SHARED 1)
 
 	if (PROFILING)
-		set(CMAKE_CXX_FLAGS "-pg ${CMAKE_CXX_FLAGS}")
+		set(CMAKE_CXX_FLAGS "-pg -g ${CMAKE_CXX_FLAGS}")
 	endif ()
 
 	execute_process(
