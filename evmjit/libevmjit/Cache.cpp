@@ -4,6 +4,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_os_ostream.h>
@@ -57,6 +58,36 @@ void Cache::clear()
 	std::error_code err;
 	for (auto it = fs::directory_iterator{cachePath.str(), err}; it != fs::directory_iterator{}; it.increment(err))
 		fs::remove(it->path());
+}
+
+void Cache::preload(llvm::ExecutionEngine& _ee, std::unordered_map<std::string, uint64_t>& _funcCache)
+{
+	// TODO: Cache dir should be in one place
+	using namespace llvm::sys;
+	llvm::SmallString<256> cachePath;
+	path::system_temp_directory(false, cachePath);
+	path::append(cachePath, "evm_objs");
+
+	// Disable listener
+	auto listener = g_listener;
+	g_listener = nullptr;
+
+	std::error_code err;
+	for (auto it = fs::directory_iterator{cachePath.str(), err}; it != fs::directory_iterator{}; it.increment(err))
+	{
+		auto name = it->path().substr(cachePath.size() + 1);
+		if (auto module = getObject(name))
+		{
+			DLOG(cache) << "Preload: " << name << "\n";
+			_ee.addModule(module.get());
+			module.release();
+			auto addr = _ee.getFunctionAddress(name);
+			assert(addr);
+			_funcCache[std::move(name)] = addr;
+		}
+	}
+
+	g_listener = listener;
 }
 
 std::unique_ptr<llvm::Module> Cache::getObject(std::string const& id)

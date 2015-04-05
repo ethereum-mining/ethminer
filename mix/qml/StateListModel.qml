@@ -12,6 +12,7 @@ Item {
 
 	property alias model: stateListModel
 	property var stateList: []
+	property alias stateDialog: stateDialog
 	property string defaultAccount: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074" //support for old project
 
 	function fromPlainStateItem(s) {

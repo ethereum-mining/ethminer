@@ -18,21 +18,21 @@ Rectangle
 	property string sectionName;
 	property variant selManager;
 	property int index;
-	color: index % 2 === 0 ? "transparent" : ProjectFilesStyle.title.background
+	color: index % 2 === 0 ? "transparent" : projectFilesStyle.title.background
 
 	function hiddenHeightTopLevel()
 	{
-		return section.state === "hidden" ? ProjectFilesStyle.documentsList.height : ProjectFilesStyle.documentsList.fileNameHeight * model.count + ProjectFilesStyle.documentsList.height;
+		return section.state === "hidden" ? projectFilesStyle.documentsList.height : projectFilesStyle.documentsList.fileNameHeight * model.count + projectFilesStyle.documentsList.height;
 	}
 
 	function hiddenHeightRepeater()
 	{
-		return section.state === "hidden" ? 0 : ProjectFilesStyle.documentsList.fileNameHeight * wrapperItem.model.count;
+		return section.state === "hidden" ? 0 : projectFilesStyle.documentsList.fileNameHeight * wrapperItem.model.count;
 	}
 
 	function hiddenHeightElement()
 	{
-		return section.state === "hidden" ? 0 : ProjectFilesStyle.documentsList.fileNameHeight;
+		return section.state === "hidden" ? 0 : projectFilesStyle.documentsList.fileNameHeight;
 	}
 
 	function getDocumentIndex(documentId)
@@ -68,7 +68,7 @@ Rectangle
 		{
 			anchors.top: parent.top
 			id: rowCol
-			height: ProjectFilesStyle.documentsList.height
+			height: projectFilesStyle.documentsList.height
 			Layout.fillWidth: true
 
 
@@ -88,15 +88,15 @@ Rectangle
 				id: section
 				text: sectionName
 				anchors.left: parent.left
-				anchors.leftMargin: ProjectFilesStyle.general.leftMargin
-				color: ProjectFilesStyle.documentsList.sectionColor
+				anchors.leftMargin: projectFilesStyle.general.leftMargin
+				color: projectFilesStyle.documentsList.sectionColor
 				font.family: boldFont.name
-				font.pointSize: ProjectFilesStyle.documentsList.sectionFontSize
+				font.pointSize: projectFilesStyle.documentsList.sectionFontSize
 				states: [
 					State {
 						name: "hidden"
 						PropertyChanges { target: filesList; visible: false; }
-						PropertyChanges { target: rowCol; Layout.minimumHeight: ProjectFilesStyle.documentsList.height; Layout.maximumHeight: ProjectFilesStyle.documentsList.height; height: ProjectFilesStyle.documentsList.height; }
+						PropertyChanges { target: rowCol; Layout.minimumHeight: projectFilesStyle.documentsList.height; Layout.maximumHeight: projectFilesStyle.documentsList.height; height: projectFilesStyle.documentsList.height; }
 						PropertyChanges { target: imgArrow; source: "qrc:/qml/img/closedtriangleindicator_filesproject.png" }
 					}
 				]
@@ -138,7 +138,7 @@ Rectangle
 					Layout.preferredHeight: wrapperItem.hiddenHeightElement()
 					Layout.maximumHeight: wrapperItem.hiddenHeightElement()
 					height: wrapperItem.hiddenHeightElement()
-					color: isSelected ? ProjectFilesStyle.documentsList.highlightColor : "transparent"
+					color: isSelected ? projectFilesStyle.documentsList.highlightColor : "transparent"
 					property bool isSelected
 					property bool renameMode
 
@@ -147,15 +147,15 @@ Rectangle
 						anchors.verticalCenter: parent.verticalCenter
 						anchors.fill: parent
 						anchors.left: parent.left
-						anchors.leftMargin: ProjectFilesStyle.general.leftMargin + 2
+						anchors.leftMargin: projectFilesStyle.general.leftMargin + 2
 						Text {
 							id: nameText
 							height: parent.height
 							visible: !renameMode
-							color: rootItem.isSelected ? ProjectFilesStyle.documentsList.selectedColor : ProjectFilesStyle.documentsList.color
+							color: rootItem.isSelected ? projectFilesStyle.documentsList.selectedColor : projectFilesStyle.documentsList.color
 							text: name;
 							font.family: fileNameFont.name
-							font.pointSize: ProjectFilesStyle.documentsList.fontSize
+							font.pointSize: projectFilesStyle.documentsList.fontSize
 							verticalAlignment:  Text.AlignVCenter
 
 							Connections
@@ -182,7 +182,7 @@ Rectangle
 						DefaultLabel {
 							id: editStatusLabel
 							visible: false
-							color: rootItem.isSelected ? ProjectFilesStyle.documentsList.selectedColor : ProjectFilesStyle.documentsList.color
+							color: rootItem.isSelected ? projectFilesStyle.documentsList.selectedColor : projectFilesStyle.documentsList.color
 							verticalAlignment:  Text.AlignVCenter
 							text: "*"
 							width: 10
@@ -196,7 +196,7 @@ Rectangle
 						visible: renameMode
 						anchors.verticalCenter: parent.verticalCenter
 						anchors.left: parent.left
-						anchors.leftMargin: ProjectFilesStyle.general.leftMargin
+						anchors.leftMargin: projectFilesStyle.general.leftMargin
 						MouseArea {
 							id: textMouseArea
 							anchors.fill: parent
