@@ -113,8 +113,8 @@ public:
 	bool isKnown(h256 const& _hash) const;
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
-	BlockInfo info(h256 const& _hash) const { return BlockInfo(block(_hash)); }
-	BlockInfo info() const { return BlockInfo(block()); }
+	BlockInfo info(h256 const& _hash) const { return BlockInfo(block(_hash), IgnoreNonce, _hash); }
+	BlockInfo info() const { return info(currentHash()); }
 
 	/// Get a block (RLP format) for the given hash (or the most recent mined if none given). Thread-safe.
 	bytes block(h256 const& _hash) const;

@@ -173,7 +173,10 @@ Ethasher::Result Ethasher::eval(BlockInfo const& _header, Nonce const& _nonce)
 {
 	auto p = Ethasher::params(_header);
 	ethash_return_value r;
-	ethash_compute_light(&r, Ethasher::get()->light(_header), &p, _header.headerHash(WithoutNonce).data(), (uint64_t)(u64)_nonce);
+	if (Ethasher::get()->m_fulls.count(_header.seedHash()))
+		ethash_compute_full(&r, Ethasher::get()->full(_header).data(), &p, _header.headerHash(WithoutNonce).data(), (uint64_t)(u64)_nonce);
+	else
+		ethash_compute_light(&r, Ethasher::get()->light(_header), &p, _header.headerHash(WithoutNonce).data(), (uint64_t)(u64)_nonce);
 //	cdebug << "Ethasher::eval sha3(cache):" << sha3(Ethasher::get()->cache(_header)) << "hh:" << _header.headerHash(WithoutNonce) << "nonce:" << _nonce << " => " << h256(r.result, h256::ConstructFromPointer);
 	return Result{h256(r.result, h256::ConstructFromPointer), h256(r.mix_hash, h256::ConstructFromPointer)};
 }
