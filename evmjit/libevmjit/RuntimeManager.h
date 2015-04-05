@@ -48,6 +48,8 @@ public:
 	static llvm::StructType* getRuntimeType();
 	static llvm::StructType* getRuntimeDataType();
 
+	void checkStackLimit(size_t _max, int _diff);
+
 private:
 	llvm::Value* getPtr(RuntimeData::Index _index);
 	void set(RuntimeData::Index _index, llvm::Value* _value);
@@ -58,6 +60,9 @@ private:
 	llvm::Value* m_gasPtr = nullptr;
 	llvm::Value* m_memPtr = nullptr;
 	llvm::Value* m_envPtr = nullptr;
+
+	llvm::Value* m_stackSize = nullptr;
+	llvm::Function* m_checkStackLimit = nullptr;
 
 	code_iterator m_codeBegin = {};
 	code_iterator m_codeEnd = {};
