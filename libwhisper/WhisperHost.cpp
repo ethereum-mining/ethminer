@@ -163,13 +163,7 @@ void WhisperHost::uninstallWatch(unsigned _i)
 void WhisperHost::doWork()
 {
 	for (auto i: peerSessions())
-	{
-		auto w = i.first->cap<WhisperPeer>();
-		if (w)
-			w->sendMessages();
-		else
-			cwarn << "cap<WhisperPeer>() returned nullptr";
-	}
+		i.first->cap<WhisperPeer>().get()->sendMessages();
 	cleanup();
 }
 
