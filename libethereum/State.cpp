@@ -78,23 +78,24 @@ OverlayDB State::openDB(std::string _path, WithExisting _we)
 	return OverlayDB(db);
 }
 
-State::State(Address _coinbaseAddress, OverlayDB const& _db, BaseState _bs):
+State::State(OverlayDB const& _db, BaseState _bs, Address _coinbaseAddress):
 	m_db(_db),
 	m_state(&m_db),
 	m_ourAddress(_coinbaseAddress),
 	m_blockReward(c_blockReward)
 {
-	// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
-	m_state.init();
+	if (_bs != BaseState::PreExisting)
+		// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
+		m_state.init();
 
-	paranoia("beginning of normal construction.", true);
+	paranoia("beginning of Genesis construction.", true);
 
 	if (_bs == BaseState::CanonGenesis)
 	{
 		dev::eth::commit(genesisState(), m_db, m_state);
 		m_db.commit();
 
-		paranoia("after DB commit of normal construction.", true);
+		paranoia("after DB commit of Genesis construction.", true);
 		m_previousBlock = CanonBlockChain::genesis();
 	}
 	else
@@ -321,7 +322,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 		std::vector<h256> chain;
 		while (bi.number != 0 && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
 		{
-			chain.push_back(bi.hash);				// push back for later replay.
+			chain.push_back(bi.hash());				// push back for later replay.
 			bi.populate(_bc.block(bi.parentHash));	// move to parent.
 		}
 
@@ -537,18 +538,18 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
 
-#if !ETH_RELEASE
 	BlockInfo bi(_block, _checkNonce ? CheckEverything : IgnoreNonce);
-	assert(m_previousBlock.hash == bi.parentHash);
+#if !ETH_RELEASE
+	assert(m_previousBlock.hash() == bi.parentHash);
 	assert(m_currentBlock.parentHash == bi.parentHash);
 	assert(rootHash() == m_previousBlock.stateRoot);
 #endif
 
-	if (m_currentBlock.parentHash != m_previousBlock.hash)
+	if (m_currentBlock.parentHash != m_previousBlock.hash())
 		BOOST_THROW_EXCEPTION(InvalidParentHash());
 
 	// Populate m_currentBlock with the correct values.
-	m_currentBlock.populate(_block, _checkNonce ? CheckEverything : IgnoreNonce);
+	m_currentBlock = bi;
 	m_currentBlock.verifyInternals(_block);
 
 //	cnote << "playback begins:" << m_state.root();
@@ -598,7 +599,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 			cwarn << TransactionReceipt(&b);
 		}
 		cwarn << "Recorded: " << m_currentBlock.receiptsRoot;
-		auto rs = _bc.receipts(m_currentBlock.hash);
+		auto rs = _bc.receipts(m_currentBlock.hash());
 		for (unsigned j = 0; j < rs.receipts.size(); ++j)
 		{
 			auto b = rs.receipts[j].rlp();
@@ -840,7 +841,7 @@ void State::commitToMine(BlockChain const& _bc)
 
 	m_currentBlock.gasUsed = gasUsed();
 	m_currentBlock.stateRoot = m_state.root();
-	m_currentBlock.parentHash = m_previousBlock.hash;
+	m_currentBlock.parentHash = m_previousBlock.hash();
 }
 
 MineInfo State::mine(unsigned _msTimeout, bool _turbo)
@@ -890,10 +891,10 @@ void State::completeMine()
 	ret.appendRaw(m_currentTxs);
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
-	m_currentBlock.hash = sha3(RLP(m_currentBytes)[0].data());
-	cnote << "Mined " << m_currentBlock.hash.abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
+	m_currentBlock.noteDirty();
+	cnote << "Mined " << m_currentBlock.hash().abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
 	StructuredLogger::minedNewBlock(
-		m_currentBlock.hash.abridged(),
+		m_currentBlock.hash().abridged(),
 		m_currentBlock.nonce.abridged(),
 		"", //TODO: chain head hash here ??
 		m_currentBlock.parentHash.abridged()
