@@ -80,7 +80,7 @@ public:
 	u256 number;
 	u256 gasLimit;
 	u256 gasUsed;
-	u256 timestamp;
+	u256 timestamp = Invalid256;
 	bytes extraData;
 	h256 mixHash;
 	Nonce nonce;
@@ -100,20 +100,20 @@ public:
 	bool operator==(BlockInfo const& _cmp) const
 	{
 		return parentHash == _cmp.parentHash &&
-				sha3Uncles == _cmp.sha3Uncles &&
-				coinbaseAddress == _cmp.coinbaseAddress &&
-				stateRoot == _cmp.stateRoot &&
-				transactionsRoot == _cmp.transactionsRoot &&
-				receiptsRoot == _cmp.receiptsRoot &&
-				logBloom == _cmp.logBloom &&
-				difficulty == _cmp.difficulty &&
-				number == _cmp.number &&
-				gasLimit == _cmp.gasLimit &&
-				gasUsed == _cmp.gasUsed &&
-				timestamp == _cmp.timestamp &&
-				extraData == _cmp.extraData &&
-				mixHash == _cmp.mixHash &&
-				nonce == _cmp.nonce;
+			sha3Uncles == _cmp.sha3Uncles &&
+			coinbaseAddress == _cmp.coinbaseAddress &&
+			stateRoot == _cmp.stateRoot &&
+			transactionsRoot == _cmp.transactionsRoot &&
+			receiptsRoot == _cmp.receiptsRoot &&
+			logBloom == _cmp.logBloom &&
+			difficulty == _cmp.difficulty &&
+			number == _cmp.number &&
+			gasLimit == _cmp.gasLimit &&
+			gasUsed == _cmp.gasUsed &&
+			timestamp == _cmp.timestamp &&
+			extraData == _cmp.extraData &&
+			mixHash == _cmp.mixHash &&
+			nonce == _cmp.nonce;
 	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 

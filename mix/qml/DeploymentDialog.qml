@@ -32,7 +32,7 @@ Window {
 	property string currentAccount
 	property alias gasToUse: gasToUseInput.text
 
-	color: Style.generic.layout.backgroundColor
+	color: appStyle.generic.layout.backgroundColor
 
 	function close()
 	{
@@ -330,7 +330,7 @@ Window {
 						anchors.verticalCenter: parent.verticalCenter;
 						anchors.left: applicationUrlEth.right
 						font.italic: true
-						font.pointSize: Style.absoluteSize(-1)
+						font.pointSize: appStyle.absoluteSize(-1)
 					}
 				}
 			}
