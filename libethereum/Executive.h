@@ -61,9 +61,9 @@ class Executive
 {
 public:
 	/// Basic constructor.
-	Executive(State& _s, LastHashes const& _lh, unsigned _level): m_s(_s), m_lastHashes(_lh), m_depth(_level) {}
+	Executive(State& _s, LastHashes const& _lh, unsigned _level = 0): m_s(_s), m_lastHashes(_lh), m_depth(_level) {}
 	/// Basic constructor.
-	Executive(State& _s, BlockChain const& _bc, unsigned _level);
+	Executive(State& _s, BlockChain const& _bc, unsigned _level = 0);
 	/// Basic destructor.
 	~Executive() = default;
 

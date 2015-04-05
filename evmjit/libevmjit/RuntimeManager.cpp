@@ -78,7 +78,7 @@ llvm::Twine getName(RuntimeData::Index _index)
 	case RuntimeData::CodeSize:		return "code";
 	case RuntimeData::CallDataSize:	return "callDataSize";
 	case RuntimeData::Gas:			return "gas";
-	case RuntimeData::Number:	return "number";
+	case RuntimeData::Number:		return "number";
 	case RuntimeData::Timestamp:	return "timestamp";
 	}
 }
@@ -101,6 +101,48 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeB
 	assert(m_memPtr->getType() == Array::getType()->getPointerTo());
 	m_envPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(rtPtr, 1), "env");
 	assert(m_envPtr->getType() == Type::EnvPtr);
+
+	m_stackSize = m_builder.CreateAlloca(Type::Size, nullptr, "stackSize");
+	m_builder.CreateStore(m_builder.getInt64(0), m_stackSize);
+
+	llvm::Type* checkStackLimitArgs[] = {Type::Size->getPointerTo(), Type::Size, Type::Size, Type::BytePtr};
+	m_checkStackLimit = llvm::Function::Create(llvm::FunctionType::get(Type::Void, checkStackLimitArgs, false), llvm::Function::PrivateLinkage, "stack.checkSize", getModule());
+	m_checkStackLimit->setDoesNotThrow();
+	m_checkStackLimit->setDoesNotCapture(1);
+
+	auto checkBB = llvm::BasicBlock::Create(_builder.getContext(), "Check", m_checkStackLimit);
+	auto updateBB = llvm::BasicBlock::Create(_builder.getContext(), "Update", m_checkStackLimit);
+	auto outOfStackBB = llvm::BasicBlock::Create(_builder.getContext(), "OutOfStack", m_checkStackLimit);
+
+	auto currSizePtr = &m_checkStackLimit->getArgumentList().front();
+	currSizePtr->setName("currSize");
+	auto max = currSizePtr->getNextNode();
+	max->setName("max");
+	auto diff = max->getNextNode();
+	diff->setName("diff");
+	auto jmpBuf = diff->getNextNode();
+	jmpBuf->setName("jmpBuf");
+
+	InsertPointGuard guard{m_builder};
+	m_builder.SetInsertPoint(checkBB);
+	auto currSize = m_builder.CreateLoad(currSizePtr, "cur");
+	auto maxSize = m_builder.CreateNUWAdd(currSize, max, "maxSize");
+	auto ok = m_builder.CreateICmpULE(maxSize, m_builder.getInt64(1024), "ok");
+	m_builder.CreateCondBr(ok, updateBB, outOfStackBB, Type::expectTrue);
+
+	m_builder.SetInsertPoint(updateBB);
+	auto newSize = m_builder.CreateNSWAdd(currSize, diff);
+	m_builder.CreateStore(newSize, currSizePtr);
+	m_builder.CreateRetVoid();
+
+	m_builder.SetInsertPoint(outOfStackBB);
+	abort(jmpBuf);
+	m_builder.CreateUnreachable();
+}
+
+void RuntimeManager::checkStackLimit(size_t _max, int _diff)
+{
+	createCall(m_checkStackLimit, {m_stackSize, m_builder.getInt64(_max), m_builder.getInt64(_diff), getJmpBuf()});
 }
 
 llvm::Value* RuntimeManager::getRuntimePtr()
