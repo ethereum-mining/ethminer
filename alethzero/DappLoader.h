@@ -90,5 +90,6 @@ private:
 	dev::WebThreeDirect* m_web3;
 	QNetworkAccessManager m_net;
 	std::map<QUrl, dev::h256> m_uriHashes;
+	bool m_skipHashVerification = false;
 };
 

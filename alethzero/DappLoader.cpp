@@ -193,6 +193,7 @@ Manifest DappLoader::loadManifest(std::string const& _manifest)
 
 void DappLoader::loadDapp(QString const& _uri)
 {
+	QUrl contentUri;
 	DappLocation location = resolveAppUri(_uri);
 	QUrl uri(location.contentUri);
 	QNetworkRequest request(uri);
