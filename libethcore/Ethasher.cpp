@@ -82,11 +82,13 @@ bytesConstRef Ethasher::full(BlockInfo const& _header)
 	RecursiveGuard l(x_this);
 	if (!m_fulls.count(_header.seedHash()))
 	{
-		if (!m_fulls.empty())
+		// @memoryleak @bug place it on a pile for deletion - perhaps use shared_ptr.
+/*		if (!m_fulls.empty())
 		{
 			delete [] m_fulls.begin()->second.data();
 			m_fulls.erase(m_fulls.begin());
-		}
+		}*/
+
 		try {
 			boost::filesystem::create_directories(getDataDir("ethash"));
 		} catch (...) {}
