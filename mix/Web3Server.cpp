@@ -23,13 +23,93 @@
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Log.h>
 #include <libethereum/Interface.h>
+#include <libwebthree/WebThree.h>
 #include "Web3Server.h"
 
 using namespace dev::mix;
+using namespace dev;
+
+namespace
+{
+class EmptyNetwork : public dev::WebThreeNetworkFace
+{
+	std::vector<p2p::PeerSessionInfo> peers() override
+	{
+		return std::vector<p2p::PeerSessionInfo>();
+	}
+
+	size_t peerCount() const override
+	{
+		return 0;
+	}
+
+	void addNode(p2p::NodeId const& _node, bi::tcp::endpoint const& _hostEndpoint) override
+	{
+		(void)_node;
+		(void)_hostEndpoint;
+	}
+
+	void requirePeer(p2p::NodeId const& _node, bi::tcp::endpoint const& _endpoint) override
+	{
+		(void)_node;
+		(void)_endpoint;
+	}
+
+	dev::bytes saveNetwork() override
+	{
+		return dev::bytes();
+	}
+
+	void setIdealPeerCount(size_t _n) override
+	{
+		(void)_n;
+	}
+
+	bool haveNetwork() const override
+	{
+		return false;
+	}
+
+	void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers) override
+	{
+		(void)_n;
+		(void)_dropPeers;
+	}
+
+	p2p::NodeId id() const override
+	{
+		return p2p::NodeId();
+	}
+
+	p2p::Peers nodes() const override
+	{
+		return p2p::Peers();
+	}
+
+	void startNetwork() override
+	{
+	}
+
+	void stopNetwork() override
+	{
+	}
+
+	bool isNetworkStarted() const override
+	{
+		return false;
+	}
+};
+
+}
 
 Web3Server::Web3Server(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts, dev::eth::Interface* _client):
 	WebThreeStubServerBase(_conn, _accounts),
-	m_client(_client)
+	m_client(_client),
+	m_network(new EmptyNetwork())
+{
+}
+
+Web3Server::~Web3Server()
 {
 }
 
@@ -40,7 +120,7 @@ std::shared_ptr<dev::shh::Interface> Web3Server::face()
 
 dev::WebThreeNetworkFace* Web3Server::network()
 {
-	BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::WebThreeNetworkFace"));
+	return m_network.get();
 }
 
 std::string Web3Server::get(std::string const& _name, std::string const& _key)
