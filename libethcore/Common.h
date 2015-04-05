@@ -85,5 +85,15 @@ enum class RelativeBlock: BlockNumber
 	Pending = PendingBlock
 };
 
+enum class ImportResult
+{
+	Success = 0,
+	UnknownParent,
+	FutureTime,
+	AlreadyInChain,
+	AlreadyKnown,
+	Malformed
+};
+
 }
 }

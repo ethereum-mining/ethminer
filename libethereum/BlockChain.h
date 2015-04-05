@@ -64,6 +64,7 @@ struct BlockChainWarn: public LogChannel { static const char* name() { return "=
 std::map<Address, Account> const& genesisState();
 
 ldb::Slice toSlice(h256 const& _h, unsigned _sub = 0);
+ldb::Slice oldToSlice(h256 const& _h, unsigned _sub = 0);
 
 using BlocksHash = std::map<h256, bytes>;
 using TransactionHashes = h256s;
@@ -99,7 +100,7 @@ public:
 	void process();
 
 	/// Sync the chain with any incoming blocks. All blocks should, if processed in order
-	h256s sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
+	std::pair<h256s, bool> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
@@ -113,12 +114,13 @@ public:
 	bool isKnown(h256 const& _hash) const;
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
-	BlockInfo info(h256 const& _hash) const { return BlockInfo(block(_hash)); }
-	BlockInfo info() const { return BlockInfo(block()); }
+	BlockInfo info(h256 const& _hash) const { return BlockInfo(block(_hash), IgnoreNonce, _hash); }
+	BlockInfo info() const { return info(currentHash()); }
 
 	/// Get a block (RLP format) for the given hash (or the most recent mined if none given). Thread-safe.
 	bytes block(h256 const& _hash) const;
 	bytes block() const { return block(currentHash()); }
+	bytes oldBlock(h256 const& _hash) const;
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
 	BlockDetails details(h256 const& _hash) const { return queryExtras<BlockDetails, ExtraDetails>(_hash, m_details, x_details, NullBlockDetails); }
@@ -255,6 +257,30 @@ private:
 
 		std::string s;
 		(_extrasDB ? _extrasDB : m_extrasDB)->Get(m_readOptions, toSlice(_h, N), &s);
+		if (s.empty())
+		{
+//			cout << "Not found in DB: " << _h << endl;
+			return _n;
+		}
+
+		noteUsed(_h, N);
+
+		WriteGuard l(_x);
+		auto ret = _m.insert(std::make_pair(_h, T(RLP(s))));
+		return ret.first->second;
+	}
+
+	template<class T, unsigned N> T oldQueryExtras(h256 const& _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const
+	{
+		{
+			ReadGuard l(_x);
+			auto it = _m.find(_h);
+			if (it != _m.end())
+				return it->second;
+		}
+
+		std::string s;
+		(_extrasDB ? _extrasDB : m_extrasDB)->Get(m_readOptions, oldToSlice(_h, N), &s);
 		if (s.empty())
 		{
 //			cout << "Not found in DB: " << _h << endl;
