@@ -148,7 +148,7 @@ Main::Main(QWidget *parent) :
 
 	cerr << "State root: " << CanonBlockChain::genesis().stateRoot << endl;
 	auto block = CanonBlockChain::createGenesisBlock();
-	cerr << "Block Hash: " << CanonBlockChain::genesis().hash << endl;
+	cerr << "Block Hash: " << CanonBlockChain::genesis().hash() << endl;
 	cerr << "Block RLP: " << RLP(block) << endl;
 	cerr << "Block Hex: " << toHex(block) << endl;
 	cerr << "eth Network protocol version: " << eth::c_protocolVersion << endl;
@@ -1491,7 +1491,7 @@ void Main::on_blocks_currentItemChanged()
 			{
 				BlockInfo uncle = BlockInfo::fromHeader(u.data());
 				char const* line = "<div><span style=\"margin-left: 2em\">&nbsp;</span>";
-				s << line << "Hash: <b>" << uncle.hash << "</b>" << "</div>";
+				s << line << "Hash: <b>" << uncle.hash() << "</b>" << "</div>";
 				s << line << "Parent: <b>" << uncle.parentHash << "</b>" << "</div>";
 				s << line << "Number: <b>" << uncle.number << "</b>" << "</div>";
 				s << line << "Coinbase: <b>" << pretty(uncle.coinbaseAddress).toHtmlEscaped().toStdString() << " " << uncle.coinbaseAddress << "</b>" << "</div>";

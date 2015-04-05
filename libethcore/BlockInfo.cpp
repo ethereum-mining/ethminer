@@ -35,9 +35,9 @@ BlockInfo::BlockInfo(): timestamp(Invalid256)
 {
 }
 
-BlockInfo::BlockInfo(bytesConstRef _block, Strictness _s)
+BlockInfo::BlockInfo(bytesConstRef _block, Strictness _s, h256 const& _h)
 {
-	populate(_block, _s);
+	populate(_block, _s, _h);
 }
 
 void BlockInfo::setEmpty()
@@ -57,8 +57,7 @@ void BlockInfo::setEmpty()
 	extraData.clear();
 	mixHash = h256();
 	nonce = Nonce();
-	m_seedHash = h256();
-	hash = headerHash(WithNonce);
+	m_hash = m_seedHash = h256();
 }
 
 h256 const& BlockInfo::seedHash() const
@@ -69,10 +68,17 @@ h256 const& BlockInfo::seedHash() const
 	return m_seedHash;
 }
 
-BlockInfo BlockInfo::fromHeader(bytesConstRef _header, Strictness _s)
+h256 const& BlockInfo::hash() const
+{
+	if (!m_hash)
+		m_hash = headerHash(WithNonce);
+	return m_hash;
+}
+
+BlockInfo BlockInfo::fromHeader(bytesConstRef _header, Strictness _s, h256 const& _h)
 {
 	BlockInfo ret;
-	ret.populateFromHeader(RLP(_header), _s);
+	ret.populateFromHeader(RLP(_header), _s, _h);
 	return ret;
 }
 
@@ -97,9 +103,11 @@ h256 BlockInfo::headerHash(bytesConstRef _block)
 	return sha3(RLP(_block)[0].data());
 }
 
-void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s)
+void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const& _h)
 {
-	hash = dev::sha3(_header.data());
+//	m_hash = dev::sha3(_header.data());
+	m_hash = _h;
+	m_seedHash = h256();
 
 	int field = 0;
 	try
@@ -149,14 +157,14 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s)
 	}
 }
 
-void BlockInfo::populate(bytesConstRef _block, Strictness _s)
+void BlockInfo::populate(bytesConstRef _block, Strictness _s, h256 const& _h)
 {
 	RLP root(_block);
 	RLP header = root[0];
 
 	if (!header.isList())
 		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block header needs to be a list") << BadFieldError(0, header.data().toString()));
-	populateFromHeader(header, _s);
+	populateFromHeader(header, _s, _h);
 
 	if (!root[1].isList())
 		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block transactions need to be a list") << BadFieldError(1, root[1].data().toString()));
@@ -191,8 +199,9 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 
 void BlockInfo::populateFromParent(BlockInfo const& _parent)
 {
+	m_hash = m_seedHash = h256();
 	stateRoot = _parent.stateRoot;
-	parentHash = _parent.hash;
+	parentHash = _parent.hash();
 	number = _parent.number + 1;
 	gasLimit = selectGasLimit(_parent);
 	gasUsed = 0;
@@ -230,7 +239,7 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 	// Check timestamp is after previous timestamp.
 	if (parentHash)
 	{
-		if (parentHash != _parent.hash)
+		if (parentHash != _parent.hash())
 			BOOST_THROW_EXCEPTION(InvalidParentHash());
 
 		if (timestamp <= _parent.timestamp)
