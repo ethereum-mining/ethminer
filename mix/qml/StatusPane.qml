@@ -231,7 +231,11 @@ Rectangle {
 					top = top.parent
 				var coordinates = logsContainer.mapToItem(top, 0, 0);
 				logsContainer.parent = top;
-				logsContainer.x = status.x + statusContainer.x - LogsPaneStyle.generic.layout.dateWidth - LogsPaneStyle.generic.layout.typeWidth + 70
+				logsContainer.x = status.x + statusContainer.x - logStyle.generic.layout.dateWidth - logStyle.generic.layout.typeWidth + 70
+			}
+
+			LogsPaneStyle {
+				id: logStyle
 			}
 
 			LogsPane

@@ -437,7 +437,8 @@ function finalizeDeployment(deploymentId, addresses) {
 				"\tinterface: " + codeModel.contracts[c].contractInterface + ",\n" +
 				"\taddress: \"" + addresses[c] + "\"\n" +
 				"};\n" +
-				contractAccessor + ".contract = web3.eth.contract(" + contractAccessor + ".address, " + contractAccessor + ".interface);\n";
+				contractAccessor + ".contractClass = web3.eth.contract(" + contractAccessor + ".interface);\n" +
+				contractAccessor + ".contract = new " + contractAccessor + ".contractClass(" + contractAccessor + ".address);\n";
 	}
 	fileIo.writeFile(deploymentDir + "deployment.js", deploymentJs);
 	deploymentAddresses = addresses;
