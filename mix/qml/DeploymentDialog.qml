@@ -24,7 +24,8 @@ Window {
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
-	property string urlHintContract: urlHintAddr.text
+	property alias urlHintContract: urlHintAddr.text
+	property alias localPackageUrl: localPackageUrl.text
 	property string packageHash
 	property string packageBase64
 	property string eth: registrarAddr.text
@@ -299,7 +300,7 @@ Window {
 
 				DefaultTextField
 				{
-					text: "20000"
+					text: "1000000"
 					Layout.preferredWidth: 350
 					id: gasToUseInput
 				}
@@ -415,6 +416,20 @@ Window {
 			{
 				columns: 2
 				Layout.fillWidth: true
+
+				DefaultLabel
+				{
+					Layout.preferredWidth: 355
+					text: qsTr("Local package URL")
+				}
+
+				DefaultTextField
+				{
+					Layout.preferredWidth: 350
+					id: localPackageUrl
+					//readOnly: true
+					//enabled: rowRegister.isOkToRegister()
+				}
 
 				DefaultLabel
 				{
