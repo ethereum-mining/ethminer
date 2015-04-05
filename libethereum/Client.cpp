@@ -90,7 +90,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 		{
 			auto bb = _bc.block(p);
 			RLP r(bb);
-			BlockReceipts brs(_bc.receipts(bi.hash));
+			BlockReceipts brs(_bc.receipts(bi.hash()));
 			for (unsigned i = 0; i < r[1].size(); ++i)
 			{
 				auto gu = brs.receipts[i].gasUsed();
@@ -123,8 +123,8 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _for
 	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
 	m_gp(new TrivialGasPricer),
 	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
-	m_preMine(Address(), m_stateDB),
-	m_postMine(Address(), m_stateDB)
+	m_preMine(m_stateDB),
+	m_postMine(m_stateDB)
 {
 	m_gp->update(m_bc);
 
@@ -148,8 +148,8 @@ Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string c
 	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
 	m_gp(_gp),
 	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
-	m_preMine(Address(), m_stateDB),
-	m_postMine(Address(), m_stateDB)
+	m_preMine(m_stateDB),
+	m_postMine(m_stateDB)
 {
 	m_gp->update(m_bc);
 
@@ -221,8 +221,8 @@ void Client::killChain()
 	}
 	m_bc.reopen(Defaults::dbPath(), WithExisting::Kill);
 
-	m_preMine = State(Address(), m_stateDB);
-	m_postMine = State(Address(), m_stateDB);
+	m_preMine = State(m_stateDB);
+	m_postMine = State(m_stateDB);
 
 	if (auto h = m_host.lock())
 		h->reset();
@@ -313,7 +313,7 @@ void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 				auto m = i.second.filter.matches(tr);
 				if (m.size())
 				{
-					auto transactionHash = transaction(d.hash, j).sha3();
+					auto transactionHash = transaction(d.hash(), j).sha3();
 					// filter catches them
 					for (LogEntry const& l: m)
 						i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number, transactionHash));

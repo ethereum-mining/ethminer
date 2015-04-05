@@ -33,6 +33,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
+#include <libethcore/Ethasher.h>
 #include <liblll/Compiler.h>
 #include "GenesisInfo.h"
 #include "State.h"
@@ -200,7 +201,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
 
 	// Open a fresh state DB
-	State s(Address(), State::openDB(_path, WithExisting::Kill), BaseState::CanonGenesis);
+	State s(State::openDB(_path, WithExisting::Kill), BaseState::CanonGenesis);
 
 	// Clear all memos ready for replay.
 	m_details.clear();
@@ -226,12 +227,15 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 			bytes b = block(queryExtras<BlockHash, ExtraBlockHash>(h256(u256(d)), m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value);
 
 			BlockInfo bi(b);
+			if (bi.number % c_ethashEpochLength == 1)
+				Ethasher::get()->full(bi);
+
 			if (bi.parentHash != lastHash)
 			{
-				cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash.abridged() << "#" << d << " -> parent is" << bi.parentHash.abridged() << "; expected" << lastHash.abridged() << "#" << (d - 1);
+				cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash().abridged() << "#" << d << " -> parent is" << bi.parentHash.abridged() << "; expected" << lastHash.abridged() << "#" << (d - 1);
 				return;
 			}
-			lastHash = bi.hash;
+			lastHash = bi.hash();
 			import(b, s.db(), true);
 		}
 		catch (...)
@@ -414,7 +418,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 	{
 		// Check transactions are valid and that they result in a state equivalent to our state_root.
 		// Get total difficulty increase and update state, checking it.
-		State s(bi.coinbaseAddress, _db);
+		State s(_db);	//, bi.coinbaseAddress
 		auto tdIncrease = s.enactOn(&_block, bi, *this);
 
 		BlockLogBlooms blb;
@@ -493,7 +497,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 	{
 		clog(BlockChainWarn) << "   Malformed block: " << diagnostic_information(_e);
 		_e << errinfo_comment("Malformed block ");
-		clog(BlockChainWarn) << "Block: " << bi.hash;
+		clog(BlockChainWarn) << "Block: " << bi.hash();
 		clog(BlockChainWarn) << bi;
 		clog(BlockChainWarn) << "Block parent: " << bi.parentHash;
 		clog(BlockChainWarn) << BlockInfo(block(bi.parentHash));
@@ -560,7 +564,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 			{
 				RLP blockRLP(b);
 				TransactionAddress ta;
-				ta.blockHash = bi.hash;
+				ta.blockHash = bi.hash();
 				WriteGuard l(x_transactionAddresses);
 				for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
 				{
@@ -570,7 +574,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 			}
 			{
 				WriteGuard l(x_blockHashes);
-				m_blockHashes[h256(bi.number)].value = bi.hash;
+				m_blockHashes[h256(bi.number)].value = bi.hash();
 			}
 
 			// Update database with them.

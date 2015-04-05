@@ -182,7 +182,7 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 			if (_f.matches(receipt.bloom()))
 			{
 				auto info = bc().info(h);
-				auto th = transaction(info.hash, i).sha3();
+				auto th = transaction(info.hash(), i).sha3();
 				LogEntries le = _f.matches(receipt);
 				if (le.size())
 				{
