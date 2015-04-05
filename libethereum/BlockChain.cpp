@@ -208,6 +208,8 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	h256 lastHash = genesisHash();
 	for (unsigned d = 1; d < originalNumber; ++d)
 	{
+		if (originalNumber > 1000)
+			exit(0);
 		try
 		{
 			bytes b = block(queryExtras<BlockHash, ExtraBlockHash>(h256(u256(d)), m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value);
