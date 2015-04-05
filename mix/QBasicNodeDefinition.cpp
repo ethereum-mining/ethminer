@@ -14,34 +14,28 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
+/** @file QBasicNodeDefinition.cpp
  * @author Yann yann@ethdev.com
  * @date 2014
- * Ethereum IDE client.
  */
 
-#include <iostream>
-#include <stdlib.h>
-#include <boost/exception/exception.hpp>
-#include <boost/exception/diagnostic_information.hpp>
-#include "MixApplication.h"
+#include "QBasicNodeDefinition.h"
+#include <libsolidity/AST.h>
 
-using namespace dev::mix;
-
-int main(int _argc, char* _argv[])
+namespace dev
 {
-	try
-	{
-		MixApplication::initialize();
-		MixApplication app(_argc, _argv);
-		return app.exec();
-	}
-	catch (boost::exception const& _e)
-	{
-		std::cerr << boost::diagnostic_information(_e);
-	}
-	catch (std::exception const& _e)
-	{
-		std::cerr << _e.what();
-	}
+namespace mix
+{
+
+QBasicNodeDefinition::QBasicNodeDefinition(QObject* _parent, solidity::Declaration const* _d):
+	QObject(_parent), m_name(QString::fromStdString(_d->getName()))
+{
+}
+
+QBasicNodeDefinition::QBasicNodeDefinition(QObject* _parent, std::string const& _name):
+	QObject(_parent), m_name(QString::fromStdString(_name))
+{
+}
+
+}
 }

@@ -22,9 +22,11 @@
 
 #include <iostream>
 #include <stdlib.h>
-#include <boost/exception/exception.hpp>
-#include <boost/exception/diagnostic_information.hpp>
+#include <quicktest.h>
+#include <QtQml>
 #include "MixApplication.h"
+#include "Exceptions.h"
+#include "TestService.h"
 
 using namespace dev::mix;
 
@@ -33,8 +35,9 @@ int main(int _argc, char* _argv[])
 	try
 	{
 		MixApplication::initialize();
-		MixApplication app(_argc, _argv);
-		return app.exec();
+		qmlRegisterType<TestService>("org.ethereum.qml.TestService", 1, 0, "TestService");
+
+		return quick_test_main(_argc, _argv, "mix", _argv[1]);
 	}
 	catch (boost::exception const& _e)
 	{
