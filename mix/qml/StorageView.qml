@@ -29,7 +29,7 @@ DebugInfoList
 					anchors.leftMargin: 5
 					color: "#4a4a4a"
 					text: styleData.value.split('\t')[0];
-					font.pointSize: DebuggerPaneStyle.general.basicFontSize
+					font.pointSize: dbgStyle.general.basicFontSize
 					width: parent.width - 5
 					elide: Text.ElideRight
 				}
@@ -52,7 +52,7 @@ DebugInfoList
 					color: "#4a4a4a"
 					text: styleData.value.split('\t')[1];
 					elide: Text.ElideRight
-					font.pointSize: DebuggerPaneStyle.general.basicFontSize
+					font.pointSize: dbgStyle.general.basicFontSize
 				}
 			}
 		}
