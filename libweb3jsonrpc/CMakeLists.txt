@@ -22,9 +22,9 @@ file(GLOB HEADERS "*.h")
 
 if (ETH_STATIC)
 	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
-else()
+else ()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
-endif()
+endif ()
 
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
@@ -33,11 +33,13 @@ target_link_libraries(${EXECUTABLE} ${MHD_LIBRARIES})
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} secp256k1)
-target_link_libraries(${EXECUTABLE} solidity)
 
-if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+if (SOLIDITY)
+	target_link_libraries(${EXECUTABLE} solidity)
+endif ()
+if (SERPENT)
 	target_link_libraries(${EXECUTABLE} serpent)
-endif()
+endif ()
 
 if (ETH_JSON_RPC_STUB)
 	add_custom_target(jsonrpcstub) 
@@ -51,7 +53,7 @@ if (ETH_JSON_RPC_STUB)
 			-P "${ETH_SCRIPTS_DIR}/jsonrpcstub.cmake"
 	)
 	add_dependencies(${EXECUTABLE} jsonrpcstub)
-endif()
+endif ()
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
