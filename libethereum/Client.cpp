@@ -123,7 +123,7 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _for
 	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
 	m_gp(new TrivialGasPricer),
 	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
-	m_preMine(m_stateDB),
+	m_preMine(m_stateDB, BaseState::CanonGenesis),
 	m_postMine(m_stateDB)
 {
 	m_gp->update(m_bc);

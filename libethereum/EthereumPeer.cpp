@@ -478,7 +478,12 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		clogS(NetMessageSummary) << dec << success << "imported OK," << unknown << "with unknown parents," << future << "with future timestamps," << got << " already known," << repeated << " repeats received.";
 
 		if (m_asking == Asking::Blocks)
-			transition(Asking::Blocks);
+		{
+			if (!got)
+				transition(Asking::Blocks);
+			else
+				transition(Asking::Nothing);
+		}
 		break;
 	}
 	case NewBlockPacket:
