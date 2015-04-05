@@ -838,6 +838,9 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 	// Block may have no terminator if the next instruction is a jump destination.
 	if (!_basicBlock.llvm()->getTerminator())
 		m_builder.CreateBr(_nextBasicBlock);
+
+	m_builder.SetInsertPoint(_basicBlock.llvm()->getFirstNonPHI());
+	_runtimeManager.checkStackLimit(_basicBlock.localStack().getMaxSize(), _basicBlock.localStack().getDiff());
 }
 
 
