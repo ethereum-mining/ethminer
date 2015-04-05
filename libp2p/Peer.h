@@ -75,6 +75,9 @@ public:
 	/// Reason peer was previously disconnected.
 	DisconnectReason lastDisconnect() const { return m_lastDisconnect; }
 	
+	/// Peer session is noted as useful.
+	void noteSessionGood() { m_failedAttempts = 0; }
+	
 protected:
 	/// Returns number of seconds to wait until attempting connection, based on attempted connection history.
 	unsigned fallbackSeconds() const;
