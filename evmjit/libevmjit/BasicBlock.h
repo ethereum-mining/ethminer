@@ -33,6 +33,9 @@ public:
 		/// @param _index Index of value to be swaped. Must be > 0.
 		void swap(size_t _index);
 
+		size_t getMaxSize() const { return m_maxSize; }
+		int getDiff() const { return m_bblock.m_tosOffset; }
+
 	private:
 		LocalStack(BasicBlock& _owner);
 		LocalStack(LocalStack const&) = delete;
@@ -49,6 +52,7 @@ public:
 
 	private:
 		BasicBlock& m_bblock;
+		size_t m_maxSize = 0; ///< Max size reached by the stack.
 	};
 
 	explicit BasicBlock(instr_idx _firstInstrIdx, code_iterator _begin, code_iterator _end, llvm::Function* _mainFunc, llvm::IRBuilder<>& _builder, bool isJumpDest);

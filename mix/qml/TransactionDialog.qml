@@ -13,7 +13,7 @@ Window {
 	width: 520
 	height: 500;
 	visible: false
-	color: StateDialogStyle.generic.backgroundColor
+	color: transactionDialogStyle.generic.backgroundColor
 	title: qsTr("Edit Transaction")
 	property int transactionIndex
 	property alias gas: gasValueEdit.gasValue;
@@ -59,16 +59,7 @@ Window {
 		contractComboBox.currentIndex = contractIndex;
 
 		loadFunctions(contractComboBox.currentValue());
-
-		var functionIndex = -1;
-		for (var f = 0; f < functionsModel.count; f++)
-			if (functionsModel.get(f).text === item.functionId)
-				functionIndex = f;
-
-		if (functionIndex == -1 && functionsModel.count > 0)
-			functionIndex = 0; //@todo suggest unused function
-
-		functionComboBox.currentIndex = functionIndex;
+		selectFunction(functionId);
 
 		paramsModel = [];
 		if (functionId !== contractComboBox.currentValue())
@@ -87,9 +78,6 @@ Window {
 
 		visible = true;
 		valueField.focus = true;
-		modalTransactionDialog.height = (paramsModel.length > 0 ? 500 : 300);
-		paramLabel.visible = paramsModel.length > 0;
-		paramScroll.visible = paramsModel.length > 0;
 	}
 
 	function loadFunctions(contractId)
@@ -105,6 +93,19 @@ Window {
 		//append constructor
 		functionsModel.append({ text: contractId });
 
+	}
+
+	function selectFunction(functionId)
+	{
+		var functionIndex = -1;
+		for (var f = 0; f < functionsModel.count; f++)
+			if (functionsModel.get(f).text === functionId)
+				functionIndex = f;
+
+		if (functionIndex == -1 && functionsModel.count > 0)
+			functionIndex = 0; //@todo suggest unused function
+
+		functionComboBox.currentIndex = functionIndex;
 	}
 
 	function loadParameter(parameter)
@@ -136,6 +137,15 @@ Window {
 		typeLoader.members = []
 		typeLoader.value = paramValues;
 		typeLoader.members = paramsModel;
+		paramLabel.visible = paramsModel.length > 0;
+		paramScroll.visible = paramsModel.length > 0;
+		modalTransactionDialog.height = (paramsModel.length > 0 ? 500 : 300);
+	}
+
+	function acceptAndClose()
+	{
+		close();
+		accepted();
 	}
 
 	function close()
@@ -167,6 +177,10 @@ Window {
 		item.sender = senderComboBox.model[senderComboBox.currentIndex].secret;
 		item.parameters = paramValues;
 		return item;
+	}
+
+	StateDialogStyle {
+		id: transactionDialogStyle
 	}
 
 	ColumnLayout {
@@ -365,8 +379,7 @@ Window {
 			Button {
 				text: qsTr("OK");
 				onClicked: {
-					close();
-					accepted();
+					acceptAndClose();
 				}
 			}
 			Button {

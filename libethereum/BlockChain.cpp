@@ -19,10 +19,10 @@
  * @date 2014
  */
 
-#include <leveldb/db.h>
-
 #include "BlockChain.h"
 
+#include <leveldb/db.h>
+#include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
 #include <libdevcore/Common.h>
@@ -43,6 +43,7 @@ using namespace dev::eth;
 namespace js = json_spirit;
 
 #define ETH_CATCH 1
+#define ETH_TIMED_IMPORTS 0
 
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
@@ -98,7 +99,7 @@ static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 #endif
 
-BlockChain::BlockChain(bytes const& _genesisBlock, std::string _path, bool _killExisting)
+BlockChain::BlockChain(bytes const& _genesisBlock, std::string _path, WithExisting _we, ProgressCallback const& _p)
 {
 	// initialise deathrow.
 	m_cacheUsage.resize(c_collectionQueueSize);
@@ -108,7 +109,9 @@ BlockChain::BlockChain(bytes const& _genesisBlock, std::string _path, bool _kill
 	m_genesisBlock = _genesisBlock;
 	m_genesisHash = sha3(RLP(m_genesisBlock)[0].data());
 
-	open(_path, _killExisting);
+	open(_path, _we);
+	if (_we == WithExisting::Verify)
+		rebuild(_path, _p);
 }
 
 BlockChain::~BlockChain()
@@ -116,24 +119,23 @@ BlockChain::~BlockChain()
 	close();
 }
 
-void BlockChain::open(std::string _path, bool _killExisting)
+void BlockChain::open(std::string const& _path, WithExisting _we)
 {
-	if (_path.empty())
-		_path = Defaults::get()->m_dbPath;
-	boost::filesystem::create_directories(_path);
-	if (_killExisting)
+	std::string path = _path.empty() ? Defaults::get()->m_dbPath : _path;
+	boost::filesystem::create_directories(path);
+	if (_we == WithExisting::Kill)
 	{
-		boost::filesystem::remove_all(_path + "/blocks");
-		boost::filesystem::remove_all(_path + "/details");
+		boost::filesystem::remove_all(path + "/blocks");
+		boost::filesystem::remove_all(path + "/details");
 	}
 
 	ldb::Options o;
 	o.create_if_missing = true;
-	ldb::DB::Open(o, _path + "/blocks", &m_blocksDB);
-	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
+	ldb::DB::Open(o, path + "/blocks", &m_blocksDB);
+	ldb::DB::Open(o, path + "/details", &m_extrasDB);
 	if (!m_blocksDB || !m_extrasDB)
 	{
-		if (boost::filesystem::space(_path + "/blocks").available < 1024)
+		if (boost::filesystem::space(path + "/blocks").available < 1024)
 		{
 			cwarn << "Not enough available space found on hard drive. Please free some up and then re-run. Bailing.";
 			BOOST_THROW_EXCEPTION(NotEnoughAvailableSpace());
@@ -158,7 +160,6 @@ void BlockChain::open(std::string _path, bool _killExisting)
 	// TODO: Implement ability to rebuild details map from DB.
 	std::string l;
 	m_extrasDB->Get(m_readOptions, ldb::Slice("best"), &l);
-
 	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
 
 	cnote << "Opened blockchain DB. Latest: " << currentHash();
@@ -172,6 +173,66 @@ void BlockChain::close()
 	m_lastBlockHash = m_genesisHash;
 	m_details.clear();
 	m_blocks.clear();
+}
+
+#define IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
+
+void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, unsigned)> const& _progress)
+{
+	unsigned originalNumber = number();
+
+	// Keep extras DB around, but under a temp name
+	delete m_extrasDB;
+	m_extrasDB = nullptr;
+	IGNORE_EXCEPTIONS(boost::filesystem::remove_all(_path + "/details.old"));
+	boost::filesystem::rename(_path + "/details", _path + "/details.old");
+	ldb::DB* oldExtrasDB;
+	ldb::Options o;
+	o.create_if_missing = true;
+	ldb::DB::Open(o, _path + "/details.old", &oldExtrasDB);
+	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
+
+	// Open a fresh state DB
+	State s(Address(), State::openDB(_path, WithExisting::Kill), BaseState::CanonGenesis);
+
+	// Clear all memos ready for replay.
+	m_details.clear();
+	m_logBlooms.clear();
+	m_receipts.clear();
+	m_transactionAddresses.clear();
+	m_blockHashes.clear();
+	m_blocksBlooms.clear();
+	m_lastLastHashes.clear();
+	m_lastBlockHash = genesisHash();
+
+	h256 lastHash = genesisHash();
+	for (unsigned d = 1; d < originalNumber; ++d)
+	{
+		try
+		{
+			bytes b = block(queryExtras<BlockHash, ExtraBlockHash>(h256(u256(d)), m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value);
+
+			BlockInfo bi(b);
+			if (bi.parentHash != lastHash)
+			{
+				cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash.abridged() << "#" << d << " -> parent is" << bi.parentHash.abridged() << "; expected" << lastHash.abridged() << "#" << (d - 1);
+				return;
+			}
+			lastHash = bi.hash;
+			import(b, s.db(), true);
+		}
+		catch (...)
+		{
+			// Failed to import - stop here.
+			break;
+		}
+
+		if (_progress)
+			_progress(d, originalNumber);
+	}
+
+	delete oldExtrasDB;
+	boost::filesystem::remove_all(_path + "/details.old");
 }
 
 template <class T, class V>
@@ -211,7 +272,7 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 	_bq.tick(*this);
 
 	vector<bytes> blocks;
-	_bq.drain(blocks);
+	_bq.drain(blocks, _max);
 
 	h256s ret;
 	for (auto const& block: blocks)
@@ -219,10 +280,7 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 		try
 		{
 			for (auto h: import(block, _stateDB))
-				if (!_max--)
-					break;
-				else
-					ret.push_back(h);
+				ret.push_back(h);
 		}
 		catch (UnknownParent)
 		{
@@ -241,11 +299,11 @@ h256s BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max
 	return ret;
 }
 
-h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB) noexcept
+h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _force) noexcept
 {
 	try
 	{
-		return import(_block, _stateDB);
+		return import(_block, _stateDB, _force);
 	}
 	catch (...)
 	{
@@ -254,8 +312,20 @@ h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB) 
 	}
 }
 
-h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
+h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 {
+	//@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
+
+#if ETH_TIMED_IMPORTS
+	boost::timer total;
+	double preliminaryChecks;
+	double enactment;
+	double collation;
+	double writing;
+	double checkBest;
+	boost::timer t;
+#endif
+
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;
 
@@ -282,7 +352,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	auto newHash = BlockInfo::headerHash(_block);
 
 	// Check block doesn't already exist first!
-	if (isKnown(newHash))
+	if (isKnown(newHash) && !_force)
 	{
 		clog(BlockChainNote) << newHash << ": Not new.";
 		BOOST_THROW_EXCEPTION(AlreadyHaveBlock());
@@ -315,6 +385,11 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 
 	clog(BlockChainNote) << "Attempting import of " << newHash.abridged() << "...";
 
+#if ETH_TIMED_IMPORTS
+	preliminaryChecks = t.elapsed();
+	t.restart();
+#endif
+
 	u256 td;
 #if ETH_CATCH
 	try
@@ -324,6 +399,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		// Get total difficulty increase and update state, checking it.
 		State s(bi.coinbaseAddress, _db);
 		auto tdIncrease = s.enactOn(&_block, bi, *this);
+
 		BlockLogBlooms blb;
 		BlockReceipts br;
 		for (unsigned i = 0; i < s.pending().size(); ++i)
@@ -333,6 +409,11 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 		}
 		s.cleanup(true);
 		td = pd.totalDifficulty + tdIncrease;
+
+#if ETH_TIMED_IMPORTS
+		enactment = t.elapsed();
+		t.restart();
+#endif
 
 #if ETH_PARANOIA
 		checkConsistency();
@@ -351,37 +432,6 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_details[bi.parentHash].children.push_back(newHash);
 		}
 		{
-			WriteGuard l(x_blockHashes);
-			m_blockHashes[h256(bi.number)].value = newHash;
-		}
-		h256s alteredBlooms;
-		{
-			WriteGuard l(x_blocksBlooms);
-			LogBloom blockBloom = bi.logBloom;
-			blockBloom.shiftBloom<3>(sha3(bi.coinbaseAddress.ref()));
-			unsigned index = (unsigned)bi.number;
-			for (unsigned level = 0; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
-			{
-				unsigned i = index / c_bloomIndexSize;
-				unsigned o = index % c_bloomIndexSize;
-				alteredBlooms.push_back(chunkId(level, i));
-				m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
-			}
-		}
-		// Collate transaction hashes and remember who they were.
-		h256s newTransactionAddresses;
-		{
-			RLP blockRLP(_block);
-			TransactionAddress ta;
-			ta.blockHash = newHash;
-			WriteGuard l(x_transactionAddresses);
-			for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
-			{
-				newTransactionAddresses.push_back(sha3(blockRLP[1][ta.index].data()));
-				m_transactionAddresses[newTransactionAddresses.back()] = ta;
-			}
-		}
-		{
 			WriteGuard l(x_logBlooms);
 			m_logBlooms[newHash] = blb;
 		}
@@ -390,34 +440,46 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 			m_receipts[newHash] = br;
 		}
 
+#if ETH_TIMED_IMPORTS
+		collation = t.elapsed();
+		t.restart();
+#endif
+
 		{
-			ReadGuard l1(x_blocksBlooms);
 			ReadGuard l2(x_details);
-			ReadGuard l3(x_blockHashes);
 			ReadGuard l4(x_receipts);
 			ReadGuard l5(x_logBlooms);
-			ReadGuard l6(x_transactionAddresses);
 			m_blocksDB->Put(m_writeOptions, toSlice(newHash), (ldb::Slice)ref(_block));
 			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[newHash].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
-			m_extrasDB->Put(m_writeOptions, toSlice(h256(bi.number), ExtraBlockHash), (ldb::Slice)dev::ref(m_blockHashes[h256(bi.number)].rlp()));
-			for (auto const& h: newTransactionAddresses)
-				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[newHash].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(newHash, ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[newHash].rlp()));
-			for (auto const& h: alteredBlooms)
-				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraBlocksBlooms), (ldb::Slice)dev::ref(m_blocksBlooms[h].rlp()));
 		}
+
+#if ETH_TIMED_IMPORTS
+		writing = t.elapsed();
+		t.restart();
+#endif
 
 #if ETH_PARANOIA
 		checkConsistency();
 #endif
 	}
 #if ETH_CATCH
-	catch (Exception const& _e)
+	catch (InvalidNonce const& _e)
 	{
 		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(_e);
 		_e << errinfo_comment("Malformed block ");
+		throw;
+	}
+	catch (Exception const& _e)
+	{
+		clog(BlockChainWarn) << "   Malformed block: " << diagnostic_information(_e);
+		_e << errinfo_comment("Malformed block ");
+		clog(BlockChainWarn) << "Block: " << bi.hash;
+		clog(BlockChainWarn) << bi;
+		clog(BlockChainWarn) << "Block parent: " << bi.parentHash;
+		clog(BlockChainWarn) << BlockInfo(block(bi.parentHash));
 		throw;
 	}
 #endif
@@ -436,16 +498,78 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	h256 last = currentHash();
 	if (td > details(last).totalDifficulty)
 	{
-		ret = treeRoute(last, newHash);
+		h256 common;
+		unsigned commonIndex;
+		tie(ret, common, commonIndex) = treeRoute(last, newHash);
 		{
 			WriteGuard l(x_lastBlockHash);
 			m_lastBlockHash = newHash;
 		}
 
+		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
+
+		// Most of the time these two will be equal - only when we're doing a chain revert will they not be
+		if (common != last)
+			// If we are reverting previous blocks, we need to clear their blooms (in particular, to
+			// rebuild any higher level blooms that they contributed to).
+			clearBlockBlooms(number(common) + 1, number(last) + 1);
+
+		// Go through ret backwards until hash != last.parent and update m_transactionAddresses, m_blockHashes
+		for (auto i = ret.rbegin(); i != ret.rend() && *i != common; ++i)
+		{
+			auto b = block(*i);
+			BlockInfo bi(b);
+			// Collate logs into blooms.
+			h256s alteredBlooms;
+			{
+				LogBloom blockBloom = bi.logBloom;
+				blockBloom.shiftBloom<3>(sha3(bi.coinbaseAddress.ref()));
+
+				// Pre-memoize everything we need before locking x_blocksBlooms
+				for (unsigned level = 0, index = (unsigned)bi.number; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
+					blocksBlooms(chunkId(level, index / c_bloomIndexSize));
+
+				WriteGuard l(x_blocksBlooms);
+				for (unsigned level = 0, index = (unsigned)bi.number; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
+				{
+					unsigned i = index / c_bloomIndexSize;
+					unsigned o = index % c_bloomIndexSize;
+					alteredBlooms.push_back(chunkId(level, i));
+					m_blocksBlooms[alteredBlooms.back()].blooms[o] |= blockBloom;
+				}
+			}
+			// Collate transaction hashes and remember who they were.
+			h256s newTransactionAddresses;
+			{
+				RLP blockRLP(b);
+				TransactionAddress ta;
+				ta.blockHash = bi.hash;
+				WriteGuard l(x_transactionAddresses);
+				for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
+				{
+					newTransactionAddresses.push_back(sha3(blockRLP[1][ta.index].data()));
+					m_transactionAddresses[newTransactionAddresses.back()] = ta;
+				}
+			}
+			{
+				WriteGuard l(x_blockHashes);
+				m_blockHashes[h256(bi.number)].value = bi.hash;
+			}
+
+			// Update database with them.
+			ReadGuard l1(x_blocksBlooms);
+			ReadGuard l3(x_blockHashes);
+			ReadGuard l6(x_transactionAddresses);
+			for (auto const& h: alteredBlooms)
+				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraBlocksBlooms), (ldb::Slice)dev::ref(m_blocksBlooms[h].rlp()));
+			m_extrasDB->Put(m_writeOptions, toSlice(h256(bi.number), ExtraBlockHash), (ldb::Slice)dev::ref(m_blockHashes[h256(bi.number)].rlp()));
+			for (auto const& h: newTransactionAddresses)
+				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
+		}
+
+		clog(BlockChainNote) << "   Imported and best" << td << ". Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(ret);
 		noteCanonChanged();
 
-		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&newHash, 32));
-		clog(BlockChainNote) << "   Imported and best" << td << ". Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(ret);
 		StructuredLogger::chainNewHead(
 			bi.headerHash(WithoutNonce).abridged(),
 			bi.nonce.abridged(),
@@ -457,19 +581,72 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db)
 	{
 		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
 	}
+
+#if ETH_TIMED_IMPORTS
+	checkBest = t.elapsed();
+	cnote << "Import took:" << total.elapsed();
+	cnote << "preliminaryChecks:" << preliminaryChecks;
+	cnote << "enactment:" << enactment;
+	cnote << "collation:" << collation;
+	cnote << "writing:" << writing;
+	cnote << "checkBest:" << checkBest;
+#endif
+
 	return ret;
 }
 
-h256s BlockChain::treeRoute(h256 const& _from, h256 const& _to, h256* o_common, bool _pre, bool _post) const
+void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
 {
-	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
+	//   ... c c c c c c c c c c C o o o o o o
+	//   ...                               /=15        /=21
+	// L0...| ' | ' | ' | ' | ' | ' | ' | 'b|x'x|x'x|x'e| /=11
+	// L1...|   '   |   '   |   '   |   ' b | x ' x | x ' e |   /=6
+	// L2...|       '       |       '   b   |   x   '   x   |   e   /=3
+	// L3...|               '       b       |       x       '       e
+	// model: c_bloomIndexLevels = 4, c_bloomIndexSize = 2
+
+	//   ...                               /=15        /=21
+	// L0...| ' ' ' | ' ' ' | ' ' ' | ' ' 'b|x'x'x'x|x'e' ' |
+	// L1...|       '       '       '   b   |   x   '   x   '   e   '       |
+	// L2...|               b               '               x               '                e              '                               |
+	// model: c_bloomIndexLevels = 2, c_bloomIndexSize = 4
+
+	// algorithm doesn't have the best memoisation coherence, but eh well...
+
+	unsigned beginDirty = _begin;
+	unsigned endDirty = _end;
+	for (unsigned level = 0; level < c_bloomIndexLevels; level++, beginDirty /= c_bloomIndexSize, endDirty = (endDirty - 1) / c_bloomIndexSize + 1)
+	{
+		// compute earliest & latest index for each level, rebuild from previous levels.
+		for (unsigned item = beginDirty; item != endDirty; ++item)
+		{
+			unsigned bunch = item / c_bloomIndexSize;
+			unsigned offset = item % c_bloomIndexSize;
+			auto id = chunkId(level, bunch);
+			LogBloom acc;
+			if (!!level)
+			{
+				// rebuild the bloom from the previous (lower) level (if there is one).
+				auto lowerChunkId = chunkId(level - 1, item);
+				for (auto const& bloom: blocksBlooms(lowerChunkId).blooms)
+					acc |= bloom;
+			}
+			blocksBlooms(id);	// make sure it has been memoized.
+			m_blocksBlooms[id].blooms[offset] = acc;
+		}
+	}
+}
+
+tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const& _to, bool _common, bool _pre, bool _post) const
+{
+//	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
 	if (!_from || !_to)
-		return h256s();
+		return make_tuple(h256s(), h256(), 0);
 	h256s ret;
 	h256s back;
 	unsigned fn = details(_from).number;
 	unsigned tn = details(_to).number;
-	cdebug << "treeRoute" << fn << "..." << tn;
+//	cdebug << "treeRoute" << fn << "..." << tn;
 	h256 from = _from;
 	while (fn > tn)
 	{
@@ -477,7 +654,7 @@ h256s BlockChain::treeRoute(h256 const& _from, h256 const& _to, h256* o_common, 
 			ret.push_back(from);
 		from = details(from).parent;
 		fn--;
-		cdebug << "from:" << fn << _from.abridged();
+//		cdebug << "from:" << fn << _from.abridged();
 	}
 	h256 to = _to;
 	while (fn < tn)
@@ -486,7 +663,7 @@ h256s BlockChain::treeRoute(h256 const& _from, h256 const& _to, h256* o_common, 
 			back.push_back(to);
 		to = details(to).parent;
 		tn--;
-		cdebug << "to:" << tn << _to.abridged();
+//		cdebug << "to:" << tn << _to.abridged();
 	}
 	while (from != to)
 	{
@@ -496,20 +673,19 @@ h256s BlockChain::treeRoute(h256 const& _from, h256 const& _to, h256* o_common, 
 			assert(to);
 		from = details(from).parent;
 		to = details(to).parent;
-		if (_pre)
+		if (_pre && (from != to || _common))
 			ret.push_back(from);
-		if (_post)
+		if (_post && (from != to || (!_pre && _common)))
 			back.push_back(to);
 		fn--;
 		tn--;
 		//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
 	}
-	if (o_common)
-		*o_common = from;
 	ret.reserve(ret.size() + back.size());
-	for (auto it = back.cbegin(); it != back.cend(); ++it)
+	unsigned i = ret.size() - (int)(_common && !ret.empty() && !back.empty());
+	for (auto it = back.rbegin(); it != back.rend(); ++it)
 		ret.push_back(*it);
-	return ret;
+	return make_tuple(ret, from, i);
 }
 
 void BlockChain::noteUsed(h256 const& _h, unsigned _extra) const

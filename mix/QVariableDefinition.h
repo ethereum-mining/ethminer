@@ -21,14 +21,14 @@
 
 #pragma once
 
-#include <QAbstractListModel>
-#include "QBigInt.h"
-#include "QVariableDeclaration.h"
+#include <QObject>
+#include <libdevcore/Common.h>
 
 namespace dev
 {
 namespace mix
 {
+class QVariableDeclaration;
 
 class QVariableDefinition: public QObject
 {
@@ -54,7 +54,7 @@ public:
 	/// Decode the return value @a _rawValue.
 	virtual void decodeValue(dev::bytes const& _rawValue) = 0;
 	/// returns String representation of the encoded value.
-	Q_INVOKABLE QString encodeValueAsString() { return QString::fromStdString(dev::toHex(encodeValue())); }
+	Q_INVOKABLE QString encodeValueAsString();
 
 protected:
 	QString m_value;
