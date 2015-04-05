@@ -427,8 +427,8 @@ Window {
 				{
 					Layout.preferredWidth: 350
 					id: localPackageUrl
-					//readOnly: true
-					//enabled: rowRegister.isOkToRegister()
+					readOnly: true
+					enabled: rowRegister.isOkToRegister()
 				}
 
 				DefaultLabel
