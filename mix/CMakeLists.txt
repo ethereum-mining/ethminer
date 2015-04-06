@@ -29,7 +29,7 @@ else()
 	qt5_add_resources(UI_RESOURCES noweb.qrc)
 endif()
 
-if (CMAKE_BUILD_TYPE EQUAL "DEBUG")
+if (CMAKE_BUILD_TYPE MATCHES Debug)
 	add_definitions(-DQT_QML_DEBUG)
 endif()
 

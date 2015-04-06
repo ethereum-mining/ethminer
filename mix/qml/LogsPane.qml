@@ -27,10 +27,6 @@ Rectangle
 		}
 	}
 
-	LogsPaneStyle {
-		id: logStyle
-	}
-
 	anchors.fill: parent
 	radius: 10
 	color: "transparent"
