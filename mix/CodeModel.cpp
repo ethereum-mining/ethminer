@@ -109,11 +109,9 @@ dev::eth::AssemblyItems filterLocations(dev::eth::AssemblyItems const& _location
 QHash<unsigned, SolidityDeclarations> collectStorage(dev::solidity::ContractDefinition const& _contract)
 {
 	QHash<unsigned, SolidityDeclarations> result;
-	dev::solidity::ContractType const* contractType = dynamic_cast<dev::solidity::ContractType const*>(_contract.getType(nullptr).get());
-	if (!contractType)
-		return result;
+	dev::solidity::ContractType contractType(_contract);
 
-	for (auto v : contractType->getStateVariables())
+	for (auto v : contractType.getStateVariables())
 	{
 		dev::solidity::VariableDeclaration const* declaration = std::get<0>(v);
 		dev::u256 slot = std::get<1>(v);
@@ -355,7 +353,6 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 	SolidityType r { SolidityType::Type::UnsignedInteger, 32, 1, false, false, QString::fromStdString(_type->toString()), std::vector<SolidityDeclaration>(), std::vector<QString>() };
 	if (!_type)
 		return r;
-	r.dynamicSize = _type->isDynamicallySized();
 	switch (_type->getCategory())
 	{
 	case Type::Category::Integer:
@@ -390,6 +387,7 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 				r = elementType;
 			}
 			r.count = static_cast<unsigned>(array->getLength());
+			r.dynamicSize = _type->isDynamicallySized();
 			r.array = true;
 		}
 		break;
