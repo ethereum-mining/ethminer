@@ -646,6 +646,7 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 {
 	// TODO throw here jsonrpc errors
 	string res;
+	(void)_code;
 #if SERPENT
 	try
 	{
@@ -666,6 +667,7 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
 {
 	// TOOD throw here jsonrpc errors
+	(void)_code;
 	string res;
 #if SOLIDITY
 	dev::solidity::CompilerStack compiler;
