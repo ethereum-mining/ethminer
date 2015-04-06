@@ -385,7 +385,7 @@ string WebThreeStubServerBase::eth_getBlockTransactionCountByNumber(string const
 {
 	try
 	{
-		return toJS(client()->transactionCount(client()->hashFromNumber(toBlockNumber(_blockNumber))));
+		return toJS(_blockNumber == "pending" ? client()->pending().size() : client()->transactionCount(client()->hashFromNumber(toBlockNumber(_blockNumber))));
 	}
 	catch (...)
 	{

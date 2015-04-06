@@ -220,6 +220,8 @@ void EthereumPeer::setAsking(Asking _a, bool _isSyncing)
 		m_syncingNeededBlocks.clear();
 	}
 
+	m_lastAsk = chrono::system_clock::now();
+
 	session()->addNote("ask", _a == Asking::Nothing ? "nothing" : _a == Asking::State ? "state" : _a == Asking::Hashes ? "hashes" : _a == Asking::Blocks ? "blocks" : "?");
 	session()->addNote("sync", string(isSyncing() ? "ongoing" : "holding") + (needsSyncing() ? " & needed" : ""));
 }
@@ -233,6 +235,13 @@ void EthereumPeer::setNeedsSyncing(h256 _latestHash, u256 _td)
 		host()->noteNeedsSyncing(this);
 
 	session()->addNote("sync", string(isSyncing() ? "ongoing" : "holding") + (needsSyncing() ? " & needed" : ""));
+}
+
+void EthereumPeer::tick()
+{
+	if (chrono::system_clock::now() - m_lastAsk > chrono::seconds(10) && m_asking != Asking::Nothing)
+		// timeout
+		session()->disconnect(PingTimeout);
 }
 
 bool EthereumPeer::isSyncing() const
@@ -451,6 +460,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 					break;
 
 				case ImportResult::Malformed:
+				case ImportResult::BadChain:
 					disable("Malformed block received.");
 					return true;
 
@@ -505,8 +515,9 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 				break;
 
 			case ImportResult::Malformed:
+			case ImportResult::BadChain:
 				disable("Malformed block received.");
-				break;
+				return true;
 
 			case ImportResult::AlreadyInChain:
 			case ImportResult::AlreadyKnown:
