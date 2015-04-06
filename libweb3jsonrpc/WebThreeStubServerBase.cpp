@@ -26,9 +26,11 @@
 
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonData.h>
+#if ETH_SOLIDITY
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/SourceReferenceFormatter.h>
+#endif
 #include <libevmcore/Instruction.h>
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
@@ -36,7 +38,7 @@
 #include <libethcore/CommonJS.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
-#ifndef _MSC_VER
+#if ETH_SERPENT
 #include <libserpent/funcs.h>
 #endif
 #include "WebThreeStubServerBase.h"
@@ -57,58 +59,70 @@ const unsigned dev::SensibleHttpPort = 8080;
 static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 {
 	Json::Value res;
-	res["hash"] = toJS(_bi.hash);
-	res["parentHash"] = toJS(_bi.parentHash);
-	res["sha3Uncles"] = toJS(_bi.sha3Uncles);
-	res["miner"] = toJS(_bi.coinbaseAddress);
-	res["stateRoot"] = toJS(_bi.stateRoot);
-	res["transactionsRoot"] = toJS(_bi.transactionsRoot);
-	res["difficulty"] = toJS(_bi.difficulty);
-	res["number"] = toJS(_bi.number);
-	res["gasUsed"] = toJS(_bi.gasUsed);
-	res["gasLimit"] = toJS(_bi.gasLimit);
-	res["timestamp"] = toJS(_bi.timestamp);
-	res["extraData"] = toJS(_bi.extraData);
-	res["nonce"] = toJS(_bi.nonce);
-	res["logsBloom"] = toJS(_bi.logBloom);
+	if (_bi)
+	{
+		res["hash"] = toJS(_bi.hash());
+		res["parentHash"] = toJS(_bi.parentHash);
+		res["sha3Uncles"] = toJS(_bi.sha3Uncles);
+		res["miner"] = toJS(_bi.coinbaseAddress);
+		res["stateRoot"] = toJS(_bi.stateRoot);
+		res["transactionsRoot"] = toJS(_bi.transactionsRoot);
+		res["difficulty"] = toJS(_bi.difficulty);
+		res["number"] = toJS(_bi.number);
+		res["gasUsed"] = toJS(_bi.gasUsed);
+		res["gasLimit"] = toJS(_bi.gasLimit);
+		res["timestamp"] = toJS(_bi.timestamp);
+		res["extraData"] = toJS(_bi.extraData);
+		res["nonce"] = toJS(_bi.nonce);
+		res["logsBloom"] = toJS(_bi.logBloom);
+	}
 	return res;
 }
 
 static Json::Value toJson(dev::eth::Transaction const& _t)
 {
 	Json::Value res;
-	res["hash"] = toJS(_t.sha3());
-	res["input"] = toJS(_t.data());
-	res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
-	res["from"] = toJS(_t.safeSender());
-	res["gas"] = toJS(_t.gas());
-	res["gasPrice"] = toJS(_t.gasPrice());
-	res["nonce"] = toJS(_t.nonce());
-	res["value"] = toJS(_t.value());
+	if (_t)
+	{
+		res["hash"] = toJS(_t.sha3());
+		res["input"] = toJS(_t.data());
+		res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.receiveAddress());
+		res["from"] = toJS(_t.safeSender());
+		res["gas"] = toJS(_t.gas());
+		res["gasPrice"] = toJS(_t.gasPrice());
+		res["nonce"] = toJS(_t.nonce());
+		res["value"] = toJS(_t.value());
+	}
 	return res;
 }
 
 static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us, Transactions const& _ts)
 {
 	Json::Value res = toJson(_bi);
-	res["uncles"] = Json::Value(Json::arrayValue);
-	for (h256 h: _us)
-		res["uncles"].append(toJS(h));
-	res["transactions"] = Json::Value(Json::arrayValue);
-	for (Transaction const& t: _ts)
-		res["transactions"].append(toJson(t));
+	if (_bi)
+	{
+		res["uncles"] = Json::Value(Json::arrayValue);
+		for (h256 h: _us)
+			res["uncles"].append(toJS(h));
+		res["transactions"] = Json::Value(Json::arrayValue);
+		for (Transaction const& t: _ts)
+			res["transactions"].append(toJson(t));
+	}
 	return res;
 }
 
 static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us, TransactionHashes const& _ts)
 {
 	Json::Value res = toJson(_bi);
-	res["uncles"] = Json::Value(Json::arrayValue);
-	for (h256 h: _us)
-		res["uncles"].append(toJS(h));
-	res["transactions"] = Json::Value(Json::arrayValue);
-	for (h256 const& t: _ts)
-		res["transactions"].append(toJS(t));
+	if (_bi)
+	{
+		res["uncles"] = Json::Value(Json::arrayValue);
+		for (h256 h: _us)
+			res["uncles"].append(toJS(h));
+		res["transactions"] = Json::Value(Json::arrayValue);
+		for (h256 const& t: _ts)
+			res["transactions"].append(toJS(t));
+	}
 	return res;
 }
 
@@ -282,6 +296,11 @@ string WebThreeStubServerBase::net_peerCount()
 bool WebThreeStubServerBase::net_listening()
 {
 	return network()->isNetworkStarted();
+}
+
+string WebThreeStubServerBase::eth_protocolVersion()
+{
+	return toJS(eth::c_protocolVersion);
 }
 
 string WebThreeStubServerBase::eth_coinbase()
@@ -603,8 +622,10 @@ Json::Value WebThreeStubServerBase::eth_getCompilers()
 {
 	Json::Value ret(Json::arrayValue);
 	ret.append("lll");
+#if SOLIDITY
 	ret.append("solidity");
-#ifndef _MSC_VER
+#endif
+#if SERPENT
 	ret.append("serpent");
 #endif
 	return ret;
@@ -625,7 +646,8 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 {
 	// TODO throw here jsonrpc errors
 	string res;
-#ifndef _MSC_VER
+	(void)_code;
+#if SERPENT
 	try
 	{
 		res = toJS(dev::asBytes(::compile(_code)));
@@ -645,7 +667,9 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
 {
 	// TOOD throw here jsonrpc errors
+	(void)_code;
 	string res;
+#if SOLIDITY
 	dev::solidity::CompilerStack compiler;
 	try
 	{
@@ -661,6 +685,7 @@ string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
 	{
 		cwarn << "Uncought solidity compilation exception";
 	}
+#endif
 	return res;
 }
 

@@ -24,14 +24,15 @@ Window {
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
-	property string urlHintContract: urlHintAddr.text
+	property alias urlHintContract: urlHintAddr.text
+	property alias localPackageUrl: localPackageUrl.text
 	property string packageHash
 	property string packageBase64
 	property string eth: registrarAddr.text
 	property string currentAccount
 	property alias gasToUse: gasToUseInput.text
 
-	color: Style.generic.layout.backgroundColor
+	color: appStyle.generic.layout.backgroundColor
 
 	function close()
 	{
@@ -131,8 +132,8 @@ Window {
 			var jsonRpcRequestId = 0;
 			requests.push({
 							  jsonrpc: "2.0",
-							  method: "eth_countAt",
-							  params: [ currentAccount ],
+							  method: "eth_getTransactionCount",
+							  params: [ currentAccount, "pending" ],
 							  id: jsonRpcRequestId++
 						  });
 			TransactionHelper.rpcCall(requests, function (httpRequest, response){
@@ -299,7 +300,7 @@ Window {
 
 				DefaultTextField
 				{
-					text: "20000"
+					text: "1000000"
 					Layout.preferredWidth: 350
 					id: gasToUseInput
 				}
@@ -329,7 +330,7 @@ Window {
 						anchors.verticalCenter: parent.verticalCenter;
 						anchors.left: applicationUrlEth.right
 						font.italic: true
-						font.pointSize: Style.absoluteSize(-1)
+						font.pointSize: appStyle.absoluteSize(-1)
 					}
 				}
 			}
@@ -415,6 +416,20 @@ Window {
 			{
 				columns: 2
 				Layout.fillWidth: true
+
+				DefaultLabel
+				{
+					Layout.preferredWidth: 355
+					text: qsTr("Local package URL")
+				}
+
+				DefaultTextField
+				{
+					Layout.preferredWidth: 350
+					id: localPackageUrl
+					readOnly: true
+					enabled: rowRegister.isOkToRegister()
+				}
 
 				DefaultLabel
 				{

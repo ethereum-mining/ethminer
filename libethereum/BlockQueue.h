@@ -26,6 +26,7 @@
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
 #include <libdevcore/Guards.h>
+#include <libethcore/Common.h>
 
 namespace dev
 {
@@ -36,16 +37,6 @@ class BlockChain;
 
 struct BlockQueueChannel: public LogChannel { static const char* name() { return "[]Q"; } static const int verbosity = 4; };
 #define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
-
-enum class ImportResult
-{
-	Success = 0,
-	UnknownParent,
-	FutureTime,
-	AlreadyInChain,
-	AlreadyKnown,
-	Malformed
-};
 
 /**
  * @brief A queue of blocks. Sits between network or other I/O and the BlockChain.
@@ -61,12 +52,13 @@ public:
 	/// Notes that time has moved on and some blocks that used to be "in the future" may no be valid.
 	void tick(BlockChain const& _bc);
 
-	/// Grabs the blocks that are ready, giving them in the correct order for insertion into the chain.
+	/// Grabs at most @a _max of the blocks that are ready, giving them in the correct order for insertion into the chain.
 	/// Don't forget to call doneDrain() once you're done importing.
-	void drain(std::vector<bytes>& o_out);
+	void drain(std::vector<bytes>& o_out, unsigned _max);
 
 	/// Must be called after a drain() call. Notes that the drained blocks have been imported into the blockchain, so we can forget about them.
-	void doneDrain() { WriteGuard l(m_lock); m_drainingSet.clear(); }
+	/// @returns true iff there are additional blocks ready to be processed.
+	bool doneDrain() { WriteGuard l(m_lock); m_drainingSet.clear(); return !m_readySet.empty(); }
 
 	/// Notify the queue that the chain has changed and a new block has attained 'ready' status (i.e. is in the chain).
 	void noteReady(h256 _b) { WriteGuard l(m_lock); noteReadyWithoutWriteGuard(_b); }

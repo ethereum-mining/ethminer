@@ -101,7 +101,7 @@ find_program(ETH_JSON_RPC_STUB jsonrpcstub)
 message(" - jsonrpcstub location    : ${ETH_JSON_RPC_STUB}")
 
 # do not compile GUI
-if (NOT HEADLESS) 
+if (GUI)
 
 # we need json rpc to build alethzero
 	if (NOT JSON_RPC_CPP_FOUND)
@@ -153,7 +153,7 @@ if (NOT HEADLESS)
 		endif()
 	endif()
 
-endif() #HEADLESS
+endif() #GUI
 
 # use multithreaded boost libraries, with -mt suffix
 set(Boost_USE_MULTITHREADED ON)
