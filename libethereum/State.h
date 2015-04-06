@@ -54,7 +54,12 @@ struct StateTrace: public LogChannel { static const char* name() { return "=S=";
 struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
 struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
 
-enum class BaseState { Empty, CanonGenesis };
+enum class BaseState
+{
+	PreExisting,
+	Empty,
+	CanonGenesis
+};
 
 enum class TransactionPriority
 {
@@ -103,8 +108,15 @@ class State
 	friend class Executive;
 
 public:
-	/// Construct state object.
-	State(Address _coinbaseAddress = Address(), OverlayDB const& _db = OverlayDB(), BaseState _bs = BaseState::CanonGenesis);
+	/// Default constructor; creates with a blank database prepopulated with the genesis block.
+	State(): State(OverlayDB(), BaseState::Empty) {}
+
+	/// Basic state object from database.
+	/// Use the default when you already have a database and you just want to make a State object
+	/// which uses it. If you have no preexisting database then set BaseState to something other
+	/// than BaseState::PreExisting in order to prepopulate the Trie.
+	/// You can also set the coinbase address.
+	explicit State(OverlayDB const& _db, BaseState _bs = BaseState::PreExisting, Address _coinbaseAddress = Address());
 
 	/// Construct state object from arbitrary point in blockchain.
 	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash);
@@ -123,8 +135,8 @@ public:
 	Address address() const { return m_ourAddress; }
 
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
-	static OverlayDB openDB(std::string _path, bool _killExisting = false);
-	static OverlayDB openDB(bool _killExisting = false) { return openDB(std::string(), _killExisting); }
+	static OverlayDB openDB(std::string _path, WithExisting _we = WithExisting::Trust);
+	static OverlayDB openDB(WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _we); }
 	OverlayDB const& db() const { return m_db; }
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
@@ -334,6 +346,7 @@ private:
 	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
 	/// Debugging only. Good for checking the Trie is in shape.
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
+
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
 	SecureTrieDB<Address, OverlayDB> m_state;	///< Our state tree, as an OverlayDB DB.

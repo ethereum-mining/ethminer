@@ -18,7 +18,7 @@
 #pragma once
 
 #include <chrono>
-#include <map>
+#include <vector>
 
 #include "TestHelper.h"
 
@@ -31,19 +31,26 @@ class Stats: public Listener
 {
 public:
 	using clock = std::chrono::high_resolution_clock;
-	using stats_t = std::map<clock::duration, std::string>;
+
+	struct Item
+	{
+		clock::duration duration;
+		std::string 	name;
+	};
 
 	static Stats& get();
 
 	~Stats();
 
+	void suiteStarted(std::string const& _name) override;
 	void testStarted(std::string const& _name) override;
 	void testFinished() override;
 
 private:
 	clock::time_point m_tp;
+	std::string m_currentSuite;
 	std::string m_currentTest;
-	stats_t m_stats;
+	std::vector<Item> m_stats;
 };
 
 }

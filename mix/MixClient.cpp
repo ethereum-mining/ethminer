@@ -93,7 +93,7 @@ void MixClient::resetState(std::map<Secret, u256> _accounts)
 	h256 stateRoot = accountState.root();
 	m_bc.reset();
 	m_bc.reset(new MixBlockChain(m_dbPath, stateRoot));
-	m_state = eth::State(genesisState.begin()->first , m_stateDB, BaseState::Empty);
+	m_state = eth::State(m_stateDB, BaseState::PreExisting, genesisState.begin()->first);
 	m_state.sync(bc());
 	m_startState = m_state;
 	WriteGuard lx(x_executions);

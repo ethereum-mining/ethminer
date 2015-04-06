@@ -35,6 +35,9 @@ namespace eth
 /// Current protocol version.
 extern const unsigned c_protocolVersion;
 
+/// Current minor protocol version.
+extern const unsigned c_minorProtocolVersion;
+
 /// Current database version.
 extern const unsigned c_databaseVersion;
 
@@ -80,6 +83,16 @@ enum class RelativeBlock: BlockNumber
 {
 	Latest = LatestBlock,
 	Pending = PendingBlock
+};
+
+enum class ImportResult
+{
+	Success = 0,
+	UnknownParent,
+	FutureTime,
+	AlreadyInChain,
+	AlreadyKnown,
+	Malformed
 };
 
 }

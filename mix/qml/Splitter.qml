@@ -9,6 +9,3 @@ SplitView
 		color: "#cccccc"
 	}
 }
-
-
-

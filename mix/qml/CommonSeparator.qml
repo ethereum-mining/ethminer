@@ -4,6 +4,6 @@ import "."
 Rectangle
 {
 	height: 1
-	color: Style.generic.layout.separatorColor
+	color: appStyle.generic.layout.separatorColor
 }
 
