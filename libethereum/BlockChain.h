@@ -100,15 +100,15 @@ public:
 	void process();
 
 	/// Sync the chain with any incoming blocks. All blocks should, if processed in order
-	std::pair<h256s, bool> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
+	std::tuple<h256s, h256s, bool> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	h256s attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _force = false) noexcept;
+	std::pair<h256s, h256> attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _force = false) noexcept;
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	h256s import(bytes const& _block, OverlayDB const& _stateDB, bool _force = false);
+	std::pair<h256s, h256> import(bytes const& _block, OverlayDB const& _stateDB, bool _force = false);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 const& _hash) const;
@@ -177,6 +177,10 @@ public:
 	/// Get a block's transaction (RLP format) for the given block hash (or the most recent mined if none given) & index. Thread-safe.
 	bytes transaction(h256 const& _blockHash, unsigned _i) const { bytes b = block(_blockHash); return RLP(b)[1][_i].data().toBytes(); }
 	bytes transaction(unsigned _i) const { return transaction(currentHash(), _i); }
+
+	/// Get all transactions from a block.
+	std::vector<bytes> transactions(h256 const& _blockHash) const { bytes b = block(_blockHash); std::vector<bytes> ret; for (auto const& i: RLP(b)[1]) ret.push_back(i.data().toBytes()); return ret; }
+	std::vector<bytes> transactions() const { return transactions(currentHash()); }
 
 	/// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
 	unsigned number(h256 const& _hash) const { return details(_hash).number; }

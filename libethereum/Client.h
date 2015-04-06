@@ -168,6 +168,8 @@ public:
 	dev::eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
 	CanonBlockChain const& blockChain() const { return m_bc; }
+	/// Get some information on the block queue.
+	BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
 
 	// Mining stuff:
 
