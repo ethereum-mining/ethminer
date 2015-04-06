@@ -111,6 +111,12 @@ bool TestService::waitForSignal(QObject* _item, QString _signalName, int _timeou
 	return spy.size();
 }
 
+bool TestService::waitForRendering(QObject* _item, int timeout)
+{
+	QWindow* window = eventWindow(_item);
+	return waitForSignal(window, "frameSwapped()", timeout);
+}
+
 bool TestService::keyPress(QObject* _item, int _key, int _modifiers, int _delay)
 {
 	QWindow* window = eventWindow(_item);
