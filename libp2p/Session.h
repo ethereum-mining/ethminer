@@ -74,7 +74,7 @@ public:
 	void sealAndSend(RLPStream& _s);
 
 	int rating() const;
-	void addRating(unsigned _r);
+	void addRating(int _r);
 
 	void addNote(std::string const& _k, std::string const& _v) { m_info.notes[_k] = _v; }
 

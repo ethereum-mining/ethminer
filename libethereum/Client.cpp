@@ -38,14 +38,30 @@ using namespace p2p;
 VersionChecker::VersionChecker(string const& _dbPath):
 	m_path(_dbPath.size() ? _dbPath : Defaults::dbPath())
 {
-	auto protocolContents = contents(m_path + "/protocol");
-	auto databaseContents = contents(m_path + "/database");
-	m_ok = RLP(protocolContents).toInt<unsigned>(RLP::LaisezFaire) == eth::c_protocolVersion && RLP(databaseContents).toInt<unsigned>(RLP::LaisezFaire) == c_databaseVersion;
+	bytes statusBytes = contents(m_path + "/status");
+	RLP status(statusBytes);
+	try
+	{
+		auto protocolVersion = (unsigned)status[0];
+		auto minorProtocolVersion = (unsigned)status[1];
+		auto databaseVersion = (unsigned)status[2];
+		m_action =
+			protocolVersion != eth::c_protocolVersion || databaseVersion != c_databaseVersion ?
+				WithExisting::Kill
+			: minorProtocolVersion != eth::c_minorProtocolVersion ?
+				WithExisting::Verify
+			:
+				WithExisting::Trust;
+	}
+	catch (...)
+	{
+		m_action = WithExisting::Kill;
+	}
 }
 
 void VersionChecker::setOk()
 {
-	if (!m_ok)
+	if (m_action != WithExisting::Trust)
 	{
 		try
 		{
@@ -55,8 +71,7 @@ void VersionChecker::setOk()
 		{
 			cwarn << "Unhandled exception! Failed to create directory: " << m_path << "\n" << boost::current_exception_diagnostic_information();
 		}
-		writeFile(m_path + "/protocol", rlp(eth::c_protocolVersion));
-		writeFile(m_path + "/database", rlp(c_databaseVersion));
+		writeFile(m_path + "/status", rlpList(eth::c_protocolVersion, eth::c_minorProtocolVersion, c_databaseVersion));
 	}
 }
 
@@ -75,7 +90,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 		{
 			auto bb = _bc.block(p);
 			RLP r(bb);
-			BlockReceipts brs(_bc.receipts(bi.hash));
+			BlockReceipts brs(_bc.receipts(bi.hash()));
 			for (unsigned i = 0; i < r[1].size(); ++i)
 			{
 				auto gu = brs.receipts[i].gasUsed();
@@ -102,14 +117,14 @@ void BasicGasPricer::update(BlockChain const& _bc)
 	}
 }
 
-Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean, u256 _networkId, int _miners):
+Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId, int _miners):
 	Worker("eth"),
 	m_vc(_dbPath),
-	m_bc(_dbPath, !m_vc.ok() || _forceClean),
+	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
 	m_gp(new TrivialGasPricer),
-	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
-	m_preMine(Address(), m_stateDB),
-	m_postMine(Address(), m_stateDB)
+	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
+	m_preMine(m_stateDB, BaseState::CanonGenesis),
+	m_postMine(m_stateDB)
 {
 	m_gp->update(m_bc);
 
@@ -127,14 +142,14 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, bool _forceClean,
 	startWorking();
 }
 
-Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string const& _dbPath, bool _forceClean, u256 _networkId, int _miners):
+Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId, int _miners):
 	Worker("eth"),
 	m_vc(_dbPath),
-	m_bc(_dbPath, !m_vc.ok() || _forceClean),
+	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
 	m_gp(_gp),
-	m_stateDB(State::openDB(_dbPath, !m_vc.ok() || _forceClean)),
-	m_preMine(Address(), m_stateDB),
-	m_postMine(Address(), m_stateDB)
+	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
+	m_preMine(m_stateDB),
+	m_postMine(m_stateDB)
 {
 	m_gp->update(m_bc);
 
@@ -202,12 +217,12 @@ void Client::killChain()
 	{
 		WriteGuard l(x_stateDB);
 		m_stateDB = OverlayDB();
-		m_stateDB = State::openDB(Defaults::dbPath(), true);
+		m_stateDB = State::openDB(Defaults::dbPath(), WithExisting::Kill);
 	}
-	m_bc.reopen(Defaults::dbPath(), true);
+	m_bc.reopen(Defaults::dbPath(), WithExisting::Kill);
 
-	m_preMine = State(Address(), m_stateDB);
-	m_postMine = State(Address(), m_stateDB);
+	m_preMine = State(m_stateDB);
+	m_postMine = State(m_stateDB);
 
 	if (auto h = m_host.lock())
 		h->reset();
@@ -298,7 +313,7 @@ void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 				auto m = i.second.filter.matches(tr);
 				if (m.size())
 				{
-					auto transactionHash = transaction(d.hash, j).sha3();
+					auto transactionHash = transaction(d.hash(), j).sha3();
 					// filter catches them
 					for (LogEntry const& l: m)
 						i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number, transactionHash));
@@ -426,6 +441,8 @@ void Client::doWork()
 {
 	// TODO: Use condition variable rather than polling.
 
+	bool stillGotWork = false;
+
 	cworkin << "WORK";
 	h256Set changeds;
 
@@ -481,7 +498,10 @@ void Client::doWork()
 		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
 		x_stateDB.unlock();
-		h256s newBlocks = m_bc.sync(m_bq, db, 100);	// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
+		h256s newBlocks;
+		bool sgw;
+		tie(newBlocks, sgw) = m_bc.sync(m_bq, db, 100);	// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
+		stillGotWork = stillGotWork | sgw;
 		if (newBlocks.size())
 		{
 			for (auto i: newBlocks)
@@ -529,7 +549,9 @@ void Client::doWork()
 	noteChanged(changeds);
 	cworkout << "WORK";
 
-	this_thread::sleep_for(chrono::milliseconds(100));
+	if (!stillGotWork)
+		this_thread::sleep_for(chrono::milliseconds(100));
+
 	if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(5))
 	{
 		// watches garbage collection
@@ -586,7 +608,7 @@ void Client::inject(bytesConstRef _rlp)
 {
 	startWorking();
 	
-	m_tq.attemptImport(_rlp);
+	m_tq.import(_rlp);
 }
 
 void Client::flushTransactions()

@@ -134,11 +134,6 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QString const& _data, Solidit
 	return dataSize;
 }
 
-void ContractCallDataEncoder::push(bytes const& _b)
-{
-	m_encodedData.insert(m_encodedData.end(), _b.begin(), _b.end());
-}
-
 bigint ContractCallDataEncoder::decodeInt(dev::bytes const& _rawValue)
 {
 	dev::u256 un = dev::fromBigEndian<dev::u256>(_rawValue);
