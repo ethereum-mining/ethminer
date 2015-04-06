@@ -148,7 +148,7 @@ else ()
 endif ()
 # Backwards compatibility
 if (HEADLESS)
-	set(BUNDLE minimal)
+	set(BUNDLE "minimal")
 endif ()
 
 if (PARANOIA)
