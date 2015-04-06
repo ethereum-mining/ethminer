@@ -51,7 +51,7 @@ public:
 	using LightType = void const*;
 	using FullType = void const*;
 
-	LightType cache(BlockInfo const& _header);
+	LightType light(BlockInfo const& _header);
 	bytesConstRef full(BlockInfo const& _header);
 	static ethash_params params(BlockInfo const& _header);
 	static ethash_params params(unsigned _n);
@@ -99,7 +99,7 @@ private:
 
 	static Ethasher* s_this;
 	RecursiveMutex x_this;
-	std::map<h256, LightType> m_caches;
+	std::map<h256, LightType> m_lights;
 	std::map<h256, bytesRef> m_fulls;
 };
 

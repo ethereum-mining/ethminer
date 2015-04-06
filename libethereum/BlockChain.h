@@ -64,6 +64,7 @@ struct BlockChainWarn: public LogChannel { static const char* name() { return "=
 std::map<Address, Account> const& genesisState();
 
 ldb::Slice toSlice(h256 const& _h, unsigned _sub = 0);
+ldb::Slice oldToSlice(h256 const& _h, unsigned _sub = 0);
 
 using BlocksHash = std::map<h256, bytes>;
 using TransactionHashes = h256s;
@@ -99,26 +100,27 @@ public:
 	void process();
 
 	/// Sync the chain with any incoming blocks. All blocks should, if processed in order
-	h256s sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
+	std::pair<h256s, bool> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	h256s attemptImport(bytes const& _block, OverlayDB const& _stateDB) noexcept;
+	h256s attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _force = false) noexcept;
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	h256s import(bytes const& _block, OverlayDB const& _stateDB);
+	h256s import(bytes const& _block, OverlayDB const& _stateDB, bool _force = false);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 const& _hash) const;
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
-	BlockInfo info(h256 const& _hash) const { return BlockInfo(block(_hash)); }
-	BlockInfo info() const { return BlockInfo(block()); }
+	BlockInfo info(h256 const& _hash) const { return BlockInfo(block(_hash), IgnoreNonce, _hash); }
+	BlockInfo info() const { return info(currentHash()); }
 
 	/// Get a block (RLP format) for the given hash (or the most recent mined if none given). Thread-safe.
 	bytes block(h256 const& _hash) const;
 	bytes block() const { return block(currentHash()); }
+	bytes oldBlock(h256 const& _hash) const;
 
 	/// Get the familial details concerning a block (or the most recent mined if none given). Thread-safe.
 	BlockDetails details(h256 const& _hash) const { return queryExtras<BlockDetails, ExtraDetails>(_hash, m_details, x_details, NullBlockDetails); }
@@ -163,6 +165,7 @@ public:
 	 */
 	BlocksBlooms blocksBlooms(unsigned _level, unsigned _index) const { return blocksBlooms(chunkId(_level, _index)); }
 	BlocksBlooms blocksBlooms(h256 const& _chunkId) const { return queryExtras<BlocksBlooms, ExtraBlocksBlooms>(_chunkId, m_blocksBlooms, x_blocksBlooms, NullBlocksBlooms); }
+	void clearBlockBlooms(unsigned _begin, unsigned _end);
 	LogBloom blockBloom(unsigned _number) const { return blocksBlooms(chunkId(0, _number / c_bloomIndexSize)).blooms[_number % c_bloomIndexSize]; }
 	std::vector<unsigned> withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest) const;
 	std::vector<unsigned> withBlockBloom(LogBloom const& _b, unsigned _earliest, unsigned _latest, unsigned _topLevel, unsigned _index) const;
@@ -194,21 +197,31 @@ public:
 	/// Will call _progress with the progress in this operation first param done, second total.
 	void rebuild(std::string const& _path, ProgressCallback const& _progress = std::function<void(unsigned, unsigned)>());
 
-	/** @returns the hash of all blocks between @a _from and @a _to, all blocks are ordered first by a number of
-	 * blocks that are parent-to-child, then two sibling blocks, then a number of blocks that are child-to-parent.
+	/** @returns a tuple of:
+	 * - an vector of hashes of all blocks between @a _from and @a _to, all blocks are ordered first by a number of
+	 * blocks that are parent-to-child, then two sibling blocks, then a number of blocks that are child-to-parent;
+	 * - the block hash of the latest common ancestor of both blocks;
+	 * - the index where the latest common ancestor of both blocks would either be found or inserted, depending
+	 * on whether it is included.
 	 *
-	 * If non-null, the h256 at @a o_common is set to the latest common ancestor of both blocks.
+	 * @param _common if true, include the common ancestor in the returned vector.
+	 * @param _pre if true, include all block hashes running from @a _from until the common ancestor in the returned vector.
+	 * @param _post if true, include all block hashes running from the common ancestor until @a _to in the returned vector.
 	 *
 	 * e.g. if the block tree is 3a -> 2a -> 1a -> g and 2b -> 1b -> g (g is genesis, *a, *b are competing chains),
 	 * then:
 	 * @code
-	 * treeRoute(3a, 2b) == { 3a, 2a, 1a, 1b, 2b }; // *o_common == g
-	 * treeRoute(2a, 1a) == { 2a, 1a }; // *o_common == 1a
-	 * treeRoute(1a, 2a) == { 1a, 2a }; // *o_common == 1a
-	 * treeRoute(1b, 2a) == { 1b, 1a, 2a }; // *o_common == g
+	 * treeRoute(3a, 2b, false) == make_tuple({ 3a, 2a, 1a, 1b, 2b }, g, 3);
+	 * treeRoute(2a, 1a, false) == make_tuple({ 2a, 1a }, 1a, 1)
+	 * treeRoute(1a, 2a, false) == make_tuple({ 1a, 2a }, 1a, 0)
+	 * treeRoute(1b, 2a, false) == make_tuple({ 1b, 1a, 2a }, g, 1)
+	 * treeRoute(3a, 2b, true) == make_tuple({ 3a, 2a, 1a, g, 1b, 2b }, g, 3);
+	 * treeRoute(2a, 1a, true) == make_tuple({ 2a, 1a }, 1a, 1)
+	 * treeRoute(1a, 2a, true) == make_tuple({ 1a, 2a }, 1a, 0)
+	 * treeRoute(1b, 2a, true) == make_tuple({ 1b, g, 1a, 2a }, g, 1)
 	 * @endcode
 	 */
-	h256s treeRoute(h256 const& _from, h256 const& _to, h256* o_common = nullptr, bool _pre = true, bool _post = true) const;
+	std::tuple<h256s, h256, unsigned> treeRoute(h256 const& _from, h256 const& _to, bool _common = true, bool _pre = true, bool _post = true) const;
 
 	struct Statistics
 	{
@@ -244,6 +257,30 @@ private:
 
 		std::string s;
 		(_extrasDB ? _extrasDB : m_extrasDB)->Get(m_readOptions, toSlice(_h, N), &s);
+		if (s.empty())
+		{
+//			cout << "Not found in DB: " << _h << endl;
+			return _n;
+		}
+
+		noteUsed(_h, N);
+
+		WriteGuard l(_x);
+		auto ret = _m.insert(std::make_pair(_h, T(RLP(s))));
+		return ret.first->second;
+	}
+
+	template<class T, unsigned N> T oldQueryExtras(h256 const& _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const
+	{
+		{
+			ReadGuard l(_x);
+			auto it = _m.find(_h);
+			if (it != _m.end())
+				return it->second;
+		}
+
+		std::string s;
+		(_extrasDB ? _extrasDB : m_extrasDB)->Get(m_readOptions, oldToSlice(_h, N), &s);
 		if (s.empty())
 		{
 //			cout << "Not found in DB: " << _h << endl;

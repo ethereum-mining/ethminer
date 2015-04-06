@@ -22,27 +22,17 @@
 
 #include <iostream>
 #include <stdlib.h>
+#include <boost/exception/exception.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 #include "MixApplication.h"
-#include "Exceptions.h"
+
 using namespace dev::mix;
 
 int main(int _argc, char* _argv[])
 {
-#ifdef ETH_HAVE_WEBENGINE
-	Q_INIT_RESOURCE(js);
-#endif
-#if __linux
-	//work around ubuntu appmenu-qt5 bug
-	//https://bugs.launchpad.net/ubuntu/+source/appmenu-qt5/+bug/1323853
-	putenv((char*)"QT_QPA_PLATFORMTHEME=");
-	putenv((char*)"QSG_RENDER_LOOP=threaded");
-#endif
-#if (defined(_WIN32) || defined(_WIN64))
-	if (!getenv("OPENSSL_CONF"))
-		putenv((char*)"OPENSSL_CONF=c:\\");
-#endif
 	try
 	{
+		MixApplication::initialize();
 		MixApplication app(_argc, _argv);
 		return app.exec();
 	}

@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>qml/AlertMessageDialog.qml</file>
+        <file>qml/Application.qml</file>
         <file>qml/BasicMessage.qml</file>
         <file>qml/BigIntValue.qml</file>
         <file>qml/CallStack.qml</file>
@@ -47,7 +48,8 @@
         <file>qml/StatusPaneStyle.qml</file>
         <file>qml/StepActionImage.qml</file>
         <file>qml/StorageView.qml</file>
-        <file>qml/StructView.qml</file>
+		<file>qml/StatesComboBox.qml</file>
+		<file>qml/StructView.qml</file>
         <file>qml/Style.qml</file>
         <file>qml/TabStyle.qml</file>
         <file>qml/TransactionDialog.qml</file>
@@ -59,8 +61,5 @@
         <file>qml/js/ProjectModel.js</file>
         <file>qml/js/QEtherHelper.js</file>
         <file>qml/js/TransactionHelper.js</file>
-        <file>qml/main.qml</file>
-        <file>qml/qmldir</file>
-        <file>qml/StatesComboBox.qml</file>
     </qresource>
 </RCC>

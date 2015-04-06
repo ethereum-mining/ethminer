@@ -19,6 +19,7 @@
 
 #include <iterator>
 #include <numeric>
+#include <fstream>
 
 namespace dev
 {
@@ -31,6 +32,11 @@ Stats& Stats::get()
 	return instance;
 }
 
+void Stats::suiteStarted(std::string const& _name)
+{
+	m_currentSuite = _name;
+}
+
 void Stats::testStarted(std::string const& _name)
 {
 	m_currentTest = _name;
@@ -39,7 +45,7 @@ void Stats::testStarted(std::string const& _name)
 
 void Stats::testFinished()
 {
-	m_stats[clock::now() - m_tp] = std::move(m_currentTest);
+	m_stats.push_back({clock::now() - m_tp, m_currentSuite + "/" + m_currentTest});
 }
 
 std::ostream& operator<<(std::ostream& out, Stats::clock::duration const& d)
@@ -52,31 +58,42 @@ Stats::~Stats()
 	if (m_stats.empty())
 		return;
 
+	std::sort(m_stats.begin(), m_stats.end(), [](Stats::Item const& a, Stats::Item const& b){
+		return a.duration < b.duration;
+	});
+
 	auto& out = std::cout;
 	auto itr = m_stats.begin();
 	auto min = *itr;
 	auto max = *m_stats.rbegin();
 	std::advance(itr, m_stats.size() / 2);
 	auto med = *itr;
-	auto tot = std::accumulate(m_stats.begin(), m_stats.end(), clock::duration{}, [](clock::duration const& a, stats_t::value_type const& v)
+	auto tot = std::accumulate(m_stats.begin(), m_stats.end(), clock::duration{}, [](clock::duration const& a, Stats::Item const& v)
 	{
-		return a + v.first;
+		return a + v.duration;
 	});
 
 	out << "\nSTATS:\n\n" << std::setfill(' ');
 
-	if (Options::get().statsFull)
+	if (Options::get().statsOutFile == "out")
 	{
 		for (auto&& s: m_stats)
-			out << "  " << std::setw(40) << std::left << s.second.substr(0, 40) << s.first << " \n";
+			out << "  " << std::setw(40) << std::left << s.name.substr(0, 40) << s.duration << " \n";
 		out << "\n";
+	}
+	else if (!Options::get().statsOutFile.empty())
+	{
+		// Output stats to file
+		std::ofstream file{Options::get().statsOutFile};
+		for (auto&& s: m_stats)
+			file << s.name << "\t" << std::chrono::duration_cast<std::chrono::microseconds>(s.duration).count() << "\n";
 	}
 
 	out	<< "  tot: " << tot << "\n"
 		<< "  avg: " << (tot / m_stats.size()) << "\n\n"
-		<< "  min: " << min.first << " (" << min.second << ")\n"
-		<< "  med: " << med.first << " (" << med.second << ")\n"
-		<< "  max: " << max.first << " (" << max.second << ")\n";
+		<< "  min: " << min.duration << " (" << min.name << ")\n"
+		<< "  med: " << med.duration << " (" << med.name << ")\n"
+		<< "  max: " << max.duration << " (" << max.name << ")\n";
 }
 
 }

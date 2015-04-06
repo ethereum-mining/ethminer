@@ -26,14 +26,15 @@
 
 #pragma once
 
+namespace dev
+{
+
 namespace solidity
 {
 class Type;
 class VariableDeclaration;
 }
 
-namespace dev
-{
 namespace mix
 {
 

@@ -162,7 +162,7 @@ void WhisperHost::uninstallWatch(unsigned _i)
 
 void WhisperHost::doWork()
 {
-	for (auto& i: peerSessions())
+	for (auto i: peerSessions())
 		i.first->cap<WhisperPeer>().get()->sendMessages();
 	cleanup();
 }
