@@ -307,10 +307,10 @@ void Main::uninstallWatch(unsigned _w)
 
 void Main::installWatches()
 {
+	installWatch(ChainChangedFilter, [=](LocalisedLogEntries const&){ onNewBlock(); });
+	installWatch(PendingChangedFilter, [=](LocalisedLogEntries const&){ onNewPending(); });
 	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installNameRegWatch(); });
 	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installCurrenciesWatch(); });
-	installWatch(PendingChangedFilter, [=](LocalisedLogEntries const&){ onNewPending(); });
-	installWatch(ChainChangedFilter, [=](LocalisedLogEntries const&){ onNewBlock(); });
 }
 
 Address Main::getNameReg() const
