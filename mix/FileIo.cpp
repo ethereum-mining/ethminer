@@ -196,6 +196,7 @@ QStringList FileIo::makePackage(QString const& _deploymentFolder)
 	QStringList ret;
 	ret.append(QString::fromStdString(toHex(dappHash.ref())));
 	ret.append(qFileBytes.toBase64());
+	ret.append(url.toString());
 	return ret;
 }
 
