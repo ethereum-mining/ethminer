@@ -92,20 +92,6 @@ private:
 	bool m_functionScope;
 };
 
-dev::eth::AssemblyItems filterLocations(dev::eth::AssemblyItems const& _locations, dev::solidity::ContractDefinition const& _contract, QHash<LocationPair, QString> _functions)
-{
-	dev::eth::AssemblyItems result;
-	result.reserve(_locations.size());
-	for (dev::eth::AssemblyItem item : _locations)
-	{
-		dev::SourceLocation const& l = item.getLocation();
-		if (_contract.getLocation() == l || _functions.contains(LocationPair(l.start, l.end)))
-			item.setLocation(dev::SourceLocation(-1, -1, l.sourceName));
-		result.push_back(item);
-	}
-	return result;
-}
-
 QHash<unsigned, SolidityDeclarations> collectStorage(dev::solidity::ContractDefinition const& _contract)
 {
 	QHash<unsigned, SolidityDeclarations> result;
@@ -120,7 +106,6 @@ QHash<unsigned, SolidityDeclarations> collectStorage(dev::solidity::ContractDefi
 	}
 	return result;
 }
-
 
 } //namespace
 
@@ -150,8 +135,8 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	CollectDeclarationsVisitor visitor(&m_functions, &m_locals);
 	m_storage = collectStorage(contractDefinition);
 	contractDefinition.accept(visitor);
-	m_assemblyItems = filterLocations(_compiler.getRuntimeAssemblyItems(name), contractDefinition, m_functions);
-	m_constructorAssemblyItems = filterLocations(_compiler.getAssemblyItems(name), contractDefinition, m_functions);
+	m_assemblyItems = _compiler.getRuntimeAssemblyItems(name);
+	m_constructorAssemblyItems = _compiler.getAssemblyItems(name);
 }
 
 QString CompiledContract::codeHex() const
@@ -251,6 +236,13 @@ CompiledContract const& CodeModel::contract(QString _name) const
 	if (res == nullptr)
 		BOOST_THROW_EXCEPTION(dev::Exception() << dev::errinfo_comment("Contract not found: " + _name.toStdString()));
 	return *res;
+}
+
+CompiledContract const* CodeModel::tryGetContract(QString _name) const
+{
+	Guard l(x_contractMap);
+	CompiledContract* res = m_contractMap.value(_name);
+	return res;
 }
 
 void CodeModel::releaseContracts()

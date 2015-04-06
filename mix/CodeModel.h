@@ -141,7 +141,11 @@ public:
 	/// Get contract code by url. Contract is compiled on first access and cached
 	dev::bytes const& getStdContractCode(QString const& _contractName, QString const& _url);
 	/// Get contract by name
+	/// Throws if not found
 	CompiledContract const& contract(QString _name) const;
+	/// Get contract by name
+	/// @returns nullptr if not found
+	CompiledContract const* tryGetContract(QString _name) const;
 	/// Find a contract by document id
 	/// @returns CompiledContract object or null if not found
 	Q_INVOKABLE CompiledContract* contractByDocumentId(QString _documentId) const;

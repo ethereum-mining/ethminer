@@ -333,13 +333,13 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 		codeMaps.push_back(move(codeMap));
 		//try to resolve contract for source level debugging
 		auto nameIter = m_contractNames.find(code.address);
-		if (nameIter != m_contractNames.end())
+		CompiledContract const* compilerRes = nullptr;
+		if (nameIter != m_contractNames.end() && (compilerRes = m_codeModel->tryGetContract(nameIter->second)))
 		{
-			CompiledContract const& compilerRes = m_codeModel->contract(nameIter->second);
-			eth::AssemblyItems assemblyItems = !_t.isConstructor() ? compilerRes.assemblyItems() : compilerRes.constructorAssemblyItems();
-			codes.back()->setDocument(compilerRes.documentId());
+			eth::AssemblyItems assemblyItems = !_t.isConstructor() ? compilerRes->assemblyItems() : compilerRes->constructorAssemblyItems();
+			codes.back()->setDocument(compilerRes->documentId());
 			codeItems.push_back(move(assemblyItems));
-			contracts.push_back(&compilerRes);
+			contracts.push_back(compilerRes);
 		}
 		else
 		{
@@ -432,7 +432,12 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 			storage["values"] = storageValues;
 
 			prevInstructionIndex = instructionIndex;
-			solState = new QSolState(debugData, move(storage), move(solCallStack), move(locals), instruction.getLocation().start, instruction.getLocation().end, QString::fromUtf8(instruction.getLocation().sourceName->c_str()));
+
+			SourceLocation location = instruction.getLocation();
+			if (contract->contract()->location() == location || contract->functions().contains(LocationPair(location.start, location.end)))
+				location = dev::SourceLocation(-1, -1, location.sourceName);
+
+			solState = new QSolState(debugData, move(storage), move(solCallStack), move(locals), location.start, location.end, QString::fromUtf8(location.sourceName->c_str()));
 		}
 
 		states.append(QVariant::fromValue(new QMachineState(debugData, instructionIndex, s, codes[s.codeIndex], data[s.dataIndex], solState)));
@@ -460,7 +465,6 @@ QVariant ClientModel::formatStorageValue(SolidityType const& _type, map<u256, u2
 	{
 		count = _storage.at(slot);
 		slot = fromBigEndian<u256>(sha3(toBigEndian(slot)).asBytes());
-		cout << std::hex << slot;
 	}
 	else if (_type.array)
 		count = _type.count;
