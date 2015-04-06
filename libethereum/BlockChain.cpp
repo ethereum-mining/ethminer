@@ -714,21 +714,21 @@ tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const
 		tn--;
 //		cdebug << "to:" << tn << _to.abridged();
 	}
-	while (from != to)
+	for (;; from = details(from).parent, to = details(to).parent)
 	{
-		if (!from)
-			assert(from);
-		if (!to)
-			assert(to);
-		from = details(from).parent;
-		to = details(to).parent;
 		if (_pre && (from != to || _common))
 			ret.push_back(from);
 		if (_post && (from != to || (!_pre && _common)))
 			back.push_back(to);
 		fn--;
 		tn--;
-		//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
+//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
+		if (from == to)
+			break;
+		if (!from)
+			assert(from);
+		if (!to)
+			assert(to);
 	}
 	ret.reserve(ret.size() + back.size());
 	unsigned i = ret.size() - (int)(_common && !ret.empty() && !back.empty());
