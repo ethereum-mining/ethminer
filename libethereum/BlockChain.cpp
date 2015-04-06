@@ -306,39 +306,49 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 	return m_lastLastHashes;
 }
 
-pair<h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
+tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
 	_bq.tick(*this);
 
 	vector<bytes> blocks;
 	_bq.drain(blocks, _max);
 
-	h256s ret;
+	h256s fresh;
+	h256s dead;
+	h256s badBlocks;
 	for (auto const& block: blocks)
 	{
 		try
 		{
-			for (auto h: import(block, _stateDB))
-				ret.push_back(h);
+			auto r = import(block, _stateDB);
+			bool isOld = true;
+			for (auto const& h: r.first)
+				if (h == r.second)
+					isOld = false;
+				else if (isOld)
+					dead.push_back(h);
+				else
+					fresh.push_back(h);
 		}
 		catch (UnknownParent)
 		{
-			cwarn << "Unknown parent of block!!!" << BlockInfo::headerHash(block).abridged() << boost::current_exception_diagnostic_information();
-			_bq.import(&block, *this);
+			cwarn << "ODD: Import queue contains block with unknown parent." << boost::current_exception_diagnostic_information();
+			// NOTE: don't reimport since the queue should guarantee everything in the right order.
+			// Can't continue - chain bad.
+			badBlocks.push_back(BlockInfo::headerHash(block));
 		}
 		catch (Exception const& _e)
 		{
-			cwarn << "Unexpected exception!" << diagnostic_information(_e);
-			_bq.import(&block, *this);
+			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << diagnostic_information(_e);
+			// NOTE: don't reimport since the queue should guarantee everything in the right order.
+			// Can't continue - chain  bad.
+			badBlocks.push_back(BlockInfo::headerHash(block));
 		}
-		catch (...)
-		{}
 	}
-	bool yetMore = _bq.doneDrain();
-	return make_pair(ret, yetMore);
+	return make_tuple(fresh, dead, _bq.doneDrain(badBlocks));
 }
 
-h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _force) noexcept
+pair<h256s, h256> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, bool _force) noexcept
 {
 	try
 	{
@@ -347,11 +357,11 @@ h256s BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, 
 	catch (...)
 	{
 		cwarn << "Unexpected exception! Could not import block!" << boost::current_exception_diagnostic_information();
-		return h256s();
+		return make_pair(h256s(), h256());
 	}
 }
 
-h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
+pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 {
 	//@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
@@ -532,14 +542,14 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 	);
 	//	cnote << "Parent " << bi.parentHash << " has " << details(bi.parentHash).children.size() << " children.";
 
-	h256s ret;
+	h256s route;
+	h256 common;
 	// This might be the new best block...
 	h256 last = currentHash();
 	if (td > details(last).totalDifficulty)
 	{
-		h256 common;
 		unsigned commonIndex;
-		tie(ret, common, commonIndex) = treeRoute(last, newHash);
+		tie(route, common, commonIndex) = treeRoute(last, newHash);
 		{
 			WriteGuard l(x_lastBlockHash);
 			m_lastBlockHash = newHash;
@@ -554,7 +564,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 			clearBlockBlooms(number(common) + 1, number(last) + 1);
 
 		// Go through ret backwards until hash != last.parent and update m_transactionAddresses, m_blockHashes
-		for (auto i = ret.rbegin(); i != ret.rend() && *i != common; ++i)
+		for (auto i = route.rbegin(); i != route.rend() && *i != common; ++i)
 		{
 			auto b = block(*i);
 			BlockInfo bi(b);
@@ -606,7 +616,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
 		}
 
-		clog(BlockChainNote) << "   Imported and best" << td << ". Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(ret);
+		clog(BlockChainNote) << "   Imported and best" << td << ". Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(route);
 		noteCanonChanged();
 
 		StructuredLogger::chainNewHead(
@@ -631,7 +641,7 @@ h256s BlockChain::import(bytes const& _block, OverlayDB const& _db, bool _force)
 	cnote << "checkBest:" << checkBest;
 #endif
 
-	return ret;
+	return make_pair(route, common);
 }
 
 void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
@@ -704,21 +714,21 @@ tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const
 		tn--;
 //		cdebug << "to:" << tn << _to.abridged();
 	}
-	while (from != to)
+	for (;; from = details(from).parent, to = details(to).parent)
 	{
-		if (!from)
-			assert(from);
-		if (!to)
-			assert(to);
-		from = details(from).parent;
-		to = details(to).parent;
 		if (_pre && (from != to || _common))
 			ret.push_back(from);
 		if (_post && (from != to || (!_pre && _common)))
 			back.push_back(to);
 		fn--;
 		tn--;
-		//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
+//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
+		if (from == to)
+			break;
+		if (!from)
+			assert(from);
+		if (!to)
+			assert(to);
 	}
 	ret.reserve(ret.size() + back.size());
 	unsigned i = ret.size() - (int)(_common && !ret.empty() && !back.empty());

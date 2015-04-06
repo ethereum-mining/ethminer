@@ -38,6 +38,14 @@ class BlockChain;
 struct BlockQueueChannel: public LogChannel { static const char* name() { return "[]Q"; } static const int verbosity = 4; };
 #define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
 
+struct BlockQueueStatus
+{
+	size_t ready;
+	size_t future;
+	size_t unknown;
+	size_t bad;
+};
+
 /**
  * @brief A queue of blocks. Sits between network or other I/O and the BlockChain.
  * Sorts them ready for blockchain insertion (with the BlockChain::sync() method).
@@ -58,7 +66,7 @@ public:
 
 	/// Must be called after a drain() call. Notes that the drained blocks have been imported into the blockchain, so we can forget about them.
 	/// @returns true iff there are additional blocks ready to be processed.
-	bool doneDrain() { WriteGuard l(m_lock); m_drainingSet.clear(); return !m_readySet.empty(); }
+	bool doneDrain(h256s const& _knownBad = h256s());
 
 	/// Notify the queue that the chain has changed and a new block has attained 'ready' status (i.e. is in the chain).
 	void noteReady(h256 _b) { WriteGuard l(m_lock); noteReadyWithoutWriteGuard(_b); }
@@ -72,6 +80,9 @@ public:
 	/// Return first block with an unknown parent.
 	h256 firstUnknown() const { ReadGuard l(m_lock); return m_unknownSet.size() ? *m_unknownSet.begin() : h256(); }
 
+	/// Get some infomration on the current status.
+	BlockQueueStatus status() const { ReadGuard l(m_lock); return BlockQueueStatus{m_ready.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
+
 private:
 	void noteReadyWithoutWriteGuard(h256 _b);
 	void notePresentWithoutWriteGuard(bytesConstRef _block);
@@ -83,6 +94,7 @@ private:
 	std::set<h256> m_unknownSet;							///< Set of all blocks whose parents are not ready/in-chain.
 	std::multimap<h256, std::pair<h256, bytes>> m_unknown;	///< For transactions that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
 	std::multimap<unsigned, bytes> m_future;				///< Set of blocks that are not yet valid.
+	std::set<h256> m_knownBad;								///< Set of blocks that we know will never be valid.
 };
 
 }
