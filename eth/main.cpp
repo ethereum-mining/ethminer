@@ -120,7 +120,7 @@ void help()
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
-		<< "    -K,--kill-blockchain  First kill the blockchain." << endl
+		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "       --listen-ip <port>  Listen on the given port for incoming connections (default: 30303)." << endl
 		<< "    -l,--listen <ip>  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
 		<< "    -u,--public-ip <ip>  Force public ip to given (default: auto)." << endl
@@ -129,7 +129,7 @@ void help()
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
 		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
-		<< "    -R,--rebuild-blockchain  First rebuild the blockchain from the existing database." << endl
+		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
 		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
@@ -274,9 +274,9 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
-		else if (arg == "-K" || arg == "--kill-blockchain")
+		else if (arg == "-K" || arg == "--kill-blockchain" || arg == "--kill")
 			killChain = WithExisting::Kill;
-		else if (arg == "-B" || arg == "--rebuild-blockchain")
+		else if (arg == "-B" || arg == "--rebuild")
 			killChain = WithExisting::Verify;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];

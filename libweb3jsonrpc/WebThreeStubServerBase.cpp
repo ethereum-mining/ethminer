@@ -26,9 +26,11 @@
 
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonData.h>
+#if ETH_SOLIDITY
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/SourceReferenceFormatter.h>
+#endif
 #include <libevmcore/Instruction.h>
 #include <liblll/Compiler.h>
 #include <libethereum/Client.h>
@@ -36,7 +38,7 @@
 #include <libethcore/CommonJS.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
-#ifndef _MSC_VER
+#if ETH_SERPENT
 #include <libserpent/funcs.h>
 #endif
 #include "WebThreeStubServerBase.h"
@@ -59,7 +61,7 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 	Json::Value res;
 	if (_bi)
 	{
-		res["hash"] = toJS(_bi.hash);
+		res["hash"] = toJS(_bi.hash());
 		res["parentHash"] = toJS(_bi.parentHash);
 		res["sha3Uncles"] = toJS(_bi.sha3Uncles);
 		res["miner"] = toJS(_bi.coinbaseAddress);
@@ -294,6 +296,11 @@ string WebThreeStubServerBase::net_peerCount()
 bool WebThreeStubServerBase::net_listening()
 {
 	return network()->isNetworkStarted();
+}
+
+string WebThreeStubServerBase::eth_protocolVersion()
+{
+	return toJS(eth::c_protocolVersion);
 }
 
 string WebThreeStubServerBase::eth_coinbase()
@@ -615,8 +622,10 @@ Json::Value WebThreeStubServerBase::eth_getCompilers()
 {
 	Json::Value ret(Json::arrayValue);
 	ret.append("lll");
+#if SOLIDITY
 	ret.append("solidity");
-#ifndef _MSC_VER
+#endif
+#if SERPENT
 	ret.append("serpent");
 #endif
 	return ret;
@@ -637,7 +646,8 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 {
 	// TODO throw here jsonrpc errors
 	string res;
-#ifndef _MSC_VER
+	(void)_code;
+#if SERPENT
 	try
 	{
 		res = toJS(dev::asBytes(::compile(_code)));
@@ -657,7 +667,9 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
 {
 	// TOOD throw here jsonrpc errors
+	(void)_code;
 	string res;
+#if SOLIDITY
 	dev::solidity::CompilerStack compiler;
 	try
 	{
@@ -673,6 +685,7 @@ string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
 	{
 		cwarn << "Uncought solidity compilation exception";
 	}
+#endif
 	return res;
 }
 
