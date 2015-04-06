@@ -162,6 +162,11 @@ void EthereumHost::doWork()
 		maintainTransactions();
 		maintainBlocks(h);
 	}
+
+	for (auto p: peerSessions())
+		if (shared_ptr<EthereumPeer> const& ep = p.first->cap<EthereumPeer>())
+			ep->tick();
+
 //	return netChange;
 	// TODO: Figure out what to do with netChange.
 	(void)netChange;

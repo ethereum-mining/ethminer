@@ -514,7 +514,7 @@ void Client::doWork()
 				m_tq.drop(th);
 
 		stillGotWork = stillGotWork | sgw;
-		if (fresh.size())
+		if (!fresh.empty())
 		{
 			for (auto i: fresh)
 				appendFromNewBlock(i, changeds);

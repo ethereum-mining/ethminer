@@ -38,6 +38,14 @@ class BlockChain;
 struct BlockQueueChannel: public LogChannel { static const char* name() { return "[]Q"; } static const int verbosity = 4; };
 #define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
 
+struct BlockQueueStatus
+{
+	size_t ready;
+	size_t future;
+	size_t unknown;
+	size_t bad;
+};
+
 /**
  * @brief A queue of blocks. Sits between network or other I/O and the BlockChain.
  * Sorts them ready for blockchain insertion (with the BlockChain::sync() method).
@@ -71,6 +79,9 @@ public:
 
 	/// Return first block with an unknown parent.
 	h256 firstUnknown() const { ReadGuard l(m_lock); return m_unknownSet.size() ? *m_unknownSet.begin() : h256(); }
+
+	/// Get some infomration on the current status.
+	BlockQueueStatus status() const { ReadGuard l(m_lock); return BlockQueueStatus{m_ready.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
 
 private:
 	void noteReadyWithoutWriteGuard(h256 _b);
