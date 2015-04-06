@@ -162,6 +162,11 @@ void EthereumHost::doWork()
 		maintainTransactions();
 		maintainBlocks(h);
 	}
+
+	for (auto p: peerSessions())
+		if (shared_ptr<EthereumPeer> const& ep = p.first->cap<EthereumPeer>())
+			ep->tick();
+
 //	return netChange;
 	// TODO: Figure out what to do with netChange.
 	(void)netChange;
@@ -201,16 +206,22 @@ void EthereumHost::maintainBlocks(h256 _currentHash)
 	{
 		clog(NetMessageSummary) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
-		for (auto j: peerSessions())
+		std::vector<std::shared_ptr<EthereumPeer>> dispersal;
+		for (auto const& j: peerSessions())
+			if (!j.first->cap<EthereumPeer>()->m_knownBlocks.count(_currentHash))
+				dispersal.push_back(j.first->cap<EthereumPeer>());
+
+		for (unsigned i = (dispersal.size() + 3) / 4; i--;)
 		{
-			auto p = j.first->cap<EthereumPeer>().get();
+			unsigned n = rand() % dispersal.size();
+			auto p = std::move(dispersal[n]);
+			dispersal.erase(dispersal.begin() + n);
 
 			RLPStream ts;
 			p->prep(ts, NewBlockPacket, 2).appendRaw(m_chain.block(), 1).append(m_chain.details().totalDifficulty);
 
 			Guard l(p->x_knownBlocks);
-			if (!p->m_knownBlocks.count(_currentHash))
-				p->sealAndSend(ts);
+			p->sealAndSend(ts);
 			p->m_knownBlocks.clear();
 		}
 		m_latestBlockSent = _currentHash;

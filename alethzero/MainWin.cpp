@@ -161,7 +161,10 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->mineStatus);
+	statusBar()->addPermanentWidget(ui->chainStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
+
+	ui->blockCount->setText(QString("PV%2 D%3 H%4 v%5").arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(c_ethashVersion).arg(dev::Version));
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 	
@@ -301,16 +304,25 @@ unsigned Main::installWatch(dev::h256 _tf, WatchHandler const& _f)
 
 void Main::uninstallWatch(unsigned _w)
 {
+	cdebug << "!!! Main: uninstalling watch" << _w;
 	ethereum()->uninstallWatch(_w);
 	m_handlers.erase(_w);
 }
 
 void Main::installWatches()
 {
+	auto newBlockId = installWatch(ChainChangedFilter, [=](LocalisedLogEntries const&){
+		onNewBlock();
+	});
+	auto newPendingId = installWatch(PendingChangedFilter, [=](LocalisedLogEntries const&){
+		onNewPending();
+	});
+
+	cdebug << "newBlock watch ID: " << newBlockId;
+	cdebug << "newPending watch ID: " << newPendingId;
+
 	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installNameRegWatch(); });
 	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installCurrenciesWatch(); });
-	installWatch(PendingChangedFilter, [=](LocalisedLogEntries const&){ onNewPending(); });
-	installWatch(ChainChangedFilter, [=](LocalisedLogEntries const&){ onNewBlock(); });
 }
 
 Address Main::getNameReg() const
@@ -1089,9 +1101,9 @@ void Main::refreshAccounts()
 
 void Main::refreshBlockCount()
 {
-	cwatch << "refreshBlockCount()";
 	auto d = ethereum()->blockChain().details();
-	ui->blockCount->setText(QString("%4 #%1 PV%2 D%3 H%5").arg(d.number).arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(c_ethashVersion));
+	BlockQueueStatus b = ethereum()->blockQueueStatus();
+	ui->chainStatus->setText(QString("%3 ready %4 future %5 unknown %6 bad  %1 #%2").arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.ready).arg(b.future).arg(b.unknown).arg(b.bad));
 }
 
 void Main::on_turboMining_triggered()
@@ -1270,6 +1282,7 @@ void Main::timerEvent(QTimerEvent*)
 		refreshNetwork();
 		refreshWhispers();
 		refreshCache();
+		refreshBlockCount();
 		poll();
 	}
 	else
