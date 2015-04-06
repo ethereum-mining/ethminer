@@ -451,6 +451,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 					break;
 
 				case ImportResult::Malformed:
+				case ImportResult::BadChain:
 					disable("Malformed block received.");
 					return true;
 
@@ -505,8 +506,9 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 				break;
 
 			case ImportResult::Malformed:
+			case ImportResult::BadChain:
 				disable("Malformed block received.");
-				break;
+				return true;
 
 			case ImportResult::AlreadyInChain:
 			case ImportResult::AlreadyKnown:

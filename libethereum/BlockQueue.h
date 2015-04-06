@@ -58,7 +58,7 @@ public:
 
 	/// Must be called after a drain() call. Notes that the drained blocks have been imported into the blockchain, so we can forget about them.
 	/// @returns true iff there are additional blocks ready to be processed.
-	bool doneDrain() { WriteGuard l(m_lock); m_drainingSet.clear(); return !m_readySet.empty(); }
+	bool doneDrain(h256s const& _knownBad = h256s());
 
 	/// Notify the queue that the chain has changed and a new block has attained 'ready' status (i.e. is in the chain).
 	void noteReady(h256 _b) { WriteGuard l(m_lock); noteReadyWithoutWriteGuard(_b); }
@@ -83,6 +83,7 @@ private:
 	std::set<h256> m_unknownSet;							///< Set of all blocks whose parents are not ready/in-chain.
 	std::multimap<h256, std::pair<h256, bytes>> m_unknown;	///< For transactions that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
 	std::multimap<unsigned, bytes> m_future;				///< Set of blocks that are not yet valid.
+	std::set<h256> m_knownBad;								///< Set of blocks that we know will never be valid.
 };
 
 }

@@ -453,6 +453,7 @@ void Client::doWork()
 			// TODO: enable a short-circuit option since we mined it. will need to get the end state from the miner.
 			auto lm = dynamic_cast<LocalMiner*>(&m);
 			h256s hs;
+			h256 c;
 			if (false && lm && !m_verifyOwnBlocks)
 			{
 				// TODO: implement
@@ -463,12 +464,13 @@ void Client::doWork()
 			{
 				cwork << "CHAIN <== postSTATE";
 				WriteGuard l(x_stateDB);
-				hs = m_bc.attemptImport(m.blockData(), m_stateDB);
+				tie(hs, c) = m_bc.attemptImport(m.blockData(), m_stateDB);
 			}
 			if (hs.size())
 			{
 				for (auto const& h: hs)
-					appendFromNewBlock(h, changeds);
+					if (h != c)
+						appendFromNewBlock(h, changeds);
 				changeds.insert(ChainChangedFilter);
 			}
 			for (auto& m: m_localMiners)
@@ -498,18 +500,28 @@ void Client::doWork()
 		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
 		x_stateDB.unlock();
-		h256s newBlocks;
+		h256s fresh;
+		h256s dead;
 		bool sgw;
-		tie(newBlocks, sgw) = m_bc.sync(m_bq, db, 100);	// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
+		tie(fresh, dead, sgw) = m_bc.sync(m_bq, db, 100);
+
+		// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
+		for (auto const& h: dead)
+			for (auto const& t: m_bc.transactions(h))
+				m_tq.import(t);
+		for (auto const& h: fresh)
+			for (auto const& th: m_bc.transactionHashes(h))
+				m_tq.drop(th);
+
 		stillGotWork = stillGotWork | sgw;
-		if (newBlocks.size())
+		if (fresh.size())
 		{
-			for (auto i: newBlocks)
+			for (auto i: fresh)
 				appendFromNewBlock(i, changeds);
 			changeds.insert(ChainChangedFilter);
 		}
 		x_stateDB.lock();
-		if (newBlocks.size())
+		if (fresh.size())
 			m_stateDB = db;
 
 		cwork << "preSTATE <== CHAIN";
