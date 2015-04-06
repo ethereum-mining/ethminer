@@ -385,7 +385,7 @@ void Host::addNode(NodeId const& _node, bi::address const& _addr, unsigned short
 {
 	// return if network is stopped while waiting on Host::run() or nodeTable to start
 	while (!haveNetwork())
-		if(isWorking())
+		if (isWorking())
 			this_thread::sleep_for(chrono::milliseconds(50));
 		else
 			return;
