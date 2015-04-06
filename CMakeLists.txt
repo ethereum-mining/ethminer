@@ -335,7 +335,6 @@ endif()
 
 if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
-	add_subdirectory(ethrpctest)
 endif()
 
 add_subdirectory(secp256k1)
@@ -356,6 +355,9 @@ add_subdirectory(libwebthree)
 if (TESTS)
 	add_subdirectory(libtestutils)
 	add_subdirectory(test)
+	if (JSONRPC)
+		add_subdirectory(ethrpctest)
+	endif ()
 endif ()
 
 if (TOOLS)
