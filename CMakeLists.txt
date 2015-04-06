@@ -146,6 +146,10 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 else ()
 	set(DECENT_PLATFORM ON)
 endif ()
+# Backwards compatibility
+if (HEADLESS)
+	set(BUNDLE minimal)
+endif ()
 
 if (PARANOIA)
 	set(PARANOIA ON)
