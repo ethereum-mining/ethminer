@@ -159,8 +159,16 @@ void EthereumHost::doWork()
 	// If we've finished our initial sync (including getting all the blocks into the chain so as to reduce invalid transactions), start trading transactions & blocks
 	if (!isSyncing() && m_chain.isKnown(m_latestBlockSent))
 	{
-		maintainTransactions();
-		maintainBlocks(h);
+		if (m_newTransactions)
+		{
+			m_newTransactions = false;
+			maintainTransactions();
+		}
+		if (m_newBlocks)
+		{
+			m_newBlocks = false;
+			maintainBlocks(h);
+		}
 	}
 
 	for (auto p: peerSessions())
@@ -192,8 +200,10 @@ void EthereumHost::maintainTransactions()
 			{
 				b += ts[h].rlp();
 				++n;
-				m_transactionsSent.insert(h);
 			}
+			for (auto const& t: ts)
+				m_transactionsSent.insert(t.first);
+
 			ep->clearKnownTransactions();
 
 			if (n || ep->m_requireTransactions)
