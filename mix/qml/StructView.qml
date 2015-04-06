@@ -79,11 +79,14 @@ Column
 
 				function getValue()
 				{
+					var r = "";
 					if (value && value[modelData.name] !== undefined)
-						return value[modelData.name];
+						r = value[modelData.name];
 					else if (modelData.type.category === QSolidityType.Struct)
-						return {};
-					return "";
+						r = {};
+					if (Array.isArray(r))
+						r = r.join(", ");
+					return r;
 				}
 			}
 		}

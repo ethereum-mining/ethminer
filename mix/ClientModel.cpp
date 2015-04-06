@@ -453,6 +453,7 @@ QVariant ClientModel::formatStorageValue(SolidityType const& _type, map<u256, u2
 	{
 		count = _storage.at(slot);
 		slot = fromBigEndian<u256>(sha3(toBigEndian(slot)).asBytes());
+		cout << std::hex << slot;
 	}
 	else if (_type.array)
 		count = _type.count;
@@ -461,8 +462,12 @@ QVariant ClientModel::formatStorageValue(SolidityType const& _type, map<u256, u2
 	while (count--)
 	{
 
-		bytes slotBytes = toBigEndian(_storage.at(slot));
-		bytes val(slotBytes.begin() + offset, slotBytes.begin() + offset + _type.size);
+		auto slotIter = _storage.find(slot);
+		u256 slotValue = slotIter != _storage.end() ? slotIter->second : u256();
+		bytes slotBytes = toBigEndian(slotValue);
+		auto start = slotBytes.end() - _type.size - offset;
+		bytes val(32 - _type.size); //prepend with zeroes
+		val.insert(val.end(), start, start + _type.size);
 		values.append(decoder.decode(_type, val));
 		offset += _type.size;
 		if ((offset + _type.size) > 32)

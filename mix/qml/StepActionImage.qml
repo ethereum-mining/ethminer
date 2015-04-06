@@ -6,6 +6,7 @@ import QtQuick.Controls.Styles 1.1
 
 Rectangle {
 	id: buttonActionContainer
+	color: "transparent"
 	property string disableStateImg
 	property string enabledStateImg
 	property string buttonTooltip
