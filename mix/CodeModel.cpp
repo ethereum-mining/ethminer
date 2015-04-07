@@ -136,7 +136,7 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	m_storage = collectStorage(contractDefinition);
 	contractDefinition.accept(visitor);
 	m_assemblyItems = *_compiler.getRuntimeAssemblyItems(name);
-	m_constructorAssemblyItems = _compiler.getAssemblyItems(name);
+	m_constructorAssemblyItems = *_compiler.getAssemblyItems(name);
 }
 
 QString CompiledContract::codeHex() const
