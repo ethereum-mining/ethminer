@@ -323,6 +323,7 @@ enum class NodeMode
 
 int main(int argc, char** argv)
 {
+	bool initDAG = true;
 	string listenIP;
 	unsigned short listenPort = 30303;
 	string publicIP;
