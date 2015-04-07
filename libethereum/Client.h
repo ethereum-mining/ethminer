@@ -65,10 +65,10 @@ public:
 	VersionChecker(std::string const& _dbPath);
 
 	void setOk();
-	bool ok() const { return m_ok; }
+	WithExisting action() const { return m_action; }
 
 private:
-	bool m_ok;
+	WithExisting m_action;
 	std::string m_path;
 };
 
@@ -114,6 +114,11 @@ private:
 	std::array<u256, 9> m_octiles;
 };
 
+struct ClientNote: public LogChannel { static const char* name() { return "*C*"; } static const int verbosity = 2; };
+struct ClientChat: public LogChannel { static const char* name() { return "=C="; } static const int verbosity = 4; };
+struct ClientTrace: public LogChannel { static const char* name() { return "-C-"; } static const int verbosity = 7; };
+struct ClientDetail: public LogChannel { static const char* name() { return " C "; } static const int verbosity = 14; };
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -126,7 +131,7 @@ public:
 	explicit Client(
 		p2p::Host* _host,
 		std::string const& _dbPath = std::string(),
-		bool _forceClean = false,
+		WithExisting _forceAction = WithExisting::Trust,
 		u256 _networkId = 0,
 		int _miners = -1
 	);
@@ -135,7 +140,7 @@ public:
 		p2p::Host* _host,
 		std::shared_ptr<GasPricer> _gpForAdoption,		// pass it in with new.
 		std::string const& _dbPath = std::string(),
-		bool _forceClean = false,
+		WithExisting _forceAction = WithExisting::Trust,
 		u256 _networkId = 0,
 		int _miners = -1
 	);
@@ -168,6 +173,8 @@ public:
 	dev::eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
 	CanonBlockChain const& blockChain() const { return m_bc; }
+	/// Get some information on the block queue.
+	BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
 
 	// Mining stuff:
 

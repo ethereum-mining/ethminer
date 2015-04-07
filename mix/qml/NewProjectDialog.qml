@@ -16,6 +16,7 @@ Dialog {
 
 	property alias projectTitle: titleField.text
 	readonly property string projectPath: "file://" + pathField.text
+	property alias pathFieldText: pathField.text
 	signal accepted
 
 	function open() {

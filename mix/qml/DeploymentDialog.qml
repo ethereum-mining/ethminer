@@ -15,11 +15,12 @@ Dialog {
 	id: modalDeploymentDialog
 	modality: Qt.ApplicationModal
 	width: 735
-	height: 320
+	height: 400
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
-	property string urlHintContract: urlHintAddr.text
+	property alias urlHintContract: urlHintAddr.text
+	property alias localPackageUrl: localPackageUrl.text
 	property string packageHash
 	property string packageBase64
 	property string eth: registrarAddr.text
@@ -33,10 +34,7 @@ Dialog {
 
 	function open()
 	{
-		modalDeploymentDialog.setX((Screen.width - width) / 2);
-		modalDeploymentDialog.setY((Screen.height - height) / 2);
 		visible = true;
-
 		var requests = [{
 							//accounts
 							jsonrpc: "2.0",
@@ -124,8 +122,8 @@ Dialog {
 			var jsonRpcRequestId = 0;
 			requests.push({
 							  jsonrpc: "2.0",
-							  method: "eth_countAt",
-							  params: [ currentAccount ],
+							  method: "eth_getTransactionCount",
+							  params: [ currentAccount, "pending" ],
 							  id: jsonRpcRequestId++
 						  });
 			TransactionHelper.rpcCall(requests, function (httpRequest, response){
@@ -153,7 +151,7 @@ Dialog {
 	}
 
 	contentItem: Rectangle {
-		color: Style.generic.layout.backgroundColor
+		color: appStyle.generic.layout.backgroundColor
 		anchors.fill: parent
 		Column
 		{
@@ -287,94 +285,46 @@ Dialog {
 							id: balance;
 						}
 					}
-
-					DefaultLabel
-					{
-						text: qsTr("Amount of gas to use for each contract deployment: ")
-					}
-
-					DefaultTextField
-					{
-						text: "20000"
-						Layout.preferredWidth: 350
-						id: gasToUseInput
-					}
-
-					DefaultLabel
-					{
-						text: qsTr("Ethereum Application URL: ")
-					}
-
-					Rectangle
-					{
-						Layout.fillWidth: true
-						height: 25
-						color: "transparent"
-						DefaultTextField
-						{
-							width: 200
-							id: applicationUrlEth
-							onTextChanged: {
-								appUrlFormatted.text = ProjectModelCode.formatAppUrl(text).join('/');
-							}
-						}
-
-						DefaultLabel
-						{
-							id: appUrlFormatted
-							anchors.verticalCenter: parent.verticalCenter;
-							anchors.left: applicationUrlEth.right
-							font.italic: true
-							font.pointSize: Style.absoluteSize(-1)
-						}
-					}
 				}
 
-				RowLayout
+				DefaultLabel
+				{
+					text: qsTr("Amount of gas to use for each contract deployment: ")
+				}
+
+				DefaultTextField
+				{
+					text: "1000000"
+					Layout.preferredWidth: 350
+					id: gasToUseInput
+				}
+
+				DefaultLabel
+				{
+					text: qsTr("Ethereum Application URL: ")
+				}
+
+				Rectangle
 				{
 					Layout.fillWidth: true
-					Rectangle
+					height: 25
+					color: "transparent"
+					DefaultTextField
 					{
-						Layout.preferredWidth: 357
-						color: "transparent"
-					}
-
-					Button
-					{
-						id: deployButton
-						action: runAction
-						iconSource: "qrc:/qml/img/run.png"
-					}
-
-					Action {
-						id: runAction
-						tooltip: qsTr("Deploy contract(s) and Package resources files.")
-						onTriggered: {
-							var inError = [];
-							var ethUrl = ProjectModelCode.formatAppUrl(applicationUrlEth.text);
-							for (var k in ethUrl)
-							{
-								if (ethUrl[k].length > 32)
-									inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
-							}
-							if (!stopForInputError(inError))
-							{
-								if (contractRedeploy.checked)
-									deployWarningDialog.open();
-								else
-									ProjectModelCode.startDeployProject(false);
-							}
+						width: 200
+						id: applicationUrlEth
+						onTextChanged: {
+							appUrlFormatted.text = ProjectModelCode.formatAppUrl(text).join('/');
 						}
 					}
 
-					CheckBox
+					DefaultLabel
 					{
-						anchors.left: deployButton.right
-						id: contractRedeploy
-						enabled: Object.keys(projectModel.deploymentAddresses).length > 0
-						checked: Object.keys(projectModel.deploymentAddresses).length == 0
-						text: qsTr("Deploy Contract(s)")
-						anchors.verticalCenter: parent.verticalCenter
+						id: appUrlFormatted
+						anchors.verticalCenter: parent.verticalCenter;
+						anchors.left: applicationUrlEth.right
+						font.italic: true
+						font.pointSize: appStyle.absoluteSize(-1)
 					}
 				}
 			}
@@ -411,6 +361,20 @@ Dialog {
 				{
 					columns: 2
 					Layout.fillWidth: true
+
+					DefaultLabel
+					{
+						Layout.preferredWidth: 355
+						text: qsTr("Local package URL")
+					}
+
+					DefaultTextField
+					{
+						Layout.preferredWidth: 350
+						id: localPackageUrl
+						readOnly: true
+						enabled: rowRegister.isOkToRegister()
+					}
 
 					DefaultLabel
 					{

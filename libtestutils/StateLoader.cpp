@@ -26,7 +26,7 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
-StateLoader::StateLoader(Json::Value const& _json) : m_state(Address(), OverlayDB(), BaseState::Empty)
+StateLoader::StateLoader(Json::Value const& _json)
 {
 	for (string const& name: _json.getMemberNames())
 	{
