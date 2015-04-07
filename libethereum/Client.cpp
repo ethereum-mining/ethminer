@@ -453,6 +453,7 @@ void Client::doWork()
 			// TODO: enable a short-circuit option since we mined it. will need to get the end state from the miner.
 			auto lm = dynamic_cast<LocalMiner*>(&m);
 			h256s hs;
+			h256 c;
 			if (false && lm && !m_verifyOwnBlocks)
 			{
 				// TODO: implement
@@ -463,12 +464,13 @@ void Client::doWork()
 			{
 				cwork << "CHAIN <== postSTATE";
 				WriteGuard l(x_stateDB);
-				hs = m_bc.attemptImport(m.blockData(), m_stateDB);
+				tie(hs, c) = m_bc.attemptImport(m.blockData(), m_stateDB);
 			}
 			if (hs.size())
 			{
 				for (auto const& h: hs)
-					appendFromNewBlock(h, changeds);
+					if (h != c)
+						appendFromNewBlock(h, changeds);
 				changeds.insert(ChainChangedFilter);
 			}
 			for (auto& m: m_localMiners)
@@ -498,18 +500,42 @@ void Client::doWork()
 		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
 		x_stateDB.unlock();
-		h256s newBlocks;
+		h256s fresh;
+		h256s dead;
 		bool sgw;
-		tie(newBlocks, sgw) = m_bc.sync(m_bq, db, 100);	// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
-		stillGotWork = stillGotWork | sgw;
-		if (newBlocks.size())
+		tie(fresh, dead, sgw) = m_bc.sync(m_bq, db, 100);
+
+		// insert transactions that we are declaring the dead part of the chain
+		for (auto const& h: dead)
 		{
-			for (auto i: newBlocks)
+			clog(ClientNote) << "Dead block:" << h.abridged();
+			for (auto const& t: m_bc.transactions(h))
+			{
+				clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckSignature::None);
+				m_tq.import(t);
+			}
+		}
+
+		// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
+		for (auto const& h: fresh)
+		{
+			clog(ClientChat) << "Mined block:" << h.abridged();
+			for (auto const& th: m_bc.transactionHashes(h))
+			{
+				clog(ClientNote) << "Safely dropping transaction " << th;
+				m_tq.drop(th);
+			}
+		}
+
+		stillGotWork = stillGotWork | sgw;
+		if (!fresh.empty())
+		{
+			for (auto i: fresh)
 				appendFromNewBlock(i, changeds);
 			changeds.insert(ChainChangedFilter);
 		}
 		x_stateDB.lock();
-		if (newBlocks.size())
+		if (fresh.size())
 			m_stateDB = db;
 
 		cwork << "preSTATE <== CHAIN";
@@ -523,7 +549,7 @@ void Client::doWork()
 			// TODO: Move transactions pending from m_postMine back to transaction queue.
 		}
 
-		// returns h256s as blooms, once for each transaction.
+		// returns TransactionReceipts, once for each transaction.
 		cwork << "postSTATE <== TQ";
 		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq, *m_gp);
 		if (newPendingReceipts.size())
@@ -536,8 +562,15 @@ void Client::doWork()
 			if (isMining())
 				cnote << "Additional transaction ready: Restarting mining operation.";
 			resyncStateNeeded = true;
+			if (auto h = m_host.lock())
+				h->noteNewTransactions();
 		}
 	}
+
+	if (!changeds.empty())
+		if (auto h = m_host.lock())
+			h->noteNewBlocks();
+
 	if (resyncStateNeeded)
 	{
 		ReadGuard l(x_localMiners);

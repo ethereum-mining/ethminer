@@ -92,7 +92,8 @@ enum class ImportResult
 	FutureTime,
 	AlreadyInChain,
 	AlreadyKnown,
-	Malformed
+	Malformed,
+	BadChain
 };
 
 }
