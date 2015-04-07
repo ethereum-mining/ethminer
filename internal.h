@@ -35,10 +35,10 @@ void ethash_calculate_dag_item(node *const ret,
                                ethash_params const *params,
                                ethash_cache const *cache);
 
-void ethash_quick_hash(ethash_blockhash_t *return_hash,
-                       ethash_blockhash_t const *header_hash,
+void ethash_quick_hash(ethash_h256_t *return_hash,
+                       ethash_h256_t const *header_hash,
                        const uint64_t nonce,
-                       ethash_blockhash_t const *mix_hash);
+                       ethash_h256_t const *mix_hash);
 
 #ifdef __cplusplus
 }

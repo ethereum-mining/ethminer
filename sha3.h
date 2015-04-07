@@ -8,7 +8,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 
-struct ethash_blockhash;
+struct ethash_h256;
 
 #define decsha3(bits) \
   int sha3_##bits(uint8_t*, size_t, const uint8_t*, size_t);
@@ -16,7 +16,7 @@ struct ethash_blockhash;
 decsha3(256)
 decsha3(512)
 
-static inline void SHA3_256(struct ethash_blockhash const* ret, uint8_t const *data, const size_t size)
+static inline void SHA3_256(struct ethash_h256 const* ret, uint8_t const *data, const size_t size)
 {
     sha3_256((uint8_t*)ret, 32, data, size);
 }

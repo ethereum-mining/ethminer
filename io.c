@@ -54,7 +54,7 @@ free_name:
 
 bool ethash_io_write(char const *dirname,
                      ethash_params const* params,
-                     ethash_blockhash_t seedhash,
+                     ethash_h256_t seedhash,
                      void const* cache,
                      uint8_t **data,
                      uint64_t *data_size)

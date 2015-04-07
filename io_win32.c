@@ -24,7 +24,7 @@
 #include <errno.h>
 #include <stdio.h>
 
-enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_blockhash_t seedhash)
+enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_h256_t seedhash)
 {
     char read_buffer[DAG_MEMO_BYTESIZE];
     char expect_buffer[DAG_MEMO_BYTESIZE];

@@ -51,7 +51,7 @@ enum ethash_io_rc {
  * @param seedhash       The seedhash of the current block number
  * @return               For possible return values @see enum ethash_io_rc
  */
-enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_blockhash_t seedhash);
+enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_h256_t seedhash);
 
 /**
  * Fully computes data and writes it to the file on disk.
@@ -79,13 +79,13 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_blockhash_t seed
  */
 bool ethash_io_write(char const *dirname,
                      ethash_params const* params,
-                     ethash_blockhash_t seedhash,
+                     ethash_h256_t seedhash,
                      void const* cache,
                      uint8_t **data,
                      uint64_t *data_size);
 
 static inline void ethash_io_serialize_info(uint32_t revision,
-                                            ethash_blockhash_t seed_hash,
+                                            ethash_h256_t seed_hash,
                                             char *output)
 {
     // if .info is only consumed locally we don't really care about endianess

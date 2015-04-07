@@ -23,9 +23,9 @@
 #include <cryptopp/sha3.h>
 
 extern "C" {
-struct ethash_blockhash;
-typedef struct ethash_blockhash ethash_blockhash_t;
-void SHA3_256(ethash_blockhash_t const* ret, const uint8_t *data, size_t size) {
+struct ethash_h256;
+typedef struct ethash_h256 ethash_h256_t;
+void SHA3_256(ethash_h256_t const* ret, const uint8_t *data, size_t size) {
     CryptoPP::SHA3_256().CalculateDigest((uint8_t*)ret, data, size);
 }
 

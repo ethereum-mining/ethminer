@@ -52,7 +52,7 @@ uint64_t ethash_get_cachesize(const uint32_t block_number) {
 // SeqMemoHash(s, R, N)
 void static ethash_compute_cache_nodes(node *const nodes,
                                        ethash_params const *params,
-                                       ethash_blockhash_t const* seed)
+                                       ethash_h256_t const* seed)
 {
     assert((params->cache_size % sizeof(node)) == 0);
     uint32_t const num_nodes = (uint32_t) (params->cache_size / sizeof(node));
@@ -86,7 +86,7 @@ void static ethash_compute_cache_nodes(node *const nodes,
 
 void ethash_mkcache(ethash_cache *cache,
                     ethash_params const *params,
-                    ethash_blockhash_t const* seed)
+                    ethash_h256_t const* seed)
 {
     node *nodes = (node *) cache->mem;
     ethash_compute_cache_nodes(nodes, params, seed);
@@ -164,7 +164,7 @@ static void ethash_hash(ethash_return_value *ret,
                         node const *full_nodes,
                         ethash_cache const *cache,
                         ethash_params const *params,
-                        ethash_blockhash_t const *header_hash,
+                        ethash_h256_t const *header_hash,
                         const uint64_t nonce)
 {
 
@@ -255,10 +255,10 @@ static void ethash_hash(ethash_return_value *ret,
     SHA3_256(&ret->result, s_mix->bytes, 64 + 32); // Keccak-256(s + compressed_mix)
 }
 
-void ethash_quick_hash(ethash_blockhash_t *return_hash,
-                       ethash_blockhash_t const *header_hash,
+void ethash_quick_hash(ethash_h256_t *return_hash,
+                       ethash_h256_t const *header_hash,
                        const uint64_t nonce,
-                       ethash_blockhash_t const *mix_hash)
+                       ethash_h256_t const *mix_hash)
 {
 
     uint8_t buf[64 + 32];
@@ -272,21 +272,21 @@ void ethash_quick_hash(ethash_blockhash_t *return_hash,
     SHA3_256(return_hash, buf, 64 + 32);
 }
 
-void ethash_get_seedhash(ethash_blockhash_t *seedhash, const uint32_t block_number)
+void ethash_get_seedhash(ethash_h256_t *seedhash, const uint32_t block_number)
 {
-    ethash_blockhash_reset(seedhash);
+    ethash_h256_reset(seedhash);
     const uint32_t epochs = block_number / EPOCH_LENGTH;
     for (uint32_t i = 0; i < epochs; ++i)
         SHA3_256(seedhash, (uint8_t*)seedhash, 32);
 }
 
-int ethash_quick_check_difficulty(ethash_blockhash_t const *header_hash,
+int ethash_quick_check_difficulty(ethash_h256_t const *header_hash,
                                   const uint64_t nonce,
-                                  ethash_blockhash_t const *mix_hash,
-                                  ethash_blockhash_t const *difficulty)
+                                  ethash_h256_t const *mix_hash,
+                                  ethash_h256_t const *difficulty)
 {
 
-    ethash_blockhash_t return_hash;
+    ethash_h256_t return_hash;
     ethash_quick_hash(&return_hash, header_hash, nonce, mix_hash);
     return ethash_check_difficulty(&return_hash, difficulty);
 }
@@ -294,7 +294,7 @@ int ethash_quick_check_difficulty(ethash_blockhash_t const *header_hash,
 void ethash_full(ethash_return_value *ret,
                  void const *full_mem,
                  ethash_params const *params,
-                 ethash_blockhash_t const *header_hash,
+                 ethash_h256_t const *header_hash,
                  const uint64_t nonce)
 {
     ethash_hash(ret, (node const *) full_mem, NULL, params, header_hash, nonce);
@@ -303,7 +303,7 @@ void ethash_full(ethash_return_value *ret,
 void ethash_light(ethash_return_value *ret,
                   ethash_cache const *cache,
                   ethash_params const *params,
-                  ethash_blockhash_t const *header_hash,
+                  ethash_h256_t const *header_hash,
                   const uint64_t nonce)
 {
     ethash_hash(ret, NULL, cache, params, header_hash, nonce);
