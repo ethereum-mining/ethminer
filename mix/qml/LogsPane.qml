@@ -7,6 +7,11 @@ import org.ethereum.qml.SortFilterProxyModel 1.0
 Rectangle
 {
 	property variant currentStatus;
+	function clear()
+	{
+		logsModel.clear();
+	}
+
 	function push(_level, _type, _content)
 	{
 		_content = _content.replace(/\n/g, " ")
