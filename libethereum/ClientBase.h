@@ -63,7 +63,7 @@ struct WatchChannel: public LogChannel { static const char* name() { return "(o)
 #define cwatch dev::LogOutputStream<dev::eth::WatchChannel, true>()
 struct WorkInChannel: public LogChannel { static const char* name() { return ">W>"; } static const int verbosity = 16; };
 struct WorkOutChannel: public LogChannel { static const char* name() { return "<W<"; } static const int verbosity = 16; };
-struct WorkChannel: public LogChannel { static const char* name() { return "-W-"; } static const int verbosity = 16; };
+struct WorkChannel: public LogChannel { static const char* name() { return "-W-"; } static const int verbosity = 21; };
 #define cwork dev::LogOutputStream<dev::eth::WorkChannel, true>()
 #define cworkin dev::LogOutputStream<dev::eth::WorkInChannel, true>()
 #define cworkout dev::LogOutputStream<dev::eth::WorkOutChannel, true>()
