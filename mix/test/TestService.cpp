@@ -20,6 +20,7 @@
  * Ethereum IDE client.
  */
 
+#include <iostream>
 #include "TestService.h"
 #include <QtTest/QSignalSpy>
 #include <QElapsedTimer>
@@ -162,6 +163,7 @@ bool TestService::keyClickChar(QObject* _item, QString const& _character, int _m
 bool TestService::mouseClick(QObject* _item, qreal _x, qreal _y, int _button, int _modifiers, int _delay)
 {
 	QWindow* window = qobject_cast<QWindow*>(_item);
+	QMetaObject const* mo =  _item->metaObject();
 	if (!window)
 		window = eventWindow(_item);
 	mouseEvent(MouseClick, window, _item, Qt::MouseButton(_button), Qt::KeyboardModifiers(_modifiers), QPointF(_x, _y), _delay);
@@ -176,18 +178,22 @@ void TestService::setTargetWindow(QObject* _window)
 	window->requestActivate();
 }
 
+
 QWindow* TestService::eventWindow(QObject* _item)
 {
 	QQuickItem* item = qobject_cast<QQuickItem*>(_item);
 	if (item && item->window())
 		return item->window();
 
-	QQuickWindow* window = qobject_cast<QQuickWindow*>(_item);
+	QWindow* window = qobject_cast<QQuickWindow*>(_item);
+	if (!window && _item->parent())
+		window = eventWindow(_item->parent());
 	if (!window)
 		window = qobject_cast<QQuickWindow*>(m_targetWindow);
 	if (window)
 	{
 		window->requestActivate();
+		std::cout << window->title().toStdString();
 		return window;
 	}
 	item = qobject_cast<QQuickItem*>(m_targetWindow);

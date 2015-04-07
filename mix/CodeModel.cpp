@@ -220,7 +220,7 @@ QVariantMap CodeModel::contracts() const
 	return result;
 }
 
-CompiledContract* CodeModel::contractByDocumentId(QString _documentId) const
+CompiledContract* CodeModel::contractByDocumentId(QString const& _documentId) const
 {
 	Guard l(x_contractMap);
 	for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
@@ -229,7 +229,7 @@ CompiledContract* CodeModel::contractByDocumentId(QString _documentId) const
 	return nullptr;
 }
 
-CompiledContract const& CodeModel::contract(QString _name) const
+CompiledContract const& CodeModel::contract(QString const& _name) const
 {
 	Guard l(x_contractMap);
 	CompiledContract* res = m_contractMap.value(_name);
@@ -238,7 +238,7 @@ CompiledContract const& CodeModel::contract(QString _name) const
 	return *res;
 }
 
-CompiledContract const* CodeModel::tryGetContract(QString _name) const
+CompiledContract const* CodeModel::tryGetContract(QString const& _name) const
 {
 	Guard l(x_contractMap);
 	CompiledContract* res = m_contractMap.value(_name);
