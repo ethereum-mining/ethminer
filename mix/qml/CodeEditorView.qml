@@ -71,6 +71,7 @@ Item {
 		editor.onIsCleanChanged.connect(function() {
 			isCleanChanged(editor.isClean, document.documentId);
 		});
+		editor.sourceName = document.documentId;
 	}
 
 	function getEditor(documentId) {
@@ -133,6 +134,22 @@ Item {
 		var editor = getEditor(docId);
 		if (editor)
 			editor.changeGeneration();
+	}
+
+	function goToCompilationError() {
+		for (var i = 0; i < openDocCount; i++)
+		{
+			var doc = editorListModel.get(i);
+			if (doc.isContract)
+			{
+				if (currentDocumentId !== doc.documentId)
+					loadDocument(doc);
+				var editor = editors.itemAt(i).item;
+				if (editor)
+					editor.goToCompilationError();
+				break;
+			}
+		}
 	}
 
 	Component.onCompleted: projectModel.codeEditor = codeEditorView;

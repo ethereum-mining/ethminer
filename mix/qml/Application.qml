@@ -398,4 +398,14 @@ ApplicationWindow {
 		enabled: !projectModel.isEmpty && codeModel.hasContract
 		onTriggered: projectModel.deployProject();
 	}
+
+	Action {
+		id: goToCompilationError
+		text: qsTr("Go to compilation error")
+		shortcut: "Ctrl+Shift+E"
+		onTriggered:
+		{
+			mainContent.codeEditor.goToCompilationError();
+		}
+	}
 }

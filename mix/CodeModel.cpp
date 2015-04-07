@@ -302,7 +302,7 @@ void CodeModel::runCompilationJob(int _jobId)
 		CompiledContract* contract = nullptr;
 		if (location && location->sourceName.get() && (contract = contractByDocumentId(QString::fromStdString(*location->sourceName))))
 			message = message.replace(QString::fromStdString(*location->sourceName), contract->contract()->name()); //substitute the location to match our contract names
-		compilationError(message);
+		compilationError(message, QString::fromStdString(*location->sourceName));
 	}
 	m_compiling = false;
 	emit stateChanged();
