@@ -27,6 +27,7 @@
 #include <map>
 #include <QString>
 #include <QVariantMap>
+#include <QFuture>
 #include "MachineStates.h"
 
 namespace dev
@@ -34,13 +35,14 @@ namespace dev
 namespace mix
 {
 
-class AppContext;
 class Web3Server;
 class RpcConnector;
 class QEther;
 class QDebugData;
 class MixClient;
 class QVariableDefinition;
+class CodeModel;
+struct SolidityType;
 
 /// Backend transaction config class
 struct TransactionSettings
@@ -62,7 +64,7 @@ struct TransactionSettings
 	/// Gas price
 	u256 gasPrice;
 	/// Mapping from contract function parameter name to value
-	QList<QVariableDefinition*> parameterValues;
+	QVariantMap parameterValues;
 	/// Standard contract url
 	QString stdContractUrl;
 	/// Sender
@@ -126,7 +128,7 @@ class ClientModel: public QObject
 	Q_OBJECT
 
 public:
-	ClientModel(AppContext* _context);
+	ClientModel();
 	~ClientModel();
 	/// @returns true if currently executing contract code
 	Q_PROPERTY(bool running MEMBER m_running NOTIFY runStateChanged)
@@ -142,6 +144,8 @@ public:
 	Q_INVOKABLE QString apiCall(QString const& _message);
 	/// Simulate mining. Creates a new block
 	Q_INVOKABLE void mine();
+	/// Get/set code model. Should be set from qml
+	Q_PROPERTY(CodeModel* codeModel MEMBER m_codeModel)
 
 public slots:
 	/// Setup state, run transaction sequence, show debugger for the last transaction
@@ -151,13 +155,14 @@ public slots:
 	Q_INVOKABLE void debugRecord(unsigned _index);
 	/// Show the debugger for an empty record
 	Q_INVOKABLE void emptyRecord();
+	/// Generate new adress
 	Q_INVOKABLE QString newAddress();
+	/// Encode a string to ABI parameter. Returns a hex string
+	Q_INVOKABLE QString encodeAbiString(QString _string);
 
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
 	void showDebugger();
-	/// Update UI with transaction run error.
-	void showDebugError(QString const& _error);
 
 signals:
 	/// Transaction execution started
@@ -198,10 +203,12 @@ private:
 	void onNewTransaction();
 	void onStateReset();
 	void showDebuggerForTransaction(ExecutionResult const& _t);
+	QVariant formatValue(SolidityType const& _type, dev::u256 const& _value);
+	QVariant formatStorageValue(SolidityType const& _type, std::map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
 
-	AppContext* m_context;
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;
+	QFuture<void> m_runFuture;
 	std::unique_ptr<MixClient> m_client;
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
@@ -209,6 +216,7 @@ private:
 	std::map<Address, QString> m_contractNames;
 	std::map<QString, Address> m_stdContractAddresses;
 	std::map<Address, QString> m_stdContractNames;
+	CodeModel* m_codeModel = nullptr;
 };
 
 }

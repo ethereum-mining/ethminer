@@ -44,6 +44,11 @@ WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, 
 	ldb::DB::Open(o, path, &m_db);
 }
 
+std::string WebThreeStubServer::web3_clientVersion()
+{
+	return m_web3.clientVersion();
+}
+
 dev::eth::Interface* WebThreeStubServer::client()
 {
 	return m_web3.ethereum();

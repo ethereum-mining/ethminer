@@ -44,11 +44,13 @@ struct NodeEntry: public Node
 	NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp);
 
 	unsigned const distance;	///< Node's distance (xor of _src as integer).
+
+	bool pending = true;		///< Node will be ignored until Pong is received
 };
 
 enum NodeTableEventType {
 	NodeEntryAdded,
-	NodeEntryRemoved
+	NodeEntryDropped
 };
 class NodeTable;
 class NodeTableEventHandler
@@ -101,11 +103,10 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
  * NodeTable accepts a port for UDP and will listen to the port on all available
  * interfaces.
  *
+ *
  * [Integration]
- * @todo restore nodes: affects refreshbuckets
  * @todo TCP endpoints
- * @todo makeRequired: don't try to evict node if node isRequired.
- * @todo makeRequired: exclude bucket from refresh if we have node as peer.
+ * @todo GC uniform 1/32 entires at 112500ms interval
  *
  * [Optimization]
  * @todo serialize evictions per-bucket
@@ -134,22 +135,23 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	using EvictionTimeout = std::pair<std::pair<NodeId, TimePoint>, NodeId>;	///< First NodeId may be evicted and replaced with second NodeId.
 
 public:
-	NodeTable(ba::io_service& _io, KeyPair _alias, uint16_t _udpPort = 30303);
+	/// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
+	NodeTable(ba::io_service& _io, KeyPair _alias, bi::address const& _udpAddress, uint16_t _udpPort = 30303);
 	~NodeTable();
 
 	/// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
 	static unsigned distance(NodeId const& _a, NodeId const& _b) { u512 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 
-	/// Set event handler for NodeEntryAdded and NodeEntryRemoved events.
+	/// Set event handler for NodeEntryAdded and NodeEntryDropped events.
 	void setEventHandler(NodeTableEventHandler* _handler) { m_nodeEventHandler.reset(_handler); }
 
-	/// Called by implementation which provided handler to process NodeEntryAdded/NodeEntryRemoved events. Events are coalesced by type whereby old events are ignored.
+	/// Called by implementation which provided handler to process NodeEntryAdded/NodeEntryDropped events. Events are coalesced by type whereby old events are ignored.
 	void processEvents();
 
-	/// Add node. Node will be pinged if it's not already known.
+	/// Add node. Node will be pinged and empty shared_ptr is returned if NodeId is uknown.
 	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp);
 
-	/// Add node. Node will be pinged if it's not already known.
+	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen.
 	std::shared_ptr<NodeEntry> addNode(Node const& _node);
 
 	/// To be called when node table is empty. Runs node discovery with m_node.id as the target in order to populate node-table.
@@ -193,7 +195,7 @@ private:
 	/* todo: replace boost::posix_time; change constants to upper camelcase */
 	boost::posix_time::milliseconds const c_evictionCheckInterval = boost::posix_time::milliseconds(75);	///< Interval at which eviction timeouts are checked.
 	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
-	std::chrono::seconds const c_bucketRefresh = std::chrono::seconds(3600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
+	std::chrono::milliseconds const c_bucketRefresh = std::chrono::milliseconds(112500);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
 
 	struct NodeBucket
 	{
@@ -225,7 +227,7 @@ private:
 	/// Asynchronously drops _leastSeen node if it doesn't reply and adds _new node, otherwise _new node is thrown away.
 	void evict(std::shared_ptr<NodeEntry> _leastSeen, std::shared_ptr<NodeEntry> _new);
 
-	/// Called whenever activity is received from an unknown node in order to maintain node table.
+	/// Called whenever activity is received from a node in order to maintain node table.
 	void noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _endpoint);
 
 	/// Used to drop node when timeout occurs or when evict() result is to keep previous node.
@@ -265,6 +267,9 @@ private:
 
 	Mutex x_evictions;										///< LOCK x_nodes first if both x_nodes and x_evictions locks are required.
 	std::deque<EvictionTimeout> m_evictions;					///< Eviction timeouts.
+	
+	Mutex x_pubkDiscoverPings;								///< LOCK x_nodes first if both x_nodes and x_pubkDiscoverPings locks are required.
+	std::map<bi::address, TimePoint> m_pubkDiscoverPings;		///< List of pending pings where node entry wasn't created due to unkown pubk.
 
 	ba::io_service& m_io;										///< Used by bucket refresh timer.
 	std::shared_ptr<NodeSocket> m_socket;						///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
@@ -282,6 +287,8 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
 		_out << n.address() << "\t" << n.distance << "\t" << n.endpoint.udp.address() << ":" << n.endpoint.udp.port() << std::endl;
 	return _out;
 }
+
+struct InvalidRLP: public Exception {};
 
 /**
  * Ping packet: Sent to check if node is alive.
@@ -311,13 +318,13 @@ struct PingNode: RLPXDatagram<PingNode>
 
 	static const uint8_t type = 1;
 
-	unsigned version = 1;
+	unsigned version = 0;
 	std::string ipAddress;
 	unsigned port;
 	unsigned expiration;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); ipAddress = r[0].toString(); port = r[1].toInt<unsigned>(); expiration = r[2].toInt<unsigned>(); }
+	void streamRLP(RLPStream& _s) const override;
+	void interpretRLP(bytesConstRef _bytes) override;
 };
 
 /**
@@ -411,8 +418,11 @@ struct Neighbours: RLPXDatagram<Neighbours>
 struct NodeTableWarn: public LogChannel { static const char* name() { return "!P!"; } static const int verbosity = 0; };
 struct NodeTableNote: public LogChannel { static const char* name() { return "*P*"; } static const int verbosity = 1; };
 struct NodeTableMessageSummary: public LogChannel { static const char* name() { return "-P-"; } static const int verbosity = 2; };
-struct NodeTableConnect: public LogChannel { static const char* name() { return "+P+"; } static const int verbosity = 10; };
 struct NodeTableMessageDetail: public LogChannel { static const char* name() { return "=P="; } static const int verbosity = 5; };
+struct NodeTableConnect: public LogChannel { static const char* name() { return "+P+"; } static const int verbosity = 10; };
+struct NodeTableEvent: public LogChannel { static const char* name() { return "+P+"; } static const int verbosity = 10; };
+struct NodeTableTimer: public LogChannel { static const char* name() { return "+P+"; } static const int verbosity = 10; };
+struct NodeTableUpdate: public LogChannel { static const char* name() { return "+P+"; } static const int verbosity = 10; };
 struct NodeTableTriviaSummary: public LogChannel { static const char* name() { return "-P-"; } static const int verbosity = 10; };
 struct NodeTableTriviaDetail: public LogChannel { static const char* name() { return "=P="; } static const int verbosity = 11; };
 struct NodeTableAllDetail: public LogChannel { static const char* name() { return "=P="; } static const int verbosity = 13; };

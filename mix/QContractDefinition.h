@@ -39,8 +39,7 @@ class QContractDefinition: public QBasicNodeDefinition
 	Q_PROPERTY(dev::mix::QFunctionDefinition* constructor READ constructor CONSTANT)
 
 public:
-	QContractDefinition() {}
-	QContractDefinition(solidity::ContractDefinition const* _contract);
+	QContractDefinition(QObject* _parent, solidity::ContractDefinition const* _contract);
 	/// Get all the functions of the contract.
 	QQmlListProperty<QFunctionDefinition> functions() const { return QQmlListProperty<QFunctionDefinition>(const_cast<QContractDefinition*>(this), const_cast<QContractDefinition*>(this)->m_functions); }
 	/// Get the constructor of the contract.

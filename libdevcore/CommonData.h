@@ -35,21 +35,22 @@ namespace dev
 
 // String conversion functions, mainly to/from hex/nibble/byte representations.
 
-enum class ThrowType
+enum class WhenError
 {
-	NoThrow = 0,
+	DontThrow = 0,
 	Throw = 1,
 };
 
 /// Convert a series of bytes to the corresponding string of hex duplets.
-/// @param _w specifies the width of each of the elements. Defaults to two - enough to represent a byte.
+/// @param _w specifies the width of the first of the elements. Defaults to two - enough to represent a byte.
 /// @example toHex("A\x69") == "4169"
 template <class _T>
 std::string toHex(_T const& _data, int _w = 2)
 {
 	std::ostringstream ret;
+	unsigned ii = 0;
 	for (auto i: _data)
-		ret << std::hex << std::setfill('0') << std::setw(_w) << (int)(typename std::make_unsigned<decltype(i)>::type)i;
+		ret << std::hex << std::setfill('0') << std::setw(ii++ ? 2 : _w) << (int)(typename std::make_unsigned<decltype(i)>::type)i;
 	return ret.str();
 }
 
@@ -59,8 +60,8 @@ int fromHex(char _i);
 
 /// Converts a (printable) ASCII hex string into the corresponding byte stream.
 /// @example fromHex("41626261") == asBytes("Abba")
-/// If _throw = ThrowType::NoThrow, it replaces bad hex characters with 0's, otherwise it will throw an exception.
-bytes fromHex(std::string const& _s, ThrowType _throw = ThrowType::NoThrow);
+/// If _throw = ThrowType::DontThrow, it replaces bad hex characters with 0's, otherwise it will throw an exception.
+bytes fromHex(std::string const& _s, WhenError _throw = WhenError::DontThrow);
 
 #if 0
 std::string toBase58(bytesConstRef _data);
@@ -70,6 +71,13 @@ bytes fromBase58(std::string const& _s);
 /// Converts byte array to a string containing the same (binary) data. Unless
 /// the byte array happens to contain ASCII data, this won't be printable.
 inline std::string asString(bytes const& _b)
+{
+	return std::string((char const*)_b.data(), (char const*)(_b.data() + _b.size()));
+}
+
+/// Converts byte array ref to a string containing the same (binary) data. Unless
+/// the byte array happens to contain ASCII data, this won't be printable.
+inline std::string asString(bytesConstRef _b)
 {
 	return std::string((char const*)_b.data(), (char const*)(_b.data() + _b.size()));
 }

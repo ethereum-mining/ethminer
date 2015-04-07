@@ -55,7 +55,7 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 	{
 	case StatusPacket:
 	{
-		auto protocolVersion = _r[1].toInt<unsigned>();
+		auto protocolVersion = _r[0].toInt<unsigned>();
 
 		clogS(NetMessageSummary) << "Status: " << protocolVersion;
 

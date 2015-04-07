@@ -37,6 +37,15 @@ namespace dev
 namespace eth
 {
 
+using TransactionHashes = h256s;
+using UncleHashes = h256s;
+
+enum class Reaping
+{
+	Automatic,
+	Manual
+};
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -52,25 +61,28 @@ public:
 	// [TRANSACTION API]
 
 	/// Submits the given message-call transaction.
-	virtual void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
+	virtual void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
 
 	/// Submits a new contract-creation transaction.
 	/// @returns the new contract's address (assuming it all goes through).
-	virtual Address transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
-
-	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
-	virtual void inject(bytesConstRef _rlp) = 0;
+	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
 
 	/// Blocks until all pending transactions have been processed.
 	virtual void flushTransactions() = 0;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
+	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber) = 0;
+	ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) { return call(_secret, _value, _dest, _data, _gas, _gasPrice, m_default); }
+
+	/// Does the given creation. Nothing is recorded into the state.
+	/// @returns the pair of the Address of the created contract together with its code.
+	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber) = 0;
+	ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) { return create(_secret, _value, _data, _gas, _gasPrice, m_default); }
 
 	// [STATE-QUERY API]
 
 	int getDefault() const { return m_default; }
-	void setDefault(int _block) { m_default = _block; }
+	void setDefault(BlockNumber _block) { m_default = _block; }
 
 	u256 balanceAt(Address _a) const { return balanceAt(_a, m_default); }
 	u256 countAt(Address _a) const { return countAt(_a, m_default); }
@@ -78,11 +90,11 @@ public:
 	bytes codeAt(Address _a) const { return codeAt(_a, m_default); }
 	std::map<u256, u256> storageAt(Address _a) const { return storageAt(_a, m_default); }
 
-	virtual u256 balanceAt(Address _a, int _block) const = 0;
-	virtual u256 countAt(Address _a, int _block) const = 0;
-	virtual u256 stateAt(Address _a, u256 _l, int _block) const = 0;
-	virtual bytes codeAt(Address _a, int _block) const = 0;
-	virtual std::map<u256, u256> storageAt(Address _a, int _block) const = 0;
+	virtual u256 balanceAt(Address _a, BlockNumber _block) const = 0;
+	virtual u256 countAt(Address _a, BlockNumber _block) const = 0;
+	virtual u256 stateAt(Address _a, u256 _l, BlockNumber _block) const = 0;
+	virtual bytes codeAt(Address _a, BlockNumber _block) const = 0;
+	virtual std::map<u256, u256> storageAt(Address _a, BlockNumber _block) const = 0;
 
 	// [LOGS API]
 	
@@ -90,9 +102,11 @@ public:
 	virtual LocalisedLogEntries logs(LogFilter const& _filter) const = 0;
 
 	/// Install, uninstall and query watches.
-	virtual unsigned installWatch(LogFilter const& _filter) = 0;
-	virtual unsigned installWatch(h256 _filterId) = 0;
-	virtual void uninstallWatch(unsigned _watchId) = 0;
+	virtual unsigned installWatch(LogFilter const& _filter, Reaping _r = Reaping::Automatic) = 0;
+	virtual unsigned installWatch(h256 _filterId, Reaping _r = Reaping::Automatic) = 0;
+	virtual bool uninstallWatch(unsigned _watchId) = 0;
+	LocalisedLogEntries peekWatchSafe(unsigned _watchId) const { try { return peekWatch(_watchId); } catch (...) { return LocalisedLogEntries(); } }
+	LocalisedLogEntries checkWatchSafe(unsigned _watchId) { try { return checkWatch(_watchId); } catch (...) { return LocalisedLogEntries(); } }
 	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const = 0;
 	virtual LocalisedLogEntries checkWatch(unsigned _watchId) = 0;
 
@@ -101,10 +115,14 @@ public:
 	virtual h256 hashFromNumber(unsigned _number) const = 0;
 	virtual BlockInfo blockInfo(h256 _hash) const = 0;
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
+	virtual Transaction transaction(h256 _transactionHash) const = 0;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const = 0;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const = 0;
+	virtual UncleHashes uncleHashes(h256 _blockHash) const = 0;
 	virtual unsigned transactionCount(h256 _blockHash) const = 0;
 	virtual unsigned uncleCount(h256 _blockHash) const = 0;
+	virtual Transactions transactions(h256 _blockHash) const = 0;
+	virtual TransactionHashes transactionHashes(h256 _blockHash) const = 0;
 
 	// [EXTRA API]:
 
@@ -118,11 +136,12 @@ public:
 	/// Differences between transactions.
 	StateDiff diff(unsigned _txi) const { return diff(_txi, m_default); }
 	virtual StateDiff diff(unsigned _txi, h256 _block) const = 0;
-	virtual StateDiff diff(unsigned _txi, int _block) const = 0;
+	virtual StateDiff diff(unsigned _txi, BlockNumber _block) const = 0;
 
 	/// Get a list of all active addresses.
+	/// NOTE: This only works when compiled with ETH_FATDB; otherwise will throw InterfaceNotSupported.
 	virtual Addresses addresses() const { return addresses(m_default); }
-	virtual Addresses addresses(int _block) const = 0;
+	virtual Addresses addresses(BlockNumber _block) const = 0;
 
 	/// Get the fee associated for a transaction with the given data.
 	template <class T> static bigint txGas(T const& _data, u256 _gas = 0) { bigint ret = c_txGas + _gas; for (auto i: _data) ret += i ? c_txDataNonZeroGas : c_txDataZeroGas; return ret; }
@@ -160,7 +179,7 @@ public:
 	virtual MineProgress miningProgress() const = 0;
 
 protected:
-	int m_default = -1;
+	int m_default = PendingBlock;
 };
 
 class Watch;

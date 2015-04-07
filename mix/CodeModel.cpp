@@ -25,7 +25,11 @@
 #include <QDebug>
 #include <QApplication>
 #include <QtQml>
+#include <libdevcore/Common.h>
 #include <libevmcore/SourceLocation.h>
+#include <libsolidity/AST.h>
+#include <libsolidity/Types.h>
+#include <libsolidity/ASTVisitor.h>
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libsolidity/InterfaceHandler.h>
@@ -43,6 +47,68 @@ using namespace dev::mix;
 const std::set<std::string> c_predefinedContracts =
 	{ "Config", "Coin", "CoinReg", "coin", "service", "owned", "mortal", "NameReg", "named", "std", "configUser" };
 
+
+namespace
+{
+using namespace dev::solidity;
+class CollectDeclarationsVisitor: public ASTConstVisitor
+{
+public:
+	CollectDeclarationsVisitor(QHash<LocationPair, QString>* _functions, QHash<LocationPair, SolidityDeclaration>* _locals):
+	m_functions(_functions), m_locals(_locals), m_functionScope(false) {}
+private:
+	LocationPair nodeLocation(ASTNode const& _node)
+	{
+		return LocationPair(_node.getLocation().start, _node.getLocation().end);
+	}
+
+	virtual bool visit(FunctionDefinition const& _node)
+	{
+		m_functions->insert(nodeLocation(_node), QString::fromStdString(_node.getName()));
+		m_functionScope = true;
+		return true;
+	}
+
+	virtual void endVisit(FunctionDefinition const&)
+	{
+		m_functionScope = false;
+	}
+
+	virtual bool visit(VariableDeclaration const& _node)
+	{
+		SolidityDeclaration decl;
+		decl.type = CodeModel::nodeType(_node.getType().get());
+		decl.name = QString::fromStdString(_node.getName());
+		decl.slot = 0;
+		decl.offset = 0;
+		if (m_functionScope)
+			m_locals->insert(nodeLocation(_node), decl);
+		return true;
+	}
+
+private:
+	QHash<LocationPair, QString>* m_functions;
+	QHash<LocationPair, SolidityDeclaration>* m_locals;
+	bool m_functionScope;
+};
+
+QHash<unsigned, SolidityDeclarations> collectStorage(dev::solidity::ContractDefinition const& _contract)
+{
+	QHash<unsigned, SolidityDeclarations> result;
+	dev::solidity::ContractType contractType(_contract);
+
+	for (auto v : contractType.getStateVariables())
+	{
+		dev::solidity::VariableDeclaration const* declaration = std::get<0>(v);
+		dev::u256 slot = std::get<1>(v);
+		unsigned offset = std::get<2>(v);
+		result[static_cast<unsigned>(slot)].push_back(SolidityDeclaration { QString::fromStdString(declaration->getName()), CodeModel::nodeType(declaration->getType().get()), slot, offset });
+	}
+	return result;
+}
+
+} //namespace
+
 void BackgroundWorker::queueCodeChange(int _jobId)
 {
 	m_model->runCompilationJob(_jobId);
@@ -52,18 +118,25 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	QObject(nullptr),
 	m_sourceHash(qHash(_source))
 {
-	auto const& contractDefinition = _compiler.getContractDefinition(_contractName.toStdString());
-	m_contract.reset(new QContractDefinition(&contractDefinition));
+	std::string name = _contractName.toStdString();
+	ContractDefinition const& contractDefinition = _compiler.getContractDefinition(name);
+	m_contract.reset(new QContractDefinition(nullptr, &contractDefinition));
 	QQmlEngine::setObjectOwnership(m_contract.get(), QQmlEngine::CppOwnership);
+	m_contract->moveToThread(QApplication::instance()->thread());
 	m_bytes = _compiler.getBytecode(_contractName.toStdString());
-	m_assemblyItems = _compiler.getRuntimeAssemblyItems(_contractName.toStdString());
-	m_constructorAssemblyItems = _compiler.getAssemblyItems(_contractName.toStdString());
+
 	dev::solidity::InterfaceHandler interfaceHandler;
 	m_contractInterface = QString::fromStdString(*interfaceHandler.getABIInterface(contractDefinition));
 	if (m_contractInterface.isEmpty())
 		m_contractInterface = "[]";
 	if (contractDefinition.getLocation().sourceName.get())
 		m_documentId = QString::fromStdString(*contractDefinition.getLocation().sourceName);
+
+	CollectDeclarationsVisitor visitor(&m_functions, &m_locals);
+	m_storage = collectStorage(contractDefinition);
+	contractDefinition.accept(visitor);
+	m_assemblyItems = _compiler.getRuntimeAssemblyItems(name);
+	m_constructorAssemblyItems = _compiler.getAssemblyItems(name);
 }
 
 QString CompiledContract::codeHex() const
@@ -71,8 +144,7 @@ QString CompiledContract::codeHex() const
 	return QString::fromStdString(toJS(m_bytes));
 }
 
-CodeModel::CodeModel(QObject* _parent):
-	QObject(_parent),
+CodeModel::CodeModel():
 	m_compiling(false),
 	m_codeHighlighterSettings(new CodeHighlighterSettings()),
 	m_backgroundWorker(this),
@@ -121,12 +193,14 @@ void CodeModel::reset(QVariantMap const& _documents)
 
 void CodeModel::registerCodeChange(QString const& _documentId, QString const& _code)
 {
+	CompiledContract* contract = contractByDocumentId(_documentId);
+	if (contract != nullptr && contract->m_sourceHash == qHash(_code))
 	{
-		Guard l(x_contractMap);
-		CompiledContract* contract = m_contractMap.value(_documentId);
-		if (contract != nullptr && contract->m_sourceHash == qHash(_code))
-			return;
+		emit compilationComplete();
+		return;
+	}
 
+	{
 		Guard pl(x_pendingContracts);
 		m_pendingContracts[_documentId] = _code;
 	}
@@ -146,7 +220,7 @@ QVariantMap CodeModel::contracts() const
 	return result;
 }
 
-CompiledContract* CodeModel::contractByDocumentId(QString _documentId) const
+CompiledContract* CodeModel::contractByDocumentId(QString const& _documentId) const
 {
 	Guard l(x_contractMap);
 	for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
@@ -155,13 +229,20 @@ CompiledContract* CodeModel::contractByDocumentId(QString _documentId) const
 	return nullptr;
 }
 
-CompiledContract const& CodeModel::contract(QString _name) const
+CompiledContract const& CodeModel::contract(QString const& _name) const
 {
 	Guard l(x_contractMap);
 	CompiledContract* res = m_contractMap.value(_name);
 	if (res == nullptr)
 		BOOST_THROW_EXCEPTION(dev::Exception() << dev::errinfo_comment("Contract not found: " + _name.toStdString()));
 	return *res;
+}
+
+CompiledContract const* CodeModel::tryGetContract(QString const& _name) const
+{
+	Guard l(x_contractMap);
+	CompiledContract* res = m_contractMap.value(_name);
+	return res;
 }
 
 void CodeModel::releaseContracts()
@@ -196,14 +277,22 @@ void CodeModel::runCompilationJob(int _jobId)
 				if (c_predefinedContracts.count(n) != 0)
 					continue;
 				QString name = QString::fromStdString(n);
-				auto sourceIter = m_pendingContracts.find(name);
+				QString sourceName = QString::fromStdString(*cs.getContractDefinition(n).getLocation().sourceName);
+				auto sourceIter = m_pendingContracts.find(sourceName);
 				QString source = sourceIter != m_pendingContracts.end() ? sourceIter->second : QString();
 				CompiledContract* contract = new CompiledContract(cs, name, source);
 				QQmlEngine::setObjectOwnership(contract, QQmlEngine::CppOwnership);
 				result[name] = contract;
-				CompiledContract* prevContract = m_contractMap.value(name);
+				CompiledContract* prevContract = nullptr;
+				for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
+					if (c.value()->documentId() == contract->documentId())
+						prevContract = c.value();
 				if (prevContract != nullptr && prevContract->contractInterface() != result[name]->contractInterface())
 					emit contractInterfaceChanged(name);
+				if (prevContract == nullptr)
+					emit newContractCompiled(name);
+				else if (prevContract->contract()->name() != name)
+					emit contractRenamed(contract->documentId(), prevContract->contract()->name(), name);
 			}
 			releaseContracts();
 			m_contractMap.swap(result);
@@ -249,5 +338,81 @@ dev::bytes const& CodeModel::getStdContractCode(const QString& _contractName, co
 		m_compiledContracts.insert(std::make_pair(QString::fromStdString(name), std::move(code)));
 	}
 	return m_compiledContracts.at(_contractName);
+}
+
+SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
+{
+	SolidityType r { SolidityType::Type::UnsignedInteger, 32, 1, false, false, QString::fromStdString(_type->toString()), std::vector<SolidityDeclaration>(), std::vector<QString>() };
+	if (!_type)
+		return r;
+	switch (_type->getCategory())
+	{
+	case Type::Category::Integer:
+		{
+			IntegerType const* it = dynamic_cast<IntegerType const*>(_type);
+			r.size = it->getNumBits() / 8;
+			r.type = it->isAddress() ? SolidityType::Type::Address : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
+		}
+		break;
+	case Type::Category::Bool:
+		r.type = SolidityType::Type::Bool;
+		break;
+	case Type::Category::FixedBytes:
+		{
+			FixedBytesType const* b = dynamic_cast<FixedBytesType const*>(_type);
+			r.type = SolidityType::Type::Bytes;
+			r.size = static_cast<unsigned>(b->getNumBytes());
+		}
+		break;
+	case Type::Category::Contract:
+		r.type = SolidityType::Type::Address;
+		break;
+	case Type::Category::Array:
+		{
+			ArrayType const* array = dynamic_cast<ArrayType const*>(_type);
+			if (array->isByteArray())
+				r.type = SolidityType::Type::Bytes;
+			else
+			{
+				SolidityType elementType = nodeType(array->getBaseType().get());
+				elementType.name = r.name;
+				r = elementType;
+			}
+			r.count = static_cast<unsigned>(array->getLength());
+			r.dynamicSize = _type->isDynamicallySized();
+			r.array = true;
+		}
+		break;
+	case Type::Category::Enum:
+		{
+			r.type = SolidityType::Type::Enum;
+			EnumType const* e = dynamic_cast<EnumType const*>(_type);
+			for(auto const& enumValue: e->getEnumDefinition().getMembers())
+				r.enumNames.push_back(QString::fromStdString(enumValue->getName()));
+		}
+		break;
+	case Type::Category::Struct:
+		{
+			r.type = SolidityType::Type::Struct;
+			StructType const* s = dynamic_cast<StructType const*>(_type);
+			for(auto const& structMember: s->getMembers())
+			{
+				auto slotAndOffset = s->getStorageOffsetsOfMember(structMember.first);
+				r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.first), nodeType(structMember.second.get()), slotAndOffset.first, slotAndOffset.second });
+			}
+		}
+		break;
+	case Type::Category::Function:
+	case Type::Category::IntegerConstant:
+	case Type::Category::Magic:
+	case Type::Category::Mapping:
+	case Type::Category::Modifier:
+	case Type::Category::Real:
+	case Type::Category::TypeType:
+	case Type::Category::Void:
+	default:
+		break;
+	}
+	return r;
 }
 

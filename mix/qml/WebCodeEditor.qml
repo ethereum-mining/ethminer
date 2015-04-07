@@ -4,27 +4,34 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
+import org.ethereum.qml.Clipboard 1.0
+import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Item {
-	signal editorTextChanged;
-	signal breakpointsChanged;
+	signal breakpointsChanged
+	signal editorTextChanged
+	signal loadComplete
+	property bool isClean: true
 	property string currentText: ""
 	property string currentMode: ""
 	property bool initialized: false
+	property bool unloaded: false
 	property var currentBreakpoints: [];
 
 	function setText(text, mode) {
 		currentText = text;
-		currentMode = mode;
-		if (initialized) {
+		if (mode !== undefined)
+			currentMode = mode;
+		if (initialized && editorBrowser) {
 			editorBrowser.runJavaScript("setTextBase64(\"" + Qt.btoa(text) + "\")");
-			editorBrowser.runJavaScript("setMode(\"" + mode + "\")");
+			editorBrowser.runJavaScript("setMode(\"" + currentMode + "\")");
 		}
 		setFocus();
 	}
 
 	function setFocus() {
-		editorBrowser.forceActiveFocus();
+		if (editorBrowser)
+			editorBrowser.forceActiveFocus();
 	}
 
 	function getText() {
@@ -32,14 +39,20 @@ Item {
 	}
 
 	function syncClipboard() {
-		if (Qt.platform.os == "osx") {
-			var text = appContext.clipboard;
+		if (Qt.platform.os == "osx" && editorBrowser) {
+			var text = clipboard.text;
 			editorBrowser.runJavaScript("setClipboardBase64(\"" + Qt.btoa(text) + "\")");
 		}
 	}
 
 	function highlightExecution(location) {
-		editorBrowser.runJavaScript("highlightExecution(" + location.start + "," + location.end + ")");
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("highlightExecution(" + location.start + "," + location.end + ")");
+	}
+
+	function showWarning(content) {
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("showWarning('" + content + "')");
 	}
 
 	function getBreakpoints() {
@@ -47,11 +60,22 @@ Item {
 	}
 
 	function toggleBreakpoint() {
-		editorBrowser.runJavaScript("toggleBreakpoint()");
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("toggleBreakpoint()");
+	}
+
+	function changeGeneration() {
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("changeGeneration()", function(result) {});
+	}
+
+	Clipboard
+	{
+		id: clipboard
 	}
 
 	Connections {
-		target: appContext
+		target: clipboard
 		onClipboardChanged:	syncClipboard()
 	}
 
@@ -67,15 +91,45 @@ Item {
 			console.log("editor: " + sourceID + ":" + lineNumber + ":" + message);
 		}
 
+		Component.onDestruction:
+		{
+			codeModel.onCompilationComplete.disconnect(compilationComplete);
+			codeModel.onCompilationError.disconnect(compilationError);
+		}
+
 		onLoadingChanged:
 		{
-			if (!loading) {
+			if (!loading && editorBrowser) {
 				initialized = true;
 				setText(currentText, currentMode);
 				runJavaScript("getTextChanged()", function(result) { });
 				pollTimer.running = true;
 				syncClipboard();
+				if (currentMode === "solidity")
+				{
+					codeModel.onCompilationComplete.connect(compilationComplete);
+					codeModel.onCompilationError.connect(compilationError);
+				}
+				parent.changeGeneration();
 			}
+		}
+
+
+		function compilationComplete()
+		{
+			if (editorBrowser)
+				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
+		}
+
+		function compilationError(error)
+		{
+			if (!editorBrowser || !error)
+				return;
+			var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);
+			if (errorInfo.line && errorInfo.column)
+				editorBrowser.runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
+			else
+				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
 		}
 
 		Timer
@@ -85,8 +139,10 @@ Item {
 			running: false
 			repeat: true
 			onTriggered: {
+				if (!editorBrowser)
+					return;
 				editorBrowser.runJavaScript("getTextChanged()", function(result) {
-					if (result === true) {
+					if (result === true && editorBrowser) {
 						editorBrowser.runJavaScript("getText()" , function(textValue) {
 							currentText = textValue;
 							editorTextChanged();
@@ -94,7 +150,7 @@ Item {
 					}
 				});
 				editorBrowser.runJavaScript("getBreakpointsChanged()", function(result) {
-					if (result === true) {
+					if (result === true && editorBrowser) {
 						editorBrowser.runJavaScript("getBreakpoints()" , function(bp) {
 							if (currentBreakpoints !== bp) {
 								currentBreakpoints = bp;
@@ -103,7 +159,9 @@ Item {
 						});
 					}
 				});
-
+				editorBrowser.runJavaScript("isClean()", function(result) {
+					isClean = result;
+				});
 			}
 		}
 	}

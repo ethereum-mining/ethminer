@@ -6,13 +6,9 @@
 #include <sstream>
 
 #include "preprocessor/llvm_includes_start.h"
-#include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IntrinsicInst.h>
-#include <llvm/IR/MDBuilder.h>
-#include <llvm/PassManager.h>
-#include <llvm/Transforms/Scalar.h>
 #include "preprocessor/llvm_includes_end.h"
 
 #include "Instruction.h"
@@ -93,7 +89,7 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 	}
 }
 
-llvm::BasicBlock* Compiler::getJumpTableBlock()
+llvm::BasicBlock* Compiler::getJumpTableBlock(RuntimeManager& _runtimeManager)
 {
 	if (!m_jumpTableBlock)
 	{
@@ -101,7 +97,7 @@ llvm::BasicBlock* Compiler::getJumpTableBlock()
 		InsertPointGuard g{m_builder};
 		m_builder.SetInsertPoint(m_jumpTableBlock->llvm());
 		auto dest = m_builder.CreatePHI(Type::Word, 8, "target");
-		auto switchInstr = m_builder.CreateSwitch(dest, getBadJumpBlock());
+		auto switchInstr = m_builder.CreateSwitch(dest, getBadJumpBlock(_runtimeManager));
 		for (auto&& p : m_basicBlocks)
 		{
 			if (p.second.isJumpDest())
@@ -111,21 +107,20 @@ llvm::BasicBlock* Compiler::getJumpTableBlock()
 	return m_jumpTableBlock->llvm();
 }
 
-llvm::BasicBlock* Compiler::getBadJumpBlock()
+llvm::BasicBlock* Compiler::getBadJumpBlock(RuntimeManager& _runtimeManager)
 {
 	if (!m_badJumpBlock)
 	{
 		m_badJumpBlock.reset(new BasicBlock("BadJump", m_mainFunc, m_builder, true));
 		InsertPointGuard g{m_builder};
 		m_builder.SetInsertPoint(m_badJumpBlock->llvm());
-		m_builder.CreateRet(Constant::get(ReturnCode::BadJumpDestination));
+		_runtimeManager.exit(ReturnCode::BadJumpDestination);
 	}
 	return m_badJumpBlock->llvm();
 }
 
 std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_iterator _end, std::string const& _id)
 {
-	auto compilationStartTime = std::chrono::high_resolution_clock::now();
 	auto module = std::unique_ptr<llvm::Module>(new llvm::Module(_id, m_builder.getContext()));
 
 	// Create main function
@@ -136,6 +131,17 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	// Create entry basic block
 	auto entryBlock = llvm::BasicBlock::Create(m_builder.getContext(), {}, m_mainFunc);
 	m_builder.SetInsertPoint(entryBlock);
+
+	createBasicBlocks(_begin, _end);
+
+	// Init runtime structures.
+	RuntimeManager runtimeManager(m_builder, _begin, _end);
+	GasMeter gasMeter(m_builder, runtimeManager);
+	Memory memory(runtimeManager, gasMeter);
+	Ext ext(runtimeManager, memory);
+	Stack stack(m_builder, runtimeManager);
+	runtimeManager.setStack(stack); // Runtime Manager will free stack memory
+	Arith256 arith(m_builder);
 
 	auto jmpBufWords = m_builder.CreateAlloca(Type::BytePtr, m_builder.getInt64(3), "jmpBuf.words");
 	auto frameaddress = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::frameaddress);
@@ -149,24 +155,14 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto jmpBuf = m_builder.CreateBitCast(jmpBufWords, Type::BytePtr, "jmpBuf");
 	auto r = m_builder.CreateCall(setjmp, jmpBuf);
 	auto normalFlow = m_builder.CreateICmpEQ(r, m_builder.getInt32(0));
-
-	createBasicBlocks(_begin, _end);
-
-	// Init runtime structures.
-	RuntimeManager runtimeManager(m_builder, jmpBuf, _begin, _end);
-	GasMeter gasMeter(m_builder, runtimeManager);
-	Memory memory(runtimeManager, gasMeter);
-	Ext ext(runtimeManager, memory);
-	Stack stack(m_builder, runtimeManager);
-	Arith256 arith(m_builder);
+	runtimeManager.setJmpBuf(jmpBuf);
 
 	// TODO: Create Stop basic block on demand
 	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
 	auto abortBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Abort", m_mainFunc);
 
 	auto firstBB = m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.begin()->second.llvm();
-	auto expectTrue = llvm::MDBuilder{m_builder.getContext()}.createBranchWeights(1, 0);
-	m_builder.CreateCondBr(normalFlow, firstBB, abortBB, expectTrue);
+	m_builder.CreateCondBr(normalFlow, firstBB, abortBB, Type::expectTrue);
 
 	for (auto basicBlockPairIt = m_basicBlocks.begin(); basicBlockPairIt != m_basicBlocks.end(); ++basicBlockPairIt)
 	{
@@ -180,10 +176,10 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	// Code for special blocks:
 	// TODO: move to separate function.
 	m_builder.SetInsertPoint(m_stopBB);
-	m_builder.CreateRet(Constant::get(ReturnCode::Stop));
+	runtimeManager.exit(ReturnCode::Stop);
 
 	m_builder.SetInsertPoint(abortBB);
-	m_builder.CreateRet(Constant::get(ReturnCode::OutOfGas));
+	runtimeManager.exit(ReturnCode::OutOfGas);
 
 	removeDeadBlocks();
 
@@ -230,16 +226,6 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 
 	dumpCFGifRequired("blocks-sync.dot");
 
-	if (m_jumpTableBlock && m_options.rewriteSwitchToBranches)
-	{
-		llvm::FunctionPassManager fpManager(module.get());
-		fpManager.add(llvm::createLowerSwitchPass());
-		fpManager.doInitialization();
-		fpManager.run(*m_mainFunc);
-	}
-
-	auto compilationEndTime = std::chrono::high_resolution_clock::now();
-	clog(JIT) << "JIT: " << std::chrono::duration_cast<std::chrono::milliseconds>(compilationEndTime - compilationStartTime).count();
 	return module;
 }
 
@@ -516,7 +502,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			auto val = stack.pop();
 			static_cast<void>(val);
 			// Generate a dummy use of val to make sure that a get(0) will be emitted at this point,
-			// so that StackTooSmall will be thrown
+			// so that StackUnderflow will be thrown
 			// m_builder.CreateICmpEQ(val, val, "dummy");
 			break;
 		}
@@ -600,7 +586,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 				auto&& c = constant->getValue();
 				auto targetIdx = c.getActiveBits() <= 64 ? c.getZExtValue() : -1;
 				auto it = m_basicBlocks.find(targetIdx);
-				targetBlock = (it != m_basicBlocks.end() && it->second.isJumpDest()) ? it->second.llvm() : getBadJumpBlock();
+				targetBlock = (it != m_basicBlocks.end() && it->second.isJumpDest()) ? it->second.llvm() : getBadJumpBlock(_runtimeManager);
 			}
 
 			// TODO: Improve; check for constants
@@ -613,7 +599,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 				else
 				{
 					_basicBlock.setJumpTarget(target);
-					m_builder.CreateBr(getJumpTableBlock());
+					m_builder.CreateBr(getJumpTableBlock(_runtimeManager));
 				}
 			}
 			else // JUMPI
@@ -629,7 +615,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 				else
 				{
 					_basicBlock.setJumpTarget(target);
-					m_builder.CreateCondBr(cond, getJumpTableBlock(), _nextBasicBlock);
+					m_builder.CreateCondBr(cond, getJumpTableBlock(_runtimeManager), _nextBasicBlock);
 				}
 			}
 			break;
@@ -769,7 +755,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 		{
-			auto callGas256 = stack.pop();
+			auto callGas = stack.pop();
 			auto codeAddress = stack.pop();
 			auto value = stack.pop();
 			auto inOff = stack.pop();
@@ -787,13 +773,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			if (inst == Instruction::CALLCODE)
 				receiveAddress = _runtimeManager.get(RuntimeData::Address);
 
-			auto gas = _runtimeManager.getGas();
-			_gasMeter.count(callGas256);
-			auto callGas = m_builder.CreateTrunc(callGas256, Type::Gas);
-			auto gasLeft = m_builder.CreateNSWSub(gas, callGas);
-			_runtimeManager.setGas(callGas);
-			auto ret = _ext.call(receiveAddress, value, inOff, inSize, outOff, outSize, codeAddress);
-			_gasMeter.giveBack(gasLeft);
+			auto ret = _ext.call(callGas, receiveAddress, value, inOff, inSize, outOff, outSize, codeAddress);
+			_gasMeter.count(m_builder.getInt64(0), _runtimeManager.getJmpBuf(), _runtimeManager.getGasPtr());
 			stack.push(ret);
 			break;
 		}
@@ -806,14 +787,14 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			_memory.require(index, size);
 			_runtimeManager.registerReturnData(index, size);
 
-			m_builder.CreateRet(Constant::get(ReturnCode::Return));
+			_runtimeManager.exit(ReturnCode::Return);
 			break;
 		}
 
 		case Instruction::SUICIDE:
 		{
 			_runtimeManager.registerSuicide(stack.pop());
-			m_builder.CreateRet(Constant::get(ReturnCode::Suicide));
+			_runtimeManager.exit(ReturnCode::Suicide);
 			break;
 		}
 
@@ -857,6 +838,9 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 	// Block may have no terminator if the next instruction is a jump destination.
 	if (!_basicBlock.llvm()->getTerminator())
 		m_builder.CreateBr(_nextBasicBlock);
+
+	m_builder.SetInsertPoint(_basicBlock.llvm()->getFirstNonPHI());
+	_runtimeManager.checkStackLimit(_basicBlock.localStack().getMaxSize(), _basicBlock.localStack().getDiff());
 }
 
 

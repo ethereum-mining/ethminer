@@ -41,7 +41,7 @@
 namespace dev
 {
 
-namespace test { class ImportTest; }
+namespace test { class ImportTest; class StateLoader; }
 
 namespace eth
 {
@@ -54,7 +54,12 @@ struct StateTrace: public LogChannel { static const char* name() { return "=S=";
 struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
 struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
 
-enum class BaseState { Empty, CanonGenesis };
+enum class BaseState
+{
+	PreExisting,
+	Empty,
+	CanonGenesis
+};
 
 enum class TransactionPriority
 {
@@ -68,7 +73,8 @@ enum class TransactionPriority
 class GasPricer
 {
 public:
-	GasPricer() {}
+	GasPricer() = default;
+	virtual ~GasPricer() = default;
 
 	virtual u256 ask(State const&) const = 0;
 	virtual u256 bid(TransactionPriority _p = TransactionPriority::Medium) const = 0;
@@ -83,6 +89,12 @@ protected:
 	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return 10 * szabo; }
 };
 
+enum class Permanence
+{
+	Reverted,
+	Committed
+};
+
 /**
  * @brief Model of the current state of the ledger.
  * Maintains current ledger (m_current) as a fast hash-map. This is hashed only when required (i.e. to create or verify a block).
@@ -92,11 +104,19 @@ class State
 {
 	friend class ExtVM;
 	friend class dev::test::ImportTest;
+	friend class dev::test::StateLoader;
 	friend class Executive;
 
 public:
-	/// Construct state object.
-	State(Address _coinbaseAddress = Address(), OverlayDB const& _db = OverlayDB(), BaseState _bs = BaseState::CanonGenesis);
+	/// Default constructor; creates with a blank database prepopulated with the genesis block.
+	State(): State(OverlayDB(), BaseState::Empty) {}
+
+	/// Basic state object from database.
+	/// Use the default when you already have a database and you just want to make a State object
+	/// which uses it. If you have no preexisting database then set BaseState to something other
+	/// than BaseState::PreExisting in order to prepopulate the Trie.
+	/// You can also set the coinbase address.
+	explicit State(OverlayDB const& _db, BaseState _bs = BaseState::PreExisting, Address _coinbaseAddress = Address());
 
 	/// Construct state object from arbitrary point in blockchain.
 	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash);
@@ -115,11 +135,12 @@ public:
 	Address address() const { return m_ourAddress; }
 
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
-	static OverlayDB openDB(std::string _path, bool _killExisting = false);
-	static OverlayDB openDB(bool _killExisting = false) { return openDB(std::string(), _killExisting); }
+	static OverlayDB openDB(std::string _path, WithExisting _we = WithExisting::Trust);
+	static OverlayDB openDB(WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _we); }
 	OverlayDB const& db() const { return m_db; }
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
+	/// @throws InterfaceNotSupported if compiled without ETH_FATDB.
 	std::map<Address, u256> addresses() const;
 
 	/// Get the header information on the present block.
@@ -179,15 +200,9 @@ public:
 	/// Like sync but only operate on _tq, killing the invalid/old ones.
 	bool cull(TransactionQueue& _tq) const;
 
-	/// Returns the last few block hashes of the current chain.
-	LastHashes getLastHashes(BlockChain const& _bc, unsigned _n) const;
-
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	u256 execute(BlockChain const& _bc, bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true);
-	u256 execute(BlockChain const& _bc, bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
-	u256 execute(LastHashes const& _lh, bytes const& _rlp, bytes* o_output = nullptr, bool _commit = true) { return execute(_lh, &_rlp, o_output, _commit); }
-	u256 execute(LastHashes const& _lh, bytesConstRef _rlp, bytes* o_output = nullptr, bool _commit = true);
+	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed);
 
 	/// Get the remaining gas limit in this block.
 	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
@@ -211,6 +226,14 @@ public:
 	 * @note We use bigint here as we don't want any accidental problems with negative numbers.
 	 */
 	void subBalance(Address _id, bigint _value);
+
+	/**
+	 * @brief Transfers "the balance @a _value between two accounts.
+	 * @param _from Account from which @a _value will be deducted.
+	 * @param _to Account to which @a _value will be added.
+	 * @param _value Amount to be transferred.
+	 */
+	void transferBalance(Address _from, Address _to, u256 _value) { subBalance(_from, _value); addBalance(_to, _value); }
 
 	/// Get the root of the storage of an account.
 	h256 storageRoot(Address _contract) const;
@@ -314,7 +337,7 @@ private:
 	u256 enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce = true);
 
 	/// Finalise the block, applying the earned rewards.
-	void applyRewards(Addresses const& _uncleAddresses);
+	void applyRewards(std::vector<BlockInfo> const& _uncleBlockHeaders);
 
 	/// @returns gas used by transactions thus far executed.
 	u256 gasUsed() const { return m_receipts.size() ? m_receipts.back().gasUsed() : 0; }
@@ -323,6 +346,7 @@ private:
 	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
 	/// Debugging only. Good for checking the Trie is in shape.
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
+
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
 	SecureTrieDB<Address, OverlayDB> m_state;	///< Our state tree, as an OverlayDB DB.

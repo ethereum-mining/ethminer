@@ -1,36 +1,37 @@
 import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
+import QtQuick.Dialogs 1.2
 import QtQuick.Window 2.0
 import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.QEther 1.0
 import "js/TransactionHelper.js" as TransactionHelper
 import "."
 
-Window {
+Dialog {
 	id: modalTransactionDialog
 	modality: Qt.ApplicationModal
 	width: 520
-	height: (paramsModel.count > 0 ? 500 : 300)
+	height: 500
 	visible: false
-	color: StateDialogStyle.generic.backgroundColor
 	title: qsTr("Edit Transaction")
 	property int transactionIndex
-	property alias transactionParams: paramsModel;
 	property alias gas: gasValueEdit.gasValue;
 	property alias gasPrice: gasPriceField.value;
 	property alias transactionValue: valueField.value;
 	property string contractId: contractComboBox.currentValue();
 	property alias functionId: functionComboBox.currentText;
-	property var itemParams;
+	property var paramValues;
+	property var paramsModel: [];
 	property bool useTransactionDefaultValue: false
-	property var qType;
 	property alias stateAccounts: senderComboBox.model
-
 	signal accepted;
 
+	StateDialogStyle {
+		id: transactionDialogStyle
+	}
+
 	function open(index, item) {
-		qType = [];
 		rowFunction.visible = !useTransactionDefaultValue;
 		rowValue.visible = !useTransactionDefaultValue;
 		rowGas.visible = !useTransactionDefaultValue;
@@ -44,7 +45,7 @@ Window {
 		var functionId = item.functionId;
 		rowFunction.visible = true;
 
-		itemParams = item.parameters !== undefined ? item.parameters : {};
+		paramValues = item.parameters !== undefined ? item.parameters : {};
 		if (item.sender)
 			senderComboBox.select(item.sender);
 
@@ -62,30 +63,20 @@ Window {
 		contractComboBox.currentIndex = contractIndex;
 
 		loadFunctions(contractComboBox.currentValue());
+		selectFunction(functionId);
 
-		var functionIndex = -1;
-		for (var f = 0; f < functionsModel.count; f++)
-			if (functionsModel.get(f).text === item.functionId)
-				functionIndex = f;
-
-		if (functionIndex == -1 && functionsModel.count > 0)
-			functionIndex = 0; //@todo suggest unused function
-
-		functionComboBox.currentIndex = functionIndex;
-
-		paramsModel.clear();
+		paramsModel = [];
 		if (functionId !== contractComboBox.currentValue())
 			loadParameters();
 		else {
 			var contract = codeModel.contracts[contractId];
 			if (contract) {
-				var parameters = contract.contract.constructor.parameters;
-				for (var p = 0; p < parameters.length; p++)
-					loadParameter(parameters[p]);
+				var params = contract.contract.constructor.parameters;
+				for (var p = 0; p < params.length; p++)
+					loadParameter(params[p]);
 			}
 		}
-		modalTransactionDialog.setX((Screen.width - width) / 2);
-		modalTransactionDialog.setY((Screen.height - height) / 2);
+		initTypeLoader();
 
 		visible = true;
 		valueField.focus = true;
@@ -106,36 +97,28 @@ Window {
 
 	}
 
+	function selectFunction(functionId)
+	{
+		var functionIndex = -1;
+		for (var f = 0; f < functionsModel.count; f++)
+			if (functionsModel.get(f).text === functionId)
+				functionIndex = f;
+
+		if (functionIndex == -1 && functionsModel.count > 0)
+			functionIndex = 0; //@todo suggest unused function
+
+		functionComboBox.currentIndex = functionIndex;
+	}
+
 	function loadParameter(parameter)
 	{
 		var type = parameter.type;
 		var pname = parameter.name;
-		var varComponent;
-
-		if (type.indexOf("int") !== -1)
-			varComponent = Qt.createComponent("qrc:/qml/QIntType.qml");
-		else if (type.indexOf("real") !== -1)
-			varComponent = Qt.createComponent("qrc:/qml/QRealType.qml");
-		else if (type.indexOf("string") !== -1 || type.indexOf("text") !== -1)
-			varComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
-		else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
-			varComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
-		else if (type.indexOf("bool") !== -1)
-			varComponent = Qt.createComponent("qrc:/qml/QBoolType.qml");
-
-		var param = varComponent.createObject(modalTransactionDialog);
-		var value = itemParams[pname] !== undefined ? itemParams[pname] : "";
-
-		param.setValue(value);
-		param.setDeclaration(parameter);
-		qType.push({ name: pname, value: param });
-		paramsModel.append({ name: pname, type: type, value: value });
+		paramsModel.push({ name: pname, type: type });
 	}
 
 	function loadParameters() {
-		paramsModel.clear();
-		if (!paramsModel)
-			return;
+		paramsModel = []
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
 			var contract = codeModel.contracts[contractComboBox.currentValue()];
 			if (contract) {
@@ -147,29 +130,29 @@ Window {
 				}
 			}
 		}
+		initTypeLoader();
 	}
 
-	function param(name)
+	function initTypeLoader()
 	{
-		for (var k = 0; k < paramsModel.count; k++)
-		{
-			if (paramsModel.get(k).name === name)
-				return paramsModel.get(k);
-		}
+		typeLoader.value = {}
+		typeLoader.members = []
+		typeLoader.value = paramValues;
+		typeLoader.members = paramsModel;
+		paramLabel.visible = paramsModel.length > 0;
+		paramScroll.visible = paramsModel.length > 0;
+		modalTransactionDialog.height = (paramsModel.length > 0 ? 500 : 300);
+	}
+
+	function acceptAndClose()
+	{
+		close();
+		accepted();
 	}
 
 	function close()
 	{
 		visible = false;
-	}
-
-	function qTypeParam(name)
-	{
-		for (var k in qType)
-		{
-			if (qType[k].name === name)
-				return qType[k].value;
-		}
 	}
 
 	function getItem()
@@ -194,344 +177,222 @@ Window {
 		}
 
 		item.sender = senderComboBox.model[senderComboBox.currentIndex].secret;
-		var orderedQType = [];
-		for (var p = 0; p < transactionDialog.transactionParams.count; p++) {
-			var parameter = transactionDialog.transactionParams.get(p);
-			var qtypeParam = qTypeParam(parameter.name);
-			qtypeParam.setValue(parameter.value);
-			orderedQType.push(qtypeParam);
-			item.parameters[parameter.name] = parameter.value;
-		}
-		item.qType = orderedQType;
+		item.parameters = paramValues;
 		return item;
 	}
-
-	ColumnLayout {
-		anchors.fill: parent
-		anchors.margins: 10
-
+	contentItem: Rectangle {
+		color: transactionDialogStyle.generic.backgroundColor
 		ColumnLayout {
-			id: dialogContent
-			anchors.top: parent.top
-			spacing: 10
-			RowLayout
-			{
-				id: rowSender
-				Layout.fillWidth: true
-				height: 150
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Sender")
-				}
-				ComboBox {
+			anchors.fill: parent
+			ColumnLayout {
+				anchors.fill: parent
+				anchors.margins: 10
 
-					function select(secret)
+				ColumnLayout {
+					id: dialogContent
+					anchors.top: parent.top
+					spacing: 10
+					RowLayout
 					{
-						for (var i in model)
-							if (model[i].secret === secret)
+						id: rowSender
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Sender")
+						}
+						ComboBox {
+
+							function select(secret)
 							{
-								currentIndex = i;
-								break;
+								for (var i in model)
+									if (model[i].secret === secret)
+									{
+										currentIndex = i;
+										break;
+									}
 							}
+
+							id: senderComboBox
+							Layout.preferredWidth: 350
+							currentIndex: 0
+							textRole: "name"
+							editable: false
+						}
 					}
 
-					id: senderComboBox
-					Layout.preferredWidth: 350
-					currentIndex: 0
-					textRole: "name"
-					editable: false
-				}
-			}
-
-			RowLayout
-			{
-				id: rowContract
-				Layout.fillWidth: true
-				height: 150
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Contract")
-				}
-				ComboBox {
-					id: contractComboBox
-					function currentValue() {
-						return (currentIndex >=0 && currentIndex < contractsModel.count) ? contractsModel.get(currentIndex).cid : "";
-					}
-					Layout.preferredWidth: 350
-					currentIndex: -1
-					textRole: "text"
-					editable: false
-					model: ListModel {
-						id: contractsModel
-					}
-					onCurrentIndexChanged: {
-						loadFunctions(currentValue());
-					}
-				}
-			}
-
-			RowLayout
-			{
-				id: rowFunction
-				Layout.fillWidth: true
-				height: 150
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Function")
-				}
-				ComboBox {
-					id: functionComboBox
-					Layout.preferredWidth: 350
-					currentIndex: -1
-					textRole: "text"
-					editable: false
-					model: ListModel {
-						id: functionsModel
-					}
-					onCurrentIndexChanged: {
-						loadParameters();
-					}
-				}
-			}
-
-			CommonSeparator
-			{
-				Layout.fillWidth: true
-			}
-
-			RowLayout
-			{
-				id: rowValue
-				Layout.fillWidth: true
-				height: 150
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Value")
-				}
-				Ether {
-					id: valueField
-					edit: true
-					displayFormattedValue: true
-				}
-			}
-
-			CommonSeparator
-			{
-				Layout.fillWidth: true
-			}
-
-			RowLayout
-			{
-				id: rowGas
-				Layout.fillWidth: true
-				height: 150
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Gas")
-				}
-
-				DefaultTextField
-				{
-					property variant gasValue
-					onGasValueChanged: text = gasValue.value();
-					onTextChanged: gasValue.setValue(text);
-					implicitWidth: 200
-					id: gasValueEdit;
-				}
-			}
-
-			CommonSeparator
-			{
-				Layout.fillWidth: true
-			}
-
-			RowLayout
-			{
-				id: rowGasPrice
-				Layout.fillWidth: true
-				height: 150
-				DefaultLabel {
-					Layout.preferredWidth: 75
-					text: qsTr("Gas Price")
-				}
-				Ether {
-					id: gasPriceField
-					edit: true
-					displayFormattedValue: true
-				}
-			}
-
-			CommonSeparator
-			{
-				Layout.fillWidth: true
-			}
-
-			DefaultLabel {
-				id: paramLabel
-				text: qsTr("Parameters:")
-				Layout.preferredWidth: 75
-				visible: paramsModel.count > 0
-			}
-
-			ScrollView
-			{
-				anchors.top: paramLabel.bottom
-				anchors.topMargin: 10
-				Layout.preferredWidth: 350
-				Layout.fillHeight: true
-				visible: paramsModel.count > 0
-				Column
-				{
-					id: paramRepeater
-					Layout.fillWidth: true
-					Layout.fillHeight: true
-					spacing: 3
-					Repeater
+					RowLayout
 					{
-						height: 20 * paramsModel.count
-						model: paramsModel
-						visible: paramsModel.count > 0
-						RowLayout
-						{
-							id: row
-							Layout.fillWidth: true
-							height: 20
-							DefaultLabel {
-								id: typeLabel
-								text: type
-								Layout.preferredWidth: 50
+						id: rowContract
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Contract")
+						}
+						ComboBox {
+							id: contractComboBox
+							function currentValue() {
+								return (currentIndex >=0 && currentIndex < contractsModel.count) ? contractsModel.get(currentIndex).cid : "";
 							}
-
-							DefaultLabel {
-								id: nameLabel
-								text: name
-								Layout.preferredWidth: 80
+							Layout.preferredWidth: 350
+							currentIndex: -1
+							textRole: "text"
+							editable: false
+							model: ListModel {
+								id: contractsModel
 							}
-
-							DefaultLabel {
-								id: equalLabel
-								text: "="
-								Layout.preferredWidth: 15
-							}
-
-							Loader
-							{
-								id: typeLoader
-								Layout.preferredWidth: 150
-								function getCurrent()
-								{
-									return modalTransactionDialog.param(name);
-								}
-
-								Connections {
-									target: typeLoader.item
-									onTextChanged: {
-										typeLoader.getCurrent().value = typeLoader.item.text;
-									}
-								}
-
-								sourceComponent:
-								{
-									if (type.indexOf("int") !== -1)
-										return intViewComp;
-									else if (type.indexOf("bool") !== -1)
-										return boolViewComp;
-									else if (type.indexOf("string") !== -1)
-										return stringViewComp;
-									else if (type.indexOf("hash") !== -1 || type.indexOf("address") !== -1)
-										return hashViewComp;
-									else
-										return null;
-								}
-
-								Component
-								{
-									id: intViewComp
-									QIntTypeView
-									{
-										height: 20
-										width: 150
-										id: intView
-										text: typeLoader.getCurrent().value
-									}
-								}
-
-								Component
-								{
-									id: boolViewComp
-									QBoolTypeView
-									{
-										height: 20
-										width: 150
-										id: boolView
-										defaultValue: "1"
-										Component.onCompleted:
-										{
-											var current = typeLoader.getCurrent().value;
-											(current === "" ? text = defaultValue : text = current);
-										}
-									}
-								}
-
-								Component
-								{
-									id: stringViewComp
-									QStringTypeView
-									{
-										height: 20
-										width: 150
-										id: stringView
-										text:
-										{
-											return typeLoader.getCurrent().value
-										}
-									}
-								}
-
-								Component
-								{
-									id: hashViewComp
-									QHashTypeView
-									{
-										height: 20
-										width: 150
-										id: hashView
-										text: typeLoader.getCurrent().value
-									}
-								}
+							onCurrentIndexChanged: {
+								loadFunctions(currentValue());
 							}
 						}
 					}
+
+					RowLayout
+					{
+						id: rowFunction
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Function")
+						}
+						ComboBox {
+							id: functionComboBox
+							Layout.preferredWidth: 350
+							currentIndex: -1
+							textRole: "text"
+							editable: false
+							model: ListModel {
+								id: functionsModel
+							}
+							onCurrentIndexChanged: {
+								loadParameters();
+							}
+						}
+					}
+
+					CommonSeparator
+					{
+						Layout.fillWidth: true
+					}
+
+					RowLayout
+					{
+						id: rowValue
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Value")
+						}
+						Ether {
+							id: valueField
+							edit: true
+							displayFormattedValue: true
+						}
+					}
+
+					CommonSeparator
+					{
+						Layout.fillWidth: true
+					}
+
+					RowLayout
+					{
+						id: rowGas
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Gas")
+						}
+
+						DefaultTextField
+						{
+							property variant gasValue
+							onGasValueChanged: text = gasValue.value();
+							onTextChanged: gasValue.setValue(text);
+							implicitWidth: 200
+							id: gasValueEdit;
+						}
+					}
+
+					CommonSeparator
+					{
+						Layout.fillWidth: true
+					}
+
+					RowLayout
+					{
+						id: rowGasPrice
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Gas Price")
+						}
+						Ether {
+							id: gasPriceField
+							edit: true
+							displayFormattedValue: true
+						}
+					}
+
+					CommonSeparator
+					{
+						Layout.fillWidth: true
+					}
+
+					DefaultLabel {
+						id: paramLabel
+						text: qsTr("Parameters:")
+						Layout.preferredWidth: 75
+					}
+
+					ScrollView
+					{
+						id: paramScroll
+						anchors.top: paramLabel.bottom
+						anchors.topMargin: 10
+						Layout.fillWidth: true
+						Layout.fillHeight: true
+						StructView
+						{
+							id: typeLoader
+							Layout.preferredWidth: 150
+							members: paramsModel;
+						}
+					}
+
+					CommonSeparator
+					{
+						Layout.fillWidth: true
+						visible: paramsModel.length > 0
+					}
 				}
 			}
 
-			CommonSeparator
+			RowLayout
 			{
-				Layout.fillWidth: true
-				visible: paramsModel.count > 0
-			}
-		}
+				anchors.bottom: parent.bottom
+				anchors.right: parent.right;
 
-		RowLayout
-		{
-			anchors.bottom: parent.bottom
-			anchors.right: parent.right;
+				Button {
+					text: qsTr("OK");
+					onClicked: {
+						close();
+						accepted();
+					}
+				}
 
-			Button {
-				text: qsTr("OK");
-				onClicked: {
-					close();
-					accepted();
+				Button {
+					text: qsTr("Cancel");
+					onClicked: close();
+					Layout.fillWidth: true
 				}
 			}
-			Button {
-				text: qsTr("Cancel");
-				onClicked: close();
-			}
 		}
-	}
-
-	ListModel {
-		id: paramsModel
 	}
 }
+

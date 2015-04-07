@@ -38,12 +38,24 @@ template <unsigned S> std::string toJS(FixedHash<S> const& _h)
 
 template <unsigned N> std::string toJS(boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N, N, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> const& _n)
 {
-	return "0x" + toHex(toCompactBigEndian(_n));
+	std::string h = toHex(toCompactBigEndian(_n, 1));
+	// remove first 0, if it is necessary;
+	std::string res = h[0] != '0' ? h : h.substr(1);
+	return "0x" + res;
 }
 
-inline std::string toJS(dev::bytes const& _n)
+inline std::string toJS(bytes const& _n, std::size_t _padding = 0)
 {
-	return "0x" + dev::toHex(_n);
+	bytes n = _n;
+	n.resize(std::max<unsigned>(n.size(), _padding));
+	return "0x" + toHex(n);
+}
+
+template< typename T >std::string toJS( T const& i )
+{
+	std::stringstream stream;
+	stream << "0x" << std::hex << i;
+	return stream.str();
 }
 
 /// Convert string to byte array. Input parameters can be hex or dec. Returns empty array if invalid input e.g neither dec or hex.
@@ -74,7 +86,7 @@ template <unsigned N> FixedHash<N> jsToFixed(std::string const& _s)
 
 inline std::string jsToFixed(double _s)
 {
-	return toJS(dev::u256(_s * (double)(dev::u256(1) << 128)));
+	return toJS(u256(_s * (double)(u256(1) << 128)));
 }
 
 template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_int_backend<N * 8, N * 8, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>> jsToInt(std::string const& _s)
@@ -92,25 +104,16 @@ template <unsigned N> boost::multiprecision::number<boost::multiprecision::cpp_i
 
 inline u256 jsToU256(std::string const& _s) { return jsToInt<32>(_s); }
 
+inline int jsToInt(std::string const& _s)
+{
+	if (_s.size() > 2 && _s.substr(0, 2).compare("0x") == 0)
+		return std::stoi(_s, nullptr, 16);
+	return std::stoi(_s, nullptr, 10);
+}
+
 inline std::string jsToDecimal(std::string const& _s)
 {
-	return dev::toString(jsToU256(_s));
-}
-
-inline std::string jsFromBinary(dev::bytes _s, unsigned _padding = 32)
-{
-	_s.resize(std::max<unsigned>(_s.size(), _padding));
-	return "0x" + dev::toHex(_s);
-}
-
-inline std::string jsFromBinary(std::string const& _s, unsigned _padding = 32)
-{
-	return jsFromBinary(asBytes(_s), _padding);
-}
-
-inline double jsFromFixed(std::string const& _s)
-{
-	return (double)jsToU256(_s) / (double)(dev::u256(1) << 128);
+	return toString(jsToU256(_s));
 }
 
 }

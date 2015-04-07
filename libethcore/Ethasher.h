@@ -27,8 +27,11 @@
 #include <thread>
 #include <cstdint>
 #include <libdevcore/Guards.h>
+#include <libdevcore/Log.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethash/ethash.h>		// TODO: REMOVE once everything merged into this class and an opaque API can be provided.
+static const unsigned c_ethashRevision = ETHASH_REVISION;
+static const unsigned c_ethashEpochLength = ETHASH_EPOCH_LENGTH;
 #include "Common.h"
 #include "BlockInfo.h"
 
@@ -41,10 +44,14 @@ class Ethasher
 {
 public:
 	Ethasher() {}
+	~Ethasher();
 
 	static Ethasher* get() { if (!s_this) s_this = new Ethasher(); return s_this; }
 
-	bytes const& cache(BlockInfo const& _header);
+	using LightType = void const*;
+	using FullType = void const*;
+
+	LightType light(BlockInfo const& _header);
 	bytesConstRef full(BlockInfo const& _header);
 	static ethash_params params(BlockInfo const& _header);
 	static ethash_params params(unsigned _n);
@@ -71,6 +78,7 @@ public:
 		inline h256 mine(uint64_t _nonce)
 		{
 			ethash_compute_full(&m_ethashReturn, m_datasetPointer, &m_params, m_headerHash.data(), _nonce);
+//			cdebug << "Ethasher::mine hh:" << m_headerHash << "nonce:" << (Nonce)(u64)_nonce << " => " << h256(m_ethashReturn.result, h256::ConstructFromPointer);
 			return h256(m_ethashReturn.result, h256::ConstructFromPointer);
 		}
 
@@ -87,9 +95,11 @@ public:
 	};
 
 private:
+	void killCache(h256 const& _s);
+
 	static Ethasher* s_this;
 	RecursiveMutex x_this;
-	std::map<h256, bytes> m_caches;
+	std::map<h256, LightType> m_lights;
 	std::map<h256, bytesRef> m_fulls;
 };
 
