@@ -68,20 +68,6 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 	return _out;
 }
 
-ldb::Slice dev::eth::oldToSlice(h256 const& _h, unsigned _sub)
-{
-#if ALL_COMPILERS_ARE_CPP11_COMPLIANT
-	static thread_local h256 h = _h ^ sha3(h256(u256(_sub)));
-	return ldb::Slice((char const*)&h, 32);
-#else
-	static boost::thread_specific_ptr<h256> t_h;
-	if (!t_h.get())
-		t_h.reset(new h256);
-	*t_h = _h ^ sha3(h256(u256(_sub)));
-	return ldb::Slice((char const*)t_h.get(), 32);
-#endif
-}
-
 ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
 {
 #if ALL_COMPILERS_ARE_CPP11_COMPLIANT
@@ -981,36 +967,6 @@ bytes BlockChain::block(h256 const& _hash) const
 
 	string d;
 	m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
-
-	if (!d.size())
-	{
-		cwarn << "Couldn't find requested block:" << _hash.abridged();
-		return bytes();
-	}
-
-	noteUsed(_hash);
-
-	WriteGuard l(x_blocks);
-	m_blocks[_hash].resize(d.size());
-	memcpy(m_blocks[_hash].data(), d.data(), d.size());
-
-	return m_blocks[_hash];
-}
-
-bytes BlockChain::oldBlock(h256 const& _hash) const
-{
-	if (_hash == m_genesisHash)
-		return m_genesisBlock;
-
-	{
-		ReadGuard l(x_blocks);
-		auto it = m_blocks.find(_hash);
-		if (it != m_blocks.end())
-			return it->second;
-	}
-
-	string d;
-	m_blocksDB->Get(m_readOptions, oldToSlice(_hash), &d);
 
 	if (!d.size())
 	{
