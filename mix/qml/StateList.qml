@@ -1,39 +1,50 @@
 import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.1
-import QtQuick.Dialogs 1.1
+import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 import QtQuick.Window 2.0
 import "."
 
-Window {
+Dialog {
 	id: stateListContainer
 	modality: Qt.WindowModal
-
 	width: 640
 	height: 480
-
 	visible: false
-	ColumnLayout
-	{
+	contentItem: Rectangle {
 		anchors.fill: parent
-		TableView {
-			id: list
-			Layout.fillHeight: true
-			Layout.fillWidth: true
-			model: projectModel.stateListModel
-			itemDelegate: renderDelegate
-			headerDelegate: null
-			TableViewColumn {
-				role: "title"
-				title: qsTr("State")
-				width: list.width
+		ColumnLayout
+		{
+			anchors.fill: parent
+			TableView {
+				id: list
+				Layout.fillHeight: true
+				Layout.fillWidth: true
+				model: projectModel.stateListModel
+				itemDelegate: renderDelegate
+				headerDelegate: null
+				frameVisible: false
+				TableViewColumn {
+					role: "title"
+					title: qsTr("State")
+					width: list.width
+				}
 			}
-		}
 
-		Button {
-			anchors.bottom: parent.bottom
-			action: addStateAction
+			Row{
+				spacing: 5
+				anchors.bottom: parent.bottom
+				anchors.right: parent.right
+				anchors.rightMargin: 10
+				Button {
+					action: addStateAction
+				}
+
+				Button {
+					action: closeAction
+				}
+			}
 		}
 	}
 
@@ -69,12 +80,21 @@ Window {
 		}
 	}
 
-	Action {
-		id: addStateAction
-		text: "&Add State"
-		shortcut: "Ctrl+T"
-		enabled: codeModel.hasContract && !clientModel.running;
-		onTriggered: list.model.addState();
+	Row
+	{
+		Action {
+			id: addStateAction
+			text: qsTr("Add State")
+			shortcut: "Ctrl+T"
+			enabled: codeModel.hasContract && !clientModel.running;
+			onTriggered: list.model.addState();
+		}
+
+		Action {
+			id: closeAction
+			text: qsTr("Close")
+			onTriggered: stateListContainer.close();
+		}
 	}
 }
 
