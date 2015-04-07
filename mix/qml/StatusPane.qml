@@ -27,7 +27,6 @@ Rectangle {
 			debugImg.state = "";
 			currentStatus = { "type": "Comp", "date": Qt.formatDateTime(new Date(), "hh:mm:ss"), "content": status.text, "level": "error" }
 		}
-		debugRunActionIcon.enabled = codeModel.hasContract;
 	}
 
 	function infoMessage(text, type)
@@ -77,7 +76,11 @@ Rectangle {
 
 	Connections {
 		target:clientModel
-		onRunStarted: infoMessage(qsTr("Running transactions..."), "Run");
+		onRunStarted:
+		{
+			logPane.clear()
+			infoMessage(qsTr("Running transactions..."), "Run");
+		}
 		onRunFailed: errorMessage(format(_message), "Run");
 		onRunComplete: infoMessage(qsTr("Run complete"), "Run");
 		onNewBlock: infoMessage(qsTr("New block created"), "State");
@@ -281,24 +284,9 @@ Rectangle {
 					anchors.rightMargin: 9
 					anchors.verticalCenter: parent.verticalCenter
 					id: debugImg
-					iconSource: "qrc:/qml/img/bugiconinactive.png"
-					action: debugRunActionIcon
-					states: [
-						State{
-							name: "active"
-							PropertyChanges { target: debugImg; iconSource: "qrc:/qml/img/bugiconactive.png"}
-						}
-					]
-				}
-				Action {
-					id: debugRunActionIcon
-					onTriggered: {
-						if (mainContent.rightViewIsVisible())
-							mainContent.hideRightView()
-						else
-							mainContent.startQuickDebugging();
-					}
-					enabled: false
+					text: ""
+					iconSource: "qrc:/qml/img/bugiconactive.png"
+					action: showHideRightPanelAction
 				}
 			}
 		}

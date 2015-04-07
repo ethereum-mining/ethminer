@@ -12,6 +12,10 @@ Rectangle {
 	id: debugPanel
 
 	property alias transactionLog: transactionLog
+	property alias debugSlider: statesSlider
+	property alias solLocals: solLocals
+	property alias solStorage: solStorage
+	property alias solCallStack: solCallStack
 	signal debugExecuteLocation(string documentId, var location)
 	property string compilationErrorMessage
 	property bool assemblyMode: false

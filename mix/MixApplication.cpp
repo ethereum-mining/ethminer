@@ -20,6 +20,7 @@
  */
 
 #include "MixApplication.h"
+#include <boost/exception/diagnostic_information.hpp>
 #include <QQmlApplicationEngine>
 #include <QUrl>
 #include <QIcon>
@@ -100,4 +101,17 @@ void MixApplication::initialize()
 
 MixApplication::~MixApplication()
 {
+}
+
+bool MixApplication::notify(QObject * receiver, QEvent * event)
+{
+	try
+	{
+		return QApplication::notify(receiver, event);
+	}
+	catch (...)
+	{
+		std::cerr << boost::current_exception_diagnostic_information();
+	}
+	return false;
 }
