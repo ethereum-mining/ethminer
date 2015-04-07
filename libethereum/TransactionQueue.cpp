@@ -28,14 +28,16 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-bool TransactionQueue::import(bytesConstRef _transactionRLP)
+ImportResult TransactionQueue::import(bytesConstRef _transactionRLP)
 {
 	// Check if we already know this transaction.
 	h256 h = sha3(_transactionRLP);
 
 	UpgradableGuard l(m_lock);
+	// TODO: keep old transactions around and check in State for nonce validity
+
 	if (m_known.count(h))
-		return false;
+		return ImportResult::AlreadyKnown;
 
 	try
 	{
@@ -52,15 +54,15 @@ bool TransactionQueue::import(bytesConstRef _transactionRLP)
 	catch (Exception const& _e)
 	{
 		cwarn << "Ignoring invalid transaction: " <<  diagnostic_information(_e);
-		return false;
+		return ImportResult::Malformed;
 	}
 	catch (std::exception const& _e)
 	{
 		cwarn << "Ignoring invalid transaction: " << _e.what();
-		return false;
+		return ImportResult::Malformed;
 	}
 
-	return true;
+	return ImportResult::Success;
 }
 
 void TransactionQueue::setFuture(std::pair<h256, Transaction> const& _t)

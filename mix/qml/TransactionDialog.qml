@@ -27,6 +27,10 @@ Dialog {
 	property alias stateAccounts: senderComboBox.model
 	signal accepted;
 
+	StateDialogStyle {
+		id: transactionDialogStyle
+	}
+
 	function open(index, item) {
 		rowFunction.visible = !useTransactionDefaultValue;
 		rowValue.visible = !useTransactionDefaultValue;
@@ -59,16 +63,7 @@ Dialog {
 		contractComboBox.currentIndex = contractIndex;
 
 		loadFunctions(contractComboBox.currentValue());
-
-		var functionIndex = -1;
-		for (var f = 0; f < functionsModel.count; f++)
-			if (functionsModel.get(f).text === item.functionId)
-				functionIndex = f;
-
-		if (functionIndex == -1 && functionsModel.count > 0)
-			functionIndex = 0; //@todo suggest unused function
-
-		functionComboBox.currentIndex = functionIndex;
+		selectFunction(functionId);
 
 		paramsModel = [];
 		if (functionId !== contractComboBox.currentValue())
@@ -85,9 +80,6 @@ Dialog {
 
 		visible = true;
 		valueField.focus = true;
-		modalTransactionDialog.height = (paramsModel.length > 0 ? 500 : 300);
-		paramLabel.visible = paramsModel.length > 0;
-		paramScroll.visible = paramsModel.length > 0;
 	}
 
 	function loadFunctions(contractId)
@@ -103,6 +95,19 @@ Dialog {
 		//append constructor
 		functionsModel.append({ text: contractId });
 
+	}
+
+	function selectFunction(functionId)
+	{
+		var functionIndex = -1;
+		for (var f = 0; f < functionsModel.count; f++)
+			if (functionsModel.get(f).text === functionId)
+				functionIndex = f;
+
+		if (functionIndex == -1 && functionsModel.count > 0)
+			functionIndex = 0; //@todo suggest unused function
+
+		functionComboBox.currentIndex = functionIndex;
 	}
 
 	function loadParameter(parameter)
@@ -134,6 +139,15 @@ Dialog {
 		typeLoader.members = []
 		typeLoader.value = paramValues;
 		typeLoader.members = paramsModel;
+		paramLabel.visible = paramsModel.length > 0;
+		paramScroll.visible = paramsModel.length > 0;
+		modalTransactionDialog.height = (paramsModel.length > 0 ? 500 : 300);
+	}
+
+	function acceptAndClose()
+	{
+		close();
+		accepted();
 	}
 
 	function close()
@@ -167,193 +181,195 @@ Dialog {
 		return item;
 	}
 	contentItem: Rectangle {
-		color: StateDialogStyle.generic.backgroundColor
-		anchors.fill: parent
+		color: transactionDialogStyle.generic.backgroundColor
 		ColumnLayout {
 			anchors.fill: parent
-			anchors.margins: 10
-
 			ColumnLayout {
-				id: dialogContent
-				anchors.top: parent.top
-				spacing: 10
-				RowLayout
-				{
-					id: rowSender
-					Layout.fillWidth: true
-					height: 150
-					DefaultLabel {
-						Layout.preferredWidth: 75
-						text: qsTr("Sender")
-					}
-					ComboBox {
+				anchors.fill: parent
+				anchors.margins: 10
 
-						function select(secret)
+				ColumnLayout {
+					id: dialogContent
+					anchors.top: parent.top
+					spacing: 10
+					RowLayout
+					{
+						id: rowSender
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Sender")
+						}
+						ComboBox {
+
+							function select(secret)
+							{
+								for (var i in model)
+									if (model[i].secret === secret)
+									{
+										currentIndex = i;
+										break;
+									}
+							}
+
+							id: senderComboBox
+							Layout.preferredWidth: 350
+							currentIndex: 0
+							textRole: "name"
+							editable: false
+						}
+					}
+
+					RowLayout
+					{
+						id: rowContract
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Contract")
+						}
+						ComboBox {
+							id: contractComboBox
+							function currentValue() {
+								return (currentIndex >=0 && currentIndex < contractsModel.count) ? contractsModel.get(currentIndex).cid : "";
+							}
+							Layout.preferredWidth: 350
+							currentIndex: -1
+							textRole: "text"
+							editable: false
+							model: ListModel {
+								id: contractsModel
+							}
+							onCurrentIndexChanged: {
+								loadFunctions(currentValue());
+							}
+						}
+					}
+
+					RowLayout
+					{
+						id: rowFunction
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Function")
+						}
+						ComboBox {
+							id: functionComboBox
+							Layout.preferredWidth: 350
+							currentIndex: -1
+							textRole: "text"
+							editable: false
+							model: ListModel {
+								id: functionsModel
+							}
+							onCurrentIndexChanged: {
+								loadParameters();
+							}
+						}
+					}
+
+					CommonSeparator
+					{
+						Layout.fillWidth: true
+					}
+
+					RowLayout
+					{
+						id: rowValue
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Value")
+						}
+						Ether {
+							id: valueField
+							edit: true
+							displayFormattedValue: true
+						}
+					}
+
+					CommonSeparator
+					{
+						Layout.fillWidth: true
+					}
+
+					RowLayout
+					{
+						id: rowGas
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Gas")
+						}
+
+						DefaultTextField
 						{
-							for (var i in model)
-								if (model[i].secret === secret)
-								{
-									currentIndex = i;
-									break;
-								}
-						}
-
-						id: senderComboBox
-						Layout.preferredWidth: 350
-						currentIndex: 0
-						textRole: "name"
-						editable: false
-					}
-				}
-
-				RowLayout
-				{
-					id: rowContract
-					Layout.fillWidth: true
-					height: 150
-					DefaultLabel {
-						Layout.preferredWidth: 75
-						text: qsTr("Contract")
-					}
-					ComboBox {
-						id: contractComboBox
-						function currentValue() {
-							return (currentIndex >=0 && currentIndex < contractsModel.count) ? contractsModel.get(currentIndex).cid : "";
-						}
-						Layout.preferredWidth: 350
-						currentIndex: -1
-						textRole: "text"
-						editable: false
-						model: ListModel {
-							id: contractsModel
-						}
-						onCurrentIndexChanged: {
-							loadFunctions(currentValue());
+							property variant gasValue
+							onGasValueChanged: text = gasValue.value();
+							onTextChanged: gasValue.setValue(text);
+							implicitWidth: 200
+							id: gasValueEdit;
 						}
 					}
-				}
 
-				RowLayout
-				{
-					id: rowFunction
-					Layout.fillWidth: true
-					height: 150
-					DefaultLabel {
-						Layout.preferredWidth: 75
-						text: qsTr("Function")
-					}
-					ComboBox {
-						id: functionComboBox
-						Layout.preferredWidth: 350
-						currentIndex: -1
-						textRole: "text"
-						editable: false
-						model: ListModel {
-							id: functionsModel
-						}
-						onCurrentIndexChanged: {
-							loadParameters();
-						}
-					}
-				}
-
-				CommonSeparator
-				{
-					Layout.fillWidth: true
-				}
-
-				RowLayout
-				{
-					id: rowValue
-					Layout.fillWidth: true
-					height: 150
-					DefaultLabel {
-						Layout.preferredWidth: 75
-						text: qsTr("Value")
-					}
-					Ether {
-						id: valueField
-						edit: true
-						displayFormattedValue: true
-					}
-				}
-
-				CommonSeparator
-				{
-					Layout.fillWidth: true
-				}
-
-				RowLayout
-				{
-					id: rowGas
-					Layout.fillWidth: true
-					height: 150
-					DefaultLabel {
-						Layout.preferredWidth: 75
-						text: qsTr("Gas")
-					}
-
-					DefaultTextField
+					CommonSeparator
 					{
-						property variant gasValue
-						onGasValueChanged: text = gasValue.value();
-						onTextChanged: gasValue.setValue(text);
-						implicitWidth: 200
-						id: gasValueEdit;
+						Layout.fillWidth: true
 					}
-				}
 
-				CommonSeparator
-				{
-					Layout.fillWidth: true
-				}
-
-				RowLayout
-				{
-					id: rowGasPrice
-					Layout.fillWidth: true
-					height: 150
-					DefaultLabel {
-						Layout.preferredWidth: 75
-						text: qsTr("Gas Price")
-					}
-					Ether {
-						id: gasPriceField
-						edit: true
-						displayFormattedValue: true
-					}
-				}
-
-				CommonSeparator
-				{
-					Layout.fillWidth: true
-				}
-
-				DefaultLabel {
-					id: paramLabel
-					text: qsTr("Parameters:")
-					Layout.preferredWidth: 75
-				}
-
-				ScrollView
-				{
-					id: paramScroll
-					anchors.top: paramLabel.bottom
-					anchors.topMargin: 10
-					Layout.fillWidth: true
-					Layout.fillHeight: true
-					StructView
+					RowLayout
 					{
-						id: typeLoader
-						Layout.preferredWidth: 150
-						members: paramsModel;
+						id: rowGasPrice
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Gas Price")
+						}
+						Ether {
+							id: gasPriceField
+							edit: true
+							displayFormattedValue: true
+						}
 					}
-				}
 
-				CommonSeparator
-				{
-					Layout.fillWidth: true
-					visible: paramsModel.length > 0
+					CommonSeparator
+					{
+						Layout.fillWidth: true
+					}
+
+					DefaultLabel {
+						id: paramLabel
+						text: qsTr("Parameters:")
+						Layout.preferredWidth: 75
+					}
+
+					ScrollView
+					{
+						id: paramScroll
+						anchors.top: paramLabel.bottom
+						anchors.topMargin: 10
+						Layout.fillWidth: true
+						Layout.fillHeight: true
+						StructView
+						{
+							id: typeLoader
+							Layout.preferredWidth: 150
+							members: paramsModel;
+						}
+					}
+
+					CommonSeparator
+					{
+						Layout.fillWidth: true
+						visible: paramsModel.length > 0
+					}
 				}
 			}
 
@@ -369,11 +385,14 @@ Dialog {
 						accepted();
 					}
 				}
+
 				Button {
 					text: qsTr("Cancel");
 					onClicked: close();
+					Layout.fillWidth: true
 				}
 			}
 		}
 	}
 }
+

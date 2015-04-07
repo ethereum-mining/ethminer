@@ -148,7 +148,7 @@ Main::Main(QWidget *parent) :
 
 	cerr << "State root: " << CanonBlockChain::genesis().stateRoot << endl;
 	auto block = CanonBlockChain::createGenesisBlock();
-	cerr << "Block Hash: " << CanonBlockChain::genesis().hash << endl;
+	cerr << "Block Hash: " << CanonBlockChain::genesis().hash() << endl;
 	cerr << "Block RLP: " << RLP(block) << endl;
 	cerr << "Block Hex: " << toHex(block) << endl;
 	cerr << "eth Network protocol version: " << eth::c_protocolVersion << endl;
@@ -161,14 +161,17 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->mineStatus);
+	statusBar()->addPermanentWidget(ui->chainStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
+
+	ui->blockCount->setText(QString("PV%2 D%3 H%4 v%5").arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(c_ethashVersion).arg(dev::Version));
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 	
 	QSettings s("ethereum", "alethzero");
 	m_networkConfig = s.value("peers").toByteArray();
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
-	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), false, {"eth", "shh"}, p2p::NetworkPreferences(), network));
+	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), WithExisting::Trust, {"eth", "shh"}, p2p::NetworkPreferences(), network));
 
 	m_httpConnector.reset(new jsonrpc::HttpServer(SensibleHttpPort, "", "", dev::SensibleHttpThreads));
 	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), keysAsVector(m_myKeys), this));
@@ -285,7 +288,7 @@ void Main::onKeysChanged()
 
 unsigned Main::installWatch(LogFilter const& _tf, WatchHandler const& _f)
 {
-	auto ret = ethereum()->installWatch(_tf);
+	auto ret = ethereum()->installWatch(_tf, Reaping::Manual);
 	m_handlers[ret] = _f;
 	_f(LocalisedLogEntries());
 	return ret;
@@ -301,16 +304,25 @@ unsigned Main::installWatch(dev::h256 _tf, WatchHandler const& _f)
 
 void Main::uninstallWatch(unsigned _w)
 {
+	cdebug << "!!! Main: uninstalling watch" << _w;
 	ethereum()->uninstallWatch(_w);
 	m_handlers.erase(_w);
 }
 
 void Main::installWatches()
 {
+	auto newBlockId = installWatch(ChainChangedFilter, [=](LocalisedLogEntries const&){
+		onNewBlock();
+	});
+	auto newPendingId = installWatch(PendingChangedFilter, [=](LocalisedLogEntries const&){
+		onNewPending();
+	});
+
+	cdebug << "newBlock watch ID: " << newBlockId;
+	cdebug << "newPending watch ID: " << newPendingId;
+
 	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installNameRegWatch(); });
 	installWatch(LogFilter().address(c_newConfig), [=](LocalisedLogEntries const&) { installCurrenciesWatch(); });
-	installWatch(PendingChangedFilter, [=](LocalisedLogEntries const&){ onNewPending(); });
-	installWatch(ChainChangedFilter, [=](LocalisedLogEntries const&){ onNewBlock(); });
 }
 
 Address Main::getNameReg() const
@@ -900,7 +912,7 @@ void Main::on_urlEdit_returnPressed()
 {
 	QString s = ui->urlEdit->text();
 	QUrl url(s);
-	if (url.scheme().isEmpty() || url.scheme() == "eth")
+	if (url.scheme().isEmpty() || url.scheme() == "eth" || url.path().endsWith(".dapp"))
 	{
 		try
 		{
@@ -1089,9 +1101,9 @@ void Main::refreshAccounts()
 
 void Main::refreshBlockCount()
 {
-	cwatch << "refreshBlockCount()";
 	auto d = ethereum()->blockChain().details();
-	ui->blockCount->setText(QString("%4 #%1 PV%2 D%3 H%5").arg(d.number).arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(c_ethashVersion));
+	BlockQueueStatus b = ethereum()->blockQueueStatus();
+	ui->chainStatus->setText(QString("%3 ready %4 future %5 unknown %6 bad  %1 #%2").arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.ready).arg(b.future).arg(b.unknown).arg(b.bad));
 }
 
 void Main::on_turboMining_triggered()
@@ -1270,6 +1282,7 @@ void Main::timerEvent(QTimerEvent*)
 		refreshNetwork();
 		refreshWhispers();
 		refreshCache();
+		refreshBlockCount();
 		poll();
 	}
 	else
@@ -1491,7 +1504,7 @@ void Main::on_blocks_currentItemChanged()
 			{
 				BlockInfo uncle = BlockInfo::fromHeader(u.data());
 				char const* line = "<div><span style=\"margin-left: 2em\">&nbsp;</span>";
-				s << line << "Hash: <b>" << uncle.hash << "</b>" << "</div>";
+				s << line << "Hash: <b>" << uncle.hash() << "</b>" << "</div>";
 				s << line << "Parent: <b>" << uncle.parentHash << "</b>" << "</div>";
 				s << line << "Number: <b>" << uncle.number << "</b>" << "</div>";
 				s << line << "Coinbase: <b>" << pretty(uncle.coinbaseAddress).toHtmlEscaped().toStdString() << " " << uncle.coinbaseAddress << "</b>" << "</div>";
@@ -1582,7 +1595,7 @@ void Main::on_debugCurrent_triggered()
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
 			bytes t = ethereum()->blockChain().transaction(h, txi);
 			State s(ethereum()->state(txi, h));
-			Executive e(s, ethereum()->blockChain(), PendingBlock);
+			Executive e(s, ethereum()->blockChain());
 			Debugger dw(this, this);
 			dw.populate(e, Transaction(t, CheckSignature::Sender));
 			dw.exec();

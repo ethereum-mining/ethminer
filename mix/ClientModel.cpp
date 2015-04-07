@@ -90,6 +90,7 @@ ClientModel::ClientModel():
 
 ClientModel::~ClientModel()
 {
+	m_runFuture.waitForFinished();
 }
 
 QString ClientModel::apiCall(QString const& _message)
@@ -113,7 +114,7 @@ void ClientModel::mine()
 	m_mining = true;
 	emit miningStarted();
 	emit miningStateChanged();
-	QtConcurrent::run([=]()
+	m_runFuture = QtConcurrent::run([=]()
 	{
 		try
 		{
@@ -136,6 +137,12 @@ QString ClientModel::newAddress()
 {
 	KeyPair a = KeyPair::create();
 	return QString::fromStdString(toHex(a.secret().ref()));
+}
+
+QString ClientModel::encodeAbiString(QString _string)
+{
+	ContractCallDataEncoder encoder;
+	return QString::fromStdString(toHex(encoder.encodeBytes(_string)));
 }
 
 QVariantMap ClientModel::contractAddresses() const
@@ -206,7 +213,7 @@ void ClientModel::executeSequence(std::vector<TransactionSettings> const& _seque
 	emit runStateChanged();
 
 	//run sequence
-	QtConcurrent::run([=]()
+	m_runFuture = QtConcurrent::run([=]()
 	{
 		try
 		{
@@ -468,7 +475,7 @@ RecordLogEntry* ClientModel::lastBlock() const
 	strGas << blockInfo.gasUsed;
 	std::stringstream strNumber;
 	strNumber << blockInfo.number;
-	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(toHex(blockInfo.hash.ref()))), tr("Gas Used: ") + QString::fromStdString(strGas.str()), QString(), QString(), false, RecordLogEntry::RecordType::Block);
+	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(toHex(blockInfo.hash().ref()))), tr("Gas Used: ") + QString::fromStdString(strGas.str()), QString(), QString(), false, RecordLogEntry::RecordType::Block);
 	QQmlEngine::setObjectOwnership(record, QQmlEngine::JavaScriptOwnership);
 	return record;
 }

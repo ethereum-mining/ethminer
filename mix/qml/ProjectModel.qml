@@ -43,8 +43,10 @@ Item {
 	property string deploymentDir
 	property var listModel: projectListModel
 	property var stateListModel: projectStateListModel.model
+	property alias stateDialog: projectStateListModel.stateDialog
 	property CodeEditorView codeEditor: null
 	property var unsavedFiles: []
+	property alias newProjectDialog: newProjectDialog
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
@@ -158,7 +160,7 @@ Item {
 	}
 
 	MessageDialog {
-		id: deployRessourcesDialog
+		id: deployResourcesDialog
 		title: qsTr("Project")
 		standardButtons: StandardButton.Ok
 	}

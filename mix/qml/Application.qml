@@ -11,6 +11,7 @@ import org.ethereum.qml.CodeModel 1.0
 import org.ethereum.qml.ClientModel 1.0
 import org.ethereum.qml.FileIo 1.0
 import org.ethereum.qml.Clipboard 1.0
+import org.ethereum.qml.ApplicationService 1.0
 
 ApplicationWindow {
 
@@ -22,6 +23,16 @@ ApplicationWindow {
 	minimumWidth: 400
 	minimumHeight: 300
 	title: qsTr("Mix")
+	property alias systemPointSize: appService.systemPointSize;
+	property alias mainContent: mainContent;
+	property alias codeModel: codeModel;
+	property alias clientModel: clientModel;
+	property alias projectModel: projectModel;
+	property alias appService: appService;
+
+	ApplicationService {
+		id: appService
+	}
 
 	CodeModel {
 		id: codeModel
@@ -42,6 +53,10 @@ ApplicationWindow {
 
 	Clipboard {
 		id: clipboard
+	}
+
+	Style {
+		id: appStyle
 	}
 
 	Connections {
