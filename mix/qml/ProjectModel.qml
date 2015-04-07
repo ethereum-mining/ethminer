@@ -160,7 +160,7 @@ Item {
 	}
 
 	MessageDialog {
-		id: deployRessourcesDialog
+		id: deployResourcesDialog
 		title: qsTr("Project")
 		standardButtons: StandardButton.Ok
 	}
