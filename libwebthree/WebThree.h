@@ -163,7 +163,7 @@ public:
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n) override;
 
-	bool haveNetwork() const override { return m_net.isStarted(); }
+	bool haveNetwork() const override { return m_net.haveNetwork(); }
 
 	void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers = false) override;
 
