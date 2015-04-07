@@ -988,11 +988,11 @@ bytes BlockChain::block(h256 const& _hash) const
 		return bytes();
 	}
 
+	noteUsed(_hash);
+
 	WriteGuard l(x_blocks);
 	m_blocks[_hash].resize(d.size());
 	memcpy(m_blocks[_hash].data(), d.data(), d.size());
-
-	noteUsed(_hash);
 
 	return m_blocks[_hash];
 }
@@ -1018,11 +1018,11 @@ bytes BlockChain::oldBlock(h256 const& _hash) const
 		return bytes();
 	}
 
+	noteUsed(_hash);
+
 	WriteGuard l(x_blocks);
 	m_blocks[_hash].resize(d.size());
 	memcpy(m_blocks[_hash].data(), d.data(), d.size());
-
-	noteUsed(_hash);
 
 	return m_blocks[_hash];
 }
