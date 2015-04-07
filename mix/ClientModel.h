@@ -155,7 +155,10 @@ public slots:
 	Q_INVOKABLE void debugRecord(unsigned _index);
 	/// Show the debugger for an empty record
 	Q_INVOKABLE void emptyRecord();
+	/// Generate new adress
 	Q_INVOKABLE QString newAddress();
+	/// Encode a string to ABI parameter. Returns a hex string
+	Q_INVOKABLE QString encodeAbiString(QString _string);
 
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
@@ -201,6 +204,7 @@ private:
 	void onStateReset();
 	void showDebuggerForTransaction(ExecutionResult const& _t);
 	QVariant formatValue(SolidityType const& _type, dev::u256 const& _value);
+	QVariant formatStorageValue(SolidityType const& _type, std::map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
 
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;
