@@ -284,15 +284,9 @@ Rectangle {
 					anchors.rightMargin: 9
 					anchors.verticalCenter: parent.verticalCenter
 					id: debugImg
+					text: ""
 					iconSource: "qrc:/qml/img/bugiconactive.png"
-					action: debugRunActionIcon
-				}
-				Action {
-					id: debugRunActionIcon
-					onTriggered: {
-						mainContent.toggleRightView();
-					}
-					enabled: true
+					action: showHideRightPanelAction
 				}
 			}
 		}
