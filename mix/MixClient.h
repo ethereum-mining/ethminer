@@ -58,6 +58,10 @@ public:
 	dev::eth::ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, eth::BlockNumber _blockNumber = eth::PendingBlock) override;
 	dev::eth::ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * eth::szabo, eth::BlockNumber _blockNumber = eth::PendingBlock) override;
 
+	void submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, bool _gasAuto);
+	Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice, bool _gasAuto);
+	dev::eth::ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, eth::BlockNumber _blockNumber, bool _gasAuto);
+
 	void setAddress(Address _us) override;
 	void setMiningThreads(unsigned _threads) override;
 	unsigned miningThreads() const override;
@@ -86,8 +90,9 @@ protected:
 	virtual void prepareForTransaction() override {}
 
 private:
-	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state, bool _call);
+	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state, bool _call, bool _gasAuto, dev::Secret const& _secret);
 	void noteChanged(h256Set const& _filters);
+	dev::eth::Transaction replaceGas(dev::eth::Transaction const& _t, dev::Secret const& _secret, dev::u256 const& _gas);
 
 	std::vector<KeyPair> m_userAccounts;
 	eth::State m_state;
