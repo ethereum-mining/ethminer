@@ -62,6 +62,7 @@ public:
 	static void initialize();
 	virtual ~MixApplication();
 	QQmlApplicationEngine* engine() { return m_engine.get(); }
+	bool notify(QObject* _receiver, QEvent* _event) override;
 
 private:
 	std::unique_ptr<QQmlApplicationEngine> m_engine;
