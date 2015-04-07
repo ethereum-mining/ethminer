@@ -355,7 +355,7 @@ Item {
 						height: 22
 						width: 22
 						action: clearAction
-						iconSource: "qrc:/qml/img/broom.png"
+						iconSource: "qrc:/qml/img/cleariconactive.png"
 					}
 
 					Action {
