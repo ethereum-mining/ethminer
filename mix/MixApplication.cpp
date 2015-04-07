@@ -20,6 +20,7 @@
  */
 
 #include "MixApplication.h"
+#include <boost/exception/diagnostic_information.hpp>
 #include <QQmlApplicationEngine>
 #include <QUrl>
 #include <QIcon>
@@ -36,6 +37,7 @@
 #include "Clipboard.h"
 #include "HttpServer.h"
 
+extern int qInitResources_js();
 using namespace dev::mix;
 
 ApplicationService::ApplicationService()
@@ -59,7 +61,6 @@ MixApplication::MixApplication(int& _argc, char* _argv[]):
 	}
 }
 
-
 void MixApplication::initialize()
 {
 #if __linux
@@ -71,6 +72,9 @@ void MixApplication::initialize()
 #if (defined(_WIN32) || defined(_WIN64))
 	if (!getenv("OPENSSL_CONF"))
 		putenv((char*)"OPENSSL_CONF=c:\\");
+#endif
+#ifdef ETH_HAVE_WEBENGINE
+	qInitResources_js();
 #endif
 
 	setOrganizationName(tr("Ethereum"));
@@ -97,4 +101,17 @@ void MixApplication::initialize()
 
 MixApplication::~MixApplication()
 {
+}
+
+bool MixApplication::notify(QObject * receiver, QEvent * event)
+{
+	try
+	{
+		return QApplication::notify(receiver, event);
+	}
+	catch (...)
+	{
+		std::cerr << boost::current_exception_diagnostic_information();
+	}
+	return false;
 }

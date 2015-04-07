@@ -42,6 +42,7 @@ public:
 
 public slots:
 	bool waitForSignal(QObject* _item, QString _signalName, int _timeout);
+	bool waitForRendering(QObject* _item, int timeout);
 	bool keyPress(QObject* _item, int _key, int _modifiers, int _delay);
 	bool keyRelease(QObject* _item, int _key, int _modifiers, int _delay);
 	bool keyClick(QObject* _item, int _key, int _modifiers, int _delay);
