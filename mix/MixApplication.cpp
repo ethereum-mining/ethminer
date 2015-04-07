@@ -19,34 +19,99 @@
  * @date 2014
  */
 
-#include <QDebug>
+#include "MixApplication.h"
+#include <boost/exception/diagnostic_information.hpp>
 #include <QQmlApplicationEngine>
-
+#include <QUrl>
+#include <QIcon>
+#include <QFont>
 #ifdef ETH_HAVE_WEBENGINE
 #include <QtWebEngine/QtWebEngine>
 #endif
+#include "CodeModel.h"
+#include "ClientModel.h"
+#include "FileIo.h"
+#include "QEther.h"
+#include "QVariableDeclaration.h"
+#include "SortFilterProxyModel.h"
+#include "Clipboard.h"
+#include "HttpServer.h"
 
-#include "MixApplication.h"
-#include "AppContext.h"
-
-#include <QMenuBar>
-
+extern int qInitResources_js();
 using namespace dev::mix;
 
-MixApplication::MixApplication(int& _argc, char* _argv[]):
-	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine()), m_appContext(new AppContext(m_engine.get()))
+ApplicationService::ApplicationService()
 {
+#ifdef ETH_HAVE_WEBENGINE
+	QtWebEngine::initialize();
+#endif
+	QFont f;
+	m_systemPointSize = f.pointSize();
+}
+
+MixApplication::MixApplication(int& _argc, char* _argv[]):
+	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine())
+{
+	m_engine->load(QUrl("qrc:/qml/Application.qml"));
+	if (!m_engine->rootObjects().empty())
+	{
+		QWindow *window = qobject_cast<QWindow*>(m_engine->rootObjects().at(0));
+		if (window)
+			window->setIcon(QIcon(":/res/mix_256x256x32.png"));
+	}
+}
+
+void MixApplication::initialize()
+{
+#if __linux
+	//work around ubuntu appmenu-qt5 bug
+	//https://bugs.launchpad.net/ubuntu/+source/appmenu-qt5/+bug/1323853
+	putenv((char*)"QT_QPA_PLATFORMTHEME=");
+	putenv((char*)"QSG_RENDER_LOOP=threaded");
+#endif
+#if (defined(_WIN32) || defined(_WIN64))
+	if (!getenv("OPENSSL_CONF"))
+		putenv((char*)"OPENSSL_CONF=c:\\");
+#endif
+#ifdef ETH_HAVE_WEBENGINE
+	qInitResources_js();
+#endif
+
 	setOrganizationName(tr("Ethereum"));
 	setOrganizationDomain(tr("ethereum.org"));
 	setApplicationName(tr("Mix"));
 	setApplicationVersion("0.1");
-#ifdef ETH_HAVE_WEBENGINE
-	QtWebEngine::initialize();
-#endif
-	QObject::connect(this, SIGNAL(lastWindowClosed()), context(), SLOT(quitApplication())); //use to kill ApplicationContext and other stuff
-	m_appContext->load();
+
+	qmlRegisterType<CodeModel>("org.ethereum.qml.CodeModel", 1, 0, "CodeModel");
+	qmlRegisterType<ClientModel>("org.ethereum.qml.ClientModel", 1, 0, "ClientModel");
+	qmlRegisterType<ApplicationService>("org.ethereum.qml.ApplicationService", 1, 0, "ApplicationService");
+	qmlRegisterType<FileIo>("org.ethereum.qml.FileIo", 1, 0, "FileIo");
+	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
+	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
+	qmlRegisterType<QVariableDeclaration>("org.ethereum.qml.QVariableDeclaration", 1, 0, "QVariableDeclaration");
+	qmlRegisterType<RecordLogEntry>("org.ethereum.qml.RecordLogEntry", 1, 0, "RecordLogEntry");
+	qmlRegisterType<SortFilterProxyModel>("org.ethereum.qml.SortFilterProxyModel", 1, 0, "SortFilterProxyModel");
+	qmlRegisterType<QSolidityType>("org.ethereum.qml.QSolidityType", 1, 0, "QSolidityType");
+	qmlRegisterType<Clipboard>("org.ethereum.qml.Clipboard", 1, 0, "Clipboard");
+	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
+	qRegisterMetaType<CodeModel*>("CodeModel*");
+	qRegisterMetaType<ClientModel*>("ClientModel*");
+	qRegisterMetaType<ClientModel*>("ClientModel*");
 }
 
 MixApplication::~MixApplication()
 {
+}
+
+bool MixApplication::notify(QObject * receiver, QEvent * event)
+{
+	try
+	{
+		return QApplication::notify(receiver, event);
+	}
+	catch (...)
+	{
+		std::cerr << boost::current_exception_diagnostic_information();
+	}
+	return false;
 }

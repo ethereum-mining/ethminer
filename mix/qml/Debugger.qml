@@ -12,6 +12,10 @@ Rectangle {
 	id: debugPanel
 
 	property alias transactionLog: transactionLog
+	property alias debugSlider: statesSlider
+	property alias solLocals: solLocals
+	property alias solStorage: solStorage
+	property alias solCallStack: solCallStack
 	signal debugExecuteLocation(string documentId, var location)
 	property string compilationErrorMessage
 	property bool assemblyMode: false
@@ -29,6 +33,7 @@ Rectangle {
 	onAssemblyModeChanged:
 	{
 		Debugger.updateMode();
+		machineStates.updateHeight();
 	}
 
 	function displayCompilationErrorIfAny()
@@ -39,7 +44,7 @@ Rectangle {
 		var errorInfo = ErrorLocationFormater.extractErrorInfo(compilationErrorMessage, false);
 		errorLocation.text = errorInfo.errorLocation;
 		errorDetail.text = errorInfo.errorDetail;
-		errorLine.text = errorInfo.errorLine;
+		errorLine.text = errorInfo.line;
 	}
 
 	function update(data, giveFocus)
@@ -64,10 +69,14 @@ Rectangle {
 		Debugger.setBreakpoints(bp);
 	}
 
+	DebuggerPaneStyle {
+		id: dbgStyle
+	}
+
 	Connections {
 		target: clientModel
 		onDebugDataReady:  {
-			update(_debugData, true);
+			update(_debugData, false);
 		}
 	}
 
@@ -90,6 +99,9 @@ Rectangle {
 		property alias memoryDumpHeightSettings: memoryRect.height
 		property alias callDataHeightSettings: callDataRect.height
 		property alias transactionLogVisible: transactionLog.visible
+		property alias solCallStackHeightSettings: solStackRect.height
+		property alias solStorageHeightSettings: solStorageRect.height
+		property alias solLocalsHeightSettings: solLocalsRect.height
 	}
 
 	Rectangle
@@ -154,19 +166,15 @@ Rectangle {
 		}
 	}
 
-	SplitView {
+	Splitter {
 		id: debugScrollArea
 		anchors.fill: parent
 		orientation: Qt.Vertical
-		handleDelegate: Rectangle {
-			height: machineStates.sideMargin
-			color: "transparent"
-		}
 
 		TransactionLog {
 			id: transactionLog
 			Layout.fillWidth: true
-			Layout.minimumHeight: 60
+			Layout.minimumHeight: 130
 			height: 250
 			anchors.top: parent.top
 			anchors.left: parent.left
@@ -183,8 +191,12 @@ Rectangle {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 			function updateHeight() {
-				statesLayout.height = buttonRow.childrenRect.height + assemblyCodeRow.childrenRect.height +
-						callStackRect.childrenRect.height + storageRect.childrenRect.height + memoryRect.childrenRect.height + callDataRect.childrenRect.height + 120;
+				var h = buttonRow.childrenRect.height;
+				if (assemblyMode)
+					h += assemblyCodeRow.childrenRect.height + callStackRect.childrenRect.height + storageRect.childrenRect.height + memoryRect.childrenRect.height + callDataRect.childrenRect.height;
+				else
+					h += solStackRect.childrenRect.height + solLocalsRect.childrenRect.height + solStorageRect.childrenRect.height;
+				statesLayout.height = h + 120;
 			}
 
 			Component.onCompleted: updateHeight();
@@ -215,6 +227,33 @@ Rectangle {
 							anchors.horizontalCenter: parent.horizontalCenter
 							id: jumpButtons
 							spacing: 3
+
+							StepActionImage
+							{
+								id: playAction
+								enabledStateImg: "qrc:/qml/img/play_button.png"
+								disableStateImg: "qrc:/qml/img/play_button.png"
+								onClicked: projectModel.stateListModel.runState(transactionLog.selectedStateIndex)
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+Shift+F8"
+								buttonTooltip: qsTr("Start Debugging")
+								visible: true
+							}
+
+							StepActionImage
+							{
+								id: pauseAction
+								enabledStateImg: "qrc:/qml/img/stop_button2x.png"
+								disableStateImg: "qrc:/qml/img/stop_button2x.png"
+								onClicked: Debugger.init(null);
+								width: 30
+								height: 30
+								buttonShortcut: "Ctrl+Shift+F9"
+								buttonTooltip: qsTr("Stop Debugging")
+								visible: true
+							}
+
 							StepActionImage
 							{
 								id: runBackAction;
@@ -225,6 +264,7 @@ Rectangle {
 								height: 30
 								buttonShortcut: "Ctrl+Shift+F5"
 								buttonTooltip: qsTr("Run Back")
+								visible: false
 							}
 
 							StepActionImage
@@ -309,9 +349,8 @@ Rectangle {
 								height: 30
 								buttonShortcut: "Ctrl+F5"
 								buttonTooltip: qsTr("Run Forward")
+								visible: false
 							}
-
-
 						}
 					}
 
@@ -418,7 +457,7 @@ Rectangle {
 										color: "#b2b3ae"
 										text: styleData.value.split(' ')[0]
 										font.family: "monospace"
-										font.pointSize: DebuggerPaneStyle.general.basicFontSize
+										font.pointSize: dbgStyle.general.basicFontSize
 										wrapMode: Text.NoWrap
 										id: id
 									}
@@ -428,7 +467,7 @@ Rectangle {
 										color: styleData.selected ? "white" : "black"
 										font.family: "monospace"
 										text: styleData.value.replace(styleData.value.split(' ')[0], '')
-										font.pointSize: DebuggerPaneStyle.general.basicFontSize
+										font.pointSize: dbgStyle.general.basicFontSize
 									}
 								}
 							}
@@ -501,7 +540,7 @@ Rectangle {
 												font.family: "monospace"
 												color: "#4a4a4a"
 												text: styleData.row;
-												font.pointSize: DebuggerPaneStyle.general.basicFontSize
+												font.pointSize: dbgStyle.general.basicFontSize
 											}
 										}
 
@@ -519,7 +558,7 @@ Rectangle {
 												anchors.verticalCenter: parent.verticalCenter
 												color: "#4a4a4a"
 												text: styleData.value
-												font.pointSize: DebuggerPaneStyle.general.basicFontSize
+												font.pointSize: dbgStyle.general.basicFontSize
 											}
 										}
 									}
@@ -546,82 +585,65 @@ Rectangle {
 
 					Rectangle
 					{
+						id: solStackRect;
+						color: "transparent"
+						Layout.minimumHeight: 25
+						Layout.maximumHeight: 800
+						onHeightChanged: machineStates.updateHeight();
+						visible: !assemblyMode
+						CallStack {
+							anchors.fill: parent
+							id: solCallStack
+						}
+					}
+
+					Rectangle
+					{
+						id: solLocalsRect;
+						color: "transparent"
+						Layout.minimumHeight: 25
+						Layout.maximumHeight: 800
+						onHeightChanged: machineStates.updateHeight();
+						visible: !assemblyMode
+						VariablesView {
+							title : qsTr("Locals")
+							anchors.fill: parent
+							id: solLocals
+						}
+					}
+
+					Rectangle
+					{
+						id: solStorageRect;
+						color: "transparent"
+						Layout.minimumHeight: 25
+						Layout.maximumHeight: 800
+						onHeightChanged: machineStates.updateHeight();
+						visible: !assemblyMode
+						VariablesView {
+							title : qsTr("Members")
+							anchors.fill: parent
+							id: solStorage
+						}
+					}
+
+					Rectangle
+					{
 						id: callStackRect;
 						color: "transparent"
 						Layout.minimumHeight: 25
 						Layout.maximumHeight: 800
 						onHeightChanged: machineStates.updateHeight();
-						DebugInfoList
-						{
-							id: callStack
-							collapsible: true
+						visible: assemblyMode
+						CallStack {
 							anchors.fill: parent
-							title : qsTr("Call Stack")
-							enableSelection: true
+							id: callStack
 							onRowActivated: Debugger.displayFrame(index);
-							itemDelegate:
-								Item {
-								anchors.fill: parent
-
-								Rectangle {
-									anchors.fill: parent
-									color: "#4A90E2"
-									visible: styleData.selected;
-								}
-
-								RowLayout
-								{
-									id: row
-									anchors.fill: parent
-									Rectangle
-									{
-										color: "#f7f7f7"
-										Layout.fillWidth: true
-										Layout.minimumWidth: 30
-										Layout.maximumWidth: 30
-										Text {
-											anchors.verticalCenter: parent.verticalCenter
-											anchors.left: parent.left
-											font.family: "monospace"
-											anchors.leftMargin: 5
-											color: "#4a4a4a"
-											text: styleData.row;
-											font.pointSize: DebuggerPaneStyle.general.basicFontSize
-											width: parent.width - 5
-											elide: Text.ElideRight
-										}
-									}
-									Rectangle
-									{
-										color: "transparent"
-										Layout.fillWidth: true
-										Layout.minimumWidth: parent.width - 30
-										Layout.maximumWidth: parent.width - 30
-										Text {
-											anchors.leftMargin: 5
-											width: parent.width - 5
-											wrapMode: Text.NoWrap
-											anchors.left: parent.left
-											font.family: "monospace"
-											anchors.verticalCenter: parent.verticalCenter
-											color: "#4a4a4a"
-											text: styleData.value;
-											elide: Text.ElideRight
-											font.pointSize: DebuggerPaneStyle.general.basicFontSize
-										}
-									}
-								}
-
-								Rectangle {
-									anchors.top: row.bottom
-									width: parent.width;
-									height: 1;
-									color: "#cccccc"
-									anchors.bottom: parent.bottom
-								}
-							}
 						}
 					}
+
+
+
 
 					Rectangle
 					{
@@ -631,68 +653,10 @@ Rectangle {
 						Layout.minimumHeight: 25
 						Layout.maximumHeight: 800
 						onHeightChanged: machineStates.updateHeight();
-						DebugInfoList
-						{
-							id: storage
+						visible: assemblyMode
+						StorageView {
 							anchors.fill: parent
-							collapsible: true
-							title : qsTr("Storage")
-							itemDelegate:
-								Item {
-								anchors.fill: parent
-								RowLayout
-								{
-									id: row
-									anchors.fill: parent
-									Rectangle
-									{
-										color: "#f7f7f7"
-										Layout.fillWidth: true
-										Layout.minimumWidth: parent.width / 2
-										Layout.maximumWidth: parent.width / 2
-										Text {
-											anchors.verticalCenter: parent.verticalCenter
-											anchors.left: parent.left
-											font.family: "monospace"
-											anchors.leftMargin: 5
-											color: "#4a4a4a"
-											text: styleData.value.split('\t')[0];
-											font.pointSize: DebuggerPaneStyle.general.basicFontSize
-											width: parent.width - 5
-											elide: Text.ElideRight
-										}
-									}
-									Rectangle
-									{
-										color: "transparent"
-										Layout.fillWidth: true
-										Layout.minimumWidth: parent.width / 2
-										Layout.maximumWidth: parent.width / 2
-										Text {
-											maximumLineCount: 1
-											clip: true
-											anchors.leftMargin: 5
-											width: parent.width - 5
-											wrapMode: Text.WrapAnywhere
-											anchors.left: parent.left
-											font.family: "monospace"
-											anchors.verticalCenter: parent.verticalCenter
-											color: "#4a4a4a"
-											text: styleData.value.split('\t')[1];
-											elide: Text.ElideRight
-											font.pointSize: DebuggerPaneStyle.general.basicFontSize
-										}
-									}
-								}
-
-								Rectangle {
-									anchors.top: row.bottom
-									width: parent.width;
-									height: 1;
-									color: "#cccccc"
-									anchors.bottom: parent.bottom
-								}
-							}
+							id: storage
 						}
 					}
 
@@ -704,6 +668,7 @@ Rectangle {
 						Layout.minimumHeight: 25
 						Layout.maximumHeight: 800
 						onHeightChanged: machineStates.updateHeight();
+						visible: assemblyMode
 						DebugInfoList {
 							id: memoryDump
 							anchors.fill: parent
@@ -726,6 +691,7 @@ Rectangle {
 						Layout.minimumHeight: 25
 						Layout.maximumHeight: 800
 						onHeightChanged: machineStates.updateHeight();
+						visible: assemblyMode
 						DebugInfoList {
 							id: callDataDump
 							anchors.fill: parent

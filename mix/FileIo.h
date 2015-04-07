@@ -25,6 +25,8 @@
 #include <libdevcore/CommonData.h>
 #include <QObject>
 
+class QFileSystemWatcher;
+
 namespace dev
 {
 namespace mix
@@ -39,8 +41,11 @@ class FileIo: public QObject
 signals:
 	/// Signalled in case of IO error
 	void error(QString const& _errorText);
+	/// Signnalled when a file is changed.
+	void fileChanged(QString const& _filePath);
 
 public:
+	FileIo();
 	/// Create a directory if it does not exist. Signals on failure.
 	Q_INVOKABLE void makeDir(QString const& _url);
 	/// Read file contents to a string. Signals on failure.
@@ -55,12 +60,17 @@ public:
 	Q_INVOKABLE bool fileExists(QString const& _url);
 	/// Compress a folder, @returns sha3 of the compressed file.
 	Q_INVOKABLE QStringList makePackage(QString const& _deploymentFolder);
-	/// Open a file browser
+	/// Open a file browser.
 	Q_INVOKABLE void openFileBrowser(QString const& _dir);
+	/// Listen for files change in @arg _path.
+	Q_INVOKABLE void watchFileChanged(QString const& _path);
+	/// Stop Listenning for files change in @arg _path.
+	Q_INVOKABLE void stopWatching(QString const& _path);
 
 private:
 	QString getHomePath() const;
 	QString pathFromUrl(QString const& _url);
+	QFileSystemWatcher* m_watcher;
 };
 
 }

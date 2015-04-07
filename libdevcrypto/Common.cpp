@@ -15,8 +15,8 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file Common.cpp
- * @author Gav Wood <i@gavwood.com>
  * @author Alex Leverington <nessence@gmail.com>
+ * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
 
@@ -82,6 +82,22 @@ bool dev::decrypt(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
 	return true;
 }
 
+void dev::encryptECIES(Public const& _k, bytesConstRef _plain, bytes& o_cipher)
+{
+	bytes io = _plain.toBytes();
+	s_secp256k1.encryptECIES(_k, io);
+	o_cipher = std::move(io);
+}
+
+bool dev::decryptECIES(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext)
+{
+	bytes io = _cipher.toBytes();
+	if (!s_secp256k1.decryptECIES(_k, io))
+		return false;
+	o_plaintext = std::move(io);
+	return true;
+}
+
 void dev::encryptSym(Secret const& _k, bytesConstRef _plain, bytes& o_cipher)
 {
 	// TOOD: @alex @subtly do this properly.
@@ -92,6 +108,54 @@ bool dev::decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plain)
 {
 	// TODO: @alex @subtly do this properly.
 	return decrypt(_k, _cipher, o_plain);
+}
+
+h128 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher)
+{
+	h128 iv(Nonce::get());
+	return encryptSymNoAuth(_k, _plain, o_cipher, iv);
+}
+
+h128 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher, h128 const& _iv)
+{
+	o_cipher.resize(_plain.size());
+
+	const int c_aesKeyLen = 16;
+	SecByteBlock key(_k.data(), c_aesKeyLen);
+	try
+	{
+		CTR_Mode<AES>::Encryption e;
+		e.SetKeyWithIV(key, key.size(), _iv.data());
+		e.ProcessData(o_cipher.data(), _plain.data(), _plain.size());
+		return _iv;
+	}
+	catch (CryptoPP::Exception& _e)
+	{
+		cerr << _e.what() << endl;
+		o_cipher.resize(0);
+		return h128();
+	}
+}
+
+bool dev::decryptSymNoAuth(Secret const& _k, h128 const& _iv, bytesConstRef _cipher, bytes& o_plaintext)
+{
+	o_plaintext.resize(_cipher.size());
+	
+	const size_t c_aesKeyLen = 16;
+	SecByteBlock key(_k.data(), c_aesKeyLen);
+	try
+	{
+		CTR_Mode<AES>::Decryption d;
+		d.SetKeyWithIV(key, key.size(), _iv.data());
+		d.ProcessData(o_plaintext.data(), _cipher.data(), _cipher.size());
+		return true;
+	}
+	catch (CryptoPP::Exception& _e)
+	{
+		cerr << _e.what() << endl;
+		o_plaintext.resize(0);
+		return false;
+	}
 }
 
 Public dev::recover(Signature const& _sig, h256 const& _message)

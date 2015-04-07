@@ -5,9 +5,10 @@ function defaultTransaction()
 	return {
 		value: createEther("0", QEther.Wei),
 		functionId: "",
-		gas: createBigInt("125000"),
+		gas: createBigInt("250000"),
 		gasPrice: createEther("100000", QEther.Wei),
-		parameters: {}
+		parameters: {},
+		stdContract: false
 	};
 }
 

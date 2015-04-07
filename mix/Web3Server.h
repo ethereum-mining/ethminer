@@ -39,14 +39,15 @@ class Web3Server: public QObject, public dev::WebThreeStubServerBase, public dev
 
 public:
 	Web3Server(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts, dev::eth::Interface* _client);
+	virtual ~Web3Server();
 
 signals:
 	void newTransaction();
 
 protected:
-	virtual Json::Value eth_changed(int _id) override;
-	virtual std::string eth_transact(Json::Value const& _json) override;
-	virtual std::string eth_call(Json::Value const& _json) override;
+	virtual Json::Value eth_getFilterChanges(std::string const& _filterId) override;
+	virtual std::string eth_sendTransaction(Json::Value const& _json) override;
+	virtual std::string eth_call(Json::Value const& _json, std::string const& _blockNumber) override;
 
 private:
 	dev::eth::Interface* client() override { return m_client; }
@@ -60,6 +61,7 @@ private:
 private:
 	dev::eth::Interface* m_client;
 	std::map<std::string, std::string> m_db;
+	std::unique_ptr<dev::WebThreeNetworkFace> m_network;
 };
 
 }

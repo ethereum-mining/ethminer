@@ -21,7 +21,6 @@
 
 #pragma once
 
-#include <QtCore/QObject>
 #include <QtCore/QtCore>
 #include <QtQml/QJSEngine>
 
@@ -34,12 +33,10 @@ class NatspecExpressionEvaluator
 public:
 	/// Construct natspec expression evaluator
 	/// @params abi - contract's abi in json format, passed as string
+	/// @params transaction - json object containing transaction data
 	/// @params method - name of the contract's method for which we evaluate the natspec.
-	/// If we want to use raw string, it should be passed with quotation marks eg. "\"helloWorld\""
-	/// If we pass string "helloWorld", the value of the object with name "helloWorld" will be used
-	/// @params params - array of method input params, passed as string, objects in array should be
 	/// javascript valid objects
-	NatspecExpressionEvaluator(QString const& _abi = "[]", QString const& _method = "", QString const& _params = "[]");
+	NatspecExpressionEvaluator(QString const& _abi = "[]", QString const& _transaction = "{}", QString const& _method = "");
 	
 	/// Should be called to evaluate natspec expression
 	/// @params expression - natspec expression
@@ -48,4 +45,7 @@ public:
 	
 private:
 	QJSEngine m_engine;
+	QString m_abi;
+	QString m_transaction;
+	QString m_method;
 };

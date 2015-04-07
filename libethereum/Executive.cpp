@@ -35,7 +35,7 @@ using namespace dev::eth;
 
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
-	m_lastHashes(_s.getLastHashes(_bc, (unsigned)_s.info().number - 1)),
+	m_lastHashes(_bc.lastHashes((unsigned)_s.info().number - 1)),
 	m_depth(_level)
 {}
 
@@ -44,75 +44,90 @@ u256 Executive::gasUsed() const
 	return m_t.gas() - m_endGas;
 }
 
+ExecutionResult Executive::executionResult() const
+{
+	return ExecutionResult(gasUsed(), m_excepted, m_newAddress, m_out, m_codeDeposit, m_ext ? m_ext->sub.refunds : 0, m_depositSize, m_gasForDeposit);
+}
+
 void Executive::accrueSubState(SubState& _parentContext)
 {
 	if (m_ext)
 		_parentContext += m_ext->sub;
 }
 
-bool Executive::setup(bytesConstRef _rlp)
+void Executive::initialize(Transaction const& _transaction)
 {
-	// Entry point for a user-executed transaction.
-	m_t = Transaction(_rlp, CheckSignature::Sender);
-	return setup();
-}
+	m_t = _transaction;
 
-bool Executive::setup()
-{
-	// Entry point for a user-executed transaction.
-
-	// Avoid invalid transactions.
-	auto nonceReq = m_s.transactionsFrom(m_t.sender());
-	if (m_t.nonce() != nonceReq)
-	{
-		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
-		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
-	}
-
-	// Check gas cost is enough.
-	auto gasCost = Interface::txGas(m_t.data());
-
-	if (m_t.gas() < gasCost)
-	{
-		clog(StateDetail) << "Not enough gas to pay for the transaction: Require >" << gasCost << " Got" << m_t.gas();
-		BOOST_THROW_EXCEPTION(OutOfGas() << RequirementError((bigint)gasCost, (bigint)m_t.gas()));
-	}
-
-	bigint cost = m_t.value() + (bigint)m_t.gas() * m_t.gasPrice();
-
-	// Avoid unaffordable transactions.
-	if (m_s.balance(m_t.sender()) < cost)
-	{
-		clog(StateDetail) << "Not enough cash: Require >" << cost << " Got" << m_s.balance(m_t.sender());
-		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(cost, (bigint)m_s.balance(m_t.sender())));
-	}
-
+	// Avoid transactions that would take us beyond the block gas limit.
 	u256 startGasUsed = m_s.gasUsed();
 	if (startGasUsed + (bigint)m_t.gas() > m_s.m_currentBlock.gasLimit)
 	{
 		clog(StateDetail) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas();
+		m_excepted = TransactionException::BlockGasLimitReached;
 		BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementError((bigint)(m_s.m_currentBlock.gasLimit - startGasUsed), (bigint)m_t.gas()));
 	}
+
+	// Check gas cost is enough.
+	m_gasRequired = Interface::txGas(m_t.data());
+	if (m_t.gas() < m_gasRequired)
+	{
+		clog(StateDetail) << "Not enough gas to pay for the transaction: Require >" << m_gasRequired << " Got" << m_t.gas();
+		m_excepted = TransactionException::OutOfGas;
+		BOOST_THROW_EXCEPTION(OutOfGas() << RequirementError((bigint)m_gasRequired, (bigint)m_t.gas()));
+	}
+
+	// Avoid invalid transactions.
+	u256 nonceReq;
+	try
+	{
+		nonceReq = m_s.transactionsFrom(m_t.sender());
+	}
+	catch (...)
+	{
+		clog(StateDetail) << "Invalid Signature";
+		m_excepted = TransactionException::InvalidSignature;
+		throw;
+	}
+	if (m_t.nonce() != nonceReq)
+	{
+		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
+		m_excepted = TransactionException::InvalidNonce;
+		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
+	}
+
+	// Avoid unaffordable transactions.
+	m_gasCost = (bigint)m_t.gas() * m_t.gasPrice();
+	m_totalCost = m_t.value() + m_gasCost;
+	if (m_s.balance(m_t.sender()) < m_totalCost)
+	{
+		clog(StateDetail) << "Not enough cash: Require >" << m_totalCost << " Got" << m_s.balance(m_t.sender());
+		m_excepted = TransactionException::NotEnoughCash;
+		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(m_totalCost, (bigint)m_s.balance(m_t.sender())));
+	}
+}
+
+bool Executive::execute()
+{
+	// Entry point for a user-executed transaction.
 
 	// Increment associated nonce for sender.
 	m_s.noteSending(m_t.sender());
 
 	// Pay...
-	clog(StateDetail) << "Paying" << formatBalance(u256(cost)) << "from sender (includes" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
-	m_s.subBalance(m_t.sender(), cost);
+	clog(StateDetail) << "Paying" << formatBalance(u256(m_gasCost)) << "from sender for gas (" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
+	m_s.subBalance(m_t.sender(), m_gasCost);
 
 	if (m_t.isCreation())
-		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)gasCost, &m_t.data(), m_t.sender());
+		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_gasRequired, &m_t.data(), m_t.sender());
 	else
-		return call(m_t.receiveAddress(), m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)gasCost, m_t.sender());
+		return call(m_t.receiveAddress(), m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_gasRequired, m_t.sender());
 }
 
 bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
 {
 	m_isCreation = false;
 //	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
-	m_s.addBalance(_receiveAddress, _value);
-
 	auto it = !(_codeAddress & ~h160(0xffffffff)) ? precompiled().find((unsigned)(u160)_codeAddress) : precompiled().end();
 	if (it != precompiled().end())
 	{
@@ -120,7 +135,9 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 		if (_gas < g)
 		{
 			m_endGas = 0;
-			m_excepted = true;
+			m_excepted = TransactionException::OutOfGasBase;
+			// Bail from exception.
+			return true;	// true actually means "all finished - nothing more to be done regarding go().
 		}
 		else
 		{
@@ -137,6 +154,9 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 	}
 	else
 		m_endGas = _gas;
+
+	m_s.transferBalance(_senderAddress, _receiveAddress, _value);
+
 	return !m_ext;
 }
 
@@ -148,20 +168,22 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	// we delete it explicitly if we decide we need to revert.
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
 
-	// Set up new account...
-	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress) + _endowment, Account::ContractConception);
-
 	// Execute _init.
+	if (!_init.empty())
+	{
+		m_vm = VMFactory::create(_gas);
+		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
+	}
+
+	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress), Account::ContractConception);
+	m_s.transferBalance(_sender, m_newAddress, _endowment);
+
 	if (_init.empty())
 	{
 		m_s.m_cache[m_newAddress].setCode({});
 		m_endGas = _gas;
 	}
-	else
-	{
-		m_vm = VMFactory::create(_gas);
-		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
-	}
+
 	return !m_ext;
 }
 
@@ -199,10 +221,19 @@ bool Executive::go(OnOpFunc const& _onOp)
 
 			if (m_isCreation)
 			{
+				m_gasForDeposit = m_endGas;
+				m_depositSize = m_out.size();
 				if (m_out.size() * c_createDataGas <= m_endGas)
+				{
+					m_codeDeposit = CodeDeposit::Success;
 					m_endGas -= m_out.size() * c_createDataGas;
+				}
 				else
+				{
+
+					m_codeDeposit = CodeDeposit::Failed;
 					m_out.reset();
+				}
 				m_s.m_cache[m_newAddress].setCode(m_out.toBytes());
 			}
 		}
@@ -214,7 +245,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		{
 			clog(StateSafeExceptions) << "Safe VM Exception. " << diagnostic_information(_e);
 			m_endGas = 0;
-			m_excepted = true;
+			m_excepted = toTransactionException(_e);
 			m_ext->revert();
 		}
 		catch (Exception const& _e)

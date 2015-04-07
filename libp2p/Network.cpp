@@ -27,8 +27,10 @@
 #endif
 
 #include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 #include <libdevcore/Common.h>
+#include <libdevcore/Assertions.h>
 #include <libdevcore/CommonIO.h>
 #include <libethcore/Exceptions.h>
 #include "Common.h"
@@ -39,9 +41,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-std::vector<bi::address> Network::getInterfaceAddresses()
+std::set<bi::address> Network::getInterfaceAddresses()
 {
-	std::vector<bi::address> addresses;
+	std::set<bi::address> addresses;
 
 #ifdef _WIN32
 	WSAData wsaData;
@@ -71,7 +73,7 @@ std::vector<bi::address> Network::getInterfaceAddresses()
 		char *addrStr = inet_ntoa(addr);
 		bi::address address(bi::address::from_string(addrStr));
 		if (!isLocalHostAddress(address))
-			addresses.push_back(address.to_v4());
+			addresses.insert(address.to_v4());
 	}
 
 	WSACleanup();
@@ -90,7 +92,7 @@ std::vector<bi::address> Network::getInterfaceAddresses()
 			in_addr addr = ((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
 			boost::asio::ip::address_v4 address(boost::asio::detail::socket_ops::network_to_host_long(addr.s_addr));
 			if (!isLocalHostAddress(address))
-				addresses.push_back(address);
+				addresses.insert(address);
 		}
 		else if (ifa->ifa_addr->sa_family == AF_INET6)
 		{
@@ -100,7 +102,7 @@ std::vector<bi::address> Network::getInterfaceAddresses()
 			memcpy(&bytes[0], addr.s6_addr, 16);
 			boost::asio::ip::address_v6 address(bytes, sockaddr->sin6_scope_id);
 			if (!isLocalHostAddress(address))
-				addresses.push_back(address);
+				addresses.insert(address);
 		}
 	}
 
@@ -112,13 +114,39 @@ std::vector<bi::address> Network::getInterfaceAddresses()
 	return std::move(addresses);
 }
 
-int Network::tcp4Listen(bi::tcp::acceptor& _acceptor, unsigned short _listenPort)
+int Network::tcp4Listen(bi::tcp::acceptor& _acceptor, NetworkPreferences const& _netPrefs)
 {
 	int retport = -1;
-	for (unsigned i = 0; i < 2; ++i)
+	if (_netPrefs.listenIPAddress.empty())
+		for (unsigned i = 0; i < 2; ++i)
+		{
+			// try to connect w/listenPort, else attempt net-allocated port
+			bi::tcp::endpoint endpoint(bi::tcp::v4(), i ? 0 : _netPrefs.listenPort);
+			try
+			{
+				_acceptor.open(endpoint.protocol());
+				_acceptor.set_option(ba::socket_base::reuse_address(true));
+				_acceptor.bind(endpoint);
+				_acceptor.listen();
+				retport = _acceptor.local_endpoint().port();
+				break;
+			}
+			catch (...)
+			{
+				if (i)
+				{
+					// both attempts failed
+					cwarn << "Couldn't start accepting connections on host. Something very wrong with network?\n" << boost::current_exception_diagnostic_information();
+				}
+				
+				// first attempt failed
+				_acceptor.close();
+				continue;
+			}
+		}
+	else
 	{
-		// try to connect w/listenPort, else attempt net-allocated port
-		bi::tcp::endpoint endpoint(bi::tcp::v4(), i ? 0 : _listenPort);
+		bi::tcp::endpoint endpoint(bi::address::from_string(_netPrefs.listenIPAddress), _netPrefs.listenPort);
 		try
 		{
 			_acceptor.open(endpoint.protocol());
@@ -126,25 +154,18 @@ int Network::tcp4Listen(bi::tcp::acceptor& _acceptor, unsigned short _listenPort
 			_acceptor.bind(endpoint);
 			_acceptor.listen();
 			retport = _acceptor.local_endpoint().port();
-			break;
 		}
 		catch (...)
 		{
-			if (i)
-			{
-				// both attempts failed
-				cwarn << "Couldn't start accepting connections on host. Something very wrong with network?\n" << boost::current_exception_diagnostic_information();
-			}
-
-			// first attempt failed
-			_acceptor.close();
-			continue;
+			clog(NetWarn) << "Couldn't start accepting connections on host. Failed to accept socket.\n" << boost::current_exception_diagnostic_information();
 		}
+		assert(retport == _netPrefs.listenPort);
+		return retport;
 	}
 	return retport;
 }
 
-bi::tcp::endpoint Network::traverseNAT(std::vector<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpifaddr)
+bi::tcp::endpoint Network::traverseNAT(std::set<bi::address> const& _ifAddresses, unsigned short _listenPort, bi::address& o_upnpInterfaceAddr)
 {
 	asserts(_listenPort != 0);
 
@@ -154,28 +175,28 @@ bi::tcp::endpoint Network::traverseNAT(std::vector<bi::address> const& _ifAddres
 		upnp = new UPnP;
 	}
 	// let m_upnp continue as null - we handle it properly.
-	catch (NoUPnPDevice) {}
+	catch (...) {}
 
-	bi::tcp::endpoint upnpep;
+	bi::tcp::endpoint upnpEP;
 	if (upnp && upnp->isValid())
 	{
-		bi::address paddr;
+		bi::address pAddr;
 		int extPort = 0;
 		for (auto const& addr: _ifAddresses)
 			if (addr.is_v4() && isPrivateAddress(addr) && (extPort = upnp->addRedirect(addr.to_string().c_str(), _listenPort)))
 			{
-				paddr = addr;
+				pAddr = addr;
 				break;
 			}
 
-		auto eip = upnp->externalIP();
-		bi::address eipaddr(bi::address::from_string(eip));
-		if (extPort && eip != string("0.0.0.0") && !isPrivateAddress(eipaddr))
+		auto eIP = upnp->externalIP();
+		bi::address eIPAddr(bi::address::from_string(eIP));
+		if (extPort && eIP != string("0.0.0.0") && !isPrivateAddress(eIPAddr))
 		{
 			clog(NetNote) << "Punched through NAT and mapped local port" << _listenPort << "onto external port" << extPort << ".";
-			clog(NetNote) << "External addr:" << eip;
-			o_upnpifaddr = paddr;
-			upnpep = bi::tcp::endpoint(eipaddr, (unsigned short)extPort);
+			clog(NetNote) << "External addr:" << eIP;
+			o_upnpInterfaceAddr = pAddr;
+			upnpEP = bi::tcp::endpoint(eIPAddr, (unsigned short)extPort);
 		}
 		else
 			clog(NetWarn) << "Couldn't punch through NAT (or no NAT in place).";
@@ -184,5 +205,33 @@ bi::tcp::endpoint Network::traverseNAT(std::vector<bi::address> const& _ifAddres
 			delete upnp;
 	}
 
-	return upnpep;
+	return upnpEP;
 }
+
+bi::tcp::endpoint Network::resolveHost(string const& _addr)
+{
+	static boost::asio::io_service s_resolverIoService;
+	
+	vector<string> split;
+	boost::split(split, _addr, boost::is_any_of(":"));
+	unsigned port = split.size() > 1 ? stoi(split[1]) : dev::p2p::c_defaultIPPort;
+
+	bi::tcp::endpoint ep(bi::address(), port);
+	boost::system::error_code ec;
+	bi::address address = bi::address::from_string(split[0], ec);
+	if (!ec)
+		ep.address(address);
+	else
+	{
+		boost::system::error_code ec;
+		// resolve returns an iterator (host can resolve to multiple addresses)
+		bi::tcp::resolver r(s_resolverIoService);
+		auto it = r.resolve({split[0], toString(port)}, ec);
+		if (ec)
+			clog(NetWarn) << "Error resolving host address " << _addr << ":" << ec.message();
+		else
+			ep = *it;
+	}
+	return ep;
+}
+

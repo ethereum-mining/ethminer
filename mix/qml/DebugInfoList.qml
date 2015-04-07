@@ -8,27 +8,32 @@ ColumnLayout {
 	property string title
 	property variant listModel;
 	property bool collapsible;
+	property bool collapsed;
 	property bool enableSelection: false;
 	property real storedHeight: 0;
 	property Component itemDelegate
+	property Component componentDelegate
+	property alias item: loader.item
 	signal rowActivated(int index)
 	spacing: 0
 
 	function collapse()
 	{
 		storedHeight = childrenRect.height;
-		storageContainer.state = "collapsed";
+		storageContainer.collapse();
 	}
 
 	function show()
 	{
-		storageContainer.state = "";
+		storageContainer.expand();
 	}
 
 	Component.onCompleted:
 	{
 		if (storageContainer.parent.parent.height === 25)
-			storageContainer.state = "collapsed";
+			storageContainer.collapse();
+		else
+			storageContainer.expand();
 	}
 
 	RowLayout {
@@ -57,15 +62,15 @@ ColumnLayout {
 			onClicked: {
 				if (collapsible)
 				{
-					if (storageContainer.state == "collapsed")
+					if (collapsed)
 					{
-						storageContainer.state = "";
+						storageContainer.expand();
 						storageContainer.parent.parent.height = storedHeight;
 					}
 					else
 					{
 						storedHeight = root.childrenRect.height;
-						storageContainer.state = "collapsed";
+						storageContainer.collapse();
 					}
 				}
 			}
@@ -78,56 +83,67 @@ ColumnLayout {
 		border.color: "#deddd9"
 		Layout.fillWidth: true
 		Layout.fillHeight: true
-		states: [
-			State {
-				name: "collapsed"
-				PropertyChanges {
-					target: storageImgArrow
-					source: "qrc:/qml/img/closedtriangleindicator.png"
-				}
-				PropertyChanges {
-					target: storageContainer.parent.parent
-					height: 25
-				}
-			}
-		]
-		TableView {
-			clip: true;
-			alternatingRowColors: false
+
+		function collapse() {
+			storageImgArrow.source = "qrc:/qml/img/closedtriangleindicator.png";
+			if (storageContainer.parent.parent.height > 25)
+				storageContainer.parent.parent.height = 25;
+			collapsed = true;
+		}
+
+		function expand() {
+			storageImgArrow.source = "qrc:/qml/img/opentriangleindicator.png";
+			collapsed = false;
+		}
+
+		Loader
+		{
+			id: loader
 			anchors.top: parent.top
 			anchors.left: parent.left
 			anchors.topMargin: 3
 			anchors.leftMargin: 3
 			width: parent.width - 3
 			height: parent.height - 6
-			model: listModel
-			selectionMode: enableSelection ? SelectionMode.SingleSelection : SelectionMode.NoSelection
-			headerDelegate: null
-			itemDelegate: root.itemDelegate
 			onHeightChanged:  {
 				if (height <= 0 && collapsible) {
 					if (storedHeight <= 0)
 						storedHeight = 200;
-					storageContainer.state = "collapsed";
+					storageContainer.collapse();
 				}
-				else if (height > 0 && storageContainer.state == "collapsed") {
-					//TODO: fix increasing size
-					//storageContainer.state = "";
-				}
-			}
-			onActivated: rowActivated(row);
-			Keys.onPressed: {
-				if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < listModel.length) {
-					var str = "";
-					for (var i = 0; i < listModel.length; i++)
-						str += listModel[i] + "\n";
-					appContext.toClipboard(str);
+				else if (height > 0 && collapsed) {
+					storageContainer.expand();
 				}
 			}
 
-			TableViewColumn {
-				role: "modelData"
-				width: parent.width
+			sourceComponent: componentDelegate ? componentDelegate : table
+		}
+		Component
+		{
+			id: table
+			TableView
+			{
+				clip: true;
+				alternatingRowColors: false
+				anchors.fill: parent
+				model: listModel
+				selectionMode: enableSelection ? SelectionMode.SingleSelection : SelectionMode.NoSelection
+				headerDelegate: null
+				itemDelegate: root.itemDelegate
+				onActivated: rowActivated(row);
+				Keys.onPressed: {
+					if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_C && currentRow >=0 && currentRow < listModel.length) {
+						var str = "";
+						for (var i = 0; i < listModel.length; i++)
+							str += listModel[i] + "\n";
+						clipboard.text = str;
+					}
+				}
+
+				TableViewColumn {
+					role: "modelData"
+					width: parent.width
+				}
 			}
 		}
 	}

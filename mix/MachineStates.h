@@ -29,6 +29,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libdevcore/Common.h>
 #include <libdevcrypto/Common.h>
 #include <libevmcore/Instruction.h>
+#include <libethereum/Transaction.h>
 #include <libethereum/TransactionReceipt.h>
 
 namespace dev
@@ -74,12 +75,13 @@ namespace mix
 		std::vector<MachineState> machineStates;
 		std::vector<bytes> transactionData;
 		std::vector<MachineCode> executionCode;
-		bytes returnValue;
+		dev::eth::ExecutionResult result;
 		dev::Address address;
 		dev::Address sender;
 		dev::Address contractAddress;
 		dev::u256 value;
 		unsigned transactionIndex;
+		unsigned executonIndex = 0;
 
 		bool isCall() const { return transactionIndex == std::numeric_limits<unsigned>::max(); }
 		bool isConstructor() const { return !isCall() && !address; }

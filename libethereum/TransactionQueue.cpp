@@ -28,14 +28,16 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-bool TransactionQueue::import(bytesConstRef _transactionRLP)
+ImportResult TransactionQueue::import(bytesConstRef _transactionRLP)
 {
 	// Check if we already know this transaction.
 	h256 h = sha3(_transactionRLP);
 
 	UpgradableGuard l(m_lock);
+	// TODO: keep old transactions around and check in State for nonce validity
+
 	if (m_known.count(h))
-		return false;
+		return ImportResult::AlreadyKnown;
 
 	try
 	{
@@ -46,37 +48,37 @@ bool TransactionQueue::import(bytesConstRef _transactionRLP)
 
 		UpgradeGuard ul(l);
 		// If valid, append to blocks.
-		m_current[h] = _transactionRLP.toBytes();
+		m_current[h] = t;
 		m_known.insert(h);
 	}
 	catch (Exception const& _e)
 	{
 		cwarn << "Ignoring invalid transaction: " <<  diagnostic_information(_e);
-		return false;
+		return ImportResult::Malformed;
 	}
 	catch (std::exception const& _e)
 	{
 		cwarn << "Ignoring invalid transaction: " << _e.what();
-		return false;
+		return ImportResult::Malformed;
 	}
 
-	return true;
+	return ImportResult::Success;
 }
 
-void TransactionQueue::setFuture(std::pair<h256, bytes> const& _t)
+void TransactionQueue::setFuture(std::pair<h256, Transaction> const& _t)
 {
 	WriteGuard l(m_lock);
 	if (m_current.count(_t.first))
 	{
 		m_current.erase(_t.first);
-		m_unknown.insert(make_pair(Transaction(_t.second, CheckSignature::Sender).sender(), _t));
+		m_unknown.insert(make_pair(_t.second.sender(), _t));
 	}
 }
 
-void TransactionQueue::noteGood(std::pair<h256, bytes> const& _t)
+void TransactionQueue::noteGood(std::pair<h256, Transaction> const& _t)
 {
 	WriteGuard l(m_lock);
-	auto r = m_unknown.equal_range(Transaction(_t.second, CheckSignature::Sender).sender());
+	auto r = m_unknown.equal_range(_t.second.sender());
 	for (auto it = r.first; it != r.second; ++it)
 		m_current.insert(it->second);
 	m_unknown.erase(r.first, r.second);

@@ -27,9 +27,10 @@
 
 #include <string>
 #include <chrono>
-#include <libp2p/Network.h>
 
 namespace Json { class Value; }
+namespace boost { namespace asio { namespace ip { template<class T>class basic_endpoint; class tcp; }}}
+namespace bi = boost::asio::ip;
 
 namespace dev
 {
@@ -61,12 +62,16 @@ public:
 	static void stopping(std::string const& _clientImpl, const char* _ethVersion);
 	static void p2pConnected(
 		std::string const& _id,
-		bi::tcp::endpoint const& _addr,
+		bi::basic_endpoint<bi::tcp> const& _addr,
 		std::chrono::system_clock::time_point const& _ts,
 		std::string const& _remoteVersion,
 		unsigned int _numConnections
 	);
-	static void p2pDisconnected(std::string const& _id, bi::tcp::endpoint const& _addr, unsigned int _numConnections);
+	static void p2pDisconnected(
+		std::string const& _id,
+		bi::basic_endpoint<bi::tcp> const& _addr,
+		unsigned int _numConnections
+	);
 	static void minedNewBlock(
 		std::string const& _hash,
 		std::string const& _blockNumber,
@@ -93,8 +98,6 @@ private:
 	StructuredLogger(StructuredLogger const&) = delete;
 	void operator=(StructuredLogger const&) = delete;
 
-	/// @returns a string representation of a timepoint
-	static std::string timePointToString(std::chrono::system_clock::time_point const& _ts);
 	void outputJson(Json::Value const& _value, std::string const& _name) const;
 
 	bool m_enabled = false;

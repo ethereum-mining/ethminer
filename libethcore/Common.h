@@ -35,8 +35,14 @@ namespace eth
 /// Current protocol version.
 extern const unsigned c_protocolVersion;
 
+/// Current minor protocol version.
+extern const unsigned c_minorProtocolVersion;
+
 /// Current database version.
 extern const unsigned c_databaseVersion;
+
+/// Current database version.
+extern const unsigned c_ethashVersion;
 
 /// User-friendly string representation of the amount _b in wei.
 std::string formatBalance(bigint const& _b);
@@ -67,6 +73,28 @@ static const u256 szabo = exp10<12>();
 static const u256 wei = exp10<0>();
 
 using Nonce = h64;
+
+using BlockNumber = unsigned;
+
+static const BlockNumber LatestBlock = (BlockNumber)-2;
+static const BlockNumber PendingBlock = (BlockNumber)-1;
+
+enum class RelativeBlock: BlockNumber
+{
+	Latest = LatestBlock,
+	Pending = PendingBlock
+};
+
+enum class ImportResult
+{
+	Success = 0,
+	UnknownParent,
+	FutureTime,
+	AlreadyInChain,
+	AlreadyKnown,
+	Malformed,
+	BadChain
+};
 
 }
 }

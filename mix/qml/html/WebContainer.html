@@ -3,6 +3,8 @@
 <head>
 <script src="qrc:///js/bignumber.min.js"></script>
 <script src="qrc:///js/webthree.js"></script>
+<script src="qrc:///qml/js/Printer.js"></script>
+<script src="qrc:///qml/js/ansi2html.js"></script>
 <script>
 loadPage = function(url) {
 	var preview = document.getElementById('preview');
@@ -17,14 +19,15 @@ reloadPage = function() {
 
 updateContracts = function(contracts) {
 	if (window.web3) {
-	    window.web3.reset();
+		window.web3.reset();
 		window.contracts = {};
 		for (var c in contracts) {
-			var contract = window.web3.eth.contract(contracts[c].address, contracts[c].interface);
+			var contractProto = window.web3.eth.contract(contracts[c].interface);
+			var contract = new contractProto(contracts[c].address);
 			window.contracts[c] = {
-				address: c.address,
-				interface: c.interface,
-				contract: contract,
+				address: contracts[c].address,
+				interface: contracts[c].interface,
+				contract: contract
 			};
 		}
 	}
@@ -33,8 +36,22 @@ updateContracts = function(contracts) {
 init = function(url) {
 	web3 = require('web3');
 	window.web3 = web3;
-	web3.setProvider(new web3.providers.HttpSyncProvider(url));
+	web3.setProvider(new web3.providers.HttpProvider(url));
 };
+
+executeJavaScript = function(script) {
+	var preview = document.getElementById('preview');
+	var obj = preview.contentWindow.eval(script);
+	var printed = prettyPrint(obj);
+	return ansi2html(printed);
+}
+
+getContent = function() {
+	var preview = document.getElementById('preview');
+	var doc = preview.contentDocument? preview.contentDocument: preview.contentWindow.document;
+	var body = doc.getElementsByTagName('body')[0];
+	return body.innerHTML;
+}
 
 </script>
 

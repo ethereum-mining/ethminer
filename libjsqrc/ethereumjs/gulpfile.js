@@ -2,6 +2,7 @@
 
 'use strict';
 
+var version = require('./version.json');
 var path = require('path');
 
 var del = require('del');
@@ -14,6 +15,7 @@ var source = require('vinyl-source-stream');
 var exorcist = require('exorcist');
 var bower = require('bower');
 var streamify = require('gulp-streamify');
+var replace = require('gulp-replace');
 
 var DEST = './dist/';
 var src = 'index';
@@ -25,6 +27,15 @@ var browserifyOptions = {
     detectGlobals: false,
     bundleExternal: false
 };
+
+gulp.task('versionReplace', function(){
+  gulp.src(['./package.json'])
+    .pipe(replace(/\"version\"\: \"(.{5})\"/, '"version": "'+ version.version + '"'))
+    .pipe(gulp.dest('./'));
+  gulp.src(['./package.js'])
+    .pipe(replace(/version\: \'(.{5})\'/, "version: '"+ version.version + "'"))
+    .pipe(gulp.dest('./'));
+});
 
 gulp.task('bower', function(cb){
     bower.commands.install().on('end', function (installed){
@@ -47,8 +58,6 @@ gulp.task('build', ['clean'], function () {
     return browserify(browserifyOptions)
         .require('./' + src + '.js', {expose: 'web3'})
         .add('./' + src + '.js')
-        .transform('envify', { NODE_ENV: 'build' })
-        .transform('unreachable-branch-transform')
         .bundle()
         .pipe(exorcist(path.join( DEST, dst + '.js.map')))
         .pipe(source(dst + '.js'))
@@ -62,6 +71,9 @@ gulp.task('watch', function() {
     gulp.watch(['./lib/*.js'], ['lint', 'build']);
 });
 
-gulp.task('dev', ['bower', 'lint', 'build']);
+gulp.task('dev', ['versionReplace','bower', 'lint', 'build']);
 gulp.task('default', ['dev']);
+
+
+gulp.task('version', ['versionReplace']);
 

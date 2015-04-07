@@ -35,7 +35,9 @@ using namespace dev::mix;
 
 bytes ContractCallDataEncoder::encodedData()
 {
-	return m_encodedData;
+	bytes r(m_encodedData);
+	r.insert(r.end(), m_dynamicData.begin(), m_dynamicData.end());
+	return r;
 }
 
 void ContractCallDataEncoder::encode(QFunctionDefinition const* _function)
@@ -44,38 +46,194 @@ void ContractCallDataEncoder::encode(QFunctionDefinition const* _function)
 	m_encodedData.insert(m_encodedData.end(), hash.begin(), hash.end());
 }
 
-void ContractCallDataEncoder::push(bytes const& _b)
+void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& _type)
 {
-	m_encodedData.insert(m_encodedData.end(), _b.begin(), _b.end());
+	u256 count = 1;
+	QStringList strList;
+	if (_type.array)
+	{
+		if (_data.type() == QVariant::String)
+			strList = _data.toString().split(",", QString::SkipEmptyParts);  //TODO: proper parsing
+		else
+			strList = _data.toStringList();
+		count = strList.count();
+
+	}
+	else
+		strList.append(_data.toString());
+
+	if (_type.dynamicSize)
+	{
+		if (_type.type == SolidityType::Type::Bytes)
+			count = encodeSingleItem(_data.toString(), _type, m_dynamicData);
+		else
+		{
+			count = strList.count();
+			for (auto const& item: strList)
+				encodeSingleItem(item, _type, m_dynamicData);
+		}
+		bytes sizeEnc(32);
+		toBigEndian(count, sizeEnc);
+		m_encodedData.insert(m_encodedData.end(), sizeEnc.begin(), sizeEnc.end());
+	}
+	else
+	{
+		if (_type.array)
+			count = _type.count;
+		int c = static_cast<int>(count);
+		if (strList.size() > c)
+			strList.erase(strList.begin() + c, strList.end());
+		else
+			while (strList.size() < c)
+				strList.append(QString());
+
+		for (auto const& item: strList)
+			encodeSingleItem(item, _type, m_encodedData);
+	}
 }
 
-QList<QVariableDefinition*> ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& _returnParameters, bytes _value)
+unsigned ContractCallDataEncoder::encodeSingleItem(QString const& _data, SolidityType const& _type, bytes& _dest)
+{
+	if (_type.type == SolidityType::Type::Struct)
+		BOOST_THROW_EXCEPTION(dev::Exception() << dev::errinfo_comment("Struct parameters are not supported yet"));
+
+	unsigned const alignSize = 32;
+	QString src = _data;
+	bytes result;
+
+	if ((src.startsWith("\"") && src.endsWith("\"")) || (src.startsWith("\'") && src.endsWith("\'")))
+		src = src.remove(src.length() - 1, 1).remove(0, 1);
+
+	if (src.startsWith("0x"))
+	{
+		result = fromHex(src.toStdString().substr(2));
+		if (_type.type != SolidityType::Type::Bytes)
+			result = padded(result, alignSize);
+	}
+	else
+	{
+		try
+		{
+			bigint i(src.toStdString());
+			result = bytes(alignSize);
+			toBigEndian((u256)i, result);
+		}
+		catch (std::exception const& ex)
+		{
+			// manage input as a string.
+			QByteArray bytesAr = src.toLocal8Bit();
+			result = bytes(bytesAr.begin(), bytesAr.end());
+			result = paddedRight(result, alignSize);
+		}
+	}
+
+	unsigned dataSize = _type.dynamicSize ? result.size() : alignSize;
+	if (result.size() % alignSize != 0)
+		result.resize((result.size() & ~(alignSize - 1)) + alignSize);
+	_dest.insert(_dest.end(), result.begin(), result.end());
+	return dataSize;
+}
+
+bigint ContractCallDataEncoder::decodeInt(dev::bytes const& _rawValue)
+{
+	dev::u256 un = dev::fromBigEndian<dev::u256>(_rawValue);
+	if (un >> 255)
+		return (-s256(~un + 1));
+	return un;
+}
+
+QString ContractCallDataEncoder::toString(dev::bigint const& _int)
+{
+	std::stringstream str;
+	str << std::dec << _int;
+	return QString::fromStdString(str.str());
+}
+
+dev::bytes ContractCallDataEncoder::encodeBool(QString const& _str)
+{
+	bytes b(1);
+	b[0] = _str == "1" || _str.toLower() == "true " ? 1 : 0;
+	return padded(b, 32);
+}
+
+bool ContractCallDataEncoder::decodeBool(dev::bytes const& _rawValue)
+{
+	byte ret = _rawValue.at(_rawValue.size() - 1);
+	return (ret != 0);
+}
+
+QString ContractCallDataEncoder::toString(bool _b)
+{
+	return _b ? "true" : "false";
+}
+
+dev::bytes ContractCallDataEncoder::encodeBytes(QString const& _str)
+{
+	QByteArray bytesAr = _str.toLocal8Bit();
+	bytes r = bytes(bytesAr.begin(), bytesAr.end());
+	return padded(r, 32);
+}
+
+dev::bytes ContractCallDataEncoder::decodeBytes(dev::bytes const& _rawValue)
+{
+	return _rawValue;
+}
+
+QString ContractCallDataEncoder::toString(dev::bytes const& _b)
+{
+	QString str;
+	if (asString(_b, str))
+		return  "\"" + str +  "\" " + QString::fromStdString(dev::toJS(_b));
+	else
+		return QString::fromStdString(dev::toJS(_b));
+}
+
+
+QVariant ContractCallDataEncoder::decode(SolidityType const& _type, bytes const& _value)
 {
 	bytesConstRef value(&_value);
 	bytes rawParam(32);
-	QList<QVariableDefinition*> r;
+	value.populate(&rawParam);
+	QSolidityType::Type type = _type.type;
+	if (type == QSolidityType::Type::SignedInteger || type == QSolidityType::Type::UnsignedInteger || type == QSolidityType::Type::Address)
+		return QVariant::fromValue(toString(decodeInt(rawParam)));
+	else if (type == QSolidityType::Type::Bool)
+		return QVariant::fromValue(toString(decodeBool(rawParam)));
+	else if (type == QSolidityType::Type::Bytes || type == QSolidityType::Type::Hash)
+		return QVariant::fromValue(toString(decodeBytes(rawParam)));
+	else if (type == QSolidityType::Type::Struct)
+		return QVariant::fromValue(QString("struct")); //TODO
+	else
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Parameter declaration not found"));
+}
+
+QStringList ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& _returnParameters, bytes _value)
+{
+	bytesConstRef value(&_value);
+	bytes rawParam(32);
+	QStringList r;
+
 	for (int k = 0; k <_returnParameters.length(); k++)
 	{
-		QVariableDeclaration* dec = static_cast<QVariableDeclaration*>(_returnParameters.at(k));
-		QVariableDefinition* def = nullptr;
-		if (dec->type().contains("int"))
-			def = new QIntType(dec, QString());
-		else if (dec->type().contains("real"))
-			def = new QRealType(dec, QString());
-		else if (dec->type().contains("bool"))
-			def = new QBoolType(dec, QString());
-		else if (dec->type().contains("string") || dec->type().contains("text"))
-			def = new QStringType(dec, QString());
-		else if (dec->type().contains("hash") || dec->type().contains("address"))
-			def = new QHashType(dec, QString());
-		else
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Parameter declaration not found"));
-
 		value.populate(&rawParam);
-		def->decodeValue(rawParam);
-		r.push_back(def);
-		value =  value.cropped(32);
-		qDebug() << "decoded return value : " << dec->type() << " " << def->value();
+		value = value.cropped(32);
+		QVariableDeclaration* dec = static_cast<QVariableDeclaration*>(_returnParameters.at(k));
+		SolidityType const& type = dec->type()->type();
+		r.append(decode(type, rawParam).toString());
 	}
 	return r;
+}
+
+
+bool ContractCallDataEncoder::asString(dev::bytes const& _b, QString& _str)
+{
+	dev::bytes bunPad = unpadded(_b);
+	for (unsigned i = 0; i < bunPad.size(); i++)
+	{
+		if (bunPad.at(i) < 9 || bunPad.at(i) > 127)
+			return false;
+		else
+			_str += QString::fromStdString(dev::toJS(bunPad.at(i))).replace("0x", "");
+	}
+	return true;
 }

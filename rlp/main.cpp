@@ -38,6 +38,7 @@ void help()
 		<< "    -r,--render  Render the given RLP. Options:" << endl
 		<< "      --indent <string>  Use string as the level indentation (default '  ')." << endl
 		<< "      --hex-ints  Render integers in hex." << endl
+		<< "      --string-ints  Render integers in the same way as strings." << endl
 		<< "      --ascii-strings  Render data as C-style strings or hex depending on content being ASCII." << endl
 		<< "      --force-string  Force all data to be rendered as C-style strings." << endl
 		<< "      --force-escape  When rendering as C-style strings, force all characters to be escaped." << endl
@@ -93,12 +94,13 @@ class RLPStreamer
 public:
 	struct Prefs
 	{
-		string indent = "  ";
+		string indent;
 		bool hexInts = false;
+		bool stringInts = true;
 		bool hexPrefix = true;
-		bool forceString = true;
+		bool forceString = false;
 		bool escapeAll = false;
-		bool forceHex = false;
+		bool forceHex = true;
 	};
 
 	RLPStreamer(ostream& _out, Prefs _p): m_out(_out), m_prefs(_p) {}
@@ -107,16 +109,16 @@ public:
 	{
 		if (_d.isNull())
 			m_out << "null";
-		else if (_d.isInt())
+		else if (_d.isInt() && !m_prefs.stringInts)
 			if (m_prefs.hexInts)
 				m_out << (m_prefs.hexPrefix ? "0x" : "") << toHex(toCompactBigEndian(_d.toInt<bigint>(RLP::LaisezFaire), 1), 1);
 			else
 				m_out << _d.toInt<bigint>(RLP::LaisezFaire);
-		else if (_d.isData())
+		else if (_d.isData() || (_d.isInt() && m_prefs.stringInts))
 			if (m_prefs.forceString || (!m_prefs.forceHex && isAscii(_d.toString())))
 				m_out << escaped(_d.toString(), m_prefs.escapeAll);
 			else
-				m_out << (m_prefs.hexPrefix ? "0x" : "") << toHex(_d.data());
+				m_out << "\"" << (m_prefs.hexPrefix ? "0x" : "") << toHex(_d.toBytes()) << "\"";
 		else if (_d.isList())
 		{
 			m_out << "[";
@@ -162,14 +164,18 @@ int main(int argc, char** argv)
 			prefs.indent = argv[++i];
 		else if (arg == "--hex-ints")
 			prefs.hexInts = true;
+		else if (arg == "--string-ints")
+			prefs.stringInts = true;
 		else if (arg == "--ascii-strings")
 			prefs.forceString = prefs.forceHex = false;
 		else if (arg == "--force-string")
 			prefs.forceString = true;
 		else if (arg == "--force-hex")
-			prefs.forceHex = true;
+			prefs.forceHex = true, prefs.forceString = false;
 		else if (arg == "--force-escape")
 			prefs.escapeAll = true;
+		else if (arg == "-n" || arg == "--nice")
+			prefs.forceString = true, prefs.stringInts = false, prefs.forceHex = false, prefs.indent = "  ";
 		else if (arg == "-l" || arg == "--list-archive")
 			mode = Mode::ListArchive;
 		else if (arg == "-e" || arg == "--extract-archive")
