@@ -433,6 +433,7 @@ Item {
 					id: resultTextArea
 					width: expressionPanel.width
 					wrapMode: Text.Wrap
+					textFormat: Text.RichText
 					font.family: webPreviewStyle.general.fontName
 					font.pointSize: appStyle.absoluteSize(-3)
 					backgroundVisible: true
