@@ -23,6 +23,7 @@
 
 #include <string>
 #include <QObject>
+#include <libevmcore/SourceLocation.h>
 
 namespace dev
 {
@@ -47,9 +48,11 @@ public:
 	QBasicNodeDefinition(QObject* _parent, std::string const& _name);
 	/// Get the name of the node.
 	QString name() const { return m_name; }
+	dev::SourceLocation const& location() { return m_location; }
 
 private:
 	QString m_name;
+	dev::SourceLocation m_location;
 };
 
 }

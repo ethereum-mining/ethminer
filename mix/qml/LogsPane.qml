@@ -7,6 +7,11 @@ import org.ethereum.qml.SortFilterProxyModel 1.0
 Rectangle
 {
 	property variant currentStatus;
+	function clear()
+	{
+		logsModel.clear();
+	}
+
 	function push(_level, _type, _content)
 	{
 		_content = _content.replace(/\n/g, " ")
@@ -57,7 +62,7 @@ Rectangle
 					model: SortFilterProxyModel {
 						id: proxyModel
 						source: logsModel
-						property var roles: ["-", "javascript", "run", "state", "comp"]
+						property var roles: ["-", "javascript", "run", "state", "comp", "deployment"]
 
 						Component.onCompleted: {
 							filterType = regEx(proxyModel.roles);
@@ -90,7 +95,7 @@ Rectangle
 							return "(?:" + roles.join('|') + ")";
 						}
 
-						filterType: "(?:javascript|run|state|comp)"
+						filterType: "(?:javascript|run|state|comp|deployment)"
 						filterContent: ""
 						filterSyntax: SortFilterProxyModel.RegExp
 						filterCaseSensitivity: Qt.CaseInsensitive
@@ -367,6 +372,50 @@ Rectangle
 					background:
 						Rectangle {
 						color: stateButton.checked ? logStyle.generic.layout.buttonSelected : "transparent"
+					}
+				}
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 1;
+				height: parent.height
+				color: logStyle.generic.layout.buttonSeparatorColor1
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 2;
+				height: parent.height
+				color: logStyle.generic.layout.buttonSeparatorColor2
+			}
+
+			ToolButton {
+				id: deloyButton
+				checkable: true
+				height: logStyle.generic.layout.headerButtonHeight
+				width: 50
+				anchors.verticalCenter: parent.verticalCenter
+				checked: true
+				onCheckedChanged: {
+					proxyModel.toogleFilter("deployment")
+				}
+				tooltip: qsTr("Deployment")
+				style:
+					ButtonStyle {
+					label:
+						Item {
+						DefaultLabel {
+							font.family: logStyle.generic.layout.logLabelFont
+							font.pointSize: appStyle.absoluteSize(-3)
+							color: logStyle.generic.layout.logLabelColor
+							anchors.centerIn: parent
+							text: qsTr("Deploy.")
+						}
+					}
+					background:
+						Rectangle {
+						color: deloyButton.checked ? logStyle.generic.layout.buttonSelected : "transparent"
 					}
 				}
 			}
