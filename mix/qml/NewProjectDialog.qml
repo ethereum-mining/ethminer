@@ -9,8 +9,6 @@ Item
 {
 	signal accepted
 	function open() {
-		newProjectWin.setX((Screen.width - width) / 2);
-		newProjectWin.setY((Screen.height - height) / 2);
 		newProjectWin.visible = true;
 		titleField.focus = true;
 	}
@@ -77,7 +75,11 @@ Item
 					}
 					Button {
 						text: qsTr("Browse")
-						onClicked: createProjectFileDialog.open()
+						onClicked:
+                        {
+                            newProjectWin.close()
+                            createProjectFileDialog.open()
+                        }
 					}
 				}
 
@@ -117,6 +119,7 @@ Item
 			if (Qt.platform.os == "windows" && u.indexOf("/") == 0)
 				u = u.substring(1, u.length);
 			pathField.text = u;
+            newProjectWin.open()
 		}
 	}
 }
