@@ -69,7 +69,7 @@ namespace
 	}
 }
 
-QCode* QMachineState::getHumanReadableCode(QObject* _owner, const Address& _address, const bytes& _code)
+QCode* QMachineState::getHumanReadableCode(QObject* _owner, const Address& _address, const bytes& _code, QHash<int, int>& o_codeMap)
 {
 	QVariantList codeStr;
 	for (unsigned i = 0; i <= _code.size(); ++i)
@@ -80,14 +80,15 @@ QCode* QMachineState::getHumanReadableCode(QObject* _owner, const Address& _addr
 			QString s = QString::fromStdString(instructionInfo((Instruction)b).name);
 			std::ostringstream out;
 			out << std::hex << std::setw(4) << std::setfill('0') << i;
-			int line = i;
+			int offset = i;
 			if (b >= (byte)Instruction::PUSH1 && b <= (byte)Instruction::PUSH32)
 			{
 				unsigned bc = getPushNumber((Instruction)b);
 				s = "PUSH 0x" + QString::fromStdString(toHex(bytesConstRef(&_code[i + 1], bc)));
 				i += bc;
 			}
-			codeStr.append(QVariant::fromValue(new QInstruction(_owner, QString::fromStdString(out.str()) + "  "  + s, line)));
+			o_codeMap[offset] = codeStr.size();
+			codeStr.append(QVariant::fromValue(new QInstruction(_owner, QString::fromStdString(out.str()) + "  "  + s)));
 		}
 		catch (...)
 		{

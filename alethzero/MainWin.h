@@ -40,6 +40,7 @@
 #include "Context.h"
 #include "Transact.h"
 #include "NatspecHandler.h"
+#include "Connect.h"
 
 namespace Ui {
 class Main;
@@ -54,8 +55,11 @@ namespace jsonrpc {
 class HttpServer;
 }
 
-class QQuickView;
+class QWebEnginePage;
 class OurWebThreeStubServer;
+class DappLoader;
+class DappHost;
+struct Dapp;
 
 using WatchHandler = std::function<void(dev::eth::LocalisedLogEntries const&)>;
 
@@ -99,6 +103,7 @@ public slots:
 
 private slots:
 	void eval(QString const& _js);
+	void addConsoleMessage(QString const& _js, QString const& _s);
 
 	// Application
 	void on_about_triggered();
@@ -172,6 +177,9 @@ private slots:
 	void refreshBlockChain();
 	void addNewId(QString _ids);
 
+	// Dapps
+	void dappLoaded(Dapp& _dapp); //qt does not support rvalue refs for signals
+
 signals:
 	void poll();
 
@@ -234,8 +242,6 @@ private:
 	QString m_privateChain;
 	dev::Address m_nameReg;
 
-	QNetworkAccessManager m_webCtrl;
-
 	QList<QPair<QString, QString>> m_consoleHistory;
 	QMutex m_logLock;
 	QString m_logHistory;
@@ -248,4 +254,9 @@ private:
 	NatspecHandler m_natSpecDB;
 
 	Transact m_transact;
+	std::unique_ptr<DappHost> m_dappHost;
+	DappLoader* m_dappLoader;
+	QWebEnginePage* m_webPage;
+	
+	Connect m_connect;
 };

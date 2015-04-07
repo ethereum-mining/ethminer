@@ -65,6 +65,7 @@ inline Integer secretToExponent(Secret const& _s) { return std::move(Integer(_s.
 
 /**
  * CryptoPP secp256k1 algorithms.
+ * @todo Collect ECIES methods into class.
  */
 class Secp256k1
 {	
@@ -75,11 +76,20 @@ public:
 	
 	void toPublic(Secret const& _s, Public& o_public) { exponentToPublic(Integer(_s.data(), sizeof(_s)), o_public); }
 	
-	/// Encrypts text (replace input).
+	/// Encrypts text (replace input). (ECIES w/XOR-SHA1)
 	void encrypt(Public const& _k, bytes& io_cipher);
 	
-	/// Decrypts text (replace input).
+	/// Decrypts text (replace input). (ECIES w/XOR-SHA1)
 	void decrypt(Secret const& _k, bytes& io_text);
+	
+	/// Encrypts text (replace input). (ECIES w/AES128-CTR-SHA256)
+	void encryptECIES(Public const& _k, bytes& io_cipher);
+
+	/// Decrypts text (replace input). (ECIES w/AES128-CTR-SHA256)
+	bool decryptECIES(Secret const& _k, bytes& io_text);
+	
+	/// Key derivation function used by encryptECIES and decryptECIES.
+	bytes eciesKDF(Secret _z, bytes _s1, unsigned kdBitLen = 256);
 	
 	/// @returns siganture of message.
 	Signature sign(Secret const& _k, bytesConstRef _message);

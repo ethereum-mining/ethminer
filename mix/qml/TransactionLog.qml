@@ -6,36 +6,33 @@ import QtQuick.Layouts 1.1
 import org.ethereum.qml.RecordLogEntry 1.0
 
 Item {
-
 	property ListModel fullModel: ListModel{}
 	property ListModel transactionModel: ListModel{}
 	property ListModel callModel: ListModel{}
-
-	Action {
-		id: addStateAction
-		text: "Add State"
-		shortcut: "Ctrl+Alt+T"
-		enabled: codeModel.hasContract && !clientModel.running;
-		onTriggered: projectModel.stateListModel.addState();
-	}
-	Action {
-		id: editStateAction
-		text: "Edit State"
-		shortcut: "Ctrl+Alt+T"
-		enabled: codeModel.hasContract && !clientModel.running && statesCombo.currentIndex >= 0 && projectModel.stateListModel.count > 0;
-		onTriggered: projectModel.stateListModel.editState(statesCombo.currentIndex);
-	}
+	property int selectedStateIndex: statesCombo.selectedIndex
 
 	ColumnLayout {
 		anchors.fill: parent
 		RowLayout {
+			anchors.right: parent.right
+			anchors.left: parent.left
+			Connections
+			{
+				id: compilationStatus
+				target: codeModel
+				property bool compilationComplete: false
+				onCompilationComplete: compilationComplete = true
+				onCompilationError: compilationComplete = false
+			}
 
 			Connections
 			{
 				target: projectModel
 				onProjectSaved:
 				{
-					if (codeModel.hasContract && !clientModel.running)
+					if (projectModel.appIsClosing || projectModel.projectIsClosing)
+						return;
+					if (compilationStatus.compilationComplete && codeModel.hasContract && !clientModel.running)
 						projectModel.stateListModel.debugDefaultState();
 				}
 				onProjectClosed:
@@ -44,36 +41,28 @@ Item {
 					transactionModel.clear();
 					callModel.clear();
 				}
+				onContractSaved: {
+					if (compilationStatus.compilationComplete && codeModel.hasContract && !clientModel.running)
+						projectModel.stateListModel.debugDefaultState();
+				}
 			}
 
-			ComboBox {
+			StatesComboBox
+			{
 				id: statesCombo
-				model: projectModel.stateListModel
-				width: 150
-				editable: false
-				textRole: "title"
-				onActivated:  {
-					model.runState(index);
-				}
+				items: projectModel.stateListModel
+				onSelectCreate: projectModel.stateListModel.addState();
+				onEditItem: projectModel.stateListModel.editState(item)
+				colorItem: "#808080"
+				colorSelect: "#4a90e2"
+				color: "white"
 				Connections {
 					target: projectModel.stateListModel
 					onStateRun: {
-						if (statesCombo.currentIndex !== index)
-							statesCombo.currentIndex = index;
+						if (statesCombo.selectedIndex !== index)
+							statesCombo.setSelectedIndex( index );
 					}
 				}
-			}
-			Button
-			{
-				anchors.rightMargin: 9
-				anchors.verticalCenter: parent.verticalCenter
-				action: editStateAction
-			}
-			Button
-			{
-				anchors.rightMargin: 9
-				anchors.verticalCenter: parent.verticalCenter
-				action: addStateAction
 			}
 			Button
 			{
@@ -110,7 +99,7 @@ Item {
 
 			TableViewColumn {
 				role: "transactionIndex"
-				title: qsTr("Index")
+				title: qsTr("#")
 				width: 40
 			}
 			TableViewColumn {
@@ -130,8 +119,8 @@ Item {
 			}
 			TableViewColumn {
 				role: "address"
-				title: qsTr("Address")
-				width: 120
+				title: qsTr("Destination")
+				width: 130
 			}
 			TableViewColumn {
 				role: "returned"
@@ -153,7 +142,6 @@ Item {
 			}
 		}
 	}
-
 	Connections {
 		target: clientModel
 		onStateCleared: {

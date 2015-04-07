@@ -1,0 +1,59 @@
+.CodeMirror-hints {
+  position: absolute;
+  z-index: 10;
+  overflow: hidden;
+  list-style: none;
+
+  margin: 0;
+  padding: 2px;
+
+  -webkit-box-shadow: 2px 3px 5px rgba(0,0,0,.2);
+  -moz-box-shadow: 2px 3px 5px rgba(0,0,0,.2);
+  box-shadow: 2px 3px 5px rgba(0,0,0,.2);
+  border-radius: 3px;
+  border: 1px solid silver;
+
+  background: white;
+  font-size: 90%;
+  font-family: monospace;
+
+  max-height: 20em;
+  overflow-y: auto;
+  width: 22em;
+}
+
+.CodeMirror-hint {
+  margin: 0;
+  padding: 0 4px;
+  border-radius: 2px;
+  max-width: 30em;
+  overflow: hidden;
+  white-space: pre;
+  color: black;
+  cursor: pointer;
+  padding-left: 20px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.CodeMirror-hint-active {
+  background: #4a90e2;
+  color: white !important;
+}
+
+.CodeMirror-hint-active .solToken,
+.CodeMirror-hint-active .solTokenType
+{
+  color: white !important;
+}
+
+.solToken {
+  float: left;
+}
+
+.solTokenType
+{
+  font-style: italic;
+  color: #808080;
+  float: right;
+}

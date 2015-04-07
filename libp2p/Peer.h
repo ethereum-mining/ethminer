@@ -47,13 +47,14 @@ namespace p2p
  * those peers. Modifying these properties via a storage backend alleviates
  * Host of the responsibility. (&& remove save/restoreNetwork)
  * @todo reimplement recording of historical session information on per-transport basis
- * @todo rebuild nodetable when localNetworking is enabled/disabled
  * @todo move attributes into protected
  */
 class Peer: public Node
 {
 	friend class Session;		/// Allows Session to update score and rating.
 	friend class Host;		/// For Host: saveNetwork(), restoreNetwork()
+
+	friend class RLPXHandshake;
 
 public:
 	bool isOffline() const { return !m_session.lock(); }
@@ -73,6 +74,9 @@ public:
 
 	/// Reason peer was previously disconnected.
 	DisconnectReason lastDisconnect() const { return m_lastDisconnect; }
+	
+	/// Peer session is noted as useful.
+	void noteSessionGood() { m_failedAttempts = 0; }
 	
 protected:
 	/// Returns number of seconds to wait until attempting connection, based on attempted connection history.

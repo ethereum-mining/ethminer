@@ -30,13 +30,13 @@ using namespace dev::eth;
 std::ostream& dev::eth::operator<<(std::ostream& _out, LogFilter const& _s)
 {
 	// TODO
-	_out << "(@" << _s.m_addresses << "#" << _s.m_topics << ">" << _s.m_earliest << "-" << _s.m_latest << "< +" << _s.m_skip << "^" << _s.m_max << ")";
+	_out << "(@" << _s.m_addresses << "#" << _s.m_topics << ">" << _s.m_earliest << "-" << _s.m_latest << "< )";
 	return _out;
 }
 
 void LogFilter::streamRLP(RLPStream& _s) const
 {
-	_s.appendList(6) << m_addresses << m_topics << m_earliest << m_latest << m_max << m_skip;
+	_s.appendList(4) << m_addresses << m_topics << m_earliest << m_latest;
 }
 
 h256 LogFilter::sha3() const
@@ -44,6 +44,33 @@ h256 LogFilter::sha3() const
 	RLPStream s;
 	streamRLP(s);
 	return dev::sha3(s.out());
+}
+
+static bool isNoLater(RelativeBlock _logBlockRelation, u256 _logBlockNumber, unsigned _latest)
+{
+	if (_latest == PendingBlock)
+		return true;
+	else if (_latest == LatestBlock)
+		return _logBlockRelation == RelativeBlock::Latest;
+	else
+		return _logBlockNumber <= _latest;
+}
+
+static bool isNoEarlier(RelativeBlock _logBlockRelation, u256 _logBlockNumber, unsigned _earliest)
+{
+	if (_earliest == PendingBlock)
+		return _logBlockRelation == RelativeBlock::Pending;
+	else if (_earliest == LatestBlock)
+		return true;
+	else
+		return _logBlockNumber >= _earliest;
+}
+
+bool LogFilter::envelops(RelativeBlock _logBlockRelation, u256 _logBlockNumber) const
+{
+	return
+		isNoLater(_logBlockRelation, _logBlockNumber, m_latest) &&
+		isNoEarlier(_logBlockRelation, _logBlockNumber, m_earliest);
 }
 
 bool LogFilter::matches(LogBloom _bloom) const
@@ -71,6 +98,16 @@ bool LogFilter::matches(LogBloom _bloom) const
 bool LogFilter::matches(State const& _s, unsigned _i) const
 {
 	return matches(_s.receipt(_i)).size() > 0;
+}
+
+vector<LogBloom> LogFilter::bloomPossibilities() const
+{
+	// return combination of each of the addresses/topics
+	vector<LogBloom> ret;
+	// TODO proper combinatorics.
+	for (auto i: m_addresses)
+		ret.push_back(LogBloom().shiftBloom<3>(dev::sha3(i)));
+	return ret;
 }
 
 LogEntries LogFilter::matches(TransactionReceipt const& _m) const

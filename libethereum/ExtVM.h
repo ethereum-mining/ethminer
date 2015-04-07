@@ -82,7 +82,11 @@ public:
 
 	/// Revert any changes made (by any of the other calls).
 	/// @TODO check call site for the parent manifest being discarded.
-	virtual void revert() override final { m_s.m_cache = m_origCache; sub.clear(); }
+	virtual void revert() override final
+	{
+		m_s.m_cache = m_origCache;
+		sub.clear();
+	}
 
 	State& state() const { return m_s; }
 

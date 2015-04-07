@@ -40,13 +40,12 @@
 #include "TransactionQueue.h"
 #include "State.h"
 #include "CommonNet.h"
-#include "LogFilter.h"
 #include "Miner.h"
-#include "Interface.h"
+#include "ABI.h"
+#include "ClientBase.h"
 
 namespace dev
 {
-
 namespace eth
 {
 
@@ -66,77 +65,12 @@ public:
 	VersionChecker(std::string const& _dbPath);
 
 	void setOk();
-	bool ok() const { return m_ok; }
+	WithExisting action() const { return m_action; }
 
 private:
-	bool m_ok;
+	WithExisting m_action;
 	std::string m_path;
 };
-
-static const int GenesisBlock = INT_MIN;
-
-struct InstalledFilter
-{
-	InstalledFilter(LogFilter const& _f): filter(_f) {}
-
-	LogFilter filter;
-	unsigned refCount = 1;
-	LocalisedLogEntries changes;
-};
-
-static const h256 PendingChangedFilter = u256(0);
-static const h256 ChainChangedFilter = u256(1);
-
-static const LogEntry SpecialLogEntry = LogEntry(Address(), h256s(), bytes());
-static const LocalisedLogEntry InitialChange(SpecialLogEntry, 0);
-
-struct ClientWatch
-{
-	ClientWatch(): lastPoll(std::chrono::system_clock::now()) {}
-	explicit ClientWatch(h256 _id): id(_id), lastPoll(std::chrono::system_clock::now()) {}
-
-	h256 id;
-	LocalisedLogEntries changes = LocalisedLogEntries{ InitialChange };
-	mutable std::chrono::system_clock::time_point lastPoll = std::chrono::system_clock::now();
-};
-
-struct WatchChannel: public LogChannel { static const char* name() { return "(o)"; } static const int verbosity = 7; };
-#define cwatch dev::LogOutputStream<dev::eth::WatchChannel, true>()
-struct WorkInChannel: public LogChannel { static const char* name() { return ">W>"; } static const int verbosity = 16; };
-struct WorkOutChannel: public LogChannel { static const char* name() { return "<W<"; } static const int verbosity = 16; };
-struct WorkChannel: public LogChannel { static const char* name() { return "-W-"; } static const int verbosity = 16; };
-#define cwork dev::LogOutputStream<dev::eth::WorkChannel, true>()
-#define cworkin dev::LogOutputStream<dev::eth::WorkInChannel, true>()
-#define cworkout dev::LogOutputStream<dev::eth::WorkOutChannel, true>()
-
-template <class T> struct ABISerialiser {};
-template <unsigned N> struct ABISerialiser<FixedHash<N>> { static bytes serialise(FixedHash<N> const& _t) { static_assert(N <= 32, "Cannot serialise hash > 32 bytes."); static_assert(N > 0, "Cannot serialise zero-length hash."); return bytes(32 - N, 0) + _t.asBytes(); } };
-template <> struct ABISerialiser<u256> { static bytes serialise(u256 const& _t) { return h256(_t).asBytes(); } };
-template <> struct ABISerialiser<u160> { static bytes serialise(u160 const& _t) { return bytes(12, 0) + h160(_t).asBytes(); } };
-template <> struct ABISerialiser<string32> { static bytes serialise(string32 const& _t) { return bytesConstRef((byte const*)_t.data(), 32).toBytes(); } };
-
-inline bytes abiInAux() { return {}; }
-template <class T, class ... U> bytes abiInAux(T const& _t, U const& ... _u)
-{
-	return ABISerialiser<T>::serialise(_t) + abiInAux(_u ...);
-}
-
-template <class ... T> bytes abiIn(std::string _id, T const& ... _t)
-{
-	return sha3(_id).ref().cropped(0, 4).toBytes() + abiInAux(_t ...);
-}
-
-template <class T> struct ABIDeserialiser {};
-template <unsigned N> struct ABIDeserialiser<FixedHash<N>> { static FixedHash<N> deserialise(bytesConstRef& io_t) { static_assert(N <= 32, "Parameter sizes must be at most 32 bytes."); FixedHash<N> ret; io_t.cropped(32 - N, N).populate(ret.ref()); io_t = io_t.cropped(32); return ret; } };
-template <> struct ABIDeserialiser<u256> { static u256 deserialise(bytesConstRef& io_t) { u256 ret = fromBigEndian<u256>(io_t.cropped(0, 32)); io_t = io_t.cropped(32); return ret; } };
-template <> struct ABIDeserialiser<u160> { static u160 deserialise(bytesConstRef& io_t) { u160 ret = fromBigEndian<u160>(io_t.cropped(12, 20)); io_t = io_t.cropped(32); return ret; } };
-template <> struct ABIDeserialiser<string32> { static string32 deserialise(bytesConstRef& io_t) { string32 ret; io_t.cropped(0, 32).populate(bytesRef((byte*)ret.data(), 32)); io_t = io_t.cropped(32); return ret; } };
-
-template <class T> T abiOut(bytes const& _data)
-{
-	bytesConstRef o(&_data);
-	return ABIDeserialiser<T>::deserialise(o);
-}
 
 class RemoteMiner: public Miner
 {
@@ -176,14 +110,19 @@ public:
 private:
 	u256 m_weiPerRef;
 	u256 m_refsPerBlock;
-	u256 m_gasPerBlock = 1000000;
+	u256 m_gasPerBlock = 3141592;
 	std::array<u256, 9> m_octiles;
 };
+
+struct ClientNote: public LogChannel { static const char* name() { return "*C*"; } static const int verbosity = 2; };
+struct ClientChat: public LogChannel { static const char* name() { return "=C="; } static const int verbosity = 4; };
+struct ClientTrace: public LogChannel { static const char* name() { return "-C-"; } static const int verbosity = 7; };
+struct ClientDetail: public LogChannel { static const char* name() { return " C "; } static const int verbosity = 14; };
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
-class Client: public MinerHost, public Interface, Worker
+class Client: public MinerHost, public ClientBase, Worker
 {
 	friend class Miner;
 
@@ -192,7 +131,7 @@ public:
 	explicit Client(
 		p2p::Host* _host,
 		std::string const& _dbPath = std::string(),
-		bool _forceClean = false,
+		WithExisting _forceAction = WithExisting::Trust,
 		u256 _networkId = 0,
 		int _miners = -1
 	);
@@ -201,7 +140,7 @@ public:
 		p2p::Host* _host,
 		std::shared_ptr<GasPricer> _gpForAdoption,		// pass it in with new.
 		std::string const& _dbPath = std::string(),
-		bool _forceClean = false,
+		WithExisting _forceAction = WithExisting::Trust,
 		u256 _networkId = 0,
 		int _miners = -1
 	);
@@ -212,81 +151,20 @@ public:
 	/// Resets the gas pricer to some other object.
 	void setGasPricer(std::shared_ptr<GasPricer> _gp) { m_gp = _gp; }
 
-	/// Submits the given message-call transaction.
-	virtual void transact(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
-
-	/// Submits a new contract-creation transaction.
-	/// @returns the new contract's address (assuming it all goes through).
-	virtual Address transact(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
-
 	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
 	virtual void inject(bytesConstRef _rlp);
 
 	/// Blocks until all pending transactions have been processed.
-	virtual void flushTransactions();
+	virtual void flushTransactions() override;
 
-	/// Makes the given call. Nothing is recorded into the state.
-	virtual bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
-
+	using Interface::call; // to remove warning about hiding virtual function
 	/// Makes the given call. Nothing is recorded into the state. This cheats by creating a null address and endowing it with a lot of ETH.
-	virtual bytes call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether);
-
-	// Informational stuff
-
-	// [NEW API]
-
-	using Interface::balanceAt;
-	using Interface::countAt;
-	using Interface::stateAt;
-	using Interface::codeAt;
-	using Interface::storageAt;
-
-	virtual u256 balanceAt(Address _a, int _block) const;
-	virtual u256 countAt(Address _a, int _block) const;
-	virtual u256 stateAt(Address _a, u256 _l, int _block) const;
-	virtual bytes codeAt(Address _a, int _block) const;
-	virtual std::map<u256, u256> storageAt(Address _a, int _block) const;
-
-	virtual unsigned installWatch(LogFilter const& _filter);
-	virtual unsigned installWatch(h256 _filterId);
-	virtual void uninstallWatch(unsigned _watchId);
-	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const;
-	virtual LocalisedLogEntries checkWatch(unsigned _watchId);
-
-	virtual LocalisedLogEntries logs(unsigned _watchId) const { try { Guard l(m_filterLock); return logs(m_filters.at(m_watches.at(_watchId).id).filter); } catch (...) { return LocalisedLogEntries(); } }
-	virtual LocalisedLogEntries logs(LogFilter const& _filter) const;
-
-	// [EXTRA API]:
-
-	/// @returns the length of the chain.
-	virtual unsigned number() const { return m_bc.number(); }
-
-	/// Get the list of pending transactions.
-	/// @TODO: Remove in favour of transactions().
-	virtual Transactions pending() const { return m_postMine.pending(); }
-
-	virtual h256 hashFromNumber(unsigned _number) const { return m_bc.numberHash(_number); }
-	virtual BlockInfo blockInfo(h256 _hash) const { return BlockInfo(m_bc.block(_hash)); }
-	virtual BlockDetails blockDetails(h256 _hash) const { return m_bc.details(_hash); }
-	virtual Transaction transaction(h256 _blockHash, unsigned _i) const;
-	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const;
-	virtual unsigned transactionCount(h256 _blockHash) const;
-	virtual unsigned uncleCount(h256 _blockHash) const;
-
-	/// Differences between transactions.
-	using Interface::diff;
-	virtual StateDiff diff(unsigned _txi, h256 _block) const;
-	virtual StateDiff diff(unsigned _txi, int _block) const;
-
-	/// Get a list of all active addresses.
-	using Interface::addresses;
-	virtual std::vector<Address> addresses(int _block) const;
+	ExecutionResult call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether);
 
 	/// Get the remaining gas limit in this block.
 	virtual u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
 
 	// [PRIVATE API - only relevant for base clients, not available in general]
-
 	dev::eth::State state(unsigned _txi, h256 _block) const;
 	dev::eth::State state(h256 _block) const;
 	dev::eth::State state(unsigned _txi) const;
@@ -295,8 +173,12 @@ public:
 	dev::eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
 	CanonBlockChain const& blockChain() const { return m_bc; }
+	/// Get some information on the block queue.
+	BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
 
 	// Mining stuff:
+
+	void setAddress(Address _us) { WriteGuard l(x_stateDB); m_preMine.setAddress(_us); }
 
 	/// Check block validity prior to mining.
 	bool miningParanoia() const { return m_paranoia; }
@@ -311,22 +193,18 @@ public:
 	/// Enable/disable fast mining.
 	void setTurboMining(bool _enable = true) { m_turboMining = _enable; }
 
-	/// Set the coinbase address.
-	virtual void setAddress(Address _us) { m_preMine.setAddress(_us); }
-	/// Get the coinbase address.
-	virtual Address address() const { return m_preMine.address(); }
 	/// Stops mining and sets the number of mining threads (0 for automatic).
 	virtual void setMiningThreads(unsigned _threads = 0);
 	/// Get the effective number of mining threads.
 	virtual unsigned miningThreads() const { ReadGuard l(x_localMiners); return m_localMiners.size(); }
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	virtual void startMining() { startWorking(); ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); }
+	virtual void startMining() { startWorking(); { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); } }
 	/// Stop mining.
 	/// NOT thread-safe
-	virtual void stopMining() { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); }
+	virtual void stopMining() { { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); } }
 	/// Are we mining now?
-	virtual bool isMining() { ReadGuard l(x_localMiners); return m_localMiners.size() && m_localMiners[0].isRunning(); }
+	virtual bool isMining() { { ReadGuard l(x_localMiners); if (!m_localMiners.empty() && m_localMiners[0].isRunning()) return true; } return false; }
 	/// Check the progress of the mining.
 	virtual MineProgress miningProgress() const;
 	/// Get and clear the mining history.
@@ -350,6 +228,17 @@ public:
 	void killChain();
 
 protected:
+	/// InterfaceStub methods
+	virtual BlockChain const& bc() const override { return m_bc; }
+	
+	/// Returns the state object for the full block (i.e. the terminal state) for index _h.
+	/// Works properly with LatestBlock and PendingBlock.
+	using ClientBase::asOf;
+	virtual State asOf(h256 const& _block) const override;
+	virtual State preMine() const override { ReadGuard l(x_stateDB); return m_preMine; }
+	virtual State postMine() const override { ReadGuard l(x_stateDB); return m_postMine; }
+	virtual void prepareForTransaction() override;
+
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
 	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _sha3);
@@ -374,15 +263,8 @@ private:
 	virtual bool turbo() const { return m_turboMining; }
 	virtual bool force() const { return m_forceMining; }
 
-	/// Return the actual block number of the block with the given int-number (positive is the same, INT_MIN is genesis block, < 0 is negative age, thus -1 is most recently mined, 0 is pending.
-	unsigned numberOf(int _b) const;
-
-	State asOf(int _h) const;
-	State asOf(unsigned _h) const;
-
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	CanonBlockChain m_bc;					///< Maintains block database.
-	TransactionQueue m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 	std::shared_ptr<GasPricer> m_gp;		///< The gas pricer.
 
@@ -402,12 +284,6 @@ private:
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
 	bool m_verifyOwnBlocks = true;			///< Should be verify blocks that we mined?
-
-
-
-	mutable Mutex m_filterLock;
-	std::map<h256, InstalledFilter> m_filters;
-	std::map<unsigned, ClientWatch> m_watches;
 
 	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
 };

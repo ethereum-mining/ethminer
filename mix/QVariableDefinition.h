@@ -21,14 +21,14 @@
 
 #pragma once
 
-#include <QAbstractListModel>
-#include "QBigInt.h"
-#include "QVariableDeclaration.h"
+#include <QObject>
+#include <libdevcore/Common.h>
 
 namespace dev
 {
 namespace mix
 {
+class QVariableDeclaration;
 
 class QVariableDefinition: public QObject
 {
@@ -54,7 +54,7 @@ public:
 	/// Decode the return value @a _rawValue.
 	virtual void decodeValue(dev::bytes const& _rawValue) = 0;
 	/// returns String representation of the encoded value.
-	Q_INVOKABLE QString encodeValueAsString() { return QString::fromStdString(dev::toHex(encodeValue())); }
+	Q_INVOKABLE QString encodeValueAsString();
 
 protected:
 	QString m_value;
@@ -63,95 +63,9 @@ private:
 	QVariableDeclaration* m_dec;
 };
 
-class QVariableDefinitionList: public QAbstractListModel
-{
-	Q_OBJECT
 
-public:
-	QVariableDefinitionList(QList<QVariableDefinition*> _def): m_def(_def) {}
-	int rowCount(const QModelIndex& parent = QModelIndex()) const override;
-	QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
-	QHash<int, QByteArray> roleNames() const override;
-	/// Return the variable definition at index _idx.
-	QVariableDefinition* val(int _idx);
-	/// Return the list of variables.
-	QList<QVariableDefinition*> def() { return m_def; }
 
-private:
-	QList<QVariableDefinition*> m_def;
-};
-
-class QIntType: public QVariableDefinition
-{
-	Q_OBJECT
-
-public:
-	QIntType() {}
-	QIntType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
-	dev::bytes encodeValue() override;
-	void decodeValue(dev::bytes const& _rawValue) override;
-	/// @returns an instance of QBigInt for the current value.
-	QBigInt* toBigInt() { return new QBigInt(m_bigIntvalue); }
-	dev::bigint bigInt() { return m_bigIntvalue; }
-	void setValue(dev::bigint _value);
-
-private:
-	dev::bigint m_bigIntvalue;
-};
-
-class QRealType: public QVariableDefinition
-{
-	Q_OBJECT
-
-public:
-	QRealType() {}
-	QRealType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
-	dev::bytes encodeValue() override;
-	void decodeValue(dev::bytes const& _rawValue) override;
-};
-
-class QStringType: public QVariableDefinition
-{
-	Q_OBJECT
-
-public:
-	QStringType() {}
-	QStringType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
-	dev::bytes encodeValue() override;
-	void decodeValue(dev::bytes const& _rawValue) override;
-};
-
-class QHashType: public QVariableDefinition
-{
-	Q_OBJECT
-
-public:
-	QHashType() {}
-	QHashType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value) {}
-	dev::bytes encodeValue() override;
-	void decodeValue(dev::bytes const& _rawValue) override;
-};
-
-class QBoolType: public QVariableDefinition
-{
-	Q_OBJECT
-
-public:
-	QBoolType(): m_boolValue(false) {}
-	QBoolType(QVariableDeclaration* _def, QString _value): QVariableDefinition(_def, _value), m_boolValue(false) {}
-	dev::bytes encodeValue() override;
-	void decodeValue(dev::bytes const& _rawValue) override;
-	///  @returns the boolean value for the current definition.
-	bool toBool() { return m_boolValue; }
-
-private:
-	bool m_boolValue;
-};
 
 }
 }
 
-Q_DECLARE_METATYPE(dev::mix::QIntType*)
-Q_DECLARE_METATYPE(dev::mix::QStringType*)
-Q_DECLARE_METATYPE(dev::mix::QHashType*)
-Q_DECLARE_METATYPE(dev::mix::QBoolType*)

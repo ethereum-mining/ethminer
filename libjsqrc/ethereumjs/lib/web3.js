@@ -19,41 +19,84 @@
  *   Jeffrey Wilcke <jeff@ethdev.com>
  *   Marek Kotewicz <marek@ethdev.com>
  *   Marian Oancea <marian@ethdev.com>
+ *   Fabian Vogelsteller <fabian@ethdev.com>
  *   Gav Wood <g@ethdev.com>
  * @date 2014
  */
 
-if (process.env.NODE_ENV !== 'build') {
-    var BigNumber = require('bignumber.js');
-}
-
-var eth = require('./eth');
-var db = require('./db');
-var shh = require('./shh');
-var watches = require('./watches');
-var filter = require('./filter');
-var utils = require('./utils');
-var requestManager = require('./requestmanager');
+var version = require('../version.json');
+var net = require('./web3/net');
+var eth = require('./web3/eth');
+var db = require('./web3/db');
+var shh = require('./web3/shh');
+var watches = require('./web3/watches');
+var filter = require('./web3/filter');
+var utils = require('./utils/utils');
+var formatters = require('./solidity/formatters');
+var requestManager = require('./web3/requestmanager');
+var c = require('./utils/config');
 
 /// @returns an array of objects describing web3 api methods
-var web3Methods = function () {
-    return [
-    { name: 'sha3', call: 'web3_sha3' }
-    ];
-};
+var web3Methods = [
+    { name: 'sha3', call: 'web3_sha3', inputFormatter: utils.toHex },
+];
+var web3Properties = [
+    { name: 'version.client', getter: 'web3_clientVersion' },
+    { name: 'version.network', getter: 'net_version' }
+];
+
 
 /// creates methods in a given object based on method description on input
 /// setups api calls for these methods
 var setupMethods = function (obj, methods) {
     methods.forEach(function (method) {
-        obj[method.name] = function () {
-            var args = Array.prototype.slice.call(arguments);
-            var call = typeof method.call === 'function' ? method.call(args) : method.call;
-            return web3.manager.send({
-                method: call,
-                params: args
-            });
-        };
+        // allow for object methods 'myObject.method'
+        var objectMethods = method.name.split('.'),
+            callFunction = function () {
+                /*jshint maxcomplexity:8 */
+                
+                var callback = null,
+                    args = Array.prototype.slice.call(arguments),
+                    call = typeof method.call === 'function' ? method.call(args) : method.call;
+
+                // get the callback if one is available
+                if(typeof args[args.length-1] === 'function'){
+                    callback = args[args.length-1];
+                    Array.prototype.pop.call(args);
+                }
+
+                // add the defaultBlock if not given
+                if(method.addDefaultblock) {
+                    if(args.length !== method.addDefaultblock)
+                        Array.prototype.push.call(args, (isFinite(c.ETH_DEFAULTBLOCK) ? utils.fromDecimal(c.ETH_DEFAULTBLOCK) : c.ETH_DEFAULTBLOCK));
+                    else
+                        args[args.length-1] = isFinite(args[args.length-1]) ? utils.fromDecimal(args[args.length-1]) : args[args.length-1];
+                }
+
+                // show deprecated warning
+                if(method.newMethod)
+                    console.warn('This method is deprecated please use web3.'+ method.newMethod +'() instead.');
+
+                return web3.manager.send({
+                    method: call,
+                    params: args,
+                    outputFormatter: method.outputFormatter,
+                    inputFormatter: method.inputFormatter,
+                    addDefaultblock: method.addDefaultblock
+                }, callback);
+            };
+
+        if(objectMethods.length > 1) {
+            if(!obj[objectMethods[0]])
+                obj[objectMethods[0]] = {};
+
+            obj[objectMethods[0]][objectMethods[1]] = callFunction;
+        
+        } else {
+
+            obj[objectMethods[0]] = callFunction;
+        }
+
     });
 };
 
@@ -61,22 +104,47 @@ var setupMethods = function (obj, methods) {
 /// setups api calls for these properties
 var setupProperties = function (obj, properties) {
     properties.forEach(function (property) {
-        var proto = {};
+        var objectProperties = property.name.split('.'),
+            proto = {};
+
         proto.get = function () {
+
+            // show deprecated warning
+            if(property.newProperty)
+                console.warn('This property is deprecated please use web3.'+ property.newProperty +' instead.');
+
+
             return web3.manager.send({
-                method: property.getter
+                method: property.getter,
+                outputFormatter: property.outputFormatter
             });
         };
 
         if (property.setter) {
             proto.set = function (val) {
+
+                // show deprecated warning
+                if(property.newProperty)
+                    console.warn('This property is deprecated please use web3.'+ property.newProperty +' instead.');
+
                 return web3.manager.send({
                     method: property.setter,
-                    params: [val]
+                    params: [val],
+                    inputFormatter: property.inputFormatter
                 });
             };
         }
-        Object.defineProperty(obj, property.name, proto);
+
+        proto.enumerable = !property.newProperty;
+
+        if(objectProperties.length > 1) {
+            if(!obj[objectProperties[0]])
+                obj[objectProperties[0]] = {};
+
+            Object.defineProperty(obj[objectProperties[0]], objectProperties[1], proto);        
+        } else
+            Object.defineProperty(obj, property.name, proto);
+
     });
 };
 
@@ -94,19 +162,37 @@ var stopPolling = function (id) {
 };
 
 var ethWatch = {
-    startPolling: startPolling.bind(null, 'eth_changed'), 
+    startPolling: startPolling.bind(null, 'eth_getFilterChanges'), 
     stopPolling: stopPolling
 };
 
 var shhWatch = {
-    startPolling: startPolling.bind(null, 'shh_changed'), 
+    startPolling: startPolling.bind(null, 'shh_getFilterChanges'), 
     stopPolling: stopPolling
 };
 
 /// setups web3 object, and it's in-browser executed methods
 var web3 = {
+
+    version: {
+        api: version.version
+    },
+
     manager: requestManager(),
     providers: {},
+
+    setProvider: function (provider) {
+        web3.manager.setProvider(provider);
+    },
+    
+    /// Should be called to reset state of web3 object
+    /// Resets everything except manager
+    reset: function () {
+        web3.manager.reset(); 
+    },
+
+    /// @returns hex string of the input
+    toHex: utils.toHex,
 
     /// @returns ascii string representation of hex value prefixed with 0x
     toAscii: utils.toAscii,
@@ -115,23 +201,30 @@ var web3 = {
     fromAscii: utils.fromAscii,
 
     /// @returns decimal representaton of hex value prefixed by 0x
-    toDecimal: function (val) {
-        // remove 0x and place 0, if it's required
-        val = val.length > 2 ? val.substring(2) : "0";
-        return (new BigNumber(val, 16).toString(10));
-    },
+    toDecimal: utils.toDecimal,
 
     /// @returns hex representation (prefixed by 0x) of decimal value
-    fromDecimal: function (val) {
-        return "0x" + (new BigNumber(val).toString(16));
+    fromDecimal: utils.fromDecimal,
+
+    /// @returns a BigNumber object
+    toBigNumber: utils.toBigNumber,
+
+    toWei: utils.toWei,
+    fromWei: utils.fromWei,
+    isAddress: utils.isAddress,
+
+    // provide network information
+    net: {
+        // peerCount: 
     },
 
-    /// used to transform value/string to eth string
-    toEth: utils.toEth,
 
     /// eth object prototype
     eth: {
+        // DEPRECATED
         contractFromAbi: function (abi) {
+            console.warn('Initiating a contract like this is deprecated please use var MyContract = eth.contract(abi); new MyContract(address); instead.');
+
             return function(addr) {
                 // Default to address of Config. TODO: rremove prior to genesis.
                 addr = addr || '0xc6d9d2cd449a754c494264e1809c50e34d64562b';
@@ -141,24 +234,22 @@ var web3 = {
             };
         },
 
-        canary: function (abi) {
-            return function(addr) {
-                // Default to address of Config. TODO: rremove prior to genesis.
-                addr = addr || '0xc6d9d2cd449a754c494264e1809c50e34d64562b';
-                return addr;
-            };
-        },
-
         /// @param filter may be a string, object or event
-        /// @param indexed is optional, this is an object with optional event indexed params
+        /// @param eventParams is optional, this is an object with optional event eventParams params
         /// @param options is optional, this is an object with optional event options ('max'...)
-        /// TODO: fix it, 4 params? no way
         /*jshint maxparams:4 */
-        watch: function (fil, indexed, options, formatter) {
-            if (fil._isEvent) {
-                return fil(indexed, options);
-            }
-            return filter(fil, ethWatch, formatter);
+        filter: function (fil, eventParams, options) {
+
+            // if its event, treat it differently
+            if (fil._isEvent)
+                return fil(eventParams, options);
+
+            return filter(fil, ethWatch, formatters.outputLogFormatter);
+        },
+        // DEPRECATED
+        watch: function (fil, eventParams, options) {
+            console.warn('eth.watch() is deprecated please use eth.filter() instead.');
+            return this.filter(fil, eventParams, options);
         }
         /*jshint maxparams:3 */
     },
@@ -169,25 +260,37 @@ var web3 = {
     /// shh object prototype
     shh: {
         /// @param filter may be a string, object or event
+        filter: function (fil) {
+            return filter(fil, shhWatch, formatters.outputPostFormatter);
+        },
+        // DEPRECATED
         watch: function (fil) {
-            return filter(fil, shhWatch);
+            console.warn('shh.watch() is deprecated please use shh.filter() instead.');
+            return this.filter(fil);
         }
-    },
-    setProvider: function (provider) {
-        web3.manager.setProvider(provider);
-    },
-    
-    /// Should be called to reset state of web3 object
-    /// Resets everything except manager
-    reset: function () {
-        web3.manager.reset(); 
     }
 };
 
+
+// ADD defaultblock
+Object.defineProperty(web3.eth, 'defaultBlock', {
+    get: function () {
+        return c.ETH_DEFAULTBLOCK;
+    },
+    set: function (val) {
+        c.ETH_DEFAULTBLOCK = val;
+        return c.ETH_DEFAULTBLOCK;
+    }
+});
+
+
 /// setups all api methods
-setupMethods(web3, web3Methods());
-setupMethods(web3.eth, eth.methods());
-setupProperties(web3.eth, eth.properties());
+setupMethods(web3, web3Methods);
+setupProperties(web3, web3Properties);
+setupMethods(web3.net, net.methods);
+setupProperties(web3.net, net.properties);
+setupMethods(web3.eth, eth.methods);
+setupProperties(web3.eth, eth.properties);
 setupMethods(web3.db, db.methods());
 setupMethods(web3.shh, shh.methods());
 setupMethods(ethWatch, watches.eth());

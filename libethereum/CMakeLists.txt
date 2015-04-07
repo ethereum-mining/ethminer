@@ -36,6 +36,10 @@ target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} secp256k1)
 
+if (ETHASHCL)
+	target_link_libraries(${EXECUTABLE} ethash-cl)
+endif ()
+
 if (CMAKE_COMPILER_IS_MINGW)
 	target_link_libraries(${EXECUTABLE} ssp shlwapi)
 endif()

@@ -45,7 +45,7 @@ void Capability::disable(std::string const& _problem)
 
 RLPStream& Capability::prep(RLPStream& _s, unsigned _id, unsigned _args)
 {
-	return Session::prep(_s).appendList(_args + 1).append(_id + m_idOffset);
+	return _s.appendRaw(bytes(1, _id + m_idOffset)).appendList(_args);
 }
 
 void Capability::sealAndSend(RLPStream& _s)
@@ -53,17 +53,7 @@ void Capability::sealAndSend(RLPStream& _s)
 	m_session->sealAndSend(_s);
 }
 
-void Capability::send(bytesConstRef _msg)
-{
-	m_session->send(_msg);
-}
-
-void Capability::send(bytes&& _msg)
-{
-	m_session->send(move(_msg));
-}
-
-void Capability::addRating(unsigned _r)
+void Capability::addRating(int _r)
 {
 	m_session->addRating(_r);
 }

@@ -87,6 +87,8 @@ public:
 	bool operator!=(FixedHash const& _c) const { return m_data != _c.m_data; }
 	bool operator<(FixedHash const& _c) const { for (unsigned i = 0; i < N; ++i) if (m_data[i] < _c.m_data[i]) return true; else if (m_data[i] > _c.m_data[i]) return false; return false; }
 	bool operator>=(FixedHash const& _c) const { return !operator<(_c); }
+	bool operator<=(FixedHash const& _c) const { return operator==(_c) || operator<(_c); }
+	bool operator>(FixedHash const& _c) const { return !operator<=(_c); }
 
 	// The obvious binary operators.
 	FixedHash& operator^=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] ^= _c.m_data[i]; return *this; }
@@ -139,6 +141,7 @@ public:
 		return ret;
 	}
 
+	/// @returns a random valued object.
 	static FixedHash random() { return random(s_fixedHashEngine); }
 
 	/// A generic std::hash compatible function object.
@@ -154,25 +157,17 @@ public:
 		}
 	};
 
-	inline FixedHash<32> bloom() const
-	{
-		FixedHash<32> ret;
-		for (auto i: m_data)
-			ret[i / 8] |= 1 << (i % 8);
-		return ret;
-	}
-
 	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h)
 	{
-		return (*this |= _h.template nbloom<P, N>());
+		return (*this |= _h.template bloom<P, N>());
 	}
 
 	template <unsigned P, unsigned M> inline bool containsBloom(FixedHash<M> const& _h)
 	{
-		return contains(_h.template nbloom<P, N>());
+		return contains(_h.template bloom<P, N>());
 	}
 
-	template <unsigned P, unsigned M> inline FixedHash<M> nbloom() const
+	template <unsigned P, unsigned M> inline FixedHash<M> bloom() const
 	{
 		static const unsigned c_bloomBits = M * 8;
 		unsigned mask = c_bloomBits - 1;

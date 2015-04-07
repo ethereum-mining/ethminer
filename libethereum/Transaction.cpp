@@ -21,14 +21,37 @@
 
 #include <libdevcore/vector_ref.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/CommonIO.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Exceptions.h>
+#include <libevm/VMFace.h>
 #include "Transaction.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
 #define ETH_ADDRESS_DEBUG 0
+
+std::ostream& dev::eth::operator<<(std::ostream& _out, ExecutionResult const& _er)
+{
+	_out << "{" << _er.gasUsed << ", " << _er.newAddress << ", " << toHex(_er.output) << "}";
+	return _out;
+}
+
+TransactionException dev::eth::toTransactionException(VMException const& _e)
+{
+	if (!!dynamic_cast<BadInstruction const*>(&_e))
+		return TransactionException::BadInstruction;
+	if (!!dynamic_cast<BadJumpDestination const*>(&_e))
+		return TransactionException::BadJumpDestination;
+	if (!!dynamic_cast<OutOfGas const*>(&_e))
+		return TransactionException::OutOfGas;
+	if (!!dynamic_cast<OutOfStack const*>(&_e))
+		return TransactionException::OutOfStack;
+	if (!!dynamic_cast<StackUnderflow const*>(&_e))
+		return TransactionException::StackUnderflow;
+	return TransactionException::Unknown;
+}
 
 Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 {
@@ -45,6 +68,10 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 		m_type = rlp[field = 3].isEmpty() ? ContractCreation : MessageCall;
 		m_receiveAddress = rlp[field = 3].isEmpty() ? Address() : rlp[field = 3].toHash<Address>(RLP::VeryStrict);
 		m_value = rlp[field = 4].toInt<u256>();
+
+		if (!rlp[field = 5].isData())
+			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("transaction data RLP must be an array"));
+
 		m_data = rlp[field = 5].toBytes();
 		byte v = rlp[field = 6].toInt<byte>() - 27;
 		h256 r = rlp[field = 7].toInt<u256>();
@@ -61,12 +88,12 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 	}
 	catch (Exception& _e)
 	{
-		_e << errinfo_name("invalid transaction format") << BadFieldError(field,toHex(rlp[field].data().toBytes()));
+		_e << errinfo_name("invalid transaction format") << BadFieldError(field, toHex(rlp[field].data().toBytes()));
 		throw;
 	}
 }
 
-Address Transaction::safeSender() const noexcept
+Address const& Transaction::safeSender() const noexcept
 {
 	try
 	{
@@ -75,11 +102,11 @@ Address Transaction::safeSender() const noexcept
 	catch (...)
 	{
 		cwarn << "safeSender() did throw an exception: " <<  boost::current_exception_diagnostic_information();
-		return Address();
+		return NullAddress;
 	}
 }
 
-Address Transaction::sender() const
+Address const& Transaction::sender() const
 {
 	if (!m_sender)
 	{

@@ -16,6 +16,7 @@
 */
 /** @file Session.cpp
  * @author Gav Wood <i@gavwood.com>
+ * @author Alex Leverington <nessence@gmail.com>
  * @date 2014
  */
 
@@ -37,18 +38,21 @@ using namespace dev::p2p;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << m_socket.native_handle() << "] "
 
-Session::Session(Host* _s, bi::tcp::socket _socket, std::shared_ptr<Peer> const& _n):
+Session::Session(Host* _s, RLPXFrameIO* _io, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info):
 	m_server(_s),
-	m_socket(std::move(_socket)),
+	m_io(_io),
+	m_socket(m_io->socket()),
 	m_peer(_n),
-	m_info({NodeId(), "?", m_socket.remote_endpoint().address().to_string(), 0, chrono::steady_clock::duration(0), CapDescSet(), 0, map<string, string>()}),
+	m_info(_info),
 	m_ping(chrono::steady_clock::time_point::max())
 {
+	m_peer->m_lastDisconnect = NoDisconnect;
 	m_lastReceived = m_connect = chrono::steady_clock::now();
 }
 
 Session::~Session()
 {
+	clogS(NetMessageSummary) << "Closing Peer Session :-(";
 	m_peer->m_lastConnected = m_peer->m_lastAttempted - chrono::seconds(1);
 
 	// Read-chain finished for one reason or another.
@@ -65,6 +69,7 @@ Session::~Session()
 		}
 	}
 	catch (...){}
+	delete m_io;
 }
 
 NodeId Session::id() const
@@ -72,12 +77,14 @@ NodeId Session::id() const
 	return m_peer ? m_peer->id : NodeId();
 }
 
-void Session::addRating(unsigned _r)
+void Session::addRating(int _r)
 {
 	if (m_peer)
 	{
 		m_peer->m_rating += _r;
 		m_peer->m_score += _r;
+		if (_r >= 0)
+			m_peer->noteSessionGood();
 	}
 }
 
@@ -142,201 +149,111 @@ void Session::serviceNodesRequest()
 	addNote("peers", "done");
 }
 
-bool Session::interpret(RLP const& _r)
+bool Session::interpret(PacketType _t, RLP const& _r)
 {
 	m_lastReceived = chrono::steady_clock::now();
 
-	clogS(NetRight) << _r;
+	clogS(NetRight) << _t << _r;
 	try		// Generic try-catch block designed to capture RLP format errors - TODO: give decent diagnostics, make a bit more specific over what is caught.
 	{
-
-	switch ((PacketType)_r[0].toInt<unsigned>())
-	{
-	case HelloPacket:
-	{
-		// TODO: P2P first pass, implement signatures. if signature fails, drop connection. if egress, flag node's endpoint as stale.
-		// Move auth to Host so we consolidate authentication logic and eschew peer deduplication logic.
-		// Move all node-lifecycle information into Host.
-		// Finalize peer-lifecycle properties vs node lifecycle.
-		
-		m_protocolVersion = _r[1].toInt<unsigned>();
-		auto clientVersion = _r[2].toString();
-		auto caps = _r[3].toVector<CapDesc>();
-		auto listenPort = _r[4].toInt<unsigned short>();
-		auto id = _r[5].toHash<NodeId>();
-
-		// clang error (previously: ... << hex << caps ...)
-		// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
-		stringstream capslog;
-		for (auto cap: caps)
-			capslog << "(" << cap.first << "," << dec << cap.second << ")";
-
-		clogS(NetMessageSummary) << "Hello: " << clientVersion << "V[" << m_protocolVersion << "]" << id.abridged() << showbase << capslog.str() << dec << listenPort;
-
-		if (m_server->id() == id)
+		switch (_t)
 		{
-			// Already connected.
-			clogS(NetWarn) << "Connected to ourself under a false pretext. We were told this peer was id" << id.abridged();
-			disconnect(LocalIdentity);
-			return true;
-		}
-
-		// if peer and connection have id, check for UnexpectedIdentity
-		if (!id)
+		case DisconnectPacket:
 		{
-			disconnect(NullIdentity);
-			return true;
-		}
-		else if (!m_peer->id)
-		{
-			m_peer->id = id;
-			m_peer->endpoint.tcp.port(listenPort);
-		}
-		else if (m_peer->id != id)
-		{
-			// TODO p2p: FIXME. Host should catch this and reattempt adding node to table.
-			m_peer->id = id;
-			m_peer->m_score = 0;
-			m_peer->m_rating = 0;
-//			disconnect(UnexpectedIdentity);
-//			return true;
-		}
-
-		if (m_server->havePeerSession(id))
-		{
-			// Already connected.
-			clogS(NetWarn) << "Already connected to a peer with id" << id.abridged();
-			// Possible that two nodes continually connect to each other with exact same timing.
-			this_thread::sleep_for(chrono::milliseconds(rand() % 100));
-			disconnect(DuplicatePeer);
-			return true;
-		}
-		
-		if (m_peer->isOffline())
-			m_peer->m_lastConnected = chrono::system_clock::now();
-
-		if (m_protocolVersion != m_server->protocolVersion())
-		{
-			disconnect(IncompatibleProtocol);
-			return true;
-		}
-		
-		m_info.clientVersion = clientVersion;
-		m_info.host = m_socket.remote_endpoint().address().to_string();
-		m_info.port = listenPort;
-		m_info.lastPing = std::chrono::steady_clock::duration();
-		m_info.caps = _r[3].toSet<CapDesc>();
-		m_info.socket = (unsigned)m_socket.native_handle();
-		m_info.notes = map<string, string>();
-
-		m_server->registerPeer(shared_from_this(), caps);
-		break;
-	}
-	case DisconnectPacket:
-	{
-		string reason = "Unspecified";
-		auto r = (DisconnectReason)_r[1].toInt<int>();
-		if (!_r[1].isInt())
-			drop(BadProtocol);
-		else
-		{
-			reason = reasonOf(r);
-			clogS(NetMessageSummary) << "Disconnect (reason: " << reason << ")";
-			drop(DisconnectRequested);
-		}
-		break;
-	}
-	case PingPacket:
-	{
-		clogS(NetTriviaSummary) << "Ping";
-		RLPStream s;
-		sealAndSend(prep(s, PongPacket));
-		break;
-	}
-	case PongPacket:
-		m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
-		clogS(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
-		break;
-	case GetPeersPacket:
-	{
-		// Disabled for interop testing.
-		// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
-		break;
-		
-		clogS(NetTriviaSummary) << "GetPeers";
-		m_theyRequestedNodes = true;
-		serviceNodesRequest();
-		break;
-	}
-	case PeersPacket:
-		// Disabled for interop testing.
-		// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
-		break;
-			
-		clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
-		m_weRequestedNodes = false;
-		for (unsigned i = 1; i < _r.itemCount(); ++i)
-		{
-			bi::address peerAddress;
-			if (_r[i][0].size() == 16)
-				peerAddress = bi::address_v6(_r[i][0].toHash<FixedHash<16>>().asArray());
-			else if (_r[i][0].size() == 4)
-				peerAddress = bi::address_v4(_r[i][0].toHash<FixedHash<4>>().asArray());
+			string reason = "Unspecified";
+			auto r = (DisconnectReason)_r[0].toInt<int>();
+			if (!_r[0].isInt())
+				drop(BadProtocol);
 			else
 			{
-				cwarn << "Received bad peer packet:" << _r;
-				disconnect(BadProtocol);
-				return true;
+				reason = reasonOf(r);
+				clogS(NetMessageSummary) << "Disconnect (reason: " << reason << ")";
+				drop(DisconnectRequested);
 			}
-			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
-			NodeId id = _r[i][2].toHash<NodeId>();
-			
-			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
-//			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")" << isPrivateAddress(peerAddress) << this->id().abridged() << isPrivateAddress(endpoint().address()) << m_server->m_peers.count(id) << (m_server->m_peers.count(id) ? isPrivateAddress(m_server->m_peers.at(id)->address.address()) : -1);
-
-			// todo: draft spec: ignore if dist(us,item) - dist(us,them) > 1
-			
-			// TODO: isPrivate
-			if (!m_server->m_netPrefs.localNetworking && isPrivateAddress(peerAddress))
-				goto CONTINUE;	// Private address. Ignore.
-
-			if (!id)
-				goto LAMEPEER;	// Null identity. Ignore.
-
-			if (m_server->id() == id)
-				goto LAMEPEER;	// Just our info - we already have that.
-
-			if (id == this->id())
-				goto LAMEPEER;	// Just their info - we already have that.
-
-			if (!ep.port())
-				goto LAMEPEER;	// Zero port? Don't think so.
-
-			if (ep.port() >= /*49152*/32768)
-				goto LAMEPEER;	// Private port according to IANA.
-
-			// OK passed all our checks. Assume it's good.
-			addRating(1000);
-			m_server->addNode(id, ep.address().to_string(), ep.port(), ep.port());
-			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
-			CONTINUE:;
-			LAMEPEER:;
+			break;
 		}
-		break;
-	default:
-	{
-		auto id = _r[0].toInt<unsigned>();
-		for (auto const& i: m_capabilities)
-			if (id >= i.second->m_idOffset && id - i.second->m_idOffset < i.second->hostCapability()->messageCount())
+		case PingPacket:
+		{
+			clogS(NetTriviaSummary) << "Ping";
+			RLPStream s;
+			sealAndSend(prep(s, PongPacket));
+			break;
+		}
+		case PongPacket:
+			m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
+			clogS(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
+			break;
+		case GetPeersPacket:
+			// Disabled for interop testing.
+			// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
+			break;
+
+			clogS(NetTriviaSummary) << "GetPeers";
+			m_theyRequestedNodes = true;
+			serviceNodesRequest();
+			break;
+		case PeersPacket:
+			// Disabled for interop testing.
+			// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
+			break;
+
+			clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
+			m_weRequestedNodes = false;
+			for (unsigned i = 0; i < _r.itemCount(); ++i)
 			{
-				if (i.second->m_enabled)
-					return i.second->interpret(id - i.second->m_idOffset, _r);
+				bi::address peerAddress;
+				if (_r[i][0].size() == 16)
+					peerAddress = bi::address_v6(_r[i][0].toHash<FixedHash<16>>().asArray());
+				else if (_r[i][0].size() == 4)
+					peerAddress = bi::address_v4(_r[i][0].toHash<FixedHash<4>>().asArray());
 				else
+				{
+					cwarn << "Received bad peer packet:" << _r;
+					disconnect(BadProtocol);
 					return true;
+				}
+				auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
+				NodeId id = _r[i][2].toHash<NodeId>();
+
+				clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
+
+				if (!isPublicAddress(peerAddress))
+					goto CONTINUE;	// Private address. Ignore.
+
+				if (!id)
+					goto LAMEPEER;	// Null identity. Ignore.
+
+				if (m_server->id() == id)
+					goto LAMEPEER;	// Just our info - we already have that.
+
+				if (id == this->id())
+					goto LAMEPEER;	// Just their info - we already have that.
+
+				if (!ep.port())
+					goto LAMEPEER;	// Zero port? Don't think so.
+
+				if (ep.port() >= /*49152*/32768)
+					goto LAMEPEER;	// Private port according to IANA.
+
+				// OK passed all our checks. Assume it's good.
+				addRating(1000);
+				m_server->addNode(id, ep.address(), ep.port(), ep.port());
+				clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
+				CONTINUE:;
+				LAMEPEER:;
 			}
-		return false;
-	}
-	}
+			break;
+		default:
+			for (auto const& i: m_capabilities)
+				if (_t >= i.second->m_idOffset && _t - i.second->m_idOffset < i.second->hostCapability()->messageCount())
+				{
+					if (i.second->m_enabled)
+						return i.second->interpret(_t - i.second->m_idOffset, _r);
+					else
+						return true;
+				}
+			return false;
+		}
 	}
 	catch (std::exception const& _e)
 	{
@@ -356,47 +273,34 @@ void Session::ping()
 
 RLPStream& Session::prep(RLPStream& _s, PacketType _id, unsigned _args)
 {
-	return prep(_s).appendList(_args + 1).append((unsigned)_id);
-}
-
-RLPStream& Session::prep(RLPStream& _s)
-{
-	return _s.appendRaw(bytes(8, 0));
+	return _s.append((unsigned)_id).appendList(_args);
 }
 
 void Session::sealAndSend(RLPStream& _s)
 {
 	bytes b;
 	_s.swapOut(b);
-	m_server->seal(b);
 	send(move(b));
 }
 
 bool Session::checkPacket(bytesConstRef _msg)
 {
-	if (_msg.size() < 8)
+	if (_msg.size() < 2)
 		return false;
-	if (!(_msg[0] == 0x22 && _msg[1] == 0x40 && _msg[2] == 0x08 && _msg[3] == 0x91))
+	if (_msg[0] > 0x7f)
 		return false;
-	uint32_t len = ((_msg[4] * 256 + _msg[5]) * 256 + _msg[6]) * 256 + _msg[7];
-	if (_msg.size() != len + 8)
-		return false;
-	RLP r(_msg.cropped(8));
-	if (r.actualSize() != len)
+	RLP r(_msg.cropped(1));
+	if (r.actualSize() + 1 != _msg.size())
 		return false;
 	return true;
 }
 
-void Session::send(bytesConstRef _msg)
-{
-	send(_msg.toBytes());
-}
-
 void Session::send(bytes&& _msg)
 {
-	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(8));
+	clogS(NetLeft) << RLP(bytesConstRef(&_msg).cropped(1));
 
-	if (!checkPacket(bytesConstRef(&_msg)))
+	bytesConstRef msg(&_msg);
+	if (!checkPacket(msg))
 		clogS(NetWarn) << "INVALID PACKET CONSTRUCTED!";
 
 	if (!m_socket.is_open())
@@ -416,6 +320,7 @@ void Session::send(bytes&& _msg)
 void Session::write()
 {
 	const bytes& bytes = m_writeQueue[0];
+	m_io->writeSingleFramePacket(&bytes, m_writeQueue[0]);
 	auto self(shared_from_this());
 	ba::async_write(m_socket, ba::buffer(bytes), [this, self](boost::system::error_code ec, std::size_t /*length*/)
 	{
@@ -451,16 +356,11 @@ void Session::drop(DisconnectReason _reason)
 		}
 		catch (...) {}
 
-	if (m_peer)
+	m_peer->m_lastDisconnect = _reason;
+	if (_reason == BadProtocol)
 	{
-		if (_reason != m_peer->m_lastDisconnect || _reason == NoDisconnect || _reason == ClientQuit || _reason == DisconnectRequested)
-			m_peer->m_failedAttempts = 0;
-		m_peer->m_lastDisconnect = _reason;
-		if (_reason == BadProtocol)
-		{
-			m_peer->m_rating /= 2;
-			m_peer->m_score /= 2;
-		}
+		m_peer->m_rating /= 2;
+		m_peer->m_score /= 2;
 	}
 	m_dropped = true;
 }
@@ -484,95 +384,88 @@ void Session::disconnect(DisconnectReason _reason)
 
 void Session::start()
 {
-	RLPStream s;
-	prep(s, HelloPacket, 5)
-					<< m_server->protocolVersion()
-					<< m_server->m_clientVersion
-					<< m_server->caps()
-					<< m_server->m_tcpPublic.port()
-					<< m_server->id();
-	sealAndSend(s);
 	ping();
 	doRead();
 }
 
 void Session::doRead()
 {
-	// ignore packets received while waiting to disconnect
+	// ignore packets received while waiting to disconnect.
 	if (m_dropped)
 		return;
-	
+
 	auto self(shared_from_this());
-	m_socket.async_read_some(boost::asio::buffer(m_data), [this,self](boost::system::error_code ec, std::size_t length)
+	ba::async_read(m_socket, boost::asio::buffer(m_data, h256::size), [this,self](boost::system::error_code ec, std::size_t length)
 	{
-		// If error is end of file, ignore
 		if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 		{
-			// got here with length of 1241...
 			clogS(NetWarn) << "Error reading: " << ec.message();
 			drop(TCPError);
 		}
 		else if (ec && length == 0)
-		{
 			return;
-		}
 		else
 		{
-			try
+			/// authenticate and decrypt header
+			bytesRef header(m_data.data(), h256::size);
+			if (!m_io->authAndDecryptHeader(header))
 			{
-				m_incoming.resize(m_incoming.size() + length);
-				memcpy(m_incoming.data() + m_incoming.size() - length, m_data.data(), length);
-				while (m_incoming.size() > 8)
+				clog(NetWarn) << "header decrypt failed";
+				drop(BadProtocol); // todo: better error
+				return;
+			}
+
+			/// check frame size
+			uint32_t frameSize = (m_data[0] * 256 + m_data[1]) * 256 + m_data[2];
+			if (frameSize >= (uint32_t)1 << 24)
+			{
+				clog(NetWarn) << "frame size too large";
+				drop(BadProtocol);
+				return;
+			}
+			
+			/// rlp of header has protocol-type, sequence-id[, total-packet-size]
+			bytes headerRLP(13);
+			bytesConstRef(m_data.data(), h128::size).cropped(3).copyTo(&headerRLP);
+			
+			/// read padded frame and mac
+			auto tlen = frameSize + ((16 - (frameSize % 16)) % 16) + h128::size;
+			ba::async_read(m_socket, boost::asio::buffer(m_data, tlen), [this, self, headerRLP, frameSize, tlen](boost::system::error_code ec, std::size_t length)
+			{
+				if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 				{
-					if (m_incoming[0] != 0x22 || m_incoming[1] != 0x40 || m_incoming[2] != 0x08 || m_incoming[3] != 0x91)
+					clogS(NetWarn) << "Error reading: " << ec.message();
+					drop(TCPError);
+				}
+				else if (ec && length == 0)
+					return;
+				else
+				{
+					if (!m_io->authAndDecryptFrame(bytesRef(m_data.data(), tlen)))
 					{
-						clogS(NetWarn) << "INVALID SYNCHRONISATION TOKEN; expected = 22400891; received = " << toHex(bytesConstRef(m_incoming.data(), 4));
+						clog(NetWarn) << "frame decrypt failed";
+						drop(BadProtocol); // todo: better error
+						return;
+					}
+					
+					bytesConstRef frame(m_data.data(), frameSize);
+					if (!checkPacket(frame))
+					{
+						cerr << "Received " << frame.size() << ": " << toHex(frame) << endl;
+						clogS(NetWarn) << "INVALID MESSAGE RECEIVED";
 						disconnect(BadProtocol);
 						return;
 					}
 					else
 					{
-						uint32_t len = fromBigEndian<uint32_t>(bytesConstRef(m_incoming.data() + 4, 4));
-						uint32_t tlen = len + 8;
-						if (m_incoming.size() < tlen)
-							break;
-
-						// enough has come in.
-						auto data = bytesConstRef(m_incoming.data(), tlen);
-						if (!checkPacket(data))
-						{
-							cerr << "Received " << len << ": " << toHex(bytesConstRef(m_incoming.data() + 8, len)) << endl;
-							clogS(NetWarn) << "INVALID MESSAGE RECEIVED";
-							disconnect(BadProtocol);
-							return;
-						}
-						else
-						{
-							RLP r(data.cropped(8));
-							if (!interpret(r))
-							{
-								// error - bad protocol
-								clogS(NetWarn) << "Couldn't interpret packet." << RLP(r);
-								// Just wasting our bandwidth - perhaps reduce rating?
-								//return;
-							}
-						}
-						memmove(m_incoming.data(), m_incoming.data() + tlen, m_incoming.size() - tlen);
-						m_incoming.resize(m_incoming.size() - tlen);
+						auto packetType = (PacketType)RLP(frame.cropped(0, 1)).toInt<unsigned>();
+						RLP r(frame.cropped(1));
+						if (!interpret(packetType, r))
+							clogS(NetWarn) << "Couldn't interpret packet." << RLP(r);
 					}
+					doRead();
 				}
-				doRead();
-			}
-			catch (Exception const& _e)
-			{
-				clogS(NetWarn) << "ERROR: " << diagnostic_information(_e);
-				drop(BadProtocol);
-			}
-			catch (std::exception const& _e)
-			{
-				clogS(NetWarn) << "ERROR: " << _e.what();
-				drop(BadProtocol);
-			}
+			});
 		}
 	});
 }

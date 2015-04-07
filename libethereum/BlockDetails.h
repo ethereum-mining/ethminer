@@ -36,6 +36,11 @@ namespace dev
 namespace eth
 {
 
+// TODO: OPTIMISE: constructors take bytes, RLP used only in necessary classes.
+
+static const unsigned c_bloomIndexSize = 16;
+static const unsigned c_bloomIndexLevels = 2;
+
 struct BlockDetails
 {
 	BlockDetails(): number(0), totalDifficulty(0) {}
@@ -61,6 +66,16 @@ struct BlockLogBlooms
 	bytes rlp() const { RLPStream s; s << blooms; size = s.out().size(); return s.out(); }
 
 	LogBlooms blooms;
+	mutable unsigned size;
+};
+
+struct BlocksBlooms
+{
+	BlocksBlooms() {}
+	BlocksBlooms(RLP const& _r) { blooms = _r.toArray<LogBloom, c_bloomIndexSize>(); size = _r.data().size(); }
+	bytes rlp() const { RLPStream s; s << blooms; size = s.out().size(); return s.out(); }
+
+	std::array<LogBloom, c_bloomIndexSize> blooms;
 	mutable unsigned size;
 };
 
@@ -103,12 +118,14 @@ using BlockLogBloomsHash = std::map<h256, BlockLogBlooms>;
 using BlockReceiptsHash = std::map<h256, BlockReceipts>;
 using TransactionAddressHash = std::map<h256, TransactionAddress>;
 using BlockHashHash = std::map<h256, BlockHash>;
+using BlocksBloomsHash = std::map<h256, BlocksBlooms>;
 
 static const BlockDetails NullBlockDetails;
 static const BlockLogBlooms NullBlockLogBlooms;
 static const BlockReceipts NullBlockReceipts;
 static const TransactionAddress NullTransactionAddress;
 static const BlockHash NullBlockHash;
+static const BlocksBlooms NullBlocksBlooms;
 
 }
 }
