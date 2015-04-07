@@ -48,33 +48,57 @@ void ContractCallDataEncoder::encode(QFunctionDefinition const* _function)
 
 void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& _type)
 {
+	u256 count = 1;
+	QStringList strList;
+	if (_type.array)
+	{
+		if (_data.type() == QVariant::String)
+			strList = _data.toString().split(",", QString::SkipEmptyParts);  //TODO: proper parsing
+		else
+			strList = _data.toStringList();
+		count = strList.count();
+
+	}
+	else
+		strList.append(_data.toString());
+
 	if (_type.dynamicSize)
 	{
-		u256 count = 0;
 		if (_type.type == SolidityType::Type::Bytes)
-			count = encodeSingleItem(_data, _type, m_dynamicData);
+			count = encodeSingleItem(_data.toString(), _type, m_dynamicData);
 		else
 		{
-			QVariantList list = qvariant_cast<QVariantList>(_data);
-			for (auto const& item: list)
+			count = strList.count();
+			for (auto const& item: strList)
 				encodeSingleItem(item, _type, m_dynamicData);
-			count = list.size();
 		}
 		bytes sizeEnc(32);
 		toBigEndian(count, sizeEnc);
 		m_encodedData.insert(m_encodedData.end(), sizeEnc.begin(), sizeEnc.end());
 	}
 	else
-		encodeSingleItem(_data, _type, m_encodedData);
+	{
+		if (_type.array)
+			count = _type.count;
+		int c = static_cast<int>(count);
+		if (strList.size() > c)
+			strList.erase(strList.begin() + c, strList.end());
+		else
+			while (strList.size() < c)
+				strList.append(QString());
+
+		for (auto const& item: strList)
+			encodeSingleItem(item, _type, m_encodedData);
+	}
 }
 
-unsigned ContractCallDataEncoder::encodeSingleItem(QVariant const& _data, SolidityType const& _type, bytes& _dest)
+unsigned ContractCallDataEncoder::encodeSingleItem(QString const& _data, SolidityType const& _type, bytes& _dest)
 {
 	if (_type.type == SolidityType::Type::Struct)
 		BOOST_THROW_EXCEPTION(dev::Exception() << dev::errinfo_comment("Struct parameters are not supported yet"));
 
 	unsigned const alignSize = 32;
-	QString src = _data.toString();
+	QString src = _data;
 	bytes result;
 
 	if ((src.startsWith("\"") && src.endsWith("\"")) || (src.startsWith("\'") && src.endsWith("\'")))
@@ -104,9 +128,9 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QVariant const& _data, Solidi
 	}
 
 	unsigned dataSize = _type.dynamicSize ? result.size() : alignSize;
+	if (result.size() % alignSize != 0)
+		result.resize((result.size() & ~(alignSize - 1)) + alignSize);
 	_dest.insert(_dest.end(), result.begin(), result.end());
-	if ((_dest.size() - 4) % alignSize != 0)
-		_dest.resize((_dest.size() & ~(alignSize - 1)) + alignSize);
 	return dataSize;
 }
 

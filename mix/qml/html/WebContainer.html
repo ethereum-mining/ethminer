@@ -3,6 +3,8 @@
 <head>
 <script src="qrc:///js/bignumber.min.js"></script>
 <script src="qrc:///js/webthree.js"></script>
+<script src="qrc:///qml/js/Printer.js"></script>
+<script src="qrc:///qml/js/ansi2html.js"></script>
 <script>
 loadPage = function(url) {
 	var preview = document.getElementById('preview');
@@ -40,7 +42,15 @@ init = function(url) {
 executeJavaScript = function(script) {
 	var preview = document.getElementById('preview');
 	var obj = preview.contentWindow.eval(script);
-	return JSON.stringify(obj, null, 2);
+	var printed = prettyPrint(obj);
+	return ansi2html(printed);
+}
+
+getContent = function() {
+	var preview = document.getElementById('preview');
+	var doc = preview.contentDocument? preview.contentDocument: preview.contentWindow.document;
+	var body = doc.getElementsByTagName('body')[0];
+	return body.innerHTML;
 }
 
 </script>
