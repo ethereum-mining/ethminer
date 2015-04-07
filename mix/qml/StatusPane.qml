@@ -77,7 +77,11 @@ Rectangle {
 
 	Connections {
 		target:clientModel
-		onRunStarted: infoMessage(qsTr("Running transactions..."), "Run");
+		onRunStarted:
+		{
+			logPane.clear()
+			infoMessage(qsTr("Running transactions..."), "Run");
+		}
 		onRunFailed: errorMessage(format(_message), "Run");
 		onRunComplete: infoMessage(qsTr("Run complete"), "Run");
 		onNewBlock: infoMessage(qsTr("New block created"), "State");
