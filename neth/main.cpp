@@ -40,6 +40,7 @@
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
+#include <libethcore/Ethasher.h>
 #include "BuildInfo.h"
 
 #undef KEY_EVENT // from windows.h
@@ -76,6 +77,7 @@ void help()
 		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+		<< "    -D,--initdag Initialize DAG for mining and exit." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
 		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
@@ -424,6 +426,8 @@ int main(int argc, char** argv)
 			structuredLogging = true;
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
+		else if (arg == "-D" || arg == "--initdag")
+			initDAG = true;
 		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
 			try
@@ -556,6 +560,14 @@ int main(int argc, char** argv)
 		&nodesState,
 		miners
 		);
+	
+	if (initDAG)
+	{
+		cout << "Initialize DAG. (This will take awhile)" << endl;
+		Ethasher::get()->full(web3.ethereum()->blockChain().info());
+		return 0;
+	}
+	
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
