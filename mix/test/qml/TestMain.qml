@@ -16,6 +16,8 @@ TestCase
 		{
 			if (el === undefined)
 				el = mainApplication;
+			if (el.contentItem) //for dialgos
+				el = el.contentItem
 
 			for (var c in str)
 			{
@@ -60,6 +62,8 @@ TestCase
 
 	function clickElement(el, x, y)
 	{
+		if (el.contentItem)
+			el = el.contentItem;
 		ts.mouseClick(el, x, y, Qt.LeftButton, Qt.NoModifier, 10)
 	}
 
