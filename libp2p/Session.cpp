@@ -156,109 +156,104 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 	clogS(NetRight) << _t << _r;
 	try		// Generic try-catch block designed to capture RLP format errors - TODO: give decent diagnostics, make a bit more specific over what is caught.
 	{
-
-	switch (_t)
-	{
-	case DisconnectPacket:
-	{
-		string reason = "Unspecified";
-		auto r = (DisconnectReason)_r[0].toInt<int>();
-		if (!_r[0].isInt())
-			drop(BadProtocol);
-		else
+		switch (_t)
 		{
-			reason = reasonOf(r);
-			clogS(NetMessageSummary) << "Disconnect (reason: " << reason << ")";
-			drop(DisconnectRequested);
-		}
-		break;
-	}
-	case PingPacket:
-	{
-		clogS(NetTriviaSummary) << "Ping";
-		RLPStream s;
-		sealAndSend(prep(s, PongPacket));
-		break;
-	}
-	case PongPacket:
-		m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
-		clogS(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
-		break;
-	case GetPeersPacket:
-	{
-		// Disabled for interop testing.
-		// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
-		break;
-		
-		clogS(NetTriviaSummary) << "GetPeers";
-		m_theyRequestedNodes = true;
-		serviceNodesRequest();
-		break;
-	}
-	case PeersPacket:
-		// Disabled for interop testing.
-		// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
-		break;
-			
-		clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
-		m_weRequestedNodes = false;
-		for (unsigned i = 0; i < _r.itemCount(); ++i)
+		case DisconnectPacket:
 		{
-			bi::address peerAddress;
-			if (_r[i][0].size() == 16)
-				peerAddress = bi::address_v6(_r[i][0].toHash<FixedHash<16>>().asArray());
-			else if (_r[i][0].size() == 4)
-				peerAddress = bi::address_v4(_r[i][0].toHash<FixedHash<4>>().asArray());
+			string reason = "Unspecified";
+			auto r = (DisconnectReason)_r[0].toInt<int>();
+			if (!_r[0].isInt())
+				drop(BadProtocol);
 			else
 			{
-				cwarn << "Received bad peer packet:" << _r;
-				disconnect(BadProtocol);
-				return true;
+				reason = reasonOf(r);
+				clogS(NetMessageSummary) << "Disconnect (reason: " << reason << ")";
+				drop(DisconnectRequested);
 			}
-			auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
-			NodeId id = _r[i][2].toHash<NodeId>();
-			
-			clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
-
-			if (!isPublicAddress(peerAddress))
-				goto CONTINUE;	// Private address. Ignore.
-
-			if (!id)
-				goto LAMEPEER;	// Null identity. Ignore.
-
-			if (m_server->id() == id)
-				goto LAMEPEER;	// Just our info - we already have that.
-
-			if (id == this->id())
-				goto LAMEPEER;	// Just their info - we already have that.
-
-			if (!ep.port())
-				goto LAMEPEER;	// Zero port? Don't think so.
-
-			if (ep.port() >= /*49152*/32768)
-				goto LAMEPEER;	// Private port according to IANA.
-
-			// OK passed all our checks. Assume it's good.
-			addRating(1000);
-			m_server->addNode(id, ep.address(), ep.port(), ep.port());
-			clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
-			CONTINUE:;
-			LAMEPEER:;
+			break;
 		}
-		break;
-	default:
-	{
-		for (auto const& i: m_capabilities)
-			if (_t >= i.second->m_idOffset && _t - i.second->m_idOffset < i.second->hostCapability()->messageCount())
+		case PingPacket:
+		{
+			clogS(NetTriviaSummary) << "Ping";
+			RLPStream s;
+			sealAndSend(prep(s, PongPacket));
+			break;
+		}
+		case PongPacket:
+			m_info.lastPing = std::chrono::steady_clock::now() - m_ping;
+			clogS(NetTriviaSummary) << "Latency: " << chrono::duration_cast<chrono::milliseconds>(m_info.lastPing).count() << " ms";
+			break;
+		case GetPeersPacket:
+			// Disabled for interop testing.
+			// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
+			break;
+
+			clogS(NetTriviaSummary) << "GetPeers";
+			m_theyRequestedNodes = true;
+			serviceNodesRequest();
+			break;
+		case PeersPacket:
+			// Disabled for interop testing.
+			// GetPeers/PeersPacket will be modified to only exchange new nodes which it's peers are interested in.
+			break;
+
+			clogS(NetTriviaSummary) << "Peers (" << dec << (_r.itemCount() - 1) << " entries)";
+			m_weRequestedNodes = false;
+			for (unsigned i = 0; i < _r.itemCount(); ++i)
 			{
-				if (i.second->m_enabled)
-					return i.second->interpret(_t - i.second->m_idOffset, _r);
+				bi::address peerAddress;
+				if (_r[i][0].size() == 16)
+					peerAddress = bi::address_v6(_r[i][0].toHash<FixedHash<16>>().asArray());
+				else if (_r[i][0].size() == 4)
+					peerAddress = bi::address_v4(_r[i][0].toHash<FixedHash<4>>().asArray());
 				else
+				{
+					cwarn << "Received bad peer packet:" << _r;
+					disconnect(BadProtocol);
 					return true;
+				}
+				auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
+				NodeId id = _r[i][2].toHash<NodeId>();
+
+				clogS(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
+
+				if (!isPublicAddress(peerAddress))
+					goto CONTINUE;	// Private address. Ignore.
+
+				if (!id)
+					goto LAMEPEER;	// Null identity. Ignore.
+
+				if (m_server->id() == id)
+					goto LAMEPEER;	// Just our info - we already have that.
+
+				if (id == this->id())
+					goto LAMEPEER;	// Just their info - we already have that.
+
+				if (!ep.port())
+					goto LAMEPEER;	// Zero port? Don't think so.
+
+				if (ep.port() >= /*49152*/32768)
+					goto LAMEPEER;	// Private port according to IANA.
+
+				// OK passed all our checks. Assume it's good.
+				addRating(1000);
+				m_server->addNode(id, ep.address(), ep.port(), ep.port());
+				clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
+				CONTINUE:;
+				LAMEPEER:;
 			}
-		return false;
-	}
-	}
+			break;
+		default:
+			for (auto const& i: m_capabilities)
+				if (_t >= i.second->m_idOffset && _t - i.second->m_idOffset < i.second->hostCapability()->messageCount())
+				{
+					if (i.second->m_enabled)
+						return i.second->interpret(_t - i.second->m_idOffset, _r);
+					else
+						return true;
+				}
+			return false;
+		}
 	}
 	catch (std::exception const& _e)
 	{

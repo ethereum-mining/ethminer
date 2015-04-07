@@ -505,13 +505,27 @@ void Client::doWork()
 		bool sgw;
 		tie(fresh, dead, sgw) = m_bc.sync(m_bq, db, 100);
 
-		// TODO: remove transactions from m_tq nicely rather than relying on out of date nonce later on.
+		// insert transactions that we are declaring the dead part of the chain
 		for (auto const& h: dead)
+		{
+			clog(ClientNote) << "Dead block:" << h.abridged();
 			for (auto const& t: m_bc.transactions(h))
+			{
+				clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckSignature::None);
 				m_tq.import(t);
+			}
+		}
+
+		// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 		for (auto const& h: fresh)
+		{
+			clog(ClientChat) << "Mined block:" << h.abridged();
 			for (auto const& th: m_bc.transactionHashes(h))
+			{
+				clog(ClientNote) << "Safely dropping transaction " << th;
 				m_tq.drop(th);
+			}
+		}
 
 		stillGotWork = stillGotWork | sgw;
 		if (!fresh.empty())
@@ -535,7 +549,7 @@ void Client::doWork()
 			// TODO: Move transactions pending from m_postMine back to transaction queue.
 		}
 
-		// returns h256s as blooms, once for each transaction.
+		// returns TransactionReceipts, once for each transaction.
 		cwork << "postSTATE <== TQ";
 		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq, *m_gp);
 		if (newPendingReceipts.size())
@@ -548,8 +562,15 @@ void Client::doWork()
 			if (isMining())
 				cnote << "Additional transaction ready: Restarting mining operation.";
 			resyncStateNeeded = true;
+			if (auto h = m_host.lock())
+				h->noteNewTransactions();
 		}
 	}
+
+	if (!changeds.empty())
+		if (auto h = m_host.lock())
+			h->noteNewBlocks();
+
 	if (resyncStateNeeded)
 	{
 		ReadGuard l(x_localMiners);
