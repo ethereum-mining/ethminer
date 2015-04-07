@@ -46,6 +46,13 @@ executeJavaScript = function(script) {
 	return ansi2html(printed);
 }
 
+getContent = function() {
+	var preview = document.getElementById('preview');
+	var doc = preview.contentDocument? preview.contentDocument: preview.contentWindow.document;
+	var body = doc.getElementsByTagName('body')[0];
+	return body.innerHTML;
+}
+
 </script>
 
 <style>

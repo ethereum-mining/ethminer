@@ -58,7 +58,7 @@ public:
 	dev::bytes decodeBytes(dev::bytes const& _rawValue);
 
 private:
-	unsigned encodeSingleItem(QVariant const& _data, SolidityType const& _type, bytes& _dest);
+	unsigned encodeSingleItem(QString const& _data, SolidityType const& _type, bytes& _dest);
 	bigint decodeInt(dev::bytes const& _rawValue);
 	dev::bytes encodeInt(QString const& _str);
 	QString toString(dev::bigint const& _int);

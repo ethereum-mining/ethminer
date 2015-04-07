@@ -185,7 +185,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	// execute on a state
 	if (!_call)
 	{
-		_state.execute(lastHashes, _t);
+		dev::eth::ExecutionResult er =_state.execute(lastHashes, _t);
 		if (_t.isCreation() && _state.code(d.contractAddress).empty())
 			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
 		// collect watches
