@@ -1,5 +1,11 @@
 var prettyPrint = (function () {
     function pp(object, indent) {
+        try {
+            JSON.stringify(object, null, 2); 
+        } catch (e) {
+            return pp(e, indent);
+        }
+
         var str = "";
         if(object instanceof Array) {
             str += "[";
@@ -11,7 +17,7 @@ var prettyPrint = (function () {
             }
             str += " ]";
         } else if (object instanceof Error) {
-            str += "\e[31m" + "Error"; 
+            str += "\e[31m" + "Error:\e[0m " + object.message; 
         } else if (isBigNumber(object)) {
             str += "\e[32m'" + object.toString(10) + "'";
         } else if(typeof(object) === "object") {
@@ -73,9 +79,8 @@ var prettyPrint = (function () {
     };
     function prettyPrintI(/* */) {
         var args = arguments;
-        //return JSON.stringify(Object.keys(args[0]), null, 2); //sasas
         var ret = "";
-        for(var i = 0, l = args.length; i < l; i++) {
+        for (var i = 0, l = args.length; i < l; i++) {
     	    ret += pp(args[i], "") + "\n";
         }
         return ret;
