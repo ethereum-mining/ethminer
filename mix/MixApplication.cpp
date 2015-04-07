@@ -36,6 +36,7 @@
 #include "Clipboard.h"
 #include "HttpServer.h"
 
+extern int qInitResources_js();
 using namespace dev::mix;
 
 ApplicationService::ApplicationService()
@@ -59,7 +60,6 @@ MixApplication::MixApplication(int& _argc, char* _argv[]):
 	}
 }
 
-
 void MixApplication::initialize()
 {
 #if __linux
@@ -71,6 +71,9 @@ void MixApplication::initialize()
 #if (defined(_WIN32) || defined(_WIN64))
 	if (!getenv("OPENSSL_CONF"))
 		putenv((char*)"OPENSSL_CONF=c:\\");
+#endif
+#ifdef ETH_HAVE_WEBENGINE
+	qInitResources_js();
 #endif
 
 	setOrganizationName(tr("Ethereum"));
