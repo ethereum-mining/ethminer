@@ -61,5 +61,7 @@
         <file>qml/js/ProjectModel.js</file>
         <file>qml/js/QEtherHelper.js</file>
         <file>qml/js/TransactionHelper.js</file>
+        <file>qml/js/Printer.js</file>
+        <file>qml/js/ansi2html.js</file>
     </qresource>
 </RCC>
