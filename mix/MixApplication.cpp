@@ -23,6 +23,7 @@
 #include <QQmlApplicationEngine>
 #include <QUrl>
 #include <QIcon>
+#include <QFont>
 #ifdef ETH_HAVE_WEBENGINE
 #include <QtWebEngine/QtWebEngine>
 #endif
@@ -35,23 +36,54 @@
 #include "Clipboard.h"
 #include "HttpServer.h"
 
+extern int qInitResources_js();
 using namespace dev::mix;
+
+ApplicationService::ApplicationService()
+{
+#ifdef ETH_HAVE_WEBENGINE
+	QtWebEngine::initialize();
+#endif
+	QFont f;
+	m_systemPointSize = f.pointSize();
+}
 
 MixApplication::MixApplication(int& _argc, char* _argv[]):
 	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine())
 {
+	m_engine->load(QUrl("qrc:/qml/Application.qml"));
+	if (!m_engine->rootObjects().empty())
+	{
+		QWindow *window = qobject_cast<QWindow*>(m_engine->rootObjects().at(0));
+		if (window)
+			window->setIcon(QIcon(":/res/mix_256x256x32.png"));
+	}
+}
+
+void MixApplication::initialize()
+{
+#if __linux
+	//work around ubuntu appmenu-qt5 bug
+	//https://bugs.launchpad.net/ubuntu/+source/appmenu-qt5/+bug/1323853
+	putenv((char*)"QT_QPA_PLATFORMTHEME=");
+	putenv((char*)"QSG_RENDER_LOOP=threaded");
+#endif
+#if (defined(_WIN32) || defined(_WIN64))
+	if (!getenv("OPENSSL_CONF"))
+		putenv((char*)"OPENSSL_CONF=c:\\");
+#endif
+#ifdef ETH_HAVE_WEBENGINE
+	qInitResources_js();
+#endif
+
 	setOrganizationName(tr("Ethereum"));
 	setOrganizationDomain(tr("ethereum.org"));
 	setApplicationName(tr("Mix"));
 	setApplicationVersion("0.1");
-#ifdef ETH_HAVE_WEBENGINE
-	QtWebEngine::initialize();
-#endif
 
-	QFont f;
-	m_engine->rootContext()->setContextProperty("systemPointSize", f.pointSize());
 	qmlRegisterType<CodeModel>("org.ethereum.qml.CodeModel", 1, 0, "CodeModel");
 	qmlRegisterType<ClientModel>("org.ethereum.qml.ClientModel", 1, 0, "ClientModel");
+	qmlRegisterType<ApplicationService>("org.ethereum.qml.ApplicationService", 1, 0, "ApplicationService");
 	qmlRegisterType<FileIo>("org.ethereum.qml.FileIo", 1, 0, "FileIo");
 	qmlRegisterType<QEther>("org.ethereum.qml.QEther", 1, 0, "QEther");
 	qmlRegisterType<QBigInt>("org.ethereum.qml.QBigInt", 1, 0, "QBigInt");
@@ -63,10 +95,7 @@ MixApplication::MixApplication(int& _argc, char* _argv[]):
 	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
 	qRegisterMetaType<CodeModel*>("CodeModel*");
 	qRegisterMetaType<ClientModel*>("ClientModel*");
-
-	m_engine->load(QUrl("qrc:/qml/main.qml"));
-	QWindow *window = qobject_cast<QWindow*>(m_engine->rootObjects().at(0));
-	window->setIcon(QIcon(":/res/mix_256x256x32.png"));
+	qRegisterMetaType<ClientModel*>("ClientModel*");
 }
 
 MixApplication::~MixApplication()

@@ -27,6 +27,7 @@
 #include <map>
 #include <QString>
 #include <QVariantMap>
+#include <QFuture>
 #include "MachineStates.h"
 
 namespace dev
@@ -154,7 +155,10 @@ public slots:
 	Q_INVOKABLE void debugRecord(unsigned _index);
 	/// Show the debugger for an empty record
 	Q_INVOKABLE void emptyRecord();
+	/// Generate new adress
 	Q_INVOKABLE QString newAddress();
+	/// Encode a string to ABI parameter. Returns a hex string
+	Q_INVOKABLE QString encodeAbiString(QString _string);
 
 private slots:
 	/// Update UI with machine states result. Display a modal dialog.
@@ -203,6 +207,7 @@ private:
 
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;
+	QFuture<void> m_runFuture;
 	std::unique_ptr<MixClient> m_client;
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;

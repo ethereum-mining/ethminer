@@ -108,6 +108,7 @@ public:
 	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const override;
 	virtual LocalisedLogEntries checkWatch(unsigned _watchId) override;
 
+	// TODO: switch all the _blockHash arguments to also accept _blockNumber
 	virtual h256 hashFromNumber(unsigned _number) const override;
 	virtual eth::BlockInfo blockInfo(h256 _hash) const override;
 	virtual eth::BlockDetails blockDetails(h256 _hash) const override;
