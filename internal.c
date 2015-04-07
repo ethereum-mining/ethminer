@@ -86,7 +86,7 @@ void static ethash_compute_cache_nodes(node *const nodes,
 
 void ethash_mkcache(ethash_cache *cache,
                     ethash_params const *params,
-                    ethash_h256_t const* seed)
+                    ethash_h256_t const *seed)
 {
     node *nodes = (node *) cache->mem;
     ethash_compute_cache_nodes(nodes, params, seed);
@@ -291,20 +291,77 @@ int ethash_quick_check_difficulty(ethash_h256_t const *header_hash,
     return ethash_check_difficulty(&return_hash, difficulty);
 }
 
-void ethash_full(ethash_return_value *ret,
-                 void const *full_mem,
-                 ethash_params const *params,
-                 ethash_h256_t const *header_hash,
-                 const uint64_t nonce)
+ethash_light_t ethash_new_light(ethash_params const *params, ethash_h256_t const *seed)
 {
-    ethash_hash(ret, (node const *) full_mem, NULL, params, header_hash, nonce);
+    struct ethash_light *ret;
+    ret = malloc(sizeof(*ret));
+    if (!ret) {
+        return NULL;
+    }
+    ret->cache.mem = malloc(params->cache_size);
+    if (!ret->cache.mem) {
+        goto fail_free_light;
+    }
+    ethash_mkcache(ret->cache.mem, params, seed);
+    return ret;
+
+fail_free_light:
+    free(ret);
+    return NULL;
 }
 
-void ethash_light(ethash_return_value *ret,
-                  ethash_cache const *cache,
-                  ethash_params const *params,
-                  ethash_h256_t const *header_hash,
-                  const uint64_t nonce)
+void ethash_delete_light(ethash_light_t light)
 {
-    ethash_hash(ret, NULL, cache, params, header_hash, nonce);
+    free(light->cache.mem);
+    free(light);
+}
+
+void ethash_compute_light(ethash_return_value *ret,
+                          ethash_light_t light,
+                          ethash_params const *params,
+                          const ethash_h256_t *header_hash,
+                          const uint64_t nonce)
+{
+    ethash_hash(ret, NULL, &light->cache, params, header_hash, nonce);
+}
+
+ethash_full_t ethash_new_full(ethash_params const* params,
+                              void const* cache,
+                              const ethash_h256_t *seed,
+                              ethash_callback_t callback)
+{
+    struct ethash_full *ret;
+    ret = malloc(sizeof(*ret));
+    if (!ret) {
+        return NULL;
+    }
+    ret->cache.mem = (void*)cache;
+    ret->data = malloc(params->full_size);
+    if (!ret->data) {
+        goto fail_free_full;
+    }
+    ethash_compute_full_data(ret->data, params, cache);
+    ret->seed = seed;
+    ret->callback = callback;
+    return ret;
+
+fail_free_full:
+    free(ret);
+    return NULL;
+}
+
+void ethash_delete_full(ethash_full_t full)
+{
+    // should the cache be freed here? Does ethash_full_t take ownership of the cache?
+    free(full->data);
+    free(full);
+}
+
+void ethash_compute_full(ethash_return_value *ret,
+                         ethash_full_t full,
+                         ethash_params const *params,
+                         const ethash_h256_t *header_hash,
+                         const uint64_t nonce)
+{
+    ethash_hash(ret, (node const*)full->data, NULL, params, header_hash, nonce);
 }

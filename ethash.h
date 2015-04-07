@@ -47,7 +47,7 @@ typedef struct ethash_params {
 	uint64_t cache_size;              // Size of compute cache (in bytes, multiple of node size (64)).
 } ethash_params;
 
-/// Type of a blockhash
+/// Type of a seedhash/blockhash e.t.c.
 typedef struct ethash_h256 { uint8_t b[32]; } ethash_h256_t;
 static inline uint8_t ethash_h256_get(ethash_h256_t const* hash, unsigned int i)
 {
@@ -64,6 +64,13 @@ static inline void ethash_h256_reset(ethash_h256_t *hash)
     memset(hash, 0, 32);
 }
 
+struct ethash_light;
+typedef struct ethash_light* ethash_light_t;
+struct ethash_full;
+typedef struct ethash_full* ethash_full_t;
+typedef int(*ethash_callback_t)(unsigned);
+
+// LTODO: for consistency's sake maybe use ethash_return_value_t?
 typedef struct ethash_return_value {
     ethash_h256_t result;
     ethash_h256_t mix_hash;
@@ -84,47 +91,27 @@ typedef struct ethash_cache {
 
 void ethash_mkcache(ethash_cache *cache, ethash_params const *params, ethash_h256_t const *seed);
 void ethash_compute_full_data(void *mem, ethash_params const *params, ethash_cache const *cache);
-void ethash_full(ethash_return_value *ret,
-                 void const *full_mem,
-                 ethash_params const *params,
-                 ethash_h256_t const *header_hash,
-                 const uint64_t nonce);
-void ethash_light(ethash_return_value *ret,
-                  ethash_cache const *cache,
-                  ethash_params const *params,
-                  ethash_h256_t const *header_hash,
-                  const uint64_t nonce);
+
+ethash_light_t ethash_new_light(ethash_params const *params, ethash_h256_t const *seed);
+void ethash_delete_light(ethash_light_t light);
+void ethash_compute_light(ethash_return_value *ret,
+                          ethash_light_t light,
+                          ethash_params const *params,
+                          const ethash_h256_t *header_hash,
+                          const uint64_t nonce);
+
+ethash_full_t ethash_new_full(ethash_params const* params,
+                              void const* cache,
+                              const ethash_h256_t *seed,
+                              ethash_callback_t callback);
+void ethash_delete_full(ethash_full_t full);
+void ethash_compute_full(ethash_return_value *ret,
+                         ethash_full_t full,
+                         ethash_params const *params,
+                         const ethash_h256_t *header_hash,
+                         const uint64_t nonce);
+
 void ethash_get_seedhash(ethash_h256_t *seedhash, const uint32_t block_number);
-
-static inline void ethash_prep_light(void *cache, ethash_params const *params, ethash_h256_t const* seed)
-{
-    ethash_cache c;
-    c.mem = cache;
-    ethash_mkcache(&c, params, seed);
-}
-
-static inline void ethash_compute_light(ethash_return_value *ret, void const *cache, ethash_params const *params, ethash_h256_t const *header_hash, const uint64_t nonce)
-{
-    ethash_cache c;
-    c.mem = (void *) cache;
-    ethash_light(ret, &c, params, header_hash, nonce);
-}
-
-static inline void ethash_prep_full(void *full, ethash_params const *params, void const *cache)
-{
-    ethash_cache c;
-    c.mem = (void *) cache;
-    ethash_compute_full_data(full, params, &c);
-}
-
-static inline void ethash_compute_full(ethash_return_value *ret,
-                                       void const *full,
-                                       ethash_params const *params,
-                                       ethash_h256_t const *header_hash,
-                                       const uint64_t nonce)
-{
-    ethash_full(ret, full, params, header_hash, nonce);
-}
 
 // Returns if hash is less than or equal to difficulty
 static inline int ethash_check_difficulty(ethash_h256_t const *hash,

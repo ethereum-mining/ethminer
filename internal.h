@@ -30,6 +30,17 @@ typedef union node {
 
 } node;
 
+struct ethash_light {
+    ethash_cache cache;
+};
+
+struct ethash_full {
+    ethash_cache cache;
+    node *data;
+    const ethash_h256_t* seed;
+    ethash_callback_t callback;
+};
+
 void ethash_calculate_dag_item(node *const ret,
                                const unsigned node_index,
                                ethash_params const *params,
