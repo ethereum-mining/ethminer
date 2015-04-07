@@ -6,6 +6,7 @@ function defaultTransaction()
 		value: createEther("0", QEther.Wei),
 		functionId: "",
 		gas: createBigInt("250000"),
+		gasAuto: true,
 		gasPrice: createEther("100000", QEther.Wei),
 		parameters: {},
 		stdContract: false
