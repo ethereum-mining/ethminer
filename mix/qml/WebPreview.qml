@@ -13,7 +13,10 @@ Item {
 	property string pendingPageUrl: ""
 	property bool initialized: false
 	property alias urlInput: urlInput
+	property alias webView: webView
+	property string webContent; //for testing
 	signal javaScriptMessage(var _level, string _sourceId, var _lineNb, string _content)
+	signal webContentReady
 
 	function setPreviewUrl(url) {
 		if (!initialized)
@@ -55,6 +58,13 @@ Item {
 		for (var i = 0; i < pageListModel.count; i++)
 			if (pageListModel.get(i).documentId === documentId)
 				action(i);
+	}
+
+	function getContent() {
+		webView.runJavaScript("getContent()", function(result) {
+			webContent = result;
+			webContentReady();
+		});
 	}
 
 	function changePage() {

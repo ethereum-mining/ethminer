@@ -2,6 +2,8 @@ import QtQuick 2.2
 import QtTest 1.1
 import org.ethereum.qml.TestService 1.0
 import "../../qml"
+import "js/TestDebugger.js" as TestDebugger
+import "js/TestTutorial.js" as TestTutorial
 
 TestCase
 {
@@ -14,6 +16,8 @@ TestCase
 		{
 			if (el === undefined)
 				el = mainApplication;
+			if (el.contentItem) //for dialgos
+				el = el.contentItem
 
 			for (var c in str)
 			{
@@ -21,6 +25,11 @@ TestCase
 				ts.keyReleaseChar(el, str[c], Qt.NoModifier, 0);
 			}
 		}
+	}
+
+	Application
+	{
+		id: mainApplication
 	}
 
 	function newProject()
@@ -43,100 +52,25 @@ TestCase
 			fail("not compiled");
 	}
 
+	function editHtml(c)
+	{
+		mainApplication.projectModel.openDocument("index.html");
+		wait(1);
+		mainApplication.mainContent.codeEditor.getEditor("index.html").setText(c);
+		ts.keyPressChar(mainApplication, "S", Qt.ControlModifier, 200); //Ctrl+S
+	}
+
 	function clickElement(el, x, y)
 	{
+		if (el.contentItem)
+			el = el.contentItem;
 		ts.mouseClick(el, x, y, Qt.LeftButton, Qt.NoModifier, 10)
 	}
 
-	function test_defaultTransactionSequence()
-	{
-		newProject();
-		editContract(
-		"contract Contract {\r" +
-		"	function Contract() {\r" +
-		"		uint x = 69;\r" +
-		"		uint y = 5;\r" +
-		"		for (uint i = 0; i < y; ++i) {\r" +
-		"			x += 42;\r" +
-		"			z += x;\r" +
-		"		}\r" +
-		"	}\r" +
-		"	uint z;\r" +
-		"}\r"
-		);
-		if (!ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000))
-			fail("not run");
-		tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel, "count", 3);
-	}
-
-	function test_transactionWithParameter()
-	{
-		newProject();
-		editContract(
-		"contract Contract {\r" +
-		"	function setZ(uint256 x) {\r" +
-		"		z = x;\r" +
-		"	}\r" +
-		"	function getZ() returns(uint256) {\r" +
-		"		return z;\r" +
-		"	}\r" +
-		"	uint z;\r" +
-		"}\r"
-		);
-		mainApplication.projectModel.stateListModel.editState(0);
-		mainApplication.projectModel.stateDialog.model.addTransaction();
-		var transactionDialog = mainApplication.projectModel.stateDialog.transactionDialog;
-		transactionDialog.selectFunction("setZ");
-		clickElement(transactionDialog, 140, 300);
-		ts.typeString("442", transactionDialog);
-		transactionDialog.acceptAndClose();
-		mainApplication.projectModel.stateDialog.model.addTransaction();
-		transactionDialog.selectFunction("getZ");
-		transactionDialog.acceptAndClose();
-		mainApplication.projectModel.stateDialog.acceptAndClose();
-		mainApplication.mainContent.startQuickDebugging();
-		wait(1);
-		if (!ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000))
-			fail("not run");
-		tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel, "count", 5);
-		tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(4), "returned", "(442)");
-	}
-
-	function test_constructorParameters()
-	{
-		newProject();
-		editContract(
-		"contract Contract {\r" +
-		"	function Contract(uint256 x) {\r" +
-		"		z = x;\r" +
-		"	}\r" +
-		"	function getZ() returns(uint256) {\r" +
-		"		return z;\r" +
-		"	}\r" +
-		"	uint z;\r" +
-		"}\r"
-		);
-		mainApplication.projectModel.stateListModel.editState(0);
-		mainApplication.projectModel.stateDialog.model.editTransaction(2);
-		var transactionDialog = mainApplication.projectModel.stateDialog.transactionDialog;
-		clickElement(transactionDialog, 140, 300);
-		ts.typeString("442", transactionDialog);
-		transactionDialog.acceptAndClose();
-		mainApplication.projectModel.stateDialog.model.addTransaction();
-		transactionDialog.selectFunction("getZ");
-		transactionDialog.acceptAndClose();
-		mainApplication.projectModel.stateDialog.acceptAndClose();
-		wait(1);
-		mainApplication.mainContent.startQuickDebugging();
-		if (!ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000))
-			fail("not run");
-		tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel, "count", 4);
-		tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(3), "returned", "(442)");
-	}
-
-	Application
-	{
-		id: mainApplication
-	}
+	function test_tutorial() { TestTutorial.test_tutorial(); }
+	function test_dbg_defaultTransactionSequence() { TestDebugger.test_defaultTransactionSequence(); }
+	function test_dbg_transactionWithParameter() { TestDebugger.test_transactionWithParameter(); }
+	function test_dbg_constructorParameters() { TestDebugger.test_constructorParameters(); }
+	function test_dbg_arrayParametersAndStorage() { TestDebugger.test_arrayParametersAndStorage(); }
 }
 
