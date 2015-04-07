@@ -335,6 +335,54 @@ Dialog {
 				}
 			}
 
+			RowLayout
+			{
+				Layout.fillWidth: true
+				Rectangle
+				{
+					Layout.preferredWidth: 357
+					color: "transparent"
+				}
+
+				Button
+				{
+					id: deployButton
+					action: runAction
+					iconSource: "qrc:/qml/img/run.png"
+				}
+
+				Action {
+					id: runAction
+					tooltip: qsTr("Deploy contract(s) and Package resources files.")
+					onTriggered: {
+						var inError = [];
+						var ethUrl = ProjectModelCode.formatAppUrl(applicationUrlEth.text);
+						for (var k in ethUrl)
+						{
+							if (ethUrl[k].length > 32)
+								inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
+						}
+						if (!stopForInputError(inError))
+						{
+							if (contractRedeploy.checked)
+								deployWarningDialog.open();
+							else
+								ProjectModelCode.startDeployProject(false);
+						}
+					}
+				}
+
+				CheckBox
+				{
+					anchors.left: deployButton.right
+					id: contractRedeploy
+					enabled: Object.keys(projectModel.deploymentAddresses).length > 0
+					checked: Object.keys(projectModel.deploymentAddresses).length == 0
+					text: qsTr("Deploy Contract(s)")
+					anchors.verticalCenter: parent.verticalCenter
+				}
+			}
+
 			Rectangle
 			{
 				width: parent.width

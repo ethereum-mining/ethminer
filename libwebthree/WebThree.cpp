@@ -74,7 +74,7 @@ WebThreeDirect::~WebThreeDirect()
 
 void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers)
 {
-	auto had = haveNetwork();
+	auto had = isNetworkStarted();
 	if (had)
 		stopNetwork();
 	m_net.setNetworkPreferences(_n, _dropPeers);
