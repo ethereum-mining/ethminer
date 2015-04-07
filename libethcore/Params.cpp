@@ -46,7 +46,6 @@ u256 const c_sha3WordGas = 6;
 u256 const c_sloadGas = 50;
 u256 const c_sstoreSetGas = 20000;
 u256 const c_sstoreResetGas = 5000;
-u256 const c_sstoreClearGas = 5000;
 u256 const c_sstoreRefundGas = 15000;
 u256 const c_jumpdestGas = 1;
 u256 const c_logGas = 375;
