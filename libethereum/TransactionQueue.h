@@ -24,6 +24,7 @@
 #include <boost/thread.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
+#include <libdevcore/Log.h>
 #include "libethcore/Common.h"
 #include "Transaction.h"
 
@@ -34,6 +35,8 @@ namespace eth
 
 class BlockChain;
 
+struct TransactionQueueChannel: public LogChannel { static const char* name() { return "->Q"; } static const int verbosity = 4; };
+#define ctxq dev::LogOutputStream<dev::eth::TransactionQueueChannel, true>()
 
 /**
  * @brief A queue of Transactions, each stored as RLP.

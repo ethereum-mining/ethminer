@@ -886,7 +886,7 @@ int main(int argc, char** argv)
 				ssbd << bbd;
 				cnote << ssbd.str();
 				int ssize = fields[4].length();
-				u256 minGas = (u256)Client::txGas(data, 0);
+				u256 minGas = (u256)Transaction::gasRequired(data, 0);
 				if (size < 40)
 				{
 					if (size > 0)
@@ -952,7 +952,7 @@ int main(int argc, char** argv)
 					auto h = bc.currentHash();
 					auto blockData = bc.block(h);
 					BlockInfo info(blockData);
-					u256 minGas = (u256)Client::txGas(bytes(), 0);
+					u256 minGas = (u256)Transaction::gasRequired(bytes(), 0);
 					try
 					{
 						Address dest = h160(fromHex(fields[0], WhenError::Throw));
@@ -1040,7 +1040,7 @@ int main(int argc, char** argv)
 					cnote << "Init:";
 					cnote << ssc.str();
 				}
-				u256 minGas = (u256)Client::txGas(init, 0);
+				u256 minGas = (u256)Transaction::gasRequired(init, 0);
 				if (!init.size())
 					cwarn << "Contract creation aborted, no init code.";
 				else if (endowment < 0)
@@ -1126,7 +1126,7 @@ int main(int argc, char** argv)
 				auto b = bc.block(h);
 				for (auto const& i: RLP(b)[1])
 				{
-					Transaction t(i.data(), CheckSignature::Sender);
+					Transaction t(i.data(), CheckTransaction::Everything);
 					auto s = t.receiveAddress() ?
 						boost::format("  %1% %2%> %3%: %4% [%5%]") %
 							toString(t.safeSender()) %
