@@ -411,3 +411,36 @@ bool ethash_full_compute(ethash_return_value *ret,
                        nonce,
                        full->callback);
 }
+
+
+/**
+ * =========================
+ * =    DEPRECATED API     =
+ * =========================
+ *
+ * Kept for backwards compatibility with whoever still uses it. Please consider
+ * switching to the new API (look above)
+ */
+void ethash_mkcache(ethash_cache *cache,
+                    ethash_params const *params,
+                    ethash_h256_t const* seed)
+{
+    node *nodes = (node*) cache->mem;
+    ethash_compute_cache_nodes(nodes, params, seed);
+}
+void ethash_full(ethash_return_value *ret,
+                 void const *full_mem,
+                 ethash_params const *params,
+                 ethash_h256_t const *header_hash,
+                 const uint64_t nonce)
+{
+    ethash_hash(ret, (node const *) full_mem, NULL, params, header_hash, nonce, NULL);
+}
+void ethash_light(ethash_return_value *ret,
+                  ethash_cache const *cache,
+                  ethash_params const *params,
+                  ethash_h256_t const *header_hash,
+                  const uint64_t nonce)
+{
+    ethash_hash(ret, NULL, cache, params, header_hash, nonce, NULL);
+}

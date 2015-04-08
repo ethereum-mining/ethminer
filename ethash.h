@@ -45,7 +45,7 @@ extern "C" {
 // LTODO: for consistency's sake maybe use ethash_params_t?
 typedef struct ethash_params {
     /// Size of full data set (in bytes, multiple of mix size (128)).
-    int64_t full_size;
+    uint64_t full_size;
     /// Size of compute cache (in bytes, multiple of node size (64)).
     uint64_t cache_size;
 } ethash_params;
@@ -207,6 +207,27 @@ int ethash_quick_check_difficulty(ethash_h256_t const *header_hash,
                                   const uint64_t nonce,
                                   ethash_h256_t const *mix_hash,
                                   ethash_h256_t const *difficulty);
+
+
+/**
+ * =========================
+ * =    DEPRECATED API     =
+ * =========================
+ *
+ * Kept for backwards compatibility with whoever still uses it. Please consider
+ * switching to the new API (look above)
+ */
+void ethash_mkcache(ethash_cache *cache, ethash_params const *params, ethash_h256_t const *seed);
+void ethash_full(ethash_return_value *ret,
+                 void const *full_mem,
+                 ethash_params const *params,
+                 ethash_h256_t const *header_hash,
+                 const uint64_t nonce);
+void ethash_light(ethash_return_value *ret,
+                  ethash_cache const *cache,
+                  ethash_params const *params,
+                  ethash_h256_t const *header_hash,
+                  const uint64_t nonce);
 
 #ifdef __cplusplus
 }
