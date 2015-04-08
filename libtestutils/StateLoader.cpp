@@ -54,4 +54,5 @@ StateLoader::StateLoader(Json::Value const& _json, std::string const& _dbPath):
 	}
 
 	m_state.commit();
+	m_state.db().commit();
 }
