@@ -114,7 +114,6 @@ Rectangle {
 		target: codeModel
 		onCompilationComplete:
 		{
-			console.log("compilation complete ...");
 			goToLine.visible = false;
 			updateStatus();
 		}
