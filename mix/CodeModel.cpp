@@ -193,13 +193,6 @@ void CodeModel::reset(QVariantMap const& _documents)
 
 void CodeModel::registerCodeChange(QString const& _documentId, QString const& _code)
 {
-	CompiledContract* contract = contractByDocumentId(_documentId);
-	if (contract != nullptr && contract->m_sourceHash == qHash(_code))
-	{
-		emit compilationComplete();
-		return;
-	}
-
 	{
 		Guard pl(x_pendingContracts);
 		m_pendingContracts[_documentId] = _code;
@@ -256,7 +249,6 @@ void CodeModel::runCompilationJob(int _jobId)
 {
 	if (_jobId != m_backgroundJobId)
 		return; //obsolete job
-
 	ContractMap result;
 	solidity::CompilerStack cs(true);
 	try
@@ -309,7 +301,7 @@ void CodeModel::runCompilationJob(int _jobId)
 		CompiledContract* contract = nullptr;
 		if (location && location->sourceName.get() && (contract = contractByDocumentId(QString::fromStdString(*location->sourceName))))
 			message = message.replace(QString::fromStdString(*location->sourceName), contract->contract()->name()); //substitute the location to match our contract names
-		compilationError(message);
+		compilationError(message, QString::fromStdString(*location->sourceName));
 	}
 	m_compiling = false;
 	emit stateChanged();
