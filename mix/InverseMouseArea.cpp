@@ -1,0 +1,59 @@
+/*
+	This file is part of cpp-ethereum.
+
+	cpp-ethereum is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	cpp-ethereum is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/** @file InverseMouseArea.cpp
+ * @author Yann yann@ethdev.com
+ * @date 2014
+ * Ethereum IDE client.
+ */
+
+#include <QQuickWindow>
+#include <QDebug>
+#include <QQuickItem>
+#include <QGraphicsSceneMouseEvent>
+#include "InverseMouseArea.h"
+
+using namespace dev::mix;
+
+void InverseMouseArea::itemChange(ItemChange _c, const ItemChangeData& _v)
+{
+	qDebug() << "itemCHange";
+	Q_UNUSED(_v);
+
+	if (_c == ItemSceneChange)
+	{
+
+		window()->installEventFilter(this);
+		//this->parentItem()->installEventFilter(this);
+	}
+
+}
+
+bool InverseMouseArea::eventFilter(QObject* _obj, QEvent* _ev)
+{
+	qDebug() << _ev->type();
+	Q_UNUSED(_obj);
+	if (_ev->type() == QEvent::MouseButtonPress)
+	{
+		qDebug() << "mouse event";
+		if (!this->contains(static_cast<QMouseEvent*>(_ev)->pos()))
+		{
+			qDebug() << "click outside";
+			emit clickedOutside();
+		}
+	}
+	return false;
+}

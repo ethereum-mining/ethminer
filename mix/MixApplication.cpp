@@ -36,6 +36,7 @@
 #include "SortFilterProxyModel.h"
 #include "Clipboard.h"
 #include "HttpServer.h"
+#include "InverseMouseArea.h"
 
 extern int qInitResources_js();
 using namespace dev::mix;
@@ -89,8 +90,8 @@ void MixApplication::initialize()
 	qmlRegisterType<QSolidityType>("org.ethereum.qml.QSolidityType", 1, 0, "QSolidityType");
 	qmlRegisterType<Clipboard>("org.ethereum.qml.Clipboard", 1, 0, "Clipboard");
 	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
+	qmlRegisterType<InverseMouseArea>("org.ethereum.qml.InverseMouseArea", 1, 0, "InverseMouseArea");
 	qRegisterMetaType<CodeModel*>("CodeModel*");
-	qRegisterMetaType<ClientModel*>("ClientModel*");
 	qRegisterMetaType<ClientModel*>("ClientModel*");
 }
 
