@@ -25,6 +25,7 @@
 #include <libdevcrypto/Common.h>
 #include <libethcore/Exceptions.h>
 #include <libevm/VMFace.h>
+#include "Interface.h"
 #include "Transaction.h"
 using namespace std;
 using namespace dev;
@@ -53,7 +54,7 @@ TransactionException dev::eth::toTransactionException(VMException const& _e)
 	return TransactionException::Unknown;
 }
 
-Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
+Transaction::Transaction(bytesConstRef _rlpData, CheckTransaction _checkSig)
 {
 	int field = 0;
 	RLP rlp(_rlpData);
@@ -81,9 +82,9 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 			BOOST_THROW_EXCEPTION(BadRLP() << errinfo_comment("to many fields in the transaction RLP"));
 
 		m_vrs = SignatureStruct{ r, s, v };
-		if (_checkSig >= CheckSignature::Range && !m_vrs.isValid())
+		if (_checkSig >= CheckTransaction::Cheap && !m_vrs.isValid())
 			BOOST_THROW_EXCEPTION(InvalidSignature());
-		if (_checkSig == CheckSignature::Sender)
+		if (_checkSig == CheckTransaction::Everything)
 			m_sender = sender();
 	}
 	catch (Exception& _e)
@@ -91,6 +92,8 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckSignature _checkSig)
 		_e << errinfo_name("invalid transaction format") << BadFieldError(field, toHex(rlp[field].data().toBytes()));
 		throw;
 	}
+	if (_checkSig >= CheckTransaction::Cheap && !checkPayment())
+		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError(gasRequired(), (bigint)gas()));
 }
 
 Address const& Transaction::safeSender() const noexcept
@@ -116,6 +119,13 @@ Address const& Transaction::sender() const
 		m_sender = right160(dev::sha3(bytesConstRef(p.data(), sizeof(p))));
 	}
 	return m_sender;
+}
+
+bigint Transaction::gasRequired() const
+{
+	if (!m_gasRequired)
+		m_gasRequired = Transaction::gasRequired(m_data);
+	return m_gasRequired;
 }
 
 void Transaction::sign(Secret _priv)
