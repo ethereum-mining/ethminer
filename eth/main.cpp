@@ -319,7 +319,7 @@ int main(int argc, char** argv)
 			else
 				try
 				{
-					blockFees = stol(m);
+					initDAG = stol(m);
 				}
 				catch (...)
 				{
