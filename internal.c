@@ -194,9 +194,9 @@ static bool ethash_hash(ethash_return_value *ret,
                         ethash_cache const *cache,
                         ethash_params const *params,
                         ethash_h256_t const *header_hash,
-                        const uint64_t nonce)
+                        const uint64_t nonce,
+                        ethash_callback_t callback)
 {
-
     if (params->full_size % MIX_WORDS != 0) {
         return false;
     }
@@ -235,9 +235,14 @@ static bool ethash_hash(ethash_return_value *ret,
         uint32_t const index = ((s_mix->words[0] ^ i) * FNV_PRIME ^ mix->words[i % MIX_WORDS]) % num_full_pages;
 
         for (unsigned n = 0; n != MIX_NODES; ++n) {
-            const node *dag_node = &full_nodes[MIX_NODES * index + n];
-
-            if (!full_nodes) {
+            const node *dag_node;
+            if (callback &&
+                callback(((float)(i * n) / (float)(ACCESSES * MIX_NODES) * 100) != 0)) {
+                return false;
+            }
+            if (full_nodes) {
+                dag_node = &full_nodes[MIX_NODES * index + n];
+            } else {
                 node tmp_node;
                 ethash_calculate_dag_item(&tmp_node, index * MIX_NODES + n, params, cache);
                 dag_node = &tmp_node;
@@ -284,6 +289,7 @@ static bool ethash_hash(ethash_return_value *ret,
     memcpy(&ret->mix_hash, mix->bytes, 32);
     // final Keccak hash
     SHA3_256(&ret->result, s_mix->bytes, 64 + 32); // Keccak-256(s + compressed_mix)
+    return true;
 }
 
 void ethash_quick_hash(ethash_h256_t *return_hash,
@@ -346,13 +352,13 @@ void ethash_light_delete(ethash_light_t light)
     free(light);
 }
 
-void ethash_light_compute(ethash_return_value *ret,
+bool ethash_light_compute(ethash_return_value *ret,
                           ethash_light_t light,
                           ethash_params const *params,
                           const ethash_h256_t *header_hash,
                           const uint64_t nonce)
 {
-    ethash_hash(ret, NULL, light->cache, params, header_hash, nonce);
+    return ethash_hash(ret, NULL, light->cache, params, header_hash, nonce, NULL);
 }
 
 ethash_full_t ethash_full_new(ethash_params const* params,
@@ -391,11 +397,17 @@ void ethash_full_delete(ethash_full_t full)
     free(full);
 }
 
-void ethash_full_compute(ethash_return_value *ret,
+bool ethash_full_compute(ethash_return_value *ret,
                          ethash_full_t full,
                          ethash_params const *params,
                          const ethash_h256_t *header_hash,
                          const uint64_t nonce)
 {
-    ethash_hash(ret, (node const*)full->data, NULL, params, header_hash, nonce);
+    return ethash_hash(ret,
+                       (node const*)full->data,
+                       NULL,
+                       params,
+                       header_hash,
+                       nonce,
+                       full->callback);
 }

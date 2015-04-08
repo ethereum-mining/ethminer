@@ -127,7 +127,18 @@ ethash_light_t ethash_light_new(ethash_params const *params, ethash_h256_t const
  * @param light    The light handler to free
  */
 void ethash_light_delete(ethash_light_t light);
-void ethash_light_compute(ethash_return_value *ret,
+/**
+ * Calculate the light client data
+ *
+ * @param ret            An object of ethash_return_value to hold the return value
+ * @param light          The light client handler
+ * @param params         The parameters to use
+ * @param header_hash    The header hash to pack into the mix
+ * @param nonce          The nonce to pack into the mix
+ * @return               true if all went well and false if there were invalid
+ *                       parameters given.
+ */
+bool ethash_light_compute(ethash_return_value *ret,
                           ethash_light_t light,
                           ethash_params const *params,
                           const ethash_h256_t *header_hash,
@@ -142,6 +153,10 @@ void ethash_light_compute(ethash_return_value *ret,
  *                  ownership of the cache and free it at deletion. If not then the user
  *                  still has to handle freeing of the cache himself.
  * @param seed      Block seedhash. TODO: Do we really need this in this function?
+ * @param callback  A callback function with signature of @ref ethash_callback_t
+ *                  It accepts an unsigned with which a progress of DAG calculation
+ *                  can be displayed. If all goes well the callback should return 0.
+ *                  If a non-zero value is returned then DAG generation will stop.
  * @return          Newly allocated ethash_full handler or NULL in case of
  *                  ERRNOMEM or invalid parameters used for @ref ethash_compute_full_data()
  */
@@ -154,7 +169,19 @@ ethash_full_t ethash_full_new(ethash_params const* params,
  * @param full    The light handler to free
  */
 void ethash_full_delete(ethash_full_t full);
-void ethash_full_compute(ethash_return_value *ret,
+/**
+ * Calculate the full client data
+ *
+ * @param ret            An object of ethash_return_value to hold the return value
+ * @param full           The full client handler
+ * @param params         The parameters to use
+ * @param header_hash    The header hash to pack into the mix
+ * @param nonce          The nonce to pack into the mix
+ * @return               true if all went well and false if there were invalid
+ *                       parameters given or if there was a callback given and
+ *                       at some point return a non-zero value
+ */
+bool ethash_full_compute(ethash_return_value *ret,
                          ethash_full_t full,
                          ethash_params const *params,
                          const ethash_h256_t *header_hash,
