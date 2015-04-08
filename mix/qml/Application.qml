@@ -402,7 +402,7 @@ ApplicationWindow {
 	Action {
 		id: goToCompilationError
 		text: qsTr("Go to compilation error")
-		shortcut: "Ctrl+Shift+E"
+		shortcut: "F4"
 		onTriggered:
 		{
 			mainContent.codeEditor.goToCompilationError();

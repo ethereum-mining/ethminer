@@ -7,12 +7,12 @@ import QtQuick.Dialogs 1.1
 Item {
 	id: codeEditorView
 	property string currentDocumentId: ""
+	property string sourceInError
 	property int openDocCount: 0
 	signal documentEdit(string documentId)
 	signal breakpointsChanged(string documentId)
 	signal isCleanChanged(var isClean, string documentId)
 	signal loadComplete
-
 
 	function getDocumentText(documentId) {
 		for (var i = 0; i < openDocCount; i++)	{
@@ -50,7 +50,6 @@ Item {
 			doLoadDocument(editors.itemAt(openDocCount).item, editorListModel.get(openDocCount))
 		}
 		openDocCount++;
-
 	}
 
 	function doLoadDocument(editor, document) {
@@ -137,13 +136,15 @@ Item {
 	}
 
 	function goToCompilationError() {
+		if (sourceInError === "")
+			return;
+		if (currentDocumentId !== sourceInError)
+			projectModel.openDocument(sourceInError);
 		for (var i = 0; i < openDocCount; i++)
 		{
 			var doc = editorListModel.get(i);
-			if (doc.isContract)
+			if (doc.isContract && doc.documentId === sourceInError)
 			{
-				if (currentDocumentId !== doc.documentId)
-					loadDocument(doc);
 				var editor = editors.itemAt(i).item;
 				if (editor)
 					editor.goToCompilationError();
@@ -153,6 +154,16 @@ Item {
 	}
 
 	Component.onCompleted: projectModel.codeEditor = codeEditorView;
+
+	Connections {
+		target: codeModel
+		onCompilationError: {
+			sourceInError = _sourceName;
+		}
+		onCompilationComplete: {
+			sourceInError = "";
+		}
+	}
 
 	Connections {
 		target: projectModel

@@ -7,6 +7,9 @@ import QtQuick.Dialogs 1.1
 
 Item
 {
+	property alias projectTitle: titleField.text
+	readonly property string projectPath: "file://" + pathField.text
+	property alias pathFieldText: pathField.text
 	signal accepted
 	function open() {
 		newProjectWin.visible = true;
@@ -30,12 +33,6 @@ Item
 		height: 120
 
 		visible: false
-
-		property alias projectTitle: titleField.text
-		readonly property string projectPath: "file://" + pathField.text
-		property alias pathFieldText: pathField.text
-
-
 
 		contentItem: Rectangle {
 			anchors.fill: parent
@@ -76,10 +73,10 @@ Item
 					Button {
 						text: qsTr("Browse")
 						onClicked:
-                        {
-                            newProjectWin.close()
-                            createProjectFileDialog.open()
-                        }
+						{
+							newProjectWin.close()
+							createProjectFileDialog.open()
+						}
 					}
 				}
 
@@ -119,7 +116,7 @@ Item
 			if (Qt.platform.os == "windows" && u.indexOf("/") == 0)
 				u = u.substring(1, u.length);
 			pathField.text = u;
-            newProjectWin.open()
+			newProjectWin.open()
 		}
 	}
 }
