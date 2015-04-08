@@ -331,7 +331,7 @@ int ethash_quick_check_difficulty(ethash_h256_t const *header_hash,
 ethash_light_t ethash_light_new(ethash_params const *params, ethash_h256_t const *seed)
 {
     struct ethash_light *ret;
-    ret = malloc(sizeof(*ret));
+    ret = calloc(sizeof(*ret), 1);
     if (!ret) {
         return NULL;
     }
@@ -348,7 +348,9 @@ fail_free_light:
 
 void ethash_light_delete(ethash_light_t light)
 {
-    ethash_cache_delete(light->cache);
+    if (light->cache) {
+        ethash_cache_delete(light->cache);
+    }
     free(light);
 }
 
@@ -361,13 +363,25 @@ bool ethash_light_compute(ethash_return_value *ret,
     return ethash_hash(ret, NULL, light->cache, params, header_hash, nonce, NULL);
 }
 
+ethash_cache *ethash_light_get_cache(ethash_light_t light)
+{
+    return light->cache;
+}
+
+ethash_cache *ethash_light_acquire_cache(ethash_light_t light)
+{
+    ethash_cache* ret = light->cache;
+    light->cache = 0;
+    return ret;
+}
+
 ethash_full_t ethash_full_new(ethash_params const* params,
                               ethash_cache const* cache,
                               const ethash_h256_t *seed,
                               ethash_callback_t callback)
 {
     struct ethash_full *ret;
-    ret = malloc(sizeof(*ret));
+    ret = calloc(sizeof(*ret), 1);
     if (!ret) {
         return NULL;
     }
@@ -392,7 +406,9 @@ fail_free_full:
 
 void ethash_full_delete(ethash_full_t full)
 {
-    ethash_cache_delete(full->cache);
+    if (full->cache) {
+        ethash_cache_delete(full->cache);
+    }
     free(full->data);
     free(full);
 }
@@ -412,6 +428,17 @@ bool ethash_full_compute(ethash_return_value *ret,
                        full->callback);
 }
 
+ethash_cache *ethash_full_get_cache(ethash_full_t full)
+{
+    return full->cache;
+}
+
+ethash_cache *ethash_full_acquire_cache(ethash_full_t full)
+{
+    ethash_cache* ret = full->cache;
+    full->cache = 0;
+    return ret;
+}
 
 /**
  * =========================

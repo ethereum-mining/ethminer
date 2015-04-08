@@ -144,6 +144,23 @@ bool ethash_light_compute(ethash_return_value *ret,
                           const ethash_h256_t *header_hash,
                           const uint64_t nonce);
 /**
+ * Get a pointer to the cache object held by the light client
+ *
+ * @param light    The light client whose cache to request
+ * @return         A pointer to the cache held by the light client or NULL if
+ *                 there was no cache in the first place
+ */
+ethash_cache *ethash_light_get_cache(ethash_light_t light);
+/**
+ * Move the memory ownership of the cache somewhere else
+ *
+ * @param light    The light client whose cache's memory ownership  to acquire.
+ *                 After this function concludes it will no longer have a cache.
+ * @return         A pointer to the moved cache or NULL if there was no cache in the first place
+ */
+ethash_cache *ethash_light_acquire_cache(ethash_light_t light);
+
+/**
  * Allocate and initialize a new ethash_full handler
  *
  * @param params    The parameters to initialize it with. We are interested in
@@ -186,6 +203,22 @@ bool ethash_full_compute(ethash_return_value *ret,
                          ethash_params const *params,
                          const ethash_h256_t *header_hash,
                          const uint64_t nonce);
+/**
+ * Get a pointer to the cache object held by the full client
+ *
+ * @param full    The full client whose cache to request
+ * @return        A pointer to the cache held by the full client or NULL
+ *                if there was no cache in the first place
+ */
+ethash_cache *ethash_full_get_cache(ethash_full_t full);
+/**
+ * Move the memory ownership of the cache somewhere else
+ *
+ * @param full     The full client whose cache's memory ownership  to acquire.
+ *                 After this function concludes it will no longer have a cache.
+ * @return         A pointer to the moved cache or NULL if there was no cache in the first place
+ */
+ethash_cache *ethash_full_acquire_cache(ethash_full_t full);
 
 void ethash_get_seedhash(ethash_h256_t *seedhash, const uint32_t block_number);
 
