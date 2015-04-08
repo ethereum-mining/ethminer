@@ -200,6 +200,15 @@ enum class NodeMode
 	Full
 };
 
+void doInitDAG(unsigned _n)
+{
+	BlockInfo bi;
+	bi.number = _n;
+	cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.seedHash().abridged() << "). This will take a while." << endl;
+	Ethasher::get()->full(bi);
+	exit(0);
+}
+
 static const unsigned NoDAGInit = (unsigned)-3;
 
 int main(int argc, char** argv)
@@ -440,6 +449,12 @@ int main(int argc, char** argv)
 		}
 	}
 
+
+	// Two codepaths is necessary since named block require database, but numbered
+	// blocks are superuseful to have when database is already open in another process.
+	if (initDAG < NoDAGInit)
+		doInitDAG(initDAG);
+
 	if (!clientName.empty())
 		clientName += "/";
 
@@ -460,16 +475,8 @@ int main(int argc, char** argv)
 		miners
 		);
 	
-	if (initDAG != NoDAGInit)
-	{
-		BlockInfo bi;
-		bi.number = (initDAG == LatestBlock || initDAG == PendingBlock) ?
-			web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0) :
-			initDAG;
-		cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.seedHash().abridged() << "). This will take a while." << endl;
-		Ethasher::get()->full(bi);
-		return 0;
-	}
+	if (initDAG == LatestBlock || initDAG == PendingBlock)
+		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
 	
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
