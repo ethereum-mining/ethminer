@@ -302,7 +302,7 @@ BlockDetails ClientBase::blockDetails(h256 _hash) const
 
 Transaction ClientBase::transaction(h256 _transactionHash) const
 {
-	return Transaction(bc().transaction(_transactionHash), CheckSignature::Range);
+	return Transaction(bc().transaction(_transactionHash), CheckTransaction::Cheap);
 }
 
 Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
@@ -310,7 +310,7 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 	auto bl = bc().block(_blockHash);
 	RLP b(bl);
 	if (_i < b[1].itemCount())
-		return Transaction(b[1][_i].data(), CheckSignature::Range);
+		return Transaction(b[1][_i].data(), CheckTransaction::Cheap);
 	else
 		return Transaction();
 }
@@ -321,7 +321,7 @@ Transactions ClientBase::transactions(h256 _blockHash) const
 	RLP b(bl);
 	Transactions res;
 	for (unsigned i = 0; i < b[1].itemCount(); i++)
-		res.emplace_back(b[1][i].data(), CheckSignature::Range);
+		res.emplace_back(b[1][i].data(), CheckTransaction::Cheap);
 	return res;
 }
 

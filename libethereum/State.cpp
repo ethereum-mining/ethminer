@@ -574,7 +574,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		k << i;
 
 		transactionsTrie.insert(&k.out(), tr.data());
-		execute(lh, Transaction(tr.data(), CheckSignature::Sender));
+		execute(lh, Transaction(tr.data(), CheckTransaction::Everything));
 
 		RLPStream receiptrlp;
 		m_receipts.back().streamRLP(receiptrlp);

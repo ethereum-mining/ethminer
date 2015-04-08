@@ -143,9 +143,6 @@ public:
 	virtual Addresses addresses() const { return addresses(m_default); }
 	virtual Addresses addresses(BlockNumber _block) const = 0;
 
-	/// Get the fee associated for a transaction with the given data.
-	template <class T> static bigint txGas(T const& _data, u256 _gas = 0) { bigint ret = c_txGas + _gas; for (auto i: _data) ret += i ? c_txDataNonZeroGas : c_txDataZeroGas; return ret; }
-
 	/// Get the remaining gas limit in this block.
 	virtual u256 gasLimitRemaining() const = 0;
 

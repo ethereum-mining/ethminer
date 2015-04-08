@@ -24,7 +24,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/Common.h>
-
+#include <libethcore/Params.h>
 namespace dev
 {
 namespace eth
@@ -37,11 +37,11 @@ enum IncludeSignature
 	WithSignature = 1,		///< Do include a signature.
 };
 
-enum class CheckSignature
+enum class CheckTransaction
 {
 	None,
-	Range,
-	Sender
+	Cheap,
+	Everything
 };
 
 enum class TransactionException
@@ -119,10 +119,10 @@ public:
 	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data): m_type(ContractCreation), m_value(_value), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
 
 	/// Constructs a transaction from the given RLP.
-	explicit Transaction(bytesConstRef _rlp, CheckSignature _checkSig);
+	explicit Transaction(bytesConstRef _rlp, CheckTransaction _checkSig);
 
 	/// Constructs a transaction from the given RLP.
-	explicit Transaction(bytes const& _rlp, CheckSignature _checkSig): Transaction(&_rlp, _checkSig) {}
+	explicit Transaction(bytes const& _rlp, CheckTransaction _checkSig): Transaction(&_rlp, _checkSig) {}
 
 
 	/// Checks equality of transactions.
@@ -178,27 +178,37 @@ public:
 	/// @returns the signature of the transaction. Encodes the sender.
 	SignatureStruct const& signature() const { return m_vrs; }
 
+	/// @returns true if the transaction contains enough gas for the basic payment.
+	bool checkPayment() const { return m_gas >= gasRequired(); }
+
+	/// @returns the gas required to run this transaction.
+	bigint gasRequired() const;
+
+	/// Get the fee associated for a transaction with the given data.
+	template <class T> static bigint gasRequired(T const& _data, u256 _gas = 0) { bigint ret = c_txGas + _gas; for (auto i: _data) ret += i ? c_txDataNonZeroGas : c_txDataZeroGas; return ret; }
+
 private:
 	/// Type of transaction.
 	enum Type
 	{
-		NullTransaction,			///< Null transaction.
-		ContractCreation,			///< Transaction to create contracts - receiveAddress() is ignored.
-		MessageCall					///< Transaction to invoke a message call - receiveAddress() is used.
+		NullTransaction,				///< Null transaction.
+		ContractCreation,				///< Transaction to create contracts - receiveAddress() is ignored.
+		MessageCall						///< Transaction to invoke a message call - receiveAddress() is used.
 	};
 
-	void sign(Secret _priv);		///< Sign the transaction.
+	void sign(Secret _priv);			///< Sign the transaction.
 
-	Type m_type = NullTransaction;	///< Is this a contract-creation transaction or a message-call transaction?
-	u256 m_nonce;					///< The transaction-count of the sender.
-	u256 m_value;					///< The amount of ETH to be transferred by this transaction. Called 'endowment' for contract-creation transactions.
-	Address m_receiveAddress;		///< The receiving address of the transaction.
-	u256 m_gasPrice;				///< The base fee and thus the implied exchange rate of ETH to GAS.
-	u256 m_gas;						///< The total gas to convert, paid for from sender's account. Any unused gas gets refunded once the contract is ended.
-	bytes m_data;					///< The data associated with the transaction, or the initialiser if it's a creation transaction.
-	SignatureStruct m_vrs;			///< The signature of the transaction. Encodes the sender.
+	Type m_type = NullTransaction;		///< Is this a contract-creation transaction or a message-call transaction?
+	u256 m_nonce;						///< The transaction-count of the sender.
+	u256 m_value;						///< The amount of ETH to be transferred by this transaction. Called 'endowment' for contract-creation transactions.
+	Address m_receiveAddress;			///< The receiving address of the transaction.
+	u256 m_gasPrice;					///< The base fee and thus the implied exchange rate of ETH to GAS.
+	u256 m_gas;							///< The total gas to convert, paid for from sender's account. Any unused gas gets refunded once the contract is ended.
+	bytes m_data;						///< The data associated with the transaction, or the initialiser if it's a creation transaction.
+	SignatureStruct m_vrs;				///< The signature of the transaction. Encodes the sender.
 
-	mutable Address m_sender;		///< Cached sender, determined from signature.
+	mutable Address m_sender;			///< Cached sender, determined from signature.
+	mutable bigint m_gasRequired = 0;	///< Memoised amount required for the transaction to run.
 };
 
 /// Nice name for vector of Transaction.
