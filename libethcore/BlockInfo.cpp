@@ -40,7 +40,7 @@ BlockInfo::BlockInfo(bytesConstRef _block, Strictness _s, h256 const& _h)
 	populate(_block, _s, _h);
 }
 
-void BlockInfo::setEmpty()
+void BlockInfo::clear()
 {
 	parentHash = h256();
 	sha3Uncles = EmptyListSHA3;
@@ -105,8 +105,9 @@ h256 BlockInfo::headerHash(bytesConstRef _block)
 
 void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const& _h)
 {
-//	m_hash = dev::sha3(_header.data());
 	m_hash = _h;
+	if (_h)
+		assert(_h == dev::sha3(_header.data()));
 	m_seedHash = h256();
 
 	int field = 0;
@@ -172,13 +173,21 @@ void BlockInfo::populate(bytesConstRef _block, Strictness _s, h256 const& _h)
 		BOOST_THROW_EXCEPTION(InvalidBlockFormat() << errinfo_comment("block uncles need to be a list") << BadFieldError(2, root[2].data().toString()));
 }
 
+template <class T, class U> h256 trieRootOver(unsigned _itemCount, T const& _getKey, U const& _getValue)
+{
+	MemoryDB db;
+	GenericTrieDB<MemoryDB> t(&db);
+	t.init();
+	for (unsigned i = 0; i < _itemCount; ++i)
+		t.insert(_getKey(i), _getValue(i));
+	return t.root();
+}
+
 void BlockInfo::verifyInternals(bytesConstRef _block) const
 {
 	RLP root(_block);
 
-	u256 mgp = (u256)-1;
-
-	OverlayDB db;
+	/*OverlayDB db;
 	GenericTrieDB<OverlayDB> t(&db);
 	t.init();
 	unsigned i = 0;
@@ -186,12 +195,13 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 	{
 		bytes k = rlp(i);
 		t.insert(&k, tr.data());
-		u256 gasprice = tr[1].toInt<u256>();
-		mgp = min(mgp, gasprice); // the minimum gas price is not used for anything //TODO delete?
 		++i;
 	}
-	if (transactionsRoot != t.root())
-		BOOST_THROW_EXCEPTION(InvalidTransactionsHash() << HashMismatchError(t.root(), transactionsRoot));
+	if (transactionsRoot != t.root())*/
+	auto txList = root[1];
+	auto expectedRoot = trieRootOver(txList.itemCount(), [&](unsigned i){ return rlp(i); }, [&](unsigned i){ return txList[i].data(); });
+	if (transactionsRoot != expectedRoot)
+		BOOST_THROW_EXCEPTION(InvalidTransactionsHash() << HashMismatchError(expectedRoot, transactionsRoot));
 
 	if (sha3Uncles != sha3(root[2].data()))
 		BOOST_THROW_EXCEPTION(InvalidUnclesHash());
@@ -199,7 +209,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 
 void BlockInfo::populateFromParent(BlockInfo const& _parent)
 {
-	m_hash = m_seedHash = h256();
+	noteDirty();
 	stateRoot = _parent.stateRoot;
 	parentHash = _parent.hash();
 	number = _parent.number + 1;
