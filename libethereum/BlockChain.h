@@ -83,7 +83,6 @@ using ProgressCallback = std::function<void(unsigned, unsigned)>;
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  * @threadsafe
- * @todo Make not memory hog (should actually act as a cache and deallocate old entries).
  */
 class BlockChain
 {
