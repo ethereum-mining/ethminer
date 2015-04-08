@@ -519,7 +519,7 @@ void Client::doWork()
 		// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 		for (auto const& h: fresh)
 		{
-			clog(ClientChat) << "Mined block:" << h.abridged();
+			clog(ClientChat) << "Live block:" << h.abridged();
 			for (auto const& th: m_bc.transactionHashes(h))
 			{
 				clog(ClientNote) << "Safely dropping transaction " << th;
