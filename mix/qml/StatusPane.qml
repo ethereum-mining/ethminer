@@ -185,25 +185,57 @@ Rectangle {
 				else
 					width = undefined
 			}
-		}
 
-		Button
-		{
-			anchors.fill: parent
-			id: toolTip
-			action: toolTipInfo
-			text: ""
-			z: 3;
-			style:
-				ButtonStyle {
-				background:Rectangle {
-					color: "transparent"
+			Button
+			{
+				anchors.fill: parent
+				id: toolTip
+				action: toolTipInfo
+				text: ""
+				z: 3;
+				style:
+					ButtonStyle {
+					background:Rectangle {
+						color: "transparent"
+					}
+				}
+				MouseArea {
+					anchors.fill: parent
+					onClicked: {
+						logsContainer.toggle();
+					}
 				}
 			}
-			MouseArea {
+		}
+
+		Rectangle
+		{
+			visible: false
+			color: "transparent"
+			width: 40
+			height: parent.height
+			anchors.top: parent.top
+			anchors.left: status.right
+			anchors.leftMargin: 15
+			id: goToLine
+			RowLayout
+			{
 				anchors.fill: parent
-				onClicked: {
-					logsContainer.toggle();
+				Rectangle
+				{
+					color: "transparent"
+					anchors.fill: parent
+					Button
+					{
+						z: 4
+						anchors.right: parent.right
+						anchors.rightMargin: 9
+						anchors.verticalCenter: parent.verticalCenter
+						id: goToLineBtn
+						text: ""
+						iconSource: "qrc:/qml/img/signerroricon32.png"
+						action: goToCompilationError
+					}
 				}
 			}
 		}
@@ -275,39 +307,6 @@ Rectangle {
 			}
 		}
 	}
-
-	Rectangle
-	{
-		visible: false
-		color: "transparent"
-		width: 40
-		height: parent.height
-		anchors.top: parent.top
-		anchors.left: statusContainer.right
-		anchors.leftMargin: 15
-		id: goToLine
-		RowLayout
-		{
-			anchors.fill: parent
-			Rectangle
-			{
-				color: "transparent"
-				anchors.fill: parent
-				Button
-				{
-					z: 4
-					anchors.right: parent.right
-					anchors.rightMargin: 9
-					anchors.verticalCenter: parent.verticalCenter
-					id: goToLineBtn
-					text: ""
-					iconSource: "qrc:/qml/img/signerroricon32.png"
-					action: goToCompilationError
-				}
-			}
-		}
-	}
-
 
 	Rectangle
 	{
