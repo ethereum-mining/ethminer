@@ -16,7 +16,8 @@ Item {
 	property string currentMode: ""
 	property bool initialized: false
 	property bool unloaded: false
-	property var currentBreakpoints: [];
+	property var currentBreakpoints: []
+	property string sourceName
 
 	function setText(text, mode) {
 		currentText = text;
@@ -67,6 +68,11 @@ Item {
 	function changeGeneration() {
 		if (initialized && editorBrowser)
 			editorBrowser.runJavaScript("changeGeneration()", function(result) {});
+	}
+
+	function goToCompilationError() {
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("goToCompilationError()", function(result) {});
 	}
 
 	Clipboard
@@ -121,8 +127,10 @@ Item {
 				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
 		}
 
-		function compilationError(error)
+		function compilationError(error, sourceName)
 		{
+			if (sourceName !== parent.sourceName)
+				return;
 			if (!editorBrowser || !error)
 				return;
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);

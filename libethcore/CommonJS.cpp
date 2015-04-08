@@ -65,5 +65,22 @@ std::string prettyU256(u256 _n, bool _abridged)
 	return s.str();
 }
 
+namespace eth
+{
+
+BlockNumber jsToBlockNumber(std::string const& _js)
+{
+	if (_js == "latest")
+		return LatestBlock;
+	else if (_js == "earliest")
+		return 0;
+	else if (_js == "pending")
+		return PendingBlock;
+	else
+		return (unsigned)jsToInt(_js);
+}
+
+}
+
 }
 

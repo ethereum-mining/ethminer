@@ -23,6 +23,7 @@
 
 #include <json/json.h>
 #include <libethereum/State.h>
+#include "TransientDirectory.h"
 
 namespace dev
 {
@@ -35,11 +36,12 @@ namespace test
 class StateLoader
 {
 public:
-	StateLoader(Json::Value const& _json);
+	StateLoader(Json::Value const& _json, std::string const& _dbPath);
 	eth::State const& state() const { return m_state; }
 
 private:
 	eth::State m_state;
 };
+
 }
 }
