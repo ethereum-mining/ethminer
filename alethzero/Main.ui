@@ -570,7 +570,7 @@
      <item>
       <widget class="QListWidget" name="ourAccounts">
        <property name="focusPolicy">
-        <enum>Qt::NoFocus</enum>
+        <enum>Qt::WheelFocus</enum>
        </property>
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
@@ -637,7 +637,7 @@
          </sizepolicy>
         </property>
         <property name="focusPolicy">
-         <enum>Qt::NoFocus</enum>
+         <enum>Qt::WheelFocus</enum>
         </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>
@@ -715,7 +715,7 @@
          </sizepolicy>
         </property>
         <property name="focusPolicy">
-         <enum>Qt::NoFocus</enum>
+         <enum>Qt::WheelFocus</enum>
         </property>
         <property name="frameShape">
          <enum>QFrame::NoFrame</enum>

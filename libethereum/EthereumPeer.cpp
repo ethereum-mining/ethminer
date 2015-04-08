@@ -348,11 +348,11 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 				break;
 			case ImportResult::AlreadyKnown:
 				// if we already had the transaction, then don't bother sending it on.
+				host()->m_transactionsSent.insert(h);
 				addRating(0);
 				break;
 			case ImportResult::Success:
 				addRating(100);
-				host()->m_transactionsSent.insert(h);
 				break;
 			default:;
 			}
