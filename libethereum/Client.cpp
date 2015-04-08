@@ -94,7 +94,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 			for (unsigned i = 0; i < r[1].size(); ++i)
 			{
 				auto gu = brs.receipts[i].gasUsed();
-				dist[Transaction(r[1][i].data(), CheckSignature::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
+				dist[Transaction(r[1][i].data(), CheckTransaction::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
 				total += (unsigned)gu;
 			}
 		}
@@ -511,7 +511,7 @@ void Client::doWork()
 			clog(ClientNote) << "Dead block:" << h.abridged();
 			for (auto const& t: m_bc.transactions(h))
 			{
-				clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckSignature::None);
+				clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckTransaction::None);
 				m_tq.import(t);
 			}
 		}
