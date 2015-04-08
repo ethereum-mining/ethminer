@@ -44,6 +44,7 @@ Item {
 			value: QEtherHelper.createEther(t.value.value, t.value.unit),
 			gas: QEtherHelper.createBigInt(t.gas.value),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
+			gasAuto: t.gasAuto,
 			stdContract: t.stdContract ? true : false,
 			parameters: {},
 			sender: t.sender
@@ -91,6 +92,7 @@ Item {
 			url: t.url,
 			value: { value: t.value.value, unit: t.value.unit },
 			gas: { value: t.gas.value() },
+			gasAuto: t.gasAuto,
 			gasPrice: { value: t.gasPrice.value, unit: t.gasPrice.unit },
 			stdContract: t.stdContract,
 			parameters: {}
