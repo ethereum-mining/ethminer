@@ -236,6 +236,34 @@ inline std::vector<_T>& operator+=(std::vector<typename std::enable_if<!std::is_
 	return _a;
 }
 
+/// Insert the contents of a container into a set
+template <class T, class U> std::set<T>& operator+=(std::set<T>& _a, U const& _b)
+{
+	for (auto const& i: _b)
+		_a.insert(i);
+	return _a;
+}
+
+/// Concatenate the contents of a container onto a vector
+template <class T, class U> std::vector<T>& operator+=(std::vector<T>& _a, U const& _b)
+{
+	for (auto const& i: _b)
+		_a.push_back(i);
+	return _a;
+}
+
+/// Insert the contents of a container into a set
+template <class T, class U> std::set<T> operator+(std::set<T> _a, U const& _b)
+{
+	return _a += _b;
+}
+
+/// Concatenate the contents of a container onto a vector
+template <class T, class U> std::vector<T> operator+(std::vector<T> _a, U const& _b)
+{
+	return _a += _b;
+}
+
 /// Concatenate two vectors of elements.
 template <class _T>
 inline std::vector<_T> operator+(std::vector<_T> const& _a, std::vector<_T> const& _b)

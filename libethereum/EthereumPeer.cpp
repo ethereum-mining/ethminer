@@ -334,7 +334,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	case GetTransactionsPacket: break;	// DEPRECATED.
 	case TransactionsPacket:
 	{
-		clogS(NetMessageSummary) << "Transactions (" << dec << _r.itemCount() << "entries)";
+		clogS(NetAllDetail) << "Transactions (" << dec << _r.itemCount() << "entries)";
 		Guard l(x_knownTransactions);
 		for (unsigned i = 0; i < _r.itemCount(); ++i)
 		{
@@ -348,11 +348,11 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 				break;
 			case ImportResult::AlreadyKnown:
 				// if we already had the transaction, then don't bother sending it on.
+				host()->m_transactionsSent.insert(h);
 				addRating(0);
 				break;
 			case ImportResult::Success:
 				addRating(100);
-				host()->m_transactionsSent.insert(h);
 				break;
 			default:;
 			}
