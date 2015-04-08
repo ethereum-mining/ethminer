@@ -274,6 +274,9 @@ public:
 	/// Get the list of pending transactions.
 	Transactions const& pending() const { return m_transactions; }
 
+	/// Get the list of hashes of pending transactions.
+	h256Set const& pendingHashes() const { return m_transactionSet; }
+
 	/// Get the transaction receipt for the transaction of the given index.
 	TransactionReceipt const& receipt(unsigned _i) const { return m_receipts[_i]; }
 
@@ -360,6 +363,7 @@ private:
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
+	bool m_committedToMine = false;				///< Have we committed to mine on the present m_currentBlock?
 
 	bytes m_currentTxs;							///< The RLP-encoded block of transactions.
 	bytes m_currentUncles;						///< The RLP-encoded block of uncles.

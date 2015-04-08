@@ -94,7 +94,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 			for (unsigned i = 0; i < r[1].size(); ++i)
 			{
 				auto gu = brs.receipts[i].gasUsed();
-				dist[Transaction(r[1][i].data(), CheckSignature::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
+				dist[Transaction(r[1][i].data(), CheckTransaction::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
 				total += (unsigned)gu;
 			}
 		}
@@ -511,7 +511,7 @@ void Client::doWork()
 			clog(ClientNote) << "Dead block:" << h.abridged();
 			for (auto const& t: m_bc.transactions(h))
 			{
-				clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckSignature::None);
+				clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckTransaction::None);
 				m_tq.import(t);
 			}
 		}
@@ -519,7 +519,7 @@ void Client::doWork()
 		// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 		for (auto const& h: fresh)
 		{
-			clog(ClientChat) << "Mined block:" << h.abridged();
+			clog(ClientChat) << "Live block:" << h.abridged();
 			for (auto const& th: m_bc.transactionHashes(h))
 			{
 				clog(ClientNote) << "Safely dropping transaction " << th;
