@@ -73,6 +73,12 @@ Dialog {
 				balance.text = comboAccounts.balances[0];
 			});
 		});
+
+		var gas = 0;
+		var gasCosts = clientModel.gasCosts;
+		for (var g in gasCosts)
+			gas += gasCosts[g];
+		gasToUse = gas;
 	}
 
 	function stopForInputError(inError)
@@ -421,7 +427,7 @@ Dialog {
 						Layout.preferredWidth: 350
 						id: localPackageUrl
 						readOnly: true
-						enabled: rowRegister.isOkToRegister()
+
 					}
 
 					DefaultLabel
