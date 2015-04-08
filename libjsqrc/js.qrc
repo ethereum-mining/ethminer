@@ -2,6 +2,6 @@
     <qresource prefix="/js">
         <file>bignumber.min.js</file>
         <file>setup.js</file>
-        <file alias="webthree.js">ethereumjs/dist/ethereum.js</file>
+        <file alias="webthree.js">ethereumjs/dist/web3.js</file>
     </qresource>
 </RCC>
