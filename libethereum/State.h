@@ -138,6 +138,7 @@ public:
 	static OverlayDB openDB(std::string _path, WithExisting _we = WithExisting::Trust);
 	static OverlayDB openDB(WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _we); }
 	OverlayDB const& db() const { return m_db; }
+	OverlayDB& db() { return m_db; }
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	/// @throws InterfaceNotSupported if compiled without ETH_FATDB.
