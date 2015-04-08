@@ -113,7 +113,7 @@ void help()
 		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
-		<< "    -D,--initdag Initialize DAG for mining and exit." << endl
+		<< "    -D,--initdag <this/next/number>  Initialize DAG for mining on given block and exit." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
 		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
@@ -200,9 +200,11 @@ enum class NodeMode
 	Full
 };
 
+static const unsigned NoDAGInit = (unsigned)-3;
+
 int main(int argc, char** argv)
 {
-	bool initDAG = false;
+	unsigned initDAG = NoDAGInit;
 	string listenIP;
 	unsigned short listenPort = 30303;
 	string publicIP;
@@ -307,8 +309,24 @@ int main(int argc, char** argv)
 			structuredLogging = true;
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
-		else if (arg == "-D" || arg == "--initdag")
-			initDAG = true;
+		else if ((arg == "-D" || arg == "--initdag") && i + 1 < argc)
+		{
+			string m = boost::to_lower_copy(string(argv[++i]));
+			if (m == "next")
+				initDAG = PendingBlock;
+			else if (m == "this")
+				initDAG = LatestBlock;
+			else
+				try
+				{
+					blockFees = stol(m);
+				}
+				catch (...)
+				{
+					cerr << "Bad " << arg << " option: " << m << endl;
+					return -1;
+				}
+		}
 		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
 			try
@@ -317,7 +335,7 @@ int main(int argc, char** argv)
 			}
 			catch (...)
 			{
-				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
 		}
@@ -329,7 +347,7 @@ int main(int argc, char** argv)
 			}
 			catch (...)
 			{
-				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
 		}
@@ -442,10 +460,14 @@ int main(int argc, char** argv)
 		miners
 		);
 	
-	if (initDAG)
+	if (initDAG != NoDAGInit)
 	{
-		cout << "Initializing DAG. (This will take awhile)" << endl;
-		Ethasher::get()->full(web3.ethereum()->blockChain().info());
+		BlockInfo bi;
+		bi.number = (initDAG == LatestBlock || initDAG == PendingBlock) ?
+			web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0) :
+			initDAG;
+		cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.seedHash() << "). This will take a while." << endl;
+		Ethasher::get()->full(bi);
 		return 0;
 	}
 	
