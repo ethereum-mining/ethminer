@@ -42,9 +42,12 @@
 extern "C" {
 #endif
 
+// LTODO: for consistency's sake maybe use ethash_params_t?
 typedef struct ethash_params {
-	uint64_t full_size;               // Size of full data set (in bytes, multiple of mix size (128)).
-	uint64_t cache_size;              // Size of compute cache (in bytes, multiple of node size (64)).
+    /// Size of full data set (in bytes, multiple of mix size (128)).
+    int64_t full_size;
+    /// Size of compute cache (in bytes, multiple of node size (64)).
+    uint64_t cache_size;
 } ethash_params;
 
 /// Type of a seedhash/blockhash e.t.c.
@@ -81,31 +84,77 @@ uint64_t ethash_get_cachesize(const uint32_t block_number);
 
 // initialize the parameters
 static inline void ethash_params_init(ethash_params *params, const uint32_t block_number) {
-	params->full_size = ethash_get_datasize(block_number);
-	params->cache_size = ethash_get_cachesize(block_number);
+    params->full_size = ethash_get_datasize(block_number);
+    params->cache_size = ethash_get_cachesize(block_number);
 }
 
+// LTODO: for consistency's sake maybe use ethash_cache_t?
 typedef struct ethash_cache {
-	void *mem;
+    void *mem;
 } ethash_cache;
 
-void ethash_mkcache(ethash_cache *cache, ethash_params const *params, ethash_h256_t const *seed);
-void ethash_compute_full_data(void *mem, ethash_params const *params, ethash_cache const *cache);
+/**
+ * Allocate and initialize a new ethash_cache object
+ *
+ * @param params    The parameters to initialize it with. We are interested in
+ *                  the cache_size from here
+ * @param seed      Block seedhash to be used during the computation of the
+ *                  cache nodes
+ * @return          Newly allocated ethash_cache on success or NULL in case of
+ *                  ERRNOMEM or invalid parameters used for @ref ethash_compute_cache_nodes()
+ */
+ethash_cache *ethash_cache_new(ethash_params const *params, ethash_h256_t const *seed);
+/**
+ * Frees a previously allocated ethash_cache
+ * @param c        The object to free
+ */
+void ethash_cache_delete(ethash_cache *c);
+bool ethash_compute_full_data(void *mem, ethash_params const *params, ethash_cache const *cache);
 
-ethash_light_t ethash_new_light(ethash_params const *params, ethash_h256_t const *seed);
-void ethash_delete_light(ethash_light_t light);
-void ethash_compute_light(ethash_return_value *ret,
+/**
+ * Allocate and initialize a new ethash_light handler
+ *
+ * @param params    The parameters to initialize it with. We are interested in
+ *                  the cache_size from here
+ * @param seed      Block seedhash to be used during the computation of the
+ *                  cache nodes
+ * @return          Newly allocated ethash_light handler or NULL in case of
+ *                  ERRNOMEM or invalid parameters used for @ref ethash_compute_cache_nodes()
+ */
+ethash_light_t ethash_light_new(ethash_params const *params, ethash_h256_t const *seed);
+/**
+ * Frees a previously allocated ethash_light handler
+ * @param light    The light handler to free
+ */
+void ethash_light_delete(ethash_light_t light);
+void ethash_light_compute(ethash_return_value *ret,
                           ethash_light_t light,
                           ethash_params const *params,
                           const ethash_h256_t *header_hash,
                           const uint64_t nonce);
-
-ethash_full_t ethash_new_full(ethash_params const* params,
-                              void const* cache,
+/**
+ * Allocate and initialize a new ethash_full handler
+ *
+ * @param params    The parameters to initialize it with. We are interested in
+ *                  the full_size from here
+ * @param cache     A cache object to use that was allocated with @ref ethash_cache_new().
+ *                  Iff this function succeeds the ethash_full_t will take memory
+ *                  ownership of the cache and free it at deletion. If not then the user
+ *                  still has to handle freeing of the cache himself.
+ * @param seed      Block seedhash. TODO: Do we really need this in this function?
+ * @return          Newly allocated ethash_full handler or NULL in case of
+ *                  ERRNOMEM or invalid parameters used for @ref ethash_compute_full_data()
+ */
+ethash_full_t ethash_full_new(ethash_params const* params,
+                              ethash_cache const* cache,
                               const ethash_h256_t *seed,
                               ethash_callback_t callback);
-void ethash_delete_full(ethash_full_t full);
-void ethash_compute_full(ethash_return_value *ret,
+/**
+ * Frees a previously allocated ethash_full handler
+ * @param full    The light handler to free
+ */
+void ethash_full_delete(ethash_full_t full);
+void ethash_full_compute(ethash_return_value *ret,
                          ethash_full_t full,
                          ethash_params const *params,
                          const ethash_h256_t *header_hash,
