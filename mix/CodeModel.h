@@ -160,7 +160,7 @@ signals:
 	/// Emitted on compilation complete
 	void compilationComplete();
 	/// Emitted on compilation error
-	void compilationError(QString _error);
+	void compilationError(QString _error, QString _sourceName);
 	/// Internal signal used to transfer compilation job to background thread
 	void scheduleCompilationJob(int _jobId);
 	/// Emitted if there are any changes in the code model
