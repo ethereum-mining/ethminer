@@ -323,7 +323,6 @@ enum class NodeMode
 
 int main(int argc, char** argv)
 {
-	bool initDAG = true;
 	string listenIP;
 	unsigned short listenPort = 30303;
 	string publicIP;
@@ -427,8 +426,6 @@ int main(int argc, char** argv)
 			structuredLogging = true;
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
-		else if (arg == "-D" || arg == "--initdag")
-			initDAG = true;
 		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
 			try
@@ -561,13 +558,6 @@ int main(int argc, char** argv)
 		&nodesState,
 		miners
 		);
-	
-	if (initDAG)
-	{
-		cout << "Initialize DAG. (This will take awhile)" << endl;
-		Ethasher::get()->full(web3.ethereum()->blockChain().info());
-		return 0;
-	}
 	
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
