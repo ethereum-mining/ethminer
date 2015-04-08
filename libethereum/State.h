@@ -274,6 +274,9 @@ public:
 	/// Get the list of pending transactions.
 	Transactions const& pending() const { return m_transactions; }
 
+	/// Get the list of hashes of pending transactions.
+	h256Set const& pendingHashes() const { return m_transactionSet; }
+
 	/// Get the transaction receipt for the transaction of the given index.
 	TransactionReceipt const& receipt(unsigned _i) const { return m_receipts[_i]; }
 

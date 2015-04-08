@@ -109,7 +109,7 @@ public:
 	virtual LocalisedLogEntries checkWatch(unsigned _watchId) override;
 
 	// TODO: switch all the _blockHash arguments to also accept _blockNumber
-	virtual h256 hashFromNumber(unsigned _number) const override;
+	virtual h256 hashFromNumber(BlockNumber _number) const override;
 	virtual eth::BlockInfo blockInfo(h256 _hash) const override;
 	virtual eth::BlockDetails blockDetails(h256 _hash) const override;
 	virtual eth::Transaction transaction(h256 _transactionHash) const override;
@@ -122,6 +122,7 @@ public:
 	virtual unsigned uncleCount(h256 _blockHash) const override;
 	virtual unsigned number() const override;
 	virtual eth::Transactions pending() const override;
+	virtual h256s pendingHashes() const override;
 
 	using Interface::diff;
 	virtual StateDiff diff(unsigned _txi, h256 _block) const override;
