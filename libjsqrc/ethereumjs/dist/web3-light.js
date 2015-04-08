@@ -1664,7 +1664,7 @@ var getBlock = new Method({
     name: 'getBlock', 
     call: blockCall,
     params: 2,
-    inputFormatter: [utils.toHex, function (val) { return !!val; }],
+	inputFormatter: [formatters.inputBlockNumberFormatter, function (val) { return !!val; }],
     outputFormatter: formatters.outputBlockFormatter
 });
 
@@ -1672,7 +1672,7 @@ var getUncle = new Method({
     name: 'getUncle',
     call: uncleCall,
     params: 3,
-    inputFormatter: [utils.toHex, utils.toHex, function (val) { return !!val; }],
+	inputFormatter: [formatters.inputBlockNumberFormatter, utils.toHex, function (val) { return !!val; }],
     outputFormatter: formatters.outputBlockFormatter,
 
 });
