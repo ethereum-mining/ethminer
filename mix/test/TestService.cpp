@@ -163,7 +163,6 @@ bool TestService::keyClickChar(QObject* _item, QString const& _character, int _m
 bool TestService::mouseClick(QObject* _item, qreal _x, qreal _y, int _button, int _modifiers, int _delay)
 {
 	QWindow* window = qobject_cast<QWindow*>(_item);
-	QMetaObject const* mo =  _item->metaObject();
 	if (!window)
 		window = eventWindow(_item);
 	mouseEvent(MouseClick, window, _item, Qt::MouseButton(_button), Qt::KeyboardModifiers(_modifiers), QPointF(_x, _y), _delay);

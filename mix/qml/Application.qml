@@ -398,4 +398,14 @@ ApplicationWindow {
 		enabled: !projectModel.isEmpty && codeModel.hasContract
 		onTriggered: projectModel.deployProject();
 	}
+
+	Action {
+		id: goToCompilationError
+		text: qsTr("Go to compilation error")
+		shortcut: "F4"
+		onTriggered:
+		{
+			mainContent.codeEditor.goToCompilationError();
+		}
+	}
 }

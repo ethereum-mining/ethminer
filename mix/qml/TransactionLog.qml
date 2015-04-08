@@ -127,6 +127,11 @@ Item {
 				title: qsTr("Returned")
 				width: 120
 			}
+			TableViewColumn {
+				role: "gasUsed"
+				title: qsTr("Gas Used")
+				width: 120
+			}
 			onActivated:  {
 				var item = logTable.model.get(row);
 				if (item.type === RecordLogEntry.Transaction)
