@@ -181,7 +181,7 @@ void ClientModel::setupState(QVariantMap _state)
 		QString contractId = transaction.value("contractId").toString();
 		QString functionId = transaction.value("functionId").toString();
 		u256 gas = boost::get<u256>(qvariant_cast<QBigInt*>(transaction.value("gas"))->internalValue());
-		bool gasAuto = transaction.value("gas").toBool();
+		bool gasAuto = transaction.value("gasAuto").toBool();
 		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
 		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
 		QString sender = transaction.value("sender").toString();
