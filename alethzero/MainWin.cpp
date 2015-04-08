@@ -1156,7 +1156,7 @@ void Main::refreshBlockChain()
 		auto b = bc.block(h);
 		for (auto const& i: RLP(b)[1])
 		{
-			Transaction t(i.data(), CheckSignature::Sender);
+			Transaction t(i.data(), CheckTransaction::Everything);
 			QString s = t.receiveAddress() ?
 				QString("    %2 %5> %3: %1 [%4]")
 					.arg(formatBalance(t.value()).c_str())
@@ -1536,7 +1536,7 @@ void Main::on_blocks_currentItemChanged()
 		else
 		{
 			unsigned txi = item->data(Qt::UserRole + 1).toInt();
-			Transaction tx(block[1][txi].data(), CheckSignature::Sender);
+			Transaction tx(block[1][txi].data(), CheckTransaction::Everything);
 			auto ss = tx.safeSender();
 			h256 th = sha3(rlpList(ss, tx.nonce()));
 			TransactionReceipt receipt = ethereum()->blockChain().receipts(h).receipts[txi];
@@ -1597,7 +1597,7 @@ void Main::on_debugCurrent_triggered()
 			State s(ethereum()->state(txi, h));
 			Executive e(s, ethereum()->blockChain());
 			Debugger dw(this, this);
-			dw.populate(e, Transaction(t, CheckSignature::Sender));
+			dw.populate(e, Transaction(t, CheckTransaction::Everything));
 			dw.exec();
 		}
 	}

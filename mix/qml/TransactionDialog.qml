@@ -17,6 +17,7 @@ Dialog {
 	title: qsTr("Edit Transaction")
 	property int transactionIndex
 	property alias gas: gasValueEdit.gasValue;
+	property alias gasAuto: gasAutoCheck.checked;
 	property alias gasPrice: gasPriceField.value;
 	property alias transactionValue: valueField.value;
 	property string contractId: contractComboBox.currentValue();
@@ -39,6 +40,7 @@ Dialog {
 
 		transactionIndex = index;
 		gasValueEdit.gasValue = item.gas;
+		gasAutoCheck.checked = item.gasAuto ? true : false;
 		gasPriceField.value = item.gasPrice;
 		valueField.value = item.value;
 		var contractId = item.contractId;
@@ -164,6 +166,7 @@ Dialog {
 				contractId: transactionDialog.contractId,
 				functionId: transactionDialog.functionId,
 				gas: transactionDialog.gas,
+				gasAuto: transactionDialog.gasAuto,
 				gasPrice: transactionDialog.gasPrice,
 				value: transactionDialog.transactionValue,
 				parameters: {},
@@ -314,7 +317,15 @@ Dialog {
 							onGasValueChanged: text = gasValue.value();
 							onTextChanged: gasValue.setValue(text);
 							implicitWidth: 200
+							enabled: !gasAutoCheck.checked
 							id: gasValueEdit;
+						}
+
+						CheckBox
+						{
+							id: gasAutoCheck
+							checked: true
+							text: qsTr("Auto");
 						}
 					}
 
