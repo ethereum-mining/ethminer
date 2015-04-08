@@ -101,7 +101,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 	shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, NodeIPEndpoint(_node.endpoint.udp, _node.endpoint.tcp)));
 	m_nodes[_node.id] = ret;
 	ret->cullEndpoint();
-	clog(NodeTableConnect) << "addNode pending for" << m_node.endpoint.udp << m_node.endpoint.tcp;
+	clog(NodeTableConnect) << "addNode pending for" << _node.endpoint.udp << _node.endpoint.tcp;
 	PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
 	p.sign(m_secret);
 	m_socketPointer->send(p);
@@ -468,7 +468,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
 
 				vector<shared_ptr<NodeEntry>> nearest = nearestNodeEntries(in.target);
-				static unsigned const nlimit = (m_socketPointer->maxDatagramSize - 11) / 86;
+				static unsigned const nlimit = (m_socketPointer->maxDatagramSize - 13) / 87;
 				for (unsigned offset = 0; offset < nearest.size(); offset += nlimit)
 				{
 					Neighbours out(_from, nearest, offset, nlimit);
