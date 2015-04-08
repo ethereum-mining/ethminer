@@ -2,6 +2,7 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.3
+import org.ethereum.qml.InverseMouseArea 1.0
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
 
@@ -247,6 +248,20 @@ Rectangle {
 
 		Rectangle
 		{
+			InverseMouseArea
+			{
+				id: outsideClick
+				anchors.fill: parent
+			}
+
+			Connections
+			{
+				target: outsideClick
+				onClickedOutside: {
+					toggle();
+				}
+			}
+
 			function toggle()
 			{
 				if (logsContainer.state === "opened")
