@@ -41,9 +41,9 @@ public:
 	void setActive(bool _v);
 
 protected:
-	void itemChange(ItemChange _c, const ItemChangeData& _v);
-	bool eventFilter(QObject* _obj, QEvent *_ev);
-	bool contains(const QPoint& _point) const;
+	void itemChange(ItemChange _c, const ItemChangeData& _v) override;
+	bool eventFilter(QObject* _obj, QEvent *_ev) override;
+	bool contains(const QPointF& _point) const override;
 
 private:
 	bool m_active;
