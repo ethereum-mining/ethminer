@@ -43,7 +43,7 @@ bool InverseMouseArea::eventFilter(QObject* _obj, QEvent* _ev)
 	return false;
 }
 
-bool InverseMouseArea::contains(const QPoint& _point) const
+bool InverseMouseArea::contains(const QPointF& _point) const
 {
 	if (!this->m_active)
 		return false;
