@@ -16,7 +16,7 @@
 */
 /** @file InverseMouseArea.cpp
  * @author Yann yann@ethdev.com
- * @date 2014
+ * @date 2015
  * Ethereum IDE client.
  */
 
