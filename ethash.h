@@ -109,7 +109,6 @@ ethash_cache *ethash_cache_new(ethash_params const *params, ethash_h256_t const 
  * @param c        The object to free
  */
 void ethash_cache_delete(ethash_cache *c);
-bool ethash_compute_full_data(void *mem, ethash_params const *params, ethash_cache const *cache);
 
 /**
  * Allocate and initialize a new ethash_light handler
@@ -261,6 +260,15 @@ void ethash_light(ethash_return_value *ret,
                   ethash_params const *params,
                   ethash_h256_t const *header_hash,
                   const uint64_t nonce);
+/**
+ * Compute the memory data for a full node's memory
+ * 
+ * @param mem        A pointer to an ethash full's memory
+ * @param params     The parameters to compute the data with
+ * @param cache      A cache object to use in the calculation
+ * @return           true if all went fine and false for invalid parameters
+ */
+bool ethash_compute_full_data(void *mem, ethash_params const *params, ethash_cache const *cache);
 
 #ifdef __cplusplus
 }
