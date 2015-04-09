@@ -115,9 +115,14 @@ void help()
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
 		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
+		<< "    -E,--export <file>  Export file as a concatenated series of blocks and exit." << endl
+		<< "    --export-from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
+		<< "    --export-to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
+		<< "    --export-only <n>  Equivalent to --export-from n --export-to n." << endl
 		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
+		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
 #if ETH_JSONRPC
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
@@ -209,33 +214,61 @@ void doInitDAG(unsigned _n)
 	exit(0);
 }
 
-static const unsigned NoDAGInit = (unsigned)-3;
+enum class OperationMode
+{
+	Node,
+	Import,
+	Export,
+	DAGInit
+};
 
 int main(int argc, char** argv)
 {
-	unsigned initDAG = NoDAGInit;
+	/// Operating mode.
+	OperationMode mode = OperationMode::Node;
+	string dbPath;
+
+	/// File name for import/export.
+	string filename;
+
+	/// Hashes/numbers for export range.
+	string exportFrom = "1";
+	string exportTo = "latest";
+
+	/// DAG initialisation param.
+	unsigned initDAG;
+
+	/// General params for Node operation
+	NodeMode nodeMode = NodeMode::Full;
+	bool interactive = false;
+#if ETH_JSONRPC
+	int jsonrpc = -1;
+#endif
+	bool upnp = true;
+	WithExisting killChain = WithExisting::Trust;
+	bool jit = false;
+
+	/// Networking params.
+	string clientName;
 	string listenIP;
 	unsigned short listenPort = 30303;
 	string publicIP;
 	string remoteHost;
 	unsigned short remotePort = 30303;
-	string dbPath;
-	unsigned mining = ~(unsigned)0;
-	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
-	int miners = -1;
-	bool interactive = false;
-#if ETH_JSONRPC
-	int jsonrpc = -1;
-#endif
 	bool bootstrap = false;
-	bool upnp = true;
+
+	/// Mining params
+	unsigned mining = ~(unsigned)0;
+	int miners = -1;
 	bool forceMining = false;
-	WithExisting killChain = WithExisting::Trust;
-	bool jit = false;
+	bool turboMining = false;
+
+	/// Structured logging params
 	bool structuredLogging = false;
 	string structuredLoggingFormat = "%Y-%m-%dT%H:%M:%S";
-	string clientName;
+
+	/// Transaction params
 	TransactionPriority priority = TransactionPriority::Medium;
 	double etherPrice = 30.679;
 	double blockFees = 15.0;
@@ -275,6 +308,16 @@ int main(int argc, char** argv)
 			remoteHost = argv[++i];
 		else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
 			remotePort = (short)atoi(argv[++i]);
+		else if ((arg == "-I" || arg == "--import") && i + 1 < argc)
+		{
+			mode = OperationMode::Import;
+			filename = argv[++i];
+		}
+		else if ((arg == "-E" || arg == "--export") && i + 1 < argc)
+		{
+			mode = OperationMode::Export;
+			filename = argv[++i];
+		}
 		else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -321,6 +364,7 @@ int main(int argc, char** argv)
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
 		{
 			string m = boost::to_lower_copy(string(argv[++i]));
+			mode = OperationMode::DAGInit;
 			if (m == "next")
 				initDAG = PendingBlock;
 			else if (m == "this")
@@ -402,6 +446,8 @@ int main(int argc, char** argv)
 			bootstrap = true;
 		else if (arg == "-f" || arg == "--force-mining")
 			forceMining = true;
+		else if (arg == "-T" || arg == "--turbo-mining")
+			turboMining = true;
 		else if (arg == "-i" || arg == "--interactive")
 			interactive = true;
 #if ETH_JSONRPC
@@ -420,9 +466,9 @@ int main(int argc, char** argv)
 		{
 			string m = argv[++i];
 			if (m == "full")
-				mode = NodeMode::Full;
+				nodeMode = NodeMode::Full;
 			else if (m == "peer")
-				mode = NodeMode::PeerServer;
+				nodeMode = NodeMode::PeerServer;
 			else
 			{
 				cerr << "Unknown mode: " << m << endl;
@@ -452,7 +498,7 @@ int main(int argc, char** argv)
 
 	// Two codepaths is necessary since named block require database, but numbered
 	// blocks are superuseful to have when database is already open in another process.
-	if (initDAG < NoDAGInit)
+	if (mode == OperationMode::DAGInit && !(initDAG == LatestBlock || initDAG == PendingBlock))
 		doInitDAG(initDAG);
 
 	if (!clientName.empty())
@@ -469,23 +515,69 @@ int main(int argc, char** argv)
 		clientImplString,
 		dbPath,
 		killChain,
-		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
+		nodeMode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
 		&nodesState,
 		miners
 		);
 	
-	if (initDAG == LatestBlock || initDAG == PendingBlock)
+	if (mode == OperationMode::DAGInit)
 		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
-	
+
+	auto toNumber = [&](string const& s) -> unsigned {
+		if (s == "latest")
+			return web3.ethereum()->number();
+		if (s.size() == 64 || (s.size() == 66 && s.substr(0, 2) == "0x"))
+			return web3.ethereum()->blockChain().number(h256(s));
+		try {
+			return stol(s);
+		}
+		catch (...)
+		{
+			cerr << "Bad block number/hash option: " << s << endl;
+			exit(-1);
+		}
+	};
+
+	if (mode == OperationMode::Export)
+	{
+		ofstream fout;
+		fout.open(filename);
+		unsigned last = toNumber(exportTo);
+		for (unsigned i = toNumber(exportFrom); i <= last; ++i)
+		{
+			bytes block = web3.ethereum()->blockChain().block(web3.ethereum()->blockChain().numberHash(i));
+			fout.write((char const*)block.data(), block.size());
+		}
+		return 0;
+	}
+
+	if (mode == OperationMode::Import)
+	{
+		ifstream fin;
+		fin.open(filename);
+
+		while (fin)
+		{
+			bytes block(8);
+			fin.read((char*)block.data(), 8);
+			unsigned remaining = RLP(block, RLP::LaisezFaire).actualSize() - 8;
+			block.resize(remaining);
+			fin.read((char*)block.data() + 8, remaining);
+			web3.ethereum()->injectBlock(block);
+		}
+		return 0;
+	}
+
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
-	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
+	eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
 	StructuredLogger::starting(clientImplString, dev::Version);
 	if (c)
 	{
 		c->setGasPricer(gasPricer);
 		c->setForceMining(forceMining);
+		c->setTurboMining(turboMining);
 		c->setAddress(coinbase);
 	}
 

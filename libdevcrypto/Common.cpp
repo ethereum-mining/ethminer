@@ -37,9 +37,9 @@ static Secp256k1 s_secp256k1;
 
 bool dev::SignatureStruct::isValid() const
 {
-	if (this->v > 1 ||
-			this->r >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
-			this->s >= h256("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"))
+	if (v > 1 ||
+		r >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
+		s >= h256("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"))
 		return false;
 	return true;
 }
