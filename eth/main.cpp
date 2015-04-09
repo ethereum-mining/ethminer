@@ -247,7 +247,7 @@ int main(int argc, char** argv)
 	Format exportFormat = Format::Binary;
 
 	/// DAG initialisation param.
-	unsigned initDAG;
+	unsigned initDAG = 0;
 
 	/// General params for Node operation
 	NodeMode nodeMode = NodeMode::Full;
