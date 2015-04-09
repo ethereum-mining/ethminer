@@ -3,6 +3,7 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.InverseMouseArea 1.0
+import QtGraphicalEffects 1.0
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
 
@@ -248,6 +249,27 @@ Rectangle {
 
 		Rectangle
 		{
+			id: logsShadow
+			width: logsContainer.width + 5
+			height: 0
+			opacity: 0.3
+			clip: true
+			anchors.top: logsContainer.top
+			anchors.margins: 4
+			Rectangle {
+				color: "gray"
+				anchors.top: parent.top
+				radius: 10
+				id: roundRect
+				height: 400
+				width: parent.width
+			}
+		}
+
+
+
+		Rectangle
+		{
 			InverseMouseArea
 			{
 				id: outsideClick
@@ -287,9 +309,16 @@ Rectangle {
 					top = top.parent
 				var coordinates = logsContainer.mapToItem(top, 0, 0);
 				logsContainer.parent = top;
+				logsShadow.parent = top;
 				logsContainer.x = status.x + statusContainer.x - logStyle.generic.layout.dateWidth - logStyle.generic.layout.typeWidth + 70
+				logsShadow.x = status.x + statusContainer.x - logStyle.generic.layout.dateWidth - logStyle.generic.layout.typeWidth + 70;
+				logsShadow.z = 1
+				logsContainer.z = 2
 				if (Qt.platform.os === "osx")
+				{
 					logsContainer.y = statusContainer.y;
+					logsShadow.y = statusContainer.y;
+				}
 			}
 
 			LogsPaneStyle {
@@ -305,6 +334,7 @@ Rectangle {
 				State {
 					name: "opened";
 					PropertyChanges { target: logsContainer; height: 500; visible: true }
+					PropertyChanges { target: logsShadow; height: 500; visible: true }
 					PropertyChanges { target: outsideClick; active: true }
 
 				},
@@ -313,6 +343,7 @@ Rectangle {
 					PropertyChanges { target: logsContainer; height: 0; visible: false }
 					PropertyChanges { target: statusContainer; width: 600; height: 30 }
 					PropertyChanges { target: outsideClick; active: false }
+					PropertyChanges { target: logsShadow; height: 0; visible: false }
 				}
 			]
 			transitions: Transition {

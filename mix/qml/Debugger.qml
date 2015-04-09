@@ -215,14 +215,16 @@ Rectangle {
 					id: buttonRow
 					height: 30
 					Layout.fillWidth: true
+					width: parent.width
 					color: "transparent"
 
 					Rectangle {
 						anchors.top: parent.top
 						anchors.bottom: parent.bottom
 						anchors.left: parent.left
+						anchors.leftMargin: machineStates.sideMargin
 						color: "transparent"
-						width: parent.width * 0.4
+						width: 240
 						RowLayout {
 							anchors.horizontalCenter: parent.horizontalCenter
 							id: jumpButtons
@@ -358,7 +360,7 @@ Rectangle {
 						anchors.top: parent.top
 						anchors.bottom: parent.bottom
 						anchors.right: parent.right
-						width: parent.width * 0.6
+						width: parent.width - 265
 						color: "transparent"
 						Slider {
 							id: statesSlider

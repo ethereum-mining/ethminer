@@ -400,7 +400,6 @@ Dialog {
 				Button {
 					text: qsTr("Cancel");
 					onClicked: close();
-					Layout.fillWidth: true
 				}
 			}
 		}
