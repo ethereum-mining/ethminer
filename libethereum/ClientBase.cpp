@@ -107,6 +107,11 @@ ExecutionResult ClientBase::create(Secret _secret, u256 _value, bytes const& _da
 	return ret;
 }
 
+void ClientBase::injectBlock(bytes const& _block)
+{
+	bc().import(_block, preMine().db());
+}
+
 u256 ClientBase::balanceAt(Address _a, BlockNumber _block) const
 {
 	return asOf(_block).balance(_a);

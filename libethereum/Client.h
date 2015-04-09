@@ -229,8 +229,9 @@ public:
 
 protected:
 	/// InterfaceStub methods
+	virtual BlockChain& bc() override { return m_bc; }
 	virtual BlockChain const& bc() const override { return m_bc; }
-	
+
 	/// Returns the state object for the full block (i.e. the terminal state) for index _h.
 	/// Works properly with LatestBlock and PendingBlock.
 	using ClientBase::asOf;
