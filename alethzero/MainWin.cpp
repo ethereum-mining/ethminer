@@ -183,13 +183,6 @@ Main::Main(QWidget *parent) :
 	m_webPage = webPage;
 	connect(webPage, &WebPage::consoleMessage, [this](QString const& _msg) { Main::addConsoleMessage(_msg, QString()); });
 	ui->webView->setPage(m_webPage);
-	connect(ui->webView, &QWebEngineView::loadFinished, [this]()
-	{
-		auto f = ui->webView->page();
-		f->runJavaScript(contentsOfQResource(":/js/bignumber.min.js"));
-		f->runJavaScript(contentsOfQResource(":/js/webthree.js"));
-		f->runJavaScript(contentsOfQResource(":/js/setup.js"));
-	});
 
 	connect(ui->webView, &QWebEngineView::titleChanged, [=]()
 	{
@@ -199,6 +192,7 @@ Main::Main(QWidget *parent) :
 	m_dappHost.reset(new DappHost(8081));
 	m_dappLoader = new DappLoader(this, web3());
 	connect(m_dappLoader, &DappLoader::dappReady, this, &Main::dappLoaded);
+	connect(m_dappLoader, &DappLoader::pageReady, this, &Main::pageLoaded);
 //	ui->webView->page()->settings()->setAttribute(QWebEngineSettings::DeveloperExtrasEnabled, true);
 //	QWebEngineInspector* inspector = new QWebEngineInspector();
 //	inspector->setPage(page);
@@ -264,7 +258,7 @@ NetworkPreferences Main::netPrefs() const
 	{
 		listenIP.clear();
 	}
-	
+
 	auto publicIP = ui->forcePublicIP->text().toStdString();
 	try
 	{
@@ -274,7 +268,7 @@ NetworkPreferences Main::netPrefs() const
 	{
 		publicIP.clear();
 	}
-	
+
 	if (isPublicAddress(publicIP))
 		return NetworkPreferences(publicIP, listenIP, ui->port->value(), ui->upnp->isChecked());
 	else
@@ -918,6 +912,7 @@ void Main::on_urlEdit_returnPressed()
 		{
 			//try do resolve dapp url
 			m_dappLoader->loadDapp(s);
+			return;
 		}
 		catch (...)
 		{
@@ -931,8 +926,7 @@ void Main::on_urlEdit_returnPressed()
 		else
 			url.setScheme("http");
 	else {}
-	qDebug() << url.toString();
-	ui->webView->page()->setUrl(url);
+	m_dappLoader->loadPage(url.toString());
 }
 
 void Main::on_nameReg_textChanged()
@@ -1799,7 +1793,7 @@ void Main::on_connect_triggered()
 		ui->net->setChecked(true);
 		on_net_triggered();
 	}
-	
+
 	m_connect.setEnvironment(m_servers);
 	if (m_connect.exec() == QDialog::Accepted)
 	{
@@ -1811,9 +1805,9 @@ void Main::on_connect_triggered()
 			nodeID = NodeId(fromHex(m_connect.nodeId().toStdString()));
 		}
 		catch (BadHexCharacter&) {}
-		
+
 		m_connect.reset();
-		
+
 		if (required)
 			web3()->requirePeer(nodeID, host);
 		else
@@ -2015,4 +2009,9 @@ void Main::dappLoaded(Dapp& _dapp)
 {
 	QUrl url = m_dappHost->hostDapp(std::move(_dapp));
 	ui->webView->page()->setUrl(url);
+}
+
+void Main::pageLoaded(QByteArray const& _content, QString const& _mimeType, QUrl const& _uri)
+{
+	ui->webView->page()->setContent(_content, _mimeType, _uri);
 }
