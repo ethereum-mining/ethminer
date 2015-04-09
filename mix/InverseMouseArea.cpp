@@ -39,7 +39,7 @@ bool InverseMouseArea::eventFilter(QObject* _obj, QEvent* _ev)
 {
 	Q_UNUSED(_obj);
 	if (this->m_active && _ev->type() == QEvent::MouseButtonPress && !this->contains(static_cast<QMouseEvent*>(_ev)->pos()))
-		emit clickedOutside();
+		emit clickedOutside(QPointF(static_cast<QMouseEvent*>(_ev)->pos()));
 	return false;
 }
 

@@ -99,11 +99,10 @@ Rectangle {
 		}
 
 		MouseArea {
+			id: selectorArea
 			anchors.fill: parent
 			onClicked: {
-				if (outsideClick.trigerred)
-					outsideClick.trigerred = false;
-				else if (statesCombo.state === "")
+				if (statesCombo.state === "")
 					statesCombo.state = "dropDown";
 			}
 		}
@@ -133,13 +132,13 @@ Rectangle {
 
 		InverseMouseArea
 		{
-			property bool trigerred: false
 			id: outsideClick
 			anchors.fill: parent
 			active: false
 			onClickedOutside: {
-				trigerred = true;
-				statesCombo.hideDropDown()
+				var p = selectorArea.mapFromItem(null, _point.x, _point.y);
+				if (!selectorArea.contains(Qt.point(p.x, p.y)))
+					statesCombo.hideDropDown()
 			}
 		}
 

@@ -49,7 +49,7 @@ private:
 	bool m_active;
 
 signals:
-	void clickedOutside();
+	void clickedOutside(QPointF _point);
 };
 
 }
