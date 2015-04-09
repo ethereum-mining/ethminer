@@ -116,9 +116,9 @@ void help()
 		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
 		<< "    -E,--export <file>  Export file as a concatenated series of blocks and exit." << endl
-		<< "    --export-from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
-		<< "    --export-to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
-		<< "    --export-only <n>  Equivalent to --export-from n --export-to n." << endl
+		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
+		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
+		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
 		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
@@ -222,8 +222,18 @@ enum class OperationMode
 	DAGInit
 };
 
+enum class Format
+{
+	Binary,
+	Hex,
+	Human
+};
+
 int main(int argc, char** argv)
 {
+	// Init defaults
+	Defaults::get();
+
 	/// Operating mode.
 	OperationMode mode = OperationMode::Node;
 	string dbPath;
@@ -234,6 +244,7 @@ int main(int argc, char** argv)
 	/// Hashes/numbers for export range.
 	string exportFrom = "1";
 	string exportTo = "latest";
+	Format exportFormat = Format::Binary;
 
 	/// DAG initialisation param.
 	unsigned initDAG;
@@ -263,6 +274,8 @@ int main(int argc, char** argv)
 	int miners = -1;
 	bool forceMining = false;
 	bool turboMining = false;
+	KeyPair us = KeyPair::create();
+	Address coinbase = us.address();
 
 	/// Structured logging params
 	bool structuredLogging = false;
@@ -273,13 +286,6 @@ int main(int argc, char** argv)
 	double etherPrice = 30.679;
 	double blockFees = 15.0;
 
-	// Init defaults
-	Defaults::get();
-
-	// Our address.
-	KeyPair us = KeyPair::create();
-	Address coinbase = us.address();
-
 	string configFile = getDataDir() + "/config.rlp";
 	bytes b = contents(configFile);
 	if (b.size())
@@ -287,12 +293,6 @@ int main(int argc, char** argv)
 		RLP config(b);
 		us = KeyPair(config[0].toHash<Secret>());
 		coinbase = config[1].toHash<Address>();
-	}
-	else
-	{
-		RLPStream config(2);
-		config << us.secret() << coinbase;
-		writeFile(configFile, config.out());
 	}
 
 	for (int i = 1; i < argc; ++i)
@@ -318,6 +318,27 @@ int main(int argc, char** argv)
 			mode = OperationMode::Export;
 			filename = argv[++i];
 		}
+		else if (arg == "--format" && i + 1 < argc)
+		{
+			string m = argv[++i];
+			if (m == "binary")
+				exportFormat = Format::Binary;
+			else if (m == "hex")
+				exportFormat = Format::Hex;
+			else if (m == "human")
+				exportFormat = Format::Human;
+			else
+			{
+				cerr << "Bad " << arg << " option: " << m << endl;
+				return -1;
+			}
+		}
+		else if (arg == "--to" && i + 1 < argc)
+			exportTo = argv[++i];
+		else if (arg == "--from" && i + 1 < argc)
+			exportFrom = argv[++i];
+		else if (arg == "--only" && i + 1 < argc)
+			exportTo = exportFrom = argv[++i];
 		else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -327,7 +348,7 @@ int main(int argc, char** argv)
 				upnp = false;
 			else
 			{
-				cerr << "Invalid -n/--upnp option: " << m << endl;
+				cerr << "Bad " << arg << " option: " << m << endl;
 				return -1;
 			}
 		}
@@ -344,14 +365,13 @@ int main(int argc, char** argv)
 			}
 			catch (BadHexCharacter& _e)
 			{
-				cwarn << "invalid hex character, coinbase rejected";
-				cwarn << boost::diagnostic_information(_e);
-				break;
+				cerr << "Bad hex in " << arg << " option: " << argv[i] << endl;
+				return -1;
 			}
 			catch (...)
 			{
-				cwarn << "coinbase rejected";
-				break;
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
 			}
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			us = KeyPair(h256(fromHex(argv[++i])));
@@ -495,6 +515,11 @@ int main(int argc, char** argv)
 		}
 	}
 
+	{
+		RLPStream config(2);
+		config << us.secret() << coinbase;
+		writeFile(configFile, config.out());
+	}
 
 	// Two codepaths is necessary since named block require database, but numbered
 	// blocks are superuseful to have when database is already open in another process.
@@ -503,8 +528,6 @@ int main(int argc, char** argv)
 
 	if (!clientName.empty())
 		clientName += "/";
-
-	cout << credits();
 
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
@@ -541,34 +564,66 @@ int main(int argc, char** argv)
 
 	if (mode == OperationMode::Export)
 	{
-		ofstream fout;
-		fout.open(filename);
+		ofstream fout(filename, std::ofstream::binary);
+		ostream& out = (filename.empty() || filename == "--") ? cout : fout;
+
 		unsigned last = toNumber(exportTo);
 		for (unsigned i = toNumber(exportFrom); i <= last; ++i)
 		{
 			bytes block = web3.ethereum()->blockChain().block(web3.ethereum()->blockChain().numberHash(i));
-			fout.write((char const*)block.data(), block.size());
+			switch (exportFormat)
+			{
+			case Format::Binary: out.write((char const*)block.data(), block.size()); break;
+			case Format::Hex: out << toHex(block) << endl; break;
+			case Format::Human: out << RLP(block) << endl; break;
+			default:;
+			}
 		}
 		return 0;
 	}
 
 	if (mode == OperationMode::Import)
 	{
-		ifstream fin;
-		fin.open(filename);
-
-		while (fin)
+		ifstream fin(filename, std::ifstream::binary);
+		istream& in = (filename.empty() || filename == "--") ? cin : fin;
+		unsigned alreadyHave = 0;
+		unsigned good = 0;
+		unsigned futureTime = 0;
+		unsigned unknownParent = 0;
+		unsigned bad = 0;
+		while (in.peek() != -1)
 		{
 			bytes block(8);
-			fin.read((char*)block.data(), 8);
-			unsigned remaining = RLP(block, RLP::LaisezFaire).actualSize() - 8;
-			block.resize(remaining);
-			fin.read((char*)block.data() + 8, remaining);
-			web3.ethereum()->injectBlock(block);
+			in.read((char*)block.data(), 8);
+			block.resize(RLP(block, RLP::LaisezFaire).actualSize());
+			in.read((char*)block.data() + 8, block.size() - 8);
+			try
+			{
+				web3.ethereum()->injectBlock(block);
+				good++;
+			}
+			catch (AlreadyHaveBlock const&)
+			{
+				alreadyHave++;
+			}
+			catch (UnknownParent const&)
+			{
+				unknownParent++;
+			}
+			catch (FutureTime const&)
+			{
+				futureTime++;
+			}
+			catch (...)
+			{
+				bad++;
+			}
 		}
+		cout << (good + bad + futureTime + unknownParent + alreadyHave) << " total: " << good << " ok, " << alreadyHave << " got, " << futureTime << " future, " << unknownParent << " unknown parent, " << bad << " malformed." << endl;
 		return 0;
 	}
 
+	cout << credits();
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
@@ -645,10 +700,9 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "connect")
 			{
-				string addr;
-				unsigned port;
-				iss >> addr >> port;
-				web3.addNode(p2p::NodeId(), addr + ":" + toString(port ? port : p2p::c_defaultIPPort));
+				string addrPort;
+				iss >> addrPort;
+				web3.addNode(p2p::NodeId(), addrPort);
 			}
 			else if (cmd == "netstop")
 			{
