@@ -285,11 +285,6 @@ LocalisedLogEntries ClientBase::checkWatch(unsigned _watchId)
 	return ret;
 }
 
-h256 ClientBase::hashFromNumber(unsigned _number) const
-{
-	return bc().numberHash(_number);
-}
-
 BlockInfo ClientBase::blockInfo(h256 _hash) const
 {
 	return BlockInfo(bc().block(_hash));
@@ -302,7 +297,7 @@ BlockDetails ClientBase::blockDetails(h256 _hash) const
 
 Transaction ClientBase::transaction(h256 _transactionHash) const
 {
-	return Transaction(bc().transaction(_transactionHash), CheckSignature::Range);
+	return Transaction(bc().transaction(_transactionHash), CheckTransaction::Cheap);
 }
 
 Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
@@ -310,7 +305,7 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 	auto bl = bc().block(_blockHash);
 	RLP b(bl);
 	if (_i < b[1].itemCount())
-		return Transaction(b[1][_i].data(), CheckSignature::Range);
+		return Transaction(b[1][_i].data(), CheckTransaction::Cheap);
 	else
 		return Transaction();
 }
@@ -321,7 +316,7 @@ Transactions ClientBase::transactions(h256 _blockHash) const
 	RLP b(bl);
 	Transactions res;
 	for (unsigned i = 0; i < b[1].itemCount(); i++)
-		res.emplace_back(b[1][i].data(), CheckSignature::Range);
+		res.emplace_back(b[1][i].data(), CheckTransaction::Cheap);
 	return res;
 }
 
@@ -369,6 +364,11 @@ Transactions ClientBase::pending() const
 	return postMine().pending();
 }
 
+h256s ClientBase::pendingHashes() const
+{
+	return h256s() + postMine().pendingHashes();
+}
+
 
 StateDiff ClientBase::diff(unsigned _txi, h256 _block) const
 {
@@ -398,4 +398,13 @@ u256 ClientBase::gasLimitRemaining() const
 Address ClientBase::address() const
 {
 	return preMine().address();
+}
+
+h256 ClientBase::hashFromNumber(BlockNumber _number) const
+{
+	if (_number == PendingBlock)
+		return h256();
+	if (_number == LatestBlock)
+		return bc().currentHash();
+	return bc().numberHash(_number);
 }
