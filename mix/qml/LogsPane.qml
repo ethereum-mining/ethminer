@@ -585,48 +585,6 @@ Rectangle
 					}
 				}
 			}
-
-			Rectangle
-			{
-				height: logStyle.generic.layout.headerButtonHeight
-				anchors.verticalCenter: parent.verticalCenter
-				color: "transparent"
-				width: 20
-				Button
-				{
-					id: hideButton
-					action: hideAction
-					anchors.fill: parent
-					anchors.verticalCenter: parent.verticalCenter
-					height: 25
-					style:
-						ButtonStyle {
-						background:
-							Rectangle {
-							height: logStyle.generic.layout.headerButtonHeight
-							implicitHeight: logStyle.generic.layout.headerButtonHeight
-							color: "transparent"
-						}
-					}
-				}
-
-				Image {
-					id: hideImage
-					source: "qrc:/qml/img/exit.png"
-					anchors.centerIn: parent
-					fillMode: Image.PreserveAspectFit
-					width: 20
-					height: 25
-				}
-
-				Action {
-					id: hideAction
-					tooltip: qsTr("Exit")
-					onTriggered: {
-						logsPane.parent.toggle();
-					}
-				}
-			}
 		}
 	}
 
