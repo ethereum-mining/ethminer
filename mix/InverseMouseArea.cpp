@@ -30,19 +30,15 @@ using namespace dev::mix;
 
 void InverseMouseArea::itemChange(ItemChange _c, const ItemChangeData& _v)
 {
-	if (!this->m_active)
-		return;
 	Q_UNUSED(_v);
-	if (_c == ItemSceneChange && window())
+	if (this->m_active && _c == ItemSceneChange && window())
 		window()->installEventFilter(this);
 }
 
 bool InverseMouseArea::eventFilter(QObject* _obj, QEvent* _ev)
 {
-	if (!this->m_active)
-		return false;
 	Q_UNUSED(_obj);
-	if (_ev->type() == QEvent::MouseButtonPress && !this->contains(static_cast<QMouseEvent*>(_ev)->pos()))
+	if (this->m_active && _ev->type() == QEvent::MouseButtonPress && !this->contains(static_cast<QMouseEvent*>(_ev)->pos()))
 		emit clickedOutside();
 	return false;
 }
