@@ -206,8 +206,10 @@ Rectangle {
 				anchors.top: parent.top
 				anchors.topMargin: 15
 				anchors.left: parent.left;
-				anchors.leftMargin: machineStates.sideMargin
-				width: debugScrollArea.width - machineStates.sideMargin * 2 - 20;
+				anchors.leftMargin: machineStates.sideMargin 
+				//anchors.right: parent.right;
+				// anchors.rightMargin: machineStates.sideMargin 
+				width: debugScrollArea.width - machineStates.sideMargin * 2 - 20 ;
 				spacing: machineStates.sideMargin
 
 				Rectangle {
@@ -218,15 +220,15 @@ Rectangle {
 					color: "transparent"
 
 					Rectangle {
-						anchors.top: parent.top
-						anchors.bottom: parent.bottom
-						anchors.left: parent.left
+						anchors.fill: parent
 						color: "transparent"
-						width: parent.width * 0.4
+						//width: parent.width * 0.4
 						RowLayout {
-							anchors.horizontalCenter: parent.horizontalCenter
+							//anchors.horizontalCenter: parent.horizontalCenter
+							anchors.fill: parent
 							id: jumpButtons
-							spacing: 3
+							spacing: 2
+							layoutDirection: Qt.LeftToRight
 
 							StepActionImage
 							{
@@ -239,6 +241,7 @@ Rectangle {
 								buttonShortcut: "Ctrl+Shift+F8"
 								buttonTooltip: qsTr("Start Debugging")
 								visible: true
+								Layout.alignment: Qt.AlignLeft
 							}
 
 							StepActionImage
@@ -351,35 +354,40 @@ Rectangle {
 								buttonTooltip: qsTr("Run Forward")
 								visible: false
 							}
-						}
-					}
 
-					Rectangle {
-						anchors.top: parent.top
-						anchors.bottom: parent.bottom
-						anchors.right: parent.right
-						width: parent.width * 0.6
-						color: "transparent"
-						Slider {
-							id: statesSlider
-							anchors.fill: parent
-							tickmarksEnabled: true
-							stepSize: 1.0
-							onValueChanged: Debugger.jumpTo(value);
-							style: SliderStyle {
-								groove: Rectangle {
-									implicitHeight: 3
-									color: "#7da4cd"
-									radius: 8
-								}
-								handle: Rectangle {
-									anchors.centerIn: parent
-									color: control.pressed ? "white" : "lightgray"
-									border.color: "gray"
-									border.width: 2
-									implicitWidth: 10
-									implicitHeight: 10
-									radius: 12
+							Rectangle {
+								anchors.top: parent.top
+								anchors.bottom: parent.bottom
+								anchors.right: parent.right
+								//width: parent.width * 0.6
+								//minimumWidth: parent.width * 0.6
+								color: "transparent"
+								Layout.fillWidth: true
+								//Layout.minimumWidth: parent.width * 0.6
+								Layout.alignment: Qt.AlignRight
+
+								Slider {
+									id: statesSlider
+									anchors.fill: parent
+									tickmarksEnabled: true
+									stepSize: 1.0
+									onValueChanged: Debugger.jumpTo(value);
+									style: SliderStyle {
+										groove: Rectangle {
+											implicitHeight: 3
+											color: "#7da4cd"
+											radius: 8
+										}
+										handle: Rectangle {
+											anchors.centerIn: parent
+											color: control.pressed ? "white" : "lightgray"
+											border.color: "gray"
+											border.width: 2
+											implicitWidth: 10
+											implicitHeight: 10
+											radius: 12
+										}
+									}
 								}
 							}
 						}
