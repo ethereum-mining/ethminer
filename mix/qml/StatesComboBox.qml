@@ -31,8 +31,6 @@ Rectangle {
 
 	width: 200
 	height: 23
-	border.width: 2
-	border.color: "red"
 	Component.onCompleted: {
 		var top = dropDownList
 		while (top.parent) {
@@ -85,7 +83,6 @@ Rectangle {
 		id: boldFont
 	}
 	smooth: true
-
 	Rectangle {
 		id: chosenItem
 		width: parent.width
@@ -105,11 +102,8 @@ Rectangle {
 			anchors.fill: parent
 			onClicked: {
 				if (outsideClick.trigerred)
-				{
 					outsideClick.trigerred = false;
-					return;
-				}
-				if (statesCombo.state === "")
+				else if (statesCombo.state === "")
 					statesCombo.state = "dropDown";
 			}
 		}
@@ -151,7 +145,6 @@ Rectangle {
 
 		ColumnLayout {
 			spacing: 2
-
 			TableView {
 				id: listView
 				height: 20
