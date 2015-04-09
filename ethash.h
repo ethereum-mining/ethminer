@@ -168,7 +168,6 @@ ethash_cache *ethash_light_acquire_cache(ethash_light_t light);
  *                  Iff this function succeeds the ethash_full_t will take memory
  *                  ownership of the cache and free it at deletion. If not then the user
  *                  still has to handle freeing of the cache himself.
- * @param seed      Block seedhash. TODO: Do we really need this in this function?
  * @param callback  A callback function with signature of @ref ethash_callback_t
  *                  It accepts an unsigned with which a progress of DAG calculation
  *                  can be displayed. If all goes well the callback should return 0.
@@ -178,7 +177,6 @@ ethash_cache *ethash_light_acquire_cache(ethash_light_t light);
  */
 ethash_full_t ethash_full_new(ethash_params const* params,
                               ethash_cache const* cache,
-                              const ethash_h256_t *seed,
                               ethash_callback_t callback);
 /**
  * Frees a previously allocated ethash_full handler

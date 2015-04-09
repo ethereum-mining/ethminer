@@ -37,7 +37,6 @@ struct ethash_light {
 struct ethash_full {
     ethash_cache *cache;
     node *data;
-    const ethash_h256_t* seed;
     ethash_callback_t callback;
 };
 

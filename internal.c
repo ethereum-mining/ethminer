@@ -377,7 +377,6 @@ ethash_cache *ethash_light_acquire_cache(ethash_light_t light)
 
 ethash_full_t ethash_full_new(ethash_params const* params,
                               ethash_cache const* cache,
-                              const ethash_h256_t *seed,
                               ethash_callback_t callback)
 {
     struct ethash_full *ret;
@@ -385,6 +384,7 @@ ethash_full_t ethash_full_new(ethash_params const* params,
     if (!ret) {
         return NULL;
     }
+    
     ret->cache = (ethash_cache*)cache;
     ret->data = malloc(params->full_size);
     if (!ret->data) {
@@ -393,7 +393,6 @@ ethash_full_t ethash_full_new(ethash_params const* params,
     if (!ethash_compute_full_data(ret->data, params, cache)) {
         goto fail_free_full_data;
     }
-    ret->seed = seed;
     ret->callback = callback;
     return ret;
 
