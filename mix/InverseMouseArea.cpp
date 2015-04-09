@@ -30,30 +30,34 @@ using namespace dev::mix;
 
 void InverseMouseArea::itemChange(ItemChange _c, const ItemChangeData& _v)
 {
-	qDebug() << "itemCHange";
+	if (!this->m_active)
+		return;
 	Q_UNUSED(_v);
-
-	if (_c == ItemSceneChange)
-	{
-
+	if (_c == ItemSceneChange && window())
 		window()->installEventFilter(this);
-		//this->parentItem()->installEventFilter(this);
-	}
-
 }
 
 bool InverseMouseArea::eventFilter(QObject* _obj, QEvent* _ev)
 {
-	qDebug() << _ev->type();
+	if (!this->m_active)
+		return false;
 	Q_UNUSED(_obj);
-	if (_ev->type() == QEvent::MouseButtonPress)
-	{
-		qDebug() << "mouse event";
-		if (!this->contains(static_cast<QMouseEvent*>(_ev)->pos()))
-		{
-			qDebug() << "click outside";
-			emit clickedOutside();
-		}
-	}
+	if (_ev->type() == QEvent::MouseButtonPress && !this->contains(static_cast<QMouseEvent*>(_ev)->pos()))
+		emit clickedOutside();
 	return false;
+}
+
+bool InverseMouseArea::contains(const QPoint& _point) const
+{
+	if (!this->m_active)
+		return false;
+	QPointF global = this->parentItem()->mapToItem(0, QPointF(0, 0));
+	return QRectF(global.x(), global.y(), this->parentItem()->width(), this->parentItem()->height()).contains(_point);
+}
+
+void InverseMouseArea::setActive(bool _v)
+{
+	m_active = _v;
+	if (m_active && window())
+		window()->installEventFilter(this);
 }

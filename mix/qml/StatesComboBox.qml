@@ -24,13 +24,15 @@ import QtQuick 2.0
 import QtQuick.Controls 1.0
 import QtQuick.Layouts 1.1
 import QtGraphicalEffects 1.0
+import org.ethereum.qml.InverseMouseArea 1.0
 
 Rectangle {
 	id: statesComboBox
 
 	width: 200
 	height: 23
-
+	border.width: 2
+	border.color: "red"
 	Component.onCompleted: {
 		var top = dropDownList
 		while (top.parent) {
@@ -62,6 +64,12 @@ Rectangle {
 		chosenItemText.text = statesComboBox.items.get(index).title
 	}
 
+	function hideDropDown()
+	{
+		if (statesComboBox.state === "dropDown")
+			statesComboBox.state = "";
+	}
+
 	signal comboClicked
 
 	property variant colorItem
@@ -76,14 +84,13 @@ Rectangle {
 	{
 		id: boldFont
 	}
-
 	smooth: true
+
 	Rectangle {
 		id: chosenItem
 		width: parent.width
 		height: statesComboBox.height
 		color: statesComboBox.color
-
 		Text {
 			id: chosenItemText
 			anchors.left: parent.left
@@ -97,7 +104,13 @@ Rectangle {
 		MouseArea {
 			anchors.fill: parent
 			onClicked: {
-				statesComboBox.state = statesComboBox.state === "dropDown" ? "" : "dropDown"
+				if (outsideClick.trigerred)
+				{
+					outsideClick.trigerred = false;
+					return;
+				}
+				if (statesCombo.state === "")
+					statesCombo.state = "dropDown";
 			}
 		}
 	}
@@ -124,8 +137,21 @@ Rectangle {
 		anchors.topMargin: 23
 		color: statesComboBox.color
 
+		InverseMouseArea
+		{
+			property bool trigerred: false
+			id: outsideClick
+			anchors.fill: parent
+			active: false
+			onClickedOutside: {
+				trigerred = true;
+				statesCombo.hideDropDown()
+			}
+		}
+
 		ColumnLayout {
 			spacing: 2
+
 			TableView {
 				id: listView
 				height: 20
@@ -255,6 +281,10 @@ Rectangle {
 			target: listView
 			height: 20
 			implicitHeight: (statesComboBox.rowHeight * (statesComboBox.items.count))
+		}
+		PropertyChanges {
+			target: outsideClick
+			active: true
 		}
 	}
 }

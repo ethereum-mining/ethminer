@@ -252,13 +252,9 @@ Rectangle {
 			{
 				id: outsideClick
 				anchors.fill: parent
-			}
-
-			Connections
-			{
-				target: outsideClick
+				active: false
 				onClickedOutside: {
-					toggle();
+					logsContainer.toggle();
 				}
 			}
 
@@ -309,11 +305,14 @@ Rectangle {
 				State {
 					name: "opened";
 					PropertyChanges { target: logsContainer; height: 500; visible: true }
+					PropertyChanges { target: outsideClick; active: true }
+
 				},
 				State {
 					name: "closed";
 					PropertyChanges { target: logsContainer; height: 0; visible: false }
 					PropertyChanges { target: statusContainer; width: 600; height: 30 }
+					PropertyChanges { target: outsideClick; active: false }
 				}
 			]
 			transitions: Transition {

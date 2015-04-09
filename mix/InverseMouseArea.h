@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <QQuickWindow>
 #include <QQuickItem>
 
 namespace dev
@@ -32,14 +33,20 @@ namespace mix
 class InverseMouseArea: public QQuickItem
 {
 	Q_OBJECT
+	Q_PROPERTY(bool active MEMBER m_active WRITE setActive)
 
 public:
 	InverseMouseArea(QQuickItem* _parent = 0): QQuickItem(_parent) {}
-	~InverseMouseArea() { /*scene()->removeEventFilter(this);*/ }
+	~InverseMouseArea() { if (window()) { window()->removeEventFilter(this); } }
+	void setActive(bool _v);
 
 protected:
 	void itemChange(ItemChange _c, const ItemChangeData& _v);
 	bool eventFilter(QObject* _obj, QEvent *_ev);
+	bool contains(const QPoint& _point) const;
+
+private:
+	bool m_active;
 
 signals:
 	void clickedOutside();
