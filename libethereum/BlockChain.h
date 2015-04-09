@@ -64,7 +64,6 @@ struct BlockChainWarn: public LogChannel { static const char* name() { return "=
 std::map<Address, Account> const& genesisState();
 
 ldb::Slice toSlice(h256 const& _h, unsigned _sub = 0);
-ldb::Slice oldToSlice(h256 const& _h, unsigned _sub = 0);
 
 using BlocksHash = std::map<h256, bytes>;
 using TransactionHashes = h256s;
@@ -84,7 +83,6 @@ using ProgressCallback = std::function<void(unsigned, unsigned)>;
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  * @threadsafe
- * @todo Make not memory hog (should actually act as a cache and deallocate old entries).
  */
 class BlockChain
 {
@@ -261,30 +259,6 @@ private:
 
 		std::string s;
 		(_extrasDB ? _extrasDB : m_extrasDB)->Get(m_readOptions, toSlice(_h, N), &s);
-		if (s.empty())
-		{
-//			cout << "Not found in DB: " << _h << endl;
-			return _n;
-		}
-
-		noteUsed(_h, N);
-
-		WriteGuard l(_x);
-		auto ret = _m.insert(std::make_pair(_h, T(RLP(s))));
-		return ret.first->second;
-	}
-
-	template<class T, unsigned N> T oldQueryExtras(h256 const& _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const
-	{
-		{
-			ReadGuard l(_x);
-			auto it = _m.find(_h);
-			if (it != _m.end())
-				return it->second;
-		}
-
-		std::string s;
-		(_extrasDB ? _extrasDB : m_extrasDB)->Get(m_readOptions, oldToSlice(_h, N), &s);
 		if (s.empty())
 		{
 //			cout << "Not found in DB: " << _h << endl;

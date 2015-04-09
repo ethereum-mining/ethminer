@@ -113,7 +113,7 @@ void help()
 		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
-		<< "    -D,--initdag Initialize DAG for mining and exit." << endl
+		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
 		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
@@ -200,9 +200,20 @@ enum class NodeMode
 	Full
 };
 
+void doInitDAG(unsigned _n)
+{
+	BlockInfo bi;
+	bi.number = _n;
+	cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.seedHash().abridged() << "). This will take a while." << endl;
+	Ethasher::get()->full(bi);
+	exit(0);
+}
+
+static const unsigned NoDAGInit = (unsigned)-3;
+
 int main(int argc, char** argv)
 {
-	bool initDAG = false;
+	unsigned initDAG = NoDAGInit;
 	string listenIP;
 	unsigned short listenPort = 30303;
 	string publicIP;
@@ -307,8 +318,24 @@ int main(int argc, char** argv)
 			structuredLogging = true;
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
-		else if (arg == "-D" || arg == "--initdag")
-			initDAG = true;
+		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
+		{
+			string m = boost::to_lower_copy(string(argv[++i]));
+			if (m == "next")
+				initDAG = PendingBlock;
+			else if (m == "this")
+				initDAG = LatestBlock;
+			else
+				try
+				{
+					initDAG = stol(m);
+				}
+				catch (...)
+				{
+					cerr << "Bad " << arg << " option: " << m << endl;
+					return -1;
+				}
+		}
 		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
 			try
@@ -317,7 +344,7 @@ int main(int argc, char** argv)
 			}
 			catch (...)
 			{
-				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
 		}
@@ -329,7 +356,7 @@ int main(int argc, char** argv)
 			}
 			catch (...)
 			{
-				cerr << "Bad " << arg << " option: " << argv[++i] << endl;
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
 		}
@@ -422,6 +449,12 @@ int main(int argc, char** argv)
 		}
 	}
 
+
+	// Two codepaths is necessary since named block require database, but numbered
+	// blocks are superuseful to have when database is already open in another process.
+	if (initDAG < NoDAGInit)
+		doInitDAG(initDAG);
+
 	if (!clientName.empty())
 		clientName += "/";
 
@@ -442,12 +475,8 @@ int main(int argc, char** argv)
 		miners
 		);
 	
-	if (initDAG)
-	{
-		cout << "Initializing DAG. (This will take awhile)" << endl;
-		Ethasher::get()->full(web3.ethereum()->blockChain().info());
-		return 0;
-	}
+	if (initDAG == LatestBlock || initDAG == PendingBlock)
+		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
 	
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
@@ -667,7 +696,7 @@ int main(int argc, char** argv)
 					cnote << ssbd.str();
 					int ssize = sechex.length();
 					int size = hexAddr.length();
-					u256 minGas = (u256)Client::txGas(data, 0);
+					u256 minGas = (u256)Transaction::gasRequired(data, 0);
 					if (size < 40)
 					{
 						if (size > 0)
@@ -746,7 +775,7 @@ int main(int argc, char** argv)
 						auto h = bc.currentHash();
 						auto blockData = bc.block(h);
 						BlockInfo info(blockData);
-						u256 minGas = (u256)Client::txGas(bytes(), 0);
+						u256 minGas = (u256)Transaction::gasRequired(bytes(), 0);
 						try
 						{
 							Address dest = h160(fromHex(hexAddr, WhenError::Throw));
@@ -811,7 +840,7 @@ int main(int argc, char** argv)
 						cnote << "Init:";
 						cnote << ssc.str();
 					}
-					u256 minGas = (u256)Client::txGas(init, 0);
+					u256 minGas = (u256)Transaction::gasRequired(init, 0);
 					if (!init.size())
 						cwarn << "Contract creation aborted, no init code.";
 					else if (endowment < 0)

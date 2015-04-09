@@ -71,7 +71,7 @@ public:
 	void operator=(Executive) = delete;
 
 	/// Initializes the executive for evaluating a transaction. You must call finalize() at some point following this.
-	void initialize(bytesConstRef _transaction) { initialize(Transaction(_transaction, CheckSignature::None)); }
+	void initialize(bytesConstRef _transaction) { initialize(Transaction(_transaction, CheckTransaction::None)); }
 	void initialize(Transaction const& _transaction);
 	/// Finalise a transaction previously set up with initialize().
 	/// @warning Only valid after initialize() and execute(), and possibly go().
