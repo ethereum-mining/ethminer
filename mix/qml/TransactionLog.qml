@@ -4,6 +4,7 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import org.ethereum.qml.RecordLogEntry 1.0
+import org.ethereum.qml.InverseMouseArea 1.0
 
 Item {
 	property ListModel fullModel: ListModel{}
@@ -60,7 +61,7 @@ Item {
 					target: projectModel.stateListModel
 					onStateRun: {
 						if (statesCombo.selectedIndex !== index)
-							statesCombo.setSelectedIndex( index );
+							statesCombo.setSelectedIndex(index)
 					}
 				}
 			}
