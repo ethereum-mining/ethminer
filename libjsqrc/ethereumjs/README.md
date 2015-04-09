@@ -1,9 +1,11 @@
 # Ethereum JavaScript API
 
+[![Join the chat at https://gitter.im/ethereum/ethereum.js](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereum/ethereum.js?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 This is the Ethereum compatible [JavaScript API](https://github.com/ethereum/wiki/wiki/JavaScript-API)
 which implements the [Generic JSON RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC) spec. It's available on npm as a node module, for bower and component as an embeddable js and as a meteor.js package.
 
-[![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![dependency status][dep-image]][dep-url] [![dev dependency status][dep-dev-image]][dep-dev-url][![Coverage Status][coveralls-image]][coveralls-url]
+[![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![dependency status][dep-image]][dep-url] [![dev dependency status][dep-dev-image]][dep-dev-url][![Coverage Status][coveralls-image]][coveralls-url][![Stories in Ready][waffle-image]][waffle-url]
 
 <!-- [![browser support](https://ci.testling.com/ethereum/ethereum.js.png)](https://ci.testling.com/ethereum/ethereum.js) -->
 
@@ -36,7 +38,7 @@ Component
 ## Usage
 Require the library (not required for the meteor package):
 
-	var web3 = require('web3');
+	var web3 = require('ethereum.js');
 
 Set a provider (QtSyncProvider, HttpProvider)
 
@@ -110,4 +112,6 @@ eth -j
 [dep-dev-url]: https://david-dm.org/ethereum/ethereum.js#info=devDependencies
 [coveralls-image]: https://coveralls.io/repos/ethereum/ethereum.js/badge.svg?branch=master
 [coveralls-url]: https://coveralls.io/r/ethereum/ethereum.js?branch=master
+[waffle-image]: https://badge.waffle.io/ethereum/ethereum.js.svg?label=ready&title=Ready
+[waffle-url]: http://waffle.io/ethereum/ethereum.js
 
