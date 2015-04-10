@@ -107,7 +107,7 @@ unsigned RLP::actualSize() const
 	if (isSingleByte())
 		return 1;
 	if (isData() || isList())
-		return payload().data() - m_data.data() + length();
+		return payloadOffset() + length();
 	return 0;
 }
 

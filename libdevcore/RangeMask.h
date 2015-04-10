@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 #include <iostream>
+#include <assert.h>
 
 namespace dev
 {

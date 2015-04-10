@@ -191,6 +191,8 @@ void EthereumHost::maintainTransactions()
 		for (auto const& p: randomSelection(25, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }))
 			peerTransactions[p].push_back(i.first);
 	}
+	for (auto const& t: ts)
+		m_transactionsSent.insert(t.first);
 	for (auto p: peerSessions())
 		if (auto ep = p.first->cap<EthereumPeer>())
 		{
@@ -198,11 +200,10 @@ void EthereumHost::maintainTransactions()
 			unsigned n = 0;
 			for (auto const& h: peerTransactions[ep])
 			{
+				ep->m_knownTransactions.insert(h);
 				b += ts[h].rlp();
 				++n;
 			}
-			for (auto const& t: ts)
-				m_transactionsSent.insert(t.first);
 
 			ep->clearKnownTransactions();
 

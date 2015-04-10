@@ -154,6 +154,14 @@ QVariantMap ClientModel::contractAddresses() const
 	return res;
 }
 
+QVariantMap ClientModel::gasCosts() const
+{
+	QVariantMap res;
+	for (auto const& c: m_gasCosts)
+		res.insert(c.first, QVariant::fromValue(static_cast<int>(c.second)));
+	return res;
+}
+
 void ClientModel::setupState(QVariantMap _state)
 {
 	QVariantList balances = _state.value("accounts").toList();
@@ -173,6 +181,7 @@ void ClientModel::setupState(QVariantMap _state)
 		QString contractId = transaction.value("contractId").toString();
 		QString functionId = transaction.value("functionId").toString();
 		u256 gas = boost::get<u256>(qvariant_cast<QBigInt*>(transaction.value("gas"))->internalValue());
+		bool gasAuto = transaction.value("gasAuto").toBool();
 		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
 		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
 		QString sender = transaction.value("sender").toString();
@@ -183,7 +192,7 @@ void ClientModel::setupState(QVariantMap _state)
 				contractId = functionId;
 			TransactionSettings transactionSettings(contractId, transaction.value("url").toString());
 			transactionSettings.gasPrice = 10000000000000;
-			transactionSettings.gas = 125000;
+			transactionSettings.gasAuto = true;
 			transactionSettings.value = 0;
 			transactionSettings.sender = Secret(sender.toStdString());
 			transactionSequence.push_back(transactionSettings);
@@ -192,7 +201,7 @@ void ClientModel::setupState(QVariantMap _state)
 		{
 			if (contractId.isEmpty() && m_codeModel->hasContract()) //TODO: This is to support old project files, remove later
 				contractId = m_codeModel->contracts().keys()[0];
-			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasPrice, Secret(sender.toStdString()));
+			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasAuto, gasPrice, Secret(sender.toStdString()));
 			transactionSettings.parameterValues = transaction.value("parameters").toMap();
 
 			if (contractId == functionId || functionId == "Constructor")
@@ -228,7 +237,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 					//std contract
 					bytes const& stdContractCode = m_codeModel->getStdContractCode(transaction.contractId, transaction.stdContractUrl);
 					TransactionSettings stdTransaction = transaction;
-					stdTransaction.gas = 500000;// TODO: get this from std contracts library
+					stdTransaction.gasAuto = true;
 					Address address = deployContract(stdContractCode, stdTransaction);
 					m_stdContractAddresses[stdTransaction.contractId] = address;
 					m_stdContractNames[address] = stdTransaction.contractId;
@@ -277,6 +286,8 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 							m_contractNames[newAddress] = transaction.contractId;
 							contractAddressesChanged();
 						}
+						gasCostsChanged();
+						m_gasCosts[transaction.contractId] = m_client->lastExecution().gasUsed;
 					}
 					else
 					{
@@ -507,13 +518,13 @@ void ClientModel::debugRecord(unsigned _index)
 
 Address ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
 {
-	Address newAddress = m_client->submitTransaction(_ctrTransaction.sender, _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice);
+	Address newAddress = m_client->submitTransaction(_ctrTransaction.sender, _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice, _ctrTransaction.gasAuto);
 	return newAddress;
 }
 
 void ClientModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
-	m_client->submitTransaction(_tr.sender, _tr.value, _contract, _data, _tr.gas, _tr.gasPrice);
+	m_client->submitTransaction(_tr.sender, _tr.value, _contract, _data, _tr.gas, _tr.gasPrice, _tr.gasAuto);
 }
 
 RecordLogEntry* ClientModel::lastBlock() const
@@ -523,7 +534,7 @@ RecordLogEntry* ClientModel::lastBlock() const
 	strGas << blockInfo.gasUsed;
 	stringstream strNumber;
 	strNumber << blockInfo.number;
-	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(toHex(blockInfo.hash().ref()))), tr("Gas Used: ") + QString::fromStdString(strGas.str()), QString(), QString(), false, RecordLogEntry::RecordType::Block);
+	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(toHex(blockInfo.hash().ref()))), QString(), QString(), QString(), false, RecordLogEntry::RecordType::Block, QString::fromStdString(strGas.str()));
 	QQmlEngine::setObjectOwnership(record, QQmlEngine::JavaScriptOwnership);
 	return record;
 }
@@ -544,12 +555,16 @@ void ClientModel::onNewTransaction()
 	unsigned recordIndex = tr.executonIndex;
 	QString transactionIndex = tr.isCall() ? QObject::tr("Call") : QString("%1:%2").arg(block).arg(tr.transactionIndex);
 	QString address = QString::fromStdString(toJS(tr.address));
-	QString value =  QString::fromStdString(toString(tr.value));
+	QString value = QString::fromStdString(toString(tr.value));
 	QString contract = address;
 	QString function;
 	QString returned;
+	QString gasUsed;
 
 	bool creation = (bool)tr.contractAddress;
+
+	if (!tr.isCall())
+		gasUsed = QString::fromStdString(toString(tr.gasUsed));
 
 	//TODO: handle value transfer
 	FixedHash<4> functionHash;
@@ -605,7 +620,7 @@ void ClientModel::onNewTransaction()
 		}
 	}
 
-	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall(), RecordLogEntry::RecordType::Transaction);
+	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall(), RecordLogEntry::RecordType::Transaction, gasUsed);
 	QQmlEngine::setObjectOwnership(log, QQmlEngine::JavaScriptOwnership);
 	emit newRecord(log);
 }

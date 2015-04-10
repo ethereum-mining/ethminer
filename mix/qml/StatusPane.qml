@@ -2,6 +2,8 @@ import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.3
+import org.ethereum.qml.InverseMouseArea 1.0
+import QtGraphicalEffects 1.0
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
 
@@ -112,8 +114,17 @@ Rectangle {
 	}
 	Connections {
 		target: codeModel
-		onCompilationComplete: updateStatus();
-		onCompilationError: updateStatus(_error);
+		onCompilationComplete:
+		{
+			goToLine.visible = false;
+			updateStatus();
+		}
+
+		onCompilationError:
+		{
+			goToLine.visible = true
+			updateStatus(_error);
+		}
 	}
 
 	color: "transparent"
@@ -176,24 +187,70 @@ Rectangle {
 				else
 					width = undefined
 			}
-		}
 
-		Button
-		{
-			anchors.fill: parent
-			id: toolTip
-			action: toolTipInfo
-			text: ""
-			style:
-				ButtonStyle {
-				background:Rectangle {
-					color: "transparent"
+			Button
+			{
+				anchors.fill: parent
+				id: toolTip
+				action: toolTipInfo
+				text: ""
+				z: 3;
+				style:
+					ButtonStyle {
+					background:Rectangle {
+						color: "transparent"
+					}
+				}
+				MouseArea {
+					anchors.fill: parent
+					onClicked: {
+						logsContainer.toggle();
+					}
 				}
 			}
-			MouseArea {
+		}
+
+		Rectangle
+		{
+			visible: false
+			color: "transparent"
+			width: 40
+			height: parent.height
+			anchors.top: parent.top
+			anchors.left: status.right
+			anchors.leftMargin: 15
+			id: goToLine
+			RowLayout
+			{
 				anchors.fill: parent
-				onClicked: {
-					logsContainer.toggle();
+				Rectangle
+				{
+					color: "transparent"
+					anchors.fill: parent
+					Button
+					{
+						z: 4
+						anchors.centerIn: parent
+						id: goToLineBtn
+						text: ""
+						width: 30
+						height: 30
+						action: goToCompilationError
+						style: ButtonStyle {
+							background: Rectangle {
+								color: "transparent"
+
+								Image { 
+									source: "qrc:/qml/img/warningicon.png"
+									height: 30
+									width: 30
+									sourceSize.width: 30
+        							sourceSize.height: 30
+        							anchors.centerIn: parent
+								}
+							}
+						}
+					}
 				}
 			}
 		}
@@ -205,6 +262,37 @@ Rectangle {
 
 		Rectangle
 		{
+			id: logsShadow
+			width: logsContainer.width + 5
+			height: 0
+			opacity: 0.3
+			clip: true
+			anchors.top: logsContainer.top
+			anchors.margins: 4
+			Rectangle {
+				color: "gray"
+				anchors.top: parent.top
+				radius: 10
+				id: roundRect
+				height: 400
+				width: parent.width
+			}
+		}
+
+
+
+		Rectangle
+		{
+			InverseMouseArea
+			{
+				id: outsideClick
+				anchors.fill: parent
+				active: false
+				onClickedOutside: {
+					logsContainer.toggle();
+				}
+			}
+
 			function toggle()
 			{
 				if (logsContainer.state === "opened")
@@ -234,7 +322,16 @@ Rectangle {
 					top = top.parent
 				var coordinates = logsContainer.mapToItem(top, 0, 0);
 				logsContainer.parent = top;
+				logsShadow.parent = top;
 				logsContainer.x = status.x + statusContainer.x - logStyle.generic.layout.dateWidth - logStyle.generic.layout.typeWidth + 70
+				logsShadow.x = status.x + statusContainer.x - logStyle.generic.layout.dateWidth - logStyle.generic.layout.typeWidth + 70;
+				logsShadow.z = 1
+				logsContainer.z = 2
+				if (Qt.platform.os === "osx")
+				{
+					logsContainer.y = statusContainer.y;
+					logsShadow.y = statusContainer.y;
+				}
 			}
 
 			LogsPaneStyle {
@@ -250,11 +347,16 @@ Rectangle {
 				State {
 					name: "opened";
 					PropertyChanges { target: logsContainer; height: 500; visible: true }
+					PropertyChanges { target: logsShadow; height: 500; visible: true }
+					PropertyChanges { target: outsideClick; active: true }
+
 				},
 				State {
 					name: "closed";
 					PropertyChanges { target: logsContainer; height: 0; visible: false }
 					PropertyChanges { target: statusContainer; width: 600; height: 30 }
+					PropertyChanges { target: outsideClick; active: false }
+					PropertyChanges { target: logsShadow; height: 0; visible: false }
 				}
 			]
 			transitions: Transition {

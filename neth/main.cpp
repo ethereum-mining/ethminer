@@ -40,6 +40,7 @@
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
+#include <libethcore/Ethasher.h>
 #include "BuildInfo.h"
 
 #undef KEY_EVENT // from windows.h
@@ -76,6 +77,7 @@ void help()
 		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+		<< "    -D,--initdag Initialize DAG for mining and exit." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
 		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
@@ -535,8 +537,6 @@ int main(int argc, char** argv)
 		}
 	}
 
-	
-	
 	if (!clientName.empty())
 		clientName += "/";
 
@@ -556,6 +556,7 @@ int main(int argc, char** argv)
 		&nodesState,
 		miners
 		);
+	
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
@@ -873,7 +874,7 @@ int main(int argc, char** argv)
 				ssbd << bbd;
 				cnote << ssbd.str();
 				int ssize = fields[4].length();
-				u256 minGas = (u256)Client::txGas(data, 0);
+				u256 minGas = (u256)Transaction::gasRequired(data, 0);
 				if (size < 40)
 				{
 					if (size > 0)
@@ -939,7 +940,7 @@ int main(int argc, char** argv)
 					auto h = bc.currentHash();
 					auto blockData = bc.block(h);
 					BlockInfo info(blockData);
-					u256 minGas = (u256)Client::txGas(bytes(), 0);
+					u256 minGas = (u256)Transaction::gasRequired(bytes(), 0);
 					try
 					{
 						Address dest = h160(fromHex(fields[0], WhenError::Throw));
@@ -1027,7 +1028,7 @@ int main(int argc, char** argv)
 					cnote << "Init:";
 					cnote << ssc.str();
 				}
-				u256 minGas = (u256)Client::txGas(init, 0);
+				u256 minGas = (u256)Transaction::gasRequired(init, 0);
 				if (!init.size())
 					cwarn << "Contract creation aborted, no init code.";
 				else if (endowment < 0)
@@ -1113,7 +1114,7 @@ int main(int argc, char** argv)
 				auto b = bc.block(h);
 				for (auto const& i: RLP(b)[1])
 				{
-					Transaction t(i.data(), CheckSignature::Sender);
+					Transaction t(i.data(), CheckTransaction::Everything);
 					auto s = t.receiveAddress() ?
 						boost::format("  %1% %2%> %3%: %4% [%5%]") %
 							toString(t.safeSender()) %

@@ -170,18 +170,6 @@ static Json::Value toJson(map<u256, u256> const& _storage)
 	return res;
 }
 
-static unsigned toBlockNumber(std::string const& _js)
-{
-	if (_js == "latest")
-		return LatestBlock;
-	else if (_js == "earliest")
-		return 0;
-	else if (_js == "pending")
-		return PendingBlock;
-	else
-		return (unsigned)jsToInt(_js);
-}
-
 static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
 {
 	dev::eth::LogFilter filter;
@@ -190,9 +178,9 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 
 	// check only !empty. it should throw exceptions if input params are incorrect
 	if (!_json["fromBlock"].empty())
-		filter.withEarliest(toBlockNumber(_json["fromBlock"].asString()));
+		filter.withEarliest(jsToBlockNumber(_json["fromBlock"].asString()));
 	if (!_json["toBlock"].empty())
-		filter.withLatest(toBlockNumber(_json["toBlock"].asString()));
+		filter.withLatest(jsToBlockNumber(_json["toBlock"].asString()));
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
@@ -336,7 +324,7 @@ string WebThreeStubServerBase::eth_getBalance(string const& _address, string con
 {
 	try
 	{
-		return toJS(client()->balanceAt(jsToAddress(_address), toBlockNumber(_blockNumber)));
+		return toJS(client()->balanceAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
 	}
 	catch (...)
 	{
@@ -348,7 +336,7 @@ string WebThreeStubServerBase::eth_getStorageAt(string const& _address, string c
 {
 	try
 	{
-		return toJS(client()->stateAt(jsToAddress(_address), jsToU256(_position), toBlockNumber(_blockNumber)));
+		return toJS(client()->stateAt(jsToAddress(_address), jsToU256(_position), jsToBlockNumber(_blockNumber)));
 	}
 	catch (...)
 	{
@@ -360,7 +348,7 @@ string WebThreeStubServerBase::eth_getTransactionCount(string const& _address, s
 {
 	try
 	{
-		return toJS(client()->countAt(jsToAddress(_address), toBlockNumber(_blockNumber)));
+		return toJS(client()->countAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
 	}
 	catch (...)
 	{
@@ -385,7 +373,7 @@ string WebThreeStubServerBase::eth_getBlockTransactionCountByNumber(string const
 {
 	try
 	{
-		return toJS(_blockNumber == "pending" ? client()->pending().size() : client()->transactionCount(client()->hashFromNumber(toBlockNumber(_blockNumber))));
+		return toJS(client()->transactionCount(jsToBlockNumber(_blockNumber)));
 	}
 	catch (...)
 	{
@@ -409,7 +397,7 @@ string WebThreeStubServerBase::eth_getUncleCountByBlockNumber(string const& _blo
 {
 	try
 	{
-		return toJS(client()->uncleCount(client()->hashFromNumber(toBlockNumber(_blockNumber))));
+		return toJS(client()->uncleCount(jsToBlockNumber(_blockNumber)));
 	}
 	catch (...)
 	{
@@ -421,7 +409,7 @@ string WebThreeStubServerBase::eth_getCode(string const& _address, string const&
 {
 	try
 	{
-		return toJS(client()->codeAt(jsToAddress(_address), toBlockNumber(_blockNumber)));
+		return toJS(client()->codeAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
 	}
 	catch (...)
 	{
@@ -461,63 +449,55 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 
 string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 {
-	TransactionSkeleton t;
-	
 	try
 	{
-		t = toTransaction(_json);
+		string ret;
+		TransactionSkeleton t = toTransaction(_json);
+	
+		if (!t.from)
+			t.from = m_accounts->getDefaultTransactAccount();
+		if (t.creation)
+			ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
+		if (!t.gasPrice)
+			t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
+		if (!t.gas)
+			t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
+
+		if (m_accounts->isRealAccount(t.from))
+			authenticate(t, false);
+		else if (m_accounts->isProxyAccount(t.from))
+			authenticate(t, true);
+	
+		return ret;
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-	string ret;
-	if (!t.from)
-		t.from = m_accounts->getDefaultTransactAccount();
-	if (t.creation)
-		ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
-	if (!t.gasPrice)
-		t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
-	if (!t.gas)
-		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
-	
-	if (m_accounts->isRealAccount(t.from))
-		authenticate(t, false);
-	else if (m_accounts->isProxyAccount(t.from))
-		authenticate(t, true);
-	
-	return ret;
 }
 
 
 string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& _blockNumber)
 {
-	TransactionSkeleton t;
-	int number;
-	
 	try
 	{
-		t = toTransaction(_json);
-		number = toBlockNumber(_blockNumber);
+		TransactionSkeleton t = toTransaction(_json);
+		if (!t.from)
+			t.from = m_accounts->getDefaultTransactAccount();
+	//	if (!m_accounts->isRealAccount(t.from))
+	//		return ret;
+		if (!t.gasPrice)
+			t.gasPrice = 10 * dev::eth::szabo;
+		if (!t.gas)
+			t.gas = client()->gasLimitRemaining();
+
+		return toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, jsToBlockNumber(_blockNumber), FudgeFactor::Lenient).output);
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
 	
-	string ret;
-	if (!t.from)
-		t.from = m_accounts->getDefaultTransactAccount();
-	if (!m_accounts->isRealAccount(t.from))
-		return ret;
-	if (!t.gasPrice)
-		t.gasPrice = 10 * dev::eth::szabo;
-	if (!t.gas)
-		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
-	ret = toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, number).output);
-	
-	return ret;
 }
 
 bool WebThreeStubServerBase::eth_flush()
@@ -546,7 +526,7 @@ Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNum
 {
 	try
 	{
-		auto h = client()->hashFromNumber(jsToInt(_blockNumber));
+		auto h = jsToBlockNumber(_blockNumber);
 		if (_includeTransactions)
 			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactions(h));
 		else
@@ -586,7 +566,7 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockNumberAndIndex(stri
 {
 	try
 	{
-		return toJson(client()->transaction(client()->hashFromNumber(jsToInt(_blockNumber)), jsToInt(_transactionIndex)));
+		return toJson(client()->transaction(jsToBlockNumber(_blockNumber), jsToInt(_transactionIndex)));
 	}
 	catch (...)
 	{
@@ -610,7 +590,7 @@ Json::Value WebThreeStubServerBase::eth_getUncleByBlockNumberAndIndex(string con
 {
 	try
 	{
-		return toJson(client()->uncle(client()->hashFromNumber(toBlockNumber(_blockNumber)), jsToInt(_uncleIndex)));
+		return toJson(client()->uncle(jsToBlockNumber(_blockNumber), jsToInt(_uncleIndex)));
 	}
 	catch (...)
 	{
