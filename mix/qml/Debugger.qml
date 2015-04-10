@@ -207,8 +207,6 @@ Rectangle {
 				anchors.topMargin: 15
 				anchors.left: parent.left;
 				anchors.leftMargin: machineStates.sideMargin 
-				//anchors.right: parent.right;
-				// anchors.rightMargin: machineStates.sideMargin 
 				width: debugScrollArea.width - machineStates.sideMargin * 2 - 20 ;
 				spacing: machineStates.sideMargin
 
@@ -222,12 +220,10 @@ Rectangle {
 					Rectangle {
 						anchors.fill: parent
 						color: "transparent"
-						//width: parent.width * 0.4
 						RowLayout {
-							//anchors.horizontalCenter: parent.horizontalCenter
 							anchors.fill: parent
 							id: jumpButtons
-							spacing: 2
+							spacing: 3
 							layoutDirection: Qt.LeftToRight
 
 							StepActionImage
@@ -359,11 +355,9 @@ Rectangle {
 								anchors.top: parent.top
 								anchors.bottom: parent.bottom
 								anchors.right: parent.right
-								//width: parent.width * 0.6
-								//minimumWidth: parent.width * 0.6
 								color: "transparent"
 								Layout.fillWidth: true
-								//Layout.minimumWidth: parent.width * 0.6
+								Layout.minimumWidth: parent.width * 0.2
 								Layout.alignment: Qt.AlignRight
 
 								Slider {
@@ -488,7 +482,7 @@ Rectangle {
 						anchors.top : parent.top
 						anchors.bottom: parent.bottom
 						anchors.right: parent.right
-						height: parent.height //- 2 * stateListContainer.border.width
+						height: parent.height
 						color: "transparent"
 						ColumnLayout
 						{
@@ -528,7 +522,6 @@ Rectangle {
 								title : qsTr("Stack")
 								itemDelegate: Item {
 									id: renderedItem
-									//height: 25
 									width: parent.width
 									RowLayout
 									{
