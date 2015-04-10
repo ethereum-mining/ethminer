@@ -229,13 +229,26 @@ Rectangle {
 					Button
 					{
 						z: 4
-						anchors.right: parent.right
-						anchors.rightMargin: 9
-						anchors.verticalCenter: parent.verticalCenter
+						anchors.centerIn: parent
 						id: goToLineBtn
 						text: ""
-						iconSource: "qrc:/qml/img/signerroricon32.png"
+						width: 30
+						height: 30
 						action: goToCompilationError
+						style: ButtonStyle {
+							background: Rectangle {
+								color: "transparent"
+
+								Image { 
+									source: "qrc:/qml/img/warningicon.png"
+									height: 30
+									width: 30
+									sourceSize.width: 30
+        							sourceSize.height: 30
+        							anchors.centerIn: parent
+								}
+							}
+						}
 					}
 				}
 			}
