@@ -65,14 +65,17 @@ Address ClientBase::submitTransaction(Secret _secret, u256 _endowment, bytes con
 }
 
 // TODO: remove try/catch, allow exceptions
-ExecutionResult ClientBase::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
+ExecutionResult ClientBase::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff)
 {
 	ExecutionResult ret;
 	try
 	{
 		State temp = asOf(_blockNumber);
-		u256 n = temp.transactionsFrom(toAddress(_secret));
+		Address a = toAddress(_secret);
+		u256 n = temp.transactionsFrom(a);
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
+		if (_ff == FudgeFactor::Lenient)
+			temp.addBalance(a, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
 		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
 	}
 	catch (...)
@@ -82,16 +85,19 @@ ExecutionResult ClientBase::call(Secret _secret, u256 _value, Address _dest, byt
 	return ret;
 }
 
-ExecutionResult ClientBase::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
+ExecutionResult ClientBase::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff)
 {
 	ExecutionResult ret;
 	try
 	{
 		State temp = asOf(_blockNumber);
-		u256 n = temp.transactionsFrom(toAddress(_secret));
+		Address a = toAddress(_secret);
+		u256 n = temp.transactionsFrom(a);
 		//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 		
 		Transaction t(_value, _gasPrice, _gas, _data, n, _secret);
+		if (_ff == FudgeFactor::Lenient)
+			temp.addBalance(a, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
 		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
 	}
 	catch (...)
@@ -99,6 +105,11 @@ ExecutionResult ClientBase::create(Secret _secret, u256 _value, bytes const& _da
 		// TODO: Some sort of notification of failure.
 	}
 	return ret;
+}
+
+void ClientBase::injectBlock(bytes const& _block)
+{
+	bc().import(_block, preMine().db());
 }
 
 u256 ClientBase::balanceAt(Address _a, BlockNumber _block) const

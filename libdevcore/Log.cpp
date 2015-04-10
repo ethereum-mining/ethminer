@@ -43,7 +43,7 @@ void dev::simpleDebugOut(std::string const& _s, char const*)
 	static Mutex s_lock;
 	Guard l(s_lock);
 
-	cout << _s << endl << flush;
+	cerr << _s << endl << flush;
 
 	// helpful to use OutputDebugString on windows
 	#ifdef _WIN32
