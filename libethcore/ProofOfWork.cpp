@@ -207,10 +207,10 @@ std::pair<MineInfo, Ethash::Proof> EthashCL::mine(BlockInfo const& _header, unsi
 	{
 		m_hook->abort();
 		static std::random_device s_eng;
-		uint64_t tryNonce = (uint64_t)(u64)(m_last = Nonce::random(s_eng));
 		auto hh = _header.headerHash(WithoutNonce);
-		cdebug << "Mining with headerhash" << hh << "from nonce" << m_last << "with boundary" << _header.boundary();
-		m_miner->search(hh.data(), tryNonce, *m_hook);
+		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)_header.boundary() >> 192);
+		cdebug << "Mining with headerhash" << hh << "from nonce" << m_last << "with boundary" << _header.boundary() << " (" << upper64OfBoundary << ")";
+		m_miner->search(hh.data(), upper64OfBoundary, *m_hook);
 	}
 	m_lastHeader = _header;
 
