@@ -19,10 +19,11 @@
  * @date 2014
  * Ethereum client.
  */
+#if ETH_ETHASHCL
 #define __CL_ENABLE_EXCEPTIONS
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 #include "libethash-cl/cl.hpp"
-
+#endif
 #include <functional>
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Log.h>
@@ -108,6 +109,7 @@ int main()
 #else
 int main()
 {
+#if ETH_ETHASHCL
 	EthashCL ecl;
 	BlockInfo genesis = CanonBlockChain::genesis();
 	genesis.difficulty = 1 << 18;
@@ -118,6 +120,7 @@ int main()
 	cdebug << r.second.mixHash << r.second.nonce;
 	EthashCL::assignResult(r.second, genesis);
 	assert(EthashCPU::verify(genesis));
+#endif
 	return 0;
 }
 #endif
