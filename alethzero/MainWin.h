@@ -179,6 +179,7 @@ private slots:
 
 	// Dapps
 	void dappLoaded(Dapp& _dapp); //qt does not support rvalue refs for signals
+	void pageLoaded(QByteArray const& _content, QString const& _mimeType, QUrl const& _uri);
 
 signals:
 	void poll();
