@@ -94,7 +94,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 			for (unsigned i = 0; i < r[1].size(); ++i)
 			{
 				auto gu = brs.receipts[i].gasUsed();
-				dist[Transaction(r[1][i].data(), CheckSignature::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
+				dist[Transaction(r[1][i].data(), CheckTransaction::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
 				total += (unsigned)gu;
 			}
 		}
@@ -334,6 +334,7 @@ void Client::setMiningThreads(unsigned _threads)
 {
 	stopMining();
 #if ETH_ETHASHCL
+	(void)_threads;
 	unsigned t = 1;
 #else
 	auto t = _threads ? _threads : thread::hardware_concurrency();
@@ -397,7 +398,7 @@ void Client::setupState(State& _s)
 		_s.commitToMine(m_bc);
 }
 
-ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u256 _gasPrice)
+ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u256 _gasPrice, Address const& _from)
 {
 	ExecutionResult ret;
 	try
@@ -407,10 +408,10 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 		{
 			ReadGuard l(x_stateDB);
 			temp = m_postMine;
-			temp.addBalance(Address(), _value + _gasPrice * _gas);
+			temp.addBalance(_from, _value + _gasPrice * _gas);
 		}
 		Executive e(temp, LastHashes(), 0);
-		if (!e.call(_dest, _dest, Address(), _value, _gasPrice, &_data, _gas, Address()))
+		if (!e.call(_dest, _dest, _from, _value, _gasPrice, &_data, _gas, _from))
 			e.go();
 		ret = e.executionResult();
 	}
@@ -511,7 +512,7 @@ void Client::doWork()
 			clog(ClientNote) << "Dead block:" << h.abridged();
 			for (auto const& t: m_bc.transactions(h))
 			{
-				clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckSignature::None);
+				clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckTransaction::None);
 				m_tq.import(t);
 			}
 		}
@@ -519,7 +520,7 @@ void Client::doWork()
 		// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 		for (auto const& h: fresh)
 		{
-			clog(ClientChat) << "Mined block:" << h.abridged();
+			clog(ClientChat) << "Live block:" << h.abridged();
 			for (auto const& th: m_bc.transactionHashes(h))
 			{
 				clog(ClientNote) << "Safely dropping transaction " << th;

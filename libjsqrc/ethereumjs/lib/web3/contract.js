@@ -26,15 +26,6 @@ var utils = require('../utils/utils');
 var eventImpl = require('./event');
 var signature = require('./signature');
 
-var exportNatspecGlobals = function (vars) {
-    // it's used byt natspec.js
-    // TODO: figure out better way to solve this
-    web3._currentContractAbi = vars.abi;
-    web3._currentContractAddress = vars.address;
-    web3._currentContractMethodName = vars.method;
-    web3._currentContractMethodParams = vars.params;
-};
-
 var addFunctionRelatedPropertiesToContract = function (contract) {
     
     contract.call = function (options) {
@@ -43,28 +34,11 @@ var addFunctionRelatedPropertiesToContract = function (contract) {
         return contract;
     };
 
-
     contract.sendTransaction = function (options) {
         contract._isTransaction = true;
         contract._options = options;
         return contract;
     };
-    // DEPRECATED
-    contract.transact = function (options) {
-
-        console.warn('myContract.transact() is deprecated please use myContract.sendTransaction() instead.');
-
-        return contract.sendTransaction(options);
-    };
-
-    contract._options = {};
-    ['gas', 'gasPrice', 'value', 'from'].forEach(function(p) {
-        contract[p] = function (v) {
-            contract._options[p] = v;
-            return contract;
-        };
-    });
-
 };
 
 var addFunctionsToContract = function (contract, desc, address) {
@@ -96,13 +70,6 @@ var addFunctionsToContract = function (contract, desc, address) {
 
             if (isTransaction) {
                 
-                exportNatspecGlobals({
-                    abi: desc,
-                    address: address,
-                    method: method.name,
-                    params: params
-                });
-
                 // transactions do not have any output, cause we do not know, when they will be processed
                 web3.eth.sendTransaction(options);
                 return;
@@ -159,7 +126,7 @@ var addEventsToContract = function (contract, desc, address) {
                 var parser = eventImpl.outputParser(e);
                 return parser(data);
             };
-			return web3.eth.filter(o, undefined, undefined, outputFormatter);
+            return web3.eth.filter(o, undefined, undefined, outputFormatter);
         };
         
         // this property should be used by eth.filter to check if object is an event
@@ -203,17 +170,7 @@ var addEventsToContract = function (contract, desc, address) {
 var contract = function (abi) {
 
     // return prototype
-    if(abi instanceof Array && arguments.length === 1) {
-        return Contract.bind(null, abi);
-
-    // deprecated: auto initiate contract
-    } else {
-
-        console.warn('Initiating a contract like this is deprecated please use var MyContract = eth.contract(abi); new MyContract(address); instead.');
-
-        return new Contract(arguments[1], arguments[0]);
-    }
-
+    return Contract.bind(null, abi);
 };
 
 function Contract(abi, address) {

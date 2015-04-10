@@ -116,9 +116,9 @@ public:
 	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
-	void setEmpty();
+	void clear();
 
-	void noteDirty() const { m_hash = m_seedHash= h256(); }
+	void noteDirty() const { m_hash = m_seedHash = h256(); }
 
 	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreNonce, h256 const& _h = h256());
 	void populate(bytesConstRef _block, Strictness _s = IgnoreNonce, h256 const& _h = h256());

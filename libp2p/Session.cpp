@@ -245,7 +245,7 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 			break;
 		default:
 			for (auto const& i: m_capabilities)
-				if (_t >= i.second->m_idOffset && _t - i.second->m_idOffset < i.second->hostCapability()->messageCount())
+				if (_t >= (int)i.second->m_idOffset && _t - i.second->m_idOffset < i.second->hostCapability()->messageCount())
 				{
 					if (i.second->m_enabled)
 						return i.second->interpret(_t - i.second->m_idOffset, _r);

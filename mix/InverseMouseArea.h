@@ -13,39 +13,45 @@
 
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
- */
-/** @file TransientDirectory.h
- * @author Marek Kotewicz <marek@ethdev.com>
+*/
+/** @file InverseMouseArea.h
+ * @author Yann yann@ethdev.com
  * @date 2015
+ * Ethereum IDE client.
  */
 
 #pragma once
 
-#include <string>
-#include "Common.h"
+#include <QQuickWindow>
+#include <QQuickItem>
 
 namespace dev
 {
-namespace test
+namespace mix
 {
 
-/**
- * @brief temporary directory implementation
- * It creates temporary directory in the given path. On dealloc it removes the directory
- * @throws if the given path already exists, throws an exception
- */
-class TransientDirectory
+class InverseMouseArea: public QQuickItem
 {
+	Q_OBJECT
+	Q_PROPERTY(bool active MEMBER m_active WRITE setActive)
+
 public:
-	TransientDirectory();
-	TransientDirectory(std::string const& _path);
-	~TransientDirectory();
+	InverseMouseArea(QQuickItem* _parent = 0): QQuickItem(_parent) {}
+	~InverseMouseArea() { if (window()) { window()->removeEventFilter(this); } }
+	void setActive(bool _v);
 
-	std::string const& path() const { return m_path; }
+protected:
+	void itemChange(ItemChange _c, const ItemChangeData& _v) override;
+	bool eventFilter(QObject* _obj, QEvent *_ev) override;
+	bool contains(const QPointF& _point) const override;
 
 private:
-	std::string m_path;
+	bool m_active;
+
+signals:
+	void clickedOutside(QPointF _point);
 };
 
 }
 }
+

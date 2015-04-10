@@ -123,6 +123,44 @@ ethash_params Ethasher::params(BlockInfo const& _header)
 	return params((unsigned)_header.number);
 }
 
+void Ethasher::readFull(BlockInfo const& _header, void* _dest)
+{
+	if (!m_fulls.count(_header.seedHash()))
+	{
+		// @memoryleak @bug place it on a pile for deletion - perhaps use shared_ptr.
+/*		if (!m_fulls.empty())
+		{
+			delete [] m_fulls.begin()->second.data();
+			m_fulls.erase(m_fulls.begin());
+		}*/
+
+		try {
+			boost::filesystem::create_directories(getDataDir("ethash"));
+		} catch (...) {}
+
+		auto info = rlpList(c_ethashRevision, _header.seedHash());
+		std::string oldMemoFile = getDataDir("ethash") + "/full";
+		std::string memoFile = getDataDir("ethash") + "/full-R" + toString(c_ethashRevision) + "-" + toHex(_header.seedHash().ref().cropped(0, 8));
+		if (boost::filesystem::exists(oldMemoFile) && contents(oldMemoFile + ".info") == info)
+		{
+			// memofile valid - rename.
+			boost::filesystem::rename(oldMemoFile, memoFile);
+		}
+
+		IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile));
+		IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile + ".info"));
+
+		ethash_params p = params((unsigned)_header.number);
+		bytesRef r = contentsNew(memoFile, bytesRef((byte*)_dest, p.full_size));
+		if (!r)
+		{
+			auto c = light(_header);
+			ethash_prep_full(_dest, &p, c);
+			writeFile(memoFile, bytesConstRef((byte*)_dest, p.full_size));
+		}
+	}
+}
+
 ethash_params Ethasher::params(unsigned _n)
 {
 	ethash_params p;

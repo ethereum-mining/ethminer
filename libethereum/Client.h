@@ -159,7 +159,7 @@ public:
 
 	using Interface::call; // to remove warning about hiding virtual function
 	/// Makes the given call. Nothing is recorded into the state. This cheats by creating a null address and endowing it with a lot of ETH.
-	ExecutionResult call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether);
+	ExecutionResult call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether, Address const& _from = Address());
 
 	/// Get the remaining gas limit in this block.
 	virtual u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
@@ -229,8 +229,9 @@ public:
 
 protected:
 	/// InterfaceStub methods
+	virtual BlockChain& bc() override { return m_bc; }
 	virtual BlockChain const& bc() const override { return m_bc; }
-	
+
 	/// Returns the state object for the full block (i.e. the terminal state) for index _h.
 	/// Works properly with LatestBlock and PendingBlock.
 	using ClientBase::asOf;

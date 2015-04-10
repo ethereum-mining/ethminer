@@ -25,19 +25,18 @@ else()
 	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
 endif()
 
-target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
-target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
-
 target_link_libraries(${EXECUTABLE} evm)
 target_link_libraries(${EXECUTABLE} lll)
 target_link_libraries(${EXECUTABLE} whisper)
 target_link_libraries(${EXECUTABLE} p2p)
 target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} ethcore)
+target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
+target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
 target_link_libraries(${EXECUTABLE} secp256k1)
-
 if (ETHASHCL)
 	target_link_libraries(${EXECUTABLE} ethash-cl)
+	target_link_libraries(${EXECUTABLE} OpenCL)
 endif ()
 
 if (CMAKE_COMPILER_IS_MINGW)
