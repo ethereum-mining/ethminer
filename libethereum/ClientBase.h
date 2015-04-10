@@ -146,7 +146,8 @@ public:
 	virtual unsigned miningThreads() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::miningThreads")); }
 	virtual void startMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::startMining")); }
 	virtual void stopMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::stopMining")); }
-	virtual bool isMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::isMining")); }
+	virtual bool isMining() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::isMining")); }
+	virtual uint64_t hashrate() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::hashrate")); }
 	virtual eth::MineProgress miningProgress() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::miningProgress")); }
 	virtual std::pair<h256, u256> getWork() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::getWork")); }
 	virtual bool submitWork(eth::ProofOfWork::Proof const&) override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::submitWork")); }

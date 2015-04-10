@@ -296,6 +296,11 @@ string WebThreeStubServerBase::eth_coinbase()
 	return toJS(client()->address());
 }
 
+string WebThreeStubServerBase::eth_hashrate()
+{
+	return toJS(client()->hashrate());
+}
+
 bool WebThreeStubServerBase::eth_mining()
 {
 	return client()->isMining();

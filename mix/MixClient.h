@@ -67,7 +67,8 @@ public:
 	unsigned miningThreads() const override;
 	void startMining() override;
 	void stopMining() override;
-	bool isMining() override;
+	bool isMining() const override;
+	uint64_t hashrate() const override;
 	eth::MineProgress miningProgress() const override;
 	std::pair<h256, u256> getWork() override { return std::pair<h256, u256>(); }
 	bool submitWork(eth::ProofOfWork::Proof const&) override { return false; }
