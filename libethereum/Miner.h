@@ -60,8 +60,8 @@ public:
 	virtual void setupState(State& _s) = 0;		///< Reset the given State object to the one that should be being mined.
 	virtual void onProgressed() {}				///< Called once some progress has been made.
 	virtual void onComplete() {}				///< Called once a block is found.
-	virtual bool turbo() const = 0;				///< @returns true iff the Miner should mine as fast as possible.
 	virtual bool force() const = 0;				///< @returns true iff the Miner should mine regardless of the number of transactions.
+	virtual bool turbo() const = 0;				///< @returns true iff the Miner should use GPU if possible.
 };
 
 class Miner
@@ -93,7 +93,7 @@ public:
 	virtual void stop() {}
 
 	/// @returns true iff the mining has been start()ed. It may still not be actually mining, depending on the host's turbo() & force().
-	virtual bool isRunning() { return false; }
+	virtual bool isRunning() const { return false; }
 
 protected:
 	MinerHost* m_host = nullptr;			///< Our host.
@@ -122,10 +122,10 @@ public:
 	LocalMiner(MinerHost* _host, unsigned _id = 0);
 
 	/// Move-constructor.
-	LocalMiner(LocalMiner&& _m): Worker((Worker&&)_m) { std::swap(m_host, _m.m_host); }
+	LocalMiner(LocalMiner&& _m): Worker((Worker&&)_m) { std::swap(m_host, _m.m_host); std::swap(m_pow, _m.m_pow); }
 
 	/// Move-assignment.
-	LocalMiner& operator=(LocalMiner&& _m) { Worker::operator=((Worker&&)_m); std::swap(m_host, _m.m_host); return *this; }
+	LocalMiner& operator=(LocalMiner&& _m) { Worker::operator=((Worker&&)_m); std::swap(m_host, _m.m_host); std::swap(m_pow, _m.m_pow); return *this; }
 
 	/// Destructor. Stops miner.
 	~LocalMiner() { stop(); }
@@ -143,7 +143,7 @@ public:
 	virtual void noteStateChange() override { m_miningStatus = Preparing; }
 
 	/// @returns true iff the mining has been start()ed. It may still not be actually mining, depending on the host's turbo() & force().
-	bool isRunning() { return isWorking(); }
+	bool isRunning() const override { return isWorking(); }
 
 	/// @returns true if mining is complete.
 	virtual bool isComplete() const override { return m_miningStatus == Mined; }
@@ -167,8 +167,9 @@ private:
 	enum MiningStatus { Waiting, Preparing, Mining, Mined, Stopping, Stopped };
 	MiningStatus m_miningStatus = Waiting;	///< TODO: consider mutex/atomic variable.
 	State m_mineState;						///< The state on which we are mining, generally equivalent to m_postMine.
+	std::unique_ptr<EthashPoW> m_pow;		///< Our miner.
 
-	mutable std::mutex x_mineInfo;			///< Lock for the mining progress & history.
+	mutable Mutex x_mineInfo;				///< Lock for the mining progress & history.
 	MineProgress m_mineProgress;			///< What's our progress?
 	std::list<MineInfo> m_mineHistory;		///< What the history of our mining?
 };

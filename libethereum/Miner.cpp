@@ -34,12 +34,14 @@ LocalMiner::LocalMiner(MinerHost* _host, unsigned _id):
 	AsyncMiner(_host, _id),
 	Worker("miner-" + toString(_id))
 {
+	m_pow.reset(_host->turbo() ? new Ethash : (Ethash*)new EthashCPU);
 }
 
 void LocalMiner::setup(MinerHost* _host, unsigned _id)
 {
 	AsyncMiner::setup(_host, _id);
 	setName("miner-" + toString(m_id));
+	m_pow.reset(_host->turbo() ? new Ethash : (Ethash*)new EthashCPU);
 }
 
 void LocalMiner::doWork()
@@ -66,7 +68,7 @@ void LocalMiner::doWork()
 		if (m_miningStatus == Mining)
 		{
 			// Mine for a while.
-			MineInfo mineInfo = m_mineState.mine(100, m_host->turbo());
+			MineInfo mineInfo = m_mineState.mine(m_pow.get());
 
 			{
 				Guard l(x_mineInfo);

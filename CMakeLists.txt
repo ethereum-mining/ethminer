@@ -62,6 +62,8 @@ function(configureProject)
 	if (GUI)
 		add_definitions(-DETH_GUI)
 	endif()
+
+	add_definitions(-DETH_TRUE)
 endfunction()
 
 set(CPPETHEREUM 1)
