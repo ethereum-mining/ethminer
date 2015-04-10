@@ -20,9 +20,9 @@ extern "C" {
 #include <stdint.h>
 
 typedef union node {
-    uint8_t bytes[NODE_WORDS * 4];
-    uint32_t words[NODE_WORDS];
-    uint64_t double_words[NODE_WORDS / 2];
+	uint8_t bytes[NODE_WORDS * 4];
+	uint32_t words[NODE_WORDS];
+	uint64_t double_words[NODE_WORDS / 2];
 
 #if defined(_M_X64) && ENABLE_SSE
 	__m128i xmm[NODE_WORDS/4];
@@ -31,24 +31,24 @@ typedef union node {
 } node;
 
 struct ethash_light {
-    ethash_cache *cache;
+	ethash_cache *cache;
 };
 
 struct ethash_full {
-    ethash_cache *cache;
-    node *data;
-    ethash_callback_t callback;
+	ethash_cache *cache;
+	node *data;
+	ethash_callback_t callback;
 };
 
 void ethash_calculate_dag_item(node *const ret,
-                               const unsigned node_index,
-                               ethash_params const *params,
-                               ethash_cache const *cache);
+							   const unsigned node_index,
+							   ethash_params const *params,
+							   ethash_cache const *cache);
 
 void ethash_quick_hash(ethash_h256_t *return_hash,
-                       ethash_h256_t const *header_hash,
-                       const uint64_t nonce,
-                       ethash_h256_t const *mix_hash);
+					   ethash_h256_t const *header_hash,
+					   const uint64_t nonce,
+					   ethash_h256_t const *mix_hash);
 
 #ifdef __cplusplus
 }

@@ -29,58 +29,58 @@
 
 FILE *ethash_fopen(const char *file_name, const char *mode)
 {
-    return fopen(file_name, mode);
+	return fopen(file_name, mode);
 }
 
 char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count)
-{   
-    return strlen(dest) + count + 1 <= dest_size ? strncat(dest, src, count) : NULL;
+{
+	return strlen(dest) + count + 1 <= dest_size ? strncat(dest, src, count) : NULL;
 }
 
 enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_h256_t seedhash)
 {
-    char read_buffer[DAG_MEMO_BYTESIZE];
-    char expect_buffer[DAG_MEMO_BYTESIZE];
-    enum ethash_io_rc ret = ETHASH_IO_FAIL;
+	char read_buffer[DAG_MEMO_BYTESIZE];
+	char expect_buffer[DAG_MEMO_BYTESIZE];
+	enum ethash_io_rc ret = ETHASH_IO_FAIL;
 
-    // assert directory exists, full owner permissions and read/search for others
-    int rc = mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    if (rc == -1 && errno != EEXIST) {
-        goto end;
-    }
+	// assert directory exists, full owner permissions and read/search for others
+	int rc = mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	if (rc == -1 && errno != EEXIST) {
+		goto end;
+	}
 
-    char *memofile = ethash_io_create_filename(dirname, DAG_MEMO_NAME, sizeof(DAG_MEMO_NAME));
-    if (!memofile) {
-        goto end;
-    }
+	char *memofile = ethash_io_create_filename(dirname, DAG_MEMO_NAME, sizeof(DAG_MEMO_NAME));
+	if (!memofile) {
+		goto end;
+	}
 
-    // try to open memo file
-    FILE *f = ethash_fopen(memofile, "rb");
-    if (!f) {
-        // file does not exist, so no checking happens. All is fine.
-        ret = ETHASH_IO_MEMO_MISMATCH;
-        goto free_memo;
-    }
+	// try to open memo file
+	FILE *f = ethash_fopen(memofile, "rb");
+	if (!f) {
+		// file does not exist, so no checking happens. All is fine.
+		ret = ETHASH_IO_MEMO_MISMATCH;
+		goto free_memo;
+	}
 
-    if (fread(read_buffer, 1, DAG_MEMO_BYTESIZE, f) != DAG_MEMO_BYTESIZE) {
-        goto close;
-    }
+	if (fread(read_buffer, 1, DAG_MEMO_BYTESIZE, f) != DAG_MEMO_BYTESIZE) {
+		goto close;
+	}
 
-    ethash_io_serialize_info(REVISION, seedhash, expect_buffer);
-    if (memcmp(read_buffer, expect_buffer, DAG_MEMO_BYTESIZE) != 0) {
-        // we have different memo contents so delete the memo file
-        if (unlink(memofile) != 0) {
-            goto close;
-        }
-        ret = ETHASH_IO_MEMO_MISMATCH;
-    }
+	ethash_io_serialize_info(REVISION, seedhash, expect_buffer);
+	if (memcmp(read_buffer, expect_buffer, DAG_MEMO_BYTESIZE) != 0) {
+		// we have different memo contents so delete the memo file
+		if (unlink(memofile) != 0) {
+			goto close;
+		}
+		ret = ETHASH_IO_MEMO_MISMATCH;
+	}
 
-    ret = ETHASH_IO_MEMO_MATCH;
+	ret = ETHASH_IO_MEMO_MATCH;
 
 close:
-    fclose(f);
+	fclose(f);
 free_memo:
-    free(memofile);
+	free(memofile);
 end:
-    return ret;
+	return ret;
 }

@@ -36,9 +36,9 @@ static const char DAG_MEMO_NAME[] = "full.info";
 
 /// Possible return values of @see ethash_io_prepare
 enum ethash_io_rc {
-    ETHASH_IO_FAIL = 0,      ///< There has been an IO failure
-    ETHASH_IO_MEMO_MISMATCH, ///< Memo file either did not exist or there was content mismatch
-    ETHASH_IO_MEMO_MATCH,    ///< Memo file existed and contents matched. No need to do anything
+	ETHASH_IO_FAIL = 0,      ///< There has been an IO failure
+	ETHASH_IO_MEMO_MISMATCH, ///< Memo file either did not exist or there was content mismatch
+	ETHASH_IO_MEMO_MATCH,    ///< Memo file existed and contents matched. No need to do anything
 };
 
 /**
@@ -79,17 +79,17 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_h256_t seedhash)
  * @return                   True for success and false in case of failure.
  */
 bool ethash_io_write(char const *dirname,
-                     ethash_params const* params,
-                     ethash_h256_t seedhash,
-                     void const* cache,
-                     uint8_t **data,
-                     uint64_t *data_size);
+					 ethash_params const* params,
+					 ethash_h256_t seedhash,
+					 void const* cache,
+					 uint8_t **data,
+					 uint64_t *data_size);
 
 /**
  * An fopen wrapper for no-warnings crossplatform fopen.
  *
  * Msvc compiler considers fopen to be insecure and suggests to use their
- * alternative. This is a wrapper for this alternative. Another way is to 
+ * alternative. This is a wrapper for this alternative. Another way is to
  * #define _CRT_SECURE_NO_WARNINGS, but disabling all security warnings does
  * not sound like a good idea.
  *
@@ -102,7 +102,7 @@ FILE *ethash_fopen(const char *file_name, const char *mode);
  * An stncat wrapper for no-warnings crossplatform strncat.
  *
  * Msvc compiler considers strncat to be insecure and suggests to use their
- * alternative. This is a wrapper for this alternative. Another way is to 
+ * alternative. This is a wrapper for this alternative. Another way is to
  * #define _CRT_SECURE_NO_WARNINGS, but disabling all security warnings does
  * not sound like a good idea.
  *
@@ -117,29 +117,29 @@ FILE *ethash_fopen(const char *file_name, const char *mode);
 char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count);
 
 static inline void ethash_io_serialize_info(uint32_t revision,
-                                            ethash_h256_t seed_hash,
-                                            char *output)
+											ethash_h256_t seed_hash,
+											char *output)
 {
-    // if .info is only consumed locally we don't really care about endianess
-    memcpy(output, &revision, 4);
-    memcpy(output + 4, &seed_hash, 32);
+	// if .info is only consumed locally we don't really care about endianess
+	memcpy(output, &revision, 4);
+	memcpy(output + 4, &seed_hash, 32);
 }
 
 static inline char *ethash_io_create_filename(char const *dirname,
-                                              char const* filename,
-                                              size_t filename_length)
+											  char const* filename,
+											  size_t filename_length)
 {
-    size_t dirlen = strlen(dirname);
-    // in C the cast is not needed, but a C++ compiler will complain for invalid conversion
-    char *name = (char*)malloc(dirlen + filename_length + 1);
-    if (!name) {
-        return NULL;
-    }
+	size_t dirlen = strlen(dirname);
+	// in C the cast is not needed, but a C++ compiler will complain for invalid conversion
+	char *name = (char*)malloc(dirlen + filename_length + 1);
+	if (!name) {
+		return NULL;
+	}
 
-    name[0] = '\0';
-    ethash_strncat(name, dirlen + filename_length + 1, dirname, dirlen);
-    ethash_strncat(name, dirlen + filename_length + 1, filename, filename_length);
-    return name;
+	name[0] = '\0';
+	ethash_strncat(name, dirlen + filename_length + 1, dirname, dirlen);
+	ethash_strncat(name, dirlen + filename_length + 1, filename, filename_length);
+	return name;
 }
 
 
