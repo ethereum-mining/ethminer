@@ -449,64 +449,55 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 
 string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 {
-	TransactionSkeleton t;
-	
 	try
 	{
-		t = toTransaction(_json);
+		string ret;
+		TransactionSkeleton t = toTransaction(_json);
+	
+		if (!t.from)
+			t.from = m_accounts->getDefaultTransactAccount();
+		if (t.creation)
+			ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
+		if (!t.gasPrice)
+			t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
+		if (!t.gas)
+			t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
+
+		if (m_accounts->isRealAccount(t.from))
+			authenticate(t, false);
+		else if (m_accounts->isProxyAccount(t.from))
+			authenticate(t, true);
+	
+		return ret;
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-	string ret;
-	if (!t.from)
-		t.from = m_accounts->getDefaultTransactAccount();
-	if (t.creation)
-		ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
-	if (!t.gasPrice)
-		t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
-	if (!t.gas)
-		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
-	
-	if (m_accounts->isRealAccount(t.from))
-		authenticate(t, false);
-	else if (m_accounts->isProxyAccount(t.from))
-		authenticate(t, true);
-	
-	return ret;
 }
 
 
 string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& _blockNumber)
 {
-	TransactionSkeleton t;
-	int number;
-	
 	try
 	{
-		t = toTransaction(_json);
-		number = jsToBlockNumber(_blockNumber);
+		TransactionSkeleton t = toTransaction(_json);
+		if (!t.from)
+			t.from = m_accounts->getDefaultTransactAccount();
+	//	if (!m_accounts->isRealAccount(t.from))
+	//		return ret;
+		if (!t.gasPrice)
+			t.gasPrice = 10 * dev::eth::szabo;
+		if (!t.gas)
+			t.gas = client()->gasLimitRemaining();
+
+		return toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, jsToBlockNumber(_blockNumber), FudgeFactor::Lenient).output);
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
 	
-	string ret;
-	if (!t.from)
-		t.from = m_accounts->getDefaultTransactAccount();
-//	if (!m_accounts->isRealAccount(t.from))
-//		return ret;
-	if (!t.gasPrice)
-		t.gasPrice = 10 * dev::eth::szabo;
-	if (!t.gas)
-		t.gas = client()->gasLimitRemaining();
-
-	ret = toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, number).output);
-	
-	return ret;
 }
 
 bool WebThreeStubServerBase::eth_flush()

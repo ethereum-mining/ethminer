@@ -20,11 +20,11 @@
  */
 
 #include <boost/filesystem.hpp>
-#include <libdevcore/Exceptions.h>
+#include "Exceptions.h"
 #include "TransientDirectory.h"
+#include "CommonIO.h"
 using namespace std;
 using namespace dev;
-using namespace dev::test;
 
 TransientDirectory::TransientDirectory():
 	TransientDirectory((boost::filesystem::temp_directory_path() / "eth_transient" / toString(FixedHash<4>::random())).string())
