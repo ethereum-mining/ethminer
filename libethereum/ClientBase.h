@@ -110,10 +110,12 @@ public:
 	virtual LocalisedLogEntries checkWatch(unsigned _watchId) override;
 
 	virtual h256 hashFromNumber(BlockNumber _number) const override;
+	virtual BlockNumber numberFromHash(h256 _blockHash) const override;
 	virtual eth::BlockInfo blockInfo(h256 _hash) const override;
 	virtual eth::BlockDetails blockDetails(h256 _hash) const override;
 	virtual eth::Transaction transaction(h256 _transactionHash) const override;
 	virtual eth::Transaction transaction(h256 _blockHash, unsigned _i) const override;
+	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const override;
 	virtual eth::Transactions transactions(h256 _blockHash) const override;
 	virtual eth::TransactionHashes transactionHashes(h256 _blockHash) const override;
 	virtual eth::BlockInfo uncle(h256 _blockHash, unsigned _i) const override;

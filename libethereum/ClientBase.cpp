@@ -321,6 +321,11 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 		return Transaction();
 }
 
+pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const
+{
+	return bc().transactionLocation(_transactionHash);
+}
+
 Transactions ClientBase::transactions(h256 _blockHash) const
 {
 	auto bl = bc().block(_blockHash);
@@ -419,3 +424,9 @@ h256 ClientBase::hashFromNumber(BlockNumber _number) const
 		return bc().currentHash();
 	return bc().numberHash(_number);
 }
+
+BlockNumber ClientBase::numberFromHash(h256 _blockHash) const
+{
+	return bc().number(_blockHash);
+}
+
