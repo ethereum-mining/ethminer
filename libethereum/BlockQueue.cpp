@@ -107,14 +107,6 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	}
 }
 
-namespace dev {
-template <class T, class U> std::set<T>& operator+=(std::set<T>& _a, U const& _b)
-{
-	for (auto const& i: _b)
-		_a.insert(i);
-	return _a;
-} }
-
 bool BlockQueue::doneDrain(h256s const& _bad)
 {
 	WriteGuard l(m_lock);

@@ -42,6 +42,8 @@ namespace eth
 
 struct MineInfo
 {
+	MineInfo() = default;
+	MineInfo(bool _completed): completed(_completed) {}
 	void combine(MineInfo const& _m) { requirement = std::max(requirement, _m.requirement); best = std::min(best, _m.best); hashes += _m.hashes; completed = completed || _m.completed; }
 	double requirement = 0;
 	double best = 1e99;
@@ -67,6 +69,8 @@ protected:
 };
 
 #if ETH_ETHASHCL
+class EthashCLHook;
+
 class EthashCL
 {
 public:
@@ -88,7 +92,7 @@ protected:
 	BlockInfo m_lastHeader;
 	Nonce m_mined;
 	std::unique_ptr<ethash_cl_miner> m_miner;
-	std::unique_ptr<ethash_cl_search_hook> m_hook;
+	std::unique_ptr<EthashCLHook> m_hook;
 };
 
 using Ethash = EthashCL;

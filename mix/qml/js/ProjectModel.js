@@ -124,7 +124,8 @@ function loadProject(path) {
 			for(var i = 0; i < projectData.files.length; i++) {
 				addFile(projectData.files[i]);
 			}
-			projectSettings.lastProjectPath = path;
+			if (mainApplication.trackLastProject)
+				projectSettings.lastProjectPath = path;
 			projectLoading(projectData);
 			projectLoaded()
 

@@ -63,7 +63,7 @@ struct WatchChannel: public LogChannel { static const char* name() { return "(o)
 #define cwatch dev::LogOutputStream<dev::eth::WatchChannel, true>()
 struct WorkInChannel: public LogChannel { static const char* name() { return ">W>"; } static const int verbosity = 16; };
 struct WorkOutChannel: public LogChannel { static const char* name() { return "<W<"; } static const int verbosity = 16; };
-struct WorkChannel: public LogChannel { static const char* name() { return "-W-"; } static const int verbosity = 16; };
+struct WorkChannel: public LogChannel { static const char* name() { return "-W-"; } static const int verbosity = 21; };
 #define cwork dev::LogOutputStream<dev::eth::WorkChannel, true>()
 #define cworkin dev::LogOutputStream<dev::eth::WorkInChannel, true>()
 #define cworkout dev::LogOutputStream<dev::eth::WorkOutChannel, true>()
@@ -82,9 +82,10 @@ public:
 	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) override;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock) override;
+	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
 
-	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock) override;
+	/// Makes the given create. Nothing is recorded into the state.
+	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
 	
 	using Interface::balanceAt;
 	using Interface::countAt;
@@ -108,8 +109,7 @@ public:
 	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const override;
 	virtual LocalisedLogEntries checkWatch(unsigned _watchId) override;
 
-	// TODO: switch all the _blockHash arguments to also accept _blockNumber
-	virtual h256 hashFromNumber(unsigned _number) const override;
+	virtual h256 hashFromNumber(BlockNumber _number) const override;
 	virtual eth::BlockInfo blockInfo(h256 _hash) const override;
 	virtual eth::BlockDetails blockDetails(h256 _hash) const override;
 	virtual eth::Transaction transaction(h256 _transactionHash) const override;
@@ -122,6 +122,9 @@ public:
 	virtual unsigned uncleCount(h256 _blockHash) const override;
 	virtual unsigned number() const override;
 	virtual eth::Transactions pending() const override;
+	virtual h256s pendingHashes() const override;
+
+	void injectBlock(bytes const& _block);
 
 	using Interface::diff;
 	virtual StateDiff diff(unsigned _txi, h256 _block) const override;
@@ -153,6 +156,7 @@ public:
 protected:
 	/// The interface that must be implemented in any class deriving this.
 	/// {
+	virtual BlockChain& bc() = 0;
 	virtual BlockChain const& bc() const = 0;
 	virtual State asOf(h256 const& _h) const = 0;
 	virtual State preMine() const = 0;

@@ -58,7 +58,7 @@ string dev::memDump(bytes const& _bytes, unsigned _width, bool _html)
 }
 
 // Don't forget to delete[] later.
-bytesRef dev::contentsNew(std::string const& _file)
+bytesRef dev::contentsNew(std::string const& _file, bytesRef _dest)
 {
 	std::ifstream is(_file, std::ifstream::binary);
 	if (!is)
@@ -68,8 +68,10 @@ bytesRef dev::contentsNew(std::string const& _file)
 	streamoff length = is.tellg();
 	if (length == 0) // return early, MSVC does not like reading 0 bytes
 		return bytesRef();
+	if (!_dest.empty() && _dest.size() != (unsigned)length)
+		return bytesRef();
 	is.seekg (0, is.beg);
-	bytesRef ret(new byte[length], length);
+	bytesRef ret = _dest.empty() ? bytesRef(new byte[length], length) : _dest;
 	is.read((char*)ret.data(), length);
 	is.close();
 	return ret;

@@ -46,6 +46,12 @@ enum class Reaping
 	Manual
 };
 
+enum class FudgeFactor
+{
+	Strict,
+	Lenient
+};
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -71,13 +77,13 @@ public:
 	virtual void flushTransactions() = 0;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber) = 0;
-	ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) { return call(_secret, _value, _dest, _data, _gas, _gasPrice, m_default); }
+	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) = 0;
+	ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, FudgeFactor _ff = FudgeFactor::Strict) { return call(_secret, _value, _dest, _data, _gas, _gasPrice, m_default, _ff); }
 
 	/// Does the given creation. Nothing is recorded into the state.
 	/// @returns the pair of the Address of the created contract together with its code.
-	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber) = 0;
-	ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) { return create(_secret, _value, _data, _gas, _gasPrice, m_default); }
+	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) = 0;
+	ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, FudgeFactor _ff = FudgeFactor::Strict) { return create(_secret, _value, _data, _gas, _gasPrice, m_default, _ff); }
 
 	// [STATE-QUERY API]
 
@@ -112,10 +118,11 @@ public:
 
 	// [BLOCK QUERY API]
 
-	virtual h256 hashFromNumber(unsigned _number) const = 0;
+	virtual Transaction transaction(h256 _transactionHash) const = 0;
+	virtual h256 hashFromNumber(BlockNumber _number) const = 0;
+
 	virtual BlockInfo blockInfo(h256 _hash) const = 0;
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
-	virtual Transaction transaction(h256 _transactionHash) const = 0;
 	virtual Transaction transaction(h256 _blockHash, unsigned _i) const = 0;
 	virtual BlockInfo uncle(h256 _blockHash, unsigned _i) const = 0;
 	virtual UncleHashes uncleHashes(h256 _blockHash) const = 0;
@@ -123,6 +130,16 @@ public:
 	virtual unsigned uncleCount(h256 _blockHash) const = 0;
 	virtual Transactions transactions(h256 _blockHash) const = 0;
 	virtual TransactionHashes transactionHashes(h256 _blockHash) const = 0;
+
+	BlockInfo blockInfo(BlockNumber _block) const { return blockInfo(hashFromNumber(_block)); }
+	BlockDetails blockDetails(BlockNumber _block) const { return blockDetails(hashFromNumber(_block)); }
+	Transaction transaction(BlockNumber _block, unsigned _i) const { if (_block == PendingBlock) { auto p = pending(); return _i < p.size() ? p[_i] : Transaction(); } return transaction(hashFromNumber(_block)); }
+	unsigned transactionCount(BlockNumber _block) const { if (_block == PendingBlock) { auto p = pending(); return p.size(); } return transactionCount(hashFromNumber(_block)); }
+	Transactions transactions(BlockNumber _block) const { if (_block == PendingBlock) return pending(); return transactions(hashFromNumber(_block)); }
+	TransactionHashes transactionHashes(BlockNumber _block) const { if (_block == PendingBlock) return pendingHashes(); return transactionHashes(hashFromNumber(_block)); }
+	BlockInfo uncle(BlockNumber _block, unsigned _i) const { return uncle(hashFromNumber(_block), _i); }
+	UncleHashes uncleHashes(BlockNumber _block) const { return uncleHashes(hashFromNumber(_block)); }
+	unsigned uncleCount(BlockNumber _block) const { return uncleCount(hashFromNumber(_block)); }
 
 	// [EXTRA API]:
 
@@ -132,6 +149,7 @@ public:
 	/// Get a map containing each of the pending transactions.
 	/// @TODO: Remove in favour of transactions().
 	virtual Transactions pending() const = 0;
+	virtual h256s pendingHashes() const = 0;
 
 	/// Differences between transactions.
 	StateDiff diff(unsigned _txi) const { return diff(_txi, m_default); }
@@ -142,9 +160,6 @@ public:
 	/// NOTE: This only works when compiled with ETH_FATDB; otherwise will throw InterfaceNotSupported.
 	virtual Addresses addresses() const { return addresses(m_default); }
 	virtual Addresses addresses(BlockNumber _block) const = 0;
-
-	/// Get the fee associated for a transaction with the given data.
-	template <class T> static bigint txGas(T const& _data, u256 _gas = 0) { bigint ret = c_txGas + _gas; for (auto i: _data) ret += i ? c_txDataNonZeroGas : c_txDataZeroGas; return ret; }
 
 	/// Get the remaining gas limit in this block.
 	virtual u256 gasLimitRemaining() const = 0;
