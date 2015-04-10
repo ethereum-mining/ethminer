@@ -29,6 +29,7 @@ ApplicationWindow {
 	property alias clientModel: clientModel;
 	property alias projectModel: projectModel;
 	property alias appService: appService;
+	property bool trackLastProject: true;
 
 	ApplicationService {
 		id: appService
