@@ -24,6 +24,17 @@
 #include <errno.h>
 #include <stdio.h>
 
+FILE *ethash_fopen(const char *file_name, const char *mode)
+{
+    FILE *f;
+    return fopen_s(&f, file_name, mode) == 0 ? f : NULL;
+}
+
+char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count)
+{   
+    return strncat_s(dest, dest_size, src, count) == 0 ? dest : NULL;
+}
+
 enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_h256_t seedhash)
 {
     char read_buffer[DAG_MEMO_BYTESIZE];
@@ -42,7 +53,7 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_h256_t seedhash)
     }
 
     // try to open memo file
-    FILE *f = fopen(memofile, "rb");
+    FILE *f = ethash_fopen(memofile, "rb");
     if (!f) {
         // file does not exist, so no checking happens. All is fine.
         ret = ETHASH_IO_MEMO_MISMATCH;

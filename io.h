@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include "ethash.h"
 
 #ifdef __cplusplus
@@ -84,6 +85,37 @@ bool ethash_io_write(char const *dirname,
                      uint8_t **data,
                      uint64_t *data_size);
 
+/**
+ * An fopen wrapper for no-warnings crossplatform fopen.
+ *
+ * Msvc compiler considers fopen to be insecure and suggests to use their
+ * alternative. This is a wrapper for this alternative. Another way is to 
+ * #define _CRT_SECURE_NO_WARNINGS, but disabling all security warnings does
+ * not sound like a good idea.
+ *
+ * @param file_name        The path to the file to open
+ * @param mode             Opening mode. Check fopen()
+ * @return                 The FILE* or NULL in failure
+ */
+FILE *ethash_fopen(const char *file_name, const char *mode);
+/**
+ * An stncat wrapper for no-warnings crossplatform strncat.
+ *
+ * Msvc compiler considers strncat to be insecure and suggests to use their
+ * alternative. This is a wrapper for this alternative. Another way is to 
+ * #define _CRT_SECURE_NO_WARNINGS, but disabling all security warnings does
+ * not sound like a good idea.
+ *
+ * @param des              Destination buffer
+ * @param dest_size        Maximum size of the destination buffer. This is the
+ *                         extra argument for the MSVC secure strncat
+ * @param src              Souce buffer
+ * @param count            Number of bytes to copy from source
+ * @return                 If all is well returns the dest buffer. If there is an
+ *                         error returns NULL
+ */
+char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count);
+
 static inline void ethash_io_serialize_info(uint32_t revision,
                                             ethash_h256_t seed_hash,
                                             char *output)
@@ -97,15 +129,16 @@ static inline char *ethash_io_create_filename(char const *dirname,
                                               char const* filename,
                                               size_t filename_length)
 {
+    size_t dirlen = strlen(dirname);
     // in C the cast is not needed, but a C++ compiler will complain for invalid conversion
-    char *name = (char*)malloc(strlen(dirname) + filename_length);
+    char *name = (char*)malloc(dirlen + filename_length + 1);
     if (!name) {
         return NULL;
     }
 
     name[0] = '\0';
-    strcat(name, dirname);
-    strcat(name, filename);
+    ethash_strncat(name, dirlen + filename_length + 1, dirname, dirlen);
+    ethash_strncat(name, dirlen + filename_length + 1, filename, filename_length);
     return name;
 }
 
