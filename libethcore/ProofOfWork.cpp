@@ -128,6 +128,7 @@ struct EthashCLHook: public ethash_cl_miner::search_hook
 {
 	void abort()
 	{
+		cdebug << "Attempting to abort";
 		if (m_aborted)
 			return;
 		m_abort = true;
@@ -149,12 +150,14 @@ protected:
 		for (unsigned i = 0; i < _count; ++i)
 			m_found.push_back((Nonce)(u64)_nonces[i]);
 		m_aborted = true;
+		cdebug << "Found nonces: " << vector<uint64_t>(_nonces, _nonces + _count);
 		return true;
 	}
 
 	virtual bool searched(uint64_t _startNonce, uint32_t _count) override
 	{
 		Guard l(x_all);
+		cdebug << "Searched" << _count << "from" << _startNonce;
 		m_total += _count;
 		m_last = _startNonce + _count;
 		if (m_abort)

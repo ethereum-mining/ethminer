@@ -259,16 +259,28 @@ void Client::clearPending()
 	noteChanged(changeds);
 }
 
+template <class T>
+static string filtersToString(T const& _fs)
+{
+	stringstream ret;
+	ret << "{";
+	bool i = false;
+	for (h256 const& f: _fs)
+		ret << (i++ ? ", " : "") << (f == PendingChangedFilter ? "pending" : f == ChainChangedFilter ? "chain" : f.abridged());
+	ret << "}";
+	return ret.str();
+}
+
 void Client::noteChanged(h256Set const& _filters)
 {
 	Guard l(x_filtersWatches);
 	if (_filters.size())
-		cnote << "noteChanged(" << _filters << ")";
+		cnote << "noteChanged(" << filtersToString(_filters) << ")";
 	// accrue all changes left in each filter into the watches.
 	for (auto& w: m_watches)
 		if (_filters.count(w.second.id))
 		{
-			cwatch << "!!!" << w.first << w.second.id;
+			cwatch << "!!!" << w.first << (m_filters.count(w.second.id) ? w.second.id.abridged() : w.second.id == PendingChangedFilter ? "pending" : w.second.id == ChainChangedFilter ? "chain" : "???");
 			if (m_filters.count(w.second.id))	// Normal filtering watch
 				w.second.changes += m_filters.at(w.second.id).changes;
 			else								// Special ('pending'/'latest') watch
@@ -523,7 +535,7 @@ void Client::doWork()
 			clog(ClientChat) << "Live block:" << h.abridged();
 			for (auto const& th: m_bc.transactionHashes(h))
 			{
-				clog(ClientNote) << "Safely dropping transaction " << th;
+				clog(ClientNote) << "Safely dropping transaction " << th.abridged();
 				m_tq.drop(th);
 			}
 		}
