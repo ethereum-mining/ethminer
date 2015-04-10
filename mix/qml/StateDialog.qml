@@ -336,6 +336,14 @@ Dialog {
 					anchors.right: parent.right;
 
 					Button {
+						text: qsTr("Delete");
+						enabled: !modalStateDialog.isDefault
+						onClicked: {
+							projectModel.stateListModel.deleteState(stateIndex);
+							close();
+						}
+					}
+					Button {
 						text: qsTr("OK");
 						onClicked: {
 							close();
@@ -345,13 +353,6 @@ Dialog {
 					Button {
 						text: qsTr("Cancel");
 						onClicked: close();
-					}
-					Button {
-						text: qsTr("Delete");
-						onClicked: {
-							projectModel.stateListModel.deleteState(stateIndex);
-							close();
-						}
 					}
 				}
 
