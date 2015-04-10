@@ -13,7 +13,7 @@ Dialog {
 	id: modalStateDialog
 	modality: Qt.ApplicationModal
 
-	width: 590
+	width: 630
 	height: 480
 	title: qsTr("Edit State")
 	visible: false
@@ -79,7 +79,10 @@ Dialog {
 	}
 	contentItem: Rectangle {
 		color: stateDialogStyle.generic.backgroundColor
-		ColumnLayout {
+		Rectangle {
+			color: stateDialogStyle.generic.backgroundColor
+			anchors.top: parent.top
+			anchors.margins: 10
 			anchors.fill: parent
 			ColumnLayout {
 				anchors.fill: parent
@@ -91,7 +94,7 @@ Dialog {
 					{
 						Layout.fillWidth: true
 						DefaultLabel {
-							Layout.preferredWidth: 75
+							Layout.preferredWidth: 85
 							text: qsTr("Title")
 						}
 						DefaultTextField
@@ -112,10 +115,10 @@ Dialog {
 
 						Rectangle
 						{
-							Layout.preferredWidth: 75
+							Layout.preferredWidth: 85
 							DefaultLabel {
 								id: accountsLabel
-								Layout.preferredWidth: 75
+								Layout.preferredWidth: 85
 								text: qsTr("Accounts")
 							}
 
@@ -227,7 +230,7 @@ Dialog {
 					{
 						Layout.fillWidth: true
 						DefaultLabel {
-							Layout.preferredWidth: 75
+							Layout.preferredWidth: 85
 							text: qsTr("Default")
 						}
 						CheckBox {
@@ -240,52 +243,91 @@ Dialog {
 					{
 						Layout.fillWidth: true
 					}
-				}
 
-				ColumnLayout {
-					anchors.top: dialogContent.bottom
-					anchors.topMargin: 5
-					spacing: 0
 					RowLayout
 					{
-						Layout.preferredWidth: 150
-						DefaultLabel {
-							text: qsTr("Transactions: ")
-						}
+						Layout.fillWidth: true
 
-						Button
+						Rectangle
 						{
-							iconSource: "qrc:/qml/img/plus.png"
-							action: newTrAction
-							width: 10
-							height: 10
-							anchors.right: parent.right
-						}
+							Layout.preferredWidth: 85
+							DefaultLabel {
+								id: transactionsLabel
+								Layout.preferredWidth: 85
+								text: qsTr("Transactions")
+							}
 
-						Action {
-							id: newTrAction
-							tooltip: qsTr("Create a new transaction")
-							onTriggered: transactionsModel.addTransaction()
-						}
-					}
-
-					ScrollView
-					{
-						Layout.fillHeight: true
-						Layout.preferredWidth: 300
-						Column
-						{
-							Layout.fillHeight: true
-							Repeater
+							Button
 							{
-								id: trRepeater
-								model: transactionsModel
-								delegate: transactionRenderDelegate
-								visible: transactionsModel.count > 0
-								height: 20 * transactionsModel.count
+								anchors.top: transactionsLabel.bottom
+								anchors.topMargin: 10
+								iconSource: "qrc:/qml/img/plus.png"
+								action: newTrAction
+							}
+
+							Action {
+								id: newTrAction
+								tooltip: qsTr("Create a new transaction")
+								onTriggered: transactionsModel.addTransaction()
+							}
+						}
+
+						TableView
+						{
+							id: transactionsView
+							Layout.fillWidth: true
+							model: transactionsModel
+							headerVisible: false
+							TableViewColumn {
+								role: "name"
+								title: qsTr("Name")
+								width: 150
+								delegate: Item {
+									RowLayout
+									{
+										height: 30
+										width: parent.width
+										Button
+										{
+											iconSource: "qrc:/qml/img/delete_sign.png"
+											action: deleteTransactionAction
+										}
+
+										Action {
+											id: deleteTransactionAction
+											tooltip: qsTr("Delete")
+											onTriggered: transactionsModel.deleteTransaction(styleData.row)
+										}
+
+										Button
+										{
+											iconSource: "qrc:/qml/img/edit.png"
+											action: editAction
+											visible: styleData.row >= 0 ? !transactionsModel.get(styleData.row).stdContract : false
+											width: 10
+											height: 10
+											Action {
+												id: editAction
+												tooltip: qsTr("Edit")
+												onTriggered: transactionsModel.editTransaction(styleData.row)
+											}
+										}
+
+										DefaultLabel {
+											Layout.preferredWidth: 150
+											text: styleData.row >= 0 ? transactionsModel.get(styleData.row).functionId : ""
+										}
+									}
+								}
+							}
+							rowDelegate:
+								Rectangle {
+								color: styleData.alternate ? "transparent" : "#f0f0f0"
+								height: 30;
 							}
 						}
 					}
+
 				}
 
 				RowLayout
@@ -293,6 +335,14 @@ Dialog {
 					anchors.bottom: parent.bottom
 					anchors.right: parent.right;
 
+					Button {
+						text: qsTr("Delete");
+						enabled: !modalStateDialog.isDefault
+						onClicked: {
+							projectModel.stateListModel.deleteState(stateIndex);
+							close();
+						}
+					}
 					Button {
 						text: qsTr("OK");
 						onClicked: {
@@ -325,7 +375,6 @@ Dialog {
 					}
 
 					function addTransaction() {
-
 						// Set next id here to work around Qt bug
 						// https://bugreports.qt-project.org/browse/QTBUG-41327
 						// Second call to signal handler would just edit the item that was just created, no harm done
@@ -347,44 +396,6 @@ Dialog {
 								return true;
 						}
 						return false;
-					}
-				}
-
-				Component {
-					id: transactionRenderDelegate
-					RowLayout {
-						DefaultLabel {
-							Layout.preferredWidth: 150
-							text: functionId
-						}
-
-						Button
-						{
-							id: deleteBtn
-							iconSource: "qrc:/qml/img/delete_sign.png"
-							action: deleteAction
-							width: 10
-							height: 10
-							Action {
-								id: deleteAction
-								tooltip: qsTr("Delete")
-								onTriggered: transactionsModel.deleteTransaction(index)
-							}
-						}
-
-						Button
-						{
-							iconSource: "qrc:/qml/img/edit.png"
-							action: editAction
-							visible: stdContract === false
-							width: 10
-							height: 10
-							Action {
-								id: editAction
-								tooltip: qsTr("Edit")
-								onTriggered: transactionsModel.editTransaction(index)
-							}
-						}
 					}
 				}
 
