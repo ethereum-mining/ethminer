@@ -306,11 +306,11 @@ public:
 	bool sync(BlockChain const& _bc);
 
 	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
-	bool sync(BlockChain const& _bc, h256 _blockHash, BlockInfo const& _bi = BlockInfo());
+	bool sync(BlockChain const& _bc, h256 _blockHash, BlockInfo const& _bi = BlockInfo(), bool _checkNonce = true);
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
-	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc);
+	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc, bool _checkNonce);
 
 	/// Returns back to a pristine state after having done a playback.
 	/// @arg _fullCommit if true flush everything out to disk. If false, this effectively only validates

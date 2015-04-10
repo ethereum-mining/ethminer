@@ -250,9 +250,8 @@ void MixClient::mine()
 {
 	WriteGuard l(x_state);
 	m_state.commitToMine(bc());
-	while (!m_state.mine(100, true).completed) {}
 	m_state.completeMine();
-	bc().import(m_state.blockData(), m_stateDB);
+	bc().import(m_state.blockData(), m_stateDB, Aversion::AvoidOldBlocks, false);
 	m_state.sync(bc());
 	m_startState = m_state;
 	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
