@@ -76,7 +76,7 @@ Item {
 	Connections {
 		target: mainApplication
 		onLoaded: {
-			if (projectSettings.lastProjectPath && projectSettings.lastProjectPath !== "")
+			if (mainApplication.trackLastProject && projectSettings.lastProjectPath && projectSettings.lastProjectPath !== "")
 				projectModel.loadProject(projectSettings.lastProjectPath)
 		}
 	}

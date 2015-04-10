@@ -18,6 +18,7 @@ Item {
 	property bool unloaded: false
 	property var currentBreakpoints: []
 	property string sourceName
+	property var document
 
 	function setText(text, mode) {
 		currentText = text;
@@ -117,6 +118,7 @@ Item {
 					codeModel.onCompilationError.connect(compilationError);
 				}
 				parent.changeGeneration();
+				loadComplete();
 			}
 		}
 

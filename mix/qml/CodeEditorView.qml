@@ -46,31 +46,36 @@ Item {
 		else
 		{
 			editorListModel.set(openDocCount, document);
-			editors.itemAt(openDocCount).visible = true;
-			doLoadDocument(editors.itemAt(openDocCount).item, editorListModel.get(openDocCount))
+			doLoadDocument(editors.itemAt(openDocCount).item, editorListModel.get(openDocCount), false)
+			loadComplete();
 		}
 		openDocCount++;
 	}
 
-	function doLoadDocument(editor, document) {
+	function doLoadDocument(editor, document, create) {
 		var data = fileIo.readFile(document.path);
-		editor.onLoadComplete.connect(function() {
-			loadComplete();
-		});
-		editor.onEditorTextChanged.connect(function() {
-			documentEdit(document.documentId);
-			if (document.isContract)
-				codeModel.registerCodeChange(document.documentId, editor.getText());
-		});
-		editor.onBreakpointsChanged.connect(function() {
-			if (document.isContract)
-				breakpointsChanged(document.documentId);
-		});
-		editor.setText(data, document.syntaxMode);
-		editor.onIsCleanChanged.connect(function() {
-			isCleanChanged(editor.isClean, document.documentId);
-		});
+		if (create)
+		{
+			editor.onLoadComplete.connect(function() {
+				codeEditorView.loadComplete();
+			});
+			editor.onEditorTextChanged.connect(function() {
+				documentEdit(editor.document.documentId);
+				if (editor.document.isContract)
+					codeModel.registerCodeChange(editor.document.documentId, editor.getText());
+			});
+			editor.onBreakpointsChanged.connect(function() {
+				if (editor.document.isContract)
+					breakpointsChanged(editor.document.documentId);
+			});
+			editor.onIsCleanChanged.connect(function() {
+				isCleanChanged(editor.isClean, editor.document.documentId);
+			});
+		}
+		editor.document = document;
 		editor.sourceName = document.documentId;
+		editor.setText(data, document.syntaxMode);
+		editor.changeGeneration();
 	}
 
 	function getEditor(documentId) {
@@ -192,9 +197,6 @@ Item {
 		}
 
 		onProjectClosed: {
-			for (var i = 0; i < editorListModel.count; i++)
-				editors.itemAt(i).visible = false;
-			//editorListModel.clear();
 			currentDocumentId = "";
 			openDocCount = 0;
 		}
@@ -234,7 +236,7 @@ Item {
 		property variant item
 		property variant doc
 		onYes: {
-			doLoadDocument(item, doc);
+			doLoadDocument(item, doc, false);
 			resetEditStatus(doc.documentId);
 		}
 	}
@@ -251,7 +253,7 @@ Item {
 			asynchronous: true
 			anchors.fill:  parent
 			source: appService.haveWebEngine ? "WebCodeEditor.qml" : "CodeEditor.qml"
-			visible: (index >= 0 && index < editorListModel.count && currentDocumentId === editorListModel.get(index).documentId)
+			visible: (index >= 0 && index < openDocCount && currentDocumentId === editorListModel.get(index).documentId)
 			property bool changed: false
 			onVisibleChanged: {
 				loadIfNotLoaded()
@@ -271,7 +273,7 @@ Item {
 				loadIfNotLoaded()
 			}
 			onLoaded: {
-				doLoadDocument(loader.item, editorListModel.get(index))
+				doLoadDocument(loader.item, editorListModel.get(index), true)
 			}
 
 			Connections
