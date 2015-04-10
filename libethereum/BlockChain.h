@@ -112,7 +112,7 @@ public:
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	std::pair<h256s, h256> import(bytes const& _block, OverlayDB const& _stateDB, Aversion _force = Aversion::AvoidOldBlocks);
+	std::pair<h256s, h256> import(bytes const& _block, OverlayDB const& _stateDB, Aversion _force = Aversion::AvoidOldBlocks, bool _checkNonce = true);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 const& _hash) const;

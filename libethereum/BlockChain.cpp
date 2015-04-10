@@ -347,7 +347,7 @@ pair<h256s, h256> BlockChain::attemptImport(bytes const& _block, OverlayDB const
 	}
 }
 
-pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, Aversion _force)
+pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, Aversion _force, bool _checkNonce)
 {
 	//@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
@@ -432,7 +432,7 @@ pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, 
 		// Check transactions are valid and that they result in a state equivalent to our state_root.
 		// Get total difficulty increase and update state, checking it.
 		State s(_db);	//, bi.coinbaseAddress
-		auto tdIncrease = s.enactOn(&_block, bi, *this);
+		auto tdIncrease = s.enactOn(&_block, bi, *this, _checkNonce);
 
 		BlockLogBlooms blb;
 		BlockReceipts br;
