@@ -79,7 +79,7 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 	return res;
 }
 
-static Json::Value toJson(dev::eth::Transaction const& _t)
+static Json::Value toJson(dev::eth::Transaction const& _t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber)
 {
 	Json::Value res;
 	if (_t)
@@ -92,6 +92,9 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 		res["gasPrice"] = toJS(_t.gasPrice());
 		res["nonce"] = toJS(_t.nonce());
 		res["value"] = toJS(_t.value());
+		res["blockHash"] = toJS(_location.first);
+		res["transactionIndex"] = toJS(_location.second);
+		res["blockNumber"] = toJS(_blockNumber);
 	}
 	return res;
 }
@@ -105,8 +108,8 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us
 		for (h256 h: _us)
 			res["uncles"].append(toJS(h));
 		res["transactions"] = Json::Value(Json::arrayValue);
-		for (Transaction const& t: _ts)
-			res["transactions"].append(toJson(t));
+		for (unsigned i = 0; i < _ts.size(); i++)
+			res["transactions"].append(toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber)_bi.number));
 	}
 	return res;
 }
@@ -551,7 +554,8 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByHash(string const& _tran
 {
 	try
 	{
-		return toJson(client()->transaction(jsToFixed<32>(_transactionHash)));
+		h256 h = jsToFixed<32>(_transactionHash);
+		return toJson(client()->transaction(h), client()->transactionLocation(h), client()->numberFromHash(h));
 	}
 	catch (...)
 	{
@@ -563,7 +567,10 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockHashAndIndex(string
 {
 	try
 	{
-		return toJson(client()->transaction(jsToFixed<32>(_blockHash), jsToInt(_transactionIndex)));
+		h256 bh = jsToFixed<32>(_blockHash);
+		unsigned ti = jsToInt(_transactionIndex);
+		Transaction t = client()->transaction(bh, ti);
+		return toJson(t, make_pair(bh, ti), client()->numberFromHash(bh));
 	}
 	catch (...)
 	{
@@ -575,7 +582,10 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockNumberAndIndex(stri
 {
 	try
 	{
-		return toJson(client()->transaction(jsToBlockNumber(_blockNumber), jsToInt(_transactionIndex)));
+		BlockNumber bn = jsToBlockNumber(_blockNumber);
+		unsigned ti = jsToInt(_transactionIndex);
+		Transaction t = client()->transaction(bn, ti);
+		return toJson(t, make_pair(client()->hashFromNumber(bn), ti), bn);
 	}
 	catch (...)
 	{
