@@ -52,7 +52,7 @@ Item {
 			{
 				id: statesCombo
 				items: projectModel.stateListModel
-				onSelectCreate: projectModel.stateListModel.addState();
+				onSelectCreate: projectModel.stateListModel.addState()
 				onEditItem: projectModel.stateListModel.editState(item)
 				colorItem: "#808080"
 				colorSelect: "#4a90e2"
@@ -63,8 +63,16 @@ Item {
 						if (statesCombo.selectedIndex !== index)
 							statesCombo.setSelectedIndex(index)
 					}
+					onStateListModelReady: {
+						statesCombo.setSelectedIndex(projectModel.stateListModel.defaultStateIndex)
+					}
+					onStateDeleted: {
+						if (index === statesCombo.selectedIndex)
+							statesCombo.setSelectedIndex(0);
+					}
 				}
 			}
+
 			Button
 			{
 				anchors.rightMargin: 9

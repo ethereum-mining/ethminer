@@ -290,7 +290,7 @@ public:
 	RLPs toList() const;
 
 	/// @returns the data payload. Valid for all types.
-	bytesConstRef payload() const { return isSingleByte() ? m_data.cropped(0, 1) : m_data.cropped(1 + lengthSize()); }
+	bytesConstRef payload() const { return m_data.cropped(payloadOffset()); }
 
 	/// @returns the theoretical size of this item.
 	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
@@ -308,6 +308,9 @@ private:
 
 	/// @returns the size in bytes of the payload, as given by the RLP as opposed to as inferred from m_data.
 	unsigned length() const;
+
+	/// @returns the number of bytes into the data that the payload starts.
+	unsigned payloadOffset() const { return isSingleByte() ? 0 : (1 + lengthSize()); }
 
 	/// @returns the number of data items.
 	unsigned items() const;

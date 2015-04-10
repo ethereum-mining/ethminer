@@ -397,7 +397,7 @@ void Client::setupState(State& _s)
 		_s.commitToMine(m_bc);
 }
 
-ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u256 _gasPrice)
+ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u256 _gasPrice, Address const& _from)
 {
 	ExecutionResult ret;
 	try
@@ -407,10 +407,10 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 		{
 			ReadGuard l(x_stateDB);
 			temp = m_postMine;
-			temp.addBalance(Address(), _value + _gasPrice * _gas);
+			temp.addBalance(_from, _value + _gasPrice * _gas);
 		}
 		Executive e(temp, LastHashes(), 0);
-		if (!e.call(_dest, _dest, Address(), _value, _gasPrice, &_data, _gas, Address()))
+		if (!e.call(_dest, _dest, _from, _value, _gasPrice, &_data, _gas, _from))
 			e.go();
 		ret = e.executionResult();
 	}

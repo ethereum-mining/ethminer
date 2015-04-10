@@ -46,6 +46,12 @@ enum class Reaping
 	Manual
 };
 
+enum class FudgeFactor
+{
+	Strict,
+	Lenient
+};
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -71,13 +77,13 @@ public:
 	virtual void flushTransactions() = 0;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber) = 0;
-	ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) { return call(_secret, _value, _dest, _data, _gas, _gasPrice, m_default); }
+	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) = 0;
+	ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, FudgeFactor _ff = FudgeFactor::Strict) { return call(_secret, _value, _dest, _data, _gas, _gasPrice, m_default, _ff); }
 
 	/// Does the given creation. Nothing is recorded into the state.
 	/// @returns the pair of the Address of the created contract together with its code.
-	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber) = 0;
-	ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo) { return create(_secret, _value, _data, _gas, _gasPrice, m_default); }
+	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) = 0;
+	ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, FudgeFactor _ff = FudgeFactor::Strict) { return create(_secret, _value, _data, _gas, _gasPrice, m_default, _ff); }
 
 	// [STATE-QUERY API]
 
