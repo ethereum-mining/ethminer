@@ -75,7 +75,7 @@ ExecutionResult ClientBase::call(Secret _secret, u256 _value, Address _dest, byt
 		u256 n = temp.transactionsFrom(a);
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
 		if (_ff == FudgeFactor::Lenient)
-			temp.addBalance(a, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
+			temp.addBalance(a, (u256)(t.gas() * t.gasPrice() + t.value()));
 		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
 	}
 	catch (...)

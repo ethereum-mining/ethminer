@@ -19,18 +19,25 @@
  * @date 2014
  * Ethereum client.
  */
+#define __CL_ENABLE_EXCEPTIONS
+#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+#include "libethash-cl/cl.hpp"
+
 #include <functional>
-#include <libethereum/AccountDiff.h>
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/TrieDB.h>
+#include <libdevcore/TransientDirectory.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcrypto/TrieDB.h>
 #include <libp2p/All.h>
-#include <libethereum/DownloadMan.h>
+#include <libethcore/Ethasher.h>
+#include <libethcore/ProofOfWork.h>
 #include <libethereum/All.h>
+#include <libethereum/AccountDiff.h>
+#include <libethereum/DownloadMan.h>
 #include <liblll/All.h>
 #include <libwhisper/WhisperPeer.h>
 #include <libwhisper/WhisperHost.h>
@@ -101,6 +108,22 @@ int main()
 #else
 int main()
 {
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (platforms.empty())
+	{
+		cdebug << "No OpenCL platforms found.";
+		return false;
+	}
+
+	EthashCL ecl;
+	BlockInfo genesis = CanonBlockChain::genesis();
+	TransientDirectory td;
+	std::pair<MineInfo, Ethash::Proof> r;
+	while (!r.first.completed)
+		r = ecl.mine(genesis, 1000);
+	EthashCL::assignResult(r.second, genesis);
+	assert(EthashCPU::verify(genesis));
 	return 0;
 }
 #endif
