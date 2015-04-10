@@ -96,5 +96,16 @@ enum class ImportResult
 	BadChain
 };
 
+struct ImportRequirements
+{
+	using value = unsigned;
+	enum
+	{
+		ValidNonce = 1,
+		DontHave = 2,
+		Default = ValidNonce
+	};
+};
+
 }
 }
