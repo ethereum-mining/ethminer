@@ -118,7 +118,7 @@ public:
 
 	void clear();
 
-	void noteDirty() const { m_hash = m_seedHash = h256(); }
+	void noteDirty() const { m_hash = m_seedHash = m_boundary = h256(); }
 
 	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreNonce, h256 const& _h = h256());
 	void populate(bytesConstRef _block, Strictness _s = IgnoreNonce, h256 const& _h = h256());
@@ -131,6 +131,7 @@ public:
 	u256 selectGasLimit(BlockInfo const& _parent) const;
 	h256 const& seedHash() const;
 	h256 const& hash() const;
+	h256 const& boundary() const;
 
 	/// sha3 of the header only.
 	h256 headerHash(IncludeNonce _n) const;
@@ -139,6 +140,7 @@ public:
 private:
 	mutable h256 m_seedHash;
 	mutable h256 m_hash;						///< SHA3 hash of the block header! Not serialised.
+	mutable h256 m_boundary;					///< 2^256 / difficulty
 };
 
 inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
