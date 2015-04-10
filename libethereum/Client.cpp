@@ -334,6 +334,7 @@ void Client::setMiningThreads(unsigned _threads)
 {
 	stopMining();
 #if ETH_ETHASHCL
+	(void)_threads;
 	unsigned t = 1;
 #else
 	auto t = _threads ? _threads : thread::hardware_concurrency();

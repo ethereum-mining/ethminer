@@ -22,11 +22,8 @@
 #pragma once
 
 #include <string>
-#include "Common.h"
 
 namespace dev
-{
-namespace test
 {
 
 /**
@@ -47,5 +44,4 @@ private:
 	std::string m_path;
 };
 
-}
 }
