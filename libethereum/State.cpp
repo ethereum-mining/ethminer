@@ -274,7 +274,7 @@ bool State::sync(BlockChain const& _bc)
 	return sync(_bc, _bc.currentHash());
 }
 
-bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
+bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi, bool _checkNonce)
 {
 	bool ret = false;
 	// BLOCK
@@ -337,7 +337,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 			for (auto it = chain.rbegin(); it != chain.rend(); ++it)
 			{
 				auto b = _bc.block(*it);
-				enact(&b, _bc);
+				enact(&b, _bc, _checkNonce);
 				cleanup(true);
 			}
 		}
@@ -355,7 +355,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 	return ret;
 }
 
-u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc)
+u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc, bool _checkNonce)
 {
 #if ETH_TIMED_ENACTMENTS
 	boost::timer t;
@@ -383,7 +383,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 	t.restart();
 #endif
 
-	sync(_bc, _bi.parentHash);
+	sync(_bc, _bi.parentHash, BlockInfo(), _checkNonce);
 	resetCurrent();
 
 #if ETH_TIMED_ENACTMENTS
@@ -392,7 +392,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 #endif
 
 	m_previousBlock = biParent;
-	auto ret = enact(_block, _bc);
+	auto ret = enact(_block, _bc, _checkNonce);
 
 #if ETH_TIMED_ENACTMENTS
 	enactment = t.elapsed();
