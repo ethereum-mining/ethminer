@@ -30,18 +30,20 @@ TestCase
 	Application
 	{
 		id: mainApplication
+		trackLastProject: false
 	}
 
 	function newProject()
 	{
-		waitForRendering(mainApplication.mainContent, 10000);
 		mainApplication.projectModel.createProject();
 		var projectDlg = mainApplication.projectModel.newProjectDialog;
 		wait(30);
 		projectDlg.projectTitle = "TestProject";
 		projectDlg.pathFieldText = "/tmp/MixTest"; //TODO: get platform temp path
 		projectDlg.acceptAndClose();
-		wait(30);
+		wait(1);
+		if (!ts.waitForSignal(mainApplication.codeModel, "compilationComplete()", 5000))
+			fail("new contract not compiled");
 	}
 
 	function editContract(c)
@@ -55,7 +57,7 @@ TestCase
 	function editHtml(c)
 	{
 		mainApplication.projectModel.openDocument("index.html");
-		wait(1);
+		ts.waitForSignal(mainApplication.mainContent.codeEditor, "loadComplete()", 5000);
 		mainApplication.mainContent.codeEditor.getEditor("index.html").setText(c);
 		ts.keyPressChar(mainApplication, "S", Qt.ControlModifier, 200); //Ctrl+S
 	}
