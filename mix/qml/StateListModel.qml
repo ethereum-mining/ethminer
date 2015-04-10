@@ -167,6 +167,7 @@ Item {
 		signal defaultStateChanged;
 		signal stateListModelReady;
 		signal stateRun(int index)
+		signal stateDeleted(int index)
 
 		function defaultTransactionItem() {
 			return TransactionHelper.defaultTransaction();
@@ -293,9 +294,8 @@ Item {
 			}
 			else if (defaultStateIndex > index)
 				defaultStateIndex--;
-
 			save();
-
+			stateDeleted(index);
 		}
 
 		function save() {

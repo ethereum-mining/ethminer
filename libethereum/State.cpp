@@ -543,8 +543,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	// m_currentBlock is assumed to be prepopulated and reset.
 
 	BlockInfo bi(_block, _checkNonce ? CheckEverything : IgnoreNonce);
-	cdebug << "enacting" << BlockInfo::headerHash(_block).abridged() << "==" << bi.hash().abridged() << "on" << m_previousBlock.hash().abridged();
-	cdebug << m_currentBlock;
 
 #if !ETH_RELEASE
 	assert(m_previousBlock.hash() == bi.parentHash);
@@ -559,9 +557,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	m_currentBlock = bi;
 	m_currentBlock.verifyInternals(_block);
 	m_currentBlock.noteDirty();
-
-	cdebug << "populated and verified. incoming block hash is" << m_currentBlock.hash().abridged();
-	cdebug << m_currentBlock;
 
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
@@ -631,7 +626,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	// Initialise total difficulty calculation.
 	u256 tdIncrease = m_currentBlock.difficulty;
 
-
 	// Check uncles & apply their rewards to state.
 	if (rlp[2].itemCount() > 2)
 		BOOST_THROW_EXCEPTION(TooManyUncles());
@@ -685,11 +679,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		m_db.rollback();
 		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed)));
 	}
-
-	cdebug << m_currentBlock;
-	auto hh = m_currentBlock.hash();
-	m_currentBlock.noteDirty();
-	cdebug << "done enacting. new stateroot is" << m_currentBlock.stateRoot.abridged() << ", hash is" << m_currentBlock.hash().abridged() << " = " << hh;
 
 	return tdIncrease;
 }
