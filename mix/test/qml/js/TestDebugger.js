@@ -75,7 +75,6 @@ function test_constructorParameters()
 	ts.typeString("442", transactionDialog);
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.model.addTransaction();
-	ts.waitForRendering(transactionDialog, 3000);
 	transactionDialog.selectFunction("getZ");
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.acceptAndClose();
