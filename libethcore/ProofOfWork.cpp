@@ -130,6 +130,7 @@ struct EthashCLHook: public ethash_cl_miner::search_hook
 	{
 		if (m_aborted)
 			return;
+		cdebug << "Attempting to abort";
 		m_abort = true;
 		for (unsigned timeout = 0; timeout < 100 && !m_aborted; ++timeout)
 			std::this_thread::sleep_for(chrono::milliseconds(30));
@@ -149,12 +150,14 @@ protected:
 		for (unsigned i = 0; i < _count; ++i)
 			m_found.push_back((Nonce)(u64)_nonces[i]);
 		m_aborted = true;
+		cdebug << "Found nonces: " << vector<uint64_t>(_nonces, _nonces + _count);
 		return true;
 	}
 
 	virtual bool searched(uint64_t _startNonce, uint32_t _count) override
 	{
 		Guard l(x_all);
+		cdebug << "Searched" << _count << "from" << _startNonce;
 		m_total += _count;
 		m_last = _startNonce + _count;
 		if (m_abort)
@@ -195,14 +198,19 @@ std::pair<MineInfo, Ethash::Proof> EthashCL::mine(BlockInfo const& _header, unsi
 		if (m_miner)
 			m_hook->abort();
 		m_miner.reset(new ethash_cl_miner);
-		m_miner->init(Ethasher::params(_header), [&](void* d){ Ethasher::get()->readFull(_header, d); });
+		auto cb = [&](void* d) {
+			Ethasher::get()->readFull(_header, d);
+		};
+		m_miner->init(Ethasher::params(_header), cb);
 	}
 	if (m_lastHeader != _header)
 	{
 		m_hook->abort();
 		static std::random_device s_eng;
 		uint64_t tryNonce = (uint64_t)(u64)(m_last = Nonce::random(s_eng));
-		m_miner->search(_header.headerHash(WithoutNonce).data(), tryNonce, *m_hook);
+		auto hh = _header.headerHash(WithoutNonce);
+		cdebug << "Mining with headerhash" << hh << "from nonce" << m_last << "with boundary" << _header.boundary();
+		m_miner->search(hh.data(), tryNonce, *m_hook);
 	}
 	m_lastHeader = _header;
 
@@ -210,9 +218,14 @@ std::pair<MineInfo, Ethash::Proof> EthashCL::mine(BlockInfo const& _header, unsi
 	auto found = m_hook->fetchFound();
 	if (!found.empty())
 	{
-		Nonce n = (Nonce)(u64)found[0];
-		auto result = Ethasher::eval(_header, n);
-		return std::make_pair(MineInfo(true), EthashCL::Proof{n, result.mixHash});
+		for (auto const& n: found)
+		{
+			auto result = Ethasher::eval(_header, n);
+			cdebug << "Got nonce " << n << "gives result" << result.value;
+			if (result.value < _header.boundary())
+				return std::make_pair(MineInfo(true), EthashCL::Proof{n, result.mixHash});
+		}
+		assert(false);
 	}
 	return std::make_pair(MineInfo(false), EthashCL::Proof());
 }
