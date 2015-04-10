@@ -76,14 +76,7 @@ bool static ethash_compute_cache_nodes(node *const nodes,
             SHA3_512(nodes[i].bytes, data.bytes, sizeof(data));
         }
     }
-
-    // now perform endian conversion
-#if BYTE_ORDER != LITTLE_ENDIAN
-    for (unsigned w = 0; w != (num_nodes*NODE_WORDS); ++w)
-    {
-        nodes->words[w] = fix_endian32(nodes->words[w]);
-    }
-#endif
+    fix_endian_arr32(nodes->words, num_nodes * NODE_WORDS);
     return true;
 }
 
@@ -205,21 +198,11 @@ static bool ethash_hash(ethash_return_value *ret,
     assert(sizeof(node) * 8 == 512);
     node s_mix[MIX_NODES + 1];
     memcpy(s_mix[0].bytes, header_hash, 32);
-
-#if BYTE_ORDER != LITTLE_ENDIAN
-    s_mix[0].double_words[4] = fix_endian64(nonce);
-#else
-    s_mix[0].double_words[4] = nonce;
-#endif
+    fix_endian64(s_mix[0].double_words[4], nonce);
 
     // compute sha3-512 hash and replicate across mix
     SHA3_512(s_mix->bytes, s_mix->bytes, 40);
-
-#if BYTE_ORDER != LITTLE_ENDIAN
-    for (unsigned w = 0; w != 16; ++w) {
-        s_mix[0].words[w] = fix_endian32(s_mix[0].words[w]);
-    }
-#endif
+    fix_endian_arr32(s_mix[0].words, 16);
 
     node *const mix = s_mix + 1;
     for (unsigned w = 0; w != MIX_WORDS; ++w) {
@@ -280,12 +263,7 @@ static bool ethash_hash(ethash_return_value *ret,
         mix->words[w / 4] = reduction;
     }
 
-#if BYTE_ORDER != LITTLE_ENDIAN
-    for (unsigned w = 0; w != MIX_WORDS/4; ++w) {
-        mix->words[w] = fix_endian32(mix->words[w]);
-    }
-#endif
-
+    fix_endian_arr32(mix->words, MIX_WORDS / 4);
     memcpy(&ret->mix_hash, mix->bytes, 32);
     // final Keccak hash
     SHA3_256(&ret->result, s_mix->bytes, 64 + 32); // Keccak-256(s + compressed_mix)
@@ -300,9 +278,7 @@ void ethash_quick_hash(ethash_h256_t *return_hash,
 
     uint8_t buf[64 + 32];
     memcpy(buf, header_hash, 32);
-#if BYTE_ORDER != LITTLE_ENDIAN
-    nonce = fix_endian64(nonce);
-#endif
+    fix_endian64_same(nonce);
     memcpy(&(buf[32]), &nonce, 8);
     SHA3_512(buf, buf, 40);
     memcpy(&(buf[64]), mix_hash, 32);
