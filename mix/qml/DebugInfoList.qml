@@ -40,11 +40,9 @@ ColumnLayout {
 		height: 25
 		id: header
 		Image {
-			source: "qrc:/qml/img/opentriangleindicator.png"
+			source: "img/closedtriangleindicator.png"
 			width: 15
 			height: 15
-			sourceSize.width: 15
-			sourceSize.height: 15
 			id: storageImgArrow
 		}
 
