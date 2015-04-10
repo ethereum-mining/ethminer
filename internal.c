@@ -94,7 +94,7 @@ ethash_cache *ethash_cache_new(ethash_params const *params, ethash_h256_t const 
     if (!ret) {
         return NULL;
     }
-    ret->mem = malloc(params->cache_size);
+    ret->mem = malloc((size_t)params->cache_size);
     if (!ret->mem) {
         goto fail_free_cache;
     }
@@ -386,7 +386,7 @@ ethash_full_t ethash_full_new(ethash_params const* params,
     }
     
     ret->cache = (ethash_cache*)cache;
-    ret->data = malloc(params->full_size);
+    ret->data = malloc((size_t)params->full_size);
     if (!ret->data) {
         goto fail_free_full;
     }

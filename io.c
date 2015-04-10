@@ -36,7 +36,7 @@ static bool ethash_io_write_file(char const *dirname,
     if (!fullname) {
         return false;
     }
-    FILE *f = fopen(fullname, "wb");
+    FILE *f = ethash_fopen(fullname, "wb");
     if (!f) {
         goto free_name;
     }
