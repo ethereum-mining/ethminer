@@ -190,7 +190,7 @@ public:
 	/// Get hash of the current block to be mined minus the nonce (the 'work hash').
 	virtual std::pair<h256, u256> getWork() = 0;
 	/// Submit the nonce for the proof-of-work.
-	virtual bool submitWork(ProofOfWork::Proof const& _proof) = 0;
+	virtual bool submitWork(ProofOfWork::Solution const& _proof) = 0;
 
 	/// Check the progress of the mining.
 	virtual MineProgress miningProgress() const = 0;
