@@ -36,6 +36,15 @@ namespace dev
 namespace eth
 {
 
+struct WorkPackage
+{
+	h256 boundary;
+	h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
+	h256 seedHash;
+};
+
+static const WorkPackage NullWorkPackage;
+
 /**
  * @brief Describes the progress of a mining operation.
  */
@@ -57,6 +66,10 @@ struct MineProgress
 class MinerHost
 {
 public:
+	// ============================= NEW API =============================
+	virtual WorkPackage const& getWork() const { return NullWorkPackage; }
+
+	// ============================= OLD API =============================
 	virtual void setupState(State& _s) = 0;		///< Reset the given State object to the one that should be being mined.
 	virtual void onProgressed() {}				///< Called once some progress has been made.
 	virtual void onComplete() {}				///< Called once a block is found.
@@ -173,6 +186,70 @@ private:
 	MineProgress m_mineProgress;			///< What's our progress?
 	std::list<MineInfo> m_mineHistory;		///< What the history of our mining?
 };
+
+/**
+ * @brief A collective of Miners.
+ * Miners ask for work, then submit proofs
+ * @threadsafe
+ */
+class Farm: public MinerHost
+{
+public:
+	/**
+	 * @brief Sets the current mining mission.
+	 * @param _bi The block (header) we wish to be mining.
+	 */
+	void setWork(BlockInfo const& _bi);
+
+	/**
+	 * @brief (Re)start miners for CPU only.
+	 * @returns true if started properly.
+	 */
+	bool startCPU();
+
+	/**
+	 * @brief (Re)start miners for GPU only.
+	 * @returns true if started properly.
+	 */
+	bool startGPU();
+
+	/**
+	 * @brief Stop all mining activities.
+	 */
+	void stop();
+
+	/**
+	 * @brief Get information on the progress of mining this work package.
+	 * @return The progress with mining so far.
+	 */
+	MineProgress const& mineProgress() const { ReadGuard l(x_progress); return m_progress; }
+
+protected:
+	/**
+	 * @brief Called by a Miner to retrieve a work package. Reimplemented from MinerHost.
+	 * @return The work package to solve.
+	 */
+	virtual WorkPackage const& getWork() const override { ReadGuard l(x_work); return m_work; }
+
+	/**
+	 * @brief Called from a Miner to note a WorkPackage has a solution.
+	 * @param _p The solution.
+	 * @param _wp The WorkPackage that the Solution is for.
+	 * @return true iff the solution was good (implying that mining should be .
+	 */
+	virtual bool submitProof(ProofOfWork::Solution const& _p, WorkPackage const& _wp) = 0;
+
+private:
+	mutable SharedMutex x_miners;
+	std::vector<std::shared_ptr<Miner>> m_miners;
+
+	mutable SharedMutex x_progress;
+	MineProgress m_progress;
+
+	mutable SharedMutex x_work;
+	WorkPackage m_work;
+};
+
 
 }
 }

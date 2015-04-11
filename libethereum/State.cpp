@@ -856,7 +856,7 @@ void State::commitToMine(BlockChain const& _bc)
 	m_committedToMine = true;
 }
 
-bool State::completeMine(ProofOfWork::Proof const& _nonce)
+bool State::completeMine(ProofOfWork::Solution const& _nonce)
 {
 	ProofOfWork::assignResult(_nonce, m_currentBlock);
 

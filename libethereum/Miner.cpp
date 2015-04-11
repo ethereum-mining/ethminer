@@ -30,11 +30,9 @@ using namespace dev::eth;
 
 Miner::~Miner() {}
 
-LocalMiner::LocalMiner(MinerHost* _host, unsigned _id):
-	AsyncMiner(_host, _id),
-	Worker("miner-" + toString(_id))
+LocalMiner::LocalMiner(MinerHost* _host, unsigned _id)
 {
-	m_pow.reset(_host->turbo() ? new Ethash : (Ethash*)new EthashCPU);
+	setup(_host, _id);
 }
 
 void LocalMiner::setup(MinerHost* _host, unsigned _id)
