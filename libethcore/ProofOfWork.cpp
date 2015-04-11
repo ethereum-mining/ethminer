@@ -50,16 +50,16 @@ bool EthashPoW::verify(BlockInfo const& _header)
 	return Ethasher::verify(_header);
 }
 
-std::pair<MineInfo, EthashCPU::Proof> EthashCPU::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue)
+std::pair<MineInfo, EthashCPU::Solution> EthashCPU::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue)
 {
 	Ethasher::Miner m(_header);
 
-	std::pair<MineInfo, Proof> ret;
+	std::pair<MineInfo, Solution> ret;
 	auto tid = std::this_thread::get_id();
 	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data()) + std::hash<decltype(tid)>()(tid)));
 	uint64_t tryNonce = (uint64_t)(u64)(m_last = Nonce::random(s_eng));
 
-	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
+	h256 boundary = _header.boundary();
 	ret.first.requirement = log2((double)(u256)boundary);
 
 	// 2^ 0      32      64      128      256
@@ -68,7 +68,7 @@ std::pair<MineInfo, EthashCPU::Proof> EthashCPU::mine(BlockInfo const& _header, 
 	// evaluate until we run out of time
 	auto startTime = std::chrono::steady_clock::now();
 	double best = 1e99;	// high enough to be effectively infinity :)
-	Proof result;
+	Solution result;
 	unsigned hashCount = 0;
 	for (; (std::chrono::steady_clock::now() - startTime) < std::chrono::milliseconds(_msTimeout) && _continue; tryNonce++, hashCount++)
 	{
@@ -128,7 +128,7 @@ struct EthashCLHook: public ethash_cl_miner::search_hook
 	{
 		if (m_aborted)
 			return;
-		cdebug << "Attempting to abort";
+//		cdebug << "Attempting to abort";
 		m_abort = true;
 		for (unsigned timeout = 0; timeout < 100 && !m_aborted; ++timeout)
 			std::this_thread::sleep_for(chrono::milliseconds(30));
@@ -148,14 +148,14 @@ protected:
 		for (unsigned i = 0; i < _count; ++i)
 			m_found.push_back((Nonce)(u64)_nonces[i]);
 		m_aborted = true;
-		cdebug << "Found nonces: " << vector<uint64_t>(_nonces, _nonces + _count);
+//		cdebug << "Found nonces: " << vector<uint64_t>(_nonces, _nonces + _count);
 		return true;
 	}
 
 	virtual bool searched(uint64_t _startNonce, uint32_t _count) override
 	{
 		Guard l(x_all);
-		cdebug << "Searched" << _count << "from" << _startNonce;
+//		cdebug << "Searched" << _count << "from" << _startNonce;
 		m_total += _count;
 		m_last = _startNonce + _count;
 		if (m_abort)
@@ -184,7 +184,7 @@ EthashCL::~EthashCL()
 {
 }
 
-std::pair<MineInfo, Ethash::Proof> EthashCL::mine(BlockInfo const& _header, unsigned _msTimeout, bool)
+std::pair<MineInfo, Ethash::Solution> EthashCL::mine(BlockInfo const& _header, unsigned _msTimeout, bool)
 {
 	if (!m_lastHeader || m_lastHeader.seedHash() != _header.seedHash())
 	{
@@ -206,7 +206,14 @@ std::pair<MineInfo, Ethash::Proof> EthashCL::mine(BlockInfo const& _header, unsi
 	}
 	m_lastHeader = _header;
 
+	MineInfo mi;
+	Solution proof;
+	mi.requirement = log2((double)(u256)_header.boundary());
+	mi.best = 0;
+
 	std::this_thread::sleep_for(chrono::milliseconds(_msTimeout));
+
+	mi.hashes += m_hook->fetchTotal();
 	auto found = m_hook->fetchFound();
 	if (!found.empty())
 	{
@@ -214,10 +221,13 @@ std::pair<MineInfo, Ethash::Proof> EthashCL::mine(BlockInfo const& _header, unsi
 		{
 			auto result = Ethasher::eval(_header, n);
 			if (result.value < _header.boundary())
-				return std::make_pair(MineInfo(true), EthashCL::Proof{n, result.mixHash});
+			{
+				mi.completed = true;
+				proof = Solution{n, result.mixHash};
+			}
 		}
 	}
-	return std::make_pair(MineInfo(false), EthashCL::Proof());
+	return std::make_pair(mi, proof);
 }
 
 #endif

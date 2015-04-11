@@ -452,7 +452,7 @@ pair<h256, u256> Client::getWork()
 	return make_pair(m_remoteMiner.workHash(), m_remoteMiner.difficulty());
 }
 
-bool Client::submitWork(ProofOfWork::Proof const& _proof)
+bool Client::submitWork(ProofOfWork::Solution const& _proof)
 {
 	Guard l(x_remoteMiner);
 	return m_remoteMiner.submitWork(_proof);

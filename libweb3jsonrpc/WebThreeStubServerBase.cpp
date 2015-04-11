@@ -767,7 +767,7 @@ bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, string const& 
 {
 	try
 	{
-		return client()->submitWork(ProofOfWork::Proof{jsToFixed<Nonce::size>(_nonce), jsToFixed<32>(_mixHash)});
+		return client()->submitWork(ProofOfWork::Solution{jsToFixed<Nonce::size>(_nonce), jsToFixed<32>(_mixHash)});
 	}
 	catch (...)
 	{

@@ -114,7 +114,7 @@ int main()
 	BlockInfo genesis = CanonBlockChain::genesis();
 	genesis.difficulty = 1 << 18;
 	cdebug << (h256)u256((bigint(1) << 256) / genesis.difficulty);
-	std::pair<MineInfo, Ethash::Proof> r;
+	std::pair<MineInfo, Ethash::Solution> r;
 	while (!r.first.completed)
 		r = ecl.mine(genesis, 1000);
 	cdebug << r.second.mixHash << r.second.nonce;
