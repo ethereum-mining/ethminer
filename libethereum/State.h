@@ -162,7 +162,7 @@ public:
 
 	/// Pass in a solution to the proof-of-work.
 	/// @returns true iff the given nonce is a proof-of-work for this State's block.
-	bool completeMine(ProofOfWork::Proof const& _result);
+	bool completeMine(ProofOfWork::Solution const& _result);
 
 	/// Attempt to find valid nonce for block that this state represents.
 	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
@@ -174,7 +174,7 @@ public:
 		m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
 
 		MineInfo ret;
-		typename ProofOfWork::Proof r;
+		typename ProofOfWork::Solution r;
 		std::tie(ret, r) = _pow->mine(m_currentBlock, _pow->defaultTimeout(), true);
 
 		if (!ret.completed)

@@ -71,7 +71,7 @@ public:
 	uint64_t hashrate() const override;
 	eth::MineProgress miningProgress() const override;
 	std::pair<h256, u256> getWork() override { return std::pair<h256, u256>(); }
-	bool submitWork(eth::ProofOfWork::Proof const&) override { return false; }
+	bool submitWork(eth::ProofOfWork::Solution const&) override { return false; }
 	virtual void flushTransactions() override {}
 
 	/// @returns the last mined block information

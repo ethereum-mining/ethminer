@@ -82,7 +82,7 @@ public:
 	h256 workHash() const { return m_state.info().headerHash(IncludeNonce::WithoutNonce); }
 	u256 const& difficulty() const { return m_state.info().difficulty; }
 
-	bool submitWork(ProofOfWork::Proof const& _result) { return (m_isComplete = m_state.completeMine(_result)); }
+	bool submitWork(ProofOfWork::Solution const& _result) { return (m_isComplete = m_state.completeMine(_result)); }
 
 	virtual bool isComplete() const override { return m_isComplete; }
 	virtual bytes const& blockData() const { return m_state.blockData(); }
@@ -216,7 +216,7 @@ public:
 	/// nonce (the 'work hash') and the difficulty to be met.
 	virtual std::pair<h256, u256> getWork() override;
 	/// Submit the proof for the proof-of-work.
-	virtual bool submitWork(ProofOfWork::Proof const& _proof) override;
+	virtual bool submitWork(ProofOfWork::Solution const& _proof) override;
 
 	// Debug stuff:
 
