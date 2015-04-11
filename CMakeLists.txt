@@ -267,10 +267,11 @@ if ("x${CMAKE_BUILD_TYPE}" STREQUAL "x")
 	set(CMAKE_BUILD_TYPE "Release")
 endif ()
 
-# Default TARGET_PLATFORM to "linux".
-set(TARGET_PLATFORM CACHE STRING "linux")
+# Default TARGET_PLATFORM to ${CMAKE_SYSTEM}
+# change this once we support cross compiling
+set(TARGET_PLATFORM CACHE STRING ${CMAKE_SYSTEM})
 if ("x${TARGET_PLATFORM}" STREQUAL "x")
-	set(TARGET_PLATFORM "linux")
+	set(TARGET_PLATFORM ${CMAKE_SYSTEM})
 endif ()
 
 message("------------------------------------------------------------------------")
@@ -297,10 +298,7 @@ message("-- EVMJIT           Build LLVM-based JIT EVM (experimental!) ${EVMJIT}"
 message("------------------------------------------------------------------------")
 message("")
 
-
-if ("${TARGET_PLATFORM}" STREQUAL "linux")
-	set(CMAKE_THREAD_LIBS_INIT pthread)
-endif ()
+set(CMAKE_THREAD_LIBS_INIT pthread)
 
 include(EthCompilerSettings)
 message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
