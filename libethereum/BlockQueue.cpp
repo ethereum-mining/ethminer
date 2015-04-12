@@ -102,6 +102,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 			m_readySet.insert(h);
 
 			noteReadyWithoutWriteGuard(h);
+			m_onReady();
 			return ImportResult::Success;
 		}
 	}

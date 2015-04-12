@@ -42,6 +42,7 @@
 #include "CommonNet.h"
 #include "Miner.h"
 #include "ABI.h"
+#include "Farm.h"
 #include "ClientBase.h"
 
 namespace dev
@@ -122,7 +123,7 @@ struct ClientDetail: public LogChannel { static const char* name() { return " C 
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
-class Client: public MinerHost, public ClientBase, Worker
+class Client: public ClientBase, Worker
 {
 	friend class OldMiner;
 
@@ -132,8 +133,7 @@ public:
 		p2p::Host* _host,
 		std::string const& _dbPath = std::string(),
 		WithExisting _forceAction = WithExisting::Trust,
-		u256 _networkId = 0,
-		int _miners = -1
+		u256 _networkId = 0
 	);
 
 	explicit Client(
@@ -141,8 +141,7 @@ public:
 		std::shared_ptr<GasPricer> _gpForAdoption,		// pass it in with new.
 		std::string const& _dbPath = std::string(),
 		WithExisting _forceAction = WithExisting::Trust,
-		u256 _networkId = 0,
-		int _miners = -1
+		u256 _networkId = 0
 	);
 
 	/// Destructor.
@@ -191,31 +190,31 @@ public:
 	/// Are we allowed to GPU mine?
 	bool turboMining() const { return m_turboMining; }
 	/// Enable/disable GPU mining.
-	void setTurboMining(bool _enable = true) { bool was = isMining(); stopMining(); m_turboMining = _enable; setMiningThreads(0); if (was) startMining(); }
+	void setTurboMining(bool _enable = true) { m_turboMining = _enable; if (isMining()) startMining(); }
 
-	/// Stops mining and sets the number of mining threads (0 for automatic).
-	void setMiningThreads(unsigned _threads = 0) override;
-	/// Get the effective number of mining threads.
-	unsigned miningThreads() const override { ReadGuard l(x_localMiners); return m_localMiners.size(); }
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	void startMining() override { startWorking(); { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); } }
+	void startMining() override { if (m_turboMining) m_farm.startGPU(); else m_farm.startCPU(); }
 	/// Stop mining.
 	/// NOT thread-safe
-	void stopMining() override { { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); } }
+	void stopMining() override { m_farm.stop(); }
 	/// Are we mining now?
-	bool isMining() const override { { ReadGuard l(x_localMiners); if (!m_localMiners.empty() && m_localMiners[0].isRunning()) return true; } return false; }
-	/// Are we mining now?
+	bool isMining() const override { return m_farm.isMining(); }
+	/// The hashrate...
 	uint64_t hashrate() const override;
 	/// Check the progress of the mining.
-	MineProgress miningProgress() const override;
+	MiningProgress miningProgress() const override;
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory();
 
 	/// Update to the latest transactions and get hash of the current block to be mined minus the
 	/// nonce (the 'work hash') and the difficulty to be met.
 	virtual std::pair<h256, u256> getWork() override;
-	/// Submit the proof for the proof-of-work.
+
+	/** @brief Submit the proof for the proof-of-work.
+	 * @param _s A valid solution.
+	 * @return true if the solution was indeed valid and accepted.
+	 */
 	virtual bool submitWork(ProofOfWork::Solution const& _proof) override;
 
 	// Debug stuff:
@@ -261,10 +260,23 @@ private:
 	/// Called when Worker is exiting.
 	virtual void doneWorking();
 
-	/// Overrides for being a mining host.
-	virtual void setupState(State& _s);
-	virtual bool turbo() const { return m_turboMining; }
-	virtual bool force() const { return m_forceMining; }
+	/// Magically called when the chain has changed. An import route is provided.
+	/// Called by either submitWork() or in our main thread through syncBlockQueue().
+	void onChainChanged(ImportRoute const& _ir);
+
+	/// Signal handler for when the block queue needs processing.
+	void syncBlockQueue();
+
+	/// Signal handler for when the block queue needs processing.
+	void syncTransactionQueue();
+
+	/// Magically called when m_tq needs syncing. Be nice and don't block.
+	void onTransactionQueueReady() { Guard l(x_fakeSignalSystemState); m_syncTransactionQueue = true; }
+
+	/// Magically called when m_tq needs syncing. Be nice and don't block.
+	void onBlockQueueReady() { Guard l(x_fakeSignalSystemState); m_syncBlockQueue = true; }
+
+	void checkWatchGarbage();
 
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	CanonBlockChain m_bc;					///< Maintains block database.
@@ -278,17 +290,24 @@ private:
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
+	Farm<ProofOfWork> m_farm;				///< Our mining farm.
 	mutable Mutex x_remoteMiner;			///< The remote miner lock.
 	RemoteMiner m_remoteMiner;				///< The remote miner.
 
-	std::vector<LocalMiner> m_localMiners;	///< The in-process miners.
-	mutable SharedMutex x_localMiners;		///< The in-process miners lock.
-	bool m_paranoia = false;				///< Should we be paranoid about our state?
+	Handler m_tqReady;
+	Handler m_bqReady;
+
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
-	bool m_verifyOwnBlocks = true;			///< Should be verify blocks that we mined?
+	bool m_paranoia = false;				///< Should we be paranoid about our state?
 
 	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
+											///< When did we last both doing GC on the watches?
+
+	// TODO!!!!!! REPLACE WITH A PROPER X-THREAD ASIO SIGNAL SYSTEM (could just be condition variables)
+	mutable Mutex x_fakeSignalSystemState;
+	bool m_syncTransactionQueue = false;
+	bool m_syncBlockQueue = false;
 };
 
 }

@@ -96,5 +96,42 @@ enum class ImportResult
 	BadChain
 };
 
+class Signal;
+
+class Handler
+{
+public:
+	Handler() = default;
+	Handler(Handler const&) = delete;
+	~Handler() { reset(); }
+
+	Handler& operator=(Handler const& _h) = delete;
+
+	void reset();
+
+private:
+	Handler(unsigned _i, Signal* _s): m_i(_i), m_s(_s) {}
+
+	unsigned m_i = 0;
+	Signal* m_s = nullptr;
+};
+
+/// Super-duper signal mechanism. TODO: replace with somthing a bit heavier weight.
+class Signal
+{
+public:
+	using Callback = std::function<void()>;
+	using Callbacks = std::vector<ReadyCallback>;
+
+	Handler add(Callback const& _h) { auto n = m_onReady.size() ? m_onReady.rbegin()->first + 1 : 0; m_onReady[n] = _h; return Handler(n, this); }
+
+	void operator()() { for (auto const& f: m_fire) f.second(); }
+
+private:
+	std::map<unsigned, Callbacks> m_fire;
+};
+
+inline void Handler::reset() { if (m_s) m_s->m_fire->erase(m_i); m_s = nullptr; }
+
 }
 }
