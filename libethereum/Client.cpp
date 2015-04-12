@@ -264,7 +264,7 @@ static string filtersToString(T const& _fs)
 {
 	stringstream ret;
 	ret << "{";
-	bool i = false;
+	unsigned i = 0;
 	for (h256 const& f: _fs)
 		ret << (i++ ? ", " : "") << (f == PendingChangedFilter ? "pending" : f == ChainChangedFilter ? "chain" : f.abridged());
 	ret << "}";
