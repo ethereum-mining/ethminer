@@ -28,7 +28,7 @@ namespace eth{
 
 class EthashAux
 {
-	EthashAux() {}
+public:
 	~EthashAux();
 
 	static EthashAux* get() { if (!s_this) s_this = new EthashAux(); return s_this; }
@@ -49,9 +49,11 @@ class EthashAux
 	static Ethash::Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce);
 
 private:
+	EthashAux() {}
+
 	void killCache(h256 const& _s);
 
-	static Ethash* s_this;
+	static EthashAux* s_this;
 	RecursiveMutex x_this;
 
 	std::map<h256, LightType> m_lights;
