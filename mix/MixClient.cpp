@@ -372,16 +372,6 @@ void MixClient::setAddress(Address _us)
 	m_state.setAddress(_us);
 }
 
-void MixClient::setMiningThreads(unsigned _threads)
-{
-	m_miningThreads = _threads;
-}
-
-unsigned MixClient::miningThreads() const
-{
-	return m_miningThreads;
-}
-
 void MixClient::startMining()
 {
 	//no-op

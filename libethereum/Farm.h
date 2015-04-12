@@ -42,7 +42,7 @@ namespace eth
  * @threadsafe
  */
 template <class PoW>
-class Farm: public FarmFace<PoW>
+class GenericFarm: public GenericFarmFace<PoW>
 {
 public:
 	/**

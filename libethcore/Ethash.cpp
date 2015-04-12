@@ -62,7 +62,7 @@ unsigned Ethash::revision()
 void Ethash::prep(BlockInfo const& _header)
 {
 	if (_header.number % ETHASH_EPOCH_LENGTH == 1)
-		EthashAux::full(bi);
+		EthashAux::full(_header);
 }
 
 bool Ethash::preVerify(BlockInfo const& _header)
@@ -88,7 +88,7 @@ bool Ethash::verify(BlockInfo const& _header)
 #endif
 
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
-	auto result = eval(_header);
+	auto result = EthashAux::eval(_header);
 	bool slow = result.value <= boundary && result.mixHash == _header.mixHash;
 
 #if ETH_DEBUG || !ETH_TRUE
@@ -111,28 +111,26 @@ bool Ethash::verify(BlockInfo const& _header)
 void Ethash::CPUMiner::workLoop()
 {
 	auto tid = std::this_thread::get_id();
-	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data()) + std::hash<decltype(tid)>()(tid)));
+	static std::mt19937_64 s_eng((time(0) + std::hash<decltype(tid)>()(tid)));
 
-	uint64_t tryNonce = Nonce::random(s_eng);
+	uint64_t tryNonce = (uint64_t)(u64)Nonce::random(s_eng);
 	ethash_return_value ethashReturn;
 
-	auto p = Ethash::params(m_work.seedHash);
-	void const* dagPointer = Ethash::full(m_work.headerHash).data();
+	auto p = EthashAux::params(m_work.seedHash);
+	void const* dagPointer = EthashAux::full(m_work.headerHash).data();
 	uint8_t const* headerHashPointer = m_work.headerHash.data();
-	h256 boundary = m_work.boundary();
+	h256 boundary = m_work.boundary;
 	unsigned hashCount = 0;
 	for (; !shouldStop(); tryNonce++, hashCount++)
 	{
 		ethash_compute_full(&ethashReturn, dagPointer, &p, headerHashPointer, tryNonce);
 		h256 value = h256(ethashReturn.result, h256::ConstructFromPointer);
-		if (value <= boundary && submitProof(Solution{value, h256(ethashReturn.mix_hash, h256::ConstructFromPointer)}))
+		if (value <= boundary && submitProof(Solution{(Nonce)(u64)tryNonce, h256(ethashReturn.mix_hash, h256::ConstructFromPointer)}))
 			break;
 	}
 }
 
 #if ETH_ETHASHCL || !ETH_TRUE
-
-namespace dev { namespace eth {
 
 class EthashCLHook: public ethash_cl_miner::search_hook
 {
@@ -148,8 +146,8 @@ public:
 		m_abort = true;
 		for (unsigned timeout = 0; timeout < 100 && !m_aborted; ++timeout)
 			std::this_thread::sleep_for(chrono::milliseconds(30));
-		if (!m_aborted)
-			cwarn << "Couldn't abort. Abandoning OpenCL process.";
+//		if (!m_aborted)
+//			cwarn << "Couldn't abort. Abandoning OpenCL process.";
 		m_aborted = m_abort = false;
 	}
 
@@ -161,7 +159,7 @@ protected:
 //		cdebug << "Found nonces: " << vector<uint64_t>(_nonces, _nonces + _count);
 		for (uint32_t i = 0; i < _count; ++i)
 		{
-			if (m_owner->found(_nonces[i]))
+			if (m_owner->report(_nonces[i]))
 			{
 				m_aborted = true;
 				return true;
@@ -193,19 +191,17 @@ private:
 	Ethash::GPUMiner* m_owner = nullptr;
 };
 
-} }
-
 Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
 	m_hook(new EthashCLHook(this))
 {
 }
 
-void Ethash::GPUMiner::report(uint64_t _nonce)
+bool Ethash::GPUMiner::report(uint64_t _nonce)
 {
 	Nonce n = (Nonce)(u64)_nonce;
-	Result r = Ethash::eval(m_work.seedHash, m_work.headerHash, n);
-	if (r.value < m_work.boundary)
+	Result r = EthashAux::eval(m_lastWork.seedHash, m_lastWork.headerHash, n);
+	if (r.value < m_lastWork.boundary)
 		return submitProof(Solution{n, r.mixHash});
 	return false;
 }
@@ -217,17 +213,17 @@ void Ethash::GPUMiner::kickOff(WorkPackage const& _work)
 		if (m_miner)
 			m_hook->abort();
 		m_miner.reset(new ethash_cl_miner);
-		auto p = Ethash::params(_work.seedHash);
-		auto cb = [&](void* d) { EthashAux::readFull(_work.seedHash, bytesRef((byte*)d, p.full_size)); };
+		auto p = EthashAux::params(_work.seedHash);
+		auto cb = [&](void* d) { EthashAux::full(_work.seedHash, bytesRef((byte*)d, p.full_size)); };
 		m_miner->init(p, cb, 32);
 	}
 	if (m_lastWork.headerHash != _work.headerHash)
 	{
 		m_hook->abort();
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)_work.boundary >> 192);
-		m_miner->search(_work.headerHash, upper64OfBoundary, *m_hook);
+		m_miner->search(_work.headerHash.data(), upper64OfBoundary, *m_hook);
 	}
-	m_work = _work;
+	m_lastWork = _work;
 }
 
 void Ethash::GPUMiner::pause()
