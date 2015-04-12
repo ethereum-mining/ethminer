@@ -404,14 +404,17 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 	return ret;
 }
 
-pair<h256, u256> Client::getWork()
+ProofOfWork::WorkPackage Client::getWork()
 {
 	Guard l(x_remoteMiner);
+	BlockInfo bi;
 	{
 		ReadGuard l(x_stateDB);
 		m_remoteMiner.update(m_postMine, m_bc);
+		m_postMine.commitToMine(m_bc);
+		bi = m_postMine.info();
 	}
-	return make_pair(m_remoteMiner.workHash(), m_remoteMiner.difficulty());
+	return ProofOfWork::package(bi);
 }
 
 bool Client::submitWork(ProofOfWork::Solution const& _solution)

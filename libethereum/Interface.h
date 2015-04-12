@@ -26,11 +26,11 @@
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Params.h>
+#include <libethcore/ProofOfWork.h>
 #include "LogFilter.h"
 #include "Transaction.h"
 #include "AccountDiff.h"
 #include "BlockDetails.h"
-#include "Miner.h"
 
 namespace dev
 {
@@ -188,7 +188,7 @@ public:
 	virtual bool submitWork(ProofOfWork::Solution const& _proof) = 0;
 
 	/// Check the progress of the mining.
-	virtual MineProgress miningProgress() const = 0;
+	virtual MiningProgress miningProgress() const = 0;
 
 protected:
 	int m_default = PendingBlock;
