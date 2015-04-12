@@ -467,7 +467,7 @@ void Client::doWork()
 	cworkin << "WORK";
 	h256Set changeds;
 
-	auto maintainMiner = [&](Miner& m)
+	auto maintainMiner = [&](OldMiner& m)
 	{
 		if (m.isComplete())
 		{

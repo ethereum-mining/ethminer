@@ -57,7 +57,11 @@ protected:
 	virtual void startedWorking() {}
 	
 	/// Called continuously following sleep for m_idleWaitMs.
-	virtual void doWork() = 0;
+	virtual void doWork() {}
+
+	/// Overrides doWork(); should call shouldStop() often and exit when true.
+	virtual void workLoop();
+	bool shouldStop() const { return m_stop; }
 	
 	/// Called when is to be stopped, just prior to thread being joined.
 	virtual void doneWorking() {}
