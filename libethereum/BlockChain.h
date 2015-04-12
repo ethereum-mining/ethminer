@@ -68,7 +68,7 @@ ldb::Slice toSlice(h256 const& _h, unsigned _sub = 0);
 using BlocksHash = std::map<h256, bytes>;
 using TransactionHashes = h256s;
 using UncleHashes = h256s;
-using ImportRoute = std::pair<h256s, h256s,>;
+using ImportRoute = std::pair<h256s, h256s>;
 
 enum {
 	ExtraDetails = 0,
