@@ -29,6 +29,7 @@
 #include <libdevcrypto/SHA3.h>
 #include "Common.h"
 #include "BlockInfo.h"
+#include "Miner.h"
 
 #define FAKE_DAGGER 1
 
@@ -51,39 +52,56 @@ struct MineInfo
 	bool completed = false;
 };
 
-class EthashPoW
+class EthashCLHook;
+
+class Ethash
 {
+
 public:
-	struct Solution
-	{
-		Nonce nonce;
-		h256 mixHash;
-	};
 
-	static bool verify(BlockInfo const& _header);
-	static void assignResult(Solution const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
-
-	virtual unsigned defaultTimeout() const { return 100; }
-	virtual std::pair<MineInfo, Solution> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true) = 0;
+struct Solution
+{
+	Nonce nonce;
+	h256 mixHash;
 };
 
-class EthashCPU: public EthashPoW
+static bool verify(BlockInfo const& _header);
+static void assignResult(Solution const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
+
+class CPUMiner: public Miner, Worker
 {
 public:
-	std::pair<MineInfo, Solution> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true) override;
+	CPUMiner(ConstructionInfo const& _ci): Miner(_ci), Worker("miner" + toString(index())) {}
 
-protected:
-	Nonce m_last;
+	static unsigned instances() { return thread::hardware_concurrency(); }
+
+	void kickOff(WorkPackage const& _work) override
+	{
+		stopWorking();
+		m_work = _work;
+		startWorking();
+	}
+
+	void pause() override { stopWorking(); }
+
+private:
+	void workLoop() override;
+
+	WorkPackage m_work;
+	MineInfo m_info;
 };
 
 #if ETH_ETHASHCL || !ETH_TRUE
-class EthashCLHook;
 
-class EthashCL: public EthashPoW
+class GPUMiner: public NewMiner
 {
 public:
-	EthashCL();
-	~EthashCL();
+	GPUMiner(ConstructionInfo const& _ci): NewMiner(_ci)
+	{
+
+	}
+
+	static unsigned instances() { return 1; }
 
 	std::pair<MineInfo, Solution> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true) override;
 	unsigned defaultTimeout() const override { return 500; }
@@ -96,81 +114,15 @@ protected:
 	std::unique_ptr<EthashCLHook> m_hook;
 };
 
-using Ethash = EthashCL;
 #else
-using Ethash = EthashCPU;
+
+using GPUMiner = CPUMiner;
+
 #endif
 
-template <class Evaluator>
-class ProofOfWorkEngine: public Evaluator
-{
-public:
-	using Solution = Nonce;
-
-	static bool verify(BlockInfo const& _header) { return (bigint)(u256)Evaluator::eval(_header.headerHash(WithoutNonce), _header.nonce) <= (bigint(1) << 256) / _header.difficulty; }
-	inline std::pair<MineInfo, Solution> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true);
-	static void assignResult(Solution const& _r, BlockInfo& _header) { _header.nonce = _r; }
-	unsigned defaultTimeout() const { return 100; }
-
-protected:
-	Nonce m_last;
 };
-
-class SHA3Evaluator
-{
-public:
-	static h256 eval(h256 const& _root, Nonce const& _nonce) { h256 b[2] = { _root, h256(_nonce) }; return sha3(bytesConstRef((byte const*)&b[0], 64)); }
-};
-
-using SHA3ProofOfWork = ProofOfWorkEngine<SHA3Evaluator>;
 
 using ProofOfWork = Ethash;
-
-template <class Evaluator>
-std::pair<MineInfo, typename ProofOfWorkEngine<Evaluator>::Solution> ProofOfWorkEngine<Evaluator>::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue)
-{
-	auto headerHashWithoutNonce = _header.headerHash(WithoutNonce);
-	auto difficulty = _header.difficulty;
-
-	std::pair<MineInfo, Nonce> ret;
-	static std::mt19937_64 s_eng((time(0) + *reinterpret_cast<unsigned*>(m_last.data())));
-	Nonce::Arith s = (m_last = Nonce::random(s_eng));
-
-	bigint d = (bigint(1) << 256) / difficulty;
-	ret.first.requirement = log2((double)d);
-
-	// 2^ 0      32      64      128      256
-	//   [--------*-------------------------]
-	//
-	// evaluate until we run out of time
-	auto startTime = std::chrono::steady_clock::now();
-	double best = 1e99;	// high enough to be effectively infinity :)
-	ProofOfWorkEngine<Evaluator>::Solution solution;
-	unsigned h = 0;
-	for (; (std::chrono::steady_clock::now() - startTime) < std::chrono::milliseconds(_msTimeout) && _continue; s++, h++)
-	{
-		solution = (ProofOfWorkEngine<Evaluator>::Solution)s;
-		auto e = (bigint)(u256)Evaluator::eval(headerHashWithoutNonce, solution);
-		best = std::min<double>(best, log2((double)e));
-		if (e <= d)
-		{
-			ret.first.completed = true;
-			break;
-		}
-	}
-	ret.first.hashes = h;
-	ret.first.best = best;
-	ret.second = solution;
-
-	if (ret.first.completed)
-	{
-		BlockInfo test = _header;
-		assignResult(solution, test);
-		assert(verify(test));
-	}
-
-	return ret;
-}
 
 }
 }
