@@ -369,7 +369,7 @@ MineProgress Client::miningProgress() const
 
 uint64_t Client::hashrate() const
 {
-	uint64_t ret;
+	uint64_t ret = 0;
 	ReadGuard l(x_localMiners);
 	for (LocalMiner const& m: m_localMiners)
 		ret += m.miningProgress().hashes / m.miningProgress().ms;
