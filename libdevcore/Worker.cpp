@@ -39,12 +39,7 @@ void Worker::startWorking()
 	{
 		setThreadName(m_name.c_str());
 		startedWorking();
-		while (!m_stop)
-		{
-			if (m_idleWaitMs)
-				this_thread::sleep_for(chrono::milliseconds(m_idleWaitMs));
-			doWork();
-		}
+		workLoop();
 		cnote << "Finishing up worker thread";
 		doneWorking();
 	}));
@@ -63,3 +58,12 @@ void Worker::stopWorking()
 	cnote << "Stopped" << m_name;
 }
 
+void Worker::workLoop()
+{
+	while (!m_stop)
+	{
+		if (m_idleWaitMs)
+			this_thread::sleep_for(chrono::milliseconds(m_idleWaitMs));
+		doWork();
+	}
+}

@@ -45,13 +45,38 @@ namespace dev
 namespace eth
 {
 
-bool EthashPoW::verify(BlockInfo const& _header)
+void Ethash::CPUMiner::workLoop()
 {
-	return Ethasher::verify(_header);
-}
+	Solution solution;
 
-std::pair<MineInfo, EthashCPU::Solution> EthashCPU::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue)
-{
+	class Miner
+	{
+	public:
+		Miner(BlockInfo const& _header):
+			m_headerHash(_header.headerHash(WithoutNonce)),
+			m_params(Ethasher::params(_header)),
+			m_datasetPointer(Ethasher::get()->full(_header).data())
+		{}
+
+		inline h256 mine(uint64_t _nonce)
+		{
+			ethash_compute_full(&m_ethashReturn, m_datasetPointer, &m_params, m_headerHash.data(), _nonce);
+//			cdebug << "Ethasher::mine hh:" << m_headerHash << "nonce:" << (Nonce)(u64)_nonce << " => " << h256(m_ethashReturn.result, h256::ConstructFromPointer);
+			return h256(m_ethashReturn.result, h256::ConstructFromPointer);
+		}
+
+		inline h256 lastMixHash() const
+		{
+			return h256(m_ethashReturn.mix_hash, h256::ConstructFromPointer);
+		}
+
+	private:
+		ethash_return_value m_ethashReturn;
+		h256 m_headerHash;
+		ethash_params m_params;
+		void const* m_datasetPointer;
+	};
+
 	Ethasher::Miner m(_header);
 
 	std::pair<MineInfo, Solution> ret;
@@ -70,34 +95,21 @@ std::pair<MineInfo, EthashCPU::Solution> EthashCPU::mine(BlockInfo const& _heade
 	double best = 1e99;	// high enough to be effectively infinity :)
 	Solution result;
 	unsigned hashCount = 0;
-	for (; (std::chrono::steady_clock::now() - startTime) < std::chrono::milliseconds(_msTimeout) && _continue; tryNonce++, hashCount++)
+	for (; !shouldStop(); tryNonce++, hashCount++)
 	{
 		h256 val(m.mine(tryNonce));
 		best = std::min<double>(best, log2((double)(u256)val));
 		if (val <= boundary)
 		{
-			ret.first.completed = true;
-			assert(Ethasher::eval(_header, (Nonce)(u64)tryNonce).value == val);
-			result.mixHash = m.lastMixHash();
-			result.nonce = u64(tryNonce);
-			BlockInfo test = _header;
-			assignResult(result, test);
-			assert(verify(test));
-			break;
+			if (submitProof(solution))
+				return;
 		}
 	}
 	ret.first.hashes = hashCount;
 	ret.first.best = best;
 	ret.second = result;
 
-	if (ret.first.completed)
-	{
-		BlockInfo test = _header;
-		assignResult(result, test);
-		assert(verify(test));
-	}
-
-	return ret;
+	return;
 }
 
 #if ETH_ETHASHCL || !ETH_TRUE
