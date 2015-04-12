@@ -48,7 +48,7 @@ class TransactionQueue
 public:
 	using ImportCallback = std::function<void(ImportResult)>;
 
-	ImportResult import(bytes const& _tx, ImportCallback const& _cb = ImportCallback()) { return import(&_tx); }
+	ImportResult import(bytes const& _tx, ImportCallback const& _cb = ImportCallback()) { return import(&_tx, _cb); }
 	ImportResult import(bytesConstRef _tx, ImportCallback const& _cb = ImportCallback());
 
 	void drop(h256 _txHash);
