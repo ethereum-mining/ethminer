@@ -26,7 +26,7 @@
 
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonData.h>
-#if ETH_SOLIDITY
+#if ETH_SOLIDITY || !ETH_TRUE
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/SourceReferenceFormatter.h>
@@ -38,7 +38,7 @@
 #include <libethcore/CommonJS.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
-#if ETH_SERPENT
+#if ETH_SERPENT || !ETH_TRUE
 #include <libserpent/funcs.h>
 #endif
 #include "WebThreeStubServerBase.h"
@@ -632,7 +632,7 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 	// TODO throw here jsonrpc errors
 	string res;
 	(void)_code;
-#if ETH_SERPENT || !TRUE
+#if ETH_SERPENT || !ETH_TRUE
 	try
 	{
 		res = toJS(dev::asBytes(::compile(_code)));
@@ -654,7 +654,7 @@ string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
 	// TOOD throw here jsonrpc errors
 	(void)_code;
 	string res;
-#if ETH_SOLIDITY || !TRUE
+#if ETH_SOLIDITY || !ETH_TRUE
 	dev::solidity::CompilerStack compiler;
 	try
 	{
