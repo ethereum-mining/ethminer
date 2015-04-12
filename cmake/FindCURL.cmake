@@ -16,10 +16,17 @@ find_path(
 	DOC "curl include dir"
 )
 
+# if msvc 64 build
+# names from cmake's FindCURL
+if (CMAKE_CL_64)
+	set(CURL_NAMES curl_x64 curllib_x64 libcurl_imp_x64 curllib_static_x64 libcurl_x64)
+else ()
+	set(CURL_NAMES curl curllib libcurl_imp curllib_static libcurl)
+endif()
+
 find_library(
 	CURL_LIBRARY
-	# names from cmake's FindCURL
-	NAMES curl curllib libcurl_imp curllib_static libcurl
+	NAMES ${CURL_NAMES}
 	DOC "curl library"
 )
 
@@ -30,9 +37,16 @@ set(CURL_LIBRARIES ${CURL_LIBRARY})
 # same naming convention as in qt (appending debug library with d)
 # boost is using the same "hack" as us with "optimized" and "debug"
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	
+	if (CMAKE_CL_64)
+		set(CURL_NAMES_DEBUG curld_x64 libcurld_x64)
+	else ()
+		set(CURL_NAMES_DEBUG curld libcurld)
+	endif()
+
 	find_library(
 		CURL_LIBRARY_DEBUG
-		NAMES curld libcurld
+		NAMES ${CURL_DEBUG}
 		DOC "curl debug library"
 	)
 	
