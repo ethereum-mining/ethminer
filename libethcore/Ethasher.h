@@ -52,11 +52,13 @@ public:
 	using FullType = void const*;
 
 	LightType light(BlockInfo const& _header);
-	bytesConstRef full(BlockInfo const& _header);
-	static ethash_params params(BlockInfo const& _header);
-	static ethash_params params(unsigned _n);
+	LightType light(h256 const& _header);
+	bytesConstRef full(BlockInfo const& _header, bytesRef _dest = bytesRef());
+	bytesConstRef full(h256 const& _header, bytesRef _dest = bytesRef());
 
-	void readFull(BlockInfo const& _header, void* _dest);
+	static ethash_params params(BlockInfo const& _header);
+	static ethash_params params(h256 const& _seedHash);
+	static ethash_params params(unsigned _n);
 
 	struct Result
 	{
@@ -66,6 +68,7 @@ public:
 
 	static Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
 	static Result eval(BlockInfo const& _header, Nonce const& _nonce);
+	static Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce);
 	static bool verify(BlockInfo const& _header);
 
 	class Miner
@@ -103,6 +106,7 @@ private:
 	RecursiveMutex x_this;
 	std::map<h256, LightType> m_lights;
 	std::map<h256, bytesRef> m_fulls;
+	std::map<h256, unsigned> m_seedHashes;
 };
 
 }
