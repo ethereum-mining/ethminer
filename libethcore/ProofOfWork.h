@@ -34,7 +34,6 @@
 #define FAKE_DAGGER 1
 
 class ethash_cl_miner;
-struct ethash_cl_search_hook;
 
 namespace dev
 {
@@ -51,8 +50,6 @@ struct MineInfo
 	unsigned hashes = 0;
 	bool completed = false;
 };
-
-class EthashCLHook;
 
 class Ethash
 {
@@ -75,6 +72,7 @@ public:
 
 	static unsigned instances() { return thread::hardware_concurrency(); }
 
+protected:
 	void kickOff(WorkPackage const& _work) override
 	{
 		stopWorking();
@@ -93,25 +91,29 @@ private:
 
 #if ETH_ETHASHCL || !ETH_TRUE
 
-class GPUMiner: public NewMiner
-{
-public:
-	GPUMiner(ConstructionInfo const& _ci): NewMiner(_ci)
-	{
+class EthashCLHook;
 
-	}
+class GPUMiner: public Miner
+{
+	friend class EthashCLHook;
+
+public:
+	GPUMiner(ConstructionInfo const& _ci);
 
 	static unsigned instances() { return 1; }
 
-	std::pair<MineInfo, Solution> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true) override;
-	unsigned defaultTimeout() const override { return 500; }
-
 protected:
-	Nonce m_last;
-	BlockInfo m_lastHeader;
-	Nonce m_mined;
-	std::unique_ptr<ethash_cl_miner> m_miner;
+	void kickOff(WorkPackage const& _work) override;
+	void pause() override;
+
+private:
+	void report(uint64_t _nonce);
+
 	std::unique_ptr<EthashCLHook> m_hook;
+	std::unique_ptr<ethash_cl_miner> m_miner;
+	h256 m_minerSeed;
+	WorkPackage m_lastWork;	///< Work loaded into m_miner.
+	MineInfo m_info;
 };
 
 #else
