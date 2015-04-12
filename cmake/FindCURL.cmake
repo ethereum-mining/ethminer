@@ -46,7 +46,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 	find_library(
 		CURL_LIBRARY_DEBUG
-		NAMES ${CURL_DEBUG}
+		NAMES ${CURL_NAMES_DEBUG}
 		DOC "curl debug library"
 	)
 	
