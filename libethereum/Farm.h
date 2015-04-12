@@ -14,10 +14,9 @@
  You should have received a copy of the GNU General Public License
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-/** @file Miner.h
- * @author Alex Leverington <nessence@gmail.com>
+/** @file Farm.h
  * @author Gav Wood <i@gavwood.com>
- * @date 2014
+ * @date 2015
  */
 
 #pragma once
@@ -28,7 +27,8 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/Common.h>
-#include "Miner.h"
+#include <libethcore/Miner.h>
+#include <libethcore/BlockInfo.h>
 
 namespace dev
 {
@@ -41,8 +41,8 @@ namespace eth
  * Miners ask for work, then submit proofs
  * @threadsafe
  */
-template <class ProofOfWork>
-class Farm: public FarmFace
+template <class PoW>
+class Farm: public FarmFace<PoW>
 {
 public:
 	/**
@@ -65,13 +65,13 @@ public:
 	 * @brief (Re)start miners for CPU only.
 	 * @returns true if started properly.
 	 */
-	bool startCPU() { return start<ProofOfWork::CPUMiner>(); }
+	bool startCPU() { return start<PoW::CPUMiner>(); }
 
 	/**
 	 * @brief (Re)start miners for GPU only.
 	 * @returns true if started properly.
 	 */
-	bool startGPU() { start<ProofOfWork::GPUMiner>(); }
+	bool startGPU() { start<PoW::GPUMiner>(); }
 
 	/**
 	 * @brief Stop all mining activities.
@@ -82,20 +82,24 @@ public:
 		m_miners.clear();
 	}
 
+	bool isMining() const
+	{
+		ReadGuard l(x_miners);
+		return !m_miners.empty();
+	}
+
 	/**
 	 * @brief Get information on the progress of mining this work package.
 	 * @return The progress with mining so far.
 	 */
-	MineProgress const& mineProgress() const { ReadGuard l(x_progress); return m_progress; }
+	MiningProgress const& miningProgress() const { ReadGuard l(x_progress); return m_progress; }
 
-protected:
-	// TO BE REIMPLEMENTED BY THE SUBCLASS
 	/**
 	 * @brief Provides a valid header based upon that received previously with setWork().
 	 * @param _bi The now-valid header.
 	 * @return true if the header was good and that the Farm should pause until more work is submitted.
 	 */
-	virtual bool submitHeader(BlockInfo const& _bi) = 0;
+	void onSolutionFound(function<bool(Solution const&)> _handler) { m_onSolutionFound = _handler; }
 
 private:
 	/**
@@ -104,16 +108,15 @@ private:
 	 * @param _wp The WorkPackage that the Solution is for.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	bool submitProof(ProofOfWork::Solution const& _p, WorkPackage const& _wp, NewMiner* _m) override
+	bool submitProof(Solution const& _s, WorkPackage const& _wp, Miner* _m) override
 	{
 		if (_wp.headerHash != m_work.headerHash)
 			return false;
 
-		ProofOfWork::assignResult(_p, m_header);
-		if (submitHeader(m_header))
+		if (m_onSolutionFound && m_onSolutionFound(_s))
 		{
 			ReadGuard l(x_miners);
-			for (std::shared_ptr<NewMiner> const& m: m_miners)
+			for (std::shared_ptr<Miner> const& m: m_miners)
 				if (m.get() != _m)
 					m->pause();
 			m_work.headerHash = h256();
@@ -139,14 +142,16 @@ private:
 	}
 
 	mutable SharedMutex x_miners;
-	std::vector<std::shared_ptr<NewMiner>> m_miners;
+	std::vector<std::shared_ptr<Miner>> m_miners;
 
 	mutable SharedMutex x_progress;
-	MineProgress m_progress;
+	MiningProgress m_progress;
 
 	mutable SharedMutex x_work;
 	WorkPackage m_work;
 	BlockInfo m_header;
+
+	function<bool(Solution const&)> m_onSolutionFound;
 };
 
 }
