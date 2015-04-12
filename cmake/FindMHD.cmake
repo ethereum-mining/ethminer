@@ -53,9 +53,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 		DOC "mhd debug library"
 	)
 
-	set(MHD_LIBRARIES optimized ${MHD_LIBRARIES} debug ${MHD_LIBRARY_DEBUG})
 	# not sure why this was commented
-	# always use release for now
+	# always use release for now, need to ask Arkadiy
 	#string(REPLACE ".lib" ".dll" MHD_DLL_DEBUG ${MHD_LIBRARY_DEBUG})
 	#set(MHD_LIBRARIES optimized ${MHD_LIBRARIES} debug ${MHD_LIBRARY_DEBUG})
 
