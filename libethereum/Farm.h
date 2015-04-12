@@ -53,9 +53,7 @@ public:
 	{
 		WriteGuard l(x_work);
 		m_header = _bi;
-		m_work.boundary = _bi.boundary();
-		m_work.headerHash = _bi.headerHash(WithNonce);
-		m_work.seedHash = _bi.seedHash();
+		m_work = PoW::package(m_header);
 		ReadGuard l(x_miners);
 		for (auto const& m: miners)
 			m->setWork(m_work);

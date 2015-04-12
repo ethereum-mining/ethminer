@@ -73,28 +73,6 @@ private:
 	std::string m_path;
 };
 
-class RemoteMiner: public OldMiner
-{
-public:
-	RemoteMiner() {}
-
-	void update(State const& _provisional, BlockChain const& _bc) { m_state = _provisional; m_state.commitToMine(_bc); }
-
-	h256 workHash() const { return m_state.info().headerHash(IncludeNonce::WithoutNonce); }
-	u256 const& difficulty() const { return m_state.info().difficulty; }
-
-	bool submitWork(ProofOfWork::Solution const& _result) { return (m_isComplete = m_state.completeMine(_result)); }
-
-	virtual bool isComplete() const override { return m_isComplete; }
-	virtual bytes const& blockData() const { return m_state.blockData(); }
-
-	virtual void noteStateChange() override {}
-
-private:
-	bool m_isComplete = false;
-	State m_state;
-};
-
 class BasicGasPricer: public GasPricer
 {
 public:
@@ -209,7 +187,7 @@ public:
 
 	/// Update to the latest transactions and get hash of the current block to be mined minus the
 	/// nonce (the 'work hash') and the difficulty to be met.
-	virtual std::pair<h256, u256> getWork() override;
+	virtual ProofOfWork::WorkPackage getWork() override;
 
 	/** @brief Submit the proof for the proof-of-work.
 	 * @param _s A valid solution.
