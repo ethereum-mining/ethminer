@@ -58,19 +58,19 @@ struct MiningProgress
 	unsigned ms = 0;			///< Total number of milliseconds of mining thus far.
 };
 
-template <class PoW> class Miner;
+template <class PoW> class GenericMiner;
 
 /**
  * @brief Class for hosting one or more Miners.
  * @warning Must be implemented in a threadsafe manner since it will be called from multiple
  * miner threads.
  */
-template <class PoW> class FarmFace
+template <class PoW> class GenericFarmFace
 {
 public:
 	using WorkPackage = typename PoW::WorkPackage;
 	using Solution = typename PoW::Solution;
-	using Miner = Miner<PoW>;
+	using Miner = GenericMiner<PoW>;
 
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
@@ -85,15 +85,15 @@ public:
 /**
  * @brief A miner - a member and adoptee of the Farm.
  */
-template <class PoW> class Miner
+template <class PoW> class GenericMiner
 {
 public:
-	using ConstructionInfo = std::pair<FarmFace<PoW>*, unsigned>;
 	using WorkPackage = typename PoW::WorkPackage;
 	using Solution = typename PoW::Solution;
-	using FarmFace = FarmFace<PoW>;
+	using FarmFace = GenericFarmFace<PoW>;
+	using ConstructionInfo = std::pair<FarmFace*, unsigned>;
 
-	Miner(ConstructionInfo const& _ci):
+	GenericMiner(ConstructionInfo const& _ci):
 		m_farm(_ci.first),
 		m_index(_ci.second)
 	{}
@@ -143,6 +143,8 @@ protected:
 		}
 		return true;
 	}
+
+	WorkPackage const& work() const { return m_work; }
 
 private:
 	FarmFace* m_farm = nullptr;

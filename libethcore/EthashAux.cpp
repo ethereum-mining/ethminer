@@ -102,13 +102,13 @@ void const* EthashAux::light(BlockInfo const& _header)
 
 void const* EthashAux::light(h256 const& _seedHash)
 {
-	RecursiveGuard l(x_this);
-	if (!m_lights.count(_header.seedHash()))
+	RecursiveGuard l(get()->x_this);
+	if (!get()->m_lights.count(_seedHash))
 	{
 		ethash_params p = params(_seedHash);
-		m_lights[_seedHash] = ethash_new_light(&p, _seedHash.data());
+		get()->m_lights[_seedHash] = ethash_new_light(&p, _seedHash.data());
 	}
-	return m_lights[_seedHash];
+	return get()->m_lights[_seedHash];
 }
 
 bytesConstRef EthashAux::full(BlockInfo const& _header, bytesRef _dest)
@@ -118,14 +118,14 @@ bytesConstRef EthashAux::full(BlockInfo const& _header, bytesRef _dest)
 
 bytesConstRef EthashAux::full(h256 const& _seedHash, bytesRef _dest)
 {
-	RecursiveGuard l(x_this);
-	if (m_fulls.count(_seedHash) && _dest)
+	RecursiveGuard l(get()->x_this);
+	if (get()->m_fulls.count(_seedHash) && _dest)
 	{
-		assert(m_fulls.size() <= _dest.size());
-		m_fulls.at(_seedHash).copyTo(_dest);
-		return;
+		assert(get()->m_fulls.size() <= _dest.size());
+		get()->m_fulls.at(_seedHash).copyTo(_dest);
+		return _dest;
 	}
-	if (!m_fulls.count(_seedHash))
+	if (!get()->m_fulls.count(_seedHash))
 	{
 		// @memoryleak @bug place it on a pile for deletion - perhaps use shared_ptr.
 /*		if (!m_fulls.empty())
@@ -138,7 +138,7 @@ bytesConstRef EthashAux::full(h256 const& _seedHash, bytesRef _dest)
 			boost::filesystem::create_directories(getDataDir("ethash"));
 		} catch (...) {}
 
-		auto info = rlpList(revision(), _seedHash);
+		auto info = rlpList(Ethash::revision(), _seedHash);
 		std::string oldMemoFile = getDataDir("ethash") + "/full";
 		std::string memoFile = getDataDir("ethash") + "/full-R" + toString(ETHASH_REVISION) + "-" + toHex(_seedHash.ref().cropped(0, 8));
 		if (boost::filesystem::exists(oldMemoFile) && contents(oldMemoFile + ".info") == info)
@@ -147,8 +147,8 @@ bytesConstRef EthashAux::full(h256 const& _seedHash, bytesRef _dest)
 			boost::filesystem::rename(oldMemoFile, memoFile);
 		}
 
-		IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile));
-		IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile + ".info"));
+		ETH_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile));
+		ETH_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile + ".info"));
 
 		ethash_params p = params(_seedHash);
 		assert(!_dest || _dest.size() >= p.full_size);	// must be big enough.
@@ -162,14 +162,14 @@ bytesConstRef EthashAux::full(h256 const& _seedHash, bytesRef _dest)
 				r = _dest;
 			else
 				r = bytesRef(new byte[p.full_size], p.full_size);
-			ethash_prep_full(r, &p, light(_seedHash));
+			ethash_prep_full(r.data(), &p, light(_seedHash));
 			writeFile(memoFile, r);
 		}
 		if (_dest)
 			return _dest;
-		m_fulls[_seedHash] = r;
+		get()->m_fulls[_seedHash] = r;
 	}
-	return m_fulls[_seedHash];
+	return get()->m_fulls[_seedHash];
 }
 
 Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
@@ -179,12 +179,12 @@ Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
 
 Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
 {
-	auto p = EthashAux::params(_header);
+	auto p = EthashAux::params(_seedHash);
 	ethash_return_value r;
 	if (EthashAux::get()->m_fulls.count(_seedHash))
 		ethash_compute_full(&r, EthashAux::get()->full(_seedHash).data(), &p, _headerHash.data(), (uint64_t)(u64)_nonce);
 	else
 		ethash_compute_light(&r, EthashAux::get()->light(_seedHash), &p, _headerHash.data(), (uint64_t)(u64)_nonce);
 //	cdebug << "EthashAux::eval sha3(cache):" << sha3(EthashAux::get()->cache(_header)) << "hh:" << _header.headerHash(WithoutNonce) << "nonce:" << _nonce << " => " << h256(r.result, h256::ConstructFromPointer);
-	return Result{h256(r.result, h256::ConstructFromPointer), h256(r.mix_hash, h256::ConstructFromPointer)};
+	return Ethash::Result{h256(r.result, h256::ConstructFromPointer), h256(r.mix_hash, h256::ConstructFromPointer)};
 }

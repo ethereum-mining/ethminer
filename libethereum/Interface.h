@@ -171,11 +171,6 @@ public:
 	/// Get the coinbase address.
 	virtual Address address() const = 0;
 
-	/// Stops mining and sets the number of mining threads (0 for automatic).
-	virtual void setMiningThreads(unsigned _threads = 0) = 0;
-	/// Get the effective number of mining threads.
-	virtual unsigned miningThreads() const = 0;
-
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
 	virtual void startMining() = 0;

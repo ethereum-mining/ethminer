@@ -290,7 +290,7 @@ private:
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
-	Farm<ProofOfWork> m_farm;				///< Our mining farm.
+	GenericFarm<ProofOfWork> m_farm;		///< Our mining farm.
 	mutable Mutex x_remoteMiner;			///< The remote miner lock.
 	RemoteMiner m_remoteMiner;				///< The remote miner.
 
