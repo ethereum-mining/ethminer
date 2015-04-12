@@ -34,23 +34,14 @@ if (ETH_COMPILE)
 	# boost
 	include(compile/boost.cmake)
 else()	
-	eth_download(jsoncpp)
-	eth_download(microhttpd)
-	eth_download(json-rpc-cpp
-		VERSION 4.2
-		OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/json-rpc-cpp_osx.sh
-	)
-	
-	if (APPLE)
-		eth_download(snappy OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/snappy_osx.sh)
-	endif()
-
-	eth_download(leveldb OSX_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/leveldb_osx.sh)
+	eth_download(curl VERSION 7.4.2)
+	eth_download(jsoncpp VERSION 1.6.2)
+	eth_download(microhttpd VERSION 0.9.2)
+	eth_download(json-rpc-cpp VERSION 0.5.0)
 	eth_download(qt VERSION 5.4)
+	eth_download(leveldb)
 	eth_download(cryptopp)
 	eth_download(boost)
-	eth_download(curl)
-
 endif()
 
 # will be re-eanbled later
