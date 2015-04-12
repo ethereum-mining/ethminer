@@ -70,8 +70,7 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 
 void Ethash::prep(BlockInfo const& _header)
 {
-	if (_header.number % ETHASH_EPOCH_LENGTH == 1)
-		EthashAux::full(_header);
+	EthashAux::full(_header);
 }
 
 bool Ethash::preVerify(BlockInfo const& _header)
@@ -206,6 +205,12 @@ Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 {
 }
 
+Ethash::GPUMiner::~GPUMiner()
+{
+	delete m_hook;
+	delete m_miner;
+}
+
 bool Ethash::GPUMiner::report(uint64_t _nonce)
 {
 	Nonce n = (Nonce)(u64)_nonce;
@@ -221,7 +226,10 @@ void Ethash::GPUMiner::kickOff(WorkPackage const& _work)
 	{
 		if (m_miner)
 			m_hook->abort();
-		m_miner.reset(new ethash_cl_miner);
+
+		delete m_miner;
+		m_miner = new ethash_cl_miner;
+
 		auto p = EthashAux::params(_work.seedHash);
 		auto cb = [&](void* d) { EthashAux::full(_work.seedHash, bytesRef((byte*)d, p.full_size)); };
 		m_miner->init(p, cb, 32);

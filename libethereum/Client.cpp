@@ -126,9 +126,9 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _for
 	m_preMine(m_stateDB, BaseState::CanonGenesis),
 	m_postMine(m_stateDB)
 {
-	m_tqReady = m_tq->onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
-	m_bqReady = m_bq->onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
-	m_farm->onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
+	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
+	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
+	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
 
 	m_gp->update(m_bc);
 
@@ -151,9 +151,9 @@ Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string c
 	m_preMine(m_stateDB),
 	m_postMine(m_stateDB)
 {
-	m_tq->onReady([=](){ this->onTransactionQueueReady(); });
-	m_bq->onReady([=](){ this->onBlockQueueReady(); });
-	m_farm->onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
+	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
+	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
+	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
 
 	m_gp->update(m_bc);
 
@@ -210,7 +210,7 @@ void Client::killChain()
 
 	m_tq.clear();
 	m_bq.clear();
-	m_localMiners.clear();
+	m_farm.stop();
 	m_preMine = State();
 	m_postMine = State();
 
@@ -248,11 +248,7 @@ void Client::clearPending()
 		m_postMine = m_preMine;
 	}
 
-	{
-		ReadGuard l(x_localMiners);
-		for (auto& m: m_localMiners)
-			m.noteStateChange();
-	}
+	startMining();
 
 	noteChanged(changeds);
 }
@@ -315,34 +311,23 @@ void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 void Client::setForceMining(bool _enable)
 {
 	 m_forceMining = _enable;
-	 ReadGuard l(x_localMiners);
-	 for (auto& m: m_localMiners)
-		 m.noteStateChange();
+	 startMining();
 }
 
-MineProgress Client::miningProgress() const
+MiningProgress Client::miningProgress() const
 {
-	MineProgress ret;
-	ReadGuard l(x_localMiners);
-	for (auto& m: m_localMiners)
-		ret.combine(m.miningProgress());
-	return ret;
+	return MiningProgress();
 }
 
 uint64_t Client::hashrate() const
 {
-	uint64_t ret = 0;
-	ReadGuard l(x_localMiners);
-	for (LocalMiner const& m: m_localMiners)
-		ret += m.miningProgress().hashes / m.miningProgress().ms;
-	return ret / 1000;
+	return 0;
 }
 
 std::list<MineInfo> Client::miningHistory()
 {
 	std::list<MineInfo> ret;
-
-	ReadGuard l(x_localMiners);
+/*	ReadGuard l(x_localMiners);
 	if (m_localMiners.empty())
 		return ret;
 	ret = m_localMiners[0].miningHistory();
@@ -353,11 +338,11 @@ std::list<MineInfo> Client::miningHistory()
 		auto li = l.begin();
 		for (; ri != ret.end() && li != l.end(); ++ri, ++li)
 			ri->combine(*li);
-	}
+	}*/
 	return ret;
 }
 
-void Client::setupState(State& _s)
+/*void Client::setupState(State& _s)
 {
 	{
 		ReadGuard l(x_stateDB);
@@ -378,7 +363,7 @@ void Client::setupState(State& _s)
 	}
 	else
 		_s.commitToMine(m_bc);
-}
+}*/
 
 ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u256 _gasPrice, Address const& _from)
 {
@@ -406,15 +391,7 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 
 ProofOfWork::WorkPackage Client::getWork()
 {
-	Guard l(x_remoteMiner);
-	BlockInfo bi;
-	{
-		ReadGuard l(x_stateDB);
-		m_remoteMiner.update(m_postMine, m_bc);
-		m_postMine.commitToMine(m_bc);
-		bi = m_postMine.info();
-	}
-	return ProofOfWork::package(bi);
+	return ProofOfWork::package(m_miningInfo);
 }
 
 bool Client::submitWork(ProofOfWork::Solution const& _solution)
@@ -422,7 +399,7 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 	bytes newBlock;
 	{
 		WriteGuard l(x_stateDB);
-		if (!m_postMine.completeMine(_solution))
+		if (!m_postMine.completeMine<ProofOfWork>(_solution))
 			return false;
 		newBlock = m_postMine.blockData();
 	}
@@ -435,7 +412,7 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 
 void Client::syncBlockQueue()
 {
-	ImportResult ir;
+	ImportRoute ir;
 
 	{
 		WriteGuard l(x_stateDB);
@@ -446,30 +423,33 @@ void Client::syncBlockQueue()
 		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, db, 100);
 
 		x_stateDB.lock();
-		if (fresh.size())
-			m_stateDB = db;
+		if (ir.first.empty())
+			return;
+		m_stateDB = db;
 	}
-
-	if (!ir.first.empty())
-		onChainChanged(ir);
-	return true;
+	onChainChanged(ir);
 }
 
 void Client::syncTransactionQueue()
 {
 	// returns TransactionReceipts, once for each transaction.
 	cwork << "postSTATE <== TQ";
+
+	h256Set changeds;
 	TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq, *m_gp);
 	if (newPendingReceipts.size())
 	{
 		for (size_t i = 0; i < newPendingReceipts.size(); i++)
 			appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
-
 		changeds.insert(PendingChangedFilter);
 
-		if (isMining())
-			cnote << "Additional transaction ready: Restarting mining operation.";
-		resyncStateNeeded = true;
+		// TODO: Tell farm about new transaction (i.e. restartProofOfWork mining).
+		onPostStateChanged();
+
+		// Tell watches about the new transactions.
+		noteChanged(changeds);
+
+		// Tell network about the new transactions.
 		if (auto h = m_host.lock())
 			h->noteNewTransactions();
 	}
@@ -504,27 +484,41 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 	h256Set changeds;
 	for (auto const& h: _ir.first)
-		if (h != _ir.second)
-			appendFromNewBlock(h, changeds);
+		appendFromNewBlock(h, changeds);
 	changeds.insert(ChainChangedFilter);
-	noteChanged(changeds);
 
 	// RESTART MINING
 
-	// LOCKS NEEDED?
-	Guard l(x_stateDB);
-	cwork << "preSTATE <== CHAIN";
-	if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
+	// LOCKS REALLY NEEDED?
 	{
-		if (isMining())
-			cnote << "New block on chain: Restarting mining operation.";
-		m_postMine = m_preMine;
-		resyncStateNeeded = true;
-		changeds.insert(PendingChangedFilter);
+		ReadGuard l(x_stateDB);
+		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
+		{
+			if (isMining())
+				cnote << "New block on chain.";
 
-		m_postMine.commitToMine(m_bc);
-		m_farm.setWork(m_postMine.info());
+			m_postMine = m_preMine;
+			changeds.insert(PendingChangedFilter);
+
+			x_stateDB.unlock();
+			onPostStateChanged();
+			x_stateDB.lock();
+		}
 	}
+
+	noteChanged(changeds);
+}
+
+void Client::onPostStateChanged()
+{
+	cnote << "Post state changed: Restarting mining...";
+	{
+		WriteGuard l(x_stateDB);
+		m_postMine.commitToMine(m_bc);
+		m_miningInfo = m_postMine.info();
+	}
+
+	m_farm.setWork(m_miningInfo);
 }
 
 void Client::noteChanged(h256Set const& _filters)

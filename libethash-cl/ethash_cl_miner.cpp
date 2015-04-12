@@ -50,6 +50,8 @@ static void add_definition(std::string& source, char const* id, unsigned value)
 	source.insert(source.begin(), buf, buf + strlen(buf));
 }
 
+ethash_cl_miner::search_hook::~search_hook() {}
+
 ethash_cl_miner::ethash_cl_miner()
 :	m_opencl_1_1()
 {
