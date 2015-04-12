@@ -39,6 +39,8 @@ using namespace chrono;
 using namespace dev;
 using namespace eth;
 
+#define ETH_IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
+
 Ethasher* dev::eth::Ethasher::s_this = nullptr;
 
 Ethasher::~Ethasher()
@@ -59,28 +61,35 @@ void Ethasher::killCache(h256 const& _s)
 
 void const* Ethasher::light(BlockInfo const& _header)
 {
-	RecursiveGuard l(x_this);
-	if (_header.number > c_ethashEpochLength * 2048)
-	{
-		std::ostringstream error;
-		error << "block number is too high; max is " << c_ethashEpochLength * 2048 << "(was " << _header.number << ")";
-		throw std::invalid_argument( error.str() );
- 	}
-
-	if (!m_lights.count(_header.seedHash()))
-	{
-		ethash_params p = params((unsigned)_header.number);
-		m_lights[_header.seedHash()] = ethash_new_light(&p, _header.seedHash().data());
-	}
-	return m_lights[_header.seedHash()];
+	return light(_header.seedHash());
 }
 
-#define IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
-
-bytesConstRef Ethasher::full(BlockInfo const& _header)
+void const* Ethasher::light(h256 const& _seedHash)
 {
 	RecursiveGuard l(x_this);
-	if (!m_fulls.count(_header.seedHash()))
+	if (!m_lights.count(_header.seedHash()))
+	{
+		ethash_params p = params(_seedHash);
+		m_lights[_seedHash] = ethash_new_light(&p, _seedHash.data());
+	}
+	return m_lights[_seedHash];
+}
+
+bytesConstRef Ethasher::full(BlockInfo const& _header, bytesRef _dest)
+{
+	return full(_header.seedHash(), _dest);
+}
+
+bytesConstRef Ethasher::full(h256 const& _seedHash, bytesRef _dest)
+{
+	RecursiveGuard l(x_this);
+	if (m_fulls.count(_seedHash) && _dest)
+	{
+		assert(m_fulls.size() <= _dest.size());
+		m_fulls.at(_seedHash).copyTo(_dest);
+		return;
+	}
+	if (!m_fulls.count(_seedHash))
 	{
 		// @memoryleak @bug place it on a pile for deletion - perhaps use shared_ptr.
 /*		if (!m_fulls.empty())
@@ -93,9 +102,9 @@ bytesConstRef Ethasher::full(BlockInfo const& _header)
 			boost::filesystem::create_directories(getDataDir("ethash"));
 		} catch (...) {}
 
-		auto info = rlpList(c_ethashRevision, _header.seedHash());
+		auto info = rlpList(c_ethashRevision, _seedHash);
 		std::string oldMemoFile = getDataDir("ethash") + "/full";
-		std::string memoFile = getDataDir("ethash") + "/full-R" + toString(c_ethashRevision) + "-" + toHex(_header.seedHash().ref().cropped(0, 8));
+		std::string memoFile = getDataDir("ethash") + "/full-R" + toString(c_ethashRevision) + "-" + toHex(_seedHash.ref().cropped(0, 8));
 		if (boost::filesystem::exists(oldMemoFile) && contents(oldMemoFile + ".info") == info)
 		{
 			// memofile valid - rename.
@@ -105,60 +114,31 @@ bytesConstRef Ethasher::full(BlockInfo const& _header)
 		IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile));
 		IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile + ".info"));
 
-		m_fulls[_header.seedHash()] = contentsNew(memoFile);
-		if (!m_fulls[_header.seedHash()])
+		ethash_params p = params(_seedHash);
+		assert(!_dest || _dest.size() >= p.full_size);	// must be big enough.
+
+		bytesRef r = contentsNew(memoFile, _dest);
+		if (!r)
 		{
-			ethash_params p = params((unsigned)_header.number);
-			m_fulls[_header.seedHash()] = bytesRef(new byte[p.full_size], p.full_size);
-			auto c = light(_header);
-			ethash_prep_full(m_fulls[_header.seedHash()].data(), &p, c);
-			writeFile(memoFile, m_fulls[_header.seedHash()]);
+			// file didn't exist.
+			if (_dest)
+				// buffer was passed in - no insertion into cache nor need to allocate
+				r = _dest;
+			else
+				r = bytesRef(new byte[p.full_size], p.full_size);
+			ethash_prep_full(r, &p, light(_seedHash));
+			writeFile(memoFile, r);
 		}
+		if (_dest)
+			return _dest;
+		m_fulls[_seedHash] = r;
 	}
-	return m_fulls[_header.seedHash()];
+	return m_fulls[_seedHash];
 }
 
 ethash_params Ethasher::params(BlockInfo const& _header)
 {
 	return params((unsigned)_header.number);
-}
-
-void Ethasher::readFull(BlockInfo const& _header, void* _dest)
-{
-	if (!m_fulls.count(_header.seedHash()))
-	{
-		// @memoryleak @bug place it on a pile for deletion - perhaps use shared_ptr.
-/*		if (!m_fulls.empty())
-		{
-			delete [] m_fulls.begin()->second.data();
-			m_fulls.erase(m_fulls.begin());
-		}*/
-
-		try {
-			boost::filesystem::create_directories(getDataDir("ethash"));
-		} catch (...) {}
-
-		auto info = rlpList(c_ethashRevision, _header.seedHash());
-		std::string oldMemoFile = getDataDir("ethash") + "/full";
-		std::string memoFile = getDataDir("ethash") + "/full-R" + toString(c_ethashRevision) + "-" + toHex(_header.seedHash().ref().cropped(0, 8));
-		if (boost::filesystem::exists(oldMemoFile) && contents(oldMemoFile + ".info") == info)
-		{
-			// memofile valid - rename.
-			boost::filesystem::rename(oldMemoFile, memoFile);
-		}
-
-		IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile));
-		IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile + ".info"));
-
-		ethash_params p = params((unsigned)_header.number);
-		bytesRef r = contentsNew(memoFile, bytesRef((byte*)_dest, p.full_size));
-		if (!r)
-		{
-			auto c = light(_header);
-			ethash_prep_full(_dest, &p, c);
-			writeFile(memoFile, bytesConstRef((byte*)_dest, p.full_size));
-		}
-	}
 }
 
 ethash_params Ethasher::params(unsigned _n)
@@ -167,6 +147,27 @@ ethash_params Ethasher::params(unsigned _n)
 	p.cache_size = ethash_get_cachesize(_n);
 	p.full_size = ethash_get_datasize(_n);
 	return p;
+}
+
+ethash_params Ethasher::params(h256 const& _seedHash)
+{
+	unsigned epoch = 0;
+	try
+	{
+		epoch = m_seedHashes.at(_seedHash);
+	}
+	catch (...)
+	{
+		for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = h256(h)) {}
+		if (epoch == 2048)
+		{
+			std::ostringstream error;
+			error << "apparent block number for " << _seedHash.abridged() << " is too high; max is " << (c_ethashEpochLength * 2048);
+			throw std::invalid_argument(error.str());
+		}
+		m_seedHashes[_seedHash] = epoch;
+	}
+	return params(epoch * c_ethashEpochLength);
 }
 
 bool Ethasher::verify(BlockInfo const& _header)
@@ -209,12 +210,17 @@ bool Ethasher::verify(BlockInfo const& _header)
 
 Ethasher::Result Ethasher::eval(BlockInfo const& _header, Nonce const& _nonce)
 {
+	return eval(_header.seedHash(), _header.headerHash(WithoutNonce), _nonce);
+}
+
+Ethasher::Result Ethasher::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
+{
 	auto p = Ethasher::params(_header);
 	ethash_return_value r;
-	if (Ethasher::get()->m_fulls.count(_header.seedHash()))
-		ethash_compute_full(&r, Ethasher::get()->full(_header).data(), &p, _header.headerHash(WithoutNonce).data(), (uint64_t)(u64)_nonce);
+	if (Ethasher::get()->m_fulls.count(_seedHash))
+		ethash_compute_full(&r, Ethasher::get()->full(_seedHash).data(), &p, _headerHash.data(), (uint64_t)(u64)_nonce);
 	else
-		ethash_compute_light(&r, Ethasher::get()->light(_header), &p, _header.headerHash(WithoutNonce).data(), (uint64_t)(u64)_nonce);
+		ethash_compute_light(&r, Ethasher::get()->light(_seedHash), &p, _headerHash.data(), (uint64_t)(u64)_nonce);
 //	cdebug << "Ethasher::eval sha3(cache):" << sha3(Ethasher::get()->cache(_header)) << "hh:" << _header.headerHash(WithoutNonce) << "nonce:" << _nonce << " => " << h256(r.result, h256::ConstructFromPointer);
 	return Result{h256(r.result, h256::ConstructFromPointer), h256(r.mix_hash, h256::ConstructFromPointer)};
 }
