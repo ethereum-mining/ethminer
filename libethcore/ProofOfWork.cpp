@@ -31,7 +31,7 @@
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcrypto/FileSystem.h>
 #include <libdevcore/Common.h>
-#if ETH_ETHASHCL
+#if ETH_ETHASHCL || !ETH_TRUE
 #include <libethash-cl/ethash_cl_miner.h>
 #endif
 #include "BlockInfo.h"
@@ -134,10 +134,15 @@ public:
 };
 */
 
-struct EthashCLHook: public ethash_cl_miner::search_hook
+namespace dev { namespace eth {
+class EthashCLHook: public ethash_cl_miner::search_hook
 {
+public:
+	EthashCLHook(Ethash::GPUMiner* _owner): m_owner(_owner) {}
+
 	void abort()
 	{
+		Guard l(x_all);
 		if (m_aborted)
 			return;
 //		cdebug << "Attempting to abort";
@@ -147,21 +152,23 @@ struct EthashCLHook: public ethash_cl_miner::search_hook
 		if (!m_aborted)
 			cwarn << "Couldn't abort. Abandoning OpenCL process.";
 		m_aborted = m_abort = false;
-		m_found.clear();
 	}
 
-	vector<Nonce> fetchFound() { vector<Nonce> ret; Guard l(x_all); std::swap(ret, m_found); return ret; }
 	uint64_t fetchTotal() { Guard l(x_all); auto ret = m_total; m_total = 0; return ret; }
 
 protected:
 	virtual bool found(uint64_t const* _nonces, uint32_t _count) override
 	{
-		Guard l(x_all);
-		for (unsigned i = 0; i < _count; ++i)
-			m_found.push_back((Nonce)(u64)_nonces[i]);
-		m_aborted = true;
 //		cdebug << "Found nonces: " << vector<uint64_t>(_nonces, _nonces + _count);
-		return true;
+		for (uint32_t i = 0; i < _count; ++i)
+		{
+			if (m_owner->found(_nonces[i]))
+			{
+				m_aborted = true;
+				return true;
+			}
+		}
+		return false;
 	}
 
 	virtual bool searched(uint64_t _startNonce, uint32_t _count) override
@@ -180,66 +187,53 @@ protected:
 
 private:
 	Mutex x_all;
-	vector<Nonce> m_found;
 	uint64_t m_total;
 	uint64_t m_last;
 	bool m_abort = false;
 	bool m_aborted = true;
+	Ethash::GPUMiner* m_owner = nullptr;
 };
 
-EthashCL::EthashCL():
-	m_hook(new EthashCLHook)
+} }
+
+Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
+	Miner(_ci),
+	m_hook(new EthashCLHook(this))
 {
 }
 
-EthashCL::~EthashCL()
+void Ethash::GPUMiner::report(uint64_t _nonce)
 {
+	Nonce n = (Nonce)(u64)_nonce;
+	Ethasher::Result r = Ethasher::eval(m_work.seedHash, m_work.headerHash, n);
+	if (r.value < m_work.boundary)
+		return submitProof(Solution{n, r.mixHash});
+	return false;
 }
 
-std::pair<MineInfo, Ethash::Solution> EthashCL::mine(BlockInfo const& _header, unsigned _msTimeout, bool)
+void Ethash::GPUMiner::kickOff(WorkPackage const& _work)
 {
-	if (!m_lastHeader || m_lastHeader.seedHash() != _header.seedHash())
+	if (!m_miner || m_minerSeed != _work.seedHash)
 	{
 		if (m_miner)
 			m_hook->abort();
 		m_miner.reset(new ethash_cl_miner);
-		auto cb = [&](void* d) {
-			Ethasher::get()->readFull(_header, d);
-		};
-		m_miner->init(Ethasher::params(_header), cb, 32);
+		auto p = Ethasher::params(_work.seedHash);
+		auto cb = [&](void* d) { Ethasher::get()->readFull(_work.seedHash, bytesRef((byte*)d, p.full_size)); };
+		m_miner->init(p, cb, 32);
 	}
-	if (m_lastHeader != _header)
+	if (m_lastWork.headerHash != _work.headerHash)
 	{
 		m_hook->abort();
-		static std::random_device s_eng;
-		auto hh = _header.headerHash(WithoutNonce);
-		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)_header.boundary() >> 192);
-		m_miner->search(hh.data(), upper64OfBoundary, *m_hook);
+		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)_work.boundary >> 192);
+		m_miner->search(_work.headerHash, upper64OfBoundary, *m_hook);
 	}
-	m_lastHeader = _header;
+	m_work = _work;
+}
 
-	MineInfo mi;
-	Solution proof;
-	mi.requirement = log2((double)(u256)_header.boundary());
-	mi.best = 0;
-
-	std::this_thread::sleep_for(chrono::milliseconds(_msTimeout));
-
-	mi.hashes += m_hook->fetchTotal();
-	auto found = m_hook->fetchFound();
-	if (!found.empty())
-	{
-		for (auto const& n: found)
-		{
-			auto result = Ethasher::eval(_header, n);
-			if (result.value < _header.boundary())
-			{
-				mi.completed = true;
-				proof = Solution{n, result.mixHash};
-			}
-		}
-	}
-	return std::make_pair(mi, proof);
+void Ethash::GPUMiner::pause()
+{
+	m_hook->abort();
 }
 
 #endif
