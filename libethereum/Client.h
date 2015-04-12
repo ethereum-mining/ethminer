@@ -40,7 +40,6 @@
 #include "TransactionQueue.h"
 #include "State.h"
 #include "CommonNet.h"
-#include "Miner.h"
 #include "ABI.h"
 #include "Farm.h"
 #include "ClientBase.h"
@@ -103,8 +102,6 @@ struct ClientDetail: public LogChannel { static const char* name() { return " C 
  */
 class Client: public ClientBase, Worker
 {
-	friend class OldMiner;
-
 public:
 	/// New-style Constructor.
 	explicit Client(
@@ -254,6 +251,10 @@ private:
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
 	void onBlockQueueReady() { Guard l(x_fakeSignalSystemState); m_syncBlockQueue = true; }
 
+	/// Called when the post state has changed (i.e. when more transactions are in it or we're mining on a new block).
+	/// This updates m_miningInfo.
+	void onPostStateChanged();
+
 	void checkWatchGarbage();
 
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
@@ -265,12 +266,11 @@ private:
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;						///< The present state of the client.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
 	GenericFarm<ProofOfWork> m_farm;		///< Our mining farm.
-	mutable Mutex x_remoteMiner;			///< The remote miner lock.
-	RemoteMiner m_remoteMiner;				///< The remote miner.
 
 	Handler m_tqReady;
 	Handler m_bqReady;
