@@ -26,6 +26,7 @@
 #include <chrono>
 #include <thread>
 #include <cstdint>
+#include <libdevcore/CommonIO.h>
 #include "Common.h"
 #include "BlockInfo.h"
 #include "Miner.h"
@@ -37,9 +38,13 @@ namespace dev
 namespace eth
 {
 
+class EthashCLHook;
+
 class Ethash
 {
 public:
+	using Miner = GenericMiner<Ethash>;
+
 	struct Solution
 	{
 		Nonce nonce;
@@ -73,7 +78,7 @@ public:
 	public:
 		CPUMiner(ConstructionInfo const& _ci): Miner(_ci), Worker("miner" + toString(index())) {}
 
-		static unsigned instances() { return thread::hardware_concurrency(); }
+		static unsigned instances() { return std::thread::hardware_concurrency(); }
 
 	protected:
 		void kickOff(WorkPackage const& _work) override
@@ -93,10 +98,9 @@ public:
 	};
 
 #if ETH_ETHASHCL || !ETH_TRUE
-	class EthashCLHook;
 	class GPUMiner: public Miner
 	{
-		friend class EthashCLHook;
+		friend class dev::eth::EthashCLHook;
 
 	public:
 		GPUMiner(ConstructionInfo const& _ci);
@@ -108,7 +112,7 @@ public:
 		void pause() override;
 
 	private:
-		void report(uint64_t _nonce);
+		bool report(uint64_t _nonce);
 
 		std::unique_ptr<EthashCLHook> m_hook;
 		std::unique_ptr<ethash_cl_miner> m_miner;
