@@ -83,6 +83,8 @@ public:
 	/// Get some infomration on the current status.
 	BlockQueueStatus status() const { ReadGuard l(m_lock); return BlockQueueStatus{m_ready.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
 
+	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
+
 private:
 	void noteReadyWithoutWriteGuard(h256 _b);
 	void notePresentWithoutWriteGuard(bytesConstRef _block);
@@ -95,6 +97,7 @@ private:
 	std::multimap<h256, std::pair<h256, bytes>> m_unknown;	///< For transactions that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
 	std::multimap<unsigned, bytes> m_future;				///< Set of blocks that are not yet valid.
 	std::set<h256> m_knownBad;								///< Set of blocks that we know will never be valid.
+	Signal m_onReady;										///< Called when a subsequent call to import transactions will return a non-empty container. Be nice and exit fast.
 };
 
 }

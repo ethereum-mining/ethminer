@@ -15,9 +15,8 @@
  along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
 /** @file Miner.h
- * @author Alex Leverington <nessence@gmail.com>
  * @author Gav Wood <i@gavwood.com>
- * @date 2014
+ * @date 2015
  */
 
 #pragma once
@@ -28,7 +27,6 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/Common.h>
-#include "State.h"
 
 namespace dev
 {
@@ -36,14 +34,16 @@ namespace dev
 namespace eth
 {
 
-struct WorkPackage
+struct MineInfo
 {
-	h256 boundary;
-	h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
-	h256 seedHash;
+	MineInfo() = default;
+	MineInfo(bool _completed): completed(_completed) {}
+	void combine(MineInfo const& _m) { requirement = std::max(requirement, _m.requirement); best = std::min(best, _m.best); hashes += _m.hashes; completed = completed || _m.completed; }
+	double requirement = 0;
+	double best = 1e99;
+	unsigned hashes = 0;
+	bool completed = false;
 };
-
-static const WorkPackage NullWorkPackage;
 
 /**
  * @brief Describes the progress of a mining operation.
@@ -58,30 +58,40 @@ struct MiningProgress
 	unsigned ms = 0;			///< Total number of milliseconds of mining thus far.
 };
 
+template <class PoW> class Miner;
+
 /**
  * @brief Class for hosting one or more Miners.
  * @warning Must be implemented in a threadsafe manner since it will be called from multiple
  * miner threads.
  */
-class FarmFace
+template <class PoW> class FarmFace
 {
 public:
+	using WorkPackage = typename PoW::WorkPackage;
+	using Solution = typename PoW::Solution;
+	using Miner = Miner<PoW>;
+
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
 	 * @param _p The solution.
 	 * @param _wp The WorkPackage that the Solution is for.
+	 * @param _finder The miner that found it.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	virtual bool submitProof(ProofOfWork::Solution const& _p, WorkPackage const& _wp) = 0;
+	virtual bool submitProof(Solution const& _p, WorkPackage const& _wp, Miner* _finder) = 0;
 };
 
 /**
  * @brief A miner - a member and adoptee of the Farm.
  */
-class Miner
+template <class PoW> class Miner
 {
 public:
-	using ConstructionInfo = std::pair<FarmFace*, unsigned>;
+	using ConstructionInfo = std::pair<FarmFace<PoW>*, unsigned>;
+	using WorkPackage = typename PoW::WorkPackage;
+	using Solution = typename PoW::Solution;
+	using FarmFace = FarmFace<PoW>;
 
 	Miner(ConstructionInfo const& _ci):
 		m_farm(_ci.first),
@@ -124,7 +134,7 @@ protected:
 	 * @param _s The solution.
 	 * @return true if the solution was correct and that the miner should pause.
 	 */
-	bool submitProof(ProofOfWork::Solution const& _s)
+	bool submitProof(Solution const& _s)
 	{
 		if (m_farm)
 		{
