@@ -36,6 +36,7 @@
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
+#include <libethcore/ProofOfWork.h>
 #if ETH_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -44,7 +45,6 @@
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
-#include <libethcore/Ethasher.h>
 #include "BuildInfo.h"
 using namespace std;
 using namespace dev;
@@ -208,7 +208,7 @@ void doInitDAG(unsigned _n)
 	BlockInfo bi;
 	bi.number = _n;
 	cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.seedHash().abridged() << "). This will take a while." << endl;
-	Ethasher::get()->full(bi);
+	Ethash::prep(bi);
 	exit(0);
 }
 
@@ -269,7 +269,6 @@ int main(int argc, char** argv)
 
 	/// Mining params
 	unsigned mining = ~(unsigned)0;
-	int miners = -1;
 	bool forceMining = false;
 	KeyPair sigKey = KeyPair::create();
 	Secret sessionSecret;
@@ -478,8 +477,6 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
-		else if ((arg == "-t" || arg == "--miners") && i + 1 < argc)
-			miners = atoi(argv[++i]);
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -541,9 +538,7 @@ int main(int argc, char** argv)
 		killChain,
 		nodeMode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
-		&nodesState,
-		miners
-		);
+		&nodesState);
 	
 	if (mode == OperationMode::DAGInit)
 		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
