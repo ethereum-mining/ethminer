@@ -59,6 +59,15 @@ unsigned Ethash::revision()
 	return ETHASH_REVISION;
 }
 
+Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
+{
+	WorkPackage ret;
+	ret.boundary = _bi.boundary();
+	ret.headerHash = _bi.headerHash(WithNonce);
+	ret.seedHash = _bi.seedHash();
+	return ret;
+}
+
 void Ethash::prep(BlockInfo const& _header)
 {
 	if (_header.number % ETHASH_EPOCH_LENGTH == 1)
