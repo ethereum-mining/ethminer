@@ -136,7 +136,6 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 endif ()
 
 createDefaultCacheConfig()
-configureProject()
 
 # Force chromium.
 set (ETH_HAVE_WEBENGINE 1)
@@ -263,6 +262,8 @@ elseif (BUNDLE STREQUAL "user")
 	set(TESTS OFF)
 endif ()
 
+configureProject()
+
 # Default CMAKE_BUILD_TYPE to "Release".
 set(CMAKE_BUILD_TYPE CACHE STRING "Release")
 if ("x${CMAKE_BUILD_TYPE}" STREQUAL "x")
@@ -272,7 +273,11 @@ endif ()
 # Default TARGET_PLATFORM to "linux".
 set(TARGET_PLATFORM CACHE STRING "linux")
 if ("x${TARGET_PLATFORM}" STREQUAL "x")
-	set(TARGET_PLATFORM "linux")
+	if (WIN32)
+		set(TARGET_PLATFORM "windows")
+	else ()
+		set(TARGET_PLATFORM "linux")
+	endif ()
 endif ()
 
 message("------------------------------------------------------------------------")
@@ -308,7 +313,7 @@ include(EthCompilerSettings)
 message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 
 
-# this must be an include, as a function it would messs up with variable scope!
+# this must be an include, as a function it would mess up with variable scope!
 include(EthDependencies)
 include(EthExecutableHelper)
 
