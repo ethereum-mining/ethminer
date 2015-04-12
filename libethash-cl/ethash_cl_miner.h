@@ -12,6 +12,8 @@ class ethash_cl_miner
 public:
 	struct search_hook
 	{
+		virtual ~search_hook(); // always a virtual destructor for a class with virtuals.
+
 		// reports progress, return true to abort
 		virtual bool found(uint64_t const* nonces, uint32_t count) = 0;
 		virtual bool searched(uint64_t start_nonce, uint32_t count) = 0;

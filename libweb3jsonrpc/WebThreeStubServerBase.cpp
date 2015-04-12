@@ -758,8 +758,9 @@ Json::Value WebThreeStubServerBase::eth_getWork()
 {
 	Json::Value ret(Json::arrayValue);
 	auto r = client()->getWork();
-	ret.append(toJS(r.first));
-	ret.append(toJS(r.second));
+	ret.append(toJS(r.headerHash));
+	ret.append(toJS(r.seedHash));
+	ret.append(toJS(r.boundary));
 	return ret;
 }
 

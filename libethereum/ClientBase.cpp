@@ -20,10 +20,12 @@
  * @date 2015
  */
 
-#include <libdevcore/StructuredLogger.h>
 #include "ClientBase.h"
+
+#include <libdevcore/StructuredLogger.h>
 #include "BlockChain.h"
 #include "Executive.h"
+#include "State.h"
 
 using namespace std;
 using namespace dev;
