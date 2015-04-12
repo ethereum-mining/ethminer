@@ -36,7 +36,6 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
-#include <libethcore/Ethasher.h>
 #include <liblll/Compiler.h>
 #include "GenesisInfo.h"
 #include "State.h"
@@ -336,7 +335,7 @@ ImportRoute BlockChain::attemptImport(bytes const& _block, OverlayDB const& _sta
 	catch (...)
 	{
 		cwarn << "Unexpected exception! Could not import block!" << boost::current_exception_diagnostic_information();
-		return make_pair(h256s(), h256());
+		return make_pair(h256s(), h256s());
 	}
 }
 

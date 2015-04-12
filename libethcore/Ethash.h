@@ -68,10 +68,11 @@ public:
 
 	static std::string name();
 	static unsigned revision();
+	static void prep(BlockInfo const& _header);
 	static bool verify(BlockInfo const& _header);
 	static bool preVerify(BlockInfo const& _header);
+	static WorkPackage package(BlockInfo const& _header);
 	static void assignResult(Solution const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
-	static void prep(BlockInfo const& _header);
 
 	class CPUMiner: public Miner, Worker
 	{
@@ -124,9 +125,6 @@ public:
 	using GPUMiner = CPUMiner;
 #endif
 };
-
-using ProofOfWork = Ethash;
-using Solution = Ethash::Solution;
 
 }
 }
