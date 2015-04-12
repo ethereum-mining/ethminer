@@ -142,8 +142,6 @@ public:
 
 	/// TODO: consider moving it to a separate interface
 
-	virtual void setMiningThreads(unsigned _threads) override { (void)_threads; BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::setMiningThreads")); }
-	virtual unsigned miningThreads() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::miningThreads")); }
 	virtual void startMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::startMining")); }
 	virtual void stopMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::stopMining")); }
 	virtual bool isMining() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::isMining")); }

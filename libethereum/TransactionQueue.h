@@ -26,7 +26,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
-#include "libethcore/Common.h"
+#include <libethcore/Common.h>
 #include "Transaction.h"
 
 namespace dev
@@ -60,13 +60,15 @@ public:
 	void noteGood(std::pair<h256, Transaction> const& _t);
 
 	void clear() { WriteGuard l(m_lock); m_known.clear(); m_current.clear(); m_unknown.clear(); }
+	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
 
 private:
 	mutable boost::shared_mutex m_lock;								///< General lock.
 	std::set<h256> m_known;											///< Hashes of transactions in both sets.
 	std::map<h256, Transaction> m_current;							///< Map of SHA3(tx) to tx.
 	std::multimap<Address, std::pair<h256, Transaction>> m_unknown;	///< For transactions that have a future nonce; we map their sender address to the tx stuff, and insert once the sender has a valid TX.
-	std::map<h256, std::function<void(ImportResult)>> m_callbacks;	///< Called once
+	std::map<h256, std::function<void(ImportResult)>> m_callbacks;	///< Called once.
+	Signal m_onReady;												///< Called when a subsequent call to import transactions will return a non-empty container. Be nice and exit fast.
 };
 
 }
