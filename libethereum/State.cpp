@@ -856,20 +856,6 @@ void State::commitToMine(BlockChain const& _bc)
 	m_committedToMine = true;
 }
 
-bool State::completeMine(ProofOfWork::Solution const& _nonce)
-{
-	ProofOfWork::assignResult(_nonce, m_currentBlock);
-
-//	if (!m_pow.verify(m_currentBlock))
-//		return false;
-
-	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
-
-	completeMine();
-
-	return true;
-}
-
 void State::completeMine()
 {
 	cdebug << "Completing mine!";
