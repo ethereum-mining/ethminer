@@ -164,7 +164,7 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->chainStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
 
-	ui->blockCount->setText(QString("PV%2 D%3 H%4 v%5").arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(c_ethashVersion).arg(dev::Version));
+	ui->blockCount->setText(QString("PV%2 D%3 %4-%5 v%6").arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(ProofOfWork::name()).arg(ProofOfWork::revision()).arg(dev::Version));
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 	
