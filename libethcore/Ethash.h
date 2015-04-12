@@ -105,6 +105,7 @@ public:
 
 	public:
 		GPUMiner(ConstructionInfo const& _ci);
+		~GPUMiner();
 
 		static unsigned instances() { return 1; }
 
@@ -115,8 +116,9 @@ public:
 	private:
 		bool report(uint64_t _nonce);
 
-		std::unique_ptr<EthashCLHook> m_hook;
-		std::unique_ptr<ethash_cl_miner> m_miner;
+		EthashCLHook* m_hook;
+		ethash_cl_miner* m_miner;
+
 		h256 m_minerSeed;
 		WorkPackage m_lastWork;	///< Work loaded into m_miner.
 		MineInfo m_info;

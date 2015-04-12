@@ -183,7 +183,7 @@ public:
 	virtual uint64_t hashrate() const = 0;
 
 	/// Get hash of the current block to be mined minus the nonce (the 'work hash').
-	virtual std::pair<h256, u256> getWork() = 0;
+	virtual ProofOfWork::WorkPackage getWork() = 0;
 	/// Submit the nonce for the proof-of-work.
 	virtual bool submitWork(ProofOfWork::Solution const& _proof) = 0;
 
