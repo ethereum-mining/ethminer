@@ -451,7 +451,7 @@ bool State::cull(TransactionQueue& _tq) const
 		{
 			try
 			{
-				if (i.second.nonce() <= transactionsFrom(i.second.sender()))
+				if (i.second.nonce() < transactionsFrom(i.second.sender()))
 				{
 					_tq.drop(i.first);
 					ret = true;
