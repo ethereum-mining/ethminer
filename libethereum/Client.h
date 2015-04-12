@@ -72,7 +72,7 @@ private:
 	std::string m_path;
 };
 
-class RemoteMiner: public Miner
+class RemoteMiner: public OldMiner
 {
 public:
 	RemoteMiner() {}
@@ -124,7 +124,7 @@ struct ClientDetail: public LogChannel { static const char* name() { return " C 
  */
 class Client: public MinerHost, public ClientBase, Worker
 {
-	friend class Miner;
+	friend class OldMiner;
 
 public:
 	/// New-style Constructor.

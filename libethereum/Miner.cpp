@@ -28,7 +28,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-Miner::~Miner() {}
+OldMiner::~OldMiner() {}
 
 LocalMiner::LocalMiner(MinerHost* _host, unsigned _id)
 {
