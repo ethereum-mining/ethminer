@@ -273,7 +273,6 @@ int main(int argc, char** argv)
 	unsigned mining = ~(unsigned)0;
 	int miners = -1;
 	bool forceMining = false;
-	bool turboMining = false;
 	KeyPair us = KeyPair::create();
 	Address coinbase = us.address();
 
@@ -466,8 +465,6 @@ int main(int argc, char** argv)
 			bootstrap = true;
 		else if (arg == "-f" || arg == "--force-mining")
 			forceMining = true;
-		else if (arg == "-T" || arg == "--turbo-mining")
-			turboMining = true;
 		else if (arg == "-i" || arg == "--interactive")
 			interactive = true;
 #if ETH_JSONRPC
@@ -632,7 +629,6 @@ int main(int argc, char** argv)
 	{
 		c->setGasPricer(gasPricer);
 		c->setForceMining(forceMining);
-		c->setTurboMining(turboMining);
 		c->setAddress(coinbase);
 	}
 
