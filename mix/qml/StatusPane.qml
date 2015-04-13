@@ -284,14 +284,17 @@ Rectangle {
 			{
 				if (logsContainer.state === "opened")
 				{
+					statusContainer.visible = true
 					logsContainer.state = "closed"
 				}
 				else
 				{
+					statusContainer.visible = false
 					logsContainer.state = "opened";
 					logsContainer.focus = true;
 					forceActiveFocus();
-					calCoord();
+					calCoord()
+					move()
 				}
 			}
 
@@ -304,20 +307,30 @@ Rectangle {
 
 			function calCoord()
 			{
+				if (!logsContainer.parent.parent)
+					return
 				var top = logsContainer;
 				while (top.parent)
 					top = top.parent
 				var coordinates = logsContainer.mapToItem(top, 0, 0);
 				logsContainer.parent = top;
 				logsShadow.parent = top;
-				logsContainer.x = status.x + statusContainer.x - logStyle.generic.layout.dateWidth - logStyle.generic.layout.typeWidth + 70
-				logsShadow.x = status.x + statusContainer.x - logStyle.generic.layout.dateWidth - logStyle.generic.layout.typeWidth + 70;
+				top.onWidthChanged.connect(move)
+				top.onHeightChanged.connect(move)
+			}
+
+			function move()
+			{
+				var statusGlobalCoord = status.mapToItem(null, 0, 0);
+				console.log("ddd " + statusGlobalCoord.x);
+				logsContainer.x = statusGlobalCoord.x - logPane.contentXPos
+				logsShadow.x = statusGlobalCoord.x - logPane.contentXPos
 				logsShadow.z = 1
 				logsContainer.z = 2
 				if (Qt.platform.os === "osx")
 				{
-					logsContainer.y = statusContainer.y;
-					logsShadow.y = statusContainer.y;
+					logsContainer.y = statusGlobalCoord.y;
+					logsShadow.y = statusGlobalCoord.y;
 				}
 			}
 
@@ -328,6 +341,10 @@ Rectangle {
 			LogsPane
 			{
 				id: logPane;
+				onContentXPosChanged:
+				{
+					parent.move();
+				}
 			}
 
 			states: [
