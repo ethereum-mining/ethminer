@@ -57,7 +57,7 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname,
 	}
 
 	// try to open the file
-	FILE *f = fopen(tmpfile, "rb");
+	FILE *f = ethash_fopen(tmpfile, "rb");
 	if (!f) {
 		// file does not exist, will need to be created
 		ret = ETHASH_IO_MEMO_MISMATCH;
@@ -65,7 +65,6 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname,
 	}
 
 	ret = ETHASH_IO_MEMO_MATCH;
-
 	*output_file = f;
 free_memo:
 	free(tmpfile);
