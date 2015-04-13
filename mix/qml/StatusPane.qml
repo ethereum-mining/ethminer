@@ -187,25 +187,32 @@ Rectangle {
 				else
 					width = undefined
 			}
+		}
 
-			Button
-			{
-				anchors.fill: parent
-				id: toolTip
-				action: toolTipInfo
-				text: ""
-				z: 3;
-				style:
-					ButtonStyle {
-					background:Rectangle {
-						color: "transparent"
-					}
+		Button
+		{
+			anchors.fill: parent
+			id: toolTip
+			action: toolTipInfo
+			text: ""
+			z: 3;
+			style:
+				ButtonStyle {
+				background:Rectangle {
+					color: "transparent"
 				}
-				MouseArea {
-					anchors.fill: parent
-					onClicked: {
+			}
+			MouseArea {
+				anchors.fill: parent
+				onClicked: {
+					var globalCoord = goToLineBtn.mapToItem(statusContainer, 0, 0);
+					if (mouseX > globalCoord.x
+							&& mouseX < globalCoord.x + goToLineBtn.width
+							&& mouseY > globalCoord.y
+							&& mouseY < globalCoord.y + goToLineBtn.height)
+						goToCompilationError.trigger(goToLineBtn);
+					else
 						logsContainer.toggle();
-					}
 				}
 			}
 		}
@@ -240,13 +247,13 @@ Rectangle {
 							background: Rectangle {
 								color: "transparent"
 
-								Image { 
+								Image {
 									source: "qrc:/qml/img/warningicon.png"
 									height: 30
 									width: 30
 									sourceSize.width: 30
-        							sourceSize.height: 30
-        							anchors.centerIn: parent
+									sourceSize.height: 30
+									anchors.centerIn: parent
 								}
 							}
 						}
@@ -335,7 +342,6 @@ Rectangle {
 			function move()
 			{
 				var statusGlobalCoord = status.mapToItem(null, 0, 0);
-				console.log("ddd " + statusGlobalCoord.x);
 				logsContainer.x = statusGlobalCoord.x - logPane.contentXPos
 				logsShadow.x = statusGlobalCoord.x - logPane.contentXPos
 				logsShadow.z = 1
