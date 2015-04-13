@@ -59,6 +59,7 @@ if (JSONRPC)
  	find_package(MHD) 
 	message(" - microhttpd header: ${MHD_INCLUDE_DIRS}")
 	message(" - microhttpd lib   : ${MHD_LIBRARIES}")
+	message(" - microhttpd dll   : ${MHD_DLLS}")
 
 endif() #JSONRPC
 
