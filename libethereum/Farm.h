@@ -56,16 +56,16 @@ public:
 	 */
 	void setWork(BlockInfo const& _bi)
 	{
-		WorkPackage w;
-		{
-			WriteGuard l(x_work);
-			m_header = _bi;
-			w = m_work = PoW::package(m_header);
-		}
-
+		WriteGuard l(x_work);
 		ReadGuard l2(x_miners);
+		m_header = _bi;
+		auto p = PoW::package(m_header);
+		if (p.headerHash == m_work.headerHash)
+			return;
+		m_work = p;
 		for (auto const& m: m_miners)
 			m->setWork(m_work);
+		resetTimer();
 	}
 
 	/**
@@ -99,7 +99,19 @@ public:
 	 * @brief Get information on the progress of mining this work package.
 	 * @return The progress with mining so far.
 	 */
-	MiningProgress const& miningProgress() const { ReadGuard l(x_progress); return m_progress; }
+	MiningProgress const& miningProgress() const
+	{
+		MiningProgress p;
+		p.ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_lastStart).count();
+		{
+			ReadGuard l2(x_miners);
+			for (auto const& i: m_miners)
+				p.hashes += i->hashCount();
+		}
+		ReadGuard l(x_progress);
+		m_progress = p;
+		return m_progress;
+	}
 
 	using SolutionFound = std::function<bool(Solution const&)>;
 
@@ -109,6 +121,8 @@ public:
 	 * @return true if the header was good and that the Farm should pause until more work is submitted.
 	 */
 	void onSolutionFound(SolutionFound const& _handler) { m_onSolutionFound = _handler; }
+
+	WorkPackage work() const { ReadGuard l(x_work); return m_work; }
 
 private:
 	/**
@@ -140,21 +154,32 @@ private:
 	template <class MinerType>
 	bool start()
 	{
-		WriteGuard l(x_miners);
+		ReadGuard l(x_work);
+		WriteGuard l2(x_miners);
 		if (!m_miners.empty() && !!std::dynamic_pointer_cast<MinerType>(m_miners[0]))
 			return true;
 		m_miners.clear();
 		m_miners.reserve(MinerType::instances());
 		for (unsigned i = 0; i < MinerType::instances(); ++i)
+		{
 			m_miners.push_back(std::shared_ptr<Miner>(new MinerType(std::make_pair(this, i))));
+			m_miners.back()->setWork(m_work);
+		}
+		resetTimer();
 		return true;
+	}
+
+	void resetTimer()
+	{
+		m_lastStart = std::chrono::steady_clock::now();
 	}
 
 	mutable SharedMutex x_miners;
 	std::vector<std::shared_ptr<Miner>> m_miners;
 
 	mutable SharedMutex x_progress;
-	MiningProgress m_progress;
+	mutable MiningProgress m_progress;
+	std::chrono::steady_clock::time_point m_lastStart;
 
 	mutable SharedMutex x_work;
 	WorkPackage m_work;

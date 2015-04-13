@@ -32,7 +32,6 @@
 #endif
 
 namespace dev { namespace eth {
-struct MineInfo;
 class DownloadMan;
 }}
 
