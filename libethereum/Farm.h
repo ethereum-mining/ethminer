@@ -136,8 +136,9 @@ private:
 	 * @param _wp The WorkPackage that the Solution is for.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	bool submitProof(Solution const& _s, WorkPackage const& _wp, Miner* _m) override
+	bool submitProof(Solution const& _s, WorkPackage& _wp, Miner* _m) override
 	{
+		ReadGuard l(x_work);
 		if (_wp.headerHash != m_work.headerHash)
 			return false;
 
@@ -147,6 +148,7 @@ private:
 			for (std::shared_ptr<Miner> const& m: m_miners)
 				if (m.get() != _m)
 					m->setWork();
+			_wp.reset();
 			m_work.reset();
 			return true;
 		}
