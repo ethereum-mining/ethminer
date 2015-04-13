@@ -707,6 +707,7 @@ void Main::writeSettings()
 	s.setValue("upnp", ui->upnp->isChecked());
 	s.setValue("forceAddress", ui->forcePublicIP->text());
 	s.setValue("forceMining", ui->forceMining->isChecked());
+	s.setValue("turboMining", ui->turboMining->isChecked());
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("natSpec", ui->natSpec->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
@@ -777,6 +778,8 @@ void Main::readSettings(bool _skipGeometry)
 	ui->dropPeers->setChecked(false);
 	ui->forceMining->setChecked(s.value("forceMining", false).toBool());
 	on_forceMining_triggered();
+	ui->turboMining->setChecked(s.value("turboMining", false).toBool());
+	on_turboMining_triggered();
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->natSpec->setChecked(s.value("natSpec", true).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());

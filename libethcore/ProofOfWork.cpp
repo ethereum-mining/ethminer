@@ -45,12 +45,12 @@ namespace dev
 namespace eth
 {
 
-bool EthashCPU::verify(BlockInfo const& _header)
+bool EthashPoW::verify(BlockInfo const& _header)
 {
 	return Ethasher::verify(_header);
 }
 
-std::pair<MineInfo, EthashCPU::Proof> EthashCPU::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue, bool _turbo)
+std::pair<MineInfo, EthashCPU::Proof> EthashCPU::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue)
 {
 	Ethasher::Miner m(_header);
 
@@ -67,8 +67,6 @@ std::pair<MineInfo, EthashCPU::Proof> EthashCPU::mine(BlockInfo const& _header, 
 	//
 	// evaluate until we run out of time
 	auto startTime = std::chrono::steady_clock::now();
-	if (!_turbo)
-		std::this_thread::sleep_for(std::chrono::milliseconds(_msTimeout * 90 / 100));
 	double best = 1e99;	// high enough to be effectively infinity :)
 	Proof result;
 	unsigned hashCount = 0;
@@ -102,7 +100,7 @@ std::pair<MineInfo, EthashCPU::Proof> EthashCPU::mine(BlockInfo const& _header, 
 	return ret;
 }
 
-#if ETH_ETHASHCL
+#if ETH_ETHASHCL || !ETH_TRUE
 
 /*
 class ethash_cl_miner
@@ -186,12 +184,7 @@ EthashCL::~EthashCL()
 {
 }
 
-bool EthashCL::verify(BlockInfo const& _header)
-{
-	return Ethasher::verify(_header);
-}
-
-std::pair<MineInfo, Ethash::Proof> EthashCL::mine(BlockInfo const& _header, unsigned _msTimeout, bool, bool)
+std::pair<MineInfo, Ethash::Proof> EthashCL::mine(BlockInfo const& _header, unsigned _msTimeout, bool)
 {
 	if (!m_lastHeader || m_lastHeader.seedHash() != _header.seedHash())
 	{
@@ -201,16 +194,15 @@ std::pair<MineInfo, Ethash::Proof> EthashCL::mine(BlockInfo const& _header, unsi
 		auto cb = [&](void* d) {
 			Ethasher::get()->readFull(_header, d);
 		};
-		m_miner->init(Ethasher::params(_header), cb);
+		m_miner->init(Ethasher::params(_header), cb, 32);
 	}
 	if (m_lastHeader != _header)
 	{
 		m_hook->abort();
 		static std::random_device s_eng;
-		uint64_t tryNonce = (uint64_t)(u64)(m_last = Nonce::random(s_eng));
 		auto hh = _header.headerHash(WithoutNonce);
-		cdebug << "Mining with headerhash" << hh << "from nonce" << m_last << "with boundary" << _header.boundary();
-		m_miner->search(hh.data(), tryNonce, *m_hook);
+		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)_header.boundary() >> 192);
+		m_miner->search(hh.data(), upper64OfBoundary, *m_hook);
 	}
 	m_lastHeader = _header;
 
@@ -221,11 +213,9 @@ std::pair<MineInfo, Ethash::Proof> EthashCL::mine(BlockInfo const& _header, unsi
 		for (auto const& n: found)
 		{
 			auto result = Ethasher::eval(_header, n);
-			cdebug << "Got nonce " << n << "gives result" << result.value;
 			if (result.value < _header.boundary())
 				return std::make_pair(MineInfo(true), EthashCL::Proof{n, result.mixHash});
 		}
-		assert(false);
 	}
 	return std::make_pair(MineInfo(false), EthashCL::Proof());
 }
