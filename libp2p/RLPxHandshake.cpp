@@ -95,10 +95,7 @@ void RLPXHandshake::readAuth()
 			m_remoteEphemeral = recover(*(Signature*)sig.data(), sharedSecret ^ m_remoteNonce);
 
 			if (sha3(m_remoteEphemeral) != *(h256*)hepubk.data())
-			{
 				clog(NetConnect) << "p2p.connect.ingress auth failed (invalid: hash mismatch) for" << m_socket->remoteEndpoint();
-				m_nextState = Error;
-			}
 			
 			transition();
 		}
