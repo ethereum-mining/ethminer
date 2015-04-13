@@ -56,6 +56,8 @@ public:
 	static ethash_params params(BlockInfo const& _header);
 	static ethash_params params(unsigned _n);
 
+	void readFull(BlockInfo const& _header, void* _dest);
+
 	struct Result
 	{
 		h256 value;

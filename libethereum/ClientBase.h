@@ -82,9 +82,10 @@ public:
 	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) override;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock) override;
+	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
 
-	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock) override;
+	/// Makes the given create. Nothing is recorded into the state.
+	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
 	
 	using Interface::balanceAt;
 	using Interface::countAt;
@@ -108,7 +109,6 @@ public:
 	virtual LocalisedLogEntries peekWatch(unsigned _watchId) const override;
 	virtual LocalisedLogEntries checkWatch(unsigned _watchId) override;
 
-	// TODO: switch all the _blockHash arguments to also accept _blockNumber
 	virtual h256 hashFromNumber(BlockNumber _number) const override;
 	virtual eth::BlockInfo blockInfo(h256 _hash) const override;
 	virtual eth::BlockDetails blockDetails(h256 _hash) const override;
@@ -123,6 +123,8 @@ public:
 	virtual unsigned number() const override;
 	virtual eth::Transactions pending() const override;
 	virtual h256s pendingHashes() const override;
+
+	void injectBlock(bytes const& _block);
 
 	using Interface::diff;
 	virtual StateDiff diff(unsigned _txi, h256 _block) const override;
@@ -144,7 +146,8 @@ public:
 	virtual unsigned miningThreads() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::miningThreads")); }
 	virtual void startMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::startMining")); }
 	virtual void stopMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::stopMining")); }
-	virtual bool isMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::isMining")); }
+	virtual bool isMining() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::isMining")); }
+	virtual uint64_t hashrate() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::hashrate")); }
 	virtual eth::MineProgress miningProgress() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::miningProgress")); }
 	virtual std::pair<h256, u256> getWork() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::getWork")); }
 	virtual bool submitWork(eth::ProofOfWork::Proof const&) override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("dev::eth::ClientBase::submitWork")); }
@@ -154,6 +157,7 @@ public:
 protected:
 	/// The interface that must be implemented in any class deriving this.
 	/// {
+	virtual BlockChain& bc() = 0;
 	virtual BlockChain const& bc() const = 0;
 	virtual State asOf(h256 const& _h) const = 0;
 	virtual State preMine() const = 0;

@@ -22,8 +22,8 @@
 #pragma once
 
 #include <json/json.h>
+#include <libdevcore/TransientDirectory.h>
 #include <libethereum/State.h>
-#include "TransientDirectory.h"
 
 namespace dev
 {

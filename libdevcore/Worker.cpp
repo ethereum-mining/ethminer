@@ -29,11 +29,11 @@ using namespace dev;
 
 void Worker::startWorking()
 {
-	cdebug << "startWorking for thread" << m_name;
+	cnote << "startWorking for thread" << m_name;
 	Guard l(x_work);
 	if (m_work)
 		return;
-	cdebug << "Spawning" << m_name;
+	cnote << "Spawning" << m_name;
 	m_stop = false;
 	m_work.reset(new thread([&]()
 	{
@@ -45,21 +45,21 @@ void Worker::startWorking()
 				this_thread::sleep_for(chrono::milliseconds(m_idleWaitMs));
 			doWork();
 		}
-		cdebug << "Finishing up worker thread";
+		cnote << "Finishing up worker thread";
 		doneWorking();
 	}));
 }
 
 void Worker::stopWorking()
 {
-	cdebug << "stopWorking for thread" << m_name;
+	cnote << "stopWorking for thread" << m_name;
 	Guard l(x_work);
 	if (!m_work)
 		return;
-	cdebug << "Stopping" << m_name;
+	cnote << "Stopping" << m_name;
 	m_stop = true;
 	m_work->join();
 	m_work.reset();
-	cdebug << "Stopped" << m_name;
+	cnote << "Stopped" << m_name;
 }
 

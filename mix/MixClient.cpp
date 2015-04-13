@@ -250,7 +250,8 @@ void MixClient::mine()
 {
 	WriteGuard l(x_state);
 	m_state.commitToMine(bc());
-	while (!m_state.mine(100, true).completed) {}
+	ProofOfWork pow;
+	while (!m_state.mine(&pow).completed) {}
 	m_state.completeMine();
 	bc().import(m_state.blockData(), m_stateDB);
 	m_state.sync(bc());
@@ -295,12 +296,15 @@ Address MixClient::submitTransaction(Secret _secret, u256 _endowment, bytes cons
 	return address;
 }
 
-dev::eth::ExecutionResult MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, bool _gasAuto)
+dev::eth::ExecutionResult MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, bool _gasAuto, FudgeFactor _ff)
 {
 	(void)_blockNumber;
+	Address a = toAddress(_secret);
 	State temp = asOf(eth::PendingBlock);
-	u256 n = temp.transactionsFrom(toAddress(_secret));
+	u256 n = temp.transactionsFrom(a);
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
+	if (_ff == FudgeFactor::Lenient)
+		temp.addBalance(a, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
 	bytes rlp = t.rlp();
 	WriteGuard lw(x_state); //TODO: lock is required only for last execution state
 	executeTransaction(t, temp, true, _gasAuto, _secret);
@@ -317,22 +321,25 @@ Address MixClient::submitTransaction(Secret _secret, u256 _endowment, bytes cons
 	return submitTransaction(_secret, _endowment, _init, _gas, _gasPrice, false);
 }
 
-dev::eth::ExecutionResult MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
+dev::eth::ExecutionResult MixClient::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, eth::FudgeFactor _ff)
 {
-	return call(_secret, _value, _dest, _data, _gas, _gasPrice, _blockNumber,false);
+	return call(_secret, _value, _dest, _data, _gas, _gasPrice, _blockNumber, false, _ff);
 }
 
-dev::eth::ExecutionResult MixClient::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
+dev::eth::ExecutionResult MixClient::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, eth::FudgeFactor _ff)
 {
 	(void)_blockNumber;
 	u256 n;
+	Address a = toAddress(_secret);
 	State temp;
 	{
 		ReadGuard lr(x_state);
 		temp = asOf(eth::PendingBlock);
-		n = temp.transactionsFrom(toAddress(_secret));
+		n = temp.transactionsFrom(a);
 	}
 	Transaction t(_value, _gasPrice, _gas, _data, n, _secret);
+	if (_ff == FudgeFactor::Lenient)
+		temp.addBalance(a, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
 	bytes rlp = t.rlp();
 	WriteGuard lw(x_state); //TODO: lock is required only for last execution state
 	executeTransaction(t, temp, true, false, _secret);
@@ -385,9 +392,14 @@ void MixClient::stopMining()
 	//no-op
 }
 
-bool MixClient::isMining()
+bool MixClient::isMining() const
 {
 	return false;
+}
+
+uint64_t MixClient::hashrate() const
+{
+	return 0;
 }
 
 eth::MineProgress MixClient::miningProgress() const

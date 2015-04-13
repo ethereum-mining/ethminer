@@ -451,7 +451,7 @@ bool State::cull(TransactionQueue& _tq) const
 		{
 			try
 			{
-				if (i.second.nonce() <= transactionsFrom(i.second.sender()))
+				if (i.second.nonce() < transactionsFrom(i.second.sender()))
 				{
 					_tq.drop(i.first);
 					ret = true;
@@ -543,8 +543,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	// m_currentBlock is assumed to be prepopulated and reset.
 
 	BlockInfo bi(_block, _checkNonce ? CheckEverything : IgnoreNonce);
-	cdebug << "enacting" << BlockInfo::headerHash(_block).abridged() << "==" << bi.hash().abridged() << "on" << m_previousBlock.hash().abridged();
-	cdebug << m_currentBlock;
 
 #if !ETH_RELEASE
 	assert(m_previousBlock.hash() == bi.parentHash);
@@ -559,9 +557,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	m_currentBlock = bi;
 	m_currentBlock.verifyInternals(_block);
 	m_currentBlock.noteDirty();
-
-	cdebug << "populated and verified. incoming block hash is" << m_currentBlock.hash().abridged();
-	cdebug << m_currentBlock;
 
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
@@ -631,7 +626,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 	// Initialise total difficulty calculation.
 	u256 tdIncrease = m_currentBlock.difficulty;
 
-
 	// Check uncles & apply their rewards to state.
 	if (rlp[2].itemCount() > 2)
 		BOOST_THROW_EXCEPTION(TooManyUncles());
@@ -685,11 +679,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
 		m_db.rollback();
 		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed)));
 	}
-
-	cdebug << m_currentBlock;
-	auto hh = m_currentBlock.hash();
-	m_currentBlock.noteDirty();
-	cdebug << "done enacting. new stateroot is" << m_currentBlock.stateRoot.abridged() << ", hash is" << m_currentBlock.hash().abridged() << " = " << hh;
 
 	return tdIncrease;
 }
@@ -867,33 +856,12 @@ void State::commitToMine(BlockChain const& _bc)
 	m_committedToMine = true;
 }
 
-MineInfo State::mine(unsigned _msTimeout, bool _turbo)
-{
-	// Update difficulty according to timestamp.
-	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
-
-	MineInfo ret;
-	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	ProofOfWork::Proof r;
-	tie(ret, r) = m_pow.mine(m_currentBlock, _msTimeout, true, _turbo);
-
-	if (!ret.completed)
-		m_currentBytes.clear();
-	else
-	{
-		ProofOfWork::assignResult(r, m_currentBlock);
-		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
-	}
-
-	return ret;
-}
-
 bool State::completeMine(ProofOfWork::Proof const& _nonce)
 {
 	ProofOfWork::assignResult(_nonce, m_currentBlock);
 
-	if (!m_pow.verify(m_currentBlock))
-		return false;
+//	if (!m_pow.verify(m_currentBlock))
+//		return false;
 
 	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
 

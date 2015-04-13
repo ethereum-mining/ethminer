@@ -159,7 +159,7 @@ public:
 
 	using Interface::call; // to remove warning about hiding virtual function
 	/// Makes the given call. Nothing is recorded into the state. This cheats by creating a null address and endowing it with a lot of ETH.
-	ExecutionResult call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether);
+	ExecutionResult call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether, Address const& _from = Address());
 
 	/// Get the remaining gas limit in this block.
 	virtual u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
@@ -188,25 +188,27 @@ public:
 	bool forceMining() const { return m_forceMining; }
 	/// Enable/disable forcing of mining to happen, even without transactions.
 	void setForceMining(bool _enable);
-	/// Are we mining as fast as we can?
+	/// Are we allowed to GPU mine?
 	bool turboMining() const { return m_turboMining; }
-	/// Enable/disable fast mining.
-	void setTurboMining(bool _enable = true) { m_turboMining = _enable; }
+	/// Enable/disable GPU mining.
+	void setTurboMining(bool _enable = true) { bool was = isMining(); stopMining(); m_turboMining = _enable; setMiningThreads(0); if (was) startMining(); }
 
 	/// Stops mining and sets the number of mining threads (0 for automatic).
-	virtual void setMiningThreads(unsigned _threads = 0);
+	void setMiningThreads(unsigned _threads = 0) override;
 	/// Get the effective number of mining threads.
-	virtual unsigned miningThreads() const { ReadGuard l(x_localMiners); return m_localMiners.size(); }
+	unsigned miningThreads() const override { ReadGuard l(x_localMiners); return m_localMiners.size(); }
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	virtual void startMining() { startWorking(); { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); } }
+	void startMining() override { startWorking(); { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); } }
 	/// Stop mining.
 	/// NOT thread-safe
-	virtual void stopMining() { { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); } }
+	void stopMining() override { { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); } }
 	/// Are we mining now?
-	virtual bool isMining() { { ReadGuard l(x_localMiners); if (!m_localMiners.empty() && m_localMiners[0].isRunning()) return true; } return false; }
+	bool isMining() const override { { ReadGuard l(x_localMiners); if (!m_localMiners.empty() && m_localMiners[0].isRunning()) return true; } return false; }
+	/// Are we mining now?
+	uint64_t hashrate() const override;
 	/// Check the progress of the mining.
-	virtual MineProgress miningProgress() const;
+	MineProgress miningProgress() const override;
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory();
 
@@ -229,8 +231,9 @@ public:
 
 protected:
 	/// InterfaceStub methods
+	virtual BlockChain& bc() override { return m_bc; }
 	virtual BlockChain const& bc() const override { return m_bc; }
-	
+
 	/// Returns the state object for the full block (i.e. the terminal state) for index _h.
 	/// Works properly with LatestBlock and PendingBlock.
 	using ClientBase::asOf;
