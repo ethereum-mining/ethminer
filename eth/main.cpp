@@ -127,12 +127,15 @@ void help()
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
+#if ETH_EVMJIT
+		<< "    -J,--jit  Enable EVM JIT (default: off)." << endl
+#endif
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "       --listen-ip <port>  Listen on the given port for incoming connections (default: 30303)." << endl
 		<< "    -l,--listen <ip>  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
 		<< "    -u,--public-ip <ip>  Force public ip to given (default: auto)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
-		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
+		<< "    -n,-u,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
 		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
@@ -140,7 +143,6 @@ void help()
 		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -S,--temporary-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
-		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
@@ -336,7 +338,7 @@ int main(int argc, char** argv)
 			exportFrom = argv[++i];
 		else if (arg == "--only" && i + 1 < argc)
 			exportTo = exportFrom = argv[++i];
-		else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
+		else if ((arg == "-n" || arg == "-u" || arg == "--upnp") && i + 1 < argc)
 		{
 			string m = argv[++i];
 			if (isTrue(m))
@@ -490,15 +492,12 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
-		else if (arg == "--jit")
-		{
 #if ETH_EVMJIT
+		else if (arg == "-J" || arg == "--jit")
+		{
 			jit = true;
-#else
-			cerr << "EVM JIT not enabled" << endl;
-			return -1;
-#endif
 		}
+#endif
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
