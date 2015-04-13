@@ -16,9 +16,16 @@ find_path(
 	DOC "leveldb include dir"
 )
 
+# if msvc 64 build
+if (CMAKE_CL_64)
+	set(LEVELDB_NAMES leveldb_x64)
+else ()
+	set(LEVELDB_NAMES leveldb)
+endif()
+
 find_library(
 	LEVELDB_LIBRARY
-	NAMES leveldb
+	NAMES ${LEVELDB_NAMES}
 	DOC "leveldb library"
 )
 
@@ -29,9 +36,16 @@ set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARY})
 # same naming convention as in qt (appending debug library with d)
 # boost is using the same "hack" as us with "optimized" and "debug"
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+
+	if (CMAKE_CL_64)
+		set(LEVELDB_NAMES_DEBUG leveldbd_x64)
+	else ()
+		set(LEVELDB_NAMES_DEBUG leveldbd)
+	endif()
+
 	find_library(
 		LEVELDB_LIBRARY_DEBUG
-		NAMES leveldbd
+		NAMES ${LEVELDB_NAMES_DEBUG}
 		DOC "leveldb debug library"
 	)
 	
