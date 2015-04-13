@@ -42,6 +42,8 @@ namespace eth
 
 struct MineInfo
 {
+	MineInfo() = default;
+	MineInfo(bool _completed): completed(_completed) {}
 	void combine(MineInfo const& _m) { requirement = std::max(requirement, _m.requirement); best = std::min(best, _m.best); hashes += _m.hashes; completed = completed || _m.completed; }
 	double requirement = 0;
 	double best = 1e99;
@@ -49,7 +51,7 @@ struct MineInfo
 	bool completed = false;
 };
 
-class EthashCPU
+class EthashPoW
 {
 public:
 	struct Proof
@@ -59,36 +61,39 @@ public:
 	};
 
 	static bool verify(BlockInfo const& _header);
-	std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
 	static void assignResult(Proof const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
+
+	virtual unsigned defaultTimeout() const { return 100; }
+	virtual std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true) = 0;
+};
+
+class EthashCPU: public EthashPoW
+{
+public:
+	std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true) override;
 
 protected:
 	Nonce m_last;
 };
 
-#if ETH_ETHASHCL
-class EthashCL
+#if ETH_ETHASHCL || !ETH_TRUE
+class EthashCLHook;
+
+class EthashCL: public EthashPoW
 {
 public:
-	struct Proof
-	{
-		Nonce nonce;
-		h256 mixHash;
-	};
-
 	EthashCL();
 	~EthashCL();
 
-	static bool verify(BlockInfo const& _header);
-	std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
-	static void assignResult(Proof const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
+	std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true) override;
+	unsigned defaultTimeout() const override { return 500; }
 
 protected:
 	Nonce m_last;
 	BlockInfo m_lastHeader;
 	Nonce m_mined;
 	std::unique_ptr<ethash_cl_miner> m_miner;
-	std::unique_ptr<ethash_cl_search_hook> m_hook;
+	std::unique_ptr<EthashCLHook> m_hook;
 };
 
 using Ethash = EthashCL;
@@ -103,8 +108,9 @@ public:
 	using Proof = Nonce;
 
 	static bool verify(BlockInfo const& _header) { return (bigint)(u256)Evaluator::eval(_header.headerHash(WithoutNonce), _header.nonce) <= (bigint(1) << 256) / _header.difficulty; }
-	inline std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true, bool _turbo = false);
+	inline std::pair<MineInfo, Proof> mine(BlockInfo const& _header, unsigned _msTimeout = 100, bool _continue = true);
 	static void assignResult(Proof const& _r, BlockInfo& _header) { _header.nonce = _r; }
+	unsigned defaultTimeout() const { return 100; }
 
 protected:
 	Nonce m_last;
@@ -121,7 +127,7 @@ using SHA3ProofOfWork = ProofOfWorkEngine<SHA3Evaluator>;
 using ProofOfWork = Ethash;
 
 template <class Evaluator>
-std::pair<MineInfo, typename ProofOfWorkEngine<Evaluator>::Proof> ProofOfWorkEngine<Evaluator>::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue, bool _turbo)
+std::pair<MineInfo, typename ProofOfWorkEngine<Evaluator>::Proof> ProofOfWorkEngine<Evaluator>::mine(BlockInfo const& _header, unsigned _msTimeout, bool _continue)
 {
 	auto headerHashWithoutNonce = _header.headerHash(WithoutNonce);
 	auto difficulty = _header.difficulty;
@@ -138,8 +144,6 @@ std::pair<MineInfo, typename ProofOfWorkEngine<Evaluator>::Proof> ProofOfWorkEng
 	//
 	// evaluate until we run out of time
 	auto startTime = std::chrono::steady_clock::now();
-	if (!_turbo)
-		std::this_thread::sleep_for(std::chrono::milliseconds(_msTimeout * 90 / 100));
 	double best = 1e99;	// high enough to be effectively infinity :)
 	ProofOfWorkEngine<Evaluator>::Proof solution;
 	unsigned h = 0;
