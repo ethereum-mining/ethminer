@@ -250,7 +250,8 @@ void MixClient::mine()
 {
 	WriteGuard l(x_state);
 	m_state.commitToMine(bc());
-	while (!m_state.mine(100, true).completed) {}
+	ProofOfWork pow;
+	while (!m_state.mine(&pow).completed) {}
 	m_state.completeMine();
 	bc().import(m_state.blockData(), m_stateDB);
 	m_state.sync(bc());
@@ -391,9 +392,14 @@ void MixClient::stopMining()
 	//no-op
 }
 
-bool MixClient::isMining()
+bool MixClient::isMining() const
 {
 	return false;
+}
+
+uint64_t MixClient::hashrate() const
+{
+	return 0;
 }
 
 eth::MineProgress MixClient::miningProgress() const
