@@ -59,6 +59,11 @@ public:
 
 	struct WorkPackage
 	{
+		WorkPackage() = default;
+
+		void reset() { headerHash = h256(); }
+		operator bool() const { return headerHash != h256(); }
+
 		h256 boundary;
 		h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
 		h256 seedHash;
@@ -89,17 +94,16 @@ public:
 			startWorking();
 		}
 
-		void pause() override { stopWorking(); }
+		void pause() override { stopWorking(); m_work.reset(); }
 
 	private:
 		void workLoop() override;
 
 		WorkPackage m_work;
-		MineInfo m_info;
 	};
 
 #if ETH_ETHASHCL || !ETH_TRUE
-	class GPUMiner: public Miner
+	class GPUMiner: public Miner, Worker
 	{
 		friend class dev::eth::EthashCLHook;
 
@@ -114,14 +118,16 @@ public:
 		void pause() override;
 
 	private:
+		void workLoop() override;
 		bool report(uint64_t _nonce);
 
-		EthashCLHook* m_hook;
-		ethash_cl_miner* m_miner;
+		using Miner::accumulateHashes;
 
-		h256 m_minerSeed;
-		WorkPackage m_lastWork;	///< Work loaded into m_miner.
-		MineInfo m_info;
+		EthashCLHook* m_hook = nullptr;
+		ethash_cl_miner* m_miner = nullptr;
+
+		h256 m_minerSeed;		///< Last seed in m_miner
+		WorkPackage m_work;		///< Work to be done by GPU, set with kickOff and picked up in workLoop.
 	};
 #else
 	using GPUMiner = CPUMiner;

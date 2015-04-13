@@ -34,9 +34,9 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/TrieDB.h>
 #include <libp2p/All.h>
-#include <libethcore/Ethasher.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethereum/All.h>
+#include <libethereum/Farm.h>
 #include <libethereum/AccountDiff.h>
 #include <libethereum/DownloadMan.h>
 #include <liblll/All.h>
@@ -109,18 +109,50 @@ int main()
 #else
 int main()
 {
-#if ETH_ETHASHCL
-	EthashCL ecl;
+	GenericFarm<Ethash> f;
 	BlockInfo genesis = CanonBlockChain::genesis();
 	genesis.difficulty = 1 << 18;
-	cdebug << (h256)u256((bigint(1) << 256) / genesis.difficulty);
-	std::pair<MineInfo, Ethash::Solution> r;
-	while (!r.first.completed)
-		r = ecl.mine(genesis, 1000);
-	cdebug << r.second.mixHash << r.second.nonce;
-	EthashCL::assignResult(r.second, genesis);
-	assert(EthashCPU::verify(genesis));
-#endif
+	cdebug << genesis.boundary();
+
+	auto mine = [](GenericFarm<Ethash>& f, BlockInfo const& g, unsigned timeout) {
+		BlockInfo bi = g;
+		bool completed = false;
+		f.onSolutionFound([&](ProofOfWork::Solution sol)
+		{
+			ProofOfWork::assignResult(sol, bi);
+			return completed = true;
+		});
+		f.setWork(bi);
+		for (unsigned i = 0; !completed && i < timeout * 10; ++i, cout << f.miningProgress() << "\r" << flush)
+			this_thread::sleep_for(chrono::milliseconds(100));
+		cdebug << bi.mixHash << bi.nonce << (Ethash::verify(bi) ? "GOOD" : "bad");
+	};
+
+	f.startCPU();
+	mine(f, genesis, 10);
+	mine(f, genesis, 10);
+	f.startGPU();
+
+	cdebug << "Good:";
+	genesis.difficulty = 1 << 18;
+	genesis.noteDirty();
+	mine(f, genesis, 3);
+
+	cdebug << "Bad:";
+	genesis.difficulty = (u256(1) << 40);
+	genesis.noteDirty();
+	mine(f, genesis, 3);
+
+	cdebug << "Good:";
+	genesis.difficulty = 1 << 18;
+	genesis.noteDirty();
+	mine(f, genesis, 3);
+
+	cdebug << "Bad:";
+	genesis.difficulty = (u256(1) << 40);
+	genesis.noteDirty();
+	mine(f, genesis, 3);
+
 	return 0;
 }
 #endif
