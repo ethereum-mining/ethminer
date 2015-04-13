@@ -67,8 +67,8 @@ public:
 	void stopMining() override;
 	bool isMining() const override;
 	uint64_t hashrate() const override;
-	eth::MineProgress miningProgress() const override;
-	std::pair<h256, u256> getWork() override { return std::pair<h256, u256>(); }
+	eth::MiningProgress miningProgress() const override;
+	eth::ProofOfWork::WorkPackage getWork() override { return eth::ProofOfWork::WorkPackage(); }
 	bool submitWork(eth::ProofOfWork::Solution const&) override { return false; }
 	virtual void flushTransactions() override {}
 

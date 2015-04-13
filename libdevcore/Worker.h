@@ -66,6 +66,9 @@ protected:
 	/// Called when is to be stopped, just prior to thread being joined.
 	virtual void doneWorking() {}
 
+	/// Blocks caller into worker thread has finished.
+	void join() const { Guard l(x_work); try { if (m_work) m_work->join(); } catch (...) {} }
+
 private:
 	std::string m_name;
 	unsigned m_idleWaitMs = 0;
