@@ -43,6 +43,13 @@ macro(eth_add_executable EXECUTABLE)
 
 endmacro()
 
+macro(eth_copy_dlls EXECUTABLE DLLS)
+	add_custom_command(TARGET ${EXECUTABLE} POST_BUILD COMMNAND ${CMAKE_COMMAND} 
+		-DLIBS="${DLLS}" 
+		-DCONFIGURATION="$<CONFIGURATION>"
+		-DDESTINATION="${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}"
+endmacro()
+
 # 
 # this function requires the following variables to be specified:
 # ETH_DEPENDENCY_INSTALL_DIR
