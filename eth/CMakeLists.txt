@@ -29,9 +29,7 @@ target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethash)
 
 if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
-	eth_copy_dlls(${EXECUTABLE} ${MHD_DLLS})
-	#add_custom_command(TARGET ${EXECUTABLE} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy ${MHD_DLL_RELEASE} "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}")
-
+	eth_copy_dlls("${EXECUTABLE}" MHD_DLLS)
 endif()
 
 install( TARGETS ${EXECUTABLE} DESTINATION bin )
