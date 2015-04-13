@@ -183,7 +183,9 @@ public:
 	/// NOT thread-safe
 	virtual void stopMining() = 0;
 	/// Are we mining now?
-	virtual bool isMining() = 0;
+	virtual bool isMining() const = 0;
+	/// Current hash rate.
+	virtual uint64_t hashrate() const = 0;
 
 	/// Get hash of the current block to be mined minus the nonce (the 'work hash').
 	virtual std::pair<h256, u256> getWork() = 0;
