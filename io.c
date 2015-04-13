@@ -22,9 +22,6 @@
 #include <string.h>
 #include <stdio.h>
 
-// silly macro to save some typing
-#define PASS_ARR(c_) (c_), sizeof(c_)
-
 static bool ethash_io_write_file(char const *dirname,
 								 char const* filename,
 								 size_t filename_length,
@@ -51,39 +48,3 @@ free_name:
 	free(fullname);
 	return ret;
 }
-
-bool ethash_io_write(char const *dirname,
-					 ethash_params const* params,
-					 ethash_h256_t seedhash,
-					 void const* cache,
-					 uint8_t **data,
-					 uint64_t *data_size)
-{
-	char info_buffer[DAG_MEMO_BYTESIZE];
-	// allocate the bytes
-	uint8_t *temp_data_ptr = malloc((size_t)params->full_size);
-	if (!temp_data_ptr) {
-		goto end;
-	}
-	ethash_compute_full_data(temp_data_ptr, params, cache);
-
-	if (!ethash_io_write_file(dirname, PASS_ARR(DAG_FILE_NAME), temp_data_ptr, (size_t)params->full_size)) {
-		goto fail_free;
-	}
-
-	ethash_io_serialize_info(REVISION, seedhash, info_buffer);
-	if (!ethash_io_write_file(dirname, PASS_ARR(DAG_MEMO_NAME), info_buffer, DAG_MEMO_BYTESIZE)) {
-		goto fail_free;
-	}
-
-	*data = temp_data_ptr;
-	*data_size = params->full_size;
-	return true;
-
-fail_free:
-	free(temp_data_ptr);
-end:
-	return false;
-}
-
-#undef PASS_ARR

@@ -2,6 +2,7 @@
 #include "compiler.h"
 #include "endian.h"
 #include "ethash.h"
+#include <stdio.h>
 
 #define ENABLE_SSE 0
 
@@ -35,6 +36,7 @@ struct ethash_light {
 };
 
 struct ethash_full {
+	FILE *file;
 	ethash_cache *cache;
 	node *data;
 	ethash_callback_t callback;

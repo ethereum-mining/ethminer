@@ -37,10 +37,11 @@ char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count
 	return strlen(dest) + count + 1 <= dest_size ? strncat(dest, src, count) : NULL;
 }
 
-enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_h256_t seedhash)
+enum ethash_io_rc ethash_io_prepare(char const *dirname,
+	ethash_h256_t seedhash,
+	FILE **output_file)
 {
-	char read_buffer[DAG_MEMO_BYTESIZE];
-	char expect_buffer[DAG_MEMO_BYTESIZE];
+	char mutable_name[DAG_MUTABLE_NAME_MAX_SIZE];
 	enum ethash_io_rc ret = ETHASH_IO_FAIL;
 
 	// assert directory exists, full owner permissions and read/search for others
@@ -49,38 +50,25 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_h256_t seedhash)
 		goto end;
 	}
 
-	char *memofile = ethash_io_create_filename(dirname, DAG_MEMO_NAME, sizeof(DAG_MEMO_NAME));
-	if (!memofile) {
+	ethash_io_mutable_name(REVISION, &seedhash, mutable_name);
+	char *tmpfile = ethash_io_create_filename(dirname, mutable_name, strlen(mutable_name));
+	if (!tmpfile) {
 		goto end;
 	}
 
-	// try to open memo file
-	FILE *f = ethash_fopen(memofile, "rb");
+	// try to open the file
+	FILE *f = fopen(tmpfile, "rb");
 	if (!f) {
-		// file does not exist, so no checking happens. All is fine.
+		// file does not exist, will need to be created
 		ret = ETHASH_IO_MEMO_MISMATCH;
 		goto free_memo;
 	}
 
-	if (fread(read_buffer, 1, DAG_MEMO_BYTESIZE, f) != DAG_MEMO_BYTESIZE) {
-		goto close;
-	}
-
-	ethash_io_serialize_info(REVISION, seedhash, expect_buffer);
-	if (memcmp(read_buffer, expect_buffer, DAG_MEMO_BYTESIZE) != 0) {
-		// we have different memo contents so delete the memo file
-		if (unlink(memofile) != 0) {
-			goto close;
-		}
-		ret = ETHASH_IO_MEMO_MISMATCH;
-	}
-
 	ret = ETHASH_IO_MEMO_MATCH;
 
-close:
-	fclose(f);
+	*output_file = f;
 free_memo:
-	free(memofile);
+	free(tmpfile);
 end:
 	return ret;
 }

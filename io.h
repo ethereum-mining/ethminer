@@ -23,67 +23,41 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include "endian.h"
 #include "ethash.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-static const char DAG_FILE_NAME[] = "full";
-static const char DAG_MEMO_NAME[] = "full.info";
-// MSVC thinks that "static const unsigned int" is not a compile time variable. Sorry for the #define :(
-#define DAG_MEMO_BYTESIZE 36
-
+// Maximum size for mutable part of DAG file name
+// 10 is for maximum number of digits of a uint32_t (for REVISION)
+// 1 is for _ and 16 is for the first 16 hex digits for first 8 bytes of
+// the seedhash and last 1 is for the null terminating character
+// Reference: https://github.com/ethereum/wiki/wiki/Ethash-DAG
+#define DAG_MUTABLE_NAME_MAX_SIZE (10 + 1 + 16 + 1)
 /// Possible return values of @see ethash_io_prepare
 enum ethash_io_rc {
 	ETHASH_IO_FAIL = 0,      ///< There has been an IO failure
-	ETHASH_IO_MEMO_MISMATCH, ///< Memo file either did not exist or there was content mismatch
-	ETHASH_IO_MEMO_MATCH,    ///< Memo file existed and contents matched. No need to do anything
+	ETHASH_IO_MEMO_MISMATCH, ///< The DAG file did not exist or there was revision/hash mismatch
+	ETHASH_IO_MEMO_MATCH,    ///< DAG file existed and revision/hash matched. No need to do anything
 };
 
 /**
  * Prepares io for ethash
  *
- * Create the DAG directory if it does not exist, and check if the memo file matches.
- * If it does not match then it's deleted to pave the way for @ref ethash_io_write()
+ * Create the DAG directory and the DAG file if they don't exist.
  *
- * @param dirname        A null terminated c-string of the path of the ethash
+ * @param[in] dirname    A null terminated c-string of the path of the ethash
  *                       data directory. If it does not exist it's created.
- * @param seedhash       The seedhash of the current block number
+ * @param[in] seedhash   The seedhash of the current block number, used in the
+ *                       naming of the file as can be seen from the spec at:
+ *                       https://github.com/ethereum/wiki/wiki/Ethash-DAG
+ * @param[out] f         If the hash/revision combo matched then this will point
+ *                       to an opened file handler for that file. User will then
+ *                       have to close it.
  * @return               For possible return values @see enum ethash_io_rc
  */
-enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_h256_t seedhash);
-
-/**
- * Fully computes data and writes it to the file on disk.
- *
- * This function should be called after @see ethash_io_prepare() and only if
- * its return value is @c ETHASH_IO_MEMO_MISMATCH. Will write both the full data
- * and the memo file.
- *
- * @param[in] dirname        A null terminated c-string of the path of the ethash
- *                           data directory. Has to exist.
- * @param[in] params         An ethash_params object containing the full size
- *                           and the cache size
- * @param[in] seedhash       The seedhash of the current block number
- * @param[in] cache          The cache data. Would have usually been calulated by
- *                           @see ethash_prep_light().
- * @param[out] data          Pass a pointer to uint8_t by reference here. If the
- *                           function is succesfull then this point to the allocated
- *                           data calculated by @see ethash_prep_full(). Memory
- *                           ownership is transfered to the callee. Remember that
- *                           you eventually need to free this with a call to free().
- * @param[out] data_size     Pass a uint64_t by value. If the function is succesfull
- *                           then this will contain the number of bytes allocated
- *                           for @a data.
- * @return                   True for success and false in case of failure.
- */
-bool ethash_io_write(char const *dirname,
-					 ethash_params const* params,
-					 ethash_h256_t seedhash,
-					 void const* cache,
-					 uint8_t **data,
-					 uint64_t *data_size);
+enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_h256_t seedhash, FILE **f);
 
 /**
  * An fopen wrapper for no-warnings crossplatform fopen.
@@ -99,7 +73,7 @@ bool ethash_io_write(char const *dirname,
  */
 FILE *ethash_fopen(const char *file_name, const char *mode);
 /**
- * An stncat wrapper for no-warnings crossplatform strncat.
+ * An strncat wrapper for no-warnings crossplatform strncat.
  *
  * Msvc compiler considers strncat to be insecure and suggests to use their
  * alternative. This is a wrapper for this alternative. Another way is to
@@ -116,13 +90,15 @@ FILE *ethash_fopen(const char *file_name, const char *mode);
  */
 char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count);
 
-static inline void ethash_io_serialize_info(uint32_t revision,
-											ethash_h256_t seed_hash,
-											char *output)
+static inline bool ethash_io_mutable_name(uint32_t revision,
+                                          ethash_h256_t *seed_hash,
+                                          char *output)
 {
-	// if .info is only consumed locally we don't really care about endianess
-	memcpy(output, &revision, 4);
-	memcpy(output + 4, &seed_hash, 32);
+    uint64_t hash = *((uint64_t*)seed_hash);
+#if LITTLE_ENDIAN == BYTE_ORDER
+    hash = ethash_swap_u64(hash);
+#endif
+    return snprintf(output, DAG_MUTABLE_NAME_MAX_SIZE, "%u_%016lx", revision, hash) >= 0;
 }
 
 static inline char *ethash_io_create_filename(char const *dirname,
