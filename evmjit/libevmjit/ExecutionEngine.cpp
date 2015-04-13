@@ -88,10 +88,10 @@ void parseOptions()
 	//cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
 
 	// FIXME: LLVM workaround:
-	// Manually select instruction scheduler other than "source".
+	// Manually select instruction scheduler. Confirmed bad schedulers: source, list-burr, list-hybrid.
 	// "source" scheduler has a bug: http://llvm.org/bugs/show_bug.cgi?id=22304
 	auto envLine = std::getenv("EVMJIT");
-	auto commandLine = std::string{"evmjit "} + (envLine ? envLine : "") + " -pre-RA-sched=list-burr\0";
+	auto commandLine = std::string{"evmjit "} + (envLine ? envLine : "") + " -pre-RA-sched=list-ilp\0";
 	static const auto c_maxArgs = 20;
 	char const* argv[c_maxArgs] = {nullptr, };
 	auto arg = std::strtok(&*commandLine.begin(), " ");

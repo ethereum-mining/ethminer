@@ -115,9 +115,14 @@ void help()
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
 		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
+		<< "    -E,--export <file>  Export file as a concatenated series of blocks and exit." << endl
+		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
+		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
+		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
 		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
+		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
 #if ETH_JSONRPC
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
@@ -209,43 +214,76 @@ void doInitDAG(unsigned _n)
 	exit(0);
 }
 
-static const unsigned NoDAGInit = (unsigned)-3;
+enum class OperationMode
+{
+	Node,
+	Import,
+	Export,
+	DAGInit
+};
+
+enum class Format
+{
+	Binary,
+	Hex,
+	Human
+};
 
 int main(int argc, char** argv)
 {
-	unsigned initDAG = NoDAGInit;
+	// Init defaults
+	Defaults::get();
+
+	/// Operating mode.
+	OperationMode mode = OperationMode::Node;
+	string dbPath;
+
+	/// File name for import/export.
+	string filename;
+
+	/// Hashes/numbers for export range.
+	string exportFrom = "1";
+	string exportTo = "latest";
+	Format exportFormat = Format::Binary;
+
+	/// DAG initialisation param.
+	unsigned initDAG = 0;
+
+	/// General params for Node operation
+	NodeMode nodeMode = NodeMode::Full;
+	bool interactive = false;
+#if ETH_JSONRPC
+	int jsonrpc = -1;
+#endif
+	bool upnp = true;
+	WithExisting killChain = WithExisting::Trust;
+	bool jit = false;
+
+	/// Networking params.
+	string clientName;
 	string listenIP;
 	unsigned short listenPort = 30303;
 	string publicIP;
 	string remoteHost;
 	unsigned short remotePort = 30303;
-	string dbPath;
-	unsigned mining = ~(unsigned)0;
-	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
-	int miners = -1;
-	bool interactive = false;
-#if ETH_JSONRPC
-	int jsonrpc = -1;
-#endif
 	bool bootstrap = false;
-	bool upnp = true;
+
+	/// Mining params
+	unsigned mining = ~(unsigned)0;
+	int miners = -1;
 	bool forceMining = false;
-	WithExisting killChain = WithExisting::Trust;
-	bool jit = false;
+	KeyPair us = KeyPair::create();
+	Address coinbase = us.address();
+
+	/// Structured logging params
 	bool structuredLogging = false;
 	string structuredLoggingFormat = "%Y-%m-%dT%H:%M:%S";
-	string clientName;
+
+	/// Transaction params
 	TransactionPriority priority = TransactionPriority::Medium;
 	double etherPrice = 30.679;
 	double blockFees = 15.0;
-
-	// Init defaults
-	Defaults::get();
-
-	// Our address.
-	KeyPair us = KeyPair::create();
-	Address coinbase = us.address();
 
 	string configFile = getDataDir() + "/config.rlp";
 	bytes b = contents(configFile);
@@ -254,12 +292,6 @@ int main(int argc, char** argv)
 		RLP config(b);
 		us = KeyPair(config[0].toHash<Secret>());
 		coinbase = config[1].toHash<Address>();
-	}
-	else
-	{
-		RLPStream config(2);
-		config << us.secret() << coinbase;
-		writeFile(configFile, config.out());
 	}
 
 	for (int i = 1; i < argc; ++i)
@@ -275,6 +307,37 @@ int main(int argc, char** argv)
 			remoteHost = argv[++i];
 		else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
 			remotePort = (short)atoi(argv[++i]);
+		else if ((arg == "-I" || arg == "--import") && i + 1 < argc)
+		{
+			mode = OperationMode::Import;
+			filename = argv[++i];
+		}
+		else if ((arg == "-E" || arg == "--export") && i + 1 < argc)
+		{
+			mode = OperationMode::Export;
+			filename = argv[++i];
+		}
+		else if (arg == "--format" && i + 1 < argc)
+		{
+			string m = argv[++i];
+			if (m == "binary")
+				exportFormat = Format::Binary;
+			else if (m == "hex")
+				exportFormat = Format::Hex;
+			else if (m == "human")
+				exportFormat = Format::Human;
+			else
+			{
+				cerr << "Bad " << arg << " option: " << m << endl;
+				return -1;
+			}
+		}
+		else if (arg == "--to" && i + 1 < argc)
+			exportTo = argv[++i];
+		else if (arg == "--from" && i + 1 < argc)
+			exportFrom = argv[++i];
+		else if (arg == "--only" && i + 1 < argc)
+			exportTo = exportFrom = argv[++i];
 		else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -284,7 +347,7 @@ int main(int argc, char** argv)
 				upnp = false;
 			else
 			{
-				cerr << "Invalid -n/--upnp option: " << m << endl;
+				cerr << "Bad " << arg << " option: " << m << endl;
 				return -1;
 			}
 		}
@@ -301,14 +364,13 @@ int main(int argc, char** argv)
 			}
 			catch (BadHexCharacter& _e)
 			{
-				cwarn << "invalid hex character, coinbase rejected";
-				cwarn << boost::diagnostic_information(_e);
-				break;
+				cerr << "Bad hex in " << arg << " option: " << argv[i] << endl;
+				return -1;
 			}
 			catch (...)
 			{
-				cwarn << "coinbase rejected";
-				break;
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
 			}
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			us = KeyPair(h256(fromHex(argv[++i])));
@@ -321,6 +383,7 @@ int main(int argc, char** argv)
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
 		{
 			string m = boost::to_lower_copy(string(argv[++i]));
+			mode = OperationMode::DAGInit;
 			if (m == "next")
 				initDAG = PendingBlock;
 			else if (m == "this")
@@ -420,9 +483,9 @@ int main(int argc, char** argv)
 		{
 			string m = argv[++i];
 			if (m == "full")
-				mode = NodeMode::Full;
+				nodeMode = NodeMode::Full;
 			else if (m == "peer")
-				mode = NodeMode::PeerServer;
+				nodeMode = NodeMode::PeerServer;
 			else
 			{
 				cerr << "Unknown mode: " << m << endl;
@@ -449,16 +512,19 @@ int main(int argc, char** argv)
 		}
 	}
 
+	{
+		RLPStream config(2);
+		config << us.secret() << coinbase;
+		writeFile(configFile, config.out());
+	}
 
 	// Two codepaths is necessary since named block require database, but numbered
 	// blocks are superuseful to have when database is already open in another process.
-	if (initDAG < NoDAGInit)
+	if (mode == OperationMode::DAGInit && !(initDAG == LatestBlock || initDAG == PendingBlock))
 		doInitDAG(initDAG);
 
 	if (!clientName.empty())
 		clientName += "/";
-
-	cout << credits();
 
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
@@ -469,18 +535,95 @@ int main(int argc, char** argv)
 		clientImplString,
 		dbPath,
 		killChain,
-		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
+		nodeMode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
 		&nodesState,
 		miners
 		);
 	
-	if (initDAG == LatestBlock || initDAG == PendingBlock)
+	if (mode == OperationMode::DAGInit)
 		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
-	
+
+	auto toNumber = [&](string const& s) -> unsigned {
+		if (s == "latest")
+			return web3.ethereum()->number();
+		if (s.size() == 64 || (s.size() == 66 && s.substr(0, 2) == "0x"))
+			return web3.ethereum()->blockChain().number(h256(s));
+		try {
+			return stol(s);
+		}
+		catch (...)
+		{
+			cerr << "Bad block number/hash option: " << s << endl;
+			exit(-1);
+		}
+	};
+
+	if (mode == OperationMode::Export)
+	{
+		ofstream fout(filename, std::ofstream::binary);
+		ostream& out = (filename.empty() || filename == "--") ? cout : fout;
+
+		unsigned last = toNumber(exportTo);
+		for (unsigned i = toNumber(exportFrom); i <= last; ++i)
+		{
+			bytes block = web3.ethereum()->blockChain().block(web3.ethereum()->blockChain().numberHash(i));
+			switch (exportFormat)
+			{
+			case Format::Binary: out.write((char const*)block.data(), block.size()); break;
+			case Format::Hex: out << toHex(block) << endl; break;
+			case Format::Human: out << RLP(block) << endl; break;
+			default:;
+			}
+		}
+		return 0;
+	}
+
+	if (mode == OperationMode::Import)
+	{
+		ifstream fin(filename, std::ifstream::binary);
+		istream& in = (filename.empty() || filename == "--") ? cin : fin;
+		unsigned alreadyHave = 0;
+		unsigned good = 0;
+		unsigned futureTime = 0;
+		unsigned unknownParent = 0;
+		unsigned bad = 0;
+		while (in.peek() != -1)
+		{
+			bytes block(8);
+			in.read((char*)block.data(), 8);
+			block.resize(RLP(block, RLP::LaisezFaire).actualSize());
+			in.read((char*)block.data() + 8, block.size() - 8);
+			try
+			{
+				web3.ethereum()->injectBlock(block);
+				good++;
+			}
+			catch (AlreadyHaveBlock const&)
+			{
+				alreadyHave++;
+			}
+			catch (UnknownParent const&)
+			{
+				unknownParent++;
+			}
+			catch (FutureTime const&)
+			{
+				futureTime++;
+			}
+			catch (...)
+			{
+				bad++;
+			}
+		}
+		cout << (good + bad + futureTime + unknownParent + alreadyHave) << " total: " << good << " ok, " << alreadyHave << " got, " << futureTime << " future, " << unknownParent << " unknown parent, " << bad << " malformed." << endl;
+		return 0;
+	}
+
+	cout << credits();
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
-	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
+	eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
 	StructuredLogger::starting(clientImplString, dev::Version);
 	if (c)
 	{
@@ -553,10 +696,9 @@ int main(int argc, char** argv)
 			}
 			else if (cmd == "connect")
 			{
-				string addr;
-				unsigned port;
-				iss >> addr >> port;
-				web3.addNode(p2p::NodeId(), addr + ":" + toString(port ? port : p2p::c_defaultIPPort));
+				string addrPort;
+				iss >> addrPort;
+				web3.addNode(p2p::NodeId(), addrPort);
 			}
 			else if (cmd == "netstop")
 			{
