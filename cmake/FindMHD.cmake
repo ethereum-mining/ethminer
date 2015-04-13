@@ -38,8 +38,8 @@ set(MHD_LIBRARIES ${MHD_LIBRARY})
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 	#TODO: place dlls into CMAKE_CFG_INTDIR subfolders
-	string(REPLACE ".lib" ".dll" MHD_DLL_RELEASE ${MHD_LIBRARY})
-	string(REPLACE "/lib/" "/bin/" MHD_DLL_RELEASE ${MHD_DLL_RELEASE})
+	#string(REPLACE ".lib" ".dll" MHD_DLL_RELEASE ${MHD_LIBRARY})
+	#string(REPLACE "/lib/" "/bin/" MHD_DLL_RELEASE ${MHD_DLL_RELEASE})
 
 	if (CMAKE_CL_64)
 		set(MHD_NAMES_DEBUG microhttpd_d_x64 microhttpd-10_d_x64 libmicrohttpd_d_x64 libmicrohttpd-dll_d_x64)
@@ -56,7 +56,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# not sure why this was commented
 	# always use release for now, need to ask Arkadiy
 	#string(REPLACE ".lib" ".dll" MHD_DLL_DEBUG ${MHD_LIBRARY_DEBUG})
-	#set(MHD_LIBRARIES optimized ${MHD_LIBRARIES} debug ${MHD_LIBRARY_DEBUG})
+	set(MHD_LIBRARIES optimized ${MHD_LIBRARIES} debug ${MHD_LIBRARY_DEBUG})
 
 endif()
 
