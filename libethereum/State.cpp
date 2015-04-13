@@ -451,7 +451,7 @@ bool State::cull(TransactionQueue& _tq) const
 		{
 			try
 			{
-				if (i.second.nonce() <= transactionsFrom(i.second.sender()))
+				if (i.second.nonce() < transactionsFrom(i.second.sender()))
 				{
 					_tq.drop(i.first);
 					ret = true;
@@ -856,33 +856,12 @@ void State::commitToMine(BlockChain const& _bc)
 	m_committedToMine = true;
 }
 
-MineInfo State::mine(unsigned _msTimeout, bool _turbo)
-{
-	// Update difficulty according to timestamp.
-	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
-
-	MineInfo ret;
-	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	ProofOfWork::Proof r;
-	tie(ret, r) = m_pow.mine(m_currentBlock, _msTimeout, true, _turbo);
-
-	if (!ret.completed)
-		m_currentBytes.clear();
-	else
-	{
-		ProofOfWork::assignResult(r, m_currentBlock);
-		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
-	}
-
-	return ret;
-}
-
 bool State::completeMine(ProofOfWork::Proof const& _nonce)
 {
 	ProofOfWork::assignResult(_nonce, m_currentBlock);
 
-	if (!m_pow.verify(m_currentBlock))
-		return false;
+//	if (!m_pow.verify(m_currentBlock))
+//		return false;
 
 	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
 

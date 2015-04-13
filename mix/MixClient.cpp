@@ -390,9 +390,14 @@ void MixClient::stopMining()
 	//no-op
 }
 
-bool MixClient::isMining()
+bool MixClient::isMining() const
 {
 	return false;
+}
+
+uint64_t MixClient::hashrate() const
+{
+	return 0;
 }
 
 eth::MineProgress MixClient::miningProgress() const

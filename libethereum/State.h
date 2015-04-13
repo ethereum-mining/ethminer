@@ -168,7 +168,25 @@ public:
 	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
 	/// @param _msTimeout Timeout before return in milliseconds.
 	/// @returns Information on the mining.
-	MineInfo mine(unsigned _msTimeout = 1000, bool _turbo = false);
+	template <class ProofOfWork> MineInfo mine(ProofOfWork* _pow)
+	{
+		// Update difficulty according to timestamp.
+		m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
+
+		MineInfo ret;
+		typename ProofOfWork::Proof r;
+		std::tie(ret, r) = _pow->mine(m_currentBlock, _pow->defaultTimeout(), true);
+
+		if (!ret.completed)
+			m_currentBytes.clear();
+		else
+		{
+			ProofOfWork::assignResult(r, m_currentBlock);
+			cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
+		}
+
+		return ret;
+	}
 
 	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
 	 * Typically looks like:
@@ -370,8 +388,6 @@ private:
 	bytes m_currentUncles;						///< The RLP-encoded block of uncles.
 
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
-
-	ProofOfWork m_pow;							///< The PoW mining class.
 
 	u256 m_blockReward;
 
