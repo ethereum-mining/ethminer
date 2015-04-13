@@ -26,7 +26,7 @@
 
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonData.h>
-#if ETH_SOLIDITY
+#if ETH_SOLIDITY || !ETH_TRUE
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/SourceReferenceFormatter.h>
@@ -38,7 +38,7 @@
 #include <libethcore/CommonJS.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
-#if ETH_SERPENT
+#if ETH_SERPENT || !ETH_TRUE
 #include <libserpent/funcs.h>
 #endif
 #include "WebThreeStubServerBase.h"
@@ -296,6 +296,11 @@ string WebThreeStubServerBase::eth_coinbase()
 	return toJS(client()->address());
 }
 
+string WebThreeStubServerBase::eth_hashrate()
+{
+	return toJS(client()->hashrate());
+}
+
 bool WebThreeStubServerBase::eth_mining()
 {
 	return client()->isMining();
@@ -449,64 +454,55 @@ static TransactionSkeleton toTransaction(Json::Value const& _json)
 
 string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 {
-	TransactionSkeleton t;
-	
 	try
 	{
-		t = toTransaction(_json);
+		string ret;
+		TransactionSkeleton t = toTransaction(_json);
+	
+		if (!t.from)
+			t.from = m_accounts->getDefaultTransactAccount();
+		if (t.creation)
+			ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
+		if (!t.gasPrice)
+			t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
+		if (!t.gas)
+			t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
+
+		if (m_accounts->isRealAccount(t.from))
+			authenticate(t, false);
+		else if (m_accounts->isProxyAccount(t.from))
+			authenticate(t, true);
+	
+		return ret;
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
-	string ret;
-	if (!t.from)
-		t.from = m_accounts->getDefaultTransactAccount();
-	if (t.creation)
-		ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
-	if (!t.gasPrice)
-		t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
-	if (!t.gas)
-		t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
-	
-	if (m_accounts->isRealAccount(t.from))
-		authenticate(t, false);
-	else if (m_accounts->isProxyAccount(t.from))
-		authenticate(t, true);
-	
-	return ret;
 }
 
 
 string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& _blockNumber)
 {
-	TransactionSkeleton t;
-	int number;
-	
 	try
 	{
-		t = toTransaction(_json);
-		number = jsToBlockNumber(_blockNumber);
+		TransactionSkeleton t = toTransaction(_json);
+		if (!t.from)
+			t.from = m_accounts->getDefaultTransactAccount();
+	//	if (!m_accounts->isRealAccount(t.from))
+	//		return ret;
+		if (!t.gasPrice)
+			t.gasPrice = 10 * dev::eth::szabo;
+		if (!t.gas)
+			t.gas = client()->gasLimitRemaining();
+
+		return toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, jsToBlockNumber(_blockNumber), FudgeFactor::Lenient).output);
 	}
 	catch (...)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
 	
-	string ret;
-	if (!t.from)
-		t.from = m_accounts->getDefaultTransactAccount();
-//	if (!m_accounts->isRealAccount(t.from))
-//		return ret;
-	if (!t.gasPrice)
-		t.gasPrice = 10 * dev::eth::szabo;
-	if (!t.gas)
-		t.gas = client()->gasLimitRemaining();
-
-	ret = toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, number).output);
-	
-	return ret;
 }
 
 bool WebThreeStubServerBase::eth_flush()
@@ -611,10 +607,10 @@ Json::Value WebThreeStubServerBase::eth_getCompilers()
 {
 	Json::Value ret(Json::arrayValue);
 	ret.append("lll");
-#if SOLIDITY
+#if ETH_SOLIDITY || !TRUE
 	ret.append("solidity");
 #endif
-#if SERPENT
+#if ETH_SERPENT || !TRUE
 	ret.append("serpent");
 #endif
 	return ret;
@@ -636,7 +632,7 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 	// TODO throw here jsonrpc errors
 	string res;
 	(void)_code;
-#if SERPENT
+#if ETH_SERPENT || !ETH_TRUE
 	try
 	{
 		res = toJS(dev::asBytes(::compile(_code)));
@@ -658,7 +654,7 @@ string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
 	// TOOD throw here jsonrpc errors
 	(void)_code;
 	string res;
-#if SOLIDITY
+#if ETH_SOLIDITY || !ETH_TRUE
 	dev::solidity::CompilerStack compiler;
 	try
 	{

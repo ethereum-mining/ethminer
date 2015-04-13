@@ -150,6 +150,7 @@
      <string>&amp;Tools</string>
     </property>
     <addaction name="mine"/>
+    <addaction name="turboMining"/>
     <addaction name="separator"/>
     <addaction name="newTransaction"/>
     <addaction name="newAccount"/>
@@ -176,7 +177,6 @@
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
     <addaction name="forceMining"/>
-    <addaction name="turboMining"/>
     <addaction name="separator"/>
     <addaction name="usePrivate"/>
     <addaction name="jitvm"/>
@@ -1608,14 +1608,6 @@ font-size: 14pt</string>
     <string>&amp;Enable LLL Optimizer</string>
    </property>
   </action>
-  <action name="turboMining">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>&amp;Reserved Debug 1</string>
-   </property>
-  </action>
   <action name="localNetworking">
    <property name="checkable">
     <bool>true</bool>
@@ -1677,6 +1669,14 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>&amp;NatSpec Enabled</string>
+   </property>
+  </action>
+  <action name="turboMining">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;GPU Mining</string>
    </property>
   </action>
  </widget>
