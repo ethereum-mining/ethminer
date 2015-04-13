@@ -19,10 +19,11 @@
  * @date 2014
  * Ethereum client.
  */
+#if ETH_ETHASHCL
 #define __CL_ENABLE_EXCEPTIONS
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 #include "libethash-cl/cl.hpp"
-
+#endif
 #include <functional>
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Log.h>
@@ -108,22 +109,18 @@ int main()
 #else
 int main()
 {
-	std::vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
-	if (platforms.empty())
-	{
-		cdebug << "No OpenCL platforms found.";
-		return false;
-	}
-
+#if ETH_ETHASHCL
 	EthashCL ecl;
 	BlockInfo genesis = CanonBlockChain::genesis();
-	TransientDirectory td;
+	genesis.difficulty = 1 << 18;
+	cdebug << (h256)u256((bigint(1) << 256) / genesis.difficulty);
 	std::pair<MineInfo, Ethash::Proof> r;
 	while (!r.first.completed)
 		r = ecl.mine(genesis, 1000);
+	cdebug << r.second.mixHash << r.second.nonce;
 	EthashCL::assignResult(r.second, genesis);
 	assert(EthashCPU::verify(genesis));
+#endif
 	return 0;
 }
 #endif
