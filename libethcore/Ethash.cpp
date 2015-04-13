@@ -30,9 +30,10 @@
 #include <thread>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/Common.h>
+#include <libdevcore/CommonIO.h>
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcrypto/FileSystem.h>
-#include <libdevcore/Common.h>
 #include <libethash/ethash.h>
 #if ETH_ETHASHCL || !ETH_TRUE
 #include <libethash-cl/ethash_cl_miner.h>
@@ -123,10 +124,12 @@ void Ethash::CPUMiner::workLoop()
 	uint64_t tryNonce = (uint64_t)(u64)Nonce::random(s_eng);
 	ethash_return_value ethashReturn;
 
-	auto p = EthashAux::params(m_work.seedHash);
-	void const* dagPointer = EthashAux::full(m_work.seedHash).data();
-	uint8_t const* headerHashPointer = m_work.headerHash.data();
-	h256 boundary = m_work.boundary;
+	WorkPackage w = work();
+
+	auto p = EthashAux::params(w.seedHash);
+	void const* dagPointer = EthashAux::full(w.seedHash).data();
+	uint8_t const* headerHashPointer = w.headerHash.data();
+	h256 boundary = w.boundary;
 	unsigned hashCount = 1;
 	for (; !shouldStop(); tryNonce++, hashCount++)
 	{
@@ -149,7 +152,6 @@ public:
 	void abort()
 	{
 		Guard l(x_all);
-		m_owner->m_work.headerHash = h256();
 		if (m_aborted)
 			return;
 //		cdebug << "Attempting to abort";
@@ -158,13 +160,17 @@ public:
 			std::this_thread::sleep_for(chrono::milliseconds(30));
 //		if (!m_aborted)
 //			cwarn << "Couldn't abort. Abandoning OpenCL process.";
+	}
+
+	void reset()
+	{
 		m_aborted = m_abort = false;
 	}
 
 protected:
 	virtual bool found(uint64_t const* _nonces, uint32_t _count) override
 	{
-//		cdebug << "Found nonces: " << vector<uint64_t>(_nonces, _nonces + _count);
+//		dev::operator <<(std::cerr << "Found nonces: ", vector<uint64_t>(_nonces, _nonces + _count)) << std::endl;
 		for (uint32_t i = 0; i < _count; ++i)
 		{
 			if (m_owner->report(_nonces[i]))
@@ -179,7 +185,7 @@ protected:
 	virtual bool searched(uint64_t _startNonce, uint32_t _count) override
 	{
 		Guard l(x_all);
-//		cdebug << "Searched" << _count << "from" << _startNonce;
+//		std::cerr << "Searched " << _count << " from " << _startNonce << std::endl;
 		m_owner->accumulateHashes(_count);
 		m_last = _startNonce + _count;
 		if (m_abort)
@@ -206,29 +212,30 @@ Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 
 Ethash::GPUMiner::~GPUMiner()
 {
-	delete m_hook;
+	pause();
 	delete m_miner;
+	delete m_hook;
 }
 
 bool Ethash::GPUMiner::report(uint64_t _nonce)
 {
 	Nonce n = (Nonce)(u64)_nonce;
-	Result r = EthashAux::eval(m_work.seedHash, m_work.headerHash, n);
-	if (r.value < m_work.boundary)
+	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
+	if (r.value < work().boundary)
 		return submitProof(Solution{n, r.mixHash});
 	return false;
 }
 
-void Ethash::GPUMiner::kickOff(WorkPackage const& _work)
+void Ethash::GPUMiner::kickOff()
 {
-	m_work = _work;
+	m_hook->reset();
 	startWorking();
 }
 
 void Ethash::GPUMiner::workLoop()
 {
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
-	WorkPackage w = m_work;
+	WorkPackage w = work();
 	if (!m_miner || m_minerSeed != w.seedHash)
 	{
 		m_minerSeed = w.seedHash;
@@ -249,7 +256,6 @@ void Ethash::GPUMiner::pause()
 {
 	m_hook->abort();
 	stopWorking();
-	m_work.headerHash = h256();
 }
 
 #endif

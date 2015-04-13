@@ -87,19 +87,16 @@ public:
 		static unsigned instances() { return std::thread::hardware_concurrency(); }
 
 	protected:
-		void kickOff(WorkPackage const& _work) override
+		void kickOff() override
 		{
 			stopWorking();
-			m_work = _work;
 			startWorking();
 		}
 
-		void pause() override { stopWorking(); m_work.reset(); }
+		void pause() override { stopWorking(); }
 
 	private:
 		void workLoop() override;
-
-		WorkPackage m_work;
 	};
 
 #if ETH_ETHASHCL || !ETH_TRUE
@@ -114,7 +111,7 @@ public:
 		static unsigned instances() { return 1; }
 
 	protected:
-		void kickOff(WorkPackage const& _work) override;
+		void kickOff() override;
 		void pause() override;
 
 	private:
@@ -127,7 +124,6 @@ public:
 		ethash_cl_miner* m_miner = nullptr;
 
 		h256 m_minerSeed;		///< Last seed in m_miner
-		WorkPackage m_work;		///< Work to be done by GPU, set with kickOff and picked up in workLoop.
 	};
 #else
 	using GPUMiner = CPUMiner;
