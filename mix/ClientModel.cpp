@@ -222,12 +222,14 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 	emit runStarted();
 	emit runStateChanged();
 
+	//m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), m_client->userAccounts(), m_client.get()));
+	m_client->resetState(_balances);
+	m_web3Server.setAccounts(m_client->userAccounts());
 	//run sequence
 	m_runFuture = QtConcurrent::run([=]()
 	{
 		try
 		{
-			m_client->resetState(_balances);
 			onStateReset();
 			for (TransactionSettings const& transaction: _sequence)
 			{
