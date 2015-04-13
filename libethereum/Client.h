@@ -188,25 +188,27 @@ public:
 	bool forceMining() const { return m_forceMining; }
 	/// Enable/disable forcing of mining to happen, even without transactions.
 	void setForceMining(bool _enable);
-	/// Are we mining as fast as we can?
+	/// Are we allowed to GPU mine?
 	bool turboMining() const { return m_turboMining; }
-	/// Enable/disable fast mining.
-	void setTurboMining(bool _enable = true) { m_turboMining = _enable; }
+	/// Enable/disable GPU mining.
+	void setTurboMining(bool _enable = true) { bool was = isMining(); stopMining(); m_turboMining = _enable; setMiningThreads(0); if (was) startMining(); }
 
 	/// Stops mining and sets the number of mining threads (0 for automatic).
-	virtual void setMiningThreads(unsigned _threads = 0);
+	void setMiningThreads(unsigned _threads = 0) override;
 	/// Get the effective number of mining threads.
-	virtual unsigned miningThreads() const { ReadGuard l(x_localMiners); return m_localMiners.size(); }
+	unsigned miningThreads() const override { ReadGuard l(x_localMiners); return m_localMiners.size(); }
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	virtual void startMining() { startWorking(); { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); } }
+	void startMining() override { startWorking(); { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); } }
 	/// Stop mining.
 	/// NOT thread-safe
-	virtual void stopMining() { { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); } }
+	void stopMining() override { { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); } }
 	/// Are we mining now?
-	virtual bool isMining() { { ReadGuard l(x_localMiners); if (!m_localMiners.empty() && m_localMiners[0].isRunning()) return true; } return false; }
+	bool isMining() const override { { ReadGuard l(x_localMiners); if (!m_localMiners.empty() && m_localMiners[0].isRunning()) return true; } return false; }
+	/// Are we mining now?
+	uint64_t hashrate() const override;
 	/// Check the progress of the mining.
-	virtual MineProgress miningProgress() const;
+	MineProgress miningProgress() const override;
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory();
 
