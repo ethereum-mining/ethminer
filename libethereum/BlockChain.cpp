@@ -601,7 +601,7 @@ pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, 
 				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
 		}
 
-		clog(BlockChainNote) << "   Imported and best" << td << ". Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(route);
+		clog(BlockChainNote) << "   Imported and best" << td << " (#" << bi.number << "). Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(route);
 		noteCanonChanged();
 
 		StructuredLogger::chainNewHead(

@@ -75,6 +75,13 @@ h256 const& BlockInfo::hash() const
 	return m_hash;
 }
 
+h256 const& BlockInfo::boundary() const
+{
+	if (!m_boundary)
+		m_boundary = (h256)(u256)((bigint(1) << 256) / difficulty);
+	return m_boundary;
+}
+
 BlockInfo BlockInfo::fromHeader(bytesConstRef _header, Strictness _s, h256 const& _h)
 {
 	BlockInfo ret;

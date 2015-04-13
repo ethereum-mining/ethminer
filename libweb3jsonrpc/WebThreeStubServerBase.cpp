@@ -26,7 +26,7 @@
 
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonData.h>
-#if ETH_SOLIDITY
+#if ETH_SOLIDITY || !ETH_TRUE
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/SourceReferenceFormatter.h>
@@ -38,7 +38,7 @@
 #include <libethcore/CommonJS.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
-#if ETH_SERPENT
+#if ETH_SERPENT || !ETH_TRUE
 #include <libserpent/funcs.h>
 #endif
 #include "WebThreeStubServerBase.h"
@@ -294,6 +294,11 @@ string WebThreeStubServerBase::eth_protocolVersion()
 string WebThreeStubServerBase::eth_coinbase()
 {
 	return toJS(client()->address());
+}
+
+string WebThreeStubServerBase::eth_hashrate()
+{
+	return toJS(client()->hashrate());
 }
 
 bool WebThreeStubServerBase::eth_mining()
@@ -602,10 +607,10 @@ Json::Value WebThreeStubServerBase::eth_getCompilers()
 {
 	Json::Value ret(Json::arrayValue);
 	ret.append("lll");
-#if SOLIDITY
+#if ETH_SOLIDITY || !TRUE
 	ret.append("solidity");
 #endif
-#if SERPENT
+#if ETH_SERPENT || !TRUE
 	ret.append("serpent");
 #endif
 	return ret;
@@ -627,7 +632,7 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 	// TODO throw here jsonrpc errors
 	string res;
 	(void)_code;
-#if SERPENT
+#if ETH_SERPENT || !ETH_TRUE
 	try
 	{
 		res = toJS(dev::asBytes(::compile(_code)));
@@ -649,7 +654,7 @@ string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
 	// TOOD throw here jsonrpc errors
 	(void)_code;
 	string res;
-#if SOLIDITY
+#if ETH_SOLIDITY || !ETH_TRUE
 	dev::solidity::CompilerStack compiler;
 	try
 	{
