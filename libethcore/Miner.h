@@ -34,29 +34,23 @@ namespace dev
 namespace eth
 {
 
-struct MineInfo
-{
-	MineInfo() = default;
-	MineInfo(bool _completed): completed(_completed) {}
-	void combine(MineInfo const& _m) { requirement = std::max(requirement, _m.requirement); best = std::min(best, _m.best); hashes += _m.hashes; completed = completed || _m.completed; }
-	double requirement = 0;
-	double best = 1e99;
-	unsigned hashes = 0;
-	bool completed = false;
-};
-
 /**
  * @brief Describes the progress of a mining operation.
  */
 struct MiningProgress
 {
-	void combine(MiningProgress const& _m) { requirement = std::max(requirement, _m.requirement); best = std::min(best, _m.best); current = std::max(current, _m.current); hashes += _m.hashes; ms = std::max(ms, _m.ms); }
-	double requirement = 0;		///< The PoW requirement - as the second logarithm of the minimum acceptable hash.
-	double best = 1e99;			///< The PoW achievement - as the second logarithm of the minimum found hash.
-	double current = 0;			///< The most recent PoW achievement - as the second logarithm of the presently found hash.
+//	MiningProgress& operator+=(MiningProgress const& _mp) { hashes += _mp.hashes; ms = std::max(ms, _mp.ms); return *this; }
 	unsigned hashes = 0;		///< Total number of hashes computed.
 	unsigned ms = 0;			///< Total number of milliseconds of mining thus far.
 };
+
+struct MineInfo: public MiningProgress {};
+
+inline std::ostream& operator<<(std::ostream& _out, MiningProgress const& _p)
+{
+	_out << (_p.hashes * 1000 / _p.ms) << "H/s = " <<  _p.hashes << " hashes / " << (double(_p.ms) / 1000) << "s";
+	return _out;
+}
 
 template <class PoW> class GenericMiner;
 
@@ -103,12 +97,17 @@ public:
 	void setWork(WorkPackage const& _work = WorkPackage())
 	{
 		Guard l(x_work);
+		if (_work.headerHash == m_work.headerHash)
+			return;
 		if (_work.headerHash != h256())
-			kickOff(m_work);
+			kickOff(_work);
 		else if (m_work.headerHash == h256() && _work.headerHash != h256())
 			pause();
 		m_work = _work;
+		m_hashCount = 0;
 	}
+
+	unsigned hashCount() { return m_hashCount; }
 
 	unsigned index() const { return m_index; }
 
@@ -146,12 +145,16 @@ protected:
 
 	WorkPackage const& work() const { return m_work; }
 
+	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
+
 private:
 	FarmFace* m_farm = nullptr;
 	unsigned m_index;
 
 	Mutex x_work;
 	WorkPackage m_work;
+
+	unsigned m_hashCount = 0;
 };
 
 }

@@ -45,7 +45,7 @@
 #endif
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/CommonJS.h>
-#include <libethcore/Ethasher.h>
+#include <libethcore/EthashAux.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libsolidity/Scanner.h>
@@ -164,7 +164,7 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->chainStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
 
-	ui->blockCount->setText(QString("PV%2 D%3 %4-%5 v%6").arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(ProofOfWork::name()).arg(ProofOfWork::revision()).arg(dev::Version));
+	ui->blockCount->setText(QString("PV%2 D%3 %4-%5 v%6").arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(QString::fromStdString(ProofOfWork::name())).arg(ProofOfWork::revision()).arg(dev::Version));
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 	
@@ -952,7 +952,7 @@ void Main::on_preview_triggered()
 
 void Main::refreshMining()
 {
-	MineProgress p = ethereum()->miningProgress();
+	MiningProgress p = ethereum()->miningProgress();
 	ui->mineStatus->setText(ethereum()->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
 	if (!ui->miningView->isVisible())
 		return;
@@ -1481,7 +1481,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<div>Difficulty: <b>" << info.difficulty << "</b>" << "</div>";
 			if (info.number)
 			{
-				auto e = Ethasher::eval(info);
+				auto e = EthashAux::eval(info);
 				s << "<div>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
 				s << "<div>Parent: <b>" << info.parentHash << "</b>" << "</div>";
 			}
@@ -1510,7 +1510,7 @@ void Main::on_blocks_currentItemChanged()
 				s << line << "Nonce: <b>" << uncle.nonce << "</b>" << "</div>";
 				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutNonce) << "</b>" << "</div>";
 				s << line << "Difficulty: <b>" << uncle.difficulty << "</b>" << "</div>";
-				auto e = Ethasher::eval(uncle);
+				auto e = EthashAux::eval(uncle);
 				s << line << "Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / uncle.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
 			}
 			if (info.parentHash)
