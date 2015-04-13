@@ -264,7 +264,7 @@ static string filtersToString(T const& _fs)
 {
 	stringstream ret;
 	ret << "{";
-	bool i = false;
+	unsigned i = 0;
 	for (h256 const& f: _fs)
 		ret << (i++ ? ", " : "") << (f == PendingChangedFilter ? "pending" : f == ChainChangedFilter ? "chain" : f.abridged());
 	ret << "}";
@@ -345,11 +345,10 @@ void Client::setForceMining(bool _enable)
 void Client::setMiningThreads(unsigned _threads)
 {
 	stopMining();
-#if ETH_ETHASHCL
-	(void)_threads;
-	unsigned t = 1;
-#else
 	auto t = _threads ? _threads : thread::hardware_concurrency();
+#if ETH_ETHASHCL || !ETH_TRUE
+	if (m_turboMining)
+		t = 1;
 #endif
 	WriteGuard l(x_localMiners);
 	m_localMiners.clear();
@@ -366,6 +365,15 @@ MineProgress Client::miningProgress() const
 	for (auto& m: m_localMiners)
 		ret.combine(m.miningProgress());
 	return ret;
+}
+
+uint64_t Client::hashrate() const
+{
+	uint64_t ret = 0;
+	ReadGuard l(x_localMiners);
+	for (LocalMiner const& m: m_localMiners)
+		ret += m.miningProgress().hashes / m.miningProgress().ms;
+	return ret / 1000;
 }
 
 std::list<MineInfo> Client::miningHistory()
