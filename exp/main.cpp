@@ -25,6 +25,7 @@
 #include "libethash-cl/cl.hpp"
 #endif
 #include <functional>
+#include <boost/filesystem.hpp>
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
@@ -106,7 +107,7 @@ int main()
 	cnote << "State after transaction: " << s;
 	cnote << before.diff(s);
 }
-#else
+#elif 0
 int main()
 {
 	GenericFarm<Ethash> f;
@@ -149,6 +150,77 @@ int main()
 	mine(f, genesis, 30);
 
 	f.stop();
+
+	return 0;
+}
+#else
+
+void mine(State& s, BlockChain const& _bc)
+{
+	s.commitToMine(_bc);
+	GenericFarm<ProofOfWork> f;
+	bool completed = false;
+	f.onSolutionFound([&](ProofOfWork::Solution sol)
+	{
+		return completed = s.completeMine<ProofOfWork>(sol);
+	});
+	f.setWork(s.info());
+	f.startCPU();
+	while (!completed)
+		this_thread::sleep_for(chrono::milliseconds(20));
+}
+
+int main()
+{
+	cnote << "Testing State...";
+
+	KeyPair me = sha3("Gav Wood");
+	KeyPair myMiner = sha3("Gav's Miner");
+//	KeyPair you = sha3("123");
+
+	Defaults::setDBPath(boost::filesystem::temp_directory_path().string() + "/" + toString(chrono::system_clock::now().time_since_epoch().count()));
+
+	OverlayDB stateDB = State::openDB();
+	CanonBlockChain bc;
+	cout << bc;
+
+	State s(stateDB, BaseState::CanonGenesis, myMiner.address());
+	cout << s;
+
+	// Sync up - this won't do much until we use the last state.
+	s.sync(bc);
+
+	cout << s;
+
+	// Mine to get some ether!
+	mine(s, bc);
+
+	bc.attemptImport(s.blockData(), stateDB);
+
+	cout << bc;
+
+	s.sync(bc);
+
+	cout << s;
+
+	// Inject a transaction to transfer funds from miner to me.
+	Transaction t(1000, 10000, 30000, me.address(), bytes(), s.transactionsFrom(myMiner.address()), myMiner.secret());
+	assert(t.sender() == myMiner.address());
+	s.execute(bc.lastHashes(), t);
+
+	cout << s;
+
+	// Mine to get some ether and set in stone.
+	s.commitToMine(bc);
+	s.commitToMine(bc);
+	mine(s, bc);
+	bc.attemptImport(s.blockData(), stateDB);
+
+	cout << bc;
+
+	s.sync(bc);
+
+	cout << s;
 
 	return 0;
 }

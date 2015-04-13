@@ -69,11 +69,11 @@ public:
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
 	 * @param _p The solution.
-	 * @param _wp The WorkPackage that the Solution is for.
+	 * @param _wp The WorkPackage that the Solution is for; this will be reset if the work is accepted.
 	 * @param _finder The miner that found it.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	virtual bool submitProof(Solution const& _p, WorkPackage const& _wp, Miner* _finder) = 0;
+	virtual bool submitProof(Solution const& _p, WorkPackage& io_wp, Miner* _finder) = 0;
 };
 
 /**
@@ -139,10 +139,8 @@ protected:
 	{
 		if (m_farm)
 		{
-			Guard l(x_work);
 			if (!m_farm->submitProof(_s, m_work, this))
 				return false;
-			m_work.reset();
 			return true;
 		}
 		return true;
