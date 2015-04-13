@@ -23,10 +23,18 @@
 
 #include <string>
 #include <thread>
+#include <atomic>
 #include "Guards.h"
 
 namespace dev
 {
+
+enum class IfRunning
+{
+	Fail,
+	Join,
+	Detach
+};
 
 class Worker
 {
@@ -45,7 +53,7 @@ protected:
 	void setName(std::string _n) { if (!isWorking()) m_name = _n; }
 
 	/// Starts worker thread; causes startedWorking() to be called.
-	void startWorking();
+	void startWorking(IfRunning _ir = IfRunning::Fail);
 	
 	/// Stop worker thread; causes call to stopWorking().
 	void stopWorking();

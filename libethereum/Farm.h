@@ -50,6 +50,11 @@ public:
 	using Solution = typename PoW::Solution;
 	using Miner = GenericMiner<PoW>;
 
+	~GenericFarm()
+	{
+		stop();
+	}
+
 	/**
 	 * @brief Sets the current mining mission.
 	 * @param _bi The block (header) we wish to be mining.
@@ -142,7 +147,7 @@ private:
 			for (std::shared_ptr<Miner> const& m: m_miners)
 				if (m.get() != _m)
 					m->setWork();
-			m_work.headerHash = h256();
+			m_work.reset();
 			return true;
 		}
 		return false;
