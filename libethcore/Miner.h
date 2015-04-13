@@ -40,13 +40,13 @@ namespace eth
 struct MiningProgress
 {
 //	MiningProgress& operator+=(MiningProgress const& _mp) { hashes += _mp.hashes; ms = std::max(ms, _mp.ms); return *this; }
-	unsigned hashes = 0;		///< Total number of hashes computed.
-	unsigned ms = 0;			///< Total number of milliseconds of mining thus far.
+	uint64_t hashes = 0;		///< Total number of hashes computed.
+	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
 };
 
 struct MineInfo: public MiningProgress {};
 
-inline std::ostream& operator<<(std::ostream& _out, MiningProgress const& _p)
+inline std::ostream& operator<<(std::ostream& _out, MiningProgress _p)
 {
 	_out << (_p.hashes * 1000 / _p.ms) << "H/s = " <<  _p.hashes << " hashes / " << (double(_p.ms) / 1000) << "s";
 	return _out;
@@ -97,17 +97,19 @@ public:
 	void setWork(WorkPackage const& _work = WorkPackage())
 	{
 		Guard l(x_work);
-		if (_work.headerHash == m_work.headerHash)
-			return;
-		if (_work.headerHash != h256())
-			kickOff(_work);
-		else if (m_work.headerHash == h256() && _work.headerHash != h256())
-			pause();
+		auto old = m_work;
 		m_work = _work;
+		if (!!m_work)
+		{
+			pause();
+			kickOff();
+		}
+		else if (!m_work && !!old)
+			pause();
 		m_hashCount = 0;
 	}
 
-	unsigned hashCount() { return m_hashCount; }
+	uint64_t hashCount() { return m_hashCount; }
 
 	unsigned index() const { return m_index; }
 
@@ -119,7 +121,7 @@ protected:
 	 * @brief Begin working on a given work package, discarding any previous work.
 	 * @param _work The package for which to find a solution.
 	 */
-	virtual void kickOff(WorkPackage const& _work) = 0;
+	virtual void kickOff() = 0;
 
 	/**
 	 * @brief No work left to be done. Pause until told to kickOff().
@@ -138,7 +140,10 @@ protected:
 		if (m_farm)
 		{
 			Guard l(x_work);
-			return m_farm->submitProof(_s, m_work, this);
+			if (!m_farm->submitProof(_s, m_work, this))
+				return false;
+			m_work.reset();
+			return true;
 		}
 		return true;
 	}
@@ -154,7 +159,7 @@ private:
 	Mutex x_work;
 	WorkPackage m_work;
 
-	unsigned m_hashCount = 0;
+	uint64_t m_hashCount = 0;
 };
 
 }

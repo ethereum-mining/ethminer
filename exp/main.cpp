@@ -125,33 +125,30 @@ int main()
 		f.setWork(bi);
 		for (unsigned i = 0; !completed && i < timeout * 10; ++i, cout << f.miningProgress() << "\r" << flush)
 			this_thread::sleep_for(chrono::milliseconds(100));
+		cout << endl << flush;
 		cdebug << bi.mixHash << bi.nonce << (Ethash::verify(bi) ? "GOOD" : "bad");
 	};
 
+	Ethash::prep(genesis);
+
+	genesis.difficulty = u256(1) << 40;
+	genesis.noteDirty();
 	f.startCPU();
 	mine(f, genesis, 10);
-	mine(f, genesis, 10);
+
 	f.startGPU();
 
 	cdebug << "Good:";
 	genesis.difficulty = 1 << 18;
 	genesis.noteDirty();
-	mine(f, genesis, 3);
+	mine(f, genesis, 30);
 
 	cdebug << "Bad:";
 	genesis.difficulty = (u256(1) << 40);
 	genesis.noteDirty();
-	mine(f, genesis, 3);
+	mine(f, genesis, 30);
 
-	cdebug << "Good:";
-	genesis.difficulty = 1 << 18;
-	genesis.noteDirty();
-	mine(f, genesis, 3);
-
-	cdebug << "Bad:";
-	genesis.difficulty = (u256(1) << 40);
-	genesis.noteDirty();
-	mine(f, genesis, 3);
+	f.stop();
 
 	return 0;
 }

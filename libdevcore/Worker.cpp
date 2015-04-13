@@ -27,12 +27,20 @@
 using namespace std;
 using namespace dev;
 
-void Worker::startWorking()
+void Worker::startWorking(IfRunning _ir)
 {
 	cnote << "startWorking for thread" << m_name;
 	Guard l(x_work);
-	if (m_work)
-		return;
+
+	if (m_work && m_work->joinable())
+		try {
+			if (_ir == IfRunning::Detach)
+				m_work->detach();
+			else if (_ir == IfRunning::Join)
+				m_work->join();
+			else
+				return;
+		} catch (...) {}
 	cnote << "Spawning" << m_name;
 	m_stop = false;
 	m_work.reset(new thread([&]()
@@ -40,6 +48,7 @@ void Worker::startWorking()
 		setThreadName(m_name.c_str());
 		startedWorking();
 		workLoop();
+		m_work->detach();
 		cnote << "Finishing up worker thread";
 		doneWorking();
 	}));
@@ -49,11 +58,14 @@ void Worker::stopWorking()
 {
 	cnote << "stopWorking for thread" << m_name;
 	Guard l(x_work);
-	if (!m_work)
+	if (!m_work || !m_work->joinable())
 		return;
 	cnote << "Stopping" << m_name;
 	m_stop = true;
-	m_work->join();
+	try {
+		m_work->join();
+	}
+	catch (...) {}
 	m_work.reset();
 	cnote << "Stopped" << m_name;
 }
