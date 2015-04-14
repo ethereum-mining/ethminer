@@ -53,22 +53,14 @@ FIND_PATH (CRYPTOPP_INCLUDE_DIR
   PATH_SUFFIXES include
   DOC "CryptoPP include directory")
 
-if (CMAKE_CL_64)
-  set(CRYPTOPP_NAMES cryptlib_x64 cryptopp_x64)
-  set(CRYPTOPP_NAMES_DEBUG cryptlibd_x64 cryptoppd_x64)
-else ()
-  set(CRYPTOPP_NAMES cryptlib cryptopp)
-  set(CRYPTOPP_NAMES_DEBUG cryptlibd cryptoppd)
-endif()
-
 FIND_LIBRARY (CRYPTOPP_LIBRARY_DEBUG
-  NAMES ${CRYPTOPP_NAMES_DEBUG}
+  NAMES cryptlibd cryptoppd
   HINTS ${CRYPTOPP_ROOT_DIR}
   PATH_SUFFIXES lib
   DOC "CryptoPP debug library")
 
 FIND_LIBRARY (CRYPTOPP_LIBRARY_RELEASE
-  NAMES ${CRYPTOPP_NAMES}
+  NAMES cryptlib cryptopp
   HINTS ${CRYPTOPP_ROOT_DIR}
   PATH_SUFFIXES lib
   DOC "CryptoPP release library")

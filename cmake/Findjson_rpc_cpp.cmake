@@ -24,32 +24,21 @@ find_path(
 	DOC "json-rpc-cpp include dir"
 )
 
-# if msvc 64 build
-if (CMAKE_CL_64)
-	set(JSON_RPC_CPP_COMMON_NAME jsonrpccpp-common_x64)
-	set(JSON_RPC_CPP_SERVER_NAME jsonrpccpp-server_x64)
-	set(JSON_RPC_CPP_CLIENT_NAME jsonrpccpp-client_x64)
-else ()
-	set(JSON_RPC_CPP_COMMON_NAME jsonrpccpp-common)
-	set(JSON_RPC_CPP_SERVER_NAME jsonrpccpp-server)
-	set(JSON_RPC_CPP_CLIENT_NAME jsonrpccpp-client)
-endif()
-
 find_library(
 	JSON_RPC_CPP_COMMON_LIBRARY
-	NAMES ${JSON_RPC_CPP_COMMON_NAME}
+	NAMES jsonrpccpp-common
 	DOC "json-rpc-cpp common library"
 )
 
 find_library(
 	JSON_RPC_CPP_SERVER_LIBRARY
-	NAMES ${JSON_RPC_CPP_SERVER_NAME}
+	NAMES jsonrpccpp-server
 	DOC "json-rpc-cpp server library"
 )
 
 find_library(
 	JSON_RPC_CPP_CLIENT_LIBRARY
-	NAMES ${JSON_RPC_CPP_CLIENT_NAME}
+	NAMES jsonrpccpp-client
 	DOC "json-rpc-cpp client library"
 )
 
@@ -64,32 +53,21 @@ set (JSON_RPC_CPP_CLIENT_LIBRARIES ${JSON_RPC_CPP_COMMON_LIBRARY} ${JSON_RPC_CPP
 # boost is using the same "hack" as us with "optimized" and "debug"
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
-	# if msvc 64 build
-	if (CMAKE_CL_64)
-		set(JSON_RPC_CPP_COMMON_NAME_DEBUG jsonrpccpp-commond_x64)
-		set(JSON_RPC_CPP_SERVER_NAME_DEBUG jsonrpccpp-serverd_x64)
-		set(JSON_RPC_CPP_CLIENT_NAME_DEBUG jsonrpccpp-clientd_x64)
-	else ()
-		set(JSON_RPC_CPP_COMMON_NAME_DEBUG jsonrpccpp-commond)
-		set(JSON_RPC_CPP_SERVER_NAME_DEBUG jsonrpccpp-serverd)
-		set(JSON_RPC_CPP_CLIENT_NAME_DEBUG jsonrpccpp-clientd)
-	endif()
-
 	find_library(
 		JSON_RPC_CPP_COMMON_LIBRARY_DEBUG
-		NAMES ${JSON_RPC_CPP_COMMON_NAME_DEBUG} 
+		NAMES jsonrpccpp-commond
 		DOC "json-rpc-cpp common debug library"
 	)
 	
 	find_library(
 		JSON_RPC_CPP_SERVER_LIBRARY_DEBUG
-		NAMES ${JSON_RPC_CPP_SERVER_NAME_DEBUG} 
+		NAMES jsonrpccpp-serverd
 		DOC "json-rpc-cpp server debug library"
 	)
 
 	find_library(
 		JSON_RPC_CPP_CLIENT_LIBRARY_DEBUG
-		NAMES ${JSON_RPC_CPP_CLIENT_NAME_DEBUG} 
+		NAMES jsonrpccpp-clientd
 		DOC "json-rpc-cpp client debug library"
 	)
 
