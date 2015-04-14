@@ -139,13 +139,11 @@ void help()
 		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
 		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
+		<< "    -S,--temporary-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
 		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
-#if ETH_EVMJIT
-		<< "    --jit  Use EVM JIT (default: off)." << endl
-#endif
 		;
 		exit(0);
 }
@@ -273,8 +271,9 @@ int main(int argc, char** argv)
 	unsigned mining = ~(unsigned)0;
 	int miners = -1;
 	bool forceMining = false;
-	KeyPair us = KeyPair::create();
-	Address coinbase = us.address();
+	KeyPair sigKey = KeyPair::create();
+	Secret sessionSecret;
+	Address coinbase = sigKey.address();
 
 	/// Structured logging params
 	bool structuredLogging = false;
@@ -290,7 +289,7 @@ int main(int argc, char** argv)
 	if (b.size())
 	{
 		RLP config(b);
-		us = KeyPair(config[0].toHash<Secret>());
+		sigKey = KeyPair(config[0].toHash<Secret>());
 		coinbase = config[1].toHash<Address>();
 	}
 
@@ -373,7 +372,9 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
-			us = KeyPair(h256(fromHex(argv[++i])));
+			sigKey = KeyPair(h256(fromHex(argv[++i])));
+		else if ((arg == "-S" || arg == "--session-secret") && i + 1 < argc)
+			sessionSecret = h256(fromHex(argv[++i]));
 		else if (arg == "--structured-logging-format" && i + 1 < argc)
 			structuredLoggingFormat = string(argv[++i]);
 		else if (arg == "--structured-logging")
@@ -514,9 +515,12 @@ int main(int argc, char** argv)
 
 	{
 		RLPStream config(2);
-		config << us.secret() << coinbase;
+		config << sigKey.secret() << coinbase;
 		writeFile(configFile, config.out());
 	}
+
+	if (sessionSecret)
+		sigKey = KeyPair(sessionSecret);
 
 	// Two codepaths is necessary since named block require database, but numbered
 	// blocks are superuseful to have when database is already open in another process.
@@ -632,7 +636,7 @@ int main(int argc, char** argv)
 		c->setAddress(coinbase);
 	}
 
-	cout << "Transaction Signer: " << us.address() << endl;
+	cout << "Transaction Signer: " << sigKey.address() << endl;
 	cout << "Mining Benefactor: " << coinbase << endl;
 	web3.startNetwork();
 
@@ -647,8 +651,7 @@ int main(int argc, char** argv)
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
-		jsonrpcServer->setIdentities({us});
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({sigKey})));
 		jsonrpcServer->StartListening();
 	}
 #endif
@@ -772,8 +775,7 @@ int main(int argc, char** argv)
 				if (jsonrpc < 0)
 					jsonrpc = SensibleHttpPort;
 				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
-				jsonrpcServer->setIdentities({us});
+				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({sigKey})));
 				jsonrpcServer->StartListening();
 			}
 			else if (cmd == "jsonstop")
@@ -785,12 +787,11 @@ int main(int argc, char** argv)
 #endif
 			else if (cmd == "address")
 			{
-				cout << "Current address:" << endl
-					 << toHex(us.address().asArray()) << endl;
+				cout << "Current address:" << endl << sigKey.address() << endl;
 			}
 			else if (cmd == "secret")
 			{
-				cout << "Secret Key: " << toHex(us.secret().asArray()) << endl;
+				cout << "Secret Key: " << sigKey.secret() << endl;
 			}
 			else if (c && cmd == "block")
 			{
@@ -805,7 +806,7 @@ int main(int argc, char** argv)
 			}
 			else if (c && cmd == "balance")
 			{
-				cout << "Current balance: " << formatBalance( c->balanceAt(us.address())) << " = " <<c->balanceAt(us.address()) << " wei" << endl;
+				cout << "Current balance: " << formatBalance( c->balanceAt(sigKey.address())) << " = " <<c->balanceAt(sigKey.address()) << " wei" << endl;
 			}
 			else if (c && cmd == "transact")
 			{
@@ -921,7 +922,7 @@ int main(int argc, char** argv)
 						try
 						{
 							Address dest = h160(fromHex(hexAddr, WhenError::Throw));
-							c->submitTransaction(us.secret(), amount, dest, bytes(), minGas);
+							c->submitTransaction(sigKey.secret(), amount, dest, bytes(), minGas);
 						}
 						catch (BadHexCharacter& _e)
 						{
@@ -990,7 +991,7 @@ int main(int argc, char** argv)
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is" << minGas;
 					else
-						c->submitTransaction(us.secret(), endowment, init, gas, gasPrice);
+						c->submitTransaction(sigKey.secret(), endowment, init, gas, gasPrice);
 				}
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
@@ -1107,7 +1108,7 @@ int main(int argc, char** argv)
 				{
 					string hexSec;
 					iss >> hexSec;
-					us = KeyPair(h256(fromHex(hexSec)));
+					sigKey = KeyPair(h256(fromHex(hexSec)));
 				}
 				else
 					cwarn << "Require parameter: setSecret HEXSECRETKEY";
@@ -1147,7 +1148,7 @@ int main(int argc, char** argv)
 					string path;
 					iss >> path;
 					RLPStream config(2);
-					config << us.secret() << coinbase;
+					config << sigKey.secret() << coinbase;
 					writeFile(path, config.out());
 				}
 				else
@@ -1163,7 +1164,7 @@ int main(int argc, char** argv)
 					if (b.size())
 					{
 						RLP config(b);
-						us = KeyPair(config[0].toHash<Secret>());
+						sigKey = KeyPair(config[0].toHash<Secret>());
 						coinbase = config[1].toHash<Address>();
 					}
 					else
