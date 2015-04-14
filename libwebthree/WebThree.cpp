@@ -42,7 +42,7 @@ WebThreeDirect::WebThreeDirect(
 	WithExisting _we,
 	std::set<std::string> const& _interfaces,
 	NetworkPreferences const& _n,
-	bytesConstRef _network, int _miners
+	bytesConstRef _network
 ):
 	m_clientVersion(_clientVersion),
 	m_net(_clientVersion, _n, _network)
@@ -50,7 +50,7 @@ WebThreeDirect::WebThreeDirect(
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	if (_interfaces.count("eth"))
-		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _we, 0, _miners));
+		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _we, 0));
 
 	if (_interfaces.count("shh"))
 		m_whisper = m_net.registerCapability<WhisperHost>(new WhisperHost);

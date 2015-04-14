@@ -180,6 +180,7 @@
     <addaction name="separator"/>
     <addaction name="usePrivate"/>
     <addaction name="jitvm"/>
+    <addaction name="retryUnknown"/>
    </widget>
    <widget class="QMenu" name="menu_View">
     <property name="title">
@@ -1677,6 +1678,11 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>&amp;GPU Mining</string>
+   </property>
+  </action>
+  <action name="retryUnknown">
+   <property name="text">
+    <string>Retry Unknown Parent Blocks</string>
    </property>
   </action>
  </widget>
