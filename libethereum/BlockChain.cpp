@@ -240,7 +240,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 				return;
 			}
 			lastHash = bi.hash();
-			import(b, s.db(), Aversion::ImportOldBlocks);
+			import(b, s.db(), ImportRequirements::Default);
 		}
 		catch (...)
 		{
@@ -334,11 +334,11 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 	return make_tuple(fresh, dead, _bq.doneDrain(badBlocks));
 }
 
-pair<h256s, h256> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, Aversion _force) noexcept
+pair<h256s, h256> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept
 {
 	try
 	{
-		return import(_block, _stateDB, _force);
+		return import(_block, _stateDB, _ir);
 	}
 	catch (...)
 	{
@@ -347,7 +347,7 @@ pair<h256s, h256> BlockChain::attemptImport(bytes const& _block, OverlayDB const
 	}
 }
 
-pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, Aversion _force, ImportRequirements::value _ir)
+pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, ImportRequirements::value _ir)
 {
 	//@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
@@ -386,7 +386,7 @@ pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, 
 #endif
 
 	// Check block doesn't already exist first!
-	if (isKnown(bi.hash()) && _force == Aversion::AvoidOldBlocks)
+	if (isKnown(bi.hash()) && (_ir & ImportRequirements::DontHave))
 	{
 		clog(BlockChainNote) << bi.hash() << ": Not new.";
 		BOOST_THROW_EXCEPTION(AlreadyHaveBlock());
