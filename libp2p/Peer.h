@@ -59,8 +59,6 @@ class Peer: public Node
 public:
 	bool isOffline() const { return !m_session.lock(); }
 
-	bi::tcp::endpoint const& peerEndpoint() const { return endpoint.tcp; }
-
 	virtual bool operator<(Peer const& _p) const;
 	
 	/// WIP: Returns current peer rating.

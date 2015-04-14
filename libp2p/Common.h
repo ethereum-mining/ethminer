@@ -156,28 +156,30 @@ using PeerSessionInfos = std::vector<PeerSessionInfo>;
  */
 struct NodeIPEndpoint
 {
-	NodeIPEndpoint(): udp(bi::udp::endpoint()), tcp(bi::tcp::endpoint()) {}
-	NodeIPEndpoint(bi::udp::endpoint _udp): udp(_udp) {}
-	NodeIPEndpoint(bi::tcp::endpoint _tcp): tcp(_tcp) {}
-	NodeIPEndpoint(bi::udp::endpoint _udp, bi::tcp::endpoint _tcp): udp(_udp), tcp(_tcp) {}
-
-	bi::udp::endpoint udp;
-	bi::tcp::endpoint tcp;
+	static bool test_allowLocal;
 	
-	operator bool() const { return !udp.address().is_unspecified() || !tcp.address().is_unspecified(); }
-};
+	NodeIPEndpoint(): address() {}
+	NodeIPEndpoint(bi::address _addr, uint16_t _udp, uint16_t _tcp): address(_addr), udpPort(_udp), tcpPort(_tcp) {}
 
+	bi::address address;
+	uint16_t udpPort = 0;
+	uint16_t tcpPort = 0;
+	
+	operator bi::udp::endpoint() const { return std::move(bi::udp::endpoint(address, udpPort)); }
+	operator bi::tcp::endpoint() const { return std::move(bi::tcp::endpoint(address, tcpPort)); }
+	
+	operator bool() const { return !address.is_unspecified() && udpPort > 0 && tcpPort > 0; }
+	
+	bool isValid() const { return NodeIPEndpoint::test_allowLocal ? true : isPublicAddress(address); }
+};
+	
 struct Node
 {
 	Node(): endpoint(NodeIPEndpoint()) {};
 	Node(Public _pubk, NodeIPEndpoint _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
-	Node(Public _pubk, bi::udp::endpoint _udp, bool _required = false): Node(_pubk, NodeIPEndpoint(_udp), _required) {}
-	
+
 	virtual NodeId const& address() const { return id; }
 	virtual Public const& publicKey() const { return id; }
-	
-	/// Adopt UDP address for TCP if TCP isn't public and UDP is. (to be removed when protocol is updated for nat)
-	void cullEndpoint();
 	
 	NodeId id;
 	
@@ -192,4 +194,7 @@ struct Node
 };
 
 }
+	
+/// Simple stream output for a NodeIPEndpoint.
+std::ostream& operator<<(std::ostream& _out, dev::p2p::NodeIPEndpoint const& _ep);
 }

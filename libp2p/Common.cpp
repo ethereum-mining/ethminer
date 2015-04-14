@@ -27,6 +27,8 @@ using namespace dev::p2p;
 const unsigned dev::p2p::c_protocolVersion = 3;
 const unsigned dev::p2p::c_defaultIPPort = 30303;
 
+bool dev::p2p::NodeIPEndpoint::test_allowLocal = false;
+
 bool p2p::isPublicAddress(std::string const& _addressToCheck)
 {
 	return _addressToCheck.empty() ? false : isPublicAddress(bi::address::from_string(_addressToCheck));
@@ -111,8 +113,13 @@ std::string p2p::reasonOf(DisconnectReason _r)
 	}
 }
 
-void Node::cullEndpoint()
+namespace dev {
+	
+std::ostream& operator<<(std::ostream& _out, dev::p2p::NodeIPEndpoint const& _ep)
 {
-	if (!isPublicAddress(endpoint.tcp.address()) && isPublicAddress(endpoint.udp.address()))
-		endpoint.tcp.address(endpoint.udp.address());
+	_out << _ep.address << _ep.udpPort << _ep.tcpPort;
+	return _out;
 }
+	
+}
+
