@@ -20,6 +20,7 @@
  * Ethereum IDE client.
  */
 
+#include "MixClient.h"
 #include <vector>
 #include <libdevcore/Exceptions.h>
 #include <libethereum/CanonBlockChain.h>
@@ -28,10 +29,8 @@
 #include <libethereum/ExtVM.h>
 #include <libethereum/BlockChain.h>
 #include <libevm/VM.h>
-
 #include "Exceptions.h"
-#include "MixClient.h"
-
+using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
@@ -250,9 +249,17 @@ void MixClient::mine()
 {
 	WriteGuard l(x_state);
 	m_state.commitToMine(bc());
-	ProofOfWork pow;
-	while (!m_state.mine(&pow).completed) {}
-	m_state.completeMine();
+	GenericFarm<ProofOfWork> f;
+	bool completed = false;
+	f.onSolutionFound([&](ProofOfWork::Solution sol)
+	{
+		return completed = m_state.completeMine<ProofOfWork>(sol);
+	});
+	f.setWork(m_state.info());
+	f.startCPU();
+	while (!completed)
+		this_thread::sleep_for(chrono::milliseconds(20));
+
 	bc().import(m_state.blockData(), m_stateDB);
 	m_state.sync(bc());
 	m_startState = m_state;
@@ -372,16 +379,6 @@ void MixClient::setAddress(Address _us)
 	m_state.setAddress(_us);
 }
 
-void MixClient::setMiningThreads(unsigned _threads)
-{
-	m_miningThreads = _threads;
-}
-
-unsigned MixClient::miningThreads() const
-{
-	return m_miningThreads;
-}
-
 void MixClient::startMining()
 {
 	//no-op
@@ -402,9 +399,9 @@ uint64_t MixClient::hashrate() const
 	return 0;
 }
 
-eth::MineProgress MixClient::miningProgress() const
+eth::MiningProgress MixClient::miningProgress() const
 {
-	return eth::MineProgress();
+	return eth::MiningProgress();
 }
 
 }

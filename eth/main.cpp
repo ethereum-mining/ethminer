@@ -32,6 +32,8 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
+#include <libethcore/ProofOfWork.h>
+#include <libethcore/EthashAux.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
@@ -44,7 +46,6 @@
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
-#include <libethcore/Ethasher.h>
 #include "BuildInfo.h"
 using namespace std;
 using namespace dev;
@@ -111,6 +112,7 @@ void help()
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
 		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (Default: 15)." << endl
 		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
+		<< "    -C,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
 		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
@@ -127,12 +129,15 @@ void help()
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
+#if ETH_EVMJIT
+		<< "    -J,--jit  Enable EVM JIT (default: off)." << endl
+#endif
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "       --listen-ip <port>  Listen on the given port for incoming connections (default: 30303)." << endl
 		<< "    -l,--listen <ip>  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
 		<< "    -u,--public-ip <ip>  Force public ip to given (default: auto)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
-		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
+		<< "    -n,-u,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
 		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
@@ -140,7 +145,6 @@ void help()
 		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -S,--temporary-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
-		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
 		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
@@ -208,7 +212,7 @@ void doInitDAG(unsigned _n)
 	BlockInfo bi;
 	bi.number = _n;
 	cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.seedHash().abridged() << "). This will take a while." << endl;
-	Ethasher::get()->full(bi);
+	Ethash::prep(bi);
 	exit(0);
 }
 
@@ -269,7 +273,6 @@ int main(int argc, char** argv)
 
 	/// Mining params
 	unsigned mining = ~(unsigned)0;
-	int miners = -1;
 	bool forceMining = false;
 	KeyPair sigKey = KeyPair::create();
 	Secret sessionSecret;
@@ -337,7 +340,7 @@ int main(int argc, char** argv)
 			exportFrom = argv[++i];
 		else if (arg == "--only" && i + 1 < argc)
 			exportTo = exportFrom = argv[++i];
-		else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
+		else if ((arg == "-n" || arg == "-u" || arg == "--upnp") && i + 1 < argc)
 		{
 			string m = argv[++i];
 			if (isTrue(m))
@@ -361,7 +364,7 @@ int main(int argc, char** argv)
 			{
 				coinbase = h160(fromHex(argv[++i], WhenError::Throw));
 			}
-			catch (BadHexCharacter& _e)
+			catch (BadHexCharacter&)
 			{
 				cerr << "Bad hex in " << arg << " option: " << argv[i] << endl;
 				return -1;
@@ -399,6 +402,43 @@ int main(int argc, char** argv)
 					cerr << "Bad " << arg << " option: " << m << endl;
 					return -1;
 				}
+		}
+		else if ((arg == "-C" || arg == "--check-pow") && i + 4 < argc)
+		{
+			string m;
+			try
+			{
+				BlockInfo bi;
+				m = boost::to_lower_copy(string(argv[++i]));
+				h256 powHash(m);
+				m = boost::to_lower_copy(string(argv[++i]));
+				h256 seedHash;
+				if (m.size() == 64 || m.size() == 66)
+					seedHash = h256(m);
+				else
+					seedHash = EthashAux::seedHash(stol(m));
+				m = boost::to_lower_copy(string(argv[++i]));
+				bi.difficulty = u256(m);
+				auto boundary = bi.boundary();
+				m = boost::to_lower_copy(string(argv[++i]));
+				bi.nonce = h64(m);
+				auto r = EthashAux::eval(seedHash, powHash, bi.nonce);
+				bool valid = r.value < boundary;
+				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
+				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
+				cout << "  where " << boundary << " = 2^256 / " << bi.difficulty << endl;
+				cout << "  and " << r.value << " = ethash(" << powHash << ", " << bi.nonce << ")" << endl;
+				cout << "  with seed as " << seedHash << endl;
+				if (valid)
+					cout << "(mixHash = " << r.mixHash << ")" << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(bytesConstRef((byte const*)EthashAux::light(seedHash), EthashAux::params(seedHash).cache_size)) << endl;
+				exit(0);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << m << endl;
+				return -1;
+			}
 		}
 		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
@@ -478,8 +518,6 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
-		else if ((arg == "-t" || arg == "--miners") && i + 1 < argc)
-			miners = atoi(argv[++i]);
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -493,15 +531,12 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
-		else if (arg == "--jit")
-		{
 #if ETH_EVMJIT
+		else if (arg == "-J" || arg == "--jit")
+		{
 			jit = true;
-#else
-			cerr << "EVM JIT not enabled" << endl;
-			return -1;
-#endif
 		}
+#endif
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
@@ -541,9 +576,7 @@ int main(int argc, char** argv)
 		killChain,
 		nodeMode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
-		&nodesState,
-		miners
-		);
+		&nodesState);
 	
 	if (mode == OperationMode::DAGInit)
 		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
