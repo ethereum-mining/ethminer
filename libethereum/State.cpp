@@ -542,7 +542,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
 
-	BlockInfo bi(_block, ((_ir & (ImportRequirements::ValidNonce | ImportRequirements::DontHave)) == ImportRequirements::ValidNonce) ? CheckEverything : IgnoreNonce);
+	BlockInfo bi(_block, (_ir & ImportRequirements::ValidNonce) ? CheckEverything : IgnoreNonce);
 
 #if !ETH_RELEASE
 	assert(m_previousBlock.hash() == bi.parentHash);

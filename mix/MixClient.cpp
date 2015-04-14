@@ -251,7 +251,7 @@ void MixClient::mine()
 	WriteGuard l(x_state);
 	m_state.commitToMine(bc());
 	m_state.completeMine();
-	bc().import(m_state.blockData(), m_stateDB, Aversion::AvoidOldBlocks, ImportRequirements::ValidNonce | ImportRequirements::DontHave);
+	bc().import(m_state.blockData(), m_stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce);
 	m_state.sync(bc());
 	m_startState = m_state;
 	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
