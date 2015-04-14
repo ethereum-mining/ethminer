@@ -1027,7 +1027,7 @@ void Main::refreshNetwork()
 							   .arg(sessions[i.id] = QString::fromStdString(i.clientVersion))
 							   .arg(QString::fromStdString(toString(i.caps)))
 							   .arg(QString::fromStdString(toString(i.notes)))
-							   .arg(i.socket)
+							   .arg(i.socketId)
 							   .arg(QString::fromStdString(i.id.abridged())));
 
 		auto ns = web3()->nodes();
