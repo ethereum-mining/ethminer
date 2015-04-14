@@ -80,12 +80,6 @@ enum {
 
 using ProgressCallback = std::function<void(unsigned, unsigned)>;
 
-enum class Aversion
-{
-	AvoidOldBlocks,
-	ImportOldBlocks
-};
-
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.
  * @threadsafe
@@ -108,11 +102,11 @@ public:
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	std::pair<h256s, h256> attemptImport(bytes const& _block, OverlayDB const& _stateDB, Aversion _force = Aversion::AvoidOldBlocks) noexcept;
+	std::pair<h256s, h256> attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default) noexcept;
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	std::pair<h256s, h256> import(bytes const& _block, OverlayDB const& _stateDB, Aversion _force = Aversion::AvoidOldBlocks, ImportRequirements::value _ir = ImportRequirements::Default);
+	std::pair<h256s, h256> import(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 const& _hash) const;
