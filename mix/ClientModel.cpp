@@ -134,10 +134,15 @@ void ClientModel::mine()
 	});
 }
 
-QString ClientModel::newAddress()
+QString ClientModel::newSecret()
 {
 	KeyPair a = KeyPair::create();
 	return QString::fromStdString(toHex(a.secret().ref()));
+}
+
+QString ClientModel::address(QString const& _secret)
+{
+	return QString::fromStdString(toHex(KeyPair(Secret(_secret.toStdString())).address().ref()));
 }
 
 QString ClientModel::encodeAbiString(QString _string)
@@ -210,10 +215,10 @@ void ClientModel::setupState(QVariantMap _state)
 			transactionSequence.push_back(transactionSettings);
 		}
 	}
-	executeSequence(transactionSequence, accounts);
+	executeSequence(transactionSequence, accounts, Secret(_state.value("miner").toMap().value("secret").toString().toStdString()));
 }
 
-void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, map<Secret, u256> const& _balances)
+void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, map<Secret, u256> const& _balances, Secret const& _miner)
 {
 	if (m_running)
 		BOOST_THROW_EXCEPTION(ExecutionStateException());
@@ -223,8 +228,8 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 	emit runStateChanged();
 
 	//m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), m_client->userAccounts(), m_client.get()));
-	m_client->resetState(_balances);
-	m_web3Server.setAccounts(m_client->userAccounts());
+	m_client->resetState(_balances, _miner);
+	m_web3Server->setAccounts(m_client->userAccounts());
 	//run sequence
 	m_runFuture = QtConcurrent::run([=]()
 	{
