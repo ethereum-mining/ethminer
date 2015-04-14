@@ -92,7 +92,7 @@ void ethash_cl_miner::finish()
 	}
 }
 
-bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size)
+bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size, unsigned _deviceId)
 {
 	// store params
 	m_params = params;
@@ -119,8 +119,13 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 	}
 
 	// use default device
-	unsigned device_num = 0;
-	cl::Device& device = devices[device_num];
+	cl::Device& device = devices[std::min<unsigned>(_deviceId, devices.size() - 1)];
+	for (unsigned n = 0; n < devices.size(); ++n)
+	{
+		auto version = devices[n].getInfo<CL_DEVICE_VERSION>();
+		auto name = devices[n].getInfo<CL_DEVICE_NAME>();
+		fprintf(stderr, "%s %d: %s (%s)\n", n == _deviceId ? "USING " : "      ", n, name.c_str(), version.c_str());
+	}
 	std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
 	fprintf(stderr, "Using device: %s (%s)\n", device.getInfo<CL_DEVICE_NAME>().c_str(),device_version.c_str());
 

@@ -261,6 +261,8 @@ private:
 	Ethash::GPUMiner* m_owner = nullptr;
 };
 
+unsigned Ethash::GPUMiner::s_deviceId = 0;
+
 Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
 	m_hook(new EthashCLHook(this))
@@ -302,7 +304,7 @@ void Ethash::GPUMiner::workLoop()
 
 		auto p = EthashAux::params(m_minerSeed);
 		auto cb = [&](void* d) { EthashAux::full(m_minerSeed, bytesRef((byte*)d, p.full_size)); };
-		m_miner->init(p, cb, 32);
+		m_miner->init(p, cb, 32, s_deviceId);
 	}
 
 	uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
