@@ -36,6 +36,7 @@ public:
 	using LightType = void const*;
 	using FullType = void const*;
 
+	static h256 seedHash(unsigned _number);
 	static ethash_params params(BlockInfo const& _header);
 	static ethash_params params(h256 const& _seedHash);
 	static ethash_params params(unsigned _n);
@@ -58,7 +59,8 @@ private:
 
 	std::map<h256, LightType> m_lights;
 	std::map<h256, bytesRef> m_fulls;
-	std::map<h256, unsigned> m_seedHashes;
+	std::map<h256, unsigned> m_epochs;
+	h256s m_seedHashes;
 };
 
 }
