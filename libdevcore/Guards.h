@@ -38,4 +38,75 @@ using UpgradableGuard = boost::upgrade_lock<boost::shared_mutex>;
 using UpgradeGuard = boost::upgrade_to_unique_lock<boost::shared_mutex>;
 using WriteGuard = boost::unique_lock<boost::shared_mutex>;
 
+template <class GuardType, class MutexType>
+struct GenericGuardBool: GuardType
+{
+	GenericGuardBool(MutexType& _m): GuardType(_m) {}
+	bool b = true;
+};
+template <class MutexType>
+struct GenericUnguardBool
+{
+	GenericUnguardBool(MutexType& _m): m(_m) { m.unlock(); }
+	~GenericUnguardBool() { m.lock(); }
+	bool b = true;
+	MutexType& m;
+};
+template <class MutexType>
+struct GenericUnguardSharedBool
+{
+	GenericUnguardSharedBool(MutexType& _m): m(_m) { m.unlock_shared(); }
+	~GenericUnguardSharedBool() { m.lock_shared(); }
+	bool b = true;
+	MutexType& m;
+};
+
+/** @brief Simple block guard.
+ * The expression/block following is guarded though the given mutex.
+ * Usage:
+ * @code
+ * Mutex m;
+ * unsigned d;
+ * ...
+ * ETH_GUARDED(m) d = 1;
+ * ...
+ * ETH_GUARDED(m) { for (auto d = 10; d > 0; --d) foo(d); d = 0; }
+ * @endcode
+ *
+ * There are several variants of this basic mechanism for different Mutex types and Guards.
+ *
+ * There is also the UNGUARD variant which allows an unguarded expression/block to exist within a
+ * guarded expression. eg:
+ *
+ * @code
+ * Mutex m;
+ * int d;
+ * ...
+ * ETH_GUARDED(m)
+ * {
+ *   for (auto d = 50; d > 25; --d)
+ *     foo(d);
+ *   ETH_UNGUARDED(m)
+ *     bar();
+ *   for (; d > 0; --d)
+ *     foo(d);
+ * }
+ * @endcode
+ */
+
+#define ETH_GUARDED(MUTEX) \
+	for (GenericGuardBool<Guard, Mutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
+#define ETH_READ_GUARDED(MUTEX) \
+	for (GenericGuardBool<ReadGuard, SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
+#define ETH_WRITE_GUARDED(MUTEX) \
+	for (GenericGuardBool<WriteGuard, SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
+#define ETH_RECURSIVE_GUARDED(MUTEX) \
+	for (GenericGuardBool<RecursiveGuard, RecursiveMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
+#define ETH_UNGUARDED(MUTEX) \
+	for (GenericUnguardBool<Mutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
+#define ETH_READ_UNGUARDED(MUTEX) \
+	for (GenericUnguardSharedBool<SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
+#define ETH_WRITE_UNGUARDED(MUTEX) \
+	for (GenericUnguardBool<SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
+
 }

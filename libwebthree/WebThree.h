@@ -112,8 +112,7 @@ public:
 		WithExisting _we = WithExisting::Trust,
 		std::set<std::string> const& _interfaces = {"eth", "shh"},
 		p2p::NetworkPreferences const& _n = p2p::NetworkPreferences(),
-		bytesConstRef _network = bytesConstRef(),
-		int _miners = -1
+		bytesConstRef _network = bytesConstRef()
 	);
 
 	/// Destructor.

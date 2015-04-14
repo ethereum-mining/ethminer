@@ -85,7 +85,7 @@ typedef uint8_t const ethash_seedhash_t[32];
 
 typedef void const* ethash_light_t;
 static inline ethash_light_t ethash_new_light(ethash_params const* params, ethash_seedhash_t seed) {
-	void* ret = malloc(params->cache_size);
+	void* ret = malloc((size_t)params->cache_size);
 	ethash_mkcache(ret, params, seed);
 	return ret;
 }
@@ -98,7 +98,7 @@ static inline void ethash_delete_light(ethash_light_t light) {
 
 typedef void const* ethash_full_t;
 static inline ethash_full_t ethash_new_full(ethash_params const* params, ethash_light_t light) {
-	void* ret = malloc(params->full_size);
+	void* ret = malloc((size_t)params->full_size);
 	ethash_compute_full_data(ret, params, light);
 	return ret;
 }
