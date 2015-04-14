@@ -19,7 +19,6 @@ set(EXECUTABLE ethcore)
 
 file(GLOB HEADERS "*.h")
 
-
 if(ETH_STATIC)
 	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
 else()
@@ -29,6 +28,8 @@ endif()
 target_link_libraries(${EXECUTABLE} ethash)
 target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} devcore)
+target_link_libraries(${EXECUTABLE} ethash-cl)
+
 if (CPUID_FOUND)
 	target_link_libraries(${EXECUTABLE} ${CPUID_LIBRARIES})
 endif ()
