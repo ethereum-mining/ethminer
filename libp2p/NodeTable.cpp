@@ -468,7 +468,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
 
 				vector<shared_ptr<NodeEntry>> nearest = nearestNodeEntries(in.target);
-				static unsigned const nlimit = (m_socketPointer->maxDatagramSize - 13) / 87;
+				static unsigned const nlimit = (m_socketPointer->maxDatagramSize - 111) / 87;
 				for (unsigned offset = 0; offset < nearest.size(); offset += nlimit)
 				{
 					Neighbours out(_from, nearest, offset, nlimit);
