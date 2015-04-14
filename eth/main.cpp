@@ -313,6 +313,14 @@ void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, u
 	exit(0);
 }
 
+void doFarm(MinerType _m)
+{
+	(void)_m;
+	// TODO: Set up JSONRPC client: to implement:
+//	{ "name": "eth_getWork", "params": [], "order": [], "returns": [<powHash>, <seedHash>, <boundary>]},
+//	{ "name": "eth_submitWork", "params": [<nonce>, <mixHash>], "order": [], "returns": true},
+}
+
 int main(int argc, char** argv)
 {
 	// Init defaults
@@ -716,6 +724,9 @@ int main(int argc, char** argv)
 
 	if (mode == OperationMode::Benchmark)
 		doBenchmark(minerType, phoneHome, benchmarkWarmup, benchmarkTrial, benchmarkTrials);
+
+	if (mode == OperationMode::Farm)
+		doFarm(minerType);
 
 	if (!clientName.empty())
 		clientName += "/";
