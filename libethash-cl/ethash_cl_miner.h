@@ -2,7 +2,16 @@
 
 #define __CL_ENABLE_EXCEPTIONS 
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 #include "cl.hpp"
+#pragma clang diagnostic pop
+#else
+#include "cl.hpp"
+#endif
+
 #include <time.h>
 #include <functional>
 #include <libethash/ethash.h>
