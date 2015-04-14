@@ -192,6 +192,27 @@ bool Client::isSyncing() const
 	return false;
 }
 
+void Client::startedWorking()
+{
+	// Synchronise the state according to the head of the block chain.
+	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
+	cdebug << "startedWorking()";
+	WriteGuard l(x_stateDB);
+
+	cdebug << m_bc.number() << m_bc.currentHash();
+
+	cdebug << "Pre:" << m_preMine.info();
+	cdebug << "Post:" << m_postMine.info();
+	cdebug << "Pre:" << m_preMine.info().headerHash(WithoutNonce) << "; Post:" << m_postMine.info().headerHash(WithoutNonce);
+
+	m_preMine.sync(m_bc);
+	m_postMine = m_preMine;
+
+	cdebug << "Pre:" << m_preMine.info();
+	cdebug << "Post:" << m_postMine.info();
+	cdebug << "Pre:" << m_preMine.info().headerHash(WithoutNonce) << "; Post:" << m_postMine.info().headerHash(WithoutNonce);
+}
+
 void Client::doneWorking()
 {
 	// Synchronise the state according to the head of the block chain.
@@ -403,10 +424,11 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 			return false;
 		newBlock = m_postMine.blockData();
 	}
-
+	m_bq.import(&newBlock, m_bc);
+/*
 	ImportRoute ir = m_bc.attemptImport(newBlock, m_stateDB);
 	if (!ir.first.empty())
-		onChainChanged(ir);
+		onChainChanged(ir);*/
 	return true;
 }
 
@@ -500,9 +522,9 @@ void Client::onChainChanged(ImportRoute const& _ir)
 			m_postMine = m_preMine;
 			changeds.insert(PendingChangedFilter);
 
-			x_stateDB.unlock();
+			x_stateDB.unlock_shared();
 			onPostStateChanged();
-			x_stateDB.lock();
+			x_stateDB.lock_shared();
 		}
 	}
 
@@ -514,8 +536,12 @@ void Client::onPostStateChanged()
 	cnote << "Post state changed: Restarting mining...";
 	{
 		WriteGuard l(x_stateDB);
+		cdebug << "Pre:" << m_preMine.info();
 		m_postMine.commitToMine(m_bc);
 		m_miningInfo = m_postMine.info();
+		cdebug << "Pre:" << m_preMine.info();
+		cdebug << "Post:" << m_postMine.info();
+		cdebug << "Pre:" << m_preMine.info().headerHash(WithoutNonce) << "; Post:" << m_postMine.info().headerHash(WithoutNonce);
 	}
 
 	m_farm.setWork(m_miningInfo);
