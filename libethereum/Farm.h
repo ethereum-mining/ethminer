@@ -59,14 +59,18 @@ public:
 	 * @brief Sets the current mining mission.
 	 * @param _bi The block (header) we wish to be mining.
 	 */
-	void setWork(BlockInfo const& _bi)
+	void setWork(BlockInfo const& _bi) { setWork(PoW::package(_bi)); }
+
+	/**
+	 * @brief Sets the current mining mission.
+	 * @param _wp The work package we wish to be mining.
+	 */
+	void setWork(WorkPackage const& _wp)
 	{
 		WriteGuard l(x_minerWork);
-		m_header = _bi;
-		auto p = PoW::package(m_header);
-		if (p.headerHash == m_work.headerHash)
+		if (_wp.headerHash == m_work.headerHash)
 			return;
-		m_work = p;
+		m_work = _wp;
 		for (auto const& m: m_miners)
 			m->setWork(m_work);
 		resetTimer();
@@ -190,7 +194,6 @@ private:
 	mutable SharedMutex x_minerWork;
 	std::vector<std::shared_ptr<Miner>> m_miners;
 	WorkPackage m_work;
-	BlockInfo m_header;
 
 	std::atomic<bool> m_isMining = {false};
 
