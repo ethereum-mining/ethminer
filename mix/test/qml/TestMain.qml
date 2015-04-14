@@ -4,6 +4,7 @@ import org.ethereum.qml.TestService 1.0
 import "../../qml"
 import "js/TestDebugger.js" as TestDebugger
 import "js/TestTutorial.js" as TestTutorial
+import "js/TestMiner.js" as TestMiner
 import "js/TestProject.js" as TestProject
 
 TestCase
@@ -75,6 +76,8 @@ TestCase
 	function test_dbg_transactionWithParameter() { TestDebugger.test_transactionWithParameter(); }
 	function test_dbg_constructorParameters() { TestDebugger.test_constructorParameters(); }
 	function test_dbg_arrayParametersAndStorage() { TestDebugger.test_arrayParametersAndStorage(); }
+	function test_miner_getDefaultiner() { TestMiner.test_getDefaultMiner(); }
+	function test_miner_selectMiner() { TestMiner.test_selectMiner(); }
 	function test_project_contractRename() { TestProject.test_contractRename(); }
 }
 

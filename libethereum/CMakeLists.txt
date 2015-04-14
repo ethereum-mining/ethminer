@@ -36,7 +36,6 @@ target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
 target_link_libraries(${EXECUTABLE} secp256k1)
 if (ETHASHCL)
 	target_link_libraries(${EXECUTABLE} ethash-cl)
-	target_link_libraries(${EXECUTABLE} OpenCL)
 endif ()
 
 if (CMAKE_COMPILER_IS_MINGW)
