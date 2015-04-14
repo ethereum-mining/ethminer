@@ -149,6 +149,7 @@ else ()
 endif ()
 # Backwards compatibility
 if (HEADLESS)
+	message("*** WARNING: -DHEADLESS=1 option is DEPRECATED! Use -DBUNDLE=minimal or -DGUI=0")
 	set(BUNDLE "minimal")
 endif ()
 
