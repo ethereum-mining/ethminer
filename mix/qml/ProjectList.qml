@@ -8,6 +8,7 @@ import "."
 
 Item {
 	property bool renameMode: false;
+	property alias sections: sectionRepeater
 
 	ProjectFilesStyle {
 		id: projectFilesStyle
