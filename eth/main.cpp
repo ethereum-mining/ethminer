@@ -89,7 +89,7 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
-#if ETH_FATDB
+#if ETH_FATDB || !ETH_TRUE
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
 #endif
@@ -112,24 +112,31 @@ void help()
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
 		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (Default: 15)." << endl
 		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
-		<< "    -C,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
+		<< "    -C,--cpu  When mining, use the CPU." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+		<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 15)." << endl
+		<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
+		<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
 		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
 		<< "    -E,--export <file>  Export file as a concatenated series of blocks and exit." << endl
 		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
-		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
+		<< "    -f,--force-mining  Mine even when there are no transactions to mine (Default: off)" << endl
+#if ETH_JSONRPC || !ETH_TRUE
+		<< "    -F,--farm  Put into mining farm mode (default GPU with CPU as fallback)." << endl
+#endif
+		<< "    -G,--gpu  When miningm use the GPU." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
-#if ETH_JSONRPC
+#if ETH_JSONRPC || !ETH_TRUE
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
-#if ETH_EVMJIT
+#if ETH_EVMJIT || !ETH_TRUE
 		<< "    -J,--jit  Enable EVM JIT (default: off)." << endl
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
@@ -137,17 +144,20 @@ void help()
 		<< "    -l,--listen <ip>  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
 		<< "    -u,--public-ip <ip>  Force public ip to given (default: auto)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
-		<< "    -n,-u,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
+		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --gpu." << endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
 		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
+		<< "    --phone-home <on/off>  When benchmarking, publish results (Default: on)" << endl
 		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
 		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -S,--temporary-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
+		<< "    -u,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
-		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
+		<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
+		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
 		;
 		exit(0);
 }
@@ -221,7 +231,9 @@ enum class OperationMode
 	Node,
 	Import,
 	Export,
-	DAGInit
+	DAGInit,
+	Benchmark,
+	Farm
 };
 
 enum class Format
@@ -231,6 +243,70 @@ enum class Format
 	Human
 };
 
+enum class MinerType
+{
+	CPU,
+	GPU
+};
+
+void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
+{
+	BlockInfo genesis = CanonBlockChain::genesis();
+	genesis.difficulty = 1 << 18;
+	cdebug << genesis.boundary();
+
+	GenericFarm<Ethash> f;
+	f.onSolutionFound([&](ProofOfWork::Solution) { return false; });
+
+	string platformInfo = _m == MinerType::CPU ? ProofOfWork::CPUMiner::platformInfo() : _m == MinerType::GPU ? ProofOfWork::GPUMiner::platformInfo() : "";
+	cout << "Benchmarking on platform: " << platformInfo << endl;
+
+	cout << "Preparing DAG..." << endl;
+	Ethash::prep(genesis);
+
+	genesis.difficulty = u256(1) << 63;
+	genesis.noteDirty();
+	f.setWork(genesis);
+	if (_m == MinerType::CPU)
+		f.startCPU();
+	else if (_m == MinerType::GPU)
+		f.startGPU();
+
+	map<uint64_t, MiningProgress> results;
+	uint64_t mean = 0;
+	uint64_t innerMean = 0;
+	for (unsigned i = 0; i <= _trials; ++i)
+	{
+		if (!i)
+			cout << "Warming up..." << endl;
+		else
+			cout << "Trial " << i << "... " << flush;
+		this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
+
+		auto mp = f.miningProgress();
+		f.resetMiningProgress();
+		if (!i)
+			continue;
+		auto rate = mp.rate();
+
+		cout << rate << endl;
+		results[rate] = mp;
+		mean += rate;
+		if (i > 1 && i < 5)
+			innerMean += rate;
+	}
+	f.stop();
+	cout << "min/mean/max: " << results.begin()->second.rate() << "/" << (mean / _trials) << "/" << results.rbegin()->second.rate() << " H/s" << endl;
+	cout << "inner mean: " << (innerMean / (_trials - 2)) << " H/s" << endl;
+
+	(void)_phoneHome;
+	if (_phoneHome)
+	{
+		// TODO: send f.miningInfo() along with f.platformInfo() to Marian.
+	}
+	exit(0);
+}
+
 int main(int argc, char** argv)
 {
 	// Init defaults
@@ -239,6 +315,9 @@ int main(int argc, char** argv)
 	/// Operating mode.
 	OperationMode mode = OperationMode::Node;
 	string dbPath;
+
+	/// Mining options
+	MinerType minerType = MinerType::CPU;
 
 	/// File name for import/export.
 	string filename;
@@ -287,6 +366,12 @@ int main(int argc, char** argv)
 	double etherPrice = 30.679;
 	double blockFees = 15.0;
 
+	/// Benchmarking params
+	bool phoneHome = true;
+	unsigned benchmarkWarmup = 15;
+	unsigned benchmarkTrial = 3;
+	unsigned benchmarkTrials = 5;
+
 	string configFile = getDataDir() + "/config.rlp";
 	bytes b = contents(configFile);
 	if (b.size())
@@ -318,6 +403,21 @@ int main(int argc, char** argv)
 		{
 			mode = OperationMode::Export;
 			filename = argv[++i];
+		}
+		else if (arg == "-F" || arg == "--farm")
+			mode = OperationMode::Farm;
+		else if (arg == "--phone-home" && i + 1 < argc)
+		{
+			string m = argv[++i];
+			if (isTrue(m))
+				phoneHome = true;
+			else if (isFalse(m))
+				phoneHome = false;
+			else
+			{
+				cerr << "Bad " << arg << " option: " << m << endl;
+				return -1;
+			}
 		}
 		else if (arg == "--format" && i + 1 < argc)
 		{
@@ -355,6 +455,33 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "--benchmark-warmup" && i + 1 < argc)
+			try {
+				benchmarkWarmup = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		else if (arg == "--benchmark-trial" && i + 1 < argc)
+			try {
+				benchmarkTrial = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		else if (arg == "--benchmark-trials" && i + 1 < argc)
+			try {
+				benchmarkTrials = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
 		else if (arg == "-K" || arg == "--kill-blockchain" || arg == "--kill")
 			killChain = WithExisting::Kill;
 		else if (arg == "-B" || arg == "--rebuild")
@@ -362,8 +489,7 @@ int main(int argc, char** argv)
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 			clientName = argv[++i];
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
-			try
-			{
+			try {
 				coinbase = h160(fromHex(argv[++i], WhenError::Throw));
 			}
 			catch (BadHexCharacter&)
@@ -376,6 +502,10 @@ int main(int argc, char** argv)
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
+		else if (arg == "-C" || arg == "--cpu")
+			minerType = MinerType::CPU;
+		else if (arg == "-G" || arg == "--gpu")
+			minerType = MinerType::GPU;
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			sigKey = KeyPair(h256(fromHex(argv[++i])));
 		else if ((arg == "-S" || arg == "--session-secret") && i + 1 < argc)
@@ -405,7 +535,7 @@ int main(int argc, char** argv)
 					return -1;
 				}
 		}
-		else if ((arg == "-C" || arg == "--check-pow") && i + 4 < argc)
+		else if ((arg == "-w" || arg == "--check-pow") && i + 4 < argc)
 		{
 			string m;
 			try
@@ -442,6 +572,8 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "-M" || arg == "--benchmark")
+			mode = OperationMode::Benchmark;
 		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
 			try
@@ -563,6 +695,9 @@ int main(int argc, char** argv)
 	// blocks are superuseful to have when database is already open in another process.
 	if (mode == OperationMode::DAGInit && !(initDAG == LatestBlock || initDAG == PendingBlock))
 		doInitDAG(initDAG);
+
+	if (mode == OperationMode::Benchmark)
+		doBenchmark(minerType, phoneHome, benchmarkWarmup, benchmarkTrial, benchmarkTrials);
 
 	if (!clientName.empty())
 		clientName += "/";

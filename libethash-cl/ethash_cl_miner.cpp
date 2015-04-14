@@ -57,6 +57,33 @@ ethash_cl_miner::ethash_cl_miner()
 {
 }
 
+std::string ethash_cl_miner::platform_info()
+{
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (platforms.empty())
+	{
+		debugf("No OpenCL platforms found.\n");
+		return std::string();
+	}
+
+	// get GPU device of the default platform
+	std::vector<cl::Device> devices;
+	platforms[0].getDevices(CL_DEVICE_TYPE_ALL, &devices);
+	if (devices.empty())
+	{
+		debugf("No OpenCL devices found.\n");
+		return std::string();
+	}
+
+	// use default device
+	unsigned device_num = 0;
+	cl::Device& device = devices[device_num];
+	std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
+
+	return "{ platform: '" + platforms[0].getInfo<CL_PLATFORM_NAME>() + "', device: '" + device.getInfo<CL_DEVICE_NAME>() + "', version: '" + device_version + "' }";
+}
+
 void ethash_cl_miner::finish()
 {
 	if (m_queue())
