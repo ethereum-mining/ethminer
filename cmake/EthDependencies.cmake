@@ -4,7 +4,11 @@
 # by defining this variable, cmake will look for dependencies first in our own repository before looking in system paths like /usr/local/ ...
 # this must be set to point to the same directory as $ETH_DEPENDENCY_INSTALL_DIR in /extdep directory
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
-set (ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}")
+if (CMAKE_CL_64)
+	set (ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}/x64")
+else ()
+	set (ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}/Win32")
+endif()
 set (CMAKE_PREFIX_PATH ${ETH_DEPENDENCY_INSTALL_DIR})
 
 # setup directory for cmake generated files and include it globally 
@@ -59,6 +63,7 @@ if (JSONRPC)
  	find_package(MHD) 
 	message(" - microhttpd header: ${MHD_INCLUDE_DIRS}")
 	message(" - microhttpd lib   : ${MHD_LIBRARIES}")
+	message(" - microhttpd dll   : ${MHD_DLLS}")
 endif() #JSONRPC
 
 # TODO readline package does not yet check for correct version number
@@ -104,7 +109,7 @@ endif()
 
 find_package (OpenCL)
 if (OpenCL_FOUND)
-	message(" - opencl header: ${OpenCL_INCLUDE_DIRES}")
+	message(" - opencl header: ${OpenCL_INCLUDE_DIRS}")
 	message(" - opencl lib   : ${OpenCL_LIBRARIES}")
 endif()
 
