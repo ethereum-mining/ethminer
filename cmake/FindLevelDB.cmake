@@ -16,16 +16,9 @@ find_path(
 	DOC "leveldb include dir"
 )
 
-# if msvc 64 build
-if (CMAKE_CL_64)
-	set(LEVELDB_NAMES leveldb_x64)
-else ()
-	set(LEVELDB_NAMES leveldb)
-endif()
-
 find_library(
 	LEVELDB_LIBRARY
-	NAMES ${LEVELDB_NAMES}
+	NAMES leveldb
 	DOC "leveldb library"
 )
 
@@ -37,15 +30,9 @@ set(LEVELDB_LIBRARIES ${LEVELDB_LIBRARY})
 # boost is using the same "hack" as us with "optimized" and "debug"
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
-	if (CMAKE_CL_64)
-		set(LEVELDB_NAMES_DEBUG leveldbd_x64)
-	else ()
-		set(LEVELDB_NAMES_DEBUG leveldbd)
-	endif()
-
 	find_library(
 		LEVELDB_LIBRARY_DEBUG
-		NAMES ${LEVELDB_NAMES_DEBUG}
+		NAMES leveldbd
 		DOC "leveldb debug library"
 	)
 	
