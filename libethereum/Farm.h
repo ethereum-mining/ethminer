@@ -61,8 +61,7 @@ public:
 	 */
 	void setWork(BlockInfo const& _bi)
 	{
-		WriteGuard l(x_work);
-		ReadGuard l2(x_miners);
+		WriteGuard l(x_minerWork);
 		m_header = _bi;
 		auto p = PoW::package(m_header);
 		if (p.headerHash == m_work.headerHash)
@@ -90,14 +89,14 @@ public:
 	 */
 	void stop()
 	{
-		WriteGuard l(x_miners);
+		WriteGuard l(x_minerWork);
 		m_miners.clear();
+		m_work.reset();
 	}
 
 	bool isMining() const
 	{
-		ReadGuard l(x_miners);
-		return !m_miners.empty();
+		return !!m_work;
 	}
 
 	/**
@@ -109,7 +108,7 @@ public:
 		MiningProgress p;
 		p.ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_lastStart).count();
 		{
-			ReadGuard l2(x_miners);
+			ReadGuard l2(x_minerWork);
 			for (auto const& i: m_miners)
 				p.hashes += i->hashCount();
 		}
@@ -127,7 +126,7 @@ public:
 	 */
 	void onSolutionFound(SolutionFound const& _handler) { m_onSolutionFound = _handler; }
 
-	WorkPackage work() const { ReadGuard l(x_work); return m_work; }
+	WorkPackage work() const { ReadGuard l(x_minerWork); return m_work; }
 
 private:
 	/**
@@ -136,19 +135,14 @@ private:
 	 * @param _wp The WorkPackage that the Solution is for.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	bool submitProof(Solution const& _s, WorkPackage& _wp, Miner* _m) override
+	bool submitProof(Solution const& _s, Miner* _m) override
 	{
-		ReadGuard l(x_work);
-		if (_wp.headerHash != m_work.headerHash)
-			return false;
-
 		if (m_onSolutionFound && m_onSolutionFound(_s))
 		{
-			ReadGuard l(x_miners);
+			WriteGuard ul(x_minerWork);
 			for (std::shared_ptr<Miner> const& m: m_miners)
 				if (m.get() != _m)
 					m->setWork();
-			_wp.reset();
 			m_work.reset();
 			return true;
 		}
@@ -161,8 +155,7 @@ private:
 	template <class MinerType>
 	bool start()
 	{
-		ReadGuard l(x_work);
-		WriteGuard l2(x_miners);
+		WriteGuard l(x_minerWork);
 		if (!m_miners.empty() && !!std::dynamic_pointer_cast<MinerType>(m_miners[0]))
 			return true;
 		m_miners.clear();
@@ -181,16 +174,14 @@ private:
 		m_lastStart = std::chrono::steady_clock::now();
 	}
 
-	mutable SharedMutex x_miners;
+	mutable SharedMutex x_minerWork;
 	std::vector<std::shared_ptr<Miner>> m_miners;
+	WorkPackage m_work;
+	BlockInfo m_header;
 
 	mutable SharedMutex x_progress;
 	mutable MiningProgress m_progress;
 	std::chrono::steady_clock::time_point m_lastStart;
-
-	mutable SharedMutex x_work;
-	WorkPackage m_work;
-	BlockInfo m_header;
 
 	SolutionFound m_onSolutionFound;
 };
