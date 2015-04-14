@@ -170,6 +170,8 @@ ethash_cache *ethash_light_acquire_cache(ethash_light_t light);
 /**
  * Allocate and initialize a new ethash_full handler
  *
+ * @param dirname   The directory in which to put the DAG file.
+ * @param seedhash  The seed hash of the block. Used in the DAG file naming.
  * @param params    The parameters to initialize it with. We are interested in
  *                  the full_size from here
  * @param cache     A cache object to use that was allocated with @ref ethash_cache_new().
@@ -183,9 +185,11 @@ ethash_cache *ethash_light_acquire_cache(ethash_light_t light);
  * @return          Newly allocated ethash_full handler or NULL in case of
  *                  ERRNOMEM or invalid parameters used for @ref ethash_compute_full_data()
  */
-ethash_full_t ethash_full_new(ethash_params const* params,
-							  ethash_cache const* cache,
-							  ethash_callback_t callback);
+ethash_full_t ethash_full_new(char const *dirname,
+	const ethash_h256_t *seed_hash,
+	ethash_params const* params,
+	ethash_cache const* cache,
+	ethash_callback_t callback);
 /**
  * Frees a previously allocated ethash_full handler
  * @param full    The light handler to free
@@ -198,7 +202,7 @@ void ethash_full_delete(ethash_full_t full);
  * @param full           The full client handler
  * @param params         The parameters to use
  * @param header_hash    The header hash to pack into the mix
- * @param nonce              The nonce to pack into the mix
+ * @param nonce          The nonce to pack into the mix
  * @return               true if all went well and false if there were invalid
  *                       parameters given or if there was a callback given and
  *                       at some point return a non-zero value

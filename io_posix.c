@@ -38,8 +38,9 @@ char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count
 }
 
 enum ethash_io_rc ethash_io_prepare(char const *dirname,
-	ethash_h256_t seedhash,
-	FILE **output_file)
+	ethash_h256_t const seedhash,
+	FILE **output_file,
+	size_t file_size)
 {
 	char mutable_name[DAG_MUTABLE_NAME_MAX_SIZE];
 	enum ethash_io_rc ret = ETHASH_IO_FAIL;
@@ -57,14 +58,28 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname,
 	}
 
 	// try to open the file
-	FILE *f = ethash_fopen(tmpfile, "rb");
-	if (!f) {
+	FILE *f = ethash_fopen(tmpfile, "rb+");
+	if (f) {
+		// TODO: check for file size
+	} else {
 		// file does not exist, will need to be created
+		f = ethash_fopen(tmpfile, "wb+");
+		if (!f) {
+			goto free_memo;
+		}
+		// make sure it's of the proper size
+		if (fseek(f, file_size - 1, SEEK_SET) != 0) {
+			fclose(f);
+			goto free_memo;
+		}
+		fputc('\n', f);
+		fflush(f);
 		ret = ETHASH_IO_MEMO_MISMATCH;
-		goto free_memo;
+		goto set_file;
 	}
 
 	ret = ETHASH_IO_MEMO_MATCH;
+set_file:
 	*output_file = f;
 free_memo:
 	free(tmpfile);

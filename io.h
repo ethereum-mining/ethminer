@@ -52,12 +52,18 @@ enum ethash_io_rc {
  * @param[in] seedhash   The seedhash of the current block number, used in the
  *                       naming of the file as can be seen from the spec at:
  *                       https://github.com/ethereum/wiki/wiki/Ethash-DAG
- * @param[out] f         If the hash/revision combo matched then this will point
- *                       to an opened file handler for that file. User will then
- *                       have to close it.
+ * @param[out] f         If there was no failure then this will point to an open
+ *                       file descriptor. User is responsible for closing it.
+ *                       In the case of memo match then the file is open on read
+ *                       mode, while on the case of mismatch a new file is created
+ *                       on write mode
+ * @param[in] file_size  The size that the DAG file should have on disk
  * @return               For possible return values @see enum ethash_io_rc
  */
-enum ethash_io_rc ethash_io_prepare(char const *dirname, ethash_h256_t seedhash, FILE **f);
+enum ethash_io_rc ethash_io_prepare(char const *dirname,
+	ethash_h256_t const seedhash,
+	FILE **f,
+	size_t file_size);
 
 /**
  * An fopen wrapper for no-warnings crossplatform fopen.
@@ -91,8 +97,8 @@ FILE *ethash_fopen(const char *file_name, const char *mode);
 char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count);
 
 static inline bool ethash_io_mutable_name(uint32_t revision,
-                                          ethash_h256_t *seed_hash,
-                                          char *output)
+	ethash_h256_t const* seed_hash,
+	char* output)
 {
     uint64_t hash = *((uint64_t*)seed_hash);
 #if LITTLE_ENDIAN == BYTE_ORDER
@@ -101,7 +107,7 @@ static inline bool ethash_io_mutable_name(uint32_t revision,
     return snprintf(output, DAG_MUTABLE_NAME_MAX_SIZE, "%u_%016lx", revision, hash) >= 0;
 }
 
-static inline char *ethash_io_create_filename(char const *dirname,
+static inline char *ethash_io_create_filename(char const* dirname,
 											  char const* filename,
 											  size_t filename_length)
 {

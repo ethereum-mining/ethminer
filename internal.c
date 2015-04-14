@@ -23,11 +23,14 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <stddef.h>
+#include <errno.h>
+#include "mmap.h"
 #include "ethash.h"
 #include "fnv.h"
 #include "endian.h"
 #include "internal.h"
 #include "data_sizes.h"
+#include "io.h"
 
 #ifdef WITH_CRYPTOPP
 
@@ -121,11 +124,9 @@ void ethash_calculate_dag_item(node *const ret,
 	uint32_t num_parent_nodes = (uint32_t) (params->cache_size / sizeof(node));
 	node const *cache_nodes = (node const *) cache->mem;
 	node const *init = &cache_nodes[node_index % num_parent_nodes];
-
 	memcpy(ret, init, sizeof(node));
 	ret->words[0] ^= node_index;
 	SHA3_512(ret->bytes, ret->bytes, sizeof(node));
-
 #if defined(_M_X64) && ENABLE_SSE
 	__m128i const fnv_prime = _mm_set1_epi32(FNV_PRIME);
 	__m128i xmm0 = ret->xmm[0];
@@ -176,7 +177,6 @@ bool ethash_compute_full_data(void *mem,
 		return false;
 	}
 	node *full_nodes = mem;
-
 	// now compute full nodes
 	for (unsigned n = 0; n != (params->full_size / sizeof(node)); ++n) {
 		ethash_calculate_dag_item(&(full_nodes[n]), n, params, cache);
@@ -277,7 +277,6 @@ void ethash_quick_hash(ethash_h256_t *return_hash,
 					   const uint64_t nonce,
 					   ethash_h256_t const *mix_hash)
 {
-
 	uint8_t buf[64 + 32];
 	memcpy(buf, header_hash, 32);
 	fix_endian64_same(nonce);
@@ -353,21 +352,50 @@ ethash_cache *ethash_light_acquire_cache(ethash_light_t light)
 	return ret;
 }
 
-ethash_full_t ethash_full_new(ethash_params const* params,
-							  ethash_cache const* cache,
-							  ethash_callback_t callback)
+ethash_full_t ethash_full_new(char const *dirname,
+	const ethash_h256_t *seed_hash,
+	ethash_params const* params,
+	ethash_cache const* cache,
+	ethash_callback_t callback)
 {
 	struct ethash_full *ret;
+	int fd;
+	FILE *f = NULL;
+	bool match = false;
 	ret = calloc(sizeof(*ret), 1);
 	if (!ret) {
 		return NULL;
 	}
 
 	ret->cache = (ethash_cache*)cache;
-	ret->data = malloc((size_t)params->full_size);
-	if (!ret->data) {
+	ret->file_size = (size_t)params->full_size;
+	switch (ethash_io_prepare(dirname, *seed_hash, &f, (size_t)params->full_size)) {
+	case ETHASH_IO_FAIL:
 		goto fail_free_full;
+	case ETHASH_IO_MEMO_MATCH:
+		match = true;
+	case ETHASH_IO_MEMO_MISMATCH:
+		ret->file = f;
+		if ((fd = fileno(ret->file)) == -1) {
+			goto fail_free_full;
+		}
+		ret->data = mmap(
+			NULL,
+			(size_t)params->full_size,
+			PROT_READ | PROT_WRITE,
+			MAP_SHARED,
+			fd,
+			0
+		);
+		if (ret->data == MAP_FAILED) {
+			goto fail_close_file;
+		}
+		if (match) {
+			return ret;
+		}
+		break;
 	}
+
 	if (!ethash_compute_full_data(ret->data, params, cache)) {
 		goto fail_free_full_data;
 	}
@@ -375,7 +403,10 @@ ethash_full_t ethash_full_new(ethash_params const* params,
 	return ret;
 
 fail_free_full_data:
-	free(ret->data);
+	// could check that munmap(..) == 0 but even if it did not can't really do anything here
+	munmap(ret->data, (size_t)params->full_size);
+fail_close_file:
+	fclose(ret->file);
 fail_free_full:
 	free(ret);
 	return NULL;
@@ -386,7 +417,11 @@ void ethash_full_delete(ethash_full_t full)
 	if (full->cache) {
 		ethash_cache_delete(full->cache);
 	}
-	free(full->data);
+	// could check that munmap(..) == 0 but even if it did not can't really do anything here
+	munmap(full->data, full->file_size);
+	if (full->file) {
+		fclose(full->file);
+	}
 	free(full);
 }
 
