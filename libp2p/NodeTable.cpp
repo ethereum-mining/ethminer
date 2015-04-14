@@ -176,6 +176,7 @@ void NodeTable::discover(NodeId _node, unsigned _round, shared_ptr<set<shared_pt
 			tried.push_back(r);
 			FindNode p(r->endpoint, _node);
 			p.sign(m_secret);
+			m_findNodeTimeout.push_back(make_pair(_node, chrono::steady_clock::now()));
 			m_socketPointer->send(p);
 		}
 	
@@ -455,6 +456,20 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				
 			case Neighbours::type:
 			{
+				bool expected = false;
+				m_findNodeTimeout.remove_if([&](NodeIdTimePoint const& t)
+				{
+					if (t.first == nodeid && chrono::steady_clock::now() - t.second < c_reqTimeout)
+						expected = true;
+					return t.first == nodeid;
+				});
+				
+				if (!expected)
+				{
+					clog(NetConnect) << "Dropping unsolicited Neighbours packet from " << _from.address();
+					break;
+				}
+				
 				Neighbours in = Neighbours::fromBytesConstRef(_from, rlpBytes);
 				for (auto n: in.nodes)
 					addNode(n.node, NodeIPEndpoint(bi::address::from_string(n.ipAddress), n.udpPort, n.udpPort));
