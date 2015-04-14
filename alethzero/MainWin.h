@@ -163,6 +163,7 @@ private slots:
 	void on_usePrivate_triggered();
 	void on_turboMining_triggered();
 	void on_jitvm_triggered();
+	void on_retryUnknown_triggered();
 
 	// Debugger
 	void on_debugCurrent_triggered();
