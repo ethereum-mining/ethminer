@@ -36,7 +36,7 @@ using namespace dev::eth;
 // types
 
 using dev::eth::MineInfo;
-using dev::eth::MineProgress;
+using dev::eth::MiningProgress;
 
 // functions
 using dev::toString;
@@ -50,12 +50,13 @@ MiningView::MiningView(QWidget* _p): QWidget(_p)
 {
 }
 
-void MiningView::appendStats(list<MineInfo> const& _i, MineProgress const& _p)
+void MiningView::appendStats(list<MineInfo> const& _i, MiningProgress const& _p)
 {
+	(void)_p;
 	if (_i.empty())
 		return;
 
-	unsigned o = m_values.size();
+/*	unsigned o = m_values.size();
 	for (MineInfo const& i: _i)
 	{
 		m_values.push_back(i.best);
@@ -91,7 +92,7 @@ void MiningView::appendStats(list<MineInfo> const& _i, MineProgress const& _p)
 	m_completes.erase(remove_if(m_completes.begin(), m_completes.end(), [](int i){return i < 0;}), m_completes.end());
 
 	m_progress = _p;
-	update();
+	update();*/
 }
 
 void MiningView::resetStats()
@@ -101,6 +102,7 @@ void MiningView::resetStats()
 
 void MiningView::paintEvent(QPaintEvent*)
 {
+	/*
 	Grapher g;
 	QPainter p(this);
 
@@ -115,4 +117,5 @@ void MiningView::paintEvent(QPaintEvent*)
 		g.ruleY(r - 1, QColor(128, 128, 128));
 	for (auto r: m_completes)
 		g.ruleY(r, QColor(192, 64, 64));
+	*/
 }

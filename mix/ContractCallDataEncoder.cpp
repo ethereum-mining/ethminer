@@ -118,7 +118,7 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QString const& _data, Solidit
 			result = bytes(alignSize);
 			toBigEndian((u256)i, result);
 		}
-		catch (std::exception const& ex)
+		catch (std::exception const&)
 		{
 			// manage input as a string.
 			QByteArray bytesAr = src.toLocal8Bit();

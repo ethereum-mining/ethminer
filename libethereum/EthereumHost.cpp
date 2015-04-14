@@ -133,9 +133,10 @@ void EthereumHost::noteDoneBlocks(EthereumPeer* _who, bool _clemency)
 		{
 			// Done our chain-get.
 			clog(NetNote) << "Chain download failed. Peer with blocks didn't have them all. This peer is bad and should be punished.";
+			clog(NetNote) << "TODO: PUNISH.";
 
-			m_banned.insert(_who->session()->id());			// We know who you are!
-			_who->disable("Peer sent hashes but was unable to provide the blocks.");
+//			m_banned.insert(_who->session()->id());			// We know who you are!
+//			_who->disable("Peer sent hashes but was unable to provide the blocks.");
 		}
 		m_man.reset();
 	}
