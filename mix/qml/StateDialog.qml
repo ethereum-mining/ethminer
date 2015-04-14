@@ -22,6 +22,8 @@ Dialog {
 	property alias isDefault: defaultCheckBox.checked
 	property alias model: transactionsModel
 	property alias transactionDialog: transactionDialog
+	property alias minerComboBox: comboMiner
+	property alias newAccAction: newAccountAction
 	property int stateIndex
 	property var stateTransactions: []
 	property var stateAccounts: []
@@ -46,12 +48,11 @@ Dialog {
 		accountsModel.clear();
 		stateAccounts = [];
 		var miner = 0;
-
 		for (var k = 0; k < item.accounts.length; k++)
 		{
 			accountsModel.append(item.accounts[k]);
 			stateAccounts.push(item.accounts[k]);
-			if (item.accounts[k].name === item.miner.name)
+			if (item.miner && item.accounts[k].name === item.miner.name)
 				miner = k;
 		}
 
@@ -91,6 +92,7 @@ Dialog {
 		}
 		return item;
 	}
+
 	contentItem: Rectangle {
 		color: stateDialogStyle.generic.backgroundColor
 		Rectangle {
@@ -138,6 +140,7 @@ Dialog {
 
 							Button
 							{
+								id: newAccountButton
 								anchors.top: accountsLabel.bottom
 								anchors.topMargin: 10
 								iconSource: "qrc:/qml/img/plus.png"
@@ -149,9 +152,15 @@ Dialog {
 								tooltip: qsTr("Add new Account")
 								onTriggered:
 								{
+									add();
+								}
+
+								function add()
+								{
 									var account = stateListModel.newAccount("1000000", QEther.Ether);
 									stateAccounts.push(account);
 									accountsModel.append(account);
+									return account;
 								}
 							}
 						}
@@ -194,8 +203,12 @@ Dialog {
 													alertAlreadyUsed.open();
 												else
 												{
+													if (stateAccounts[styleData.row].name === comboMiner.currentText)
+														comboMiner.currentIndex = 0;
 													stateAccounts.splice(styleData.row, 1);
 													accountsModel.remove(styleData.row);
+													comboMiner.model = stateAccounts;
+													comboMiner.update();
 												}
 											}
 										}
