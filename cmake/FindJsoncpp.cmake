@@ -31,12 +31,6 @@ set(JSONCPP_LIBRARIES ${JSONCPP_LIBRARY})
 # boost is using the same "hack" as us with "optimized" and "debug"
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
-	if (CMAKE_CL_64)
-		set(JSONCPP_NAMES_DEBUG jsoncppd_x64)
-	else ()
-		set(JSONCPP_NAMES_DEBUG jsoncppd)
-	endif()
-
 	find_library(
 		JSONCPP_LIBRARY_DEBUG
 		NAMES jsoncppd
