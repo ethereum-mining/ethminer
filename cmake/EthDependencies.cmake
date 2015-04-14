@@ -59,7 +59,6 @@ if (JSONRPC)
  	find_package(MHD) 
 	message(" - microhttpd header: ${MHD_INCLUDE_DIRS}")
 	message(" - microhttpd lib   : ${MHD_LIBRARIES}")
-
 endif() #JSONRPC
 
 # TODO readline package does not yet check for correct version number
@@ -86,7 +85,7 @@ endif()
 # TODO it is also not required in msvc build
 find_package (Gmp 6.0.0)
 if (GMP_FOUND)
-	message(" - gmp Header: ${GMP_INCLUDE_DIRS}")
+	message(" - gmp header: ${GMP_INCLUDE_DIRS}")
 	message(" - gmp lib   : ${GMP_LIBRARIES}")
 endif()
 
@@ -95,6 +94,19 @@ endif()
 find_package (CURL)
 message(" - curl header: ${CURL_INCLUDE_DIRS}")
 message(" - curl lib   : ${CURL_LIBRARIES}")
+
+# cpuid required for eth
+find_package (Cpuid)
+if (CPUID_FOUND)
+	message(" - cpuid header: ${CPUID_INCLUDE_DIRS}")
+	message(" - cpuid lib   : ${CPUID_LIBRARIES}")
+endif()
+
+find_package (OpenCL)
+if (OpenCL_FOUND)
+	message(" - opencl header: ${OpenCL_INCLUDE_DIRES}")
+	message(" - opencl lib   : ${OpenCL_LIBRARIES}")
+endif()
 
 # find location of jsonrpcstub
 find_program(ETH_JSON_RPC_STUB jsonrpcstub)
