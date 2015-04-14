@@ -221,7 +221,10 @@ void ClientModel::setupState(QVariantMap _state)
 void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, map<Secret, u256> const& _balances, Secret const& _miner)
 {
 	if (m_running)
-		BOOST_THROW_EXCEPTION(ExecutionStateException());
+	{
+		qWarning() << "Waiting for current execution to complete";
+		m_runFuture.waitForFinished();
+	}
 	m_running = true;
 
 	emit runStarted();

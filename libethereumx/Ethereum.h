@@ -52,7 +52,7 @@ class Client;
  */
 class Ethereum
 {
-	friend class Miner;
+	friend class OldMiner;
 
 public:
 	/// Constructor. After this, everything should be set up to go.
