@@ -118,6 +118,17 @@ public:
 		return m_progress;
 	}
 
+	/**
+	 * @brief Reset the mining progess counter.
+	 */
+	void resetMiningProgress()
+	{
+		ETH_READ_GUARDED(x_minerWork)
+			for (auto const& i: m_miners)
+				i->resetHashCount();
+		resetTimer();
+	}
+
 	using SolutionFound = std::function<bool(Solution const&)>;
 
 	/**

@@ -85,6 +85,7 @@ public:
 		CPUMiner(ConstructionInfo const& _ci): Miner(_ci), Worker("miner" + toString(index())) {}
 
 		static unsigned instances() { return std::thread::hardware_concurrency(); }
+		static std::string platformInfo();
 
 	protected:
 		void kickOff() override
@@ -109,6 +110,7 @@ public:
 		~GPUMiner();
 
 		static unsigned instances() { return 1; }
+		static std::string platformInfo();
 
 	protected:
 		void kickOff() override;
