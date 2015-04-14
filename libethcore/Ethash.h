@@ -85,6 +85,8 @@ public:
 		CPUMiner(ConstructionInfo const& _ci): Miner(_ci), Worker("miner" + toString(index())) {}
 
 		static unsigned instances() { return std::thread::hardware_concurrency(); }
+		static std::string platformInfo();
+		static void setDefaultDevice(unsigned) {}
 
 	protected:
 		void kickOff() override
@@ -97,6 +99,7 @@ public:
 
 	private:
 		void workLoop() override;
+		static unsigned s_deviceId;
 	};
 
 #if ETH_ETHASHCL || !ETH_TRUE
@@ -109,6 +112,8 @@ public:
 		~GPUMiner();
 
 		static unsigned instances() { return 1; }
+		static std::string platformInfo();
+		static void setDefaultDevice(unsigned _id) { s_deviceId = _id; }
 
 	protected:
 		void kickOff() override;
@@ -124,6 +129,7 @@ public:
 		ethash_cl_miner* m_miner = nullptr;
 
 		h256 m_minerSeed;		///< Last seed in m_miner
+		static unsigned s_deviceId;
 	};
 #else
 	using GPUMiner = CPUMiner;
