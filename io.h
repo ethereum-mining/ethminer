@@ -43,6 +43,12 @@ enum ethash_io_rc {
 	ETHASH_IO_MEMO_MATCH,         ///< DAG file existed and revision/hash matched. No need to do anything
 };
 
+// small hack for windows. I don't feel I should use va_args and forward just
+// to have this one function properly cross-platform abstracted
+#if defined(_WIN32)
+#define snprintf(...) sprintf_s(__VA_ARGS__)
+#endif
+
 /**
  * Prepares io for ethash
  *

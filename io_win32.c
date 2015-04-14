@@ -23,6 +23,8 @@
 #include <direct.h>
 #include <errno.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 FILE *ethash_fopen(const char *file_name, const char *mode)
 {
