@@ -342,6 +342,8 @@ int main(int argc, char** argv)
 			exportTo = exportFrom = argv[++i];
 		else if ((arg == "-n" || arg == "-u" || arg == "--upnp") && i + 1 < argc)
 		{
+			if (arg == "-n")
+				cerr << "-n is DEPRECATED. It will be removed for the Frontier. Use -u instead." << endl;
 			string m = argv[++i];
 			if (isTrue(m))
 				upnp = true;
