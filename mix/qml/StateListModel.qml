@@ -21,7 +21,8 @@ Item {
 		return {
 			title: s.title,
 			transactions: s.transactions.map(fromPlainTransactionItem),
-			accounts: s.accounts.map(fromPlainAccountItem)
+			accounts: s.accounts.map(fromPlainAccountItem),
+			miner: s.miner
 		};
 	}
 
@@ -37,6 +38,7 @@ Item {
 	function fromPlainTransactionItem(t) {
 		if (!t.sender)
 			t.sender = defaultAccount; //support for old project
+
 		var r = {
 			contractId: t.contractId,
 			functionId: t.functionId,
@@ -59,7 +61,8 @@ Item {
 		return {
 			title: s.title,
 			transactions: s.transactions.map(toPlainTransactionItem),
-			accounts: s.accounts.map(toPlainAccountItem)
+			accounts: s.accounts.map(toPlainAccountItem),
+			miner: s.miner
 		};
 	}
 
@@ -81,7 +84,7 @@ Item {
 			balance: {
 				value: t.balance.value,
 				unit: t.balance.unit
-			}
+			},
 		};
 	}
 
@@ -95,6 +98,7 @@ Item {
 			gasAuto: t.gasAuto,
 			gasPrice: { value: t.gasPrice.value, unit: t.gasPrice.unit },
 			stdContract: t.stdContract,
+			sender: t.sender,
 			parameters: {}
 		};
 		for (var key in t.parameters)
@@ -176,8 +180,9 @@ Item {
 		function newAccount(_balance, _unit, _secret)
 		{
 			if (!_secret)
-				_secret = clientModel.newAddress();
-			var name = qsTr("Account") + "-" + _secret.substring(0, 4);
+				_secret = clientModel.newSecret();
+			var address = clientModel.address(_secret);
+			var name = qsTr("Account") + "-" + address.substring(0, 4);
 			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit) };
 		}
 
