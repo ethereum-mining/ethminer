@@ -36,7 +36,6 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
-#include <libethcore/Ethasher.h>
 #include <liblll/Compiler.h>
 #include "GenesisInfo.h"
 #include "State.h"
@@ -231,8 +230,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 			bytes b = block(queryExtras<BlockHash, ExtraBlockHash>(h256(u256(d)), m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value);
 
 			BlockInfo bi(b);
-			if (bi.number % c_ethashEpochLength == 1)
-				Ethasher::get()->full(bi);
+			ProofOfWork::prep(bi);
 
 			if (bi.parentHash != lastHash)
 			{
@@ -307,14 +305,8 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 		try
 		{
 			auto r = import(block, _stateDB);
-			bool isOld = true;
-			for (auto const& h: r.first)
-				if (h == r.second)
-					isOld = false;
-				else if (isOld)
-					dead.push_back(h);
-				else
-					fresh.push_back(h);
+			fresh += r.first;
+			dead += r.second;
 		}
 		catch (UnknownParent)
 		{
@@ -334,7 +326,7 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 	return make_tuple(fresh, dead, _bq.doneDrain(badBlocks));
 }
 
-pair<h256s, h256> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, Aversion _force) noexcept
+ImportRoute BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, Aversion _force) noexcept
 {
 	try
 	{
@@ -343,11 +335,11 @@ pair<h256s, h256> BlockChain::attemptImport(bytes const& _block, OverlayDB const
 	catch (...)
 	{
 		cwarn << "Unexpected exception! Could not import block!" << boost::current_exception_diagnostic_information();
-		return make_pair(h256s(), h256());
+		return make_pair(h256s(), h256s());
 	}
 }
 
-pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, Aversion _force)
+ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Aversion _force)
 {
 	//@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
@@ -626,7 +618,17 @@ pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, 
 	cnote << "checkBest:" << checkBest;
 #endif
 
-	return make_pair(route, common);
+	h256s fresh;
+	h256s dead;
+	bool isOld = true;
+	for (auto const& h: route)
+		if (h == common)
+			isOld = false;
+		else if (isOld)
+			dead.push_back(h);
+		else
+			fresh.push_back(h);
+	return make_pair(fresh, dead);
 }
 
 void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)

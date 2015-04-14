@@ -63,15 +63,13 @@ public:
 	dev::eth::ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, eth::BlockNumber _blockNumber, bool _gasAuto, eth::FudgeFactor _ff = eth::FudgeFactor::Strict);
 
 	void setAddress(Address _us) override;
-	void setMiningThreads(unsigned _threads) override;
-	unsigned miningThreads() const override;
 	void startMining() override;
 	void stopMining() override;
 	bool isMining() const override;
 	uint64_t hashrate() const override;
-	eth::MineProgress miningProgress() const override;
-	std::pair<h256, u256> getWork() override { return std::pair<h256, u256>(); }
-	bool submitWork(eth::ProofOfWork::Proof const&) override { return false; }
+	eth::MiningProgress miningProgress() const override;
+	eth::ProofOfWork::WorkPackage getWork() override { return eth::ProofOfWork::WorkPackage(); }
+	bool submitWork(eth::ProofOfWork::Solution const&) override { return false; }
 	virtual void flushTransactions() override {}
 
 	/// @returns the last mined block information

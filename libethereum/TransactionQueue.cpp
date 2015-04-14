@@ -28,7 +28,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-ImportResult TransactionQueue::import(bytesConstRef _transactionRLP)
+ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb)
 {
 	// Check if we already know this transaction.
 	h256 h = sha3(_transactionRLP);
@@ -50,8 +50,10 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP)
 		// If valid, append to blocks.
 		m_current[h] = t;
 		m_known.insert(h);
-
+		if (_cb)
+			m_callbacks[h] = _cb;
 		ctxq << "Queued vaguely legit-looking transaction" << h.abridged();
+		m_onReady();
 	}
 	catch (Exception const& _e)
 	{

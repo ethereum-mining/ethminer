@@ -465,7 +465,7 @@ void Main::on_urlEdit_returnPressed()
 
 void Main::refreshMining()
 {
-	dev::eth::MineProgress p = ethereum()->miningProgress();
+	dev::eth::MiningProgress p = ethereum()->miningProgress();
 	ui->mineStatus->setText(ethereum()->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
 }
 
