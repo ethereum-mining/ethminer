@@ -162,8 +162,10 @@ public slots:
 	Q_INVOKABLE void debugRecord(unsigned _index);
 	/// Show the debugger for an empty record
 	Q_INVOKABLE void emptyRecord();
-	/// Generate new adress
-	Q_INVOKABLE QString newAddress();
+	/// Generate new secret
+	Q_INVOKABLE QString newSecret();
+	/// retrieve the address of @arg _secret
+	Q_INVOKABLE QString address(QString const& _secret);
 	/// Encode a string to ABI parameter. Returns a hex string
 	Q_INVOKABLE QString encodeAbiString(QString _string);
 
@@ -207,7 +209,7 @@ private:
 	RecordLogEntry* lastBlock() const;
 	QVariantMap contractAddresses() const;
 	QVariantMap gasCosts() const;
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Secret, u256> const& _balances);
+	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Secret, u256> const& _balances, Secret const& _miner);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	void onNewTransaction();
