@@ -273,7 +273,7 @@ private:
 	std::map<bi::address, TimePoint> m_pubkDiscoverPings;		///< List of pending pings where node entry wasn't created due to unkown pubk.
 
 	Mutex x_findNodeTimeout;
-	std::list<NodeIdTimePoint> m_findNodeTimout;				///< Timeouts for pending Ping and FindNode requests.
+	std::list<NodeIdTimePoint> m_findNodeTimeout;				///< Timeouts for pending Ping and FindNode requests.
 	
 	ba::io_service& m_io;										///< Used by bucket refresh timer.
 	std::shared_ptr<NodeSocket> m_socket;						///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
