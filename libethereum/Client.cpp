@@ -332,7 +332,8 @@ void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 void Client::setForceMining(bool _enable)
 {
 	 m_forceMining = _enable;
-	 startMining();
+	 if (isMining())
+		startMining();
 }
 
 MiningProgress Client::miningProgress() const
