@@ -85,7 +85,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 			Guard l(x_pubkDiscoverPings);
 			m_pubkDiscoverPings[_node.endpoint.address] = std::chrono::steady_clock::now();
 		}
-		PingNode p((bi::udp::endpoint)_node.endpoint, m_node.endpoint.address.to_string(), m_node.endpoint.udpPort);
+		PingNode p(_node.endpoint, m_node.endpoint.address.to_string(), m_node.endpoint.udpPort);
 		p.sign(m_secret);
 		m_socketPointer->send(p);
 		return move(shared_ptr<NodeEntry>());
