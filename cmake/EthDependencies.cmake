@@ -109,7 +109,7 @@ endif()
 
 find_package (OpenCL)
 if (OpenCL_FOUND)
-	message(" - opencl header: ${OpenCL_INCLUDE_DIRES}")
+	message(" - opencl header: ${OpenCL_INCLUDE_DIRS}")
 	message(" - opencl lib   : ${OpenCL_LIBRARIES}")
 endif()
 
