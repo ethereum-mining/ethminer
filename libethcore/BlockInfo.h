@@ -39,6 +39,7 @@ enum IncludeNonce
 enum Strictness
 {
 	CheckEverything,
+	QuickNonce,
 	IgnoreNonce,
 	CheckNothing
 };
