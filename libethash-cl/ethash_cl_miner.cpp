@@ -81,7 +81,7 @@ std::string ethash_cl_miner::platform_info()
 	cl::Device& device = devices[device_num];
 	std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
 
-	return "{ platform: '" + platforms[0].getInfo<CL_PLATFORM_NAME>() + "', device: '" + device.getInfo<CL_DEVICE_NAME>() + "', version: '" + device_version + "' }";
+	return "{ \"platform\": \"" + platforms[0].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
 }
 
 void ethash_cl_miner::finish()

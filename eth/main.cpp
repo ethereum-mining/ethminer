@@ -48,7 +48,10 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #endif
 #include "BuildInfo.h"
+#if ETH_JSONRPC || !ETH_TRUE
 #include "PhoneHome.h"
+#include "Farm.h"
+#endif
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -117,7 +120,7 @@ void help()
 		<< "    -C,--cpu  When mining, use the CPU." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
-		<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 15)." << endl
+		<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 3)." << endl
 		<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
 		<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
 		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
@@ -128,9 +131,10 @@ void help()
 		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
 		<< "    -f,--force-mining  Mine even when there are no transactions to mine (Default: off)" << endl
 #if ETH_JSONRPC || !ETH_TRUE
-		<< "    -F,--farm  Put into mining farm mode (default GPU with CPU as fallback)." << endl
+		<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL. Use with -G/--opencl." << endl
+		<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
 #endif
-		<< "    -G,--gpu  When mining use the GPU." << endl
+		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
@@ -146,12 +150,14 @@ void help()
 		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
 		<< "    --public-ip <ip>  Force public ip to given (default: auto)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
-		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --gpu." << endl
+		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --opencl." << endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
-		<< "    --opencl-device <n>  When mining use OpenCL device n (default: 0)." << endl
+		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
+#if ETH_JSONRPC || !ETH_TRUE
 		<< "    --phone-home <on/off>  When benchmarking, publish results (Default: on)" << endl
+#endif
 		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
 		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
@@ -323,14 +329,48 @@ void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, u
 	exit(0);
 }
 
-void doFarm(MinerType _m)
+void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 {
 	(void)_m;
-	// TODO: Set up JSONRPC client: to implement:
-//	{ "name": "eth_getWork", "params": [], "order": [], "returns": [<powHash>, <seedHash>, <boundary>]},
-//	{ "name": "eth_submitWork", "params": [<nonce>, <mixHash>], "order": [], "returns": true},
+	(void)_remote;
+	(void)_recheckPeriod;
+#if ETH_JSONRPC || !ETH_TRUE
+	jsonrpc::HttpClient client(_remote);
+	Farm rpc(client);
 
+	GenericFarm<Ethash> f;
 
+	if (_m == MinerType::CPU)
+		f.startCPU();
+	else if (_m == MinerType::GPU)
+		f.startGPU();
+
+	ProofOfWork::WorkPackage current;
+	while (true)
+	{
+		bool completed = false;
+		ProofOfWork::Solution solution;
+		f.onSolutionFound([&](ProofOfWork::Solution sol)
+		{
+			solution = sol;
+			return completed = true;
+		});
+		for (unsigned i = 0; !completed; ++i)
+		{
+			Json::Value v = rpc.eth_getWork();
+			h256 hh(v[0].asString());
+			if (hh != current.headerHash)
+			{
+				current.headerHash = hh;
+				current.seedHash = h256(v[1].asString());
+				current.boundary = h256(v[2].asString());
+				f.setWork(current);
+			}
+			this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
+		}
+		rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(solution.mixHash));
+	}
+#endif
 	exit(0);
 }
 
@@ -396,9 +436,13 @@ int main(int argc, char** argv)
 
 	/// Benchmarking params
 	bool phoneHome = true;
-	unsigned benchmarkWarmup = 15;
+	unsigned benchmarkWarmup = 3;
 	unsigned benchmarkTrial = 3;
 	unsigned benchmarkTrials = 5;
+
+	/// Farm params
+	string farmURL = "http://127.0.0.1:8080";
+	unsigned farmRecheckPeriod = 500;
 
 	string configFile = getDataDir() + "/config.rlp";
 	bytes b = contents(configFile);
@@ -444,8 +488,20 @@ int main(int argc, char** argv)
 			mode = OperationMode::Export;
 			filename = argv[++i];
 		}
-		else if (arg == "-F" || arg == "--farm")
+		else if ((arg == "-F" || arg == "--farm") && i + 1 < argc)
+		{
 			mode = OperationMode::Farm;
+			farmURL = argv[++i];
+		}
+		else if (arg == "--farm-recheck" && i + 1 < argc)
+			try {
+				farmRecheckPeriod = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
 				openclDevice = stol(argv[++i]);
@@ -557,7 +613,7 @@ int main(int argc, char** argv)
 			}
 		else if (arg == "-C" || arg == "--cpu")
 			minerType = MinerType::CPU;
-		else if (arg == "-G" || arg == "--gpu")
+		else if (arg == "-G" || arg == "--opencl")
 			minerType = MinerType::GPU;
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
 			sigKey = KeyPair(h256(fromHex(argv[++i])));
@@ -755,7 +811,7 @@ int main(int argc, char** argv)
 		doBenchmark(minerType, phoneHome, benchmarkWarmup, benchmarkTrial, benchmarkTrials);
 
 	if (mode == OperationMode::Farm)
-		doFarm(minerType);
+		doFarm(minerType, farmURL, farmRecheckPeriod);
 
 	if (!clientName.empty())
 		clientName += "/";
