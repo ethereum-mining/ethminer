@@ -20,6 +20,7 @@
  * Ethereum IDE client.
  */
 
+#include "MixClient.h"
 #include <vector>
 #include <libdevcore/Exceptions.h>
 #include <libethereum/CanonBlockChain.h>
@@ -28,10 +29,8 @@
 #include <libethereum/ExtVM.h>
 #include <libethereum/BlockChain.h>
 #include <libevm/VM.h>
-
 #include "Exceptions.h"
-#include "MixClient.h"
-
+using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
@@ -56,7 +55,7 @@ bytes MixBlockChain::createGenesisBlock(h256 _stateRoot)
 }
 
 MixClient::MixClient(std::string const& _dbPath):
-	m_dbPath(_dbPath), m_miningThreads(0)
+	m_dbPath(_dbPath)
 {
 	std::map<Secret, u256> account;
 	account.insert(std::make_pair(c_defaultUserAccountSecret, 1000000 * ether));
@@ -252,6 +251,20 @@ void MixClient::mine()
 	m_state.commitToMine(bc());
 	m_state.completeMine();
 	bc().import(m_state.blockData(), m_stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce);
+	/*
+	GenericFarm<ProofOfWork> f;
+	bool completed = false;
+	f.onSolutionFound([&](ProofOfWork::Solution sol)
+	{
+		return completed = m_state.completeMine<ProofOfWork>(sol);
+	});
+	f.setWork(m_state.info());
+	f.startCPU();
+	while (!completed)
+		this_thread::sleep_for(chrono::milliseconds(20));
+
+	bc().import(m_state.blockData(), m_stateDB);
+	*/
 	m_state.sync(bc());
 	m_startState = m_state;
 	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
@@ -370,16 +383,6 @@ void MixClient::setAddress(Address _us)
 	m_state.setAddress(_us);
 }
 
-void MixClient::setMiningThreads(unsigned _threads)
-{
-	m_miningThreads = _threads;
-}
-
-unsigned MixClient::miningThreads() const
-{
-	return m_miningThreads;
-}
-
 void MixClient::startMining()
 {
 	//no-op
@@ -400,9 +403,9 @@ uint64_t MixClient::hashrate() const
 	return 0;
 }
 
-eth::MineProgress MixClient::miningProgress() const
+eth::MiningProgress MixClient::miningProgress() const
 {
-	return eth::MineProgress();
+	return eth::MiningProgress();
 }
 
 }
