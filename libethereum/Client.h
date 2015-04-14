@@ -169,7 +169,7 @@ public:
 
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	void startMining() override { if (m_turboMining) m_farm.startGPU(); else m_farm.startCPU(); onPostStateChanged(); }
+	void startMining() override;
 	/// Stop mining.
 	/// NOT thread-safe
 	void stopMining() override { m_farm.stop(); }
@@ -202,6 +202,8 @@ public:
 	void clearPending();
 	/// Kills the blockchain. Just for debug use.
 	void killChain();
+	/// Retries all blocks with unknown parents.
+	void retryUnkonwn() { m_bq.retryAllUnknown(); }
 
 protected:
 	/// InterfaceStub methods

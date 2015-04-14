@@ -1752,6 +1752,11 @@ void Main::on_clearPending_triggered()
 	refreshAll();
 }
 
+void Main::on_retryUnknown_triggered()
+{
+	ethereum()->retryUnkonwn();
+}
+
 void Main::on_killBlockchain_triggered()
 {
 	writeSettings();
