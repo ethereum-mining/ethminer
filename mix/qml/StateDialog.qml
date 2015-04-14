@@ -47,12 +47,15 @@ Dialog {
 		stateAccounts = [];
 		var miner = 0;
 
-		for (var k = 0; k < item.accounts.length; k++)
+		if (item.miner)
 		{
-			accountsModel.append(item.accounts[k]);
-			stateAccounts.push(item.accounts[k]);
-			if (item.accounts[k].name === item.miner.name)
-				miner = k;
+			for (var k = 0; k < item.accounts.length; k++)
+			{
+				accountsModel.append(item.accounts[k]);
+				stateAccounts.push(item.accounts[k]);
+				if (item.accounts[k].name === item.miner.name)
+					miner = k;
+			}
 		}
 
 		visible = true;
