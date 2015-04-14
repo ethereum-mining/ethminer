@@ -67,19 +67,24 @@ h256 EthashAux::seedHash(unsigned _number)
 {
 	unsigned epoch = _number / ETHASH_EPOCH_LENGTH;
 	RecursiveGuard l(get()->x_this);
-	if (_number < get()->m_seedHashes.size())
-		return get()->m_seedHashes[_number];
-	h256 ret;
-	unsigned n = 0;
-	if (!get()->m_seedHashes.empty())
+	if (epoch >= get()->m_seedHashes.size())
 	{
-		ret = get()->m_seedHashes.back();
-		n = get()->m_seedHashes.size() - 1;
+		h256 ret;
+		unsigned n = 0;
+		if (!get()->m_seedHashes.empty())
+		{
+			ret = get()->m_seedHashes.back();
+			n = get()->m_seedHashes.size() - 1;
+		}
+		get()->m_seedHashes.resize(epoch + 1);
+		cdebug << "Searching for seedHash of epoch " << epoch;
+		for (; n <= epoch; ++n, ret = sha3(ret))
+		{
+			get()->m_seedHashes[n] = ret;
+			cdebug << "Epoch" << n << "is" << ret.abridged();
+		}
 	}
-	cdebug << "Searching for seedHash of epoch " << epoch;
-	for (; n < epoch; ++n, ret = sha3(ret))
-		cdebug << "Epoch" << n << "is" << ret.abridged();
-	return ret;
+	return get()->m_seedHashes[epoch];
 }
 
 ethash_params EthashAux::params(h256 const& _seedHash)
@@ -93,17 +98,13 @@ ethash_params EthashAux::params(h256 const& _seedHash)
 	catch (...)
 	{
 		cdebug << "Searching for seedHash " << _seedHash.abridged();
-		for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = sha3(h))
-		{
-			cdebug << "Epoch" << epoch << "is" << h.abridged();
-		}
+		for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = sha3(h), get()->m_epochs[h] = epoch) {}
 		if (epoch == 2048)
 		{
 			std::ostringstream error;
 			error << "apparent block number for " << _seedHash.abridged() << " is too high; max is " << (ETHASH_EPOCH_LENGTH * 2048);
 			throw std::invalid_argument(error.str());
 		}
-		get()->m_epochs[_seedHash] = epoch;
 	}
 	return params(epoch * ETHASH_EPOCH_LENGTH);
 }

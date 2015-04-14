@@ -436,15 +436,12 @@ void Client::syncBlockQueue()
 {
 	ImportRoute ir;
 
+	cwork << "BQ ==> CHAIN ==> STATE";
 	{
 		WriteGuard l(x_stateDB);
-		cwork << "BQ ==> CHAIN ==> STATE";
 		OverlayDB db = m_stateDB;
-		x_stateDB.unlock();
-
-		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, db, 100);
-
-		x_stateDB.lock();
+		ETH_WRITE_UNGUARDED(x_stateDB)
+			tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, db, 100);
 		if (ir.first.empty())
 			return;
 		m_stateDB = db;
@@ -458,7 +455,11 @@ void Client::syncTransactionQueue()
 	cwork << "postSTATE <== TQ";
 
 	h256Set changeds;
-	TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq, *m_gp);
+	TransactionReceipts newPendingReceipts;
+
+	ETH_WRITE_GUARDED(x_stateDB)
+		newPendingReceipts = m_postMine.sync(m_bc, m_tq, *m_gp);
+
 	if (newPendingReceipts.size())
 	{
 		for (size_t i = 0; i < newPendingReceipts.size(); i++)
@@ -512,8 +513,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	// RESTART MINING
 
 	// LOCKS REALLY NEEDED?
-	{
-		ReadGuard l(x_stateDB);
+	ETH_WRITE_GUARDED(x_stateDB)
 		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
 		{
 			if (isMining())
@@ -522,11 +522,9 @@ void Client::onChainChanged(ImportRoute const& _ir)
 			m_postMine = m_preMine;
 			changeds.insert(PendingChangedFilter);
 
-			x_stateDB.unlock_shared();
-			onPostStateChanged();
-			x_stateDB.lock_shared();
+			ETH_WRITE_UNGUARDED(x_stateDB)
+				onPostStateChanged();
 		}
-	}
 
 	noteChanged(changeds);
 }
@@ -534,17 +532,24 @@ void Client::onChainChanged(ImportRoute const& _ir)
 void Client::onPostStateChanged()
 {
 	cnote << "Post state changed: Restarting mining...";
+	if (isMining())
 	{
-		WriteGuard l(x_stateDB);
-		cdebug << "Pre:" << m_preMine.info();
-		m_postMine.commitToMine(m_bc);
-		m_miningInfo = m_postMine.info();
-		cdebug << "Pre:" << m_preMine.info();
-		cdebug << "Post:" << m_postMine.info();
-		cdebug << "Pre:" << m_preMine.info().headerHash(WithoutNonce) << "; Post:" << m_postMine.info().headerHash(WithoutNonce);
+		{
+			WriteGuard l(x_stateDB);
+			m_postMine.commitToMine(m_bc);
+			m_miningInfo = m_postMine.info();
+		}
+		m_farm.setWork(m_miningInfo);
 	}
+}
 
-	m_farm.setWork(m_miningInfo);
+void Client::startMining()
+{
+	if (m_turboMining)
+		m_farm.startGPU();
+	else
+		m_farm.startCPU();
+	onPostStateChanged();
 }
 
 void Client::noteChanged(h256Set const& _filters)
