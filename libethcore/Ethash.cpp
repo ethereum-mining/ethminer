@@ -23,6 +23,7 @@
 
 #include <boost/detail/endian.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <array>
 #include <thread>
@@ -37,6 +38,10 @@
 #include <libethash/ethash.h>
 #if ETH_ETHASHCL || !ETH_TRUE
 #include <libethash-cl/ethash_cl_miner.h>
+#endif
+#if ETH_CPUID || !ETH_TRUE
+#define HAVE_STDINT_H
+#include <libcpuid/libcpuid.h>
 #endif
 #include "BlockInfo.h"
 #include "EthashAux.h"
@@ -140,6 +145,58 @@ void Ethash::CPUMiner::workLoop()
 		if (!(hashCount % 1000))
 			accumulateHashes(1000);
 	}
+}
+
+static string jsonEncode(map<string, string> const& _m)
+{
+	string ret = "{";
+
+	for (auto const& i: _m)
+	{
+		string k = boost::replace_all_copy(boost::replace_all_copy(i.first, "\\", "\\\\"), "'", "\\'");
+		string v = boost::replace_all_copy(boost::replace_all_copy(i.second, "\\", "\\\\"), "'", "\\'");
+		if (ret.size() > 1)
+			ret += ", ";
+		ret += "\"" + k + "\":\"" + v + "\"";
+	}
+
+	return ret + "}";
+}
+
+std::string Ethash::CPUMiner::platformInfo()
+{
+	string baseline = toString(std::thread::hardware_concurrency()) + "-thread CPU";
+#if ETH_CPUID || !ETH_TRUE
+	if (!cpuid_present())
+		return baseline;
+	struct cpu_raw_data_t raw;
+	struct cpu_id_t data;
+	if (cpuid_get_raw_data(&raw) < 0)
+		return baseline;
+	if (cpu_identify(&raw, &data) < 0)
+		return baseline;
+	map<string, string> m;
+	m["vendor"] = data.vendor_str;
+	m["codename"] = data.cpu_codename;
+	m["brand"] = data.brand_str;
+	m["L1 cache"] = toString(data.l1_data_cache);
+	m["L2 cache"] = toString(data.l2_cache);
+	m["L3 cache"] = toString(data.l3_cache);
+	m["cores"] = toString(data.num_cores);
+	m["threads"] = toString(data.num_logical_cpus);
+	m["clocknominal"] = toString(cpu_clock_by_os());
+	m["clocktested"] = toString(cpu_clock_measure(200, 0));
+	/*
+	printf("  MMX         : %s\n", data.flags[CPU_FEATURE_MMX] ? "present" : "absent");
+	printf("  MMX-extended: %s\n", data.flags[CPU_FEATURE_MMXEXT] ? "present" : "absent");
+	printf("  SSE         : %s\n", data.flags[CPU_FEATURE_SSE] ? "present" : "absent");
+	printf("  SSE2        : %s\n", data.flags[CPU_FEATURE_SSE2] ? "present" : "absent");
+	printf("  3DNow!      : %s\n", data.flags[CPU_FEATURE_3DNOW] ? "present" : "absent");
+	*/
+	return jsonEncode(m);
+#else
+	return baseline;
+#endif
 }
 
 #if ETH_ETHASHCL || !ETH_TRUE
@@ -256,6 +313,11 @@ void Ethash::GPUMiner::pause()
 {
 	m_hook->abort();
 	stopWorking();
+}
+
+std::string Ethash::GPUMiner::platformInfo()
+{
+	return ethash_cl_miner::platform_info();
 }
 
 #endif
