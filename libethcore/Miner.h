@@ -42,13 +42,14 @@ struct MiningProgress
 //	MiningProgress& operator+=(MiningProgress const& _mp) { hashes += _mp.hashes; ms = std::max(ms, _mp.ms); return *this; }
 	uint64_t hashes = 0;		///< Total number of hashes computed.
 	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
+	uint64_t rate() const { return hashes * 1000 / ms; }
 };
 
 struct MineInfo: public MiningProgress {};
 
 inline std::ostream& operator<<(std::ostream& _out, MiningProgress _p)
 {
-	_out << (_p.hashes * 1000 / _p.ms) << "H/s = " <<  _p.hashes << " hashes / " << (double(_p.ms) / 1000) << "s";
+	_out << _p.rate() << " H/s = " <<  _p.hashes << " hashes / " << (double(_p.ms) / 1000) << " s";
 	return _out;
 }
 
@@ -112,7 +113,9 @@ public:
 		m_hashCount = 0;
 	}
 
-	uint64_t hashCount() { return m_hashCount; }
+	uint64_t hashCount() const { return m_hashCount; }
+
+	void resetHashCount() { m_hashCount = 0; }
 
 	unsigned index() const { return m_index; }
 
