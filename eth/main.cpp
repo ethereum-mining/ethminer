@@ -707,6 +707,8 @@ int main(int argc, char** argv)
 	if (sessionSecret)
 		sigKey = KeyPair(sessionSecret);
 
+	ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
+
 	// Two codepaths is necessary since named block require database, but numbered
 	// blocks are superuseful to have when database is already open in another process.
 	if (mode == OperationMode::DAGInit && !(initDAG == LatestBlock || initDAG == PendingBlock))
@@ -733,8 +735,6 @@ int main(int argc, char** argv)
 	
 	if (mode == OperationMode::DAGInit)
 		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
-
-	ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
 
 	auto toNumber = [&](string const& s) -> unsigned {
 		if (s == "latest")
