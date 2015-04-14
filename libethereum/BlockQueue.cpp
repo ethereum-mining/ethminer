@@ -183,3 +183,15 @@ void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 		m_unknown.erase(r.first, r.second);
 	}
 }
+
+void BlockQueue::retryAllUnknown()
+{
+	for (auto it = m_unknown.begin(); it != m_unknown.end(); ++it)
+	{
+		m_ready.push_back(it->second.second);
+		auto newReady = it->second.first;
+		m_unknownSet.erase(newReady);
+		m_readySet.insert(newReady);
+	}
+	m_unknown.clear();
+}
