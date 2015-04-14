@@ -48,7 +48,7 @@ namespace dev
 namespace eth
 {
 
-const Ethash::WorkPackage Ethash::NullWorkPackage;
+const Ethash::WorkPackage Ethash::NullWorkPackage = Ethash::WorkPackage();
 
 std::string Ethash::name()
 {
@@ -81,7 +81,7 @@ bool Ethash::preVerify(BlockInfo const& _header)
 
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
-	return ethash_quick_check_difficulty(
+	return !!ethash_quick_check_difficulty(
 		_header.headerHash(WithoutNonce).data(),
 		(uint64_t)(u64)_header.nonce,
 		_header.mixHash.data(),

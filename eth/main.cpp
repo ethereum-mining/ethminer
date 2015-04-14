@@ -364,7 +364,7 @@ int main(int argc, char** argv)
 			{
 				coinbase = h160(fromHex(argv[++i], WhenError::Throw));
 			}
-			catch (BadHexCharacter& _e)
+			catch (BadHexCharacter&)
 			{
 				cerr << "Bad hex in " << arg << " option: " << argv[i] << endl;
 				return -1;
