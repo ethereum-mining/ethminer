@@ -227,7 +227,6 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 	emit runStarted();
 	emit runStateChanged();
 
-	//m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), m_client->userAccounts(), m_client.get()));
 	m_client->resetState(_balances, _miner);
 	m_web3Server->setAccounts(m_client->userAccounts());
 	//run sequence
