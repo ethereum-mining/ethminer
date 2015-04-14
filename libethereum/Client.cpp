@@ -571,19 +571,13 @@ void Client::doWork()
 {
 	// TODO: Use condition variable rather than this rubbish.
 
-	Guard l(x_fakeSignalSystemState);
-
-	if (m_syncTransactionQueue)
-	{
-		m_syncTransactionQueue = false;
+	bool t = true;
+	if (m_syncTransactionQueue.compare_exchange_strong(t, false))
 		syncTransactionQueue();
-	}
 
-	if (m_syncBlockQueue)
-	{
-		m_syncBlockQueue = false;
+	t = true;
+	if (m_syncBlockQueue.compare_exchange_strong(t, false))
 		syncBlockQueue();
-	}
 
 	checkWatchGarbage();
 

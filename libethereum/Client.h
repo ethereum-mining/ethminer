@@ -249,10 +249,10 @@ private:
 	void syncTransactionQueue();
 
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
-	void onTransactionQueueReady() { Guard l(x_fakeSignalSystemState); m_syncTransactionQueue = true; }
+	void onTransactionQueueReady() { m_syncTransactionQueue = true; }
 
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
-	void onBlockQueueReady() { Guard l(x_fakeSignalSystemState); m_syncBlockQueue = true; }
+	void onBlockQueueReady() { m_syncBlockQueue = true; }
 
 	/// Called when the post state has changed (i.e. when more transactions are in it or we're mining on a new block).
 	/// This updates m_miningInfo.
@@ -286,9 +286,8 @@ private:
 											///< When did we last both doing GC on the watches?
 
 	// TODO!!!!!! REPLACE WITH A PROPER X-THREAD ASIO SIGNAL SYSTEM (could just be condition variables)
-	mutable Mutex x_fakeSignalSystemState;
-	bool m_syncTransactionQueue = false;
-	bool m_syncBlockQueue = false;
+	std::atomic<bool> m_syncTransactionQueue = {false};
+	std::atomic<bool> m_syncBlockQueue = {false};
 };
 
 }
