@@ -114,7 +114,7 @@ void help()
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
 		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (Default: 15)." << endl
-		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
+		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -C,--cpu  When mining, use the CPU." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
@@ -143,21 +143,21 @@ void help()
 		<< "    -J,--jit  Enable EVM JIT (default: off)." << endl
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
-		<< "       --listen-ip <port>  Listen on the given port for incoming connections (default: 30303)." << endl
-		<< "    -l,--listen <ip>  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
-		<< "    -u,--public-ip <ip>  Force public ip to given (default: auto)." << endl
+		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
+		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
+		<< "    --public-ip <ip>  Force public ip to given (default: auto)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
 		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --gpu." << endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
 		<< "    --opencl-device <n>  When mining use OpenCL device n (default: 0)." << endl
-		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
+		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
 		<< "    --phone-home <on/off>  When benchmarking, publish results (Default: on)" << endl
 		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
-		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
+		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
-		<< "    -S,--temporary-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
-		<< "    -u,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
+		<< "    -S,--session-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
+		<< "    --upnp <on/off>  Use upnp for NAT (default: on)." << endl
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
@@ -319,6 +319,9 @@ void doFarm(MinerType _m)
 	// TODO: Set up JSONRPC client: to implement:
 //	{ "name": "eth_getWork", "params": [], "order": [], "returns": [<powHash>, <seedHash>, <boundary>]},
 //	{ "name": "eth_submitWork", "params": [<nonce>, <mixHash>], "order": [], "returns": true},
+
+
+	exit(0);
 }
 
 int main(int argc, char** argv)
@@ -402,13 +405,25 @@ int main(int argc, char** argv)
 		if (arg == "--listen-ip" && i + 1 < argc)
 			listenIP = argv[++i];
 		else if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
+		{
+			if (arg == "-l")
+				cerr << "-l is DEPRECATED. It will be removed for the Frontier. Use --listen-port instead." << endl;
 			listenPort = (short)atoi(argv[++i]);
+		}
 		else if ((arg == "-u" || arg == "--public-ip" || arg == "--public") && i + 1 < argc)
+		{
+			if (arg == "-u")
+				cerr << "-u is DEPRECATED. It will be removed for the Frontier. Use --public-ip instead." << endl;
 			publicIP = argv[++i];
+		}
 		else if ((arg == "-r" || arg == "--remote") && i + 1 < argc)
 			remoteHost = argv[++i];
 		else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
+		{
+			if (arg == "-p")
+				cerr << "-p is DEPRECATED. It will be removed for the Frontier. Use --port instead (or place directly as host:port)." << endl;
 			remotePort = (short)atoi(argv[++i]);
+		}
 		else if ((arg == "-I" || arg == "--import") && i + 1 < argc)
 		{
 			mode = OperationMode::Import;
@@ -467,7 +482,7 @@ int main(int argc, char** argv)
 		else if ((arg == "-n" || arg == "-u" || arg == "--upnp") && i + 1 < argc)
 		{
 			if (arg == "-n")
-				cerr << "-n is DEPRECATED. It will be removed for the Frontier. Use -u instead." << endl;
+				cerr << "-n is DEPRECATED. It will be removed for the Frontier. Use --upnp instead." << endl;
 			string m = argv[++i];
 			if (isTrue(m))
 				upnp = true;
@@ -511,7 +526,11 @@ int main(int argc, char** argv)
 		else if (arg == "-B" || arg == "--rebuild")
 			killChain = WithExisting::Verify;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
+		{
+			if (arg == "-c")
+				cerr << "-c is DEPRECATED. It will be removed for the Frontier. Use --client-name instead." << endl;
 			clientName = argv[++i];
+		}
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
 			try {
 				coinbase = h160(fromHex(argv[++i], WhenError::Throw));
