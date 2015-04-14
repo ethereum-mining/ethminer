@@ -22,7 +22,7 @@ public:
 public:
 	ethash_cl_miner();
 
-	bool init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size = 64);
+	bool init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size = 64, unsigned _deviceId = 0);
 	static std::string platform_info();
 
 	void finish();
