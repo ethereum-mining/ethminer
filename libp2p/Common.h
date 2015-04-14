@@ -156,6 +156,7 @@ using PeerSessionInfos = std::vector<PeerSessionInfo>;
  */
 struct NodeIPEndpoint
 {
+	/// Setting true causes isValid to return true for all addresses. Defaults to false. Used by test fixtures.
 	static bool test_allowLocal;
 	
 	NodeIPEndpoint(): address() {}
