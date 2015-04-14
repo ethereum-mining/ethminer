@@ -92,11 +92,12 @@ public:
 		WriteGuard l(x_minerWork);
 		m_miners.clear();
 		m_work.reset();
+		m_isMining = false;
 	}
 
 	bool isMining() const
 	{
-		return !!m_work;
+		return m_isMining;
 	}
 
 	/**
@@ -165,6 +166,7 @@ private:
 			m_miners.push_back(std::shared_ptr<Miner>(new MinerType(std::make_pair(this, i))));
 			m_miners.back()->setWork(m_work);
 		}
+		m_isMining = true;
 		resetTimer();
 		return true;
 	}
@@ -178,6 +180,8 @@ private:
 	std::vector<std::shared_ptr<Miner>> m_miners;
 	WorkPackage m_work;
 	BlockInfo m_header;
+
+	std::atomic<bool> m_isMining = {false};
 
 	mutable SharedMutex x_progress;
 	mutable MiningProgress m_progress;
