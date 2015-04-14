@@ -76,11 +76,8 @@ TestCase
 	function test_dbg_transactionWithParameter() { TestDebugger.test_transactionWithParameter(); }
 	function test_dbg_constructorParameters() { TestDebugger.test_constructorParameters(); }
 	function test_dbg_arrayParametersAndStorage() { TestDebugger.test_arrayParametersAndStorage(); }
-<<<<<<< HEAD
 	function test_miner_getDefaultiner() { TestMiner.test_getDefaultMiner(); }
 	function test_miner_selectMiner() { TestMiner.test_selectMiner(); }
-=======
 	function test_project_contractRename() { TestProject.test_contractRename(); }
->>>>>>> up/develop
 }
 
