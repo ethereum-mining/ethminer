@@ -73,11 +73,12 @@ public:
 	 * @param _finder The miner that found it.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
-	virtual bool submitProof(Solution const& _p, WorkPackage& io_wp, Miner* _finder) = 0;
+	virtual bool submitProof(Solution const& _p, Miner* _finder) = 0;
 };
 
 /**
  * @brief A miner - a member and adoptee of the Farm.
+ * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from this class.
  */
 template <class PoW> class GenericMiner
 {
@@ -96,15 +97,17 @@ public:
 
 	void setWork(WorkPackage const& _work = WorkPackage())
 	{
-		Guard l(x_work);
 		auto old = m_work;
-		m_work = _work;
-		if (!!m_work)
+		{
+			Guard l(x_work);
+			m_work = _work;
+		}
+		if (!!_work)
 		{
 			pause();
 			kickOff();
 		}
-		else if (!m_work && !!old)
+		else if (!_work && !!old)
 			pause();
 		m_hashCount = 0;
 	}
@@ -137,16 +140,18 @@ protected:
 	 */
 	bool submitProof(Solution const& _s)
 	{
-		if (m_farm)
+		if (!m_farm)
+			return true;
+		if (m_farm->submitProof(_s, this))
 		{
-			if (!m_farm->submitProof(_s, m_work, this))
-				return false;
+			Guard l(x_work);
+			m_work.reset();
 			return true;
 		}
-		return true;
+		return false;
 	}
 
-	WorkPackage const& work() const { return m_work; }
+	WorkPackage const& work() const { Guard l(x_work); return m_work; }
 
 	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
 
@@ -154,10 +159,10 @@ private:
 	FarmFace* m_farm = nullptr;
 	unsigned m_index;
 
-	Mutex x_work;
-	WorkPackage m_work;
-
 	uint64_t m_hashCount = 0;
+
+	WorkPackage m_work;
+	mutable Mutex x_work;
 };
 
 }
