@@ -4,6 +4,7 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import Qt.labs.settings 1.0
+import QtGraphicalEffects 1.0
 import "js/Debugger.js" as Debugger
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
@@ -231,9 +232,9 @@ Rectangle {
 								id: playAction
 								enabledStateImg: "qrc:/qml/img/play_button.png"
 								disableStateImg: "qrc:/qml/img/play_button.png"
+								buttonLeft: true
 								onClicked: projectModel.stateListModel.runState(transactionLog.selectedStateIndex)
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+Shift+F8"
 								buttonTooltip: qsTr("Start Debugging")
 								visible: true
@@ -246,8 +247,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/stop_button2x.png"
 								disableStateImg: "qrc:/qml/img/stop_button2x.png"
 								onClicked: Debugger.init(null);
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+Shift+F9"
 								buttonTooltip: qsTr("Stop Debugging")
 								visible: true
@@ -259,8 +259,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutback.png"
 								disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
 								onClicked: Debugger.runBack()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+Shift+F5"
 								buttonTooltip: qsTr("Run Back")
 								visible: false
@@ -272,8 +271,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutback.png"
 								disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
 								onClicked: Debugger.stepOutBack()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+Shift+F11"
 								buttonTooltip: qsTr("Step Out Back")
 							}
@@ -284,8 +282,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpintoback.png"
 								disableStateImg: "qrc:/qml/img/jumpintobackdisabled.png"
 								onClicked: Debugger.stepIntoBack()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+F11"
 								buttonTooltip: qsTr("Step Into Back")
 							}
@@ -296,8 +293,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoverback.png"
 								disableStateImg: "qrc:/qml/img/jumpoverbackdisabled.png"
 								onClicked: Debugger.stepOverBack()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+F10"
 								buttonTooltip: qsTr("Step Over Back")
 							}
@@ -308,8 +304,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoverforward.png"
 								disableStateImg: "qrc:/qml/img/jumpoverforwarddisabled.png"
 								onClicked: Debugger.stepOverForward()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "F10"
 								buttonTooltip: qsTr("Step Over Forward")
 							}
@@ -320,8 +315,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpintoforward.png"
 								disableStateImg: "qrc:/qml/img/jumpintoforwarddisabled.png"
 								onClicked: Debugger.stepIntoForward()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "F11"
 								buttonTooltip: qsTr("Step Into Forward")
 							}
@@ -332,10 +326,10 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
 								disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
 								onClicked: Debugger.stepOutForward()
-								width: 30
-								height: 30
+								width: 45
 								buttonShortcut: "Shift+F11"
 								buttonTooltip: qsTr("Step Out Forward")
+								buttonRight: true
 							}
 
 							StepActionImage
@@ -344,11 +338,11 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
 								disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
 								onClicked: Debugger.runForward()
-								width: 30
-								height: 30
+								width: 45
 								buttonShortcut: "Ctrl+F5"
 								buttonTooltip: qsTr("Run Forward")
 								visible: false
+								buttonRight: true
 							}
 
 							Rectangle {
