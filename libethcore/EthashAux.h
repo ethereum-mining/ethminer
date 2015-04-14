@@ -41,7 +41,7 @@ public:
 	static ethash_params params(h256 const& _seedHash);
 	static ethash_params params(unsigned _n);
 	static LightType light(BlockInfo const& _header);
-	static LightType light(h256 const& _header);
+	static LightType light(h256 const& _seedHash);
 	static bytesConstRef full(BlockInfo const& _header, bytesRef _dest = bytesRef());
 	static bytesConstRef full(h256 const& _header, bytesRef _dest = bytesRef());
 

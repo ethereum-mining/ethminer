@@ -32,11 +32,12 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
+#include <libethcore/ProofOfWork.h>
+#include <libethcore/EthashAux.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
-#include <libethcore/ProofOfWork.h>
 #if ETH_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -111,6 +112,7 @@ void help()
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
 		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (Default: 15)." << endl
 		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
+		<< "    -C,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
 		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
@@ -400,6 +402,43 @@ int main(int argc, char** argv)
 					cerr << "Bad " << arg << " option: " << m << endl;
 					return -1;
 				}
+		}
+		else if ((arg == "-C" || arg == "--check-pow") && i + 4 < argc)
+		{
+			string m;
+			try
+			{
+				BlockInfo bi;
+				m = boost::to_lower_copy(string(argv[++i]));
+				h256 powHash(m);
+				m = boost::to_lower_copy(string(argv[++i]));
+				h256 seedHash;
+				if (m.size() == 64 || m.size() == 66)
+					seedHash = h256(m);
+				else
+					seedHash = EthashAux::seedHash(stol(m));
+				m = boost::to_lower_copy(string(argv[++i]));
+				bi.difficulty = u256(m);
+				auto boundary = bi.boundary();
+				m = boost::to_lower_copy(string(argv[++i]));
+				bi.nonce = h64(m);
+				auto r = EthashAux::eval(seedHash, powHash, bi.nonce);
+				bool valid = r.value < boundary;
+				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
+				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
+				cout << "  where " << boundary << " = 2^256 / " << bi.difficulty << endl;
+				cout << "  and " << r.value << " = ethash(" << powHash << ", " << bi.nonce << ")" << endl;
+				cout << "  with seed as " << seedHash << endl;
+				if (valid)
+					cout << "(mixHash = " << r.mixHash << ")" << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(bytesConstRef((byte const*)EthashAux::light(seedHash), EthashAux::params(seedHash).cache_size)) << endl;
+				exit(0);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << m << endl;
+				return -1;
+			}
 		}
 		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{

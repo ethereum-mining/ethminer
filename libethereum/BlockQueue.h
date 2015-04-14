@@ -71,6 +71,9 @@ public:
 	/// Notify the queue that the chain has changed and a new block has attained 'ready' status (i.e. is in the chain).
 	void noteReady(h256 _b) { WriteGuard l(m_lock); noteReadyWithoutWriteGuard(_b); }
 
+	/// Force a retry of all the blocks with unknown parents.
+	void retryAllUnknown();
+
 	/// Get information on the items queued.
 	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_ready.size(), m_unknown.size()); }
 
