@@ -169,7 +169,7 @@ public:
 
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	void startMining() override { if (m_turboMining) m_farm.startGPU(); else m_farm.startCPU(); }
+	void startMining() override { if (m_turboMining) m_farm.startGPU(); else m_farm.startCPU(); onPostStateChanged(); }
 	/// Stop mining.
 	/// NOT thread-safe
 	void stopMining() override { m_farm.stop(); }
@@ -229,11 +229,14 @@ protected:
 	void noteChanged(h256Set const& _filters);
 
 private:
+	/// Called when Worker is starting.
+	void startedWorking() override;
+
 	/// Do some work. Handles blockchain maintenance and mining.
-	virtual void doWork();
+	void doWork() override;
 
 	/// Called when Worker is exiting.
-	virtual void doneWorking();
+	void doneWorking() override;
 
 	/// Magically called when the chain has changed. An import route is provided.
 	/// Called by either submitWork() or in our main thread through syncBlockQueue().

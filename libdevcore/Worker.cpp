@@ -29,7 +29,7 @@ using namespace dev;
 
 void Worker::startWorking(IfRunning _ir)
 {
-	cnote << "startWorking for thread" << m_name;
+//	cnote << "startWorking for thread" << m_name;
 	Guard l(x_work);
 
 	if (m_work && m_work->joinable())
@@ -56,7 +56,7 @@ void Worker::startWorking(IfRunning _ir)
 
 void Worker::stopWorking()
 {
-	cnote << "stopWorking for thread" << m_name;
+//	cnote << "stopWorking for thread" << m_name;
 	Guard l(x_work);
 	if (!m_work || !m_work->joinable())
 		return;

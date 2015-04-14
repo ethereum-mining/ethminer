@@ -37,7 +37,7 @@
 #include <libnatspec/NatspecExpressionEvaluator.h>
 #include <libethereum/Client.h>
 #include <libethereum/Utility.h>
-#ifndef _MSC_VER
+#if ETH_SERPENT
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #endif
@@ -220,7 +220,7 @@ static tuple<vector<string>, bytes, string> userInputToCode(string const& _user,
 			errors.push_back("Solidity: Uncaught exception");
 		}
 	}
-#ifndef _MSC_VER
+#if ETH_SERPENT
 	else if (sourceIsSerpent(_user))
 	{
 		try

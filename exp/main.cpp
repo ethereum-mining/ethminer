@@ -40,6 +40,7 @@
 #include <libethereum/Farm.h>
 #include <libethereum/AccountDiff.h>
 #include <libethereum/DownloadMan.h>
+#include <libethereum/Client.h>
 #include <liblll/All.h>
 #include <libwhisper/WhisperPeer.h>
 #include <libwhisper/WhisperHost.h>
@@ -153,7 +154,7 @@ int main()
 
 	return 0;
 }
-#else
+#elif 0
 
 void mine(State& s, BlockChain const& _bc)
 {
@@ -169,7 +170,7 @@ void mine(State& s, BlockChain const& _bc)
 	while (!completed)
 		this_thread::sleep_for(chrono::milliseconds(20));
 }
-
+#elif 0
 int main()
 {
 	cnote << "Testing State...";
@@ -221,6 +222,29 @@ int main()
 	s.sync(bc);
 
 	cout << s;
+
+	return 0;
+}
+#else
+int main()
+{
+	string tempDir = boost::filesystem::temp_directory_path().string() + "/" + toString(chrono::system_clock::now().time_since_epoch().count());
+
+	KeyPair myMiner = sha3("Gav's Miner");
+
+	p2p::Host net("Test");
+	cdebug << "Path:" << tempDir;
+	Client c(&net, tempDir);
+
+	c.setAddress(myMiner.address());
+
+	this_thread::sleep_for(chrono::milliseconds(1000));
+
+	c.startMining();
+
+	this_thread::sleep_for(chrono::milliseconds(6000));
+
+	c.stopMining();
 
 	return 0;
 }
