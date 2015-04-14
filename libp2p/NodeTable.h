@@ -41,10 +41,7 @@ namespace p2p
 struct NodeEntry: public Node
 {
 	NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw);
-	NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp);
-
 	unsigned const distance;	///< Node's distance (xor of _src as integer).
-
 	bool pending = true;		///< Node will be ignored until Pong is received
 };
 
@@ -136,7 +133,7 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 
 public:
 	/// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
-	NodeTable(ba::io_service& _io, KeyPair _alias, bi::address const& _udpAddress, uint16_t _udpPort = 30303);
+	NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint);
 	~NodeTable();
 
 	/// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
@@ -149,7 +146,7 @@ public:
 	void processEvents();
 
 	/// Add node. Node will be pinged and empty shared_ptr is returned if NodeId is uknown.
-	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp);
+	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, NodeIPEndpoint const& _ep);
 
 	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen.
 	std::shared_ptr<NodeEntry> addNode(Node const& _node);
@@ -212,7 +209,7 @@ private:
 	void ping(NodeEntry* _n) const;
 
 	/// Returns center node entry which describes this node and used with dist() to calculate xor metric for node table nodes.
-	NodeEntry center() const { return NodeEntry(m_node, m_node.publicKey(), m_node.endpoint.udp); }
+	NodeEntry center() const { return NodeEntry(m_node, m_node.publicKey(), m_node.endpoint); }
 
 	/// Used by asynchronous operations to return NodeEntry which is active and managed by node table.
 	std::shared_ptr<NodeEntry> nodeEntry(NodeId _id);
@@ -281,10 +278,10 @@ private:
 
 inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
 {
-	_out << _nodeTable.center().address() << "\t" << "0\t" << _nodeTable.center().endpoint.udp.address() << ":" << _nodeTable.center().endpoint.udp.port() << std::endl;
+	_out << _nodeTable.center().address() << "\t" << "0\t" << _nodeTable.center().endpoint.address << ":" << _nodeTable.center().endpoint.udpPort << std::endl;
 	auto s = _nodeTable.snapshot();
 	for (auto n: s)
-		_out << n.address() << "\t" << n.distance << "\t" << n.endpoint.udp.address() << ":" << n.endpoint.udp.port() << std::endl;
+		_out << n.address() << "\t" << n.distance << "\t" << n.endpoint.address << ":" << n.endpoint.udpPort << std::endl;
 	return _out;
 }
 
@@ -292,7 +289,7 @@ struct InvalidRLP: public Exception {};
 
 /**
  * Ping packet: Sent to check if node is alive.
- * PingNode is cached and regenerated after expiration - t, where t is timeout.
+ * PingNode is cached and regenerated after ts + t, where t is timeout.
  *
  * Ping is used to implement evict. When a new node is seen for
  * a given bucket which is full, the least-responsive node is pinged.
@@ -306,7 +303,6 @@ struct InvalidRLP: public Exception {};
  * signature: Signature of message.
  * ipAddress: Our IP address.
  * port: Our port.
- * expiration: Triggers regeneration of packet. May also provide control over synchronization.
  *
  * @todo uint128_t for ip address (<->integer ipv4/6, asio-address, asio-endpoint)
  *
@@ -314,14 +310,15 @@ struct InvalidRLP: public Exception {};
 struct PingNode: RLPXDatagram<PingNode>
 {
 	PingNode(bi::udp::endpoint _ep): RLPXDatagram<PingNode>(_ep) {}
-	PingNode(bi::udp::endpoint _ep, std::string _src, uint16_t _srcPort, std::chrono::seconds _expiration = std::chrono::seconds(60)): RLPXDatagram<PingNode>(_ep), ipAddress(_src), port(_srcPort), expiration(futureFromEpoch(_expiration)) {}
+	PingNode(bi::udp::endpoint _ep, std::string _src, uint16_t _srcPort, std::chrono::seconds _ts = std::chrono::seconds(60)): RLPXDatagram<PingNode>(_ep), ipAddress(_src), tcpPort(_srcPort), ts(futureFromEpoch(_ts)) {}
 
 	static const uint8_t type = 1;
 
 	unsigned version = 0;
 	std::string ipAddress;
-	unsigned port;
-	unsigned expiration;
+//	unsigned udpPort;
+	unsigned tcpPort;
+	unsigned ts;
 
 	void streamRLP(RLPStream& _s) const override;
 	void interpretRLP(bytesConstRef _bytes) override;
@@ -336,20 +333,20 @@ struct PingNode: RLPXDatagram<PingNode>
  */
 struct Pong: RLPXDatagram<Pong>
 {
-	Pong(bi::udp::endpoint _ep): RLPXDatagram<Pong>(_ep), expiration(futureFromEpoch(std::chrono::seconds(60))) {}
+	Pong(bi::udp::endpoint _ep): RLPXDatagram<Pong>(_ep), ts(futureFromEpoch(std::chrono::seconds(60))) {}
 
 	static const uint8_t type = 2;
 
 	h256 echo;				///< MCD of PingNode
-	unsigned expiration;
+	unsigned ts;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << echo << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); echo = (h256)r[0]; expiration = r[1].toInt<unsigned>(); }
+	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << echo << ts; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); echo = (h256)r[0]; ts = r[1].toInt<unsigned>(); }
 };
 
 /**
  * FindNode Packet: Request k-nodes, closest to the target.
- * FindNode is cached and regenerated after expiration - t, where t is timeout.
+ * FindNode is cached and regenerated after ts + t, where t is timeout.
  * FindNode implicitly results in finding neighbours of a given node.
  *
  * RLP Encoded Items: 2
@@ -357,21 +354,20 @@ struct Pong: RLPXDatagram<Pong>
  * Maximum Encoded Size: 30 bytes
  *
  * target: NodeId of node. The responding node will send back nodes closest to the target.
- * expiration: Triggers regeneration of packet. May also provide control over synchronization.
  *
  */
 struct FindNode: RLPXDatagram<FindNode>
 {
 	FindNode(bi::udp::endpoint _ep): RLPXDatagram<FindNode>(_ep) {}
-	FindNode(bi::udp::endpoint _ep, NodeId _target, std::chrono::seconds _expiration = std::chrono::seconds(30)): RLPXDatagram<FindNode>(_ep), target(_target), expiration(futureFromEpoch(_expiration)) {}
+	FindNode(bi::udp::endpoint _ep, NodeId _target, std::chrono::seconds _ts = std::chrono::seconds(60)): RLPXDatagram<FindNode>(_ep), target(_target), ts(futureFromEpoch(_ts)) {}
 
 	static const uint8_t type = 3;
 
 	h512 target;
-	unsigned expiration;
+	unsigned ts;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = r[0].toHash<h512>(); expiration = r[1].toInt<unsigned>(); }
+	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << ts; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = r[0].toHash<h512>(); ts = r[1].toInt<unsigned>(); }
 };
 
 /**
@@ -387,21 +383,22 @@ struct Neighbours: RLPXDatagram<Neighbours>
 		Node() = default;
 		Node(RLP const& _r) { interpretRLP(_r); }
 		std::string ipAddress;
-		unsigned port;
+		unsigned udpPort;
+//		unsigned tcpPort;
 		NodeId node;
-		void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << port << node; }
-		void interpretRLP(RLP const& _r) { ipAddress = _r[0].toString(); port = _r[1].toInt<unsigned>(); node = h512(_r[2].toBytes()); }
+		void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << udpPort << node; }
+		void interpretRLP(RLP const& _r) { ipAddress = _r[0].toString(); udpPort = _r[1].toInt<unsigned>(); node = h512(_r[2].toBytes()); }
 	};
 
-	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep), expiration(futureFromEpoch(std::chrono::seconds(30))) {}
-	Neighbours(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbours>(_to), expiration(futureFromEpoch(std::chrono::seconds(30)))
+	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep), ts(futureFromEpoch(std::chrono::seconds(30))) {}
+	Neighbours(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbours>(_to), ts(futureFromEpoch(std::chrono::seconds(30)))
 	{
 		auto limit = _limit ? std::min(_nearest.size(), (size_t)(_offset + _limit)) : _nearest.size();
 		for (auto i = _offset; i < limit; i++)
 		{
 			Node node;
-			node.ipAddress = _nearest[i]->endpoint.udp.address().to_string();
-			node.port = _nearest[i]->endpoint.udp.port();
+			node.ipAddress = _nearest[i]->endpoint.address.to_string();
+			node.udpPort = _nearest[i]->endpoint.udpPort;
 			node.node = _nearest[i]->publicKey();
 			nodes.push_back(node);
 		}
@@ -409,10 +406,10 @@ struct Neighbours: RLPXDatagram<Neighbours>
 
 	static const uint8_t type = 4;
 	std::vector<Node> nodes;
-	unsigned expiration = 1;
+	unsigned ts = 1;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << expiration; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n)); expiration = r[1].toInt<unsigned>(); }
+	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(nodes.size()); for (auto& n: nodes) n.streamRLP(_s); _s << ts; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n)); ts = r[1].toInt<unsigned>(); }
 };
 
 struct NodeTableWarn: public LogChannel { static const char* name() { return "!P!"; } static const int verbosity = 0; };
