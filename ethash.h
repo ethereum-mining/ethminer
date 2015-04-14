@@ -73,7 +73,7 @@ static inline void ethash_h256_reset(ethash_h256_t *hash)
 // have to provide all 32 values. If you don't provide all the rest
 // will simply be unitialized (not guranteed to be 0)
 #define ethash_h256_static_init(...)			\
-	{.b = {__VA_ARGS__} }
+	{ {__VA_ARGS__} }
 
 struct ethash_light;
 typedef struct ethash_light* ethash_light_t;
