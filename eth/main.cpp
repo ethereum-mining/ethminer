@@ -45,11 +45,10 @@
 #if ETH_JSONRPC || !ETH_TRUE
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
-#endif
-#if ETH_CURL || !ETH_TRUE
-#include <curl/curl.h>
+#include <jsonrpccpp/client/connectors/httpclient.h>
 #endif
 #include "BuildInfo.h"
+#include "PhoneHome.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -304,12 +303,23 @@ void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, u
 	cout << "inner mean: " << (innerMean / (_trials - 2)) << " H/s" << endl;
 
 	(void)_phoneHome;
+#if ETH_JSONRPC || !ETH_TRUE
 	if (_phoneHome)
 	{
 		cout << "Phoning home to find world ranking..." << endl;
-
-		// TODO: send f.miningInfo() along with f.platformInfo() to Marian.
+		jsonrpc::HttpClient client("http://192.168.33.39:3000/benchmark");
+		PhoneHome rpc(client);
+		try
+		{
+			unsigned ranking = rpc.report_benchmark(platformInfo, innerMean);
+			cout << "Ranked: " << ranking << " of all benchmarks." << endl;
+		}
+		catch (...)
+		{
+			cout << "Error phoning home. ET is sad." << endl;
+		}
 	}
+#endif
 	exit(0);
 }
 
