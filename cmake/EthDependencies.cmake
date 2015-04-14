@@ -102,6 +102,12 @@ if (CPUID_FOUND)
 	message(" - cpuid lib   : ${CPUID_LIBRARIES}")
 endif()
 
+find_package (OpenCL)
+if (OpenCL_FOUND)
+	message(" - opencl header: ${OpenCL_INCLUDE_DIRES}")
+	message(" - opencl lib   : ${OpenCL_LIBRARIES}")
+endif()
+
 # find location of jsonrpcstub
 find_program(ETH_JSON_RPC_STUB jsonrpcstub)
 message(" - jsonrpcstub location    : ${ETH_JSON_RPC_STUB}")
