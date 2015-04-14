@@ -371,12 +371,13 @@ ethash_full_t ethash_full_new(char const *dirname,
 	ret->file_size = (size_t)params->full_size;
 	switch (ethash_io_prepare(dirname, *seed_hash, &f, (size_t)params->full_size)) {
 	case ETHASH_IO_FAIL:
+	case ETHASH_IO_MEMO_SIZE_MISMATCH:
 		goto fail_free_full;
 	case ETHASH_IO_MEMO_MATCH:
 		match = true;
 	case ETHASH_IO_MEMO_MISMATCH:
 		ret->file = f;
-		if ((fd = fileno(ret->file)) == -1) {
+		if ((fd = ethash_fileno(ret->file)) == -1) {
 			goto fail_free_full;
 		}
 		ret->data = mmap(

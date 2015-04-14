@@ -37,9 +37,10 @@ extern "C" {
 #define DAG_MUTABLE_NAME_MAX_SIZE (10 + 1 + 16 + 1)
 /// Possible return values of @see ethash_io_prepare
 enum ethash_io_rc {
-	ETHASH_IO_FAIL = 0,      ///< There has been an IO failure
-	ETHASH_IO_MEMO_MISMATCH, ///< The DAG file did not exist or there was revision/hash mismatch
-	ETHASH_IO_MEMO_MATCH,    ///< DAG file existed and revision/hash matched. No need to do anything
+	ETHASH_IO_FAIL = 0,           ///< There has been an IO failure
+	ETHASH_IO_MEMO_SIZE_MISMATCH, ///< DAG with revision/hash match, but file size was wrong.
+	ETHASH_IO_MEMO_MISMATCH,      ///< The DAG file did not exist or there was revision/hash mismatch
+	ETHASH_IO_MEMO_MATCH,         ///< DAG file existed and revision/hash matched. No need to do anything
 };
 
 /**
@@ -78,6 +79,7 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname,
  * @return                 The FILE* or NULL in failure
  */
 FILE *ethash_fopen(const char *file_name, const char *mode);
+
 /**
  * An strncat wrapper for no-warnings crossplatform strncat.
  *
@@ -95,6 +97,32 @@ FILE *ethash_fopen(const char *file_name, const char *mode);
  *                         error returns NULL
  */
 char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count);
+
+/**
+ * A cross-platform mkdir wrapper to create a directory or assert it's there
+ * 
+ * @param dirname        The full path of the directory to create
+ * @return               true if the directory was created or if it already
+ *                       existed
+ */
+bool ethash_mkdir(char const *dirname);
+
+/**
+ * Get a file's size
+ *
+ * @param[in] f        The open file stream whose size to get
+ * @param[out] size    Pass a size_t by reference to contain the file size
+ * @return             true in success and false if there was a failure
+ */
+bool ethash_file_size(FILE *f, size_t *ret_size);
+
+/**
+ * Get a file descriptor number from a FILE stream
+ * 
+ * @param f            The file stream whose fd to get
+ * @return             Platform specific fd handler
+ */
+int ethash_fileno(FILE *f);
 
 static inline bool ethash_io_mutable_name(uint32_t revision,
 	ethash_h256_t const* seed_hash,

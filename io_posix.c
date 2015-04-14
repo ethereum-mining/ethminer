@@ -37,52 +37,24 @@ char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count
 	return strlen(dest) + count + 1 <= dest_size ? strncat(dest, src, count) : NULL;
 }
 
-enum ethash_io_rc ethash_io_prepare(char const *dirname,
-	ethash_h256_t const seedhash,
-	FILE **output_file,
-	size_t file_size)
+bool ethash_mkdir(char const *dirname)
 {
-	char mutable_name[DAG_MUTABLE_NAME_MAX_SIZE];
-	enum ethash_io_rc ret = ETHASH_IO_FAIL;
-
-	// assert directory exists, full owner permissions and read/search for others
 	int rc = mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-	if (rc == -1 && errno != EEXIST) {
-		goto end;
-	}
+	return rc != -1 || errno == EEXIST;
+}
 
-	ethash_io_mutable_name(REVISION, &seedhash, mutable_name);
-	char *tmpfile = ethash_io_create_filename(dirname, mutable_name, strlen(mutable_name));
-	if (!tmpfile) {
-		goto end;
-	}
+int ethash_fileno(FILE *f)
+{
+	return fileno(f);
+}
 
-	// try to open the file
-	FILE *f = ethash_fopen(tmpfile, "rb+");
-	if (f) {
-		// TODO: check for file size
-	} else {
-		// file does not exist, will need to be created
-		f = ethash_fopen(tmpfile, "wb+");
-		if (!f) {
-			goto free_memo;
-		}
-		// make sure it's of the proper size
-		if (fseek(f, file_size - 1, SEEK_SET) != 0) {
-			fclose(f);
-			goto free_memo;
-		}
-		fputc('\n', f);
-		fflush(f);
-		ret = ETHASH_IO_MEMO_MISMATCH;
-		goto set_file;
+bool ethash_file_size(FILE *f, size_t *ret_size)
+{
+	struct stat st;
+	int fd;
+	if ((fd = fileno(f)) == -1 || fstat(fd, &st) != 0) {
+		return false;
 	}
-
-	ret = ETHASH_IO_MEMO_MATCH;
-set_file:
-	*output_file = f;
-free_memo:
-	free(tmpfile);
-end:
-	return ret;
+	*ret_size = st.st_size;
+	return true;
 }
