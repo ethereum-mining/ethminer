@@ -6,7 +6,9 @@ import org.ethereum.qml.SortFilterProxyModel 1.0
 
 Rectangle
 {
-	property variant currentStatus;
+	property variant currentStatus
+	property int contentXPos: logStyle.generic.layout.dateWidth + logStyle.generic.layout.typeWidth - 70
+
 	function clear()
 	{
 		logsModel.clear();
@@ -117,6 +119,10 @@ Rectangle
 							return cl;
 						}
 
+						Component.onCompleted:
+						{
+							logsPane.contentXPos = logContent.x
+						}
 
 						MouseArea
 						{

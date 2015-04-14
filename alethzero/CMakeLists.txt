@@ -59,7 +59,7 @@ target_link_libraries(${EXECUTABLE} jsqrc)
 target_link_libraries(${EXECUTABLE} natspec)
 target_link_libraries(${EXECUTABLE} ${MHD_LIBRARIES})
 
-if (NOT ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC"))
+if (SERPENT)
 	target_link_libraries(${EXECUTABLE} serpent)
 endif()
 

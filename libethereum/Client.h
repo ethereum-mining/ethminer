@@ -40,8 +40,8 @@
 #include "TransactionQueue.h"
 #include "State.h"
 #include "CommonNet.h"
-#include "Miner.h"
 #include "ABI.h"
+#include "Farm.h"
 #include "ClientBase.h"
 
 namespace dev
@@ -72,28 +72,6 @@ private:
 	std::string m_path;
 };
 
-class RemoteMiner: public Miner
-{
-public:
-	RemoteMiner() {}
-
-	void update(State const& _provisional, BlockChain const& _bc) { m_state = _provisional; m_state.commitToMine(_bc); }
-
-	h256 workHash() const { return m_state.info().headerHash(IncludeNonce::WithoutNonce); }
-	u256 const& difficulty() const { return m_state.info().difficulty; }
-
-	bool submitWork(ProofOfWork::Proof const& _result) { return (m_isComplete = m_state.completeMine(_result)); }
-
-	virtual bool isComplete() const override { return m_isComplete; }
-	virtual bytes const& blockData() const { return m_state.blockData(); }
-
-	virtual void noteStateChange() override {}
-
-private:
-	bool m_isComplete = false;
-	State m_state;
-};
-
 class BasicGasPricer: public GasPricer
 {
 public:
@@ -122,18 +100,15 @@ struct ClientDetail: public LogChannel { static const char* name() { return " C 
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
-class Client: public MinerHost, public ClientBase, Worker
+class Client: public ClientBase, Worker
 {
-	friend class Miner;
-
 public:
 	/// New-style Constructor.
 	explicit Client(
 		p2p::Host* _host,
 		std::string const& _dbPath = std::string(),
 		WithExisting _forceAction = WithExisting::Trust,
-		u256 _networkId = 0,
-		int _miners = -1
+		u256 _networkId = 0
 	);
 
 	explicit Client(
@@ -141,8 +116,7 @@ public:
 		std::shared_ptr<GasPricer> _gpForAdoption,		// pass it in with new.
 		std::string const& _dbPath = std::string(),
 		WithExisting _forceAction = WithExisting::Trust,
-		u256 _networkId = 0,
-		int _miners = -1
+		u256 _networkId = 0
 	);
 
 	/// Destructor.
@@ -191,32 +165,32 @@ public:
 	/// Are we allowed to GPU mine?
 	bool turboMining() const { return m_turboMining; }
 	/// Enable/disable GPU mining.
-	void setTurboMining(bool _enable = true) { bool was = isMining(); stopMining(); m_turboMining = _enable; setMiningThreads(0); if (was) startMining(); }
+	void setTurboMining(bool _enable = true) { m_turboMining = _enable; if (isMining()) startMining(); }
 
-	/// Stops mining and sets the number of mining threads (0 for automatic).
-	void setMiningThreads(unsigned _threads = 0) override;
-	/// Get the effective number of mining threads.
-	unsigned miningThreads() const override { ReadGuard l(x_localMiners); return m_localMiners.size(); }
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
-	void startMining() override { startWorking(); { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.start(); } }
+	void startMining() override;
 	/// Stop mining.
 	/// NOT thread-safe
-	void stopMining() override { { ReadGuard l(x_localMiners); for (auto& m: m_localMiners) m.stop(); } }
+	void stopMining() override { m_farm.stop(); }
 	/// Are we mining now?
-	bool isMining() const override { { ReadGuard l(x_localMiners); if (!m_localMiners.empty() && m_localMiners[0].isRunning()) return true; } return false; }
-	/// Are we mining now?
+	bool isMining() const override { return m_farm.isMining(); }
+	/// The hashrate...
 	uint64_t hashrate() const override;
 	/// Check the progress of the mining.
-	MineProgress miningProgress() const override;
+	MiningProgress miningProgress() const override;
 	/// Get and clear the mining history.
 	std::list<MineInfo> miningHistory();
 
 	/// Update to the latest transactions and get hash of the current block to be mined minus the
 	/// nonce (the 'work hash') and the difficulty to be met.
-	virtual std::pair<h256, u256> getWork() override;
-	/// Submit the proof for the proof-of-work.
-	virtual bool submitWork(ProofOfWork::Proof const& _proof) override;
+	virtual ProofOfWork::WorkPackage getWork() override;
+
+	/** @brief Submit the proof for the proof-of-work.
+	 * @param _s A valid solution.
+	 * @return true if the solution was indeed valid and accepted.
+	 */
+	virtual bool submitWork(ProofOfWork::Solution const& _proof) override;
 
 	// Debug stuff:
 
@@ -228,6 +202,8 @@ public:
 	void clearPending();
 	/// Kills the blockchain. Just for debug use.
 	void killChain();
+	/// Retries all blocks with unknown parents.
+	void retryUnkonwn() { m_bq.retryAllUnknown(); }
 
 protected:
 	/// InterfaceStub methods
@@ -255,16 +231,36 @@ protected:
 	void noteChanged(h256Set const& _filters);
 
 private:
+	/// Called when Worker is starting.
+	void startedWorking() override;
+
 	/// Do some work. Handles blockchain maintenance and mining.
-	virtual void doWork();
+	void doWork() override;
 
 	/// Called when Worker is exiting.
-	virtual void doneWorking();
+	void doneWorking() override;
 
-	/// Overrides for being a mining host.
-	virtual void setupState(State& _s);
-	virtual bool turbo() const { return m_turboMining; }
-	virtual bool force() const { return m_forceMining; }
+	/// Magically called when the chain has changed. An import route is provided.
+	/// Called by either submitWork() or in our main thread through syncBlockQueue().
+	void onChainChanged(ImportRoute const& _ir);
+
+	/// Signal handler for when the block queue needs processing.
+	void syncBlockQueue();
+
+	/// Signal handler for when the block queue needs processing.
+	void syncTransactionQueue();
+
+	/// Magically called when m_tq needs syncing. Be nice and don't block.
+	void onTransactionQueueReady() { m_syncTransactionQueue = true; }
+
+	/// Magically called when m_tq needs syncing. Be nice and don't block.
+	void onBlockQueueReady() { m_syncBlockQueue = true; }
+
+	/// Called when the post state has changed (i.e. when more transactions are in it or we're mining on a new block).
+	/// This updates m_miningInfo.
+	void onPostStateChanged();
+
+	void checkWatchGarbage();
 
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	CanonBlockChain m_bc;					///< Maintains block database.
@@ -275,20 +271,25 @@ private:
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
 	State m_preMine;						///< The present state of the client.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
-	mutable Mutex x_remoteMiner;			///< The remote miner lock.
-	RemoteMiner m_remoteMiner;				///< The remote miner.
+	GenericFarm<ProofOfWork> m_farm;		///< Our mining farm.
 
-	std::vector<LocalMiner> m_localMiners;	///< The in-process miners.
-	mutable SharedMutex x_localMiners;		///< The in-process miners lock.
-	bool m_paranoia = false;				///< Should we be paranoid about our state?
+	Handler m_tqReady;
+	Handler m_bqReady;
+
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
-	bool m_verifyOwnBlocks = true;			///< Should be verify blocks that we mined?
+	bool m_paranoia = false;				///< Should we be paranoid about our state?
 
 	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
+											///< When did we last both doing GC on the watches?
+
+	// TODO!!!!!! REPLACE WITH A PROPER X-THREAD ASIO SIGNAL SYSTEM (could just be condition variables)
+	std::atomic<bool> m_syncTransactionQueue = {false};
+	std::atomic<bool> m_syncBlockQueue = {false};
 };
 
 }

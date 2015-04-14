@@ -63,6 +63,14 @@ function(configureProject)
 		add_definitions(-DETH_GUI)
 	endif()
 
+	if (CPUID_FOUND)
+		add_definitions(-DETH_CPUID)
+	endif()
+
+	if (CURL_FOUND)
+		add_definitions(-DETH_CURL)
+	endif()
+
 	add_definitions(-DETH_TRUE)
 endfunction()
 
@@ -149,6 +157,7 @@ else ()
 endif ()
 # Backwards compatibility
 if (HEADLESS)
+	message("*** WARNING: -DHEADLESS=1 option is DEPRECATED! Use -DBUNDLE=minimal or -DGUI=0")
 	set(BUNDLE "minimal")
 endif ()
 
@@ -243,6 +252,15 @@ elseif (BUNDLE STREQUAL "full")
 	set(TOOLS ON)
 	set(TESTS ON)
 	set(FATDB ON)
+elseif (BUNDLE STREQUAL "core")
+	set(SERPENT OFF)
+	set(SOLIDITY ON)
+	set(USENPM OFF)
+	set(GUI ON)
+	set(NCURSES OFF)
+	set(TOOLS ON)
+	set(TESTS OFF)
+	set(FATDB ON)
 elseif (BUNDLE STREQUAL "tests")
 	set(SERPENT ${DECENT_PLATFORM})
 	set(SOLIDITY ON)
@@ -262,8 +280,6 @@ elseif (BUNDLE STREQUAL "user")
 	set(TESTS OFF)
 endif ()
 
-configureProject()
-
 # Default CMAKE_BUILD_TYPE to "Release".
 set(CMAKE_BUILD_TYPE CACHE STRING "Release")
 if ("x${CMAKE_BUILD_TYPE}" STREQUAL "x")
@@ -280,6 +296,10 @@ if ("x${TARGET_PLATFORM}" STREQUAL "x")
 	endif ()
 endif ()
 
+include(EthDependencies)
+
+configureProject()
+
 message("------------------------------------------------------------------------")
 message("--                  CMake Version                            ${CMAKE_VERSION}")
 message("-- CMAKE_BUILD_TYPE Build type                               ${CMAKE_BUILD_TYPE}")
@@ -287,6 +307,8 @@ message("-- TARGET_PLATFORM  Target platform                          ${TARGET_P
 message("-- BUNDLE           Build bundle                             ${BUNDLE}")
 message("--------------------------------------------------------------- features")
 message("--                  Chromium support                         ${ETH_HAVE_WEBENGINE}")
+message("--                  Hardware identification support          ${CPUID_FOUND}")
+message("--                  HTTP Request support                     ${CURL_FOUND}")
 message("-- VMTRACE          VM execution tracing                     ${VMTRACE}")
 message("-- PROFILING        Profiling support                        ${PROFILING}")
 message("-- FATDB            Full database exploring                  ${FATDB}")
@@ -312,9 +334,7 @@ endif ()
 include(EthCompilerSettings)
 message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 
-
 # this must be an include, as a function it would mess up with variable scope!
-include(EthDependencies)
 include(EthExecutableHelper)
 
 createBuildInfo()

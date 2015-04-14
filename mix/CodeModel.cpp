@@ -269,7 +269,10 @@ void CodeModel::runCompilationJob(int _jobId)
 				if (c_predefinedContracts.count(n) != 0)
 					continue;
 				QString name = QString::fromStdString(n);
-				QString sourceName = QString::fromStdString(*cs.getContractDefinition(n).getLocation().sourceName);
+				ContractDefinition const& contractDefinition = cs.getContractDefinition(n);
+				if (!contractDefinition.isFullyImplemented())
+					continue;
+				QString sourceName = QString::fromStdString(*contractDefinition.getLocation().sourceName);
 				auto sourceIter = m_pendingContracts.find(sourceName);
 				QString source = sourceIter != m_pendingContracts.end() ? sourceIter->second : QString();
 				CompiledContract* contract = new CompiledContract(cs, name, source);

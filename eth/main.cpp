@@ -32,19 +32,23 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
+#include <libethcore/ProofOfWork.h>
+#include <libethcore/EthashAux.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
-#if ETH_READLINE
+#if ETH_READLINE || !ETH_TRUE
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
-#if ETH_JSONRPC
+#if ETH_JSONRPC || !ETH_TRUE
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
-#include <libethcore/Ethasher.h>
+#if ETH_CURL || !ETH_TRUE
+#include <curl/curl.h>
+#endif
 #include "BuildInfo.h"
 using namespace std;
 using namespace dev;
@@ -88,7 +92,7 @@ void interactiveHelp()
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
-#if ETH_FATDB
+#if ETH_FATDB || !ETH_TRUE
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
 #endif
@@ -110,42 +114,54 @@ void help()
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
 		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (Default: 15)." << endl
-		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
+		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
+		<< "    -C,--cpu  When mining, use the CPU." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+		<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 15)." << endl
+		<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
+		<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
 		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
 		<< "    -E,--export <file>  Export file as a concatenated series of blocks and exit." << endl
 		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
-		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
+		<< "    -f,--force-mining  Mine even when there are no transactions to mine (Default: off)" << endl
+#if ETH_JSONRPC || !ETH_TRUE
+		<< "    -F,--farm  Put into mining farm mode (default GPU with CPU as fallback)." << endl
+#endif
+		<< "    -G,--gpu  When mining use the GPU." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
-#if ETH_JSONRPC
+#if ETH_JSONRPC || !ETH_TRUE
 		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
 		<< "    --json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
-		<< "    -K,--kill  First kill the blockchain." << endl
-		<< "       --listen-ip <port>  Listen on the given port for incoming connections (default: 30303)." << endl
-		<< "    -l,--listen <ip>  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
-		<< "    -u,--public-ip <ip>  Force public ip to given (default: auto)." << endl
-		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
-		<< "    -n,--upnp <on/off>  Use upnp for NAT (default: on)." << endl
-		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
-		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
-		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
-		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
-		<< "    -r,--remote <host>  Connect to remote host (default: none)." << endl
-		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
-		<< "    -t,--miners <number>  Number of mining threads to start (Default: " << thread::hardware_concurrency() << ")" << endl
-		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
-		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
-		<< "    -V,--version  Show the version and exit." << endl
-#if ETH_EVMJIT
-		<< "    --jit  Use EVM JIT (default: off)." << endl
+#if ETH_EVMJIT || !ETH_TRUE
+		<< "    -J,--jit  Enable EVM JIT (default: off)." << endl
 #endif
+		<< "    -K,--kill  First kill the blockchain." << endl
+		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
+		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
+		<< "    --public-ip <ip>  Force public ip to given (default: auto)." << endl
+		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
+		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --gpu." << endl
+		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
+		<< "    --opencl-device <n>  When mining use OpenCL device n (default: 0)." << endl
+		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
+		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
+		<< "    --phone-home <on/off>  When benchmarking, publish results (Default: on)" << endl
+		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
+		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
+		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
+		<< "    -S,--session-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
+		<< "    --upnp <on/off>  Use upnp for NAT (default: on)." << endl
+		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
+		<< "    -V,--version  Show the version and exit." << endl
+		<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
+		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
 		;
 		exit(0);
 }
@@ -210,7 +226,7 @@ void doInitDAG(unsigned _n)
 	BlockInfo bi;
 	bi.number = _n;
 	cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.seedHash().abridged() << "). This will take a while." << endl;
-	Ethasher::get()->full(bi);
+	Ethash::prep(bi);
 	exit(0);
 }
 
@@ -219,7 +235,9 @@ enum class OperationMode
 	Node,
 	Import,
 	Export,
-	DAGInit
+	DAGInit,
+	Benchmark,
+	Farm
 };
 
 enum class Format
@@ -229,6 +247,83 @@ enum class Format
 	Human
 };
 
+enum class MinerType
+{
+	CPU,
+	GPU
+};
+
+void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
+{
+	BlockInfo genesis = CanonBlockChain::genesis();
+	genesis.difficulty = 1 << 18;
+	cdebug << genesis.boundary();
+
+	GenericFarm<Ethash> f;
+	f.onSolutionFound([&](ProofOfWork::Solution) { return false; });
+
+	string platformInfo = _m == MinerType::CPU ? ProofOfWork::CPUMiner::platformInfo() : _m == MinerType::GPU ? ProofOfWork::GPUMiner::platformInfo() : "";
+	cout << "Benchmarking on platform: " << platformInfo << endl;
+
+	cout << "Preparing DAG..." << endl;
+	Ethash::prep(genesis);
+
+	genesis.difficulty = u256(1) << 63;
+	genesis.noteDirty();
+	f.setWork(genesis);
+	if (_m == MinerType::CPU)
+		f.startCPU();
+	else if (_m == MinerType::GPU)
+		f.startGPU();
+
+	map<uint64_t, MiningProgress> results;
+	uint64_t mean = 0;
+	uint64_t innerMean = 0;
+	for (unsigned i = 0; i <= _trials; ++i)
+	{
+		if (!i)
+			cout << "Warming up..." << endl;
+		else
+			cout << "Trial " << i << "... " << flush;
+		this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
+
+		auto mp = f.miningProgress();
+		f.resetMiningProgress();
+		if (!i)
+			continue;
+		auto rate = mp.rate();
+
+		cout << rate << endl;
+		results[rate] = mp;
+		mean += rate;
+		if (i > 1 && i < 5)
+			innerMean += rate;
+	}
+	f.stop();
+	cout << "min/mean/max: " << results.begin()->second.rate() << "/" << (mean / _trials) << "/" << results.rbegin()->second.rate() << " H/s" << endl;
+	cout << "inner mean: " << (innerMean / (_trials - 2)) << " H/s" << endl;
+
+	(void)_phoneHome;
+	if (_phoneHome)
+	{
+		cout << "Phoning home to find world ranking..." << endl;
+
+		// TODO: send f.miningInfo() along with f.platformInfo() to Marian.
+	}
+	exit(0);
+}
+
+void doFarm(MinerType _m)
+{
+	(void)_m;
+	// TODO: Set up JSONRPC client: to implement:
+//	{ "name": "eth_getWork", "params": [], "order": [], "returns": [<powHash>, <seedHash>, <boundary>]},
+//	{ "name": "eth_submitWork", "params": [<nonce>, <mixHash>], "order": [], "returns": true},
+
+
+	exit(0);
+}
+
 int main(int argc, char** argv)
 {
 	// Init defaults
@@ -237,6 +332,10 @@ int main(int argc, char** argv)
 	/// Operating mode.
 	OperationMode mode = OperationMode::Node;
 	string dbPath;
+
+	/// Mining options
+	MinerType minerType = MinerType::CPU;
+	unsigned openclDevice = 0;
 
 	/// File name for import/export.
 	string filename;
@@ -271,10 +370,10 @@ int main(int argc, char** argv)
 
 	/// Mining params
 	unsigned mining = ~(unsigned)0;
-	int miners = -1;
 	bool forceMining = false;
-	KeyPair us = KeyPair::create();
-	Address coinbase = us.address();
+	KeyPair sigKey = KeyPair::create();
+	Secret sessionSecret;
+	Address coinbase = sigKey.address();
 
 	/// Structured logging params
 	bool structuredLogging = false;
@@ -285,12 +384,18 @@ int main(int argc, char** argv)
 	double etherPrice = 30.679;
 	double blockFees = 15.0;
 
+	/// Benchmarking params
+	bool phoneHome = true;
+	unsigned benchmarkWarmup = 15;
+	unsigned benchmarkTrial = 3;
+	unsigned benchmarkTrials = 5;
+
 	string configFile = getDataDir() + "/config.rlp";
 	bytes b = contents(configFile);
 	if (b.size())
 	{
 		RLP config(b);
-		us = KeyPair(config[0].toHash<Secret>());
+		sigKey = KeyPair(config[0].toHash<Secret>());
 		coinbase = config[1].toHash<Address>();
 	}
 
@@ -300,13 +405,25 @@ int main(int argc, char** argv)
 		if (arg == "--listen-ip" && i + 1 < argc)
 			listenIP = argv[++i];
 		else if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
+		{
+			if (arg == "-l")
+				cerr << "-l is DEPRECATED. It will be removed for the Frontier. Use --listen-port instead." << endl;
 			listenPort = (short)atoi(argv[++i]);
+		}
 		else if ((arg == "-u" || arg == "--public-ip" || arg == "--public") && i + 1 < argc)
+		{
+			if (arg == "-u")
+				cerr << "-u is DEPRECATED. It will be removed for the Frontier. Use --public-ip instead." << endl;
 			publicIP = argv[++i];
+		}
 		else if ((arg == "-r" || arg == "--remote") && i + 1 < argc)
 			remoteHost = argv[++i];
 		else if ((arg == "-p" || arg == "--port") && i + 1 < argc)
+		{
+			if (arg == "-p")
+				cerr << "-p is DEPRECATED. It will be removed for the Frontier. Use --port instead (or place directly as host:port)." << endl;
 			remotePort = (short)atoi(argv[++i]);
+		}
 		else if ((arg == "-I" || arg == "--import") && i + 1 < argc)
 		{
 			mode = OperationMode::Import;
@@ -316,6 +433,30 @@ int main(int argc, char** argv)
 		{
 			mode = OperationMode::Export;
 			filename = argv[++i];
+		}
+		else if (arg == "-F" || arg == "--farm")
+			mode = OperationMode::Farm;
+		else if (arg == "--opencl-device" && i + 1 < argc)
+			try {
+				openclDevice = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		else if (arg == "--phone-home" && i + 1 < argc)
+		{
+			string m = argv[++i];
+			if (isTrue(m))
+				phoneHome = true;
+			else if (isFalse(m))
+				phoneHome = false;
+			else
+			{
+				cerr << "Bad " << arg << " option: " << m << endl;
+				return -1;
+			}
 		}
 		else if (arg == "--format" && i + 1 < argc)
 		{
@@ -338,8 +479,10 @@ int main(int argc, char** argv)
 			exportFrom = argv[++i];
 		else if (arg == "--only" && i + 1 < argc)
 			exportTo = exportFrom = argv[++i];
-		else if ((arg == "-n" || arg == "--upnp") && i + 1 < argc)
+		else if ((arg == "-n" || arg == "-u" || arg == "--upnp") && i + 1 < argc)
 		{
+			if (arg == "-n")
+				cerr << "-n is DEPRECATED. It will be removed for the Frontier. Use --upnp instead." << endl;
 			string m = argv[++i];
 			if (isTrue(m))
 				upnp = true;
@@ -351,18 +494,48 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "--benchmark-warmup" && i + 1 < argc)
+			try {
+				benchmarkWarmup = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		else if (arg == "--benchmark-trial" && i + 1 < argc)
+			try {
+				benchmarkTrial = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		else if (arg == "--benchmark-trials" && i + 1 < argc)
+			try {
+				benchmarkTrials = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
 		else if (arg == "-K" || arg == "--kill-blockchain" || arg == "--kill")
 			killChain = WithExisting::Kill;
 		else if (arg == "-B" || arg == "--rebuild")
 			killChain = WithExisting::Verify;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
+		{
+			if (arg == "-c")
+				cerr << "-c is DEPRECATED. It will be removed for the Frontier. Use --client-name instead." << endl;
 			clientName = argv[++i];
+		}
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
-			try
-			{
+			try {
 				coinbase = h160(fromHex(argv[++i], WhenError::Throw));
 			}
-			catch (BadHexCharacter& _e)
+			catch (BadHexCharacter&)
 			{
 				cerr << "Bad hex in " << arg << " option: " << argv[i] << endl;
 				return -1;
@@ -372,8 +545,14 @@ int main(int argc, char** argv)
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
+		else if (arg == "-C" || arg == "--cpu")
+			minerType = MinerType::CPU;
+		else if (arg == "-G" || arg == "--gpu")
+			minerType = MinerType::GPU;
 		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
-			us = KeyPair(h256(fromHex(argv[++i])));
+			sigKey = KeyPair(h256(fromHex(argv[++i])));
+		else if ((arg == "-S" || arg == "--session-secret") && i + 1 < argc)
+			sessionSecret = h256(fromHex(argv[++i]));
 		else if (arg == "--structured-logging-format" && i + 1 < argc)
 			structuredLoggingFormat = string(argv[++i]);
 		else if (arg == "--structured-logging")
@@ -399,6 +578,45 @@ int main(int argc, char** argv)
 					return -1;
 				}
 		}
+		else if ((arg == "-w" || arg == "--check-pow") && i + 4 < argc)
+		{
+			string m;
+			try
+			{
+				BlockInfo bi;
+				m = boost::to_lower_copy(string(argv[++i]));
+				h256 powHash(m);
+				m = boost::to_lower_copy(string(argv[++i]));
+				h256 seedHash;
+				if (m.size() == 64 || m.size() == 66)
+					seedHash = h256(m);
+				else
+					seedHash = EthashAux::seedHash(stol(m));
+				m = boost::to_lower_copy(string(argv[++i]));
+				bi.difficulty = u256(m);
+				auto boundary = bi.boundary();
+				m = boost::to_lower_copy(string(argv[++i]));
+				bi.nonce = h64(m);
+				auto r = EthashAux::eval(seedHash, powHash, bi.nonce);
+				bool valid = r.value < boundary;
+				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
+				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
+				cout << "  where " << boundary << " = 2^256 / " << bi.difficulty << endl;
+				cout << "  and " << r.value << " = ethash(" << powHash << ", " << bi.nonce << ")" << endl;
+				cout << "  with seed as " << seedHash << endl;
+				if (valid)
+					cout << "(mixHash = " << r.mixHash << ")" << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(bytesConstRef((byte const*)EthashAux::light(seedHash), EthashAux::params(seedHash).cache_size)) << endl;
+				exit(0);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << m << endl;
+				return -1;
+			}
+		}
+		else if (arg == "-M" || arg == "--benchmark")
+			mode = OperationMode::Benchmark;
 		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
 			try
@@ -477,8 +695,6 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
-		else if ((arg == "-t" || arg == "--miners") && i + 1 < argc)
-			miners = atoi(argv[++i]);
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -492,15 +708,12 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
-		else if (arg == "--jit")
-		{
 #if ETH_EVMJIT
+		else if (arg == "-J" || arg == "--jit")
+		{
 			jit = true;
-#else
-			cerr << "EVM JIT not enabled" << endl;
-			return -1;
-#endif
 		}
+#endif
 		else if (arg == "-h" || arg == "--help")
 			help();
 		else if (arg == "-V" || arg == "--version")
@@ -514,14 +727,25 @@ int main(int argc, char** argv)
 
 	{
 		RLPStream config(2);
-		config << us.secret() << coinbase;
+		config << sigKey.secret() << coinbase;
 		writeFile(configFile, config.out());
 	}
+
+	if (sessionSecret)
+		sigKey = KeyPair(sessionSecret);
+
+	ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
 
 	// Two codepaths is necessary since named block require database, but numbered
 	// blocks are superuseful to have when database is already open in another process.
 	if (mode == OperationMode::DAGInit && !(initDAG == LatestBlock || initDAG == PendingBlock))
 		doInitDAG(initDAG);
+
+	if (mode == OperationMode::Benchmark)
+		doBenchmark(minerType, phoneHome, benchmarkWarmup, benchmarkTrial, benchmarkTrials);
+
+	if (mode == OperationMode::Farm)
+		doFarm(minerType);
 
 	if (!clientName.empty())
 		clientName += "/";
@@ -537,9 +761,7 @@ int main(int argc, char** argv)
 		killChain,
 		nodeMode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
-		&nodesState,
-		miners
-		);
+		&nodesState);
 	
 	if (mode == OperationMode::DAGInit)
 		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
@@ -632,7 +854,7 @@ int main(int argc, char** argv)
 		c->setAddress(coinbase);
 	}
 
-	cout << "Transaction Signer: " << us.address() << endl;
+	cout << "Transaction Signer: " << sigKey.address() << endl;
 	cout << "Mining Benefactor: " << coinbase << endl;
 	web3.startNetwork();
 
@@ -647,8 +869,7 @@ int main(int argc, char** argv)
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
-		jsonrpcServer->setIdentities({us});
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({sigKey})));
 		jsonrpcServer->StartListening();
 	}
 #endif
@@ -772,8 +993,7 @@ int main(int argc, char** argv)
 				if (jsonrpc < 0)
 					jsonrpc = SensibleHttpPort;
 				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
-				jsonrpcServer->setIdentities({us});
+				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({sigKey})));
 				jsonrpcServer->StartListening();
 			}
 			else if (cmd == "jsonstop")
@@ -785,12 +1005,11 @@ int main(int argc, char** argv)
 #endif
 			else if (cmd == "address")
 			{
-				cout << "Current address:" << endl
-					 << toHex(us.address().asArray()) << endl;
+				cout << "Current address:" << endl << sigKey.address() << endl;
 			}
 			else if (cmd == "secret")
 			{
-				cout << "Secret Key: " << toHex(us.secret().asArray()) << endl;
+				cout << "Secret Key: " << sigKey.secret() << endl;
 			}
 			else if (c && cmd == "block")
 			{
@@ -805,7 +1024,7 @@ int main(int argc, char** argv)
 			}
 			else if (c && cmd == "balance")
 			{
-				cout << "Current balance: " << formatBalance( c->balanceAt(us.address())) << " = " <<c->balanceAt(us.address()) << " wei" << endl;
+				cout << "Current balance: " << formatBalance( c->balanceAt(sigKey.address())) << " = " <<c->balanceAt(sigKey.address()) << " wei" << endl;
 			}
 			else if (c && cmd == "transact")
 			{
@@ -921,7 +1140,7 @@ int main(int argc, char** argv)
 						try
 						{
 							Address dest = h160(fromHex(hexAddr, WhenError::Throw));
-							c->submitTransaction(us.secret(), amount, dest, bytes(), minGas);
+							c->submitTransaction(sigKey.secret(), amount, dest, bytes(), minGas);
 						}
 						catch (BadHexCharacter& _e)
 						{
@@ -990,7 +1209,7 @@ int main(int argc, char** argv)
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is" << minGas;
 					else
-						c->submitTransaction(us.secret(), endowment, init, gas, gasPrice);
+						c->submitTransaction(sigKey.secret(), endowment, init, gas, gasPrice);
 				}
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
@@ -1107,7 +1326,7 @@ int main(int argc, char** argv)
 				{
 					string hexSec;
 					iss >> hexSec;
-					us = KeyPair(h256(fromHex(hexSec)));
+					sigKey = KeyPair(h256(fromHex(hexSec)));
 				}
 				else
 					cwarn << "Require parameter: setSecret HEXSECRETKEY";
@@ -1147,7 +1366,7 @@ int main(int argc, char** argv)
 					string path;
 					iss >> path;
 					RLPStream config(2);
-					config << us.secret() << coinbase;
+					config << sigKey.secret() << coinbase;
 					writeFile(path, config.out());
 				}
 				else
@@ -1163,7 +1382,7 @@ int main(int argc, char** argv)
 					if (b.size())
 					{
 						RLP config(b);
-						us = KeyPair(config[0].toHash<Secret>());
+						sigKey = KeyPair(config[0].toHash<Secret>());
 						coinbase = config[1].toHash<Address>();
 					}
 					else
