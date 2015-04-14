@@ -30,6 +30,7 @@ set(JSONCPP_LIBRARIES ${JSONCPP_LIBRARY})
 # same naming convention as in qt (appending debug library with d)
 # boost is using the same "hack" as us with "optimized" and "debug"
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+
 	find_library(
 		JSONCPP_LIBRARY_DEBUG
 		NAMES jsoncppd
