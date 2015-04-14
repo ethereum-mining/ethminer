@@ -38,13 +38,16 @@
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
-#if ETH_READLINE
+#if ETH_READLINE || !ETH_TRUE
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
-#if ETH_JSONRPC
+#if ETH_JSONRPC || !ETH_TRUE
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
+#endif
+#if ETH_CURL || !ETH_TRUE
+#include <curl/curl.h>
 #endif
 #include "BuildInfo.h"
 using namespace std;
@@ -128,7 +131,7 @@ void help()
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "    -F,--farm  Put into mining farm mode (default GPU with CPU as fallback)." << endl
 #endif
-		<< "    -G,--gpu  When miningm use the GPU." << endl
+		<< "    -G,--gpu  When mining use the GPU." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
 		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
 		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
@@ -146,6 +149,7 @@ void help()
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
 		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --gpu." << endl
 		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
+		<< "    --opencl-device <n>  When mining use OpenCL device n (default: 0)." << endl
 		<< "    -p,--port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
 		<< "    --phone-home <on/off>  When benchmarking, publish results (Default: on)" << endl
@@ -302,6 +306,8 @@ void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, u
 	(void)_phoneHome;
 	if (_phoneHome)
 	{
+		cout << "Phoning home to find world ranking..." << endl;
+
 		// TODO: send f.miningInfo() along with f.platformInfo() to Marian.
 	}
 	exit(0);
@@ -318,6 +324,7 @@ int main(int argc, char** argv)
 
 	/// Mining options
 	MinerType minerType = MinerType::CPU;
+	unsigned openclDevice = 0;
 
 	/// File name for import/export.
 	string filename;
@@ -406,6 +413,15 @@ int main(int argc, char** argv)
 		}
 		else if (arg == "-F" || arg == "--farm")
 			mode = OperationMode::Farm;
+		else if (arg == "--opencl-device" && i + 1 < argc)
+			try {
+				openclDevice = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -717,6 +733,8 @@ int main(int argc, char** argv)
 	
 	if (mode == OperationMode::DAGInit)
 		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
+
+	ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
 
 	auto toNumber = [&](string const& s) -> unsigned {
 		if (s == "latest")
