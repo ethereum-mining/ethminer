@@ -48,6 +48,7 @@ Session::Session(Host* _s, RLPXFrameIO* _io, std::shared_ptr<Peer> const& _n, Pe
 {
 	m_peer->m_lastDisconnect = NoDisconnect;
 	m_lastReceived = m_connect = chrono::steady_clock::now();
+	m_info.socketId = _io->socket().native_handle();
 }
 
 Session::~Session()
