@@ -119,7 +119,9 @@ public:
 	// [BLOCK QUERY API]
 
 	virtual Transaction transaction(h256 _transactionHash) const = 0;
+	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const = 0;
 	virtual h256 hashFromNumber(BlockNumber _number) const = 0;
+	virtual BlockNumber numberFromHash(h256 _blockHash) const = 0;
 
 	virtual BlockInfo blockInfo(h256 _hash) const = 0;
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
