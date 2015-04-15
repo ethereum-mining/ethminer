@@ -93,6 +93,17 @@ enum class ImportResult
 	BadChain
 };
 
+struct ImportRequirements
+{
+	using value = unsigned;
+	enum
+	{
+		ValidNonce = 1, ///< Validate Nonce
+		DontHave = 2, ///< Avoid old blocks
+		Default = ValidNonce | DontHave
+	};
+};
+
 /// Super-duper signal mechanism. TODO: replace with somthing a bit heavier weight.
 class Signal
 {

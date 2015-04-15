@@ -134,6 +134,15 @@ public:
 		return m_blocksGot.full();
 	}
 
+	h256s remaining() const
+	{
+		h256s ret;
+		ReadGuard l(m_lock);
+		for (auto i: m_blocksGot.inverted())
+			ret.push_back(m_chain[i]);
+		return ret;
+	}
+
 	h256s chain() const { ReadGuard l(m_lock); return m_chain; }
 	void foreachSub(std::function<void(DownloadSub const&)> const& _f) const { ReadGuard l(x_subs); for(auto i: m_subs) _f(*i); }
 	unsigned subCount() const { ReadGuard l(x_subs); return m_subs.size(); }

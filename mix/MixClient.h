@@ -101,7 +101,6 @@ private:
 	mutable boost::shared_mutex x_executions;
 	ExecutionResults m_executions;
 	std::string m_dbPath;
-	unsigned m_miningThreads;
 };
 
 }
