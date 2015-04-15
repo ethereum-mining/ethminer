@@ -46,8 +46,6 @@ EthashAux* dev::eth::EthashAux::s_this = nullptr;
 
 EthashAux::~EthashAux()
 {
-	while (!m_lights.empty())
-		killCache(m_lights.begin()->first);
 }
 
 ethash_params EthashAux::params(BlockInfo const& _header)
@@ -112,28 +110,33 @@ ethash_params EthashAux::params(h256 const& _seedHash)
 void EthashAux::killCache(h256 const& _s)
 {
 	RecursiveGuard l(x_this);
-	if (m_lights.count(_s))
-	{
-		ethash_delete_light(m_lights.at(_s));
-		m_lights.erase(_s);
-	}
+	m_lights.erase(_s);
 }
 
-void const* EthashAux::light(BlockInfo const& _header)
+EthashAux::LightType EthashAux::light(BlockInfo const& _header)
 {
 	return light(_header.seedHash());
 }
 
-void const* EthashAux::light(h256 const& _seedHash)
+EthashAux::LightType EthashAux::light(h256 const& _seedHash)
 {
 	RecursiveGuard l(get()->x_this);
-	if (!get()->m_lights.count(_seedHash))
-	{
-		ethash_params p = params(_seedHash);
-		get()->m_lights[_seedHash] = ethash_new_light(&p, _seedHash.data());
-	}
-	return get()->m_lights[_seedHash];
+	LightType ret = get()->m_lights[_seedHash];
+	return ret ? ret : (get()->m_lights[_seedHash] = make_shared<LightAllocation>(_seedHash));
 }
+
+EthashAux::LightAllocation::LightAllocation(h256 const& _seed)
+{
+	auto p = params(_seed);
+	size = p.cache_size;
+	light = ethash_new_light(&p, _seed.data());
+}
+
+EthashAux::LightAllocation::~LightAllocation()
+{
+	ethash_delete_light(light);
+}
+
 
 EthashAux::FullType EthashAux::full(BlockInfo const& _header, bytesRef _dest)
 {
@@ -152,6 +155,9 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest)
 	}
 	if (!ret)
 	{
+		// drop our last used cache sine we're allocating another 1GB.
+		get()->m_lastUsedFull.reset();
+
 		try {
 			boost::filesystem::create_directories(getDataDir("ethash"));
 		} catch (...) {}
@@ -180,14 +186,15 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest)
 				r = _dest;
 			else
 				r = bytesRef(new byte[p.full_size], p.full_size);
-			ethash_prep_full(r.data(), &p, light(_seedHash));
+			ethash_prep_full(r.data(), &p, light(_seedHash)->light);
 			writeFile(memoFile, r);
 		}
 		if (_dest)
 			return FullType();
-		ret = make_shared<FullTypeAllocation>(r);
+		ret = make_shared<FullAllocation>(r);
 		get()->m_fulls[_seedHash] = ret;
 	}
+	get()->m_lastUsedFull = ret;
 	return ret;
 }
 
@@ -196,15 +203,25 @@ Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
 	return eval(_header.seedHash(), _header.headerHash(WithoutNonce), _nonce);
 }
 
+Ethash::Result EthashAux::FullAllocation::compute(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) const
+{
+	ethash_return_value r;
+	auto p = EthashAux::params(_seedHash);
+	ethash_compute_full(&r, data.data(), &p, _headerHash.data(), (uint64_t)(u64)_nonce);
+	return Ethash::Result{h256(r.result, h256::ConstructFromPointer), h256(r.mix_hash, h256::ConstructFromPointer)};
+}
+
+Ethash::Result EthashAux::LightAllocation::compute(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) const
+{
+	ethash_return_value r;
+	auto p = EthashAux::params(_seedHash);
+	ethash_compute_light(&r, light, &p, _headerHash.data(), (uint64_t)(u64)_nonce);
+	return Ethash::Result{h256(r.result, h256::ConstructFromPointer), h256(r.mix_hash, h256::ConstructFromPointer)};
+}
+
 Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
 {
-	auto p = EthashAux::params(_seedHash);
-	ethash_return_value r;
-	auto dag = EthashAux::get()->full(_seedHash);
-	if (EthashAux::get()->m_fulls.count(_seedHash))
-		ethash_compute_full(&r, dag->data.data(), &p, _headerHash.data(), (uint64_t)(u64)_nonce);
-	else
-		ethash_compute_light(&r, EthashAux::get()->light(_seedHash), &p, _headerHash.data(), (uint64_t)(u64)_nonce);
-//	cdebug << "EthashAux::eval sha3(cache):" << sha3(EthashAux::get()->cache(_header)) << "hh:" << _header.headerHash(WithoutNonce) << "nonce:" << _nonce << " => " << h256(r.result, h256::ConstructFromPointer);
-	return Ethash::Result{h256(r.result, h256::ConstructFromPointer), h256(r.mix_hash, h256::ConstructFromPointer)};
+	if (auto dag = EthashAux::get()->full(_seedHash))
+		return dag->compute(_seedHash, _headerHash, _nonce);
+	return EthashAux::get()->light(_seedHash)->compute(_seedHash, _headerHash, _nonce);
 }
