@@ -30,18 +30,20 @@ set(MHD_LIBRARIES ${MHD_LIBRARY})
 # official MHD project actually uses _d suffix
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
-	#TODO: place dlls into CMAKE_CFG_INTDIR subfolders
-	string(REPLACE ".lib" ".dll" MHD_DLL_RELEASE ${MHD_LIBRARY})
-	string(REPLACE "/lib/" "/bin/" MHD_DLL_RELEASE ${MHD_DLL_RELEASE})
-
 	find_library(
 		MHD_LIBRARY_DEBUG
 		NAMES microhttpd_d microhttpd-10_d libmicrohttpd_d libmicrohttpd-dll_d
 		DOC "mhd debug library"
 	)
-	# always use release for now
-	#string(REPLACE ".lib" ".dll" MHD_DLL_DEBUG ${MHD_LIBRARY_DEBUG})
-	#set(MHD_LIBRARIES optimized ${MHD_LIBRARIES} debug ${MHD_LIBRARY_DEBUG})
+
+	set(MHD_LIBRARIES optimized ${MHD_LIBRARIES} debug ${MHD_LIBRARY_DEBUG})
+
+    # prepare dlls
+	string(REPLACE ".lib" ".dll" MHD_DLL ${MHD_LIBRARY})
+	string(REPLACE "/lib/" "/bin/" MHD_DLL ${MHD_DLL})
+	string(REPLACE ".lib" ".dll" MHD_DLL_DEBUG ${MHD_LIBRARY_DEBUG})
+	string(REPLACE "/lib/" "/bin/" MHD_DLL_DEBUG ${MHD_DLL_DEBUG})
+	set(MHD_DLLS optimized ${MHD_DLL} debug ${MHD_DLL_DEBUG})
 
 endif()
 

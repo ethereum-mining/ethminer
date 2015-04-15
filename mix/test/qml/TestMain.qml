@@ -4,6 +4,8 @@ import org.ethereum.qml.TestService 1.0
 import "../../qml"
 import "js/TestDebugger.js" as TestDebugger
 import "js/TestTutorial.js" as TestTutorial
+import "js/TestMiner.js" as TestMiner
+import "js/TestProject.js" as TestProject
 
 TestCase
 {
@@ -48,10 +50,19 @@ TestCase
 
 	function editContract(c)
 	{
+		if (mainApplication.codeModel.compiling)
+			ts.waitForSignal(mainApplication.codeModel, "compilationComplete()", 5000);
 		mainApplication.mainContent.codeEditor.getEditor("contract.sol").setText(c);
-		ts.keyPressChar(mainApplication, "S", Qt.ControlModifier, 200); //Ctrl+S
 		if (!ts.waitForSignal(mainApplication.codeModel, "compilationComplete()", 5000))
 			fail("not compiled");
+		ts.keyPressChar(mainApplication, "S", Qt.ControlModifier, 200); //Ctrl+S
+	}
+
+
+	function waitForExecution()
+	{
+		while (mainApplication.clientModel.running)
+			ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000);
 	}
 
 	function editHtml(c)
@@ -74,5 +85,10 @@ TestCase
 	function test_dbg_transactionWithParameter() { TestDebugger.test_transactionWithParameter(); }
 	function test_dbg_constructorParameters() { TestDebugger.test_constructorParameters(); }
 	function test_dbg_arrayParametersAndStorage() { TestDebugger.test_arrayParametersAndStorage(); }
+	function test_dbg_solidity() { TestDebugger.test_solidityDebugging(); }
+	function test_dbg_vm() { TestDebugger.test_vmDebugging(); }
+	function test_miner_getDefaultiner() { TestMiner.test_getDefaultMiner(); }
+	function test_miner_selectMiner() { TestMiner.test_selectMiner(); }
+	function test_project_contractRename() { TestProject.test_contractRename(); }
 }
 
