@@ -17,8 +17,8 @@ QtObject {
 			property string logLabelColor: "#4a4a4a"
 			property string logLabelFont: "sans serif"
 			property int headerInputWidth: 200
-			property int dateWidth: 150
-			property int typeWidth: 150
+			property int dateWidth: 100
+			property int typeWidth: 100
 			property int contentWidth: 560
 			property string logAlternateColor: "#f6f5f6"
 			property string errorColor: "#fffcd5"
