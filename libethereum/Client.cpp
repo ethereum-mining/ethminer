@@ -94,7 +94,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 			for (unsigned i = 0; i < r[1].size(); ++i)
 			{
 				auto gu = brs.receipts[i].gasUsed();
-				dist[Transaction(r[1][i].data(), CheckSignature::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
+				dist[Transaction(r[1][i].data(), CheckTransaction::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
 				total += (unsigned)gu;
 			}
 		}
@@ -117,7 +117,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 	}
 }
 
-Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId, int _miners):
+Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId):
 	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
@@ -126,14 +126,14 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _for
 	m_preMine(m_stateDB, BaseState::CanonGenesis),
 	m_postMine(m_stateDB)
 {
+	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
+	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
+	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
+
 	m_gp->update(m_bc);
 
 	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
-	if (_miners > -1)
-		setMiningThreads(_miners);
-	else
-		setMiningThreads();
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
@@ -142,7 +142,7 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _for
 	startWorking();
 }
 
-Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId, int _miners):
+Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId):
 	Worker("eth"),
 	m_vc(_dbPath),
 	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
@@ -151,14 +151,14 @@ Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string c
 	m_preMine(m_stateDB),
 	m_postMine(m_stateDB)
 {
+	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
+	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
+	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
+
 	m_gp->update(m_bc);
 
 	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
 
-	if (_miners > -1)
-		setMiningThreads(_miners);
-	else
-		setMiningThreads();
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	m_vc.setOk();
@@ -192,6 +192,27 @@ bool Client::isSyncing() const
 	return false;
 }
 
+void Client::startedWorking()
+{
+	// Synchronise the state according to the head of the block chain.
+	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
+	cdebug << "startedWorking()";
+	WriteGuard l(x_stateDB);
+
+	cdebug << m_bc.number() << m_bc.currentHash();
+
+	cdebug << "Pre:" << m_preMine.info();
+	cdebug << "Post:" << m_postMine.info();
+	cdebug << "Pre:" << m_preMine.info().headerHash(WithoutNonce) << "; Post:" << m_postMine.info().headerHash(WithoutNonce);
+
+	m_preMine.sync(m_bc);
+	m_postMine = m_preMine;
+
+	cdebug << "Pre:" << m_preMine.info();
+	cdebug << "Post:" << m_postMine.info();
+	cdebug << "Pre:" << m_preMine.info().headerHash(WithoutNonce) << "; Post:" << m_postMine.info().headerHash(WithoutNonce);
+}
+
 void Client::doneWorking()
 {
 	// Synchronise the state according to the head of the block chain.
@@ -210,7 +231,7 @@ void Client::killChain()
 
 	m_tq.clear();
 	m_bq.clear();
-	m_localMiners.clear();
+	m_farm.stop();
 	m_preMine = State();
 	m_postMine = State();
 
@@ -228,8 +249,6 @@ void Client::killChain()
 		h->reset();
 
 	doWork();
-
-	setMiningThreads(0);
 
 	startWorking();
 	if (wasMining)
@@ -250,33 +269,21 @@ void Client::clearPending()
 		m_postMine = m_preMine;
 	}
 
-	{
-		ReadGuard l(x_localMiners);
-		for (auto& m: m_localMiners)
-			m.noteStateChange();
-	}
+	startMining();
 
 	noteChanged(changeds);
 }
 
-void Client::noteChanged(h256Set const& _filters)
+template <class T>
+static string filtersToString(T const& _fs)
 {
-	Guard l(x_filtersWatches);
-	if (_filters.size())
-		cnote << "noteChanged(" << _filters << ")";
-	// accrue all changes left in each filter into the watches.
-	for (auto& w: m_watches)
-		if (_filters.count(w.second.id))
-		{
-			cwatch << "!!!" << w.first << w.second.id;
-			if (m_filters.count(w.second.id))	// Normal filtering watch
-				w.second.changes += m_filters.at(w.second.id).changes;
-			else								// Special ('pending'/'latest') watch
-				w.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, 0));
-		}
-	// clear the filters now.
-	for (auto& i: m_filters)
-		i.second.changes.clear();
+	stringstream ret;
+	ret << "{";
+	unsigned i = 0;
+	for (h256 const& f: _fs)
+		ret << (i++ ? ", " : "") << (f == PendingChangedFilter ? "pending" : f == ChainChangedFilter ? "chain" : f.abridged());
+	ret << "}";
+	return ret.str();
 }
 
 void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _transactionHash)
@@ -325,41 +332,24 @@ void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
 void Client::setForceMining(bool _enable)
 {
 	 m_forceMining = _enable;
-	 ReadGuard l(x_localMiners);
-	 for (auto& m: m_localMiners)
-		 m.noteStateChange();
+	 if (isMining())
+		startMining();
 }
 
-void Client::setMiningThreads(unsigned _threads)
+MiningProgress Client::miningProgress() const
 {
-	stopMining();
-#if ETH_ETHASHCL
-	unsigned t = 1;
-#else
-	auto t = _threads ? _threads : thread::hardware_concurrency();
-#endif
-	WriteGuard l(x_localMiners);
-	m_localMiners.clear();
-	m_localMiners.resize(t);
-	unsigned i = 0;
-	for (auto& m: m_localMiners)
-		m.setup(this, i++);
+	return MiningProgress();
 }
 
-MineProgress Client::miningProgress() const
+uint64_t Client::hashrate() const
 {
-	MineProgress ret;
-	ReadGuard l(x_localMiners);
-	for (auto& m: m_localMiners)
-		ret.combine(m.miningProgress());
-	return ret;
+	return 0;
 }
 
 std::list<MineInfo> Client::miningHistory()
 {
 	std::list<MineInfo> ret;
-
-	ReadGuard l(x_localMiners);
+/*	ReadGuard l(x_localMiners);
 	if (m_localMiners.empty())
 		return ret;
 	ret = m_localMiners[0].miningHistory();
@@ -370,11 +360,11 @@ std::list<MineInfo> Client::miningHistory()
 		auto li = l.begin();
 		for (; ri != ret.end() && li != l.end(); ++ri, ++li)
 			ri->combine(*li);
-	}
+	}*/
 	return ret;
 }
 
-void Client::setupState(State& _s)
+/*void Client::setupState(State& _s)
 {
 	{
 		ReadGuard l(x_stateDB);
@@ -395,9 +385,9 @@ void Client::setupState(State& _s)
 	}
 	else
 		_s.commitToMine(m_bc);
-}
+}*/
 
-ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u256 _gasPrice)
+ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 _value, u256 _gasPrice, Address const& _from)
 {
 	ExecutionResult ret;
 	try
@@ -407,10 +397,10 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 		{
 			ReadGuard l(x_stateDB);
 			temp = m_postMine;
-			temp.addBalance(Address(), _value + _gasPrice * _gas);
+			temp.addBalance(_from, _value + _gasPrice * _gas);
 		}
 		Executive e(temp, LastHashes(), 0);
-		if (!e.call(_dest, _dest, Address(), _value, _gasPrice, &_data, _gas, Address()))
+		if (!e.call(_dest, _dest, _from, _value, _gasPrice, &_data, _gas, _from))
 			e.go();
 		ret = e.executionResult();
 	}
@@ -421,170 +411,187 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 	return ret;
 }
 
-pair<h256, u256> Client::getWork()
+ProofOfWork::WorkPackage Client::getWork()
 {
-	Guard l(x_remoteMiner);
-	{
-		ReadGuard l(x_stateDB);
-		m_remoteMiner.update(m_postMine, m_bc);
-	}
-	return make_pair(m_remoteMiner.workHash(), m_remoteMiner.difficulty());
+	return ProofOfWork::package(m_miningInfo);
 }
 
-bool Client::submitWork(ProofOfWork::Proof const& _proof)
+bool Client::submitWork(ProofOfWork::Solution const& _solution)
 {
-	Guard l(x_remoteMiner);
-	return m_remoteMiner.submitWork(_proof);
+	bytes newBlock;
+	{
+		WriteGuard l(x_stateDB);
+		if (!m_postMine.completeMine<ProofOfWork>(_solution))
+			return false;
+		newBlock = m_postMine.blockData();
+	}
+	m_bq.import(&newBlock, m_bc);
+/*
+	ImportRoute ir = m_bc.attemptImport(newBlock, m_stateDB);
+	if (!ir.first.empty())
+		onChainChanged(ir);*/
+	return true;
+}
+
+void Client::syncBlockQueue()
+{
+	ImportRoute ir;
+
+	cwork << "BQ ==> CHAIN ==> STATE";
+	{
+		WriteGuard l(x_stateDB);
+		OverlayDB db = m_stateDB;
+		ETH_WRITE_UNGUARDED(x_stateDB)
+			tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, db, 100);
+		if (ir.first.empty())
+			return;
+		m_stateDB = db;
+	}
+	onChainChanged(ir);
+}
+
+void Client::syncTransactionQueue()
+{
+	// returns TransactionReceipts, once for each transaction.
+	cwork << "postSTATE <== TQ";
+
+	h256Set changeds;
+	TransactionReceipts newPendingReceipts;
+
+	ETH_WRITE_GUARDED(x_stateDB)
+		newPendingReceipts = m_postMine.sync(m_bc, m_tq, *m_gp);
+
+	if (newPendingReceipts.size())
+	{
+		for (size_t i = 0; i < newPendingReceipts.size(); i++)
+			appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
+		changeds.insert(PendingChangedFilter);
+
+		// TODO: Tell farm about new transaction (i.e. restartProofOfWork mining).
+		onPostStateChanged();
+
+		// Tell watches about the new transactions.
+		noteChanged(changeds);
+
+		// Tell network about the new transactions.
+		if (auto h = m_host.lock())
+			h->noteNewTransactions();
+	}
+}
+
+void Client::onChainChanged(ImportRoute const& _ir)
+{
+	// insert transactions that we are declaring the dead part of the chain
+	for (auto const& h: _ir.second)
+	{
+		clog(ClientNote) << "Dead block:" << h.abridged();
+		for (auto const& t: m_bc.transactions(h))
+		{
+			clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckTransaction::None);
+			m_tq.import(t);
+		}
+	}
+
+	// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
+	for (auto const& h: _ir.first)
+	{
+		clog(ClientChat) << "Live block:" << h.abridged();
+		for (auto const& th: m_bc.transactionHashes(h))
+		{
+			clog(ClientNote) << "Safely dropping transaction " << th.abridged();
+			m_tq.drop(th);
+		}
+	}
+
+	if (auto h = m_host.lock())
+		h->noteNewBlocks();
+
+	h256Set changeds;
+	for (auto const& h: _ir.first)
+		appendFromNewBlock(h, changeds);
+	changeds.insert(ChainChangedFilter);
+
+	// RESTART MINING
+
+	// LOCKS REALLY NEEDED?
+	ETH_WRITE_GUARDED(x_stateDB)
+		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
+		{
+			if (isMining())
+				cnote << "New block on chain.";
+
+			m_postMine = m_preMine;
+			changeds.insert(PendingChangedFilter);
+
+			ETH_WRITE_UNGUARDED(x_stateDB)
+				onPostStateChanged();
+		}
+
+	noteChanged(changeds);
+}
+
+void Client::onPostStateChanged()
+{
+	cnote << "Post state changed: Restarting mining...";
+	if (isMining())
+	{
+		{
+			WriteGuard l(x_stateDB);
+			m_postMine.commitToMine(m_bc);
+			m_miningInfo = m_postMine.info();
+		}
+		m_farm.setWork(m_miningInfo);
+	}
+}
+
+void Client::startMining()
+{
+	if (m_turboMining)
+		m_farm.startGPU();
+	else
+		m_farm.startCPU();
+	onPostStateChanged();
+}
+
+void Client::noteChanged(h256Set const& _filters)
+{
+	Guard l(x_filtersWatches);
+	if (_filters.size())
+		cnote << "noteChanged(" << filtersToString(_filters) << ")";
+	// accrue all changes left in each filter into the watches.
+	for (auto& w: m_watches)
+		if (_filters.count(w.second.id))
+		{
+			cwatch << "!!!" << w.first << (m_filters.count(w.second.id) ? w.second.id.abridged() : w.second.id == PendingChangedFilter ? "pending" : w.second.id == ChainChangedFilter ? "chain" : "???");
+			if (m_filters.count(w.second.id))	// Normal filtering watch
+				w.second.changes += m_filters.at(w.second.id).changes;
+			else								// Special ('pending'/'latest') watch
+				w.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, 0));
+		}
+	// clear the filters now.
+	for (auto& i: m_filters)
+		i.second.changes.clear();
 }
 
 void Client::doWork()
 {
-	// TODO: Use condition variable rather than polling.
+	// TODO: Use condition variable rather than this rubbish.
 
-	bool stillGotWork = false;
+	bool t = true;
+	if (m_syncTransactionQueue.compare_exchange_strong(t, false))
+		syncTransactionQueue();
 
-	cworkin << "WORK";
-	h256Set changeds;
+	t = true;
+	if (m_syncBlockQueue.compare_exchange_strong(t, false))
+		syncBlockQueue();
 
-	auto maintainMiner = [&](Miner& m)
-	{
-		if (m.isComplete())
-		{
-			// TODO: enable a short-circuit option since we mined it. will need to get the end state from the miner.
-			auto lm = dynamic_cast<LocalMiner*>(&m);
-			h256s hs;
-			h256 c;
-			if (false && lm && !m_verifyOwnBlocks)
-			{
-				// TODO: implement
-				//m_bc.attemptImport(m_blockData(), m_stateDB, lm->state());
-				// TODO: derive hs from lm->state()
-			}
-			else
-			{
-				cwork << "CHAIN <== postSTATE";
-				WriteGuard l(x_stateDB);
-				tie(hs, c) = m_bc.attemptImport(m.blockData(), m_stateDB);
-			}
-			if (hs.size())
-			{
-				for (auto const& h: hs)
-					if (h != c)
-						appendFromNewBlock(h, changeds);
-				changeds.insert(ChainChangedFilter);
-			}
-			for (auto& m: m_localMiners)
-				m.noteStateChange();
-		}
-	};
-	{
-		ReadGuard l(x_localMiners);
-		for (auto& m: m_localMiners)
-			maintainMiner(m);
-	}
-	{
-		Guard l(x_remoteMiner);
-		maintainMiner(m_remoteMiner);
-	}
+	checkWatchGarbage();
 
-	// Synchronise state to block chain.
-	// This should remove any transactions on our queue that are included within our state.
-	// It also guarantees that the state reflects the longest (valid!) chain on the block chain.
-	//   This might mean reverting to an earlier state and replaying some blocks, or, (worst-case:
-	//   if there are no checkpoints before our fork) reverting to the genesis block and replaying
-	//   all blocks.
-	// Resynchronise state with block chain & trans
-	bool resyncStateNeeded = false;
-	{
-		WriteGuard l(x_stateDB);
-		cwork << "BQ ==> CHAIN ==> STATE";
-		OverlayDB db = m_stateDB;
-		x_stateDB.unlock();
-		h256s fresh;
-		h256s dead;
-		bool sgw;
-		tie(fresh, dead, sgw) = m_bc.sync(m_bq, db, 100);
+	this_thread::sleep_for(chrono::milliseconds(20));
+}
 
-		// insert transactions that we are declaring the dead part of the chain
-		for (auto const& h: dead)
-		{
-			clog(ClientNote) << "Dead block:" << h.abridged();
-			for (auto const& t: m_bc.transactions(h))
-			{
-				clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckSignature::None);
-				m_tq.import(t);
-			}
-		}
-
-		// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
-		for (auto const& h: fresh)
-		{
-			clog(ClientChat) << "Mined block:" << h.abridged();
-			for (auto const& th: m_bc.transactionHashes(h))
-			{
-				clog(ClientNote) << "Safely dropping transaction " << th;
-				m_tq.drop(th);
-			}
-		}
-
-		stillGotWork = stillGotWork | sgw;
-		if (!fresh.empty())
-		{
-			for (auto i: fresh)
-				appendFromNewBlock(i, changeds);
-			changeds.insert(ChainChangedFilter);
-		}
-		x_stateDB.lock();
-		if (fresh.size())
-			m_stateDB = db;
-
-		cwork << "preSTATE <== CHAIN";
-		if (m_preMine.sync(m_bc) || m_postMine.address() != m_preMine.address())
-		{
-			if (isMining())
-				cnote << "New block on chain: Restarting mining operation.";
-			m_postMine = m_preMine;
-			resyncStateNeeded = true;
-			changeds.insert(PendingChangedFilter);
-			// TODO: Move transactions pending from m_postMine back to transaction queue.
-		}
-
-		// returns TransactionReceipts, once for each transaction.
-		cwork << "postSTATE <== TQ";
-		TransactionReceipts newPendingReceipts = m_postMine.sync(m_bc, m_tq, *m_gp);
-		if (newPendingReceipts.size())
-		{
-			for (size_t i = 0; i < newPendingReceipts.size(); i++)
-				appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
-			
-			changeds.insert(PendingChangedFilter);
-
-			if (isMining())
-				cnote << "Additional transaction ready: Restarting mining operation.";
-			resyncStateNeeded = true;
-			if (auto h = m_host.lock())
-				h->noteNewTransactions();
-		}
-	}
-
-	if (!changeds.empty())
-		if (auto h = m_host.lock())
-			h->noteNewBlocks();
-
-	if (resyncStateNeeded)
-	{
-		ReadGuard l(x_localMiners);
-		for (auto& m: m_localMiners)
-			m.noteStateChange();
-	}
-
-	cwork << "noteChanged" << changeds.size() << "items";
-	noteChanged(changeds);
-	cworkout << "WORK";
-
-	if (!stillGotWork)
-		this_thread::sleep_for(chrono::milliseconds(100));
-
+void Client::checkWatchGarbage()
+{
 	if (chrono::system_clock::now() - m_lastGarbageCollection > chrono::seconds(5))
 	{
 		// watches garbage collection

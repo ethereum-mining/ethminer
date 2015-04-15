@@ -36,6 +36,7 @@
 #include "SortFilterProxyModel.h"
 #include "Clipboard.h"
 #include "HttpServer.h"
+#include "InverseMouseArea.h"
 
 extern int qInitResources_js();
 using namespace dev::mix;
@@ -52,13 +53,8 @@ ApplicationService::ApplicationService()
 MixApplication::MixApplication(int& _argc, char* _argv[]):
 	QApplication(_argc, _argv), m_engine(new QQmlApplicationEngine())
 {
+	setWindowIcon(QIcon(":/res/mix_256x256x32.png"));
 	m_engine->load(QUrl("qrc:/qml/Application.qml"));
-	if (!m_engine->rootObjects().empty())
-	{
-		QWindow *window = qobject_cast<QWindow*>(m_engine->rootObjects().at(0));
-		if (window)
-			window->setIcon(QIcon(":/res/mix_256x256x32.png"));
-	}
 }
 
 void MixApplication::initialize()
@@ -94,8 +90,8 @@ void MixApplication::initialize()
 	qmlRegisterType<QSolidityType>("org.ethereum.qml.QSolidityType", 1, 0, "QSolidityType");
 	qmlRegisterType<Clipboard>("org.ethereum.qml.Clipboard", 1, 0, "Clipboard");
 	qmlRegisterType<HttpServer>("HttpServer", 1, 0, "HttpServer");
+	qmlRegisterType<InverseMouseArea>("org.ethereum.qml.InverseMouseArea", 1, 0, "InverseMouseArea");
 	qRegisterMetaType<CodeModel*>("CodeModel*");
-	qRegisterMetaType<ClientModel*>("ClientModel*");
 	qRegisterMetaType<ClientModel*>("ClientModel*");
 }
 

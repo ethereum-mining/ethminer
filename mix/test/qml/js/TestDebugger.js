@@ -14,8 +14,7 @@ function test_defaultTransactionSequence()
 	"	uint z;\r" +
 	"}\r"
 	);
-	if (!ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel, "count", 3);
 }
 
@@ -47,8 +46,7 @@ function test_transactionWithParameter()
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.acceptAndClose();
 	mainApplication.mainContent.startQuickDebugging();
-	if (!ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel, "count", 5);
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(4), "returned", "(442)");
 }
@@ -75,13 +73,11 @@ function test_constructorParameters()
 	ts.typeString("442", transactionDialog);
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.model.addTransaction();
-	ts.waitForRendering(transactionDialog, 3000);
 	transactionDialog.selectFunction("getZ");
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.acceptAndClose();
 	mainApplication.mainContent.startQuickDebugging();
-	if (!ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel, "count", 4);
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(3), "returned", "(442)");
 }
@@ -138,3 +134,67 @@ function test_arrayParametersAndStorage()
 	tryCompare(mainApplication.mainContent.rightPane.solStorage.item.value, "s", "42");
 	tryCompare(mainApplication.mainContent.rightPane.solCallStack.listModel, 0, "setMV");
 }
+
+function test_solidityDebugging()
+{
+	newProject();
+	editContract(
+	"contract Contract {\r " +
+	"	function add(uint256 a, uint256 b) returns (uint256)\r " +
+	"	{\r " +
+	"		return a + b;\r " +
+	"	}\r " +
+	"	function Contract()\r " +
+	"	{\r " +
+	"		uint256 local = add(42, 34);\r " +
+	"		storage = local;\r " +
+	"	}\r " +
+	"	uint256 storage;\r " +
+	"}");
+
+	mainApplication.mainContent.startQuickDebugging();
+	if (!ts.waitForSignal(mainApplication.clientModel, "debugDataReady(QObject*)", 5000))
+		fail("Error running transaction");
+
+	tryCompare(mainApplication.mainContent.rightPane.debugSlider, "maximumValue", 20);
+	tryCompare(mainApplication.mainContent.rightPane.debugSlider, "value", 0);
+	mainApplication.mainContent.rightPane.debugSlider.value = 13;
+	tryCompare(mainApplication.mainContent.rightPane.solCallStack.listModel, 0, "add");
+	tryCompare(mainApplication.mainContent.rightPane.solCallStack.listModel, 1, "Contract");
+	tryCompare(mainApplication.mainContent.rightPane.solLocals.item.value, "local", "0");
+	tryCompare(mainApplication.mainContent.rightPane.solStorage.item.value, "storage", undefined);
+	mainApplication.mainContent.rightPane.debugSlider.value = 19;
+	tryCompare(mainApplication.mainContent.rightPane.solLocals.item.value, "local", "76");
+	tryCompare(mainApplication.mainContent.rightPane.solStorage.item.value, "storage", "76");
+}
+
+function test_vmDebugging()
+{
+	newProject();
+	editContract(
+	"contract Contract {\r " +
+	"	function add(uint256 a, uint256 b) returns (uint256)\r " +
+	"	{\r " +
+	"		return a + b;\r " +
+	"	}\r " +
+	"	function Contract()\r " +
+	"	{\r " +
+	"		uint256 local = add(42, 34);\r " +
+	"		storage = local;\r " +
+	"	}\r " +
+	"	uint256 storage;\r " +
+	"}");
+
+	mainApplication.mainContent.startQuickDebugging();
+	if (!ts.waitForSignal(mainApplication.clientModel, "debugDataReady(QObject*)", 5000))
+		fail("Error running transaction");
+
+	mainApplication.mainContent.rightPane.assemblyMode = !mainApplication.mainContent.rightPane.assemblyMode;
+	tryCompare(mainApplication.mainContent.rightPane.debugSlider, "maximumValue", 41);
+	tryCompare(mainApplication.mainContent.rightPane.debugSlider, "value", 0);
+	mainApplication.mainContent.rightPane.debugSlider.value = 35;
+	tryCompare(mainApplication.mainContent.rightPane.vmCallStack.listModel, 0, mainApplication.clientModel.contractAddresses["Contract"].substring(2));
+	tryCompare(mainApplication.mainContent.rightPane.vmStorage.listModel, 0, "@ 0 (0x0)	 76 (0x4c)");
+	tryCompare(mainApplication.mainContent.rightPane.vmMemory.listModel, "length", 0);
+}
+

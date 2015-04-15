@@ -6,7 +6,7 @@ import QtQuick.Dialogs 1.2
 import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.QEther 1.0
 import "js/TransactionHelper.js" as TransactionHelper
-import "js/ProjectModel.js" as ProjectModelCode
+import "js/NetworkDeployment.js" as NetworkDeploymentCode
 import "js/QEtherHelper.js" as QEtherHelper
 import "."
 
@@ -73,6 +73,12 @@ Dialog {
 				balance.text = comboAccounts.balances[0];
 			});
 		});
+
+		var gas = 0;
+		var gasCosts = clientModel.gasCosts;
+		for (var g in gasCosts)
+			gas += gasCosts[g];
+		gasToUse = gas;
 	}
 
 	function stopForInputError(inError)
@@ -329,6 +335,54 @@ Dialog {
 				}
 			}
 
+			RowLayout
+			{
+				Layout.fillWidth: true
+				Rectangle
+				{
+					Layout.preferredWidth: 357
+					color: "transparent"
+				}
+
+				Button
+				{
+					id: deployButton
+					action: runAction
+					iconSource: "qrc:/qml/img/run.png"
+				}
+
+				Action {
+					id: runAction
+					tooltip: qsTr("Deploy contract(s) and Package resources files.")
+					onTriggered: {
+						var inError = [];
+						var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEth.text);
+						for (var k in ethUrl)
+						{
+							if (ethUrl[k].length > 32)
+								inError.push(qsTr("Member too long: " + ethUrl[k]) + "\n");
+						}
+						if (!stopForInputError(inError))
+						{
+							if (contractRedeploy.checked)
+								deployWarningDialog.open();
+							else
+								NetworkDeploymentCode.startDeployProject(false);
+						}
+					}
+				}
+
+				CheckBox
+				{
+					anchors.left: deployButton.right
+					id: contractRedeploy
+					enabled: Object.keys(projectModel.deploymentAddresses).length > 0
+					checked: Object.keys(projectModel.deploymentAddresses).length == 0
+					text: qsTr("Deploy Contract(s)")
+					anchors.verticalCenter: parent.verticalCenter
+				}
+			}
+
 			Rectangle
 			{
 				width: parent.width
@@ -373,7 +427,7 @@ Dialog {
 						Layout.preferredWidth: 350
 						id: localPackageUrl
 						readOnly: true
-						enabled: rowRegister.isOkToRegister()
+
 					}
 
 					DefaultLabel

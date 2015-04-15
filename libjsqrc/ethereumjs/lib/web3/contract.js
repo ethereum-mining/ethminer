@@ -21,19 +21,11 @@
  */
 
 var web3 = require('../web3'); 
-var abi = require('../solidity/abi');
+var solAbi = require('../solidity/abi');
 var utils = require('../utils/utils');
+var solUtils = require('../solidity/utils');
 var eventImpl = require('./event');
 var signature = require('./signature');
-
-var exportNatspecGlobals = function (vars) {
-    // it's used byt natspec.js
-    // TODO: figure out better way to solve this
-    web3._currentContractAbi = vars.abi;
-    web3._currentContractAddress = vars.address;
-    web3._currentContractMethodName = vars.method;
-    web3._currentContractMethodParams = vars.params;
-};
 
 var addFunctionRelatedPropertiesToContract = function (contract) {
     
@@ -43,36 +35,19 @@ var addFunctionRelatedPropertiesToContract = function (contract) {
         return contract;
     };
 
-
     contract.sendTransaction = function (options) {
         contract._isTransaction = true;
         contract._options = options;
         return contract;
     };
-    // DEPRECATED
-    contract.transact = function (options) {
-
-        console.warn('myContract.transact() is deprecated please use myContract.sendTransaction() instead.');
-
-        return contract.sendTransaction(options);
-    };
-
-    contract._options = {};
-    ['gas', 'gasPrice', 'value', 'from'].forEach(function(p) {
-        contract[p] = function (v) {
-            contract._options[p] = v;
-            return contract;
-        };
-    });
-
 };
 
 var addFunctionsToContract = function (contract, desc, address) {
-    var inputParser = abi.inputParser(desc);
-    var outputParser = abi.outputParser(desc);
+    var inputParser = solAbi.inputParser(desc);
+    var outputParser = solAbi.outputParser(desc);
 
     // create contract functions
-    utils.filterFunctions(desc).forEach(function (method) {
+    solUtils.filterFunctions(desc).forEach(function (method) {
 
         var displayName = utils.extractDisplayName(method.name);
         var typeName = utils.extractTypeName(method.name);
@@ -96,13 +71,6 @@ var addFunctionsToContract = function (contract, desc, address) {
 
             if (isTransaction) {
                 
-                exportNatspecGlobals({
-                    abi: desc,
-                    address: address,
-                    method: method.name,
-                    params: params
-                });
-
                 // transactions do not have any output, cause we do not know, when they will be processed
                 web3.eth.sendTransaction(options);
                 return;
@@ -131,14 +99,14 @@ var addFunctionsToContract = function (contract, desc, address) {
 var addEventRelatedPropertiesToContract = function (contract, desc, address) {
     contract.address = address;
     contract._onWatchEventResult = function (data) {
-        var matchingEvent = event.getMatchingEvent(utils.filterEvents(desc));
+        var matchingEvent = event.getMatchingEvent(solUtils.filterEvents(desc));
         var parser = eventImpl.outputParser(matchingEvent);
         return parser(data);
     };
     
     Object.defineProperty(contract, 'topics', {
         get: function() {
-            return utils.filterEvents(desc).map(function (e) {
+            return solUtils.filterEvents(desc).map(function (e) {
                 return signature.eventSignatureFromAscii(e.name);
             });
         }
@@ -148,7 +116,7 @@ var addEventRelatedPropertiesToContract = function (contract, desc, address) {
 
 var addEventsToContract = function (contract, desc, address) {
     // create contract events
-    utils.filterEvents(desc).forEach(function (e) {
+    solUtils.filterEvents(desc).forEach(function (e) {
 
         var impl = function () {
             var params = Array.prototype.slice.call(arguments);
@@ -159,7 +127,7 @@ var addEventsToContract = function (contract, desc, address) {
                 var parser = eventImpl.outputParser(e);
                 return parser(data);
             };
-			return web3.eth.filter(o, undefined, undefined, outputFormatter);
+            return web3.eth.filter(o, undefined, undefined, outputFormatter);
         };
         
         // this property should be used by eth.filter to check if object is an event
@@ -203,20 +171,10 @@ var addEventsToContract = function (contract, desc, address) {
 var contract = function (abi) {
 
     // return prototype
-    if(abi instanceof Array && arguments.length === 1) {
-        return Contract.bind(null, abi);
-
-    // deprecated: auto initiate contract
-    } else {
-
-        console.warn('Initiating a contract like this is deprecated please use var MyContract = eth.contract(abi); new MyContract(address); instead.');
-
-        return new Contract(arguments[1], arguments[0]);
-    }
-
+    return Contract.bind(null, abi);
 };
 
-function Contract(abi, address) {
+function Contract(abi, options) {
 
     // workaround for invalid assumption that method.name is the full anonymous prototype of the method.
     // it's not. it's just the name. the rest of the code assumes it's actually the anonymous
@@ -229,6 +187,17 @@ function Contract(abi, address) {
             method.name = displayName + '(' + typeName + ')';
         }
     });
+
+    var address = '';
+    if (utils.isAddress(options)) {
+        address = options;
+    } else { // is a source code!
+        // TODO, parse the rest of the args
+        var code = options;
+        var args = Array.prototype.slice.call(arguments, 2);
+        var bytes = solAbi.formatConstructorParams(abi, args);
+        address = web3.eth.sendTransaction({data: code + bytes});
+    }
 
     var result = {};
     addFunctionRelatedPropertiesToContract(result);
