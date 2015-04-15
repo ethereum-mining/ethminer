@@ -401,9 +401,9 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 				AssemblyItem const& prevInstruction = codeItems[s.codeIndex][prevInstructionIndex];
 				auto functionIter = contract->functions().find(LocationPair(instruction.getLocation().start, instruction.getLocation().end));
 				if (functionIter != contract->functions().end() && ((prevInstruction.getJumpType() == AssemblyItem::JumpType::IntoFunction) || solCallStack.empty()))
-					solCallStack.push_back(QVariant::fromValue(functionIter.value()));
+					solCallStack.push_front(QVariant::fromValue(functionIter.value()));
 				else if (prevInstruction.getJumpType() == AssemblyItem::JumpType::OutOfFunction && !solCallStack.empty())
-					solCallStack.pop_back();
+					solCallStack.pop_front();
 			}
 
 			//format solidity context values
