@@ -150,7 +150,7 @@ Item {
 		id: httpServer
 		listen: true
 		accept: true
-		port: 8893
+		//port: 8893
 		onClientConnected: {
 			var urlPath = _request.url.toString();
 			if (urlPath.indexOf("/rpc/") === 0)

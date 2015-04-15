@@ -100,7 +100,7 @@ protected:
 
 signals:
 	void clientConnected(HttpRequest* _request);
-	void errorStringChanged(QString const& _errorString);
+	void errorStringChanged();
 	void urlChanged(QUrl const& _url);
 	void portChanged(int _port);
 	void listenChanged(bool _listen);
