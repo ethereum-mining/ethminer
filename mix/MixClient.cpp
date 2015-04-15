@@ -55,7 +55,7 @@ bytes MixBlockChain::createGenesisBlock(h256 _stateRoot)
 }
 
 MixClient::MixClient(std::string const& _dbPath):
-	m_dbPath(_dbPath), m_miningThreads(0)
+	m_dbPath(_dbPath)
 {
 	std::map<Secret, u256> account;
 	account.insert(std::make_pair(c_defaultUserAccountSecret, 1000000 * ether));
@@ -249,6 +249,9 @@ void MixClient::mine()
 {
 	WriteGuard l(x_state);
 	m_state.commitToMine(bc());
+	m_state.completeMine();
+	bc().import(m_state.blockData(), m_stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce);
+	/*
 	GenericFarm<ProofOfWork> f;
 	bool completed = false;
 	f.onSolutionFound([&](ProofOfWork::Solution sol)
@@ -261,6 +264,7 @@ void MixClient::mine()
 		this_thread::sleep_for(chrono::milliseconds(20));
 
 	bc().import(m_state.blockData(), m_stateDB);
+	*/
 	m_state.sync(bc());
 	m_startState = m_state;
 	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
