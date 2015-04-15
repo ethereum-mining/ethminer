@@ -21,6 +21,7 @@
  */
 
 #include <memory>
+#include <random>
 #include <QTcpSocket>
 #include "HttpServer.h"
 
@@ -106,8 +107,18 @@ void HttpServer::updateListening()
 	if (this->isListening())
 		this->close();
 
-	if (!m_listen || QTcpServer::listen(QHostAddress::LocalHost, m_port))
+	if (!m_listen)
 		return;
+
+	if (!QTcpServer::listen(QHostAddress::LocalHost, m_port))
+		errorStringChanged();
+
+	if (m_port != QTcpServer::serverPort())
+	{
+		m_port = QTcpServer::serverPort();
+		emit portChanged(m_port);
+		emit urlChanged(url());
+	}
 }
 
 void HttpServer::incomingConnection(qintptr _socket)
