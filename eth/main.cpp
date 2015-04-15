@@ -112,61 +112,70 @@ void help()
 {
 	cout
 		<< "Usage eth [OPTIONS]" << endl
-		<< "Options:" << endl
+		<< "Options:" << endl << endl
+		<< "Client mode (default):" << endl
+		<< "    -o,--mode <full/peer>  Start a full node or a peer node (default: full)." << endl
+		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
+#if ETH_JSONRPC || !ETH_TRUE
+		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
+		<< "    --json-rpc-port <n>  Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
+#endif
+		<< "    -K,--kill  First kill the blockchain." << endl
+		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
+		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
+		<< "    -S,--session-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
+		<< "Client transacting:" << endl
+		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
+		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (default: 30.679)." << endl
+		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
+		<< "Client mining:" << endl
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
-		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
-		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (Default: 15)." << endl
-		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
+		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (default: off)" << endl
+		<< "    -f,--force-mining  Mine even when there are no transactions to mine (default: off)" << endl
 		<< "    -C,--cpu  When mining, use the CPU." << endl
-		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
-		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
+		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
+		<< "Client networking:" << endl
+		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
+		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
+		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 5)." << endl
+		<< "    --public-ip <ip>  Force public ip to given (default: auto)." << endl
+		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
+		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
+		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
+		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
+		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
+#if ETH_JSONRPC || !ETH_TRUE
+		<< "Work farming mode:" << endl
+		<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL. Use with -G/--opencl." << endl
+		<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
+#endif
+		<< "Ethash verify mode:" << endl
+		<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
+		<< "Benchmarking mode:" << endl
+		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --opencl." << endl
 		<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 3)." << endl
 		<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
 		<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
+#if ETH_JSONRPC || !ETH_TRUE
+		<< "    --phone-home <on/off>  When benchmarking, publish results (default: on)" << endl
+#endif
+		<< "DAG creation mode:" << endl
 		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
-		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
+		<< "Import/export modes:" << endl
+		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
 		<< "    -E,--export <file>  Export file as a concatenated series of blocks and exit." << endl
 		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
-		<< "    -f,--force-mining  Mine even when there are no transactions to mine (Default: off)" << endl
-#if ETH_JSONRPC || !ETH_TRUE
-		<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL. Use with -G/--opencl." << endl
-		<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
-#endif
-		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
-		<< "    -h,--help  Show this help message and exit." << endl
-		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
-		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
-#if ETH_JSONRPC || !ETH_TRUE
-		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
-		<< "    --json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
-#endif
+		<< "General Options:" << endl
+		<< "    -d,--db-path <path>  Load database from path (default: " << getDataDir() << ")" << endl
 #if ETH_EVMJIT || !ETH_TRUE
 		<< "    -J,--jit  Enable EVM JIT (default: off)." << endl
 #endif
-		<< "    -K,--kill  First kill the blockchain." << endl
-		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
-		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
-		<< "    --public-ip <ip>  Force public ip to given (default: auto)." << endl
-		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
-		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --opencl." << endl
-		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
-		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
-		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
-		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
-#if ETH_JSONRPC || !ETH_TRUE
-		<< "    --phone-home <on/off>  When benchmarking, publish results (Default: on)" << endl
-#endif
-		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
-		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
-		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
-		<< "    -S,--session-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
-		<< "    --upnp <on/off>  Use upnp for NAT (default: on)." << endl
-		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
+		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
-		<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
-		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
+		<< "    -h,--help  Show this help message and exit." << endl
 		;
 		exit(0);
 }
@@ -313,7 +322,7 @@ void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, u
 	if (_phoneHome)
 	{
 		cout << "Phoning home to find world ranking..." << endl;
-		jsonrpc::HttpClient client("http://192.168.33.39:3000/benchmark");
+		jsonrpc::HttpClient client("http://gav.ethdev.com:3000/benchmark");
 		PhoneHome rpc(client);
 		try
 		{
