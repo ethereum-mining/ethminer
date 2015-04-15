@@ -3,8 +3,6 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 
-
-
 Rectangle {
 	id: buttonActionContainer
 	property string disableStateImg
@@ -14,7 +12,6 @@ Rectangle {
 	property bool buttonLeft
 	property bool buttonRight
 	signal clicked
-
 
 	color: "transparent"
 	width: 35
@@ -43,8 +40,8 @@ Rectangle {
 		        right: parent.right
 		        top: parent.top
 		        bottom: parent.bottom
-				bottomMargin:debugImg.pressed? 0 : 1;
-				topMargin:debugImg.pressed? 1 : 0;
+				bottomMargin: debugImg.pressed ? 0 : 1;
+				topMargin: debugImg.pressed ? 1 : 0;
 			}
 			color: "#FCFBFC"
 			radius: 3
@@ -65,14 +62,13 @@ Rectangle {
 		        right: parent.right
 		        top: parent.top
 		        bottom: parent.bottom
-				bottomMargin:debugImg.pressed? 0 : 1;
-				topMargin:debugImg.pressed? 1 : 0;
+				bottomMargin: debugImg.pressed ? 0 : 1;
+				topMargin: debugImg.pressed? 1 : 0;
 			}
 			color: "#FCFBFC"
 			radius: 3
 		}	 
 	}
-
 
 	Rectangle {
 		id: contentRectangle
@@ -87,8 +83,8 @@ Rectangle {
 		        right: parent.right
 		        top: parent.top
 		        bottom: parent.bottom
-				bottomMargin:debugImg.pressed? 0 : 1;
-				topMargin:debugImg.pressed? 1 : 0;
+				bottomMargin: debugImg.pressed ? 0 : 1;
+				topMargin: debugImg.pressed ? 1 : 0;
 			}
 			color: "#FCFBFC"
 
@@ -96,7 +92,7 @@ Rectangle {
 				id: debugImage
 				source: enabledStateImg
 				anchors.centerIn: parent
-				anchors.topMargin: debugImg.pressed? 1 : 0;
+				anchors.topMargin: debugImg.pressed ? 1 : 0;
 				
 				fillMode: Image.PreserveAspectFit
 				width: 15
@@ -105,28 +101,24 @@ Rectangle {
 
 		}
 
-
 		Button {
 			anchors.fill: parent
 			id: debugImg
 			action: buttonAction
-			style: Rectangle {
-				color: "transparent"
+			style: ButtonStyle {
+				background: Rectangle {
+					color: "transparent"
+				}
 			}
 		}
 
-		
 		Action {
 			tooltip: buttonTooltip
 			id: buttonAction
 			shortcut: buttonShortcut
 			onTriggered: {
-				// contentRectangle.anchors.bottomMargin = 0
-				// contentRectangle.anchors.topMargin = 1
 				buttonActionContainer.clicked();
 			}
 		}
 	}
-
-	
 }

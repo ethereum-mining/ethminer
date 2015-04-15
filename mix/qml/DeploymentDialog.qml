@@ -6,7 +6,7 @@ import QtQuick.Dialogs 1.2
 import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.QEther 1.0
 import "js/TransactionHelper.js" as TransactionHelper
-import "js/ProjectModel.js" as ProjectModelCode
+import "js/NetworkDeployment.js" as NetworkDeploymentCode
 import "js/QEtherHelper.js" as QEtherHelper
 import "."
 
@@ -356,7 +356,7 @@ Dialog {
 					tooltip: qsTr("Deploy contract(s) and Package resources files.")
 					onTriggered: {
 						var inError = [];
-						var ethUrl = ProjectModelCode.formatAppUrl(applicationUrlEth.text);
+						var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEth.text);
 						for (var k in ethUrl)
 						{
 							if (ethUrl[k].length > 32)
@@ -367,7 +367,7 @@ Dialog {
 							if (contractRedeploy.checked)
 								deployWarningDialog.open();
 							else
-								ProjectModelCode.startDeployProject(false);
+								NetworkDeploymentCode.startDeployProject(false);
 						}
 					}
 				}
