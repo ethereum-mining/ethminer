@@ -135,29 +135,23 @@ void const* EthashAux::light(h256 const& _seedHash)
 	return get()->m_lights[_seedHash];
 }
 
-bytesConstRef EthashAux::full(BlockInfo const& _header, bytesRef _dest)
+EthashAux::FullType EthashAux::full(BlockInfo const& _header, bytesRef _dest)
 {
 	return full(_header.seedHash(), _dest);
 }
 
-bytesConstRef EthashAux::full(h256 const& _seedHash, bytesRef _dest)
+EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest)
 {
 	RecursiveGuard l(get()->x_this);
-	if (get()->m_fulls.count(_seedHash) && _dest)
+	FullType ret = get()->m_fulls[_seedHash].lock();
+	if (ret && _dest)
 	{
-		assert(get()->m_fulls.size() <= _dest.size());
-		get()->m_fulls.at(_seedHash).copyTo(_dest);
-		return _dest;
+		assert(ret->data.size() <= _dest.size());
+		ret->data.copyTo(_dest);
+		return FullType();
 	}
-	if (!get()->m_fulls.count(_seedHash))
+	if (!ret)
 	{
-		// @memoryleak @bug place it on a pile for deletion - perhaps use shared_ptr.
-/*		if (!m_fulls.empty())
-		{
-			delete [] m_fulls.begin()->second.data();
-			m_fulls.erase(m_fulls.begin());
-		}*/
-
 		try {
 			boost::filesystem::create_directories(getDataDir("ethash"));
 		} catch (...) {}
@@ -190,10 +184,11 @@ bytesConstRef EthashAux::full(h256 const& _seedHash, bytesRef _dest)
 			writeFile(memoFile, r);
 		}
 		if (_dest)
-			return _dest;
-		get()->m_fulls[_seedHash] = r;
+			return FullType();
+		ret = make_shared<FullTypeAllocation>(r);
+		get()->m_fulls[_seedHash] = ret;
 	}
-	return get()->m_fulls[_seedHash];
+	return ret;
 }
 
 Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
@@ -205,8 +200,9 @@ Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, N
 {
 	auto p = EthashAux::params(_seedHash);
 	ethash_return_value r;
+	auto dag = EthashAux::get()->full(_seedHash);
 	if (EthashAux::get()->m_fulls.count(_seedHash))
-		ethash_compute_full(&r, EthashAux::get()->full(_seedHash).data(), &p, _headerHash.data(), (uint64_t)(u64)_nonce);
+		ethash_compute_full(&r, dag->data.data(), &p, _headerHash.data(), (uint64_t)(u64)_nonce);
 	else
 		ethash_compute_light(&r, EthashAux::get()->light(_seedHash), &p, _headerHash.data(), (uint64_t)(u64)_nonce);
 //	cdebug << "EthashAux::eval sha3(cache):" << sha3(EthashAux::get()->cache(_header)) << "hh:" << _header.headerHash(WithoutNonce) << "nonce:" << _nonce << " => " << h256(r.result, h256::ConstructFromPointer);

@@ -33,8 +33,14 @@ public:
 
 	static EthashAux* get() { if (!s_this) s_this = new EthashAux(); return s_this; }
 
+	struct FullTypeAllocation
+	{
+		FullTypeAllocation(bytesConstRef _d): data(_d) {}
+		~FullTypeAllocation() { delete [] data.data(); }
+		bytesConstRef const data;
+	};
 	using LightType = void const*;
-	using FullType = void const*;
+	using FullType = std::shared_ptr<FullTypeAllocation>;
 
 	static h256 seedHash(unsigned _number);
 	static ethash_params params(BlockInfo const& _header);
@@ -42,8 +48,8 @@ public:
 	static ethash_params params(unsigned _n);
 	static LightType light(BlockInfo const& _header);
 	static LightType light(h256 const& _seedHash);
-	static bytesConstRef full(BlockInfo const& _header, bytesRef _dest = bytesRef());
-	static bytesConstRef full(h256 const& _header, bytesRef _dest = bytesRef());
+	static FullType full(BlockInfo const& _header, bytesRef _dest = bytesRef());
+	static FullType full(h256 const& _header, bytesRef _dest = bytesRef());
 
 	static Ethash::Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
 	static Ethash::Result eval(BlockInfo const& _header, Nonce const& _nonce);
@@ -58,7 +64,7 @@ private:
 	RecursiveMutex x_this;
 
 	std::map<h256, LightType> m_lights;
-	std::map<h256, bytesRef> m_fulls;
+	std::map<h256, std::weak_ptr<FullTypeAllocation>> m_fulls;
 	std::map<h256, unsigned> m_epochs;
 	h256s m_seedHashes;
 };
