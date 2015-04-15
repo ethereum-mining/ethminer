@@ -110,7 +110,10 @@ void HttpServer::updateListening()
 		return;
 
 	if (!QTcpServer::listen(QHostAddress::LocalHost, m_port))
+	{
 		errorStringChanged();
+		return;
+	}
 
 	if (m_port != QTcpServer::serverPort())
 	{

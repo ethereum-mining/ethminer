@@ -50,10 +50,19 @@ TestCase
 
 	function editContract(c)
 	{
+		if (mainApplication.codeModel.compiling)
+			ts.waitForSignal(mainApplication.codeModel, "compilationComplete()", 5000);
 		mainApplication.mainContent.codeEditor.getEditor("contract.sol").setText(c);
 		if (!ts.waitForSignal(mainApplication.codeModel, "compilationComplete()", 5000))
 			fail("not compiled");
 		ts.keyPressChar(mainApplication, "S", Qt.ControlModifier, 200); //Ctrl+S
+	}
+
+
+	function waitForExecution()
+	{
+		while (mainApplication.clientModel.running)
+			ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000);
 	}
 
 	function editHtml(c)
