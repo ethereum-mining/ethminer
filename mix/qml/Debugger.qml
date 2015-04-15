@@ -17,6 +17,10 @@ Rectangle {
 	property alias solLocals: solLocals
 	property alias solStorage: solStorage
 	property alias solCallStack: solCallStack
+	property alias vmCallStack: callStack
+	property alias vmStorage: storage
+	property alias vmMemory: memoryDump
+	property alias vmCallData: callDataDump
 	signal debugExecuteLocation(string documentId, var location)
 	property string compilationErrorMessage
 	property bool assemblyMode: false
