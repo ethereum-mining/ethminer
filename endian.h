@@ -28,7 +28,11 @@
 #include <stdlib.h>
 #define ethash_swap_u32(input_) _byteswap_ulong(input_)
 #define ethash_swap_u64(input_) _byteswap_uint64(input_)
-#else
+#elif defined(__APPLE__)
+#include <libkern/OSByteOrder.h>
+#define ethash_swap_u32(input_) OSSwapInt32(input_)
+#define ethash_swap_u64(input_) OSSwapInt64(input_)
+#else // posix
 #include <byteswap.h>
 #define ethash_swap_u32(input_) __bswap_32(input_)
 #define ethash_swap_u64(input_) __bswap_64(input_)
