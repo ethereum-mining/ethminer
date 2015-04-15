@@ -6,7 +6,9 @@ import org.ethereum.qml.SortFilterProxyModel 1.0
 
 Rectangle
 {
-	property variant currentStatus;
+	property variant currentStatus
+	property int contentXPos: logStyle.generic.layout.dateWidth + logStyle.generic.layout.typeWidth - 70
+
 	function clear()
 	{
 		logsModel.clear();
@@ -62,7 +64,7 @@ Rectangle
 					model: SortFilterProxyModel {
 						id: proxyModel
 						source: logsModel
-						property var roles: ["-", "javascript", "run", "state", "comp"]
+						property var roles: ["-", "javascript", "run", "state", "comp", "deployment"]
 
 						Component.onCompleted: {
 							filterType = regEx(proxyModel.roles);
@@ -95,7 +97,7 @@ Rectangle
 							return "(?:" + roles.join('|') + ")";
 						}
 
-						filterType: "(?:javascript|run|state|comp)"
+						filterType: "(?:javascript|run|state|comp|deployment)"
 						filterContent: ""
 						filterSyntax: SortFilterProxyModel.RegExp
 						filterCaseSensitivity: Qt.CaseInsensitive
@@ -117,6 +119,10 @@ Rectangle
 							return cl;
 						}
 
+						Component.onCompleted:
+						{
+							logsPane.contentXPos = logContent.x
+						}
 
 						MouseArea
 						{
@@ -389,6 +395,50 @@ Rectangle
 				height: parent.height
 				color: logStyle.generic.layout.buttonSeparatorColor2
 			}
+
+			ToolButton {
+				id: deloyButton
+				checkable: true
+				height: logStyle.generic.layout.headerButtonHeight
+				width: 50
+				anchors.verticalCenter: parent.verticalCenter
+				checked: true
+				onCheckedChanged: {
+					proxyModel.toogleFilter("deployment")
+				}
+				tooltip: qsTr("Deployment")
+				style:
+					ButtonStyle {
+					label:
+						Item {
+						DefaultLabel {
+							font.family: logStyle.generic.layout.logLabelFont
+							font.pointSize: appStyle.absoluteSize(-3)
+							color: logStyle.generic.layout.logLabelColor
+							anchors.centerIn: parent
+							text: qsTr("Deploy.")
+						}
+					}
+					background:
+						Rectangle {
+						color: deloyButton.checked ? logStyle.generic.layout.buttonSelected : "transparent"
+					}
+				}
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 1;
+				height: parent.height
+				color: logStyle.generic.layout.buttonSeparatorColor1
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 2;
+				height: parent.height
+				color: logStyle.generic.layout.buttonSeparatorColor2
+			}
 		}
 
 		Row
@@ -538,48 +588,6 @@ Rectangle
 						background: Rectangle {
 							radius: 10
 						}
-					}
-				}
-			}
-
-			Rectangle
-			{
-				height: logStyle.generic.layout.headerButtonHeight
-				anchors.verticalCenter: parent.verticalCenter
-				color: "transparent"
-				width: 20
-				Button
-				{
-					id: hideButton
-					action: hideAction
-					anchors.fill: parent
-					anchors.verticalCenter: parent.verticalCenter
-					height: 25
-					style:
-						ButtonStyle {
-						background:
-							Rectangle {
-							height: logStyle.generic.layout.headerButtonHeight
-							implicitHeight: logStyle.generic.layout.headerButtonHeight
-							color: "transparent"
-						}
-					}
-				}
-
-				Image {
-					id: hideImage
-					source: "qrc:/qml/img/exit.png"
-					anchors.centerIn: parent
-					fillMode: Image.PreserveAspectFit
-					width: 20
-					height: 25
-				}
-
-				Action {
-					id: hideAction
-					tooltip: qsTr("Exit")
-					onTriggered: {
-						logsPane.parent.toggle();
 					}
 				}
 			}

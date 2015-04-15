@@ -33,18 +33,20 @@ ColumnLayout {
 		if (storageContainer.parent.parent.height === 25)
 			storageContainer.collapse();
 		else
+		{
+			if (storageContainer.parent.parent.height === 0)
+				storageContainer.parent.parent.height = 200;
 			storageContainer.expand();
+		}
 	}
 
 	RowLayout {
 		height: 25
 		id: header
 		Image {
-			source: "qrc:/qml/img/opentriangleindicator.png"
+			source: "img/closedtriangleindicator.png"
 			width: 15
 			height: 15
-			sourceSize.width: 15
-			sourceSize.height: 15
 			id: storageImgArrow
 		}
 
@@ -65,6 +67,8 @@ ColumnLayout {
 					if (collapsed)
 					{
 						storageContainer.expand();
+						if (storedHeight <= 25)
+							storedHeight = 200;
 						storageContainer.parent.parent.height = storedHeight;
 					}
 					else
@@ -107,8 +111,6 @@ ColumnLayout {
 			height: parent.height - 6
 			onHeightChanged:  {
 				if (height <= 0 && collapsible) {
-					if (storedHeight <= 0)
-						storedHeight = 200;
 					storageContainer.collapse();
 				}
 				else if (height > 0 && collapsed) {

@@ -134,10 +134,15 @@ void ClientModel::mine()
 	});
 }
 
-QString ClientModel::newAddress()
+QString ClientModel::newSecret()
 {
 	KeyPair a = KeyPair::create();
 	return QString::fromStdString(toHex(a.secret().ref()));
+}
+
+QString ClientModel::address(QString const& _secret)
+{
+	return QString::fromStdString(toHex(KeyPair(Secret(_secret.toStdString())).address().ref()));
 }
 
 QString ClientModel::encodeAbiString(QString _string)
@@ -151,6 +156,14 @@ QVariantMap ClientModel::contractAddresses() const
 	QVariantMap res;
 	for (auto const& c: m_contractAddresses)
 		res.insert(c.first, QString::fromStdString(toJS(c.second)));
+	return res;
+}
+
+QVariantMap ClientModel::gasCosts() const
+{
+	QVariantMap res;
+	for (auto const& c: m_gasCosts)
+		res.insert(c.first, QVariant::fromValue(static_cast<int>(c.second)));
 	return res;
 }
 
@@ -173,6 +186,7 @@ void ClientModel::setupState(QVariantMap _state)
 		QString contractId = transaction.value("contractId").toString();
 		QString functionId = transaction.value("functionId").toString();
 		u256 gas = boost::get<u256>(qvariant_cast<QBigInt*>(transaction.value("gas"))->internalValue());
+		bool gasAuto = transaction.value("gasAuto").toBool();
 		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
 		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
 		QString sender = transaction.value("sender").toString();
@@ -183,7 +197,7 @@ void ClientModel::setupState(QVariantMap _state)
 				contractId = functionId;
 			TransactionSettings transactionSettings(contractId, transaction.value("url").toString());
 			transactionSettings.gasPrice = 10000000000000;
-			transactionSettings.gas = 125000;
+			transactionSettings.gasAuto = true;
 			transactionSettings.value = 0;
 			transactionSettings.sender = Secret(sender.toStdString());
 			transactionSequence.push_back(transactionSettings);
@@ -192,7 +206,7 @@ void ClientModel::setupState(QVariantMap _state)
 		{
 			if (contractId.isEmpty() && m_codeModel->hasContract()) //TODO: This is to support old project files, remove later
 				contractId = m_codeModel->contracts().keys()[0];
-			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasPrice, Secret(sender.toStdString()));
+			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasAuto, gasPrice, Secret(sender.toStdString()));
 			transactionSettings.parameterValues = transaction.value("parameters").toMap();
 
 			if (contractId == functionId || functionId == "Constructor")
@@ -201,24 +215,28 @@ void ClientModel::setupState(QVariantMap _state)
 			transactionSequence.push_back(transactionSettings);
 		}
 	}
-	executeSequence(transactionSequence, accounts);
+	executeSequence(transactionSequence, accounts, Secret(_state.value("miner").toMap().value("secret").toString().toStdString()));
 }
 
-void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, map<Secret, u256> const& _balances)
+void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, map<Secret, u256> const& _balances, Secret const& _miner)
 {
 	if (m_running)
-		BOOST_THROW_EXCEPTION(ExecutionStateException());
+	{
+		qWarning() << "Waiting for current execution to complete";
+		m_runFuture.waitForFinished();
+	}
 	m_running = true;
 
 	emit runStarted();
 	emit runStateChanged();
 
+	m_client->resetState(_balances, _miner);
+	m_web3Server->setAccounts(m_client->userAccounts());
 	//run sequence
 	m_runFuture = QtConcurrent::run([=]()
 	{
 		try
 		{
-			m_client->resetState(_balances);
 			onStateReset();
 			for (TransactionSettings const& transaction: _sequence)
 			{
@@ -228,7 +246,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 					//std contract
 					bytes const& stdContractCode = m_codeModel->getStdContractCode(transaction.contractId, transaction.stdContractUrl);
 					TransactionSettings stdTransaction = transaction;
-					stdTransaction.gas = 500000;// TODO: get this from std contracts library
+					stdTransaction.gasAuto = true;
 					Address address = deployContract(stdContractCode, stdTransaction);
 					m_stdContractAddresses[stdTransaction.contractId] = address;
 					m_stdContractNames[address] = stdTransaction.contractId;
@@ -277,6 +295,8 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 							m_contractNames[newAddress] = transaction.contractId;
 							contractAddressesChanged();
 						}
+						gasCostsChanged();
+						m_gasCosts[transaction.contractId] = m_client->lastExecution().gasUsed;
 					}
 					else
 					{
@@ -381,9 +401,9 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 				AssemblyItem const& prevInstruction = codeItems[s.codeIndex][prevInstructionIndex];
 				auto functionIter = contract->functions().find(LocationPair(instruction.getLocation().start, instruction.getLocation().end));
 				if (functionIter != contract->functions().end() && ((prevInstruction.getJumpType() == AssemblyItem::JumpType::IntoFunction) || solCallStack.empty()))
-					solCallStack.push_back(QVariant::fromValue(functionIter.value()));
+					solCallStack.push_front(QVariant::fromValue(functionIter.value()));
 				else if (prevInstruction.getJumpType() == AssemblyItem::JumpType::OutOfFunction && !solCallStack.empty())
-					solCallStack.pop_back();
+					solCallStack.pop_front();
 			}
 
 			//format solidity context values
@@ -507,13 +527,13 @@ void ClientModel::debugRecord(unsigned _index)
 
 Address ClientModel::deployContract(bytes const& _code, TransactionSettings const& _ctrTransaction)
 {
-	Address newAddress = m_client->submitTransaction(_ctrTransaction.sender, _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice);
+	Address newAddress = m_client->submitTransaction(_ctrTransaction.sender, _ctrTransaction.value, _code, _ctrTransaction.gas, _ctrTransaction.gasPrice, _ctrTransaction.gasAuto);
 	return newAddress;
 }
 
 void ClientModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
-	m_client->submitTransaction(_tr.sender, _tr.value, _contract, _data, _tr.gas, _tr.gasPrice);
+	m_client->submitTransaction(_tr.sender, _tr.value, _contract, _data, _tr.gas, _tr.gasPrice, _tr.gasAuto);
 }
 
 RecordLogEntry* ClientModel::lastBlock() const
@@ -523,7 +543,7 @@ RecordLogEntry* ClientModel::lastBlock() const
 	strGas << blockInfo.gasUsed;
 	stringstream strNumber;
 	strNumber << blockInfo.number;
-	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(toHex(blockInfo.hash().ref()))), tr("Gas Used: ") + QString::fromStdString(strGas.str()), QString(), QString(), false, RecordLogEntry::RecordType::Block);
+	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(toHex(blockInfo.hash().ref()))), QString(), QString(), QString(), false, RecordLogEntry::RecordType::Block, QString::fromStdString(strGas.str()));
 	QQmlEngine::setObjectOwnership(record, QQmlEngine::JavaScriptOwnership);
 	return record;
 }
@@ -544,12 +564,16 @@ void ClientModel::onNewTransaction()
 	unsigned recordIndex = tr.executonIndex;
 	QString transactionIndex = tr.isCall() ? QObject::tr("Call") : QString("%1:%2").arg(block).arg(tr.transactionIndex);
 	QString address = QString::fromStdString(toJS(tr.address));
-	QString value =  QString::fromStdString(toString(tr.value));
+	QString value = QString::fromStdString(toString(tr.value));
 	QString contract = address;
 	QString function;
 	QString returned;
+	QString gasUsed;
 
 	bool creation = (bool)tr.contractAddress;
+
+	if (!tr.isCall())
+		gasUsed = QString::fromStdString(toString(tr.gasUsed));
 
 	//TODO: handle value transfer
 	FixedHash<4> functionHash;
@@ -605,7 +629,7 @@ void ClientModel::onNewTransaction()
 		}
 	}
 
-	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall(), RecordLogEntry::RecordType::Transaction);
+	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall(), RecordLogEntry::RecordType::Transaction, gasUsed);
 	QQmlEngine::setObjectOwnership(log, QQmlEngine::JavaScriptOwnership);
 	emit newRecord(log);
 }

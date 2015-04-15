@@ -112,8 +112,7 @@ public:
 		WithExisting _we = WithExisting::Trust,
 		std::set<std::string> const& _interfaces = {"eth", "shh"},
 		p2p::NetworkPreferences const& _n = p2p::NetworkPreferences(),
-		bytesConstRef _network = bytesConstRef(),
-		int _miners = -1
+		bytesConstRef _network = bytesConstRef()
 	);
 
 	/// Destructor.
@@ -163,7 +162,7 @@ public:
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n) override;
 
-	bool haveNetwork() const override { return m_net.isStarted(); }
+	bool haveNetwork() const override { return m_net.haveNetwork(); }
 
 	void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers = false) override;
 
