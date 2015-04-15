@@ -15,7 +15,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # Normally, set(...CACHE...) creates cache variables, but does not modify them.
 function(createDefaultCacheConfig)
 	set(VMTRACE OFF CACHE BOOL "VM tracing and run-time checks (useful for cross-implementation VM debugging)")
-	set(PARANOIA OFF CACHE BOOL "Additional run-time checks")
+	set(PARANOID OFF CACHE BOOL "Additional run-time checks")
 	set(JSONRPC ON CACHE BOOL "Build with jsonprc. default on")
 	set(FATDB OFF CACHE BOOL "Build with ability to list entries in the Trie. Doubles DB size, slows everything down, but good for looking at state diffs and trie contents.")
 	set(USENPM OFF CACHE BOOL "Use npm to recompile ethereum.js if it was changed")
@@ -35,7 +35,7 @@ endfunction()
 
 # propagates CMake configuration options to the compiler
 function(configureProject)
-	if (PARANOIA)
+	if (PARANOID)
 		add_definitions(-DETH_PARANOIA)
 	endif ()
 
@@ -62,6 +62,16 @@ function(configureProject)
 	if (GUI)
 		add_definitions(-DETH_GUI)
 	endif()
+
+	if (CPUID_FOUND)
+		add_definitions(-DETH_CPUID)
+	endif()
+
+	if (CURL_FOUND)
+		add_definitions(-DETH_CURL)
+	endif()
+
+	add_definitions(-DETH_TRUE)
 endfunction()
 
 set(CPPETHEREUM 1)
@@ -89,7 +99,7 @@ function(createBuildInfo)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/int")
 	endif ()
 
-	if (PARANOIA)
+	if (PARANOID)
 		set(ETH_BUILD_PLATFORM "${ETH_BUILD_PLATFORM}/PARA")
 	endif ()
 
@@ -123,9 +133,9 @@ cmake_policy(SET CMP0015 NEW)
 
 # Clear invalid option
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-	if (PARANOIA)
+	if (PARANOID)
 		message("Paranoia requires debug - disabling for release build.")
-		set(PARANOIA OFF)
+		set(PARANOID OFF)
 	endif ()
 	if (VMTRACE)
 		message("VM Tracing requires debug - disabling for release build.")
@@ -134,7 +144,6 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 endif ()
 
 createDefaultCacheConfig()
-configureProject()
 
 # Force chromium.
 set (ETH_HAVE_WEBENGINE 1)
@@ -148,13 +157,14 @@ else ()
 endif ()
 # Backwards compatibility
 if (HEADLESS)
+	message("*** WARNING: -DHEADLESS=1 option is DEPRECATED! Use -DBUNDLE=minimal or -DGUI=0")
 	set(BUNDLE "minimal")
 endif ()
 
-if (PARANOIA)
-	set(PARANOIA ON)
+if (PARANOID)
+	set(PARANOID ON)
 else ()
-	set(PARANOIA OFF)
+	set(PARANOID OFF)
 endif ()
 if (VMTRACE)
 	set(VMTRACE ON)
@@ -242,6 +252,15 @@ elseif (BUNDLE STREQUAL "full")
 	set(TOOLS ON)
 	set(TESTS ON)
 	set(FATDB ON)
+elseif (BUNDLE STREQUAL "core")
+	set(SERPENT OFF)
+	set(SOLIDITY ON)
+	set(USENPM OFF)
+	set(GUI ON)
+	set(NCURSES OFF)
+	set(TOOLS ON)
+	set(TESTS OFF)
+	set(FATDB ON)
 elseif (BUNDLE STREQUAL "tests")
 	set(SERPENT ${DECENT_PLATFORM})
 	set(SOLIDITY ON)
@@ -270,8 +289,16 @@ endif ()
 # Default TARGET_PLATFORM to "linux".
 set(TARGET_PLATFORM CACHE STRING "linux")
 if ("x${TARGET_PLATFORM}" STREQUAL "x")
-	set(TARGET_PLATFORM "linux")
+	if (WIN32)
+		set(TARGET_PLATFORM "windows")
+	else ()
+		set(TARGET_PLATFORM "linux")
+	endif ()
 endif ()
+
+include(EthDependencies)
+
+configureProject()
 
 message("------------------------------------------------------------------------")
 message("--                  CMake Version                            ${CMAKE_VERSION}")
@@ -280,9 +307,10 @@ message("-- TARGET_PLATFORM  Target platform                          ${TARGET_P
 message("-- BUNDLE           Build bundle                             ${BUNDLE}")
 message("--------------------------------------------------------------- features")
 message("--                  Chromium support                         ${ETH_HAVE_WEBENGINE}")
+message("--                  Hardware identification support          ${CPUID_FOUND}")
+message("--                  HTTP Request support                     ${CURL_FOUND}")
 message("-- VMTRACE          VM execution tracing                     ${VMTRACE}")
 message("-- PROFILING        Profiling support                        ${PROFILING}")
-message("-- PARANOIA         Additional (SLOW) database checking      ${PARANOIA}")
 message("-- FATDB            Full database exploring                  ${FATDB}")
 message("-- JSONRPC          JSON-RPC support                         ${JSONRPC}")
 message("-- USENPM           Javascript source building               ${USENPM}")
@@ -306,9 +334,7 @@ endif ()
 include(EthCompilerSettings)
 message("-- CXXFLAGS: ${CMAKE_CXX_FLAGS}")
 
-
-# this must be an include, as a function it would messs up with variable scope!
-include(EthDependencies)
+# this must be an include, as a function it would mess up with variable scope!
 include(EthExecutableHelper)
 
 createBuildInfo()

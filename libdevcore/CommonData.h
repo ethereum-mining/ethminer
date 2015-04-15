@@ -116,9 +116,9 @@ inline void toBigEndian(_T _val, _Out& o_out)
 template <class _T, class _In>
 inline _T fromBigEndian(_In const& _bytes)
 {
-	_T ret = 0;
+	_T ret = (_T)0;
 	for (auto i: _bytes)
-		ret = (ret << 8) | (byte)(typename std::make_unsigned<typename _In::value_type>::type)i;
+		ret = (_T)((ret << 8) | (byte)(typename std::make_unsigned<typename _In::value_type>::type)i);
 	return ret;
 }
 
@@ -234,6 +234,34 @@ inline std::vector<_T>& operator+=(std::vector<typename std::enable_if<!std::is_
 	for (auto& i: _b)
 		_a.push_back(i);
 	return _a;
+}
+
+/// Insert the contents of a container into a set
+template <class T, class U> std::set<T>& operator+=(std::set<T>& _a, U const& _b)
+{
+	for (auto const& i: _b)
+		_a.insert(i);
+	return _a;
+}
+
+/// Concatenate the contents of a container onto a vector
+template <class T, class U> std::vector<T>& operator+=(std::vector<T>& _a, U const& _b)
+{
+	for (auto const& i: _b)
+		_a.push_back(i);
+	return _a;
+}
+
+/// Insert the contents of a container into a set
+template <class T, class U> std::set<T> operator+(std::set<T> _a, U const& _b)
+{
+	return _a += _b;
+}
+
+/// Concatenate the contents of a container onto a vector
+template <class T, class U> std::vector<T> operator+(std::vector<T> _a, U const& _b)
+{
+	return _a += _b;
 }
 
 /// Concatenate two vectors of elements.

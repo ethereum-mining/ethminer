@@ -22,8 +22,8 @@
 #include "Common.h"
 #include <random>
 #include <libdevcrypto/SHA3.h>
-#include "Ethasher.h"
 #include "Exceptions.h"
+#include "ProofOfWork.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -33,7 +33,6 @@ namespace dev
 namespace eth
 {
 
-const unsigned c_ethashVersion = c_ethashRevision;
 const unsigned c_protocolVersion = 60;
 const unsigned c_minorProtocolVersion = 0;
 const unsigned c_databaseBaseVersion = 9;
@@ -43,7 +42,7 @@ const unsigned c_databaseVersionModifier = 1;
 const unsigned c_databaseVersionModifier = 0;
 #endif
 
-const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionModifier << 8) + (c_ethashVersion << 9);
+const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionModifier << 8) + (ProofOfWork::revision() << 9);
 
 vector<pair<u256, string>> const& units()
 {

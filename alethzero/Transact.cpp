@@ -37,7 +37,7 @@
 #include <libnatspec/NatspecExpressionEvaluator.h>
 #include <libethereum/Client.h>
 #include <libethereum/Utility.h>
-#ifndef _MSC_VER
+#if ETH_SERPENT
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #endif
@@ -220,7 +220,7 @@ static tuple<vector<string>, bytes, string> userInputToCode(string const& _user,
 			errors.push_back("Solidity: Uncaught exception");
 		}
 	}
-#ifndef _MSC_VER
+#if ETH_SERPENT
 	else if (sourceIsSerpent(_user))
 	{
 		try
@@ -306,7 +306,7 @@ void Transact::rejigData()
 	htmlInfo += "<h4>Hex</h4>" + QString(Div(Mono)) + QString::fromStdString(toHex(m_data)) + "</div>";
 
 	// Determine the minimum amount of gas we need to play...
-	qint64 baseGas = (qint64)Interface::txGas(m_data, 0);
+	qint64 baseGas = (qint64)Transaction::gasRequired(m_data, 0);
 	qint64 gasNeeded = 0;
 
 	if (b < value() + baseGas * gasPrice())

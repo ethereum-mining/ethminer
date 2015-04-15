@@ -163,6 +163,7 @@ private slots:
 	void on_usePrivate_triggered();
 	void on_turboMining_triggered();
 	void on_jitvm_triggered();
+	void on_retryUnknown_triggered();
 
 	// Debugger
 	void on_debugCurrent_triggered();
@@ -179,6 +180,7 @@ private slots:
 
 	// Dapps
 	void dappLoaded(Dapp& _dapp); //qt does not support rvalue refs for signals
+	void pageLoaded(QByteArray const& _content, QString const& _mimeType, QUrl const& _uri);
 
 signals:
 	void poll();

@@ -102,18 +102,11 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 			m_readySet.insert(h);
 
 			noteReadyWithoutWriteGuard(h);
+			m_onReady();
 			return ImportResult::Success;
 		}
 	}
 }
-
-namespace dev {
-template <class T, class U> std::set<T>& operator+=(std::set<T>& _a, U const& _b)
-{
-	for (auto const& i: _b)
-		_a.insert(i);
-	return _a;
-} }
 
 bool BlockQueue::doneDrain(h256s const& _bad)
 {
@@ -189,4 +182,16 @@ void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 		}
 		m_unknown.erase(r.first, r.second);
 	}
+}
+
+void BlockQueue::retryAllUnknown()
+{
+	for (auto it = m_unknown.begin(); it != m_unknown.end(); ++it)
+	{
+		m_ready.push_back(it->second.second);
+		auto newReady = it->second.first;
+		m_unknownSet.erase(newReady);
+		m_readySet.insert(newReady);
+	}
+	m_unknown.clear();
 }

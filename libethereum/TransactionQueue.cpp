@@ -28,7 +28,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-ImportResult TransactionQueue::import(bytesConstRef _transactionRLP)
+ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb)
 {
 	// Check if we already know this transaction.
 	h256 h = sha3(_transactionRLP);
@@ -44,21 +44,25 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP)
 		// Check validity of _transactionRLP as a transaction. To do this we just deserialise and attempt to determine the sender.
 		// If it doesn't work, the signature is bad.
 		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
-		Transaction t(_transactionRLP, CheckSignature::Sender);
+		Transaction t(_transactionRLP, CheckTransaction::Everything);
 
 		UpgradeGuard ul(l);
 		// If valid, append to blocks.
 		m_current[h] = t;
 		m_known.insert(h);
+		if (_cb)
+			m_callbacks[h] = _cb;
+		ctxq << "Queued vaguely legit-looking transaction" << h.abridged();
+		m_onReady();
 	}
 	catch (Exception const& _e)
 	{
-		cwarn << "Ignoring invalid transaction: " <<  diagnostic_information(_e);
+		ctxq << "Ignoring invalid transaction: " <<  diagnostic_information(_e);
 		return ImportResult::Malformed;
 	}
 	catch (std::exception const& _e)
 	{
-		cwarn << "Ignoring invalid transaction: " << _e.what();
+		ctxq << "Ignoring invalid transaction: " << _e.what();
 		return ImportResult::Malformed;
 	}
 

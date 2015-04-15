@@ -131,8 +131,9 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 {
 	friend std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable);
 	using NodeSocket = UDPSocket<NodeTable, 1280>;
-	using TimePoint = std::chrono::steady_clock::time_point;
-	using EvictionTimeout = std::pair<std::pair<NodeId, TimePoint>, NodeId>;	///< First NodeId may be evicted and replaced with second NodeId.
+	using TimePoint = std::chrono::steady_clock::time_point;	///< Steady time point.
+	using NodeIdTimePoint = std::pair<NodeId, TimePoint>;
+	using EvictionTimeout = std::pair<NodeIdTimePoint, NodeId>;	///< First NodeId (NodeIdTimePoint) may be evicted and replaced with second NodeId.
 
 public:
 	/// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
@@ -195,7 +196,7 @@ private:
 	/* todo: replace boost::posix_time; change constants to upper camelcase */
 	boost::posix_time::milliseconds const c_evictionCheckInterval = boost::posix_time::milliseconds(75);	///< Interval at which eviction timeouts are checked.
 	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
-	std::chrono::milliseconds const c_bucketRefresh = std::chrono::milliseconds(112500);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
+	std::chrono::milliseconds const c_bucketRefresh = std::chrono::milliseconds(57600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
 
 	struct NodeBucket
 	{
@@ -271,6 +272,9 @@ private:
 	Mutex x_pubkDiscoverPings;								///< LOCK x_nodes first if both x_nodes and x_pubkDiscoverPings locks are required.
 	std::map<bi::address, TimePoint> m_pubkDiscoverPings;		///< List of pending pings where node entry wasn't created due to unkown pubk.
 
+	Mutex x_findNodeTimeout;
+	std::list<NodeIdTimePoint> m_findNodeTimeout;				///< Timeouts for pending Ping and FindNode requests.
+	
 	ba::io_service& m_io;										///< Used by bucket refresh timer.
 	std::shared_ptr<NodeSocket> m_socket;						///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
 	NodeSocket* m_socketPointer;								///< Set to m_socket.get(). Socket is created in constructor and disconnected in destructor to ensure access to pointer is safe.
