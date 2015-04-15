@@ -23,7 +23,7 @@ set eth_version=%2
 
 cd download
 
-if not exist %eth_name%-%eth_version%.tar.gz curl -o %eth_name%-%eth_version%.tar.gz %eth_server%/%eth_name%-%eth_version%.tar.gz
+if not exist %eth_name%-%eth_version%.tar.gz curl -k -o %eth_name%-%eth_version%.tar.gz %eth_server%/%eth_name%-%eth_version%.tar.gz
 if not exist %eth_name%-%eth_version% tar -zxvf %eth_name%-%eth_version%.tar.gz
 cmake -E copy_directory %eth_name%-%eth_version% ..\install\windows
 
