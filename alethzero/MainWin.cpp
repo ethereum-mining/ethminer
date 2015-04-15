@@ -45,7 +45,7 @@
 #endif
 #include <libdevcrypto/FileSystem.h>
 #include <libethcore/CommonJS.h>
-#include <libethcore/Ethasher.h>
+#include <libethcore/EthashAux.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libsolidity/Scanner.h>
@@ -164,7 +164,7 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->chainStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
 
-	ui->blockCount->setText(QString("PV%2 D%3 H%4 v%5").arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(c_ethashVersion).arg(dev::Version));
+	ui->blockCount->setText(QString("PV%2 D%3 %4-%5 v%6").arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(QString::fromStdString(ProofOfWork::name())).arg(ProofOfWork::revision()).arg(dev::Version));
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 	
@@ -707,6 +707,7 @@ void Main::writeSettings()
 	s.setValue("upnp", ui->upnp->isChecked());
 	s.setValue("forceAddress", ui->forcePublicIP->text());
 	s.setValue("forceMining", ui->forceMining->isChecked());
+	s.setValue("turboMining", ui->turboMining->isChecked());
 	s.setValue("paranoia", ui->paranoia->isChecked());
 	s.setValue("natSpec", ui->natSpec->isChecked());
 	s.setValue("showAll", ui->showAll->isChecked());
@@ -777,6 +778,8 @@ void Main::readSettings(bool _skipGeometry)
 	ui->dropPeers->setChecked(false);
 	ui->forceMining->setChecked(s.value("forceMining", false).toBool());
 	on_forceMining_triggered();
+	ui->turboMining->setChecked(s.value("turboMining", false).toBool());
+	on_turboMining_triggered();
 	ui->paranoia->setChecked(s.value("paranoia", false).toBool());
 	ui->natSpec->setChecked(s.value("natSpec", true).toBool());
 	ui->showAll->setChecked(s.value("showAll", false).toBool());
@@ -887,12 +890,16 @@ void Main::on_usePrivate_triggered()
 	{
 		m_privateChain = QInputDialog::getText(this, "Enter Name", "Enter the name of your private chain", QLineEdit::Normal, QString("NewChain-%1").arg(time(0)));
 		if (m_privateChain.isEmpty())
-			ui->usePrivate->setChecked(false);
+		{
+			if (ui->usePrivate->isChecked())
+				ui->usePrivate->setChecked(false);
+			else
+				// was cancelled.
+				return;
+		}
 	}
 	else
-	{
 		m_privateChain.clear();
-	}
 	on_killBlockchain_triggered();
 }
 
@@ -949,7 +956,7 @@ void Main::on_preview_triggered()
 
 void Main::refreshMining()
 {
-	MineProgress p = ethereum()->miningProgress();
+	MiningProgress p = ethereum()->miningProgress();
 	ui->mineStatus->setText(ethereum()->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
 	if (!ui->miningView->isVisible())
 		return;
@@ -1024,7 +1031,7 @@ void Main::refreshNetwork()
 							   .arg(sessions[i.id] = QString::fromStdString(i.clientVersion))
 							   .arg(QString::fromStdString(toString(i.caps)))
 							   .arg(QString::fromStdString(toString(i.notes)))
-							   .arg(i.socket)
+							   .arg(i.socketId)
 							   .arg(QString::fromStdString(i.id.abridged())));
 
 		auto ns = web3()->nodes();
@@ -1478,7 +1485,7 @@ void Main::on_blocks_currentItemChanged()
 			s << "<div>Difficulty: <b>" << info.difficulty << "</b>" << "</div>";
 			if (info.number)
 			{
-				auto e = Ethasher::eval(info);
+				auto e = EthashAux::eval(info);
 				s << "<div>Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / info.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
 				s << "<div>Parent: <b>" << info.parentHash << "</b>" << "</div>";
 			}
@@ -1507,7 +1514,7 @@ void Main::on_blocks_currentItemChanged()
 				s << line << "Nonce: <b>" << uncle.nonce << "</b>" << "</div>";
 				s << line << "Hash w/o nonce: <b>" << uncle.headerHash(WithoutNonce) << "</b>" << "</div>";
 				s << line << "Difficulty: <b>" << uncle.difficulty << "</b>" << "</div>";
-				auto e = Ethasher::eval(uncle);
+				auto e = EthashAux::eval(uncle);
 				s << line << "Proof-of-Work: <b>" << e.value << " &lt;= " << (h256)u256((bigint(1) << 256) / uncle.difficulty) << "</b> (mixhash: " << e.mixHash.abridged() << ")" << "</div>";
 			}
 			if (info.parentHash)
@@ -1747,6 +1754,11 @@ void Main::on_clearPending_triggered()
 	readSettings(true);
 	installWatches();
 	refreshAll();
+}
+
+void Main::on_retryUnknown_triggered()
+{
+	ethereum()->retryUnkonwn();
 }
 
 void Main::on_killBlockchain_triggered()

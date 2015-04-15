@@ -25,6 +25,7 @@
 #include "libethash-cl/cl.hpp"
 #endif
 #include <functional>
+#include <boost/filesystem.hpp>
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
@@ -34,11 +35,12 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/TrieDB.h>
 #include <libp2p/All.h>
-#include <libethcore/Ethasher.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethereum/All.h>
+#include <libethereum/Farm.h>
 #include <libethereum/AccountDiff.h>
 #include <libethereum/DownloadMan.h>
+#include <libethereum/Client.h>
 #include <liblll/All.h>
 #include <libwhisper/WhisperPeer.h>
 #include <libwhisper/WhisperHost.h>
@@ -106,21 +108,144 @@ int main()
 	cnote << "State after transaction: " << s;
 	cnote << before.diff(s);
 }
+#elif 0
+int main()
+{
+	GenericFarm<Ethash> f;
+	BlockInfo genesis = CanonBlockChain::genesis();
+	genesis.difficulty = 1 << 18;
+	cdebug << genesis.boundary();
+
+	auto mine = [](GenericFarm<Ethash>& f, BlockInfo const& g, unsigned timeout) {
+		BlockInfo bi = g;
+		bool completed = false;
+		f.onSolutionFound([&](ProofOfWork::Solution sol)
+		{
+			ProofOfWork::assignResult(sol, bi);
+			return completed = true;
+		});
+		f.setWork(bi);
+		for (unsigned i = 0; !completed && i < timeout * 10; ++i, cout << f.miningProgress() << "\r" << flush)
+			this_thread::sleep_for(chrono::milliseconds(100));
+		cout << endl << flush;
+		cdebug << bi.mixHash << bi.nonce << (Ethash::verify(bi) ? "GOOD" : "bad");
+	};
+
+	Ethash::prep(genesis);
+
+	genesis.difficulty = u256(1) << 40;
+	genesis.noteDirty();
+	f.startCPU();
+	mine(f, genesis, 10);
+
+	f.startGPU();
+
+	cdebug << "Good:";
+	genesis.difficulty = 1 << 18;
+	genesis.noteDirty();
+	mine(f, genesis, 30);
+
+	cdebug << "Bad:";
+	genesis.difficulty = (u256(1) << 40);
+	genesis.noteDirty();
+	mine(f, genesis, 30);
+
+	f.stop();
+
+	return 0;
+}
+#elif 0
+
+void mine(State& s, BlockChain const& _bc)
+{
+	s.commitToMine(_bc);
+	GenericFarm<ProofOfWork> f;
+	bool completed = false;
+	f.onSolutionFound([&](ProofOfWork::Solution sol)
+	{
+		return completed = s.completeMine<ProofOfWork>(sol);
+	});
+	f.setWork(s.info());
+	f.startCPU();
+	while (!completed)
+		this_thread::sleep_for(chrono::milliseconds(20));
+}
+#elif 0
+int main()
+{
+	cnote << "Testing State...";
+
+	KeyPair me = sha3("Gav Wood");
+	KeyPair myMiner = sha3("Gav's Miner");
+//	KeyPair you = sha3("123");
+
+	Defaults::setDBPath(boost::filesystem::temp_directory_path().string() + "/" + toString(chrono::system_clock::now().time_since_epoch().count()));
+
+	OverlayDB stateDB = State::openDB();
+	CanonBlockChain bc;
+	cout << bc;
+
+	State s(stateDB, BaseState::CanonGenesis, myMiner.address());
+	cout << s;
+
+	// Sync up - this won't do much until we use the last state.
+	s.sync(bc);
+
+	cout << s;
+
+	// Mine to get some ether!
+	mine(s, bc);
+
+	bc.attemptImport(s.blockData(), stateDB);
+
+	cout << bc;
+
+	s.sync(bc);
+
+	cout << s;
+
+	// Inject a transaction to transfer funds from miner to me.
+	Transaction t(1000, 10000, 30000, me.address(), bytes(), s.transactionsFrom(myMiner.address()), myMiner.secret());
+	assert(t.sender() == myMiner.address());
+	s.execute(bc.lastHashes(), t);
+
+	cout << s;
+
+	// Mine to get some ether and set in stone.
+	s.commitToMine(bc);
+	s.commitToMine(bc);
+	mine(s, bc);
+	bc.attemptImport(s.blockData(), stateDB);
+
+	cout << bc;
+
+	s.sync(bc);
+
+	cout << s;
+
+	return 0;
+}
 #else
 int main()
 {
-#if ETH_ETHASHCL
-	EthashCL ecl;
-	BlockInfo genesis = CanonBlockChain::genesis();
-	genesis.difficulty = 1 << 18;
-	cdebug << (h256)u256((bigint(1) << 256) / genesis.difficulty);
-	std::pair<MineInfo, Ethash::Proof> r;
-	while (!r.first.completed)
-		r = ecl.mine(genesis, 1000);
-	cdebug << r.second.mixHash << r.second.nonce;
-	EthashCL::assignResult(r.second, genesis);
-	assert(EthashCPU::verify(genesis));
-#endif
+	string tempDir = boost::filesystem::temp_directory_path().string() + "/" + toString(chrono::system_clock::now().time_since_epoch().count());
+
+	KeyPair myMiner = sha3("Gav's Miner");
+
+	p2p::Host net("Test");
+	cdebug << "Path:" << tempDir;
+	Client c(&net, tempDir);
+
+	c.setAddress(myMiner.address());
+
+	this_thread::sleep_for(chrono::milliseconds(1000));
+
+	c.startMining();
+
+	this_thread::sleep_for(chrono::milliseconds(6000));
+
+	c.stopMining();
+
 	return 0;
 }
 #endif
