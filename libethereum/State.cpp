@@ -274,7 +274,7 @@ bool State::sync(BlockChain const& _bc)
 	return sync(_bc, _bc.currentHash());
 }
 
-bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
+bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi, ImportRequirements::value _ir)
 {
 	bool ret = false;
 	// BLOCK
@@ -337,7 +337,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 			for (auto it = chain.rbegin(); it != chain.rend(); ++it)
 			{
 				auto b = _bc.block(*it);
-				enact(&b, _bc);
+				enact(&b, _bc, _ir);
 				cleanup(true);
 			}
 		}
@@ -355,7 +355,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi)
 	return ret;
 }
 
-u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc)
+u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 #if ETH_TIMED_ENACTMENTS
 	boost::timer t;
@@ -383,7 +383,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 	t.restart();
 #endif
 
-	sync(_bc, _bi.parentHash);
+	sync(_bc, _bi.parentHash, BlockInfo(), _ir);
 	resetCurrent();
 
 #if ETH_TIMED_ENACTMENTS
@@ -392,7 +392,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 #endif
 
 	m_previousBlock = biParent;
-	auto ret = enact(_block, _bc);
+	auto ret = enact(_block, _bc, _ir);
 
 #if ETH_TIMED_ENACTMENTS
 	enactment = t.elapsed();
@@ -451,7 +451,7 @@ bool State::cull(TransactionQueue& _tq) const
 		{
 			try
 			{
-				if (i.second.nonce() <= transactionsFrom(i.second.sender()))
+				if (i.second.nonce() < transactionsFrom(i.second.sender()))
 				{
 					_tq.drop(i.first);
 					ret = true;
@@ -538,11 +538,11 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, Ga
 	return ret;
 }
 
-u256 State::enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce)
+u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
 
-	BlockInfo bi(_block, _checkNonce ? CheckEverything : IgnoreNonce);
+	BlockInfo bi(_block, (_ir & ImportRequirements::ValidNonce) ? CheckEverything : IgnoreNonce);
 
 #if !ETH_RELEASE
 	assert(m_previousBlock.hash() == bi.parentHash);
@@ -854,41 +854,6 @@ void State::commitToMine(BlockChain const& _bc)
 	m_currentBlock.parentHash = m_previousBlock.hash();
 
 	m_committedToMine = true;
-}
-
-MineInfo State::mine(unsigned _msTimeout, bool _turbo)
-{
-	// Update difficulty according to timestamp.
-	m_currentBlock.difficulty = m_currentBlock.calculateDifficulty(m_previousBlock);
-
-	MineInfo ret;
-	// TODO: Miner class that keeps dagger between mine calls (or just non-polling mining).
-	ProofOfWork::Proof r;
-	tie(ret, r) = m_pow.mine(m_currentBlock, _msTimeout, true, _turbo);
-
-	if (!ret.completed)
-		m_currentBytes.clear();
-	else
-	{
-		ProofOfWork::assignResult(r, m_currentBlock);
-		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
-	}
-
-	return ret;
-}
-
-bool State::completeMine(ProofOfWork::Proof const& _nonce)
-{
-	ProofOfWork::assignResult(_nonce, m_currentBlock);
-
-	if (!m_pow.verify(m_currentBlock))
-		return false;
-
-	cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << ProofOfWork::verify(m_currentBlock);
-
-	completeMine();
-
-	return true;
 }
 
 void State::completeMine()

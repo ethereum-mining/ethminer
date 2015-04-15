@@ -116,9 +116,9 @@ inline void toBigEndian(_T _val, _Out& o_out)
 template <class _T, class _In>
 inline _T fromBigEndian(_In const& _bytes)
 {
-	_T ret = 0;
+	_T ret = (_T)0;
 	for (auto i: _bytes)
-		ret = (ret << 8) | (byte)(typename std::make_unsigned<typename _In::value_type>::type)i;
+		ret = (_T)((ret << 8) | (byte)(typename std::make_unsigned<typename _In::value_type>::type)i);
 	return ret;
 }
 

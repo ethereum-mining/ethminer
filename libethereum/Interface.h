@@ -26,11 +26,11 @@
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Params.h>
+#include <libethcore/ProofOfWork.h>
 #include "LogFilter.h"
 #include "Transaction.h"
 #include "AccountDiff.h"
 #include "BlockDetails.h"
-#include "Miner.h"
 
 namespace dev
 {
@@ -119,7 +119,9 @@ public:
 	// [BLOCK QUERY API]
 
 	virtual Transaction transaction(h256 _transactionHash) const = 0;
+	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const = 0;
 	virtual h256 hashFromNumber(BlockNumber _number) const = 0;
+	virtual BlockNumber numberFromHash(h256 _blockHash) const = 0;
 
 	virtual BlockInfo blockInfo(h256 _hash) const = 0;
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
@@ -171,11 +173,6 @@ public:
 	/// Get the coinbase address.
 	virtual Address address() const = 0;
 
-	/// Stops mining and sets the number of mining threads (0 for automatic).
-	virtual void setMiningThreads(unsigned _threads = 0) = 0;
-	/// Get the effective number of mining threads.
-	virtual unsigned miningThreads() const = 0;
-
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
 	virtual void startMining() = 0;
@@ -183,15 +180,17 @@ public:
 	/// NOT thread-safe
 	virtual void stopMining() = 0;
 	/// Are we mining now?
-	virtual bool isMining() = 0;
+	virtual bool isMining() const = 0;
+	/// Current hash rate.
+	virtual uint64_t hashrate() const = 0;
 
 	/// Get hash of the current block to be mined minus the nonce (the 'work hash').
-	virtual std::pair<h256, u256> getWork() = 0;
+	virtual ProofOfWork::WorkPackage getWork() = 0;
 	/// Submit the nonce for the proof-of-work.
-	virtual bool submitWork(ProofOfWork::Proof const& _proof) = 0;
+	virtual bool submitWork(ProofOfWork::Solution const& _proof) = 0;
 
 	/// Check the progress of the mining.
-	virtual MineProgress miningProgress() const = 0;
+	virtual MiningProgress miningProgress() const = 0;
 
 protected:
 	int m_default = PendingBlock;

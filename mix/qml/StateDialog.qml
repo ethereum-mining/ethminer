@@ -14,7 +14,7 @@ Dialog {
 	modality: Qt.ApplicationModal
 
 	width: 630
-	height: 480
+	height: 500
 	title: qsTr("Edit State")
 	visible: false
 
@@ -22,6 +22,8 @@ Dialog {
 	property alias isDefault: defaultCheckBox.checked
 	property alias model: transactionsModel
 	property alias transactionDialog: transactionDialog
+	property alias minerComboBox: comboMiner
+	property alias newAccAction: newAccountAction
 	property int stateIndex
 	property var stateTransactions: []
 	property var stateAccounts: []
@@ -45,16 +47,21 @@ Dialog {
 
 		accountsModel.clear();
 		stateAccounts = [];
+		var miner = 0;
 		for (var k = 0; k < item.accounts.length; k++)
 		{
 			accountsModel.append(item.accounts[k]);
 			stateAccounts.push(item.accounts[k]);
+			if (item.miner && item.accounts[k].name === item.miner.name)
+				miner = k;
 		}
 
 		visible = true;
 		isDefault = setDefault;
 		titleField.focus = true;
 		defaultCheckBox.enabled = !isDefault;
+		comboMiner.model = stateAccounts;
+		comboMiner.currentIndex = miner;
 		forceActiveFocus();
 	}
 
@@ -75,8 +82,17 @@ Dialog {
 		}
 		item.transactions = stateTransactions;
 		item.accounts = stateAccounts;
+		for (var k = 0; k < stateAccounts.length; k++)
+		{
+			if (stateAccounts[k].name === comboMiner.currentText)
+			{
+				item.miner = stateAccounts[k];
+				break;
+			}
+		}
 		return item;
 	}
+
 	contentItem: Rectangle {
 		color: stateDialogStyle.generic.backgroundColor
 		Rectangle {
@@ -124,6 +140,7 @@ Dialog {
 
 							Button
 							{
+								id: newAccountButton
 								anchors.top: accountsLabel.bottom
 								anchors.topMargin: 10
 								iconSource: "qrc:/qml/img/plus.png"
@@ -135,9 +152,15 @@ Dialog {
 								tooltip: qsTr("Add new Account")
 								onTriggered:
 								{
+									add();
+								}
+
+								function add()
+								{
 									var account = stateListModel.newAccount("1000000", QEther.Ether);
 									stateAccounts.push(account);
 									accountsModel.append(account);
+									return account;
 								}
 							}
 						}
@@ -159,7 +182,7 @@ Dialog {
 							TableViewColumn {
 								role: "name"
 								title: qsTr("Name")
-								width: 150
+								width: 230
 								delegate: Item {
 									RowLayout
 									{
@@ -180,8 +203,12 @@ Dialog {
 													alertAlreadyUsed.open();
 												else
 												{
+													if (stateAccounts[styleData.row].name === comboMiner.currentText)
+														comboMiner.currentIndex = 0;
 													stateAccounts.splice(styleData.row, 1);
 													accountsModel.remove(styleData.row);
+													comboMiner.model = stateAccounts;
+													comboMiner.update();
 												}
 											}
 										}
@@ -190,7 +217,12 @@ Dialog {
 											anchors.verticalCenter: parent.verticalCenter
 											onTextChanged: {
 												if (styleData.row > -1)
-													stateAccounts[styleData.row].name = text;
+												{
+													stateAccounts[styleData.row].name = text
+													var index = comboMiner.currentIndex;
+													comboMiner.model = stateAccounts;
+													comboMiner.currentIndex = index;
+												}
 											}
 											text:  {
 												return styleData.value
@@ -218,6 +250,25 @@ Dialog {
 								color: styleData.alternate ? "transparent" : "#f0f0f0"
 								height: 30;
 							}
+						}
+					}
+
+					CommonSeparator
+					{
+						Layout.fillWidth: true
+					}
+
+					RowLayout
+					{
+						Layout.fillWidth: true
+						DefaultLabel {
+							Layout.preferredWidth: 85
+							text: qsTr("Miner")
+						}
+						ComboBox {
+							id: comboMiner
+							textRole: "name"
+							Layout.fillWidth: true
 						}
 					}
 
