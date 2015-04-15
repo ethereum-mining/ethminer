@@ -14,8 +14,7 @@ function test_defaultTransactionSequence()
 	"	uint z;\r" +
 	"}\r"
 	);
-	if (!ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel, "count", 3);
 }
 
@@ -47,8 +46,7 @@ function test_transactionWithParameter()
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.acceptAndClose();
 	mainApplication.mainContent.startQuickDebugging();
-	if (!ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel, "count", 5);
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(4), "returned", "(442)");
 }
@@ -79,8 +77,7 @@ function test_constructorParameters()
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.acceptAndClose();
 	mainApplication.mainContent.startQuickDebugging();
-	if (!ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel, "count", 4);
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(3), "returned", "(442)");
 }
