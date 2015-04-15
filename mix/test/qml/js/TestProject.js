@@ -3,6 +3,7 @@ function test_contractRename()
 	newProject();
 	tryCompare(mainApplication.mainContent.projectNavigator.sections.itemAt(0).model.get(0), "name", "Contract");
 	editContract("contract Renamed {}");
+	mainApplication.mainContent.startQuickDebugging();
 	if (!ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000))
 		fail("Error running transaction");
 	wait(1000);
