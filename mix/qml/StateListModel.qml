@@ -193,7 +193,9 @@ Item {
 				accounts: []
 			};
 
-			item.accounts.push(newAccount("1000000", QEther.Ether, defaultAccount));
+			var account = newAccount("1000000", QEther.Ether, defaultAccount)
+			item.accounts.push(account);
+			item.miner = account;
 
 			//add all stdc contracts
 			for (var i = 0; i < contractLibrary.model.count; i++) {
