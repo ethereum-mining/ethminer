@@ -221,6 +221,7 @@ Ethash::Result EthashAux::LightAllocation::compute(h256 const& _seedHash, h256 c
 
 Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
 {
+	// TODO: should be EthashAux::get()->haveFull(_seedHash)
 	if (auto dag = EthashAux::get()->full(_seedHash))
 		return dag->compute(_seedHash, _headerHash, _nonce);
 	return EthashAux::get()->light(_seedHash)->compute(_seedHash, _headerHash, _nonce);
