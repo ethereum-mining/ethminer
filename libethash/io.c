@@ -61,13 +61,13 @@ bool ethash_io_write(char const *dirname,
 {
     char info_buffer[DAG_MEMO_BYTESIZE];
     // allocate the bytes
-    uint8_t *temp_data_ptr = malloc(params->full_size);
+	uint8_t *temp_data_ptr = malloc((size_t)params->full_size);
     if (!temp_data_ptr) {
         goto end;
     }
     ethash_compute_full_data(temp_data_ptr, params, cache);
 
-    if (!ethash_io_write_file(dirname, PASS_ARR(DAG_FILE_NAME), temp_data_ptr, params->full_size)) {
+	if (!ethash_io_write_file(dirname, PASS_ARR(DAG_FILE_NAME), temp_data_ptr, (size_t)params->full_size)) {
         goto fail_free;
     }
 
@@ -77,7 +77,7 @@ bool ethash_io_write(char const *dirname,
     }
 
     *data = temp_data_ptr;
-    *data_size = params->full_size;
+	*data_size = (size_t)params->full_size;
     return true;
 
 fail_free:

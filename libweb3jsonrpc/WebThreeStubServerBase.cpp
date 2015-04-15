@@ -26,7 +26,7 @@
 
 #include <jsonrpccpp/common/exception.h>
 #include <libdevcore/CommonData.h>
-#if ETH_SOLIDITY
+#if ETH_SOLIDITY || !ETH_TRUE
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/SourceReferenceFormatter.h>
@@ -38,7 +38,7 @@
 #include <libethcore/CommonJS.h>
 #include <libwhisper/Message.h>
 #include <libwhisper/WhisperHost.h>
-#if ETH_SERPENT
+#if ETH_SERPENT || !ETH_TRUE
 #include <libserpent/funcs.h>
 #endif
 #include "WebThreeStubServerBase.h"
@@ -79,7 +79,7 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 	return res;
 }
 
-static Json::Value toJson(dev::eth::Transaction const& _t)
+static Json::Value toJson(dev::eth::Transaction const& _t, std::pair<h256, unsigned> _location, BlockNumber _blockNumber)
 {
 	Json::Value res;
 	if (_t)
@@ -92,6 +92,9 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 		res["gasPrice"] = toJS(_t.gasPrice());
 		res["nonce"] = toJS(_t.nonce());
 		res["value"] = toJS(_t.value());
+		res["blockHash"] = toJS(_location.first);
+		res["transactionIndex"] = toJS(_location.second);
+		res["blockNumber"] = toJS(_blockNumber);
 	}
 	return res;
 }
@@ -105,8 +108,8 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us
 		for (h256 h: _us)
 			res["uncles"].append(toJS(h));
 		res["transactions"] = Json::Value(Json::arrayValue);
-		for (Transaction const& t: _ts)
-			res["transactions"].append(toJson(t));
+		for (unsigned i = 0; i < _ts.size(); i++)
+			res["transactions"].append(toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber)_bi.number));
 	}
 	return res;
 }
@@ -294,6 +297,11 @@ string WebThreeStubServerBase::eth_protocolVersion()
 string WebThreeStubServerBase::eth_coinbase()
 {
 	return toJS(client()->address());
+}
+
+string WebThreeStubServerBase::eth_hashrate()
+{
+	return toJS(client()->hashrate());
 }
 
 bool WebThreeStubServerBase::eth_mining()
@@ -542,7 +550,9 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByHash(string const& _tran
 {
 	try
 	{
-		return toJson(client()->transaction(jsToFixed<32>(_transactionHash)));
+		h256 h = jsToFixed<32>(_transactionHash);
+		auto l = client()->transactionLocation(h);
+		return toJson(client()->transaction(h), l, client()->numberFromHash(l.first));
 	}
 	catch (...)
 	{
@@ -554,7 +564,10 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockHashAndIndex(string
 {
 	try
 	{
-		return toJson(client()->transaction(jsToFixed<32>(_blockHash), jsToInt(_transactionIndex)));
+		h256 bh = jsToFixed<32>(_blockHash);
+		unsigned ti = jsToInt(_transactionIndex);
+		Transaction t = client()->transaction(bh, ti);
+		return toJson(t, make_pair(bh, ti), client()->numberFromHash(bh));
 	}
 	catch (...)
 	{
@@ -566,7 +579,10 @@ Json::Value WebThreeStubServerBase::eth_getTransactionByBlockNumberAndIndex(stri
 {
 	try
 	{
-		return toJson(client()->transaction(jsToBlockNumber(_blockNumber), jsToInt(_transactionIndex)));
+		BlockNumber bn = jsToBlockNumber(_blockNumber);
+		unsigned ti = jsToInt(_transactionIndex);
+		Transaction t = client()->transaction(bn, ti);
+		return toJson(t, make_pair(client()->hashFromNumber(bn), ti), bn);
 	}
 	catch (...)
 	{
@@ -602,10 +618,10 @@ Json::Value WebThreeStubServerBase::eth_getCompilers()
 {
 	Json::Value ret(Json::arrayValue);
 	ret.append("lll");
-#if SOLIDITY
+#if ETH_SOLIDITY || !TRUE
 	ret.append("solidity");
 #endif
-#if SERPENT
+#if ETH_SERPENT || !TRUE
 	ret.append("serpent");
 #endif
 	return ret;
@@ -627,7 +643,7 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 	// TODO throw here jsonrpc errors
 	string res;
 	(void)_code;
-#if SERPENT
+#if ETH_SERPENT || !ETH_TRUE
 	try
 	{
 		res = toJS(dev::asBytes(::compile(_code)));
@@ -649,7 +665,7 @@ string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
 	// TOOD throw here jsonrpc errors
 	(void)_code;
 	string res;
-#if SOLIDITY
+#if ETH_SOLIDITY || !ETH_TRUE
 	dev::solidity::CompilerStack compiler;
 	try
 	{
@@ -753,8 +769,9 @@ Json::Value WebThreeStubServerBase::eth_getWork()
 {
 	Json::Value ret(Json::arrayValue);
 	auto r = client()->getWork();
-	ret.append(toJS(r.first));
-	ret.append(toJS(r.second));
+	ret.append(toJS(r.headerHash));
+	ret.append(toJS(r.seedHash));
+	ret.append(toJS(r.boundary));
 	return ret;
 }
 
@@ -762,7 +779,7 @@ bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, string const& 
 {
 	try
 	{
-		return client()->submitWork(ProofOfWork::Proof{jsToFixed<Nonce::size>(_nonce), jsToFixed<32>(_mixHash)});
+		return client()->submitWork(ProofOfWork::Solution{jsToFixed<Nonce::size>(_nonce), jsToFixed<32>(_mixHash)});
 	}
 	catch (...)
 	{

@@ -23,10 +23,18 @@
 
 #include <string>
 #include <thread>
+#include <atomic>
 #include "Guards.h"
 
 namespace dev
 {
+
+enum class IfRunning
+{
+	Fail,
+	Join,
+	Detach
+};
 
 class Worker
 {
@@ -45,7 +53,7 @@ protected:
 	void setName(std::string _n) { if (!isWorking()) m_name = _n; }
 
 	/// Starts worker thread; causes startedWorking() to be called.
-	void startWorking();
+	void startWorking(IfRunning _ir = IfRunning::Fail);
 	
 	/// Stop worker thread; causes call to stopWorking().
 	void stopWorking();
@@ -57,10 +65,17 @@ protected:
 	virtual void startedWorking() {}
 	
 	/// Called continuously following sleep for m_idleWaitMs.
-	virtual void doWork() = 0;
+	virtual void doWork() {}
+
+	/// Overrides doWork(); should call shouldStop() often and exit when true.
+	virtual void workLoop();
+	bool shouldStop() const { return m_stop; }
 	
 	/// Called when is to be stopped, just prior to thread being joined.
 	virtual void doneWorking() {}
+
+	/// Blocks caller into worker thread has finished.
+	void join() const { Guard l(x_work); try { if (m_work) m_work->join(); } catch (...) {} }
 
 private:
 	std::string m_name;

@@ -42,14 +42,14 @@ class MiningView: public QWidget
 public:
 	MiningView(QWidget* _p = nullptr);
 
-	void appendStats(std::list<dev::eth::MineInfo> const& _l, dev::eth::MineProgress const& _p);
+	void appendStats(std::list<dev::eth::MineInfo> const& _l, dev::eth::MiningProgress const& _p);
 	void resetStats();
 
 protected:
 	virtual void paintEvent(QPaintEvent*);
 
 private:
-	dev::eth::MineProgress m_progress;
+	dev::eth::MiningProgress m_progress;
 	unsigned m_duration = 300;
 	std::vector<float> m_values;
 	std::vector<float> m_bests;

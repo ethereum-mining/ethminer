@@ -145,7 +145,7 @@ struct PeerSessionInfo
 	unsigned short port;
 	std::chrono::steady_clock::duration lastPing;
 	std::set<CapDesc> caps;
-	unsigned socket;
+	unsigned socketId;
 	std::map<std::string, std::string> notes;
 };
 

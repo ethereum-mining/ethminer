@@ -102,15 +102,15 @@ var getBlock = new Method({
     name: 'getBlock', 
     call: blockCall,
     params: 2,
-	inputFormatter: [formatters.inputBlockNumberFormatter, function (val) { return !!val; }],
+    inputFormatter: [utils.toHex, function (val) { return !!val; }],
     outputFormatter: formatters.outputBlockFormatter
 });
 
 var getUncle = new Method({
     name: 'getUncle',
     call: uncleCall,
-    params: 3,
-	inputFormatter: [formatters.inputBlockNumberFormatter, utils.toHex, function (val) { return !!val; }],
+    params: 2,
+    inputFormatter: [utils.toHex, utils.toHex],
     outputFormatter: formatters.outputBlockFormatter,
 
 });
@@ -234,7 +234,7 @@ var properties = [
     new Property({
         name: 'gasPrice',
         getter: 'eth_gasPrice',
-        outputFormatter: formatters.inputNumberFormatter
+        outputFormatter: formatters.outputBigNumberFormatter
     }),
     new Property({
         name: 'accounts',
