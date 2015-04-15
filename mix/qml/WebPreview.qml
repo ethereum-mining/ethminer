@@ -40,11 +40,14 @@ Item {
 		var contracts = {};
 		for (var c in codeModel.contracts) {
 			var contract = codeModel.contracts[c];
-			contracts[c] = {
-				name: contract.contract.name,
-				address: clientModel.contractAddresses[contract.contract.name],
-				interface: JSON.parse(contract.contractInterface),
-			};
+			var address = clientModel.contractAddresses[contract.contract.name];
+			if (address) {
+				contracts[c] = {
+					name: contract.contract.name,
+					address: address,
+					interface: JSON.parse(contract.contractInterface),
+				};
+			}
 		}
 		webView.runJavaScript("updateContracts(" + JSON.stringify(contracts) + ")");
 	}
