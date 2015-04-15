@@ -2,7 +2,16 @@
 
 #define __CL_ENABLE_EXCEPTIONS 
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 #include "cl.hpp"
+#pragma clang diagnostic pop
+#else
+#include "cl.hpp"
+#endif
+
 #include <time.h>
 #include <functional>
 #include <libethash/ethash.h>
@@ -22,7 +31,8 @@ public:
 public:
 	ethash_cl_miner();
 
-	bool init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size = 64);
+	bool init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size = 64, unsigned _deviceId = 0);
+	static std::string platform_info();
 
 	void finish();
 	void hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);

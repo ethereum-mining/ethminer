@@ -890,12 +890,16 @@ void Main::on_usePrivate_triggered()
 	{
 		m_privateChain = QInputDialog::getText(this, "Enter Name", "Enter the name of your private chain", QLineEdit::Normal, QString("NewChain-%1").arg(time(0)));
 		if (m_privateChain.isEmpty())
-			ui->usePrivate->setChecked(false);
+		{
+			if (ui->usePrivate->isChecked())
+				ui->usePrivate->setChecked(false);
+			else
+				// was cancelled.
+				return;
+		}
 	}
 	else
-	{
 		m_privateChain.clear();
-	}
 	on_killBlockchain_triggered();
 }
 
@@ -1027,7 +1031,7 @@ void Main::refreshNetwork()
 							   .arg(sessions[i.id] = QString::fromStdString(i.clientVersion))
 							   .arg(QString::fromStdString(toString(i.caps)))
 							   .arg(QString::fromStdString(toString(i.notes)))
-							   .arg(i.socket)
+							   .arg(i.socketId)
 							   .arg(QString::fromStdString(i.id.abridged())));
 
 		auto ns = web3()->nodes();
