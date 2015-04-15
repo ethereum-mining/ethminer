@@ -30,6 +30,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/ProofOfWork.h>
+#include <libethcore/Miner.h>
 #include <libethcore/Params.h>
 #include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
@@ -162,13 +163,20 @@ public:
 
 	/// Pass in a solution to the proof-of-work.
 	/// @returns true iff the given nonce is a proof-of-work for this State's block.
-	bool completeMine(ProofOfWork::Proof const& _result);
+	template <class PoW>
+	bool completeMine(typename PoW::Solution const& _result)
+	{
+		PoW::assignResult(_result, m_currentBlock);
 
-	/// Attempt to find valid nonce for block that this state represents.
-	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
-	/// @param _msTimeout Timeout before return in milliseconds.
-	/// @returns Information on the mining.
-	MineInfo mine(unsigned _msTimeout = 1000, bool _turbo = false);
+	//	if (!m_pow.verify(m_currentBlock))
+	//		return false;
+
+		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
+
+		completeMine();
+
+		return true;
+	}
 
 	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
 	 * Typically looks like:
@@ -306,11 +314,11 @@ public:
 	bool sync(BlockChain const& _bc);
 
 	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
-	bool sync(BlockChain const& _bc, h256 _blockHash, BlockInfo const& _bi = BlockInfo());
+	bool sync(BlockChain const& _bc, h256 _blockHash, BlockInfo const& _bi = BlockInfo(), ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
-	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc);
+	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Returns back to a pristine state after having done a playback.
 	/// @arg _fullCommit if true flush everything out to disk. If false, this effectively only validates
@@ -338,7 +346,7 @@ private:
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock.
 	/// Throws on failure.
-	u256 enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce = true);
+	u256 enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(std::vector<BlockInfo> const& _uncleBlockHeaders);
@@ -350,7 +358,6 @@ private:
 	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
 	/// Debugging only. Good for checking the Trie is in shape.
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
-
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
 	SecureTrieDB<Address, OverlayDB> m_state;	///< Our state tree, as an OverlayDB DB.
@@ -370,8 +377,6 @@ private:
 	bytes m_currentUncles;						///< The RLP-encoded block of uncles.
 
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
-
-	ProofOfWork m_pow;							///< The PoW mining class.
 
 	u256 m_blockReward;
 
