@@ -672,7 +672,7 @@ int main(int argc, char** argv)
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(bytesConstRef((byte const*)EthashAux::light(seedHash), EthashAux::params(seedHash).cache_size)) << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(seedHash)->data()) << endl;
 				exit(0);
 			}
 			catch (...)
