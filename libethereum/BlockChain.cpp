@@ -36,7 +36,6 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>
-#include <libethcore/Ethasher.h>
 #include <liblll/Compiler.h>
 #include "GenesisInfo.h"
 #include "State.h"
@@ -231,8 +230,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 			bytes b = block(queryExtras<BlockHash, ExtraBlockHash>(h256(u256(d)), m_blockHashes, x_blockHashes, NullBlockHash, oldExtrasDB).value);
 
 			BlockInfo bi(b);
-			if (bi.number % c_ethashEpochLength == 1)
-				Ethasher::get()->full(bi);
+			ProofOfWork::prep(bi);
 
 			if (bi.parentHash != lastHash)
 			{
@@ -240,7 +238,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 				return;
 			}
 			lastHash = bi.hash();
-			import(b, s.db(), Aversion::ImportOldBlocks);
+			import(b, s.db(), ImportRequirements::Default);
 		}
 		catch (...)
 		{
@@ -307,14 +305,8 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 		try
 		{
 			auto r = import(block, _stateDB);
-			bool isOld = true;
-			for (auto const& h: r.first)
-				if (h == r.second)
-					isOld = false;
-				else if (isOld)
-					dead.push_back(h);
-				else
-					fresh.push_back(h);
+			fresh += r.first;
+			dead += r.second;
 		}
 		catch (UnknownParent)
 		{
@@ -334,20 +326,20 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 	return make_tuple(fresh, dead, _bq.doneDrain(badBlocks));
 }
 
-pair<h256s, h256> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, Aversion _force) noexcept
+ImportRoute BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept
 {
 	try
 	{
-		return import(_block, _stateDB, _force);
+		return import(_block, _stateDB, _ir);
 	}
 	catch (...)
 	{
 		cwarn << "Unexpected exception! Could not import block!" << boost::current_exception_diagnostic_information();
-		return make_pair(h256s(), h256());
+		return make_pair(h256s(), h256s());
 	}
 }
 
-pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, Aversion _force)
+ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, ImportRequirements::value _ir)
 {
 	//@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
 
@@ -386,7 +378,7 @@ pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, 
 #endif
 
 	// Check block doesn't already exist first!
-	if (isKnown(bi.hash()) && _force == Aversion::AvoidOldBlocks)
+	if (isKnown(bi.hash()) && (_ir & ImportRequirements::DontHave))
 	{
 		clog(BlockChainNote) << bi.hash() << ": Not new.";
 		BOOST_THROW_EXCEPTION(AlreadyHaveBlock());
@@ -432,7 +424,7 @@ pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, 
 		// Check transactions are valid and that they result in a state equivalent to our state_root.
 		// Get total difficulty increase and update state, checking it.
 		State s(_db);	//, bi.coinbaseAddress
-		auto tdIncrease = s.enactOn(&_block, bi, *this);
+		auto tdIncrease = s.enactOn(&_block, bi, *this, _ir);
 
 		BlockLogBlooms blb;
 		BlockReceipts br;
@@ -626,7 +618,17 @@ pair<h256s, h256> BlockChain::import(bytes const& _block, OverlayDB const& _db, 
 	cnote << "checkBest:" << checkBest;
 #endif
 
-	return make_pair(route, common);
+	h256s fresh;
+	h256s dead;
+	bool isOld = true;
+	for (auto const& h: route)
+		if (h == common)
+			isOld = false;
+		else if (isOld)
+			dead.push_back(h);
+		else
+			fresh.push_back(h);
+	return make_pair(fresh, dead);
 }
 
 void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)

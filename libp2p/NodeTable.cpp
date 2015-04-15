@@ -176,7 +176,7 @@ void NodeTable::discover(NodeId _node, unsigned _round, shared_ptr<set<shared_pt
 			tried.push_back(r);
 			FindNode p(r->endpoint, _node);
 			p.sign(m_secret);
-			m_findNodeTimeout.push_back(make_pair(_node, chrono::steady_clock::now()));
+			m_findNodeTimeout.push_back(make_pair(r->id, chrono::steady_clock::now()));
 			m_socketPointer->send(p);
 		}
 	
@@ -457,11 +457,14 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			case Neighbours::type:
 			{
 				bool expected = false;
+				auto now = chrono::steady_clock::now();
 				m_findNodeTimeout.remove_if([&](NodeIdTimePoint const& t)
 				{
-					if (t.first == nodeid && chrono::steady_clock::now() - t.second < c_reqTimeout)
+					if (t.first == nodeid && now - t.second < c_reqTimeout)
 						expected = true;
-					return t.first == nodeid;
+					else if (t.first == nodeid)
+						return true;
+					return false;
 				});
 				
 				if (!expected)
@@ -481,7 +484,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
 
 				vector<shared_ptr<NodeEntry>> nearest = nearestNodeEntries(in.target);
-				static unsigned const nlimit = (m_socketPointer->maxDatagramSize - 13) / 87;
+				static unsigned const nlimit = (m_socketPointer->maxDatagramSize - 111) / 87;
 				for (unsigned offset = 0; offset < nearest.size(); offset += nlimit)
 				{
 					Neighbours out(_from, nearest, offset, nlimit);
