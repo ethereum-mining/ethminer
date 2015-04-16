@@ -24,6 +24,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <errno.h>
+#include <math.h>
 #include "mmap.h"
 #include "ethash.h"
 #include "fnv.h"
@@ -215,16 +216,18 @@ static bool ethash_hash(ethash_return_value *ret,
 			page_size = sizeof(uint32_t) * MIX_WORDS,
 			num_full_pages = (unsigned) (params->full_size / page_size);
 
-
+	const double progress_change = 1.0f / ACCESSES / MIX_NODES;
+	double progress = 0.0f;
 	for (unsigned i = 0; i != ACCESSES; ++i) {
 		uint32_t const index = ((s_mix->words[0] ^ i) * FNV_PRIME ^ mix->words[i % MIX_WORDS]) % num_full_pages;
 
 		for (unsigned n = 0; n != MIX_NODES; ++n) {
 			const node *dag_node;
 			if (callback &&
-				callback(((float)(i * n) / (float)(ACCESSES * MIX_NODES) * 100) != 0)) {
+				callback((unsigned int)(ceil(progress * 100.0f))) != 0) {
 				return false;
 			}
+			progress += progress_change;
 			if (full_nodes) {
 				dag_node = &full_nodes[MIX_NODES * index + n];
 			} else {
