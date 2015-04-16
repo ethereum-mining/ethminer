@@ -174,29 +174,25 @@ void Host::doneWorking()
 
 void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint)
 {
+	// session maybe ingress or egress so m_peers and node table entries may not exist
 	shared_ptr<Peer> p;
+	ETH_RECURSIVE_GUARDED(x_sessions)
 	{
-		RecursiveGuard l(x_sessions);
 		if (m_peers.count(_id))
-		{
 			p = m_peers[_id];
-			p->endpoint.address = _endpoint.address();
-		}
 		else
 		{
-			// peer doesn't exist, try to get info from node table
-			Node n = m_nodeTable->node(_id);
-			if (!n)
-			{
-				n.id = _id;
-				n.endpoint = NodeIPEndpoint(_endpoint.address(), 0, 0);
-			}
-			
-			p.reset(new Peer(n));
+			// peer doesn't exist, try to get port info from node table
+			if (Node n = m_nodeTable->node(_id))
+				p.reset(new Peer(n));
+			else
+				p.reset(new Peer(Node(_id, UnspecifiedNodeIPEndpoint)));
+			m_peers[_id] = p;
 		}
 	}
 	if (p->isOffline())
 		p->m_lastConnected = std::chrono::system_clock::now();
+	p->endpoint.address = _endpoint.address();
 
 	auto protocolVersion = _rlp[0].toInt<unsigned>();
 	auto clientVersion = _rlp[1].toString();
@@ -248,17 +244,15 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 
 void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 {
-
 	if (_e == NodeEntryAdded)
 	{
 		clog(NetNote) << "p2p.host.nodeTable.events.nodeEntryAdded " << _n;
-
-		auto n = m_nodeTable->node(_n);
-		if (n)
+		// only add iff node is in node table
+		if (Node n = m_nodeTable->node(_n))
 		{
 			shared_ptr<Peer> p;
+			ETH_RECURSIVE_GUARDED(x_sessions)
 			{
-				RecursiveGuard l(x_sessions);
 				if (m_peers.count(_n))
 				{
 					p = m_peers[_n];
@@ -268,18 +262,9 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 				{
 					p.reset(new Peer(n));
 					m_peers[_n] = p;
-					clog(NetNote) << "p2p.host.peers.events.peersAdded " << _n << p->endpoint;
+					clog(NetNote) << "p2p.host.peers.events.peerAdded " << _n << p->endpoint;
 				}
 			}
-
-			// TODO: Implement similar to discover. Attempt connecting to nodes
-			//       until ideal peer count is reached; if all nodes are tried,
-			//       repeat. Notably, this is an integrated process such that
-			//       when onNodeTableEvent occurs we should also update +/-
-			//       the list of nodes to be tried. Thus:
-			//       1) externalize connection attempts
-			//       2) attempt copies potentialPeer list
-			//       3) replace this logic w/maintenance of potentialPeers
 			if (peerCount() < m_idealPeerCount)
 				connect(p);
 		}
@@ -287,7 +272,6 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 	else if (_e == NodeEntryDropped)
 	{
 		clog(NetNote) << "p2p.host.nodeTable.events.NodeEntryDropped " << _n;
-
 		RecursiveGuard l(x_sessions);
 		m_peers.erase(_n);
 	}
@@ -411,10 +395,10 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 	Node node(_n, _endpoint, true);
 	if (_n)
 	{
-		// add or replace peer
+		// create or update m_peers entry
 		shared_ptr<Peer> p;
+		ETH_RECURSIVE_GUARDED(x_sessions)
 		{
-			RecursiveGuard l(x_sessions);
 			if (m_peers.count(_n))
 			{
 				p = m_peers[_n];
