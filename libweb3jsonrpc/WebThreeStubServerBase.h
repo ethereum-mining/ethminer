@@ -77,6 +77,8 @@ public:
 	virtual std::string net_peerCount();
 	virtual bool net_listening();
 
+	virtual std::string eth_protocolVersion();
+	virtual std::string eth_hashrate();
 	virtual std::string eth_coinbase();
 	virtual bool eth_mining();
 	virtual std::string eth_gasPrice();

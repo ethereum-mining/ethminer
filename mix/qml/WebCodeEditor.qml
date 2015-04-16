@@ -4,23 +4,29 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls.Styles 1.1
 import QtWebEngine 1.0
 import QtWebEngine.experimental 1.0
+import org.ethereum.qml.Clipboard 1.0
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 
 Item {
-	signal editorTextChanged
 	signal breakpointsChanged
+	signal editorTextChanged
+	signal loadComplete
 	property bool isClean: true
 	property string currentText: ""
 	property string currentMode: ""
 	property bool initialized: false
-	property var currentBreakpoints: [];
+	property bool unloaded: false
+	property var currentBreakpoints: []
+	property string sourceName
+	property var document
 
 	function setText(text, mode) {
 		currentText = text;
-		currentMode = mode;
+		if (mode !== undefined)
+			currentMode = mode;
 		if (initialized && editorBrowser) {
 			editorBrowser.runJavaScript("setTextBase64(\"" + Qt.btoa(text) + "\")");
-			editorBrowser.runJavaScript("setMode(\"" + mode + "\")");
+			editorBrowser.runJavaScript("setMode(\"" + currentMode + "\")");
 		}
 		setFocus();
 	}
@@ -65,6 +71,16 @@ Item {
 			editorBrowser.runJavaScript("changeGeneration()", function(result) {});
 	}
 
+	function goToCompilationError() {
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("goToCompilationError()", function(result) {});
+	}
+
+	Clipboard
+	{
+		id: clipboard
+	}
+
 	Connections {
 		target: clipboard
 		onClipboardChanged:	syncClipboard()
@@ -102,6 +118,7 @@ Item {
 					codeModel.onCompilationError.connect(compilationError);
 				}
 				parent.changeGeneration();
+				loadComplete();
 			}
 		}
 
@@ -112,8 +129,10 @@ Item {
 				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
 		}
 
-		function compilationError(error)
+		function compilationError(error, sourceName)
 		{
+			if (sourceName !== parent.sourceName)
+				return;
 			if (!editorBrowser || !error)
 				return;
 			var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);
@@ -133,7 +152,7 @@ Item {
 				if (!editorBrowser)
 					return;
 				editorBrowser.runJavaScript("getTextChanged()", function(result) {
-					if (result === true) {
+					if (result === true && editorBrowser) {
 						editorBrowser.runJavaScript("getText()" , function(textValue) {
 							currentText = textValue;
 							editorTextChanged();
@@ -141,7 +160,7 @@ Item {
 					}
 				});
 				editorBrowser.runJavaScript("getBreakpointsChanged()", function(result) {
-					if (result === true) {
+					if (result === true && editorBrowser) {
 						editorBrowser.runJavaScript("getBreakpoints()" , function(bp) {
 							if (currentBreakpoints !== bp) {
 								currentBreakpoints = bp;

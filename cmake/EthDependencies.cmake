@@ -4,7 +4,11 @@
 # by defining this variable, cmake will look for dependencies first in our own repository before looking in system paths like /usr/local/ ...
 # this must be set to point to the same directory as $ETH_DEPENDENCY_INSTALL_DIR in /extdep directory
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _system_name)
-set (ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}")
+if (CMAKE_CL_64)
+	set (ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}/x64")
+else ()
+	set (ETH_DEPENDENCY_INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extdep/install/${_system_name}/Win32")
+endif()
 set (CMAKE_PREFIX_PATH ${ETH_DEPENDENCY_INSTALL_DIR})
 
 # setup directory for cmake generated files and include it globally 
@@ -59,7 +63,7 @@ if (JSONRPC)
  	find_package(MHD) 
 	message(" - microhttpd header: ${MHD_INCLUDE_DIRS}")
 	message(" - microhttpd lib   : ${MHD_LIBRARIES}")
-
+	message(" - microhttpd dll   : ${MHD_DLLS}")
 endif() #JSONRPC
 
 # TODO readline package does not yet check for correct version number
@@ -86,7 +90,7 @@ endif()
 # TODO it is also not required in msvc build
 find_package (Gmp 6.0.0)
 if (GMP_FOUND)
-	message(" - gmp Header: ${GMP_INCLUDE_DIRS}")
+	message(" - gmp header: ${GMP_INCLUDE_DIRS}")
 	message(" - gmp lib   : ${GMP_LIBRARIES}")
 endif()
 
@@ -96,12 +100,25 @@ find_package (CURL)
 message(" - curl header: ${CURL_INCLUDE_DIRS}")
 message(" - curl lib   : ${CURL_LIBRARIES}")
 
+# cpuid required for eth
+find_package (Cpuid)
+if (CPUID_FOUND)
+	message(" - cpuid header: ${CPUID_INCLUDE_DIRS}")
+	message(" - cpuid lib   : ${CPUID_LIBRARIES}")
+endif()
+
+find_package (OpenCL)
+if (OpenCL_FOUND)
+	message(" - opencl header: ${OpenCL_INCLUDE_DIRS}")
+	message(" - opencl lib   : ${OpenCL_LIBRARIES}")
+endif()
+
 # find location of jsonrpcstub
 find_program(ETH_JSON_RPC_STUB jsonrpcstub)
 message(" - jsonrpcstub location    : ${ETH_JSON_RPC_STUB}")
 
 # do not compile GUI
-if (NOT HEADLESS) 
+if (GUI)
 
 # we need json rpc to build alethzero
 	if (NOT JSON_RPC_CPP_FOUND)
@@ -153,7 +170,7 @@ if (NOT HEADLESS)
 		endif()
 	endif()
 
-endif() #HEADLESS
+endif() #GUI
 
 # use multithreaded boost libraries, with -mt suffix
 set(Boost_USE_MULTITHREADED ON)

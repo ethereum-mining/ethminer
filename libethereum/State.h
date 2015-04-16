@@ -30,6 +30,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/ProofOfWork.h>
+#include <libethcore/Miner.h>
 #include <libethcore/Params.h>
 #include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
@@ -54,7 +55,12 @@ struct StateTrace: public LogChannel { static const char* name() { return "=S=";
 struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
 struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
 
-enum class BaseState { Empty, CanonGenesis };
+enum class BaseState
+{
+	PreExisting,
+	Empty,
+	CanonGenesis
+};
 
 enum class TransactionPriority
 {
@@ -103,8 +109,15 @@ class State
 	friend class Executive;
 
 public:
-	/// Construct state object.
-	State(Address _coinbaseAddress = Address(), OverlayDB const& _db = OverlayDB(), BaseState _bs = BaseState::CanonGenesis);
+	/// Default constructor; creates with a blank database prepopulated with the genesis block.
+	State(): State(OverlayDB(), BaseState::Empty) {}
+
+	/// Basic state object from database.
+	/// Use the default when you already have a database and you just want to make a State object
+	/// which uses it. If you have no preexisting database then set BaseState to something other
+	/// than BaseState::PreExisting in order to prepopulate the Trie.
+	/// You can also set the coinbase address.
+	explicit State(OverlayDB const& _db, BaseState _bs = BaseState::PreExisting, Address _coinbaseAddress = Address());
 
 	/// Construct state object from arbitrary point in blockchain.
 	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash);
@@ -123,9 +136,10 @@ public:
 	Address address() const { return m_ourAddress; }
 
 	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
-	static OverlayDB openDB(std::string _path, bool _killExisting = false);
-	static OverlayDB openDB(bool _killExisting = false) { return openDB(std::string(), _killExisting); }
+	static OverlayDB openDB(std::string _path, WithExisting _we = WithExisting::Trust);
+	static OverlayDB openDB(WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _we); }
 	OverlayDB const& db() const { return m_db; }
+	OverlayDB& db() { return m_db; }
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	/// @throws InterfaceNotSupported if compiled without ETH_FATDB.
@@ -149,13 +163,20 @@ public:
 
 	/// Pass in a solution to the proof-of-work.
 	/// @returns true iff the given nonce is a proof-of-work for this State's block.
-	bool completeMine(ProofOfWork::Proof const& _result);
+	template <class PoW>
+	bool completeMine(typename PoW::Solution const& _result)
+	{
+		PoW::assignResult(_result, m_currentBlock);
 
-	/// Attempt to find valid nonce for block that this state represents.
-	/// This function is thread-safe. You can safely have other interactions with this object while it is happening.
-	/// @param _msTimeout Timeout before return in milliseconds.
-	/// @returns Information on the mining.
-	MineInfo mine(unsigned _msTimeout = 1000, bool _turbo = false);
+	//	if (!m_pow.verify(m_currentBlock))
+	//		return false;
+
+		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
+
+		completeMine();
+
+		return true;
+	}
 
 	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
 	 * Typically looks like:
@@ -262,6 +283,9 @@ public:
 	/// Get the list of pending transactions.
 	Transactions const& pending() const { return m_transactions; }
 
+	/// Get the list of hashes of pending transactions.
+	h256Set const& pendingHashes() const { return m_transactionSet; }
+
 	/// Get the transaction receipt for the transaction of the given index.
 	TransactionReceipt const& receipt(unsigned _i) const { return m_receipts[_i]; }
 
@@ -290,11 +314,11 @@ public:
 	bool sync(BlockChain const& _bc);
 
 	/// Sync with the block chain, but rather than synching to the latest block, instead sync to the given block.
-	bool sync(BlockChain const& _bc, h256 _blockHash, BlockInfo const& _bi = BlockInfo());
+	bool sync(BlockChain const& _bc, h256 _blockHash, BlockInfo const& _bi = BlockInfo(), ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
-	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc);
+	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Returns back to a pristine state after having done a playback.
 	/// @arg _fullCommit if true flush everything out to disk. If false, this effectively only validates
@@ -322,7 +346,7 @@ private:
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock.
 	/// Throws on failure.
-	u256 enact(bytesConstRef _block, BlockChain const& _bc, bool _checkNonce = true);
+	u256 enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(std::vector<BlockInfo> const& _uncleBlockHeaders);
@@ -347,13 +371,12 @@ private:
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
 	bytes m_currentBytes;						///< The current block.
+	bool m_committedToMine = false;				///< Have we committed to mine on the present m_currentBlock?
 
 	bytes m_currentTxs;							///< The RLP-encoded block of transactions.
 	bytes m_currentUncles;						///< The RLP-encoded block of uncles.
 
 	Address m_ourAddress;						///< Our address (i.e. the address to which fees go).
-
-	ProofOfWork m_pow;							///< The PoW mining class.
 
 	u256 m_blockReward;
 

@@ -84,7 +84,7 @@ std::set<bi::address> Network::getInterfaceAddresses()
 
 	for (auto ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
 	{
-		if (!ifa->ifa_addr || string(ifa->ifa_name) == "lo0")
+		if (!ifa->ifa_addr || string(ifa->ifa_name) == "lo0" || !(ifa->ifa_flags & IFF_UP))
 			continue;
 
 		if (ifa->ifa_addr->sa_family == AF_INET)

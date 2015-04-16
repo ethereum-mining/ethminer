@@ -31,11 +31,12 @@ using namespace dev::eth;
 BlockChainLoader::BlockChainLoader(Json::Value const& _json)
 {
 	// load pre state
-	StateLoader sl(_json["pre"]);
+	StateLoader sl(_json["pre"], m_dir.path());
 	m_state = sl.state();
 
 	// load genesisBlock
-	m_bc.reset(new BlockChain(fromHex(_json["genesisRLP"].asString()), m_dir.path(), true));
+	m_bc.reset(new BlockChain(fromHex(_json["genesisRLP"].asString()), m_dir.path(), WithExisting::Kill));
+	assert(m_state.rootHash() == m_bc->info().stateRoot);
 
 	// load blocks
 	for (auto const& block: _json["blocks"])

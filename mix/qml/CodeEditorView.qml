@@ -7,13 +7,15 @@ import QtQuick.Dialogs 1.1
 Item {
 	id: codeEditorView
 	property string currentDocumentId: ""
+	property string sourceInError
+	property int openDocCount: 0
 	signal documentEdit(string documentId)
 	signal breakpointsChanged(string documentId)
 	signal isCleanChanged(var isClean, string documentId)
-
+	signal loadComplete
 
 	function getDocumentText(documentId) {
-		for (var i = 0; i < editorListModel.count; i++)	{
+		for (var i = 0; i < openDocCount; i++)	{
 			if (editorListModel.get(i).documentId === documentId) {
 				return editors.itemAt(i).item.getText();
 			}
@@ -22,7 +24,7 @@ Item {
 	}
 
 	function isDocumentOpen(documentId) {
-		for (var i = 0; i < editorListModel.count; i++)
+		for (var i = 0; i < openDocCount; i++)
 			if (editorListModel.get(i).documentId === documentId &&
 					editors.itemAt(i).item)
 				return true;
@@ -35,32 +37,49 @@ Item {
 	}
 
 	function loadDocument(document) {
-		for (var i = 0; i < editorListModel.count; i++)
+		for (var i = 0; i < openDocCount; i++)
 			if (editorListModel.get(i).documentId === document.documentId)
 				return; //already open
 
-		editorListModel.append(document);
+		if (editorListModel.count <= openDocCount)
+			editorListModel.append(document);
+		else
+		{
+			editorListModel.set(openDocCount, document);
+			doLoadDocument(editors.itemAt(openDocCount).item, editorListModel.get(openDocCount), false)
+			loadComplete();
+		}
+		openDocCount++;
 	}
 
-	function doLoadDocument(editor, document) {
+	function doLoadDocument(editor, document, create) {
 		var data = fileIo.readFile(document.path);
-		editor.onEditorTextChanged.connect(function() {
-			documentEdit(document.documentId);
-			if (document.isContract)
-				codeModel.registerCodeChange(document.documentId, editor.getText());
-		});
-		editor.onBreakpointsChanged.connect(function() {
-			if (document.isContract)
-				breakpointsChanged(document.documentId);
-		});
+		if (create)
+		{
+			editor.onLoadComplete.connect(function() {
+				codeEditorView.loadComplete();
+			});
+			editor.onEditorTextChanged.connect(function() {
+				documentEdit(editor.document.documentId);
+				if (editor.document.isContract)
+					codeModel.registerCodeChange(editor.document.documentId, editor.getText());
+			});
+			editor.onBreakpointsChanged.connect(function() {
+				if (editor.document.isContract)
+					breakpointsChanged(editor.document.documentId);
+			});
+			editor.onIsCleanChanged.connect(function() {
+				isCleanChanged(editor.isClean, editor.document.documentId);
+			});
+		}
+		editor.document = document;
+		editor.sourceName = document.documentId;
 		editor.setText(data, document.syntaxMode);
-		editor.onIsCleanChanged.connect(function() {
-			isCleanChanged(editor.isClean, document.documentId);
-		});
+		editor.changeGeneration();
 	}
 
 	function getEditor(documentId) {
-		for (var i = 0; i < editorListModel.count; i++)
+		for (var i = 0; i < openDocCount; i++)
 		{
 			if (editorListModel.get(i).documentId === documentId)
 				return editors.itemAt(i).item;
@@ -91,7 +110,7 @@ Item {
 	}
 
 	function editingContract() {
-		for (var i = 0; i < editorListModel.count; i++)
+		for (var i = 0; i < openDocCount; i++)
 			if (editorListModel.get(i).documentId === currentDocumentId)
 				return editorListModel.get(i).isContract;
 		return false;
@@ -99,7 +118,7 @@ Item {
 
 	function getBreakpoints() {
 		var bpMap = {};
-		for (var i = 0; i < editorListModel.count; i++)  {
+		for (var i = 0; i < openDocCount; i++)  {
 			var documentId = editorListModel.get(i).documentId;
 			var editor = editors.itemAt(i).item;
 			if (editor) {
@@ -121,7 +140,35 @@ Item {
 			editor.changeGeneration();
 	}
 
+	function goToCompilationError() {
+		if (sourceInError === "")
+			return;
+		if (currentDocumentId !== sourceInError)
+			projectModel.openDocument(sourceInError);
+		for (var i = 0; i < openDocCount; i++)
+		{
+			var doc = editorListModel.get(i);
+			if (doc.isContract && doc.documentId === sourceInError)
+			{
+				var editor = editors.itemAt(i).item;
+				if (editor)
+					editor.goToCompilationError();
+				break;
+			}
+		}
+	}
+
 	Component.onCompleted: projectModel.codeEditor = codeEditorView;
+
+	Connections {
+		target: codeModel
+		onCompilationError: {
+			sourceInError = _sourceName;
+		}
+		onCompilationComplete: {
+			sourceInError = "";
+		}
+	}
 
 	Connections {
 		target: projectModel
@@ -130,7 +177,7 @@ Item {
 		}
 
 		onProjectSaving: {
-			for (var i = 0; i < editorListModel.count; i++)
+			for (var i = 0; i < openDocCount; i++)
 			{
 				var doc = editorListModel.get(i);
 				var editor = editors.itemAt(i).item;
@@ -142,7 +189,7 @@ Item {
 		onProjectSaved: {
 			if (projectModel.appIsClosing || projectModel.projectIsClosing)
 				return;
-			for (var i = 0; i < editorListModel.count; i++)
+			for (var i = 0; i < openDocCount; i++)
 			{
 				var doc = editorListModel.get(i);
 				resetEditStatus(doc.documentId);
@@ -150,10 +197,8 @@ Item {
 		}
 
 		onProjectClosed: {
-			for (var i = 0; i < editorListModel.count; i++)
-				editors.itemAt(i).visible = false;
-			editorListModel.clear();
 			currentDocumentId = "";
+			openDocCount = 0;
 		}
 
 		onDocumentSaved: {
@@ -177,6 +222,11 @@ Item {
 		}
 	}
 
+	CodeEditorStyle
+	{
+		id: style;
+	}
+
 	MessageDialog
 	{
 		id: messageDialog
@@ -186,7 +236,7 @@ Item {
 		property variant item
 		property variant doc
 		onYes: {
-			doLoadDocument(item, doc);
+			doLoadDocument(item, doc, false);
 			resetEditStatus(doc.documentId);
 		}
 	}
@@ -194,13 +244,16 @@ Item {
 	Repeater {
 		id: editors
 		model: editorListModel
+		onItemRemoved: {
+			item.item.unloaded = true;
+		}
 		delegate: Loader {
 			id: loader
 			active: false
 			asynchronous: true
 			anchors.fill:  parent
-			source: "CodeEditor.qml"
-			visible: (index >= 0 && index < editorListModel.count && currentDocumentId === editorListModel.get(index).documentId)
+			source: appService.haveWebEngine ? "WebCodeEditor.qml" : "CodeEditor.qml"
+			visible: (index >= 0 && index < openDocCount && currentDocumentId === editorListModel.get(index).documentId)
 			property bool changed: false
 			onVisibleChanged: {
 				loadIfNotLoaded()
@@ -220,7 +273,7 @@ Item {
 				loadIfNotLoaded()
 			}
 			onLoaded: {
-				doLoadDocument(loader.item, editorListModel.get(index))
+				doLoadDocument(loader.item, editorListModel.get(index), true)
 			}
 
 			Connections

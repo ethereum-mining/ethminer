@@ -141,9 +141,12 @@ public:
 	/// Resets acceptor, socket, and IO service. Called by deallocator.
 	void stop();
 
-	/// @returns if network is running.
-	bool isStarted() const { return m_run; }
+	/// @returns if network has been started.
+	bool isStarted() const { return isWorking(); }
 
+	/// @returns if network is started and interactive.
+	bool haveNetwork() const { return m_run && !!m_nodeTable; }
+	
 	NodeId id() const { return m_alias.pub(); }
 
 	/// Validates and starts peer session, taking ownership of _io. Disconnects and returns false upon error.

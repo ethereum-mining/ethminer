@@ -25,7 +25,6 @@
 #include <libethereum/Executive.h>
 #include <libevm/VMFactory.h>
 #include "vm.h"
-#include "Stats.h"
 
 using namespace std;
 using namespace json_spirit;
@@ -97,7 +96,7 @@ void FakeExtVM::push(mArray& a, u256 _v)
 mObject FakeExtVM::exportEnv()
 {
 	mObject ret;
-	ret["previousHash"] = toString(previousBlock.hash);
+	ret["previousHash"] = toString(currentBlock.parentHash);
 	push(ret, "currentDifficulty", currentBlock.difficulty);
 	push(ret, "currentTimestamp", currentBlock.timestamp);
 	ret["currentCoinbase"] = toString(currentBlock.coinbaseAddress);
@@ -116,7 +115,7 @@ void FakeExtVM::importEnv(mObject& _o)
 	assert(_o.count("currentCoinbase") > 0);
 	assert(_o.count("currentNumber") > 0);
 
-	previousBlock.hash = h256(_o["previousHash"].get_str());
+	currentBlock.parentHash = h256(_o["previousHash"].get_str());
 	currentBlock.number = toInt(_o["currentNumber"]);
 	lastHashes = test::lastHashes(currentBlock.number);
 	currentBlock.gasLimit = toInt(_o["currentGasLimit"]);
@@ -311,9 +310,6 @@ namespace dev { namespace test {
 
 void doVMTests(json_spirit::mValue& v, bool _fillin)
 {
-	if (Options::get().stats)
-		Listener::registerListener(Stats::get());
-
 	for (auto& i: v.get_obj())
 	{
 		std::cout << "  " << i.first << "\n";
@@ -384,7 +380,6 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 			}
 		}
 
-
 		if (_fillin)
 		{
 			o["env"] = mValue(fev.exportEnv());
@@ -392,6 +387,18 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 			if (!vmExceptionOccured)
 			{
 				o["post"] = mValue(fev.exportState());
+
+				if (o.count("expect") > 0)
+				{
+					State postState(OverlayDB(), eth::BaseState::Empty);
+					State expectState(OverlayDB(), eth::BaseState::Empty);
+					stateOptionsMap expectStateMap;
+					ImportTest::importState(o["post"].get_obj(), postState);
+					ImportTest::importState(o["expect"].get_obj(), expectState, expectStateMap);
+					ImportTest::checkExpectedState(expectState, postState, expectStateMap, Options::get().checkState ? WhenError::Throw : WhenError::DontThrow);
+					o.erase(o.find("expect"));
+				}
+
 				o["callcreates"] = fev.exportCallCreates();
 				o["out"] = "0x" + toHex(output);
 				fev.push(o, "gas", gas);
@@ -419,25 +426,11 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 
 				BOOST_CHECK_EQUAL(toInt(o["gas"]), gas);
 
-				auto& expectedAddrs = test.addresses;
-				auto& resultAddrs = fev.addresses;
-				for (auto&& expectedPair : expectedAddrs)
-				{
-					auto& expectedAddr = expectedPair.first;
-					auto resultAddrIt = resultAddrs.find(expectedAddr);
-					if (resultAddrIt == resultAddrs.end())
-						BOOST_ERROR("Missing expected address " << expectedAddr);
-					else
-					{
-						auto& expectedState = expectedPair.second;
-						auto& resultState = resultAddrIt->second;
-						BOOST_CHECK_MESSAGE(std::get<0>(expectedState) == std::get<0>(resultState), expectedAddr << ": incorrect balance " << std::get<0>(resultState) << ", expected " << std::get<0>(expectedState));
-						BOOST_CHECK_MESSAGE(std::get<1>(expectedState) == std::get<1>(resultState), expectedAddr << ": incorrect txCount " << std::get<1>(resultState) << ", expected " << std::get<1>(expectedState));
-						BOOST_CHECK_MESSAGE(std::get<3>(expectedState) == std::get<3>(resultState), expectedAddr << ": incorrect code");
-
-						checkStorage(std::get<2>(expectedState), std::get<2>(resultState), expectedAddr);
-					}
-				}
+				State postState, expectState;
+				mObject mPostState = fev.exportState();
+				ImportTest::importState(mPostState, postState);
+				ImportTest::importState(o["post"].get_obj(), expectState);
+				ImportTest::checkExpectedState(expectState, postState);
 
 				checkAddresses<std::map<Address, std::tuple<u256, u256, std::map<u256, u256>, bytes> > >(test.addresses, fev.addresses);
 
@@ -531,6 +524,8 @@ BOOST_AUTO_TEST_CASE(vmInputLimitsLightTest)
 
 BOOST_AUTO_TEST_CASE(vmRandom)
 {
+	test::Options::get(); // parse command line options, e.g. to enable JIT
+
 	string testPath = getTestPath();
 	testPath += "/VMTests/RandomTests";
 
@@ -549,6 +544,7 @@ BOOST_AUTO_TEST_CASE(vmRandom)
 			string s = asString(dev::contents(path.string()));
 			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Content of " + path.string() + " is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
 			json_spirit::read_string(s, v);
+			test::Listener::notifySuiteStarted(path.filename().string());
 			doVMTests(v, false);
 		}
 		catch (Exception const& _e)

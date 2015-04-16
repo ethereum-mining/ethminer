@@ -39,6 +39,7 @@ enum IncludeNonce
 enum Strictness
 {
 	CheckEverything,
+	QuickNonce,
 	IgnoreNonce,
 	CheckNothing
 };
@@ -68,7 +69,6 @@ struct BlockInfo
 {
 public:
 	// TODO: make them all private!
-	h256 hash;						///< SHA3 hash of the block header! Not serialised (the only member not contained in a block header).
 	h256 parentHash;
 	h256 sha3Uncles;
 	Address coinbaseAddress;
@@ -80,48 +80,50 @@ public:
 	u256 number;
 	u256 gasLimit;
 	u256 gasUsed;
-	u256 timestamp;
+	u256 timestamp = Invalid256;
 	bytes extraData;
 	h256 mixHash;
 	Nonce nonce;
 
 	BlockInfo();
-	explicit BlockInfo(bytes const& _block, Strictness _s = CheckEverything): BlockInfo(&_block, _s) {}
-	explicit BlockInfo(bytesConstRef _block, Strictness _s = CheckEverything);
+	explicit BlockInfo(bytes const& _block, Strictness _s = IgnoreNonce, h256 const& _h = h256()): BlockInfo(&_block, _s, _h) {}
+	explicit BlockInfo(bytesConstRef _block, Strictness _s = IgnoreNonce, h256 const& _h = h256());
 
 	static h256 headerHash(bytes const& _block) { return headerHash(&_block); }
 	static h256 headerHash(bytesConstRef _block);
 
-	static BlockInfo fromHeader(bytes const& _block, Strictness _s = CheckEverything) { return fromHeader(bytesConstRef(&_block), _s); }
-	static BlockInfo fromHeader(bytesConstRef _block, Strictness _s = CheckEverything);
+	static BlockInfo fromHeader(bytes const& _header, Strictness _s = IgnoreNonce, h256 const& _h = h256()) { return fromHeader(bytesConstRef(&_header), _s, _h); }
+	static BlockInfo fromHeader(bytesConstRef _header, Strictness _s = IgnoreNonce, h256 const& _h = h256());
 
 	explicit operator bool() const { return timestamp != Invalid256; }
 
 	bool operator==(BlockInfo const& _cmp) const
 	{
 		return parentHash == _cmp.parentHash &&
-				sha3Uncles == _cmp.sha3Uncles &&
-				coinbaseAddress == _cmp.coinbaseAddress &&
-				stateRoot == _cmp.stateRoot &&
-				transactionsRoot == _cmp.transactionsRoot &&
-				receiptsRoot == _cmp.receiptsRoot &&
-				logBloom == _cmp.logBloom &&
-				difficulty == _cmp.difficulty &&
-				number == _cmp.number &&
-				gasLimit == _cmp.gasLimit &&
-				gasUsed == _cmp.gasUsed &&
-				timestamp == _cmp.timestamp &&
-				extraData == _cmp.extraData &&
-				mixHash == _cmp.mixHash &&
-				nonce == _cmp.nonce;
+			sha3Uncles == _cmp.sha3Uncles &&
+			coinbaseAddress == _cmp.coinbaseAddress &&
+			stateRoot == _cmp.stateRoot &&
+			transactionsRoot == _cmp.transactionsRoot &&
+			receiptsRoot == _cmp.receiptsRoot &&
+			logBloom == _cmp.logBloom &&
+			difficulty == _cmp.difficulty &&
+			number == _cmp.number &&
+			gasLimit == _cmp.gasLimit &&
+			gasUsed == _cmp.gasUsed &&
+			timestamp == _cmp.timestamp &&
+			extraData == _cmp.extraData &&
+			mixHash == _cmp.mixHash &&
+			nonce == _cmp.nonce;
 	}
 	bool operator!=(BlockInfo const& _cmp) const { return !operator==(_cmp); }
 
-	void setEmpty();
+	void clear();
 
-	void populateFromHeader(RLP const& _header, Strictness _s = CheckEverything);
-	void populate(bytesConstRef _block, Strictness _s = CheckEverything);
-	void populate(bytes const& _block, Strictness _s = CheckEverything) { populate(&_block, _s); }
+	void noteDirty() const { m_hash = m_seedHash = m_boundary = h256(); }
+
+	void populateFromHeader(RLP const& _header, Strictness _s = IgnoreNonce, h256 const& _h = h256());
+	void populate(bytesConstRef _block, Strictness _s = IgnoreNonce, h256 const& _h = h256());
+	void populate(bytes const& _block, Strictness _s = IgnoreNonce, h256 const& _h = h256()) { populate(&_block, _s, _h); }
 	void verifyInternals(bytesConstRef _block) const;
 	void verifyParent(BlockInfo const& _parent) const;
 	void populateFromParent(BlockInfo const& parent);
@@ -129,6 +131,8 @@ public:
 	u256 calculateDifficulty(BlockInfo const& _parent) const;
 	u256 selectGasLimit(BlockInfo const& _parent) const;
 	h256 const& seedHash() const;
+	h256 const& hash() const;
+	h256 const& boundary() const;
 
 	/// sha3 of the header only.
 	h256 headerHash(IncludeNonce _n) const;
@@ -136,11 +140,13 @@ public:
 
 private:
 	mutable h256 m_seedHash;
+	mutable h256 m_hash;						///< SHA3 hash of the block header! Not serialised.
+	mutable h256 m_boundary;					///< 2^256 / difficulty
 };
 
 inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 {
-	_out << _bi.hash << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.transactionsRoot << " " <<
+	_out << _bi.hash() << " " << _bi.parentHash << " " << _bi.sha3Uncles << " " << _bi.coinbaseAddress << " " << _bi.stateRoot << " " << _bi.transactionsRoot << " " <<
 			_bi.receiptsRoot << " " << _bi.logBloom << " " << _bi.difficulty << " " << _bi.number << " " << _bi.gasLimit << " " <<
 			_bi.gasUsed << " " << _bi.timestamp << " " << _bi.mixHash << " " << _bi.nonce << " (" << _bi.seedHash() << ")";
 	return _out;

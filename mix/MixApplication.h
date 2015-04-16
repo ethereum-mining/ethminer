@@ -33,14 +33,36 @@ namespace dev
 namespace mix
 {
 
+class ApplicationService: public QObject
+{
+	Q_OBJECT
+	Q_PROPERTY(int systemPointSize READ systemPointSize CONSTANT)
+	Q_PROPERTY(bool haveWebEngine READ haveWebEngine CONSTANT)
+
+public:
+	ApplicationService();
+	int systemPointSize() const { return m_systemPointSize; }
+#ifdef ETH_HAVE_WEBENGINE
+	bool haveWebEngine() const { return true; }
+#else
+	bool haveWebEngine() const { return false; }
+#endif
+
+private:
+	int m_systemPointSize = 0;
+};
+
+
 class MixApplication: public QApplication
 {
 	Q_OBJECT
 
 public:
 	MixApplication(int& _argc, char* _argv[]);
+	static void initialize();
 	virtual ~MixApplication();
 	QQmlApplicationEngine* engine() { return m_engine.get(); }
+	bool notify(QObject* _receiver, QEvent* _event) override;
 
 private:
 	std::unique_ptr<QQmlApplicationEngine> m_engine;

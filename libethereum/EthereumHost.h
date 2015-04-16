@@ -76,7 +76,12 @@ public:
 
 	bool isBanned(p2p::NodeId _id) const { return !!m_banned.count(_id); }
 
+	void noteNewTransactions() { m_newTransactions = true; }
+	void noteNewBlocks() { m_newBlocks = true; }
+
 private:
+	std::vector<std::shared_ptr<EthereumPeer>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
+
 	/// Session is tell us that we may need (re-)syncing with the peer.
 	void noteNeedsSyncing(EthereumPeer* _who);
 
@@ -119,6 +124,9 @@ private:
 	h256Set m_transactionsSent;
 
 	std::set<p2p::NodeId> m_banned;
+
+	bool m_newTransactions = false;
+	bool m_newBlocks = false;
 };
 
 }

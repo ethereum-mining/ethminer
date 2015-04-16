@@ -25,6 +25,7 @@
 #include <QStringList>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QMimeDatabase>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/CryptoPP.h>
@@ -96,13 +97,31 @@ DappLocation DappLoader::resolveAppUri(QString const& _uri)
 
 void DappLoader::downloadComplete(QNetworkReply* _reply)
 {
+	QUrl requestUrl = _reply->request().url();
+	if (m_pageUrls.count(requestUrl) != 0)
+	{
+		//inject web3 js
+		QByteArray content = "<script>\n";
+		content.append(web3Content());
+		content.append("</script>\n");
+		content.append(_reply->readAll());
+		QString contentType = _reply->header(QNetworkRequest::ContentTypeHeader).toString();
+		if (contentType.isEmpty())
+		{
+			QMimeDatabase db;
+			contentType = db.mimeTypeForUrl(requestUrl).name();
+		}
+		pageReady(content, contentType, requestUrl);
+		return;
+	}
+
 	try
 	{
 		//try to interpret as rlp
 		QByteArray data = _reply->readAll();
 		_reply->deleteLater();
 
-		h256 expected = m_uriHashes[_reply->request().url()];
+		h256 expected = m_uriHashes[requestUrl];
 		bytes package(reinterpret_cast<unsigned char const*>(data.constData()), reinterpret_cast<unsigned char const*>(data.constData() + data.size()));
 		Secp256k1 dec;
 		dec.decrypt(expected, package);
@@ -144,15 +163,7 @@ void DappLoader::loadDapp(RLP const& _rlp)
 			if (entry->path == "/deployment.js")
 			{
 				//inject web3 code
-				QString code;
-				code += contentsOfQResource(":/js/bignumber.min.js");
-				code += "\n";
-				code += contentsOfQResource(":/js/webthree.js");
-				code += "\n";
-				code += contentsOfQResource(":/js/setup.js");
-				code += "\n";
-				QByteArray res = code.toLatin1();
-				bytes b(res.data(), res.data() + res.size());
+				bytes b(web3Content().data(), web3Content().data() + web3Content().size());
 				b.insert(b.end(), content.begin(), content.end());
 				dapp.content[hash] = b;
 			}
@@ -163,6 +174,22 @@ void DappLoader::loadDapp(RLP const& _rlp)
 			throw dev::Exception() << errinfo_comment("Dapp content hash does not match");
 	}
 	emit dappReady(dapp);
+}
+
+QByteArray const& DappLoader::web3Content()
+{
+	if (m_web3Js.isEmpty())
+	{
+		QString code;
+		code += contentsOfQResource(":/js/bignumber.min.js");
+		code += "\n";
+		code += contentsOfQResource(":/js/webthree.js");
+		code += "\n";
+		code += contentsOfQResource(":/js/setup.js");
+		code += "\n";
+		m_web3Js = code.toLatin1();
+	}
+	return m_web3Js;
 }
 
 Manifest DappLoader::loadManifest(std::string const& _manifest)
@@ -193,10 +220,34 @@ Manifest DappLoader::loadManifest(std::string const& _manifest)
 
 void DappLoader::loadDapp(QString const& _uri)
 {
-	DappLocation location = resolveAppUri(_uri);
-	QUrl uri(location.contentUri);
+	QUrl uri(_uri);
+	QUrl contentUri;
+	h256 hash;
+	if (uri.path().endsWith(".dapp") && uri.query().startsWith("hash="))
+	{
+		contentUri = uri;
+		QString query = uri.query();
+		query.remove("hash=");
+		if (!query.startsWith("0x"))
+			query.insert(0, "0x");
+		hash = jsToFixed<32>(query.toStdString());
+	}
+	else
+	{
+		DappLocation location = resolveAppUri(_uri);
+		contentUri = location.contentUri;
+		hash = location.contentHash;
+	}
+	QNetworkRequest request(contentUri);
+	m_uriHashes[uri] = hash;
+	m_net.get(request);
+}
+
+void DappLoader::loadPage(QString const& _uri)
+{
+	QUrl uri(_uri);
 	QNetworkRequest request(uri);
-	m_uriHashes[uri] = location.contentHash;
+	m_pageUrls.insert(uri);
 	m_net.get(request);
 }
 

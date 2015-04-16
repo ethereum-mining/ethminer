@@ -33,9 +33,7 @@
  * @constructor
  */
 
-if (process.env.NODE_ENV !== 'build') {
-    var BigNumber = require('bignumber.js'); // jshint ignore:line
-}
+var BigNumber = require('bignumber.js');
 
 var unitMap = {
     'wei':      '1',
@@ -56,6 +54,18 @@ var unitMap = {
     'tether':   '1000000000000000000000000000000'
 };
 
+/**
+ * Should be called to pad string to expected length
+ *
+ * @method padLeft
+ * @param {String} string to be padded
+ * @param {Number} characters that result string should have
+ * @param {String} sign, by default 0
+ * @returns {String} right aligned string
+ */
+var padLeft = function (string, chars, sign) {
+    return new Array(chars - string.length + 1).join(sign ? sign : "0") + string;
+};
 
 /** Finds first index of array element matching pattern
  *
@@ -152,32 +162,6 @@ var extractTypeName = function (name) {
 };
 
 /**
- * Filters all functions from input abi
- *
- * @method filterFunctions
- * @param {Array} abi
- * @returns {Array} abi array with filtered objects of type 'function'
- */
-var filterFunctions = function (json) {
-    return json.filter(function (current) {
-        return current.type === 'function'; 
-    }); 
-};
-
-/**
- * Filters all events from input abi
- *
- * @method filterEvents
- * @param {Array} abi
- * @returns {Array} abi array with filtered objects of type 'event'
- */
-var filterEvents = function (json) {
-    return json.filter(function (current) {
-        return current.type === 'event';
-    });
-};
-
-/**
  * Converts value to it's decimal representation in string
  *
  * @method toDecimal
@@ -214,13 +198,13 @@ var fromDecimal = function (value) {
 var toHex = function (val) {
     /*jshint maxcomplexity:7 */
 
-    if(isBoolean(val))
-        return val;
+    if (isBoolean(val))
+        return fromDecimal(+val);
 
-    if(isBigNumber(val))
+    if (isBigNumber(val))
         return fromDecimal(val);
 
-    if(isObject(val))
+    if (isObject(val))
         return fromAscii(JSON.stringify(val));
 
     // if its a negative number, pass it through fromDecimal
@@ -339,19 +323,44 @@ var toTwosComplement = function (number) {
 };
 
 /**
- * Checks if the given string has proper length
+ * Checks if the given string is strictly an address
+ *
+ * @method isStrictAddress
+ * @param {String} address the given HEX adress
+ * @return {Boolean}
+*/
+var isStrictAddress = function (address) {
+    return /^0x[0-9a-f]{40}$/.test(address);
+};
+
+/**
+ * Checks if the given string is an address
  *
  * @method isAddress
  * @param {String} address the given HEX adress
  * @return {Boolean}
 */
-var isAddress = function(address) {
-    if (!isString(address)) {
-        return false;
+var isAddress = function (address) {
+    return /^(0x)?[0-9a-f]{40}$/.test(address);
+};
+
+/**
+ * Transforms given string to valid 20 bytes-length addres with 0x prefix
+ *
+ * @method toAddress
+ * @param {String} address
+ * @return {String} formatted address
+ */
+var toAddress = function (address) {
+    if (isStrictAddress(address)) {
+        return address;
+    }
+    
+    if (/^[0-9a-f]{40}$/.test(address)) {
+        return '0x' + address;
     }
 
-    return ((address.indexOf('0x') === 0 && address.length === 42) ||
-            (address.indexOf('0x') === -1 && address.length === 40));
+    return '0x' + padLeft(toHex(address).substr(2), 40);
 };
 
 /**
@@ -422,7 +431,23 @@ var isArray = function (object) {
     return object instanceof Array; 
 };
 
+/**
+ * Returns true if given string is valid json object
+ * 
+ * @method isJson
+ * @param {String}
+ * @return {Boolean}
+ */
+var isJson = function (str) {
+    try {
+        return !!JSON.parse(str);
+    } catch (e) {
+        return false;
+    }
+};
+
 module.exports = {
+    padLeft: padLeft,
     findIndex: findIndex,
     toHex: toHex,
     toDecimal: toDecimal,
@@ -431,18 +456,19 @@ module.exports = {
     fromAscii: fromAscii,
     extractDisplayName: extractDisplayName,
     extractTypeName: extractTypeName,
-    filterFunctions: filterFunctions,
-    filterEvents: filterEvents,
     toWei: toWei,
     fromWei: fromWei,
     toBigNumber: toBigNumber,
     toTwosComplement: toTwosComplement,
+    toAddress: toAddress,
     isBigNumber: isBigNumber,
+    isStrictAddress: isStrictAddress,
     isAddress: isAddress,
     isFunction: isFunction,
     isString: isString,
     isObject: isObject,
     isBoolean: isBoolean,
-    isArray: isArray
+    isArray: isArray,
+    isJson: isJson
 };
 

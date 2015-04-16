@@ -8,6 +8,12 @@ import "."
 
 Item {
 	property bool renameMode: false;
+	property alias sections: sectionRepeater
+
+	ProjectFilesStyle {
+		id: projectFilesStyle
+	}
+
 	ColumnLayout {
 		anchors.fill: parent
 		id: filesCol
@@ -20,8 +26,8 @@ Item {
 
 		Rectangle
 		{
-			color: ProjectFilesStyle.title.background
-			height: ProjectFilesStyle.title.height
+			color: projectFilesStyle.title.background
+			height: projectFilesStyle.title.height
 			Layout.fillWidth: true
 			Image {
 				id: projectIcon
@@ -37,14 +43,14 @@ Item {
 			Text
 			{
 				id: projectTitle
-				color: ProjectFilesStyle.title.color
+				color: projectFilesStyle.title.color
 				text: projectModel.projectTitle
 				anchors.verticalCenter: parent.verticalCenter
 				visible: !projectModel.isEmpty;
 				anchors.left: parent.left
-				anchors.leftMargin: ProjectFilesStyle.general.leftMargin
+				anchors.leftMargin: projectFilesStyle.general.leftMargin
 				font.family: srcSansProLight.name
-				font.pointSize: ProjectFilesStyle.title.fontSize
+				font.pointSize: projectFilesStyle.title.fontSize
 				font.weight: Font.Light
 			}
 
@@ -54,7 +60,7 @@ Item {
 				anchors.right: parent.right
 				anchors.rightMargin: 15
 				font.family: srcSansProLight.name
-				font.pointSize: ProjectFilesStyle.title.fontSize
+				font.pointSize: projectFilesStyle.title.fontSize
 				anchors.verticalCenter: parent.verticalCenter
 				font.weight: Font.Light
 			}
@@ -64,14 +70,14 @@ Item {
 		{
 			Layout.fillWidth: true
 			height: 3
-			color: ProjectFilesStyle.documentsList.background
+			color: projectFilesStyle.documentsList.background
 		}
 
 		Rectangle
 		{
 			Layout.fillWidth: true
 			Layout.fillHeight: true
-			color: ProjectFilesStyle.documentsList.background
+			color: projectFilesStyle.documentsList.background
 
 			ColumnLayout
 			{

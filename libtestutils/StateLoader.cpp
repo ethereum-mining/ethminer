@@ -26,7 +26,8 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
-StateLoader::StateLoader(Json::Value const& _json) : m_state(Address(), OverlayDB(), BaseState::Empty)
+StateLoader::StateLoader(Json::Value const& _json, std::string const& _dbPath):
+	m_state(State::openDB(_dbPath, WithExisting::Kill), BaseState::Empty)
 {
 	for (string const& name: _json.getMemberNames())
 	{
@@ -53,4 +54,5 @@ StateLoader::StateLoader(Json::Value const& _json) : m_state(Address(), OverlayD
 	}
 
 	m_state.commit();
+	m_state.db().commit();
 }
