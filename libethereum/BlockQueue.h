@@ -55,7 +55,7 @@ class BlockQueue
 {
 public:
 	/// Import a block into the queue.
-	ImportResult import(bytesConstRef _tx, BlockChain const& _bc);
+	ImportResult import(bytesConstRef _tx, BlockChain const& _bc, bool _isOurs = false);
 
 	/// Notes that time has moved on and some blocks that used to be "in the future" may no be valid.
 	void tick(BlockChain const& _bc);
