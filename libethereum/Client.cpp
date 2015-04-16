@@ -425,7 +425,7 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 			return false;
 		newBlock = m_postMine.blockData();
 	}
-	m_bq.import(&newBlock, m_bc);
+	m_bq.import(&newBlock, m_bc, true);
 /*
 	ImportRoute ir = m_bc.attemptImport(newBlock, m_stateDB);
 	if (!ir.first.empty())
