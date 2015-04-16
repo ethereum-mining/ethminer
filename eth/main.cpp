@@ -926,6 +926,7 @@ int main(int argc, char** argv)
 	{
 		c->setGasPricer(gasPricer);
 		c->setForceMining(forceMining);
+		c->setTurboMining(minerType == MinerType::GPU);
 		c->setAddress(coinbase);
 	}
 
