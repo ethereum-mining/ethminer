@@ -177,7 +177,12 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	shared_ptr<Peer> p;
 	{
 		RecursiveGuard l(x_sessions);
-		if (!m_peers.count(_id))
+		if (m_peers.count(_id))
+		{
+			p = m_peers[_id];
+			p->endpoint.address = _endpoint.address();
+		}
+		else
 		{
 			// peer doesn't exist, try to get info from node table
 			Node n = m_nodeTable->node(_id);
@@ -188,11 +193,6 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 			}
 			
 			p.reset(new Peer(n));
-		}
-		else
-		{
-			p = m_peers[_id];
-			p->endpoint.address = _endpoint.address();
 		}
 	}
 	if (p->isOffline())
