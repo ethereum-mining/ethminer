@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <inttypes.h>
 #include "endian.h"
 #include "ethash.h"
 
@@ -138,7 +139,7 @@ static inline bool ethash_io_mutable_name(uint32_t revision,
 #if LITTLE_ENDIAN == BYTE_ORDER
     hash = ethash_swap_u64(hash);
 #endif
-    return snprintf(output, DAG_MUTABLE_NAME_MAX_SIZE, "%u_%016lx", revision, hash) >= 0;
+    return snprintf(output, DAG_MUTABLE_NAME_MAX_SIZE, "%u_%016" PRIx64, revision, hash) >= 0;
 }
 
 static inline char *ethash_io_create_filename(char const* dirname,
