@@ -175,16 +175,28 @@ void Host::doneWorking()
 void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io, bi::tcp::endpoint _endpoint)
 {
 	shared_ptr<Peer> p;
-	if (!m_peers.count(_id))
 	{
-		p.reset(new Peer());
-		p->id = _id;
+		RecursiveGuard l(x_sessions);
+		if (!m_peers.count(_id))
+		{
+			// peer doesn't exist, try to get info from node table
+			Node n = m_nodeTable->node(_id);
+			if (!n)
+			{
+				n.id = _id;
+				n.endpoint = NodeIPEndpoint(_endpoint.address(), 0, 0);
+			}
+			
+			p.reset(new Peer(n));
+		}
+		else
+		{
+			p = m_peers[_id];
+			p->endpoint.address = _endpoint.address();
+		}
 	}
-	else
-		p = m_peers[_id];
 	if (p->isOffline())
 		p->m_lastConnected = std::chrono::system_clock::now();
-	p->endpoint.address = _endpoint.address();
 
 	auto protocolVersion = _rlp[0].toInt<unsigned>();
 	auto clientVersion = _rlp[1].toString();
@@ -248,17 +260,16 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 			{
 				RecursiveGuard l(x_sessions);
 				if (m_peers.count(_n))
+				{
 					p = m_peers[_n];
+					p->endpoint = n.endpoint;
+				}
 				else
 				{
-					p.reset(new Peer());
-					p->id = _n;
-					p->required = n.required;
+					p.reset(new Peer(n));
 					m_peers[_n] = p;
-
 					clog(NetNote) << "p2p.host.peers.events.peersAdded " << _n << p->endpoint;
 				}
-				p->endpoint = n.endpoint;
 			}
 
 			// TODO: Implement similar to discover. Attempt connecting to nodes
@@ -405,15 +416,16 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 		{
 			RecursiveGuard l(x_sessions);
 			if (m_peers.count(_n))
+			{
 				p = m_peers[_n];
+				p->endpoint = node.endpoint;
+				p->required = true;
+			}
 			else
 			{
-				p.reset(new Peer());
-				p->id = _n;
-				p->required = true;
+				p.reset(new Peer(node));
 				m_peers[_n] = p;
 			}
-			p->endpoint = node.endpoint;
 		}
 		connect(p);
 	}
@@ -757,16 +769,13 @@ void Host::restoreNetwork(bytesConstRef _b)
 				m_nodeTable->addNode(id, ep);
 			else if (i.itemCount() == 10)
 			{
-				shared_ptr<Peer> p = make_shared<Peer>();
-				p->id = id;
-				p->required = required;
+				shared_ptr<Peer> p = make_shared<Peer>(Node(id, ep, required));
 				p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
 				p->m_lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
 				p->m_failedAttempts = i[6].toInt<unsigned>();
 				p->m_lastDisconnect = (DisconnectReason)i[7].toInt<unsigned>();
 				p->m_score = (int)i[8].toInt<unsigned>();
 				p->m_rating = (int)i[9].toInt<unsigned>();
-				p->endpoint = ep;
 				m_peers[p->id] = p;
 				if (p->required)
 					requirePeer(p->id, ep);
