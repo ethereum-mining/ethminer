@@ -579,7 +579,7 @@ void Host::run(boost::system::error_code const&)
 	// is always live and to ensure reputation and fallback timers are properly
 	// updated. // disconnectLatePeers();
 
-	auto openSlots = m_idealPeerCount - peerCount();
+	int openSlots = m_idealPeerCount - peerCount();
 	if (openSlots > 0)
 	{
 		list<shared_ptr<Peer>> toConnect;
