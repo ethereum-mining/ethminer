@@ -57,6 +57,7 @@ class Peer: public Node
 	friend class RLPXHandshake;
 
 public:
+	Peer(): Node(NodeId(), UnspecifiedNodeIPEndpoint) {}
 	bool isOffline() const { return !m_session.lock(); }
 
 	virtual bool operator<(Peer const& _p) const;

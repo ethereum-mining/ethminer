@@ -52,6 +52,11 @@ namespace p2p
 extern const unsigned c_protocolVersion;
 extern const unsigned c_defaultIPPort;
 
+struct NodeIPEndpoint;
+struct Node;
+extern const NodeIPEndpoint UnspecifiedNodeIPEndpoint;
+extern const Node UnspecifiedNode;
+
 using NodeId = h512;
 
 bool isPrivateAddress(bi::address const& _addressToCheck);
@@ -158,13 +163,12 @@ struct NodeIPEndpoint
 {
 	/// Setting true causes isValid to return true for all addresses. Defaults to false. Used by test fixtures.
 	static bool test_allowLocal;
-	
-	NodeIPEndpoint(): address() {}
+
 	NodeIPEndpoint(bi::address _addr, uint16_t _udp, uint16_t _tcp): address(_addr), udpPort(_udp), tcpPort(_tcp) {}
 
 	bi::address address;
-	uint16_t udpPort = 0;
-	uint16_t tcpPort = 0;
+	uint16_t udpPort;
+	uint16_t tcpPort;
 	
 	operator bi::udp::endpoint() const { return std::move(bi::udp::endpoint(address, udpPort)); }
 	operator bi::tcp::endpoint() const { return std::move(bi::tcp::endpoint(address, tcpPort)); }
@@ -176,7 +180,6 @@ struct NodeIPEndpoint
 	
 struct Node
 {
-	Node(): endpoint(NodeIPEndpoint()) {};
 	Node(Public _pubk, NodeIPEndpoint _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
 
 	virtual NodeId const& address() const { return id; }
