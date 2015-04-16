@@ -144,7 +144,7 @@ Node NodeTable::node(NodeId const& _id)
 		Node n(_id, entry->endpoint, entry->required);
 		return move(n);
 	}
-	return move(Node());
+	return UnspecifiedNode;
 }
 
 shared_ptr<NodeEntry> NodeTable::nodeEntry(NodeId _id)

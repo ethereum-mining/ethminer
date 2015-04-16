@@ -27,6 +27,9 @@ using namespace dev::p2p;
 const unsigned dev::p2p::c_protocolVersion = 3;
 const unsigned dev::p2p::c_defaultIPPort = 30303;
 
+const dev::p2p::NodeIPEndpoint dev::p2p::UnspecifiedNodeIPEndpoint = NodeIPEndpoint(bi::address(), 0, 0);
+const dev::p2p::Node dev::p2p::UnspecifiedNode = dev::p2p::Node(NodeId(), UnspecifiedNodeIPEndpoint);
+
 bool dev::p2p::NodeIPEndpoint::test_allowLocal = false;
 
 bool p2p::isPublicAddress(std::string const& _addressToCheck)
