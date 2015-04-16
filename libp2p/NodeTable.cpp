@@ -272,7 +272,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 	vector<shared_ptr<NodeEntry>> ret;
 	for (auto& nodes: found)
 		for (auto n: nodes.second)
-			if (n->endpoint.isValid())
+			if (n->endpoint.isAllowed())
 				ret.push_back(n);
 	return move(ret);
 }
@@ -306,7 +306,7 @@ void NodeTable::evict(shared_ptr<NodeEntry> _leastSeen, shared_ptr<NodeEntry> _n
 
 void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _endpoint)
 {
-	if (_pubk == m_node.address() || !NodeIPEndpoint(_endpoint.address(), _endpoint.port(), _endpoint.port()).isValid())
+	if (_pubk == m_node.address() || !NodeIPEndpoint(_endpoint.address(), _endpoint.port(), _endpoint.port()).isAllowed())
 		return;
 
 	shared_ptr<NodeEntry> node = nodeEntry(_pubk);
