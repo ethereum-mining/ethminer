@@ -161,7 +161,7 @@ using PeerSessionInfos = std::vector<PeerSessionInfo>;
  */
 struct NodeIPEndpoint
 {
-	/// Setting true causes isValid to return true for all addresses. Defaults to false. Used by test fixtures.
+	/// Setting true causes isAllowed to return true for all addresses. (Used by test fixtures)
 	static bool test_allowLocal;
 
 	NodeIPEndpoint(bi::address _addr, uint16_t _udp, uint16_t _tcp): address(_addr), udpPort(_udp), tcpPort(_tcp) {}
@@ -175,7 +175,7 @@ struct NodeIPEndpoint
 	
 	operator bool() const { return !address.is_unspecified() && udpPort > 0 && tcpPort > 0; }
 	
-	bool isValid() const { return NodeIPEndpoint::test_allowLocal ? true : isPublicAddress(address); }
+	bool isAllowed() const { return NodeIPEndpoint::test_allowLocal ? !address.is_unspecified() : isPublicAddress(address); }
 };
 	
 struct Node

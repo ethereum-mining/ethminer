@@ -684,7 +684,7 @@ bytes Host::saveNetwork() const
 		if (!endpoint.address().is_v4())
 			continue;
 
-		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && endpoint.port() > 0 && p.id != id() && (p.required || p.endpoint.isValid()))
+		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && endpoint.port() > 0 && p.id != id() && (p.required || p.endpoint.isAllowed()))
 		{
 			network.appendList(10);
 			network << endpoint.port() << p.id << p.required
@@ -743,9 +743,9 @@ void Host::restoreNetwork(bytesConstRef _b)
 				continue;
 			
 			// todo: ipv6, bi::address_v6(i[0].toArray<byte, 16>()
-			NodeIPEndpoint ep(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<short>(), i[1].toInt<short>());
+			NodeIPEndpoint ep({bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<uint16_t>(), i[1].toInt<uint16_t>()});
 			bool required = i[3].toInt<bool>();
-			if (!ep.isValid() && !required)
+			if (!ep.isAllowed() && !required)
 				continue;
 			
 			auto id = (NodeId)i[2];

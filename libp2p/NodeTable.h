@@ -320,8 +320,8 @@ struct PingNode: RLPXDatagram<PingNode>
 
 	unsigned version = 0;
 	std::string ipAddress;
-//	unsigned udpPort;
-	unsigned tcpPort;
+//	uint16_t udpPort;
+	uint16_t tcpPort;
 	unsigned ts;
 
 	void streamRLP(RLPStream& _s) const override;
@@ -387,11 +387,11 @@ struct Neighbours: RLPXDatagram<Neighbours>
 		Node() = default;
 		Node(RLP const& _r) { interpretRLP(_r); }
 		std::string ipAddress;
-		unsigned udpPort;
-//		unsigned tcpPort;
+		uint16_t udpPort;
+//		uint16_t tcpPort;
 		NodeId node;
 		void streamRLP(RLPStream& _s) const { _s.appendList(3); _s << ipAddress << udpPort << node; }
-		void interpretRLP(RLP const& _r) { ipAddress = _r[0].toString(); udpPort = _r[1].toInt<unsigned>(); node = h512(_r[2].toBytes()); }
+		void interpretRLP(RLP const& _r) { ipAddress = _r[0].toString(); udpPort = _r[1].toInt<uint16_t>(); node = h512(_r[2].toBytes()); }
 	};
 
 	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep), ts(futureFromEpoch(std::chrono::seconds(30))) {}
