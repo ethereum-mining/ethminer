@@ -108,7 +108,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 				runGas = c_sstoreSetGas;
 			else if (_ext.store(m_stack.back()) && !m_stack[m_stack.size() - 2])
 			{
-				runGas = c_sstoreClearGas;
+				runGas = c_sstoreResetGas;
 				_ext.sub.refunds += c_sstoreRefundGas;
 			}
 			else

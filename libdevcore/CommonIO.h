@@ -46,7 +46,7 @@ namespace dev
 bytes contents(std::string const& _file);
 std::string contentsString(std::string const& _file);
 /// Retrieve and returns the allocated contents of the given file. If the file doesn't exist or isn't readable, returns nullptr. Don't forget to delete [] when finished.
-bytesRef contentsNew(std::string const& _file);
+bytesRef contentsNew(std::string const& _file, bytesRef _dest = bytesRef());
 
 /// Retrieve and returns the allocated contents of the given file and load into buffer. Used to fill mapped OpenCL buffer. 
 uint64_t contentsToBuffer(std::string const& _file, void * buf);

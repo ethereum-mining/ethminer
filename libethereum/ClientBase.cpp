@@ -20,10 +20,12 @@
  * @date 2015
  */
 
-#include <libdevcore/StructuredLogger.h>
 #include "ClientBase.h"
+
+#include <libdevcore/StructuredLogger.h>
 #include "BlockChain.h"
 #include "Executive.h"
+#include "State.h"
 
 using namespace std;
 using namespace dev;
@@ -44,7 +46,7 @@ void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, b
 	
 	u256 n = postMine().transactionsFrom(toAddress(_secret));
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
-	m_tq.attemptImport(t.rlp());
+	m_tq.import(t.rlp());
 	
 	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
 	cnote << "New transaction " << t;
@@ -56,7 +58,7 @@ Address ClientBase::submitTransaction(Secret _secret, u256 _endowment, bytes con
 	
 	u256 n = postMine().transactionsFrom(toAddress(_secret));
 	Transaction t(_endowment, _gasPrice, _gas, _init, n, _secret);
-	m_tq.attemptImport(t.rlp());
+	m_tq.import(t.rlp());
 
 	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
 	cnote << "New transaction " << t;
@@ -65,14 +67,17 @@ Address ClientBase::submitTransaction(Secret _secret, u256 _endowment, bytes con
 }
 
 // TODO: remove try/catch, allow exceptions
-ExecutionResult ClientBase::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
+ExecutionResult ClientBase::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff)
 {
 	ExecutionResult ret;
 	try
 	{
 		State temp = asOf(_blockNumber);
-		u256 n = temp.transactionsFrom(toAddress(_secret));
+		Address a = toAddress(_secret);
+		u256 n = temp.transactionsFrom(a);
 		Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
+		if (_ff == FudgeFactor::Lenient)
+			temp.addBalance(a, (u256)(t.gas() * t.gasPrice() + t.value()));
 		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
 	}
 	catch (...)
@@ -82,16 +87,19 @@ ExecutionResult ClientBase::call(Secret _secret, u256 _value, Address _dest, byt
 	return ret;
 }
 
-ExecutionResult ClientBase::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber)
+ExecutionResult ClientBase::create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff)
 {
 	ExecutionResult ret;
 	try
 	{
 		State temp = asOf(_blockNumber);
-		u256 n = temp.transactionsFrom(toAddress(_secret));
+		Address a = toAddress(_secret);
+		u256 n = temp.transactionsFrom(a);
 		//	cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
 		
 		Transaction t(_value, _gasPrice, _gas, _data, n, _secret);
+		if (_ff == FudgeFactor::Lenient)
+			temp.addBalance(a, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
 		ret = temp.execute(bc().lastHashes(), t, Permanence::Reverted);
 	}
 	catch (...)
@@ -99,6 +107,11 @@ ExecutionResult ClientBase::create(Secret _secret, u256 _value, bytes const& _da
 		// TODO: Some sort of notification of failure.
 	}
 	return ret;
+}
+
+void ClientBase::injectBlock(bytes const& _block)
+{
+	bc().import(_block, preMine().db());
 }
 
 u256 ClientBase::balanceAt(Address _a, BlockNumber _block) const
@@ -182,7 +195,7 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 			if (_f.matches(receipt.bloom()))
 			{
 				auto info = bc().info(h);
-				auto th = transaction(info.hash, i).sha3();
+				auto th = transaction(info.hash(), i).sha3();
 				LogEntries le = _f.matches(receipt);
 				if (le.size())
 				{
@@ -265,7 +278,8 @@ LocalisedLogEntries ClientBase::peekWatch(unsigned _watchId) const
 //	cwatch << "peekWatch" << _watchId;
 	auto& w = m_watches.at(_watchId);
 //	cwatch << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
-	w.lastPoll = chrono::system_clock::now();
+	if (w.lastPoll != chrono::system_clock::time_point::max())
+		w.lastPoll = chrono::system_clock::now();
 	return w.changes;
 }
 
@@ -278,14 +292,10 @@ LocalisedLogEntries ClientBase::checkWatch(unsigned _watchId)
 	auto& w = m_watches.at(_watchId);
 //	cwatch << "lastPoll updated to " << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 	std::swap(ret, w.changes);
-	w.lastPoll = chrono::system_clock::now();
-	
-	return ret;
-}
+	if (w.lastPoll != chrono::system_clock::time_point::max())
+		w.lastPoll = chrono::system_clock::now();
 
-h256 ClientBase::hashFromNumber(unsigned _number) const
-{
-	return bc().numberHash(_number);
+	return ret;
 }
 
 BlockInfo ClientBase::blockInfo(h256 _hash) const
@@ -300,7 +310,7 @@ BlockDetails ClientBase::blockDetails(h256 _hash) const
 
 Transaction ClientBase::transaction(h256 _transactionHash) const
 {
-	return Transaction(bc().transaction(_transactionHash), CheckSignature::Range);
+	return Transaction(bc().transaction(_transactionHash), CheckTransaction::Cheap);
 }
 
 Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
@@ -308,9 +318,14 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 	auto bl = bc().block(_blockHash);
 	RLP b(bl);
 	if (_i < b[1].itemCount())
-		return Transaction(b[1][_i].data(), CheckSignature::Range);
+		return Transaction(b[1][_i].data(), CheckTransaction::Cheap);
 	else
 		return Transaction();
+}
+
+pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const
+{
+	return bc().transactionLocation(_transactionHash);
 }
 
 Transactions ClientBase::transactions(h256 _blockHash) const
@@ -319,7 +334,7 @@ Transactions ClientBase::transactions(h256 _blockHash) const
 	RLP b(bl);
 	Transactions res;
 	for (unsigned i = 0; i < b[1].itemCount(); i++)
-		res.emplace_back(b[1][i].data(), CheckSignature::Range);
+		res.emplace_back(b[1][i].data(), CheckTransaction::Cheap);
 	return res;
 }
 
@@ -367,6 +382,11 @@ Transactions ClientBase::pending() const
 	return postMine().pending();
 }
 
+h256s ClientBase::pendingHashes() const
+{
+	return h256s() + postMine().pendingHashes();
+}
+
 
 StateDiff ClientBase::diff(unsigned _txi, h256 _block) const
 {
@@ -397,3 +417,18 @@ Address ClientBase::address() const
 {
 	return preMine().address();
 }
+
+h256 ClientBase::hashFromNumber(BlockNumber _number) const
+{
+	if (_number == PendingBlock)
+		return h256();
+	if (_number == LatestBlock)
+		return bc().currentHash();
+	return bc().numberHash(_number);
+}
+
+BlockNumber ClientBase::numberFromHash(h256 _blockHash) const
+{
+	return bc().number(_blockHash);
+}
+

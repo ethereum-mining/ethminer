@@ -15,19 +15,3 @@ function createBigInt(_value)
 	return bigint;
 }
 
-function createString(_value)
-{
-	var stringComponent = Qt.createComponent("qrc:/qml/QStringType.qml");
-	var stringC = stringComponent.createObject();
-	stringC.setValue(_value);
-	return stringC;
-}
-
-function createHash(_value)
-{
-	var hComponent = Qt.createComponent("qrc:/qml/QHashType.qml");
-	var hC = hComponent.createObject();
-	hC.setValue(_value);
-	return hC;
-}
-

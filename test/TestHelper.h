@@ -36,9 +36,12 @@ namespace eth
 {
 
 class Client;
+class State;
 
 void mine(Client& c, int numBlocks);
 void connectClients(Client& c1, Client& c2);
+void mine(State& _s, BlockChain const& _bc);
+void mine(BlockInfo& _bi);
 
 }
 
@@ -97,17 +100,30 @@ namespace test
 	}																	\
 	while (0)
 
+struct ImportStateOptions
+{
+	ImportStateOptions(bool _bSetAll = false):m_bHasBalance(_bSetAll), m_bHasNonce(_bSetAll), m_bHasCode(_bSetAll), m_bHasStorage(_bSetAll)	{}
+	bool isAllSet() {return m_bHasBalance && m_bHasNonce && m_bHasCode && m_bHasStorage;}
+	bool m_bHasBalance;
+	bool m_bHasNonce;
+	bool m_bHasCode;
+	bool m_bHasStorage;
+};
+typedef std::map<Address, ImportStateOptions> stateOptionsMap;
 
 class ImportTest
 {
 public:
-	ImportTest(json_spirit::mObject& _o) : m_statePre(Address(), OverlayDB(), eth::BaseState::Empty),  m_statePost(Address(), OverlayDB(), eth::BaseState::Empty), m_TestObject(_o) {}
+	ImportTest(json_spirit::mObject& _o): m_TestObject(_o) {}
 	ImportTest(json_spirit::mObject& _o, bool isFiller);
 	// imports
 	void importEnv(json_spirit::mObject& _o);
-	void importState(json_spirit::mObject& _o, eth::State& _state);
+	static void importState(json_spirit::mObject& _o, eth::State& _state);
+	static void importState(json_spirit::mObject& _o, eth::State& _state, stateOptionsMap& _stateOptionsMap);
 	void importTransaction(json_spirit::mObject& _o);
+
 	void exportTest(bytes const& _output, eth::State const& _statePost);
+	static void checkExpectedState(eth::State const& _stateExpect, eth::State const& _statePost, stateOptionsMap const _expectedStateOptions = stateOptionsMap(), WhenError _throw = WhenError::Throw);
 
 	eth::State m_statePre;
 	eth::State m_statePost;
@@ -164,7 +180,8 @@ public:
 	bool vmtrace = false;	///< Create EVM execution tracer // TODO: Link with log verbosity?
 	bool fillTests = false; ///< Create JSON test files from execution results
 	bool stats = false;		///< Execution time stats
-	bool statsFull = false; ///< Output full stats - execution times for every test
+	std::string statsOutFile; ///< Stats output file. "out" for standard output
+	bool checkState = false;///< Throw error when checking test states
 
 	/// Test selection
 	/// @{
@@ -191,10 +208,12 @@ class Listener
 public:
 	virtual ~Listener() = default;
 
+	virtual void suiteStarted(std::string const&) {}
 	virtual void testStarted(std::string const& _name) = 0;
 	virtual void testFinished() = 0;
 
 	static void registerListener(Listener& _listener);
+	static void notifySuiteStarted(std::string const& _name);
 	static void notifyTestStarted(std::string const& _name);
 	static void notifyTestFinished();
 
@@ -208,8 +227,6 @@ public:
 		ExecTimeGuard& operator=(ExecTimeGuard) = delete;
 	};
 };
-
-
 
 }
 }

@@ -4,6 +4,7 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import Qt.labs.settings 1.0
+import QtGraphicalEffects 1.0
 import "js/Debugger.js" as Debugger
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
@@ -12,6 +13,14 @@ Rectangle {
 	id: debugPanel
 
 	property alias transactionLog: transactionLog
+	property alias debugSlider: statesSlider
+	property alias solLocals: solLocals
+	property alias solStorage: solStorage
+	property alias solCallStack: solCallStack
+	property alias vmCallStack: callStack
+	property alias vmStorage: storage
+	property alias vmMemory: memoryDump
+	property alias vmCallData: callDataDump
 	signal debugExecuteLocation(string documentId, var location)
 	property string compilationErrorMessage
 	property bool assemblyMode: false
@@ -63,6 +72,10 @@ Rectangle {
 	function setBreakpoints(bp)
 	{
 		Debugger.setBreakpoints(bp);
+	}
+
+	DebuggerPaneStyle {
+		id: dbgStyle
 	}
 
 	Connections {
@@ -198,8 +211,8 @@ Rectangle {
 				anchors.top: parent.top
 				anchors.topMargin: 15
 				anchors.left: parent.left;
-				anchors.leftMargin: machineStates.sideMargin
-				width: debugScrollArea.width - machineStates.sideMargin * 2 - 20;
+				anchors.leftMargin: machineStates.sideMargin 
+				width: debugScrollArea.width - machineStates.sideMargin * 2 - 20 ;
 				spacing: machineStates.sideMargin
 
 				Rectangle {
@@ -210,27 +223,26 @@ Rectangle {
 					color: "transparent"
 
 					Rectangle {
-						anchors.top: parent.top
-						anchors.bottom: parent.bottom
-						anchors.left: parent.left
+						anchors.fill: parent
 						color: "transparent"
-						width: parent.width * 0.4
 						RowLayout {
-							anchors.horizontalCenter: parent.horizontalCenter
+							anchors.fill: parent
 							id: jumpButtons
 							spacing: 3
+							layoutDirection: Qt.LeftToRight
 
 							StepActionImage
 							{
 								id: playAction
 								enabledStateImg: "qrc:/qml/img/play_button.png"
 								disableStateImg: "qrc:/qml/img/play_button.png"
+								buttonLeft: true
 								onClicked: projectModel.stateListModel.runState(transactionLog.selectedStateIndex)
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+Shift+F8"
 								buttonTooltip: qsTr("Start Debugging")
 								visible: true
+								Layout.alignment: Qt.AlignLeft
 							}
 
 							StepActionImage
@@ -239,8 +251,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/stop_button2x.png"
 								disableStateImg: "qrc:/qml/img/stop_button2x.png"
 								onClicked: Debugger.init(null);
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+Shift+F9"
 								buttonTooltip: qsTr("Stop Debugging")
 								visible: true
@@ -252,8 +263,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutback.png"
 								disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
 								onClicked: Debugger.runBack()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+Shift+F5"
 								buttonTooltip: qsTr("Run Back")
 								visible: false
@@ -265,8 +275,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutback.png"
 								disableStateImg: "qrc:/qml/img/jumpoutbackdisabled.png"
 								onClicked: Debugger.stepOutBack()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+Shift+F11"
 								buttonTooltip: qsTr("Step Out Back")
 							}
@@ -277,8 +286,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpintoback.png"
 								disableStateImg: "qrc:/qml/img/jumpintobackdisabled.png"
 								onClicked: Debugger.stepIntoBack()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+F11"
 								buttonTooltip: qsTr("Step Into Back")
 							}
@@ -289,8 +297,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoverback.png"
 								disableStateImg: "qrc:/qml/img/jumpoverbackdisabled.png"
 								onClicked: Debugger.stepOverBack()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "Ctrl+F10"
 								buttonTooltip: qsTr("Step Over Back")
 							}
@@ -301,8 +308,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoverforward.png"
 								disableStateImg: "qrc:/qml/img/jumpoverforwarddisabled.png"
 								onClicked: Debugger.stepOverForward()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "F10"
 								buttonTooltip: qsTr("Step Over Forward")
 							}
@@ -313,8 +319,7 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpintoforward.png"
 								disableStateImg: "qrc:/qml/img/jumpintoforwarddisabled.png"
 								onClicked: Debugger.stepIntoForward()
-								width: 30
-								height: 30
+								width: 23
 								buttonShortcut: "F11"
 								buttonTooltip: qsTr("Step Into Forward")
 							}
@@ -325,10 +330,10 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
 								disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
 								onClicked: Debugger.stepOutForward()
-								width: 30
-								height: 30
+								width: 45
 								buttonShortcut: "Shift+F11"
 								buttonTooltip: qsTr("Step Out Forward")
+								buttonRight: true
 							}
 
 							StepActionImage
@@ -337,41 +342,44 @@ Rectangle {
 								enabledStateImg: "qrc:/qml/img/jumpoutforward.png"
 								disableStateImg: "qrc:/qml/img/jumpoutforwarddisabled.png"
 								onClicked: Debugger.runForward()
-								width: 30
-								height: 30
+								width: 45
 								buttonShortcut: "Ctrl+F5"
 								buttonTooltip: qsTr("Run Forward")
 								visible: false
+								buttonRight: true
 							}
-						}
-					}
 
-					Rectangle {
-						anchors.top: parent.top
-						anchors.bottom: parent.bottom
-						anchors.right: parent.right
-						width: parent.width * 0.6
-						color: "transparent"
-						Slider {
-							id: statesSlider
-							anchors.fill: parent
-							tickmarksEnabled: true
-							stepSize: 1.0
-							onValueChanged: Debugger.jumpTo(value);
-							style: SliderStyle {
-								groove: Rectangle {
-									implicitHeight: 3
-									color: "#7da4cd"
-									radius: 8
-								}
-								handle: Rectangle {
-									anchors.centerIn: parent
-									color: control.pressed ? "white" : "lightgray"
-									border.color: "gray"
-									border.width: 2
-									implicitWidth: 10
-									implicitHeight: 10
-									radius: 12
+							Rectangle {
+								anchors.top: parent.top
+								anchors.bottom: parent.bottom
+								anchors.right: parent.right
+								color: "transparent"
+								Layout.fillWidth: true
+								Layout.minimumWidth: parent.width * 0.2
+								Layout.alignment: Qt.AlignRight
+
+								Slider {
+									id: statesSlider
+									anchors.fill: parent
+									tickmarksEnabled: true
+									stepSize: 1.0
+									onValueChanged: Debugger.jumpTo(value);
+									style: SliderStyle {
+										groove: Rectangle {
+											implicitHeight: 3
+											color: "#7da4cd"
+											radius: 8
+										}
+										handle: Rectangle {
+											anchors.centerIn: parent
+											color: control.pressed ? "white" : "lightgray"
+											border.color: "gray"
+											border.width: 2
+											implicitWidth: 10
+											implicitHeight: 10
+											radius: 12
+										}
+									}
 								}
 							}
 						}
@@ -449,7 +457,7 @@ Rectangle {
 										color: "#b2b3ae"
 										text: styleData.value.split(' ')[0]
 										font.family: "monospace"
-										font.pointSize: DebuggerPaneStyle.general.basicFontSize
+										font.pointSize: dbgStyle.general.basicFontSize
 										wrapMode: Text.NoWrap
 										id: id
 									}
@@ -459,7 +467,7 @@ Rectangle {
 										color: styleData.selected ? "white" : "black"
 										font.family: "monospace"
 										text: styleData.value.replace(styleData.value.split(' ')[0], '')
-										font.pointSize: DebuggerPaneStyle.general.basicFontSize
+										font.pointSize: dbgStyle.general.basicFontSize
 									}
 								}
 							}
@@ -472,7 +480,7 @@ Rectangle {
 						anchors.top : parent.top
 						anchors.bottom: parent.bottom
 						anchors.right: parent.right
-						height: parent.height //- 2 * stateListContainer.border.width
+						height: parent.height
 						color: "transparent"
 						ColumnLayout
 						{
@@ -512,7 +520,6 @@ Rectangle {
 								title : qsTr("Stack")
 								itemDelegate: Item {
 									id: renderedItem
-									//height: 25
 									width: parent.width
 									RowLayout
 									{
@@ -532,7 +539,7 @@ Rectangle {
 												font.family: "monospace"
 												color: "#4a4a4a"
 												text: styleData.row;
-												font.pointSize: DebuggerPaneStyle.general.basicFontSize
+												font.pointSize: dbgStyle.general.basicFontSize
 											}
 										}
 
@@ -550,7 +557,7 @@ Rectangle {
 												anchors.verticalCenter: parent.verticalCenter
 												color: "#4a4a4a"
 												text: styleData.value
-												font.pointSize: DebuggerPaneStyle.general.basicFontSize
+												font.pointSize: dbgStyle.general.basicFontSize
 											}
 										}
 									}

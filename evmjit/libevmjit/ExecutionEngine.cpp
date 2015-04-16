@@ -76,6 +76,7 @@ cl::opt<CacheMode> g_cache{"cache", cl::desc{"Cache compiled EVM code on disk"},
 		clEnumValN(CacheMode::read,  "r", "Read only. No new objects are added to cache."),
 		clEnumValN(CacheMode::write, "w", "Write only. No objects are loaded from cache."),
 		clEnumValN(CacheMode::clear, "c", "Clear the cache storage. Cache is disabled."),
+		clEnumValN(CacheMode::preload, "p", "Preload all cached objects."),
 		clEnumValEnd)};
 cl::opt<bool> g_stats{"st", cl::desc{"Statistics"}};
 cl::opt<bool> g_dump{"dump", cl::desc{"Dump LLVM IR module"}};
@@ -87,10 +88,10 @@ void parseOptions()
 	//cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
 
 	// FIXME: LLVM workaround:
-	// Manually select instruction scheduler other than "source".
+	// Manually select instruction scheduler. Confirmed bad schedulers: source, list-burr, list-hybrid.
 	// "source" scheduler has a bug: http://llvm.org/bugs/show_bug.cgi?id=22304
 	auto envLine = std::getenv("EVMJIT");
-	auto commandLine = std::string{"evmjit "} + (envLine ? envLine : "") + " -pre-RA-sched=list-burr\0";
+	auto commandLine = std::string{"evmjit "} + (envLine ? envLine : "") + " -pre-RA-sched=list-ilp\0";
 	static const auto c_maxArgs = 20;
 	char const* argv[c_maxArgs] = {nullptr, };
 	auto arg = std::strtok(&*commandLine.begin(), " ");
@@ -111,7 +112,14 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	std::unique_ptr<ExecStats> listener{new ExecStats};
 	listener->stateChanged(ExecState::Started);
 
+	bool preloadCache = g_cache == CacheMode::preload;
+	if (preloadCache)
+		g_cache = CacheMode::on;
+
+	// TODO: Do not pseudo-init the cache every time
 	auto objectCache = (g_cache != CacheMode::off && g_cache != CacheMode::clear) ? Cache::getObjectCache(g_cache, listener.get()) : nullptr;
+
+	static std::unordered_map<std::string, uint64_t> funcCache;
 
 	static std::unique_ptr<llvm::ExecutionEngine> ee;
 	if (!ee)
@@ -138,6 +146,9 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 			return ReturnCode::LLVMConfigError;
 		module.release();  // Successfully created llvm::ExecutionEngine takes ownership of the module
 		ee->setObjectCache(objectCache);
+
+		if (preloadCache)
+			Cache::preload(*ee, funcCache);
 	}
 
 	static StatsCollector statsCollector;
@@ -146,10 +157,9 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	m_runtime.init(_data, _env);
 
 	EntryFuncPtr entryFuncPtr = nullptr;
-	static std::unordered_map<std::string, EntryFuncPtr> funcCache;
 	auto it = funcCache.find(mainFuncName);
 	if (it != funcCache.end())
-		entryFuncPtr = it->second;
+		entryFuncPtr = (EntryFuncPtr) it->second;
 
 	if (!entryFuncPtr)
 	{
@@ -177,7 +187,8 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	if (!CHECK(entryFuncPtr))
 		return ReturnCode::LLVMLinkError;
 
-	funcCache[mainFuncName] = entryFuncPtr;
+	if (it == funcCache.end())
+		funcCache[mainFuncName] = (uint64_t) entryFuncPtr;
 
 	listener->stateChanged(ExecState::Execution);
 	auto returnCode = entryFuncPtr(&m_runtime);

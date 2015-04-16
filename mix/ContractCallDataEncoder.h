@@ -52,19 +52,19 @@ public:
 	QVariant decode(SolidityType const& _type, bytes const& _value);
 	/// Get all encoded data encoded by encode function.
 	bytes encodedData();
-	/// Push the given @a _b to the current param context.
-	void push(bytes const& _b);
+	/// Encode a string to ABI bytes
+	dev::bytes encodeBytes(QString const& _str);
+	/// Decode bytes from ABI
+	dev::bytes decodeBytes(dev::bytes const& _rawValue);
 
 private:
-	unsigned encodeSingleItem(QVariant const& _data, SolidityType const& _type, bytes& _dest);
+	unsigned encodeSingleItem(QString const& _data, SolidityType const& _type, bytes& _dest);
 	bigint decodeInt(dev::bytes const& _rawValue);
 	dev::bytes encodeInt(QString const& _str);
 	QString toString(dev::bigint const& _int);
 	dev::bytes encodeBool(QString const& _str);
 	bool decodeBool(dev::bytes const& _rawValue);
 	QString toString(bool _b);
-	dev::bytes encodeBytes(QString const& _str);
-	dev::bytes decodeBytes(dev::bytes const& _rawValue);
 	QString toString(dev::bytes const& _b);
 	bool asString(dev::bytes const& _b, QString& _str);
 

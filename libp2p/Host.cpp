@@ -182,10 +182,8 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	}
 	else
 		p = m_peers[_id];
-	p->m_lastDisconnect = NoDisconnect;
 	if (p->isOffline())
 		p->m_lastConnected = std::chrono::system_clock::now();
-	p->m_failedAttempts = 0;
 	p->endpoint.tcp.address(_endpoint.address());
 
 	auto protocolVersion = _rlp[0].toInt<unsigned>();
@@ -219,16 +217,19 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 					ps->disconnect(DuplicatePeer);
 					return;
 				}
+		
+		// todo: mutex Session::m_capabilities and move for(:caps) out of mutex.
+		unsigned o = (unsigned)UserPacket;
+		for (auto const& i: caps)
+			if (haveCapability(i))
+			{
+				ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps.get(), o));
+				o += m_capabilities[i]->messageCount();
+			}
+		ps->start();
 		m_sessions[_id] = ps;
 	}
-	ps->start();
-	unsigned o = (unsigned)UserPacket;
-	for (auto const& i: caps)
-		if (haveCapability(i))
-		{
-			ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps.get(), o));
-			o += m_capabilities[i]->messageCount();
-		}
+	
 	clog(NetNote) << "p2p.host.peer.register" << _id.abridged();
 	StructuredLogger::p2pConnected(_id.abridged(), ps->m_peer->peerEndpoint(), ps->m_peer->m_lastConnected, clientVersion, peerCount());
 }
@@ -382,11 +383,12 @@ string Host::pocHost()
 
 void Host::addNode(NodeId const& _node, bi::address const& _addr, unsigned short _udpNodePort, unsigned short _tcpPeerPort)
 {
-	// TODO: p2p clean this up (bring tested acceptor code over from network branch)
-	while (isWorking() && !m_run)
-		this_thread::sleep_for(chrono::milliseconds(50));
-	if (!m_run)
-		return;
+	// return if network is stopped while waiting on Host::run() or nodeTable to start
+	while (!haveNetwork())
+		if (isWorking())
+			this_thread::sleep_for(chrono::milliseconds(50));
+		else
+			return;
 
 	if (_tcpPeerPort < 30300 || _tcpPeerPort > 30305)
 		cwarn << "Non-standard port being recorded: " << _tcpPeerPort;
@@ -484,12 +486,14 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 	auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
 	socket->ref().async_connect(_p->peerEndpoint(), [=](boost::system::error_code const& ec)
 	{
+		_p->m_lastAttempted = std::chrono::system_clock::now();
+		_p->m_failedAttempts++;
+		
 		if (ec)
 		{
 			clog(NetConnect) << "Connection refused to node" << _p->id.abridged() << "@" << _p->peerEndpoint() << "(" << ec.message() << ")";
+			// Manually set error (session not present)
 			_p->m_lastDisconnect = TCPError;
-			_p->m_lastAttempted = std::chrono::system_clock::now();
-			_p->m_failedAttempts++;
 		}
 		else
 		{
@@ -499,9 +503,7 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 				Guard l(x_connecting);
 				m_connecting.push_back(handshake);
 			}
-			
-			// preempt setting failedAttempts; this value is cleared upon success
-			_p->m_failedAttempts++;
+
 			handshake->start();
 		}
 		
@@ -635,8 +637,9 @@ void Host::startedWorking()
 	else
 		clog(NetNote) << "p2p.start.notice id:" << id().abridged() << "TCP Listen port is invalid or unavailable.";
 
-	m_nodeTable.reset(new NodeTable(m_ioService, m_alias, bi::address::from_string(listenAddress()), listenPort()));
-	m_nodeTable->setEventHandler(new HostNodeTableHandler(*this));
+	shared_ptr<NodeTable> nodeTable(new NodeTable(m_ioService, m_alias, bi::address::from_string(listenAddress()), listenPort()));
+	nodeTable->setEventHandler(new HostNodeTableHandler(*this));
+	m_nodeTable = nodeTable;
 	restoreNetwork(&m_restoreNetwork);
 
 	clog(NetNote) << "p2p.started id:" << id().abridged();

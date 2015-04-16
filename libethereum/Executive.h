@@ -61,9 +61,9 @@ class Executive
 {
 public:
 	/// Basic constructor.
-	Executive(State& _s, LastHashes const& _lh, unsigned _level): m_s(_s), m_lastHashes(_lh), m_depth(_level) {}
+	Executive(State& _s, LastHashes const& _lh, unsigned _level = 0): m_s(_s), m_lastHashes(_lh), m_depth(_level) {}
 	/// Basic constructor.
-	Executive(State& _s, BlockChain const& _bc, unsigned _level);
+	Executive(State& _s, BlockChain const& _bc, unsigned _level = 0);
 	/// Basic destructor.
 	~Executive() = default;
 
@@ -71,7 +71,7 @@ public:
 	void operator=(Executive) = delete;
 
 	/// Initializes the executive for evaluating a transaction. You must call finalize() at some point following this.
-	void initialize(bytesConstRef _transaction) { initialize(Transaction(_transaction, CheckSignature::None)); }
+	void initialize(bytesConstRef _transaction) { initialize(Transaction(_transaction, CheckTransaction::None)); }
 	void initialize(Transaction const& _transaction);
 	/// Finalise a transaction previously set up with initialize().
 	/// @warning Only valid after initialize() and execute(), and possibly go().

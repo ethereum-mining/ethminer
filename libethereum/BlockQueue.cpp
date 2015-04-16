@@ -38,7 +38,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 
 	UpgradableGuard l(m_lock);
 
-	if (m_readySet.count(h) || m_drainingSet.count(h) || m_unknownSet.count(h))
+	if (m_readySet.count(h) || m_drainingSet.count(h) || m_unknownSet.count(h) || m_knownBad.count(h))
 	{
 		// Already know about this one.
 		cblockq << "Already known.";
@@ -48,20 +48,17 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	// VERIFY: populates from the block and checks the block is internally coherent.
 	BlockInfo bi;
 
-#if ETH_CATCH
 	try
-#endif
 	{
+		// TODO: quick verify
 		bi.populate(_block);
 		bi.verifyInternals(_block);
 	}
-#if ETH_CATCH
 	catch (Exception const& _e)
 	{
 		cwarn << "Ignoring malformed block: " << diagnostic_information(_e);
 		return ImportResult::Malformed;
 	}
-#endif
 
 	// Check block doesn't already exist first!
 	if (_bc.details(h))
@@ -82,7 +79,13 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	else
 	{
 		// We now know it.
-		if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash))
+		if (m_knownBad.count(bi.parentHash))
+		{
+			m_knownBad.insert(bi.hash());
+			// bad parent; this is bad too, note it as such
+			return ImportResult::BadChain;
+		}
+		else if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash))
 		{
 			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
 			cblockq << "OK - queued as unknown parent:" << bi.parentHash.abridged();
@@ -99,9 +102,31 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 			m_readySet.insert(h);
 
 			noteReadyWithoutWriteGuard(h);
+			m_onReady();
 			return ImportResult::Success;
 		}
 	}
+}
+
+bool BlockQueue::doneDrain(h256s const& _bad)
+{
+	WriteGuard l(m_lock);
+	m_drainingSet.clear();
+	if (_bad.size())
+	{
+		vector<bytes> old;
+		swap(m_ready, old);
+		for (auto& b: old)
+		{
+			BlockInfo bi(b);
+			if (m_knownBad.count(bi.parentHash))
+				m_knownBad.insert(bi.hash());
+			else
+				m_ready.push_back(std::move(b));
+		}
+	}
+	m_knownBad += _bad;
+	return !m_readySet.empty();
 }
 
 void BlockQueue::tick(BlockChain const& _bc)
@@ -114,13 +139,29 @@ void BlockQueue::tick(BlockChain const& _bc)
 	m_future.erase(m_future.begin(), m_future.upper_bound(t));
 }
 
-void BlockQueue::drain(std::vector<bytes>& o_out)
+template <class T> T advanced(T _t, unsigned _n)
+{
+	std::advance(_t, _n);
+	return _t;
+}
+
+void BlockQueue::drain(std::vector<bytes>& o_out, unsigned _max)
 {
 	WriteGuard l(m_lock);
 	if (m_drainingSet.empty())
 	{
-		swap(o_out, m_ready);
-		swap(m_drainingSet, m_readySet);
+		o_out.resize(min<unsigned>(_max, m_ready.size()));
+		for (unsigned i = 0; i < o_out.size(); ++i)
+			swap(o_out[i], m_ready[i]);
+		m_ready.erase(m_ready.begin(), advanced(m_ready.begin(), o_out.size()));
+		for (auto const& bs: o_out)
+		{
+			auto h = sha3(bs);
+			m_drainingSet.insert(h);
+			m_readySet.erase(h);
+		}
+//		swap(o_out, m_ready);
+//		swap(m_drainingSet, m_readySet);
 	}
 }
 
@@ -141,4 +182,16 @@ void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 		}
 		m_unknown.erase(r.first, r.second);
 	}
+}
+
+void BlockQueue::retryAllUnknown()
+{
+	for (auto it = m_unknown.begin(); it != m_unknown.end(); ++it)
+	{
+		m_ready.push_back(it->second.second);
+		auto newReady = it->second.first;
+		m_unknownSet.erase(newReady);
+		m_readySet.insert(newReady);
+	}
+	m_unknown.clear();
 }

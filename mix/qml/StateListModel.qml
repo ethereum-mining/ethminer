@@ -12,6 +12,7 @@ Item {
 
 	property alias model: stateListModel
 	property var stateList: []
+	property alias stateDialog: stateDialog
 	property string defaultAccount: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074" //support for old project
 
 	function fromPlainStateItem(s) {
@@ -20,7 +21,8 @@ Item {
 		return {
 			title: s.title,
 			transactions: s.transactions.map(fromPlainTransactionItem),
-			accounts: s.accounts.map(fromPlainAccountItem)
+			accounts: s.accounts.map(fromPlainAccountItem),
+			miner: s.miner
 		};
 	}
 
@@ -36,6 +38,7 @@ Item {
 	function fromPlainTransactionItem(t) {
 		if (!t.sender)
 			t.sender = defaultAccount; //support for old project
+
 		var r = {
 			contractId: t.contractId,
 			functionId: t.functionId,
@@ -43,6 +46,7 @@ Item {
 			value: QEtherHelper.createEther(t.value.value, t.value.unit),
 			gas: QEtherHelper.createBigInt(t.gas.value),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
+			gasAuto: t.gasAuto,
 			stdContract: t.stdContract ? true : false,
 			parameters: {},
 			sender: t.sender
@@ -57,7 +61,8 @@ Item {
 		return {
 			title: s.title,
 			transactions: s.transactions.map(toPlainTransactionItem),
-			accounts: s.accounts.map(toPlainAccountItem)
+			accounts: s.accounts.map(toPlainAccountItem),
+			miner: s.miner
 		};
 	}
 
@@ -79,7 +84,7 @@ Item {
 			balance: {
 				value: t.balance.value,
 				unit: t.balance.unit
-			}
+			},
 		};
 	}
 
@@ -90,8 +95,10 @@ Item {
 			url: t.url,
 			value: { value: t.value.value, unit: t.value.unit },
 			gas: { value: t.gas.value() },
+			gasAuto: t.gasAuto,
 			gasPrice: { value: t.gasPrice.value, unit: t.gasPrice.unit },
 			stdContract: t.stdContract,
+			sender: t.sender,
 			parameters: {}
 		};
 		for (var key in t.parameters)
@@ -164,6 +171,7 @@ Item {
 		signal defaultStateChanged;
 		signal stateListModelReady;
 		signal stateRun(int index)
+		signal stateDeleted(int index)
 
 		function defaultTransactionItem() {
 			return TransactionHelper.defaultTransaction();
@@ -172,8 +180,9 @@ Item {
 		function newAccount(_balance, _unit, _secret)
 		{
 			if (!_secret)
-				_secret = clientModel.newAddress();
-			var name = qsTr("Account") + "-" + _secret.substring(0, 4);
+				_secret = clientModel.newSecret();
+			var address = clientModel.address(_secret);
+			var name = qsTr("Account") + "-" + address.substring(0, 4);
 			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit) };
 		}
 
@@ -184,7 +193,9 @@ Item {
 				accounts: []
 			};
 
-			item.accounts.push(newAccount("1000000", QEther.Ether, defaultAccount));
+			var account = newAccount("1000000", QEther.Ether, defaultAccount)
+			item.accounts.push(account);
+			item.miner = account;
 
 			//add all stdc contracts
 			for (var i = 0; i < contractLibrary.model.count; i++) {
@@ -290,9 +301,8 @@ Item {
 			}
 			else if (defaultStateIndex > index)
 				defaultStateIndex--;
-
 			save();
-
+			stateDeleted(index);
 		}
 
 		function save() {

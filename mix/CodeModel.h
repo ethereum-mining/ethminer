@@ -99,7 +99,7 @@ public:
 
 	QHash<LocationPair, QString> const& functions() const { return m_functions; }
 	QHash<LocationPair, SolidityDeclaration> const& locals() const { return m_locals; }
-	QHash<unsigned, SolidityDeclaration> const& storage() const { return m_storage; }
+	QHash<unsigned, SolidityDeclarations> const& storage() const { return m_storage; }
 
 private:
 	uint m_sourceHash;
@@ -112,7 +112,7 @@ private:
 	eth::AssemblyItems m_constructorAssemblyItems;
 	QHash<LocationPair, QString> m_functions;
 	QHash<LocationPair, SolidityDeclaration> m_locals;
-	QHash<unsigned, SolidityDeclaration> m_storage;
+	QHash<unsigned, SolidityDeclarations> m_storage;
 
 	friend class CodeModel;
 };
@@ -141,10 +141,14 @@ public:
 	/// Get contract code by url. Contract is compiled on first access and cached
 	dev::bytes const& getStdContractCode(QString const& _contractName, QString const& _url);
 	/// Get contract by name
-	CompiledContract const& contract(QString _name) const;
+	/// Throws if not found
+	CompiledContract const& contract(QString const& _name) const;
+	/// Get contract by name
+	/// @returns nullptr if not found
+	CompiledContract const* tryGetContract(QString const& _name) const;
 	/// Find a contract by document id
 	/// @returns CompiledContract object or null if not found
-	Q_INVOKABLE CompiledContract* contractByDocumentId(QString _documentId) const;
+	Q_INVOKABLE CompiledContract* contractByDocumentId(QString const& _documentId) const;
 	/// Reset code model
 	Q_INVOKABLE void reset() { reset(QVariantMap()); }
 	/// Convert solidity type info to mix type
@@ -156,7 +160,7 @@ signals:
 	/// Emitted on compilation complete
 	void compilationComplete();
 	/// Emitted on compilation error
-	void compilationError(QString _error);
+	void compilationError(QString _error, QString _sourceName);
 	/// Internal signal used to transfer compilation job to background thread
 	void scheduleCompilationJob(int _jobId);
 	/// Emitted if there are any changes in the code model

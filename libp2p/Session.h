@@ -65,7 +65,7 @@ public:
 	bool isConnected() const { return m_socket.is_open(); }
 
 	NodeId id() const;
-	unsigned socketId() const { return m_info.socket; }
+	unsigned socketId() const { return m_info.socketId; }
 
 	template <class PeerCap>
 	std::shared_ptr<PeerCap> cap() const { try { return std::static_pointer_cast<PeerCap>(m_capabilities.at(std::make_pair(PeerCap::name(), PeerCap::version()))); } catch (...) { return nullptr; } }
@@ -74,7 +74,7 @@ public:
 	void sealAndSend(RLPStream& _s);
 
 	int rating() const;
-	void addRating(unsigned _r);
+	void addRating(int _r);
 
 	void addNote(std::string const& _k, std::string const& _v) { m_info.notes[_k] = _v; }
 
