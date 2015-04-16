@@ -23,7 +23,12 @@ set eth_version=%2
 
 cd download
 
-if not exist %eth_name%-%eth_version%.tar.gz bitsadmin /transfer DownloadJob /download /priority normal %eth_server%/%eth_name%-%eth_version%.tar.gz %cd%\%eth_name%-%eth_version%.tar.gz
+if not exist %eth_name%-%eth_version%.tar.gz (
+	bitsadmin /cancel %eth_name%-%eth_version%.tar.gz
+	bitsadmin /create %eth_name%-%eth_version%.tar.gz
+	bitsadmin /transfer %eth_name%-%eth_version%.tar.gz /download /priority normal %eth_server%/%eth_name%-%eth_version%.tar.gz %cd%\%eth_name%-%eth_version%.tar.gz
+	bitsadmin /cancel %eth_name%-%eth_version%.tar.gz
+)
 if not exist %eth_name%-%eth_version% tar -zxvf %eth_name%-%eth_version%.tar.gz
 cmake -E copy_directory %eth_name%-%eth_version% ..\install\windows
 
