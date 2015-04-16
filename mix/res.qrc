@@ -20,6 +20,7 @@
         <file>qml/img/bugiconactive.png</file>
         <file>qml/img/bugiconinactive.png</file>
         <file>qml/img/closedtriangleindicator.png</file>
+        <file>qml/img/closedtriangleindicator@2x.png</file>
         <file>qml/img/closedtriangleindicator_filesproject.png</file>
         <file>qml/img/console.png</file>
         <file>qml/img/copy.png</file>
@@ -43,6 +44,7 @@
         <file>qml/img/note.png</file>
         <file>qml/img/openedfolder.png</file>
         <file>qml/img/opentriangleindicator.png</file>
+        <file>qml/img/opentriangleindicator@2x.png</file>
         <file>qml/img/opentriangleindicator_filesproject.png</file>
         <file>qml/img/plus.png</file>
         <file>qml/img/projecticon.png</file>
@@ -63,5 +65,7 @@
         <file>qml/img/copyiconactive.png</file>
         <file>qml/img/searchicon.png</file>
         <file>qml/img/stop_button2x.png</file>
+        <file>qml/img/warningicon.png</file>
+        <file>qml/img/warningicon@2x.png</file>
     </qresource>
 </RCC>

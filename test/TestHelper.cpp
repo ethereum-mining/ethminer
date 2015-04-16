@@ -29,6 +29,7 @@
 #include <libethereum/Client.h>
 #include <liblll/Compiler.h>
 #include <libevm/VMFactory.h>
+#include "Stats.h"
 
 using namespace std;
 using namespace dev::eth;
@@ -61,15 +62,51 @@ void connectClients(Client& c1, Client& c2)
 	c2.connect("127.0.0.1", c1Port);
 #endif
 }
+
+void mine(State& s, BlockChain const& _bc)
+{
+	s.commitToMine(_bc);
+	GenericFarm<ProofOfWork> f;
+	bool completed = false;
+	f.onSolutionFound([&](ProofOfWork::Solution sol)
+	{
+		return completed = s.completeMine<ProofOfWork>(sol);
+	});
+	f.setWork(s.info());
+	f.startCPU();
+	while (!completed)
+		this_thread::sleep_for(chrono::milliseconds(20));
+}
+
+void mine(BlockInfo& _bi)
+{
+	GenericFarm<ProofOfWork> f;
+	bool completed = false;
+	f.onSolutionFound([&](ProofOfWork::Solution sol)
+	{
+		ProofOfWork::assignResult(sol, _bi);
+		return completed = true;
+	});
+	f.setWork(_bi);
+	f.startCPU();
+	while (!completed)
+		this_thread::sleep_for(chrono::milliseconds(20));
+}
+
 }
 
 namespace test
 {
 
 struct ValueTooLarge: virtual Exception {};
+struct MissingFields : virtual Exception {};
+
 bigint const c_max256plus1 = bigint(1) << 256;
 
-ImportTest::ImportTest(json_spirit::mObject& _o, bool isFiller) : m_statePre(Address(_o["env"].get_obj()["currentCoinbase"].get_str()), OverlayDB(), eth::BaseState::Empty),  m_statePost(Address(_o["env"].get_obj()["currentCoinbase"].get_str()), OverlayDB(), eth::BaseState::Empty), m_TestObject(_o)
+ImportTest::ImportTest(json_spirit::mObject& _o, bool isFiller):
+	m_statePre(OverlayDB(), eth::BaseState::Empty, Address(_o["env"].get_obj()["currentCoinbase"].get_str())),
+	m_statePost(OverlayDB(), eth::BaseState::Empty, Address(_o["env"].get_obj()["currentCoinbase"].get_str())),
+	m_TestObject(_o)
 {
 	importEnv(_o["env"].get_obj());
 	importState(_o["pre"].get_obj(), m_statePre);
@@ -91,7 +128,7 @@ void ImportTest::importEnv(json_spirit::mObject& _o)
 	assert(_o.count("currentCoinbase") > 0);
 	assert(_o.count("currentNumber") > 0);
 
-	m_environment.previousBlock.hash = h256(_o["previousHash"].get_str());
+	m_environment.currentBlock.parentHash = h256(_o["previousHash"].get_str());
 	m_environment.currentBlock.number = toInt(_o["currentNumber"]);
 	m_environment.currentBlock.gasLimit = toInt(_o["currentGasLimit"]);
 	m_environment.currentBlock.difficulty = toInt(_o["currentDifficulty"]);
@@ -102,41 +139,75 @@ void ImportTest::importEnv(json_spirit::mObject& _o)
 	m_statePre.m_currentBlock = m_environment.currentBlock;
 }
 
-void ImportTest::importState(json_spirit::mObject& _o, State& _state)
+// import state from not fully declared json_spirit::mObject, writing to _stateOptionsMap which fields were defined in json
+
+void ImportTest::importState(json_spirit::mObject& _o, State& _state, stateOptionsMap& _stateOptionsMap)
 {
 	for (auto& i: _o)
 	{
 		json_spirit::mObject o = i.second.get_obj();
 
-		assert(o.count("balance") > 0);
-		assert(o.count("nonce") > 0);
-		assert(o.count("storage") > 0);
-		assert(o.count("code") > 0);
+		ImportStateOptions stateOptions;
+		u256 balance = 0;
+		u256 nonce = 0;
 
-		if (bigint(o["balance"].get_str()) >= c_max256plus1)
-			BOOST_THROW_EXCEPTION(ValueTooLarge() << errinfo_comment("State 'balance' is equal or greater than 2**256") );
-		if (bigint(o["nonce"].get_str()) >= c_max256plus1)
-			BOOST_THROW_EXCEPTION(ValueTooLarge() << errinfo_comment("State 'nonce' is equal or greater than 2**256") );
+		if (o.count("balance") > 0)
+		{
+			stateOptions.m_bHasBalance = true;
+			if (bigint(o["balance"].get_str()) >= c_max256plus1)
+				BOOST_THROW_EXCEPTION(ValueTooLarge() << errinfo_comment("State 'balance' is equal or greater than 2**256") );
+			balance = toInt(o["balance"]);
+		}
+
+		if (o.count("nonce") > 0)
+		{
+			stateOptions.m_bHasNonce = true;
+			if (bigint(o["nonce"].get_str()) >= c_max256plus1)
+				BOOST_THROW_EXCEPTION(ValueTooLarge() << errinfo_comment("State 'nonce' is equal or greater than 2**256") );
+			nonce = toInt(o["nonce"]);
+		}
 
 		Address address = Address(i.first);
 
-		bytes code = importCode(o);
+		bytes code;
+		if (o.count("code") > 0)
+		{
+			code = importCode(o);
+			stateOptions.m_bHasCode = true;
+		}
 
 		if (code.size())
 		{
-			_state.m_cache[address] = Account(toInt(o["balance"]), Account::ContractConception);
+			_state.m_cache[address] = Account(balance, Account::ContractConception);
 			_state.m_cache[address].setCode(code);
 		}
 		else
-			_state.m_cache[address] = Account(toInt(o["balance"]), Account::NormalCreation);
+			_state.m_cache[address] = Account(balance, Account::NormalCreation);
 
-		for (auto const& j: o["storage"].get_obj())
-			_state.setStorage(address, toInt(j.first), toInt(j.second));
+		if (o.count("storage") > 0)
+		{
+			stateOptions.m_bHasStorage = true;
+			for (auto const& j: o["storage"].get_obj())
+				_state.setStorage(address, toInt(j.first), toInt(j.second));
+		}
 
-		for(int i=0; i<toInt(o["nonce"]); ++i)
+		for (int i = 0; i < nonce; ++i)
 			_state.noteSending(address);
 
 		_state.ensureCached(address, false, false);
+		_stateOptionsMap[address] = stateOptions;
+	}
+}
+
+void ImportTest::importState(json_spirit::mObject& _o, State& _state)
+{
+	stateOptionsMap importedMap;
+	importState(_o, _state, importedMap);
+	for (auto& stateOptionMap : importedMap)
+	{
+		//check that every parameter was declared in state object
+		if (!stateOptionMap.second.isAllSet())
+			BOOST_THROW_EXCEPTION(MissingFields() << errinfo_comment("Import State: Missing state fields!"));	
 	}
 }
 
@@ -168,7 +239,65 @@ void ImportTest::importTransaction(json_spirit::mObject& _o)
 	{
 		RLPStream transactionRLPStream = createRLPStreamFromTransactionFields(_o);
 		RLP transactionRLP(transactionRLPStream.out());
-		m_transaction = Transaction(transactionRLP.data(), CheckSignature::Sender);
+		m_transaction = Transaction(transactionRLP.data(), CheckTransaction::Everything);
+	}
+}
+
+void ImportTest::checkExpectedState(State const& _stateExpect, State const& _statePost, stateOptionsMap const _expectedStateOptions, WhenError _throw)
+{
+	#define CHECK(a,b)						\
+		{									\
+			if (_throw == WhenError::Throw) \
+				BOOST_CHECK_MESSAGE(a,b);	\
+			else							\
+				BOOST_WARN_MESSAGE(a,b);	\
+		}
+
+	for (auto const& a: _stateExpect.addresses())
+	{
+		CHECK(_statePost.addressInUse(a.first), "Filling Test: " << a.first << " missing expected address!");
+		if (_statePost.addressInUse(a.first))
+		{
+			ImportStateOptions addressOptions(true);
+			if(_expectedStateOptions.size())
+			{
+				try
+				{
+					addressOptions = _expectedStateOptions.at(a.first);
+				}
+				catch(std::out_of_range)
+				{
+					BOOST_ERROR("expectedStateOptions map does not match expectedState in checkExpectedState!");
+					break;
+				}
+			}
+
+			if (addressOptions.m_bHasBalance)
+				CHECK(_stateExpect.balance(a.first) == _statePost.balance(a.first),
+						"Check State: " << a.first <<  ": incorrect balance " << _statePost.balance(a.first) << ", expected " << _stateExpect.balance(a.first));
+
+			if (addressOptions.m_bHasNonce)
+				CHECK(_stateExpect.transactionsFrom(a.first) == _statePost.transactionsFrom(a.first),
+						"Check State: " << a.first <<  ": incorrect nonce " << _statePost.transactionsFrom(a.first) << ", expected " << _stateExpect.transactionsFrom(a.first));
+
+			if (addressOptions.m_bHasStorage)
+			{
+				map<u256, u256> stateStorage = _statePost.storage(a.first);
+				for (auto const& s: _stateExpect.storage(a.first))
+					CHECK(stateStorage[s.first] == s.second,
+							"Check State: " << a.first <<  ": incorrect storage [" << s.first << "] = " << toHex(stateStorage[s.first]) << ", expected [" << s.first << "] = " << toHex(s.second));
+
+				//Check for unexpected storage values
+				stateStorage = _stateExpect.storage(a.first);
+				for (auto const& s: _statePost.storage(a.first))
+					CHECK(stateStorage[s.first] == s.second,
+							"Check State: " << a.first <<  ": incorrect storage [" << s.first << "] = " << toHex(s.second) << ", expected [" << s.first << "] = " << toHex(stateStorage[s.first]));
+			}
+
+			if (addressOptions.m_bHasCode)
+				CHECK(_stateExpect.code(a.first) == _statePost.code(a.first),
+						"Check State: " << a.first <<  ": incorrect code '" << toHex(_statePost.code(a.first)) << "', expected '" << toHex(_stateExpect.code(a.first)) << "'");
+		}
 	}
 }
 
@@ -180,8 +309,17 @@ void ImportTest::exportTest(bytes const& _output, State const& _statePost)
 	// export logs
 	m_TestObject["logs"] = exportLog(_statePost.pending().size() ? _statePost.log(0) : LogEntries());
 
-	// export post state
+	// compare expected state with post state
+	if (m_TestObject.count("expect") > 0)
+	{
+		stateOptionsMap stateMap;
+		State expectState(OverlayDB(), eth::BaseState::Empty);
+		importState(m_TestObject["expect"].get_obj(), expectState, stateMap);
+		checkExpectedState(expectState, _statePost, stateMap, Options::get().checkState ? WhenError::Throw : WhenError::DontThrow);
+		m_TestObject.erase(m_TestObject.find("expect"));
+	}
 
+	// export post state
 	m_TestObject["post"] = fillJsonWithState(_statePost);
 	m_TestObject["postStateRoot"] = toHex(_statePost.rootHash().asBytes());
 
@@ -431,6 +569,9 @@ void executeTests(const string& _name, const string& _testPathAppendix, std::fun
 	string testPath = getTestPath();
 	testPath += _testPathAppendix;
 
+	if (Options::get().stats)
+		Listener::registerListener(Stats::get());
+
 	if (Options::get().fillTests)
 	{
 		try
@@ -462,6 +603,7 @@ void executeTests(const string& _name, const string& _testPathAppendix, std::fun
 		string s = asString(dev::contents(testPath + "/" + _name + ".json"));
 		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + testPath + "/" + _name + ".json is empty. Have you cloned the 'tests' repo branch develop and set ETHEREUM_TEST_PATH to its path?");
 		json_spirit::read_string(s, v);
+		Listener::notifySuiteStarted(_name);
 		doTests(v, false);
 	}
 	catch (Exception const& _e)
@@ -535,10 +677,12 @@ Options::Options()
 			vmtrace = true;
 		else if (arg == "--filltests")
 			fillTests = true;
-		else if (arg == "--stats")
+		else if (arg.compare(0, 7, "--stats") == 0)
+		{
 			stats = true;
-		else if (arg == "--stats=full")
-			stats = statsFull = true;
+			if (arg.size() > 7)
+				statsOutFile = arg.substr(8); // skip '=' char
+		}
 		else if (arg == "--performance")
 			performance = true;
 		else if (arg == "--quadratic")
@@ -549,6 +693,8 @@ Options::Options()
 			inputLimits = true;
 		else if (arg == "--bigdata")
 			bigData = true;
+		else if (arg == "--checkstate")
+			checkState = true;
 		else if (arg == "--all")
 		{
 			performance = true;
@@ -584,6 +730,12 @@ namespace
 void Listener::registerListener(Listener& _listener)
 {
 	g_listener = &_listener;
+}
+
+void Listener::notifySuiteStarted(std::string const& _name)
+{
+	if (g_listener)
+		g_listener->suiteStarted(_name);
 }
 
 void Listener::notifyTestStarted(std::string const& _name)

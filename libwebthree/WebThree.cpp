@@ -39,10 +39,10 @@ using namespace dev::shh;
 WebThreeDirect::WebThreeDirect(
 	std::string const& _clientVersion,
 	std::string const& _dbPath,
-	bool _forceClean,
+	WithExisting _we,
 	std::set<std::string> const& _interfaces,
 	NetworkPreferences const& _n,
-	bytesConstRef _network, int _miners
+	bytesConstRef _network
 ):
 	m_clientVersion(_clientVersion),
 	m_net(_clientVersion, _n, _network)
@@ -50,7 +50,7 @@ WebThreeDirect::WebThreeDirect(
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	if (_interfaces.count("eth"))
-		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _forceClean, 0, _miners));
+		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _we, 0));
 
 	if (_interfaces.count("shh"))
 		m_whisper = m_net.registerCapability<WhisperHost>(new WhisperHost);
@@ -74,7 +74,7 @@ WebThreeDirect::~WebThreeDirect()
 
 void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers)
 {
-	auto had = haveNetwork();
+	auto had = isNetworkStarted();
 	if (had)
 		stopNetwork();
 	m_net.setNetworkPreferences(_n, _dropPeers);

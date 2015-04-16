@@ -105,6 +105,9 @@ private:
 	/// Check whether the session should bother grabbing the peer's blocks.
 	bool shouldGrabBlocks() const;
 
+	/// Runs period checks to check up on the peer.
+	void tick();
+
 	/// Peer's protocol version.
 	unsigned m_protocolVersion;
 	/// Peer's network id.
@@ -112,6 +115,8 @@ private:
 
 	/// What, if anything, we last asked the other peer for.
 	Asking m_asking = Asking::Nothing;
+	/// When we asked for it. Allows a time out.
+	std::chrono::system_clock::time_point m_lastAsk;
 
 	/// Whether this peer is in the process of syncing or not. Only one peer can be syncing at once.
 	bool m_isSyncing = false;

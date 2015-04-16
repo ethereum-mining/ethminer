@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>test/TestMain.qml</file>
+        <file>test/TestTransactionDebug.qml</file>
+    </qresource>
+</RCC>

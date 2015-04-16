@@ -25,17 +25,13 @@
 #include <mutex>
 #include <list>
 #include <atomic>
-
-// Make sure boost/asio.hpp is included before windows.h.
-#include <boost/asio.hpp>
+#include <boost/asio.hpp> // Make sure boost/asio.hpp is included before windows.h.
 #include <boost/utility.hpp>
-
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Exceptions.h>
 #include <libp2p/Host.h>
-
 #include <libwhisper/WhisperHost.h>
 #include <libethereum/Client.h>
 
@@ -113,11 +109,10 @@ public:
 	WebThreeDirect(
 		std::string const& _clientVersion,
 		std::string const& _dbPath,
-		bool _forceClean = false,
+		WithExisting _we = WithExisting::Trust,
 		std::set<std::string> const& _interfaces = {"eth", "shh"},
 		p2p::NetworkPreferences const& _n = p2p::NetworkPreferences(),
-		bytesConstRef _network = bytesConstRef(),
-		int _miners = -1
+		bytesConstRef _network = bytesConstRef()
 	);
 
 	/// Destructor.
@@ -130,6 +125,8 @@ public:
 	bzz::Interface* swarm() const { BOOST_THROW_EXCEPTION(InterfaceNotSupported("bzz")); }
 
 	// Misc stuff:
+
+	std::string const& clientVersion() const { return m_clientVersion; }
 
 	void setClientVersion(std::string const& _name) { m_clientVersion = _name; }
 
@@ -165,7 +162,7 @@ public:
 	/// Sets the ideal number of peers.
 	void setIdealPeerCount(size_t _n) override;
 
-	bool haveNetwork() const override { return m_net.isStarted(); }
+	bool haveNetwork() const override { return m_net.haveNetwork(); }
 
 	void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers = false) override;
 

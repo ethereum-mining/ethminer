@@ -3,11 +3,17 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.SortFilterProxyModel 1.0
-import "."
 
 Rectangle
 {
-	property variant currentStatus;
+	property variant currentStatus
+	property int contentXPos: logStyle.generic.layout.dateWidth + logStyle.generic.layout.typeWidth - 70
+
+	function clear()
+	{
+		logsModel.clear();
+	}
+
 	function push(_level, _type, _content)
 	{
 		_content = _content.replace(/\n/g, " ")
@@ -58,7 +64,7 @@ Rectangle
 					model: SortFilterProxyModel {
 						id: proxyModel
 						source: logsModel
-						property var roles: ["-", "javascript", "run", "state", "comp"]
+						property var roles: ["-", "javascript", "run", "state", "comp", "deployment"]
 
 						Component.onCompleted: {
 							filterType = regEx(proxyModel.roles);
@@ -91,7 +97,7 @@ Rectangle
 							return "(?:" + roles.join('|') + ")";
 						}
 
-						filterType: "(?:javascript|run|state|comp)"
+						filterType: "(?:javascript|run|state|comp|deployment)"
 						filterContent: ""
 						filterSyntax: SortFilterProxyModel.RegExp
 						filterCaseSensitivity: Qt.CaseInsensitive
@@ -99,20 +105,24 @@ Rectangle
 
 					Rectangle
 					{
-						width: LogsPaneStyle.generic.layout.dateWidth + LogsPaneStyle.generic.layout.contentWidth + LogsPaneStyle.generic.layout.typeWidth
+						width: logStyle.generic.layout.dateWidth + logStyle.generic.layout.contentWidth + logStyle.generic.layout.typeWidth
 						height: 30
 						color:
 						{
 							var cl;
 							if (level === "warning" || level === "error")
-								cl = LogsPaneStyle.generic.layout.errorColor;
+								cl = logStyle.generic.layout.errorColor;
 							else
-								cl = index % 2 === 0 ? "transparent" : LogsPaneStyle.generic.layout.logAlternateColor;
+								cl = index % 2 === 0 ? "transparent" : logStyle.generic.layout.logAlternateColor;
 							if (index === 0)
 								logsRepeater.frontColor = cl;
 							return cl;
 						}
 
+						Component.onCompleted:
+						{
+							logsPane.contentXPos = logContent.x
+						}
 
 						MouseArea
 						{
@@ -136,10 +146,13 @@ Rectangle
 
 
 						DefaultLabel {
+							id: dateLabel
 							text: date;
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							width: LogsPaneStyle.generic.layout.dateWidth
-							font.pointSize: Style.absoluteSize(-1)
+							font.family: logStyle.generic.layout.logLabelFont
+							width: logStyle.generic.layout.dateWidth
+							font.pointSize: appStyle.absoluteSize(-1)
+							clip: true
+							elide: Text.ElideRight
 							anchors.left: parent.left
 							anchors.leftMargin: 15
 							anchors.verticalCenter: parent.verticalCenter
@@ -150,11 +163,14 @@ Rectangle
 
 						DefaultLabel {
 							text: type;
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							width: LogsPaneStyle.generic.layout.typeWidth
-							font.pointSize: Style.absoluteSize(-1)
-							anchors.left: parent.left
-							anchors.leftMargin: 100
+							id: typeLabel
+							font.family: logStyle.generic.layout.logLabelFont
+							width: logStyle.generic.layout.typeWidth
+							clip: true
+							elide: Text.ElideRight
+							font.pointSize: appStyle.absoluteSize(-1)
+							anchors.left: dateLabel.right
+							anchors.leftMargin: 2
 							anchors.verticalCenter: parent.verticalCenter
 							color: {
 								parent.getColor(level);
@@ -164,13 +180,13 @@ Rectangle
 						Text {
 							id: logContent
 							text: content;
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							width: LogsPaneStyle.generic.layout.contentWidth
-							font.pointSize: Style.absoluteSize(-1)
+							font.family: logStyle.generic.layout.logLabelFont
+							width: logStyle.generic.layout.contentWidth
+							font.pointSize: appStyle.absoluteSize(-1)
 							anchors.verticalCenter: parent.verticalCenter
 							elide: Text.ElideRight
-							anchors.left: parent.left
-							anchors.leftMargin: 230
+							anchors.left: typeLabel.right
+							anchors.leftMargin: 2
 							color: {
 								parent.getColor(level);
 							}
@@ -194,8 +210,8 @@ Rectangle
 			id: itemDelegate
 			DefaultLabel {
 				text: styleData.value;
-				font.family: LogsPaneStyle.generic.layout.logLabelFont
-				font.pointSize: Style.absoluteSize(-1)
+				font.family: logStyle.generic.layout.logLabelFont
+				font.pointSize: appStyle.absoluteSize(-1)
 				color: {
 					if (proxyModel.get(styleData.row).level === "error")
 						return "red";
@@ -214,16 +230,16 @@ Rectangle
 			GradientStop { position: 0.0; color: "#f1f1f1" }
 			GradientStop { position: 1.0; color: "#d9d7da" }
 		}
-		Layout.preferredHeight: LogsPaneStyle.generic.layout.headerHeight
-		height: LogsPaneStyle.generic.layout.headerHeight
+		Layout.preferredHeight: logStyle.generic.layout.headerHeight
+		height: logStyle.generic.layout.headerHeight
 		width: logsPane.width
 		anchors.bottom: parent.bottom
 		Row
 		{
 			id: rowAction
-			anchors.leftMargin: LogsPaneStyle.generic.layout.leftMargin
+			anchors.leftMargin: logStyle.generic.layout.leftMargin
 			anchors.left: parent.left
-			spacing: LogsPaneStyle.generic.layout.headerButtonSpacing
+			spacing: logStyle.generic.layout.headerButtonSpacing
 			height: parent.height
 			Rectangle
 			{
@@ -232,10 +248,12 @@ Rectangle
 				width: 40
 				DefaultLabel
 				{
+					width: 40
+					elide: Text.ElideRight
 					anchors.verticalCenter: parent.verticalCenter
-					color: LogsPaneStyle.generic.layout.logLabelColor
-					font.pointSize: Style.absoluteSize(-3)
-					font.family: LogsPaneStyle.generic.layout.logLabelFont
+					color: logStyle.generic.layout.logLabelColor
+					font.pointSize: appStyle.absoluteSize(-3)
+					font.family: logStyle.generic.layout.logLabelFont
 					text: qsTr("Show:")
 				}
 			}
@@ -244,21 +262,21 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color: LogsPaneStyle.generic.layout.buttonSeparatorColor1
+				color: logStyle.generic.layout.buttonSeparatorColor1
 			}
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
 				width: 2;
 				height: parent.height
-				color: LogsPaneStyle.generic.layout.buttonSeparatorColor2
+				color: logStyle.generic.layout.buttonSeparatorColor2
 			}
 
 			ToolButton {
 				id: javascriptButton
 				checkable: true
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
-				width: 20
+				height: logStyle.generic.layout.headerButtonHeight
+				width: 30
 				anchors.verticalCenter: parent.verticalCenter
 				checked: true
 				onCheckedChanged: {
@@ -269,17 +287,27 @@ Rectangle
 					ButtonStyle {
 					label:
 						Item {
-						DefaultLabel {
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							font.pointSize: Style.absoluteSize(-3)
-							color: LogsPaneStyle.generic.layout.logLabelColor
+						Rectangle
+						{
+							width: labelJs.width
+							height: labelJs.height
 							anchors.centerIn: parent
-							text: qsTr("JS")
+							color: "transparent"
+							DefaultLabel {
+								id: labelJs
+								width: 15
+								elide: Text.ElideRight
+								anchors.horizontalCenter: parent.horizontalCenter
+								font.family: logStyle.generic.layout.logLabelFont
+								font.pointSize: appStyle.absoluteSize(-3)
+								color: logStyle.generic.layout.logLabelColor
+								text: qsTr("JS")
+							}
 						}
 					}
 					background:
 						Rectangle {
-						color: javascriptButton.checked ? LogsPaneStyle.generic.layout.buttonSelected : "transparent"
+						color: javascriptButton.checked ? logStyle.generic.layout.buttonSelected : "transparent"
 					}
 				}
 			}
@@ -288,21 +316,21 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color: LogsPaneStyle.generic.layout.buttonSeparatorColor1
+				color: logStyle.generic.layout.buttonSeparatorColor1
 			}
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
 				width: 2;
 				height: parent.height
-				color: LogsPaneStyle.generic.layout.buttonSeparatorColor2
+				color: logStyle.generic.layout.buttonSeparatorColor2
 			}
 
 			ToolButton {
 				id: runButton
 				checkable: true
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
-				width: 30
+				height: logStyle.generic.layout.headerButtonHeight
+				width: 40
 				anchors.verticalCenter: parent.verticalCenter
 				checked: true
 				onCheckedChanged: {
@@ -313,17 +341,27 @@ Rectangle
 					ButtonStyle {
 					label:
 						Item {
-						DefaultLabel {
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							font.pointSize: Style.absoluteSize(-3)
-							color: LogsPaneStyle.generic.layout.logLabelColor
+						Rectangle
+						{
+							width: labelRun.width
+							height: labelRun.height
 							anchors.centerIn: parent
-							text: qsTr("Run")
+							color: "transparent"
+							DefaultLabel {
+								id: labelRun
+								width: 25
+								anchors.horizontalCenter: parent.horizontalCenter
+								elide: Text.ElideRight
+								font.family: logStyle.generic.layout.logLabelFont
+								font.pointSize: appStyle.absoluteSize(-3)
+								color: logStyle.generic.layout.logLabelColor
+								text: qsTr("Run")
+							}
 						}
 					}
 					background:
 						Rectangle {
-						color: runButton.checked ? LogsPaneStyle.generic.layout.buttonSelected : "transparent"
+						color: runButton.checked ? logStyle.generic.layout.buttonSelected : "transparent"
 					}
 				}
 			}
@@ -332,22 +370,22 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color: LogsPaneStyle.generic.layout.buttonSeparatorColor1
+				color: logStyle.generic.layout.buttonSeparatorColor1
 			}
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
 				width: 2;
 				height: parent.height
-				color: LogsPaneStyle.generic.layout.buttonSeparatorColor2
+				color: logStyle.generic.layout.buttonSeparatorColor2
 			}
 
 			ToolButton {
 				id: stateButton
 				checkable: true
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				height: logStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
-				width: 35
+				width: 40
 				checked: true
 				onCheckedChanged: {
 					proxyModel.toogleFilter("state")
@@ -357,17 +395,27 @@ Rectangle
 					ButtonStyle {
 					label:
 						Item {
-						DefaultLabel {
-							font.family: LogsPaneStyle.generic.layout.logLabelFont
-							font.pointSize: Style.absoluteSize(-3)
-							color: LogsPaneStyle.generic.layout.logLabelColor
+						Rectangle
+						{
+							width: labelState.width
+							height: labelState.height
 							anchors.centerIn: parent
-							text: qsTr("State")
+							color: "transparent"
+							DefaultLabel {
+								id: labelState
+								width: 30
+								anchors.horizontalCenter: parent.horizontalCenter
+								elide: Text.ElideRight
+								font.family: logStyle.generic.layout.logLabelFont
+								font.pointSize: appStyle.absoluteSize(-3)
+								color: logStyle.generic.layout.logLabelColor
+								text: qsTr("State")
+							}
 						}
 					}
 					background:
 						Rectangle {
-						color: stateButton.checked ? LogsPaneStyle.generic.layout.buttonSelected : "transparent"
+						color: stateButton.checked ? logStyle.generic.layout.buttonSelected : "transparent"
 					}
 				}
 			}
@@ -376,14 +424,68 @@ Rectangle
 				anchors.verticalCenter: parent.verticalCenter
 				width: 1;
 				height: parent.height
-				color: LogsPaneStyle.generic.layout.buttonSeparatorColor1
+				color: logStyle.generic.layout.buttonSeparatorColor1
 			}
 
 			Rectangle {
 				anchors.verticalCenter: parent.verticalCenter
 				width: 2;
 				height: parent.height
-				color: LogsPaneStyle.generic.layout.buttonSeparatorColor2
+				color: logStyle.generic.layout.buttonSeparatorColor2
+			}
+
+			ToolButton {
+				id: deloyButton
+				checkable: true
+				height: logStyle.generic.layout.headerButtonHeight
+				width: 50
+				anchors.verticalCenter: parent.verticalCenter
+				checked: true
+				onCheckedChanged: {
+					proxyModel.toogleFilter("deployment")
+				}
+				tooltip: qsTr("Deployment")
+				style:
+					ButtonStyle {
+					label:
+						Item {
+						Rectangle
+						{
+							width: labelDeploy.width
+							height: labelDeploy.height
+							anchors.centerIn: parent
+							color: "transparent"
+							DefaultLabel {
+								width: 40
+								id: labelDeploy
+								anchors.horizontalCenter: parent.horizontalCenter
+								elide: Text.ElideRight
+								font.family: logStyle.generic.layout.logLabelFont
+								font.pointSize: appStyle.absoluteSize(-3)
+								color: logStyle.generic.layout.logLabelColor
+								text: qsTr("Deploy.")
+							}
+						}
+					}
+					background:
+						Rectangle {
+						color: deloyButton.checked ? logStyle.generic.layout.buttonSelected : "transparent"
+					}
+				}
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 1;
+				height: parent.height
+				color: logStyle.generic.layout.buttonSeparatorColor1
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 2;
+				height: parent.height
+				color: logStyle.generic.layout.buttonSeparatorColor2
 			}
 		}
 
@@ -395,7 +497,7 @@ Rectangle
 			spacing: 10
 			Rectangle
 			{
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				height: logStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
 				color: "transparent"
 				width: 20
@@ -410,8 +512,8 @@ Rectangle
 						ButtonStyle {
 						background:
 							Rectangle {
-							height: LogsPaneStyle.generic.layout.headerButtonHeight
-							implicitHeight: LogsPaneStyle.generic.layout.headerButtonHeight
+							height: logStyle.generic.layout.headerButtonHeight
+							implicitHeight: logStyle.generic.layout.headerButtonHeight
 							color: "transparent"
 						}
 					}
@@ -438,7 +540,7 @@ Rectangle
 
 			Rectangle
 			{
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
+				height: logStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
 				color: "transparent"
 				width: 20
@@ -453,8 +555,8 @@ Rectangle
 						ButtonStyle {
 						background:
 							Rectangle {
-							height: LogsPaneStyle.generic.layout.headerButtonHeight
-							implicitHeight: LogsPaneStyle.generic.layout.headerButtonHeight
+							height: logStyle.generic.layout.headerButtonHeight
+							implicitHeight: logStyle.generic.layout.headerButtonHeight
 							color: "transparent"
 						}
 					}
@@ -510,8 +612,8 @@ Rectangle
 					width: 100
 					anchors.left: searchImg.right
 					anchors.leftMargin: -7
-					font.family: LogsPaneStyle.generic.layout.logLabelFont
-					font.pointSize: Style.absoluteSize(-3)
+					font.family: logStyle.generic.layout.logLabelFont
+					font.pointSize: appStyle.absoluteSize(-3)
 					font.italic: true
 					text: qsTr(" - Search - ")
 					onFocusChanged:
@@ -534,48 +636,6 @@ Rectangle
 						background: Rectangle {
 							radius: 10
 						}
-					}
-				}
-			}
-
-			Rectangle
-			{
-				height: LogsPaneStyle.generic.layout.headerButtonHeight
-				anchors.verticalCenter: parent.verticalCenter
-				color: "transparent"
-				width: 20
-				Button
-				{
-					id: hideButton
-					action: hideAction
-					anchors.fill: parent
-					anchors.verticalCenter: parent.verticalCenter
-					height: 25
-					style:
-						ButtonStyle {
-						background:
-							Rectangle {
-							height: LogsPaneStyle.generic.layout.headerButtonHeight
-							implicitHeight: LogsPaneStyle.generic.layout.headerButtonHeight
-							color: "transparent"
-						}
-					}
-				}
-
-				Image {
-					id: hideImage
-					source: "qrc:/qml/img/exit.png"
-					anchors.centerIn: parent
-					fillMode: Image.PreserveAspectFit
-					width: 20
-					height: 25
-				}
-
-				Action {
-					id: hideAction
-					tooltip: qsTr("Exit")
-					onTriggered: {
-						logsPane.parent.toggle();
 					}
 				}
 			}

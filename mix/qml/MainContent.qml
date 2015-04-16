@@ -22,7 +22,9 @@ Rectangle {
 
 	property alias rightViewVisible: rightView.visible
 	property alias webViewVisible: webPreview.visible
+	property alias webView: webPreview
 	property alias projectViewVisible: projectList.visible
+	property alias projectNavigator: projectList
 	property alias runOnProjectLoad: mainSettings.runOnProjectLoad
 	property alias rightPane: rightView
 	property alias codeEditor: codeEditor
