@@ -134,6 +134,7 @@ void help()
 		<< "    -f,--force-mining  Mine even when there are no transactions to mine (default: off)" << endl
 		<< "    -C,--cpu  When mining, use the CPU." << endl
 		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
+		<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 		<< "Client networking:" << endl
 		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
@@ -394,6 +395,7 @@ int main(int argc, char** argv)
 
 	/// Mining options
 	MinerType minerType = MinerType::CPU;
+	unsigned openclPlatform = 0;
 	unsigned openclDevice = 0;
 
 	/// File name for import/export.
@@ -511,6 +513,15 @@ int main(int argc, char** argv)
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
+		else if (arg == "--opencl-platform" && i + 1 < argc)
+			try {
+			openclPlatform= stol(argv[++i]);
+		}
+		catch (...)
+		{
+			cerr << "Bad " << arg << " option: " << argv[i] << endl;
+			return -1;
+		}
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
 				openclDevice = stol(argv[++i]);
@@ -809,6 +820,7 @@ int main(int argc, char** argv)
 	if (sessionSecret)
 		sigKey = KeyPair(sessionSecret);
 
+	ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
 	ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
 
 	// Two codepaths is necessary since named block require database, but numbered
