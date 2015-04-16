@@ -11,7 +11,6 @@
     event Log4Anonym(bool indexed aBool, address indexed aAddress, bytes32 indexed aBytes32, int8 aInt8, uint value) ;
 
     function JSON_Test() {
-
     }
 
     function setBool(bool _bool) {
@@ -125,7 +124,6 @@
     uint256 myUint256;
     address myAddress;
     bytes0 myBytes0;
-    bytes32 myBytes32;
-    
+    bytes32 myBytes32;    
 }
 
