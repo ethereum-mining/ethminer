@@ -23,10 +23,12 @@ set eth_version=%2
 
 cd download
 
-if not exist %eth_name%-%eth_version%.tar.gz curl -o %eth_name%-%eth_version%.tar.gz %eth_server%/%eth_name%-%eth_version%.tar.gz
-if not exist %eth_name%-%eth_version% tar -zxvf %eth_name%-%eth_version%.tar.gz
+rem if not exist %eth_name%-%eth_version%.tar.gz curl -o %eth_name%-%eth_version%.tar.gz %eth_server%/%eth_name%-%eth_version%.tar.gz
+rem if not exist %eth_name%-%eth_version%.tar.gz cscript /nologo ..\wget.vbs %eth_server%/%eth_name%-%eth_version%.tar.gz %eth_name%-%eth_version%.tar.gz 
+bitsadmin /transfer DownloadJob /download /priority normal %eth_server%/%eth_name%-%eth_version%.tar.gz %cd%\%eth_name%-%eth_version%.tar.gz
+if not exist %eth_name%-%eth_version% cmake -E tar -zxvf %eth_name%-%eth_version%.tar.gz
 cmake -E copy_directory %eth_name%-%eth_version% ..\install\windows
 
-cd ..\download
+cd ..
 
 goto :EOF
