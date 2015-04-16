@@ -33,7 +33,7 @@ namespace p2p
 
 bool Peer::shouldReconnect() const
 {
-	return chrono::system_clock::now() > m_lastAttempted + chrono::seconds(fallbackSeconds());
+	return id && endpoint && chrono::system_clock::now() > m_lastAttempted + chrono::seconds(fallbackSeconds());
 }
 	
 unsigned Peer::fallbackSeconds() const
