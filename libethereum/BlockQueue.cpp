@@ -70,7 +70,8 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 	UpgradeGuard ul(l);
 
 	// Check it's not in the future
-	if (bi.timestamp > (u256)time(0) && !_isOurs)
+	(void)_isOurs;
+	if (bi.timestamp > (u256)time(0)/* && !_isOurs*/)
 	{
 		m_future.insert(make_pair((unsigned)bi.timestamp, _block.toBytes()));
 		cblockq << "OK - queued for future.";
