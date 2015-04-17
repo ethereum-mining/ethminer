@@ -26,29 +26,29 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-FILE *ethash_fopen(const char *file_name, const char *mode)
+FILE* ethash_fopen(const char* file_name, const char* mode)
 {
-	FILE *f;
+	FILE* f;
 	return fopen_s(&f, file_name, mode) == 0 ? f : NULL;
 }
 
-char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count)
+char* ethash_strncat(char* dest, size_t dest_size, const char* src, size_t count)
 {
 	return strncat_s(dest, dest_size, src, count) == 0 ? dest : NULL;
 }
 
-bool ethash_mkdir(char const *dirname)
+bool ethash_mkdir(char const* dirname)
 {
 	int rc = _mkdir(dirname);
 	return rc != -1 || errno == EEXIST;
 }
 
-int ethash_fileno(FILE *f)
+int ethash_fileno(FILE* f)
 {
 	return _fileno(f);
 }
 
-bool ethash_file_size(FILE *f, size_t *ret_size)
+bool ethash_file_size(FILE* f, size_t* ret_size)
 {
 	struct _stat st;
 	int fd;

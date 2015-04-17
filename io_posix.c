@@ -27,17 +27,17 @@
 #include <stdio.h>
 #include <unistd.h>
 
-FILE *ethash_fopen(const char *file_name, const char *mode)
+FILE* ethash_fopen(const char* file_name, const char* mode)
 {
 	return fopen(file_name, mode);
 }
 
-char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count)
+char* ethash_strncat(char* dest, size_t dest_size, const char* src, size_t count)
 {
 	return strlen(dest) + count + 1 <= dest_size ? strncat(dest, src, count) : NULL;
 }
 
-bool ethash_mkdir(char const *dirname)
+bool ethash_mkdir(char const* dirname)
 {
 	int rc = mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 	return rc != -1 || errno == EEXIST;
@@ -48,7 +48,7 @@ int ethash_fileno(FILE *f)
 	return fileno(f);
 }
 
-bool ethash_file_size(FILE *f, size_t *ret_size)
+bool ethash_file_size(FILE* f, size_t* ret_size)
 {
 	struct stat st;
 	int fd;

@@ -58,23 +58,25 @@ enum ethash_io_rc {
  *
  * Create the DAG directory and the DAG file if they don't exist.
  *
- * @param[in] dirname    A null terminated c-string of the path of the ethash
- *                       data directory. If it does not exist it's created.
- * @param[in] seedhash   The seedhash of the current block number, used in the
- *                       naming of the file as can be seen from the spec at:
- *                       https://github.com/ethereum/wiki/wiki/Ethash-DAG
- * @param[out] f         If there was no failure then this will point to an open
- *                       file descriptor. User is responsible for closing it.
- *                       In the case of memo match then the file is open on read
- *                       mode, while on the case of mismatch a new file is created
- *                       on write mode
- * @param[in] file_size  The size that the DAG file should have on disk
- * @return               For possible return values @see enum ethash_io_rc
+ * @param[in] dirname        A null terminated c-string of the path of the ethash
+ *                           data directory. If it does not exist it's created.
+ * @param[in] seedhash       The seedhash of the current block number, used in the
+ *                           naming of the file as can be seen from the spec at:
+ *                           https://github.com/ethereum/wiki/wiki/Ethash-DAG
+ * @param[out] output_file   If there was no failure then this will point to an open
+ *                           file descriptor. User is responsible for closing it.
+ *                           In the case of memo match then the file is open on read
+ *                           mode, while on the case of mismatch a new file is created
+ *                           on write mode
+ * @param[in] file_size      The size that the DAG file should have on disk
+ * @return                   For possible return values @see enum ethash_io_rc
  */
-enum ethash_io_rc ethash_io_prepare(char const *dirname,
+enum ethash_io_rc ethash_io_prepare(
+	char const* dirname,
 	ethash_h256_t const seedhash,
-	FILE **f,
-	size_t file_size);
+	FILE** output_file,
+	size_t file_size
+);
 
 /**
  * An fopen wrapper for no-warnings crossplatform fopen.
@@ -88,7 +90,7 @@ enum ethash_io_rc ethash_io_prepare(char const *dirname,
  * @param mode             Opening mode. Check fopen()
  * @return                 The FILE* or NULL in failure
  */
-FILE *ethash_fopen(const char *file_name, const char *mode);
+FILE* ethash_fopen(const char* file_name, const char* mode);
 
 /**
  * An strncat wrapper for no-warnings crossplatform strncat.
@@ -106,7 +108,7 @@ FILE *ethash_fopen(const char *file_name, const char *mode);
  * @return                 If all is well returns the dest buffer. If there is an
  *                         error returns NULL
  */
-char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count);
+char* ethash_strncat(char* dest, size_t dest_size, const char* src, size_t count);
 
 /**
  * A cross-platform mkdir wrapper to create a directory or assert it's there
@@ -115,7 +117,7 @@ char *ethash_strncat(char *dest, size_t dest_size, const char *src, size_t count
  * @return               true if the directory was created or if it already
  *                       existed
  */
-bool ethash_mkdir(char const *dirname);
+bool ethash_mkdir(char const* dirname);
 
 /**
  * Get a file's size
@@ -124,7 +126,7 @@ bool ethash_mkdir(char const *dirname);
  * @param[out] size    Pass a size_t by reference to contain the file size
  * @return             true in success and false if there was a failure
  */
-bool ethash_file_size(FILE *f, size_t *ret_size);
+bool ethash_file_size(FILE* f, size_t* ret_size);
 
 /**
  * Get a file descriptor number from a FILE stream
@@ -132,11 +134,13 @@ bool ethash_file_size(FILE *f, size_t *ret_size);
  * @param f            The file stream whose fd to get
  * @return             Platform specific fd handler
  */
-int ethash_fileno(FILE *f);
+int ethash_fileno(FILE* f);
 
-static inline bool ethash_io_mutable_name(uint32_t revision,
+static inline bool ethash_io_mutable_name(
+	uint32_t revision,
 	ethash_h256_t const* seed_hash,
-	char* output)
+	char* output
+)
 {
     uint64_t hash = *((uint64_t*)seed_hash);
 #if LITTLE_ENDIAN == BYTE_ORDER
@@ -145,13 +149,15 @@ static inline bool ethash_io_mutable_name(uint32_t revision,
     return snprintf(output, DAG_MUTABLE_NAME_MAX_SIZE, "%u_%016" PRIx64, revision, hash) >= 0;
 }
 
-static inline char *ethash_io_create_filename(char const* dirname,
-											  char const* filename,
-											  size_t filename_length)
+static inline char* ethash_io_create_filename(
+	char const* dirname,
+	char const* filename,
+	size_t filename_length
+)
 {
 	size_t dirlen = strlen(dirname);
 	// in C the cast is not needed, but a C++ compiler will complain for invalid conversion
-	char *name = (char*)malloc(dirlen + filename_length + 1);
+	char* name = (char*)malloc(dirlen + filename_length + 1);
 	if (!name) {
 		return NULL;
 	}
