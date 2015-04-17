@@ -144,7 +144,7 @@ public:
 	dev::eth::State state(unsigned _txi) const;
 
 	/// Get the object representing the current state of Ethereum.
-	dev::eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
+	dev::eth::State postState() const { ReadGuard l(x_postMine); return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
 	CanonBlockChain const& blockChain() const { return m_bc; }
 	/// Get some information on the block queue.
@@ -152,7 +152,7 @@ public:
 
 	// Mining stuff:
 
-	void setAddress(Address _us) { WriteGuard l(x_stateDB); m_preMine.setAddress(_us); }
+	void setAddress(Address _us) { WriteGuard l(x_preMine); m_preMine.setAddress(_us); }
 
 	/// Check block validity prior to mining.
 	bool miningParanoia() const { return m_paranoia; }
@@ -214,8 +214,8 @@ protected:
 	/// Works properly with LatestBlock and PendingBlock.
 	using ClientBase::asOf;
 	virtual State asOf(h256 const& _block) const override;
-	virtual State preMine() const override { ReadGuard l(x_stateDB); return m_preMine; }
-	virtual State postMine() const override { ReadGuard l(x_stateDB); return m_postMine; }
+	virtual State preMine() const override { ReadGuard l(x_preMine); return m_preMine; }
+	virtual State postMine() const override { ReadGuard l(x_postMine); return m_postMine; }
 	virtual void prepareForTransaction() override;
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
@@ -271,9 +271,10 @@ private:
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 	std::shared_ptr<GasPricer> m_gp;		///< The gas pricer.
 
-	mutable SharedMutex x_stateDB;			///< Lock on the state DB, effectively a lock on m_postMine.
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
+	mutable SharedMutex x_preMine;			///< Lock on the OverlayDB and other attributes of m_preMine.
 	State m_preMine;						///< The present state of the client.
+	mutable SharedMutex x_postMine;			///< Lock on the OverlayDB and other attributes of m_postMine.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
 
