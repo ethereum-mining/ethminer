@@ -579,7 +579,7 @@ void Host::run(boost::system::error_code const&)
 	// is always live and to ensure reputation and fallback timers are properly
 	// updated. // disconnectLatePeers();
 
-	auto openSlots = m_idealPeerCount - peerCount();
+	int openSlots = m_idealPeerCount - peerCount();
 	if (openSlots > 0)
 	{
 		list<shared_ptr<Peer>> toConnect;
@@ -703,7 +703,7 @@ bytes Host::saveNetwork() const
 		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && endpoint.port() > 0 && endpoint.port() < /*49152*/32768 && p.id != id() && !isPrivateAddress(p.endpoint.udp.address()) && !isPrivateAddress(endpoint.address()))
 		{
 			network.appendList(10);
-			network << endpoint.port() << p.id << p.required
+			network << endpoint.address().to_v4().to_bytes() << endpoint.port() << p.id << p.required
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastConnected.time_since_epoch()).count()
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastAttempted.time_since_epoch()).count()
 				<< p.m_failedAttempts << (unsigned)p.m_lastDisconnect << p.m_score << p.m_rating;
