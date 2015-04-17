@@ -87,11 +87,11 @@ typedef struct ethash_return_value {
 	ethash_h256_t mix_hash;
 } ethash_return_value;
 
-uint64_t ethash_get_datasize(const uint32_t block_number);
-uint64_t ethash_get_cachesize(const uint32_t block_number);
+uint64_t ethash_get_datasize(uint32_t const block_number);
+uint64_t ethash_get_cachesize(uint32_t const block_number);
 
 // initialize the parameters
-static inline void ethash_params_init(ethash_params* params, const uint32_t block_number)
+static inline void ethash_params_init(ethash_params* params, uint32_t const block_number)
 {
 	params->full_size = ethash_get_datasize(block_number);
 	params->cache_size = ethash_get_cachesize(block_number);
@@ -99,7 +99,7 @@ static inline void ethash_params_init(ethash_params* params, const uint32_t bloc
 
 // LTODO: for consistency's sake maybe use ethash_cache_t?
 typedef struct ethash_cache {
-	void *mem;
+	void* mem;
 } ethash_cache;
 
 /**
@@ -151,7 +151,7 @@ bool ethash_light_compute(
 	ethash_light_t light,
 	ethash_params const* params,
 	const ethash_h256_t* header_hash,
-	const uint64_t nonce
+	uint64_t const nonce
 );
 /**
  * Get a pointer to the cache object held by the light client
@@ -216,8 +216,8 @@ bool ethash_full_compute(
 	ethash_return_value* ret,
 	ethash_full_t full,
 	ethash_params const* params,
-	const ethash_h256_t* header_hash,
-	const uint64_t nonce
+	ethash_h256_t const* header_hash,
+	uint64_t const nonce
 );
 /**
  * Get a pointer to the cache object held by the full client
@@ -256,7 +256,7 @@ static inline int ethash_check_difficulty(
 
 int ethash_quick_check_difficulty(
 	ethash_h256_t const* header_hash,
-	const uint64_t nonce,
+	uint64_t const nonce,
 	ethash_h256_t const* mix_hash,
 	ethash_h256_t const* difficulty
 );
@@ -276,14 +276,14 @@ void ethash_full(
 	void const* full_mem,
 	ethash_params const* params,
 	ethash_h256_t const* header_hash,
-	const uint64_t nonce
+	uint64_t const nonce
 );
 void ethash_light(
 	ethash_return_value* ret,
 	ethash_cache const* cache,
 	ethash_params const* params,
 	ethash_h256_t const* header_hash,
-	const uint64_t nonce
+	uint64_t const nonce
 );
 /**
  * Compute the memory data for a full node's memory

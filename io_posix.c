@@ -27,12 +27,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
-FILE* ethash_fopen(const char* file_name, const char* mode)
+FILE* ethash_fopen(char const* file_name, char const* mode)
 {
 	return fopen(file_name, mode);
 }
 
-char* ethash_strncat(char* dest, size_t dest_size, const char* src, size_t count)
+char* ethash_strncat(char* dest, size_t dest_size, char const* src, size_t count)
 {
 	return strlen(dest) + count + 1 <= dest_size ? strncat(dest, src, count) : NULL;
 }

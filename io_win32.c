@@ -26,13 +26,13 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-FILE* ethash_fopen(const char* file_name, const char* mode)
+FILE* ethash_fopen(char const* file_name, char const* mode)
 {
 	FILE* f;
 	return fopen_s(&f, file_name, mode) == 0 ? f : NULL;
 }
 
-char* ethash_strncat(char* dest, size_t dest_size, const char* src, size_t count)
+char* ethash_strncat(char* dest, size_t dest_size, char const* src, size_t count)
 {
 	return strncat_s(dest, dest_size, src, count) == 0 ? dest : NULL;
 }

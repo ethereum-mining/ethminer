@@ -41,13 +41,13 @@
 #include "sha3.h"
 #endif // WITH_CRYPTOPP
 
-uint64_t ethash_get_datasize(const uint32_t block_number)
+uint64_t ethash_get_datasize(uint32_t const block_number)
 {
 	assert(block_number / EPOCH_LENGTH < 2048);
 	return dag_sizes[block_number / EPOCH_LENGTH];
 }
 
-uint64_t ethash_get_cachesize(const uint32_t block_number)
+uint64_t ethash_get_cachesize(uint32_t const block_number)
 {
 	assert(block_number / EPOCH_LENGTH < 2048);
 	return cache_sizes[block_number / EPOCH_LENGTH];
@@ -198,7 +198,7 @@ static bool ethash_hash(
 	ethash_cache const* cache,
 	ethash_params const* params,
 	ethash_h256_t const* header_hash,
-	const uint64_t nonce,
+	uint64_t const nonce,
 	ethash_callback_t callback
 )
 {
@@ -286,7 +286,7 @@ static bool ethash_hash(
 void ethash_quick_hash(
 	ethash_h256_t* return_hash,
 	ethash_h256_t const* header_hash,
-	const uint64_t nonce,
+	uint64_t const nonce,
 	ethash_h256_t const* mix_hash
 )
 {
@@ -309,7 +309,7 @@ void ethash_get_seedhash(ethash_h256_t* seedhash, const uint32_t block_number)
 
 int ethash_quick_check_difficulty(
 	ethash_h256_t const* header_hash,
-	const uint64_t nonce,
+	uint64_t const nonce,
 	ethash_h256_t const* mix_hash,
 	ethash_h256_t const* difficulty
 )
@@ -351,7 +351,7 @@ bool ethash_light_compute(
 	ethash_light_t light,
 	ethash_params const* params,
 	const ethash_h256_t* header_hash,
-	const uint64_t nonce
+	uint64_t const nonce
 )
 {
 	return ethash_hash(ret, NULL, light->cache, params, header_hash, nonce, NULL);
@@ -449,8 +449,8 @@ bool ethash_full_compute(
 	ethash_return_value* ret,
 	ethash_full_t full,
 	ethash_params const* params,
-	const ethash_h256_t* header_hash,
-	const uint64_t nonce
+	ethash_h256_t const* header_hash,
+	uint64_t const nonce
 )
 {
 	return ethash_hash(ret,
@@ -496,7 +496,7 @@ void ethash_full(
 	void const* full_mem,
 	ethash_params const* params,
 	ethash_h256_t const* header_hash,
-	const uint64_t nonce
+	uint64_t const nonce
 )
 {
 	ethash_hash(ret, (node const *) full_mem, NULL, params, header_hash, nonce, NULL);
@@ -506,7 +506,7 @@ void ethash_light(
 	ethash_cache const* cache,
 	ethash_params const* params,
 	ethash_h256_t const* header_hash,
-	const uint64_t nonce
+	uint64_t const nonce
 )
 {
 	ethash_hash(ret, NULL, cache, params, header_hash, nonce, NULL);

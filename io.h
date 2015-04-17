@@ -90,7 +90,7 @@ enum ethash_io_rc ethash_io_prepare(
  * @param mode             Opening mode. Check fopen()
  * @return                 The FILE* or NULL in failure
  */
-FILE* ethash_fopen(const char* file_name, const char* mode);
+FILE* ethash_fopen(char const* file_name, char const* mode);
 
 /**
  * An strncat wrapper for no-warnings crossplatform strncat.
@@ -108,7 +108,7 @@ FILE* ethash_fopen(const char* file_name, const char* mode);
  * @return                 If all is well returns the dest buffer. If there is an
  *                         error returns NULL
  */
-char* ethash_strncat(char* dest, size_t dest_size, const char* src, size_t count);
+char* ethash_strncat(char* dest, size_t dest_size, char const* src, size_t count);
 
 /**
  * A cross-platform mkdir wrapper to create a directory or assert it's there
