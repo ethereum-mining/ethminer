@@ -295,21 +295,24 @@ void Ethash::GPUMiner::kickOff()
 void Ethash::GPUMiner::workLoop()
 {
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
-	WorkPackage w = work();
-	if (!m_miner || m_minerSeed != w.seedHash)
-	{
-		m_minerSeed = w.seedHash;
+	try {
+		WorkPackage w = work();
+		if (!m_miner || m_minerSeed != w.seedHash)
+		{
+			m_minerSeed = w.seedHash;
 
-		delete m_miner;
-		m_miner = new ethash_cl_miner;
+			delete m_miner;
+			m_miner = new ethash_cl_miner;
 
-		auto p = EthashAux::params(m_minerSeed);
-		auto cb = [&](void* d) { EthashAux::full(m_minerSeed, bytesRef((byte*)d, p.full_size)); };
-		m_miner->init(p, cb, 32, s_deviceId);
+			auto p = EthashAux::params(m_minerSeed);
+			auto cb = [&](void* d) { EthashAux::full(m_minerSeed, bytesRef((byte*)d, p.full_size)); };
+			m_miner->init(p, cb, 32, s_deviceId);
+		}
+
+		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
+		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook);
 	}
-
-	uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
-	m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook);
+	catch (...) {}
 }
 
 void Ethash::GPUMiner::pause()
