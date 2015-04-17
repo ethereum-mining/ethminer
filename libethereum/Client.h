@@ -260,7 +260,11 @@ private:
 	/// This updates m_miningInfo.
 	void onPostStateChanged();
 
+	/// Does garbage collection on watches.
 	void checkWatchGarbage();
+
+	/// Ticks various system-level objects.
+	void tick();
 
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	CanonBlockChain m_bc;					///< Maintains block database.
@@ -286,6 +290,8 @@ private:
 
 	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
 											///< When did we last both doing GC on the watches?
+	mutable std::chrono::system_clock::time_point m_lastTick = std::chrono::system_clock::now();
+											///< When did we last tick()?
 
 	// TODO!!!!!! REPLACE WITH A PROPER X-THREAD ASIO SIGNAL SYSTEM (could just be condition variables)
 	std::atomic<bool> m_syncTransactionQueue = {false};
