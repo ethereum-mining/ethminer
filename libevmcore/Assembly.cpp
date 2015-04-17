@@ -24,7 +24,7 @@
 #include <libdevcore/Log.h>
 #include <libevmcore/CommonSubexpressionEliminator.h>
 #include <libevmcore/ControlFlowGraph.h>
-
+#include <json/json.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -65,6 +65,13 @@ void Assembly::append(Assembly const& _a, int _deposit)
 	}
 }
 
+string Assembly::out() const
+{
+	stringstream ret;
+	stream(ret);
+	return ret.str();
+}
+
 unsigned Assembly::bytesRequired() const
 {
 	for (unsigned br = 1;; ++br)
@@ -101,7 +108,7 @@ string Assembly::getLocationFromSources(StringMap const& _sourceCodes, SourceLoc
 	return move(cut);
 }
 
-ostream& Assembly::stream(ostream& _out, string const& _prefix, StringMap const& _sourceCodes) const
+ostream& Assembly::streamAsm(ostream& _out, string const& _prefix, StringMap const& _sourceCodes) const
 {
 	_out << _prefix << ".code:" << endl;
 	for (AssemblyItem const& i: m_items)
@@ -155,6 +162,115 @@ ostream& Assembly::stream(ostream& _out, string const& _prefix, StringMap const&
 		}
 	}
 	return _out;
+}
+
+Json::Value Assembly::createJsonValue(string _name, int _begin, int _end, string _value, string _jumpType) const
+{
+	Json::Value value;
+	value["name"] = _name;
+	value["begin"] = _begin;
+	value["end"] = _end;
+	if (!_value.empty())
+		value["value"] = _value;
+	if (!_jumpType.empty())
+		value["jumpType"] = _jumpType;
+	return value;
+}
+
+string toStringInHex(u256 _value)
+{
+	std::stringstream hexStr;
+	hexStr << hex << _value;
+	return hexStr.str();
+}
+
+Json::Value Assembly::streamAsmJson(ostream& _out, StringMap const& _sourceCodes) const
+{
+	Json::Value root;
+
+	Json::Value collection(Json::arrayValue);
+	for (AssemblyItem const& i: m_items)
+	{
+		switch (i.type())
+		{
+		case Operation:
+			collection.append(
+				createJsonValue(instructionInfo(i.instruction()).name, i.getLocation().start, i.getLocation().end, i.getJumpTypeAsString()));
+			break;
+		case Push:
+			collection.append(
+				createJsonValue("PUSH", i.getLocation().start, i.getLocation().end, toStringInHex(i.data()), i.getJumpTypeAsString()));
+			break;
+		case PushString:
+			collection.append(
+				createJsonValue("PUSH tag", i.getLocation().start, i.getLocation().end, m_strings.at((h256)i.data())));
+			break;
+		case PushTag:
+			collection.append(
+				createJsonValue("PUSH [tag]", i.getLocation().start, i.getLocation().end, toStringInHex(i.data())));
+			break;
+		case PushSub:
+			collection.append(
+				createJsonValue("PUSH [$]", i.getLocation().start, i.getLocation().end, dev::toString(h256(i.data()))));
+			break;
+		case PushSubSize:
+			collection.append(
+				createJsonValue("PUSH #[$]", i.getLocation().start, i.getLocation().end, dev::toString(h256(i.data()))));
+			break;
+		case PushProgramSize:
+			collection.append(
+				createJsonValue("PUSHSIZE", i.getLocation().start, i.getLocation().end));
+			break;
+		case Tag:
+		{
+			collection.append(
+				createJsonValue("tag", i.getLocation().start, i.getLocation().end, string(i.data())));
+			collection.append(
+				createJsonValue("JUMDEST", i.getLocation().start, i.getLocation().end));
+		}
+			break;
+		case PushData:
+		{
+			Json::Value pushData;
+			pushData["name"] = "PUSH hex";
+			collection.append(createJsonValue("PUSH hex", i.getLocation().start, i.getLocation().end, toStringInHex(i.data())));
+		}
+			break;
+		default:
+			BOOST_THROW_EXCEPTION(InvalidOpcode());
+		}
+	}
+
+	root[".code"] = collection;
+
+	if (!m_data.empty() || !m_subs.empty())
+	{
+		Json::Value data;
+		for (auto const& i: m_data)
+			if (u256(i.first) >= m_subs.size())
+				data[toStringInHex((u256)i.first)] = toHex(i.second);
+
+		for (size_t i = 0; i < m_subs.size(); ++i)
+		{
+			std::stringstream hexStr;
+			hexStr << hex << i;
+			data[hexStr.str()] = m_subs[i].stream(_out, "", _sourceCodes, true);
+		}
+		root[".data"] = data;
+		_out << root;
+	}
+	return root;
+}
+
+Json::Value Assembly::stream(ostream& _out, string const& _prefix, StringMap const& _sourceCodes, bool _inJsonFormat) const
+{
+	if (_inJsonFormat)
+		return streamAsmJson(_out, _sourceCodes);
+	else
+	{
+		streamAsm(_out, _prefix, _sourceCodes);
+		return Json::Value();
+	}
 }
 
 AssemblyItem const& Assembly::append(AssemblyItem const& _i)
