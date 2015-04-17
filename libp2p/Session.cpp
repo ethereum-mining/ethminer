@@ -48,6 +48,7 @@ Session::Session(Host* _s, RLPXFrameIO* _io, std::shared_ptr<Peer> const& _n, Pe
 {
 	m_peer->m_lastDisconnect = NoDisconnect;
 	m_lastReceived = m_connect = chrono::steady_clock::now();
+	m_info.socketId = _io->socket().native_handle();
 }
 
 Session::~Session()
@@ -245,7 +246,7 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 			break;
 		default:
 			for (auto const& i: m_capabilities)
-				if (_t >= i.second->m_idOffset && _t - i.second->m_idOffset < i.second->hostCapability()->messageCount())
+				if (_t >= (int)i.second->m_idOffset && _t - i.second->m_idOffset < i.second->hostCapability()->messageCount())
 				{
 					if (i.second->m_enabled)
 						return i.second->interpret(_t - i.second->m_idOffset, _r);

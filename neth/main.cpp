@@ -76,6 +76,7 @@ void help()
 		<< "    -c,--client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
 		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+		<< "    -D,--initdag Initialize DAG for mining and exit." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
 		<< "    -f,--force-mining  Mine even when there are no transaction to mine (Default: off)" << endl
 		<< "    -h,--help  Show this help message and exit." << endl
@@ -330,7 +331,6 @@ int main(int argc, char** argv)
 	unsigned mining = ~(unsigned)0;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
-	int miners = -1;
 #if ETH_JSONRPC
 	int jsonrpc = 8080;
 #endif
@@ -500,8 +500,6 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
-		else if ((arg == "-t" || arg == "--miners") && i + 1 < argc)
-			miners = atoi(argv[++i]);
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -535,8 +533,6 @@ int main(int argc, char** argv)
 		}
 	}
 
-	
-	
 	if (!clientName.empty())
 		clientName += "/";
 
@@ -553,9 +549,8 @@ int main(int argc, char** argv)
 		killChain ? WithExisting::Kill : WithExisting::Trust,
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
-		&nodesState,
-		miners
-		);
+		&nodesState);
+	
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	eth::Client* c = mode == NodeMode::Full ? web3.ethereum() : nullptr;
@@ -873,7 +868,7 @@ int main(int argc, char** argv)
 				ssbd << bbd;
 				cnote << ssbd.str();
 				int ssize = fields[4].length();
-				u256 minGas = (u256)Client::txGas(data, 0);
+				u256 minGas = (u256)Transaction::gasRequired(data, 0);
 				if (size < 40)
 				{
 					if (size > 0)
@@ -939,7 +934,7 @@ int main(int argc, char** argv)
 					auto h = bc.currentHash();
 					auto blockData = bc.block(h);
 					BlockInfo info(blockData);
-					u256 minGas = (u256)Client::txGas(bytes(), 0);
+					u256 minGas = (u256)Transaction::gasRequired(bytes(), 0);
 					try
 					{
 						Address dest = h160(fromHex(fields[0], WhenError::Throw));
@@ -1027,7 +1022,7 @@ int main(int argc, char** argv)
 					cnote << "Init:";
 					cnote << ssc.str();
 				}
-				u256 minGas = (u256)Client::txGas(init, 0);
+				u256 minGas = (u256)Transaction::gasRequired(init, 0);
 				if (!init.size())
 					cwarn << "Contract creation aborted, no init code.";
 				else if (endowment < 0)
@@ -1113,7 +1108,7 @@ int main(int argc, char** argv)
 				auto b = bc.block(h);
 				for (auto const& i: RLP(b)[1])
 				{
-					Transaction t(i.data(), CheckSignature::Sender);
+					Transaction t(i.data(), CheckTransaction::Everything);
 					auto s = t.receiveAddress() ?
 						boost::format("  %1% %2%> %3%: %4% [%5%]") %
 							toString(t.safeSender()) %
@@ -1252,7 +1247,7 @@ int main(int argc, char** argv)
 		if (c && c->isMining())
 		{
 			mvwprintw(consolewin, qheight - 1, width / 4 - 11, "Mining ON");
-			dev::eth::MineProgress p = c->miningProgress();
+			dev::eth::MiningProgress p = c->miningProgress();
 			auto speed = boost::format("%2% kH/s @ %1%s") % (p.ms / 1000) % (p.ms ? p.hashes / p.ms : 0);
 			mvwprintw(consolewin, qheight - 2, width / 4 - speed.str().length() - 2, speed.str().c_str());
 		}

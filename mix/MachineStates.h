@@ -80,6 +80,7 @@ namespace mix
 		dev::Address sender;
 		dev::Address contractAddress;
 		dev::u256 value;
+		dev::u256 gasUsed;
 		unsigned transactionIndex;
 		unsigned executonIndex = 0;
 

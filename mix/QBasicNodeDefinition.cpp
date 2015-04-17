@@ -28,7 +28,7 @@ namespace mix
 {
 
 QBasicNodeDefinition::QBasicNodeDefinition(QObject* _parent, solidity::Declaration const* _d):
-	QObject(_parent), m_name(QString::fromStdString(_d->getName()))
+	QObject(_parent), m_name(QString::fromStdString(_d->getName())), m_location(_d->getLocation())
 {
 }
 

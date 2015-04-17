@@ -23,13 +23,18 @@ endif()
 
 if (JSONRPC)
 	target_link_libraries(${EXECUTABLE} web3jsonrpc)
+	target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_CLIENT_LIBRARIES})
+	target_link_libraries(${EXECUTABLE} ${CURL_LIBRARIES})
+	if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
+		eth_copy_dlls(${EXECUTABLE} CURL_DLLS)
+	endif()
 endif()
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethash)
 
 if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
-	add_custom_command(TARGET ${EXECUTABLE} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy ${MHD_DLL_RELEASE} "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}")
+	eth_copy_dlls("${EXECUTABLE}" MHD_DLLS)
 endif()
 
 install( TARGETS ${EXECUTABLE} DESTINATION bin )

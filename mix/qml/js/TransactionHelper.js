@@ -6,6 +6,7 @@ function defaultTransaction()
 		value: createEther("0", QEther.Wei),
 		functionId: "",
 		gas: createBigInt("250000"),
+		gasAuto: true,
 		gasPrice: createEther("100000", QEther.Wei),
 		parameters: {},
 		stdContract: false
@@ -25,7 +26,7 @@ function rpcCall(requests, callBack)
 		if (httpRequest.readyState === XMLHttpRequest.DONE) {
 			if (httpRequest.status !== 200 || httpRequest.responseText === "")
 			{
-				var errorText = qsTr("Deployment error: Error while registering Dapp ") + httpRequest.status;
+				var errorText = qsTr("Unable to initiate request to the live network. Please verify your ethereum node is up.") + qsTr(" Error status: ")  + httpRequest.status;
 				console.log(errorText);
 				deploymentError(errorText);
 			}
