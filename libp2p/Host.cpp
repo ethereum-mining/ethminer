@@ -680,14 +680,13 @@ bytes Host::saveNetwork() const
 	{
 		// Only save peers which have connected within 2 days, with properly-advertised port and public IP address
 		// todo: e2e ipv6 support
-		bi::tcp::endpoint endpoint(p.endpoint);
-		if (!endpoint.address().is_v4())
+		if (!p.endpoint.address.is_v4())
 			continue;
 
-		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && endpoint.port() > 0 && p.id != id() && (p.required || p.endpoint.isAllowed()))
+		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && p.endpoint.tcpPort > 0 && p.id != id() && (p.required || p.endpoint.isAllowed()))
 		{
 			network.appendList(10);
-			network << endpoint.address().to_v4().to_bytes() << endpoint.port() << p.id << p.required
+			network << p.endpoint.address.to_v4().to_bytes() << p.endpoint.tcpPort << p.id << p.required
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastConnected.time_since_epoch()).count()
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastAttempted.time_since_epoch()).count()
 				<< p.m_failedAttempts << (unsigned)p.m_lastDisconnect << p.m_score << p.m_rating;
@@ -743,17 +742,15 @@ void Host::restoreNetwork(bytesConstRef _b)
 				continue;
 			
 			// todo: ipv6, bi::address_v6(i[0].toArray<byte, 16>()
-			NodeIPEndpoint ep({bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<uint16_t>(), i[1].toInt<uint16_t>()});
-			bool required = i[3].toInt<bool>();
-			if (!ep.isAllowed() && !required)
-				continue;
-			
-			auto id = (NodeId)i[2];
-			if (i.itemCount() == 3)
-				m_nodeTable->addNode(id, ep);
+			Node n((NodeId)i[2], NodeIPEndpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<uint16_t>(), i[1].toInt<uint16_t>()));
+			if (i.itemCount() == 3 && n.endpoint.isAllowed())
+				m_nodeTable->addNode(n);
 			else if (i.itemCount() == 10)
 			{
-				shared_ptr<Peer> p = make_shared<Peer>(Node(id, ep, required));
+				n.required = i[3].toInt<bool>();
+				if (!n.endpoint.isAllowed() && !n.required)
+					continue;
+				shared_ptr<Peer> p = make_shared<Peer>(n);
 				p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
 				p->m_lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
 				p->m_failedAttempts = i[6].toInt<unsigned>();
@@ -762,7 +759,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 				p->m_rating = (int)i[9].toInt<unsigned>();
 				m_peers[p->id] = p;
 				if (p->required)
-					requirePeer(p->id, ep);
+					requirePeer(p->id, n.endpoint);
 				else
 					m_nodeTable->addNode(*p.get());
 			}
