@@ -377,7 +377,7 @@ Item {
 						font.italic: true
 						font.pointSize: appStyle.absoluteSize(-3)
 						anchors.verticalCenter: parent.verticalCenter
-
+						property bool active: false
 						property var history: []
 						property int index: -1
 
@@ -394,12 +394,20 @@ Item {
 							expressionInput.text = history[index];
 						}
 
+						onTextChanged: {
+							active = text !== "";
+							if (!active)
+								index = -1;
+						}
+
 						Keys.onDownPressed: {
-							displayCache(1);
+							if (active)
+								displayCache(-1);
 						}
 
 						Keys.onUpPressed: {
-							displayCache(-1);
+							displayCache(1);
+							active = true;
 						}
 
 						Keys.onEnterPressed:
