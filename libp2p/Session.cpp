@@ -139,11 +139,11 @@ void Session::serviceNodesRequest()
 	auto rs = randomSelection(peers, 10);
 	for (auto const& i: rs)
 	{
-		clogS(NetTriviaDetail) << "Sending peer " << i.id.abridged() << i.peerEndpoint();
-		if (i.peerEndpoint().address().is_v4())
-			s.appendList(3) << bytesConstRef(i.peerEndpoint().address().to_v4().to_bytes().data(), 4) << i.peerEndpoint().port() << i.id;
+		clogS(NetTriviaDetail) << "Sending peer " << i.id.abridged() << i.endpoint;
+		if (i.endpoint.address.is_v4())
+			s.appendList(3) << bytesConstRef(i.endpoint.address.to_v4().to_bytes().data(), 4) << i.endpoint.tcpPort << i.id;
 		else// if (i.second.address().is_v6()) - assumed
-			s.appendList(3) << bytesConstRef(i.peerEndpoint().address().to_v6().to_bytes().data(), 16) << i.peerEndpoint().port() << i.id;
+			s.appendList(3) << bytesConstRef(i.endpoint.address.to_v6().to_bytes().data(), 16) << i.endpoint.tcpPort << i.id;
 	}
 	sealAndSend(s);
 	m_theyRequestedNodes = false;
@@ -238,7 +238,7 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 
 				// OK passed all our checks. Assume it's good.
 				addRating(1000);
-				m_server->addNode(id, ep.address(), ep.port(), ep.port());
+				m_server->addNode(id, NodeIPEndpoint(ep.address(), ep.port(), ep.port()));
 				clogS(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
 				CONTINUE:;
 				LAMEPEER:;
@@ -371,7 +371,7 @@ void Session::disconnect(DisconnectReason _reason)
 	clogS(NetConnect) << "Disconnecting (our reason:" << reasonOf(_reason) << ")";
 	StructuredLogger::p2pDisconnected(
 		m_info.id.abridged(),
-		m_peer->peerEndpoint(),
+		m_peer->endpoint, // TODO: may not be 100% accurate
 		m_server->peerCount()
 	);
 	if (m_socket.is_open())

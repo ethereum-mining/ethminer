@@ -116,6 +116,7 @@ g. Never use a macro where adequate non-preprocessor C++ can be written.
 h. Make use of auto whenever type is clear or unimportant:
 - Always avoid doubly-stating the type.
 - Use to avoid vast and unimportant type declarations.
+- However, avoid using auto where type is not immediately obvious from the context, and especially not for arithmetic expressions.
 i. Don't pass bools: prefer enumerations instead.
 j. Prefer enum class to straight enum.
 

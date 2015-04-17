@@ -425,7 +425,7 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 			return false;
 		newBlock = m_postMine.blockData();
 	}
-	m_bq.import(&newBlock, m_bc);
+	m_bq.import(&newBlock, m_bc, true);
 /*
 	ImportRoute ir = m_bc.attemptImport(newBlock, m_stateDB);
 	if (!ir.first.empty())
@@ -585,9 +585,19 @@ void Client::doWork()
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
 		syncBlockQueue();
 
-	checkWatchGarbage();
+	tick();
 
 	this_thread::sleep_for(chrono::milliseconds(20));
+}
+
+void Client::tick()
+{
+	if (chrono::system_clock::now() - m_lastTick > chrono::seconds(1))
+	{
+		checkWatchGarbage();
+		m_bq.tick(m_bc);
+		m_lastTick = chrono::system_clock::now();
+	}
 }
 
 void Client::checkWatchGarbage()
