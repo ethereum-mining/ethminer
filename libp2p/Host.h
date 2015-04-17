@@ -103,10 +103,13 @@ public:
 	template <class T> std::shared_ptr<T> cap() const { try { return std::static_pointer_cast<T>(m_capabilities.at(std::make_pair(T::staticName(), T::staticVersion()))); } catch (...) { return nullptr; } }
 
 	/// Add node as a peer candidate. Node is added if discovery ping is successful and table has capacity.
-	void addNode(NodeId const& _node, bi::address const& _addr, unsigned short _udpPort, unsigned short _tcpPort);
+	void addNode(NodeId const& _node, NodeIPEndpoint const& _endpoint);
 	
 	/// Create Peer and attempt keeping peer connected.
-	void requirePeer(NodeId const& _node, bi::address const& _udpAddr, unsigned short _udpPort, bi::address const& _tcpAddr = bi::address(), unsigned short _tcpPort = 0);
+	void requirePeer(NodeId const& _node, NodeIPEndpoint const& _endpoint);
+
+	/// Create Peer and attempt keeping peer connected.
+	void requirePeer(NodeId const& _node, bi::address const& _addr, unsigned short _udpPort, unsigned short _tcpPort) { requirePeer(_node, NodeIPEndpoint(_addr, _udpPort, _tcpPort)); }
 
 	/// Note peer as no longer being required.
 	void relinquishPeer(NodeId const& _node);
