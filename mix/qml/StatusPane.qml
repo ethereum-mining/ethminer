@@ -142,7 +142,6 @@ Rectangle {
 			anchors.verticalCenter: parent.verticalCenter
 			anchors.horizontalCenter: parent.horizontalCenter
 			font.pointSize: appStyle.absoluteSize(-1)
-			height: 15
 			font.family: "sans serif"
 			objectName: "status"
 			wrapMode: Text.WrapAnywhere
