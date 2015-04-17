@@ -59,7 +59,7 @@ protected:
 	void stopWorking();
 	
 	/// Returns if worker thread is present.
-	bool isWorking() const { Guard l(x_work); return !!m_work; }
+	bool isWorking() const { Guard l(x_work); return !!m_work && m_work->joinable(); }
 	
 	/// Called after thread is started from startWorking().
 	virtual void startedWorking() {}
@@ -83,7 +83,8 @@ private:
 	
 	mutable Mutex x_work;						///< Lock for the network existance.
 	std::unique_ptr<std::thread> m_work;		///< The network thread.
-	bool m_stop = false;
+	std::atomic<bool> m_stop = {false};
+	std::atomic<bool> m_stopped = {false};
 };
 
 }

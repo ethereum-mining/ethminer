@@ -43,30 +43,32 @@ void Worker::startWorking(IfRunning _ir)
 		} catch (...) {}
 	cnote << "Spawning" << m_name;
 	m_stop = false;
+	m_stopped = false;
 	m_work.reset(new thread([&]()
 	{
 		setThreadName(m_name.c_str());
 		startedWorking();
 		workLoop();
-		m_work->detach();
 		cnote << "Finishing up worker thread";
 		doneWorking();
+		ETH_GUARDED(x_work)
+			m_work->detach();
+		m_stopped = true;
 	}));
 }
 
 void Worker::stopWorking()
 {
 //	cnote << "stopWorking for thread" << m_name;
-	Guard l(x_work);
-	if (!m_work || !m_work->joinable())
-		return;
+	ETH_GUARDED(x_work)
+		if (!m_work || !m_work->joinable())
+			return;
 	cnote << "Stopping" << m_name;
 	m_stop = true;
-	try {
-		m_work->join();
-	}
-	catch (...) {}
-	m_work.reset();
+	while (!m_stopped)
+		this_thread::sleep_for(chrono::microseconds(50));
+	ETH_GUARDED(x_work)
+		m_work.reset();
 	cnote << "Stopped" << m_name;
 }
 

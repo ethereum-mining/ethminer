@@ -690,7 +690,9 @@ void State::cleanup(bool _fullCommit)
 		paranoia("immediately before database commit", true);
 
 		// Commit the new trie to disk.
+		cnote << "Commiting to disk...";
 		m_db.commit();
+		cnote << "Committed.";
 
 		paranoia("immediately after database commit", true);
 		m_previousBlock = m_currentBlock;
