@@ -127,7 +127,7 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QString const& _data, Solidit
 		}
 	}
 
-	unsigned dataSize = _type.dynamicSize ? result.size() : alignSize;
+	size_t dataSize = _type.dynamicSize ? result.size() : alignSize;
 	if (result.size() % alignSize != 0)
 		result.resize((result.size() & ~(alignSize - 1)) + alignSize);
 	_dest.insert(_dest.end(), result.begin(), result.end());
