@@ -23,7 +23,7 @@
 # define DWORD_LO(x) (x)
 #endif
 
-void *mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset)
+void* mmap(void* start, size_t length, int prot, int flags, int fd, off_t offset)
 {
 	if (prot & ~(PROT_READ | PROT_WRITE | PROT_EXEC))
 		return MAP_FAILED;
@@ -75,7 +75,7 @@ void *mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset
 	return ret;
 }
 
-void munmap(void *addr, size_t length)
+void munmap(void* addr, size_t length)
 {
 	UnmapViewOfFile(addr);
 }
