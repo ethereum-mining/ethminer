@@ -28,7 +28,7 @@ target_link_libraries(${EXECUTABLE} testutils)
 target_link_libraries(${EXECUTABLE} web3jsonrpc)
 
 if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
-	add_custom_command(TARGET ${EXECUTABLE} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy ${MHD_DLL_RELEASE} "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}")
+	eth_copy_dlls("${EXECUTABLE}" MHD_DLLS)
 endif()
 
 install( TARGETS ${EXECUTABLE} DESTINATION bin )

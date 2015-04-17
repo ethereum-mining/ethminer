@@ -46,7 +46,7 @@ namespace dev
 bytes contents(std::string const& _file);
 std::string contentsString(std::string const& _file);
 /// Retrieve and returns the allocated contents of the given file. If the file doesn't exist or isn't readable, returns nullptr. Don't forget to delete [] when finished.
-bytesRef contentsNew(std::string const& _file);
+bytesRef contentsNew(std::string const& _file, bytesRef _dest = bytesRef());
 
 /// Write the given binary data into the given file, replacing the file if it pre-exists.
 void writeFile(std::string const& _file, bytesConstRef _data);

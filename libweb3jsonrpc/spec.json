@@ -6,8 +6,9 @@
             { "name": "net_peerCount", "params": [], "order": [], "returns" : "" },
             { "name": "net_listening", "params": [], "order": [], "returns" : false },
 
-            { "name": "eth_protocolVersion", "params": [], "order": [], "returns" : "" },
-            { "name": "eth_coinbase", "params": [], "order": [], "returns" : "" },
+			{ "name": "eth_protocolVersion", "params": [], "order": [], "returns" : "" },
+			{ "name": "eth_hashrate", "params": [], "order": [], "returns" : "" },
+			{ "name": "eth_coinbase", "params": [], "order": [], "returns" : "" },
             { "name": "eth_mining", "params": [], "order": [], "returns" : false },
             { "name": "eth_gasPrice", "params": [], "order": [], "returns" : "" },
             { "name": "eth_accounts", "params": [], "order": [], "returns" : [] },

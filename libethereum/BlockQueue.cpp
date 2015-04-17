@@ -29,7 +29,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
+ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs)
 {
 	// Check if we already know this block.
 	h256 h = BlockInfo::headerHash(_block);
@@ -70,7 +70,8 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	UpgradeGuard ul(l);
 
 	// Check it's not in the future
-	if (bi.timestamp > (u256)time(0))
+	(void)_isOurs;
+	if (bi.timestamp > (u256)time(0)/* && !_isOurs*/)
 	{
 		m_future.insert(make_pair((unsigned)bi.timestamp, _block.toBytes()));
 		cblockq << "OK - queued for future.";
@@ -102,18 +103,11 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 			m_readySet.insert(h);
 
 			noteReadyWithoutWriteGuard(h);
+			m_onReady();
 			return ImportResult::Success;
 		}
 	}
 }
-
-namespace dev {
-template <class T, class U> std::set<T>& operator+=(std::set<T>& _a, U const& _b)
-{
-	for (auto const& i: _b)
-		_a.insert(i);
-	return _a;
-} }
 
 bool BlockQueue::doneDrain(h256s const& _bad)
 {
@@ -189,4 +183,16 @@ void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 		}
 		m_unknown.erase(r.first, r.second);
 	}
+}
+
+void BlockQueue::retryAllUnknown()
+{
+	for (auto it = m_unknown.begin(); it != m_unknown.end(); ++it)
+	{
+		m_ready.push_back(it->second.second);
+		auto newReady = it->second.first;
+		m_unknownSet.erase(newReady);
+		m_readySet.insert(newReady);
+	}
+	m_unknown.clear();
 }

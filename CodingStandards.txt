@@ -113,26 +113,34 @@ d. Favour declarations close to use; don't habitually declare at top of scope al
 e. Always pass non-trivial parameters with a const& suffix.
 f. If a function returns multiple values, use std::tuple (std::pair acceptable). Prefer not using */& arguments, except where efficiency requires.
 g. Never use a macro where adequate non-preprocessor C++ can be written.
-h. Prefer "using NewType = OldType" to "typedef OldType NewType".
-i. Make use of auto whenever type is clear or unimportant:
+h. Make use of auto whenever type is clear or unimportant:
 - Always avoid doubly-stating the type.
 - Use to avoid vast and unimportant type declarations.
+- However, avoid using auto where type is not immediately obvious from the context, and especially not for arithmetic expressions.
+i. Don't pass bools: prefer enumerations instead.
+j. Prefer enum class to straight enum.
 
 
 (WRONG)
 const double d = 0;
 int i, j;
 char *s;
-float meanAndSigma(std::vector<float> _v, float* _sigma);
+float meanAndSigma(std::vector<float> _v, float* _sigma, bool _approximate);
 Derived* x(dynamic_cast<Derived*>(base));
 for (map<ComplexTypeOne, ComplexTypeTwo>::iterator i = l.begin(); i != l.end(); ++l) {}
 
+
 (CORRECT)
+enum class Accuracy
+{
+	Approximate,
+	Exact
+};
 double const d = 0;
 int i;
 int j;
 char* s;
-std::tuple<float, float> meanAndSigma(std::vector<float> const& _v);
+std::tuple<float, float> meanAndSigma(std::vector<float> const& _v, Accuracy _a);
 auto x = dynamic_cast<Derived*>(base);
 for (auto i = x.begin(); i != x.end(); ++i) {}
 
@@ -190,7 +198,6 @@ b. Generally avoid shortening a standard form that already includes all importan
 c. Where there are exceptions to this (due to excessive use and clear meaning), note the change prominently and use it consistently.
 - e.g. using Guard = boost::lock_guard<std::mutex>; ///< Guard is used throughout the codebase since it's clear in meaning and used commonly. 
 d. In general expressions should be roughly as important/semantically meaningful as the space they occupy.
-
 
 
 11. Commenting

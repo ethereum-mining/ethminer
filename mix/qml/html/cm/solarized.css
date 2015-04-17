@@ -154,8 +154,10 @@ http://ethanschoonover.com/solarized/img/solarized-palette.png
 }
 
 /*
+
 Active line. Negative margin compensates left padding of the text in the
 view-port
+
 */
 .cm-s-solarized.cm-s-dark .CodeMirror-activeline-background {
   background: rgba(255, 255, 255, 0.10);
@@ -166,20 +168,24 @@ view-port
 
 /* Code execution */
 .CodeMirror-exechighlight {
-	background: #eee8d5;
+  border-bottom: double 1px #94A2A2;
 }
+
 
 /* Error annotation */
 .CodeMirror-errorannotation {
-	border-bottom: 1px solid #b58900;
+	border-bottom: 1px solid #DD3330;
+  margin-bottom: 4px;
 }
 
 .CodeMirror-errorannotation-context {
 	font-family: monospace;
 	font-size: small;
-	color: #586e75;
+	color: #EEE9D5;
 	background: #b58900;
 	padding: 2px;
+  text-shadow: none !important;
+  border-top: solid 2px #063742;
 }
 
 span.CodeMirror-selectedtext { color: #586e75 !important; }

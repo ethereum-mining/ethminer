@@ -13,7 +13,10 @@ Item {
 	property string pendingPageUrl: ""
 	property bool initialized: false
 	property alias urlInput: urlInput
+	property alias webView: webView
+	property string webContent; //for testing
 	signal javaScriptMessage(var _level, string _sourceId, var _lineNb, string _content)
+	signal webContentReady
 
 	function setPreviewUrl(url) {
 		if (!initialized)
@@ -37,11 +40,14 @@ Item {
 		var contracts = {};
 		for (var c in codeModel.contracts) {
 			var contract = codeModel.contracts[c];
-			contracts[c] = {
-				name: contract.contract.name,
-				address: clientModel.contractAddresses[contract.contract.name],
-				interface: JSON.parse(contract.contractInterface),
-			};
+			var address = clientModel.contractAddresses[contract.contract.name];
+			if (address) {
+				contracts[c] = {
+					name: contract.contract.name,
+					address: address,
+					interface: JSON.parse(contract.contractInterface),
+				};
+			}
 		}
 		webView.runJavaScript("updateContracts(" + JSON.stringify(contracts) + ")");
 	}
@@ -55,6 +61,13 @@ Item {
 		for (var i = 0; i < pageListModel.count; i++)
 			if (pageListModel.get(i).documentId === documentId)
 				action(i);
+	}
+
+	function getContent() {
+		webView.runJavaScript("getContent()", function(result) {
+			webContent = result;
+			webContentReady();
+		});
 	}
 
 	function changePage() {
@@ -140,7 +153,6 @@ Item {
 		id: httpServer
 		listen: true
 		accept: true
-		port: 8893
 		onClientConnected: {
 			var urlPath = _request.url.toString();
 			if (urlPath.indexOf("/rpc/") === 0)
@@ -345,7 +357,7 @@ Item {
 						height: 22
 						width: 22
 						action: clearAction
-						iconSource: "qrc:/qml/img/broom.png"
+						iconSource: "qrc:/qml/img/cleariconactive.png"
 					}
 
 					Action {
@@ -365,7 +377,7 @@ Item {
 						font.italic: true
 						font.pointSize: appStyle.absoluteSize(-3)
 						anchors.verticalCenter: parent.verticalCenter
-
+						property bool active: false
 						property var history: []
 						property int index: -1
 
@@ -382,12 +394,20 @@ Item {
 							expressionInput.text = history[index];
 						}
 
+						onTextChanged: {
+							active = text !== "";
+							if (!active)
+								index = -1;
+						}
+
 						Keys.onDownPressed: {
-							displayCache(1);
+							if (active)
+								displayCache(-1);
 						}
 
 						Keys.onUpPressed: {
-							displayCache(-1);
+							displayCache(1);
+							active = true;
 						}
 
 						Keys.onEnterPressed:
@@ -423,6 +443,7 @@ Item {
 					id: resultTextArea
 					width: expressionPanel.width
 					wrapMode: Text.Wrap
+					textFormat: Text.RichText
 					font.family: webPreviewStyle.general.fontName
 					font.pointSize: appStyle.absoluteSize(-3)
 					backgroundVisible: true

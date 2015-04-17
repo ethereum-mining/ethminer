@@ -6,7 +6,14 @@ import org.ethereum.qml.SortFilterProxyModel 1.0
 
 Rectangle
 {
-	property variant currentStatus;
+	property variant currentStatus
+	property int contentXPos: logStyle.generic.layout.dateWidth + logStyle.generic.layout.typeWidth - 70
+
+	function clear()
+	{
+		logsModel.clear();
+	}
+
 	function push(_level, _type, _content)
 	{
 		_content = _content.replace(/\n/g, " ")
@@ -57,7 +64,7 @@ Rectangle
 					model: SortFilterProxyModel {
 						id: proxyModel
 						source: logsModel
-						property var roles: ["-", "javascript", "run", "state", "comp"]
+						property var roles: ["-", "javascript", "run", "state", "comp", "deployment"]
 
 						Component.onCompleted: {
 							filterType = regEx(proxyModel.roles);
@@ -90,7 +97,7 @@ Rectangle
 							return "(?:" + roles.join('|') + ")";
 						}
 
-						filterType: "(?:javascript|run|state|comp)"
+						filterType: "(?:javascript|run|state|comp|deployment)"
 						filterContent: ""
 						filterSyntax: SortFilterProxyModel.RegExp
 						filterCaseSensitivity: Qt.CaseInsensitive
@@ -112,6 +119,10 @@ Rectangle
 							return cl;
 						}
 
+						Component.onCompleted:
+						{
+							logsPane.contentXPos = logContent.x
+						}
 
 						MouseArea
 						{
@@ -135,10 +146,13 @@ Rectangle
 
 
 						DefaultLabel {
+							id: dateLabel
 							text: date;
 							font.family: logStyle.generic.layout.logLabelFont
 							width: logStyle.generic.layout.dateWidth
 							font.pointSize: appStyle.absoluteSize(-1)
+							clip: true
+							elide: Text.ElideRight
 							anchors.left: parent.left
 							anchors.leftMargin: 15
 							anchors.verticalCenter: parent.verticalCenter
@@ -149,11 +163,14 @@ Rectangle
 
 						DefaultLabel {
 							text: type;
+							id: typeLabel
 							font.family: logStyle.generic.layout.logLabelFont
 							width: logStyle.generic.layout.typeWidth
+							clip: true
+							elide: Text.ElideRight
 							font.pointSize: appStyle.absoluteSize(-1)
-							anchors.left: parent.left
-							anchors.leftMargin: 100
+							anchors.left: dateLabel.right
+							anchors.leftMargin: 2
 							anchors.verticalCenter: parent.verticalCenter
 							color: {
 								parent.getColor(level);
@@ -168,8 +185,8 @@ Rectangle
 							font.pointSize: appStyle.absoluteSize(-1)
 							anchors.verticalCenter: parent.verticalCenter
 							elide: Text.ElideRight
-							anchors.left: parent.left
-							anchors.leftMargin: 230
+							anchors.left: typeLabel.right
+							anchors.leftMargin: 2
 							color: {
 								parent.getColor(level);
 							}
@@ -231,6 +248,8 @@ Rectangle
 				width: 40
 				DefaultLabel
 				{
+					width: 40
+					elide: Text.ElideRight
 					anchors.verticalCenter: parent.verticalCenter
 					color: logStyle.generic.layout.logLabelColor
 					font.pointSize: appStyle.absoluteSize(-3)
@@ -257,7 +276,7 @@ Rectangle
 				id: javascriptButton
 				checkable: true
 				height: logStyle.generic.layout.headerButtonHeight
-				width: 20
+				width: 30
 				anchors.verticalCenter: parent.verticalCenter
 				checked: true
 				onCheckedChanged: {
@@ -268,12 +287,22 @@ Rectangle
 					ButtonStyle {
 					label:
 						Item {
-						DefaultLabel {
-							font.family: logStyle.generic.layout.logLabelFont
-							font.pointSize: appStyle.absoluteSize(-3)
-							color: logStyle.generic.layout.logLabelColor
+						Rectangle
+						{
+							width: labelJs.width
+							height: labelJs.height
 							anchors.centerIn: parent
-							text: qsTr("JS")
+							color: "transparent"
+							DefaultLabel {
+								id: labelJs
+								width: 15
+								elide: Text.ElideRight
+								anchors.horizontalCenter: parent.horizontalCenter
+								font.family: logStyle.generic.layout.logLabelFont
+								font.pointSize: appStyle.absoluteSize(-3)
+								color: logStyle.generic.layout.logLabelColor
+								text: qsTr("JS")
+							}
 						}
 					}
 					background:
@@ -301,7 +330,7 @@ Rectangle
 				id: runButton
 				checkable: true
 				height: logStyle.generic.layout.headerButtonHeight
-				width: 30
+				width: 40
 				anchors.verticalCenter: parent.verticalCenter
 				checked: true
 				onCheckedChanged: {
@@ -312,12 +341,22 @@ Rectangle
 					ButtonStyle {
 					label:
 						Item {
-						DefaultLabel {
-							font.family: logStyle.generic.layout.logLabelFont
-							font.pointSize: appStyle.absoluteSize(-3)
-							color: logStyle.generic.layout.logLabelColor
+						Rectangle
+						{
+							width: labelRun.width
+							height: labelRun.height
 							anchors.centerIn: parent
-							text: qsTr("Run")
+							color: "transparent"
+							DefaultLabel {
+								id: labelRun
+								width: 25
+								anchors.horizontalCenter: parent.horizontalCenter
+								elide: Text.ElideRight
+								font.family: logStyle.generic.layout.logLabelFont
+								font.pointSize: appStyle.absoluteSize(-3)
+								color: logStyle.generic.layout.logLabelColor
+								text: qsTr("Run")
+							}
 						}
 					}
 					background:
@@ -346,7 +385,7 @@ Rectangle
 				checkable: true
 				height: logStyle.generic.layout.headerButtonHeight
 				anchors.verticalCenter: parent.verticalCenter
-				width: 35
+				width: 40
 				checked: true
 				onCheckedChanged: {
 					proxyModel.toogleFilter("state")
@@ -356,17 +395,81 @@ Rectangle
 					ButtonStyle {
 					label:
 						Item {
-						DefaultLabel {
-							font.family: logStyle.generic.layout.logLabelFont
-							font.pointSize: appStyle.absoluteSize(-3)
-							color: logStyle.generic.layout.logLabelColor
+						Rectangle
+						{
+							width: labelState.width
+							height: labelState.height
 							anchors.centerIn: parent
-							text: qsTr("State")
+							color: "transparent"
+							DefaultLabel {
+								id: labelState
+								width: 30
+								anchors.horizontalCenter: parent.horizontalCenter
+								elide: Text.ElideRight
+								font.family: logStyle.generic.layout.logLabelFont
+								font.pointSize: appStyle.absoluteSize(-3)
+								color: logStyle.generic.layout.logLabelColor
+								text: qsTr("State")
+							}
 						}
 					}
 					background:
 						Rectangle {
 						color: stateButton.checked ? logStyle.generic.layout.buttonSelected : "transparent"
+					}
+				}
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 1;
+				height: parent.height
+				color: logStyle.generic.layout.buttonSeparatorColor1
+			}
+
+			Rectangle {
+				anchors.verticalCenter: parent.verticalCenter
+				width: 2;
+				height: parent.height
+				color: logStyle.generic.layout.buttonSeparatorColor2
+			}
+
+			ToolButton {
+				id: deloyButton
+				checkable: true
+				height: logStyle.generic.layout.headerButtonHeight
+				width: 50
+				anchors.verticalCenter: parent.verticalCenter
+				checked: true
+				onCheckedChanged: {
+					proxyModel.toogleFilter("deployment")
+				}
+				tooltip: qsTr("Deployment")
+				style:
+					ButtonStyle {
+					label:
+						Item {
+						Rectangle
+						{
+							width: labelDeploy.width
+							height: labelDeploy.height
+							anchors.centerIn: parent
+							color: "transparent"
+							DefaultLabel {
+								width: 40
+								id: labelDeploy
+								anchors.horizontalCenter: parent.horizontalCenter
+								elide: Text.ElideRight
+								font.family: logStyle.generic.layout.logLabelFont
+								font.pointSize: appStyle.absoluteSize(-3)
+								color: logStyle.generic.layout.logLabelColor
+								text: qsTr("Deploy.")
+							}
+						}
+					}
+					background:
+						Rectangle {
+						color: deloyButton.checked ? logStyle.generic.layout.buttonSelected : "transparent"
 					}
 				}
 			}
@@ -533,48 +636,6 @@ Rectangle
 						background: Rectangle {
 							radius: 10
 						}
-					}
-				}
-			}
-
-			Rectangle
-			{
-				height: logStyle.generic.layout.headerButtonHeight
-				anchors.verticalCenter: parent.verticalCenter
-				color: "transparent"
-				width: 20
-				Button
-				{
-					id: hideButton
-					action: hideAction
-					anchors.fill: parent
-					anchors.verticalCenter: parent.verticalCenter
-					height: 25
-					style:
-						ButtonStyle {
-						background:
-							Rectangle {
-							height: logStyle.generic.layout.headerButtonHeight
-							implicitHeight: logStyle.generic.layout.headerButtonHeight
-							color: "transparent"
-						}
-					}
-				}
-
-				Image {
-					id: hideImage
-					source: "qrc:/qml/img/exit.png"
-					anchors.centerIn: parent
-					fillMode: Image.PreserveAspectFit
-					width: 20
-					height: 25
-				}
-
-				Action {
-					id: hideAction
-					tooltip: qsTr("Exit")
-					onTriggered: {
-						logsPane.parent.toggle();
 					}
 				}
 			}
