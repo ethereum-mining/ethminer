@@ -32,26 +32,30 @@ typedef union node {
 } node;
 
 struct ethash_light {
-	ethash_cache *cache;
+	ethash_cache* cache;
 };
 
 struct ethash_full {
-	FILE *file;
+	FILE* file;
 	size_t file_size;
-	ethash_cache *cache;
-	node *data;
+	ethash_cache* cache;
+	node* data;
 	ethash_callback_t callback;
 };
 
-void ethash_calculate_dag_item(node *const ret,
-							   const unsigned node_index,
-							   ethash_params const *params,
-							   ethash_cache const *cache);
+void ethash_calculate_dag_item(
+	node* const ret,
+	const unsigned node_index,
+	ethash_params const* params,
+	ethash_cache const* cache
+);
 
-void ethash_quick_hash(ethash_h256_t *return_hash,
-					   ethash_h256_t const *header_hash,
-					   const uint64_t nonce,
-					   ethash_h256_t const *mix_hash);
+void ethash_quick_hash(
+	ethash_h256_t* return_hash,
+	ethash_h256_t const* header_hash,
+	const uint64_t nonce,
+	ethash_h256_t const* mix_hash
+);
 
 #ifdef __cplusplus
 }
