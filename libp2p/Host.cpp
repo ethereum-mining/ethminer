@@ -687,7 +687,7 @@ bytes Host::saveNetwork() const
 		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && endpoint.port() > 0 && p.id != id() && (p.required || p.endpoint.isAllowed()))
 		{
 			network.appendList(10);
-			network << endpoint.port() << p.id << p.required
+			network << endpoint.address().to_v4().to_bytes() << endpoint.port() << p.id << p.required
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastConnected.time_since_epoch()).count()
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastAttempted.time_since_epoch()).count()
 				<< p.m_failedAttempts << (unsigned)p.m_lastDisconnect << p.m_score << p.m_rating;
