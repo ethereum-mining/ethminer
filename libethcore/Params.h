@@ -37,7 +37,6 @@ extern u256 const c_minimumDifficulty;
 extern u256 const c_difficultyBoundDivisor;
 extern u256 const c_durationLimit;
 extern u256 const c_maximumExtraDataSize;
-extern u256 const c_epochDuration;
 extern u256 const c_stackLimit;
 
 extern u256 const c_tierStepGas[8];			///< Once per operation, for a selection of them.
@@ -48,8 +47,7 @@ extern u256 const c_sha3WordGas;			///< Once per word of the SHA3 operation's da
 extern u256 const c_copyGas;				///< Multiplied by the number of 32-byte words that are copied (round up) for any *COPY operation and added.
 extern u256 const c_sloadGas;				///< Once per SLOAD operation.
 extern u256 const c_sstoreSetGas;			///< Once per SSTORE operation if the zeroness changes from zero.
-extern u256 const c_sstoreResetGas;			///< Once per SSTORE operation if the zeroness doesn't change.
-extern u256 const c_sstoreClearGas;			///< Once per SSTORE operation if the zeroness changes to zero.
+extern u256 const c_sstoreResetGas;			///< Once per SSTORE operation if the zeroness does not change from zero. NOTE: when c_sstoreSetGas does not apply.
 extern u256 const c_sstoreRefundGas;		///< Refunded gas, once per SSTORE operation if the zeroness changes to zero.
 extern u256 const c_jumpdestGas;			///< Once per JUMPDEST operation.
 extern u256 const c_logGas;					///< Per LOG* operation.

@@ -52,8 +52,6 @@ bool SemanticInformation::breaksCSEAnalysisBlock(AssemblyItem const& _item)
 			return true; // GAS and PC assume a specific order of opcodes
 		if (_item.instruction() == Instruction::MSIZE)
 			return true; // msize is modified already by memory access, avoid that for now
-		if (_item.instruction() == Instruction::SHA3)
-			return true; //@todo: we have to compare sha3's not based on their memory addresses but on the memory content.
 		InstructionInfo info = instructionInfo(_item.instruction());
 		if (_item.instruction() == Instruction::SSTORE)
 			return false;
@@ -104,4 +102,23 @@ bool SemanticInformation::isSwapInstruction(AssemblyItem const& _item)
 bool SemanticInformation::isJumpInstruction(AssemblyItem const& _item)
 {
 	return _item == AssemblyItem(Instruction::JUMP) || _item == AssemblyItem(Instruction::JUMPI);
+}
+
+bool SemanticInformation::altersControlFlow(AssemblyItem const& _item)
+{
+	if (_item.type() != Operation)
+		return false;
+	switch (_item.instruction())
+	{
+	// note that CALL, CALLCODE and CREATE do not really alter the control flow, because we
+	// continue on the next instruction (unless an exception happens which can always happen)
+	case Instruction::JUMP:
+	case Instruction::JUMPI:
+	case Instruction::RETURN:
+	case Instruction::SUICIDE:
+	case Instruction::STOP:
+		return true;
+	default:
+		return false;
+	}
 }

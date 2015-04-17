@@ -132,10 +132,11 @@ void EthereumHost::noteDoneBlocks(EthereumPeer* _who, bool _clemency)
 		else
 		{
 			// Done our chain-get.
-			clog(NetNote) << "Chain download failed. Peer with blocks didn't have them all. This peer is bad and should be punished.";
-
-			m_banned.insert(_who->session()->id());			// We know who you are!
-			_who->disable("Peer sent hashes but was unable to provide the blocks.");
+			clog(NetWarn) << "Chain download failed. Peer with blocks didn't have them all. This peer is bad and should be punished.";
+			clog(NetWarn) << m_man.remaining();
+			clog(NetWarn) << "WOULD BAN.";
+//			m_banned.insert(_who->session()->id());			// We know who you are!
+//			_who->disable("Peer sent hashes but was unable to provide the blocks.");
 		}
 		m_man.reset();
 	}
@@ -191,6 +192,8 @@ void EthereumHost::maintainTransactions()
 		for (auto const& p: randomSelection(25, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }))
 			peerTransactions[p].push_back(i.first);
 	}
+	for (auto const& t: ts)
+		m_transactionsSent.insert(t.first);
 	for (auto p: peerSessions())
 		if (auto ep = p.first->cap<EthereumPeer>())
 		{
@@ -198,11 +201,10 @@ void EthereumHost::maintainTransactions()
 			unsigned n = 0;
 			for (auto const& h: peerTransactions[ep])
 			{
+				ep->m_knownTransactions.insert(h);
 				b += ts[h].rlp();
 				++n;
 			}
-			for (auto const& t: ts)
-				m_transactionsSent.insert(t.first);
 
 			ep->clearKnownTransactions();
 

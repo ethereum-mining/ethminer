@@ -383,11 +383,12 @@ string Host::pocHost()
 
 void Host::addNode(NodeId const& _node, bi::address const& _addr, unsigned short _udpNodePort, unsigned short _tcpPeerPort)
 {
-	// TODO: p2p clean this up (bring tested acceptor code over from network branch)
-	while (isWorking() && !m_run)
-		this_thread::sleep_for(chrono::milliseconds(50));
-	if (!m_run)
-		return;
+	// return if network is stopped while waiting on Host::run() or nodeTable to start
+	while (!haveNetwork())
+		if (isWorking())
+			this_thread::sleep_for(chrono::milliseconds(50));
+		else
+			return;
 
 	if (_tcpPeerPort < 30300 || _tcpPeerPort > 30305)
 		cwarn << "Non-standard port being recorded: " << _tcpPeerPort;
@@ -578,7 +579,7 @@ void Host::run(boost::system::error_code const&)
 	// is always live and to ensure reputation and fallback timers are properly
 	// updated. // disconnectLatePeers();
 
-	auto openSlots = m_idealPeerCount - peerCount();
+	int openSlots = m_idealPeerCount - peerCount();
 	if (openSlots > 0)
 	{
 		list<shared_ptr<Peer>> toConnect;
@@ -636,8 +637,9 @@ void Host::startedWorking()
 	else
 		clog(NetNote) << "p2p.start.notice id:" << id().abridged() << "TCP Listen port is invalid or unavailable.";
 
-	m_nodeTable.reset(new NodeTable(m_ioService, m_alias, bi::address::from_string(listenAddress()), listenPort()));
-	m_nodeTable->setEventHandler(new HostNodeTableHandler(*this));
+	shared_ptr<NodeTable> nodeTable(new NodeTable(m_ioService, m_alias, bi::address::from_string(listenAddress()), listenPort()));
+	nodeTable->setEventHandler(new HostNodeTableHandler(*this));
+	m_nodeTable = nodeTable;
 	restoreNetwork(&m_restoreNetwork);
 
 	clog(NetNote) << "p2p.started id:" << id().abridged();

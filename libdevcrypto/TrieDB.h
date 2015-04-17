@@ -161,9 +161,15 @@ public:
 		}
 	}
 
+	std::string at(bytes const& _key) const { return at(&_key); }
 	std::string at(bytesConstRef _key) const;
+	void insert(bytes const& _key, bytes const& _value) { insert(&_key, &_value); }
+	void insert(bytesConstRef _key, bytes const& _value) { insert(_key, &_value); }
+	void insert(bytes const& _key, bytesConstRef _value) { insert(&_key, _value); }
 	void insert(bytesConstRef _key, bytesConstRef _value);
+	void remove(bytes const& _key) { remove(&_key); }
 	void remove(bytesConstRef _key);
+	bool contains(bytes const& _key) { return contains(&_key); }
 	bool contains(bytesConstRef _key) { return !at(_key).empty(); }
 
 	class iterator

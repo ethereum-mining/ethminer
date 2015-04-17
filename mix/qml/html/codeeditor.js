@@ -189,4 +189,9 @@ compilationComplete = function()
 	compilationCompleteBool = true;
 }
 
+goToCompilationError = function()
+{
+	editor.setCursor(annotation.line, annotation.column)
+}
+
 editor.setOption("extraKeys", extraKeys);
