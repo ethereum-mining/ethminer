@@ -132,11 +132,12 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 void BlockQueue::tick(BlockChain const& _bc)
 {
 	unsigned t = time(0);
-	for (auto i = m_future.begin(); i != m_future.end() && i->first < t; ++i)
+	for (auto i = m_future.begin(); i != m_future.end() && i->first <= t; ++i) 
 		import(&(i->second), _bc);
 
 	WriteGuard l(m_lock);
 	m_future.erase(m_future.begin(), m_future.upper_bound(t));
+	
 }
 
 template <class T> T advanced(T _t, unsigned _n)
