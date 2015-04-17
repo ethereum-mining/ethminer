@@ -1,14 +1,14 @@
  contract JSON_Test {
-    event Log0(uint value);
-    event Log0Anonym (uint value) ;
+    event Log0(uint value) ;
+    event Log0Anonym (uint value) anonymous;
     event Log1(bool indexed aBool, uint value);
-    event Log1Anonym(bool indexed aBool, uint value) ;
+    event Log1Anonym(bool indexed aBool, uint value) anonymous;
     event Log2(bool indexed aBool, address indexed aAddress, uint value);
-    event Log2Anonym(bool indexed aBool, address indexed aAddress, uint value) ;
+    event Log2Anonym(bool indexed aBool, address indexed aAddress, uint value) anonymous;
     event Log3(bool indexed aBool, address indexed aAddress, bytes32 indexed aBytes32, uint value);
-    event Log3Anonym(bool indexed aBool, address indexed aAddress, bytes32 indexed aBytes32, uint value) ;
+    event Log3Anonym(bool indexed aBool, address indexed aAddress, bytes32 indexed aBytes32, uint value) anonymous;
     event Log4(bool indexed aBool, address indexed aAddress, bytes32 indexed aBytes32, int8 aInt8, uint value);
-    event Log4Anonym(bool indexed aBool, address indexed aAddress, bytes32 indexed aBytes32, int8 aInt8, uint value) ;
+    event Log4Anonym(bool indexed aBool, address indexed aAddress, bytes32 indexed aBytes32, int8 aInt8, uint value) anonymous;
 
     function JSON_Test() {
     }
@@ -36,11 +36,7 @@
     function setAddress(address _address) {
         myAddress = _address;
     }
-    
-    function setBytes0(bytes0 _bytes0) {
-        myBytes0 = _bytes0;
-    }
-    
+
     function setBytes32(bytes32 _bytes32) {
         myBytes32 = _bytes32;
     }
@@ -67,10 +63,6 @@
     
     function getAddress() returns (address ret) {
         return myAddress;
-    }
-    
-    function getBytes0() returns (bytes0 ret) {
-        return myBytes0;
     }
     
     function getBytes32() returns (bytes32 ret) {
@@ -123,7 +115,6 @@
     int256 myInt256;
     uint256 myUint256;
     address myAddress;
-    bytes0 myBytes0;
     bytes32 myBytes32;    
 }
 
