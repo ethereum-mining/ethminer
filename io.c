@@ -22,35 +22,6 @@
 #include <string.h>
 #include <stdio.h>
 
-static bool ethash_io_write_file(
-	char const* dirname,
-	char const* filename,
-	size_t filename_length,
-	void const* data,
-	size_t data_size
-)
-{
-	bool ret = false;
-	char* fullname = ethash_io_create_filename(dirname, filename, filename_length);
-	if (!fullname) {
-		return false;
-	}
-	FILE* f = ethash_fopen(fullname, "wb");
-	if (!f) {
-		goto free_name;
-	}
-	if (data_size != fwrite(data, 1, data_size, f)) {
-		goto close;
-	}
-
-	ret = true;
-close:
-	fclose(f);
-free_name:
-	free(fullname);
-	return ret;
-}
-
 enum ethash_io_rc ethash_io_prepare(
 	char const* dirname,
 	ethash_h256_t const seedhash,
