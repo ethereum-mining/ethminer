@@ -237,7 +237,7 @@ protected:
 				return true;
 			}
 		}
-		return false;
+		return m_owner->shouldStop();
 	}
 
 	virtual bool searched(uint64_t _startNonce, uint32_t _count) override
@@ -246,7 +246,7 @@ protected:
 //		std::cerr << "Searched " << _count << " from " << _startNonce << std::endl;
 		m_owner->accumulateHashes(_count);
 		m_last = _startNonce + _count;
-		if (m_abort)
+		if (m_abort || m_owner->shouldStop())
 		{
 			m_aborted = true;
 			return true;
@@ -266,6 +266,7 @@ unsigned Ethash::GPUMiner::s_deviceId = 0;
 
 Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
+	Worker("gpuminer"),
 	m_hook(new EthashCLHook(this))
 {
 }

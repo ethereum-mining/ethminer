@@ -27,54 +27,75 @@
 using namespace std;
 using namespace dev;
 
-void Worker::startWorking(IfRunning _ir)
+void Worker::startWorking()
 {
 //	cnote << "startWorking for thread" << m_name;
 	Guard l(x_work);
-
-	if (m_work && m_work->joinable())
-		try {
-			if (_ir == IfRunning::Detach)
-				m_work->detach();
-			else if (_ir == IfRunning::Join)
-				m_work->join();
-			else
-				return;
-		} catch (...) {}
-	cnote << "Spawning" << m_name;
-	m_stop = false;
-	m_stopped = false;
-	m_work.reset(new thread([&]()
+	m_state = WorkerState::Starting;
+	if (!m_work)
 	{
-		setThreadName(m_name.c_str());
-		startedWorking();
-		workLoop();
-		cnote << "Finishing up worker thread";
-		doneWorking();
-		ETH_GUARDED(x_work)
-			m_work->detach();
-		m_stopped = true;
-	}));
+		m_work.reset(new thread([&]()
+		{
+			setThreadName(m_name.c_str());
+			while (m_state != WorkerState::Killing)
+			{
+				WorkerState ex = WorkerState::Starting;
+				m_state.compare_exchange_strong(ex, WorkerState::Started);
+
+				startedWorking();
+				workLoop();
+				cnote << "Finishing up worker thread";
+				doneWorking();
+
+//				ex = WorkerState::Stopping;
+//				m_state.compare_exchange_strong(ex, WorkerState::Stopped);
+
+				ex = m_state.exchange(WorkerState::Stopped);
+				if (ex == WorkerState::Killing)
+					m_state.exchange(ex);
+
+				while (m_state == WorkerState::Stopped)
+					this_thread::sleep_for(chrono::milliseconds(20));
+			}
+		}));
+		cnote << "Spawning" << m_name;
+	}
+	while (m_state != WorkerState::Started)
+		this_thread::sleep_for(chrono::microseconds(20));
 }
 
 void Worker::stopWorking()
 {
 //	cnote << "stopWorking for thread" << m_name;
 	ETH_GUARDED(x_work)
-		if (!m_work || !m_work->joinable())
-			return;
-	cnote << "Stopping" << m_name;
-	m_stop = true;
-	while (!m_stopped)
-		this_thread::sleep_for(chrono::microseconds(50));
+		if (m_work)
+		{
+			cnote << "Stopping" << m_name;
+			WorkerState ex = WorkerState::Started;
+			m_state.compare_exchange_strong(ex, WorkerState::Stopping);
+
+			while (m_state != WorkerState::Stopped)
+				this_thread::sleep_for(chrono::microseconds(20));
+		}
+}
+
+void Worker::terminate()
+{
+//	cnote << "stopWorking for thread" << m_name;
 	ETH_GUARDED(x_work)
-		m_work.reset();
-	cnote << "Stopped" << m_name;
+		if (m_work)
+		{
+			cnote << "Terminating" << m_name;
+			m_state.exchange(WorkerState::Killing);
+
+			m_work->join();
+			m_work.reset();
+		}
 }
 
 void Worker::workLoop()
 {
-	while (!m_stop)
+	while (m_state == WorkerState::Started)
 	{
 		if (m_idleWaitMs)
 			this_thread::sleep_for(chrono::milliseconds(m_idleWaitMs));

@@ -398,6 +398,7 @@ void Session::doRead()
 	auto self(shared_from_this());
 	ba::async_read(m_socket, boost::asio::buffer(m_data, h256::size), [this,self](boost::system::error_code ec, std::size_t length)
 	{
+		ThreadContext tc(toString(socketId()));
 		if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 		{
 			clogS(NetWarn) << "Error reading: " << ec.message();
@@ -433,6 +434,7 @@ void Session::doRead()
 			auto tlen = frameSize + ((16 - (frameSize % 16)) % 16) + h128::size;
 			ba::async_read(m_socket, boost::asio::buffer(m_data, tlen), [this, self, headerRLP, frameSize, tlen](boost::system::error_code ec, std::size_t length)
 			{
+				ThreadContext tc(toString(socketId()));
 				if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 				{
 					clogS(NetWarn) << "Error reading: " << ec.message();
