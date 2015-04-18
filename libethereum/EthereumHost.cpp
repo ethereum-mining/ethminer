@@ -189,7 +189,7 @@ void EthereumHost::maintainTransactions()
 	for (auto const& i: ts)
 	{
 		bool unsent = !m_transactionsSent.count(i.first);
-		for (auto const& p: randomSelection(25, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }))
+		for (auto const& p: randomSelection(100, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }))
 			peerTransactions[p].push_back(i.first);
 	}
 	for (auto const& t: ts)
@@ -253,7 +253,7 @@ void EthereumHost::maintainBlocks(h256 _currentHash)
 
 			h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
-			for (auto const& p: randomSelection(25, [&](EthereumPeer* p){return !p->m_knownBlocks.count(_currentHash); }))
+			for (auto const& p: randomSelection(100, [&](EthereumPeer* p){return !p->m_knownBlocks.count(_currentHash); }))
 				for (auto const& b: blocks)
 					if (!p->m_knownBlocks.count(b))
 					{
