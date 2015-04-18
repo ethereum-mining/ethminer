@@ -57,9 +57,10 @@ class Peer: public Node
 	friend class RLPXHandshake;
 
 public:
+	/// Construct Peer from Node.
+	Peer(Node const& _node): Node(_node.id, _node.endpoint, _node.required) {}
+	
 	bool isOffline() const { return !m_session.lock(); }
-
-	bi::tcp::endpoint const& peerEndpoint() const { return endpoint.tcp; }
 
 	virtual bool operator<(Peer const& _p) const;
 	

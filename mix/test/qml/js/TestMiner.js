@@ -18,3 +18,13 @@ function test_selectMiner()
 	compare(state.miner.secret, account.secret);
 }
 
+function test_mine()
+{
+	newProject();
+	mainApplication.mainContent.startQuickDebugging();
+	waitForExecution();
+	mainApplication.clientModel.mine();
+	waitForMining();
+	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(3), "contract", " - Block - ");
+}
+

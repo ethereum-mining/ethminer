@@ -109,7 +109,7 @@ void CodeHighlighter::processError(dev::Exception const& _exception)
 void CodeHighlighter::processComments(std::string const& _source)
 {
 	unsigned i = 0;
-	unsigned size = _source.size();
+	size_t size = _source.size();
 	if (size == 0)
 		return;
 	while (i < size - 1)
