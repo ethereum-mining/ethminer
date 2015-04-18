@@ -34,7 +34,7 @@ using namespace dev::shh;
 #endif
 #define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
 
-WhisperHost::WhisperHost()
+WhisperHost::WhisperHost(): Worker("shh")
 {
 }
 

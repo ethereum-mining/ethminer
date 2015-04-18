@@ -53,18 +53,24 @@ extern std::function<void(std::string const&, char const*)> g_logPost;
 /// or equal to the currently output verbosity (g_logVerbosity).
 extern std::map<std::type_info const*, bool> g_logOverride;
 
-/// Associate a name with each thread for nice logging.
-struct ThreadLocalLogName
+#define ETH_THREAD_CONTEXT(name) for (std::pair<dev::ThreadContext, bool> __eth_thread_context(name, true); p.second; p.second = false)
+
+class ThreadContext
 {
-	ThreadLocalLogName(std::string _name) { m_name.reset(new std::string(_name)); };
-	boost::thread_specific_ptr<std::string> m_name;
+public:
+	ThreadContext(std::string const& _info) { push(_info); }
+	~ThreadContext() { pop(); }
+
+	static void push(std::string const& _n);
+	static void pop();
+	static std::string join(std::string const& _prior);
 };
 
-/// The current thread's name.
-extern ThreadLocalLogName t_logThreadName;
+/// Set the current thread's log name.
+void setThreadName(std::string const& _n);
 
 /// Set the current thread's log name.
-inline void setThreadName(char const* _n) { t_logThreadName.m_name.reset(new std::string(_n)); }
+std::string getThreadName();
 
 /// The default logging channels. Each has an associated verbosity and three-letter prefix (name() ).
 /// Channels should inherit from LogChannel and define name() and verbosity.
@@ -92,7 +98,7 @@ public:
 			char buf[24];
 			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
 				buf[0] = '\0'; // empty if case strftime fails
-			m_sstr << Id::name() << " [ " << buf << " | " << (t_logThreadName.m_name.get() ? *t_logThreadName.m_name.get() : std::string("<unknown>")) << (_term ? " ] " : "");
+			m_sstr << Id::name() << " [ " << buf << " | " << getThreadName() << ThreadContext::join(" | ") << (_term ? " ] " : "");
 		}
 	}
 
