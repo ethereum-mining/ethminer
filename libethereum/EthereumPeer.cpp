@@ -142,7 +142,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 				clog(NetNote) << "Difficulty of hashchain HIGHER. Grabbing" << m_syncingNeededBlocks.size() << "blocks [latest now" << m_syncingLatestHash.abridged() << ", was" << host()->m_latestBlockSent.abridged() << "]";
 
 				host()->m_man.resetToChain(m_syncingNeededBlocks);
-				host()->m_latestBlockSent = m_syncingLatestHash;
+//				host()->m_latestBlockSent = m_syncingLatestHash;
 			}
 			else
 			{
