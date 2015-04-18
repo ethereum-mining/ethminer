@@ -121,7 +121,7 @@ void help()
 		<< "    --json-rpc-port <n>  Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
-		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
+		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -S,--session-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
 		<< "Client transacting:" << endl
@@ -598,7 +598,7 @@ int main(int argc, char** argv)
 			}
 		else if (arg == "-K" || arg == "--kill-blockchain" || arg == "--kill")
 			killChain = WithExisting::Kill;
-		else if (arg == "-B" || arg == "--rebuild")
+		else if (arg == "-R" || arg == "--rebuild")
 			killChain = WithExisting::Verify;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 		{
