@@ -467,7 +467,7 @@ bool State::cull(TransactionQueue& _tq) const
 	return ret;
 }
 
-TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, bool* o_transactionQueueChanged)
+TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, bool* o_transactionQueueChanged, unsigned msTimeout)
 {
 	// TRANSACTIONS
 	TransactionReceipts ret;
@@ -475,7 +475,9 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, Ga
 
 	LastHashes lh;
 
-	for (int goodTxs = 1; goodTxs;)
+	auto deadline =  chrono::steady_clock::now() + chrono::milliseconds(msTimeout);
+
+	for (int goodTxs = 1; goodTxs && chrono::steady_clock::now() < deadline; )
 	{
 		goodTxs = 0;
 		for (auto const& i: ts)
