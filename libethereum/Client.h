@@ -277,6 +277,7 @@ private:
 	mutable SharedMutex x_postMine;			///< Lock on the OverlayDB and other attributes of m_postMine.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
+	bool m_remoteWorking = false;			///< Is there an acive and valid remote worker?
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 

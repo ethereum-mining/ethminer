@@ -395,6 +395,9 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 
 ProofOfWork::WorkPackage Client::getWork()
 {
+	// lock the work so a later submission isn't invalidated by processing a transaction elsewhere.
+	// this will be reset as soon as a new block arrives, allowing more transactions to be processed.
+	m_remoteWorking = true;
 	return ProofOfWork::package(m_miningInfo);
 }
 
@@ -448,7 +451,7 @@ void Client::syncTransactionQueue()
 			appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
 	changeds.insert(PendingChangedFilter);
 
-	// TODO: Tell farm about new transaction (i.e. restartProofOfWork mining).
+	// Tell farm about new transaction (i.e. restartProofOfWork mining).
 	onPostStateChanged();
 
 	// Tell watches about the new transactions.
@@ -468,7 +471,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		for (auto const& t: m_bc.transactions(h))
 		{
 			clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckTransaction::None);
-			m_tq.import(t);
+			m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
 		}
 	}
 
@@ -525,6 +528,7 @@ void Client::onPostStateChanged()
 		}
 		m_farm.setWork(m_miningInfo);
 	}
+	m_remoteWorking = false;
 }
 
 void Client::startMining()
@@ -561,16 +565,17 @@ void Client::doWork()
 	// TODO: Use condition variable rather than this rubbish.
 
 	bool t = true;
-	if (m_syncTransactionQueue.compare_exchange_strong(t, false))
-		syncTransactionQueue();
-
-	t = true;
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
 		syncBlockQueue();
 
+	t = true;
+	if (m_syncTransactionQueue.compare_exchange_strong(t, false) && !m_remoteWorking)
+		syncTransactionQueue();
+
 	tick();
 
-	this_thread::sleep_for(chrono::milliseconds(20));
+	if (!m_syncBlockQueue && !m_syncTransactionQueue)
+		this_thread::sleep_for(chrono::milliseconds(20));
 }
 
 void Client::tick()
