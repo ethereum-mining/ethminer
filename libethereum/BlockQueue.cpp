@@ -150,7 +150,7 @@ void BlockQueue::tick(BlockChain const& _bc)
 	vector<bytes> todo;
 	{
 		WriteGuard l(m_lock);
-		auto end = m_future.upper_bound(t);
+		auto end = m_future.lower_bound(t);
 		for (auto i = m_future.begin(); i != end; ++i)
 			todo.push_back(move(i->second));
 		m_future.erase(m_future.begin(), end);
