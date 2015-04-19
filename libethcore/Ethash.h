@@ -86,6 +86,7 @@ public:
 
 		static unsigned instances() { return std::thread::hardware_concurrency(); }
 		static std::string platformInfo();
+		static void setDefaultPlatform(unsigned) {}
 		static void setDefaultDevice(unsigned) {}
 
 	protected:
@@ -113,6 +114,7 @@ public:
 
 		static unsigned instances() { return 1; }
 		static std::string platformInfo();
+		static void setDefaultPlatform(unsigned _id) { s_platformId = _id; }
 		static void setDefaultDevice(unsigned _id) { s_deviceId = _id; }
 
 	protected:
@@ -129,6 +131,7 @@ public:
 		ethash_cl_miner* m_miner = nullptr;
 
 		h256 m_minerSeed;		///< Last seed in m_miner
+		static unsigned s_platformId;
 		static unsigned s_deviceId;
 	};
 #else
