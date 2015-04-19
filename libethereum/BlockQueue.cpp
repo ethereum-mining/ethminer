@@ -136,20 +136,21 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 
 void BlockQueue::tick(BlockChain const& _bc)
 {
+	UpgradableGuard l(m_lock);
 	if (m_future.empty())
 		return;
 
 	cblockq << "Checking past-future blocks...";
 
 	unsigned t = time(0);
-	if (t < m_future.begin()->first)
+	if (t <= m_future.begin()->first)
 		return;
 
 	cblockq << "Past-future blocks ready.";
 
 	vector<bytes> todo;
 	{
-		WriteGuard l(m_lock);
+		UpgradeGuard l2(l);
 		auto end = m_future.lower_bound(t);
 		for (auto i = m_future.begin(); i != end; ++i)
 			todo.push_back(move(i->second));
