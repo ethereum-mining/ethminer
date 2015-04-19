@@ -403,19 +403,25 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case GetBlocksPacket:
 	{
-		clog(NetMessageSummary) << "GetBlocks (" << dec << _r.itemCount() << "entries)";
+		unsigned count = _r.itemCount();
+		clog(NetMessageSummary) << "GetBlocks (" << dec << count << "entries)";
 		// return the requested blocks.
 		bytes rlp;
 		unsigned n = 0;
-		for (unsigned i = 0; i < _r.itemCount() && i <= c_maxBlocks; ++i)
+		for (unsigned i = 0; i < min(count, c_maxBlocks); ++i)
 		{
-			auto b = host()->m_chain.block(_r[i].toHash<h256>());
-			if (b.size())
+			auto h = _r[i].toHash<h256>();
+			if (host()->m_chain.isKnown(h))
 			{
-				rlp += b;
+				rlp += host()->m_chain.block(_r[i].toHash<h256>());
 				++n;
 			}
 		}
+		if (count > 20 && n == 0)
+			clog(NetWarn) << "all" << count << "unknown blocks requested; peer on different chain?";
+		else
+			clog(NetMessageSummary) << n << "blocks known and returned;" << (min(count, c_maxBlocks) - n) << "blocks unknown;" << (c_maxBlocks > count ? c_maxBlocks - count : 0) << "blocks ignored";
+
 		addRating(0);
 		RLPStream s;
 		prep(s, BlocksPacket, n).appendRaw(rlp, n);
