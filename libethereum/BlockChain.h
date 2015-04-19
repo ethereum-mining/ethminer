@@ -59,6 +59,7 @@ struct FutureTime: virtual Exception {};
 struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 7; };
 struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 4; };
 struct BlockChainWarn: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 1; };
+struct BlockChainDebug: public LogChannel { static const char* name() { return "#B#"; } static const int verbosity = 0; };
 
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
 std::map<Address, Account> const& genesisState();

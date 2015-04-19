@@ -405,6 +405,13 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	{
 		unsigned count = _r.itemCount();
 		clog(NetMessageSummary) << "GetBlocks (" << dec << count << "entries)";
+
+		if (!count)
+		{
+			clog(NetImpolite) << "Zero-entry GetBlocks: Not replying.";
+			addRating(-10);
+			break;
+		}
 		// return the requested blocks.
 		bytes rlp;
 		unsigned n = 0;

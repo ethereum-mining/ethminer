@@ -398,9 +398,11 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	if (!pd)
 	{
 		auto pdata = pd.rlp();
-		cwarn << "Odd: details is returning false despite block known:" << RLP(pdata);
+		clog(BlockChainDebug) << "Details is returning false despite block known:" << RLP(pdata);
 		auto parentBlock = block(bi.parentHash);
-		cwarn << "Block:" << RLP(parentBlock);
+		clog(BlockChainDebug) << "Block:" << RLP(parentBlock);
+		clog(BlockChainDebug) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+		exit(-1);
 	}
 
 	// Check it's not crazy
@@ -619,6 +621,14 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	cnote << "writing:" << writing;
 	cnote << "checkBest:" << checkBest;
 #endif
+
+	if (isKnown(bi.hash()) && !details(bi.hash()))
+	{
+		clog(BlockChainDebug) << "Known block just inserted has no details.";
+		clog(BlockChainDebug) << "Block:" << bi;
+		clog(BlockChainDebug) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+		exit(-1);
+	}
 
 	h256s fresh;
 	h256s dead;
