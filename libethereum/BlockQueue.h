@@ -86,6 +86,9 @@ public:
 	/// Get some infomration on the current status.
 	BlockQueueStatus status() const { ReadGuard l(m_lock); return BlockQueueStatus{m_ready.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
 
+	/// Get some infomration on the given block's status regarding us.
+	ImportResult blockStatus(h256 const& _h) const { ReadGuard l(m_lock); return m_readySet.count(_h) || m_drainingSet.count(_h) ? ImportResult::AlreadyKnown : m_unknownSet.count(_h) ? ImportResult::UnknownParent : m_knownBad.count(_h) ? ImportResult::BadChain : ImportResult::Unknown; }
+
 	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
 
 private:
