@@ -408,6 +408,7 @@ ProofOfWork::WorkPackage Client::getWork()
 {
 	// lock the work so a later submission isn't invalidated by processing a transaction elsewhere.
 	// this will be reset as soon as a new block arrives, allowing more transactions to be processed.
+	m_lastGetWork = chrono::system_clock::now();
 	m_remoteWorking = true;
 	return ProofOfWork::package(m_miningInfo);
 }
@@ -527,18 +528,23 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	noteChanged(changeds);
 }
 
+bool Client::remoteActive() const
+{
+	return chrono::system_clock::now() - m_lastGetWork < chrono::seconds(30);
+}
+
 void Client::onPostStateChanged()
 {
 	cnote << "Post state changed: Restarting mining...";
-//	if (isMining())
-//	{
+	if (isMining() || remoteActive())
+	{
 		{
 			WriteGuard l(x_postMine);
 			m_postMine.commitToMine(m_bc);
 			m_miningInfo = m_postMine.info();
 		}
 		m_farm.setWork(m_miningInfo);
-//	}
+	}
 	m_remoteWorking = false;
 }
 
