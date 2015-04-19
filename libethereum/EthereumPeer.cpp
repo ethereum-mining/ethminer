@@ -420,7 +420,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		if (count > 20 && n == 0)
 			clog(NetWarn) << "all" << count << "unknown blocks requested; peer on different chain?";
 		else
-			clog(NetMessageSummary) << n << "blocks known and returned;" << (min(count, c_maxBlocks) - n) << "blocks unknown;" << (c_maxBlocks > count ? c_maxBlocks - count : 0) << "blocks ignored";
+			clog(NetMessageSummary) << n << "blocks known and returned;" << (min(count, c_maxBlocks) - n) << "blocks unknown;" << (count > c_maxBlocks ? count - c_maxBlocks : 0) << "blocks ignored";
 
 		addRating(0);
 		RLPStream s;

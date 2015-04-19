@@ -441,7 +441,7 @@ void Client::syncTransactionQueue()
 	TransactionReceipts newPendingReceipts;
 
 	ETH_WRITE_GUARDED(x_postMine)
-		newPendingReceipts = m_postMine.sync(m_bc, m_tq, *m_gp);
+		tie(newPendingReceipts, m_syncTransactionQueue) = m_postMine.sync(m_bc, m_tq, *m_gp);
 
 	if (newPendingReceipts.empty())
 		return;

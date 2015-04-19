@@ -98,7 +98,8 @@ public:
 	/// To be called from main loop every 100ms or so.
 	void process();
 
-	/// Sync the chain with any incoming blocks. All blocks should, if processed in order
+	/// Sync the chain with any incoming blocks. All blocks should, if processed in order.
+	/// @returns fresh blocks, dead blocks and true iff there are additional blocks to be processed waiting.
 	std::tuple<h256s, h256s, bool> sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max);
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
