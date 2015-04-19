@@ -121,7 +121,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 				clog(NetWarn) << "Bad state: asking for Hashes yet not syncing!";
 
 			setAsking(_a, true);
-			prep(s, GetBlockHashesPacket, 2) << m_syncingNeededBlocks.back() << c_maxHashesAsk;
+			prep(s, GetBlockHashesPacket, 2) << m_syncingLastReceivedHash << c_maxHashesAsk;
 			sealAndSend(s);
 			return;
 		}
@@ -385,6 +385,8 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			transition(Asking::Blocks);
 			return true;
 		}
+		unsigned knowns = 0;
+		unsigned unknowns = 0;
 		for (unsigned i = 0; i < _r.itemCount(); ++i)
 		{
 			addRating(1);
@@ -392,18 +394,26 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			auto status = host()->m_bq.blockStatus(h);
 			if (status == QueueStatus::Importing || status == QueueStatus::Ready || host()->m_chain.isKnown(h))
 			{
+				clog(NetMessageSummary) << "block hash ready:" << h << ". Start blocks download...";
 				transition(Asking::Blocks);
 				return true;
 			}
 			else if (status == QueueStatus::Bad)
 			{
-				cwarn << "BAD hash chain discovered. Ignoring.";
+				cwarn << "block hash bad!" << h << ". Bailing...";
 				transition(Asking::Nothing);
 				return true;
 			}
 			else if (status == QueueStatus::Unknown)
+			{
+				unknowns++;
 				m_syncingNeededBlocks.push_back(h);
+			}
+			else
+				knowns++;
+			m_syncingLastReceivedHash = h;
 		}
+		clog(NetMessageSummary) << knowns << "knowns," << unknowns << "unknowns; now at" << m_syncingLastReceivedHash.abridged();
 		// run through - ask for more.
 		transition(Asking::Hashes);
 		break;
