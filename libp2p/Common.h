@@ -77,6 +77,7 @@ struct InvalidHostIPAddress: virtual dev::Exception {};
 
 struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
 struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
+struct NetImpolite: public LogChannel { static const char* name() { return "#!*"; } static const int verbosity = 1; };
 struct NetMessageSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 2; };
 struct NetConnect: public LogChannel { static const char* name() { return "+N+"; } static const int verbosity = 10; };
 struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 5; };
