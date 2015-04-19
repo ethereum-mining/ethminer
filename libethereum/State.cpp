@@ -276,6 +276,7 @@ bool State::sync(BlockChain const& _bc)
 
 bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi, ImportRequirements::value _ir)
 {
+	(void)_ir;
 	bool ret = false;
 	// BLOCK
 	BlockInfo bi = _bi ? _bi : _bc.info(_block);
@@ -321,6 +322,24 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi, Impor
 		// Find most recent state dump and replay what's left.
 		// (Most recent state dump might end up being genesis.)
 
+		if (m_db.lookup(bi.stateRoot).empty())
+		{
+			cwarn << "Unable to sync to" << bi.hash().abridged() << "; state root" << bi.stateRoot.abridged() << "not found in database.";
+			cwarn << "Database corrupt: contains block without stateRoot:" << bi;
+			cwarn << "Bailing.";
+			exit(-1);
+		}
+		m_previousBlock = bi;
+		resetCurrent();
+		ret = true;
+	}
+#if ALLOW_REBUILD
+	else
+	{
+		// New blocks available, or we've switched to a different branch. All change.
+		// Find most recent state dump and replay what's left.
+		// (Most recent state dump might end up being genesis.)
+
 		std::vector<h256> chain;
 		while (bi.number != 0 && m_db.lookup(bi.stateRoot).empty())	// while we don't have the state root of the latest block...
 		{
@@ -352,6 +371,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi, Impor
 		resetCurrent();
 		ret = true;
 	}
+#endif
 	return ret;
 }
 
@@ -692,9 +712,9 @@ void State::cleanup(bool _fullCommit)
 		paranoia("immediately before database commit", true);
 
 		// Commit the new trie to disk.
-		cnote << "Commiting to disk...";
+		cnote << "Committing to disk: stateRoot" << m_currentBlock.stateRoot.abridged() << "=" << rootHash().abridged() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 		m_db.commit();
-		cnote << "Committed.";
+		cnote << "Committed: stateRoot" << m_currentBlock.stateRoot.abridged() << "=" << rootHash().abridged() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 
 		paranoia("immediately after database commit", true);
 		m_previousBlock = m_currentBlock;
