@@ -461,43 +461,19 @@ void State::resetCurrent()
 	paranoia("begin resetCurrent", true);
 }
 
-bool State::cull(TransactionQueue& _tq) const
-{
-	bool ret = false;
-	auto ts = _tq.transactions();
-	for (auto const& i: ts)
-	{
-		if (!m_transactionSet.count(i.first))
-		{
-			try
-			{
-				if (i.second.nonce() < transactionsFrom(i.second.sender()))
-				{
-					_tq.drop(i.first);
-					ret = true;
-				}
-			}
-			catch (...)
-			{
-				_tq.drop(i.first);
-				ret = true;
-			}
-		}
-	}
-	return ret;
-}
-
-TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, bool* o_transactionQueueChanged, unsigned msTimeout)
+pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, unsigned msTimeout)
 {
 	// TRANSACTIONS
-	TransactionReceipts ret;
+	pair<TransactionReceipts, bool> ret;
+	ret.second = false;
+
 	auto ts = _tq.transactions();
 
 	LastHashes lh;
 
 	auto deadline =  chrono::steady_clock::now() + chrono::milliseconds(msTimeout);
 
-	for (int goodTxs = 1; goodTxs && chrono::steady_clock::now() < deadline; )
+	for (int goodTxs = 1; goodTxs; )
 	{
 		goodTxs = 0;
 		for (auto const& i: ts)
@@ -511,51 +487,67 @@ TransactionReceipts State::sync(BlockChain const& _bc, TransactionQueue& _tq, Ga
 						if (lh.empty())
 							lh = _bc.lastHashes();
 						execute(lh, i.second);
-						ret.push_back(m_receipts.back());
+						ret.first.push_back(m_receipts.back());
 						_tq.noteGood(i);
 						++goodTxs;
 	//					cnote << "TX took:" << t.elapsed() * 1000;
 					}
+					else if (i.second.gasPrice() < _gp.ask(*this) * 9 / 10)
+					{
+						// less than 90% of our ask price for gas. drop.
+						cnote << i.first.abridged() << "Dropping El Cheapo transaction (<90% of ask price)";
+						_tq.drop(i.first);
+					}
 				}
-#if ETH_DEBUG
 				catch (InvalidNonce const& in)
 				{
-					bigint const* req = boost::get_error_info<errinfo_required>(in);
-					bigint const* got = boost::get_error_info<errinfo_got>(in);
+					bigint const& req = *boost::get_error_info<errinfo_required>(in);
+					bigint const& got = *boost::get_error_info<errinfo_got>(in);
 
-					if (*req > *got)
+					if (req > got)
 					{
 						// too old
+						cnote << i.first.abridged() << "Dropping old transaction (nonce too low)";
 						_tq.drop(i.first);
-						if (o_transactionQueueChanged)
-							*o_transactionQueueChanged = true;
+					}
+					else if (got > req + 5)
+					{
+						// too new
+						cnote << i.first.abridged() << "Dropping new transaction (> 5 nonces ahead)";
+						_tq.drop(i.first);
 					}
 					else
 						_tq.setFuture(i);
 				}
 				catch (BlockGasLimitReached const& e)
 				{
-					_tq.setFuture(i);
+					bigint const& got = *boost::get_error_info<errinfo_got>(e);
+					if (got > m_currentBlock.gasLimit)
+					{
+						cnote << i.first.abridged() << "Dropping over-gassy transaction (gas > block's gas limit)";
+						_tq.drop(i.first);
+					}
+					else
+						_tq.setFuture(i);
 				}
-#endif
 				catch (Exception const& _e)
 				{
 					// Something else went wrong - drop it.
+					cnote << i.first.abridged() << "Dropping invalid transaction:" << diagnostic_information(_e);
 					_tq.drop(i.first);
-					if (o_transactionQueueChanged)
-						*o_transactionQueueChanged = true;
-					cnote << "Dropping invalid transaction:";
-					cnote << diagnostic_information(_e);
 				}
 				catch (std::exception const&)
 				{
 					// Something else went wrong - drop it.
 					_tq.drop(i.first);
-					if (o_transactionQueueChanged)
-						*o_transactionQueueChanged = true;
-					cnote << "Transaction caused low-level exception :(";
+					cnote << i.first.abridged() << "Transaction caused low-level exception :(";
 				}
 			}
+		if (chrono::steady_clock::now() > deadline)
+		{
+			ret.second = true;
+			break;
+		}
 	}
 	return ret;
 }
