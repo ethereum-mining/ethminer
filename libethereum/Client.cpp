@@ -117,6 +117,13 @@ void BasicGasPricer::update(BlockChain const& _bc)
 	}
 }
 
+std::ostream& dev::eth::operator<<(std::ostream& _out, ActivityReport const& _r)
+{
+	_out << "Since " << toString(_r.since) << " (" << std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - _r.since).count();
+	_out << "): " << _r.ticks << "ticks";
+	return _out;
+}
+
 Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId):
 	Worker("eth"),
 	m_vc(_dbPath),
@@ -582,9 +589,12 @@ void Client::tick()
 {
 	if (chrono::system_clock::now() - m_lastTick > chrono::seconds(1))
 	{
+		m_report.ticks++;
 		checkWatchGarbage();
 		m_bq.tick(m_bc);
 		m_lastTick = chrono::system_clock::now();
+		if (m_report.ticks == 15)
+			cnote << activityReport();
 	}
 }
 

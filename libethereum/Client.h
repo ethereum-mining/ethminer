@@ -97,6 +97,14 @@ struct ClientChat: public LogChannel { static const char* name() { return "=C=";
 struct ClientTrace: public LogChannel { static const char* name() { return "-C-"; } static const int verbosity = 7; };
 struct ClientDetail: public LogChannel { static const char* name() { return " C "; } static const int verbosity = 14; };
 
+struct ActivityReport
+{
+	unsigned ticks = 0;
+	std::chrono::system_clock::time_point since = std::chrono::system_clock::now();
+};
+
+std::ostream& operator<<(std::ostream& _out, ActivityReport const& _r);
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -204,6 +212,8 @@ public:
 	void killChain();
 	/// Retries all blocks with unknown parents.
 	void retryUnkonwn() { m_bq.retryAllUnknown(); }
+	/// Get a report of activity.
+	ActivityReport activityReport() { ActivityReport ret; std::swap(m_report, ret); return ret; }
 
 protected:
 	/// InterfaceStub methods
@@ -294,6 +304,8 @@ private:
 											///< When did we last both doing GC on the watches?
 	mutable std::chrono::system_clock::time_point m_lastTick = std::chrono::system_clock::now();
 											///< When did we last tick()?
+
+	ActivityReport m_report;
 
 	// TODO!!!!!! REPLACE WITH A PROPER X-THREAD ASIO SIGNAL SYSTEM (could just be condition variables)
 	std::atomic<bool> m_syncTransactionQueue = {false};

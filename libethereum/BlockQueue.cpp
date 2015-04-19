@@ -74,7 +74,11 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 	if (bi.timestamp > (u256)time(0)/* && !_isOurs*/)
 	{
 		m_future.insert(make_pair((unsigned)bi.timestamp, _block.toBytes()));
-		cblockq << "OK - queued for future.";
+		char buf[24];
+		time_t bit = (unsigned)bi.timestamp;
+		if (strftime(buf, 24, "%X", localtime(&bit)) == 0)
+			buf[0] = '\0'; // empty if case strftime fails
+		cblockq << "OK - queued for future [" << bi.timestamp << "vs" << time(0) << "] - will wait until" << buf;
 		return ImportResult::FutureTime;
 	}
 	else
@@ -132,12 +136,30 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 
 void BlockQueue::tick(BlockChain const& _bc)
 {
-	unsigned t = time(0);
-	for (auto i = m_future.begin(); i != m_future.end() && i->first < t; ++i)
-		import(&(i->second), _bc);
+	if (m_future.empty())
+		return;
 
-	WriteGuard l(m_lock);
-	m_future.erase(m_future.begin(), m_future.upper_bound(t));
+	cblockq << "Checking past-future blocks...";
+
+	unsigned t = time(0);
+	if (t < m_future.begin()->first)
+		return;
+
+	cblockq << "Past-future blocks ready.";
+
+	vector<bytes> todo;
+	{
+		WriteGuard l(m_lock);
+		auto end = m_future.upper_bound(t);
+		for (auto i = m_future.begin(); i != end; ++i)
+			todo.push_back(move(i->second));
+		m_future.erase(m_future.begin(), end);
+	}
+
+	cblockq << "Importing" << todo.size() << "past-future blocks.";
+
+	for (auto const& b: todo)
+		import(&b, _bc);
 }
 
 template <class T> T advanced(T _t, unsigned _n)
