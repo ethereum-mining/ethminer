@@ -90,8 +90,7 @@ enum class ImportResult
 	AlreadyInChain,
 	AlreadyKnown,
 	Malformed,
-	BadChain,
-	Unknown
+	BadChain
 };
 
 struct ImportRequirements

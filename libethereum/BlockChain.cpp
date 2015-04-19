@@ -310,7 +310,7 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 			fresh += r.first;
 			dead += r.second;
 		}
-		catch (UnknownParent)
+		catch (dev::eth::UnknownParent)
 		{
 			cwarn << "ODD: Import queue contains block with unknown parent." << boost::current_exception_diagnostic_information();
 			// NOTE: don't reimport since the queue should guarantee everything in the right order.
