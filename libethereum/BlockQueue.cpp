@@ -169,6 +169,21 @@ template <class T> T advanced(T _t, unsigned _n)
 	return _t;
 }
 
+QueueStatus BlockQueue::blockStatus(h256 const& _h) const
+{
+	ReadGuard l(m_lock);
+	return
+		m_readySet.count(_h) ?
+			QueueStatus::Ready :
+		m_drainingSet.count(_h) ?
+			QueueStatus::Importing :
+		m_unknownSet.count(_h) ?
+			QueueStatus::UnknownParent :
+		m_knownBad.count(_h) ?
+			QueueStatus::Bad :
+			QueueStatus::Unknown;
+}
+
 void BlockQueue::drain(std::vector<bytes>& o_out, unsigned _max)
 {
 	WriteGuard l(m_lock);

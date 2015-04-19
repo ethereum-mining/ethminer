@@ -389,12 +389,19 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		{
 			addRating(1);
 			auto h = _r[i].toHash<h256>();
-			if (host()->m_bq.blockStatus(h) != ImportResult::Unknown || host()->m_chain.isKnown(h))
+			auto status = host()->m_bq.blockStatus(h);
+			if (status == QueueStatus::Importing || status == QueueStatus::Ready || host()->m_chain.isKnown(h))
 			{
 				transition(Asking::Blocks);
 				return true;
 			}
-			else
+			else if (status == QueueStatus::Bad)
+			{
+				cwarn << "BAD hash chain discovered. Ignoring.";
+				transition(Asking::Nothing);
+				return true;
+			}
+			else if (status == QueueStatus::Unknown)
 				m_syncingNeededBlocks.push_back(h);
 		}
 		// run through - ask for more.
