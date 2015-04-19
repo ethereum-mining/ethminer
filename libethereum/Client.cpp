@@ -530,15 +530,15 @@ void Client::onChainChanged(ImportRoute const& _ir)
 void Client::onPostStateChanged()
 {
 	cnote << "Post state changed: Restarting mining...";
-	if (isMining())
-	{
+//	if (isMining())
+//	{
 		{
 			WriteGuard l(x_postMine);
 			m_postMine.commitToMine(m_bc);
 			m_miningInfo = m_postMine.info();
 		}
 		m_farm.setWork(m_miningInfo);
-	}
+//	}
 	m_remoteWorking = false;
 }
 
