@@ -43,8 +43,9 @@ void Worker::startWorking()
 				m_state.compare_exchange_strong(ex, WorkerState::Started);
 
 				startedWorking();
+				cnote << "Entering work loop...";
 				workLoop();
-				cnote << "Finishing up worker thread";
+				cnote << "Finishing up worker thread...";
 				doneWorking();
 
 //				ex = WorkerState::Stopping;

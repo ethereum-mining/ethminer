@@ -314,7 +314,10 @@ void Ethash::GPUMiner::workLoop()
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
 		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook);
 	}
-	catch (...) {}
+	catch (...)
+	{
+		cwarn << "Error GPU mining. GPU memory fragmentation?";
+	}
 }
 
 void Ethash::GPUMiner::pause()

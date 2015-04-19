@@ -339,6 +339,9 @@ void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, u
 	exit(0);
 }
 
+struct HappyChannel: public LogChannel  { static const char* name() { return ":-D"; } static const int verbosity = 1; };
+struct SadChannel: public LogChannel { static const char* name() { return ":-("; } static const int verbosity = 1; };
+
 void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 {
 	(void)_m;
@@ -347,9 +350,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 #if ETH_JSONRPC || !ETH_TRUE
 	jsonrpc::HttpClient client(_remote);
 	Farm rpc(client);
-
 	GenericFarm<Ethash> f;
-
 	if (_m == MinerType::CPU)
 		f.startCPU();
 	else if (_m == MinerType::GPU)
@@ -357,29 +358,47 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 
 	ProofOfWork::WorkPackage current;
 	while (true)
-	{
-		bool completed = false;
-		ProofOfWork::Solution solution;
-		f.onSolutionFound([&](ProofOfWork::Solution sol)
+		try
 		{
-			solution = sol;
-			return completed = true;
-		});
-		for (unsigned i = 0; !completed; ++i)
-		{
-			Json::Value v = rpc.eth_getWork();
-			h256 hh(v[0].asString());
-			if (hh != current.headerHash)
+			bool completed = false;
+			ProofOfWork::Solution solution;
+			f.onSolutionFound([&](ProofOfWork::Solution sol)
 			{
-				current.headerHash = hh;
-				current.seedHash = h256(v[1].asString());
-				current.boundary = h256(v[2].asString());
-				f.setWork(current);
+				solution = sol;
+				return completed = true;
+			});
+			for (unsigned i = 0; !completed; ++i)
+			{
+				if (current)
+					cnote << "Mining on PoWhash" << current.headerHash.abridged() << ": " << f.miningProgress();
+				else
+					cnote << "Getting work package...";
+				Json::Value v = rpc.eth_getWork();
+				h256 hh(v[0].asString());
+				if (hh != current.headerHash)
+				{
+					current.headerHash = hh;
+					current.seedHash = h256(v[1].asString());
+					current.boundary = h256(v[2].asString());
+					cnote << "Got new work package.";
+					f.setWork(current);
+				}
+				this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 			}
-			this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
+			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash.abridged() << "," << solution.mixHash.abridged() << "] to" << _remote << "...";
+			bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
+			if (ok)
+				clog(HappyChannel) << "Submitted and accepted.";
+			else
+				clog(SadChannel) << "Not accepted.";
+			current.reset();
 		}
-		rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(solution.mixHash));
-	}
+		catch (jsonrpc::JsonRpcException&)
+		{
+			for (auto i = 10; --i; this_thread::sleep_for(chrono::seconds(1)))
+				cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
+			cerr << endl;
+		}
 #endif
 	exit(0);
 }
