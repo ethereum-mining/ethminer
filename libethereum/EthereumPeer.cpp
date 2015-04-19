@@ -389,7 +389,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		{
 			addRating(1);
 			auto h = _r[i].toHash<h256>();
-			if (host()->m_chain.isKnown(h))
+			if (host()->m_bq.blockStatus(h) != ImportResult::Unknown || host()->m_chain.isKnown(h))
 			{
 				transition(Asking::Blocks);
 				return true;
@@ -484,6 +484,8 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 				case ImportResult::UnknownParent:
 					unknown++;
 					break;
+
+				default:;
 				}
 			}
 			else
@@ -535,6 +537,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 				clog(NetMessageSummary) << "Received block with no known parent. Resyncing...";
 				setNeedsSyncing(h, _r[1].toInt<u256>());
 				break;
+			default:;
 			}
 
 			Guard l(x_knownBlocks);
