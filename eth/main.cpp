@@ -379,8 +379,8 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 				{
 					current.headerHash = hh;
 					current.seedHash = h256(v[1].asString());
-					current.boundary = h256(v[2].asString());
-					cnote << "Got new work package.";
+					current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
+					cnote << "Got work package:" << current.headerHash.abridged() << " < " << current.boundary;
 					f.setWork(current);
 				}
 				this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
@@ -395,7 +395,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 		}
 		catch (jsonrpc::JsonRpcException&)
 		{
-			for (auto i = 10; --i; this_thread::sleep_for(chrono::seconds(1)))
+			for (auto i = 3; --i; this_thread::sleep_for(chrono::seconds(1)))
 				cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
 			cerr << endl;
 		}
