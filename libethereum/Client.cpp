@@ -352,11 +352,15 @@ void Client::setForceMining(bool _enable)
 
 MiningProgress Client::miningProgress() const
 {
+	if (m_farm.isMining())
+		return m_farm.miningProgress();
 	return MiningProgress();
 }
 
 uint64_t Client::hashrate() const
 {
+	if (m_farm.isMining())
+		return m_farm.miningProgress().rate();
 	return 0;
 }
 
