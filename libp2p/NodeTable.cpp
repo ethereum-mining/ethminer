@@ -24,6 +24,20 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+const char* NodeTableWarn::name() { return "!P!"; }
+const char* NodeTableNote::name() { return "*P*"; }
+const char* NodeTableMessageSummary::name() { return "-P-"; }
+const char* NodeTableMessageDetail::name() { return "=P="; }
+const char* NodeTableConnect::name() { return "+P+"; }
+const char* NodeTableEvent::name() { return "+P+"; }
+const char* NodeTableTimer::name() { return "+P+"; }
+const char* NodeTableUpdate::name() { return "+P+"; }
+const char* NodeTableTriviaSummary::name() { return "-P-"; }
+const char* NodeTableTriviaDetail::name() { return "=P="; }
+const char* NodeTableAllDetail::name() { return "=P="; }
+const char* NodeTableEgress::name() { return ">>P"; }
+const char* NodeTableIngress::name() { return "<<P"; }
+
 NodeEntry::NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src.id,_pubk)) {}
 
 NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint):

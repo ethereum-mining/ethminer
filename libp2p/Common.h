@@ -75,17 +75,17 @@ struct NetworkStartRequired: virtual dev::Exception {};
 struct InvalidPublicIPAddress: virtual dev::Exception {};
 struct InvalidHostIPAddress: virtual dev::Exception {};
 
-struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
-struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
-struct NetImpolite: public LogChannel { static const char* name() { return "#!*"; } static const int verbosity = 1; };
-struct NetMessageSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 2; };
-struct NetConnect: public LogChannel { static const char* name() { return "+N+"; } static const int verbosity = 10; };
-struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 5; };
-struct NetTriviaSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 10; };
-struct NetTriviaDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 11; };
-struct NetAllDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 13; };
-struct NetRight: public LogChannel { static const char* name() { return ">N>"; } static const int verbosity = 14; };
-struct NetLeft: public LogChannel { static const char* name() { return "<N<"; } static const int verbosity = 15; };
+struct NetWarn: public LogChannel { static const char* name(); static const int verbosity = 0; };
+struct NetNote: public LogChannel { static const char* name(); static const int verbosity = 1; };
+struct NetImpolite: public LogChannel { static const char* name(); static const int verbosity = 1; };
+struct NetMessageSummary: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct NetConnect: public LogChannel { static const char* name(); static const int verbosity = 10; };
+struct NetMessageDetail: public LogChannel { static const char* name(); static const int verbosity = 5; };
+struct NetTriviaSummary: public LogChannel { static const char* name(); static const int verbosity = 10; };
+struct NetTriviaDetail: public LogChannel { static const char* name(); static const int verbosity = 11; };
+struct NetAllDetail: public LogChannel { static const char* name(); static const int verbosity = 13; };
+struct NetRight: public LogChannel { static const char* name(); static const int verbosity = 14; };
+struct NetLeft: public LogChannel { static const char* name(); static const int verbosity = 15; };
 
 enum PacketType
 {

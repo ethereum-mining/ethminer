@@ -48,6 +48,11 @@ namespace js = json_spirit;
 #define ETH_CATCH 1
 #define ETH_TIMED_IMPORTS 0
 
+const char* BlockChainDebug::name() { return EthBlue "☍" EthWhite " ◇"; }
+const char* BlockChainWarn::name() { return EthBlue "☍" EthOnRed EthBlackBold " ✘"; }
+const char* BlockChainNote::name() { return EthBlue "☍" EthBlue " ℹ"; }
+const char* BlockChainChat::name() { return EthBlue "☍" EthWhite " ◌"; }
+
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.currentHash());
