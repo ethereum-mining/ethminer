@@ -28,6 +28,7 @@
 #include <boost/thread.hpp>
 #include "vector_ref.h"
 #include "CommonIO.h"
+#include "Terminal.h"
 
 namespace dev
 {
@@ -77,9 +78,9 @@ std::string getThreadName();
 struct LogChannel { static const char* name() { return "   "; } static const int verbosity = 1; };
 struct LeftChannel: public LogChannel  { static const char* name() { return "<<<"; } };
 struct RightChannel: public LogChannel { static const char* name() { return ">>>"; } };
-struct WarnChannel: public LogChannel  { static const char* name() { return "!!!"; } static const int verbosity = 0; };
+struct WarnChannel: public LogChannel  { static const char* name() { return EthWhiteOn EthBlackB "!!!" EthReset; } static const int verbosity = 0; };
 struct NoteChannel: public LogChannel  { static const char* name() { return "***"; } };
-struct DebugChannel: public LogChannel { static const char* name() { return "---"; } static const int verbosity = 0; };
+struct DebugChannel: public LogChannel { static const char* name() { return EthWhiteB "---" EthReset; } static const int verbosity = 0; };
 
 /// Logging class, iostream-like, that can be shifted to.
 template <class Id, bool _AutoSpacing = true>
@@ -98,7 +99,7 @@ public:
 			char buf[24];
 			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
 				buf[0] = '\0'; // empty if case strftime fails
-			m_sstr << Id::name() << " [ " << buf << " | " << getThreadName() << ThreadContext::join(" | ") << (_term ? " ] " : "");
+			m_sstr << Id::name() << EthBlue " [ " EthBlueI << buf << EthBlue " | " EthCyan << getThreadName() << ThreadContext::join(EthBlue " | " EthPurple) << (_term ? EthBlue " ] " : "") << EthReset;
 		}
 	}
 
