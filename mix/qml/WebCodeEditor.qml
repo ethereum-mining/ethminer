@@ -83,7 +83,6 @@ Item {
 			editorBrowser.runJavaScript("setFontSize(" + size + ")", function(result) {});
 	}
 
-
 	Clipboard
 	{
 		id: clipboard
