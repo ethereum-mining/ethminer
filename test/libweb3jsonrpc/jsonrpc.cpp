@@ -59,7 +59,7 @@ struct Setup
 		setup = true;
 
 		dev::p2p::NetworkPreferences nprefs(30303, std::string(), false);
-		web3 = new WebThreeDirect("Ethereum(++) tests", "", true, {"eth", "shh"}, nprefs);
+		web3 = new WebThreeDirect("++eth tests", "", true, {"eth", "shh"}, nprefs);
 		
 		web3->setIdealPeerCount(5);
 		web3->ethereum()->setForceMining(true);
