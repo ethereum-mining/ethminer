@@ -77,7 +77,7 @@ h256 const& BlockInfo::hash() const
 
 h256 const& BlockInfo::boundary() const
 {
-	if (!m_boundary)
+	if (!m_boundary && difficulty)
 		m_boundary = (h256)(u256)((bigint(1) << 256) / difficulty);
 	return m_boundary;
 }

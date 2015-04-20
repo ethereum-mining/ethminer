@@ -117,6 +117,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		lastHashes[i] = lastHashes[i - 1] ? bc().details(lastHashes[i - 1]).parent : h256();
 
 	State execState = _state;
+	execState.addBalance(t.sender(), t.gas() * t.gasPrice()); //give it enough balance for gas estimation
 	Executive execution(execState, lastHashes, 0);
 	execution.initialize(&rlp);
 	execution.execute();
