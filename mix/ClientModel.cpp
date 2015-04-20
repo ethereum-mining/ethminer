@@ -498,6 +498,8 @@ QVariant ClientModel::formatStorageValue(SolidityType const& _type, map<u256, u2
 		bytes slotBytes = toBigEndian(slotValue);
 		auto start = slotBytes.end() - _type.size - offset;
 		bytes val(32 - _type.size); //prepend with zeroes
+		if (_type.type == SolidityType::SignedInteger && (*start & 0x80)) //extend sign
+			std::fill(val.begin(), val.end(), 0xff);
 		val.insert(val.end(), start, start + _type.size);
 		values.append(decoder.decode(_type, val));
 		offset += _type.size;

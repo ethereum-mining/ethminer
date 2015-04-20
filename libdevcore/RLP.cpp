@@ -111,10 +111,24 @@ unsigned RLP::actualSize() const
 	return 0;
 }
 
+void RLP::requireGood() const
+{
+	if (isNull())
+		BOOST_THROW_EXCEPTION(BadRLP());
+	byte n = m_data[0];
+	if (n != c_rlpDataImmLenStart + 1)
+		return;
+	if (m_data.size() < 2)
+		BOOST_THROW_EXCEPTION(BadRLP());
+	if (m_data[1] < c_rlpDataImmLenStart)
+		BOOST_THROW_EXCEPTION(BadRLP());
+}
+
 bool RLP::isInt() const
 {
 	if (isNull())
 		return false;
+	requireGood();
 	byte n = m_data[0];
 	if (n < c_rlpDataImmLenStart)
 		return !!n;
@@ -141,6 +155,7 @@ unsigned RLP::length() const
 {
 	if (isNull())
 		return 0;
+	requireGood();
 	unsigned ret = 0;
 	byte n = m_data[0];
 	if (n < c_rlpDataImmLenStart)

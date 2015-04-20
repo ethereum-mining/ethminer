@@ -626,6 +626,7 @@ int main(int argc, char** argv)
 
 	logwin = newwin(height * 2 / 5 - 2, width * 2 / 3, qheight, 0);
 	nc::nc_window_streambuf outbuf(logwin, std::cout);
+	nc::nc_window_streambuf eoutbuf(logwin, std::cerr);
 
 	consolewin   = newwin(qheight, width / 4, 0, 0);
 	nc::nc_window_streambuf coutbuf(consolewin, ccout);

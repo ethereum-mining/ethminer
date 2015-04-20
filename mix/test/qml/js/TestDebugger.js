@@ -91,17 +91,20 @@ function test_arrayParametersAndStorage()
 	"		{\r" +
 	"			m = x;\r" +
 	"			s = 5;\r" +
+	"			signed = 6534;\r" +
 	"		}\r" +
 	"		\r" +
 	"		function setMV(uint72[5] x) external\r" +
 	"		{\r" +
 	"			mv = x;\r" +
 	"			s = 42;\r" +
+	"			signed = -534;\r" +
 	"		}\r" +
 	"		\r" +
 	"		uint256[] m;\r" +
 	"		uint72[5] mv;\r" +
 	"		uint256 s;\r" +
+	"		int48 signed;\r" +
 	"	}\r");
 
 	mainApplication.projectModel.stateListModel.editState(0);
@@ -127,11 +130,13 @@ function test_arrayParametersAndStorage()
 	mainApplication.mainContent.rightPane.debugSlider.value = mainApplication.mainContent.rightPane.debugSlider.maximumValue;
 	tryCompare(mainApplication.mainContent.rightPane.solStorage.item.value, "m", ["4","5","6","2","10"]);
 	tryCompare(mainApplication.mainContent.rightPane.solStorage.item.value, "s", "5");
+	tryCompare(mainApplication.mainContent.rightPane.solStorage.item.value, "signed", "6534");
 	//debug setMV
 	mainApplication.clientModel.debugRecord(4);
 	mainApplication.mainContent.rightPane.debugSlider.value = mainApplication.mainContent.rightPane.debugSlider.maximumValue - 1;
 	tryCompare(mainApplication.mainContent.rightPane.solStorage.item.value, "mv", ["13","35","1","4","0"]);
 	tryCompare(mainApplication.mainContent.rightPane.solStorage.item.value, "s", "42");
+	tryCompare(mainApplication.mainContent.rightPane.solStorage.item.value, "signed", "-534");
 	tryCompare(mainApplication.mainContent.rightPane.solCallStack.listModel, 0, "setMV");
 }
 

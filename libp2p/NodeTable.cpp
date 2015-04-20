@@ -382,7 +382,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	// h256 + Signature + type + RLP (smallest possible packet is empty neighbours packet which is 3 bytes)
 	if (_packet.size() < h256::size + Signature::size + 1 + 3)
 	{
-		clog(NodeTableWarn) << "Invalid Message size from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableWarn) << "Invalid message size from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
@@ -390,7 +390,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	h256 hashSigned(sha3(hashedBytes));
 	if (!_packet.cropped(0, h256::size).contentsEqual(hashSigned.asBytes()))
 	{
-		clog(NodeTableWarn) << "Invalid Message hash from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableWarn) << "Invalid message hash from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
@@ -402,7 +402,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	Public nodeid(dev::recover(*(Signature const*)sigBytes.data(), sha3(signedBytes)));
 	if (!nodeid)
 	{
-		clog(NodeTableWarn) << "Invalid Message signature from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableWarn) << "Invalid message signature from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
@@ -469,7 +469,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				
 				if (!expected)
 				{
-					clog(NetConnect) << "Dropping unsolicited Neighbours packet from " << _from.address();
+					clog(NetConnect) << "Dropping unsolicited neighbours packet from " << _from.address();
 					break;
 				}
 				
@@ -517,7 +517,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			}
 				
 			default:
-				clog(NodeTableWarn) << "Invalid Message, " << hex << packetType << ", received from " << _from.address().to_string() << ":" << dec << _from.port();
+				clog(NodeTableWarn) << "Invalid message, " << hex << packetType << ", received from " << _from.address().to_string() << ":" << dec << _from.port();
 				return;
 		}
 

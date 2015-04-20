@@ -185,6 +185,8 @@ void BlockChain::close()
 
 void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, unsigned)> const& _progress)
 {
+	std::string path = _path.empty() ? Defaults::get()->m_dbPath : _path;
+
 #if ETH_PROFILING_GPERF
 	ProfilerStart("BlockChain_rebuild.log");
 #endif
@@ -195,16 +197,16 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	// Keep extras DB around, but under a temp name
 	delete m_extrasDB;
 	m_extrasDB = nullptr;
-	IGNORE_EXCEPTIONS(boost::filesystem::remove_all(_path + "/details.old"));
-	boost::filesystem::rename(_path + "/details", _path + "/details.old");
+	IGNORE_EXCEPTIONS(boost::filesystem::remove_all(path + "/details.old"));
+	boost::filesystem::rename(path + "/details", path + "/details.old");
 	ldb::DB* oldExtrasDB;
 	ldb::Options o;
 	o.create_if_missing = true;
-	ldb::DB::Open(o, _path + "/details.old", &oldExtrasDB);
-	ldb::DB::Open(o, _path + "/details", &m_extrasDB);
+	ldb::DB::Open(o, path + "/details.old", &oldExtrasDB);
+	ldb::DB::Open(o, path + "/details", &m_extrasDB);
 
 	// Open a fresh state DB
-	State s(State::openDB(_path, WithExisting::Kill), BaseState::CanonGenesis);
+	State s(State::openDB(path, WithExisting::Kill), BaseState::CanonGenesis);
 
 	// Clear all memos ready for replay.
 	m_details.clear();
@@ -255,7 +257,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 #endif
 
 	delete oldExtrasDB;
-	boost::filesystem::remove_all(_path + "/details.old");
+	boost::filesystem::remove_all(path + "/details.old");
 }
 
 template <class T, class V>
@@ -308,7 +310,7 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 			fresh += r.first;
 			dead += r.second;
 		}
-		catch (UnknownParent)
+		catch (dev::eth::UnknownParent)
 		{
 			cwarn << "ODD: Import queue contains block with unknown parent." << boost::current_exception_diagnostic_information();
 			// NOTE: don't reimport since the queue should guarantee everything in the right order.
@@ -396,9 +398,11 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	if (!pd)
 	{
 		auto pdata = pd.rlp();
-		cwarn << "Odd: details is returning false despite block known:" << RLP(pdata);
+		clog(BlockChainDebug) << "Details is returning false despite block known:" << RLP(pdata);
 		auto parentBlock = block(bi.parentHash);
-		cwarn << "Block:" << RLP(parentBlock);
+		clog(BlockChainDebug) << "Block:" << RLP(parentBlock);
+		clog(BlockChainDebug) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+		exit(-1);
 	}
 
 	// Check it's not crazy
@@ -617,6 +621,14 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	cnote << "writing:" << writing;
 	cnote << "checkBest:" << checkBest;
 #endif
+
+	if (isKnown(bi.hash()) && !details(bi.hash()))
+	{
+		clog(BlockChainDebug) << "Known block just inserted has no details.";
+		clog(BlockChainDebug) << "Block:" << bi;
+		clog(BlockChainDebug) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+		exit(-1);
+	}
 
 	h256s fresh;
 	h256s dead;

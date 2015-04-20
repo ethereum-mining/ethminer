@@ -46,6 +46,15 @@ struct BlockQueueStatus
 	size_t bad;
 };
 
+enum class QueueStatus
+{
+	Ready,
+	Importing,
+	UnknownParent,
+	Bad,
+	Unknown
+};
+
 /**
  * @brief A queue of blocks. Sits between network or other I/O and the BlockChain.
  * Sorts them ready for blockchain insertion (with the BlockChain::sync() method).
@@ -85,6 +94,9 @@ public:
 
 	/// Get some infomration on the current status.
 	BlockQueueStatus status() const { ReadGuard l(m_lock); return BlockQueueStatus{m_ready.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
+
+	/// Get some infomration on the given block's status regarding us.
+	QueueStatus blockStatus(h256 const& _h) const;
 
 	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
 
