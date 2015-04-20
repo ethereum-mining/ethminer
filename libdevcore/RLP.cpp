@@ -149,8 +149,11 @@ unsigned RLP::length() const
 		return n - c_rlpDataImmLenStart;
 	else if (n < c_rlpListStart)
 	{
-		if ((int)m_data.size() <= n - c_rlpDataIndLenZero || m_data[1] == 0)
+		if ((int)m_data.size() <= n - c_rlpDataIndLenZero)
 			BOOST_THROW_EXCEPTION(BadRLP());
+		if ((int)m_data.size() > 1)
+			if (m_data[1] == 0)
+				BOOST_THROW_EXCEPTION(BadRLP());
 		for (int i = 0; i < n - c_rlpDataIndLenZero; ++i)
 			ret = (ret << 8) | m_data[i + 1];
 	}
@@ -158,8 +161,11 @@ unsigned RLP::length() const
 		return n - c_rlpListStart;
 	else
 	{
-		if ((int)m_data.size() <= n - c_rlpListIndLenZero || m_data[1] == 0)
+		if ((int)m_data.size() <= n - c_rlpListIndLenZero)
 			BOOST_THROW_EXCEPTION(BadRLP());
+		if ((int)m_data.size() > 1)
+			if (m_data[1] == 0)
+				BOOST_THROW_EXCEPTION(BadRLP());
 		for (int i = 0; i < n - c_rlpListIndLenZero; ++i)
 			ret = (ret << 8) | m_data[i + 1];
 	}
