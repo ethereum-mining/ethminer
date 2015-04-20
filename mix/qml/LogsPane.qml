@@ -6,12 +6,15 @@ import org.ethereum.qml.SortFilterProxyModel 1.0
 
 Rectangle
 {
+	property variant statusPane
 	property variant currentStatus
 	property int contentXPos: logStyle.generic.layout.dateWidth + logStyle.generic.layout.typeWidth - 70
 
 	function clear()
 	{
 		logsModel.clear();
+		statusPane.clear();
+		currentStatus = undefined;
 	}
 
 	function push(_level, _type, _content)
@@ -22,7 +25,7 @@ Rectangle
 
 	onVisibleChanged:
 	{
-		if (visible && (logsModel.count === 0 || (logsModel.get(0).date !== currentStatus.date && logsModel.get(0).content !== currentStatus.content)))
+		if (currentStatus && visible && (logsModel.count === 0 || logsModel.get(0).content !== currentStatus.content || logsModel.get(0).date !== currentStatus.date))
 			logsModel.insert(0, { "type": currentStatus.type, "date": currentStatus.date, "content": currentStatus.content, "level": currentStatus.level });
 		else if (!visible)
 		{
@@ -533,7 +536,7 @@ Rectangle
 					enabled: logsModel.count > 0
 					tooltip: qsTr("Clear")
 					onTriggered: {
-						logsModel.clear();
+						logsPane.clear()
 					}
 				}
 			}
