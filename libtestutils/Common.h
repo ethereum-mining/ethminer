@@ -37,6 +37,7 @@ std::string getTestPath();
 int randomNumber();
 Json::Value loadJsonFromFile(std::string const& _path);
 std::string toTestFilePath(std::string const& _filename);
+std::string getFolder(std::string const& _line);
 std::string getRandomPath();
 
 }
