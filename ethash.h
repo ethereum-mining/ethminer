@@ -201,6 +201,10 @@ bool ethash_full_compute(
 	uint64_t const nonce
 );
 /**
+ * Get a pointer to the full DAG data
+ */
+void *ethash_full_data(ethash_full_t full);
+/**
  * Get a pointer to the cache object held by the full client
  *
  * @param full    The full client whose cache to request

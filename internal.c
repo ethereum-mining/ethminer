@@ -467,6 +467,11 @@ bool ethash_full_compute(
 	);
 }
 
+void *ethash_full_data(ethash_full_t full)
+{
+    return full->data;
+}
+
 ethash_cache_t* ethash_full_get_cache(ethash_full_t full)
 {
 	return full->cache;
