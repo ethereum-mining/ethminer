@@ -485,14 +485,15 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 #endif
 
 		{
+			ReadGuard l1(x_blocks);
 			ReadGuard l2(x_details);
 			ReadGuard l4(x_receipts);
 			ReadGuard l5(x_logBlooms);
-			m_blocksDB->Put(m_writeOptions, toSlice(bi.hash()), (ldb::Slice)ref(_block));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.hash()].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[bi.hash()].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[bi.hash()].rlp()));
+			m_blocksDB->Put(m_writeOptions, toSlice(bi.hash()), (ldb::Slice)ref(_block));
 		}
 
 #if ETH_TIMED_IMPORTS
@@ -968,25 +969,23 @@ bool BlockChain::isKnown(h256 const& _hash) const
 	if (_hash == m_genesisHash)
 		return true;
 
-	BlockInfo bi;
-
-	{
-		ReadGuard l(x_blocks);
-		auto it = m_blocks.find(_hash);
-		if (it != m_blocks.end())
-			bi = BlockInfo(it->second, CheckNothing, _hash);
-	}
-
-	if (!bi)
-	{
-		string d;
-		m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
-		if (!d.size())
-			return false;
-		bi = BlockInfo(bytesConstRef(&d), CheckNothing, _hash);
-	}
-
-	return bi.number <= m_lastBlockNumber;	// TODO: m_lastBlockNumber
+	ETH_READ_GUARDED(x_blocks)
+		if (!m_blocks.count(_hash))
+		{
+			string d;
+			m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
+			if (d.empty())
+				return false;
+		}
+	ETH_READ_GUARDED(x_details)
+		if (!m_details.count(_hash))
+		{
+			string d;
+			m_extrasDB->Get(m_readOptions, toSlice(_hash, ExtraDetails), &d);
+			if (d.empty())
+				return false;
+		}
+	return true;
 }
 
 bytes BlockChain::block(h256 const& _hash) const
@@ -1004,7 +1003,7 @@ bytes BlockChain::block(h256 const& _hash) const
 	string d;
 	m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
 
-	if (!d.size())
+	if (d.empty())
 	{
 		cwarn << "Couldn't find requested block:" << _hash.abridged();
 		return bytes();
