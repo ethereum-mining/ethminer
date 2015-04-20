@@ -160,8 +160,7 @@ Item {
 		}
 	}
 
-	function setFontSize(size)
-	{
+	function setFontSize(size) {
 		if (size <= 10 || size >= 48)
 			return;
 		editorSettings.fontSize = size;
@@ -328,7 +327,6 @@ Item {
 	ListModel {
 		id: editorListModel
 	}
-
 
 	Action {
 		id: increaseFontSize
