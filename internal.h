@@ -32,13 +32,13 @@ typedef union node {
 } node;
 
 struct ethash_light {
-	ethash_cache* cache;
+	ethash_cache_t* cache;
 };
 
 struct ethash_full {
 	FILE* file;
-	size_t file_size;
-	ethash_cache* cache;
+	uint64_t file_size;
+	ethash_cache_t* cache;
 	node* data;
 	ethash_callback_t callback;
 };
@@ -46,8 +46,7 @@ struct ethash_full {
 void ethash_calculate_dag_item(
 	node* const ret,
 	const unsigned node_index,
-	ethash_params const* params,
-	ethash_cache const* cache
+	ethash_cache_t const* cache
 );
 
 void ethash_quick_hash(
