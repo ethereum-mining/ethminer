@@ -32,6 +32,7 @@
 		<file>qml/html/cm/show-hint.js</file>
 		<file>qml/html/cm/signal.js</file>
 		<file>qml/html/cm/solarized.css</file>
+		<file>qml/html/cm/inkpot.css</file>
 		<file>qml/html/cm/solidity.js</file>
 		<file>qml/html/cm/solidityToken.js</file>
 		<file>qml/html/cm/tern.js</file>
