@@ -317,7 +317,7 @@ Item {
 				experimental.settings.localContentCanAccessRemoteUrls: true
 				onJavaScriptConsoleMessage: {
 					console.log(sourceID + ":" + lineNumber + ": " + message);
-					webPreview.javaScriptMessage(level, sourceID, lineNumber, message);
+					webPreview.javaScriptMessage(level, sourceID, lineNumber - 1, message);
 				}
 				onLoadingChanged: {
 					if (!loading) {
