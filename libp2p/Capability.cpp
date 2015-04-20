@@ -27,19 +27,14 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-#if defined(clogS)
-#undef clogS
-#endif
-#define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
-
 Capability::Capability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset): m_session(_s), m_host(_h), m_idOffset(_idOffset)
 {
-	clogS(NetConnect) << "New session for capability" << m_host->name() << "; idOffset:" << m_idOffset;
+	clog(NetConnect) << "New session for capability" << m_host->name() << "; idOffset:" << m_idOffset;
 }
 
 void Capability::disable(std::string const& _problem)
 {
-	clogS(NetWarn) << "DISABLE: Disabling capability '" << m_host->name() << "'. Reason:" << _problem;
+	clog(NetWarn) << "DISABLE: Disabling capability '" << m_host->name() << "'. Reason:" << _problem;
 	m_enabled = false;
 }
 

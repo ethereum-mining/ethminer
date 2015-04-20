@@ -34,13 +34,6 @@ OverlayDB::~OverlayDB()
 		cnote << "Closing state DB";
 }
 
-void OverlayDB::setDB(ldb::DB* _db, bool _clearOverlay)
-{
-	m_db = std::shared_ptr<ldb::DB>(_db);
-	if (_clearOverlay)
-		m_over.clear();
-}
-
 void OverlayDB::commit()
 {
 	if (m_db)

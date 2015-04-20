@@ -29,7 +29,12 @@
 #include <libevmcore/Instruction.h>
 #include <libevmcore/AssemblyItem.h>
 #include "Exceptions.h"
+#include <json/json.h>
 
+namespace Json
+{
+class Value;
+}
 namespace dev
 {
 namespace eth
@@ -76,7 +81,7 @@ public:
 	void popTo(int _deposit) { while (m_deposit > _deposit) append(Instruction::POP); }
 
 	void injectStart(AssemblyItem const& _i);
-	std::string out() const { std::stringstream ret; stream(ret); return ret.str(); }
+	std::string out() const;
 	int deposit() const { return m_deposit; }
 	void adjustDeposit(int _adjustment) { m_deposit += _adjustment; if (asserts(m_deposit >= 0)) BOOST_THROW_EXCEPTION(InvalidDeposit()); }
 	void setDeposit(int _deposit) { m_deposit = _deposit; if (asserts(m_deposit >= 0)) BOOST_THROW_EXCEPTION(InvalidDeposit()); }
@@ -86,13 +91,24 @@ public:
 
 	bytes assemble() const;
 	Assembly& optimise(bool _enable);
-	std::ostream& stream(std::ostream& _out, std::string const& _prefix = "", const StringMap &_sourceCodes = StringMap()) const;
+	Json::Value stream(
+		std::ostream& _out,
+		std::string const& _prefix = "",
+		const StringMap &_sourceCodes = StringMap(),
+		bool _inJsonFormat = false
+	) const;
 
 protected:
 	std::string getLocationFromSources(StringMap const& _sourceCodes, SourceLocation const& _location) const;
 	void donePath() { if (m_totalDeposit != INT_MAX && m_totalDeposit != m_deposit) BOOST_THROW_EXCEPTION(InvalidDeposit()); }
 	unsigned bytesRequired() const;
 
+private:
+	Json::Value streamAsmJson(std::ostream& _out, const StringMap &_sourceCodes) const;
+	std::ostream& streamAsm(std::ostream& _out, std::string const& _prefix, StringMap const& _sourceCodes) const;
+	Json::Value createJsonValue(std::string _name, int _begin, int _end, std::string _value = std::string(), std::string _jumpType = std::string()) const;
+
+protected:
 	unsigned m_usedTags = 0;
 	AssemblyItems m_items;
 	mutable std::map<h256, bytes> m_data;

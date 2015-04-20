@@ -138,12 +138,12 @@ EthashAux::LightAllocation::~LightAllocation()
 }
 
 
-EthashAux::FullType EthashAux::full(BlockInfo const& _header, bytesRef _dest)
+EthashAux::FullType EthashAux::full(BlockInfo const& _header, bytesRef _dest, bool _createIfMissing)
 {
-	return full(_header.seedHash(), _dest);
+	return full(_header.seedHash(), _dest, _createIfMissing);
 }
 
-EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest)
+EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest, bool _createIfMissing)
 {
 	RecursiveGuard l(get()->x_this);
 	FullType ret = get()->m_fulls[_seedHash].lock();
@@ -180,6 +180,8 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest)
 		bytesRef r = contentsNew(memoFile, _dest);
 		if (!r)
 		{
+			if (!_createIfMissing)
+				return FullType();
 			// file didn't exist.
 			if (_dest)
 				// buffer was passed in - no insertion into cache nor need to allocate
@@ -221,8 +223,7 @@ Ethash::Result EthashAux::LightAllocation::compute(h256 const& _seedHash, h256 c
 
 Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
 {
-	// TODO: should be EthashAux::get()->haveFull(_seedHash)
-	if (auto dag = EthashAux::get()->full(_seedHash))
+	if (auto dag = EthashAux::get()->full(_seedHash, bytesRef(), false))
 		return dag->compute(_seedHash, _headerHash, _nonce);
 	return EthashAux::get()->light(_seedHash)->compute(_seedHash, _headerHash, _nonce);
 }
