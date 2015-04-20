@@ -52,8 +52,10 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 		BOOST_REQUIRE(o.count("pre"));
 		ImportTest importer(o["pre"].get_obj());
-		State state(OverlayDB(), BaseState::Empty, biGenesisBlock.coinbaseAddress);
-		State stateTemp(OverlayDB(), BaseState::Empty, biGenesisBlock.coinbaseAddress);
+		TransientDirectory td_stateDB;
+		TransientDirectory td_stateDB_tmp;
+		State state(OverlayDB(State::openDB(td_stateDB.path())), BaseState::Empty, biGenesisBlock.coinbaseAddress);
+		State stateTemp(OverlayDB(State::openDB(td_stateDB_tmp.path())), BaseState::Empty, biGenesisBlock.coinbaseAddress);
 		importer.importState(o["pre"].get_obj(), state);
 		o["pre"] = fillJsonWithState(state);
 		state.commit();
@@ -289,6 +291,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					state = stateTemp; //revert state as if it was before executing this block
 				}
 				blArray.push_back(blObj);
+				this_thread::sleep_for(chrono::seconds(1));
 			} //for blocks
 
 			if (o.count("expect") > 0)
@@ -625,11 +628,11 @@ void writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi)
 	_o["transactionsTrie"] = toString(_bi.transactionsRoot);
 	_o["receiptTrie"] = toString(_bi.receiptsRoot);
 	_o["bloom"] = toString(_bi.logBloom);
-	_o["difficulty"] = "0x" + toHex(toCompactBigEndian(_bi.difficulty), 1);
-	_o["number"] = "0x" + toHex(toCompactBigEndian(_bi.number), 1);
-	_o["gasLimit"] = "0x" + toHex(toCompactBigEndian(_bi.gasLimit), 1);
-	_o["gasUsed"] = "0x" + toHex(toCompactBigEndian(_bi.gasUsed), 1);
-	_o["timestamp"] = "0x" + toHex(toCompactBigEndian(_bi.timestamp), 1);
+	_o["difficulty"] = "0x" + toHex(toCompactBigEndian(_bi.difficulty, 1));
+	_o["number"] = "0x" + toHex(toCompactBigEndian(_bi.number, 1));
+	_o["gasLimit"] = "0x" + toHex(toCompactBigEndian(_bi.gasLimit, 1));
+	_o["gasUsed"] = "0x" + toHex(toCompactBigEndian(_bi.gasUsed, 1));
+	_o["timestamp"] = "0x" + toHex(toCompactBigEndian(_bi.timestamp, 1));
 	_o["extraData"] ="0x" + toHex(_bi.extraData);
 	_o["mixHash"] = toString(_bi.mixHash);
 	_o["nonce"] = toString(_bi.nonce);
@@ -663,9 +666,9 @@ BOOST_AUTO_TEST_CASE(bcInvalidRLPTest)
 	dev::test::executeTests("bcInvalidRLPTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
 }
 
-BOOST_AUTO_TEST_CASE(bcJS_API_Test)
+BOOST_AUTO_TEST_CASE(bcRPC_API_Test)
 {
-	dev::test::executeTests("bcJS_API_Test", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	dev::test::executeTests("bcRPC_API_Test", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcValidBlockTest)
@@ -694,4 +697,3 @@ BOOST_AUTO_TEST_CASE(userDefinedFile)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-

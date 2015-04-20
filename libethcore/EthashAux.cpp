@@ -75,11 +75,11 @@ h256 EthashAux::seedHash(unsigned _number)
 			n = get()->m_seedHashes.size() - 1;
 		}
 		get()->m_seedHashes.resize(epoch + 1);
-		cdebug << "Searching for seedHash of epoch " << epoch;
+//		cdebug << "Searching for seedHash of epoch " << epoch;
 		for (; n <= epoch; ++n, ret = sha3(ret))
 		{
 			get()->m_seedHashes[n] = ret;
-			cdebug << "Epoch" << n << "is" << ret.abridged();
+//			cdebug << "Epoch" << n << "is" << ret.abridged();
 		}
 	}
 	return get()->m_seedHashes[epoch];
@@ -95,7 +95,7 @@ ethash_params EthashAux::params(h256 const& _seedHash)
 	}
 	catch (...)
 	{
-		cdebug << "Searching for seedHash " << _seedHash.abridged();
+//		cdebug << "Searching for seedHash " << _seedHash.abridged();
 		for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = sha3(h), get()->m_epochs[h] = epoch) {}
 		if (epoch == 2048)
 		{
