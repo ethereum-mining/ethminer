@@ -28,9 +28,34 @@
 using namespace std;
 using namespace dev;
 
+//⊳⊲◀▶■▣▢□▷◁▧▨▩▲◆◉◈◇◎●◍◌○◼☑☒☎☢☣☰☀♽♥♠✩✭❓✔✓✖✕✘✓✔✅⚒⚡⦸⬌∅⁕«««»»»
+
 // Logging
 int dev::g_logVerbosity = 5;
 map<type_info const*, bool> dev::g_logOverride;
+
+const char* LogChannel::name() { return EthGray "···" EthReset; }
+const char* LeftChannel::name() { return EthNavy "◀▬▬" EthReset; }
+const char* RightChannel::name() { return EthGreen "▬▬▶" EthReset; }
+const char* WarnChannel::name() { return EthOnRed EthBlackBold "✘✘✘" EthReset; }
+const char* NoteChannel::name() { return EthGreen " ✔ " EthReset; }
+const char* DebugChannel::name() { return EthWhite " ◆ " EthReset; }
+
+LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v)
+{
+	auto it = g_logOverride.find(_info);
+	if ((it != g_logOverride.end() && it->second == true) || (it == g_logOverride.end() && (int)_v <= g_logVerbosity))
+	{
+		time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		char buf[24];
+		if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
+			buf[0] = '\0'; // empty if case strftime fails
+		static char const* c_begin = EthWhite " [ " EthReset EthCoalBold;
+		static char const* c_sep = EthReset EthWhite " | " EthReset EthCoalBold;
+		static char const* c_end = EthReset EthWhite " ] " EthReset;
+		m_sstr << _id << c_begin << buf << c_sep << getThreadName() << ThreadContext::join(c_sep) << c_end;
+	}
+}
 
 /// Associate a name with each thread for nice logging.
 struct ThreadLocalLogName

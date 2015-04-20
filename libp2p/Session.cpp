@@ -48,7 +48,8 @@ Session::Session(Host* _s, RLPXFrameIO* _io, std::shared_ptr<Peer> const& _n, Pe
 
 Session::~Session()
 {
-	ThreadContext tc(info().id.abridged() + " | " + info().clientVersion);
+	ThreadContext tc(info().id.abridged());
+	ThreadContext tc2(info().clientVersion);
 	clog(NetMessageSummary) << "Closing peer session :-(";
 	m_peer->m_lastConnected = m_peer->m_lastAttempted - chrono::seconds(1);
 
@@ -323,7 +324,8 @@ void Session::write()
 	auto self(shared_from_this());
 	ba::async_write(m_socket, ba::buffer(bytes), [this, self](boost::system::error_code ec, std::size_t /*length*/)
 	{
-		ThreadContext tc(info().id.abridged() + " | " + info().clientVersion);
+		ThreadContext tc(info().id.abridged());
+		ThreadContext tc2(info().clientVersion);
 		// must check queue, as write callback can occur following dropped()
 		if (ec)
 		{
@@ -397,7 +399,8 @@ void Session::doRead()
 	auto self(shared_from_this());
 	ba::async_read(m_socket, boost::asio::buffer(m_data, h256::size), [this,self](boost::system::error_code ec, std::size_t length)
 	{
-		ThreadContext tc(info().id.abridged() + " | " + info().clientVersion);
+		ThreadContext tc(info().id.abridged());
+		ThreadContext tc2(info().clientVersion);
 		if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 		{
 			clog(NetWarn) << "Error reading: " << ec.message();
