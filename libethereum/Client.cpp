@@ -205,20 +205,11 @@ void Client::startedWorking()
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
 	cdebug << "startedWorking()";
 
-	cdebug << m_bc.number() << m_bc.currentHash();
-	cdebug << "Pre:" << m_preMine.info();
-	cdebug << "Post:" << m_postMine.info();
-	cdebug << "Pre:" << m_preMine.info().headerHash(WithoutNonce) << "; Post:" << m_postMine.info().headerHash(WithoutNonce);
-
 	ETH_WRITE_GUARDED(x_preMine)
 		m_preMine.sync(m_bc);
 	ETH_WRITE_GUARDED(x_postMine)
 		ETH_READ_GUARDED(x_preMine)
 			m_postMine = m_preMine;
-
-	cdebug << "Pre:" << m_preMine.info();
-	cdebug << "Post:" << m_postMine.info();
-	cdebug << "Pre:" << m_preMine.info().headerHash(WithoutNonce) << "; Post:" << m_postMine.info().headerHash(WithoutNonce);
 }
 
 void Client::doneWorking()
