@@ -436,7 +436,8 @@ void Session::doRead()
 			auto tlen = frameSize + ((16 - (frameSize % 16)) % 16) + h128::size;
 			ba::async_read(m_socket, boost::asio::buffer(m_data, tlen), [this, self, headerRLP, frameSize, tlen](boost::system::error_code ec, std::size_t length)
 			{
-				ThreadContext tc(info().id.abridged() + " | " + info().clientVersion);
+				ThreadContext tc(info().id.abridged());
+				ThreadContext tc2(info().clientVersion);
 				if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 				{
 					clog(NetWarn) << "Error reading: " << ec.message();

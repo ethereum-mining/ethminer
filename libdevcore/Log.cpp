@@ -28,18 +28,18 @@
 using namespace std;
 using namespace dev;
 
-//⊳⊲◀▶■▣▢□▷◁▧▨▩▲◆◉◈◇◎●◍◌○◼☑☒☎☢☣☰☀♽♥♠✩✭❓✔✓✖✕✘✓✔✅⚒⚡⦸⬌∅⁕«««»»»
+//⊳⊲◀▶■▣▢□▷◁▧▨▩▲◆◉◈◇◎●◍◌○◼☑☒☎☢☣☰☀♽♥♠✩✭❓✔✓✖✕✘✓✔✅⚒⚡⦸⬌∅⁕«««»»»⚙
 
 // Logging
 int dev::g_logVerbosity = 5;
 map<type_info const*, bool> dev::g_logOverride;
 
-const char* LogChannel::name() { return EthGray "···" EthReset; }
-const char* LeftChannel::name() { return EthNavy "◀▬▬" EthReset; }
-const char* RightChannel::name() { return EthGreen "▬▬▶" EthReset; }
-const char* WarnChannel::name() { return EthOnRed EthBlackBold "✘✘✘" EthReset; }
-const char* NoteChannel::name() { return EthGreen " ✔ " EthReset; }
-const char* DebugChannel::name() { return EthWhite " ◆ " EthReset; }
+const char* LogChannel::name() { return EthGray "···"; }
+const char* LeftChannel::name() { return EthNavy "◀▬▬"; }
+const char* RightChannel::name() { return EthGreen "▬▬▶"; }
+const char* WarnChannel::name() { return EthOnRed EthBlackBold "  ✘"; }
+const char* NoteChannel::name() { return EthBlue "  ℹ"; }
+const char* DebugChannel::name() { return EthWhite "  ◇"; }
 
 LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v)
 {
@@ -50,10 +50,11 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
 		char buf[24];
 		if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
 			buf[0] = '\0'; // empty if case strftime fails
-		static char const* c_begin = EthWhite " [ " EthReset EthCoalBold;
-		static char const* c_sep = EthReset EthWhite " | " EthReset EthCoalBold;
-		static char const* c_end = EthReset EthWhite " ] " EthReset;
-		m_sstr << _id << c_begin << buf << c_sep << getThreadName() << ThreadContext::join(c_sep) << c_end;
+		static char const* c_begin = "  " EthViolet;
+		static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
+		static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
+		static char const* c_end = EthReset "  ";
+		m_sstr << _id << c_begin << buf << c_sep1 << getThreadName() << ThreadContext::join(c_sep2) << c_end;
 	}
 }
 

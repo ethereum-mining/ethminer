@@ -32,6 +32,20 @@ const dev::p2p::Node dev::p2p::UnspecifiedNode = dev::p2p::Node(NodeId(), Unspec
 
 bool dev::p2p::NodeIPEndpoint::test_allowLocal = false;
 
+//⊳⊲◀▶■▣▢□▷◁▧▨▩▲◆◉◈◇◎●◍◌○◼☑☒☎☢☣☰☀♽♥♠✩✭❓✔✓✖✕✘✓✔✅⚒⚡⦸⬌∅⁕«««»»»⚙━┅┉▬
+
+const char* NetWarn::name() { return EthYellow "⧎" EthRed " ✘"; }
+const char* NetImpolite::name() { return EthYellow "⧎" EthRed " !"; }
+const char* NetNote::name() { return EthYellow "⧎" EthBlue " ℹ"; }
+const char* NetConnect::name() { return EthYellow "⧎" EthYellow " ▢"; }
+const char* NetMessageSummary::name() { return EthYellow "⧎" EthWhite " ◌"; }
+const char* NetMessageDetail::name() { return EthYellow "⧎" EthGray " ○"; }
+const char* NetTriviaSummary::name() { return EthYellow "⧎" EthGray " ◎"; }
+const char* NetTriviaDetail::name() { return EthYellow "⧎" EthCoal " ◍"; }
+const char* NetAllDetail::name() { return EthYellow "⧎" EthCoal " ●"; }
+const char* NetRight::name() { return EthYellow "⧎" EthGreen "▬▶"; }
+const char* NetLeft::name() { return EthYellow "⧎" EthNavy "◀▬"; }
+
 bool p2p::isPublicAddress(std::string const& _addressToCheck)
 {
 	return _addressToCheck.empty() ? false : isPublicAddress(bi::address::from_string(_addressToCheck));

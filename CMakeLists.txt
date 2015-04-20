@@ -242,11 +242,11 @@ if ("x${CMAKE_BUILD_TYPE}" STREQUAL "x")
 	set(CMAKE_BUILD_TYPE "Release")
 endif ()
 
-# Default TARGET_PLATFORM to ${CMAKE_SYSTEM}
+# Default TARGET_PLATFORM to ${CMAKE_SYSTEM_NAME}
 # change this once we support cross compiling
-set(TARGET_PLATFORM CACHE STRING ${CMAKE_SYSTEM})
+set(TARGET_PLATFORM CACHE STRING ${CMAKE_SYSTEM_NAME})
 if ("x${TARGET_PLATFORM}" STREQUAL "x")
-	set(TARGET_PLATFORM ${CMAKE_SYSTEM})
+	set(TARGET_PLATFORM ${CMAKE_SYSTEM_NAME})
 endif ()
 
 include(EthDependencies)
