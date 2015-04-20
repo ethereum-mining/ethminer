@@ -72,9 +72,9 @@ std::string dev::test::toTestFilePath(std::string const& _filename)
 	return getTestPath() + "/" + _filename + ".json";
 }
 
-std::string dev::test::getFolder(std::string const& _line)
+std::string dev::test::getFolder(std::string const& _file)
 {
-	return boost::filesystem::path(_line).parent_path().string();
+	return boost::filesystem::path(_file).parent_path().string();
 }
 
 std::string dev::test::getRandomPath()
