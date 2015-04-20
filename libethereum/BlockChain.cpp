@@ -218,7 +218,11 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	m_lastLastHashes.clear();
 	m_lastBlockHash = genesisHash();
 
-	h256 lastHash = genesisHash();
+	m_details[m_lastBlockHash].totalDifficulty = c_genesisDifficulty;
+
+	m_extrasDB->Put(m_writeOptions, toSlice(m_lastBlockHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[m_lastBlockHash].rlp()));
+
+	h256 lastHash = m_lastBlockHash;
 	boost::timer t;
 	for (unsigned d = 1; d < originalNumber; ++d)
 	{
@@ -240,7 +244,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 				return;
 			}
 			lastHash = bi.hash();
-			import(b, s.db(), ImportRequirements::Default);
+			import(b, s.db(), 0);
 		}
 		catch (...)
 		{
@@ -408,12 +412,12 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	// Check it's not crazy
 	if (bi.timestamp > (u256)time(0))
 	{
-		clog(BlockChainNote) << bi.hash() << ": Future time " << bi.timestamp << " (now at " << time(0) << ")";
+		clog(BlockChainChat) << bi.hash() << ": Future time " << bi.timestamp << " (now at " << time(0) << ")";
 		// Block has a timestamp in the future. This is no good.
 		BOOST_THROW_EXCEPTION(FutureTime());
 	}
 
-	clog(BlockChainNote) << "Attempting import of " << bi.hash().abridged() << "...";
+	clog(BlockChainChat) << "Attempting import of " << bi.hash().abridged() << "...";
 
 #if ETH_TIMED_IMPORTS
 	preliminaryChecks = t.elapsed();
@@ -609,7 +613,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	}
 	else
 	{
-		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
+		clog(BlockChainChat) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
 	}
 
 #if ETH_TIMED_IMPORTS
