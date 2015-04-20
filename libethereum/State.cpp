@@ -663,7 +663,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 		uncle.verifyParent(uncleParent);
 
 		nonces.insert(uncle.nonce);
-		tdIncrease += uncle.difficulty;
+//		tdIncrease += uncle.difficulty;
 		rewarded.push_back(uncle);
 	}
 
@@ -704,15 +704,15 @@ void State::cleanup(bool _fullCommit)
 		paranoia("immediately before database commit", true);
 
 		// Commit the new trie to disk.
-		cnote << "Committing to disk: stateRoot" << m_currentBlock.stateRoot.abridged() << "=" << rootHash().abridged() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
+		clog(StateTrace) << "Committing to disk: stateRoot" << m_currentBlock.stateRoot.abridged() << "=" << rootHash().abridged() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 		m_db.commit();
-		cnote << "Committed: stateRoot" << m_currentBlock.stateRoot.abridged() << "=" << rootHash().abridged() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
+		clog(StateTrace) << "Committed: stateRoot" << m_currentBlock.stateRoot.abridged() << "=" << rootHash().abridged() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 
 		paranoia("immediately after database commit", true);
 		m_previousBlock = m_currentBlock;
 		m_currentBlock.populateFromParent(m_previousBlock);
 
-		cdebug << "finalising enactment. current -> previous, hash is" << m_previousBlock.hash().abridged();
+		clog(StateTrace) << "finalising enactment. current -> previous, hash is" << m_previousBlock.hash().abridged();
 	}
 	else
 		m_db.rollback();

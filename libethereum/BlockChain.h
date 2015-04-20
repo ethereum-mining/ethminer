@@ -56,8 +56,8 @@ struct AlreadyHaveBlock: virtual Exception {};
 struct UnknownParent: virtual Exception {};
 struct FutureTime: virtual Exception {};
 
-struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 7; };
-struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 4; };
+struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 5; };
+struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 3; };
 struct BlockChainWarn: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 1; };
 struct BlockChainDebug: public LogChannel { static const char* name() { return "#B#"; } static const int verbosity = 0; };
 
