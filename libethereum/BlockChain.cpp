@@ -167,6 +167,7 @@ void BlockChain::open(std::string const& _path, WithExisting _we)
 	std::string l;
 	m_extrasDB->Get(m_readOptions, ldb::Slice("best"), &l);
 	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
+	m_lastBlockNumber = number(m_lastBlockHash);
 
 	cnote << "Opened blockchain DB. Latest: " << currentHash();
 }
@@ -177,6 +178,7 @@ void BlockChain::close()
 	delete m_extrasDB;
 	delete m_blocksDB;
 	m_lastBlockHash = m_genesisHash;
+	m_lastBlockNumber = 0;
 	m_details.clear();
 	m_blocks.clear();
 }
@@ -191,8 +193,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	ProfilerStart("BlockChain_rebuild.log");
 #endif
 
-//	unsigned originalNumber = (unsigned)BlockInfo(oldBlock(m_lastBlockHash)).number;
-	unsigned originalNumber = number();
+	unsigned originalNumber = m_lastBlockNumber;
 
 	// Keep extras DB around, but under a temp name
 	delete m_extrasDB;
@@ -217,6 +218,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	m_blocksBlooms.clear();
 	m_lastLastHashes.clear();
 	m_lastBlockHash = genesisHash();
+	m_lastBlockNumber = 0;
 
 	m_details[m_lastBlockHash].totalDifficulty = c_genesisDifficulty;
 
@@ -535,12 +537,6 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	{
 		unsigned commonIndex;
 		tie(route, common, commonIndex) = treeRoute(last, bi.hash());
-		{
-			WriteGuard l(x_lastBlockHash);
-			m_lastBlockHash = bi.hash();
-		}
-
-		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&(bi.hash()), 32));
 
 		// Most of the time these two will be equal - only when we're doing a chain revert will they not be
 		if (common != last)
@@ -599,6 +595,14 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 			m_extrasDB->Put(m_writeOptions, toSlice(h256(bi.number), ExtraBlockHash), (ldb::Slice)dev::ref(m_blockHashes[h256(bi.number)].rlp()));
 			for (auto const& h: newTransactionAddresses)
 				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
+		}
+
+		// FINALLY! change our best hash.
+		{
+			WriteGuard l(x_lastBlockHash);
+			m_lastBlockHash = bi.hash();
+			m_lastBlockNumber = (unsigned)bi.number;
+			m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&(bi.hash()), 32));
 		}
 
 		clog(BlockChainNote) << "   Imported and best" << td << " (#" << bi.number << "). Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(route);
@@ -960,14 +964,26 @@ bool BlockChain::isKnown(h256 const& _hash) const
 {
 	if (_hash == m_genesisHash)
 		return true;
+
 	{
 		ReadGuard l(x_blocks);
-		if (m_blocks.count(_hash))
-			return true;
+		auto it = m_blocks.find(_hash);
+		if (it != m_blocks.end())
+		{
+			noteUsed(_hash);
+			BlockInfo bi(it->second, CheckNothing, _hash);
+			return bi.number <= m_lastBlockNumber;	// TODO: m_lastBlockNumber
+		}
 	}
+
 	string d;
 	m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
-	return !!d.size();
+
+	if (!d.size())
+		return false;
+
+	BlockInfo bi(bytesConstRef(&d), CheckNothing, _hash);
+	return bi.number <= m_lastBlockNumber;	// TODO: m_lastBlockNumber
 }
 
 bytes BlockChain::block(h256 const& _hash) const

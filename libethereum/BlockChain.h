@@ -185,7 +185,7 @@ public:
 
 	/// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
 	unsigned number(h256 const& _hash) const { return details(_hash).number; }
-	unsigned number() const { return number(currentHash()); }
+	unsigned number() const { return m_lastBlockNumber; }
 
 	/// Get a given block (RLP format). Thread-safe.
 	h256 currentHash() const { ReadGuard l(x_lastBlockHash); return m_lastBlockHash; }
@@ -315,6 +315,7 @@ private:
 	/// Hash of the last (valid) block on the longest chain.
 	mutable boost::shared_mutex x_lastBlockHash;
 	h256 m_lastBlockHash;
+	unsigned m_lastBlockNumber = 0;
 
 	/// Genesis block info.
 	h256 m_genesisHash;
