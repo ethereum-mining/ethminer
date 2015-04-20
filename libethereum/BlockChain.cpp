@@ -406,7 +406,10 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		auto pdata = pd.rlp();
 		clog(BlockChainDebug) << "Details is returning false despite block known:" << RLP(pdata);
 		auto parentBlock = block(bi.parentHash);
-		clog(BlockChainDebug) << "Block:" << RLP(parentBlock);
+		clog(BlockChainDebug) << "isKnown:" << isKnown(bi.parentHash);
+		clog(BlockChainDebug) << "last/number:" << m_lastBlockNumber << m_lastBlockHash << bi.number;
+		clog(BlockChainDebug) << "Block:" << BlockInfo(parentBlock);
+		clog(BlockChainDebug) << "RLP:" << RLP(parentBlock);
 		clog(BlockChainDebug) << "DATABASE CORRUPTION: CRITICAL FAILURE";
 		exit(-1);
 	}
