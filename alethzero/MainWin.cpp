@@ -1448,6 +1448,25 @@ void Main::on_inject_triggered()
 	}
 }
 
+void Main::on_injectBlock_triggered()
+{
+	QString s = QInputDialog::getText(this, "Inject Block", "Enter block dump in hex");
+	try
+	{
+		bytes b = fromHex(s.toStdString(), WhenError::Throw);
+		ethereum()->injectBlock(b);
+	}
+	catch (BadHexCharacter& _e)
+	{
+		cwarn << "invalid hex character, transaction rejected";
+		cwarn << boost::diagnostic_information(_e);
+	}
+	catch (...)
+	{
+		cwarn << "block rejected";
+	}
+}
+
 void Main::on_blocks_currentItemChanged()
 {
 	ui->info->clear();
