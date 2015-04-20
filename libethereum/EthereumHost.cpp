@@ -189,7 +189,7 @@ void EthereumHost::maintainTransactions()
 	for (auto const& i: ts)
 	{
 		bool unsent = !m_transactionsSent.count(i.first);
-		for (auto const& p: randomSelection(25, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }))
+		for (auto const& p: randomSelection(100, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }))
 			peerTransactions[p].push_back(i.first);
 	}
 	for (auto const& t: ts)
@@ -242,18 +242,28 @@ std::vector<std::shared_ptr<EthereumPeer>> EthereumHost::randomSelection(unsigne
 void EthereumHost::maintainBlocks(h256 _currentHash)
 {
 	// Send any new blocks.
-	if (m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
+	auto detailsFrom = m_chain.details(m_latestBlockSent);
+	auto detailsTo = m_chain.details(_currentHash);
+	if (detailsFrom.totalDifficulty < detailsTo.totalDifficulty)
 	{
-		clog(NetMessageSummary) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
-
-		for (auto const& p: randomSelection(25, [&](EthereumPeer* p){return !p->m_knownBlocks.count(_currentHash); }))
+		if (diff(detailsFrom.number, detailsTo.number) < 20)
 		{
-			RLPStream ts;
-			p->prep(ts, NewBlockPacket, 2).appendRaw(m_chain.block(), 1).append(m_chain.details().totalDifficulty);
+			// don't be sending more than 20 "new" blocks. if there are any more we were probably waaaay behind.
+			clog(NetMessageSummary) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
-			Guard l(p->x_knownBlocks);
-			p->sealAndSend(ts);
-			p->m_knownBlocks.clear();
+			h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
+
+			for (auto const& p: randomSelection(100, [&](EthereumPeer* p){return !p->m_knownBlocks.count(_currentHash); }))
+				for (auto const& b: blocks)
+					if (!p->m_knownBlocks.count(b))
+					{
+						RLPStream ts;
+						p->prep(ts, NewBlockPacket, 2).appendRaw(m_chain.block(b), 1).append(m_chain.details(b).totalDifficulty);
+
+						Guard l(p->x_knownBlocks);
+						p->sealAndSend(ts);
+						p->m_knownBlocks.clear();
+					}
 		}
 		m_latestBlockSent = _currentHash;
 	}

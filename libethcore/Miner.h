@@ -24,7 +24,9 @@
 #include <thread>
 #include <list>
 #include <atomic>
+#include <boost/timer.hpp>
 #include <libdevcore/Common.h>
+#include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/Common.h>
 
@@ -105,8 +107,12 @@ public:
 		}
 		if (!!_work)
 		{
+			boost::timer t;
 			pause();
+			cdebug << "pause took" << t.elapsed();
+			t.restart();
 			kickOff();
+			cdebug << "kickOff took" << t.elapsed();
 		}
 		else if (!_work && !!old)
 			pause();
