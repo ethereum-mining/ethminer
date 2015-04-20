@@ -30,7 +30,7 @@ namespace dev
 namespace test
 {
 
-struct TestChannel: public LogChannel  { static const char* name() { return "TEST"; } };
+struct TestChannel: public LogChannel  { static const char* name(); };
 #define ctest dev::LogOutputStream<dev::test::TestChannel, true>()
 
 std::string getTestPath();

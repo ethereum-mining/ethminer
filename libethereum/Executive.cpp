@@ -31,6 +31,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+const char* VMTraceChannel::name() { return "EVM"; }
+
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
 	m_lastHashes(_bc.lastHashes((unsigned)_s.info().number - 1)),

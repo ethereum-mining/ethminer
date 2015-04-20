@@ -29,6 +29,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::test;
 
+const char* TestChannel::name() { return "TST"; }
+
 std::string dev::test::getTestPath()
 {
 	string testPath;
