@@ -200,14 +200,9 @@ public:
 	/// Only valid after mine() returns true.
 	bytes const& blockData() const { return m_currentBytes; }
 
-	// TODO: Cleaner interface.
 	/// Sync our transactions, killing those from the queue that we have and assimilating those that we don't.
-	/// @returns a list of receipts one for each transaction placed from the queue into the state.
-	/// @a o_transactionQueueChanged boolean pointer, the value of which will be set to true if the transaction queue
-	/// changed and the pointer is non-null
-	TransactionReceipts sync(BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, bool* o_transactionQueueChanged = nullptr);
-	/// Like sync but only operate on _tq, killing the invalid/old ones.
-	bool cull(TransactionQueue& _tq) const;
+	/// @returns a list of receipts one for each transaction placed from the queue into the state and bool, true iff there are more transactions to be processed.
+	std::pair<TransactionReceipts, bool> sync(BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, unsigned _msTimeout = 100);
 
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
