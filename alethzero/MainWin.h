@@ -159,6 +159,7 @@ private slots:
 	void on_killBlockchain_triggered();
 	void on_clearPending_triggered();
 	void on_inject_triggered();
+	void on_injectBlock_triggered();
 	void on_forceMining_triggered();
 	void on_usePrivate_triggered();
 	void on_turboMining_triggered();

@@ -186,7 +186,7 @@ Item {
 
 				if (documentName === urlInput.text.replace(httpServer.url + "/", "")) {
 					//root page, inject deployment script
-					content = "<script>web3=parent.web3;contracts=parent.contracts;</script>\n" + content;
+					content = "<script>web3=parent.web3;BigNumber=parent.BigNumber;contracts=parent.contracts;</script>\n" + content;
 					_request.setResponseContentType("text/html");
 				}
 				_request.setResponse(content);
@@ -317,7 +317,7 @@ Item {
 				experimental.settings.localContentCanAccessRemoteUrls: true
 				onJavaScriptConsoleMessage: {
 					console.log(sourceID + ":" + lineNumber + ": " + message);
-					webPreview.javaScriptMessage(level, sourceID, lineNumber, message);
+					webPreview.javaScriptMessage(level, sourceID, lineNumber - 1, message);
 				}
 				onLoadingChanged: {
 					if (!loading) {
