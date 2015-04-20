@@ -965,24 +965,24 @@ bool BlockChain::isKnown(h256 const& _hash) const
 	if (_hash == m_genesisHash)
 		return true;
 
+	BlockInfo bi;
+
 	{
 		ReadGuard l(x_blocks);
 		auto it = m_blocks.find(_hash);
 		if (it != m_blocks.end())
-		{
-			noteUsed(_hash);
-			BlockInfo bi(it->second, CheckNothing, _hash);
-			return bi.number <= m_lastBlockNumber;	// TODO: m_lastBlockNumber
-		}
+			bi = BlockInfo(it->second, CheckNothing, _hash);
 	}
 
-	string d;
-	m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
+	if (!bi)
+	{
+		string d;
+		m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
+		if (!d.size())
+			return false;
+		bi = BlockInfo(bytesConstRef(&d), CheckNothing, _hash);
+	}
 
-	if (!d.size())
-		return false;
-
-	BlockInfo bi(bytesConstRef(&d), CheckNothing, _hash);
 	return bi.number <= m_lastBlockNumber;	// TODO: m_lastBlockNumber
 }
 
