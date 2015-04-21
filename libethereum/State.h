@@ -50,10 +50,10 @@ namespace eth
 class BlockChain;
 class State;
 
-struct StateChat: public LogChannel { static const char* name() { return "-S-"; } static const int verbosity = 4; };
-struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
-struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
-struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
+struct StateChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
+struct StateTrace: public LogChannel { static const char* name(); static const int verbosity = 7; };
+struct StateDetail: public LogChannel { static const char* name(); static const int verbosity = 14; };
+struct StateSafeExceptions: public LogChannel { static const char* name(); static const int verbosity = 21; };
 
 enum class BaseState
 {
@@ -161,15 +161,18 @@ public:
 	/// This may be called multiple times and without issue.
 	void commitToMine(BlockChain const& _bc);
 
+	/// @returns true iff commitToMine() has been called without any subsequest transactions added &c.
+	bool isCommittedToMine() const { return m_committedToMine; }
+
 	/// Pass in a solution to the proof-of-work.
-	/// @returns true iff the given nonce is a proof-of-work for this State's block.
+	/// @returns true iff we were previously committed to mining.
 	template <class PoW>
 	bool completeMine(typename PoW::Solution const& _result)
 	{
-		PoW::assignResult(_result, m_currentBlock);
+		if (!m_committedToMine)
+			return false;
 
-	//	if (!m_pow.verify(m_currentBlock))
-	//		return false;
+		PoW::assignResult(_result, m_currentBlock);
 
 		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
 
@@ -177,24 +180,6 @@ public:
 
 		return true;
 	}
-
-	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
-	 * Typically looks like:
-	 * @code
-	 * while (notYetMined)
-	 * {
-	 * // lock
-	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
-	 * // unlock
-	 * MineInfo info;
-	 * for (info.completed = false; !info.completed; info = mine()) {}
-	 * }
-	 * // lock
-	 * completeMine();
-	 * // unlock
-	 * @endcode
-	 */
-	void completeMine();
 
 	/// Get the complete current block, including valid nonce.
 	/// Only valid after mine() returns true.
@@ -327,6 +312,19 @@ public:
 	void resetCurrent();
 
 private:
+	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
+	 * Typically looks like:
+	 * @code
+	 * while (notYetMined)
+	 * {
+	 * // lock
+	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
+	 * completeMine();
+	 * // unlock
+	 * @endcode
+	 */
+	void completeMine();
+
 	/// Undo the changes to the state for committing to mine.
 	void uncommitToMine();
 

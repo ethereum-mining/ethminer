@@ -29,6 +29,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
+
 ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs)
 {
 	// Check if we already know this block.
