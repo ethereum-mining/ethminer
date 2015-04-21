@@ -247,7 +247,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 
 			if (bi.parentHash != lastHash)
 			{
-				cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash().abridged() << "#" << d << " -> parent is" << bi.parentHash.abridged() << "; expected" << lastHash.abridged() << "#" << (d - 1);
+				cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash() << "#" << d << " -> parent is" << bi.parentHash << "; expected" << lastHash << "#" << (d - 1);
 				return;
 			}
 			lastHash = bi.hash();
@@ -278,16 +278,6 @@ bool contains(T const& _t, V const& _v)
 		if (i == _v)
 			return true;
 	return false;
-}
-
-inline string toString(h256s const& _bs)
-{
-	ostringstream out;
-	out << "[ ";
-	for (auto i: _bs)
-		out << i.abridged() << ", ";
-	out << "]";
-	return out.str();
 }
 
 LastHashes BlockChain::lastHashes(unsigned _n) const
@@ -323,14 +313,14 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 		}
 		catch (dev::eth::UnknownParent)
 		{
-			cwarn << "ODD: Import queue contains block with unknown parent." << boost::current_exception_diagnostic_information();
+			cwarn << "ODD: Import queue contains block with unknown parent." << error << boost::current_exception_diagnostic_information();
 			// NOTE: don't reimport since the queue should guarantee everything in the right order.
 			// Can't continue - chain bad.
 			badBlocks.push_back(BlockInfo::headerHash(block));
 		}
 		catch (Exception const& _e)
 		{
-			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << diagnostic_information(_e);
+			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << error << diagnostic_information(_e);
 			// NOTE: don't reimport since the queue should guarantee everything in the right order.
 			// Can't continue - chain  bad.
 			badBlocks.push_back(BlockInfo::headerHash(block));
@@ -427,7 +417,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		BOOST_THROW_EXCEPTION(FutureTime());
 	}
 
-	clog(BlockChainChat) << "Attempting import of " << bi.hash().abridged() << "...";
+	clog(BlockChainChat) << "Attempting import of " << bi.hash() << "...";
 
 #if ETH_TIMED_IMPORTS
 	preliminaryChecks = t.elapsed();
@@ -704,7 +694,7 @@ void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
 
 tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const& _to, bool _common, bool _pre, bool _post) const
 {
-//	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
+//	cdebug << "treeRoute" << _from << "..." << _to;
 	if (!_from || !_to)
 		return make_tuple(h256s(), h256(), 0);
 	h256s ret;
@@ -719,7 +709,7 @@ tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const
 			ret.push_back(from);
 		from = details(from).parent;
 		fn--;
-//		cdebug << "from:" << fn << _from.abridged();
+//		cdebug << "from:" << fn << _from;
 	}
 	h256 to = _to;
 	while (fn < tn)
@@ -728,7 +718,7 @@ tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const
 			back.push_back(to);
 		to = details(to).parent;
 		tn--;
-//		cdebug << "to:" << tn << _to.abridged();
+//		cdebug << "to:" << tn << _to;
 	}
 	for (;; from = details(from).parent, to = details(to).parent)
 	{
@@ -738,7 +728,7 @@ tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const
 			back.push_back(to);
 		fn--;
 		tn--;
-//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
+//		cdebug << "from:" << fn << _from << "; to:" << tn << _to;
 		if (from == to)
 			break;
 		if (!from)
@@ -1010,7 +1000,7 @@ bytes BlockChain::block(h256 const& _hash) const
 
 	if (d.empty())
 	{
-		cwarn << "Couldn't find requested block:" << _hash.abridged();
+		cwarn << "Couldn't find requested block:" << _hash;
 		return bytes();
 	}
 
