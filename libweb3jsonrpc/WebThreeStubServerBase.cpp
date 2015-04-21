@@ -775,7 +775,7 @@ Json::Value WebThreeStubServerBase::eth_getWork()
 	return ret;
 }
 
-bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, string const& _mixHash)
+bool WebThreeStubServerBase::eth_submitWork(string const& _nonce, string const&, string const& _mixHash)
 {
 	try
 	{

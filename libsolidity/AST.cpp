@@ -54,6 +54,7 @@ void ContractDefinition::checkTypeRequirements()
 
 	checkIllegalOverrides();
 	checkAbstractFunctions();
+	checkAbstractConstructors();
 
 	FunctionDefinition const* constructor = getConstructor();
 	if (constructor && !constructor->getReturnParameters().empty())
@@ -150,6 +151,45 @@ void ContractDefinition::checkAbstractFunctions()
 			setFullyImplemented(false);
 			break;
 		}
+}
+
+void ContractDefinition::checkAbstractConstructors()
+{
+	set<ContractDefinition const*> argumentsNeeded;
+	// check that we get arguments for all base constructors that need it.
+	// If not mark the contract as abstract (not fully implemented)
+
+	vector<ContractDefinition const*> const& bases = getLinearizedBaseContracts();
+	for (ContractDefinition const* contract: bases)
+		if (FunctionDefinition const* constructor = contract->getConstructor())
+			if (contract != this && !constructor->getParameters().empty())
+				argumentsNeeded.insert(contract);
+
+	for (ContractDefinition const* contract: bases)
+	{
+		if (FunctionDefinition const* constructor = contract->getConstructor())
+			for (auto const& modifier: constructor->getModifiers())
+			{
+				auto baseContract = dynamic_cast<ContractDefinition const*>(
+					modifier->getName()->getReferencedDeclaration()
+				);
+				if (baseContract)
+					argumentsNeeded.erase(baseContract);
+			}
+
+
+		for (ASTPointer<InheritanceSpecifier> const& base: contract->getBaseContracts())
+		{
+			auto baseContract = dynamic_cast<ContractDefinition const*>(
+				base->getName()->getReferencedDeclaration()
+			);
+			solAssert(baseContract, "");
+			if (!base->getArguments().empty())
+				argumentsNeeded.erase(baseContract);
+		}
+	}
+	if (!argumentsNeeded.empty())
+		setFullyImplemented(false);
 }
 
 void ContractDefinition::checkIllegalOverrides() const
@@ -281,7 +321,7 @@ void InheritanceSpecifier::checkTypeRequirements()
 	ContractDefinition const* base = dynamic_cast<ContractDefinition const*>(m_baseName->getReferencedDeclaration());
 	solAssert(base, "Base contract not available.");
 	TypePointers parameterTypes = ContractType(*base).getConstructorType()->getParameterTypes();
-	if (parameterTypes.size() != m_arguments.size())
+	if (!m_arguments.empty() && parameterTypes.size() != m_arguments.size())
 		BOOST_THROW_EXCEPTION(createTypeError("Wrong argument count for constructor call."));
 	for (size_t i = 0; i < m_arguments.size(); ++i)
 		if (!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameterTypes[i]))
@@ -348,8 +388,8 @@ void FunctionDefinition::checkTypeRequirements()
 	}
 	for (ASTPointer<ModifierInvocation> const& modifier: m_functionModifiers)
 		modifier->checkTypeRequirements(isConstructor() ?
-			dynamic_cast<ContractDefinition const&>(*getScope()).getBaseContracts() :
-			vector<ASTPointer<InheritanceSpecifier>>());
+			dynamic_cast<ContractDefinition const&>(*getScope()).getLinearizedBaseContracts() :
+			vector<ContractDefinition const*>());
 	if (m_body)
 		m_body->checkTypeRequirements();
 }
@@ -378,20 +418,16 @@ void VariableDeclaration::checkTypeRequirements()
 		if ((m_type && !m_type->isValueType()) || !m_value)
 			BOOST_THROW_EXCEPTION(createTypeError("Unitialized \"constant\" variable."));
 	}
-	if (!m_value)
-		return;
 	if (m_type)
 	{
-		m_value->expectType(*m_type);
-		if (m_isStateVariable && !m_type->externalType() && getVisibility() >= Visibility::Public)
-			BOOST_THROW_EXCEPTION(createTypeError("Internal type is not allowed for state variables."));
-
-		if (!FunctionType(*this).externalType())
-			BOOST_THROW_EXCEPTION(createTypeError("Internal type is not allowed for public state variables."));
+		if (m_value)
+			m_value->expectType(*m_type);
 	}
 	else
 	{
-		// no type declared and no previous assignment, infer the type
+		if (!m_value)
+			// This feature might be extended in the future.
+			BOOST_THROW_EXCEPTION(createTypeError("Assignment necessary for type detection."));
 		m_value->checkTypeRequirements();
 		TypePointer type = m_value->getType();
 		if (type->getCategory() == Type::Category::IntegerConstant)
@@ -405,6 +441,8 @@ void VariableDeclaration::checkTypeRequirements()
 			BOOST_THROW_EXCEPTION(createTypeError("Variable cannot have void type."));
 		m_type = type;
 	}
+	if (m_isStateVariable && getVisibility() >= Visibility::Public && !FunctionType(*this).externalType())
+		BOOST_THROW_EXCEPTION(createTypeError("Internal type is not allowed for public state variables."));
 }
 
 bool VariableDeclaration::isExternalFunctionParameter() const
@@ -428,7 +466,7 @@ void ModifierDefinition::checkTypeRequirements()
 	m_body->checkTypeRequirements();
 }
 
-void ModifierInvocation::checkTypeRequirements(vector<ASTPointer<InheritanceSpecifier>> const& _bases)
+void ModifierInvocation::checkTypeRequirements(vector<ContractDefinition const*> const& _bases)
 {
 	m_modifierName->checkTypeRequirements();
 	for (ASTPointer<Expression> const& argument: m_arguments)
@@ -441,10 +479,10 @@ void ModifierInvocation::checkTypeRequirements(vector<ASTPointer<InheritanceSpec
 		parameters = &modifier->getParameters();
 	else
 		// check parameters for Base constructors
-		for (auto const& base: _bases)
-			if (declaration == base->getName()->getReferencedDeclaration())
+		for (auto const* base: _bases)
+			if (declaration == base)
 			{
-				if (auto referencedConstructor = dynamic_cast<ContractDefinition const&>(*declaration).getConstructor())
+				if (auto referencedConstructor = base->getConstructor())
 					parameters = &referencedConstructor->getParameters();
 				else
 					parameters = &emptyParameterList;
@@ -688,7 +726,7 @@ void NewExpression::checkTypeRequirements()
 	if (!m_contract)
 		BOOST_THROW_EXCEPTION(createTypeError("Identifier is not a contract."));
 	if (!m_contract->isFullyImplemented())
-		BOOST_THROW_EXCEPTION(m_contract->createTypeError("Trying to create an instance of an abstract contract."));
+		BOOST_THROW_EXCEPTION(createTypeError("Trying to create an instance of an abstract contract."));
 	shared_ptr<ContractType const> contractType = make_shared<ContractType>(*m_contract);
 	TypePointers const& parameterTypes = contractType->getConstructorType()->getParameterTypes();
 	m_type = make_shared<FunctionType>(parameterTypes, TypePointers{contractType},

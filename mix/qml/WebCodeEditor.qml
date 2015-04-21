@@ -19,6 +19,7 @@ Item {
 	property var currentBreakpoints: []
 	property string sourceName
 	property var document
+	property int fontSize: 0
 
 	function setText(text, mode) {
 		currentText = text;
@@ -76,6 +77,12 @@ Item {
 			editorBrowser.runJavaScript("goToCompilationError()", function(result) {});
 	}
 
+	function setFontSize(size) {
+		fontSize = size;
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("setFontSize(" + size + ")", function(result) {});
+	}
+
 	Clipboard
 	{
 		id: clipboard
@@ -108,6 +115,7 @@ Item {
 		{
 			if (!loading && editorBrowser) {
 				initialized = true;
+				setFontSize(fontSize);
 				setText(currentText, currentMode);
 				runJavaScript("getTextChanged()", function(result) { });
 				pollTimer.running = true;

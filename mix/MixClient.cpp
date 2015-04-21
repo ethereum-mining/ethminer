@@ -40,7 +40,7 @@ namespace mix
 {
 
 Secret const c_defaultUserAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
-u256 const c_mixGenesisDifficulty = c_minimumDifficulty; //TODO: make it lower for Mix somehow
+u256 const c_mixGenesisDifficulty = 131072; //TODO: make it lower for Mix somehow
 
 bytes MixBlockChain::createGenesisBlock(h256 _stateRoot)
 {
@@ -117,6 +117,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		lastHashes[i] = lastHashes[i - 1] ? bc().details(lastHashes[i - 1]).parent : h256();
 
 	State execState = _state;
+	execState.addBalance(t.sender(), t.gas() * t.gasPrice()); //give it enough balance for gas estimation
 	Executive execution(execState, lastHashes, 0);
 	execution.initialize(&rlp);
 	execution.execute();
@@ -249,7 +250,7 @@ void MixClient::mine()
 {
 	WriteGuard l(x_state);
 	m_state.commitToMine(bc());
-	m_state.completeMine();
+	m_state.completeMine<Ethash>(Ethash::Solution());
 	bc().import(m_state.blockData(), m_stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce);
 	/*
 	GenericFarm<ProofOfWork> f;

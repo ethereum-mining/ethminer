@@ -28,6 +28,7 @@
 #include <boost/thread.hpp>
 #include "vector_ref.h"
 #include "CommonIO.h"
+#include "Terminal.h"
 
 namespace dev
 {
@@ -53,57 +54,57 @@ extern std::function<void(std::string const&, char const*)> g_logPost;
 /// or equal to the currently output verbosity (g_logVerbosity).
 extern std::map<std::type_info const*, bool> g_logOverride;
 
-/// Associate a name with each thread for nice logging.
-struct ThreadLocalLogName
+#define ETH_THREAD_CONTEXT(name) for (std::pair<dev::ThreadContext, bool> __eth_thread_context(name, true); p.second; p.second = false)
+
+class ThreadContext
 {
-	ThreadLocalLogName(std::string _name) { m_name.reset(new std::string(_name)); };
-	boost::thread_specific_ptr<std::string> m_name;
+public:
+	ThreadContext(std::string const& _info) { push(_info); }
+	~ThreadContext() { pop(); }
+
+	static void push(std::string const& _n);
+	static void pop();
+	static std::string join(std::string const& _prior);
 };
 
-/// The current thread's name.
-extern ThreadLocalLogName t_logThreadName;
+/// Set the current thread's log name.
+void setThreadName(std::string const& _n);
 
 /// Set the current thread's log name.
-inline void setThreadName(char const* _n) { t_logThreadName.m_name.reset(new std::string(_n)); }
+std::string getThreadName();
 
 /// The default logging channels. Each has an associated verbosity and three-letter prefix (name() ).
 /// Channels should inherit from LogChannel and define name() and verbosity.
-struct LogChannel { static const char* name() { return "   "; } static const int verbosity = 1; };
-struct LeftChannel: public LogChannel  { static const char* name() { return "<<<"; } };
-struct RightChannel: public LogChannel { static const char* name() { return ">>>"; } };
-struct WarnChannel: public LogChannel  { static const char* name() { return "!!!"; } static const int verbosity = 0; };
-struct NoteChannel: public LogChannel  { static const char* name() { return "***"; } };
-struct DebugChannel: public LogChannel { static const char* name() { return "---"; } static const int verbosity = 0; };
+struct LogChannel { static const char* name(); static const int verbosity = 1; };
+struct LeftChannel: public LogChannel  { static const char* name(); };
+struct RightChannel: public LogChannel { static const char* name(); };
+struct WarnChannel: public LogChannel  { static const char* name(); static const int verbosity = 0; };
+struct NoteChannel: public LogChannel  { static const char* name(); };
+struct DebugChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };
+
+class LogOutputStreamBase
+{
+public:
+	LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v);
+
+protected:
+	std::stringstream m_sstr;	///< The accrued log entry.
+};
 
 /// Logging class, iostream-like, that can be shifted to.
 template <class Id, bool _AutoSpacing = true>
-class LogOutputStream
+class LogOutputStream: private LogOutputStreamBase
 {
 public:
 	/// Construct a new object.
 	/// If _term is true the the prefix info is terminated with a ']' character; if not it ends only with a '|' character.
-	LogOutputStream(bool _term = true)
-	{
-		std::type_info const* i = &typeid(Id);
-		auto it = g_logOverride.find(i);
-		if ((it != g_logOverride.end() && it->second == true) || (it == g_logOverride.end() && Id::verbosity <= g_logVerbosity))
-		{
-			time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-			char buf[24];
-			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
-				buf[0] = '\0'; // empty if case strftime fails
-			m_sstr << Id::name() << " [ " << buf << " | " << (t_logThreadName.m_name.get() ? *t_logThreadName.m_name.get() : std::string("<unknown>")) << (_term ? " ] " : "");
-		}
-	}
+	LogOutputStream(): LogOutputStreamBase(Id::name(), &typeid(Id), Id::verbosity) {}
 
 	/// Destructor. Posts the accrued log entry to the g_logPost function.
 	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(m_sstr.str(), Id::name()); }
 
 	/// Shift arbitrary data to the log. Spaces will be added between items as required.
 	template <class T> LogOutputStream& operator<<(T const& _t) { if (Id::verbosity <= g_logVerbosity) { if (_AutoSpacing && m_sstr.str().size() && m_sstr.str().back() != ' ') m_sstr << " "; m_sstr << _t; } return *this; }
-
-private:
-	std::stringstream m_sstr;	///< The accrued log entry.
 };
 
 // Simple cout-like stream objects for accessing common log channels.

@@ -92,10 +92,18 @@ private:
 	std::array<u256, 9> m_octiles;
 };
 
-struct ClientNote: public LogChannel { static const char* name() { return "*C*"; } static const int verbosity = 2; };
-struct ClientChat: public LogChannel { static const char* name() { return "=C="; } static const int verbosity = 4; };
-struct ClientTrace: public LogChannel { static const char* name() { return "-C-"; } static const int verbosity = 7; };
-struct ClientDetail: public LogChannel { static const char* name() { return " C "; } static const int verbosity = 14; };
+struct ClientNote: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct ClientChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
+struct ClientTrace: public LogChannel { static const char* name(); static const int verbosity = 7; };
+struct ClientDetail: public LogChannel { static const char* name(); static const int verbosity = 14; };
+
+struct ActivityReport
+{
+	unsigned ticks = 0;
+	std::chrono::system_clock::time_point since = std::chrono::system_clock::now();
+};
+
+std::ostream& operator<<(std::ostream& _out, ActivityReport const& _r);
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
@@ -144,7 +152,7 @@ public:
 	dev::eth::State state(unsigned _txi) const;
 
 	/// Get the object representing the current state of Ethereum.
-	dev::eth::State postState() const { ReadGuard l(x_stateDB); return m_postMine; }
+	dev::eth::State postState() const { ReadGuard l(x_postMine); return m_postMine; }
 	/// Get the object representing the current canonical blockchain.
 	CanonBlockChain const& blockChain() const { return m_bc; }
 	/// Get some information on the block queue.
@@ -152,7 +160,7 @@ public:
 
 	// Mining stuff:
 
-	void setAddress(Address _us) { WriteGuard l(x_stateDB); m_preMine.setAddress(_us); }
+	void setAddress(Address _us) { WriteGuard l(x_preMine); m_preMine.setAddress(_us); }
 
 	/// Check block validity prior to mining.
 	bool miningParanoia() const { return m_paranoia; }
@@ -204,6 +212,8 @@ public:
 	void killChain();
 	/// Retries all blocks with unknown parents.
 	void retryUnkonwn() { m_bq.retryAllUnknown(); }
+	/// Get a report of activity.
+	ActivityReport activityReport() { ActivityReport ret; std::swap(m_report, ret); return ret; }
 
 protected:
 	/// InterfaceStub methods
@@ -214,8 +224,8 @@ protected:
 	/// Works properly with LatestBlock and PendingBlock.
 	using ClientBase::asOf;
 	virtual State asOf(h256 const& _block) const override;
-	virtual State preMine() const override { ReadGuard l(x_stateDB); return m_preMine; }
-	virtual State postMine() const override { ReadGuard l(x_stateDB); return m_postMine; }
+	virtual State preMine() const override { ReadGuard l(x_preMine); return m_preMine; }
+	virtual State postMine() const override { ReadGuard l(x_postMine); return m_postMine; }
 	virtual void prepareForTransaction() override;
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
@@ -260,18 +270,26 @@ private:
 	/// This updates m_miningInfo.
 	void onPostStateChanged();
 
+	/// Does garbage collection on watches.
 	void checkWatchGarbage();
+
+	/// Ticks various system-level objects.
+	void tick();
 
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	CanonBlockChain m_bc;					///< Maintains block database.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 	std::shared_ptr<GasPricer> m_gp;		///< The gas pricer.
 
-	mutable SharedMutex x_stateDB;			///< Lock on the state DB, effectively a lock on m_postMine.
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
+	mutable SharedMutex x_preMine;			///< Lock on the OverlayDB and other attributes of m_preMine.
 	State m_preMine;						///< The present state of the client.
+	mutable SharedMutex x_postMine;			///< Lock on the OverlayDB and other attributes of m_postMine.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
+	bool remoteActive() const;				///< Is there an active and valid remote worker?
+	bool m_remoteWorking = false;			///< Has the remote worker recently been reset?
+	std::chrono::system_clock::time_point m_lastGetWork = std::chrono::system_clock::time_point::min();	///< Is there an active and valid remote worker?
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
@@ -286,6 +304,10 @@ private:
 
 	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
 											///< When did we last both doing GC on the watches?
+	mutable std::chrono::system_clock::time_point m_lastTick = std::chrono::system_clock::now();
+											///< When did we last tick()?
+
+	ActivityReport m_report;
 
 	// TODO!!!!!! REPLACE WITH A PROPER X-THREAD ASIO SIGNAL SYSTEM (could just be condition variables)
 	std::atomic<bool> m_syncTransactionQueue = {false};

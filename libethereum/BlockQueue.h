@@ -35,7 +35,7 @@ namespace eth
 
 class BlockChain;
 
-struct BlockQueueChannel: public LogChannel { static const char* name() { return "[]Q"; } static const int verbosity = 4; };
+struct BlockQueueChannel: public LogChannel { static const char* name(); static const int verbosity = 4; };
 #define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
 
 struct BlockQueueStatus
@@ -44,6 +44,15 @@ struct BlockQueueStatus
 	size_t future;
 	size_t unknown;
 	size_t bad;
+};
+
+enum class QueueStatus
+{
+	Ready,
+	Importing,
+	UnknownParent,
+	Bad,
+	Unknown
 };
 
 /**
@@ -55,7 +64,7 @@ class BlockQueue
 {
 public:
 	/// Import a block into the queue.
-	ImportResult import(bytesConstRef _tx, BlockChain const& _bc);
+	ImportResult import(bytesConstRef _tx, BlockChain const& _bc, bool _isOurs = false);
 
 	/// Notes that time has moved on and some blocks that used to be "in the future" may no be valid.
 	void tick(BlockChain const& _bc);
@@ -85,6 +94,9 @@ public:
 
 	/// Get some infomration on the current status.
 	BlockQueueStatus status() const { ReadGuard l(m_lock); return BlockQueueStatus{m_ready.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
+
+	/// Get some infomration on the given block's status regarding us.
+	QueueStatus blockStatus(h256 const& _h) const;
 
 	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
 

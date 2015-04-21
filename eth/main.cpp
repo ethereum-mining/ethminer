@@ -112,61 +112,71 @@ void help()
 {
 	cout
 		<< "Usage eth [OPTIONS]" << endl
-		<< "Options:" << endl
+		<< "Options:" << endl << endl
+		<< "Client mode (default):" << endl
+		<< "    -o,--mode <full/peer>  Start a full node or a peer node (default: full)." << endl
+		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
+#if ETH_JSONRPC || !ETH_TRUE
+		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
+		<< "    --json-rpc-port <n>  Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
+#endif
+		<< "    -K,--kill  First kill the blockchain." << endl
+		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
+		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
+		<< "    -S,--session-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
+		<< "Client transacting:" << endl
+		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
+		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (default: 30.679)." << endl
+		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
+		<< "Client mining:" << endl
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
-		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
-		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (Default: 15)." << endl
-		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
+		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (default: off)" << endl
+		<< "    -f,--force-mining  Mine even when there are no transactions to mine (default: off)" << endl
 		<< "    -C,--cpu  When mining, use the CPU." << endl
-		<< "    -d,--db-path <path>  Load database from path (default:  ~/.ethereum " << endl
-		<< "                         <APPDATA>/Etherum or Library/Application Support/Ethereum)." << endl
+		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
+		<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
+		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
+		<< "Client networking:" << endl
+		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
+		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
+		<< "    -x,--peers <number>  Attempt to connect to given number of peers (default: 5)." << endl
+		<< "    --public-ip <ip>  Force public ip to given (default: auto)." << endl
+		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
+		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
+		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
+		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
+		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
+#if ETH_JSONRPC || !ETH_TRUE
+		<< "Work farming mode:" << endl
+		<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL. Use with -G/--opencl." << endl
+		<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
+#endif
+		<< "Ethash verify mode:" << endl
+		<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
+		<< "Benchmarking mode:" << endl
+		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --opencl." << endl
 		<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 3)." << endl
 		<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
 		<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
+#if ETH_JSONRPC || !ETH_TRUE
+		<< "    --phone-home <on/off>  When benchmarking, publish results (default: on)" << endl
+#endif
+		<< "DAG creation mode:" << endl
 		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
-		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (Default: 30.679)." << endl
+		<< "Import/export modes:" << endl
+		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
 		<< "    -E,--export <file>  Export file as a concatenated series of blocks and exit." << endl
 		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
-		<< "    -f,--force-mining  Mine even when there are no transactions to mine (Default: off)" << endl
-#if ETH_JSONRPC || !ETH_TRUE
-		<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL. Use with -G/--opencl." << endl
-		<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
-#endif
-		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
-		<< "    -h,--help  Show this help message and exit." << endl
-		<< "    -i,--interactive  Enter interactive mode (default: non-interactive)." << endl
-		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
-#if ETH_JSONRPC || !ETH_TRUE
-		<< "    -j,--json-rpc  Enable JSON-RPC server (default: off)." << endl
-		<< "    --json-rpc-port	 Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
-#endif
+		<< "General Options:" << endl
+		<< "    -d,--db-path <path>  Load database from path (default: " << getDataDir() << ")" << endl
 #if ETH_EVMJIT || !ETH_TRUE
 		<< "    -J,--jit  Enable EVM JIT (default: off)." << endl
 #endif
-		<< "    -K,--kill  First kill the blockchain." << endl
-		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
-		<< "    --listen-ip <ip>(:<port>)  Listen on the given IP for incoming connections (default: 0.0.0.0)." << endl
-		<< "    --public-ip <ip>  Force public ip to given (default: auto)." << endl
-		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (Default: off)" << endl
-		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --opencl." << endl
-		<< "    -o,--mode <full/peer>  Start a full node or a peer node (Default: full)." << endl
-		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
-		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
-		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
-#if ETH_JSONRPC || !ETH_TRUE
-		<< "    --phone-home <on/off>  When benchmarking, publish results (Default: on)" << endl
-#endif
-		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
-		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
-		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
-		<< "    -S,--session-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
-		<< "    --upnp <on/off>  Use upnp for NAT (default: on)." << endl
-		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (Default: 8)." << endl
+		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
-		<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
-		<< "    -x,--peers <number>  Attempt to connect to given number of peers (Default: 5)." << endl
+		<< "    -h,--help  Show this help message and exit." << endl
 		;
 		exit(0);
 }
@@ -313,7 +323,7 @@ void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, u
 	if (_phoneHome)
 	{
 		cout << "Phoning home to find world ranking..." << endl;
-		jsonrpc::HttpClient client("http://192.168.33.39:3000/benchmark");
+		jsonrpc::HttpClient client("http://gav.ethdev.com:3000/benchmark");
 		PhoneHome rpc(client);
 		try
 		{
@@ -329,6 +339,9 @@ void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, u
 	exit(0);
 }
 
+struct HappyChannel: public LogChannel  { static const char* name() { return ":-D"; } static const int verbosity = 1; };
+struct SadChannel: public LogChannel { static const char* name() { return ":-("; } static const int verbosity = 1; };
+
 void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 {
 	(void)_m;
@@ -337,9 +350,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 #if ETH_JSONRPC || !ETH_TRUE
 	jsonrpc::HttpClient client(_remote);
 	Farm rpc(client);
-
 	GenericFarm<Ethash> f;
-
 	if (_m == MinerType::CPU)
 		f.startCPU();
 	else if (_m == MinerType::GPU)
@@ -347,35 +358,119 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 
 	ProofOfWork::WorkPackage current;
 	while (true)
-	{
-		bool completed = false;
-		ProofOfWork::Solution solution;
-		f.onSolutionFound([&](ProofOfWork::Solution sol)
+		try
 		{
-			solution = sol;
-			return completed = true;
-		});
-		for (unsigned i = 0; !completed; ++i)
-		{
-			Json::Value v = rpc.eth_getWork();
-			h256 hh(v[0].asString());
-			if (hh != current.headerHash)
+			bool completed = false;
+			ProofOfWork::Solution solution;
+			f.onSolutionFound([&](ProofOfWork::Solution sol)
 			{
-				current.headerHash = hh;
-				current.seedHash = h256(v[1].asString());
-				current.boundary = h256(v[2].asString());
-				f.setWork(current);
+				solution = sol;
+				return completed = true;
+			});
+			for (unsigned i = 0; !completed; ++i)
+			{
+				if (current)
+					cnote << "Mining on PoWhash" << current.headerHash.abridged() << ": " << f.miningProgress();
+				else
+					cnote << "Getting work package...";
+				Json::Value v = rpc.eth_getWork();
+				h256 hh(v[0].asString());
+				if (hh != current.headerHash)
+				{
+					current.headerHash = hh;
+					current.seedHash = h256(v[1].asString());
+					current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
+					cnote << "Got work package:" << current.headerHash.abridged() << " < " << current.boundary;
+					f.setWork(current);
+				}
+				this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 			}
-			this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
+			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash.abridged() << "," << solution.mixHash.abridged() << "] to" << _remote << "...";
+			bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
+			if (ok)
+				clog(HappyChannel) << "Submitted and accepted.";
+			else
+				clog(SadChannel) << "Not accepted.";
+			current.reset();
 		}
-		rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(solution.mixHash));
-	}
+		catch (jsonrpc::JsonRpcException&)
+		{
+			for (auto i = 3; --i; this_thread::sleep_for(chrono::seconds(1)))
+				cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
+			cerr << endl;
+		}
 #endif
 	exit(0);
 }
 
 int main(int argc, char** argv)
 {
+	cout << "\x1b[30mEthBlack\x1b[0m" << endl;
+	cout << "\x1b[90mEthCoal\x1b[0m" << endl;
+	cout << "\x1b[37mEthGray\x1b[0m" << endl;
+	cout << "\x1b[97mEthWhite\x1b[0m" << endl;
+	cout << "\x1b[31mEthRed\x1b[0m" << endl;
+	cout << "\x1b[32mEthGreen\x1b[0m" << endl;
+	cout << "\x1b[33mEthYellow\x1b[0m" << endl;
+	cout << "\x1b[34mEthBlue\x1b[0m" << endl;
+	cout << "\x1b[35mEthPurple\x1b[0m" << endl;
+	cout << "\x1b[36mEthCyan\x1b[0m" << endl;
+	// High Intensity
+	cout << "\x1b[91mEthRedI\x1b[0m" << endl;
+	cout << "\x1b[92mEthLime\x1b[0m" << endl;
+	cout << "\x1b[93mEthYellowI\x1b[0m" << endl;
+	cout << "\x1b[94mEthBlueI\x1b[0m" << endl;
+	cout << "\x1b[95mEthPurpleI\x1b[0m" << endl;
+	cout << "\x1b[96mEthCyanI\x1b[0m" << endl;
+
+	// Bold
+	cout << "\x1b[1;30mEthBlackB\x1b[0m" << endl;
+	cout << "\x1b[1;90mEthCoalB\x1b[0m" << endl;
+	cout << "\x1b[1;37mEthGrayB\x1b[0m" << endl;
+	cout << "\x1b[1;97mEthWhiteB\x1b[0m" << endl;
+	cout << "\x1b[1;31mEthRedB\x1b[0m" << endl;
+	cout << "\x1b[1;32mEthGreenB\x1b[0m" << endl;
+	cout << "\x1b[1;33mEthYellowB\x1b[0m" << endl;
+	cout << "\x1b[1;34mEthBlueB\x1b[0m" << endl;
+	cout << "\x1b[1;35mEthPurpleB\x1b[0m" << endl;
+	cout << "\x1b[1;36mEthCyanB\x1b[0m" << endl;
+	// Bold High Intensity
+	cout << "\x1b[1;91mEthRedBI\x1b[0m" << endl;
+	cout << "\x1b[1;92mEthGreenBI\x1b[0m" << endl;
+	cout << "\x1b[1;93mEthYellowBI\x1b[0m" << endl;
+	cout << "\x1b[1;94mEthBlueBI\x1b[0m" << endl;
+	cout << "\x1b[1;95mEthPurpleBI\x1b[0m" << endl;
+	cout << "\x1b[1;96mEthCyanBI\x1b[0m" << endl;
+
+	// Background
+	cout << "\x1b[40mEthBlackOn\x1b[0m" << endl;
+	cout << "\x1b[100mEthCoalOn\x1b[0m" << endl;
+	cout << "\x1b[47mEthGrayOn\x1b[0m" << endl;
+	cout << "\x1b[107mEthWhiteOn\x1b[0m" << endl;
+	cout << "\x1b[41mEthRedOn\x1b[0m" << endl;
+	cout << "\x1b[42mEthGreenOn\x1b[0m" << endl;
+	cout << "\x1b[43mEthYellowOn\x1b[0m" << endl;
+	cout << "\x1b[44mEthBlueOn\x1b[0m" << endl;
+	cout << "\x1b[45mEthPurpleOn\x1b[0m" << endl;
+	cout << "\x1b[46mEthCyanOn\x1b[0m" << endl;
+	// High Intensity backgrounds
+	cout << "\x1b[101mEthRedOnI\x1b[0m" << endl;
+	cout << "\x1b[102mEthGreenOnI\x1b[0m" << endl;
+	cout << "\x1b[103mEthYellowOnI\x1b[0m" << endl;
+	cout << "\x1b[104mEthBlueOnI\x1b[0m" << endl;
+	cout << "\x1b[105mEthPurpleOnI\x1b[0m" << endl;
+	cout << "\x1b[106mEthCyanOnI\x1b[0m" << endl;
+
+	// Underline
+	cout << "\x1b[4;30mEthBlackU\x1b[0m" << endl;
+	cout << "\x1b[4;31mEthRedU\x1b[0m" << endl;
+	cout << "\x1b[4;32mEthGreenU\x1b[0m" << endl;
+	cout << "\x1b[4;33mEthYellowU\x1b[0m" << endl;
+	cout << "\x1b[4;34mEthBlueU\x1b[0m" << endl;
+	cout << "\x1b[4;35mEthPurpleU\x1b[0m" << endl;
+	cout << "\x1b[4;36mEthCyanU\x1b[0m" << endl;
+	cout << "\x1b[4;37mEthWhiteU\x1b[0m" << endl;
+
 	// Init defaults
 	Defaults::get();
 
@@ -385,6 +480,7 @@ int main(int argc, char** argv)
 
 	/// Mining options
 	MinerType minerType = MinerType::CPU;
+	unsigned openclPlatform = 0;
 	unsigned openclDevice = 0;
 
 	/// File name for import/export.
@@ -502,6 +598,15 @@ int main(int argc, char** argv)
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
+		else if (arg == "--opencl-platform" && i + 1 < argc)
+			try {
+			openclPlatform= stol(argv[++i]);
+		}
+		catch (...)
+		{
+			cerr << "Bad " << arg << " option: " << argv[i] << endl;
+			return -1;
+		}
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
 				openclDevice = stol(argv[++i]);
@@ -589,7 +694,7 @@ int main(int argc, char** argv)
 			}
 		else if (arg == "-K" || arg == "--kill-blockchain" || arg == "--kill")
 			killChain = WithExisting::Kill;
-		else if (arg == "-B" || arg == "--rebuild")
+		else if (arg == "-R" || arg == "--rebuild")
 			killChain = WithExisting::Verify;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 		{
@@ -672,7 +777,7 @@ int main(int argc, char** argv)
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(bytesConstRef((byte const*)EthashAux::light(seedHash), EthashAux::params(seedHash).cache_size)) << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(seedHash)->data()) << endl;
 				exit(0);
 			}
 			catch (...)
@@ -800,6 +905,7 @@ int main(int argc, char** argv)
 	if (sessionSecret)
 		sigKey = KeyPair(sessionSecret);
 
+	ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
 	ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
 
 	// Two codepaths is necessary since named block require database, but numbered
@@ -820,7 +926,7 @@ int main(int argc, char** argv)
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
-	std::string clientImplString = "Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
+	std::string clientImplString = "++eth/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
 		clientImplString,
 		dbPath,
@@ -917,6 +1023,7 @@ int main(int argc, char** argv)
 	{
 		c->setGasPricer(gasPricer);
 		c->setForceMining(forceMining);
+		c->setTurboMining(minerType == MinerType::GPU);
 		c->setAddress(coinbase);
 	}
 
