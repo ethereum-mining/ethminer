@@ -85,20 +85,7 @@ void parseOptions()
 {
 	static llvm::llvm_shutdown_obj shutdownObj{};
 	cl::AddExtraVersionPrinter(printVersion);
-	//cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
-
-	// FIXME: LLVM workaround:
-	// Manually select instruction scheduler. Confirmed bad schedulers: source, list-burr, list-hybrid.
-	// "source" scheduler has a bug: http://llvm.org/bugs/show_bug.cgi?id=22304
-	auto envLine = std::getenv("EVMJIT");
-	auto commandLine = std::string{"evmjit "} + (envLine ? envLine : "") + " -pre-RA-sched=list-ilp\0";
-	static const auto c_maxArgs = 20;
-	char const* argv[c_maxArgs] = {nullptr, };
-	auto arg = std::strtok(&*commandLine.begin(), " ");
-	auto i = 0;
-	for (; i < c_maxArgs && arg; ++i, arg = std::strtok(nullptr, " "))
-		argv[i] = arg;
-	cl::ParseCommandLineOptions(i, argv, "Ethereum EVM JIT Compiler");
+	cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
 }
 
 }
