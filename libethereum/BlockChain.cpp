@@ -48,10 +48,17 @@ namespace js = json_spirit;
 #define ETH_CATCH 1
 #define ETH_TIMED_IMPORTS 0
 
+#ifdef _WIN32
+const char* BlockChainDebug::name() { return EthBlue "8" EthWhite " <>"; }
+const char* BlockChainWarn::name() { return EthBlue "8" EthOnRed EthBlackBold " X"; }
+const char* BlockChainNote::name() { return EthBlue "8" EthBlue " i"; }
+const char* BlockChainChat::name() { return EthBlue "8" EthWhite " o"; }
+#else
 const char* BlockChainDebug::name() { return EthBlue "☍" EthWhite " ◇"; }
 const char* BlockChainWarn::name() { return EthBlue "☍" EthOnRed EthBlackBold " ✘"; }
 const char* BlockChainNote::name() { return EthBlue "☍" EthBlue " ℹ"; }
 const char* BlockChainChat::name() { return EthBlue "☍" EthWhite " ◌"; }
+#endif
 
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
