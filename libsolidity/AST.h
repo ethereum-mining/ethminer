@@ -282,9 +282,15 @@ public:
 	FunctionDefinition const* getFallbackFunction() const;
 
 private:
+	/// Checks that two functions defined in this contract with the same name have different
+	/// arguments and that there is at most one constructor.
+	void checkDuplicateFunctions() const;
 	void checkIllegalOverrides() const;
 	void checkAbstractFunctions();
 	void checkAbstractConstructors();
+	/// Checks that different functions with external visibility end up having different
+	/// external argument types (i.e. different signature).
+	void checkExternalTypeClashes() const;
 
 	std::vector<std::pair<FixedHash<4>, FunctionTypePointer>> const& getInterfaceFunctionList() const;
 
@@ -968,7 +974,10 @@ class Expression: public ASTNode
 {
 public:
 	Expression(SourceLocation const& _location): ASTNode(_location) {}
-	virtual void checkTypeRequirements() = 0;
+	/// Performs type checking after which m_type should be set.
+	/// @arg _argumentTypes if set, provides the argument types for the case that this expression
+	/// is used in the context of a call, used for function overload resolution.
+	virtual void checkTypeRequirements(TypePointers const* _argumentTypes) = 0;
 
 	std::shared_ptr<Type const> const& getType() const { return m_type; }
 	bool isLValue() const { return m_isLValue; }
@@ -1007,7 +1016,7 @@ public:
 	}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual void checkTypeRequirements() override;
+	virtual void checkTypeRequirements(TypePointers const* _argumentTypes) override;
 
 	Expression const& getLeftHandSide() const { return *m_leftHandSide; }
 	Token::Value getAssignmentOperator() const { return m_assigmentOperator; }
@@ -1035,7 +1044,7 @@ public:
 	}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual void checkTypeRequirements() override;
+	virtual void checkTypeRequirements(TypePointers const* _argumentTypes) override;
 
 	Token::Value getOperator() const { return m_operator; }
 	bool isPrefixOperation() const { return m_isPrefix; }
@@ -1062,7 +1071,7 @@ public:
 	}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual void checkTypeRequirements() override;
+	virtual void checkTypeRequirements(TypePointers const* _argumentTypes) override;
 
 	Expression const& getLeftExpression() const { return *m_left; }
 	Expression const& getRightExpression() const { return *m_right; }
@@ -1090,7 +1099,7 @@ public:
 		Expression(_location), m_expression(_expression), m_arguments(_arguments), m_names(_names) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual void checkTypeRequirements() override;
+	virtual void checkTypeRequirements(TypePointers const* _argumentTypes) override;
 
 	Expression const& getExpression() const { return *m_expression; }
 	std::vector<ASTPointer<Expression const>> getArguments() const { return {m_arguments.begin(), m_arguments.end()}; }
@@ -1116,7 +1125,7 @@ public:
 		Expression(_location), m_contractName(_contractName) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual void checkTypeRequirements() override;
+	virtual void checkTypeRequirements(TypePointers const* _argumentTypes) override;
 
 	/// Returns the referenced contract. Can only be called after type checking.
 	ContractDefinition const* getContract() const { solAssert(m_contract, ""); return m_contract; }
@@ -1140,11 +1149,18 @@ public:
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 	Expression const& getExpression() const { return *m_expression; }
 	ASTString const& getMemberName() const { return *m_memberName; }
-	virtual void checkTypeRequirements() override;
+	/// @returns the declaration referenced by this expression. Might return nullptr even if the
+	/// expression is valid, e.g. if the member does not correspond to an AST node.
+	Declaration const* referencedDeclaration() const { return m_referencedDeclaration; }
+	virtual void checkTypeRequirements(TypePointers const* _argumentTypes) override;
 
 private:
 	ASTPointer<Expression> m_expression;
 	ASTPointer<ASTString> m_memberName;
+
+	/// Pointer to the referenced declaration, this is sometimes needed to resolve function over
+	/// loads in the type-checking phase.
+	Declaration const* m_referencedDeclaration = nullptr;
 };
 
 /**
@@ -1158,7 +1174,7 @@ public:
 		Expression(_location), m_base(_base), m_index(_index) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual void checkTypeRequirements() override;
+	virtual void checkTypeRequirements(TypePointers const* _argumentTypes) override;
 
 	Expression const& getBaseExpression() const { return *m_base; }
 	Expression const* getIndexExpression() const { return m_index.get(); }
@@ -1188,18 +1204,31 @@ public:
 		PrimaryExpression(_location), m_name(_name) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual void checkTypeRequirements() override;
+	virtual void checkTypeRequirements(TypePointers const* _argumentTypes) override;
 
 	ASTString const& getName() const { return *m_name; }
 
-	void setReferencedDeclaration(Declaration const& _referencedDeclaration,
-								  ContractDefinition const* _currentContract = nullptr)
+	void setReferencedDeclaration(
+		Declaration const& _referencedDeclaration,
+		ContractDefinition const* _currentContract = nullptr
+	)
 	{
 		m_referencedDeclaration = &_referencedDeclaration;
 		m_currentContract = _currentContract;
 	}
-	Declaration const* getReferencedDeclaration() const { return m_referencedDeclaration; }
-	ContractDefinition const* getCurrentContract() const { return m_currentContract; }
+	Declaration const& getReferencedDeclaration() const;
+
+	/// Stores a set of possible declarations referenced by this identifier. Has to be resolved
+	/// providing argument types using overloadResolution before the referenced declaration
+	/// is accessed.
+	void setOverloadedDeclarations(std::set<Declaration const*> const& _declarations)
+	{
+		m_overloadedDeclarations = _declarations;
+	}
+
+	/// Tries to find exactly one of the possible referenced declarations provided the given
+	/// argument types in a call context.
+	void overloadResolution(TypePointers const& _argumentTypes);
 
 private:
 	ASTPointer<ASTString> m_name;
@@ -1209,6 +1238,8 @@ private:
 	/// Stores a reference to the current contract. This is needed because types of base contracts
 	/// change depending on the context.
 	ContractDefinition const* m_currentContract = nullptr;
+	/// A set of overloaded declarations, right now only FunctionDefinition has overloaded declarations.
+	std::set<Declaration const*> m_overloadedDeclarations;
 };
 
 /**
@@ -1226,7 +1257,7 @@ public:
 	}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual void checkTypeRequirements() override;
+	virtual void checkTypeRequirements(TypePointers const* _argumentTypes) override;
 
 	Token::Value getTypeToken() const { return m_typeToken; }
 
@@ -1260,7 +1291,7 @@ public:
 		PrimaryExpression(_location), m_token(_token), m_value(_value), m_subDenomination(_sub) {}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
-	virtual void checkTypeRequirements() override;
+	virtual void checkTypeRequirements(TypePointers const* _argumentTypes) override;
 
 	Token::Value getToken() const { return m_token; }
 	/// @returns the non-parsed value of the literal
