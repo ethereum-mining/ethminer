@@ -85,6 +85,27 @@ std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _devic
 	return "{ \"platform\": \"" + platforms[platform_num].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
 }
 
+unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
+{
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (platforms.empty())
+	{
+		debugf("No OpenCL platforms found.\n");
+		return 0;
+	}
+
+	std::vector<cl::Device> devices;
+	unsigned platform_num = std::min<unsigned>(_platformId, platforms.size() - 1);
+	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
+	if (devices.empty())
+	{
+		debugf("No OpenCL devices found.\n");
+		return 0;
+	}
+	return devices.size();
+}
+
 void ethash_cl_miner::finish()
 {
 	if (m_queue())

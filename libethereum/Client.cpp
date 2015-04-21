@@ -124,10 +124,17 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, ActivityReport const& _r)
 	return _out;
 }
 
+#ifdef _WIN32
+const char* ClientNote::name() { return EthTeal "^" EthBlue " i"; }
+const char* ClientChat::name() { return EthTeal "^" EthWhite " o"; }
+const char* ClientTrace::name() { return EthTeal "^" EthGray " O"; }
+const char* ClientDetail::name() { return EthTeal "^" EthCoal " 0"; }
+#else
 const char* ClientNote::name() { return EthTeal "⧫" EthBlue " ℹ"; }
 const char* ClientChat::name() { return EthTeal "⧫" EthWhite " ◌"; }
 const char* ClientTrace::name() { return EthTeal "⧫" EthGray " ◎"; }
 const char* ClientDetail::name() { return EthTeal "⧫" EthCoal " ●"; }
+#endif
 
 Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId):
 	Worker("eth"),
