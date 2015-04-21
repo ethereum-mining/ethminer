@@ -28,6 +28,7 @@ Item
 	Dialog {
 		id: newProjectWin
 		modality: Qt.ApplicationModal
+		title: qsTr("New Project");
 
 		width: 640
 		height: 120

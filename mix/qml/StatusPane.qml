@@ -55,6 +55,12 @@ Rectangle {
 		currentStatus = { "type": type, "date": Qt.formatDateTime(new Date(), "hh:mm:ss"), "content": text, "level": "error" }
 	}
 
+	function clear()
+	{
+		status.state = "";
+		status.text = "";
+	}
+
 	StatusPaneStyle {
 		id: statusPaneStyle
 	}
@@ -142,7 +148,6 @@ Rectangle {
 			anchors.verticalCenter: parent.verticalCenter
 			anchors.horizontalCenter: parent.horizontalCenter
 			font.pointSize: appStyle.absoluteSize(-1)
-			height: 15
 			font.family: "sans serif"
 			objectName: "status"
 			wrapMode: Text.WrapAnywhere
@@ -360,6 +365,7 @@ Rectangle {
 			LogsPane
 			{
 				id: logPane;
+				statusPane: statusHeader
 				onContentXPosChanged:
 				{
 					parent.move();

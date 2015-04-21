@@ -28,7 +28,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb)
+const char* TransactionQueueChannel::name() { return EthCyan "┉┅▶"; }
+
+ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb, IfDropped _ik)
 {
 	// Check if we already know this transaction.
 	h256 h = sha3(_transactionRLP);
@@ -38,6 +40,9 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 
 	if (m_known.count(h))
 		return ImportResult::AlreadyKnown;
+
+	if (m_dropped.count(h) && _ik == IfDropped::Ignore)
+		return ImportResult::AlreadyInChain;
 
 	try
 	{
@@ -88,7 +93,7 @@ void TransactionQueue::noteGood(std::pair<h256, Transaction> const& _t)
 	m_unknown.erase(r.first, r.second);
 }
 
-void TransactionQueue::drop(h256 _txHash)
+void TransactionQueue::drop(h256 const& _txHash)
 {
 	UpgradableGuard l(m_lock);
 
@@ -96,6 +101,7 @@ void TransactionQueue::drop(h256 _txHash)
 		return;
 
 	UpgradeGuard ul(l);
+	m_dropped.insert(_txHash);
 	m_known.erase(_txHash);
 
 	if (m_current.count(_txHash))

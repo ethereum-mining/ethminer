@@ -35,7 +35,7 @@ class BlockChain;
 class ExtVM;
 struct Manifest;
 
-struct VMTraceChannel: public LogChannel { static const char* name() { return "EVM"; } static const int verbosity = 11; };
+struct VMTraceChannel: public LogChannel { static const char* name(); static const int verbosity = 11; };
 
 /**
  * @brief Message-call/contract-creation executor; useful for executing transactions.

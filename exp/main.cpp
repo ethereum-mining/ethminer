@@ -22,7 +22,14 @@
 #if ETH_ETHASHCL
 #define __CL_ENABLE_EXCEPTIONS
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
-#include "libethash-cl/cl.hpp"
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#include <libethash-cl/cl.hpp>
+#pragma clang diagnostic pop
+#else
+#include <libethash-cl/cl.hpp>
+#endif
 #endif
 #include <functional>
 #include <boost/filesystem.hpp>

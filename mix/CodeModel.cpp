@@ -135,8 +135,8 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	CollectDeclarationsVisitor visitor(&m_functions, &m_locals);
 	m_storage = collectStorage(contractDefinition);
 	contractDefinition.accept(visitor);
-	m_assemblyItems = _compiler.getRuntimeAssemblyItems(name);
-	m_constructorAssemblyItems = _compiler.getAssemblyItems(name);
+	m_assemblyItems = *_compiler.getRuntimeAssemblyItems(name);
+	m_constructorAssemblyItems = *_compiler.getAssemblyItems(name);
 }
 
 QString CompiledContract::codeHex() const
@@ -299,12 +299,18 @@ void CodeModel::runCompilationJob(int _jobId)
 	{
 		std::ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
-		SourceLocation const* location = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception);
 		QString message = QString::fromStdString(error.str());
-		CompiledContract* contract = nullptr;
-		if (location && location->sourceName.get() && (contract = contractByDocumentId(QString::fromStdString(*location->sourceName))))
-			message = message.replace(QString::fromStdString(*location->sourceName), contract->contract()->name()); //substitute the location to match our contract names
-		compilationError(message, QString::fromStdString(*location->sourceName));
+		QString sourceName;
+		if (SourceLocation const* location = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception))
+		{
+			if (location->sourceName)
+				sourceName = QString::fromStdString(*location->sourceName);
+			if (!sourceName.isEmpty())
+				if (CompiledContract* contract = contractByDocumentId(sourceName))
+					//substitute the location to match our contract names
+					message = message.replace(sourceName, contract->contract()->name());
+		}
+		compilationError(message, sourceName);
 	}
 	m_compiling = false;
 	emit stateChanged();
