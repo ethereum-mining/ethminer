@@ -291,7 +291,15 @@ static string filtersToString(T const& _fs)
 	ret << "{";
 	unsigned i = 0;
 	for (h256 const& f: _fs)
-		ret << (i++ ? ", " : "") << (f == PendingChangedFilter ? "pending" : f == ChainChangedFilter ? "chain" : f.abridged());
+	{
+		ret << (i++ ? ", " : "");
+		if (f == PendingChangedFilter)
+			ret << url << "pending";
+		else if (f == ChainChangedFilter)
+			ret << url << "chain";
+		else
+			ret << f;
+	}
 	ret << "}";
 	return ret.str();
 }
@@ -475,7 +483,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	// insert transactions that we are declaring the dead part of the chain
 	for (auto const& h: _ir.second)
 	{
-		clog(ClientNote) << "Dead block:" << h.abridged();
+		clog(ClientNote) << "Dead block:" << h;
 		for (auto const& t: m_bc.transactions(h))
 		{
 			clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckTransaction::None);
@@ -486,10 +494,10 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 	for (auto const& h: _ir.first)
 	{
-		clog(ClientChat) << "Live block:" << h.abridged();
+		clog(ClientChat) << "Live block:" << h;
 		for (auto const& th: m_bc.transactionHashes(h))
 		{
-			clog(ClientNote) << "Safely dropping transaction " << th.abridged();
+			clog(ClientNote) << "Safely dropping transaction " << th;
 			m_tq.drop(th);
 		}
 	}
