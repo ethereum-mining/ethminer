@@ -48,6 +48,11 @@ namespace js = json_spirit;
 #define ETH_CATCH 1
 #define ETH_TIMED_IMPORTS 0
 
+const char* BlockChainDebug::name() { return EthBlue "☍" EthWhite " ◇"; }
+const char* BlockChainWarn::name() { return EthBlue "☍" EthOnRed EthBlackBold " ✘"; }
+const char* BlockChainNote::name() { return EthBlue "☍" EthBlue " ℹ"; }
+const char* BlockChainChat::name() { return EthBlue "☍" EthWhite " ◌"; }
+
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.currentHash());
@@ -406,7 +411,10 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		auto pdata = pd.rlp();
 		clog(BlockChainDebug) << "Details is returning false despite block known:" << RLP(pdata);
 		auto parentBlock = block(bi.parentHash);
-		clog(BlockChainDebug) << "Block:" << RLP(parentBlock);
+		clog(BlockChainDebug) << "isKnown:" << isKnown(bi.parentHash);
+		clog(BlockChainDebug) << "last/number:" << m_lastBlockNumber << m_lastBlockHash << bi.number;
+		clog(BlockChainDebug) << "Block:" << BlockInfo(parentBlock);
+		clog(BlockChainDebug) << "RLP:" << RLP(parentBlock);
 		clog(BlockChainDebug) << "DATABASE CORRUPTION: CRITICAL FAILURE";
 		exit(-1);
 	}
@@ -482,14 +490,15 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 #endif
 
 		{
+			ReadGuard l1(x_blocks);
 			ReadGuard l2(x_details);
 			ReadGuard l4(x_receipts);
 			ReadGuard l5(x_logBlooms);
-			m_blocksDB->Put(m_writeOptions, toSlice(bi.hash()), (ldb::Slice)ref(_block));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.hash()].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[bi.hash()].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[bi.hash()].rlp()));
+			m_blocksDB->Put(m_writeOptions, toSlice(bi.hash()), (ldb::Slice)ref(_block));
 		}
 
 #if ETH_TIMED_IMPORTS
@@ -965,25 +974,23 @@ bool BlockChain::isKnown(h256 const& _hash) const
 	if (_hash == m_genesisHash)
 		return true;
 
-	BlockInfo bi;
-
-	{
-		ReadGuard l(x_blocks);
-		auto it = m_blocks.find(_hash);
-		if (it != m_blocks.end())
-			bi = BlockInfo(it->second, CheckNothing, _hash);
-	}
-
-	if (!bi)
-	{
-		string d;
-		m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
-		if (!d.size())
-			return false;
-		bi = BlockInfo(bytesConstRef(&d), CheckNothing, _hash);
-	}
-
-	return bi.number <= m_lastBlockNumber;	// TODO: m_lastBlockNumber
+	ETH_READ_GUARDED(x_blocks)
+		if (!m_blocks.count(_hash))
+		{
+			string d;
+			m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
+			if (d.empty())
+				return false;
+		}
+	ETH_READ_GUARDED(x_details)
+		if (!m_details.count(_hash))
+		{
+			string d;
+			m_extrasDB->Get(m_readOptions, toSlice(_hash, ExtraDetails), &d);
+			if (d.empty())
+				return false;
+		}
+	return true;
 }
 
 bytes BlockChain::block(h256 const& _hash) const
@@ -1001,7 +1008,7 @@ bytes BlockChain::block(h256 const& _hash) const
 	string d;
 	m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
 
-	if (!d.size())
+	if (d.empty())
 	{
 		cwarn << "Couldn't find requested block:" << _hash.abridged();
 		return bytes();

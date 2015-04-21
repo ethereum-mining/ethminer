@@ -116,6 +116,11 @@ QString contentsOfQResource(string const& res)
 Address c_newConfig = Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
 //Address c_nameReg = Address("ddd1cea741d548f90d86fb87a3ae6492e18c03a1");
 
+static QString filterOutTerminal(QString _s)
+{
+	return _s.replace(QRegExp("\x1b\\[(\\d;)?\\d+m"), "");
+}
+
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main),
@@ -130,7 +135,7 @@ Main::Main(QWidget *parent) :
 	{
 		simpleDebugOut(s, c);
 		m_logLock.lock();
-		m_logHistory.append(QString::fromStdString(s) + "\n");
+		m_logHistory.append(filterOutTerminal(QString::fromStdString(s)) + "\n");
 		m_logChanged = true;
 		m_logLock.unlock();
 //		ui->log->addItem(QString::fromStdString(s));

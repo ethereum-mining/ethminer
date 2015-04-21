@@ -31,6 +31,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+const char* VMTraceChannel::name() { return "EVM"; }
+
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
 	m_lastHashes(_bc.lastHashes((unsigned)_s.info().number - 1)),
@@ -199,8 +201,8 @@ OnOpFunc Executive::simpleTrace()
 		o << "    STORAGE" << endl;
 		for (auto const& i: ext.state().storage(ext.myAddress))
 			o << showbase << hex << i.first << ": " << i.second << endl;
-		dev::LogOutputStream<VMTraceChannel, false>(true) << o.str();
-		dev::LogOutputStream<VMTraceChannel, false>(false) << " | " << dec << ext.depth << " | " << ext.myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " | " << dec << vm.gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32" << " ]";
+		dev::LogOutputStream<VMTraceChannel, false>() << o.str();
+		dev::LogOutputStream<VMTraceChannel, false>() << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << vm.gas() << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
 	};
 }
 

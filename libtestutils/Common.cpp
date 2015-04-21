@@ -20,6 +20,7 @@
  */
 
 #include <random>
+#include <boost/filesystem.hpp>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/FileSystem.h>
@@ -28,6 +29,8 @@
 using namespace std;
 using namespace dev;
 using namespace dev::test;
+
+const char* TestChannel::name() { return "TST"; }
 
 std::string dev::test::getTestPath()
 {
@@ -69,6 +72,11 @@ Json::Value dev::test::loadJsonFromFile(std::string const& _path)
 std::string dev::test::toTestFilePath(std::string const& _filename)
 {
 	return getTestPath() + "/" + _filename + ".json";
+}
+
+std::string dev::test::getFolder(std::string const& _file)
+{
+	return boost::filesystem::path(_file).parent_path().string();
 }
 
 std::string dev::test::getRandomPath()

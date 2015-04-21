@@ -405,6 +405,72 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 
 int main(int argc, char** argv)
 {
+	cout << "\x1b[30mEthBlack\x1b[0m" << endl;
+	cout << "\x1b[90mEthCoal\x1b[0m" << endl;
+	cout << "\x1b[37mEthGray\x1b[0m" << endl;
+	cout << "\x1b[97mEthWhite\x1b[0m" << endl;
+	cout << "\x1b[31mEthRed\x1b[0m" << endl;
+	cout << "\x1b[32mEthGreen\x1b[0m" << endl;
+	cout << "\x1b[33mEthYellow\x1b[0m" << endl;
+	cout << "\x1b[34mEthBlue\x1b[0m" << endl;
+	cout << "\x1b[35mEthPurple\x1b[0m" << endl;
+	cout << "\x1b[36mEthCyan\x1b[0m" << endl;
+	// High Intensity
+	cout << "\x1b[91mEthRedI\x1b[0m" << endl;
+	cout << "\x1b[92mEthLime\x1b[0m" << endl;
+	cout << "\x1b[93mEthYellowI\x1b[0m" << endl;
+	cout << "\x1b[94mEthBlueI\x1b[0m" << endl;
+	cout << "\x1b[95mEthPurpleI\x1b[0m" << endl;
+	cout << "\x1b[96mEthCyanI\x1b[0m" << endl;
+
+	// Bold
+	cout << "\x1b[1;30mEthBlackB\x1b[0m" << endl;
+	cout << "\x1b[1;90mEthCoalB\x1b[0m" << endl;
+	cout << "\x1b[1;37mEthGrayB\x1b[0m" << endl;
+	cout << "\x1b[1;97mEthWhiteB\x1b[0m" << endl;
+	cout << "\x1b[1;31mEthRedB\x1b[0m" << endl;
+	cout << "\x1b[1;32mEthGreenB\x1b[0m" << endl;
+	cout << "\x1b[1;33mEthYellowB\x1b[0m" << endl;
+	cout << "\x1b[1;34mEthBlueB\x1b[0m" << endl;
+	cout << "\x1b[1;35mEthPurpleB\x1b[0m" << endl;
+	cout << "\x1b[1;36mEthCyanB\x1b[0m" << endl;
+	// Bold High Intensity
+	cout << "\x1b[1;91mEthRedBI\x1b[0m" << endl;
+	cout << "\x1b[1;92mEthGreenBI\x1b[0m" << endl;
+	cout << "\x1b[1;93mEthYellowBI\x1b[0m" << endl;
+	cout << "\x1b[1;94mEthBlueBI\x1b[0m" << endl;
+	cout << "\x1b[1;95mEthPurpleBI\x1b[0m" << endl;
+	cout << "\x1b[1;96mEthCyanBI\x1b[0m" << endl;
+
+	// Background
+	cout << "\x1b[40mEthBlackOn\x1b[0m" << endl;
+	cout << "\x1b[100mEthCoalOn\x1b[0m" << endl;
+	cout << "\x1b[47mEthGrayOn\x1b[0m" << endl;
+	cout << "\x1b[107mEthWhiteOn\x1b[0m" << endl;
+	cout << "\x1b[41mEthRedOn\x1b[0m" << endl;
+	cout << "\x1b[42mEthGreenOn\x1b[0m" << endl;
+	cout << "\x1b[43mEthYellowOn\x1b[0m" << endl;
+	cout << "\x1b[44mEthBlueOn\x1b[0m" << endl;
+	cout << "\x1b[45mEthPurpleOn\x1b[0m" << endl;
+	cout << "\x1b[46mEthCyanOn\x1b[0m" << endl;
+	// High Intensity backgrounds
+	cout << "\x1b[101mEthRedOnI\x1b[0m" << endl;
+	cout << "\x1b[102mEthGreenOnI\x1b[0m" << endl;
+	cout << "\x1b[103mEthYellowOnI\x1b[0m" << endl;
+	cout << "\x1b[104mEthBlueOnI\x1b[0m" << endl;
+	cout << "\x1b[105mEthPurpleOnI\x1b[0m" << endl;
+	cout << "\x1b[106mEthCyanOnI\x1b[0m" << endl;
+
+	// Underline
+	cout << "\x1b[4;30mEthBlackU\x1b[0m" << endl;
+	cout << "\x1b[4;31mEthRedU\x1b[0m" << endl;
+	cout << "\x1b[4;32mEthGreenU\x1b[0m" << endl;
+	cout << "\x1b[4;33mEthYellowU\x1b[0m" << endl;
+	cout << "\x1b[4;34mEthBlueU\x1b[0m" << endl;
+	cout << "\x1b[4;35mEthPurpleU\x1b[0m" << endl;
+	cout << "\x1b[4;36mEthCyanU\x1b[0m" << endl;
+	cout << "\x1b[4;37mEthWhiteU\x1b[0m" << endl;
+
 	// Init defaults
 	Defaults::get();
 
@@ -860,7 +926,7 @@ int main(int argc, char** argv)
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
-	std::string clientImplString = "Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
+	std::string clientImplString = "++eth/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
 		clientImplString,
 		dbPath,
