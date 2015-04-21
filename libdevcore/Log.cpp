@@ -41,7 +41,9 @@ const char* WarnChannel::name() { return EthOnRed EthBlackBold "  ✘"; }
 const char* NoteChannel::name() { return EthBlue "  ℹ"; }
 const char* DebugChannel::name() { return EthWhite "  ◇"; }
 
-LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v)
+LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v, bool _autospacing):
+	m_autospacing(_autospacing),
+	m_verbosity(_v)
 {
 	auto it = g_logOverride.find(_info);
 	if ((it != g_logOverride.end() && it->second == true) || (it == g_logOverride.end() && (int)_v <= g_logVerbosity))

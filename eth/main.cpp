@@ -370,7 +370,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 			for (unsigned i = 0; !completed; ++i)
 			{
 				if (current)
-					cnote << "Mining on PoWhash" << current.headerHash.abridged() << ": " << f.miningProgress();
+					cnote << "Mining on PoWhash" << current.headerHash << ": " << f.miningProgress();
 				else
 					cnote << "Getting work package...";
 				Json::Value v = rpc.eth_getWork();
@@ -380,12 +380,12 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 					current.headerHash = hh;
 					current.seedHash = h256(v[1].asString());
 					current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-					cnote << "Got work package:" << current.headerHash.abridged() << " < " << current.boundary;
+					cnote << "Got work package:" << current.headerHash << " < " << current.boundary;
 					f.setWork(current);
 				}
 				this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 			}
-			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash.abridged() << "," << solution.mixHash.abridged() << "] to" << _remote << "...";
+			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash << "," << solution.mixHash << "] to" << _remote << "...";
 			bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
 			if (ok)
 				clog(HappyChannel) << "Submitted and accepted.";
