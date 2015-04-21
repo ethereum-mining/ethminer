@@ -28,6 +28,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+const char* TransactionQueueChannel::name() { return EthCyan "┉┅▶"; }
+
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb, IfDropped _ik)
 {
 	// Check if we already know this transaction.

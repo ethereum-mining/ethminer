@@ -250,7 +250,7 @@ void MixClient::mine()
 {
 	WriteGuard l(x_state);
 	m_state.commitToMine(bc());
-	m_state.completeMine();
+	m_state.completeMine<Ethash>(Ethash::Solution());
 	bc().import(m_state.blockData(), m_stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce);
 	/*
 	GenericFarm<ProofOfWork> f;

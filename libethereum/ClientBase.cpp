@@ -31,6 +31,11 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+const char* WatchChannel::name() { return EthBlue "ℹ" EthWhite "  "; }
+const char* WorkInChannel::name() { return EthOrange "⚒" EthGreen "▬▶"; }
+const char* WorkOutChannel::name() { return EthOrange "⚒" EthNavy "◀▬"; }
+const char* WorkChannel::name() { return EthOrange "⚒" EthWhite "  "; }
+
 State ClientBase::asOf(BlockNumber _h) const
 {
 	if (_h == PendingBlock)

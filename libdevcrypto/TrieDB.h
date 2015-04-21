@@ -40,7 +40,7 @@ namespace ldb = leveldb;
 namespace dev
 {
 
-struct TrieDBChannel: public LogChannel  { static const char* name() { return "-T-"; } static const int verbosity = 17; };
+struct TrieDBChannel: public LogChannel  { static const char* name(); static const int verbosity = 17; };
 #define tdebug clog(TrieDBChannel)
 
 struct InvalidTrie: virtual dev::Exception {};

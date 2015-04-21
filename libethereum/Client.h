@@ -92,10 +92,10 @@ private:
 	std::array<u256, 9> m_octiles;
 };
 
-struct ClientNote: public LogChannel { static const char* name() { return "*C*"; } static const int verbosity = 2; };
-struct ClientChat: public LogChannel { static const char* name() { return "=C="; } static const int verbosity = 4; };
-struct ClientTrace: public LogChannel { static const char* name() { return "-C-"; } static const int verbosity = 7; };
-struct ClientDetail: public LogChannel { static const char* name() { return " C "; } static const int verbosity = 14; };
+struct ClientNote: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct ClientChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
+struct ClientTrace: public LogChannel { static const char* name(); static const int verbosity = 7; };
+struct ClientDetail: public LogChannel { static const char* name(); static const int verbosity = 14; };
 
 struct ActivityReport
 {
