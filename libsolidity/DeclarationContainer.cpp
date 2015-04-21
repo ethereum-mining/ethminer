@@ -22,11 +22,11 @@
 
 #include <libsolidity/DeclarationContainer.h>
 #include <libsolidity/AST.h>
+#include <libsolidity/Types.h>
 
-namespace dev
-{
-namespace solidity
-{
+using namespace std;
+using namespace dev;
+using namespace dev::solidity;
 
 bool DeclarationContainer::registerDeclaration(Declaration const& _declaration, bool _invisible, bool _update)
 {
@@ -34,17 +34,34 @@ bool DeclarationContainer::registerDeclaration(Declaration const& _declaration, 
 	if (name.empty())
 		return true;
 
-	if (!_update && (m_declarations.count(name) || m_invisibleDeclarations.count(name)))
-		return false;
+	if (_update)
+	{
+		solAssert(!dynamic_cast<FunctionDefinition const*>(&_declaration), "Attempt to update function definition.");
+		m_declarations[name].clear();
+		m_invisibleDeclarations[name].clear();
+	}
+	else
+	{
+		if (dynamic_cast<FunctionDefinition const*>(&_declaration))
+		{
+			// check that all other declarations with the same name are functions
+			for (auto&& declaration: m_invisibleDeclarations[name] + m_declarations[name])
+				if (!dynamic_cast<FunctionDefinition const*>(declaration))
+					return false;
+		}
+		else if (m_declarations.count(name) > 0 || m_invisibleDeclarations.count(name) > 0)
+			return false;
+	}
 
 	if (_invisible)
-		m_invisibleDeclarations.insert(name);
+		m_invisibleDeclarations[name].insert(&_declaration);
 	else
-		m_declarations[name] = &_declaration;
+		m_declarations[name].insert(&_declaration);
+
 	return true;
 }
 
-Declaration const* DeclarationContainer::resolveName(ASTString const& _name, bool _recursive) const
+set<Declaration const*> DeclarationContainer::resolveName(ASTString const& _name, bool _recursive) const
 {
 	solAssert(!_name.empty(), "Attempt to resolve empty name.");
 	auto result = m_declarations.find(_name);
@@ -52,8 +69,5 @@ Declaration const* DeclarationContainer::resolveName(ASTString const& _name, boo
 		return result->second;
 	if (_recursive && m_enclosingContainer)
 		return m_enclosingContainer->resolveName(_name, true);
-	return nullptr;
-}
-
-}
+	return set<Declaration const*>({});
 }

@@ -398,8 +398,8 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 			StructType const* s = dynamic_cast<StructType const*>(_type);
 			for(auto const& structMember: s->getMembers())
 			{
-				auto slotAndOffset = s->getStorageOffsetsOfMember(structMember.first);
-				r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.first), nodeType(structMember.second.get()), slotAndOffset.first, slotAndOffset.second });
+				auto slotAndOffset = s->getStorageOffsetsOfMember(structMember.name);
+				r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.name), nodeType(structMember.type.get()), slotAndOffset.first, slotAndOffset.second });
 			}
 		}
 		break;
