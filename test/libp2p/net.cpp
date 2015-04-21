@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(v2PingNodePacket)
 
 	PingNode p((bi::udp::endpoint()));
 	BOOST_REQUIRE_NO_THROW(p = PingNode::fromBytesConstRef(bi::udp::endpoint(), bytesConstRef(&s.out())));
-	BOOST_REQUIRE(p.version == 2);
+	BOOST_REQUIRE(p.version == 0);
 }
 
 BOOST_AUTO_TEST_CASE(neighboursPacketLength)
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE(neighboursPacketLength)
 	}
 }
 
-BOOST_AUTO_TEST_CASE(test_neighbours_packet)
+BOOST_AUTO_TEST_CASE(neighboursPacket)
 {
 	KeyPair k = KeyPair::create();
 	std::vector<std::pair<KeyPair,unsigned>> testNodes(TestNodeTable::createTestNodes(16));
@@ -287,12 +287,6 @@ BOOST_AUTO_TEST_CASE(test_findnode_neighbours)
 	// Executing findNode should result in a list which is serialized
 	// into Neighbours packet. Neighbours packet should then be deserialized
 	// into the same list of nearest nodes.
-}
-
-BOOST_AUTO_TEST_CASE(test_windows_template)
-{
-	bi::udp::endpoint ep;
-	PingNode p(ep);
 }
 
 BOOST_AUTO_TEST_CASE(kademlia)
@@ -328,7 +322,7 @@ BOOST_AUTO_TEST_CASE(kademlia)
 
 }
 
-BOOST_AUTO_TEST_CASE(test_udp_once)
+BOOST_AUTO_TEST_CASE(udpOnce)
 {
 	UDPDatagram d(bi::udp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 30300), bytes({65,65,65,65}));
 	TestUDPSocket a; a.m_socket->connect(); a.start();
