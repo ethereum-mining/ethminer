@@ -83,16 +83,6 @@ void FakeExtVM::reset(u256 _myBalance, u256 _myNonce, map<u256, u256> const& _st
 	set(myAddress, _myBalance, _myNonce, _storage, get<3>(addresses[myAddress]));
 }
 
-/*void FakeExtVM::push(mObject& o, string const& _n, u256 _v)
-{
-	o[_n] = jsonHex(_v);
-}*/
-
-/*void FakeExtVM::push(mArray& a, u256 _v)
-{
-	a.push_back(toString(_v));
-}*/
-
 mObject FakeExtVM::exportEnv()
 {
 	mObject ret;
