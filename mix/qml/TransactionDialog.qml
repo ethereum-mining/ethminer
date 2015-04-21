@@ -39,6 +39,8 @@ Dialog {
 		rowGasPrice.visible = !useTransactionDefaultValue;
 
 		transactionIndex = index;
+		typeLoader.transactionIndex = index;
+
 		gasValueEdit.gasValue = item.gas;
 		gasAutoCheck.checked = item.gasAuto ? true : false;
 		gasPriceField.value = item.gasPrice;
