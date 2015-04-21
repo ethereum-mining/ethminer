@@ -82,7 +82,7 @@ struct TestNodeTable: public NodeTable
 		bi::address ourIp = bi::address::from_string("127.0.0.1");
 		for (auto& n: _testNodes)
 		{
-			ping(bi::udp::endpoint(ourIp, n.second));
+			ping(NodeIPEndpoint(ourIp, n.second, n.second));
 			this_thread::sleep_for(chrono::milliseconds(2));
 		}
 	}
@@ -244,11 +244,9 @@ BOOST_AUTO_TEST_CASE(neighboursPacketLength)
 		auto limit = nlimit ? std::min(testNodes.size(), (size_t)(offset + nlimit)) : testNodes.size();
 		for (auto i = offset; i < limit; i++)
 		{
-			Neighbours::Node node;
-			node.ipAddress = boost::asio::ip::address::from_string("200.200.200.200").to_string();
-			node.udpPort = testNodes[i].second;
-			node.node = testNodes[i].first.pub();
-			out.nodes.push_back(node);
+			Node n(testNodes[i].first.pub(), NodeIPEndpoint(boost::asio::ip::address::from_string("200.200.200.200"), testNodes[i].second, testNodes[i].second));
+			Neighbours::Neighbour neighbour(n);
+			out.neighbours.push_back(neighbour);
 		}
 		
 		out.sign(k.sec());
@@ -265,11 +263,9 @@ BOOST_AUTO_TEST_CASE(test_neighbours_packet)
 	Neighbours out(to);
 	for (auto n: testNodes)
 	{
-		Neighbours::Node node;
-		node.ipAddress = boost::asio::ip::address::from_string("127.0.0.1").to_string();
-		node.udpPort = n.second;
-		node.node = n.first.pub();
-		out.nodes.push_back(node);
+		Node node(n.first.pub(), NodeIPEndpoint(boost::asio::ip::address::from_string("200.200.200.200"), n.second, n.second));
+		Neighbours::Neighbour neighbour(node);
+		out.neighbours.push_back(neighbour);
 	}
 	out.sign(k.sec());
 
@@ -277,9 +273,9 @@ BOOST_AUTO_TEST_CASE(test_neighbours_packet)
 	bytesConstRef rlpBytes(packet.cropped(h256::size + Signature::size + 1));
 	Neighbours in = Neighbours::fromBytesConstRef(to, rlpBytes);
 	int count = 0;
-	for (auto n: in.nodes)
+	for (auto n: in.neighbours)
 	{
-		BOOST_REQUIRE_EQUAL(testNodes[count].second, n.udpPort);
+		BOOST_REQUIRE_EQUAL(testNodes[count].second, n.endpoint.udpPort);
 		BOOST_REQUIRE_EQUAL(testNodes[count].first.pub(), n.node);
 		BOOST_REQUIRE_EQUAL(sha3(testNodes[count].first.pub()), sha3(n.node));
 		count++;
