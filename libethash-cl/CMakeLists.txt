@@ -10,6 +10,7 @@ file(GLOB HEADERS "*.h")
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${OpenCL_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
 include_directories(..)
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 TARGET_LINK_LIBRARIES(${EXECUTABLE} ${OpenCL_LIBRARIES} ethash)
