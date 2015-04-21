@@ -15,7 +15,7 @@ cmake_policy(SET CMP0020 NEW)
 # 3.1 and above
 if ((${CMAKE_MAJOR_VERSION} GREATER 2) AND (${CMAKE_MINOR_VERSION} GREATER 0))
 	# implicitly dereference variables (deprecated in 3.1)
-	cmake_policy(SET CMP0054 OLD)
+	cmake_policy(SET CMP0054 NEW)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
