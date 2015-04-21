@@ -50,10 +50,28 @@ TestCase
 
 	function editContract(c)
 	{
+		if (mainApplication.codeModel.compiling)
+			ts.waitForSignal(mainApplication.codeModel, "compilationComplete()", 5000);
 		mainApplication.mainContent.codeEditor.getEditor("contract.sol").setText(c);
 		if (!ts.waitForSignal(mainApplication.codeModel, "compilationComplete()", 5000))
 			fail("not compiled");
 		ts.keyPressChar(mainApplication, "S", Qt.ControlModifier, 200); //Ctrl+S
+	}
+
+	function waitForMining()
+	{
+		while (mainApplication.clientModel.mining)
+			ts.waitForSignal(mainApplication.clientModel, "miningComplete()", 5000);
+		wait(1); //allow events to propagate 2 times for transaction log to be updated
+		wait(1);
+	}
+
+	function waitForExecution()
+	{
+		while (mainApplication.clientModel.running)
+			ts.waitForSignal(mainApplication.clientModel, "runComplete()", 5000);
+		wait(1); //allow events to propagate 2 times for transaction log to be updated
+		wait(1);
 	}
 
 	function editHtml(c)
@@ -76,8 +94,11 @@ TestCase
 	function test_dbg_transactionWithParameter() { TestDebugger.test_transactionWithParameter(); }
 	function test_dbg_constructorParameters() { TestDebugger.test_constructorParameters(); }
 	function test_dbg_arrayParametersAndStorage() { TestDebugger.test_arrayParametersAndStorage(); }
+	function test_dbg_solidity() { TestDebugger.test_solidityDebugging(); }
+	function test_dbg_vm() { TestDebugger.test_vmDebugging(); }
 	function test_miner_getDefaultiner() { TestMiner.test_getDefaultMiner(); }
 	function test_miner_selectMiner() { TestMiner.test_selectMiner(); }
+	function test_miner_mine() { TestMiner.test_mine(); }
 	function test_project_contractRename() { TestProject.test_contractRename(); }
 }
 

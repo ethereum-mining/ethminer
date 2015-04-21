@@ -27,6 +27,9 @@ using namespace dev;
 namespace dev
 {
 
+const char* DBChannel::name() { return "TDB"; }
+const char* DBWarn::name() { return "TDB"; }
+
 std::map<h256, std::string> MemoryDB::get() const
 {
 	if (!m_enforceRefs)

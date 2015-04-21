@@ -22,7 +22,6 @@
 #pragma once
 
 #include <functional>
-#include <boost/thread.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
@@ -36,8 +35,10 @@ namespace eth
 
 class BlockChain;
 
-struct TransactionQueueChannel: public LogChannel { static const char* name() { return "->Q"; } static const int verbosity = 4; };
+struct TransactionQueueChannel: public LogChannel { static const char* name(); static const int verbosity = 4; };
 #define ctxq dev::LogOutputStream<dev::eth::TransactionQueueChannel, true>()
+
+enum class IfDropped { Ignore, Retry };
 
 /**
  * @brief A queue of Transactions, each stored as RLP.
@@ -48,10 +49,10 @@ class TransactionQueue
 public:
 	using ImportCallback = std::function<void(ImportResult)>;
 
-	ImportResult import(bytes const& _tx, ImportCallback const& _cb = ImportCallback()) { return import(&_tx, _cb); }
-	ImportResult import(bytesConstRef _tx, ImportCallback const& _cb = ImportCallback());
+	ImportResult import(bytes const& _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore) { return import(&_tx, _cb, _ik); }
+	ImportResult import(bytesConstRef _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore);
 
-	void drop(h256 _txHash);
+	void drop(h256 const& _txHash);
 
 	std::map<h256, Transaction> transactions() const { ReadGuard l(m_lock); return m_current; }
 	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_current.size(), m_unknown.size()); }
@@ -63,11 +64,12 @@ public:
 	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
 
 private:
-	mutable boost::shared_mutex m_lock;								///< General lock.
+	mutable SharedMutex m_lock;								///< General lock.
 	std::set<h256> m_known;											///< Hashes of transactions in both sets.
 	std::map<h256, Transaction> m_current;							///< Map of SHA3(tx) to tx.
 	std::multimap<Address, std::pair<h256, Transaction>> m_unknown;	///< For transactions that have a future nonce; we map their sender address to the tx stuff, and insert once the sender has a valid TX.
 	std::map<h256, std::function<void(ImportResult)>> m_callbacks;	///< Called once.
+	std::set<h256> m_dropped;										///< Transactions that have previously been dropped.
 	Signal m_onReady;												///< Called when a subsequent call to import transactions will return a non-empty container. Be nice and exit fast.
 };
 

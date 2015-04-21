@@ -29,7 +29,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
+const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
+
+ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs)
 {
 	// Check if we already know this block.
 	h256 h = BlockInfo::headerHash(_block);
@@ -70,10 +72,15 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc)
 	UpgradeGuard ul(l);
 
 	// Check it's not in the future
-	if (bi.timestamp > (u256)time(0))
+	(void)_isOurs;
+	if (bi.timestamp > (u256)time(0)/* && !_isOurs*/)
 	{
 		m_future.insert(make_pair((unsigned)bi.timestamp, _block.toBytes()));
-		cblockq << "OK - queued for future.";
+		char buf[24];
+		time_t bit = (unsigned)bi.timestamp;
+		if (strftime(buf, 24, "%X", localtime(&bit)) == 0)
+			buf[0] = '\0'; // empty if case strftime fails
+		cblockq << "OK - queued for future [" << bi.timestamp << "vs" << time(0) << "] - will wait until" << buf;
 		return ImportResult::FutureTime;
 	}
 	else
@@ -131,18 +138,53 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 
 void BlockQueue::tick(BlockChain const& _bc)
 {
-	unsigned t = time(0);
-	for (auto i = m_future.begin(); i != m_future.end() && i->first < t; ++i)
-		import(&(i->second), _bc);
+	vector<bytes> todo;
+	{
+		UpgradableGuard l(m_lock);
+		if (m_future.empty())
+			return;
 
-	WriteGuard l(m_lock);
-	m_future.erase(m_future.begin(), m_future.upper_bound(t));
+		cblockq << "Checking past-future blocks...";
+
+		unsigned t = time(0);
+		if (t <= m_future.begin()->first)
+			return;
+
+		cblockq << "Past-future blocks ready.";
+
+		{
+			UpgradeGuard l2(l);
+			auto end = m_future.lower_bound(t);
+			for (auto i = m_future.begin(); i != end; ++i)
+				todo.push_back(move(i->second));
+			m_future.erase(m_future.begin(), end);
+		}
+	}
+	cblockq << "Importing" << todo.size() << "past-future blocks.";
+
+	for (auto const& b: todo)
+		import(&b, _bc);
 }
 
 template <class T> T advanced(T _t, unsigned _n)
 {
 	std::advance(_t, _n);
 	return _t;
+}
+
+QueueStatus BlockQueue::blockStatus(h256 const& _h) const
+{
+	ReadGuard l(m_lock);
+	return
+		m_readySet.count(_h) ?
+			QueueStatus::Ready :
+		m_drainingSet.count(_h) ?
+			QueueStatus::Importing :
+		m_unknownSet.count(_h) ?
+			QueueStatus::UnknownParent :
+		m_knownBad.count(_h) ?
+			QueueStatus::Bad :
+			QueueStatus::Unknown;
 }
 
 void BlockQueue::drain(std::vector<bytes>& o_out, unsigned _max)

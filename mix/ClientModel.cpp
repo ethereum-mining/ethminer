@@ -401,9 +401,9 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 				AssemblyItem const& prevInstruction = codeItems[s.codeIndex][prevInstructionIndex];
 				auto functionIter = contract->functions().find(LocationPair(instruction.getLocation().start, instruction.getLocation().end));
 				if (functionIter != contract->functions().end() && ((prevInstruction.getJumpType() == AssemblyItem::JumpType::IntoFunction) || solCallStack.empty()))
-					solCallStack.push_back(QVariant::fromValue(functionIter.value()));
+					solCallStack.push_front(QVariant::fromValue(functionIter.value()));
 				else if (prevInstruction.getJumpType() == AssemblyItem::JumpType::OutOfFunction && !solCallStack.empty())
-					solCallStack.pop_back();
+					solCallStack.pop_front();
 			}
 
 			//format solidity context values
@@ -498,6 +498,8 @@ QVariant ClientModel::formatStorageValue(SolidityType const& _type, map<u256, u2
 		bytes slotBytes = toBigEndian(slotValue);
 		auto start = slotBytes.end() - _type.size - offset;
 		bytes val(32 - _type.size); //prepend with zeroes
+		if (_type.type == SolidityType::SignedInteger && (*start & 0x80)) //extend sign
+			std::fill(val.begin(), val.end(), 0xff);
 		val.insert(val.end(), start, start + _type.size);
 		values.append(decoder.decode(_type, val));
 		offset += _type.size;

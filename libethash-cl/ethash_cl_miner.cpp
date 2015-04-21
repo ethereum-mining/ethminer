@@ -57,7 +57,7 @@ ethash_cl_miner::ethash_cl_miner()
 {
 }
 
-std::string ethash_cl_miner::platform_info()
+std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
 {
 	std::vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
@@ -67,21 +67,22 @@ std::string ethash_cl_miner::platform_info()
 		return std::string();
 	}
 
-	// get GPU device of the default platform
+	// get GPU device of the selected platform
 	std::vector<cl::Device> devices;
-	platforms[0].getDevices(CL_DEVICE_TYPE_ALL, &devices);
+	unsigned platform_num = std::min<unsigned>(_platformId, platforms.size() - 1);
+	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 	if (devices.empty())
 	{
 		debugf("No OpenCL devices found.\n");
 		return std::string();
 	}
 
-	// use default device
-	unsigned device_num = 0;
+	// use selected default device
+	unsigned device_num = std::min<unsigned>(_deviceId, devices.size() - 1);
 	cl::Device& device = devices[device_num];
 	std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
 
-	return "{ \"platform\": \"" + platforms[0].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
+	return "{ \"platform\": \"" + platforms[platform_num].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
 }
 
 void ethash_cl_miner::finish()
@@ -92,7 +93,7 @@ void ethash_cl_miner::finish()
 	}
 }
 
-bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size, unsigned _deviceId)
+bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size, unsigned _platformId, unsigned _deviceId)
 {
 	// store params
 	m_params = params;
@@ -106,12 +107,15 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 		return false;
 	}
 
-	// use default platform
-	fprintf(stderr, "Using platform: %s\n", platforms[0].getInfo<CL_PLATFORM_NAME>().c_str());
+	// use selected platform
+
+	_platformId = std::min<unsigned>(_platformId, platforms.size() - 1);
+
+	fprintf(stderr, "Using platform: %s\n", platforms[_platformId].getInfo<CL_PLATFORM_NAME>().c_str());
 
     // get GPU device of the default platform
     std::vector<cl::Device> devices;
-    platforms[0].getDevices(CL_DEVICE_TYPE_ALL, &devices);
+	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
     if (devices.empty())
 	{
 		debugf("No OpenCL devices found.\n");
