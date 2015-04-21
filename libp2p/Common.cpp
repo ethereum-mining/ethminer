@@ -24,7 +24,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-const unsigned dev::p2p::c_protocolVersion = 3;
+const unsigned dev::p2p::c_protocolVersion = 4;
 const unsigned dev::p2p::c_defaultIPPort = 30303;
 
 const dev::p2p::NodeIPEndpoint dev::p2p::UnspecifiedNodeIPEndpoint = NodeIPEndpoint(bi::address(), 0, 0);
