@@ -75,7 +75,7 @@ struct Setup
 string fromAscii(string _s)
 {
 	bytes b = asBytes(_s);
-	return "0x" + toHex(b);
+	return jsonHex(b);
 }
 
 BOOST_FIXTURE_TEST_SUITE(environment, Setup)
