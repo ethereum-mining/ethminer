@@ -29,7 +29,11 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+#ifdef _WIN32
+const char* BlockQueueChannel::name() { return EthOrange "[]>"; }
+#else
 const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
+#endif
 
 ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs)
 {

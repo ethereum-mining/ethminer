@@ -34,12 +34,21 @@ using namespace dev;
 int dev::g_logVerbosity = 5;
 map<type_info const*, bool> dev::g_logOverride;
 
+#ifdef _WIN32
+const char* LogChannel::name() { return EthGray "..."; }
+const char* LeftChannel::name() { return EthNavy "<--"; }
+const char* RightChannel::name() { return EthGreen "-->"; }
+const char* WarnChannel::name() { return EthOnRed EthBlackBold "  X"; }
+const char* NoteChannel::name() { return EthBlue "  i"; }
+const char* DebugChannel::name() { return EthWhite "  D"; }
+#else
 const char* LogChannel::name() { return EthGray "···"; }
 const char* LeftChannel::name() { return EthNavy "◀▬▬"; }
 const char* RightChannel::name() { return EthGreen "▬▬▶"; }
 const char* WarnChannel::name() { return EthOnRed EthBlackBold "  ✘"; }
 const char* NoteChannel::name() { return EthBlue "  ℹ"; }
 const char* DebugChannel::name() { return EthWhite "  ◇"; }
+#endif
 
 LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v, bool _autospacing):
 	m_autospacing(_autospacing),
