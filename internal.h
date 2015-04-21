@@ -38,7 +38,6 @@ struct ethash_light {
 struct ethash_full {
 	FILE* file;
 	uint64_t file_size;
-	ethash_cache_t* cache;
 	node* data;
 	ethash_callback_t callback;
 };

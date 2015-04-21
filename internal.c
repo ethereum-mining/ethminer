@@ -41,13 +41,13 @@
 #include "sha3.h"
 #endif // WITH_CRYPTOPP
 
-uint64_t ethash_get_datasize(uint32_t const block_number)
+uint64_t ethash_get_datasize(uint64_t const block_number)
 {
 	assert(block_number / ETHASH_EPOCH_LENGTH < 2048);
 	return dag_sizes[block_number / ETHASH_EPOCH_LENGTH];
 }
 
-uint64_t ethash_get_cachesize(uint32_t const block_number)
+uint64_t ethash_get_cachesize(uint64_t const block_number)
 {
 	assert(block_number / ETHASH_EPOCH_LENGTH < 2048);
 	return cache_sizes[block_number / ETHASH_EPOCH_LENGTH];
@@ -389,8 +389,6 @@ ethash_full_t ethash_full_new(
 	if (!ret) {
 		return NULL;
 	}
-
-	ret->cache = (ethash_cache_t*)cache;
 	ret->file_size = (size_t)full_size;
 	switch (ethash_io_prepare(dirname, *seed_hash, &f, (size_t)full_size)) {
 	case ETHASH_IO_FAIL:
@@ -438,9 +436,6 @@ fail_free_full:
 
 void ethash_full_delete(ethash_full_t full)
 {
-	if (full->cache) {
-		ethash_cache_delete(full->cache);
-	}
 	// could check that munmap(..) == 0 but even if it did not can't really do anything here
 	munmap(full->data, full->file_size);
 	if (full->file) {
@@ -470,18 +465,6 @@ bool ethash_full_compute(
 void *ethash_full_data(ethash_full_t full)
 {
     return full->data;
-}
-
-ethash_cache_t* ethash_full_get_cache(ethash_full_t full)
-{
-	return full->cache;
-}
-
-ethash_cache_t* ethash_full_acquire_cache(ethash_full_t full)
-{
-	ethash_cache_t* ret = full->cache;
-	full->cache = 0;
-	return ret;
 }
 
 /**

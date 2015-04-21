@@ -79,8 +79,8 @@ typedef struct ethash_return_value {
 	ethash_h256_t mix_hash;
 } ethash_return_value;
 
-uint64_t ethash_get_datasize(uint32_t const block_number);
-uint64_t ethash_get_cachesize(uint32_t const block_number);
+uint64_t ethash_get_datasize(uint64_t const block_number);
+uint64_t ethash_get_cachesize(uint64_t const block_number);
 
 // LTODO: for consistency's sake maybe use ethash_cache_t?
 typedef struct ethash_cache {
@@ -204,22 +204,6 @@ bool ethash_full_compute(
  * Get a pointer to the full DAG data
  */
 void *ethash_full_data(ethash_full_t full);
-/**
- * Get a pointer to the cache object held by the full client
- *
- * @param full    The full client whose cache to request
- * @return        A pointer to the cache held by the full client or NULL
- *                if there was no cache in the first place
- */
-ethash_cache_t* ethash_full_get_cache(ethash_full_t full);
-/**
- * Move the memory ownership of the cache somewhere else
- *
- * @param full     The full client whose cache's memory ownership  to acquire.
- *                 After this function concludes it will no longer have a cache.
- * @return         A pointer to the moved cache or NULL if there was no cache in the first place
- */
-ethash_cache_t* ethash_full_acquire_cache(ethash_full_t full);
 
 void ethash_get_seedhash(ethash_h256_t *seedhash, const uint32_t block_number);
 
