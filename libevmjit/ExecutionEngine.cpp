@@ -131,20 +131,20 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		llvm::InitializeNativeTargetAsmPrinter();
 
 		auto module = std::unique_ptr<llvm::Module>(new llvm::Module({}, llvm::getGlobalContext()));
-		llvm::EngineBuilder builder(module.get());
-		builder.setEngineKind(llvm::EngineKind::JIT);
-		builder.setUseMCJIT(true);
-		builder.setOptLevel(g_optimize ? llvm::CodeGenOpt::Default : llvm::CodeGenOpt::None);
 
+		// FIXME: LLVM 3.7: test on Windows
 		auto triple = llvm::Triple(llvm::sys::getProcessTriple());
 		if (triple.getOS() == llvm::Triple::OSType::Win32)
 			triple.setObjectFormat(llvm::Triple::ObjectFormatType::ELF);  // MCJIT does not support COFF format
 		module->setTargetTriple(triple.str());
 
+		llvm::EngineBuilder builder(std::move(module));
+		builder.setEngineKind(llvm::EngineKind::JIT);
+		builder.setOptLevel(g_optimize ? llvm::CodeGenOpt::Default : llvm::CodeGenOpt::None);
+
 		ee.reset(builder.create());
 		if (!CHECK(ee))
 			return ReturnCode::LLVMConfigError;
-		module.release();  // Successfully created llvm::ExecutionEngine takes ownership of the module
 		ee->setObjectCache(objectCache);
 
 		if (preloadCache)
@@ -179,8 +179,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		if (g_dump)
 			module->dump();
 
-		ee->addModule(module.get());
-		module.release();
+		ee->addModule(std::move(module));
 		listener->stateChanged(ExecState::CodeGen);
 		entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
 	}

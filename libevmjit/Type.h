@@ -3,7 +3,8 @@
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Constants.h>
-#include "preprocessor/llvm_includes_end.h"
+#include <llvm/IR/Metadata.h>
+#include "preprocessor/llvm_includes_end.h" // FIXME: LLVM 3.7: check if needed
 
 #include "Common.h"
 
