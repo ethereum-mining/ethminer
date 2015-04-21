@@ -512,7 +512,8 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				if (in.version != dev::p2p::c_protocolVersion)
 				{
 					if (auto n = nodeEntry(nodeid))
-						dropNode(n);
+						if (n)
+							dropNode(n);
 					return;
 				}
 				
