@@ -264,10 +264,12 @@ private:
 
 unsigned Ethash::GPUMiner::s_platformId = 0;
 unsigned Ethash::GPUMiner::s_deviceId = 0;
+unsigned Ethash::GPUMiner::s_numInstances = 1;
+unsigned Ethash::CPUMiner::s_numInstances = 1;
 
 Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
-	Worker("gpuminer"),
+	Worker("gpuminer" + toString(index())),
 	m_hook(new EthashCLHook(this))
 {
 }
@@ -308,6 +310,7 @@ void Ethash::GPUMiner::workLoop()
 
 			auto p = EthashAux::params(m_minerSeed);
 			auto cb = [&](void* d) { EthashAux::full(m_minerSeed, bytesRef((byte*)d, p.full_size)); };
+			unsigned device = instances() > 0 ? index() : s_deviceId;
 			m_miner->init(p, cb, 32, s_platformId, s_deviceId);
 		}
 
@@ -329,6 +332,11 @@ void Ethash::GPUMiner::pause()
 std::string Ethash::GPUMiner::platformInfo()
 {
 	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
+}
+
+unsigned Ethash::GPUMiner::getNumDevices()
+{
+	return ethash_cl_miner::get_num_devices(s_platformId);
 }
 
 #endif
