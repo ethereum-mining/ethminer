@@ -136,6 +136,7 @@ void help()
 		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
 		<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
+		<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 		<< "Client networking:" << endl
 		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
@@ -481,7 +482,8 @@ int main(int argc, char** argv)
 	/// Mining options
 	MinerType minerType = MinerType::CPU;
 	unsigned openclPlatform = 0;
-	unsigned openclDevice = 0;
+	unsigned openclDevice	= 0;
+	unsigned miningThreads = UINT_MAX;
 
 	/// File name for import/export.
 	string filename;
@@ -601,12 +603,12 @@ int main(int argc, char** argv)
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
 			openclPlatform= stol(argv[++i]);
-		}
-		catch (...)
-		{
-			cerr << "Bad " << arg << " option: " << argv[i] << endl;
-			return -1;
-		}
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
 				openclDevice = stol(argv[++i]);
@@ -850,6 +852,17 @@ int main(int argc, char** argv)
 					return -1;
 				}
 		}
+		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
+		{
+			try {
+				miningThreads = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		}
 		else if (arg == "-b" || arg == "--bootstrap")
 			bootstrap = true;
 		else if (arg == "-f" || arg == "--force-mining")
@@ -905,9 +918,16 @@ int main(int argc, char** argv)
 	if (sessionSecret)
 		sigKey = KeyPair(sessionSecret);
 
-	ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
-	ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
+	
 
+	if (minerType == MinerType::CPU) {
+		ProofOfWork::CPUMiner::setNumInstances(miningThreads);
+	}
+	else if (minerType == MinerType::GPU) {
+		ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
+		ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
+		ProofOfWork::GPUMiner::setNumInstances(miningThreads);
+	}
 	// Two codepaths is necessary since named block require database, but numbered
 	// blocks are superuseful to have when database is already open in another process.
 	if (mode == OperationMode::DAGInit && !(initDAG == LatestBlock || initDAG == PendingBlock))
