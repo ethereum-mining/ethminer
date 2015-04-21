@@ -30,7 +30,7 @@ using namespace dev;
 using namespace dev::eth;
 
 #ifdef _WIN32
-const char* BlockQueueChannel::name() { return EthOrange "[]->"; }
+const char* BlockQueueChannel::name() { return EthOrange "[]>"; }
 #else
 const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
 #endif
