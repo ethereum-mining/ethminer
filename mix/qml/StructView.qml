@@ -8,13 +8,15 @@ Column
 	id: root
 	property alias members: repeater.model  //js array
 	property var value: ({})
+	property int transactionIndex
 	Layout.fillWidth: true
-
+	spacing: 10
 	Repeater
 	{
 		id: repeater
 		visible: model.length > 0
 		Layout.fillWidth: true
+
 		RowLayout
 		{
 			id: row
@@ -51,10 +53,12 @@ Column
 						return Qt.createComponent("qrc:/qml/QBoolTypeView.qml");
 					else if (t === QSolidityType.Bytes)
 						return Qt.createComponent("qrc:/qml/QStringTypeView.qml");
-					else if (t === QSolidityType.Hash || t === QSolidityType.Address)
+					else if (t === QSolidityType.Hash)
 						return Qt.createComponent("qrc:/qml/QHashTypeView.qml");
 					else if (t === QSolidityType.Struct)
 						return Qt.createComponent("qrc:/qml/StructView.qml");
+					else if (t === QSolidityType.Address)
+						return Qt.createComponent("qrc:/qml/QAddressView.qml");
 					else
 						return undefined;
 				}
@@ -63,7 +67,21 @@ Column
 					var ptype = members[index].type;
 					var pname = members[index].name;
 					var vals = value;
-					if (ptype.category === QSolidityType.Struct && !item.members)
+					if (ptype.category === QSolidityType.Address)
+					{
+						item.contractCreationTr.append({"functionId": " - "});
+						for (var k = 0; k < transactionsModel.count; k++)
+						{
+							if (k >= transactionIndex)
+								break;
+							var tr = transactionsModel.get(k);
+							if (tr.functionId === tr.contractId && modelData.type.name === qsTr("contract") + " " + tr.contractId)
+								item.contractCreationTr.append(tr);
+						}
+						item.value = getValue();
+						item.init();
+					}
+					else if (ptype.category === QSolidityType.Struct && !item.members)
 					{
 						item.value = getValue();
 						item.members = ptype.members;
