@@ -37,8 +37,8 @@ BlockInfo constructBlock(mObject& _o);
 bytes createBlockRLPFromFields(mObject& _tObj);
 RLPStream createFullBlockFromHeader(BlockInfo const& _bi, bytes const& _txs = RLPEmptyList, bytes const& _uncles = RLPEmptyList);
 
-mObject writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi);
 mArray writeTransactionsToJson(Transactions const& txs);
+mObject writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi);
 void overwriteBlockHeader(BlockInfo& _current_BlockHeader, mObject& _blObj);
 BlockInfo constructBlock(mObject& _o);
 void updatePoW(BlockInfo& _bi);
@@ -81,7 +81,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		// create new "genesis" block
 		RLPStream rlpGenesisBlock = createFullBlockFromHeader(biGenesisBlock);
 		biGenesisBlock.verifyInternals(&rlpGenesisBlock.out());
-		o["genesisRLP"] = "0x" + toHex(rlpGenesisBlock.out());
+		o["genesisRLP"] = jsonHex(rlpGenesisBlock.out());
 
 		// construct blockchain
 		TransientDirectory td;
@@ -149,7 +149,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					return;
 				}
 
-				blObj["rlp"] = "0x" + toHex(state.blockData());
+				blObj["rlp"] = jsonHex(state.blockData());
 
 				//get valid transactions
 				Transactions txList;
@@ -188,7 +188,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 				RLPStream block2 = createFullBlockFromHeader(current_BlockHeader, txStream.out(), uncleStream.out());
 
-				blObj["rlp"] = "0x" + toHex(block2.out());
+				blObj["rlp"] = jsonHex(block2.out());
 
 				if (sha3(RLP(state.blockData())[0].data()) != sha3(RLP(block2.out())[0].data()))
 					cnote << "block header mismatch\n";
@@ -620,17 +620,7 @@ mArray writeTransactionsToJson(Transactions const& txs)
 	mArray txArray;
 	for (auto const& txi: txs)
 	{
-		mObject txObject;
-		txObject["nonce"] = toString(txi.nonce());
-		txObject["data"] = "0x" + toHex(txi.data());
-		txObject["gasLimit"] = toString(txi.gas());
-		txObject["gasPrice"] = toString(txi.gasPrice());
-		txObject["r"] = "0x" + toString(txi.signature().r);
-		txObject["s"] = "0x" + toString(txi.signature().s);
-		txObject["v"] = to_string(txi.signature().v + 27);
-		txObject["to"] = txi.isCreation() ? "" : toString(txi.receiveAddress());
-		txObject["value"] = toString(txi.value());
-		txObject = ImportTest::makeAllFieldsHex(txObject);
+		mObject txObject = fillJsonWithTransaction(txi);
 		txArray.push_back(txObject);
 	}
 	return txArray;
@@ -638,22 +628,22 @@ mArray writeTransactionsToJson(Transactions const& txs)
 
 mObject writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi)
 {
-	_o["parentHash"] = toString(_bi.parentHash);
-	_o["uncleHash"] = toString(_bi.sha3Uncles);
-	_o["coinbase"] = toString(_bi.coinbaseAddress);
-	_o["stateRoot"] = toString(_bi.stateRoot);
-	_o["transactionsTrie"] = toString(_bi.transactionsRoot);
-	_o["receiptTrie"] = toString(_bi.receiptsRoot);
-	_o["bloom"] = toString(_bi.logBloom);
-	_o["difficulty"] = "0x" + toHex(toCompactBigEndian(_bi.difficulty), 1);
-	_o["number"] = "0x" + toHex(toCompactBigEndian(_bi.number), 1);
-	_o["gasLimit"] = "0x" + toHex(toCompactBigEndian(_bi.gasLimit), 1);
-	_o["gasUsed"] = "0x" + toHex(toCompactBigEndian(_bi.gasUsed), 1);
-	_o["timestamp"] = "0x" + toHex(toCompactBigEndian(_bi.timestamp), 1);
-	_o["extraData"] ="0x" + toHex(_bi.extraData);
-	_o["mixHash"] = toString(_bi.mixHash);
-	_o["nonce"] = toString(_bi.nonce);
-	_o["hash"] = toString(_bi.hash());
+	_o["parentHash"] = jsonHash(_bi.parentHash);
+	_o["uncleHash"] = jsonHash(_bi.sha3Uncles);
+	_o["coinbase"] = jsonHash(_bi.coinbaseAddress);
+	_o["stateRoot"] = jsonHash(_bi.stateRoot);
+	_o["transactionsTrie"] = jsonHash(_bi.transactionsRoot);
+	_o["receiptTrie"] = jsonHash(_bi.receiptsRoot);
+	_o["bloom"] = jsonHash(_bi.logBloom);
+	_o["difficulty"] = jsonHex(_bi.difficulty);
+	_o["number"] = jsonHex(_bi.number);
+	_o["gasLimit"] = jsonHex(_bi.gasLimit);
+	_o["gasUsed"] = jsonHex(_bi.gasUsed);
+	_o["timestamp"] = jsonHex(_bi.timestamp);
+	_o["extraData"] = jsonHex(_bi.extraData);
+	_o["mixHash"] = jsonHash(_bi.mixHash);
+	_o["nonce"] = jsonHash(_bi.nonce);
+	_o["hash"] = jsonHash(_bi.hash());
 	return _o;
 }
 
