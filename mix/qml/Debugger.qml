@@ -211,7 +211,7 @@ Rectangle {
 				anchors.top: parent.top
 				anchors.topMargin: 15
 				anchors.left: parent.left;
-				anchors.leftMargin: machineStates.sideMargin 
+				anchors.leftMargin: machineStates.sideMargin
 				width: debugScrollArea.width - machineStates.sideMargin * 2 - 20 ;
 				spacing: machineStates.sideMargin
 
@@ -640,9 +640,6 @@ Rectangle {
 							onRowActivated: Debugger.displayFrame(index);
 						}
 					}
-
-
-
 
 					Rectangle
 					{

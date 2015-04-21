@@ -71,6 +71,7 @@ struct TransactionSettings
 	QString stdContractUrl;
 	/// Sender
 	Secret sender;
+
 };
 
 

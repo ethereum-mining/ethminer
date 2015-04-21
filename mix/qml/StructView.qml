@@ -20,7 +20,7 @@ Column
 		RowLayout
 		{
 			id: row
-			height: 20 + (members[index].type.category === QSolidityType.Struct ? (20 * members[index].type.members.length) : 0)
+			height: 30 + (members[index].type.category === QSolidityType.Struct ? (20 * members[index].type.members.length) : 0)
 			Layout.fillWidth: true
 			DefaultLabel {
 				height: 20
@@ -70,13 +70,18 @@ Column
 					if (ptype.category === QSolidityType.Address)
 					{
 						item.contractCreationTr.append({"functionId": " - "});
+						var trCr = -1;
 						for (var k = 0; k < transactionsModel.count; k++)
 						{
 							if (k >= transactionIndex)
 								break;
 							var tr = transactionsModel.get(k);
-							if (tr.functionId === tr.contractId && modelData.type.name === qsTr("contract") + " " + tr.contractId)
-								item.contractCreationTr.append(tr);
+							if (tr.functionId === tr.contractId)
+							{
+								trCr++;
+								if (modelData.type.name === qsTr("contract") + " " + tr.contractId)
+									item.contractCreationTr.append({ "functionId": tr.contractId + " - " + trCr });
+							}
 						}
 						item.value = getValue();
 						item.init();
