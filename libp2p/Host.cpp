@@ -678,15 +678,16 @@ bytes Host::saveNetwork() const
 	int count = 0;
 	for (auto const& p: peers)
 	{
-		// Only save peers which have connected within 2 days, with properly-advertised port and public IP address
-		// todo: e2e ipv6 support
+		// todo: ipv6
 		if (!p.endpoint.address.is_v4())
 			continue;
 
-		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && p.endpoint.tcpPort > 0 && p.id != id() && (p.required || p.endpoint.isAllowed()))
+		// Only save peers which have connected within 2 days, with properly-advertised port and public IP address
+		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && !!p.endpoint && p.id != id() && (p.required || p.endpoint.isAllowed()))
 		{
-			network.appendList(10);
-			network << p.endpoint.address.to_v4().to_bytes() << p.endpoint.tcpPort << p.id << p.required
+			network.appendList(11);
+			p.endpoint.streamRLP(network, NodeIPEndpoint::InlineList);
+			network << p.id << p.required
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastConnected.time_since_epoch()).count()
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastAttempted.time_since_epoch()).count()
 				<< p.m_failedAttempts << (unsigned)p.m_lastDisconnect << p.m_score << p.m_rating;
@@ -700,12 +701,9 @@ bytes Host::saveNetwork() const
 		state.sort();
 		for (auto const& entry: state)
 		{
-			network.appendList(3);
-			if (entry.endpoint.address.is_v4())
-				network << entry.endpoint.address.to_v4().to_bytes();
-			else
-				network << entry.endpoint.address.to_v6().to_bytes();
-			network << entry.endpoint.tcpPort << entry.id;
+			network.appendList(4);
+			entry.endpoint.streamRLP(network, NodeIPEndpoint::InlineList);
+			network << entry.id;
 			count++;
 		}
 	}
@@ -738,25 +736,25 @@ void Host::restoreNetwork(bytesConstRef _b)
 
 		for (auto i: r[2])
 		{
+			// todo: ipv6
 			if (i[0].itemCount() != 4)
 				continue;
-			
-			// todo: ipv6, bi::address_v6(i[0].toArray<byte, 16>()
-			Node n((NodeId)i[2], NodeIPEndpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<uint16_t>(), i[1].toInt<uint16_t>()));
-			if (i.itemCount() == 3 && n.endpoint.isAllowed())
+
+			Node n((NodeId)i[3], NodeIPEndpoint(i));
+			if (i.itemCount() == 4 && n.endpoint.isAllowed())
 				m_nodeTable->addNode(n);
-			else if (i.itemCount() == 10)
+			else if (i.itemCount() == 11)
 			{
-				n.required = i[3].toInt<bool>();
+				n.required = i[4].toInt<bool>();
 				if (!n.endpoint.isAllowed() && !n.required)
 					continue;
 				shared_ptr<Peer> p = make_shared<Peer>(n);
-				p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
-				p->m_lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
-				p->m_failedAttempts = i[6].toInt<unsigned>();
-				p->m_lastDisconnect = (DisconnectReason)i[7].toInt<unsigned>();
-				p->m_score = (int)i[8].toInt<unsigned>();
-				p->m_rating = (int)i[9].toInt<unsigned>();
+				p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
+				p->m_lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[6].toInt<unsigned>()));
+				p->m_failedAttempts = i[7].toInt<unsigned>();
+				p->m_lastDisconnect = (DisconnectReason)i[8].toInt<unsigned>();
+				p->m_score = (int)i[9].toInt<unsigned>();
+				p->m_rating = (int)i[10].toInt<unsigned>();
 				m_peers[p->id] = p;
 				if (p->required)
 					requirePeer(p->id, n.endpoint);
