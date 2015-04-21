@@ -170,18 +170,7 @@ llvm::Function* Arith256::getDivFunc(llvm::Type* _type)
 		auto yLz = m_builder.CreateCall2(ctlzIntr, yArg, m_builder.getInt1(true), "y.lz");
 		auto rLz = m_builder.CreateCall2(ctlzIntr, r0, m_builder.getInt1(true), "r.lz");
 		auto i0 = m_builder.CreateNUWSub(yLz, rLz, "i0");
-		auto shlBy0 = m_builder.CreateICmpEQ(i0, zero);
 		auto y0 = m_builder.CreateShl(yArg, i0);
-		if (_type == m_builder.getIntNTy(512)) // Workaround for shl bug for long shifts
-		{
-			const auto treshold = m_builder.getIntN(512, 128);
-			auto highShift = m_builder.CreateICmpUGT(i0, treshold);
-			auto s = m_builder.CreateNUWSub(i0, treshold);
-			auto yhs = m_builder.CreateShl(yArg, treshold);
-			yhs = m_builder.CreateShl(yhs, s);
-			y0 = m_builder.CreateSelect(highShift, yhs, y0);
-		}
-		y0 = m_builder.CreateSelect(shlBy0, yArg, y0, "y0"); // Workaround for LLVM bug: shl by 0 produces wrong result
 		m_builder.CreateBr(loopBB);
 
 		m_builder.SetInsertPoint(loopBB);
