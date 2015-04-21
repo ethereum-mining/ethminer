@@ -482,7 +482,7 @@ int main(int argc, char** argv)
 	/// Mining options
 	MinerType minerType = MinerType::CPU;
 	unsigned openclPlatform = 0;
-	unsigned openclDevice	= 0;
+	unsigned openclDevice = 0;
 	unsigned miningThreads = UINT_MAX;
 
 	/// File name for import/export.
@@ -602,7 +602,7 @@ int main(int argc, char** argv)
 			}
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
-			openclPlatform= stol(argv[++i]);
+				openclPlatform = stol(argv[++i]);
 			}
 			catch (...)
 			{
@@ -920,14 +920,15 @@ int main(int argc, char** argv)
 
 	
 
-	if (minerType == MinerType::CPU) {
+	if (minerType == MinerType::CPU)
 		ProofOfWork::CPUMiner::setNumInstances(miningThreads);
-	}
-	else if (minerType == MinerType::GPU) {
+	else if (minerType == MinerType::GPU)
+	{
 		ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
 		ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
 		ProofOfWork::GPUMiner::setNumInstances(miningThreads);
 	}
+
 	// Two codepaths is necessary since named block require database, but numbered
 	// blocks are superuseful to have when database is already open in another process.
 	if (mode == OperationMode::DAGInit && !(initDAG == LatestBlock || initDAG == PendingBlock))
