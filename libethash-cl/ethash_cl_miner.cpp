@@ -29,6 +29,7 @@
 #include <vector>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
+#include <libdevcore/Log.h>
 #include "ethash_cl_miner.h"
 #include "ethash_cl_miner_kernel.h"
 
@@ -63,7 +64,7 @@ std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _devic
 	cl::Platform::get(&platforms);
 	if (platforms.empty())
 	{
-		debugf("No OpenCL platforms found.\n");
+		cwarn << "No OpenCL platforms found.";
 		return std::string();
 	}
 
@@ -73,7 +74,7 @@ std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _devic
 	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 	if (devices.empty())
 	{
-		debugf("No OpenCL devices found.\n");
+		cwarn << "No OpenCL devices found.";
 		return std::string();
 	}
 
@@ -91,7 +92,7 @@ unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
 	cl::Platform::get(&platforms);
 	if (platforms.empty())
 	{
-		debugf("No OpenCL platforms found.\n");
+		cwarn << "No OpenCL platforms found.";
 		return 0;
 	}
 
@@ -100,7 +101,7 @@ unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
 	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 	if (devices.empty())
 	{
-		debugf("No OpenCL devices found.\n");
+		cwarn << "No OpenCL devices found.";
 		return 0;
 	}
 	return devices.size();
@@ -124,7 +125,7 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
     cl::Platform::get(&platforms);
 	if (platforms.empty())
 	{
-		debugf("No OpenCL platforms found.\n");
+		cwarn << "No OpenCL platforms found.";
 		return false;
 	}
 
@@ -132,31 +133,25 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 
 	_platformId = std::min<unsigned>(_platformId, platforms.size() - 1);
 
-	fprintf(stderr, "Using platform: %s\n", platforms[_platformId].getInfo<CL_PLATFORM_NAME>().c_str());
+	cnote <<  "Using platform: " << platforms[_platformId].getInfo<CL_PLATFORM_NAME>().c_str();
 
     // get GPU device of the default platform
     std::vector<cl::Device> devices;
 	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
     if (devices.empty())
 	{
-		debugf("No OpenCL devices found.\n");
+		cwarn << "No OpenCL devices found.";
 		return false;
 	}
 
-	// use default device
+	// use selected device
 	cl::Device& device = devices[std::min<unsigned>(_deviceId, devices.size() - 1)];
-	for (unsigned n = 0; n < devices.size(); ++n)
-	{
-		auto version = devices[n].getInfo<CL_DEVICE_VERSION>();
-		auto name = devices[n].getInfo<CL_DEVICE_NAME>();
-		fprintf(stderr, "%s %d: %s (%s)\n", n == _deviceId ? "USING " : "      ", n, name.c_str(), version.c_str());
-	}
 	std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
-	fprintf(stderr, "Using device: %s (%s)\n", device.getInfo<CL_DEVICE_NAME>().c_str(),device_version.c_str());
+	cnote << "Using device: "<< device.getInfo<CL_DEVICE_NAME>().c_str() << "(" << device_version.c_str() << ")";
 
 	if (strncmp("OpenCL 1.0", device_version.c_str(), 10) == 0)
 	{
-		debugf("OpenCL 1.0 is not supported.\n");
+		cwarn << "OpenCL 1.0 is not supported.";
 		return false;
 	}
 	if (strncmp("OpenCL 1.1", device_version.c_str(), 10) == 0)
@@ -190,7 +185,7 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 	}
 	catch (cl::Error err)
 	{
-		debugf("%s\n", program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
+		cwarn << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str();
 		return false;
 	}
 	m_hash_kernel = cl::Kernel(program, "ethash_hash");
