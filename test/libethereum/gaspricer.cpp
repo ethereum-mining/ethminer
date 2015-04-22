@@ -33,7 +33,7 @@ using namespace dev::eth;
 
 namespace dev {  namespace test {
 
-void executeGasPricerTest(const string name, double _etherPrice, double _blockFee, const string bcTestPath, u256 _expectedAsk, u256 _expectedBid)
+void executeGasPricerTest(const string name, double _etherPrice, double _blockFee, const string bcTestPath, TransactionPriority _txPrio, u256 _expectedAsk, u256 _expectedBid)
 {
 	cnote << name;
 	BasicGasPricer gp(u256(double(ether / 1000) / _etherPrice), u256(_blockFee * 1000));
@@ -44,7 +44,7 @@ void executeGasPricerTest(const string name, double _etherPrice, double _blockFe
 
 	gp.update(bc);
 	BOOST_CHECK_EQUAL(gp.ask(State()), _expectedAsk);
-	BOOST_CHECK_EQUAL(gp.bid(), _expectedBid);
+	BOOST_CHECK_EQUAL(gp.bid(_txPrio), _expectedBid);
 }
 
 
@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(trivialGasPricer)
 	std::shared_ptr<dev::eth::GasPricer> gp(new TrivialGasPricer);
 	BOOST_CHECK_EQUAL(gp->ask(State()), 10 * szabo);
 	BOOST_CHECK_EQUAL(gp->bid(), 10 * szabo);
-	gp->update(BlockChain(bytes(), string(), WithExisting::Kill));
+	gp->update(BlockChain(bytes(), TransientDirectory().path(), WithExisting::Kill));
 	BOOST_CHECK_EQUAL(gp->ask(State()), 10 * szabo);
 	BOOST_CHECK_EQUAL(gp->bid(), 10 * szabo);
 }
@@ -93,27 +93,53 @@ BOOST_AUTO_TEST_CASE(basicGasPricerNoUpdate)
 
 BOOST_AUTO_TEST_CASE(basicGasPricer_RPC_API_Test)
 {
-	dev::test::executeGasPricerTest("RPC_API_Test", 30.679, 15.0, "/BlockTests/bcRPC_API_Test.json", 155632494086, 155632494086);
+	dev::test::executeGasPricerTest("RPC_API_Test", 30.679, 15.0, "/BlockTests/bcRPC_API_Test.json", TransactionPriority::Medium, 155632494086, 155632494086);
 }
 
 BOOST_AUTO_TEST_CASE(basicGasPricer_bcValidBlockTest)
 {
-	dev::test::executeGasPricerTest("SimpleTx", 30.679, 15.0, "/BlockTests/bcValidBlockTest.json", 155632494086, 155632494086);
-}
-
-BOOST_AUTO_TEST_CASE(basicGasPricer_bcInvalidHeaderTest)
-{
-	dev::test::executeGasPricerTest("wrongUncleHash", 30.679, 15.0, "/BlockTests/bcInvalidHeaderTest.json", 155632494086, 155632494086);
+	dev::test::executeGasPricerTest("SimpleTx", 30.679, 15.0, "/BlockTests/bcValidBlockTest.json", TransactionPriority::Medium, 155632494086, 155632494086);
 }
 
 BOOST_AUTO_TEST_CASE(basicGasPricer_bcUncleTest)
 {
-	dev::test::executeGasPricerTest("twoUncle", 30.679, 15.0, "/BlockTests/bcUncleTest.json", 155632494086, 155632494086);
+	dev::test::executeGasPricerTest("twoUncle", 30.679, 15.0, "/BlockTests/bcUncleTest.json", TransactionPriority::Medium, 155632494086, 155632494086);
 }
 
 BOOST_AUTO_TEST_CASE(basicGasPricer_bcUncleHeaderValiditiy)
 {
-	dev::test::executeGasPricerTest("correct", 30.679, 15.0, "/BlockTests/bcUncleHeaderValiditiy.json", 155632494086, 155632494086);
+	dev::test::executeGasPricerTest("correct", 30.679, 15.0, "/BlockTests/bcUncleHeaderValiditiy.json", TransactionPriority::Medium, 155632494086, 155632494086);
 }
+
+BOOST_AUTO_TEST_CASE(basicGasPricer_notxs)
+{
+	dev::test::executeGasPricerTest("notxs", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Medium, 155632494086, 155632494086);
+}
+
+BOOST_AUTO_TEST_CASE(basicGasPricer_highGasUsage_LowestPrio)
+{
+	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Lowest, 15731290119, 10000000000000);
+}
+
+BOOST_AUTO_TEST_CASE(basicGasPricer_highGasUsage_LowPrio)
+{
+	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Low, 15731290119, 15812460025839);
+}
+
+BOOST_AUTO_TEST_CASE(basicGasPricer_highGasUsage_MediumPrio)
+{
+	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Medium, 15731290119, 20072941956000);
+}
+
+BOOST_AUTO_TEST_CASE(basicGasPricer_highGasUsage_HighPrio)
+{
+	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::High, 15731290119, 24328405650672);
+}
+
+BOOST_AUTO_TEST_CASE(basicGasPricer_highGasUsage_HighestPrio)
+{
+	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Highest, 15731290119, 30000000000000);
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
