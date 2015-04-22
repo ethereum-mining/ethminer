@@ -22,11 +22,7 @@ file(GLOB HEADERS "*.h")
 
 qt5_add_resources(NATSPECQRC natspec.qrc)
 
-if (ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${RESOURCE_ADDED} ${SRC_LIST} ${HEADERS} ${NATSPECQRC})
-else()
-	add_library(${EXECUTABLE} SHARED ${RESOURCE_ADDED} ${SRC_LIST} ${HEADERS} ${NATSPECQRC})
-endif()
+add_library(${EXECUTABLE} ${RESOURCE_ADDED} ${SRC_LIST} ${HEADERS} ${NATSPECQRC})
 
 target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} Qt5::Qml)
