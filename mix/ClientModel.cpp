@@ -282,9 +282,9 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 					{
 						QSolidityType const* type = p->type();
 						QVariant value = transaction.parameterValues.value(p->name());
-						if (type->type().type == SolidityType::Type::Address && value.toString().startsWith("<"))
+						if (type->type().type == SolidityType::Type::Address && value.toString().startsWith("<") && value.toString().endsWith(">"))
 						{
-							QStringList nb = value.toString().remove("<").remove(">").split(" - ") ;
+							QStringList nb = value.toString().remove("<").remove(">").split(" - ");
 							value = QVariant(QString::fromStdString("0x" + toHex(deployedContracts.at(nb.back().toInt()).ref())));
 						}
 						encoder.encode(value, type->type());
