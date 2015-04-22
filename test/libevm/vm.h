@@ -38,7 +38,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <libethereum/Transaction.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/State.h>
-#include "../TestHelper.h"
+#include <test/TestHelper.h>
 
 namespace dev { namespace test {
 
