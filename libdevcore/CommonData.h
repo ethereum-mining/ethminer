@@ -41,6 +41,11 @@ enum class WhenError
 	Throw = 1,
 };
 
+enum class HexPrefix
+{
+	DontAdd = 0,
+	Add = 1,
+};
 /// Convert a series of bytes to the corresponding string of hex duplets.
 /// @param _w specifies the width of the first of the elements. Defaults to two - enough to represent a byte.
 /// @example toHex("A\x69") == "4169"
@@ -128,9 +133,6 @@ inline std::string toBigEndianString(u160 _val) { std::string ret(20, '\0'); toB
 inline bytes toBigEndian(u256 _val) { bytes ret(32); toBigEndian(_val, ret); return ret; }
 inline bytes toBigEndian(u160 _val) { bytes ret(20); toBigEndian(_val, ret); return ret; }
 
-/// Convenience function for conversion of a u256 to hex
-inline std::string toHex(u256 val) { return toHex(toBigEndian(val)); }
-
 /// Convenience function for toBigEndian.
 /// @returns a byte array just big enough to represent @a _val.
 template <class _T>
@@ -159,6 +161,17 @@ inline std::string toCompactBigEndianString(_T _val)
 	return ret;
 }
 
+/// Convenience function for conversion of a u256 to hex
+inline std::string toHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd)
+{
+	std::string str = toHex(toBigEndian(val));
+	return (prefix == HexPrefix::Add) ? "0x" + str : str;
+}
+inline std::string toCompactHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd)
+{
+	std::string str = toHex(toCompactBigEndian(val, 1)); //1 means val=0 would be '0x00' instead of '0x'
+	return (prefix == HexPrefix::Add) ? "0x" + str : str;
+}
 
 // Algorithms for string and string-like collections.
 

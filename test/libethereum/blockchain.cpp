@@ -81,7 +81,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		// create new "genesis" block
 		RLPStream rlpGenesisBlock = createFullBlockFromHeader(biGenesisBlock);
 		biGenesisBlock.verifyInternals(&rlpGenesisBlock.out());
-		o["genesisRLP"] = jsonHex(rlpGenesisBlock.out());
+		o["genesisRLP"] = "0x" + toString(rlpGenesisBlock.out());
 
 		// construct blockchain
 		TransientDirectory td;
@@ -149,7 +149,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					return;
 				}
 
-				blObj["rlp"] = jsonHex(state.blockData());
+				blObj["rlp"] = "0x"+toString(state.blockData());
 
 				//get valid transactions
 				Transactions txList;
@@ -188,7 +188,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 				RLPStream block2 = createFullBlockFromHeader(current_BlockHeader, txStream.out(), uncleStream.out());
 
-				blObj["rlp"] = jsonHex(block2.out());
+				blObj["rlp"] = "0x" + toString(block2.out());
 
 				if (sha3(RLP(state.blockData())[0].data()) != sha3(RLP(block2.out())[0].data()))
 					cnote << "block header mismatch\n";
@@ -628,22 +628,22 @@ mArray writeTransactionsToJson(Transactions const& txs)
 
 mObject writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi)
 {
-	_o["parentHash"] = jsonHash(_bi.parentHash);
-	_o["uncleHash"] = jsonHash(_bi.sha3Uncles);
-	_o["coinbase"] = jsonHash(_bi.coinbaseAddress);
-	_o["stateRoot"] = jsonHash(_bi.stateRoot);
-	_o["transactionsTrie"] = jsonHash(_bi.transactionsRoot);
-	_o["receiptTrie"] = jsonHash(_bi.receiptsRoot);
-	_o["bloom"] = jsonHash(_bi.logBloom);
-	_o["difficulty"] = jsonHex(_bi.difficulty);
-	_o["number"] = jsonHex(_bi.number);
-	_o["gasLimit"] = jsonHex(_bi.gasLimit);
-	_o["gasUsed"] = jsonHex(_bi.gasUsed);
-	_o["timestamp"] = jsonHex(_bi.timestamp);
-	_o["extraData"] = jsonHex(_bi.extraData);
-	_o["mixHash"] = jsonHash(_bi.mixHash);
-	_o["nonce"] = jsonHash(_bi.nonce);
-	_o["hash"] = jsonHash(_bi.hash());
+	_o["parentHash"] = toString(_bi.parentHash);
+	_o["uncleHash"] = toString(_bi.sha3Uncles);
+	_o["coinbase"] = toString(_bi.coinbaseAddress);
+	_o["stateRoot"] = toString(_bi.stateRoot);
+	_o["transactionsTrie"] = toString(_bi.transactionsRoot);
+	_o["receiptTrie"] = toString(_bi.receiptsRoot);
+	_o["bloom"] = toString(_bi.logBloom);
+	_o["difficulty"] = toCompactHex(_bi.difficulty, HexPrefix::Add);
+	_o["number"] = toCompactHex(_bi.number, HexPrefix::Add);
+	_o["gasLimit"] = toCompactHex(_bi.gasLimit, HexPrefix::Add);
+	_o["gasUsed"] = toCompactHex(_bi.gasUsed, HexPrefix::Add);
+	_o["timestamp"] = toCompactHex(_bi.timestamp, HexPrefix::Add);
+	_o["extraData"] = "0x" + toString(_bi.extraData);
+	_o["mixHash"] = toString(_bi.mixHash);
+	_o["nonce"] = toString(_bi.nonce);
+	_o["hash"] = toString(_bi.hash());
 	return _o;
 }
 
