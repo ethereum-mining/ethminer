@@ -96,6 +96,7 @@ TestCase
 	function test_dbg_arrayParametersAndStorage() { TestDebugger.test_arrayParametersAndStorage(); }
 	function test_dbg_solidity() { TestDebugger.test_solidityDebugging(); }
 	function test_dbg_vm() { TestDebugger.test_vmDebugging(); }
+	function test_dbg_ctrTypeAsParam() { TestDebugger.test_ctrTypeAsParam(); }
 	function test_miner_getDefaultiner() { TestMiner.test_getDefaultMiner(); }
 	function test_miner_selectMiner() { TestMiner.test_selectMiner(); }
 	function test_miner_mine() { TestMiner.test_mine(); }

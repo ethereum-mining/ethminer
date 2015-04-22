@@ -101,6 +101,18 @@ Dialog {
 
 	}
 
+	function selectContract(contractName)
+	{
+		for (var k = 0; k < contractsModel.count; k++)
+		{
+			if (contractsModel.get(k).cid === contractName)
+			{
+				contractComboBox.currentIndex = k;
+				break;
+			}
+		}
+	}
+
 	function selectFunction(functionId)
 	{
 		var functionIndex = -1;
