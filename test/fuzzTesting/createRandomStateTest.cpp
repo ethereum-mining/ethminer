@@ -35,8 +35,8 @@
 #include <libdevcore/CommonData.h>
 #include <libevmcore/Instruction.h>
 #include <libevm/VMFactory.h>
-#include "../TestHelper.h"
-#include "../libevm/vm.h"
+#include <test/libevm/vm.h>
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace json_spirit;
