@@ -51,7 +51,7 @@ NatspecHandler::~NatspecHandler()
 void NatspecHandler::add(dev::h256 const& _contractHash, string const& _doc)
 {
 	m_db->Put(m_writeOptions, _contractHash.ref(), _doc);
-	cdebug << "Registering NatSpec: " << _contractHash.abridged() << _doc;
+	cdebug << "Registering NatSpec: " << _contractHash << _doc;
 }
 
 string NatspecHandler::retrieve(dev::h256 const& _contractHash) const

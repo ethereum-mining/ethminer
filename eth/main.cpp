@@ -136,6 +136,7 @@ void help()
 		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
 		<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
+		<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 		<< "Client networking:" << endl
 		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
@@ -370,7 +371,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 			for (unsigned i = 0; !completed; ++i)
 			{
 				if (current)
-					cnote << "Mining on PoWhash" << current.headerHash.abridged() << ": " << f.miningProgress();
+					cnote << "Mining on PoWhash" << current.headerHash << ": " << f.miningProgress();
 				else
 					cnote << "Getting work package...";
 				Json::Value v = rpc.eth_getWork();
@@ -380,12 +381,12 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 					current.headerHash = hh;
 					current.seedHash = h256(v[1].asString());
 					current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-					cnote << "Got work package:" << current.headerHash.abridged() << " < " << current.boundary;
+					cnote << "Got work package:" << current.headerHash << " < " << current.boundary;
 					f.setWork(current);
 				}
 				this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 			}
-			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash.abridged() << "," << solution.mixHash.abridged() << "] to" << _remote << "...";
+			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash << "," << solution.mixHash << "] to" << _remote << "...";
 			bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
 			if (ok)
 				clog(HappyChannel) << "Submitted and accepted.";
@@ -482,6 +483,7 @@ int main(int argc, char** argv)
 	MinerType minerType = MinerType::CPU;
 	unsigned openclPlatform = 0;
 	unsigned openclDevice = 0;
+	unsigned miningThreads = UINT_MAX;
 
 	/// File name for import/export.
 	string filename;
@@ -600,13 +602,13 @@ int main(int argc, char** argv)
 			}
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
-			openclPlatform= stol(argv[++i]);
-		}
-		catch (...)
-		{
-			cerr << "Bad " << arg << " option: " << argv[i] << endl;
-			return -1;
-		}
+				openclPlatform = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
 				openclDevice = stol(argv[++i]);
@@ -850,6 +852,17 @@ int main(int argc, char** argv)
 					return -1;
 				}
 		}
+		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
+		{
+			try {
+				miningThreads = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		}
 		else if (arg == "-b" || arg == "--bootstrap")
 			bootstrap = true;
 		else if (arg == "-f" || arg == "--force-mining")
@@ -905,8 +918,16 @@ int main(int argc, char** argv)
 	if (sessionSecret)
 		sigKey = KeyPair(sessionSecret);
 
-	ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
-	ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
+	
+
+	if (minerType == MinerType::CPU)
+		ProofOfWork::CPUMiner::setNumInstances(miningThreads);
+	else if (minerType == MinerType::GPU)
+	{
+		ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
+		ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
+		ProofOfWork::GPUMiner::setNumInstances(miningThreads);
+	}
 
 	// Two codepaths is necessary since named block require database, but numbered
 	// blocks are superuseful to have when database is already open in another process.

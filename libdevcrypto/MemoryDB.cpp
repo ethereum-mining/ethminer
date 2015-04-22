@@ -49,7 +49,7 @@ std::string MemoryDB::lookup(h256 _h) const
 		if (!m_enforceRefs || (m_refCount.count(it->first) && m_refCount.at(it->first)))
 			return it->second;
 //		else if (m_enforceRefs && m_refCount.count(it->first) && !m_refCount.at(it->first))
-//			cnote << "Lookup required for value with no refs. Let's hope it's in the DB." << _h.abridged();
+//			cnote << "Lookup required for value with no refs. Let's hope it's in the DB." << _h;
 	}
 	return std::string();
 }
@@ -67,7 +67,7 @@ void MemoryDB::insert(h256 _h, bytesConstRef _v)
 	m_over[_h] = _v.toString();
 	m_refCount[_h]++;
 #if ETH_PARANOIA
-	dbdebug << "INST" << _h.abridged() << "=>" << m_refCount[_h];
+	dbdebug << "INST" << _h << "=>" << m_refCount[_h];
 #endif
 }
 
@@ -82,15 +82,15 @@ bool MemoryDB::kill(h256 _h)
 		{
 			// If we get to this point, then there was probably a node in the level DB which we need to remove and which we have previously
 			// used as part of the memory-based MemoryDB. Nothing to be worried about *as long as the node exists in the DB*.
-			dbdebug << "NOKILL-WAS" << _h.abridged();
+			dbdebug << "NOKILL-WAS" << _h;
 			return false;
 		}
-		dbdebug << "KILL" << _h.abridged() << "=>" << m_refCount[_h];
+		dbdebug << "KILL" << _h << "=>" << m_refCount[_h];
 		return true;
 	}
 	else
 	{
-		dbdebug << "NOKILL" << _h.abridged();
+		dbdebug << "NOKILL" << _h;
 		return false;
 	}
 #else

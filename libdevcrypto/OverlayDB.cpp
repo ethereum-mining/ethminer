@@ -103,7 +103,7 @@ void OverlayDB::kill(h256 _h)
 		if (m_db)
 			m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
 		if (ret.empty())
-			cnote << "Decreasing DB node ref count below zero with no DB node. Probably have a corrupt Trie." << _h.abridged();
+			cnote << "Decreasing DB node ref count below zero with no DB node. Probably have a corrupt Trie." << _h;
 	}
 #else
 	MemoryDB::kill(_h);
