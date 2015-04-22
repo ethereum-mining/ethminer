@@ -33,6 +33,8 @@ public:
 
 	bool init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size = 64, unsigned _platformId = 0, unsigned _deviceId = 0);
 	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
+	static unsigned get_num_devices(unsigned _platformId = 0);
+
 
 	void finish();
 	void hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);

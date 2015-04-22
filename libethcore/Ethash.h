@@ -78,17 +78,18 @@ public:
 	static bool preVerify(BlockInfo const& _header);
 	static WorkPackage package(BlockInfo const& _header);
 	static void assignResult(Solution const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
+	
 
 	class CPUMiner: public Miner, Worker
 	{
 	public:
 		CPUMiner(ConstructionInfo const& _ci): Miner(_ci), Worker("miner" + toString(index())) {}
 
-		static unsigned instances() { return std::thread::hardware_concurrency(); }
+		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
 		static std::string platformInfo();
 		static void setDefaultPlatform(unsigned) {}
 		static void setDefaultDevice(unsigned) {}
-
+		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
 	protected:
 		void kickOff() override
 		{
@@ -100,7 +101,7 @@ public:
 
 	private:
 		void workLoop() override;
-		static unsigned s_deviceId;
+		static unsigned s_numInstances;
 	};
 
 #if ETH_ETHASHCL || !ETH_TRUE
@@ -112,11 +113,13 @@ public:
 		GPUMiner(ConstructionInfo const& _ci);
 		~GPUMiner();
 
-		static unsigned instances() { return 1; }
+		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 		static std::string platformInfo();
+		static unsigned getNumDevices();
 		static void setDefaultPlatform(unsigned _id) { s_platformId = _id; }
 		static void setDefaultDevice(unsigned _id) { s_deviceId = _id; }
-
+		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
+		
 	protected:
 		void kickOff() override;
 		void pause() override;
@@ -133,6 +136,7 @@ public:
 		h256 m_minerSeed;		///< Last seed in m_miner
 		static unsigned s_platformId;
 		static unsigned s_deviceId;
+		static unsigned s_numInstances;
 	};
 #else
 	using GPUMiner = CPUMiner;

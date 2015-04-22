@@ -87,7 +87,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 	// we handle when tcp endpoint is 0 below
 	if (_node.endpoint.address.to_string() == "0.0.0.0")
 	{
-		clog(NodeTableWarn) << "addNode Failed. Invalid UDP address 0.0.0.0 for" << _node.id.abridged();
+		clog(NodeTableWarn) << "addNode Failed. Invalid UDP address" << url << "0.0.0.0" << "for" << _node.id;
 		return move(shared_ptr<NodeEntry>());
 	}
 	
