@@ -39,7 +39,8 @@ bool dev::SignatureStruct::isValid() const
 {
 	if (v > 1 ||
 		r >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
-		s >= h256("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"))
+		s >= h256("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f") ||
+		s < h256("0x01"))
 		return false;
 	return true;
 }
