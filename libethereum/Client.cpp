@@ -25,9 +25,6 @@
 #include <thread>
 #include <boost/filesystem.hpp>
 #include <boost/math/distributions/normal.hpp>
-#include <boost/multiprecision/number.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
-#include <boost/multiprecision/cpp_dec_float.hpp>
 #include <libdevcore/Log.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libp2p/Host.h>
