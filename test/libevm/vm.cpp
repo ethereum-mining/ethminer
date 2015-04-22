@@ -86,12 +86,12 @@ void FakeExtVM::reset(u256 _myBalance, u256 _myNonce, map<u256, u256> const& _st
 mObject FakeExtVM::exportEnv()
 {
 	mObject ret;
-	ret["previousHash"] = jsonHash(currentBlock.parentHash);
-	ret["currentDifficulty"] = jsonHex(currentBlock.difficulty);
-	ret["currentTimestamp"] =  jsonHex(currentBlock.timestamp);
-	ret["currentCoinbase"] = jsonHash(currentBlock.coinbaseAddress);
-	ret["currentNumber"] = jsonHex(currentBlock.number);
-	ret["currentGasLimit"] = jsonHex(currentBlock.gasLimit);
+	ret["previousHash"] = toString(currentBlock.parentHash);
+	ret["currentDifficulty"] = toCompactHex(currentBlock.difficulty, HexPrefix::Add);
+	ret["currentTimestamp"] =  toCompactHex(currentBlock.timestamp, HexPrefix::Add);
+	ret["currentCoinbase"] = toString(currentBlock.coinbaseAddress);
+	ret["currentNumber"] = toCompactHex(currentBlock.number, HexPrefix::Add);
+	ret["currentGasLimit"] = toCompactHex(currentBlock.gasLimit, HexPrefix::Add);
 	return ret;
 }
 
@@ -120,16 +120,15 @@ mObject FakeExtVM::exportState()
 	for (auto const& a: addresses)
 	{
 		mObject o;
-		o["balance"] = jsonHex(get<0>(a.second));
-		o["nonce"] = jsonHex(get<1>(a.second));
+		o["balance"] = toCompactHex(get<0>(a.second), HexPrefix::Add);
+		o["nonce"] = toCompactHex(get<1>(a.second), HexPrefix::Add);
 		{
 			mObject store;
 			for (auto const& s: get<2>(a.second))
-				store[jsonHex(s.first)] = jsonHex(s.second);
+				store[toCompactHex(s.first, HexPrefix::Add)] = toCompactHex(s.second, HexPrefix::Add);
 			o["storage"] = store;
 		}
-		o["code"] = jsonHex(get<3>(a.second));
-
+		o["code"] = "0x"+toString(get<3>(a.second));
 		ret[toString(a.first)] = o;
 	}
 	return ret;
@@ -159,14 +158,14 @@ void FakeExtVM::importState(mObject& _object)
 mObject FakeExtVM::exportExec()
 {
 	mObject ret;
-	ret["address"] = jsonHash(myAddress);
-	ret["caller"] = jsonHash(caller);
-	ret["origin"] = jsonHash(origin);
-	ret["value"] = jsonHex(value);
-	ret["gasPrice"] = jsonHex(gasPrice);
-	ret["gas"] = jsonHex(gas);
-	ret["data"] = jsonHex(data);
-	ret["code"] = jsonHex(code);
+	ret["address"] = toString(myAddress);
+	ret["caller"] = toString(caller);
+	ret["origin"] = toString(origin);
+	ret["value"] = toCompactHex(value, HexPrefix::Add);
+	ret["gasPrice"] = toCompactHex(gasPrice, HexPrefix::Add);
+	ret["gas"] = toCompactHex(gas, HexPrefix::Add);
+	ret["data"] = "0x" + toString(data);
+	ret["code"] = "0x" + toString(code);
 	return ret;
 }
 
@@ -207,10 +206,10 @@ mArray FakeExtVM::exportCallCreates()
 	for (Transaction const& tx: callcreates)
 	{
 		mObject o;
-		o["destination"] = tx.isCreation() ? "" : jsonHash(tx.receiveAddress());
-		o["gasLimit"] = jsonHex(tx.gas());
-		o["value"] = jsonHex(tx.value());
-		o["data"] = jsonHex(tx.data());
+		o["destination"] = tx.isCreation() ? "" : toString(tx.receiveAddress());
+		o["gasLimit"] = toCompactHex(tx.gas(), HexPrefix::Add);
+		o["value"] = toCompactHex(tx.value(), HexPrefix::Add);
+		o["data"] = "0x" + toString(tx.data());
 		ret.push_back(o);
 	}
 	return ret;
@@ -281,7 +280,7 @@ eth::OnOpFunc FakeExtVM::simpleTrace()
 			o_step.push_back(Pair("storage", storage));
 			o_step.push_back(Pair("depth", to_string(ext.depth)));
 			o_step.push_back(Pair("gas", (string)vm.gas()));
-			o_step.push_back(Pair("address", jsonHash(ext.myAddress )));
+			o_step.push_back(Pair("address", toString(ext.myAddress )));
 			o_step.push_back(Pair("step", steps ));
 			o_step.push_back(Pair("pc", (int)vm.curPC()));
 			o_step.push_back(Pair("opcode", instructionInfo(inst).name ));
@@ -389,8 +388,8 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 				}
 
 				o["callcreates"] = fev.exportCallCreates();
-				o["out"] = jsonHex(output);
-				o["gas"] = jsonHex(gas);
+				o["out"] = "0x" + toString(output);
+				o["gas"] = toCompactHex(gas, HexPrefix::Add);
 				o["logs"] = exportLog(fev.sub.logs);
 			}
 		}

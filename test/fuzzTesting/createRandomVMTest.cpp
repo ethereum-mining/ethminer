@@ -200,8 +200,8 @@ void doMyTests(json_spirit::mValue& _v)
 		{
 			o["post"] = mValue(fev.exportState());
 			o["callcreates"] = fev.exportCallCreates();
-			o["out"] = dev::test::jsonHex(output);
-			o["gas"] = dev::test::jsonHex(gas);
+			o["out"] = "0x" + toString(output);
+			o["gas"] = toCompactHex(gas, HexPrefix::Add);
 			o["logs"] = test::exportLog(fev.sub.logs);
 		}
 	}

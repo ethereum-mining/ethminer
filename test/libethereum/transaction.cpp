@@ -43,7 +43,7 @@ void doTransactionTests(json_spirit::mValue& _v, bool _fillin)
 
 			//Construct Rlp of the given transaction
 			RLPStream rlpStream = createRLPStreamFromTransactionFields(tObj);
-			o["rlp"] = jsonHex(rlpStream.out());
+			o["rlp"] = "0x"+toString(rlpStream.out());
 
 			try
 			{
