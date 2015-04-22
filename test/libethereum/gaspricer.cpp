@@ -27,7 +27,6 @@
 #include "../TestHelper.h"
 
 using namespace std;
-//using namespace json_spirit;
 using namespace dev;
 using namespace dev::eth;
 
@@ -46,8 +45,6 @@ void executeGasPricerTest(const string name, double _etherPrice, double _blockFe
 	BOOST_CHECK_EQUAL(gp.ask(State()), _expectedAsk);
 	BOOST_CHECK_EQUAL(gp.bid(_txPrio), _expectedBid);
 }
-
-
 } }
 
 BOOST_AUTO_TEST_SUITE(GasPricer)
@@ -140,6 +137,4 @@ BOOST_AUTO_TEST_CASE(basicGasPricer_highGasUsage_HighestPrio)
 {
 	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Highest, 15731290119, 30000000000000);
 }
-
-
 BOOST_AUTO_TEST_SUITE_END()
