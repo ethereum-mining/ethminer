@@ -136,6 +136,7 @@ void help()
 		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
 		<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
+		<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 		<< "Client networking:" << endl
 		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
@@ -370,7 +371,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 			for (unsigned i = 0; !completed; ++i)
 			{
 				if (current)
-					cnote << "Mining on PoWhash" << current.headerHash.abridged() << ": " << f.miningProgress();
+					cnote << "Mining on PoWhash" << current.headerHash << ": " << f.miningProgress();
 				else
 					cnote << "Getting work package...";
 				Json::Value v = rpc.eth_getWork();
@@ -380,12 +381,12 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 					current.headerHash = hh;
 					current.seedHash = h256(v[1].asString());
 					current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-					cnote << "Got work package:" << current.headerHash.abridged() << " < " << current.boundary;
+					cnote << "Got work package:" << current.headerHash << " < " << current.boundary;
 					f.setWork(current);
 				}
 				this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 			}
-			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash.abridged() << "," << solution.mixHash.abridged() << "] to" << _remote << "...";
+			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash << "," << solution.mixHash << "] to" << _remote << "...";
 			bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
 			if (ok)
 				clog(HappyChannel) << "Submitted and accepted.";
@@ -405,6 +406,72 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 
 int main(int argc, char** argv)
 {
+	cout << "\x1b[30mEthBlack\x1b[0m" << endl;
+	cout << "\x1b[90mEthCoal\x1b[0m" << endl;
+	cout << "\x1b[37mEthGray\x1b[0m" << endl;
+	cout << "\x1b[97mEthWhite\x1b[0m" << endl;
+	cout << "\x1b[31mEthRed\x1b[0m" << endl;
+	cout << "\x1b[32mEthGreen\x1b[0m" << endl;
+	cout << "\x1b[33mEthYellow\x1b[0m" << endl;
+	cout << "\x1b[34mEthBlue\x1b[0m" << endl;
+	cout << "\x1b[35mEthPurple\x1b[0m" << endl;
+	cout << "\x1b[36mEthCyan\x1b[0m" << endl;
+	// High Intensity
+	cout << "\x1b[91mEthRedI\x1b[0m" << endl;
+	cout << "\x1b[92mEthLime\x1b[0m" << endl;
+	cout << "\x1b[93mEthYellowI\x1b[0m" << endl;
+	cout << "\x1b[94mEthBlueI\x1b[0m" << endl;
+	cout << "\x1b[95mEthPurpleI\x1b[0m" << endl;
+	cout << "\x1b[96mEthCyanI\x1b[0m" << endl;
+
+	// Bold
+	cout << "\x1b[1;30mEthBlackB\x1b[0m" << endl;
+	cout << "\x1b[1;90mEthCoalB\x1b[0m" << endl;
+	cout << "\x1b[1;37mEthGrayB\x1b[0m" << endl;
+	cout << "\x1b[1;97mEthWhiteB\x1b[0m" << endl;
+	cout << "\x1b[1;31mEthRedB\x1b[0m" << endl;
+	cout << "\x1b[1;32mEthGreenB\x1b[0m" << endl;
+	cout << "\x1b[1;33mEthYellowB\x1b[0m" << endl;
+	cout << "\x1b[1;34mEthBlueB\x1b[0m" << endl;
+	cout << "\x1b[1;35mEthPurpleB\x1b[0m" << endl;
+	cout << "\x1b[1;36mEthCyanB\x1b[0m" << endl;
+	// Bold High Intensity
+	cout << "\x1b[1;91mEthRedBI\x1b[0m" << endl;
+	cout << "\x1b[1;92mEthGreenBI\x1b[0m" << endl;
+	cout << "\x1b[1;93mEthYellowBI\x1b[0m" << endl;
+	cout << "\x1b[1;94mEthBlueBI\x1b[0m" << endl;
+	cout << "\x1b[1;95mEthPurpleBI\x1b[0m" << endl;
+	cout << "\x1b[1;96mEthCyanBI\x1b[0m" << endl;
+
+	// Background
+	cout << "\x1b[40mEthBlackOn\x1b[0m" << endl;
+	cout << "\x1b[100mEthCoalOn\x1b[0m" << endl;
+	cout << "\x1b[47mEthGrayOn\x1b[0m" << endl;
+	cout << "\x1b[107mEthWhiteOn\x1b[0m" << endl;
+	cout << "\x1b[41mEthRedOn\x1b[0m" << endl;
+	cout << "\x1b[42mEthGreenOn\x1b[0m" << endl;
+	cout << "\x1b[43mEthYellowOn\x1b[0m" << endl;
+	cout << "\x1b[44mEthBlueOn\x1b[0m" << endl;
+	cout << "\x1b[45mEthPurpleOn\x1b[0m" << endl;
+	cout << "\x1b[46mEthCyanOn\x1b[0m" << endl;
+	// High Intensity backgrounds
+	cout << "\x1b[101mEthRedOnI\x1b[0m" << endl;
+	cout << "\x1b[102mEthGreenOnI\x1b[0m" << endl;
+	cout << "\x1b[103mEthYellowOnI\x1b[0m" << endl;
+	cout << "\x1b[104mEthBlueOnI\x1b[0m" << endl;
+	cout << "\x1b[105mEthPurpleOnI\x1b[0m" << endl;
+	cout << "\x1b[106mEthCyanOnI\x1b[0m" << endl;
+
+	// Underline
+	cout << "\x1b[4;30mEthBlackU\x1b[0m" << endl;
+	cout << "\x1b[4;31mEthRedU\x1b[0m" << endl;
+	cout << "\x1b[4;32mEthGreenU\x1b[0m" << endl;
+	cout << "\x1b[4;33mEthYellowU\x1b[0m" << endl;
+	cout << "\x1b[4;34mEthBlueU\x1b[0m" << endl;
+	cout << "\x1b[4;35mEthPurpleU\x1b[0m" << endl;
+	cout << "\x1b[4;36mEthCyanU\x1b[0m" << endl;
+	cout << "\x1b[4;37mEthWhiteU\x1b[0m" << endl;
+
 	// Init defaults
 	Defaults::get();
 
@@ -416,6 +483,7 @@ int main(int argc, char** argv)
 	MinerType minerType = MinerType::CPU;
 	unsigned openclPlatform = 0;
 	unsigned openclDevice = 0;
+	unsigned miningThreads = UINT_MAX;
 
 	/// File name for import/export.
 	string filename;
@@ -534,13 +602,13 @@ int main(int argc, char** argv)
 			}
 		else if (arg == "--opencl-platform" && i + 1 < argc)
 			try {
-			openclPlatform= stol(argv[++i]);
-		}
-		catch (...)
-		{
-			cerr << "Bad " << arg << " option: " << argv[i] << endl;
-			return -1;
-		}
+				openclPlatform = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
 				openclDevice = stol(argv[++i]);
@@ -784,6 +852,17 @@ int main(int argc, char** argv)
 					return -1;
 				}
 		}
+		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
+		{
+			try {
+				miningThreads = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		}
 		else if (arg == "-b" || arg == "--bootstrap")
 			bootstrap = true;
 		else if (arg == "-f" || arg == "--force-mining")
@@ -839,8 +918,16 @@ int main(int argc, char** argv)
 	if (sessionSecret)
 		sigKey = KeyPair(sessionSecret);
 
-	ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
-	ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
+	
+
+	if (minerType == MinerType::CPU)
+		ProofOfWork::CPUMiner::setNumInstances(miningThreads);
+	else if (minerType == MinerType::GPU)
+	{
+		ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
+		ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
+		ProofOfWork::GPUMiner::setNumInstances(miningThreads);
+	}
 
 	// Two codepaths is necessary since named block require database, but numbered
 	// blocks are superuseful to have when database is already open in another process.
@@ -860,7 +947,7 @@ int main(int argc, char** argv)
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
-	std::string clientImplString = "Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
+	std::string clientImplString = "++eth/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
 		clientImplString,
 		dbPath,

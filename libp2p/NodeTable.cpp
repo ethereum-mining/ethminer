@@ -24,6 +24,20 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+const char* NodeTableWarn::name() { return "!P!"; }
+const char* NodeTableNote::name() { return "*P*"; }
+const char* NodeTableMessageSummary::name() { return "-P-"; }
+const char* NodeTableMessageDetail::name() { return "=P="; }
+const char* NodeTableConnect::name() { return "+P+"; }
+const char* NodeTableEvent::name() { return "+P+"; }
+const char* NodeTableTimer::name() { return "+P+"; }
+const char* NodeTableUpdate::name() { return "+P+"; }
+const char* NodeTableTriviaSummary::name() { return "-P-"; }
+const char* NodeTableTriviaDetail::name() { return "=P="; }
+const char* NodeTableAllDetail::name() { return "=P="; }
+const char* NodeTableEgress::name() { return ">>P"; }
+const char* NodeTableIngress::name() { return "<<P"; }
+
 NodeEntry::NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src.id,_pubk)) {}
 
 NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint):
@@ -73,7 +87,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 	// we handle when tcp endpoint is 0 below
 	if (_node.endpoint.address.to_string() == "0.0.0.0")
 	{
-		clog(NodeTableWarn) << "addNode Failed. Invalid UDP address 0.0.0.0 for" << _node.id.abridged();
+		clog(NodeTableWarn) << "addNode Failed. Invalid UDP address" << url << "0.0.0.0" << "for" << _node.id;
 		return move(shared_ptr<NodeEntry>());
 	}
 	
@@ -382,7 +396,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	// h256 + Signature + type + RLP (smallest possible packet is empty neighbours packet which is 3 bytes)
 	if (_packet.size() < h256::size + Signature::size + 1 + 3)
 	{
-		clog(NodeTableWarn) << "Invalid message size from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableTriviaSummary) << "Invalid message size from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
@@ -390,7 +404,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	h256 hashSigned(sha3(hashedBytes));
 	if (!_packet.cropped(0, h256::size).contentsEqual(hashSigned.asBytes()))
 	{
-		clog(NodeTableWarn) << "Invalid message hash from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableTriviaSummary) << "Invalid message hash from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
@@ -402,7 +416,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	Public nodeid(dev::recover(*(Signature const*)sigBytes.data(), sha3(signedBytes)));
 	if (!nodeid)
 	{
-		clog(NodeTableWarn) << "Invalid message signature from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableTriviaSummary) << "Invalid message signature from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
