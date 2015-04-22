@@ -237,6 +237,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 	{
 		try
 		{
+			vector<Address> deployedContracts;
 			onStateReset();
 			for (TransactionSettings const& transaction: _sequence)
 			{
@@ -248,6 +249,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 					TransactionSettings stdTransaction = transaction;
 					stdTransaction.gasAuto = true;
 					Address address = deployContract(stdContractCode, stdTransaction);
+					deployedContracts.push_back(address);
 					m_stdContractAddresses[stdTransaction.contractId] = address;
 					m_stdContractNames[address] = stdTransaction.contractId;
 				}
@@ -280,6 +282,11 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 					{
 						QSolidityType const* type = p->type();
 						QVariant value = transaction.parameterValues.value(p->name());
+						if (type->type().type == SolidityType::Type::Address && value.toString().startsWith("<") && value.toString().endsWith(">"))
+						{
+							QStringList nb = value.toString().remove("<").remove(">").split(" - ");
+							value = QVariant(QString::fromStdString("0x" + toHex(deployedContracts.at(nb.back().toInt()).ref())));
+						}
 						encoder.encode(value, type->type());
 					}
 
@@ -288,6 +295,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 						bytes param = encoder.encodedData();
 						contractCode.insert(contractCode.end(), param.begin(), param.end());
 						Address newAddress = deployContract(contractCode, transaction);
+						deployedContracts.push_back(newAddress);
 						auto contractAddressIter = m_contractAddresses.find(transaction.contractId);
 						if (contractAddressIter == m_contractAddresses.end() || newAddress != contractAddressIter->second)
 						{
