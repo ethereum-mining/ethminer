@@ -24,6 +24,10 @@
 #include <chrono>
 #include <thread>
 #include <boost/filesystem.hpp>
+#include <boost/math/distributions/normal.hpp>
+#include <boost/multiprecision/number.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
 #include <libdevcore/Log.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libp2p/Host.h>
@@ -83,6 +87,8 @@ void BasicGasPricer::update(BlockChain const& _bc)
 
 	map<u256, unsigned> dist;
 	unsigned total = 0;
+
+	// make gasPrice versus gasUsed distribution for the last 1000 blocks
 	while (c < 1000 && p)
 	{
 		BlockInfo bi = _bc.info(p);
@@ -91,28 +97,44 @@ void BasicGasPricer::update(BlockChain const& _bc)
 			auto bb = _bc.block(p);
 			RLP r(bb);
 			BlockReceipts brs(_bc.receipts(bi.hash()));
-			for (unsigned i = 0; i < r[1].size(); ++i)
+			size_t i = 0;
+			for (auto const& tr: r[1])
 			{
+				Transaction tx(tr.data(), CheckTransaction::None);
 				auto gu = brs.receipts[i].gasUsed();
-				dist[Transaction(r[1][i].data(), CheckTransaction::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
+				dist[tx.gasPrice()] += (unsigned)gu;
 				total += (unsigned)gu;
+				i++;
 			}
 		}
 		p = bi.parentHash;
 		++c;
 	}
+
+	// fill m_octiles with weighted gasPrices
 	if (total > 0)
 	{
-		unsigned t = 0;
-		unsigned q = 1;
 		m_octiles[0] = dist.begin()->first;
+
+		// calc mean
+		u256 mean = 0;
 		for (auto const& i: dist)
-		{
-			for (; t <= total * q / 8 && t + i.second > total * q / 8; ++q)
-				m_octiles[q] = i.first;
-			if (q > 7)
-				break;
-		}
+			mean += i.first * i.second;
+		mean /= total;
+
+		// calc standard deviation
+		u256 sdSquared = 0;
+		for (auto const& i: dist)
+			sdSquared += i.second * (i.first - mean) * (i.first - mean);
+		sdSquared /= total;
+		double sd = sqrt(sdSquared.convert_to<double>());
+		double normalizedSd = 4.0 * sd / mean.convert_to<double>();
+
+		// calc octiles normalized to gaussian distribution
+		boost::math::normal gauss(4, normalizedSd ? normalizedSd : 1);
+		for (int i=1; i < 8; i++)
+			m_octiles[i] = mean / 4000 * int(boost::math::quantile(gauss, (double)i / 8) * 1000);
+
 		m_octiles[8] = dist.rbegin()->first;
 	}
 }
