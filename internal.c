@@ -189,7 +189,7 @@ bool ethash_compute_full_data(void* mem, uint64_t full_size, ethash_cache_t cons
 }
 
 static bool ethash_hash(
-	ethash_return_value* ret,
+	ethash_return_value_t* ret,
 	node const* full_nodes,
 	ethash_cache_t const* cache,
 	uint64_t full_size,
@@ -343,7 +343,7 @@ void ethash_light_delete(ethash_light_t light)
 }
 
 bool ethash_light_compute(
-	ethash_return_value* ret,
+	ethash_return_value_t* ret,
 	ethash_light_t light,
 	uint64_t full_size,
 	const ethash_h256_t* header_hash,
@@ -445,7 +445,7 @@ void ethash_full_delete(ethash_full_t full)
 }
 
 bool ethash_full_compute(
-	ethash_return_value* ret,
+	ethash_return_value_t* ret,
 	ethash_full_t full,
 	ethash_h256_t const* header_hash,
 	uint64_t const nonce
@@ -486,7 +486,7 @@ void ethash_mkcache(
 }
 
 void ethash_full(
-	ethash_return_value* ret,
+	ethash_return_value_t* ret,
 	void const* full_mem,
 	ethash_params const* params,
 	ethash_h256_t const* header_hash,
@@ -496,7 +496,7 @@ void ethash_full(
 	ethash_hash(ret, (node const *) full_mem, NULL, params->full_size, header_hash, nonce, NULL);
 }
 void ethash_light(
-	ethash_return_value* ret,
+	ethash_return_value_t* ret,
 	ethash_cache_t const* cache,
 	ethash_params const* params,
 	ethash_h256_t const* header_hash,

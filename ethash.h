@@ -73,16 +73,14 @@ struct ethash_full;
 typedef struct ethash_full* ethash_full_t;
 typedef int(*ethash_callback_t)(unsigned);
 
-// LTODO: for consistency's sake maybe use ethash_return_value_t?
 typedef struct ethash_return_value {
 	ethash_h256_t result;
 	ethash_h256_t mix_hash;
-} ethash_return_value;
+} ethash_return_value_t;
 
 uint64_t ethash_get_datasize(uint64_t const block_number);
 uint64_t ethash_get_cachesize(uint64_t const block_number);
 
-// LTODO: for consistency's sake maybe use ethash_cache_t?
 typedef struct ethash_cache {
 	void* mem;
 	uint64_t cache_size;
@@ -131,7 +129,7 @@ void ethash_light_delete(ethash_light_t light);
  *                       parameters given.
  */
 bool ethash_light_compute(
-	ethash_return_value* ret,
+	ethash_return_value_t* ret,
 	ethash_light_t light,
 	uint64_t full_size,
 	const ethash_h256_t* header_hash,
@@ -195,7 +193,7 @@ void ethash_full_delete(ethash_full_t full);
  *                       at some point return a non-zero value
  */
 bool ethash_full_compute(
-	ethash_return_value* ret,
+	ethash_return_value_t* ret,
 	ethash_full_t full,
 	ethash_h256_t const* header_hash,
 	uint64_t const nonce
@@ -265,14 +263,14 @@ static inline void ethash_params_init(ethash_params* params, uint32_t const bloc
 
 void ethash_mkcache(ethash_cache_t* cache, ethash_params const* params, ethash_h256_t const* seed);
 void ethash_full(
-	ethash_return_value* ret,
+	ethash_return_value_t* ret,
 	void const* full_mem,
 	ethash_params const* params,
 	ethash_h256_t const* header_hash,
 	uint64_t const nonce
 );
 void ethash_light(
-	ethash_return_value* ret,
+	ethash_return_value_t* ret,
 	ethash_cache_t const* cache,
 	ethash_params const* params,
 	ethash_h256_t const* header_hash,
