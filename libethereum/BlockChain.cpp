@@ -48,6 +48,18 @@ namespace js = json_spirit;
 #define ETH_CATCH 1
 #define ETH_TIMED_IMPORTS 0
 
+#ifdef _WIN32
+const char* BlockChainDebug::name() { return EthBlue "8" EthWhite " <>"; }
+const char* BlockChainWarn::name() { return EthBlue "8" EthOnRed EthBlackBold " X"; }
+const char* BlockChainNote::name() { return EthBlue "8" EthBlue " i"; }
+const char* BlockChainChat::name() { return EthBlue "8" EthWhite " o"; }
+#else
+const char* BlockChainDebug::name() { return EthBlue "☍" EthWhite " ◇"; }
+const char* BlockChainWarn::name() { return EthBlue "☍" EthOnRed EthBlackBold " ✘"; }
+const char* BlockChainNote::name() { return EthBlue "☍" EthBlue " ℹ"; }
+const char* BlockChainChat::name() { return EthBlue "☍" EthWhite " ◌"; }
+#endif
+
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockChain const& _bc)
 {
 	string cmp = toBigEndianString(_bc.currentHash());
@@ -167,6 +179,7 @@ void BlockChain::open(std::string const& _path, WithExisting _we)
 	std::string l;
 	m_extrasDB->Get(m_readOptions, ldb::Slice("best"), &l);
 	m_lastBlockHash = l.empty() ? m_genesisHash : *(h256*)l.data();
+	m_lastBlockNumber = number(m_lastBlockHash);
 
 	cnote << "Opened blockchain DB. Latest: " << currentHash();
 }
@@ -177,6 +190,7 @@ void BlockChain::close()
 	delete m_extrasDB;
 	delete m_blocksDB;
 	m_lastBlockHash = m_genesisHash;
+	m_lastBlockNumber = 0;
 	m_details.clear();
 	m_blocks.clear();
 }
@@ -191,8 +205,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	ProfilerStart("BlockChain_rebuild.log");
 #endif
 
-//	unsigned originalNumber = (unsigned)BlockInfo(oldBlock(m_lastBlockHash)).number;
-	unsigned originalNumber = number();
+	unsigned originalNumber = m_lastBlockNumber;
 
 	// Keep extras DB around, but under a temp name
 	delete m_extrasDB;
@@ -217,8 +230,13 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	m_blocksBlooms.clear();
 	m_lastLastHashes.clear();
 	m_lastBlockHash = genesisHash();
+	m_lastBlockNumber = 0;
 
-	h256 lastHash = genesisHash();
+	m_details[m_lastBlockHash].totalDifficulty = c_genesisDifficulty;
+
+	m_extrasDB->Put(m_writeOptions, toSlice(m_lastBlockHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[m_lastBlockHash].rlp()));
+
+	h256 lastHash = m_lastBlockHash;
 	boost::timer t;
 	for (unsigned d = 1; d < originalNumber; ++d)
 	{
@@ -236,11 +254,11 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 
 			if (bi.parentHash != lastHash)
 			{
-				cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash().abridged() << "#" << d << " -> parent is" << bi.parentHash.abridged() << "; expected" << lastHash.abridged() << "#" << (d - 1);
+				cwarn << "DISJOINT CHAIN DETECTED; " << bi.hash() << "#" << d << " -> parent is" << bi.parentHash << "; expected" << lastHash << "#" << (d - 1);
 				return;
 			}
 			lastHash = bi.hash();
-			import(b, s.db(), ImportRequirements::Default);
+			import(b, s.db(), 0);
 		}
 		catch (...)
 		{
@@ -267,16 +285,6 @@ bool contains(T const& _t, V const& _v)
 		if (i == _v)
 			return true;
 	return false;
-}
-
-inline string toString(h256s const& _bs)
-{
-	ostringstream out;
-	out << "[ ";
-	for (auto i: _bs)
-		out << i.abridged() << ", ";
-	out << "]";
-	return out.str();
 }
 
 LastHashes BlockChain::lastHashes(unsigned _n) const
@@ -312,14 +320,14 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 		}
 		catch (dev::eth::UnknownParent)
 		{
-			cwarn << "ODD: Import queue contains block with unknown parent." << boost::current_exception_diagnostic_information();
+			cwarn << "ODD: Import queue contains block with unknown parent." << error << boost::current_exception_diagnostic_information();
 			// NOTE: don't reimport since the queue should guarantee everything in the right order.
 			// Can't continue - chain bad.
 			badBlocks.push_back(BlockInfo::headerHash(block));
 		}
 		catch (Exception const& _e)
 		{
-			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << diagnostic_information(_e);
+			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << error << diagnostic_information(_e);
 			// NOTE: don't reimport since the queue should guarantee everything in the right order.
 			// Can't continue - chain  bad.
 			badBlocks.push_back(BlockInfo::headerHash(block));
@@ -400,7 +408,10 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		auto pdata = pd.rlp();
 		clog(BlockChainDebug) << "Details is returning false despite block known:" << RLP(pdata);
 		auto parentBlock = block(bi.parentHash);
-		clog(BlockChainDebug) << "Block:" << RLP(parentBlock);
+		clog(BlockChainDebug) << "isKnown:" << isKnown(bi.parentHash);
+		clog(BlockChainDebug) << "last/number:" << m_lastBlockNumber << m_lastBlockHash << bi.number;
+		clog(BlockChainDebug) << "Block:" << BlockInfo(parentBlock);
+		clog(BlockChainDebug) << "RLP:" << RLP(parentBlock);
 		clog(BlockChainDebug) << "DATABASE CORRUPTION: CRITICAL FAILURE";
 		exit(-1);
 	}
@@ -408,12 +419,12 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	// Check it's not crazy
 	if (bi.timestamp > (u256)time(0))
 	{
-		clog(BlockChainNote) << bi.hash() << ": Future time " << bi.timestamp << " (now at " << time(0) << ")";
+		clog(BlockChainChat) << bi.hash() << ": Future time " << bi.timestamp << " (now at " << time(0) << ")";
 		// Block has a timestamp in the future. This is no good.
 		BOOST_THROW_EXCEPTION(FutureTime());
 	}
 
-	clog(BlockChainNote) << "Attempting import of " << bi.hash().abridged() << "...";
+	clog(BlockChainChat) << "Attempting import of " << bi.hash() << "...";
 
 #if ETH_TIMED_IMPORTS
 	preliminaryChecks = t.elapsed();
@@ -476,14 +487,15 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 #endif
 
 		{
+			ReadGuard l1(x_blocks);
 			ReadGuard l2(x_details);
 			ReadGuard l4(x_receipts);
 			ReadGuard l5(x_logBlooms);
-			m_blocksDB->Put(m_writeOptions, toSlice(bi.hash()), (ldb::Slice)ref(_block));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.hash()].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[bi.hash()].rlp()));
 			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[bi.hash()].rlp()));
+			m_blocksDB->Put(m_writeOptions, toSlice(bi.hash()), (ldb::Slice)ref(_block));
 		}
 
 #if ETH_TIMED_IMPORTS
@@ -531,12 +543,6 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	{
 		unsigned commonIndex;
 		tie(route, common, commonIndex) = treeRoute(last, bi.hash());
-		{
-			WriteGuard l(x_lastBlockHash);
-			m_lastBlockHash = bi.hash();
-		}
-
-		m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&(bi.hash()), 32));
 
 		// Most of the time these two will be equal - only when we're doing a chain revert will they not be
 		if (common != last)
@@ -597,6 +603,14 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
 		}
 
+		// FINALLY! change our best hash.
+		{
+			WriteGuard l(x_lastBlockHash);
+			m_lastBlockHash = bi.hash();
+			m_lastBlockNumber = (unsigned)bi.number;
+			m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&(bi.hash()), 32));
+		}
+
 		clog(BlockChainNote) << "   Imported and best" << td << " (#" << bi.number << "). Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(route);
 		noteCanonChanged();
 
@@ -609,7 +623,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	}
 	else
 	{
-		clog(BlockChainNote) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
+		clog(BlockChainChat) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
 	}
 
 #if ETH_TIMED_IMPORTS
@@ -687,7 +701,7 @@ void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
 
 tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const& _to, bool _common, bool _pre, bool _post) const
 {
-//	cdebug << "treeRoute" << _from.abridged() << "..." << _to.abridged();
+//	cdebug << "treeRoute" << _from << "..." << _to;
 	if (!_from || !_to)
 		return make_tuple(h256s(), h256(), 0);
 	h256s ret;
@@ -702,7 +716,7 @@ tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const
 			ret.push_back(from);
 		from = details(from).parent;
 		fn--;
-//		cdebug << "from:" << fn << _from.abridged();
+//		cdebug << "from:" << fn << _from;
 	}
 	h256 to = _to;
 	while (fn < tn)
@@ -711,7 +725,7 @@ tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const
 			back.push_back(to);
 		to = details(to).parent;
 		tn--;
-//		cdebug << "to:" << tn << _to.abridged();
+//		cdebug << "to:" << tn << _to;
 	}
 	for (;; from = details(from).parent, to = details(to).parent)
 	{
@@ -721,7 +735,7 @@ tuple<h256s, h256, unsigned> BlockChain::treeRoute(h256 const& _from, h256 const
 			back.push_back(to);
 		fn--;
 		tn--;
-//		cdebug << "from:" << fn << _from.abridged() << "; to:" << tn << _to.abridged();
+//		cdebug << "from:" << fn << _from << "; to:" << tn << _to;
 		if (from == to)
 			break;
 		if (!from)
@@ -956,14 +970,24 @@ bool BlockChain::isKnown(h256 const& _hash) const
 {
 	if (_hash == m_genesisHash)
 		return true;
-	{
-		ReadGuard l(x_blocks);
-		if (m_blocks.count(_hash))
-			return true;
-	}
-	string d;
-	m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
-	return !!d.size();
+
+	ETH_READ_GUARDED(x_blocks)
+		if (!m_blocks.count(_hash))
+		{
+			string d;
+			m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
+			if (d.empty())
+				return false;
+		}
+	ETH_READ_GUARDED(x_details)
+		if (!m_details.count(_hash))
+		{
+			string d;
+			m_extrasDB->Get(m_readOptions, toSlice(_hash, ExtraDetails), &d);
+			if (d.empty())
+				return false;
+		}
+	return true;
 }
 
 bytes BlockChain::block(h256 const& _hash) const
@@ -981,9 +1005,9 @@ bytes BlockChain::block(h256 const& _hash) const
 	string d;
 	m_blocksDB->Get(m_readOptions, toSlice(_hash), &d);
 
-	if (!d.size())
+	if (d.empty())
 	{
-		cwarn << "Couldn't find requested block:" << _hash.abridged();
+		cwarn << "Couldn't find requested block:" << _hash;
 		return bytes();
 	}
 

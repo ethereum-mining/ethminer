@@ -116,6 +116,11 @@ QString contentsOfQResource(string const& res)
 Address c_newConfig = Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
 //Address c_nameReg = Address("ddd1cea741d548f90d86fb87a3ae6492e18c03a1");
 
+static QString filterOutTerminal(QString _s)
+{
+	return _s.replace(QRegExp("\x1b\\[(\\d;)?\\d+m"), "");
+}
+
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main),
@@ -130,7 +135,7 @@ Main::Main(QWidget *parent) :
 	{
 		simpleDebugOut(s, c);
 		m_logLock.lock();
-		m_logHistory.append(QString::fromStdString(s) + "\n");
+		m_logHistory.append(filterOutTerminal(QString::fromStdString(s)) + "\n");
 		m_logChanged = true;
 		m_logLock.unlock();
 //		ui->log->addItem(QString::fromStdString(s));
@@ -164,7 +169,7 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->chainStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
 
-	ui->blockCount->setText(QString("PV%2 D%3 %4-%5 v%6").arg(eth::c_protocolVersion).arg(c_databaseVersion).arg(QString::fromStdString(ProofOfWork::name())).arg(ProofOfWork::revision()).arg(dev::Version));
+	ui->blockCount->setText(QString("PV%1.%2 D%3 %4-%5 v%6").arg(eth::c_protocolVersion).arg(eth::c_minorProtocolVersion).arg(c_databaseVersion).arg(QString::fromStdString(ProofOfWork::name())).arg(ProofOfWork::revision()).arg(dev::Version));
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
 	
@@ -1445,6 +1450,25 @@ void Main::on_inject_triggered()
 	catch (...)
 	{
 		cwarn << "transaction rejected";
+	}
+}
+
+void Main::on_injectBlock_triggered()
+{
+	QString s = QInputDialog::getText(this, "Inject Block", "Enter block dump in hex");
+	try
+	{
+		bytes b = fromHex(s.toStdString(), WhenError::Throw);
+		ethereum()->injectBlock(b);
+	}
+	catch (BadHexCharacter& _e)
+	{
+		cwarn << "invalid hex character, transaction rejected";
+		cwarn << boost::diagnostic_information(_e);
+	}
+	catch (...)
+	{
+		cwarn << "block rejected";
 	}
 }
 

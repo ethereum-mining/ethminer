@@ -35,7 +35,7 @@ namespace eth
 
 class BlockChain;
 
-struct TransactionQueueChannel: public LogChannel { static const char* name() { return "->Q"; } static const int verbosity = 4; };
+struct TransactionQueueChannel: public LogChannel { static const char* name(); static const int verbosity = 4; };
 #define ctxq dev::LogOutputStream<dev::eth::TransactionQueueChannel, true>()
 
 enum class IfDropped { Ignore, Retry };

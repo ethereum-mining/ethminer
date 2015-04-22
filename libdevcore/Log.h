@@ -26,8 +26,13 @@
 #include <ctime>
 #include <chrono>
 #include <boost/thread.hpp>
+#include <boost/asio.hpp>
 #include "vector_ref.h"
+#include "Common.h"
 #include "CommonIO.h"
+#include "CommonData.h"
+#include "FixedHash.h"
+#include "Terminal.h"
 
 namespace dev
 {
@@ -74,42 +79,129 @@ std::string getThreadName();
 
 /// The default logging channels. Each has an associated verbosity and three-letter prefix (name() ).
 /// Channels should inherit from LogChannel and define name() and verbosity.
-struct LogChannel { static const char* name() { return "   "; } static const int verbosity = 1; };
-struct LeftChannel: public LogChannel  { static const char* name() { return "<<<"; } };
-struct RightChannel: public LogChannel { static const char* name() { return ">>>"; } };
-struct WarnChannel: public LogChannel  { static const char* name() { return "!!!"; } static const int verbosity = 0; };
-struct NoteChannel: public LogChannel  { static const char* name() { return "***"; } };
-struct DebugChannel: public LogChannel { static const char* name() { return "---"; } static const int verbosity = 0; };
+struct LogChannel { static const char* name(); static const int verbosity = 1; };
+struct LeftChannel: public LogChannel { static const char* name(); };
+struct RightChannel: public LogChannel { static const char* name(); };
+struct WarnChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };
+struct NoteChannel: public LogChannel { static const char* name(); };
+struct DebugChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };
+
+enum LogTag
+{
+	None,
+	url,
+	error
+};
+
+class LogOutputStreamBase
+{
+public:
+	LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v, bool _autospacing);
+
+	void comment(std::string const& _t)
+	{
+		switch (m_logTag)
+		{
+		case url: m_sstr << EthNavyUnder; break;
+		case error: m_sstr << EthRedBold; break;
+		default:;
+		}
+		m_sstr << _t << EthReset;
+		m_logTag = None;
+	}
+
+	void append(unsigned long _t) { m_sstr << EthBlue << _t << EthReset; }
+	void append(long _t) { m_sstr << EthBlue << _t << EthReset; }
+	void append(unsigned int _t) { m_sstr << EthBlue << _t << EthReset; }
+	void append(int _t) { m_sstr << EthBlue << _t << EthReset; }
+	void append(bigint const& _t) { m_sstr << EthNavy << _t << EthReset; }
+	void append(u256 const& _t) { m_sstr << EthNavy << _t << EthReset; }
+	void append(u160 const& _t) { m_sstr << EthNavy << _t << EthReset; }
+	void append(double _t) { m_sstr << EthBlue << _t << EthReset; }
+	template <unsigned N> void append(FixedHash<N> const& _t) { m_sstr << EthTeal "#" << _t.abridged() << EthReset; }
+	void append(h160 const& _t) { m_sstr << EthRed "@" << _t.abridged() << EthReset; }
+	void append(h256 const& _t) { m_sstr << EthCyan "#" << _t.abridged() << EthReset; }
+	void append(h512 const& _t) { m_sstr << EthTeal "##" << _t.abridged() << EthReset; }
+	void append(std::string const& _t) { m_sstr << EthGreen "\"" + _t + "\"" EthReset; }
+	void append(bytes const& _t) { m_sstr << EthYellow "%" << toHex(_t) << EthReset; }
+	void append(bytesConstRef _t) { m_sstr << EthYellow "%" << toHex(_t) << EthReset; }
+	template <class T> void append(std::vector<T> const& _t)
+	{
+		m_sstr << EthWhite "[" EthReset;
+		int n = 0;
+		for (auto const& i: _t)
+		{
+			m_sstr << (n++ ? EthWhite ", " EthReset : "");
+			append(i);
+		}
+		m_sstr << EthWhite "]" EthReset;
+	}
+	template <class T> void append(std::set<T> const& _t)
+	{
+		m_sstr << EthYellow "{" EthReset;
+		int n = 0;
+		for (auto const& i: _t)
+		{
+			m_sstr << (n++ ? EthYellow ", " EthReset : "");
+			append(i);
+		}
+		m_sstr << EthYellow "}" EthReset;
+	}
+	template <class T, class U> void append(std::map<T, U> const& _t)
+	{
+		m_sstr << EthLime "{" EthReset;
+		int n = 0;
+		for (auto const& i: _t)
+		{
+			m_sstr << (n++ ? EthLime ", " EthReset : "");
+			append(i.first);
+			m_sstr << (n++ ? EthLime ": " EthReset : "");
+			append(i.second);
+		}
+		m_sstr << EthLime "}" EthReset;
+	}
+	template <class T, class U> void append(std::pair<T, U> const& _t)
+	{
+		m_sstr << EthPurple "(" EthReset;
+		append(_t.first);
+		m_sstr << EthPurple ", " EthReset;
+		append(_t.second);
+		m_sstr << EthPurple ")" EthReset;
+	}
+	template <class T> void append(T const& _t)
+	{
+		m_sstr << toString(_t);
+	}
+	template <class T> void append(boost::asio::ip::tcp::endpoint const& _t)
+	{
+		m_sstr << EthNavyUnder "tcp://" << _t << EthReset;
+	}
+
+protected:
+	bool m_autospacing = false;
+	unsigned m_verbosity = 0;
+	std::stringstream m_sstr;	///< The accrued log entry.
+	LogTag m_logTag;
+};
 
 /// Logging class, iostream-like, that can be shifted to.
 template <class Id, bool _AutoSpacing = true>
-class LogOutputStream
+class LogOutputStream: LogOutputStreamBase
 {
 public:
 	/// Construct a new object.
 	/// If _term is true the the prefix info is terminated with a ']' character; if not it ends only with a '|' character.
-	LogOutputStream(bool _term = true)
-	{
-		std::type_info const* i = &typeid(Id);
-		auto it = g_logOverride.find(i);
-		if ((it != g_logOverride.end() && it->second == true) || (it == g_logOverride.end() && Id::verbosity <= g_logVerbosity))
-		{
-			time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-			char buf[24];
-			if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
-				buf[0] = '\0'; // empty if case strftime fails
-			m_sstr << Id::name() << " [ " << buf << " | " << getThreadName() << ThreadContext::join(" | ") << (_term ? " ] " : "");
-		}
-	}
+	LogOutputStream(): LogOutputStreamBase(Id::name(), &typeid(Id), Id::verbosity, _AutoSpacing) {}
 
 	/// Destructor. Posts the accrued log entry to the g_logPost function.
 	~LogOutputStream() { if (Id::verbosity <= g_logVerbosity) g_logPost(m_sstr.str(), Id::name()); }
 
-	/// Shift arbitrary data to the log. Spaces will be added between items as required.
-	template <class T> LogOutputStream& operator<<(T const& _t) { if (Id::verbosity <= g_logVerbosity) { if (_AutoSpacing && m_sstr.str().size() && m_sstr.str().back() != ' ') m_sstr << " "; m_sstr << _t; } return *this; }
+	LogOutputStream& operator<<(std::string const& _t) { if (Id::verbosity <= g_logVerbosity) { if (_AutoSpacing && m_sstr.str().size() && m_sstr.str().back() != ' ') m_sstr << " "; comment(_t); } return *this; }
 
-private:
-	std::stringstream m_sstr;	///< The accrued log entry.
+	LogOutputStream& operator<<(LogTag _t) { m_logTag = _t; return *this; }
+
+	/// Shift arbitrary data to the log. Spaces will be added between items as required.
+	template <class T> LogOutputStream& operator<<(T const& _t) { if (Id::verbosity <= g_logVerbosity) { if (_AutoSpacing && m_sstr.str().size() && m_sstr.str().back() != ' ') m_sstr << " "; append(_t); } return *this; }
 };
 
 // Simple cout-like stream objects for accessing common log channels.
