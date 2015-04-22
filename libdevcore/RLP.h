@@ -308,7 +308,7 @@ private:
 	/// Single-byte data payload.
 	bool isSingleByte() const { return !isNull() && m_data[0] < c_rlpDataImmLenStart; }
 
-	/// @returns the bytes used to encode the length of the data. Valid for all types.
+	/// @returns the amount of bytes used to encode the length of the data. Valid for all types.
 	unsigned lengthSize() const { if (isData() && m_data[0] > c_rlpDataIndLenZero) return m_data[0] - c_rlpDataIndLenZero; if (isList() && m_data[0] > c_rlpListIndLenZero) return m_data[0] - c_rlpListIndLenZero; return 0; }
 
 	/// @returns the size in bytes of the payload, as given by the RLP as opposed to as inferred from m_data.

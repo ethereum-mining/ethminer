@@ -1,10 +1,22 @@
 # cmake global
 cmake_minimum_required(VERSION 2.8.12)
+
+project(ethereum)
+
+set(CMAKE_AUTOMOC ON)
+
+# link_directories interprate relative paths with respect to CMAKE_CURRENT_SOURCE_DIR
+cmake_policy(SET CMP0015 NEW)
+
 # let cmake autolink dependencies on windows
 # it's specified globally, cause qt libraries requires that on windows and they are also found globally
 cmake_policy(SET CMP0020 NEW)
 
-project(ethereum)
+# 3.1 and above
+if ((${CMAKE_MAJOR_VERSION} GREATER 2) AND (${CMAKE_MINOR_VERSION} GREATER 0))
+	# implicitly dereference variables (deprecated in 3.1)
+	cmake_policy(SET CMP0054 NEW)
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -124,9 +136,6 @@ endfunction()
 ######################################################################################################
 
 
-set(CMAKE_AUTOMOC ON)
-cmake_policy(SET CMP0015 NEW)
-
 # Clear invalid option
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 	if (PARANOID)
@@ -242,11 +251,11 @@ if ("x${CMAKE_BUILD_TYPE}" STREQUAL "x")
 	set(CMAKE_BUILD_TYPE "Release")
 endif ()
 
-# Default TARGET_PLATFORM to ${CMAKE_SYSTEM}
+# Default TARGET_PLATFORM to ${CMAKE_SYSTEM_NAME}
 # change this once we support cross compiling
-set(TARGET_PLATFORM CACHE STRING ${CMAKE_SYSTEM})
+set(TARGET_PLATFORM CACHE STRING ${CMAKE_SYSTEM_NAME})
 if ("x${TARGET_PLATFORM}" STREQUAL "x")
-	set(TARGET_PLATFORM ${CMAKE_SYSTEM})
+	set(TARGET_PLATFORM ${CMAKE_SYSTEM_NAME})
 endif ()
 
 include(EthDependencies)

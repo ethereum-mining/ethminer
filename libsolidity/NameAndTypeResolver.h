@@ -56,18 +56,19 @@ public:
 	/// Resolves the given @a _name inside the scope @a _scope. If @a _scope is omitted,
 	/// the global scope is used (i.e. the one containing only the contract).
 	/// @returns a pointer to the declaration on success or nullptr on failure.
-	Declaration const* resolveName(ASTString const& _name, Declaration const* _scope = nullptr) const;
+	std::set<Declaration const*> resolveName(ASTString const& _name, Declaration const* _scope = nullptr) const;
 
 	/// Resolves a name in the "current" scope. Should only be called during the initial
 	/// resolving phase.
-	Declaration const* getNameFromCurrentScope(ASTString const& _name, bool _recursive = true);
+	std::set<Declaration const*> getNameFromCurrentScope(ASTString const& _name, bool _recursive = true);
 
 private:
 	void reset();
 
-	/// Imports all members declared directly in the given contract (i.e. does not import inherited
-	/// members) into the current scope if they are not present already.
-	void importInheritedScope(ContractDefinition const& _base);
+	/// Either imports all non-function members or all function members declared directly in the
+	/// given contract (i.e. does not import inherited members) into the current scope if they are
+	///not present already.
+	void importInheritedScope(ContractDefinition const& _base, bool _importFunctions);
 
 	/// Computes "C3-Linearization" of base contracts and stores it inside the contract.
 	void linearizeBaseContracts(ContractDefinition& _contract) const;
@@ -126,13 +127,18 @@ private:
 class ReferencesResolver: private ASTVisitor
 {
 public:
-	ReferencesResolver(ASTNode& _root, NameAndTypeResolver& _resolver,
-					   ContractDefinition const* _currentContract,
-					   ParameterList const* _returnParameters,
-					   bool _allowLazyTypes = true);
+	ReferencesResolver(
+		ASTNode& _root,
+		NameAndTypeResolver& _resolver,
+		ContractDefinition const* _currentContract,
+		ParameterList const* _returnParameters,
+		bool _resolveInsideCode = false,
+		bool _allowLazyTypes = true
+	);
 
 private:
 	virtual void endVisit(VariableDeclaration& _variable) override;
+	virtual bool visit(Block&) override { return m_resolveInsideCode; }
 	virtual bool visit(Identifier& _identifier) override;
 	virtual bool visit(UserDefinedTypeName& _typeName) override;
 	virtual bool visit(Mapping&) override;
@@ -141,6 +147,7 @@ private:
 	NameAndTypeResolver& m_resolver;
 	ContractDefinition const* m_currentContract;
 	ParameterList const* m_returnParameters;
+	bool m_resolveInsideCode;
 	bool m_allowLazyTypes;
 };
 

@@ -23,9 +23,6 @@
 
 #include <thread>
 #include <chrono>
-
-#include <boost/filesystem/path.hpp>
-
 #include <libethereum/Client.h>
 #include <liblll/Compiler.h>
 #include <libevm/VMFactory.h>
@@ -542,6 +539,8 @@ void checkCallCreates(eth::Transactions _resultCallCreates, eth::Transactions _e
 
 void userDefinedTest(string testTypeFlag, std::function<void(json_spirit::mValue&, bool)> doTests)
 {
+	Options::get(); // parse command line options, e.g. to enable JIT
+
 	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
 	{
 		string arg = boost::unit_test::framework::master_test_suite().argv[i];
@@ -592,7 +591,7 @@ void userDefinedTest(string testTypeFlag, std::function<void(json_spirit::mValue
 	}
 }
 
-void executeTests(const string& _name, const string& _testPathAppendix, std::function<void(json_spirit::mValue&, bool)> doTests)
+void executeTests(const string& _name, const string& _testPathAppendix, const boost::filesystem::path _pathToFiller, std::function<void(json_spirit::mValue&, bool)> doTests)
 {
 	string testPath = getTestPath();
 	testPath += _testPathAppendix;
@@ -607,9 +606,8 @@ void executeTests(const string& _name, const string& _testPathAppendix, std::fun
 			cnote << "Populating tests...";
 			json_spirit::mValue v;
 			boost::filesystem::path p(__FILE__);
-			boost::filesystem::path dir = p.parent_path();
-			string s = asString(dev::contents(dir.string() + "/" + _name + "Filler.json"));
-			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + dir.string() + "/" + _name + "Filler.json is empty.");
+			string s = asString(dev::contents(_pathToFiller.string() + "/" + _name + "Filler.json"));
+			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + _pathToFiller.string() + "/" + _name + "Filler.json is empty.");
 			json_spirit::read_string(s, v);
 			doTests(v, true);
 			writeFile(testPath + "/" + _name + ".json", asBytes(json_spirit::write_string(v, true)));

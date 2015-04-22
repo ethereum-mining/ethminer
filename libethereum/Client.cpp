@@ -124,6 +124,18 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, ActivityReport const& _r)
 	return _out;
 }
 
+#ifdef _WIN32
+const char* ClientNote::name() { return EthTeal "^" EthBlue " i"; }
+const char* ClientChat::name() { return EthTeal "^" EthWhite " o"; }
+const char* ClientTrace::name() { return EthTeal "^" EthGray " O"; }
+const char* ClientDetail::name() { return EthTeal "^" EthCoal " 0"; }
+#else
+const char* ClientNote::name() { return EthTeal "⧫" EthBlue " ℹ"; }
+const char* ClientChat::name() { return EthTeal "⧫" EthWhite " ◌"; }
+const char* ClientTrace::name() { return EthTeal "⧫" EthGray " ◎"; }
+const char* ClientDetail::name() { return EthTeal "⧫" EthCoal " ●"; }
+#endif
+
 Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId):
 	Worker("eth"),
 	m_vc(_dbPath),
@@ -205,20 +217,11 @@ void Client::startedWorking()
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
 	cdebug << "startedWorking()";
 
-	cdebug << m_bc.number() << m_bc.currentHash();
-	cdebug << "Pre:" << m_preMine.info();
-	cdebug << "Post:" << m_postMine.info();
-	cdebug << "Pre:" << m_preMine.info().headerHash(WithoutNonce) << "; Post:" << m_postMine.info().headerHash(WithoutNonce);
-
 	ETH_WRITE_GUARDED(x_preMine)
 		m_preMine.sync(m_bc);
 	ETH_WRITE_GUARDED(x_postMine)
 		ETH_READ_GUARDED(x_preMine)
 			m_postMine = m_preMine;
-
-	cdebug << "Pre:" << m_preMine.info();
-	cdebug << "Post:" << m_postMine.info();
-	cdebug << "Pre:" << m_preMine.info().headerHash(WithoutNonce) << "; Post:" << m_postMine.info().headerHash(WithoutNonce);
 }
 
 void Client::doneWorking()
@@ -295,7 +298,15 @@ static string filtersToString(T const& _fs)
 	ret << "{";
 	unsigned i = 0;
 	for (h256 const& f: _fs)
-		ret << (i++ ? ", " : "") << (f == PendingChangedFilter ? "pending" : f == ChainChangedFilter ? "chain" : f.abridged());
+	{
+		ret << (i++ ? ", " : "");
+		if (f == PendingChangedFilter)
+			ret << url << "pending";
+		else if (f == ChainChangedFilter)
+			ret << url << "chain";
+		else
+			ret << f;
+	}
 	ret << "}";
 	return ret.str();
 }
@@ -479,7 +490,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	// insert transactions that we are declaring the dead part of the chain
 	for (auto const& h: _ir.second)
 	{
-		clog(ClientNote) << "Dead block:" << h.abridged();
+		clog(ClientNote) << "Dead block:" << h;
 		for (auto const& t: m_bc.transactions(h))
 		{
 			clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckTransaction::None);
@@ -490,10 +501,10 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
 	for (auto const& h: _ir.first)
 	{
-		clog(ClientChat) << "Live block:" << h.abridged();
+		clog(ClientChat) << "Live block:" << h;
 		for (auto const& th: m_bc.transactionHashes(h))
 		{
-			clog(ClientNote) << "Safely dropping transaction " << th.abridged();
+			clog(ClientNote) << "Safely dropping transaction " << th;
 			m_tq.drop(th);
 		}
 	}
