@@ -368,12 +368,7 @@ Dialog {
 											Layout.preferredWidth: 150
 											text: {
 												if (styleData.row >= 0)
-												{
-													if (transactionsModel.get(styleData.row).label !== undefined)
-														return transactionsModel.get(styleData.row).label;
-													else if (transactionsModel.get(styleData.row).functionId !== undefined)
-														return transactionsModel.get(styleData.row).functionId;
-												}
+													return transactionsModel.get(styleData.row).functionId;
 												else
 													return "";
 											}
