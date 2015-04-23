@@ -311,7 +311,7 @@ void Ethash::GPUMiner::workLoop()
 
 			auto p = EthashAux::params(m_minerSeed);
 			auto cb = [&](void* d) { EthashAux::full(m_minerSeed, bytesRef((byte*)d, p.full_size)); };
-			unsigned device = instances() > 0 ? index() : s_deviceId;
+			unsigned device = instances() > 1 ? index() : s_deviceId;
 			m_miner->init(p, cb, 32, s_platformId, device);
 		}
 
