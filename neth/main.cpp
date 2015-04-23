@@ -722,7 +722,7 @@ int main(int argc, char** argv)
 			{
 				gasPricer->setRefBlockFees(u256(blockFees * 1000));
 			}
-			catch(Overflow const& _e)
+			catch (Overflow const& _e)
 			{
 				cout << boost::diagnostic_information(_e);
 			}
@@ -733,14 +733,14 @@ int main(int argc, char** argv)
 		{
 			iss >> etherPrice;
 			if (etherPrice == 0)
-				cout << "ether price can not be set to zero" << endl;
+				cout << "ether price cannot be set to zero" << endl;
 			else
 			{
 				try
 				{
 					gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
 				}
-				catch(Overflow const& _e)
+				catch (Overflow const& _e)
 				{
 					cout << boost::diagnostic_information(_e);
 				}
