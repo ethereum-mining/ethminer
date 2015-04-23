@@ -52,7 +52,7 @@ function test_tutorial()
 	transactionDialog.selectFunction("setRating");
 	clickElement(transactionDialog, 200, 310);
 	ts.typeString("Titanic", transactionDialog);
-	clickElement(transactionDialog, 200, 330);
+	clickElement(transactionDialog, 200, 350);
 	ts.typeString("2", transactionDialog);
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.acceptAndClose();

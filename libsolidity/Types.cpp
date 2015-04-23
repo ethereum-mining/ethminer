@@ -745,8 +745,6 @@ string ArrayType::toString() const
 
 TypePointer ArrayType::externalType() const
 {
-	if (m_location != Location::CallData)
-		return TypePointer();
 	if (m_isByteArray)
 		return shared_from_this();
 	if (!m_baseType->externalType())
@@ -1128,7 +1126,7 @@ unsigned FunctionType::getSizeOnStack() const
 	return size;
 }
 
-TypePointer FunctionType::externalType() const
+FunctionTypePointer FunctionType::externalFunctionType() const
 {
 	TypePointers paramTypes;
 	TypePointers retParamTypes;
@@ -1136,13 +1134,13 @@ TypePointer FunctionType::externalType() const
 	for (auto type: m_parameterTypes)
 	{
 		if (!type->externalType())
-			return TypePointer();
+			return FunctionTypePointer();
 		paramTypes.push_back(type->externalType());
 	}
 	for (auto type: m_returnParameterTypes)
 	{
 		if (!type->externalType())
-			return TypePointer();
+			return FunctionTypePointer();
 		retParamTypes.push_back(type->externalType());
 	}
 	return make_shared<FunctionType>(paramTypes, retParamTypes, m_location, m_arbitraryParameters);
@@ -1218,7 +1216,9 @@ string FunctionType::externalSignature(std::string const& _name) const
 	}
 	string ret = funcName + "(";
 
-	TypePointers externalParameterTypes = dynamic_cast<FunctionType const&>(*externalType()).getParameterTypes();
+	FunctionTypePointer external = externalFunctionType();
+	solAssert(!!external, "External function type requested.");
+	TypePointers externalParameterTypes = external->getParameterTypes();
 	for (auto it = externalParameterTypes.cbegin(); it != externalParameterTypes.cend(); ++it)
 	{
 		solAssert(!!(*it), "Parameter should have external type");
