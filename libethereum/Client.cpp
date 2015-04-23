@@ -82,8 +82,8 @@ void BasicGasPricer::update(BlockChain const& _bc)
 	h256 p = _bc.currentHash();
 	m_gasPerBlock = _bc.info(p).gasLimit;
 
-	map<u256, unsigned> dist;
-	unsigned total = 0;
+	map<u256, u256> dist;
+	u256 total = 0;
 
 	// make gasPrice versus gasUsed distribution for the last 1000 blocks
 	while (c < 1000 && p)
@@ -98,9 +98,9 @@ void BasicGasPricer::update(BlockChain const& _bc)
 			for (auto const& tr: r[1])
 			{
 				Transaction tx(tr.data(), CheckTransaction::None);
-				auto gu = brs.receipts[i].gasUsed();
-				dist[tx.gasPrice()] += (unsigned)gu;
-				total += (unsigned)gu;
+				u256 gu = brs.receipts[i].gasUsed();
+				dist[tx.gasPrice()] += gu;
+				total += gu;
 				i++;
 			}
 		}
@@ -129,8 +129,8 @@ void BasicGasPricer::update(BlockChain const& _bc)
 
 		// calc octiles normalized to gaussian distribution
 		boost::math::normal gauss(4, normalizedSd ? normalizedSd : 1);
-		for (int i=1; i < 8; i++)
-			m_octiles[i] = mean / 4000 * int(boost::math::quantile(gauss, (double)i / 8) * 1000);
+		for (int i = 1; i < 8; i++)
+			m_octiles[i] = mean / 4000 * int(boost::math::quantile(gauss, i / 8.0) * 1000);
 
 		m_octiles[8] = dist.rbegin()->first;
 	}
