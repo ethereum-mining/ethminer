@@ -366,7 +366,12 @@ Dialog {
 
 										DefaultLabel {
 											Layout.preferredWidth: 150
-											text: styleData.row >= 0 ? transactionsModel.get(styleData.row).functionId : ""
+											text: {
+												if (styleData.row >= 0)
+													return transactionsModel.get(styleData.row).functionId;
+												else
+													return "";
+											}
 										}
 									}
 								}
@@ -378,7 +383,6 @@ Dialog {
 							}
 						}
 					}
-
 				}
 
 				RowLayout
@@ -456,7 +460,6 @@ Dialog {
 					onAccepted:
 					{
 						var item = transactionDialog.getItem();
-
 						if (transactionDialog.transactionIndex < transactionsModel.count) {
 							transactionsModel.set(transactionDialog.transactionIndex, item);
 							stateTransactions[transactionDialog.transactionIndex] = item;
