@@ -612,6 +612,7 @@ int main(int argc, char** argv)
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
 				openclDevice = stol(argv[++i]);
+				miningThreads = 1;
 			}
 			catch (...)
 			{

@@ -28,6 +28,7 @@
 #include <memory>
 #include <vector>
 #include <boost/noncopyable.hpp>
+#include <json/json.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
 
@@ -104,7 +105,7 @@ public:
 	/// @arg _sourceCodes is the map of input files to source code strings
 	/// @arg _inJsonFromat shows whether the out should be in Json format
 	/// Prerequisite: Successful compilation.
-	void streamAssembly(std::ostream& _outStream, std::string const& _contractName = "", StringMap _sourceCodes = StringMap(), bool _inJsonFormat = false) const;
+	Json::Value streamAssembly(std::ostream& _outStream, std::string const& _contractName = "", StringMap _sourceCodes = StringMap(), bool _inJsonFormat = false) const;
 
 	/// Returns a string representing the contract interface in JSON.
 	/// Prerequisite: Successful call to parse or compile.
@@ -140,7 +141,7 @@ private:
 		std::shared_ptr<SourceUnit> ast;
 		std::string interface;
 		bool isLibrary = false;
-		void reset() { scanner.reset(); ast.reset(); interface.clear(); isLibrary = false;}
+		void reset() { scanner.reset(); ast.reset(); interface.clear(); }
 	};
 
 	struct Contract
