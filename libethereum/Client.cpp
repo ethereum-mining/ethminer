@@ -237,9 +237,6 @@ void Client::doneWorking()
 
 void Client::killChain()
 {
-	WriteGuard l(x_postMine);
-	WriteGuard l2(x_preMine);
-
 	bool wasMining = isMining();
 	if (wasMining)
 		stopMining();
@@ -248,18 +245,21 @@ void Client::killChain()
 	m_tq.clear();
 	m_bq.clear();
 	m_farm.stop();
-	m_preMine = State();
-	m_postMine = State();
 
-//	ETH_WRITE_GUARDED(x_stateDB)	// no point doing this yet since we can't control where else it's open yet.
 	{
+		WriteGuard l(x_postMine);
+		WriteGuard l2(x_preMine);
+
+		m_preMine = State();
+		m_postMine = State();
+
 		m_stateDB = OverlayDB();
 		m_stateDB = State::openDB(Defaults::dbPath(), WithExisting::Kill);
-	}
-	m_bc.reopen(Defaults::dbPath(), WithExisting::Kill);
+		m_bc.reopen(Defaults::dbPath(), WithExisting::Kill);
 
-	m_preMine = State(m_stateDB);
-	m_postMine = State(m_stateDB);
+		m_preMine = State(m_stateDB, BaseState::CanonGenesis);
+		m_postMine = State(m_stateDB);
+	}
 
 	if (auto h = m_host.lock())
 		h->reset();
