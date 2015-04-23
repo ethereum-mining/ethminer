@@ -279,9 +279,22 @@ void CodeModel::runCompilationJob(int _jobId)
 				QQmlEngine::setObjectOwnership(contract, QQmlEngine::CppOwnership);
 				result[name] = contract;
 				CompiledContract* prevContract = nullptr;
+				// find previous contract by name
 				for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
-					if (c.value()->documentId() == contract->documentId())
+					if (c.value()->contract()->name() == contract->contract()->name())
 						prevContract = c.value();
+
+				// if not found, try by documentId
+				if (!prevContract)
+				{
+					for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
+						if (c.value()->documentId() == contract->documentId())
+						{
+							//make sure there are no other contracts in the same source, otherwise it is not a rename
+							if (!std::any_of(result.begin(),result.end(), [=](ContractMap::const_iterator::value_type _v) { return _v != contract && _v->documentId() == contract->documentId(); }))
+							prevContract = c.value();
+						}
+				}
 				if (prevContract != nullptr && prevContract->contractInterface() != result[name]->contractInterface())
 					emit contractInterfaceChanged(name);
 				if (prevContract == nullptr)

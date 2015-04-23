@@ -251,21 +251,7 @@ void MixClient::mine()
 	WriteGuard l(x_state);
 	m_state.commitToMine(bc());
 	m_state.completeMine<Ethash>(Ethash::Solution());
-	bc().import(m_state.blockData(), m_stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce);
-	/*
-	GenericFarm<ProofOfWork> f;
-	bool completed = false;
-	f.onSolutionFound([&](ProofOfWork::Solution sol)
-	{
-		return completed = m_state.completeMine<ProofOfWork>(sol);
-	});
-	f.setWork(m_state.info());
-	f.startCPU();
-	while (!completed)
-		this_thread::sleep_for(chrono::milliseconds(20));
-
-	bc().import(m_state.blockData(), m_stateDB);
-	*/
+	bc().import(m_state.blockData(), m_state.db(), ImportRequirements::Default & ~ImportRequirements::ValidNonce);
 	m_state.sync(bc());
 	m_startState = m_state;
 	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
