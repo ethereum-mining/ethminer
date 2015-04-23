@@ -55,7 +55,7 @@
             {
                 "transactions" : [
                     {
-                        "data" : "0xfffffffffffff",
+                        "data" : "0xffffffffffff",
                         "gasLimit" : "850000",
                         "gasPrice" : "12000000000000",
                         "nonce" : "1",
@@ -70,7 +70,7 @@
             {
                 "transactions" : [
                     {
-                        "data" : "0xffffffffffffff",
+                        "data" : "0xffffffffffff",
                         "gasLimit" : "850000",
                         "gasPrice" : "14000000000000",
                         "nonce" : "2",
@@ -85,7 +85,7 @@
             {
                 "transactions" : [
                     {
-                        "data" : "0xfffffffffffffff",
+                        "data" : "0xffffffffffff",
                         "gasLimit" : "850000",
                         "gasPrice" : "16000000000000",
                         "nonce" : "3",
@@ -100,7 +100,7 @@
             {
                 "transactions" : [
                     {
-                        "data" : "0xfffffffffffffffffffffffffffffff",
+                        "data" : "0xffffffffffff",
                         "gasLimit" : "850000",
                         "gasPrice" : "18000000000000",
                         "nonce" : "4",
@@ -115,7 +115,7 @@
             {
                 "transactions" : [
                     {
-                        "data" : "0xffffffffffffffffffffffffffffffff",
+                        "data" : "0xffffffffffff",
                         "gasLimit" : "850000",
                         "gasPrice" : "20000000000000",
                         "nonce" : "5",
@@ -130,7 +130,7 @@
             {
                 "transactions" : [
                     {
-                        "data" : "0xffffffffffffffffffffffffffffffff",
+                        "data" : "0xffffffffffff",
                         "gasLimit" : "850000",
                         "gasPrice" : "22000000000000",
                         "nonce" : "6",
@@ -145,7 +145,7 @@
             {
                 "transactions" : [
                     {
-                        "data" : "0xffffffffffffffffffffffffffffffff",
+                        "data" : "0xffffffffffff",
                         "gasLimit" : "850000",
                         "gasPrice" : "24000000000000",
                         "nonce" : "7",
@@ -160,7 +160,7 @@
             {
                 "transactions" : [
                     {
-                        "data" : "0xffffffffffffffffffffffffffffffff",
+                        "data" : "0xffffffffffff",
                         "gasLimit" : "850000",
                         "gasPrice" : "26000000000000",
                         "nonce" : "8",
@@ -175,7 +175,7 @@
             {
                 "transactions" : [
                     {
-                        "data" : "0xffffffffffffffffffffffffffffffff",
+                        "data" : "0xffffffffffff",
                         "gasLimit" : "850000",
                         "gasPrice" : "28000000000000",
                         "nonce" : "9",
@@ -190,7 +190,7 @@
             {
                 "transactions" : [
                     {
-                        "data" : "0xffffffffffffffffffffffffffffffff",
+                        "data" : "0xffffffffffff",
                         "gasLimit" : "850000",
                         "gasPrice" : "30000000000000",
                         "nonce" : "10",
