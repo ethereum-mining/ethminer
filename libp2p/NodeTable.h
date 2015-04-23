@@ -146,10 +146,7 @@ public:
 	/// Called by implementation which provided handler to process NodeEntryAdded/NodeEntryDropped events. Events are coalesced by type whereby old events are ignored.
 	void processEvents();
 
-	/// Add node. Node will be pinged and empty shared_ptr is returned if NodeId is uknown.
-	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, NodeIPEndpoint const& _ep);
-
-	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen.
+	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeId is empty.
 	std::shared_ptr<NodeEntry> addNode(Node const& _node);
 
 	/// To be called when node table is empty. Runs node discovery with m_node.id as the target in order to populate node-table.
@@ -321,8 +318,8 @@ struct PingNode: RLPXDatagram<PingNode>
  */
 struct Pong: RLPXDatagram<Pong>
 {
-	Pong(bi::udp::endpoint _ep): RLPXDatagram<Pong>(_ep), destination(UnspecifiedNodeIPEndpoint) {}
-	Pong(NodeIPEndpoint _dest): RLPXDatagram<Pong>((bi::udp::endpoint)_dest), destination(_dest), ts(futureFromEpoch(std::chrono::seconds(60))) {}
+	Pong(bi::udp::endpoint const& _ep): RLPXDatagram<Pong>(_ep), destination(UnspecifiedNodeIPEndpoint) {}
+	Pong(NodeIPEndpoint const& _dest): RLPXDatagram<Pong>((bi::udp::endpoint)_dest), destination(_dest), ts(futureFromEpoch(std::chrono::seconds(60))) {}
 
 	static const uint8_t type = 2;
 
