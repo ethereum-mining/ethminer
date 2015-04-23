@@ -686,7 +686,7 @@ bytes Host::saveNetwork() const
 		if (chrono::system_clock::now() - p.m_lastConnected < chrono::seconds(3600 * 48) && !!p.endpoint && p.id != id() && (p.required || p.endpoint.isAllowed()))
 		{
 			network.appendList(11);
-			p.endpoint.streamRLP(network, NodeIPEndpoint::InlineList);
+			p.endpoint.streamRLP(network, NodeIPEndpoint::Inline);
 			network << p.id << p.required
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastConnected.time_since_epoch()).count()
 				<< chrono::duration_cast<chrono::seconds>(p.m_lastAttempted.time_since_epoch()).count()
@@ -702,7 +702,7 @@ bytes Host::saveNetwork() const
 		for (auto const& entry: state)
 		{
 			network.appendList(4);
-			entry.endpoint.streamRLP(network, NodeIPEndpoint::InlineList);
+			entry.endpoint.streamRLP(network, NodeIPEndpoint::Inline);
 			network << entry.id;
 			count++;
 		}
