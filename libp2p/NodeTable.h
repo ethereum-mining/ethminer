@@ -299,8 +299,10 @@ struct InvalidRLP: public Exception {};
  */
 struct PingNode: RLPXDatagram<PingNode>
 {
-	PingNode(bi::udp::endpoint _ep): RLPXDatagram<PingNode>(_ep), source(UnspecifiedNodeIPEndpoint), destination(UnspecifiedNodeIPEndpoint) {}
+	/// Constructor used for sending PingNode.
 	PingNode(NodeIPEndpoint _src, NodeIPEndpoint _dest): RLPXDatagram<PingNode>(_dest), source(_src), destination(_dest), ts(futureFromEpoch(std::chrono::seconds(60))) {}
+	/// Constructor used to create empty PingNode for parsing inbound packets.
+	PingNode(bi::udp::endpoint _ep): RLPXDatagram<PingNode>(_ep), source(UnspecifiedNodeIPEndpoint), destination(UnspecifiedNodeIPEndpoint) {}
 
 	static const uint8_t type = 1;
 
@@ -368,7 +370,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 		Neighbour(RLP const& _r): endpoint(_r) { node = h512(_r[3].toBytes()); }
 		NodeIPEndpoint endpoint;
 		NodeId node;
-		void streamRLP(RLPStream& _s) const { _s.appendList(4); endpoint.streamRLP(_s, NodeIPEndpoint::InlineList); _s << node; }
+		void streamRLP(RLPStream& _s) const { _s.appendList(4); endpoint.streamRLP(_s, NodeIPEndpoint::Inline); _s << node; }
 	};
 
 	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep), ts(futureFromEpoch(std::chrono::seconds(30))) {}
