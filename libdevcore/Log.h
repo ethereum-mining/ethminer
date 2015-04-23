@@ -26,13 +26,14 @@
 #include <ctime>
 #include <chrono>
 #include <boost/thread.hpp>
-#include <boost/asio.hpp>
 #include "vector_ref.h"
 #include "Common.h"
 #include "CommonIO.h"
 #include "CommonData.h"
 #include "FixedHash.h"
 #include "Terminal.h"
+
+namespace boost { namespace asio { namespace ip { template<class T>class basic_endpoint; class tcp; } } }
 
 namespace dev
 {
@@ -127,6 +128,7 @@ public:
 	void append(std::string const& _t) { m_sstr << EthGreen "\"" + _t + "\"" EthReset; }
 	void append(bytes const& _t) { m_sstr << EthYellow "%" << toHex(_t) << EthReset; }
 	void append(bytesConstRef _t) { m_sstr << EthYellow "%" << toHex(_t) << EthReset; }
+	void append(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> const& _t);
 	template <class T> void append(std::vector<T> const& _t)
 	{
 		m_sstr << EthWhite "[" EthReset;
@@ -173,10 +175,6 @@ public:
 	template <class T> void append(T const& _t)
 	{
 		m_sstr << toString(_t);
-	}
-	template <class T> void append(boost::asio::ip::tcp::endpoint const& _t)
-	{
-		m_sstr << EthNavyUnder "tcp://" << _t << EthReset;
 	}
 
 protected:
