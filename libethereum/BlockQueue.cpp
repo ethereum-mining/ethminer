@@ -29,14 +29,18 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+#ifdef _WIN32
+const char* BlockQueueChannel::name() { return EthOrange "[]>"; }
+#else
 const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
+#endif
 
 ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs)
 {
 	// Check if we already know this block.
 	h256 h = BlockInfo::headerHash(_block);
 
-	cblockq << "Queuing block" << h.abridged() << "for import...";
+	cblockq << "Queuing block" << h << "for import...";
 
 	UpgradableGuard l(m_lock);
 
@@ -95,7 +99,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		else if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash))
 		{
 			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
-			cblockq << "OK - queued as unknown parent:" << bi.parentHash.abridged();
+			cblockq << "OK - queued as unknown parent:" << bi.parentHash;
 			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
 			m_unknownSet.insert(h);
 
