@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE(host)
 		this_thread::sleep_for(chrono::milliseconds(20));
 	host1.addNode(node2, NodeIPEndpoint(bi::address::from_string("127.0.0.1"), host2prefs.listenPort, host2prefs.listenPort));
 	
-	this_thread::sleep_for(chrono::seconds(10));
+	this_thread::sleep_for(chrono::seconds(3));
 	
 	auto host1peerCount = host1.peerCount();
 	auto host2peerCount = host2.peerCount();
