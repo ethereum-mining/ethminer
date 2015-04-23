@@ -194,7 +194,16 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 	}
 	if (!_json["topics"].empty())
 		for (unsigned i = 0; i < _json["topics"].size(); i++)
-			filter.topic(i, jsToFixed<32>(_json["topics"][i].asString()));
+		{
+			if (_json["topics"][i].isArray())
+			{
+				for (auto t: _json["topics"][i])
+					if (!t.isNull())
+						filter.topic(i, jsToFixed<32>(t.asString()));
+			}
+			else if (!_json["topics"][i].isNull())
+				filter.topic(i, jsToFixed<32>(_json["topics"][i].asString()));
+		}
 	return filter;
 }
 
