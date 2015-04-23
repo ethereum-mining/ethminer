@@ -124,15 +124,23 @@ void BasicGasPricer::update(BlockChain const& _bc)
 		for (auto const& i: dist)
 			sdSquared += i.second * (i.first - mean) * (i.first - mean);
 		sdSquared /= total;
-		double sd = sqrt(sdSquared.convert_to<double>());
-		double normalizedSd = 4.0 * sd / mean.convert_to<double>();
 
-		// calc octiles normalized to gaussian distribution
-		boost::math::normal gauss(4, normalizedSd ? normalizedSd : 1);
-		for (int i = 1; i < 8; i++)
-			m_octiles[i] = mean / 4000 * int(boost::math::quantile(gauss, i / 8.0) * 1000);
+		if (sdSquared)
+		{
+			long double sd = sqrt(sdSquared.convert_to<long double>());
+			long double normalizedSd = sd / mean.convert_to<long double>();
 
-		m_octiles[8] = dist.rbegin()->first;
+			// calc octiles normalized to gaussian distribution
+			boost::math::normal gauss(1.0, (normalizedSd > 0.01) ? normalizedSd : 0.01);
+			for (size_t i = 1; i < 8; i++)
+				m_octiles[i] = u256(mean.convert_to<long double>() * boost::math::quantile(gauss, i / 8.0));
+			m_octiles[8] = dist.rbegin()->first;
+		}
+		else
+		{
+			for (size_t i = 0; i < 9; i++)
+				m_octiles[i] = (i + 1) * mean / 5;
+		}
 	}
 }
 
