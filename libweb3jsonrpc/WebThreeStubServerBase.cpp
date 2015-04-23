@@ -201,7 +201,7 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 					if (!t.isNull())
 						filter.topic(i, jsToFixed<32>(t.asString()));
 			}
-			else if (!_json["topics"][i].isNull())
+			else if (!_json["topics"][i].isNull()) // if it is anything else then string, it should and will fail
 				filter.topic(i, jsToFixed<32>(_json["topics"][i].asString()));
 		}
 	return filter;
@@ -233,7 +233,16 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	
 	if (!_json["topics"].empty())
 		for (auto i: _json["topics"])
-			bt.shift(jsToBytes(i.asString()));
+		{
+			if (i.isArray())
+			{
+				for (auto j: i)
+					if (!j.isNull())
+						bt.shift(jsToBytes(j.asString()));
+			}
+			else if (!i.isNull()) // if it is anything else then string, it should and will fail
+				bt.shift(jsToBytes(i.asString()));
+		}
 	
 	return _m.seal(_from, bt, ttl, workToProve);
 }
