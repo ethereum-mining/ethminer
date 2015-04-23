@@ -303,7 +303,7 @@
             "value" : "11",
             "v" : "27",
             "r" : "0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
-            "s" : "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
+            "s" : "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140"
         }
     },
 
@@ -351,7 +351,7 @@
             "value" : "11",
             "v" : "27",
             "r" : "0x48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353",
-            "s" : "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
+            "s" : "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
         }
     },
 
@@ -436,7 +436,7 @@
     },
 
     "TransactionWithRvalue1" : {
-	"expect" : "invalid",
+	"expect" : "valid",
         "transaction" :
         {
             "data" : "",
@@ -484,7 +484,7 @@
     },
 
     "TransactionWithRSvalue1" : {
-	"expect" : "invalid",
+	"expect" : "valid",
         "transaction" :
         {
             "data" : "",
