@@ -120,14 +120,14 @@ public:
 		if (_r.isList() && _r.itemCount() == 2 && (!_wasExt || _out))
 		{
 			if (_out)
-				(*_out) << std::string(_indent * 2, ' ') << (_wasExt ? "!2 " : "2  ") << sha3(_r.data()).abridged() << ": " << _r << "\n";
+				(*_out) << std::string(_indent * 2, ' ') << (_wasExt ? "!2 " : "2  ") << sha3(_r.data()) << ": " << _r << "\n";
 			if (!isLeaf(_r))						// don't go down leaves
 				descendEntry(_r[1], _keyMask, true, _out, _indent + 1);
 		}
 		else if (_r.isList() && _r.itemCount() == 17)
 		{
 			if (_out)
-				(*_out) << std::string(_indent * 2, ' ') << "17 " << sha3(_r.data()).abridged() << ": " << _r << "\n";
+				(*_out) << std::string(_indent * 2, ' ') << "17 " << sha3(_r.data()) << ": " << _r << "\n";
 			for (unsigned i = 0; i < 16; ++i)
 				if (!_r[i].isEmpty())				// 16 branches are allowed to be empty
 					descendEntry(_r[i], _keyMask, false, _out, _indent + 1);
@@ -779,7 +779,7 @@ template <class DB> std::string GenericTrieDB<DB>::atAux(RLP const& _here, Nibbl
 template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSlice _k, bytesConstRef _v, bool _inLine)
 {
 #if ETH_PARANOIA
-	tdebug << "mergeAt " << _orig << _k << sha3(_orig.data()).abridged();
+	tdebug << "mergeAt " << _orig << _k << sha3(_orig.data());
 #endif
 
 	// The caller will make sure that the bytes are inserted properly.
@@ -854,7 +854,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 template <class DB> void GenericTrieDB<DB>::mergeAtAux(RLPStream& _out, RLP const& _orig, NibbleSlice _k, bytesConstRef _v)
 {
 #if ETH_PARANOIA
-	tdebug << "mergeAtAux " << _orig << _k << sha3(_orig.data()).abridged() << ((_orig.isData() && _orig.size() <= 32) ? _orig.toHash<h256>().abridged() : std::string());
+	tdebug << "mergeAtAux " << _orig << _k << sha3(_orig.data()) << ((_orig.isData() && _orig.size() <= 32) ? _orig.toHash<h256>() : std::string());
 #endif
 
 	RLP r = _orig;
@@ -902,7 +902,7 @@ template <class DB> std::string GenericTrieDB<DB>::deref(RLP const& _n) const
 template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSlice _k)
 {
 #if ETH_PARANOIA
-	tdebug << "deleteAt " << _orig << _k << sha3(_orig.data()).abridged();
+	tdebug << "deleteAt " << _orig << _k << sha3(_orig.data());
 #endif
 
 	// The caller will make sure that the bytes are inserted properly.
@@ -1009,7 +1009,7 @@ template <class DB> bytes GenericTrieDB<DB>::deleteAt(RLP const& _orig, NibbleSl
 template <class DB> bool GenericTrieDB<DB>::deleteAtAux(RLPStream& _out, RLP const& _orig, NibbleSlice _k)
 {
 #if ETH_PARANOIA
-	tdebug << "deleteAtAux " << _orig << _k << sha3(_orig.data()).abridged() << ((_orig.isData() && _orig.size() <= 32) ? _orig.toHash<h256>().abridged() : std::string());
+	tdebug << "deleteAtAux " << _orig << _k << sha3(_orig.data()) << ((_orig.isData() && _orig.size() <= 32) ? _orig.toHash<h256>() : std::string());
 #endif
 
 	bytes b = _orig.isEmpty() ? bytes() : deleteAt(_orig.isList() ? _orig : RLP(node(_orig.toHash<h256>())), _k);
