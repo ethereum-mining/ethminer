@@ -848,7 +848,7 @@ bool WebThreeStubServerBase::shh_post(Json::Value const& _json)
 		Secret from;
 		if (m.from() && m_ids.count(m.from()))
 		{
-			cwarn << "Silently signing message from identity" << m.from().abridged() << ": User validation hook goes here.";
+			cwarn << "Silently signing message from identity" << m.from() << ": User validation hook goes here.";
 			// TODO: insert validification hook here.
 			from = m_ids[m.from()];
 		}
@@ -940,7 +940,7 @@ Json::Value WebThreeStubServerBase::shh_getFilterChanges(string const& _filterId
 				shh::Message m;
 				if (pub)
 				{
-					cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
+					cwarn << "Silently decrypting message from identity" << pub << ": User validation hook goes here.";
 					m = e.open(face()->fullTopic(id), m_ids[pub]);
 				}
 				else
@@ -973,7 +973,7 @@ Json::Value WebThreeStubServerBase::shh_getMessages(string const& _filterId)
 				shh::Message m;
 				if (pub)
 				{
-					cwarn << "Silently decrypting message from identity" << pub.abridged() << ": User validation hook goes here.";
+					cwarn << "Silently decrypting message from identity" << pub << ": User validation hook goes here.";
 					m = e.open(face()->fullTopic(id), m_ids[pub]);
 				}
 				else

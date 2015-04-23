@@ -58,7 +58,7 @@ string NatspecHandler::retrieve(dev::h256 const& _contractHash) const
 {
 	string ret;
 	m_db->Get(m_readOptions, _contractHash.ref(), &ret);
-	cdebug << "Looking up NatSpec: " << _contractHash.abridged() << ret;
+	cdebug << "Looking up NatSpec: " << _contractHash << ret;
 	return ret;
 }
 
