@@ -81,7 +81,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		// create new "genesis" block
 		RLPStream rlpGenesisBlock = createFullBlockFromHeader(biGenesisBlock);
 		biGenesisBlock.verifyInternals(&rlpGenesisBlock.out());
-		o["genesisRLP"] = "0x" + toString(rlpGenesisBlock.out());
+		o["genesisRLP"] = toHex(rlpGenesisBlock.out(), 2, HexPrefix::Add);
 
 		// construct blockchain
 		TransientDirectory td;
@@ -149,7 +149,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					return;
 				}
 
-				blObj["rlp"] = "0x"+toString(state.blockData());
+				blObj["rlp"] = toHex(state.blockData(), 2, HexPrefix::Add);
 
 				//get valid transactions
 				Transactions txList;
@@ -188,7 +188,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 				RLPStream block2 = createFullBlockFromHeader(current_BlockHeader, txStream.out(), uncleStream.out());
 
-				blObj["rlp"] = "0x" + toString(block2.out());
+				blObj["rlp"] = toHex(block2.out(), 2, HexPrefix::Add);
 
 				if (sha3(RLP(state.blockData())[0].data()) != sha3(RLP(block2.out())[0].data()))
 					cnote << "block header mismatch\n";
@@ -640,7 +640,7 @@ mObject writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi)
 	_o["gasLimit"] = toCompactHex(_bi.gasLimit, HexPrefix::Add);
 	_o["gasUsed"] = toCompactHex(_bi.gasUsed, HexPrefix::Add);
 	_o["timestamp"] = toCompactHex(_bi.timestamp, HexPrefix::Add);
-	_o["extraData"] = "0x" + toString(_bi.extraData);
+	_o["extraData"] = toHex(_bi.extraData, 2, HexPrefix::Add);
 	_o["mixHash"] = toString(_bi.mixHash);
 	_o["nonce"] = toString(_bi.nonce);
 	_o["hash"] = toString(_bi.hash());

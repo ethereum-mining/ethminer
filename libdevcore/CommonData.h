@@ -50,13 +50,13 @@ enum class HexPrefix
 /// @param _w specifies the width of the first of the elements. Defaults to two - enough to represent a byte.
 /// @example toHex("A\x69") == "4169"
 template <class _T>
-std::string toHex(_T const& _data, int _w = 2)
+std::string toHex(_T const& _data, int _w = 2, HexPrefix _prefix = HexPrefix::DontAdd)
 {
 	std::ostringstream ret;
 	unsigned ii = 0;
 	for (auto i: _data)
 		ret << std::hex << std::setfill('0') << std::setw(ii++ ? 2 : _w) << (int)(typename std::make_unsigned<decltype(i)>::type)i;
-	return ret.str();
+	return (_prefix == HexPrefix::Add) ? "0x" + ret.str() : ret.str();
 }
 
 /// Converts a (printable) ASCII hex character into the correspnding integer value.
