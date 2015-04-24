@@ -498,6 +498,11 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			case FindNode::type:
 			{
 				FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
+				if (RLPXDatagramFace::secondsSinceEpoch() - in.ts > 3)
+				{
+					clog(NodeTableTriviaSummary) << "Received expired FindNode from " << _from.address().to_string() << ":" << _from.port();
+					return;
+				}
 
 				vector<shared_ptr<NodeEntry>> nearest = nearestNodeEntries(in.target);
 				static unsigned const nlimit = (m_socketPointer->maxDatagramSize - 111) / 87;
@@ -517,6 +522,11 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				PingNode in = PingNode::fromBytesConstRef(_from, rlpBytes);
 				if (in.version != dev::p2p::c_protocolVersion)
 					return;
+				if (RLPXDatagramFace::secondsSinceEpoch() - in.ts > 3)
+				{
+					clog(NodeTableTriviaSummary) << "Received expired PingNode from " << _from.address().to_string() << ":" << _from.port();
+					return;
+				}
 
 				if (in.source.address.is_unspecified())
 					in.source.address = _from.address();
