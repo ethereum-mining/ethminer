@@ -1317,9 +1317,9 @@ int main(int argc, char** argv)
 				{
 					string hexAddr;
 					u256 amount;
-					int size = hexAddr.length();
 
 					iss >> hexAddr >> amount;
+					int size = hexAddr.length();
 					if (size < 40)
 					{
 						if (size > 0)
