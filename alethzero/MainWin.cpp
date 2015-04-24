@@ -217,6 +217,7 @@ Main::Main(QWidget *parent) :
 
 Main::~Main()
 {
+	m_httpConnector->StopListening();
 	writeSettings();
 	// Must do this here since otherwise m_ethereum'll be deleted (and therefore clearWatches() called by the destructor)
 	// *after* the client is dead.
