@@ -24,7 +24,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/Common.h>
-#include <libethcore/Params.h>
+#include <libevmcore/Params.h>
 namespace dev
 {
 namespace eth

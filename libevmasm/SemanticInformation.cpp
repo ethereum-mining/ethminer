@@ -21,8 +21,8 @@
  * Helper to provide semantic information about assembly items.
  */
 
-#include <libevmcore/SemanticInformation.h>
-#include <libevmcore/AssemblyItem.h>
+#include <libevmasm/SemanticInformation.h>
+#include <libevmasm/AssemblyItem.h>
 
 using namespace std;
 using namespace dev;

@@ -26,7 +26,7 @@
 #include <QApplication>
 #include <QtQml>
 #include <libdevcore/Common.h>
-#include <libevmcore/SourceLocation.h>
+#include <libevmasm/SourceLocation.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/Types.h>
 #include <libsolidity/ASTVisitor.h>
