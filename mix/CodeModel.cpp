@@ -281,7 +281,7 @@ void CodeModel::runCompilationJob(int _jobId)
 	emit stateChanged();
 }
 
-void CodeModel::collectContracts(solidity::CompilerStack const& _cs)
+void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs)
 {
 	Guard pl(x_pendingContracts);
 	Guard l(x_contractMap);
