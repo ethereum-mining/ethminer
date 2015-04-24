@@ -309,7 +309,7 @@ struct PingNode: RLPXDatagram<PingNode>
 	unsigned version = 0;
 	NodeIPEndpoint source;
 	NodeIPEndpoint destination;
-	uint32_t ts;
+	uint32_t ts = 0;
 
 	void streamRLP(RLPStream& _s) const override;
 	void interpretRLP(bytesConstRef _bytes) override;
@@ -327,7 +327,7 @@ struct Pong: RLPXDatagram<Pong>
 
 	NodeIPEndpoint destination;
 	h256 echo;				///< MCD of PingNode
-	uint32_t ts;
+	uint32_t ts = 0;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << echo << ts; }
 	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); echo = (h256)r[0]; ts = r[1].toInt<uint32_t>(); }
@@ -353,7 +353,7 @@ struct FindNode: RLPXDatagram<FindNode>
 	static const uint8_t type = 3;
 
 	h512 target;
-	uint32_t ts;
+	uint32_t ts = 0;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << ts; }
 	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = r[0].toHash<h512>(); ts = r[1].toInt<uint32_t>(); }
@@ -370,7 +370,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 		Neighbour(RLP const& _r): endpoint(_r) { node = h512(_r[3].toBytes()); }
 		NodeIPEndpoint endpoint;
 		NodeId node;
-		void streamRLP(RLPStream& _s) const { _s.appendList(4); endpoint.streamRLP(_s, NodeIPEndpoint::Inline); _s << node; }
+		void streamRLP(RLPStream& _s) const { _s.appendList(4); endpoint.streamRLP(_s, NodeIPEndpoint::StreamInline); _s << node; }
 	};
 
 	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep), ts(secondsSinceEpoch()) {}
@@ -383,7 +383,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 
 	static const uint8_t type = 4;
 	std::vector<Neighbour> neighbours;
-	uint32_t ts = 1;
+	uint32_t ts = 0;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(neighbours.size()); for (auto& n: neighbours) n.streamRLP(_s); _s << ts; }
 	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) neighbours.push_back(Neighbour(n)); ts = r[1].toInt<uint32_t>(); }
