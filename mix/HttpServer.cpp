@@ -156,7 +156,7 @@ void HttpServer::readClient()
 					//collect headers
 					int colon = l.indexOf(':');
 					if (colon > 0)
-						headers[l.left(colon)] = l.right(l.length() - colon - 1);
+						headers[l.left(colon).trimmed().toLower()] = l.right(l.length() - colon - 1).trimmed();
 				}
 				while (!(l.isEmpty() || l == "\r" || l == "\r\n"));
 
