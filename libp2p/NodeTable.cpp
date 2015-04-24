@@ -313,12 +313,12 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 		return;
 
 	shared_ptr<NodeEntry> node = nodeEntry(_pubk);
-	if (!!node && !node->pending && !!node->endpoint)
+	node->endpoint.address = _endpoint.address();
+	node->endpoint.udpPort = _endpoint.port();
+	if (!!node && !node->pending)
 	{
 		// todo: drop in favor of ping/pong packets
 		clog(NodeTableConnect) << "Noting active node:" << _pubk.abridged() << _endpoint.address().to_string() << ":" << _endpoint.port();
-		node->endpoint.address = _endpoint.address();
-		node->endpoint.udpPort = _endpoint.port();
 		
 		shared_ptr<NodeEntry> contested;
 		{
@@ -456,15 +456,10 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 						return; // unsolicited pong; don't note node as active
 				}
 				
-				// update our endpoint address and UDP port (with caution and iff appropriate)
-				if (false && !m_node.endpoint)
-				{
-					if (in.destination.address != m_node.endpoint.address)
-						m_node.endpoint.address = in.destination.address;
-					
-					if (in.destination.udpPort != m_node.endpoint.udpPort)
-						m_node.endpoint.udpPort = in.destination.udpPort;
-				}
+				// update our endpoint address and UDP port
+				if ((!m_node.endpoint || !m_node.endpoint.isAllowed()) && in.destination.address != m_node.endpoint.address && isPublicAddress(in.destination.address))
+					m_node.endpoint.address = in.destination.address;
+				m_node.endpoint.udpPort = in.destination.udpPort;
 				
 				clog(NodeTableConnect) << "PONG from " << nodeid.abridged() << _from;
 				break;
@@ -528,10 +523,10 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 					return;
 				}
 
-				if (in.source.address.is_unspecified())
-					in.source.address = _from.address();
+				in.source.address = _from.address();
+				in.source.udpPort = _from.port();
 				addNode(Node(nodeid, in.source));
-				Pong p(NodeIPEndpoint(_from.address(), _from.port(), in.source.tcpPort));
+				Pong p(in.source);
 				p.echo = sha3(rlpBytes);
 				p.sign(m_secret);
 				m_socketPointer->send(p);
