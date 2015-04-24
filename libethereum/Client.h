@@ -35,12 +35,12 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/Params.h>
+#include <libethcore/ABI.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
 #include "CommonNet.h"
-#include "ABI.h"
 #include "Farm.h"
 #include "ClientBase.h"
 
