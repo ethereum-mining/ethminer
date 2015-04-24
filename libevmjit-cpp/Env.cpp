@@ -1,7 +1,7 @@
 
 #pragma GCC diagnostic ignored "-Wconversion"
 #include <libdevcrypto/SHA3.h>
-#include <libethcore/Params.h>
+#include <libevmcore/Params.h>
 #include <libevm/ExtVMFace.h>
 
 #include "Utils.h"
