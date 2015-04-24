@@ -174,7 +174,7 @@ public:
 
 		PoW::assignResult(_result, m_currentBlock);
 
-		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
+		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce) << m_currentBlock.nonce << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
 
 		completeMine();
 
