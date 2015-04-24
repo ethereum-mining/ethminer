@@ -329,7 +329,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi, Impor
 
 		if (m_db.lookup(bi.stateRoot).empty())
 		{
-			cwarn << "Unable to sync to" << bi.hash().abridged() << "; state root" << bi.stateRoot.abridged() << "not found in database.";
+			cwarn << "Unable to sync to" << bi.hash() << "; state root" << bi.stateRoot << "not found in database.";
 			cwarn << "Database corrupt: contains block without stateRoot:" << bi;
 			cwarn << "Bailing.";
 			exit(-1);
@@ -500,7 +500,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					else if (i.second.gasPrice() < _gp.ask(*this) * 9 / 10)
 					{
 						// less than 90% of our ask price for gas. drop.
-						cnote << i.first.abridged() << "Dropping El Cheapo transaction (<90% of ask price)";
+						cnote << i.first << "Dropping El Cheapo transaction (<90% of ask price)";
 						_tq.drop(i.first);
 					}
 				}
@@ -512,13 +512,13 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					if (req > got)
 					{
 						// too old
-						cnote << i.first.abridged() << "Dropping old transaction (nonce too low)";
+						cnote << i.first << "Dropping old transaction (nonce too low)";
 						_tq.drop(i.first);
 					}
 					else if (got > req + 5)
 					{
 						// too new
-						cnote << i.first.abridged() << "Dropping new transaction (> 5 nonces ahead)";
+						cnote << i.first << "Dropping new transaction (> 5 nonces ahead)";
 						_tq.drop(i.first);
 					}
 					else
@@ -529,7 +529,7 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 					bigint const& got = *boost::get_error_info<errinfo_got>(e);
 					if (got > m_currentBlock.gasLimit)
 					{
-						cnote << i.first.abridged() << "Dropping over-gassy transaction (gas > block's gas limit)";
+						cnote << i.first << "Dropping over-gassy transaction (gas > block's gas limit)";
 						_tq.drop(i.first);
 					}
 					else
@@ -538,14 +538,14 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 				catch (Exception const& _e)
 				{
 					// Something else went wrong - drop it.
-					cnote << i.first.abridged() << "Dropping invalid transaction:" << diagnostic_information(_e);
+					cnote << i.first << "Dropping invalid transaction:" << diagnostic_information(_e);
 					_tq.drop(i.first);
 				}
 				catch (std::exception const&)
 				{
 					// Something else went wrong - drop it.
 					_tq.drop(i.first);
-					cnote << i.first.abridged() << "Transaction caused low-level exception :(";
+					cnote << i.first << "Transaction caused low-level exception :(";
 				}
 			}
 		if (chrono::steady_clock::now() > deadline)
@@ -709,15 +709,15 @@ void State::cleanup(bool _fullCommit)
 		paranoia("immediately before database commit", true);
 
 		// Commit the new trie to disk.
-		clog(StateTrace) << "Committing to disk: stateRoot" << m_currentBlock.stateRoot.abridged() << "=" << rootHash().abridged() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
+		clog(StateTrace) << "Committing to disk: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 		m_db.commit();
-		clog(StateTrace) << "Committed: stateRoot" << m_currentBlock.stateRoot.abridged() << "=" << rootHash().abridged() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
+		clog(StateTrace) << "Committed: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 
 		paranoia("immediately after database commit", true);
 		m_previousBlock = m_currentBlock;
 		m_currentBlock.populateFromParent(m_previousBlock);
 
-		clog(StateTrace) << "finalising enactment. current -> previous, hash is" << m_previousBlock.hash().abridged();
+		clog(StateTrace) << "finalising enactment. current -> previous, hash is" << m_previousBlock.hash();
 	}
 	else
 		m_db.rollback();
@@ -789,7 +789,7 @@ void State::commitToMine(BlockChain const& _bc)
 {
 	uncommitToMine();
 
-//	cnote << "Committing to mine on block" << m_previousBlock.hash.abridged();
+//	cnote << "Committing to mine on block" << m_previousBlock.hash;
 #if  ETH_PARANOIA && 0
 	commit();
 	cnote << "Pre-reward stateRoot:" << m_state.root();
@@ -866,7 +866,7 @@ void State::commitToMine(BlockChain const& _bc)
 	// Commit any and all changes to the trie that are in the cache, then update the state root accordingly.
 	commit();
 
-//	cnote << "Post-reward stateRoot:" << m_state.root().abridged();
+//	cnote << "Post-reward stateRoot:" << m_state.root();
 //	cnote << m_state;
 //	cnote << *this;
 
@@ -890,7 +890,7 @@ void State::completeMine()
 	ret.appendRaw(m_currentUncles);
 	ret.swapOut(m_currentBytes);
 	m_currentBlock.noteDirty();
-	cnote << "Mined " << m_currentBlock.hash().abridged() << "(parent: " << m_currentBlock.parentHash.abridged() << ")";
+	cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash << ")";
 	StructuredLogger::minedNewBlock(
 		m_currentBlock.hash().abridged(),
 		m_currentBlock.nonce.abridged(),

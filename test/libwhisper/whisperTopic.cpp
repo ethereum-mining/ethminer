@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE(topic)
 				if (received.count(last))
 					continue;
 				received.insert(last);
-				cnote << "New message from:" << msg.from().abridged() << RLP(msg.payload()).toInt<unsigned>();
+				cnote << "New message from:" << msg.from() << RLP(msg.payload()).toInt<unsigned>();
 				result += last;
 			}
 			this_thread::sleep_for(chrono::milliseconds(50));
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(forwarding)
 			{
 				Message msg = whost1->envelope(i).open(whost1->fullTopic(w));
 				unsigned last = RLP(msg.payload()).toInt<unsigned>();
-				cnote << "New message from:" << msg.from().abridged() << RLP(msg.payload()).toInt<unsigned>();
+				cnote << "New message from:" << msg.from() << RLP(msg.payload()).toInt<unsigned>();
 				result = last;
 			}
 			this_thread::sleep_for(chrono::milliseconds(50));
@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE(forwarding)
 			for (auto i: whost2->checkWatch(w))
 			{
 				Message msg = whost2->envelope(i).open(whost2->fullTopic(w));
-				cnote << "New message from:" << msg.from().abridged() << RLP(msg.payload()).toInt<unsigned>();
+				cnote << "New message from:" << msg.from() << RLP(msg.payload()).toInt<unsigned>();
 			}
 			this_thread::sleep_for(chrono::milliseconds(50));
 		}
@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 			for (auto i: whost1->checkWatch(w))
 			{
 				Message msg = whost1->envelope(i).open(whost1->fullTopic(w));
-				cnote << "New message from:" << msg.from().abridged() << RLP(msg.payload()).toInt<unsigned>();
+				cnote << "New message from:" << msg.from() << RLP(msg.payload()).toInt<unsigned>();
 			}
 			this_thread::sleep_for(chrono::milliseconds(50));
 		}
@@ -283,7 +283,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 			{
 				Message msg = wh->envelope(i).open(wh->fullTopic(w));
 				unsigned last = RLP(msg.payload()).toInt<unsigned>();
-				cnote << "New message from:" << msg.from().abridged() << RLP(msg.payload()).toInt<unsigned>();
+				cnote << "New message from:" << msg.from() << RLP(msg.payload()).toInt<unsigned>();
 				result = last;
 			}
 			this_thread::sleep_for(chrono::milliseconds(50));
