@@ -37,7 +37,7 @@ enum ethash_io_rc ethash_io_prepare(
 		goto end;
 	}
 
-	ethash_io_mutable_name(REVISION, &seedhash, mutable_name);
+	ethash_io_mutable_name(ETHASH_REVISION, &seedhash, mutable_name);
 	char* tmpfile = ethash_io_create_filename(dirname, mutable_name, strlen(mutable_name));
 	if (!tmpfile) {
 		goto end;
