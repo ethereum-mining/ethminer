@@ -185,8 +185,8 @@ Item {
 						content = fileIo.readFile(doc.path);
 				}
 
-				var accept = _request.headers["Accept"];
-				if (accept && accept.indexOf("text/html") >= 0 && !_request.headers["HTTP_X_REQUESTED_WITH"])
+				var accept = _request.headers["accept"];
+				if (accept && accept.indexOf("text/html") >= 0 && !_request.headers["http_x_requested_with"])
 				{
 					//navigate to page request, inject deployment script
 					content = "<script>web3=parent.web3;BigNumber=parent.BigNumber;contracts=parent.contracts;</script>\n" + content;
