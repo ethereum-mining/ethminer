@@ -141,15 +141,13 @@ Address ICAP::lookup(std::function<bytes(Address, bytes)> const& _call, Address 
 	if (m_asset == "XET")
 	{
 		// TODO
-//		_call(_reg, );
-		return Address();
+		throw InterfaceNotSupported("ICAP::lookup(), XET asset");
 	}
 	else if (m_asset == "ETH")
 	{
 		// TODO
-
 //		return resolve(m_institution + "/" + m_client).primary();
-		return Address();
+		throw InterfaceNotSupported("ICAP::lookup(), ETH asset");
 	}
 	else
 		throw InterfaceNotSupported("ICAP::lookup(), non XET asset");

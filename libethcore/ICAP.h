@@ -39,6 +39,10 @@ struct InvalidICAP: virtual public dev::Exception {};
 
 static const std::string EmptyString;
 
+/**
+ * @brief Encapsulation of an ICAP address.
+ * Can be encoded, decoded, looked-up and inspected.
+ */
 class ICAP
 {
 public:
@@ -74,7 +78,7 @@ public:
 	/// @returns type of ICAP.
 	Type type() const { return m_type; }
 	/// @returns target address. Only valid when type() == Direct.
-	Address const& direct() const { return m_type == Direct ? m_direct : Address(); }
+	Address const& direct() const { return m_type == Direct ? m_direct : ZeroAddress; }
 	/// @returns asset. Only valid when type() == Indirect.
 	std::string const& asset() const { return m_type == Indirect ? m_asset : EmptyString; }
 	/// @returns target name. Only valid when type() == Indirect and asset() == "ETH".
