@@ -20,8 +20,9 @@
  * Ethereum IDE client.
  */
 
-#include <iostream>
 #include "TestService.h"
+#include <iostream>
+#include <QUuid>
 #include <QtTest/QSignalSpy>
 #include <QElapsedTimer>
 #include <QQuickItem>
@@ -177,7 +178,6 @@ void TestService::setTargetWindow(QObject* _window)
 	window->requestActivate();
 }
 
-
 QWindow* TestService::eventWindow(QObject* _item)
 {
 	QQuickItem* item = qobject_cast<QQuickItem*>(_item);
@@ -199,6 +199,11 @@ QWindow* TestService::eventWindow(QObject* _item)
 	if (item)
 		return item->window();
 	return 0;
+}
+
+QString TestService::createUuid() const
+{
+	return QUuid::createUuid().toString();
 }
 
 }
