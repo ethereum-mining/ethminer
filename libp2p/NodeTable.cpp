@@ -218,24 +218,22 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 			Guard l(x_state);
 			for (auto n: m_state[head].nodes)
 				if (auto p = n.lock())
-					if (!!p->endpoint && p->endpoint.isAllowed())
+				{
+					if (count < s_bucketSize)
+						found[distance(_target, p->id)].push_back(p);
+					else
+						break;
+				}
+			
+			if (count < s_bucketSize && tail)
+				for (auto n: m_state[tail].nodes)
+					if (auto p = n.lock())
 					{
 						if (count < s_bucketSize)
 							found[distance(_target, p->id)].push_back(p);
 						else
 							break;
 					}
-			
-			if (count < s_bucketSize && tail)
-				for (auto n: m_state[tail].nodes)
-					if (auto p = n.lock())
-						if (!!p->endpoint && p->endpoint.isAllowed())
-						{
-							if (count < s_bucketSize)
-								found[distance(_target, p->id)].push_back(p);
-							else
-								break;
-						}
 
 			head++;
 			if (tail)
@@ -247,13 +245,12 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 			Guard l(x_state);
 			for (auto n: m_state[head].nodes)
 				if (auto p = n.lock())
-					if (!!p->endpoint && p->endpoint.isAllowed())
-					{
-						if (count < s_bucketSize)
-							found[distance(_target, p->id)].push_back(p);
-						else
-							break;
-					}
+				{
+					if (count < s_bucketSize)
+						found[distance(_target, p->id)].push_back(p);
+					else
+						break;
+				}
 			head++;
 		}
 	else
@@ -262,20 +259,19 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 			Guard l(x_state);
 			for (auto n: m_state[tail].nodes)
 				if (auto p = n.lock())
-					if (!!p->endpoint && p->endpoint.isAllowed())
-					{
-						if (count < s_bucketSize)
-							found[distance(_target, p->id)].push_back(p);
-						else
-							break;
-					}
+				{
+					if (count < s_bucketSize)
+						found[distance(_target, p->id)].push_back(p);
+					else
+						break;
+				}
 			tail--;
 		}
 	
 	vector<shared_ptr<NodeEntry>> ret;
 	for (auto& nodes: found)
 		for (auto n: nodes.second)
-			if (ret.size() < s_bucketSize && n->endpoint.isAllowed())
+			if (ret.size() < s_bucketSize && !!n->endpoint && n->endpoint.isAllowed())
 				ret.push_back(n);
 	return move(ret);
 }
