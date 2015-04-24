@@ -30,7 +30,7 @@
 #include <QHash>
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
-#include <libevmcore/Assembly.h>
+#include <libevmasm/Assembly.h>
 #include "SolidityType.h"
 
 class QTextDocument;

@@ -33,7 +33,7 @@
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcrypto/SHA3.h>
 #include <libdevcrypto/FileSystem.h>
-#include <libethcore/Params.h>
+#include <libevmcore/Params.h>
 #include "BlockInfo.h"
 using namespace std;
 using namespace chrono;
