@@ -61,7 +61,7 @@ bool EthereumHost::ensureInitialised()
 	{
 		// First time - just initialise.
 		m_latestBlockSent = m_chain.currentHash();
-		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent.abridged();
+		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent;
 
 		for (auto const& i: m_tq.transactions())
 			m_transactionsSent.insert(i.first);

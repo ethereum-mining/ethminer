@@ -517,7 +517,7 @@ int main(int argc, char** argv)
 	bool bootstrap = false;
 
 	/// Mining params
-	unsigned mining = ~(unsigned)0;
+	unsigned mining = 0;
 	bool forceMining = false;
 	KeyPair sigKey = KeyPair::create();
 	Secret sessionSecret;
@@ -1317,9 +1317,9 @@ int main(int argc, char** argv)
 				{
 					string hexAddr;
 					u256 amount;
-					int size = hexAddr.length();
 
 					iss >> hexAddr >> amount;
+					int size = hexAddr.length();
 					if (size < 40)
 					{
 						if (size > 0)
