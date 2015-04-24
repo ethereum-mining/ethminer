@@ -57,7 +57,7 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 		m_known.insert(h);
 		if (_cb)
 			m_callbacks[h] = _cb;
-		ctxq << "Queued vaguely legit-looking transaction" << h.abridged();
+		ctxq << "Queued vaguely legit-looking transaction" << h;
 		m_onReady();
 	}
 	catch (Exception const& _e)
