@@ -181,7 +181,7 @@ protected:
 	bool m_autospacing = false;
 	unsigned m_verbosity = 0;
 	std::stringstream m_sstr;	///< The accrued log entry.
-	LogTag m_logTag;
+	LogTag m_logTag = LogTag::None;
 };
 
 /// Logging class, iostream-like, that can be shifted to.
