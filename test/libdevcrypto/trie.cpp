@@ -522,17 +522,17 @@ BOOST_AUTO_TEST_CASE(trieStess)
 
 					cwarn << "Good:" << d2.root();
 //					for (auto i: dm2.get())
-//						cwarn << i.first.abridged() << ": " << RLP(i.second);
+//						cwarn << i.first << ": " << RLP(i.second);
 					d2.debugStructure(cerr);
 					cwarn << "Broken:" << d.root();	// Leaves an extension -> extension (3c1... -> 742...)
 //					for (auto i: dm.get())
-//						cwarn << i.first.abridged() << ": " << RLP(i.second);
+//						cwarn << i.first << ": " << RLP(i.second);
 					d.debugStructure(cerr);
 
 					d2.insert(k, v);
 					cwarn << "Pres:" << d2.root();
 //					for (auto i: dm2.get())
-//						cwarn << i.first.abridged() << ": " << RLP(i.second);
+//						cwarn << i.first << ": " << RLP(i.second);
 					d2.debugStructure(cerr);
 					g_logVerbosity = 99;
 					d2.remove(k);

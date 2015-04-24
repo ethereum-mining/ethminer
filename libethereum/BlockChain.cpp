@@ -320,14 +320,14 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 		}
 		catch (dev::eth::UnknownParent)
 		{
-			cwarn << "ODD: Import queue contains block with unknown parent." << error << boost::current_exception_diagnostic_information();
+			cwarn << "ODD: Import queue contains block with unknown parent." << LogTag::Error << boost::current_exception_diagnostic_information();
 			// NOTE: don't reimport since the queue should guarantee everything in the right order.
 			// Can't continue - chain bad.
 			badBlocks.push_back(BlockInfo::headerHash(block));
 		}
 		catch (Exception const& _e)
 		{
-			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << error << diagnostic_information(_e);
+			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << LogTag::Error << diagnostic_information(_e);
 			// NOTE: don't reimport since the queue should guarantee everything in the right order.
 			// Can't continue - chain  bad.
 			badBlocks.push_back(BlockInfo::headerHash(block));
@@ -611,7 +611,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 			m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&(bi.hash()), 32));
 		}
 
-		clog(BlockChainNote) << "   Imported and best" << td << " (#" << bi.number << "). Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << toString(route);
+		clog(BlockChainNote) << "   Imported and best" << td << " (#" << bi.number << "). Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << route;
 		noteCanonChanged();
 
 		StructuredLogger::chainNewHead(

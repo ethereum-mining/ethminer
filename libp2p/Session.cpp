@@ -138,7 +138,7 @@ void Session::serviceNodesRequest()
 	auto rs = randomSelection(peers, 10);
 	for (auto const& i: rs)
 	{
-		clog(NetTriviaDetail) << "Sending peer " << i.id.abridged() << i.endpoint;
+		clog(NetTriviaDetail) << "Sending peer " << i.id << i.endpoint;
 		if (i.endpoint.address.is_v4())
 			s.appendList(3) << bytesConstRef(i.endpoint.address.to_v4().to_bytes().data(), 4) << i.endpoint.tcpPort << i.id;
 		else// if (i.second.address().is_v6()) - assumed
@@ -215,7 +215,7 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 				auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 				NodeId id = _r[i][2].toHash<NodeId>();
 
-				clog(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
+				clog(NetAllDetail) << "Checking: " << ep << "(" << id << ")";
 
 				if (!isPublicAddress(peerAddress))
 					goto CONTINUE;	// Private address. Ignore.
@@ -238,7 +238,7 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 				// OK passed all our checks. Assume it's good.
 				addRating(1000);
 				m_server->addNode(id, NodeIPEndpoint(ep.address(), ep.port(), ep.port()));
-				clog(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
+				clog(NetTriviaDetail) << "New peer: " << ep << "(" << id << ")";
 				CONTINUE:;
 				LAMEPEER:;
 			}
