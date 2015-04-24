@@ -517,7 +517,7 @@ int main(int argc, char** argv)
 	bool bootstrap = false;
 
 	/// Mining params
-	unsigned mining = ~(unsigned)0;
+	unsigned mining = 0;
 	bool forceMining = false;
 	KeyPair sigKey = KeyPair::create();
 	Secret sessionSecret;
