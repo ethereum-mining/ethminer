@@ -88,10 +88,10 @@ public:
 	/// @returns client name. Only valid when type() == Indirect and asset() == "XET".
 	std::string const& client() const { return m_type == Indirect && m_asset == "XET" ? m_client : EmptyString; }
 	/// @returns target address. Always valid, but requires the Registry address and a function to make calls.
-	Address address(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const { return m_type == Direct ? direct() : m_type == Indirect ? lookup(_call, _reg) : Address(); }
+	std::pair<Address, bytes> address(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const { return m_type == Direct ? make_pair(direct(), bytes()) : m_type == Indirect ? lookup(_call, _reg) : make_pair(Address(), bytes()); }
 
 	/// @returns target address. Looks up through the given Registry and call function. Only valid when type() == Indirect.
-	Address lookup(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const;
+	std::pair<Address, bytes> lookup(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const;
 
 private:
 	Type m_type = Invalid;
