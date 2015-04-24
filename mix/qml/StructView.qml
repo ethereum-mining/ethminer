@@ -7,8 +7,10 @@ Column
 {
 	id: root
 	property alias members: repeater.model  //js array
+	property variant accounts
 	property var value: ({})
 	property int transactionIndex
+	property string context
 	Layout.fillWidth: true
 	spacing: 10
 	Repeater
@@ -69,21 +71,40 @@ Column
 					var vals = value;
 					if (ptype.category === QSolidityType.Address)
 					{
-						item.contractCreationTr.append({"functionId": " - "});
-						var trCr = -1;
-						for (var k = 0; k < transactionsModel.count; k++)
+						item.value = getValue();
+						item.readOnly = context === "variable";
+						if (context === "parameter")
 						{
-							if (k >= transactionIndex)
-								break;
-							var tr = transactionsModel.get(k);
-							if (tr.functionId === tr.contractId)
+							var dec = modelData.type.name.split(" ");
+							item.subType = dec[0];
+							item.accountRef.append({"itemid": " - "});
+
+							if (item.subType === "contract" || item.subType === "address")
 							{
-								trCr++;
-								if (modelData.type.name === qsTr("contract") + " " + tr.contractId)
-									item.contractCreationTr.append({ "functionId": tr.contractId + " - " + trCr });
+								var trCr = 0;
+								for (var k = 0; k < transactionsModel.count; k++)
+								{
+									if (k >= transactionIndex)
+										break;
+									var tr = transactionsModel.get(k);
+									if (tr.functionId === tr.contractId && (dec[1] === tr.contractId || item.subType === "address"))
+									{
+										item.accountRef.append({ "itemid": tr.contractId + " - " + trCr, "value": "<" + tr.contractId + " - " + trCr + ">", "type": "contract" });
+										trCr++;
+									}
+								}
+							}
+							if (item.subType === "address")
+							{
+								for (k = 0; k < accounts.length; k++)
+								{
+									if (accounts[k].address === undefined)
+										accounts[k].address = clientModel.address(accounts[k].secret);
+									item.accountRef.append({ "itemid": accounts[k].name, "value": "0x" + accounts[k].address, "type": "address" });
+								}
+
 							}
 						}
-						item.value = getValue();
 						item.init();
 					}
 					else if (ptype.category === QSolidityType.Struct && !item.members)

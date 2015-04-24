@@ -317,9 +317,7 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 	node->endpoint.udpPort = _endpoint.port();
 	if (!!node && !node->pending)
 	{
-		// todo: drop in favor of ping/pong packets
-		clog(NodeTableConnect) << "Noting active node:" << _pubk.abridged() << _endpoint.address().to_string() << ":" << _endpoint.port();
-		
+		clog(NodeTableConnect) << "Noting active node:" << _pubk << _endpoint.address().to_string() << ":" << _endpoint.port();
 		shared_ptr<NodeEntry> contested;
 		{
 			Guard l(x_state);
@@ -371,7 +369,7 @@ void NodeTable::dropNode(shared_ptr<NodeEntry> _n)
 	}
 	
 	// notify host
-	clog(NodeTableUpdate) << "p2p.nodes.drop " << _n->id.abridged();
+	clog(NodeTableUpdate) << "p2p.nodes.drop " << _n->id;
 	if (m_nodeEventHandler)
 		m_nodeEventHandler->appendEvent(_n->id, NodeEntryDropped);
 }
@@ -461,7 +459,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 					m_node.endpoint.address = in.destination.address;
 				m_node.endpoint.udpPort = in.destination.udpPort;
 				
-				clog(NodeTableConnect) << "PONG from " << nodeid.abridged() << _from;
+				clog(NodeTableConnect) << "PONG from " << nodeid << _from;
 				break;
 			}
 				
