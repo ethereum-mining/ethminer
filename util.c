@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include "util.h"
 
-#ifdef _MSC_VER
 
 // foward declare without all of Windows.h
 __declspec(dllimport) void __stdcall OutputDebugStringA(char const* lpOutputString);
@@ -37,5 +36,3 @@ void debugf(char const* str, ...)
 	buf[sizeof(buf)-1] = '\0';
 	OutputDebugStringA(buf);
 }
-
-#endif
