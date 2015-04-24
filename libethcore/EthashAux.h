@@ -78,6 +78,8 @@ private:
 	std::map<h256, std::shared_ptr<LightAllocation>> m_lights;
 	std::map<h256, std::weak_ptr<FullAllocation>> m_fulls;
 	FullType m_lastUsedFull;
+
+	Mutex x_epochs;
 	std::map<h256, unsigned> m_epochs;
 	h256s m_seedHashes;
 };
