@@ -182,6 +182,7 @@ private:
 	void runCompilationJob(int _jobId);
 	void stop();
 	void releaseContracts();
+	void collectContracts(solidity::CompilerStack const& _cs);
 
 	std::atomic<bool> m_compiling;
 	mutable dev::Mutex x_contractMap;
