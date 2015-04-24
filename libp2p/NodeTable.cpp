@@ -414,8 +414,6 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			{
 				Pong in = Pong::fromBytesConstRef(_from, rlpBytes);
 				
-				// TODO: check echo! (pending pings)
-				
 				// whenever a pong is received, check if it's in m_evictions
 				Guard le(x_evictions);
 				bool evictionEntry = false;
@@ -451,7 +449,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				}
 				
 				// update our endpoint address and UDP port
-				if ((!m_node.endpoint || !m_node.endpoint.isAllowed()) && in.destination.address != m_node.endpoint.address && isPublicAddress(in.destination.address))
+				if ((!m_node.endpoint || !m_node.endpoint.isAllowed()) && isPublicAddress(in.destination.address))
 					m_node.endpoint.address = in.destination.address;
 				m_node.endpoint.udpPort = in.destination.udpPort;
 				
@@ -516,7 +514,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 					clog(NodeTableTriviaSummary) << "Received expired PingNode from " << _from.address().to_string() << ":" << _from.port();
 					return;
 				}
-
+				
 				in.source.address = _from.address();
 				in.source.udpPort = _from.port();
 				addNode(Node(nodeid, in.source));
@@ -610,7 +608,7 @@ void PingNode::interpretRLP(bytesConstRef _bytes)
 		version = dev::p2p::c_protocolVersion;
 		source.interpretRLP(r[1]);
 		destination.interpretRLP(r[2]);
-		ts = r[3].toInt<unsigned>(RLP::Strict);
+		ts = r[3].toInt<uint32_t>(RLP::Strict);
 	}
 	else
 		version = 0;

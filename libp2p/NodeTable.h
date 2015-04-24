@@ -330,7 +330,7 @@ struct Pong: RLPXDatagram<Pong>
 	uint32_t ts;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << echo << ts; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); echo = (h256)r[0]; ts = r[1].toInt<unsigned>(); }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); echo = (h256)r[0]; ts = r[1].toInt<uint32_t>(); }
 };
 
 /**
@@ -356,7 +356,7 @@ struct FindNode: RLPXDatagram<FindNode>
 	uint32_t ts;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << target << ts; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = r[0].toHash<h512>(); ts = r[1].toInt<unsigned>(); }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); target = r[0].toHash<h512>(); ts = r[1].toInt<uint32_t>(); }
 };
 
 /**
@@ -386,7 +386,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 	uint32_t ts = 1;
 
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(neighbours.size()); for (auto& n: neighbours) n.streamRLP(_s); _s << ts; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) neighbours.push_back(Neighbour(n)); ts = r[1].toInt<unsigned>(); }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) neighbours.push_back(Neighbour(n)); ts = r[1].toInt<uint32_t>(); }
 };
 
 struct NodeTableWarn: public LogChannel { static const char* name(); static const int verbosity = 0; };
