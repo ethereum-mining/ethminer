@@ -24,6 +24,8 @@ DebugInfoList
 					members: []
 					value: {}
 					Layout.preferredWidth: parent.width
+					context: "variable"
+					width: parent.width
 				}
 		}
 	}
