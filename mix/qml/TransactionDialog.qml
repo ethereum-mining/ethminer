@@ -11,7 +11,7 @@ import "."
 Dialog {
 	id: modalTransactionDialog
 	modality: Qt.ApplicationModal
-	width: 520
+	width: 570
 	height: 500
 	visible: false
 	title: qsTr("Edit Transaction")
@@ -387,6 +387,8 @@ Dialog {
 							id: typeLoader
 							Layout.preferredWidth: 150
 							members: paramsModel;
+							accounts: senderComboBox.model
+							context: "parameter"
 						}
 					}
 
