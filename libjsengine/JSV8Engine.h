@@ -20,6 +20,7 @@ class JSV8Engine : public JSEngine
 public:
 	JSV8Engine();
 	virtual ~JSV8Engine();
+	v8::Handle<v8::Value> eval(const char* _cstr) const;
 	const char* evaluate(const char* _cstr) const;
 
 private:
@@ -29,7 +30,6 @@ private:
 
 protected:
 	v8::Handle<v8::Context> const& context() const;
-	virtual const char* formatOutputValue(v8::Handle<v8::Value> const& _value) const;
 };
 
 }

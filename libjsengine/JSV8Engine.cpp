@@ -2,8 +2,8 @@
 // Created by Marek Kotewicz on 27/04/15.
 //
 
-#include <libplatform/libplatform.h>
 #include <memory>
+#include <libplatform/libplatform.h>
 #include "JSV8Engine.h"
 
 using namespace dev;
@@ -94,7 +94,7 @@ JSV8Env::~JSV8Env()
 JSV8Engine::JSV8Engine():
 		m_isolate(v8::Isolate::New()),
 		m_scope(new JSV8Scope(m_isolate))
-{ }
+{}
 
 JSV8Engine::~JSV8Engine()
 {
@@ -102,7 +102,7 @@ JSV8Engine::~JSV8Engine()
 	m_isolate->Dispose();
 }
 
-const char* JSV8Engine::evaluate(const char* _cstr) const
+v8::Handle<v8::Value> JSV8Engine::eval(const char* _cstr) const
 {
 	v8::HandleScope handleScope(m_isolate);
 //	v8::TryCatch tryCatch;
@@ -113,27 +113,28 @@ const char* JSV8Engine::evaluate(const char* _cstr) const
 	if (script.IsEmpty())
 	{
 		// TODO: handle exceptions
-		return "";
+		return v8::Handle<v8::Value>();
 	}
 
-	v8::Handle<v8::Value> result = script->Run();
-	return formatOutputValue(result);
+	return script->Run();
+}
+
+const char* JSV8Engine::evaluate(const char* _cstr) const
+{
+	v8::Handle<v8::Value> value = (eval(_cstr));
+
+	if (value.IsEmpty())
+	{
+		// TODO: handle exceptions
+		return "";
+	}
+	else if (value->IsUndefined())
+		return "undefined";
+	v8::String::Utf8Value str(value);
+	return *str ? *str : "<string conversion failed>";
 }
 
 v8::Handle<v8::Context> const& JSV8Engine::context() const
 {
 	return m_scope->context();
-}
-
-const char* JSV8Engine::formatOutputValue(v8::Handle<v8::Value> const& _value) const
-{
-	if (_value.IsEmpty())
-	{
-		// TODO: handle exceptions
-		return "";
-	}
-	else if (_value->IsUndefined())
-		return "undefined";
-	v8::String::Utf8Value str(_value);
-	return *str ? *str : "<string conversion failed>";
 }
