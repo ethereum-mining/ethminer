@@ -417,17 +417,14 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
 		case Instruction::BYTE:
 		{
-			const auto byteNum = stack.pop();
-			auto value = stack.pop();
+			const auto idx = stack.pop();
+			auto value = Endianness::toBE(m_builder, stack.pop());
 
-			value = Endianness::toBE(m_builder, value);
+			auto idxValid = m_builder.CreateICmpULT(idx, Constant::get(32), "idxValid");
 			auto bytes = m_builder.CreateBitCast(value, llvm::VectorType::get(Type::Byte, 32), "bytes");
-			auto safeByteNum = m_builder.CreateZExt(m_builder.CreateTrunc(byteNum, m_builder.getIntNTy(5)), Type::lowPrecision); // Trim index, large values can crash
-			auto byte = m_builder.CreateExtractElement(bytes, safeByteNum, "byte");
+			auto byte = m_builder.CreateExtractElement(bytes, idx, "byte");
 			value = m_builder.CreateZExt(byte, Type::Word);
-
-			auto byteNumValid = m_builder.CreateICmpULT(byteNum, Constant::get(32));
-			value = m_builder.CreateSelect(byteNumValid, value, Constant::get(0));
+			value = m_builder.CreateSelect(idxValid, value, Constant::get(0));
 			stack.push(value);
 			break;
 		}
