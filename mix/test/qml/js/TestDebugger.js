@@ -123,8 +123,7 @@ function test_arrayParametersAndStorage()
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.acceptAndClose();
 	mainApplication.mainContent.startQuickDebugging();
-	if (!ts.waitForSignal(mainApplication.clientModel, "debugDataReady(QObject*)", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 	//debug setM
 	mainApplication.clientModel.debugRecord(3);
 	mainApplication.mainContent.rightPane.debugSlider.value = mainApplication.mainContent.rightPane.debugSlider.maximumValue;
@@ -158,8 +157,7 @@ function test_solidityDebugging()
 	"}");
 
 	mainApplication.mainContent.startQuickDebugging();
-	if (!ts.waitForSignal(mainApplication.clientModel, "debugDataReady(QObject*)", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 
 	tryCompare(mainApplication.mainContent.rightPane.debugSlider, "maximumValue", 20);
 	tryCompare(mainApplication.mainContent.rightPane.debugSlider, "value", 0);
@@ -191,8 +189,7 @@ function test_vmDebugging()
 	"}");
 
 	mainApplication.mainContent.startQuickDebugging();
-	if (!ts.waitForSignal(mainApplication.clientModel, "debugDataReady(QObject*)", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 
 	mainApplication.mainContent.rightPane.assemblyMode = !mainApplication.mainContent.rightPane.assemblyMode;
 	tryCompare(mainApplication.mainContent.rightPane.debugSlider, "maximumValue", 41);
@@ -225,12 +222,7 @@ function test_ctrTypeAsParam()
 	"	}\r " +
 	"}");
 	mainApplication.projectModel.stateListModel.editState(0); //C1 ctor already added
-	mainApplication.projectModel.stateDialog.model.addTransaction();
 	var transactionDialog = mainApplication.projectModel.stateDialog.transactionDialog;
-	ts.waitForRendering(transactionDialog, 3000);
-	transactionDialog.selectContract("C2");
-	transactionDialog.selectFunction("C2");
-	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.model.addTransaction();
 	transactionDialog = mainApplication.projectModel.stateDialog.transactionDialog;
 	ts.waitForRendering(transactionDialog, 3000);
@@ -241,8 +233,7 @@ function test_ctrTypeAsParam()
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.acceptAndClose();
 	mainApplication.mainContent.startQuickDebugging();
-	if (!ts.waitForSignal(mainApplication.clientModel, "debugDataReady(QObject*)", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(4), "returned", "(159)");
 }

@@ -249,7 +249,6 @@ void CodeModel::runCompilationJob(int _jobId)
 {
 	if (_jobId != m_backgroundJobId)
 		return; //obsolete job
-	ContractMap result;
 	solidity::CompilerStack cs(true);
 	try
 	{
@@ -260,40 +259,7 @@ void CodeModel::runCompilationJob(int _jobId)
 				cs.addSource(c.first.toStdString(), c.second.toStdString());
 		}
 		cs.compile(false);
-
-		{
-			Guard pl(x_pendingContracts);
-			Guard l(x_contractMap);
-			for (std::string n: cs.getContractNames())
-			{
-				if (c_predefinedContracts.count(n) != 0)
-					continue;
-				QString name = QString::fromStdString(n);
-				ContractDefinition const& contractDefinition = cs.getContractDefinition(n);
-				if (!contractDefinition.isFullyImplemented())
-					continue;
-				QString sourceName = QString::fromStdString(*contractDefinition.getLocation().sourceName);
-				auto sourceIter = m_pendingContracts.find(sourceName);
-				QString source = sourceIter != m_pendingContracts.end() ? sourceIter->second : QString();
-				CompiledContract* contract = new CompiledContract(cs, name, source);
-				QQmlEngine::setObjectOwnership(contract, QQmlEngine::CppOwnership);
-				result[name] = contract;
-				CompiledContract* prevContract = nullptr;
-				for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
-					if (c.value()->documentId() == contract->documentId())
-						prevContract = c.value();
-				if (prevContract != nullptr && prevContract->contractInterface() != result[name]->contractInterface())
-					emit contractInterfaceChanged(name);
-				if (prevContract == nullptr)
-					emit newContractCompiled(name);
-				else if (prevContract->contract()->name() != name)
-					emit contractRenamed(contract->documentId(), prevContract->contract()->name(), name);
-			}
-			releaseContracts();
-			m_contractMap.swap(result);
-			emit codeChanged();
-			emit compilationComplete();
-		}
+		collectContracts(cs);
 	}
 	catch (dev::Exception const& _exception)
 	{
@@ -307,13 +273,61 @@ void CodeModel::runCompilationJob(int _jobId)
 				sourceName = QString::fromStdString(*location->sourceName);
 			if (!sourceName.isEmpty())
 				if (CompiledContract* contract = contractByDocumentId(sourceName))
-					//substitute the location to match our contract names
-					message = message.replace(sourceName, contract->contract()->name());
+					message = message.replace(sourceName, contract->contract()->name()); //substitute the location to match our contract names
 		}
 		compilationError(message, sourceName);
 	}
 	m_compiling = false;
 	emit stateChanged();
+}
+
+void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs)
+{
+	Guard pl(x_pendingContracts);
+	Guard l(x_contractMap);
+	ContractMap result;
+	for (std::string n: _cs.getContractNames())
+	{
+		if (c_predefinedContracts.count(n) != 0)
+			continue;
+		QString name = QString::fromStdString(n);
+		ContractDefinition const& contractDefinition = _cs.getContractDefinition(n);
+		if (!contractDefinition.isFullyImplemented())
+			continue;
+		QString sourceName = QString::fromStdString(*contractDefinition.getLocation().sourceName);
+		auto sourceIter = m_pendingContracts.find(sourceName);
+		QString source = sourceIter != m_pendingContracts.end() ? sourceIter->second : QString();
+		CompiledContract* contract = new CompiledContract(_cs, name, source);
+		QQmlEngine::setObjectOwnership(contract, QQmlEngine::CppOwnership);
+		result[name] = contract;
+		CompiledContract* prevContract = nullptr;
+		// find previous contract by name
+		for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
+			if (c.value()->contract()->name() == contract->contract()->name())
+				prevContract = c.value();
+
+		// if not found, try by documentId
+		if (!prevContract)
+		{
+			for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
+				if (c.value()->documentId() == contract->documentId())
+				{
+					//make sure there are no other contracts in the same source, otherwise it is not a rename
+					if (!std::any_of(result.begin(),result.end(), [=](ContractMap::const_iterator::value_type _v) { return _v != contract && _v->documentId() == contract->documentId(); }))
+					prevContract = c.value();
+				}
+		}
+		if (prevContract != nullptr && prevContract->contractInterface() != result[name]->contractInterface())
+			emit contractInterfaceChanged(name);
+		if (prevContract == nullptr)
+			emit newContractCompiled(name);
+		else if (prevContract->contract()->name() != name)
+			emit contractRenamed(contract->documentId(), prevContract->contract()->name(), name);
+	}
+	releaseContracts();
+	m_contractMap.swap(result);
+	emit codeChanged();
+	emit compilationComplete();
 }
 
 bool CodeModel::hasContract() const

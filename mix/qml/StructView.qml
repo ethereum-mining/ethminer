@@ -12,7 +12,7 @@ Column
 	property int transactionIndex
 	property string context
 	Layout.fillWidth: true
-	spacing: 10
+	spacing: 0
 	Repeater
 	{
 		id: repeater
@@ -22,7 +22,7 @@ Column
 		RowLayout
 		{
 			id: row
-			height: 30 + (members[index].type.category === QSolidityType.Struct ? (20 * members[index].type.members.length) : 0)
+			height: 20 + (members[index].type.category === QSolidityType.Struct ? (20 * members[index].type.members.length) : 0)
 			Layout.fillWidth: true
 			DefaultLabel {
 				height: 20
@@ -32,12 +32,14 @@ Column
 			}
 
 			DefaultLabel {
+				height: 20
 				id: nameLabel
 				text: modelData.name
 				anchors.verticalCenter: parent.verticalCenter
 			}
 
 			DefaultLabel {
+				height: 20
 				id: equalLabel
 				text: "="
 				anchors.verticalCenter: parent.verticalCenter
@@ -45,6 +47,7 @@ Column
 			Loader
 			{
 				id: typeLoader
+				height: 20
 				anchors.verticalCenter: parent.verticalCenter
 				sourceComponent:
 				{
@@ -69,10 +72,10 @@ Column
 					var ptype = members[index].type;
 					var pname = members[index].name;
 					var vals = value;
+					item.readOnly = context === "variable";
 					if (ptype.category === QSolidityType.Address)
 					{
 						item.value = getValue();
-						item.readOnly = context === "variable";
 						if (context === "parameter")
 						{
 							var dec = modelData.type.name.split(" ");
@@ -119,6 +122,10 @@ Column
 						vals[pname] = item.value;
 						valueChanged();
 					});
+
+					var newWidth = nameLabel.width + typeLabel.width + item.width + 108;
+					if (root.width < newWidth)
+						root.width = newWidth;
 				}
 
 				function getValue()
