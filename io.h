@@ -69,13 +69,16 @@ enum ethash_io_rc {
  *                           mode, while on the case of mismatch a new file is created
  *                           on write mode
  * @param[in] file_size      The size that the DAG file should have on disk
+ * @param[out] force_create  If true then there is no check to see if the file
+ *                           already exists
  * @return                   For possible return values @see enum ethash_io_rc
  */
 enum ethash_io_rc ethash_io_prepare(
 	char const* dirname,
 	ethash_h256_t const seedhash,
 	FILE** output_file,
-	size_t file_size
+	size_t file_size,
+	bool force_create
 );
 
 /**

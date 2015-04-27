@@ -373,6 +373,24 @@ ethash_cache_t *ethash_light_acquire_cache(ethash_light_t light)
 	return ret;
 }
 
+static bool ethash_mmap(struct ethash_full* ret, FILE* f)
+{
+	int fd;
+	ret->file = f;
+	if ((fd = ethash_fileno(ret->file)) == -1) {
+		return false;
+	}
+	ret->data = mmap(
+		NULL,
+		(size_t)ret->file_size,
+		PROT_READ | PROT_WRITE,
+		MAP_SHARED,
+		fd,
+		0
+	);
+	return ret->data != MAP_FAILED;
+}
+
 ethash_full_t ethash_full_new(
 	char const* dirname,
 	ethash_h256_t const* seed_hash,
@@ -382,38 +400,29 @@ ethash_full_t ethash_full_new(
 )
 {
 	struct ethash_full* ret;
-	int fd;
 	FILE *f = NULL;
-	bool match = false;
 	ret = calloc(sizeof(*ret), 1);
 	if (!ret) {
 		return NULL;
 	}
 	ret->file_size = (size_t)full_size;
-	switch (ethash_io_prepare(dirname, *seed_hash, &f, (size_t)full_size)) {
+	switch (ethash_io_prepare(dirname, *seed_hash, &f, (size_t)full_size, false)) {
 	case ETHASH_IO_FAIL:
-	case ETHASH_IO_MEMO_SIZE_MISMATCH:
 		goto fail_free_full;
 	case ETHASH_IO_MEMO_MATCH:
-		match = true;
-	case ETHASH_IO_MEMO_MISMATCH:
-		ret->file = f;
-		if ((fd = ethash_fileno(ret->file)) == -1) {
-			goto fail_free_full;
-		}
-		ret->data = mmap(
-			NULL,
-			(size_t)full_size,
-			PROT_READ | PROT_WRITE,
-			MAP_SHARED,
-			fd,
-			0
-		);
-		if (ret->data == MAP_FAILED) {
+		if (!ethash_mmap(ret, f)) {
 			goto fail_close_file;
 		}
-		if (match) {
-			return ret;
+		return ret;
+	case ETHASH_IO_MEMO_SIZE_MISMATCH:
+		// if a DAG of same filename but unexpected size is found, silently force new file creation
+		if (ethash_io_prepare(dirname, *seed_hash, &f, (size_t)full_size, true) != ETHASH_IO_MEMO_MISMATCH) {
+			goto fail_free_full;
+		}
+		// fallthrough to the mismatch case here, DO NOT go through match
+	case ETHASH_IO_MEMO_MISMATCH:
+		if (!ethash_mmap(ret, f)) {
+			goto fail_close_file;
 		}
 		break;
 	}
