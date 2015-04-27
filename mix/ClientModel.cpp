@@ -151,6 +151,39 @@ QString ClientModel::encodeAbiString(QString _string)
 	return QString::fromStdString(toHex(encoder.encodeBytes(_string)));
 }
 
+QString ClientModel::encodeString(QString const& _param)
+{
+	ContractCallDataEncoder encoder;
+	return QString::fromStdString(toHex(encoder.encodeBytesParam(_param, 32)));
+}
+
+QStringList ClientModel::encodeParams(QVariant const& _param, QString const& _contract, QString const& _function)
+{
+	QStringList ret;
+	CompiledContract const& compilerRes = m_codeModel->contract(_contract);
+	QList<QVariableDeclaration*> paramsList;
+	shared_ptr<QContractDefinition> contractDef = compilerRes.sharedContract();
+	if (_contract == _function)
+		paramsList = contractDef->constructor()->parametersList();
+	else
+		for (QFunctionDefinition* tf: contractDef->functionsList())
+			if (tf->name() == _function)
+			{
+				paramsList = tf->parametersList();
+				break;
+			}
+	if (paramsList.length() > 0)
+		for (QVariableDeclaration* var: paramsList)
+		{
+			ContractCallDataEncoder encoder;
+			QSolidityType const* type = var->type();
+			QVariant value = _param.toMap().value(var->name());
+			encoder.encode(value, type->type());
+			ret.push_back(QString::fromStdString(toHex(encoder.encodedData())));
+		}
+	return ret;
+}
+
 QVariantMap ClientModel::contractAddresses() const
 {
 	QVariantMap res;
