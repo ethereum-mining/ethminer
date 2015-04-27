@@ -212,9 +212,10 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 	if (transactionsRoot != t.root())*/
 	auto txList = root[1];
 	auto expectedRoot = trieRootOver(txList.itemCount(), [&](unsigned i){ return rlp(i); }, [&](unsigned i){ return txList[i].data(); });
+	cnote << "expect trroot " << toString(expectedRoot);
 	if (transactionsRoot != expectedRoot)
 		BOOST_THROW_EXCEPTION(InvalidTransactionsHash() << HashMismatchError(expectedRoot, transactionsRoot));
-
+	cnote << "expect uncleh " << toString(sha3(root[2].data()));
 	if (sha3Uncles != sha3(root[2].data()))
 		BOOST_THROW_EXCEPTION(InvalidUnclesHash());
 }
