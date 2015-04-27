@@ -8,7 +8,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 	set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -DETH_RELEASE")
 	set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG -DETH_RELEASE")
 	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DETH_RELEASE")
-	set(ETH_SHARED 1)
 
 	if (PROFILING)
 		set(CMAKE_CXX_FLAGS "-g ${CMAKE_CXX_FLAGS}")
@@ -31,7 +30,6 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 	set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -DETH_RELEASE")
 	set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG -DETH_RELEASE")
 	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DETH_DEBUG")
-	set(ETH_SHARED 1)
 
 	if ("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++ -fcolor-diagnostics -Qunused-arguments -DBOOST_ASIO_HAS_CLANG_LIBCXX")
@@ -55,8 +53,10 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# stack size 16MB
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ignore:4099,4075 /STACK:16777216")
 	# windows likes static
-	set(ETH_STATIC 1)
-
+	if (NOT ETH_STATIC)
+		message("Forcing static linkage for MSVC.")
+		set(ETH_STATIC 1)
+	endif ()
 else ()
 	message(WARNING "Your compiler is not tested, if you run into any issues, we'd welcome any patches.")
 endif ()
@@ -72,3 +72,8 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
 	endif ()
 endif ()
 
+if(ETH_STATIC)
+	set(BUILD_SHARED_LIBS OFF)
+else()
+	set(BUILD_SHARED_LIBS ON)
+endif(ETH_STATIC)

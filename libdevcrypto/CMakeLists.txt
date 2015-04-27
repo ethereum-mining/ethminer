@@ -17,11 +17,7 @@ include_directories(${LEVELDB_INCLUDE_DIRS})
 set(EXECUTABLE devcrypto)
 
 file(GLOB HEADERS "*.h")
-if(ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
-else()
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
-endif()
+add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} ${Boost_FILESYSTEM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
