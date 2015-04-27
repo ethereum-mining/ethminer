@@ -26,6 +26,7 @@ Dialog {
 	property string eth: registrarAddr.text
 	property string currentAccount
 	property alias gasToUse: gasToUseInput.text
+	property variant paramsModel: []
 
 	function close()
 	{
@@ -54,8 +55,8 @@ Dialog {
 				requests.push({
 								  //accounts
 								  jsonrpc: "2.0",
-								  method: "eth_balanceAt",
-								  params: [ids[k]],
+								  method: "eth_getBalance",
+								  params: [ids[k], 'latest'],
 								  id: k
 							  });
 			}
@@ -135,6 +136,7 @@ Dialog {
 			TransactionHelper.rpcCall(requests, function (httpRequest, response){
 				response = response.replace(/,0+/, ''); // ==> result:27,00000000
 				var count = JSON.parse(response)[0].result
+				console.log("count " + count);
 				if (k < parseInt(count) && k > 0)
 				{
 					stop();
@@ -246,6 +248,25 @@ Dialog {
 				{
 					columns: 2
 					width: parent.width
+
+					DefaultLabel
+					{
+						text: qsTr("State:")
+					}
+
+					Rectangle
+					{
+						width: 300
+						color: "transparent"
+						height: 25
+						id: paramsRect
+						ComboBox
+						{
+							id: statesList
+							textRole: "title"
+							model: projectModel.stateListModel
+						}
+					}
 
 					DefaultLabel
 					{
@@ -364,6 +385,7 @@ Dialog {
 						}
 						if (!stopForInputError(inError))
 						{
+							projectModel.deployedState = statesList.currentText;
 							if (contractRedeploy.checked)
 								deployWarningDialog.open();
 							else
