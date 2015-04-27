@@ -20,10 +20,6 @@ struct Type
 	static llvm::IntegerType* Word;
 	static llvm::PointerType* WordPtr;
 
-	/// Type for doing low precision arithmetics where 256-bit precision is not supported by native target
-	/// @TODO: Use 64-bit for now. In 128-bit compiler-rt library functions are required
-	static llvm::IntegerType* lowPrecision;
-
 	static llvm::IntegerType* Bool;
 	static llvm::IntegerType* Size;
 	static llvm::IntegerType* Gas;
