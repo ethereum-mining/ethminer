@@ -136,6 +136,21 @@ bool ethash_file_size(FILE* f, size_t* ret_size);
  */
 int ethash_fileno(FILE* f);
 
+/**
+ * Create the filename for the DAG.
+ *
+ * @param dirname            The directory name in which the DAG file should reside
+ *                           If it does not end with a directory separator it is appended.
+ * @param filename           The actual name of the file
+ * @param filename_length    The length of the filename in bytes
+ * @return                   A char* containing the full name. User must deallocate.
+ */
+char* ethash_io_create_filename(
+	char const* dirname,
+	char const* filename,
+	size_t filename_length
+);
+
 static inline bool ethash_io_mutable_name(
 	uint32_t revision,
 	ethash_h256_t const* seed_hash,
@@ -148,26 +163,6 @@ static inline bool ethash_io_mutable_name(
 #endif
     return snprintf(output, DAG_MUTABLE_NAME_MAX_SIZE, "%u_%016" PRIx64, revision, hash) >= 0;
 }
-
-static inline char* ethash_io_create_filename(
-	char const* dirname,
-	char const* filename,
-	size_t filename_length
-)
-{
-	size_t dirlen = strlen(dirname);
-	// in C the cast is not needed, but a C++ compiler will complain for invalid conversion
-	char* name = (char*)malloc(dirlen + filename_length + 1);
-	if (!name) {
-		return NULL;
-	}
-
-	name[0] = '\0';
-	ethash_strncat(name, dirlen + filename_length + 1, dirname, dirlen);
-	ethash_strncat(name, dirlen + filename_length + 1, filename, filename_length);
-	return name;
-}
-
 
 #ifdef __cplusplus
 }
