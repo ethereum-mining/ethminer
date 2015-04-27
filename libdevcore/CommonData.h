@@ -152,11 +152,11 @@ inline bytes toCompactBigEndian(byte _val, unsigned _min = 0)
 /// Convenience function for toBigEndian.
 /// @returns a string just big enough to represent @a _val.
 template <class _T>
-inline std::string toCompactBigEndianString(_T _val)
+inline std::string toCompactBigEndianString(_T _val, unsigned _min = 0)
 {
 	int i = 0;
 	for (_T v = _val; v; ++i, v >>= 8) {}
-	std::string ret(i, '\0');
+	std::string ret(std::max<unsigned>(_min, i), '\0');
 	toBigEndian(_val, ret);
 	return ret;
 }
@@ -167,9 +167,10 @@ inline std::string toHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd)
 	std::string str = toHex(toBigEndian(val));
 	return (prefix == HexPrefix::Add) ? "0x" + str : str;
 }
-inline std::string toCompactHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd)
+
+inline std::string toCompactHex(u256 val, HexPrefix prefix = HexPrefix::DontAdd, unsigned _min = 0)
 {
-	std::string str = toHex(toCompactBigEndian(val, 1)); //1 means val=0 would be '0x00' instead of '0x'
+	std::string str = toHex(toCompactBigEndian(val, _min));
 	return (prefix == HexPrefix::Add) ? "0x" + str : str;
 }
 
