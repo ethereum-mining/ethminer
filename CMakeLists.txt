@@ -327,7 +327,7 @@ if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
 endif()
 
-add_subdirectory(libethconsole)
+add_subdirectory(libjsengine)
 add_subdirectory(secp256k1)
 add_subdirectory(libp2p)
 add_subdirectory(libdevcrypto)

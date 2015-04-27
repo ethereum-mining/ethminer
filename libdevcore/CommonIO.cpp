@@ -30,7 +30,7 @@ string dev::memDump(bytes const& _bytes, unsigned _width, bool _html)
 {
 	stringstream ret;
 	if (_html)
-		ret << "<pre style=\"font-family: Monospace,Lucida JSV8ScopeBase,Courier,Courier New,sans-serif; font-size: small\">";
+		ret << "<pre style=\"font-family: Monospace,Lucida JSV8Engine,Courier,Courier New,sans-serif; font-size: small\">";
 	for (unsigned i = 0; i < _bytes.size(); i += _width)
 	{
 		ret << hex << setw(4) << setfill('0') << i << " ";

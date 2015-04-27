@@ -8,6 +8,8 @@ endif()
 
 set(CMAKE_AUTOMOC OFF)
 
+# macos brew version of v8 needs to be compiled with libstdc++
+# it also needs to be dynamic library
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
 
 aux_source_directory(. SRC_LIST)
@@ -15,11 +17,11 @@ aux_source_directory(. SRC_LIST)
 include_directories(BEFORE ..)
 include_directories(${V8_INCLUDE_DIRS})
 
-set(EXECUTABLE ethconsole)
+set(EXECUTABLE jsengine)
 
 file(GLOB HEADERS "*.h")
 
-add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
+add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} ${V8_LIBRARIES})
 
