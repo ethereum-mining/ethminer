@@ -58,8 +58,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		ImportTest importer(o["pre"].get_obj());
 		TransientDirectory td_stateDB;
 		TransientDirectory td_stateDB_tmp;
-		State state(OverlayDB(State::openDB(td_stateDB.path())), BaseState::Empty, biGenesisBlock.coinbaseAddress);
-		State stateTemp(OverlayDB(State::openDB(td_stateDB_tmp.path())), BaseState::Empty, biGenesisBlock.coinbaseAddress);
+		State state(State::openDB(td_stateDB.path()), BaseState::Empty, biGenesisBlock.coinbaseAddress);
+		State stateTemp(State::openDB(td_stateDB_tmp.path()), BaseState::Empty, biGenesisBlock.coinbaseAddress);
 		importer.importState(o["pre"].get_obj(), state);
 		o["pre"] = fillJsonWithState(state);
 		state.commit();
@@ -697,6 +697,11 @@ BOOST_AUTO_TEST_CASE(bcUncleTest)
 BOOST_AUTO_TEST_CASE(bcUncleHeaderValiditiy)
 {
 	dev::test::executeTests("bcUncleHeaderValiditiy", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+}
+
+BOOST_AUTO_TEST_CASE(bcGasPricerTest)
+{
+	dev::test::executeTests("bcGasPricerTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(userDefinedFile)
