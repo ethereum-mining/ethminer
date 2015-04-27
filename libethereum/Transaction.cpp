@@ -105,7 +105,7 @@ Address const& Transaction::safeSender() const noexcept
 	catch (...)
 	{
 		cwarn << "safeSender() did throw an exception: " <<  boost::current_exception_diagnostic_information();
-		return NullAddress;
+		return ZeroAddress;
 	}
 }
 

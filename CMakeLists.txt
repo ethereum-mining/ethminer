@@ -354,6 +354,7 @@ if (TOOLS)
 
 	add_subdirectory(rlp)
 	add_subdirectory(abi)
+	add_subdirectory(ethminer)
 	add_subdirectory(eth)
 
 	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
