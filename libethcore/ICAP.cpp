@@ -129,13 +129,6 @@ std::string ICAP::encoded() const
 
 pair<Address, bytes> ICAP::lookup(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const
 {
-	auto toString32 = [](string const& s)
-	{
-		string32 ret;
-		bytesConstRef(&s).populate(bytesRef((byte*)ret.data(), 32));
-		return ret;
-	};
-
 	auto resolve = [&](string const& s)
 	{
 		vector<string> ss;
@@ -143,7 +136,7 @@ pair<Address, bytes> ICAP::lookup(std::function<bytes(Address, bytes)> const& _c
 		Address r = _reg;
 		for (unsigned i = 0; i < ss.size() - 1; ++i)
 			r = abiOut<Address>(_call(r, abiIn("subRegistrar(bytes)", toString32(ss[i]))));
-		return abiOut<Address>(_call(r, abiIn("primary(bytes)", toString32(ss.back()))));
+		return abiOut<Address>(_call(r, abiIn("addr(bytes)", toString32(ss.back()))));
 	};
 	if (m_asset == "XET")
 	{
@@ -152,8 +145,14 @@ pair<Address, bytes> ICAP::lookup(std::function<bytes(Address, bytes)> const& _c
 		return make_pair(a, d);
 	}
 	else if (m_asset == "ETH")
-		return make_pair(resolve(m_institution + "/" + m_client), bytes());
-
+	{
+		if (m_institution == "XREG")
+			return make_pair(resolve(m_client), bytes());
+		else if (m_institution[0] != 'X')
+			return make_pair(resolve(m_institution + "/" + m_client), bytes());
+		else
+			throw InterfaceNotSupported("ICAP::lookup(), bad institution");
+	}
 	throw InterfaceNotSupported("ICAP::lookup(), bad asset");
 }
 

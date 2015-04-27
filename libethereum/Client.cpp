@@ -671,13 +671,6 @@ eth::State Client::state(unsigned _txi) const
 	return m_postMine.fromPending(_txi);
 }
 
-void Client::inject(bytesConstRef _rlp)
-{
-	startWorking();
-	
-	m_tq.import(_rlp);
-}
-
 void Client::flushTransactions()
 {
 	doWork();

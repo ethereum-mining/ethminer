@@ -1010,26 +1010,13 @@ int main(int argc, char** argv)
 			in.read((char*)block.data(), 8);
 			block.resize(RLP(block, RLP::LaisezFaire).actualSize());
 			in.read((char*)block.data() + 8, block.size() - 8);
-			try
+			switch (web3.ethereum()->injectBlock(block))
 			{
-				web3.ethereum()->injectBlock(block);
-				good++;
-			}
-			catch (AlreadyHaveBlock const&)
-			{
-				alreadyHave++;
-			}
-			catch (UnknownParent const&)
-			{
-				unknownParent++;
-			}
-			catch (FutureTime const&)
-			{
-				futureTime++;
-			}
-			catch (...)
-			{
-				bad++;
+			case ImportResult::Success: good++; break;
+			case ImportResult::AlreadyKnown: alreadyHave++; break;
+			case ImportResult::UnknownParent: unknownParent++; break;
+			case ImportResult::FutureTime: futureTime++; break;
+			default: bad++; break;
 			}
 		}
 		cout << (good + bad + futureTime + unknownParent + alreadyHave) << " total: " << good << " ok, " << alreadyHave << " got, " << futureTime << " future, " << unknownParent << " unknown parent, " << bad << " malformed." << endl;

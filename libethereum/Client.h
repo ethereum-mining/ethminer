@@ -133,9 +133,6 @@ public:
 	/// Resets the gas pricer to some other object.
 	void setGasPricer(std::shared_ptr<GasPricer> _gp) { m_gp = _gp; }
 
-	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
-	virtual void inject(bytesConstRef _rlp);
-
 	/// Blocks until all pending transactions have been processed.
 	virtual void flushTransactions() override;
 
