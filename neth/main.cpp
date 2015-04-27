@@ -718,13 +718,33 @@ int main(int argc, char** argv)
 		else if (c && cmd == "setblockfees")
 		{
 			iss >> blockFees;
-			gasPricer->setRefBlockFees(u256(blockFees * 1000));
+			try
+			{
+				gasPricer->setRefBlockFees(u256(blockFees * 1000));
+			}
+			catch (Overflow const& _e)
+			{
+				cout << boost::diagnostic_information(_e);
+			}
+
 			cout << "Block fees: " << blockFees << endl;
 		}
 		else if (c && cmd == "setetherprice")
 		{
 			iss >> etherPrice;
-			gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+			if (etherPrice == 0)
+				cout << "ether price cannot be set to zero" << endl;
+			else
+			{
+				try
+				{
+					gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+				}
+				catch (Overflow const& _e)
+				{
+					cout << boost::diagnostic_information(_e);
+				}
+			}
 			cout << "ether Price: " << etherPrice << endl;
 		}
 		else if (c && cmd == "setpriority")
