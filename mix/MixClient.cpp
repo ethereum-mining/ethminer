@@ -42,6 +42,18 @@ namespace mix
 Secret const c_defaultUserAccountSecret = Secret("cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074");
 u256 const c_mixGenesisDifficulty = 131072; //TODO: make it lower for Mix somehow
 
+namespace
+{
+
+struct MixPow //dummy POW
+{
+	typedef int Solution;
+	static void assignResult(int, BlockInfo const&) {}
+	static bool verify(BlockInfo const&) { return true; }
+};
+
+}
+
 bytes MixBlockChain::createGenesisBlock(h256 _stateRoot)
 {
 	RLPStream block(3);
@@ -250,22 +262,8 @@ void MixClient::mine()
 {
 	WriteGuard l(x_state);
 	m_state.commitToMine(bc());
-	m_state.completeMine<Ethash>(Ethash::Solution());
-	bc().import(m_state.blockData(), m_stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce);
-	/*
-	GenericFarm<ProofOfWork> f;
-	bool completed = false;
-	f.onSolutionFound([&](ProofOfWork::Solution sol)
-	{
-		return completed = m_state.completeMine<ProofOfWork>(sol);
-	});
-	f.setWork(m_state.info());
-	f.startCPU();
-	while (!completed)
-		this_thread::sleep_for(chrono::milliseconds(20));
-
-	bc().import(m_state.blockData(), m_stateDB);
-	*/
+	m_state.completeMine<MixPow>(0);
+	bc().import(m_state.blockData(), m_state.db(), ImportRequirements::Default & ~ImportRequirements::ValidNonce);
 	m_state.sync(bc());
 	m_startState = m_state;
 	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };

@@ -97,8 +97,6 @@ struct ExecutionResult
 
 std::ostream& operator<<(std::ostream& _out, ExecutionResult const& _er);
 
-static const Address NullAddress;
-
 /// Encodes a transaction, ready to be exported to or freshly imported from RLP.
 class Transaction
 {
