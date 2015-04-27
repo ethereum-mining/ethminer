@@ -141,6 +141,24 @@ static Json::Value toJson(dev::eth::TransactionSkeleton const& _t)
 	return res;
 }
 
+static Json::Value toJson(dev::eth::Transaction const& _t)
+{
+	Json::Value res;
+	res["to"] = _t.isCreation() ? Json::Value() : toJS(_t.to());
+	res["from"] = toJS(_t.from());
+	res["gas"] = toJS(_t.gas());
+	res["gasPrice"] = toJS(_t.gasPrice());
+	res["value"] = toJS(_t.value());
+	res["data"] = toJS(_t.data(), 32);
+	res["nonce"] = toJS(_t.nonce());
+	res["hash"] = toJS(_t.sha3(WithSignature));
+	res["sighash"] = toJS(_t.sha3(WithoutSignature));
+	res["r"] = toJS(_t.signature().r);
+	res["s"] = toJS(_t.signature().s);
+	res["v"] = toJS(_t.signature().v);
+	return res;
+}
+
 static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 {
 	Json::Value res;
@@ -502,6 +520,58 @@ string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 	}
 }
 
+string WebThreeStubServerBase::eth_signTransaction(Json::Value const& _json)
+{
+	try
+	{
+		string ret;
+		TransactionSkeleton t = toTransaction(_json);
+
+		if (!t.from)
+			t.from = m_accounts->getDefaultTransactAccount();
+		if (t.creation)
+			ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
+		if (!t.gasPrice)
+			t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
+		if (!t.gas)
+			t.gas = min<u256>(client()->gasLimitRemaining(), client()->balanceAt(t.from) / t.gasPrice);
+
+		if (m_accounts->isRealAccount(t.from))
+			authenticate(t, false);
+		else if (m_accounts->isProxyAccount(t.from))
+			authenticate(t, true);
+
+		return toJS((t.creation ? Transaction(t.value, t.gasPrice, t.gas, t.data) : Transaction(t.value, t.gasPrice, t.gas, t.to, t.data)).sha3(WithoutSignature));
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+Json::Value WebThreeStubServerBase::eth_inspectTransaction(std::string const& _rlp)
+{
+	try
+	{
+		return toJson(Transaction(jsToBytes(_rlp), CheckTransaction::Everything));
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+bool WebThreeStubServerBase::eth_injectTransaction(std::string const& _rlp)
+{
+	try
+	{
+		return client()->injectTransaction(jsToBytes(_rlp)) == ImportResult::Success;
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
 
 string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& _blockNumber)
 {

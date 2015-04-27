@@ -62,7 +62,7 @@ public:
 	virtual QString pretty(dev::Address _a) const = 0;
 	virtual QString prettyU256(dev::u256 _n) const = 0;
 	virtual QString render(dev::Address _a) const = 0;
-	virtual dev::Address fromString(QString const& _a) const = 0;
+	virtual std::pair<dev::Address, dev::bytes> fromString(QString const& _a) const = 0;
 	virtual std::string renderDiff(dev::eth::StateDiff const& _d) const = 0;
 };
 

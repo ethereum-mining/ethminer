@@ -1010,26 +1010,13 @@ int main(int argc, char** argv)
 			in.read((char*)block.data(), 8);
 			block.resize(RLP(block, RLP::LaisezFaire).actualSize());
 			in.read((char*)block.data() + 8, block.size() - 8);
-			try
+			switch (web3.ethereum()->injectBlock(block))
 			{
-				web3.ethereum()->injectBlock(block);
-				good++;
-			}
-			catch (AlreadyHaveBlock const&)
-			{
-				alreadyHave++;
-			}
-			catch (UnknownParent const&)
-			{
-				unknownParent++;
-			}
-			catch (FutureTime const&)
-			{
-				futureTime++;
-			}
-			catch (...)
-			{
-				bad++;
+			case ImportResult::Success: good++; break;
+			case ImportResult::AlreadyKnown: alreadyHave++; break;
+			case ImportResult::UnknownParent: unknownParent++; break;
+			case ImportResult::FutureTime: futureTime++; break;
+			default: bad++; break;
 			}
 		}
 		cout << (good + bad + futureTime + unknownParent + alreadyHave) << " total: " << good << " ok, " << alreadyHave << " got, " << futureTime << " future, " << unknownParent << " unknown parent, " << bad << " malformed." << endl;
@@ -1137,13 +1124,33 @@ int main(int argc, char** argv)
 			else if (c && cmd == "setblockfees")
 			{
 				iss >> blockFees;
-				gasPricer->setRefBlockFees(u256(blockFees * 1000));
+				try
+				{
+					gasPricer->setRefBlockFees(u256(blockFees * 1000));
+				}
+				catch (Overflow const& _e)
+				{
+					cout << boost::diagnostic_information(_e);
+				}
+
 				cout << "Block fees: " << blockFees << endl;
 			}
 			else if (c && cmd == "setetherprice")
 			{
 				iss >> etherPrice;
-				gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+				if (etherPrice == 0)
+					cout << "ether price cannot be set to zero" << endl;
+				else
+				{
+					try
+					{
+						gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+					}
+					catch (Overflow const& _e)
+					{
+						cout << boost::diagnostic_information(_e);
+					}
+				}
 				cout << "ether Price: " << etherPrice << endl;
 			}
 			else if (c && cmd == "setpriority")
