@@ -186,8 +186,8 @@ struct NodeIPEndpoint
 	
 	bool isAllowed() const { return NodeIPEndpoint::test_allowLocal ? !address.is_unspecified() : isPublicAddress(address); }
 	
-	void streamRLP(RLPStream& _s, RLPAppend _inline = StreamList) const { if (_inline == StreamList) _s.appendList(3); if (address.is_v4()) _s << address.to_v4().to_bytes(); else if (address.is_v6()) _s << address.to_v6().to_bytes(); else _s << ""; _s << udpPort << tcpPort; }
-	void interpretRLP(RLP const& _r) { if (_r[0].size() == 0) address = bi::address(); else if (_r[0].size() == 4) address = bi::address_v4(_r[0].toArray<byte, 4>()); else address = bi::address_v6(_r[0].toArray<byte, 16>()); udpPort = _r[1].toInt<uint16_t>(); tcpPort = _r[2].toInt<uint16_t>(); }
+	void streamRLP(RLPStream& _s, RLPAppend _inline = StreamList) const;
+	void interpretRLP(RLP const& _r);
 };
 	
 struct Node

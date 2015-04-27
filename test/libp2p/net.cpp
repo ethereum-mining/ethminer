@@ -235,8 +235,8 @@ BOOST_AUTO_TEST_CASE(neighboursPacketLength)
 	std::vector<std::pair<KeyPair,unsigned>> testNodes(TestNodeTable::createTestNodes(16));
 	bi::udp::endpoint to(boost::asio::ip::address::from_string("127.0.0.1"), 30000);
 	
-	// hash(32), signature(65), overhead: packet(2), type(1), nodeList(2), ts(9),
-	static unsigned const nlimit = (1280 - 111) / 87;
+	// hash(32), signature(65), overhead: packetSz(3), type(1), nodeListSz(3), ts(5),
+	static unsigned const nlimit = (1280 - 109) / 90; // neighbour: 2 + 65 + 3 + 3 + 17
 	for (unsigned offset = 0; offset < testNodes.size(); offset += nlimit)
 	{
 		Neighbours out(to);
