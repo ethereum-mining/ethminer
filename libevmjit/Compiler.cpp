@@ -455,7 +455,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			auto word = stack.pop();
 
 			auto k32_ = m_builder.CreateTrunc(idx, m_builder.getIntNTy(5), "k_32");
-			auto k32 = m_builder.CreateZExt(k32_, Type::lowPrecision);
+			auto k32 = m_builder.CreateZExt(k32_, Type::Size);
 			auto k32x8 = m_builder.CreateMul(k32, m_builder.getInt64(8), "kx8");
 
 			// test for word >> (k * 8 + 7)
@@ -492,11 +492,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
 		case Instruction::POP:
 		{
-			auto val = stack.pop();
-			static_cast<void>(val);
-			// Generate a dummy use of val to make sure that a get(0) will be emitted at this point,
-			// so that StackUnderflow will be thrown
-			// m_builder.CreateICmpEQ(val, val, "dummy");
+			stack.pop();
 			break;
 		}
 
@@ -653,7 +649,6 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		}
 
 		case Instruction::CODESIZE:
-			// TODO: Use constant
 			stack.push(_runtimeManager.getCodeSize());
 			break;
 
