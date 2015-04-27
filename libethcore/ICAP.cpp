@@ -82,13 +82,11 @@ ICAP ICAP::decoded(std::string const& _encoded)
 	{
 		ret.m_type = Indirect;
 		ret.m_asset = data.substr(0, 3);
-		if (ret.m_asset == "XET")
+		if (ret.m_asset == "XET" || ret.m_asset == "ETH")
 		{
 			ret.m_institution = data.substr(3, 4);
 			ret.m_client = data.substr(7);
 		}
-		else if (ret.m_asset == "ETH")
-			ret.m_client = data.substr(4);
 		else
 			throw InvalidICAP();
 	}
@@ -103,7 +101,7 @@ std::string ICAP::encoded() const
 	if (m_type == Direct)
 	{
 		if (!!m_direct[0])
-			return string();
+			throw InvalidICAP();
 		std::string d = toBase36<Address::size>(m_direct);
 		while (d.size() < 30)
 			d = "0" + d;
@@ -135,8 +133,8 @@ pair<Address, bytes> ICAP::lookup(std::function<bytes(Address, bytes)> const& _c
 		boost::algorithm::split(ss, s, boost::is_any_of("/"));
 		Address r = _reg;
 		for (unsigned i = 0; i < ss.size() - 1; ++i)
-			r = abiOut<Address>(_call(r, abiIn("subRegistrar(bytes)", toString32(ss[i]))));
-		return abiOut<Address>(_call(r, abiIn("addr(bytes)", toString32(ss.back()))));
+			r = abiOut<Address>(_call(r, abiIn("subRegistrar(bytes32)", toString32(ss[i]))));
+		return abiOut<Address>(_call(r, abiIn("addr(bytes32)", toString32(ss.back()))));
 	};
 	if (m_asset == "XET")
 	{

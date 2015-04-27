@@ -83,7 +83,7 @@ public:
 	QString pretty(dev::Address _a) const override;
 	QString prettyU256(dev::u256 _n) const override;
 	QString render(dev::Address _a) const override;
-	dev::Address fromString(QString const& _a) const override;
+	std::pair<dev::Address, dev::bytes> fromString(QString const& _a) const override;
 	std::string renderDiff(dev::eth::StateDiff const& _d) const override;
 
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
