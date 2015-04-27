@@ -175,32 +175,3 @@ void Stack::push(llvm::Value* _value)
 }
 }
 }
-
-extern "C"
-{
-	using namespace dev::eth::jit;
-
-	EXPORT void ext_calldataload(RuntimeData* _rtData, i256* _index, byte* o_value)
-	{
-		// It asumes all indexes are less than 2^64
-
-		auto index = _index->a;
-		if (_index->b || _index->c || _index->d)				 // if bigger that 2^64
-			index = std::numeric_limits<decltype(index)>::max(); // set max to fill with 0 leter
-
-		auto data = _rtData->callData;
-		auto size = _rtData->callDataSize;
-		for (auto i = 0; i < 32; ++i)
-		{
-			if (index < size)
-			{
-				o_value[i] = data[index];
-				++index;  // increment only if in range
-			}
-			else
-				o_value[i] = 0;
-		}
-	}
-
-} // extern "C"
-

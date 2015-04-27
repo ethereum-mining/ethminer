@@ -721,8 +721,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
 		case Instruction::CALLDATALOAD:
 		{
-			auto index = stack.pop();
-			auto value = _ext.calldataload(index);
+			auto idx = stack.pop();
+			auto value = _ext.calldataload(idx);
 			stack.push(value);
 			break;
 		}
