@@ -519,63 +519,61 @@ QString Main::pretty(dev::Address _a) const
 		if (s.size())
 			return s;
 	}
-	h256 n;
-	return fromRaw(n);
+	return QString();
 }
 
 QString Main::render(dev::Address _a) const
 {
 	QString p = pretty(_a);
+	QString n;
 	try {
-		p += QString(p.isEmpty() ? "" : " ") + QString::fromStdString(ICAP(_a).encoded());
+		n = QString::fromStdString(ICAP(_a).encoded());
 	}
-	catch (...)
-	{
-		return p + " (" + QString::fromStdString(_a.abridged()) + ")";
+	catch (...) {
+		n = QString::fromStdString(_a.abridged());
 	}
-	return QString::fromStdString(_a.abridged());
+	return p.isEmpty() ? n : (p + " " + n);
 }
 
-Address Main::fromString(QString const& _n) const
+pair<Address, bytes> Main::fromString(QString const& _n) const
 {
 	if (_n == "(Create Contract)")
-		return Address();
+		return make_pair(Address(), bytes());
 
 	auto g_newNameReg = getNameReg();
 	if (g_newNameReg)
 	{
-		Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn("getAddress(bytes32)", ::toString32(_n.toStdString()))).output);
+		Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn("addr(bytes32)", ::toString32(_n.toStdString()))).output);
 		if (a)
-			return a;
+			return make_pair(a, bytes());
 	}
 	if (_n.size() == 40)
 	{
 		try
 		{
-			return Address(fromHex(_n.toStdString(), WhenError::Throw));
+			return make_pair(Address(fromHex(_n.toStdString(), WhenError::Throw)), bytes());
 		}
 		catch (BadHexCharacter& _e)
 		{
 			cwarn << "invalid hex character, address rejected";
 			cwarn << boost::diagnostic_information(_e);
-			return Address();
+			return make_pair(Address(), bytes());
 		}
 		catch (...)
 		{
 			cwarn << "address rejected";
-			return Address();
+			return make_pair(Address(), bytes());
 		}
 	}
 	else
 		try {
-			Address a = ICAP::decoded(_n.toStdString()).address([&](Address const& a, bytes const& b) -> bytes
+			return ICAP::decoded(_n.toStdString()).address([&](Address const& a, bytes const& b) -> bytes
 			{
 				return ethereum()->call(a, b).output;
-			}, g_newNameReg).first;
-			return a;
+			}, g_newNameReg);
 		}
 		catch (...) {}
-	return Address();
+	return make_pair(Address(), bytes());
 }
 
 QString Main::lookup(QString const& _a) const
