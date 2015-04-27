@@ -360,18 +360,17 @@ llvm::Value* Arith256::mul(llvm::Value* _arg1, llvm::Value* _arg2)
 
 std::pair<llvm::Value*, llvm::Value*> Arith256::div(llvm::Value* _arg1, llvm::Value* _arg2)
 {
-	// FIXME: Disabled because of llvm::APInt::urem bug
-//	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
-//	{
-//		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
-//		{
-//			if (!c2->getValue())
-//				return std::make_pair(Constant::get(0), Constant::get(0));
-//			auto div = Constant::get(c1->getValue().udiv(c2->getValue()));
-//			auto mod = Constant::get(c1->getValue().urem(c2->getValue()));
-//			return std::make_pair(div, mod);
-//		}
-//	}
+	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
+	{
+		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
+		{
+			if (!c2->getValue())
+				return std::make_pair(Constant::get(0), Constant::get(0));
+			auto div = Constant::get(c1->getValue().udiv(c2->getValue()));
+			auto mod = Constant::get(c1->getValue().urem(c2->getValue()));
+			return std::make_pair(div, mod);
+		}
+	}
 
 	auto r = createCall(getDivFunc(Type::Word), {_arg1, _arg2});
 	auto div =  m_builder.CreateExtractValue(r, 0, "div");
@@ -381,18 +380,17 @@ std::pair<llvm::Value*, llvm::Value*> Arith256::div(llvm::Value* _arg1, llvm::Va
 
 std::pair<llvm::Value*, llvm::Value*> Arith256::sdiv(llvm::Value* _x, llvm::Value* _y)
 {
-	// FIXME: Disabled because of llvm::APInt::urem bug
-//	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_x))
-//	{
-//		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_y))
-//		{
-//			if (!c2->getValue())
-//				return std::make_pair(Constant::get(0), Constant::get(0));
-//			auto div = Constant::get(c1->getValue().sdiv(c2->getValue()));
-//			auto mod = Constant::get(c1->getValue().srem(c2->getValue()));
-//			return std::make_pair(div, mod);
-//		}
-//	}
+	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_x))
+	{
+		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_y))
+		{
+			if (!c2->getValue())
+				return std::make_pair(Constant::get(0), Constant::get(0));
+			auto div = Constant::get(c1->getValue().sdiv(c2->getValue()));
+			auto mod = Constant::get(c1->getValue().srem(c2->getValue()));
+			return std::make_pair(div, mod);
+		}
+	}
 
 	auto xIsNeg = m_builder.CreateICmpSLT(_x, Constant::get(0));
 	auto xNeg = m_builder.CreateSub(Constant::get(0), _x);
@@ -447,42 +445,40 @@ llvm::Value* Arith256::exp(llvm::Value* _arg1, llvm::Value* _arg2)
 
 llvm::Value* Arith256::addmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3)
 {
-	// FIXME: Disabled because of llvm::APInt::urem bug
-//	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
-//	{
-//		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
-//		{
-//			if (auto c3 = llvm::dyn_cast<llvm::ConstantInt>(_arg3))
-//			{
-//				if (!c3->getValue())
-//					return Constant::get(0);
-//				auto s = c1->getValue().zext(256+64) + c2->getValue().zext(256+64);
-//				auto r = s.urem(c3->getValue().zext(256+64)).trunc(256);
-//				return Constant::get(r);
-//			}
-//		}
-//	}
+	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
+	{
+		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
+		{
+			if (auto c3 = llvm::dyn_cast<llvm::ConstantInt>(_arg3))
+			{
+				if (!c3->getValue())
+					return Constant::get(0);
+				auto s = c1->getValue().zext(256+64) + c2->getValue().zext(256+64);
+				auto r = s.urem(c3->getValue().zext(256+64)).trunc(256);
+				return Constant::get(r);
+			}
+		}
+	}
 
 	return createCall(getAddModFunc(), {_arg1, _arg2, _arg3});
 }
 
 llvm::Value* Arith256::mulmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3)
 {
-	// FIXME: Disabled because of llvm::APInt::urem bug
-//	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
-//	{
-//		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
-//		{
-//			if (auto c3 = llvm::dyn_cast<llvm::ConstantInt>(_arg3))
-//			{
-//				if (!c3->getValue())
-//					return Constant::get(0);
-//				auto p = c1->getValue().zext(512) * c2->getValue().zext(512);
-//				auto r = p.urem(c3->getValue().zext(512)).trunc(256);
-//				return Constant::get(r);
-//			}
-//		}
-//	}
+	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
+	{
+		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
+		{
+			if (auto c3 = llvm::dyn_cast<llvm::ConstantInt>(_arg3))
+			{
+				if (!c3->getValue())
+					return Constant::get(0);
+				auto p = c1->getValue().zext(512) * c2->getValue().zext(512);
+				auto r = p.urem(c3->getValue().zext(512)).trunc(256);
+				return Constant::get(r);
+			}
+		}
+	}
 
 	return createCall(getMulModFunc(), {_arg1, _arg2, _arg3});
 }
