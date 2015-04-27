@@ -328,7 +328,8 @@ void Main::installWatches()
 
 Address Main::getNameReg() const
 {
-	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)1)).output);
+	return Address("c6d9d2cd449a754c494264e1809c50e34d64562b");
+//	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)1)).output);
 }
 
 Address Main::getCurrencies() const
@@ -514,7 +515,7 @@ QString Main::pretty(dev::Address _a) const
 
 	if (g_newNameReg)
 	{
-		QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(g_newNameReg, abiIn("nameOf(address)", _a)).output)));
+		QString s = QString::fromStdString(toString(abiOut<string32>(ethereum()->call(g_newNameReg, abiIn("getName(address)", _a)).output)));
 		if (s.size())
 			return s;
 	}
@@ -525,19 +526,14 @@ QString Main::pretty(dev::Address _a) const
 QString Main::render(dev::Address _a) const
 {
 	QString p = pretty(_a);
-	if (!_a[0])
+	try {
 		p += QString(p.isEmpty() ? "" : " ") + QString::fromStdString(ICAP(_a).encoded());
-	if (!p.isEmpty())
+	}
+	catch (...)
+	{
 		return p + " (" + QString::fromStdString(_a.abridged()) + ")";
+	}
 	return QString::fromStdString(_a.abridged());
-}
-
-string32 fromString(string const& _s)
-{
-	string32 ret;
-	for (unsigned i = 0; i < 32 && i <= _s.size(); ++i)
-		ret[i] = i < _s.size() ? _s[i] : 0;
-	return ret;
 }
 
 Address Main::fromString(QString const& _n) const
@@ -548,7 +544,7 @@ Address Main::fromString(QString const& _n) const
 	auto g_newNameReg = getNameReg();
 	if (g_newNameReg)
 	{
-		Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn("addressOf(string32)", ::fromString(_n.toStdString()))).output);
+		Address a = abiOut<Address>(ethereum()->call(g_newNameReg, abiIn("getAddress(bytes32)", ::toString32(_n.toStdString()))).output);
 		if (a)
 			return a;
 	}
@@ -570,10 +566,16 @@ Address Main::fromString(QString const& _n) const
 			return Address();
 		}
 	}
-	else if (Address a = ICAP::decoded(_n.toStdString()).direct())
-		return a;
 	else
-		return Address();
+		try {
+			Address a = ICAP::decoded(_n.toStdString()).address([&](Address const& a, bytes const& b) -> bytes
+			{
+				return ethereum()->call(a, b).output;
+			}, g_newNameReg).first;
+			return a;
+		}
+		catch (...) {}
+	return Address();
 }
 
 QString Main::lookup(QString const& _a) const
@@ -1371,7 +1373,7 @@ void Main::on_inject_triggered()
 	try
 	{
 		bytes b = fromHex(s.toStdString(), WhenError::Throw);
-		ethereum()->inject(&b);
+		ethereum()->injectTransaction(b);
 	}
 	catch (BadHexCharacter& _e)
 	{

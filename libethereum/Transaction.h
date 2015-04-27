@@ -165,6 +165,12 @@ public:
 	/// @returns the receiving address of the message-call transaction (undefined for contract-creation transactions).
 	Address receiveAddress() const { return m_receiveAddress; }
 
+	/// Synonym for receiveAddress().
+	Address to() const { return m_receiveAddress; }
+
+	/// Synonym for safeSender().
+	Address from() const { return safeSender(); }
+
 	/// @returns the data associated with this (message-call) transaction. Synonym for initCode().
 	bytes const& data() const { return m_data; }
 	/// @returns the initialisation code associated with this (contract-creation) transaction. Synonym for data().

@@ -85,6 +85,12 @@ public:
 	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) = 0;
 	ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, FudgeFactor _ff = FudgeFactor::Strict) { return create(_secret, _value, _data, _gas, _gasPrice, m_default, _ff); }
 
+	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
+	virtual ImportResult injectTransaction(bytes const& _rlp) = 0;
+
+	/// Injects the RLP-encoded block given by the _rlp into the block queue directly.
+	virtual ImportResult injectBlock(bytes const& _block) = 0;
+
 	// [STATE-QUERY API]
 
 	int getDefault() const { return m_default; }
