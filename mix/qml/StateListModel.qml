@@ -246,7 +246,7 @@ Item {
 		function addNewContracts() {
 			//add new contracts for all states
 			var changed = false;
-			for(var c in codeModel.contracts) {
+			for (var c in codeModel.contracts) {
 				for (var s = 0; s < stateListModel.count; s++) {
 					var state = stateList[s];
 					for (var t = 0; t < state.transactions.length; t++) {

@@ -26,8 +26,10 @@
 #include <atomic>
 #include <map>
 #include <QString>
+#include <QQmlListProperty>
 #include <QVariantMap>
 #include <QFuture>
+#include <QVariableDeclaration.h>
 #include "MachineStates.h"
 
 namespace dev
@@ -153,6 +155,10 @@ public:
 	Q_INVOKABLE void mine();
 	/// Get/set code model. Should be set from qml
 	Q_PROPERTY(CodeModel* codeModel MEMBER m_codeModel)
+	/// Encode parameters
+	Q_INVOKABLE QStringList encodeParams(QVariant const& _param, QString const& _contract, QString const& _function);
+	/// Encode parameter
+	Q_INVOKABLE QString encodeString(QString const& _param);
 
 public slots:
 	/// Setup state, run transaction sequence, show debugger for the last transaction
