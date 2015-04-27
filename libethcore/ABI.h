@@ -31,6 +31,14 @@ namespace dev
 namespace eth
 {
 
+inline string32 toString32(std::string const& _s)
+{
+	string32 ret;
+	for (unsigned i = 0; i < 32; ++i)
+		ret[i] = i < _s.size() ? _s[i] : 0;
+	return ret;
+}
+
 template <class T> struct ABISerialiser {};
 template <unsigned N> struct ABISerialiser<FixedHash<N>> { static bytes serialise(FixedHash<N> const& _t) { static_assert(N <= 32, "Cannot serialise hash > 32 bytes."); static_assert(N > 0, "Cannot serialise zero-length hash."); return bytes(32 - N, 0) + _t.asBytes(); } };
 template <> struct ABISerialiser<u256> { static bytes serialise(u256 const& _t) { return h256(_t).asBytes(); } };
