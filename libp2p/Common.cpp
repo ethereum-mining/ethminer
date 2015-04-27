@@ -144,6 +144,31 @@ std::string p2p::reasonOf(DisconnectReason _r)
 	}
 }
 
+void NodeIPEndpoint::streamRLP(RLPStream& _s, RLPAppend _inline) const
+{
+	if (_inline == StreamList)
+		_s.appendList(3);
+	if (address.is_v4())
+		_s << bytesConstRef(&address.to_v4().to_bytes()[0], 4);
+	else if (address.is_v6())
+		_s << bytesConstRef(&address.to_v6().to_bytes()[0], 16);
+	else
+		_s << bytes();
+	_s << udpPort << tcpPort;
+}
+
+void NodeIPEndpoint::interpretRLP(RLP const& _r)
+{
+	if (_r[0].size() == 4)
+		address = bi::address_v4(*(bi::address_v4::bytes_type*)_r[0].toBytes().data());
+	else if (_r[0].size() == 16)
+		address = bi::address_v6(*(bi::address_v6::bytes_type*)_r[0].toBytes().data());
+	else
+		address = bi::address();
+	udpPort = _r[1].toInt<uint16_t>();
+	tcpPort = _r[2].toInt<uint16_t>();
+}
+
 namespace dev {
 	
 std::ostream& operator<<(std::ostream& _out, dev::p2p::NodeIPEndpoint const& _ep)
