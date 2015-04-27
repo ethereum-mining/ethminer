@@ -25,11 +25,7 @@ set(EXECUTABLE p2p)
 
 file(GLOB HEADERS "*.h")
 
-if(ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
-else()
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
-endif()
+add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 if (MINIUPNPC_FOUND)
 	target_link_libraries(${EXECUTABLE} ${MINIUPNPC_LIBRARIES})
