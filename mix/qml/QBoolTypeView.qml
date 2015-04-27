@@ -6,6 +6,7 @@ Item
 	id: editRoot
 	property string value
 	property string defaultValue
+	property alias readOnly: !boolCombo.enabled
 	height: 20
 	width: 150
 
