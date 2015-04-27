@@ -35,7 +35,6 @@ enum class EnvFunc
 	log,
 	blockhash,
 	extcode,
-	calldataload,  // Helper function, not client Env interface
 
 	_size
 };
