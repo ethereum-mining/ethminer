@@ -328,6 +328,7 @@ if (JSONRPC)
 endif()
 
 add_subdirectory(libjsengine)
+add_subdirectory(libjsconsole)
 add_subdirectory(secp256k1)
 add_subdirectory(libp2p)
 add_subdirectory(libdevcrypto)
