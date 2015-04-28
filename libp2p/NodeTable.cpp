@@ -485,7 +485,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			case FindNode::type:
 			{
 				FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
-				if (RLPXDatagramFace::secondsSinceEpoch() - in.ts > 3)
+				if (RLPXDatagramFace::secondsSinceEpoch() > in.ts)
 				{
 					clog(NodeTableTriviaSummary) << "Received expired FindNode from " << _from.address().to_string() << ":" << _from.port();
 					return;
@@ -509,7 +509,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				PingNode in = PingNode::fromBytesConstRef(_from, rlpBytes);
 				if (in.version != dev::p2p::c_protocolVersion)
 					return;
-				if (RLPXDatagramFace::secondsSinceEpoch() - in.ts > 3)
+				if (RLPXDatagramFace::secondsSinceEpoch() > in.ts)
 				{
 					clog(NodeTableTriviaSummary) << "Received expired PingNode from " << _from.address().to_string() << ":" << _from.port();
 					return;
