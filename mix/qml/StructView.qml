@@ -7,10 +7,12 @@ Column
 {
 	id: root
 	property alias members: repeater.model  //js array
+	property variant accounts
 	property var value: ({})
 	property int transactionIndex
+	property string context
 	Layout.fillWidth: true
-	spacing: 10
+	spacing: 0
 	Repeater
 	{
 		id: repeater
@@ -20,7 +22,7 @@ Column
 		RowLayout
 		{
 			id: row
-			height: 30 + (members[index].type.category === QSolidityType.Struct ? (20 * members[index].type.members.length) : 0)
+			height: 20 + (members[index].type.category === QSolidityType.Struct ? (20 * members[index].type.members.length) : 0)
 			Layout.fillWidth: true
 			DefaultLabel {
 				height: 20
@@ -30,12 +32,14 @@ Column
 			}
 
 			DefaultLabel {
+				height: 20
 				id: nameLabel
 				text: modelData.name
 				anchors.verticalCenter: parent.verticalCenter
 			}
 
 			DefaultLabel {
+				height: 20
 				id: equalLabel
 				text: "="
 				anchors.verticalCenter: parent.verticalCenter
@@ -43,6 +47,7 @@ Column
 			Loader
 			{
 				id: typeLoader
+				height: 20
 				anchors.verticalCenter: parent.verticalCenter
 				sourceComponent:
 				{
@@ -67,23 +72,42 @@ Column
 					var ptype = members[index].type;
 					var pname = members[index].name;
 					var vals = value;
+					item.readOnly = context === "variable";
 					if (ptype.category === QSolidityType.Address)
 					{
-						item.contractCreationTr.append({"functionId": " - "});
-						var trCr = -1;
-						for (var k = 0; k < transactionsModel.count; k++)
+						item.value = getValue();
+						if (context === "parameter")
 						{
-							if (k >= transactionIndex)
-								break;
-							var tr = transactionsModel.get(k);
-							if (tr.functionId === tr.contractId)
+							var dec = modelData.type.name.split(" ");
+							item.subType = dec[0];
+							item.accountRef.append({"itemid": " - "});
+
+							if (item.subType === "contract" || item.subType === "address")
 							{
-								trCr++;
-								if (modelData.type.name === qsTr("contract") + " " + tr.contractId)
-									item.contractCreationTr.append({ "functionId": tr.contractId + " - " + trCr });
+								var trCr = 0;
+								for (var k = 0; k < transactionsModel.count; k++)
+								{
+									if (k >= transactionIndex)
+										break;
+									var tr = transactionsModel.get(k);
+									if (tr.functionId === tr.contractId && (dec[1] === tr.contractId || item.subType === "address"))
+									{
+										item.accountRef.append({ "itemid": tr.contractId + " - " + trCr, "value": "<" + tr.contractId + " - " + trCr + ">", "type": "contract" });
+										trCr++;
+									}
+								}
+							}
+							if (item.subType === "address")
+							{
+								for (k = 0; k < accounts.length; k++)
+								{
+									if (accounts[k].address === undefined)
+										accounts[k].address = clientModel.address(accounts[k].secret);
+									item.accountRef.append({ "itemid": accounts[k].name, "value": "0x" + accounts[k].address, "type": "address" });
+								}
+
 							}
 						}
-						item.value = getValue();
 						item.init();
 					}
 					else if (ptype.category === QSolidityType.Struct && !item.members)
@@ -98,6 +122,10 @@ Column
 						vals[pname] = item.value;
 						valueChanged();
 					});
+
+					var newWidth = nameLabel.width + typeLabel.width + item.width + 108;
+					if (root.width < newWidth)
+						root.width = newWidth;
 				}
 
 				function getValue()

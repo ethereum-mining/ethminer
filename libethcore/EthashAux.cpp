@@ -64,7 +64,7 @@ ethash_params EthashAux::params(unsigned _n)
 h256 EthashAux::seedHash(unsigned _number)
 {
 	unsigned epoch = _number / ETHASH_EPOCH_LENGTH;
-	RecursiveGuard l(get()->x_this);
+	Guard l(get()->x_epochs);
 	if (epoch >= get()->m_seedHashes.size())
 	{
 		h256 ret;
@@ -87,7 +87,7 @@ h256 EthashAux::seedHash(unsigned _number)
 
 ethash_params EthashAux::params(h256 const& _seedHash)
 {
-	RecursiveGuard l(get()->x_this);
+	Guard l(get()->x_epochs);
 	unsigned epoch = 0;
 	try
 	{

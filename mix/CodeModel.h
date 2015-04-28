@@ -117,7 +117,7 @@ private:
 	friend class CodeModel;
 };
 
-using ContractMap = QHash<QString, CompiledContract*>;
+using ContractMap = QMap<QString, CompiledContract*>; //needs to be sorted
 
 /// Code compilation model. Compiles contracts in background an provides compiled contract data
 class CodeModel: public QObject
@@ -182,6 +182,7 @@ private:
 	void runCompilationJob(int _jobId);
 	void stop();
 	void releaseContracts();
+	void collectContracts(solidity::CompilerStack const& _cs);
 
 	std::atomic<bool> m_compiling;
 	mutable dev::Mutex x_contractMap;

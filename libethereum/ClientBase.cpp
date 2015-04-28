@@ -114,9 +114,9 @@ ExecutionResult ClientBase::create(Secret _secret, u256 _value, bytes const& _da
 	return ret;
 }
 
-void ClientBase::injectBlock(bytes const& _block)
+ImportResult ClientBase::injectBlock(bytes const& _block)
 {
-	bc().import(_block, preMine().db());
+	return bc().attemptImport(_block, preMine().db()).first;
 }
 
 u256 ClientBase::balanceAt(Address _a, BlockNumber _block) const

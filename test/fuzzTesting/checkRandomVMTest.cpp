@@ -25,7 +25,8 @@
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Log.h>
 #include <libevm/VMFactory.h>
-#include "../libevm/vm.h"
+#include <test/libevm/vm.h>
+#include <test/TestHelper.h>
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
