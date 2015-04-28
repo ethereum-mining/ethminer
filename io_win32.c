@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <Shlobj.h>
 
 FILE* ethash_fopen(char const* file_name, char const* mode)
 {
@@ -88,9 +89,6 @@ bool ethash_get_default_dirname(char* strbuf, size_t buffsize)
 {
 	strbuf[0] = '\n';
 	if (!SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, (WCHAR*)strbuf))) {
-		return false;
-	}
-	if (!ethash_strncat(strbuf, buffsize, home_dir, len)) {
 		return false;
 	}
 	if (!ethash_strncat(strbuf, buffsize, "\\", 1)) {
