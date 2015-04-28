@@ -61,6 +61,7 @@ protected:
  */
 struct RLPXDatagramFace: public UDPDatagram
 {
+	static uint32_t futureFromEpoch(std::chrono::seconds _sec) { return std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count(); }
 	static uint32_t secondsSinceEpoch() { return std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now()).time_since_epoch()).count(); }
 	static Public authenticate(bytesConstRef _sig, bytesConstRef _rlp);
 
