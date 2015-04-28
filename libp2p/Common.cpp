@@ -144,9 +144,9 @@ std::string p2p::reasonOf(DisconnectReason _r)
 	}
 }
 
-void NodeIPEndpoint::streamRLP(RLPStream& _s, RLPAppend _inline) const
+void NodeIPEndpoint::streamRLP(RLPStream& _s, RLPAppend _append) const
 {
-	if (_inline == StreamList)
+	if (_append == StreamList)
 		_s.appendList(3);
 	if (address.is_v4())
 		_s << bytesConstRef(&address.to_v4().to_bytes()[0], 4);

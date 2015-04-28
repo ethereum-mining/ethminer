@@ -186,7 +186,7 @@ struct NodeIPEndpoint
 	
 	bool isAllowed() const { return NodeIPEndpoint::test_allowLocal ? !address.is_unspecified() : isPublicAddress(address); }
 	
-	void streamRLP(RLPStream& _s, RLPAppend _inline = StreamList) const;
+	void streamRLP(RLPStream& _s, RLPAppend _append = StreamList) const;
 	void interpretRLP(RLP const& _r);
 };
 	
