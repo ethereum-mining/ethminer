@@ -12,6 +12,7 @@ aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ..)
 include_directories(${V8_INCLUDE_DIRS})
+include_directories(${READLINE_INCLUDE_DIRS})
 
 set(EXECUTABLE jsconsole)
 
@@ -20,6 +21,8 @@ file(GLOB HEADERS "*.h")
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} jsengine)
+target_link_libraries(${EXECUTABLE} devcore)
+target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
