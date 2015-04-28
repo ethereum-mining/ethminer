@@ -55,10 +55,10 @@ char* ethash_io_create_filename(
 )
 {
 	size_t dirlen = strlen(dirname);
-    size_t dest_size = dirlen + filename_length + 1;
-    if (dirname[dirlen] != '/') {
-        dest_size += 1;
-    }
+	size_t dest_size = dirlen + filename_length + 1;
+	if (dirname[dirlen] != '/') {
+		dest_size += 1;
+	}
 	char* name = malloc(dest_size);
 	if (!name) {
 		return NULL;
@@ -66,9 +66,9 @@ char* ethash_io_create_filename(
 
 	name[0] = '\0';
 	ethash_strncat(name, dest_size, dirname, dirlen);
-    if (dirname[dirlen] != '/') {
-        ethash_strncat(name, dest_size, "/", 1);
-    }
+	if (dirname[dirlen] != '/') {
+		ethash_strncat(name, dest_size, "/", 1);
+	}
 	ethash_strncat(name, dest_size, filename, filename_length);
 	return name;
 }
@@ -82,4 +82,20 @@ bool ethash_file_size(FILE* f, size_t* ret_size)
 	}
 	*ret_size = st.st_size;
 	return true;
+}
+
+bool ethash_get_default_dirname(char* strbuf, size_t buffsize)
+{
+	strbuf[0] = '\n';
+	char* home_dir = getenv("HOME");
+	size_t len = strlen(home_dir);
+	if (!ethash_strncat(strbuf, buffsize, home_dir, len)) {
+		return false;
+	}
+	if (home_dir[len] != '/') {
+		if (!ethash_strncat(strbuf, buffsize, "/", 1)) {
+			return false;
+		}
+	}
+	return ethash_strncat(strbuf, buffsize, ".ethash/", 8);
 }

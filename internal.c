@@ -90,46 +90,14 @@ bool static ethash_compute_cache_nodes(
 	return true;
 }
 
-ethash_cache_t* ethash_cache_new(uint64_t cache_size, ethash_h256_t const* seed)
-{
-	ethash_cache_t* ret;
-	ret = malloc(sizeof(*ret));
-	if (!ret) {
-		return NULL;
-	}
-	ret->mem = malloc((size_t)cache_size);
-	if (!ret->mem) {
-		goto fail_free_cache;
-	}
-
-	node* nodes = (node*)ret->mem;
-	if (!ethash_compute_cache_nodes(nodes, cache_size, seed)) {
-		goto fail_free_cache_mem;
-	}
-	ret->cache_size = cache_size;
-	return ret;
-
-fail_free_cache_mem:
-	free(ret->mem);
-fail_free_cache:
-	free(ret);
-	return NULL;
-}
-
-void ethash_cache_delete(ethash_cache_t* c)
-{
-	free(c->mem);
-	free(c);
-}
-
 void ethash_calculate_dag_item(
 	node* const ret,
 	const unsigned node_index,
-	ethash_cache_t const* cache
+	ethash_light_t const light
 )
 {
-	uint32_t num_parent_nodes = (uint32_t) (cache->cache_size / sizeof(node));
-	node const* cache_nodes = (node const *) cache->mem;
+	uint32_t num_parent_nodes = (uint32_t) (light->cache_size / sizeof(node));
+	node const* cache_nodes = (node const *) light->cache;
 	node const* init = &cache_nodes[node_index % num_parent_nodes];
 	memcpy(ret, init, sizeof(node));
 	ret->words[0] ^= node_index;
@@ -174,7 +142,7 @@ void ethash_calculate_dag_item(
 	SHA3_512(ret->bytes, ret->bytes, sizeof(node));
 }
 
-bool ethash_compute_full_data(void* mem, uint64_t full_size, ethash_cache_t const* cache)
+bool ethash_compute_full_data(void* mem, uint64_t full_size, ethash_light_t const light)
 {
 	if (full_size % (sizeof(uint32_t) * MIX_WORDS) != 0 ||
 		(full_size % sizeof(node)) != 0) {
@@ -183,7 +151,7 @@ bool ethash_compute_full_data(void* mem, uint64_t full_size, ethash_cache_t cons
 	node* full_nodes = mem;
 	// now compute full nodes
 	for (unsigned n = 0; n != (full_size / sizeof(node)); ++n) {
-		ethash_calculate_dag_item(&(full_nodes[n]), n, cache);
+		ethash_calculate_dag_item(&(full_nodes[n]), n, light);
 	}
 	return true;
 }
@@ -191,9 +159,9 @@ bool ethash_compute_full_data(void* mem, uint64_t full_size, ethash_cache_t cons
 static bool ethash_hash(
 	ethash_return_value_t* ret,
 	node const* full_nodes,
-	ethash_cache_t const* cache,
+	ethash_light_t const light,
 	uint64_t full_size,
-	ethash_h256_t const* header_hash,
+	ethash_h256_t const header_hash,
 	uint64_t const nonce,
 	ethash_callback_t callback
 )
@@ -205,7 +173,7 @@ static bool ethash_hash(
 	// pack hash and nonce together into first 40 bytes of s_mix
 	assert(sizeof(node) * 8 == 512);
 	node s_mix[MIX_NODES + 1];
-	memcpy(s_mix[0].bytes, header_hash, 32);
+	memcpy(s_mix[0].bytes, &header_hash, 32);
 	fix_endian64(s_mix[0].double_words[4], nonce);
 
 	// compute sha3-512 hash and replicate across mix
@@ -236,7 +204,7 @@ static bool ethash_hash(
 				dag_node = &full_nodes[MIX_NODES * index + n];
 			} else {
 				node tmp_node;
-				ethash_calculate_dag_item(&tmp_node, index * MIX_NODES + n, cache);
+				ethash_calculate_dag_item(&tmp_node, index * MIX_NODES + n, light);
 				dag_node = &tmp_node;
 			}
 
@@ -295,7 +263,7 @@ void ethash_quick_hash(
 	SHA3_256(return_hash, buf, 64 + 32);
 }
 
-void ethash_get_seedhash(ethash_h256_t* seedhash, const uint32_t block_number)
+void ethash_get_seedhash(ethash_h256_t* seedhash, uint64_t const block_number)
 {
 	ethash_h256_reset(seedhash);
 	const uint32_t epochs = block_number / ETHASH_EPOCH_LENGTH;
@@ -316,44 +284,61 @@ int ethash_quick_check_difficulty(
 	return ethash_check_difficulty(&return_hash, difficulty);
 }
 
-ethash_light_t ethash_light_new(uint64_t cache_size, ethash_h256_t const* seed)
+ethash_light_t ethash_light_new_internal(uint64_t cache_size, ethash_h256_t const* seed)
 {
 	struct ethash_light *ret;
 	ret = calloc(sizeof(*ret), 1);
 	if (!ret) {
 		return NULL;
 	}
-	ret->cache = ethash_cache_new(cache_size, seed);
+	ret->cache = malloc((size_t)cache_size);
 	if (!ret->cache) {
 		goto fail_free_light;
 	}
+	node* nodes = (node*)ret->cache;
+	if (!ethash_compute_cache_nodes(nodes, cache_size, seed)) {
+		goto fail_free_cache_mem;
+	}
+	ret->cache_size = cache_size;
 	return ret;
 
+fail_free_cache_mem:
+	free(ret->cache);
 fail_free_light:
 	free(ret);
 	return NULL;
 }
 
+ethash_light_t ethash_light_new(uint64_t const block_number)
+{
+	ethash_h256_t seedhash;
+	ethash_light_t ret;
+	ethash_get_seedhash(&seedhash, block_number);
+	ret = ethash_light_new_internal(ethash_get_cachesize(block_number), &seedhash);
+	ret->block_number = block_number;
+	return ret;
+}
+
 void ethash_light_delete(ethash_light_t light)
 {
 	if (light->cache) {
-		ethash_cache_delete(light->cache);
+		free(light->cache);
 	}
 	free(light);
 }
 
-bool ethash_light_compute(
+bool ethash_light_compute_internal(
 	ethash_return_value_t* ret,
 	ethash_light_t light,
 	uint64_t full_size,
-	const ethash_h256_t* header_hash,
+	const ethash_h256_t header_hash,
 	uint64_t const nonce
 )
 {
 	return ethash_hash(
 		ret,
 		NULL,
-		light->cache,
+		light,
 		full_size,
 		header_hash,
 		nonce,
@@ -361,17 +346,22 @@ bool ethash_light_compute(
 	);
 }
 
-ethash_cache_t *ethash_light_get_cache(ethash_light_t light)
+ethash_return_value_t ethash_light_compute(
+	ethash_light_t light,
+	const ethash_h256_t header_hash,
+	uint64_t const nonce
+)
 {
-	return light->cache;
-}
-
-ethash_cache_t *ethash_light_acquire_cache(ethash_light_t light)
-{
-	ethash_cache_t* ret = light->cache;
-	light->cache = 0;
+	ethash_return_value_t ret;
+	ret.success = true;
+	uint64_t full_size = ethash_get_datasize(light->block_number);
+	if (!ethash_light_compute_internal(&ret, light, full_size, header_hash, nonce)) {
+		ret.success = false;
+	}
 	return ret;
 }
+
+
 
 static bool ethash_mmap(struct ethash_full* ret, FILE* f)
 {
@@ -391,11 +381,11 @@ static bool ethash_mmap(struct ethash_full* ret, FILE* f)
 	return ret->data != MAP_FAILED;
 }
 
-ethash_full_t ethash_full_new(
+ethash_full_t ethash_full_new_internal(
 	char const* dirname,
 	ethash_h256_t const* seed_hash,
 	uint64_t full_size,
-	ethash_cache_t const* cache,
+	ethash_light_t const light,
 	ethash_callback_t callback
 )
 {
@@ -427,7 +417,7 @@ ethash_full_t ethash_full_new(
 		break;
 	}
 
-	if (!ethash_compute_full_data(ret->data, full_size, cache)) {
+	if (!ethash_compute_full_data(ret->data, full_size, light)) {
 		goto fail_free_full_data;
 	}
 	ret->callback = callback;
@@ -443,6 +433,18 @@ fail_free_full:
 	return NULL;
 }
 
+ethash_full_t ethash_full_new(ethash_light_t light, ethash_callback_t callback)
+{
+	char strbuf[256];
+	if (!ethash_get_default_dirname(strbuf, 256)) {
+		return NULL;
+	}
+	uint64_t full_size = ethash_get_datasize(light->block_number);
+	ethash_h256_t seedhash;
+	ethash_get_seedhash(&seedhash, light->block_number);
+	return ethash_full_new_internal(strbuf, &seedhash, full_size, light, callback);
+}
+
 void ethash_full_delete(ethash_full_t full)
 {
 	// could check that munmap(..) == 0 but even if it did not can't really do anything here
@@ -453,64 +455,33 @@ void ethash_full_delete(ethash_full_t full)
 	free(full);
 }
 
-bool ethash_full_compute(
-	ethash_return_value_t* ret,
+ethash_return_value_t ethash_full_compute(
 	ethash_full_t full,
-	ethash_h256_t const* header_hash,
+	ethash_h256_t const header_hash,
 	uint64_t const nonce
 )
 {
-	return ethash_hash(
-		ret,
+	ethash_return_value_t ret;
+	ret.success = true;
+	if (!ethash_hash(
+		&ret,
 		(node const*)full->data,
 		NULL,
 		full->file_size,
 		header_hash,
 		nonce,
-		full->callback
-	);
+		full->callback)) {
+		ret.success = false;
+	}
+	return ret;
 }
 
-void *ethash_full_data(ethash_full_t full)
+void const* ethash_full_dag(ethash_full_t full)
 {
-    return full->data;
+	return full->data;
 }
 
-/**
- * =========================
- * =	DEPRECATED API	   =
- * =========================
- *
- * Kept for backwards compatibility with whoever still uses it. Please consider
- * switching to the new API (look above)
- */
-void ethash_mkcache(
-	ethash_cache_t* cache,
-	ethash_params const* params,
-	ethash_h256_t const* seed
-)
+uint64_t ethash_full_dag_size(ethash_full_t full)
 {
-	node* nodes = (node*) cache->mem;
-	ethash_compute_cache_nodes(nodes, params->cache_size, seed);
-}
-
-void ethash_full(
-	ethash_return_value_t* ret,
-	void const* full_mem,
-	ethash_params const* params,
-	ethash_h256_t const* header_hash,
-	uint64_t const nonce
-)
-{
-	ethash_hash(ret, (node const *) full_mem, NULL, params->full_size, header_hash, nonce, NULL);
-}
-void ethash_light(
-	ethash_return_value_t* ret,
-	ethash_cache_t const* cache,
-	ethash_params const* params,
-	ethash_h256_t const* header_hash,
-	uint64_t const nonce
-)
-{
-	ethash_hash(ret, NULL, cache, params->full_size, header_hash, nonce, NULL);
+	return full->file_size;
 }

@@ -115,7 +115,7 @@ char* ethash_strncat(char* dest, size_t dest_size, char const* src, size_t count
 
 /**
  * A cross-platform mkdir wrapper to create a directory or assert it's there
- * 
+ *
  * @param dirname        The full path of the directory to create
  * @return               true if the directory was created or if it already
  *                       existed
@@ -133,7 +133,7 @@ bool ethash_file_size(FILE* f, size_t* ret_size);
 
 /**
  * Get a file descriptor number from a FILE stream
- * 
+ *
  * @param f            The file stream whose fd to get
  * @return             Platform specific fd handler
  */
@@ -153,6 +153,18 @@ char* ethash_io_create_filename(
 	char const* filename,
 	size_t filename_length
 );
+
+/**
+ * Gets the default directory name for the DAG depending on the system
+ *
+ * The spec defining this directory is here: https://github.com/ethereum/wiki/wiki/Ethash-DAG
+ *
+ * @param[out] strbuf          A string buffer of sufficient size to keep the
+ *                             null termninated string of the directory name
+ * @param[in]  buffsize        Size of @a strbuf in bytes
+ * @return                     true for success and false otherwise
+ */
+bool ethash_get_default_dirname(char* strbuf, size_t buffsize);
 
 static inline bool ethash_io_mutable_name(
 	uint32_t revision,
