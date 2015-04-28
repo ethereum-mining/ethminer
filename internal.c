@@ -43,14 +43,14 @@
 
 uint64_t ethash_get_datasize(uint32_t const block_number)
 {
-	assert(block_number / EPOCH_LENGTH < 2048);
-	return dag_sizes[block_number / EPOCH_LENGTH];
+	assert(block_number / ETHASH_EPOCH_LENGTH < 2048);
+	return dag_sizes[block_number / ETHASH_EPOCH_LENGTH];
 }
 
 uint64_t ethash_get_cachesize(uint32_t const block_number)
 {
-	assert(block_number / EPOCH_LENGTH < 2048);
-	return cache_sizes[block_number / EPOCH_LENGTH];
+	assert(block_number / ETHASH_EPOCH_LENGTH < 2048);
+	return cache_sizes[block_number / ETHASH_EPOCH_LENGTH];
 }
 
 // Follows Sergio's "STRICT MEMORY HARD HASHING FUNCTIONS" (2014)
@@ -73,7 +73,7 @@ bool static ethash_compute_cache_nodes(
 		SHA3_512(nodes[i].bytes, nodes[i - 1].bytes, 64);
 	}
 
-	for (unsigned j = 0; j != CACHE_ROUNDS; j++) {
+	for (unsigned j = 0; j != ETHASH_CACHE_ROUNDS; j++) {
 		for (unsigned i = 0; i != num_nodes; i++) {
 			uint32_t const idx = nodes[i].words[0] % num_nodes;
 			node data;
@@ -142,7 +142,7 @@ void ethash_calculate_dag_item(
 	__m128i xmm3 = ret->xmm[3];
 #endif
 
-	for (unsigned i = 0; i != DATASET_PARENTS; ++i) {
+	for (unsigned i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
 		uint32_t parent_index = ((node_index ^ i) * FNV_PRIME ^ ret->words[i % NODE_WORDS]) % num_parent_nodes;
 		node const *parent = &cache_nodes[parent_index];
 
@@ -224,9 +224,9 @@ static bool ethash_hash(
 	unsigned const page_size = sizeof(uint32_t) * MIX_WORDS;
 	unsigned const num_full_pages = (unsigned) (params->full_size / page_size);
 
-	double const progress_change = 1.0f / ACCESSES / MIX_NODES;
+	double const progress_change = 1.0f / ETHASH_ACCESSES / MIX_NODES;
 	double progress = 0.0f;
-	for (unsigned i = 0; i != ACCESSES; ++i) {
+	for (unsigned i = 0; i != ETHASH_ACCESSES; ++i) {
 		uint32_t const index = ((s_mix->words[0] ^ i) * FNV_PRIME ^ mix->words[i % MIX_WORDS]) % num_full_pages;
 
 		for (unsigned n = 0; n != MIX_NODES; ++n) {
@@ -302,7 +302,7 @@ void ethash_quick_hash(
 void ethash_get_seedhash(ethash_h256_t* seedhash, const uint32_t block_number)
 {
 	ethash_h256_reset(seedhash);
-	const uint32_t epochs = block_number / EPOCH_LENGTH;
+	const uint32_t epochs = block_number / ETHASH_EPOCH_LENGTH;
 	for (uint32_t i = 0; i < epochs; ++i)
 		SHA3_256(seedhash, (uint8_t*)seedhash, 32);
 }
