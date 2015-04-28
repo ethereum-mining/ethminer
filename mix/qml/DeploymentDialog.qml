@@ -25,7 +25,7 @@ Dialog {
 	property string packageBase64
 	property string eth: registrarAddr.text
 	property string currentAccount
-	property alias gasToUse: gasToUseInput.text
+	property string gasToUse: "0x188132" //gasToUseInput.text
 	property variant paramsModel: []
 
 	function close()
@@ -341,7 +341,7 @@ Dialog {
 						width: 200
 						id: applicationUrlEth
 						onTextChanged: {
-							appUrlFormatted.text = ProjectModelCode.formatAppUrl(text).join('/');
+							appUrlFormatted.text = NetworkDeploymentCode.formatAppUrl(text).join('/');
 						}
 					}
 
@@ -516,7 +516,7 @@ Dialog {
 							if (applicationUrlHttp.text.length > 32)
 								inError.push(qsTr(applicationUrlHttp.text));
 							if (!stopForInputError(inError))
-								ProjectModelCode.registerToUrlHint();
+								NetworkDeploymentCode.registerToUrlHint();
 						}
 					}
 				}

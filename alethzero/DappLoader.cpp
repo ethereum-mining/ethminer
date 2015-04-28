@@ -39,8 +39,8 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::crypto;
 
-Address c_registrar = Address("0000000000000000000000000000000000000a28");
-Address c_urlHint = Address("0000000000000000000000000000000000000a29");
+Address c_registrar = Address("6a16d3a392de03c67c1880acca6a9d650015c8ae");
+Address c_urlHint = Address("43c6d48ef55d10a786eb3e244824c820d5359b43");
 
 QString contentsOfQResource(std::string const& res);
 
@@ -73,19 +73,19 @@ DappLocation DappLoader::resolveAppUri(QString const& _uri)
 		string32 name = ZeroString32;
 		QByteArray utf8 = parts[partIndex].toUtf8();
 		std::copy(utf8.data(), utf8.data() + utf8.size(), name.data());
-		address = abiOut<Address>(web3()->ethereum()->call(address, abiIn("addr(string32)", name)).output);
+		address = abiOut<Address>(web3()->ethereum()->call(address, abiIn("subRegistrar(bytes32)", name)).output);
 		domainParts.append(parts[partIndex]);
 		if (!address)
 		{
 			//we have the address of the last part, try to get content hash
-			contentHash = abiOut<h256>(web3()->ethereum()->call(lastAddress, abiIn("content(string32)", name)).output);
+			contentHash = abiOut<h256>(web3()->ethereum()->call(lastAddress, abiIn("content(bytes32)", name)).output);
 			if (!contentHash)
 				throw dev::Exception() << errinfo_comment("Can't resolve address");
 		}
 		++partIndex;
 	}
 
-	string32 contentUrl = abiOut<string32>(web3()->ethereum()->call(c_urlHint, abiIn("url(hash256)", contentHash)).output);
+	string32 contentUrl = abiOut<string32>(web3()->ethereum()->call(c_urlHint, abiIn("url(bytes32)", contentHash)).output);
 	QString domain = domainParts.join('/');
 	parts.erase(parts.begin(), parts.begin() + partIndex);
 	QString path = parts.join('/');

@@ -158,7 +158,7 @@ public:
 	/// Encode parameters
 	Q_INVOKABLE QStringList encodeParams(QVariant const& _param, QString const& _contract, QString const& _function);
 	/// Encode parameter
-	Q_INVOKABLE QString encodeString(QString const& _param);
+	Q_INVOKABLE QString encodeStringParam(QString const& _param);
 
 public slots:
 	/// Setup state, run transaction sequence, show debugger for the last transaction
