@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "JSPrinter.h"
 #include "JSV8Engine.h"
 
 
@@ -12,11 +13,11 @@ namespace dev
 namespace eth
 {
 
-class JSV8Printer
+class JSV8Printer : public JSPrinter
 {
 public:
 	JSV8Printer(JSV8Engine const& _engine);
-	const char* print(v8::Handle<v8::Value> const& _value) const;
+	const char* prettyPrint(JSV8Value const& _value) const;
 };
 
 }

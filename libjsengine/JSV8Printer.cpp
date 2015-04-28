@@ -12,7 +12,7 @@ JSV8Printer::JSV8Printer(JSV8Engine const& _engine)
 
 }
 
-const char* JSV8Printer::print(v8::Handle<v8::Value> const& _value) const
+const char* JSV8Printer::prettyPrint(JSV8Value const& _value) const
 {
-	return "";
+	return nullptr;
 }

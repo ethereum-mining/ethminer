@@ -70,6 +70,19 @@ private:
 
 JSV8Env JSV8Engine::s_env = JSV8Env();
 
+const char* JSV8Value::asCString() const
+{
+	if (m_value.IsEmpty())
+	{
+		// TODO: handle exceptions
+		return "";
+	}
+	else if (m_value->IsUndefined())
+		return "undefined";
+	v8::String::Utf8Value str(m_value);
+	return *str ? *str : "<string conversion failed>";
+}
+
 JSV8Env::JSV8Env()
 {
 	static bool initialized = false;
@@ -102,7 +115,7 @@ JSV8Engine::~JSV8Engine()
 	m_isolate->Dispose();
 }
 
-v8::Handle<v8::Value> JSV8Engine::eval(const char* _cstr) const
+JSV8Value JSV8Engine::eval(const char* _cstr) const
 {
 	v8::HandleScope handleScope(m_isolate);
 //	v8::TryCatch tryCatch;
@@ -113,25 +126,10 @@ v8::Handle<v8::Value> JSV8Engine::eval(const char* _cstr) const
 	if (script.IsEmpty())
 	{
 		// TODO: handle exceptions
-		return v8::Handle<v8::Value>();
+		return JSV8Value(v8::Handle<v8::Value>());
 	}
 
-	return script->Run();
-}
-
-const char* JSV8Engine::evaluate(const char* _cstr) const
-{
-	v8::Handle<v8::Value> value = (eval(_cstr));
-
-	if (value.IsEmpty())
-	{
-		// TODO: handle exceptions
-		return "";
-	}
-	else if (value->IsUndefined())
-		return "undefined";
-	v8::String::Utf8Value str(value);
-	return *str ? *str : "<string conversion failed>";
+	return JSV8Value(script->Run());
 }
 
 v8::Handle<v8::Context> const& JSV8Engine::context() const
