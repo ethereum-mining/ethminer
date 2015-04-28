@@ -300,7 +300,8 @@ struct InvalidRLP: public Exception {};
 struct PingNode: RLPXDatagram<PingNode>
 {
 	/// Constructor used for sending PingNode.
-	PingNode(NodeIPEndpoint _src, NodeIPEndpoint _dest): RLPXDatagram<PingNode>(_dest), source(_src), destination(_dest), ts(secondsSinceEpoch()) {}
+	PingNode(NodeIPEndpoint _src, NodeIPEndpoint _dest): RLPXDatagram<PingNode>(_dest), source(_src), destination(_dest), ts(futureFromEpoch(std::chrono::seconds(60))) {}
+	
 	/// Constructor used to create empty PingNode for parsing inbound packets.
 	PingNode(bi::udp::endpoint _ep): RLPXDatagram<PingNode>(_ep), source(UnspecifiedNodeIPEndpoint), destination(UnspecifiedNodeIPEndpoint) {}
 
@@ -321,7 +322,7 @@ struct PingNode: RLPXDatagram<PingNode>
 struct Pong: RLPXDatagram<Pong>
 {
 	Pong(bi::udp::endpoint const& _ep): RLPXDatagram<Pong>(_ep), destination(UnspecifiedNodeIPEndpoint) {}
-	Pong(NodeIPEndpoint const& _dest): RLPXDatagram<Pong>((bi::udp::endpoint)_dest), destination(_dest), ts(secondsSinceEpoch()) {}
+	Pong(NodeIPEndpoint const& _dest): RLPXDatagram<Pong>((bi::udp::endpoint)_dest), destination(_dest), ts(futureFromEpoch(std::chrono::seconds(60))) {}
 
 	static const uint8_t type = 2;
 
@@ -348,7 +349,7 @@ struct Pong: RLPXDatagram<Pong>
 struct FindNode: RLPXDatagram<FindNode>
 {
 	FindNode(bi::udp::endpoint _ep): RLPXDatagram<FindNode>(_ep) {}
-	FindNode(bi::udp::endpoint _ep, NodeId _target): RLPXDatagram<FindNode>(_ep), target(_target), ts(secondsSinceEpoch()) {}
+	FindNode(bi::udp::endpoint _ep, NodeId _target): RLPXDatagram<FindNode>(_ep), target(_target), ts(futureFromEpoch(std::chrono::seconds(60))) {}
 
 	static const uint8_t type = 3;
 
@@ -374,7 +375,7 @@ struct Neighbours: RLPXDatagram<Neighbours>
 	};
 
 	Neighbours(bi::udp::endpoint _ep): RLPXDatagram<Neighbours>(_ep), ts(secondsSinceEpoch()) {}
-	Neighbours(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbours>(_to), ts(secondsSinceEpoch())
+	Neighbours(bi::udp::endpoint _to, std::vector<std::shared_ptr<NodeEntry>> const& _nearest, unsigned _offset = 0, unsigned _limit = 0): RLPXDatagram<Neighbours>(_to), ts(futureFromEpoch(std::chrono::seconds(60)))
 	{
 		auto limit = _limit ? std::min(_nearest.size(), (size_t)(_offset + _limit)) : _nearest.size();
 		for (auto i = _offset; i < limit; i++)
