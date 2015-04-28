@@ -610,6 +610,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	if (receiptsTrie.root() != m_currentBlock.receiptsRoot)
 	{
 		cwarn << "Bad receipts state root.";
+		cwarn << "Expected: " << toString(receiptsTrie.root()) << " received: " << toString(m_currentBlock.receiptsRoot);
 		cwarn << "Block:" << toHex(_block);
 		cwarn << "Block RLP:" << rlp;
 		cwarn << "Calculated: " << receiptsTrie.root();
