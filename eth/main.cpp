@@ -38,6 +38,7 @@
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
+#include <libjsconsole/JSConsole.h>
 #if ETH_READLINE || !ETH_TRUE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -406,6 +407,11 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 
 int main(int argc, char** argv)
 {
+	JSConsole console;
+	console.repl();
+	console.repl();
+	console.repl();
+	console.repl();
 	cout << "\x1b[30mEthBlack\x1b[0m" << endl;
 	cout << "\x1b[90mEthCoal\x1b[0m" << endl;
 	cout << "\x1b[37mEthGray\x1b[0m" << endl;
@@ -1603,16 +1609,24 @@ int main(int argc, char** argv)
 		unsigned n =c->blockChain().details().number;
 		if (mining)
 			c->startMining();
+		JSConsole console;
 		while (!g_exit)
 		{
+			console.repl();
 			if ( c->isMining() &&c->blockChain().details().number - n == mining)
 				c->stopMining();
 			this_thread::sleep_for(chrono::milliseconds(100));
 		}
 	}
 	else
+	{
+		JSConsole console;
 		while (!g_exit)
+		{
+			console.repl();
 			this_thread::sleep_for(chrono::milliseconds(1000));
+		}
+	}
 
 	StructuredLogger::stopping(clientImplString, dev::Version);
 	auto netData = web3.saveNetwork();

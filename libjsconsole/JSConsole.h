@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <libjsengine/JSV8Engine.h>
+#include <libjsengine/JSV8Printer.h>
+
 namespace dev
 {
 namespace eth
@@ -12,7 +15,12 @@ namespace eth
 class JSConsole
 {
 public:
-	virtual void repl() const = 0;
+	JSConsole(): m_engine(), m_printer(m_engine) {}
+	int repl() const;
+
+private:
+	JSV8Engine m_engine;
+	JSV8Printer m_printer;
 };
 
 }
