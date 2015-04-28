@@ -1,14 +1,14 @@
 {
   "name": "web3",
   "namespace": "ethereum",
-  "version": "0.2.6",
+  "version": "0.3.3",
   "description": "Ethereum JavaScript API, middleware to talk to a ethereum node over RPC",
   "main": "./index.js",
   "directories": {
     "lib": "./lib"
   },
   "dependencies": {
-    "bignumber.js": ">=2.0.0",
+    "bignumber.js": "debris/bignumber.js#master",
     "xmlhttprequest": "*"
   },
   "browser": {
