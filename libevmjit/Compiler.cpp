@@ -270,7 +270,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto res = _arith.mul(lhs, rhs);
+			auto res = m_builder.CreateMul(lhs, rhs);
 			stack.push(res);
 			break;
 		}

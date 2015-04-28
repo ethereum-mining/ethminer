@@ -162,6 +162,8 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 				listener->stateChanged(ExecState::Optimization);
 				optimize(*module);
 			}
+
+			prepare(*module);
 		}
 		if (g_dump)
 			module->dump();
