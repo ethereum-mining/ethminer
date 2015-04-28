@@ -223,7 +223,7 @@ function checkEthPath(dappUrl, callBack)
 	else
 	{
 		// the first owned registrar must have been created to follow the path.
-		var str = clientModel.encodeString(dappUrl[0]);
+		var str = clientModel.encodeStringParam(dappUrl[0]);
 		console.log("prarma = " + str + " " + deploymentDialog.eth);
 
 		console.log("0x5a3a05bd" + str);
@@ -234,7 +234,7 @@ function checkEthPath(dappUrl, callBack)
 						  //subRegistrar()
 						  jsonrpc: "2.0",
 						  method: "eth_call",
-						  params: [ { "gas": 150000, "from": deploymentDialog.currentAccount,  "to": '0x' + deploymentDialog.eth, "data": "0x5a3a05bd" + str } ],
+						  params: [ { "gas": "0xffff", "from": deploymentDialog.currentAccount,  "to": '0x' + deploymentDialog.eth, "data": "0x5a3a05bd" + str }, "pending" ],
 						  id: jsonRpcRequestId++
 					  });
 		rpcCall(requests, function (httpRequest, response) {
@@ -266,7 +266,7 @@ function checkRegistration(dappUrl, addr, callBack)
 		console.log(txt);
 		var requests = [];
 		var registrar = {}
-		var str = clientModel.encodeString(dappUrl[0]);
+		var str = clientModel.encodeStringParam(dappUrl[0]);
 		requests.push({
 						  //getOwner()
 						  jsonrpc: "2.0",
@@ -331,7 +331,7 @@ function checkRegistration(dappUrl, addr, callBack)
 							trCountIncrementTimeOut();
 							return;
 						}
-						var crLevel = clientModel.encodeString(dappUrl[0]);
+						var crLevel = clientModel.encodeStringParam(dappUrl[0]);
 						requests.push({
 										  //setRegister()
 										  jsonrpc: "2.0",
@@ -363,13 +363,17 @@ function registerContentHash(registrar, callBack)
 	var txt = qsTr("Finalizing Dapp registration ...");
 	deploymentStepChanged(txt);
 	console.log(txt);
+	console.log(" 45 64 564 0 " + deploymentDialog.packageHash);
 	var requests = [];
-	var paramTitle = clientModel.encodeAbiString(projectModel.projectTitle);
+	var paramTitle = clientModel.encodeStringParam(projectModel.projectTitle);
+	console.log("ggg " + paramTitle);
+	console.log('registrar ' + registrar);
+
 	requests.push({
 					  //setContent()
 					  jsonrpc: "2.0",
 					  method: "eth_sendTransaction",
-					  params: [ { "from": deploymentDialog.currentAccount, "gas": 30000, "gasPrice": "10", "to": '0x' + registrar, "data": "0xc3d014d6" + paramTitle + deploymentDialog.packageHash } ],
+					  params: [ { "from": deploymentDialog.currentAccount, "gas": "0xfffff", "to": '0x' + registrar, "data": "0xc3d014d6" + paramTitle + deploymentDialog.packageHash } ],
 					  id: jsonRpcRequestId++
 				  });
 	rpcCall(requests, function (httpRequest, response) {
@@ -381,12 +385,13 @@ function registerToUrlHint()
 {
 	deploymentStepChanged(qsTr("Registering application Resources (" + deploymentDialog.applicationUrlHttp) + ") ...");
 	var requests = [];
-	var paramUrlHttp = clientModel.encodeString(deploymentDialog.applicationUrlHttp);
+	var paramUrlHttp = clientModel.encodeStringParam(deploymentDialog.applicationUrlHttp);
+	console.log("package hash " + deploymentDialog.packageHash);
 	requests.push({
 					  //urlHint => suggestUrl
 					  jsonrpc: "2.0",
 					  method: "eth_sendTransaction",
-					  params: [ {  "to": '0x' + deploymentDialog.urlHintContract, "gas": 30000, "data": "0x584e86ad" + deploymentDialog.packageHash + paramUrlHttp } ],
+					  params: [ {  "to": '0x' + deploymentDialog.urlHintContract, "from": deploymentDialog.currentAccount, "gas": "0xfffff", "data": "0x584e86ad" + deploymentDialog.packageHash + paramUrlHttp } ],
 					  id: jsonRpcRequestId++
 				  });
 

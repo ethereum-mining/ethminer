@@ -53,7 +53,7 @@ public:
 	/// Get all encoded data encoded by encode function.
 	bytes encodedData();
 	/// Encode a string to bytes (in order to be used as funtion param)
-	dev::bytes encodeBytesParam(QString const& _str, unsigned _alignSize);
+	dev::bytes encodeStringParam(QString const& _str, unsigned _alignSize);
 	/// Encode a string to ABI bytes
 	dev::bytes encodeBytes(QString const& _str);
 	/// Decode bytes from ABI

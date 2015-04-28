@@ -121,7 +121,7 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QString const& _data, Solidit
 		catch (std::exception const&)
 		{
 			// manage input as a string.
-			result = encodeBytesParam(src, alignSize);
+			result = encodeStringParam(src, alignSize);
 		}
 	}
 
@@ -165,7 +165,7 @@ QString ContractCallDataEncoder::toString(bool _b)
 	return _b ? "true" : "false";
 }
 
-dev::bytes ContractCallDataEncoder::encodeBytesParam(QString const& _str, unsigned alignSize)
+dev::bytes ContractCallDataEncoder::encodeStringParam(QString const& _str, unsigned alignSize)
 {
 	bytes result;
 	QByteArray bytesAr = _str.toLocal8Bit();
