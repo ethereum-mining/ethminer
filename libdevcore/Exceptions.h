@@ -51,6 +51,7 @@ struct NoUPnPDevice: virtual Exception {};
 struct RootNotFound: virtual Exception {};
 struct BadRoot: virtual Exception {};
 struct FileError: virtual Exception {};
+struct Overflow: virtual Exception {};
 struct InterfaceNotSupported: virtual Exception { public: InterfaceNotSupported(std::string _f): Exception("Interface " + _f + " not supported.") {} };
 
 // error information to be added to exceptions

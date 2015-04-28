@@ -97,8 +97,6 @@ struct ExecutionResult
 
 std::ostream& operator<<(std::ostream& _out, ExecutionResult const& _er);
 
-static const Address NullAddress;
-
 /// Encodes a transaction, ready to be exported to or freshly imported from RLP.
 class Transaction
 {
@@ -166,6 +164,12 @@ public:
 
 	/// @returns the receiving address of the message-call transaction (undefined for contract-creation transactions).
 	Address receiveAddress() const { return m_receiveAddress; }
+
+	/// Synonym for receiveAddress().
+	Address to() const { return m_receiveAddress; }
+
+	/// Synonym for safeSender().
+	Address from() const { return safeSender(); }
 
 	/// @returns the data associated with this (message-call) transaction. Synonym for initCode().
 	bytes const& data() const { return m_data; }

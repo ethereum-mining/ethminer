@@ -24,6 +24,7 @@
 #include <chrono>
 #include <thread>
 #include <boost/filesystem.hpp>
+#include <boost/math/distributions/normal.hpp>
 #include <libdevcore/Log.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libp2p/Host.h>
@@ -81,8 +82,10 @@ void BasicGasPricer::update(BlockChain const& _bc)
 	h256 p = _bc.currentHash();
 	m_gasPerBlock = _bc.info(p).gasLimit;
 
-	map<u256, unsigned> dist;
-	unsigned total = 0;
+	map<u256, u256> dist;
+	u256 total = 0;
+
+	// make gasPrice versus gasUsed distribution for the last 1000 blocks
 	while (c < 1000 && p)
 	{
 		BlockInfo bi = _bc.info(p);
@@ -91,29 +94,53 @@ void BasicGasPricer::update(BlockChain const& _bc)
 			auto bb = _bc.block(p);
 			RLP r(bb);
 			BlockReceipts brs(_bc.receipts(bi.hash()));
-			for (unsigned i = 0; i < r[1].size(); ++i)
+			size_t i = 0;
+			for (auto const& tr: r[1])
 			{
-				auto gu = brs.receipts[i].gasUsed();
-				dist[Transaction(r[1][i].data(), CheckTransaction::None).gasPrice()] += (unsigned)brs.receipts[i].gasUsed();
-				total += (unsigned)gu;
+				Transaction tx(tr.data(), CheckTransaction::None);
+				u256 gu = brs.receipts[i].gasUsed();
+				dist[tx.gasPrice()] += gu;
+				total += gu;
+				i++;
 			}
 		}
 		p = bi.parentHash;
 		++c;
 	}
+
+	// fill m_octiles with weighted gasPrices
 	if (total > 0)
 	{
-		unsigned t = 0;
-		unsigned q = 1;
 		m_octiles[0] = dist.begin()->first;
+
+		// calc mean
+		u256 mean = 0;
 		for (auto const& i: dist)
+			mean += i.first * i.second;
+		mean /= total;
+
+		// calc standard deviation
+		u256 sdSquared = 0;
+		for (auto const& i: dist)
+			sdSquared += i.second * (i.first - mean) * (i.first - mean);
+		sdSquared /= total;
+
+		if (sdSquared)
 		{
-			for (; t <= total * q / 8 && t + i.second > total * q / 8; ++q)
-				m_octiles[q] = i.first;
-			if (q > 7)
-				break;
+			long double sd = sqrt(sdSquared.convert_to<long double>());
+			long double normalizedSd = sd / mean.convert_to<long double>();
+
+			// calc octiles normalized to gaussian distribution
+			boost::math::normal gauss(1.0, (normalizedSd > 0.01) ? normalizedSd : 0.01);
+			for (size_t i = 1; i < 8; i++)
+				m_octiles[i] = u256(mean.convert_to<long double>() * boost::math::quantile(gauss, i / 8.0));
+			m_octiles[8] = dist.rbegin()->first;
 		}
-		m_octiles[8] = dist.rbegin()->first;
+		else
+		{
+			for (size_t i = 0; i < 9; i++)
+				m_octiles[i] = (i + 1) * mean / 5;
+		}
 	}
 }
 
@@ -669,13 +696,6 @@ eth::State Client::state(h256 _block) const
 eth::State Client::state(unsigned _txi) const
 {
 	return m_postMine.fromPending(_txi);
-}
-
-void Client::inject(bytesConstRef _rlp)
-{
-	startWorking();
-	
-	m_tq.import(_rlp);
 }
 
 void Client::flushTransactions()

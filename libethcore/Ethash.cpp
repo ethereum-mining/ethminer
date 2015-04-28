@@ -121,7 +121,7 @@ bool Ethash::verify(BlockInfo const& _header)
 	return slow;
 }
 
-unsigned Ethash::CPUMiner::s_numInstances = 1;
+unsigned Ethash::CPUMiner::s_numInstances = 0;
 
 void Ethash::CPUMiner::workLoop()
 {
@@ -266,7 +266,7 @@ private:
 
 unsigned Ethash::GPUMiner::s_platformId = 0;
 unsigned Ethash::GPUMiner::s_deviceId = 0;
-unsigned Ethash::GPUMiner::s_numInstances = 1;
+unsigned Ethash::GPUMiner::s_numInstances = 0;
 
 Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
