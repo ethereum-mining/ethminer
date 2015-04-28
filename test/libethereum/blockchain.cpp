@@ -700,11 +700,11 @@ mObject writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi)
 	_o["transactionsTrie"] = toString(_bi.transactionsRoot);
 	_o["receiptTrie"] = toString(_bi.receiptsRoot);
 	_o["bloom"] = toString(_bi.logBloom);
-	_o["difficulty"] = toCompactHex(_bi.difficulty, HexPrefix::Add);
-	_o["number"] = toCompactHex(_bi.number, HexPrefix::Add);
-	_o["gasLimit"] = toCompactHex(_bi.gasLimit, HexPrefix::Add);
-	_o["gasUsed"] = toCompactHex(_bi.gasUsed, HexPrefix::Add);
-	_o["timestamp"] = toCompactHex(_bi.timestamp, HexPrefix::Add);
+	_o["difficulty"] = toCompactHex(_bi.difficulty, HexPrefix::Add, 1);
+	_o["number"] = toCompactHex(_bi.number, HexPrefix::Add, 1);
+	_o["gasLimit"] = toCompactHex(_bi.gasLimit, HexPrefix::Add, 1);
+	_o["gasUsed"] = toCompactHex(_bi.gasUsed, HexPrefix::Add, 1);
+	_o["timestamp"] = toCompactHex(_bi.timestamp, HexPrefix::Add, 1);
 	_o["extraData"] = toHex(_bi.extraData, 2, HexPrefix::Add);
 	_o["mixHash"] = toString(_bi.mixHash);
 	_o["nonce"] = toString(_bi.nonce);
