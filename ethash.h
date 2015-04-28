@@ -68,11 +68,11 @@ typedef struct ethash_return_value {
 /**
  * Allocate and initialize a new ethash_light handler
  *
- * @param block_number  The block number for which to create the handler
- * @return              Newly allocated ethash_light handler or NULL in case of
- *                      ERRNOMEM or invalid parameters used for @ref ethash_compute_cache_nodes()
+ * @param block_number   The block number for which to create the handler
+ * @return               Newly allocated ethash_light handler or NULL in case of
+ *                       ERRNOMEM or invalid parameters used for @ref ethash_compute_cache_nodes()
  */
-ethash_light_t ethash_light_new(uint64_t const block_number);
+ethash_light_t ethash_light_new(uint64_t block_number);
 /**
  * Frees a previously allocated ethash_light handler
  * @param light        The light handler to free
@@ -89,19 +89,19 @@ void ethash_light_delete(ethash_light_t light);
 ethash_return_value_t ethash_light_compute(
 	ethash_light_t light,
 	const ethash_h256_t header_hash,
-	uint64_t const nonce
+	uint64_t  nonce
 );
 
 /**
  * Allocate and initialize a new ethash_full handler
  *
- * @param dirname        The light handler containing the cache.
- * @param callback       A callback function with signature of @ref ethash_callback_t
- *                       It accepts an unsigned with which a progress of DAG calculation
- *                       can be displayed. If all goes well the callback should return 0.
- *                       If a non-zero value is returned then DAG generation will stop.
- * @return               Newly allocated ethash_full handler or NULL in case of
- *                       ERRNOMEM or invalid parameters used for @ref ethash_compute_full_data()
+ * @param light         The light handler containing the cache.
+ * @param callback      A callback function with signature of @ref ethash_callback_t
+ *                      It accepts an unsigned with which a progress of DAG calculation
+ *                      can be displayed. If all goes well the callback should return 0.
+ *                      If a non-zero value is returned then DAG generation will stop.
+ * @return              Newly allocated ethash_full handler or NULL in case of
+ *                      ERRNOMEM or invalid parameters used for @ref ethash_compute_full_data()
  */
 ethash_full_t ethash_full_new(ethash_light_t light, ethash_callback_t callback);
 
@@ -121,7 +121,7 @@ void ethash_full_delete(ethash_full_t full);
 ethash_return_value_t ethash_full_compute(
 	ethash_full_t full,
 	ethash_h256_t const header_hash,
-	uint64_t const nonce
+	uint64_t nonce
 );
 /**
  * Get a pointer to the full DAG data
@@ -135,7 +135,7 @@ uint64_t ethash_full_dag_size(ethash_full_t full);
 /**
  * Calculate the seedhash for a given block number
  */
-void ethash_get_seedhash(ethash_h256_t *seedhash, uint64_t const block_number);
+ethash_h256_t ethash_get_seedhash(uint64_t block_number);
 
 #ifdef __cplusplus
 }

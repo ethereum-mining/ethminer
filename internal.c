@@ -263,12 +263,14 @@ void ethash_quick_hash(
 	SHA3_256(return_hash, buf, 64 + 32);
 }
 
-void ethash_get_seedhash(ethash_h256_t* seedhash, uint64_t const block_number)
+ethash_h256_t ethash_get_seedhash(uint64_t block_number)
 {
-	ethash_h256_reset(seedhash);
+	ethash_h256_t ret;
+	ethash_h256_reset(&ret);
 	const uint32_t epochs = block_number / ETHASH_EPOCH_LENGTH;
 	for (uint32_t i = 0; i < epochs; ++i)
-		SHA3_256(seedhash, (uint8_t*)seedhash, 32);
+		SHA3_256(&ret, (uint8_t*)&ret, 32);
+	return ret;
 }
 
 int ethash_quick_check_difficulty(
@@ -309,11 +311,10 @@ fail_free_light:
 	return NULL;
 }
 
-ethash_light_t ethash_light_new(uint64_t const block_number)
+ethash_light_t ethash_light_new(uint64_t block_number)
 {
-	ethash_h256_t seedhash;
+	ethash_h256_t seedhash = ethash_get_seedhash(block_number);
 	ethash_light_t ret;
-	ethash_get_seedhash(&seedhash, block_number);
 	ret = ethash_light_new_internal(ethash_get_cachesize(block_number), &seedhash);
 	ret->block_number = block_number;
 	return ret;
@@ -332,7 +333,7 @@ bool ethash_light_compute_internal(
 	ethash_light_t light,
 	uint64_t full_size,
 	const ethash_h256_t header_hash,
-	uint64_t const nonce
+	uint64_t nonce
 )
 {
 	return ethash_hash(
@@ -440,8 +441,7 @@ ethash_full_t ethash_full_new(ethash_light_t light, ethash_callback_t callback)
 		return NULL;
 	}
 	uint64_t full_size = ethash_get_datasize(light->block_number);
-	ethash_h256_t seedhash;
-	ethash_get_seedhash(&seedhash, light->block_number);
+	ethash_h256_t seedhash = ethash_get_seedhash(light->block_number);
 	return ethash_full_new_internal(strbuf, &seedhash, full_size, light, callback);
 }
 
@@ -458,7 +458,7 @@ void ethash_full_delete(ethash_full_t full)
 ethash_return_value_t ethash_full_compute(
 	ethash_full_t full,
 	ethash_h256_t const header_hash,
-	uint64_t const nonce
+	uint64_t nonce
 )
 {
 	ethash_return_value_t ret;
