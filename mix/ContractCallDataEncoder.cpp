@@ -201,7 +201,7 @@ QVariant ContractCallDataEncoder::decode(SolidityType const& _type, bytes const&
 	bytes rawParam(32);
 	value.populate(&rawParam);
 	QSolidityType::Type type = _type.type;
-	if (type == QSolidityType::Type::SignedInteger || type == QSolidityType::Type::UnsignedInteger || type == QSolidityType::Type::Address)
+	if (type == QSolidityType::Type::SignedInteger || type == QSolidityType::Type::UnsignedInteger)
 		return QVariant::fromValue(toString(decodeInt(rawParam)));
 	else if (type == QSolidityType::Type::Bool)
 		return QVariant::fromValue(toString(decodeBool(rawParam)));
@@ -209,6 +209,8 @@ QVariant ContractCallDataEncoder::decode(SolidityType const& _type, bytes const&
 		return QVariant::fromValue(toString(decodeBytes(rawParam)));
 	else if (type == QSolidityType::Type::Struct)
 		return QVariant::fromValue(QString("struct")); //TODO
+	else if (type == QSolidityType::Type::Address)
+		return QVariant::fromValue(toString(decodeBytes(unpadLeft(rawParam))));
 	else
 		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Parameter declaration not found"));
 }

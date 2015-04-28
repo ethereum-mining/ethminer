@@ -21,6 +21,8 @@
 
 #include "Common.h"
 #include <random>
+#include <boost/algorithm/string/case_conv.hpp>
+#include <libdevcore/Base64.h>
 #include <libdevcrypto/SHA3.h>
 #include "Exceptions.h"
 #include "ProofOfWork.h"
@@ -100,4 +102,5 @@ std::string formatBalance(bigint const& _b)
 	return ret.str();
 }
 
-}}
+}
+}
