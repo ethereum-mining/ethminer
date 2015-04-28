@@ -9,13 +9,18 @@ namespace dev
 namespace eth
 {
 
+class JSValue
+{
+public:
+	virtual const char* asCString() const = 0;
+};
+
+template <typename T>
 class JSEngine
 {
 public:
-	JSEngine() {};
-	virtual ~JSEngine() {};
 	// should be used to evalute javascript expression
-	virtual const char* evaluate(const char* _cstr) const = 0;
+	virtual T eval(const char* _cstr) const = 0;
 };
 
 }

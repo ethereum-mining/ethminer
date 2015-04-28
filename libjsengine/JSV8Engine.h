@@ -15,13 +15,23 @@ namespace eth
 class JSV8Env;
 class JSV8Scope;
 
-class JSV8Engine : public JSEngine
+class JSV8Value : public JSValue
+{
+public:
+	JSV8Value(v8::Handle<v8::Value> _value): m_value(_value) {}
+	const char* asCString() const;
+
+	v8::Handle<v8::Value> const& value() const { return m_value; }
+private:
+	v8::Handle<v8::Value> m_value;
+};
+
+class JSV8Engine : public JSEngine<JSV8Value>
 {
 public:
 	JSV8Engine();
 	virtual ~JSV8Engine();
-	v8::Handle<v8::Value> eval(const char* _cstr) const;
-	const char* evaluate(const char* _cstr) const;
+	JSV8Value eval(const char* _cstr) const;
 
 private:
 	static JSV8Env s_env;
@@ -34,4 +44,3 @@ protected:
 
 }
 }
-
