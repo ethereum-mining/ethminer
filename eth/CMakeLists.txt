@@ -6,6 +6,7 @@ aux_source_directory(. SRC_LIST)
 include_directories(BEFORE ..)
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
+include_directories(${V8_INCLUDE_DIRS})
 
 set(EXECUTABLE eth)
 
@@ -32,6 +33,7 @@ endif()
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethash)
+target_link_libraries(${EXECUTABLE} jsconsole)
 
 if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
 	eth_copy_dlls("${EXECUTABLE}" MHD_DLLS)
