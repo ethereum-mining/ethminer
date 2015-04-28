@@ -151,10 +151,10 @@ QString ClientModel::encodeAbiString(QString _string)
 	return QString::fromStdString(toHex(encoder.encodeBytes(_string)));
 }
 
-QString ClientModel::encodeString(QString const& _param)
+QString ClientModel::encodeStringParam(QString const& _param)
 {
 	ContractCallDataEncoder encoder;
-	return QString::fromStdString(toHex(encoder.encodeBytesParam(_param, 32)));
+	return QString::fromStdString(toHex(encoder.encodeStringParam(_param, 32)));
 }
 
 QStringList ClientModel::encodeParams(QVariant const& _param, QString const& _contract, QString const& _function)
