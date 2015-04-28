@@ -16,9 +16,11 @@ class JSConsole
 {
 public:
 	JSConsole(): m_engine(), m_printer(m_engine) {}
-	int repl() const;
+	void repl() const;
 
 private:
+	std::string promptForIndentionLevel(int _i) const;
+
 	JSV8Engine m_engine;
 	JSV8Printer m_printer;
 };

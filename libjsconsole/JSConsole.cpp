@@ -3,6 +3,7 @@
 //
 
 #include <iostream>
+#include <algorithm>
 #include <libdevcore/Log.h>
 #include "JSConsole.h"
 
@@ -14,19 +15,42 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-int JSConsole::repl() const
+void JSConsole::repl() const
 {
 	string cmd = "";
 	g_logPost = [](std::string const& a, char const*) { cout << "\r           \r" << a << endl << flush; rl_forced_update_display(); };
 
-	char* c = readline("> ");
-	if (c && *c)
+	bool isEmpty = true;
+	int openBrackets = 0;
+	do {
+		char* buff = readline(promptForIndentionLevel(openBrackets).c_str());
+		isEmpty = !(buff && *buff);
+		if (!isEmpty)
+		{
+			cmd += string(buff);
+			cmd += " ";
+			free(buff);
+			int open = count(cmd.begin(), cmd.end(), '{');
+			open += count(cmd.begin(), cmd.end(), '(');
+			int closed = count(cmd.begin(), cmd.end(), '}');
+			closed += count(cmd.begin(), cmd.end(), ')');
+			openBrackets = open - closed;
+		}
+	} while (openBrackets > 0);
+
+	if (!isEmpty)
 	{
-		cmd = string(c);
-		add_history(c);
+		add_history(cmd.c_str());
 		auto value = m_engine.eval(cmd.c_str());
 		string result = m_printer.print(value);
-		free(c);
 		cout << result << endl;
 	}
+}
+
+std::string JSConsole::promptForIndentionLevel(int _i) const
+{
+	if (_i == 0)
+		return "> ";
+
+	return string((_i + 1) * 2, ' ');
 }
