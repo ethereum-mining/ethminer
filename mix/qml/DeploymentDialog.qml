@@ -19,7 +19,6 @@ Dialog {
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
-	property alias urlHintContract: urlHintAddr.text
 	property alias localPackageUrl: localPackageUrl.text
 	property string packageHash
 	property string packageBase64
@@ -44,6 +43,7 @@ Dialog {
 							id: 0
 						}];
 
+		console.log(packageHash);
 		TransactionHelper.rpcCall(requests, function(arg1, arg2)
 		{
 			modelAccounts.clear();
@@ -271,12 +271,15 @@ Dialog {
 					DefaultLabel
 					{
 						text: qsTr("Root Registrar address:")
+						visible: false //still use it for now in dev env.
 					}
 
 					DefaultTextField
 					{
 						Layout.preferredWidth: 350
 						id: registrarAddr
+						text: "c6d9d2cd449a754c494264e1809c50e34d64562b"
+						visible: false
 					}
 
 					DefaultLabel
@@ -449,20 +452,6 @@ Dialog {
 						Layout.preferredWidth: 350
 						id: localPackageUrl
 						readOnly: true
-
-					}
-
-					DefaultLabel
-					{
-						Layout.preferredWidth: 355
-						text: qsTr("URL Hint contract address:")
-					}
-
-					DefaultTextField
-					{
-						Layout.preferredWidth: 350
-						id: urlHintAddr
-						enabled: rowRegister.isOkToRegister()
 					}
 
 					DefaultLabel
