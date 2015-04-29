@@ -34,8 +34,8 @@ foreach(resource ${ETH_RESOURCES})
 	# filedata is a file content
 	file(READ ${filename} filedata HEX)
 
-    # read full name of the file
-    file(GLOB filename ${filename})
+	# read full name of the file
+	file(GLOB filename ${filename})
 
 	# Convert hex data for C compatibility
 	string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
