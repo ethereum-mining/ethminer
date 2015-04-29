@@ -44,17 +44,15 @@ foreach(resource ${ETH_RESOURCES})
 	set(ETH_RESULT_DATA "${ETH_RESULT_DATA}	static const unsigned char eth_${resource}[] = {\n	// ${filename}\n	${filedata}\n};\n")
 
 	# append init resources
-	set(ETH_RESULT_INIT "${ETH_RESULT_INIT}	eth_resources[\"${resource}\"] = (char const*)eth_${resource};\n")
-	set(ETH_RESULT_INIT "${ETH_RESULT_INIT}	eth_sizes[\"${resource}\"]     = sizeof(eth_${resource});\n")
+	set(ETH_RESULT_INIT "${ETH_RESULT_INIT}	m_resources[\"${resource}\"] = (char const*)eth_${resource};\n")
+	set(ETH_RESULT_INIT "${ETH_RESULT_INIT}	m_sizes[\"${resource}\"]     = sizeof(eth_${resource});\n")
 
 endforeach(resource)
 
 set(ETH_DST_NAME "${ETH_RESOURCE_LOCATION}/${ETH_RESOURCE_NAME}")
 
-configure_file("${CMAKE_CURRENT_LIST_DIR}/resource.cpp.in" "${ETH_DST_NAME}.cpp.tmp")
-configure_file("${CMAKE_CURRENT_LIST_DIR}/resource.h.in" "${ETH_DST_NAME}.h.tmp")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/resource.hpp.in" "${ETH_DST_NAME}.hpp.tmp")
 
 include("${CMAKE_CURRENT_LIST_DIR}/../EthUtils.cmake")
-replace_if_different("${ETH_DST_NAME}.cpp.tmp" "${ETH_DST_NAME}.cpp")
-replace_if_different("${ETH_DST_NAME}.h.tmp" "${ETH_DST_NAME}.h")
+replace_if_different("${ETH_DST_NAME}.hpp.tmp" "${ETH_DST_NAME}.hpp")
 
