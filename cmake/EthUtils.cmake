@@ -62,3 +62,31 @@ macro(eth_add_test NAME)
 
 endmacro()
 
+# Based on
+# http://stackoverflow.com/questions/11813271/embed-resources-eg-shader-code-images-into-executable-library-with-cmake
+# Creates C resources file from files
+function(eth_create_resources bins output)
+	set(tmp_output "${output}.tmp")
+	# Create empty output file
+	file(WRITE ${tmp_output} "")
+	# Collect input files
+#	file(GLOB bins ${dir}/*)
+	# Iterate through input files
+	foreach(bin ${${bins}})
+		# Get short filename
+		string(REGEX MATCH "([^/]+)$" filename ${bin})
+		# Replace filename spaces & extension separator for C compatibility
+		string(REGEX REPLACE "\\.| " "_" filename ${filename})
+		# Add eth prefix (qt does the same thing)
+		set(filename "eth_${filename}")
+		# full name
+		file(GLOB the_name ${bin})
+		# Read hex data from file
+		file(READ ${bin} filedata HEX)
+		# Convert hex data for C compatibility
+		string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
+		# Append data to output file
+		file(APPEND ${tmp_output} "static const unsigned char ${filename}[] = {\n  // ${the_name}\n  ${filedata}};\nstatic const unsigned ${filename}_size = sizeof(${filename});\n")
+	endforeach()
+	replace_if_different("${tmp_output}" "${output}")
+endfunction()
