@@ -88,7 +88,7 @@ void ethash_light_delete(ethash_light_t light);
  */
 ethash_return_value_t ethash_light_compute(
 	ethash_light_t light,
-	const ethash_h256_t header_hash,
+	ethash_h256_t const header_hash,
 	uint64_t  nonce
 );
 
