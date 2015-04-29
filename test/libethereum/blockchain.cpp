@@ -62,7 +62,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		//Imported blocks from the start
 		typedef std::vector<bytes> uncleList;
 		typedef std::pair<bytes, uncleList> blockSet;
-		std::vector<blockSet> blockRLPs;
+		std::vector<blockSet> blockSets;
 
 		importer.importState(o["pre"].get_obj(), trueState);
 		o["pre"] = fillJsonWithState(trueState);
@@ -100,7 +100,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 			blockSet genesis;
 			genesis.first = rlpGenesisBlock.out();
 			genesis.second = uncleList();
-			blockRLPs.push_back(genesis);
+			blockSets.push_back(genesis);
 			vector<BlockInfo> vBiBlocks;
 			vBiBlocks.push_back(biGenesisBlock);
 
@@ -109,7 +109,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 			{
 				mObject blObj = bl.get_obj();
 				BOOST_REQUIRE(blObj.count("blocknumber"));
-
 
 				//each time construct a new blockchain up to importBlockNumber (to generate next block header)
 				vBiBlocks.clear();
@@ -125,11 +124,11 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				for (size_t i = 1; i < importBlockNumber; i++) //0 block is genesis
 				{
 					BlockQueue uncleQueue;
-					uncleList uncles = blockRLPs.at(i).second;
+					uncleList uncles = blockSets.at(i).second;
 					for (size_t j = 0; j < uncles.size(); j++)
 						uncleQueue.import(&uncles.at(j), bc);
 
-					const bytes block = blockRLPs.at(i).first;
+					const bytes block = blockSets.at(i).first;
 					bc.sync(uncleQueue, state.db(), 4);
 					bc.attemptImport(block, state.db());
 					vBiBlocks.push_back(BlockInfo(block));
@@ -257,14 +256,15 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					blockSet newBlock;
 					newBlock.first = state.blockData();
 					newBlock.second = uncleBlockQueueList;
-					if (importBlockNumber < blockRLPs.size())
+					if (importBlockNumber < blockSets.size())
 					{
 						//make new correct history of imported blocks
-						blockRLPs[importBlockNumber] = newBlock;
-						for (size_t i = importBlockNumber+1; i < blockRLPs.size(); i++)
-							blockRLPs.pop_back();
+						blockSets[importBlockNumber] = newBlock;
+						for (size_t i = importBlockNumber+1; i < blockSets.size(); i++)
+							blockSets.pop_back();
 					}
-					else	blockRLPs.push_back(newBlock);
+					else
+						blockSets.push_back(newBlock);
 				}
 				// if exception is thrown, RLP is invalid and no blockHeader, Transaction list, or Uncle list should be given
 				catch (...)
@@ -289,6 +289,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 			o["blocks"] = blArray;
 			o["postState"] = fillJsonWithState(trueState);
+			o["lastblockhash"] = toString(trueBc.info().hash());
 
 			//make all values hex in pre section
 			State prestate(OverlayDB(), BaseState::Empty, biGenesisBlock.coinbaseAddress);
@@ -300,7 +301,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		{
 			for (auto const& bl: o["blocks"].get_array())
 			{
-				bool importedAndNotBest = false;
+				bool importedAndBest = true;
 				mObject blObj = bl.get_obj();
 				bytes blockRLP;
 				try
@@ -309,7 +310,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					blockRLP = importByteArray(blObj["rlp"].get_str());
 					trueBc.import(blockRLP, trueState.db());
 					if (trueBc.info() != BlockInfo(blockRLP))
-						importedAndNotBest  = true;
+						importedAndBest  = false;
 					trueState.sync(trueBc);
 				}
 				// if exception is thrown, RLP is invalid and no blockHeader, Transaction list, or Uncle list should be given
@@ -348,7 +349,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 				BlockInfo blockFromRlp = trueBc.info();
 
-				if (!importedAndNotBest)
+				if (importedAndBest)
 				{
 					//Check the fields restored from RLP to original fields
 					BOOST_CHECK_MESSAGE(blockHeaderFromFields.headerHash(WithNonce) == blockFromRlp.headerHash(WithNonce), "hash in given RLP not matching the block hash!");
@@ -465,8 +466,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 					for (size_t i = 0; i < uBlHsFromField.size(); ++i)
 						BOOST_CHECK_MESSAGE(uBlHsFromField[i] == uBlHsFromRlp[i], "block header in rlp and in field do not match");
-				}
-			}
+				}//importedAndBest
+			}//all blocks
 		}
 	}
 }
@@ -508,6 +509,7 @@ mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<B
 
 		// make uncle header valid
 		uncleBlockFromFields.timestamp = (u256)time(0);
+		cnote << "uncle block n = " << toString(uncleBlockFromFields.number);
 		if (vBiBlocks.size() > 2)
 		{
 			if (uncleBlockFromFields.number - 1 < vBiBlocks.size())
