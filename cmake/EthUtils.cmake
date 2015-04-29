@@ -64,7 +64,11 @@ endmacro()
 
 # Creates C resources file from files
 function(eth_add_resources TARGET RESOURCE_FILE)
-	add_custom_command(TARGET ${TARGET} PRE_BUILD
+
+	add_custom_target("${TARGET}.resources"
 		COMMAND ${CMAKE_COMMAND} -DETH_RES_FILE="${RESOURCE_FILE}" -P "${ETH_SCRIPTS_DIR}/resources.cmake"
 	)
+
+	add_dependencies(${TARGET} "${TARGET}.resources")
+
 endfunction()
