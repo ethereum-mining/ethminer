@@ -23,7 +23,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/TrieDB.h>
 #include <libethcore/Common.h>
-#include <libevmcore/Params.h>
+#include <libethcore/Params.h>
 #include "EthashAux.h"
 #include "ProofOfWork.h"
 #include "Exceptions.h"

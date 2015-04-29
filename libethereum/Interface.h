@@ -25,7 +25,6 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
-#include <libevmcore/Params.h>
 #include <libethcore/ProofOfWork.h>
 #include "LogFilter.h"
 #include "Transaction.h"
