@@ -383,9 +383,6 @@ if (GUI)
 
 endif()
 
-set(ETH_RESOURCES "LICENSE" "README.md")
-eth_create_resources(ETH_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/here.h")
-
 #unset(TARGET_PLATFORM CACHE)
 
 if (WIN32)

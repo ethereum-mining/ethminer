@@ -1,37 +1,60 @@
-
-# cmake -DETH_RES_FILE=... -DETH_DST_NAME=... -P scripts/resources.cmake
-# cmake -DETH_RES_FILE=test.cmake -DETH_DST_NAME=dst -P resources.cmake
+# based on: http://stackoverflow.com/questions/11813271/embed-resources-eg-shader-code-images-into-executable-library-with-cmake
+#
+# example:
+# cmake -DETH_RES_FILE=test.cmake -P resources.cmake
+#
+# where test.cmake is:
+# 
+# # BEGIN OF cmake.test
+# 
+# set(copydlls "copydlls.cmake")
+# set(conf "configure.cmake")
+# 
+# # this three properties must be set!
+#
+# set(ETH_RESOURCE_NAME "EthResources")
+# set(ETH_RESOURCE_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}")
+# set(ETH_RESOURCES "copydlls" "conf")
+#
+# # END of cmake.test
+#
 
 # should define ETH_RESOURCES
 include(${ETH_RES_FILE})
 
-set(ETH_RESULT_DATA)
-set(ETH_RESULT_INIT)
+set(ETH_RESULT_DATA "")
+set(ETH_RESULT_INIT "")
 
 # resource is a name visible for cpp application 
 foreach(resource ${ETH_RESOURCES})
-	
+
 	# filename is the name of file which will be used in app
 	set(filename ${${resource}})
 
 	# filedata is a file content
 	file(READ ${filename} filedata HEX)
 
+    # read full name of the file
+    file(GLOB filename ${filename})
+
 	# Convert hex data for C compatibility
 	string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
 
 	# append static variables to result variable
-	list(APPEND ${ETH_RESULT_DATA} "static const unsigned char eth_${resource}[] = {\n  // ${filename}\n  ${filedata}\n};\n")
+	set(ETH_RESULT_DATA "${ETH_RESULT_DATA}	static const unsigned char eth_${resource}[] = {\n	// ${filename}\n	${filedata}\n};\n")
 
 	# append init resources
-	list(APPEND ${ETH_RESULT_INIT} "	eth_resources[\"${resource}\"] = (char const*)eth_${resource};\n")
-	list(APPEND ${ETH_RESULT_INIT} "	eth_sizes[\"${resource}\"]     = sizeof(eth_${resource});\n")
+	set(ETH_RESULT_INIT "${ETH_RESULT_INIT}	eth_resources[\"${resource}\"] = (char const*)eth_${resource};\n")
+	set(ETH_RESULT_INIT "${ETH_RESULT_INIT}	eth_sizes[\"${resource}\"]     = sizeof(eth_${resource});\n")
 
 endforeach(resource)
 
-configure_file("resource.cpp.in" "${ETH_DST_NAME}.cpp.tmp")
+set(ETH_DST_NAME "${ETH_RESOURCE_LOCATION}/${ETH_RESOURCE_NAME}")
 
-include("../EthUtils.cmake")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/resource.cpp.in" "${ETH_DST_NAME}.cpp.tmp")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/resource.h.in" "${ETH_DST_NAME}.h.tmp")
+
+include("${CMAKE_CURRENT_LIST_DIR}/../EthUtils.cmake")
 replace_if_different("${ETH_DST_NAME}.cpp.tmp" "${ETH_DST_NAME}.cpp")
-replace_if_different("resource.h" "${ETH_DST_NAME}.h")
+replace_if_different("${ETH_DST_NAME}.h.tmp" "${ETH_DST_NAME}.h")
 
