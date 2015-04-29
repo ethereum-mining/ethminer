@@ -72,6 +72,7 @@
 #include "DappLoader.h"
 #include "DappHost.h"
 #include "WebPage.h"
+#include "ExportState.h"
 #include "ui_Main.h"
 using namespace std;
 using namespace dev;
@@ -818,6 +819,12 @@ void Main::on_exportKey_triggered()
 		auto k = m_myKeys[ui->ourAccounts->currentRow()];
 		QMessageBox::information(this, "Export Account Key", "Secret key to account " + render(k.address()) + " is:\n" + QString::fromStdString(toHex(k.sec().ref())));
 	}
+}
+
+void Main::on_exportState_triggered()
+{
+	ExportStateDialog dialog(this);
+	dialog.exec();
 }
 
 void Main::on_usePrivate_triggered()

@@ -48,7 +48,7 @@ public:
 	MixClient(std::string const& _dbPath);
 	virtual ~MixClient();
 	/// Reset state to the empty state with given balance.
-	void resetState(std::map<Secret, u256> _accounts, Secret _miner = Secret());
+	void resetState(std::map<dev::Address, dev::eth::Account> const& _accounts,  Secret const& _miner = Secret());
 	void mine();
 	ExecutionResult lastExecution() const;
 	ExecutionResult execution(unsigned _index) const;
@@ -75,7 +75,6 @@ public:
 	/// @returns the last mined block information
 	using Interface::blockInfo; // to remove warning about hiding virtual function
 	eth::BlockInfo blockInfo() const;
-	std::vector<KeyPair> userAccounts() { return m_userAccounts; }
 
 protected:
 	/// ClientBase methods
@@ -92,7 +91,6 @@ private:
 	void noteChanged(h256Set const& _filters);
 	dev::eth::Transaction replaceGas(dev::eth::Transaction const& _t, dev::Secret const& _secret, dev::u256 const& _gas);
 
-	std::vector<KeyPair> m_userAccounts;
 	eth::State m_state;
 	eth::State m_startState;
 	OverlayDB m_stateDB;
