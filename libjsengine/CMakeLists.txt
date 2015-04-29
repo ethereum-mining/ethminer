@@ -8,10 +8,6 @@ endif()
 
 set(CMAKE_AUTOMOC OFF)
 
-# macos brew version of v8 needs to be compiled with libstdc++
-# it also needs to be dynamic library
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
-
 aux_source_directory(. SRC_LIST)
 
 include_directories(BEFORE ..)
@@ -22,6 +18,14 @@ set(EXECUTABLE jsengine)
 file(GLOB HEADERS "*.h")
 
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
+
+# macos brew version of v8 needs to be compiled with libstdc++
+# it also needs to be dynamic library
+# xcode needs libstdc++ to be explicitly set as it's attribute
+if (APPLE)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
+	set_property(TARGET ${EXECUTABLE} PROPERTY XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libstdc++")
+endif()
 
 target_link_libraries(${EXECUTABLE} ${V8_LIBRARIES})
 
