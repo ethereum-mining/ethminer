@@ -121,9 +121,7 @@ unsigned ContractCallDataEncoder::encodeSingleItem(QString const& _data, Solidit
 		catch (std::exception const&)
 		{
 			// manage input as a string.
-			QByteArray bytesAr = src.toLocal8Bit();
-			result = bytes(bytesAr.begin(), bytesAr.end());
-			result = paddedRight(result, alignSize);
+			result = encodeStringParam(src, alignSize);
 		}
 	}
 
@@ -165,6 +163,14 @@ bool ContractCallDataEncoder::decodeBool(dev::bytes const& _rawValue)
 QString ContractCallDataEncoder::toString(bool _b)
 {
 	return _b ? "true" : "false";
+}
+
+dev::bytes ContractCallDataEncoder::encodeStringParam(QString const& _str, unsigned alignSize)
+{
+	bytes result;
+	QByteArray bytesAr = _str.toLocal8Bit();
+	result = bytes(bytesAr.begin(), bytesAr.end());
+	return paddedRight(result, alignSize);
 }
 
 dev::bytes ContractCallDataEncoder::encodeBytes(QString const& _str)
