@@ -15,7 +15,7 @@ namespace eth
 class JSConsole
 {
 public:
-	JSConsole(): m_engine(), m_printer(m_engine) {}
+	JSConsole();
 	void repl() const;
 
 private:

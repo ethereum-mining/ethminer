@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <libdevcore/Log.h>
 #include "JSConsole.h"
+#include "libjsconsole/JSConsoleResources.hpp"
 
 // TODO: readline!
 #include <readline/readline.h>
@@ -14,6 +15,14 @@
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+
+JSConsole::JSConsole(): m_engine(), m_printer(m_engine)
+{
+	JSConsoleResources resources;
+	string web3 = resources.loadResourceAsString("web3");
+	m_engine.eval(web3.c_str());
+	m_engine.eval("web3 = require('web3');");
+}
 
 void JSConsole::repl() const
 {
@@ -54,3 +63,5 @@ std::string JSConsole::promptForIndentionLevel(int _i) const
 
 	return string((_i + 1) * 2, ' ');
 }
+
+
