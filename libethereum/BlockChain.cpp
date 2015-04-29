@@ -336,16 +336,27 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 	return make_tuple(fresh, dead, _bq.doneDrain(badBlocks));
 }
 
-ImportRoute BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept
+pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept
 {
 	try
 	{
-		return import(_block, _stateDB, _ir);
+		return make_pair(ImportResult::Success, import(_block, _stateDB, _ir));
+	}
+	catch (UnknownParent&)
+	{
+		return make_pair(ImportResult::UnknownParent, make_pair(h256s(), h256s()));
+	}
+	catch (AlreadyHaveBlock&)
+	{
+		return make_pair(ImportResult::AlreadyKnown, make_pair(h256s(), h256s()));
+	}
+	catch (FutureTime&)
+	{
+		return make_pair(ImportResult::FutureTime, make_pair(h256s(), h256s()));
 	}
 	catch (...)
 	{
-		cwarn << "Unexpected exception! Could not import block!" << boost::current_exception_diagnostic_information();
-		return make_pair(h256s(), h256s());
+		return make_pair(ImportResult::Malformed, make_pair(h256s(), h256s()));
 	}
 }
 

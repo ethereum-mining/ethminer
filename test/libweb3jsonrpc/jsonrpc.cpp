@@ -35,7 +35,7 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <set>
 #include "../JsonSpiritHeaders.h"
-#include "../TestHelper.h"
+#include "<test/TestHelper.h>"
 #include "webthreestubclient.h"
 
 BOOST_AUTO_TEST_SUITE(jsonrpc)
@@ -75,7 +75,7 @@ struct Setup
 string fromAscii(string _s)
 {
 	bytes b = asBytes(_s);
-	return "0x" + toHex(b);
+	return toHex(b, 2, HexPrefix::Add);
 }
 
 BOOST_FIXTURE_TEST_SUITE(environment, Setup)
