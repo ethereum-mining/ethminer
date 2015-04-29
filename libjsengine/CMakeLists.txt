@@ -19,6 +19,9 @@ file(GLOB HEADERS "*.h")
 
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
+include(EthUtils)
+eth_add_resources(${EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/JSResources.cmake")
+
 # macos brew version of v8 needs to be compiled with libstdc++
 # it also needs to be dynamic library
 # xcode needs libstdc++ to be explicitly set as it's attribute
