@@ -179,6 +179,7 @@ void help()
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
+		<< "    --console Use interactive javascript console" << endl
 		;
 		exit(0);
 }
@@ -539,6 +540,9 @@ int main(int argc, char** argv)
 	unsigned benchmarkTrial = 3;
 	unsigned benchmarkTrials = 5;
 
+	// javascript console
+	bool useConsole = false;
+
 	/// Farm params
 	string farmURL = "http://127.0.0.1:8080";
 	unsigned farmRecheckPeriod = 500;
@@ -877,6 +881,8 @@ int main(int argc, char** argv)
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
 #endif
+		else if (arg == "--console")
+			useConsole = true;
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
@@ -1611,21 +1617,29 @@ int main(int argc, char** argv)
 		unsigned n =c->blockChain().details().number;
 		if (mining)
 			c->startMining();
-		JSConsole console;
-		while (!g_exit)
+		if (useConsole)
 		{
-			console.repl();
-			if ( c->isMining() &&c->blockChain().details().number - n == mining)
-				c->stopMining();
-			this_thread::sleep_for(chrono::milliseconds(100));
+			JSConsole console;
+			while (!g_exit)
+			{
+				console.repl();
+				if (c->isMining() && c->blockChain().details().number - n == mining)
+					c->stopMining();
+				this_thread::sleep_for(chrono::milliseconds(100));
+			}
 		}
+		else
+			while (!g_exit)
+			{
+				if (c->isMining() && c->blockChain().details().number - n == mining)
+					c->stopMining();
+				this_thread::sleep_for(chrono::milliseconds(100));
+			}
 	}
 	else
 	{
-		JSConsole console;
 		while (!g_exit)
 		{
-			console.repl();
 			this_thread::sleep_for(chrono::milliseconds(1000));
 		}
 	}
