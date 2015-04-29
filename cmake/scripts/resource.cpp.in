@@ -1,0 +1,26 @@
+
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <unordered_map>
+
+using namespace std;
+
+${ETH_RESULT_DATA}
+
+static unordered_map <string, const char*> eth_resources;
+static unordered_map <string, unsigned> eth_sizes;
+
+void initResources()
+{
+	${ETH_RESULT_INIT}
+	//eth_resources["LICENSE"] = (char const*)eth_LICENSE;
+	//eth_sizes["LICENSE"] = sizeof(eth_LICENSE);
+}
+
+string loadResource(string _name)
+{
+	ostringstream bistream;
+	bistream.write(eth_resources[_name], eth_sizes[_name]);
+	return bistream.str();
+}
