@@ -838,8 +838,8 @@
             "previousHash" : "5e20a0453cecd065ea59c37ac63e079ee08998b6045136a8ce6635c7912ec0b6"
         },
 	"expect" : {
-            "balance" : "0",
             "0000000000000000000000000000000000000000" : {
+		"balance" : "0",
                 "storage" : {
                     "0x" : "0x0c",
                     "0x01" : "0x0c",
@@ -875,7 +875,7 @@
 
             "c94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
                 "balance" : "10",
-                "//" : "gas = 19 going OOG, gas = 20 fine",
+                "code" : "gas = 19 going OOG, gas = 20 fine",
                 "code" : "{(SSTORE 0 0)(SSTORE 1 0)(SSTORE 2 0)(SSTORE 3 0) (CALL 20000 0 1 0 0 0 0) }",
                 "nonce" : "0",
                 "storage" : {

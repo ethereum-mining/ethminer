@@ -35,7 +35,8 @@
 #include <libdevcore/CommonData.h>
 #include <libevmcore/Instruction.h>
 #include <libevm/VMFactory.h>
-#include "../libevm/vm.h"
+#include <test/libevm/vm.h>
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace json_spirit;
@@ -199,8 +200,8 @@ void doMyTests(json_spirit::mValue& _v)
 		{
 			o["post"] = mValue(fev.exportState());
 			o["callcreates"] = fev.exportCallCreates();
-			o["out"] = "0x" + toHex(output);
-			fev.push(o, "gas", gas);
+			o["out"] = toHex(output, 2, HexPrefix::Add);
+			o["gas"] = toCompactHex(gas, HexPrefix::Add, 1);
 			o["logs"] = test::exportLog(fev.sub.logs);
 		}
 	}

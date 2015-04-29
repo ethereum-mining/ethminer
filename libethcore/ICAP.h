@@ -25,6 +25,7 @@
 
 #include <string>
 #include <functional>
+#include <boost/algorithm/string/case_conv.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/FixedHash.h>
@@ -49,13 +50,13 @@ public:
 	/// Construct null ICAP object.
 	ICAP() = default;
 	/// Construct a direct ICAP object for given target address. Must have a zero first byte.
-	ICAP(Address const& _target): m_direct(_target) {}
+	ICAP(Address const& _target): m_type(Direct), m_direct(_target) {}
 	/// Construct an indirect ICAP object for given target name.
-	ICAP(std::string const& _target): m_client(_target), m_asset("ETH") {}
+	ICAP(std::string const& _target): m_type(Indirect), m_client(boost::algorithm::to_upper_copy(_target)), m_asset("ETH") {}
 	/// Construct an indirect ICAP object for given client and institution names.
-	ICAP(std::string const& _client, std::string const& _inst): m_client(_client), m_institution(_inst), m_asset("XET") {}
+	ICAP(std::string const& _client, std::string const& _inst): m_type(Indirect), m_client(boost::algorithm::to_upper_copy(_client)), m_institution(boost::algorithm::to_upper_copy(_inst)), m_asset("XET") {}
 	/// Construct an indirect ICAP object for given client, institution and asset names. You generally don't want to use this.
-	ICAP(std::string const& _c, std::string const& _i, std::string const& _a): m_client(_c), m_institution(_i), m_asset(_a) {}
+	ICAP(std::string const& _c, std::string const& _i, std::string const& _a): m_type(Indirect), m_client(boost::algorithm::to_upper_copy(_c)), m_institution(boost::algorithm::to_upper_copy(_i)), m_asset(boost::algorithm::to_upper_copy(_a)) {}
 
 	/// Type of ICAP address.
 	enum Type
@@ -88,10 +89,10 @@ public:
 	/// @returns client name. Only valid when type() == Indirect and asset() == "XET".
 	std::string const& client() const { return m_type == Indirect && m_asset == "XET" ? m_client : EmptyString; }
 	/// @returns target address. Always valid, but requires the Registry address and a function to make calls.
-	Address address(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const { return m_type == Direct ? direct() : m_type == Indirect ? lookup(_call, _reg) : Address(); }
+	std::pair<Address, bytes> address(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const { return m_type == Direct ? make_pair(direct(), bytes()) : m_type == Indirect ? lookup(_call, _reg) : make_pair(Address(), bytes()); }
 
 	/// @returns target address. Looks up through the given Registry and call function. Only valid when type() == Indirect.
-	Address lookup(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const;
+	std::pair<Address, bytes> lookup(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const;
 
 private:
 	Type m_type = Invalid;

@@ -127,7 +127,8 @@ public:
 	virtual Transactions pending() const override;
 	virtual h256s pendingHashes() const override;
 
-	void injectBlock(bytes const& _block);
+	ImportResult injectTransaction(bytes const& _rlp) override { prepareForTransaction(); return m_tq.import(_rlp); }
+	ImportResult injectBlock(bytes const& _block);
 
 	using Interface::diff;
 	virtual StateDiff diff(unsigned _txi, h256 _block) const override;
