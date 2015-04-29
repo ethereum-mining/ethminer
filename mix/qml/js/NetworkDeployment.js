@@ -224,11 +224,6 @@ function checkEthPath(dappUrl, callBack)
 	{
 		// the first owned registrar must have been created to follow the path.
 		var str = clientModel.encodeStringParam(dappUrl[0]);
-		console.log("prarma = " + str + " " + deploymentDialog.eth);
-
-		console.log("0x5a3a05bd" + str);
-		console.log(deploymentDialog.currentAccount);
-		console.log(deploymentDialog.eth);
 		var requests = [];
 		requests.push({
 						  //subRegistrar()
@@ -271,7 +266,7 @@ function checkRegistration(dappUrl, addr, callBack)
 						  //getOwner()
 						  jsonrpc: "2.0",
 						  method: "eth_call",
-						  params: [ { "gas" : 2000, "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x02571be3" } ],
+						  params: [ { "gas" : 2000, "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x02571be3" }, "pending" ],
 						  id: jsonRpcRequestId++
 					  });
 
@@ -279,7 +274,7 @@ function checkRegistration(dappUrl, addr, callBack)
 						  //register()
 						  jsonrpc: "2.0",
 						  method: "eth_call",
-						  params: [ { "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x5a3a05bd"  + str } ],
+						  params: [ { "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x5a3a05bd"  + str }, "pending" ],
 						  id: jsonRpcRequestId++
 					  });
 
@@ -363,11 +358,8 @@ function registerContentHash(registrar, callBack)
 	var txt = qsTr("Finalizing Dapp registration ...");
 	deploymentStepChanged(txt);
 	console.log(txt);
-	console.log(" 45 64 564 0 " + deploymentDialog.packageHash);
 	var requests = [];
 	var paramTitle = clientModel.encodeStringParam(projectModel.projectTitle);
-	console.log("ggg " + paramTitle);
-	console.log('registrar ' + registrar);
 
 	requests.push({
 					  //setContent()
@@ -384,19 +376,40 @@ function registerContentHash(registrar, callBack)
 function registerToUrlHint()
 {
 	deploymentStepChanged(qsTr("Registering application Resources (" + deploymentDialog.applicationUrlHttp) + ") ...");
+
+	urlHintAddress(function(urlHint){
+		var requests = [];
+		var paramUrlHttp = clientModel.encodeStringParam(deploymentDialog.applicationUrlHttp);
+
+		requests.push({
+						  //urlHint => suggestUrl
+						  jsonrpc: "2.0",
+						  method: "eth_sendTransaction",
+						  params: [ {  "to": '0x' + urlHint, "from": deploymentDialog.currentAccount, "gas": "0xfffff", "data": "0x584e86ad" + deploymentDialog.packageHash + paramUrlHttp } ],
+						  id: jsonRpcRequestId++
+					  });
+
+		rpcCall(requests, function (httpRequest, response) {
+			deploymentComplete();
+		});
+	});
+}
+
+function urlHintAddress(callBack)
+{
 	var requests = [];
-	var paramUrlHttp = clientModel.encodeStringParam(deploymentDialog.applicationUrlHttp);
-	console.log("package hash " + deploymentDialog.packageHash);
+	var urlHint = clientModel.encodeStringParam("UrlHint");
 	requests.push({
-					  //urlHint => suggestUrl
+					  //registrar: get UrlHint addr
 					  jsonrpc: "2.0",
-					  method: "eth_sendTransaction",
-					  params: [ {  "to": '0x' + deploymentDialog.urlHintContract, "from": deploymentDialog.currentAccount, "gas": "0xfffff", "data": "0x584e86ad" + deploymentDialog.packageHash + paramUrlHttp } ],
+					  method: "eth_call",
+					  params: [ {  "to": '0x' + deploymentDialog.eth, "from": deploymentDialog.currentAccount, "gas": "0xfffff", "data": "0x3b3b57de" + urlHint }, "pending" ],
 					  id: jsonRpcRequestId++
 				  });
 
 	rpcCall(requests, function (httpRequest, response) {
-		deploymentComplete();
+		var res = JSON.parse(response);
+		callBack(normalizeAddress(res[0].result));
 	});
 }
 

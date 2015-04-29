@@ -173,7 +173,7 @@ Main::Main(QWidget *parent) :
 	ui->blockCount->setText(QString("PV%1.%2 D%3 %4-%5 v%6").arg(eth::c_protocolVersion).arg(eth::c_minorProtocolVersion).arg(c_databaseVersion).arg(QString::fromStdString(ProofOfWork::name())).arg(ProofOfWork::revision()).arg(dev::Version));
 
 	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
-	
+
 	QSettings s("ethereum", "alethzero");
 	m_networkConfig = s.value("peers").toByteArray();
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
@@ -196,7 +196,7 @@ Main::Main(QWidget *parent) :
 	});
 
 	m_dappHost.reset(new DappHost(8081));
-	m_dappLoader = new DappLoader(this, web3());
+	m_dappLoader = new DappLoader(this, web3(), getNameReg());
 	connect(m_dappLoader, &DappLoader::dappReady, this, &Main::dappLoaded);
 	connect(m_dappLoader, &DappLoader::pageReady, this, &Main::pageLoaded);
 //	ui->webView->page()->settings()->setAttribute(QWebEngineSettings::DeveloperExtrasEnabled, true);
