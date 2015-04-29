@@ -39,13 +39,10 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::crypto;
 
-Address c_registrar = Address("6a16d3a392de03c67c1880acca6a9d650015c8ae");
-Address c_urlHint = Address("43c6d48ef55d10a786eb3e244824c820d5359b43");
-
 QString contentsOfQResource(std::string const& res);
 
-DappLoader::DappLoader(QObject* _parent, WebThreeDirect* _web3):
-	QObject(_parent), m_web3(_web3)
+DappLoader::DappLoader(QObject* _parent, WebThreeDirect* _web3, Address _nameReg):
+	QObject(_parent), m_web3(_web3), m_nameReg(_nameReg)
 {
 	connect(&m_net, &QNetworkAccessManager::finished, this, &DappLoader::downloadComplete);
 }
@@ -61,12 +58,11 @@ DappLocation DappLoader::resolveAppUri(QString const& _uri)
 	std::reverse(parts.begin(), parts.end());
 	parts.append(url.path().split('/', QString::SkipEmptyParts));
 
-	Address address = c_registrar;
+	Address address = m_nameReg;
 	Address lastAddress;
 	int partIndex = 0;
 
 	h256 contentHash;
-
 	while (address && partIndex < parts.length())
 	{
 		lastAddress = address;
@@ -85,7 +81,12 @@ DappLocation DappLoader::resolveAppUri(QString const& _uri)
 		++partIndex;
 	}
 
-	string32 contentUrl = abiOut<string32>(web3()->ethereum()->call(c_urlHint, abiIn("url(bytes32)", contentHash)).output);
+	string32 urlHintName = ZeroString32;
+	QByteArray utf8 = QString("UrlHint").toUtf8();
+	std::copy(utf8.data(), utf8.data() + utf8.size(), urlHintName.data());
+
+	Address urlHint = abiOut<Address>(web3()->ethereum()->call(m_nameReg, abiIn("addr(bytes32)", urlHintName)).output);
+	string32 contentUrl = abiOut<string32>(web3()->ethereum()->call(urlHint, abiIn("url(bytes32)", contentHash)).output);
 	QString domain = domainParts.join('/');
 	parts.erase(parts.begin(), parts.begin() + partIndex);
 	QString path = parts.join('/');
@@ -237,6 +238,7 @@ void DappLoader::loadDapp(QString const& _uri)
 		DappLocation location = resolveAppUri(_uri);
 		contentUri = location.contentUri;
 		hash = location.contentHash;
+		uri = contentUri;
 	}
 	QNetworkRequest request(contentUri);
 	m_uriHashes[uri] = hash;
