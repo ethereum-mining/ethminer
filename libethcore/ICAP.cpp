@@ -21,9 +21,11 @@
 
 #include "ICAP.h"
 #include <boost/algorithm/string/case_conv.hpp>
+#include <boost/algorithm/string.hpp>
 #include <libdevcore/Base64.h>
 #include <libdevcrypto/SHA3.h>
 #include "Exceptions.h"
+#include "ABI.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -80,13 +82,11 @@ ICAP ICAP::decoded(std::string const& _encoded)
 	{
 		ret.m_type = Indirect;
 		ret.m_asset = data.substr(0, 3);
-		if (ret.m_asset == "XET")
+		if (ret.m_asset == "XET" || ret.m_asset == "ETH")
 		{
 			ret.m_institution = data.substr(3, 4);
 			ret.m_client = data.substr(7);
 		}
-		else if (ret.m_asset == "ETH")
-			ret.m_client = data.substr(4);
 		else
 			throw InvalidICAP();
 	}
@@ -101,7 +101,7 @@ std::string ICAP::encoded() const
 	if (m_type == Direct)
 	{
 		if (!!m_direct[0])
-			return string();
+			throw InvalidICAP();
 		std::string d = toBase36<Address::size>(m_direct);
 		while (d.size() < 30)
 			d = "0" + d;
@@ -113,20 +113,11 @@ std::string ICAP::encoded() const
 			m_asset.find_first_not_of("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890") != string::npos ||
 			m_institution.find_first_not_of("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890") != string::npos ||
 			m_client.find_first_not_of("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890") != string::npos ||
-			m_asset.size() != 3
+			m_asset.size() != 3 ||
+			(boost::to_upper_copy(m_asset) != "XET" && boost::to_upper_copy(m_asset) != "ETH") ||
+			m_institution.size() != 4 ||
+			m_client.size() != 9
 		)
-			throw InvalidICAP();
-		if (boost::to_upper_copy(m_asset) == "XET")
-		{
-			if (m_institution.size() != 4 || m_client.size() != 9)
-				throw InvalidICAP();
-		}
-		else if (boost::to_upper_copy(m_asset) == "ETH")
-		{
-			if (m_client.size() != 13)
-				throw InvalidICAP();
-		}
-		else
 			throw InvalidICAP();
 		return iban("XE", m_asset + m_institution + m_client);
 	}
@@ -134,23 +125,33 @@ std::string ICAP::encoded() const
 		throw InvalidICAP();
 }
 
-Address ICAP::lookup(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const
+pair<Address, bytes> ICAP::lookup(std::function<bytes(Address, bytes)> const& _call, Address const& _reg) const
 {
-	(void)_call;
-	(void)_reg;
+	auto resolve = [&](string const& s)
+	{
+		vector<string> ss;
+		boost::algorithm::split(ss, s, boost::is_any_of("/"));
+		Address r = _reg;
+		for (unsigned i = 0; i < ss.size() - 1; ++i)
+			r = abiOut<Address>(_call(r, abiIn("subRegistrar(bytes32)", toString32(ss[i]))));
+		return abiOut<Address>(_call(r, abiIn("addr(bytes32)", toString32(ss.back()))));
+	};
 	if (m_asset == "XET")
 	{
-		// TODO
-		throw InterfaceNotSupported("ICAP::lookup(), XET asset");
+		Address a = resolve(m_institution);
+		bytes d = abiIn("deposit(uint64)", fromBase36<8>(m_client));
+		return make_pair(a, d);
 	}
 	else if (m_asset == "ETH")
 	{
-		// TODO
-//		return resolve(m_institution + "/" + m_client).primary();
-		throw InterfaceNotSupported("ICAP::lookup(), ETH asset");
+		if (m_institution == "XREG")
+			return make_pair(resolve(m_client), bytes());
+		else if (m_institution[0] != 'X')
+			return make_pair(resolve(m_institution + "/" + m_client), bytes());
+		else
+			throw InterfaceNotSupported("ICAP::lookup(), bad institution");
 	}
-	else
-		throw InterfaceNotSupported("ICAP::lookup(), non XET asset");
+	throw InterfaceNotSupported("ICAP::lookup(), bad asset");
 }
 
 }

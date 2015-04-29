@@ -102,7 +102,7 @@ var getBlock = new Method({
     name: 'getBlock', 
     call: blockCall,
     params: 2,
-    inputFormatter: [utils.toHex, function (val) { return !!val; }],
+    inputFormatter: [formatters.inputBlockNumberFormatter, function (val) { return !!val; }],
     outputFormatter: formatters.outputBlockFormatter
 });
 
@@ -110,7 +110,7 @@ var getUncle = new Method({
     name: 'getUncle',
     call: uncleCall,
     params: 2,
-    inputFormatter: [utils.toHex, utils.toHex],
+    inputFormatter: [formatters.inputBlockNumberFormatter, utils.toHex],
     outputFormatter: formatters.outputBlockFormatter,
 
 });
@@ -148,7 +148,7 @@ var getTransactionFromBlock = new Method({
     name: 'getTransactionFromBlock',
     call: transactionFromBlockCall,
     params: 2,
-    inputFormatter: [utils.toHex, utils.toHex],
+    inputFormatter: [formatters.inputBlockNumberFormatter, utils.toHex],
     outputFormatter: formatters.outputTransactionFormatter
 });
 
@@ -192,12 +192,6 @@ var compileSerpent = new Method({
     params: 1
 });
 
-var flush = new Method({
-    name: 'flush',
-    call: 'eth_flush',
-    params: 0
-});
-
 var methods = [
     getBalance,
     getStorageAt,
@@ -215,7 +209,6 @@ var methods = [
     compileSolidity,
     compileLLL,
     compileSerpent,
-    flush
 ];
 
 /// @returns an array of objects describing web3.eth api properties

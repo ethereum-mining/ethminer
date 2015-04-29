@@ -30,10 +30,12 @@
 #include <QMessageBox>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
+#if ETH_SOLIDITY || !ETH_TRUE
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/SourceReferenceFormatter.h>
+#endif
 #include <libnatspec/NatspecExpressionEvaluator.h>
 #include <libethereum/Client.h>
 #include <libethereum/Utility.h>
@@ -113,7 +115,7 @@ void Transact::updateDestination()
 			if (ui->destination->findText(s, Qt::MatchExactly | Qt::MatchCaseSensitive) == -1)
 				ui->destination->addItem(s);
 	for (int i = 0; i < ui->destination->count(); ++i)
-		if (ui->destination->itemText(i) != "(Create Contract)" && !m_context->fromString(ui->destination->itemText(i)))
+		if (ui->destination->itemText(i) != "(Create Contract)" && !m_context->fromString(ui->destination->itemText(i)).first)
 			ui->destination->removeItem(i--);
 }
 
@@ -139,10 +141,25 @@ void Transact::updateFee()
 void Transact::on_destination_currentTextChanged(QString)
 {
 	if (ui->destination->currentText().size() && ui->destination->currentText() != "(Create Contract)")
-		if (Address a = m_context->fromString(ui->destination->currentText()))
-			ui->calculatedName->setText(m_context->render(a));
+	{
+		auto p = m_context->fromString(ui->destination->currentText());
+		if (p.first)
+			ui->calculatedName->setText(m_context->render(p.first));
 		else
 			ui->calculatedName->setText("Unknown Address");
+		if (!p.second.empty())
+		{
+			m_data = p.second;
+			ui->data->setPlainText(QString::fromStdString("0x" + toHex(m_data)));
+			ui->data->setEnabled(false);
+		}
+		else if (!ui->data->isEnabled())
+		{
+			m_data.clear();
+			ui->data->setPlainText("");
+			ui->data->setEnabled(true);
+		}
+	}
 	else
 		ui->calculatedName->setText("Create Contract");
 	rejigData();
@@ -199,7 +216,7 @@ static tuple<vector<string>, bytes, string> userInputToCode(string const& _user,
 		boost::replace_all_copy(u, " ", "");
 		data = fromHex(u);
 	}
-#if ETH_SOLIDITY
+#if ETH_SOLIDITY || !ETH_TRUE
 	else if (sourceIsSolidity(_user))
 	{
 		dev::solidity::CompilerStack compiler(true);
@@ -329,7 +346,8 @@ void Transact::rejigData()
 		er = ethereum()->create(s, value(), m_data, gasNeeded, gasPrice());
 	else
 	{
-		to = m_context->fromString(ui->destination->currentText());
+		// TODO: cache like m_data.
+		to = m_context->fromString(ui->destination->currentText()).first;
 		er = ethereum()->call(s, value(), to, m_data, gasNeeded, gasPrice());
 	}
 	gasNeeded = (qint64)(er.gasUsed + er.gasRefunded);
@@ -415,7 +433,8 @@ void Transact::on_send_clicked()
 #endif
 	}
 	else
-		ethereum()->submitTransaction(s, value(), m_context->fromString(ui->destination->currentText()), m_data, ui->gas->value(), gasPrice());
+		// TODO: cache like m_data.
+		ethereum()->submitTransaction(s, value(), m_context->fromString(ui->destination->currentText()).first, m_data, ui->gas->value(), gasPrice());
 	close();
 }
 
@@ -434,7 +453,7 @@ void Transact::on_debug_clicked()
 		State st(ethereum()->postState());
 		Transaction t = isCreation() ?
 			Transaction(value(), gasPrice(), ui->gas->value(), m_data, st.transactionsFrom(dev::toAddress(s)), s) :
-			Transaction(value(), gasPrice(), ui->gas->value(), m_context->fromString(ui->destination->currentText()), m_data, st.transactionsFrom(dev::toAddress(s)), s);
+			Transaction(value(), gasPrice(), ui->gas->value(), m_context->fromString(ui->destination->currentText()).first, m_data, st.transactionsFrom(dev::toAddress(s)), s);
 		Debugger dw(m_context, this);
 		Executive e(st, ethereum()->blockChain(), 0);
 		dw.populate(e, t);

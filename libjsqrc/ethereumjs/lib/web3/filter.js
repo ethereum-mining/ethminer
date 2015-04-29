@@ -28,6 +28,25 @@ var RequestManager = require('./requestmanager');
 var formatters = require('./formatters');
 var utils = require('../utils/utils');
 
+/**
+* Converts a given topic to a hex string, but also allows null values.
+*
+* @param {Mixed} value
+* @return {String}
+*/
+var toTopic = function(value){
+
+    if(value === null || typeof value === 'undefined')
+        return null;
+
+    value = String(value);
+
+    if(value.indexOf('0x') === 0)
+        return value;
+    else
+        return utils.fromAscii(value);
+};
+
 /// This method should be called on options object, to verify deprecated properties && lazy load dynamic ones
 /// @param should be string or object
 /// @returns options string or object
@@ -42,7 +61,7 @@ var getOptions = function (options) {
     // make sure topics, get converted to hex
     options.topics = options.topics || [];
     options.topics = options.topics.map(function(topic){
-        return utils.toHex(topic);
+        return (utils.isArray(topic)) ? topic.map(toTopic) : toTopic(topic);
     });
 
     // lazy load
@@ -86,6 +105,20 @@ Filter.prototype.watch = function (callback) {
         });
     };
 
+    // call getFilterLogs on start
+    if (!utils.isString(this.options)) {
+        this.get(function (err, messages) {
+            // don't send all the responses to all the watches again... just to this one
+            if (err) {
+                callback(err);
+            }
+
+            messages.forEach(function (message) {
+                callback(null, message);
+            });
+        });
+    }
+
     RequestManager.getInstance().startPolling({
         method: this.implementation.poll.call,
         params: [this.filterId],
@@ -98,12 +131,24 @@ Filter.prototype.stopWatching = function () {
     this.callbacks = [];
 };
 
-Filter.prototype.get = function () {
-    var logs = this.implementation.getLogs(this.filterId);
+Filter.prototype.get = function (callback) {
     var self = this;
-    return logs.map(function (log) {
-        return self.formatter ? self.formatter(log) : log;
-    });
+    if (utils.isFunction(callback)) {
+        this.implementation.getLogs(this.filterId, function(err, res){
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, res.map(function (log) {
+                    return self.formatter ? self.formatter(log) : log;
+                }));
+            }
+        });
+    } else {
+        var logs = this.implementation.getLogs(this.filterId);
+        return logs.map(function (log) {
+            return self.formatter ? self.formatter(log) : log;
+        });
+    }
 };
 
 module.exports = Filter;

@@ -24,7 +24,7 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethereum/CanonBlockChain.h>
-#include "../TestHelper.h"
+#include <test/TestHelper.h>
 
 using namespace std;
 using namespace json_spirit;
@@ -33,12 +33,16 @@ using namespace dev::eth;
 
 namespace dev {  namespace test {
 
+BlockInfo constructBlock(mObject& _o);
 bytes createBlockRLPFromFields(mObject& _tObj);
+RLPStream createFullBlockFromHeader(BlockInfo const& _bi, bytes const& _txs = RLPEmptyList, bytes const& _uncles = RLPEmptyList);
+
+mArray writeTransactionsToJson(Transactions const& txs);
+mObject writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi);
 void overwriteBlockHeader(BlockInfo& _current_BlockHeader, mObject& _blObj);
 BlockInfo constructBlock(mObject& _o);
 void updatePoW(BlockInfo& _bi);
-void writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi);
-RLPStream createFullBlockFromHeader(BlockInfo const& _bi, bytes const& _txs = RLPEmptyList, bytes const& _uncles = RLPEmptyList);
+mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<BlockInfo> const& vBiBlocks);
 
 void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 {
@@ -54,8 +58,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		ImportTest importer(o["pre"].get_obj());
 		TransientDirectory td_stateDB;
 		TransientDirectory td_stateDB_tmp;
-		State state(OverlayDB(State::openDB(td_stateDB.path())), BaseState::Empty, biGenesisBlock.coinbaseAddress);
-		State stateTemp(OverlayDB(State::openDB(td_stateDB_tmp.path())), BaseState::Empty, biGenesisBlock.coinbaseAddress);
+		State state(State::openDB(td_stateDB.path()), BaseState::Empty, biGenesisBlock.coinbaseAddress);
+		State stateTemp(State::openDB(td_stateDB_tmp.path()), BaseState::Empty, biGenesisBlock.coinbaseAddress);
 		importer.importState(o["pre"].get_obj(), state);
 		o["pre"] = fillJsonWithState(state);
 		state.commit();
@@ -77,7 +81,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		// create new "genesis" block
 		RLPStream rlpGenesisBlock = createFullBlockFromHeader(biGenesisBlock);
 		biGenesisBlock.verifyInternals(&rlpGenesisBlock.out());
-		o["genesisRLP"] = "0x" + toHex(rlpGenesisBlock.out());
+		o["genesisRLP"] = toHex(rlpGenesisBlock.out(), 2, HexPrefix::Add);
 
 		// construct blockchain
 		TransientDirectory td;
@@ -91,6 +95,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 			vBiBlocks.push_back(biGenesisBlock);
 			for (auto const& bl: o["blocks"].get_array())
 			{
+				stateTemp = state;
 				mObject blObj = bl.get_obj();
 
 				// get txs
@@ -105,74 +110,15 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 						cnote << "failed importing transaction\n";
 				}
 
-				// write uncle list
-				BlockQueue uncleBlockQueue;
-				mArray aUncleList;
+				//get uncles
 				vector<BlockInfo> vBiUncles;
-				mObject uncleHeaderObj_pre;
+				blObj["uncleHeaders"] = importUncles(blObj, vBiUncles, vBiBlocks);
 
-				for (auto const& uHObj: blObj["uncleHeaders"].get_array())
+				BlockQueue uncleBlockQueue;
+				cnote << "import uncle in blockQueue";
+				for (size_t i = 0; i < vBiUncles.size(); i++)
 				{
-					mObject uncleHeaderObj = uHObj.get_obj();
-					if (uncleHeaderObj.count("sameAsPreviousSibling"))
-					{
-						writeBlockHeaderToJson(uncleHeaderObj_pre, vBiUncles[vBiUncles.size()-1]);
-						aUncleList.push_back(uncleHeaderObj_pre);
-						vBiUncles.push_back(vBiUncles[vBiUncles.size()-1]);
-						continue;
-					}
-
-					if (uncleHeaderObj.count("sameAsBlock"))
-					{
-						writeBlockHeaderToJson(uncleHeaderObj_pre, vBiBlocks[(size_t)toInt(uncleHeaderObj["sameAsBlock"])]);
-						aUncleList.push_back(uncleHeaderObj_pre);
-						vBiUncles.push_back(vBiBlocks[(size_t)toInt(uncleHeaderObj["sameAsBlock"])]);
-						continue;
-					}
-					string overwrite = "false";
-					if (uncleHeaderObj.count("overwriteAndRedoPoW"))
-					{
-						overwrite = uncleHeaderObj["overwriteAndRedoPoW"].get_str();
-						uncleHeaderObj.erase("overwriteAndRedoPoW");
-					}
-
-					BlockInfo uncleBlockFromFields = constructBlock(uncleHeaderObj);
-
-					// make uncle header valid
-					uncleBlockFromFields.timestamp = (u256)time(0);
-					if (vBiBlocks.size() > 2)
-					{
-						if (uncleBlockFromFields.number - 1 < vBiBlocks.size())
-							uncleBlockFromFields.populateFromParent(vBiBlocks[(size_t)uncleBlockFromFields.number - 1]);
-						else
-							uncleBlockFromFields.populateFromParent(vBiBlocks[vBiBlocks.size() - 2]);
-					}
-					else
-						continue;
-
-					if (overwrite != "false")
-					{
-						uncleBlockFromFields.difficulty = overwrite == "difficulty" ? toInt(uncleHeaderObj["difficulty"]) : uncleBlockFromFields.difficulty;
-						uncleBlockFromFields.gasLimit = overwrite == "gasLimit" ? toInt(uncleHeaderObj["gasLimit"]) : uncleBlockFromFields.gasLimit;
-						uncleBlockFromFields.gasUsed = overwrite == "gasUsed" ? toInt(uncleHeaderObj["gasUsed"]) : uncleBlockFromFields.gasUsed;
-						uncleBlockFromFields.parentHash = overwrite == "parentHash" ? h256(uncleHeaderObj["parentHash"].get_str()) : uncleBlockFromFields.parentHash;
-						uncleBlockFromFields.stateRoot = overwrite == "stateRoot" ? h256(uncleHeaderObj["stateRoot"].get_str()) : uncleBlockFromFields.stateRoot;
-						if (overwrite == "timestamp")
-						{
-							uncleBlockFromFields.timestamp = toInt(uncleHeaderObj["timestamp"]);
-							uncleBlockFromFields.difficulty = uncleBlockFromFields.calculateDifficulty(vBiBlocks[(size_t)uncleBlockFromFields.number - 1]);
-						}
-					}
-
-					updatePoW(uncleBlockFromFields);
-					writeBlockHeaderToJson(uncleHeaderObj, uncleBlockFromFields);
-
-					aUncleList.push_back(uncleHeaderObj);
-					vBiUncles.push_back(uncleBlockFromFields);
-
-					cnote << "import uncle in blockQueue";
-
-					RLPStream uncle = createFullBlockFromHeader(uncleBlockFromFields);
+					RLPStream uncle = createFullBlockFromHeader(vBiUncles.at(i));
 					try
 					{
 						uncleBlockQueue.import(&uncle.out(), bc);
@@ -181,11 +127,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					{
 						cnote << "error in importing uncle! This produces an invalid block (May be by purpose for testing).";
 					}
+				} 
 
-					uncleHeaderObj_pre = uncleHeaderObj;
-				} //for blObj["uncleHeaders"].get_array()
-
-				blObj["uncleHeaders"] = aUncleList;
 				bc.sync(uncleBlockQueue, state.db(), 4);
 				state.commitToMine(bc);
 
@@ -206,33 +149,15 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					return;
 				}
 
-				blObj["rlp"] = "0x" + toHex(state.blockData());
+				blObj["rlp"] = toHex(state.blockData(), 2, HexPrefix::Add);
 
-				// write valid txs
-				mArray txArray;
+				//get valid transactions
 				Transactions txList;
 				for (auto const& txi: txs.transactions())
-				{
 					txList.push_back(txi.second);
-					mObject txObject;
-					txObject["nonce"] = toString(txi.second.nonce());
-					txObject["data"] = "0x" + toHex(txi.second.data());
-					txObject["gasLimit"] = toString(txi.second.gas());
-					txObject["gasPrice"] = toString(txi.second.gasPrice());
-					txObject["r"] = "0x" + toString(txi.second.signature().r);
-					txObject["s"] = "0x" + toString(txi.second.signature().s);
-					txObject["v"] = to_string(txi.second.signature().v + 27);
-					txObject["to"] = txi.second.isCreation() ? "" : toString(txi.second.receiveAddress());
-					txObject["value"] = toString(txi.second.value());
-					txObject = ImportTest::makeAllFieldsHex(txObject);
-
-					txArray.push_back(txObject);
-				}
-
-				blObj["transactions"] = txArray;
+				blObj["transactions"] = writeTransactionsToJson(txList);
 
 				BlockInfo current_BlockHeader = state.info();
-
 				if (blObj.count("blockHeader"))
 					overwriteBlockHeader(current_BlockHeader, blObj);
 
@@ -263,7 +188,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 				RLPStream block2 = createFullBlockFromHeader(current_BlockHeader, txStream.out(), uncleStream.out());
 
-				blObj["rlp"] = "0x" + toHex(block2.out());
+				blObj["rlp"] = toHex(block2.out(), 2, HexPrefix::Add);
 
 				if (sha3(RLP(state.blockData())[0].data()) != sha3(RLP(block2.out())[0].data()))
 					cnote << "block header mismatch\n";
@@ -483,6 +408,77 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 // helping functions
 
+mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<BlockInfo> const& vBiBlocks)
+{
+	// write uncle list
+	mArray aUncleList;
+	mObject uncleHeaderObj_pre;
+
+	for (auto const& uHObj: blObj.at("uncleHeaders").get_array())
+	{
+		mObject uncleHeaderObj = uHObj.get_obj();
+		if (uncleHeaderObj.count("sameAsPreviousSibling"))
+		{
+			writeBlockHeaderToJson(uncleHeaderObj_pre, vBiUncles[vBiUncles.size()-1]);
+			aUncleList.push_back(uncleHeaderObj_pre);
+			vBiUncles.push_back(vBiUncles[vBiUncles.size()-1]);
+			continue;
+		}
+
+		if (uncleHeaderObj.count("sameAsBlock"))
+		{
+			writeBlockHeaderToJson(uncleHeaderObj_pre, vBiBlocks[(size_t)toInt(uncleHeaderObj["sameAsBlock"])]);
+			aUncleList.push_back(uncleHeaderObj_pre);
+			vBiUncles.push_back(vBiBlocks[(size_t)toInt(uncleHeaderObj["sameAsBlock"])]);
+			continue;
+		}
+		string overwrite = "false";
+		if (uncleHeaderObj.count("overwriteAndRedoPoW"))
+		{
+			overwrite = uncleHeaderObj["overwriteAndRedoPoW"].get_str();
+			uncleHeaderObj.erase("overwriteAndRedoPoW");
+		}
+
+		BlockInfo uncleBlockFromFields = constructBlock(uncleHeaderObj);
+
+		// make uncle header valid
+		uncleBlockFromFields.timestamp = (u256)time(0);
+		if (vBiBlocks.size() > 2)
+		{
+			if (uncleBlockFromFields.number - 1 < vBiBlocks.size())
+				uncleBlockFromFields.populateFromParent(vBiBlocks[(size_t)uncleBlockFromFields.number - 1]);
+			else
+				uncleBlockFromFields.populateFromParent(vBiBlocks[vBiBlocks.size() - 2]);
+		}
+		else
+			continue;
+
+		if (overwrite != "false")
+		{
+			uncleBlockFromFields.difficulty = overwrite == "difficulty" ? toInt(uncleHeaderObj["difficulty"]) : uncleBlockFromFields.difficulty;
+			uncleBlockFromFields.gasLimit = overwrite == "gasLimit" ? toInt(uncleHeaderObj["gasLimit"]) : uncleBlockFromFields.gasLimit;
+			uncleBlockFromFields.gasUsed = overwrite == "gasUsed" ? toInt(uncleHeaderObj["gasUsed"]) : uncleBlockFromFields.gasUsed;
+			uncleBlockFromFields.parentHash = overwrite == "parentHash" ? h256(uncleHeaderObj["parentHash"].get_str()) : uncleBlockFromFields.parentHash;
+			uncleBlockFromFields.stateRoot = overwrite == "stateRoot" ? h256(uncleHeaderObj["stateRoot"].get_str()) : uncleBlockFromFields.stateRoot;
+			if (overwrite == "timestamp")
+			{
+				uncleBlockFromFields.timestamp = toInt(uncleHeaderObj["timestamp"]);
+				uncleBlockFromFields.difficulty = uncleBlockFromFields.calculateDifficulty(vBiBlocks[(size_t)uncleBlockFromFields.number - 1]);
+			}
+		}
+
+		updatePoW(uncleBlockFromFields);
+		writeBlockHeaderToJson(uncleHeaderObj, uncleBlockFromFields);
+
+		aUncleList.push_back(uncleHeaderObj);
+		vBiUncles.push_back(uncleBlockFromFields);
+
+		uncleHeaderObj_pre = uncleHeaderObj;
+	} //for blObj["uncleHeaders"].get_array()
+
+	return aUncleList;
+}
+
 bytes createBlockRLPFromFields(mObject& _tObj)
 {
 	RLPStream rlpStream;
@@ -619,7 +615,18 @@ void updatePoW(BlockInfo& _bi)
 	_bi.noteDirty();
 }
 
-void writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi)
+mArray writeTransactionsToJson(Transactions const& txs)
+{
+	mArray txArray;
+	for (auto const& txi: txs)
+	{
+		mObject txObject = fillJsonWithTransaction(txi);
+		txArray.push_back(txObject);
+	}
+	return txArray;
+}
+
+mObject writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi)
 {
 	_o["parentHash"] = toString(_bi.parentHash);
 	_o["uncleHash"] = toString(_bi.sha3Uncles);
@@ -628,15 +635,16 @@ void writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi)
 	_o["transactionsTrie"] = toString(_bi.transactionsRoot);
 	_o["receiptTrie"] = toString(_bi.receiptsRoot);
 	_o["bloom"] = toString(_bi.logBloom);
-	_o["difficulty"] = "0x" + toHex(toCompactBigEndian(_bi.difficulty, 1));
-	_o["number"] = "0x" + toHex(toCompactBigEndian(_bi.number, 1));
-	_o["gasLimit"] = "0x" + toHex(toCompactBigEndian(_bi.gasLimit, 1));
-	_o["gasUsed"] = "0x" + toHex(toCompactBigEndian(_bi.gasUsed, 1));
-	_o["timestamp"] = "0x" + toHex(toCompactBigEndian(_bi.timestamp, 1));
-	_o["extraData"] ="0x" + toHex(_bi.extraData);
+	_o["difficulty"] = toCompactHex(_bi.difficulty, HexPrefix::Add, 1);
+	_o["number"] = toCompactHex(_bi.number, HexPrefix::Add, 1);
+	_o["gasLimit"] = toCompactHex(_bi.gasLimit, HexPrefix::Add, 1);
+	_o["gasUsed"] = toCompactHex(_bi.gasUsed, HexPrefix::Add, 1);
+	_o["timestamp"] = toCompactHex(_bi.timestamp, HexPrefix::Add, 1);
+	_o["extraData"] = toHex(_bi.extraData, 2, HexPrefix::Add);
 	_o["mixHash"] = toString(_bi.mixHash);
 	_o["nonce"] = toString(_bi.nonce);
 	_o["hash"] = toString(_bi.hash());
+	return _o;
 }
 
 RLPStream createFullBlockFromHeader(BlockInfo const& _bi, bytes const& _txs, bytes const& _uncles)
@@ -689,6 +697,11 @@ BOOST_AUTO_TEST_CASE(bcUncleTest)
 BOOST_AUTO_TEST_CASE(bcUncleHeaderValiditiy)
 {
 	dev::test::executeTests("bcUncleHeaderValiditiy", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+}
+
+BOOST_AUTO_TEST_CASE(bcGasPricerTest)
+{
+	dev::test::executeTests("bcGasPricerTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(userDefinedFile)
