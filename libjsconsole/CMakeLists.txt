@@ -20,6 +20,9 @@ file(GLOB HEADERS "*.h")
 
 add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
+include(EthUtils)
+eth_add_resources(${EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/JSResources.cmake")
+
 target_link_libraries(${EXECUTABLE} jsengine)
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})

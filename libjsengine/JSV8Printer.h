@@ -7,7 +7,6 @@
 #include "JSPrinter.h"
 #include "JSV8Engine.h"
 
-
 namespace dev
 {
 namespace eth
