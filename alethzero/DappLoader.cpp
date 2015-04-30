@@ -82,7 +82,7 @@ DappLocation DappLoader::resolveAppUri(QString const& _uri)
 	}
 
 	string32 urlHintName = ZeroString32;
-	QByteArray utf8 = QString("UrlHint").toUtf8();
+	QByteArray utf8 = QString("urlhint").toUtf8();
 	std::copy(utf8.data(), utf8.data() + utf8.size(), urlHintName.data());
 
 	Address urlHint = abiOut<Address>(web3()->ethereum()->call(m_nameReg, abiIn("addr(bytes32)", urlHintName)).output);
