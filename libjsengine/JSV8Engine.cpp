@@ -77,8 +77,14 @@ const char* JSV8Value::asCString() const
 		// TODO: handle exceptions
 		return "";
 	}
+
 	else if (m_value->IsUndefined())
 		return "undefined";
+//	else if (m_value->IsNativeError())
+//	{
+//		v8::String::Utf8Value str(m_value);
+//		return *str ? *str : "error";
+//	}
 	v8::String::Utf8Value str(m_value);
 	return *str ? *str : "<string conversion failed>";
 }
@@ -118,16 +124,16 @@ JSV8Engine::~JSV8Engine()
 JSV8Value JSV8Engine::eval(const char* _cstr) const
 {
 	v8::HandleScope handleScope(m_isolate);
-//	v8::TryCatch tryCatch;
+	v8::TryCatch tryCatch;
 	v8::Local<v8::String> source = v8::String::NewFromUtf8(context()->GetIsolate(), _cstr);
 	v8::Local<v8::String> name(v8::String::NewFromUtf8(context()->GetIsolate(), "(shell)"));
 	v8::ScriptOrigin origin(name);
 	v8::Handle<v8::Script> script = v8::Script::Compile(source, &origin);
+	// Make sure to wrap the exception in a new handle because
+	// the handle returned from the TryCatch is destroyed
+	// TODO: improve this cause sometimes incorrect message is being sent!
 	if (script.IsEmpty())
-	{
-		// TODO: handle exceptions
-		return JSV8Value(v8::Handle<v8::Value>());
-	}
+		return v8::Exception::Error(v8::Local<v8::String>::New(context()->GetIsolate(), tryCatch.Message()->Get()));
 
 	return JSV8Value(script->Run());
 }
