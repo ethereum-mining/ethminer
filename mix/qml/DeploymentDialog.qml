@@ -19,13 +19,13 @@ Dialog {
 	visible: false
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
-	property alias urlHintContract: urlHintAddr.text
 	property alias localPackageUrl: localPackageUrl.text
 	property string packageHash
 	property string packageBase64
 	property string eth: registrarAddr.text
 	property string currentAccount
-	property alias gasToUse: gasToUseInput.text
+	property string gasToUse: "0x188132" //gasToUseInput.text
+	property variant paramsModel: []
 
 	function close()
 	{
@@ -43,6 +43,7 @@ Dialog {
 							id: 0
 						}];
 
+		console.log(packageHash);
 		TransactionHelper.rpcCall(requests, function(arg1, arg2)
 		{
 			modelAccounts.clear();
@@ -54,8 +55,8 @@ Dialog {
 				requests.push({
 								  //accounts
 								  jsonrpc: "2.0",
-								  method: "eth_balanceAt",
-								  params: [ids[k]],
+								  method: "eth_getBalance",
+								  params: [ids[k], 'latest'],
 								  id: k
 							  });
 			}
@@ -135,6 +136,7 @@ Dialog {
 			TransactionHelper.rpcCall(requests, function (httpRequest, response){
 				response = response.replace(/,0+/, ''); // ==> result:27,00000000
 				var count = JSON.parse(response)[0].result
+				console.log("count " + count);
 				if (k < parseInt(count) && k > 0)
 				{
 					stop();
@@ -249,13 +251,35 @@ Dialog {
 
 					DefaultLabel
 					{
+						text: qsTr("State:")
+					}
+
+					Rectangle
+					{
+						width: 300
+						color: "transparent"
+						height: 25
+						id: paramsRect
+						ComboBox
+						{
+							id: statesList
+							textRole: "title"
+							model: projectModel.stateListModel
+						}
+					}
+
+					DefaultLabel
+					{
 						text: qsTr("Root Registrar address:")
+						visible: false //still use it for now in dev env.
 					}
 
 					DefaultTextField
 					{
 						Layout.preferredWidth: 350
 						id: registrarAddr
+						text: "c6d9d2cd449a754c494264e1809c50e34d64562b"
+						visible: false
 					}
 
 					DefaultLabel
@@ -320,7 +344,7 @@ Dialog {
 						width: 200
 						id: applicationUrlEth
 						onTextChanged: {
-							appUrlFormatted.text = ProjectModelCode.formatAppUrl(text).join('/');
+							appUrlFormatted.text = NetworkDeploymentCode.formatAppUrl(text).join('/');
 						}
 					}
 
@@ -364,6 +388,7 @@ Dialog {
 						}
 						if (!stopForInputError(inError))
 						{
+							projectModel.deployedState = statesList.currentText;
 							if (contractRedeploy.checked)
 								deployWarningDialog.open();
 							else
@@ -427,20 +452,6 @@ Dialog {
 						Layout.preferredWidth: 350
 						id: localPackageUrl
 						readOnly: true
-
-					}
-
-					DefaultLabel
-					{
-						Layout.preferredWidth: 355
-						text: qsTr("URL Hint contract address:")
-					}
-
-					DefaultTextField
-					{
-						Layout.preferredWidth: 350
-						id: urlHintAddr
-						enabled: rowRegister.isOkToRegister()
 					}
 
 					DefaultLabel
@@ -494,7 +505,7 @@ Dialog {
 							if (applicationUrlHttp.text.length > 32)
 								inError.push(qsTr(applicationUrlHttp.text));
 							if (!stopForInputError(inError))
-								ProjectModelCode.registerToUrlHint();
+								NetworkDeploymentCode.registerToUrlHint();
 						}
 					}
 				}
