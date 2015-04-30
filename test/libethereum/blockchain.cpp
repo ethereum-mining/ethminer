@@ -104,11 +104,14 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 			vector<BlockInfo> vBiBlocks;
 			vBiBlocks.push_back(biGenesisBlock);
 
-			size_t importBlockNumber;
+			size_t importBlockNumber = 0;
 			for (auto const& bl: o["blocks"].get_array())
 			{
 				mObject blObj = bl.get_obj();
-				BOOST_REQUIRE(blObj.count("blocknumber"));
+				if (blObj.count("blocknumber") > 0)
+					importBlockNumber = std::max((int)toInt(blObj["blocknumber"]), 1);
+				else
+					importBlockNumber++;
 
 				//each time construct a new blockchain up to importBlockNumber (to generate next block header)
 				vBiBlocks.clear();
@@ -120,7 +123,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				importer.importState(o["pre"].get_obj(), state);
 				state.commit();
 
-				importBlockNumber = std::max((int)toInt(blObj["blocknumber"]), 1);
 				for (size_t i = 1; i < importBlockNumber; i++) //0 block is genesis
 				{
 					BlockQueue uncleQueue;
@@ -134,7 +136,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					vBiBlocks.push_back(BlockInfo(block));
 
 					state.sync(bc);
-					//vBiBlocks.push_back(state.info());
 				}
 
 				// get txs
@@ -260,7 +261,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					{
 						//make new correct history of imported blocks
 						blockSets[importBlockNumber] = newBlock;
-						for (size_t i = importBlockNumber+1; i < blockSets.size(); i++)
+						for (size_t i = importBlockNumber + 1; i < blockSets.size(); i++)
 							blockSets.pop_back();
 					}
 					else
