@@ -330,8 +330,8 @@ struct Pong: RLPXDatagram<Pong>
 	h256 echo;				///< MCD of PingNode
 	uint32_t ts = 0;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s << echo << ts; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); echo = (h256)r[0]; ts = r[1].toInt<uint32_t>(); }
+	void streamRLP(RLPStream& _s) const { _s.appendList(3); destination.streamRLP(_s); _s << echo << ts; }
+	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); destination.interpretRLP(r[0]); echo = (h256)r[1]; ts = r[2].toInt<uint32_t>(); }
 };
 
 /**
