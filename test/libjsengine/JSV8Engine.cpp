@@ -39,4 +39,31 @@ BOOST_AUTO_TEST_CASE(evalEmpty)
 	BOOST_CHECK_EQUAL(result, "undefined");
 }
 
+BOOST_AUTO_TEST_CASE(evalAssignment)
+{
+	JSV8Engine engine;
+	JSV8Printer printer(engine);
+	auto value = engine.eval("x = 5");
+	string result = printer.print(value);
+	BOOST_CHECK_EQUAL(result, "5");
+}
+
+BOOST_AUTO_TEST_CASE(evalIncorrectExpression)
+{
+	JSV8Engine engine;
+	JSV8Printer printer(engine);
+	auto value = engine.eval("[");
+	string result = printer.print(value);
+	BOOST_CHECK_EQUAL(result, "Error: Uncaught SyntaxError: Unexpected end of input");
+}
+
+BOOST_AUTO_TEST_CASE(evalNull)
+{
+	JSV8Engine engine;
+	JSV8Printer printer(engine);
+	auto value = engine.eval("null");
+	string result = printer.print(value);
+	BOOST_CHECK_EQUAL(result, "null");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
