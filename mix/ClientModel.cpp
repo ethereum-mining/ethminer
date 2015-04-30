@@ -85,7 +85,7 @@ ClientModel::ClientModel():
 	connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
 
-	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), m_client->userAccounts(), m_client.get()));
+	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), std::vector<KeyPair>(), m_client.get()));
 	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
 }
 
@@ -151,6 +151,39 @@ QString ClientModel::encodeAbiString(QString _string)
 	return QString::fromStdString(toHex(encoder.encodeBytes(_string)));
 }
 
+QString ClientModel::encodeStringParam(QString const& _param)
+{
+	ContractCallDataEncoder encoder;
+	return QString::fromStdString(toHex(encoder.encodeStringParam(_param, 32)));
+}
+
+QStringList ClientModel::encodeParams(QVariant const& _param, QString const& _contract, QString const& _function)
+{
+	QStringList ret;
+	CompiledContract const& compilerRes = m_codeModel->contract(_contract);
+	QList<QVariableDeclaration*> paramsList;
+	shared_ptr<QContractDefinition> contractDef = compilerRes.sharedContract();
+	if (_contract == _function)
+		paramsList = contractDef->constructor()->parametersList();
+	else
+		for (QFunctionDefinition* tf: contractDef->functionsList())
+			if (tf->name() == _function)
+			{
+				paramsList = tf->parametersList();
+				break;
+			}
+	if (paramsList.length() > 0)
+		for (QVariableDeclaration* var: paramsList)
+		{
+			ContractCallDataEncoder encoder;
+			QSolidityType const* type = var->type();
+			QVariant value = _param.toMap().value(var->name());
+			encoder.encode(value, type->type());
+			ret.push_back(QString::fromStdString(toHex(encoder.encodedData())));
+		}
+	return ret;
+}
+
 QVariantMap ClientModel::contractAddresses() const
 {
 	QVariantMap res;
@@ -169,14 +202,41 @@ QVariantMap ClientModel::gasCosts() const
 
 void ClientModel::setupState(QVariantMap _state)
 {
-	QVariantList balances = _state.value("accounts").toList();
+	QVariantList stateAccounts = _state.value("accounts").toList();
+	QVariantList stateContracts = _state.value("contracts").toList();
 	QVariantList transactions = _state.value("transactions").toList();
 
-	map<Secret, u256> accounts;
-	for (auto const& b: balances)
+	map<Address, Account> accounts;
+	std::vector<KeyPair> userAccounts;
+
+	for (auto const& b: stateAccounts)
 	{
-		QVariantMap address = b.toMap();
-		accounts.insert(make_pair(Secret(address.value("secret").toString().toStdString()), (qvariant_cast<QEther*>(address.value("balance")))->toU256Wei()));
+		QVariantMap account = b.toMap();
+		Address address = {};
+		if (account.contains("secret"))
+		{
+			KeyPair key(Secret(account.value("secret").toString().toStdString()));
+			userAccounts.push_back(key);
+			address = key.address();
+		}
+		else if (account.contains("address"))
+			address = Address(fromHex(account.value("address").toString().toStdString()));
+		if (!address)
+			continue;
+
+		accounts[address] = Account(qvariant_cast<QEther*>(account.value("balance"))->toU256Wei(), Account::NormalCreation);
+	}
+	for (auto const& c: stateContracts)
+	{
+		QVariantMap contract = c.toMap();
+		Address address = Address(fromHex(contract.value("address").toString().toStdString()));
+		Account account(qvariant_cast<QEther*>(contract.value("balance"))->toU256Wei(), Account::ContractConception);
+		bytes code = fromHex(contract.value("code").toString().toStdString());
+		account.setCode(code);
+		QVariantMap storageMap = contract.value("storage").toMap();
+		for(auto s = storageMap.cbegin(); s != storageMap.cend(); ++s)
+			account.setStorage(fromBigEndian<u256>(fromHex(s.key().toStdString())), fromBigEndian<u256>(fromHex(s.value().toString().toStdString())));
+		accounts[address] = account;
 	}
 
 	vector<TransactionSettings> transactionSequence;
@@ -215,10 +275,11 @@ void ClientModel::setupState(QVariantMap _state)
 			transactionSequence.push_back(transactionSettings);
 		}
 	}
+	m_web3Server->setAccounts(userAccounts);
 	executeSequence(transactionSequence, accounts, Secret(_state.value("miner").toMap().value("secret").toString().toStdString()));
 }
 
-void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, map<Secret, u256> const& _balances, Secret const& _miner)
+void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, std::map<Address, Account> const& _accounts, Secret const& _miner)
 {
 	if (m_running)
 	{
@@ -230,8 +291,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 	emit runStarted();
 	emit runStateChanged();
 
-	m_client->resetState(_balances, _miner);
-	m_web3Server->setAccounts(m_client->userAccounts());
+	m_client->resetState(_accounts, _miner);
 	//run sequence
 	m_runFuture = QtConcurrent::run([=]()
 	{
