@@ -54,7 +54,20 @@ enum ethash_io_rc ethash_io_prepare(
 				fclose(f);
 				goto free_memo;
 			}
-			if (file_size != found_size) {
+			if (file_size != found_size - ETHASH_DAG_MAGIC_NUM_SIZE) {
+				fclose(f);
+				ret = ETHASH_IO_MEMO_SIZE_MISMATCH;
+				goto free_memo;
+			}
+			// compare the magic number, no need to care about endianess since it's local
+			uint64_t magic_num;
+			if (fread(&magic_num, ETHASH_DAG_MAGIC_NUM_SIZE, 1, f) != 1) {
+				// I/O error
+				fclose(f);
+				ret = ETHASH_IO_MEMO_SIZE_MISMATCH;
+				goto free_memo;
+			}
+			if (magic_num != ETHASH_DAG_MAGIC_NUM) {
 				fclose(f);
 				ret = ETHASH_IO_MEMO_SIZE_MISMATCH;
 				goto free_memo;
@@ -70,7 +83,7 @@ enum ethash_io_rc ethash_io_prepare(
 		goto free_memo;
 	}
 	// make sure it's of the proper size
-	if (fseek(f, file_size - 1, SEEK_SET) != 0) {
+	if (fseek(f, file_size + ETHASH_DAG_MAGIC_NUM_SIZE - 1, SEEK_SET) != 0) {
 		fclose(f);
 		goto free_memo;
 	}

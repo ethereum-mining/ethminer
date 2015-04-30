@@ -370,19 +370,24 @@ ethash_return_value_t ethash_light_compute(
 static bool ethash_mmap(struct ethash_full* ret, FILE* f)
 {
 	int fd;
+	void* mmapped_data;
 	ret->file = f;
 	if ((fd = ethash_fileno(ret->file)) == -1) {
 		return false;
 	}
-	ret->data = mmap(
+	mmapped_data= mmap(
 		NULL,
-		(size_t)ret->file_size,
+		(size_t)ret->file_size + ETHASH_DAG_MAGIC_NUM_SIZE,
 		PROT_READ | PROT_WRITE,
 		MAP_SHARED,
 		fd,
 		0
 	);
-	return ret->data != MAP_FAILED;
+	if (mmapped_data == MAP_FAILED) {
+		return false;
+	}
+	ret->data = mmapped_data + ETHASH_DAG_MAGIC_NUM_SIZE;
+	return true;
 }
 
 ethash_full_t ethash_full_new_internal(
@@ -424,6 +429,16 @@ ethash_full_t ethash_full_new_internal(
 	if (!ethash_compute_full_data(ret->data, full_size, light, callback)) {
 		goto fail_free_full_data;
 	}
+
+	// after the DAG has been filled then we finalize it by writting the magic number at the beginning
+	if (fseek(f, 0, SEEK_SET) != 0) {
+		goto fail_free_full_data;
+	}
+	uint64_t const magic_num = ETHASH_DAG_MAGIC_NUM;
+	if (fwrite(&magic_num, ETHASH_DAG_MAGIC_NUM_SIZE, 1, f) != 1) {
+		goto fail_free_full_data;
+	}
+	fflush(f); // make sure the magic number IS there
 	return ret;
 
 fail_free_full_data:
