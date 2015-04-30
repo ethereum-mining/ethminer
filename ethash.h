@@ -102,6 +102,9 @@ ethash_return_value_t ethash_light_compute(
  *                      It accepts an unsigned with which a progress of DAG calculation
  *                      can be displayed. If all goes well the callback should return 0.
  *                      If a non-zero value is returned then DAG generation will stop.
+ *                      Be advised. A progress value of 100 means that DAG creation is
+ *                      almost complete and that this function will soon return succesfully.
+ *                      It does not mean that the function has already had a succesfull return.
  * @return              Newly allocated ethash_full handler or NULL in case of
  *                      ERRNOMEM or invalid parameters used for @ref ethash_compute_full_data()
  */
