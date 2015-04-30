@@ -86,7 +86,7 @@ bool ethash_file_size(FILE* f, size_t* ret_size)
 
 bool ethash_get_default_dirname(char* strbuf, size_t buffsize)
 {
-	strbuf[0] = '\n';
+	strbuf[0] = '\0';
 	char* home_dir = getenv("HOME");
 	size_t len = strlen(home_dir);
 	if (!ethash_strncat(strbuf, buffsize, home_dir, len)) {
