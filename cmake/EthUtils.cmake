@@ -74,8 +74,6 @@ function(eth_add_resources RESOURCE_FILE OUT_FILE)
 		list(APPEND filenames "${${resource}}")
 	endforeach(resource)
 
-	message(STATUS "filenames; ${filenames}")
-
 	add_custom_command(OUTPUT ${OUTPUT}
 		COMMAND ${CMAKE_COMMAND} -DETH_RES_FILE="${RESOURCE_FILE}" -P "${ETH_SCRIPTS_DIR}/resources.cmake"
 		DEPENDS ${filenames}
