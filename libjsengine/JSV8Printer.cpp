@@ -5,6 +5,7 @@
 #include <string>
 #include "JSV8Printer.h"
 #include "libjsengine/JSEngineResources.hpp"
+#include "libjsengine/t.h"
 
 using namespace std;
 using namespace dev;
