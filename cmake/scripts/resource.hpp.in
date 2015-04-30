@@ -2,7 +2,6 @@
 #pragma once
 
 #include <string>
-#include <sstream>
 #include <map>
 
 namespace dev
@@ -19,12 +18,7 @@ ${ETH_RESULT_DATA}
 ${ETH_RESULT_INIT}
 	}
 
-	std::string loadResourceAsString(std::string _name)
-	{
-		std::ostringstream bistream;
-		bistream.write(m_resources[_name], m_sizes[_name]);
-		return bistream.str();
-	}
+	std::string loadResourceAsString(std::string _name) { return std::string(m_resources[_name], m_sizes[_name]); }
 
 private:
 	std::map <std::string, const char*> m_resources;
