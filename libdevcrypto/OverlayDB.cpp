@@ -20,6 +20,7 @@
  */
 
 #include <leveldb/db.h>
+#include <leveldb/write_batch.h>
 #include <libdevcore/Common.h>
 #include "OverlayDB.h"
 using namespace std;
@@ -38,19 +39,21 @@ void OverlayDB::commit()
 {
 	if (m_db)
 	{
+		ldb::WriteBatch batch;
 //		cnote << "Committing nodes to disk DB:";
 		for (auto const& i: m_over)
 		{
 //			cnote << i.first << "#" << m_refCount[i.first];
 			if (m_refCount[i.first])
-				m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size()));
+				batch.Put(ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size()));
 		}
 		for (auto const& i: m_auxActive)
 			if (m_aux.count(i))
 			{
-				m_db->Put(m_writeOptions, i.ref(), bytesConstRef(&m_aux[i]));
+				batch.Put(i.ref(), bytesConstRef(&m_aux[i]));
 				m_aux.erase(i);
 			}
+		m_db->Write(m_writeOptions, &batch);
 		m_auxActive.clear();
 		m_aux.clear();
 		m_over.clear();
