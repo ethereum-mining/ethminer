@@ -192,7 +192,7 @@ struct NodeIPEndpoint
 	
 struct Node
 {
-	Node(Public _pubk, NodeIPEndpoint _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
+	Node(Public _pubk, NodeIPEndpoint const& _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
 
 	virtual NodeId const& address() const { return id; }
 	virtual Public const& publicKey() const { return id; }
