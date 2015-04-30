@@ -55,4 +55,3 @@ configure_file("${CMAKE_CURRENT_LIST_DIR}/resource.hpp.in" "${ETH_DST_NAME}.hpp.
 
 include("${CMAKE_CURRENT_LIST_DIR}/../EthUtils.cmake")
 replace_if_different("${ETH_DST_NAME}.hpp.tmp" "${ETH_DST_NAME}.hpp")
-
