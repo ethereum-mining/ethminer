@@ -221,19 +221,14 @@ using Transactions = std::vector<Transaction>;
 /// Simple human-readable stream-shift operator.
 inline std::ostream& operator<<(std::ostream& _out, Transaction const& _t)
 {
-	_out << "{";
+	_out << _t.sha3().abridged() << "{";
 	if (_t.receiveAddress())
 		_out << _t.receiveAddress().abridged();
 	else
 		_out << "[CREATE]";
 
-	_out << "/" << _t.nonce() << "$" << _t.value() << "+" << _t.gas() << "@" << _t.gasPrice();
-	try
-	{
-		_out << "<-" << _t.sender().abridged();
-	}
-	catch (...) {}
-	_out << " #" << _t.data().size() << "}";
+	_out << "/" << _t.data().size() << "$" << _t.value() << "+" << _t.gas() << "@" << _t.gasPrice();
+	_out << "<-" << _t.safeSender().abridged() << " #" << _t.nonce() << "}";
 	return _out;
 }
 

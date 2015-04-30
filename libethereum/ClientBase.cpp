@@ -48,8 +48,11 @@ State ClientBase::asOf(BlockNumber _h) const
 void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	prepareForTransaction();
-	
-	u256 n = postMine().transactionsFrom(toAddress(_secret));
+
+	auto a = toAddress(_secret);
+	u256 n = postMine().transactionsFrom(a);
+	cdebug << "submitTx: " << a << "postMine=" << n << "; tq=" << m_tq.maxNonce(a);
+	n = max<u256>(n, m_tq.maxNonce(a));
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
 	m_tq.import(t.rlp());
 	
