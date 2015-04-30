@@ -17,6 +17,8 @@ class JSV8Printer : public JSPrinter<JSV8Value>
 public:
 	JSV8Printer(JSV8Engine const& _engine);
 	const char* prettyPrint(JSV8Value const& _value) const;
+private:
+	JSV8Engine const& m_engine;
 };
 
 }

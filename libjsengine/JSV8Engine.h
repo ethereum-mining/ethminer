@@ -32,14 +32,12 @@ public:
 	JSV8Engine();
 	virtual ~JSV8Engine();
 	JSV8Value eval(const char* _cstr) const;
+	v8::Handle<v8::Context> const& context() const;
 
 private:
 	static JSV8Env s_env;
 	v8::Isolate* m_isolate;
 	JSV8Scope* m_scope;
-
-protected:
-	v8::Handle<v8::Context> const& context() const;
 };
 
 }
