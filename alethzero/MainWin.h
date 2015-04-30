@@ -134,6 +134,7 @@ private slots:
 	// Tools
 	void on_newTransaction_triggered();
 	void on_loadJS_triggered();
+	void on_exportState_triggered();
 
 	// Stuff concerning the blocks/transactions/accounts panels
 	void ourAccountsRowsMoved();

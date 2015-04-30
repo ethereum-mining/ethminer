@@ -26,12 +26,17 @@
 #include <atomic>
 #include <map>
 #include <QString>
+#include <QQmlListProperty>
 #include <QVariantMap>
 #include <QFuture>
+#include <QVariableDeclaration.h>
 #include "MachineStates.h"
 
 namespace dev
 {
+
+namespace eth { class Account; }
+
 namespace mix
 {
 
@@ -153,6 +158,10 @@ public:
 	Q_INVOKABLE void mine();
 	/// Get/set code model. Should be set from qml
 	Q_PROPERTY(CodeModel* codeModel MEMBER m_codeModel)
+	/// Encode parameters
+	Q_INVOKABLE QStringList encodeParams(QVariant const& _param, QString const& _contract, QString const& _function);
+	/// Encode parameter
+	Q_INVOKABLE QString encodeStringParam(QString const& _param);
 
 public slots:
 	/// Setup state, run transaction sequence, show debugger for the last transaction
@@ -209,7 +218,7 @@ private:
 	RecordLogEntry* lastBlock() const;
 	QVariantMap contractAddresses() const;
 	QVariantMap gasCosts() const;
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Secret, u256> const& _balances, Secret const& _miner);
+	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Address, dev::eth::Account> const& _accounts, Secret const& _miner);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	void onNewTransaction();
