@@ -646,7 +646,7 @@ void Client::tick()
 		m_bq.tick(m_bc);
 		m_lastTick = chrono::system_clock::now();
 		if (m_report.ticks == 15)
-			cnote << activityReport();
+			clog(ClientTrace) << activityReport();
 	}
 }
 
