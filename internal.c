@@ -92,7 +92,7 @@ bool static ethash_compute_cache_nodes(
 
 void ethash_calculate_dag_item(
 	node* const ret,
-	const unsigned node_index,
+	uint64_t node_index,
 	ethash_light_t const light
 )
 {
@@ -153,12 +153,12 @@ bool ethash_compute_full_data(
 		(full_size % sizeof(node)) != 0) {
 		return false;
 	}
-	unsigned int const max_n = full_size / sizeof(node);
+	uint64_t const max_n = full_size / sizeof(node);
 	node* full_nodes = mem;
 	double const progress_change = 1.0f / max_n;
 	double progress = 0.0f;
 	// now compute full nodes
-	for (unsigned n = 0; n != max_n; ++n) {
+	for (uint64_t n = 0; n != max_n; ++n) {
 		if (callback &&
 			n % (max_n / 100) == 0 &&
 			callback((unsigned int)(ceil(progress * 100.0f))) != 0) {
@@ -203,7 +203,7 @@ static bool ethash_hash(
 	unsigned const num_full_pages = (unsigned) (full_size / page_size);
 
 	for (unsigned i = 0; i != ETHASH_ACCESSES; ++i) {
-		uint32_t const index = ((s_mix->words[0] ^ i) * FNV_PRIME ^ mix->words[i % MIX_WORDS]) % num_full_pages;
+		uint64_t const index = ((s_mix->words[0] ^ i) * FNV_PRIME ^ mix->words[i % MIX_WORDS]) % num_full_pages;
 
 		for (unsigned n = 0; n != MIX_NODES; ++n) {
 			node const* dag_node;
@@ -274,7 +274,7 @@ ethash_h256_t ethash_get_seedhash(uint64_t block_number)
 {
 	ethash_h256_t ret;
 	ethash_h256_reset(&ret);
-	const uint32_t epochs = block_number / ETHASH_EPOCH_LENGTH;
+	uint64_t const epochs = block_number / ETHASH_EPOCH_LENGTH;
 	for (uint32_t i = 0; i < epochs; ++i)
 		SHA3_256(&ret, (uint8_t*)&ret, 32);
 	return ret;
@@ -356,7 +356,7 @@ bool ethash_light_compute_internal(
 ethash_return_value_t ethash_light_compute(
 	ethash_light_t light,
 	ethash_h256_t const header_hash,
-	uint64_t const nonce
+	uint64_t nonce
 )
 {
 	ethash_return_value_t ret;
@@ -373,7 +373,7 @@ ethash_return_value_t ethash_light_compute(
 static bool ethash_mmap(struct ethash_full* ret, FILE* f)
 {
 	int fd;
-	void* mmapped_data;
+	char* mmapped_data;
 	ret->file = f;
 	if ((fd = ethash_fileno(ret->file)) == -1) {
 		return false;
@@ -389,7 +389,7 @@ static bool ethash_mmap(struct ethash_full* ret, FILE* f)
 	if (mmapped_data == MAP_FAILED) {
 		return false;
 	}
-	ret->data = mmapped_data + ETHASH_DAG_MAGIC_NUM_SIZE;
+	ret->data = (node*)(mmapped_data + ETHASH_DAG_MAGIC_NUM_SIZE);
 	return true;
 }
 
@@ -468,7 +468,7 @@ ethash_full_t ethash_full_new(ethash_light_t light, ethash_callback_t callback)
 void ethash_full_delete(ethash_full_t full)
 {
 	// could check that munmap(..) == 0 but even if it did not can't really do anything here
-	munmap(full->data, full->file_size);
+	munmap(full->data, (size_t)full->file_size);
 	if (full->file) {
 		fclose(full->file);
 	}

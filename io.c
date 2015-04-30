@@ -26,7 +26,7 @@ enum ethash_io_rc ethash_io_prepare(
 	char const* dirname,
 	ethash_h256_t const seedhash,
 	FILE** output_file,
-	size_t file_size,
+	uint64_t file_size,
 	bool force_create
 )
 {

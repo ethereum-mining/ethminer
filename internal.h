@@ -102,7 +102,7 @@ bool ethash_light_compute_internal(
 	ethash_light_t light,
 	uint64_t full_size,
 	ethash_h256_t const header_hash,
-	uint64_t const nonce
+	uint64_t nonce
 );
 
 struct ethash_full {
@@ -138,7 +138,7 @@ ethash_full_t ethash_full_new_internal(
 
 void ethash_calculate_dag_item(
 	node* const ret,
-	const unsigned node_index,
+	uint64_t node_index,
 	ethash_light_t const cache
 );
 
