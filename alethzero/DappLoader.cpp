@@ -39,13 +39,10 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::crypto;
 
-Address c_registrar = Address("0000000000000000000000000000000000000a28");
-Address c_urlHint = Address("0000000000000000000000000000000000000a29");
-
 QString contentsOfQResource(std::string const& res);
 
-DappLoader::DappLoader(QObject* _parent, WebThreeDirect* _web3):
-	QObject(_parent), m_web3(_web3)
+DappLoader::DappLoader(QObject* _parent, WebThreeDirect* _web3, Address _nameReg):
+	QObject(_parent), m_web3(_web3), m_nameReg(_nameReg)
 {
 	connect(&m_net, &QNetworkAccessManager::finished, this, &DappLoader::downloadComplete);
 }
@@ -61,31 +58,35 @@ DappLocation DappLoader::resolveAppUri(QString const& _uri)
 	std::reverse(parts.begin(), parts.end());
 	parts.append(url.path().split('/', QString::SkipEmptyParts));
 
-	Address address = c_registrar;
+	Address address = m_nameReg;
 	Address lastAddress;
 	int partIndex = 0;
 
 	h256 contentHash;
-
 	while (address && partIndex < parts.length())
 	{
 		lastAddress = address;
 		string32 name = ZeroString32;
 		QByteArray utf8 = parts[partIndex].toUtf8();
 		std::copy(utf8.data(), utf8.data() + utf8.size(), name.data());
-		address = abiOut<Address>(web3()->ethereum()->call(address, abiIn("addr(string32)", name)).output);
+		address = abiOut<Address>(web3()->ethereum()->call(address, abiIn("subRegistrar(bytes32)", name)).output);
 		domainParts.append(parts[partIndex]);
 		if (!address)
 		{
 			//we have the address of the last part, try to get content hash
-			contentHash = abiOut<h256>(web3()->ethereum()->call(lastAddress, abiIn("content(string32)", name)).output);
+			contentHash = abiOut<h256>(web3()->ethereum()->call(lastAddress, abiIn("content(bytes32)", name)).output);
 			if (!contentHash)
 				throw dev::Exception() << errinfo_comment("Can't resolve address");
 		}
 		++partIndex;
 	}
 
-	string32 contentUrl = abiOut<string32>(web3()->ethereum()->call(c_urlHint, abiIn("url(hash256)", contentHash)).output);
+	string32 urlHintName = ZeroString32;
+	QByteArray utf8 = QString("urlhint").toUtf8();
+	std::copy(utf8.data(), utf8.data() + utf8.size(), urlHintName.data());
+
+	Address urlHint = abiOut<Address>(web3()->ethereum()->call(m_nameReg, abiIn("addr(bytes32)", urlHintName)).output);
+	string32 contentUrl = abiOut<string32>(web3()->ethereum()->call(urlHint, abiIn("url(bytes32)", contentHash)).output);
 	QString domain = domainParts.join('/');
 	parts.erase(parts.begin(), parts.begin() + partIndex);
 	QString path = parts.join('/');
@@ -237,6 +238,7 @@ void DappLoader::loadDapp(QString const& _uri)
 		DappLocation location = resolveAppUri(_uri);
 		contentUri = location.contentUri;
 		hash = location.contentHash;
+		uri = contentUri;
 	}
 	QNetworkRequest request(contentUri);
 	m_uriHashes[uri] = hash;

@@ -20,6 +20,8 @@
  * @date 2015
  * Ethereum IDE client.
  */
+.import org.ethereum.qml.QSolidityType 1.0 as QSolidityType
+
 Qt.include("TransactionHelper.js")
 
 
@@ -43,40 +45,116 @@ function startDeployProject(erasePrevious)
 	console.log("Deploying " + deploymentId + " to " + jsonRpcUrl);
 	deploymentStarted();
 
-	var ctrNames = Object.keys(codeModel.contracts);
 	var ctrAddresses = {};
-	deployContracts(0, ctrAddresses, ctrNames, function (){
+	var state = retrieveState(projectModel.deployedState);
+	if (!state)
+	{
+		var txt = qsTr("Unable to find state " + projectModel.deployedState);
+		deploymentError(txt);
+		console.log(txt);
+		return;
+	}
+	executeTr(0, state, ctrAddresses, function (){
 		finalizeDeployment(deploymentId, ctrAddresses);
 	});
 }
 
-function deployContracts(ctrIndex, ctrAddresses, ctrNames, callBack)
+function retrieveState(state)
 {
-	var code = codeModel.contracts[ctrNames[ctrIndex]].codeHex;
-	var requests = [{
-						jsonrpc: "2.0",
-						method: "eth_sendTransaction",
-						params: [ { "from": deploymentDialog.currentAccount, "gas": deploymentDialog.gasToUse, "code": code } ],
-						id: 0
-					}];
-	rpcCall(requests, function (httpCall, response){
-		var txt = qsTr("Please wait while " + ctrNames[ctrIndex] + " is published ...")
-		deploymentStepChanged(txt);
-		console.log(txt);
-		ctrAddresses[ctrNames[ctrIndex]] = JSON.parse(response)[0].result
-		deploymentDialog.waitForTrCountToIncrement(function(status) {
-			if (status === -1)
+	for (var k = 0; k < projectModel.stateListModel.count; k++)
+	{
+		if (projectModel.stateListModel.get(k).title === state)
+			return projectModel.stateListModel.get(k);
+	}
+	return null;
+}
+
+function replaceParamToken(paramsDef, params, ctrAddresses)
+{
+	var retParams = {};
+	for (var k in paramsDef)
+	{
+		var value = "";
+		if (params[paramsDef[k].name] !== undefined)
+		{
+			value = params[paramsDef[k].name];
+			if (paramsDef[k].type.category === 4 && value.indexOf("<") === 0)
 			{
-				trCountIncrementTimeOut();
-				return;
+				value = value.replace("<", "").replace(">", "");
+				value = ctrAddresses[value];
 			}
-			ctrIndex++;
-			if (ctrIndex < ctrNames.length)
-				deployContracts(ctrIndex, ctrAddresses, ctrNames, callBack);
-			else
-				callBack();
+		}
+		retParams[paramsDef[k].name] = value;
+	}
+	return retParams;
+}
+
+function getFunction(ctrName, functionId)
+{
+	if (codeModel.contracts[ctrName] === undefined)
+		return null;
+	if (ctrName === functionId)
+		return codeModel.contracts[ctrName].contract.constructor;
+	else
+	{
+		for (var j in codeModel.contracts[ctrName].contract.functions)
+		{
+			if (codeModel.contracts[ctrName].contract.functions[j].name === functionId)
+				return codeModel.contracts[ctrName].contract.functions[j];
+		}
+	}
+}
+
+function executeTr(trIndex, state, ctrAddresses, callBack)
+{
+	var tr = state.transactions.get(trIndex);
+	var func = getFunction(tr.contractId, tr.functionId);
+	if (!func)
+		executeTrNextStep(trIndex, state, ctrAddresses, callBack);
+	else
+	{
+		var rpcParams = { "from": deploymentDialog.currentAccount, "gas": deploymentDialog.gasToUse };
+		var params = replaceParamToken(func.parameters, tr.parameters, ctrAddresses);
+		var encodedParams = clientModel.encodeParams(params, tr.contractId, tr.functionId);
+
+		if (state.contractId === state.functionId)
+			rpcParams.code = codeModel.contracts[tr.contractId].codeHex + encodedParams.join("");
+		else
+			rpcParams.data = func.hash + encodedParams.join("");
+
+		var requests = [{
+							jsonrpc: "2.0",
+							method: "eth_sendTransaction",
+							params: [ rpcParams ],
+							id: jsonRpcRequestId
+						}];
+
+		rpcCall(requests, function (httpCall, response){
+			var txt = qsTr(tr.contractId + "." + tr.functionId + "() ...")
+			deploymentStepChanged(txt);
+			console.log(txt);
+			if (tr.contractId === tr.functionId)
+			{
+				ctrAddresses[tr.contractId] = JSON.parse(response)[0].result
+				ctrAddresses[tr.contractId + " - " + trIndex] = JSON.parse(response)[0].result //get right ctr address if deploy more than one contract of same type.
+			}
+			deploymentDialog.waitForTrCountToIncrement(function(status) {
+				if (status === -1)
+					trCountIncrementTimeOut();
+				else
+					executeTrNextStep(trIndex, state, ctrAddresses, callBack)
+			});
 		});
-	});
+	}
+}
+
+function executeTrNextStep(trIndex, state, ctrAddresses, callBack)
+{
+	trIndex++;
+	if (trIndex < state.transactions.count)
+		executeTr(trIndex, state, ctrAddresses, callBack);
+	else
+		callBack();
 }
 
 function finalizeDeployment(deploymentId, addresses) {
@@ -141,17 +219,19 @@ function finalizeDeployment(deploymentId, addresses) {
 function checkEthPath(dappUrl, callBack)
 {
 	if (dappUrl.length === 1)
-		registerContentHash(deploymentDialog.eth, callBack); // we directly create a dapp under the root registrar.
+		reserve(deploymentDialog.eth, function() {
+			registerContentHash(deploymentDialog.eth, callBack); // we directly create a dapp under the root registrar.
+		});
 	else
 	{
-		// the first owned reigstrar must have been created to follow the path.
-		var str = createString(dappUrl[0]);
+		// the first owned registrar must have been created to follow the path.
+		var str = clientModel.encodeStringParam(dappUrl[0]);
 		var requests = [];
 		requests.push({
-						  //register()
+						  //subRegistrar()
 						  jsonrpc: "2.0",
 						  method: "eth_call",
-						  params: [ { "gas": 150000, "from": deploymentDialog.currentAccount,  "to": '0x' + deploymentDialog.eth, "data": "0x6be16bed"  + str.encodeValueAsString() } ],
+						  params: [ { "gas": "0xffff", "from": deploymentDialog.currentAccount,  "to": '0x' + deploymentDialog.eth, "data": "0x5a3a05bd" + str }, "pending" ],
 						  id: jsonRpcRequestId++
 					  });
 		rpcCall(requests, function (httpRequest, response) {
@@ -183,12 +263,12 @@ function checkRegistration(dappUrl, addr, callBack)
 		console.log(txt);
 		var requests = [];
 		var registrar = {}
-		var str = createString(dappUrl[0]);
+		var str = clientModel.encodeStringParam(dappUrl[0]);
 		requests.push({
 						  //getOwner()
 						  jsonrpc: "2.0",
 						  method: "eth_call",
-						  params: [ { "gas" : 2000, "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x893d20e8" } ],
+						  params: [ { "gas" : 2000, "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x02571be3" }, "pending" ],
 						  id: jsonRpcRequestId++
 					  });
 
@@ -196,7 +276,7 @@ function checkRegistration(dappUrl, addr, callBack)
 						  //register()
 						  jsonrpc: "2.0",
 						  method: "eth_call",
-						  params: [ { "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x6be16bed"  + str.encodeValueAsString() } ],
+						  params: [ { "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x5a3a05bd"  + str }, "pending" ],
 						  id: jsonRpcRequestId++
 					  });
 
@@ -232,7 +312,7 @@ function checkRegistration(dappUrl, addr, callBack)
 				requests.push({
 								  jsonrpc: "2.0",
 								  method: "eth_sendTransaction",
-								  params: [ { "from": deploymentDialog.currentAccount, "gas": 20000, "code": "0x60056013565b61059e8061001d6000396000f35b33600081905550560060003560e060020a90048063019848921461009a578063449c2090146100af5780635d574e32146100cd5780635fd4b08a146100e1578063618242da146100f65780636be16bed1461010b5780636c4489b414610129578063893d20e8146101585780639607730714610173578063c284bc2a14610187578063e50f599a14610198578063e5811b35146101af578063ec7b9200146101cd57005b6100a560043561031b565b8060005260206000f35b6100ba6004356103a0565b80600160a060020a031660005260206000f35b6100db600435602435610537565b60006000f35b6100ec600435610529565b8060005260206000f35b6101016004356103dd565b8060005260206000f35b6101166004356103bd565b80600160a060020a031660005260206000f35b61013460043561034b565b82600160a060020a031660005281600160a060020a03166020528060405260606000f35b610160610341565b80600160a060020a031660005260206000f35b6101816004356024356102b4565b60006000f35b6101926004356103fd565b60006000f35b6101a96004356024356044356101f2565b60006000f35b6101ba6004356101eb565b80600160a060020a031660005260206000f35b6101d8600435610530565b80600160a060020a031660005260206000f35b6000919050565b600054600160a060020a031633600160a060020a031614610212576102af565b8160026000858152602001908152602001600020819055508061023457610287565b81600160a060020a0316837f680ad70765443c2967675ab0fb91a46350c01c6df59bf9a41ff8a8dd097464ec60006000a3826001600084600160a060020a03168152602001908152602001600020819055505b827f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b505050565b600054600160a060020a031633600160a060020a0316146102d457610317565b806002600084815260200190815260200160002060010181905550817f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b5050565b60006001600083600160a060020a03168152602001908152602001600020549050919050565b6000600054905090565b6000600060006002600085815260200190815260200160002054925060026000858152602001908152602001600020600101549150600260008581526020019081526020016000206002015490509193909250565b600060026000838152602001908152602001600020549050919050565b600060026000838152602001908152602001600020600101549050919050565b600060026000838152602001908152602001600020600201549050919050565b600054600160a060020a031633600160a060020a03161461041d57610526565b80600160006002600085815260200190815260200160002054600160a060020a031681526020019081526020016000205414610458576104d2565b6002600082815260200190815260200160002054600160a060020a0316817f680ad70765443c2967675ab0fb91a46350c01c6df59bf9a41ff8a8dd097464ec60006000a36000600160006002600085815260200190815260200160002054600160a060020a03168152602001908152602001600020819055505b6002600082815260200190815260200160002060008101600090556001810160009055600281016000905550807f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b50565b6000919050565b6000919050565b600054600160a060020a031633600160a060020a0316146105575761059a565b806002600084815260200190815260200160002060020181905550817f18d67da0cd86808336a3aa8912f6ea70c5250f1a98b586d1017ef56fe199d4fc60006000a25b505056" } ],
+								  params: [ { "from": deploymentDialog.currentAccount, "gas": 20000, "code": "0x600080547fffffffffffffffffffffffff0000000000000000000000000000000000000000163317815561058990819061003990396000f3007c010000000000000000000000000000000000000000000000000000000060003504630198489281146100a757806302571be3146100d957806321f8a721146100e35780632dff6941146100ed5780633b3b57de1461010d5780635a3a05bd1461013d5780635fd4b08a1461017057806389a69c0e1461017c578063b5c645bd146101b0578063be99a9801461022c578063c3d014d614610264578063d93e75731461029857005b73ffffffffffffffffffffffffffffffffffffffff600435166000908152600160205260409020548060005260206000f35b6000808052602081f35b6000808052602081f35b600435600090815260026020819052604090912001548060005260206000f35b600435600090815260026020908152604082205473ffffffffffffffffffffffffffffffffffffffff1680835291f35b600435600090815260026020908152604082206001015473ffffffffffffffffffffffffffffffffffffffff1680835291f35b60008060005260206000f35b6000546102c89060043590602435903373ffffffffffffffffffffffffffffffffffffffff90811691161461052557610585565b600435600090815260026020819052604090912080546001820154919092015473ffffffffffffffffffffffffffffffffffffffff9283169291909116908273ffffffffffffffffffffffffffffffffffffffff166000528173ffffffffffffffffffffffffffffffffffffffff166020528060405260606000f35b6000546102ce906004359060243590604435903373ffffffffffffffffffffffffffffffffffffffff9081169116146102e0576103af565b6000546102d49060043590602435903373ffffffffffffffffffffffffffffffffffffffff9081169116146103b4576103f1565b6000546102da90600435903373ffffffffffffffffffffffffffffffffffffffff9081169116146103f557610522565b60006000f35b60006000f35b60006000f35b60006000f35b600083815260026020526040902080547fffffffffffffffffffffffff000000000000000000000000000000000000000016831790558061034757827fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc60006040a26103ae565b73ffffffffffffffffffffffffffffffffffffffff8216837ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a854560006040a373ffffffffffffffffffffffffffffffffffffffff821660009081526001602052604090208390555b5b505050565b600082815260026020819052604080832090910183905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b5050565b60008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091529020548114610432576104b2565b6000818152600260205260408082205473ffffffffffffffffffffffffffffffffffffffff169183917ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a85459190a360008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091528120555b600081815260026020819052604080832080547fffffffffffffffffffffffff00000000000000000000000000000000000000009081168255600182018054909116905590910182905582917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b50565b60008281526002602052604080822060010180547fffffffffffffffffffffffff0000000000000000000000000000000000000000168417905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b505056" } ],
 								  id: jsonRpcRequestId++
 							  });
 
@@ -248,12 +328,12 @@ function checkRegistration(dappUrl, addr, callBack)
 							trCountIncrementTimeOut();
 							return;
 						}
-						var crLevel = createString(dappUrl[0]).encodeValueAsString();
+						var crLevel = clientModel.encodeStringParam(dappUrl[0]);
 						requests.push({
 										  //setRegister()
 										  jsonrpc: "2.0",
 										  method: "eth_sendTransaction",
-										  params: [ { "from": deploymentDialog.currentAccount, "gas": 30000, "to": '0x' + addr, "data": "0x96077307" + crLevel + deploymentDialog.pad(newCtrAddress) } ],
+										  params: [ { "from": deploymentDialog.currentAccount, "gas": 30000, "to": '0x' + addr, "data": "0x89a69c0e" + crLevel + deploymentDialog.pad(newCtrAddress) } ],
 										  id: jsonRpcRequestId++
 									  });
 
@@ -275,18 +355,39 @@ function trCountIncrementTimeOut()
 	deploymentError(error);
 }
 
+function reserve(registrar, callBack)
+{
+	var txt = qsTr("Making reservation in the root registrar...");
+	deploymentStepChanged(txt);
+	console.log(txt);
+	var requests = [];
+	var paramTitle = clientModel.encodeStringParam(projectModel.projectTitle);
+	requests.push({
+				  //reserve()
+				  jsonrpc: "2.0",
+				  method: "eth_sendTransaction",
+				  params: [ { "from": deploymentDialog.currentAccount, "gas": "0xfffff", "to": '0x' + registrar, "data": "0x432ced04" + paramTitle } ],
+				  id: jsonRpcRequestId++
+			  });
+	rpcCall(requests, function (httpRequest, response) {
+		callBack();
+	});
+}
+
+
 function registerContentHash(registrar, callBack)
 {
 	var txt = qsTr("Finalizing Dapp registration ...");
 	deploymentStepChanged(txt);
 	console.log(txt);
 	var requests = [];
-	var paramTitle = clientModel.encodeAbiString(projectModel.projectTitle);
+	var paramTitle = clientModel.encodeStringParam(projectModel.projectTitle);
+
 	requests.push({
 					  //setContent()
 					  jsonrpc: "2.0",
 					  method: "eth_sendTransaction",
-					  params: [ { "from": deploymentDialog.currentAccount, "gas": 30000, "gasPrice": "10", "to": '0x' + registrar, "data": "0x5d574e32" + paramTitle + deploymentDialog.packageHash } ],
+					  params: [ { "from": deploymentDialog.currentAccount, "gas": "0xfffff", "to": '0x' + registrar, "data": "0xc3d014d6" + paramTitle + deploymentDialog.packageHash } ],
 					  id: jsonRpcRequestId++
 				  });
 	rpcCall(requests, function (httpRequest, response) {
@@ -297,18 +398,40 @@ function registerContentHash(registrar, callBack)
 function registerToUrlHint()
 {
 	deploymentStepChanged(qsTr("Registering application Resources (" + deploymentDialog.applicationUrlHttp) + ") ...");
+
+	urlHintAddress(function(urlHint){
+		var requests = [];
+		var paramUrlHttp = clientModel.encodeStringParam(deploymentDialog.applicationUrlHttp);
+
+		requests.push({
+						  //urlHint => suggestUrl
+						  jsonrpc: "2.0",
+						  method: "eth_sendTransaction",
+						  params: [ {  "to": '0x' + urlHint, "from": deploymentDialog.currentAccount, "gas": "0xfffff", "data": "0x584e86ad" + deploymentDialog.packageHash + paramUrlHttp } ],
+						  id: jsonRpcRequestId++
+					  });
+
+		rpcCall(requests, function (httpRequest, response) {
+			deploymentComplete();
+		});
+	});
+}
+
+function urlHintAddress(callBack)
+{
 	var requests = [];
-	var paramUrlHttp = createString(deploymentDialog.applicationUrlHttp);
+	var urlHint = clientModel.encodeStringParam("urlhint");
 	requests.push({
-					  //urlHint => suggestUrl
+					  //registrar: get UrlHint addr
 					  jsonrpc: "2.0",
-					  method: "eth_sendTransaction",
-					  params: [ {  "to": '0x' + deploymentDialog.urlHintContract, "gas": 30000, "data": "0x4983e19c" + deploymentDialog.packageHash + paramUrlHttp.encodeValueAsString() } ],
+					  method: "eth_call",
+					  params: [ {  "to": '0x' + deploymentDialog.eth, "from": deploymentDialog.currentAccount, "gas": "0xfffff", "data": "0x3b3b57de" + urlHint }, "pending" ],
 					  id: jsonRpcRequestId++
 				  });
 
 	rpcCall(requests, function (httpRequest, response) {
-		deploymentComplete();
+		var res = JSON.parse(response);
+		callBack(normalizeAddress(res[0].result));
 	});
 }
 
