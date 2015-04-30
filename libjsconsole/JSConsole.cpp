@@ -51,7 +51,7 @@ void JSConsole::repl() const
 	{
 		add_history(cmd.c_str());
 		auto value = m_engine.eval(cmd.c_str());
-		string result = m_printer.print(value);
+		string result = m_printer.prettyPrint(value);
 		cout << result << endl;
 	}
 }
