@@ -38,7 +38,9 @@
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
+#if ETH_JSCONSOLE || !ETH_TRUE
 #include <libjsconsole/JSConsole.h>
+#endif
 #if ETH_READLINE || !ETH_TRUE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -179,7 +181,9 @@ void help()
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
+#if ETH_JSCONSOLE || !ETH_TRUE
 		<< "    --console Use interactive javascript console" << endl
+#endif
 		;
 		exit(0);
 }
@@ -881,8 +885,10 @@ int main(int argc, char** argv)
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
 #endif
+#if ETH_JSCONSOLE
 		else if (arg == "--console")
 			useConsole = true;
+#endif
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
@@ -1619,6 +1625,7 @@ int main(int argc, char** argv)
 			c->startMining();
 		if (useConsole)
 		{
+#if ETH_JSCONSOLE
 			JSConsole console;
 			while (!g_exit)
 			{
@@ -1627,6 +1634,7 @@ int main(int argc, char** argv)
 					c->stopMining();
 				this_thread::sleep_for(chrono::milliseconds(100));
 			}
+#endif
 		}
 		else
 			while (!g_exit)
