@@ -309,11 +309,12 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 		return;
 
 	shared_ptr<NodeEntry> node = nodeEntry(_pubk);
-	node->endpoint.address = _endpoint.address();
-	node->endpoint.udpPort = _endpoint.port();
 	if (!!node && !node->pending)
 	{
 		clog(NodeTableConnect) << "Noting active node:" << _pubk << _endpoint.address().to_string() << ":" << _endpoint.port();
+		node->endpoint.address = _endpoint.address();
+		node->endpoint.udpPort = _endpoint.port();
+		
 		shared_ptr<NodeEntry> contested;
 		{
 			Guard l(x_state);
