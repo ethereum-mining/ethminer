@@ -142,15 +142,27 @@ void ethash_calculate_dag_item(
 	SHA3_512(ret->bytes, ret->bytes, sizeof(node));
 }
 
-bool ethash_compute_full_data(void* mem, uint64_t full_size, ethash_light_t const light)
+bool ethash_compute_full_data(
+	void* mem,
+	uint64_t full_size,
+	ethash_light_t const light,
+	ethash_callback_t callback
+)
 {
 	if (full_size % (sizeof(uint32_t) * MIX_WORDS) != 0 ||
 		(full_size % sizeof(node)) != 0) {
 		return false;
 	}
 	node* full_nodes = mem;
+	double const progress_change = 1.0f / (full_size / sizeof(node));
+	double progress = 0.0f;
 	// now compute full nodes
 	for (unsigned n = 0; n != (full_size / sizeof(node)); ++n) {
+		if (callback &&
+				callback((unsigned int)(ceil(progress * 100.0f))) != 0) {
+				return false;
+		}
+		progress += progress_change;
 		ethash_calculate_dag_item(&(full_nodes[n]), n, light);
 	}
 	return true;
@@ -162,8 +174,7 @@ static bool ethash_hash(
 	ethash_light_t const light,
 	uint64_t full_size,
 	ethash_h256_t const header_hash,
-	uint64_t const nonce,
-	ethash_callback_t callback
+	uint64_t const nonce
 )
 {
 	if (full_size % MIX_WORDS != 0) {
@@ -188,18 +199,11 @@ static bool ethash_hash(
 	unsigned const page_size = sizeof(uint32_t) * MIX_WORDS;
 	unsigned const num_full_pages = (unsigned) (full_size / page_size);
 
-	double const progress_change = 1.0f / ETHASH_ACCESSES / MIX_NODES;
-	double progress = 0.0f;
 	for (unsigned i = 0; i != ETHASH_ACCESSES; ++i) {
 		uint32_t const index = ((s_mix->words[0] ^ i) * FNV_PRIME ^ mix->words[i % MIX_WORDS]) % num_full_pages;
 
 		for (unsigned n = 0; n != MIX_NODES; ++n) {
 			node const* dag_node;
-			if (callback &&
-				callback((unsigned int)(ceil(progress * 100.0f))) != 0) {
-				return false;
-			}
-			progress += progress_change;
 			if (full_nodes) {
 				dag_node = &full_nodes[MIX_NODES * index + n];
 			} else {
@@ -342,8 +346,7 @@ bool ethash_light_compute_internal(
 		light,
 		full_size,
 		header_hash,
-		nonce,
-		NULL
+		nonce
 	);
 }
 
@@ -418,10 +421,9 @@ ethash_full_t ethash_full_new_internal(
 		break;
 	}
 
-	if (!ethash_compute_full_data(ret->data, full_size, light)) {
+	if (!ethash_compute_full_data(ret->data, full_size, light, callback)) {
 		goto fail_free_full_data;
 	}
-	ret->callback = callback;
 	return ret;
 
 fail_free_full_data:
@@ -469,8 +471,7 @@ ethash_return_value_t ethash_full_compute(
 		NULL,
 		full->file_size,
 		header_hash,
-		nonce,
-		full->callback)) {
+		nonce)) {
 		ret.success = false;
 	}
 	return ret;

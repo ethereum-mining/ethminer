@@ -109,7 +109,6 @@ struct ethash_full {
 	FILE* file;
 	uint64_t file_size;
 	node* data;
-	ethash_callback_t callback;
 };
 
 /**
@@ -159,9 +158,15 @@ uint64_t ethash_get_cachesize(uint64_t const block_number);
  * @param mem         A pointer to an ethash full's memory
  * @param full_size   The size of the full data in bytes
  * @param cache       A cache object to use in the calculation
+ * @param callback    The callback function. Check @ref ethash_full_new() for details.
  * @return            true if all went fine and false for invalid parameters
  */
-bool ethash_compute_full_data(void* mem, uint64_t full_size, ethash_light_t const cache);
+bool ethash_compute_full_data(
+	void* mem,
+	uint64_t full_size,
+	ethash_light_t const light,
+	ethash_callback_t callback
+);
 
 #ifdef __cplusplus
 }
