@@ -47,6 +47,11 @@ struct InvalidTrie: virtual dev::Exception {};
 extern const h256 c_shaNull;
 extern const h256 EmptyTrie;
 
+enum class Verification {
+	Skip,
+	Normal
+};
+
 /**
  * @brief Merkle Patricia Tree "Trie": a modifed base-16 Radix tree.
  * This version uses a database backend.
@@ -69,23 +74,26 @@ public:
 	using DB = _DB;
 
 	GenericTrieDB(DB* _db = nullptr): m_db(_db) {}
-	GenericTrieDB(DB* _db, h256 _root) { open(_db, _root); }
+	GenericTrieDB(DB* _db, h256 const& _root, Verification _v = Verification::Normal) { open(_db, _root, _v); }
 	~GenericTrieDB() {}
 
 	void open(DB* _db) { m_db = _db; }
-	void open(DB* _db, h256 _root) { m_db = _db; setRoot(_root); }
+	void open(DB* _db, h256 const& _root, Verification _v = Verification::Normal) { m_db = _db; setRoot(_root, _v); }
 
 	void init() { setRoot(insertNode(&RLPNull)); assert(node(m_root).size()); }
 
-	void setRoot(h256 _root)
+	void setRoot(h256 const& _root, Verification _v = Verification::Normal)
 	{
 		m_root = _root;
-		if (m_root == c_shaNull && !m_db->exists(m_root))
-			init();
+		if (_v == Verification::Normal)
+		{
+			if (m_root == c_shaNull && !m_db->exists(m_root))
+				init();
 
-		/*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/
-		if (!node(m_root).size())
-			BOOST_THROW_EXCEPTION(RootNotFound());
+			/*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/
+			if (!node(m_root).size())
+				BOOST_THROW_EXCEPTION(RootNotFound());
+		}
 	}
 
 	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
@@ -93,7 +101,7 @@ public:
 	/// True if the trie is initialised but empty (i.e. that the DB contains the root node which is empty).
 	bool isEmpty() const { return m_root == c_shaNull && node(m_root).size(); }
 
-	h256 root() const { if (!node(m_root).size()) BOOST_THROW_EXCEPTION(BadRoot()); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
+	h256 const& root() const { if (!node(m_root).size()) BOOST_THROW_EXCEPTION(BadRoot()); /*std::cout << "Returning root as " << ret << " (really " << m_root << ")" << std::endl;*/ return m_root; }	// patch the root in the case of the empty trie. TODO: handle this properly.
 
 	void debugPrint() {}
 
@@ -301,7 +309,7 @@ public:
 	using KeyType = _KeyType;
 
 	SpecificTrieDB(DB* _db = nullptr): Generic(_db) {}
-	SpecificTrieDB(DB* _db, h256 _root): Generic(_db, _root) {}
+	SpecificTrieDB(DB* _db, h256 _root, Verification _v = Verification::Normal): Generic(_db, _root, _v) {}
 
 	std::string operator[](KeyType _k) const { return at(_k); }
 
@@ -349,7 +357,7 @@ public:
 	using DB = _DB;
 
 	HashedGenericTrieDB(DB* _db = nullptr): Super(_db) {}
-	HashedGenericTrieDB(DB* _db, h256 _root): Super(_db, _root) {}
+	HashedGenericTrieDB(DB* _db, h256 _root, Verification _v = Verification::Normal): Super(_db, _root, _v) {}
 
 	using Super::open;
 	using Super::init;
@@ -402,20 +410,20 @@ class FatGenericTrieDB: public GenericTrieDB<DB>
 
 public:
 	FatGenericTrieDB(DB* _db): Super(_db), m_secure(_db) {}
-	FatGenericTrieDB(DB* _db, h256 _root) { open(_db, _root); }
+	FatGenericTrieDB(DB* _db, h256 _root, Verification _v = Verification::Normal) { open(_db, _root, _v); }
 
-	void open(DB* _db, h256 _root) { Super::open(_db); m_secure.open(_db); setRoot(_root); }
+	void open(DB* _db, h256 _root, Verification _v = Verification::Normal) { Super::open(_db); m_secure.open(_db); setRoot(_root, _v); }
 
 	void init() { Super::init(); m_secure.init(); syncRoot(); }
 
-	void setRoot(h256 _root)
+	void setRoot(h256 _root, Verification _v = Verification::Normal)
 	{
 		if (!m_secure.isNull())
 			Super::db()->removeAux(m_secure.root());
-		m_secure.setRoot(_root);
+		m_secure.setRoot(_root, _v);
 		auto rb = Super::db()->lookupAux(m_secure.root());
 		auto r = h256(rb);
-		Super::setRoot(r);
+		Super::setRoot(r, _v);
 	}
 
 	h256 root() const { return m_secure.root(); }

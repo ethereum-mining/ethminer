@@ -445,8 +445,8 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 
 	ldb::WriteBatch blocksBatch;
 	ldb::WriteBatch extrasBatch;
-	h256 newLastBlockHash;
-	unsigned newLastBlockNumber = 0;
+	h256 newLastBlockHash = currentHash();
+	unsigned newLastBlockNumber = number();
 
 	u256 td;
 #if ETH_CATCH
@@ -478,30 +478,27 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 #endif
 
 		// All ok - insert into DB
-		{
-			// ensure parent is cached for later addition.
-			// TODO: this is a bit horrible would be better refactored into an enveloping UpgradableGuard
-			// together with an "ensureCachedWithUpdatableLock(l)" method.
-			// This is safe in practice since the caches don't get flushed nearly often enough to be
-			// done here.
-			details(bi.parentHash);
-			WriteGuard l(x_details);
+
+		// ensure parent is cached for later addition.
+		// TODO: this is a bit horrible would be better refactored into an enveloping UpgradableGuard
+		// together with an "ensureCachedWithUpdatableLock(l)" method.
+		// This is safe in practice since the caches don't get flushed nearly often enough to be
+		// done here.
+		details(bi.parentHash);
+		ETH_WRITE_GUARDED(x_details)
 			m_details[bi.parentHash].children.push_back(bi.hash());
-		}
 
 #if ETH_TIMED_IMPORTS
 		collation = t.elapsed();
 		t.restart();
 #endif
 
-		{
-			ReadGuard l2(x_details);
-			extrasBatch.Put(toSlice(bi.hash(), ExtraDetails), (ldb::Slice)dev::ref(BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {}).rlp()));
+		blocksBatch.Put(toSlice(bi.hash()), (ldb::Slice)ref(_block));
+		ETH_READ_GUARDED(x_details)
 			extrasBatch.Put(toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
-			extrasBatch.Put(toSlice(bi.hash(), ExtraLogBlooms), (ldb::Slice)dev::ref(blb.rlp()));
-			extrasBatch.Put(toSlice(bi.hash(), ExtraReceipts), (ldb::Slice)dev::ref(br.rlp()));
-			blocksBatch.Put(toSlice(bi.hash()), (ldb::Slice)ref(_block));
-		}
+		extrasBatch.Put(toSlice(bi.hash(), ExtraDetails), (ldb::Slice)dev::ref(BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {}).rlp()));
+		extrasBatch.Put(toSlice(bi.hash(), ExtraLogBlooms), (ldb::Slice)dev::ref(blb.rlp()));
+		extrasBatch.Put(toSlice(bi.hash(), ExtraReceipts), (ldb::Slice)dev::ref(br.rlp()));
 
 #if ETH_TIMED_IMPORTS
 		writing = t.elapsed();
