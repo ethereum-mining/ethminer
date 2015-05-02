@@ -47,25 +47,22 @@ public:
 	void clear() { m_over.clear(); }
 	std::map<h256, std::string> get() const;
 
-	std::string lookup(h256 _h) const;
-	bool exists(h256 _h) const;
-	void insert(h256 _h, bytesConstRef _v);
-	bool kill(h256 _h);
+	std::string lookup(h256 const& _h) const;
+	bool exists(h256 const& _h) const;
+	void insert(h256 const& _h, bytesConstRef _v);
+	bool kill(h256 const& _h);
 	void purge();
 
-	bytes lookupAux(h256 _h) const { auto h = aux(_h); return m_aux.count(h) ? m_aux.at(h) : bytes(); }
-	void removeAux(h256 _h) { m_auxActive.erase(aux(_h)); }
-	void insertAux(h256 _h, bytesConstRef _v) { auto h = aux(_h); m_auxActive.insert(h); m_aux[h] = _v.toBytes(); }
+	bytes lookupAux(h256 const& _h) const { try { return m_aux.at(_h).first; } catch (...) { return bytes(); } }
+	void removeAux(h256 const& _h) { m_aux[_h].second = false; }
+	void insertAux(h256 const& _h, bytesConstRef _v) { m_aux[_h] = make_pair(_v.toBytes(), true); }
 
 	std::set<h256> keys() const;
 
 protected:
-	static h256 aux(h256 _k) { return h256(sha3(_k).ref().cropped(0, 24), h256::AlignLeft); }
-
 	std::map<h256, std::string> m_over;
 	std::map<h256, unsigned> m_refCount;
-	std::set<h256> m_auxActive;
-	std::map<h256, bytes> m_aux;
+	std::map<h256, std::pair<bytes, bool>> m_aux;
 
 	mutable bool m_enforceRefs = false;
 };
