@@ -138,7 +138,7 @@ public:
 	~NodeTable();
 
 	/// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
-	static unsigned distance(NodeId const& _a, NodeId const& _b) { u512 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
+	static unsigned distance(NodeId const& _a, NodeId const& _b) { u256 d = sha3(_a) ^ sha3(_b); unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 
 	/// Set event handler for NodeEntryAdded and NodeEntryDropped events.
 	void setEventHandler(NodeTableEventHandler* _handler) { m_nodeEventHandler.reset(_handler); }
@@ -178,7 +178,7 @@ private:
 
 	/// Constants for Kademlia, derived from address space.
 
-	static unsigned const s_addressByteSize = sizeof(NodeId);				///< Size of address type in bytes.
+	static unsigned const s_addressByteSize = h256::size;					///< Size of address type in bytes.
 	static unsigned const s_bits = 8 * s_addressByteSize;					///< Denoted by n in [Kademlia].
 	static unsigned const s_bins = s_bits - 1;								///< Size of m_state (excludes root, which is us).
 	static unsigned const s_maxSteps = boost::static_log2<s_bits>::value;	///< Max iterations of discovery. (discover)
