@@ -735,6 +735,7 @@ eth::State Client::state(unsigned _txi) const
 	ETH_READ_GUARDED(x_postMine)
 		return m_postMine.fromPending(_txi);
 	assert(false);
+	return State();
 }
 
 void Client::flushTransactions()
