@@ -41,7 +41,7 @@ std::map<h256, std::string> MemoryDB::get() const
 	return ret;
 }
 
-std::string MemoryDB::lookup(h256 _h) const
+std::string MemoryDB::lookup(h256 const& _h) const
 {
 	auto it = m_over.find(_h);
 	if (it != m_over.end())
@@ -54,7 +54,7 @@ std::string MemoryDB::lookup(h256 _h) const
 	return std::string();
 }
 
-bool MemoryDB::exists(h256 _h) const
+bool MemoryDB::exists(h256 const& _h) const
 {
 	auto it = m_over.find(_h);
 	if (it != m_over.end() && (!m_enforceRefs || (m_refCount.count(it->first) && m_refCount.at(it->first))))
@@ -62,7 +62,7 @@ bool MemoryDB::exists(h256 _h) const
 	return false;
 }
 
-void MemoryDB::insert(h256 _h, bytesConstRef _v)
+void MemoryDB::insert(h256 const& _h, bytesConstRef _v)
 {
 	m_over[_h] = _v.toString();
 	m_refCount[_h]++;
@@ -71,7 +71,7 @@ void MemoryDB::insert(h256 _h, bytesConstRef _v)
 #endif
 }
 
-bool MemoryDB::kill(h256 _h)
+bool MemoryDB::kill(h256 const& _h)
 {
 	if (m_refCount.count(_h))
 	{
