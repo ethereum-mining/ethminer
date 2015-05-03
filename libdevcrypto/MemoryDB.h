@@ -44,7 +44,7 @@ class MemoryDB
 public:
 	MemoryDB() {}
 
-	void clear() { m_over.clear(); }
+	void clear() { m_main.clear(); }	// WARNING !!!! didn't originally clear m_refCount!!!
 	std::map<h256, std::string> get() const;
 
 	std::string lookup(h256 const& _h) const;
@@ -60,8 +60,7 @@ public:
 	std::set<h256> keys() const;
 
 protected:
-	std::map<h256, std::string> m_over;
-	std::map<h256, unsigned> m_refCount;
+	std::map<h256, std::pair<std::string, unsigned>> m_main;
 	std::map<h256, std::pair<bytes, bool>> m_aux;
 
 	mutable bool m_enforceRefs = false;
@@ -80,7 +79,7 @@ private:
 
 inline std::ostream& operator<<(std::ostream& _out, MemoryDB const& _m)
 {
-	for (auto i: _m.get())
+	for (auto const& i: _m.get())
 	{
 		_out << i.first << ": ";
 		_out << RLP(i.second);
