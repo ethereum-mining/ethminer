@@ -41,11 +41,11 @@ void OverlayDB::commit()
 	{
 		ldb::WriteBatch batch;
 //		cnote << "Committing nodes to disk DB:";
-		for (auto const& i: m_over)
+		for (auto const& i: m_main)
 		{
-//			cnote << i.first << "#" << m_refCount[i.first];
-			if (m_refCount[i.first])
-				batch.Put(ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size()));
+//			cnote << i.first << "#" << m_main[i.first].second;
+			if (i.second.second)
+				batch.Put(ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.first.data(), i.second.first.size()));
 		}
 		for (auto const& i: m_aux)
 			if (i.second.second)
@@ -56,8 +56,7 @@ void OverlayDB::commit()
 			}
 		m_db->Write(m_writeOptions, &batch);
 		m_aux.clear();
-		m_over.clear();
-		m_refCount.clear();
+		m_main.clear();
 	}
 }
 
@@ -77,8 +76,7 @@ bytes OverlayDB::lookupAux(h256 _h) const
 
 void OverlayDB::rollback()
 {
-	m_over.clear();
-	m_refCount.clear();
+	m_main.clear();
 }
 
 std::string OverlayDB::lookup(h256 _h) const
