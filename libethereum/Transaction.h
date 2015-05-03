@@ -149,7 +149,7 @@ public:
 	bytes rlp(IncludeSignature _sig = WithSignature) const { RLPStream s; streamRLP(s, _sig); return s.out(); }
 
 	/// @returns the SHA3 hash of the RLP serialisation of this transaction.
-	h256 sha3(IncludeSignature _sig = WithSignature) const { RLPStream s; streamRLP(s, _sig); return dev::sha3(s.out()); }
+	h256 sha3(IncludeSignature _sig = WithSignature) const { if (_sig == WithSignature && m_hashWith) return m_hashWith; RLPStream s; streamRLP(s, _sig); auto ret = dev::sha3(s.out()); if (_sig == WithSignature) m_hashWith = ret; return ret; }
 
 	/// @returns the amount of ETH to be transferred by this (message-call) transaction, in Wei. Synonym for endowment().
 	u256 value() const { return m_value; }
@@ -211,6 +211,7 @@ private:
 	bytes m_data;						///< The data associated with the transaction, or the initialiser if it's a creation transaction.
 	SignatureStruct m_vrs;				///< The signature of the transaction. Encodes the sender.
 
+	mutable h256 m_hashWith;			///< Cached hash of transaction with signature.
 	mutable Address m_sender;			///< Cached sender, determined from signature.
 	mutable bigint m_gasRequired = 0;	///< Memoised amount required for the transaction to run.
 };
