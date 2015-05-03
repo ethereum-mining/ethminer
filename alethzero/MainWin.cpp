@@ -1097,30 +1097,33 @@ void Main::refreshBlockChain()
 			blockItem->setSelected(true);
 
 		int n = 0;
-		auto b = bc.block(h);
-		for (auto const& i: RLP(b)[1])
-		{
-			Transaction t(i.data(), CheckTransaction::Everything);
-			QString s = t.receiveAddress() ?
-				QString("    %2 %5> %3: %1 [%4]")
-					.arg(formatBalance(t.value()).c_str())
-					.arg(render(t.safeSender()))
-					.arg(render(t.receiveAddress()))
-					.arg((unsigned)t.nonce())
-					.arg(ethereum()->codeAt(t.receiveAddress()).size() ? '*' : '-') :
-				QString("    %2 +> %3: %1 [%4]")
-					.arg(formatBalance(t.value()).c_str())
-					.arg(render(t.safeSender()))
-					.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce())))))
-					.arg((unsigned)t.nonce());
-			QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
-			auto hba = QByteArray((char const*)h.data(), h.size);
-			txItem->setData(Qt::UserRole, hba);
-			txItem->setData(Qt::UserRole + 1, n);
-			if (oldSelected == hba)
-				txItem->setSelected(true);
-			n++;
+		try {
+			auto b = bc.block(h);
+			for (auto const& i: RLP(b)[1])
+			{
+				Transaction t(i.data(), CheckTransaction::Everything);
+				QString s = t.receiveAddress() ?
+					QString("    %2 %5> %3: %1 [%4]")
+						.arg(formatBalance(t.value()).c_str())
+						.arg(render(t.safeSender()))
+						.arg(render(t.receiveAddress()))
+						.arg((unsigned)t.nonce())
+						.arg(ethereum()->codeAt(t.receiveAddress()).size() ? '*' : '-') :
+					QString("    %2 +> %3: %1 [%4]")
+						.arg(formatBalance(t.value()).c_str())
+						.arg(render(t.safeSender()))
+						.arg(render(right160(sha3(rlpList(t.safeSender(), t.nonce())))))
+						.arg((unsigned)t.nonce());
+				QListWidgetItem* txItem = new QListWidgetItem(s, ui->blocks);
+				auto hba = QByteArray((char const*)h.data(), h.size);
+				txItem->setData(Qt::UserRole, hba);
+				txItem->setData(Qt::UserRole + 1, n);
+				if (oldSelected == hba)
+					txItem->setSelected(true);
+				n++;
+			}
 		}
+		catch (...) {}
 	};
 
 	if (filters.empty())

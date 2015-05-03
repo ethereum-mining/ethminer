@@ -582,11 +582,12 @@ void Client::onChainChanged(ImportRoute const& _ir)
 			m_preMine = newPreMine;
 		DEV_TIMED(working) ETH_WRITE_GUARDED(x_working)
 			m_working = newPreMine;
+//		Transactions ts = m_postMine.pending();
 		ETH_READ_GUARDED(x_postMine)
 			for (auto const& t: m_postMine.pending())
 			{
 				clog(ClientNote) << "Resubmitting post-mine transaction " << t;
-				m_tq.import(t.rlp(), TransactionQueue::ImportCallback(), IfDropped::Retry);
+				m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
 			}
 		ETH_READ_GUARDED(x_working) DEV_TIMED(post) ETH_WRITE_GUARDED(x_postMine)
 			m_postMine = m_working;
@@ -662,7 +663,7 @@ void Client::doWork()
 
 	bool t = true;
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
-		syncBlockQueue();
+		syncBlockQueue();	// GAAA!!!!! CALLED TOO OFTEN!!!
 
 	t = true;
 	if (m_syncTransactionQueue.compare_exchange_strong(t, false) && !m_remoteWorking)
@@ -735,6 +736,7 @@ eth::State Client::state(unsigned _txi) const
 	ETH_READ_GUARDED(x_postMine)
 		return m_postMine.fromPending(_txi);
 	assert(false);
+	return State();
 }
 
 void Client::flushTransactions()
