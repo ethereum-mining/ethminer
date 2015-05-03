@@ -152,7 +152,7 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 
 State::State(State const& _s):
 	m_db(_s.m_db),
-	m_state(&m_db, _s.m_state.root()),
+	m_state(&m_db, _s.m_state.root(), Verification::Skip),
 	m_transactions(_s.m_transactions),
 	m_receipts(_s.m_receipts),
 	m_transactionSet(_s.m_transactionSet),
@@ -184,7 +184,7 @@ void State::paranoia(std::string const& _when, bool _enforceRefs) const
 State& State::operator=(State const& _s)
 {
 	m_db = _s.m_db;
-	m_state.open(&m_db, _s.m_state.root());
+	m_state.open(&m_db, _s.m_state.root(), Verification::Skip);
 	m_transactions = _s.m_transactions;
 	m_receipts = _s.m_receipts;
 	m_transactionSet = _s.m_transactionSet;
