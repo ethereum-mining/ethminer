@@ -25,6 +25,7 @@
 #include <gperftools/profiler.h>
 #endif
 #include <leveldb/db.h>
+#include <leveldb/write_batch.h>
 #include <boost/timer.hpp>
 #include <boost/filesystem.hpp>
 #include <test/JsonSpiritHeaders.h>
@@ -46,7 +47,7 @@ using namespace dev::eth;
 namespace js = json_spirit;
 
 #define ETH_CATCH 1
-#define ETH_TIMED_IMPORTS 0
+#define ETH_TIMED_IMPORTS 1
 
 #ifdef _WIN32
 const char* BlockChainDebug::name() { return EthBlue "8" EthWhite " <>"; }
@@ -302,7 +303,7 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 
 tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
-	_bq.tick(*this);
+//	_bq.tick(*this);
 
 	vector<bytes> blocks;
 	_bq.drain(blocks, _max);
@@ -442,6 +443,11 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	t.restart();
 #endif
 
+	ldb::WriteBatch blocksBatch;
+	ldb::WriteBatch extrasBatch;
+	h256 newLastBlockHash = currentHash();
+	unsigned newLastBlockNumber = number();
+
 	u256 td;
 #if ETH_CATCH
 	try
@@ -470,44 +476,29 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 #if ETH_PARANOIA
 		checkConsistency();
 #endif
-		// All ok - insert into DB
-		{
-			// ensure parent is cached for later addition.
-			// TODO: this is a bit horrible would be better refactored into an enveloping UpgradableGuard
-			// together with an "ensureCachedWithUpdatableLock(l)" method.
-			// This is safe in practice since the caches don't get flushed nearly often enough to be
-			// done here.
-			details(bi.parentHash);
 
-			WriteGuard l(x_details);
-			m_details[bi.hash()] = BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {});
+		// All ok - insert into DB
+
+		// ensure parent is cached for later addition.
+		// TODO: this is a bit horrible would be better refactored into an enveloping UpgradableGuard
+		// together with an "ensureCachedWithUpdatableLock(l)" method.
+		// This is safe in practice since the caches don't get flushed nearly often enough to be
+		// done here.
+		details(bi.parentHash);
+		ETH_WRITE_GUARDED(x_details)
 			m_details[bi.parentHash].children.push_back(bi.hash());
-		}
-		{
-			WriteGuard l(x_logBlooms);
-			m_logBlooms[bi.hash()] = blb;
-		}
-		{
-			WriteGuard l(x_receipts);
-			m_receipts[bi.hash()] = br;
-		}
 
 #if ETH_TIMED_IMPORTS
 		collation = t.elapsed();
 		t.restart();
 #endif
 
-		{
-			ReadGuard l1(x_blocks);
-			ReadGuard l2(x_details);
-			ReadGuard l4(x_receipts);
-			ReadGuard l5(x_logBlooms);
-			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.hash()].rlp()));
-			m_extrasDB->Put(m_writeOptions, toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
-			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraLogBlooms), (ldb::Slice)dev::ref(m_logBlooms[bi.hash()].rlp()));
-			m_extrasDB->Put(m_writeOptions, toSlice(bi.hash(), ExtraReceipts), (ldb::Slice)dev::ref(m_receipts[bi.hash()].rlp()));
-			m_blocksDB->Put(m_writeOptions, toSlice(bi.hash()), (ldb::Slice)ref(_block));
-		}
+		blocksBatch.Put(toSlice(bi.hash()), (ldb::Slice)ref(_block));
+		ETH_READ_GUARDED(x_details)
+			extrasBatch.Put(toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
+		extrasBatch.Put(toSlice(bi.hash(), ExtraDetails), (ldb::Slice)dev::ref(BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {}).rlp()));
+		extrasBatch.Put(toSlice(bi.hash(), ExtraLogBlooms), (ldb::Slice)dev::ref(blb.rlp()));
+		extrasBatch.Put(toSlice(bi.hash(), ExtraReceipts), (ldb::Slice)dev::ref(br.rlp()));
 
 #if ETH_TIMED_IMPORTS
 		writing = t.elapsed();
@@ -552,8 +543,11 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	h256 last = currentHash();
 	if (td > details(last).totalDifficulty)
 	{
+		// don't include bi.hash() in treeRoute, since it's not yet in details DB...
+		// just tack it on afterwards.
 		unsigned commonIndex;
-		tie(route, common, commonIndex) = treeRoute(last, bi.hash());
+		tie(route, common, commonIndex) = treeRoute(last, bi.parentHash);
+		route.push_back(bi.hash());
 
 		// Most of the time these two will be equal - only when we're doing a chain revert will they not be
 		if (common != last)
@@ -564,20 +558,24 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		// Go through ret backwards until hash != last.parent and update m_transactionAddresses, m_blockHashes
 		for (auto i = route.rbegin(); i != route.rend() && *i != common; ++i)
 		{
-			auto b = block(*i);
-			BlockInfo bi(b);
+			BlockInfo tbi;
+			if (*i == bi.hash())
+				tbi = bi;
+			else
+				tbi = BlockInfo(block(*i));
+
 			// Collate logs into blooms.
 			h256s alteredBlooms;
 			{
-				LogBloom blockBloom = bi.logBloom;
-				blockBloom.shiftBloom<3>(sha3(bi.coinbaseAddress.ref()));
+				LogBloom blockBloom = tbi.logBloom;
+				blockBloom.shiftBloom<3>(sha3(tbi.coinbaseAddress.ref()));
 
 				// Pre-memoize everything we need before locking x_blocksBlooms
-				for (unsigned level = 0, index = (unsigned)bi.number; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
+				for (unsigned level = 0, index = (unsigned)tbi.number; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
 					blocksBlooms(chunkId(level, index / c_bloomIndexSize));
 
 				WriteGuard l(x_blocksBlooms);
-				for (unsigned level = 0, index = (unsigned)bi.number; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
+				for (unsigned level = 0, index = (unsigned)tbi.number; level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)
 				{
 					unsigned i = index / c_bloomIndexSize;
 					unsigned o = index % c_bloomIndexSize;
@@ -588,38 +586,26 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 			// Collate transaction hashes and remember who they were.
 			h256s newTransactionAddresses;
 			{
-				RLP blockRLP(b);
+				bytes blockBytes;
+				RLP blockRLP(*i == bi.hash() ? _block : (blockBytes = block(*i)));
 				TransactionAddress ta;
-				ta.blockHash = bi.hash();
-				WriteGuard l(x_transactionAddresses);
+				ta.blockHash = tbi.hash();
 				for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
-				{
-					newTransactionAddresses.push_back(sha3(blockRLP[1][ta.index].data()));
-					m_transactionAddresses[newTransactionAddresses.back()] = ta;
-				}
-			}
-			{
-				WriteGuard l(x_blockHashes);
-				m_blockHashes[h256(bi.number)].value = bi.hash();
+					extrasBatch.Put(toSlice(sha3(blockRLP[1][ta.index].data()), ExtraTransactionAddress), (ldb::Slice)dev::ref(ta.rlp()));
 			}
 
 			// Update database with them.
 			ReadGuard l1(x_blocksBlooms);
-			ReadGuard l3(x_blockHashes);
-			ReadGuard l6(x_transactionAddresses);
 			for (auto const& h: alteredBlooms)
-				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraBlocksBlooms), (ldb::Slice)dev::ref(m_blocksBlooms[h].rlp()));
-			m_extrasDB->Put(m_writeOptions, toSlice(h256(bi.number), ExtraBlockHash), (ldb::Slice)dev::ref(m_blockHashes[h256(bi.number)].rlp()));
-			for (auto const& h: newTransactionAddresses)
-				m_extrasDB->Put(m_writeOptions, toSlice(h, ExtraTransactionAddress), (ldb::Slice)dev::ref(m_transactionAddresses[h].rlp()));
+				extrasBatch.Put(toSlice(h, ExtraBlocksBlooms), (ldb::Slice)dev::ref(m_blocksBlooms[h].rlp()));
+			extrasBatch.Put(toSlice(h256(tbi.number), ExtraBlockHash), (ldb::Slice)dev::ref(BlockHash(tbi.hash()).rlp()));
 		}
 
 		// FINALLY! change our best hash.
 		{
-			WriteGuard l(x_lastBlockHash);
-			m_lastBlockHash = bi.hash();
-			m_lastBlockNumber = (unsigned)bi.number;
-			m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&(bi.hash()), 32));
+			newLastBlockHash = bi.hash();
+			newLastBlockNumber = (unsigned)bi.number;
+			extrasBatch.Put(ldb::Slice("best"), ldb::Slice((char const*)&(bi.hash()), 32));
 		}
 
 		clog(BlockChainNote) << "   Imported and best" << td << " (#" << bi.number << "). Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << route;
@@ -635,6 +621,15 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	else
 	{
 		clog(BlockChainChat) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
+	}
+
+	m_blocksDB->Write(m_writeOptions, &blocksBatch);
+	m_extrasDB->Write(m_writeOptions, &extrasBatch);
+
+	ETH_WRITE_GUARDED(x_lastBlockHash)
+	{
+		m_lastBlockHash = newLastBlockHash;
+		m_lastBlockNumber = newLastBlockNumber;
 	}
 
 #if ETH_TIMED_IMPORTS
