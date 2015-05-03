@@ -49,6 +49,7 @@ class TransactionQueue
 public:
 	using ImportCallback = std::function<void(ImportResult)>;
 
+	ImportResult import(Transaction const& _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore);
 	ImportResult import(bytes const& _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore) { return import(&_tx, _cb, _ik); }
 	ImportResult import(bytesConstRef _tx, ImportCallback const& _cb = ImportCallback(), IfDropped _ik = IfDropped::Ignore);
 
@@ -65,6 +66,9 @@ public:
 	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
 
 private:
+	ImportResult check_WITH_LOCK(h256 const& _h, IfDropped _ik);
+	ImportResult manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction, ImportCallback const& _cb);
+
 	void insertCurrent_WITH_LOCK(std::pair<h256, Transaction> const& _p);
 	bool removeCurrent_WITH_LOCK(h256 const& _txHash);
 
