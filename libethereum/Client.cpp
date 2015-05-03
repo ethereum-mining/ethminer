@@ -658,8 +658,6 @@ void Client::noteChanged(h256Set const& _filters)
 
 void Client::doWork()
 {
-	// TODO: Use condition variable rather than this rubbish.
-
 	bool t = true;
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
 		syncBlockQueue();
@@ -671,7 +669,10 @@ void Client::doWork()
 	tick();
 
 	if (!m_syncBlockQueue && !m_syncTransactionQueue)
-		this_thread::sleep_for(chrono::milliseconds(20));
+	{
+		std::unique_lock<std::mutex> l(x_signalled);
+		m_signalled.wait_for(l, chrono::seconds(1));
+	}
 }
 
 void Client::tick()
