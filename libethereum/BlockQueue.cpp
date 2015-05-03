@@ -74,17 +74,19 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 	}
 
 	UpgradeGuard ul(l);
+	invariants_WITH_LOCK();
 
 	// Check it's not in the future
 	(void)_isOurs;
 	if (bi.timestamp > (u256)time(0)/* && !_isOurs*/)
 	{
-		m_future.insert(make_pair((unsigned)bi.timestamp, _block.toBytes()));
+		m_future.insert(make_pair((unsigned)bi.timestamp, make_pair(h, _block.toBytes())));
 		char buf[24];
 		time_t bit = (unsigned)bi.timestamp;
 		if (strftime(buf, 24, "%X", localtime(&bit)) == 0)
 			buf[0] = '\0'; // empty if case strftime fails
 		cblockq << "OK - queued for future [" << bi.timestamp << "vs" << time(0) << "] - will wait until" << buf;
+		invariants_WITH_LOCK();
 		return ImportResult::FutureTime;
 	}
 	else
@@ -94,6 +96,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		{
 			m_knownBad.insert(bi.hash());
 			// bad parent; this is bad too, note it as such
+			invariants_WITH_LOCK();
 			return ImportResult::BadChain;
 		}
 		else if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash))
@@ -103,16 +106,18 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
 			m_unknownSet.insert(h);
 
+			invariants_WITH_LOCK();
 			return ImportResult::UnknownParent;
 		}
 		else
 		{
 			// If valid, append to blocks.
 			cblockq << "OK - ready for chain insertion.";
-			m_ready.push_back(_block.toBytes());
+			m_ready.push_back(make_pair(h, _block.toBytes()));
 			m_readySet.insert(h);
+			invariants_WITH_LOCK();
 
-			noteReadyWithoutWriteGuard(h);
+			noteReady_WITH_LOCK(h);
 			m_onReady();
 			return ImportResult::Success;
 		}
@@ -122,27 +127,33 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 bool BlockQueue::doneDrain(h256s const& _bad)
 {
 	WriteGuard l(m_lock);
+	invariants_WITH_LOCK();
 	m_drainingSet.clear();
 	if (_bad.size())
 	{
-		vector<bytes> old;
+		vector<pair<h256, bytes>> old;
 		swap(m_ready, old);
 		for (auto& b: old)
 		{
-			BlockInfo bi(b);
+			BlockInfo bi(b.second);
 			if (m_knownBad.count(bi.parentHash))
-				m_knownBad.insert(bi.hash());
+			{
+				m_knownBad.insert(b.first);
+				m_readySet.erase(b.first);
+			}
 			else
 				m_ready.push_back(std::move(b));
 		}
 	}
 	m_knownBad += _bad;
+	// GAA!!!! NEVER EMPTY?!?!?! TODO: remove items from readySet!
+	invariants_WITH_LOCK();
 	return !m_readySet.empty();
 }
 
 void BlockQueue::tick(BlockChain const& _bc)
 {
-	vector<bytes> todo;
+	vector<pair<h256, bytes>> todo;
 	{
 		UpgradableGuard l(m_lock);
 		if (m_future.empty())
@@ -158,16 +169,18 @@ void BlockQueue::tick(BlockChain const& _bc)
 
 		{
 			UpgradeGuard l2(l);
+			invariants_WITH_LOCK();
 			auto end = m_future.lower_bound(t);
 			for (auto i = m_future.begin(); i != end; ++i)
 				todo.push_back(move(i->second));
 			m_future.erase(m_future.begin(), end);
+			invariants_WITH_LOCK();
 		}
 	}
 	cblockq << "Importing" << todo.size() << "past-future blocks.";
 
 	for (auto const& b: todo)
-		import(&b, _bc);
+		import(&b.second, _bc);
 }
 
 template <class T> T advanced(T _t, unsigned _n)
@@ -194,25 +207,34 @@ QueueStatus BlockQueue::blockStatus(h256 const& _h) const
 void BlockQueue::drain(std::vector<bytes>& o_out, unsigned _max)
 {
 	WriteGuard l(m_lock);
+	invariants_WITH_LOCK();
 	if (m_drainingSet.empty())
 	{
 		o_out.resize(min<unsigned>(_max, m_ready.size()));
 		for (unsigned i = 0; i < o_out.size(); ++i)
-			swap(o_out[i], m_ready[i]);
+			swap(o_out[i], m_ready[i].second);
 		m_ready.erase(m_ready.begin(), advanced(m_ready.begin(), o_out.size()));
 		for (auto const& bs: o_out)
 		{
-			auto h = sha3(bs);
+			// TODO: @optimise use map<h256, bytes> rather than vector<bytes> & set<h256>.
+			auto h = BlockInfo::headerHash(bs);
 			m_drainingSet.insert(h);
 			m_readySet.erase(h);
 		}
 //		swap(o_out, m_ready);
 //		swap(m_drainingSet, m_readySet);
 	}
+	invariants_WITH_LOCK();
 }
 
-void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
+void BlockQueue::invariants_WITH_LOCK() const
 {
+	assert(m_readySet.size() == m_ready.size());
+}
+
+void BlockQueue::noteReady_WITH_LOCK(h256 const& _good)
+{
+	invariants_WITH_LOCK();
 	list<h256> goodQueue(1, _good);
 	while (!goodQueue.empty())
 	{
@@ -220,7 +242,7 @@ void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 		goodQueue.pop_front();
 		for (auto it = r.first; it != r.second; ++it)
 		{
-			m_ready.push_back(it->second.second);
+			m_ready.push_back(it->second);
 			auto newReady = it->second.first;
 			m_unknownSet.erase(newReady);
 			m_readySet.insert(newReady);
@@ -228,16 +250,19 @@ void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 		}
 		m_unknown.erase(r.first, r.second);
 	}
+	invariants_WITH_LOCK();
 }
 
 void BlockQueue::retryAllUnknown()
 {
+	invariants_WITH_LOCK();
 	for (auto it = m_unknown.begin(); it != m_unknown.end(); ++it)
 	{
-		m_ready.push_back(it->second.second);
+		m_ready.push_back(it->second);
 		auto newReady = it->second.first;
 		m_unknownSet.erase(newReady);
 		m_readySet.insert(newReady);
 	}
 	m_unknown.clear();
+	invariants_WITH_LOCK();
 }
