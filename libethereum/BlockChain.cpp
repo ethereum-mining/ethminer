@@ -303,7 +303,7 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 
 tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
-	_bq.tick(*this);
+//	_bq.tick(*this);
 
 	vector<bytes> blocks;
 	_bq.drain(blocks, _max);
