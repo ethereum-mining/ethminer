@@ -22,6 +22,7 @@
 #pragma once
 
 #include <thread>
+#include <condition_variable>
 #include <mutex>
 #include <list>
 #include <atomic>
@@ -258,10 +259,10 @@ private:
 	void syncTransactionQueue();
 
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
-	void onTransactionQueueReady() { m_syncTransactionQueue = true; }
+	void onTransactionQueueReady() { m_syncTransactionQueue = true; m_signalled.notify_all(); }
 
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
-	void onBlockQueueReady() { m_syncBlockQueue = true; }
+	void onBlockQueueReady() { m_syncBlockQueue = true; m_signalled.notify_all(); }
 
 	/// Called when the post state has changed (i.e. when more transactions are in it or we're mining on a new block).
 	/// This updates m_miningInfo.
@@ -309,6 +310,8 @@ private:
 	ActivityReport m_report;
 
 	// TODO!!!!!! REPLACE WITH A PROPER X-THREAD ASIO SIGNAL SYSTEM (could just be condition variables)
+	std::condition_variable m_signalled;
+	Mutex x_signalled;
 	std::atomic<bool> m_syncTransactionQueue = {false};
 	std::atomic<bool> m_syncBlockQueue = {false};
 };
