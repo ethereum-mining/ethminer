@@ -78,7 +78,7 @@ public:
 	bool doneDrain(h256s const& _knownBad = h256s());
 
 	/// Notify the queue that the chain has changed and a new block has attained 'ready' status (i.e. is in the chain).
-	void noteReady(h256 _b) { WriteGuard l(m_lock); noteReadyWithoutWriteGuard(_b); }
+	void noteReady(h256 const& _b) { WriteGuard l(m_lock); noteReady_WITH_LOCK(_b); }
 
 	/// Force a retry of all the blocks with unknown parents.
 	void retryAllUnknown();
@@ -87,7 +87,7 @@ public:
 	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_ready.size(), m_unknown.size()); }
 
 	/// Clear everything.
-	void clear() { WriteGuard l(m_lock); m_readySet.clear(); m_drainingSet.clear(); m_ready.clear(); m_unknownSet.clear(); m_unknown.clear(); m_future.clear(); }
+	void clear() { WriteGuard l(m_lock); invariants_WITH_LOCK(); m_readySet.clear(); m_drainingSet.clear(); m_ready.clear(); m_unknownSet.clear(); m_unknown.clear(); m_future.clear(); invariants_WITH_LOCK(); }
 
 	/// Return first block with an unknown parent.
 	h256 firstUnknown() const { ReadGuard l(m_lock); return m_unknownSet.size() ? *m_unknownSet.begin() : h256(); }
@@ -101,18 +101,18 @@ public:
 	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
 
 private:
-	void noteReadyWithoutWriteGuard(h256 _b);
-	void notePresentWithoutWriteGuard(bytesConstRef _block);
+	void noteReady_WITH_LOCK(h256 const& _b);
+	void invariants_WITH_LOCK() const;
 
 	mutable boost::shared_mutex m_lock;						///< General lock.
-	std::set<h256> m_readySet;								///< All blocks ready for chain-import.
 	std::set<h256> m_drainingSet;							///< All blocks being imported.
-	std::vector<bytes> m_ready;								///< List of blocks, in correct order, ready for chain-import.
+	std::set<h256> m_readySet;								///< All blocks ready for chain-import.
+	std::vector<std::pair<h256, bytes>> m_ready;			///< List of blocks, in correct order, ready for chain-import.
 	std::set<h256> m_unknownSet;							///< Set of all blocks whose parents are not ready/in-chain.
-	std::multimap<h256, std::pair<h256, bytes>> m_unknown;	///< For transactions that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
-	std::multimap<unsigned, bytes> m_future;				///< Set of blocks that are not yet valid.
+	std::multimap<h256, std::pair<h256, bytes>> m_unknown;	///< For blocks that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
 	std::set<h256> m_knownBad;								///< Set of blocks that we know will never be valid.
-	Signal m_onReady;										///< Called when a subsequent call to import transactions will return a non-empty container. Be nice and exit fast.
+	std::multimap<unsigned, std::pair<h256, bytes>> m_future;///< Set of blocks that are not yet valid.
+	Signal m_onReady;										///< Called when a subsequent call to import blocks will return a non-empty container. Be nice and exit fast.
 };
 
 }
