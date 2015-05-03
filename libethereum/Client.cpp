@@ -582,7 +582,6 @@ void Client::onChainChanged(ImportRoute const& _ir)
 			m_preMine = newPreMine;
 		DEV_TIMED(working) ETH_WRITE_GUARDED(x_working)
 			m_working = newPreMine;
-//		Transactions ts = m_postMine.pending();
 		ETH_READ_GUARDED(x_postMine)
 			for (auto const& t: m_postMine.pending())
 			{
@@ -663,7 +662,7 @@ void Client::doWork()
 
 	bool t = true;
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
-		syncBlockQueue();	// GAAA!!!!! CALLED TOO OFTEN!!!
+		syncBlockQueue();
 
 	t = true;
 	if (m_syncTransactionQueue.compare_exchange_strong(t, false) && !m_remoteWorking)
