@@ -20,7 +20,7 @@
  */
 
 #include "Common.h"
-
+#include "Exceptions.h"
 using namespace std;
 using namespace dev;
 
@@ -28,6 +28,12 @@ namespace dev
 {
 
 char const* Version = "0.9.14";
+
+void HasInvariants::checkInvariants() const
+{
+	if (!invariants())
+		BOOST_THROW_EXCEPTION(FailedInvariant());
+}
 
 }
 

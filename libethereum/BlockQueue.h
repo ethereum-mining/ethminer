@@ -30,6 +30,7 @@
 
 namespace dev
 {
+
 namespace eth
 {
 
@@ -60,7 +61,7 @@ enum class QueueStatus
  * Sorts them ready for blockchain insertion (with the BlockChain::sync() method).
  * @threadsafe
  */
-class BlockQueue
+class BlockQueue: HasInvariants
 {
 public:
 	/// Import a block into the queue.
@@ -87,7 +88,7 @@ public:
 	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_ready.size(), m_unknown.size()); }
 
 	/// Clear everything.
-	void clear() { WriteGuard l(m_lock); invariants_WITH_LOCK(); m_readySet.clear(); m_drainingSet.clear(); m_ready.clear(); m_unknownSet.clear(); m_unknown.clear(); m_future.clear(); invariants_WITH_LOCK(); }
+	void clear() { WriteGuard l(m_lock); DEV_INVARIANT_CHECK; m_readySet.clear(); m_drainingSet.clear(); m_ready.clear(); m_unknownSet.clear(); m_unknown.clear(); m_future.clear(); }
 
 	/// Return first block with an unknown parent.
 	h256 firstUnknown() const { ReadGuard l(m_lock); return m_unknownSet.size() ? *m_unknownSet.begin() : h256(); }
@@ -102,7 +103,8 @@ public:
 
 private:
 	void noteReady_WITH_LOCK(h256 const& _b);
-	void invariants_WITH_LOCK() const;
+
+	bool invariants() const override;
 
 	mutable boost::shared_mutex m_lock;						///< General lock.
 	std::set<h256> m_drainingSet;							///< All blocks being imported.
