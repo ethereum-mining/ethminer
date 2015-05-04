@@ -13,6 +13,7 @@ aux_source_directory(. SRC_LIST)
 include_directories(BEFORE ..)
 include_directories(${V8_INCLUDE_DIRS})
 include_directories(${READLINE_INCLUDE_DIRS})
+include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
 set(EXECUTABLE jsconsole)
 
@@ -26,7 +27,7 @@ add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS} ${JSRES})
 target_link_libraries(${EXECUTABLE} jsengine)
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
+target_link_libraries(${EXECUTABLE} web3jsonrpc)
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
-

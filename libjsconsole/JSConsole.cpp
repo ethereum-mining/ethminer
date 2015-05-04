@@ -3,26 +3,24 @@
 //
 
 #include <iostream>
-#include <algorithm>
 #include <libdevcore/Log.h>
 #include "JSConsole.h"
+#include "JSV8Connector.h"
 #include "libjsconsole/JSConsoleResources.hpp"
 
 // TODO: readline!
 #include <readline/readline.h>
-#include <readline/history.h>
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-JSConsole::JSConsole(): m_engine(), m_printer(m_engine), m_rpc(m_engine)
+JSConsole::JSConsole(WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
+		m_engine(),
+		m_printer(m_engine)
 {
-//	JSConsoleResources resources;
-//	string web3 = resources.loadResourceAsString("web3");
-//	m_engine.eval(web3.c_str());
-//	m_engine.eval("web3 = require('web3');");
-	m_rpc.StartListening();
+	m_jsonrpcConnector.reset(new JSV8Connector(m_engine));
+	m_jsonrpcServer.reset(new WebThreeStubServer(*m_jsonrpcConnector.get(), _web3, _accounts));
 }
 
 void JSConsole::repl() const

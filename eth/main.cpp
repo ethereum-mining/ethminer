@@ -412,18 +412,6 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 
 int main(int argc, char** argv)
 {
-	JSConsole console;
-	console.repl();
-	console.repl();
-	console.repl();
-	console.repl();
-	console.repl();
-	console.repl();
-	console.repl();
-	console.repl();
-	console.repl();
-	console.repl();
-	console.repl();
 	cout << "\x1b[30mEthBlack\x1b[0m" << endl;
 	cout << "\x1b[90mEthCoal\x1b[0m" << endl;
 	cout << "\x1b[37mEthGray\x1b[0m" << endl;
@@ -1638,7 +1626,7 @@ int main(int argc, char** argv)
 		if (useConsole)
 		{
 #if ETH_JSCONSOLE
-			JSConsole console;
+			JSConsole console(web3, vector<KeyPair>({sigKey}));
 			while (!g_exit)
 			{
 				console.repl();

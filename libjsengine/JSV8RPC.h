@@ -4,7 +4,6 @@
 
 #pragma once
 
-//#include <jsonrpccpp/server/abstractserverconnector.h>
 #include <libjsengine/JSV8Engine.h>
 
 namespace dev
@@ -16,17 +15,12 @@ class JSV8RPC
 {
 public:
 	JSV8RPC(JSV8Engine const& _engine);
-	virtual ~JSV8RPC();
 
-	bool StartListening();
-
-	bool StopListening();
-
-	bool SendResponse(std::string const& _response, void* _addInfo = NULL);
+	virtual void onSend(const char* _payload) = 0;
+	const char* m_lastResponse;
 
 private:
 	JSV8Engine const& m_engine;
-	std::string m_lastResponse;
 };
 
 }
