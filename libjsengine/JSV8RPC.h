@@ -33,12 +33,14 @@ class JSV8RPC
 {
 public:
 	JSV8RPC(JSV8Engine const& _engine);
-
 	virtual void onSend(const char* _payload) = 0;
-	const char* m_lastResponse;
+	const char* lastResponse() const { return m_lastResponse; }
 
 private:
 	JSV8Engine const& m_engine;
+
+protected:
+	const char* m_lastResponse;
 };
 
 }
