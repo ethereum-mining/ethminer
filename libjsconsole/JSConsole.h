@@ -6,7 +6,7 @@
 
 #include <libjsengine/JSV8Engine.h>
 #include <libjsengine/JSV8Printer.h>
-#include <libjsengine/JSV8RPC.h>
+#include <libweb3jsonrpc/WebThreeStubServer.h>
 
 namespace dev
 {
@@ -16,7 +16,7 @@ namespace eth
 class JSConsole
 {
 public:
-	JSConsole();
+	JSConsole(WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
 	void repl() const;
 
 private:
@@ -24,7 +24,8 @@ private:
 
 	JSV8Engine m_engine;
 	JSV8Printer m_printer;
-	JSV8RPC m_rpc;
+	std::unique_ptr<WebThreeStubServer> m_jsonrpcServer;
+	std::unique_ptr<jsonrpc::AbstractServerConnector> m_jsonrpcConnector;
 };
 
 }
