@@ -226,7 +226,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 					return;
 				}
 		
-		if (peerCount() > 2 * m_idealPeerCount)
+		if (peerCount() > 9 * m_idealPeerCount)
 		{
 			ps->disconnect(TooManyPeers);
 			return;
@@ -341,7 +341,7 @@ void Host::runAcceptor()
 		auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
 		m_tcp4Acceptor.async_accept(socket->ref(), [=](boost::system::error_code ec)
 		{
-			if (peerCount() > 2 * m_idealPeerCount)
+			if (peerCount() > 9 * m_idealPeerCount)
 			{
 				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (2 * ideal peer count): " << socket->remoteEndpoint();
 				socket->close();
