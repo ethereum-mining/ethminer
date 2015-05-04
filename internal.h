@@ -89,16 +89,13 @@ ethash_light_t ethash_light_new_internal(uint64_t cache_size, ethash_h256_t cons
 /**
  * Calculate the light client data. Internal version.
  *
- * @param ret            An object of ethash_return_value to hold the return value
  * @param light          The light client handler
  * @param full_size      The size of the full data in bytes.
  * @param header_hash    The header hash to pack into the mix
  * @param nonce          The nonce to pack into the mix
- * @return               true if all went well and false if there were invalid
- *                       parameters given.
+ * @return               The resulting hash.
  */
-bool ethash_light_compute_internal(
-	ethash_return_value_t* ret,
+ethash_return_value_t ethash_light_compute_internal(
 	ethash_light_t light,
 	uint64_t full_size,
 	ethash_h256_t const header_hash,
@@ -130,7 +127,7 @@ struct ethash_full {
  */
 ethash_full_t ethash_full_new_internal(
 	char const* dirname,
-	ethash_h256_t const* seed_hash,
+	ethash_h256_t const seed_hash,
 	uint64_t full_size,
 	ethash_light_t const light,
 	ethash_callback_t callback

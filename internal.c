@@ -335,22 +335,19 @@ void ethash_light_delete(ethash_light_t light)
 	free(light);
 }
 
-bool ethash_light_compute_internal(
-	ethash_return_value_t* ret,
+ethash_return_value_t ethash_light_compute_internal(
 	ethash_light_t light,
 	uint64_t full_size,
 	ethash_h256_t const header_hash,
 	uint64_t nonce
 )
 {
-	return ethash_hash(
-		ret,
-		NULL,
-		light,
-		full_size,
-		header_hash,
-		nonce
-	);
+  	ethash_return_value_t ret;
+	ret.success = true;
+	if (!ethash_hash(&ret, NULL, light, full_size, header_hash, nonce)) {
+		ret.success = false;
+	}
+	return ret;
 }
 
 ethash_return_value_t ethash_light_compute(
@@ -359,16 +356,9 @@ ethash_return_value_t ethash_light_compute(
 	uint64_t nonce
 )
 {
-	ethash_return_value_t ret;
-	ret.success = true;
 	uint64_t full_size = ethash_get_datasize(light->block_number);
-	if (!ethash_light_compute_internal(&ret, light, full_size, header_hash, nonce)) {
-		ret.success = false;
-	}
-	return ret;
+	return ethash_light_compute_internal(light, full_size, header_hash, nonce);
 }
-
-
 
 static bool ethash_mmap(struct ethash_full* ret, FILE* f)
 {
@@ -395,7 +385,7 @@ static bool ethash_mmap(struct ethash_full* ret, FILE* f)
 
 ethash_full_t ethash_full_new_internal(
 	char const* dirname,
-	ethash_h256_t const* seed_hash,
+	ethash_h256_t const seed_hash,
 	uint64_t full_size,
 	ethash_light_t const light,
 	ethash_callback_t callback
@@ -408,7 +398,7 @@ ethash_full_t ethash_full_new_internal(
 		return NULL;
 	}
 	ret->file_size = (size_t)full_size;
-	switch (ethash_io_prepare(dirname, *seed_hash, &f, (size_t)full_size, false)) {
+	switch (ethash_io_prepare(dirname, seed_hash, &f, (size_t)full_size, false)) {
 	case ETHASH_IO_FAIL:
 		goto fail_free_full;
 	case ETHASH_IO_MEMO_MATCH:
@@ -418,7 +408,7 @@ ethash_full_t ethash_full_new_internal(
 		return ret;
 	case ETHASH_IO_MEMO_SIZE_MISMATCH:
 		// if a DAG of same filename but unexpected size is found, silently force new file creation
-		if (ethash_io_prepare(dirname, *seed_hash, &f, (size_t)full_size, true) != ETHASH_IO_MEMO_MISMATCH) {
+		if (ethash_io_prepare(dirname, seed_hash, &f, (size_t)full_size, true) != ETHASH_IO_MEMO_MISMATCH) {
 			goto fail_free_full;
 		}
 		// fallthrough to the mismatch case here, DO NOT go through match
@@ -462,7 +452,7 @@ ethash_full_t ethash_full_new(ethash_light_t light, ethash_callback_t callback)
 	}
 	uint64_t full_size = ethash_get_datasize(light->block_number);
 	ethash_h256_t seedhash = ethash_get_seedhash(light->block_number);
-	return ethash_full_new_internal(strbuf, &seedhash, full_size, light, callback);
+	return ethash_full_new_internal(strbuf, seedhash, full_size, light, callback);
 }
 
 void ethash_full_delete(ethash_full_t full)
