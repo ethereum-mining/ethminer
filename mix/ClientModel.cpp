@@ -422,7 +422,7 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 		//try to resolve contract for source level debugging
 		auto nameIter = m_contractNames.find(code.address);
 		CompiledContract const* compilerRes = nullptr;
-		if (nameIter != m_contractNames.end() && (compilerRes = m_codeModel->tryGetContract(nameIter->second)))
+		if (nameIter != m_contractNames.end() && (compilerRes = m_codeModel->tryGetContract(nameIter->second))) //returned object is guaranteed to live till the end of event handler in main thread
 		{
 			eth::AssemblyItems assemblyItems = !_t.isConstructor() ? compilerRes->assemblyItems() : compilerRes->constructorAssemblyItems();
 			codes.back()->setDocument(compilerRes->documentId());
@@ -467,9 +467,9 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 			{
 				//track calls into functions
 				AssemblyItem const& prevInstruction = codeItems[s.codeIndex][prevInstructionIndex];
-				auto functionIter = contract->functions().find(LocationPair(instruction.getLocation().start, instruction.getLocation().end));
-				if (functionIter != contract->functions().end() && ((prevInstruction.getJumpType() == AssemblyItem::JumpType::IntoFunction) || solCallStack.empty()))
-					solCallStack.push_front(QVariant::fromValue(functionIter.value()));
+				QString functionName = m_codeModel->resolveFunctionName(instruction.getLocation());
+				if (!functionName.isEmpty() && ((prevInstruction.getJumpType() == AssemblyItem::JumpType::IntoFunction) || solCallStack.empty()))
+					solCallStack.push_front(QVariant::fromValue(functionName));
 				else if (prevInstruction.getJumpType() == AssemblyItem::JumpType::OutOfFunction && !solCallStack.empty())
 					solCallStack.pop_front();
 			}
@@ -521,11 +521,13 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 
 			prevInstructionIndex = instructionIndex;
 
+			// filter out locations that match whole function or contract
 			SourceLocation location = instruction.getLocation();
-			if (contract->contract()->location() == location || contract->functions().contains(LocationPair(location.start, location.end)))
+			QString source = QString::fromUtf8(location.sourceName->c_str());
+			if (m_codeModel->isContractOrFunctionLocation(location))
 				location = dev::SourceLocation(-1, -1, location.sourceName);
 
-			solState = new QSolState(debugData, move(storage), move(solCallStack), move(locals), location.start, location.end, QString::fromUtf8(location.sourceName->c_str()));
+			solState = new QSolState(debugData, move(storage), move(solCallStack), move(locals), location.start, location.end, source);
 		}
 
 		states.append(QVariant::fromValue(new QMachineState(debugData, instructionIndex, s, codes[s.codeIndex], data[s.dataIndex], solState)));
