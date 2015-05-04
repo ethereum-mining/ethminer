@@ -6,6 +6,7 @@
 
 #include <libjsengine/JSV8Engine.h>
 #include <libjsengine/JSV8Printer.h>
+#include <libjsengine/JSV8RPC.h>
 
 namespace dev
 {
@@ -23,6 +24,7 @@ private:
 
 	JSV8Engine m_engine;
 	JSV8Printer m_printer;
+	JSV8RPC m_rpc;
 };
 
 }

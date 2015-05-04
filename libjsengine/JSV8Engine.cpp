@@ -5,7 +5,9 @@
 #include <memory>
 #include <libplatform/libplatform.h>
 #include "JSV8Engine.h"
+#include "libjsengine/JSEngineResources.hpp"
 
+using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
@@ -13,6 +15,48 @@ namespace dev
 {
 namespace eth
 {
+
+static const char* toCString(const v8::String::Utf8Value& value) {
+	return *value ? *value : "<string conversion failed>";
+}
+
+// from https://github.com/v8/v8-git-mirror/blob/master/samples/shell.cc
+static void reportException(v8::Isolate* isolate, v8::TryCatch* try_catch) {
+	v8::HandleScope handle_scope(isolate);
+	v8::String::Utf8Value exception(try_catch->Exception());
+	const char* exception_string = toCString(exception);
+	v8::Handle<v8::Message> message = try_catch->Message();
+	if (message.IsEmpty()) {
+		// V8 didn't provide any extra information about this error; just
+		// print the exception.
+		fprintf(stderr, "%s\n", exception_string);
+	} else {
+		// Print (filename):(line number): (message).
+		v8::String::Utf8Value filename(message->GetScriptOrigin().ResourceName());
+		const char* filename_string = toCString(filename);
+		int linenum = message->GetLineNumber();
+		fprintf(stderr, "%s:%i: %s\n", filename_string, linenum, exception_string);
+		// Print line of source code.
+		v8::String::Utf8Value sourceline(message->GetSourceLine());
+		const char* sourceline_string = toCString(sourceline);
+		fprintf(stderr, "%s\n", sourceline_string);
+		// Print wavy underline (GetUnderline is deprecated).
+		int start = message->GetStartColumn();
+		for (int i = 0; i < start; i++) {
+			fprintf(stderr, " ");
+		}
+		int end = message->GetEndColumn();
+		for (int i = start; i < end; i++) {
+			fprintf(stderr, "^");
+		}
+		fprintf(stderr, "\n");
+		v8::String::Utf8Value stack_trace(try_catch->StackTrace());
+		if (stack_trace.length() > 0) {
+			const char* stack_trace_string = toCString(stack_trace);
+			fprintf(stderr, "%s\n", stack_trace_string);
+		}
+	}
+}
 
 class ShellArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
 public:
@@ -113,7 +157,14 @@ JSV8Env::~JSV8Env()
 JSV8Engine::JSV8Engine():
 		m_isolate(v8::Isolate::New()),
 		m_scope(new JSV8Scope(m_isolate))
-{}
+{
+	JSEngineResources resources;
+	string common = resources.loadResourceAsString("common");
+	string web3 = resources.loadResourceAsString("web3");
+	eval(common.c_str());
+	eval(web3.c_str());
+	eval("web3 = require('web3');");
+}
 
 JSV8Engine::~JSV8Engine()
 {
@@ -133,9 +184,20 @@ JSV8Value JSV8Engine::eval(const char* _cstr) const
 	// the handle returned from the TryCatch is destroyed
 	// TODO: improve this cause sometimes incorrect message is being sent!
 	if (script.IsEmpty())
+	{
+		reportException(context()->GetIsolate(), &tryCatch);
 		return v8::Exception::Error(v8::Local<v8::String>::New(context()->GetIsolate(), tryCatch.Message()->Get()));
+	}
 
-	return JSV8Value(script->Run());
+	auto result = script->Run();
+
+	if (result.IsEmpty())
+	{
+		reportException(context()->GetIsolate(), &tryCatch);
+		return v8::Exception::Error(v8::Local<v8::String>::New(context()->GetIsolate(), tryCatch.Message()->Get()));
+	}
+
+	return result;
 }
 
 v8::Handle<v8::Context> const& JSV8Engine::context() const
