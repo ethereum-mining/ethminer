@@ -300,7 +300,6 @@ private:
 	void noteUsed(h256 const& _h, unsigned _extra = (unsigned)-1) const;
 	std::chrono::system_clock::time_point m_lastCollection;
 
-	void noteCanonChanged() const { Guard l(x_lastLastHashes); m_lastLastHashes.clear(); }
 	mutable Mutex x_lastLastHashes;
 	mutable LastHashes m_lastLastHashes;
 	mutable unsigned m_lastLastHashesNumber = (unsigned)-1;
