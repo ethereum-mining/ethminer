@@ -24,7 +24,9 @@ Dialog {
 	property string packageBase64
 	property string eth: registrarAddr.text
 	property string currentAccount
-	property string gasToUse: "0x188132" //gasToUseInput.text
+	property string gasToUse: gasToUseInput.text
+	property string gasPrice
+	property variant gasTotal
 	property variant paramsModel: []
 
 	function close()
@@ -43,7 +45,6 @@ Dialog {
 							id: 0
 						}];
 
-		console.log(packageHash);
 		TransactionHelper.rpcCall(requests, function(arg1, arg2)
 		{
 			modelAccounts.clear();
@@ -70,16 +71,27 @@ Dialog {
 				{
 					var ether = QEtherHelper.createEther(balanceRet[k].result, QEther.Wei);
 					comboAccounts.balances.push(ether.format());
+					comboAccounts.weiBalances.push(balanceRet[k].result);
 				}
 				balance.text = comboAccounts.balances[0];
 			});
 		});
 
-		var gas = 0;
-		var gasCosts = clientModel.gasCosts;
-		for (var g in gasCosts)
-			gas += gasCosts[g];
-		gasToUse = gas;
+		if (clientModel.gasCosts.length === 0)
+		{
+			errorDialog.text = qsTr("Please run the state one time before deploying in order to calculate gas requirement.");
+			errorDialog.open();
+		}
+		else
+		{
+			NetworkDeploymentCode.gasPrice(function(price) {
+				gasPrice = price;
+				gasPriceInt.setValue(gasPrice);
+				gasInt.setValue(NetworkDeploymentCode.gasUsed());
+				gasTotal = gasInt.multiply(gasPriceInt);
+				gasToUseInput.text = gasTotal.value();
+			});
+		}
 	}
 
 	function stopForInputError(inError)
@@ -112,6 +124,16 @@ Dialog {
 		poolLog.k = -1;
 		poolLog.elapsed = 0;
 		poolLog.start();
+	}
+
+	BigIntValue
+	{
+		id: gasInt
+	}
+
+	BigIntValue
+	{
+		id: gasPriceInt
 	}
 
 	Timer
@@ -295,11 +317,13 @@ Dialog {
 						ComboBox {
 							id: comboAccounts
 							property var balances: []
+							property var weiBalances: []
 							onCurrentIndexChanged : {
 								if (modelAccounts.count > 0)
 								{
 									currentAccount = modelAccounts.get(currentIndex).id;
 									balance.text = balances[currentIndex];
+									balanceInt.setValue(weiBalances[currentIndex]);
 								}
 							}
 							model: ListModel {
@@ -314,19 +338,39 @@ Dialog {
 							anchors.leftMargin: 20
 							id: balance;
 						}
+
+						BigIntValue
+						{
+							id: balanceInt
+						}
 					}
 				}
 
 				DefaultLabel
 				{
-					text: qsTr("Amount of gas to use for each contract deployment: ")
+					text: qsTr("Amount of gas to use for contract deployment: ")
 				}
 
 				DefaultTextField
 				{
-					text: "1000000"
 					Layout.preferredWidth: 350
 					id: gasToUseInput
+				}
+
+				DefaultLabel
+				{
+					text: qsTr("Amount of gas to use for dapp registration: ")
+				}
+
+				BigIntValue
+				{
+					id: deployGas;
+				}
+
+				DefaultTextField
+				{
+					Layout.preferredWidth: 350
+					id: gasToUseDeployInput
 				}
 
 				DefaultLabel
@@ -345,6 +389,10 @@ Dialog {
 						id: applicationUrlEth
 						onTextChanged: {
 							appUrlFormatted.text = NetworkDeploymentCode.formatAppUrl(text).join('/');
+							NetworkDeploymentCode.checkPathCreationCost(function(pathCreationCost){
+								gasToUseDeployInput.text = pathCreationCost;
+								deployGas.setValue(pathCreationCost);
+							});
 						}
 					}
 
@@ -379,6 +427,28 @@ Dialog {
 					id: runAction
 					tooltip: qsTr("Deploy contract(s) and Package resources files.")
 					onTriggered: {
+						if (contractRedeploy.checked)
+						{
+							console.log(gasTotal);
+							if (balanceInt <= gasTotal.add(deployGas))
+							{
+								errorDialog.text = qsTr("Not enough ether to deploy contract.");
+								errorDialog.open();
+								console.log("fff");
+								return;
+							}
+						}
+						else
+						{
+							if (balanceInt <= deployGas)
+							{
+								errorDialog.text = qsTr("Not enough ether to deploy contract.");
+								errorDialog.open();
+								console.log("mmmm");
+								return;
+							}
+						}
+
 						var inError = [];
 						var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEth.text);
 						for (var k in ethUrl)
