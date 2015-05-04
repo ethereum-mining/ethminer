@@ -39,72 +39,60 @@ static const char* toCString(v8::String::Utf8Value const& value)
 	return *value ? *value : "<string conversion failed>";
 }
 
-// from https://github.com/v8/v8-git-mirror/blob/master/samples/shell.cc
-static void reportException(v8::Isolate* isolate, v8::TryCatch* try_catch)
+// from:        https://github.com/v8/v8-git-mirror/blob/master/samples/shell.cc
+// v3.15 from:  https://chromium.googlesource.com/v8/v8.git/+/3.14.5.9/samples/shell.cc
+void reportException(v8::TryCatch* try_catch)
 {
-//	v8::HandleScope handle_scope;
-//	v8::String::Utf8Value exception(try_catch->Exception());
-//	const char* exception_string = toCString(exception);
-//	v8::Handle<v8::Message> message = try_catch->Message();
-//
-//	 V8 didn't provide any extra information about this error; just
-//	 print the exception.
-//	if (message.IsEmpty())
-//		fprintf(stderr, "%s\n", exception_string);
-//	else
-//	{
-//		 Print (filename):(line number): (message).
-//		v8::String::Utf8Value filename(message->GetScriptOrigin().ResourceName());
-//		const char* filename_string = toCString(filename);
-//		int linenum = message->GetLineNumber();
-//		fprintf(stderr, "%s:%i: %s\n", filename_string, linenum, exception_string);
-//
-//		 Print line of source code.
-//		v8::String::Utf8Value sourceline(message->GetSourceLine());
-//		const char* sourceline_string = toCString(sourceline);
-//		fprintf(stderr, "%s\n", sourceline_string);
-//
-//		 Print wavy underline (GetUnderline is deprecated).
-//		int start = message->GetStartColumn();
-//
-//		for (int i = 0; i < start; i++)
-//			fprintf(stderr, " ");
-//
-//		int end = message->GetEndColumn();
-//
-//		for (int i = start; i < end; i++)
-//			fprintf(stderr, "^");
-//
-//		fprintf(stderr, "\n");
-//		v8::String::Utf8Value stack_trace(try_catch->StackTrace());
-//
-//		if (stack_trace.length() > 0)
-//		{
-//			const char* stack_trace_string = toCString(stack_trace);
-//			fprintf(stderr, "%s\n", stack_trace_string);
-//		}
-//	}
-}
+	v8::HandleScope handle_scope;
+	v8::String::Utf8Value exception(try_catch->Exception());
+	const char* exception_string = toCString(exception);
+	v8::Handle<v8::Message> message = try_catch->Message();
 
-//class ShellArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
-//public:
-//	virtual void* Allocate(size_t length) {
-//		void* data = AllocateUninitialized(length);
-//		return data == NULL ? data : memset(data, 0, length);
-//	}
-//	virtual void* AllocateUninitialized(size_t length) { return malloc(length); }
-//	virtual void Free(void* data, size_t) { free(data); }
-//};
+	// V8 didn't provide any extra information about this error; just
+	// print the exception.
+	if (message.IsEmpty())
+		printf("%s\n", exception_string);
+	else
+	{
+		// Print (filename):(line number): (message).
+		v8::String::Utf8Value filename(message->GetScriptResourceName());
+		const char* filename_string = toCString(filename);
+		int linenum = message->GetLineNumber();
+		printf("%s:%i: %s\n", filename_string, linenum, exception_string);
+
+		// Print line of source code.
+		v8::String::Utf8Value sourceline(message->GetSourceLine());
+		const char* sourceline_string = toCString(sourceline);
+		printf("%s\n", sourceline_string);
+
+		// Print wavy underline (GetUnderline is deprecated).
+		int start = message->GetStartColumn();
+		for (int i = 0; i < start; i++)
+			printf(" ");
+
+		int end = message->GetEndColumn();
+
+		for (int i = start; i < end; i++)
+			printf("^");
+
+		printf("\n");
+
+		v8::String::Utf8Value stack_trace(try_catch->StackTrace());
+		if (stack_trace.length() > 0)
+		{
+			const char* stack_trace_string = toCString(stack_trace);
+			printf("%s\n", stack_trace_string);
+		}
+	}
+}
 
 class JSV8Env
 {
 public:
-	JSV8Env();
-
-	~JSV8Env();
-
-private:
-//	v8::Platform *m_platform;
+	~JSV8Env()
+	{
+		v8::V8::Dispose();
+	}
 };
 
 v8::Handle<v8::Context> createShellContext()
@@ -155,23 +143,6 @@ const char* JSV8Value::asCString() const
 	return toCString(str);
 }
 
-JSV8Env::JSV8Env()
-{
-//	v8::V8::InitializeICU();
-//	m_platform = v8::platform::CreateDefaultPlatform();
-//	v8::V8::InitializePlatform(m_platform);
-//	v8::V8::Initialize();
-//	ShellArrayBufferAllocator array_buffer_allocator;
-//	v8::V8::SetArrayBufferAllocator(&array_buffer_allocator);
-}
-
-JSV8Env::~JSV8Env()
-{
-	v8::V8::Dispose();
-//	v8::V8::ShutdownPlatform();
-//	delete m_platform;
-}
-
 JSV8Engine::JSV8Engine(): m_scope(new JSV8Scope())
 {
 	JSEngineResources resources;
@@ -200,7 +171,7 @@ JSV8Value JSV8Engine::eval(const char* _cstr) const
 	// the handle returned from the TryCatch is destroyed
 	if (script.IsEmpty())
 	{
-//		reportException(&tryCatch);
+		reportException(&tryCatch);
 		return v8::Exception::Error(v8::Local<v8::String>::New(tryCatch.Message()->Get()));
 	}
 
@@ -208,7 +179,7 @@ JSV8Value JSV8Engine::eval(const char* _cstr) const
 
 	if (result.IsEmpty())
 	{
-//		reportException(&tryCatch);
+		reportException(&tryCatch);
 		return v8::Exception::Error(v8::Local<v8::String>::New(tryCatch.Message()->Get()));
 	}
 
