@@ -111,7 +111,7 @@ void ethash_calculate_dag_item(
 #endif
 
 	for (uint32_t i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
-		uint32_t parent_index = ((node_index ^ i) * FNV_PRIME ^ ret->words[i % NODE_WORDS]) % num_parent_nodes;
+		uint32_t parent_index = fnv_hash(node_index ^ i, ret->words[i % NODE_WORDS]) % num_parent_nodes;
 		node const *parent = &cache_nodes[parent_index];
 
 #if defined(_M_X64) && ENABLE_SSE
