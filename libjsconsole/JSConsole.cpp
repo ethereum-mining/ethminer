@@ -26,8 +26,9 @@
 #include "JSV8Connector.h"
 #include "libjsconsole/JSConsoleResources.hpp"
 
-// TODO: readline!
+// TODO! make readline optional!
 #include <readline/readline.h>
+#include <readline/history.h>
 
 using namespace std;
 using namespace dev;
