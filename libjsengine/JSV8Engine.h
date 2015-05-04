@@ -54,7 +54,6 @@ public:
 
 private:
 	static JSV8Env s_env;
-	v8::Isolate* m_isolate;
 	JSV8Scope* m_scope;
 };
 
