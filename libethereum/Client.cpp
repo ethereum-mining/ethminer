@@ -36,6 +36,12 @@ using namespace dev;
 using namespace dev::eth;
 using namespace p2p;
 
+namespace dev
+{
+struct TimerHelper { TimerHelper(char const* _id): id(_id) {} ~TimerHelper() { cdebug << "Timer" << id << t.elapsed() << "s"; } boost::timer t; char const* id; };
+#define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(#S, true); __eth_t.second; __eth_t.second = false)
+}
+
 VersionChecker::VersionChecker(string const& _dbPath):
 	m_path(_dbPath.size() ? _dbPath : Defaults::dbPath())
 {
@@ -246,9 +252,13 @@ void Client::startedWorking()
 
 	ETH_WRITE_GUARDED(x_preMine)
 		m_preMine.sync(m_bc);
-	ETH_WRITE_GUARDED(x_postMine)
-		ETH_READ_GUARDED(x_preMine)
+	ETH_READ_GUARDED(x_preMine)
+	{
+		ETH_WRITE_GUARDED(x_working)
+			m_working = m_preMine;
+		ETH_WRITE_GUARDED(x_postMine)
 			m_postMine = m_preMine;
+	}
 }
 
 void Client::doneWorking()
@@ -257,9 +267,13 @@ void Client::doneWorking()
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
 	ETH_WRITE_GUARDED(x_preMine)
 		m_preMine.sync(m_bc);
-	ETH_WRITE_GUARDED(x_postMine)
-		ETH_READ_GUARDED(x_preMine)
+	ETH_READ_GUARDED(x_preMine)
+	{
+		ETH_WRITE_GUARDED(x_working)
+			m_working = m_preMine;
+		ETH_WRITE_GUARDED(x_postMine)
 			m_postMine = m_preMine;
+	}
 }
 
 void Client::killChain()
@@ -453,18 +467,20 @@ ProofOfWork::WorkPackage Client::getWork()
 bool Client::submitWork(ProofOfWork::Solution const& _solution)
 {
 	bytes newBlock;
-	{
-		WriteGuard l(x_postMine);
-		if (!m_postMine.completeMine<ProofOfWork>(_solution))
+	DEV_TIMED(working) ETH_WRITE_GUARDED(x_working)
+		if (!m_working.completeMine<ProofOfWork>(_solution))
 			return false;
-		newBlock = m_postMine.blockData();
-		// OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postMine that contains all trie changes.
+
+	ETH_READ_GUARDED(x_working)
+	{
+		DEV_TIMED(post) ETH_WRITE_GUARDED(x_postMine)
+			m_postMine = m_working;
+		newBlock = m_working.blockData();
 	}
+
+	// OPTIMISE: very inefficient to not utilise the existing OverlayDB in m_postMine that contains all trie changes.
 	m_bq.import(&newBlock, m_bc, true);
-/*
-	ImportRoute ir = m_bc.attemptImport(newBlock, m_stateDB);
-	if (!ir.first.empty())
-		onChainChanged(ir);*/
+
 	return true;
 }
 
@@ -489,11 +505,15 @@ void Client::syncTransactionQueue()
 	h256Set changeds;
 	TransactionReceipts newPendingReceipts;
 
-	ETH_WRITE_GUARDED(x_postMine)
-		tie(newPendingReceipts, m_syncTransactionQueue) = m_postMine.sync(m_bc, m_tq, *m_gp);
+	DEV_TIMED(working) ETH_WRITE_GUARDED(x_working)
+		tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(m_bc, m_tq, *m_gp);
 
 	if (newPendingReceipts.empty())
 		return;
+
+	ETH_READ_GUARDED(x_working)
+		DEV_TIMED(post) ETH_WRITE_GUARDED(x_postMine)
+			m_postMine = m_working;
 
 	ETH_READ_GUARDED(x_postMine)
 		for (size_t i = 0; i < newPendingReceipts.size(); i++)
@@ -519,7 +539,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		clog(ClientNote) << "Dead block:" << h;
 		for (auto const& t: m_bc.transactions(h))
 		{
-			clog(ClientNote) << "Resubmitting transaction " << Transaction(t, CheckTransaction::None);
+			clog(ClientNote) << "Resubmitting dead-block transaction " << Transaction(t, CheckTransaction::None);
 			m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
 		}
 	}
@@ -545,18 +565,32 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 	// RESTART MINING
 
-	// LOCKS REALLY NEEDED?
 	bool preChanged = false;
-	ETH_WRITE_GUARDED(x_preMine)
-		preChanged = m_preMine.sync(m_bc);
+	State newPreMine;
+	ETH_READ_GUARDED(x_preMine)
+		newPreMine = m_preMine;
+
+	// TODO: use m_postMine to avoid re-evaluating our own blocks.
+	preChanged = newPreMine.sync(m_bc);
+
 	if (preChanged || m_postMine.address() != m_preMine.address())
 	{
 		if (isMining())
 			cnote << "New block on chain.";
 
-		ETH_WRITE_GUARDED(x_postMine)
-			ETH_READ_GUARDED(x_preMine)
-				m_postMine = m_preMine;
+		ETH_WRITE_GUARDED(x_preMine)
+			m_preMine = newPreMine;
+		DEV_TIMED(working) ETH_WRITE_GUARDED(x_working)
+			m_working = newPreMine;
+		ETH_READ_GUARDED(x_postMine)
+			for (auto const& t: m_postMine.pending())
+			{
+				clog(ClientNote) << "Resubmitting post-mine transaction " << t;
+				m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
+			}
+		ETH_READ_GUARDED(x_working) DEV_TIMED(post) ETH_WRITE_GUARDED(x_postMine)
+			m_postMine = m_working;
+
 		changeds.insert(PendingChangedFilter);
 
 		onPostStateChanged();
@@ -575,9 +609,12 @@ void Client::onPostStateChanged()
 	cnote << "Post state changed: Restarting mining...";
 	if (isMining() || remoteActive())
 	{
+		DEV_TIMED(working) ETH_WRITE_GUARDED(x_working)
+			m_working.commitToMine(m_bc);
+		ETH_READ_GUARDED(x_working)
 		{
-			WriteGuard l(x_postMine);
-			m_postMine.commitToMine(m_bc);
+			DEV_TIMED(post) ETH_WRITE_GUARDED(x_postMine)
+				m_postMine = m_working;
 			m_miningInfo = m_postMine.info();
 		}
 		m_farm.setWork(m_miningInfo);
@@ -621,8 +658,6 @@ void Client::noteChanged(h256Set const& _filters)
 
 void Client::doWork()
 {
-	// TODO: Use condition variable rather than this rubbish.
-
 	bool t = true;
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
 		syncBlockQueue();
@@ -634,7 +669,10 @@ void Client::doWork()
 	tick();
 
 	if (!m_syncBlockQueue && !m_syncTransactionQueue)
-		this_thread::sleep_for(chrono::milliseconds(20));
+	{
+		std::unique_lock<std::mutex> l(x_signalled);
+		m_signalled.wait_for(l, chrono::seconds(1));
+	}
 }
 
 void Client::tick()
@@ -695,7 +733,10 @@ eth::State Client::state(h256 _block) const
 
 eth::State Client::state(unsigned _txi) const
 {
-	return m_postMine.fromPending(_txi);
+	ETH_READ_GUARDED(x_postMine)
+		return m_postMine.fromPending(_txi);
+	assert(false);
+	return State();
 }
 
 void Client::flushTransactions()
