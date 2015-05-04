@@ -49,7 +49,7 @@ void JSV8RPCSend(v8::FunctionCallbackInfo<v8::Value> const& args)
 	v8::String::Utf8Value str(stringifiedArg);
 	that->onSend(*str);
 
-	v8::Local<v8::Value> values[1] = {v8::String::NewFromUtf8(args.GetIsolate(), that->m_lastResponse)};
+	v8::Local<v8::Value> values[1] = {v8::String::NewFromUtf8(args.GetIsolate(), that->lastResponse())};
 	args.GetReturnValue().Set(parseFunc->Call(parseFunc, 1, values));
 }
 

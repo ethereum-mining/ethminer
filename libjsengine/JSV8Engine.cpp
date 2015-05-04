@@ -34,42 +34,52 @@ namespace dev
 namespace eth
 {
 
-static const char* toCString(const v8::String::Utf8Value& value) {
+static const char* toCString(v8::String::Utf8Value const& value)
+{
 	return *value ? *value : "<string conversion failed>";
 }
 
 // from https://github.com/v8/v8-git-mirror/blob/master/samples/shell.cc
-static void reportException(v8::Isolate* isolate, v8::TryCatch* try_catch) {
+static void reportException(v8::Isolate* isolate, v8::TryCatch* try_catch)
+{
 	v8::HandleScope handle_scope(isolate);
 	v8::String::Utf8Value exception(try_catch->Exception());
 	const char* exception_string = toCString(exception);
 	v8::Handle<v8::Message> message = try_catch->Message();
-	if (message.IsEmpty()) {
-		// V8 didn't provide any extra information about this error; just
-		// print the exception.
+
+	// V8 didn't provide any extra information about this error; just
+	// print the exception.
+	if (message.IsEmpty())
 		fprintf(stderr, "%s\n", exception_string);
-	} else {
+	else
+	{
 		// Print (filename):(line number): (message).
 		v8::String::Utf8Value filename(message->GetScriptOrigin().ResourceName());
 		const char* filename_string = toCString(filename);
 		int linenum = message->GetLineNumber();
 		fprintf(stderr, "%s:%i: %s\n", filename_string, linenum, exception_string);
+
 		// Print line of source code.
 		v8::String::Utf8Value sourceline(message->GetSourceLine());
 		const char* sourceline_string = toCString(sourceline);
 		fprintf(stderr, "%s\n", sourceline_string);
+
 		// Print wavy underline (GetUnderline is deprecated).
 		int start = message->GetStartColumn();
-		for (int i = 0; i < start; i++) {
+
+		for (int i = 0; i < start; i++)
 			fprintf(stderr, " ");
-		}
+
 		int end = message->GetEndColumn();
-		for (int i = start; i < end; i++) {
+
+		for (int i = start; i < end; i++)
 			fprintf(stderr, "^");
-		}
+
 		fprintf(stderr, "\n");
 		v8::String::Utf8Value stack_trace(try_catch->StackTrace());
-		if (stack_trace.length() > 0) {
+
+		if (stack_trace.length() > 0)
+		{
 			const char* stack_trace_string = toCString(stack_trace);
 			fprintf(stderr, "%s\n", stack_trace_string);
 		}
@@ -101,10 +111,6 @@ v8::Handle<v8::Context> createShellContext(v8::Isolate* isolate)
 {
 	v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 	v8::Handle<v8::Context> context = v8::Context::New(isolate, NULL, global);
-	if (context.IsEmpty())
-	{
-		// TODO: throw an exception
-	}
 	return context;
 }
 
@@ -135,20 +141,13 @@ JSV8Env JSV8Engine::s_env = JSV8Env();
 const char* JSV8Value::asCString() const
 {
 	if (m_value.IsEmpty())
-	{
-		// TODO: handle exceptions
 		return "";
-	}
 
 	else if (m_value->IsUndefined())
 		return "undefined";
-//	else if (m_value->IsNativeError())
-//	{
-//		v8::String::Utf8Value str(m_value);
-//		return *str ? *str : "error";
-//	}
+
 	v8::String::Utf8Value str(m_value);
-	return *str ? *str : "<string conversion failed>";
+	return toCString(str);
 }
 
 JSV8Env::JSV8Env()
@@ -198,9 +197,9 @@ JSV8Value JSV8Engine::eval(const char* _cstr) const
 	v8::Local<v8::String> name(v8::String::NewFromUtf8(context()->GetIsolate(), "(shell)"));
 	v8::ScriptOrigin origin(name);
 	v8::Handle<v8::Script> script = v8::Script::Compile(source, &origin);
+
 	// Make sure to wrap the exception in a new handle because
 	// the handle returned from the TryCatch is destroyed
-	// TODO: improve this cause sometimes incorrect message is being sent!
 	if (script.IsEmpty())
 	{
 		reportException(context()->GetIsolate(), &tryCatch);
