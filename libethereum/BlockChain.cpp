@@ -293,9 +293,14 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 	Guard l(x_lastLastHashes);
 	if (m_lastLastHashesNumber != _n || m_lastLastHashes.empty())
 	{
-		m_lastLastHashes.resize(256);
+		LastHashes lastHashes(256);
+		//m_lastLastHashes.resize(256);
 		for (unsigned i = 0; i < 256; ++i)
-			m_lastLastHashes[i] = _n >= i ? numberHash(_n - i) : h256();
+		{
+			size_t prevIndex = m_lastLastHashesNumber - _n + i;
+			lastHashes[i] = (prevIndex >= 0 && prevIndex < m_lastLastHashes.size()) ? m_lastLastHashes[prevIndex] : (_n >= i ? numberHash(_n - i) : h256());
+		}
+		m_lastLastHashes = std::move(lastHashes);
 		m_lastLastHashesNumber = _n;
 	}
 	return m_lastLastHashes;
@@ -609,7 +614,6 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		}
 
 		clog(BlockChainNote) << "   Imported and best" << td << " (#" << bi.number << "). Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << route;
-		noteCanonChanged();
 
 		StructuredLogger::chainNewHead(
 			bi.headerHash(WithoutNonce).abridged(),
