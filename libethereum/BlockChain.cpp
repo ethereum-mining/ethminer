@@ -294,7 +294,6 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 	if (m_lastLastHashesNumber != _n || m_lastLastHashes.empty())
 	{
 		LastHashes lastHashes(256);
-		//m_lastLastHashes.resize(256);
 		for (unsigned i = 0; i < 256; ++i)
 		{
 			size_t prevIndex = m_lastLastHashesNumber - _n + i;
