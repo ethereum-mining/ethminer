@@ -137,7 +137,7 @@ llvm::Function* Arith256::getDivFunc(llvm::Type* _type)
 		// The following algorithm also handles divisor of value 0 returning 0 for both quotient and reminder
 
 		llvm::Type* argTypes[] = {_type, _type};
-		auto retType = llvm::StructType::get(m_builder.getContext(), llvm::ArrayRef<llvm::Type*>{argTypes});
+		auto retType = llvm::VectorType::get(_type, 2);
 		auto funcName = _type == Type::Word ? "div" : "div512";
 		func = llvm::Function::Create(llvm::FunctionType::get(retType, argTypes, false), llvm::Function::PrivateLinkage, funcName, getModule());
 		func->setDoesNotThrow();
@@ -209,8 +209,8 @@ llvm::Function* Arith256::getDivFunc(llvm::Type* _type)
 		auto rRet = m_builder.CreatePHI(_type, 2, "r.ret");
 		rRet->addIncoming(r0, entryBB);
 		rRet->addIncoming(r1, loopBB);
-		auto ret = m_builder.CreateInsertValue(llvm::UndefValue::get(retType), qRet, 0, "ret0");
-		ret = m_builder.CreateInsertValue(ret, rRet, 1, "ret");
+		auto ret = m_builder.CreateInsertElement(llvm::UndefValue::get(retType), qRet, uint64_t(0), "ret0");
+		ret = m_builder.CreateInsertElement(ret, rRet, 1, "ret");
 		m_builder.CreateRet(ret);
 	}
 	return func;
@@ -312,7 +312,7 @@ llvm::Function* Arith256::getAddModFunc()
 		auto m512 = m_builder.CreateZExt(mod, i512Ty, "m512");
 		auto s = m_builder.CreateAdd(x512, y512, "s");
 		auto d = createCall(getDivFunc(i512Ty), {s, m512});
-		auto r = m_builder.CreateExtractValue(d, 1, "r");
+		auto r = m_builder.CreateExtractElement(d, 1, "r");
 		m_builder.CreateRet(m_builder.CreateTrunc(r, Type::Word));
 	}
 	return m_addmod;
@@ -342,9 +342,8 @@ llvm::Function* Arith256::getMulModFunc()
 		auto p = createCall(getMul512Func(), {x, y});
 		auto m = m_builder.CreateZExt(mod, i512Ty, "m");
 		auto d = createCall(getDivFunc(i512Ty), {p, m});
-		auto r = m_builder.CreateExtractValue(d, 1, "r");
-		r = m_builder.CreateTrunc(r, Type::Word);
-		m_builder.CreateRet(r);
+		auto r = m_builder.CreateExtractElement(d, 1, "r");
+		m_builder.CreateRet(m_builder.CreateTrunc(r, Type::Word));
 	}
 	return m_mulmod;
 }
@@ -364,8 +363,8 @@ std::pair<llvm::Value*, llvm::Value*> Arith256::div(llvm::Value* _arg1, llvm::Va
 	}
 
 	auto r = createCall(getDivFunc(Type::Word), {_arg1, _arg2});
-	auto div =  m_builder.CreateExtractValue(r, 0, "div");
-	auto mod =  m_builder.CreateExtractValue(r, 1, "mod");
+	auto div =  m_builder.CreateExtractElement(r, uint64_t(0), "div");
+	auto mod =  m_builder.CreateExtractElement(r, 1, "mod");
 	return std::make_pair(div, mod);
 }
 
