@@ -16,12 +16,13 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-JSConsole::JSConsole(): m_engine(), m_printer(m_engine)
+JSConsole::JSConsole(): m_engine(), m_printer(m_engine), m_rpc(m_engine)
 {
-	JSConsoleResources resources;
-	string web3 = resources.loadResourceAsString("web3");
-	m_engine.eval(web3.c_str());
-	m_engine.eval("web3 = require('web3');");
+//	JSConsoleResources resources;
+//	string web3 = resources.loadResourceAsString("web3");
+//	m_engine.eval(web3.c_str());
+//	m_engine.eval("web3 = require('web3');");
+	m_rpc.StartListening();
 }
 
 void JSConsole::repl() const

@@ -17,6 +17,8 @@ var prettyPrint = (function () {
             str += " ]";
         } else if (object instanceof Error) {
             str += "\033[31m" + "Error:\033[0m " + object.message;
+        }  else if (object === null) {
+            str += "\033[1m\033[30m" + "null";
         } else if (isBigNumber(object)) {
             str += "\033[32m'" + object.toString(10) + "'";
         } else if(typeof(object) === "object") {
