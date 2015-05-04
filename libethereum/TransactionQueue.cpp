@@ -38,26 +38,56 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 	UpgradableGuard l(m_lock);
 	// TODO: keep old transactions around and check in State for nonce validity
 
-	if (m_known.count(h))
+	auto ir = check_WITH_LOCK(h, _ik);
+	if (ir != ImportResult::Success)
+		return ir;
+
+	Transaction t(_transactionRLP, CheckTransaction::Everything);
+	UpgradeGuard ul(l);
+	return manageImport_WITH_LOCK(h, t, _cb);
+}
+
+ImportResult TransactionQueue::check_WITH_LOCK(h256 const& _h, IfDropped _ik)
+{
+	if (m_known.count(_h))
 		return ImportResult::AlreadyKnown;
 
-	if (m_dropped.count(h) && _ik == IfDropped::Ignore)
+	if (m_dropped.count(_h) && _ik == IfDropped::Ignore)
 		return ImportResult::AlreadyInChain;
 
+	return ImportResult::Success;
+}
+
+ImportResult TransactionQueue::import(Transaction const& _transaction, ImportCallback const& _cb, IfDropped _ik)
+{
+	// Check if we already know this transaction.
+	h256 h = _transaction.sha3(WithSignature);
+
+	UpgradableGuard l(m_lock);
+	// TODO: keep old transactions around and check in State for nonce validity
+
+	auto ir = check_WITH_LOCK(h, _ik);
+	if (ir != ImportResult::Success)
+		return ir;
+
+	UpgradeGuard ul(l);
+	return manageImport_WITH_LOCK(h, _transaction, _cb);
+}
+
+ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction, ImportCallback const& _cb)
+{
 	try
 	{
 		// Check validity of _transactionRLP as a transaction. To do this we just deserialise and attempt to determine the sender.
 		// If it doesn't work, the signature is bad.
 		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
-		Transaction t(_transactionRLP, CheckTransaction::Everything);
 
-		UpgradeGuard ul(l);
 		// If valid, append to blocks.
-		insertCurrent_WITH_LOCK(make_pair(h, t));
-		m_known.insert(h);
+		insertCurrent_WITH_LOCK(make_pair(_h, _transaction));
+		m_known.insert(_h);
 		if (_cb)
-			m_callbacks[h] = _cb;
-		ctxq << "Queued vaguely legit-looking transaction" << h;
+			m_callbacks[_h] = _cb;
+		ctxq << "Queued vaguely legit-looking transaction" << _h;
 		m_onReady();
 	}
 	catch (Exception const& _e)
