@@ -300,7 +300,7 @@ Dialog {
 					{
 						Layout.preferredWidth: 350
 						id: registrarAddr
-						text: "c6d9d2cd449a754c494264e1809c50e34d64562b"
+						text: "c958eeae0f4d11664a9db27d04d86ae1d744d1d9"
 						visible: false
 					}
 
@@ -351,7 +351,7 @@ Dialog {
 					text: qsTr("Amount of gas to use for contract deployment: ")
 				}
 
-				DefaultTextField
+				DefaultLabel
 				{
 					Layout.preferredWidth: 350
 					id: gasToUseInput
@@ -367,7 +367,7 @@ Dialog {
 					id: deployGas;
 				}
 
-				DefaultTextField
+				DefaultLabel
 				{
 					Layout.preferredWidth: 350
 					id: gasToUseDeployInput
@@ -388,10 +388,14 @@ Dialog {
 						width: 200
 						id: applicationUrlEth
 						onTextChanged: {
+							if (!modalDeploymentDialog.visible)
+								return;
 							appUrlFormatted.text = NetworkDeploymentCode.formatAppUrl(text).join('/');
-							NetworkDeploymentCode.checkPathCreationCost(function(pathCreationCost){
-								gasToUseDeployInput.text = pathCreationCost;
-								deployGas.setValue(pathCreationCost);
+							NetworkDeploymentCode.checkPathCreationCost(function(pathCreationCost)
+							{
+								deployGas.setValue("" + pathCreationCost + "");
+								var gasSpent = deployGas.multiply(gasPriceInt);
+								gasToUseDeployInput.text = gasSpent.value();
 							});
 						}
 					}
@@ -434,7 +438,6 @@ Dialog {
 							{
 								errorDialog.text = qsTr("Not enough ether to deploy contract.");
 								errorDialog.open();
-								console.log("fff");
 								return;
 							}
 						}
@@ -444,7 +447,6 @@ Dialog {
 							{
 								errorDialog.text = qsTr("Not enough ether to deploy contract.");
 								errorDialog.open();
-								console.log("mmmm");
 								return;
 							}
 						}
