@@ -4,7 +4,6 @@
 
 #include "libjsconsole/JSConsoleResources.hpp"
 #include "JSV8RPC.h"
-#include <assert.h>
 
 using namespace std;
 using namespace dev;
@@ -17,34 +16,29 @@ namespace eth
 
 void JSV8RPCSend(v8::FunctionCallbackInfo<v8::Value> const& args)
 {
-	const char* tmp = R"(
-	{
-		"id": 1,
-				"jsonrpc": "2.0",
-				"result": "0x9df33b35fbdd8dff5e557a0cce288614dbf7327c292f1ac5b9c6c0e672005f48"
-	}
-	)";
-
 	v8::Local<v8::String> JSON = v8::String::NewFromUtf8(args.GetIsolate(), "JSON");
 	v8::Local<v8::String> parse = v8::String::NewFromUtf8(args.GetIsolate(), "parse");
+	v8::Local<v8::String> stringify = v8::String::NewFromUtf8(args.GetIsolate(), "stringify");
 	v8::Handle<v8::Object> jsonObject = v8::Handle<v8::Object>::Cast(args.GetIsolate()->GetCurrentContext()->Global()->Get(JSON));
-	v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(jsonObject->Get(parse));
+	v8::Handle<v8::Function> parseFunc = v8::Handle<v8::Function>::Cast(jsonObject->Get(parse));
+	v8::Handle<v8::Function> stringifyFunc = v8::Handle<v8::Function>::Cast(jsonObject->Get(stringify));
 
-	v8::Local<v8::Value> values[1] = {v8::String::NewFromUtf8(args.GetIsolate(), tmp)};
-	args.GetReturnValue().Set(func->Call(func, 1, values));
+	v8::Local<v8::Object> self = args.Holder();
+	v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(self->GetInternalField(0));
+	JSV8RPC* that = static_cast<JSV8RPC*>(wrap->Value());
+	v8::Local<v8::Value> vals[1] = {args[0]->ToObject()};
+	v8::Local<v8::Value> stringifiedArg = stringifyFunc->Call(stringifyFunc, 1, vals);
+	v8::String::Utf8Value str(stringifiedArg);
+	that->onSend(*str);
+
+	v8::Local<v8::Value> values[1] = {v8::String::NewFromUtf8(args.GetIsolate(), that->m_lastResponse)};
+	args.GetReturnValue().Set(parseFunc->Call(parseFunc, 1, values));
 }
 
 }
 }
 
-JSV8RPC::JSV8RPC(JSV8Engine const &_engine): m_engine(_engine) {}
-
-JSV8RPC::~JSV8RPC()
-{
-	StopListening();
-}
-
-bool JSV8RPC::StartListening()
+JSV8RPC::JSV8RPC(JSV8Engine const &_engine): m_engine(_engine)
 {
 	v8::HandleScope scope(m_engine.context()->GetIsolate());
 	v8::Local<v8::ObjectTemplate> rpcTemplate = v8::ObjectTemplate::New(m_engine.context()->GetIsolate());
@@ -63,17 +57,12 @@ bool JSV8RPC::StartListening()
 	v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(web3object->Get(setProvider));
 	v8::Local<v8::Value> values[1] = {obj};
 	func->Call(func, 1, values);
-	return true;
-}
 
-bool JSV8RPC::StopListening()
-{
-	return true;
-}
-
-bool JSV8RPC::SendResponse(std::string const &_response, void *_addInfo)
-{
-	m_lastResponse = _response;
-	(void)_addInfo;
-	return true;
+	m_lastResponse = R"(
+	{
+		"id": 1,
+		"jsonrpc": "2.0",
+		"error": "Uninitalized JSV8RPC!"
+	}
+	)";
 }
