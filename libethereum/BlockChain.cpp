@@ -298,7 +298,7 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 		for (unsigned i = 0; i < 256; ++i)
 		{
 			size_t prevIndex = m_lastLastHashesNumber - _n + i;
-			lastHashes[i] = (prevIndex >= 0 && prevIndex < m_lastLastHashes.size()) ? m_lastLastHashes[prevIndex] : (_n >= i ? numberHash(_n - i) : h256());
+			lastHashes[i] = (prevIndex < m_lastLastHashes.size()) ? m_lastLastHashes[prevIndex] : (_n >= i ? numberHash(_n - i) : h256());
 		}
 		m_lastLastHashes = std::move(lastHashes);
 		m_lastLastHashesNumber = _n;
