@@ -63,8 +63,29 @@ function startDeployProject(erasePrevious)
 function checkPathCreationCost(callBack)
 {
 	var dappUrl = formatAppUrl(deploymentDialog.applicationUrlEth);
-	checkEthPath(dappUrl, true, function(success) {
-		callBack((dappUrl.length - 1) * 100000 + 5000 /* 500: register content hash */);
+	checkEthPath(dappUrl, true, function(success, cause) {
+		if (!success)
+		{
+			switch (cause)
+			{
+			case "rootownedregistrar_notexist":
+				deploymentError(qsTr("Owned registrar does not exist under the global registrar. Please create one using DApp registration."));
+				break;
+			case "ownedregistrar_creationfailed":
+				deploymentError(qsTr("The creation of your new owned registrar fails. Please use DApp registration to create one."));
+				break;
+			case "ownedregistrar_notowner":
+				deploymentError(qsTr("You are not the owner of this registrar. You cannot register your Dapp here."));
+				break;
+			default:
+				break;
+			}
+		}
+		else
+		{
+			deploymentStepChanged(qsTr("Your Dapp can be registered here."));
+			callBack((dappUrl.length - 1) * 100000 + 5000);
+		}
 	});
 }
 
@@ -132,7 +153,6 @@ function executeTr(trIndex, state, ctrAddresses, callBack)
 	else
 	{
 		var gasCost = clientModel.encodeAbiString(clientModel.gasCosts[trIndex]);
-		console.log("gas " + gasCost);
 		var rpcParams = { "from": deploymentDialog.currentAccount, "gas": "0x" + gasCost };
 		var params = replaceParamToken(func.parameters, tr.parameters, ctrAddresses);
 		var encodedParams = clientModel.encodeParams(params, tr.contractId, tr.functionId);
@@ -253,10 +273,15 @@ function finalizeDeployment(deploymentId, addresses) {
 
 function checkEthPath(dappUrl, checkOnly, callBack)
 {
-	if (dappUrl.length === 1 && !checkOnly)
-		reserve(deploymentDialog.eth, function() {
-			registerContentHash(deploymentDialog.eth, callBack); // we directly create a dapp under the root registrar.
-		});
+	if (dappUrl.length === 1)
+	{
+		if (!checkOnly)
+			reserve(deploymentDialog.eth, function() {
+				registerContentHash(deploymentDialog.eth, callBack); // we directly create a dapp under the root registrar.
+			});
+		else
+			callBack(true);
+	}
 	else
 	{
 		// the first owned registrar must have been created to follow the path.
@@ -266,7 +291,7 @@ function checkEthPath(dappUrl, checkOnly, callBack)
 						  //subRegistrar()
 						  jsonrpc: "2.0",
 						  method: "eth_call",
-						  params: [ { "gas": "0xffff", "from": deploymentDialog.currentAccount,  "to": '0x' + deploymentDialog.eth, "data": "0x5a3a05bd" + str }, "pending" ],
+						  params: [ { "gas": "0xffff", "from": deploymentDialog.currentAccount,  "to": '0x' + deploymentDialog.eth, "data": "0xe1fa8e84" + str }, "pending" ],
 						  id: jsonRpcRequestId++
 					  });
 		rpcCall(requests, function (httpRequest, response) {
@@ -277,7 +302,7 @@ function checkEthPath(dappUrl, checkOnly, callBack)
 				var errorTxt = qsTr("Path does not exists " + JSON.stringify(dappUrl) + ". Please register using Registration Dapp. Aborting.");
 				deploymentError(errorTxt);
 				console.log(errorTxt);
-				callBack(false);
+				callBack(false, "rootownedregistrar_notexist");
 			}
 			else
 			{
@@ -288,25 +313,56 @@ function checkEthPath(dappUrl, checkOnly, callBack)
 	}
 }
 
+function isOwner(addr, callBack)
+{
+	var requests = [];
+	requests.push({
+					  //getOwner()
+					  jsonrpc: "2.0",
+					  method: "eth_call",
+					  params: [ { "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0xb387ef92" }, "pending" ],
+					  id: jsonRpcRequestId++
+				  });
+	rpcCall(requests, function (httpRequest, response) {
+		var res = JSON.parse(response);
+		callBack(normalizeAddress(deploymentDialog.currentAccount) === normalizeAddress(res[0].result));
+	});
+}
+
 function checkRegistration(dappUrl, addr, callBack, checkOnly)
 {
-	if (dappUrl.length === 1 && !checkOnly)
-		registerContentHash(addr, callBack); // We do not create the register for the last part, just registering the content hash.
+	console.log("checkRegistration " + addr + " " + dappUrl.join('|'));
+	isOwner(addr, function(ret){
+		if (!ret)
+		{
+			var errorTxt = qsTr("You are not the owner of " + dappUrl[0] + ". Aborting");
+			deploymentError(errorTxt);
+			console.log(errorTxt);
+			callBack(false, "ownedregistrar_notowner");
+		}
+		else
+			continueRegistration(dappUrl, addr, callBack, checkOnly);
+	});
+}
+
+function continueRegistration(dappUrl, addr, callBack, checkOnly)
+{
+	if (dappUrl.length === 1)
+	{
+		if (!checkOnly)
+			registerContentHash(addr, callBack); // We do not create the register for the last part, just registering the content hash.
+		else
+			callBack(true);
+	}
 	else
 	{
-		var txt = qsTr("Checking " + JSON.stringify(dappUrl) + " ... in registrar " + addr);
+		var txt = qsTr("Checking " + JSON.stringify(dappUrl));
 		deploymentStepChanged(txt);
 		console.log(txt);
 		var requests = [];
 		var registrar = {}
 		var str = clientModel.encodeStringParam(dappUrl[0]);
-		requests.push({
-						  //getOwner()
-						  jsonrpc: "2.0",
-						  method: "eth_call",
-						  params: [ { "gas" : 2000, "from": deploymentDialog.currentAccount, "to": '0x' + addr, "data": "0x02571be3" }, "pending" ],
-						  id: jsonRpcRequestId++
-					  });
+
 
 		requests.push({
 						  //register()
@@ -318,21 +374,14 @@ function checkRegistration(dappUrl, addr, callBack, checkOnly)
 
 		rpcCall(requests, function (httpRequest, response) {
 			var res = JSON.parse(response);
-			var nextAddr = normalizeAddress(res[1].result);
+			var nextAddr = normalizeAddress(res[0].result);
 			var errorTxt;
-			if (res[1].result === "0x")
+			if (res[0].result === "0x")
 			{
 				errorTxt = qsTr("Error when creating new owned regsitrar. Please use the regsitration Dapp. Aborting");
 				deploymentError(errorTxt);
 				console.log(errorTxt);
-				callBack(false);
-			}
-			else if (normalizeAddress(deploymentDialog.currentAccount) !== normalizeAddress(res[0].result))
-			{
-				errorTxt = qsTr("You are not the owner of " + dappUrl[0] + ". Aborting");
-				deploymentError(errorTxt);
-				console.log(errorTxt);
-				callBack(false);
+				callBack(false, "ownedregistrar_creationfailed");
 			}
 			else if (nextAddr.replace(/0+/g, "") !== "")
 			{
@@ -346,7 +395,6 @@ function checkRegistration(dappUrl, addr, callBack, checkOnly)
 					callBack(true);
 					return;
 				}
-
 				var txt = qsTr("Registering sub domain " + dappUrl[0] +  " ...");
 				console.log(txt);
 				deploymentStepChanged(txt);
@@ -356,7 +404,7 @@ function checkRegistration(dappUrl, addr, callBack, checkOnly)
 				requests.push({
 								  jsonrpc: "2.0",
 								  method: "eth_sendTransaction",
-								  params: [ { "from": deploymentDialog.currentAccount, "gas": 20000, "code": "0x600080547fffffffffffffffffffffffff0000000000000000000000000000000000000000163317815561058990819061003990396000f3007c010000000000000000000000000000000000000000000000000000000060003504630198489281146100a757806302571be3146100d957806321f8a721146100e35780632dff6941146100ed5780633b3b57de1461010d5780635a3a05bd1461013d5780635fd4b08a1461017057806389a69c0e1461017c578063b5c645bd146101b0578063be99a9801461022c578063c3d014d614610264578063d93e75731461029857005b73ffffffffffffffffffffffffffffffffffffffff600435166000908152600160205260409020548060005260206000f35b6000808052602081f35b6000808052602081f35b600435600090815260026020819052604090912001548060005260206000f35b600435600090815260026020908152604082205473ffffffffffffffffffffffffffffffffffffffff1680835291f35b600435600090815260026020908152604082206001015473ffffffffffffffffffffffffffffffffffffffff1680835291f35b60008060005260206000f35b6000546102c89060043590602435903373ffffffffffffffffffffffffffffffffffffffff90811691161461052557610585565b600435600090815260026020819052604090912080546001820154919092015473ffffffffffffffffffffffffffffffffffffffff9283169291909116908273ffffffffffffffffffffffffffffffffffffffff166000528173ffffffffffffffffffffffffffffffffffffffff166020528060405260606000f35b6000546102ce906004359060243590604435903373ffffffffffffffffffffffffffffffffffffffff9081169116146102e0576103af565b6000546102d49060043590602435903373ffffffffffffffffffffffffffffffffffffffff9081169116146103b4576103f1565b6000546102da90600435903373ffffffffffffffffffffffffffffffffffffffff9081169116146103f557610522565b60006000f35b60006000f35b60006000f35b60006000f35b600083815260026020526040902080547fffffffffffffffffffffffff000000000000000000000000000000000000000016831790558061034757827fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc60006040a26103ae565b73ffffffffffffffffffffffffffffffffffffffff8216837ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a854560006040a373ffffffffffffffffffffffffffffffffffffffff821660009081526001602052604090208390555b5b505050565b600082815260026020819052604080832090910183905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b5050565b60008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091529020548114610432576104b2565b6000818152600260205260408082205473ffffffffffffffffffffffffffffffffffffffff169183917ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a85459190a360008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091528120555b600081815260026020819052604080832080547fffffffffffffffffffffffff00000000000000000000000000000000000000009081168255600182018054909116905590910182905582917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b50565b60008281526002602052604080822060010180547fffffffffffffffffffffffff0000000000000000000000000000000000000000168417905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b505056" } ],
+								  params: [ { "from": deploymentDialog.currentAccount, "gas": "#ffff", "code": "0x600080547fffffffffffffffffffffffff0000000000000000000000000000000000000000163317815561058990819061003990396000f3007c010000000000000000000000000000000000000000000000000000000060003504630198489281146100a757806302571be3146100d957806321f8a721146100e35780632dff6941146100ed5780633b3b57de1461010d5780635a3a05bd1461013d5780635fd4b08a1461017057806389a69c0e1461017c578063b5c645bd146101b0578063be99a9801461022c578063c3d014d614610264578063d93e75731461029857005b73ffffffffffffffffffffffffffffffffffffffff600435166000908152600160205260409020548060005260206000f35b6000808052602081f35b6000808052602081f35b600435600090815260026020819052604090912001548060005260206000f35b600435600090815260026020908152604082205473ffffffffffffffffffffffffffffffffffffffff1680835291f35b600435600090815260026020908152604082206001015473ffffffffffffffffffffffffffffffffffffffff1680835291f35b60008060005260206000f35b6000546102c89060043590602435903373ffffffffffffffffffffffffffffffffffffffff90811691161461052557610585565b600435600090815260026020819052604090912080546001820154919092015473ffffffffffffffffffffffffffffffffffffffff9283169291909116908273ffffffffffffffffffffffffffffffffffffffff166000528173ffffffffffffffffffffffffffffffffffffffff166020528060405260606000f35b6000546102ce906004359060243590604435903373ffffffffffffffffffffffffffffffffffffffff9081169116146102e0576103af565b6000546102d49060043590602435903373ffffffffffffffffffffffffffffffffffffffff9081169116146103b4576103f1565b6000546102da90600435903373ffffffffffffffffffffffffffffffffffffffff9081169116146103f557610522565b60006000f35b60006000f35b60006000f35b60006000f35b600083815260026020526040902080547fffffffffffffffffffffffff000000000000000000000000000000000000000016831790558061034757827fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc60006040a26103ae565b73ffffffffffffffffffffffffffffffffffffffff8216837ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a854560006040a373ffffffffffffffffffffffffffffffffffffffff821660009081526001602052604090208390555b5b505050565b600082815260026020819052604080832090910183905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b5050565b60008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091529020548114610432576104b2565b6000818152600260205260408082205473ffffffffffffffffffffffffffffffffffffffff169183917ff63780e752c6a54a94fc52715dbc5518a3b4c3c2833d301a204226548a2a85459190a360008181526002602090815260408083205473ffffffffffffffffffffffffffffffffffffffff16835260019091528120555b600081815260026020819052604080832080547fffffffffffffffffffffffff00000000000000000000000000000000000000009081168255600182018054909116905590910182905582917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b50565b60008281526002602052604080822060010180547fffffffffffffffffffffffff0000000000000000000000000000000000000000168417905583917fa6697e974e6a320f454390be03f74955e8978f1a6971ea6730542e37b66179bc91a25b505056" } ],
 								  id: jsonRpcRequestId++
 							  });
 
@@ -377,7 +425,7 @@ function checkRegistration(dappUrl, addr, callBack, checkOnly)
 										  //setRegister()
 										  jsonrpc: "2.0",
 										  method: "eth_sendTransaction",
-										  params: [ { "from": deploymentDialog.currentAccount, "gas": 30000, "to": '0x' + addr, "data": "0x89a69c0e" + crLevel + deploymentDialog.pad(newCtrAddress) } ],
+										  params: [ { "from": deploymentDialog.currentAccount, "gas": "#ffff", "to": '0x' + addr, "data": "0x89a69c0e" + crLevel + deploymentDialog.pad(newCtrAddress) } ],
 										  id: jsonRpcRequestId++
 									  });
 
@@ -435,7 +483,7 @@ function registerContentHash(registrar, callBack)
 					  id: jsonRpcRequestId++
 				  });
 	rpcCall(requests, function (httpRequest, response) {
-		callBack();
+		callBack(true);
 	});
 }
 
@@ -469,7 +517,7 @@ function urlHintAddress(callBack)
 					  //registrar: get UrlHint addr
 					  jsonrpc: "2.0",
 					  method: "eth_call",
-					  params: [ {  "to": '0x' + deploymentDialog.eth, "from": deploymentDialog.currentAccount, "gas": "0xfffff", "data": "0x3b3b57de" + urlHint }, "pending" ],
+					  params: [ {  "to": '0x' + deploymentDialog.eth, "from": deploymentDialog.currentAccount, "data": "0x3b3b57de" + urlHint }, "pending" ],
 					  id: jsonRpcRequestId++
 				  });
 
@@ -490,7 +538,6 @@ function normalizeAddress(addr)
 
 function formatAppUrl(url)
 {
-	console.log(" 55 " + url);
 	if (url.toLowerCase().lastIndexOf("/") === url.length - 1)
 		url = url.substring(0, url.length - 1);
 	if (url.toLowerCase().indexOf("eth://") === 0)
