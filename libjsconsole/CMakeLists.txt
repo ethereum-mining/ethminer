@@ -10,8 +10,8 @@ set(CMAKE_AUTOMOC OFF)
 
 aux_source_directory(. SRC_LIST)
 
+include_directories(BEFORE ${V8_INCLUDE_DIRS})
 include_directories(BEFORE ..)
-include_directories(${V8_INCLUDE_DIRS})
 include_directories(${READLINE_INCLUDE_DIRS})
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
