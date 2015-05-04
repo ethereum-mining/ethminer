@@ -40,8 +40,6 @@ using namespace chrono;
 using namespace dev;
 using namespace eth;
 
-#define ETH_IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
-
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
 
 EthashAux::~EthashAux()
@@ -171,8 +169,8 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest, bool 
 			boost::filesystem::rename(oldMemoFile, memoFile);
 		}
 
-		ETH_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile));
-		ETH_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile + ".info"));
+		DEV_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile));
+		DEV_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile + ".info"));
 
 		ethash_params p = params(_seedHash);
 		assert(!_dest || _dest.size() >= p.full_size);	// must be big enough.
