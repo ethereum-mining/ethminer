@@ -69,16 +69,16 @@ bool static ethash_compute_cache_nodes(
 
 	SHA3_512(nodes[0].bytes, (uint8_t*)seed, 32);
 
-	for (unsigned i = 1; i != num_nodes; ++i) {
+	for (uint32_t i = 1; i != num_nodes; ++i) {
 		SHA3_512(nodes[i].bytes, nodes[i - 1].bytes, 64);
 	}
 
-	for (unsigned j = 0; j != ETHASH_CACHE_ROUNDS; j++) {
-		for (unsigned i = 0; i != num_nodes; i++) {
+	for (uint32_t j = 0; j != ETHASH_CACHE_ROUNDS; j++) {
+		for (uint32_t i = 0; i != num_nodes; i++) {
 			uint32_t const idx = nodes[i].words[0] % num_nodes;
 			node data;
 			data = nodes[(num_nodes - 1 + i) % num_nodes];
-			for (unsigned w = 0; w != NODE_WORDS; ++w) {
+			for (uint32_t w = 0; w != NODE_WORDS; ++w) {
 				data.words[w] ^= nodes[idx].words[w];
 			}
 			SHA3_512(nodes[i].bytes, data.bytes, sizeof(data));
@@ -92,7 +92,7 @@ bool static ethash_compute_cache_nodes(
 
 void ethash_calculate_dag_item(
 	node* const ret,
-	uint64_t node_index,
+	uint32_t node_index,
 	ethash_light_t const light
 )
 {
@@ -110,7 +110,7 @@ void ethash_calculate_dag_item(
 	__m128i xmm3 = ret->xmm[3];
 #endif
 
-	for (unsigned i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
+	for (uint32_t i = 0; i != ETHASH_DATASET_PARENTS; ++i) {
 		uint32_t parent_index = ((node_index ^ i) * FNV_PRIME ^ ret->words[i % NODE_WORDS]) % num_parent_nodes;
 		node const *parent = &cache_nodes[parent_index];
 

@@ -138,7 +138,7 @@ ethash_full_t ethash_full_new_internal(
 
 void ethash_calculate_dag_item(
 	node* const ret,
-	uint64_t node_index,
+	uint32_t node_index,
 	ethash_light_t const cache
 );
 
