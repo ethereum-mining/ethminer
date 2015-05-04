@@ -192,11 +192,11 @@ QVariantMap ClientModel::contractAddresses() const
 	return res;
 }
 
-QVariantMap ClientModel::gasCosts() const
+QVariantList ClientModel::gasCosts() const
 {
-	QVariantMap res;
+	QVariantList res;
 	for (auto const& c: m_gasCosts)
-		res.insert(c.first, QVariant::fromValue(static_cast<int>(c.second)));
+		res.append(QVariant::fromValue(static_cast<int>(c)));
 	return res;
 }
 
@@ -299,6 +299,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 		{
 			vector<Address> deployedContracts;
 			onStateReset();
+			m_gasCosts.clear();
 			for (TransactionSettings const& transaction: _sequence)
 			{
 				ContractCallDataEncoder encoder;
@@ -364,7 +365,6 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 							contractAddressesChanged();
 						}
 						gasCostsChanged();
-						m_gasCosts[transaction.contractId] = m_client->lastExecution().gasUsed;
 					}
 					else
 					{
@@ -378,6 +378,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 						}
 						callContract(contractAddressIter->second, encoder.encodedData(), transaction);
 					}
+					m_gasCosts.append(m_client->lastExecution().gasUsed);
 				}
 				onNewTransaction();
 			}
