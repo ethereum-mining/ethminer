@@ -83,7 +83,7 @@ enum ethash_io_rc ethash_io_prepare(
 		goto free_memo;
 	}
 	// make sure it's of the proper size
-	if (fseek(f, file_size + ETHASH_DAG_MAGIC_NUM_SIZE - 1, SEEK_SET) != 0) {
+	if (fseek(f, (long int)(file_size + ETHASH_DAG_MAGIC_NUM_SIZE - 1), SEEK_SET) != 0) {
 		fclose(f);
 		goto free_memo;
 	}

@@ -153,12 +153,12 @@ bool ethash_compute_full_data(
 		(full_size % sizeof(node)) != 0) {
 		return false;
 	}
-	uint64_t const max_n = full_size / sizeof(node);
+	uint32_t const max_n = (uint32_t)(full_size / sizeof(node));
 	node* full_nodes = mem;
 	double const progress_change = 1.0f / max_n;
 	double progress = 0.0f;
 	// now compute full nodes
-	for (uint64_t n = 0; n != max_n; ++n) {
+	for (uint32_t n = 0; n != max_n; ++n) {
 		if (callback &&
 			n % (max_n / 100) == 0 &&
 			callback((unsigned int)(ceil(progress * 100.0f))) != 0) {
@@ -195,7 +195,7 @@ static bool ethash_hash(
 	fix_endian_arr32(s_mix[0].words, 16);
 
 	node* const mix = s_mix + 1;
-	for (unsigned w = 0; w != MIX_WORDS; ++w) {
+	for (uint32_t w = 0; w != MIX_WORDS; ++w) {
 		mix->words[w] = s_mix[0].words[w % NODE_WORDS];
 	}
 
@@ -203,7 +203,7 @@ static bool ethash_hash(
 	unsigned const num_full_pages = (unsigned) (full_size / page_size);
 
 	for (unsigned i = 0; i != ETHASH_ACCESSES; ++i) {
-		uint64_t const index = ((s_mix->words[0] ^ i) * FNV_PRIME ^ mix->words[i % MIX_WORDS]) % num_full_pages;
+		uint32_t const index = fnv_hash(s_mix->words[0] ^ i, mix->words[i % MIX_WORDS]) % num_full_pages;
 
 		for (unsigned n = 0; n != MIX_NODES; ++n) {
 			node const* dag_node;
@@ -239,7 +239,7 @@ static bool ethash_hash(
 	}
 
 	// compress mix
-	for (unsigned w = 0; w != MIX_WORDS; w += 4) {
+	for (uint32_t w = 0; w != MIX_WORDS; w += 4) {
 		uint32_t reduction = mix->words[w + 0];
 		reduction = reduction * FNV_PRIME ^ mix->words[w + 1];
 		reduction = reduction * FNV_PRIME ^ mix->words[w + 2];
