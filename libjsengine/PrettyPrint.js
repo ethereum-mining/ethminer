@@ -76,7 +76,8 @@ var prettyPrint = (function () {
         });
     };
     var isBigNumber = function (object) {
-        return typeof BigNumber !== 'undefined' && object instanceof BigNumber;
+        return (!!object.constructor && object.constructor.name === 'BigNumber') ||
+            (typeof BigNumber !== 'undefined' && object instanceof BigNumber)
     };
     function prettyPrintInner(/* */) {
         var args = arguments;
