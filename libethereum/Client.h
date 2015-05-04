@@ -22,6 +22,7 @@
 #pragma once
 
 #include <thread>
+#include <condition_variable>
 #include <mutex>
 #include <list>
 #include <atomic>
@@ -258,10 +259,10 @@ private:
 	void syncTransactionQueue();
 
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
-	void onTransactionQueueReady() { m_syncTransactionQueue = true; }
+	void onTransactionQueueReady() { m_syncTransactionQueue = true; m_signalled.notify_all(); }
 
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
-	void onBlockQueueReady() { m_syncBlockQueue = true; }
+	void onBlockQueueReady() { m_syncBlockQueue = true; m_signalled.notify_all(); }
 
 	/// Called when the post state has changed (i.e. when more transactions are in it or we're mining on a new block).
 	/// This updates m_miningInfo.
@@ -279,10 +280,12 @@ private:
 	std::shared_ptr<GasPricer> m_gp;		///< The gas pricer.
 
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
-	mutable SharedMutex x_preMine;			///< Lock on the OverlayDB and other attributes of m_preMine.
+	mutable SharedMutex x_preMine;			///< Lock on m_preMine.
 	State m_preMine;						///< The present state of the client.
-	mutable SharedMutex x_postMine;			///< Lock on the OverlayDB and other attributes of m_postMine.
+	mutable SharedMutex x_postMine;			///< Lock on m_postMine.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+	mutable SharedMutex x_working;			///< Lock on m_working.
+	State m_working;						///< The state of the client which we're mining (i.e. it'll have all the rewards added), while we're actually working on it.
 	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
 	bool remoteActive() const;				///< Is there an active and valid remote worker?
 	bool m_remoteWorking = false;			///< Has the remote worker recently been reset?
@@ -307,6 +310,8 @@ private:
 	ActivityReport m_report;
 
 	// TODO!!!!!! REPLACE WITH A PROPER X-THREAD ASIO SIGNAL SYSTEM (could just be condition variables)
+	std::condition_variable m_signalled;
+	Mutex x_signalled;
 	std::atomic<bool> m_syncTransactionQueue = {false};
 	std::atomic<bool> m_syncBlockQueue = {false};
 };
