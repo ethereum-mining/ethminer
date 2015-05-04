@@ -22,14 +22,8 @@ find_library(
 	DOC "v8 library"
 )
 
-find_library(
-	V8_BASE_LIBRARY
-	NAMES v8_base
-	DOC "v8 base library"
-)
-
 set(V8_INCLUDE_DIRS ${V8_INCLUDE_DIR})
-set(V8_LIBRARIES ${V8_LIBRARY} ${V8_BASE_LIBRARY})
+set(V8_LIBRARIES ${V8_LIBRARY})
 
 # debug library on windows
 # same naming convention as in qt (appending debug library with d)
