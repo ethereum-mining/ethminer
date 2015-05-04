@@ -63,7 +63,9 @@ BOOST_AUTO_TEST_CASE(evalNull)
 	JSV8Printer printer(engine);
 	auto value = engine.eval("null");
 	string result = printer.print(value);
+	string prettyResult = printer.prettyPrint(value);
 	BOOST_CHECK_EQUAL(result, "null");
+	BOOST_CHECK_EQUAL(prettyResult.find("null") != std::string::npos, true);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
