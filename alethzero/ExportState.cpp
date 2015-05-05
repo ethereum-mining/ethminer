@@ -129,8 +129,8 @@ void ExportStateDialog::fillContracts()
 	ui->contracts->setEnabled(true);
 	for (auto i: ethereum()->addresses(m_block))
 	{
-		QString r = m_main->render(i);
-		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(r).arg((unsigned)ethereum()->countAt(i)), ethereum()->codeAt(i).empty() ? ui->accounts : ui->contracts))
+		string r = m_main->render(i);
+		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(ethereum()->balanceAt(i)).c_str()).arg(QString::fromStdString(r)).arg((unsigned)ethereum()->countAt(i)), ethereum()->codeAt(i).empty() ? ui->accounts : ui->contracts))
 			->setData(Qt::UserRole, QByteArray((char const*)i.data(), Address::size));
 	}
 }
