@@ -767,7 +767,7 @@ void BlockChain::noteUsed(h256 const& _h, unsigned _extra) const
 		m_inUse.insert(id);
 }
 
-template <class T> static unsigned getHashSize(map<h256, T> const& _map)
+template <class T> static unsigned getHashSize(unordered_map<h256, T> const& _map)
 {
 	unsigned ret = 0;
 	for (auto const& i: _map)
@@ -855,7 +855,7 @@ void BlockChain::garbageCollect(bool _force)
 		}
 	}
 	m_cacheUsage.pop_back();
-	m_cacheUsage.push_front(std::set<CacheID>{});
+	m_cacheUsage.push_front(std::unordered_set<CacheID>{});
 }
 
 void BlockChain::checkConsistency()
