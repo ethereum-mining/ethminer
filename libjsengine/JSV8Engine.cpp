@@ -21,7 +21,6 @@
  */
 
 #include <memory>
-//#include <libplatform/libplatform.h>
 #include "JSV8Engine.h"
 #include "libjsengine/JSEngineResources.hpp"
 
