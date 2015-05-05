@@ -552,7 +552,7 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget_contracts">
+  <widget class="QDockWidget" name="dockWidget_accounts">
    <property name="features">
     <set>QDockWidget::DockWidgetFeatureMask</set>
    </property>
