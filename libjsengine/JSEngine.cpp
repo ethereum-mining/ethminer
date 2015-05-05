@@ -20,4 +20,17 @@
  * Ethereum client.
  */
 
+#include <string.h>
+#include <stdlib.h>
 #include "JSEngine.h"
+
+using namespace dev;
+using namespace dev::eth;
+
+JSString::JSString(char const *_cstr): m_cstr(strdup(_cstr)) {}
+
+JSString::~JSString()
+{
+	if (m_cstr)
+		free(m_cstr);
+}

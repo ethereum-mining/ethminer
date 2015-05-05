@@ -27,10 +27,20 @@ namespace dev
 namespace eth
 {
 
+class JSString
+{
+public:
+	JSString(char const* _cstr);
+	~JSString();
+	char const* cstr() const { return m_cstr; }
+private:
+	char* m_cstr;
+};
+
 class JSValue
 {
 public:
-	virtual const char* asCString() const = 0;
+	virtual JSString toString() const = 0;
 };
 
 template <typename T>
