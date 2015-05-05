@@ -37,7 +37,7 @@ class JSV8Value : public JSValue
 {
 public:
 	JSV8Value(v8::Handle<v8::Value> _value): m_value(_value) {}
-	const char* asCString() const;
+	JSString toString() const;
 
 	v8::Handle<v8::Value> const& value() const { return m_value; }
 private:

@@ -35,7 +35,7 @@ JSV8Printer::JSV8Printer(JSV8Engine const& _engine): m_engine(_engine)
 	m_engine.eval(prettyPrint.c_str());
 }
 
-const char* JSV8Printer::prettyPrint(JSV8Value const& _value) const
+JSString JSV8Printer::prettyPrint(JSV8Value const& _value) const
 {
 	v8::HandleScope handleScope;
 	v8::Local<v8::String> pp = v8::String::New("prettyPrint");

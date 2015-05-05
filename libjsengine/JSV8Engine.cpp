@@ -130,7 +130,7 @@ private:
 
 JSV8Env JSV8Engine::s_env = JSV8Env();
 
-const char* JSV8Value::asCString() const
+JSString JSV8Value::toString() const
 {
 	if (m_value.IsEmpty())
 		return "";
