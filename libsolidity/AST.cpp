@@ -96,8 +96,8 @@ void ContractDefinition::checkTypeRequirements()
 		FixedHash<4> const& hash = it.first;
 		if (hashes.count(hash))
 			BOOST_THROW_EXCEPTION(createTypeError(
-									  std::string("Function signature hash collision for ") +
-									  it.second->externalSignature()));
+				string("Function signature hash collision for ") + it.second->externalSignature()
+			));
 		hashes.insert(hash);
 	}
 }
@@ -140,12 +140,22 @@ void ContractDefinition::checkDuplicateFunctions() const
 	map<string, vector<FunctionDefinition const*>> functions;
 	for (ASTPointer<FunctionDefinition> const& function: getDefinedFunctions())
 		functions[function->getName()].push_back(function.get());
+
 	if (functions[getName()].size() > 1)
+	{
+		SecondarySourceLocation ssl;
+		auto it = functions[getName()].begin();
+		++it;
+		for (; it != functions[getName()].end(); ++it)
+			ssl.append("Another declaration is here:", (*it)->getLocation());
+
 		BOOST_THROW_EXCEPTION(
 			DeclarationError() <<
-			errinfo_sourceLocation(getLocation()) <<
-			errinfo_comment("More than one constructor defined.")
+			errinfo_sourceLocation(functions[getName()].front()->getLocation()) <<
+			errinfo_comment("More than one constructor defined.") <<
+			errinfo_secondarySourceLocation(ssl)
 		);
+	}
 	for (auto const& it: functions)
 	{
 		vector<FunctionDefinition const*> const& overloads = it.second;
@@ -155,7 +165,9 @@ void ContractDefinition::checkDuplicateFunctions() const
 					BOOST_THROW_EXCEPTION(
 						DeclarationError() <<
 						errinfo_sourceLocation(overloads[j]->getLocation()) <<
-						errinfo_comment("Function with same name and arguments already defined.")
+						errinfo_comment("Function with same name and arguments defined twice.") <<
+						errinfo_secondarySourceLocation(SecondarySourceLocation().append(
+							"Other declaration is here:", overloads[i]->getLocation()))
 					);
 	}
 }
@@ -299,12 +311,12 @@ void ContractDefinition::checkExternalTypeClashes() const
 					));
 }
 
-std::vector<ASTPointer<EventDefinition>> const& ContractDefinition::getInterfaceEvents() const
+vector<ASTPointer<EventDefinition>> const& ContractDefinition::getInterfaceEvents() const
 {
 	if (!m_interfaceEvents)
 	{
 		set<string> eventsSeen;
-		m_interfaceEvents.reset(new std::vector<ASTPointer<EventDefinition>>());
+		m_interfaceEvents.reset(new vector<ASTPointer<EventDefinition>>());
 		for (ContractDefinition const* contract: getLinearizedBaseContracts())
 			for (ASTPointer<EventDefinition> const& e: contract->getEvents())
 				if (eventsSeen.count(e->getName()) == 0)
@@ -944,7 +956,7 @@ void Identifier::overloadResolution(TypePointers const& _argumentTypes)
 	solAssert(!m_referencedDeclaration, "Referenced declaration should be null before overload resolution.");
 	solAssert(!m_overloadedDeclarations.empty(), "No candidates for overload resolution found.");
 
-	std::vector<Declaration const*> possibles;
+	vector<Declaration const*> possibles;
 	if (m_overloadedDeclarations.size() == 1)
 		m_referencedDeclaration = *m_overloadedDeclarations.begin();
 
