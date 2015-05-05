@@ -50,7 +50,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 			continue;
 		}
 
-		std::cout << "  " << i.first << "\n";
+		std::cout << "  " << i.first << std::endl;
 		BOOST_REQUIRE(o.count("env") > 0);
 		BOOST_REQUIRE(o.count("pre") > 0);
 		BOOST_REQUIRE(o.count("transaction") > 0);
@@ -67,7 +67,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 		}
 		catch (Exception const& _e)
 		{
-			cnote << "Exception:\n" << diagnostic_information(_e);
+			cnote << "Exception: " << diagnostic_information(_e);
 			theState.commit();
 		}
 		catch (std::exception const& _e)
