@@ -25,9 +25,9 @@
 #include <sstream>
 #include <libdevcore/Common.h>
 #include <libdevcore/Assertions.h>
-#include <libevmcore/SourceLocation.h>
 #include <libevmcore/Instruction.h>
-#include <libevmcore/AssemblyItem.h>
+#include <libevmasm/SourceLocation.h>
+#include <libevmasm/AssemblyItem.h>
 #include "Exceptions.h"
 #include <json/json.h>
 

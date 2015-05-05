@@ -27,7 +27,7 @@
 #include <libevmcore/Instruction.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/BlockInfo.h>
-#include <libethcore/Params.h>
+#include <libevmcore/Params.h>
 #include "VMFace.h"
 
 namespace dev
