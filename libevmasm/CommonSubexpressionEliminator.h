@@ -30,8 +30,8 @@
 #include <ostream>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Exceptions.h>
-#include <libevmcore/ExpressionClasses.h>
-#include <libevmcore/SemanticInformation.h>
+#include <libevmasm/ExpressionClasses.h>
+#include <libevmasm/SemanticInformation.h>
 
 namespace dev
 {
