@@ -354,9 +354,33 @@ void DeclarationRegistrationHelper::closeCurrentScope()
 void DeclarationRegistrationHelper::registerDeclaration(Declaration& _declaration, bool _opensScope)
 {
 	if (!m_scopes[m_currentScope].registerDeclaration(_declaration, !_declaration.isVisibleInContract()))
-		BOOST_THROW_EXCEPTION(DeclarationError() << errinfo_sourceLocation(_declaration.getLocation())
-												 << errinfo_comment("Identifier already declared."));
-	//@todo the exception should also contain the location of the first declaration
+	{
+		SourceLocation firstDeclarationLocation;
+		SourceLocation secondDeclarationLocation;
+		Declaration const* conflictingDeclaration = m_scopes[m_currentScope].conflictingDeclaration(_declaration);
+		solAssert(conflictingDeclaration, "");
+
+		if (_declaration.getLocation().start < conflictingDeclaration->getLocation().start)
+		{
+			firstDeclarationLocation = _declaration.getLocation();
+			secondDeclarationLocation = conflictingDeclaration->getLocation();
+		}
+		else
+		{
+			firstDeclarationLocation = conflictingDeclaration->getLocation();
+			secondDeclarationLocation = _declaration.getLocation();
+		}
+
+		BOOST_THROW_EXCEPTION(
+			DeclarationError() <<
+			errinfo_sourceLocation(secondDeclarationLocation) <<
+			errinfo_comment("Identifier already declared.") <<
+			errinfo_secondarySourceLocation(
+				SecondarySourceLocation().append("The previous declaration is here:", firstDeclarationLocation)
+			)
+		);
+	}
+
 	_declaration.setScope(m_currentScope);
 	if (_opensScope)
 		enterNewSubScope(_declaration);
@@ -435,8 +459,11 @@ bool ReferencesResolver::visit(Identifier& _identifier)
 {
 	auto declarations = m_resolver.getNameFromCurrentScope(_identifier.getName());
 	if (declarations.empty())
-		BOOST_THROW_EXCEPTION(DeclarationError() << errinfo_sourceLocation(_identifier.getLocation())
-												 << errinfo_comment("Undeclared identifier."));
+		BOOST_THROW_EXCEPTION(
+			DeclarationError() <<
+			errinfo_sourceLocation(_identifier.getLocation()) <<
+			errinfo_comment("Undeclared identifier.")
+		);
 	else if (declarations.size() == 1)
 		_identifier.setReferencedDeclaration(**declarations.begin(), m_currentContract);
 	else
