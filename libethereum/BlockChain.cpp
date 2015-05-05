@@ -47,7 +47,7 @@ using namespace dev::eth;
 namespace js = json_spirit;
 
 #define ETH_CATCH 1
-#define ETH_TIMED_IMPORTS 1
+#define ETH_TIMED_IMPORTS 0
 
 #ifdef _WIN32
 const char* BlockChainDebug::name() { return EthBlue "8" EthWhite " <>"; }

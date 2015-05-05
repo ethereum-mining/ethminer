@@ -182,7 +182,11 @@ private:
 
 #define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(#S, true); __eth_t.second; __eth_t.second = false)
 #define DEV_TIMED_SCOPE(S) ::dev::TimerHelper __eth_t(S)
+#if WIN32
+#define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__FUNCSIG__)
+#else
 #define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__PRETTY_FUNCTION__)
+#endif
 
 enum class WithExisting: int
 {
