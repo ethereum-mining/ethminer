@@ -87,6 +87,7 @@ bool ethash_file_size(FILE* f, size_t* ret_size)
 
 bool ethash_get_default_dirname(char* strbuf, size_t buffsize)
 {
+	static const char dir_suffix[] = "Appdata\\Ethash\\";
 	strbuf[0] = '\0';
 	if (!SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, (WCHAR*)strbuf))) {
 		return false;
@@ -95,5 +96,5 @@ bool ethash_get_default_dirname(char* strbuf, size_t buffsize)
 		return false;
 	}
 
-	return ethash_strncat(strbuf, buffsize, "Appdata\\Ethash\\", 14);
+	return ethash_strncat(strbuf, buffsize, dir_suffix, sizeof(dir_suffix));
 }
