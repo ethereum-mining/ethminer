@@ -470,7 +470,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 			}//all blocks
 
 			BOOST_REQUIRE(o.count("lastblockhash") > 0);
-			BOOST_CHECK_MESSAGE(toString(trueBc.info().hash()) == o["lastblockhash"], "last block hash of constructed blockchain does not match provided hash of the last block!");
+			BOOST_CHECK_MESSAGE(toString(trueBc.info().hash()) == o["lastblockhash"].get_str(), "last block hash of constructed blockchain does not match provided hash of the last block!");
 		}
 	}
 }
