@@ -126,7 +126,10 @@ highlightExecution = function(start, end) {
 		executionMark.clear();
 	if (debugWarning)
 		debugWarning.clear();
-	executionMark = editor.markText(editor.posFromIndex(start), editor.posFromIndex(end), { className: "CodeMirror-exechighlight" });
+	if (start > 0 && end > start) {
+		executionMark = editor.markText(editor.posFromIndex(start), editor.posFromIndex(end), { className: "CodeMirror-exechighlight" });
+		editor.scrollIntoView(editor.posFromIndex(start));
+	}
 }
 
 var changeId;
