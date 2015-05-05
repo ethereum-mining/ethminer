@@ -69,13 +69,16 @@ enum ethash_io_rc {
  *                           mode, while on the case of mismatch a new file is created
  *                           on write mode
  * @param[in] file_size      The size that the DAG file should have on disk
+ * @param[out] force_create  If true then there is no check to see if the file
+ *                           already exists
  * @return                   For possible return values @see enum ethash_io_rc
  */
 enum ethash_io_rc ethash_io_prepare(
 	char const* dirname,
 	ethash_h256_t const seedhash,
 	FILE** output_file,
-	size_t file_size
+	uint64_t file_size,
+	bool force_create
 );
 
 /**
@@ -112,7 +115,7 @@ char* ethash_strncat(char* dest, size_t dest_size, char const* src, size_t count
 
 /**
  * A cross-platform mkdir wrapper to create a directory or assert it's there
- * 
+ *
  * @param dirname        The full path of the directory to create
  * @return               true if the directory was created or if it already
  *                       existed
@@ -130,11 +133,38 @@ bool ethash_file_size(FILE* f, size_t* ret_size);
 
 /**
  * Get a file descriptor number from a FILE stream
- * 
+ *
  * @param f            The file stream whose fd to get
  * @return             Platform specific fd handler
  */
 int ethash_fileno(FILE* f);
+
+/**
+ * Create the filename for the DAG.
+ *
+ * @param dirname            The directory name in which the DAG file should reside
+ *                           If it does not end with a directory separator it is appended.
+ * @param filename           The actual name of the file
+ * @param filename_length    The length of the filename in bytes
+ * @return                   A char* containing the full name. User must deallocate.
+ */
+char* ethash_io_create_filename(
+	char const* dirname,
+	char const* filename,
+	size_t filename_length
+);
+
+/**
+ * Gets the default directory name for the DAG depending on the system
+ *
+ * The spec defining this directory is here: https://github.com/ethereum/wiki/wiki/Ethash-DAG
+ *
+ * @param[out] strbuf          A string buffer of sufficient size to keep the
+ *                             null termninated string of the directory name
+ * @param[in]  buffsize        Size of @a strbuf in bytes
+ * @return                     true for success and false otherwise
+ */
+bool ethash_get_default_dirname(char* strbuf, size_t buffsize);
 
 static inline bool ethash_io_mutable_name(
 	uint32_t revision,
@@ -148,26 +178,6 @@ static inline bool ethash_io_mutable_name(
 #endif
     return snprintf(output, DAG_MUTABLE_NAME_MAX_SIZE, "%u_%016" PRIx64, revision, hash) >= 0;
 }
-
-static inline char* ethash_io_create_filename(
-	char const* dirname,
-	char const* filename,
-	size_t filename_length
-)
-{
-	size_t dirlen = strlen(dirname);
-	// in C the cast is not needed, but a C++ compiler will complain for invalid conversion
-	char* name = (char*)malloc(dirlen + filename_length + 1);
-	if (!name) {
-		return NULL;
-	}
-
-	name[0] = '\0';
-	ethash_strncat(name, dirlen + filename_length + 1, dirname, dirlen);
-	ethash_strncat(name, dirlen + filename_length + 1, filename, filename_length);
-	return name;
-}
-
 
 #ifdef __cplusplus
 }
