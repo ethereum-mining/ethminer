@@ -43,6 +43,10 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 {
 	for (auto& i: v.get_obj())
 	{
+		if (test::Options::get().singletest == true)
+			if (test::Options::get().singletestName != i.first)
+				continue;
+
 		std::cout << "  " << i.first << "\n";
 		mObject& o = i.second.get_obj();
 
