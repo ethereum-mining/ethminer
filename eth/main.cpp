@@ -1645,12 +1645,8 @@ int main(int argc, char** argv)
 			}
 	}
 	else
-	{
 		while (!g_exit)
-		{
 			this_thread::sleep_for(chrono::milliseconds(1000));
-		}
-	}
 
 	StructuredLogger::stopping(clientImplString, dev::Version);
 	auto netData = web3.saveNetwork();
