@@ -37,6 +37,7 @@
 #include <vector>
 #include <set>
 #include <functional>
+#include <boost/timer.hpp>
 #pragma warning(push)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -167,6 +168,21 @@ private:
 #else
 #define DEV_INVARIANT_CHECK (void)0;
 #endif
+
+class TimerHelper
+{
+public:
+	TimerHelper(char const* _id): id(_id) {}
+	~TimerHelper();
+
+private:
+	boost::timer t;
+	char const* id;
+};
+
+#define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(#S, true); __eth_t.second; __eth_t.second = false)
+#define DEV_TIMED_SCOPE(S) ::dev::TimerHelper __eth_t(S)
+#define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__PRETTY_FUNCTION__)
 
 enum class WithExisting: int
 {
