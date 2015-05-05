@@ -145,7 +145,6 @@ Main::Main(QWidget *parent) :
 
 #if !ETH_FATDB
 	delete ui->dockWidget_accounts;
-	delete ui->dockWidget_contracts;
 #endif
 
 #if ETH_DEBUG
