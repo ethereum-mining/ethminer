@@ -81,8 +81,17 @@ shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, NodeIPEndpoint con
 	return addNode(node);
 }
 
-shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
+shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relation)
 {
+	if (_relation)
+	{
+		shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, _node.endpoint));
+		ret->pending = false;
+		m_nodes[_node.id] = ret;
+		noteActiveNode(_node.id, _node.endpoint);
+		return ret;
+	}
+	
 	// re-enable tcp checks when NAT hosts are handled by discover
 	// we handle when tcp endpoint is 0 below
 	if (_node.endpoint.address.to_string() == "0.0.0.0")
