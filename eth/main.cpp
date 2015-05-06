@@ -411,7 +411,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 	exit(0);
 }
 
-void stopMiningAfterXBlocks(eth::Client *_c, unsigned _start, unsigned _mining)
+void stopMiningAfterXBlocks(eth::Client* _c, unsigned _start, unsigned _mining)
 {
 	if (_c->isMining() && _c->blockChain().details().number - _start == _mining)
 		_c->stopMining();

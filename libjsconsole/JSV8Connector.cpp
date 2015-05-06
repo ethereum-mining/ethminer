@@ -36,14 +36,14 @@ bool JSV8Connector::StopListening()
 	return true;
 }
 
-bool JSV8Connector::SendResponse(std::string const &_response, void *_addInfo)
+bool JSV8Connector::SendResponse(std::string const& _response, void* _addInfo)
 {
 	(void)_addInfo;
 	m_lastResponse = _response.c_str();
 	return true;
 }
 
-void JSV8Connector::onSend(const char *payload)
+void JSV8Connector::onSend(char const* payload)
 {
 	OnRequest(payload, NULL);
 }

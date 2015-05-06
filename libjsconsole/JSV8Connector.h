@@ -30,18 +30,20 @@ namespace dev
 namespace eth
 {
 
-class JSV8Connector : public jsonrpc::AbstractServerConnector, public JSV8RPC
+class JSV8Connector: public jsonrpc::AbstractServerConnector, public JSV8RPC
 {
 
 public:
-	JSV8Connector(JSV8Engine const &_engine) : JSV8RPC(_engine) {}
+	JSV8Connector(JSV8Engine const& _engine): JSV8RPC(_engine) {}
 	virtual ~JSV8Connector();
 
+	// implement AbstractServerConnector interface
 	bool StartListening();
 	bool StopListening();
-	bool SendResponse(std::string const& _response, void* _addInfo = NULL);
+	bool SendResponse(std::string const& _response, void* _addInfo = nullptr);
 
-	void onSend(const char* payload);
+	// implement JSV8RPC interface
+	void onSend(char const* payload);
 };
 
 }
