@@ -75,8 +75,17 @@ void NodeTable::processEvents()
 		m_nodeEventHandler->processEvents();
 }
 
-shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
+shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relation = Unknown)
 {
+	if (_relation == Known)
+	{
+		shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, _node.endpoint));
+		ret->pending = false;
+		m_nodes[_node.id] = ret;
+		noteActiveNode(_node.id, _node.endpoint);
+		return ret;
+	}
+	
 	if (!_node.endpoint)
 		return move(shared_ptr<NodeEntry>());
 	

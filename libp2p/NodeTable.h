@@ -133,6 +133,8 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	using EvictionTimeout = std::pair<NodeIdTimePoint, NodeId>;	///< First NodeId (NodeIdTimePoint) may be evicted and replaced with second NodeId.
 
 public:
+	enum NodeRelation { Unknown = 0, Known };
+	
 	/// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
 	NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint);
 	~NodeTable();
@@ -147,7 +149,7 @@ public:
 	void processEvents();
 
 	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeId is empty.
-	std::shared_ptr<NodeEntry> addNode(Node const& _node);
+	std::shared_ptr<NodeEntry> addNode(Node const& _node, NodeRelation _relation = Unknown);
 
 	/// To be called when node table is empty. Runs node discovery with m_node.id as the target in order to populate node-table.
 	void discover();
