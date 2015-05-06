@@ -100,23 +100,15 @@ inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
  * NodeTable accepts a port for UDP and will listen to the port on all available
  * interfaces.
  *
- *
- * [Integration]
- * @todo TCP endpoints
- * @todo GC uniform 1/32 entires at 112500ms interval
- *
  * [Optimization]
  * @todo serialize evictions per-bucket
  * @todo store evictions in map, unit-test eviction logic
  * @todo store root node in table
  * @todo encapsulate discover into NetworkAlgorithm (task)
- * @todo Pong to include ip:port where ping was received
  * @todo expiration and sha3(id) 'to' for messages which are replies (prevents replay)
  * @todo cache Ping and FindSelf
  *
  * [Networking]
- * @todo node-endpoint updates
- * @todo TCP endpoints
  * @todo eth/upnp/natpmp/stun/ice/etc for public-discovery
  * @todo firewall
  *
@@ -131,7 +123,7 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	using TimePoint = std::chrono::steady_clock::time_point;	///< Steady time point.
 	using NodeIdTimePoint = std::pair<NodeId, TimePoint>;
 	using EvictionTimeout = std::pair<NodeIdTimePoint, NodeId>;	///< First NodeId (NodeIdTimePoint) may be evicted and replaced with second NodeId.
-
+	
 public:
 	enum NodeRelation { Unknown = 0, Known };
 	
@@ -149,7 +141,7 @@ public:
 	void processEvents();
 
 	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeId is empty.
-	std::shared_ptr<NodeEntry> addNode(Node const& _node, NodeRelation _relation = Unknown);
+	std::shared_ptr<NodeEntry> addNode(Node const& _node, NodeRelation _relation = NodeRelation::Unknown);
 
 	/// To be called when node table is empty. Runs node discovery with m_node.id as the target in order to populate node-table.
 	void discover();
@@ -332,8 +324,8 @@ struct Pong: RLPXDatagram<Pong>
 	h256 echo;				///< MCD of PingNode
 	uint32_t ts = 0;
 
-	void streamRLP(RLPStream& _s) const { _s.appendList(3); destination.streamRLP(_s); _s << echo << ts; }
-	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); destination.interpretRLP(r[0]); echo = (h256)r[1]; ts = r[2].toInt<uint32_t>(); }
+	void streamRLP(RLPStream& _s) const;
+	void interpretRLP(bytesConstRef _bytes);
 };
 
 /**
@@ -391,6 +383,23 @@ struct Neighbours: RLPXDatagram<Neighbours>
 	void streamRLP(RLPStream& _s) const { _s.appendList(2); _s.appendList(neighbours.size()); for (auto& n: neighbours) n.streamRLP(_s); _s << ts; }
 	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) neighbours.push_back(Neighbour(n)); ts = r[1].toInt<uint32_t>(); }
 };
+	
+namespace compat
+{
+	/**
+	 * Pong packet [compatability]: Sent in response to ping
+	 */
+	struct Pong: RLPXDatagram<Pong>
+	{
+		Pong(bi::udp::endpoint const& _ep): RLPXDatagram<Pong>(_ep) {}
+		Pong(NodeIPEndpoint const& _dest): RLPXDatagram<Pong>((bi::udp::endpoint)_dest), ts(futureFromEpoch(std::chrono::seconds(60))) {}
+		static const uint8_t type = 2;
+		h256 echo;
+		uint32_t ts = 0;
+		void streamRLP(RLPStream& _s) const {	_s.appendList(2); _s << echo << ts; }
+		void interpretRLP(bytesConstRef _bytes);
+	};
+}
 
 struct NodeTableWarn: public LogChannel { static const char* name(); static const int verbosity = 0; };
 struct NodeTableNote: public LogChannel { static const char* name(); static const int verbosity = 1; };

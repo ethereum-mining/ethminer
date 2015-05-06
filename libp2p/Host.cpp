@@ -746,7 +746,8 @@ void Host::restoreNetwork(bytesConstRef _b)
 	
 	RecursiveGuard l(x_sessions);
 	RLP r(_b);
-	if (r.itemCount() > 0 && r[0].isInt() && r[0].toInt<unsigned>() == dev::p2p::c_protocolVersion)
+	unsigned fileVersion = r[0].toInt<unsigned>();
+	if (r.itemCount() > 0 && r[0].isInt() && fileVersion >= dev::p2p::c_protocolVersion - 1)
 	{
 		// r[0] = version
 		// r[1] = key
@@ -758,26 +759,53 @@ void Host::restoreNetwork(bytesConstRef _b)
 			if (i[0].itemCount() != 4)
 				continue;
 
-			Node n((NodeId)i[3], NodeIPEndpoint(i));
-			if (i.itemCount() == 4 && n.endpoint.isAllowed())
-				m_nodeTable->addNode(n);
-			else if (i.itemCount() == 11)
+			if (i.itemCount() == 4 || i.itemCount() == 11)
 			{
-				n.required = i[4].toInt<bool>();
-				if (!n.endpoint.isAllowed() && !n.required)
-					continue;
-				shared_ptr<Peer> p = make_shared<Peer>(n);
-				p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
-				p->m_lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[6].toInt<unsigned>()));
-				p->m_failedAttempts = i[7].toInt<unsigned>();
-				p->m_lastDisconnect = (DisconnectReason)i[8].toInt<unsigned>();
-				p->m_score = (int)i[9].toInt<unsigned>();
-				p->m_rating = (int)i[10].toInt<unsigned>();
-				m_peers[p->id] = p;
-				if (p->required)
-					requirePeer(p->id, n.endpoint);
-				else
-					m_nodeTable->addNode(*p.get(), NodeTable::NodeRelation::Known);
+				Node n((NodeId)i[3], NodeIPEndpoint(i));
+				if (i.itemCount() == 4 && n.endpoint.isAllowed())
+					m_nodeTable->addNode(n);
+				else if (i.itemCount() == 11)
+				{
+					n.required = i[4].toInt<bool>();
+					if (!n.endpoint.isAllowed() && !n.required)
+						continue;
+					shared_ptr<Peer> p = make_shared<Peer>(n);
+					p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
+					p->m_lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[6].toInt<unsigned>()));
+					p->m_failedAttempts = i[7].toInt<unsigned>();
+					p->m_lastDisconnect = (DisconnectReason)i[8].toInt<unsigned>();
+					p->m_score = (int)i[9].toInt<unsigned>();
+					p->m_rating = (int)i[10].toInt<unsigned>();
+					m_peers[p->id] = p;
+					if (p->required)
+						requirePeer(p->id, n.endpoint);
+					else
+						m_nodeTable->addNode(*p.get(), NodeTable::NodeRelation::Known);
+				}
+			}
+			else if (i.itemCount() == 3 || i.itemCount() == 10)
+			{
+				Node n((NodeId)i[2], NodeIPEndpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<uint16_t>(), i[1].toInt<uint16_t>()));
+				if (i.itemCount() == 3 && n.endpoint.isAllowed())
+					m_nodeTable->addNode(n);
+				else if (i.itemCount() == 10)
+				{
+					n.required = i[3].toInt<bool>();
+					if (!n.endpoint.isAllowed() && !n.required)
+						continue;
+					shared_ptr<Peer> p = make_shared<Peer>(n);
+					p->m_lastConnected = chrono::system_clock::time_point(chrono::seconds(i[4].toInt<unsigned>()));
+					p->m_lastAttempted = chrono::system_clock::time_point(chrono::seconds(i[5].toInt<unsigned>()));
+					p->m_failedAttempts = i[6].toInt<unsigned>();
+					p->m_lastDisconnect = (DisconnectReason)i[7].toInt<unsigned>();
+					p->m_score = (int)i[8].toInt<unsigned>();
+					p->m_rating = (int)i[9].toInt<unsigned>();
+					m_peers[p->id] = p;
+					if (p->required)
+						requirePeer(p->id, n.endpoint);
+					else
+						m_nodeTable->addNode(*p.get(), NodeTable::NodeRelation::Known);
+				}
 			}
 		}
 	}
@@ -786,7 +814,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 KeyPair Host::networkAlias(bytesConstRef _b)
 {
 	RLP r(_b);
-	if (r.itemCount() == 3 && r[0].isInt() && r[0].toInt<unsigned>() == dev::p2p::c_protocolVersion)
+	if (r.itemCount() == 3 && r[0].isInt() && r[0].toInt<unsigned>() >= 3)
 		return move(KeyPair(move(Secret(r[1].toBytes()))));
 	else
 		return move(KeyPair::create());
