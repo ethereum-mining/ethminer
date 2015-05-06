@@ -80,10 +80,10 @@ public:
 	bool confirm() const;
 	NatSpecFace* natSpec() { return &m_natSpecDB; }
 
-	QString pretty(dev::Address _a) const override;
-	QString prettyU256(dev::u256 _n) const override;
-	QString render(dev::Address _a) const override;
-	std::pair<dev::Address, dev::bytes> fromString(QString const& _a) const override;
+	std::string pretty(dev::Address const& _a) const override;
+	std::string prettyU256(dev::u256 const& _n) const override;
+	std::string render(dev::Address const& _a) const override;
+	std::pair<dev::Address, dev::bytes> fromString(std::string const& _a) const override;
 	std::string renderDiff(dev::eth::StateDiff const& _d) const override;
 
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
@@ -131,6 +131,13 @@ private slots:
 	void on_importKeyFile_triggered();
 	void on_exportKey_triggered();
 
+	// Account pane
+	void on_accountsFilter_textChanged();
+	void on_showBasic_toggled();
+	void on_showContracts_toggled();
+	void on_onlyNamed_toggled();
+	void on_refreshAccounts_clicked();
+
 	// Tools
 	void on_newTransaction_triggered();
 	void on_loadJS_triggered();
@@ -140,8 +147,7 @@ private slots:
 	void ourAccountsRowsMoved();
 	void on_ourAccounts_doubleClicked();
 	void on_accounts_doubleClicked();
-	void on_contracts_doubleClicked();
-	void on_contracts_currentItemChanged();
+	void on_accounts_currentItemChanged();
 	void on_transactionQueue_currentItemChanged();
 	void on_blockChainFilter_textChanged();
 	void on_blocks_currentItemChanged();
@@ -254,7 +260,7 @@ private:
 	std::unique_ptr<jsonrpc::HttpServer> m_httpConnector;
 	std::unique_ptr<OurWebThreeStubServer> m_server;
 
-	static QString fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
+	static std::string fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
 	NatspecHandler m_natSpecDB;
 
 	Transact m_transact;

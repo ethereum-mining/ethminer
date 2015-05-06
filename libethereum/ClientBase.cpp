@@ -142,6 +142,11 @@ bytes ClientBase::codeAt(Address _a, BlockNumber _block) const
 	return asOf(_block).code(_a);
 }
 
+h256 ClientBase::codeHashAt(Address _a, BlockNumber _block) const
+{
+	return asOf(_block).codeHash(_a);
+}
+
 map<u256, u256> ClientBase::storageAt(Address _a, BlockNumber _block) const
 {
 	return asOf(_block).storage(_a);

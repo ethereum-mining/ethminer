@@ -15,14 +15,17 @@ include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 include_directories(${Boost_INCLUDE_DIRS})
 
-set(EXECUTABLE solidity)
+set(EXECUTABLE evmasm)
 
-file(GLOB HEADERS "*.h") 
+file(GLOB HEADERS "*.h")
 
-add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
+if (ETH_STATIC)
+	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
+else()
+	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
+endif()
 
-target_link_libraries(${EXECUTABLE} ${JSONCPP_LIBRARIES})
-target_link_libraries(${EXECUTABLE} evmasm)
+target_link_libraries(${EXECUTABLE} evmcore)
 target_link_libraries(${EXECUTABLE} devcrypto)
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )

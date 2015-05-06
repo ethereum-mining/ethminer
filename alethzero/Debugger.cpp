@@ -226,7 +226,7 @@ void Debugger::update()
 
 			QString stack;
 			for (auto i: ws.stack)
-				stack.prepend("<div>" + m_context->prettyU256(i) + "</div>");
+				stack.prepend("<div>" + QString::fromStdString(m_context->prettyU256(i)) + "</div>");
 			ui->debugStack->setHtml(stack);
 			ui->debugMemory->setHtml(QString::fromStdString(dev::memDump(ws.memory, 16, true)));
 			assert(m_session.codes.count(ws.code));
@@ -246,7 +246,7 @@ void Debugger::update()
 			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 			stringstream s;
 			for (auto const& i: ws.storage)
-				s << "@" << m_context->prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << m_context->prettyU256(i.second).toStdString() << "<br/>";
+				s << "@" << m_context->prettyU256(i.first) << "&nbsp;&nbsp;&nbsp;&nbsp;" << m_context->prettyU256(i.second) << "<br/>";
 			ui->debugStorage->setHtml(QString::fromStdString(s.str()));
 		}
 	}
