@@ -19,6 +19,8 @@ var prettyPrint = (function () {
             str += "\033[31m" + "Error:\033[0m " + object.message;
         }  else if (object === null) {
             str += "\033[1m\033[30m" + "null";
+        } else if(typeof(object) === "undefined") {
+            str += "\033[1m\033[30m" + object;
         } else if (isBigNumber(object)) {
             str += "\033[32m'" + object.toString(10) + "'";
         } else if(typeof(object) === "object") {
@@ -40,8 +42,6 @@ var prettyPrint = (function () {
             str += indent.substr(2, indent.length) + "}";
         } else if(typeof(object) === "string") {
             str += "\033[32m'" + object + "'";
-        } else if(typeof(object) === "undefined") {
-            str += "\033[1m\033[30m" + object;
         } else if(typeof(object) === "number") {
             str += "\033[31m" + object;
         } else if(typeof(object) === "function") {
