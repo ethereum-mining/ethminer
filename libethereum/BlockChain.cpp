@@ -474,7 +474,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		t.restart();
 #endif
 
-#if ETH_PARANOIA
+#if ETH_PARANOIA || !ETH_TRUE
 		checkConsistency();
 #endif
 
@@ -489,7 +489,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		ETH_WRITE_GUARDED(x_details)
 			m_details[bi.parentHash].children.push_back(bi.hash());
 
-#if ETH_TIMED_IMPORTS
+#if ETH_TIMED_IMPORTS || !ETH_TRUE
 		collation = t.elapsed();
 		t.restart();
 #endif
@@ -497,17 +497,14 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		blocksBatch.Put(toSlice(bi.hash()), (ldb::Slice)ref(_block));
 		ETH_READ_GUARDED(x_details)
 			extrasBatch.Put(toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
+
 		extrasBatch.Put(toSlice(bi.hash(), ExtraDetails), (ldb::Slice)dev::ref(BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {}).rlp()));
 		extrasBatch.Put(toSlice(bi.hash(), ExtraLogBlooms), (ldb::Slice)dev::ref(blb.rlp()));
 		extrasBatch.Put(toSlice(bi.hash(), ExtraReceipts), (ldb::Slice)dev::ref(br.rlp()));
 
-#if ETH_TIMED_IMPORTS
+#if ETH_TIMED_IMPORTS || !ETH_TRUE
 		writing = t.elapsed();
 		t.restart();
-#endif
-
-#if ETH_PARANOIA
-		checkConsistency();
 #endif
 	}
 #if ETH_CATCH
@@ -632,6 +629,10 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		m_lastBlockNumber = newLastBlockNumber;
 	}
 
+#if ETH_PARANOIA || !ETH_TRUE
+	checkConsistency();
+#endif
+
 #if ETH_TIMED_IMPORTS
 	checkBest = t.elapsed();
 	cnote << "Import took:" << total.elapsed();
@@ -642,7 +643,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	cnote << "checkBest:" << checkBest;
 #endif
 
-	if (route.size())
+	if (!route.empty())
 		noteCanonChanged();
 
 	if (isKnown(bi.hash()) && !details(bi.hash()))
