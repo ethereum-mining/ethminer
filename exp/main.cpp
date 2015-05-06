@@ -33,6 +33,7 @@
 #endif
 #include <functional>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
@@ -43,6 +44,7 @@
 #include <libdevcrypto/TrieDB.h>
 #include <libp2p/All.h>
 #include <libethcore/ProofOfWork.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libethereum/All.h>
 #include <libethereum/Farm.h>
 #include <libethereum/AccountDiff.h>
@@ -58,8 +60,94 @@ using namespace dev::eth;
 using namespace dev::p2p;
 using namespace dev::shh;
 namespace js = json_spirit;
+namespace fs = boost::filesystem;
 
-#if 0
+#if 1
+
+inline h128 fromUUID(std::string const& _uuid) { return h128(boost::replace_all_copy(_uuid, "-", "")); }
+
+class KeyManager: public Worker
+{
+public:
+	KeyManager() { readKeys(); }
+	~KeyManager() {}
+
+	Secret secret(h128 const& _uuid, std::string const& _pass)
+	{
+		auto it = m_keys.find(_uuid);
+		if (it == m_keys.end())
+			return Secret();
+		return Secret(decrypt(it->second, _pass));
+	}
+
+private:
+	void readKeys(std::string const& _keysPath = getDataDir("web3") + "/keys")
+	{
+		fs::path p(_keysPath);
+		js::mValue v;
+		for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it)
+			if (is_regular_file(it->path()))
+			{
+				cdebug << "Reading" << it->path();
+				js::read_string(contentsString(it->path().string()), v);
+				js::mObject o = v.get_obj();
+				int version = o.count("Version") ? stoi(o["Version"].get_str()) : o.count("version") ? o["version"].get_int() : 0;
+				if (version == 2)
+					m_keys[fromUUID(o["id"].get_str())] = o["crypto"];
+				else
+					cwarn << "Cannot read key version" << version;
+			}
+	}
+
+	static bytes decrypt(js::mValue const& _v, std::string const& _pass)
+	{
+		js::mObject o = _v.get_obj();
+		bytes pKey;
+		if (o["kdf"].get_str() == "pbkdf2")
+		{
+			auto params = o["kdfparams"].get_obj();
+			unsigned iterations = params["c"].get_int();
+			bytes salt = fromHex(params["salt"].get_str());
+			pKey = pbkdf2(_pass, salt, iterations).asBytes();
+		}
+		else
+		{
+			cwarn << "Unknown KDF" << o["kdf"].get_str() << "not supported.";
+			return bytes();
+		}
+
+		// TODO check MAC
+		h256 mac(o["mac"].get_str());
+		(void)mac;
+
+		bytes cipherText = fromHex(o["ciphertext"].get_str());
+		bytes ret;
+		if (o["cipher"].get_str() == "aes-128-cbc")
+		{
+			auto params = o["cipherparams"].get_obj();
+			h128 key(sha3(h128(pKey, h128::AlignRight)), h128::AlignRight);
+			h128 iv(params["iv"].get_str());
+			decryptSymNoAuth(key, iv, &cipherText, ret);
+		}
+		else
+		{
+			cwarn << "Unknown cipher" << o["cipher"].get_str() << "not supported.";
+			return bytes();
+		}
+
+		return ret;
+	}
+
+	std::map<h128, js::mValue> m_keys;
+};
+
+int main()
+{
+	KeyManager keyman;
+	cdebug << "Secret key for 0498f19a-59db-4d54-ac95-33901b4f1870 is " << keyman.secret(fromUUID("0498f19a-59db-4d54-ac95-33901b4f1870"), "foo");
+}
+
+#elif 0
 int main()
 {
 	DownloadMan man;

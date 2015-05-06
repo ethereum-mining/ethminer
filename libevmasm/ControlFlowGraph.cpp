@@ -21,11 +21,11 @@
  * Control flow analysis for the optimizer.
  */
 
-#include <libevmcore/ControlFlowGraph.h>
+#include <libevmasm/ControlFlowGraph.h>
 #include <map>
-#include <libevmcore/Exceptions.h>
-#include <libevmcore/AssemblyItem.h>
-#include <libevmcore/SemanticInformation.h>
+#include <libevmasm/Exceptions.h>
+#include <libevmasm/AssemblyItem.h>
+#include <libevmasm/SemanticInformation.h>
 
 using namespace std;
 using namespace dev;

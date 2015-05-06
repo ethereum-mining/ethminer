@@ -110,12 +110,12 @@ void Transact::updateDestination()
 	cwatch << "updateDestination()";
 	QString s;
 	for (auto i: ethereum()->addresses())
-		if ((s = m_context->pretty(i)).size())
+		if ((s = QString::fromStdString(m_context->pretty(i))).size())
 			// A namereg address
 			if (ui->destination->findText(s, Qt::MatchExactly | Qt::MatchCaseSensitive) == -1)
 				ui->destination->addItem(s);
 	for (int i = 0; i < ui->destination->count(); ++i)
-		if (ui->destination->itemText(i) != "(Create Contract)" && !m_context->fromString(ui->destination->itemText(i)).first)
+		if (ui->destination->itemText(i) != "(Create Contract)" && !m_context->fromString(ui->destination->itemText(i).toStdString()).first)
 			ui->destination->removeItem(i--);
 }
 
@@ -142,9 +142,9 @@ void Transact::on_destination_currentTextChanged(QString)
 {
 	if (ui->destination->currentText().size() && ui->destination->currentText() != "(Create Contract)")
 	{
-		auto p = m_context->fromString(ui->destination->currentText());
+		auto p = m_context->fromString(ui->destination->currentText().toStdString());
 		if (p.first)
-			ui->calculatedName->setText(m_context->render(p.first));
+			ui->calculatedName->setText(QString::fromStdString(m_context->render(p.first)));
 		else
 			ui->calculatedName->setText("Unknown Address");
 		if (!p.second.empty())
@@ -347,7 +347,7 @@ void Transact::rejigData()
 	else
 	{
 		// TODO: cache like m_data.
-		to = m_context->fromString(ui->destination->currentText()).first;
+		to = m_context->fromString(ui->destination->currentText().toStdString()).first;
 		er = ethereum()->call(s, value(), to, m_data, gasNeeded, gasPrice());
 	}
 	gasNeeded = (qint64)(er.gasUsed + er.gasRefunded);
@@ -434,7 +434,7 @@ void Transact::on_send_clicked()
 	}
 	else
 		// TODO: cache like m_data.
-		ethereum()->submitTransaction(s, value(), m_context->fromString(ui->destination->currentText()).first, m_data, ui->gas->value(), gasPrice());
+		ethereum()->submitTransaction(s, value(), m_context->fromString(ui->destination->currentText().toStdString()).first, m_data, ui->gas->value(), gasPrice());
 	close();
 }
 
@@ -453,7 +453,7 @@ void Transact::on_debug_clicked()
 		State st(ethereum()->postState());
 		Transaction t = isCreation() ?
 			Transaction(value(), gasPrice(), ui->gas->value(), m_data, st.transactionsFrom(dev::toAddress(s)), s) :
-			Transaction(value(), gasPrice(), ui->gas->value(), m_context->fromString(ui->destination->currentText()).first, m_data, st.transactionsFrom(dev::toAddress(s)), s);
+			Transaction(value(), gasPrice(), ui->gas->value(), m_context->fromString(ui->destination->currentText().toStdString()).first, m_data, st.transactionsFrom(dev::toAddress(s)), s);
 		Debugger dw(m_context, this);
 		Executive e(st, ethereum()->blockChain(), 0);
 		dw.populate(e, t);
