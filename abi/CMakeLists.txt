@@ -12,5 +12,4 @@ add_executable(${EXECUTABLE} ${SRC_LIST})
 
 target_link_libraries(${EXECUTABLE} ethereum)
 
-install( TARGETS ${EXECUTABLE} DESTINATION bin) 
-
+eth_install_executable(${EXECUTABLE})
