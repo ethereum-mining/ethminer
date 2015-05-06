@@ -226,7 +226,12 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 					return;
 				}
 		
-		if (peerCount() > 9 * m_idealPeerCount)
+		unsigned pendingCount = 0;
+		{
+			Guard l(x_pendingNodeConns);
+			pendingCount = m_pendingPeerConns.size();
+		}
+		if (peerCount() + pendingCount > 9 * m_idealPeerCount)
 		{
 			ps->disconnect(TooManyPeers);
 			return;
@@ -271,7 +276,12 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 					clog(NetNote) << "p2p.host.peers.events.peerAdded " << _n << p->endpoint;
 				}
 			}
-			if (peerCount() < m_idealPeerCount)
+			unsigned pendingCount = 0;
+			{
+				Guard l(x_pendingNodeConns);
+				pendingCount = m_pendingPeerConns.size();
+			}
+			if (peerCount() + pendingCount < m_idealPeerCount)
 				connect(p);
 		}
 	}
@@ -578,7 +588,12 @@ void Host::run(boost::system::error_code const&)
 	// is always live and to ensure reputation and fallback timers are properly
 	// updated. // disconnectLatePeers();
 
-	int openSlots = m_idealPeerCount - peerCount();
+	unsigned pendingCount = 0;
+	{
+		Guard l(x_pendingNodeConns);
+		pendingCount = m_pendingPeerConns.size();
+	}
+	int openSlots = m_idealPeerCount - peerCount() - pendingCount;
 	if (openSlots > 0)
 	{
 		list<shared_ptr<Peer>> toConnect;
