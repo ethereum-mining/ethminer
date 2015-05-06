@@ -36,12 +36,6 @@ using namespace dev;
 using namespace dev::eth;
 using namespace p2p;
 
-namespace dev
-{
-struct TimerHelper { TimerHelper(char const* _id): id(_id) {} ~TimerHelper() { cdebug << "Timer" << id << t.elapsed() << "s"; } boost::timer t; char const* id; };
-#define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(#S, true); __eth_t.second; __eth_t.second = false)
-}
-
 VersionChecker::VersionChecker(string const& _dbPath):
 	m_path(_dbPath.size() ? _dbPath : Defaults::dbPath())
 {
@@ -582,12 +576,13 @@ void Client::onChainChanged(ImportRoute const& _ir)
 			m_preMine = newPreMine;
 		DEV_TIMED(working) ETH_WRITE_GUARDED(x_working)
 			m_working = newPreMine;
-//		Transactions ts = m_postMine.pending();
 		ETH_READ_GUARDED(x_postMine)
 			for (auto const& t: m_postMine.pending())
 			{
 				clog(ClientNote) << "Resubmitting post-mine transaction " << t;
-				m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
+				auto ir = m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
+				if (ir != ImportResult::Success)
+					onTransactionQueueReady();
 			}
 		ETH_READ_GUARDED(x_working) DEV_TIMED(post) ETH_WRITE_GUARDED(x_postMine)
 			m_postMine = m_working;
@@ -596,6 +591,10 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 		onPostStateChanged();
 	}
+
+	// Quick hack for now - the TQ at this point already has the prior pending transactions in it;
+	// we should resync with it manually until we are stricter about what constitutes "knowing".
+	onTransactionQueueReady();
 
 	noteChanged(changeds);
 }
@@ -659,11 +658,9 @@ void Client::noteChanged(h256Set const& _filters)
 
 void Client::doWork()
 {
-	// TODO: Use condition variable rather than this rubbish.
-
 	bool t = true;
 	if (m_syncBlockQueue.compare_exchange_strong(t, false))
-		syncBlockQueue();	// GAAA!!!!! CALLED TOO OFTEN!!!
+		syncBlockQueue();
 
 	t = true;
 	if (m_syncTransactionQueue.compare_exchange_strong(t, false) && !m_remoteWorking)
@@ -672,7 +669,10 @@ void Client::doWork()
 	tick();
 
 	if (!m_syncBlockQueue && !m_syncTransactionQueue)
-		this_thread::sleep_for(chrono::milliseconds(20));
+	{
+		std::unique_lock<std::mutex> l(x_signalled);
+		m_signalled.wait_for(l, chrono::seconds(1));
+	}
 }
 
 void Client::tick()

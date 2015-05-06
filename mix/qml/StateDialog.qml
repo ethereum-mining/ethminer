@@ -158,7 +158,7 @@ Dialog {
 								id: importJsonFileDialog
 								visible: false
 								title: qsTr("Select State File")
-								nameFilters: [qsTr("JSON files (*.json)", "All files (*)")]
+								nameFilters: Qt.platform.os === "osx" ? [] : [qsTr("JSON files (*.json)", "All files (*)")] //qt 5.4 segfaults with filter string on OSX
 								onAccepted: {
 									var path = importJsonFileDialog.fileUrl.toString()
 									var jsonData = fileIo.readFile(path)

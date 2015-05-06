@@ -37,6 +37,7 @@
 #include <vector>
 #include <set>
 #include <functional>
+#include <boost/timer.hpp>
 #pragma warning(push)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -128,13 +129,64 @@ inline N diff(N const& _a, N const& _b)
 }
 
 /// RAII utility class whose destructor calls a given function.
-class ScopeGuard {
+class ScopeGuard
+{
 public:
 	ScopeGuard(std::function<void(void)> _f): m_f(_f) {}
 	~ScopeGuard() { m_f(); }
+
 private:
 	std::function<void(void)> m_f;
 };
+
+/// Inheritable for classes that have invariants.
+class HasInvariants
+{
+public:
+	/// Check invariants are met, throw if not.
+	void checkInvariants() const;
+
+protected:
+	/// Reimplement to specify the invariants.
+	virtual bool invariants() const = 0;
+};
+
+/// RAII checker for invariant assertions.
+class InvariantChecker
+{
+public:
+	InvariantChecker(HasInvariants* _this): m_this(_this) { m_this->checkInvariants(); }
+	~InvariantChecker() { m_this->checkInvariants(); }
+
+private:
+	HasInvariants const* m_this;
+};
+
+/// Scope guard for invariant check in a class derived from HasInvariants.
+#if ETH_DEBUG
+#define DEV_INVARIANT_CHECK ::dev::InvariantChecker __dev_invariantCheck(this)
+#else
+#define DEV_INVARIANT_CHECK (void)0;
+#endif
+
+class TimerHelper
+{
+public:
+	TimerHelper(char const* _id): id(_id) {}
+	~TimerHelper();
+
+private:
+	boost::timer t;
+	char const* id;
+};
+
+#define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(#S, true); __eth_t.second; __eth_t.second = false)
+#define DEV_TIMED_SCOPE(S) ::dev::TimerHelper __eth_t(S)
+#if WIN32
+#define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__FUNCSIG__)
+#else
+#define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__PRETTY_FUNCTION__)
+#endif
 
 enum class WithExisting: int
 {
@@ -145,7 +197,8 @@ enum class WithExisting: int
 
 }
 
-namespace std {
+namespace std
+{
 
 inline dev::WithExisting max(dev::WithExisting _a, dev::WithExisting _b)
 {

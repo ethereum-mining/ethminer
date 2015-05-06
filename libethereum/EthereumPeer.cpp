@@ -329,9 +329,10 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	case GetTransactionsPacket: break;	// DEPRECATED.
 	case TransactionsPacket:
 	{
-		clog(NetAllDetail) << "Transactions (" << dec << _r.itemCount() << "entries)";
+		unsigned itemCount = _r.itemCount();
+		clog(NetAllDetail) << "Transactions (" << dec << itemCount << "entries)";
 		Guard l(x_knownTransactions);
-		for (unsigned i = 0; i < _r.itemCount(); ++i)
+		for (unsigned i = 0; i < itemCount; ++i)
 		{
 			auto h = sha3(_r[i].data());
 			m_knownTransactions.insert(h);
@@ -373,21 +374,22 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case BlockHashesPacket:
 	{
-		clog(NetMessageSummary) << "BlockHashes (" << dec << _r.itemCount() << "entries)" << (_r.itemCount() ? "" : ": NoMoreHashes");
+		unsigned itemCount = _r.itemCount();
+		clog(NetMessageSummary) << "BlockHashes (" << dec << itemCount << "entries)" << (itemCount ? "" : ": NoMoreHashes");
 
 		if (m_asking != Asking::Hashes)
 		{
 			cwarn << "Peer giving us hashes when we didn't ask for them.";
 			break;
 		}
-		if (_r.itemCount() == 0)
+		if (itemCount == 0)
 		{
 			transition(Asking::Blocks);
 			return true;
 		}
 		unsigned knowns = 0;
 		unsigned unknowns = 0;
-		for (unsigned i = 0; i < _r.itemCount(); ++i)
+		for (unsigned i = 0; i < itemCount; ++i)
 		{
 			addRating(1);
 			auto h = _r[i].toHash<h256>();
@@ -454,12 +456,13 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case BlocksPacket:
 	{
-		clog(NetMessageSummary) << "Blocks (" << dec << _r.itemCount() << "entries)" << (_r.itemCount() ? "" : ": NoMoreBlocks");
+		unsigned itemCount = _r.itemCount();
+		clog(NetMessageSummary) << "Blocks (" << dec << itemCount << "entries)" << (itemCount ? "" : ": NoMoreBlocks");
 
 		if (m_asking != Asking::Blocks)
 			clog(NetWarn) << "Unexpected Blocks received!";
 
-		if (_r.itemCount() == 0)
+		if (itemCount == 0)
 		{
 			// Got to this peer's latest block - just give up.
 			transition(Asking::Nothing);
@@ -472,7 +475,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		unsigned got = 0;
 		unsigned repeated = 0;
 
-		for (unsigned i = 0; i < _r.itemCount(); ++i)
+		for (unsigned i = 0; i < itemCount; ++i)
 		{
 			auto h = BlockInfo::headerHash(_r[i].data());
 			if (m_sub.noteBlock(h))

@@ -54,7 +54,7 @@ const unsigned dev::SensibleHttpThreads = 1;
 #else
 const unsigned dev::SensibleHttpThreads = 4;
 #endif
-const unsigned dev::SensibleHttpPort = 8080;
+const unsigned dev::SensibleHttpPort = 8545;
 
 static Json::Value toJson(dev::eth::BlockInfo const& _bi)
 {

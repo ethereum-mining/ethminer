@@ -31,7 +31,6 @@
 #include <libethcore/BlockInfo.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/Miner.h>
-#include <libethcore/Params.h>
 #include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
 #include "Account.h"
