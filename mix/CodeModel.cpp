@@ -26,7 +26,7 @@
 #include <QApplication>
 #include <QtQml>
 #include <libdevcore/Common.h>
-#include <libevmcore/SourceLocation.h>
+#include <libevmasm/SourceLocation.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/Types.h>
 #include <libsolidity/ASTVisitor.h>
@@ -51,30 +51,31 @@ const std::set<std::string> c_predefinedContracts =
 namespace
 {
 using namespace dev::solidity;
-class CollectDeclarationsVisitor: public ASTConstVisitor
+
+class CollectLocalsVisitor: public ASTConstVisitor
 {
 public:
-	CollectDeclarationsVisitor(QHash<LocationPair, QString>* _functions, QHash<LocationPair, SolidityDeclaration>* _locals):
-	m_functions(_functions), m_locals(_locals), m_functionScope(false) {}
+	CollectLocalsVisitor(QHash<LocationPair, SolidityDeclaration>* _locals):
+	m_locals(_locals), m_functionScope(false) {}
+
 private:
 	LocationPair nodeLocation(ASTNode const& _node)
 	{
 		return LocationPair(_node.getLocation().start, _node.getLocation().end);
 	}
 
-	virtual bool visit(FunctionDefinition const& _node)
+	virtual bool visit(FunctionDefinition const&)
 	{
-		m_functions->insert(nodeLocation(_node), QString::fromStdString(_node.getName()));
 		m_functionScope = true;
 		return true;
 	}
 
-	virtual void endVisit(FunctionDefinition const&)
+	virtual void endVisit(FunctionDefinition const&) override
 	{
 		m_functionScope = false;
 	}
 
-	virtual bool visit(VariableDeclaration const& _node)
+	virtual bool visit(VariableDeclaration const& _node) override
 	{
 		SolidityDeclaration decl;
 		decl.type = CodeModel::nodeType(_node.getType().get());
@@ -87,9 +88,36 @@ private:
 	}
 
 private:
-	QHash<LocationPair, QString>* m_functions;
 	QHash<LocationPair, SolidityDeclaration>* m_locals;
 	bool m_functionScope;
+};
+
+class CollectLocationsVisitor: public ASTConstVisitor
+{
+public:
+	CollectLocationsVisitor(SourceMap* _sourceMap):
+	m_sourceMap(_sourceMap) {}
+
+private:
+	LocationPair nodeLocation(ASTNode const& _node)
+	{
+		return LocationPair(_node.getLocation().start, _node.getLocation().end);
+	}
+
+	virtual bool visit(FunctionDefinition const& _node) override
+	{
+		m_sourceMap->functions.insert(nodeLocation(_node), QString::fromStdString(_node.getName()));
+		return true;
+	}
+
+	virtual bool visit(ContractDefinition const& _node) override
+	{
+		m_sourceMap->contracts.insert(nodeLocation(_node), QString::fromStdString(_node.getName()));
+		return true;
+	}
+
+private:
+	SourceMap* m_sourceMap;
 };
 
 QHash<unsigned, SolidityDeclarations> collectStorage(dev::solidity::ContractDefinition const& _contract)
@@ -132,7 +160,7 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	if (contractDefinition.getLocation().sourceName.get())
 		m_documentId = QString::fromStdString(*contractDefinition.getLocation().sourceName);
 
-	CollectDeclarationsVisitor visitor(&m_functions, &m_locals);
+	CollectLocalsVisitor visitor(&m_locals);
 	m_storage = collectStorage(contractDefinition);
 	contractDefinition.accept(visitor);
 	m_assemblyItems = *_compiler.getRuntimeAssemblyItems(name);
@@ -243,6 +271,7 @@ void CodeModel::releaseContracts()
 	for (ContractMap::iterator c = m_contractMap.begin(); c != m_contractMap.end(); ++c)
 		c.value()->deleteLater();
 	m_contractMap.clear();
+	m_sourceMaps.clear();
 }
 
 void CodeModel::runCompilationJob(int _jobId)
@@ -253,13 +282,17 @@ void CodeModel::runCompilationJob(int _jobId)
 	try
 	{
 		cs.addSource("configUser", R"(contract configUser{function configAddr()constant returns(address a){ return 0xf025d81196b72fba60a1d4dddad12eeb8360d828;}})");
+		std::vector<std::string> sourceNames;
 		{
 			Guard l(x_pendingContracts);
 			for (auto const& c: m_pendingContracts)
+			{
 				cs.addSource(c.first.toStdString(), c.second.toStdString());
+				sourceNames.push_back(c.first.toStdString());
+			}
 		}
 		cs.compile(false);
-		collectContracts(cs);
+		collectContracts(cs, sourceNames);
 	}
 	catch (dev::Exception const& _exception)
 	{
@@ -281,11 +314,20 @@ void CodeModel::runCompilationJob(int _jobId)
 	emit stateChanged();
 }
 
-void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs)
+void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs, std::vector<std::string> const& _sourceNames)
 {
 	Guard pl(x_pendingContracts);
 	Guard l(x_contractMap);
 	ContractMap result;
+	SourceMaps sourceMaps;
+	for (std::string const& sourceName: _sourceNames)
+	{
+		dev::solidity::SourceUnit const& source = _cs.getAST(sourceName);
+		SourceMap sourceMap;
+		CollectLocationsVisitor collector(&sourceMap);
+		source.accept(collector);
+		sourceMaps.insert(QString::fromStdString(sourceName), std::move(sourceMap));
+	}
 	for (std::string n: _cs.getContractNames())
 	{
 		if (c_predefinedContracts.count(n) != 0)
@@ -326,6 +368,7 @@ void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs)
 	}
 	releaseContracts();
 	m_contractMap.swap(result);
+	m_sourceMaps.swap(sourceMaps);
 	emit codeChanged();
 	emit compilationComplete();
 }
@@ -431,3 +474,32 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 	return r;
 }
 
+bool CodeModel::isContractOrFunctionLocation(dev::SourceLocation const& _location)
+{
+	if (!_location.sourceName)
+		return false;
+	Guard l(x_contractMap);
+	auto sourceMapIter = m_sourceMaps.find(QString::fromStdString(*_location.sourceName));
+	if (sourceMapIter != m_sourceMaps.cend())
+	{
+		LocationPair location(_location.start, _location.end);
+		return sourceMapIter.value().contracts.contains(location) || sourceMapIter.value().functions.contains(location);
+	}
+	return false;
+}
+
+QString CodeModel::resolveFunctionName(dev::SourceLocation const& _location)
+{
+	if (!_location.sourceName)
+		return QString();
+	Guard l(x_contractMap);
+	auto sourceMapIter = m_sourceMaps.find(QString::fromStdString(*_location.sourceName));
+	if (sourceMapIter != m_sourceMaps.cend())
+	{
+		LocationPair location(_location.start, _location.end);
+		auto functionNameIter = sourceMapIter.value().functions.find(location);
+		if (functionNameIter != sourceMapIter.value().functions.cend())
+			return functionNameIter.value();
+	}
+	return QString();
+}

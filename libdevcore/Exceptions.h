@@ -53,6 +53,7 @@ struct BadRoot: virtual Exception {};
 struct FileError: virtual Exception {};
 struct Overflow: virtual Exception {};
 struct InterfaceNotSupported: virtual Exception { public: InterfaceNotSupported(std::string _f): Exception("Interface " + _f + " not supported.") {} };
+struct FailedInvariant: virtual Exception {};
 
 // error information to be added to exceptions
 using errinfo_invalidSymbol = boost::error_info<struct tag_invalidSymbol, char>;
