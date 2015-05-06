@@ -517,8 +517,19 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			case PingNode::type:
 			{
 				PingNode in = PingNode::fromBytesConstRef(_from, rlpBytes);
-				if (in.version != dev::p2p::c_protocolVersion)
-					return;
+				if (in.version < dev::p2p::c_protocolVersion)
+				{
+					if (in.version == 3)
+					{
+						compat::Pong p(in.source);
+						p.echo = sha3(rlpBytes);
+						p.sign(m_secret);
+						m_socketPointer->send(p);
+					}
+					else
+						return;
+				}
+				
 				if (RLPXDatagramFace::secondsSinceEpoch() > in.ts)
 				{
 					clog(NodeTableTriviaSummary) << "Received expired PingNode from " << _from.address().to_string() << ":" << _from.port();
@@ -621,5 +632,27 @@ void PingNode::interpretRLP(bytesConstRef _bytes)
 		ts = r[3].toInt<uint32_t>(RLP::Strict);
 	}
 	else
-		version = 0;
+		version = r[0].toInt<unsigned>(RLP::Strict);
+}
+
+void Pong::streamRLP(RLPStream& _s) const
+{
+	_s.appendList(3);
+	destination.streamRLP(_s);
+	_s << echo << ts;
+}
+
+void Pong::interpretRLP(bytesConstRef _bytes)
+{
+	RLP r(_bytes);
+	destination.interpretRLP(r[0]);
+	echo = (h256)r[1];
+	ts = r[2].toInt<uint32_t>();
+}
+
+void compat::Pong::interpretRLP(bytesConstRef _bytes)
+{
+	RLP r(_bytes);
+	echo = (h256)r[0];
+	ts = r[1].toInt<uint32_t>();
 }
