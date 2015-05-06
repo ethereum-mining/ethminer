@@ -22,8 +22,8 @@
 #include "Assembly.h"
 #include <fstream>
 #include <libdevcore/Log.h>
-#include <libevmcore/CommonSubexpressionEliminator.h>
-#include <libevmcore/ControlFlowGraph.h>
+#include <libevmasm/CommonSubexpressionEliminator.h>
+#include <libevmasm/ControlFlowGraph.h>
 #include <json/json.h>
 using namespace std;
 using namespace dev;

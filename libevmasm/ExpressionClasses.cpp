@@ -21,14 +21,14 @@
  * Container for equivalence classes of expressions for use in common subexpression elimination.
  */
 
-#include <libevmcore/ExpressionClasses.h>
+#include <libevmasm/ExpressionClasses.h>
 #include <utility>
 #include <tuple>
 #include <functional>
 #include <boost/range/adaptor/reversed.hpp>
 #include <boost/noncopyable.hpp>
-#include <libevmcore/Assembly.h>
-#include <libevmcore/CommonSubexpressionEliminator.h>
+#include <libevmasm/Assembly.h>
+#include <libevmasm/CommonSubexpressionEliminator.h>
 
 using namespace std;
 using namespace dev;

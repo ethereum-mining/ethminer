@@ -14,12 +14,23 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file setup.js
- * @authors:
- *   Marek Kotewicz <marek@ethdev.com>
+/** @file Exceptions.h
+ * @author Christian <c@ethdev.com>
  * @date 2014
  */
 
-var web3 = require('web3');
-web3.setProvider(new web3.providers.HttpProvider("http://localhost:8545"));
+#pragma once
 
+#include <libdevcore/Exceptions.h>
+
+namespace dev
+{
+namespace eth
+{
+
+struct AssemblyException: virtual Exception {};
+struct OptimizerException: virtual AssemblyException {};
+struct StackTooDeepException: virtual OptimizerException {};
+
+}
+}

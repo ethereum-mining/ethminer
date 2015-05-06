@@ -120,6 +120,61 @@ BOOST_AUTO_TEST_CASE(saveNodes)
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_FIXTURE_TEST_SUITE(p2pPeer, P2PFixture)
+
+BOOST_AUTO_TEST_CASE(requirePeer)
+{
+	auto oldLogVerbosity = g_logVerbosity;
+	g_logVerbosity = 10;
+
+	const char* const localhost = "127.0.0.1";
+	NetworkPreferences prefs1(localhost, 30301, false);
+	NetworkPreferences prefs2(localhost, 30302, false);
+	Host host1("Test", prefs1);
+	host1.start();
+
+	Host host2("Test", prefs2);
+	host2.start();
+
+	auto node2 = host2.id();
+	host1.requirePeer(node2, NodeIPEndpoint(bi::address::from_string(localhost), prefs2.listenPort, prefs2.listenPort));
+
+	this_thread::sleep_for(chrono::seconds(3));
+
+	auto host1peerCount = host1.peerCount();
+	auto host2peerCount = host2.peerCount();
+	BOOST_REQUIRE_EQUAL(host1peerCount, 1);
+	BOOST_REQUIRE_EQUAL(host2peerCount, 1);
+
+	PeerSessionInfos sis1 = host1.peerSessionInfo();
+	PeerSessionInfos sis2 = host2.peerSessionInfo();
+
+	BOOST_REQUIRE_EQUAL(sis1.size(), 1);
+	BOOST_REQUIRE_EQUAL(sis2.size(), 1);
+
+	Peers peers1 = host1.getPeers();
+	Peers peers2 = host2.getPeers();
+	BOOST_REQUIRE_EQUAL(peers1.size(), 1);
+	BOOST_REQUIRE_EQUAL(peers2.size(), 1);
+
+	DisconnectReason disconnect1 = peers1[0].lastDisconnect();
+	DisconnectReason disconnect2 = peers2[0].lastDisconnect();
+	BOOST_REQUIRE_EQUAL(disconnect1, disconnect2);
+
+	host1.relinquishPeer(node2);
+
+	this_thread::sleep_for(chrono::seconds(1));
+
+	host1peerCount = host1.peerCount();
+	host2peerCount = host2.peerCount();
+	BOOST_REQUIRE_EQUAL(host1peerCount, 1);
+	BOOST_REQUIRE_EQUAL(host2peerCount, 1);
+
+	g_logVerbosity = oldLogVerbosity;
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE(peerTypes)
 
 BOOST_AUTO_TEST_CASE(emptySharedPeer)

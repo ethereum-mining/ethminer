@@ -23,7 +23,7 @@
 
 #include <string>
 #include <QObject>
-#include <libevmcore/SourceLocation.h>
+#include <libevmasm/SourceLocation.h>
 
 namespace dev
 {
