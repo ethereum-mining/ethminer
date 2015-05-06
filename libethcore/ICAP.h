@@ -51,8 +51,6 @@ public:
 	ICAP() = default;
 	/// Construct a direct ICAP object for given target address. Must have a zero first byte.
 	ICAP(Address const& _target): m_type(Direct), m_direct(_target) {}
-	/// Construct an indirect ICAP object for given target name.
-	ICAP(std::string const& _target): m_type(Indirect), m_client(boost::algorithm::to_upper_copy(_target)), m_asset("ETH") {}
 	/// Construct an indirect ICAP object for given client and institution names.
 	ICAP(std::string const& _client, std::string const& _inst): m_type(Indirect), m_client(boost::algorithm::to_upper_copy(_client)), m_institution(boost::algorithm::to_upper_copy(_inst)), m_asset("XET") {}
 	/// Construct an indirect ICAP object for given client, institution and asset names. You generally don't want to use this.

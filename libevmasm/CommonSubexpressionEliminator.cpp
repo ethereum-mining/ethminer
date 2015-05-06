@@ -24,8 +24,8 @@
 #include <functional>
 #include <boost/range/adaptor/reversed.hpp>
 #include <libdevcrypto/SHA3.h>
-#include <libevmcore/CommonSubexpressionEliminator.h>
-#include <libevmcore/AssemblyItem.h>
+#include <libevmasm/CommonSubexpressionEliminator.h>
+#include <libevmasm/AssemblyItem.h>
 
 using namespace std;
 using namespace dev;

@@ -305,6 +305,7 @@ endif()
 
 add_subdirectory(libdevcore)
 add_subdirectory(libevmcore)
+add_subdirectory(libevmasm)
 add_subdirectory(liblll)
 
 if (SERPENT)
