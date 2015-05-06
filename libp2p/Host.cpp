@@ -737,6 +737,9 @@ bytes Host::saveNetwork() const
 
 void Host::restoreNetwork(bytesConstRef _b)
 {
+	if (!_b.size())
+		return;
+	
 	// nodes can only be added if network is added
 	if (!isStarted())
 		BOOST_THROW_EXCEPTION(NetworkStartRequired());
@@ -756,7 +759,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 		for (auto i: r[2])
 		{
 			// todo: ipv6
-			if (i[0].itemCount() != 4)
+			if (i[0].itemCount() != 4 && i[0].size() != 4)
 				continue;
 
 			if (i.itemCount() == 4 || i.itemCount() == 11)
