@@ -75,7 +75,7 @@ void NodeTable::processEvents()
 		m_nodeEventHandler->processEvents();
 }
 
-shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relation = Unknown)
+shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relation)
 {
 	if (_relation == Known)
 	{
