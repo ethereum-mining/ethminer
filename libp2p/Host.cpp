@@ -226,7 +226,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 					return;
 				}
 		
-		if (peerSlotsAvailable(Ingress))
+		if (!peerSlotsAvailable(Ingress))
 		{
 			ps->disconnect(TooManyPeers);
 			return;
@@ -580,10 +580,8 @@ void Host::run(boost::system::error_code const&)
 
 	// todo: update peerSlotsAvailable()
 	unsigned pendingCount = 0;
-	{
-		Guard l(x_pendingNodeConns);
+	ETH_GUARDED(x_pendingNodeConns)
 		pendingCount = m_pendingPeerConns.size();
-	}
 	int openSlots = m_idealPeerCount - peerCount() - pendingCount;
 	if (openSlots > 0)
 	{
