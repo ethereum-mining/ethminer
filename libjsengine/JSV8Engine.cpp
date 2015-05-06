@@ -33,19 +33,19 @@ namespace dev
 namespace eth
 {
 
-static const char* toCString(v8::String::Utf8Value const& value)
+static char const* toCString(v8::String::Utf8Value const& _value)
 {
-	return *value ? *value : "<string conversion failed>";
+	return *_value ? *_value : "<string conversion failed>";
 }
 
 // from:        https://github.com/v8/v8-git-mirror/blob/master/samples/shell.cc
 // v3.15 from:  https://chromium.googlesource.com/v8/v8.git/+/3.14.5.9/samples/shell.cc
-void reportException(v8::TryCatch* try_catch)
+void reportException(v8::TryCatch*_try_catch)
 {
 	v8::HandleScope handle_scope;
-	v8::String::Utf8Value exception(try_catch->Exception());
-	const char* exception_string = toCString(exception);
-	v8::Handle<v8::Message> message = try_catch->Message();
+	v8::String::Utf8Value exception(_try_catch->Exception());
+	char const* exception_string = toCString(exception);
+	v8::Handle<v8::Message> message = _try_catch->Message();
 
 	// V8 didn't provide any extra information about this error; just
 	// print the exception.
@@ -55,13 +55,13 @@ void reportException(v8::TryCatch* try_catch)
 	{
 		// Print (filename):(line number): (message).
 		v8::String::Utf8Value filename(message->GetScriptResourceName());
-		const char* filename_string = toCString(filename);
+		char const* filename_string = toCString(filename);
 		int linenum = message->GetLineNumber();
 		printf("%s:%i: %s\n", filename_string, linenum, exception_string);
 
 		// Print line of source code.
 		v8::String::Utf8Value sourceline(message->GetSourceLine());
-		const char* sourceline_string = toCString(sourceline);
+		char const* sourceline_string = toCString(sourceline);
 		printf("%s\n", sourceline_string);
 
 		// Print wavy underline (GetUnderline is deprecated).
@@ -76,10 +76,10 @@ void reportException(v8::TryCatch* try_catch)
 
 		printf("\n");
 
-		v8::String::Utf8Value stack_trace(try_catch->StackTrace());
+		v8::String::Utf8Value stack_trace(_try_catch->StackTrace());
 		if (stack_trace.length() > 0)
 		{
-			const char* stack_trace_string = toCString(stack_trace);
+			char const* stack_trace_string = toCString(stack_trace);
 			printf("%s\n", stack_trace_string);
 		}
 	}
@@ -94,18 +94,12 @@ public:
 	}
 };
 
-v8::Handle<v8::Context> createShellContext()
-{
-	v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New();
-	return v8::Context::New(NULL, global);
-}
-
 class JSV8Scope
 {
 public:
 	JSV8Scope():
 			m_handleScope(),
-			m_context(createShellContext()),
+			m_context(v8::Context::New(NULL, v8::ObjectTemplate::New())),
 			m_contextScope(m_context)
 	{
 		m_context->Enter();
@@ -157,7 +151,7 @@ JSV8Engine::~JSV8Engine()
 	delete m_scope;
 }
 
-JSV8Value JSV8Engine::eval(const char* _cstr) const
+JSV8Value JSV8Engine::eval(char const* _cstr) const
 {
 	v8::HandleScope handleScope;
 	v8::TryCatch tryCatch;
