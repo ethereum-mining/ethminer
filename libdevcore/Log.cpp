@@ -24,13 +24,56 @@
 #include <string>
 #include <iostream>
 #include <thread>
+#include <boost/asio/ip/tcp.hpp>
 #include "Guards.h"
 using namespace std;
 using namespace dev;
 
+//⊳⊲◀▶■▣▢□▷◁▧▨▩▲◆◉◈◇◎●◍◌○◼☑☒☎☢☣☰☀♽♥♠✩✭❓✔✓✖✕✘✓✔✅⚒⚡⦸⬌∅⁕«««»»»⚙
+
 // Logging
 int dev::g_logVerbosity = 5;
 map<type_info const*, bool> dev::g_logOverride;
+
+#ifdef _WIN32
+const char* LogChannel::name() { return EthGray "..."; }
+const char* LeftChannel::name() { return EthNavy "<--"; }
+const char* RightChannel::name() { return EthGreen "-->"; }
+const char* WarnChannel::name() { return EthOnRed EthBlackBold "  X"; }
+const char* NoteChannel::name() { return EthBlue "  i"; }
+const char* DebugChannel::name() { return EthWhite "  D"; }
+#else
+const char* LogChannel::name() { return EthGray "···"; }
+const char* LeftChannel::name() { return EthNavy "◀▬▬"; }
+const char* RightChannel::name() { return EthGreen "▬▬▶"; }
+const char* WarnChannel::name() { return EthOnRed EthBlackBold "  ✘"; }
+const char* NoteChannel::name() { return EthBlue "  ℹ"; }
+const char* DebugChannel::name() { return EthWhite "  ◇"; }
+#endif
+
+LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v, bool _autospacing):
+	m_autospacing(_autospacing),
+	m_verbosity(_v)
+{
+	auto it = g_logOverride.find(_info);
+	if ((it != g_logOverride.end() && it->second == true) || (it == g_logOverride.end() && (int)_v <= g_logVerbosity))
+	{
+		time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		char buf[24];
+		if (strftime(buf, 24, "%X", localtime(&rawTime)) == 0)
+			buf[0] = '\0'; // empty if case strftime fails
+		static char const* c_begin = "  " EthViolet;
+		static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
+		static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
+		static char const* c_end = EthReset "  ";
+		m_sstr << _id << c_begin << buf << c_sep1 << getThreadName() << ThreadContext::join(c_sep2) << c_end;
+	}
+}
+
+void LogOutputStreamBase::append(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> const& _t)
+{
+	m_sstr << EthNavyUnder "tcp://" << _t << EthReset;
+}
 
 /// Associate a name with each thread for nice logging.
 struct ThreadLocalLogName
@@ -115,8 +158,8 @@ void dev::setThreadName(string const& _n)
 
 void dev::simpleDebugOut(std::string const& _s, char const*)
 {
-	static Mutex s_lock;
-	Guard l(s_lock);
+	static SpinLock s_lock;
+	SpinGuard l(s_lock);
 
 	cerr << _s << endl << flush;
 

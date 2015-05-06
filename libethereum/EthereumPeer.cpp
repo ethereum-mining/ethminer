@@ -134,7 +134,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 				clog(NetWarn) << "Bad state: asking for Hashes yet not syncing!";
 			if (shouldGrabBlocks())
 			{
-				clog(NetNote) << "Difficulty of hashchain HIGHER. Grabbing" << m_syncingNeededBlocks.size() << "blocks [latest now" << m_syncingLatestHash.abridged() << ", was" << host()->m_latestBlockSent.abridged() << "]";
+				clog(NetNote) << "Difficulty of hashchain HIGHER. Grabbing" << m_syncingNeededBlocks.size() << "blocks [latest now" << m_syncingLatestHash << ", was" << host()->m_latestBlockSent << "]";
 
 				host()->m_man.resetToChain(m_syncingNeededBlocks);
 //				host()->m_latestBlockSent = m_syncingLatestHash;
@@ -253,7 +253,7 @@ bool EthereumPeer::shouldGrabBlocks() const
 	if (m_syncingNeededBlocks.empty())
 		return false;
 
-	clog(NetNote) << "Should grab blocks? " << td << "vs" << ctd << ";" << m_syncingNeededBlocks.size() << " blocks, ends" << m_syncingNeededBlocks.back().abridged();
+	clog(NetNote) << "Should grab blocks? " << td << "vs" << ctd << ";" << m_syncingNeededBlocks.size() << " blocks, ends" << m_syncingNeededBlocks.back();
 
 	if (td < ctd || (td == ctd && host()->m_chain.currentHash() == lh))
 		return false;
@@ -280,7 +280,7 @@ void EthereumPeer::attemptSync()
 	unsigned n = host()->m_chain.number();
 	u256 td = host()->m_chain.details().totalDifficulty;
 
-	clog(NetAllDetail) << "Attempt chain-grab? Latest:" << c.abridged() << ", number:" << n << ", TD:" << td << " versus " << m_totalDifficulty;
+	clog(NetAllDetail) << "Attempt chain-grab? Latest:" << c << ", number:" << n << ", TD:" << td << " versus " << m_totalDifficulty;
 	if (td >= m_totalDifficulty)
 	{
 		clog(NetAllDetail) << "No. Our chain is better.";
@@ -310,7 +310,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		m_latestHash = _r[3].toHash<h256>();
 		auto genesisHash = _r[4].toHash<h256>();
 
-		clog(NetMessageSummary) << "Status:" << m_protocolVersion << "/" << m_networkId << "/" << genesisHash.abridged() << ", TD:" << m_totalDifficulty << "=" << m_latestHash.abridged();
+		clog(NetMessageSummary) << "Status:" << m_protocolVersion << "/" << m_networkId << "/" << genesisHash << ", TD:" << m_totalDifficulty << "=" << m_latestHash;
 
 		if (genesisHash != host()->m_chain.genesisHash())
 			disable("Invalid genesis hash");
@@ -329,9 +329,10 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	case GetTransactionsPacket: break;	// DEPRECATED.
 	case TransactionsPacket:
 	{
-		clog(NetAllDetail) << "Transactions (" << dec << _r.itemCount() << "entries)";
+		unsigned itemCount = _r.itemCount();
+		clog(NetAllDetail) << "Transactions (" << dec << itemCount << "entries)";
 		Guard l(x_knownTransactions);
-		for (unsigned i = 0; i < _r.itemCount(); ++i)
+		for (unsigned i = 0; i < itemCount; ++i)
 		{
 			auto h = sha3(_r[i].data());
 			m_knownTransactions.insert(h);
@@ -358,7 +359,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	{
 		h256 later = _r[0].toHash<h256>();
 		unsigned limit = _r[1].toInt<unsigned>();
-		clog(NetMessageSummary) << "GetBlockHashes (" << limit << "entries," << later.abridged() << ")";
+		clog(NetMessageSummary) << "GetBlockHashes (" << limit << "entries," << later << ")";
 
 		unsigned c = min<unsigned>(host()->m_chain.number(later), limit);
 
@@ -373,21 +374,22 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case BlockHashesPacket:
 	{
-		clog(NetMessageSummary) << "BlockHashes (" << dec << _r.itemCount() << "entries)" << (_r.itemCount() ? "" : ": NoMoreHashes");
+		unsigned itemCount = _r.itemCount();
+		clog(NetMessageSummary) << "BlockHashes (" << dec << itemCount << "entries)" << (itemCount ? "" : ": NoMoreHashes");
 
 		if (m_asking != Asking::Hashes)
 		{
 			cwarn << "Peer giving us hashes when we didn't ask for them.";
 			break;
 		}
-		if (_r.itemCount() == 0)
+		if (itemCount == 0)
 		{
 			transition(Asking::Blocks);
 			return true;
 		}
 		unsigned knowns = 0;
 		unsigned unknowns = 0;
-		for (unsigned i = 0; i < _r.itemCount(); ++i)
+		for (unsigned i = 0; i < itemCount; ++i)
 		{
 			addRating(1);
 			auto h = _r[i].toHash<h256>();
@@ -413,7 +415,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 				knowns++;
 			m_syncingLastReceivedHash = h;
 		}
-		clog(NetMessageSummary) << knowns << "knowns," << unknowns << "unknowns; now at" << m_syncingLastReceivedHash.abridged();
+		clog(NetMessageSummary) << knowns << "knowns," << unknowns << "unknowns; now at" << m_syncingLastReceivedHash;
 		// run through - ask for more.
 		transition(Asking::Hashes);
 		break;
@@ -454,12 +456,13 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case BlocksPacket:
 	{
-		clog(NetMessageSummary) << "Blocks (" << dec << _r.itemCount() << "entries)" << (_r.itemCount() ? "" : ": NoMoreBlocks");
+		unsigned itemCount = _r.itemCount();
+		clog(NetMessageSummary) << "Blocks (" << dec << itemCount << "entries)" << (itemCount ? "" : ": NoMoreBlocks");
 
 		if (m_asking != Asking::Blocks)
 			clog(NetWarn) << "Unexpected Blocks received!";
 
-		if (_r.itemCount() == 0)
+		if (itemCount == 0)
 		{
 			// Got to this peer's latest block - just give up.
 			transition(Asking::Nothing);
@@ -472,7 +475,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		unsigned got = 0;
 		unsigned repeated = 0;
 
-		for (unsigned i = 0; i < _r.itemCount(); ++i)
+		for (unsigned i = 0; i < itemCount; ++i)
 		{
 			auto h = BlockInfo::headerHash(_r[i].data());
 			if (m_sub.noteBlock(h))
@@ -526,7 +529,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	case NewBlockPacket:
 	{
 		auto h = BlockInfo::headerHash(_r[0].data());
-		clog(NetMessageSummary) << "NewBlock: " << h.abridged();
+		clog(NetMessageSummary) << "NewBlock: " << h;
 
 		if (_r.itemCount() != 2)
 			disable("NewBlock without 2 data fields.");

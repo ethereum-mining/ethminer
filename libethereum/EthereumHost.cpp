@@ -61,7 +61,7 @@ bool EthereumHost::ensureInitialised()
 	{
 		// First time - just initialise.
 		m_latestBlockSent = m_chain.currentHash();
-		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent.abridged();
+		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent;
 
 		for (auto const& i: m_tq.transactions())
 			m_transactionsSent.insert(i.first);
@@ -122,7 +122,7 @@ void EthereumHost::noteDoneBlocks(EthereumPeer* _who, bool _clemency)
 		// Done our chain-get.
 		clog(NetNote) << "Chain download complete.";
 		// 1/100th for each useful block hash.
-		_who->addRating(m_man.chain().size() / 100);
+		_who->addRating(m_man.chainSize() / 100);
 		m_man.reset();
 	}
 	else if (_who->isSyncing())

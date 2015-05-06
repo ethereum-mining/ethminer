@@ -279,7 +279,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		if (!_ec)
 		{
 			if (!m_socket->remoteEndpoint().address().is_unspecified())
-				clog(NetWarn) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Timeout)";
+				clog(NetConnect) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Timeout)";
 			cancel();
 		}
 	});

@@ -28,6 +28,8 @@
 
 #include <deque>
 #include <chrono>
+#include <unordered_map>
+#include <unordered_set>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Guards.h>
@@ -39,6 +41,14 @@
 #include "Transaction.h"
 #include "BlockQueue.h"
 namespace ldb = leveldb;
+
+namespace std
+{
+template <> struct hash<pair<dev::h256, unsigned>>
+{
+	size_t operator()(pair<dev::h256, unsigned> const& _x) const { return hash<dev::h256>()(_x.first) ^ hash<unsigned>()(_x.second); }
+};
+}
 
 namespace dev
 {
@@ -56,17 +66,17 @@ struct AlreadyHaveBlock: virtual Exception {};
 struct UnknownParent: virtual Exception {};
 struct FutureTime: virtual Exception {};
 
-struct BlockChainChat: public LogChannel { static const char* name() { return "-B-"; } static const int verbosity = 5; };
-struct BlockChainNote: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 3; };
-struct BlockChainWarn: public LogChannel { static const char* name() { return "=B="; } static const int verbosity = 1; };
-struct BlockChainDebug: public LogChannel { static const char* name() { return "#B#"; } static const int verbosity = 0; };
+struct BlockChainChat: public LogChannel { static const char* name(); static const int verbosity = 5; };
+struct BlockChainNote: public LogChannel { static const char* name(); static const int verbosity = 3; };
+struct BlockChainWarn: public LogChannel { static const char* name(); static const int verbosity = 1; };
+struct BlockChainDebug: public LogChannel { static const char* name(); static const int verbosity = 0; };
 
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
 std::map<Address, Account> const& genesisState();
 
 ldb::Slice toSlice(h256 const& _h, unsigned _sub = 0);
 
-using BlocksHash = std::map<h256, bytes>;
+using BlocksHash = std::unordered_map<h256, bytes>;
 using TransactionHashes = h256s;
 using UncleHashes = h256s;
 using ImportRoute = std::pair<h256s, h256s>;
@@ -105,7 +115,7 @@ public:
 
 	/// Attempt to import the given block directly into the CanonBlockChain and sync with the state DB.
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
-	ImportRoute attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default) noexcept;
+	std::pair<ImportResult, ImportRoute> attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default) noexcept;
 
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
@@ -144,7 +154,7 @@ public:
 	UncleHashes uncleHashes() const { return uncleHashes(currentHash()); }
 	
 	/// Get the hash for a given block's number.
-	h256 numberHash(unsigned _i) const { if (!_i) return genesisHash(); return queryExtras<BlockHash, ExtraBlockHash>(h256(u256(_i)), m_blockHashes, x_blockHashes, NullBlockHash).value; }
+	h256 numberHash(unsigned _i) const { if (!_i) return genesisHash(); return queryExtras<BlockHash, ExtraBlockHash>(h256(_i), m_blockHashes, x_blockHashes, NullBlockHash).value; }
 
 	/// Get the last N hashes for a given block. (N is determined by the LastHashes type.)
 	LastHashes lastHashes() const { return lastHashes(number()); }
@@ -251,7 +261,7 @@ private:
 	void open(std::string const& _path, WithExisting _we = WithExisting::Trust);
 	void close();
 
-	template<class T, unsigned N> T queryExtras(h256 const& _h, std::map<h256, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const
+	template<class T, unsigned N> T queryExtras(h256 const& _h, std::unordered_map<h256, T>& _m, boost::shared_mutex& _x, T const& _n, ldb::DB* _extrasDB = nullptr) const
 	{
 		{
 			ReadGuard l(_x);
@@ -295,8 +305,8 @@ private:
 
 	using CacheID = std::pair<h256, unsigned>;
 	mutable Mutex x_cacheUsage;
-	mutable std::deque<std::set<CacheID>> m_cacheUsage;
-	mutable std::set<CacheID> m_inUse;
+	mutable std::deque<std::unordered_set<CacheID>> m_cacheUsage;
+	mutable std::unordered_set<CacheID> m_inUse;
 	void noteUsed(h256 const& _h, unsigned _extra = (unsigned)-1) const;
 	std::chrono::system_clock::time_point m_lastCollection;
 

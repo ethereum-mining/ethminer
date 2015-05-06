@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <unordered_map>
 #pragma warning(push)
 #pragma warning(disable: 4100 4267)
 #include <leveldb/db.h>
@@ -92,6 +93,7 @@ struct BlockReceipts
 struct BlockHash
 {
 	BlockHash() {}
+	BlockHash(h256 const& _h): value(_h) {}
 	BlockHash(RLP const& _r) { value = _r.toHash<h256>(); }
 	bytes rlp() const { return dev::rlp(value); }
 
@@ -113,12 +115,12 @@ struct TransactionAddress
 	static const unsigned size = 67;
 };
 
-using BlockDetailsHash = std::map<h256, BlockDetails>;
-using BlockLogBloomsHash = std::map<h256, BlockLogBlooms>;
-using BlockReceiptsHash = std::map<h256, BlockReceipts>;
-using TransactionAddressHash = std::map<h256, TransactionAddress>;
-using BlockHashHash = std::map<h256, BlockHash>;
-using BlocksBloomsHash = std::map<h256, BlocksBlooms>;
+using BlockDetailsHash = std::unordered_map<h256, BlockDetails>;
+using BlockLogBloomsHash = std::unordered_map<h256, BlockLogBlooms>;
+using BlockReceiptsHash = std::unordered_map<h256, BlockReceipts>;
+using TransactionAddressHash = std::unordered_map<h256, TransactionAddress>;
+using BlockHashHash = std::unordered_map<h256, BlockHash>;
+using BlocksBloomsHash = std::unordered_map<h256, BlocksBlooms>;
 
 static const BlockDetails NullBlockDetails;
 static const BlockLogBlooms NullBlockLogBlooms;

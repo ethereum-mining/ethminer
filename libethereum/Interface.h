@@ -25,7 +25,6 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
-#include <libethcore/Params.h>
 #include <libethcore/ProofOfWork.h>
 #include "LogFilter.h"
 #include "Transaction.h"
@@ -85,6 +84,12 @@ public:
 	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) = 0;
 	ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, FudgeFactor _ff = FudgeFactor::Strict) { return create(_secret, _value, _data, _gas, _gasPrice, m_default, _ff); }
 
+	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
+	virtual ImportResult injectTransaction(bytes const& _rlp) = 0;
+
+	/// Injects the RLP-encoded block given by the _rlp into the block queue directly.
+	virtual ImportResult injectBlock(bytes const& _block) = 0;
+
 	// [STATE-QUERY API]
 
 	int getDefault() const { return m_default; }
@@ -94,12 +99,14 @@ public:
 	u256 countAt(Address _a) const { return countAt(_a, m_default); }
 	u256 stateAt(Address _a, u256 _l) const { return stateAt(_a, _l, m_default); }
 	bytes codeAt(Address _a) const { return codeAt(_a, m_default); }
+	h256 codeHashAt(Address _a) const { return codeHashAt(_a, m_default); }
 	std::map<u256, u256> storageAt(Address _a) const { return storageAt(_a, m_default); }
 
 	virtual u256 balanceAt(Address _a, BlockNumber _block) const = 0;
 	virtual u256 countAt(Address _a, BlockNumber _block) const = 0;
 	virtual u256 stateAt(Address _a, u256 _l, BlockNumber _block) const = 0;
 	virtual bytes codeAt(Address _a, BlockNumber _block) const = 0;
+	virtual h256 codeHashAt(Address _a, BlockNumber _block) const = 0;
 	virtual std::map<u256, u256> storageAt(Address _a, BlockNumber _block) const = 0;
 
 	// [LOGS API]

@@ -24,6 +24,20 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
+const char* NodeTableWarn::name() { return "!P!"; }
+const char* NodeTableNote::name() { return "*P*"; }
+const char* NodeTableMessageSummary::name() { return "-P-"; }
+const char* NodeTableMessageDetail::name() { return "=P="; }
+const char* NodeTableConnect::name() { return "+P+"; }
+const char* NodeTableEvent::name() { return "+P+"; }
+const char* NodeTableTimer::name() { return "+P+"; }
+const char* NodeTableUpdate::name() { return "+P+"; }
+const char* NodeTableTriviaSummary::name() { return "-P-"; }
+const char* NodeTableTriviaDetail::name() { return "=P="; }
+const char* NodeTableAllDetail::name() { return "=P="; }
+const char* NodeTableEgress::name() { return ">>P"; }
+const char* NodeTableIngress::name() { return "<<P"; }
+
 NodeEntry::NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src.id,_pubk)) {}
 
 NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint):
@@ -73,7 +87,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 	// we handle when tcp endpoint is 0 below
 	if (_node.endpoint.address.to_string() == "0.0.0.0")
 	{
-		clog(NodeTableWarn) << "addNode Failed. Invalid UDP address 0.0.0.0 for" << _node.id.abridged();
+		clog(NodeTableWarn) << "addNode Failed. Invalid UDP address" << LogTag::Url << "0.0.0.0" << "for" << _node.id;
 		return move(shared_ptr<NodeEntry>());
 	}
 	
@@ -312,7 +326,7 @@ void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _en
 	shared_ptr<NodeEntry> node = nodeEntry(_pubk);
 	if (!!node && !node->pending)
 	{
-		clog(NodeTableConnect) << "Noting active node:" << _pubk.abridged() << _endpoint.address().to_string() << ":" << _endpoint.port();
+		clog(NodeTableConnect) << "Noting active node:" << _pubk << _endpoint.address().to_string() << ":" << _endpoint.port();
 		node->endpoint.address = _endpoint.address();
 		node->endpoint.udpPort = _endpoint.port();
 		
@@ -367,7 +381,7 @@ void NodeTable::dropNode(shared_ptr<NodeEntry> _n)
 	}
 	
 	// notify host
-	clog(NodeTableUpdate) << "p2p.nodes.drop " << _n->id.abridged();
+	clog(NodeTableUpdate) << "p2p.nodes.drop " << _n->id;
 	if (m_nodeEventHandler)
 		m_nodeEventHandler->appendEvent(_n->id, NodeEntryDropped);
 }
@@ -450,7 +464,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 						return; // unsolicited pong; don't note node as active
 				}
 				
-				clog(NodeTableConnect) << "PONG from " << nodeid.abridged() << _from;
+				clog(NodeTableConnect) << "PONG from " << nodeid << _from;
 				break;
 			}
 				
