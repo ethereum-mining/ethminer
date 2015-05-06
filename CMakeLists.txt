@@ -411,6 +411,14 @@ if (WIN32)
 	set(CPACK_COMPONENTS_ALL alethzero mix solc eth ethminer rlp abi)
 
 	# nsis specific stuff
+	if (CMAKE_CL_64)
+		set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+		set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION} (Win64)")
+	else ()
+		set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
+		set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
+	endif()
+
 	set(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} ethereum")
 	set(CPACK_NSIS_HELP_LINK "https://github.com/ethereum/cpp-ethereum")
 	set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/ethereum/cpp-ethereum")
