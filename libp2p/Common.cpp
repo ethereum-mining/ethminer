@@ -26,6 +26,7 @@ using namespace dev::p2p;
 
 const unsigned dev::p2p::c_protocolVersion = 4;
 const unsigned dev::p2p::c_defaultIPPort = 30303;
+static_assert(dev::p2p::c_protocolVersion == 4, "Replace v3 compatbility with v4 compatibility before updating network version.");
 
 const dev::p2p::NodeIPEndpoint dev::p2p::UnspecifiedNodeIPEndpoint = NodeIPEndpoint(bi::address(), 0, 0);
 const dev::p2p::Node dev::p2p::UnspecifiedNode = dev::p2p::Node(NodeId(), UnspecifiedNodeIPEndpoint);
