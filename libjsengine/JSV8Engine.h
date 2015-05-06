@@ -49,7 +49,7 @@ class JSV8Engine : public JSEngine<JSV8Value>
 public:
 	JSV8Engine();
 	virtual ~JSV8Engine();
-	JSV8Value eval(const char* _cstr) const;
+	JSV8Value eval(char const* _cstr) const;
 	v8::Handle<v8::Context> const& context() const;
 
 private:
