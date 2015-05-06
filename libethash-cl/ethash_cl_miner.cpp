@@ -88,6 +88,13 @@ std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _devic
 	return "{ \"platform\": \"" + platforms[platform_num].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
 }
 
+unsigned ethash_cl_miner::get_num_platforms()
+{
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	return platforms.size();
+}
+
 unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
 {
 	std::vector<cl::Platform> platforms;
@@ -117,14 +124,11 @@ void ethash_cl_miner::finish()
 	}
 }
 
-bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size, unsigned _platformId, unsigned _deviceId)
+bool ethash_cl_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned workgroup_size, unsigned _platformId, unsigned _deviceId)
 {
-	// store params
-	m_params = params;
-
 	// get all platforms
-    std::vector<cl::Platform> platforms;
-    cl::Platform::get(&platforms);
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
 	if (platforms.empty())
 	{
 		cout << "No OpenCL platforms found." << endl;
@@ -137,10 +141,10 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 
 	cout << "Using platform: " << platforms[_platformId].getInfo<CL_PLATFORM_NAME>().c_str() << endl;
 
-    // get GPU device of the default platform
-    std::vector<cl::Device> devices;
+	// get GPU device of the default platform
+	std::vector<cl::Device> devices;
 	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
-    if (devices.empty())
+	if (devices.empty())
 	{
 		cout << "No OpenCL devices found." << endl;
 		return false;
@@ -171,7 +175,7 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 	// patch source code
 	std::string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
 	add_definition(code, "GROUP_SIZE", m_workgroup_size);
-	add_definition(code, "DAG_SIZE", (unsigned)(params.full_size / ETHASH_MIX_BYTES));
+	add_definition(code, "DAG_SIZE", (unsigned)(_dagSize / ETHASH_MIX_BYTES));
 	add_definition(code, "ACCESSES", ETHASH_ACCESSES);
 	add_definition(code, "MAX_OUTPUTS", c_max_search_results);
 	//debugf("%s", code.c_str());
@@ -194,18 +198,20 @@ bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*
 	m_search_kernel = cl::Kernel(program, "ethash_search");
 
 	// create buffer for dag
-	m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, params.full_size);
+	m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize);
 	
 	// create buffer for header
 	m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
 	// compute dag on CPU
 	{
+		m_queue.enqueueWriteBuffer(m_dag, CL_TRUE, 0, _dagSize, _dag);
+
 		// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
-		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, params.full_size);
+//		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, _dagSize);
 		// memcpying 1GB: horrible... really. horrible. but necessary since we can't mmap *and* gpumap.
-		_fillDAG(dag_ptr);
-		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
+//		_fillDAG(dag_ptr);
+//		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
 	}
 
 	// create mining buffers

@@ -189,7 +189,7 @@ void EthereumHost::maintainTransactions()
 	for (auto const& i: ts)
 	{
 		bool unsent = !m_transactionsSent.count(i.first);
-		for (auto const& p: randomSelection(100, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }))
+		for (auto const& p: randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }).second)
 			peerTransactions[p].push_back(i.first);
 	}
 	for (auto const& t: ts)
@@ -218,28 +218,28 @@ void EthereumHost::maintainTransactions()
 		}
 }
 
-std::vector<std::shared_ptr<EthereumPeer>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
+pair<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
 {
-	std::vector<std::shared_ptr<EthereumPeer>> candidates;
-	candidates.reserve(peerSessions().size());
+	pair<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>> ret;
+	ret.second.reserve(peerSessions().size());
 	for (auto const& j: peerSessions())
 	{
 		auto pp = j.first->cap<EthereumPeer>();
 		if (_allow(pp.get()))
-			candidates.push_back(pp);
+			ret.second.push_back(pp);
 	}
 
-	std::vector<std::shared_ptr<EthereumPeer>> ret;
-	for (unsigned i = (peerSessions().size() * _percent + 99) / 100; i-- && candidates.size();)
+	ret.second.reserve((peerSessions().size() * _percent + 99) / 100);
+	for (unsigned i = (peerSessions().size() * _percent + 99) / 100; i-- && ret.second.size();)
 	{
-		unsigned n = rand() % candidates.size();
-		ret.push_back(std::move(candidates[n]));
-		candidates.erase(candidates.begin() + n);
+		unsigned n = rand() % ret.second.size();
+		ret.first.push_back(std::move(ret.second[n]));
+		ret.second.erase(ret.second.begin() + n);
 	}
 	return ret;
 }
 
-void EthereumHost::maintainBlocks(h256 _currentHash)
+void EthereumHost::maintainBlocks(h256 const& _currentHash)
 {
 	// Send any new blocks.
 	auto detailsFrom = m_chain.details(m_latestBlockSent);
@@ -253,17 +253,28 @@ void EthereumHost::maintainBlocks(h256 _currentHash)
 
 			h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
-			for (auto const& p: randomSelection(100, [&](EthereumPeer* p){return !p->m_knownBlocks.count(_currentHash); }))
+			auto s = randomSelection(25, [&](EthereumPeer* p){ ETH_GUARDED(p->x_knownBlocks) return !p->m_knownBlocks.count(_currentHash); return false; });
+			for (shared_ptr<EthereumPeer> const& p: s.first)
 				for (auto const& b: blocks)
-					if (!p->m_knownBlocks.count(b))
-					{
-						RLPStream ts;
-						p->prep(ts, NewBlockPacket, 2).appendRaw(m_chain.block(b), 1).append(m_chain.details(b).totalDifficulty);
+				{
+					RLPStream ts;
+					p->prep(ts, NewBlockPacket, 2).appendRaw(m_chain.block(b), 1).append(m_chain.details(b).totalDifficulty);
 
-						Guard l(p->x_knownBlocks);
-						p->sealAndSend(ts);
-						p->m_knownBlocks.clear();
-					}
+					Guard l(p->x_knownBlocks);
+					p->sealAndSend(ts);
+					p->m_knownBlocks.clear();
+				}
+			for (shared_ptr<EthereumPeer> const& p: s.second)
+			{
+				RLPStream ts;
+				p->prep(ts, NewBlockHashesPacket, blocks.size());
+				for (auto const& b: blocks)
+					ts.append(b);
+
+				Guard l(p->x_knownBlocks);
+				p->sealAndSend(ts);
+				p->m_knownBlocks.clear();
+			}
 		}
 		m_latestBlockSent = _currentHash;
 	}

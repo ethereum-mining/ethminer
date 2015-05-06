@@ -135,6 +135,8 @@ public:
 	// TODO: P2P this should be combined with peers into a HostStat object of some kind; coalesce data, as it's only used for status information.
 	Peers getPeers() const { RecursiveGuard l(x_sessions); Peers ret; for (auto const& i: m_peers) ret.push_back(*i.second); return ret; }
 
+	NetworkPreferences const& networkPreferences() const { return m_netPrefs; }
+
 	void setNetworkPreferences(NetworkPreferences const& _p, bool _dropPeers = false) { m_dropPeers = _dropPeers; auto had = isStarted(); if (had) stop(); m_netPrefs = _p; if (had) start(); }
 
 	/// Start network. @threadsafe
@@ -162,6 +164,8 @@ protected:
 	void restoreNetwork(bytesConstRef _b);
 
 private:
+	enum PeerSlotRatio { Egress = 2, Ingress = 9 };
+	
 	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
 	
 	/// Determines and sets m_tcpPublic to publicly advertised address.
@@ -169,6 +173,9 @@ private:
 
 	void connect(std::shared_ptr<Peer> const& _p);
 
+	/// Returns true if pending and connected peer count is less than maximum
+	bool peerSlotsAvailable(PeerSlotRatio _type) { Guard l(x_pendingNodeConns); return peerCount() + m_pendingPeerConns.size() < _type * m_idealPeerCount; }
+	
 	/// Ping the peers to update the latency information and disconnect peers which have timed out.
 	void keepAlivePeers();
 

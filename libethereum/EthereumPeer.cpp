@@ -326,7 +326,6 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			transition(Asking::Nothing);
 		break;
 	}
-	case GetTransactionsPacket: break;	// DEPRECATED.
 	case TransactionsPacket:
 	{
 		unsigned itemCount = _r.itemCount();
@@ -560,8 +559,51 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			default:;
 			}
 
-			Guard l(x_knownBlocks);
-			m_knownBlocks.insert(h);
+			ETH_GUARDED(x_knownBlocks)
+				m_knownBlocks.insert(h);
+		}
+		break;
+	}
+	case NewBlockHashesPacket:
+	{
+		clog(NetMessageSummary) << "NewBlockHashes";
+		if (host()->isSyncing())
+			clog(NetMessageSummary) << "Ignoring since we're already downloading.";
+		else
+		{
+			unsigned knowns = 0;
+			unsigned unknowns = 0;
+			unsigned itemCount = _r.itemCount();
+			for (unsigned i = 0; i < itemCount; ++i)
+			{
+				addRating(1);
+				auto h = _r[i].toHash<h256>();
+				ETH_GUARDED(x_knownBlocks)
+					m_knownBlocks.insert(h);
+				auto status = host()->m_bq.blockStatus(h);
+				if (status == QueueStatus::Importing || status == QueueStatus::Ready || host()->m_chain.isKnown(h))
+					knowns++;
+				else if (status == QueueStatus::Bad)
+				{
+					cwarn << "block hash bad!" << h << ". Bailing...";
+					return true;
+				}
+				else if (status == QueueStatus::Unknown)
+				{
+					unknowns++;
+					m_syncingNeededBlocks.push_back(h);
+				}
+				else
+					knowns++;
+			}
+			clog(NetMessageSummary) << knowns << "knowns," << unknowns << "unknowns";
+			if (unknowns > 0)
+			{
+				host()->m_man.resetToChain(m_syncingNeededBlocks);
+				host()->changeSyncer(this);
+				transition(Asking::Blocks);
+			}
+			return true;
 		}
 		break;
 	}
