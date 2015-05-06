@@ -411,6 +411,13 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 	exit(0);
 }
 
+void stopMiningAfterXBlocks(eth::Client *_c, unsigned _start, unsigned _mining)
+{
+	if (_c->isMining() && _c->blockChain().details().number - _start == _mining)
+		_c->stopMining();
+	this_thread::sleep_for(chrono::milliseconds(100));
+}
+
 int main(int argc, char** argv)
 {
 	cout << "\x1b[30mEthBlack\x1b[0m" << endl;
@@ -1642,19 +1649,13 @@ int main(int argc, char** argv)
 			while (!g_exit)
 			{
 				console.repl();
-				if (c->isMining() && c->blockChain().details().number - n == mining)
-					c->stopMining();
-				this_thread::sleep_for(chrono::milliseconds(100));
+				stopMiningAfterXBlocks(c, n, mining);
 			}
 #endif
 		}
 		else
 			while (!g_exit)
-			{
-				if (c->isMining() && c->blockChain().details().number - n == mining)
-					c->stopMining();
-				this_thread::sleep_for(chrono::milliseconds(100));
-			}
+				stopMiningAfterXBlocks(c, n, mining);
 	}
 	else
 		while (!g_exit)
