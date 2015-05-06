@@ -15,7 +15,7 @@ function defaultTransaction()
 
 function rpcCall(requests, callBack)
 {
-	var jsonRpcUrl = "http://localhost:8080";
+	var jsonRpcUrl = "http://localhost:8545";
 	var rpcRequest = JSON.stringify(requests);
 	console.log(rpcRequest);
 	var httpRequest = new XMLHttpRequest();
