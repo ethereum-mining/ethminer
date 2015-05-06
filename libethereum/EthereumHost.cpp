@@ -122,7 +122,7 @@ void EthereumHost::noteDoneBlocks(EthereumPeer* _who, bool _clemency)
 		// Done our chain-get.
 		clog(NetNote) << "Chain download complete.";
 		// 1/100th for each useful block hash.
-		_who->addRating(m_man.chain().size() / 100);
+		_who->addRating(m_man.chainSize() / 100);
 		m_man.reset();
 	}
 	else if (_who->isSyncing())

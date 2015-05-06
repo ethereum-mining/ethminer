@@ -36,7 +36,6 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 	h256 h = sha3(_transactionRLP);
 
 	UpgradableGuard l(m_lock);
-	// TODO: keep old transactions around and check in State for nonce validity
 
 	auto ir = check_WITH_LOCK(h, _ik);
 	if (ir != ImportResult::Success)

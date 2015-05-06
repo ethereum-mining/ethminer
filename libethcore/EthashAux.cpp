@@ -33,7 +33,6 @@
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcrypto/SHA3.h>
 #include <libdevcrypto/FileSystem.h>
-#include <libethcore/Params.h>
 #include "BlockInfo.h"
 using namespace std;
 using namespace chrono;
@@ -87,13 +86,10 @@ ethash_params EthashAux::params(h256 const& _seedHash)
 {
 	Guard l(get()->x_epochs);
 	unsigned epoch = 0;
-	try
+	auto epochIter = get()->m_epochs.find(_seedHash);
+	if (epochIter == get()->m_epochs.end())
 	{
-		epoch = get()->m_epochs.at(_seedHash);
-	}
-	catch (...)
-	{
-//		cdebug << "Searching for seedHash " << _seedHash;
+		//		cdebug << "Searching for seedHash " << _seedHash;
 		for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = sha3(h), get()->m_epochs[h] = epoch) {}
 		if (epoch == 2048)
 		{
@@ -102,6 +98,8 @@ ethash_params EthashAux::params(h256 const& _seedHash)
 			throw std::invalid_argument(error.str());
 		}
 	}
+	else
+		epoch = epochIter->second;
 	return params(epoch * ETHASH_EPOCH_LENGTH);
 }
 

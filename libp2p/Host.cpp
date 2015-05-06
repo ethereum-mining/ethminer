@@ -464,7 +464,7 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 		return;
 	}
 
-	if (!m_nodeTable->haveNode(_p->id))
+	if (!!m_nodeTable && !m_nodeTable->haveNode(_p->id))
 	{
 		clog(NetWarn) << "Aborted connect. Node not in node table.";
 		m_nodeTable->addNode(*_p.get());
