@@ -164,6 +164,8 @@ protected:
 	void restoreNetwork(bytesConstRef _b);
 
 private:
+	enum PeerSlotRatio { Egress = 2, Ingress = 9 };
+	
 	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
 	
 	/// Determines and sets m_tcpPublic to publicly advertised address.
@@ -171,6 +173,9 @@ private:
 
 	void connect(std::shared_ptr<Peer> const& _p);
 
+	/// Returns true if pending and connected peer count is less than maximum
+	bool peerSlotsAvailable(PeerSlotRatio _type) { Guard l(x_pendingNodeConns); return peerCount() + m_pendingPeerConns.size() < _type * m_idealPeerCount; }
+	
 	/// Ping the peers to update the latency information and disconnect peers which have timed out.
 	void keepAlivePeers();
 
