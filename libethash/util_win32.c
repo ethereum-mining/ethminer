@@ -14,26 +14,25 @@
   You should have received a copy of the GNU General Public License
   along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file fnv.h
-* @author Matthew Wampler-Doty <negacthulhu@gmail.com>
-* @date 2015
-*/
+/** @file util.c
+ * @author Tim Hughes <tim@twistedfury.com>
+ * @date 2015
+ */
+#include <stdarg.h>
+#include <stdio.h>
+#include "util.h"
 
-#pragma once
-#include <stdint.h>
-#include "compiler.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// foward declare without all of Windows.h
+__declspec(dllimport) void __stdcall OutputDebugStringA(char const* lpOutputString);
 
-#define FNV_PRIME 0x01000193
-
-static inline uint32_t fnv_hash(uint32_t const x, uint32_t const y)
+void debugf(char const* str, ...)
 {
-	return x * FNV_PRIME ^ y;
-}
+	va_list args;
+	va_start(args, str);
 
-#ifdef __cplusplus
+	char buf[1<<16];
+	_vsnprintf_s(buf, sizeof(buf), sizeof(buf), str, args);
+	buf[sizeof(buf)-1] = '\0';
+	OutputDebugStringA(buf);
 }
-#endif
