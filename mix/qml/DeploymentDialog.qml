@@ -18,9 +18,9 @@ Dialog {
 	height: 400
 	visible: false
 	property int ownedRegistrarDeployGas: 1179075 // TODO: Use sol library to calculate gas requirement for each tr.
-	property int ownedRegistrarSetSubRegistrarGas: 44719
-	property int ownedRegistrarSetContentHashGas: 43691
-	property int urlHintSuggestUrlGas: 62832
+	property int ownedRegistrarSetSubRegistrarGas: 50000
+	property int ownedRegistrarSetContentHashGas: 50000
+	property int urlHintSuggestUrlGas: 70000
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
 	property alias localPackageUrl: localPackageUrl.text
@@ -300,7 +300,7 @@ Dialog {
 					{
 						Layout.preferredWidth: 350
 						id: registrarAddr
-						text: "c6d9d2cd449a754c494264e1809c50e34d64562b"
+						text: "ab69f864e49fc4294d18355c4bafb0b91b5e629b"
 						visible: false
 					}
 
