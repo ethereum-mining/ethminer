@@ -401,7 +401,13 @@ if (WIN32)
 	# our stuff
 	set(CPACK_COMPONENT_ALETHZERO_GROUP "Applications")
 	set(CPACK_COMPONENT_MIX_GROUP "Applications")
-	set(CPACK_COMPONENTS_ALL alethzero mix)
+	set(CPACK_COMPONENT_SOLC_GROUP "CLI")
+	set(CPACK_COMPONENT_ETH_GROUP "CLI")
+	set(CPACK_COMPONENT_ETHMINER_GROUP "CLI")
+	set(CPACK_COMPONENT_RLP_GROUP "CLI")
+	set(CPACK_COMPONENT_ABI_GROUP "CLI")
+
+	set(CPACK_COMPONENTS_ALL alethzero mix solc eth ethminer rlp abi)
 
 	# nsis specific stuff
 	set(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_INSTALL_DIRECTORY} ethereum")
