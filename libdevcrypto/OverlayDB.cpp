@@ -20,6 +20,7 @@
  */
 
 #include <leveldb/db.h>
+#include <leveldb/write_batch.h>
 #include <libdevcore/Common.h>
 #include "OverlayDB.h"
 using namespace std;
@@ -38,23 +39,24 @@ void OverlayDB::commit()
 {
 	if (m_db)
 	{
+		ldb::WriteBatch batch;
 //		cnote << "Committing nodes to disk DB:";
-		for (auto const& i: m_over)
+		for (auto const& i: m_main)
 		{
-//			cnote << i.first << "#" << m_refCount[i.first];
-			if (m_refCount[i.first])
-				m_db->Put(m_writeOptions, ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.data(), i.second.size()));
+//			cnote << i.first << "#" << m_main[i.first].second;
+			if (i.second.second)
+				batch.Put(ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.first.data(), i.second.first.size()));
 		}
-		for (auto const& i: m_auxActive)
-			if (m_aux.count(i))
+		for (auto const& i: m_aux)
+			if (i.second.second)
 			{
-				m_db->Put(m_writeOptions, i.ref(), bytesConstRef(&m_aux[i]));
-				m_aux.erase(i);
+				bytes b = i.first.asBytes();
+				b.push_back(255);	// for aux
+				batch.Put(bytesConstRef(&b), bytesConstRef(&i.second.first));
 			}
-		m_auxActive.clear();
+		m_db->Write(m_writeOptions, &batch);
 		m_aux.clear();
-		m_over.clear();
-		m_refCount.clear();
+		m_main.clear();
 	}
 }
 
@@ -64,7 +66,9 @@ bytes OverlayDB::lookupAux(h256 _h) const
 	if (!ret.empty())
 		return ret;
 	std::string v;
-	m_db->Get(m_readOptions, aux(_h).ref(), &v);
+	bytes b = _h.asBytes();
+	b.push_back(255);	// for aux
+	m_db->Get(m_readOptions, bytesConstRef(&b), &v);
 	if (v.empty())
 		cwarn << "Aux not found: " << _h;
 	return asBytes(v);
@@ -72,8 +76,7 @@ bytes OverlayDB::lookupAux(h256 _h) const
 
 void OverlayDB::rollback()
 {
-	m_over.clear();
-	m_refCount.clear();
+	m_main.clear();
 }
 
 std::string OverlayDB::lookup(h256 _h) const
@@ -103,7 +106,7 @@ void OverlayDB::kill(h256 _h)
 		if (m_db)
 			m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
 		if (ret.empty())
-			cnote << "Decreasing DB node ref count below zero with no DB node. Probably have a corrupt Trie." << _h.abridged();
+			cnote << "Decreasing DB node ref count below zero with no DB node. Probably have a corrupt Trie." << _h;
 	}
 #else
 	MemoryDB::kill(_h);

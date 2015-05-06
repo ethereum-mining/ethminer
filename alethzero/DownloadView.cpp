@@ -39,13 +39,13 @@ void DownloadView::paintEvent(QPaintEvent*)
 	QPainter p(this);
 
 	p.fillRect(rect(), Qt::white);
-	if (!m_man || m_man->chain().empty() || !m_man->subCount())
+	if (!m_man || m_man->chainEmpty() || !m_man->subCount())
 		return;
 
 	double ratio = (double)rect().width() / rect().height();
 	if (ratio < 1)
 		ratio = 1 / ratio;
-	double n = min(16.0, min(rect().width(), rect().height()) / ceil(sqrt(m_man->chain().size() / ratio)));
+	double n = min(16.0, min(rect().width(), rect().height()) / ceil(sqrt(m_man->chainSize() / ratio)));
 
 //	QSizeF area(rect().width() / floor(rect().width() / n), rect().height() / floor(rect().height() / n));
 	QSizeF area(n, n);

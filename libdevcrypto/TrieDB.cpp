@@ -26,3 +26,5 @@ using namespace dev;
 
 h256 const dev::c_shaNull = sha3(rlp(""));
 h256 const dev::EmptyTrie = c_shaNull;
+
+const char* TrieDBChannel::name() { return "-T-"; }

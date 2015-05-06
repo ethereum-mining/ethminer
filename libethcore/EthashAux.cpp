@@ -33,14 +33,11 @@
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcrypto/SHA3.h>
 #include <libdevcrypto/FileSystem.h>
-#include <libethcore/Params.h>
 #include "BlockInfo.h"
 using namespace std;
 using namespace chrono;
 using namespace dev;
 using namespace eth;
-
-#define ETH_IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
 
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
 
@@ -64,7 +61,7 @@ ethash_params EthashAux::params(unsigned _n)
 h256 EthashAux::seedHash(unsigned _number)
 {
 	unsigned epoch = _number / ETHASH_EPOCH_LENGTH;
-	RecursiveGuard l(get()->x_this);
+	Guard l(get()->x_epochs);
 	if (epoch >= get()->m_seedHashes.size())
 	{
 		h256 ret;
@@ -79,7 +76,7 @@ h256 EthashAux::seedHash(unsigned _number)
 		for (; n <= epoch; ++n, ret = sha3(ret))
 		{
 			get()->m_seedHashes[n] = ret;
-//			cdebug << "Epoch" << n << "is" << ret.abridged();
+//			cdebug << "Epoch" << n << "is" << ret;
 		}
 	}
 	return get()->m_seedHashes[epoch];
@@ -87,23 +84,22 @@ h256 EthashAux::seedHash(unsigned _number)
 
 ethash_params EthashAux::params(h256 const& _seedHash)
 {
-	RecursiveGuard l(get()->x_this);
+	Guard l(get()->x_epochs);
 	unsigned epoch = 0;
-	try
+	auto epochIter = get()->m_epochs.find(_seedHash);
+	if (epochIter == get()->m_epochs.end())
 	{
-		epoch = get()->m_epochs.at(_seedHash);
-	}
-	catch (...)
-	{
-//		cdebug << "Searching for seedHash " << _seedHash.abridged();
+		//		cdebug << "Searching for seedHash " << _seedHash;
 		for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = sha3(h), get()->m_epochs[h] = epoch) {}
 		if (epoch == 2048)
 		{
 			std::ostringstream error;
-			error << "apparent block number for " << _seedHash.abridged() << " is too high; max is " << (ETHASH_EPOCH_LENGTH * 2048);
+			error << "apparent block number for " << _seedHash << " is too high; max is " << (ETHASH_EPOCH_LENGTH * 2048);
 			throw std::invalid_argument(error.str());
 		}
 	}
+	else
+		epoch = epochIter->second;
 	return params(epoch * ETHASH_EPOCH_LENGTH);
 }
 
@@ -171,8 +167,8 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest, bool 
 			boost::filesystem::rename(oldMemoFile, memoFile);
 		}
 
-		ETH_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile));
-		ETH_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile + ".info"));
+		DEV_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile));
+		DEV_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile + ".info"));
 
 		ethash_params p = params(_seedHash);
 		assert(!_dest || _dest.size() >= p.full_size);	// must be big enough.

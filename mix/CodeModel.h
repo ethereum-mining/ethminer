@@ -30,7 +30,7 @@
 #include <QHash>
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
-#include <libevmcore/Assembly.h>
+#include <libevmasm/Assembly.h>
 #include "SolidityType.h"
 
 class QTextDocument;
@@ -97,7 +97,6 @@ public:
 	/// @returns contract source Id
 	QString documentId() const { return m_documentId; }
 
-	QHash<LocationPair, QString> const& functions() const { return m_functions; }
 	QHash<LocationPair, SolidityDeclaration> const& locals() const { return m_locals; }
 	QHash<unsigned, SolidityDeclarations> const& storage() const { return m_storage; }
 
@@ -110,14 +109,24 @@ private:
 	QString m_documentId;
 	eth::AssemblyItems m_assemblyItems;
 	eth::AssemblyItems m_constructorAssemblyItems;
-	QHash<LocationPair, QString> m_functions;
 	QHash<LocationPair, SolidityDeclaration> m_locals;
 	QHash<unsigned, SolidityDeclarations> m_storage;
 
 	friend class CodeModel;
 };
 
-using ContractMap = QHash<QString, CompiledContract*>;
+using ContractMap = QMap<QString, CompiledContract*>; //needs to be sorted
+
+/// Source map
+using LocationMap = QHash<LocationPair, QString>;
+
+struct SourceMap
+{
+	LocationMap contracts;
+	LocationMap functions;
+};
+
+using SourceMaps = QMap<QString, SourceMap>; //by source id
 
 /// Code compilation model. Compiles contracts in background an provides compiled contract data
 class CodeModel: public QObject
@@ -145,7 +154,7 @@ public:
 	CompiledContract const& contract(QString const& _name) const;
 	/// Get contract by name
 	/// @returns nullptr if not found
-	CompiledContract const* tryGetContract(QString const& _name) const;
+	Q_INVOKABLE CompiledContract const* tryGetContract(QString const& _name) const;
 	/// Find a contract by document id
 	/// @returns CompiledContract object or null if not found
 	Q_INVOKABLE CompiledContract* contractByDocumentId(QString const& _documentId) const;
@@ -153,6 +162,10 @@ public:
 	Q_INVOKABLE void reset() { reset(QVariantMap()); }
 	/// Convert solidity type info to mix type
 	static SolidityType nodeType(dev::solidity::Type const* _type);
+	/// Check if given location belongs to contract or function
+	bool isContractOrFunctionLocation(dev::SourceLocation const& _location);
+	/// Get funciton name by location
+	QString resolveFunctionName(dev::SourceLocation const& _location);
 
 signals:
 	/// Emited on compilation state change
@@ -182,10 +195,12 @@ private:
 	void runCompilationJob(int _jobId);
 	void stop();
 	void releaseContracts();
+	void collectContracts(dev::solidity::CompilerStack const& _cs, std::vector<std::string> const& _sourceNames);
 
 	std::atomic<bool> m_compiling;
 	mutable dev::Mutex x_contractMap;
 	ContractMap m_contractMap;
+	SourceMaps m_sourceMaps;
 	std::unique_ptr<CodeHighlighterSettings> m_codeHighlighterSettings;
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;

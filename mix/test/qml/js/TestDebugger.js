@@ -123,8 +123,7 @@ function test_arrayParametersAndStorage()
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.acceptAndClose();
 	mainApplication.mainContent.startQuickDebugging();
-	if (!ts.waitForSignal(mainApplication.clientModel, "debugDataReady(QObject*)", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 	//debug setM
 	mainApplication.clientModel.debugRecord(3);
 	mainApplication.mainContent.rightPane.debugSlider.value = mainApplication.mainContent.rightPane.debugSlider.maximumValue;
@@ -158,8 +157,7 @@ function test_solidityDebugging()
 	"}");
 
 	mainApplication.mainContent.startQuickDebugging();
-	if (!ts.waitForSignal(mainApplication.clientModel, "debugDataReady(QObject*)", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 
 	tryCompare(mainApplication.mainContent.rightPane.debugSlider, "maximumValue", 20);
 	tryCompare(mainApplication.mainContent.rightPane.debugSlider, "value", 0);
@@ -191,8 +189,7 @@ function test_vmDebugging()
 	"}");
 
 	mainApplication.mainContent.startQuickDebugging();
-	if (!ts.waitForSignal(mainApplication.clientModel, "debugDataReady(QObject*)", 5000))
-		fail("Error running transaction");
+	waitForExecution();
 
 	mainApplication.mainContent.rightPane.assemblyMode = !mainApplication.mainContent.rightPane.assemblyMode;
 	tryCompare(mainApplication.mainContent.rightPane.debugSlider, "maximumValue", 41);
@@ -201,5 +198,43 @@ function test_vmDebugging()
 	tryCompare(mainApplication.mainContent.rightPane.vmCallStack.listModel, 0, mainApplication.clientModel.contractAddresses["Contract"].substring(2));
 	tryCompare(mainApplication.mainContent.rightPane.vmStorage.listModel, 0, "@ 0 (0x0)	 76 (0x4c)");
 	tryCompare(mainApplication.mainContent.rightPane.vmMemory.listModel, "length", 0);
+}
+
+function test_ctrTypeAsParam()
+{
+	newProject();
+	editContract(
+	"contract C1 {\r " +
+	"	function get() returns (uint256)\r " +
+	"	{\r " +
+	"		return 159;\r " +
+	"	}\r " +
+	"}\r" +
+	"contract C2 {\r " +
+	"   C1 c1;\r " +
+	"	function getFromC1() returns (uint256)\r " +
+	"	{\r " +
+	"		return c1.get();\r " +
+	"	}\r " +
+	"   function C2(C1 _c1)\r" +
+	"	{\r " +
+	"       c1 = _c1;\r" +
+	"	}\r " +
+	"}");
+	mainApplication.projectModel.stateListModel.editState(0); //C1 ctor already added
+	var transactionDialog = mainApplication.projectModel.stateDialog.transactionDialog;
+	mainApplication.projectModel.stateDialog.model.addTransaction();
+	transactionDialog = mainApplication.projectModel.stateDialog.transactionDialog;
+	ts.waitForRendering(transactionDialog, 3000);
+	transactionDialog.selectContract("C2");
+	transactionDialog.selectFunction("getFromC1");
+	clickElement(transactionDialog, 406, 340);
+	clickElement(transactionDialog, 406, 366);
+	transactionDialog.acceptAndClose();
+	mainApplication.projectModel.stateDialog.acceptAndClose();
+	mainApplication.mainContent.startQuickDebugging();
+	waitForExecution();
+
+	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(4), "returned", "(159)");
 }
 

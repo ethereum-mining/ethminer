@@ -29,12 +29,18 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+#ifdef _WIN32
+const char* BlockQueueChannel::name() { return EthOrange "[]>"; }
+#else
+const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
+#endif
+
 ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs)
 {
 	// Check if we already know this block.
 	h256 h = BlockInfo::headerHash(_block);
 
-	cblockq << "Queuing block" << h.abridged() << "for import...";
+	cblockq << "Queuing block" << h << "for import...";
 
 	UpgradableGuard l(m_lock);
 
@@ -68,12 +74,13 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 	}
 
 	UpgradeGuard ul(l);
+	DEV_INVARIANT_CHECK;
 
 	// Check it's not in the future
 	(void)_isOurs;
 	if (bi.timestamp > (u256)time(0)/* && !_isOurs*/)
 	{
-		m_future.insert(make_pair((unsigned)bi.timestamp, _block.toBytes()));
+		m_future.insert(make_pair((unsigned)bi.timestamp, make_pair(h, _block.toBytes())));
 		char buf[24];
 		time_t bit = (unsigned)bi.timestamp;
 		if (strftime(buf, 24, "%X", localtime(&bit)) == 0)
@@ -93,7 +100,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		else if (!m_readySet.count(bi.parentHash) && !m_drainingSet.count(bi.parentHash) && !_bc.isKnown(bi.parentHash))
 		{
 			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
-			cblockq << "OK - queued as unknown parent:" << bi.parentHash.abridged();
+			cblockq << "OK - queued as unknown parent:" << bi.parentHash;
 			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
 			m_unknownSet.insert(h);
 
@@ -103,10 +110,10 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		{
 			// If valid, append to blocks.
 			cblockq << "OK - ready for chain insertion.";
-			m_ready.push_back(_block.toBytes());
+			m_ready.push_back(make_pair(h, _block.toBytes()));
 			m_readySet.insert(h);
 
-			noteReadyWithoutWriteGuard(h);
+			noteReady_WITH_LOCK(h);
 			m_onReady();
 			return ImportResult::Success;
 		}
@@ -116,16 +123,20 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 bool BlockQueue::doneDrain(h256s const& _bad)
 {
 	WriteGuard l(m_lock);
+	DEV_INVARIANT_CHECK;
 	m_drainingSet.clear();
 	if (_bad.size())
 	{
-		vector<bytes> old;
+		vector<pair<h256, bytes>> old;
 		swap(m_ready, old);
 		for (auto& b: old)
 		{
-			BlockInfo bi(b);
+			BlockInfo bi(b.second);
 			if (m_knownBad.count(bi.parentHash))
-				m_knownBad.insert(bi.hash());
+			{
+				m_knownBad.insert(b.first);
+				m_readySet.erase(b.first);
+			}
 			else
 				m_ready.push_back(std::move(b));
 		}
@@ -136,7 +147,7 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 
 void BlockQueue::tick(BlockChain const& _bc)
 {
-	vector<bytes> todo;
+	vector<pair<h256, bytes>> todo;
 	{
 		UpgradableGuard l(m_lock);
 		if (m_future.empty())
@@ -152,6 +163,7 @@ void BlockQueue::tick(BlockChain const& _bc)
 
 		{
 			UpgradeGuard l2(l);
+			DEV_INVARIANT_CHECK;
 			auto end = m_future.lower_bound(t);
 			for (auto i = m_future.begin(); i != end; ++i)
 				todo.push_back(move(i->second));
@@ -161,7 +173,7 @@ void BlockQueue::tick(BlockChain const& _bc)
 	cblockq << "Importing" << todo.size() << "past-future blocks.";
 
 	for (auto const& b: todo)
-		import(&b, _bc);
+		import(&b.second, _bc);
 }
 
 template <class T> T advanced(T _t, unsigned _n)
@@ -188,15 +200,17 @@ QueueStatus BlockQueue::blockStatus(h256 const& _h) const
 void BlockQueue::drain(std::vector<bytes>& o_out, unsigned _max)
 {
 	WriteGuard l(m_lock);
+	DEV_INVARIANT_CHECK;
 	if (m_drainingSet.empty())
 	{
 		o_out.resize(min<unsigned>(_max, m_ready.size()));
 		for (unsigned i = 0; i < o_out.size(); ++i)
-			swap(o_out[i], m_ready[i]);
+			swap(o_out[i], m_ready[i].second);
 		m_ready.erase(m_ready.begin(), advanced(m_ready.begin(), o_out.size()));
 		for (auto const& bs: o_out)
 		{
-			auto h = sha3(bs);
+			// TODO: @optimise use map<h256, bytes> rather than vector<bytes> & set<h256>.
+			auto h = BlockInfo::headerHash(bs);
 			m_drainingSet.insert(h);
 			m_readySet.erase(h);
 		}
@@ -205,8 +219,14 @@ void BlockQueue::drain(std::vector<bytes>& o_out, unsigned _max)
 	}
 }
 
-void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
+bool BlockQueue::invariants() const
 {
+	return m_readySet.size() == m_ready.size();
+}
+
+void BlockQueue::noteReady_WITH_LOCK(h256 const& _good)
+{
+	DEV_INVARIANT_CHECK;
 	list<h256> goodQueue(1, _good);
 	while (!goodQueue.empty())
 	{
@@ -214,7 +234,7 @@ void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 		goodQueue.pop_front();
 		for (auto it = r.first; it != r.second; ++it)
 		{
-			m_ready.push_back(it->second.second);
+			m_ready.push_back(it->second);
 			auto newReady = it->second.first;
 			m_unknownSet.erase(newReady);
 			m_readySet.insert(newReady);
@@ -226,9 +246,10 @@ void BlockQueue::noteReadyWithoutWriteGuard(h256 _good)
 
 void BlockQueue::retryAllUnknown()
 {
+	DEV_INVARIANT_CHECK;
 	for (auto it = m_unknown.begin(); it != m_unknown.end(); ++it)
 	{
-		m_ready.push_back(it->second.second);
+		m_ready.push_back(it->second);
 		auto newReady = it->second.first;
 		m_unknownSet.erase(newReady);
 		m_readySet.insert(newReady);

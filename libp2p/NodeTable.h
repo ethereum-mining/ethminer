@@ -416,19 +416,19 @@ struct Neighbours: RLPXDatagram<Neighbours>
 	void interpretRLP(bytesConstRef _bytes) { RLP r(_bytes); for (auto n: r[0]) nodes.push_back(Node(n)); ts = r[1].toInt<unsigned>(); }
 };
 
-struct NodeTableWarn: public LogChannel { static const char* name() { return "!P!"; } static const int verbosity = 0; };
-struct NodeTableNote: public LogChannel { static const char* name() { return "*P*"; } static const int verbosity = 1; };
-struct NodeTableMessageSummary: public LogChannel { static const char* name() { return "-P-"; } static const int verbosity = 2; };
-struct NodeTableMessageDetail: public LogChannel { static const char* name() { return "=P="; } static const int verbosity = 5; };
-struct NodeTableConnect: public LogChannel { static const char* name() { return "+P+"; } static const int verbosity = 10; };
-struct NodeTableEvent: public LogChannel { static const char* name() { return "+P+"; } static const int verbosity = 10; };
-struct NodeTableTimer: public LogChannel { static const char* name() { return "+P+"; } static const int verbosity = 10; };
-struct NodeTableUpdate: public LogChannel { static const char* name() { return "+P+"; } static const int verbosity = 10; };
-struct NodeTableTriviaSummary: public LogChannel { static const char* name() { return "-P-"; } static const int verbosity = 10; };
-struct NodeTableTriviaDetail: public LogChannel { static const char* name() { return "=P="; } static const int verbosity = 11; };
-struct NodeTableAllDetail: public LogChannel { static const char* name() { return "=P="; } static const int verbosity = 13; };
-struct NodeTableEgress: public LogChannel { static const char* name() { return ">>P"; } static const int verbosity = 14; };
-struct NodeTableIngress: public LogChannel { static const char* name() { return "<<P"; } static const int verbosity = 15; };
+struct NodeTableWarn: public LogChannel { static const char* name(); static const int verbosity = 0; };
+struct NodeTableNote: public LogChannel { static const char* name(); static const int verbosity = 1; };
+struct NodeTableMessageSummary: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct NodeTableMessageDetail: public LogChannel { static const char* name(); static const int verbosity = 5; };
+struct NodeTableConnect: public LogChannel { static const char* name(); static const int verbosity = 10; };
+struct NodeTableEvent: public LogChannel { static const char* name(); static const int verbosity = 10; };
+struct NodeTableTimer: public LogChannel { static const char* name(); static const int verbosity = 10; };
+struct NodeTableUpdate: public LogChannel { static const char* name(); static const int verbosity = 10; };
+struct NodeTableTriviaSummary: public LogChannel { static const char* name(); static const int verbosity = 10; };
+struct NodeTableTriviaDetail: public LogChannel { static const char* name(); static const int verbosity = 11; };
+struct NodeTableAllDetail: public LogChannel { static const char* name(); static const int verbosity = 13; };
+struct NodeTableEgress: public LogChannel { static const char* name(); static const int verbosity = 14; };
+struct NodeTableIngress: public LogChannel { static const char* name(); static const int verbosity = 15; };
 
 }
 }

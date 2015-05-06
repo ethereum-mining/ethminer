@@ -1,7 +1,7 @@
 /* jshint ignore:start */
 Package.describe({
-  name: 'ethereum:js',
-  version: '0.2.6',
+  name: 'ethereum:web3',
+  version: '0.3.3',
   summary: 'Ethereum JavaScript API, middleware to talk to a ethreum node over RPC',
   git: 'https://github.com/ethereum/ethereum.js',
   // By default, Meteor will default to using README.md for documentation.
@@ -14,10 +14,9 @@ Package.onUse(function(api) {
 
   // api.use('3stack:bignumber@2.0.0', 'client');
 
-  // api.export('BigNumber', 'client');
   api.export(['web3', 'BigNumber'], 'client');
 
-  api.addFiles('dist/ethereum.js', 'client');
+  api.addFiles('dist/web3.js', 'client');
   api.addFiles('package-init.js', 'client');
 });
 

@@ -28,34 +28,65 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+const char* TransactionQueueChannel::name() { return EthCyan "┉┅▶"; }
+
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallback const& _cb, IfDropped _ik)
 {
 	// Check if we already know this transaction.
 	h256 h = sha3(_transactionRLP);
 
 	UpgradableGuard l(m_lock);
-	// TODO: keep old transactions around and check in State for nonce validity
 
-	if (m_known.count(h))
+	auto ir = check_WITH_LOCK(h, _ik);
+	if (ir != ImportResult::Success)
+		return ir;
+
+	Transaction t(_transactionRLP, CheckTransaction::Everything);
+	UpgradeGuard ul(l);
+	return manageImport_WITH_LOCK(h, t, _cb);
+}
+
+ImportResult TransactionQueue::check_WITH_LOCK(h256 const& _h, IfDropped _ik)
+{
+	if (m_known.count(_h))
 		return ImportResult::AlreadyKnown;
 
-	if (m_dropped.count(h) && _ik == IfDropped::Ignore)
+	if (m_dropped.count(_h) && _ik == IfDropped::Ignore)
 		return ImportResult::AlreadyInChain;
 
+	return ImportResult::Success;
+}
+
+ImportResult TransactionQueue::import(Transaction const& _transaction, ImportCallback const& _cb, IfDropped _ik)
+{
+	// Check if we already know this transaction.
+	h256 h = _transaction.sha3(WithSignature);
+
+	UpgradableGuard l(m_lock);
+	// TODO: keep old transactions around and check in State for nonce validity
+
+	auto ir = check_WITH_LOCK(h, _ik);
+	if (ir != ImportResult::Success)
+		return ir;
+
+	UpgradeGuard ul(l);
+	return manageImport_WITH_LOCK(h, _transaction, _cb);
+}
+
+ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction, ImportCallback const& _cb)
+{
 	try
 	{
 		// Check validity of _transactionRLP as a transaction. To do this we just deserialise and attempt to determine the sender.
 		// If it doesn't work, the signature is bad.
 		// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
-		Transaction t(_transactionRLP, CheckTransaction::Everything);
 
-		UpgradeGuard ul(l);
 		// If valid, append to blocks.
-		m_current[h] = t;
-		m_known.insert(h);
+		insertCurrent_WITH_LOCK(make_pair(_h, _transaction));
+		m_known.insert(_h);
 		if (_cb)
-			m_callbacks[h] = _cb;
-		ctxq << "Queued vaguely legit-looking transaction" << h.abridged();
+			m_callbacks[_h] = _cb;
+		ctxq << "Queued vaguely legit-looking transaction" << _h;
 		m_onReady();
 	}
 	catch (Exception const& _e)
@@ -72,13 +103,54 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 	return ImportResult::Success;
 }
 
+u256 TransactionQueue::maxNonce(Address const& _a) const
+{
+	cdebug << "txQ::maxNonce" << _a;
+	ReadGuard l(m_lock);
+	u256 ret = 0;
+	auto r = m_senders.equal_range(_a);
+	for (auto it = r.first; it != r.second; ++it)
+	{
+		cdebug << it->first << "1+" << m_current.at(it->second).nonce();
+		DEV_IGNORE_EXCEPTIONS(ret = max(ret, m_current.at(it->second).nonce() + 1));
+	}
+	return ret;
+}
+
+void TransactionQueue::insertCurrent_WITH_LOCK(std::pair<h256, Transaction> const& _p)
+{
+	cdebug << "txQ::insertCurrent" << _p.first << _p.second.sender() << _p.second.nonce();
+	m_senders.insert(make_pair(_p.second.sender(), _p.first));
+	m_current.insert(_p);
+}
+
+bool TransactionQueue::removeCurrent_WITH_LOCK(h256 const& _txHash)
+{
+	cdebug << "txQ::removeCurrent" << _txHash;
+	if (m_current.count(_txHash))
+	{
+		auto r = m_senders.equal_range(m_current[_txHash].sender());
+		for (auto it = r.first; it != r.second; ++it)
+			if (it->second == _txHash)
+			{
+				cdebug << "=> sender" << it->first;
+				m_senders.erase(it);
+				break;
+			}
+		cdebug << "=> nonce" << m_current[_txHash].nonce();
+		m_current.erase(_txHash);
+		return true;
+	}
+	return false;
+}
+
 void TransactionQueue::setFuture(std::pair<h256, Transaction> const& _t)
 {
 	WriteGuard l(m_lock);
 	if (m_current.count(_t.first))
 	{
-		m_current.erase(_t.first);
 		m_unknown.insert(make_pair(_t.second.sender(), _t));
+		m_current.erase(_t.first);
 	}
 }
 
@@ -102,9 +174,7 @@ void TransactionQueue::drop(h256 const& _txHash)
 	m_dropped.insert(_txHash);
 	m_known.erase(_txHash);
 
-	if (m_current.count(_txHash))
-		m_current.erase(_txHash);
-	else
+	if (!removeCurrent_WITH_LOCK(_txHash))
 	{
 		for (auto i = m_unknown.begin(); i != m_unknown.end(); ++i)
 			if (i->second.first == _txHash)
