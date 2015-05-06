@@ -33,18 +33,18 @@ namespace eth
 class JSV8Env;
 class JSV8Scope;
 
-class JSV8Value : public JSValue
+class JSV8Value: public JSValue
 {
 public:
 	JSV8Value(v8::Handle<v8::Value> _value): m_value(_value) {}
 	JSString toString() const;
-
 	v8::Handle<v8::Value> const& value() const { return m_value; }
+
 private:
 	v8::Handle<v8::Value> m_value;
 };
 
-class JSV8Engine : public JSEngine<JSV8Value>
+class JSV8Engine: public JSEngine<JSV8Value>
 {
 public:
 	JSV8Engine();

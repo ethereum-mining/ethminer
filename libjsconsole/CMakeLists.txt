@@ -19,10 +19,7 @@ set(EXECUTABLE jsconsole)
 
 file(GLOB HEADERS "*.h")
 
-include(EthUtils)
-eth_add_resources("${CMAKE_CURRENT_SOURCE_DIR}/JSResources.cmake" JSRES)
-
-add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS} ${JSRES})
+add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} jsengine)
 target_link_libraries(${EXECUTABLE} devcore)

@@ -42,29 +42,29 @@ static char const* toCString(v8::String::Utf8Value const& _value)
 
 // from:        https://github.com/v8/v8-git-mirror/blob/master/samples/shell.cc
 // v3.15 from:  https://chromium.googlesource.com/v8/v8.git/+/3.14.5.9/samples/shell.cc
-void reportException(v8::TryCatch*_try_catch)
+void reportException(v8::TryCatch* _tryCatch)
 {
 	v8::HandleScope handle_scope;
-	v8::String::Utf8Value exception(_try_catch->Exception());
-	char const* exception_string = toCString(exception);
-	v8::Handle<v8::Message> message = _try_catch->Message();
+	v8::String::Utf8Value exception(_tryCatch->Exception());
+	char const* exceptionString = toCString(exception);
+	v8::Handle<v8::Message> message = _tryCatch->Message();
 
 	// V8 didn't provide any extra information about this error; just
 	// print the exception.
 	if (message.IsEmpty())
-		printf("%s\n", exception_string);
+		printf("%s\n", exceptionString);
 	else
 	{
 		// Print (filename):(line number): (message).
 		v8::String::Utf8Value filename(message->GetScriptResourceName());
-		char const* filename_string = toCString(filename);
+		char const* filenameString = toCString(filename);
 		int linenum = message->GetLineNumber();
-		printf("%s:%i: %s\n", filename_string, linenum, exception_string);
+		printf("%s:%i: %s\n", filenameString, linenum, exceptionString);
 
 		// Print line of source code.
 		v8::String::Utf8Value sourceline(message->GetSourceLine());
-		char const* sourceline_string = toCString(sourceline);
-		printf("%s\n", sourceline_string);
+		char const* sourcelineString = toCString(sourceline);
+		printf("%s\n", sourcelineString);
 
 		// Print wavy underline (GetUnderline is deprecated).
 		int start = message->GetStartColumn();
@@ -78,11 +78,11 @@ void reportException(v8::TryCatch*_try_catch)
 
 		printf("\n");
 
-		v8::String::Utf8Value stack_trace(_try_catch->StackTrace());
-		if (stack_trace.length() > 0)
+		v8::String::Utf8Value stackTrace(_tryCatch->StackTrace());
+		if (stackTrace.length() > 0)
 		{
-			char const* stack_trace_string = toCString(stack_trace);
-			printf("%s\n", stack_trace_string);
+			char const* stackTraceString = toCString(stackTrace);
+			printf("%s\n", stackTraceString);
 		}
 	}
 }

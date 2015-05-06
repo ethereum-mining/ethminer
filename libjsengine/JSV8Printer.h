@@ -30,7 +30,7 @@ namespace dev
 namespace eth
 {
 
-class JSV8Printer : public JSPrinter<JSV8Value>
+class JSV8Printer: public JSPrinter<JSV8Value>
 {
 public:
 	JSV8Printer(JSV8Engine const& _engine);

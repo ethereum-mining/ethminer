@@ -37,6 +37,7 @@ public:
 	JSString(char const* _cstr);
 	~JSString();
 	char const* cstr() const { return m_cstr; }
+
 private:
 	char* m_cstr;
 };

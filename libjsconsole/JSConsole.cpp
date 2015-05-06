@@ -36,8 +36,8 @@ using namespace dev;
 using namespace dev::eth;
 
 JSConsole::JSConsole(WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
-		m_engine(),
-		m_printer(m_engine)
+	m_engine(),
+	m_printer(m_engine)
 {
 	m_jsonrpcConnector.reset(new JSV8Connector(m_engine));
 	m_jsonrpcServer.reset(new WebThreeStubServer(*m_jsonrpcConnector.get(), _web3, _accounts));

@@ -30,7 +30,7 @@ namespace dev
 namespace eth
 {
 
-v8::Handle<v8::Value> JSV8RPCSend(v8::Arguments const& args)
+v8::Handle<v8::Value> JSV8RPCSend(v8::Arguments const& _args)
 {
 	v8::Local<v8::String> JSON = v8::String::New("JSON");
 	v8::Local<v8::String> parse = v8::String::New("parse");
@@ -39,10 +39,10 @@ v8::Handle<v8::Value> JSV8RPCSend(v8::Arguments const& args)
 	v8::Handle<v8::Function> parseFunc = v8::Handle<v8::Function>::Cast(jsonObject->Get(parse));
 	v8::Handle<v8::Function> stringifyFunc = v8::Handle<v8::Function>::Cast(jsonObject->Get(stringify));
 
-	v8::Local<v8::Object> self = args.Holder();
+	v8::Local<v8::Object> self = _args.Holder();
 	v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(self->GetInternalField(0));
 	JSV8RPC* that = static_cast<JSV8RPC*>(wrap->Value());
-	v8::Local<v8::Value> vals[1] = {args[0]->ToObject()};
+	v8::Local<v8::Value> vals[1] = {_args[0]->ToObject()};
 	v8::Local<v8::Value> stringifiedArg = stringifyFunc->Call(stringifyFunc, 1, vals);
 	v8::String::Utf8Value str(stringifiedArg);
 	that->onSend(*str);
@@ -54,7 +54,7 @@ v8::Handle<v8::Value> JSV8RPCSend(v8::Arguments const& args)
 }
 }
 
-JSV8RPC::JSV8RPC(JSV8Engine const &_engine): m_engine(_engine)
+JSV8RPC::JSV8RPC(JSV8Engine const& _engine): m_engine(_engine)
 {
 	v8::HandleScope scope;
 	v8::Local<v8::ObjectTemplate> rpcTemplate = v8::ObjectTemplate::New();
