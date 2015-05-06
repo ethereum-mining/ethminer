@@ -27,7 +27,7 @@
 using namespace dev;
 using namespace dev::eth;
 
-JSString::JSString(char const *_cstr): m_cstr(strdup(_cstr)) {}
+JSString::JSString(char const* _cstr): m_cstr(strdup(_cstr)) {}
 
 JSString::~JSString()
 {

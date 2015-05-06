@@ -48,7 +48,7 @@ class JSEngine
 {
 public:
 	// should be used to evalute javascript expression
-	virtual T eval(const char* _cstr) const = 0;
+	virtual T eval(char const* _cstr) const = 0;
 };
 
 }
