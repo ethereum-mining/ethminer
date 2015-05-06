@@ -35,7 +35,9 @@ namespace eth
 
 static char const* toCString(v8::String::Utf8Value const& _value)
 {
-	return *_value ? *_value : "<string conversion failed>";
+	if (*_value)
+		return *_value;
+	throw JSPrintException();
 }
 
 // from:        https://github.com/v8/v8-git-mirror/blob/master/samples/shell.cc

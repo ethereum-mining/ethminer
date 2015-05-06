@@ -43,5 +43,7 @@ JSString JSV8Printer::prettyPrint(JSV8Value const& _value) const
 	v8::Local<v8::Value> values[1] = {v8::Local<v8::Value>::New(_value.value())};
 	v8::Local<v8::Value> res = func->Call(func, 1, values);
 	v8::String::Utf8Value str(res);
-	return *str ? *str : "<pretty print conversion failed>";
+	if (*str)
+		return *str;
+	throw JSPrintException();
 }

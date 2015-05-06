@@ -21,11 +21,15 @@
  */
 
 #pragma once
+#include <exception>
 
 namespace dev
 {
 namespace eth
 {
+
+class JSException: public std::exception {};
+class JSPrintException: public JSException { char const* what() const noexcept { return "Cannot print expression!"; } };
 
 class JSString
 {
