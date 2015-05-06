@@ -79,7 +79,7 @@ public:
 	~QBigInt() {}
 
 	/// @returns the current used big integer.
-	BigIntVariant internalValue() { return m_internalValue; }
+	BigIntVariant internalValue() const { return m_internalValue; }
 	/// @returns a string representation of the big integer used. Invokable from QML.
 	Q_INVOKABLE QString value() const;
 	/// Set the value of the BigInteger used. Will use u256 type. Invokable from QML.
