@@ -18,6 +18,7 @@
 #include "VMFactory.h"
 #include <libdevcore/Assertions.h>
 #include "VM.h"
+#include "SmartVM.h"
 
 #if ETH_EVMJIT
 #include <evmjit/libevmjit-cpp/JitVM.h>
@@ -45,7 +46,16 @@ std::unique_ptr<VMFace> VMFactory::create(u256 _gas)
 std::unique_ptr<VMFace> VMFactory::create(VMKind _kind, u256 _gas)
 {
 #if ETH_EVMJIT
-	return std::unique_ptr<VMFace>(_kind == VMKind::JIT ? static_cast<VMFace*>(new JitVM(_gas)) : static_cast<VMFace*>(new VM(_gas)));
+	switch (_kind)
+	{
+	default:
+	case VMKind::Interpreter:
+		return std::unique_ptr<VMFace>(new VM(_gas));
+	case VMKind::JIT:
+		return std::unique_ptr<VMFace>(new JitVM(_gas));
+	case VMKind::Smart:
+		return std::unique_ptr<VMFace>(new SmartVM(_gas));
+	}
 #else
 	asserts(_kind == VMKind::Interpreter && "JIT disabled in build configuration");
 	return std::unique_ptr<VMFace>(new VM(_gas));

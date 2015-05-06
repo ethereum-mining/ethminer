@@ -23,26 +23,20 @@ namespace dev
 namespace eth
 {
 
-enum class VMKind
-{
-	Interpreter,
-	JIT,
-	Smart,
-};
-
-class VMFactory
+/// Smart VM proxy.
+///
+/// This class is a strategy pattern implementation for VM. For every EVM code
+/// execution request it tries to select the best VM implementation (Interpreter or JIT)
+/// by analyzing available information like: code size, hit count, JIT status, etc.
+class SmartVM: public VMFace
 {
 public:
-	VMFactory() = delete;
+	SmartVM(u256 _gas): VMFace(_gas) {}
 
-	/// Creates a VM instance of global kind (controlled by setKind() function).
-	static std::unique_ptr<VMFace> create(u256 _gas);
+	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
 
-	/// Creates a VM instance of kind provided.
-	static std::unique_ptr<VMFace> create(VMKind _kind, u256 _gas);
-
-	/// Set global VM kind
-	static void setKind(VMKind _kind);
+private:
+	std::unique_ptr<VMFace> m_selectedVM;
 };
 
 }
