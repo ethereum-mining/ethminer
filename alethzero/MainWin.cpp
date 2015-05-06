@@ -143,10 +143,6 @@ Main::Main(QWidget *parent) :
 //		ui->log->addItem(QString::fromStdString(s));
 	};
 
-#if !ETH_FATDB
-	delete ui->dockWidget_accounts;
-#endif
-
 #if ETH_DEBUG
 	m_servers.append("127.0.0.1:30300");
 #endif
@@ -203,6 +199,9 @@ Main::Main(QWidget *parent) :
 //	QWebEngineInspector* inspector = new QWebEngineInspector();
 //	inspector->setPage(page);
 	readSettings();
+#if !ETH_FATDB
+	removeDockWidget(ui->dockWidget_accounts);
+#endif
 	installWatches();
 	startTimer(100);
 
