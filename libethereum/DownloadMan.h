@@ -143,7 +143,8 @@ public:
 		return ret;
 	}
 
-	h256s chain() const { ReadGuard l(m_lock); return m_chain; }
+	size_t chainSize() const { ReadGuard l(m_lock); return m_chain.size(); }
+	size_t chainEmpty() const { ReadGuard l(m_lock); return m_chain.empty(); }
 	void foreachSub(std::function<void(DownloadSub const&)> const& _f) const { ReadGuard l(x_subs); for(auto i: m_subs) _f(*i); }
 	unsigned subCount() const { ReadGuard l(x_subs); return m_subs.size(); }
 	RangeMask<unsigned> blocksGot() const { ReadGuard l(m_lock); return m_blocksGot; }

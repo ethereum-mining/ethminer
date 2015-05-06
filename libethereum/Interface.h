@@ -25,7 +25,6 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
-#include <libethcore/Params.h>
 #include <libethcore/ProofOfWork.h>
 #include "LogFilter.h"
 #include "Transaction.h"
@@ -100,12 +99,14 @@ public:
 	u256 countAt(Address _a) const { return countAt(_a, m_default); }
 	u256 stateAt(Address _a, u256 _l) const { return stateAt(_a, _l, m_default); }
 	bytes codeAt(Address _a) const { return codeAt(_a, m_default); }
+	h256 codeHashAt(Address _a) const { return codeHashAt(_a, m_default); }
 	std::map<u256, u256> storageAt(Address _a) const { return storageAt(_a, m_default); }
 
 	virtual u256 balanceAt(Address _a, BlockNumber _block) const = 0;
 	virtual u256 countAt(Address _a, BlockNumber _block) const = 0;
 	virtual u256 stateAt(Address _a, u256 _l, BlockNumber _block) const = 0;
 	virtual bytes codeAt(Address _a, BlockNumber _block) const = 0;
+	virtual h256 codeHashAt(Address _a, BlockNumber _block) const = 0;
 	virtual std::map<u256, u256> storageAt(Address _a, BlockNumber _block) const = 0;
 
 	// [LOGS API]
