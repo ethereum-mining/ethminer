@@ -413,7 +413,6 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 		// create or update m_peers entry
 		shared_ptr<Peer> p;
 		ETH_RECURSIVE_GUARDED(x_sessions)
-		{
 			if (m_peers.count(_n))
 			{
 				p = m_peers[_n];
@@ -425,7 +424,6 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 				p.reset(new Peer(node));
 				m_peers[_n] = p;
 			}
-		}
 		connect(p);
 	}
 	else if (m_nodeTable)
@@ -438,6 +436,7 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 		t->async_wait([this, _n](boost::system::error_code const& _ec)
 		{
 			if (!_ec && m_nodeTable)
+				// FIXME RACE CONDITION (use weak_ptr or mutex).
 				if (auto n = m_nodeTable->node(_n))
 					requirePeer(n.id, n.endpoint);
 		});
