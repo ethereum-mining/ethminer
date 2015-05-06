@@ -147,7 +147,7 @@ public:
 	/// @returns deployed contracts addresses
 	Q_PROPERTY(QVariantMap contractAddresses READ contractAddresses NOTIFY contractAddressesChanged)
 	/// @returns deployed contracts gas costs
-	Q_PROPERTY(QVariantMap gasCosts READ gasCosts NOTIFY gasCostsChanged)
+	Q_PROPERTY(QVariantList gasCosts READ gasCosts NOTIFY gasCostsChanged)
 	// @returns the last block
 	Q_PROPERTY(RecordLogEntry* lastBlock READ lastBlock CONSTANT)
 	/// ethereum.js RPC request entry point
@@ -162,6 +162,8 @@ public:
 	Q_INVOKABLE QStringList encodeParams(QVariant const& _param, QString const& _contract, QString const& _function);
 	/// Encode parameter
 	Q_INVOKABLE QString encodeStringParam(QString const& _param);
+	/// To Hex number
+	Q_INVOKABLE QString toHex(QString const& _int);
 
 public slots:
 	/// Setup state, run transaction sequence, show debugger for the last transaction
@@ -217,7 +219,7 @@ signals:
 private:
 	RecordLogEntry* lastBlock() const;
 	QVariantMap contractAddresses() const;
-	QVariantMap gasCosts() const;
+	QVariantList gasCosts() const;
 	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Address, dev::eth::Account> const& _accounts, Secret const& _miner);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
@@ -233,7 +235,7 @@ private:
 	std::unique_ptr<MixClient> m_client;
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
-	std::map<QString, u256> m_gasCosts;
+	QList<u256> m_gasCosts;
 	std::map<QString, Address> m_contractAddresses;
 	std::map<Address, QString> m_contractNames;
 	std::map<QString, Address> m_stdContractAddresses;
