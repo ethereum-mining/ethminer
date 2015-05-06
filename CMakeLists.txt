@@ -389,6 +389,7 @@ endif()
 if (WIN32)
 	# packaging stuff
 	include(InstallRequiredSystemLibraries)
+	set(CPACK_PACKAGE_NAME "Ethereum")
 	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "ethereum")
 	set(CPACK_PACKAGE_VENDOR "ethereum.org")
 	set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
