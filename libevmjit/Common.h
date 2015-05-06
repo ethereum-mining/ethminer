@@ -31,7 +31,7 @@ enum class ReturnCode
 
 	// Standard error codes
 	OutOfGas           = -1,
-	StackUnderflow      = -2,
+	StackUnderflow     = -2,
 	BadJumpDestination = -3,
 	BadInstruction     = -4,
 	Rejected           = -5, ///< Input data (code, gas, block info, etc.) does not meet JIT requirement and execution request has been rejected
@@ -45,16 +45,6 @@ enum class ReturnCode
 
 	LinkerWorkaround = -299,
 };
-
-/// Representation of 256-bit value binary compatible with LLVM i256
-struct i256
-{
-	uint64_t a = 0;
-	uint64_t b = 0;
-	uint64_t c = 0;
-	uint64_t d = 0;
-};
-static_assert(sizeof(i256) == 32, "Wrong i265 size");
 
 #define UNTESTED assert(false)
 
