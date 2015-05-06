@@ -326,7 +326,6 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			transition(Asking::Nothing);
 		break;
 	}
-	case GetTransactionsPacket: break;	// DEPRECATED.
 	case TransactionsPacket:
 	{
 		unsigned itemCount = _r.itemCount();
@@ -565,6 +564,49 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		}
 		break;
 	}
+/*	case NewBlockHashesPacket:
+	{
+		clog(NetMessageSummary) << "NewBlock: " << h;
+		if (_r.itemCount() == 1)
+			disable("NewBlock without any data fields.");
+		else if (host()->isSyncing())
+			clog(NetMessageSummary) << "Ignoring since we're already downloading.";
+		else
+		{
+			unsigned knowns = 0;
+			unsigned unknowns = 0;
+			for (unsigned i = 0; i < itemCount; ++i)
+			{
+				addRating(1);
+				auto h = _r[i].toHash<h256>();
+				auto status = host()->m_bq.blockStatus(h);
+				if (status == QueueStatus::Importing || status == QueueStatus::Ready || host()->m_chain.isKnown(h))
+				{
+					clog(NetMessageSummary) << "block hash ready:" << h << ". Start blocks download...";
+					transition(Asking::Blocks);
+					return true;
+				}
+				else if (status == QueueStatus::Bad)
+				{
+					cwarn << "block hash bad!" << h << ". Bailing...";
+					transition(Asking::Nothing);
+					return true;
+				}
+				else if (status == QueueStatus::Unknown)
+				{
+					unknowns++;
+					m_syncingNeededBlocks.push_back(h);
+				}
+				else
+					knowns++;
+				m_syncingLastReceivedHash = h;
+			}
+			clog(NetMessageSummary) << knowns << "knowns," << unknowns << "unknowns; now at" << m_syncingLastReceivedHash;
+			transition(Asking::Blocks);
+			return true;
+		}
+		break;
+	}*/
 	default:
 		return false;
 	}
