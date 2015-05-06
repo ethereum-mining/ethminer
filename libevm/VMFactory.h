@@ -26,7 +26,7 @@ namespace eth
 enum class VMKind: bool
 {
 	Interpreter,
-	JIT
+	JIT,
 };
 
 class VMFactory
@@ -34,7 +34,13 @@ class VMFactory
 public:
 	VMFactory() = delete;
 
+	/// Creates a VM instance of global kind (controlled by setKind() function).
 	static std::unique_ptr<VMFace> create(u256 _gas);
+
+	/// Creates a VM instance of kind provided.
+	static std::unique_ptr<VMFace> create(VMKind _kind, u256 _gas);
+
+	/// Set global VM kind
 	static void setKind(VMKind _kind);
 };
 
