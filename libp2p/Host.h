@@ -162,7 +162,7 @@ protected:
 	void restoreNetwork(bytesConstRef _b);
 
 private:
-	enum PeerSlotRatio { Egress = 1, Ingress = 9 };
+	enum PeerSlotRatio { Egress = 2, Ingress = 9 };
 	
 	bool havePeerSession(NodeId _id) { RecursiveGuard l(x_sessions); return m_sessions.count(_id) ? !!m_sessions[_id].lock() : false; }
 	
