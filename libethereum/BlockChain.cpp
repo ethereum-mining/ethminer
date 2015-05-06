@@ -610,7 +610,6 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		}
 
 		clog(BlockChainNote) << "   Imported and best" << td << " (#" << bi.number << "). Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << route;
-		noteCanonChanged();
 
 		StructuredLogger::chainNewHead(
 			bi.headerHash(WithoutNonce).abridged(),
@@ -642,6 +641,9 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	cnote << "writing:" << writing;
 	cnote << "checkBest:" << checkBest;
 #endif
+
+	if (route.size())
+		noteCanonChanged();
 
 	if (isKnown(bi.hash()) && !details(bi.hash()))
 	{
