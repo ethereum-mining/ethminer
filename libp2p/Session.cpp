@@ -48,7 +48,8 @@ Session::Session(Host* _s, RLPXFrameIO* _io, std::shared_ptr<Peer> const& _n, Pe
 
 Session::~Session()
 {
-	ThreadContext tc(info().id.abridged() + " | " + info().clientVersion);
+	ThreadContext tc(info().id.abridged());
+	ThreadContext tc2(info().clientVersion);
 	clog(NetMessageSummary) << "Closing peer session :-(";
 	m_peer->m_lastConnected = m_peer->m_lastAttempted - chrono::seconds(1);
 
@@ -137,7 +138,7 @@ void Session::serviceNodesRequest()
 	auto rs = randomSelection(peers, 10);
 	for (auto const& i: rs)
 	{
-		clog(NetTriviaDetail) << "Sending peer " << i.id.abridged() << i.endpoint;
+		clog(NetTriviaDetail) << "Sending peer " << i.id << i.endpoint;
 		if (i.endpoint.address.is_v4())
 			s.appendList(3) << bytesConstRef(i.endpoint.address.to_v4().to_bytes().data(), 4) << i.endpoint.tcpPort << i.id;
 		else// if (i.second.address().is_v6()) - assumed
@@ -214,7 +215,7 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 				auto ep = bi::tcp::endpoint(peerAddress, _r[i][1].toInt<short>());
 				NodeId id = _r[i][2].toHash<NodeId>();
 
-				clog(NetAllDetail) << "Checking: " << ep << "(" << id.abridged() << ")";
+				clog(NetAllDetail) << "Checking: " << ep << "(" << id << ")";
 
 				if (!isPublicAddress(peerAddress))
 					goto CONTINUE;	// Private address. Ignore.
@@ -237,7 +238,7 @@ bool Session::interpret(PacketType _t, RLP const& _r)
 				// OK passed all our checks. Assume it's good.
 				addRating(1000);
 				m_server->addNode(id, NodeIPEndpoint(ep.address(), ep.port(), ep.port()));
-				clog(NetTriviaDetail) << "New peer: " << ep << "(" << id .abridged()<< ")";
+				clog(NetTriviaDetail) << "New peer: " << ep << "(" << id << ")";
 				CONTINUE:;
 				LAMEPEER:;
 			}
@@ -323,7 +324,8 @@ void Session::write()
 	auto self(shared_from_this());
 	ba::async_write(m_socket, ba::buffer(bytes), [this, self](boost::system::error_code ec, std::size_t /*length*/)
 	{
-		ThreadContext tc(info().id.abridged() + " | " + info().clientVersion);
+		ThreadContext tc(info().id.abridged());
+		ThreadContext tc2(info().clientVersion);
 		// must check queue, as write callback can occur following dropped()
 		if (ec)
 		{
@@ -397,7 +399,8 @@ void Session::doRead()
 	auto self(shared_from_this());
 	ba::async_read(m_socket, boost::asio::buffer(m_data, h256::size), [this,self](boost::system::error_code ec, std::size_t length)
 	{
-		ThreadContext tc(info().id.abridged() + " | " + info().clientVersion);
+		ThreadContext tc(info().id.abridged());
+		ThreadContext tc2(info().clientVersion);
 		if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 		{
 			clog(NetWarn) << "Error reading: " << ec.message();
@@ -433,7 +436,8 @@ void Session::doRead()
 			auto tlen = frameSize + ((16 - (frameSize % 16)) % 16) + h128::size;
 			ba::async_read(m_socket, boost::asio::buffer(m_data, tlen), [this, self, headerRLP, frameSize, tlen](boost::system::error_code ec, std::size_t length)
 			{
-				ThreadContext tc(info().id.abridged() + " | " + info().clientVersion);
+				ThreadContext tc(info().id.abridged());
+				ThreadContext tc2(info().clientVersion);
 				if (ec && ec.category() != boost::asio::error::get_misc_category() && ec.value() != boost::asio::error::eof)
 				{
 					clog(NetWarn) << "Error reading: " << ec.message();

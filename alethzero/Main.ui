@@ -53,6 +53,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QLabel" name="blockCount">
+        <property name="text">
+         <string>1 block</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="balance">
         <property name="text">
          <string>0 wei</string>
@@ -63,13 +70,6 @@
        <widget class="QLabel" name="peerCount">
         <property name="text">
          <string>0 peers</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="blockCount">
-        <property name="text">
-         <string>1 block</string>
         </property>
        </widget>
       </item>
@@ -160,6 +160,8 @@
     <addaction name="killAccount"/>
     <addaction name="separator"/>
     <addaction name="loadJS"/>
+    <addaction name="separator"/>
+    <addaction name="exportState"/>
    </widget>
    <widget class="QMenu" name="menu_Help">
     <property name="title">
@@ -176,6 +178,7 @@
     <addaction name="clearPending"/>
     <addaction name="killBlockchain"/>
     <addaction name="inject"/>
+    <addaction name="injectBlock"/>
     <addaction name="forceMining"/>
     <addaction name="separator"/>
     <addaction name="usePrivate"/>
@@ -187,7 +190,6 @@
      <string>&amp;View</string>
     </property>
     <addaction name="showAll"/>
-    <addaction name="showAllAccounts"/>
     <addaction name="separator"/>
     <addaction name="preview"/>
    </widget>
@@ -215,43 +217,6 @@
    <addaction name="menu_Debug"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QDockWidget" name="dockWidget_accounts">
-   <property name="features">
-    <set>QDockWidget::DockWidgetFeatureMask</set>
-   </property>
-   <property name="windowTitle">
-    <string>Accounts</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>2</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents_2">
-    <layout class="QHBoxLayout" name="horizontalLayout_4">
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
-      <number>0</number>
-     </property>
-     <item>
-      <widget class="QListWidget" name="accounts">
-       <property name="focusPolicy">
-        <enum>Qt::NoFocus</enum>
-       </property>
-       <property name="frameShape">
-        <enum>QFrame::NoFrame</enum>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-  </widget>
   <widget class="QDockWidget" name="dockWidget_3">
    <property name="features">
     <set>QDockWidget::DockWidgetFeatureMask</set>
@@ -592,13 +557,16 @@
     <set>QDockWidget::DockWidgetFeatureMask</set>
    </property>
    <property name="windowTitle">
-    <string>Contracts</string>
+    <string>Accounts</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_6">
     <layout class="QVBoxLayout" name="verticalLayout_2">
+     <property name="spacing">
+      <number>0</number>
+     </property>
      <property name="leftMargin">
       <number>0</number>
      </property>
@@ -612,11 +580,65 @@
       <number>0</number>
      </property>
      <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_12">
+       <item>
+        <widget class="QLineEdit" name="accountsFilter">
+         <property name="placeholderText">
+          <string>Filter...</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="showBasic">
+         <property name="text">
+          <string>Basic</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="showContracts">
+         <property name="text">
+          <string>Contracts</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="onlyNamed">
+         <property name="text">
+          <string>Only Named</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="refreshAccounts">
+         <property name="text">
+          <string>Refresh</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
       <widget class="QSplitter" name="splitter_3">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
-       <widget class="QListWidget" name="contracts">
+       <widget class="QListWidget" name="accounts">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
           <horstretch>0</horstretch>
@@ -630,7 +652,7 @@
          <enum>QFrame::NoFrame</enum>
         </property>
        </widget>
-       <widget class="QPlainTextEdit" name="contractInfo">
+       <widget class="QPlainTextEdit" name="accountInfo">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
           <horstretch>2</horstretch>
@@ -1477,6 +1499,11 @@ font-size: 14pt</string>
     <string>&amp;Load Javascript...</string>
    </property>
   </action>
+  <action name="exportState">
+   <property name="text">
+    <string>&amp;Export State...</string>
+   </property>
+  </action>
   <action name="debugStepBack">
    <property name="enabled">
     <bool>false</bool>
@@ -1683,6 +1710,11 @@ font-size: 14pt</string>
   <action name="retryUnknown">
    <property name="text">
     <string>Retry Unknown Parent Blocks</string>
+   </property>
+  </action>
+  <action name="injectBlock">
+   <property name="text">
+    <string>In&amp;ject Block</string>
    </property>
   </action>
  </widget>

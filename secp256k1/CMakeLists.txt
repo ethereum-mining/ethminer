@@ -14,22 +14,14 @@ file(GLOB HEADERS "*.h")
 
 if (APPLE OR UNIX)
 
-	if (ETH_STATIC)
-		add_library(${EXECUTABLE} STATIC ${EXECUTABLE}.c field_5x52_asm.asm)
-	else()
-		add_library(${EXECUTABLE} SHARED ${EXECUTABLE}.c field_5x52_asm.asm)
-	endif()
+	add_library(${EXECUTABLE} ${EXECUTABLE}.c field_5x52_asm.asm)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -DUSE_FIELD_GMP -DUSE_NUM_GMP -DUSE_FIELD_INV_NUM")
 	target_link_libraries(${EXECUTABLE} ${GMP_LIBRARIES})
 elseif (CMAKE_COMPILER_IS_MINGW)
 
 	include_directories(${Boost_INCLUDE_DIRS})
 
-	if (ETH_STATIC)
-		add_library(${EXECUTABLE} STATIC ${EXECUTABLE}.c field_5x52_asm.asm)
-	else()
-		add_library(${EXECUTABLE} SHARED ${EXECUTABLE}.c field_5x52_asm.asm)
-	endif()
+	add_library(${EXECUTABLE} ${EXECUTABLE}.c field_5x52_asm.asm)
 
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -W -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes -Wno-unused-function -DUSE_FIELD_GMP -DUSE_NUM_GMP -DUSE_FIELD_INV_NUM")
 	target_link_libraries(${EXECUTABLE} ${GMP_LIBRARIES})
@@ -37,11 +29,7 @@ else()
 
 	include_directories(${Boost_INCLUDE_DIRS})
 
-	if (ETH_STATIC)
-		add_library(${EXECUTABLE} STATIC ${EXECUTABLE}.c)
-	else()
-		add_library(${EXECUTABLE} SHARED ${EXECUTABLE}.c)
-	endif()
+	add_library(${EXECUTABLE} ${EXECUTABLE}.c)
 	# /TP - compile project as cpp project
 	set_target_properties(${EXECUTABLE} PROPERTIES COMPILE_FLAGS "/TP /wd4244")
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_NUM_BOOST -DUSE_FIELD_10X26 -DUSE_FIELD_INV_BUILTIN")

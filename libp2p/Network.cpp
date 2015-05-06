@@ -228,7 +228,7 @@ bi::tcp::endpoint Network::resolveHost(string const& _addr)
 		bi::tcp::resolver r(s_resolverIoService);
 		auto it = r.resolve({split[0], toString(port)}, ec);
 		if (ec)
-			clog(NetWarn) << "Error resolving host address " << _addr << ":" << ec.message();
+			clog(NetWarn) << "Error resolving host address..." << LogTag::Url << _addr << ":" << LogTag::Error << ec.message();
 		else
 			ep = *it;
 	}

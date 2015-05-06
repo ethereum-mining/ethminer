@@ -64,6 +64,9 @@ public:
 	/// Convert from the corresponding arithmetic type.
 	FixedHash(Arith const& _arith) { toBigEndian(_arith, m_data); }
 
+	/// Convert from unsigned
+	explicit FixedHash(unsigned _u) { toBigEndian(_u, m_data); }
+
 	/// Explicitly construct, copying from a byte array.
 	explicit FixedHash(bytes const& _b, ConstructFromHashType _t = FailIfDifferent) { if (_b.size() == N) memcpy(m_data.data(), _b.data(), std::min<unsigned>(_b.size(), N)); else { m_data.fill(0); if (_t != FailIfDifferent) { auto c = std::min<unsigned>(_b.size(), N); for (unsigned i = 0; i < c; ++i) m_data[_t == AlignRight ? N - 1 - i : i] = _b[_t == AlignRight ? _b.size() - 1 - i : i]; } } }
 
@@ -80,7 +83,7 @@ public:
 	operator Arith() const { return fromBigEndian<Arith>(m_data); }
 
 	/// @returns true iff this is the empty hash.
-	explicit operator bool() const { return ((Arith)*this) != 0; }
+	explicit operator bool() const { return std::any_of(m_data.begin(), m_data.end(), [](byte _b) { return _b != 0; }); }
 
 	// The obvious comparison operators.
 	bool operator==(FixedHash const& _c) const { return m_data == _c.m_data; }

@@ -22,6 +22,7 @@
 #pragma once
 
 #include <thread>
+#include <condition_variable>
 #include <mutex>
 #include <list>
 #include <atomic>
@@ -35,12 +36,12 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/Params.h>
+#include <libethcore/ABI.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
 #include "CommonNet.h"
-#include "ABI.h"
 #include "Farm.h"
 #include "ClientBase.h"
 
@@ -77,8 +78,8 @@ class BasicGasPricer: public GasPricer
 public:
 	explicit BasicGasPricer(u256 _weiPerRef, u256 _refsPerBlock): m_weiPerRef(_weiPerRef), m_refsPerBlock(_refsPerBlock) {}
 
-	void setRefPrice(u256 _weiPerRef) { m_weiPerRef = _weiPerRef; }
-	void setRefBlockFees(u256 _refsPerBlock) { m_refsPerBlock = _refsPerBlock; }
+	void setRefPrice(u256 _weiPerRef) { if ((bigint)m_refsPerBlock * _weiPerRef > std::numeric_limits<u256>::max() ) BOOST_THROW_EXCEPTION(Overflow() << errinfo_comment("ether price * block fees is larger than 2**256-1, choose a smaller number.") ); else m_weiPerRef = _weiPerRef; }
+	void setRefBlockFees(u256 _refsPerBlock) { if ((bigint)m_weiPerRef * _refsPerBlock > std::numeric_limits<u256>::max() ) BOOST_THROW_EXCEPTION(Overflow() << errinfo_comment("ether price * block fees is larger than 2**256-1, choose a smaller number.") ); else m_refsPerBlock = _refsPerBlock; }
 
 	u256 ask(State const&) const override { return m_weiPerRef * m_refsPerBlock / m_gasPerBlock; }
 	u256 bid(TransactionPriority _p = TransactionPriority::Medium) const override { return m_octiles[(int)_p] > 0 ? m_octiles[(int)_p] : (m_weiPerRef * m_refsPerBlock / m_gasPerBlock); }
@@ -92,10 +93,10 @@ private:
 	std::array<u256, 9> m_octiles;
 };
 
-struct ClientNote: public LogChannel { static const char* name() { return "*C*"; } static const int verbosity = 2; };
-struct ClientChat: public LogChannel { static const char* name() { return "=C="; } static const int verbosity = 4; };
-struct ClientTrace: public LogChannel { static const char* name() { return "-C-"; } static const int verbosity = 7; };
-struct ClientDetail: public LogChannel { static const char* name() { return " C "; } static const int verbosity = 14; };
+struct ClientNote: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct ClientChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
+struct ClientTrace: public LogChannel { static const char* name(); static const int verbosity = 7; };
+struct ClientDetail: public LogChannel { static const char* name(); static const int verbosity = 14; };
 
 struct ActivityReport
 {
@@ -132,9 +133,6 @@ public:
 
 	/// Resets the gas pricer to some other object.
 	void setGasPricer(std::shared_ptr<GasPricer> _gp) { m_gp = _gp; }
-
-	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
-	virtual void inject(bytesConstRef _rlp);
 
 	/// Blocks until all pending transactions have been processed.
 	virtual void flushTransactions() override;
@@ -261,10 +259,10 @@ private:
 	void syncTransactionQueue();
 
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
-	void onTransactionQueueReady() { m_syncTransactionQueue = true; }
+	void onTransactionQueueReady() { m_syncTransactionQueue = true; m_signalled.notify_all(); }
 
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
-	void onBlockQueueReady() { m_syncBlockQueue = true; }
+	void onBlockQueueReady() { m_syncBlockQueue = true; m_signalled.notify_all(); }
 
 	/// Called when the post state has changed (i.e. when more transactions are in it or we're mining on a new block).
 	/// This updates m_miningInfo.
@@ -282,10 +280,12 @@ private:
 	std::shared_ptr<GasPricer> m_gp;		///< The gas pricer.
 
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
-	mutable SharedMutex x_preMine;			///< Lock on the OverlayDB and other attributes of m_preMine.
+	mutable SharedMutex x_preMine;			///< Lock on m_preMine.
 	State m_preMine;						///< The present state of the client.
-	mutable SharedMutex x_postMine;			///< Lock on the OverlayDB and other attributes of m_postMine.
+	mutable SharedMutex x_postMine;			///< Lock on m_postMine.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+	mutable SharedMutex x_working;			///< Lock on m_working.
+	State m_working;						///< The state of the client which we're mining (i.e. it'll have all the rewards added), while we're actually working on it.
 	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
 	bool remoteActive() const;				///< Is there an active and valid remote worker?
 	bool m_remoteWorking = false;			///< Has the remote worker recently been reset?
@@ -310,6 +310,8 @@ private:
 	ActivityReport m_report;
 
 	// TODO!!!!!! REPLACE WITH A PROPER X-THREAD ASIO SIGNAL SYSTEM (could just be condition variables)
+	std::condition_variable m_signalled;
+	Mutex x_signalled;
 	std::atomic<bool> m_syncTransactionQueue = {false};
 	std::atomic<bool> m_syncBlockQueue = {false};
 };

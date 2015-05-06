@@ -33,6 +33,8 @@ else()
 	link_directories(/usr/lib/llvm-3.7/lib)
 endif()
 
+get_filename_component(EVMJIT_INCLUDE_DIR include ABSOLUTE)
+
 add_subdirectory(libevmjit)
 
 if(EVMJIT_CPP)

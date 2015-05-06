@@ -8,6 +8,7 @@ set(SOURCES
     Common.h
     Compiler.cpp		Compiler.h
     CompilerHelper.cpp	CompilerHelper.h
+    ${EVMJIT_INCLUDE_DIR}/evmjit/DataTypes.h
     Endianness.cpp		Endianness.h
     ExecStats.cpp		ExecStats.h
     ExecutionEngine.cpp	ExecutionEngine.h
@@ -15,6 +16,7 @@ set(SOURCES
     GasMeter.cpp		GasMeter.h
     Instruction.cpp		Instruction.h
     interface.cpp		interface.h
+    JIT.cpp             ${EVMJIT_INCLUDE_DIR}/evmjit/JIT.h
     Memory.cpp			Memory.h
     Optimizer.cpp		Optimizer.h
     Runtime.cpp			Runtime.h
@@ -79,6 +81,7 @@ set_target_properties(${TARGET_NAME} PROPERTIES
 						VERSION ${EVMJIT_VERSION} SOVERSION ${EVMJIT_SOVERSION}
 						FOLDER "libs")
 
+include_directories(${EVMJIT_INCLUDE_DIR})
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/gen)
 
