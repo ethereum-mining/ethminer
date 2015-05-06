@@ -29,7 +29,7 @@ namespace eth
 {
 namespace
 {
-	VMKind g_kind = VMKind::Interpreter;
+	auto g_kind = VMKind::Interpreter;
 }
 
 void VMFactory::setKind(VMKind _kind)
@@ -39,10 +39,15 @@ void VMFactory::setKind(VMKind _kind)
 
 std::unique_ptr<VMFace> VMFactory::create(u256 _gas)
 {
+	return create(g_kind, _gas);
+}
+
+std::unique_ptr<VMFace> VMFactory::create(VMKind _kind, u256 _gas)
+{
 #if ETH_EVMJIT
-	return std::unique_ptr<VMFace>(g_kind == VMKind::JIT ? static_cast<VMFace*>(new JitVM(_gas)) : static_cast<VMFace*>(new VM(_gas)));
+	return std::unique_ptr<VMFace>(_kind == VMKind::JIT ? static_cast<VMFace*>(new JitVM(_gas)) : static_cast<VMFace*>(new VM(_gas)));
 #else
-	asserts(g_kind == VMKind::Interpreter && "JIT disabled in build configuration");
+	asserts(_kind == VMKind::Interpreter && "JIT disabled in build configuration");
 	return std::unique_ptr<VMFace>(new VM(_gas));
 #endif
 }
