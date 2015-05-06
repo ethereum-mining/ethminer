@@ -22,6 +22,7 @@
 
 #include <iostream>
 #include <libdevcore/Log.h>
+#include <libweb3jsonrpc/WebThreeStubServer.h>
 #include "JSConsole.h"
 #include "JSV8Connector.h"
 #include "libjsconsole/JSConsoleResources.hpp"
@@ -41,6 +42,8 @@ JSConsole::JSConsole(WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _ac
 	m_jsonrpcConnector.reset(new JSV8Connector(m_engine));
 	m_jsonrpcServer.reset(new WebThreeStubServer(*m_jsonrpcConnector.get(), _web3, _accounts));
 }
+
+JSConsole::~JSConsole() {}
 
 void JSConsole::repl() const
 {
@@ -81,5 +84,3 @@ std::string JSConsole::promptForIndentionLevel(int _i) const
 
 	return string((_i + 1) * 2, ' ');
 }
-
-
