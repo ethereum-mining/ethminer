@@ -28,6 +28,7 @@
 #include <libethereum/Executive.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/BlockChain.h>
+#include <libethcore/Params.h>
 #include <libevm/VM.h>
 #include "Exceptions.h"
 using namespace std;

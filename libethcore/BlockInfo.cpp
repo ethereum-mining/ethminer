@@ -23,10 +23,10 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/TrieDB.h>
 #include <libethcore/Common.h>
+#include <libethcore/Params.h>
 #include "EthashAux.h"
 #include "ProofOfWork.h"
 #include "Exceptions.h"
-#include "Params.h"
 #include "BlockInfo.h"
 using namespace std;
 using namespace dev;

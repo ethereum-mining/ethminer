@@ -80,7 +80,7 @@ public:
 	void noteNewBlocks() { m_newBlocks = true; }
 
 private:
-	std::vector<std::shared_ptr<EthereumPeer>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
+	std::pair<std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<EthereumPeer>>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
 
 	/// Session is tell us that we may need (re-)syncing with the peer.
 	void noteNeedsSyncing(EthereumPeer* _who);
@@ -92,7 +92,7 @@ private:
 	void doWork();
 
 	void maintainTransactions();
-	void maintainBlocks(h256 _currentBlock);
+	void maintainBlocks(h256 const& _currentBlock);
 
 	/// Get a bunch of needed blocks.
 	/// Removes them from our list of needed blocks.
