@@ -83,7 +83,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, NodeIPEndpoint con
 
 shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relation)
 {
-	if (_relation)
+	if (_relation == Known)
 	{
 		shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, _node.endpoint));
 		ret->pending = false;
