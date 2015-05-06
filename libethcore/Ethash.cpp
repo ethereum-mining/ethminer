@@ -309,10 +309,10 @@ void Ethash::GPUMiner::workLoop()
 			delete m_miner;
 			m_miner = new ethash_cl_miner;
 
-			auto p = EthashAux::params(m_minerSeed);
-			auto cb = [&](void* d) { EthashAux::full(m_minerSeed, bytesRef((byte*)d, p.full_size)); };
 			unsigned device = instances() > 1 ? index() : s_deviceId;
-			m_miner->init(p, cb, 32, s_platformId, device);
+
+			EthashAux::FullType dag = EthashAux::full(m_minerSeed);
+			m_miner->init(dag->data.data(), dag->data.size(), 32, s_platformId, device);
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
