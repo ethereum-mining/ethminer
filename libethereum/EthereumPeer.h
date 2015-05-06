@@ -129,7 +129,7 @@ private:
 	/// This is built as we ask for hashes. Once no more hashes are given, we present this to the
 	/// host who initialises the DownloadMan and m_sub becomes active for us to begin asking for blocks.
 	h256s m_syncingNeededBlocks;				///< The blocks that we should download from this peer.
-	h256 m_syncingLastReceivedHash;				///< Hash more recently received from peer.
+	h256 m_syncingLastReceivedHash;				///< Hash most recently received from peer.
 	h256 m_syncingLatestHash;					///< Peer's latest block's hash, as of the current sync.
 	u256 m_syncingTotalDifficulty;				///< Peer's latest block's total difficulty, as of the current sync.
 
