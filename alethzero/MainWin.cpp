@@ -1774,6 +1774,7 @@ void Main::on_net_triggered()
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : h256());
 		web3()->startNetwork();
 		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
+		ui->enode->setText(QString::fromStdString(web3()->enode()));
 	}
 	else
 	{

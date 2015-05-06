@@ -588,7 +588,7 @@ BOOST_AUTO_TEST_CASE(handshakeNew)
 
 BOOST_AUTO_TEST_CASE(ecies_aes128_ctr_unaligned)
 {
-	Secret encryptK(sha3("..."));
+	h128 encryptK(sha3("..."), h128::AlignLeft);
 	h256 egressMac(sha3("+++"));
 	// TESTING: send encrypt magic sequence
 	bytes magic {0x22,0x40,0x08,0x91};
@@ -610,7 +610,7 @@ BOOST_AUTO_TEST_CASE(ecies_aes128_ctr_unaligned)
 
 BOOST_AUTO_TEST_CASE(ecies_aes128_ctr)
 {
-	Secret k(sha3("0xAAAA"));
+	h128 k(sha3("0xAAAA"), h128::AlignLeft);
 	string m = "AAAAAAAAAAAAAAAA";
 	bytesConstRef msg((byte*)m.data(), m.size());
 

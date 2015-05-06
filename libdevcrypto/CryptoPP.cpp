@@ -79,7 +79,7 @@ void Secp256k1::encryptECIES(Public const& _k, bytes& io_cipher)
 	ctx.Final(mKey.data());
 	
 	bytes cipherText;
-	encryptSymNoAuth(*(Secret*)eKey.data(), bytesConstRef(&io_cipher), cipherText, h128());
+	encryptSymNoAuth(h128(eKey), bytesConstRef(&io_cipher), cipherText, h128());
 	if (cipherText.empty())
 		return;
 
@@ -139,7 +139,7 @@ bool Secp256k1::decryptECIES(Secret const& _k, bytes& io_text)
 		if (mac[i] != msgMac[i])
 			return false;
 	
-	decryptSymNoAuth(*(Secret*)eKey.data(), iv, cipherNoIV, plain);
+	decryptSymNoAuth(h128(eKey), iv, cipherNoIV, plain);
 	io_text.resize(plain.size());
 	io_text.swap(plain);
 	

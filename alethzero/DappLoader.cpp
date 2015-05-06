@@ -69,7 +69,11 @@ DappLocation DappLoader::resolveAppUri(QString const& _uri)
 		string32 name = ZeroString32;
 		QByteArray utf8 = parts[partIndex].toUtf8();
 		std::copy(utf8.data(), utf8.data() + utf8.size(), name.data());
-		address = abiOut<Address>(web3()->ethereum()->call(address, abiIn("subRegistrar(bytes32)", name)).output);
+		if (address != m_nameReg)
+			address = abiOut<Address>(web3()->ethereum()->call(address, abiIn("subRegistrar(bytes32)", name)).output);
+		else
+			address = abiOut<Address>(web3()->ethereum()->call(address, abiIn("register(bytes32)", name)).output);
+
 		domainParts.append(parts[partIndex]);
 		if (!address)
 		{
