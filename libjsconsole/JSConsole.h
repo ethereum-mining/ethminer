@@ -24,7 +24,9 @@
 
 #include <libjsengine/JSV8Engine.h>
 #include <libjsengine/JSV8Printer.h>
-#include <libweb3jsonrpc/WebThreeStubServer.h>
+
+class WebThreeStubServer;
+namespace jsonrpc { class AbstractServerConnector; }
 
 namespace dev
 {
@@ -35,6 +37,7 @@ class JSConsole
 {
 public:
 	JSConsole(WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
+	~JSConsole();
 	void repl() const;
 
 private:
