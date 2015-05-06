@@ -98,9 +98,9 @@ class JSV8Scope
 {
 public:
 	JSV8Scope():
-			m_handleScope(),
-			m_context(v8::Context::New(NULL, v8::ObjectTemplate::New())),
-			m_contextScope(m_context)
+		m_handleScope(),
+		m_context(v8::Context::New(NULL, v8::ObjectTemplate::New())),
+		m_contextScope(m_context)
 	{
 		m_context->Enter();
 	}
