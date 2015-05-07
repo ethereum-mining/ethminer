@@ -22,7 +22,6 @@
 #pragma once
 
 #include <array>
-#include <map>
 #include <unordered_map>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
@@ -142,7 +141,7 @@ public:
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	/// @throws InterfaceNotSupported if compiled without ETH_FATDB.
-	std::map<Address, u256> addresses() const;
+	std::unordered_map<Address, u256> addresses() const;
 
 	/// Get the header information on the present block.
 	BlockInfo const& info() const { return m_currentBlock; }
@@ -238,8 +237,8 @@ public:
 
 	/// Get the storage of an account.
 	/// @note This is expensive. Don't use it unless you need to.
-	/// @returns std::map<u256, u256> if no account exists at that address.
-	std::map<u256, u256> storage(Address _contract) const;
+	/// @returns std::unordered_map<u256, u256> if no account exists at that address.
+	std::unordered_map<u256, u256> storage(Address _contract) const;
 
 	/// Get the code of an account.
 	/// @returns bytes() if no account exists at that address.
@@ -263,7 +262,7 @@ public:
 	Transactions const& pending() const { return m_transactions; }
 
 	/// Get the list of hashes of pending transactions.
-	h256Set const& pendingHashes() const { return m_transactionSet; }
+	h256Hash const& pendingHashes() const { return m_transactionSet; }
 
 	/// Get the transaction receipt for the transaction of the given index.
 	TransactionReceipt const& receipt(unsigned _i) const { return m_receipts[_i]; }
@@ -334,7 +333,7 @@ private:
 	void ensureCached(Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Retrieve all information about a given address into a cache.
-	void ensureCached(std::map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
+	void ensureCached(std::unordered_map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock.
 	/// Throws on failure.
@@ -355,10 +354,10 @@ private:
 	SecureTrieDB<Address, OverlayDB> m_state;	///< Our state tree, as an OverlayDB DB.
 	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
 	TransactionReceipts m_receipts;				///< The corresponding list of transaction receipts.
-	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
+	h256Hash m_transactionSet;					///< The set of transaction hashes that we've included in the state.
 	OverlayDB m_lastTx;
 
-	mutable std::map<Address, Account> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
+	mutable std::unordered_map<Address, Account> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
@@ -380,7 +379,7 @@ private:
 std::ostream& operator<<(std::ostream& _out, State const& _s);
 
 template <class DB>
-void commit(std::map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
+void commit(std::unordered_map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
 {
 	for (auto const& i: _cache)
 		if (i.second.isDirty())

@@ -147,17 +147,10 @@ public:
 	/// @returns a random valued object.
 	static FixedHash random() { return random(s_fixedHashEngine); }
 
-	/// A generic std::hash compatible function object.
 	struct hash
 	{
 		/// Make a hash of the object's data.
-		size_t operator()(FixedHash const& value) const
-		{
-			size_t h = 0;
-			for (auto i: value.m_data)
-				h = (h << (5 - h)) + i;
-			return h;
-		}
+		size_t operator()(FixedHash const& value) const;
 	};
 
 	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h)
@@ -215,6 +208,23 @@ template<> inline bool FixedHash<32>::operator==(FixedHash<32> const& _other) co
 	return (hash1[0] == hash2[0]) && (hash1[1] == hash2[1]) && (hash1[2] == hash2[2]) && (hash1[3] == hash2[3]);
 }
 
+/// Fast std::hash compatible hash function object for h64.
+template<> inline size_t FixedHash<8>::hash::operator()(FixedHash<8> const& value) const
+{
+	const uint64_t*data = (const uint64_t*)value.data();
+	return (size_t)(*data);
+}
+
+/// Fast std::hash compatible hash function object for h160.
+template<> inline size_t FixedHash<20>::hash::operator()(FixedHash<20> const& value) const
+{
+	const uint64_t*data = (const uint64_t*)value.data();
+	uint64_t hash = data[0];
+	hash ^= data[1];
+	hash ^= ((const uint32_t*)value.data())[4];
+	return (size_t)hash;
+}
+
 /// Fast std::hash compatible hash function object for h256.
 template<> inline size_t FixedHash<32>::hash::operator()(FixedHash<32> const& value) const
 {
@@ -223,6 +233,21 @@ template<> inline size_t FixedHash<32>::hash::operator()(FixedHash<32> const& va
 	hash ^= data[1];
 	hash ^= data[2];
 	hash ^= data[3];
+	return (size_t)hash;
+}
+
+/// Fast std::hash compatible hash function object for h512.
+template<> inline size_t FixedHash<64>::hash::operator()(FixedHash<64> const& value) const
+{
+	const uint64_t*data = (const uint64_t*)value.data();
+	uint64_t hash = data[0];
+	hash ^= data[1];
+	hash ^= data[2];
+	hash ^= data[3];
+	hash ^= data[4];
+	hash ^= data[5];
+	hash ^= data[6];
+	hash ^= data[7];
 	return (size_t)hash;
 }
 
@@ -251,6 +276,8 @@ using h256s = std::vector<h256>;
 using h160s = std::vector<h160>;
 using h256Set = std::set<h256>;
 using h160Set = std::set<h160>;
+using h256Hash = std::unordered_set<h256>;
+using h160Hash = std::unordered_set<h160>;
 
 /// Convert the given value into h160 (160-bit unsigned integer) using the right 20 bytes.
 inline h160 right160(h256 const& _t)
@@ -282,6 +309,9 @@ inline std::string toString(h256s const& _bs)
 
 namespace std
 {
-	/// Forward std::hash<dev::h256> to dev::h256::hash.
+	/// Forward std::hash<dev::FixedHash> to dev::FixedHash::hash.
+	template<> struct hash<dev::h64>: dev::h64::hash {};
+	template<> struct hash<dev::h160>: dev::h160::hash {};
 	template<> struct hash<dev::h256>: dev::h256::hash {};
+	template<> struct hash<dev::h512>: dev::h512::hash {};
 }

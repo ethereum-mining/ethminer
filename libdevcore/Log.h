@@ -164,6 +164,30 @@ public:
 		}
 		m_sstr << EthLime "}" EthReset;
 	}
+	template <class T> void append(std::unordered_set<T> const& _t)
+	{
+		m_sstr << EthYellow "{" EthReset;
+		int n = 0;
+		for (auto const& i: _t)
+		{
+			m_sstr << (n++ ? EthYellow ", " EthReset : "");
+			append(i);
+		}
+		m_sstr << EthYellow "}" EthReset;
+	}
+	template <class T, class U> void append(std::unordered_map<T, U> const& _t)
+	{
+		m_sstr << EthLime "{" EthReset;
+		int n = 0;
+		for (auto const& i: _t)
+		{
+			m_sstr << (n++ ? EthLime ", " EthReset : "");
+			append(i.first);
+			m_sstr << (n++ ? EthLime ": " EthReset : "");
+			append(i.second);
+		}
+		m_sstr << EthLime "}" EthReset;
+	}
 	template <class T, class U> void append(std::pair<T, U> const& _t)
 	{
 		m_sstr << EthPurple "(" EthReset;

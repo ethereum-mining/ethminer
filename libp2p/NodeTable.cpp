@@ -232,7 +232,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 	unsigned head = distance(m_node.id, _target);
 	unsigned tail = head == 0 ? lastBin : (head - 1) % s_bins;
 	
-	map<unsigned, list<shared_ptr<NodeEntry>>> found;
+	unordered_multimap<unsigned, shared_ptr<NodeEntry>> found;
 	unsigned count = 0;
 	
 	// if d is 0, then we roll look forward, if last, we reverse, else, spread from d
@@ -244,7 +244,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
-						found[distance(_target, p->id)].push_back(p);
+						found.insert(make_pair(distance(_target, p->id), p));
 					else
 						break;
 				}
@@ -254,7 +254,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 					if (auto p = n.lock())
 					{
 						if (count < s_bucketSize)
-							found[distance(_target, p->id)].push_back(p);
+							found.insert(make_pair(distance(_target, p->id), p));
 						else
 							break;
 					}
@@ -271,7 +271,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
-						found[distance(_target, p->id)].push_back(p);
+						found.insert(make_pair(distance(_target, p->id), p));
 					else
 						break;
 				}
@@ -285,7 +285,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
-						found[distance(_target, p->id)].push_back(p);
+						found.insert(make_pair(distance(_target, p->id), p));
 					else
 						break;
 				}
@@ -293,10 +293,9 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 		}
 	
 	vector<shared_ptr<NodeEntry>> ret;
-	for (auto& nodes: found)
-		for (auto n: nodes.second)
-			if (n->endpoint.isAllowed())
-				ret.push_back(n);
+		for (auto n: found)
+			if (n.second->endpoint.isAllowed())
+				ret.push_back(n.second);
 	return move(ret);
 }
 
