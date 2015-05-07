@@ -36,9 +36,19 @@ void HasInvariants::checkInvariants() const
 		BOOST_THROW_EXCEPTION(FailedInvariant());
 }
 
+struct TimerChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };
+
+#ifdef _WIN32
+const char* TimerChannel::name() { return EthRed " ! "; }
+#else
+const char* TimerChannel::name() { return EthRed " ⚡ "; }
+#endif
+
 TimerHelper::~TimerHelper()
 {
-	cdebug << "Timer" << id << t.elapsed() << "s";
+	auto e = m_t.elapsed();
+	if (!m_ms || e * 1000 > m_ms)
+		clog(TimerChannel) << m_id << e << "s";
 }
 
 }
