@@ -158,8 +158,8 @@ void dev::setThreadName(string const& _n)
 
 void dev::simpleDebugOut(std::string const& _s, char const*)
 {
-	static Mutex s_lock;
-	Guard l(s_lock);
+	static SpinLock s_lock;
+	SpinGuard l(s_lock);
 
 	cerr << _s << endl << flush;
 

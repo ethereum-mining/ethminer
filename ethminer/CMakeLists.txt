@@ -37,5 +37,9 @@ if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
 	eth_copy_dlls("${EXECUTABLE}" MHD_DLLS)
 endif()
 
-install( TARGETS ${EXECUTABLE} DESTINATION bin )
+if (APPLE)
+	install(TARGETS ${EXECUTABLE} DESTINATION bin)
+else()
+	eth_install_executable(${EXECUTABLE})
+endif()
 

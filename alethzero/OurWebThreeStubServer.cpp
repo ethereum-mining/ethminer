@@ -73,7 +73,7 @@ bool OurWebThreeStubServer::showCreationNotice(TransactionSkeleton const& _t, bo
 
 bool OurWebThreeStubServer::showSendNotice(TransactionSkeleton const& _t, bool _toProxy)
 {
-	return showAuthenticationPopup("Fund Transfer Transaction", "ÐApp is attempting to send " + formatBalance(_t.value) + " to a recipient " + m_main->pretty(_t.to).toStdString() + (_toProxy ? " (this transaction is not executed directly, but forwarded to another ÐApp)" : "") +
+	return showAuthenticationPopup("Fund Transfer Transaction", "ÐApp is attempting to send " + formatBalance(_t.value) + " to a recipient " + m_main->pretty(_t.to) + (_toProxy ? " (this transaction is not executed directly, but forwarded to another ÐApp)" : "") +
 ", with additional network fees of up to " + formatBalance(_t.gas * _t.gasPrice) + ".\n\nMaximum total cost is " + formatBalance(_t.value + _t.gas * _t.gasPrice) + ".");
 }
 
@@ -81,7 +81,7 @@ bool OurWebThreeStubServer::showUnknownCallNotice(TransactionSkeleton const& _t,
 {
 	return showAuthenticationPopup("DANGEROUS! Unknown Contract Transaction!",
 		"ÐApp is attempting to call into an unknown contract at address " +
-		m_main->pretty(_t.to).toStdString() + ".\n\n" +
+		m_main->pretty(_t.to) + ".\n\n" +
 		(_toProxy ? "This transaction is not executed directly, but forwarded to another ÐApp.\n\n" : "")  +
 		"Call involves sending " +
 		formatBalance(_t.value) + " to the recipient, with additional network fees of up to " +
@@ -137,7 +137,7 @@ bool OurWebThreeStubServer::validateTransaction(TransactionSkeleton const& _t, b
 	// otherwise it's a transaction to a contract for which we have the natspec
 	return showAuthenticationPopup("Contract Transaction",
 		"ÐApp attempting to conduct contract interaction with " +
-		m_main->pretty(_t.to).toStdString() +
+		m_main->pretty(_t.to) +
 		": <b>" + userNotice + "</b>.\n\n" +
 		(_toProxy ? "This transaction is not executed directly, but forwarded to another ÐApp.\n\n" : "") +
 		(_t.value > 0 ?

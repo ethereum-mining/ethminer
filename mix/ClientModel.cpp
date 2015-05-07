@@ -137,24 +137,29 @@ void ClientModel::mine()
 QString ClientModel::newSecret()
 {
 	KeyPair a = KeyPair::create();
-	return QString::fromStdString(toHex(a.secret().ref()));
+	return QString::fromStdString(dev::toHex(a.secret().ref()));
 }
 
 QString ClientModel::address(QString const& _secret)
 {
-	return QString::fromStdString(toHex(KeyPair(Secret(_secret.toStdString())).address().ref()));
+	return QString::fromStdString(dev::toHex(KeyPair(Secret(_secret.toStdString())).address().ref()));
+}
+
+QString ClientModel::toHex(QString const& _int)
+{
+	return QString::fromStdString(dev::toHex(dev::u256(_int.toStdString())));
 }
 
 QString ClientModel::encodeAbiString(QString _string)
 {
 	ContractCallDataEncoder encoder;
-	return QString::fromStdString(toHex(encoder.encodeBytes(_string)));
+	return QString::fromStdString(dev::toHex(encoder.encodeBytes(_string)));
 }
 
 QString ClientModel::encodeStringParam(QString const& _param)
 {
 	ContractCallDataEncoder encoder;
-	return QString::fromStdString(toHex(encoder.encodeStringParam(_param, 32)));
+	return QString::fromStdString(dev::toHex(encoder.encodeStringParam(_param, 32)));
 }
 
 QStringList ClientModel::encodeParams(QVariant const& _param, QString const& _contract, QString const& _function)
@@ -179,7 +184,7 @@ QStringList ClientModel::encodeParams(QVariant const& _param, QString const& _co
 			QSolidityType const* type = var->type();
 			QVariant value = _param.toMap().value(var->name());
 			encoder.encode(value, type->type());
-			ret.push_back(QString::fromStdString(toHex(encoder.encodedData())));
+			ret.push_back(QString::fromStdString(dev::toHex(encoder.encodedData())));
 		}
 	return ret;
 }
@@ -192,11 +197,11 @@ QVariantMap ClientModel::contractAddresses() const
 	return res;
 }
 
-QVariantMap ClientModel::gasCosts() const
+QVariantList ClientModel::gasCosts() const
 {
-	QVariantMap res;
+	QVariantList res;
 	for (auto const& c: m_gasCosts)
-		res.insert(c.first, QVariant::fromValue(static_cast<int>(c.second)));
+		res.append(QVariant::fromValue(static_cast<int>(c)));
 	return res;
 }
 
@@ -299,6 +304,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 		{
 			vector<Address> deployedContracts;
 			onStateReset();
+			m_gasCosts.clear();
 			for (TransactionSettings const& transaction: _sequence)
 			{
 				ContractCallDataEncoder encoder;
@@ -345,7 +351,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 						if (type->type().type == SolidityType::Type::Address && value.toString().startsWith("<") && value.toString().endsWith(">"))
 						{
 							QStringList nb = value.toString().remove("<").remove(">").split(" - ");
-							value = QVariant(QString::fromStdString("0x" + toHex(deployedContracts.at(nb.back().toInt()).ref())));
+							value = QVariant(QString::fromStdString("0x" + dev::toHex(deployedContracts.at(nb.back().toInt()).ref())));
 						}
 						encoder.encode(value, type->type());
 					}
@@ -364,7 +370,6 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 							contractAddressesChanged();
 						}
 						gasCostsChanged();
-						m_gasCosts[transaction.contractId] = m_client->lastExecution().gasUsed;
 					}
 					else
 					{
@@ -378,6 +383,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 						}
 						callContract(contractAddressIter->second, encoder.encodedData(), transaction);
 					}
+					m_gasCosts.append(m_client->lastExecution().gasUsed);
 				}
 				onNewTransaction();
 			}
@@ -422,7 +428,7 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 		//try to resolve contract for source level debugging
 		auto nameIter = m_contractNames.find(code.address);
 		CompiledContract const* compilerRes = nullptr;
-		if (nameIter != m_contractNames.end() && (compilerRes = m_codeModel->tryGetContract(nameIter->second)))
+		if (nameIter != m_contractNames.end() && (compilerRes = m_codeModel->tryGetContract(nameIter->second))) //returned object is guaranteed to live till the end of event handler in main thread
 		{
 			eth::AssemblyItems assemblyItems = !_t.isConstructor() ? compilerRes->assemblyItems() : compilerRes->constructorAssemblyItems();
 			codes.back()->setDocument(compilerRes->documentId());
@@ -467,9 +473,9 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 			{
 				//track calls into functions
 				AssemblyItem const& prevInstruction = codeItems[s.codeIndex][prevInstructionIndex];
-				auto functionIter = contract->functions().find(LocationPair(instruction.getLocation().start, instruction.getLocation().end));
-				if (functionIter != contract->functions().end() && ((prevInstruction.getJumpType() == AssemblyItem::JumpType::IntoFunction) || solCallStack.empty()))
-					solCallStack.push_front(QVariant::fromValue(functionIter.value()));
+				QString functionName = m_codeModel->resolveFunctionName(instruction.getLocation());
+				if (!functionName.isEmpty() && ((prevInstruction.getJumpType() == AssemblyItem::JumpType::IntoFunction) || solCallStack.empty()))
+					solCallStack.push_front(QVariant::fromValue(functionName));
 				else if (prevInstruction.getJumpType() == AssemblyItem::JumpType::OutOfFunction && !solCallStack.empty())
 					solCallStack.pop_front();
 			}
@@ -521,11 +527,13 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 
 			prevInstructionIndex = instructionIndex;
 
+			// filter out locations that match whole function or contract
 			SourceLocation location = instruction.getLocation();
-			if (contract->contract()->location() == location || contract->functions().contains(LocationPair(location.start, location.end)))
+			QString source = QString::fromUtf8(location.sourceName->c_str());
+			if (m_codeModel->isContractOrFunctionLocation(location))
 				location = dev::SourceLocation(-1, -1, location.sourceName);
 
-			solState = new QSolState(debugData, move(storage), move(solCallStack), move(locals), location.start, location.end, QString::fromUtf8(location.sourceName->c_str()));
+			solState = new QSolState(debugData, move(storage), move(solCallStack), move(locals), location.start, location.end, source);
 		}
 
 		states.append(QVariant::fromValue(new QMachineState(debugData, instructionIndex, s, codes[s.codeIndex], data[s.dataIndex], solState)));
@@ -613,7 +621,7 @@ RecordLogEntry* ClientModel::lastBlock() const
 	strGas << blockInfo.gasUsed;
 	stringstream strNumber;
 	strNumber << blockInfo.number;
-	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(toHex(blockInfo.hash().ref()))), QString(), QString(), QString(), false, RecordLogEntry::RecordType::Block, QString::fromStdString(strGas.str()));
+	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(dev::toHex(blockInfo.hash().ref()))), QString(), QString(), QString(), false, RecordLogEntry::RecordType::Block, QString::fromStdString(strGas.str()));
 	QQmlEngine::setObjectOwnership(record, QQmlEngine::JavaScriptOwnership);
 	return record;
 }
