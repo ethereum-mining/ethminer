@@ -150,7 +150,7 @@ public:
 	struct hash
 	{
 		/// Make a hash of the object's data.
-		size_t operator()(FixedHash const& value) const;
+		size_t operator()(FixedHash const& _value) const { return boost::hash_range(_value.m_data.cbegin(), _value.m_data.cend()); }
 	};
 
 	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h)
@@ -208,47 +208,11 @@ template<> inline bool FixedHash<32>::operator==(FixedHash<32> const& _other) co
 	return (hash1[0] == hash2[0]) && (hash1[1] == hash2[1]) && (hash1[2] == hash2[2]) && (hash1[3] == hash2[3]);
 }
 
-/// Fast std::hash compatible hash function object for h64.
-template<> inline size_t FixedHash<8>::hash::operator()(FixedHash<8> const& value) const
-{
-	const uint64_t*data = (const uint64_t*)value.data();
-	return (size_t)(*data);
-}
-
-/// Fast std::hash compatible hash function object for h160.
-template<> inline size_t FixedHash<20>::hash::operator()(FixedHash<20> const& value) const
-{
-	const uint64_t*data = (const uint64_t*)value.data();
-	uint64_t hash = data[0];
-	hash ^= data[1];
-	hash ^= ((const uint32_t*)value.data())[4];
-	return (size_t)hash;
-}
-
 /// Fast std::hash compatible hash function object for h256.
 template<> inline size_t FixedHash<32>::hash::operator()(FixedHash<32> const& value) const
 {
-	const uint64_t*data = (const uint64_t*)value.data();
-	uint64_t hash = data[0];
-	hash ^= data[1];
-	hash ^= data[2];
-	hash ^= data[3];
-	return (size_t)hash;
-}
-
-/// Fast std::hash compatible hash function object for h512.
-template<> inline size_t FixedHash<64>::hash::operator()(FixedHash<64> const& value) const
-{
-	const uint64_t*data = (const uint64_t*)value.data();
-	uint64_t hash = data[0];
-	hash ^= data[1];
-	hash ^= data[2];
-	hash ^= data[3];
-	hash ^= data[4];
-	hash ^= data[5];
-	hash ^= data[6];
-	hash ^= data[7];
-	return (size_t)hash;
+	uint64_t const* data = reinterpret_cast<uint64_t const*>(value.data());
+	return boost::hash_range(data, data + 4);
 }
 
 /// Stream I/O for the FixedHash class.

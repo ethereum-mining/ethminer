@@ -68,7 +68,7 @@ extern Address ZeroAddress;
 /// A vector of Ethereum addresses.
 using Addresses = h160s;
 
-/// A hash table of Ethereum addresses.
+/// A hash set of Ethereum addresses.
 using AddressHash = std::unordered_set<h160>;
 
 /// A vector of secrets.
