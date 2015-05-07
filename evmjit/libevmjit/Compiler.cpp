@@ -159,10 +159,10 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 
 	// TODO: Create Stop basic block on demand
 	m_stopBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Stop", m_mainFunc);
-	auto abortBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Abort", m_mainFunc);
+	m_abortBB = llvm::BasicBlock::Create(m_mainFunc->getContext(), "Abort", m_mainFunc);
 
 	auto firstBB = m_basicBlocks.empty() ? m_stopBB : m_basicBlocks.begin()->second.llvm();
-	m_builder.CreateCondBr(normalFlow, firstBB, abortBB, Type::expectTrue);
+	m_builder.CreateCondBr(normalFlow, firstBB, m_abortBB, Type::expectTrue);
 
 	for (auto basicBlockPairIt = m_basicBlocks.begin(); basicBlockPairIt != m_basicBlocks.end(); ++basicBlockPairIt)
 	{
@@ -178,7 +178,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	m_builder.SetInsertPoint(m_stopBB);
 	runtimeManager.exit(ReturnCode::Stop);
 
-	m_builder.SetInsertPoint(abortBB);
+	m_builder.SetInsertPoint(m_abortBB);
 	runtimeManager.exit(ReturnCode::OutOfGas);
 
 	removeDeadBlocks();
@@ -789,7 +789,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
 		case Instruction::STOP:
 		{
-			m_builder.CreateRet(Constant::get(ReturnCode::Stop));
+			m_builder.CreateBr(m_stopBB);
 			break;
 		}
 
@@ -816,7 +816,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		}
 
 		default: // Invalid instruction - abort
-			m_builder.CreateRet(Constant::get(ReturnCode::BadInstruction));
+			m_builder.CreateBr(m_abortBB);
 			it = _basicBlock.end() - 1; // finish block compilation
 		}
 	}
