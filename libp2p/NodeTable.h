@@ -133,12 +133,14 @@ class NodeTable: UDPSocketEvents, public std::enable_shared_from_this<NodeTable>
 	using EvictionTimeout = std::pair<NodeIdTimePoint, NodeId>;	///< First NodeId (NodeIdTimePoint) may be evicted and replaced with second NodeId.
 
 public:
+	enum NodeRelation { Unknown = 0, Known };
+	
 	/// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
 	NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint);
 	~NodeTable();
 
 	/// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
-	static unsigned distance(NodeId const& _a, NodeId const& _b) { u512 d = _a ^ _b; unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
+	static unsigned distance(NodeId const& _a, NodeId const& _b) { u256 d = sha3(_a) ^ sha3(_b); unsigned ret; for (ret = 0; d >>= 1; ++ret) {}; return ret; }
 
 	/// Set event handler for NodeEntryAdded and NodeEntryDropped events.
 	void setEventHandler(NodeTableEventHandler* _handler) { m_nodeEventHandler.reset(_handler); }
@@ -149,8 +151,8 @@ public:
 	/// Add node. Node will be pinged and empty shared_ptr is returned if NodeId is uknown.
 	std::shared_ptr<NodeEntry> addNode(Public const& _pubk, NodeIPEndpoint const& _ep);
 
-	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen.
-	std::shared_ptr<NodeEntry> addNode(Node const& _node);
+	/// Add node. Node will be pinged and empty shared_ptr is returned if node has never been seen or NodeId is empty.
+	std::shared_ptr<NodeEntry> addNode(Node const& _node, NodeRelation _relation = NodeRelation::Unknown);
 
 	/// To be called when node table is empty. Runs node discovery with m_node.id as the target in order to populate node-table.
 	void discover();
@@ -178,7 +180,7 @@ private:
 
 	/// Constants for Kademlia, derived from address space.
 
-	static unsigned const s_addressByteSize = sizeof(NodeId);				///< Size of address type in bytes.
+	static unsigned const s_addressByteSize = h256::size;					///< Size of address type in bytes.
 	static unsigned const s_bits = 8 * s_addressByteSize;					///< Denoted by n in [Kademlia].
 	static unsigned const s_bins = s_bits - 1;								///< Size of m_state (excludes root, which is us).
 	static unsigned const s_maxSteps = boost::static_log2<s_bits>::value;	///< Max iterations of discovery. (discover)
