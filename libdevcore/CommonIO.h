@@ -45,7 +45,8 @@ namespace dev
 /// Retrieve and returns the contents of the given file. If the file doesn't exist or isn't readable, returns an empty bytes.
 bytes contents(std::string const& _file);
 std::string contentsString(std::string const& _file);
-/// Retrieve and returns the allocated contents of the given file. If the file doesn't exist or isn't readable, returns nullptr. Don't forget to delete [] when finished.
+/// Retrieve and returns the allocated contents of the given file; if @_dest is given, don't allocate, use it directly.
+/// If the file doesn't exist or isn't readable, returns bytesRef(). Don't forget to delete [] the returned value's data when finished.
 bytesRef contentsNew(std::string const& _file, bytesRef _dest = bytesRef());
 
 /// Write the given binary data into the given file, replacing the file if it pre-exists.
@@ -76,7 +77,11 @@ template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, 
 template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::multimap<T, U> const& _e);
 template <class _S, class _T> _S& operator<<(_S& _out, std::shared_ptr<_T> const& _p);
 
-template <class T> inline std::string toString(std::chrono::time_point<T> const& _e, std::string _format = "")
+#ifdef _WIN32
+template <class T> inline std::string toString(std::chrono::time_point<T> const& _e, std::string _format = "%Y-%m-%d %H:%M:%S")
+#else
+template <class T> inline std::string toString(std::chrono::time_point<T> const& _e, std::string _format = "%F %T")
+#endif
 {
 	unsigned long milliSecondsSinceEpoch = std::chrono::duration_cast<std::chrono::milliseconds>(_e.time_since_epoch()).count();
 	auto const durationSinceEpoch = std::chrono::milliseconds(milliSecondsSinceEpoch);

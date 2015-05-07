@@ -61,7 +61,7 @@ bool EthereumHost::ensureInitialised()
 	{
 		// First time - just initialise.
 		m_latestBlockSent = m_chain.currentHash();
-		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent.abridged();
+		clog(NetNote) << "Initialising: latest=" << m_latestBlockSent;
 
 		for (auto const& i: m_tq.transactions())
 			m_transactionsSent.insert(i.first);
@@ -122,7 +122,7 @@ void EthereumHost::noteDoneBlocks(EthereumPeer* _who, bool _clemency)
 		// Done our chain-get.
 		clog(NetNote) << "Chain download complete.";
 		// 1/100th for each useful block hash.
-		_who->addRating(m_man.chain().size() / 100);
+		_who->addRating(m_man.chainSize() / 100);
 		m_man.reset();
 	}
 	else if (_who->isSyncing())
@@ -189,7 +189,7 @@ void EthereumHost::maintainTransactions()
 	for (auto const& i: ts)
 	{
 		bool unsent = !m_transactionsSent.count(i.first);
-		for (auto const& p: randomSelection(25, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }))
+		for (auto const& p: randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }).second)
 			peerTransactions[p].push_back(i.first);
 	}
 	for (auto const& t: ts)
@@ -218,42 +218,63 @@ void EthereumHost::maintainTransactions()
 		}
 }
 
-std::vector<std::shared_ptr<EthereumPeer>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
+pair<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
 {
-	std::vector<std::shared_ptr<EthereumPeer>> candidates;
-	candidates.reserve(peerSessions().size());
+	pair<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>> ret;
+	ret.second.reserve(peerSessions().size());
 	for (auto const& j: peerSessions())
 	{
 		auto pp = j.first->cap<EthereumPeer>();
 		if (_allow(pp.get()))
-			candidates.push_back(pp);
+			ret.second.push_back(pp);
 	}
 
-	std::vector<std::shared_ptr<EthereumPeer>> ret;
-	for (unsigned i = (peerSessions().size() * _percent + 99) / 100; i-- && candidates.size();)
+	ret.second.reserve((peerSessions().size() * _percent + 99) / 100);
+	for (unsigned i = (peerSessions().size() * _percent + 99) / 100; i-- && ret.second.size();)
 	{
-		unsigned n = rand() % candidates.size();
-		ret.push_back(std::move(candidates[n]));
-		candidates.erase(candidates.begin() + n);
+		unsigned n = rand() % ret.second.size();
+		ret.first.push_back(std::move(ret.second[n]));
+		ret.second.erase(ret.second.begin() + n);
 	}
 	return ret;
 }
 
-void EthereumHost::maintainBlocks(h256 _currentHash)
+void EthereumHost::maintainBlocks(h256 const& _currentHash)
 {
 	// Send any new blocks.
-	if (m_chain.details(m_latestBlockSent).totalDifficulty < m_chain.details(_currentHash).totalDifficulty)
+	auto detailsFrom = m_chain.details(m_latestBlockSent);
+	auto detailsTo = m_chain.details(_currentHash);
+	if (detailsFrom.totalDifficulty < detailsTo.totalDifficulty)
 	{
-		clog(NetMessageSummary) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
-
-		for (auto const& p: randomSelection(25, [&](EthereumPeer* p){return !p->m_knownBlocks.count(_currentHash); }))
+		if (diff(detailsFrom.number, detailsTo.number) < 20)
 		{
-			RLPStream ts;
-			p->prep(ts, NewBlockPacket, 2).appendRaw(m_chain.block(), 1).append(m_chain.details().totalDifficulty);
+			// don't be sending more than 20 "new" blocks. if there are any more we were probably waaaay behind.
+			clog(NetMessageSummary) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
 
-			Guard l(p->x_knownBlocks);
-			p->sealAndSend(ts);
-			p->m_knownBlocks.clear();
+			h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
+
+			auto s = randomSelection(25, [&](EthereumPeer* p){ ETH_GUARDED(p->x_knownBlocks) return !p->m_knownBlocks.count(_currentHash); return false; });
+			for (shared_ptr<EthereumPeer> const& p: s.first)
+				for (auto const& b: blocks)
+				{
+					RLPStream ts;
+					p->prep(ts, NewBlockPacket, 2).appendRaw(m_chain.block(b), 1).append(m_chain.details(b).totalDifficulty);
+
+					Guard l(p->x_knownBlocks);
+					p->sealAndSend(ts);
+					p->m_knownBlocks.clear();
+				}
+			for (shared_ptr<EthereumPeer> const& p: s.second)
+			{
+				RLPStream ts;
+				p->prep(ts, NewBlockHashesPacket, blocks.size());
+				for (auto const& b: blocks)
+					ts.append(b);
+
+				Guard l(p->x_knownBlocks);
+				p->sealAndSend(ts);
+				p->m_knownBlocks.clear();
+			}
 		}
 		m_latestBlockSent = _currentHash;
 	}

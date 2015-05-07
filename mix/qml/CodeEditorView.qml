@@ -3,6 +3,7 @@ import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 import QtQuick.Dialogs 1.1
+import Qt.labs.settings 1.0
 
 Item {
 	id: codeEditorView
@@ -74,6 +75,7 @@ Item {
 		}
 		editor.document = document;
 		editor.sourceName = document.documentId;
+		editor.setFontSize(editorSettings.fontSize);
 		editor.setText(data, document.syntaxMode);
 		editor.changeGeneration();
 	}
@@ -156,6 +158,14 @@ Item {
 				break;
 			}
 		}
+	}
+
+	function setFontSize(size) {
+		if (size <= 10 || size >= 48)
+			return;
+		editorSettings.fontSize = size;
+		for (var i = 0; i < editors.count; i++)
+			editors.itemAt(i).item.setFontSize(size);
 	}
 
 	Component.onCompleted: projectModel.codeEditor = codeEditorView;
@@ -316,5 +326,24 @@ Item {
 	}
 	ListModel {
 		id: editorListModel
+	}
+
+	Action {
+		id: increaseFontSize
+		text: qsTr("Increase Font Size")
+		shortcut: "Ctrl+="
+		onTriggered: setFontSize(editorSettings.fontSize + 1)
+	}
+
+	Action {
+		id: decreaseFontSize
+		text: qsTr("Decrease Font Size")
+		shortcut: "Ctrl+-"
+		onTriggered: setFontSize(editorSettings.fontSize - 1)
+	}
+
+	Settings {
+		id: editorSettings
+		property int fontSize: 12;
 	}
 }

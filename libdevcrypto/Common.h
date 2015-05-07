@@ -103,13 +103,13 @@ void encryptECIES(Public const& _k, bytesConstRef _plain, bytes& o_cipher);
 bool decryptECIES(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
 	
 /// Encrypts payload with random IV/ctr using AES128-CTR.
-h128 encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher);
+h128 encryptSymNoAuth(h128 const& _k, bytesConstRef _plain, bytes& o_cipher);
 
 /// Encrypts payload with specified IV/ctr using AES128-CTR.
-h128 encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher, h128 const& _iv);
+h128 encryptSymNoAuth(h128 const& _k, bytesConstRef _plain, bytes& o_cipher, h128 const& _iv);
 	
-/// Decrypts payload with specified IV/ctr.
-bool decryptSymNoAuth(Secret const& _k, h128 const& _iv, bytesConstRef _cipher, bytes& o_plaintext);
+/// Decrypts payload with specified IV/ctr using AES128-CTR.
+bool decryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _cipher, bytes& o_plaintext);
 
 /// Recovers Public key from signed message hash.
 Public recover(Signature const& _sig, h256 const& _hash);
@@ -119,6 +119,9 @@ Signature sign(Secret const& _k, h256 const& _hash);
 	
 /// Verify signature.
 bool verify(Public const& _k, Signature const& _s, h256 const& _hash);
+
+/// Derive key via PBKDF2.
+h256 pbkdf2(std::string const& _pass, bytes const& _salt, unsigned _iterations);
 
 /// Simple class that represents a "key pair".
 /// All of the data of the class can be regenerated from the secret key (m_secret) alone.
@@ -164,7 +167,7 @@ struct InvalidState: public dev::Exception {};
 
 /// Key derivation
 h256 kdf(Secret const& _priv, h256 const& _hash);
-	
+
 /**
  * @brief Generator for nonce material
  */

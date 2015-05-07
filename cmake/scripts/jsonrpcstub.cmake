@@ -42,4 +42,3 @@ else()
 	replace_if_different("${SERVER_TMPFILE}" "${SERVER_OUTFILE}")
 	replace_if_different("${CLIENT_TMPFILE}" "${CLIENT_OUTFILE}")
 endif()
-

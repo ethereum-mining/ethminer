@@ -21,6 +21,8 @@
 
 #include "Common.h"
 #include <random>
+#include <boost/algorithm/string/case_conv.hpp>
+#include <libdevcore/Base64.h>
 #include <libdevcrypto/SHA3.h>
 #include "Exceptions.h"
 #include "ProofOfWork.h"
@@ -34,7 +36,7 @@ namespace eth
 {
 
 const unsigned c_protocolVersion = 60;
-const unsigned c_minorProtocolVersion = 0;
+const unsigned c_minorProtocolVersion = 2;
 const unsigned c_databaseBaseVersion = 9;
 #if ETH_FATDB
 const unsigned c_databaseVersionModifier = 1;
@@ -100,4 +102,5 @@ std::string formatBalance(bigint const& _b)
 	return ret.str();
 }
 
-}}
+}
+}

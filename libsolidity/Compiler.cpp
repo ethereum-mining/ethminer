@@ -24,7 +24,7 @@
 #include <algorithm>
 #include <boost/range/adaptor/reversed.hpp>
 #include <libevmcore/Instruction.h>
-#include <libevmcore/Assembly.h>
+#include <libevmasm/Assembly.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/ExpressionCompiler.h>
 #include <libsolidity/CompilerUtils.h>
@@ -90,7 +90,7 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 			for (auto const& modifier: constructor->getModifiers())
 			{
 				auto baseContract = dynamic_cast<ContractDefinition const*>(
-					modifier->getName()->getReferencedDeclaration());
+					&modifier->getName()->getReferencedDeclaration());
 				if (baseContract)
 					if (m_baseArguments.count(baseContract->getConstructor()) == 0)
 						m_baseArguments[baseContract->getConstructor()] = &modifier->getArguments();
@@ -99,7 +99,7 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 		for (ASTPointer<InheritanceSpecifier> const& base: contract->getBaseContracts())
 		{
 			ContractDefinition const* baseContract = dynamic_cast<ContractDefinition const*>(
-						base->getName()->getReferencedDeclaration());
+						&base->getName()->getReferencedDeclaration());
 			solAssert(baseContract, "");
 
 			if (m_baseArguments.count(baseContract->getConstructor()) == 0)
@@ -136,6 +136,7 @@ void Compiler::appendBaseConstructor(FunctionDefinition const& _constructor)
 	FunctionType constructorType(_constructor);
 	if (!constructorType.getParameterTypes().empty())
 	{
+		solAssert(m_baseArguments.count(&_constructor), "");
 		std::vector<ASTPointer<Expression>> const* arguments = m_baseArguments[&_constructor];
 		solAssert(arguments, "");
 		for (unsigned i = 0; i < arguments->size(); ++i)
@@ -430,7 +431,8 @@ bool Compiler::visit(ForStatement const& _forStatement)
 	CompilerContext::LocationSetter locationSetter(m_context, _forStatement);
 	eth::AssemblyItem loopStart = m_context.newTag();
 	eth::AssemblyItem loopEnd = m_context.newTag();
-	m_continueTags.push_back(loopStart);
+	eth::AssemblyItem loopNext = m_context.newTag();
+	m_continueTags.push_back(loopNext);
 	m_breakTags.push_back(loopEnd);
 
 	if (_forStatement.getInitializationExpression())
@@ -447,6 +449,8 @@ bool Compiler::visit(ForStatement const& _forStatement)
 	}
 
 	_forStatement.getBody().accept(*this);
+
+	m_context << loopNext;
 
 	// for's loop expression if existing
 	if (_forStatement.getLoopExpression())
@@ -541,7 +545,7 @@ void Compiler::appendModifierOrFunctionCode()
 		ASTPointer<ModifierInvocation> const& modifierInvocation = m_currentFunction->getModifiers()[m_modifierDepth];
 
 		// constructor call should be excluded
-		if (dynamic_cast<ContractDefinition const*>(modifierInvocation->getName()->getReferencedDeclaration()))
+		if (dynamic_cast<ContractDefinition const*>(&modifierInvocation->getName()->getReferencedDeclaration()))
 		{
 			++m_modifierDepth;
 			appendModifierOrFunctionCode();

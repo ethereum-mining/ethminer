@@ -155,12 +155,15 @@ private:
 	{
 		if (m_onSolutionFound && m_onSolutionFound(_s))
 		{
-			WriteGuard ul(x_minerWork);
-			for (std::shared_ptr<Miner> const& m: m_miners)
-				if (m.get() != _m)
-					m->setWork();
-			m_work.reset();
-			return true;
+			if (x_minerWork.try_lock())
+			{
+				for (std::shared_ptr<Miner> const& m: m_miners)
+					if (m.get() != _m)
+						m->setWork();
+				m_work.reset();
+				x_minerWork.unlock();
+				return true;
+			}
 		}
 		return false;
 	}
