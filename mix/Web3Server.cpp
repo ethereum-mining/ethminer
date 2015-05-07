@@ -70,6 +70,12 @@ class EmptyNetwork : public dev::WebThreeNetworkFace
 		return false;
 	}
 
+	p2p::NetworkPreferences const& networkPreferences() const override
+	{
+		static const p2p::NetworkPreferences c_ret;
+		return c_ret;
+	}
+
 	void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers) override
 	{
 		(void)_n;
