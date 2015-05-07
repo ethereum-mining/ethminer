@@ -203,3 +203,26 @@ struct Node
 /// Simple stream output for a NodeIPEndpoint.
 std::ostream& operator<<(std::ostream& _out, dev::p2p::NodeIPEndpoint const& _ep);
 }
+
+/// std::hash for asio::adress
+namespace std
+{
+
+template <> struct hash<bi::address>
+{
+	size_t operator()(bi::address const& _a) const
+	{
+		if (_a.is_v4())
+			return _a.to_v4().to_ulong();
+		if (_a.is_v6())
+		{
+			auto const& range = _a.to_v6().to_bytes();
+			return boost::hash_range(range.begin(), range.end());
+		}
+		if (_a.is_unspecified())
+			return static_cast<size_t>(0x3487194039229152ul);  // Some random value
+		return std::hash<std::string>()(_a.to_string());
+	}
+};
+
+}
