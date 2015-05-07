@@ -18,13 +18,15 @@ DebugInfoList
 			property alias members: typeLoader.members;
 			property alias value: typeLoader.value;
 			anchors.fill: parent
-				StructView
-				{
-					id: typeLoader
-					members: []
-					value: {}
-					Layout.preferredWidth: parent.width
-				}
+			anchors.rightMargin: 8
+			StructView
+			{
+				id: typeLoader
+				members: []
+				value: {}
+				context: "variable"
+				width:parent.width
+			}
 		}
 	}
 

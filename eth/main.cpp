@@ -121,7 +121,7 @@ void help()
 		<< "    --json-rpc-port <n>  Specify JSON-RPC server port (implies '-j', default: " << SensibleHttpPort << ")." << endl
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
-		<< "    -R,--rebuild  First rebuild the blockchain from the existing database." << endl
+		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -S,--session-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
 		<< "Client transacting:" << endl
@@ -134,7 +134,9 @@ void help()
 		<< "    -f,--force-mining  Mine even when there are no transactions to mine (default: off)" << endl
 		<< "    -C,--cpu  When mining, use the CPU." << endl
 		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
+		<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
+		<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
 		<< "Client networking:" << endl
 		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
@@ -144,6 +146,7 @@ void help()
 		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
 		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
 		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
+		<< "    --network-id <n> Only connect to other hosts with this network id (default:0)." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "Work farming mode:" << endl
@@ -338,6 +341,9 @@ void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, u
 	exit(0);
 }
 
+struct HappyChannel: public LogChannel  { static const char* name() { return ":-D"; } static const int verbosity = 1; };
+struct SadChannel: public LogChannel { static const char* name() { return ":-("; } static const int verbosity = 1; };
+
 void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 {
 	(void)_m;
@@ -346,9 +352,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 #if ETH_JSONRPC || !ETH_TRUE
 	jsonrpc::HttpClient client(_remote);
 	Farm rpc(client);
-
 	GenericFarm<Ethash> f;
-
 	if (_m == MinerType::CPU)
 		f.startCPU();
 	else if (_m == MinerType::GPU)
@@ -356,35 +360,120 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 
 	ProofOfWork::WorkPackage current;
 	while (true)
-	{
-		bool completed = false;
-		ProofOfWork::Solution solution;
-		f.onSolutionFound([&](ProofOfWork::Solution sol)
+		try
 		{
-			solution = sol;
-			return completed = true;
-		});
-		for (unsigned i = 0; !completed; ++i)
-		{
-			Json::Value v = rpc.eth_getWork();
-			h256 hh(v[0].asString());
-			if (hh != current.headerHash)
+			bool completed = false;
+			ProofOfWork::Solution solution;
+			f.onSolutionFound([&](ProofOfWork::Solution sol)
 			{
-				current.headerHash = hh;
-				current.seedHash = h256(v[1].asString());
-				current.boundary = h256(v[2].asString());
-				f.setWork(current);
+				solution = sol;
+				return completed = true;
+			});
+			for (unsigned i = 0; !completed; ++i)
+			{
+				if (current)
+					cnote << "Mining on PoWhash" << current.headerHash << ": " << f.miningProgress();
+				else
+					cnote << "Getting work package...";
+				Json::Value v = rpc.eth_getWork();
+				h256 hh(v[0].asString());
+				if (hh != current.headerHash)
+				{
+					current.headerHash = hh;
+					current.seedHash = h256(v[1].asString());
+					current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
+					cnote << "Got work package:" << current.headerHash << " < " << current.boundary;
+					f.setWork(current);
+				}
+				this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 			}
-			this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
+			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash << "," << solution.mixHash << "] to" << _remote << "...";
+			bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
+			if (ok)
+				clog(HappyChannel) << "Submitted and accepted.";
+			else
+				clog(SadChannel) << "Not accepted.";
+			current.reset();
 		}
-		rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(solution.mixHash));
-	}
+		catch (jsonrpc::JsonRpcException&)
+		{
+			for (auto i = 3; --i; this_thread::sleep_for(chrono::seconds(1)))
+				cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
+			cerr << endl;
+		}
 #endif
 	exit(0);
 }
 
 int main(int argc, char** argv)
 {
+#if 0
+	cout << "\x1b[30mEthBlack\x1b[0m" << endl;
+	cout << "\x1b[90mEthCoal\x1b[0m" << endl;
+	cout << "\x1b[37mEthGray\x1b[0m" << endl;
+	cout << "\x1b[97mEthWhite\x1b[0m" << endl;
+	cout << "\x1b[31mEthRed\x1b[0m" << endl;
+	cout << "\x1b[32mEthGreen\x1b[0m" << endl;
+	cout << "\x1b[33mEthYellow\x1b[0m" << endl;
+	cout << "\x1b[34mEthBlue\x1b[0m" << endl;
+	cout << "\x1b[35mEthPurple\x1b[0m" << endl;
+	cout << "\x1b[36mEthCyan\x1b[0m" << endl;
+	// High Intensity
+	cout << "\x1b[91mEthRedI\x1b[0m" << endl;
+	cout << "\x1b[92mEthLime\x1b[0m" << endl;
+	cout << "\x1b[93mEthYellowI\x1b[0m" << endl;
+	cout << "\x1b[94mEthBlueI\x1b[0m" << endl;
+	cout << "\x1b[95mEthPurpleI\x1b[0m" << endl;
+	cout << "\x1b[96mEthCyanI\x1b[0m" << endl;
+
+	// Bold
+	cout << "\x1b[1;30mEthBlackB\x1b[0m" << endl;
+	cout << "\x1b[1;90mEthCoalB\x1b[0m" << endl;
+	cout << "\x1b[1;37mEthGrayB\x1b[0m" << endl;
+	cout << "\x1b[1;97mEthWhiteB\x1b[0m" << endl;
+	cout << "\x1b[1;31mEthRedB\x1b[0m" << endl;
+	cout << "\x1b[1;32mEthGreenB\x1b[0m" << endl;
+	cout << "\x1b[1;33mEthYellowB\x1b[0m" << endl;
+	cout << "\x1b[1;34mEthBlueB\x1b[0m" << endl;
+	cout << "\x1b[1;35mEthPurpleB\x1b[0m" << endl;
+	cout << "\x1b[1;36mEthCyanB\x1b[0m" << endl;
+	// Bold High Intensity
+	cout << "\x1b[1;91mEthRedBI\x1b[0m" << endl;
+	cout << "\x1b[1;92mEthGreenBI\x1b[0m" << endl;
+	cout << "\x1b[1;93mEthYellowBI\x1b[0m" << endl;
+	cout << "\x1b[1;94mEthBlueBI\x1b[0m" << endl;
+	cout << "\x1b[1;95mEthPurpleBI\x1b[0m" << endl;
+	cout << "\x1b[1;96mEthCyanBI\x1b[0m" << endl;
+
+	// Background
+	cout << "\x1b[40mEthBlackOn\x1b[0m" << endl;
+	cout << "\x1b[100mEthCoalOn\x1b[0m" << endl;
+	cout << "\x1b[47mEthGrayOn\x1b[0m" << endl;
+	cout << "\x1b[107mEthWhiteOn\x1b[0m" << endl;
+	cout << "\x1b[41mEthRedOn\x1b[0m" << endl;
+	cout << "\x1b[42mEthGreenOn\x1b[0m" << endl;
+	cout << "\x1b[43mEthYellowOn\x1b[0m" << endl;
+	cout << "\x1b[44mEthBlueOn\x1b[0m" << endl;
+	cout << "\x1b[45mEthPurpleOn\x1b[0m" << endl;
+	cout << "\x1b[46mEthCyanOn\x1b[0m" << endl;
+	// High Intensity backgrounds
+	cout << "\x1b[101mEthRedOnI\x1b[0m" << endl;
+	cout << "\x1b[102mEthGreenOnI\x1b[0m" << endl;
+	cout << "\x1b[103mEthYellowOnI\x1b[0m" << endl;
+	cout << "\x1b[104mEthBlueOnI\x1b[0m" << endl;
+	cout << "\x1b[105mEthPurpleOnI\x1b[0m" << endl;
+	cout << "\x1b[106mEthCyanOnI\x1b[0m" << endl;
+
+	// Underline
+	cout << "\x1b[4;30mEthBlackU\x1b[0m" << endl;
+	cout << "\x1b[4;31mEthRedU\x1b[0m" << endl;
+	cout << "\x1b[4;32mEthGreenU\x1b[0m" << endl;
+	cout << "\x1b[4;33mEthYellowU\x1b[0m" << endl;
+	cout << "\x1b[4;34mEthBlueU\x1b[0m" << endl;
+	cout << "\x1b[4;35mEthPurpleU\x1b[0m" << endl;
+	cout << "\x1b[4;36mEthCyanU\x1b[0m" << endl;
+	cout << "\x1b[4;37mEthWhiteU\x1b[0m" << endl;
+#endif
 	// Init defaults
 	Defaults::get();
 
@@ -394,7 +483,9 @@ int main(int argc, char** argv)
 
 	/// Mining options
 	MinerType minerType = MinerType::CPU;
+	unsigned openclPlatform = 0;
 	unsigned openclDevice = 0;
+	unsigned miningThreads = UINT_MAX;
 
 	/// File name for import/export.
 	string filename;
@@ -426,9 +517,10 @@ int main(int argc, char** argv)
 	unsigned short remotePort = 30303;
 	unsigned peers = 5;
 	bool bootstrap = false;
+	unsigned networkId = 0;
 
 	/// Mining params
-	unsigned mining = ~(unsigned)0;
+	unsigned mining = 0;
 	bool forceMining = false;
 	KeyPair sigKey = KeyPair::create();
 	Secret sessionSecret;
@@ -511,9 +603,19 @@ int main(int argc, char** argv)
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
+		else if (arg == "--opencl-platform" && i + 1 < argc)
+			try {
+				openclPlatform = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
 		else if (arg == "--opencl-device" && i + 1 < argc)
 			try {
 				openclDevice = stol(argv[++i]);
+				miningThreads = 1;
 			}
 			catch (...)
 			{
@@ -569,6 +671,15 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "--network-id" && i + 1 < argc)
+			try {
+				networkId = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
 		else if (arg == "--benchmark-warmup" && i + 1 < argc)
 			try {
 				benchmarkWarmup = stol(argv[++i]);
@@ -598,7 +709,7 @@ int main(int argc, char** argv)
 			}
 		else if (arg == "-K" || arg == "--kill-blockchain" || arg == "--kill")
 			killChain = WithExisting::Kill;
-		else if (arg == "-B" || arg == "--rebuild")
+		else if (arg == "-R" || arg == "--rebuild")
 			killChain = WithExisting::Verify;
 		else if ((arg == "-c" || arg == "--client-name") && i + 1 < argc)
 		{
@@ -754,6 +865,17 @@ int main(int argc, char** argv)
 					return -1;
 				}
 		}
+		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
+		{
+			try {
+				miningThreads = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		}
 		else if (arg == "-b" || arg == "--bootstrap")
 			bootstrap = true;
 		else if (arg == "-f" || arg == "--force-mining")
@@ -809,7 +931,16 @@ int main(int argc, char** argv)
 	if (sessionSecret)
 		sigKey = KeyPair(sessionSecret);
 
-	ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
+	
+
+	if (minerType == MinerType::CPU)
+		ProofOfWork::CPUMiner::setNumInstances(miningThreads);
+	else if (minerType == MinerType::GPU)
+	{
+		ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
+		ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
+		ProofOfWork::GPUMiner::setNumInstances(miningThreads);
+	}
 
 	// Two codepaths is necessary since named block require database, but numbered
 	// blocks are superuseful to have when database is already open in another process.
@@ -829,7 +960,7 @@ int main(int argc, char** argv)
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
-	std::string clientImplString = "Ethereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
+	std::string clientImplString = "++eth/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
 		clientImplString,
 		dbPath,
@@ -891,26 +1022,13 @@ int main(int argc, char** argv)
 			in.read((char*)block.data(), 8);
 			block.resize(RLP(block, RLP::LaisezFaire).actualSize());
 			in.read((char*)block.data() + 8, block.size() - 8);
-			try
+			switch (web3.ethereum()->injectBlock(block))
 			{
-				web3.ethereum()->injectBlock(block);
-				good++;
-			}
-			catch (AlreadyHaveBlock const&)
-			{
-				alreadyHave++;
-			}
-			catch (UnknownParent const&)
-			{
-				unknownParent++;
-			}
-			catch (FutureTime const&)
-			{
-				futureTime++;
-			}
-			catch (...)
-			{
-				bad++;
+			case ImportResult::Success: good++; break;
+			case ImportResult::AlreadyKnown: alreadyHave++; break;
+			case ImportResult::UnknownParent: unknownParent++; break;
+			case ImportResult::FutureTime: futureTime++; break;
+			default: bad++; break;
 			}
 		}
 		cout << (good + bad + futureTime + unknownParent + alreadyHave) << " total: " << good << " ok, " << alreadyHave << " got, " << futureTime << " future, " << unknownParent << " unknown parent, " << bad << " malformed." << endl;
@@ -926,12 +1044,15 @@ int main(int argc, char** argv)
 	{
 		c->setGasPricer(gasPricer);
 		c->setForceMining(forceMining);
+		c->setTurboMining(minerType == MinerType::GPU);
 		c->setAddress(coinbase);
+		c->setNetworkId(networkId);
 	}
 
 	cout << "Transaction Signer: " << sigKey.address() << endl;
 	cout << "Mining Benefactor: " << coinbase << endl;
 	web3.startNetwork();
+	cout << "Node ID: " << web3.enode() << endl;
 
 	if (bootstrap)
 		web3.addNode(p2p::NodeId(), Host::pocHost());
@@ -1017,13 +1138,33 @@ int main(int argc, char** argv)
 			else if (c && cmd == "setblockfees")
 			{
 				iss >> blockFees;
-				gasPricer->setRefBlockFees(u256(blockFees * 1000));
+				try
+				{
+					gasPricer->setRefBlockFees(u256(blockFees * 1000));
+				}
+				catch (Overflow const& _e)
+				{
+					cout << boost::diagnostic_information(_e);
+				}
+
 				cout << "Block fees: " << blockFees << endl;
 			}
 			else if (c && cmd == "setetherprice")
 			{
 				iss >> etherPrice;
-				gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+				if (etherPrice == 0)
+					cout << "ether price cannot be set to zero" << endl;
+				else
+				{
+					try
+					{
+						gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+					}
+					catch (Overflow const& _e)
+					{
+						cout << boost::diagnostic_information(_e);
+					}
+				}
 				cout << "ether Price: " << etherPrice << endl;
 			}
 			else if (c && cmd == "setpriority")
@@ -1197,9 +1338,9 @@ int main(int argc, char** argv)
 				{
 					string hexAddr;
 					u256 amount;
-					int size = hexAddr.length();
 
 					iss >> hexAddr >> amount;
+					int size = hexAddr.length();
 					if (size < 40)
 					{
 						if (size > 0)

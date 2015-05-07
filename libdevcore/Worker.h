@@ -36,6 +36,15 @@ enum class IfRunning
 	Detach
 };
 
+enum class WorkerState
+{
+	Starting,
+	Started,
+	Stopping,
+	Stopped,
+	Killing
+};
+
 class Worker
 {
 protected:
@@ -47,19 +56,19 @@ protected:
 	/// Move-assignment.
 	Worker& operator=(Worker&& _m) { std::swap(m_name, _m.m_name); return *this; }
 
-	virtual ~Worker() { stopWorking(); }
+	virtual ~Worker() { terminate(); }
 
 	/// Allows changing worker name if work is stopped.
 	void setName(std::string _n) { if (!isWorking()) m_name = _n; }
 
 	/// Starts worker thread; causes startedWorking() to be called.
-	void startWorking(IfRunning _ir = IfRunning::Fail);
+	void startWorking();
 	
 	/// Stop worker thread; causes call to stopWorking().
 	void stopWorking();
-	
+
 	/// Returns if worker thread is present.
-	bool isWorking() const { Guard l(x_work); return !!m_work; }
+	bool isWorking() const { Guard l(x_work); return m_state == WorkerState::Started; }
 	
 	/// Called after thread is started from startWorking().
 	virtual void startedWorking() {}
@@ -69,21 +78,25 @@ protected:
 
 	/// Overrides doWork(); should call shouldStop() often and exit when true.
 	virtual void workLoop();
-	bool shouldStop() const { return m_stop; }
+	bool shouldStop() const { return m_state != WorkerState::Started; }
 	
 	/// Called when is to be stopped, just prior to thread being joined.
 	virtual void doneWorking() {}
 
 	/// Blocks caller into worker thread has finished.
-	void join() const { Guard l(x_work); try { if (m_work) m_work->join(); } catch (...) {} }
+//	void join() const { Guard l(x_work); try { if (m_work) m_work->join(); } catch (...) {} }
 
 private:
+	/// Stop and never start again.
+	void terminate();
+
 	std::string m_name;
+
 	unsigned m_idleWaitMs = 0;
 	
 	mutable Mutex x_work;						///< Lock for the network existance.
 	std::unique_ptr<std::thread> m_work;		///< The network thread.
-	bool m_stop = false;
+	std::atomic<WorkerState> m_state = {WorkerState::Starting};
 };
 
 }

@@ -145,16 +145,23 @@ void HttpServer::readClient()
 		if (socket->canReadLine())
 		{
 			QString hdr = QString(socket->readLine());
+			QVariantMap headers;
 			if (hdr.startsWith("POST") || hdr.startsWith("GET"))
 			{
 				QUrl url(hdr.split(' ')[1]);
 				QString l;
 				do
+				{
 					l = socket->readLine();
+					//collect headers
+					int colon = l.indexOf(':');
+					if (colon > 0)
+						headers[l.left(colon).trimmed().toLower()] = l.right(l.length() - colon - 1).trimmed();
+				}
 				while (!(l.isEmpty() || l == "\r" || l == "\r\n"));
 
 				QString content = socket->readAll();
-				std::unique_ptr<HttpRequest> request(new HttpRequest(this, url, content));
+				std::unique_ptr<HttpRequest> request(new HttpRequest(this, std::move(url), std::move(content), std::move(headers)));
 				clientConnected(request.get());
 				QTextStream os(socket);
 				os.setAutoDetectUnicode(true);
