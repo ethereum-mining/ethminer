@@ -48,9 +48,14 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 {
 	for (auto& i: _v.get_obj())
 	{
-		cerr << i.first << endl;
 		mObject& o = i.second.get_obj();
+		if (test::Options::get().singleTest && test::Options::get().singleTestName != i.first)
+		{
+			o.clear();
+			continue;
+		}
 
+		cerr << i.first << endl;
 		BOOST_REQUIRE(o.count("genesisBlockHeader"));
 		BlockInfo biGenesisBlock = constructBlock(o["genesisBlockHeader"].get_obj());
 
@@ -250,11 +255,11 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					//there we get new blockchain status in state which could have more difficulty than we have in trueState
 					//attempt to import new block to the true blockchain
 					trueBc.sync(uncleBlockQueue, trueState.db(), 4);
-					trueBc.attemptImport(state.blockData(), trueState.db());
+					trueBc.attemptImport(block2.out(), trueState.db());
 					trueState.sync(trueBc);
 
 					blockSet newBlock;
-					newBlock.first = state.blockData();
+					newBlock.first = block2.out();
 					newBlock.second = uncleBlockQueueList;
 					if (importBlockNumber < blockSets.size())
 					{
@@ -306,8 +311,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				bytes blockRLP;
 				try
 				{
-					trueState.sync(trueBc);
 					blockRLP = importByteArray(blObj["rlp"].get_str());
+					trueState.sync(trueBc);
 					trueBc.import(blockRLP, trueState.db());
 					if (trueBc.info() != BlockInfo(blockRLP))
 						importedAndBest  = false;
@@ -470,7 +475,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 			}//all blocks
 
 			BOOST_REQUIRE(o.count("lastblockhash") > 0);
-			BOOST_CHECK_MESSAGE(toString(trueBc.info().hash()) == o["lastblockhash"].get_str(), "last block hash of constructed blockchain does not match provided hash of the last block!");
+			BOOST_CHECK_MESSAGE(toString(trueBc.info().hash()) == o["lastblockhash"].get_str(),
+					"Boost check: " + i.first + " lastblockhash does not match " + toString(trueBc.info().hash()) + " expected: " + o["lastblockhash"].get_str());
 		}
 	}
 }
