@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file FeeStructure.h
+/** @file Params.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -37,41 +37,6 @@ extern u256 const c_minimumDifficulty;
 extern u256 const c_difficultyBoundDivisor;
 extern u256 const c_durationLimit;
 extern u256 const c_maximumExtraDataSize;
-extern u256 const c_stackLimit;
-
-extern u256 const c_tierStepGas[8];			///< Once per operation, for a selection of them.
-extern u256 const c_expGas;					///< Once per EXP instuction.
-extern u256 const c_expByteGas;				///< Times ceil(log256(exponent)) for the EXP instruction.
-extern u256 const c_sha3Gas;				///< Once per SHA3 operation.
-extern u256 const c_sha3WordGas;			///< Once per word of the SHA3 operation's data.
-extern u256 const c_copyGas;				///< Multiplied by the number of 32-byte words that are copied (round up) for any *COPY operation and added.
-extern u256 const c_sloadGas;				///< Once per SLOAD operation.
-extern u256 const c_sstoreSetGas;			///< Once per SSTORE operation if the zeroness changes from zero.
-extern u256 const c_sstoreResetGas;			///< Once per SSTORE operation if the zeroness does not change from zero. NOTE: when c_sstoreSetGas does not apply.
-extern u256 const c_sstoreRefundGas;		///< Refunded gas, once per SSTORE operation if the zeroness changes to zero.
-extern u256 const c_jumpdestGas;			///< Once per JUMPDEST operation.
-extern u256 const c_logGas;					///< Per LOG* operation.
-extern u256 const c_logDataGas;				///< Per byte in a LOG* operation's data.
-extern u256 const c_logTopicGas;			///< Multiplied by the * of the LOG*, per LOG transaction. e.g. LOG0 incurs 0 * c_txLogTopicGas, LOG4 incurs 4 * c_txLogTopicGas.
-extern u256 const c_createGas;				///< Once per CREATE operation & contract-creation transaction.
-extern u256 const c_createDataGas;
-extern u256 const c_callGas;				///< Once per CALL operation & message call transaction.
-extern u256 const c_callStipend;			///< Free gas given at beginning of call.
-extern u256 const c_callNewAccountGas;		///< Paid for CALL when the destination address didn't exist prior.
-extern u256 const c_callValueTransferGas;	///< Paid for CALL when the value transfor is non-zero.
-extern u256 const c_suicideRefundGas;		///< Refunded following a suicide operation.
-extern u256 const c_memoryGas;				///< Times the address of the (highest referenced byte in memory + 1). NOTE: referencing happens on read, write and in instructions such as RETURN and CALL.
-extern u256 const c_quadCoeffDiv;			///< Divisor for the quadratic particle of the memory cost equation.
-extern u256 const c_txGas;					///< Per transaction. NOTE: Not payable on data of calls between transactions.
-extern u256 const c_txDataZeroGas;			///< Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
-extern u256 const c_txDataNonZeroGas;		///< Per byte of data attached to a transaction that is not equal to zero. NOTE: Not payable on data of calls between transactions.
-extern u256 const c_ecrecoverGas;
-extern u256 const c_sha256Gas;
-extern u256 const c_sha256WordGas;
-extern u256 const c_ripemd160Gas;
-extern u256 const c_ripemd160WordGas;
-extern u256 const c_identityGas;
-extern u256 const c_identityWordGas;
 
 }
 }

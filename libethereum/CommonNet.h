@@ -56,7 +56,7 @@ class EthereumPeer;
 enum
 {
 	StatusPacket = 0,
-	GetTransactionsPacket,
+	NewBlockHashesPacket,
 	TransactionsPacket,
 	GetBlockHashesPacket,
 	BlockHashesPacket,

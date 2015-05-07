@@ -326,12 +326,12 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			transition(Asking::Nothing);
 		break;
 	}
-	case GetTransactionsPacket: break;	// DEPRECATED.
 	case TransactionsPacket:
 	{
-		clog(NetAllDetail) << "Transactions (" << dec << _r.itemCount() << "entries)";
+		unsigned itemCount = _r.itemCount();
+		clog(NetAllDetail) << "Transactions (" << dec << itemCount << "entries)";
 		Guard l(x_knownTransactions);
-		for (unsigned i = 0; i < _r.itemCount(); ++i)
+		for (unsigned i = 0; i < itemCount; ++i)
 		{
 			auto h = sha3(_r[i].data());
 			m_knownTransactions.insert(h);
@@ -373,21 +373,22 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case BlockHashesPacket:
 	{
-		clog(NetMessageSummary) << "BlockHashes (" << dec << _r.itemCount() << "entries)" << (_r.itemCount() ? "" : ": NoMoreHashes");
+		unsigned itemCount = _r.itemCount();
+		clog(NetMessageSummary) << "BlockHashes (" << dec << itemCount << "entries)" << (itemCount ? "" : ": NoMoreHashes");
 
 		if (m_asking != Asking::Hashes)
 		{
 			cwarn << "Peer giving us hashes when we didn't ask for them.";
 			break;
 		}
-		if (_r.itemCount() == 0)
+		if (itemCount == 0)
 		{
 			transition(Asking::Blocks);
 			return true;
 		}
 		unsigned knowns = 0;
 		unsigned unknowns = 0;
-		for (unsigned i = 0; i < _r.itemCount(); ++i)
+		for (unsigned i = 0; i < itemCount; ++i)
 		{
 			addRating(1);
 			auto h = _r[i].toHash<h256>();
@@ -454,12 +455,13 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	}
 	case BlocksPacket:
 	{
-		clog(NetMessageSummary) << "Blocks (" << dec << _r.itemCount() << "entries)" << (_r.itemCount() ? "" : ": NoMoreBlocks");
+		unsigned itemCount = _r.itemCount();
+		clog(NetMessageSummary) << "Blocks (" << dec << itemCount << "entries)" << (itemCount ? "" : ": NoMoreBlocks");
 
 		if (m_asking != Asking::Blocks)
 			clog(NetWarn) << "Unexpected Blocks received!";
 
-		if (_r.itemCount() == 0)
+		if (itemCount == 0)
 		{
 			// Got to this peer's latest block - just give up.
 			transition(Asking::Nothing);
@@ -472,7 +474,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		unsigned got = 0;
 		unsigned repeated = 0;
 
-		for (unsigned i = 0; i < _r.itemCount(); ++i)
+		for (unsigned i = 0; i < itemCount; ++i)
 		{
 			auto h = BlockInfo::headerHash(_r[i].data());
 			if (m_sub.noteBlock(h))
@@ -557,8 +559,51 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			default:;
 			}
 
-			Guard l(x_knownBlocks);
-			m_knownBlocks.insert(h);
+			ETH_GUARDED(x_knownBlocks)
+				m_knownBlocks.insert(h);
+		}
+		break;
+	}
+	case NewBlockHashesPacket:
+	{
+		clog(NetMessageSummary) << "NewBlockHashes";
+		if (host()->isSyncing())
+			clog(NetMessageSummary) << "Ignoring since we're already downloading.";
+		else
+		{
+			unsigned knowns = 0;
+			unsigned unknowns = 0;
+			unsigned itemCount = _r.itemCount();
+			for (unsigned i = 0; i < itemCount; ++i)
+			{
+				addRating(1);
+				auto h = _r[i].toHash<h256>();
+				ETH_GUARDED(x_knownBlocks)
+					m_knownBlocks.insert(h);
+				auto status = host()->m_bq.blockStatus(h);
+				if (status == QueueStatus::Importing || status == QueueStatus::Ready || host()->m_chain.isKnown(h))
+					knowns++;
+				else if (status == QueueStatus::Bad)
+				{
+					cwarn << "block hash bad!" << h << ". Bailing...";
+					return true;
+				}
+				else if (status == QueueStatus::Unknown)
+				{
+					unknowns++;
+					m_syncingNeededBlocks.push_back(h);
+				}
+				else
+					knowns++;
+			}
+			clog(NetMessageSummary) << knowns << "knowns," << unknowns << "unknowns";
+			if (unknowns > 0)
+			{
+				host()->m_man.resetToChain(m_syncingNeededBlocks);
+				host()->changeSyncer(this);
+				transition(Asking::Blocks);
+			}
+			return true;
 		}
 		break;
 	}
