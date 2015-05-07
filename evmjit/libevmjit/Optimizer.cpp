@@ -79,6 +79,7 @@ bool LowerEVMPass::doFinalization(llvm::Module&)
 bool prepare(llvm::Module& _module)
 {
 	auto pm = llvm::legacy::PassManager{};
+	pm.add(llvm::createDeadCodeEliminationPass());
 	pm.add(new LowerEVMPass{});
 	return pm.run(_module);
 }
