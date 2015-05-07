@@ -65,6 +65,9 @@ private:
 	/// Stop basic block - terminates execution with STOP code (0)
 	llvm::BasicBlock* m_stopBB = nullptr;
 
+	/// Abort basic block - terminates execution with OOG-like state
+	llvm::BasicBlock* m_abortBB = nullptr;
+
 	/// Block with a jump table.
 	std::unique_ptr<BasicBlock> m_jumpTableBlock;
 
