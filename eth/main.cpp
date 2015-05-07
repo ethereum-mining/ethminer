@@ -407,6 +407,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 
 int main(int argc, char** argv)
 {
+#if 0
 	cout << "\x1b[30mEthBlack\x1b[0m" << endl;
 	cout << "\x1b[90mEthCoal\x1b[0m" << endl;
 	cout << "\x1b[37mEthGray\x1b[0m" << endl;
@@ -472,7 +473,7 @@ int main(int argc, char** argv)
 	cout << "\x1b[4;35mEthPurpleU\x1b[0m" << endl;
 	cout << "\x1b[4;36mEthCyanU\x1b[0m" << endl;
 	cout << "\x1b[4;37mEthWhiteU\x1b[0m" << endl;
-
+#endif
 	// Init defaults
 	Defaults::get();
 
@@ -1051,6 +1052,7 @@ int main(int argc, char** argv)
 	cout << "Transaction Signer: " << sigKey.address() << endl;
 	cout << "Mining Benefactor: " << coinbase << endl;
 	web3.startNetwork();
+	cout << "Node ID: " << web3.enode() << endl;
 
 	if (bootstrap)
 		web3.addNode(p2p::NodeId(), Host::pocHost());
