@@ -293,9 +293,9 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 		}
 	
 	vector<shared_ptr<NodeEntry>> ret;
-		for (auto n: found)
-			if (n.second->endpoint.isAllowed())
-				ret.push_back(n.second);
+	for (auto n: found)
+		if (n.second->endpoint.isAllowed())
+			ret.push_back(n.second);
 	return move(ret);
 }
 
