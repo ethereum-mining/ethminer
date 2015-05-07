@@ -119,9 +119,7 @@ unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
 void ethash_cl_miner::finish()
 {
 	if (m_queue())
-	{
 		m_queue.finish();
-	}
 }
 
 bool ethash_cl_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned workgroup_size, unsigned _platformId, unsigned _deviceId)
@@ -161,9 +159,7 @@ bool ethash_cl_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned work
 		return false;
 	}
 	if (strncmp("OpenCL 1.1", device_version.c_str(), 10) == 0)
-	{
 		m_opencl_1_1 = true;
-	}
 
 	// create context
 	m_context = cl::Context(std::vector<cl::Device>(&device, &device + 1));
