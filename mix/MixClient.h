@@ -48,7 +48,7 @@ public:
 	MixClient(std::string const& _dbPath);
 	virtual ~MixClient();
 	/// Reset state to the empty state with given balance.
-	void resetState(std::map<dev::Address, dev::eth::Account> const& _accounts,  Secret const& _miner = Secret());
+	void resetState(std::unordered_map<dev::Address, dev::eth::Account> const& _accounts,  Secret const& _miner = Secret());
 	void mine();
 	ExecutionResult lastExecution() const;
 	ExecutionResult execution(unsigned _index) const;

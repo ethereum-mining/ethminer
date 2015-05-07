@@ -50,7 +50,7 @@ namespace mix
 		dev::u256s stack;
 		dev::bytes memory;
 		dev::bigint gasCost;
-		std::map<dev::u256, dev::u256> storage;
+		std::unordered_map<dev::u256, dev::u256> storage;
 		std::vector<unsigned> levels;
 		unsigned codeIndex;
 		unsigned dataIndex;
