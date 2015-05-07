@@ -317,8 +317,9 @@ void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, u
 			innerMean += rate;
 	}
 	f.stop();
+	innerMean /= (_trials - 2);
 	cout << "min/mean/max: " << results.begin()->second.rate() << "/" << (mean / _trials) << "/" << results.rbegin()->second.rate() << " H/s" << endl;
-	cout << "inner mean: " << (innerMean / (_trials - 2)) << " H/s" << endl;
+	cout << "inner mean: " << innerMean << " H/s" << endl;
 
 	(void)_phoneHome;
 #if ETH_JSONRPC || !ETH_TRUE
