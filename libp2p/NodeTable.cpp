@@ -138,8 +138,10 @@ list<NodeEntry> NodeTable::snapshot() const
 	list<NodeEntry> ret;
 	Guard l(x_state);
 	for (auto s: m_state)
-		for (auto n: s.nodes)
-			ret.push_back(*n.lock());
+		for (auto np: s.nodes)
+			if (auto n = np.lock())
+				if (!!n)
+					ret.push_back(*n);
 	return move(ret);
 }
 
