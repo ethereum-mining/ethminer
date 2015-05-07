@@ -137,24 +137,29 @@ void ClientModel::mine()
 QString ClientModel::newSecret()
 {
 	KeyPair a = KeyPair::create();
-	return QString::fromStdString(toHex(a.secret().ref()));
+	return QString::fromStdString(dev::toHex(a.secret().ref()));
 }
 
 QString ClientModel::address(QString const& _secret)
 {
-	return QString::fromStdString(toHex(KeyPair(Secret(_secret.toStdString())).address().ref()));
+	return QString::fromStdString(dev::toHex(KeyPair(Secret(_secret.toStdString())).address().ref()));
+}
+
+QString ClientModel::toHex(QString const& _int)
+{
+	return QString::fromStdString(dev::toHex(dev::u256(_int.toStdString())));
 }
 
 QString ClientModel::encodeAbiString(QString _string)
 {
 	ContractCallDataEncoder encoder;
-	return QString::fromStdString(toHex(encoder.encodeBytes(_string)));
+	return QString::fromStdString(dev::toHex(encoder.encodeBytes(_string)));
 }
 
 QString ClientModel::encodeStringParam(QString const& _param)
 {
 	ContractCallDataEncoder encoder;
-	return QString::fromStdString(toHex(encoder.encodeStringParam(_param, 32)));
+	return QString::fromStdString(dev::toHex(encoder.encodeStringParam(_param, 32)));
 }
 
 QStringList ClientModel::encodeParams(QVariant const& _param, QString const& _contract, QString const& _function)
@@ -179,7 +184,7 @@ QStringList ClientModel::encodeParams(QVariant const& _param, QString const& _co
 			QSolidityType const* type = var->type();
 			QVariant value = _param.toMap().value(var->name());
 			encoder.encode(value, type->type());
-			ret.push_back(QString::fromStdString(toHex(encoder.encodedData())));
+			ret.push_back(QString::fromStdString(dev::toHex(encoder.encodedData())));
 		}
 	return ret;
 }
@@ -192,11 +197,11 @@ QVariantMap ClientModel::contractAddresses() const
 	return res;
 }
 
-QVariantMap ClientModel::gasCosts() const
+QVariantList ClientModel::gasCosts() const
 {
-	QVariantMap res;
+	QVariantList res;
 	for (auto const& c: m_gasCosts)
-		res.insert(c.first, QVariant::fromValue(static_cast<int>(c.second)));
+		res.append(QVariant::fromValue(static_cast<int>(c)));
 	return res;
 }
 
@@ -299,6 +304,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 		{
 			vector<Address> deployedContracts;
 			onStateReset();
+			m_gasCosts.clear();
 			for (TransactionSettings const& transaction: _sequence)
 			{
 				ContractCallDataEncoder encoder;
@@ -345,7 +351,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 						if (type->type().type == SolidityType::Type::Address && value.toString().startsWith("<") && value.toString().endsWith(">"))
 						{
 							QStringList nb = value.toString().remove("<").remove(">").split(" - ");
-							value = QVariant(QString::fromStdString("0x" + toHex(deployedContracts.at(nb.back().toInt()).ref())));
+							value = QVariant(QString::fromStdString("0x" + dev::toHex(deployedContracts.at(nb.back().toInt()).ref())));
 						}
 						encoder.encode(value, type->type());
 					}
@@ -364,7 +370,6 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 							contractAddressesChanged();
 						}
 						gasCostsChanged();
-						m_gasCosts[transaction.contractId] = m_client->lastExecution().gasUsed;
 					}
 					else
 					{
@@ -378,6 +383,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 						}
 						callContract(contractAddressIter->second, encoder.encodedData(), transaction);
 					}
+					m_gasCosts.append(m_client->lastExecution().gasUsed);
 				}
 				onNewTransaction();
 			}
@@ -615,7 +621,7 @@ RecordLogEntry* ClientModel::lastBlock() const
 	strGas << blockInfo.gasUsed;
 	stringstream strNumber;
 	strNumber << blockInfo.number;
-	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(toHex(blockInfo.hash().ref()))), QString(), QString(), QString(), false, RecordLogEntry::RecordType::Block, QString::fromStdString(strGas.str()));
+	RecordLogEntry* record =  new RecordLogEntry(0, QString::fromStdString(strNumber.str()), tr(" - Block - "), tr("Hash: ") + QString(QString::fromStdString(dev::toHex(blockInfo.hash().ref()))), QString(), QString(), QString(), false, RecordLogEntry::RecordType::Block, QString::fromStdString(strGas.str()));
 	QQmlEngine::setObjectOwnership(record, QQmlEngine::JavaScriptOwnership);
 	return record;
 }

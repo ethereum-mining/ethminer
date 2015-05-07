@@ -133,7 +133,6 @@ EthashAux::LightAllocation::~LightAllocation()
 	ethash_delete_light(light);
 }
 
-
 EthashAux::FullType EthashAux::full(BlockInfo const& _header, bytesRef _dest, bool _createIfMissing)
 {
 	return full(_header.seedHash(), _dest, _createIfMissing);
