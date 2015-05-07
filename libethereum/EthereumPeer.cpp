@@ -559,7 +559,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			default:;
 			}
 
-			ETH_GUARDED(x_knownBlocks)
+			DEV_GUARDED(x_knownBlocks)
 				m_knownBlocks.insert(h);
 		}
 		break;
@@ -578,7 +578,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			{
 				addRating(1);
 				auto h = _r[i].toHash<h256>();
-				ETH_GUARDED(x_knownBlocks)
+				DEV_GUARDED(x_knownBlocks)
 					m_knownBlocks.insert(h);
 				auto status = host()->m_bq.blockStatus(h);
 				if (status == QueueStatus::Importing || status == QueueStatus::Ready || host()->m_chain.isKnown(h))

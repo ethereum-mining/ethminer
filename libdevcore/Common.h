@@ -169,15 +169,17 @@ private:
 #define DEV_INVARIANT_CHECK (void)0;
 #endif
 
+/// Simple scope-based timer helper.
 class TimerHelper
 {
 public:
-	TimerHelper(char const* _id): id(_id) {}
+	TimerHelper(char const* _id, unsigned _msReportWhenGreater = 0): m_id(_id), m_ms(_msReportWhenGreater) {}
 	~TimerHelper();
 
 private:
-	boost::timer t;
-	char const* id;
+	boost::timer m_t;
+	char const* m_id;
+	unsigned m_ms;
 };
 
 #define DEV_TIMED(S) for (::std::pair<::dev::TimerHelper, bool> __eth_t(#S, true); __eth_t.second; __eth_t.second = false)
@@ -186,6 +188,14 @@ private:
 #define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__FUNCSIG__)
 #else
 #define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__PRETTY_FUNCTION__)
+#endif
+
+#define DEV_TIMED_IF(S, MS) for (::std::pair<::dev::TimerHelper, bool> __eth_t(::dev::TimerHelper(#S, MS), true); __eth_t.second; __eth_t.second = false)
+#define DEV_TIMED_SCOPE_IF(S) ::dev::TimerHelper __eth_t(S, MS)
+#if WIN32
+#define DEV_TIMED_FUNCTION_IF(MS) DEV_TIMED_SCOPE_IF(__FUNCSIG__, MS)
+#else
+#define DEV_TIMED_FUNCTION_IF(MS) DEV_TIMED_SCOPE_IF(__PRETTY_FUNCTION__, MS)
 #endif
 
 enum class WithExisting: int

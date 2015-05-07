@@ -81,9 +81,9 @@ using SpinGuard = std::lock_guard<SpinLock>;
  * Mutex m;
  * unsigned d;
  * ...
- * ETH_GUARDED(m) d = 1;
+ * ETH_(m) d = 1;
  * ...
- * ETH_GUARDED(m) { for (auto d = 10; d > 0; --d) foo(d); d = 0; }
+ * ETH_(m) { for (auto d = 10; d > 0; --d) foo(d); d = 0; }
  * @endcode
  *
  * There are several variants of this basic mechanism for different Mutex types and Guards.
@@ -95,7 +95,7 @@ using SpinGuard = std::lock_guard<SpinLock>;
  * Mutex m;
  * int d;
  * ...
- * ETH_GUARDED(m)
+ * ETH_(m)
  * {
  *   for (auto d = 50; d > 25; --d)
  *     foo(d);
@@ -107,19 +107,19 @@ using SpinGuard = std::lock_guard<SpinLock>;
  * @endcode
  */
 
-#define ETH_GUARDED(MUTEX) \
+#define DEV_GUARDED(MUTEX) \
 	for (GenericGuardBool<Guard, Mutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define ETH_READ_GUARDED(MUTEX) \
+#define DEV_READ_GUARDED(MUTEX) \
 	for (GenericGuardBool<ReadGuard, SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define ETH_WRITE_GUARDED(MUTEX) \
+#define DEV_WRITE_GUARDED(MUTEX) \
 	for (GenericGuardBool<WriteGuard, SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define ETH_RECURSIVE_GUARDED(MUTEX) \
+#define DEV_RECURSIVE_GUARDED(MUTEX) \
 	for (GenericGuardBool<RecursiveGuard, RecursiveMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define ETH_UNGUARDED(MUTEX) \
+#define DEV_UNGUARDED(MUTEX) \
 	for (GenericUnguardBool<Mutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define ETH_READ_UNGUARDED(MUTEX) \
+#define DEV_READ_UNGUARDED(MUTEX) \
 	for (GenericUnguardSharedBool<SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
-#define ETH_WRITE_UNGUARDED(MUTEX) \
+#define DEV_WRITE_UNGUARDED(MUTEX) \
 	for (GenericUnguardBool<SharedMutex> __eth_l(MUTEX); __eth_l.b; __eth_l.b = false)
 
 }
