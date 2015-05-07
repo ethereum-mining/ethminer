@@ -82,7 +82,7 @@ struct TestNodeTable: public NodeTable
 		bi::address ourIp = bi::address::from_string("127.0.0.1");
 		for (auto& n: _testNodes)
 		{
-			ping(bi::udp::endpoint(ourIp, n.second));
+			ping(NodeIPEndpoint(ourIp, n.second, n.second));
 			this_thread::sleep_for(chrono::milliseconds(2));
 		}
 	}
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(v2PingNodePacket)
 
 	PingNode p((bi::udp::endpoint()));
 	BOOST_REQUIRE_NO_THROW(p = PingNode::fromBytesConstRef(bi::udp::endpoint(), bytesConstRef(&s.out())));
-	BOOST_REQUIRE(p.version == 2);
+	BOOST_REQUIRE(p.version == 0);
 }
 
 BOOST_AUTO_TEST_CASE(neighboursPacketLength)
@@ -235,8 +235,8 @@ BOOST_AUTO_TEST_CASE(neighboursPacketLength)
 	std::vector<std::pair<KeyPair,unsigned>> testNodes(TestNodeTable::createTestNodes(16));
 	bi::udp::endpoint to(boost::asio::ip::address::from_string("127.0.0.1"), 30000);
 	
-	// hash(32), signature(65), overhead: packet(2), type(1), nodeList(2), ts(9),
-	static unsigned const nlimit = (1280 - 111) / 87;
+	// hash(32), signature(65), overhead: packetSz(3), type(1), nodeListSz(3), ts(5),
+	static unsigned const nlimit = (1280 - 109) / 90; // neighbour: 2 + 65 + 3 + 3 + 17
 	for (unsigned offset = 0; offset < testNodes.size(); offset += nlimit)
 	{
 		Neighbours out(to);
@@ -244,11 +244,9 @@ BOOST_AUTO_TEST_CASE(neighboursPacketLength)
 		auto limit = nlimit ? std::min(testNodes.size(), (size_t)(offset + nlimit)) : testNodes.size();
 		for (auto i = offset; i < limit; i++)
 		{
-			Neighbours::Node node;
-			node.ipAddress = boost::asio::ip::address::from_string("200.200.200.200").to_string();
-			node.udpPort = testNodes[i].second;
-			node.node = testNodes[i].first.pub();
-			out.nodes.push_back(node);
+			Node n(testNodes[i].first.pub(), NodeIPEndpoint(boost::asio::ip::address::from_string("200.200.200.200"), testNodes[i].second, testNodes[i].second));
+			Neighbours::Neighbour neighbour(n);
+			out.neighbours.push_back(neighbour);
 		}
 		
 		out.sign(k.sec());
@@ -256,7 +254,7 @@ BOOST_AUTO_TEST_CASE(neighboursPacketLength)
 	}
 }
 
-BOOST_AUTO_TEST_CASE(test_neighbours_packet)
+BOOST_AUTO_TEST_CASE(neighboursPacket)
 {
 	KeyPair k = KeyPair::create();
 	std::vector<std::pair<KeyPair,unsigned>> testNodes(TestNodeTable::createTestNodes(16));
@@ -265,11 +263,9 @@ BOOST_AUTO_TEST_CASE(test_neighbours_packet)
 	Neighbours out(to);
 	for (auto n: testNodes)
 	{
-		Neighbours::Node node;
-		node.ipAddress = boost::asio::ip::address::from_string("127.0.0.1").to_string();
-		node.udpPort = n.second;
-		node.node = n.first.pub();
-		out.nodes.push_back(node);
+		Node node(n.first.pub(), NodeIPEndpoint(boost::asio::ip::address::from_string("200.200.200.200"), n.second, n.second));
+		Neighbours::Neighbour neighbour(node);
+		out.neighbours.push_back(neighbour);
 	}
 	out.sign(k.sec());
 
@@ -277,9 +273,9 @@ BOOST_AUTO_TEST_CASE(test_neighbours_packet)
 	bytesConstRef rlpBytes(packet.cropped(h256::size + Signature::size + 1));
 	Neighbours in = Neighbours::fromBytesConstRef(to, rlpBytes);
 	int count = 0;
-	for (auto n: in.nodes)
+	for (auto n: in.neighbours)
 	{
-		BOOST_REQUIRE_EQUAL(testNodes[count].second, n.udpPort);
+		BOOST_REQUIRE_EQUAL(testNodes[count].second, n.endpoint.udpPort);
 		BOOST_REQUIRE_EQUAL(testNodes[count].first.pub(), n.node);
 		BOOST_REQUIRE_EQUAL(sha3(testNodes[count].first.pub()), sha3(n.node));
 		count++;
@@ -291,12 +287,6 @@ BOOST_AUTO_TEST_CASE(test_findnode_neighbours)
 	// Executing findNode should result in a list which is serialized
 	// into Neighbours packet. Neighbours packet should then be deserialized
 	// into the same list of nearest nodes.
-}
-
-BOOST_AUTO_TEST_CASE(test_windows_template)
-{
-	bi::udp::endpoint ep;
-	PingNode p(ep);
 }
 
 BOOST_AUTO_TEST_CASE(kademlia)
@@ -332,7 +322,7 @@ BOOST_AUTO_TEST_CASE(kademlia)
 
 }
 
-BOOST_AUTO_TEST_CASE(test_udp_once)
+BOOST_AUTO_TEST_CASE(udpOnce)
 {
 	UDPDatagram d(bi::udp::endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 30300), bytes({65,65,65,65}));
 	TestUDPSocket a; a.m_socket->connect(); a.start();
