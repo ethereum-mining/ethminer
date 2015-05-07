@@ -226,7 +226,7 @@ bi::tcp::endpoint Network::resolveHost(string const& _addr)
 		boost::system::error_code ec;
 		// resolve returns an iterator (host can resolve to multiple addresses)
 		bi::tcp::resolver r(s_resolverIoService);
-		auto it = r.resolve({split[0], toString(port)}, ec);
+		auto it = r.resolve({bi::tcp::v4(), split[0], toString(port)}, ec);
 		if (ec)
 			clog(NetWarn) << "Error resolving host address..." << LogTag::Url << _addr << ":" << LogTag::Error << ec.message();
 		else

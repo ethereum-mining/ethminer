@@ -143,11 +143,6 @@ Main::Main(QWidget *parent) :
 //		ui->log->addItem(QString::fromStdString(s));
 	};
 
-#if !ETH_FATDB
-	delete ui->dockWidget_accounts;
-	delete ui->dockWidget_contracts;
-#endif
-
 #if ETH_DEBUG
 	m_servers.append("127.0.0.1:30300");
 #endif
@@ -204,6 +199,9 @@ Main::Main(QWidget *parent) :
 //	QWebEngineInspector* inspector = new QWebEngineInspector();
 //	inspector->setPage(page);
 	readSettings();
+#if !ETH_FATDB
+	removeDockWidget(ui->dockWidget_accounts);
+#endif
 	installWatches();
 	startTimer(100);
 
@@ -1373,6 +1371,8 @@ void Main::on_transactionQueue_currentItemChanged()
 			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
 		else
 			s << "<div>Log Bloom: <b><i>Uneventful</i></b></div>";
+		s << "<div>Gas Used: <b>" << receipt.gasUsed() << "</b></div>";
+		s << "<div>End State: <b>" << receipt.stateRoot().abridged() << "</b></div>";
 		auto r = receipt.rlp();
 		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 		s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
@@ -1566,6 +1566,8 @@ void Main::on_blocks_currentItemChanged()
 				s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
 			else
 				s << "<div>Log Bloom: <b><i>Uneventful</i></b></div>";
+			s << "<div>Gas Used: <b>" << receipt.gasUsed() << "</b></div>";
+			s << "<div>End State: <b>" << receipt.stateRoot().abridged() << "</b></div>";
 			auto r = receipt.rlp();
 			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 			s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
@@ -1776,6 +1778,7 @@ void Main::on_net_triggered()
 		ethereum()->setNetworkId(m_privateChain.size() ? sha3(m_privateChain.toStdString()) : h256());
 		web3()->startNetwork();
 		ui->downloadView->setDownloadMan(ethereum()->downloadMan());
+		ui->enode->setText(QString::fromStdString(web3()->enode()));
 	}
 	else
 	{
