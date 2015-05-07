@@ -27,7 +27,7 @@
 #include <map>
 #include <memory>
 #include <libdevcore/Common.h>
-#include <libevmcore/AssemblyItem.h>
+#include <libevmasm/AssemblyItem.h>
 
 namespace dev
 {

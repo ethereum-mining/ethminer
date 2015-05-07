@@ -208,7 +208,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	
 	// create session so disconnects are managed
 	auto ps = make_shared<Session>(this, _io, p, PeerSessionInfo({_id, clientVersion, _endpoint.address().to_string(), listenPort, chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>()}));
-	if (protocolVersion != dev::p2p::c_protocolVersion)
+	if (protocolVersion < dev::p2p::c_protocolVersion)
 	{
 		ps->disconnect(IncompatibleProtocol);
 		return;
@@ -226,7 +226,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 					return;
 				}
 		
-		if (peerCount() > 2 * m_idealPeerCount)
+		if (!peerSlotsAvailable(Ingress))
 		{
 			ps->disconnect(TooManyPeers);
 			return;
@@ -271,7 +271,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 					clog(NetNote) << "p2p.host.peers.events.peerAdded " << _n << p->endpoint;
 				}
 			}
-			if (peerCount() < m_idealPeerCount)
+			if (peerSlotsAvailable(Egress))
 				connect(p);
 		}
 	}
@@ -341,7 +341,7 @@ void Host::runAcceptor()
 		auto socket = make_shared<RLPXSocket>(new bi::tcp::socket(m_ioService));
 		m_tcp4Acceptor.async_accept(socket->ref(), [=](boost::system::error_code ec)
 		{
-			if (peerCount() > 2 * m_idealPeerCount)
+			if (peerCount() > 9 * m_idealPeerCount)
 			{
 				clog(NetConnect) << "Dropping incoming connect due to maximum peer count (2 * ideal peer count): " << socket->remoteEndpoint();
 				socket->close();
@@ -413,7 +413,6 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 		// create or update m_peers entry
 		shared_ptr<Peer> p;
 		ETH_RECURSIVE_GUARDED(x_sessions)
-		{
 			if (m_peers.count(_n))
 			{
 				p = m_peers[_n];
@@ -425,7 +424,6 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 				p.reset(new Peer(node));
 				m_peers[_n] = p;
 			}
-		}
 		connect(p);
 	}
 	else if (m_nodeTable)
@@ -438,6 +436,7 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 		t->async_wait([this, _n](boost::system::error_code const& _ec)
 		{
 			if (!_ec && m_nodeTable)
+				// FIXME RACE CONDITION (use weak_ptr or mutex).
 				if (auto n = m_nodeTable->node(_n))
 					requirePeer(n.id, n.endpoint);
 		});
@@ -464,7 +463,7 @@ void Host::connect(std::shared_ptr<Peer> const& _p)
 		return;
 	}
 
-	if (!m_nodeTable->haveNode(_p->id))
+	if (!!m_nodeTable && !m_nodeTable->haveNode(_p->id))
 	{
 		clog(NetWarn) << "Aborted connect. Node not in node table.";
 		m_nodeTable->addNode(*_p.get());
@@ -578,7 +577,11 @@ void Host::run(boost::system::error_code const&)
 	// is always live and to ensure reputation and fallback timers are properly
 	// updated. // disconnectLatePeers();
 
-	int openSlots = m_idealPeerCount - peerCount();
+	// todo: update peerSlotsAvailable()
+	unsigned pendingCount = 0;
+	ETH_GUARDED(x_pendingNodeConns)
+		pendingCount = m_pendingPeerConns.size();
+	int openSlots = m_idealPeerCount - peerCount() - pendingCount;
 	if (openSlots > 0)
 	{
 		list<shared_ptr<Peer>> toConnect;
@@ -759,7 +762,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 			// todo: ipv6, bi::address_v6(i[0].toArray<byte, 16>()
 			Node n((NodeId)i[2], NodeIPEndpoint(bi::address_v4(i[0].toArray<byte, 4>()), i[1].toInt<uint16_t>(), i[1].toInt<uint16_t>()));
 			if (i.itemCount() == 3 && n.endpoint.isAllowed())
-				m_nodeTable->addNode(n);
+				m_nodeTable->addNode(n, NodeTable::NodeRelation::Known);
 			else if (i.itemCount() == 10)
 			{
 				n.required = i[3].toInt<bool>();
@@ -776,7 +779,7 @@ void Host::restoreNetwork(bytesConstRef _b)
 				if (p->required)
 					requirePeer(p->id, n.endpoint);
 				else
-					m_nodeTable->addNode(*p.get());
+					m_nodeTable->addNode(*p.get(), NodeTable::NodeRelation::Known);
 			}
 		}
 	}

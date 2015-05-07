@@ -146,6 +146,7 @@ void help()
 		<< "    --listen <port>  Listen on the given port for incoming connections (default: 30303)." << endl
 		<< "    -r,--remote <host>(:<port>)  Connect to remote host (default: none)." << endl
 		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
+		<< "    --network-id <n> Only connect to other hosts with this network id (default:0)." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "Work farming mode:" << endl
@@ -406,6 +407,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 
 int main(int argc, char** argv)
 {
+#if 0
 	cout << "\x1b[30mEthBlack\x1b[0m" << endl;
 	cout << "\x1b[90mEthCoal\x1b[0m" << endl;
 	cout << "\x1b[37mEthGray\x1b[0m" << endl;
@@ -471,7 +473,7 @@ int main(int argc, char** argv)
 	cout << "\x1b[4;35mEthPurpleU\x1b[0m" << endl;
 	cout << "\x1b[4;36mEthCyanU\x1b[0m" << endl;
 	cout << "\x1b[4;37mEthWhiteU\x1b[0m" << endl;
-
+#endif
 	// Init defaults
 	Defaults::get();
 
@@ -515,6 +517,7 @@ int main(int argc, char** argv)
 	unsigned short remotePort = 30303;
 	unsigned peers = 5;
 	bool bootstrap = false;
+	unsigned networkId = 0;
 
 	/// Mining params
 	unsigned mining = 0;
@@ -668,6 +671,15 @@ int main(int argc, char** argv)
 				return -1;
 			}
 		}
+		else if (arg == "--network-id" && i + 1 < argc)
+			try {
+				networkId = stol(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
 		else if (arg == "--benchmark-warmup" && i + 1 < argc)
 			try {
 				benchmarkWarmup = stol(argv[++i]);
@@ -1034,11 +1046,13 @@ int main(int argc, char** argv)
 		c->setForceMining(forceMining);
 		c->setTurboMining(minerType == MinerType::GPU);
 		c->setAddress(coinbase);
+		c->setNetworkId(networkId);
 	}
 
 	cout << "Transaction Signer: " << sigKey.address() << endl;
 	cout << "Mining Benefactor: " << coinbase << endl;
 	web3.startNetwork();
+	cout << "Node ID: " << web3.enode() << endl;
 
 	if (bootstrap)
 		web3.addNode(p2p::NodeId(), Host::pocHost());
