@@ -127,7 +127,7 @@ public:
 	 */
 	void resetMiningProgress()
 	{
-		ETH_READ_GUARDED(x_minerWork)
+		DEV_READ_GUARDED(x_minerWork)
 			for (auto const& i: m_miners)
 				i->resetHashCount();
 		resetTimer();

@@ -176,7 +176,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 {
 	// session maybe ingress or egress so m_peers and node table entries may not exist
 	shared_ptr<Peer> p;
-	ETH_RECURSIVE_GUARDED(x_sessions)
+	DEV_RECURSIVE_GUARDED(x_sessions)
 	{
 		if (m_peers.count(_id))
 			p = m_peers[_id];
@@ -257,7 +257,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 		if (Node n = m_nodeTable->node(_n))
 		{
 			shared_ptr<Peer> p;
-			ETH_RECURSIVE_GUARDED(x_sessions)
+			DEV_RECURSIVE_GUARDED(x_sessions)
 			{
 				if (m_peers.count(_n))
 				{
@@ -412,7 +412,7 @@ void Host::requirePeer(NodeId const& _n, NodeIPEndpoint const& _endpoint)
 	{
 		// create or update m_peers entry
 		shared_ptr<Peer> p;
-		ETH_RECURSIVE_GUARDED(x_sessions)
+		DEV_RECURSIVE_GUARDED(x_sessions)
 			if (m_peers.count(_n))
 			{
 				p = m_peers[_n];
@@ -579,7 +579,7 @@ void Host::run(boost::system::error_code const&)
 
 	// todo: update peerSlotsAvailable()
 	unsigned pendingCount = 0;
-	ETH_GUARDED(x_pendingNodeConns)
+	DEV_GUARDED(x_pendingNodeConns)
 		pendingCount = m_pendingPeerConns.size();
 	int openSlots = m_idealPeerCount - peerCount() - pendingCount;
 	if (openSlots > 0)
