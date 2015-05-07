@@ -95,8 +95,6 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeB
 	auto rtPtr = getRuntimePtr();
 	m_dataPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(getRuntimeType(), rtPtr, 0), "dataPtr");
 	assert(m_dataPtr->getType() == Type::RuntimeDataPtr);
-	m_gasPtr = m_builder.CreateStructGEP(getRuntimeDataType(), m_dataPtr, 0, "gasPtr");
-	assert(m_gasPtr->getType() == Type::Gas->getPointerTo());
 	m_memPtr = m_builder.CreateStructGEP(getRuntimeType(), rtPtr, 2, "mem");
 	assert(m_memPtr->getType() == Array::getType()->getPointerTo());
 	m_envPtr = m_builder.CreateLoad(m_builder.CreateStructGEP(getRuntimeType(), rtPtr, 1), "env");
@@ -108,6 +106,9 @@ RuntimeManager::RuntimeManager(llvm::IRBuilder<>& _builder, code_iterator _codeB
 	auto data = m_builder.CreateLoad(m_dataPtr, "data");
 	for (unsigned i = 0; i < m_dataElts.size(); ++i)
 		m_dataElts[i] = m_builder.CreateExtractValue(data, i, getName(RuntimeData::Index(i)));
+
+	m_gasPtr = m_builder.CreateAlloca(Type::Gas, nullptr, "gas.ptr");
+	m_builder.CreateStore(m_dataElts[RuntimeData::Index::Gas], m_gasPtr);
 
 	llvm::Type* checkStackLimitArgs[] = {Type::Size->getPointerTo(), Type::Size, Type::Size, Type::BytePtr};
 	m_checkStackLimit = llvm::Function::Create(llvm::FunctionType::get(Type::Void, checkStackLimitArgs, false), llvm::Function::PrivateLinkage, "stack.checkSize", getModule());
@@ -215,6 +216,8 @@ void RuntimeManager::exit(ReturnCode _returnCode)
 	if (m_stack)
 		m_stack->free();
 
+	auto extGasPtr = m_builder.CreateStructGEP(getRuntimeDataType(), getDataPtr(), RuntimeData::Index::Gas, "msg.gas.ptr");
+	m_builder.CreateStore(getGas(), extGasPtr);
 	m_builder.CreateRet(Constant::get(_returnCode));
 }
 
@@ -286,7 +289,7 @@ llvm::Value* RuntimeManager::getMem()
 void RuntimeManager::setGas(llvm::Value* _gas)
 {
 	assert(_gas->getType() == Type::Gas);
-	set(RuntimeData::Gas, _gas);
+	getBuilder().CreateStore(_gas, getGasPtr());
 }
 
 }
