@@ -33,14 +33,11 @@
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcrypto/SHA3.h>
 #include <libdevcrypto/FileSystem.h>
-#include <libethcore/Params.h>
 #include "BlockInfo.h"
 using namespace std;
 using namespace chrono;
 using namespace dev;
 using namespace eth;
-
-#define ETH_IGNORE_EXCEPTIONS(X) try { X; } catch (...) {}
 
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
 
@@ -64,7 +61,7 @@ ethash_params EthashAux::params(unsigned _n)
 h256 EthashAux::seedHash(unsigned _number)
 {
 	unsigned epoch = _number / ETHASH_EPOCH_LENGTH;
-	RecursiveGuard l(get()->x_this);
+	Guard l(get()->x_epochs);
 	if (epoch >= get()->m_seedHashes.size())
 	{
 		h256 ret;
@@ -75,11 +72,11 @@ h256 EthashAux::seedHash(unsigned _number)
 			n = get()->m_seedHashes.size() - 1;
 		}
 		get()->m_seedHashes.resize(epoch + 1);
-		cdebug << "Searching for seedHash of epoch " << epoch;
+//		cdebug << "Searching for seedHash of epoch " << epoch;
 		for (; n <= epoch; ++n, ret = sha3(ret))
 		{
 			get()->m_seedHashes[n] = ret;
-			cdebug << "Epoch" << n << "is" << ret.abridged();
+//			cdebug << "Epoch" << n << "is" << ret;
 		}
 	}
 	return get()->m_seedHashes[epoch];
@@ -87,23 +84,22 @@ h256 EthashAux::seedHash(unsigned _number)
 
 ethash_params EthashAux::params(h256 const& _seedHash)
 {
-	RecursiveGuard l(get()->x_this);
+	Guard l(get()->x_epochs);
 	unsigned epoch = 0;
-	try
+	auto epochIter = get()->m_epochs.find(_seedHash);
+	if (epochIter == get()->m_epochs.end())
 	{
-		epoch = get()->m_epochs.at(_seedHash);
-	}
-	catch (...)
-	{
-		cdebug << "Searching for seedHash " << _seedHash.abridged();
+		//		cdebug << "Searching for seedHash " << _seedHash;
 		for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = sha3(h), get()->m_epochs[h] = epoch) {}
 		if (epoch == 2048)
 		{
 			std::ostringstream error;
-			error << "apparent block number for " << _seedHash.abridged() << " is too high; max is " << (ETHASH_EPOCH_LENGTH * 2048);
+			error << "apparent block number for " << _seedHash << " is too high; max is " << (ETHASH_EPOCH_LENGTH * 2048);
 			throw std::invalid_argument(error.str());
 		}
 	}
+	else
+		epoch = epochIter->second;
 	return params(epoch * ETHASH_EPOCH_LENGTH);
 }
 
@@ -137,13 +133,12 @@ EthashAux::LightAllocation::~LightAllocation()
 	ethash_delete_light(light);
 }
 
-
-EthashAux::FullType EthashAux::full(BlockInfo const& _header, bytesRef _dest)
+EthashAux::FullType EthashAux::full(BlockInfo const& _header, bytesRef _dest, bool _createIfMissing)
 {
-	return full(_header.seedHash(), _dest);
+	return full(_header.seedHash(), _dest, _createIfMissing);
 }
 
-EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest)
+EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest, bool _createIfMissing)
 {
 	RecursiveGuard l(get()->x_this);
 	FullType ret = get()->m_fulls[_seedHash].lock();
@@ -171,8 +166,8 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest)
 			boost::filesystem::rename(oldMemoFile, memoFile);
 		}
 
-		ETH_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile));
-		ETH_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile + ".info"));
+		DEV_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile));
+		DEV_IGNORE_EXCEPTIONS(boost::filesystem::remove(oldMemoFile + ".info"));
 
 		ethash_params p = params(_seedHash);
 		assert(!_dest || _dest.size() >= p.full_size);	// must be big enough.
@@ -180,6 +175,8 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bytesRef _dest)
 		bytesRef r = contentsNew(memoFile, _dest);
 		if (!r)
 		{
+			if (!_createIfMissing)
+				return FullType();
 			// file didn't exist.
 			if (_dest)
 				// buffer was passed in - no insertion into cache nor need to allocate
@@ -221,8 +218,7 @@ Ethash::Result EthashAux::LightAllocation::compute(h256 const& _seedHash, h256 c
 
 Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
 {
-	// TODO: should be EthashAux::get()->haveFull(_seedHash)
-	if (auto dag = EthashAux::get()->full(_seedHash))
+	if (auto dag = EthashAux::get()->full(_seedHash, bytesRef(), false))
 		return dag->compute(_seedHash, _headerHash, _nonce);
 	return EthashAux::get()->light(_seedHash)->compute(_seedHash, _headerHash, _nonce);
 }

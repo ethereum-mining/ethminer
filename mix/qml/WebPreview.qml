@@ -17,6 +17,7 @@ Item {
 	property string webContent; //for testing
 	signal javaScriptMessage(var _level, string _sourceId, var _lineNb, string _content)
 	signal webContentReady
+	signal ready
 
 	function setPreviewUrl(url) {
 		if (!initialized)
@@ -184,9 +185,11 @@ Item {
 						content = fileIo.readFile(doc.path);
 				}
 
-				if (documentName === urlInput.text.replace(httpServer.url + "/", "")) {
-					//root page, inject deployment script
-					content = "<script>web3=parent.web3;contracts=parent.contracts;</script>\n" + content;
+				var accept = _request.headers["accept"];
+				if (accept && accept.indexOf("text/html") >= 0 && !_request.headers["http_x_requested_with"])
+				{
+					//navigate to page request, inject deployment script
+					content = "<script>web3=parent.web3;BigNumber=parent.BigNumber;contracts=parent.contracts;</script>\n" + content;
 					_request.setResponseContentType("text/html");
 				}
 				_request.setResponse(content);
@@ -317,7 +320,7 @@ Item {
 				experimental.settings.localContentCanAccessRemoteUrls: true
 				onJavaScriptConsoleMessage: {
 					console.log(sourceID + ":" + lineNumber + ": " + message);
-					webPreview.javaScriptMessage(level, sourceID, lineNumber, message);
+					webPreview.javaScriptMessage(level, sourceID, lineNumber - 1, message);
 				}
 				onLoadingChanged: {
 					if (!loading) {
@@ -325,6 +328,7 @@ Item {
 						webView.runJavaScript("init(\"" + httpServer.url + "/rpc/\")");
 						if (pendingPageUrl)
 							setPreviewUrl(pendingPageUrl);
+						ready();
 					}
 				}
 			}

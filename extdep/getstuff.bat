@@ -23,10 +23,16 @@ set eth_version=%2
 
 cd download
 
-if not exist %eth_name%-%eth_version%.tar.gz curl -k -o %eth_name%-%eth_version%.tar.gz %eth_server%/%eth_name%-%eth_version%.tar.gz
-if not exist %eth_name%-%eth_version% tar -zxvf %eth_name%-%eth_version%.tar.gz
+if not exist %eth_name%-%eth_version%.tar.gz (
+	for /f "tokens=2 delims={}" %%g in ('bitsadmin /create %eth_name%-%eth_version%.tar.gz') do (
+		bitsadmin /transfer {%%g} /download /priority normal %eth_server%/%eth_name%-%eth_version%.tar.gz %cd%\%eth_name%-%eth_version%.tar.gz
+		bitsadmin /cancel {%%g}
+	)
+)
+if not exist %eth_name%-%eth_version% cmake -E tar -zxvf %eth_name%-%eth_version%.tar.gz
 cmake -E copy_directory %eth_name%-%eth_version% ..\install\windows
 
-cd ..\download
+cd ..
 
 goto :EOF
+

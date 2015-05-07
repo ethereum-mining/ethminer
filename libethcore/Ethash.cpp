@@ -121,6 +121,8 @@ bool Ethash::verify(BlockInfo const& _header)
 	return slow;
 }
 
+unsigned Ethash::CPUMiner::s_numInstances = 0;
+
 void Ethash::CPUMiner::workLoop()
 {
 	auto tid = std::this_thread::get_id();
@@ -237,7 +239,7 @@ protected:
 				return true;
 			}
 		}
-		return false;
+		return m_owner->shouldStop();
 	}
 
 	virtual bool searched(uint64_t _startNonce, uint32_t _count) override
@@ -246,7 +248,7 @@ protected:
 //		std::cerr << "Searched " << _count << " from " << _startNonce << std::endl;
 		m_owner->accumulateHashes(_count);
 		m_last = _startNonce + _count;
-		if (m_abort)
+		if (m_abort || m_owner->shouldStop())
 		{
 			m_aborted = true;
 			return true;
@@ -262,10 +264,13 @@ private:
 	Ethash::GPUMiner* m_owner = nullptr;
 };
 
+unsigned Ethash::GPUMiner::s_platformId = 0;
 unsigned Ethash::GPUMiner::s_deviceId = 0;
+unsigned Ethash::GPUMiner::s_numInstances = 0;
 
 Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
+	Worker("gpuminer" + toString(index())),
 	m_hook(new EthashCLHook(this))
 {
 }
@@ -295,21 +300,28 @@ void Ethash::GPUMiner::kickOff()
 void Ethash::GPUMiner::workLoop()
 {
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
-	WorkPackage w = work();
-	if (!m_miner || m_minerSeed != w.seedHash)
-	{
-		m_minerSeed = w.seedHash;
+	try {
+		WorkPackage w = work();
+		if (!m_miner || m_minerSeed != w.seedHash)
+		{
+			m_minerSeed = w.seedHash;
 
-		delete m_miner;
-		m_miner = new ethash_cl_miner;
+			delete m_miner;
+			m_miner = new ethash_cl_miner;
 
-		auto p = EthashAux::params(m_minerSeed);
-		auto cb = [&](void* d) { EthashAux::full(m_minerSeed, bytesRef((byte*)d, p.full_size)); };
-		m_miner->init(p, cb, 32, s_deviceId);
+			unsigned device = instances() > 1 ? index() : s_deviceId;
+
+			EthashAux::FullType dag = EthashAux::full(m_minerSeed);
+			m_miner->init(dag->data.data(), dag->data.size(), 32, s_platformId, device);
+		}
+
+		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
+		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook);
 	}
-
-	uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
-	m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook);
+	catch (...)
+	{
+		cwarn << "Error GPU mining. GPU memory fragmentation?";
+	}
 }
 
 void Ethash::GPUMiner::pause()
@@ -320,7 +332,12 @@ void Ethash::GPUMiner::pause()
 
 std::string Ethash::GPUMiner::platformInfo()
 {
-	return ethash_cl_miner::platform_info();
+	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
+}
+
+unsigned Ethash::GPUMiner::getNumDevices()
+{
+	return ethash_cl_miner::get_num_devices(s_platformId);
 }
 
 #endif

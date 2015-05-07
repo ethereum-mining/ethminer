@@ -60,8 +60,8 @@ public:
 	static ethash_params params(unsigned _n);
 	static LightType light(BlockInfo const& _header);
 	static LightType light(h256 const& _seedHash);
-	static FullType full(BlockInfo const& _header, bytesRef _dest = bytesRef());
-	static FullType full(h256 const& _header, bytesRef _dest = bytesRef());
+	static FullType full(BlockInfo const& _header, bytesRef _dest = bytesRef(), bool _createIfMissing = true);
+	static FullType full(h256 const& _header, bytesRef _dest = bytesRef(), bool _createIfMissing = true);
 
 	static Ethash::Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
 	static Ethash::Result eval(BlockInfo const& _header, Nonce const& _nonce);
@@ -78,6 +78,8 @@ private:
 	std::map<h256, std::shared_ptr<LightAllocation>> m_lights;
 	std::map<h256, std::weak_ptr<FullAllocation>> m_fulls;
 	FullType m_lastUsedFull;
+
+	Mutex x_epochs;
 	std::map<h256, unsigned> m_epochs;
 	h256s m_seedHashes;
 };

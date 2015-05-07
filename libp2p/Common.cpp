@@ -27,6 +27,39 @@ using namespace dev::p2p;
 const unsigned dev::p2p::c_protocolVersion = 3;
 const unsigned dev::p2p::c_defaultIPPort = 30303;
 
+const dev::p2p::NodeIPEndpoint dev::p2p::UnspecifiedNodeIPEndpoint = NodeIPEndpoint(bi::address(), 0, 0);
+const dev::p2p::Node dev::p2p::UnspecifiedNode = dev::p2p::Node(NodeId(), UnspecifiedNodeIPEndpoint);
+
+bool dev::p2p::NodeIPEndpoint::test_allowLocal = false;
+
+//⊳⊲◀▶■▣▢□▷◁▧▨▩▲◆◉◈◇◎●◍◌○◼☑☒☎☢☣☰☀♽♥♠✩✭❓✔✓✖✕✘✓✔✅⚒⚡⦸⬌∅⁕«««»»»⚙━┅┉▬
+
+#ifdef _WIN32
+const char* NetWarn::name() { return EthYellow "N" EthRed " X"; }
+const char* NetImpolite::name() { return EthYellow "N" EthRed " !"; }
+const char* NetNote::name() { return EthYellow "N" EthBlue " i"; }
+const char* NetConnect::name() { return EthYellow "N" EthYellow " C"; }
+const char* NetMessageSummary::name() { return EthYellow "N" EthWhite " ."; }
+const char* NetMessageDetail::name() { return EthYellow "N" EthGray " o"; }
+const char* NetTriviaSummary::name() { return EthYellow "N" EthGray " O"; }
+const char* NetTriviaDetail::name() { return EthYellow "N" EthCoal " 0"; }
+const char* NetAllDetail::name() { return EthYellow "N" EthCoal " A"; }
+const char* NetRight::name() { return EthYellow "N" EthGreen "->"; }
+const char* NetLeft::name() { return EthYellow "N" EthNavy "<-"; }
+#else
+const char* NetWarn::name() { return EthYellow "⧎" EthRed " ✘"; }
+const char* NetImpolite::name() { return EthYellow "⧎" EthRed " !"; }
+const char* NetNote::name() { return EthYellow "⧎" EthBlue " ℹ"; }
+const char* NetConnect::name() { return EthYellow "⧎" EthYellow " ▢"; }
+const char* NetMessageSummary::name() { return EthYellow "⧎" EthWhite " ◌"; }
+const char* NetMessageDetail::name() { return EthYellow "⧎" EthGray " ○"; }
+const char* NetTriviaSummary::name() { return EthYellow "⧎" EthGray " ◎"; }
+const char* NetTriviaDetail::name() { return EthYellow "⧎" EthCoal " ◍"; }
+const char* NetAllDetail::name() { return EthYellow "⧎" EthCoal " ●"; }
+const char* NetRight::name() { return EthYellow "⧎" EthGreen "▬▶"; }
+const char* NetLeft::name() { return EthYellow "⧎" EthNavy "◀▬"; }
+#endif
+
 bool p2p::isPublicAddress(std::string const& _addressToCheck)
 {
 	return _addressToCheck.empty() ? false : isPublicAddress(bi::address::from_string(_addressToCheck));
@@ -111,8 +144,13 @@ std::string p2p::reasonOf(DisconnectReason _r)
 	}
 }
 
-void Node::cullEndpoint()
+namespace dev {
+	
+std::ostream& operator<<(std::ostream& _out, dev::p2p::NodeIPEndpoint const& _ep)
 {
-	if (!isPublicAddress(endpoint.tcp.address()) && isPublicAddress(endpoint.udp.address()))
-		endpoint.tcp.address(endpoint.udp.address());
+	_out << _ep.address << _ep.udpPort << _ep.tcpPort;
+	return _out;
 }
+	
+}
+
