@@ -9,7 +9,7 @@ var editor = CodeMirror(document.body, {
 						});
 var ternServer;
 
-editor.setOption("theme", "solarized dark");
+editor.setOption("theme", "inkpot");
 editor.setOption("indentUnit", 4);
 editor.setOption("indentWithTabs", true);
 editor.setOption("fullScreen", true);
@@ -126,7 +126,10 @@ highlightExecution = function(start, end) {
 		executionMark.clear();
 	if (debugWarning)
 		debugWarning.clear();
-	executionMark = editor.markText(editor.posFromIndex(start), editor.posFromIndex(end), { className: "CodeMirror-exechighlight" });
+	if (start > 0 && end > start) {
+		executionMark = editor.markText(editor.posFromIndex(start), editor.posFromIndex(end), { className: "CodeMirror-exechighlight" });
+		editor.scrollIntoView(editor.posFromIndex(start));
+	}
 }
 
 var changeId;
@@ -194,4 +197,11 @@ goToCompilationError = function()
 	editor.setCursor(annotation.line, annotation.column)
 }
 
+setFontSize = function(size)
+{
+	editor.getWrapperElement().style["font-size"] = size + "px";
+	editor.refresh();
+}
+
 editor.setOption("extraKeys", extraKeys);
+

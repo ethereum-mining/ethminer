@@ -29,11 +29,6 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-#if defined(clogS)
-#undef clogS
-#endif
-#define clogS(X) dev::LogOutputStream<X, true>(false) << "| " << std::setw(2) << session()->socketId() << "] "
-
 WhisperPeer::WhisperPeer(Session* _s, HostCapabilityFace* _h, unsigned _i): Capability(_s, _h, _i)
 {
 	RLPStream s;
@@ -57,7 +52,7 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 	{
 		auto protocolVersion = _r[0].toInt<unsigned>();
 
-		clogS(NetMessageSummary) << "Status: " << protocolVersion;
+		clog(NetMessageSummary) << "Status: " << protocolVersion;
 
 		if (protocolVersion != version())
 			disable("Invalid protocol version.");

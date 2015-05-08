@@ -24,7 +24,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/Common.h>
-#include <libethcore/Params.h>
+#include <libevmcore/Params.h>
 namespace dev
 {
 namespace eth
@@ -97,8 +97,6 @@ struct ExecutionResult
 
 std::ostream& operator<<(std::ostream& _out, ExecutionResult const& _er);
 
-static const Address NullAddress;
-
 /// Encodes a transaction, ready to be exported to or freshly imported from RLP.
 class Transaction
 {
@@ -151,7 +149,7 @@ public:
 	bytes rlp(IncludeSignature _sig = WithSignature) const { RLPStream s; streamRLP(s, _sig); return s.out(); }
 
 	/// @returns the SHA3 hash of the RLP serialisation of this transaction.
-	h256 sha3(IncludeSignature _sig = WithSignature) const { RLPStream s; streamRLP(s, _sig); return dev::sha3(s.out()); }
+	h256 sha3(IncludeSignature _sig = WithSignature) const { if (_sig == WithSignature && m_hashWith) return m_hashWith; RLPStream s; streamRLP(s, _sig); auto ret = dev::sha3(s.out()); if (_sig == WithSignature) m_hashWith = ret; return ret; }
 
 	/// @returns the amount of ETH to be transferred by this (message-call) transaction, in Wei. Synonym for endowment().
 	u256 value() const { return m_value; }
@@ -166,6 +164,12 @@ public:
 
 	/// @returns the receiving address of the message-call transaction (undefined for contract-creation transactions).
 	Address receiveAddress() const { return m_receiveAddress; }
+
+	/// Synonym for receiveAddress().
+	Address to() const { return m_receiveAddress; }
+
+	/// Synonym for safeSender().
+	Address from() const { return safeSender(); }
 
 	/// @returns the data associated with this (message-call) transaction. Synonym for initCode().
 	bytes const& data() const { return m_data; }
@@ -207,6 +211,7 @@ private:
 	bytes m_data;						///< The data associated with the transaction, or the initialiser if it's a creation transaction.
 	SignatureStruct m_vrs;				///< The signature of the transaction. Encodes the sender.
 
+	mutable h256 m_hashWith;			///< Cached hash of transaction with signature.
 	mutable Address m_sender;			///< Cached sender, determined from signature.
 	mutable bigint m_gasRequired = 0;	///< Memoised amount required for the transaction to run.
 };
@@ -217,19 +222,14 @@ using Transactions = std::vector<Transaction>;
 /// Simple human-readable stream-shift operator.
 inline std::ostream& operator<<(std::ostream& _out, Transaction const& _t)
 {
-	_out << "{";
+	_out << _t.sha3().abridged() << "{";
 	if (_t.receiveAddress())
 		_out << _t.receiveAddress().abridged();
 	else
 		_out << "[CREATE]";
 
-	_out << "/" << _t.nonce() << "$" << _t.value() << "+" << _t.gas() << "@" << _t.gasPrice();
-	try
-	{
-		_out << "<-" << _t.sender().abridged();
-	}
-	catch (...) {}
-	_out << " #" << _t.data().size() << "}";
+	_out << "/" << _t.data().size() << "$" << _t.value() << "+" << _t.gas() << "@" << _t.gasPrice();
+	_out << "<-" << _t.safeSender().abridged() << " #" << _t.nonce() << "}";
 	return _out;
 }
 

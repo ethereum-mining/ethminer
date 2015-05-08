@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <string>
+#include <functional>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcrypto/Common.h>
@@ -40,9 +42,6 @@ extern const unsigned c_minorProtocolVersion;
 
 /// Current database version.
 extern const unsigned c_databaseVersion;
-
-/// Current database version.
-extern const unsigned c_ethashVersion;
 
 /// User-friendly string representation of the amount _b in wei.
 std::string formatBalance(bigint const& _b);
@@ -95,6 +94,47 @@ enum class ImportResult
 	Malformed,
 	BadChain
 };
+
+struct ImportRequirements
+{
+	using value = unsigned;
+	enum
+	{
+		ValidNonce = 1, ///< Validate Nonce
+		DontHave = 2, ///< Avoid old blocks
+		Default = ValidNonce | DontHave
+	};
+};
+
+/// Super-duper signal mechanism. TODO: replace with somthing a bit heavier weight.
+class Signal
+{
+public:
+	class HandlerAux
+	{
+		friend class Signal;
+
+	public:
+		~HandlerAux() { if (m_s) m_s->m_fire.erase(m_i); m_s = nullptr; }
+
+	private:
+		HandlerAux(unsigned _i, Signal* _s): m_i(_i), m_s(_s) {}
+
+		unsigned m_i = 0;
+		Signal* m_s = nullptr;
+	};
+
+	using Callback = std::function<void()>;
+
+	std::shared_ptr<HandlerAux> add(Callback const& _h) { auto n = m_fire.empty() ? 0 : (m_fire.rbegin()->first + 1); m_fire[n] = _h; return std::shared_ptr<HandlerAux>(new HandlerAux(n, this)); }
+
+	void operator()() { for (auto const& f: m_fire) f.second(); }
+
+private:
+	std::map<unsigned, Callback> m_fire;
+};
+
+using Handler = std::shared_ptr<Signal::HandlerAux>;
 
 }
 }

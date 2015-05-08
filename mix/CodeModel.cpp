@@ -26,7 +26,7 @@
 #include <QApplication>
 #include <QtQml>
 #include <libdevcore/Common.h>
-#include <libevmcore/SourceLocation.h>
+#include <libevmasm/SourceLocation.h>
 #include <libsolidity/AST.h>
 #include <libsolidity/Types.h>
 #include <libsolidity/ASTVisitor.h>
@@ -51,30 +51,31 @@ const std::set<std::string> c_predefinedContracts =
 namespace
 {
 using namespace dev::solidity;
-class CollectDeclarationsVisitor: public ASTConstVisitor
+
+class CollectLocalsVisitor: public ASTConstVisitor
 {
 public:
-	CollectDeclarationsVisitor(QHash<LocationPair, QString>* _functions, QHash<LocationPair, SolidityDeclaration>* _locals):
-	m_functions(_functions), m_locals(_locals), m_functionScope(false) {}
+	CollectLocalsVisitor(QHash<LocationPair, SolidityDeclaration>* _locals):
+	m_locals(_locals), m_functionScope(false) {}
+
 private:
 	LocationPair nodeLocation(ASTNode const& _node)
 	{
 		return LocationPair(_node.getLocation().start, _node.getLocation().end);
 	}
 
-	virtual bool visit(FunctionDefinition const& _node)
+	virtual bool visit(FunctionDefinition const&)
 	{
-		m_functions->insert(nodeLocation(_node), QString::fromStdString(_node.getName()));
 		m_functionScope = true;
 		return true;
 	}
 
-	virtual void endVisit(FunctionDefinition const&)
+	virtual void endVisit(FunctionDefinition const&) override
 	{
 		m_functionScope = false;
 	}
 
-	virtual bool visit(VariableDeclaration const& _node)
+	virtual bool visit(VariableDeclaration const& _node) override
 	{
 		SolidityDeclaration decl;
 		decl.type = CodeModel::nodeType(_node.getType().get());
@@ -87,9 +88,36 @@ private:
 	}
 
 private:
-	QHash<LocationPair, QString>* m_functions;
 	QHash<LocationPair, SolidityDeclaration>* m_locals;
 	bool m_functionScope;
+};
+
+class CollectLocationsVisitor: public ASTConstVisitor
+{
+public:
+	CollectLocationsVisitor(SourceMap* _sourceMap):
+	m_sourceMap(_sourceMap) {}
+
+private:
+	LocationPair nodeLocation(ASTNode const& _node)
+	{
+		return LocationPair(_node.getLocation().start, _node.getLocation().end);
+	}
+
+	virtual bool visit(FunctionDefinition const& _node) override
+	{
+		m_sourceMap->functions.insert(nodeLocation(_node), QString::fromStdString(_node.getName()));
+		return true;
+	}
+
+	virtual bool visit(ContractDefinition const& _node) override
+	{
+		m_sourceMap->contracts.insert(nodeLocation(_node), QString::fromStdString(_node.getName()));
+		return true;
+	}
+
+private:
+	SourceMap* m_sourceMap;
 };
 
 QHash<unsigned, SolidityDeclarations> collectStorage(dev::solidity::ContractDefinition const& _contract)
@@ -132,11 +160,11 @@ CompiledContract::CompiledContract(const dev::solidity::CompilerStack& _compiler
 	if (contractDefinition.getLocation().sourceName.get())
 		m_documentId = QString::fromStdString(*contractDefinition.getLocation().sourceName);
 
-	CollectDeclarationsVisitor visitor(&m_functions, &m_locals);
+	CollectLocalsVisitor visitor(&m_locals);
 	m_storage = collectStorage(contractDefinition);
 	contractDefinition.accept(visitor);
-	m_assemblyItems = _compiler.getRuntimeAssemblyItems(name);
-	m_constructorAssemblyItems = _compiler.getAssemblyItems(name);
+	m_assemblyItems = *_compiler.getRuntimeAssemblyItems(name);
+	m_constructorAssemblyItems = *_compiler.getAssemblyItems(name);
 }
 
 QString CompiledContract::codeHex() const
@@ -243,68 +271,106 @@ void CodeModel::releaseContracts()
 	for (ContractMap::iterator c = m_contractMap.begin(); c != m_contractMap.end(); ++c)
 		c.value()->deleteLater();
 	m_contractMap.clear();
+	m_sourceMaps.clear();
 }
 
 void CodeModel::runCompilationJob(int _jobId)
 {
 	if (_jobId != m_backgroundJobId)
 		return; //obsolete job
-	ContractMap result;
 	solidity::CompilerStack cs(true);
 	try
 	{
 		cs.addSource("configUser", R"(contract configUser{function configAddr()constant returns(address a){ return 0xf025d81196b72fba60a1d4dddad12eeb8360d828;}})");
+		std::vector<std::string> sourceNames;
 		{
 			Guard l(x_pendingContracts);
 			for (auto const& c: m_pendingContracts)
+			{
 				cs.addSource(c.first.toStdString(), c.second.toStdString());
+				sourceNames.push_back(c.first.toStdString());
+			}
 		}
 		cs.compile(false);
-
-		{
-			Guard pl(x_pendingContracts);
-			Guard l(x_contractMap);
-			for (std::string n: cs.getContractNames())
-			{
-				if (c_predefinedContracts.count(n) != 0)
-					continue;
-				QString name = QString::fromStdString(n);
-				QString sourceName = QString::fromStdString(*cs.getContractDefinition(n).getLocation().sourceName);
-				auto sourceIter = m_pendingContracts.find(sourceName);
-				QString source = sourceIter != m_pendingContracts.end() ? sourceIter->second : QString();
-				CompiledContract* contract = new CompiledContract(cs, name, source);
-				QQmlEngine::setObjectOwnership(contract, QQmlEngine::CppOwnership);
-				result[name] = contract;
-				CompiledContract* prevContract = nullptr;
-				for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
-					if (c.value()->documentId() == contract->documentId())
-						prevContract = c.value();
-				if (prevContract != nullptr && prevContract->contractInterface() != result[name]->contractInterface())
-					emit contractInterfaceChanged(name);
-				if (prevContract == nullptr)
-					emit newContractCompiled(name);
-				else if (prevContract->contract()->name() != name)
-					emit contractRenamed(contract->documentId(), prevContract->contract()->name(), name);
-			}
-			releaseContracts();
-			m_contractMap.swap(result);
-			emit codeChanged();
-			emit compilationComplete();
-		}
+		collectContracts(cs, sourceNames);
 	}
 	catch (dev::Exception const& _exception)
 	{
 		std::ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
-		SourceLocation const* location = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception);
 		QString message = QString::fromStdString(error.str());
-		CompiledContract* contract = nullptr;
-		if (location && location->sourceName.get() && (contract = contractByDocumentId(QString::fromStdString(*location->sourceName))))
-			message = message.replace(QString::fromStdString(*location->sourceName), contract->contract()->name()); //substitute the location to match our contract names
-		compilationError(message, QString::fromStdString(*location->sourceName));
+		QString sourceName;
+		if (SourceLocation const* location = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception))
+		{
+			if (location->sourceName)
+				sourceName = QString::fromStdString(*location->sourceName);
+			if (!sourceName.isEmpty())
+				if (CompiledContract* contract = contractByDocumentId(sourceName))
+					message = message.replace(sourceName, contract->contract()->name()); //substitute the location to match our contract names
+		}
+		compilationError(message, sourceName);
 	}
 	m_compiling = false;
 	emit stateChanged();
+}
+
+void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs, std::vector<std::string> const& _sourceNames)
+{
+	Guard pl(x_pendingContracts);
+	Guard l(x_contractMap);
+	ContractMap result;
+	SourceMaps sourceMaps;
+	for (std::string const& sourceName: _sourceNames)
+	{
+		dev::solidity::SourceUnit const& source = _cs.getAST(sourceName);
+		SourceMap sourceMap;
+		CollectLocationsVisitor collector(&sourceMap);
+		source.accept(collector);
+		sourceMaps.insert(QString::fromStdString(sourceName), std::move(sourceMap));
+	}
+	for (std::string n: _cs.getContractNames())
+	{
+		if (c_predefinedContracts.count(n) != 0)
+			continue;
+		QString name = QString::fromStdString(n);
+		ContractDefinition const& contractDefinition = _cs.getContractDefinition(n);
+		if (!contractDefinition.isFullyImplemented())
+			continue;
+		QString sourceName = QString::fromStdString(*contractDefinition.getLocation().sourceName);
+		auto sourceIter = m_pendingContracts.find(sourceName);
+		QString source = sourceIter != m_pendingContracts.end() ? sourceIter->second : QString();
+		CompiledContract* contract = new CompiledContract(_cs, name, source);
+		QQmlEngine::setObjectOwnership(contract, QQmlEngine::CppOwnership);
+		result[name] = contract;
+		CompiledContract* prevContract = nullptr;
+		// find previous contract by name
+		for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
+			if (c.value()->contract()->name() == contract->contract()->name())
+				prevContract = c.value();
+
+		// if not found, try by documentId
+		if (!prevContract)
+		{
+			for (ContractMap::const_iterator c = m_contractMap.cbegin(); c != m_contractMap.cend(); ++c)
+				if (c.value()->documentId() == contract->documentId())
+				{
+					//make sure there are no other contracts in the same source, otherwise it is not a rename
+					if (!std::any_of(result.begin(),result.end(), [=](ContractMap::const_iterator::value_type _v) { return _v != contract && _v->documentId() == contract->documentId(); }))
+					prevContract = c.value();
+				}
+		}
+		if (prevContract != nullptr && prevContract->contractInterface() != result[name]->contractInterface())
+			emit contractInterfaceChanged(name);
+		if (prevContract == nullptr)
+			emit newContractCompiled(name);
+		else if (prevContract->contract()->name() != name)
+			emit contractRenamed(contract->documentId(), prevContract->contract()->name(), name);
+	}
+	releaseContracts();
+	m_contractMap.swap(result);
+	m_sourceMaps.swap(sourceMaps);
+	emit codeChanged();
+	emit compilationComplete();
 }
 
 bool CodeModel::hasContract() const
@@ -389,8 +455,8 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 			StructType const* s = dynamic_cast<StructType const*>(_type);
 			for(auto const& structMember: s->getMembers())
 			{
-				auto slotAndOffset = s->getStorageOffsetsOfMember(structMember.first);
-				r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.first), nodeType(structMember.second.get()), slotAndOffset.first, slotAndOffset.second });
+				auto slotAndOffset = s->getStorageOffsetsOfMember(structMember.name);
+				r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.name), nodeType(structMember.type.get()), slotAndOffset.first, slotAndOffset.second });
 			}
 		}
 		break;
@@ -408,3 +474,32 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 	return r;
 }
 
+bool CodeModel::isContractOrFunctionLocation(dev::SourceLocation const& _location)
+{
+	if (!_location.sourceName)
+		return false;
+	Guard l(x_contractMap);
+	auto sourceMapIter = m_sourceMaps.find(QString::fromStdString(*_location.sourceName));
+	if (sourceMapIter != m_sourceMaps.cend())
+	{
+		LocationPair location(_location.start, _location.end);
+		return sourceMapIter.value().contracts.contains(location) || sourceMapIter.value().functions.contains(location);
+	}
+	return false;
+}
+
+QString CodeModel::resolveFunctionName(dev::SourceLocation const& _location)
+{
+	if (!_location.sourceName)
+		return QString();
+	Guard l(x_contractMap);
+	auto sourceMapIter = m_sourceMaps.find(QString::fromStdString(*_location.sourceName));
+	if (sourceMapIter != m_sourceMaps.cend())
+	{
+		LocationPair location(_location.start, _location.end);
+		auto functionNameIter = sourceMapIter.value().functions.find(location);
+		if (functionNameIter != sourceMapIter.value().functions.cend())
+			return functionNameIter.value();
+	}
+	return QString();
+}

@@ -30,6 +30,7 @@ set(CURL_LIBRARIES ${CURL_LIBRARY})
 # same naming convention as in qt (appending debug library with d)
 # boost is using the same "hack" as us with "optimized" and "debug"
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	
 	find_library(
 		CURL_LIBRARY_DEBUG
 		NAMES curld libcurld
@@ -37,6 +38,13 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	)
 	
 	set(CURL_LIBRARIES optimized ${CURL_LIBRARIES} debug ${CURL_LIBRARY_DEBUG})
+
+	# prepare dlls
+	string(REPLACE ".lib" ".dll" CURL_DLL ${CURL_LIBRARY})
+	string(REPLACE "/lib/" "/bin/" CURL_DLL ${CURL_DLL})
+	string(REPLACE ".lib" ".dll" CURL_DLL_DEBUG ${CURL_LIBRARY_DEBUG})
+	string(REPLACE "/lib/" "/bin/" CURL_DLL_DEBUG ${CURL_DLL_DEBUG})
+	set(CURL_DLLS optimized ${CURL_DLL} debug ${CURL_DLL_DEBUG})
 
 endif()
 

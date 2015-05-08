@@ -27,67 +27,74 @@ using namespace dev;
 namespace dev
 {
 
+const char* DBChannel::name() { return "TDB"; }
+const char* DBWarn::name() { return "TDB"; }
+
 std::map<h256, std::string> MemoryDB::get() const
 {
-	if (!m_enforceRefs)
-		return m_over;
 	std::map<h256, std::string> ret;
-	for (auto const& i: m_refCount)
-		if (i.second)
-			ret.insert(*m_over.find(i.first));
+	for (auto const& i: m_main)
+		if (!m_enforceRefs || i.second.second > 0)
+			ret.insert(make_pair(i.first, i.second.first));
 	return ret;
 }
 
-std::string MemoryDB::lookup(h256 _h) const
+std::string MemoryDB::lookup(h256 const& _h) const
 {
-	auto it = m_over.find(_h);
-	if (it != m_over.end())
+	auto it = m_main.find(_h);
+	if (it != m_main.end())
 	{
-		if (!m_enforceRefs || (m_refCount.count(it->first) && m_refCount.at(it->first)))
-			return it->second;
+		if (!m_enforceRefs || it->second.second > 0)
+			return it->second.first;
 //		else if (m_enforceRefs && m_refCount.count(it->first) && !m_refCount.at(it->first))
-//			cnote << "Lookup required for value with no refs. Let's hope it's in the DB." << _h.abridged();
+//			cnote << "Lookup required for value with no refs. Let's hope it's in the DB." << _h;
 	}
 	return std::string();
 }
 
-bool MemoryDB::exists(h256 _h) const
+bool MemoryDB::exists(h256 const& _h) const
 {
-	auto it = m_over.find(_h);
-	if (it != m_over.end() && (!m_enforceRefs || (m_refCount.count(it->first) && m_refCount.at(it->first))))
+	auto it = m_main.find(_h);
+	if (it != m_main.end() && (!m_enforceRefs || it->second.second > 0))
 		return true;
 	return false;
 }
 
-void MemoryDB::insert(h256 _h, bytesConstRef _v)
+void MemoryDB::insert(h256 const& _h, bytesConstRef _v)
 {
-	m_over[_h] = _v.toString();
-	m_refCount[_h]++;
+	auto it = m_main.find(_h);
+	if (it != m_main.end())
+	{
+		it->second.first = _v.toString();
+		it->second.second++;
+	}
+	else
+		m_main[_h] = make_pair(_v.toString(), 1);
 #if ETH_PARANOIA
-	dbdebug << "INST" << _h.abridged() << "=>" << m_refCount[_h];
+	dbdebug << "INST" << _h << "=>" << m_main[_h].second;
 #endif
 }
 
-bool MemoryDB::kill(h256 _h)
+bool MemoryDB::kill(h256 const& _h)
 {
-	if (m_refCount.count(_h))
+	if (m_main.count(_h))
 	{
-		if (m_refCount[_h] > 0)
-			--m_refCount[_h];
+		if (m_main[_h].second > 0)
+			m_main[_h].second--;
 #if ETH_PARANOIA
 		else
 		{
 			// If we get to this point, then there was probably a node in the level DB which we need to remove and which we have previously
 			// used as part of the memory-based MemoryDB. Nothing to be worried about *as long as the node exists in the DB*.
-			dbdebug << "NOKILL-WAS" << _h.abridged();
+			dbdebug << "NOKILL-WAS" << _h;
 			return false;
 		}
-		dbdebug << "KILL" << _h.abridged() << "=>" << m_refCount[_h];
+		dbdebug << "KILL" << _h << "=>" << m_main[_h].second;
 		return true;
 	}
 	else
 	{
-		dbdebug << "NOKILL" << _h.abridged();
+		dbdebug << "NOKILL" << _h;
 		return false;
 	}
 #else
@@ -98,16 +105,18 @@ bool MemoryDB::kill(h256 _h)
 
 void MemoryDB::purge()
 {
-	for (auto const& i: m_refCount)
-		if (!i.second)
-			m_over.erase(i.first);
+	for (auto it = m_main.begin(); it != m_main.end(); )
+		if (it->second.second)
+			++it;
+		else
+			it = m_main.erase(it);
 }
 
 set<h256> MemoryDB::keys() const
 {
 	set<h256> ret;
-	for (auto const& i: m_refCount)
-		if (i.second && h128(i.first.ref().cropped(0, 16)))
+	for (auto const& i: m_main)
+		if (i.second.second)
 			ret.insert(i.first);
 	return ret;
 }

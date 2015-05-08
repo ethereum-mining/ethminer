@@ -20,14 +20,21 @@
  * @date 2015
  */
 
-#include <libdevcore/StructuredLogger.h>
 #include "ClientBase.h"
+
+#include <libdevcore/StructuredLogger.h>
 #include "BlockChain.h"
 #include "Executive.h"
+#include "State.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+
+const char* WatchChannel::name() { return EthBlue "ℹ" EthWhite "  "; }
+const char* WorkInChannel::name() { return EthOrange "⚒" EthGreen "▬▶"; }
+const char* WorkOutChannel::name() { return EthOrange "⚒" EthNavy "◀▬"; }
+const char* WorkChannel::name() { return EthOrange "⚒" EthWhite "  "; }
 
 State ClientBase::asOf(BlockNumber _h) const
 {
@@ -41,8 +48,11 @@ State ClientBase::asOf(BlockNumber _h) const
 void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	prepareForTransaction();
-	
-	u256 n = postMine().transactionsFrom(toAddress(_secret));
+
+	auto a = toAddress(_secret);
+	u256 n = postMine().transactionsFrom(a);
+	cdebug << "submitTx: " << a << "postMine=" << n << "; tq=" << m_tq.maxNonce(a);
+	n = max<u256>(n, m_tq.maxNonce(a));
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
 	m_tq.import(t.rlp());
 	
@@ -107,9 +117,9 @@ ExecutionResult ClientBase::create(Secret _secret, u256 _value, bytes const& _da
 	return ret;
 }
 
-void ClientBase::injectBlock(bytes const& _block)
+ImportResult ClientBase::injectBlock(bytes const& _block)
 {
-	bc().import(_block, preMine().db());
+	return bc().attemptImport(_block, preMine().db()).first;
 }
 
 u256 ClientBase::balanceAt(Address _a, BlockNumber _block) const
@@ -130,6 +140,11 @@ u256 ClientBase::stateAt(Address _a, u256 _l, BlockNumber _block) const
 bytes ClientBase::codeAt(Address _a, BlockNumber _block) const
 {
 	return asOf(_block).code(_a);
+}
+
+h256 ClientBase::codeHashAt(Address _a, BlockNumber _block) const
+{
+	return asOf(_block).codeHash(_a);
 }
 
 map<u256, u256> ClientBase::storageAt(Address _a, BlockNumber _block) const
@@ -219,7 +234,7 @@ unsigned ClientBase::installWatch(LogFilter const& _f, Reaping _r)
 		Guard l(x_filtersWatches);
 		if (!m_filters.count(h))
 		{
-			cwatch << "FFF" << _f << h.abridged();
+			cwatch << "FFF" << _f << h;
 			m_filters.insert(make_pair(h, _f));
 		}
 	}
@@ -233,7 +248,7 @@ unsigned ClientBase::installWatch(h256 _h, Reaping _r)
 		Guard l(x_filtersWatches);
 		ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
 		m_watches[ret] = ClientWatch(_h, _r);
-		cwatch << "+++" << ret << _h.abridged();
+		cwatch << "+++" << ret << _h;
 	}
 #if INITIAL_STATE_AS_CHANGES
 	auto ch = logs(ret);
@@ -319,6 +334,11 @@ Transaction ClientBase::transaction(h256 _blockHash, unsigned _i) const
 		return Transaction(b[1][_i].data(), CheckTransaction::Cheap);
 	else
 		return Transaction();
+}
+
+pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const
+{
+	return bc().transactionLocation(_transactionHash);
 }
 
 Transactions ClientBase::transactions(h256 _blockHash) const
@@ -419,3 +439,9 @@ h256 ClientBase::hashFromNumber(BlockNumber _number) const
 		return bc().currentHash();
 	return bc().numberHash(_number);
 }
+
+BlockNumber ClientBase::numberFromHash(h256 _blockHash) const
+{
+	return bc().number(_blockHash);
+}
+

@@ -42,7 +42,7 @@ WebThreeDirect::WebThreeDirect(
 	WithExisting _we,
 	std::set<std::string> const& _interfaces,
 	NetworkPreferences const& _n,
-	bytesConstRef _network, int _miners
+	bytesConstRef _network
 ):
 	m_clientVersion(_clientVersion),
 	m_net(_clientVersion, _n, _network)
@@ -50,7 +50,7 @@ WebThreeDirect::WebThreeDirect(
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
 	if (_interfaces.count("eth"))
-		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _we, 0, _miners));
+		m_ethereum.reset(new eth::Client(&m_net, _dbPath, _we, 0));
 
 	if (_interfaces.count("shh"))
 		m_whisper = m_net.registerCapability<WhisperHost>(new WhisperHost);
@@ -70,6 +70,11 @@ WebThreeDirect::~WebThreeDirect()
 	// use bits of data owned by m_ethereum).
 	m_net.stop();
 	m_ethereum.reset();
+}
+
+p2p::NetworkPreferences const& WebThreeDirect::networkPreferences() const
+{
+	return m_net.networkPreferences();
 }
 
 void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers)
@@ -104,12 +109,12 @@ bytes WebThreeDirect::saveNetwork()
 
 void WebThreeDirect::addNode(NodeId const& _node, bi::tcp::endpoint const& _host)
 {
-	m_net.addNode(_node, _host.address(), _host.port(), _host.port());
+	m_net.addNode(_node, NodeIPEndpoint(_host.address(), _host.port(), _host.port()));
 }
 
 void WebThreeDirect::requirePeer(NodeId const& _node, bi::tcp::endpoint const& _host)
 {
-	m_net.requirePeer(_node, _host.address(), _host.port());
+	m_net.requirePeer(_node, NodeIPEndpoint(_host.address(), _host.port(), _host.port()));
 }
 
 

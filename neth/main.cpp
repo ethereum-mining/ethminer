@@ -40,7 +40,6 @@
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
-#include <libethcore/Ethasher.h>
 #include "BuildInfo.h"
 
 #undef KEY_EVENT // from windows.h
@@ -332,7 +331,6 @@ int main(int argc, char** argv)
 	unsigned mining = ~(unsigned)0;
 	NodeMode mode = NodeMode::Full;
 	unsigned peers = 5;
-	int miners = -1;
 #if ETH_JSONRPC
 	int jsonrpc = 8080;
 #endif
@@ -502,8 +500,6 @@ int main(int argc, char** argv)
 			g_logVerbosity = atoi(argv[++i]);
 		else if ((arg == "-x" || arg == "--peers") && i + 1 < argc)
 			peers = atoi(argv[++i]);
-		else if ((arg == "-t" || arg == "--miners") && i + 1 < argc)
-			miners = atoi(argv[++i]);
 		else if ((arg == "-o" || arg == "--mode") && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -546,16 +542,14 @@ int main(int argc, char** argv)
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
-	std::string clientImplString = "NEthereum(++)/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
+	std::string clientImplString = "N++eth/" + clientName + "v" + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
 		clientImplString,
 		dbPath,
 		killChain ? WithExisting::Kill : WithExisting::Trust,
 		mode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
 		netPrefs,
-		&nodesState,
-		miners
-		);
+		&nodesState);
 	
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
@@ -632,6 +626,7 @@ int main(int argc, char** argv)
 
 	logwin = newwin(height * 2 / 5 - 2, width * 2 / 3, qheight, 0);
 	nc::nc_window_streambuf outbuf(logwin, std::cout);
+	nc::nc_window_streambuf eoutbuf(logwin, std::cerr);
 
 	consolewin   = newwin(qheight, width / 4, 0, 0);
 	nc::nc_window_streambuf coutbuf(consolewin, ccout);
@@ -723,13 +718,33 @@ int main(int argc, char** argv)
 		else if (c && cmd == "setblockfees")
 		{
 			iss >> blockFees;
-			gasPricer->setRefBlockFees(u256(blockFees * 1000));
+			try
+			{
+				gasPricer->setRefBlockFees(u256(blockFees * 1000));
+			}
+			catch (Overflow const& _e)
+			{
+				cout << boost::diagnostic_information(_e);
+			}
+
 			cout << "Block fees: " << blockFees << endl;
 		}
 		else if (c && cmd == "setetherprice")
 		{
 			iss >> etherPrice;
-			gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+			if (etherPrice == 0)
+				cout << "ether price cannot be set to zero" << endl;
+			else
+			{
+				try
+				{
+					gasPricer->setRefPrice(u256(double(ether / 1000) / etherPrice));
+				}
+				catch (Overflow const& _e)
+				{
+					cout << boost::diagnostic_information(_e);
+				}
+			}
 			cout << "ether Price: " << etherPrice << endl;
 		}
 		else if (c && cmd == "setpriority")
@@ -1253,7 +1268,7 @@ int main(int argc, char** argv)
 		if (c && c->isMining())
 		{
 			mvwprintw(consolewin, qheight - 1, width / 4 - 11, "Mining ON");
-			dev::eth::MineProgress p = c->miningProgress();
+			dev::eth::MiningProgress p = c->miningProgress();
 			auto speed = boost::format("%2% kH/s @ %1%s") % (p.ms / 1000) % (p.ms ? p.hashes / p.ms : 0);
 			mvwprintw(consolewin, qheight - 2, width / 4 - speed.str().length() - 2, speed.str().c_str());
 		}

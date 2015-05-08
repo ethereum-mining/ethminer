@@ -12,19 +12,31 @@ aux_source_directory(. SRC_LIST)
 include_directories(BEFORE ..)
 include_directories(${Boost_INCLUDE_DIRS})
 
+if (ETHASHCL)
+	include_directories(${OpenCL_INCLUDE_DIRS})
+endif ()
+
+if (CPUID_FOUND)
+	include_directories(${Cpuid_INCLUDE_DIRS})
+endif ()
+
 set(EXECUTABLE ethcore)
 
 file(GLOB HEADERS "*.h")
 
-if(ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
-else()
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
-endif()
+add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} ethash)
 target_link_libraries(${EXECUTABLE} devcrypto)
-target_link_libraries(${EXECUTABLE} devcore)
+target_link_libraries(${EXECUTABLE} evmcore)
+
+if (ETHASHCL)
+	target_link_libraries(${EXECUTABLE} ethash-cl)
+endif ()
+
+if (CPUID_FOUND)
+	target_link_libraries(${EXECUTABLE} ${CPUID_LIBRARIES})
+endif ()
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )

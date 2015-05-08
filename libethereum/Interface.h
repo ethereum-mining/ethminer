@@ -25,12 +25,11 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
-#include <libethcore/Params.h>
+#include <libethcore/ProofOfWork.h>
 #include "LogFilter.h"
 #include "Transaction.h"
 #include "AccountDiff.h"
 #include "BlockDetails.h"
-#include "Miner.h"
 
 namespace dev
 {
@@ -85,6 +84,12 @@ public:
 	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) = 0;
 	ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, FudgeFactor _ff = FudgeFactor::Strict) { return create(_secret, _value, _data, _gas, _gasPrice, m_default, _ff); }
 
+	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
+	virtual ImportResult injectTransaction(bytes const& _rlp) = 0;
+
+	/// Injects the RLP-encoded block given by the _rlp into the block queue directly.
+	virtual ImportResult injectBlock(bytes const& _block) = 0;
+
 	// [STATE-QUERY API]
 
 	int getDefault() const { return m_default; }
@@ -94,12 +99,14 @@ public:
 	u256 countAt(Address _a) const { return countAt(_a, m_default); }
 	u256 stateAt(Address _a, u256 _l) const { return stateAt(_a, _l, m_default); }
 	bytes codeAt(Address _a) const { return codeAt(_a, m_default); }
+	h256 codeHashAt(Address _a) const { return codeHashAt(_a, m_default); }
 	std::map<u256, u256> storageAt(Address _a) const { return storageAt(_a, m_default); }
 
 	virtual u256 balanceAt(Address _a, BlockNumber _block) const = 0;
 	virtual u256 countAt(Address _a, BlockNumber _block) const = 0;
 	virtual u256 stateAt(Address _a, u256 _l, BlockNumber _block) const = 0;
 	virtual bytes codeAt(Address _a, BlockNumber _block) const = 0;
+	virtual h256 codeHashAt(Address _a, BlockNumber _block) const = 0;
 	virtual std::map<u256, u256> storageAt(Address _a, BlockNumber _block) const = 0;
 
 	// [LOGS API]
@@ -119,7 +126,9 @@ public:
 	// [BLOCK QUERY API]
 
 	virtual Transaction transaction(h256 _transactionHash) const = 0;
+	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const = 0;
 	virtual h256 hashFromNumber(BlockNumber _number) const = 0;
+	virtual BlockNumber numberFromHash(h256 _blockHash) const = 0;
 
 	virtual BlockInfo blockInfo(h256 _hash) const = 0;
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
@@ -171,11 +180,6 @@ public:
 	/// Get the coinbase address.
 	virtual Address address() const = 0;
 
-	/// Stops mining and sets the number of mining threads (0 for automatic).
-	virtual void setMiningThreads(unsigned _threads = 0) = 0;
-	/// Get the effective number of mining threads.
-	virtual unsigned miningThreads() const = 0;
-
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
 	virtual void startMining() = 0;
@@ -183,15 +187,17 @@ public:
 	/// NOT thread-safe
 	virtual void stopMining() = 0;
 	/// Are we mining now?
-	virtual bool isMining() = 0;
+	virtual bool isMining() const = 0;
+	/// Current hash rate.
+	virtual uint64_t hashrate() const = 0;
 
 	/// Get hash of the current block to be mined minus the nonce (the 'work hash').
-	virtual std::pair<h256, u256> getWork() = 0;
+	virtual ProofOfWork::WorkPackage getWork() = 0;
 	/// Submit the nonce for the proof-of-work.
-	virtual bool submitWork(ProofOfWork::Proof const& _proof) = 0;
+	virtual bool submitWork(ProofOfWork::Solution const& _proof) = 0;
 
 	/// Check the progress of the mining.
-	virtual MineProgress miningProgress() const = 0;
+	virtual MiningProgress miningProgress() const = 0;
 
 protected:
 	int m_default = PendingBlock;

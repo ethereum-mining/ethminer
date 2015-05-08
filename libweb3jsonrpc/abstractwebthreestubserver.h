@@ -18,6 +18,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("net_peerCount", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::net_peerCountI);
             this->bindAndAddMethod(jsonrpc::Procedure("net_listening", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::net_listeningI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_protocolVersion", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_protocolVersionI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_hashrate", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_hashrateI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_coinbase", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_coinbaseI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_mining", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN,  NULL), &AbstractWebThreeStubServer::eth_miningI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_gasPrice", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_gasPriceI);
@@ -52,10 +53,13 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getFilterLogs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getFilterLogsI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getLogs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_getLogsI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getWork", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::eth_getWorkI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_submitWork", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_submitWorkI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_submitWork", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_submitWorkI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_register", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_registerI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_unregister", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_unregisterI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_fetchQueuedTransactions", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_fetchQueuedTransactionsI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_signTransaction", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_signTransactionI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_inspectTransaction", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_inspectTransactionI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_injectTransaction", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_injectTransactionI);
             this->bindAndAddMethod(jsonrpc::Procedure("db_put", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::db_putI);
             this->bindAndAddMethod(jsonrpc::Procedure("db_get", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::db_getI);
             this->bindAndAddMethod(jsonrpc::Procedure("shh_post", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::shh_postI);
@@ -97,6 +101,11 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             (void)request;
             response = this->eth_protocolVersion();
+        }
+        inline virtual void eth_hashrateI(const Json::Value &request, Json::Value &response)
+        {
+            (void)request;
+            response = this->eth_hashrate();
         }
         inline virtual void eth_coinbaseI(const Json::Value &request, Json::Value &response)
         {
@@ -244,7 +253,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
         inline virtual void eth_submitWorkI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_submitWork(request[0u].asString(), request[1u].asString());
+            response = this->eth_submitWork(request[0u].asString(), request[1u].asString(), request[2u].asString());
         }
         inline virtual void eth_registerI(const Json::Value &request, Json::Value &response)
         {
@@ -257,6 +266,18 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         inline virtual void eth_fetchQueuedTransactionsI(const Json::Value &request, Json::Value &response)
         {
             response = this->eth_fetchQueuedTransactions(request[0u].asString());
+        }
+        inline virtual void eth_signTransactionI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->eth_signTransaction(request[0u]);
+        }
+        inline virtual void eth_inspectTransactionI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->eth_inspectTransaction(request[0u].asString());
+        }
+        inline virtual void eth_injectTransactionI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->eth_injectTransaction(request[0u].asString());
         }
         inline virtual void db_putI(const Json::Value &request, Json::Value &response)
         {
@@ -309,6 +330,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual std::string net_peerCount() = 0;
         virtual bool net_listening() = 0;
         virtual std::string eth_protocolVersion() = 0;
+        virtual std::string eth_hashrate() = 0;
         virtual std::string eth_coinbase() = 0;
         virtual bool eth_mining() = 0;
         virtual std::string eth_gasPrice() = 0;
@@ -343,10 +365,13 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual Json::Value eth_getFilterLogs(const std::string& param1) = 0;
         virtual Json::Value eth_getLogs(const Json::Value& param1) = 0;
         virtual Json::Value eth_getWork() = 0;
-        virtual bool eth_submitWork(const std::string& param1, const std::string& param2) = 0;
+        virtual bool eth_submitWork(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
         virtual std::string eth_register(const std::string& param1) = 0;
         virtual bool eth_unregister(const std::string& param1) = 0;
         virtual Json::Value eth_fetchQueuedTransactions(const std::string& param1) = 0;
+        virtual std::string eth_signTransaction(const Json::Value& param1) = 0;
+        virtual Json::Value eth_inspectTransaction(const std::string& param1) = 0;
+        virtual bool eth_injectTransaction(const std::string& param1) = 0;
         virtual bool db_put(const std::string& param1, const std::string& param2, const std::string& param3) = 0;
         virtual std::string db_get(const std::string& param1, const std::string& param2) = 0;
         virtual bool shh_post(const Json::Value& param1) = 0;

@@ -18,10 +18,14 @@ Item {
 	function fromPlainStateItem(s) {
 		if (!s.accounts)
 			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether, defaultAccount)]; //support for old project
+		if (!s.contracts)
+			s.contracts = [];
 		return {
 			title: s.title,
 			transactions: s.transactions.map(fromPlainTransactionItem),
-			accounts: s.accounts.map(fromPlainAccountItem)
+			accounts: s.accounts.map(fromPlainAccountItem),
+			contracts: s.contracts.map(fromPlainAccountItem),
+			miner: s.miner
 		};
 	}
 
@@ -29,14 +33,18 @@ Item {
 	{
 		return {
 			name: t.name,
+			address: t.address,
 			secret: t.secret,
-			balance: QEtherHelper.createEther(t.balance.value, t.balance.unit)
+			balance: QEtherHelper.createEther(t.balance.value, t.balance.unit),
+			storage: t.storage,
+			code: t.code,
 		};
 	}
 
 	function fromPlainTransactionItem(t) {
 		if (!t.sender)
 			t.sender = defaultAccount; //support for old project
+
 		var r = {
 			contractId: t.contractId,
 			functionId: t.functionId,
@@ -59,7 +67,9 @@ Item {
 		return {
 			title: s.title,
 			transactions: s.transactions.map(toPlainTransactionItem),
-			accounts: s.accounts.map(toPlainAccountItem)
+			accounts: s.accounts.map(toPlainAccountItem),
+			contracts: s.contracts.map(toPlainAccountItem),
+			miner: s.miner
 		};
 	}
 
@@ -81,7 +91,10 @@ Item {
 			balance: {
 				value: t.balance.value,
 				unit: t.balance.unit
-			}
+			},
+			address: t.address,
+			storage: t.storage,
+			code: t.code,
 		};
 	}
 
@@ -95,6 +108,7 @@ Item {
 			gasAuto: t.gasAuto,
 			gasPrice: { value: t.gasPrice.value, unit: t.gasPrice.unit },
 			stdContract: t.stdContract,
+			sender: t.sender,
 			parameters: {}
 		};
 		for (var key in t.parameters)
@@ -176,19 +190,23 @@ Item {
 		function newAccount(_balance, _unit, _secret)
 		{
 			if (!_secret)
-				_secret = clientModel.newAddress();
-			var name = qsTr("Account") + "-" + _secret.substring(0, 4);
-			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit) };
+				_secret = clientModel.newSecret();
+			var address = clientModel.address(_secret);
+			var name = qsTr("Account") + "-" + address.substring(0, 4);
+			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit), address: address };
 		}
 
 		function createDefaultState() {
 			var item = {
 				title: "",
 				transactions: [],
-				accounts: []
+				accounts: [],
+				contracts: []
 			};
 
-			item.accounts.push(newAccount("1000000", QEther.Ether, defaultAccount));
+			var account = newAccount("1000000", QEther.Ether, defaultAccount)
+			item.accounts.push(account);
+			item.miner = account;
 
 			//add all stdc contracts
 			for (var i = 0; i < contractLibrary.model.count; i++) {
@@ -239,7 +257,7 @@ Item {
 		function addNewContracts() {
 			//add new contracts for all states
 			var changed = false;
-			for(var c in codeModel.contracts) {
+			for (var c in codeModel.contracts) {
 				for (var s = 0; s < stateListModel.count; s++) {
 					var state = stateList[s];
 					for (var t = 0; t < state.transactions.length; t++) {

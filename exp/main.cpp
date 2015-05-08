@@ -19,11 +19,21 @@
  * @date 2014
  * Ethereum client.
  */
+#if ETH_ETHASHCL
 #define __CL_ENABLE_EXCEPTIONS
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
-#include "libethash-cl/cl.hpp"
-
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#include <libethash-cl/cl.hpp>
+#pragma clang diagnostic pop
+#else
+#include <libethash-cl/cl.hpp>
+#endif
+#endif
 #include <functional>
+#include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
@@ -33,11 +43,13 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/TrieDB.h>
 #include <libp2p/All.h>
-#include <libethcore/Ethasher.h>
 #include <libethcore/ProofOfWork.h>
+#include <libdevcrypto/FileSystem.h>
 #include <libethereum/All.h>
+#include <libethereum/Farm.h>
 #include <libethereum/AccountDiff.h>
 #include <libethereum/DownloadMan.h>
+#include <libethereum/Client.h>
 #include <liblll/All.h>
 #include <libwhisper/WhisperPeer.h>
 #include <libwhisper/WhisperHost.h>
@@ -48,8 +60,142 @@ using namespace dev::eth;
 using namespace dev::p2p;
 using namespace dev::shh;
 namespace js = json_spirit;
+namespace fs = boost::filesystem;
 
-#if 0
+#if 1
+
+inline h128 fromUUID(std::string const& _uuid) { return h128(boost::replace_all_copy(_uuid, "-", "")); }
+
+class KeyManager: public Worker
+{
+public:
+	KeyManager() { readKeys(); }
+	~KeyManager() {}
+
+	Secret secret(h128 const& _uuid, function<std::string()> const& _pass)
+	{
+		auto rit = m_ready.find(_uuid);
+		if (rit != m_ready.end())
+			return rit->second;
+		auto it = m_keys.find(_uuid);
+		if (it == m_keys.end())
+			return Secret();
+		Secret ret(decrypt(it->second, _pass()));
+		if (ret)
+			m_ready[_uuid] = ret;
+		return ret;
+	}
+
+	h128 create(std::string const& _pass)
+	{
+		auto s = Secret::random();
+		h128 r(sha3(s));
+		m_ready[r] = s;
+		m_keys[r] = encrypt(s.asBytes(), _pass);
+		return r;
+	}
+
+private:
+	void writeKeys(std::string const& _keysPath = getDataDir("web3") + "/keys")
+	{
+		(void)_keysPath;
+	}
+
+	void readKeys(std::string const& _keysPath = getDataDir("web3") + "/keys")
+	{
+		fs::path p(_keysPath);
+		js::mValue v;
+		for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it)
+			if (is_regular_file(it->path()))
+			{
+				cdebug << "Reading" << it->path();
+				js::read_string(contentsString(it->path().string()), v);
+				if (v.type() == js::obj_type)
+				{
+					js::mObject o = v.get_obj();
+					int version = o.count("Version") ? stoi(o["Version"].get_str()) : o.count("version") ? o["version"].get_int() : 0;
+					if (version == 2)
+						m_keys[fromUUID(o["id"].get_str())] = o["crypto"];
+					else
+						cwarn << "Cannot read key version" << version;
+				}
+				else
+					cwarn << "Invalid JSON in key file" << it->path().string();
+			}
+	}
+
+	static js::mValue encrypt(bytes const& _v, std::string const& _pass)
+	{
+		(void)_v;
+		(void)_pass;
+		return js::mValue();
+	}
+
+	static bytes decrypt(js::mValue const& _v, std::string const& _pass)
+	{
+		js::mObject o = _v.get_obj();
+
+		// derive key
+		bytes derivedKey;
+		if (o["kdf"].get_str() == "pbkdf2")
+		{
+			auto params = o["kdfparams"].get_obj();
+			if (params["prf"].get_str() != "hmac-sha256")
+			{
+				cwarn << "Unknown PRF for PBKDF2" << params["prf"].get_str() << "not supported.";
+				return bytes();
+			}
+			unsigned iterations = params["c"].get_int();
+			bytes salt = fromHex(params["salt"].get_str());
+			derivedKey = pbkdf2(_pass, salt, iterations, params["dklen"].get_int());
+		}
+		else
+		{
+			cwarn << "Unknown KDF" << o["kdf"].get_str() << "not supported.";
+			return bytes();
+		}
+
+		bytes cipherText = fromHex(o["ciphertext"].get_str());
+
+		// check MAC
+		h256 mac(o["mac"].get_str());
+		h256 macExp = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
+		if (mac != macExp)
+		{
+			cwarn << "Invalid key - MAC mismatch; expected" << toString(macExp) << ", got" << toString(mac);
+			return bytes();
+		}
+
+		// decrypt
+		bytes ret;
+		if (o["cipher"].get_str() == "aes-128-cbc")
+		{
+			auto params = o["cipherparams"].get_obj();
+			h128 key(sha3(h128(derivedKey, h128::AlignRight)), h128::AlignRight);
+			h128 iv(params["iv"].get_str());
+			decryptSymNoAuth(key, iv, &cipherText, ret);
+		}
+		else
+		{
+			cwarn << "Unknown cipher" << o["cipher"].get_str() << "not supported.";
+			return bytes();
+		}
+
+		return ret;
+	}
+
+	mutable std::map<h128, Secret> m_ready;
+	std::map<h128, js::mValue> m_keys;
+};
+
+int main()
+{
+	cdebug << toHex(pbkdf2("password", asBytes("salt"), 1, 20));
+	KeyManager keyman;
+	cdebug << "Secret key for 0498f19a-59db-4d54-ac95-33901b4f1870 is " << keyman.secret(fromUUID("0498f19a-59db-4d54-ac95-33901b4f1870"), [](){ return "foo"; });
+}
+
+#elif 0
 int main()
 {
 	DownloadMan man;
@@ -105,25 +251,144 @@ int main()
 	cnote << "State after transaction: " << s;
 	cnote << before.diff(s);
 }
+#elif 0
+int main()
+{
+	GenericFarm<Ethash> f;
+	BlockInfo genesis = CanonBlockChain::genesis();
+	genesis.difficulty = 1 << 18;
+	cdebug << genesis.boundary();
+
+	auto mine = [](GenericFarm<Ethash>& f, BlockInfo const& g, unsigned timeout) {
+		BlockInfo bi = g;
+		bool completed = false;
+		f.onSolutionFound([&](ProofOfWork::Solution sol)
+		{
+			ProofOfWork::assignResult(sol, bi);
+			return completed = true;
+		});
+		f.setWork(bi);
+		for (unsigned i = 0; !completed && i < timeout * 10; ++i, cout << f.miningProgress() << "\r" << flush)
+			this_thread::sleep_for(chrono::milliseconds(100));
+		cout << endl << flush;
+		cdebug << bi.mixHash << bi.nonce << (Ethash::verify(bi) ? "GOOD" : "bad");
+	};
+
+	Ethash::prep(genesis);
+
+	genesis.difficulty = u256(1) << 40;
+	genesis.noteDirty();
+	f.startCPU();
+	mine(f, genesis, 10);
+
+	f.startGPU();
+
+	cdebug << "Good:";
+	genesis.difficulty = 1 << 18;
+	genesis.noteDirty();
+	mine(f, genesis, 30);
+
+	cdebug << "Bad:";
+	genesis.difficulty = (u256(1) << 40);
+	genesis.noteDirty();
+	mine(f, genesis, 30);
+
+	f.stop();
+
+	return 0;
+}
+#elif 0
+
+void mine(State& s, BlockChain const& _bc)
+{
+	s.commitToMine(_bc);
+	GenericFarm<ProofOfWork> f;
+	bool completed = false;
+	f.onSolutionFound([&](ProofOfWork::Solution sol)
+	{
+		return completed = s.completeMine<ProofOfWork>(sol);
+	});
+	f.setWork(s.info());
+	f.startCPU();
+	while (!completed)
+		this_thread::sleep_for(chrono::milliseconds(20));
+}
+#elif 0
+int main()
+{
+	cnote << "Testing State...";
+
+	KeyPair me = sha3("Gav Wood");
+	KeyPair myMiner = sha3("Gav's Miner");
+//	KeyPair you = sha3("123");
+
+	Defaults::setDBPath(boost::filesystem::temp_directory_path().string() + "/" + toString(chrono::system_clock::now().time_since_epoch().count()));
+
+	OverlayDB stateDB = State::openDB();
+	CanonBlockChain bc;
+	cout << bc;
+
+	State s(stateDB, BaseState::CanonGenesis, myMiner.address());
+	cout << s;
+
+	// Sync up - this won't do much until we use the last state.
+	s.sync(bc);
+
+	cout << s;
+
+	// Mine to get some ether!
+	mine(s, bc);
+
+	bc.attemptImport(s.blockData(), stateDB);
+
+	cout << bc;
+
+	s.sync(bc);
+
+	cout << s;
+
+	// Inject a transaction to transfer funds from miner to me.
+	Transaction t(1000, 10000, 30000, me.address(), bytes(), s.transactionsFrom(myMiner.address()), myMiner.secret());
+	assert(t.sender() == myMiner.address());
+	s.execute(bc.lastHashes(), t);
+
+	cout << s;
+
+	// Mine to get some ether and set in stone.
+	s.commitToMine(bc);
+	s.commitToMine(bc);
+	mine(s, bc);
+	bc.attemptImport(s.blockData(), stateDB);
+
+	cout << bc;
+
+	s.sync(bc);
+
+	cout << s;
+
+	return 0;
+}
 #else
 int main()
 {
-	std::vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
-	if (platforms.empty())
-	{
-		cdebug << "No OpenCL platforms found.";
-		return false;
-	}
+	string tempDir = boost::filesystem::temp_directory_path().string() + "/" + toString(chrono::system_clock::now().time_since_epoch().count());
 
-	EthashCL ecl;
-	BlockInfo genesis = CanonBlockChain::genesis();
-	TransientDirectory td;
-	std::pair<MineInfo, Ethash::Proof> r;
-	while (!r.first.completed)
-		r = ecl.mine(genesis, 1000);
-	EthashCL::assignResult(r.second, genesis);
-	assert(EthashCPU::verify(genesis));
+	KeyPair myMiner = sha3("Gav's Miner");
+
+	p2p::Host net("Test");
+	cdebug << "Path:" << tempDir;
+	Client c(&net, tempDir);
+
+	c.setAddress(myMiner.address());
+
+	this_thread::sleep_for(chrono::milliseconds(1000));
+
+	c.startMining();
+
+	this_thread::sleep_for(chrono::milliseconds(6000));
+
+	c.stopMining();
+
 	return 0;
 }
 #endif
