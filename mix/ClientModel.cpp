@@ -373,7 +373,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 						auto contractAddressIter = m_contractAddresses.find(transaction.contractId);
 						if (contractAddressIter == m_contractAddresses.end() || newAddress != contractAddressIter->second)
 						{
-							QString contractToken = "<" + transaction.contractId + " - " + QString::number(deployedContracts.size() - 1) + ">";
+							QString contractToken = retrieveToken(transaction.contractId, deployedContracts);
 							m_contractAddresses[contractToken] = newAddress;
 							m_contractNames[newAddress] = contractToken;
 							contractAddressesChanged();
@@ -382,7 +382,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 					}
 					else
 					{
-						auto contractAddressIter = m_contractAddresses.find(transaction.contractId);
+						auto contractAddressIter = m_contractAddresses.find(retrieveToken(transaction.contractId, deployedContracts));
 						if (contractAddressIter == m_contractAddresses.end())
 						{
 							emit runFailed("Contract '" + transaction.contractId + tr(" not deployed.") + "' " + tr(" Cannot call ") + transaction.functionId);
@@ -422,6 +422,14 @@ QString ClientModel::resolveToken(QString const& _value, vector<Address> const& 
 		QStringList nb = ret.remove("<").remove(">").split(" - ");
 		ret = QString::fromStdString("0x" + dev::toHex(_contracts.at(nb.back().toInt()).ref()));
 	}
+	return ret;
+}
+
+QString ClientModel::retrieveToken(QString const& _value, vector<Address> const& _contracts)
+{
+	QString ret = _value;
+	if (!_value.startsWith("<") && !_value.endsWith(">"))
+		return "<" + _value + " - " + QString::number(_contracts.size() - 1) +  ">";
 	return ret;
 }
 

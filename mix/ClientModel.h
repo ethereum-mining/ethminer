@@ -232,6 +232,7 @@ private:
 	QVariant formatStorageValue(SolidityType const& _type, std::map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
 	QString resolveToken(QString const& _value, std::vector<Address> const& _contracts);
 	QString resolveContractName(QString const& _value);
+	QString retrieveToken(QString const& _value, std::vector<Address> const& _contracts);
 
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;
