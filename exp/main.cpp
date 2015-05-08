@@ -65,6 +65,7 @@ namespace fs = boost::filesystem;
 #if 1
 
 inline h128 fromUUID(std::string const& _uuid) { return h128(boost::replace_all_copy(_uuid, "-", "")); }
+inline std::string toUUID(h128 const& _uuid) { std::string ret = toHex(_uuid.ref()); for (unsigned i: {20, 16, 12, 8}) ret.insert(ret.begin() + i, '-'); return ret; }
 
 class KeyManager: public Worker
 {
@@ -74,31 +75,48 @@ public:
 
 	Secret secret(h128 const& _uuid, function<std::string()> const& _pass)
 	{
-		auto rit = m_ready.find(_uuid);
-		if (rit != m_ready.end())
+		auto rit = m_cached.find(_uuid);
+		if (rit != m_cached.end())
 			return rit->second;
 		auto it = m_keys.find(_uuid);
 		if (it == m_keys.end())
 			return Secret();
 		Secret ret(decrypt(it->second, _pass()));
 		if (ret)
-			m_ready[_uuid] = ret;
+			m_cached[_uuid] = ret;
 		return ret;
+	}
+
+	h128 import(Secret const& _s, std::string const& _pass)
+	{
+		h128 r(sha3(_s));
+		m_cached[r] = _s;
+		m_keys[r] = encrypt(_s.asBytes(), _pass);
+		writeKeys();
+		return r;
 	}
 
 	h128 create(std::string const& _pass)
 	{
-		auto s = Secret::random();
-		h128 r(sha3(s));
-		m_ready[r] = s;
-		m_keys[r] = encrypt(s.asBytes(), _pass);
-		return r;
+		return import(Secret::random(), _pass);
 	}
+
+	void clearCache() const { m_cached.clear(); }
 
 private:
 	void writeKeys(std::string const& _keysPath = getDataDir("web3") + "/keys")
 	{
-		(void)_keysPath;
+		fs::path p(_keysPath);
+		boost::filesystem::create_directories(p);
+		for (auto const& k: m_keys)
+		{
+			std::string uuid = toUUID(k.first);
+			js::mObject v;
+			v["crypto"] = k.second;
+			v["id"] = uuid;
+			v["version"] = 2;
+			writeFile((p / uuid).string() + ".json", js::write_string(js::mValue(v), true));
+		}
 	}
 
 	void readKeys(std::string const& _keysPath = getDataDir("web3") + "/keys")
@@ -126,9 +144,42 @@ private:
 
 	static js::mValue encrypt(bytes const& _v, std::string const& _pass)
 	{
-		(void)_v;
-		(void)_pass;
-		return js::mValue();
+		js::mObject ret;
+
+		// KDF info
+		unsigned dklen = 16;
+		unsigned iterations = 262144;
+		bytes salt = h256::random().asBytes();
+		ret["kdf"] = "pbkdf2";
+		{
+			js::mObject params;
+			params["prf"] = "hmac-sha256";
+			params["c"] = (int)iterations;
+			params["salt"] = toHex(salt);
+			params["dklen"] = (int)dklen;
+			ret["kdfparams"] = params;
+		}
+		bytes derivedKey = pbkdf2(_pass, salt, iterations, dklen);
+
+		// cipher info
+		ret["cipher"] = "aes-128-cbc";
+		h128 key(sha3(h128(derivedKey, h128::AlignRight)), h128::AlignRight);
+		h128 iv = h128::random();
+		{
+			js::mObject params;
+			params["iv"] = toHex(iv.ref());
+			ret["cipherparams"] = params;
+		}
+
+		// cipher text
+		bytes cipherText = encryptSymNoAuth(key, iv, &_v);
+		ret["ciphertext"] = toHex(cipherText);
+
+		// and mac.
+		h256 mac = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
+		ret["mac"] = toHex(mac.ref());
+
+		return ret;
 	}
 
 	static bytes decrypt(js::mValue const& _v, std::string const& _pass)
@@ -167,32 +218,29 @@ private:
 		}
 
 		// decrypt
-		bytes ret;
 		if (o["cipher"].get_str() == "aes-128-cbc")
 		{
 			auto params = o["cipherparams"].get_obj();
 			h128 key(sha3(h128(derivedKey, h128::AlignRight)), h128::AlignRight);
 			h128 iv(params["iv"].get_str());
-			decryptSymNoAuth(key, iv, &cipherText, ret);
+			return decryptSymNoAuth(key, iv, &cipherText);
 		}
 		else
 		{
 			cwarn << "Unknown cipher" << o["cipher"].get_str() << "not supported.";
 			return bytes();
 		}
-
-		return ret;
 	}
 
-	mutable std::map<h128, Secret> m_ready;
+	mutable std::map<h128, Secret> m_cached;
 	std::map<h128, js::mValue> m_keys;
 };
 
 int main()
 {
-	cdebug << toHex(pbkdf2("password", asBytes("salt"), 1, 20));
 	KeyManager keyman;
-	cdebug << "Secret key for 0498f19a-59db-4d54-ac95-33901b4f1870 is " << keyman.secret(fromUUID("0498f19a-59db-4d54-ac95-33901b4f1870"), [](){ return "foo"; });
+	auto id = fromUUID("441193ae-a767-f1c3-48ba-dd6610db5ed0");
+	cdebug << "Secret key for " << toUUID(id) << "is" << keyman.secret(id, [](){ return "bar"; });
 }
 
 #elif 0
