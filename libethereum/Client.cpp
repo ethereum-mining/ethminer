@@ -244,13 +244,13 @@ void Client::startedWorking()
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
 	cdebug << "startedWorking()";
 
-	ETH_WRITE_GUARDED(x_preMine)
+	DEV_WRITE_GUARDED(x_preMine)
 		m_preMine.sync(m_bc);
-	ETH_READ_GUARDED(x_preMine)
+	DEV_READ_GUARDED(x_preMine)
 	{
-		ETH_WRITE_GUARDED(x_working)
+		DEV_WRITE_GUARDED(x_working)
 			m_working = m_preMine;
-		ETH_WRITE_GUARDED(x_postMine)
+		DEV_WRITE_GUARDED(x_postMine)
 			m_postMine = m_preMine;
 	}
 }
@@ -259,13 +259,13 @@ void Client::doneWorking()
 {
 	// Synchronise the state according to the head of the block chain.
 	// TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-	ETH_WRITE_GUARDED(x_preMine)
+	DEV_WRITE_GUARDED(x_preMine)
 		m_preMine.sync(m_bc);
-	ETH_READ_GUARDED(x_preMine)
+	DEV_READ_GUARDED(x_preMine)
 	{
-		ETH_WRITE_GUARDED(x_working)
+		DEV_WRITE_GUARDED(x_working)
 			m_working = m_preMine;
-		ETH_WRITE_GUARDED(x_postMine)
+		DEV_WRITE_GUARDED(x_postMine)
 			m_postMine = m_preMine;
 	}
 }
@@ -309,7 +309,7 @@ void Client::killChain()
 void Client::clearPending()
 {
 	h256Set changeds;
-	ETH_WRITE_GUARDED(x_postMine)
+	DEV_WRITE_GUARDED(x_postMine)
 	{
 		if (!m_postMine.pending().size())
 			return;
@@ -317,7 +317,7 @@ void Client::clearPending()
 //			appendFromNewPending(m_postMine.logBloom(i), changeds);
 		changeds.insert(PendingChangedFilter);
 		m_tq.clear();
-		ETH_READ_GUARDED(x_preMine)
+		DEV_READ_GUARDED(x_preMine)
 			m_postMine = m_preMine;
 	}
 
@@ -434,7 +434,7 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 	{
 		State temp;
 //		cdebug << "Nonce at " << toAddress(_secret) << " pre:" << m_preMine.transactionsFrom(toAddress(_secret)) << " post:" << m_postMine.transactionsFrom(toAddress(_secret));
-		ETH_READ_GUARDED(x_postMine)
+		DEV_READ_GUARDED(x_postMine)
 			temp = m_postMine;
 		temp.addBalance(_from, _value + _gasPrice * _gas);
 		Executive e(temp, LastHashes(), 0);
@@ -461,13 +461,13 @@ ProofOfWork::WorkPackage Client::getWork()
 bool Client::submitWork(ProofOfWork::Solution const& _solution)
 {
 	bytes newBlock;
-	DEV_TIMED(working) ETH_WRITE_GUARDED(x_working)
+	DEV_TIMED(working) DEV_WRITE_GUARDED(x_working)
 		if (!m_working.completeMine<ProofOfWork>(_solution))
 			return false;
 
-	ETH_READ_GUARDED(x_working)
+	DEV_READ_GUARDED(x_working)
 	{
-		DEV_TIMED(post) ETH_WRITE_GUARDED(x_postMine)
+		DEV_TIMED(post) DEV_WRITE_GUARDED(x_postMine)
 			m_postMine = m_working;
 		newBlock = m_working.blockData();
 	}
@@ -499,17 +499,17 @@ void Client::syncTransactionQueue()
 	h256Set changeds;
 	TransactionReceipts newPendingReceipts;
 
-	DEV_TIMED(working) ETH_WRITE_GUARDED(x_working)
+	DEV_TIMED(working) DEV_WRITE_GUARDED(x_working)
 		tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(m_bc, m_tq, *m_gp);
 
 	if (newPendingReceipts.empty())
 		return;
 
-	ETH_READ_GUARDED(x_working)
-		DEV_TIMED(post) ETH_WRITE_GUARDED(x_postMine)
+	DEV_READ_GUARDED(x_working)
+		DEV_TIMED(post) DEV_WRITE_GUARDED(x_postMine)
 			m_postMine = m_working;
 
-	ETH_READ_GUARDED(x_postMine)
+	DEV_READ_GUARDED(x_postMine)
 		for (size_t i = 0; i < newPendingReceipts.size(); i++)
 			appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
 	changeds.insert(PendingChangedFilter);
@@ -561,7 +561,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 	bool preChanged = false;
 	State newPreMine;
-	ETH_READ_GUARDED(x_preMine)
+	DEV_READ_GUARDED(x_preMine)
 		newPreMine = m_preMine;
 
 	// TODO: use m_postMine to avoid re-evaluating our own blocks.
@@ -572,11 +572,11 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		if (isMining())
 			cnote << "New block on chain.";
 
-		ETH_WRITE_GUARDED(x_preMine)
+		DEV_WRITE_GUARDED(x_preMine)
 			m_preMine = newPreMine;
-		DEV_TIMED(working) ETH_WRITE_GUARDED(x_working)
+		DEV_TIMED(working) DEV_WRITE_GUARDED(x_working)
 			m_working = newPreMine;
-		ETH_READ_GUARDED(x_postMine)
+		DEV_READ_GUARDED(x_postMine)
 			for (auto const& t: m_postMine.pending())
 			{
 				clog(ClientNote) << "Resubmitting post-mine transaction " << t;
@@ -584,7 +584,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 				if (ir != ImportResult::Success)
 					onTransactionQueueReady();
 			}
-		ETH_READ_GUARDED(x_working) DEV_TIMED(post) ETH_WRITE_GUARDED(x_postMine)
+		DEV_READ_GUARDED(x_working) DEV_TIMED(post) DEV_WRITE_GUARDED(x_postMine)
 			m_postMine = m_working;
 
 		changeds.insert(PendingChangedFilter);
@@ -609,11 +609,11 @@ void Client::onPostStateChanged()
 	cnote << "Post state changed: Restarting mining...";
 	if (isMining() || remoteActive())
 	{
-		DEV_TIMED(working) ETH_WRITE_GUARDED(x_working)
+		DEV_TIMED(working) DEV_WRITE_GUARDED(x_working)
 			m_working.commitToMine(m_bc);
-		ETH_READ_GUARDED(x_working)
+		DEV_READ_GUARDED(x_working)
 		{
-			DEV_TIMED(post) ETH_WRITE_GUARDED(x_postMine)
+			DEV_TIMED(post) DEV_WRITE_GUARDED(x_postMine)
 				m_postMine = m_working;
 			m_miningInfo = m_postMine.info();
 		}
@@ -694,7 +694,7 @@ void Client::checkWatchGarbage()
 	{
 		// watches garbage collection
 		vector<unsigned> toUninstall;
-		ETH_GUARDED(x_filtersWatches)
+		DEV_GUARDED(x_filtersWatches)
 			for (auto key: keysOf(m_watches))
 				if (m_watches[key].lastPoll != chrono::system_clock::time_point::max() && chrono::system_clock::now() - m_watches[key].lastPoll > chrono::seconds(20))
 				{
@@ -733,7 +733,7 @@ eth::State Client::state(h256 _block) const
 
 eth::State Client::state(unsigned _txi) const
 {
-	ETH_READ_GUARDED(x_postMine)
+	DEV_READ_GUARDED(x_postMine)
 		return m_postMine.fromPending(_txi);
 	assert(false);
 	return State();
