@@ -113,6 +113,9 @@ public:
 	/// @returns an abridged version of the hash as a user-readable hex string.
 	std::string abridged() const { return toHex(ref().cropped(0, 4)) + "\342\200\246"; }
 
+	/// @returns an abridged version of the hash as a user-readable hex string.
+	std::string hex() const { return toHex(ref()); }
+
 	/// @returns a mutable byte vector_ref to the object's data.
 	bytesRef ref() { return bytesRef(m_data.data(), N); }
 
