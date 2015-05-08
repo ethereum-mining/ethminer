@@ -57,10 +57,15 @@ Item {
 			stdContract: t.stdContract ? true : false,
 			parameters: {},
 			sender: t.sender,
-			isContractCall: t.isContractCall
+			isContractCreation: t.isContractCreation,
+			label: t.label
 		};
-		if (r.isContractCall === undefined)
-			r.isContractCall = true; //support for old project
+
+		if (!r.label)
+			r.label = r.contractId + " " + r.functionId;
+
+		if (r.isContractCreation === undefined)
+			r.isContractCreation = true; //support for old project
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
 
@@ -115,7 +120,8 @@ Item {
 			stdContract: t.stdContract,
 			sender: t.sender,
 			parameters: {},
-			isContractCall: t.isContractCall
+			isContractCreation: t.isContractCreation,
+			label: t.label
 		};
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
