@@ -82,6 +82,14 @@ Dialog {
 		}
 		initTypeLoader();
 
+		trType.checked = item.isContractCall
+		trType.init();
+
+		recipients.accounts = senderComboBox.model;
+		recipients.subType = "address";
+		recipients.load();
+		recipients.init();
+		recipients.select(contractId);
 		visible = true;
 		valueField.focus = true;
 	}
@@ -193,6 +201,13 @@ Dialog {
 			item.functionId = transactionDialog.functionId;
 		}
 
+		item.isContractCall = trType.checked;
+		if (!item.isContractCall)
+		{
+			item.functionId = recipients.currentText;
+			item.contractId = recipients.currentText;
+		}
+
 		item.sender = senderComboBox.model[senderComboBox.currentIndex].secret;
 		item.parameters = paramValues;
 		return item;
@@ -235,6 +250,46 @@ Dialog {
 							currentIndex: 0
 							textRole: "name"
 							editable: false
+						}
+					}
+
+					RowLayout
+					{
+						id: rowIsContract
+						Layout.fillWidth: true
+						height: 150
+						CheckBox {
+							id: trType
+							onCheckedChanged:
+							{
+								init();
+							}
+
+							function init()
+							{
+								rowFunction.visible = checked;
+								rowContract.visible = checked;
+								rowRecipient.visible = !checked;
+							}
+
+							text: qsTr("is contract call")
+							checked: true
+						}
+					}
+
+					RowLayout
+					{
+						id: rowRecipient
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Recipient")
+						}
+
+						QAddressView
+						{
+							id: recipients
 						}
 					}
 

@@ -250,7 +250,10 @@ void ClientModel::setupState(QVariantMap _state)
 		u256 value = (qvariant_cast<QEther*>(transaction.value("value")))->toU256Wei();
 		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
 		QString sender = transaction.value("sender").toString();
-		bool isStdContract = (transaction.value("stdContract").toBool());
+		bool isStdContract = transaction.value("stdContract").toBool();
+		bool isContractCall;
+		if (!transaction.value("isContractCall").isNull())
+			isContractCall = transaction.value("isContractCall").toBool();
 		if (isStdContract)
 		{
 			if (contractId.isEmpty()) //TODO: This is to support old project files, remove later
@@ -266,7 +269,7 @@ void ClientModel::setupState(QVariantMap _state)
 		{
 			if (contractId.isEmpty() && m_codeModel->hasContract()) //TODO: This is to support old project files, remove later
 				contractId = m_codeModel->contracts().keys()[0];
-			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasAuto, gasPrice, Secret(sender.toStdString()));
+			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasAuto, gasPrice, Secret(sender.toStdString()), isContractCall);
 			transactionSettings.parameterValues = transaction.value("parameters").toMap();
 
 			if (contractId == functionId || functionId == "Constructor")
@@ -301,6 +304,13 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 			onStateReset();
 			for (TransactionSettings const& transaction: _sequence)
 			{
+				if (!transaction.isContractCall)
+				{
+					QString address = resolveToken(transaction.contractId, deployedContracts);
+					callAddress(Address(address.toStdString()), bytes(), transaction);
+					onNewTransaction();
+					continue;
+				}
 				ContractCallDataEncoder encoder;
 				if (!transaction.stdContractUrl.isEmpty())
 				{
@@ -342,11 +352,8 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 					{
 						QSolidityType const* type = p->type();
 						QVariant value = transaction.parameterValues.value(p->name());
-						if (type->type().type == SolidityType::Type::Address && value.toString().startsWith("<") && value.toString().endsWith(">"))
-						{
-							QStringList nb = value.toString().remove("<").remove(">").split(" - ");
-							value = QVariant(QString::fromStdString("0x" + toHex(deployedContracts.at(nb.back().toInt()).ref())));
-						}
+						if (type->type().type == SolidityType::Type::Address)
+							value = QVariant(resolveToken(value.toString(), deployedContracts));
 						encoder.encode(value, type->type());
 					}
 
@@ -376,7 +383,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 							emit runStateChanged();
 							return;
 						}
-						callContract(contractAddressIter->second, encoder.encodedData(), transaction);
+						callAddress(contractAddressIter->second, encoder.encodedData(), transaction);
 					}
 				}
 				onNewTransaction();
@@ -397,6 +404,17 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 		m_running = false;
 		emit runStateChanged();
 	});
+}
+
+QString ClientModel::resolveToken(QString const& _value, vector<Address> const& _contracts)
+{
+	QString ret = _value;
+	if (_value.startsWith("<") && _value.endsWith(">"))
+	{
+		QStringList nb = ret.remove("<").remove(">").split(" - ");
+		ret = QString::fromStdString("0x" + toHex(_contracts.at(nb.back().toInt()).ref()));
+	}
+	return ret;
 }
 
 void ClientModel::showDebugger()
@@ -603,7 +621,7 @@ Address ClientModel::deployContract(bytes const& _code, TransactionSettings cons
 	return newAddress;
 }
 
-void ClientModel::callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
+void ClientModel::callAddress(Address const& _contract, bytes const& _data, TransactionSettings const& _tr)
 {
 	m_client->submitTransaction(_tr.sender, _tr.value, _contract, _data, _tr.gas, _tr.gasPrice, _tr.gasAuto);
 }

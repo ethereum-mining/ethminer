@@ -46,6 +46,7 @@ Item {
 			t.sender = defaultAccount; //support for old project
 
 		var r = {
+			type: t.type,
 			contractId: t.contractId,
 			functionId: t.functionId,
 			url: t.url,
@@ -55,7 +56,8 @@ Item {
 			gasAuto: t.gasAuto,
 			stdContract: t.stdContract ? true : false,
 			parameters: {},
-			sender: t.sender
+			sender: t.sender,
+			isContractCall: t.isContractCall
 		};
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
@@ -100,6 +102,7 @@ Item {
 
 	function toPlainTransactionItem(t) {
 		var r = {
+			type: t.type,
 			contractId: t.contractId,
 			functionId: t.functionId,
 			url: t.url,
@@ -109,7 +112,8 @@ Item {
 			gasPrice: { value: t.gasPrice.value, unit: t.gasPrice.unit },
 			stdContract: t.stdContract,
 			sender: t.sender,
-			parameters: {}
+			parameters: {},
+			isContractCall: t.isContractCall
 		};
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
