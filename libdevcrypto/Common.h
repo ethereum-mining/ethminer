@@ -103,13 +103,13 @@ void encryptECIES(Public const& _k, bytesConstRef _plain, bytes& o_cipher);
 bool decryptECIES(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
 	
 /// Encrypts payload with random IV/ctr using AES128-CTR.
-h128 encryptSymNoAuth(h128 const& _k, bytesConstRef _plain, bytes& o_cipher);
+std::pair<bytes, h128> encryptSymNoAuth(h128 const& _k, bytesConstRef _plain);
 
 /// Encrypts payload with specified IV/ctr using AES128-CTR.
-h128 encryptSymNoAuth(h128 const& _k, bytesConstRef _plain, bytes& o_cipher, h128 const& _iv);
-	
+bytes encryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _plain);
+
 /// Decrypts payload with specified IV/ctr using AES128-CTR.
-bool decryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _cipher, bytes& o_plaintext);
+bytes decryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _cipher);
 
 /// Recovers Public key from signed message hash.
 Public recover(Signature const& _sig, h256 const& _hash);
