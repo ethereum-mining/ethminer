@@ -270,6 +270,8 @@ Dialog {
 								rowFunction.visible = checked;
 								rowContract.visible = checked;
 								rowRecipient.visible = !checked;
+								paramLabel.visible = checked;
+								paramScroll.visible = checked;
 							}
 
 							text: qsTr("is contract call")

@@ -59,6 +59,8 @@ Item {
 			sender: t.sender,
 			isContractCall: t.isContractCall
 		};
+		if (r.isContractCall === undefined)
+			r.isContractCall = true; //support for old project
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
 

@@ -418,7 +418,7 @@ QString ClientModel::resolveToken(QString const& _value, vector<Address> const& 
 	if (_value.startsWith("<") && _value.endsWith(">"))
 	{
 		QStringList nb = ret.remove("<").remove(">").split(" - ");
-		ret = QString::fromStdString("0x" + toHex(_contracts.at(nb.back().toInt()).ref()));
+		ret = QString::fromStdString("0x" + dev::toHex(_contracts.at(nb.back().toInt()).ref()));
 	}
 	return ret;
 }
