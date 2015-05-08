@@ -73,6 +73,7 @@ private:
 private:
 	bytes m_encodedData;
 	bytes m_dynamicData;
+	std::vector<std::pair<size_t, size_t>> m_offsetMap;
 };
 
 }
