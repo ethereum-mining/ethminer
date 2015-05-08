@@ -41,7 +41,6 @@ BOOST_AUTO_TEST_SUITE(DashimotoTests)
 
 BOOST_AUTO_TEST_CASE(basic_test)
 {
-#if 0 // LTODO: Uncomment me and make me work !!!
 	string testPath = test::getTestPath();
 
 	testPath += "/PoWTests";
@@ -64,14 +63,14 @@ BOOST_AUTO_TEST_CASE(basic_test)
 
 		unsigned cacheSize(o["cache_size"].get_int());
 		h256 cacheHash(o["cache_hash"].get_str());
-		BOOST_REQUIRE_EQUAL(EthashAux::get()->params(header).cache_size, cacheSize);
+		BOOST_REQUIRE_EQUAL(EthashAux::get()->light(header)->size, cacheSize);
 		BOOST_REQUIRE_EQUAL(sha3(EthashAux::get()->light(header)->data()), cacheHash);
 
 #if TEST_FULL
 		unsigned fullSize(o["full_size"].get_int());
 		h256 fullHash(o["full_hash"].get_str());
-		BOOST_REQUIRE_EQUAL(EthashAux::get()->full(header).size(), fullSize);
-		BOOST_REQUIRE_EQUAL(sha3(EthashAux::get()->full(header)), fullHash);
+		BOOST_REQUIRE_EQUAL(EthashAux::get()->full(header)->size(), fullSize);
+		BOOST_REQUIRE_EQUAL(sha3(EthashAux::get()->full(header)->data()), fullHash);
 #endif
 
 		h256 result(o["result"].get_str());
@@ -79,7 +78,6 @@ BOOST_AUTO_TEST_CASE(basic_test)
 		BOOST_REQUIRE_EQUAL(r.value, result);
 		BOOST_REQUIRE_EQUAL(r.mixHash, header.mixHash);
 	}
-#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()
