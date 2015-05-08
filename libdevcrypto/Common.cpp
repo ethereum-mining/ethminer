@@ -39,7 +39,9 @@ bool dev::SignatureStruct::isValid() const
 {
 	if (v > 1 ||
 		r >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
-		s >= h256("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"))
+		s >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
+		s < h256(1) ||
+		r < h256(1))
 		return false;
 	return true;
 }
@@ -110,13 +112,13 @@ bool dev::decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plain)
 	return decrypt(_k, _cipher, o_plain);
 }
 
-h128 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher)
+h128 dev::encryptSymNoAuth(h128 const& _k, bytesConstRef _plain, bytes& o_cipher)
 {
 	h128 iv(Nonce::get());
 	return encryptSymNoAuth(_k, _plain, o_cipher, iv);
 }
 
-h128 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher, h128 const& _iv)
+h128 dev::encryptSymNoAuth(h128 const& _k, bytesConstRef _plain, bytes& o_cipher, h128 const& _iv)
 {
 	o_cipher.resize(_plain.size());
 
@@ -137,7 +139,7 @@ h128 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_ciph
 	}
 }
 
-bool dev::decryptSymNoAuth(Secret const& _k, h128 const& _iv, bytesConstRef _cipher, bytes& o_plaintext)
+bool dev::decryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _cipher, bytes& o_plaintext)
 {
 	o_plaintext.resize(_cipher.size());
 	
@@ -171,6 +173,14 @@ Signature dev::sign(Secret const& _k, h256 const& _hash)
 bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 {
 	return s_secp256k1.verify(_p, _s, _hash.ref(), true);
+}
+
+bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen)
+{
+	bytes ret(_dkLen);
+	PKCS5_PBKDF2_HMAC<SHA256> pbkdf;
+	pbkdf.DeriveKey(ret.data(), ret.size(), 0, (byte*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _iterations);
+	return ret;
 }
 
 KeyPair KeyPair::create()

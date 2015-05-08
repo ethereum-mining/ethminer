@@ -1,6 +1,7 @@
-var assert = require('assert');
+var chai = require('chai');
+var assert = chai.assert; 
 var BigNumber = require('bignumber.js');
-var abi = require('../lib/solidity/abi.js');
+var abi = require('../lib/solidity/abi');
 var clone = function (object) { return JSON.parse(JSON.stringify(object)); };
 
 var description =  [{
@@ -19,9 +20,9 @@ var description =  [{
     ]
 }];
 
-describe('lib/solidity/abi', function() {
-    describe('inputParser', function() {
-        it('should parse input uint', function() {
+describe('lib/solidity/abi', function () {
+    describe('inputParser', function () {
+        it('should parse input uint', function () {
 
             // given
             var d = clone(description);
@@ -468,10 +469,10 @@ describe('lib/solidity/abi', function() {
             var parser = abi.inputParser(d);
 
             // then
-            assert.equal(parser.test([1]),      "0000000000000000000000000000000100000000000000000000000000000000");
-            assert.equal(parser.test([2.125]),  "0000000000000000000000000000000220000000000000000000000000000000");
-            assert.equal(parser.test([8.5]),    "0000000000000000000000000000000880000000000000000000000000000000");
-            assert.equal(parser.test([-1]),     "ffffffffffffffffffffffffffffffff00000000000000000000000000000000");
+            assert.equal(parser.test(1),      "0000000000000000000000000000000100000000000000000000000000000000");
+            assert.equal(parser.test(2.125),  "0000000000000000000000000000000220000000000000000000000000000000");
+            assert.equal(parser.test(8.5),    "0000000000000000000000000000000880000000000000000000000000000000");
+            assert.equal(parser.test(-1),     "ffffffffffffffffffffffffffffffff00000000000000000000000000000000");
 
         });
 
@@ -488,9 +489,9 @@ describe('lib/solidity/abi', function() {
             var parser = abi.inputParser(d);
 
             // then
-            assert.equal(parser.test([1]),      "0000000000000000000000000000000100000000000000000000000000000000");
-            assert.equal(parser.test([2.125]),  "0000000000000000000000000000000220000000000000000000000000000000");
-            assert.equal(parser.test([8.5]),    "0000000000000000000000000000000880000000000000000000000000000000");
+            assert.equal(parser.test(1),      "0000000000000000000000000000000100000000000000000000000000000000");
+            assert.equal(parser.test(2.125),  "0000000000000000000000000000000220000000000000000000000000000000");
+            assert.equal(parser.test(8.5),    "0000000000000000000000000000000880000000000000000000000000000000");
 
         });
 

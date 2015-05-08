@@ -25,6 +25,7 @@
 #include <QObject>
 #include <QTcpServer>
 #include <QUrl>
+#include <QVariantMap>
 #include <QQmlParserStatus>
 
 namespace dev
@@ -40,10 +41,12 @@ class HttpRequest: public QObject
 	Q_PROPERTY(QUrl url MEMBER m_url CONSTANT)
 	/// Request body contents
 	Q_PROPERTY(QString content MEMBER m_content CONSTANT)
+	/// Request HTTP headers
+	Q_PROPERTY(QVariantMap headers MEMBER m_headers CONSTANT)
 
 private:
-	HttpRequest(QObject* _parent, QUrl const& _url, QString const& _content):
-		QObject(_parent), m_url(_url), m_content(_content)
+	HttpRequest(QObject* _parent, QUrl&& _url, QString&& _content, QVariantMap&& _headers):
+		QObject(_parent), m_url(_url), m_content(_content), m_headers(_headers)
 	{
 	}
 
@@ -60,6 +63,7 @@ private:
 	QString m_content;
 	QString m_response;
 	QString m_responseContentType;
+	QVariantMap m_headers;
 	friend class HttpServer;
 };
 
@@ -100,7 +104,7 @@ protected:
 
 signals:
 	void clientConnected(HttpRequest* _request);
-	void errorStringChanged(QString const& _errorString);
+	void errorStringChanged();
 	void urlChanged(QUrl const& _url);
 	void portChanged(int _port);
 	void listenChanged(bool _listen);

@@ -21,6 +21,7 @@ updateContracts = function(contracts) {
 	if (window.web3) {
 		window.web3.reset();
 		window.contracts = {};
+		window.BigNumber = require('bignumber.js');
 		for (var c in contracts) {
 			var contractProto = window.web3.eth.contract(contracts[c].interface);
 			var contract = new contractProto(contracts[c].address);

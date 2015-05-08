@@ -95,10 +95,7 @@ void RLPXHandshake::readAuth()
 			m_remoteEphemeral = recover(*(Signature*)sig.data(), sharedSecret ^ m_remoteNonce);
 
 			if (sha3(m_remoteEphemeral) != *(h256*)hepubk.data())
-			{
 				clog(NetConnect) << "p2p.connect.ingress auth failed (invalid: hash mismatch) for" << m_socket->remoteEndpoint();
-				m_nextState = Error;
-			}
 			
 			transition();
 		}
@@ -252,7 +249,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 						bytesRef frame(&m_handshakeInBuffer);
 						if (!m_io->authAndDecryptFrame(frame))
 						{
-							clog(NetWarn) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: decrypt failed";
+							clog(NetTriviaSummary) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: decrypt failed";
 							m_nextState = Error;
 							transition();
 							return;
@@ -261,13 +258,13 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 						PacketType packetType = (PacketType)(frame[0] == 0x80 ? 0x0 : frame[0]);
 						if (packetType != 0)
 						{
-							clog(NetWarn) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: invalid packet type";
+							clog(NetTriviaSummary) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: invalid packet type";
 							m_nextState = Error;
 							transition();
 							return;
 						}
 
-						clog(NetNote) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: success. starting session.";
+						clog(NetTriviaSummary) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: success. starting session.";
 						RLP rlp(frame.cropped(1), RLP::ThrowOnFail | RLP::FailIfTooSmall);
 						m_host->startPeerSession(m_remote, rlp, m_io, m_socket->remoteEndpoint());
 					}
@@ -282,7 +279,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		if (!_ec)
 		{
 			if (!m_socket->remoteEndpoint().address().is_unspecified())
-				clog(NetWarn) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Timeout)";
+				clog(NetConnect) << "Disconnecting " << m_socket->remoteEndpoint() << " (Handshake Timeout)";
 			cancel();
 		}
 	});

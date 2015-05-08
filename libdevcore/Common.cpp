@@ -20,14 +20,36 @@
  */
 
 #include "Common.h"
-
+#include "Exceptions.h"
+#include "Log.h"
 using namespace std;
 using namespace dev;
 
 namespace dev
 {
 
-char const* Version = "0.9.6";
+char const* Version = "0.9.15o";
+
+void HasInvariants::checkInvariants() const
+{
+	if (!invariants())
+		BOOST_THROW_EXCEPTION(FailedInvariant());
+}
+
+struct TimerChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };
+
+#ifdef _WIN32
+const char* TimerChannel::name() { return EthRed " ! "; }
+#else
+const char* TimerChannel::name() { return EthRed " ⚡ "; }
+#endif
+
+TimerHelper::~TimerHelper()
+{
+	auto e = m_t.elapsed();
+	if (!m_ms || e * 1000 > m_ms)
+		clog(TimerChannel) << m_id << e << "s";
+}
 
 }
 

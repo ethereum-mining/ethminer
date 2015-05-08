@@ -14,9 +14,9 @@
     You should have received a copy of the GNU Lesser General Public License
     along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file utils.js
- * @authors:
- *   Marek Kotewicz <marek@ethdev.com>
+/** 
+ * @file utils.js
+ * @author Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  */
 
@@ -67,22 +67,6 @@ var padLeft = function (string, chars, sign) {
     return new Array(chars - string.length + 1).join(sign ? sign : "0") + string;
 };
 
-/** Finds first index of array element matching pattern
- *
- * @method findIndex
- * @param {Array}
- * @param {Function} pattern
- * @returns {Number} index of element
- */
-var findIndex = function (array, callback) {
-    var end = false;
-    var i = 0;
-    for (; i < array.length && !end; i++) {
-        end = callback(array[i]);
-    }
-    return end ? i - 1 : -1;
-};
-
 /** 
  * Should be called to get sting from it's hex representation
  *
@@ -112,7 +96,7 @@ var toAscii = function(hex) {
 /**
  * Shold be called to get hex representation (prefixed by 0x) of ascii string 
  *
- * @method fromAscii
+ * @method toHexNative
  * @param {String} string
  * @returns {String} hex representation of input string
  */
@@ -143,6 +127,22 @@ var fromAscii = function(str, pad) {
 };
 
 /**
+ * Should be used to create full function/event name from json abi
+ *
+ * @method transformToFullName
+ * @param {Object} json-abi
+ * @return {String} full fnction/event name
+ */
+var transformToFullName = function (json) {
+    if (json.name.indexOf('(') !== -1) {
+        return json.name;
+    }
+
+    var typeName = json.inputs.map(function(i){return i.type; }).join();
+    return json.name + '(' + typeName + ')';
+};
+
+/**
  * Should be called to get display name of contract function
  * 
  * @method extractDisplayName
@@ -159,32 +159,6 @@ var extractTypeName = function (name) {
     /// TODO: make it invulnerable
     var length = name.indexOf('(');
     return length !== -1 ? name.substr(length + 1, name.length - 1 - (length + 1)).replace(' ', '') : "";
-};
-
-/**
- * Filters all functions from input abi
- *
- * @method filterFunctions
- * @param {Array} abi
- * @returns {Array} abi array with filtered objects of type 'function'
- */
-var filterFunctions = function (json) {
-    return json.filter(function (current) {
-        return current.type === 'function'; 
-    }); 
-};
-
-/**
- * Filters all events from input abi
- *
- * @method filterEvents
- * @param {Array} abi
- * @returns {Array} abi array with filtered objects of type 'event'
- */
-var filterEvents = function (json) {
-    return json.filter(function (current) {
-        return current.type === 'event';
-    });
 };
 
 /**
@@ -349,14 +323,25 @@ var toTwosComplement = function (number) {
 };
 
 /**
- * Checks if the given string has proper length
+ * Checks if the given string is strictly an address
+ *
+ * @method isStrictAddress
+ * @param {String} address the given HEX adress
+ * @return {Boolean}
+*/
+var isStrictAddress = function (address) {
+    return /^0x[0-9a-f]{40}$/.test(address);
+};
+
+/**
+ * Checks if the given string is an address
  *
  * @method isAddress
  * @param {String} address the given HEX adress
  * @return {Boolean}
 */
 var isAddress = function (address) {
-    return /^0x[0-9a-f]{40}$/.test(address);
+    return /^(0x)?[0-9a-f]{40}$/.test(address);
 };
 
 /**
@@ -367,7 +352,7 @@ var isAddress = function (address) {
  * @return {String} formatted address
  */
 var toAddress = function (address) {
-    if (isAddress(address)) {
+    if (isStrictAddress(address)) {
         return address;
     }
     
@@ -463,22 +448,21 @@ var isJson = function (str) {
 
 module.exports = {
     padLeft: padLeft,
-    findIndex: findIndex,
     toHex: toHex,
     toDecimal: toDecimal,
     fromDecimal: fromDecimal,
     toAscii: toAscii,
     fromAscii: fromAscii,
+    transformToFullName: transformToFullName,
     extractDisplayName: extractDisplayName,
     extractTypeName: extractTypeName,
-    filterFunctions: filterFunctions,
-    filterEvents: filterEvents,
     toWei: toWei,
     fromWei: fromWei,
     toBigNumber: toBigNumber,
     toTwosComplement: toTwosComplement,
     toAddress: toAddress,
     isBigNumber: isBigNumber,
+    isStrictAddress: isStrictAddress,
     isAddress: isAddress,
     isFunction: isFunction,
     isString: isString,

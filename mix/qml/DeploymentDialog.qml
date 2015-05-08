@@ -6,7 +6,7 @@ import QtQuick.Dialogs 1.2
 import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.QEther 1.0
 import "js/TransactionHelper.js" as TransactionHelper
-import "js/ProjectModel.js" as ProjectModelCode
+import "js/NetworkDeployment.js" as NetworkDeploymentCode
 import "js/QEtherHelper.js" as QEtherHelper
 import "."
 
@@ -17,15 +17,19 @@ Dialog {
 	width: 735
 	height: 400
 	visible: false
+	property int ownedRegistrarDeployGas: 1179075 // TODO: Use sol library to calculate gas requirement for each tr.
+	property int ownedRegistrarSetSubRegistrarGas: 50000
+	property int ownedRegistrarSetContentHashGas: 50000
+	property int urlHintSuggestUrlGas: 70000
 	property alias applicationUrlEth: applicationUrlEth.text
 	property alias applicationUrlHttp: applicationUrlHttp.text
-	property alias urlHintContract: urlHintAddr.text
 	property alias localPackageUrl: localPackageUrl.text
 	property string packageHash
 	property string packageBase64
 	property string eth: registrarAddr.text
 	property string currentAccount
-	property alias gasToUse: gasToUseInput.text
+	property string gasPrice
+	property variant paramsModel: []
 
 	function close()
 	{
@@ -54,8 +58,8 @@ Dialog {
 				requests.push({
 								  //accounts
 								  jsonrpc: "2.0",
-								  method: "eth_balanceAt",
-								  params: [ids[k]],
+								  method: "eth_getBalance",
+								  params: [ids[k], 'latest'],
 								  id: k
 							  });
 			}
@@ -69,16 +73,26 @@ Dialog {
 				{
 					var ether = QEtherHelper.createEther(balanceRet[k].result, QEther.Wei);
 					comboAccounts.balances.push(ether.format());
+					comboAccounts.weiBalances.push(balanceRet[k].result);
 				}
 				balance.text = comboAccounts.balances[0];
 			});
 		});
 
-		var gas = 0;
-		var gasCosts = clientModel.gasCosts;
-		for (var g in gasCosts)
-			gas += gasCosts[g];
-		gasToUse = gas;
+		if (clientModel.gasCosts.length === 0)
+		{
+			errorDialog.text = qsTr("Please run the state one time before deploying in order to calculate gas requirement.");
+			errorDialog.open();
+		}
+		else
+		{
+			NetworkDeploymentCode.gasPrice(function(price) {
+				gasPrice = price;
+				gasPriceInt.setValue(gasPrice);
+				ctrDeployCtrLabel.calculateContractDeployGas();
+				ctrRegisterLabel.calculateRegisterGas();
+			});
+		}
 	}
 
 	function stopForInputError(inError)
@@ -113,6 +127,11 @@ Dialog {
 		poolLog.start();
 	}
 
+	BigIntValue
+	{
+		id: gasPriceInt
+	}
+
 	Timer
 	{
 		id: poolLog
@@ -135,6 +154,7 @@ Dialog {
 			TransactionHelper.rpcCall(requests, function (httpRequest, response){
 				response = response.replace(/,0+/, ''); // ==> result:27,00000000
 				var count = JSON.parse(response)[0].result
+				console.log("count " + count);
 				if (k < parseInt(count) && k > 0)
 				{
 					stop();
@@ -249,13 +269,39 @@ Dialog {
 
 					DefaultLabel
 					{
+						text: qsTr("State:")
+					}
+
+					Rectangle
+					{
+						width: 300
+						color: "transparent"
+						height: 25
+						id: paramsRect
+						ComboBox
+						{
+							id: statesList
+							textRole: "title"
+							model: projectModel.stateListModel
+							onCurrentIndexChanged : {
+								ctrDeployCtrLabel.calculateContractDeployGas();
+								ctrRegisterLabel.calculateRegisterGas();
+							}
+						}
+					}
+
+					DefaultLabel
+					{
 						text: qsTr("Root Registrar address:")
+						visible: false //still use it for now in dev env.
 					}
 
 					DefaultTextField
 					{
 						Layout.preferredWidth: 350
 						id: registrarAddr
+						text: "ab69f864e49fc4294d18355c4bafb0b91b5e629b"
+						visible: false
 					}
 
 					DefaultLabel
@@ -271,11 +317,15 @@ Dialog {
 						ComboBox {
 							id: comboAccounts
 							property var balances: []
+							property var weiBalances: []
 							onCurrentIndexChanged : {
 								if (modelAccounts.count > 0)
 								{
 									currentAccount = modelAccounts.get(currentIndex).id;
 									balance.text = balances[currentIndex];
+									balanceInt.setValue(weiBalances[currentIndex]);
+									ctrDeployCtrLabel.calculateContractDeployGas();
+									ctrRegisterLabel.calculateRegisterGas();
 								}
 							}
 							model: ListModel {
@@ -290,19 +340,58 @@ Dialog {
 							anchors.leftMargin: 20
 							id: balance;
 						}
+
+						BigIntValue
+						{
+							id: balanceInt
+						}
 					}
 				}
 
 				DefaultLabel
 				{
-					text: qsTr("Amount of gas to use for each contract deployment: ")
+					text: qsTr("Amount of gas to use for contract deployment: ")
+					id: ctrDeployCtrLabel
+					function calculateContractDeployGas()
+					{
+						var ether = QEtherHelper.createBigInt(NetworkDeploymentCode.gasUsed());
+						var gasTotal = ether.multiply(gasPriceInt);
+						gasToUseInput.value = QEtherHelper.createEther(gasTotal.value(), QEther.Wei, parent);
+						gasToUseDeployInput.update();
+					}
 				}
 
-				DefaultTextField
-				{
-					text: "1000000"
-					Layout.preferredWidth: 350
+				Ether {
 					id: gasToUseInput
+					displayUnitSelection: false
+					displayFormattedValue: true
+					Layout.preferredWidth: 350
+				}
+
+				DefaultLabel
+				{
+					text: qsTr("Amount of gas to use for dapp registration: ")
+					id: ctrRegisterLabel
+					function calculateRegisterGas()
+					{
+						if (!modalDeploymentDialog.visible)
+							return;
+						appUrlFormatted.text = NetworkDeploymentCode.formatAppUrl(applicationUrlEth.text).join('/');
+						NetworkDeploymentCode.checkPathCreationCost(function(pathCreationCost)
+						{
+							var ether = QEtherHelper.createBigInt(pathCreationCost);
+							var gasTotal = ether.multiply(gasPriceInt);
+							gasToUseDeployInput.value = QEtherHelper.createEther(gasTotal.value(), QEther.Wei, parent);
+							gasToUseDeployInput.update();
+						});
+					}
+				}
+
+				Ether {
+					id: gasToUseDeployInput
+					displayUnitSelection: false
+					displayFormattedValue: true
+					Layout.preferredWidth: 350
 				}
 
 				DefaultLabel
@@ -320,7 +409,7 @@ Dialog {
 						width: 200
 						id: applicationUrlEth
 						onTextChanged: {
-							appUrlFormatted.text = ProjectModelCode.formatAppUrl(text).join('/');
+							ctrRegisterLabel.calculateRegisterGas();
 						}
 					}
 
@@ -356,7 +445,7 @@ Dialog {
 					tooltip: qsTr("Deploy contract(s) and Package resources files.")
 					onTriggered: {
 						var inError = [];
-						var ethUrl = ProjectModelCode.formatAppUrl(applicationUrlEth.text);
+						var ethUrl = NetworkDeploymentCode.formatAppUrl(applicationUrlEth.text);
 						for (var k in ethUrl)
 						{
 							if (ethUrl[k].length > 32)
@@ -364,10 +453,11 @@ Dialog {
 						}
 						if (!stopForInputError(inError))
 						{
+							projectModel.deployedState = statesList.currentText;
 							if (contractRedeploy.checked)
 								deployWarningDialog.open();
 							else
-								ProjectModelCode.startDeployProject(false);
+								NetworkDeploymentCode.startDeployProject(false);
 						}
 					}
 				}
@@ -427,20 +517,6 @@ Dialog {
 						Layout.preferredWidth: 350
 						id: localPackageUrl
 						readOnly: true
-
-					}
-
-					DefaultLabel
-					{
-						Layout.preferredWidth: 355
-						text: qsTr("URL Hint contract address:")
-					}
-
-					DefaultTextField
-					{
-						Layout.preferredWidth: 350
-						id: urlHintAddr
-						enabled: rowRegister.isOkToRegister()
 					}
 
 					DefaultLabel
@@ -478,6 +554,15 @@ Dialog {
 						iconSource: "qrc:/qml/img/note.png"
 					}
 
+					BigIntValue
+					{
+						id: registerUrlHintGas
+						Component.onCompleted:
+						{
+							setValue(modalDeploymentDialog.urlHintSuggestUrlGas);
+						}
+					}
+
 					Action {
 						id: registerAction
 						enabled: rowRegister.isOkToRegister()
@@ -494,7 +579,7 @@ Dialog {
 							if (applicationUrlHttp.text.length > 32)
 								inError.push(qsTr(applicationUrlHttp.text));
 							if (!stopForInputError(inError))
-								ProjectModelCode.registerToUrlHint();
+								NetworkDeploymentCode.registerToUrlHint();
 						}
 					}
 				}

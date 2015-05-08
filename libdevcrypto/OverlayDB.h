@@ -42,7 +42,6 @@ public:
 	~OverlayDB();
 
 	ldb::DB* db() const { return m_db.get(); }
-	void setDB(ldb::DB* _db, bool _clearOverlay = true);
 
 	void commit();
 	void rollback();

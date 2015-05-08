@@ -23,9 +23,10 @@
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/TrieDB.h>
 #include <libethcore/Common.h>
+#include <libethcore/Params.h>
+#include "EthashAux.h"
 #include "ProofOfWork.h"
 #include "Exceptions.h"
-#include "Params.h"
 #include "BlockInfo.h"
 using namespace std;
 using namespace dev;
@@ -63,8 +64,7 @@ void BlockInfo::clear()
 h256 const& BlockInfo::seedHash() const
 {
 	if (!m_seedHash)
-		for (u256 n = number; n >= c_epochDuration; n -= c_epochDuration)
-			m_seedHash = sha3(m_seedHash);
+		m_seedHash = EthashAux::seedHash((unsigned)number);
 	return m_seedHash;
 }
 
@@ -73,6 +73,13 @@ h256 const& BlockInfo::hash() const
 	if (!m_hash)
 		m_hash = headerHash(WithNonce);
 	return m_hash;
+}
+
+h256 const& BlockInfo::boundary() const
+{
+	if (!m_boundary && difficulty)
+		m_boundary = (h256)(u256)((bigint(1) << 256) / difficulty);
+	return m_boundary;
 }
 
 BlockInfo BlockInfo::fromHeader(bytesConstRef _header, Strictness _s, h256 const& _h)
@@ -138,8 +145,13 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const
 		throw;
 	}
 
+	if (number > ~(unsigned)0)
+		throw InvalidNumber();
+
 	// check it hashes according to proof of work or that it's the genesis block.
 	if (_s == CheckEverything && parentHash && !ProofOfWork::verify(*this))
+		BOOST_THROW_EXCEPTION(InvalidBlockNonce() << errinfo_hash256(headerHash(WithoutNonce)) << errinfo_nonce(nonce) << errinfo_difficulty(difficulty));
+	else if (_s == QuickNonce && parentHash && !ProofOfWork::preVerify(*this))
 		BOOST_THROW_EXCEPTION(InvalidBlockNonce() << errinfo_hash256(headerHash(WithoutNonce)) << errinfo_nonce(nonce) << errinfo_difficulty(difficulty));
 
 	if (_s != CheckNothing)

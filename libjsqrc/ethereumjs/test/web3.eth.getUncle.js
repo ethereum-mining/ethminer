@@ -20,7 +20,6 @@ var blockResult = {
     "size":  "0x027f07",
     "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "gasLimit": "0x9f759",
-    "minGasPrice": "0x9f759",
     "gasUsed": "0x9f759",
     "timestamp": "0x54e34e8e",
     "transactions": ['0x460cfb8472af2c5fd05b5a2','0x460cfb8472af2c5fd05b5a2'],
@@ -41,7 +40,6 @@ var formattedBlockResult = {
     "size":  163591,
     "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "gasLimit": 653145,
-    "minGasPrice": new BigNumber(653145),
     "gasUsed": 653145,
     "timestamp": 1424182926,
     "transactions": ['0x460cfb8472af2c5fd05b5a2','0x460cfb8472af2c5fd05b5a2'],
@@ -62,13 +60,12 @@ var blockResultWithTx = {
     "size":  "0x027f07",
     "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "gasLimit": "0x9f759",
-    "minGasPrice": "0x9f759",
     "gasUsed": "0x9f759",
     "timestamp": "0x54e34e8e",
     "transactions": [{
         "status": "mined",
         "hash":"0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b",
-        "nonce":"0x",
+        "nonce":"0x2",
         "blockHash": "0x6fd9e2a26ab",
         "blockNumber": "0x15df",
         "transactionIndex":  "0x1",
@@ -96,13 +93,12 @@ var formattedBlockResultWithTx = {
     "size":  163591,
     "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "gasLimit": 653145,
-    "minGasPrice": new BigNumber(653145),
     "gasUsed": 653145,
     "timestamp": 1424182926,
     "transactions": [{
         "status": "mined",
         "hash":"0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b",
-        "nonce":"0x",
+        "nonce": 2,
         "blockHash": "0x6fd9e2a26ab",
         "blockNumber": 5599,
         "transactionIndex":  1,
@@ -118,19 +114,19 @@ var formattedBlockResultWithTx = {
 
 var tests = [{
     args: ['0x47d33b27bb249a2dbab4c0612bf9caf4c1950855', 2],
-    formattedArgs: ['0x47d33b27bb249a2dbab4c0612bf9caf4c1950855', '0x2', false],
+    formattedArgs: ['0x47d33b27bb249a2dbab4c0612bf9caf4c1950855', '0x2'],
     result: blockResult,
     formattedResult: formattedBlockResult,
     call: 'eth_getUncleByBlockHashAndIndex'
 },{
     args: [436, 1],
-    formattedArgs: ['0x1b4', '0x1', false],
+    formattedArgs: ['0x1b4', '0x1'],
     result: blockResult,
     formattedResult: formattedBlockResult,
     call: 'eth_getUncleByBlockNumberAndIndex'
 },{
     args: [436, 1, true],
-    formattedArgs: ['0x1b4', '0x1', true],
+    formattedArgs: ['0x1b4', '0x1'],
     result: blockResultWithTx,
     formattedResult: formattedBlockResultWithTx,
     call: 'eth_getUncleByBlockNumberAndIndex'
