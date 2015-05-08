@@ -30,7 +30,13 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-BOOST_AUTO_TEST_SUITE(whisper)
+struct P2PFixture
+{
+	P2PFixture() { dev::p2p::NodeIPEndpoint::test_allowLocal = true; }
+	~P2PFixture() { dev::p2p::NodeIPEndpoint::test_allowLocal = false; }
+};
+
+BOOST_FIXTURE_TEST_SUITE(whisper, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(topic)
 {
@@ -77,7 +83,7 @@ BOOST_AUTO_TEST_CASE(topic)
 	
 	while (!host1.haveNetwork())
 		this_thread::sleep_for(chrono::milliseconds(5));
-	host2.addNode(host1.id(), bi::address::from_string("127.0.0.1"), 30303, 30303);
+	host2.addNode(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30303, 30303));
 
 	// wait for nodes to connect
 	this_thread::sleep_for(chrono::milliseconds(1000));
@@ -157,7 +163,7 @@ BOOST_AUTO_TEST_CASE(forwarding)
 			this_thread::sleep_for(chrono::milliseconds(50));
 
 		this_thread::sleep_for(chrono::milliseconds(500));
-		host2.addNode(host1.id(), bi::address::from_string("127.0.0.1"), 30303, 30303);
+		host2.addNode(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30303, 30303));
 
 		startedForwarder = true;
 
@@ -182,7 +188,7 @@ BOOST_AUTO_TEST_CASE(forwarding)
 	ph.setIdealPeerCount(1);
 	shared_ptr<WhisperHost> wh = ph.registerCapability(new WhisperHost());
 	ph.start();
-	ph.addNode(host2.id(), bi::address::from_string("127.0.0.1"), 30305, 30305);
+	ph.addNode(host2.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 	while (!ph.haveNetwork())
 		this_thread::sleep_for(chrono::milliseconds(10));
 
@@ -221,7 +227,6 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 		setThreadName("forwarder");
 
 		this_thread::sleep_for(chrono::milliseconds(500));
-//		ph.addNode("127.0.0.1", 30303, 30303);
 
 		startedForwarder = true;
 
@@ -249,7 +254,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 		host2.start();
 		while (!host2.haveNetwork())
 			this_thread::sleep_for(chrono::milliseconds(2));
-		host2.addNode(host1.id(), bi::address::from_string("127.0.0.1"), 30305, 30305);
+		host2.addNode(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 
 		while (!host2.peerCount())
 			this_thread::sleep_for(chrono::milliseconds(5));
@@ -266,7 +271,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 		ph.start();
 		while (!ph.haveNetwork())
 			this_thread::sleep_for(chrono::milliseconds(2));
-		ph.addNode(host1.id(), bi::address::from_string("127.0.0.1"), 30305, 30305);
+		ph.addNode(host1.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 
 		/// Only interested in odd packets
 		auto w = wh->installWatch(BuildTopicMask("test"));
