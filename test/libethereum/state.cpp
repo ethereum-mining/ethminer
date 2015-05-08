@@ -188,6 +188,10 @@ BOOST_AUTO_TEST_CASE(stMemoryTest)
 	dev::test::executeTests("stMemoryTest", "/StateTests",dev::test::getFolder(__FILE__) + "/StateTestsFiller", dev::test::doStateTests);
 }
 
+BOOST_AUTO_TEST_CASE(stWalletTest)
+{
+	dev::test::executeTests("stWalletTest", "/StateTests",dev::test::getFolder(__FILE__) + "/StateTestsFiller", dev::test::doStateTests);
+}
 
 BOOST_AUTO_TEST_CASE(stCreateTest)
 {
