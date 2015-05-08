@@ -51,6 +51,8 @@ BOOST_AUTO_TEST_CASE(host)
 	auto node2 = host2.id();
 	host2.start();
 	
+	while (!host2.isStarted())
+		this_thread::sleep_for(chrono::milliseconds(20));
 	host1.addNode(node2, NodeIPEndpoint(bi::address::from_string("127.0.0.1"), host2prefs.listenPort, host2prefs.listenPort));
 	
 	this_thread::sleep_for(chrono::seconds(3));
@@ -72,7 +74,7 @@ BOOST_AUTO_TEST_CASE(networkConfig)
 	BOOST_REQUIRE(save.id() == restore.id());
 }
 
-BOOST_AUTO_TEST_CASE(save_nodes)
+BOOST_AUTO_TEST_CASE(saveNodes)
 {
 	std::list<Host*> hosts;
 	for (auto i:{0,1,2,3,4,5})
@@ -111,8 +113,8 @@ BOOST_AUTO_TEST_CASE(save_nodes)
 	
 	for (auto i: r[2])
 	{
-		BOOST_REQUIRE(i.itemCount() == 3 || i.itemCount() == 10);
-		BOOST_REQUIRE(i[0].itemCount() == 4 || i[0].itemCount() == 16);
+		BOOST_REQUIRE(i.itemCount() == 4 || i.itemCount() == 11);
+		BOOST_REQUIRE(i[0].size() == 4 || i[0].size() == 16);
 	}
 }
 
