@@ -33,6 +33,7 @@
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcrypto/SHA3.h>
 #include <libdevcrypto/FileSystem.h>
+#include <libethash/internal.h>
 #include "BlockInfo.h"
 #include "Exceptions.h"
 using namespace std;
@@ -52,6 +53,11 @@ ethash_h256_t EthashAux::bytesToEthash256T(uint8_t const* _bytes)
 	ethash_h256_t ret;
 	memcpy(&ret, _bytes, 32);
 	return ret;
+}
+
+uint64_t EthashAux::cacheSize(BlockInfo const& _header)
+{
+	return ethash_get_cachesize((uint64_t)_header.number);
 }
 
 h256 EthashAux::seedHash(unsigned _number)
@@ -91,8 +97,8 @@ EthashAux::LightType EthashAux::light(BlockInfo const& _header)
 
 EthashAux::LightType EthashAux::light(uint64_t _blockNumber)
 {
-	h256 seedHash = EthashAux::seedHash(_blockNumber);
 	RecursiveGuard l(get()->x_this);
+	h256 seedHash = EthashAux::seedHash(_blockNumber);
 	LightType ret = get()->m_lights[seedHash];
 	return ret ? ret : (get()->m_lights[seedHash] = make_shared<LightAllocation>(_blockNumber));
 }
@@ -100,11 +106,17 @@ EthashAux::LightType EthashAux::light(uint64_t _blockNumber)
 EthashAux::LightAllocation::LightAllocation(uint64_t _blockNumber)
 {
 	light = ethash_light_new(_blockNumber);
+	size = ethash_get_cachesize(_blockNumber);
 }
 
 EthashAux::LightAllocation::~LightAllocation()
 {
 	ethash_light_delete(light);
+}
+
+bytesConstRef EthashAux::LightAllocation::data() const
+{
+	return bytesConstRef((byte const*)light->cache, size);
 }
 
 EthashAux::FullAllocation::FullAllocation(ethash_light_t _light, ethash_callback_t _cb)
@@ -117,6 +129,11 @@ EthashAux::FullAllocation::~FullAllocation()
 	ethash_full_delete(full);
 }
 
+bytesConstRef EthashAux::FullAllocation::data() const
+{
+	return bytesConstRef((byte const*)ethash_full_dag(full), size());
+}
+
 EthashAux::FullType EthashAux::full(BlockInfo const& _header)
 {
 	return full((uint64_t) _header.number);
@@ -124,16 +141,15 @@ EthashAux::FullType EthashAux::full(BlockInfo const& _header)
 
 EthashAux::FullType EthashAux::full(uint64_t _blockNumber)
 {
-	h256 seedHash = EthashAux::seedHash(_blockNumber);
 	RecursiveGuard l(get()->x_this);
+	h256 seedHash = EthashAux::seedHash(_blockNumber);
 	FullType ret = get()->m_fulls[seedHash].lock();
 	if (ret) {
 		get()->m_lastUsedFull = ret;
 		return ret;
 	}
-	get()->m_fulls[seedHash] = make_shared<FullAllocation>(light(_blockNumber)->light, nullptr);
-	ret = get()->m_fulls[seedHash].lock();
-	get()->m_lastUsedFull = ret;
+	ret = get()->m_lastUsedFull = make_shared<FullAllocation>(light(_blockNumber)->light, nullptr);
+	get()->m_fulls[seedHash] = ret;
 	return ret;
 }
 

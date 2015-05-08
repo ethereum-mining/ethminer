@@ -311,7 +311,8 @@ void Ethash::GPUMiner::workLoop()
 			unsigned device = instances() > 1 ? index() : s_deviceId;
 
 			EthashAux::FullType dag = EthashAux::full(w.blockNumber);
-			m_miner->init((uint8_t const*)dag->data(), dag->size(), 32, s_platformId, device);
+			bytesConstRef dagData = dag->data();
+			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
