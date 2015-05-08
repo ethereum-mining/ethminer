@@ -31,6 +31,7 @@
 #include <json/json.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
+#include <libevmasm/SourceLocation.h>
 
 namespace dev
 {
@@ -130,6 +131,11 @@ public:
 	/// Compile the given @a _sourceCode to bytecode. If a scanner is provided, it is used for
 	/// scanning the source code - this is useful for printing exception information.
 	static bytes staticCompile(std::string const& _sourceCode, bool _optimize = false);
+
+	/// Helper function for logs printing. Do only use in error cases, it's quite expensive.
+	/// line and columns are numbered starting from 1 with following order:
+	/// start line, start column, end line, end column
+	std::tuple<int, int, int, int> positionFromSourceLocation(SourceLocation const& _sourceLocation) const;
 
 private:
 	/**
