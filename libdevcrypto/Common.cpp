@@ -175,11 +175,11 @@ bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 	return s_secp256k1.verify(_p, _s, _hash.ref(), true);
 }
 
-h256 dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations)
+bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen)
 {
-	h256 ret;
+	bytes ret(_dkLen);
 	PKCS5_PBKDF2_HMAC<SHA256> pbkdf;
-	pbkdf.DeriveKey(ret.data(), ret.size, 0, (byte*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _iterations);
+	pbkdf.DeriveKey(ret.data(), ret.size(), 0, (byte*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _iterations);
 	return ret;
 }
 

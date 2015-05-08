@@ -24,8 +24,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-const unsigned dev::p2p::c_protocolVersion = 3;
+const unsigned dev::p2p::c_protocolVersion = 4;
 const unsigned dev::p2p::c_defaultIPPort = 30303;
+static_assert(dev::p2p::c_protocolVersion == 4, "Replace v3 compatbility with v4 compatibility before updating network version.");
 
 const dev::p2p::NodeIPEndpoint dev::p2p::UnspecifiedNodeIPEndpoint = NodeIPEndpoint(bi::address(), 0, 0);
 const dev::p2p::Node dev::p2p::UnspecifiedNode = dev::p2p::Node(NodeId(), UnspecifiedNodeIPEndpoint);
@@ -142,6 +143,31 @@ std::string p2p::reasonOf(DisconnectReason _r)
 	case NoDisconnect: return "(No disconnect has happened.)";
 	default: return "Unknown reason.";
 	}
+}
+
+void NodeIPEndpoint::streamRLP(RLPStream& _s, RLPAppend _append) const
+{
+	if (_append == StreamList)
+		_s.appendList(3);
+	if (address.is_v4())
+		_s << bytesConstRef(&address.to_v4().to_bytes()[0], 4);
+	else if (address.is_v6())
+		_s << bytesConstRef(&address.to_v6().to_bytes()[0], 16);
+	else
+		_s << bytes();
+	_s << udpPort << tcpPort;
+}
+
+void NodeIPEndpoint::interpretRLP(RLP const& _r)
+{
+	if (_r[0].size() == 4)
+		address = bi::address_v4(*(bi::address_v4::bytes_type*)_r[0].toBytes().data());
+	else if (_r[0].size() == 16)
+		address = bi::address_v6(*(bi::address_v6::bytes_type*)_r[0].toBytes().data());
+	else
+		address = bi::address();
+	udpPort = _r[1].toInt<uint16_t>();
+	tcpPort = _r[2].toInt<uint16_t>();
 }
 
 namespace dev {
