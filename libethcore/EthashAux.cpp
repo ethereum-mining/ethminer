@@ -41,18 +41,10 @@ using namespace chrono;
 using namespace dev;
 using namespace eth;
 
-
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
 
 EthashAux::~EthashAux()
 {
-}
-
-ethash_h256_t EthashAux::bytesToEthash256T(uint8_t const* _bytes)
-{
-	ethash_h256_t ret;
-	memcpy(&ret, _bytes, 32);
-	return ret;
 }
 
 uint64_t EthashAux::cacheSize(BlockInfo const& _header)
@@ -155,7 +147,7 @@ EthashAux::FullType EthashAux::full(uint64_t _blockNumber)
 
 Ethash::Result EthashAux::FullAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
 {
-	ethash_return_value_t r = ethash_full_compute(full, bytesToEthash256T(_headerHash.data()), (uint64_t)(u64)_nonce);
+	ethash_return_value_t r = ethash_full_compute(full, *(ethash_h256_t*)_headerHash.data(), (uint64_t)(u64)_nonce);
 	if (!r.success)
 		BOOST_THROW_EXCEPTION(DAGCreationFailure());
 	return Ethash::Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
@@ -163,7 +155,7 @@ Ethash::Result EthashAux::FullAllocation::compute(h256 const& _headerHash, Nonce
 
 Ethash::Result EthashAux::LightAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
 {
-	ethash_return_value r = ethash_light_compute(light, bytesToEthash256T(_headerHash.data()), (uint64_t)(u64)_nonce);
+	ethash_return_value r = ethash_light_compute(light, *(ethash_h256_t*)_headerHash.data(), (uint64_t)(u64)_nonce);
 	if (!r.success)
 		BOOST_THROW_EXCEPTION(DAGCreationFailure());
 	return Ethash::Result{h256((uint8_t*)&r.result, h256::ConstructFromPointer), h256((uint8_t*)&r.mix_hash, h256::ConstructFromPointer)};
