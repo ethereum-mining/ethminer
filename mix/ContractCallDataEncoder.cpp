@@ -74,7 +74,7 @@ void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& 
 	{
 		bytes empty(32);
 		size_t sizePos = m_dynamicData.size();
-		m_dynamicData.insert(m_dynamicData.end(), empty.begin(), empty.end()); //reserve space for count
+		m_dynamicData += empty; //reserve space for count
 		if (_type.type == SolidityType::Type::Bytes)
 			count = encodeSingleItem(_data.toString(), _type, m_dynamicData);
 		else
@@ -86,7 +86,7 @@ void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& 
 		vector_ref<byte> sizeRef(m_dynamicData.data() + sizePos, 32);
 		toBigEndian(count, sizeRef);
 		m_offsetMap.push_back(std::make_pair(m_encodedData.size(), sizePos));
-		m_encodedData.insert(m_encodedData.end(), empty.begin(), empty.end()); //reserve space for offset
+		m_encodedData += empty; //reserve space for offset
 	}
 	else
 	{
