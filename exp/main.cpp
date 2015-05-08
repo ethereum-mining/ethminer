@@ -72,15 +72,35 @@ public:
 	KeyManager() { readKeys(); }
 	~KeyManager() {}
 
-	Secret secret(h128 const& _uuid, std::string const& _pass)
+	Secret secret(h128 const& _uuid, function<std::string()> const& _pass)
 	{
+		auto rit = m_ready.find(_uuid);
+		if (rit != m_ready.end())
+			return rit->second;
 		auto it = m_keys.find(_uuid);
 		if (it == m_keys.end())
 			return Secret();
-		return Secret(decrypt(it->second, _pass));
+		Secret ret(decrypt(it->second, _pass()));
+		if (ret)
+			m_ready[_uuid] = ret;
+		return ret;
+	}
+
+	h128 create(std::string const& _pass)
+	{
+		auto s = Secret::random();
+		h128 r(sha3(s));
+		m_ready[r] = s;
+		m_keys[r] = encrypt(s.asBytes(), _pass);
+		return r;
 	}
 
 private:
+	void writeKeys(std::string const& _keysPath = getDataDir("web3") + "/keys")
+	{
+		(void)_keysPath;
+	}
+
 	void readKeys(std::string const& _keysPath = getDataDir("web3") + "/keys")
 	{
 		fs::path p(_keysPath);
@@ -90,25 +110,44 @@ private:
 			{
 				cdebug << "Reading" << it->path();
 				js::read_string(contentsString(it->path().string()), v);
-				js::mObject o = v.get_obj();
-				int version = o.count("Version") ? stoi(o["Version"].get_str()) : o.count("version") ? o["version"].get_int() : 0;
-				if (version == 2)
-					m_keys[fromUUID(o["id"].get_str())] = o["crypto"];
+				if (v.type() == js::obj_type)
+				{
+					js::mObject o = v.get_obj();
+					int version = o.count("Version") ? stoi(o["Version"].get_str()) : o.count("version") ? o["version"].get_int() : 0;
+					if (version == 2)
+						m_keys[fromUUID(o["id"].get_str())] = o["crypto"];
+					else
+						cwarn << "Cannot read key version" << version;
+				}
 				else
-					cwarn << "Cannot read key version" << version;
+					cwarn << "Invalid JSON in key file" << it->path().string();
 			}
+	}
+
+	static js::mValue encrypt(bytes const& _v, std::string const& _pass)
+	{
+		(void)_v;
+		(void)_pass;
+		return js::mValue();
 	}
 
 	static bytes decrypt(js::mValue const& _v, std::string const& _pass)
 	{
 		js::mObject o = _v.get_obj();
-		bytes pKey;
+
+		// derive key
+		bytes derivedKey;
 		if (o["kdf"].get_str() == "pbkdf2")
 		{
 			auto params = o["kdfparams"].get_obj();
+			if (params["prf"].get_str() != "hmac-sha256")
+			{
+				cwarn << "Unknown PRF for PBKDF2" << params["prf"].get_str() << "not supported.";
+				return bytes();
+			}
 			unsigned iterations = params["c"].get_int();
 			bytes salt = fromHex(params["salt"].get_str());
-			pKey = pbkdf2(_pass, salt, iterations).asBytes();
+			derivedKey = pbkdf2(_pass, salt, iterations, params["dklen"].get_int());
 		}
 		else
 		{
@@ -116,16 +155,23 @@ private:
 			return bytes();
 		}
 
-		// TODO check MAC
-		h256 mac(o["mac"].get_str());
-		(void)mac;
-
 		bytes cipherText = fromHex(o["ciphertext"].get_str());
+
+		// check MAC
+		h256 mac(o["mac"].get_str());
+		h256 macExp = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
+		if (mac != macExp)
+		{
+			cwarn << "Invalid key - MAC mismatch; expected" << toString(macExp) << ", got" << toString(mac);
+			return bytes();
+		}
+
+		// decrypt
 		bytes ret;
 		if (o["cipher"].get_str() == "aes-128-cbc")
 		{
 			auto params = o["cipherparams"].get_obj();
-			h128 key(sha3(h128(pKey, h128::AlignRight)), h128::AlignRight);
+			h128 key(sha3(h128(derivedKey, h128::AlignRight)), h128::AlignRight);
 			h128 iv(params["iv"].get_str());
 			decryptSymNoAuth(key, iv, &cipherText, ret);
 		}
@@ -138,13 +184,15 @@ private:
 		return ret;
 	}
 
+	mutable std::map<h128, Secret> m_ready;
 	std::map<h128, js::mValue> m_keys;
 };
 
 int main()
 {
+	cdebug << toHex(pbkdf2("password", asBytes("salt"), 1, 20));
 	KeyManager keyman;
-	cdebug << "Secret key for 0498f19a-59db-4d54-ac95-33901b4f1870 is " << keyman.secret(fromUUID("0498f19a-59db-4d54-ac95-33901b4f1870"), "foo");
+	cdebug << "Secret key for 0498f19a-59db-4d54-ac95-33901b4f1870 is " << keyman.secret(fromUUID("0498f19a-59db-4d54-ac95-33901b4f1870"), [](){ return "foo"; });
 }
 
 #elif 0
