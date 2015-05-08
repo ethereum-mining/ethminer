@@ -704,6 +704,11 @@ BOOST_AUTO_TEST_CASE(bcGasPricerTest)
 	dev::test::executeTests("bcGasPricerTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
 }
 
+BOOST_AUTO_TEST_CASE(bcWalletTest)
+{
+	dev::test::executeTests("bcWalletTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+}
+
 BOOST_AUTO_TEST_CASE(userDefinedFile)
 {
 	dev::test::userDefinedTest("--singletest", dev::test::doBlockchainTests);

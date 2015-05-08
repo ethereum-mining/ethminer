@@ -36,6 +36,7 @@
 #include <libdevcrypto/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
+#include <libdevcore/RLP.h>
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
@@ -162,10 +163,17 @@ using PeerSessionInfos = std::vector<PeerSessionInfo>;
  */
 struct NodeIPEndpoint
 {
+	enum RLPAppend
+	{
+		StreamList,
+		StreamInline
+	};
+	
 	/// Setting true causes isAllowed to return true for all addresses. (Used by test fixtures)
 	static bool test_allowLocal;
 
 	NodeIPEndpoint(bi::address _addr, uint16_t _udp, uint16_t _tcp): address(_addr), udpPort(_udp), tcpPort(_tcp) {}
+	NodeIPEndpoint(RLP const& _r) { interpretRLP(_r); }
 
 	bi::address address;
 	uint16_t udpPort;
@@ -177,11 +185,14 @@ struct NodeIPEndpoint
 	operator bool() const { return !address.is_unspecified() && udpPort > 0 && tcpPort > 0; }
 	
 	bool isAllowed() const { return NodeIPEndpoint::test_allowLocal ? !address.is_unspecified() : isPublicAddress(address); }
+	
+	void streamRLP(RLPStream& _s, RLPAppend _append = StreamList) const;
+	void interpretRLP(RLP const& _r);
 };
 	
 struct Node
 {
-	Node(Public _pubk, NodeIPEndpoint _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
+	Node(Public _pubk, NodeIPEndpoint const& _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
 
 	virtual NodeId const& address() const { return id; }
 	virtual Public const& publicKey() const { return id; }
