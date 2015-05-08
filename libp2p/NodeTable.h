@@ -254,7 +254,7 @@ private:
 	mutable Mutex x_state;											///< LOCK x_state first if both x_nodes and x_state locks are required.
 	std::array<NodeBucket, s_bins> m_state;							///< State of p2p node network.
 
-	Mutex x_evictions;												///< LOCK x_nodes first if both x_nodes and x_evictions locks are required.
+	Mutex x_evictions;												///< LOCK x_evictions first if both x_nodes and x_evictions locks are required.
 	std::deque<EvictionTimeout> m_evictions;						///< Eviction timeouts.
 	
 	Mutex x_pubkDiscoverPings;										///< LOCK x_nodes first if both x_nodes and x_pubkDiscoverPings locks are required.
