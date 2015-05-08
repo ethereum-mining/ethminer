@@ -9,7 +9,8 @@ function defaultTransaction()
 		gasAuto: true,
 		gasPrice: createEther("100000", QEther.Wei),
 		parameters: {},
-		stdContract: false
+		stdContract: false,
+		isContractCall: true
 	};
 }
 
