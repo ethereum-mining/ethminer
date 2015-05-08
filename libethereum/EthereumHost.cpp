@@ -253,7 +253,7 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 
 			h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
-			auto s = randomSelection(25, [&](EthereumPeer* p){ ETH_GUARDED(p->x_knownBlocks) return !p->m_knownBlocks.count(_currentHash); return false; });
+			auto s = randomSelection(25, [&](EthereumPeer* p){ DEV_GUARDED(p->x_knownBlocks) return !p->m_knownBlocks.count(_currentHash); return false; });
 			for (shared_ptr<EthereumPeer> const& p: s.first)
 				for (auto const& b: blocks)
 				{
