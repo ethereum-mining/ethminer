@@ -486,7 +486,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		// This is safe in practice since the caches don't get flushed nearly often enough to be
 		// done here.
 		details(bi.parentHash);
-		ETH_WRITE_GUARDED(x_details)
+		DEV_WRITE_GUARDED(x_details)
 			m_details[bi.parentHash].children.push_back(bi.hash());
 
 #if ETH_TIMED_IMPORTS || !ETH_TRUE
@@ -495,7 +495,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 #endif
 
 		blocksBatch.Put(toSlice(bi.hash()), (ldb::Slice)ref(_block));
-		ETH_READ_GUARDED(x_details)
+		DEV_READ_GUARDED(x_details)
 			extrasBatch.Put(toSlice(bi.parentHash, ExtraDetails), (ldb::Slice)dev::ref(m_details[bi.parentHash].rlp()));
 
 		extrasBatch.Put(toSlice(bi.hash(), ExtraDetails), (ldb::Slice)dev::ref(BlockDetails((unsigned)pd.number + 1, td, bi.parentHash, {}).rlp()));
@@ -623,7 +623,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	m_blocksDB->Write(m_writeOptions, &blocksBatch);
 	m_extrasDB->Write(m_writeOptions, &extrasBatch);
 
-	ETH_WRITE_GUARDED(x_lastBlockHash)
+	DEV_WRITE_GUARDED(x_lastBlockHash)
 	{
 		m_lastBlockHash = newLastBlockHash;
 		m_lastBlockNumber = newLastBlockNumber;
@@ -981,7 +981,7 @@ bool BlockChain::isKnown(h256 const& _hash) const
 	if (_hash == m_genesisHash)
 		return true;
 
-	ETH_READ_GUARDED(x_blocks)
+	DEV_READ_GUARDED(x_blocks)
 		if (!m_blocks.count(_hash))
 		{
 			string d;
@@ -989,7 +989,7 @@ bool BlockChain::isKnown(h256 const& _hash) const
 			if (d.empty())
 				return false;
 		}
-	ETH_READ_GUARDED(x_details)
+	DEV_READ_GUARDED(x_details)
 		if (!m_details.count(_hash))
 		{
 			string d;

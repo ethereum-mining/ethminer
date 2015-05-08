@@ -1371,6 +1371,8 @@ void Main::on_transactionQueue_currentItemChanged()
 			s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
 		else
 			s << "<div>Log Bloom: <b><i>Uneventful</i></b></div>";
+		s << "<div>Gas Used: <b>" << receipt.gasUsed() << "</b></div>";
+		s << "<div>End State: <b>" << receipt.stateRoot().abridged() << "</b></div>";
 		auto r = receipt.rlp();
 		s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 		s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
@@ -1564,6 +1566,8 @@ void Main::on_blocks_currentItemChanged()
 				s << "<div>Log Bloom: " << receipt.bloom() << "</div>";
 			else
 				s << "<div>Log Bloom: <b><i>Uneventful</i></b></div>";
+			s << "<div>Gas Used: <b>" << receipt.gasUsed() << "</b></div>";
+			s << "<div>End State: <b>" << receipt.stateRoot().abridged() << "</b></div>";
 			auto r = receipt.rlp();
 			s << "<div>Receipt: " << toString(RLP(r)) << "</div>";
 			s << "<div>Receipt-Hex: " Span(Mono) << toHex(receipt.rlp()) << "</span></div>";
