@@ -62,10 +62,8 @@ Item {
 		};
 
 		if (!r.label)
-			r.label = r.contractId + " " + r.functionId;
+			r.label = r.contractId + " - " + r.functionId;
 
-		if (r.isContractCreation === undefined)
-			r.isContractCreation = true; //support for old project
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
 
