@@ -58,7 +58,6 @@ public:
 	using FullType = std::shared_ptr<FullAllocation>;
 
 	static h256 seedHash(unsigned _number);
-	static ethash_h256_t bytesToEthash256T(uint8_t const* _bytes);
 	static uint64_t cacheSize(BlockInfo const& _header);
 
 	static LightType light(BlockInfo const& _header);
