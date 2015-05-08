@@ -53,10 +53,10 @@ struct SolidityType;
 struct TransactionSettings
 {
 	TransactionSettings() {}
-	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, bool _gasAuto, u256 _gasPrice, Secret _sender, int _isContractCall):
-		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasAuto(_gasAuto), gasPrice(_gasPrice), sender(_sender), isContractCall(_isContractCall) {}
+	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, bool _gasAuto, u256 _gasPrice, Secret _sender, int _isContractCreation):
+		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasAuto(_gasAuto), gasPrice(_gasPrice), sender(_sender), isContractCreation(_isContractCreation) {}
 	TransactionSettings(QString const& _stdContractName, QString const& _stdContractUrl):
-		contractId(_stdContractName), gasAuto(true), stdContractUrl(_stdContractUrl), isContractCall(true) {}
+		contractId(_stdContractName), gasAuto(true), stdContractUrl(_stdContractUrl), isContractCreation(true) {}
 
 	/// Contract name
 	QString contractId;
@@ -76,8 +76,8 @@ struct TransactionSettings
 	QString stdContractUrl;
 	/// Sender
 	Secret sender;
-	/// Is a call to a contract
-	bool isContractCall;
+	/// Tr deploys a contract
+	bool isContractCreation;
 };
 
 
@@ -231,6 +231,7 @@ private:
 	QVariant formatValue(SolidityType const& _type, dev::u256 const& _value);
 	QVariant formatStorageValue(SolidityType const& _type, std::map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
 	QString resolveToken(QString const& _value, std::vector<Address> const& _contracts);
+	QString resolveContractName(QString const& _value);
 
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;
