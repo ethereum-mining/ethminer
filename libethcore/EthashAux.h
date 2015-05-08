@@ -38,7 +38,7 @@ public:
 	{
 		LightAllocation(uint64_t _blockNumber);
 		~LightAllocation();
-		bytesConstRef data() const { return bytesConstRef((byte const*)light, size); }
+		bytesConstRef data() const;
 		Ethash::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
 		ethash_light_t light;
 		uint64_t size;
@@ -49,16 +49,18 @@ public:
 		FullAllocation(ethash_light_t _light, ethash_callback_t _cb);
 		~FullAllocation();
 		Ethash::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
-		void const* data() const { return ethash_full_dag(full); }
+		bytesConstRef data() const;
 		uint64_t size() const { return ethash_full_dag_size(full); }
 		ethash_full_t full;
 	};
-	
+
 	using LightType = std::shared_ptr<LightAllocation>;
 	using FullType = std::shared_ptr<FullAllocation>;
 
 	static h256 seedHash(unsigned _number);
 	static ethash_h256_t bytesToEthash256T(uint8_t const* _bytes);
+	static uint64_t cacheSize(BlockInfo const& _header);
+
 	static LightType light(BlockInfo const& _header);
 	static LightType light(uint64_t _blockNumber);
 	static FullType full(BlockInfo const& _header);
