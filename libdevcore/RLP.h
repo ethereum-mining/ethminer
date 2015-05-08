@@ -253,6 +253,7 @@ public:
 	/// Converts to int of type given; if isString(), decodes as big-endian bytestream. @returns 0 if not an int or string.
 	template <class _T = unsigned> _T toInt(int _flags = Strict) const
 	{
+		requireGood();
 		if ((!isInt() && !(_flags & AllowNonCanon)) || isList() || isNull())
 			if (_flags & ThrowOnFail)
 				BOOST_THROW_EXCEPTION(BadCast());
@@ -273,6 +274,7 @@ public:
 
 	template <class _N> _N toHash(int _flags = Strict) const
 	{
+		requireGood();
 		if (!isData() || (length() > _N::size && (_flags & FailIfTooBig)) || (length() < _N::size && (_flags & FailIfTooSmall)))
 			if (_flags & ThrowOnFail)
 				BOOST_THROW_EXCEPTION(BadCast());
@@ -290,7 +292,7 @@ public:
 	RLPs toList() const;
 
 	/// @returns the data payload. Valid for all types.
-	bytesConstRef payload() const { return m_data.cropped(payloadOffset()); }
+	bytesConstRef payload() const { auto l = length(); if (l > m_data.size()) throw BadRLP(); return m_data.cropped(payloadOffset(), l); }
 
 	/// @returns the theoretical size of this item.
 	/// @note Under normal circumstances, is equivalent to m_data.size() - use that unless you know it won't work.
@@ -300,10 +302,13 @@ private:
 	/// Disable construction from rvalue
 	explicit RLP(bytes const&&) {}
 
+	/// Throws if is non-canonical data (i.e. single byte done in two bytes that could be done in one).
+	void requireGood() const;
+
 	/// Single-byte data payload.
 	bool isSingleByte() const { return !isNull() && m_data[0] < c_rlpDataImmLenStart; }
 
-	/// @returns the bytes used to encode the length of the data. Valid for all types.
+	/// @returns the amount of bytes used to encode the length of the data. Valid for all types.
 	unsigned lengthSize() const { if (isData() && m_data[0] > c_rlpDataIndLenZero) return m_data[0] - c_rlpDataIndLenZero; if (isList() && m_data[0] > c_rlpListIndLenZero) return m_data[0] - c_rlpListIndLenZero; return 0; }
 
 	/// @returns the size in bytes of the payload, as given by the RLP as opposed to as inferred from m_data.

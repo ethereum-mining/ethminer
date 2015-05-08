@@ -11,7 +11,7 @@ import "."
 Dialog {
 	id: modalTransactionDialog
 	modality: Qt.ApplicationModal
-	width: 520
+	width: 570
 	height: 500
 	visible: false
 	title: qsTr("Edit Transaction")
@@ -39,6 +39,8 @@ Dialog {
 		rowGasPrice.visible = !useTransactionDefaultValue;
 
 		transactionIndex = index;
+		typeLoader.transactionIndex = index;
+
 		gasValueEdit.gasValue = item.gas;
 		gasAutoCheck.checked = item.gasAuto ? true : false;
 		gasPriceField.value = item.gasPrice;
@@ -97,6 +99,18 @@ Dialog {
 		//append constructor
 		functionsModel.append({ text: contractId });
 
+	}
+
+	function selectContract(contractName)
+	{
+		for (var k = 0; k < contractsModel.count; k++)
+		{
+			if (contractsModel.get(k).cid === contractName)
+			{
+				contractComboBox.currentIndex = k;
+				break;
+			}
+		}
 	}
 
 	function selectFunction(functionId)
@@ -373,6 +387,8 @@ Dialog {
 							id: typeLoader
 							Layout.preferredWidth: 150
 							members: paramsModel;
+							accounts: senderComboBox.model
+							context: "parameter"
 						}
 					}
 

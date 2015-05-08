@@ -22,7 +22,7 @@
 
 #include <vector>
 #include <libdevcore/Log.h>
-#include <libevmcore/SourceLocation.h>
+#include <libevmasm/SourceLocation.h>
 #include <libsolidity/Parser.h>
 #include <libsolidity/Scanner.h>
 #include <libsolidity/Exceptions.h>
@@ -472,17 +472,18 @@ ASTPointer<TypeName> Parser::parseTypeName(bool _allowVar)
 	else
 		BOOST_THROW_EXCEPTION(createParserError("Expected type name"));
 
-	// Parse "[...]" postfixes for arrays.
-	while (m_scanner->getCurrentToken() == Token::LBrack)
-	{
-		m_scanner->next();
-		ASTPointer<Expression> length;
-		if (m_scanner->getCurrentToken() != Token::RBrack)
-			length = parseExpression();
-		nodeFactory.markEndPosition();
-		expectToken(Token::RBrack);
-		type = nodeFactory.createNode<ArrayTypeName>(type, length);
-	}
+	if (type)
+		// Parse "[...]" postfixes for arrays.
+		while (m_scanner->getCurrentToken() == Token::LBrack)
+		{
+			m_scanner->next();
+			ASTPointer<Expression> length;
+			if (m_scanner->getCurrentToken() != Token::RBrack)
+				length = parseExpression();
+			nodeFactory.markEndPosition();
+			expectToken(Token::RBrack);
+			type = nodeFactory.createNode<ArrayTypeName>(type, length);
+		}
 	return type;
 }
 

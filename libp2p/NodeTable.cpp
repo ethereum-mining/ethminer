@@ -24,14 +24,27 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-NodeEntry::NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src.id,_pubk)) {}
-NodeEntry::NodeEntry(Node _src, Public _pubk, bi::udp::endpoint _udp): Node(_pubk, NodeIPEndpoint(_udp)), distance(NodeTable::distance(_src.id,_pubk)) {}
+const char* NodeTableWarn::name() { return "!P!"; }
+const char* NodeTableNote::name() { return "*P*"; }
+const char* NodeTableMessageSummary::name() { return "-P-"; }
+const char* NodeTableMessageDetail::name() { return "=P="; }
+const char* NodeTableConnect::name() { return "+P+"; }
+const char* NodeTableEvent::name() { return "+P+"; }
+const char* NodeTableTimer::name() { return "+P+"; }
+const char* NodeTableUpdate::name() { return "+P+"; }
+const char* NodeTableTriviaSummary::name() { return "-P-"; }
+const char* NodeTableTriviaDetail::name() { return "=P="; }
+const char* NodeTableAllDetail::name() { return "=P="; }
+const char* NodeTableEgress::name() { return ">>P"; }
+const char* NodeTableIngress::name() { return "<<P"; }
 
-NodeTable::NodeTable(ba::io_service& _io, KeyPair _alias, bi::address const& _udpAddress, uint16_t _udp):
-	m_node(Node(_alias.pub(), bi::udp::endpoint(_udpAddress, _udp))),
+NodeEntry::NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src.id,_pubk)) {}
+
+NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint):
+	m_node(Node(_alias.pub(), _endpoint)),
 	m_secret(_alias.sec()),
 	m_io(_io),
-	m_socket(new NodeSocket(m_io, *this, m_node.endpoint.udp)),
+	m_socket(new NodeSocket(m_io, *this, (bi::udp::endpoint)m_node.endpoint)),
 	m_socketPointer(m_socket.get()),
 	m_bucketRefreshTimer(m_io),
 	m_evictionCheckTimer(m_io)
@@ -62,33 +75,29 @@ void NodeTable::processEvents()
 		m_nodeEventHandler->processEvents();
 }
 
-shared_ptr<NodeEntry> NodeTable::addNode(Public const& _pubk, bi::udp::endpoint const& _udp, bi::tcp::endpoint const& _tcp)
+shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relation)
 {
-	auto node = Node(_pubk, NodeIPEndpoint(_udp, _tcp));
-	return addNode(node);
-}
-
-shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
-{
-	// re-enable tcp checks when NAT hosts are handled by discover
-	// we handle when tcp endpoint is 0 below
-	if (_node.endpoint.udp.address().to_string() == "0.0.0.0")
+	if (_relation == Known)
 	{
-		clog(NodeTableWarn) << "addNode Failed. Invalid UDP address 0.0.0.0 for" << _node.id.abridged();
-		return move(shared_ptr<NodeEntry>());
+		shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, _node.endpoint));
+		ret->pending = false;
+		m_nodes[_node.id] = ret;
+		noteActiveNode(_node.id, _node.endpoint);
+		return ret;
 	}
+	
+	if (!_node.endpoint)
+		return move(shared_ptr<NodeEntry>());
 	
 	// ping address to recover nodeid if nodeid is empty
 	if (!_node.id)
 	{
-		clog(NodeTableConnect) << "Sending public key discovery Ping to" << _node.endpoint.udp << "(Advertising:" << m_node.endpoint.udp << ")";
+		clog(NodeTableConnect) << "Sending public key discovery Ping to" << (bi::udp::endpoint)_node.endpoint << "(Advertising:" << (bi::udp::endpoint)m_node.endpoint << ")";
 		{
 			Guard l(x_pubkDiscoverPings);
-			m_pubkDiscoverPings[_node.endpoint.udp.address()] = std::chrono::steady_clock::now();
+			m_pubkDiscoverPings[_node.endpoint.address] = std::chrono::steady_clock::now();
 		}
-		PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
-		p.sign(m_secret);
-		m_socketPointer->send(p);
+		ping(_node.endpoint);
 		return move(shared_ptr<NodeEntry>());
 	}
 	
@@ -98,13 +107,10 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node)
 			return m_nodes[_node.id];
 	}
 	
-	shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, NodeIPEndpoint(_node.endpoint.udp, _node.endpoint.tcp)));
+	shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, _node.endpoint));
 	m_nodes[_node.id] = ret;
-	ret->cullEndpoint();
-	clog(NodeTableConnect) << "addNode pending for" << _node.endpoint.udp << _node.endpoint.tcp;
-	PingNode p(_node.endpoint.udp, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
-	p.sign(m_secret);
-	m_socketPointer->send(p);
+	clog(NodeTableConnect) << "addNode pending for" << _node.endpoint;
+	ping(_node.endpoint);
 	return ret;
 }
 
@@ -132,8 +138,10 @@ list<NodeEntry> NodeTable::snapshot() const
 	list<NodeEntry> ret;
 	Guard l(x_state);
 	for (auto s: m_state)
-		for (auto n: s.nodes)
-			ret.push_back(*n.lock());
+		for (auto np: s.nodes)
+			if (auto n = np.lock())
+				if (!!n)
+					ret.push_back(*n);
 	return move(ret);
 }
 
@@ -143,10 +151,10 @@ Node NodeTable::node(NodeId const& _id)
 	if (m_nodes.count(_id))
 	{
 		auto entry = m_nodes[_id];
-		Node n(_id, NodeIPEndpoint(entry->endpoint.udp, entry->endpoint.tcp), entry->required);
+		Node n(_id, entry->endpoint, entry->required);
 		return move(n);
 	}
-	return move(Node());
+	return UnspecifiedNode;
 }
 
 shared_ptr<NodeEntry> NodeTable::nodeEntry(NodeId _id)
@@ -176,8 +184,9 @@ void NodeTable::discover(NodeId _node, unsigned _round, shared_ptr<set<shared_pt
 		{
 			auto r = nearest[i];
 			tried.push_back(r);
-			FindNode p(r->endpoint.udp, _node);
+			FindNode p(r->endpoint, _node);
 			p.sign(m_secret);
+			m_findNodeTimeout.push_back(make_pair(r->id, chrono::steady_clock::now()));
 			m_socketPointer->send(p);
 		}
 	
@@ -273,13 +282,14 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 	vector<shared_ptr<NodeEntry>> ret;
 	for (auto& nodes: found)
 		for (auto n: nodes.second)
-			ret.push_back(n);
+			if (ret.size() < s_bucketSize && !!n->endpoint && n->endpoint.isAllowed())
+				ret.push_back(n);
 	return move(ret);
 }
 
-void NodeTable::ping(bi::udp::endpoint _to) const
+void NodeTable::ping(NodeIPEndpoint _to) const
 {
-	PingNode p(_to, m_node.endpoint.udp.address().to_string(), m_node.endpoint.udp.port());
+	PingNode p(m_node.endpoint, _to);
 	p.sign(m_secret);
 	m_socketPointer->send(p);
 }
@@ -287,7 +297,7 @@ void NodeTable::ping(bi::udp::endpoint _to) const
 void NodeTable::ping(NodeEntry* _n) const
 {
 	if (_n)
-		ping(_n->endpoint.udp);
+		ping(_n->endpoint);
 }
 
 void NodeTable::evict(shared_ptr<NodeEntry> _leastSeen, shared_ptr<NodeEntry> _new)
@@ -306,16 +316,15 @@ void NodeTable::evict(shared_ptr<NodeEntry> _leastSeen, shared_ptr<NodeEntry> _n
 
 void NodeTable::noteActiveNode(Public const& _pubk, bi::udp::endpoint const& _endpoint)
 {
-	if (_pubk == m_node.address())
+	if (_pubk == m_node.address() || !NodeIPEndpoint(_endpoint.address(), _endpoint.port(), _endpoint.port()).isAllowed())
 		return;
 
 	shared_ptr<NodeEntry> node = nodeEntry(_pubk);
 	if (!!node && !node->pending)
 	{
-		clog(NodeTableConnect) << "Noting active node:" << _pubk.abridged() << _endpoint.address().to_string() << ":" << _endpoint.port();
-		node->endpoint.udp.address(_endpoint.address());
-		node->endpoint.udp.port(_endpoint.port());
-		node->cullEndpoint();
+		clog(NodeTableConnect) << "Noting active node:" << _pubk << _endpoint.address().to_string() << ":" << _endpoint.port();
+		node->endpoint.address = _endpoint.address();
+		node->endpoint.udpPort = _endpoint.port();
 		
 		shared_ptr<NodeEntry> contested;
 		{
@@ -368,7 +377,7 @@ void NodeTable::dropNode(shared_ptr<NodeEntry> _n)
 	}
 	
 	// notify host
-	clog(NodeTableUpdate) << "p2p.nodes.drop " << _n->id.abridged();
+	clog(NodeTableUpdate) << "p2p.nodes.drop " << _n->id;
 	if (m_nodeEventHandler)
 		m_nodeEventHandler->appendEvent(_n->id, NodeEntryDropped);
 }
@@ -383,7 +392,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	// h256 + Signature + type + RLP (smallest possible packet is empty neighbours packet which is 3 bytes)
 	if (_packet.size() < h256::size + Signature::size + 1 + 3)
 	{
-		clog(NodeTableWarn) << "Invalid Message size from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableTriviaSummary) << "Invalid message size from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
@@ -391,7 +400,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	h256 hashSigned(sha3(hashedBytes));
 	if (!_packet.cropped(0, h256::size).contentsEqual(hashSigned.asBytes()))
 	{
-		clog(NodeTableWarn) << "Invalid Message hash from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableTriviaSummary) << "Invalid message hash from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
@@ -403,7 +412,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	Public nodeid(dev::recover(*(Signature const*)sigBytes.data(), sha3(signedBytes)));
 	if (!nodeid)
 	{
-		clog(NodeTableWarn) << "Invalid Message signature from " << _from.address().to_string() << ":" << _from.port();
+		clog(NodeTableTriviaSummary) << "Invalid message signature from " << _from.address().to_string() << ":" << _from.port();
 		return;
 	}
 	
@@ -445,30 +454,57 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 							m_pubkDiscoverPings.erase(_from.address());
 						}
 						if (!haveNode(nodeid))
-							addNode(nodeid, _from, bi::tcp::endpoint(_from.address(), _from.port()));
+							addNode(Node(nodeid, NodeIPEndpoint(_from.address(), _from.port(), _from.port())));
 					}
 					else
 						return; // unsolicited pong; don't note node as active
 				}
 				
-				clog(NodeTableConnect) << "PONG from " << nodeid.abridged() << _from;
+				// update our endpoint address and UDP port
+				if ((!m_node.endpoint || !m_node.endpoint.isAllowed()) && isPublicAddress(in.destination.address))
+					m_node.endpoint.address = in.destination.address;
+				m_node.endpoint.udpPort = in.destination.udpPort;
+				
+				clog(NodeTableConnect) << "PONG from " << nodeid << _from;
 				break;
 			}
 				
 			case Neighbours::type:
 			{
+				bool expected = false;
+				auto now = chrono::steady_clock::now();
+				m_findNodeTimeout.remove_if([&](NodeIdTimePoint const& t)
+				{
+					if (t.first == nodeid && now - t.second < c_reqTimeout)
+						expected = true;
+					else if (t.first == nodeid)
+						return true;
+					return false;
+				});
+				
+				if (!expected)
+				{
+					clog(NetConnect) << "Dropping unsolicited neighbours packet from " << _from.address();
+					break;
+				}
+				
 				Neighbours in = Neighbours::fromBytesConstRef(_from, rlpBytes);
-				for (auto n: in.nodes)
-					addNode(n.node, bi::udp::endpoint(bi::address::from_string(n.ipAddress), n.port), bi::tcp::endpoint(bi::address::from_string(n.ipAddress), n.port));
+				for (auto n: in.neighbours)
+					addNode(Node(n.node, n.endpoint));
 				break;
 			}
 
 			case FindNode::type:
 			{
 				FindNode in = FindNode::fromBytesConstRef(_from, rlpBytes);
+				if (RLPXDatagramFace::secondsSinceEpoch() > in.ts)
+				{
+					clog(NodeTableTriviaSummary) << "Received expired FindNode from " << _from.address().to_string() << ":" << _from.port();
+					return;
+				}
 
 				vector<shared_ptr<NodeEntry>> nearest = nearestNodeEntries(in.target);
-				static unsigned const nlimit = (m_socketPointer->maxDatagramSize - 13) / 87;
+				static unsigned const nlimit = (m_socketPointer->maxDatagramSize - 109) / 90;
 				for (unsigned offset = 0; offset < nearest.size(); offset += nlimit)
 				{
 					Neighbours out(_from, nearest, offset, nlimit);
@@ -483,16 +519,29 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			case PingNode::type:
 			{
 				PingNode in = PingNode::fromBytesConstRef(_from, rlpBytes);
-				if (in.version != dev::p2p::c_protocolVersion)
+				if (in.version < dev::p2p::c_protocolVersion)
 				{
-					if (auto n = nodeEntry(nodeid))
-						dropNode(n);
+					if (in.version == 3)
+					{
+						compat::Pong p(in.source);
+						p.echo = sha3(rlpBytes);
+						p.sign(m_secret);
+						m_socketPointer->send(p);
+					}
+					else
+						return;
+				}
+				
+				if (RLPXDatagramFace::secondsSinceEpoch() > in.ts)
+				{
+					clog(NodeTableTriviaSummary) << "Received expired PingNode from " << _from.address().to_string() << ":" << _from.port();
 					return;
 				}
 				
-				addNode(nodeid, _from, bi::tcp::endpoint(bi::address::from_string(in.ipAddress), in.port));
-				
-				Pong p(_from);
+				in.source.address = _from.address();
+				in.source.udpPort = _from.port();
+				addNode(Node(nodeid, in.source));
+				Pong p(in.source);
 				p.echo = sha3(rlpBytes);
 				p.sign(m_secret);
 				m_socketPointer->send(p);
@@ -500,7 +549,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			}
 				
 			default:
-				clog(NodeTableWarn) << "Invalid Message, " << hex << packetType << ", received from " << _from.address().to_string() << ":" << dec << _from.port();
+				clog(NodeTableWarn) << "Invalid message, " << hex << packetType << ", received from " << _from.address().to_string() << ":" << dec << _from.port();
 				return;
 		}
 
@@ -527,8 +576,8 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 		bool evictionsRemain = false;
 		list<shared_ptr<NodeEntry>> drop;
 		{
-			Guard ln(x_nodes);
 			Guard le(x_evictions);
+			Guard ln(x_nodes);
 			for (auto& e: m_evictions)
 				if (chrono::steady_clock::now() - e.first.second > c_reqTimeout)
 					if (m_nodes.count(e.second))
@@ -568,26 +617,44 @@ void NodeTable::doRefreshBuckets(boost::system::error_code const& _ec)
 void PingNode::streamRLP(RLPStream& _s) const
 {
 	_s.appendList(4);
-	_s << dev::p2p::c_protocolVersion << ipAddress << port << expiration;
+	_s << dev::p2p::c_protocolVersion;
+	source.streamRLP(_s);
+	destination.streamRLP(_s);
+	_s << ts;
 }
 
 void PingNode::interpretRLP(bytesConstRef _bytes)
 {
 	RLP r(_bytes);
-	if (r.itemCountStrict() == 3)
+	if (r.itemCountStrict() == 4 && r[0].isInt() && r[0].toInt<unsigned>(RLP::Strict) == dev::p2p::c_protocolVersion)
 	{
-		version = 2;
-		ipAddress = r[0].toString();
-		port = r[1].toInt<unsigned>(RLP::Strict);
-		expiration = r[2].toInt<unsigned>(RLP::Strict);
-	}
-	else if (r.itemCountStrict() == 4)
-	{
-		version = r[0].toInt<unsigned>(RLP::Strict);
-		ipAddress = r[1].toString();
-		port = r[2].toInt<unsigned>(RLP::Strict);
-		expiration = r[3].toInt<unsigned>(RLP::Strict);
+		version = dev::p2p::c_protocolVersion;
+		source.interpretRLP(r[1]);
+		destination.interpretRLP(r[2]);
+		ts = r[3].toInt<uint32_t>(RLP::Strict);
 	}
 	else
-		BOOST_THROW_EXCEPTION(InvalidRLP());
+		version = r[0].toInt<unsigned>(RLP::Strict);
+}
+
+void Pong::streamRLP(RLPStream& _s) const
+{
+	_s.appendList(3);
+	destination.streamRLP(_s);
+	_s << echo << ts;
+}
+
+void Pong::interpretRLP(bytesConstRef _bytes)
+{
+	RLP r(_bytes);
+	destination.interpretRLP(r[0]);
+	echo = (h256)r[1];
+	ts = r[2].toInt<uint32_t>();
+}
+
+void compat::Pong::interpretRLP(bytesConstRef _bytes)
+{
+	RLP r(_bytes);
+	echo = (h256)r[0];
+	ts = r[1].toInt<uint32_t>();
 }

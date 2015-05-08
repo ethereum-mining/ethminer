@@ -28,8 +28,10 @@
 #include <memory>
 #include <vector>
 #include <boost/noncopyable.hpp>
+#include <json/json.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
+#include <libevmasm/SourceLocation.h>
 
 namespace dev
 {
@@ -94,16 +96,17 @@ public:
 	/// @returns the runtime bytecode for the contract, i.e. the code that is returned by the constructor.
 	bytes const& getRuntimeBytecode(std::string const& _contractName = "") const;
 	/// @returns normal contract assembly items
-	eth::AssemblyItems const& getAssemblyItems(std::string const& _contractName = "") const;
+	eth::AssemblyItems const* getAssemblyItems(std::string const& _contractName = "") const;
 	/// @returns runtime contract assembly items
-	eth::AssemblyItems const& getRuntimeAssemblyItems(std::string const& _contractName = "") const;
+	eth::AssemblyItems const* getRuntimeAssemblyItems(std::string const& _contractName = "") const;
 	/// @returns hash of the runtime bytecode for the contract, i.e. the code that is returned by the constructor.
 	dev::h256 getContractCodeHash(std::string const& _contractName = "") const;
 
 	/// Streams a verbose version of the assembly to @a _outStream.
 	/// @arg _sourceCodes is the map of input files to source code strings
+	/// @arg _inJsonFromat shows whether the out should be in Json format
 	/// Prerequisite: Successful compilation.
-	void streamAssembly(std::ostream& _outStream, std::string const& _contractName = "", StringMap _sourceCodes = StringMap()) const;
+	Json::Value streamAssembly(std::ostream& _outStream, std::string const& _contractName = "", StringMap _sourceCodes = StringMap(), bool _inJsonFormat = false) const;
 
 	/// Returns a string representing the contract interface in JSON.
 	/// Prerequisite: Successful call to parse or compile.
@@ -129,6 +132,11 @@ public:
 	/// scanning the source code - this is useful for printing exception information.
 	static bytes staticCompile(std::string const& _sourceCode, bool _optimize = false);
 
+	/// Helper function for logs printing. Do only use in error cases, it's quite expensive.
+	/// line and columns are numbered starting from 1 with following order:
+	/// start line, start column, end line, end column
+	std::tuple<int, int, int, int> positionFromSourceLocation(SourceLocation const& _sourceLocation) const;
+
 private:
 	/**
 	 * Information pertaining to one source unit, filled gradually during parsing and compilation.
@@ -139,7 +147,7 @@ private:
 		std::shared_ptr<SourceUnit> ast;
 		std::string interface;
 		bool isLibrary = false;
-		void reset() { scanner.reset(); ast.reset(); interface.clear(); isLibrary = false;}
+		void reset() { scanner.reset(); ast.reset(); interface.clear(); }
 	};
 
 	struct Contract

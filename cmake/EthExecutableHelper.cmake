@@ -43,6 +43,22 @@ macro(eth_add_executable EXECUTABLE)
 
 endmacro()
 
+macro(eth_copy_dlls EXECUTABLE DLLS)
+	# dlls must be unsubstitud list variable (without ${}) in format
+	# optimized;path_to_dll.dll;debug;path_to_dlld.dll 
+	list(GET ${DLLS} 1 DLL_RELEASE)
+	list(GET ${DLLS} 3 DLL_DEBUG)
+	add_custom_command(TARGET ${EXECUTABLE}
+		POST_BUILD 
+		COMMAND ${CMAKE_COMMAND} ARGS 
+		-DDLL_RELEASE="${DLL_RELEASE}" 
+		-DDLL_DEBUG="${DLL_DEBUG}" 
+		-DCONF="$<CONFIGURATION>"
+		-DDESTINATION="${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}" 
+		-P "${ETH_SCRIPTS_DIR}/copydlls.cmake"
+	)
+endmacro()
+
 # 
 # this function requires the following variables to be specified:
 # ETH_DEPENDENCY_INSTALL_DIR
@@ -78,6 +94,7 @@ macro(eth_install_executable EXECUTABLE)
 			
 		# This tool and next will inspect linked libraries in order to determine which dependencies are required
 		if (${CMAKE_CFG_INTDIR} STREQUAL ".")
+			# TODO: This should only happen for GUI application
 			set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${EXECUTABLE}.app")
 		else ()
 			set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/\$ENV{CONFIGURATION}/${EXECUTABLE}.app")
@@ -107,14 +124,18 @@ macro(eth_install_executable EXECUTABLE)
 
 		#copy additional dlls
 		foreach(dll ${ETH_INSTALL_EXECUTABLE_DLLS})
-			add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND ${CMAKE_COMMAND}
-			ARGS -E copy ${dll} "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}"
-		)
+			eth_copy_dlls(${EXECUTABLE} ${dll})
 		endforeach(dll)
 
-		install( TARGETS ${EXECUTABLE} RUNTIME 
-			DESTINATION bin
+		install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Debug"
+			DESTINATION .
+			CONFIGURATIONS Debug
+			COMPONENT ${EXECUTABLE}
+		)
+
+		install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Release"
+			DESTINATION .
+			CONFIGURATIONS Release
 			COMPONENT ${EXECUTABLE}
 		)
 

@@ -5,6 +5,7 @@ import QtQuick.Controls 1.0
 import QtQuick.Dialogs 1.1
 import Qt.labs.settings 1.0
 import "js/ProjectModel.js" as ProjectModelCode
+import "js/NetworkDeployment.js" as NetworkDeploymentCode
 
 Item {
 	id: projectModel
@@ -47,6 +48,7 @@ Item {
 	property CodeEditorView codeEditor: null
 	property var unsavedFiles: []
 	property alias newProjectDialog: newProjectDialog
+	property string deployedState
 
 	//interface
 	function saveAll() { ProjectModelCode.saveAll(); }
@@ -69,9 +71,9 @@ Item {
 	function getDocumentIdByName(documentName) { return ProjectModelCode.getDocumentIdByName(documentName); }
 	function getDocumentIndex(documentId) { return ProjectModelCode.getDocumentIndex(documentId); }
 	function addExistingFiles(paths) { ProjectModelCode.doAddExistingFiles(paths); }
-	function deployProject() { ProjectModelCode.deployProject(false); }
-	function registerToUrlHint() { ProjectModelCode.registerToUrlHint(); }
-	function formatAppUrl() { ProjectModelCode.formatAppUrl(url); }
+	function deployProject() { NetworkDeploymentCode.deployProject(false); }
+	function registerToUrlHint() { NetworkDeploymentCode.registerToUrlHint(); }
+	function formatAppUrl() { NetworkDeploymentCode.formatAppUrl(url); }
 
 	Connections {
 		target: mainApplication
@@ -155,7 +157,7 @@ Item {
 		icon: StandardIcon.Question
 		standardButtons: StandardButton.Ok | StandardButton.Abort
 		onAccepted: {
-			ProjectModelCode.startDeployProject(true);
+			NetworkDeploymentCode.startDeployProject(true);
 		}
 	}
 

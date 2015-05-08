@@ -3,6 +3,7 @@ set(CMAKE_AUTOMOC OFF)
 
 aux_source_directory(. SRC_LIST)
 
+include_directories(BEFORE ${JSONCPP_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 include_directories(${LEVELDB_INCLUDE_DIRS})
 
@@ -23,10 +24,11 @@ endif()
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethereum)
 target_link_libraries(${EXECUTABLE} p2p)
-target_link_libraries(${EXECUTABLE} ethash-cl)
-target_link_libraries(${EXECUTABLE} ethash)
-target_link_libraries(${EXECUTABLE} OpenCL)
-
+if (ETHASHCL)
+	target_link_libraries(${EXECUTABLE} ethash-cl)
+	target_link_libraries(${EXECUTABLE} ethash)
+	target_link_libraries(${EXECUTABLE} OpenCL)
+endif()
 install( TARGETS ${EXECUTABLE} DESTINATION bin) 
 
 
