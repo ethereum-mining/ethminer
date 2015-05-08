@@ -48,13 +48,17 @@ inline Address jsToAddress(std::string const& _s) { return jsToFixed<sizeof(dev:
 /// Convert u256 into user-readable string. Returns int/hex value of 64 bits int, hex of 160 bits FixedHash. As a fallback try to handle input as h256.
 std::string prettyU256(u256 _n, bool _abridged = true);
 
+extern const u256 UndefinedU256;
+
 }
+
 
 // ethcore
 namespace dev
 {
 namespace eth
 {
+
 
 struct TransactionSkeleton
 {
@@ -63,8 +67,8 @@ struct TransactionSkeleton
 	Address to;
 	u256 value;
 	bytes data;
-	u256 gas;
-	u256 gasPrice;
+	u256 gas = UndefinedU256;
+	u256 gasPrice = UndefinedU256;
 };
 
 /// Convert to a block number, a bit like jsToInt, except that it correctly recognises "pending" and "latest".

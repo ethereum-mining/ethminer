@@ -121,7 +121,7 @@ Signature sign(Secret const& _k, h256 const& _hash);
 bool verify(Public const& _k, Signature const& _s, h256 const& _hash);
 
 /// Derive key via PBKDF2.
-h256 pbkdf2(std::string const& _pass, bytes const& _salt, unsigned _iterations);
+bytes pbkdf2(std::string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen = 32);
 
 /// Simple class that represents a "key pair".
 /// All of the data of the class can be regenerated from the secret key (m_secret) alone.
