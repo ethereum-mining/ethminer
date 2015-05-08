@@ -30,6 +30,11 @@ Item
 		return accountRef.get(trCombobox.currentIndex).type;
 	}
 
+	function current()
+	{
+		return accountRef.get(trCombobox.currentIndex);
+	}
+
 	function load()
 	{
 		accountRef.clear();
