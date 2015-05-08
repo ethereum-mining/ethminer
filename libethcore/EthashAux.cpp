@@ -135,8 +135,9 @@ EthashAux::FullType EthashAux::full(uint64_t _blockNumber)
 {
 	RecursiveGuard l(get()->x_this);
 	h256 seedHash = EthashAux::seedHash(_blockNumber);
-	FullType ret = get()->m_fulls[seedHash].lock();
-	if (ret) {
+	FullType ret;
+	if ((ret = get()->m_fulls[seedHash].lock()))
+	{
 		get()->m_lastUsedFull = ret;
 		return ret;
 	}
@@ -168,7 +169,8 @@ Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
 
 Ethash::Result EthashAux::eval(uint64_t _blockNumber, h256 const& _headerHash, Nonce const& _nonce)
 {
-	if (auto dag = EthashAux::get()->full(_blockNumber))
+	h256 seedHash = EthashAux::seedHash(_blockNumber);
+	if (FullType dag = get()->m_fulls[seedHash].lock())
 		return dag->compute(_headerHash, _nonce);
 	return EthashAux::get()->light(_blockNumber)->compute(_headerHash, _nonce);
 }
