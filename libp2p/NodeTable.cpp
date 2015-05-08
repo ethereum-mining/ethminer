@@ -576,8 +576,8 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 		bool evictionsRemain = false;
 		list<shared_ptr<NodeEntry>> drop;
 		{
-			Guard ln(x_nodes);
 			Guard le(x_evictions);
+			Guard ln(x_nodes);
 			for (auto& e: m_evictions)
 				if (chrono::steady_clock::now() - e.first.second > c_reqTimeout)
 					if (m_nodes.count(e.second))
