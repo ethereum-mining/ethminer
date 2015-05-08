@@ -64,6 +64,9 @@ Item {
 		if (!r.label)
 			r.label = r.contractId + " - " + r.functionId;
 
+		if (r.isContractCreation === undefined)
+			r.isContractCreation = r.functionId === r.contractId;
+
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
 
