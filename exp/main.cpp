@@ -67,40 +67,36 @@ namespace fs = boost::filesystem;
 inline h128 fromUUID(std::string const& _uuid) { return h128(boost::replace_all_copy(_uuid, "-", "")); }
 inline std::string toUUID(h128 const& _uuid) { std::string ret = toHex(_uuid.ref()); for (unsigned i: {20, 16, 12, 8}) ret.insert(ret.begin() + i, '-'); return ret; }
 
-class KeyManager: public Worker
+class KeyStore
 {
 public:
-	KeyManager() { readKeys(); }
-	~KeyManager() {}
+	KeyStore() { readKeys(); }
+	~KeyStore() {}
 
-	Secret secret(h128 const& _uuid, function<std::string()> const& _pass)
+	bytes key(h128 const& _uuid, function<std::string()> const& _pass)
 	{
 		auto rit = m_cached.find(_uuid);
 		if (rit != m_cached.end())
 			return rit->second;
 		auto it = m_keys.find(_uuid);
 		if (it == m_keys.end())
-			return Secret();
-		Secret ret(decrypt(it->second, _pass()));
-		if (ret)
-			m_cached[_uuid] = ret;
-		return ret;
+			return bytes();
+		bytes key = decrypt(it->second, _pass());
+		if (!key.empty())
+			m_cached[_uuid] = key;
+		return key;
 	}
 
-	h128 import(Secret const& _s, std::string const& _pass)
+	h128 import(bytes const& _s, std::string const& _pass)
 	{
-		h128 r(sha3(_s));
+		h128 r = h128::random();
 		m_cached[r] = _s;
-		m_keys[r] = encrypt(_s.asBytes(), _pass);
+		m_keys[r] = encrypt(_s, _pass);
 		writeKeys();
 		return r;
 	}
 
-	h128 create(std::string const& _pass)
-	{
-		return import(Secret::random(), _pass);
-	}
-
+	// Clear any cached keys.
 	void clearCache() const { m_cached.clear(); }
 
 private:
@@ -137,8 +133,8 @@ private:
 					else
 						cwarn << "Cannot read key version" << version;
 				}
-				else
-					cwarn << "Invalid JSON in key file" << it->path().string();
+//				else
+//					cwarn << "Invalid JSON in key file" << it->path().string();
 			}
 	}
 
@@ -232,8 +228,133 @@ private:
 		}
 	}
 
-	mutable std::map<h128, Secret> m_cached;
+	mutable std::map<h128, bytes> m_cached;
 	std::map<h128, js::mValue> m_keys;
+};
+
+class UnknownPassword: public Exception {};
+
+struct KeyInfo
+{
+	h256 passHash;
+	std::string name;
+};
+
+static const auto DontKnowThrow = [](){ BOOST_THROW_EXCEPTION(UnknownPassword()); return std::string(); };
+
+// This one is specifically for Ethereum, but we can make it generic in due course.
+// TODO: hidden-partition style key-store.
+class KeyManager
+{
+public:
+	KeyManager() { m_cachedPasswords[sha3(m_password)] = m_password; }
+	~KeyManager() {}
+
+	void load(std::string const& _pass, std::string const& _keysFile = getDataDir("ethereum") + "/keys.info")
+	{
+		try {
+			bytes salt = contents(_keysFile + ".salt");
+			bytes encKeys = contents(_keysFile);
+			m_key = h128(pbkdf2(_pass, salt, 262144, 16));
+			bytes bs = decryptSymNoAuth(m_key, h128(), &encKeys);
+			RLP s(bs);
+			unsigned version = (unsigned)s[0];
+			if (version == 1)
+			{
+				for (auto const& i: s[1])
+					m_keyInfo[m_addrLookup[(Address)i[0]] = (h128)i[1]] = KeyInfo{(h256)i[2], (std::string)i[3]};
+				for (auto const& i: s[2])
+					m_passwordInfo[(h256)i[0]] = (std::string)i[1];
+				m_password = (string)s[3];
+			}
+		}
+		catch (...) {}
+		m_cachedPasswords[sha3(m_password)] = m_password;
+	}
+
+	// Only use if previously loaded ok.
+	// @returns false if wasn't previously loaded ok.
+	bool save(std::string const& _keysFile = getDataDir("ethereum") + "/keys.info") { if (!m_key) return false; save(m_key, _keysFile); return true; }
+
+	void save(std::string const& _pass, std::string const& _keysFile = getDataDir("ethereum") + "/keys.info")
+	{
+		bytes salt = h256::random().asBytes();
+		writeFile(_keysFile + ".salt", salt);
+		auto key = h128(pbkdf2(_pass, salt, 262144, 16));
+		save(key, _keysFile);
+	}
+
+	void save(h128 const& _key, std::string const& _keysFile = getDataDir("ethereum") + "/keys.info")
+	{
+		RLPStream s(4);
+		s << 1;
+		s.appendList(m_addrLookup.size());
+		for (auto const& i: m_addrLookup)
+			s.appendList(4) << i.first << i.second << m_keyInfo[i.second].passHash << m_keyInfo[i.second].name;
+		s.appendList(m_passwordInfo.size());
+		for (auto const& i: m_passwordInfo)
+			s.appendList(2) << i.first << i.second;
+		s.append(m_password);
+
+		writeFile(_keysFile, encryptSymNoAuth(_key, h128(), &s.out()));
+		m_key = _key;
+	}
+
+	Secret secret(Address const& _address, function<std::string()> const& _pass = DontKnowThrow)
+	{
+		auto it = m_addrLookup.find(_address);
+		if (it == m_addrLookup.end())
+			return Secret();
+		return secret(it->second, _pass);
+	}
+
+	Secret secret(h128 const& _uuid, function<std::string()> const& _pass = DontKnowThrow)
+	{
+		return Secret(m_store.key(_uuid, [&](){
+			auto it = m_cachedPasswords.find(m_keyInfo[_uuid].passHash);
+			if (it == m_cachedPasswords.end())
+			{
+				std::string p = _pass();
+				m_cachedPasswords[sha3(p)] = p;
+				return p;
+			}
+			else
+				return it->second;
+		}));
+	}
+
+	h128 import(Secret const& _s, std::string const& _pass, string const& _info = std::string(), string const& _passInfo = std::string())
+	{
+		Address addr = KeyPair(_s).address();
+		auto passHash = sha3(_pass);
+		m_cachedPasswords[passHash] = _pass;
+		m_passwordInfo[passHash] = _passInfo;
+		auto uuid = m_store.import(_s.asBytes(), _pass);
+		m_keyInfo[uuid] = KeyInfo{passHash, _info};
+		m_addrLookup[addr] = uuid;
+		return uuid;
+	}
+
+	h128 import(Secret const& _s, std::string const& _info = std::string())
+	{
+		// cache password, remember the key, remember the address
+		return import(_s, m_password, _info, std::string());
+	}
+
+private:
+	// Ethereum keys.
+	std::map<Address, h128> m_addrLookup;
+	std::map<h128, KeyInfo> m_keyInfo;
+	std::map<h256, std::string> m_passwordInfo;
+
+	// Passwords that we're storing.
+	std::map<h256, std::string> m_cachedPasswords;
+
+	// The default password for keys in the keystore - protected by the master password.
+	std::string m_password = asString(h256::random().asBytes());
+
+	KeyStore m_store;
+	h128 m_key;
 };
 
 int main()
