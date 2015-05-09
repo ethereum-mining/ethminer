@@ -20,6 +20,7 @@
  * @date 2014
  */
 
+#include "Common.h"
 #include <random>
 #include <chrono>
 #include <thread>
@@ -28,7 +29,6 @@
 #include "SHA3.h"
 #include "FileSystem.h"
 #include "CryptoPP.h"
-#include "Common.h"
 using namespace std;
 using namespace dev;
 using namespace dev::crypto;
