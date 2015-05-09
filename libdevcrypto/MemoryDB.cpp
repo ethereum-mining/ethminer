@@ -30,9 +30,9 @@ namespace dev
 const char* DBChannel::name() { return "TDB"; }
 const char* DBWarn::name() { return "TDB"; }
 
-std::map<h256, std::string> MemoryDB::get() const
+std::unordered_map<h256, std::string> MemoryDB::get() const
 {
-	std::map<h256, std::string> ret;
+	std::unordered_map<h256, std::string> ret;
 	for (auto const& i: m_main)
 		if (!m_enforceRefs || i.second.second > 0)
 			ret.insert(make_pair(i.first, i.second.first));
@@ -112,9 +112,9 @@ void MemoryDB::purge()
 			it = m_main.erase(it);
 }
 
-set<h256> MemoryDB::keys() const
+h256Hash MemoryDB::keys() const
 {
-	set<h256> ret;
+	h256Hash ret;
 	for (auto const& i: m_main)
 		if (i.second.second)
 			ret.insert(i.first);
