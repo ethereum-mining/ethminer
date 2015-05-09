@@ -201,17 +201,6 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 {
 	RLP root(_block);
 
-	/*OverlayDB db;
-	GenericTrieDB<OverlayDB> t(&db);
-	t.init();
-	unsigned i = 0;
-	for (auto const& tr: root[1])
-	{
-		bytes k = rlp(i);
-		t.insert(&k, tr.data());
-		++i;
-	}
-	if (transactionsRoot != t.root())*/
 	auto txList = root[1];
 	auto expectedRoot = trieRootOver(txList.itemCount(), [&](unsigned i){ return rlp(i); }, [&](unsigned i){ return txList[i].data(); });
 	clog(BlockInfoDiagnosticsChannel) << "Expected trie root:" << toString(expectedRoot);
