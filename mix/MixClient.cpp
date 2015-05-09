@@ -69,14 +69,14 @@ bytes MixBlockChain::createGenesisBlock(h256 _stateRoot)
 MixClient::MixClient(std::string const& _dbPath):
 	m_dbPath(_dbPath)
 {
-	resetState(std::map<Address, Account>());
+	resetState(std::unordered_map<Address, Account>());
 }
 
 MixClient::~MixClient()
 {
 }
 
-void MixClient::resetState(std::map<Address, Account> const& _accounts,  Secret const& _miner)
+void MixClient::resetState(std::unordered_map<Address, Account> const& _accounts,  Secret const& _miner)
 {
 	WriteGuard l(x_state);
 	Guard fl(x_filtersWatches);

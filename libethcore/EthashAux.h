@@ -75,12 +75,12 @@ private:
 	static EthashAux* s_this;
 	RecursiveMutex x_this;
 
-	std::map<h256, std::shared_ptr<LightAllocation>> m_lights;
-	std::map<h256, std::weak_ptr<FullAllocation>> m_fulls;
+	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
+	std::unordered_map<h256, std::weak_ptr<FullAllocation>> m_fulls;
 	FullType m_lastUsedFull;
 
 	Mutex x_epochs;
-	std::map<h256, unsigned> m_epochs;
+	std::unordered_map<h256, unsigned> m_epochs;
 	h256s m_seedHashes;
 };
 
