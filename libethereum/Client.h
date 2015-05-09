@@ -309,7 +309,6 @@ private:
 
 	ActivityReport m_report;
 
-	// TODO!!!!!! REPLACE WITH A PROPER X-THREAD ASIO SIGNAL SYSTEM (could just be condition variables)
 	std::condition_variable m_signalled;
 	Mutex x_signalled;
 	std::atomic<bool> m_syncTransactionQueue = {false};
