@@ -37,7 +37,7 @@ struct KeyInfo
 	std::string info;
 };
 
-static const auto DontKnowThrow = [](){ BOOST_THROW_EXCEPTION(UnknownPassword()); return std::string(); };
+static const auto DontKnowThrow = [](){ throw UnknownPassword(); return std::string(); };
 
 // TODO: This one is specifically for Ethereum, but we can make it generic in due course.
 // TODO: hidden-partition style key-store.
