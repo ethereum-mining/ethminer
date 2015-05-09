@@ -21,7 +21,6 @@
 
 #include "EthereumHost.h"
 
-#include <set>
 #include <chrono>
 #include <thread>
 #include <libdevcore/Common.h>
@@ -184,7 +183,7 @@ void EthereumHost::doWork()
 void EthereumHost::maintainTransactions()
 {
 	// Send any new transactions.
-	map<std::shared_ptr<EthereumPeer>, h256s> peerTransactions;
+	unordered_map<std::shared_ptr<EthereumPeer>, h256s> peerTransactions;
 	auto ts = m_tq.transactions();
 	for (auto const& i: ts)
 	{

@@ -45,7 +45,7 @@ struct WorldState
 	dev::u256s stack;
 	dev::bytes memory;
 	dev::bigint gasCost;
-	std::map<dev::u256, dev::u256> storage;
+	std::unordered_map<dev::u256, dev::u256> storage;
 	std::vector<WorldState const*> levels;
 };
 
