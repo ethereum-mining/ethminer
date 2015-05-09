@@ -208,9 +208,9 @@ StateDiff State::diff(State const& _c) const
 {
 	StateDiff ret;
 
-	std::set<Address> ads;
-	std::set<Address> trieAds;
-	std::set<Address> trieAdsD;
+	std::unordered_set<Address> ads;
+	std::unordered_set<Address> trieAds;
+	std::unordered_set<Address> trieAdsD;
 
 	auto trie = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&m_db), rootHash());
 	auto trieD = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_c.m_db), _c.rootHash());
@@ -246,7 +246,7 @@ void State::ensureCached(Address _a, bool _requireCode, bool _forceCreate) const
 	ensureCached(m_cache, _a, _requireCode, _forceCreate);
 }
 
-void State::ensureCached(std::map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const
+void State::ensureCached(std::unordered_map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const
 {
 	auto it = _cache.find(_a);
 	if (it == _cache.end())
@@ -426,10 +426,10 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 	return ret;
 }
 
-map<Address, u256> State::addresses() const
+unordered_map<Address, u256> State::addresses() const
 {
 #if ETH_FATDB
-	map<Address, u256> ret;
+	unordered_map<Address, u256> ret;
 	for (auto i: m_cache)
 		if (i.second.isAlive())
 			ret[i.first] = i.second.balance();
@@ -610,6 +610,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	if (receiptsTrie.root() != m_currentBlock.receiptsRoot)
 	{
 		cwarn << "Bad receipts state root.";
+		cwarn << "Expected: " << toString(receiptsTrie.root()) << " received: " << toString(m_currentBlock.receiptsRoot);
 		cwarn << "Block:" << toHex(_block);
 		cwarn << "Block RLP:" << rlp;
 		cwarn << "Calculated: " << receiptsTrie.root();
@@ -649,9 +650,9 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	if (rlp[2].itemCount() > 2)
 		BOOST_THROW_EXCEPTION(TooManyUncles());
 
-	set<Nonce> nonces = { m_currentBlock.nonce };
+	unordered_set<Nonce> nonces = { m_currentBlock.nonce };
 	vector<BlockInfo> rewarded;
-	set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
+	h256Hash knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
 
 	for (auto const& i: rlp[2])
 	{
@@ -805,7 +806,7 @@ void State::commitToMine(BlockChain const& _bc)
 	{
 		// Find great-uncles (or second-cousins or whatever they are) - children of great-grandparents, great-great-grandparents... that were not already uncles in previous generations.
 //		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
-		set<h256> knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
+		h256Hash knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
 		auto p = m_previousBlock.parentHash;
 		for (unsigned gen = 0; gen < 6 && p != _bc.genesisHash() && unclesCount < 2; ++gen, p = _bc.details(p).parent)
 		{
@@ -1016,9 +1017,9 @@ u256 State::storage(Address _id, u256 _memory) const
 	return ret;
 }
 
-map<u256, u256> State::storage(Address _id) const
+unordered_map<u256, u256> State::storage(Address _id) const
 {
-	map<u256, u256> ret;
+	unordered_map<u256, u256> ret;
 
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
