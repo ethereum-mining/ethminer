@@ -41,9 +41,9 @@ namespace js = json_spirit;
 
 #define ETH_CATCH 1
 
-std::map<Address, Account> const& dev::eth::genesisState()
+std::unordered_map<Address, Account> const& dev::eth::genesisState()
 {
-	static std::map<Address, Account> s_ret;
+	static std::unordered_map<Address, Account> s_ret;
 
 	if (s_ret.empty())
 	{

@@ -22,7 +22,6 @@
 #pragma once
 
 #include <array>
-#include <map>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libevm/ExtVMFace.h>

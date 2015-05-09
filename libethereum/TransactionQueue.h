@@ -55,7 +55,7 @@ public:
 
 	void drop(h256 const& _txHash);
 
-	std::map<h256, Transaction> transactions() const { ReadGuard l(m_lock); return m_current; }
+	std::unordered_map<h256, Transaction> transactions() const { ReadGuard l(m_lock); return m_current; }
 	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_current.size(), m_unknown.size()); }
 	u256 maxNonce(Address const& _a) const;
 
@@ -72,14 +72,14 @@ private:
 	void insertCurrent_WITH_LOCK(std::pair<h256, Transaction> const& _p);
 	bool removeCurrent_WITH_LOCK(h256 const& _txHash);
 
-	mutable SharedMutex m_lock;										///< General lock.
-	std::set<h256> m_known;											///< Hashes of transactions in both sets.
-	std::map<h256, Transaction> m_current;							///< Map of SHA3(tx) to tx.
-	std::multimap<Address, std::pair<h256, Transaction>> m_unknown;	///< For transactions that have a future nonce; we map their sender address to the tx stuff, and insert once the sender has a valid TX.
-	std::map<h256, std::function<void(ImportResult)>> m_callbacks;	///< Called once.
-	std::set<h256> m_dropped;										///< Transactions that have previously been dropped.
-	std::multimap<Address, h256> m_senders;							///< Mapping from the sender address to the transaction hash; useful for determining the nonce of a given sender.
-	Signal m_onReady;												///< Called when a subsequent call to import transactions will return a non-empty container. Be nice and exit fast.
+	mutable SharedMutex m_lock;													///< General lock.
+	h256Hash m_known;															///< Hashes of transactions in both sets.
+	std::unordered_map<h256, Transaction> m_current;							///< Map of SHA3(tx) to tx.
+	std::unordered_multimap<Address, std::pair<h256, Transaction>> m_unknown;	///< For transactions that have a future nonce; we map their sender address to the tx stuff, and insert once the sender has a valid TX.
+	std::unordered_map<h256, std::function<void(ImportResult)>> m_callbacks;	///< Called once.
+	h256Hash m_dropped;															///< Transactions that have previously been dropped.
+	std::multimap<Address, h256> m_senders;										///< Mapping from the sender address to the transaction hash; useful for determining the nonce of a given sender.
+	Signal m_onReady;															///< Called when a subsequent call to import transactions will return a non-empty container. Be nice and exit fast.
 };
 
 }

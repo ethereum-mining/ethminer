@@ -154,12 +154,12 @@ int Network::tcp4Listen(bi::tcp::acceptor& _acceptor, NetworkPreferences const& 
 			_acceptor.bind(endpoint);
 			_acceptor.listen();
 			retport = _acceptor.local_endpoint().port();
+			assert(retport == _netPrefs.listenPort);
 		}
 		catch (...)
 		{
 			clog(NetWarn) << "Couldn't start accepting connections on host. Failed to accept socket.\n" << boost::current_exception_diagnostic_information();
 		}
-		assert(retport == _netPrefs.listenPort);
 		return retport;
 	}
 	return retport;

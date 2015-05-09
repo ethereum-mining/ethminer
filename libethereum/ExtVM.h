@@ -91,8 +91,8 @@ public:
 	State& state() const { return m_s; }
 
 private:
-	State& m_s;										///< A reference to the base state.
-	std::map<Address, Account> m_origCache;			///< The cache of the address states (i.e. the externalities) as-was prior to the execution.
+	State& m_s;											///< A reference to the base state.
+	std::unordered_map<Address, Account> m_origCache;	///< The cache of the address states (i.e. the externalities) as-was prior to the execution.
 };
 
 }
