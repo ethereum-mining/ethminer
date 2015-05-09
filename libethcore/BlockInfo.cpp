@@ -195,6 +195,8 @@ template <class T, class U> h256 trieRootOver(unsigned _itemCount, T const& _get
 	return t.root();
 }
 
+struct BlockInfoDiagnosticsChannel: public LogChannel { static const char* name() { return EthBlue "▧" EthWhite " ◌"; } static const int verbosity = 9; };
+
 void BlockInfo::verifyInternals(bytesConstRef _block) const
 {
 	RLP root(_block);
@@ -212,10 +214,10 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 	if (transactionsRoot != t.root())*/
 	auto txList = root[1];
 	auto expectedRoot = trieRootOver(txList.itemCount(), [&](unsigned i){ return rlp(i); }, [&](unsigned i){ return txList[i].data(); });
-	cnote << "expect trroot " << toString(expectedRoot);
+	clog(BlockInfoDiagnosticsChannel) << "Expected trie root:" << toString(expectedRoot);
 	if (transactionsRoot != expectedRoot)
 		BOOST_THROW_EXCEPTION(InvalidTransactionsHash() << HashMismatchError(expectedRoot, transactionsRoot));
-	cnote << "expect uncleh " << toString(sha3(root[2].data()));
+	clog(BlockInfoDiagnosticsChannel) << "Expected uncle hash:" << toString(sha3(root[2].data()));
 	if (sha3Uncles != sha3(root[2].data()))
 		BOOST_THROW_EXCEPTION(InvalidUnclesHash());
 }
