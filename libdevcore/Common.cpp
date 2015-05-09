@@ -28,7 +28,7 @@ using namespace dev;
 namespace dev
 {
 
-char const* Version = "0.9.16";
+char const* Version = "0.9.17";
 
 void HasInvariants::checkInvariants() const
 {
