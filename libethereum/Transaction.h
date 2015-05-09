@@ -111,10 +111,10 @@ public:
 	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data, u256 const& _nonce, Secret const& _secret): m_type(ContractCreation), m_nonce(_nonce), m_value(_value), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) { sign(_secret); }
 
 	/// Constructs an unsigned message-call transaction.
-	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data): m_type(MessageCall), m_value(_value), m_receiveAddress(_dest), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
+	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest, bytes const& _data, u256 const& _nonce = 0): m_type(MessageCall), m_nonce(_nonce), m_value(_value), m_receiveAddress(_dest), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
 
 	/// Constructs an unsigned contract-creation transaction.
-	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data): m_type(ContractCreation), m_value(_value), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
+	Transaction(u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data, u256 const& _nonce = 0): m_type(ContractCreation), m_nonce(_nonce), m_value(_value), m_gasPrice(_gasPrice), m_gas(_gas), m_data(_data) {}
 
 	/// Constructs a transaction from the given RLP.
 	explicit Transaction(bytesConstRef _rlp, CheckTransaction _checkSig);
@@ -132,6 +132,8 @@ public:
 	Address const& sender() const;
 	/// Like sender() but will never throw. @returns a null Address if the signature is invalid.
 	Address const& safeSender() const noexcept;
+	/// Force the sender to a particular value. This will result in an invalid transaction RLP.
+	void forceSender(Address const& _a) { m_sender = _a; }
 
 	/// @returns true if transaction is non-null.
 	explicit operator bool() const { return m_type != NullTransaction; }

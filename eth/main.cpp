@@ -124,6 +124,7 @@ void help()
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
 		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
 		<< "    -S,--session-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
+		<< "    --master <password>  Give the master password for the key store." << endl
 		<< "Client transacting:" << endl
 		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (default: 30.679)." << endl
@@ -546,6 +547,9 @@ int main(int argc, char** argv)
 	string farmURL = "http://127.0.0.1:8080";
 	unsigned farmRecheckPeriod = 500;
 
+	/// Wallet password stuff
+	string masterPassword;
+
 	string configFile = getDataDir() + "/config.rlp";
 	bytes b = contents(configFile);
 	if (b.size())
@@ -580,6 +584,8 @@ int main(int argc, char** argv)
 				cerr << "-p is DEPRECATED. It will be removed for the Frontier. Use --port instead (or place directly as host:port)." << endl;
 			remotePort = (short)atoi(argv[++i]);
 		}
+		else if (arg == "--master" && i + 1 < argc)
+			masterPassword = argv[++i];
 		else if ((arg == "-I" || arg == "--import") && i + 1 < argc)
 		{
 			mode = OperationMode::Import;
