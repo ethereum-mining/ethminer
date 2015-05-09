@@ -587,7 +587,7 @@ string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& 
 		if (t.gas == UndefinedU256)
 			t.gas = client()->gasLimitRemaining();
 
-		return toJS(client()->call(m_ethAccounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, jsToBlockNumber(_blockNumber), FudgeFactor::Lenient).output);
+		return toJS(client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice, jsToBlockNumber(_blockNumber), FudgeFactor::Lenient).output);
 	}
 	catch (...)
 	{
