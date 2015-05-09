@@ -70,10 +70,10 @@ inline std::string toUUID(h128 const& _uuid) { std::string ret = toHex(_uuid.ref
 class KeyStore
 {
 public:
-	KeyStore() { readKeys(); }
+	KeyStore() { load(); }
 	~KeyStore() {}
 
-	bytes key(h128 const& _uuid, function<std::string()> const& _pass)
+	bytes secret(h128 const& _uuid, function<std::string()> const& _pass)
 	{
 		auto rit = m_cached.find(_uuid);
 		if (rit != m_cached.end())
@@ -81,41 +81,55 @@ public:
 		auto it = m_keys.find(_uuid);
 		if (it == m_keys.end())
 			return bytes();
-		bytes key = decrypt(it->second, _pass());
+		bytes key = decrypt(it->second.first, _pass());
 		if (!key.empty())
 			m_cached[_uuid] = key;
 		return key;
 	}
 
-	h128 import(bytes const& _s, std::string const& _pass)
+	h128 importSecret(bytes const& _s, std::string const& _pass)
 	{
 		h128 r = h128::random();
 		m_cached[r] = _s;
-		m_keys[r] = encrypt(_s, _pass);
-		writeKeys();
+		m_keys[r] = make_pair(encrypt(_s, _pass), std::string());
+		save();
 		return r;
+	}
+
+	void kill(h128 const& _uuid)
+	{
+		m_cached.erase(_uuid);
+		if (m_keys.count(_uuid))
+		{
+			boost::filesystem::remove(m_keys[_uuid].second);
+			m_keys.erase(_uuid);
+		}
 	}
 
 	// Clear any cached keys.
 	void clearCache() const { m_cached.clear(); }
 
 private:
-	void writeKeys(std::string const& _keysPath = getDataDir("web3") + "/keys")
+	void save(std::string const& _keysPath = getDataDir("web3") + "/keys")
 	{
 		fs::path p(_keysPath);
 		boost::filesystem::create_directories(p);
-		for (auto const& k: m_keys)
+		for (auto& k: m_keys)
 		{
 			std::string uuid = toUUID(k.first);
+			std::string filename = (p / uuid).string() + ".json";
 			js::mObject v;
-			v["crypto"] = k.second;
+			v["crypto"] = k.second.first;
 			v["id"] = uuid;
 			v["version"] = 2;
-			writeFile((p / uuid).string() + ".json", js::write_string(js::mValue(v), true));
+			writeFile(filename, js::write_string(js::mValue(v), true));
+			if (!k.second.second.empty() && k.second.second != filename)
+				boost::filesystem::remove(k.second.second);
+			k.second.second = filename;
 		}
 	}
 
-	void readKeys(std::string const& _keysPath = getDataDir("web3") + "/keys")
+	void load(std::string const& _keysPath = getDataDir("web3") + "/keys")
 	{
 		fs::path p(_keysPath);
 		js::mValue v;
@@ -129,7 +143,7 @@ private:
 					js::mObject o = v.get_obj();
 					int version = o.count("Version") ? stoi(o["Version"].get_str()) : o.count("version") ? o["version"].get_int() : 0;
 					if (version == 2)
-						m_keys[fromUUID(o["id"].get_str())] = o["crypto"];
+						m_keys[fromUUID(o["id"].get_str())] = make_pair(o["crypto"], it->path().string());
 					else
 						cwarn << "Cannot read key version" << version;
 				}
@@ -229,7 +243,7 @@ private:
 	}
 
 	mutable std::map<h128, bytes> m_cached;
-	std::map<h128, js::mValue> m_keys;
+	std::map<h128, std::pair<js::mValue, std::string>> m_keys;
 };
 
 class UnknownPassword: public Exception {};
@@ -237,7 +251,7 @@ class UnknownPassword: public Exception {};
 struct KeyInfo
 {
 	h256 passHash;
-	std::string name;
+	std::string info;
 };
 
 static const auto DontKnowThrow = [](){ BOOST_THROW_EXCEPTION(UnknownPassword()); return std::string(); };
@@ -255,7 +269,7 @@ static const auto DontKnowThrow = [](){ BOOST_THROW_EXCEPTION(UnknownPassword())
 class KeyManager
 {
 public:
-	KeyManager() {}
+	KeyManager(std::string const& _keysFile = getDataDir("ethereum") + "/keys.info"): m_keysFile(_keysFile) {}
 	~KeyManager() {}
 
 	void setKeysFile(std::string const& _keysFile) { m_keysFile = _keysFile; }
@@ -289,7 +303,7 @@ public:
 					m_passwordInfo[(h256)i[0]] = (std::string)i[1];
 				m_password = (string)s[3];
 			}
-			m_cachedPasswords[sha3(m_password)] = m_password;
+			m_cachedPasswords[hashPassword(m_password)] = m_password;
 			return true;
 		}
 		catch (...) {
@@ -312,12 +326,12 @@ public:
 
 	Secret secret(h128 const& _uuid, function<std::string()> const& _pass = DontKnowThrow)
 	{
-		return Secret(m_store.key(_uuid, [&](){
+		return Secret(m_store.secret(_uuid, [&](){
 			auto it = m_cachedPasswords.find(m_keyInfo[_uuid].passHash);
 			if (it == m_cachedPasswords.end())
 			{
 				std::string p = _pass();
-				m_cachedPasswords[sha3(p)] = p;
+				m_cachedPasswords[hashPassword(p)] = p;
 				return p;
 			}
 			else
@@ -325,45 +339,89 @@ public:
 		}));
 	}
 
-	h128 import(Secret const& _s, std::string const& _pass, string const& _info = std::string(), string const& _passInfo = std::string())
+	h128 uuid(Address const& _a) const
+	{
+		auto it = m_addrLookup.find(_a);
+		if (it == m_addrLookup.end())
+			return h128();
+		return it->second;
+	}
+
+	Address address(h128 const& _uuid) const
+	{
+		for (auto const& i: m_addrLookup)
+			if (i.second == _uuid)
+				return i.first;
+		return Address();
+	}
+
+	h128 import(Secret const& _s, string const& _info, std::string const& _pass, string const& _passInfo)
 	{
 		Address addr = KeyPair(_s).address();
-		auto passHash = sha3(_pass);
+		auto passHash = hashPassword(_pass);
 		m_cachedPasswords[passHash] = _pass;
 		m_passwordInfo[passHash] = _passInfo;
-		auto uuid = m_store.import(_s.asBytes(), _pass);
+		auto uuid = m_store.importSecret(_s.asBytes(), _pass);
 		m_keyInfo[uuid] = KeyInfo{passHash, _info};
 		m_addrLookup[addr] = uuid;
 		save(m_keysFile);
 		return uuid;
 	}
 
-	h128 import(Secret const& _s, std::string const& _info = std::string())
+	h128 import(Secret const& _s, std::string const& _info)
 	{
 		// cache password, remember the key, remember the address
-		return import(_s, m_password, _info, std::string());
+		return import(_s, _info, m_password, std::string());
 	}
 
-	void importExisting(h128 const& _uuid, std::string const& _pass, std::string const& _info = std::string(), std::string const& _passInfo = std::string())
+	void importExisting(h128 const& _uuid, std::string const& _info, std::string const& _pass, std::string const& _passInfo)
 	{
-		bytes key = m_store.key(_uuid, [&](){ return _pass; });
+		bytes key = m_store.secret(_uuid, [&](){ return _pass; });
 		if (key.empty())
 			return;
 		Address a = KeyPair(Secret(key)).address();
-		auto passHash = sha3(_pass);
+		auto passHash = hashPassword(_pass);
 		if (!m_passwordInfo.count(passHash))
 			m_passwordInfo[passHash] = _passInfo;
 		if (!m_cachedPasswords.count(passHash))
 			m_cachedPasswords[passHash] = _pass;
 		m_addrLookup[a] = _uuid;
 		m_keyInfo[_uuid].passHash = passHash;
-		m_keyInfo[_uuid].name = _info;
+		m_keyInfo[_uuid].info = _info;
 		save(m_keysFile);
+	}
+
+	void kill(h128 const& _id)
+	{
+		kill(address(_id));
+	}
+
+	void kill(Address const& _a)
+	{
+		auto id = m_addrLookup[_a];
+		m_addrLookup.erase(_a);
+		m_keyInfo.erase(id);
+		m_store.kill(id);
+	}
+
+	std::map<Address, std::string> keys() const
+	{
+		std::map<Address, std::string> ret;
+		for (auto const& i: m_addrLookup)
+			if (m_keyInfo.count(i.second) > 0)
+				ret[i.first] = m_keyInfo.at(i.second).info;
+		return ret;
 	}
 
 	KeyStore& store() { return m_store; }
 
 private:
+	h256 hashPassword(std::string const& _pass) const
+	{
+		// TODO SECURITY: store this a bit more securely; Scrypt perhaps?
+		return h256(pbkdf2(_pass, asBytes(m_password), 262144, 32));
+	}
+
 	// Only use if previously loaded ok.
 	// @returns false if wasn't previously loaded ok.
 	bool save(std::string const& _keysFile)
@@ -388,7 +446,7 @@ private:
 		s << 1;
 		s.appendList(m_addrLookup.size());
 		for (auto const& i: m_addrLookup)
-			s.appendList(4) << i.first << i.second << m_keyInfo[i.second].passHash << m_keyInfo[i.second].name;
+			s.appendList(4) << i.first << i.second << m_keyInfo[i.second].passHash << m_keyInfo[i.second].info;
 		s.appendList(m_passwordInfo.size());
 		for (auto const& i: m_passwordInfo)
 			s.appendList(2) << i.first << i.second;
@@ -411,7 +469,7 @@ private:
 
 	KeyStore m_store;
 	h128 m_key;
-	std::string m_keysFile = getDataDir("ethereum") + "/keys.info";
+	std::string m_keysFile;
 };
 
 int main()
@@ -422,10 +480,16 @@ int main()
 	else
 		keyman.create("foo");
 
-	auto id = fromUUID("441193ae-a767-f1c3-48ba-dd6610db5ed0");
-	keyman.importExisting(id, "bar");
+	Address a("9cab1cc4e8fe528267c6c3af664a1adbce810b5f");
 
-	cdebug << "Secret key for " << toUUID(id) << "is" << keyman.store().key(id, [](){ return "bar"; });
+//	keyman.importExisting(fromUUID("441193ae-a767-f1c3-48ba-dd6610db5ed0"), "{\"name\":\"Gavin Wood - Main identity\"}", "bar", "{\"hint\":\"Not foo.\"}");
+//	Address a2 = keyman.address(keyman.import(Secret::random(), "Key with no additional security."));
+//	cdebug << toString(a2);
+	Address a2("19c486071651b2650449ba3c6a807f316a73e8fe");
+
+	cdebug << "Secret key for " << a << "is" << keyman.secret(a, [](){ return "bar"; });
+	cdebug << "Secret key for " << a2 << "is" << keyman.secret(a2);
+
 }
 
 #elif 0
