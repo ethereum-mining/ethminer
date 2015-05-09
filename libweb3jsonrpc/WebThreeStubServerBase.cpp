@@ -531,9 +531,9 @@ string WebThreeStubServerBase::eth_signTransaction(Json::Value const& _json)
 			t.from = m_accounts->getDefaultTransactAccount();
 		if (t.creation)
 			ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
-		if (!t.gasPrice)
+		if (t.gasPrice == UndefinedU256)
 			t.gasPrice = 10 * dev::eth::szabo;		// TODO: should be determined by user somehow.
-		if (!t.gas)
+		if (t.gas == UndefinedU256)
 			t.gas = min<u256>(client()->gasLimitRemaining() / 5, client()->balanceAt(t.from) / t.gasPrice);
 
 		if (m_accounts->isRealAccount(t.from))
@@ -582,9 +582,9 @@ string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& 
 			t.from = m_accounts->getDefaultTransactAccount();
 	//	if (!m_accounts->isRealAccount(t.from))
 	//		return ret;
-		if (!t.gasPrice)
+		if (t.gasPrice == UndefinedU256)
 			t.gasPrice = 10 * dev::eth::szabo;
-		if (!t.gas)
+		if (t.gas == UndefinedU256)
 			t.gas = client()->gasLimitRemaining();
 
 		return toJS(client()->call(m_accounts->secretKey(t.from), t.value, t.to, t.data, t.gas, t.gasPrice, jsToBlockNumber(_blockNumber), FudgeFactor::Lenient).output);
