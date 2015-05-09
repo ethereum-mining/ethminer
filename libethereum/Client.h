@@ -228,15 +228,15 @@ protected:
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _sha3);
+	void appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& io_changed, h256 _sha3);
 
 	/// Collate the changed filters for the hash of the given block.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewBlock(h256 const& _blockHash, h256Set& io_changed);
+	void appendFromNewBlock(h256 const& _blockHash, h256Hash& io_changed);
 
 	/// Record that the set of filters @a _filters have changed.
 	/// This doesn't actually make any callbacks, but incrememnts some counters in m_watches.
-	void noteChanged(h256Set const& _filters);
+	void noteChanged(h256Hash const& _filters);
 
 private:
 	/// Called when Worker is starting.

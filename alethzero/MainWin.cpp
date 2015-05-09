@@ -1092,7 +1092,7 @@ void Main::refreshBlockChain()
 	auto const& bc = ethereum()->blockChain();
 	QStringList filters = ui->blockChainFilter->text().toLower().split(QRegExp("\\s+"), QString::SkipEmptyParts);
 
-	h256Set blocks;
+	h256Hash blocks;
 	for (QString f: filters)
 		if (f.size() == 64)
 		{
