@@ -42,10 +42,12 @@
 #include <libdevcore/TransientDirectory.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/TrieDB.h>
+#include <libdevcrypto/SecretStore.h>
 #include <libp2p/All.h>
 #include <libethcore/ProofOfWork.h>
 #include <libdevcrypto/FileSystem.h>
 #include <libethereum/All.h>
+#include <libethereum/KeyManager.h>
 #include <libethereum/Farm.h>
 #include <libethereum/AccountDiff.h>
 #include <libethereum/DownloadMan.h>
@@ -64,304 +66,26 @@ namespace fs = boost::filesystem;
 
 #if 1
 
-inline h128 fromUUID(std::string const& _uuid) { return h128(boost::replace_all_copy(_uuid, "-", "")); }
-inline std::string toUUID(h128 const& _uuid) { std::string ret = toHex(_uuid.ref()); for (unsigned i: {20, 16, 12, 8}) ret.insert(ret.begin() + i, '-'); return ret; }
-
-class KeyStore
-{
-public:
-	KeyStore() { readKeys(); }
-	~KeyStore() {}
-
-	bytes key(h128 const& _uuid, function<std::string()> const& _pass)
-	{
-		auto rit = m_cached.find(_uuid);
-		if (rit != m_cached.end())
-			return rit->second;
-		auto it = m_keys.find(_uuid);
-		if (it == m_keys.end())
-			return bytes();
-		bytes key = decrypt(it->second, _pass());
-		if (!key.empty())
-			m_cached[_uuid] = key;
-		return key;
-	}
-
-	h128 import(bytes const& _s, std::string const& _pass)
-	{
-		h128 r = h128::random();
-		m_cached[r] = _s;
-		m_keys[r] = encrypt(_s, _pass);
-		writeKeys();
-		return r;
-	}
-
-	// Clear any cached keys.
-	void clearCache() const { m_cached.clear(); }
-
-private:
-	void writeKeys(std::string const& _keysPath = getDataDir("web3") + "/keys")
-	{
-		fs::path p(_keysPath);
-		boost::filesystem::create_directories(p);
-		for (auto const& k: m_keys)
-		{
-			std::string uuid = toUUID(k.first);
-			js::mObject v;
-			v["crypto"] = k.second;
-			v["id"] = uuid;
-			v["version"] = 2;
-			writeFile((p / uuid).string() + ".json", js::write_string(js::mValue(v), true));
-		}
-	}
-
-	void readKeys(std::string const& _keysPath = getDataDir("web3") + "/keys")
-	{
-		fs::path p(_keysPath);
-		js::mValue v;
-		for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it)
-			if (is_regular_file(it->path()))
-			{
-				cdebug << "Reading" << it->path();
-				js::read_string(contentsString(it->path().string()), v);
-				if (v.type() == js::obj_type)
-				{
-					js::mObject o = v.get_obj();
-					int version = o.count("Version") ? stoi(o["Version"].get_str()) : o.count("version") ? o["version"].get_int() : 0;
-					if (version == 2)
-						m_keys[fromUUID(o["id"].get_str())] = o["crypto"];
-					else
-						cwarn << "Cannot read key version" << version;
-				}
-//				else
-//					cwarn << "Invalid JSON in key file" << it->path().string();
-			}
-	}
-
-	static js::mValue encrypt(bytes const& _v, std::string const& _pass)
-	{
-		js::mObject ret;
-
-		// KDF info
-		unsigned dklen = 16;
-		unsigned iterations = 262144;
-		bytes salt = h256::random().asBytes();
-		ret["kdf"] = "pbkdf2";
-		{
-			js::mObject params;
-			params["prf"] = "hmac-sha256";
-			params["c"] = (int)iterations;
-			params["salt"] = toHex(salt);
-			params["dklen"] = (int)dklen;
-			ret["kdfparams"] = params;
-		}
-		bytes derivedKey = pbkdf2(_pass, salt, iterations, dklen);
-
-		// cipher info
-		ret["cipher"] = "aes-128-cbc";
-		h128 key(sha3(h128(derivedKey, h128::AlignRight)), h128::AlignRight);
-		h128 iv = h128::random();
-		{
-			js::mObject params;
-			params["iv"] = toHex(iv.ref());
-			ret["cipherparams"] = params;
-		}
-
-		// cipher text
-		bytes cipherText = encryptSymNoAuth(key, iv, &_v);
-		ret["ciphertext"] = toHex(cipherText);
-
-		// and mac.
-		h256 mac = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
-		ret["mac"] = toHex(mac.ref());
-
-		return ret;
-	}
-
-	static bytes decrypt(js::mValue const& _v, std::string const& _pass)
-	{
-		js::mObject o = _v.get_obj();
-
-		// derive key
-		bytes derivedKey;
-		if (o["kdf"].get_str() == "pbkdf2")
-		{
-			auto params = o["kdfparams"].get_obj();
-			if (params["prf"].get_str() != "hmac-sha256")
-			{
-				cwarn << "Unknown PRF for PBKDF2" << params["prf"].get_str() << "not supported.";
-				return bytes();
-			}
-			unsigned iterations = params["c"].get_int();
-			bytes salt = fromHex(params["salt"].get_str());
-			derivedKey = pbkdf2(_pass, salt, iterations, params["dklen"].get_int());
-		}
-		else
-		{
-			cwarn << "Unknown KDF" << o["kdf"].get_str() << "not supported.";
-			return bytes();
-		}
-
-		bytes cipherText = fromHex(o["ciphertext"].get_str());
-
-		// check MAC
-		h256 mac(o["mac"].get_str());
-		h256 macExp = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
-		if (mac != macExp)
-		{
-			cwarn << "Invalid key - MAC mismatch; expected" << toString(macExp) << ", got" << toString(mac);
-			return bytes();
-		}
-
-		// decrypt
-		if (o["cipher"].get_str() == "aes-128-cbc")
-		{
-			auto params = o["cipherparams"].get_obj();
-			h128 key(sha3(h128(derivedKey, h128::AlignRight)), h128::AlignRight);
-			h128 iv(params["iv"].get_str());
-			return decryptSymNoAuth(key, iv, &cipherText);
-		}
-		else
-		{
-			cwarn << "Unknown cipher" << o["cipher"].get_str() << "not supported.";
-			return bytes();
-		}
-	}
-
-	mutable std::map<h128, bytes> m_cached;
-	std::map<h128, js::mValue> m_keys;
-};
-
-class UnknownPassword: public Exception {};
-
-struct KeyInfo
-{
-	h256 passHash;
-	std::string name;
-};
-
-static const auto DontKnowThrow = [](){ BOOST_THROW_EXCEPTION(UnknownPassword()); return std::string(); };
-
-// This one is specifically for Ethereum, but we can make it generic in due course.
-// TODO: hidden-partition style key-store.
-class KeyManager
-{
-public:
-	KeyManager() { m_cachedPasswords[sha3(m_password)] = m_password; }
-	~KeyManager() {}
-
-	void load(std::string const& _pass, std::string const& _keysFile = getDataDir("ethereum") + "/keys.info")
-	{
-		try {
-			bytes salt = contents(_keysFile + ".salt");
-			bytes encKeys = contents(_keysFile);
-			m_key = h128(pbkdf2(_pass, salt, 262144, 16));
-			bytes bs = decryptSymNoAuth(m_key, h128(), &encKeys);
-			RLP s(bs);
-			unsigned version = (unsigned)s[0];
-			if (version == 1)
-			{
-				for (auto const& i: s[1])
-					m_keyInfo[m_addrLookup[(Address)i[0]] = (h128)i[1]] = KeyInfo{(h256)i[2], (std::string)i[3]};
-				for (auto const& i: s[2])
-					m_passwordInfo[(h256)i[0]] = (std::string)i[1];
-				m_password = (string)s[3];
-			}
-		}
-		catch (...) {}
-		m_cachedPasswords[sha3(m_password)] = m_password;
-	}
-
-	// Only use if previously loaded ok.
-	// @returns false if wasn't previously loaded ok.
-	bool save(std::string const& _keysFile = getDataDir("ethereum") + "/keys.info") { if (!m_key) return false; save(m_key, _keysFile); return true; }
-
-	void save(std::string const& _pass, std::string const& _keysFile = getDataDir("ethereum") + "/keys.info")
-	{
-		bytes salt = h256::random().asBytes();
-		writeFile(_keysFile + ".salt", salt);
-		auto key = h128(pbkdf2(_pass, salt, 262144, 16));
-		save(key, _keysFile);
-	}
-
-	void save(h128 const& _key, std::string const& _keysFile = getDataDir("ethereum") + "/keys.info")
-	{
-		RLPStream s(4);
-		s << 1;
-		s.appendList(m_addrLookup.size());
-		for (auto const& i: m_addrLookup)
-			s.appendList(4) << i.first << i.second << m_keyInfo[i.second].passHash << m_keyInfo[i.second].name;
-		s.appendList(m_passwordInfo.size());
-		for (auto const& i: m_passwordInfo)
-			s.appendList(2) << i.first << i.second;
-		s.append(m_password);
-
-		writeFile(_keysFile, encryptSymNoAuth(_key, h128(), &s.out()));
-		m_key = _key;
-	}
-
-	Secret secret(Address const& _address, function<std::string()> const& _pass = DontKnowThrow)
-	{
-		auto it = m_addrLookup.find(_address);
-		if (it == m_addrLookup.end())
-			return Secret();
-		return secret(it->second, _pass);
-	}
-
-	Secret secret(h128 const& _uuid, function<std::string()> const& _pass = DontKnowThrow)
-	{
-		return Secret(m_store.key(_uuid, [&](){
-			auto it = m_cachedPasswords.find(m_keyInfo[_uuid].passHash);
-			if (it == m_cachedPasswords.end())
-			{
-				std::string p = _pass();
-				m_cachedPasswords[sha3(p)] = p;
-				return p;
-			}
-			else
-				return it->second;
-		}));
-	}
-
-	h128 import(Secret const& _s, std::string const& _pass, string const& _info = std::string(), string const& _passInfo = std::string())
-	{
-		Address addr = KeyPair(_s).address();
-		auto passHash = sha3(_pass);
-		m_cachedPasswords[passHash] = _pass;
-		m_passwordInfo[passHash] = _passInfo;
-		auto uuid = m_store.import(_s.asBytes(), _pass);
-		m_keyInfo[uuid] = KeyInfo{passHash, _info};
-		m_addrLookup[addr] = uuid;
-		return uuid;
-	}
-
-	h128 import(Secret const& _s, std::string const& _info = std::string())
-	{
-		// cache password, remember the key, remember the address
-		return import(_s, m_password, _info, std::string());
-	}
-
-private:
-	// Ethereum keys.
-	std::map<Address, h128> m_addrLookup;
-	std::map<h128, KeyInfo> m_keyInfo;
-	std::map<h256, std::string> m_passwordInfo;
-
-	// Passwords that we're storing.
-	std::map<h256, std::string> m_cachedPasswords;
-
-	// The default password for keys in the keystore - protected by the master password.
-	std::string m_password = asString(h256::random().asBytes());
-
-	KeyStore m_store;
-	h128 m_key;
-};
-
 int main()
 {
 	KeyManager keyman;
-	auto id = fromUUID("441193ae-a767-f1c3-48ba-dd6610db5ed0");
-	cdebug << "Secret key for " << toUUID(id) << "is" << keyman.secret(id, [](){ return "bar"; });
+	if (keyman.exists())
+		keyman.load("foo");
+	else
+		keyman.create("foo");
+
+	Address a("9cab1cc4e8fe528267c6c3af664a1adbce810b5f");
+
+//	keyman.importExisting(fromUUID("441193ae-a767-f1c3-48ba-dd6610db5ed0"), "{\"name\":\"Gavin Wood - Main identity\"}", "bar", "{\"hint\":\"Not foo.\"}");
+//	Address a2 = keyman.address(keyman.import(Secret::random(), "Key with no additional security."));
+//	cdebug << toString(a2);
+	Address a2("19c486071651b2650449ba3c6a807f316a73e8fe");
+
+	cdebug << keyman.keys();
+
+	cdebug << "Secret key for " << a << "is" << keyman.secret(a, [](){ return "bar"; });
+	cdebug << "Secret key for " << a2 << "is" << keyman.secret(a2);
+
 }
 
 #elif 0

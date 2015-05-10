@@ -150,17 +150,10 @@ public:
 	/// @returns a random valued object.
 	static FixedHash random() { return random(s_fixedHashEngine); }
 
-	/// A generic std::hash compatible function object.
 	struct hash
 	{
 		/// Make a hash of the object's data.
-		size_t operator()(FixedHash const& value) const
-		{
-			size_t h = 0;
-			for (auto i: value.m_data)
-				h = (h << (5 - h)) + i;
-			return h;
-		}
+		size_t operator()(FixedHash const& _value) const { return boost::hash_range(_value.m_data.cbegin(), _value.m_data.cend()); }
 	};
 
 	template <unsigned P, unsigned M> inline FixedHash& shiftBloom(FixedHash<M> const& _h)
@@ -221,12 +214,8 @@ template<> inline bool FixedHash<32>::operator==(FixedHash<32> const& _other) co
 /// Fast std::hash compatible hash function object for h256.
 template<> inline size_t FixedHash<32>::hash::operator()(FixedHash<32> const& value) const
 {
-	const uint64_t*data = (const uint64_t*)value.data();
-	uint64_t hash = data[0];
-	hash ^= data[1];
-	hash ^= data[2];
-	hash ^= data[3];
-	return (size_t)hash;
+	uint64_t const* data = reinterpret_cast<uint64_t const*>(value.data());
+	return boost::hash_range(data, data + 4);
 }
 
 /// Stream I/O for the FixedHash class.
@@ -254,6 +243,8 @@ using h256s = std::vector<h256>;
 using h160s = std::vector<h160>;
 using h256Set = std::set<h256>;
 using h160Set = std::set<h160>;
+using h256Hash = std::unordered_set<h256>;
+using h160Hash = std::unordered_set<h160>;
 
 /// Convert the given value into h160 (160-bit unsigned integer) using the right 20 bytes.
 inline h160 right160(h256 const& _t)
@@ -271,6 +262,10 @@ inline h160 left160(h256 const& _t)
 	return ret;
 }
 
+h128 fromUUID(std::string const& _uuid);
+
+std::string toUUID(h128 const& _uuid);
+
 inline std::string toString(h256s const& _bs)
 {
 	std::ostringstream out;
@@ -285,6 +280,9 @@ inline std::string toString(h256s const& _bs)
 
 namespace std
 {
-	/// Forward std::hash<dev::h256> to dev::h256::hash.
+	/// Forward std::hash<dev::FixedHash> to dev::FixedHash::hash.
+	template<> struct hash<dev::h64>: dev::h64::hash {};
+	template<> struct hash<dev::h160>: dev::h160::hash {};
 	template<> struct hash<dev::h256>: dev::h256::hash {};
+	template<> struct hash<dev::h512>: dev::h512::hash {};
 }
