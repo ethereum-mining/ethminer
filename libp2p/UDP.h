@@ -213,8 +213,8 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
 		if (_ec != boost::system::errc::success)
 			clog(NetWarn) << "Receiving UDP message failed. " << _ec.value() << ":" << _ec.message();
 
-		assert(_len);
-		m_host.onReceived(this, m_recvEndpoint, bytesConstRef(m_recvData.data(), _len));
+		if (_len)
+			m_host.onReceived(this, m_recvEndpoint, bytesConstRef(m_recvData.data(), _len));
 		doRead();
 	});
 }
