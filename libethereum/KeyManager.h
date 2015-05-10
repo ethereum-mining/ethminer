@@ -33,6 +33,8 @@ class UnknownPassword: public Exception {};
 
 struct KeyInfo
 {
+	KeyInfo() = default;
+	KeyInfo(h256 const& _passHash, std::string const& _info): passHash(_passHash), info(_info) {}
 	h256 passHash;
 	std::string info;
 };
