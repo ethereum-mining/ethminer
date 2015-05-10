@@ -60,7 +60,7 @@ bool KeyManager::load(std::string const& _pass)
 		if (version == 1)
 		{
 			for (auto const& i: s[1])
-				m_keyInfo[m_addrLookup[(Address)i[0]] = (h128)i[1]] = KeyInfo{(h256)i[2], (std::string)i[3]};
+				m_keyInfo[m_addrLookup[(Address)i[0]] = (h128)i[1]] = KeyInfo((h256)i[2], (std::string)i[3]);
 			for (auto const& i: s[2])
 				m_passwordInfo[(h256)i[0]] = (std::string)i[1];
 			m_password = (string)s[3];
