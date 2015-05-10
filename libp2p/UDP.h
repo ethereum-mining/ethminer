@@ -229,9 +229,9 @@ void UDPSocket<Handler, MaxDatagramSize>::doWrite()
 		if (m_closed)
 			return disconnectWithError(_ec);
 		else if (_ec != boost::system::errc::success &&
-				 _ec != boost::system::errc::address_not_available &&
-				 _ec != boost::system::errc::host_unreachable)
-			return disconnectWithError(_ec); // 49: can't assign requested address
+				_ec != boost::system::errc::address_not_available &&
+				_ec != boost::system::errc::host_unreachable)
+			return disconnectWithError(_ec);
 		else
 		{
 			Guard l(x_sendQ);
