@@ -223,10 +223,15 @@ void UDPSocket<Handler, MaxDatagramSize>::doWrite()
 
 	const UDPDatagram& datagram = m_sendQ[0];
 	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
-	m_socket.async_send_to(boost::asio::buffer(datagram.data), datagram.endpoint(), [this, self](boost::system::error_code _ec, std::size_t)
+	bi::udp::endpoint endpoint(datagram.endpoint());
+	m_socket.async_send_to(boost::asio::buffer(datagram.data), endpoint, [this, self, endpoint](boost::system::error_code _ec, std::size_t)
 	{
-		if (_ec || m_closed)
+		if (m_closed)
 			return disconnectWithError(_ec);
+		else if (_ec != boost::system::errc::success &&
+				 _ec != boost::system::errc::address_not_available &&
+				 _ec != boost::system::errc::host_unreachable)
+			return disconnectWithError(_ec); // 49: can't assign requested address
 		else
 		{
 			Guard l(x_sendQ);
