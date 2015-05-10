@@ -41,7 +41,7 @@ class WebThreeDirect;
 class WebThreeStubServer: public dev::WebThreeStubServerBase, public dev::WebThreeStubDatabaseFace
 {
 public:
-	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
+	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::shared_ptr<dev::eth::AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts);
 
 	virtual std::string web3_clientVersion();
 

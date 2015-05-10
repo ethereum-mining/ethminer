@@ -37,6 +37,7 @@
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
+#include <libethereum/KeyManager.h>
 #include <libwebthree/WebThree.h>
 #if ETH_JSCONSOLE || !ETH_TRUE
 #include <libjsconsole/JSConsole.h>
@@ -46,6 +47,7 @@
 #include <readline/history.h>
 #endif
 #if ETH_JSONRPC || !ETH_TRUE
+#include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
@@ -1086,13 +1088,53 @@ int main(int argc, char** argv)
 	if (remoteHost.size())
 		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 
-#if ETH_JSONRPC
+	KeyManager keyManager;
+	if (keyManager.exists())
+	{
+		while (masterPassword.empty())
+		{
+			cout << "Please enter your MASTER password:" << flush;
+			getline(cin, masterPassword);
+			if (!keyManager.load(masterPassword))
+			{
+				cout << "Password invalid. Try again." << endl;
+				masterPassword.clear();
+			}
+		}
+	}
+	else
+	{
+		while (masterPassword.empty())
+		{
+			cout << "Please enter a MASTER password to protect your key store. Make it strong." << flush;
+			getline(cin, masterPassword);
+			string confirm;
+			cout << "Please confirm the password by entering it again." << flush;
+			getline(cin, confirm);
+			if (masterPassword != confirm)
+			{
+				cout << "Passwords were different. Try again." << endl;
+				masterPassword.clear();
+			}
+		}
+		keyManager.create(masterPassword);
+	}
+
+	string logbuf;
+	bool silence = false;
+	std::string additional;
+	g_logPost = [&](std::string const& a, char const*) { if (silence) logbuf += a + "\n"; else cout << "\r           \r" << a << endl << additional << flush; };
+
+	// TODO: give hints &c.
+	auto getPassword = [&](Address const& a){ auto s = silence; silence = true; string ret; cout << endl << "Enter password for address " << a.abridged() << ": " << flush; std::getline(cin, ret); silence = s; return ret; };
+
+#if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({sigKey})));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getPassword, keyManager), vector<KeyPair>({sigKey})));
 		jsonrpcServer->StartListening();
 	}
 #endif
@@ -1103,15 +1145,15 @@ int main(int argc, char** argv)
 
 	if (interactive)
 	{
-		string logbuf;
+		additional = "Press Enter";
 		string l;
 		while (!g_exit)
 		{
-			g_logPost = [](std::string const& a, char const*) { cout << "\r           \r" << a << endl << "Press Enter" << flush; };
+			silence = false;
 			cout << logbuf << "Press Enter" << flush;
 			std::getline(cin, l);
 			logbuf.clear();
-			g_logPost = [&](std::string const& a, char const*) { logbuf += a + "\n"; };
+			silence = true;
 
 #if ETH_READLINE
 			if (l.size())
@@ -1224,7 +1266,7 @@ int main(int argc, char** argv)
 					iss >> g_logVerbosity;
 				cout << "Verbosity: " << g_logVerbosity << endl;
 			}
-#if ETH_JSONRPC
+#if ETH_JSONRPC || !ETH_TRUE
 			else if (cmd == "jsonport")
 			{
 				if (iss.peek() != -1)
@@ -1236,7 +1278,7 @@ int main(int argc, char** argv)
 				if (jsonrpc < 0)
 					jsonrpc = SensibleHttpPort;
 				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({sigKey})));
+				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getPassword, keyManager), vector<KeyPair>({sigKey})));
 				jsonrpcServer->StartListening();
 			}
 			else if (cmd == "jsonstop")

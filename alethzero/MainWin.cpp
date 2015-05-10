@@ -143,6 +143,38 @@ Main::Main(QWidget *parent) :
 //		ui->log->addItem(QString::fromStdString(s));
 	};
 
+	// Open Key Store
+	bool opened = false;
+	if (m_keyManager.exists())
+		while (!opened)
+		{
+			QString s = QInputDialog::getText(nullptr, "Master password", "Enter your MASTER account password.", QLineEdit::Password, QString());
+			if (m_keyManager.load(s.toStdString()))
+				opened = true;
+			else if (QMessageBox::question(
+					nullptr,
+					"Invalid password entered",
+					"The password you entered is incorrect. If you have forgotten your password, and you wish to start afresh, manually remove the file: " + QString::fromStdString(getDataDir("ethereum")) + "/keys.info",
+					QMessageBox::Retry,
+					QMessageBox::Abort)
+				== QMessageBox::Abort)
+				exit(0);
+		}
+	if (!opened)
+	{
+		QString password;
+		while (true)
+		{
+			password = QInputDialog::getText(nullptr, "Master password", "Enter a MASTER password for your key store. Make it strong. You probably want to write it down somewhere and keep it safe and secure; your identity will rely on this - you never want to lose it.", QLineEdit::Password, QString());
+			QString confirm = QInputDialog::getText(nullptr, "Master password", "Confirm this password by typing it again", QLineEdit::Password, QString());
+			if (password == confirm)
+				break;
+			QMessageBox::warning(nullptr, "Try again", "You entered two different passwords - please enter the same password twice.", QMessageBox::Ok);
+		}
+		m_keyManager.create(password.toStdString());
+		m_keyManager.import(Secret::random(), "{\"name\":\"Default identity\"}");
+	}
+
 #if ETH_DEBUG
 	m_servers.append("127.0.0.1:30300");
 #endif
@@ -176,7 +208,7 @@ Main::Main(QWidget *parent) :
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), WithExisting::Trust, {"eth", "shh"}, p2p::NetworkPreferences(), network));
 
 	m_httpConnector.reset(new jsonrpc::HttpServer(SensibleHttpPort, "", "", dev::SensibleHttpThreads));
-	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), keysAsVector(m_myKeys), this));
+	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), this));
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
@@ -690,7 +722,6 @@ void Main::readSettings(bool _skipGeometry)
 			}
 		}
 		ethereum()->setAddress(m_myKeys.back().address());
-		m_server->setAccounts(keysAsVector(m_myKeys));
 	}
 
 	{
@@ -1397,9 +1428,6 @@ void Main::ourAccountsRowsMoved()
 				myKeys.push_back(i);
 	}
 	m_myKeys = myKeys;
-
-	if (m_server.get())
-		m_server->setAccounts(keysAsVector(m_myKeys));
 }
 
 void Main::on_inject_triggered()
@@ -1837,7 +1865,6 @@ void Main::on_mine_triggered()
 void Main::keysChanged()
 {
 	onBalancesChange();
-	m_server->setAccounts(keysAsVector(m_myKeys));
 }
 
 bool beginsWith(Address _a, bytes const& _b)
