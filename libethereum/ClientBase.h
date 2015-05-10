@@ -83,11 +83,13 @@ public:
 	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) override;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
+	virtual ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
+	using Interface::call;
 
 	/// Makes the given create. Nothing is recorded into the state.
-	virtual ExecutionResult create(Secret _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
-	
+	virtual ExecutionResult create(Address const& _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
+	using Interface::create;
+
 	using Interface::balanceAt;
 	using Interface::countAt;
 	using Interface::stateAt;
@@ -100,7 +102,7 @@ public:
 	virtual u256 stateAt(Address _a, u256 _l, BlockNumber _block) const override;
 	virtual bytes codeAt(Address _a, BlockNumber _block) const override;
 	virtual h256 codeHashAt(Address _a, BlockNumber _block) const override;
-	virtual std::map<u256, u256> storageAt(Address _a, BlockNumber _block) const override;
+	virtual std::unordered_map<u256, u256> storageAt(Address _a, BlockNumber _block) const override;
 
 	virtual LocalisedLogEntries logs(unsigned _watchId) const override;
 	virtual LocalisedLogEntries logs(LogFilter const& _filter) const override;
@@ -172,9 +174,9 @@ protected:
 	TransactionQueue m_tq;							///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 
 	// filters
-	mutable Mutex x_filtersWatches;					///< Our lock.
-	std::map<h256, InstalledFilter> m_filters;		///< The dictionary of filters that are active.
-	std::map<unsigned, ClientWatch> m_watches;		///< Each and every watch - these reference a filter.
+	mutable Mutex x_filtersWatches;							///< Our lock.
+	std::unordered_map<h256, InstalledFilter> m_filters;	///< The dictionary of filters that are active.
+	std::map<unsigned, ClientWatch> m_watches;				///< Each and every watch - these reference a filter.
 };
 
 }}

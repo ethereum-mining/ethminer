@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <map>
+#include <unordered_map>
 #include <functional>
 #include <libdevcore/CommonData.h>
 
@@ -38,7 +38,7 @@ struct PrecompiledAddress
 };
 
 /// Info on precompiled contract accounts baked into the protocol.
-std::map<unsigned, PrecompiledAddress> const& precompiled();
+std::unordered_map<unsigned, PrecompiledAddress> const& precompiled();
 
 }
 }

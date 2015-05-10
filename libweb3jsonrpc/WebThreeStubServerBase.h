@@ -136,7 +136,7 @@ public:
 	
 	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
 	void setIdentities(std::vector<dev::KeyPair> const& _ids);
-	std::map<dev::Public, dev::Secret> const& ids() const { return m_ids; }
+	std::map<dev::Public, dev::Secret> const& ids() const { return m_shhIds; }
 
 protected:
 	virtual void authenticate(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
@@ -147,9 +147,10 @@ protected:
 	virtual dev::WebThreeNetworkFace* network() = 0;
 	virtual dev::WebThreeStubDatabaseFace* db() = 0;
 
-	std::map<dev::Public, dev::Secret> m_ids;
+	std::shared_ptr<dev::AccountHolder> m_ethAccounts;
+
+	std::map<dev::Public, dev::Secret> m_shhIds;
 	std::map<unsigned, dev::Public> m_shhWatches;
-	std::shared_ptr<dev::AccountHolder> m_accounts;
 };
 
 } //namespace dev

@@ -362,6 +362,7 @@ public:
 	template <class _T> RLPStream& appendVector(std::vector<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 	template <class _T, size_t S> RLPStream& append(std::array<_T, S> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 	template <class _T> RLPStream& append(std::set<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
+	template <class _T> RLPStream& append(std::unordered_set<_T> const& _s) { appendList(_s.size()); for (auto const& i: _s) append(i); return *this; }
 	template <class T, class U> RLPStream& append(std::pair<T, U> const& _s) { appendList(2); append(_s.first); append(_s.second); return *this; }
 
 	/// Appends a list.

@@ -23,7 +23,6 @@
 
 #include <mutex>
 #include <array>
-#include <set>
 #include <memory>
 #include <utility>
 
@@ -140,9 +139,9 @@ private:
 	bool m_requireTransactions = false;
 
 	Mutex x_knownBlocks;
-	h256Set m_knownBlocks;					///< Blocks that the peer already knows about (that don't need to be sent to them).
+	h256Hash m_knownBlocks;					///< Blocks that the peer already knows about (that don't need to be sent to them).
 	Mutex x_knownTransactions;
-	h256Set m_knownTransactions;			///< Transactions that the peer already knows of.
+	h256Hash m_knownTransactions;			///< Transactions that the peer already knows of.
 
 };
 
