@@ -38,6 +38,9 @@
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
+#if ETH_JSCONSOLE || !ETH_TRUE
+#include <libjsconsole/JSConsole.h>
+#endif
 #if ETH_READLINE || !ETH_TRUE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -180,6 +183,9 @@ void help()
 		<< "    -v,--verbosity <0 - 9>  Set the log verbosity from 0 to 9 (default: 8)." << endl
 		<< "    -V,--version  Show the version and exit." << endl
 		<< "    -h,--help  Show this help message and exit." << endl
+#if ETH_JSCONSOLE || !ETH_TRUE
+		<< "    --console Use interactive javascript console" << endl
+#endif
 		;
 		exit(0);
 }
@@ -407,6 +413,13 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 	exit(0);
 }
 
+void stopMiningAfterXBlocks(eth::Client* _c, unsigned _start, unsigned _mining)
+{
+	if (_c->isMining() && _c->blockChain().details().number - _start == _mining)
+		_c->stopMining();
+	this_thread::sleep_for(chrono::milliseconds(100));
+}
+
 int main(int argc, char** argv)
 {
 #if 0
@@ -542,6 +555,9 @@ int main(int argc, char** argv)
 	unsigned benchmarkWarmup = 3;
 	unsigned benchmarkTrial = 3;
 	unsigned benchmarkTrials = 5;
+
+	// javascript console
+	bool useConsole = false;
 
 	/// Farm params
 	string farmURL = "http://127.0.0.1:8080";
@@ -894,6 +910,10 @@ int main(int argc, char** argv)
 			jsonrpc = jsonrpc == -1 ? SensibleHttpPort : jsonrpc;
 		else if (arg == "--json-rpc-port" && i + 1 < argc)
 			jsonrpc = atoi(argv[++i]);
+#endif
+#if ETH_JSCONSOLE
+		else if (arg == "--console")
+			useConsole = true;
 #endif
 		else if ((arg == "-v" || arg == "--verbosity") && i + 1 < argc)
 			g_logVerbosity = atoi(argv[++i]);
@@ -1631,12 +1651,20 @@ int main(int argc, char** argv)
 		unsigned n =c->blockChain().details().number;
 		if (mining)
 			c->startMining();
-		while (!g_exit)
+		if (useConsole)
 		{
-			if ( c->isMining() &&c->blockChain().details().number - n == mining)
-				c->stopMining();
-			this_thread::sleep_for(chrono::milliseconds(100));
+#if ETH_JSCONSOLE
+			JSConsole console(web3, vector<KeyPair>({sigKey}));
+			while (!g_exit)
+			{
+				console.repl();
+				stopMiningAfterXBlocks(c, n, mining);
+			}
+#endif
 		}
+		else
+			while (!g_exit)
+				stopMiningAfterXBlocks(c, n, mining);
 	}
 	else
 		while (!g_exit)
