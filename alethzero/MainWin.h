@@ -35,6 +35,7 @@
 #include <libethcore/Common.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
+#include <libethereum/KeyManager.h>
 #include <libwebthree/WebThree.h>
 #include <libsolidity/CompilerStack.h>
 #include "Context.h"
@@ -89,6 +90,8 @@ public:
 	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
 
 	dev::u256 gasPrice() const { return 10 * dev::eth::szabo; }
+
+	dev::eth::KeyManager& keyManager() { return m_keyManager; }
 
 public slots:
 	void load(QString _file);
@@ -249,6 +252,7 @@ private:
 	QStringList m_servers;
 	QList<dev::KeyPair> m_myKeys;
 	QList<dev::KeyPair> m_myIdentities;
+	dev::eth::KeyManager m_keyManager;
 	QString m_privateChain;
 	dev::Address m_nameReg;
 

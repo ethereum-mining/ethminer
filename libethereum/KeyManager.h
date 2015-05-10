@@ -28,7 +28,8 @@
 
 namespace dev
 {
-
+namespace eth
+{
 class UnknownPassword: public Exception {};
 
 struct KeyInfo
@@ -65,7 +66,8 @@ public:
 	bool load(std::string const& _pass);
 	void save(std::string const& _pass) const { write(_pass, m_keysFile); }
 
-	std::map<Address, std::pair<std::string, std::string>> keys() const;
+	AddressHash accounts() const;
+	std::unordered_map<Address, std::pair<std::string, std::string>> accountDetails() const;
 
 	h128 uuid(Address const& _a) const;
 	Address address(h128 const& _uuid) const;
@@ -92,12 +94,12 @@ private:
 	void write(h128 const& _key, std::string const& _keysFile) const;
 
 	// Ethereum keys.
-	std::map<Address, h128> m_addrLookup;
-	std::map<h128, KeyInfo> m_keyInfo;
-	std::map<h256, std::string> m_passwordInfo;
+	std::unordered_map<Address, h128> m_addrLookup;
+	std::unordered_map<h128, KeyInfo> m_keyInfo;
+	std::unordered_map<h256, std::string> m_passwordInfo;
 
 	// Passwords that we're storing.
-	mutable std::map<h256, std::string> m_cachedPasswords;
+	mutable std::unordered_map<h256, std::string> m_cachedPasswords;
 
 	// The default password for keys in the keystore - protected by the master password.
 	std::string m_password;
@@ -107,4 +109,5 @@ private:
 	mutable std::string m_keysFile;
 };
 
+}
 }
