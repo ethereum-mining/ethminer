@@ -30,6 +30,8 @@ namespace dev
 
 char const* Version = "0.9.17";
 
+const u256 UndefinedU256 = ~(u256)0;
+
 void HasInvariants::checkInvariants() const
 {
 	if (!invariants())
