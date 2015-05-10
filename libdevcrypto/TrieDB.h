@@ -26,7 +26,6 @@
 #include <leveldb/db.h>
 #pragma warning(pop)
 
-#include <map>
 #include <memory>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
@@ -105,7 +104,7 @@ public:
 
 	void debugPrint() {}
 
-	void descendKey(h256 _k, std::set<h256>& _keyMask, bool _wasExt, std::ostream* _out, int _indent = 0) const
+	void descendKey(h256 _k, h256Hash& _keyMask, bool _wasExt, std::ostream* _out, int _indent = 0) const
 	{
 		_keyMask.erase(_k);
 		if (_k == m_root && _k == c_shaNull)	// root allowed to be empty
@@ -113,7 +112,7 @@ public:
 		descendList(RLP(node(_k)), _keyMask, _wasExt, _out, _indent);	// if not, it must be a list
 	}
 
-	void descendEntry(RLP const& _r, std::set<h256>& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
+	void descendEntry(RLP const& _r, h256Hash& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
 	{
 		if (_r.isData() && _r.size() == 32)
 			descendKey(_r.toHash<h256>(), _keyMask, _wasExt, _out, _indent);
@@ -123,7 +122,7 @@ public:
 			BOOST_THROW_EXCEPTION(InvalidTrie());
 	}
 
-	void descendList(RLP const& _r, std::set<h256>& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
+	void descendList(RLP const& _r, h256Hash& _keyMask, bool _wasExt, std::ostream* _out, int _indent) const
 	{
 		if (_r.isList() && _r.itemCount() == 2 && (!_wasExt || _out))
 		{
@@ -144,9 +143,9 @@ public:
 			BOOST_THROW_EXCEPTION(InvalidTrie());
 	}
 
-	std::set<h256> leftOvers(std::ostream* _out = nullptr) const
+	h256Hash leftOvers(std::ostream* _out = nullptr) const
 	{
-		std::set<h256> k = m_db->keys();
+		h256Hash k = m_db->keys();
 		descendKey(m_root, k, false, _out);
 		return k;
 	}
@@ -431,7 +430,7 @@ public:
 	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(_key, _value); m_secure.insert(_key, _value); syncRoot(); }
 	void remove(bytesConstRef _key) { Super::remove(_key); m_secure.remove(_key); syncRoot(); }
 
-	std::set<h256> leftOvers(std::ostream* = nullptr) const { return std::set<h256>{}; }
+	h256Hash leftOvers(std::ostream* = nullptr) const { return h256Hash{}; }
 	bool check(bool) const { return m_secure.check(false) && Super::check(false); }
 
 private:
