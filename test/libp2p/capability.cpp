@@ -68,10 +68,10 @@ protected:
 bool TestCapability::interpret(unsigned _id, RLP const& _r) 
 {
 	cnote << "Capability::interpret(): custom message received";
-	BOOST_ASSERT(_id == UserPacket);
 	++m_cntReceivedMessages;
 	m_testSum += _r[0].toInt();
-	return true;
+	BOOST_ASSERT(_id == UserPacket);
+	return (_id == UserPacket);
 }
 
 class TestHostCapability: public HostCapability<TestCapability>, public Worker
