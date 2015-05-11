@@ -241,8 +241,13 @@ Rectangle
 						anchors.fill: parent
 						acceptedButtons: Qt.LeftButton | Qt.RightButton
 						onClicked:{
-							if (mouse.button === Qt.RightButton && !isContract)
-								contextMenu.popup();
+							if (mouse.button === Qt.RightButton)
+							{
+								if (isContract)
+									contextMenuContract.popup();
+								else
+									contextMenu.popup();
+							}
 							else if (mouse.button === Qt.LeftButton)
 							{
 								rootItem.isSelected = true;
@@ -260,6 +265,17 @@ Rectangle
 								rootItem.renameMode = true;
 							}
 						}
+						MenuItem {
+							text: qsTr("Delete")
+							onTriggered: {
+								projectModel.removeDocument(documentId);
+								wrapperItem.removeDocument(documentId);
+							}
+						}
+					}
+
+					Menu {
+						id: contextMenuContract
 						MenuItem {
 							text: qsTr("Delete")
 							onTriggered: {
