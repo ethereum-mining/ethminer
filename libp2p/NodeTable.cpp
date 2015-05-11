@@ -432,7 +432,7 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				bool found = false;
 				EvictionTimeout evictionEntry;
 				DEV_GUARDED(x_evictions)
-					for (auto it = m_evictions.begin(); it != m_evictions.end();)
+					for (auto it = m_evictions.begin(); it != m_evictions.end(); ++it)
 						if (it->first.first == nodeid && it->first.second > std::chrono::steady_clock::now())
 						{
 							found = true;
