@@ -377,7 +377,8 @@ if (TOOLS)
 endif()
 
 if (NCURSES)
-	add_subdirectory(neth)
+	# Commented out until caktux refactors with the new wallet API.
+#	add_subdirectory(neth)
 endif ()
 
 if (GUI)
