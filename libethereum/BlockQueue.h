@@ -106,15 +106,15 @@ private:
 
 	bool invariants() const override;
 
-	mutable boost::shared_mutex m_lock;						///< General lock.
-	std::set<h256> m_drainingSet;							///< All blocks being imported.
-	std::set<h256> m_readySet;								///< All blocks ready for chain-import.
-	std::vector<std::pair<h256, bytes>> m_ready;			///< List of blocks, in correct order, ready for chain-import.
-	std::set<h256> m_unknownSet;							///< Set of all blocks whose parents are not ready/in-chain.
-	std::multimap<h256, std::pair<h256, bytes>> m_unknown;	///< For blocks that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
-	std::set<h256> m_knownBad;								///< Set of blocks that we know will never be valid.
-	std::multimap<unsigned, std::pair<h256, bytes>> m_future;///< Set of blocks that are not yet valid.
-	Signal m_onReady;										///< Called when a subsequent call to import blocks will return a non-empty container. Be nice and exit fast.
+	mutable boost::shared_mutex m_lock;									///< General lock.
+	h256Hash m_drainingSet;												///< All blocks being imported.
+	h256Hash m_readySet;												///< All blocks ready for chain-import.
+	std::vector<std::pair<h256, bytes>> m_ready;						///< List of blocks, in correct order, ready for chain-import.
+	h256Hash m_unknownSet;												///< Set of all blocks whose parents are not ready/in-chain.
+	std::unordered_multimap<h256, std::pair<h256, bytes>> m_unknown;	///< For blocks that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
+	h256Hash m_knownBad;												///< Set of blocks that we know will never be valid.
+	std::multimap<unsigned, std::pair<h256, bytes>> m_future;			///< Set of blocks that are not yet valid. Ordered by timestamp
+	Signal m_onReady;													///< Called when a subsequent call to import blocks will return a non-empty container. Be nice and exit fast.
 };
 
 }

@@ -21,9 +21,9 @@
 
 #pragma once
 
-#include <map>
 #include <vector>
-#include <set>
+#include <unordered_set>
+#include <unordered_map>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libdevcore/RangeMask.h>
@@ -46,7 +46,7 @@ public:
 	~DownloadSub();
 
 	/// Finished last fetch - grab the next bunch of block hashes to download.
-	h256Set nextFetch(unsigned _n);
+	h256Hash nextFetch(unsigned _n);
 
 	/// Note that we've received a particular block. @returns true if we had asked for it but haven't received it yet.
 	bool noteBlock(h256 _hash);
@@ -71,8 +71,8 @@ private:
 	DownloadMan* m_man = nullptr;
 
 	mutable Mutex m_fetch;
-	h256Set m_remaining;
-	std::map<h256, unsigned> m_indices;
+	h256Hash m_remaining;
+	std::unordered_map<h256, unsigned> m_indices;
 	RangeMask<unsigned> m_asked;
 	RangeMask<unsigned> m_attempted;
 };
@@ -155,7 +155,7 @@ private:
 	RangeMask<unsigned> m_blocksGot;
 
 	mutable SharedMutex x_subs;
-	std::set<DownloadSub*> m_subs;
+	std::unordered_set<DownloadSub*> m_subs;
 };
 
 }
