@@ -40,9 +40,10 @@ struct P2PFixture
 
 struct VerbosityHolder
 {
-	int oldLogVerbosity;
 	VerbosityHolder(): oldLogVerbosity(g_logVerbosity) { g_logVerbosity = 10; }
 	~VerbosityHolder() { g_logVerbosity = oldLogVerbosity; }
+
+	int oldLogVerbosity;
 };
 
 class TestCapability: public Capability
@@ -122,16 +123,14 @@ BOOST_AUTO_TEST_CASE(capability)
 
 	int const step = 10;
 
-	for (int i = 0; i < 3000; i += step)
-		if (!host1.isStarted() || !host2.isStarted())
-			this_thread::sleep_for(chrono::milliseconds(step));
+	for (int i = 0; i < 3000 && (!host1.isStarted() || !host2.isStarted()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
 
 	BOOST_REQUIRE(host1.isStarted() && host2.isStarted());
 	host1.requirePeer(host2.id(), NodeIPEndpoint(bi::address::from_string(localhost), prefs2.listenPort, prefs2.listenPort));
 
-	for (int i = 0; i < 3000; i += step)
-		if (!host1.peerCount() || !host2.peerCount())
-			this_thread::sleep_for(chrono::milliseconds(step));
+	for (int i = 0; i < 3000 && (!host1.peerCount() || !host2.peerCount()); i += step)
+		this_thread::sleep_for(chrono::milliseconds(step));
 
 	BOOST_REQUIRE(host1.peerCount() > 0 && host2.peerCount() > 0);
 
