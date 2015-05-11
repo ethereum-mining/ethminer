@@ -60,6 +60,7 @@ private:
 	dev::eth::Client* ethereum() const { return m_ethereum; }
 	void rejigData();
 
+	dev::Address fromAccount();
 	void updateDestination();
 	void updateFee();
 	bool isCreation() const;
