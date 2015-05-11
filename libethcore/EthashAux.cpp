@@ -131,6 +131,14 @@ EthashAux::FullType EthashAux::full(BlockInfo const& _header)
 	return full((uint64_t) _header.number);
 }
 
+struct DAGChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };
+const char* DAGChannel::name() { return EthGreen "DAG"; }
+static int ethash_callback(unsigned int _progress)
+{
+    clog(DAGChannel) << "Generating DAG file. Progress: " << toString(_progress) << "%";
+    return 0;
+}
+
 EthashAux::FullType EthashAux::full(uint64_t _blockNumber)
 {
 	RecursiveGuard l(get()->x_this);
@@ -141,7 +149,7 @@ EthashAux::FullType EthashAux::full(uint64_t _blockNumber)
 		get()->m_lastUsedFull = ret;
 		return ret;
 	}
-	ret = get()->m_lastUsedFull = make_shared<FullAllocation>(light(_blockNumber)->light, nullptr);
+	ret = get()->m_lastUsedFull = make_shared<FullAllocation>(light(_blockNumber)->light, ethash_callback);
 	get()->m_fulls[seedHash] = ret;
 	return ret;
 }
