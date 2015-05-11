@@ -69,9 +69,9 @@ Transact::~Transact()
 	delete ui;
 }
 
-void Transact::setEnvironment(QList<dev::KeyPair> _myKeys, dev::eth::Client* _eth, NatSpecFace* _natSpecDB)
+void Transact::setEnvironment(AddressHash const& _accounts, dev::eth::Client* _eth, NatSpecFace* _natSpecDB)
 {
-	m_myKeys = _myKeys;
+	m_accounts = _accounts;
 	m_ethereum = _eth;
 	m_natSpecDB = _natSpecDB;
 }
@@ -126,8 +126,8 @@ void Transact::updateFee()
 	ui->total->setText(QString("Total: %1").arg(formatBalance(totalReq).c_str()));
 
 	bool ok = false;
-	for (auto i: m_myKeys)
-		if (ethereum()->balanceAt(i.address()) >= totalReq)
+	for (auto const& i: m_accounts)
+		if (ethereum()->balanceAt(i) >= totalReq)
 		{
 			ok = true;
 			break;
@@ -388,17 +388,20 @@ Secret Transact::findSecret(u256 _totalReq) const
 	if (!ethereum())
 		return Secret();
 
-	Secret best;
+	Address best;
 	u256 bestBalance = 0;
-	for (auto const& i: m_myKeys)
+	for (auto const& i: m_accounts)
 	{
-		auto b = ethereum()->balanceAt(i.address(), PendingBlock);
+		auto b = ethereum()->balanceAt(i, PendingBlock);
 		if (b >= _totalReq)
-			return i.secret();
+		{
+			best = i;
+			break;
+		}
 		if (b > bestBalance)
-			bestBalance = b, best = i.secret();
+			bestBalance = b, best = i;
 	}
-	return best;
+	return m_context->retrieveSecret(best);
 }
 
 void Transact::on_send_clicked()
