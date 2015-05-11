@@ -34,7 +34,7 @@ bool ExtVM::call(Address _receiveAddress, u256 _txValue, bytesConstRef _txData, 
 		e.go(_onOp);
 		e.accrueSubState(sub);
 	}
-	io_gas = e.endGas();
+	io_gas = e.gas();
 	e.out().copyTo(_out);
 
 	return !e.excepted();
@@ -51,7 +51,7 @@ h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc 
 		e.go(_onOp);
 		e.accrueSubState(sub);
 	}
-	io_gas = e.endGas();
+	io_gas = e.gas();
 	return e.newAddress();
 }
 

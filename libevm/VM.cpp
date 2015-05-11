@@ -25,13 +25,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-void VM::reset(u256 _gas) noexcept
-{
-	VMFace::reset(_gas);
-	m_curPC = 0;
-	m_jumpDests.clear();
-}
-
 struct InstructionMetric
 {
 	int gasPriceTier;
@@ -52,8 +45,14 @@ static array<InstructionMetric, 256> metrics()
 	return s_ret;
 }
 
-bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
+bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
+	// Reset leftovers from possible previous run
+	m_curPC = 0;
+	m_jumpDests.clear();
+
+	m_gas = io_gas;
+
 	m_stack.reserve((unsigned)c_stackLimit);
 
 	static const array<InstructionMetric, 256> c_metrics = metrics();
@@ -200,11 +199,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 //			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);
 
 		if (m_gas < runGas)
-		{
-			// Out of gas!
-			m_gas = 0;
 			BOOST_THROW_EXCEPTION(OutOfGas());
-		}
 
 		m_gas = (u256)((bigint)m_gas - runGas);
 
@@ -655,6 +650,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			unsigned s = (unsigned)m_stack.back();
 			m_stack.pop_back();
 
+			io_gas = m_gas;
 			return bytesConstRef(m_temp.data() + b, s);
 		}
 		case Instruction::SUICIDE:
@@ -664,9 +660,12 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			// ...follow through to...
 		}
 		case Instruction::STOP:
+			io_gas = m_gas;
 			return bytesConstRef();
 		}
 	}
+
+	io_gas = m_gas;
 	if (_steps == (uint64_t)-1)
 		BOOST_THROW_EXCEPTION(StepsDone());
 	return bytesConstRef();
