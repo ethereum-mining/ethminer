@@ -98,7 +98,7 @@ void MixClient::resetState(std::unordered_map<Address, Account> const& _accounts
 	m_executions.clear();
 }
 
-Transaction MixClient::replaceGas(Transaction const& _t, Secret const& _secret, u256 const& _gas)
+Transaction MixClient::replaceGas(Transaction const& _t, u256 const& _gas, Secret const& _secret)
 {
 	Transaction ret;
 	if (_secret)
@@ -119,9 +119,9 @@ Transaction MixClient::replaceGas(Transaction const& _t, Secret const& _secret, 
 	return ret;
 }
 
-void MixClient::executeTransaction(Transaction const& _t, Secret const& _secret, State& _state, bool _call, bool _gasAuto)
+void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _call, bool _gasAuto, Secret const& _secret)
 {
-	Transaction t = _gasAuto ? replaceGas(_t, Secret(), m_state.gasLimitRemaining()) : _t;
+	Transaction t = _gasAuto ? replaceGas(_t, m_state.gasLimitRemaining()) : _t;
 	// do debugging run first
 	LastHashes lastHashes(256);
 	lastHashes[0] = bc().numberHash(bc().number());
@@ -230,7 +230,7 @@ void MixClient::executeTransaction(Transaction const& _t, Secret const& _secret,
 	// execute on a state
 	if (!_call)
 	{
-		t = _gasAuto ? replaceGas(_t, _secret, d.gasUsed) : _t;
+		t = _gasAuto ? replaceGas(_t, d.gasUsed, _secret) : _t;
 		er =_state.execute(lastHashes, t);
 		if (t.isCreation() && _state.code(d.contractAddress).empty())
 			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
@@ -293,7 +293,7 @@ void MixClient::submitTransaction(Secret _secret, u256 _value, Address _dest, by
 	WriteGuard l(x_state);
 	u256 n = m_state.transactionsFrom(toAddress(_secret));
 	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
-	executeTransaction(t, _secret, m_state, false, _gasAuto);
+	executeTransaction(t, m_state, false, _gasAuto, _secret);
 }
 
 Address MixClient::submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice, bool _gasAuto)
@@ -301,7 +301,7 @@ Address MixClient::submitTransaction(Secret _secret, u256 _endowment, bytes cons
 	WriteGuard l(x_state);
 	u256 n = m_state.transactionsFrom(toAddress(_secret));
 	eth::Transaction t(_endowment, _gasPrice, _gas, _init, n, _secret);
-	executeTransaction(t, _secret, m_state, false, _gasAuto);
+	executeTransaction(t, m_state, false, _gasAuto, _secret);
 	Address address = right160(sha3(rlpList(t.sender(), t.nonce())));
 	return address;
 }
@@ -316,7 +316,7 @@ dev::eth::ExecutionResult MixClient::call(Address const& _from, u256 _value, Add
 	if (_ff == FudgeFactor::Lenient)
 		temp.addBalance(_from, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
 	WriteGuard lw(x_state); //TODO: lock is required only for last execution state
-	executeTransaction(t, Secret(), temp, true, _gasAuto);
+	executeTransaction(t, temp, true, _gasAuto);
 	return lastExecution().result;
 }
 
@@ -350,7 +350,7 @@ dev::eth::ExecutionResult MixClient::create(Address const& _from, u256 _value, b
 	if (_ff == FudgeFactor::Lenient)
 		temp.addBalance(_from, (u256)(t.gasRequired() * t.gasPrice() + t.value()));
 	WriteGuard lw(x_state); //TODO: lock is required only for last execution state
-	executeTransaction(t, Secret(), temp, true, false);
+	executeTransaction(t, temp, true, false);
 	return lastExecution().result;
 }
 
