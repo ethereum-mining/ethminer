@@ -30,6 +30,7 @@
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/SHA3.h>
+#include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include "Common.h"
 namespace ba = boost::asio;
@@ -39,6 +40,9 @@ namespace dev
 {
 namespace p2p
 {
+
+struct RLPXWarn: public LogChannel { static const char* name(); static const int verbosity = 0; };
+struct RLPXNote: public LogChannel { static const char* name(); static const int verbosity = 1; };
 
 /**
  * UDP Datagram
@@ -203,14 +207,14 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
 	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
 	m_socket.async_receive_from(boost::asio::buffer(m_recvData), m_recvEndpoint, [this, self](boost::system::error_code _ec, size_t _len)
 	{
-		// ASIO Safety: It is possible that ASIO will call lambda w/o an error
-		// and after the socket has been disconnected. Checking m_closed
-		// guarantees that m_host will not be called after disconnect().
-		if (_ec || m_closed)
+		if (m_closed)
 			return disconnectWithError(_ec);
+		
+		if (_ec != boost::system::errc::success)
+			clog(NetWarn) << "Receiving UDP message failed. " << _ec.value() << ":" << _ec.message();
 
-		assert(_len);
-		m_host.onReceived(this, m_recvEndpoint, bytesConstRef(m_recvData.data(), _len));
+		if (_len)
+			m_host.onReceived(this, m_recvEndpoint, bytesConstRef(m_recvData.data(), _len));
 		doRead();
 	});
 }
@@ -228,17 +232,14 @@ void UDPSocket<Handler, MaxDatagramSize>::doWrite()
 	{
 		if (m_closed)
 			return disconnectWithError(_ec);
-		else if (_ec != boost::system::errc::success &&
-				_ec != boost::system::errc::address_not_available &&
-				_ec != boost::system::errc::host_unreachable)
-			return disconnectWithError(_ec);
-		else
-		{
-			Guard l(x_sendQ);
-			m_sendQ.pop_front();
-			if (m_sendQ.empty())
-				return;
-		}
+		
+		if (_ec != boost::system::errc::success)
+			clog(NetWarn) << "Failed delivering UDP message. " << _ec.value() << ":" << _ec.message();
+		
+		Guard l(x_sendQ);
+		m_sendQ.pop_front();
+		if (m_sendQ.empty())
+			return;
 		doWrite();
 	});
 }
