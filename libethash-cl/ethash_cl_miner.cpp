@@ -27,6 +27,7 @@
 #include <iostream>
 #include <assert.h>
 #include <queue>
+#include <random>
 #include <vector>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
@@ -341,7 +342,9 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 
 	unsigned buf = 0;
-	for (uint64_t start_nonce = 0; ; start_nonce += c_search_batch_size)
+	std::random_device engine;
+	uint64_t start_nonce = std::uniform_int_distribution<uint64_t>()(engine);
+	for (; ; start_nonce += c_search_batch_size)
 	{
 		// supply output buffer to kernel
 		m_search_kernel.setArg(0, m_search_buf[buf]);
