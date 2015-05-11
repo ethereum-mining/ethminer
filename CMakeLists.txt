@@ -377,7 +377,8 @@ if (TOOLS)
 endif()
 
 if (NCURSES)
-	add_subdirectory(neth)
+	# Commented out until caktux refactors with the new wallet API.
+#	add_subdirectory(neth)
 endif ()
 
 if (GUI)
@@ -396,7 +397,7 @@ if (GUI)
 
 endif()
 
-if (APPLE)
+if (APPLE AND GUI)
 
 	add_custom_target(appdmg
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
