@@ -47,7 +47,7 @@ public:
 	 *                        http://en.cppreference.com/w/cpp/chrono/c/strftime
 	 *                        with which to display timestamps
 	 */
-	void initialize(bool _enabled, std::string const& _timeFormat, std::string const& _destinationURL);
+	void initialize(bool _enabled, std::string const& _timeFormat, std::string const& _destinationURL = "");
 
 	static StructuredLogger& get()
 	{
