@@ -1093,8 +1093,7 @@ int main(int argc, char** argv)
 	{
 		while (masterPassword.empty())
 		{
-			cout << "Please enter your MASTER password:" << flush;
-			getline(cin, masterPassword);
+			masterPassword = getPassword("Please enter your MASTER password: ");
 			if (!keyManager.load(masterPassword))
 			{
 				cout << "Password invalid. Try again." << endl;
@@ -1106,10 +1105,8 @@ int main(int argc, char** argv)
 	{
 		while (masterPassword.empty())
 		{
-			cout << "Please enter a MASTER password to protect your key store. Make it strong." << flush;
-			getline(cin, masterPassword);
-			string confirm;
-			cout << "Please confirm the password by entering it again." << flush;
+			masterPassword = getPassword("Please enter a MASTER password to protect your key store (make it strong!): ");
+			string confirm = getPassword("Please confirm the password by entering it again: ");
 			getline(cin, confirm);
 			if (masterPassword != confirm)
 			{
@@ -1126,7 +1123,7 @@ int main(int argc, char** argv)
 	g_logPost = [&](std::string const& a, char const*) { if (silence) logbuf += a + "\n"; else cout << "\r           \r" << a << endl << additional << flush; };
 
 	// TODO: give hints &c.
-	auto getPassword = [&](Address const& a){ auto s = silence; silence = true; string ret; cout << endl << "Enter password for address " << a.abridged() << ": " << flush; std::getline(cin, ret); silence = s; return ret; };
+	auto getPassword = [&](Address const& a){ auto s = silence; silence = true; cout << endl; string ret = dev::getPassword("Enter password for address " + a.abridged() + ": "); silence = s; return ret; };
 
 #if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
