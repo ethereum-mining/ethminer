@@ -40,6 +40,7 @@ option(GUI "Build GUI components (AlethZero, Mix)" ON)
 option(TESTS "Build the tests." ON)
 option(EVMJIT "Build just-in-time compiler for EVM code (requires LLVM)" OFF)
 option(ETHASHCL "Build in support for GPU mining via OpenCL" OFF)
+option(JSCONSOLE "Build in javascript console" OFF)
 
 # propagates CMake configuration options to the compiler
 function(configureProject)
@@ -193,8 +194,13 @@ eth_format_option(GUI)
 eth_format_option(TESTS)
 eth_format_option(TOOLS)
 eth_format_option(ETHASHCL)
+eth_format_option(JSCONSOLE)
 eth_format_option_on_decent_platform(SERPENT)
 eth_format_option_on_decent_platform(NCURSES)
+
+if (JSCONSOLE)
+	set(JSONRPC ON)
+endif()
 
 if (GUI)
 	set(JSONRPC ON)
@@ -284,6 +290,7 @@ message("-- GUI              Build GUI components                     ${GUI}")
 message("-- NCURSES          Build NCurses components                 ${NCURSES}")
 message("-- TESTS            Build tests                              ${TESTS}")
 message("-- ETHASHCL         Build OpenCL components (experimental!)  ${ETHASHCL}")
+message("-- JSCONSOLE        Build with javascript console            ${JSCONSOLE}")
 message("-- EVMJIT           Build LLVM-based JIT EVM (experimental!) ${EVMJIT}")
 message("------------------------------------------------------------------------")
 message("")
@@ -326,6 +333,11 @@ endif()
 
 if (JSONRPC)
 	add_subdirectory(libweb3jsonrpc)
+endif()
+
+if (JSCONSOLE)
+	add_subdirectory(libjsengine)
+	add_subdirectory(libjsconsole)
 endif()
 
 add_subdirectory(secp256k1)
@@ -383,6 +395,7 @@ if (GUI)
 	endif ()
 
 endif()
+
 
 #unset(TARGET_PLATFORM CACHE)
 

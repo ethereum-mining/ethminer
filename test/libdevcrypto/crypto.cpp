@@ -593,15 +593,14 @@ BOOST_AUTO_TEST_CASE(ecies_aes128_ctr_unaligned)
 	// TESTING: send encrypt magic sequence
 	bytes magic {0x22,0x40,0x08,0x91};
 	bytes magicCipherAndMac;
-	encryptSymNoAuth(encryptK, &magic, magicCipherAndMac, h128());
+	magicCipherAndMac = encryptSymNoAuth(encryptK, h128(), &magic);
 	
 	magicCipherAndMac.resize(magicCipherAndMac.size() + 32);
 	sha3mac(egressMac.ref(), &magic, egressMac.ref());
 	egressMac.ref().copyTo(bytesRef(&magicCipherAndMac).cropped(magicCipherAndMac.size() - 32, 32));
 	
-	bytes plaintext;
 	bytesConstRef cipher(&magicCipherAndMac[0], magicCipherAndMac.size() - 32);
-	decryptSymNoAuth(encryptK, h128(), cipher, plaintext);
+	bytes plaintext = decryptSymNoAuth(encryptK, h128(), cipher);
 	
 	plaintext.resize(magic.size());
 	BOOST_REQUIRE(plaintext.size() > 0);
@@ -615,10 +614,10 @@ BOOST_AUTO_TEST_CASE(ecies_aes128_ctr)
 	bytesConstRef msg((byte*)m.data(), m.size());
 
 	bytes ciphertext;
-	auto iv = encryptSymNoAuth(k, msg, ciphertext);
+	h128 iv;
+	tie(ciphertext, iv) = encryptSymNoAuth(k, msg);
 	
-	bytes plaintext;
-	decryptSymNoAuth(k, iv, &ciphertext, plaintext);
+	bytes plaintext = decryptSymNoAuth(k, iv, &ciphertext);
 	BOOST_REQUIRE_EQUAL(asString(plaintext), m);
 }
 

@@ -7,6 +7,10 @@ include_directories(BEFORE ..)
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
+if (JSCONSOLE)
+	include_directories(${V8_INCLUDE_DIRS})
+endif()
+
 set(EXECUTABLE eth)
 
 file(GLOB HEADERS "*.h")
@@ -32,6 +36,10 @@ endif()
 
 target_link_libraries(${EXECUTABLE} webthree)
 target_link_libraries(${EXECUTABLE} ethash)
+
+if (JSCONSOLE)
+	target_link_libraries(${EXECUTABLE} jsconsole)
+endif()
 
 if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
 	eth_copy_dlls("${EXECUTABLE}" MHD_DLLS)
