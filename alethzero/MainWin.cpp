@@ -31,6 +31,7 @@
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QInputDialog>
+#include <QtWidgets/QListWidgetItem>
 #include <QtWebEngine/QtWebEngine>
 #include <QtWebEngineWidgets/QWebEngineView>
 #include <QtWebEngineWidgets/QWebEngineCallback>
@@ -200,8 +201,6 @@ Main::Main(QWidget *parent) :
 
 	ui->blockCount->setText(QString("PV%1.%2 D%3 %4-%5 v%6").arg(eth::c_protocolVersion).arg(eth::c_minorProtocolVersion).arg(c_databaseVersion).arg(QString::fromStdString(ProofOfWork::name())).arg(ProofOfWork::revision()).arg(dev::Version));
 
-	connect(ui->ourAccounts->model(), SIGNAL(rowsMoved(const QModelIndex &, int, int, const QModelIndex &, int)), SLOT(ourAccountsRowsMoved()));
-
 	QSettings s("ethereum", "alethzero");
 	m_networkConfig = s.value("peers").toByteArray();
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
@@ -230,6 +229,7 @@ Main::Main(QWidget *parent) :
 //	ui->webView->page()->settings()->setAttribute(QWebEngineSettings::DeveloperExtrasEnabled, true);
 //	QWebEngineInspector* inspector = new QWebEngineInspector();
 //	inspector->setPage(page);
+	setBeneficiary(*m_keyManager.accounts().begin());
 	readSettings();
 #if !ETH_FATDB
 	removeDockWidget(ui->dockWidget_accounts);
@@ -390,9 +390,9 @@ void Main::installBalancesWatch()
 	// TODO: Update for new currencies reg.
 	for (unsigned i = 0; i < ethereum()->stateAt(coinsAddr, PendingBlock); ++i)
 		altCoins.push_back(right160(ethereum()->stateAt(coinsAddr, i + 1)));
-	for (auto i: m_myKeys)
+	for (auto const& i: m_keyManager.accounts())
 		for (auto c: altCoins)
-			tf.address(c).topic(0, h256(i.address(), h256::AlignRight));
+			tf.address(c).topic(0, h256(i, h256::AlignRight));
 
 	uninstallWatch(m_balancesFilter);
 	m_balancesFilter = installWatch(tf, [=](LocalisedLogEntries const&){ onBalancesChange(); });
@@ -461,7 +461,7 @@ void Main::load(QString _s)
 
 void Main::on_newTransaction_triggered()
 {
-	m_transact.setEnvironment(m_myKeys, ethereum(), &m_natSpecDB);
+	m_transact.setEnvironment(m_keyManager.accounts(), ethereum(), &m_natSpecDB);
 	m_transact.exec();
 }
 
@@ -648,17 +648,7 @@ void Main::on_paranoia_triggered()
 void Main::writeSettings()
 {
 	QSettings s("ethereum", "alethzero");
-	{
-		QByteArray b;
-		b.resize(sizeof(Secret) * m_myKeys.size());
-		auto p = b.data();
-		for (auto i: m_myKeys)
-		{
-			memcpy(p, &(i.secret()), sizeof(Secret));
-			p += sizeof(Secret);
-		}
-		s.setValue("address", b);
-	}
+	s.remove("address");
 	{
 		QByteArray b;
 		b.resize(sizeof(Secret) * m_myIdentities.size());
@@ -698,6 +688,20 @@ void Main::writeSettings()
 	s.setValue("windowState", saveState());
 }
 
+Secret Main::retrieveSecret(Address const& _a) const
+{
+	auto info = m_keyManager.accountDetails()[_a];
+	while (true)
+	{
+		if (Secret s = m_keyManager.secret(_a, [&](){
+				return QInputDialog::getText(const_cast<Main*>(this), "Import Account Key", QString("Enter the password for the account %2 (%1). The hint is:\n%3").arg(QString::fromStdString(_a.abridged())).arg(QString::fromStdString(info.first)).arg(QString::fromStdString(info.second)), QLineEdit::Password).toStdString();
+			}))
+			return s;
+		else if (QMessageBox::warning(const_cast<Main*>(this), "Incorrect Password", "The password you gave is incorrect for this key.", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
+			return Secret();
+	}
+}
+
 void Main::readSettings(bool _skipGeometry)
 {
 	QSettings s("ethereum", "alethzero");
@@ -707,21 +711,17 @@ void Main::readSettings(bool _skipGeometry)
 	restoreState(s.value("windowState").toByteArray());
 
 	{
-		m_myKeys.clear();
 		QByteArray b = s.value("address").toByteArray();
-		if (b.isEmpty())
-			m_myKeys.append(KeyPair::create());
-		else
+		if (!b.isEmpty())
 		{
 			h256 k;
 			for (unsigned i = 0; i < b.size() / sizeof(Secret); ++i)
 			{
 				memcpy(&k, b.data() + i * sizeof(Secret), sizeof(Secret));
-				if (!count(m_myKeys.begin(), m_myKeys.end(), KeyPair(k)))
-					m_myKeys.append(KeyPair(k));
+				if (!m_keyManager.accounts().count(KeyPair(k).address()))
+					m_keyManager.import(k, "Imported (UNSAFE) key.");
 			}
 		}
-		ethereum()->setAddress(m_myKeys.back().address());
 	}
 
 	{
@@ -766,16 +766,38 @@ void Main::readSettings(bool _skipGeometry)
 	on_urlEdit_returnPressed();
 }
 
+std::string Main::getPassword(std::string const& _title, std::string const& _for)
+{
+	QString password;
+	while (true)
+	{
+		password = QInputDialog::getText(nullptr, QString::fromStdString(_title), QString::fromStdString(_for), QLineEdit::Password, QString());
+		QString confirm = QInputDialog::getText(nullptr, QString::fromStdString(_title), "Confirm this password by typing it again", QLineEdit::Password, QString());
+		if (password == confirm)
+			break;
+		QMessageBox::warning(nullptr, QString::fromStdString(_title), "You entered two different passwords - please enter the same password twice.", QMessageBox::Ok);
+	}
+	return password.toStdString();
+}
+
 void Main::on_importKey_triggered()
 {
-	QString s = QInputDialog::getText(this, "Import Account Key", "Enter account's secret key");
+	QString s = QInputDialog::getText(this, "Import Account Key", "Enter account's secret key", QLineEdit::Password);
 	bytes b = fromHex(s.toStdString());
 	if (b.size() == 32)
 	{
 		auto k = KeyPair(h256(b));
-		if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
+		if (!m_keyManager.accounts().count(k.address()))
 		{
-			m_myKeys.append(k);
+			QString s = QInputDialog::getText(this, "Import Account Key", "Enter this account's name");
+			if (QMessageBox::question(this, "Additional Security?", "Would you like to use additional security for this key? This lets you protect it with a different password to other keys, but also means you must re-enter the key's password every time you wish to use the account.", QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes)
+			{
+				std::string password = getPassword("Import Account Key", "Enter the password you would like to use for this key. Don't forget it!");
+				std::string hint = QInputDialog::getText(this, "Import Account Key", "Enter a hint to help you remember this password.").toStdString();
+				m_keyManager.import(k.secret(), s.toStdString(), password, hint);
+			}
+			else
+				m_keyManager.import(k.secret(), s.toStdString());
 			keysChanged();
 		}
 		else
@@ -816,15 +838,8 @@ void Main::on_importKeyFile_triggered()
 			}
 
 			cnote << k.address();
-			if (std::find(m_myKeys.begin(), m_myKeys.end(), k) == m_myKeys.end())
-			{
-				if (m_myKeys.empty())
-				{
-					m_myKeys.push_back(KeyPair::create());
-					keysChanged();
-				}
-				ethereum()->submitTransaction(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_myKeys.back().address(), {}, c_txGas, gasPrice());
-			}
+			if (!m_keyManager.accounts().count(k.address()))
+				ethereum()->submitTransaction(k.sec(), ethereum()->balanceAt(k.address()) - gasPrice() * c_txGas, m_beneficiary, {}, c_txGas, gasPrice());
 			else
 				QMessageBox::warning(this, "Already Have Key", "Could not import the secret key: we already own this account.");
 		}
@@ -843,10 +858,12 @@ void Main::on_importKeyFile_triggered()
 
 void Main::on_exportKey_triggered()
 {
-	if (ui->ourAccounts->currentRow() >= 0 && ui->ourAccounts->currentRow() < m_myKeys.size())
+	if (ui->ourAccounts->currentRow() >= 0)
 	{
-		auto k = m_myKeys[ui->ourAccounts->currentRow()];
-		QMessageBox::information(this, "Export Account Key", "Secret key to account " + QString::fromStdString(render(k.address()) + " is:\n" + toHex(k.sec().ref())));
+		auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
+		Address h((byte const*)hba.data(), Address::ConstructFromPointer);
+		Secret s = retrieveSecret(h);
+		QMessageBox::information(this, "Export Account Key", "Secret key to account " + QString::fromStdString(render(h) + " is:\n" + s.hex()));
 	}
 }
 
@@ -944,6 +961,24 @@ void Main::refreshMining()
 */
 }
 
+void Main::setBeneficiary(Address const& _b)
+{
+	for (int i = 0; i < ui->ourAccounts->count(); ++i)
+	{
+		auto hba = ui->ourAccounts->item(i)->data(Qt::UserRole).toByteArray();
+		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
+		ui->ourAccounts->item(i)->setCheckState(h == _b ? Qt::Checked : Qt::Unchecked);
+	}
+	m_beneficiary = _b;
+	ethereum()->setAddress(_b);
+}
+
+void Main::on_ourAccounts_itemClicked(QListWidgetItem* _i)
+{
+	auto hba = _i->data(Qt::UserRole).toByteArray();
+	setBeneficiary(Address((byte const*)hba.data(), Address::ConstructFromPointer));
+}
+
 void Main::refreshBalances()
 {
 	cwatch << "refreshBalances()";
@@ -962,11 +997,13 @@ void Main::refreshBalances()
 //		cdebug << n << addr << denom << sha3(h256(n).asBytes());
 		altCoins[addr] = make_tuple(fromRaw(n), 0, denom);
 	}*/
-	for (auto i: m_myKeys)
+	for (pair<Address, std::pair<std::string, std::string>> const& i: m_keyManager.accountDetails())
 	{
-		u256 b = ethereum()->balanceAt(i.address());
-		(new QListWidgetItem(QString("%2: %1 [%3]").arg(formatBalance(b).c_str()).arg(QString::fromStdString(render(i.address()))).arg((unsigned)ethereum()->countAt(i.address())), ui->ourAccounts))
-			->setData(Qt::UserRole, QByteArray((char const*)i.address().data(), Address::size));
+		u256 b = ethereum()->balanceAt(i.first);
+		QListWidgetItem* li = new QListWidgetItem(QString("%4 %2: %1 [%3]").arg(formatBalance(b).c_str()).arg(QString::fromStdString(render(i.first))).arg((unsigned)ethereum()->countAt(i.first)).arg(QString::fromStdString(i.second.first)), ui->ourAccounts);
+		li->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
+		li->setFlags(Qt::ItemIsUserCheckable);
+		li->setCheckState(m_beneficiary == i.first ? Qt::Checked : Qt::Unchecked);
 		totalBalance += b;
 
 //		for (auto& c: altCoins)
@@ -1416,20 +1453,6 @@ void Main::on_transactionQueue_currentItemChanged()
 	ui->pendingInfo->moveCursor(QTextCursor::Start);
 }
 
-void Main::ourAccountsRowsMoved()
-{
-	QList<KeyPair> myKeys;
-	for (int i = 0; i < ui->ourAccounts->count(); ++i)
-	{
-		auto hba = ui->ourAccounts->item(i)->data(Qt::UserRole).toByteArray();
-		auto h = Address((byte const*)hba.data(), Address::ConstructFromPointer);
-		for (auto i: m_myKeys)
-			if (i.address() == h)
-				myKeys.push_back(i);
-	}
-	m_myKeys = myKeys;
-}
-
 void Main::on_inject_triggered()
 {
 	QString s = QInputDialog::getText(this, "Inject Transaction", "Enter transaction dump in hex");
@@ -1855,7 +1878,7 @@ void Main::on_mine_triggered()
 {
 	if (ui->mine->isChecked())
 	{
-		ethereum()->setAddress(m_myKeys.last().address());
+		ethereum()->setAddress(m_beneficiary);
 		ethereum()->startMining();
 	}
 	else
@@ -1928,24 +1951,39 @@ void Main::on_newAccount_triggered()
 		t->join();
 		delete t;
 	}
-	m_myKeys.append(p);
+
+	QString s = QInputDialog::getText(this, "Create Account", "Enter this account's name");
+	if (QMessageBox::question(this, "Create Account", "Would you like to use additional security for this key? This lets you protect it with a different password to other keys, but also means you must re-enter the key's password every time you wish to use the account.", QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes)
+	{
+		std::string password = getPassword("Create Account", "Enter the password you would like to use for this key. Don't forget it!");
+		std::string hint = QInputDialog::getText(this, "Create Account", "Enter a hint to help you remember this password.").toStdString();
+		m_keyManager.import(p.secret(), s.toStdString(), password, hint);
+	}
+	else
+		m_keyManager.import(p.secret(), s.toStdString());
 	keysChanged();
 }
 
 void Main::on_killAccount_triggered()
 {
-	if (ui->ourAccounts->currentRow() >= 0 && ui->ourAccounts->currentRow() < m_myKeys.size())
+	if (ui->ourAccounts->currentRow() >= 0)
 	{
-		auto k = m_myKeys[ui->ourAccounts->currentRow()];
+		auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
+		Address h((byte const*)hba.data(), Address::ConstructFromPointer);
+		auto k = m_keyManager.accountDetails()[h];
 		if (
-			ethereum()->balanceAt(k.address()) != 0 &&
-			QMessageBox::critical(this, "Kill Account?!",
-				QString::fromStdString("Account " + render(k.address()) + " has " + formatBalance(ethereum()->balanceAt(k.address())) + " in it. It, and any contract that this account can access, will be lost forever if you continue. Do NOT continue unless you know what you are doing.\n"
+			ethereum()->balanceAt(h) != 0 &&
+			QMessageBox::critical(this, QString::fromStdString("Kill Account " + k.first + "?!"),
+				QString::fromStdString("Account " + k.first + " (" + render(h) + ") has " + formatBalance(ethereum()->balanceAt(h)) + " in it. It, and any contract that this account can access, will be lost forever if you continue. Do NOT continue unless you know what you are doing.\n"
 				"Are you sure you want to continue?"),
 				QMessageBox::Yes, QMessageBox::No) == QMessageBox::No)
 			return;
-		m_myKeys.erase(m_myKeys.begin() + ui->ourAccounts->currentRow());
+		m_keyManager.kill(h);
+		if (m_keyManager.accounts().empty())
+			m_keyManager.import(Secret::random(), "Default account");
 		keysChanged();
+		if (m_beneficiary == h)
+			setBeneficiary(*m_keyManager.accounts().begin());
 	}
 }
 
