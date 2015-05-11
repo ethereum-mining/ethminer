@@ -1002,7 +1002,7 @@ void Main::refreshBalances()
 		u256 b = ethereum()->balanceAt(i.first);
 		QListWidgetItem* li = new QListWidgetItem(QString("%4 %2: %1 [%3]").arg(formatBalance(b).c_str()).arg(QString::fromStdString(render(i.first))).arg((unsigned)ethereum()->countAt(i.first)).arg(QString::fromStdString(i.second.first)), ui->ourAccounts);
 		li->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
-		li->setFlags(Qt::ItemIsUserCheckable);
+		li->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
 		li->setCheckState(m_beneficiary == i.first ? Qt::Checked : Qt::Unchecked);
 		totalBalance += b;
 
