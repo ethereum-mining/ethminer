@@ -22,9 +22,9 @@
 #pragma once
 
 #include <mutex>
-#include <map>
+#include <unordered_map>
 #include <vector>
-#include <set>
+#include <unordered_set>
 #include <memory>
 #include <utility>
 #include <thread>
@@ -97,7 +97,7 @@ private:
 	/// Get a bunch of needed blocks.
 	/// Removes them from our list of needed blocks.
 	/// @returns empty if there's no more blocks left to fetch, otherwise the blocks to fetch.
-	h256Set neededBlocks(h256Set const& _exclude);
+	h256Hash neededBlocks(h256Hash const& _exclude);
 
 	///	Check to see if the network peer-state initialisation has happened.
 	bool isInitialised() const { return (bool)m_latestBlockSent; }
@@ -121,9 +121,9 @@ private:
 	DownloadMan m_man;
 
 	h256 m_latestBlockSent;
-	h256Set m_transactionsSent;
+	h256Hash m_transactionsSent;
 
-	std::set<p2p::NodeId> m_banned;
+	std::unordered_set<p2p::NodeId> m_banned;
 
 	bool m_newTransactions = false;
 	bool m_newBlocks = false;

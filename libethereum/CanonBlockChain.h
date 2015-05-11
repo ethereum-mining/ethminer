@@ -45,7 +45,7 @@ namespace eth
 {
 
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
-std::map<Address, Account> const& genesisState();
+std::unordered_map<Address, Account> const& genesisState();
 
 /**
  * @brief Implements the blockchain database. All data this gives is disk-backed.

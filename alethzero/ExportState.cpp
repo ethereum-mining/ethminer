@@ -91,7 +91,7 @@ void ExportStateDialog::fillBlocks()
 	while (i > 0 && i >= m_recentBlocks)
 		ui->block->removeItem(i--);
 
-	h256Set blocks;
+	h256Hash blocks;
 	for (QString f: filters)
 	{
 		if (f.startsWith("#"))
@@ -153,13 +153,17 @@ void ExportStateDialog::generateJSON()
 		auto address = Address((byte const*)hba.data(), Address::ConstructFromPointer);
 		json << prefix << "\t\"" << toHex(address.ref()) << "\":\n\t{\n\t\t\"wei\": \"" << ethereum()->balanceAt(address, m_block) << "\",\n";
 		json << "\t\t\"code\": \"" << toHex(ethereum()->codeAt(address, m_block)) << "\",\n";
-		std::map<u256, u256> storage = ethereum()->storageAt(address, m_block);
+		std::unordered_map<u256, u256> storage = ethereum()->storageAt(address, m_block);
 		if (!storage.empty())
 		{
 			json << "\t\t\"storage\":\n\t\t{\n";
+			std::string storagePrefix;
 			for (auto s: storage)
-				json << "\t\t\t\"" << toHex(s.first) << "\": \"" << toHex(s.second) << "\"" << (s.first == storage.rbegin()->first ? "" : ",") <<"\n";
-			json << "\t\t}\n";
+			{
+				json << storagePrefix << "\t\t\t\"" << toHex(s.first) << "\": \"" << toHex(s.second) << "\"";
+				storagePrefix = ",\n";
+			}
+			json << "\n\t\t}\n";
 		}
 		json << "\t}";
 		prefix = ",\n";
