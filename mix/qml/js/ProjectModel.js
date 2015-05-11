@@ -295,7 +295,7 @@ function renameDocument(documentId, newName) {
 function getDocument(documentId) {
 	var i = getDocumentIndex(documentId);
 	if (i === -1)
-		return null;
+		return undefined;
 	else
 		return projectListModel.get(i);
 }
