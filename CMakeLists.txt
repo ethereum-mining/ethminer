@@ -155,7 +155,7 @@ set (ETH_HAVE_WEBENGINE 1)
 # Backwards compatibility
 if (HEADLESS)
 	message("*** WARNING: -DHEADLESS=1 option is DEPRECATED! Use -DBUNDLE=minimal or -DGUI=0")
-	set(BUNDLE "minimal")
+	set(GUI OFF)
 endif ()
 
 # TODO: Abstract into something sensible and move into a function.
