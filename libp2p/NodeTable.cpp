@@ -81,7 +81,8 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 	{
 		shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, _node.endpoint));
 		ret->pending = false;
-		m_nodes[_node.id] = ret;
+		DEV_GUARDED(x_nodes)
+			m_nodes[_node.id] = ret;
 		noteActiveNode(_node.id, _node.endpoint);
 		return ret;
 	}
@@ -101,14 +102,13 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 		return move(shared_ptr<NodeEntry>());
 	}
 	
-	{
-		Guard ln(x_nodes);
+	DEV_GUARDED(x_nodes)
 		if (m_nodes.count(_node.id))
 			return m_nodes[_node.id];
-	}
 	
 	shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, _node.endpoint));
-	m_nodes[_node.id] = ret;
+	DEV_GUARDED(x_nodes)
+		m_nodes[_node.id] = ret;
 	clog(NodeTableConnect) << "addNode pending for" << _node.endpoint;
 	ping(_node.endpoint);
 	return ret;
@@ -186,7 +186,8 @@ void NodeTable::discover(NodeId _node, unsigned _round, shared_ptr<set<shared_pt
 			tried.push_back(r);
 			FindNode p(r->endpoint, _node);
 			p.sign(m_secret);
-			m_findNodeTimeout.push_back(make_pair(r->id, chrono::steady_clock::now()));
+			DEV_GUARDED(x_findNodeTimeout)
+				m_findNodeTimeout.push_back(make_pair(r->id, chrono::steady_clock::now()));
 			m_socketPointer->send(p);
 		}
 	
@@ -447,17 +448,17 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				{
 					if (auto n = nodeEntry(nodeid))
 						n->pending = false;
-					else if (m_pubkDiscoverPings.count(_from.address()))
+					else
 					{
+						DEV_GUARDED(x_pubkDiscoverPings)
 						{
-							Guard l(x_pubkDiscoverPings);
+							if (!m_pubkDiscoverPings.count(_from.address()))
+								return; // unsolicited pong; don't note node as active
 							m_pubkDiscoverPings.erase(_from.address());
 						}
 						if (!haveNode(nodeid))
 							addNode(Node(nodeid, NodeIPEndpoint(_from.address(), _from.port(), _from.port())));
 					}
-					else
-						return; // unsolicited pong; don't note node as active
 				}
 				
 				// update our endpoint address and UDP port
@@ -473,14 +474,15 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			{
 				bool expected = false;
 				auto now = chrono::steady_clock::now();
-				m_findNodeTimeout.remove_if([&](NodeIdTimePoint const& t)
-				{
-					if (t.first == nodeid && now - t.second < c_reqTimeout)
-						expected = true;
-					else if (t.first == nodeid)
-						return true;
-					return false;
-				});
+				DEV_GUARDED(x_findNodeTimeout)
+					m_findNodeTimeout.remove_if([&](NodeIdTimePoint const& t)
+					{
+						if (t.first == nodeid && now - t.second < c_reqTimeout)
+							expected = true;
+						else if (t.first == nodeid)
+							return true;
+						return false;
+					});
 				
 				if (!expected)
 				{
