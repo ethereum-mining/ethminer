@@ -256,9 +256,7 @@ void ClientModel::setupState(QVariantMap _state)
 		u256 gasPrice = (qvariant_cast<QEther*>(transaction.value("gasPrice")))->toU256Wei();
 		QString sender = transaction.value("sender").toString();
 		bool isStdContract = transaction.value("stdContract").toBool();
-		bool isContractCreation;
-		if (!transaction.value("isContractCreation").isNull())
-			isContractCreation = transaction.value("isContractCreation").toBool();
+		bool isContractCreation = transaction.value("isContractCreation").toBool();
 		if (isStdContract)
 		{
 			if (contractId.isEmpty()) //TODO: This is to support old project files, remove later
