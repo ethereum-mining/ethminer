@@ -87,7 +87,7 @@ void Ethereum::submitTransaction(Secret _secret, u256 _value, Address _dest, byt
 {
 }
 
-bytes Ethereum::call(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+bytes Ethereum::call(Address const& _from, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
 {
 	return bytes();
 }

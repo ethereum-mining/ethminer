@@ -222,17 +222,17 @@ private:
 	RecordLogEntry* lastBlock() const;
 	QVariantMap contractAddresses() const;
 	QVariantList gasCosts() const;
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Address, dev::eth::Account> const& _accounts, Secret const& _miner);
+	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::unordered_map<Address, dev::eth::Account> const& _accounts, Secret const& _miner);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callAddress(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	void onNewTransaction();
 	void onStateReset();
 	void showDebuggerForTransaction(ExecutionResult const& _t);
 	QVariant formatValue(SolidityType const& _type, dev::u256 const& _value);
-	QVariant formatStorageValue(SolidityType const& _type, std::map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
 	QString resolveToken(QString const& _value, std::vector<Address> const& _contracts);
 	QString resolveContractName(QString const& _value);
 	QString retrieveToken(QString const& _value, std::vector<Address> const& _contracts);
+	QVariant formatStorageValue(SolidityType const& _type, std::unordered_map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
 
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;
