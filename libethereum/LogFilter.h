@@ -67,8 +67,8 @@ public:
 	friend std::ostream& dev::eth::operator<<(std::ostream& _out, dev::eth::LogFilter const& _s);
 
 private:
-	AddressSet m_addresses;
-	std::array<h256Set, 4> m_topics;
+	AddressHash m_addresses;
+	std::array<h256Hash, 4> m_topics;
 	unsigned m_earliest = 0;
 	unsigned m_latest = LatestBlock;
 };
