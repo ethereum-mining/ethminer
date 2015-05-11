@@ -51,8 +51,6 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 	m_curPC = 0;
 	m_jumpDests.clear();
 
-	m_gas = io_gas;
-
 	m_stack.reserve((unsigned)c_stackLimit);
 
 	static const array<InstructionMetric, 256> c_metrics = metrics();
@@ -97,7 +95,7 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 		auto onOperation = [&]()
 		{
 			if (_onOp)
-				_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);
+				_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, io_gas, this, &_ext);
 		};
 
 		switch (inst)
@@ -195,13 +193,11 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 		runGas += c_copyGas * ((copySize + 31) / 32);
 
 		onOperation();
-//		if (_onOp)
-//			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);
 
-		if (m_gas < runGas)
+		if (io_gas < runGas)
 			BOOST_THROW_EXCEPTION(OutOfGas());
 
-		m_gas = (u256)((bigint)m_gas - runGas);
+		io_gas = (u256)((bigint)io_gas - runGas);
 
 		if (newTempSize > m_temp.size())
 			m_temp.resize((size_t)newTempSize);
@@ -560,7 +556,7 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 			m_stack.push_back(m_temp.size());
 			break;
 		case Instruction::GAS:
-			m_stack.push_back(m_gas);
+			m_stack.push_back(io_gas);
 			break;
 		case Instruction::JUMPDEST:
 			break;
@@ -609,7 +605,7 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 			m_stack.pop_back();
 
 			if (_ext.balance(_ext.myAddress) >= endowment && _ext.depth < 1024)
-				m_stack.push_back((u160)_ext.create(endowment, m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
+				m_stack.push_back((u160)_ext.create(endowment, io_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
 			else
 				m_stack.push_back(0);
 			break;
@@ -640,7 +636,7 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 			else
 				m_stack.push_back(0);
 
-			m_gas += gas;
+			io_gas += gas;
 			break;
 		}
 		case Instruction::RETURN:
@@ -649,8 +645,6 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 			m_stack.pop_back();
 			unsigned s = (unsigned)m_stack.back();
 			m_stack.pop_back();
-
-			io_gas = m_gas;
 			return bytesConstRef(m_temp.data() + b, s);
 		}
 		case Instruction::SUICIDE:
@@ -660,12 +654,10 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 			// ...follow through to...
 		}
 		case Instruction::STOP:
-			io_gas = m_gas;
 			return bytesConstRef();
 		}
 	}
 
-	io_gas = m_gas;
 	if (_steps == (uint64_t)-1)
 		BOOST_THROW_EXCEPTION(StepsDone());
 	return bytesConstRef();

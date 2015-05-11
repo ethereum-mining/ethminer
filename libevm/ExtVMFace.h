@@ -106,7 +106,7 @@ class VM;
 
 using LastHashes = std::vector<h256>;
 
-using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, VM*, ExtVMFace const*)>;
+using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, bigint /*gas*/, VM*, ExtVMFace const*)>;
 
 /**
  * @brief Interface and null implementation of the class for specifying VM externalities.
