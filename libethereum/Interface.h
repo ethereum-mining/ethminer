@@ -72,6 +72,10 @@ public:
 	/// @returns the new contract's address (assuming it all goes through).
 	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) = 0;
 
+	/// Submits a new contract-creation transaction.
+	/// @returns the new contract's address (assuming it all goes through).
+	Address submitTransaction(Secret const& _secret, TransactionSkeleton const& _t) { if (_t.creation) return submitTransaction(_secret, _t.value, _t.data, _t.gas, _t.gasPrice); submitTransaction(_secret, _t.value, _t.to, _t.data, _t.gas, _t.gasPrice); return Address(); }
+
 	/// Blocks until all pending transactions have been processed.
 	virtual void flushTransactions() = 0;
 

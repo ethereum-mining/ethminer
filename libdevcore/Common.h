@@ -82,6 +82,8 @@ using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
 using u160Set = std::set<u160>;
 
+extern const u256 UndefinedU256;
+
 // Map types.
 using StringMap = std::map<std::string, std::string>;
 using u256Map = std::map<u256, u256>;

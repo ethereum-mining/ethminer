@@ -49,7 +49,7 @@ class BlockChain;
 class State;
 
 struct StateChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
-struct StateTrace: public LogChannel { static const char* name(); static const int verbosity = 7; };
+struct StateTrace: public LogChannel { static const char* name(); static const int verbosity = 5; };
 struct StateDetail: public LogChannel { static const char* name(); static const int verbosity = 14; };
 struct StateSafeExceptions: public LogChannel { static const char* name(); static const int verbosity = 21; };
 
