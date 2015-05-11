@@ -104,6 +104,7 @@ void SecretStore::save(std::string const& _keysPath)
 void SecretStore::load(std::string const& _keysPath)
 {
 	fs::path p(_keysPath);
+	boost::filesystem::create_directories(p);
 	js::mValue v;
 	for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it)
 		if (is_regular_file(it->path()))

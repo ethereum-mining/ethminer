@@ -389,6 +389,16 @@ string Host::pocHost()
 	return "poc-" + strs[1] + ".ethdev.com";
 }
 
+std::unordered_map<Public, std::string> const& Host::pocHosts()
+{
+	static const std::unordered_map<Public, std::string> c_ret = {
+//		{ Public(""), "poc-9.ethdev.com:30303" },
+		{ Public("a979fb575495b8d6db44f750317d0f4622bf4c2aa3365d6af7c284339968eef29b69ad0dce72a4d8db5ebb4968de0e3bec910127f134779fbcb0cb6d3331163c"), "52.16.188.185:30303" },
+		{ Public("7f25d3eab333a6b98a8b5ed68d962bb22c876ffcd5561fca54e3c2ef27f754df6f7fd7c9b74cc919067abac154fb8e1f8385505954f161ae440abc355855e034"), "54.207.93.166:30303" }
+	};
+	return c_ret;
+}
+
 void Host::addNode(NodeId const& _node, NodeIPEndpoint const& _endpoint)
 {
 	// return if network is stopped while waiting on Host::run() or nodeTable to start

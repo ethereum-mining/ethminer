@@ -28,6 +28,7 @@
 #include <libdevcore/RLP.h>
 using namespace std;
 using namespace dev;
+using namespace eth;
 namespace fs = boost::filesystem;
 
 KeyManager::KeyManager(std::string const& _keysFile):
@@ -151,9 +152,18 @@ void KeyManager::kill(Address const& _a)
 	m_store.kill(id);
 }
 
-std::map<Address, std::pair<std::string, std::string>> KeyManager::keys() const
+AddressHash KeyManager::accounts() const
 {
-	std::map<Address, std::pair<std::string, std::string>> ret;
+	AddressHash ret;
+	for (auto const& i: m_addrLookup)
+		if (m_keyInfo.count(i.second) > 0)
+			ret.insert(i.first);
+	return ret;
+}
+
+std::unordered_map<Address, std::pair<std::string, std::string>> KeyManager::accountDetails() const
+{
+	std::unordered_map<Address, std::pair<std::string, std::string>> ret;
 	for (auto const& i: m_addrLookup)
 		if (m_keyInfo.count(i.second) > 0)
 			ret[i.first] = make_pair(m_keyInfo.at(i.second).info, m_passwordInfo.at(m_keyInfo.at(i.second).passHash));
