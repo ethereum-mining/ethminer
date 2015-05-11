@@ -322,19 +322,17 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		}
 
 		bytes output;
-		u256 gas;
 		bool vmExceptionOccured = false;
 		try
 		{
-			auto vm = eth::VMFactory::create(fev.gas);
+			auto vm = eth::VMFactory::create();
 			auto vmtrace = Options::get().vmtrace ? fev.simpleTrace() : OnOpFunc{};
 			auto outputRef = bytesConstRef{};
 			{
 				Listener::ExecTimeGuard guard{i.first};
-				outputRef = vm->go(fev, vmtrace);
+				outputRef = vm->go(fev.gas, fev, vmtrace);
 			}
 			output = outputRef.toBytes();
-			gas = vm->gas();
 		}
 		catch (VMException const&)
 		{
@@ -389,7 +387,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 
 				o["callcreates"] = fev.exportCallCreates();
 				o["out"] = toHex(output, 2, HexPrefix::Add);
-				o["gas"] = toCompactHex(gas, HexPrefix::Add, 1);
+				o["gas"] = toCompactHex(fev.gas, HexPrefix::Add, 1);
 				o["logs"] = exportLog(fev.sub.logs);
 			}
 		}
@@ -412,7 +410,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 
 				checkOutput(output, o);
 
-				BOOST_CHECK_EQUAL(toInt(o["gas"]), gas);
+				BOOST_CHECK_EQUAL(toInt(o["gas"]), fev.gas);
 
 				State postState, expectState;
 				mObject mPostState = fev.exportState();

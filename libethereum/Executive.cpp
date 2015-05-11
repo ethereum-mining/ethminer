@@ -41,7 +41,7 @@ Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 
 u256 Executive::gasUsed() const
 {
-	return m_t.gas() - m_endGas;
+	return m_t.gas() - m_gas;
 }
 
 ExecutionResult Executive::executionResult() const
@@ -133,26 +133,27 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 		bigint g = it->second.gas(_data);
 		if (_gas < g)
 		{
-			m_endGas = 0;
 			m_excepted = TransactionException::OutOfGasBase;
 			// Bail from exception.
 			return true;	// true actually means "all finished - nothing more to be done regarding go().
 		}
 		else
 		{
-			m_endGas = (u256)(_gas - g);
+			m_gas = (u256)(_gas - g);
 			m_precompiledOut = it->second.exec(_data);
 			m_out = &m_precompiledOut;
 		}
 	}
-	else if (m_s.addressHasCode(_codeAddress))
-	{
-		m_vm = VMFactory::create(_gas);
-		bytes const& c = m_s.code(_codeAddress);
-		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_depth);
-	}
 	else
-		m_endGas = _gas;
+	{
+		m_gas = _gas;
+		if (m_s.addressHasCode(_codeAddress))
+		{
+			m_vm = VMFactory::create();
+			bytes const& c = m_s.code(_codeAddress);
+			m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_depth);
+		}
+	}
 
 	m_s.transferBalance(_senderAddress, _receiveAddress, _value);
 
@@ -166,11 +167,12 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	// We can allow for the reverted state (i.e. that with which m_ext is constructed) to contain the m_newAddress, since
 	// we delete it explicitly if we decide we need to revert.
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
+	m_gas = _gas;
 
 	// Execute _init.
 	if (!_init.empty())
 	{
-		m_vm = VMFactory::create(_gas);
+		m_vm = VMFactory::create();
 		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
 	}
 
@@ -178,10 +180,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.transferBalance(_sender, m_newAddress, _endowment);
 
 	if (_init.empty())
-	{
 		m_s.m_cache[m_newAddress].setCode({});
-		m_endGas = _gas;
-	}
 
 	return !m_ext;
 }
@@ -215,17 +214,16 @@ bool Executive::go(OnOpFunc const& _onOp)
 #endif
 		try
 		{
-			m_out = m_vm->go(*m_ext, _onOp);
-			m_endGas = m_vm->gas();
+			m_out = m_vm->go(m_gas, *m_ext, _onOp);
 
 			if (m_isCreation)
 			{
-				m_gasForDeposit = m_endGas;
+				m_gasForDeposit = m_gas;
 				m_depositSize = m_out.size();
-				if (m_out.size() * c_createDataGas <= m_endGas)
+				if (m_out.size() * c_createDataGas <= m_gas)
 				{
 					m_codeDeposit = CodeDeposit::Success;
-					m_endGas -= m_out.size() * c_createDataGas;
+					m_gas -= m_out.size() * c_createDataGas;
 				}
 				else
 				{
@@ -243,7 +241,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		catch (VMException const& _e)
 		{
 			clog(StateSafeExceptions) << "Safe VM Exception. " << diagnostic_information(_e);
-			m_endGas = 0;
+			m_gas = 0;
 			m_excepted = toTransactionException(_e);
 			m_ext->revert();
 		}
@@ -273,12 +271,12 @@ void Executive::finalize()
 	// SSTORE refunds...
 	// must be done before the miner gets the fees.
 	if (m_ext)
-		m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
+		m_gas += min((m_t.gas() - m_gas) / 2, m_ext->sub.refunds);
 
 	//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
-	m_s.addBalance(m_t.sender(), m_endGas * m_t.gasPrice());
+	m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
 
-	u256 feesEarned = (m_t.gas() - m_endGas) * m_t.gasPrice();
+	u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
 
 	// Suicides...

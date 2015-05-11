@@ -38,18 +38,12 @@ struct StackUnderflow: virtual VMException {};
 class VMFace
 {
 public:
-	explicit VMFace(u256 _gas): m_gas(_gas) {}
+	VMFace() = default;
 	virtual ~VMFace() = default;
 	VMFace(VMFace const&) = delete;
 	VMFace& operator=(VMFace const&) = delete;
 
-	virtual void reset(u256 _gas = 0) noexcept { m_gas = _gas; }
-	u256 gas() const noexcept { return m_gas; }
-
-	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) = 0;
-
-protected:
-	u256 m_gas = 0;
+	virtual bytesConstRef go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) = 0;
 };
 
 }

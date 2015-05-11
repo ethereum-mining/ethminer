@@ -155,14 +155,12 @@ void doMyTests(json_spirit::mValue& _v)
 		}
 
 		bytes output;
-		auto vm = eth::VMFactory::create(fev.gas);
+		auto vm = eth::VMFactory::create();
 
-		u256 gas;
 		bool vmExceptionOccured = false;
 		try
 		{
-			output = vm->go(fev, fev.simpleTrace()).toBytes();
-			gas = vm->gas();
+			output = vm->go(fev.gas, fev, fev.simpleTrace()).toBytes();
 		}
 		catch (eth::VMException const& _e)
 		{
@@ -201,7 +199,7 @@ void doMyTests(json_spirit::mValue& _v)
 			o["post"] = mValue(fev.exportState());
 			o["callcreates"] = fev.exportCallCreates();
 			o["out"] = toHex(output, 2, HexPrefix::Add);
-			o["gas"] = toCompactHex(gas, HexPrefix::Add, 1);
+			o["gas"] = toCompactHex(fev.gas, HexPrefix::Add, 1);
 			o["logs"] = test::exportLog(fev.sub.logs);
 		}
 	}

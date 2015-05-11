@@ -34,7 +34,7 @@ class VMFactory
 public:
 	VMFactory() = delete;
 
-	static std::unique_ptr<VMFace> create(u256 _gas);
+	static std::unique_ptr<VMFace> create();
 	static void setKind(VMKind _kind);
 };
 
