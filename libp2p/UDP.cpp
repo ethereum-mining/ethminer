@@ -20,8 +20,12 @@
  */
 
 #include "UDP.h"
+using namespace std;
 using namespace dev;
 using namespace dev::p2p;
+
+const char* RLPXWarn::name() { return "!X!"; }
+const char* RLPXNote::name() { return "-X-"; }
 
 h256 RLPXDatagramFace::sign(Secret const& _k)
 {
