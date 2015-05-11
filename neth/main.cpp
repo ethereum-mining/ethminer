@@ -36,8 +36,9 @@
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
 #include <libwebthree/WebThree.h>
-#if ETH_JSONRPC
+#if ETH_JSONRPC || !ETH_TRUE
 #include <libweb3jsonrpc/WebThreeStubServer.h>
+#include <libweb3jsonrpc/AccountHolder.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #endif
 #include "BuildInfo.h"
@@ -573,13 +574,13 @@ int main(int argc, char** argv)
 	if (c && mining)
 		c->startMining();
 
-#if ETH_JSONRPC
+#if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<dev::eth::FixedAccountHolder>([&](){ return web3.ethereum(); }, vector<KeyPair>({us})), vector<KeyPair>({us})));
 		jsonrpcServer->setIdentities({us});
 		jsonrpcServer->StartListening();
 	}
@@ -793,7 +794,7 @@ int main(int argc, char** argv)
 #else
 			jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", 4));
 #endif
-			jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({us})));
+			jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<dev::eth::FixedAccountHolder>([&](){ return web3.ethereum(); }, vector<KeyPair>({us})), vector<KeyPair>({us})));
 			jsonrpcServer->setIdentities({us});
 			jsonrpcServer->StartListening();
 		}

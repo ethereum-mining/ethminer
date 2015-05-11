@@ -307,21 +307,15 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 	// update header constant buffer
 	m_queue.enqueueWriteBuffer(m_header, false, 0, 32, header);
 	for (unsigned i = 0; i != c_num_buffers; ++i)
-	{
 		m_queue.enqueueWriteBuffer(m_search_buf[i], false, 0, 4, &c_zero);
-	}
 
 #if CL_VERSION_1_2 && 0
 	cl::Event pre_return_event;
 	if (!m_opencl_1_1)
-	{
 		m_queue.enqueueBarrierWithWaitList(NULL, &pre_return_event);
-	}
 	else
 #endif
-	{
 		m_queue.finish();
-	}
 
 	/*
 	__kernel void ethash_combined_search(
@@ -389,9 +383,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 	// not safe to return until this is ready
 #if CL_VERSION_1_2 && 0
 	if (!m_opencl_1_1)
-	{
 		pre_return_event.wait();
-	}
 #endif
 }
 
