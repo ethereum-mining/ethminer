@@ -315,7 +315,6 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 					TransactionSettings stdTransaction = transaction;
 					stdTransaction.gasAuto = true;
 					Address address = deployContract(stdContractCode, stdTransaction);
-					deployedContracts.push_back(address);
 					m_stdContractAddresses[stdTransaction.contractId] = address;
 					m_stdContractNames[address] = stdTransaction.contractId;
 				}
