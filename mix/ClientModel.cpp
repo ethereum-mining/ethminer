@@ -211,7 +211,7 @@ void ClientModel::setupState(QVariantMap _state)
 	QVariantList stateContracts = _state.value("contracts").toList();
 	QVariantList transactions = _state.value("transactions").toList();
 
-	map<Address, Account> accounts;
+	unordered_map<Address, Account> accounts;
 	std::vector<KeyPair> userAccounts;
 
 	for (auto const& b: stateAccounts)
@@ -287,7 +287,7 @@ void ClientModel::setupState(QVariantMap _state)
 	executeSequence(transactionSequence, accounts, Secret(_state.value("miner").toMap().value("secret").toString().toStdString()));
 }
 
-void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, std::map<Address, Account> const& _accounts, Secret const& _miner)
+void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, std::unordered_map<Address, Account> const& _accounts, Secret const& _miner)
 {
 	if (m_running)
 	{
@@ -587,7 +587,7 @@ QVariant ClientModel::formatValue(SolidityType const& _type, u256 const& _value)
 	return res;
 }
 
-QVariant ClientModel::formatStorageValue(SolidityType const& _type, map<u256, u256> const& _storage, unsigned _offset, u256 const& _slot)
+QVariant ClientModel::formatStorageValue(SolidityType const& _type, unordered_map<u256, u256> const& _storage, unsigned _offset, u256 const& _slot)
 {
 	u256 slot = _slot;
 	QVariantList values;

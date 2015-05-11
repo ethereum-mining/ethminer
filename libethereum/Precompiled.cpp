@@ -81,7 +81,7 @@ static bytes identityCode(bytesConstRef _in)
 	return _in.toBytes();
 }
 
-static const std::map<unsigned, PrecompiledAddress> c_precompiled =
+static const std::unordered_map<unsigned, PrecompiledAddress> c_precompiled =
 {
 	{ 1, { [](bytesConstRef) -> bigint { return c_ecrecoverGas; }, ecrecoverCode }},
 	{ 2, { [](bytesConstRef i) -> bigint { return c_sha256Gas + (i.size() + 31) / 32 * c_sha256WordGas; }, sha256Code }},
@@ -89,7 +89,7 @@ static const std::map<unsigned, PrecompiledAddress> c_precompiled =
 	{ 4, { [](bytesConstRef i) -> bigint { return c_identityGas + (i.size() + 31) / 32 * c_identityWordGas; }, identityCode }}
 };
 
-std::map<unsigned, PrecompiledAddress> const& dev::eth::precompiled()
+std::unordered_map<unsigned, PrecompiledAddress> const& dev::eth::precompiled()
 {
 	return c_precompiled;
 }

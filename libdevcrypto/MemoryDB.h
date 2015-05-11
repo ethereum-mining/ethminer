@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <map>
+#include <unordered_map>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/Log.h>
@@ -45,7 +45,7 @@ public:
 	MemoryDB() {}
 
 	void clear() { m_main.clear(); }	// WARNING !!!! didn't originally clear m_refCount!!!
-	std::map<h256, std::string> get() const;
+	std::unordered_map<h256, std::string> get() const;
 
 	std::string lookup(h256 const& _h) const;
 	bool exists(h256 const& _h) const;
@@ -57,11 +57,11 @@ public:
 	void removeAux(h256 const& _h) { m_aux[_h].second = false; }
 	void insertAux(h256 const& _h, bytesConstRef _v) { m_aux[_h] = make_pair(_v.toBytes(), true); }
 
-	std::set<h256> keys() const;
+	h256Hash keys() const;
 
 protected:
-	std::map<h256, std::pair<std::string, unsigned>> m_main;
-	std::map<h256, std::pair<bytes, bool>> m_aux;
+	std::unordered_map<h256, std::pair<std::string, unsigned>> m_main;
+	std::unordered_map<h256, std::pair<bytes, bool>> m_aux;
 
 	mutable bool m_enforceRefs = false;
 };

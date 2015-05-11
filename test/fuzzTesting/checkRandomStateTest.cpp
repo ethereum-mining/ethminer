@@ -173,7 +173,7 @@ bool doStateTest(mValue& _v)
 				}
 
 				//checkStorage(importer.m_statePost.storage(expectedAddr), theState.storage(expectedAddr), expectedAddr);
-				map<u256, u256> _resultStore = theState.storage(expectedAddr);
+				unordered_map<u256, u256> _resultStore = theState.storage(expectedAddr);
 
 				for (auto&& expectedStorePair : importer.m_statePost.storage(expectedAddr))
 				{

@@ -34,10 +34,13 @@
 #endif
 
 #include <map>
+#include <unordered_map>
 #include <vector>
 #include <set>
+#include <unordered_set>
 #include <functional>
 #include <boost/timer.hpp>
+#include <boost/functional/hash.hpp>
 #pragma warning(push)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -83,6 +86,10 @@ using u160Set = std::set<u160>;
 using StringMap = std::map<std::string, std::string>;
 using u256Map = std::map<u256, u256>;
 using HexMap = std::map<bytes, std::string>;
+
+// Hash types.
+using StringHashMap = std::unordered_map<std::string, std::string>;
+using u256HashMap = std::unordered_map<u256, u256>;
 
 // String types.
 using strings = std::vector<std::string>;
@@ -214,5 +221,15 @@ inline dev::WithExisting max(dev::WithExisting _a, dev::WithExisting _b)
 {
 	return static_cast<dev::WithExisting>(max(static_cast<int>(_a), static_cast<int>(_b)));
 }
+
+template <> struct hash<dev::u256>
+{
+	size_t operator()(dev::u256 const& _a) const
+	{
+		unsigned size = _a.backend().size();
+		auto limbs = _a.backend().limbs();
+		return boost::hash_range(limbs, limbs + size);
+	}
+};
 
 }
