@@ -37,13 +37,13 @@ void VMFactory::setKind(VMKind _kind)
 	g_kind = _kind;
 }
 
-std::unique_ptr<VMFace> VMFactory::create(u256 _gas)
+std::unique_ptr<VMFace> VMFactory::create()
 {
 #if ETH_EVMJIT
-	return std::unique_ptr<VMFace>(g_kind == VMKind::JIT ? static_cast<VMFace*>(new JitVM(_gas)) : static_cast<VMFace*>(new VM(_gas)));
+	return std::unique_ptr<VMFace>(g_kind == VMKind::JIT ? static_cast<VMFace*>(new JitVM) : static_cast<VMFace*>(new VM));
 #else
 	asserts(g_kind == VMKind::Interpreter && "JIT disabled in build configuration");
-	return std::unique_ptr<VMFace>(new VM(_gas));
+	return std::unique_ptr<VMFace>(new VM);
 #endif
 }
 
