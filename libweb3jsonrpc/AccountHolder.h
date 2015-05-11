@@ -24,17 +24,20 @@
 #pragma once
 
 #include <functional>
+#include <algorithm>
 #include <vector>
 #include <map>
 #include <libdevcrypto/Common.h>
 #include <libethcore/CommonJS.h>
+#include <libethereum/Transaction.h>
 
 namespace dev
 {
 namespace eth
 {
+
+class KeyManager;
 class Interface;
-}
 
 /**
  * Manages real accounts (where we know the secret key) and proxy accounts (where transactions
@@ -43,32 +46,84 @@ class Interface;
 class AccountHolder
 {
 public:
-	explicit AccountHolder(std::function<eth::Interface*()> const& _client): m_client(_client) {}
+	explicit AccountHolder(std::function<Interface*()> const& _client): m_client(_client) {}
 
-	/// Sets or resets the list of real accounts.
-	void setAccounts(std::vector<KeyPair> const& _accounts);
-	std::vector<Address> const& getRealAccounts() const { return m_accounts; }
-	bool isRealAccount(Address const& _account) const { return m_keyPairs.count(_account) > 0; }
+	// easiest to return keyManager.addresses();
+	virtual AddressHash realAccounts() const = 0;
+	// use m_web3's submitTransaction
+	// or use AccountHolder::queueTransaction(_t) to accept
+	virtual void authenticate(dev::eth::TransactionSkeleton const& _t) = 0;
+
+	Addresses allAccounts() const;
+	bool isRealAccount(Address const& _account) const { return realAccounts().count(_account) > 0; }
 	bool isProxyAccount(Address const& _account) const { return m_proxyAccounts.count(_account) > 0; }
-	Secret const& secretKey(Address const& _account) const { return m_keyPairs.at(_account).secret(); }
-	std::vector<Address> getAllAccounts() const;
-	Address const& getDefaultTransactAccount() const;
+	Address const& defaultTransactAccount() const;
 
 	int addProxyAccount(Address const& _account);
 	bool removeProxyAccount(unsigned _id);
 	void queueTransaction(eth::TransactionSkeleton const& _transaction);
 
-	std::vector<eth::TransactionSkeleton> const& getQueuedTransactions(int _id) const;
+	std::vector<eth::TransactionSkeleton> const& queuedTransactions(int _id) const;
 	void clearQueue(int _id);
+
+protected:
+	std::function<Interface*()> m_client;
 
 private:
 	using TransactionQueue = std::vector<eth::TransactionSkeleton>;
 
-	std::map<Address, KeyPair> m_keyPairs;
-	std::vector<Address> m_accounts;
-	std::map<Address, int> m_proxyAccounts;
-	std::map<int, std::pair<Address, TransactionQueue>> m_transactionQueues;
-	std::function<eth::Interface*()> m_client;
+	std::unordered_map<Address, int> m_proxyAccounts;
+	std::unordered_map<int, std::pair<Address, TransactionQueue>> m_transactionQueues;
 };
 
+class SimpleAccountHolder: public AccountHolder
+{
+public:
+	SimpleAccountHolder(std::function<Interface*()> const& _client, std::function<std::string(Address)> const& _getPassword, KeyManager& _keyman):
+		AccountHolder(_client),
+		m_getPassword(_getPassword),
+		m_keyManager(_keyman)
+	{}
+
+	AddressHash realAccounts() const override;
+	void authenticate(dev::eth::TransactionSkeleton const& _t) override;
+
+private:
+	std::function<std::string(Address)> m_getPassword;
+	KeyManager& m_keyManager;
+};
+
+class FixedAccountHolder: public AccountHolder
+{
+public:
+	FixedAccountHolder(std::function<Interface*()> const& _client, std::vector<dev::KeyPair> const& _accounts):
+		AccountHolder(_client)
+	{
+		setAccounts(_accounts);
+	}
+
+	void setAccounts(std::vector<dev::KeyPair> const& _accounts)
+	{
+		for (auto const& i: _accounts)
+			m_accounts[i.address()] = i.secret();
+	}
+
+	dev::AddressHash realAccounts() const override
+	{
+		dev::AddressHash ret;
+		for (auto const& i: m_accounts)
+			ret.insert(i.first);
+		return ret;
+	}
+
+	// use m_web3's submitTransaction
+	// or use AccountHolder::queueTransaction(_t) to accept
+	void authenticate(dev::eth::TransactionSkeleton const& _t) override;
+
+private:
+	std::unordered_map<dev::Address, dev::Secret> m_accounts;
+};
+
+
+}
 }

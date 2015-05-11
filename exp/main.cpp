@@ -81,7 +81,7 @@ int main()
 //	cdebug << toString(a2);
 	Address a2("19c486071651b2650449ba3c6a807f316a73e8fe");
 
-	cdebug << keyman.keys();
+	cdebug << keyman.accountDetails();
 
 	cdebug << "Secret key for " << a << "is" << keyman.secret(a, [](){ return "bar"; });
 	cdebug << "Secret key for " << a2 << "is" << keyman.secret(a2);
