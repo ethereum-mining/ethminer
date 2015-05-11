@@ -396,7 +396,7 @@ if (GUI)
 
 endif()
 
-if (APPLE)
+if (APPLE AND GUI)
 
 	add_custom_target(appdmg
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
