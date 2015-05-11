@@ -1132,7 +1132,8 @@ int main(int argc, char** argv)
 	cout << "Node ID: " << web3.enode() << endl;
 
 	if (bootstrap)
-		web3.addNode(p2p::NodeId(), Host::pocHost());
+		for (auto const& i: Host::pocHosts())
+			web3.requirePeer(i.first, i.second);
 	if (remoteHost.size())
 		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 

@@ -173,7 +173,7 @@ Main::Main(QWidget *parent) :
 			QMessageBox::warning(nullptr, "Try again", "You entered two different passwords - please enter the same password twice.", QMessageBox::Ok);
 		}
 		m_keyManager.create(password.toStdString());
-		m_keyManager.import(Secret::random(), "{\"name\":\"Default identity\"}");
+		m_keyManager.import(Secret::random(), "Default identity");
 	}
 
 #if ETH_DEBUG
@@ -1994,7 +1994,8 @@ void Main::on_go_triggered()
 		ui->net->setChecked(true);
 		on_net_triggered();
 	}
-	web3()->addNode(p2p::NodeId(), Host::pocHost());
+	for (auto const& i: Host::pocHosts())
+		web3()->requirePeer(i.first, i.second);
 }
 
 std::string Main::prettyU256(dev::u256 const& _n) const
