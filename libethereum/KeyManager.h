@@ -66,6 +66,8 @@ public:
 	bool load(std::string const& _pass);
 	void save(std::string const& _pass) const { write(_pass, m_keysFile); }
 
+	void notePassword(std::string const& _pass) { m_cachedPasswords[hashPassword(_pass)] = _pass; }
+
 	AddressHash accounts() const;
 	std::unordered_map<Address, std::pair<std::string, std::string>> accountDetails() const;
 
