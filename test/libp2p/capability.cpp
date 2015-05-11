@@ -40,49 +40,43 @@ struct P2PFixture
 
 struct VerbosityHolder
 {
-	int m_oldLogVerbosity;
-	VerbosityHolder() : m_oldLogVerbosity(g_logVerbosity) { g_logVerbosity = 10; }
-	~VerbosityHolder() { g_logVerbosity = m_oldLogVerbosity; }
+	int oldLogVerbosity;
+	VerbosityHolder(): oldLogVerbosity(g_logVerbosity) { g_logVerbosity = 10; }
+	~VerbosityHolder() { g_logVerbosity = oldLogVerbosity; }
 };
 
-class TestCapability : public Capability
+class TestCapability: public Capability
 {
-	int m_cntReceivedMessages;
-	int m_testSum;
-
 public:
-	TestCapability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset) : Capability(_s, _h, _idOffset), m_cntReceivedMessages(0), m_testSum(0) {}
+	TestCapability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset): Capability(_s, _h, _idOffset), m_cntReceivedMessages(0), m_testSum(0) {}
 	virtual ~TestCapability() {}
 	int countReceivedMessages() { return m_cntReceivedMessages; }
 	int testSum() { return m_testSum; }
 	static std::string name() { return "test"; }
 	static u256 version() { return 2; }
 	static unsigned messageCount() { return UserPacket + 1; }
-
-	void sendTestMessage(int _i)
-	{
-		RLPStream s;
-		prep(s, UserPacket, 1);
-		s << _i;
-		sealAndSend(s);
-	}
+	void sendTestMessage(int _i) { RLPStream s; sealAndSend(prep(s, UserPacket, 1) << _i); }
 
 protected:
-	virtual bool interpret(unsigned _id, RLP const& _r) override 
-	{ 
-		cnote << "Capability::interpret(): custom message received";
-		BOOST_REQUIRE_EQUAL(_id, UserPacket);
-		++m_cntReceivedMessages;
-		int i = _r[0].toInt();
-		m_testSum += i;
-		return true;
-	}
+	virtual bool interpret(unsigned _id, RLP const& _r) override;
+
+	int m_cntReceivedMessages;
+	int m_testSum;
 };
 
-class TestHostCapability : public HostCapability<TestCapability>, public Worker
+bool TestCapability::interpret(unsigned _id, RLP const& _r) 
+{
+	cnote << "Capability::interpret(): custom message received";
+	BOOST_ASSERT(_id == UserPacket);
+	++m_cntReceivedMessages;
+	m_testSum += _r[0].toInt();
+	return true;
+}
+
+class TestHostCapability: public HostCapability<TestCapability>, public Worker
 {
 public:
-	TestHostCapability() : Worker("test") {}
+	TestHostCapability(): Worker("test") {}
 	virtual ~TestHostCapability() {}
 
 	void sendTestMessage(NodeId const& _id, int _x)
@@ -96,7 +90,7 @@ public:
 	{ 
 		int cnt = 0;
 		int checksum = 0;
-		for (auto i : peerSessions())
+		for (auto i: peerSessions())
 			if (_id == i.second->id)
 			{
 				cnt += i.first->cap<TestCapability>().get()->countReceivedMessages();
