@@ -390,7 +390,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 							emit runStateChanged();
 							return;
 						}
-						callAddress(Address(address.toStdString()), encoder.encodedData(), transaction);
+						callAddress(contractAddressIter->second, encoder.encodedData(), transaction);
 					}
 					m_gasCosts.append(m_client->lastExecution().gasUsed);
 				}
