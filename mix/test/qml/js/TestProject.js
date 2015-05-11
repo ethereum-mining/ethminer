@@ -47,7 +47,7 @@ function test_multipleContractsSameFile()
 
 function test_deleteFile()
 {
-	/*newProject();
+	newProject();
 	var path = mainApplication.projectModel.projectPath;
 	createHtml("page1.html", "<html><body><div id='queryres'>Fail</div></body><script>if (web3) document.getElementById('queryres').innerText='OK'</script></html>");
 	createHtml("page2.html", "<html><body><div id='queryres'>Fail</div></body><script>if (web3) document.getElementById('queryres').innerText='OK'</script></html>");
@@ -56,5 +56,5 @@ function test_deleteFile()
 	mainApplication.projectModel.closeProject(function(){});
 	mainApplication.projectModel.loadProject(path);
 	var doc = mainApplication.projectModel.getDocument("page2.html");
-	verify(doc, null)*/
+	verify(!doc, "page2.html has not been removed");
 }
