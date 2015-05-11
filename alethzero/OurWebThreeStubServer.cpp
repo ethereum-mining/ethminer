@@ -134,7 +134,7 @@ void OurAccountHolder::doValidations()
 			queueTransaction(t);
 		else
 			// sign and submit.
-			if (Secret s = m_main->keyManager().secret(t.from))
+			if (Secret s = m_main->retrieveSecret(t.from))
 				m_web3->ethereum()->submitTransaction(s, t);
 	}
 }

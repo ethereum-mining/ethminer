@@ -41,7 +41,7 @@ public:
 	explicit Transact(Context* _context, QWidget* _parent = 0);
 	~Transact();
 
-	void setEnvironment(QList<dev::KeyPair> _myKeys, dev::eth::Client* _eth, NatSpecFace* _natSpecDB);
+	void setEnvironment(dev::AddressHash const& _accounts, dev::eth::Client* _eth, NatSpecFace* _natSpecDB);
 
 private slots:
 	void on_destination_currentTextChanged(QString);
@@ -76,7 +76,7 @@ private:
 	unsigned m_backupGas = 0;
 	dev::bytes m_data;
 
-	QList<dev::KeyPair> m_myKeys;
+	dev::AddressHash m_accounts;
 	dev::eth::Client* m_ethereum = nullptr;
 	Context* m_context = nullptr;
 	NatSpecFace* m_natSpecDB = nullptr;

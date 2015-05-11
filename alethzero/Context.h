@@ -64,5 +64,7 @@ public:
 	virtual std::pair<dev::Address, dev::bytes> fromString(std::string const& _a) const = 0;
 	virtual std::string renderDiff(dev::eth::StateDiff const& _d) const = 0;
 	virtual std::string render(dev::Address const& _a) const = 0;
+	virtual dev::Secret retrieveSecret(dev::Address const& _a) const = 0;
+
 };
 
