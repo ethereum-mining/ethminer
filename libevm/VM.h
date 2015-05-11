@@ -58,7 +58,6 @@ public:
 	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
 
 	u256 curPC() const { return m_curPC; }
-	u256 gas() const { return m_gas; }
 
 	bytes const& memory() const { return m_temp; }
 	u256s const& stack() const { return m_stack; }
@@ -67,7 +66,6 @@ private:
 	friend class VMFactory;
 
 	u256 m_curPC = 0;
-	u256 m_gas = 0;
 	bytes m_temp;
 	u256s m_stack;
 	std::set<u256> m_jumpDests;
