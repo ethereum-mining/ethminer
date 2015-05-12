@@ -24,7 +24,8 @@
 
 namespace dev
 {
-namespace eth{
+namespace eth
+{
 
 class EthashAux
 {
