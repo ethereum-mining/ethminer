@@ -29,7 +29,7 @@
 
 class QComboBox;
 
-namespace dev { namespace eth { struct StateDiff; } }
+namespace dev { namespace eth { struct StateDiff; class KeyManager; } }
 
 #define Small "font-size: small; "
 #define Mono "font-family: Ubuntu Mono, Monospace, Lucida Console, Courier New; font-weight: bold; "
@@ -64,5 +64,8 @@ public:
 	virtual std::pair<dev::Address, dev::bytes> fromString(std::string const& _a) const = 0;
 	virtual std::string renderDiff(dev::eth::StateDiff const& _d) const = 0;
 	virtual std::string render(dev::Address const& _a) const = 0;
+	virtual dev::Secret retrieveSecret(dev::Address const& _a) const = 0;
+	virtual dev::eth::KeyManager& keyManager() = 0;
+
 };
 

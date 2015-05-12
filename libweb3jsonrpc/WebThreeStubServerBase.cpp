@@ -297,10 +297,11 @@ static Json::Value toJson(h256 const& _h, shh::Envelope const& _e, shh::Message 
 	return res;
 }
 
-WebThreeStubServerBase::WebThreeStubServerBase(AbstractServerConnector& _conn, vector<dev::KeyPair> const& _accounts):
-	AbstractWebThreeStubServer(_conn), m_ethAccounts(make_shared<AccountHolder>(bind(&WebThreeStubServerBase::client, this)))
+WebThreeStubServerBase::WebThreeStubServerBase(AbstractServerConnector& _conn, std::shared_ptr<dev::eth::AccountHolder> const& _ethAccounts, vector<dev::KeyPair> const& _sshAccounts):
+	AbstractWebThreeStubServer(_conn),
+	m_ethAccounts(_ethAccounts)
 {
-	m_ethAccounts->setAccounts(_accounts);
+	setIdentities(_sshAccounts);
 }
 
 void WebThreeStubServerBase::setIdentities(vector<dev::KeyPair> const& _ids)
@@ -353,7 +354,7 @@ string WebThreeStubServerBase::eth_gasPrice()
 Json::Value WebThreeStubServerBase::eth_accounts()
 {
 	Json::Value ret(Json::arrayValue);
-	for (auto const& i: m_ethAccounts->getAllAccounts())
+	for (auto const& i: m_ethAccounts->allAccounts())
 		ret.append(toJS(i));
 	return ret;
 }
@@ -499,7 +500,7 @@ string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 		TransactionSkeleton t = toTransaction(_json);
 	
 		if (!t.from)
-			t.from = m_ethAccounts->getDefaultTransactAccount();
+			t.from = m_ethAccounts->defaultTransactAccount();
 		if (t.creation)
 			ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
 		if (t.gasPrice == UndefinedU256)
@@ -507,10 +508,7 @@ string WebThreeStubServerBase::eth_sendTransaction(Json::Value const& _json)
 		if (t.gas == UndefinedU256)
 			t.gas = min<u256>(client()->gasLimitRemaining() / 5, client()->balanceAt(t.from) / t.gasPrice);
 
-		if (m_ethAccounts->isRealAccount(t.from))
-			authenticate(t, false);
-		else if (m_ethAccounts->isProxyAccount(t.from))
-			authenticate(t, true);
+		m_ethAccounts->authenticate(t);
 	
 		return ret;
 	}
@@ -528,7 +526,7 @@ string WebThreeStubServerBase::eth_signTransaction(Json::Value const& _json)
 		TransactionSkeleton t = toTransaction(_json);
 
 		if (!t.from)
-			t.from = m_ethAccounts->getDefaultTransactAccount();
+			t.from = m_ethAccounts->defaultTransactAccount();
 		if (t.creation)
 			ret = toJS(right160(sha3(rlpList(t.from, client()->countAt(t.from)))));;
 		if (t.gasPrice == UndefinedU256)
@@ -536,10 +534,7 @@ string WebThreeStubServerBase::eth_signTransaction(Json::Value const& _json)
 		if (t.gas == UndefinedU256)
 			t.gas = min<u256>(client()->gasLimitRemaining() / 5, client()->balanceAt(t.from) / t.gasPrice);
 
-		if (m_ethAccounts->isRealAccount(t.from))
-			authenticate(t, false);
-		else if (m_ethAccounts->isProxyAccount(t.from))
-			authenticate(t, true);
+		m_ethAccounts->authenticate(t);
 
 		return toJS((t.creation ? Transaction(t.value, t.gasPrice, t.gas, t.data) : Transaction(t.value, t.gasPrice, t.gas, t.to, t.data)).sha3(WithoutSignature));
 	}
@@ -579,7 +574,7 @@ string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& 
 	{
 		TransactionSkeleton t = toTransaction(_json);
 		if (!t.from)
-			t.from = m_ethAccounts->getDefaultTransactAccount();
+			t.from = m_ethAccounts->defaultTransactAccount();
 	//	if (!m_accounts->isRealAccount(t.from))
 	//		return ret;
 		if (t.gasPrice == UndefinedU256)
@@ -593,7 +588,6 @@ string WebThreeStubServerBase::eth_call(Json::Value const& _json, string const& 
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-	
 }
 
 bool WebThreeStubServerBase::eth_flush()
@@ -906,7 +900,7 @@ Json::Value WebThreeStubServerBase::eth_fetchQueuedTransactions(string const& _a
 		auto id = jsToInt(_accountId);
 		Json::Value ret(Json::arrayValue);
 		// TODO: throw an error on no account with given id
-		for (TransactionSkeleton const& t: m_ethAccounts->getQueuedTransactions(id))
+		for (TransactionSkeleton const& t: m_ethAccounts->queuedTransactions(id))
 			ret.append(toJson(t));
 		m_ethAccounts->clearQueue(id);
 		return ret;
@@ -1076,19 +1070,4 @@ Json::Value WebThreeStubServerBase::shh_getMessages(string const& _filterId)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
-}
-
-void WebThreeStubServerBase::authenticate(TransactionSkeleton const& _t, bool _toProxy)
-{
-	if (_toProxy)
-		m_ethAccounts->queueTransaction(_t);
-	else if (_t.to)
-		client()->submitTransaction(m_ethAccounts->secretKey(_t.from), _t.value, _t.to, _t.data, _t.gas, _t.gasPrice);
-	else
-		client()->submitTransaction(m_ethAccounts->secretKey(_t.from), _t.value, _t.data, _t.gas, _t.gasPrice);
-}
-
-void WebThreeStubServerBase::setAccounts(const vector<KeyPair>& _accounts)
-{
-	m_ethAccounts->setAccounts(_accounts);
 }
