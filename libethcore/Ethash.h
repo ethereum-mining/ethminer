@@ -66,7 +66,8 @@ public:
 
 		h256 boundary;
 		h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
-		h256 seedHash;
+		h256 seedHash; /// LTODO: IS this needed now that we use the block number instead?
+		uint64_t blockNumber;
 	};
 
 	static const WorkPackage NullWorkPackage;
