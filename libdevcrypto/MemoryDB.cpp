@@ -32,6 +32,7 @@ const char* DBWarn::name() { return "TDB"; }
 
 std::unordered_map<h256, std::string> MemoryDB::get() const
 {
+	ReadGuard l(x_this);
 	std::unordered_map<h256, std::string> ret;
 	for (auto const& i: m_main)
 		if (!m_enforceRefs || i.second.second > 0)
@@ -39,21 +40,34 @@ std::unordered_map<h256, std::string> MemoryDB::get() const
 	return ret;
 }
 
+MemoryDB& MemoryDB::operator=(MemoryDB const& _c)
+{
+	if (this == &_c)
+		return *this;
+	ReadGuard l(_c.x_this);
+	WriteGuard l2(x_this);
+	m_main = _c.m_main;
+	m_aux = _c.m_aux;
+	return *this;
+}
+
 std::string MemoryDB::lookup(h256 const& _h) const
 {
+	ReadGuard l(x_this);
 	auto it = m_main.find(_h);
 	if (it != m_main.end())
 	{
 		if (!m_enforceRefs || it->second.second > 0)
 			return it->second.first;
-//		else if (m_enforceRefs && m_refCount.count(it->first) && !m_refCount.at(it->first))
-//			cnote << "Lookup required for value with no refs. Let's hope it's in the DB." << _h;
+		else
+			cwarn << "Lookup required for value with refcount == 0. This is probably a critical trie issue" << _h;
 	}
 	return std::string();
 }
 
 bool MemoryDB::exists(h256 const& _h) const
 {
+	ReadGuard l(x_this);
 	auto it = m_main.find(_h);
 	if (it != m_main.end() && (!m_enforceRefs || it->second.second > 0))
 		return true;
@@ -62,6 +76,7 @@ bool MemoryDB::exists(h256 const& _h) const
 
 void MemoryDB::insert(h256 const& _h, bytesConstRef _v)
 {
+	WriteGuard l(x_this);
 	auto it = m_main.find(_h);
 	if (it != m_main.end())
 	{
@@ -77,34 +92,34 @@ void MemoryDB::insert(h256 const& _h, bytesConstRef _v)
 
 bool MemoryDB::kill(h256 const& _h)
 {
+	ReadGuard l(x_this);
 	if (m_main.count(_h))
 	{
 		if (m_main[_h].second > 0)
+		{
 			m_main[_h].second--;
+			return true;
+		}
 #if ETH_PARANOIA
 		else
 		{
 			// If we get to this point, then there was probably a node in the level DB which we need to remove and which we have previously
 			// used as part of the memory-based MemoryDB. Nothing to be worried about *as long as the node exists in the DB*.
 			dbdebug << "NOKILL-WAS" << _h;
-			return false;
 		}
 		dbdebug << "KILL" << _h << "=>" << m_main[_h].second;
-		return true;
 	}
 	else
 	{
 		dbdebug << "NOKILL" << _h;
-		return false;
-	}
-#else
-	}
-	return true;
 #endif
+	}
+	return false;
 }
 
 void MemoryDB::purge()
 {
+	WriteGuard l(x_this);
 	for (auto it = m_main.begin(); it != m_main.end(); )
 		if (it->second.second)
 			++it;
@@ -114,6 +129,7 @@ void MemoryDB::purge()
 
 h256Hash MemoryDB::keys() const
 {
+	ReadGuard l(x_this);
 	h256Hash ret;
 	for (auto const& i: m_main)
 		if (i.second.second)
