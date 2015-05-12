@@ -23,6 +23,7 @@
 
 #include <libdevcore/Exceptions.h>
 #include <libweb3jsonrpc/WebThreeStubServerBase.h>
+#include <libweb3jsonrpc/AccountHolder.h>
 
 /**
  * @brief dummy JSON-RPC api implementation
@@ -33,7 +34,10 @@
 class FixedWebThreeServer: public dev::WebThreeStubServerBase, public dev::WebThreeStubDatabaseFace
 {
 public:
-	FixedWebThreeServer(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts, dev::eth::Interface* _client): WebThreeStubServerBase(_conn, _accounts), m_client(_client) {};
+	FixedWebThreeServer(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _allAccounts, dev::eth::Interface* _client):
+		WebThreeStubServerBase(_conn, std::make_shared<dev::eth::FixedAccountHolder>([=](){return _client;}, _allAccounts), _allAccounts),
+		m_client(_client)
+	{}
 
 private:
 	dev::eth::Interface* client() override { return m_client; }

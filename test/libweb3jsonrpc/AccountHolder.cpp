@@ -22,6 +22,9 @@
 
 #include <boost/test/unit_test.hpp>
 #include <libweb3jsonrpc/AccountHolder.h>
+using namespace std;
+using namespace dev;
+using namespace eth;
 
 namespace dev
 {
@@ -32,16 +35,17 @@ BOOST_AUTO_TEST_SUITE(AccountHolderTest)
 
 BOOST_AUTO_TEST_CASE(ProxyAccountUseCase)
 {
-	AccountHolder h = AccountHolder(std::function<eth::Interface*()>());
-	BOOST_CHECK(h.getAllAccounts().empty());
-	BOOST_CHECK(h.getRealAccounts().empty());
+	FixedAccountHolder h = FixedAccountHolder(function<Interface*()>(), vector<KeyPair>());
+
+	BOOST_CHECK(h.allAccounts().empty());
+	BOOST_CHECK(h.realAccounts().empty());
 	Address addr("abababababababababababababababababababab");
 	Address addr2("abababababababababababababababababababab");
 	int id = h.addProxyAccount(addr);
-	BOOST_CHECK(h.getQueuedTransactions(id).empty());
+	BOOST_CHECK(h.queuedTransactions(id).empty());
 	// register it again
 	int secondID = h.addProxyAccount(addr);
-	BOOST_CHECK(h.getQueuedTransactions(secondID).empty());
+	BOOST_CHECK(h.queuedTransactions(secondID).empty());
 
 	eth::TransactionSkeleton t1;
 	eth::TransactionSkeleton t2;
@@ -49,20 +53,20 @@ BOOST_AUTO_TEST_CASE(ProxyAccountUseCase)
 	t1.data = fromHex("12345678");
 	t2.from = addr;
 	t2.data = fromHex("abcdef");
-	BOOST_CHECK(h.getQueuedTransactions(id).empty());
+	BOOST_CHECK(h.queuedTransactions(id).empty());
 	h.queueTransaction(t1);
-	BOOST_CHECK_EQUAL(1, h.getQueuedTransactions(id).size());
+	BOOST_CHECK_EQUAL(1, h.queuedTransactions(id).size());
 	h.queueTransaction(t2);
-	BOOST_REQUIRE_EQUAL(2, h.getQueuedTransactions(id).size());
+	BOOST_REQUIRE_EQUAL(2, h.queuedTransactions(id).size());
 
 	// second proxy should not see transactions
-	BOOST_CHECK(h.getQueuedTransactions(secondID).empty());
+	BOOST_CHECK(h.queuedTransactions(secondID).empty());
 
-	BOOST_CHECK(h.getQueuedTransactions(id)[0].data == t1.data);
-	BOOST_CHECK(h.getQueuedTransactions(id)[1].data == t2.data);
+	BOOST_CHECK(h.queuedTransactions(id)[0].data == t1.data);
+	BOOST_CHECK(h.queuedTransactions(id)[1].data == t2.data);
 
 	h.clearQueue(id);
-	BOOST_CHECK(h.getQueuedTransactions(id).empty());
+	BOOST_CHECK(h.queuedTransactions(id).empty());
 	// removing fails because it never existed
 	BOOST_CHECK(!h.removeProxyAccount(secondID));
 	BOOST_CHECK(h.removeProxyAccount(id));

@@ -35,7 +35,7 @@
 namespace dev
 {
 
-namespace eth { class Account; }
+namespace eth { class Account; class FixedAccountHolder; }
 
 namespace mix
 {
@@ -242,6 +242,7 @@ private:
 	std::unique_ptr<MixClient> m_client;
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
+	std::shared_ptr<eth::FixedAccountHolder> m_ethAccounts;
 	QList<u256> m_gasCosts;
 	std::map<std::pair<QString, int>, Address> m_contractAddresses;
 	std::map<Address, QString> m_contractNames;
