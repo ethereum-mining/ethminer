@@ -88,20 +88,15 @@ macro(eth_install_executable EXECUTABLE)
 	if (APPLE)
 		# First have qt5 install plugins and frameworks
 		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND ${MACDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app -executable=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app/Contents/MacOS/${EXECUTABLE} ${eth_qml_dir}
-			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-			COMMAND sh ${CMAKE_SOURCE_DIR}/macdeployfix.sh ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app/Contents
+			COMMAND ${MACDEPLOYQT_APP} ${EXECUTABLE}.app -executable=${EXECUTABLE}.app/Contents/MacOS/${EXECUTABLE} ${eth_qml_dir}
+			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}
+			COMMAND sh ${CMAKE_SOURCE_DIR}/macdeployfix.sh ${EXECUTABLE}.app/Contents
 		)
 
-		get_target_property(TARGET_RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE} RUNTIME_OUTPUT_DIRECTORY)
-		# This tool and next will inspect linked libraries in order to determine which dependencies are required
-		if (${CMAKE_CFG_INTDIR} STREQUAL ".")
-			# TODO: This should only happen for GUI application
-			set(APP_BUNDLE_PATH "${TARGET_RUNTIME_OUTPUT_DIRECTORY}/${EXECUTABLE}.app")
-		else ()
-			set(APP_BUNDLE_PATH "${TARGET_RUNTIME_OUTPUT_DIRECTORY}/\$ENV{CONFIGURATION}/${EXECUTABLE}.app")
-		endif ()
+		# TODO: This should only happen for GUI application
+		set(APP_BUNDLE_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INDIR}/${EXECUTABLE}.app")
 
+		# This tool and next will inspect linked libraries in order to determine which dependencies are required
 		install(CODE "
 			include(BundleUtilities)
 			set(BU_CHMOD_BUNDLE_ITEMS 1)
