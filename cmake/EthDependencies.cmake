@@ -31,7 +31,8 @@ endif()
 
 # homebrew installs qts in opt
 if (APPLE)
-	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "/usr/local/opt/qt5")
+	set (CMAKE_PREFIX_PATH "/usr/local/opt/qt5" ${CMAKE_PREFIX_PATH})
+	set (CMAKE_PREFIX_PATH "/usr/local/opt/v8-315" ${CMAKE_PREFIX_PATH})
 endif()
 
 find_program(CTEST_COMMAND ctest)
@@ -46,6 +47,13 @@ message(" - CryptoPP lib   : ${CRYPTOPP_LIBRARIES}")
 find_package (LevelDB REQUIRED)
 message(" - LevelDB header: ${LEVELDB_INCLUDE_DIRS}")
 message(" - LevelDB lib: ${LEVELDB_LIBRARIES}")
+
+if (JSCONSOLE)
+	find_package (v8 REQUIRED)
+	message(" - v8 header: ${V8_INCLUDE_DIRS}")
+	message(" - v8 lib   : ${V8_LIBRARIES}")
+	add_definitions(-DETH_JSCONSOLE)
+endif()
 
 # TODO the Jsoncpp package does not yet check for correct version number
 find_package (Jsoncpp 0.60 REQUIRED)
@@ -149,6 +157,11 @@ if (GUI)
 	if (WIN32)
 		set (WINDEPLOYQT_APP ${Qt5Core_DIR}/../../../bin/windeployqt)
 		message(" - windeployqt path: ${WINDEPLOYQT_APP}")
+	endif()
+
+	if (APPLE)
+		find_program(ETH_APP_DMG appdmg)
+		message(" - appdmg location : ${ETH_APP_DMG}")
 	endif()
 
 	if (USENPM)

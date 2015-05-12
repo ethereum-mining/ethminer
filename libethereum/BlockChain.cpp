@@ -456,7 +456,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	{
 		// Check transactions are valid and that they result in a state equivalent to our state_root.
 		// Get total difficulty increase and update state, checking it.
-		State s(_db);	//, bi.coinbaseAddress
+		State s(_db);
 		auto tdIncrease = s.enactOn(&_block, bi, *this, _ir);
 
 		BlockLogBlooms blb;
@@ -467,6 +467,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 			br.receipts.push_back(s.receipt(i));
 		}
 		s.cleanup(true);
+
 		td = pd.totalDifficulty + tdIncrease;
 
 #if ETH_TIMED_IMPORTS
@@ -603,7 +604,6 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		{
 			newLastBlockHash = bi.hash();
 			newLastBlockNumber = (unsigned)bi.number;
-			extrasBatch.Put(ldb::Slice("best"), ldb::Slice((char const*)&(bi.hash()), 32));
 		}
 
 		clog(BlockChainNote) << "   Imported and best" << td << " (#" << bi.number << "). Has" << (details(bi.parentHash).children.size() - 1) << "siblings. Route:" << route;
@@ -623,11 +623,32 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	m_blocksDB->Write(m_writeOptions, &blocksBatch);
 	m_extrasDB->Write(m_writeOptions, &extrasBatch);
 
-	DEV_WRITE_GUARDED(x_lastBlockHash)
+	if (isKnown(bi.hash()) && !details(bi.hash()))
 	{
-		m_lastBlockHash = newLastBlockHash;
-		m_lastBlockNumber = newLastBlockNumber;
+		clog(BlockChainDebug) << "Known block just inserted has no details.";
+		clog(BlockChainDebug) << "Block:" << bi;
+		clog(BlockChainDebug) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+		exit(-1);
 	}
+
+	try {
+		State canary(_db, *this, bi.hash());
+	}
+	catch (...)
+	{
+		clog(BlockChainDebug) << "Failed to initialise State object form imported block.";
+		clog(BlockChainDebug) << "Block:" << bi;
+		clog(BlockChainDebug) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+		exit(-1);
+	}
+
+	if (m_lastBlockHash != newLastBlockHash)
+		DEV_WRITE_GUARDED(x_lastBlockHash)
+		{
+			m_lastBlockHash = newLastBlockHash;
+			m_lastBlockNumber = newLastBlockNumber;
+			m_extrasDB->Put(m_writeOptions, ldb::Slice("best"), ldb::Slice((char const*)&m_lastBlockHash, 32));
+		}
 
 #if ETH_PARANOIA || !ETH_TRUE
 	checkConsistency();
@@ -645,14 +666,6 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 
 	if (!route.empty())
 		noteCanonChanged();
-
-	if (isKnown(bi.hash()) && !details(bi.hash()))
-	{
-		clog(BlockChainDebug) << "Known block just inserted has no details.";
-		clog(BlockChainDebug) << "Block:" << bi;
-		clog(BlockChainDebug) << "DATABASE CORRUPTION: CRITICAL FAILURE";
-		exit(-1);
-	}
 
 	h256s fresh;
 	h256s dead;
@@ -961,10 +974,10 @@ vector<unsigned> BlockChain::withBlockBloom(LogBloom const& _b, unsigned _earlie
 	return ret;
 }
 
-h256Set BlockChain::allUnclesFrom(h256 const& _parent) const
+h256Hash BlockChain::allUnclesFrom(h256 const& _parent) const
 {
 	// Get all uncles cited given a parent (i.e. featured as uncles/main in parent, parent + 1, ... parent + 5).
-	h256Set ret;
+	h256Hash ret;
 	h256 p = _parent;
 	for (unsigned i = 0; i < 6 && p != m_genesisHash; ++i, p = details(p).parent)
 	{
