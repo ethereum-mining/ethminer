@@ -3,6 +3,7 @@ import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 import QtQuick.Controls.Styles 1.3
+import QtQuick.Dialogs 1.2
 import "."
 
 
@@ -268,8 +269,7 @@ Rectangle
 						MenuItem {
 							text: qsTr("Delete")
 							onTriggered: {
-								projectModel.removeDocument(documentId);
-								wrapperItem.removeDocument(documentId);
+								deleteConfirmation.open();
 							}
 						}
 					}
@@ -279,9 +279,20 @@ Rectangle
 						MenuItem {
 							text: qsTr("Delete")
 							onTriggered: {
-								projectModel.removeDocument(documentId);
-								wrapperItem.removeDocument(documentId);
+								deleteConfirmation.open();
 							}
+						}
+					}
+
+					MessageDialog
+					{
+						id: deleteConfirmation
+						text: qsTr("Are you sure to delete this file ?")
+						standardButtons: StandardIcon.Ok | StandardIcon.Cancel
+						onAccepted:
+						{
+							projectModel.removeDocument(documentId);
+							wrapperItem.removeDocument(documentId);
 						}
 					}
 				}
