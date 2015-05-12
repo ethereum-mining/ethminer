@@ -282,6 +282,7 @@ namespace std
 {
 	/// Forward std::hash<dev::FixedHash> to dev::FixedHash::hash.
 	template<> struct hash<dev::h64>: dev::h64::hash {};
+	template<> struct hash<dev::h128>: dev::h128::hash {};
 	template<> struct hash<dev::h160>: dev::h160::hash {};
 	template<> struct hash<dev::h256>: dev::h256::hash {};
 	template<> struct hash<dev::h512>: dev::h512::hash {};

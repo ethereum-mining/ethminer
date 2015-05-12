@@ -159,6 +159,11 @@ if (GUI)
 		message(" - windeployqt path: ${WINDEPLOYQT_APP}")
 	endif()
 
+	if (APPLE)
+		find_program(ETH_APP_DMG appdmg)
+		message(" - appdmg location : ${ETH_APP_DMG}")
+	endif()
+
 	if (USENPM)
 
 		# TODO check node && npm version
