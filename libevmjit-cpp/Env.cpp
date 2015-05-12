@@ -3,6 +3,7 @@
 #include <libdevcrypto/SHA3.h>
 #include <libevmcore/Params.h>
 #include <libevm/ExtVMFace.h>
+#include <evmjit/DataTypes.h>
 
 #include "Utils.h"
 
@@ -16,7 +17,7 @@ extern "C"
 
 	using namespace dev;
 	using namespace dev::eth;
-	using jit::i256;
+	using evmjit::i256;
 
 	EXPORT void env_sload(ExtVMFace* _env, i256* _index, i256* o_value)
 	{
