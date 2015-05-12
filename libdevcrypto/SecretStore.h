@@ -23,6 +23,7 @@
 
 #include <functional>
 #include <mutex>
+#include <libdevcore/FixedHash.h>
 #include "Common.h"
 #include "FileSystem.h"
 
@@ -48,8 +49,8 @@ private:
 	static std::string encrypt(bytes const& _v, std::string const& _pass);
 	static bytes decrypt(std::string const& _v, std::string const& _pass);
 
-	mutable std::map<h128, bytes> m_cached;
-	std::map<h128, std::pair<std::string, std::string>> m_keys;
+	mutable std::unordered_map<h128, bytes> m_cached;
+	std::unordered_map<h128, std::pair<std::string, std::string>> m_keys;
 };
 
 }

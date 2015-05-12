@@ -45,10 +45,12 @@ struct NodeEntry: public Node
 	bool pending = true;		///< Node will be ignored until Pong is received
 };
 
-enum NodeTableEventType {
+enum NodeTableEventType
+{
 	NodeEntryAdded,
 	NodeEntryDropped
 };
+
 class NodeTable;
 class NodeTableEventHandler
 {
