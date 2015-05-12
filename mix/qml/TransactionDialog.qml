@@ -87,8 +87,6 @@ Dialog {
 		else
 			loadParameters();
 
-
-
 		visible = true;
 		valueField.focus = true;
 	}
@@ -212,12 +210,19 @@ Dialog {
 		}
 
 		item.isContractCreation = trType.checked;
+
+		if (item.functionId === "(transfert)")
+			item.isFunctionCall = false;
+
 		if (!item.isContractCreation)
 		{
 			item.contractId = recipients.currentText;
 			item.label = item.contractId + " " + item.functionId;
 			if (recipients.current().type === "address")
-				item.functionId = "(transfert)";
+			{
+				item.functionId = "";
+				item.isFunctionCall = false;
+			}
 		}
 		else
 		{
