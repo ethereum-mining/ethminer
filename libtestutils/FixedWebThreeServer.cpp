@@ -16,7 +16,12 @@
  */
 /** @file FixedWebThreeStubServer.cpp
  * @author Marek Kotewicz <marek@ethdev.com>
+ * @author Gav Wood <i@gavwood.com>
  * @date 2015
  */
 
 #include "FixedWebThreeServer.h"
+#include <libethereum/Interface.h>
+using namespace std;
+using namespace dev;
+using namespace eth;
