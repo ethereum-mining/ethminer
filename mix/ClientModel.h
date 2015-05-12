@@ -35,7 +35,7 @@
 namespace dev
 {
 
-namespace eth { class Account; }
+namespace eth { class Account; class FixedAccountHolder; }
 
 namespace mix
 {
@@ -220,14 +220,14 @@ private:
 	RecordLogEntry* lastBlock() const;
 	QVariantMap contractAddresses() const;
 	QVariantList gasCosts() const;
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::map<Address, dev::eth::Account> const& _accounts, Secret const& _miner);
+	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::unordered_map<Address, dev::eth::Account> const& _accounts, Secret const& _miner);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callContract(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	void onNewTransaction();
 	void onStateReset();
 	void showDebuggerForTransaction(ExecutionResult const& _t);
 	QVariant formatValue(SolidityType const& _type, dev::u256 const& _value);
-	QVariant formatStorageValue(SolidityType const& _type, std::map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
+	QVariant formatStorageValue(SolidityType const& _type, std::unordered_map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
 
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;
@@ -235,6 +235,7 @@ private:
 	std::unique_ptr<MixClient> m_client;
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
+	std::shared_ptr<eth::FixedAccountHolder> m_ethAccounts;
 	QList<u256> m_gasCosts;
 	std::map<QString, Address> m_contractAddresses;
 	std::map<Address, QString> m_contractNames;

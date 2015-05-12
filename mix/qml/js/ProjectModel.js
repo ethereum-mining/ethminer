@@ -294,7 +294,10 @@ function renameDocument(documentId, newName) {
 
 function getDocument(documentId) {
 	var i = getDocumentIndex(documentId);
-	return projectListModel.get(i);
+	if (i === -1)
+		return undefined;
+	else
+		return projectListModel.get(i);
 }
 
 function getDocumentIdByName(fileName)
@@ -308,10 +311,13 @@ function getDocumentIdByName(fileName)
 function removeDocument(documentId) {
 	var i = getDocumentIndex(documentId);
 	var document = projectListModel.get(i);
-	if (!document.isContract) {
-		projectListModel.remove(i);
-		documentRemoved(documentId);
-	}
+	fileIo.stopWatching(document.path);
+	fileIo.deleteFile(document.path);
+	if (document.isContract)
+		codeModel.unregisterContractSrc(documentId);
+	projectListModel.remove(i);
+	saveProjectFile();
+	documentRemoved(documentId);
 }
 
 function newHtmlFile() {

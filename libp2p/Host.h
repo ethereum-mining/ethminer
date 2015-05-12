@@ -95,6 +95,8 @@ public:
 	/// Default host for current version of client.
 	static std::string pocHost();
 
+	static std::unordered_map<Public, std::string> const& pocHosts();
+
 	/// Register a peer-capability; all new peer connections will have this capability.
 	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; std::shared_ptr<T> ret(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
 
@@ -227,7 +229,7 @@ private:
 	std::shared_ptr<NodeTable> m_nodeTable;									///< Node table (uses kademlia-like discovery).
 
 	/// Shared storage of Peer objects. Peers are created or destroyed on demand by the Host. Active sessions maintain a shared_ptr to a Peer;
-	std::map<NodeId, std::shared_ptr<Peer>> m_peers;
+	std::unordered_map<NodeId, std::shared_ptr<Peer>> m_peers;
 	
 	/// Peers we try to connect regardless of p2p network.
 	std::set<NodeId> m_requiredPeers;
@@ -235,7 +237,7 @@ private:
 
 	/// The nodes to which we are currently connected. Used by host to service peer requests and keepAlivePeers and for shutdown. (see run())
 	/// Mutable because we flush zombie entries (null-weakptrs) as regular maintenance from a const method.
-	mutable std::map<NodeId, std::weak_ptr<Session>> m_sessions;
+	mutable std::unordered_map<NodeId, std::weak_ptr<Session>> m_sessions;
 	mutable RecursiveMutex x_sessions;
 	
 	std::list<std::weak_ptr<RLPXHandshake>> m_connecting;					///< Pending connections.

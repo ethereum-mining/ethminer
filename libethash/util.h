@@ -27,9 +27,9 @@ extern "C" {
 #endif
 
 #ifdef _MSC_VER
-void debugf(const char *str, ...);
+void debugf(char const* str, ...);
 #else
-#define debugf(...) fprintf(stderr, __VA_ARGS__)
+#define debugf printf
 #endif
 
 static inline uint32_t min_u32(uint32_t a, uint32_t b)

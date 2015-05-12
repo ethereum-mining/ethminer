@@ -44,3 +44,17 @@ function test_multipleContractsSameFile()
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(3), "contract", "C2");
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(4), "contract", "C3");
 }
+
+function test_deleteFile()
+{
+	newProject();
+	var path = mainApplication.projectModel.projectPath;
+	createHtml("page1.html", "<html><body><div id='queryres'>Fail</div></body><script>if (web3) document.getElementById('queryres').innerText='OK'</script></html>");
+	createHtml("page2.html", "<html><body><div id='queryres'>Fail</div></body><script>if (web3) document.getElementById('queryres').innerText='OK'</script></html>");
+	createHtml("page3.html", "<html><body><div id='queryres'>Fail</div></body><script>if (web3) document.getElementById('queryres').innerText='OK'</script></html>");
+	mainApplication.projectModel.removeDocument("page2.html");
+	mainApplication.projectModel.closeProject(function(){});
+	mainApplication.projectModel.loadProject(path);
+	var doc = mainApplication.projectModel.getDocument("page2.html");
+	verify(!doc, "page2.html has not been removed");
+}

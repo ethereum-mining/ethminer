@@ -66,6 +66,8 @@ public:
 	Q_INVOKABLE void watchFileChanged(QString const& _path);
 	/// Stop Listenning for files change in @arg _path.
 	Q_INVOKABLE void stopWatching(QString const& _path);
+	/// Delete a file
+	Q_INVOKABLE void deleteFile(QString const& _path);
 
 private:
 	QString getHomePath() const;
