@@ -312,7 +312,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 			{
 				std::pair<QString, int> ctrInstance = resolvePair(transaction.contractId);
 				QString address = resolveToken(ctrInstance, deployedContracts);
-				if (transaction.isFunctionCall)
+				if (!transaction.isFunctionCall)
 				{
 					callAddress(Address(address.toStdString()), bytes(), transaction);
 					onNewTransaction();
