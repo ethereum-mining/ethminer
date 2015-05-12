@@ -81,7 +81,8 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 	{
 		shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, _node.endpoint));
 		ret->pending = false;
-		m_nodes[_node.id] = ret;
+		DEV_GUARDED(x_nodes)
+			m_nodes[_node.id] = ret;
 		noteActiveNode(_node.id, _node.endpoint);
 		return ret;
 	}
@@ -101,14 +102,13 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 		return move(shared_ptr<NodeEntry>());
 	}
 	
-	{
-		Guard ln(x_nodes);
+	DEV_GUARDED(x_nodes)
 		if (m_nodes.count(_node.id))
 			return m_nodes[_node.id];
-	}
 	
 	shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, _node.endpoint));
-	m_nodes[_node.id] = ret;
+	DEV_GUARDED(x_nodes)
+		m_nodes[_node.id] = ret;
 	clog(NodeTableConnect) << "addNode pending for" << _node.endpoint;
 	ping(_node.endpoint);
 	return ret;
@@ -127,20 +127,19 @@ void NodeTable::discover()
 list<NodeId> NodeTable::nodes() const
 {
 	list<NodeId> nodes;
-	Guard l(x_nodes);
-	for (auto& i: m_nodes)
-		nodes.push_back(i.second->id);
+	DEV_GUARDED(x_nodes)
+		for (auto& i: m_nodes)
+			nodes.push_back(i.second->id);
 	return move(nodes);
 }
 
 list<NodeEntry> NodeTable::snapshot() const
 {
 	list<NodeEntry> ret;
-	Guard l(x_state);
-	for (auto s: m_state)
-		for (auto np: s.nodes)
-			if (auto n = np.lock())
-				if (!!n)
+	DEV_GUARDED(x_state)
+		for (auto const& s: m_state)
+			for (auto const& np: s.nodes)
+				if (auto n = np.lock())
 					ret.push_back(*n);
 	return move(ret);
 }
@@ -151,8 +150,7 @@ Node NodeTable::node(NodeId const& _id)
 	if (m_nodes.count(_id))
 	{
 		auto entry = m_nodes[_id];
-		Node n(_id, entry->endpoint, entry->required);
-		return move(n);
+		return Node(_id, entry->endpoint, entry->required);
 	}
 	return UnspecifiedNode;
 }
@@ -173,7 +171,7 @@ void NodeTable::discover(NodeId _node, unsigned _round, shared_ptr<set<shared_pt
 		clog(NodeTableEvent) << "Terminating discover after " << _round << " rounds.";
 		return;
 	}
-	else if(!_round && !_tried)
+	else if (!_round && !_tried)
 		// initialized _tried on first round
 		_tried.reset(new set<shared_ptr<NodeEntry>>());
 	
@@ -186,7 +184,8 @@ void NodeTable::discover(NodeId _node, unsigned _round, shared_ptr<set<shared_pt
 			tried.push_back(r);
 			FindNode p(r->endpoint, _node);
 			p.sign(m_secret);
-			m_findNodeTimeout.push_back(make_pair(r->id, chrono::steady_clock::now()));
+			DEV_GUARDED(x_findNodeTimeout)
+				m_findNodeTimeout.push_back(make_pair(r->id, chrono::steady_clock::now()));
 			m_socketPointer->send(p);
 		}
 	
@@ -227,7 +226,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 		while (head != tail && head < s_bins && count < s_bucketSize)
 		{
 			Guard l(x_state);
-			for (auto n: m_state[head].nodes)
+			for (auto const& n: m_state[head].nodes)
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
@@ -237,7 +236,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 				}
 			
 			if (count < s_bucketSize && tail)
-				for (auto n: m_state[tail].nodes)
+				for (auto const& n: m_state[tail].nodes)
 					if (auto p = n.lock())
 					{
 						if (count < s_bucketSize)
@@ -254,7 +253,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 		while (head < s_bins && count < s_bucketSize)
 		{
 			Guard l(x_state);
-			for (auto n: m_state[head].nodes)
+			for (auto const& n: m_state[head].nodes)
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
@@ -268,7 +267,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 		while (tail > 0 && count < s_bucketSize)
 		{
 			Guard l(x_state);
-			for (auto n: m_state[tail].nodes)
+			for (auto const& n: m_state[tail].nodes)
 				if (auto p = n.lock())
 				{
 					if (count < s_bucketSize)
@@ -281,7 +280,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 	
 	vector<shared_ptr<NodeEntry>> ret;
 	for (auto& nodes: found)
-		for (auto n: nodes.second)
+		for (auto const& n: nodes.second)
 			if (ret.size() < s_bucketSize && !!n->endpoint && n->endpoint.isAllowed())
 				ret.push_back(n);
 	return move(ret);
@@ -305,12 +304,15 @@ void NodeTable::evict(shared_ptr<NodeEntry> _leastSeen, shared_ptr<NodeEntry> _n
 	if (!m_socketPointer->isOpen())
 		return;
 	
+	unsigned ec;
+	DEV_GUARDED(x_evictions)
 	{
-		Guard l(x_evictions);
 		m_evictions.push_back(EvictionTimeout(make_pair(_leastSeen->id,chrono::steady_clock::now()), _new->id));
-		if (m_evictions.size() == 1)
-			doCheckEvictions(boost::system::error_code());
+		ec = m_evictions.size();
 	}
+
+	if (ec == 1)
+		doCheckEvictions(boost::system::error_code());
 	ping(_leastSeen.get());
 }
 
@@ -427,37 +429,40 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				Pong in = Pong::fromBytesConstRef(_from, rlpBytes);
 				
 				// whenever a pong is received, check if it's in m_evictions
-				Guard le(x_evictions);
-				bool evictionEntry = false;
-				for (auto it = m_evictions.begin(); it != m_evictions.end(); it++)
-					if (it->first.first == nodeid && it->first.second > std::chrono::steady_clock::now())
-					{
-						evictionEntry = true;
-						if (auto n = nodeEntry(it->second))
-							dropNode(n);
-						
-						if (auto n = nodeEntry(it->first.first))
-							n->pending = false;
-						
-						it = m_evictions.erase(it);
-					}
-				
-				// if not, check if it's known/pending or a pubk discovery ping
-				if (!evictionEntry)
+				bool found = false;
+				EvictionTimeout evictionEntry;
+				DEV_GUARDED(x_evictions)
+					for (auto it = m_evictions.begin(); it != m_evictions.end(); ++it)
+						if (it->first.first == nodeid && it->first.second > std::chrono::steady_clock::now())
+						{
+							found = true;
+							evictionEntry = *it;
+							m_evictions.erase(it);
+							break;
+						}
+				if (found)
 				{
+					if (auto n = nodeEntry(evictionEntry.second))
+						dropNode(n);
+					if (auto n = nodeEntry(evictionEntry.first.first))
+						n->pending = false;
+				}
+				else
+				{
+					// if not, check if it's known/pending or a pubk discovery ping
 					if (auto n = nodeEntry(nodeid))
 						n->pending = false;
-					else if (m_pubkDiscoverPings.count(_from.address()))
+					else
 					{
+						DEV_GUARDED(x_pubkDiscoverPings)
 						{
-							Guard l(x_pubkDiscoverPings);
+							if (!m_pubkDiscoverPings.count(_from.address()))
+								return; // unsolicited pong; don't note node as active
 							m_pubkDiscoverPings.erase(_from.address());
 						}
 						if (!haveNode(nodeid))
 							addNode(Node(nodeid, NodeIPEndpoint(_from.address(), _from.port(), _from.port())));
 					}
-					else
-						return; // unsolicited pong; don't note node as active
 				}
 				
 				// update our endpoint address and UDP port
@@ -473,14 +478,15 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 			{
 				bool expected = false;
 				auto now = chrono::steady_clock::now();
-				m_findNodeTimeout.remove_if([&](NodeIdTimePoint const& t)
-				{
-					if (t.first == nodeid && now - t.second < c_reqTimeout)
-						expected = true;
-					else if (t.first == nodeid)
-						return true;
-					return false;
-				});
+				DEV_GUARDED(x_findNodeTimeout)
+					m_findNodeTimeout.remove_if([&](NodeIdTimePoint const& t)
+					{
+						if (t.first == nodeid && now - t.second < c_reqTimeout)
+							expected = true;
+						else if (t.first == nodeid)
+							return true;
+						return false;
+					});
 				
 				if (!expected)
 				{
@@ -582,7 +588,7 @@ void NodeTable::doCheckEvictions(boost::system::error_code const& _ec)
 				if (chrono::steady_clock::now() - e.first.second > c_reqTimeout)
 					if (m_nodes.count(e.second))
 						drop.push_back(m_nodes[e.second]);
-			evictionsRemain = m_evictions.size() - drop.size() > 0;
+			evictionsRemain = (m_evictions.size() - drop.size() > 0);
 		}
 		
 		drop.unique();

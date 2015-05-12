@@ -45,10 +45,12 @@ struct NodeEntry: public Node
 	bool pending = true;		///< Node will be ignored until Pong is received
 };
 
-enum NodeTableEventType {
+enum NodeTableEventType
+{
 	NodeEntryAdded,
 	NodeEntryDropped
 };
+
 class NodeTable;
 class NodeTableEventHandler
 {
@@ -80,7 +82,7 @@ protected:
 
 	Mutex x_events;
 	std::list<NodeId> m_nodeEventHandler;
-	std::map<NodeId, NodeTableEventType> m_events;
+	std::unordered_map<NodeId, NodeTableEventType> m_events;
 };
 
 class NodeTable;
@@ -243,32 +245,32 @@ private:
 	/// Purges and pings nodes for any buckets which haven't been touched for c_bucketRefresh seconds.
 	void doRefreshBuckets(boost::system::error_code const& _ec);
 
-	std::unique_ptr<NodeTableEventHandler> m_nodeEventHandler;	///< Event handler for node events.
+	std::unique_ptr<NodeTableEventHandler> m_nodeEventHandler;		///< Event handler for node events.
 
-	Node m_node;												///< This node.
-	Secret m_secret;											///< This nodes secret key.
+	Node m_node;													///< This node.
+	Secret m_secret;												///< This nodes secret key.
 
-	mutable Mutex x_nodes;									///< LOCK x_state first if both locks are required. Mutable for thread-safe copy in nodes() const.
-	std::map<NodeId, std::shared_ptr<NodeEntry>> m_nodes;		///< Nodes
+	mutable Mutex x_nodes;											///< LOCK x_state first if both locks are required. Mutable for thread-safe copy in nodes() const.
+	std::unordered_map<NodeId, std::shared_ptr<NodeEntry>> m_nodes;	///< Nodes
 
-	mutable Mutex x_state;									///< LOCK x_state first if both x_nodes and x_state locks are required.
-	std::array<NodeBucket, s_bins> m_state;					///< State of p2p node network.
+	mutable Mutex x_state;											///< LOCK x_state first if both x_nodes and x_state locks are required.
+	std::array<NodeBucket, s_bins> m_state;							///< State of p2p node network.
 
-	Mutex x_evictions;										///< LOCK x_evictions first if both x_nodes and x_evictions locks are required.
-	std::deque<EvictionTimeout> m_evictions;					///< Eviction timeouts.
+	Mutex x_evictions;												///< LOCK x_evictions first if both x_nodes and x_evictions locks are required.
+	std::deque<EvictionTimeout> m_evictions;						///< Eviction timeouts.
 	
-	Mutex x_pubkDiscoverPings;								///< LOCK x_nodes first if both x_nodes and x_pubkDiscoverPings locks are required.
-	std::map<bi::address, TimePoint> m_pubkDiscoverPings;		///< List of pending pings where node entry wasn't created due to unkown pubk.
+	Mutex x_pubkDiscoverPings;										///< LOCK x_nodes first if both x_nodes and x_pubkDiscoverPings locks are required.
+	std::unordered_map<bi::address, TimePoint> m_pubkDiscoverPings;	///< List of pending pings where node entry wasn't created due to unkown pubk.
 
 	Mutex x_findNodeTimeout;
-	std::list<NodeIdTimePoint> m_findNodeTimeout;				///< Timeouts for pending Ping and FindNode requests.
+	std::list<NodeIdTimePoint> m_findNodeTimeout;					///< Timeouts for pending Ping and FindNode requests.
 	
-	ba::io_service& m_io;										///< Used by bucket refresh timer.
-	std::shared_ptr<NodeSocket> m_socket;						///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
-	NodeSocket* m_socketPointer;								///< Set to m_socket.get(). Socket is created in constructor and disconnected in destructor to ensure access to pointer is safe.
+	ba::io_service& m_io;											///< Used by bucket refresh timer.
+	std::shared_ptr<NodeSocket> m_socket;							///< Shared pointer for our UDPSocket; ASIO requires shared_ptr.
+	NodeSocket* m_socketPointer;									///< Set to m_socket.get(). Socket is created in constructor and disconnected in destructor to ensure access to pointer is safe.
 
-	boost::asio::deadline_timer m_bucketRefreshTimer;			///< Timer which schedules and enacts bucket refresh.
-	boost::asio::deadline_timer m_evictionCheckTimer;			///< Timer for handling node evictions.
+	boost::asio::deadline_timer m_bucketRefreshTimer;				///< Timer which schedules and enacts bucket refresh.
+	boost::asio::deadline_timer m_evictionCheckTimer;				///< Timer for handling node evictions.
 };
 
 inline std::ostream& operator<<(std::ostream& _out, NodeTable const& _nodeTable)
