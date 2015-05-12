@@ -27,6 +27,7 @@ namespace dev
 namespace eth
 {
 
+
 class EthashAux
 {
 public:
@@ -34,39 +35,41 @@ public:
 
 	static EthashAux* get() { if (!s_this) s_this = new EthashAux(); return s_this; }
 
-	struct FullAllocation
-	{
-		FullAllocation(bytesConstRef _d): data(_d) {}
-		~FullAllocation() { delete [] data.data(); }
-		Ethash::Result compute(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) const;
-		bytesConstRef const data;
-	};
-
 	struct LightAllocation
 	{
-		LightAllocation(h256 const& _seed);
+		LightAllocation(uint64_t _blockNumber);
 		~LightAllocation();
-		bytesConstRef data() const { return bytesConstRef((byte const*)light, size); }
-		Ethash::Result compute(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) const;
+		bytesConstRef data() const;
+		Ethash::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
 		ethash_light_t light;
 		uint64_t size;
+	};
+
+	struct FullAllocation
+	{
+		FullAllocation(ethash_light_t _light, ethash_callback_t _cb);
+		~FullAllocation();
+		Ethash::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
+		bytesConstRef data() const;
+		uint64_t size() const { return ethash_full_dag_size(full); }
+		ethash_full_t full;
 	};
 
 	using LightType = std::shared_ptr<LightAllocation>;
 	using FullType = std::shared_ptr<FullAllocation>;
 
 	static h256 seedHash(unsigned _number);
-	static ethash_params params(BlockInfo const& _header);
-	static ethash_params params(h256 const& _seedHash);
-	static ethash_params params(unsigned _n);
+	static uint64_t cacheSize(BlockInfo const& _header);
+
 	static LightType light(BlockInfo const& _header);
-	static LightType light(h256 const& _seedHash);
-	static FullType full(BlockInfo const& _header, bytesRef _dest = bytesRef(), bool _createIfMissing = true);
-	static FullType full(h256 const& _header, bytesRef _dest = bytesRef(), bool _createIfMissing = true);
+	static LightType light(uint64_t _blockNumber);
+	static FullType full(BlockInfo const& _header);
+	static FullType full(uint64_t _blockNumber);
 
 	static Ethash::Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
 	static Ethash::Result eval(BlockInfo const& _header, Nonce const& _nonce);
-	static Ethash::Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce);
+	static Ethash::Result eval(uint64_t _blockNumber, h256 const& _headerHash, Nonce const& _nonce);
+
 
 private:
 	EthashAux() {}
