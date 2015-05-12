@@ -36,6 +36,14 @@ using namespace dev::mix;
 bytes ContractCallDataEncoder::encodedData()
 {
 	bytes r(m_encodedData);
+	size_t headerSize = m_encodedData.size() & ~0x1fUL; //ignore any prefix that is not 32-byte aligned
+	//apply offsets
+	for (auto const& p: m_offsetMap)
+	{
+		vector_ref<byte> offsetRef(r.data() + p.first, 32);
+		toBigEndian<size_t, vector_ref<byte>>(p.second + headerSize, offsetRef); //add header size minus signature hash
+	}
+
 	r.insert(r.end(), m_dynamicData.begin(), m_dynamicData.end());
 	return r;
 }
@@ -64,6 +72,9 @@ void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& 
 
 	if (_type.dynamicSize)
 	{
+		bytes empty(32);
+		size_t sizePos = m_dynamicData.size();
+		m_dynamicData += empty; //reserve space for count
 		if (_type.type == SolidityType::Type::Bytes)
 			count = encodeSingleItem(_data.toString(), _type, m_dynamicData);
 		else
@@ -72,9 +83,10 @@ void ContractCallDataEncoder::encode(QVariant const& _data, SolidityType const& 
 			for (auto const& item: strList)
 				encodeSingleItem(item, _type, m_dynamicData);
 		}
-		bytes sizeEnc(32);
-		toBigEndian(count, sizeEnc);
-		m_encodedData.insert(m_encodedData.end(), sizeEnc.begin(), sizeEnc.end());
+		vector_ref<byte> sizeRef(m_dynamicData.data() + sizePos, 32);
+		toBigEndian(count, sizeRef);
+		m_offsetMap.push_back(std::make_pair(m_encodedData.size(), sizePos));
+		m_encodedData += empty; //reserve space for offset
 	}
 	else
 	{
