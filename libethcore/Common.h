@@ -136,5 +136,16 @@ private:
 
 using Handler = std::shared_ptr<Signal::HandlerAux>;
 
+struct TransactionSkeleton
+{
+	bool creation = false;
+	Address from;
+	Address to;
+	u256 value;
+	bytes data;
+	u256 gas = UndefinedU256;
+	u256 gasPrice = UndefinedU256;
+};
+
 }
 }

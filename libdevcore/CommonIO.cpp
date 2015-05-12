@@ -20,7 +20,8 @@
  */
 
 #include "CommonIO.h"
-
+#include <iostream>
+#include <cstdlib>
 #include <fstream>
 #include "Exceptions.h"
 using namespace std;
@@ -117,3 +118,14 @@ void dev::writeFile(std::string const& _file, bytesConstRef _data)
 	ofstream(_file, ios::trunc|ios::binary).write((char const*)_data.data(), _data.size());
 }
 
+std::string dev::getPassword(std::string const& _prompt)
+{
+#if WIN32
+	cout << _prompt << flush;
+	std::string ret;
+	std::getline(cin, ret);
+	return ret;
+#else
+	return getpass(_prompt.c_str());
+#endif
+}
