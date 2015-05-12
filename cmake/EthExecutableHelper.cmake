@@ -45,25 +45,26 @@ endmacro()
 
 macro(eth_copy_dlls EXECUTABLE DLLS)
 	# dlls must be unsubstitud list variable (without ${}) in format
-	# optimized;path_to_dll.dll;debug;path_to_dlld.dll 
+	# optimized;path_to_dll.dll;debug;path_to_dlld.dll
 	list(GET ${DLLS} 1 DLL_RELEASE)
 	list(GET ${DLLS} 3 DLL_DEBUG)
+	get_target_property(TARGET_RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE} RUNTIME_OUTPUT_DIRECTORY)
 	add_custom_command(TARGET ${EXECUTABLE}
-		POST_BUILD 
-		COMMAND ${CMAKE_COMMAND} ARGS 
-		-DDLL_RELEASE="${DLL_RELEASE}" 
-		-DDLL_DEBUG="${DLL_DEBUG}" 
+		POST_BUILD
+		COMMAND ${CMAKE_COMMAND} ARGS
+		-DDLL_RELEASE="${DLL_RELEASE}"
+		-DDLL_DEBUG="${DLL_DEBUG}"
 		-DCONF="$<CONFIGURATION>"
-		-DDESTINATION="${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}" 
+		-DDESTINATION="${TARGET_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}"
 		-P "${ETH_SCRIPTS_DIR}/copydlls.cmake"
 	)
 endmacro()
 
-# 
+#
 # this function requires the following variables to be specified:
 # ETH_DEPENDENCY_INSTALL_DIR
 #
-# params: 
+# params:
 # QMLDIR
 #
 
@@ -74,7 +75,7 @@ macro(eth_install_executable EXECUTABLE)
 	set (one_value_args QMLDIR)
 	set (multi_value_args DLLS)
 	cmake_parse_arguments (ETH_INSTALL_EXECUTABLE "${options}" "${one_value_args}" "${multi_value_args}" "${extra_macro_args}")
-	
+
 	if (ETH_INSTALL_EXECUTABLE_QMLDIR)
 		if (APPLE)
 			set(eth_qml_dir "-qmldir=${ETH_INSTALL_EXECUTABLE_QMLDIR}")
@@ -87,19 +88,15 @@ macro(eth_install_executable EXECUTABLE)
 	if (APPLE)
 		# First have qt5 install plugins and frameworks
 		add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-			COMMAND ${MACDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app -executable=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app/Contents/MacOS/${EXECUTABLE} ${eth_qml_dir}
-			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-			COMMAND sh ${CMAKE_SOURCE_DIR}/macdeployfix.sh ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.app/Contents
+			COMMAND ${MACDEPLOYQT_APP} ${EXECUTABLE}.app -executable=${EXECUTABLE}.app/Contents/MacOS/${EXECUTABLE} ${eth_qml_dir}
+			WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}
+			COMMAND sh ${CMAKE_SOURCE_DIR}/macdeployfix.sh ${EXECUTABLE}.app/Contents
 		)
-			
-		# This tool and next will inspect linked libraries in order to determine which dependencies are required
-		if (${CMAKE_CFG_INTDIR} STREQUAL ".")
-			# TODO: This should only happen for GUI application
-			set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${EXECUTABLE}.app")
-		else ()
-			set(APP_BUNDLE_PATH "${CMAKE_CURRENT_BINARY_DIR}/\$ENV{CONFIGURATION}/${EXECUTABLE}.app")
-		endif ()
 
+		# TODO: This should only happen for GUI application
+		set(APP_BUNDLE_PATH "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INDIR}/${EXECUTABLE}.app")
+
+		# This tool and next will inspect linked libraries in order to determine which dependencies are required
 		install(CODE "
 			include(BundleUtilities)
 			set(BU_CHMOD_BUNDLE_ITEMS 1)
@@ -111,14 +108,15 @@ macro(eth_install_executable EXECUTABLE)
 		get_target_property(TARGET_LIBS ${EXECUTABLE} INTERFACE_LINK_LIBRARIES)
 		string(REGEX MATCH "Qt5::Core" HAVE_QT ${TARGET_LIBS})
 		if ("${HAVE_QT}" STREQUAL "Qt5::Core")
+			get_target_property(TARGET_RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE} RUNTIME_OUTPUT_DIRECTORY)
 			add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
-				COMMAND cmd /C "set PATH=${Qt5Core_DIR}/../../../bin;%PATH% && ${WINDEPLOYQT_APP} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.exe ${eth_qml_dir}"
+				COMMAND cmd /C "set PATH=${Qt5Core_DIR}/../../../bin;%PATH% && ${WINDEPLOYQT_APP} ${TARGET_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/${EXECUTABLE}.exe ${eth_qml_dir}"
 				WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 			)
 			#workaround for https://bugreports.qt.io/browse/QTBUG-42083
 			add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
 				COMMAND cmd /C "(echo [Paths] & echo.Prefix=.)" > "qt.conf"
-				WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR} VERBATIM
+				WORKING_DIRECTORY ${TARGET_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR} VERBATIM
 			)
 		endif()
 
@@ -144,5 +142,3 @@ macro(eth_install_executable EXECUTABLE)
 	endif ()
 
 endmacro()
-
-
