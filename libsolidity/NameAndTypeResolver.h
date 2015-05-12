@@ -56,19 +56,24 @@ public:
 	/// Resolves the given @a _name inside the scope @a _scope. If @a _scope is omitted,
 	/// the global scope is used (i.e. the one containing only the contract).
 	/// @returns a pointer to the declaration on success or nullptr on failure.
-	std::set<Declaration const*> resolveName(ASTString const& _name, Declaration const* _scope = nullptr) const;
+	std::vector<Declaration const*> resolveName(ASTString const& _name, Declaration const* _scope = nullptr) const;
 
 	/// Resolves a name in the "current" scope. Should only be called during the initial
 	/// resolving phase.
-	std::set<Declaration const*> getNameFromCurrentScope(ASTString const& _name, bool _recursive = true);
+	std::vector<Declaration const*> getNameFromCurrentScope(ASTString const& _name, bool _recursive = true);
+
+	/// returns the vector of declarations without repetitions
+	static std::vector<Declaration const*> cleanedDeclarations(
+		Identifier const& _identifier,
+		std::vector<Declaration const*> const& _declarations
+	);
 
 private:
 	void reset();
 
-	/// Either imports all non-function members or all function members declared directly in the
-	/// given contract (i.e. does not import inherited members) into the current scope if they are
-	///not present already.
-	void importInheritedScope(ContractDefinition const& _base, bool _importFunctions);
+	/// Imports all members declared directly in the given contract (i.e. does not import inherited members)
+	/// into the current scope if they are not present already.
+	void importInheritedScope(ContractDefinition const& _base);
 
 	/// Computes "C3-Linearization" of base contracts and stores it inside the contract.
 	void linearizeBaseContracts(ContractDefinition& _contract) const;

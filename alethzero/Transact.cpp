@@ -39,6 +39,7 @@
 #include <libnatspec/NatspecExpressionEvaluator.h>
 #include <libethereum/Client.h>
 #include <libethereum/Utility.h>
+#include <libethereum/KeyManager.h>
 #if ETH_SERPENT
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
@@ -69,11 +70,20 @@ Transact::~Transact()
 	delete ui;
 }
 
-void Transact::setEnvironment(QList<dev::KeyPair> _myKeys, dev::eth::Client* _eth, NatSpecFace* _natSpecDB)
+void Transact::setEnvironment(AddressHash const& _accounts, dev::eth::Client* _eth, NatSpecFace* _natSpecDB)
 {
-	m_myKeys = _myKeys;
+	m_accounts = _accounts;
 	m_ethereum = _eth;
 	m_natSpecDB = _natSpecDB;
+
+	ui->from->clear();
+	for (auto const& i: m_accounts)
+	{
+		auto d = m_context->keyManager().accountDetails()[i];
+		u256 b = ethereum()->balanceAt(i, PendingBlock);
+		QString s = QString("%4 %2: %1").arg(formatBalance(b).c_str()).arg(QString::fromStdString(m_context->render(i))).arg(QString::fromStdString(d.first));
+		ui->from->addItem(s);
+	}
 }
 
 bool Transact::isCreation() const
@@ -126,8 +136,8 @@ void Transact::updateFee()
 	ui->total->setText(QString("Total: %1").arg(formatBalance(totalReq).c_str()));
 
 	bool ok = false;
-	for (auto i: m_myKeys)
-		if (ethereum()->balanceAt(i.address()) >= totalReq)
+	for (auto const& i: m_accounts)
+		if (ethereum()->balanceAt(i) >= totalReq)
 		{
 			ok = true;
 			break;
@@ -388,22 +398,33 @@ Secret Transact::findSecret(u256 _totalReq) const
 	if (!ethereum())
 		return Secret();
 
-	Secret best;
+	Address best;
 	u256 bestBalance = 0;
-	for (auto const& i: m_myKeys)
+	for (auto const& i: m_accounts)
 	{
-		auto b = ethereum()->balanceAt(i.address(), PendingBlock);
+		auto b = ethereum()->balanceAt(i, PendingBlock);
 		if (b >= _totalReq)
-			return i.secret();
+		{
+			best = i;
+			break;
+		}
 		if (b > bestBalance)
-			bestBalance = b, best = i.secret();
+			bestBalance = b, best = i;
 	}
-	return best;
+	return m_context->retrieveSecret(best);
+}
+
+Address Transact::fromAccount()
+{
+	auto it = m_accounts.begin();
+	std::advance(it, ui->from->currentIndex());
+	return *it;
 }
 
 void Transact::on_send_clicked()
 {
-	Secret s = findSecret(value() + fee());
+//	Secret s = findSecret(value() + fee());
+	Secret s = m_context->retrieveSecret(fromAccount());
 	auto b = ethereum()->balanceAt(KeyPair(s).address(), PendingBlock);
 	if (!s || b < value() + fee())
 	{
@@ -440,9 +461,10 @@ void Transact::on_send_clicked()
 
 void Transact::on_debug_clicked()
 {
-	Secret s = findSecret(value() + fee());
-	auto b = ethereum()->balanceAt(KeyPair(s).address(), PendingBlock);
-	if (!s || b < value() + fee())
+//	Secret s = findSecret(value() + fee());
+	Address from = fromAccount();
+	auto b = ethereum()->balanceAt(from, PendingBlock);
+	if (!from || b < value() + fee())
 	{
 		QMessageBox::critical(this, "Transaction Failed", "Couldn't make transaction: no single account contains at least the required amount.");
 		return;
@@ -452,8 +474,9 @@ void Transact::on_debug_clicked()
 	{
 		State st(ethereum()->postState());
 		Transaction t = isCreation() ?
-			Transaction(value(), gasPrice(), ui->gas->value(), m_data, st.transactionsFrom(dev::toAddress(s)), s) :
-			Transaction(value(), gasPrice(), ui->gas->value(), m_context->fromString(ui->destination->currentText().toStdString()).first, m_data, st.transactionsFrom(dev::toAddress(s)), s);
+			Transaction(value(), gasPrice(), ui->gas->value(), m_data, st.transactionsFrom(from)) :
+			Transaction(value(), gasPrice(), ui->gas->value(), m_context->fromString(ui->destination->currentText().toStdString()).first, m_data, st.transactionsFrom(from));
+		t.forceSender(from);
 		Debugger dw(m_context, this);
 		Executive e(st, ethereum()->blockChain(), 0);
 		dw.populate(e, t);

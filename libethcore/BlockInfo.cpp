@@ -195,26 +195,18 @@ template <class T, class U> h256 trieRootOver(unsigned _itemCount, T const& _get
 	return t.root();
 }
 
+struct BlockInfoDiagnosticsChannel: public LogChannel { static const char* name() { return EthBlue "▧" EthWhite " ◌"; } static const int verbosity = 9; };
+
 void BlockInfo::verifyInternals(bytesConstRef _block) const
 {
 	RLP root(_block);
 
-	/*OverlayDB db;
-	GenericTrieDB<OverlayDB> t(&db);
-	t.init();
-	unsigned i = 0;
-	for (auto const& tr: root[1])
-	{
-		bytes k = rlp(i);
-		t.insert(&k, tr.data());
-		++i;
-	}
-	if (transactionsRoot != t.root())*/
 	auto txList = root[1];
 	auto expectedRoot = trieRootOver(txList.itemCount(), [&](unsigned i){ return rlp(i); }, [&](unsigned i){ return txList[i].data(); });
+	clog(BlockInfoDiagnosticsChannel) << "Expected trie root:" << toString(expectedRoot);
 	if (transactionsRoot != expectedRoot)
 		BOOST_THROW_EXCEPTION(InvalidTransactionsHash() << HashMismatchError(expectedRoot, transactionsRoot));
-
+	clog(BlockInfoDiagnosticsChannel) << "Expected uncle hash:" << toString(sha3(root[2].data()));
 	if (sha3Uncles != sha3(root[2].data()))
 		BOOST_THROW_EXCEPTION(InvalidUnclesHash());
 }
@@ -236,7 +228,7 @@ u256 BlockInfo::selectGasLimit(BlockInfo const& _parent) const
 		return c_genesisGasLimit;
 	else
 		// target minimum of 3141592
-		return max<u256>(max<u256>(c_minGasLimit, 3141592), (_parent.gasLimit * (c_gasLimitBoundDivisor - 1) + (_parent.gasUsed * 6 / 5)) / c_gasLimitBoundDivisor);
+		return max<u256>(max<u256>(c_minGasLimit, 3141592), _parent.gasLimit - _parent.gasLimit / c_gasLimitBoundDivisor + 1 + (_parent.gasUsed * 6 / 5) / c_gasLimitBoundDivisor);
 }
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
@@ -254,9 +246,9 @@ void BlockInfo::verifyParent(BlockInfo const& _parent) const
 		BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError((bigint)calculateDifficulty(_parent), (bigint)difficulty));
 
 	if (gasLimit < c_minGasLimit ||
-		gasLimit < _parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor ||
-		gasLimit > _parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor)
-		BOOST_THROW_EXCEPTION(InvalidGasLimit() << errinfo_min((bigint)_parent.gasLimit * (c_gasLimitBoundDivisor - 1) / c_gasLimitBoundDivisor) << errinfo_got((bigint)gasLimit) << errinfo_max((bigint)_parent.gasLimit * (c_gasLimitBoundDivisor + 1) / c_gasLimitBoundDivisor));
+		gasLimit <= _parent.gasLimit - _parent.gasLimit / c_gasLimitBoundDivisor ||
+		gasLimit >= _parent.gasLimit + _parent.gasLimit / c_gasLimitBoundDivisor)
+		BOOST_THROW_EXCEPTION(InvalidGasLimit() << errinfo_min((bigint)_parent.gasLimit - _parent.gasLimit / c_gasLimitBoundDivisor) << errinfo_got((bigint)gasLimit) << errinfo_max((bigint)_parent.gasLimit + _parent.gasLimit / c_gasLimitBoundDivisor));
 
 	// Check timestamp is after previous timestamp.
 	if (parentHash)
