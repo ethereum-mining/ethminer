@@ -27,7 +27,7 @@ enum class VMKind
 {
 	Interpreter,
 	JIT,
-	Smart,
+	Smart
 };
 
 class VMFactory
