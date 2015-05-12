@@ -210,3 +210,9 @@ void FileIo::stopWatching(QString const& _path)
 {
 	m_watcher->removePath(pathFromUrl(_path));
 }
+
+void FileIo::deleteFile(QString const& _path)
+{
+	QFile file(pathFromUrl(_path));
+	file.remove();
+}
