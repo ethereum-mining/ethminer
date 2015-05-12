@@ -73,6 +73,7 @@ class InvalidBlockNonce: virtual public dev::Exception {};
 struct InvalidParentHash: virtual dev::Exception {};
 struct InvalidNumber: virtual dev::Exception {};
 struct InvalidContractAddress: virtual public dev::Exception {};
-
+struct DAGCreationFailure: virtual public dev::Exception {};
+struct DAGComputeFailure: virtual public dev::Exception {};
 }
 }
