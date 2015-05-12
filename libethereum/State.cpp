@@ -515,10 +515,10 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 						cnote << i.first << "Dropping old transaction (nonce too low)";
 						_tq.drop(i.first);
 					}
-					else if (got > req + 5)
+					else if (got > req + 25)
 					{
 						// too new
-						cnote << i.first << "Dropping new transaction (> 5 nonces ahead)";
+						cnote << i.first << "Dropping new transaction (> 25 nonces ahead)";
 						_tq.drop(i.first);
 					}
 					else

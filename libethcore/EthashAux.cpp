@@ -149,11 +149,6 @@ bytesConstRef EthashAux::FullAllocation::data() const
 	return bytesConstRef((byte const*)ethash_full_dag(full), size());
 }
 
-EthashAux::FullType EthashAux::full(BlockInfo const& _header, function<int(unsigned)> const& _f)
-{
-	return full((uint64_t)_header.number, _f);
-}
-
 static std::function<int(unsigned)> s_dagCallback;
 static int dagCallbackShim(unsigned _p)
 {
@@ -167,16 +162,43 @@ EthashAux::FullType EthashAux::full(uint64_t _blockNumber, function<int(unsigned
 	h256 seedHash = EthashAux::seedHash(_blockNumber);
 	FullType ret;
 
-	Guard lock(get()->x_fulls);
-	if ((ret = get()->m_fulls[seedHash].lock()))
+	DEV_GUARDED(get()->x_fulls)
+		if ((ret = get()->m_fulls[seedHash].lock()))
+		{
+			get()->m_lastUsedFull = ret;
+			return ret;
+		}
+
+	s_dagCallback = _f;
+	ret = make_shared<FullAllocation>(l->light, dagCallbackShim);
+
+	DEV_GUARDED(get()->x_fulls)
+		get()->m_fulls[seedHash] = get()->m_lastUsedFull = ret;
+	return ret;
+}
+
+unsigned EthashAux::computeFull(uint64_t _blockNumber)
+{
+	Guard l(get()->x_fulls);
+	h256 seedHash = EthashAux::seedHash(_blockNumber);
+	if (FullType ret = get()->m_fulls[seedHash].lock())
 	{
 		get()->m_lastUsedFull = ret;
-		return ret;
+		return 100;
 	}
-	s_dagCallback = _f;
-	ret = get()->m_lastUsedFull = make_shared<FullAllocation>(l->light, dagCallbackShim);
-	get()->m_fulls[seedHash] = ret;
-	return ret;
+
+	if (!get()->m_fullGenerator || !get()->m_fullGenerator->joinable())
+	{
+		get()->m_fullProgress = 0;
+		get()->m_generatingFullNumber = _blockNumber / ETHASH_EPOCH_LENGTH * ETHASH_EPOCH_LENGTH;
+		get()->m_fullGenerator = unique_ptr<thread>(new thread([=](){
+			get()->full(_blockNumber, [](unsigned p){ get()->m_fullProgress = p; return 0; });
+			get()->m_fullProgress = 0;
+			get()->m_generatingFullNumber = NotGenerating;
+		}));
+	}
+
+	return (get()->m_generatingFullNumber == _blockNumber) ? get()->m_fullProgress : 0;
 }
 
 Ethash::Result EthashAux::FullAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
