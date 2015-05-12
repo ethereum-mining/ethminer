@@ -27,6 +27,7 @@
 #include <iostream>
 #include <assert.h>
 #include <queue>
+#include <random>
 #include <vector>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
@@ -306,21 +307,15 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 	// update header constant buffer
 	m_queue.enqueueWriteBuffer(m_header, false, 0, 32, header);
 	for (unsigned i = 0; i != c_num_buffers; ++i)
-	{
 		m_queue.enqueueWriteBuffer(m_search_buf[i], false, 0, 4, &c_zero);
-	}
 
 #if CL_VERSION_1_2 && 0
 	cl::Event pre_return_event;
 	if (!m_opencl_1_1)
-	{
 		m_queue.enqueueBarrierWithWaitList(NULL, &pre_return_event);
-	}
 	else
 #endif
-	{
 		m_queue.finish();
-	}
 
 	/*
 	__kernel void ethash_combined_search(
@@ -341,7 +336,9 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 
 	unsigned buf = 0;
-	for (uint64_t start_nonce = 0; ; start_nonce += c_search_batch_size)
+	std::random_device engine;
+	uint64_t start_nonce = std::uniform_int_distribution<uint64_t>()(engine);
+	for (; ; start_nonce += c_search_batch_size)
 	{
 		// supply output buffer to kernel
 		m_search_kernel.setArg(0, m_search_buf[buf]);
@@ -386,9 +383,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 	// not safe to return until this is ready
 #if CL_VERSION_1_2 && 0
 	if (!m_opencl_1_1)
-	{
 		pre_return_event.wait();
-	}
 #endif
 }
 

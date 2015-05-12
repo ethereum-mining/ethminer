@@ -25,6 +25,7 @@
 #include <map>
 #include <string>
 #include <QObject>
+#include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/WebThreeStubServerBase.h>
 
 namespace dev
@@ -38,7 +39,7 @@ class Web3Server: public QObject, public dev::WebThreeStubServerBase, public dev
 	Q_OBJECT
 
 public:
-	Web3Server(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts, dev::eth::Interface* _client);
+	Web3Server(jsonrpc::AbstractServerConnector& _conn, std::shared_ptr<eth::AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts, dev::eth::Interface* _client);
 	virtual ~Web3Server();
 
 signals:
