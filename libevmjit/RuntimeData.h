@@ -1,5 +1,6 @@
 #pragma once
 
+#include "evmjit/DataTypes.h"
 #include "Common.h"
 
 namespace dev
@@ -8,7 +9,9 @@ namespace eth
 {
 namespace jit
 {
-	
+using evmjit::i256;
+using evmjit::h256;
+
 struct RuntimeData
 {
 	enum Index
@@ -49,7 +52,7 @@ struct RuntimeData
 	int64_t 	timestamp = 0;
 	byte const* code = nullptr;
 	uint64_t 	codeSize = 0;
-	i256		codeHash;
+	h256		codeHash;
 };
 
 /// VM Environment (ExtVM) opaque type
