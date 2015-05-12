@@ -3,7 +3,7 @@ var editor = CodeMirror(document.body, {
 							//styleActiveLine: true,
 							matchBrackets: true,
 							autofocus: true,
-							gutters: ["CodeMirror-linenumbers", "breakpoints"],
+							gutters: ["CodeMirror-linenumbers", "breakpoints", "gasCost"],
 							autoCloseBrackets: true,
 							styleSelectedText: true
 						});
@@ -201,6 +201,27 @@ setFontSize = function(size)
 {
 	editor.getWrapperElement().style["font-size"] = size + "px";
 	editor.refresh();
+}
+
+makeGasCostMarker = function(value) {
+	var marker = document.createElement("div");
+	marker.style.color = "#822";
+	marker.innerHTML = value;
+	return marker;
+};
+
+displayGasCosts = function(gasCosts)
+{
+	gasCosts = JSON.parse(gasCosts);
+	for (var i in gasCosts)
+	{
+		var line = editor.posFromIndex(gasCosts[i].start);
+		console.log("___________")
+		console.log(line.line);
+		console.log(gasCosts[i].start);
+		//editor.setGutterMarker(line.line, "gasCost", makeGasCostMarker(gasCosts[i].gas));
+		editor.markText(editor.posFromIndex(gasCosts[i].start), editor.posFromIndex(gasCosts[i].end), { className: "gasCost" });
+	}
 }
 
 editor.setOption("extraKeys", extraKeys);
