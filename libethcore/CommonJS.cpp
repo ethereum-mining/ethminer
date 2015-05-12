@@ -26,8 +26,6 @@
 namespace dev
 {
 
-const u256 UndefinedU256 = ~(u256)0;
-
 Address toAddress(std::string const& _sn)
 {
 	if (_sn.size() == 40)

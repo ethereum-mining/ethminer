@@ -707,6 +707,7 @@ void State::cleanup(bool _fullCommit)
 {
 	if (_fullCommit)
 	{
+
 		paranoia("immediately before database commit", true);
 
 		// Commit the new trie to disk.
