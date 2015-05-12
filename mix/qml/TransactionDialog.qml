@@ -210,9 +210,7 @@ Dialog {
 		}
 
 		item.isContractCreation = trType.checked;
-
-		if (item.functionId === "(transfert)")
-			item.isFunctionCall = false;
+		item.isFunctionCall = item.functionId !== "(transfert)";
 
 		if (!item.isContractCreation)
 		{
