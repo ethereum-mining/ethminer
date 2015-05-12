@@ -308,7 +308,7 @@ void Client::killChain()
 
 void Client::clearPending()
 {
-	h256Set changeds;
+	h256Hash changeds;
 	DEV_WRITE_GUARDED(x_postMine)
 	{
 		if (!m_postMine.pending().size())
@@ -345,7 +345,7 @@ static S& filtersStreamOut(S& _out, T const& _fs)
 	return _out;
 }
 
-void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _transactionHash)
+void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& io_changed, h256 _transactionHash)
 {
 	Guard l(x_filtersWatches);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
@@ -363,7 +363,7 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Set& i
 		}
 }
 
-void Client::appendFromNewBlock(h256 const& _block, h256Set& io_changed)
+void Client::appendFromNewBlock(h256 const& _block, h256Hash& io_changed)
 {
 	// TODO: more precise check on whether the txs match.
 	auto d = m_bc.info(_block);
@@ -496,7 +496,7 @@ void Client::syncTransactionQueue()
 	// returns TransactionReceipts, once for each transaction.
 	cwork << "postSTATE <== TQ";
 
-	h256Set changeds;
+	h256Hash changeds;
 	TransactionReceipts newPendingReceipts;
 
 	DEV_TIMED(working) DEV_WRITE_GUARDED(x_working)
@@ -552,7 +552,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	if (auto h = m_host.lock())
 		h->noteNewBlocks();
 
-	h256Set changeds;
+	h256Hash changeds;
 	for (auto const& h: _ir.first)
 		appendFromNewBlock(h, changeds);
 	changeds.insert(ChainChangedFilter);
@@ -631,7 +631,7 @@ void Client::startMining()
 	onPostStateChanged();
 }
 
-void Client::noteChanged(h256Set const& _filters)
+void Client::noteChanged(h256Hash const& _filters)
 {
 	Guard l(x_filtersWatches);
 	if (_filters.size())

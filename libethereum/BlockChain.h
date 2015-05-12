@@ -72,7 +72,7 @@ struct BlockChainWarn: public LogChannel { static const char* name(); static con
 struct BlockChainDebug: public LogChannel { static const char* name(); static const int verbosity = 0; };
 
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
-std::map<Address, Account> const& genesisState();
+std::unordered_map<Address, Account> const& genesisState();
 
 ldb::Slice toSlice(h256 const& _h, unsigned _sub = 0);
 
@@ -206,7 +206,7 @@ public:
 	/// Get all blocks not allowed as uncles given a parent (i.e. featured as uncles/main in parent, parent + 1, ... parent + 5).
 	/// @returns set including the header-hash of every parent (including @a _parent) up to and including generation +5
 	/// togther with all their quoted uncles.
-	h256Set allUnclesFrom(h256 const& _parent) const;
+	h256Hash allUnclesFrom(h256 const& _parent) const;
 
 	/// Run through database and verify all blocks by reevaluating.
 	/// Will call _progress with the progress in this operation first param done, second total.

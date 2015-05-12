@@ -99,7 +99,7 @@ void doStateTests(json_spirit::mValue& v, bool _fillin)
 			ImportTest::checkExpectedState(importer.m_statePost, theState);
 			auto expectedAddrs = importer.m_statePost.addresses();
 			auto resultAddrs = theState.addresses();
-			checkAddresses<map<Address, u256> >(expectedAddrs, resultAddrs);
+			checkAddresses(expectedAddrs, resultAddrs);
 #endif
 			BOOST_CHECK_MESSAGE(theState.rootHash() == h256(o["postStateRoot"].get_str()), "wrong post state root");
 		}
