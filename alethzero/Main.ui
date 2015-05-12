@@ -151,6 +151,7 @@
     </property>
     <addaction name="mine"/>
     <addaction name="turboMining"/>
+    <addaction name="prepNextDAG"/>
     <addaction name="separator"/>
     <addaction name="newTransaction"/>
     <addaction name="newAccount"/>
@@ -1725,6 +1726,11 @@ font-size: 14pt</string>
   <action name="injectBlock">
    <property name="text">
     <string>In&amp;ject Block</string>
+   </property>
+  </action>
+  <action name="prepNextDAG">
+   <property name="text">
+    <string>Prepare Next &amp;DAG</string>
    </property>
   </action>
  </widget>
