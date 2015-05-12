@@ -27,6 +27,7 @@ namespace dev
 namespace eth
 {
 
+struct DAGChannel: public LogChannel { static const char* name(); static const int verbosity = 1; };
 
 class EthashAux
 {
@@ -59,17 +60,17 @@ public:
 	using FullType = std::shared_ptr<FullAllocation>;
 
 	static h256 seedHash(unsigned _number);
+	static uint64_t number(h256 const& _seedHash);
 	static uint64_t cacheSize(BlockInfo const& _header);
 
 	static LightType light(BlockInfo const& _header);
 	static LightType light(uint64_t _blockNumber);
-	static FullType full(BlockInfo const& _header);
-	static FullType full(uint64_t _blockNumber);
+	static FullType full(BlockInfo const& _header, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
+	static FullType full(uint64_t _blockNumber, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
 
 	static Ethash::Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
 	static Ethash::Result eval(BlockInfo const& _header, Nonce const& _nonce);
 	static Ethash::Result eval(uint64_t _blockNumber, h256 const& _headerHash, Nonce const& _nonce);
-
 
 private:
 	EthashAux() {}
@@ -77,9 +78,11 @@ private:
 	void killCache(h256 const& _s);
 
 	static EthashAux* s_this;
-	RecursiveMutex x_this;
 
+	RecursiveMutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
+
+	Mutex x_fulls;
 	std::unordered_map<h256, std::weak_ptr<FullAllocation>> m_fulls;
 	FullType m_lastUsedFull;
 
