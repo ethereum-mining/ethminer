@@ -107,6 +107,7 @@ Dialog {
 	function loadFunctions(contractId)
 	{
 		functionsModel.clear();
+		functionsModel.append({ text: " - " });
 		var contract = codeModel.contracts[contractId];
 		if (contract) {
 			var functions = codeModel.contracts[contractId].contract.functions;
@@ -114,7 +115,6 @@ Dialog {
 				functionsModel.append({ text: functions[f].name });
 			}
 		}
-		functionsModel.append({ text: "(transfert)" });
 	}
 
 	function selectContract(contractName)
@@ -210,7 +210,7 @@ Dialog {
 		}
 
 		item.isContractCreation = trType.checked;
-		item.isFunctionCall = item.functionId !== "(transfert)";
+		item.isFunctionCall = item.functionId !== " - ";
 
 		if (!item.isContractCreation)
 		{
