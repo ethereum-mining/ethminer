@@ -160,6 +160,8 @@ public:
 	Q_INVOKABLE CompiledContract* contractByDocumentId(QString const& _documentId) const;
 	/// Reset code model
 	Q_INVOKABLE void reset() { reset(QVariantMap()); }
+	/// Delete a contract source
+	Q_INVOKABLE void unregisterContractSrc(QString const& _documentId);
 	/// Convert solidity type info to mix type
 	static SolidityType nodeType(dev::solidity::Type const* _type);
 	/// Check if given location belongs to contract or function

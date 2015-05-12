@@ -113,5 +113,6 @@ TestCase
 	function test_project_contractRename() { TestProject.test_contractRename(); }
 	function test_project_multipleWebPages() { TestProject.test_multipleWebPages(); }
 	function test_project_multipleContractsSameFile() { TestProject.test_multipleContractsSameFile(); }
+	function test_project_deleteFile() { TestProject.test_deleteFile(); }
 }
 

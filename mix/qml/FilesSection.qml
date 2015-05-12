@@ -3,6 +3,7 @@ import QtQuick.Window 2.0
 import QtQuick.Layouts 1.0
 import QtQuick.Controls 1.0
 import QtQuick.Controls.Styles 1.3
+import QtQuick.Dialogs 1.2
 import "."
 
 
@@ -241,8 +242,13 @@ Rectangle
 						anchors.fill: parent
 						acceptedButtons: Qt.LeftButton | Qt.RightButton
 						onClicked:{
-							if (mouse.button === Qt.RightButton && !isContract)
-								contextMenu.popup();
+							if (mouse.button === Qt.RightButton)
+							{
+								if (isContract)
+									contextMenuContract.popup();
+								else
+									contextMenu.popup();
+							}
 							else if (mouse.button === Qt.LeftButton)
 							{
 								rootItem.isSelected = true;
@@ -263,9 +269,30 @@ Rectangle
 						MenuItem {
 							text: qsTr("Delete")
 							onTriggered: {
-								projectModel.removeDocument(documentId);
-								wrapperItem.removeDocument(documentId);
+								deleteConfirmation.open();
 							}
+						}
+					}
+
+					Menu {
+						id: contextMenuContract
+						MenuItem {
+							text: qsTr("Delete")
+							onTriggered: {
+								deleteConfirmation.open();
+							}
+						}
+					}
+
+					MessageDialog
+					{
+						id: deleteConfirmation
+						text: qsTr("Are you sure to delete this file ?")
+						standardButtons: StandardIcon.Ok | StandardIcon.Cancel
+						onAccepted:
+						{
+							projectModel.removeDocument(documentId);
+							wrapperItem.removeDocument(documentId);
 						}
 					}
 				}

@@ -190,9 +190,12 @@ Item {
 			for (var i = 0; i < openDocCount; i++)
 			{
 				var doc = editorListModel.get(i);
-				var editor = editors.itemAt(i).item;
-				if (editor)
-					fileIo.writeFile(doc.path, editor.getText());
+				if (editors.itemAt(i))
+				{
+					var editor = editors.itemAt(i).item;
+					if (editor)
+						fileIo.writeFile(doc.path, editor.getText());
+				}
 			}
 		}
 
@@ -312,6 +315,16 @@ Item {
 						if (editorListModel.get(i).documentId === documentId)
 						{
 							editorListModel.set(i, document);
+							break;
+						}
+				}
+
+				onDocumentRemoved: {
+					for (var i = 0; i < editorListModel.count; i++)
+						if (editorListModel.get(i).documentId === documentId)
+						{
+							editorListModel.remove(i);
+							openDocCount--;
 							break;
 						}
 				}
