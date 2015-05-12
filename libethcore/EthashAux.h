@@ -19,7 +19,9 @@
  * @date 2014
  */
 
+#include <condition_variable>
 #include <libethash/ethash.h>
+#include <libdevcore/Worker.h>
 #include "Ethash.h"
 
 namespace dev
@@ -65,7 +67,13 @@ public:
 
 	static LightType light(BlockInfo const& _header);
 	static LightType light(uint64_t _blockNumber);
-	static FullType full(BlockInfo const& _header, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
+
+	static const uint64_t NotGenerating = (uint64_t)-1;
+	/// Kicks off generation of DAG for @a _blocknumber and @returns false or @returns true if ready.
+	static unsigned computeFull(uint64_t _blockNumber);
+	/// Information on the generation progress.
+	static std::pair<uint64_t, unsigned> fullGeneratingProgress() { return std::make_pair(get()->m_generatingFullNumber, get()->m_fullProgress); }
+	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result.
 	static FullType full(uint64_t _blockNumber, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
 
 	static Ethash::Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
@@ -83,8 +91,12 @@ private:
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
 
 	Mutex x_fulls;
+	std::condition_variable m_fullsChanged;
 	std::unordered_map<h256, std::weak_ptr<FullAllocation>> m_fulls;
 	FullType m_lastUsedFull;
+	std::unique_ptr<std::thread> m_fullGenerator;
+	uint64_t m_generatingFullNumber = NotGenerating;
+	unsigned m_fullProgress;
 
 	Mutex x_epochs;
 	std::unordered_map<h256, unsigned> m_epochs;
