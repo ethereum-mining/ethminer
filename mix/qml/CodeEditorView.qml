@@ -177,6 +177,10 @@ Item {
 		}
 		onCompilationComplete: {
 			sourceInError = "";
+			var gasCosts = codeModel.gasCostByDocumentId(currentDocumentId);
+			var editor = getEditor(currentDocumentId);
+			if (editor)
+				editor.displayGasCosts(gasCosts);
 		}
 	}
 

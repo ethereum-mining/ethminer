@@ -83,6 +83,14 @@ Item {
 			editorBrowser.runJavaScript("setFontSize(" + size + ")", function(result) {});
 	}
 
+	function displayGasCosts(gasCosts) {
+
+		//console.log(gasCosts);
+		//console.log(JSON.stringify(gasCosts));
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("displayGasCosts('" + JSON.stringify(gasCosts) + "')", function(result) {});
+	}
+
 	Clipboard
 	{
 		id: clipboard
