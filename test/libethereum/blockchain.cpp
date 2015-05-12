@@ -792,7 +792,7 @@ BOOST_AUTO_TEST_CASE(bcWalletTest)
 
 BOOST_AUTO_TEST_CASE(userDefinedFile)
 {
-	dev::test::userDefinedTest("--singletest", dev::test::doBlockchainTests);
+	dev::test::userDefinedTest(dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
