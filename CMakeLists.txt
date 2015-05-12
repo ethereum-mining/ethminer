@@ -155,7 +155,7 @@ set (ETH_HAVE_WEBENGINE 1)
 # Backwards compatibility
 if (HEADLESS)
 	message("*** WARNING: -DHEADLESS=1 option is DEPRECATED! Use -DBUNDLE=minimal or -DGUI=0")
-	set(BUNDLE "minimal")
+	set(GUI OFF)
 endif ()
 
 # TODO: Abstract into something sensible and move into a function.
@@ -396,8 +396,22 @@ if (GUI)
 
 endif()
 
+if (APPLE AND GUI)
 
-#unset(TARGET_PLATFORM CACHE)
+	add_custom_target(appdmg
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		COMMAND ${CMAKE_COMMAND}
+		-DAPP_DMG_EXE=${ETH_APP_DMG}
+		-DAPP_DMG_FILE=appdmg.json.in
+		-DAPP_DMG_ICON="alethzero/alethzero.icns"
+		-DAPP_DMG_BACKGROUND="bg.png"
+		-DETH_BUILD_DIR="${CMAKE_BINARY_DIR}"
+		-DETH_MIX_APP="$<TARGET_FILE_DIR:mix>"
+		-DETH_ALETHZERO_APP="$<TARGET_FILE_DIR:AlethZero>"
+		-P "${ETH_SCRIPTS_DIR}/appdmg.cmake"
+	)
+
+endif ()
 
 if (WIN32)
 	# packaging stuff
