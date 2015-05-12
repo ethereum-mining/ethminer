@@ -58,8 +58,12 @@ Item {
 			parameters: {},
 			sender: t.sender,
 			isContractCreation: t.isContractCreation,
-			label: t.label
+			label: t.label,
+			isFunctionCall: t.isFunctionCall
 		};
+
+		if (r.isFunctionCall === undefined)
+			r.isFunctionCall = true;
 
 		if (!r.label)
 			r.label = r.contractId + " - " + r.functionId;
@@ -122,7 +126,8 @@ Item {
 			sender: t.sender,
 			parameters: {},
 			isContractCreation: t.isContractCreation,
-			label: t.label
+			label: t.label,
+			isFunctionCall: t.isFunctionCall
 		};
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];

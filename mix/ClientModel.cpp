@@ -193,7 +193,7 @@ QVariantMap ClientModel::contractAddresses() const
 {
 	QVariantMap res;
 	for (auto const& c: m_contractAddresses)
-		res.insert(c.first, QString::fromStdString(toJS(c.second)));
+		res.insert(c.first.first, QString::fromStdString(toJS(c.second)));
 	return res;
 }
 
@@ -257,6 +257,7 @@ void ClientModel::setupState(QVariantMap _state)
 		QString sender = transaction.value("sender").toString();
 		bool isStdContract = transaction.value("stdContract").toBool();
 		bool isContractCreation = transaction.value("isContractCreation").toBool();
+		bool isFunctionCall = transaction.value("isFunctionCall").toBool();
 		if (isStdContract)
 		{
 			if (contractId.isEmpty()) //TODO: This is to support old project files, remove later
@@ -272,7 +273,7 @@ void ClientModel::setupState(QVariantMap _state)
 		{
 			if (contractId.isEmpty() && m_codeModel->hasContract()) //TODO: This is to support old project files, remove later
 				contractId = m_codeModel->contracts().keys()[0];
-			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasAuto, gasPrice, Secret(sender.toStdString()), isContractCreation);
+			TransactionSettings transactionSettings(contractId, functionId, value, gas, gasAuto, gasPrice, Secret(sender.toStdString()), isContractCreation, isFunctionCall);
 			transactionSettings.parameterValues = transaction.value("parameters").toMap();
 
 			if (contractId == functionId || functionId == "Constructor")
@@ -308,9 +309,9 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 			m_gasCosts.clear();
 			for (TransactionSettings const& transaction: _sequence)
 			{
-				QString contractName = resolveContractName(transaction.contractId);
-				QString address = resolveToken(transaction.contractId, deployedContracts);
-				if (transaction.functionId == "(transfert)")
+				std::pair<QString, int> ctrInstance = resolvePair(transaction.contractId);
+				QString address = resolveToken(ctrInstance, deployedContracts);
+				if (transaction.isFunctionCall)
 				{
 					callAddress(Address(address.toStdString()), bytes(), transaction);
 					onNewTransaction();
@@ -331,7 +332,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 				else
 				{
 					//encode data
-					CompiledContract const& compilerRes = m_codeModel->contract(contractName);
+					CompiledContract const& compilerRes = m_codeModel->contract(ctrInstance.first);
 					QFunctionDefinition const* f = nullptr;
 					bytes contractCode = compilerRes.bytes();
 					shared_ptr<QContractDefinition> contractDef = compilerRes.sharedContract();
@@ -358,29 +359,28 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 						QSolidityType const* type = p->type();
 						QVariant value = transaction.parameterValues.value(p->name());
 						if (type->type().type == SolidityType::Type::Address)
-							value = QVariant(resolveToken(value.toString(), deployedContracts));
+						{
+							std::pair<QString, int> ctrParamInstance = resolvePair(value.toString());
+							value = QVariant(resolveToken(ctrParamInstance, deployedContracts));
+						}
 						encoder.encode(value, type->type());
 					}
 
-					if (transaction.functionId.isEmpty() || transaction.functionId == contractName)
+					if (transaction.functionId.isEmpty() || transaction.functionId == ctrInstance.first)
 					{
 						bytes param = encoder.encodedData();
 						contractCode.insert(contractCode.end(), param.begin(), param.end());
 						Address newAddress = deployContract(contractCode, transaction);
 						deployedContracts.push_back(newAddress);
-						auto contractAddressIter = m_contractAddresses.find(transaction.contractId);
-						if (contractAddressIter == m_contractAddresses.end() || newAddress != contractAddressIter->second)
-						{
-							QString contractToken = retrieveToken(transaction.contractId, deployedContracts);
-							m_contractAddresses[contractToken] = newAddress;
-							m_contractNames[newAddress] = contractToken;
-							contractAddressesChanged();
-						}
+						std::pair<QString, int> contractToken = retrieveToken(transaction.contractId, deployedContracts);
+						m_contractAddresses[contractToken] = newAddress;
+						m_contractNames[newAddress] = contractToken.first;
+						contractAddressesChanged();
 						gasCostsChanged();
 					}
 					else
 					{
-						auto contractAddressIter = m_contractAddresses.find(retrieveToken(transaction.contractId, deployedContracts));
+						auto contractAddressIter = m_contractAddresses.find(ctrInstance);
 						if (contractAddressIter == m_contractAddresses.end())
 						{
 							emit runFailed("Contract '" + transaction.contractId + tr(" not deployed.") + "' " + tr(" Cannot call ") + transaction.functionId);
@@ -412,31 +412,35 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 	});
 }
 
-QString ClientModel::resolveToken(QString const& _value, vector<Address> const& _contracts)
+
+std::pair<QString, int> ClientModel::resolvePair(QString const& _contractId)
 {
-	QString ret = _value;
-	if (_value.startsWith("<") && _value.endsWith(">"))
-	{
-		QStringList nb = ret.remove("<").remove(">").split(" - ");
-		ret = QString::fromStdString("0x" + dev::toHex(_contracts.at(nb.back().toInt()).ref()));
-	}
-	return ret;
+	 std::pair<QString, int> ret;
+	 ret.first = _contractId;
+	 ret.second = -1;
+	 if (_contractId.startsWith("<") && _contractId.endsWith(">"))
+	 {
+		 QStringList values = ret.first.remove("<").remove(">").split(" - ");
+		 ret.first = values[0];
+		 ret.second = values[1].toUInt();
+	 }
+	 return ret;
 }
 
-QString ClientModel::retrieveToken(QString const& _value, vector<Address> const& _contracts)
+QString ClientModel::resolveToken(std::pair<QString, int> const& _value, vector<Address> const& _contracts)
 {
-	QString ret = _value;
-	if (!_value.startsWith("<") && !_value.endsWith(">"))
-		return "<" + _value + " - " + QString::number(_contracts.size() - 1) +  ">";
-	return ret;
+	 if (_value.second != -1)
+		 return QString::fromStdString("0x" + dev::toHex(_contracts.at(_value.second).ref()));
+	 else
+		 return _value.first;
 }
 
-QString ClientModel::resolveContractName(QString const& _value)
+std::pair<QString, int> ClientModel::retrieveToken(QString const& _value, vector<Address> const& _contracts)
 {
-	QString ret = _value;
-	if (_value.startsWith("<") && _value.endsWith(">"))
-		ret = ret.remove("<").remove(">").split(" - ").first();
-	return ret;
+	 std::pair<QString, int> ret;
+	 ret.first = _value;
+	 ret.second = _contracts.size() - 1;
+	 return ret;
 }
 
 void ClientModel::showDebugger()
@@ -462,7 +466,7 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 		//try to resolve contract for source level debugging
 		auto nameIter = m_contractNames.find(code.address);
 		CompiledContract const* compilerRes = nullptr;
-		if (nameIter != m_contractNames.end() && (compilerRes = m_codeModel->tryGetContract(resolveContractName(nameIter->second)))) //returned object is guaranteed to live till the end of event handler in main thread
+		if (nameIter != m_contractNames.end() && (compilerRes = m_codeModel->tryGetContract(nameIter->second))) //returned object is guaranteed to live till the end of event handler in main thread
 		{
 			eth::AssemblyItems assemblyItems = !_t.isConstructor() ? compilerRes->assemblyItems() : compilerRes->constructorAssemblyItems();
 			codes.back()->setDocument(compilerRes->documentId());
@@ -723,7 +727,7 @@ void ClientModel::onNewTransaction()
 	auto contractAddressIter = m_contractNames.find(contractAddress);
 	if (contractAddressIter != m_contractNames.end())
 	{
-		CompiledContract const& compilerRes = m_codeModel->contract(resolveContractName(contractAddressIter->second));
+		CompiledContract const& compilerRes = m_codeModel->contract(contractAddressIter->second);
 		const QContractDefinition* def = compilerRes.contract();
 		contract = def->name();
 		if (abi)

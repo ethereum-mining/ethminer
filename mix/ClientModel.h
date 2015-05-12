@@ -53,10 +53,10 @@ struct SolidityType;
 struct TransactionSettings
 {
 	TransactionSettings() {}
-	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, bool _gasAuto, u256 _gasPrice, Secret _sender, int _isContractCreation):
-		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasAuto(_gasAuto), gasPrice(_gasPrice), sender(_sender), isContractCreation(_isContractCreation) {}
+	TransactionSettings(QString const& _contractId, QString const& _functionId, u256 _value, u256 _gas, bool _gasAuto, u256 _gasPrice, Secret _sender, bool _isContractCreation, bool _isFunctionCall):
+		contractId(_contractId), functionId(_functionId), value(_value), gas(_gas), gasAuto(_gasAuto), gasPrice(_gasPrice), sender(_sender), isContractCreation(_isContractCreation), isFunctionCall(_isFunctionCall)  {}
 	TransactionSettings(QString const& _stdContractName, QString const& _stdContractUrl):
-		contractId(_stdContractName), gasAuto(true), stdContractUrl(_stdContractUrl), isContractCreation(true) {}
+		contractId(_stdContractName), gasAuto(true), stdContractUrl(_stdContractUrl), isContractCreation(true), isFunctionCall(false) {}
 
 	/// Contract name
 	QString contractId;
@@ -78,6 +78,8 @@ struct TransactionSettings
 	Secret sender;
 	/// Tr deploys a contract
 	bool isContractCreation;
+	/// Tr call a ctr function
+	bool isFunctionCall;
 };
 
 
@@ -229,9 +231,9 @@ private:
 	void onStateReset();
 	void showDebuggerForTransaction(ExecutionResult const& _t);
 	QVariant formatValue(SolidityType const& _type, dev::u256 const& _value);
-	QString resolveToken(QString const& _value, std::vector<Address> const& _contracts);
-	QString resolveContractName(QString const& _value);
-	QString retrieveToken(QString const& _value, std::vector<Address> const& _contracts);
+	QString resolveToken(std::pair<QString, int> const& _value, std::vector<Address> const& _contracts);
+	std::pair<QString, int> retrieveToken(QString const& _value, std::vector<Address> const& _contracts);
+	std::pair<QString, int> resolvePair(QString const& _contractId);
 	QVariant formatStorageValue(SolidityType const& _type, std::unordered_map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
 
 	std::atomic<bool> m_running;
@@ -241,7 +243,7 @@ private:
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
 	QList<u256> m_gasCosts;
-	std::map<QString, Address> m_contractAddresses;
+	std::map<std::pair<QString, int>, Address> m_contractAddresses;
 	std::map<Address, QString> m_contractNames;
 	std::map<QString, Address> m_stdContractAddresses;
 	std::map<Address, QString> m_stdContractNames;
