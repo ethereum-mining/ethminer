@@ -54,6 +54,7 @@ bool LowerEVMPass::runOnBasicBlock(llvm::BasicBlock& _bb)
 {
 	auto modified = false;
 	auto module = _bb.getParent()->getParent();
+	auto i512Ty = llvm::IntegerType::get(_bb.getContext(), 512);
 	for (auto it = _bb.begin(); it != _bb.end(); )
 	{
 		auto& inst = *it++;
@@ -80,6 +81,15 @@ bool LowerEVMPass::runOnBasicBlock(llvm::BasicBlock& _bb)
 
 			case llvm::Instruction::SRem:
 				func = Arith256::getSRem256Func(*module);
+				break;
+			}
+		}
+		else if (inst.getType() == i512Ty)
+		{
+			switch (inst.getOpcode())
+			{
+			case llvm::Instruction::URem:
+				func = Arith256::getURem512Func(*module);
 				break;
 			}
 		}
