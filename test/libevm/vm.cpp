@@ -432,7 +432,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 	}
 }
 
-} } // Namespace Close
+} } // namespace close
 
 BOOST_AUTO_TEST_SUITE(VMTests)
 

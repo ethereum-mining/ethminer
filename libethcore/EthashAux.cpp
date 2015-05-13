@@ -41,6 +41,8 @@ using namespace chrono;
 using namespace dev;
 using namespace eth;
 
+const char* DAGChannel::name() { return EthGreen "DAG"; }
+
 EthashAux* dev::eth::EthashAux::s_this = nullptr;
 
 EthashAux::~EthashAux()
@@ -76,9 +78,30 @@ h256 EthashAux::seedHash(unsigned _number)
 	return get()->m_seedHashes[epoch];
 }
 
+uint64_t EthashAux::number(h256 const& _seedHash)
+{
+	Guard l(get()->x_epochs);
+	unsigned epoch = 0;
+	auto epochIter = get()->m_epochs.find(_seedHash);
+	if (epochIter == get()->m_epochs.end())
+	{
+		//		cdebug << "Searching for seedHash " << _seedHash;
+		for (h256 h; h != _seedHash && epoch < 2048; ++epoch, h = sha3(h), get()->m_epochs[h] = epoch) {}
+		if (epoch == 2048)
+		{
+			std::ostringstream error;
+			error << "apparent block number for " << _seedHash << " is too high; max is " << (ETHASH_EPOCH_LENGTH * 2048);
+			throw std::invalid_argument(error.str());
+		}
+	}
+	else
+		epoch = epochIter->second;
+	return epoch * ETHASH_EPOCH_LENGTH;
+}
+
 void EthashAux::killCache(h256 const& _s)
 {
-	RecursiveGuard l(x_this);
+	RecursiveGuard l(x_lights);
 	m_lights.erase(_s);
 }
 
@@ -89,7 +112,7 @@ EthashAux::LightType EthashAux::light(BlockInfo const& _header)
 
 EthashAux::LightType EthashAux::light(uint64_t _blockNumber)
 {
-	RecursiveGuard l(get()->x_this);
+	RecursiveGuard l(get()->x_lights);
 	h256 seedHash = EthashAux::seedHash(_blockNumber);
 	LightType ret = get()->m_lights[seedHash];
 	return ret ? ret : (get()->m_lights[seedHash] = make_shared<LightAllocation>(_blockNumber));
@@ -126,32 +149,56 @@ bytesConstRef EthashAux::FullAllocation::data() const
 	return bytesConstRef((byte const*)ethash_full_dag(full), size());
 }
 
-EthashAux::FullType EthashAux::full(BlockInfo const& _header)
+static std::function<int(unsigned)> s_dagCallback;
+static int dagCallbackShim(unsigned _p)
 {
-	return full((uint64_t) _header.number);
+	clog(DAGChannel) << "Generating DAG file. Progress: " << toString(_p) << "%";
+	return s_dagCallback ? s_dagCallback(_p) : 0;
 }
 
-struct DAGChannel: public LogChannel { static const char* name(); static const int verbosity = 0; };
-const char* DAGChannel::name() { return EthGreen "DAG"; }
-static int ethash_callback(unsigned int _progress)
+EthashAux::FullType EthashAux::full(uint64_t _blockNumber, function<int(unsigned)> const& _f)
 {
-    clog(DAGChannel) << "Generating DAG file. Progress: " << toString(_progress) << "%";
-    return 0;
-}
-
-EthashAux::FullType EthashAux::full(uint64_t _blockNumber)
-{
-	RecursiveGuard l(get()->x_this);
+	auto l = light(_blockNumber);
 	h256 seedHash = EthashAux::seedHash(_blockNumber);
 	FullType ret;
-	if ((ret = get()->m_fulls[seedHash].lock()))
+
+	DEV_GUARDED(get()->x_fulls)
+		if ((ret = get()->m_fulls[seedHash].lock()))
+		{
+			get()->m_lastUsedFull = ret;
+			return ret;
+		}
+
+	s_dagCallback = _f;
+	ret = make_shared<FullAllocation>(l->light, dagCallbackShim);
+
+	DEV_GUARDED(get()->x_fulls)
+		get()->m_fulls[seedHash] = get()->m_lastUsedFull = ret;
+	return ret;
+}
+
+unsigned EthashAux::computeFull(uint64_t _blockNumber)
+{
+	Guard l(get()->x_fulls);
+	h256 seedHash = EthashAux::seedHash(_blockNumber);
+	if (FullType ret = get()->m_fulls[seedHash].lock())
 	{
 		get()->m_lastUsedFull = ret;
-		return ret;
+		return 100;
 	}
-	ret = get()->m_lastUsedFull = make_shared<FullAllocation>(light(_blockNumber)->light, ethash_callback);
-	get()->m_fulls[seedHash] = ret;
-	return ret;
+
+	if (!get()->m_fullGenerator || !get()->m_fullGenerator->joinable())
+	{
+		get()->m_fullProgress = 0;
+		get()->m_generatingFullNumber = _blockNumber / ETHASH_EPOCH_LENGTH * ETHASH_EPOCH_LENGTH;
+		get()->m_fullGenerator = unique_ptr<thread>(new thread([=](){
+			get()->full(_blockNumber, [](unsigned p){ get()->m_fullProgress = p; return 0; });
+			get()->m_fullProgress = 0;
+			get()->m_generatingFullNumber = NotGenerating;
+		}));
+	}
+
+	return (get()->m_generatingFullNumber == _blockNumber) ? get()->m_fullProgress : 0;
 }
 
 Ethash::Result EthashAux::FullAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
