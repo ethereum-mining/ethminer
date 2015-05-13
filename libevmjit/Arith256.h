@@ -14,8 +14,6 @@ class Arith256 : public CompilerHelper
 public:
 	Arith256(llvm::IRBuilder<>& _builder);
 
-	std::pair<llvm::Value*, llvm::Value*> div(llvm::Value* _arg1, llvm::Value* _arg2);
-	std::pair<llvm::Value*, llvm::Value*> sdiv(llvm::Value* _arg1, llvm::Value* _arg2);
 	llvm::Value* exp(llvm::Value* _arg1, llvm::Value* _arg2);
 	llvm::Value* mulmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3);
 	llvm::Value* addmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3);
@@ -24,7 +22,11 @@ public:
 
 	static llvm::Function* getMulFunc(llvm::Module& _module);
 	static llvm::Function* getUDiv256Func(llvm::Module& _module);
+	static llvm::Function* getURem256Func(llvm::Module& _module);
 	static llvm::Function* getUDivRem256Func(llvm::Module& _module);
+	static llvm::Function* getSDiv256Func(llvm::Module& _module);
+	static llvm::Function* getSRem256Func(llvm::Module& _module);
+	static llvm::Function* getSDivRem256Func(llvm::Module& _module);
 
 private:
 	llvm::Function* getMul512Func();
