@@ -432,7 +432,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 	}
 }
 
-} } // Namespace Close
+} } // namespace close
 
 BOOST_AUTO_TEST_SUITE(VMTests)
 
@@ -492,16 +492,10 @@ BOOST_AUTO_TEST_CASE(vmPerformanceTest)
 		dev::test::executeTests("vmPerformanceTest", "/VMTests",dev::test::getFolder(__FILE__) + "/VMTestsFiller", dev::test::doVMTests);
 }
 
-BOOST_AUTO_TEST_CASE(vmInputLimitsTest1)
+BOOST_AUTO_TEST_CASE(vmInputLimitsTest)
 {
 	if (test::Options::get().inputLimits)
-		dev::test::executeTests("vmInputLimits1", "/VMTests",dev::test::getFolder(__FILE__) + "/VMTestsFiller", dev::test::doVMTests);
-}
-
-BOOST_AUTO_TEST_CASE(vmInputLimitsTest2)
-{
-	if (test::Options::get().inputLimits)
-		dev::test::executeTests("vmInputLimits2", "/VMTests",dev::test::getFolder(__FILE__) + "/VMTestsFiller", dev::test::doVMTests);
+		dev::test::executeTests("vmInputLimits", "/VMTests",dev::test::getFolder(__FILE__) + "/VMTestsFiller", dev::test::doVMTests);
 }
 
 BOOST_AUTO_TEST_CASE(vmInputLimitsLightTest)
@@ -548,7 +542,7 @@ BOOST_AUTO_TEST_CASE(vmRandom)
 
 BOOST_AUTO_TEST_CASE(userDefinedFile)
 {
-	dev::test::userDefinedTest("--singletest", dev::test::doVMTests);
+	dev::test::userDefinedTest(dev::test::doVMTests);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

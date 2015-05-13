@@ -81,13 +81,14 @@ public:
 	/// Submits a new contract-creation transaction.
 	/// @returns the new contract's address (assuming it all goes through).
 	virtual Address submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas = 10000, u256 _gasPrice = 10 * szabo) override;
+	using Interface::submitTransaction;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
+	virtual ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) override;
 	using Interface::call;
 
 	/// Makes the given create. Nothing is recorded into the state.
-	virtual ExecutionResult create(Address const& _secret, u256 _value, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo, BlockNumber _blockNumber = PendingBlock, FudgeFactor _ff = FudgeFactor::Strict) override;
+	virtual ExecutionResult create(Address const& _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) override;
 	using Interface::create;
 
 	using Interface::balanceAt;

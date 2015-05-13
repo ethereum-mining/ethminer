@@ -36,10 +36,10 @@
 namespace dev
 {
 class WebThreeNetworkFace;
-class AccountHolder;
 class KeyPair;
 namespace eth
 {
+class AccountHolder;
 struct TransactionSkeleton;
 class Interface;
 }
@@ -68,7 +68,7 @@ public:
 class WebThreeStubServerBase: public AbstractWebThreeStubServer
 {
 public:
-	WebThreeStubServerBase(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts);
+	WebThreeStubServerBase(jsonrpc::AbstractServerConnector& _conn, std::shared_ptr<dev::eth::AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _sshAccounts);
 
 	virtual std::string web3_sha3(std::string const& _param1);
 	virtual std::string web3_clientVersion() { return "C++ (ethereum-cpp)"; }
@@ -134,12 +134,8 @@ public:
 	virtual Json::Value shh_getFilterChanges(std::string const& _filterId);
 	virtual Json::Value shh_getMessages(std::string const& _filterId);
 	
-	void setAccounts(std::vector<dev::KeyPair> const& _accounts);
 	void setIdentities(std::vector<dev::KeyPair> const& _ids);
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_shhIds; }
-
-protected:
-	virtual void authenticate(dev::eth::TransactionSkeleton const& _t, bool _toProxy);
 
 protected:
 	virtual dev::eth::Interface* client() = 0;
@@ -147,7 +143,7 @@ protected:
 	virtual dev::WebThreeNetworkFace* network() = 0;
 	virtual dev::WebThreeStubDatabaseFace* db() = 0;
 
-	std::shared_ptr<dev::AccountHolder> m_ethAccounts;
+	std::shared_ptr<dev::eth::AccountHolder> m_ethAccounts;
 
 	std::map<dev::Public, dev::Secret> m_shhIds;
 	std::map<unsigned, dev::Public> m_shhWatches;
