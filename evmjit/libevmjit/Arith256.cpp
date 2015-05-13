@@ -86,25 +86,20 @@ llvm::Function* Arith256::getMulFunc(llvm::Module& _module)
 	return func;
 }
 
-llvm::Function* Arith256::getUDivRem256Func(llvm::Module& _module)
+namespace
 {
-	static const auto funcName = "evm.udivrem.i256";
-	if (auto func = _module.getFunction(funcName))
-		return func;
-
-	auto type = Type::Word;
-
+llvm::Function* createUDivRemFunc(llvm::Type* _type, llvm::Module& _module, char const* _funcName)
+{
 	// Based of "Improved shift divisor algorithm" from "Software Integer Division" by Microsoft Research
 	// The following algorithm also handles divisor of value 0 returning 0 for both quotient and reminder
 
-	llvm::Type* argTypes[] = {type, type};
-	auto retType = llvm::VectorType::get(type, 2);
-	auto func = llvm::Function::Create(llvm::FunctionType::get(retType, argTypes, false), llvm::Function::PrivateLinkage, funcName, &_module);
+	auto retType = llvm::VectorType::get(_type, 2);
+	auto func = llvm::Function::Create(llvm::FunctionType::get(retType, {_type, _type}, false), llvm::Function::PrivateLinkage, _funcName, &_module);
 	func->setDoesNotThrow();
 	func->setDoesNotAccessMemory();
 
-	auto zero = llvm::ConstantInt::get(type, 0);
-	auto one = llvm::ConstantInt::get(type, 1);
+	auto zero = llvm::ConstantInt::get(_type, 0);
+	auto one = llvm::ConstantInt::get(_type, 1);
 
 	auto x = &func->getArgumentList().front();
 	x->setName("x");
@@ -124,7 +119,7 @@ llvm::Function* Arith256::getUDivRem256Func(llvm::Module& _module)
 	builder.CreateCondBr(builder.CreateAnd(yLEx, yNonZero), mainBB, returnBB);
 
 	builder.SetInsertPoint(mainBB);
-	auto ctlzIntr = llvm::Intrinsic::getDeclaration(&_module, llvm::Intrinsic::ctlz, type);
+	auto ctlzIntr = llvm::Intrinsic::getDeclaration(&_module, llvm::Intrinsic::ctlz, _type);
 	// both y and r are non-zero
 	auto yLz = builder.CreateCall2(ctlzIntr, yArg, builder.getInt1(true), "y.lz");
 	auto rLz = builder.CreateCall2(ctlzIntr, r0, builder.getInt1(true), "r.lz");
@@ -133,10 +128,10 @@ llvm::Function* Arith256::getUDivRem256Func(llvm::Module& _module)
 	builder.CreateBr(loopBB);
 
 	builder.SetInsertPoint(loopBB);
-	auto yPhi = builder.CreatePHI(type, 2, "y.phi");
-	auto rPhi = builder.CreatePHI(type, 2, "r.phi");
-	auto iPhi = builder.CreatePHI(type, 2, "i.phi");
-	auto qPhi = builder.CreatePHI(type, 2, "q.phi");
+	auto yPhi = builder.CreatePHI(_type, 2, "y.phi");
+	auto rPhi = builder.CreatePHI(_type, 2, "r.phi");
+	auto iPhi = builder.CreatePHI(_type, 2, "i.phi");
+	auto qPhi = builder.CreatePHI(_type, 2, "q.phi");
 	auto rUpdate = builder.CreateNUWSub(rPhi, yPhi);
 	auto qUpdate = builder.CreateOr(qPhi, one);	// q += 1, q lowest bit is 0
 	auto rGEy = builder.CreateICmpUGE(rPhi, yPhi);
@@ -161,10 +156,10 @@ llvm::Function* Arith256::getUDivRem256Func(llvm::Module& _module)
 	qPhi->addIncoming(q2, continueBB);
 
 	builder.SetInsertPoint(returnBB);
-	auto qRet = builder.CreatePHI(type, 2, "q.ret");
+	auto qRet = builder.CreatePHI(_type, 2, "q.ret");
 	qRet->addIncoming(zero, entryBB);
 	qRet->addIncoming(q1, loopBB);
-	auto rRet = builder.CreatePHI(type, 2, "r.ret");
+	auto rRet = builder.CreatePHI(_type, 2, "r.ret");
 	rRet->addIncoming(r0, entryBB);
 	rRet->addIncoming(r1, loopBB);
 	auto ret = builder.CreateInsertElement(llvm::UndefValue::get(retType), qRet, uint64_t(0), "ret0");
@@ -172,6 +167,25 @@ llvm::Function* Arith256::getUDivRem256Func(llvm::Module& _module)
 	builder.CreateRet(ret);
 
 	return func;
+}
+}
+
+llvm::Function* Arith256::getUDivRem256Func(llvm::Module& _module)
+{
+	static const auto funcName = "evm.udivrem.i256";
+	if (auto func = _module.getFunction(funcName))
+		return func;
+
+	return createUDivRemFunc(Type::Word, _module, funcName);
+}
+
+llvm::Function* Arith256::getUDivRem512Func(llvm::Module& _module)
+{
+	static const auto funcName = "evm.udivrem.i512";
+	if (auto func = _module.getFunction(funcName))
+		return func;
+
+	return createUDivRemFunc(llvm::IntegerType::get(_module.getContext(), 512), _module, funcName);
 }
 
 llvm::Function* Arith256::getUDiv256Func(llvm::Module& _module)
@@ -200,15 +214,13 @@ llvm::Function* Arith256::getUDiv256Func(llvm::Module& _module)
 	return func;
 }
 
-llvm::Function* Arith256::getURem256Func(llvm::Module& _module)
+namespace
 {
-	static const auto funcName = "evm.urem.i256";
-	if (auto func = _module.getFunction(funcName))
-		return func;
+llvm::Function* createURemFunc(llvm::Type* _type, llvm::Module& _module, char const* _funcName)
+{
+	auto udivremFunc = _type == Type::Word ? Arith256::getUDivRem256Func(_module) : Arith256::getUDivRem512Func(_module);
 
-	auto udivremFunc = getUDivRem256Func(_module);
-
-	auto func = llvm::Function::Create(llvm::FunctionType::get(Type::Word, {Type::Word, Type::Word}, false), llvm::Function::PrivateLinkage, funcName, &_module);
+	auto func = llvm::Function::Create(llvm::FunctionType::get(_type, {_type, _type}, false), llvm::Function::PrivateLinkage, _funcName, &_module);
 	func->setDoesNotThrow();
 	func->setDoesNotAccessMemory();
 
@@ -224,6 +236,23 @@ llvm::Function* Arith256::getURem256Func(llvm::Module& _module)
 	builder.CreateRet(r);
 
 	return func;
+}
+}
+
+llvm::Function* Arith256::getURem256Func(llvm::Module& _module)
+{
+	static const auto funcName = "evm.urem.i256";
+	if (auto func = _module.getFunction(funcName))
+		return func;
+	return createURemFunc(Type::Word, _module, funcName);
+}
+
+llvm::Function* Arith256::getURem512Func(llvm::Module& _module)
+{
+	static const auto funcName = "evm.urem.i512";
+	if (auto func = _module.getFunction(funcName))
+		return func;
+	return createURemFunc(llvm::IntegerType::get(_module.getContext(), 512), _module, funcName);
 }
 
 llvm::Function* Arith256::getSDivRem256Func(llvm::Module& _module)
@@ -366,95 +395,6 @@ llvm::Function* Arith256::getMul512Func()
 	return func;
 }
 
-llvm::Function* Arith256::getDivFunc(llvm::Type* _type)
-{
-	auto& func = _type == Type::Word ? m_div : m_div512;
-
-	if (!func)
-	{
-		// Based of "Improved shift divisor algorithm" from "Software Integer Division" by Microsoft Research
-		// The following algorithm also handles divisor of value 0 returning 0 for both quotient and reminder
-
-		llvm::Type* argTypes[] = {_type, _type};
-		auto retType = llvm::VectorType::get(_type, 2);
-		auto funcName = _type == Type::Word ? "div" : "div512";
-		func = llvm::Function::Create(llvm::FunctionType::get(retType, argTypes, false), llvm::Function::PrivateLinkage, funcName, getModule());
-		func->setDoesNotThrow();
-		func->setDoesNotAccessMemory();
-
-		auto zero = llvm::ConstantInt::get(_type, 0);
-		auto one = llvm::ConstantInt::get(_type, 1);
-
-		auto x = &func->getArgumentList().front();
-		x->setName("x");
-		auto yArg = x->getNextNode();
-		yArg->setName("y");
-
-		InsertPointGuard guard{m_builder};
-
-		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), "Entry", func);
-		auto mainBB = llvm::BasicBlock::Create(m_builder.getContext(), "Main", func);
-		auto loopBB = llvm::BasicBlock::Create(m_builder.getContext(), "Loop", func);
-		auto continueBB = llvm::BasicBlock::Create(m_builder.getContext(), "Continue", func);
-		auto returnBB = llvm::BasicBlock::Create(m_builder.getContext(), "Return", func);
-
-		m_builder.SetInsertPoint(entryBB);
-		auto yNonZero = m_builder.CreateICmpNE(yArg, zero);
-		auto yLEx = m_builder.CreateICmpULE(yArg, x);
-		auto r0 = m_builder.CreateSelect(yNonZero, x, zero, "r0");
-		m_builder.CreateCondBr(m_builder.CreateAnd(yLEx, yNonZero), mainBB, returnBB);
-
-		m_builder.SetInsertPoint(mainBB);
-		auto ctlzIntr = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::ctlz, _type);
-		// both y and r are non-zero
-		auto yLz = m_builder.CreateCall2(ctlzIntr, yArg, m_builder.getInt1(true), "y.lz");
-		auto rLz = m_builder.CreateCall2(ctlzIntr, r0, m_builder.getInt1(true), "r.lz");
-		auto i0 = m_builder.CreateNUWSub(yLz, rLz, "i0");
-		auto y0 = m_builder.CreateShl(yArg, i0);
-		m_builder.CreateBr(loopBB);
-
-		m_builder.SetInsertPoint(loopBB);
-		auto yPhi = m_builder.CreatePHI(_type, 2, "y.phi");
-		auto rPhi = m_builder.CreatePHI(_type, 2, "r.phi");
-		auto iPhi = m_builder.CreatePHI(_type, 2, "i.phi");
-		auto qPhi = m_builder.CreatePHI(_type, 2, "q.phi");
-		auto rUpdate = m_builder.CreateNUWSub(rPhi, yPhi);
-		auto qUpdate = m_builder.CreateOr(qPhi, one);	// q += 1, q lowest bit is 0
-		auto rGEy = m_builder.CreateICmpUGE(rPhi, yPhi);
-		auto r1 = m_builder.CreateSelect(rGEy, rUpdate, rPhi, "r1");
-		auto q1 = m_builder.CreateSelect(rGEy, qUpdate, qPhi, "q");
-		auto iZero = m_builder.CreateICmpEQ(iPhi, zero);
-		m_builder.CreateCondBr(iZero, returnBB, continueBB);
-
-		m_builder.SetInsertPoint(continueBB);
-		auto i2 = m_builder.CreateNUWSub(iPhi, one);
-		auto q2 = m_builder.CreateShl(q1, one);
-		auto y2 = m_builder.CreateLShr(yPhi, one);
-		m_builder.CreateBr(loopBB);
-
-		yPhi->addIncoming(y0, mainBB);
-		yPhi->addIncoming(y2, continueBB);
-		rPhi->addIncoming(r0, mainBB);
-		rPhi->addIncoming(r1, continueBB);
-		iPhi->addIncoming(i0, mainBB);
-		iPhi->addIncoming(i2, continueBB);
-		qPhi->addIncoming(zero, mainBB);
-		qPhi->addIncoming(q2, continueBB);
-
-		m_builder.SetInsertPoint(returnBB);
-		auto qRet = m_builder.CreatePHI(_type, 2, "q.ret");
-		qRet->addIncoming(zero, entryBB);
-		qRet->addIncoming(q1, loopBB);
-		auto rRet = m_builder.CreatePHI(_type, 2, "r.ret");
-		rRet->addIncoming(r0, entryBB);
-		rRet->addIncoming(r1, loopBB);
-		auto ret = m_builder.CreateInsertElement(llvm::UndefValue::get(retType), qRet, uint64_t(0), "ret0");
-		ret = m_builder.CreateInsertElement(ret, rRet, 1, "ret");
-		m_builder.CreateRet(ret);
-	}
-	return func;
-}
-
 llvm::Function* Arith256::getExpFunc()
 {
 	if (!m_exp)
@@ -550,8 +490,7 @@ llvm::Function* Arith256::getAddModFunc()
 		auto y512 = m_builder.CreateZExt(y, i512Ty, "y512");
 		auto m512 = m_builder.CreateZExt(mod, i512Ty, "m512");
 		auto s = m_builder.CreateAdd(x512, y512, "s");
-		auto d = createCall(getDivFunc(i512Ty), {s, m512});
-		auto r = m_builder.CreateExtractElement(d, 1, "r");
+		auto r = createCall(getURem512Func(*getModule()), {s, m512});
 		m_builder.CreateRet(m_builder.CreateTrunc(r, Type::Word));
 	}
 	return m_addmod;
@@ -580,8 +519,7 @@ llvm::Function* Arith256::getMulModFunc()
 		m_builder.SetInsertPoint(entryBB);
 		auto p = createCall(getMul512Func(), {x, y});
 		auto m = m_builder.CreateZExt(mod, i512Ty, "m");
-		auto d = createCall(getDivFunc(i512Ty), {p, m});
-		auto r = m_builder.CreateExtractElement(d, 1, "r");
+		auto r = createCall(getURem512Func(*getModule()), {p, m});
 		m_builder.CreateRet(m_builder.CreateTrunc(r, Type::Word));
 	}
 	return m_mulmod;
