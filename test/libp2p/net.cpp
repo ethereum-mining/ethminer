@@ -99,7 +99,7 @@ struct TestNodeTable: public NodeTable
 				// manually add node for test
 				{
 					Guard ln(x_nodes);
-					shared_ptr<NodeEntry> node(new NodeEntry(m_node, n.first.pub(), NodeIPEndpoint(ourIp, n.second, n.second)));
+					shared_ptr<NodeEntry> node(new NodeEntry(m_node.id, n.first.pub(), NodeIPEndpoint(ourIp, n.second, n.second)));
 					node->pending = false;
 					m_nodes[node->id] = node;
 				}
