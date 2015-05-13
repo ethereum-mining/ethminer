@@ -86,6 +86,47 @@ llvm::Function* Arith256::getMulFunc(llvm::Module& _module)
 	return func;
 }
 
+llvm::Function* Arith256::getMul512Func(llvm::Module& _module)
+{
+	static const auto funcName = "evm.mul.i512";
+	if (auto func = _module.getFunction(funcName))
+		return func;
+
+	auto i512Ty = llvm::IntegerType::get(_module.getContext(), 512);
+	auto func = llvm::Function::Create(llvm::FunctionType::get(i512Ty, {Type::Word, Type::Word}, false), llvm::Function::PrivateLinkage, funcName, &_module);
+	func->setDoesNotThrow();
+	func->setDoesNotAccessMemory();
+
+	auto x = &func->getArgumentList().front();
+	x->setName("x");
+	auto y = x->getNextNode();
+	y->setName("y");
+
+	auto bb = llvm::BasicBlock::Create(_module.getContext(), {}, func);
+	auto builder = llvm::IRBuilder<>{bb};
+
+	auto i128 = builder.getIntNTy(128);
+	auto i256 = Type::Word;
+	auto x_lo = builder.CreateZExt(builder.CreateTrunc(x, i128, "x.lo"), i256);
+	auto y_lo = builder.CreateZExt(builder.CreateTrunc(y, i128, "y.lo"), i256);
+	auto x_hi = builder.CreateZExt(builder.CreateTrunc(builder.CreateLShr(x, Constant::get(128)), i128, "x.hi"), i256);
+	auto y_hi = builder.CreateZExt(builder.CreateTrunc(builder.CreateLShr(y, Constant::get(128)), i128, "y.hi"), i256);
+
+	auto mul256Func = getMulFunc(_module);
+	auto t1 = builder.CreateCall(mul256Func, {x_lo, y_lo});
+	auto t2 = builder.CreateCall(mul256Func, {x_lo, y_hi});
+	auto t3 = builder.CreateCall(mul256Func, {x_hi, y_lo});
+	auto t4 = builder.CreateCall(mul256Func, {x_hi, y_hi});
+
+	auto p = builder.CreateZExt(t1, i512Ty);
+	p = builder.CreateAdd(p, builder.CreateShl(builder.CreateZExt(t2, i512Ty), builder.getIntN(512, 128)));
+	p = builder.CreateAdd(p, builder.CreateShl(builder.CreateZExt(t3, i512Ty), builder.getIntN(512, 128)));
+	p = builder.CreateAdd(p, builder.CreateShl(builder.CreateZExt(t4, i512Ty), builder.getIntN(512, 256)));
+	builder.CreateRet(p);
+
+	return func;
+}
+
 namespace
 {
 llvm::Function* createUDivRemFunc(llvm::Type* _type, llvm::Module& _module, char const* _funcName)
@@ -354,47 +395,6 @@ llvm::Function* Arith256::getSRem256Func(llvm::Module& _module)
 	return func;
 }
 
-llvm::Function* Arith256::getMul512Func()
-{
-	auto& func = m_mul512;
-	if (!func)
-	{
-		auto i512 = m_builder.getIntNTy(512);
-		llvm::Type* argTypes[] = {Type::Word, Type::Word};
-		func = llvm::Function::Create(llvm::FunctionType::get(i512, argTypes, false), llvm::Function::PrivateLinkage, "mul512", getModule());
-		func->setDoesNotThrow();
-		func->setDoesNotAccessMemory();
-
-		auto x = &func->getArgumentList().front();
-		x->setName("x");
-		auto y = x->getNextNode();
-		y->setName("y");
-
-		InsertPointGuard guard{m_builder};
-		auto bb = llvm::BasicBlock::Create(m_builder.getContext(), {}, func);
-		m_builder.SetInsertPoint(bb);
-		auto i128 = m_builder.getIntNTy(128);
-		auto i256 = Type::Word;
-		auto x_lo = m_builder.CreateZExt(m_builder.CreateTrunc(x, i128, "x.lo"), i256);
-		auto y_lo = m_builder.CreateZExt(m_builder.CreateTrunc(y, i128, "y.lo"), i256);
-		auto x_hi = m_builder.CreateZExt(m_builder.CreateTrunc(m_builder.CreateLShr(x, Constant::get(128)), i128, "x.hi"), i256);
-		auto y_hi = m_builder.CreateZExt(m_builder.CreateTrunc(m_builder.CreateLShr(y, Constant::get(128)), i128, "y.hi"), i256);
-
-		auto mul256Func = getMulFunc(*getModule());
-		auto t1 = createCall(mul256Func, {x_lo, y_lo});
-		auto t2 = createCall(mul256Func, {x_lo, y_hi});
-		auto t3 = createCall(mul256Func, {x_hi, y_lo});
-		auto t4 = createCall(mul256Func, {x_hi, y_hi});
-
-		auto p = m_builder.CreateZExt(t1, i512);
-		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t2, i512), m_builder.getIntN(512, 128)));
-		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t3, i512), m_builder.getIntN(512, 128)));
-		p = m_builder.CreateAdd(p, m_builder.CreateShl(m_builder.CreateZExt(t4, i512), m_builder.getIntN(512, 256)));
-		m_builder.CreateRet(p);
-	}
-	return func;
-}
-
 llvm::Function* Arith256::getExpFunc()
 {
 	if (!m_exp)
@@ -465,66 +465,6 @@ llvm::Function* Arith256::getExpFunc()
 	return m_exp;
 }
 
-llvm::Function* Arith256::getAddModFunc()
-{
-	if (!m_addmod)
-	{
-		auto i512Ty = m_builder.getIntNTy(512);
-		llvm::Type* argTypes[] = {Type::Word, Type::Word, Type::Word};
-		m_addmod = llvm::Function::Create(llvm::FunctionType::get(Type::Word, argTypes, false), llvm::Function::PrivateLinkage, "addmod", getModule());
-		m_addmod->setDoesNotThrow();
-		m_addmod->setDoesNotAccessMemory();
-
-		auto x = &m_addmod->getArgumentList().front();
-		x->setName("x");
-		auto y = x->getNextNode();
-		y->setName("y");
-		auto mod = y->getNextNode();
-		mod->setName("m");
-
-		InsertPointGuard guard{m_builder};
-
-		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), {}, m_addmod);
-		m_builder.SetInsertPoint(entryBB);
-		auto x512 = m_builder.CreateZExt(x, i512Ty, "x512");
-		auto y512 = m_builder.CreateZExt(y, i512Ty, "y512");
-		auto m512 = m_builder.CreateZExt(mod, i512Ty, "m512");
-		auto s = m_builder.CreateAdd(x512, y512, "s");
-		auto r = createCall(getURem512Func(*getModule()), {s, m512});
-		m_builder.CreateRet(m_builder.CreateTrunc(r, Type::Word));
-	}
-	return m_addmod;
-}
-
-llvm::Function* Arith256::getMulModFunc()
-{
-	if (!m_mulmod)
-	{
-		llvm::Type* argTypes[] = {Type::Word, Type::Word, Type::Word};
-		m_mulmod = llvm::Function::Create(llvm::FunctionType::get(Type::Word, argTypes, false), llvm::Function::PrivateLinkage, "mulmod", getModule());
-		m_mulmod->setDoesNotThrow();
-		m_mulmod->setDoesNotAccessMemory();
-
-		auto i512Ty = m_builder.getIntNTy(512);
-		auto x = &m_mulmod->getArgumentList().front();
-		x->setName("x");
-		auto y = x->getNextNode();
-		y->setName("y");
-		auto mod = y->getNextNode();
-		mod->setName("mod");
-
-		InsertPointGuard guard{m_builder};
-
-		auto entryBB = llvm::BasicBlock::Create(m_builder.getContext(), {}, m_mulmod);
-		m_builder.SetInsertPoint(entryBB);
-		auto p = createCall(getMul512Func(), {x, y});
-		auto m = m_builder.CreateZExt(mod, i512Ty, "m");
-		auto r = createCall(getURem512Func(*getModule()), {p, m});
-		m_builder.CreateRet(m_builder.CreateTrunc(r, Type::Word));
-	}
-	return m_mulmod;
-}
-
 llvm::Value* Arith256::exp(llvm::Value* _arg1, llvm::Value* _arg2)
 {
 	//	while (e != 0) {
@@ -554,47 +494,6 @@ llvm::Value* Arith256::exp(llvm::Value* _arg1, llvm::Value* _arg2)
 
 	return createCall(getExpFunc(), {_arg1, _arg2});
 }
-
-llvm::Value* Arith256::addmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3)
-{
-	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
-	{
-		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
-		{
-			if (auto c3 = llvm::dyn_cast<llvm::ConstantInt>(_arg3))
-			{
-				if (!c3->getValue())
-					return Constant::get(0);
-				auto s = c1->getValue().zext(256+64) + c2->getValue().zext(256+64);
-				auto r = s.urem(c3->getValue().zext(256+64)).trunc(256);
-				return Constant::get(r);
-			}
-		}
-	}
-
-	return createCall(getAddModFunc(), {_arg1, _arg2, _arg3});
-}
-
-llvm::Value* Arith256::mulmod(llvm::Value* _arg1, llvm::Value* _arg2, llvm::Value* _arg3)
-{
-	if (auto c1 = llvm::dyn_cast<llvm::ConstantInt>(_arg1))
-	{
-		if (auto c2 = llvm::dyn_cast<llvm::ConstantInt>(_arg2))
-		{
-			if (auto c3 = llvm::dyn_cast<llvm::ConstantInt>(_arg3))
-			{
-				if (!c3->getValue())
-					return Constant::get(0);
-				auto p = c1->getValue().zext(512) * c2->getValue().zext(512);
-				auto r = p.urem(c3->getValue().zext(512)).trunc(256);
-				return Constant::get(r);
-			}
-		}
-	}
-
-	return createCall(getMulModFunc(), {_arg1, _arg2, _arg3});
-}
-
 
 }
 }
