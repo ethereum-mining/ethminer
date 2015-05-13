@@ -1,13 +1,13 @@
 #pragma once
 
-#include <evmjit/libevmjit/Common.h>
+#include <evmjit/DataTypes.h>
 
 namespace dev
 {
 namespace eth
 {
 
-inline u256 llvm2eth(jit::i256 _i)
+inline u256 llvm2eth(evmjit::i256 _i)
 {
 	u256 u = 0;
 	u |= _i.d;
@@ -20,9 +20,9 @@ inline u256 llvm2eth(jit::i256 _i)
 	return u;
 }
 
-inline jit::i256 eth2llvm(u256 _u)
+inline evmjit::i256 eth2llvm(u256 _u)
 {
-	jit::i256 i;
+	evmjit::i256 i;
 	u256 mask = 0xFFFFFFFFFFFFFFFF;
 	i.a = static_cast<uint64_t>(_u & mask);
 	_u >>= 64;
@@ -32,6 +32,12 @@ inline jit::i256 eth2llvm(u256 _u)
 	_u >>= 64;
 	i.d = static_cast<uint64_t>(_u & mask);
 	return i;
+}
+
+inline evmjit::h256 eth2llvm(h256 _u)
+{
+	/// Just directly copies memory
+	return *(evmjit::h256*)&_u;
 }
 
 }

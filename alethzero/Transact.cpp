@@ -299,8 +299,9 @@ void Transact::rejigData()
 		return;
 
 	// Determine how much balance we have to play with...
-	auto s = findSecret(value() + ethereum()->gasLimitRemaining() * gasPrice());
-	auto b = ethereum()->balanceAt(KeyPair(s).address(), PendingBlock);
+	//findSecret(value() + ethereum()->gasLimitRemaining() * gasPrice());
+	auto s = fromAccount();
+	auto b = ethereum()->balanceAt(s, PendingBlock);
 
 	m_allGood = true;
 	QString htmlInfo;

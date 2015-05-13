@@ -79,7 +79,7 @@ public:
 	void open(DB* _db) { m_db = _db; }
 	void open(DB* _db, h256 const& _root, Verification _v = Verification::Normal) { m_db = _db; setRoot(_root, _v); }
 
-	void init() { setRoot(insertNode(&RLPNull)); assert(node(m_root).size()); }
+	void init() { setRoot(forceInsertNode(&RLPNull)); assert(node(m_root).size()); }
 
 	void setRoot(h256 const& _root, Verification _v = Verification::Normal)
 	{
@@ -88,11 +88,13 @@ public:
 		{
 			if (m_root == c_shaNull && !m_db->exists(m_root))
 				init();
-
-			/*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/
+		}
+		/*std::cout << "Setting root to " << _root << " (patched to " << m_root << ")" << std::endl;*/
+#if ETH_DEBUG
+		if (_v == Verification::Normal)
+#endif
 			if (!node(m_root).size())
 				BOOST_THROW_EXCEPTION(RootNotFound());
-		}
 	}
 
 	/// True if the trie is uninitialised (i.e. that the DB doesn't contain the root node).
@@ -282,11 +284,17 @@ private:
 	std::string deref(RLP const& _n) const;
 
 	std::string node(h256 _h) const { return m_db->lookup(_h); }
-	void insertNode(h256 _h, bytesConstRef _v) { m_db->insert(_h, _v); }
-	void killNode(h256 _h) { m_db->kill(_h); }
 
-	h256 insertNode(bytesConstRef _v) { auto h = sha3(_v); insertNode(h, _v); return h; }
-	void killNode(RLP const& _d) { if (_d.data().size() >= 32) killNode(sha3(_d.data())); }
+	// These are low-level node insertion functions that just go straight through into the DB.
+	h256 forceInsertNode(bytesConstRef _v) { auto h = sha3(_v); forceInsertNode(h, _v); return h; }
+	void forceInsertNode(h256 _h, bytesConstRef _v) { m_db->insert(_h, _v); }
+	void forceKillNode(h256 _h) { m_db->kill(_h); }
+
+	// This are semantically-aware node insertion functions that only kills when the node's
+	// data is < 32 bytes. It can safely be used when pruning the trie but won't work correctly
+	// for the special case of the root (which is always looked up via a hash). In that case,
+	// use forceKillNode().
+	void killNode(RLP const& _d) { if (_d.data().size() >= 32) forceKillNode(sha3(_d.data())); }
 
 	h256 m_root;
 	DB* m_db = nullptr;
@@ -743,8 +751,8 @@ template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesCons
 	// However, we know it's the root node and thus always hashed.
 	// So, if it's less than 32 (and thus should have been deleted but wasn't) then we delete it here.
 	if (rv.size() < 32)
-		killNode(m_root);
-	m_root = insertNode(&b);
+		forceKillNode(m_root);
+	m_root = forceInsertNode(&b);
 }
 
 template <class DB> std::string GenericTrieDB<DB>::at(bytesConstRef _key) const
@@ -890,8 +898,8 @@ template <class DB> void GenericTrieDB<DB>::remove(bytesConstRef _key)
 	if (b.size())
 	{
 		if (rv.size() < 32)
-			killNode(m_root);
-		m_root = insertNode(&b);
+			forceKillNode(m_root);
+		m_root = forceInsertNode(&b);
 	}
 }
 
@@ -1081,7 +1089,7 @@ template <class DB> RLPStream& GenericTrieDB<DB>::streamNode(RLPStream& _s, byte
 	if (_b.size() < 32)
 		_s.appendRaw(_b);
 	else
-		_s.append(insertNode(&_b));
+		_s.append(forceInsertNode(&_b));
 	return _s;
 }
 
@@ -1122,7 +1130,7 @@ template <class DB> bytes GenericTrieDB<DB>::graft(RLP const& _orig)
 		// remove second item from the trie after derefrencing it into s & n.
 		auto lh = _orig[1].toHash<h256>();
 		s = node(lh);
-		killNode(lh);
+		forceKillNode(lh);
 		n = RLP(s);
 	}
 	assert(n.itemCount() == 2);

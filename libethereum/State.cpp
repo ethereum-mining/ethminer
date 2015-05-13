@@ -515,10 +515,10 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 						cnote << i.first << "Dropping old transaction (nonce too low)";
 						_tq.drop(i.first);
 					}
-					else if (got > req + 5)
+					else if (got > req + 25)
 					{
 						// too new
-						cnote << i.first << "Dropping new transaction (> 5 nonces ahead)";
+						cnote << i.first << "Dropping new transaction (> 25 nonces ahead)";
 						_tq.drop(i.first);
 					}
 					else
@@ -707,11 +707,21 @@ void State::cleanup(bool _fullCommit)
 {
 	if (_fullCommit)
 	{
-
 		paranoia("immediately before database commit", true);
 
 		// Commit the new trie to disk.
 		clog(StateTrace) << "Committing to disk: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
+
+		try {
+			EnforceRefs er(m_db, true);
+			rootHash();
+		}
+		catch (BadRoot const&)
+		{
+			clog(StateChat) << "Trie corrupt! :-(";
+			throw;
+		}
+
 		m_db.commit();
 		clog(StateTrace) << "Committed: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 

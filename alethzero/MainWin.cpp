@@ -204,7 +204,7 @@ Main::Main(QWidget *parent) :
 	QSettings s("ethereum", "alethzero");
 	m_networkConfig = s.value("peers").toByteArray();
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
-	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), WithExisting::Trust, {"eth", "shh"}, p2p::NetworkPreferences(), network));
+	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), WithExisting::Trust, {"eth"/*, "shh"*/}, p2p::NetworkPreferences(), network));
 
 	m_httpConnector.reset(new jsonrpc::HttpServer(SensibleHttpPort, "", "", dev::SensibleHttpThreads));
 	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), this));
@@ -943,22 +943,30 @@ void Main::on_preview_triggered()
 	refreshAll();
 }
 
+void Main::on_prepNextDAG_triggered()
+{
+	EthashAux::computeFull(ethereum()->blockChain().number() + ETHASH_EPOCH_LENGTH);
+}
+
 void Main::refreshMining()
 {
+	pair<uint64_t, unsigned> gp = EthashAux::fullGeneratingProgress();
+	QString t;
+	if (gp.first != EthashAux::NotGenerating)
+		t = QString("DAG for #%1-#%2: %3% complete; ").arg(gp.first).arg(gp.first + ETHASH_EPOCH_LENGTH - 1).arg(gp.second);
 	MiningProgress p = ethereum()->miningProgress();
-	ui->mineStatus->setText(ethereum()->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
-	if (!ui->miningView->isVisible())
-		return;
-	list<MineInfo> l = ethereum()->miningHistory();
-	static unsigned lh = 0;
-	if (p.hashes < lh)
-		ui->miningView->resetStats();
-	lh = p.hashes;
-	ui->miningView->appendStats(l, p);
-/*	if (p.ms)
-		for (MineInfo const& i: l)
-			cnote << i.hashes * 10 << "h/sec, need:" << i.requirement << " best:" << i.best << " best-so-far:" << p.best << " avg-speed:" << (p.hashes * 1000 / p.ms) << "h/sec";
-*/
+	ui->mineStatus->setText(t + (ethereum()->isMining() ? p.hashes > 0 ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Awaiting DAG" : "Not mining"));
+	if (ethereum()->isMining() && p.hashes > 0)
+	{
+		if (!ui->miningView->isVisible())
+			return;
+		list<MineInfo> l = ethereum()->miningHistory();
+		static unsigned lh = 0;
+		if (p.hashes < lh)
+			ui->miningView->resetStats();
+		lh = p.hashes;
+		ui->miningView->appendStats(l, p);
+	}
 }
 
 void Main::setBeneficiary(Address const& _b)
@@ -1878,6 +1886,7 @@ void Main::on_mine_triggered()
 {
 	if (ui->mine->isChecked())
 	{
+//		EthashAux::computeFull(ethereum()->blockChain().number());
 		ethereum()->setAddress(m_beneficiary);
 		ethereum()->startMining();
 	}
@@ -2027,6 +2036,7 @@ std::string Main::prettyU256(dev::u256 const& _n) const
 
 void Main::on_post_clicked()
 {
+	return;
 	shh::Message m;
 	m.setTo(stringToPublic(ui->shhTo->currentText()));
 	m.setPayload(parseData(ui->shhData->toPlainText().toStdString()));
@@ -2051,6 +2061,7 @@ int Main::authenticate(QString _title, QString _text)
 
 void Main::refreshWhispers()
 {
+	return;
 	ui->whispers->clear();
 	for (auto const& w: whisper()->all())
 	{
