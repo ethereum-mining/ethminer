@@ -54,25 +54,30 @@ bool LowerEVMPass::runOnBasicBlock(llvm::BasicBlock& _bb)
 {
 	auto modified = false;
 	auto module = _bb.getParent()->getParent();
-	for (auto&& inst : _bb)
+	for (auto it = _bb.begin(); it != _bb.end(); )
 	{
-		if (inst.getOpcode() == llvm::Instruction::Mul)
+		auto& inst = *it++;
+		llvm::Function* func = nullptr;
+		if (inst.getType() == Type::Word)
 		{
-			if (inst.getType() == Type::Word)
+			switch (inst.getOpcode())
 			{
-				auto call = llvm::CallInst::Create(Arith256::getMulFunc(*module), {inst.getOperand(0), inst.getOperand(1)}, "", &inst);
-				inst.replaceAllUsesWith(call);
-				modified = true;
+			case llvm::Instruction::Mul:
+				func = Arith256::getMulFunc(*module);
+				break;
+
+			case llvm::Instruction::UDiv:
+				func = Arith256::getUDiv256Func(*module);
+				break;
 			}
 		}
-		else if (inst.getOpcode() == llvm::Instruction::UDiv)
+
+		if (func)
 		{
-			if (inst.getType() == Type::Word)
-			{
-				auto call = llvm::CallInst::Create(Arith256::getUDiv256Func(*module), {inst.getOperand(0), inst.getOperand(1)}, "", &inst);
-				inst.replaceAllUsesWith(call);
-				modified = true;
-			}
+			auto call = llvm::CallInst::Create(func, {inst.getOperand(0), inst.getOperand(1)}, "", &inst);
+			inst.replaceAllUsesWith(call);
+			inst.eraseFromParent();
+			modified = true;
 		}
 	}
 	return modified;
@@ -90,7 +95,6 @@ bool prepare(llvm::Module& _module)
 	auto pm = llvm::legacy::PassManager{};
 	pm.add(llvm::createDeadCodeEliminationPass());
 	pm.add(new LowerEVMPass{});
-	pm.add(llvm::createDeadInstEliminationPass()); // Remove leftovers
 	return pm.run(_module);
 }
 
