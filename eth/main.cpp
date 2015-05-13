@@ -548,7 +548,7 @@ int main(int argc, char** argv)
 	string publicIP;
 	string remoteHost;
 	unsigned short remotePort = 30303;
-	unsigned peers = 5;
+	unsigned peers = 11;
 	bool bootstrap = false;
 	unsigned networkId = 0;
 
