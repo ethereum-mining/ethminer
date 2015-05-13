@@ -69,6 +69,18 @@ bool LowerEVMPass::runOnBasicBlock(llvm::BasicBlock& _bb)
 			case llvm::Instruction::UDiv:
 				func = Arith256::getUDiv256Func(*module);
 				break;
+
+			case llvm::Instruction::URem:
+				func = Arith256::getURem256Func(*module);
+				break;
+
+			case llvm::Instruction::SDiv:
+				func = Arith256::getSDiv256Func(*module);
+				break;
+
+			case llvm::Instruction::SRem:
+				func = Arith256::getSRem256Func(*module);
+				break;
 			}
 		}
 
