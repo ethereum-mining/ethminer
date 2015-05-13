@@ -37,6 +37,7 @@
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
+#include <libethereum/KeyManager.h>
 #include <libwebthree/WebThree.h>
 #if ETH_JSCONSOLE || !ETH_TRUE
 #include <libjsconsole/JSConsole.h>
@@ -46,6 +47,7 @@
 #include <readline/history.h>
 #endif
 #if ETH_JSONRPC || !ETH_TRUE
+#include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
@@ -89,10 +91,8 @@ void interactiveHelp()
 		<< "    minestart  Starts mining." << endl
 		<< "    minestop  Stops mining." << endl
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
-		<< "    address  Gives the current address." << endl
-		<< "    secret  Gives the current secret" << endl
 		<< "    block  Gives the current block height." << endl
-		<< "    balance  Gives the current balance." << endl
+		<< "    accounts  Gives information on all owned accounts (balances, mining beneficiary and default signer)." << endl
 		<< "    transact  Execute a given transaction." << endl
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
@@ -101,7 +101,7 @@ void interactiveHelp()
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
 #endif
-		<< "    setsecret <secret>  Set the secret to the hex secret key." << endl
+		<< "    setsigningkey <addr>  Set the address with which to sign transactions." << endl
 		<< "    setaddress <addr>  Set the coinbase (mining payout) address." << endl
 		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." << endl
 		<< "    importconfig <path>  Import the config (.RLP) from the path provided." << endl
@@ -125,13 +125,18 @@ void help()
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
-		<< "    -s,--secret <secretkeyhex>  Set the secret key for use with send command (default: auto)." << endl
-		<< "    -S,--session-secret <secretkeyhex>  Set the secret key for use with send command, for this session only." << endl
+		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
+		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
+		<< "    --sign-key <address>  Sign all transactions with the key of the given address." << endl
+		<< "    --session-sign-key <address>  Sign all transactions with the key of the given address for this session only." << endl
 		<< "    --master <password>  Give the master password for the key store." << endl
+		<< "    --password <password>  Give a password for a private key." << endl
+		<< endl
 		<< "Client transacting:" << endl
 		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (default: 30.679)." << endl
 		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
+		<< endl
 		<< "Client mining:" << endl
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (default: off)" << endl
@@ -141,6 +146,7 @@ void help()
 		<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 		<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 		<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
+		<< endl
 		<< "Client networking:" << endl
 		<< "    --client-name <name>  Add a name to your client's version string (default: blank)." << endl
 		<< "    -b,--bootstrap  Connect to the default Ethereum peerserver." << endl
@@ -152,13 +158,21 @@ void help()
 		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    --network-id <n> Only connect to other hosts with this network id (default:0)." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
+		<< endl
+		<< "Client structured logging:" << endl
+		<< "    --structured-logging  Enable structured logging (default output to stdout)." << endl
+		<< "    --structured-logging-format <format>  Set the structured logging time format." << endl
+		<< "    --structured-logging-url <URL>  Set the structured logging destination (currently only file:// supported)." << endl
 #if ETH_JSONRPC || !ETH_TRUE
+		<< endl
 		<< "Work farming mode:" << endl
 		<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL. Use with -G/--opencl." << endl
 		<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
 #endif
+		<< endl
 		<< "Ethash verify mode:" << endl
 		<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
+		<< endl
 		<< "Benchmarking mode:" << endl
 		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --opencl." << endl
 		<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 3)." << endl
@@ -167,14 +181,17 @@ void help()
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "    --phone-home <on/off>  When benchmarking, publish results (default: on)" << endl
 #endif
+		<< endl
 		<< "DAG creation mode:" << endl
 		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
+		<< endl
 		<< "Import/export modes:" << endl
 		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
 		<< "    -E,--export <file>  Export file as a concatenated series of blocks and exit." << endl
 		<< "    --from <n>  Export only from block n; n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --to <n>  Export only to block n (inclusive); n may be a decimal, a '0x' prefixed hash, or 'latest'." << endl
 		<< "    --only <n>  Equivalent to --export-from n --export-to n." << endl
+		<< endl
 		<< "General Options:" << endl
 		<< "    -d,--db-path <path>  Load database from path (default: " << getDataDir() << ")" << endl
 #if ETH_EVMJIT || !ETH_TRUE
@@ -537,13 +554,14 @@ int main(int argc, char** argv)
 	/// Mining params
 	unsigned mining = 0;
 	bool forceMining = false;
-	KeyPair sigKey = KeyPair::create();
-	Secret sessionSecret;
-	Address coinbase = sigKey.address();
+	Address signingKey;
+	Address sessionKey;
+	Address beneficiary = signingKey;
 
 	/// Structured logging params
 	bool structuredLogging = false;
 	string structuredLoggingFormat = "%Y-%m-%dT%H:%M:%S";
+	string structuredLoggingURL;
 
 	/// Transaction params
 	TransactionPriority priority = TransactionPriority::Medium;
@@ -568,11 +586,20 @@ int main(int argc, char** argv)
 
 	string configFile = getDataDir() + "/config.rlp";
 	bytes b = contents(configFile);
+
+	strings passwordsToNote;
+	Secrets toImport;
 	if (b.size())
 	{
 		RLP config(b);
-		sigKey = KeyPair(config[0].toHash<Secret>());
-		coinbase = config[1].toHash<Address>();
+		if (config[0].size() == 32)	// secret key - import and forget.
+		{
+			Secret s = config[0].toHash<Secret>();
+			toImport.push_back(s);
+		}
+		else							// new format - just use it as an address.
+			signingKey = config[0].toHash<Address>();
+		beneficiary = config[1].toHash<Address>();
 	}
 
 	for (int i = 1; i < argc; ++i)
@@ -600,6 +627,8 @@ int main(int argc, char** argv)
 				cerr << "-p is DEPRECATED. It will be removed for the Frontier. Use --port instead (or place directly as host:port)." << endl;
 			remotePort = (short)atoi(argv[++i]);
 		}
+		else if (arg == "--password" && i + 1 < argc)
+			passwordsToNote.push_back(argv[++i]);
 		else if (arg == "--master" && i + 1 < argc)
 			masterPassword = argv[++i];
 		else if ((arg == "-I" || arg == "--import") && i + 1 < argc)
@@ -742,7 +771,7 @@ int main(int argc, char** argv)
 		}
 		else if ((arg == "-a" || arg == "--address" || arg == "--coinbase-address") && i + 1 < argc)
 			try {
-				coinbase = h160(fromHex(argv[++i], WhenError::Throw));
+				beneficiary = h160(fromHex(argv[++i], WhenError::Throw));
 			}
 			catch (BadHexCharacter&)
 			{
@@ -758,14 +787,35 @@ int main(int argc, char** argv)
 			minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
 			minerType = MinerType::GPU;
-		else if ((arg == "-s" || arg == "--secret") && i + 1 < argc)
-			sigKey = KeyPair(h256(fromHex(argv[++i])));
-		else if ((arg == "-S" || arg == "--session-secret") && i + 1 < argc)
-			sessionSecret = h256(fromHex(argv[++i]));
+		/*<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
+		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
+		<< "    --sign-key <address>  Sign all transactions with the key of the given address." << endl
+		<< "    --session-sign-key <address>  Sign all transactions with the key of the given address for this session only." << endl*/
+		else if ((arg == "-s" || arg == "--import-secret") && i + 1 < argc)
+		{
+			Secret s(fromHex(argv[++i]));
+			toImport.push_back(s);
+			signingKey = toAddress(s);
+		}
+		else if ((arg == "-S" || arg == "--import-session-secret") && i + 1 < argc)
+		{
+			Secret s(fromHex(argv[++i]));
+			toImport.push_back(s);
+			sessionKey = toAddress(s);
+		}
+		else if ((arg == "--sign-key") && i + 1 < argc)
+			sessionKey = Address(fromHex(argv[++i]));
+		else if ((arg == "--session-sign-key") && i + 1 < argc)
+			sessionKey = Address(fromHex(argv[++i]));
 		else if (arg == "--structured-logging-format" && i + 1 < argc)
 			structuredLoggingFormat = string(argv[++i]);
 		else if (arg == "--structured-logging")
 			structuredLogging = true;
+		else if (arg == "--structured-logging-url" && i + 1 < argc)
+		{
+			structuredLogging = true;
+			structuredLoggingURL = argv[++i];
+		}
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
@@ -806,7 +856,7 @@ int main(int argc, char** argv)
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
 				bi.nonce = h64(m);
-				auto r = EthashAux::eval(seedHash, powHash, bi.nonce);
+				auto r = EthashAux::eval((uint64_t)bi.number, powHash, bi.nonce);
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
@@ -815,7 +865,7 @@ int main(int argc, char** argv)
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(seedHash)->data()) << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light((uint64_t)bi.number)->data()) << endl;
 				exit(0);
 			}
 			catch (...)
@@ -949,16 +999,24 @@ int main(int argc, char** argv)
 		}
 	}
 
+	KeyManager keyManager;
+	for (auto const& s: passwordsToNote)
+		keyManager.notePassword(s);
+	for (auto const& s: toImport)
+	{
+		keyManager.import(s, "Imported key");
+		if (!signingKey)
+			signingKey = toAddress(s);
+	}
+
 	{
 		RLPStream config(2);
-		config << sigKey.secret() << coinbase;
+		config << signingKey << beneficiary;
 		writeFile(configFile, config.out());
 	}
 
-	if (sessionSecret)
-		sigKey = KeyPair(sessionSecret);
-
-	
+	if (sessionKey)
+		signingKey = sessionKey;
 
 	if (minerType == MinerType::CPU)
 		ProofOfWork::CPUMiner::setNumInstances(miningThreads);
@@ -983,7 +1041,29 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
 
-	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat);
+	string logbuf;
+	bool silence = false;
+	std::string additional;
+	g_logPost = [&](std::string const& a, char const*){
+		if (silence)
+			logbuf += a + "\n";
+		else
+			cout << "\r           \r" << a << endl << additional << flush;
+	};
+
+	auto getPassword = [&](string const& prompt){
+		auto s = silence;
+		silence = true;
+		cout << endl;
+		string ret = dev::getPassword(prompt);
+		silence = s;
+		return ret;
+	};
+	auto getAccountPassword = [&](Address const& a){
+		return getPassword("Enter password for address " + keyManager.accountDetails()[a].first + " (" + a.abridged() + "; hint:" + keyManager.accountDetails()[a].second + "): ");
+	};
+
+	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat, structuredLoggingURL);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
@@ -992,12 +1072,37 @@ int main(int argc, char** argv)
 		clientImplString,
 		dbPath,
 		killChain,
-		nodeMode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
+		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
 		netPrefs,
 		&nodesState);
 	
 	if (mode == OperationMode::DAGInit)
 		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
+
+	if (keyManager.exists())
+		while (masterPassword.empty())
+		{
+			masterPassword = getPassword("Please enter your MASTER password: ");
+			if (!keyManager.load(masterPassword))
+			{
+				cout << "Password invalid. Try again." << endl;
+				masterPassword.clear();
+			}
+		}
+	else
+	{
+		while (masterPassword.empty())
+		{
+			masterPassword = getPassword("Please enter a MASTER password to protect your key store (make it strong!): ");
+			string confirm = getPassword("Please confirm the password by entering it again: ");
+			if (masterPassword != confirm)
+			{
+				cout << "Passwords were different. Try again." << endl;
+				masterPassword.clear();
+			}
+		}
+		keyManager.create(masterPassword);
+	}
 
 	auto toNumber = [&](string const& s) -> unsigned {
 		if (s == "latest")
@@ -1072,27 +1177,28 @@ int main(int argc, char** argv)
 		c->setGasPricer(gasPricer);
 		c->setForceMining(forceMining);
 		c->setTurboMining(minerType == MinerType::GPU);
-		c->setAddress(coinbase);
+		c->setAddress(beneficiary);
 		c->setNetworkId(networkId);
 	}
 
-	cout << "Transaction Signer: " << sigKey.address() << endl;
-	cout << "Mining Benefactor: " << coinbase << endl;
+	cout << "Transaction Signer: " << signingKey << endl;
+	cout << "Mining Benefactor: " << beneficiary << endl;
 	web3.startNetwork();
 	cout << "Node ID: " << web3.enode() << endl;
 
 	if (bootstrap)
-		web3.addNode(p2p::NodeId(), Host::pocHost());
+		for (auto const& i: Host::pocHosts())
+			web3.requirePeer(i.first, i.second);
 	if (remoteHost.size())
 		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 
-#if ETH_JSONRPC
+#if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({sigKey})));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>()));
 		jsonrpcServer->StartListening();
 	}
 #endif
@@ -1103,15 +1209,15 @@ int main(int argc, char** argv)
 
 	if (interactive)
 	{
-		string logbuf;
+		additional = "Press Enter";
 		string l;
 		while (!g_exit)
 		{
-			g_logPost = [](std::string const& a, char const*) { cout << "\r           \r" << a << endl << "Press Enter" << flush; };
+			silence = false;
 			cout << logbuf << "Press Enter" << flush;
 			std::getline(cin, l);
 			logbuf.clear();
-			g_logPost = [&](std::string const& a, char const*) { logbuf += a + "\n"; };
+			silence = true;
 
 #if ETH_READLINE
 			if (l.size())
@@ -1224,7 +1330,7 @@ int main(int argc, char** argv)
 					iss >> g_logVerbosity;
 				cout << "Verbosity: " << g_logVerbosity << endl;
 			}
-#if ETH_JSONRPC
+#if ETH_JSONRPC || !ETH_TRUE
 			else if (cmd == "jsonport")
 			{
 				if (iss.peek() != -1)
@@ -1236,7 +1342,7 @@ int main(int argc, char** argv)
 				if (jsonrpc < 0)
 					jsonrpc = SensibleHttpPort;
 				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, vector<KeyPair>({sigKey})));
+				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>()));
 				jsonrpcServer->StartListening();
 			}
 			else if (cmd == "jsonstop")
@@ -1248,11 +1354,8 @@ int main(int argc, char** argv)
 #endif
 			else if (cmd == "address")
 			{
-				cout << "Current address:" << endl << sigKey.address() << endl;
-			}
-			else if (cmd == "secret")
-			{
-				cout << "Secret Key: " << sigKey.secret() << endl;
+				cout << "Current mining beneficiary:" << endl << beneficiary << endl;
+				cout << "Current signing account:" << endl << signingKey << endl;
 			}
 			else if (c && cmd == "block")
 			{
@@ -1267,7 +1370,15 @@ int main(int argc, char** argv)
 			}
 			else if (c && cmd == "balance")
 			{
-				cout << "Current balance: " << formatBalance( c->balanceAt(sigKey.address())) << " = " <<c->balanceAt(sigKey.address()) << " wei" << endl;
+				cout << "Current balance:" << endl;
+				u256 total = 0;
+				for (auto const& i: keyManager.accountDetails())
+				{
+					auto b = c->balanceAt(i.first);
+					cout << ((i.first == signingKey) ? "SIGNING " : "        ") << ((i.first == beneficiary) ? "COINBASE " : "         ") << i.second.first << " (" << i.first << "): " << formatBalance(b) << " = " << b << " wei" << endl;
+					total += b;
+				}
+				cout << "Total: " << formatBalance(total) << " = " << total << " wei" << endl;
 			}
 			else if (c && cmd == "transact")
 			{
@@ -1383,7 +1494,7 @@ int main(int argc, char** argv)
 						try
 						{
 							Address dest = h160(fromHex(hexAddr, WhenError::Throw));
-							c->submitTransaction(sigKey.secret(), amount, dest, bytes(), minGas);
+							c->submitTransaction(keyManager.secret(signingKey, [&](){ return getAccountPassword(signingKey); }), amount, dest, bytes(), minGas);
 						}
 						catch (BadHexCharacter& _e)
 						{
@@ -1452,7 +1563,7 @@ int main(int argc, char** argv)
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is" << minGas;
 					else
-						c->submitTransaction(sigKey.secret(), endowment, init, gas, gasPrice);
+						c->submitTransaction(keyManager.secret(signingKey, [&](){ return getAccountPassword(signingKey); }), endowment, init, gas, gasPrice);
 				}
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
@@ -1563,13 +1674,13 @@ int main(int argc, char** argv)
 					}
 				}
 			}
-			else if (cmd == "setsecret")
+			else if (cmd == "setsigningkey")
 			{
 				if (iss.peek() != -1)
 				{
 					string hexSec;
 					iss >> hexSec;
-					sigKey = KeyPair(h256(fromHex(hexSec)));
+					signingKey = Address(fromHex(hexSec));
 				}
 				else
 					cwarn << "Require parameter: setSecret HEXSECRETKEY";
@@ -1586,7 +1697,7 @@ int main(int argc, char** argv)
 					{
 						try
 						{
-							coinbase = h160(fromHex(hexAddr, WhenError::Throw));
+							beneficiary = h160(fromHex(hexAddr, WhenError::Throw));
 						}
 						catch (BadHexCharacter& _e)
 						{
@@ -1609,7 +1720,7 @@ int main(int argc, char** argv)
 					string path;
 					iss >> path;
 					RLPStream config(2);
-					config << sigKey.secret() << coinbase;
+					config << signingKey << beneficiary;
 					writeFile(path, config.out());
 				}
 				else
@@ -1625,8 +1736,8 @@ int main(int argc, char** argv)
 					if (b.size())
 					{
 						RLP config(b);
-						sigKey = KeyPair(config[0].toHash<Secret>());
-						coinbase = config[1].toHash<Address>();
+						signingKey = config[0].toHash<Address>();
+						beneficiary = config[1].toHash<Address>();
 					}
 					else
 						cwarn << path << "has no content!";
