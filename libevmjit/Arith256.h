@@ -23,6 +23,8 @@ public:
 	void debug(llvm::Value* _value, char _c);
 
 	static llvm::Function* getMulFunc(llvm::Module& _module);
+	static llvm::Function* getUDiv256Func(llvm::Module& _module);
+	static llvm::Function* getUDivRem256Func(llvm::Module& _module);
 
 private:
 	llvm::Function* getMul512Func();
