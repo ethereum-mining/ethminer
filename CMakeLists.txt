@@ -295,7 +295,6 @@ message("-- EVMJIT           Build LLVM-based JIT EVM (experimental!) ${EVMJIT}"
 message("------------------------------------------------------------------------")
 message("")
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin")
 set(CMAKE_THREAD_LIBS_INIT pthread)
 
 include(EthCompilerSettings)
