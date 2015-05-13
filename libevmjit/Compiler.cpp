@@ -322,6 +322,41 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			break;
 		}
 
+		case Instruction::ADDMOD:
+		{
+			auto i512Ty = m_builder.getIntNTy(512);
+			auto a = stack.pop();
+			auto b = stack.pop();
+			auto m = stack.pop();
+			auto divByZero = m_builder.CreateICmpEQ(m, Constant::get(0));
+			a = m_builder.CreateZExt(a, i512Ty);
+			b = m_builder.CreateZExt(b, i512Ty);
+			m = m_builder.CreateZExt(m, i512Ty);
+			auto s = m_builder.CreateNUWAdd(a, b);
+			s = m_builder.CreateURem(s, m);
+			s = m_builder.CreateTrunc(s, Type::Word);
+			s = m_builder.CreateSelect(divByZero, Constant::get(0), s);
+			stack.push(s);
+			break;
+		}
+
+		case Instruction::MULMOD:
+		{
+			auto i512Ty = m_builder.getIntNTy(512);
+			auto a = stack.pop();
+			auto b = stack.pop();
+			auto m = stack.pop();
+			auto divByZero = m_builder.CreateICmpEQ(m, Constant::get(0));
+			m = m_builder.CreateZExt(m, i512Ty);
+			// TODO: Add support for i256 x i256 -> i512 in LowerEVM pass
+			llvm::Value* p = m_builder.CreateCall(Arith256::getMul512Func(*_basicBlock.llvm()->getParent()->getParent()), {a, b});
+			p = m_builder.CreateURem(p, m);
+			p = m_builder.CreateTrunc(p, Type::Word);
+			p = m_builder.CreateSelect(divByZero, Constant::get(0), p);
+			stack.push(p);
+			break;
+		}
+
 		case Instruction::EXP:
 		{
 			auto base = stack.pop();
@@ -437,26 +472,6 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			value = m_builder.CreateZExt(byte, Type::Word);
 			value = m_builder.CreateSelect(idxValid, value, Constant::get(0));
 			stack.push(value);
-			break;
-		}
-
-		case Instruction::ADDMOD:
-		{
-			auto lhs = stack.pop();
-			auto rhs = stack.pop();
-			auto mod = stack.pop();
-			auto res = _arith.addmod(lhs, rhs, mod);
-			stack.push(res);
-			break;
-		}
-
-		case Instruction::MULMOD:
-		{
-			auto lhs = stack.pop();
-			auto rhs = stack.pop();
-			auto mod = stack.pop();
-			auto res = _arith.mulmod(lhs, rhs, mod);
-			stack.push(res);
 			break;
 		}
 
