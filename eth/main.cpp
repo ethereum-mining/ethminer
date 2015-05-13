@@ -1765,7 +1765,7 @@ int main(int argc, char** argv)
 		if (useConsole)
 		{
 #if ETH_JSCONSOLE
-			JSConsole console(web3, vector<KeyPair>({sigKey}));
+			JSConsole console(web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager));
 			while (!g_exit)
 			{
 				console.repl();
