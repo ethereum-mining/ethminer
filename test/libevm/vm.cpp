@@ -432,7 +432,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 	}
 }
 
-} } // Namespace Close
+} } // namespace close
 
 BOOST_AUTO_TEST_SUITE(VMTests)
 
@@ -542,7 +542,7 @@ BOOST_AUTO_TEST_CASE(vmRandom)
 
 BOOST_AUTO_TEST_CASE(userDefinedFile)
 {
-	dev::test::userDefinedTest("--singletest", dev::test::doVMTests);
+	dev::test::userDefinedTest(dev::test::doVMTests);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
