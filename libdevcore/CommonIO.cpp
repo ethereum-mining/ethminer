@@ -24,6 +24,9 @@
 #include <cstdlib>
 #include <fstream>
 #include "Exceptions.h"
+#ifndef _WIN32
+#include <termios.h>
+#endif
 using namespace std;
 using namespace dev;
 
@@ -126,6 +129,29 @@ std::string dev::getPassword(std::string const& _prompt)
 	std::getline(cin, ret);
 	return ret;
 #else
-	return getpass(_prompt.c_str());
+	struct termios oflags;
+	struct termios nflags;
+	char password[256];
+
+	// disable echo in the terminal
+	tcgetattr(fileno(stdin), &oflags);
+	nflags = oflags;
+	nflags.c_lflag &= ~ECHO;
+	nflags.c_lflag |= ECHONL;
+
+	if (tcsetattr(fileno(stdin), TCSANOW, &nflags) != 0)
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("tcsetattr"));
+
+	printf("%s", _prompt.c_str());
+	if (!fgets(password, sizeof(password), stdin))
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("fgets"));
+	password[strlen(password) - 1] = 0;
+
+	// restore terminal
+	if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0)
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("tcsetattr"));
+
+
+	return password;
 #endif
 }
