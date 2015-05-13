@@ -288,8 +288,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto res = _arith.sdiv(lhs, rhs);
-			stack.push(res.first);
+			auto res = m_builder.CreateSDiv(lhs, rhs);
+			stack.push(res);
 			break;
 		}
 
@@ -297,8 +297,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto res = _arith.div(lhs, rhs);
-			stack.push(res.second);
+			auto res = m_builder.CreateURem(lhs, rhs);
+			stack.push(res);
 			break;
 		}
 
@@ -306,8 +306,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto res = _arith.sdiv(lhs, rhs);
-			stack.push(res.second);
+			auto res = m_builder.CreateSRem(lhs, rhs);
+			stack.push(res);
 			break;
 		}
 
