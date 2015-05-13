@@ -170,7 +170,9 @@ EthashAux::FullType EthashAux::full(uint64_t _blockNumber, function<int(unsigned
 		}
 
 	s_dagCallback = _f;
+	cnote << "Loading from libethash...";
 	ret = make_shared<FullAllocation>(l->light, dagCallbackShim);
+	cnote << "Done loading.";
 
 	DEV_GUARDED(get()->x_fulls)
 		get()->m_fulls[seedHash] = get()->m_lastUsedFull = ret;
@@ -192,7 +194,9 @@ unsigned EthashAux::computeFull(uint64_t _blockNumber)
 		get()->m_fullProgress = 0;
 		get()->m_generatingFullNumber = _blockNumber / ETHASH_EPOCH_LENGTH * ETHASH_EPOCH_LENGTH;
 		get()->m_fullGenerator = unique_ptr<thread>(new thread([=](){
+			cnote << "Loading full DAG of" << _blockNumber;
 			get()->full(_blockNumber, [](unsigned p){ get()->m_fullProgress = p; return 0; });
+			cnote << "Full DAG loaded";
 			get()->m_fullProgress = 0;
 			get()->m_generatingFullNumber = NotGenerating;
 		}));
