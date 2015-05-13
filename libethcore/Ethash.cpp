@@ -300,6 +300,7 @@ void Ethash::GPUMiner::workLoop()
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		WorkPackage w = work();
+		cnote << "workLoop" << !!m_miner << m_minerSeed << w.seedHash;
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
 			m_minerSeed = w.seedHash;
@@ -309,7 +310,12 @@ void Ethash::GPUMiner::workLoop()
 
 			unsigned device = instances() > 1 ? index() : s_deviceId;
 
-			if (!EthashAux::computeFull(EthashAux::number(w.seedHash)))
+			while (EthashAux::computeFull(EthashAux::number(w.seedHash)) != 100 && !shouldStop())
+			{
+				cnote << "Awaiting DAG" << EthashAux::computeFull(EthashAux::number(w.seedHash));
+				this_thread::sleep_for(chrono::milliseconds(500));
+			}
+			if (shouldStop())
 				return;
 			EthashAux::FullType dag = EthashAux::full(EthashAux::number(w.seedHash));
 			bytesConstRef dagData = dag->data();
