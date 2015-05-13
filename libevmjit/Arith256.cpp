@@ -154,10 +154,9 @@ llvm::Function* createUDivRemFunc(llvm::Type* _type, llvm::Module& _module, char
 	auto returnBB = llvm::BasicBlock::Create(_module.getContext(), "Return", func);
 
 	auto builder = llvm::IRBuilder<>{entryBB};
-	auto yNonZero = builder.CreateICmpNE(yArg, zero);
 	auto yLEx = builder.CreateICmpULE(yArg, x);
-	auto r0 = builder.CreateSelect(yNonZero, x, zero, "r0");
-	builder.CreateCondBr(builder.CreateAnd(yLEx, yNonZero), mainBB, returnBB);
+	auto r0 = x;
+	builder.CreateCondBr(yLEx, mainBB, returnBB);
 
 	builder.SetInsertPoint(mainBB);
 	auto ctlzIntr = llvm::Intrinsic::getDeclaration(&_module, llvm::Intrinsic::ctlz, _type);
