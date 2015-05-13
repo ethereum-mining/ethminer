@@ -25,8 +25,13 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #include <shlobj.h>
+#elif defined(__APPLE__)
+#include <stdlib.h>
+#include <stdio.h>
+#include <pwd.h>
+#include <unistd.h>
 #endif
 #include <boost/filesystem.hpp>
 using namespace std;
@@ -51,6 +56,15 @@ std::string dev::getDataDir(std::string _prefix)
 #else
 	boost::filesystem::path dataDirPath;
 	char const* homeDir = getenv("HOME");
+#if defined(__APPLE__)
+	if (!homeDir || strlen(homeDir) == 0)
+	{
+		struct passwd* pwd = getpwuid(getuid());
+		if (pwd)
+			homeDir = pwd->pw_dir;
+	}
+#endif
+	
 	if (!homeDir || strlen(homeDir) == 0)
 		dataDirPath = boost::filesystem::path("/");
 	else
