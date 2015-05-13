@@ -65,6 +65,15 @@ bool LowerEVMPass::runOnBasicBlock(llvm::BasicBlock& _bb)
 				modified = true;
 			}
 		}
+		else if (inst.getOpcode() == llvm::Instruction::UDiv)
+		{
+			if (inst.getType() == Type::Word)
+			{
+				auto call = llvm::CallInst::Create(Arith256::getUDiv256Func(*module), {inst.getOperand(0), inst.getOperand(1)}, "", &inst);
+				inst.replaceAllUsesWith(call);
+				modified = true;
+			}
+		}
 	}
 	return modified;
 }
@@ -81,6 +90,7 @@ bool prepare(llvm::Module& _module)
 	auto pm = llvm::legacy::PassManager{};
 	pm.add(llvm::createDeadCodeEliminationPass());
 	pm.add(new LowerEVMPass{});
+	pm.add(llvm::createDeadInstEliminationPass()); // Remove leftovers
 	return pm.run(_module);
 }
 
