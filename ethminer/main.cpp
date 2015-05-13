@@ -223,6 +223,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 	(void)_recheckPeriod;
 #if ETH_JSONRPC || !ETH_TRUE
 	jsonrpc::HttpClient client(_remote);
+
 	Farm rpc(client);
 	GenericFarm<Ethash> f;
 	if (_m == MinerType::CPU)
@@ -254,17 +255,31 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 					current.headerHash = hh;
 					current.seedHash = h256(v[1].asString());
 					current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-					cnote << "Got work package:" << current.headerHash << " < " << current.boundary;
+					cnote << "Got work package:";
+					cnote << "  Header-hash:" << current.headerHash.hex();
+					cnote << "  Seedhash:" << current.seedHash.hex();
+					cnote << "  Target: " << h256(current.boundary).hex();
 					f.setWork(current);
 				}
 				this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 			}
-			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash << "," << solution.mixHash << "] to" << _remote << "...";
-			bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
-			if (ok)
-				clog(HappyChannel) << "Submitted and accepted.";
+			cnote << "Solution found; Submitting to" << _remote << "...";
+			cnote << "  Nonce:" << solution.nonce.hex();
+			cnote << "  Mixhash:" << solution.mixHash.hex();
+			cnote << "  Header-hash:" << current.headerHash.hex();
+			cnote << "  Seedhash:" << current.seedHash.hex();
+			cnote << "  Target: " << h256(current.boundary).hex();
+			cnote << "  Ethash: " << h256(EthashAux::eval(EthashAux::number(current.seedHash), current.headerHash, solution.nonce).value).hex();
+			if (EthashAux::eval(EthashAux::number(current.seedHash), current.headerHash, solution.nonce).value < current.boundary)
+			{
+				bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
+				if (ok)
+					clog(HappyChannel) << "Submitted and accepted.";
+				else
+					clog(SadChannel) << "Not accepted.";
+			}
 			else
-				clog(SadChannel) << "Not accepted.";
+				cwarn << "FAILURE: GPU gave incorrect result!";
 			current.reset();
 		}
 		catch (jsonrpc::JsonRpcException&)
