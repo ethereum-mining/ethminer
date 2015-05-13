@@ -579,7 +579,7 @@ int main(int argc, char** argv)
 	bool useConsole = false;
 
 	/// Farm params
-	string farmURL = "http://127.0.0.1:8080";
+	string farmURL = "http://127.0.0.1:8545";
 	unsigned farmRecheckPeriod = 500;
 
 	/// Wallet password stuff
