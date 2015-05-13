@@ -66,29 +66,48 @@ Dialog {
 			contractIndex = 0; //@todo suggest unused contract
 		contractComboBox.currentIndex = contractIndex;
 
-		loadFunctions(contractComboBox.currentValue());
+		recipients.accounts = senderComboBox.model;
+		recipients.subType = "address";
+		recipients.load();
+		recipients.init();
+		recipients.select(contractId);
+
+		if (item.isContractCreation)
+			loadFunctions(contractComboBox.currentValue());
+		else
+			loadFunctions(contractFromToken(recipients.currentValue()))
 		selectFunction(functionId);
 
+		trType.checked = item.isContractCreation
+		trType.init();
+
 		paramsModel = [];
-		if (functionId !== contractComboBox.currentValue())
+		if (item.isContractCreation)
+			loadCtorParameters();
+		else
 			loadParameters();
-		else {
-			var contract = codeModel.contracts[contractId];
-			if (contract) {
-				var params = contract.contract.constructor.parameters;
-				for (var p = 0; p < params.length; p++)
-					loadParameter(params[p]);
-			}
-		}
-		initTypeLoader();
 
 		visible = true;
 		valueField.focus = true;
 	}
 
+	function loadCtorParameters(contractId)
+	{
+		paramsModel = [];
+		console.log(contractId);
+		var contract = codeModel.contracts[contractId];
+		if (contract) {
+			var params = contract.contract.constructor.parameters;
+			for (var p = 0; p < params.length; p++)
+				loadParameter(params[p]);
+		}
+		initTypeLoader();
+	}
+
 	function loadFunctions(contractId)
 	{
 		functionsModel.clear();
+		functionsModel.append({ text: " - " });
 		var contract = codeModel.contracts[contractId];
 		if (contract) {
 			var functions = codeModel.contracts[contractId].contract.functions;
@@ -96,9 +115,6 @@ Dialog {
 				functionsModel.append({ text: functions[f].name });
 			}
 		}
-		//append constructor
-		functionsModel.append({ text: contractId });
-
 	}
 
 	function selectContract(contractName)
@@ -136,7 +152,7 @@ Dialog {
 	function loadParameters() {
 		paramsModel = []
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
-			var contract = codeModel.contracts[contractComboBox.currentValue()];
+			var contract = codeModel.contracts[contractFromToken(recipients.currentValue())];
 			if (contract) {
 				var func = contract.contract.functions[functionComboBox.currentIndex];
 				if (func) {
@@ -193,10 +209,37 @@ Dialog {
 			item.functionId = transactionDialog.functionId;
 		}
 
+		item.isContractCreation = trType.checked;
+		item.isFunctionCall = item.functionId !== " - ";
+
+		if (!item.isContractCreation)
+		{
+			item.contractId = recipients.currentText;
+			item.label = item.contractId + " " + item.functionId;
+			if (recipients.current().type === "address")
+			{
+				item.functionId = "";
+				item.isFunctionCall = false;
+			}
+		}
+		else
+		{
+			item.functionId = item.contractId;
+			item.label = qsTr("Deploy") + " " + item.contractId;
+		}
+
 		item.sender = senderComboBox.model[senderComboBox.currentIndex].secret;
 		item.parameters = paramValues;
 		return item;
 	}
+
+	function contractFromToken(token)
+	{
+		if (token.indexOf('<') === 0)
+			return token.replace("<", "").replace(">", "").split(" - ")[0];
+		return token;
+	}
+
 	contentItem: Rectangle {
 		color: transactionDialogStyle.generic.backgroundColor
 		ColumnLayout {
@@ -240,6 +283,59 @@ Dialog {
 
 					RowLayout
 					{
+						id: rowIsContract
+						Layout.fillWidth: true
+						height: 150
+						CheckBox {
+							id: trType
+							onCheckedChanged:
+							{
+								init();
+							}
+
+							function init()
+							{
+								rowFunction.visible = !checked;
+								rowContract.visible = checked;
+								rowRecipient.visible = !checked;
+								paramLabel.visible = checked;
+								paramScroll.visible = checked;
+								functionComboBox.enabled = !checked;
+								if (checked)
+									loadCtorParameters(contractComboBox.currentValue());
+							}
+
+							text: qsTr("is contract creation")
+							checked: true
+						}
+					}
+
+					RowLayout
+					{
+						id: rowRecipient
+						Layout.fillWidth: true
+						height: 150
+						DefaultLabel {
+							Layout.preferredWidth: 75
+							text: qsTr("Recipient")
+						}
+
+						QAddressView
+						{
+							id: recipients
+							onIndexChanged:
+							{
+								rowFunction.visible = current().type === "contract";
+								paramLabel.visible = current().type === "contract";
+								paramScroll.visible = current().type === "contract";
+								if (!rowIsContract.checked)
+									loadFunctions(contractFromToken(recipients.currentValue()))
+							}
+						}
+					}
+
+					RowLayout
+					{
 						id: rowContract
 						Layout.fillWidth: true
 						height: 150
@@ -260,7 +356,7 @@ Dialog {
 								id: contractsModel
 							}
 							onCurrentIndexChanged: {
-								loadFunctions(currentValue());
+								loadCtorParameters(currentValue());
 							}
 						}
 					}

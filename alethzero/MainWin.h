@@ -124,6 +124,7 @@ private slots:
 
 	// Mining
 	void on_mine_triggered();
+	void on_prepNextDAG_triggered();
 
 	// View
 	void on_refresh_triggered();

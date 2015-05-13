@@ -76,9 +76,9 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 	return ret;
 }
 
-void Ethash::prep(BlockInfo const& _header)
+void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
 {
-	EthashAux::full(_header);
+	EthashAux::full((unsigned)_header.number, _f);
 }
 
 bool Ethash::preVerify(BlockInfo const& _header)
@@ -310,6 +310,8 @@ void Ethash::GPUMiner::workLoop()
 
 			unsigned device = instances() > 1 ? index() : s_deviceId;
 
+			if (!EthashAux::computeFull(w.blockNumber))
+				return;
 			EthashAux::FullType dag = EthashAux::full(w.blockNumber);
 			bytesConstRef dagData = dag->data();
 			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
