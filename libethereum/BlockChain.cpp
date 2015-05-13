@@ -466,7 +466,14 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 			blb.blooms.push_back(s.receipt(i).bloom());
 			br.receipts.push_back(s.receipt(i));
 		}
-		s.cleanup(true);
+		try {
+			s.cleanup(true);
+		}
+		catch (BadRoot)
+		{
+			cwarn << "BadRoot error. Retrying import later.";
+			BOOST_THROW_EXCEPTION(FutureTime());
+		}
 
 		td = pd.totalDifficulty + tdIncrease;
 
