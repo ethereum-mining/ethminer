@@ -23,21 +23,20 @@ public:
 	static llvm::Function* getMulFunc(llvm::Module& _module);
 	static llvm::Function* getUDiv256Func(llvm::Module& _module);
 	static llvm::Function* getURem256Func(llvm::Module& _module);
+	static llvm::Function* getURem512Func(llvm::Module& _module);
 	static llvm::Function* getUDivRem256Func(llvm::Module& _module);
 	static llvm::Function* getSDiv256Func(llvm::Module& _module);
 	static llvm::Function* getSRem256Func(llvm::Module& _module);
 	static llvm::Function* getSDivRem256Func(llvm::Module& _module);
+	static llvm::Function* getUDivRem512Func(llvm::Module& _module);
 
 private:
 	llvm::Function* getMul512Func();
-	llvm::Function* getDivFunc(llvm::Type* _type);
 	llvm::Function* getExpFunc();
 	llvm::Function* getAddModFunc();
 	llvm::Function* getMulModFunc();
 
 	llvm::Function* m_mul512 = nullptr;
-	llvm::Function* m_div = nullptr;
-	llvm::Function* m_div512 = nullptr;
 	llvm::Function* m_exp = nullptr;
 	llvm::Function* m_addmod = nullptr;
 	llvm::Function* m_mulmod = nullptr;
