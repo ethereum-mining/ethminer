@@ -277,37 +277,48 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
 		case Instruction::DIV:
 		{
-			auto lhs = stack.pop();
-			auto rhs = stack.pop();
-			auto res = m_builder.CreateUDiv(lhs, rhs);
-			stack.push(res);
+			auto d = stack.pop();
+			auto n = stack.pop();
+			auto divByZero = m_builder.CreateICmpEQ(n, Constant::get(0));
+			auto r = m_builder.CreateUDiv(d, n);
+			r = m_builder.CreateSelect(divByZero, Constant::get(0), r);
+			stack.push(r);
 			break;
 		}
 
 		case Instruction::SDIV:
 		{
-			auto lhs = stack.pop();
-			auto rhs = stack.pop();
-			auto res = m_builder.CreateSDiv(lhs, rhs);
-			stack.push(res);
+			auto d = stack.pop();
+			auto n = stack.pop();
+			auto divByZero = m_builder.CreateICmpEQ(n, Constant::get(0));
+			auto divByMinusOne = m_builder.CreateICmpEQ(n, Constant::get(-1));
+			auto r = m_builder.CreateSDiv(d, n);
+			r = m_builder.CreateSelect(divByZero, Constant::get(0), r);
+			auto dNeg = m_builder.CreateSub(Constant::get(0), d);
+			r = m_builder.CreateSelect(divByMinusOne, dNeg, r);
+			stack.push(r);
 			break;
 		}
 
 		case Instruction::MOD:
 		{
-			auto lhs = stack.pop();
-			auto rhs = stack.pop();
-			auto res = m_builder.CreateURem(lhs, rhs);
-			stack.push(res);
+			auto d = stack.pop();
+			auto n = stack.pop();
+			auto divByZero = m_builder.CreateICmpEQ(n, Constant::get(0));
+			auto r = m_builder.CreateURem(d, n);
+			r = m_builder.CreateSelect(divByZero, Constant::get(0), r);
+			stack.push(r);
 			break;
 		}
 
 		case Instruction::SMOD:
 		{
-			auto lhs = stack.pop();
-			auto rhs = stack.pop();
-			auto res = m_builder.CreateSRem(lhs, rhs);
-			stack.push(res);
+			auto d = stack.pop();
+			auto n = stack.pop();
+			auto divByZero = m_builder.CreateICmpEQ(n, Constant::get(0));
+			auto r = m_builder.CreateSRem(d, n);
+			r = m_builder.CreateSelect(divByZero, Constant::get(0), r);
+			stack.push(r);
 			break;
 		}
 
