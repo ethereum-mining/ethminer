@@ -131,7 +131,7 @@ std::string dev::getPassword(std::string const& _prompt)
 #else
 	struct termios oflags;
 	struct termios nflags;
-	char password[128];
+	char password[256];
 
 	// disable echo in the terminal
 	tcgetattr(fileno(stdin), &oflags);
@@ -148,9 +148,9 @@ std::string dev::getPassword(std::string const& _prompt)
 	password[strlen(password) - 1] = 0;
 
 	// restore terminal
-	if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0) {
+	if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0)
 		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("tcsetattr"));
-	}
+
 
 	return password;
 #endif
