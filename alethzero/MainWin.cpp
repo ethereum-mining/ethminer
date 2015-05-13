@@ -945,7 +945,11 @@ void Main::on_preview_triggered()
 
 void Main::on_prepNextDAG_triggered()
 {
-	EthashAux::computeFull(ethereum()->blockChain().number() + ETHASH_EPOCH_LENGTH);
+	EthashAux::computeFull(
+		EthashAux::seedHash(
+			ethereum()->blockChain().number() + ETHASH_EPOCH_LENGTH
+		)
+	);
 }
 
 void Main::refreshMining()
