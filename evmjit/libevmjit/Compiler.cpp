@@ -279,8 +279,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 		{
 			auto lhs = stack.pop();
 			auto rhs = stack.pop();
-			auto res = _arith.div(lhs, rhs);
-			stack.push(res.first);
+			auto res = m_builder.CreateUDiv(lhs, rhs);
+			stack.push(res);
 			break;
 		}
 
