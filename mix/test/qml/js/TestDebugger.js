@@ -223,13 +223,16 @@ function test_ctrTypeAsParam()
 	"}");
 	mainApplication.projectModel.stateListModel.editState(0); //C1 ctor already added
 	var transactionDialog = mainApplication.projectModel.stateDialog.transactionDialog;
+	mainApplication.projectModel.stateDialog.model.editTransaction(3);
+	ts.waitForRendering(transactionDialog, 3000);
+	clickElement(transactionDialog, 200, 300);
+	ts.typeString("<C1 - 0>", transactionDialog);
+	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.model.addTransaction();
 	transactionDialog = mainApplication.projectModel.stateDialog.transactionDialog;
 	ts.waitForRendering(transactionDialog, 3000);
 	transactionDialog.selectContract("C2");
 	transactionDialog.selectFunction("getFromC1");
-	clickElement(transactionDialog, 406, 340);
-	clickElement(transactionDialog, 406, 366);
 	transactionDialog.acceptAndClose();
 	mainApplication.projectModel.stateDialog.acceptAndClose();
 	mainApplication.mainContent.startQuickDebugging();

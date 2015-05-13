@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include <fstream>
 #include <string>
 #include <chrono>
 
@@ -46,11 +47,7 @@ public:
 	 *                        http://en.cppreference.com/w/cpp/chrono/c/strftime
 	 *                        with which to display timestamps
 	 */
-	void initialize(bool _enabled, std::string const& _timeFormat)
-	{
-		m_enabled = _enabled;
-		m_timeFormat = _timeFormat;
-	}
+	void initialize(bool _enabled, std::string const& _timeFormat, std::string const& _destinationURL = "");
 
 	static StructuredLogger& get()
 	{
@@ -92,6 +89,11 @@ public:
 		std::string const& _prevHash
 	);
 	static void transactionReceived(std::string const& _hash, std::string const& _remoteId);
+	// TODO: static void pendingQueueChanged(std::vector<h256> const& _hashes);
+	// TODO: static void miningStarted();
+	// TODO: static void stillMining(unsigned _hashrate);
+	// TODO: static void miningStopped();
+
 private:
 	// Singleton class. Private default ctor and no copying
 	StructuredLogger() = default;
@@ -102,6 +104,8 @@ private:
 
 	bool m_enabled = false;
 	std::string m_timeFormat = "%Y-%m-%dT%H:%M:%S";
+
+	mutable std::ofstream m_out;
 };
 
 }

@@ -85,7 +85,8 @@ ClientModel::ClientModel():
 	connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
 
-	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), std::vector<KeyPair>(), m_client.get()));
+	m_ethAccounts = make_shared<FixedAccountHolder>([=](){return m_client.get();}, std::vector<KeyPair>());
+	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), m_ethAccounts, std::vector<KeyPair>(), m_client.get()));
 	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
 }
 
@@ -280,7 +281,7 @@ void ClientModel::setupState(QVariantMap _state)
 			transactionSequence.push_back(transactionSettings);
 		}
 	}
-	m_web3Server->setAccounts(userAccounts);
+	m_ethAccounts->setAccounts(userAccounts);
 	executeSequence(transactionSequence, accounts, Secret(_state.value("miner").toMap().value("secret").toString().toStdString()));
 }
 
@@ -315,7 +316,6 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 					TransactionSettings stdTransaction = transaction;
 					stdTransaction.gasAuto = true;
 					Address address = deployContract(stdContractCode, stdTransaction);
-					deployedContracts.push_back(address);
 					m_stdContractAddresses[stdTransaction.contractId] = address;
 					m_stdContractNames[address] = stdTransaction.contractId;
 				}
