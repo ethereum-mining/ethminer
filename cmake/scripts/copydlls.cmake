@@ -14,4 +14,5 @@ else () # Debug
     set(DLL ${DLL_DEBUG})
 endif()
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different  "${DLL}" "${DESTINATION}")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${DLL}" "${DESTINATION}")
+
