@@ -74,7 +74,7 @@ void help()
 		<< "Options:" << endl << endl
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "Work farming mode:" << endl
-		<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8080)" << endl
+		<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 		<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
 #endif
 		<< "Benchmarking mode:" << endl
@@ -316,7 +316,7 @@ int main(int argc, char** argv)
 	unsigned benchmarkTrials = 5;
 
 	/// Farm params
-	string farmURL = "http://127.0.0.1:8080";
+	string farmURL = "http://127.0.0.1:8545";
 	unsigned farmRecheckPeriod = 500;
 
 	for (int i = 1; i < argc; ++i)
