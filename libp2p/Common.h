@@ -172,12 +172,13 @@ struct NodeIPEndpoint
 	/// Setting true causes isAllowed to return true for all addresses. (Used by test fixtures)
 	static bool test_allowLocal;
 
+	NodeIPEndpoint() = default;
 	NodeIPEndpoint(bi::address _addr, uint16_t _udp, uint16_t _tcp): address(_addr), udpPort(_udp), tcpPort(_tcp) {}
 	NodeIPEndpoint(RLP const& _r) { interpretRLP(_r); }
 
-	bi::address address;
-	uint16_t udpPort;
-	uint16_t tcpPort;
+	bi::address address = bi::address();
+	uint16_t udpPort = 0;
+	uint16_t tcpPort = 0;
 	
 	operator bi::udp::endpoint() const { return std::move(bi::udp::endpoint(address, udpPort)); }
 	operator bi::tcp::endpoint() const { return std::move(bi::tcp::endpoint(address, tcpPort)); }
