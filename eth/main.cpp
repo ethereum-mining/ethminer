@@ -93,6 +93,7 @@ void interactiveHelp()
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
 		<< "    block  Gives the current block height." << endl
 		<< "    accounts  Gives information on all owned accounts (balances, mining beneficiary and default signer)." << endl
+		<< "    newaccount <name>  Creates a new account with the given name." << endl
 		<< "    transact  Execute a given transaction." << endl
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
@@ -1002,12 +1003,6 @@ int main(int argc, char** argv)
 	KeyManager keyManager;
 	for (auto const& s: passwordsToNote)
 		keyManager.notePassword(s);
-	for (auto const& s: toImport)
-	{
-		keyManager.import(s, "Imported key");
-		if (!signingKey)
-			signingKey = toAddress(s);
-	}
 
 	{
 		RLPStream config(2);
@@ -1103,6 +1098,16 @@ int main(int argc, char** argv)
 		}
 		keyManager.create(masterPassword);
 	}
+
+	for (auto const& s: toImport)
+	{
+		keyManager.import(s, "Imported key (UNSAFE)");
+		if (!signingKey)
+			signingKey = toAddress(s);
+	}
+
+	if (keyManager.accounts().empty())
+		keyManager.import(Secret::random(), "Default key");
 
 	auto toNumber = [&](string const& s) -> unsigned {
 		if (s == "latest")
@@ -1368,9 +1373,36 @@ int main(int argc, char** argv)
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 						<< endl;
 			}
-			else if (c && cmd == "balance")
+			else if (cmd == "newaccount")
 			{
-				cout << "Current balance:" << endl;
+				string name;
+				std::getline(iss, name);
+				auto s = Secret::random();
+				string password;
+				while (password.empty())
+				{
+					password = getPassword("Please enter a password to protect this key (press enter for protection only be the MASTER password/keystore): ");
+					string confirm = getPassword("Please confirm the password by entering it again: ");
+					if (password != confirm)
+					{
+						cout << "Passwords were different. Try again." << endl;
+						password.clear();
+					}
+				}
+				if (!password.empty())
+				{
+					cout << "Enter a hint for this password: " << flush;
+					string hint;
+					std::getline(cin, hint);
+					keyManager.import(s, name, password, hint);
+				}
+				else
+					keyManager.import(s, name);
+				cout << "New account created: " << toAddress(s);
+			}
+			else if (c && cmd == "accounts")
+			{
+				cout << "Accounts:" << endl;
 				u256 total = 0;
 				for (auto const& i: keyManager.accountDetails())
 				{
