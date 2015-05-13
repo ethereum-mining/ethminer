@@ -72,7 +72,6 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 	ret.boundary = _bi.boundary();
 	ret.headerHash = _bi.headerHash(WithoutNonce);
 	ret.seedHash = _bi.seedHash();
-	ret.blockNumber = (uint64_t) _bi.number;
 	return ret;
 }
 
@@ -135,7 +134,7 @@ void Ethash::CPUMiner::workLoop()
 
 	WorkPackage w = work();
 
-	auto dag = EthashAux::full(w.blockNumber);
+	auto dag = EthashAux::full(EthashAux::number(w.seedHash));
 	h256 boundary = w.boundary;
 	unsigned hashCount = 1;
 	for (; !shouldStop(); tryNonce++, hashCount++)
@@ -284,7 +283,7 @@ Ethash::GPUMiner::~GPUMiner()
 bool Ethash::GPUMiner::report(uint64_t _nonce)
 {
 	Nonce n = (Nonce)(u64)_nonce;
-	Result r = EthashAux::eval(work().blockNumber, work().headerHash, n);
+	Result r = EthashAux::eval(EthashAux::number(work().seedHash), work().headerHash, n);
 	if (r.value < work().boundary)
 		return submitProof(Solution{n, r.mixHash});
 	return false;
@@ -310,9 +309,9 @@ void Ethash::GPUMiner::workLoop()
 
 			unsigned device = instances() > 1 ? index() : s_deviceId;
 
-			if (!EthashAux::computeFull(w.blockNumber))
+			if (!EthashAux::computeFull(EthashAux::number(w.seedHash)))
 				return;
-			EthashAux::FullType dag = EthashAux::full(w.blockNumber);
+			EthashAux::FullType dag = EthashAux::full(EthashAux::number(w.seedHash));
 			bytesConstRef dagData = dag->data();
 			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
 		}
