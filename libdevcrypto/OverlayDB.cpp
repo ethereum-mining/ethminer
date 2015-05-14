@@ -38,6 +38,12 @@ OverlayDB::~OverlayDB()
 		cnote << "Closing state DB";
 }
 
+class WriteBatchNoter: public ldb::WriteBatch::Handler
+{
+	virtual void Put(ldb::Slice const& _key, ldb::Slice const& _value) { cnote << "Put" << toHex(bytesConstRef(_key)) << "=>" << toHex(bytesConstRef(_value)); }
+	virtual void Delete(ldb::Slice const& _key) { cnote << "Delete" << toHex(bytesConstRef(_key)); }
+};
+
 void OverlayDB::commit()
 {
 	if (m_db)
@@ -61,16 +67,27 @@ void OverlayDB::commit()
 				}
 		}
 
-		while (true)
+		for (unsigned i = 0; i < 10; ++i)
 		{
 			ldb::Status o = m_db->Write(m_writeOptions, &batch);
 			if (o.ok())
 				break;
-			cwarn << "Error writing to database. Sleeping a while then retrying. If it keeps saying this, free up some space!";
-			this_thread::sleep_for(chrono::milliseconds(500));
+			if (i == 9)
+			{
+				cwarn << "Fail writing to state database. Bombing out.";
+				exit(-1);
+			}
+			cwarn << "Error writing to state database: " << o.ToString();
+			WriteBatchNoter n;
+			batch.Iterate(&n);
+			cwarn << "Sleeping for" << (i + 1) << "seconds, then retrying.";
+			this_thread::sleep_for(chrono::seconds(i + 1));
 		}
-		m_aux.clear();
-		m_main.clear();
+		DEV_WRITE_GUARDED(x_this)
+		{
+			m_aux.clear();
+			m_main.clear();
+		}
 	}
 }
 
