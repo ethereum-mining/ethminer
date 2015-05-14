@@ -24,10 +24,7 @@ public:
 	void free() { m_stack.free(); }
 
 private:
-	llvm::Function* getPopFunc();
-	llvm::Function* getPushFunc();
 	llvm::Function* getGetFunc();
-	llvm::Function* getSetFunc();
 
 	RuntimeManager& m_runtimeManager;
 
