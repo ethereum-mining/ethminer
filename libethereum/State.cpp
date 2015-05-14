@@ -652,7 +652,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 		BOOST_THROW_EXCEPTION(TooManyUncles());
 
 	vector<BlockInfo> rewarded;
-	h256Hash excluded = _bc.allUnclesFrom(m_currentBlock.parentHash);
+	h256Hash excluded = _bc.allKinFrom(m_currentBlock.parentHash, 6);
 	excluded.insert(m_currentBlock.hash());
 
 	for (auto const& i: rlp[2])
@@ -816,7 +816,7 @@ void State::commitToMine(BlockChain const& _bc)
 	{
 		// Find great-uncles (or second-cousins or whatever they are) - children of great-grandparents, great-great-grandparents... that were not already uncles in previous generations.
 //		cout << "Checking " << m_previousBlock.hash << ", parent=" << m_previousBlock.parentHash << endl;
-		h256Hash knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
+		h256Hash knownUncles = _bc.allKinFrom(m_currentBlock.parentHash);
 		auto p = m_previousBlock.parentHash;
 		for (unsigned gen = 0; gen < 6 && p != _bc.genesisHash() && unclesCount < 2; ++gen, p = _bc.details(p).parent)
 		{
