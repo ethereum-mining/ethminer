@@ -441,7 +441,7 @@ int main(int argc, char** argv)
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(bi)->data()) << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(bi.seedHash())->data()) << endl;
 				exit(0);
 			}
 			catch (...)
