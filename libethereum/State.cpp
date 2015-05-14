@@ -62,6 +62,7 @@ OverlayDB State::openDB(std::string _path, WithExisting _we)
 		boost::filesystem::remove_all(_path + "/state");
 
 	ldb::Options o;
+	o.max_open_files = 256;
 	o.create_if_missing = true;
 	ldb::DB* db = nullptr;
 	ldb::DB::Open(o, _path + "/state", &db);
