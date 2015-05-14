@@ -984,11 +984,12 @@ vector<unsigned> BlockChain::withBlockBloom(LogBloom const& _b, unsigned _earlie
 h256Hash BlockChain::allUnclesFrom(h256 const& _parent) const
 {
 	// Get all uncles cited given a parent (i.e. featured as uncles/main in parent, parent + 1, ... parent + 5).
-	h256Hash ret;
 	h256 p = _parent;
+	h256Hash ret = { p };
+	// p and (details(p).parent: i == 5) is likely to be overkill, but can't hurt to be cautious.
 	for (unsigned i = 0; i < 6 && p != m_genesisHash; ++i, p = details(p).parent)
 	{
-		ret.insert(p);		// TODO: check: should this be details(p).parent?
+		ret.insert(details(p).parent);
 		auto b = block(p);
 		for (auto i: RLP(b)[2])
 			ret.insert(sha3(i.data()));

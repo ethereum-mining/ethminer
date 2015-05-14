@@ -650,25 +650,23 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	if (rlp[2].itemCount() > 2)
 		BOOST_THROW_EXCEPTION(TooManyUncles());
 
-	unordered_set<Nonce> nonces = { m_currentBlock.nonce };
 	vector<BlockInfo> rewarded;
-	h256Hash knownUncles = _bc.allUnclesFrom(m_currentBlock.parentHash);
+	h256Hash excluded = _bc.allUnclesFrom(m_currentBlock.parentHash);
+	excluded.insert(m_currentBlock.hash());
 
 	for (auto const& i: rlp[2])
 	{
-		if (knownUncles.count(sha3(i.data())))
-			BOOST_THROW_EXCEPTION(UncleInChain() << errinfo_comment("Uncle in block already mentioned") << errinfo_data(toString(knownUncles)) << errinfo_hash256(sha3(i.data())) );
+		auto h = sha3(i.data());
+		if (excluded.count(h))
+			BOOST_THROW_EXCEPTION(UncleInChain() << errinfo_comment("Uncle in block already mentioned") << errinfo_data(toString(excluded)) << errinfo_hash256(sha3(i.data())));
+		excluded.insert(h);
 
-		BlockInfo uncle = BlockInfo::fromHeader(i.data());
-		if (nonces.count(uncle.nonce))
-			BOOST_THROW_EXCEPTION(DuplicateUncleNonce());
-
+		BlockInfo uncle = BlockInfo::fromHeader(i.data(), CheckEverything,  h);
 		BlockInfo uncleParent(_bc.block(uncle.parentHash));
 		if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
 			BOOST_THROW_EXCEPTION(UncleTooOld());
 		uncle.verifyParent(uncleParent);
 
-		nonces.insert(uncle.nonce);
 //		tdIncrease += uncle.difficulty;
 		rewarded.push_back(uncle);
 	}
