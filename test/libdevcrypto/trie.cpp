@@ -601,7 +601,6 @@ template<typename Trie> void perfTestTrie(char const* _name)
 	}
 }
 
-
 BOOST_AUTO_TEST_CASE(triePerf)
 {
 	if (test::Options::get().performance)
@@ -611,7 +610,6 @@ BOOST_AUTO_TEST_CASE(triePerf)
 		perfTestTrie<SpecificTrieDB<FatGenericTrieDB<MemoryDB>, h256>>("FatGenericTrieDB");
 	}
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()
 
