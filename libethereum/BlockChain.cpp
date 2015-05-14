@@ -639,7 +639,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	}
 
 	try {
-		State canary(_db, *this, bi.hash());
+		State canary(_db, *this, bi.hash(), ImportRequirements::DontHave);
 	}
 	catch (...)
 	{
