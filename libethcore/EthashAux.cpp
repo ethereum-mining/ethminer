@@ -105,11 +105,6 @@ void EthashAux::killCache(h256 const& _s)
 	m_lights.erase(_s);
 }
 
-EthashAux::LightType EthashAux::light(BlockInfo const& _header)
-{
-	return light(_header.seedHash());
-}
-
 EthashAux::LightType EthashAux::light(h256 const& _seedHash)
 {
 	RecursiveGuard l(get()->x_lights);

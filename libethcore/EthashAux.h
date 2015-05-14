@@ -65,7 +65,6 @@ public:
 	static uint64_t number(h256 const& _seedHash);
 	static uint64_t cacheSize(BlockInfo const& _header);
 
-	static LightType light(BlockInfo const& _header);
 	static LightType light(h256 const& _seedHash);
 
 	static const uint64_t NotGenerating = (uint64_t)-1;
