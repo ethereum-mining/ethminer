@@ -21,7 +21,7 @@ namespace jit
 bool optimize(llvm::Module& _module)
 {
 	auto pm = llvm::legacy::PassManager{};
-	//pm.add(llvm::createFunctionInliningPass(2, 2)); // Problem with APInt value bigger than 64bit
+	pm.add(llvm::createFunctionInliningPass(2, 2));
 	pm.add(llvm::createCFGSimplificationPass());
 	pm.add(llvm::createInstructionCombiningPass());
 	pm.add(llvm::createAggressiveDCEPass());
