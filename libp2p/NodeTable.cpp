@@ -95,7 +95,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 	{
 		DEV_GUARDED(x_nodes)
 			clog(NodeTableConnect) << "Sending public key discovery Ping to" << (bi::udp::endpoint)_node.endpoint << "(Advertising:" << (bi::udp::endpoint)m_node.endpoint << ")";
-		DEV_GUARDED(x_pubkDiscoverPings);
+		DEV_GUARDED(x_pubkDiscoverPings)
 			m_pubkDiscoverPings[_node.endpoint.address] = std::chrono::steady_clock::now();
 		ping(_node.endpoint);
 		return move(shared_ptr<NodeEntry>());
