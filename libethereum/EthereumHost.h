@@ -108,7 +108,7 @@ private:
 	virtual void onStarting() { startWorking(); }
 	virtual void onStopping() { stopWorking(); }
 
-	void changeSyncer(EthereumPeer* _ignore);
+	void changeSyncer(EthereumPeer* _ignore, bool _needHelp = true);
 
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
