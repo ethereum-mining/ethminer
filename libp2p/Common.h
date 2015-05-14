@@ -78,8 +78,8 @@ struct InvalidHostIPAddress: virtual dev::Exception {};
 
 struct NetWarn: public LogChannel { static const char* name(); static const int verbosity = 0; };
 struct NetNote: public LogChannel { static const char* name(); static const int verbosity = 1; };
-struct NetImpolite: public LogChannel { static const char* name(); static const int verbosity = 1; };
-struct NetMessageSummary: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct NetImpolite: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct NetMessageSummary: public LogChannel { static const char* name(); static const int verbosity = 3; };
 struct NetConnect: public LogChannel { static const char* name(); static const int verbosity = 10; };
 struct NetMessageDetail: public LogChannel { static const char* name(); static const int verbosity = 5; };
 struct NetTriviaSummary: public LogChannel { static const char* name(); static const int verbosity = 10; };
@@ -87,6 +87,9 @@ struct NetTriviaDetail: public LogChannel { static const char* name(); static co
 struct NetAllDetail: public LogChannel { static const char* name(); static const int verbosity = 13; };
 struct NetRight: public LogChannel { static const char* name(); static const int verbosity = 14; };
 struct NetLeft: public LogChannel { static const char* name(); static const int verbosity = 15; };
+struct NetP2PWarn: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct NetP2PNote: public LogChannel { static const char* name(); static const int verbosity = 6; };
+struct NetP2PConnect: public LogChannel { static const char* name(); static const int verbosity = 10; };
 
 enum PacketType
 {
