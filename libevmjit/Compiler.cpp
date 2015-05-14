@@ -280,6 +280,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			auto d = stack.pop();
 			auto n = stack.pop();
 			auto divByZero = m_builder.CreateICmpEQ(n, Constant::get(0));
+			n = m_builder.CreateSelect(divByZero, Constant::get(1), n); // protect against hardware signal
 			auto r = m_builder.CreateUDiv(d, n);
 			r = m_builder.CreateSelect(divByZero, Constant::get(0), r);
 			stack.push(r);
@@ -292,6 +293,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			auto n = stack.pop();
 			auto divByZero = m_builder.CreateICmpEQ(n, Constant::get(0));
 			auto divByMinusOne = m_builder.CreateICmpEQ(n, Constant::get(-1));
+			n = m_builder.CreateSelect(divByZero, Constant::get(1), n); // protect against hardware signal
 			auto r = m_builder.CreateSDiv(d, n);
 			r = m_builder.CreateSelect(divByZero, Constant::get(0), r);
 			auto dNeg = m_builder.CreateSub(Constant::get(0), d);
@@ -305,6 +307,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			auto d = stack.pop();
 			auto n = stack.pop();
 			auto divByZero = m_builder.CreateICmpEQ(n, Constant::get(0));
+			n = m_builder.CreateSelect(divByZero, Constant::get(1), n); // protect against hardware signal
 			auto r = m_builder.CreateURem(d, n);
 			r = m_builder.CreateSelect(divByZero, Constant::get(0), r);
 			stack.push(r);
@@ -316,6 +319,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			auto d = stack.pop();
 			auto n = stack.pop();
 			auto divByZero = m_builder.CreateICmpEQ(n, Constant::get(0));
+			n = m_builder.CreateSelect(divByZero, Constant::get(1), n); // protect against hardware signal
 			auto r = m_builder.CreateSRem(d, n);
 			r = m_builder.CreateSelect(divByZero, Constant::get(0), r);
 			stack.push(r);
