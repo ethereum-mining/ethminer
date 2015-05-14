@@ -115,26 +115,26 @@ BOOST_AUTO_TEST_CASE(basicGasPricer_notxs)
 
 BOOST_AUTO_TEST_CASE(basicGasPricer_highGasUsage_LowestPrio)
 {
-	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Lowest, 15731292650, 10000000000000);
+	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Lowest, 15731282021, 10000000000000);
 }
 
 BOOST_AUTO_TEST_CASE(basicGasPricer_highGasUsage_LowPrio)
 {
-	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Low, 15731292650, 15734152261884);
+	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Low, 15731282021, 15734152261884);
 }
 
 BOOST_AUTO_TEST_CASE(basicGasPricer_highGasUsage_MediumPrio)
 {
-	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Medium, 15731292650, 20000000000000);
+	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Medium, 15731282021, 20000000000000);
 }
 
 BOOST_AUTO_TEST_CASE(basicGasPricer_highGasUsage_HighPrio)
 {
-	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::High, 15731292650, 24265847738115);
+	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::High, 15731282021, 24265847738115);
 }
 
 BOOST_AUTO_TEST_CASE(basicGasPricer_highGasUsage_HighestPrio)
 {
-	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Highest, 15731292650, 30000000000000);
+	dev::test::executeGasPricerTest("highGasUsage", 30.679, 15.0, "/BlockTests/bcGasPricerTest.json", TransactionPriority::Highest, 15731282021, 30000000000000);
 }
 BOOST_AUTO_TEST_SUITE_END()
