@@ -40,12 +40,23 @@ namespace
 	}
 }
 
-ObjectCache* Cache::getObjectCache(CacheMode _mode, ExecutionEngineListener* _listener)
+ObjectCache* Cache::init(CacheMode _mode, ExecutionEngineListener* _listener)
 {
-	static ObjectCache objectCache;
 	g_mode = _mode;
 	g_listener = _listener;
-	return &objectCache;
+
+	if (g_mode == CacheMode::clear)
+	{
+		Cache::clear();
+		g_mode = CacheMode::off;
+	}
+
+	if (g_mode != CacheMode::off)
+	{
+		static ObjectCache objectCache;
+		return &objectCache;
+	}
+	return nullptr;
 }
 
 void Cache::clear()

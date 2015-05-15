@@ -108,9 +108,6 @@ ExecutionEngine::ExecutionEngine()
 
 	parseOptions();
 
-	if (g_cache == CacheMode::clear)
-		Cache::clear();
-
 	bool preloadCache = g_cache == CacheMode::preload;
 	if (preloadCache)
 		g_cache = CacheMode::on;
@@ -133,8 +130,7 @@ ExecutionEngine::ExecutionEngine()
 	g_ee = (builder.create());
 
 	// TODO: Update cache listener
-	auto objectCache = (g_cache != CacheMode::off && g_cache != CacheMode::clear) ? Cache::getObjectCache(g_cache, nullptr) : nullptr;
-	g_ee->setObjectCache(objectCache);
+	g_ee->setObjectCache(Cache::init(g_cache, nullptr));
 
 	// FIXME: Disabled during API changes
 	//if (preloadCache)
