@@ -45,7 +45,7 @@ public:
 class Cache
 {
 public:
-	static ObjectCache* getObjectCache(CacheMode _mode, ExecutionEngineListener* _listener);
+	static ObjectCache* init(CacheMode _mode, ExecutionEngineListener* _listener);
 	static std::unique_ptr<llvm::Module> getObject(std::string const& id);
 
 	/// Clears cache storage
