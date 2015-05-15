@@ -350,13 +350,13 @@ void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 		StructuralGasEstimator estimator;
 		std::map<ASTNode const*, GasMeter::GasConsumption> gasCosts = estimator.breakToStatementLevel(estimator.performEstimation(*items, std::vector<ASTNode const*>({&sourceUnit})), {&sourceUnit});
 
-		for (auto gasIte = gasCosts.begin(); gasIte != gasCosts.end(); ++gasIte)
+		for (auto gasItem = gasCosts.begin(); gasItem != gasCosts.end(); ++gasItem)
 		{
-			SourceLocation const& location = gasIte->first->getLocation();
-			GasMeter::GasConsumption cost = gasIte->second;
+			SourceLocation const& location = gasItem->first->getLocation();
+			GasMeter::GasConsumption cost = gasItem->second;
 			std::stringstream v;
 			v << cost.value;
-			GasMap* gas = new GasMap(location.start, location.end, QString::fromStdString(v.str()), gasIte->second.isInfinite);
+			GasMap* gas = new GasMap(location.start, location.end, QString::fromStdString(v.str()), cost.isInfinite);
 			m_gasCostsMaps.find(sourceName).value().push_back(QVariant::fromValue(gas));
 		}
 	}
@@ -364,12 +364,9 @@ void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 
 QVariantList CodeModel::gasCostByDocumentId(QString const& _documentId) const
 {
-	auto ite = m_gasCostsMaps.find(_documentId);
-	if (ite != m_gasCostsMaps.end())
-	{
-		auto sourceMapIter = m_gasCostsMaps.find(_documentId);
-		return sourceMapIter.value();
-	}
+	auto gasIter = m_gasCostsMaps.find(_documentId);
+	if (gasIter != m_gasCostsMaps.end())
+		return gasIter.value();
 	else
 		return QVariantList();
 }
