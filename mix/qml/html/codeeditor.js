@@ -216,25 +216,26 @@ setGasCosts = function(_gasCosts)
 {
 	gasCosts = JSON.parse(_gasCosts);
 
-	if (showGasEstimation)
+	if (showingGasEstimation)
 	{
 		displayGasEstimation(false);
 		displayGasEstimation(true);
 	}
 }
 
-var showGasEstimation = false;
+var showingGasEstimation = false;
 var gasMarkText = [];
 var gasMarkRef = {};
 displayGasEstimation = function(show)
 {
 	show = JSON.parse(show);
-	showGasEstimation = show;
+	showingGasEstimation = show;
 	if (show)
 	{
 		var maxGas = 20000;
 		var step = colorGradient.length / maxGas; // 20000 max gas
-		gasMarkRef = [];
+		clearGasMark();
+		gasMarkText = [];
 		gasMarkRef = {};
 		for (var i in gasCosts)
 		{
@@ -257,14 +258,20 @@ displayGasEstimation = function(show)
 	else
 	{
 		CodeMirror.off(editor.getWrapperElement(), "mouseover", listenMouseOver);
-		for (var k in gasMarkText)
-			gasMarkText[k].clear();
+		clearGasMark();
 		if (gasAnnotation)
 		{
 			gasAnnotation.clear();
 			gasAnnotation = null;
 		}
 	}
+}
+
+function clearGasMark()
+{
+	if (gasMarkText)
+		for (var k in gasMarkText)
+			gasMarkText[k].clear();
 }
 
 var gasAnnotation;
