@@ -74,7 +74,7 @@ void help()
 		<< "Options:" << endl << endl
 #if ETH_JSONRPC || !ETH_TRUE
 		<< "Work farming mode:" << endl
-		<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8080)" << endl
+		<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 		<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
 #endif
 		<< "Benchmarking mode:" << endl
@@ -223,6 +223,7 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 	(void)_recheckPeriod;
 #if ETH_JSONRPC || !ETH_TRUE
 	jsonrpc::HttpClient client(_remote);
+
 	Farm rpc(client);
 	GenericFarm<Ethash> f;
 	if (_m == MinerType::CPU)
@@ -254,17 +255,31 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 					current.headerHash = hh;
 					current.seedHash = h256(v[1].asString());
 					current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-					cnote << "Got work package:" << current.headerHash << " < " << current.boundary;
+					cnote << "Got work package:";
+					cnote << "  Header-hash:" << current.headerHash.hex();
+					cnote << "  Seedhash:" << current.seedHash.hex();
+					cnote << "  Target: " << h256(current.boundary).hex();
 					f.setWork(current);
 				}
 				this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
 			}
-			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash << "," << solution.mixHash << "] to" << _remote << "...";
-			bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
-			if (ok)
-				clog(HappyChannel) << "Submitted and accepted.";
+			cnote << "Solution found; Submitting to" << _remote << "...";
+			cnote << "  Nonce:" << solution.nonce.hex();
+			cnote << "  Mixhash:" << solution.mixHash.hex();
+			cnote << "  Header-hash:" << current.headerHash.hex();
+			cnote << "  Seedhash:" << current.seedHash.hex();
+			cnote << "  Target: " << h256(current.boundary).hex();
+			cnote << "  Ethash: " << h256(EthashAux::eval(EthashAux::number(current.seedHash), current.headerHash, solution.nonce).value).hex();
+			if (EthashAux::eval(EthashAux::number(current.seedHash), current.headerHash, solution.nonce).value < current.boundary)
+			{
+				bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
+				if (ok)
+					clog(HappyChannel) << "Submitted and accepted.";
+				else
+					clog(SadChannel) << "Not accepted.";
+			}
 			else
-				clog(SadChannel) << "Not accepted.";
+				cwarn << "FAILURE: GPU gave incorrect result!";
 			current.reset();
 		}
 		catch (jsonrpc::JsonRpcException&)
@@ -301,7 +316,7 @@ int main(int argc, char** argv)
 	unsigned benchmarkTrials = 5;
 
 	/// Farm params
-	string farmURL = "http://127.0.0.1:8080";
+	string farmURL = "http://127.0.0.1:8545";
 	unsigned farmRecheckPeriod = 500;
 
 	for (int i = 1; i < argc; ++i)
@@ -417,7 +432,7 @@ int main(int argc, char** argv)
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
 				bi.nonce = h64(m);
-				auto r = EthashAux::eval(seedHash, powHash, bi.nonce);
+				auto r = EthashAux::eval((uint64_t)bi.number, powHash, bi.nonce);
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
@@ -426,7 +441,7 @@ int main(int argc, char** argv)
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(seedHash)->data()) << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light((uint64_t)bi.number)->data()) << endl;
 				exit(0);
 			}
 			catch (...)

@@ -32,9 +32,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 	if (rejected)
 	{
 		cwarn << "Execution rejected by EVM JIT (gas limit: " << m_gas << "), executing with interpreter";
-		VMFactory::setKind(VMKind::Interpreter);
-		m_fallbackVM = VMFactory::create(m_gas);
-		VMFactory::setKind(VMKind::JIT);
+		m_fallbackVM = VMFactory::create(VMKind::Interpreter, m_gas);
 		auto&& output = m_fallbackVM->go(_ext, _onOp, _step);
 		m_gas = m_fallbackVM->gas(); // copy remaining gas, Executive expects it
 		return output;

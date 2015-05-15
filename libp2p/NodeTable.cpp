@@ -38,7 +38,7 @@ const char* NodeTableAllDetail::name() { return "=P="; }
 const char* NodeTableEgress::name() { return ">>P"; }
 const char* NodeTableIngress::name() { return "<<P"; }
 
-NodeEntry::NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src.id,_pubk)) {}
+NodeEntry::NodeEntry(NodeId const& _src, Public const& _pubk, NodeIPEndpoint const& _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src, _pubk)) {}
 
 NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint):
 	m_node(Node(_alias.pub(), _endpoint)),
@@ -79,7 +79,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 {
 	if (_relation == Known)
 	{
-		shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, _node.endpoint));
+		shared_ptr<NodeEntry> ret(new NodeEntry(m_node.id, _node.id, _node.endpoint));
 		ret->pending = false;
 		DEV_GUARDED(x_nodes)
 			m_nodes[_node.id] = ret;
@@ -93,11 +93,10 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 	// ping address to recover nodeid if nodeid is empty
 	if (!_node.id)
 	{
-		clog(NodeTableConnect) << "Sending public key discovery Ping to" << (bi::udp::endpoint)_node.endpoint << "(Advertising:" << (bi::udp::endpoint)m_node.endpoint << ")";
-		{
-			Guard l(x_pubkDiscoverPings);
+		DEV_GUARDED(x_nodes)
+			clog(NodeTableConnect) << "Sending public key discovery Ping to" << (bi::udp::endpoint)_node.endpoint << "(Advertising:" << (bi::udp::endpoint)m_node.endpoint << ")";
+		DEV_GUARDED(x_pubkDiscoverPings)
 			m_pubkDiscoverPings[_node.endpoint.address] = std::chrono::steady_clock::now();
-		}
 		ping(_node.endpoint);
 		return move(shared_ptr<NodeEntry>());
 	}
@@ -106,7 +105,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 		if (m_nodes.count(_node.id))
 			return m_nodes[_node.id];
 	
-	shared_ptr<NodeEntry> ret(new NodeEntry(m_node, _node.id, _node.endpoint));
+	shared_ptr<NodeEntry> ret(new NodeEntry(m_node.id, _node.id, _node.endpoint));
 	DEV_GUARDED(x_nodes)
 		m_nodes[_node.id] = ret;
 	clog(NodeTableConnect) << "addNode pending for" << _node.endpoint;
@@ -288,7 +287,10 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 
 void NodeTable::ping(NodeIPEndpoint _to) const
 {
-	PingNode p(m_node.endpoint, _to);
+	NodeIPEndpoint src;
+	DEV_GUARDED(x_nodes)
+		src = m_node.endpoint;
+	PingNode p(src, _to);
 	p.sign(m_secret);
 	m_socketPointer->send(p);
 }
@@ -466,9 +468,12 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 				}
 				
 				// update our endpoint address and UDP port
-				if ((!m_node.endpoint || !m_node.endpoint.isAllowed()) && isPublicAddress(in.destination.address))
-					m_node.endpoint.address = in.destination.address;
-				m_node.endpoint.udpPort = in.destination.udpPort;
+				DEV_GUARDED(x_nodes)
+				{
+					if ((!m_node.endpoint || !m_node.endpoint.isAllowed()) && isPublicAddress(in.destination.address))
+						m_node.endpoint.address = in.destination.address;
+					m_node.endpoint.udpPort = in.destination.udpPort;
+				}
 				
 				clog(NodeTableConnect) << "PONG from " << nodeid << _from;
 				break;

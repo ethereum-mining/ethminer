@@ -600,7 +600,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			if (unknowns > 0)
 			{
 				host()->m_man.resetToChain(m_syncingNeededBlocks);
-				host()->changeSyncer(this);
+				host()->changeSyncer(this, false);
 				transition(Asking::Blocks);
 			}
 			return true;
