@@ -1,29 +1,20 @@
-#include "Runtime.h"
-
+#include "ExecutionContext.h"
 #include <cassert>
 
 namespace dev
 {
-namespace eth
+namespace evmjit
 {
-namespace jit
-{
-
-void Runtime::init(RuntimeData* _data, Env* _env)
-{
-	m_data = _data;
-	m_env = _env;
-}
 
 extern "C" void ext_free(void* _data) noexcept;
 
-Runtime::~Runtime()
+ExecutionContext::~ExecutionContext()
 {
 	if (m_memData)
 		ext_free(m_memData); // Use helper free to check memory leaks
 }
 
-bytes_ref Runtime::getReturnData() const
+bytes_ref ExecutionContext::getReturnData() const
 {
 	auto data = m_data->callData;
 	auto size = static_cast<size_t>(m_data->callDataSize);
@@ -38,6 +29,5 @@ bytes_ref Runtime::getReturnData() const
 	return bytes_ref{data, size};
 }
 
-}
 }
 }

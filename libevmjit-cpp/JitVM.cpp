@@ -54,8 +54,8 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 	m_data.codeSize 	= _ext.code.size();
 	m_data.codeHash		= eth2llvm(sha3(_ext.code));
 
-	auto env = reinterpret_cast<Env*>(&_ext);
-	auto exitCode = jit::ExecutionEngine::run(m_context, &m_data, env);
+	m_context.init(m_data, reinterpret_cast<Env*>(&_ext));
+	auto exitCode = jit::ExecutionEngine::run(m_context);
 	switch (exitCode)
 	{
 	case ReturnCode::Suicide:

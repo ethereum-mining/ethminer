@@ -11,6 +11,7 @@ set(SOURCES
     ${EVMJIT_INCLUDE_DIR}/evmjit/DataTypes.h
     Endianness.cpp		Endianness.h
     ExecStats.cpp		ExecStats.h
+    ExecutionContext.cpp ExecutionContext.h
     ExecutionEngine.cpp	ExecutionEngine.h
     Ext.cpp				Ext.h
     GasMeter.cpp		GasMeter.h
@@ -19,7 +20,6 @@ set(SOURCES
     JIT.cpp             ${EVMJIT_INCLUDE_DIR}/evmjit/JIT.h
     Memory.cpp			Memory.h
     Optimizer.cpp		Optimizer.h
-    Runtime.cpp			Runtime.h
     RuntimeData.h
     RuntimeManager.cpp	RuntimeManager.h
     Stack.cpp			Stack.h
