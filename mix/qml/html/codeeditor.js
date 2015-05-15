@@ -283,7 +283,7 @@ function listenMouseOver(e)
 		{
 			if (gasAnnotation)
 				gasAnnotation.clear();
-			var cl = getClass(node);
+			var cl = getGasCostClass(node);
 			var gasTitle = gasMarkRef[cl].value.isInfinite ? "infinite" : gasMarkRef[cl].value.gas;
 			gasTitle = gasTitle + " gas";
 			gasAnnotation = editor.addLineWidget(gasMarkRef[cl].line + 1, makeGasCostMarker(gasTitle), { coverGutter: false, above: true });
@@ -296,7 +296,7 @@ function listenMouseOver(e)
 	}
 }
 
-function getClass(node)
+function getGasCostClass(node)
 {
 	var classes = node.className.split(" ");
 	for (var k in classes)
