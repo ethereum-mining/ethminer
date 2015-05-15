@@ -144,7 +144,12 @@ Item {
 		function compilationComplete()
 		{
 			if (editorBrowser)
+			{
 				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
+				parent.displayGasEstimation(gasEstimationAction.checked);
+			}
+
+
 		}
 
 		function compilationError(error, sourceName)

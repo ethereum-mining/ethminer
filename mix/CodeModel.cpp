@@ -43,7 +43,6 @@
 #include "CodeHighlighter.h"
 #include "FileIo.h"
 #include "CodeModel.h"
-#include "QBigInt.h"
 
 using namespace dev::mix;
 
