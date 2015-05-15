@@ -288,6 +288,7 @@ Item {
 						messageDialog.doc = editorListModel.get(index);
 						messageDialog.open();
 					}
+					loader.item.displayGasEstimation(gasEstimationAction.checked);
 				}
 			}
 			Component.onCompleted: {
