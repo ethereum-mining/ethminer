@@ -189,7 +189,6 @@ CodeModel::CodeModel():
 	qRegisterMetaType<QContractDefinition*>("QContractDefinition*");
 	qRegisterMetaType<QFunctionDefinition*>("QFunctionDefinition*");
 	qRegisterMetaType<QVariableDeclaration*>("QVariableDeclaration*");
-	//qRegisterMetaType<GasMap>("GasMap");
 	qmlRegisterType<QFunctionDefinition>("org.ethereum.qml", 1, 0, "QFunctionDefinition");
 	qmlRegisterType<QVariableDeclaration>("org.ethereum.qml", 1, 0, "QVariableDeclaration");
 }
@@ -325,7 +324,6 @@ void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 	m_gasCostsMaps.clear();
 	for (std::string n: _cs.getContractNames())
 	{
-
 		ContractDefinition const& contractDefinition = _cs.getContractDefinition(n);
 		QString sourceName = QString::fromStdString(*contractDefinition.getLocation().sourceName);
 
@@ -344,7 +342,9 @@ void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 		{
 			SourceLocation location = gasIte->first->getLocation();
 			GasMeter::GasConsumption cost = gasIte->second;
-			GasMap* gas = new GasMap(location.start, location.end, (new QBigInt(cost.value))->value());
+			std::stringstream v;
+			v << cost.value;
+			GasMap* gas = new GasMap(location.start, location.end, QString::fromStdString(v.str()), gasIte->second.isInfinite);
 			m_gasCostsMaps.find(sourceName).value().push_back(QVariant::fromValue(gas));
 		}
 	}
@@ -355,8 +355,6 @@ QVariantList CodeModel::gasCostByDocumentId(QString const& _documentId) const
 	if (m_gasCostsMaps.contains(_documentId))
 	{
 		auto sourceMapIter = m_gasCostsMaps.find(_documentId);
-		int gg = sourceMapIter.value().size();
-		Q_UNUSED(gg);
 		return sourceMapIter.value();
 	}
 	else

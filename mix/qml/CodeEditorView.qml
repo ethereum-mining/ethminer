@@ -168,6 +168,13 @@ Item {
 			editors.itemAt(i).item.setFontSize(size);
 	}
 
+	function displayGasEstimation(checked)
+	{
+		var editor = getEditor(currentDocumentId);
+		if (editor)
+			editor.displayGasEstimation(checked);
+	}
+
 	Component.onCompleted: projectModel.codeEditor = codeEditorView;
 
 	Connections {
@@ -180,7 +187,7 @@ Item {
 			var gasCosts = codeModel.gasCostByDocumentId(currentDocumentId);
 			var editor = getEditor(currentDocumentId);
 			if (editor)
-				editor.displayGasCosts(gasCosts);
+				editor.setGasCosts(gasCosts);
 		}
 	}
 
