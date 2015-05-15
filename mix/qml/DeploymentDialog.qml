@@ -300,8 +300,8 @@ Dialog {
 					{
 						Layout.preferredWidth: 350
 						id: registrarAddr
-						text: "ab69f864e49fc4294d18355c4bafb0b91b5e629b"
-						visible: false
+						text: "c6d9d2cd449a754c494264e1809c50e34d64562b"
+
 					}
 
 					DefaultLabel

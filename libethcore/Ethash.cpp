@@ -317,7 +317,7 @@ void Ethash::GPUMiner::workLoop()
 			}
 			if (shouldStop())
 				return;
-			EthashAux::FullType dag = EthashAux::full(EthashAux::number(w.seedHash));
+			EthashAux::FullType dag = EthashAux::full(EthashAux::number(w.seedHash));		// todo , , false
 			bytesConstRef dagData = dag->data();
 			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
 		}
