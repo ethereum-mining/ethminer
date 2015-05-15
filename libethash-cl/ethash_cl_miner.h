@@ -30,6 +30,7 @@ public:
 
 public:
 	ethash_cl_miner();
+	~ethash_cl_miner();
 
 	static unsigned get_num_platforms();
 	static unsigned get_num_devices(unsigned _platformId = 0);
