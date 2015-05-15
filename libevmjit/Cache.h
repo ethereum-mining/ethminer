@@ -12,9 +12,7 @@ namespace llvm
 
 namespace dev
 {
-namespace eth
-{
-namespace jit
+namespace evmjit
 {
 class ExecutionEngineListener;
 
@@ -55,6 +53,5 @@ public:
 	static void preload(llvm::ExecutionEngine& _ee, std::unordered_map<std::string, uint64_t>& _funcCache);
 };
 
-}
 }
 }
