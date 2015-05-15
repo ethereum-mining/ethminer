@@ -83,7 +83,7 @@ void EthereumHost::noteNeedsSyncing(EthereumPeer* _who)
 		_who->attemptSync();
 }
 
-void EthereumHost::changeSyncer(EthereumPeer* _syncer)
+void EthereumHost::changeSyncer(EthereumPeer* _syncer, bool _needHelp)
 {
 	if (_syncer)
 		clog(NetAllDetail) << "Changing syncer to" << _syncer->session()->socketId();
@@ -93,7 +93,7 @@ void EthereumHost::changeSyncer(EthereumPeer* _syncer)
 	m_syncer = _syncer;
 	if (isSyncing())
 	{
-		if (_syncer->m_asking == Asking::Blocks)
+		if (_needHelp && _syncer->m_asking == Asking::Blocks)
 			for (auto j: peerSessions())
 			{
 				auto e = j.first->cap<EthereumPeer>().get();

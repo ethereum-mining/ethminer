@@ -102,10 +102,13 @@ BOOST_AUTO_TEST_CASE(hex_encoded_securetrie_test)
 		{
 			next_permutation(ss.begin(), ss.end());
 			MemoryDB m;
+			EnforceRefs r(m, true);
 			GenericTrieDB<MemoryDB> t(&m);
 			MemoryDB hm;
+			EnforceRefs hr(hm, true);
 			HashedGenericTrieDB<MemoryDB> ht(&hm);
 			MemoryDB fm;
+			EnforceRefs fr(fm, true);
 			FatGenericTrieDB<MemoryDB> ft(&fm);
 			t.init();
 			ht.init();
@@ -164,10 +167,13 @@ BOOST_AUTO_TEST_CASE(trie_test_anyorder)
 		{
 			next_permutation(ss.begin(), ss.end());
 			MemoryDB m;
+			EnforceRefs r(m, true);
 			GenericTrieDB<MemoryDB> t(&m);
 			MemoryDB hm;
+			EnforceRefs hr(hm, true);
 			HashedGenericTrieDB<MemoryDB> ht(&hm);
 			MemoryDB fm;
+			EnforceRefs fr(fm, true);
 			FatGenericTrieDB<MemoryDB> ft(&fm);
 			t.init();
 			ht.init();
@@ -244,10 +250,13 @@ BOOST_AUTO_TEST_CASE(trie_tests_ordered)
 		}
 
 		MemoryDB m;
+		EnforceRefs r(m, true);
 		GenericTrieDB<MemoryDB> t(&m);
 		MemoryDB hm;
+		EnforceRefs hr(hm, true);
 		HashedGenericTrieDB<MemoryDB> ht(&hm);
 		MemoryDB fm;
+		EnforceRefs fr(fm, true);
 		FatGenericTrieDB<MemoryDB> ft(&fm);
 		t.init();
 		ht.init();
@@ -360,6 +369,7 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 #endif
 	{
 		MemoryDB m;
+		EnforceRefs r(m, true);
 		GenericTrieDB<MemoryDB> d(&m);
 		d.init();	// initialise as empty tree.
 		MemTrie t;

@@ -47,6 +47,9 @@ const char* NetTriviaDetail::name() { return EthYellow "N" EthCoal " 0"; }
 const char* NetAllDetail::name() { return EthYellow "N" EthCoal " A"; }
 const char* NetRight::name() { return EthYellow "N" EthGreen "->"; }
 const char* NetLeft::name() { return EthYellow "N" EthNavy "<-"; }
+const char* NetP2PWarn::name() { return EthYellow "N" EthRed " X"; }
+const char* NetP2PNote::name() { return EthYellow "N" EthBlue " i"; }
+const char* NetP2PConnect::name() { return EthYellow "N" EthYellow " C"; }
 #else
 const char* NetWarn::name() { return EthYellow "⧎" EthRed " ✘"; }
 const char* NetImpolite::name() { return EthYellow "⧎" EthRed " !"; }
@@ -59,6 +62,9 @@ const char* NetTriviaDetail::name() { return EthYellow "⧎" EthCoal " ◍"; }
 const char* NetAllDetail::name() { return EthYellow "⧎" EthCoal " ●"; }
 const char* NetRight::name() { return EthYellow "⧎" EthGreen "▬▶"; }
 const char* NetLeft::name() { return EthYellow "⧎" EthNavy "◀▬"; }
+const char* NetP2PWarn::name() { return EthYellow "⧎" EthRed " ✘"; }
+const char* NetP2PNote::name() { return EthYellow "⧎" EthBlue " ℹ"; }
+const char* NetP2PConnect::name() { return EthYellow "⧎" EthYellow " ▢"; }
 #endif
 
 bool p2p::isPublicAddress(std::string const& _addressToCheck)

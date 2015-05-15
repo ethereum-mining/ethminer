@@ -33,10 +33,12 @@ namespace dev
 namespace eth
 {
 
+class AccountHolder;
+
 class JSConsole
 {
 public:
-	JSConsole(WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
+	JSConsole(WebThreeDirect& _web3, std::shared_ptr<AccountHolder> const& _accounts);
 	~JSConsole();
 	void repl() const;
 

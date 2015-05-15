@@ -93,6 +93,7 @@ void interactiveHelp()
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
 		<< "    block  Gives the current block height." << endl
 		<< "    accounts  Gives information on all owned accounts (balances, mining beneficiary and default signer)." << endl
+		<< "    newaccount <name>  Creates a new account with the given name." << endl
 		<< "    transact  Execute a given transaction." << endl
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
@@ -158,6 +159,11 @@ void help()
 		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    --network-id <n> Only connect to other hosts with this network id (default:0)." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
+		<< endl
+		<< "Client structured logging:" << endl
+		<< "    --structured-logging  Enable structured logging (default output to stdout)." << endl
+		<< "    --structured-logging-format <format>  Set the structured logging time format." << endl
+		<< "    --structured-logging-url <URL>  Set the structured logging destination (currently only file:// supported)." << endl
 #if ETH_JSONRPC || !ETH_TRUE
 		<< endl
 		<< "Work farming mode:" << endl
@@ -542,7 +548,7 @@ int main(int argc, char** argv)
 	string publicIP;
 	string remoteHost;
 	unsigned short remotePort = 30303;
-	unsigned peers = 5;
+	unsigned peers = 11;
 	bool bootstrap = false;
 	unsigned networkId = 0;
 
@@ -573,7 +579,7 @@ int main(int argc, char** argv)
 	bool useConsole = false;
 
 	/// Farm params
-	string farmURL = "http://127.0.0.1:8080";
+	string farmURL = "http://127.0.0.1:8545";
 	unsigned farmRecheckPeriod = 500;
 
 	/// Wallet password stuff
@@ -806,8 +812,11 @@ int main(int argc, char** argv)
 			structuredLoggingFormat = string(argv[++i]);
 		else if (arg == "--structured-logging")
 			structuredLogging = true;
-		else if (arg == "--structured-logging-destination" && i + 1 < argc)
+		else if (arg == "--structured-logging-url" && i + 1 < argc)
+		{
+			structuredLogging = true;
 			structuredLoggingURL = argv[++i];
+		}
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
@@ -848,7 +857,7 @@ int main(int argc, char** argv)
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
 				bi.nonce = h64(m);
-				auto r = EthashAux::eval(seedHash, powHash, bi.nonce);
+				auto r = EthashAux::eval((uint64_t)bi.number, powHash, bi.nonce);
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
@@ -857,7 +866,7 @@ int main(int argc, char** argv)
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(seedHash)->data()) << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light((uint64_t)bi.number)->data()) << endl;
 				exit(0);
 			}
 			catch (...)
@@ -994,12 +1003,6 @@ int main(int argc, char** argv)
 	KeyManager keyManager;
 	for (auto const& s: passwordsToNote)
 		keyManager.notePassword(s);
-	for (auto const& s: toImport)
-	{
-		keyManager.import(s, "Imported key");
-		if (!signingKey)
-			signingKey = toAddress(s);
-	}
 
 	{
 		RLPStream config(2);
@@ -1033,6 +1036,28 @@ int main(int argc, char** argv)
 	if (!clientName.empty())
 		clientName += "/";
 
+	string logbuf;
+	bool silence = false;
+	std::string additional;
+	g_logPost = [&](std::string const& a, char const*){
+		if (silence)
+			logbuf += a + "\n";
+		else
+			cout << "\r           \r" << a << endl << additional << flush;
+	};
+
+	auto getPassword = [&](string const& prompt){
+		auto s = silence;
+		silence = true;
+		cout << endl;
+		string ret = dev::getPassword(prompt);
+		silence = s;
+		return ret;
+	};
+	auto getAccountPassword = [&](Address const& a){
+		return getPassword("Enter password for address " + keyManager.accountDetails()[a].first + " (" + a.abridged() + "; hint:" + keyManager.accountDetails()[a].second + "): ");
+	};
+
 	StructuredLogger::get().initialize(structuredLogging, structuredLoggingFormat, structuredLoggingURL);
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
@@ -1042,12 +1067,47 @@ int main(int argc, char** argv)
 		clientImplString,
 		dbPath,
 		killChain,
-		nodeMode == NodeMode::Full ? set<string>{"eth", "shh"} : set<string>(),
+		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
 		netPrefs,
 		&nodesState);
 	
 	if (mode == OperationMode::DAGInit)
 		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
+
+	if (keyManager.exists())
+		while (masterPassword.empty())
+		{
+			masterPassword = getPassword("Please enter your MASTER password: ");
+			if (!keyManager.load(masterPassword))
+			{
+				cout << "Password invalid. Try again." << endl;
+				masterPassword.clear();
+			}
+		}
+	else
+	{
+		while (masterPassword.empty())
+		{
+			masterPassword = getPassword("Please enter a MASTER password to protect your key store (make it strong!): ");
+			string confirm = getPassword("Please confirm the password by entering it again: ");
+			if (masterPassword != confirm)
+			{
+				cout << "Passwords were different. Try again." << endl;
+				masterPassword.clear();
+			}
+		}
+		keyManager.create(masterPassword);
+	}
+
+	for (auto const& s: toImport)
+	{
+		keyManager.import(s, "Imported key (UNSAFE)");
+		if (!signingKey)
+			signingKey = toAddress(s);
+	}
+
+	if (keyManager.accounts().empty())
+		keyManager.import(Secret::random(), "Default key");
 
 	auto toNumber = [&](string const& s) -> unsigned {
 		if (s == "latest")
@@ -1137,53 +1197,13 @@ int main(int argc, char** argv)
 	if (remoteHost.size())
 		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 
-	if (keyManager.exists())
-		while (masterPassword.empty())
-		{
-			masterPassword = getPassword("Please enter your MASTER password: ");
-			if (!keyManager.load(masterPassword))
-			{
-				cout << "Password invalid. Try again." << endl;
-				masterPassword.clear();
-			}
-		}
-	else
-	{
-		while (masterPassword.empty())
-		{
-			masterPassword = getPassword("Please enter a MASTER password to protect your key store (make it strong!): ");
-			string confirm = getPassword("Please confirm the password by entering it again: ");
-			if (masterPassword != confirm)
-			{
-				cout << "Passwords were different. Try again." << endl;
-				masterPassword.clear();
-			}
-		}
-		keyManager.create(masterPassword);
-	}
-
-	string logbuf;
-	bool silence = false;
-	std::string additional;
-	g_logPost = [&](std::string const& a, char const*) { if (silence) logbuf += a + "\n"; else cout << "\r           \r" << a << endl << additional << flush; };
-
-	// TODO: give hints &c.
-	auto getPassword = [&](Address const& a){
-		auto s = silence;
-		silence = true;
-		cout << endl;
-		string ret = dev::getPassword("Enter password for address " + keyManager.accountDetails()[a].first + " (" + a.abridged() + "; hint:" + keyManager.accountDetails()[a].second + "): ");
-		silence = s;
-		return ret;
-	};
-
 #if ETH_JSONRPC || !ETH_TRUE
 	shared_ptr<WebThreeStubServer> jsonrpcServer;
 	unique_ptr<jsonrpc::AbstractServerConnector> jsonrpcConnector;
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getPassword, keyManager), vector<KeyPair>()));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>()));
 		jsonrpcServer->StartListening();
 	}
 #endif
@@ -1327,7 +1347,7 @@ int main(int argc, char** argv)
 				if (jsonrpc < 0)
 					jsonrpc = SensibleHttpPort;
 				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getPassword, keyManager), vector<KeyPair>()));
+				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>()));
 				jsonrpcServer->StartListening();
 			}
 			else if (cmd == "jsonstop")
@@ -1353,9 +1373,36 @@ int main(int argc, char** argv)
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 						<< endl;
 			}
-			else if (c && cmd == "balance")
+			else if (cmd == "newaccount")
 			{
-				cout << "Current balance:" << endl;
+				string name;
+				std::getline(iss, name);
+				auto s = Secret::random();
+				string password;
+				while (password.empty())
+				{
+					password = getPassword("Please enter a password to protect this key (press enter for protection only be the MASTER password/keystore): ");
+					string confirm = getPassword("Please confirm the password by entering it again: ");
+					if (password != confirm)
+					{
+						cout << "Passwords were different. Try again." << endl;
+						password.clear();
+					}
+				}
+				if (!password.empty())
+				{
+					cout << "Enter a hint for this password: " << flush;
+					string hint;
+					std::getline(cin, hint);
+					keyManager.import(s, name, password, hint);
+				}
+				else
+					keyManager.import(s, name);
+				cout << "New account created: " << toAddress(s);
+			}
+			else if (c && cmd == "accounts")
+			{
+				cout << "Accounts:" << endl;
 				u256 total = 0;
 				for (auto const& i: keyManager.accountDetails())
 				{
@@ -1479,7 +1526,7 @@ int main(int argc, char** argv)
 						try
 						{
 							Address dest = h160(fromHex(hexAddr, WhenError::Throw));
-							c->submitTransaction(keyManager.secret(signingKey, [&](){ return getPassword(signingKey); }), amount, dest, bytes(), minGas);
+							c->submitTransaction(keyManager.secret(signingKey, [&](){ return getAccountPassword(signingKey); }), amount, dest, bytes(), minGas);
 						}
 						catch (BadHexCharacter& _e)
 						{
@@ -1548,7 +1595,7 @@ int main(int argc, char** argv)
 					else if (gas < minGas)
 						cwarn << "Minimum gas amount is" << minGas;
 					else
-						c->submitTransaction(keyManager.secret(signingKey, [&](){ return getPassword(signingKey); }), endowment, init, gas, gasPrice);
+						c->submitTransaction(keyManager.secret(signingKey, [&](){ return getAccountPassword(signingKey); }), endowment, init, gas, gasPrice);
 				}
 				else
 					cwarn << "Require parameters: contract ENDOWMENT GASPRICE GAS CODEHEX";
@@ -1750,7 +1797,7 @@ int main(int argc, char** argv)
 		if (useConsole)
 		{
 #if ETH_JSCONSOLE
-			JSConsole console(web3, vector<KeyPair>({sigKey}));
+			JSConsole console(web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager));
 			while (!g_exit)
 			{
 				console.repl();

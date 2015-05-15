@@ -244,7 +244,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 		m_sessions[_id] = ps;
 	}
 	
-	clog(NetNote) << "p2p.host.peer.register" << _id;
+	clog(NetP2PNote) << "p2p.host.peer.register" << _id;
 	StructuredLogger::p2pConnected(_id.abridged(), ps->m_peer->endpoint, ps->m_peer->m_lastConnected, clientVersion, peerCount());
 }
 
@@ -252,7 +252,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 {
 	if (_e == NodeEntryAdded)
 	{
-		clog(NetNote) << "p2p.host.nodeTable.events.nodeEntryAdded " << _n;
+		clog(NetP2PNote) << "p2p.host.nodeTable.events.nodeEntryAdded " << _n;
 		// only add iff node is in node table
 		if (Node n = m_nodeTable->node(_n))
 		{
@@ -268,7 +268,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 				{
 					p.reset(new Peer(n));
 					m_peers[_n] = p;
-					clog(NetNote) << "p2p.host.peers.events.peerAdded " << _n << p->endpoint;
+					clog(NetP2PNote) << "p2p.host.peers.events.peerAdded " << _n << p->endpoint;
 				}
 			}
 			if (peerSlotsAvailable(Egress))
@@ -277,7 +277,7 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 	}
 	else if (_e == NodeEntryDropped)
 	{
-		clog(NetNote) << "p2p.host.nodeTable.events.NodeEntryDropped " << _n;
+		clog(NetP2PNote) << "p2p.host.nodeTable.events.NodeEntryDropped " << _n;
 		RecursiveGuard l(x_sessions);
 		m_peers.erase(_n);
 	}
@@ -647,14 +647,14 @@ void Host::startedWorking()
 			runAcceptor();
 	}
 	else
-		clog(NetNote) << "p2p.start.notice id:" << id() << "TCP Listen port is invalid or unavailable.";
+		clog(NetP2PNote) << "p2p.start.notice id:" << id() << "TCP Listen port is invalid or unavailable.";
 
 	shared_ptr<NodeTable> nodeTable(new NodeTable(m_ioService, m_alias, NodeIPEndpoint(bi::address::from_string(listenAddress()), listenPort(), listenPort())));
 	nodeTable->setEventHandler(new HostNodeTableHandler(*this));
 	m_nodeTable = nodeTable;
 	restoreNetwork(&m_restoreNetwork);
 
-	clog(NetNote) << "p2p.started id:" << id();
+	clog(NetP2PNote) << "p2p.started id:" << id();
 
 	run(boost::system::error_code());
 }

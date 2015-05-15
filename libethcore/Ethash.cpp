@@ -36,6 +36,7 @@
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcrypto/FileSystem.h>
 #include <libethash/ethash.h>
+#include <libethash/internal.h>
 #if ETH_ETHASHCL || !ETH_TRUE
 #include <libethash-cl/ethash_cl_miner.h>
 #endif
@@ -74,9 +75,9 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 	return ret;
 }
 
-void Ethash::prep(BlockInfo const& _header)
+void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
 {
-	EthashAux::full(_header);
+	EthashAux::full((unsigned)_header.number, _f);
 }
 
 bool Ethash::preVerify(BlockInfo const& _header)
@@ -87,10 +88,10 @@ bool Ethash::preVerify(BlockInfo const& _header)
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
 	return !!ethash_quick_check_difficulty(
-		_header.headerHash(WithoutNonce).data(),
+		(ethash_h256_t const*)_header.headerHash(WithoutNonce).data(),
 		(uint64_t)(u64)_header.nonce,
-		_header.mixHash.data(),
-		boundary.data());
+		(ethash_h256_t const*)_header.mixHash.data(),
+		(ethash_h256_t const*)boundary.data());
 }
 
 bool Ethash::verify(BlockInfo const& _header)
@@ -133,17 +134,14 @@ void Ethash::CPUMiner::workLoop()
 
 	WorkPackage w = work();
 
-	auto p = EthashAux::params(w.seedHash);
-	auto dag = EthashAux::full(w.seedHash);
-	auto dagPointer = dag->data.data();
-	uint8_t const* headerHashPointer = w.headerHash.data();
+	auto dag = EthashAux::full(EthashAux::number(w.seedHash));
 	h256 boundary = w.boundary;
 	unsigned hashCount = 1;
 	for (; !shouldStop(); tryNonce++, hashCount++)
 	{
-		ethash_compute_full(&ethashReturn, dagPointer, &p, headerHashPointer, tryNonce);
-		h256 value = h256(ethashReturn.result, h256::ConstructFromPointer);
-		if (value <= boundary && submitProof(Solution{(Nonce)(u64)tryNonce, h256(ethashReturn.mix_hash, h256::ConstructFromPointer)}))
+		ethashReturn = ethash_full_compute(dag->full, *(ethash_h256_t*)w.headerHash.data(), tryNonce);
+		h256 value = h256((uint8_t*)&ethashReturn.result, h256::ConstructFromPointer);
+		if (value <= boundary && submitProof(Solution{(Nonce)(u64)tryNonce, h256((uint8_t*)&ethashReturn.mix_hash, h256::ConstructFromPointer)}))
 			break;
 		if (!(hashCount % 1000))
 			accumulateHashes(1000);
@@ -285,7 +283,7 @@ Ethash::GPUMiner::~GPUMiner()
 bool Ethash::GPUMiner::report(uint64_t _nonce)
 {
 	Nonce n = (Nonce)(u64)_nonce;
-	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
+	Result r = EthashAux::eval(EthashAux::number(work().seedHash), work().headerHash, n);
 	if (r.value < work().boundary)
 		return submitProof(Solution{n, r.mixHash});
 	return false;
@@ -302,6 +300,7 @@ void Ethash::GPUMiner::workLoop()
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		WorkPackage w = work();
+		cnote << "workLoop" << !!m_miner << m_minerSeed << w.seedHash;
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
 			m_minerSeed = w.seedHash;
@@ -311,8 +310,16 @@ void Ethash::GPUMiner::workLoop()
 
 			unsigned device = instances() > 1 ? index() : s_deviceId;
 
-			EthashAux::FullType dag = EthashAux::full(m_minerSeed);
-			m_miner->init(dag->data.data(), dag->data.size(), 32, s_platformId, device);
+			while (EthashAux::computeFull(EthashAux::number(w.seedHash)) != 100 && !shouldStop())
+			{
+				cnote << "Awaiting DAG" << EthashAux::computeFull(EthashAux::number(w.seedHash));
+				this_thread::sleep_for(chrono::milliseconds(500));
+			}
+			if (shouldStop())
+				return;
+			EthashAux::FullType dag = EthashAux::full(EthashAux::number(w.seedHash));
+			bytesConstRef dagData = dag->data();
+			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
