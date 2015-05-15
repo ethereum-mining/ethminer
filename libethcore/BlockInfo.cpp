@@ -228,7 +228,10 @@ u256 BlockInfo::selectGasLimit(BlockInfo const& _parent) const
 		return c_genesisGasLimit;
 	else
 		// target minimum of 3141592
-		return max<u256>(max<u256>(c_minGasLimit, 3141592), _parent.gasLimit - _parent.gasLimit / c_gasLimitBoundDivisor + 1 + (_parent.gasUsed * 6 / 5) / c_gasLimitBoundDivisor);
+		if (_parent.gasLimit < c_genesisGasLimit)
+			return min<u256>(c_genesisGasLimit, _parent.gasLimit + _parent.gasLimit / c_gasLimitBoundDivisor - 1);
+		else
+			return max<u256>(c_genesisGasLimit, _parent.gasLimit - _parent.gasLimit / c_gasLimitBoundDivisor + 1 + (_parent.gasUsed * 6 / 5) / c_gasLimitBoundDivisor);
 }
 
 u256 BlockInfo::calculateDifficulty(BlockInfo const& _parent) const
