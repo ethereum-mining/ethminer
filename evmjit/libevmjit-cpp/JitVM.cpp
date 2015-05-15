@@ -7,7 +7,6 @@
 #include <libdevcrypto/SHA3.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
-#include <evmjit/libevmjit/ExecutionEngine.h>
 
 #include "Utils.h"
 
@@ -56,7 +55,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 	m_data.codeHash		= eth2llvm(sha3(_ext.code));
 
 	auto env = reinterpret_cast<Env*>(&_ext);
-	auto exitCode = m_engine.run(&m_data, env);
+	auto exitCode = jit::ExecutionEngine::run(m_context, &m_data, env);
 	switch (exitCode)
 	{
 	case ReturnCode::Suicide:
@@ -79,7 +78,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 	}
 
 	m_gas = m_data.gas; // TODO: Remove m_gas field
-	return {std::get<0>(m_engine.returnData), std::get<1>(m_engine.returnData)};
+	return {std::get<0>(m_context.returnData), std::get<1>(m_context.returnData)};
 }
 
 }
