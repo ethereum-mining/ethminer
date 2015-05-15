@@ -3,8 +3,8 @@
 
 extern "C"
 {
-
 using namespace dev::eth::jit;
+using namespace dev::evmjit;
 
 EXPORT void* evmjit_create(RuntimeData* _data, Env* _env) noexcept
 {
