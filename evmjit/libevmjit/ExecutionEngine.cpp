@@ -30,11 +30,8 @@
 
 namespace dev
 {
-namespace eth
+namespace evmjit
 {
-namespace jit
-{
-using evmjit::JIT;
 
 namespace
 {
@@ -56,7 +53,7 @@ std::string hash2str(i256 const& _hash)
 	return str;
 }
 
-void printVersion()
+void printVersion() // FIXME: Fix LLVM version parsing
 {
 	std::cout << "Ethereum EVM JIT Compiler (http://github.com/ethereum/evmjit):\n"
 			  << "  EVMJIT version " << EVMJIT_VERSION << "\n"
@@ -90,19 +87,7 @@ void parseOptions()
 	cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
 }
 
-// FIXME: It is temporary, becaue ExecutionEngine.h is currently our public header
-//        and including llvm::ExecutionEngine there is not a good idea.
-llvm::ExecutionEngine* g_ee = nullptr;
-
-}
-
-ExecutionEngine& ExecutionEngine::get()
-{
-	static ExecutionEngine instance;
-	return instance;
-}
-
-ExecutionEngine::ExecutionEngine()
+std::unique_ptr<llvm::ExecutionEngine> init()
 {
 	/// ExecutionEngine is created only once
 
@@ -127,20 +112,23 @@ ExecutionEngine::ExecutionEngine()
 	builder.setEngineKind(llvm::EngineKind::JIT);
 	builder.setOptLevel(g_optimize ? llvm::CodeGenOpt::Default : llvm::CodeGenOpt::None);
 
-	g_ee = (builder.create());
+	auto ee = std::unique_ptr<llvm::ExecutionEngine>{builder.create()};
 
 	// TODO: Update cache listener
-	g_ee->setObjectCache(Cache::init(g_cache, nullptr));
+	ee->setObjectCache(Cache::init(g_cache, nullptr));
 
 	// FIXME: Disabled during API changes
 	//if (preloadCache)
 	//	Cache::preload(*ee, funcCache);
+
+	return ee;
 }
 
+}
 
 ReturnCode ExecutionEngine::run(ExecutionContext& _context)
 {
-	ExecutionEngine::get(); // FIXME
+	static auto s_ee = init();
 
 	std::unique_ptr<ExecStats> listener{new ExecStats};
 	listener->stateChanged(ExecState::Started);
@@ -175,9 +163,9 @@ ReturnCode ExecutionEngine::run(ExecutionContext& _context)
 		if (g_dump)
 			module->dump();
 
-		g_ee->addModule(std::move(module));
+		s_ee->addModule(std::move(module));
 		listener->stateChanged(ExecState::CodeGen);
-		entryFuncPtr = (EntryFuncPtr)g_ee->getFunctionAddress(mainFuncName);
+		entryFuncPtr = (EntryFuncPtr)s_ee->getFunctionAddress(mainFuncName);
 		if (!CHECK(entryFuncPtr))
 			return ReturnCode::LLVMLinkError;
 		JIT::mapCode(codeHash, (void*)entryFuncPtr); // FIXME: Remove cast
@@ -198,6 +186,5 @@ ReturnCode ExecutionEngine::run(ExecutionContext& _context)
 	return returnCode;
 }
 
-}
 }
 }

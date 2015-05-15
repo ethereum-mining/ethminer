@@ -4,14 +4,6 @@
 
 namespace dev
 {
-namespace eth
-{
-namespace jit
-{
-	class ExecutionEngine;
-}
-}
-
 namespace evmjit
 {
 
@@ -26,7 +18,7 @@ public:
 	static bool isCodeReady(h256 _codeHash);
 
 private:
-	friend class dev::eth::jit::ExecutionEngine;
+	friend class ExecutionEngine;
 
 	static void* getCode(h256 _codeHash);
 	static void mapCode(h256 _codeHash, void* _funcAddr);
