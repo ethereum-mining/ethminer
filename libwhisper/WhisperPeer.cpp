@@ -68,7 +68,8 @@ bool WhisperPeer::interpret(unsigned _id, RLP const& _r)
 	{
 		unsigned n = 0;
 		for (auto i: _r)
-			host()->inject(Envelope(i), this);
+			if (n++)
+				host()->inject(Envelope(i), this);
 		break;
 	}
 	default:
