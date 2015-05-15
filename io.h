@@ -55,6 +55,19 @@ enum ethash_io_rc {
 #endif
 
 /**
+ * Logs a critical error in important parts of ethash. Should mostly help
+ * figure out what kind of problem (I/O, memory e.t.c.) causes a NULL
+ * ethash_full_t
+ */
+#define ETHASH_CRITICAL(...)							\
+	do													\
+	{													\
+		printf("ETHASH CRITICAL ERROR: "__VA_ARGS__);	\
+		printf("\n");									\
+		fflush(stdout);									\
+	} while (0)
+
+/**
  * Prepares io for ethash
  *
  * Create the DAG directory and the DAG file if they don't exist.
