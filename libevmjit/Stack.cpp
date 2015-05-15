@@ -5,7 +5,6 @@
 #include "preprocessor/llvm_includes_end.h"
 
 #include "RuntimeManager.h"
-#include "Runtime.h"
 #include "Utils.h"
 
 #include <set> // DEBUG only

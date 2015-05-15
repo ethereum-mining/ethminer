@@ -1,15 +1,20 @@
 #pragma once
 
 #include <memory>
+#include "Common.h"
 
-#include "Runtime.h"
 
 namespace dev
 {
+namespace evmjit
+{
+	class ExecutionContext;
+}
 namespace eth
 {
 namespace jit
 {
+	using namespace evmjit; // FIXME
 
 enum class ExecState
 {
@@ -38,26 +43,13 @@ public:
 	virtual void stateChanged(ExecState) {}
 };
 
-class ExecutionContext
-{
-public:
-	ExecutionContext() = default;
-	ExecutionContext(ExecutionContext const&) = delete;
-	ExecutionContext& operator=(ExecutionContext const&) = delete;
-
-	/// Reference to returned data (RETURN opcode used)
-	bytes_ref returnData;
-
-	Runtime m_runtime;
-};
-
 class ExecutionEngine
 {
 public:
 	ExecutionEngine(ExecutionEngine const&) = delete;
 	ExecutionEngine& operator=(ExecutionEngine const&) = delete;
 
-	EXPORT static ReturnCode run(ExecutionContext& _context, RuntimeData* _data, Env* _env);
+	EXPORT static ReturnCode run(ExecutionContext& _context);
 
 private:
 	ExecutionEngine();
