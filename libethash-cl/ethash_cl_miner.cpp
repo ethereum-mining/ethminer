@@ -61,6 +61,11 @@ ethash_cl_miner::ethash_cl_miner()
 {
 }
 
+ethash_cl_miner::~ethash_cl_miner()
+{
+	finish();
+}
+
 std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
 {
 	std::vector<cl::Platform> platforms;
