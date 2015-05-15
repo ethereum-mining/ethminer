@@ -1,14 +1,18 @@
 #include "ExecutionEngine.h"
+#include "ExecutionContext.h"
 
 extern "C"
 {
 
 using namespace dev::eth::jit;
 
-EXPORT void* evmjit_create() noexcept
+EXPORT void* evmjit_create(RuntimeData* _data, Env* _env) noexcept
 {
+	if (!_data)
+		return nullptr;
+
 	// TODO: Make sure ExecutionEngine constructor does not throw + make JIT/ExecutionEngine interface all nothrow
-	return new(std::nothrow) ExecutionContext;
+	return new(std::nothrow) ExecutionContext{*_data, _env};
 }
 
 EXPORT void evmjit_destroy(ExecutionContext* _context) noexcept
@@ -16,14 +20,11 @@ EXPORT void evmjit_destroy(ExecutionContext* _context) noexcept
 	delete _context;
 }
 
-EXPORT int evmjit_run(ExecutionContext* _context, RuntimeData* _data, Env* _env) noexcept
+EXPORT int evmjit_run(ExecutionContext* _context) noexcept
 {
-	if (!_context || !_data)
-		return static_cast<int>(ReturnCode::UnexpectedException);
-
 	try
 	{
-		auto returnCode = ExecutionEngine::run(*_context, _data, _env);
+		auto returnCode = ExecutionEngine::run(*_context);
 		return static_cast<int>(returnCode);
 	}
 	catch(...)
