@@ -114,7 +114,7 @@ State::State(OverlayDB const& _db, BaseState _bs, Address _coinbaseAddress):
 	paranoia("end of normal construction.", true);
 }
 
-State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
+State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h, ImportRequirements::value _ir):
 	m_db(_db),
 	m_state(&m_db),
 	m_blockReward(c_blockReward)
@@ -136,18 +136,18 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 		// 1. Start at parent's end state (state root).
 		BlockInfo bip;
 		bip.populate(_bc.block(bi.parentHash));
-		sync(_bc, bi.parentHash, bip);
+		sync(_bc, bi.parentHash, bip, _ir);
 
 		// 2. Enact the block's transactions onto this state.
 		m_ourAddress = bi.coinbaseAddress;
-		enact(&b, _bc);
+		enact(&b, _bc, _ir);
 	}
 	else
 	{
 		// Genesis required:
 		// We know there are no transactions, so just populate directly.
 		m_state.init();
-		sync(_bc, _h, bi);
+		sync(_bc, _h, bi, _ir);
 	}
 }
 
