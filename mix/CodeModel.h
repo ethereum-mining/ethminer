@@ -137,7 +137,7 @@ class GasMap: public QObject
 	Q_PROPERTY(bool isInfinite MEMBER m_isInfinite CONSTANT)
 
 public:
-	GasMap(int _start, int _end, QString _gas, bool _isInfinite): m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite) {}
+	GasMap(int _start, int _end, QString _gas, bool _isInfinite): m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite) { QQmlEngine::setObjectOwnership(this, QQmlEngine::JavaScriptOwnership); }
 
 	int m_start;
 	int m_end;
