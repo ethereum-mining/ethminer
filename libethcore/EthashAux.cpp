@@ -156,8 +156,10 @@ static int dagCallbackShim(unsigned _p)
 	return s_dagCallback ? s_dagCallback(_p) : 0;
 }
 
-EthashAux::FullType EthashAux::full(uint64_t _blockNumber, function<int(unsigned)> const& _f)
+EthashAux::FullType EthashAux::full(uint64_t _blockNumber, function<int(unsigned)> const& _f, bool _createIfMissing)
 {
+	(void)_createIfMissing;
+	// TODO: implement
 	auto l = light(_blockNumber);
 	h256 seedHash = EthashAux::seedHash(_blockNumber);
 	FullType ret;
@@ -195,7 +197,7 @@ unsigned EthashAux::computeFull(uint64_t _blockNumber)
 		get()->m_generatingFullNumber = _blockNumber / ETHASH_EPOCH_LENGTH * ETHASH_EPOCH_LENGTH;
 		get()->m_fullGenerator = unique_ptr<thread>(new thread([=](){
 			cnote << "Loading full DAG of" << _blockNumber;
-			get()->full(_blockNumber, [](unsigned p){ get()->m_fullProgress = p; return 0; });
+			get()->full(_blockNumber, [](unsigned p){ get()->m_fullProgress = p; return 0; }), true;
 			cnote << "Full DAG loaded";
 			get()->m_fullProgress = 0;
 			get()->m_generatingFullNumber = NotGenerating;

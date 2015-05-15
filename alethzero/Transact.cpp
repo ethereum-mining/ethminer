@@ -361,7 +361,7 @@ void Transact::rejigData()
 		to = m_context->fromString(ui->destination->currentText().toStdString()).first;
 		er = ethereum()->call(s, value(), to, m_data, gasNeeded, gasPrice());
 	}
-	gasNeeded = (qint64)(er.gasUsed + er.gasRefunded);
+	gasNeeded = (qint64)(er.gasUsed + er.gasRefunded + c_callStipend);
 	htmlInfo = QString("<div class=\"info\"><span class=\"icon\">INFO</span> Gas required: %1 total = %2 base, %3 exec [%4 refunded later]</div>").arg(gasNeeded).arg(baseGas).arg(gasNeeded - baseGas).arg((qint64)er.gasRefunded) + htmlInfo;
 
 	if (er.excepted != TransactionException::None)
