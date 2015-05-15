@@ -38,20 +38,30 @@ public:
 	virtual void stateChanged(ExecState) {}
 };
 
-class ExecutionEngine
+class ExecutionContext
 {
 public:
-	ExecutionEngine() = default;
-	ExecutionEngine(ExecutionEngine const&) = delete;
-	ExecutionEngine& operator=(ExecutionEngine) = delete;
-
-	EXPORT ReturnCode run(RuntimeData* _data, Env* _env);
+	ExecutionContext() = default;
+	ExecutionContext(ExecutionContext const&) = delete;
+	ExecutionContext& operator=(ExecutionContext const&) = delete;
 
 	/// Reference to returned data (RETURN opcode used)
 	bytes_ref returnData;
 
-private:
 	Runtime m_runtime;
+};
+
+class ExecutionEngine
+{
+public:
+	ExecutionEngine(ExecutionEngine const&) = delete;
+	ExecutionEngine& operator=(ExecutionEngine const&) = delete;
+
+	EXPORT static ReturnCode run(ExecutionContext& _context, RuntimeData* _data, Env* _env);
+
+private:
+	ExecutionEngine();
+	static ExecutionEngine& get();
 };
 
 }
