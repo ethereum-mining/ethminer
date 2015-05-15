@@ -15,7 +15,7 @@ Dialog {
 	id: modalDeploymentDialog
 	modality: Qt.ApplicationModal
 	width: 735
-	height: 400
+	height: 450
 	visible: false
 	property int ownedRegistrarDeployGas: 1179075 // TODO: Use sol library to calculate gas requirement for each tr.
 	property int ownedRegistrarSetSubRegistrarGas: 50000
@@ -293,7 +293,7 @@ Dialog {
 					DefaultLabel
 					{
 						text: qsTr("Root Registrar address:")
-						visible: false //still use it for now in dev env.
+						visible: true //still use it for now in dev env.
 					}
 
 					DefaultTextField
@@ -301,7 +301,7 @@ Dialog {
 						Layout.preferredWidth: 350
 						id: registrarAddr
 						text: "c6d9d2cd449a754c494264e1809c50e34d64562b"
-
+						visible: true
 					}
 
 					DefaultLabel
