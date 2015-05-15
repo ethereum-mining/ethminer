@@ -269,8 +269,8 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 			cnote << "  Header-hash:" << current.headerHash.hex();
 			cnote << "  Seedhash:" << current.seedHash.hex();
 			cnote << "  Target: " << h256(current.boundary).hex();
-			cnote << "  Ethash: " << h256(EthashAux::eval(EthashAux::number(current.seedHash), current.headerHash, solution.nonce).value).hex();
-			if (EthashAux::eval(EthashAux::number(current.seedHash), current.headerHash, solution.nonce).value < current.boundary)
+			cnote << "  Ethash: " << h256(EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value).hex();
+			if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 			{
 				bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
 				if (ok)
@@ -432,7 +432,7 @@ int main(int argc, char** argv)
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
 				bi.nonce = h64(m);
-				auto r = EthashAux::eval((uint64_t)bi.number, powHash, bi.nonce);
+				auto r = EthashAux::eval(bi.seedHash(), powHash, bi.nonce);
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
@@ -441,7 +441,7 @@ int main(int argc, char** argv)
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light((uint64_t)bi.number)->data()) << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(bi.seedHash())->data()) << endl;
 				exit(0);
 			}
 			catch (...)
