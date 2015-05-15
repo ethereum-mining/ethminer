@@ -16,10 +16,9 @@
 
 namespace dev
 {
-namespace eth
+namespace evmjit
 {
-namespace jit
-{
+	using namespace eth::jit;
 
 namespace
 {
@@ -175,6 +174,5 @@ std::unique_ptr<llvm::MemoryBuffer> ObjectCache::getObject(llvm::Module const* _
 	return std::move(g_lastObject);
 }
 
-}
 }
 }

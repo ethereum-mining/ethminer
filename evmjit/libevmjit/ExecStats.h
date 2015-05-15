@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 #include <string>
 #include <chrono>
@@ -8,9 +9,7 @@
 
 namespace dev
 {
-namespace eth
-{
-namespace jit
+namespace evmjit
 {
 
 class ExecStats : public ExecutionEngineListener
@@ -40,6 +39,5 @@ public:
 	~StatsCollector();
 };
 
-}
 }
 }

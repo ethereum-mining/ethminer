@@ -1,20 +1,14 @@
 #pragma once
 
-#include <memory>
 #include "Common.h"
-
 
 namespace dev
 {
 namespace evmjit
 {
-	class ExecutionContext;
-}
-namespace eth
-{
-namespace jit
-{
-	using namespace evmjit; // FIXME
+class ExecutionContext;
+
+using namespace eth::jit;
 
 enum class ExecState
 {
@@ -46,16 +40,8 @@ public:
 class ExecutionEngine
 {
 public:
-	ExecutionEngine(ExecutionEngine const&) = delete;
-	ExecutionEngine& operator=(ExecutionEngine const&) = delete;
-
 	EXPORT static ReturnCode run(ExecutionContext& _context);
-
-private:
-	ExecutionEngine();
-	static ExecutionEngine& get();
 };
 
-}
 }
 }

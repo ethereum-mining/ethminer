@@ -18,7 +18,7 @@ private:
 	explicit JitVM(u256 _gas = 0) : VMFace(_gas) {}
 
 	jit::RuntimeData m_data;
-	jit::ExecutionContext m_context;
+	evmjit::ExecutionContext m_context;
 	std::unique_ptr<VMFace> m_fallbackVM; ///< VM used in case of input data rejected by JIT
 };
 

@@ -8,9 +8,7 @@
 
 namespace dev
 {
-namespace eth
-{
-namespace jit
+namespace evmjit
 {
 
 void ExecStats::stateChanged(ExecState _state)
@@ -93,6 +91,5 @@ StatsCollector::~StatsCollector()
 	}
 }
 
-}
 }
 }
