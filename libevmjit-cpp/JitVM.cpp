@@ -19,8 +19,6 @@ extern "C" void env_sload(); // fake declaration for linker symbol stripping wor
 
 bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 {
-	using namespace jit;
-
 	auto rejected = false;
 	// TODO: Rejecting transactions with gas limit > 2^63 can be used by attacker to take JIT out of scope
 	rejected |= m_gas > std::numeric_limits<decltype(m_data.gas)>::max(); // Do not accept requests with gas > 2^63 (int64 max)
@@ -54,23 +52,23 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 	m_data.codeSize 	= _ext.code.size();
 	m_data.codeHash		= eth2llvm(sha3(_ext.code));
 
-	m_context.init(m_data, reinterpret_cast<Env*>(&_ext));
-	auto exitCode = jit::ExecutionEngine::run(m_context);
+	m_context.init(m_data, reinterpret_cast<evmjit::Env*>(&_ext));
+	auto exitCode = evmjit::ExecutionEngine::run(m_context);
 	switch (exitCode)
 	{
-	case ReturnCode::Suicide:
+	case evmjit::ReturnCode::Suicide:
 		_ext.suicide(right160(llvm2eth(m_data.address)));
 		break;
 
-	case ReturnCode::BadJumpDestination:
+	case evmjit::ReturnCode::BadJumpDestination:
 		BOOST_THROW_EXCEPTION(BadJumpDestination());
-	case ReturnCode::OutOfGas:
+	case evmjit::ReturnCode::OutOfGas:
 		BOOST_THROW_EXCEPTION(OutOfGas());
-	case ReturnCode::StackUnderflow:
+	case evmjit::ReturnCode::StackUnderflow: // FIXME: Remove support for detail errors
 		BOOST_THROW_EXCEPTION(StackUnderflow());
-	case ReturnCode::BadInstruction:
+	case evmjit::ReturnCode::BadInstruction:
 		BOOST_THROW_EXCEPTION(BadInstruction());
-	case ReturnCode::LinkerWorkaround:	// never happens
+	case evmjit::ReturnCode::LinkerWorkaround:	// never happens
 		env_sload();					// but forces linker to include env_* JIT callback functions
 		break;
 	default:
