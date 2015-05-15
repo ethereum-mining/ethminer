@@ -73,8 +73,9 @@ public:
 	static unsigned computeFull(uint64_t _blockNumber);
 	/// Information on the generation progress.
 	static std::pair<uint64_t, unsigned> fullGeneratingProgress() { return std::make_pair(get()->m_generatingFullNumber, get()->m_fullProgress); }
-	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result.
-	static FullType full(uint64_t _blockNumber, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
+
+	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result or empty pointer if not existing.
+	static FullType full(uint64_t _blockNumber, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>(), bool _createIfMissing = false);
 
 	static Ethash::Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
 	static Ethash::Result eval(BlockInfo const& _header, Nonce const& _nonce);
@@ -82,6 +83,8 @@ public:
 
 private:
 	EthashAux() {}
+
+	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result.
 
 	void killCache(h256 const& _s);
 

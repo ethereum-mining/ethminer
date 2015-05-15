@@ -41,9 +41,14 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, ImportCallb
 	if (ir != ImportResult::Success)
 		return ir;
 
-	Transaction t(_transactionRLP, CheckTransaction::Everything);
-	UpgradeGuard ul(l);
-	return manageImport_WITH_LOCK(h, t, _cb);
+	try {
+		Transaction t(_transactionRLP, CheckTransaction::Everything);
+		UpgradeGuard ul(l);
+		return manageImport_WITH_LOCK(h, t, _cb);
+	}
+	catch (...) {
+		return ImportResult::Malformed;
+	}
 }
 
 ImportResult TransactionQueue::check_WITH_LOCK(h256 const& _h, IfDropped _ik)
