@@ -66,14 +66,14 @@ public:
 
 		h256 boundary;
 		h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
-		h256 seedHash;
+		h256 seedHash; /// LTODO: IS this needed now that we use the block number instead?
 	};
 
 	static const WorkPackage NullWorkPackage;
 
 	static std::string name();
 	static unsigned revision();
-	static void prep(BlockInfo const& _header);
+	static void prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
 	static bool verify(BlockInfo const& _header);
 	static bool preVerify(BlockInfo const& _header);
 	static WorkPackage package(BlockInfo const& _header);

@@ -24,7 +24,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include "compiler.h"
 
 #define ETHASH_REVISION 23
@@ -38,101 +37,110 @@
 #define ETHASH_DATASET_PARENTS 256
 #define ETHASH_CACHE_ROUNDS 3
 #define ETHASH_ACCESSES 64
+#define ETHASH_DAG_MAGIC_NUM_SIZE 8
+#define ETHASH_DAG_MAGIC_NUM 0xFEE1DEADBADDCAFE
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct ethash_params {
-	uint64_t full_size;               // Size of full data set (in bytes, multiple of mix size (128)).
-	uint64_t cache_size;              // Size of compute cache (in bytes, multiple of node size (64)).
-} ethash_params;
+/// Type of a seedhash/blockhash e.t.c.
+typedef struct ethash_h256 { uint8_t b[32]; } ethash_h256_t;
+
+// convenience macro to statically initialize an h256_t
+// usage:
+// ethash_h256_t a = ethash_h256_static_init(1, 2, 3, ... )
+// have to provide all 32 values. If you don't provide all the rest
+// will simply be unitialized (not guranteed to be 0)
+#define ethash_h256_static_init(...)			\
+	{ {__VA_ARGS__} }
+
+struct ethash_light;
+typedef struct ethash_light* ethash_light_t;
+struct ethash_full;
+typedef struct ethash_full* ethash_full_t;
+typedef int(*ethash_callback_t)(unsigned);
 
 typedef struct ethash_return_value {
-	uint8_t result[32];
-	uint8_t mix_hash[32];
-} ethash_return_value;
+	ethash_h256_t result;
+	ethash_h256_t mix_hash;
+	bool success;
+} ethash_return_value_t;
 
-uint64_t ethash_get_datasize(const uint32_t block_number);
-uint64_t ethash_get_cachesize(const uint32_t block_number);
+/**
+ * Allocate and initialize a new ethash_light handler
+ *
+ * @param block_number   The block number for which to create the handler
+ * @return               Newly allocated ethash_light handler or NULL in case of
+ *                       ERRNOMEM or invalid parameters used for @ref ethash_compute_cache_nodes()
+ */
+ethash_light_t ethash_light_new(uint64_t block_number);
+/**
+ * Frees a previously allocated ethash_light handler
+ * @param light        The light handler to free
+ */
+void ethash_light_delete(ethash_light_t light);
+/**
+ * Calculate the light client data
+ *
+ * @param light          The light client handler
+ * @param header_hash    The header hash to pack into the mix
+ * @param nonce          The nonce to pack into the mix
+ * @return               an object of ethash_return_value_t holding the return values
+ */
+ethash_return_value_t ethash_light_compute(
+	ethash_light_t light,
+	ethash_h256_t const header_hash,
+	uint64_t nonce
+);
 
-// initialize the parameters
-static inline void ethash_params_init(ethash_params *params, const uint32_t block_number) {
-	params->full_size = ethash_get_datasize(block_number);
-	params->cache_size = ethash_get_cachesize(block_number);
-}
+/**
+ * Allocate and initialize a new ethash_full handler
+ *
+ * @param light         The light handler containing the cache.
+ * @param callback      A callback function with signature of @ref ethash_callback_t
+ *                      It accepts an unsigned with which a progress of DAG calculation
+ *                      can be displayed. If all goes well the callback should return 0.
+ *                      If a non-zero value is returned then DAG generation will stop.
+ *                      Be advised. A progress value of 100 means that DAG creation is
+ *                      almost complete and that this function will soon return succesfully.
+ *                      It does not mean that the function has already had a succesfull return.
+ * @return              Newly allocated ethash_full handler or NULL in case of
+ *                      ERRNOMEM or invalid parameters used for @ref ethash_compute_full_data()
+ */
+ethash_full_t ethash_full_new(ethash_light_t light, ethash_callback_t callback);
 
-/***********************************
- * OLD API *************************
- ***********************************
- ******************** (deprecated) *
- ***********************************/
+/**
+ * Frees a previously allocated ethash_full handler
+ * @param full    The light handler to free
+ */
+void ethash_full_delete(ethash_full_t full);
+/**
+ * Calculate the full client data
+ *
+ * @param full           The full client handler
+ * @param header_hash    The header hash to pack into the mix
+ * @param nonce          The nonce to pack into the mix
+ * @return               An object of ethash_return_value to hold the return value
+ */
+ethash_return_value_t ethash_full_compute(
+	ethash_full_t full,
+	ethash_h256_t const header_hash,
+	uint64_t nonce
+);
+/**
+ * Get a pointer to the full DAG data
+ */
+void const* ethash_full_dag(ethash_full_t full);
+/**
+ * Get the size of the DAG data
+ */
+uint64_t ethash_full_dag_size(ethash_full_t full);
 
-void ethash_get_seedhash(uint8_t seedhash[32], const uint32_t block_number);
-void ethash_mkcache(void *cache, ethash_params const *params, const uint8_t seed[32]);
-void ethash_light(ethash_return_value *ret, void const *cache, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce);
-void ethash_compute_full_data(void *mem, ethash_params const *params, void const *cache);
-void ethash_full(ethash_return_value *ret, void const *full_mem, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce);
-
-/***********************************
- * NEW API *************************
- ***********************************/
-
-// TODO: compute params and seed in ethash_new_light; it should take only block_number
-// TODO: store params in ethash_light_t/ethash_full_t to avoid having to repass into compute/new_full
-
-typedef uint8_t const ethash_seedhash_t[32];
-
-typedef void const* ethash_light_t;
-static inline ethash_light_t ethash_new_light(ethash_params const* params, ethash_seedhash_t seed) {
-	void* ret = malloc((size_t)params->cache_size);
-	ethash_mkcache(ret, params, seed);
-	return ret;
-}
-static inline void ethash_compute_light(ethash_return_value *ret, ethash_light_t light, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce) {
-	ethash_light(ret, light, params, header_hash, nonce);
-}
-static inline void ethash_delete_light(ethash_light_t light) {
-	free((void*)light);
-}
-
-typedef void const* ethash_full_t;
-static inline ethash_full_t ethash_new_full(ethash_params const* params, ethash_light_t light) {
-	void* ret = malloc((size_t)params->full_size);
-	ethash_compute_full_data(ret, params, light);
-	return ret;
-}
-static inline void ethash_prep_full(void *full, ethash_params const *params, void const *cache) {
-	ethash_compute_full_data(full, params, cache);
-}
-static inline void ethash_compute_full(ethash_return_value *ret, void const *full, ethash_params const *params, const uint8_t header_hash[32], const uint64_t nonce) {
-	ethash_full(ret, full, params, header_hash, nonce);
-}
-
-/// @brief Compare two s256-bit big-endian values.
-/// @returns 1 if @a a is less than or equal to @a b, 0 otherwise.
-/// Both parameters are 256-bit big-endian values.
-static inline int ethash_leq_be256(const uint8_t a[32], const uint8_t b[32]) {
-	// Boundary is big endian
-	for (int i = 0; i < 32; i++) {
-		if (a[i] == b[i])
-			continue;
-		return a[i] < b[i];
-	}
-	return 1;
-}
-
-/// Perofrms a cursory check on the validity of the nonce.
-/// @returns 1 if the nonce may possibly be valid for the given header_hash & boundary.
-/// @p boundary equivalent to 2 ^ 256 / block_difficulty, represented as a 256-bit big-endian.
-int ethash_preliminary_check_boundary(
-	const uint8_t header_hash[32],
-	const uint64_t nonce,
-	const uint8_t mix_hash[32],
-	const uint8_t boundary[32]);
-
-#define ethash_quick_check_difficulty ethash_preliminary_check_boundary
-#define ethash_check_difficulty ethash_leq_be256
+/**
+ * Calculate the seedhash for a given block number
+ */
+ethash_h256_t ethash_get_seedhash(uint64_t block_number);
 
 #ifdef __cplusplus
 }

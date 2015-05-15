@@ -222,6 +222,19 @@ void CodeModel::reset(QVariantMap const& _documents)
 	emit scheduleCompilationJob(++m_backgroundJobId);
 }
 
+void CodeModel::unregisterContractSrc(QString const& _documentId)
+{
+	{
+		Guard pl(x_pendingContracts);
+		m_pendingContracts.erase(_documentId);
+	}
+
+	// launch the background thread
+	m_compiling = true;
+	emit stateChanged();
+	emit scheduleCompilationJob(++m_backgroundJobId);
+}
+
 void CodeModel::registerCodeChange(QString const& _documentId, QString const& _code)
 {
 	{

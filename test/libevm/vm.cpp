@@ -300,9 +300,14 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 {
 	for (auto& i: v.get_obj())
 	{
-		std::cout << "  " << i.first << "\n";
 		mObject& o = i.second.get_obj();
+		if (test::Options::get().singleTest && test::Options::get().singleTestName != i.first)
+		{
+			o.clear();
+			continue;
+		}
 
+		std::cout << "  " << i.first << "\n";
 		BOOST_REQUIRE(o.count("env") > 0);
 		BOOST_REQUIRE(o.count("pre") > 0);
 		BOOST_REQUIRE(o.count("exec") > 0);
@@ -432,7 +437,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 	}
 }
 
-} } // Namespace Close
+} } // namespace close
 
 BOOST_AUTO_TEST_SUITE(VMTests)
 
@@ -542,7 +547,7 @@ BOOST_AUTO_TEST_CASE(vmRandom)
 
 BOOST_AUTO_TEST_CASE(userDefinedFile)
 {
-	dev::test::userDefinedTest("--singletest", dev::test::doVMTests);
+	dev::test::userDefinedTest(dev::test::doVMTests);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
