@@ -134,17 +134,19 @@ class GasMap: public QObject
 	Q_PROPERTY(int start MEMBER m_start CONSTANT)
 	Q_PROPERTY(int end MEMBER m_end CONSTANT)
 	Q_PROPERTY(QString gas MEMBER m_gas CONSTANT)
+	Q_PROPERTY(bool isInfinite MEMBER m_isInfinite CONSTANT)
 
 public:
-	GasMap(int _start, int _end, QString _gas): m_start(_start), m_end(_end), m_gas(_gas) {}
+	GasMap(int _start, int _end, QString _gas, bool _isInfinite): m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite) {}
 
 	int m_start;
 	int m_end;
 	QString m_gas;
+	bool m_isInfinite;
 };
 
 using SourceMaps = QMap<QString, SourceMap>; //by source id
-using GasCostsMaps = QMap<QString, QVariantList/* QList<GasMap>*/>; //gas cost by contract name
+using GasCostsMaps = QMap<QString, QVariantList>; //gas cost by contract name
 
 /// Code compilation model. Compiles contracts in background an provides compiled contract data
 class CodeModel: public QObject
