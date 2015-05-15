@@ -352,7 +352,7 @@ void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 
 		for (auto gasIte = gasCosts.begin(); gasIte != gasCosts.end(); ++gasIte)
 		{
-			SourceLocation location = gasIte->first->getLocation();
+			SourceLocation const& location = gasIte->first->getLocation();
 			GasMeter::GasConsumption cost = gasIte->second;
 			std::stringstream v;
 			v << cost.value;
@@ -364,7 +364,8 @@ void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 
 QVariantList CodeModel::gasCostByDocumentId(QString const& _documentId) const
 {
-	if (m_gasCostsMaps.contains(_documentId))
+	auto ite = m_gasCostsMaps.find(_documentId);
+	if (ite != m_gasCostsMaps.end())
 	{
 		auto sourceMapIter = m_gasCostsMaps.find(_documentId);
 		return sourceMapIter.value();
