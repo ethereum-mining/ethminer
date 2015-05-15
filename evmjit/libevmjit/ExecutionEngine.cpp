@@ -19,8 +19,8 @@
 #include <llvm/Support/ManagedStatic.h>
 #include "preprocessor/llvm_includes_end.h"
 
+#include "ExecutionContext.h"
 #include "evmjit/JIT.h"
-#include "Runtime.h"
 #include "Compiler.h"
 #include "Optimizer.h"
 #include "Cache.h"
@@ -38,9 +38,9 @@ using evmjit::JIT;
 
 namespace
 {
-using EntryFuncPtr = ReturnCode(*)(Runtime*);
+using EntryFuncPtr = ReturnCode(*)(ExecutionContext*);
 
-std::string codeHash(i256 const& _hash)
+std::string hash2str(i256 const& _hash)
 {
 	static const auto size = sizeof(_hash);
 	static const auto hexChars = "0123456789abcdef";
@@ -142,30 +142,31 @@ ExecutionEngine::ExecutionEngine()
 }
 
 
-ReturnCode ExecutionEngine::run(ExecutionContext& _context, RuntimeData* _data, Env* _env)
+ReturnCode ExecutionEngine::run(ExecutionContext& _context)
 {
 	ExecutionEngine::get(); // FIXME
 
 	std::unique_ptr<ExecStats> listener{new ExecStats};
 	listener->stateChanged(ExecState::Started);
 
-
+	auto code = _context.code();
+	auto codeSize = _context.codeSize();
+	auto codeHash = _context.codeHash();
 
 	static StatsCollector statsCollector;
 
-	auto mainFuncName = codeHash(_data->codeHash);
-	_context.m_runtime.init(_data, _env);
+	auto mainFuncName = hash2str(codeHash);
 
 	// TODO: Remove cast
-	auto entryFuncPtr = (EntryFuncPtr) JIT::getCode(_data->codeHash);
+	auto entryFuncPtr = (EntryFuncPtr) JIT::getCode(codeHash);
 	if (!entryFuncPtr)
 	{
 		auto module = Cache::getObject(mainFuncName);
 		if (!module)
 		{
 			listener->stateChanged(ExecState::Compilation);
-			assert(_data->code || !_data->codeSize); //TODO: Is it good idea to execute empty code?
-			module = Compiler{{}}.compile(_data->code, _data->code + _data->codeSize, mainFuncName);
+			assert(code || !codeSize); //TODO: Is it good idea to execute empty code?
+			module = Compiler{{}}.compile(code, code + codeSize, mainFuncName);
 
 			if (g_optimize)
 			{
@@ -183,15 +184,15 @@ ReturnCode ExecutionEngine::run(ExecutionContext& _context, RuntimeData* _data, 
 		entryFuncPtr = (EntryFuncPtr)g_ee->getFunctionAddress(mainFuncName);
 		if (!CHECK(entryFuncPtr))
 			return ReturnCode::LLVMLinkError;
-		JIT::mapCode(_data->codeHash, (void*)entryFuncPtr); // FIXME: Remove cast
+		JIT::mapCode(codeHash, (void*)entryFuncPtr); // FIXME: Remove cast
 	}
 
 	listener->stateChanged(ExecState::Execution);
-	auto returnCode = entryFuncPtr(&_context.m_runtime);
+	auto returnCode = entryFuncPtr(&_context);
 	listener->stateChanged(ExecState::Return);
 
 	if (returnCode == ReturnCode::Return)
-		_context.returnData = _context.m_runtime.getReturnData();     // Save reference to return data
+		_context.returnData = _context.getReturnData();     // Save reference to return data
 
 	listener->stateChanged(ExecState::Finished);
 
