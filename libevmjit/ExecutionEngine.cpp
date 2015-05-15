@@ -90,65 +90,77 @@ void parseOptions()
 	cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
 }
 
+// FIXME: It is temporary, becaue ExecutionEngine.h is currently our public header
+//        and including llvm::ExecutionEngine there is not a good idea.
+llvm::ExecutionEngine* g_ee = nullptr;
+
 }
 
-
-ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
+ExecutionEngine& ExecutionEngine::get()
 {
-	static std::once_flag flag;
-	std::call_once(flag, parseOptions);
+	static ExecutionEngine instance;
+	return instance;
+}
 
-	std::unique_ptr<ExecStats> listener{new ExecStats};
-	listener->stateChanged(ExecState::Started);
+ExecutionEngine::ExecutionEngine()
+{
+	/// ExecutionEngine is created only once
+
+	parseOptions();
+
+	if (g_cache == CacheMode::clear)
+		Cache::clear();
 
 	bool preloadCache = g_cache == CacheMode::preload;
 	if (preloadCache)
 		g_cache = CacheMode::on;
 
-	// TODO: Do not pseudo-init the cache every time
-	auto objectCache = (g_cache != CacheMode::off && g_cache != CacheMode::clear) ? Cache::getObjectCache(g_cache, listener.get()) : nullptr;
+	llvm::InitializeNativeTarget();
+	llvm::InitializeNativeTargetAsmPrinter();
 
-	static std::unique_ptr<llvm::ExecutionEngine> ee;
-	if (!ee)
-	{
-		if (g_cache == CacheMode::clear)
-			Cache::clear();
+	auto module = std::unique_ptr<llvm::Module>(new llvm::Module({}, llvm::getGlobalContext()));
 
-		llvm::InitializeNativeTarget();
-		llvm::InitializeNativeTargetAsmPrinter();
+	// FIXME: LLVM 3.7: test on Windows
+	auto triple = llvm::Triple(llvm::sys::getProcessTriple());
+	if (triple.getOS() == llvm::Triple::OSType::Win32)
+		triple.setObjectFormat(llvm::Triple::ObjectFormatType::ELF);  // MCJIT does not support COFF format
+	module->setTargetTriple(triple.str());
 
-		auto module = std::unique_ptr<llvm::Module>(new llvm::Module({}, llvm::getGlobalContext()));
+	llvm::EngineBuilder builder(std::move(module));
+	builder.setEngineKind(llvm::EngineKind::JIT);
+	builder.setOptLevel(g_optimize ? llvm::CodeGenOpt::Default : llvm::CodeGenOpt::None);
 
-		// FIXME: LLVM 3.7: test on Windows
-		auto triple = llvm::Triple(llvm::sys::getProcessTriple());
-		if (triple.getOS() == llvm::Triple::OSType::Win32)
-			triple.setObjectFormat(llvm::Triple::ObjectFormatType::ELF);  // MCJIT does not support COFF format
-		module->setTargetTriple(triple.str());
+	g_ee = (builder.create());
 
-		llvm::EngineBuilder builder(std::move(module));
-		builder.setEngineKind(llvm::EngineKind::JIT);
-		builder.setOptLevel(g_optimize ? llvm::CodeGenOpt::Default : llvm::CodeGenOpt::None);
+	// TODO: Update cache listener
+	auto objectCache = (g_cache != CacheMode::off && g_cache != CacheMode::clear) ? Cache::getObjectCache(g_cache, nullptr) : nullptr;
+	g_ee->setObjectCache(objectCache);
 
-		ee.reset(builder.create());
-		if (!CHECK(ee))
-			return ReturnCode::LLVMConfigError;
-		ee->setObjectCache(objectCache);
+	// FIXME: Disabled during API changes
+	//if (preloadCache)
+	//	Cache::preload(*ee, funcCache);
+}
 
-		// FIXME: Disabled during API changes
-		//if (preloadCache)
-		//	Cache::preload(*ee, funcCache);
-	}
+
+ReturnCode ExecutionEngine::run(ExecutionContext& _context, RuntimeData* _data, Env* _env)
+{
+	ExecutionEngine::get(); // FIXME
+
+	std::unique_ptr<ExecStats> listener{new ExecStats};
+	listener->stateChanged(ExecState::Started);
+
+
 
 	static StatsCollector statsCollector;
 
 	auto mainFuncName = codeHash(_data->codeHash);
-	m_runtime.init(_data, _env);
+	_context.m_runtime.init(_data, _env);
 
 	// TODO: Remove cast
 	auto entryFuncPtr = (EntryFuncPtr) JIT::getCode(_data->codeHash);
 	if (!entryFuncPtr)
 	{
-		auto module = objectCache ? Cache::getObject(mainFuncName) : nullptr;
+		auto module = Cache::getObject(mainFuncName);
 		if (!module)
 		{
 			listener->stateChanged(ExecState::Compilation);
@@ -166,20 +178,20 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		if (g_dump)
 			module->dump();
 
-		ee->addModule(std::move(module));
+		g_ee->addModule(std::move(module));
 		listener->stateChanged(ExecState::CodeGen);
-		entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
+		entryFuncPtr = (EntryFuncPtr)g_ee->getFunctionAddress(mainFuncName);
 		if (!CHECK(entryFuncPtr))
 			return ReturnCode::LLVMLinkError;
 		JIT::mapCode(_data->codeHash, (void*)entryFuncPtr); // FIXME: Remove cast
 	}
 
 	listener->stateChanged(ExecState::Execution);
-	auto returnCode = entryFuncPtr(&m_runtime);
+	auto returnCode = entryFuncPtr(&_context.m_runtime);
 	listener->stateChanged(ExecState::Return);
 
 	if (returnCode == ReturnCode::Return)
-		returnData = m_runtime.getReturnData();     // Save reference to return data
+		_context.returnData = _context.m_runtime.getReturnData();     // Save reference to return data
 
 	listener->stateChanged(ExecState::Finished);
 
