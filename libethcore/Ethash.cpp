@@ -77,7 +77,7 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 
 void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
 {
-	EthashAux::full((unsigned)_header.number, _f);
+	EthashAux::full(_header.seedHash(), true, _f);
 }
 
 bool Ethash::preVerify(BlockInfo const& _header)
@@ -134,7 +134,7 @@ void Ethash::CPUMiner::workLoop()
 
 	WorkPackage w = work();
 
-	auto dag = EthashAux::full(EthashAux::number(w.seedHash));
+	auto dag = EthashAux::full(w.seedHash);
 	h256 boundary = w.boundary;
 	unsigned hashCount = 1;
 	for (; !shouldStop(); tryNonce++, hashCount++)
@@ -283,7 +283,7 @@ Ethash::GPUMiner::~GPUMiner()
 bool Ethash::GPUMiner::report(uint64_t _nonce)
 {
 	Nonce n = (Nonce)(u64)_nonce;
-	Result r = EthashAux::eval(EthashAux::number(work().seedHash), work().headerHash, n);
+	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
 	if (r.value < work().boundary)
 		return submitProof(Solution{n, r.mixHash});
 	return false;
@@ -310,14 +310,16 @@ void Ethash::GPUMiner::workLoop()
 
 			unsigned device = instances() > 1 ? index() : s_deviceId;
 
-			while (EthashAux::computeFull(EthashAux::number(w.seedHash)) != 100 && !shouldStop())
+			EthashAux::FullType dag;
+			while (true)
 			{
-				cnote << "Awaiting DAG" << EthashAux::computeFull(EthashAux::number(w.seedHash));
+				if ((dag = EthashAux::full(w.seedHash, false)))
+					break;
+				if (shouldStop())
+					return;
+				cnote << "Awaiting DAG";
 				this_thread::sleep_for(chrono::milliseconds(500));
 			}
-			if (shouldStop())
-				return;
-			EthashAux::FullType dag = EthashAux::full(EthashAux::number(w.seedHash));		// todo , , false
 			bytesConstRef dagData = dag->data();
 			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
 		}
