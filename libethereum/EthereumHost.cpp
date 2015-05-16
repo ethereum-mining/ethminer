@@ -96,6 +96,7 @@ void EthereumHost::changeSyncer(EthereumPeer* _syncer, bool _needHelp)
 		if (_needHelp && _syncer->m_asking == Asking::Blocks)
 			for (auto j: peerSessions())
 			{
+				clog(NetNote) << "Getting help with downloading blocks";
 				auto e = j.first->cap<EthereumPeer>().get();
 				if (e != _syncer && e->m_asking == Asking::Nothing)
 					e->transition(Asking::Blocks);
