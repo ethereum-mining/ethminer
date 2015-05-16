@@ -398,7 +398,10 @@ int main(int argc, char** argv)
 		else if (arg == "-C" || arg == "--cpu")
 			minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
+		{
 			minerType = MinerType::GPU;
+			miningThreads = 1;
+		}
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
 		{
 			string m = boost::to_lower_copy(string(argv[++i]));
