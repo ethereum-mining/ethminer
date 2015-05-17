@@ -101,13 +101,13 @@ uint64_t EthashAux::number(h256 const& _seedHash)
 
 void EthashAux::killCache(h256 const& _s)
 {
-	RecursiveGuard l(x_lights);
+	WriteGuard l(x_lights);
 	m_lights.erase(_s);
 }
 
 EthashAux::LightType EthashAux::light(h256 const& _seedHash)
 {
-	RecursiveGuard l(get()->x_lights);
+	ReadGuard l(get()->x_lights);
 	LightType ret = get()->m_lights[_seedHash];
 	return ret ? ret : (get()->m_lights[_seedHash] = make_shared<LightAllocation>(_seedHash));
 }
