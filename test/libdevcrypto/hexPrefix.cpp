@@ -27,6 +27,7 @@
 #include "../JsonSpiritHeaders.h"
 #include <libdevcore/Log.h>
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/Base64.h>
 #include <libdevcrypto/TrieCommon.h>
 #include "../TestHelper.h"
 
@@ -57,6 +58,32 @@ BOOST_AUTO_TEST_CASE(hexPrefix_test)
 		auto e = hexPrefixEncode(v, o["term"].get_bool());
 		BOOST_REQUIRE( ! o["out"].is_null() );
 		BOOST_CHECK( o["out"].get_str() == toHex(e) );
+	}
+}
+
+BOOST_AUTO_TEST_CASE(base64)
+{
+	static char const* const s_tests[][2] = {
+		{"", ""},
+		{"f", "Zg=="},
+		{"fo", "Zm8="},
+		{"foo", "Zm9v"},
+		{"foob", "Zm9vYg=="},
+		{"fooba", "Zm9vYmE="},
+		{"foobar", "Zm9vYmFy"}
+	};
+	static const auto c_numTests = sizeof(s_tests) / sizeof(s_tests[0]);
+
+	for (size_t i = 0; i < c_numTests; ++i)
+	{
+		auto expectedDecoded = std::string{s_tests[i][0]};
+		auto expectedEncoded = std::string{s_tests[i][1]};
+
+		auto encoded = toBase64(expectedDecoded);
+		BOOST_CHECK_EQUAL(expectedEncoded, encoded);
+		auto decodedBytes = fromBase64(expectedEncoded);
+		auto decoded = bytesConstRef{decodedBytes.data(), decodedBytes.size()}.toString();
+		BOOST_CHECK_EQUAL(decoded, expectedDecoded);
 	}
 }
 
