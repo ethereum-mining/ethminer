@@ -187,7 +187,7 @@ bool TransactionQueue::remove_WITH_LOCK(h256 const& _txHash)
 					m_senders.erase(i);
 					break;
 				}
-			cdebug << "=> nonce" << pit->second.nonce();
+//			cdebug << "=> nonce" << pit->second.nonce();
 			pool->erase(pit);
 			return true;
 		}
