@@ -97,7 +97,7 @@ std::unordered_map<h256, Transaction> TransactionQueue::transactions() const
 	ReadGuard l(m_lock);
 	auto ret = m_current;
 	for (auto const& i: m_future)
-		if (i.second.nonce() < maxNonce(i.second.sender()))
+		if (i.second.nonce() < maxNonce_WITH_LOCK(i.second.sender()))
 			ret.insert(i);
 	return ret;
 }
@@ -136,6 +136,11 @@ u256 TransactionQueue::maxNonce(Address const& _a) const
 {
 //	cdebug << "txQ::maxNonce" << _a;
 	ReadGuard l(m_lock);
+	return maxNonce_WITH_LOCK(_a);
+}
+
+u256 TransactionQueue::maxNonce_WITH_LOCK(Address const& _a) const
+{
 	u256 ret = 0;
 	auto r = m_senders.equal_range(_a);
 	for (auto it = r.first; it != r.second; ++it)
