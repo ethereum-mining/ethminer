@@ -56,7 +56,7 @@ public:
 	void drop(h256 const& _txHash);
 
 	unsigned waiting(Address const& _a) const;
-	std::unordered_map<h256, Transaction> transactions() const { ReadGuard l(m_lock); return m_current; }
+	std::unordered_map<h256, Transaction> transactions() const;
 	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_current.size(), m_future.size()); }
 	u256 maxNonce(Address const& _a) const;
 

@@ -92,6 +92,16 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, ImportCal
 	return ret;
 }
 
+std::unordered_map<h256, Transaction> TransactionQueue::transactions() const
+{
+	ReadGuard l(m_lock);
+	auto ret = m_current;
+	for (auto const& i: m_future)
+		if (i.second.nonce() < maxNonce(i.second.sender()))
+			ret.insert(i);
+	return ret;
+}
+
 ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transaction const& _transaction, ImportCallback const& _cb)
 {
 	try
