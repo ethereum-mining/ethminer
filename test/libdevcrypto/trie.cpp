@@ -124,7 +124,9 @@ BOOST_AUTO_TEST_CASE(hex_encoded_securetrie_test)
 				BOOST_REQUIRE(t.check(true));
 				BOOST_REQUIRE(ht.check(true));
 				BOOST_REQUIRE(ft.check(true));
-				for (auto i = ft.begin(), j = t.begin(); i != ft.end() && j != t.end(); ++i, ++j)
+				auto i = ft.begin();
+				auto j = t.begin();
+				for (; i != ft.end() && j != t.end(); ++i, ++j)
 				{
 					BOOST_CHECK_EQUAL(i == ft.end(), j == t.end());
 					BOOST_REQUIRE((*i).first.toBytes() == (*j).first.toBytes());
@@ -189,7 +191,9 @@ BOOST_AUTO_TEST_CASE(trie_test_anyorder)
 				BOOST_REQUIRE(t.check(true));
 				BOOST_REQUIRE(ht.check(true));
 				BOOST_REQUIRE(ft.check(true));
-				for (auto i = ft.begin(), j = t.begin(); i != ft.end() && j != t.end(); ++i, ++j)
+				auto i = ft.begin();
+				auto j = t.begin();
+				for (; i != ft.end() && j != t.end(); ++i, ++j)
 				{
 					BOOST_CHECK_EQUAL(i == ft.end(), j == t.end());
 					BOOST_REQUIRE((*i).first.toBytes() == (*j).first.toBytes());
@@ -274,7 +278,9 @@ BOOST_AUTO_TEST_CASE(trie_tests_ordered)
 			BOOST_REQUIRE(t.check(true));
 			BOOST_REQUIRE(ht.check(true));
 			BOOST_REQUIRE(ft.check(true));
-			for (auto i = ft.begin(), j = t.begin(); i != ft.end() && j != t.end(); ++i, ++j)
+			auto i = ft.begin();
+			auto j = t.begin();
+			for (; i != ft.end() && j != t.end(); ++i, ++j)
 			{
 				BOOST_CHECK_EQUAL(i == ft.end(), j == t.end());
 				BOOST_REQUIRE((*i).first.toBytes() == (*j).first.toBytes());
@@ -555,6 +561,53 @@ BOOST_AUTO_TEST_CASE(trieStess)
 				BOOST_REQUIRE_EQUAL(hash256(m), d.root());
 			}
 		}
+	}
+}
+
+template<typename Trie> void perfTestTrie(char const* _name)
+{
+	for (size_t p = 1000; p != 1000000; p*=10)
+	{
+		MemoryDB dm;
+		Trie d(&dm);
+		d.init();
+		cnote << "TriePerf " << _name << p;
+		std::vector<h256> keys(1000);
+		boost::timer t;
+		size_t ki = 0;
+		for (size_t i = 0; i < p; ++i)
+		{
+			auto k = h256::random();
+			auto v = toString(i);
+			d.insert(k, v);
+
+			if (i % (p / 1000) == 0)
+				keys[ki++] = k;
+		}
+		cnote << "Insert " << p << "values: " << t.elapsed();
+		t.restart();
+		for (auto k: keys)
+			d.at(k);
+		cnote << "Query 1000 values: " << t.elapsed();
+		t.restart();
+		size_t i = 0;
+		for (auto it = d.begin(); i < 1000 && it != d.end(); ++it, ++i)
+			*it;
+		cnote << "Iterate 1000 values: " << t.elapsed();
+		t.restart();
+		for (auto k: keys)
+			d.remove(k);
+		cnote << "Remove 1000 values:" << t.elapsed() << "\n";
+	}
+}
+
+BOOST_AUTO_TEST_CASE(triePerf)
+{
+	if (test::Options::get().performance)
+	{
+		perfTestTrie<SpecificTrieDB<GenericTrieDB<MemoryDB>, h256>>("GenericTrieDB");
+		perfTestTrie<SpecificTrieDB<HashedGenericTrieDB<MemoryDB>, h256>>("HashedGenericTrieDB");
+		perfTestTrie<SpecificTrieDB<FatGenericTrieDB<MemoryDB>, h256>>("FatGenericTrieDB");
 	}
 }
 
