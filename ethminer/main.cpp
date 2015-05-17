@@ -251,7 +251,10 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 				Json::Value v = rpc.eth_getWork();
 				h256 hh(v[0].asString());
 				h256 newSeedHash(v[1].asString());
-				if (hh != current.headerHash && !!EthashAux::full(newSeedHash, true))
+				if (!EthashAux::full(newSeedHash, true))
+					BOOST_THROW_EXCEPTION(DAGCreationFailure());
+				
+				if (hh != current.headerHash)
 				{
 					current.headerHash = hh;
 					current.seedHash = newSeedHash;
