@@ -364,6 +364,7 @@ static bool ethash_mmap(struct ethash_full* ret, FILE* f)
 {
 	int fd;
 	char* mmapped_data;
+	errno = 0;
 	ret->file = f;
 	if ((fd = ethash_fileno(ret->file)) == -1) {
 		return false;
