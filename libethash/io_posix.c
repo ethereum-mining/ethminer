@@ -26,6 +26,10 @@
 #include <libgen.h>
 #include <stdio.h>
 #include <unistd.h>
+#if defined(__APPLE__)
+#include <stdlib.h>
+#include <pwd.h>
+#endif
 
 FILE* ethash_fopen(char const* file_name, char const* mode)
 {
@@ -86,9 +90,22 @@ bool ethash_file_size(FILE* f, size_t* ret_size)
 
 bool ethash_get_default_dirname(char* strbuf, size_t buffsize)
 {
+#if defined(__APPLE__)
+	static const char dir_suffix[] = "Ethash/";
+	strbuf[0] = '\0';
+	char* home_dir = getenv("HOME");
+	if (!home_dir || strlen(home_dir) == 0)
+	{
+		struct passwd* pwd = getpwuid(getuid());
+		if (pwd)
+			home_dir = pwd->pw_dir;
+	}
+#else
 	static const char dir_suffix[] = ".ethash/";
 	strbuf[0] = '\0';
 	char* home_dir = getenv("HOME");
+#endif
+	
 	size_t len = strlen(home_dir);
 	if (!ethash_strncat(strbuf, buffsize, home_dir, len)) {
 		return false;
