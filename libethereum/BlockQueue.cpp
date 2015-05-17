@@ -62,12 +62,13 @@ void BlockQueue::verifierBody()
 		{
 			unique_lock<Mutex> l(m_verification);
 			m_moreToVerify.wait(l, [&](){ return !m_unverified.empty() || m_deleting; });
+			if (m_deleting)
+				return;
 			swap(work, m_unverified.front());
 			m_unverified.pop_front();
 			BlockInfo bi;
 			bi.mixHash = work.first;
 			m_verifying.push_back(make_pair(bi, bytes()));
-			cdebug << "Verifying" << bi.mixHash;
 		}
 
 		std::pair<BlockInfo, bytes> res;
@@ -91,7 +92,6 @@ void BlockQueue::verifierBody()
 			for (auto it = m_verifying.begin(); it != m_verifying.end(); ++it)
 				if (it->first.mixHash == work.first)
 				{
-					cdebug << "Cancel verifying" << work.first;
 					m_verifying.erase(it);
 					goto OK1;
 				}
@@ -106,12 +106,10 @@ void BlockQueue::verifierBody()
 			if (m_verifying.front().first.mixHash == work.first)
 			{
 				// we're next!
-				cdebug << "Verifyied" << work.first;
 				m_verifying.pop_front();
 				m_verified.push_back(move(res));
 				while (m_verifying.size() && !m_verifying.front().second.empty())
 				{
-					cdebug << "Pre-verified" << m_verifying.front().first.hash();
 					m_verified.push_back(move(m_verifying.front()));
 					m_verifying.pop_front();
 				}
@@ -122,7 +120,6 @@ void BlockQueue::verifierBody()
 				for (auto& i: m_verifying)
 					if (i.first.mixHash == work.first)
 					{
-						cdebug << "Delay-verified" << work.first << " (replacing with " << res << ")";
 						i = move(res);
 						goto OK;
 					}
