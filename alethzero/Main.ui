@@ -185,6 +185,7 @@
     <addaction name="usePrivate"/>
     <addaction name="jitvm"/>
     <addaction name="retryUnknown"/>
+    <addaction name="confirm"/>
    </widget>
    <widget class="QMenu" name="menu_View">
     <property name="title">
@@ -1731,6 +1732,17 @@ font-size: 14pt</string>
   <action name="prepNextDAG">
    <property name="text">
     <string>Prepare Next &amp;DAG</string>
+   </property>
+  </action>
+  <action name="confirm">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Co&amp;nfirm Transactions</string>
    </property>
   </action>
  </widget>

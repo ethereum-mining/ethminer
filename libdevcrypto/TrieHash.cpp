@@ -20,8 +20,8 @@
  */
 
 #include "TrieHash.h"
-
 #include <libdevcrypto/TrieCommon.h>
+#include <libdevcrypto/TrieDB.h>	// @TODO replace ASAP!
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/Common.h>
 using namespace std;
@@ -195,6 +195,37 @@ h256 hash256(u256Map const& _s)
 	RLPStream s;
 	hash256rlp(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
 	return sha3(s.out());
+}
+
+/*h256 orderedTrieRoot(std::vector<bytes> const& _data)
+{
+	StringMap m;
+	unsigned j = 0;
+	for (auto i: _data)
+		m[asString(rlp(j++))] = asString(i);
+	return hash256(m);
+}*/
+
+h256 orderedTrieRoot(std::vector<bytesConstRef> const& _data)
+{
+	MemoryDB db;
+	GenericTrieDB<MemoryDB> t(&db);
+	t.init();
+	unsigned j = 0;
+	for (auto i: _data)
+		t.insert(rlp(j++), i.toBytes());
+	return t.root();
+}
+
+h256 orderedTrieRoot(std::vector<bytes> const& _data)
+{
+	MemoryDB db;
+	GenericTrieDB<MemoryDB> t(&db);
+	t.init();
+	unsigned j = 0;
+	for (auto i: _data)
+		t.insert(rlp(j++), i);
+	return t.root();
 }
 
 }
