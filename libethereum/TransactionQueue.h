@@ -72,6 +72,7 @@ private:
 
 	void insertCurrent_WITH_LOCK(std::pair<h256, Transaction> const& _p);
 	bool remove_WITH_LOCK(h256 const& _txHash);
+	u256 maxNonce_WITH_LOCK(Address const& _a) const;
 
 	mutable SharedMutex m_lock;													///< General lock.
 	h256Hash m_known;															///< Hashes of transactions in both sets.
