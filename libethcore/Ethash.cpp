@@ -319,7 +319,10 @@ void Ethash::GPUMiner::workLoop()
 				if ((dag = EthashAux::full(w.seedHash, false)))
 					break;
 				if (shouldStop())
+				{
+					delete m_miner;
 					return;
+				}
 				cnote << "Awaiting DAG";
 				this_thread::sleep_for(chrono::milliseconds(500));
 			}

@@ -250,10 +250,11 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 					cnote << "Getting work package...";
 				Json::Value v = rpc.eth_getWork();
 				h256 hh(v[0].asString());
-				if (hh != current.headerHash)
+				h256 newSeedHash(v[1].asString());
+				if (hh != current.headerHash && !!EthashAux::full(newSeedHash, true))
 				{
 					current.headerHash = hh;
-					current.seedHash = h256(v[1].asString());
+					current.seedHash = newSeedHash;
 					current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
 					cnote << "Got work package:";
 					cnote << "  Header-hash:" << current.headerHash.hex();
