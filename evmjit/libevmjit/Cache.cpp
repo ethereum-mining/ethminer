@@ -18,7 +18,6 @@ namespace dev
 {
 namespace evmjit
 {
-	using namespace eth::jit;
 
 namespace
 {
