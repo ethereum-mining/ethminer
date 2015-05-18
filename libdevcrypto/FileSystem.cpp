@@ -70,11 +70,6 @@ std::string dev::getDataDir(std::string _prefix)
 	else
 		dataDirPath = boost::filesystem::path(homeDir);
 	
-#if defined(__APPLE__) && defined(__MACH__)
-	// This eventually needs to be put in proper wrapper (to support sandboxing)
-	return (dataDirPath / "Library/Application Support/Ethereum").string();
-#else
 	return (dataDirPath / ("." + _prefix)).string();
-#endif
 #endif
 }
