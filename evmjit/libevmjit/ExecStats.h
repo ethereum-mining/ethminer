@@ -5,14 +5,39 @@
 #include <string>
 #include <chrono>
 
-#include "ExecutionEngine.h"
-
 namespace dev
 {
 namespace evmjit
 {
 
-class ExecStats : public ExecutionEngineListener
+enum class ExecState
+{
+	Started,
+	CacheLoad,
+	CacheWrite,
+	Compilation,
+	Optimization,
+	CodeGen,
+	Execution,
+	Return,
+	Finished
+};
+
+class JITListener
+{
+public:
+	JITListener() = default;
+	JITListener(JITListener const&) = delete;
+	JITListener& operator=(JITListener) = delete;
+	virtual ~JITListener() {}
+
+	virtual void executionStarted() {}
+	virtual void executionEnded() {}
+
+	virtual void stateChanged(ExecState) {}
+};
+
+class ExecStats : public JITListener
 {
 public:
 	using clock = std::chrono::high_resolution_clock;

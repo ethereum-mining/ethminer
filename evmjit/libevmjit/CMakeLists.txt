@@ -12,12 +12,11 @@ set(SOURCES
     Endianness.cpp		Endianness.h
     ExecStats.cpp		ExecStats.h
     ExecutionContext.cpp ExecutionContext.h
-    ExecutionEngine.cpp	ExecutionEngine.h
     Ext.cpp				Ext.h
     GasMeter.cpp		GasMeter.h
     Instruction.cpp		Instruction.h
     interface.cpp		interface.h
-    ${EVMJIT_INCLUDE_DIR}/evmjit/JIT.h
+    JIT.cpp				${EVMJIT_INCLUDE_DIR}/evmjit/JIT.h
     Memory.cpp			Memory.h
     Optimizer.cpp		Optimizer.h
     RuntimeManager.cpp	RuntimeManager.h

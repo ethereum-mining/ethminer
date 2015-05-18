@@ -2,7 +2,6 @@
 
 #include <libevm/VMFace.h>
 #include <evmjit/libevmjit/ExecutionContext.h>
-#include <evmjit/libevmjit/ExecutionEngine.h>
 
 namespace dev
 {

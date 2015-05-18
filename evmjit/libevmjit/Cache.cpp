@@ -10,7 +10,7 @@
 #include <llvm/Support/raw_os_ostream.h>
 #include "preprocessor/llvm_includes_end.h"
 
-#include "ExecutionEngine.h"
+#include "ExecStats.h"
 #include "Utils.h"
 #include "BuildInfo.gen.h"
 
@@ -23,7 +23,7 @@ namespace
 {
 	CacheMode g_mode;
 	std::unique_ptr<llvm::MemoryBuffer> g_lastObject;
-	ExecutionEngineListener* g_listener;
+	JITListener* g_listener;
 	static const size_t c_versionStampLength = 32;
 
 	llvm::StringRef getLibVersionStamp()
@@ -38,7 +38,7 @@ namespace
 	}
 }
 
-ObjectCache* Cache::init(CacheMode _mode, ExecutionEngineListener* _listener)
+ObjectCache* Cache::init(CacheMode _mode, JITListener* _listener)
 {
 	g_mode = _mode;
 	g_listener = _listener;
