@@ -6,7 +6,7 @@
 #include <llvm/IR/Metadata.h>
 #include "preprocessor/llvm_includes_end.h" // FIXME: LLVM 3.7: check if needed
 
-#include "ExecutionContext.h" // FIXME: crappy dependence
+#include "evmjit/JIT.h" // ReturnCode
 
 namespace dev
 {
