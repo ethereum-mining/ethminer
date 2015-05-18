@@ -244,7 +244,7 @@ private:
 	mutable dev::Mutex x_contractMap;
 	ContractMap m_contractMap;
 	SourceMaps m_sourceMaps;
-	GasMapWrapper* m_gasCostsMaps;
+	GasMapWrapper* m_gasCostsMaps = 0;
 	std::unique_ptr<CodeHighlighterSettings> m_codeHighlighterSettings;
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;
