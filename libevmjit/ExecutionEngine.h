@@ -1,14 +1,13 @@
 #pragma once
 
-#include "Common.h"
+#include "evmjit/DataTypes.h"
 
 namespace dev
 {
 namespace evmjit
 {
 class ExecutionContext;
-
-using namespace eth::jit;
+enum class ReturnCode;
 
 enum class ExecState
 {
