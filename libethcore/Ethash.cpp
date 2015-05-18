@@ -146,8 +146,8 @@ void Ethash::CPUMiner::workLoop()
 		h256 value = h256((uint8_t*)&ethashReturn.result, h256::ConstructFromPointer);
 		if (value <= boundary && submitProof(Solution{(Nonce)(u64)tryNonce, h256((uint8_t*)&ethashReturn.mix_hash, h256::ConstructFromPointer)}))
 			break;
-		if (!(hashCount % 1000))
-			accumulateHashes(1000);
+		if (!(hashCount % 100))
+			accumulateHashes(100);
 	}
 }
 
