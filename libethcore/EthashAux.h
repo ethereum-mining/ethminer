@@ -88,7 +88,7 @@ private:
 
 	static EthashAux* s_this;
 
-	RecursiveMutex x_lights;
+	SharedMutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
 
 	Mutex x_fulls;
