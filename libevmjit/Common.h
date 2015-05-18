@@ -1,18 +1,16 @@
 #pragma once
 
-#include <tuple>
 #include <cstdint>
 
 namespace dev
 {
-namespace eth
+namespace evmjit
 {
-namespace jit{
 
-
+using byte = uint8_t;
+using code_iterator = byte const*;
 
 #define UNTESTED assert(false)
 
-}
 }
 }
