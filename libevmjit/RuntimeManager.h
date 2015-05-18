@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ExecutionContext.h"
 #include "CompilerHelper.h"
 #include "Type.h"
 #include "Instruction.h"

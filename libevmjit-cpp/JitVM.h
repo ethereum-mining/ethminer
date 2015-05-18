@@ -1,7 +1,7 @@
 #pragma once
 
 #include <libevm/VMFace.h>
-#include <evmjit/libevmjit/ExecutionContext.h>
+#include <evmjit/JIT.h>
 
 namespace dev
 {
