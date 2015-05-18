@@ -23,6 +23,7 @@
 
 #include <condition_variable>
 #include <thread>
+#include <deque>
 #include <boost/thread.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
