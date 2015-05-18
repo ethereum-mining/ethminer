@@ -27,9 +27,10 @@
 namespace dev
 {
 
+bytes rlp256(BytesMap const& _s);
+h256 hash256(BytesMap const& _s);
 bytes rlp256(StringMap const& _s);
 h256 hash256(StringMap const& _s);
-h256 hash256(u256Map const& _s);
 
 /*h256 orderedTrieRoot(std::vector<bytes> const& _data);
 
@@ -40,8 +41,6 @@ template <class T, class U> inline h256 trieRootOver(unsigned _itemCount, T cons
 		m[asString(_getKey(i))] = asString(_getValue(i));
 	return hash256(m);
 }*/
-
-using bytesMap = std::unordered_map<bytes, bytes>;
 
 h256 orderedTrieRoot(std::vector<bytesConstRef> const& _data);
 h256 orderedTrieRoot(std::vector<bytes> const& _data);
