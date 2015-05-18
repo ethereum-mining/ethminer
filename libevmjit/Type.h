@@ -6,7 +6,7 @@
 #include <llvm/IR/Metadata.h>
 #include "preprocessor/llvm_includes_end.h" // FIXME: LLVM 3.7: check if needed
 
-#include "Common.h"
+#include "ExecutionContext.h" // FIXME: crappy dependence
 
 namespace dev
 {
@@ -14,6 +14,7 @@ namespace eth
 {
 namespace jit
 {
+using namespace evmjit;
 
 struct Type
 {

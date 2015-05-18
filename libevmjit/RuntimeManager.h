@@ -1,8 +1,8 @@
 #pragma once
 
+#include "ExecutionContext.h"
 #include "CompilerHelper.h"
 #include "Type.h"
-#include "RuntimeData.h"
 #include "Instruction.h"
 
 namespace dev
@@ -11,6 +11,7 @@ namespace eth
 {
 namespace jit
 {
+using namespace evmjit;
 class Stack;
 
 class RuntimeManager: public CompilerHelper

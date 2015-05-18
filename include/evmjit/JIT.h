@@ -16,12 +16,6 @@ public:
 	/// In this case the code can be executed without overhead.
 	/// \param _codeHash	The Keccak hash of the EVM code.
 	static bool isCodeReady(h256 _codeHash);
-
-private:
-	friend class ExecutionEngine;
-
-	static void* getCode(h256 _codeHash);
-	static void mapCode(h256 _codeHash, void* _funcAddr);
 };
 
 }
