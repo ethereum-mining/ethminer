@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common.h"
+#include "evmjit/DataTypes.h"
 
 namespace llvm
 {
@@ -9,9 +9,7 @@ namespace llvm
 
 namespace dev
 {
-namespace eth
-{
-namespace jit
+namespace evmjit
 {
 
 /// Virtual machine bytecode instruction.
@@ -234,6 +232,5 @@ void skipPushData(code_iterator& _curr, code_iterator _end);
 	case Instruction::SWAP15: \
 	case Instruction::SWAP16
 
-}
 }
 }
