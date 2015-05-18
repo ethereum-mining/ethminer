@@ -313,12 +313,15 @@ void CodeModel::runCompilationJob(int _jobId)
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
 		QString message = QString::fromStdString(error.str());
 		QVariantMap firstLocation;
-		QVariantMap secondLocation;
+		QVariantList secondLocations;
 		if (SourceLocation const* first = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception))
 			firstLocation = resolveCompilationErrorLocation(cs, *first);
 		if (SecondarySourceLocation const* second = boost::get_error_info<solidity::errinfo_secondarySourceLocation>(_exception))
-			secondLocation = resolveCompilationErrorLocation(cs, second->infos.front().second);
-		compilationError(message, firstLocation, secondLocation);
+		{
+			for (auto const& c: second->infos)
+				secondLocations.push_back(resolveCompilationErrorLocation(cs, c.second));
+		}
+		compilationError(message, firstLocation, secondLocations);
 	}
 	m_compiling = false;
 	emit stateChanged();
