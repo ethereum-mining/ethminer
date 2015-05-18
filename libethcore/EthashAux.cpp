@@ -242,6 +242,6 @@ Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, N
 		return dag->compute(_headerHash, _nonce);
 	DEV_IF_THROWS(return EthashAux::get()->light(_seedHash)->compute(_headerHash, _nonce))
 	{
-		return Ethash::Result(~h256(), h256());
+		return Ethash::Result{ ~h256(), h256() };
 	}
 }
