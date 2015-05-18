@@ -1,17 +1,8 @@
-#include "ExecutionEngine.h"
-
-#include <array>
-#include <mutex>
-#include <iostream>
-#include <unordered_map>
-#include <cstdlib>
-#include <cstring>
+#include "evmjit/JIT.h"
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
 #include <llvm/ADT/Triple.h>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/Host.h>
@@ -20,7 +11,6 @@
 #include "preprocessor/llvm_includes_end.h"
 
 #include "ExecutionContext.h"
-#include "evmjit/JIT.h"
 #include "Compiler.h"
 #include "Optimizer.h"
 #include "Cache.h"
@@ -161,7 +151,7 @@ bool JIT::isCodeReady(h256 _codeHash)
 	return JITImpl::instance().codeMap.count(_codeHash) != 0;
 }
 
-ReturnCode ExecutionEngine::run(ExecutionContext& _context)
+ReturnCode JIT::exec(ExecutionContext& _context)
 {
 	static auto s_ee = init();
 
