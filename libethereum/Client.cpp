@@ -461,13 +461,13 @@ ProofOfWork::WorkPackage Client::getWork()
 bool Client::submitWork(ProofOfWork::Solution const& _solution)
 {
 	bytes newBlock;
-	DEV_TIMED(working) DEV_WRITE_GUARDED(x_working)
+	DEV_WRITE_GUARDED(x_working)
 		if (!m_working.completeMine<ProofOfWork>(_solution))
 			return false;
 
 	DEV_READ_GUARDED(x_working)
 	{
-		DEV_TIMED(post) DEV_WRITE_GUARDED(x_postMine)
+		DEV_WRITE_GUARDED(x_postMine)
 			m_postMine = m_working;
 		newBlock = m_working.blockData();
 	}
@@ -499,14 +499,14 @@ void Client::syncTransactionQueue()
 	h256Hash changeds;
 	TransactionReceipts newPendingReceipts;
 
-	DEV_TIMED(working) DEV_WRITE_GUARDED(x_working)
+	DEV_WRITE_GUARDED(x_working)
 		tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(m_bc, m_tq, *m_gp);
 
 	if (newPendingReceipts.empty())
 		return;
 
 	DEV_READ_GUARDED(x_working)
-		DEV_TIMED(post) DEV_WRITE_GUARDED(x_postMine)
+		DEV_WRITE_GUARDED(x_postMine)
 			m_postMine = m_working;
 
 	DEV_READ_GUARDED(x_postMine)
@@ -574,7 +574,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 		DEV_WRITE_GUARDED(x_preMine)
 			m_preMine = newPreMine;
-		DEV_TIMED(working) DEV_WRITE_GUARDED(x_working)
+		DEV_WRITE_GUARDED(x_working)
 			m_working = newPreMine;
 		DEV_READ_GUARDED(x_postMine)
 			for (auto const& t: m_postMine.pending())
@@ -584,7 +584,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 				if (ir != ImportResult::Success)
 					onTransactionQueueReady();
 			}
-		DEV_READ_GUARDED(x_working) DEV_TIMED(post) DEV_WRITE_GUARDED(x_postMine)
+		DEV_READ_GUARDED(x_working) DEV_WRITE_GUARDED(x_postMine)
 			m_postMine = m_working;
 
 		changeds.insert(PendingChangedFilter);
@@ -609,11 +609,11 @@ void Client::onPostStateChanged()
 	cnote << "Post state changed: Restarting mining...";
 	if (isMining() || remoteActive())
 	{
-		DEV_TIMED(working) DEV_WRITE_GUARDED(x_working)
+		DEV_WRITE_GUARDED(x_working)
 			m_working.commitToMine(m_bc);
 		DEV_READ_GUARDED(x_working)
 		{
-			DEV_TIMED(post) DEV_WRITE_GUARDED(x_postMine)
+			DEV_WRITE_GUARDED(x_postMine)
 				m_postMine = m_working;
 			m_miningInfo = m_postMine.info();
 		}

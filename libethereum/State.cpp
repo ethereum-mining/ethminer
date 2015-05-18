@@ -29,6 +29,7 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Assertions.h>
 #include <libdevcore/StructuredLogger.h>
+#include <libdevcrypto/TrieHash.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
 #include <libevm/VMFactory.h>
@@ -114,7 +115,7 @@ State::State(OverlayDB const& _db, BaseState _bs, Address _coinbaseAddress):
 	paranoia("end of normal construction.", true);
 }
 
-State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
+State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h, ImportRequirements::value _ir):
 	m_db(_db),
 	m_state(&m_db),
 	m_blockReward(c_blockReward)
@@ -136,18 +137,18 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h):
 		// 1. Start at parent's end state (state root).
 		BlockInfo bip;
 		bip.populate(_bc.block(bi.parentHash));
-		sync(_bc, bi.parentHash, bip);
+		sync(_bc, bi.parentHash, bip, _ir);
 
 		// 2. Enact the block's transactions onto this state.
 		m_ourAddress = bi.coinbaseAddress;
-		enact(&b, _bc);
+		enact(&b, _bc, _ir);
 	}
 	else
 	{
 		// Genesis required:
 		// We know there are no transactions, so just populate directly.
 		m_state.init();
-		sync(_bc, _h, bi);
+		sync(_bc, _h, bi, _ir);
 	}
 }
 
@@ -516,10 +517,10 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 						cnote << i.first << "Dropping old transaction (nonce too low)";
 						_tq.drop(i.first);
 					}
-					else if (got > req + 25)
+					else if (got > req + _tq.waiting(i.second.sender()))
 					{
 						// too new
-						cnote << i.first << "Dropping new transaction (> 25 nonces ahead)";
+						cnote << i.first << "Dropping new transaction (too many nonces ahead)";
 						_tq.drop(i.first);
 					}
 					else
@@ -534,7 +535,12 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 						_tq.drop(i.first);
 					}
 					else
-						_tq.setFuture(i);
+					{
+						// Temporarily no gas left in current block.
+						// OPTIMISE: could note this and then we don't evaluate until a block that does have the gas left.
+						// for now, just leave alone.
+//						_tq.setFuture(i);
+					}
 				}
 				catch (Exception const& _e)
 				{
@@ -592,34 +598,33 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
 	RLP rlp(_block);
 
+	vector<bytes> receipts;
+
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
 	for (auto const& tr: rlp[1])
 	{
-		RLPStream k;
-		k << i;
-
-		transactionsTrie.insert(&k.out(), tr.data());
 		execute(lh, Transaction(tr.data(), CheckTransaction::Everything));
-
-		RLPStream receiptrlp;
-		m_receipts.back().streamRLP(receiptrlp);
-		receiptsTrie.insert(&k.out(), &receiptrlp.out());
+		RLPStream receiptRLP;
+		m_receipts.back().streamRLP(receiptRLP);
+		receipts.push_back(receiptRLP.out());
 		++i;
 	}
 
-	if (receiptsTrie.root() != m_currentBlock.receiptsRoot)
+	auto receiptsRoot = orderedTrieRoot(receipts);
+
+	if (receiptsRoot != m_currentBlock.receiptsRoot)
 	{
 		cwarn << "Bad receipts state root.";
-		cwarn << "Expected: " << toString(receiptsTrie.root()) << " received: " << toString(m_currentBlock.receiptsRoot);
+		cwarn << "Expected: " << toString(receiptsRoot) << " received: " << toString(m_currentBlock.receiptsRoot);
 		cwarn << "Block:" << toHex(_block);
 		cwarn << "Block RLP:" << rlp;
-		cwarn << "Calculated: " << receiptsTrie.root();
+		cwarn << "Calculated: " << receiptsRoot;
 		for (unsigned j = 0; j < i; ++j)
 		{
 			RLPStream k;
 			k << j;
-			auto b = asBytes(receiptsTrie.at(&k.out()));
+			auto b = receipts[j];
 			cwarn << j << ": ";
 			cwarn << "RLP: " << RLP(b);
 			cwarn << "Hex: " << toHex(b);
@@ -834,6 +839,9 @@ void State::commitToMine(BlockChain const& _bc)
 				}
 		}
 	}
+
+	// TODO: move over to using TrieHash
+
 
 	MemoryDB tm;
 	GenericTrieDB<MemoryDB> transactionsTrie(&tm);
