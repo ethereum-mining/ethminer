@@ -1,4 +1,4 @@
-#include "ExecutionEngine.h"
+#include "evmjit/JIT.h"
 #include "ExecutionContext.h"
 
 extern "C"
@@ -23,7 +23,7 @@ EXPORT int evmjit_run(ExecutionContext* _context) noexcept
 {
 	try
 	{
-		auto returnCode = ExecutionEngine::run(*_context);
+		auto returnCode = JIT::exec(*_context);
 		return static_cast<int>(returnCode);
 	}
 	catch(...)

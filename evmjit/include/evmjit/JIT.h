@@ -6,6 +6,8 @@ namespace dev
 {
 namespace evmjit
 {
+enum class ReturnCode;
+class ExecutionContext;
 
 class JIT
 {
@@ -16,6 +18,8 @@ public:
 	/// In this case the code can be executed without overhead.
 	/// \param _codeHash	The Keccak hash of the EVM code.
 	static bool isCodeReady(h256 _codeHash);
+
+	EXPORT static ReturnCode exec(ExecutionContext& _context);
 };
 
 }
