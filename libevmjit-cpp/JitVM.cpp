@@ -39,25 +39,25 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 	m_data.gasPrice		= static_cast<decltype(m_data.gasPrice)>(_ext.gasPrice);
 	m_data.callData 	= _ext.data.data();
 	m_data.callDataSize = _ext.data.size();
-	m_data.address      = eth2llvm(fromAddress(_ext.myAddress));
-	m_data.caller       = eth2llvm(fromAddress(_ext.caller));
-	m_data.origin       = eth2llvm(fromAddress(_ext.origin));
-	m_data.callValue    = eth2llvm(_ext.value);
-	m_data.coinBase     = eth2llvm(fromAddress(_ext.currentBlock.coinbaseAddress));
-	m_data.difficulty   = eth2llvm(_ext.currentBlock.difficulty);
-	m_data.gasLimit     = eth2llvm(_ext.currentBlock.gasLimit);
+	m_data.address      = eth2jit(fromAddress(_ext.myAddress));
+	m_data.caller       = eth2jit(fromAddress(_ext.caller));
+	m_data.origin       = eth2jit(fromAddress(_ext.origin));
+	m_data.callValue    = eth2jit(_ext.value);
+	m_data.coinBase     = eth2jit(fromAddress(_ext.currentBlock.coinbaseAddress));
+	m_data.difficulty   = eth2jit(_ext.currentBlock.difficulty);
+	m_data.gasLimit     = eth2jit(_ext.currentBlock.gasLimit);
 	m_data.number 		= static_cast<decltype(m_data.number)>(_ext.currentBlock.number);
 	m_data.timestamp 	= static_cast<decltype(m_data.timestamp)>(_ext.currentBlock.timestamp);
 	m_data.code     	= _ext.code.data();
 	m_data.codeSize 	= _ext.code.size();
-	m_data.codeHash		= eth2llvm(sha3(_ext.code));
+	m_data.codeHash		= eth2jit(sha3(_ext.code));
 
 	m_context.init(m_data, reinterpret_cast<evmjit::Env*>(&_ext));
 	auto exitCode = evmjit::JIT::exec(m_context);
 	switch (exitCode)
 	{
 	case evmjit::ReturnCode::Suicide:
-		_ext.suicide(right160(llvm2eth(m_data.address)));
+		_ext.suicide(right160(jit2eth(m_data.address)));
 		break;
 
 	case evmjit::ReturnCode::BadJumpDestination:

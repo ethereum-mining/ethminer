@@ -35,21 +35,13 @@ inline bool operator==(h256 _h1, h256 _h2)
 /// Representation of 256-bit value binary compatible with LLVM i256
 struct i256
 {
-	uint64_t a = 0;
-	uint64_t b = 0;
-	uint64_t c = 0;
-	uint64_t d = 0;
+	uint64_t words[4] = {0,};
 
 	i256() = default;
-	i256(h256 _h)
-	{
-		a = _h.words[0];
-		b = _h.words[1];
-		c = _h.words[2];
-		d = _h.words[3];
-	}
+	i256(h256 _h) { *this = *reinterpret_cast<i256*>(&_h); }
 };
 
+// TODO: Merge with ExecutionContext
 struct RuntimeData
 {
 	enum Index
