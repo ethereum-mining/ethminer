@@ -74,7 +74,7 @@ Item {
 			});
 		}
 		editor.document = document;
-		editor.sourceName = document.documentId;
+		editor.setSourceName(document.documentId);
 		editor.setFontSize(editorSettings.fontSize);
 		editor.setText(data, document.syntaxMode);
 		editor.changeGeneration();

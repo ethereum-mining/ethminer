@@ -1,6 +1,6 @@
 function ErrorAnnotation(editor, location, content)
 {
-	this.location = JSON.parse(location);
+	this.location = location;
 	this.opened = false;
 	this.rawContent = content;
 	this.content = content.replace("Contract Error:", "");

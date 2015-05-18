@@ -175,7 +175,7 @@ signals:
 	/// Emitted on compilation complete
 	void compilationComplete();
 	/// Emitted on compilation error
-	void compilationError(QString _error, QVariantMap _firstErrorLoc, QVariantMap _secondErrorLoc);
+	void compilationError(QString _error, QVariantMap _firstErrorLoc, QVariantList _secondErrorLoc);
 	/// Internal signal used to transfer compilation job to background thread
 	void scheduleCompilationJob(int _jobId);
 	/// Emitted if there are any changes in the code model
