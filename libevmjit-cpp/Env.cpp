@@ -3,7 +3,6 @@
 #include <libdevcrypto/SHA3.h>
 #include <libevmcore/Params.h>
 #include <libevm/ExtVMFace.h>
-#include <evmjit/DataTypes.h>
 
 #include "Utils.h"
 

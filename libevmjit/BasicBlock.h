@@ -2,8 +2,7 @@
 
 #include <vector>
 
-
-#include "evmjit/DataTypes.h"
+#include "Common.h"
 #include "Stack.h"
 
 namespace dev
@@ -12,9 +11,8 @@ namespace eth
 {
 namespace jit
 {
-
-using instr_idx = uint64_t;
 using namespace evmjit;
+using instr_idx = uint64_t;
 
 class BasicBlock
 {
