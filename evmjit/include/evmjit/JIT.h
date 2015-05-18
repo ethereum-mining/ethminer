@@ -17,7 +17,7 @@ public:
 	/// Returns `true` if the EVM code has been compiled and loaded into memory.
 	/// In this case the code can be executed without overhead.
 	/// \param _codeHash	The Keccak hash of the EVM code.
-	static bool isCodeReady(h256 _codeHash);
+	static bool isCodeReady(h256 const& _codeHash);
 
 	EXPORT static ReturnCode exec(ExecutionContext& _context);
 };
