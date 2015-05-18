@@ -90,20 +90,16 @@ bool ethash_file_size(FILE* f, size_t* ret_size)
 
 bool ethash_get_default_dirname(char* strbuf, size_t buffsize)
 {
-#if defined(__APPLE__)
-	static const char dir_suffix[] = "Ethash/";
+	static const char dir_suffix[] = ".ethash/";
 	strbuf[0] = '\0';
 	char* home_dir = getenv("HOME");
+#if defined(__APPLE__)
 	if (!home_dir || strlen(home_dir) == 0)
 	{
 		struct passwd* pwd = getpwuid(getuid());
 		if (pwd)
 			home_dir = pwd->pw_dir;
 	}
-#else
-	static const char dir_suffix[] = ".ethash/";
-	strbuf[0] = '\0';
-	char* home_dir = getenv("HOME");
 #endif
 	
 	size_t len = strlen(home_dir);
