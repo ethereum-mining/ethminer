@@ -32,6 +32,7 @@ namespace dev
 {
 namespace evmjit
 {
+using namespace eth::jit;
 
 namespace
 {
@@ -53,7 +54,7 @@ std::string hash2str(i256 const& _hash)
 	return str;
 }
 
-void printVersion() // FIXME: Fix LLVM version parsing
+void printVersion()
 {
 	std::cout << "Ethereum EVM JIT Compiler (http://github.com/ethereum/evmjit):\n"
 			  << "  EVMJIT version " << EVMJIT_VERSION << "\n"
@@ -124,6 +125,40 @@ std::unique_ptr<llvm::ExecutionEngine> init()
 	return ee;
 }
 
+class JITImpl
+{
+public:
+	std::unordered_map<h256, void*> codeMap;
+
+	static JITImpl& instance()
+	{
+		static JITImpl s_instance;
+		return s_instance;
+	}
+
+	static void* getCode(h256 _codeHash);
+	static void mapCode(h256 _codeHash, void* _funcAddr);
+};
+
+void* JITImpl::getCode(h256 _codeHash)
+{
+	auto& codeMap = JITImpl::instance().codeMap;
+	auto it = codeMap.find(_codeHash);
+	if (it != codeMap.end())
+		return it->second;
+	return nullptr;
+}
+
+void JITImpl::mapCode(h256 _codeHash, void* _funcAddr)
+{
+	JITImpl::instance().codeMap.insert(std::make_pair(_codeHash, _funcAddr));
+}
+
+} // anonymous namespace
+
+bool JIT::isCodeReady(h256 _codeHash)
+{
+	return JITImpl::instance().codeMap.count(_codeHash) != 0;
 }
 
 ReturnCode ExecutionEngine::run(ExecutionContext& _context)
@@ -142,7 +177,7 @@ ReturnCode ExecutionEngine::run(ExecutionContext& _context)
 	auto mainFuncName = hash2str(codeHash);
 
 	// TODO: Remove cast
-	auto entryFuncPtr = (EntryFuncPtr) JIT::getCode(codeHash);
+	auto entryFuncPtr = (EntryFuncPtr) JITImpl::getCode(codeHash);
 	if (!entryFuncPtr)
 	{
 		auto module = Cache::getObject(mainFuncName);
@@ -168,7 +203,7 @@ ReturnCode ExecutionEngine::run(ExecutionContext& _context)
 		entryFuncPtr = (EntryFuncPtr)s_ee->getFunctionAddress(mainFuncName);
 		if (!CHECK(entryFuncPtr))
 			return ReturnCode::LLVMLinkError;
-		JIT::mapCode(codeHash, (void*)entryFuncPtr); // FIXME: Remove cast
+		JITImpl::mapCode(codeHash, (void*)entryFuncPtr); // FIXME: Remove cast
 	}
 
 	listener->stateChanged(ExecState::Execution);

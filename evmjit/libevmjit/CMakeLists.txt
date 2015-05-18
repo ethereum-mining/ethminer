@@ -17,10 +17,9 @@ set(SOURCES
     GasMeter.cpp		GasMeter.h
     Instruction.cpp		Instruction.h
     interface.cpp		interface.h
-    JIT.cpp             ${EVMJIT_INCLUDE_DIR}/evmjit/JIT.h
+    ${EVMJIT_INCLUDE_DIR}/evmjit/JIT.h
     Memory.cpp			Memory.h
     Optimizer.cpp		Optimizer.h
-    RuntimeData.h
     RuntimeManager.cpp	RuntimeManager.h
     Stack.cpp			Stack.h
     Type.cpp			Type.h
