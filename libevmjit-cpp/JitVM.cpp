@@ -7,6 +7,7 @@
 #include <libdevcrypto/SHA3.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
+#include <evmjit/JIT.h>
 
 #include "Utils.h"
 
@@ -53,7 +54,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 	m_data.codeHash		= eth2llvm(sha3(_ext.code));
 
 	m_context.init(m_data, reinterpret_cast<evmjit::Env*>(&_ext));
-	auto exitCode = evmjit::ExecutionEngine::run(m_context);
+	auto exitCode = evmjit::JIT::exec(m_context);
 	switch (exitCode)
 	{
 	case evmjit::ReturnCode::Suicide:
