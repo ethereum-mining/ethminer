@@ -32,12 +32,10 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
+#include <libdevcrypto/SHA3.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/EthashAux.h>
-#include <libevm/VM.h>
-#include <libevm/VMFactory.h>
-#include <libethereum/All.h>
-#include <libwebthree/WebThree.h>
+#include <libethcore/Farm.h>
 #if ETH_JSONRPC || !ETH_TRUE
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
@@ -50,7 +48,6 @@
 #endif
 using namespace std;
 using namespace dev;
-using namespace dev::p2p;
 using namespace dev::eth;
 using namespace boost::algorithm;
 using dev::eth::Instruction;
@@ -143,7 +140,7 @@ enum class MinerType
 
 void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 {
-	BlockInfo genesis = CanonBlockChain::genesis();
+	BlockInfo genesis;
 	genesis.difficulty = 1 << 18;
 	cdebug << genesis.boundary();
 
@@ -294,9 +291,6 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 
 int main(int argc, char** argv)
 {
-	// Init defaults
-	Defaults::get();
-
 	/// Operating mode.
 	OperationMode mode = OperationMode::Farm;
 
