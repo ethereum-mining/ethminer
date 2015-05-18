@@ -127,6 +127,26 @@ struct SourceMap
 	LocationMap functions;
 };
 
+using SourceMaps = QMap<QString, SourceMap>; //by source id
+using GasCostsMaps = QMap<QString, QVariantList>; //gas cost by contract name
+
+class GasMapWrapper: public QObject
+{
+	Q_OBJECT
+
+	Q_PROPERTY(GasCostsMaps gasMaps MEMBER m_gasMaps CONSTANT)
+
+public:
+	GasMapWrapper(QObject* _parent): QObject(_parent){}
+	void push(QString _source, int _start, int _end, QString _value, bool _isInfinite);
+	bool contains(QString _key);
+	void insert(QString _source, QVariantList _variantList);
+	QVariantList gasCostsByDocId(QString _source);
+
+private:
+	GasCostsMaps m_gasMaps;
+};
+
 class GasMap: public QObject
 {
 	Q_OBJECT
@@ -137,16 +157,13 @@ class GasMap: public QObject
 	Q_PROPERTY(bool isInfinite MEMBER m_isInfinite CONSTANT)
 
 public:
-	GasMap(int _start, int _end, QString _gas, bool _isInfinite): m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite) { QQmlEngine::setObjectOwnership(this, QQmlEngine::JavaScriptOwnership); }
+	GasMap(int _start, int _end, QString _gas, bool _isInfinite, QObject _parent): QObject(_parent), m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite) { QQmlEngine::setObjectOwnership(this, QQmlEngine::JavaScriptOwnership); }
 
 	int m_start;
 	int m_end;
 	QString m_gas;
 	bool m_isInfinite;
 };
-
-using SourceMaps = QMap<QString, SourceMap>; //by source id
-using GasCostsMaps = QMap<QString, QVariantList>; //gas cost by contract name
 
 /// Code compilation model. Compiles contracts in background an provides compiled contract data
 class CodeModel: public QObject
@@ -227,7 +244,7 @@ private:
 	mutable dev::Mutex x_contractMap;
 	ContractMap m_contractMap;
 	SourceMaps m_sourceMaps;
-	GasCostsMaps m_gasCostsMaps;
+	GasMapWrapper* m_gasCostsMaps;
 	std::unique_ptr<CodeHighlighterSettings> m_codeHighlighterSettings;
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;

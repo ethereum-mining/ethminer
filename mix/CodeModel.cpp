@@ -333,42 +333,36 @@ void CodeModel::runCompilationJob(int _jobId)
 
 void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 {
-	m_gasCostsMaps.clear();
+	m_gasCostsMaps->deleteLater();
+	m_gasCostsMaps = new GasMapWrapper(this);
 	for (std::string n: _cs.getContractNames())
 	{
 		ContractDefinition const& contractDefinition = _cs.getContractDefinition(n);
 		QString sourceName = QString::fromStdString(*contractDefinition.getLocation().sourceName);
 
-		if (!m_gasCostsMaps.contains(sourceName))
-			m_gasCostsMaps.insert(sourceName, QVariantList());
+		if (!m_gasCostsMaps->contains(sourceName))
+			m_gasCostsMaps->insert(sourceName, QVariantList());
 
 		if (!contractDefinition.isFullyImplemented())
 			continue;
 		dev::solidity::SourceUnit const& sourceUnit = _cs.getAST(*contractDefinition.getLocation().sourceName);
 		AssemblyItems const* items = _cs.getRuntimeAssemblyItems(n);
-
 		StructuralGasEstimator estimator;
 		std::map<ASTNode const*, GasMeter::GasConsumption> gasCosts = estimator.breakToStatementLevel(estimator.performEstimation(*items, std::vector<ASTNode const*>({&sourceUnit})), {&sourceUnit});
-
 		for (auto gasItem = gasCosts.begin(); gasItem != gasCosts.end(); ++gasItem)
 		{
 			SourceLocation const& location = gasItem->first->getLocation();
 			GasMeter::GasConsumption cost = gasItem->second;
 			std::stringstream v;
 			v << cost.value;
-			GasMap* gas = new GasMap(location.start, location.end, QString::fromStdString(v.str()), cost.isInfinite);
-			m_gasCostsMaps.find(sourceName).value().push_back(QVariant::fromValue(gas));
+			m_gasCostsMaps->push(sourceName, location.start, location.end, QString::fromStdString(v.str()), cost.isInfinite);
 		}
 	}
 }
 
 QVariantList CodeModel::gasCostByDocumentId(QString const& _documentId) const
 {
-	auto gasIter = m_gasCostsMaps.find(_documentId);
-	if (gasIter != m_gasCostsMaps.end())
-		return gasIter.value();
-	else
-		return QVariantList();
+	return m_gasCostsMaps->gasCostsByDocId(_documentId);
 }
 
 void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs, std::vector<std::string> const& _sourceNames)
@@ -560,3 +554,29 @@ QString CodeModel::resolveFunctionName(dev::SourceLocation const& _location)
 	}
 	return QString();
 }
+
+void GasMapWrapper::push(QString _source, int _start, int _end, QString _value, bool _isInfinite)
+{
+	GasMap* gas = new GasMap(_start, _end, _value, _isInfinite, this);
+	m_gasMaps.find(_source).value().push_back(QVariant::fromValue(gas));
+}
+
+bool GasMapWrapper::contains(QString _key)
+{
+	return m_gasMaps.contains(_key);
+}
+
+void GasMapWrapper::insert(QString _source, QVariantList _variantList)
+{
+	m_gasMaps.insert(_source, _variantList);
+}
+
+QVariantList GasMapWrapper::gasCostsByDocId(QString _source)
+{
+	auto gasIter = m_gasMaps.find(_source);
+	if (gasIter != m_gasMaps.end())
+		return gasIter.value();
+	else
+		return QVariantList();
+}
+
