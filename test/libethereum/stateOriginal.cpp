@@ -25,7 +25,7 @@
 #include <secp256k1/secp256k1.h>
 #include <libethereum/CanonBlockChain.h>
 #include <libethereum/State.h>
-#include <libethereum/Farm.h>
+#include <libethcore/Farm.h>
 #include <libethereum/Defaults.h>
 #include "../TestHelper.h"
 using namespace std;
