@@ -38,7 +38,9 @@ const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
 
 BlockQueue::BlockQueue()
 {
-	for (unsigned i = 0; i < thread::hardware_concurrency(); ++i)
+	// Allow some room for other activity
+	unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
+	for (unsigned i = 0; i < verifierThreads; ++i)
 		m_verifiers.emplace_back([=](){
 			setThreadName("verifier" + toString(i));
 			this->verifierBody();
