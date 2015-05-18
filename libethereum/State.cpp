@@ -667,7 +667,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 			BOOST_THROW_EXCEPTION(UncleInChain() << errinfo_comment("Uncle in block already mentioned") << errinfo_data(toString(excluded)) << errinfo_hash256(sha3(i.data())));
 		excluded.insert(h);
 
-		BlockInfo uncle = BlockInfo::fromHeader(i.data(), CheckEverything,  h);
+		BlockInfo uncle = BlockInfo::fromHeader(i.data(), (_ir & ImportRequirements::CheckUncles) ? CheckEverything : IgnoreNonce,  h);
 		BlockInfo uncleParent(_bc.block(uncle.parentHash));
 		if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
 			BOOST_THROW_EXCEPTION(UncleTooOld());
