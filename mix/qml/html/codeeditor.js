@@ -8,6 +8,7 @@ var editor = CodeMirror(document.body, {
 							styleSelectedText: true
 						});
 var ternServer;
+var sourceName = "";
 
 editor.setOption("theme", "inkpot");
 editor.setOption("indentUnit", 4);
@@ -157,71 +158,57 @@ showWarning = function(content)
 	debugWarning = editor.addLineWidget(0, node, { coverGutter: false, above: true });
 }
 
-var annotation = null;
-var secondaryAnnotation = null;
+var annotations = [];
 var compilationCompleteBool = true;
-compilationError = function(location, secondLocation, error)
+compilationError = function(location, error, type)
 {
 	compilationCompleteBool = false;
-	window.setTimeout(function(){
-		if (compilationCompleteBool)
-			return;
-
-		var loc = JSON.parse(location);
-		if (annotation == null)
-		{
-			annotation = new ErrorAnnotation(editor, location, error);
-			if (secondLocation.start)
-				secondaryAnnotation = new ErrorAnnotation(editor, secondLocation, "");
-		}
-		else if (annotation.location.start.line !== loc.start.line || annotation.location.start.column !== loc.start.column || annotation.rawContent !== error)
-		{
-			annotation.destroy();
-			annotation = new ErrorAnnotation(editor, location, error);
-			if (secondaryAnnotation)
-				secondaryAnnotation.destroy();
-			secondaryAnnotation = new ErrorAnnotation(editor, secondLocation, "");
-		}
-	}, 500)
+	if (compilationCompleteBool)
+		return;
+	location = JSON.parse(location);
+	if (location.start.line)
+		ensureAnnotation(location, error, type);
 }
 
-formatSource = function(line, column)
+ensureAnnotation = function(location, error, type)
 {
-	line = parseInt(line);
-	column = parseInt(column);
-	if (line > 0)
-		line = line - 1;
-	if (column > 0)
-		column = column - 1;
+	for (var k in annotations)
+	{
+		if (annotations[k].annotation.location.start.line === location.start.line)
+		{
+			annotations[k].annotation.destroy();
+			annotations.splice(k, 1);
+			break;
+		}
+	}
+	if (type === "second")
+		error = "";
+	annotations.push({ "type": type, "annotation": new ErrorAnnotation(editor, location, error)});
 }
 
 compilationComplete = function()
 {
-	if (annotation !== null)
-	{
-		annotation.destroy();
-		annotation = null;
-	}
-
-	if (secondaryAnnotation !== null)
-	{
-		secondaryAnnotation.destroy();
-		secondaryAnnotation = null;
-	}
-
+	for (var k in annotations)
+		annotations[k].annotation.destroy();
+	annotations.length = 0;
 	compilationCompleteBool = true;
-	console.log("end");
 }
 
 goToCompilationError = function()
 {
-	editor.setCursor(annotation.start.line, annotation.start.column)
+	if (annotations.length > 0)
+		editor.setCursor(annotations[0].annotation.location.start.line, annotations[0].annotation.location.start.column)
 }
 
 setFontSize = function(size)
 {
 	editor.getWrapperElement().style["font-size"] = size + "px";
 	editor.refresh();
+}
+
+setSourceName = function(_sourceName)
+{
+	sourceName = _sourceName;
 }
 
 editor.setOption("extraKeys", extraKeys);

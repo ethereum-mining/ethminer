@@ -83,6 +83,13 @@ Item {
 			editorBrowser.runJavaScript("setFontSize(" + size + ")", function(result) {});
 	}
 
+	function setSourceName(sourceName)
+	{
+		sourceName = sourceName;
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("setSourceName('" + sourceName + "')", function(result) {});
+	}
+
 	Clipboard
 	{
 		id: clipboard
@@ -137,28 +144,23 @@ Item {
 				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
 		}
 
-		function compilationError(error, firstLocation, secondLocation)
+		function compilationError(error, firstLocation, secondLocations)
 		{
-			console.log("current " + parent.sourceName);
-			console.log("source  " + firstLocation.source);
-			if (firstLocation.source !== parent.sourceName && secondLocation.source !== parent.sourceName)
-				return;
 			if (!editorBrowser || !error)
 				return;
-			if (firstLocation.start.line)
-			{
-				var detail = error.split('\n')[0];
-				var reg = detail.match(/:\d+:\d+:/g);
-				if (reg !== null)
-					detail = detail.replace(reg[0], "");
-				editorBrowser.runJavaScript("compilationError('" + JSON.stringify(firstLocation) + "', '" + JSON.stringify(secondLocation) + "', '" + detail + "')", function(result){});
-			}
-			else
-			{
-				console.log("e d qml");
-				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
-			}
+			var detail = error.split('\n')[0];
+			var reg = detail.match(/:\d+:\d+:/g);
+			if (reg !== null)
+				detail = detail.replace(reg[0], "");
+			displayErrorAnnotations(firstLocation, detail, "first");
+			for (var k in secondLocations)
+				displayErrorAnnotations(secondLocations[k], detail, "second");
+		}
 
+		function displayErrorAnnotations(location, detail, type)
+		{
+			//if (location.source === parent.sourceName)
+			editorBrowser.runJavaScript("compilationError('" + JSON.stringify(location) + "', '" + detail + "', '" + type + "')", function(result){});
 		}
 
 		Timer
