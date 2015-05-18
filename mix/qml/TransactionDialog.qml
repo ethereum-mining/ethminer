@@ -210,6 +210,8 @@ Dialog {
 		}
 
 		item.isContractCreation = trType.checked;
+		if (item.isContractCreation)
+			item.functionId = item.contractId;
 		item.isFunctionCall = item.functionId !== " - ";
 
 		if (!item.isContractCreation)
