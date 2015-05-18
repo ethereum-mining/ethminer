@@ -294,15 +294,27 @@ BOOST_AUTO_TEST_CASE(trie_tests_ordered)
 	}
 }
 
-inline h256 stringMapHash256(StringMap const& _s)
+h256 stringMapHash256(StringMap const& _s)
 {
-	return hash256(_s);
+	//return hash256(_s);
+	BytesMap bytesMap;
+	for (auto const& _v: _s)
+		bytesMap.insert(std::make_pair(bytes(_v.first.begin(), _v.first.end()), bytes(_v.second.begin(), _v.second.end())));
+	return hash256(bytesMap);
+}
+
+bytes stringMapRlp256(StringMap const& _s)
+{
+	//return rlp256(_s);
+	BytesMap bytesMap;
+	for (auto const& _v: _s)
+		bytesMap.insert(std::make_pair(bytes(_v.first.begin(), _v.first.end()), bytes(_v.second.begin(), _v.second.end())));
+	return rlp256(bytesMap);
 }
 
 BOOST_AUTO_TEST_CASE(moreTrieTests)
 {
 	cnote << "Testing Trie more...";
-#if 0
 	// More tests...
 	{
 		MemoryDB m;
@@ -311,7 +323,7 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 		cout << t;
 		cout << m;
 		cout << t.root() << endl;
-		cout << hash256(StringMap()) << endl;
+		cout << stringMapHash256(StringMap()) << endl;
 
 		t.insert(string("tesz"), string("test"));
 		cout << t;
@@ -336,7 +348,7 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 		t.remove(string("test"));
 		cout << m;
 		cout << t.root() << endl;
-		cout << hash256(StringMap()) << endl;
+		cout << stringMapHash256(StringMap()) << endl;
 	}
 	{
 		MemoryDB m;
@@ -348,20 +360,23 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 		cout << m;
 		cout << t.root() << endl;
 		cout << stringMapHash256({{"b", "B"}, {"a", "A"}}) << endl;
-		cout << RLP(rlp256({{"b", "B"}, {"a", "A"}})) << endl;
+		bytes r(stringMapRlp256({{"b", "B"}, {"a", "A"}}));
+		cout << RLP(r) << endl;
 	}
 	{
 		MemTrie t;
 		t.insert("dog", "puppy");
 		cout << hex << t.hash256() << endl;
-		cout << RLP(t.rlp()) << endl;
+		bytes r(t.rlp());
+		cout << RLP(r) << endl;
 	}
 	{
 		MemTrie t;
 		t.insert("bed", "d");
 		t.insert("be", "e");
 		cout << hex << t.hash256() << endl;
-		cout << RLP(t.rlp()) << endl;
+		bytes r(t.rlp());
+		cout << RLP(r) << endl;
 	}
 	{
 		cout << hex << stringMapHash256({{"dog", "puppy"}, {"doe", "reindeer"}}) << endl;
@@ -369,10 +384,10 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 		t.insert("dog", "puppy");
 		t.insert("doe", "reindeer");
 		cout << hex << t.hash256() << endl;
-		cout << RLP(t.rlp()) << endl;
+		bytes r(t.rlp());
+		cout << RLP(r) << endl;
 		cout << toHex(t.rlp()) << endl;
 	}
-#endif
 	{
 		MemoryDB m;
 		EnforceRefs r(m, true);
@@ -387,16 +402,17 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 			t.insert(a, b);
 			s[a] = b;
 
-			/*cout << endl << "-------------------------------" << endl;
+			cout << endl << "-------------------------------" << endl;
 			cout << a << " -> " << b << endl;
 			cout << d;
 			cout << m;
 			cout << d.root() << endl;
-			cout << hash256(s) << endl;*/
+			cout << hash256(s) << endl;
+			cout << stringMapHash256(s) << endl;
 
 			BOOST_REQUIRE(d.check(true));
-			BOOST_REQUIRE_EQUAL(t.hash256(), hash256(s));
-			BOOST_REQUIRE_EQUAL(d.root(), hash256(s));
+			BOOST_REQUIRE_EQUAL(t.hash256(), stringMapHash256(s));
+			BOOST_REQUIRE_EQUAL(d.root(), stringMapHash256(s));
 			for (auto const& i: s)
 			{
 				(void)i;
@@ -421,8 +437,8 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 			BOOST_REQUIRE(d.check(true));
 			BOOST_REQUIRE(t.at(a).empty());
 			BOOST_REQUIRE(d.at(string(a)).empty());
-			BOOST_REQUIRE_EQUAL(t.hash256(), hash256(s));
-			BOOST_REQUIRE_EQUAL(d.root(), hash256(s));
+			BOOST_REQUIRE_EQUAL(t.hash256(), stringMapHash256(s));
+			BOOST_REQUIRE_EQUAL(d.root(), stringMapHash256(s));
 			for (auto const& i: s)
 			{
 				(void)i;
@@ -493,7 +509,6 @@ BOOST_AUTO_TEST_CASE(trieLowerBound)
 BOOST_AUTO_TEST_CASE(trieStess)
 {
 	cnote << "Stress-testing Trie...";
-	if (0)
 	{
 		MemoryDB m;
 		MemoryDB dm;
@@ -512,8 +527,8 @@ BOOST_AUTO_TEST_CASE(trieStess)
 				m[k] = v;
 				t.insert(k, v);
 				d.insert(k, v);
-				BOOST_REQUIRE_EQUAL(hash256(m), t.hash256());
-				BOOST_REQUIRE_EQUAL(hash256(m), d.root());
+				BOOST_REQUIRE_EQUAL(stringMapHash256(m), t.hash256());
+				BOOST_REQUIRE_EQUAL(stringMapHash256(m), d.root());
 				BOOST_REQUIRE(d.check(true));
 			}
 			while (!m.empty())
@@ -557,8 +572,8 @@ BOOST_AUTO_TEST_CASE(trieStess)
 					cwarn << "Good?" << d2.root();
 				}
 				BOOST_REQUIRE(d.check(true));
-				BOOST_REQUIRE_EQUAL(hash256(m), t.hash256());
-				BOOST_REQUIRE_EQUAL(hash256(m), d.root());
+				BOOST_REQUIRE_EQUAL(stringMapHash256(m), t.hash256());
+				BOOST_REQUIRE_EQUAL(stringMapHash256(m), d.root());
 			}
 		}
 	}

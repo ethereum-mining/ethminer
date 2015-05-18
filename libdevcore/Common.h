@@ -86,8 +86,9 @@ extern const u256 UndefinedU256;
 
 // Map types.
 using StringMap = std::map<std::string, std::string>;
+using BytesMap = std::map<bytes, bytes>;
 using u256Map = std::map<u256, u256>;
-using HexMap = std::map<bytes, std::string>;
+using HexMap = std::map<bytes, bytes>;
 
 // Hash types.
 using StringHashMap = std::unordered_map<std::string, std::string>;
