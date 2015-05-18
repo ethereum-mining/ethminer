@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Common.h"
 #include "BasicBlock.h"
 
 namespace dev

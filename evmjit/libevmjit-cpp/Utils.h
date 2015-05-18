@@ -1,6 +1,6 @@
 #pragma once
 
-#include <evmjit/DataTypes.h>
+#include <evmjit/JIT.h>
 
 namespace dev
 {

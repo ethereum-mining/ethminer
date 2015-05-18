@@ -1,22 +1,20 @@
 set(TARGET_NAME evmjit)
 
 set(SOURCES
+    JIT.cpp				${EVMJIT_INCLUDE_DIR}/evmjit/JIT.h
     Arith256.cpp		Arith256.h
     Array.cpp			Array.h
     BasicBlock.cpp		BasicBlock.h
     Cache.cpp			Cache.h
-    Common.h
+    					Common.h
     Compiler.cpp		Compiler.h
     CompilerHelper.cpp	CompilerHelper.h
-    ${EVMJIT_INCLUDE_DIR}/evmjit/DataTypes.h
     Endianness.cpp		Endianness.h
     ExecStats.cpp		ExecStats.h
-    ExecutionContext.cpp ExecutionContext.h
     Ext.cpp				Ext.h
     GasMeter.cpp		GasMeter.h
     Instruction.cpp		Instruction.h
     interface.cpp		interface.h
-    JIT.cpp				${EVMJIT_INCLUDE_DIR}/evmjit/JIT.h
     Memory.cpp			Memory.h
     Optimizer.cpp		Optimizer.h
     RuntimeManager.cpp	RuntimeManager.h

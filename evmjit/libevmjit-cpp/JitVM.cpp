@@ -7,7 +7,6 @@
 #include <libdevcrypto/SHA3.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
-#include <evmjit/JIT.h>
 
 #include "Utils.h"
 
