@@ -8,7 +8,6 @@
 #include <llvm/IR/IntrinsicInst.h>
 #include "preprocessor/llvm_includes_end.h"
 
-#include "evmjit/DataTypes.h"
 #include "Type.h"
 #include "Endianness.h"
 #include "Utils.h"

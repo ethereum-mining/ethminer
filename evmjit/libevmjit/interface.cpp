@@ -1,5 +1,4 @@
 #include "evmjit/JIT.h"
-#include "ExecutionContext.h"
 
 extern "C"
 {

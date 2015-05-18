@@ -10,7 +10,6 @@
 #include <llvm/Support/ManagedStatic.h>
 #include "preprocessor/llvm_includes_end.h"
 
-#include "ExecutionContext.h"
 #include "Compiler.h"
 #include "Optimizer.h"
 #include "Cache.h"
@@ -209,6 +208,30 @@ ReturnCode JIT::exec(ExecutionContext& _context)
 		statsCollector.stats.push_back(std::move(listener));
 
 	return returnCode;
+}
+
+
+extern "C" void ext_free(void* _data) noexcept;
+
+ExecutionContext::~ExecutionContext()
+{
+	if (m_memData)
+		ext_free(m_memData); // Use helper free to check memory leaks
+}
+
+bytes_ref ExecutionContext::getReturnData() const
+{
+	auto data = m_data->callData;
+	auto size = static_cast<size_t>(m_data->callDataSize);
+
+	if (data < m_memData || data >= m_memData + m_memSize || size == 0)
+	{
+		assert(size == 0); // data can be an invalid pointer only if size is 0
+		m_data->callData = nullptr;
+		return {};
+	}
+
+	return bytes_ref{data, size};
 }
 
 }
