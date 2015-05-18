@@ -59,7 +59,7 @@ enum ethash_io_rc {
  * figure out what kind of problem (I/O, memory e.t.c.) causes a NULL
  * ethash_full_t
  */
-#ifndef ETHASH_NO_CRITICAL_OUTPUT
+#ifdef ETHASH_PRINT_CRITICAL_OUTPUT
 #define ETHASH_CRITICAL(...)							\
 	do													\
 	{													\
