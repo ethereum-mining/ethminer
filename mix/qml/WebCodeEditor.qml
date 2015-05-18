@@ -137,17 +137,28 @@ Item {
 				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
 		}
 
-		function compilationError(error, sourceName)
+		function compilationError(error, firstLocation, secondLocation)
 		{
-			if (sourceName !== parent.sourceName)
+			console.log("current " + parent.sourceName);
+			console.log("source  " + firstLocation.source);
+			if (firstLocation.source !== parent.sourceName && secondLocation.source !== parent.sourceName)
 				return;
 			if (!editorBrowser || !error)
 				return;
-			var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);
-			if (errorInfo.line && errorInfo.column)
-				editorBrowser.runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
+			if (firstLocation.start.line)
+			{
+				var detail = error.split('\n')[0];
+				var reg = detail.match(/:\d+:\d+:/g);
+				if (reg !== null)
+					detail = detail.replace(reg[0], "");
+				editorBrowser.runJavaScript("compilationError('" + JSON.stringify(firstLocation) + "', '" + JSON.stringify(secondLocation) + "', '" + detail + "')", function(result){});
+			}
 			else
+			{
+				console.log("e d qml");
 				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
+			}
+
 		}
 
 		Timer
