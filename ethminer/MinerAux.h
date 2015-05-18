@@ -366,7 +366,7 @@ private:
 		if (_phoneHome)
 		{
 			cout << "Phoning home to find world ranking..." << endl;
-			jsonrpc::HttpClient client("http://gav.ethdev.com:3000/benchmark");
+			jsonrpc::HttpClient client("http://gav.ethdev.com:3000");
 			PhoneHome rpc(client);
 			try
 			{
