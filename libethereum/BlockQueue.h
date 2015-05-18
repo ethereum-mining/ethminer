@@ -21,12 +21,16 @@
 
 #pragma once
 
+#include <condition_variable>
+#include <thread>
+#include <deque>
 #include <boost/thread.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
 #include <libdevcore/Guards.h>
 #include <libethcore/Common.h>
+#include <libethcore/BlockInfo.h>
 
 namespace dev
 {
@@ -41,7 +45,9 @@ struct BlockQueueChannel: public LogChannel { static const char* name(); static 
 
 struct BlockQueueStatus
 {
-	size_t ready;
+	size_t verified;
+	size_t verifying;
+	size_t unverified;
 	size_t future;
 	size_t unknown;
 	size_t bad;
@@ -64,6 +70,9 @@ enum class QueueStatus
 class BlockQueue: HasInvariants
 {
 public:
+	BlockQueue();
+	~BlockQueue();
+
 	/// Import a block into the queue.
 	ImportResult import(bytesConstRef _tx, BlockChain const& _bc, bool _isOurs = false);
 
@@ -72,7 +81,7 @@ public:
 
 	/// Grabs at most @a _max of the blocks that are ready, giving them in the correct order for insertion into the chain.
 	/// Don't forget to call doneDrain() once you're done importing.
-	void drain(std::vector<bytes>& o_out, unsigned _max);
+	void drain(std::vector<std::pair<BlockInfo, bytes>>& o_out, unsigned _max);
 
 	/// Must be called after a drain() call. Notes that the drained blocks have been imported into the blockchain, so we can forget about them.
 	/// @returns true iff there are additional blocks ready to be processed.
@@ -85,16 +94,16 @@ public:
 	void retryAllUnknown();
 
 	/// Get information on the items queued.
-	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_ready.size(), m_unknown.size()); }
+	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_verified.size(), m_unknown.size()); }
 
 	/// Clear everything.
-	void clear() { WriteGuard l(m_lock); DEV_INVARIANT_CHECK; m_readySet.clear(); m_drainingSet.clear(); m_ready.clear(); m_unknownSet.clear(); m_unknown.clear(); m_future.clear(); }
+	void clear() { WriteGuard l(m_lock); DEV_INVARIANT_CHECK; Guard l2(m_verification); m_readySet.clear(); m_drainingSet.clear(); m_verified.clear(); m_unverified.clear(); m_unknownSet.clear(); m_unknown.clear(); m_future.clear(); }
 
 	/// Return first block with an unknown parent.
 	h256 firstUnknown() const { ReadGuard l(m_lock); return m_unknownSet.size() ? *m_unknownSet.begin() : h256(); }
 
 	/// Get some infomration on the current status.
-	BlockQueueStatus status() const { ReadGuard l(m_lock); return BlockQueueStatus{m_ready.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
+	BlockQueueStatus status() const { ReadGuard l(m_lock); Guard l2(m_verification); return BlockQueueStatus{m_verified.size(), m_verifying.size(), m_unverified.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
 
 	/// Get some infomration on the given block's status regarding us.
 	QueueStatus blockStatus(h256 const& _h) const;
@@ -106,15 +115,25 @@ private:
 
 	bool invariants() const override;
 
-	mutable boost::shared_mutex m_lock;									///< General lock.
+	void verifierBody();
+
+	mutable boost::shared_mutex m_lock;									///< General lock for the sets, m_future and m_unknown.
 	h256Hash m_drainingSet;												///< All blocks being imported.
-	h256Hash m_readySet;												///< All blocks ready for chain-import.
-	std::vector<std::pair<h256, bytes>> m_ready;						///< List of blocks, in correct order, ready for chain-import.
+	h256Hash m_readySet;												///< All blocks ready for chain import.
 	h256Hash m_unknownSet;												///< Set of all blocks whose parents are not ready/in-chain.
 	std::unordered_multimap<h256, std::pair<h256, bytes>> m_unknown;	///< For blocks that have an unknown parent; we map their parent hash to the block stuff, and insert once the block appears.
 	h256Hash m_knownBad;												///< Set of blocks that we know will never be valid.
 	std::multimap<unsigned, std::pair<h256, bytes>> m_future;			///< Set of blocks that are not yet valid. Ordered by timestamp
 	Signal m_onReady;													///< Called when a subsequent call to import blocks will return a non-empty container. Be nice and exit fast.
+
+	mutable Mutex m_verification;										///< Mutex that allows writing to m_verified, m_verifying and m_unverified.
+	std::condition_variable m_moreToVerify;								///< Signaled when m_unverified has a new entry.
+	std::vector<std::pair<BlockInfo, bytes>> m_verified;				///< List of blocks, in correct order, verified and ready for chain-import.
+	std::deque<std::pair<BlockInfo, bytes>> m_verifying;				///< List of blocks being verified; as long as the second component (bytes) is empty, it's not finished.
+	std::deque<std::pair<h256, bytes>> m_unverified;					///< List of blocks, in correct order, ready for verification.
+
+	std::vector<std::thread> m_verifiers;								///< Threads who only verify.
+	bool m_deleting = false;											///< Exit condition for verifiers.
 };
 
 }

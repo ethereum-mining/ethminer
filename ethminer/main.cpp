@@ -32,12 +32,10 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
+#include <libdevcrypto/SHA3.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/EthashAux.h>
-#include <libevm/VM.h>
-#include <libevm/VMFactory.h>
-#include <libethereum/All.h>
-#include <libwebthree/WebThree.h>
+#include <libethcore/Farm.h>
 #if ETH_JSONRPC || !ETH_TRUE
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include <jsonrpccpp/server/connectors/httpserver.h>
@@ -50,7 +48,6 @@
 #endif
 using namespace std;
 using namespace dev;
-using namespace dev::p2p;
 using namespace dev::eth;
 using namespace boost::algorithm;
 using dev::eth::Instruction;
@@ -143,7 +140,7 @@ enum class MinerType
 
 void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
 {
-	BlockInfo genesis = CanonBlockChain::genesis();
+	BlockInfo genesis;
 	genesis.difficulty = 1 << 18;
 	cdebug << genesis.boundary();
 
@@ -269,8 +266,8 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 			cnote << "  Header-hash:" << current.headerHash.hex();
 			cnote << "  Seedhash:" << current.seedHash.hex();
 			cnote << "  Target: " << h256(current.boundary).hex();
-			cnote << "  Ethash: " << h256(EthashAux::eval(EthashAux::number(current.seedHash), current.headerHash, solution.nonce).value).hex();
-			if (EthashAux::eval(EthashAux::number(current.seedHash), current.headerHash, solution.nonce).value < current.boundary)
+			cnote << "  Ethash: " << h256(EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value).hex();
+			if (EthashAux::eval(current.seedHash, current.headerHash, solution.nonce).value < current.boundary)
 			{
 				bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
 				if (ok)
@@ -294,9 +291,6 @@ void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
 
 int main(int argc, char** argv)
 {
-	// Init defaults
-	Defaults::get();
-
 	/// Operating mode.
 	OperationMode mode = OperationMode::Farm;
 
@@ -398,7 +392,10 @@ int main(int argc, char** argv)
 		else if (arg == "-C" || arg == "--cpu")
 			minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
+		{
 			minerType = MinerType::GPU;
+			miningThreads = 1;
+		}
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
 		{
 			string m = boost::to_lower_copy(string(argv[++i]));
@@ -432,7 +429,7 @@ int main(int argc, char** argv)
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
 				bi.nonce = h64(m);
-				auto r = EthashAux::eval((uint64_t)bi.number, powHash, bi.nonce);
+				auto r = EthashAux::eval(bi.seedHash(), powHash, bi.nonce);
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
@@ -441,7 +438,7 @@ int main(int argc, char** argv)
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light((uint64_t)bi.number)->data()) << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(bi.seedHash())->data()) << endl;
 				exit(0);
 			}
 			catch (...)

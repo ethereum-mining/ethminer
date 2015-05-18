@@ -97,7 +97,7 @@ public:
 	{
 		eth::KnownState state;
 		for (auto const& item: addDummyLocations(_input))
-			state.feedItem(item);
+			state.feedItem(item, true);
 		return state;
 	}
 

@@ -787,11 +787,14 @@ int main(int argc, char** argv)
 		else if (arg == "-C" || arg == "--cpu")
 			minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
+		{
 			minerType = MinerType::GPU;
+			miningThreads = 1;
 		/*<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
 		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
 		<< "    --sign-key <address>  Sign all transactions with the key of the given address." << endl
 		<< "    --session-sign-key <address>  Sign all transactions with the key of the given address for this session only." << endl*/
+		}
 		else if ((arg == "-s" || arg == "--import-secret") && i + 1 < argc)
 		{
 			Secret s(fromHex(argv[++i]));
@@ -857,7 +860,7 @@ int main(int argc, char** argv)
 				auto boundary = bi.boundary();
 				m = boost::to_lower_copy(string(argv[++i]));
 				bi.nonce = h64(m);
-				auto r = EthashAux::eval((uint64_t)bi.number, powHash, bi.nonce);
+				auto r = EthashAux::eval(bi.seedHash(), powHash, bi.nonce);
 				bool valid = r.value < boundary;
 				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
 				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
@@ -866,7 +869,7 @@ int main(int argc, char** argv)
 				cout << "  with seed as " << seedHash << endl;
 				if (valid)
 					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light((uint64_t)bi.number)->data()) << endl;
+				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light(bi.seedHash())->data()) << endl;
 				exit(0);
 			}
 			catch (...)
