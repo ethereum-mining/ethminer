@@ -173,7 +173,7 @@ Item {
 	Connections {
 		target: codeModel
 		onCompilationError: {
-			sourceInError = _sourceName;
+			sourceInError = _firstErrorLoc.source;
 		}
 		onCompilationComplete: {
 			sourceInError = "";

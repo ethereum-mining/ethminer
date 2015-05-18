@@ -309,22 +309,35 @@ void CodeModel::runCompilationJob(int _jobId)
 	}
 	catch (dev::Exception const& _exception)
 	{
-		std::ostringstream error;
+		std::stringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
 		QString message = QString::fromStdString(error.str());
-		QString sourceName;
-		if (SourceLocation const* location = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception))
-		{
-			if (location->sourceName)
-				sourceName = QString::fromStdString(*location->sourceName);
-			if (!sourceName.isEmpty())
-				if (CompiledContract* contract = contractByDocumentId(sourceName))
-					message = message.replace(sourceName, contract->contract()->name()); //substitute the location to match our contract names
-		}
-		compilationError(message, sourceName);
+		QVariantMap firstLocation;
+		QVariantMap secondLocation;
+		if (SourceLocation const* first = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception))
+			firstLocation = resolveCompilationErrorLocation(cs, *first);
+		if (SecondarySourceLocation const* second = boost::get_error_info<solidity::errinfo_secondarySourceLocation>(_exception))
+			secondLocation = resolveCompilationErrorLocation(cs, second->infos.front().second);
+		compilationError(message, firstLocation, secondLocation);
 	}
 	m_compiling = false;
 	emit stateChanged();
+}
+
+QVariantMap CodeModel::resolveCompilationErrorLocation(CompilerStack const& _compiler, SourceLocation const& _location)
+{
+	std::tuple<int, int, int, int> pos = _compiler.positionFromSourceLocation(_location);
+	QVariantMap startError;
+	startError.insert("line", std::get<0>(pos) - 1);
+	startError.insert("column", std::get<1>(pos) - 1);
+	QVariantMap endError;
+	endError.insert("line", std::get<2>(pos) - 1);
+	endError.insert("column", std::get<3>(pos) - 1);
+	QVariantMap error;
+	error.insert("start", startError);
+	error.insert("end", endError);
+	error.insert("source", QString::fromStdString(*_location.sourceName));
+	return error;
 }
 
 void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs, std::vector<std::string> const& _sourceNames)

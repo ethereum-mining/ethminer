@@ -158,28 +158,41 @@ showWarning = function(content)
 }
 
 var annotation = null;
+var secondaryAnnotation = null;
 var compilationCompleteBool = true;
-compilationError = function(line, column, content)
+compilationError = function(location, secondLocation, error)
 {
 	compilationCompleteBool = false;
 	window.setTimeout(function(){
 		if (compilationCompleteBool)
 			return;
-		line = parseInt(line);
-		column = parseInt(column);
-		if (line > 0)
-			line = line - 1;
-		if (column > 0)
-			column = column - 1;
 
+		var loc = JSON.parse(location);
 		if (annotation == null)
-			annotation = new ErrorAnnotation(editor, line, column, content);
-		else if (annotation.line !== line || annotation.column !== column || annotation.content !== content)
+		{
+			annotation = new ErrorAnnotation(editor, location, error);
+			if (secondLocation.start)
+				secondaryAnnotation = new ErrorAnnotation(editor, secondLocation, "");
+		}
+		else if (annotation.location.start.line !== loc.start.line || annotation.location.start.column !== loc.start.column || annotation.rawContent !== error)
 		{
 			annotation.destroy();
-			annotation = new ErrorAnnotation(editor, line, column, content);
+			annotation = new ErrorAnnotation(editor, location, error);
+			if (secondaryAnnotation)
+				secondaryAnnotation.destroy();
+			secondaryAnnotation = new ErrorAnnotation(editor, secondLocation, "");
 		}
 	}, 500)
+}
+
+formatSource = function(line, column)
+{
+	line = parseInt(line);
+	column = parseInt(column);
+	if (line > 0)
+		line = line - 1;
+	if (column > 0)
+		column = column - 1;
 }
 
 compilationComplete = function()
@@ -189,12 +202,20 @@ compilationComplete = function()
 		annotation.destroy();
 		annotation = null;
 	}
+
+	if (secondaryAnnotation !== null)
+	{
+		secondaryAnnotation.destroy();
+		secondaryAnnotation = null;
+	}
+
 	compilationCompleteBool = true;
+	console.log("end");
 }
 
 goToCompilationError = function()
 {
-	editor.setCursor(annotation.line, annotation.column)
+	editor.setCursor(annotation.start.line, annotation.start.column)
 }
 
 setFontSize = function(size)
