@@ -1,12 +1,81 @@
 #pragma once
 
-#include "RuntimeData.h"
+#include "evmjit/DataTypes.h"
 
 namespace dev
 {
 namespace evmjit
 {
-	using namespace eth::jit; // FIXME
+
+struct RuntimeData
+{
+	enum Index
+	{
+		Gas,
+		GasPrice,
+		CallData,
+		CallDataSize,
+		Address,
+		Caller,
+		Origin,
+		CallValue,
+		CoinBase,
+		Difficulty,
+		GasLimit,
+		Number,
+		Timestamp,
+		Code,
+		CodeSize,
+
+		SuicideDestAddress = Address,		///< Suicide balance destination address
+		ReturnData 		   = CallData,		///< Return data pointer (set only in case of RETURN)
+		ReturnDataSize 	   = CallDataSize,	///< Return data size (set only in case of RETURN)
+	};
+
+	int64_t 	gas = 0;
+	int64_t 	gasPrice = 0;
+	byte const* callData = nullptr;
+	uint64_t 	callDataSize = 0;
+	i256 		address;
+	i256 		caller;
+	i256 		origin;
+	i256 		callValue;
+	i256 		coinBase;
+	i256 		difficulty;
+	i256 		gasLimit;
+	uint64_t 	number = 0;
+	int64_t 	timestamp = 0;
+	byte const* code = nullptr;
+	uint64_t 	codeSize = 0;
+	h256		codeHash;
+};
+
+/// VM Environment (ExtVM) opaque type
+struct Env;
+
+enum class ReturnCode
+{
+	// Success codes
+	Stop    = 0,
+	Return  = 1,
+	Suicide = 2,
+
+	// Standard error codes
+	OutOfGas           = -1,
+	StackUnderflow     = -2,
+	BadJumpDestination = -3,
+	BadInstruction     = -4,
+	Rejected           = -5, ///< Input data (code, gas, block info, etc.) does not meet JIT requirement and execution request has been rejected
+
+	// Internal error codes
+	LLVMConfigError    = -101,
+	LLVMCompileError   = -102,
+	LLVMLinkError      = -103,
+
+	UnexpectedException = -111,
+
+	LinkerWorkaround = -299,
+};
 
 class ExecutionContext
 {
