@@ -363,7 +363,10 @@ void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 
 QVariantList CodeModel::gasCostByDocumentId(QString const& _documentId) const
 {
-	return m_gasCostsMaps->gasCostsByDocId(_documentId);
+	if (m_gasCostsMaps)
+		return m_gasCostsMaps->gasCostsByDocId(_documentId);
+	else
+		return QVariantList();
 }
 
 void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs, std::vector<std::string> const& _sourceNames)
