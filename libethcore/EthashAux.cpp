@@ -116,6 +116,8 @@ EthashAux::LightAllocation::LightAllocation(h256 const& _seedHash)
 {
 	uint64_t blockNumber = EthashAux::number(_seedHash);
 	light = ethash_light_new(blockNumber);
+	if (!light)
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_light_new()"));
 	size = ethash_get_cachesize(blockNumber);
 }
 
@@ -132,6 +134,8 @@ bytesConstRef EthashAux::LightAllocation::data() const
 EthashAux::FullAllocation::FullAllocation(ethash_light_t _light, ethash_callback_t _cb)
 {
 	full = ethash_full_new(_light, _cb);
+	if (!full)
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_full_new()"));
 }
 
 EthashAux::FullAllocation::~FullAllocation()
