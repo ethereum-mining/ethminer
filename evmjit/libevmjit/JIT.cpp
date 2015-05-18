@@ -26,7 +26,7 @@ using namespace eth::jit;
 
 namespace
 {
-using EntryFuncPtr = ReturnCode(*)(ExecutionContext*);
+using ExecFunc = ReturnCode(*)(ExecutionContext*);
 
 std::string hash2str(i256 const& _hash)
 {
@@ -78,10 +78,28 @@ void parseOptions()
 	cl::ParseEnvironmentOptions("evmjit", "EVMJIT", "Ethereum EVM JIT Compiler");
 }
 
-std::unique_ptr<llvm::ExecutionEngine> init()
+class JITImpl
 {
-	/// ExecutionEngine is created only once
+	std::unique_ptr<llvm::ExecutionEngine> m_engine;
+	std::unordered_map<h256, ExecFunc> m_codeMap;
 
+public:
+	static JITImpl& instance()
+	{
+		static JITImpl s_instance;
+		return s_instance;
+	}
+
+	JITImpl();
+
+	llvm::ExecutionEngine& engine() { return *m_engine; }
+
+	ExecFunc getExecFunc(h256 const& _codeHash) const;
+	void mapExecFunc(h256 _codeHash, ExecFunc _funcAddr);
+};
+
+JITImpl::JITImpl()
+{
 	parseOptions();
 
 	bool preloadCache = g_cache == CacheMode::preload;
@@ -103,57 +121,39 @@ std::unique_ptr<llvm::ExecutionEngine> init()
 	builder.setEngineKind(llvm::EngineKind::JIT);
 	builder.setOptLevel(g_optimize ? llvm::CodeGenOpt::Default : llvm::CodeGenOpt::None);
 
-	auto ee = std::unique_ptr<llvm::ExecutionEngine>{builder.create()};
+	m_engine.reset(builder.create());
 
 	// TODO: Update cache listener
-	ee->setObjectCache(Cache::init(g_cache, nullptr));
+	m_engine->setObjectCache(Cache::init(g_cache, nullptr));
 
 	// FIXME: Disabled during API changes
 	//if (preloadCache)
-	//	Cache::preload(*ee, funcCache);
-
-	return ee;
+	//	Cache::preload(*m_engine, funcCache);
 }
 
-class JITImpl
+ExecFunc JITImpl::getExecFunc(h256 const& _codeHash) const
 {
-public:
-	std::unordered_map<h256, void*> codeMap;
-
-	static JITImpl& instance()
-	{
-		static JITImpl s_instance;
-		return s_instance;
-	}
-
-	static void* getCode(h256 _codeHash);
-	static void mapCode(h256 _codeHash, void* _funcAddr);
-};
-
-void* JITImpl::getCode(h256 _codeHash)
-{
-	auto& codeMap = JITImpl::instance().codeMap;
-	auto it = codeMap.find(_codeHash);
-	if (it != codeMap.end())
+	auto it = m_codeMap.find(_codeHash);
+	if (it != m_codeMap.end())
 		return it->second;
 	return nullptr;
 }
 
-void JITImpl::mapCode(h256 _codeHash, void* _funcAddr)
+void JITImpl::mapExecFunc(h256 _codeHash, ExecFunc _funcAddr)
 {
-	JITImpl::instance().codeMap.insert(std::make_pair(_codeHash, _funcAddr));
+	m_codeMap.emplace(std::move(_codeHash), _funcAddr);
 }
 
 } // anonymous namespace
 
-bool JIT::isCodeReady(h256 _codeHash)
+bool JIT::isCodeReady(h256 const& _codeHash)
 {
-	return JITImpl::instance().codeMap.count(_codeHash) != 0;
+	return JITImpl::instance().getExecFunc(_codeHash) != nullptr;
 }
 
 ReturnCode JIT::exec(ExecutionContext& _context)
 {
-	static auto s_ee = init();
+	auto& jit = JITImpl::instance();
 
 	std::unique_ptr<ExecStats> listener{new ExecStats};
 	listener->stateChanged(ExecState::Started);
@@ -167,8 +167,8 @@ ReturnCode JIT::exec(ExecutionContext& _context)
 	auto mainFuncName = hash2str(codeHash);
 
 	// TODO: Remove cast
-	auto entryFuncPtr = (EntryFuncPtr) JITImpl::getCode(codeHash);
-	if (!entryFuncPtr)
+	auto execFunc = jit.getExecFunc(codeHash);
+	if (!execFunc)
 	{
 		auto module = Cache::getObject(mainFuncName);
 		if (!module)
@@ -188,20 +188,20 @@ ReturnCode JIT::exec(ExecutionContext& _context)
 		if (g_dump)
 			module->dump();
 
-		s_ee->addModule(std::move(module));
+		jit.engine().addModule(std::move(module));
 		listener->stateChanged(ExecState::CodeGen);
-		entryFuncPtr = (EntryFuncPtr)s_ee->getFunctionAddress(mainFuncName);
-		if (!CHECK(entryFuncPtr))
+		execFunc = (ExecFunc)jit.engine().getFunctionAddress(mainFuncName);
+		if (!CHECK(execFunc))
 			return ReturnCode::LLVMLinkError;
-		JITImpl::mapCode(codeHash, (void*)entryFuncPtr); // FIXME: Remove cast
+		jit.mapExecFunc(codeHash, execFunc);
 	}
 
 	listener->stateChanged(ExecState::Execution);
-	auto returnCode = entryFuncPtr(&_context);
+	auto returnCode = execFunc(&_context);
 	listener->stateChanged(ExecState::Return);
 
 	if (returnCode == ReturnCode::Return)
-		_context.returnData = _context.getReturnData();     // Save reference to return data
+		_context.returnData = _context.getReturnData(); // Save reference to return data
 
 	listener->stateChanged(ExecState::Finished);
 
