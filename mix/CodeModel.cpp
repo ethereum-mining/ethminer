@@ -333,7 +333,8 @@ void CodeModel::runCompilationJob(int _jobId)
 
 void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 {
-	m_gasCostsMaps->deleteLater();
+	if (m_gasCostsMaps)
+		m_gasCostsMaps->deleteLater();
 	m_gasCostsMaps = new GasMapWrapper(this);
 	for (std::string n: _cs.getContractNames())
 	{
