@@ -20,15 +20,15 @@ extern "C"
 
 	EXPORT void env_sload(ExtVMFace* _env, i256* _index, i256* o_value)
 	{
-		auto index = llvm2eth(*_index);
+		auto index = jit2eth(*_index);
 		auto value = _env->store(index); // Interface uses native endianness
-		*o_value = eth2llvm(value);
+		*o_value = eth2jit(value);
 	}
 
 	EXPORT void env_sstore(ExtVMFace* _env, i256* _index, i256* _value)
 	{
-		auto index = llvm2eth(*_index);
-		auto value = llvm2eth(*_value);
+		auto index = jit2eth(*_index);
+		auto value = jit2eth(*_value);
 
 		if (value == 0 && _env->store(index) != 0)	// If delete
 			_env->sub.refunds += c_sstoreRefundGas;	// Increase refund counter
@@ -39,17 +39,17 @@ extern "C"
 	EXPORT void env_balance(ExtVMFace* _env, h256* _address, i256* o_value)
 	{
 		auto u = _env->balance(right160(*_address));
-		*o_value = eth2llvm(u);
+		*o_value = eth2jit(u);
 	}
 
 	EXPORT void env_blockhash(ExtVMFace* _env, i256* _number, h256* o_hash)
 	{
-		*o_hash = _env->blockhash(llvm2eth(*_number));
+		*o_hash = _env->blockhash(jit2eth(*_number));
 	}
 
 	EXPORT void env_create(ExtVMFace* _env, int64_t* io_gas, i256* _endowment, byte* _initBeg, uint64_t _initSize, h256* o_address)
 	{
-		auto endowment = llvm2eth(*_endowment);
+		auto endowment = jit2eth(*_endowment);
 		if (_env->balance(_env->myAddress) >= endowment && _env->depth < 1024)
 		{
 			u256 gas = *io_gas;
@@ -63,7 +63,7 @@ extern "C"
 
 	EXPORT bool env_call(ExtVMFace* _env, int64_t* io_gas, int64_t _callGas, h256* _receiveAddress, i256* _value, byte* _inBeg, uint64_t _inSize, byte* _outBeg, uint64_t _outSize, h256* _codeAddress)
 	{
-		auto value = llvm2eth(*_value);
+		auto value = jit2eth(*_value);
 		auto receiveAddress = right160(*_receiveAddress);
 		auto codeAddress = right160(*_codeAddress);
 		const auto isCall = receiveAddress == codeAddress; // OPT: The same address pointer can be used if not CODECALL
