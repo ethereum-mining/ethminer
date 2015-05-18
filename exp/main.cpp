@@ -45,10 +45,10 @@
 #include <libdevcrypto/SecretStore.h>
 #include <libp2p/All.h>
 #include <libethcore/ProofOfWork.h>
+#include <libethcore/Farm.h>
 #include <libdevcrypto/FileSystem.h>
 #include <libethereum/All.h>
 #include <libethereum/KeyManager.h>
-#include <libethereum/Farm.h>
 #include <libethereum/AccountDiff.h>
 #include <libethereum/DownloadMan.h>
 #include <libethereum/Client.h>
