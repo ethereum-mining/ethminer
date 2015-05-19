@@ -212,7 +212,7 @@ Main::Main(QWidget *parent) :
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 
-	WebPage* webPage= new WebPage(this);
+	WebPage* webPage = new WebPage(this);
 	m_webPage = webPage;
 	connect(webPage, &WebPage::consoleMessage, [this](QString const& _msg) { Main::addConsoleMessage(_msg, QString()); });
 	ui->webView->setPage(m_webPage);
@@ -366,6 +366,11 @@ Address Main::getNameReg() const
 Address Main::getCurrencies() const
 {
 	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)3)).output);
+}
+
+bool Main::doConfirm()
+{
+	return ui->confirm->isChecked();
 }
 
 void Main::installNameRegWatch()
@@ -945,7 +950,11 @@ void Main::on_preview_triggered()
 
 void Main::on_prepNextDAG_triggered()
 {
-	EthashAux::computeFull(ethereum()->blockChain().number() + ETHASH_EPOCH_LENGTH);
+	EthashAux::computeFull(
+		EthashAux::seedHash(
+			ethereum()->blockChain().number() + ETHASH_EPOCH_LENGTH
+		)
+	);
 }
 
 void Main::refreshMining()
@@ -1010,7 +1019,7 @@ void Main::refreshBalances()
 		u256 b = ethereum()->balanceAt(i.first);
 		QListWidgetItem* li = new QListWidgetItem(QString("%4 %2: %1 [%3]").arg(formatBalance(b).c_str()).arg(QString::fromStdString(render(i.first))).arg((unsigned)ethereum()->countAt(i.first)).arg(QString::fromStdString(i.second.first)), ui->ourAccounts);
 		li->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
-		li->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
+		li->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 		li->setCheckState(m_beneficiary == i.first ? Qt::Checked : Qt::Unchecked);
 		totalBalance += b;
 
@@ -1147,7 +1156,7 @@ void Main::refreshBlockCount()
 {
 	auto d = ethereum()->blockChain().details();
 	BlockQueueStatus b = ethereum()->blockQueueStatus();
-	ui->chainStatus->setText(QString("%3 ready %4 future %5 unknown %6 bad  %1 #%2").arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.ready).arg(b.future).arg(b.unknown).arg(b.bad));
+	ui->chainStatus->setText(QString("%3 ready %4 verifying %5 unverified %6 future %7 unknown %8 bad  %1 #%2").arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad));
 }
 
 void Main::on_turboMining_triggered()
@@ -1157,6 +1166,9 @@ void Main::on_turboMining_triggered()
 
 void Main::refreshBlockChain()
 {
+	if (!ui->blocks->isVisible())
+		return;
+
 	DEV_TIMED_FUNCTION;
 	cwatch << "refreshBlockChain()";
 
@@ -1990,6 +2002,7 @@ void Main::on_killAccount_triggered()
 		m_keyManager.kill(h);
 		if (m_keyManager.accounts().empty())
 			m_keyManager.import(Secret::random(), "Default account");
+		m_beneficiary = *m_keyManager.accounts().begin();
 		keysChanged();
 		if (m_beneficiary == h)
 			setBeneficiary(*m_keyManager.accounts().begin());

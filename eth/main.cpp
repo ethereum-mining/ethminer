@@ -57,24 +57,13 @@
 #include "PhoneHome.h"
 #include "Farm.h"
 #endif
+#include <ethminer/MinerAux.h>
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::eth;
 using namespace boost::algorithm;
 using dev::eth::Instruction;
-
-#undef RETURN
-
-bool isTrue(std::string const& _m)
-{
-	return _m == "on" || _m == "yes" || _m == "true" || _m == "1";
-}
-
-bool isFalse(std::string const& _m)
-{
-	return _m == "off" || _m == "no" || _m == "false" || _m == "0";
-}
 
 void interactiveHelp()
 {
@@ -93,6 +82,7 @@ void interactiveHelp()
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
 		<< "    block  Gives the current block height." << endl
 		<< "    accounts  Gives information on all owned accounts (balances, mining beneficiary and default signer)." << endl
+		<< "    newaccount <name>  Creates a new account with the given name." << endl
 		<< "    transact  Execute a given transaction." << endl
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
@@ -158,33 +148,13 @@ void help()
 		<< "    --port <port>  Connect to remote port (default: 30303)." << endl
 		<< "    --network-id <n> Only connect to other hosts with this network id (default:0)." << endl
 		<< "    --upnp <on/off>  Use UPnP for NAT (default: on)." << endl
-		<< endl
+		<< endl;
+	MinerCLI::streamHelp(cout);
+	cout
 		<< "Client structured logging:" << endl
 		<< "    --structured-logging  Enable structured logging (default output to stdout)." << endl
 		<< "    --structured-logging-format <format>  Set the structured logging time format." << endl
 		<< "    --structured-logging-url <URL>  Set the structured logging destination (currently only file:// supported)." << endl
-#if ETH_JSONRPC || !ETH_TRUE
-		<< endl
-		<< "Work farming mode:" << endl
-		<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL. Use with -G/--opencl." << endl
-		<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
-#endif
-		<< endl
-		<< "Ethash verify mode:" << endl
-		<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
-		<< endl
-		<< "Benchmarking mode:" << endl
-		<< "    -M,--benchmark  Benchmark for mining and exit; use with --cpu and --opencl." << endl
-		<< "    --benchmark-warmup <seconds>  Set the duration of warmup for the benchmark tests (default: 3)." << endl
-		<< "    --benchmark-trial <seconds>  Set the duration for each trial for the benchmark tests (default: 3)." << endl
-		<< "    --benchmark-trials <n>  Set the duration of warmup for the benchmark tests (default: 5)." << endl
-#if ETH_JSONRPC || !ETH_TRUE
-		<< "    --phone-home <on/off>  When benchmarking, publish results (default: on)" << endl
-#endif
-		<< endl
-		<< "DAG creation mode:" << endl
-		<< "    -D,--create-dag <this/next/number>  Create the DAG in preparation for mining on given block and exit." << endl
-		<< endl
 		<< "Import/export modes:" << endl
 		<< "    -I,--import <file>  Import file as a concatenated series of blocks and exit." << endl
 		<< "    -E,--export <file>  Export file as a concatenated series of blocks and exit." << endl
@@ -207,20 +177,13 @@ void help()
 		exit(0);
 }
 
-string credits(bool _interactive = false)
+string ethCredits(bool _interactive = false)
 {
 	std::ostringstream cout;
-	cout
-		<< "Ethereum (++) " << dev::Version << endl
-		<< "  Code by Gav Wood et al, (c) 2013, 2014, 2015." << endl
-		<< "  Based on a design by Vitalik Buterin." << endl << endl;
-
 	if (_interactive)
 		cout
-			<< "Type 'netstart 30303' to start networking" << endl
-			<< "Type 'connect " << Host::pocHost() << " 30303' to connect" << endl
 			<< "Type 'exit' to quit" << endl << endl;
-	return cout.str();
+	return credits() + cout.str();
 }
 
 void version()
@@ -262,23 +225,11 @@ enum class NodeMode
 	Full
 };
 
-void doInitDAG(unsigned _n)
-{
-	BlockInfo bi;
-	bi.number = _n;
-	cout << "Initializing DAG for epoch beginning #" << (bi.number / 30000 * 30000) << " (seedhash " << bi.seedHash().abridged() << "). This will take a while." << endl;
-	Ethash::prep(bi);
-	exit(0);
-}
-
 enum class OperationMode
 {
 	Node,
 	Import,
-	Export,
-	DAGInit,
-	Benchmark,
-	Farm
+	Export
 };
 
 enum class Format
@@ -287,148 +238,6 @@ enum class Format
 	Hex,
 	Human
 };
-
-enum class MinerType
-{
-	CPU,
-	GPU
-};
-
-void doBenchmark(MinerType _m, bool _phoneHome, unsigned _warmupDuration = 15, unsigned _trialDuration = 3, unsigned _trials = 5)
-{
-	BlockInfo genesis = CanonBlockChain::genesis();
-	genesis.difficulty = 1 << 18;
-	cdebug << genesis.boundary();
-
-	GenericFarm<Ethash> f;
-	f.onSolutionFound([&](ProofOfWork::Solution) { return false; });
-
-	string platformInfo = _m == MinerType::CPU ? ProofOfWork::CPUMiner::platformInfo() : _m == MinerType::GPU ? ProofOfWork::GPUMiner::platformInfo() : "";
-	cout << "Benchmarking on platform: " << platformInfo << endl;
-
-	cout << "Preparing DAG..." << endl;
-	Ethash::prep(genesis);
-
-	genesis.difficulty = u256(1) << 63;
-	genesis.noteDirty();
-	f.setWork(genesis);
-	if (_m == MinerType::CPU)
-		f.startCPU();
-	else if (_m == MinerType::GPU)
-		f.startGPU();
-
-	map<uint64_t, MiningProgress> results;
-	uint64_t mean = 0;
-	uint64_t innerMean = 0;
-	for (unsigned i = 0; i <= _trials; ++i)
-	{
-		if (!i)
-			cout << "Warming up..." << endl;
-		else
-			cout << "Trial " << i << "... " << flush;
-		this_thread::sleep_for(chrono::seconds(i ? _trialDuration : _warmupDuration));
-
-		auto mp = f.miningProgress();
-		f.resetMiningProgress();
-		if (!i)
-			continue;
-		auto rate = mp.rate();
-
-		cout << rate << endl;
-		results[rate] = mp;
-		mean += rate;
-		if (i > 1 && i < 5)
-			innerMean += rate;
-	}
-	f.stop();
-	innerMean /= (_trials - 2);
-	cout << "min/mean/max: " << results.begin()->second.rate() << "/" << (mean / _trials) << "/" << results.rbegin()->second.rate() << " H/s" << endl;
-	cout << "inner mean: " << innerMean << " H/s" << endl;
-
-	(void)_phoneHome;
-#if ETH_JSONRPC || !ETH_TRUE
-	if (_phoneHome)
-	{
-		cout << "Phoning home to find world ranking..." << endl;
-		jsonrpc::HttpClient client("http://gav.ethdev.com:3000/benchmark");
-		PhoneHome rpc(client);
-		try
-		{
-			unsigned ranking = rpc.report_benchmark(platformInfo, innerMean);
-			cout << "Ranked: " << ranking << " of all benchmarks." << endl;
-		}
-		catch (...)
-		{
-			cout << "Error phoning home. ET is sad." << endl;
-		}
-	}
-#endif
-	exit(0);
-}
-
-struct HappyChannel: public LogChannel  { static const char* name() { return ":-D"; } static const int verbosity = 1; };
-struct SadChannel: public LogChannel { static const char* name() { return ":-("; } static const int verbosity = 1; };
-
-void doFarm(MinerType _m, string const& _remote, unsigned _recheckPeriod)
-{
-	(void)_m;
-	(void)_remote;
-	(void)_recheckPeriod;
-#if ETH_JSONRPC || !ETH_TRUE
-	jsonrpc::HttpClient client(_remote);
-	Farm rpc(client);
-	GenericFarm<Ethash> f;
-	if (_m == MinerType::CPU)
-		f.startCPU();
-	else if (_m == MinerType::GPU)
-		f.startGPU();
-
-	ProofOfWork::WorkPackage current;
-	while (true)
-		try
-		{
-			bool completed = false;
-			ProofOfWork::Solution solution;
-			f.onSolutionFound([&](ProofOfWork::Solution sol)
-			{
-				solution = sol;
-				return completed = true;
-			});
-			for (unsigned i = 0; !completed; ++i)
-			{
-				if (current)
-					cnote << "Mining on PoWhash" << current.headerHash << ": " << f.miningProgress();
-				else
-					cnote << "Getting work package...";
-				Json::Value v = rpc.eth_getWork();
-				h256 hh(v[0].asString());
-				if (hh != current.headerHash)
-				{
-					current.headerHash = hh;
-					current.seedHash = h256(v[1].asString());
-					current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
-					cnote << "Got work package:" << current.headerHash << " < " << current.boundary;
-					f.setWork(current);
-				}
-				this_thread::sleep_for(chrono::milliseconds(_recheckPeriod));
-			}
-			cnote << "Solution found; submitting [" << solution.nonce << "," << current.headerHash << "," << solution.mixHash << "] to" << _remote << "...";
-			bool ok = rpc.eth_submitWork("0x" + toString(solution.nonce), "0x" + toString(current.headerHash), "0x" + toString(solution.mixHash));
-			if (ok)
-				clog(HappyChannel) << "Submitted and accepted.";
-			else
-				clog(SadChannel) << "Not accepted.";
-			current.reset();
-		}
-		catch (jsonrpc::JsonRpcException&)
-		{
-			for (auto i = 3; --i; this_thread::sleep_for(chrono::seconds(1)))
-				cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
-			cerr << endl;
-		}
-#endif
-	exit(0);
-}
 
 void stopMiningAfterXBlocks(eth::Client* _c, unsigned _start, unsigned _mining)
 {
@@ -439,85 +248,12 @@ void stopMiningAfterXBlocks(eth::Client* _c, unsigned _start, unsigned _mining)
 
 int main(int argc, char** argv)
 {
-#if 0
-	cout << "\x1b[30mEthBlack\x1b[0m" << endl;
-	cout << "\x1b[90mEthCoal\x1b[0m" << endl;
-	cout << "\x1b[37mEthGray\x1b[0m" << endl;
-	cout << "\x1b[97mEthWhite\x1b[0m" << endl;
-	cout << "\x1b[31mEthRed\x1b[0m" << endl;
-	cout << "\x1b[32mEthGreen\x1b[0m" << endl;
-	cout << "\x1b[33mEthYellow\x1b[0m" << endl;
-	cout << "\x1b[34mEthBlue\x1b[0m" << endl;
-	cout << "\x1b[35mEthPurple\x1b[0m" << endl;
-	cout << "\x1b[36mEthCyan\x1b[0m" << endl;
-	// High Intensity
-	cout << "\x1b[91mEthRedI\x1b[0m" << endl;
-	cout << "\x1b[92mEthLime\x1b[0m" << endl;
-	cout << "\x1b[93mEthYellowI\x1b[0m" << endl;
-	cout << "\x1b[94mEthBlueI\x1b[0m" << endl;
-	cout << "\x1b[95mEthPurpleI\x1b[0m" << endl;
-	cout << "\x1b[96mEthCyanI\x1b[0m" << endl;
-
-	// Bold
-	cout << "\x1b[1;30mEthBlackB\x1b[0m" << endl;
-	cout << "\x1b[1;90mEthCoalB\x1b[0m" << endl;
-	cout << "\x1b[1;37mEthGrayB\x1b[0m" << endl;
-	cout << "\x1b[1;97mEthWhiteB\x1b[0m" << endl;
-	cout << "\x1b[1;31mEthRedB\x1b[0m" << endl;
-	cout << "\x1b[1;32mEthGreenB\x1b[0m" << endl;
-	cout << "\x1b[1;33mEthYellowB\x1b[0m" << endl;
-	cout << "\x1b[1;34mEthBlueB\x1b[0m" << endl;
-	cout << "\x1b[1;35mEthPurpleB\x1b[0m" << endl;
-	cout << "\x1b[1;36mEthCyanB\x1b[0m" << endl;
-	// Bold High Intensity
-	cout << "\x1b[1;91mEthRedBI\x1b[0m" << endl;
-	cout << "\x1b[1;92mEthGreenBI\x1b[0m" << endl;
-	cout << "\x1b[1;93mEthYellowBI\x1b[0m" << endl;
-	cout << "\x1b[1;94mEthBlueBI\x1b[0m" << endl;
-	cout << "\x1b[1;95mEthPurpleBI\x1b[0m" << endl;
-	cout << "\x1b[1;96mEthCyanBI\x1b[0m" << endl;
-
-	// Background
-	cout << "\x1b[40mEthBlackOn\x1b[0m" << endl;
-	cout << "\x1b[100mEthCoalOn\x1b[0m" << endl;
-	cout << "\x1b[47mEthGrayOn\x1b[0m" << endl;
-	cout << "\x1b[107mEthWhiteOn\x1b[0m" << endl;
-	cout << "\x1b[41mEthRedOn\x1b[0m" << endl;
-	cout << "\x1b[42mEthGreenOn\x1b[0m" << endl;
-	cout << "\x1b[43mEthYellowOn\x1b[0m" << endl;
-	cout << "\x1b[44mEthBlueOn\x1b[0m" << endl;
-	cout << "\x1b[45mEthPurpleOn\x1b[0m" << endl;
-	cout << "\x1b[46mEthCyanOn\x1b[0m" << endl;
-	// High Intensity backgrounds
-	cout << "\x1b[101mEthRedOnI\x1b[0m" << endl;
-	cout << "\x1b[102mEthGreenOnI\x1b[0m" << endl;
-	cout << "\x1b[103mEthYellowOnI\x1b[0m" << endl;
-	cout << "\x1b[104mEthBlueOnI\x1b[0m" << endl;
-	cout << "\x1b[105mEthPurpleOnI\x1b[0m" << endl;
-	cout << "\x1b[106mEthCyanOnI\x1b[0m" << endl;
-
-	// Underline
-	cout << "\x1b[4;30mEthBlackU\x1b[0m" << endl;
-	cout << "\x1b[4;31mEthRedU\x1b[0m" << endl;
-	cout << "\x1b[4;32mEthGreenU\x1b[0m" << endl;
-	cout << "\x1b[4;33mEthYellowU\x1b[0m" << endl;
-	cout << "\x1b[4;34mEthBlueU\x1b[0m" << endl;
-	cout << "\x1b[4;35mEthPurpleU\x1b[0m" << endl;
-	cout << "\x1b[4;36mEthCyanU\x1b[0m" << endl;
-	cout << "\x1b[4;37mEthWhiteU\x1b[0m" << endl;
-#endif
 	// Init defaults
 	Defaults::get();
 
 	/// Operating mode.
 	OperationMode mode = OperationMode::Node;
 	string dbPath;
-
-	/// Mining options
-	MinerType minerType = MinerType::CPU;
-	unsigned openclPlatform = 0;
-	unsigned openclDevice = 0;
-	unsigned miningThreads = UINT_MAX;
 
 	/// File name for import/export.
 	string filename;
@@ -526,9 +262,6 @@ int main(int argc, char** argv)
 	string exportFrom = "1";
 	string exportTo = "latest";
 	Format exportFormat = Format::Binary;
-
-	/// DAG initialisation param.
-	unsigned initDAG = 0;
 
 	/// General params for Node operation
 	NodeMode nodeMode = NodeMode::Full;
@@ -547,7 +280,7 @@ int main(int argc, char** argv)
 	string publicIP;
 	string remoteHost;
 	unsigned short remotePort = 30303;
-	unsigned peers = 5;
+	unsigned peers = 11;
 	bool bootstrap = false;
 	unsigned networkId = 0;
 
@@ -568,18 +301,8 @@ int main(int argc, char** argv)
 	double etherPrice = 30.679;
 	double blockFees = 15.0;
 
-	/// Benchmarking params
-	bool phoneHome = true;
-	unsigned benchmarkWarmup = 3;
-	unsigned benchmarkTrial = 3;
-	unsigned benchmarkTrials = 5;
-
 	// javascript console
 	bool useConsole = false;
-
-	/// Farm params
-	string farmURL = "http://127.0.0.1:8080";
-	unsigned farmRecheckPeriod = 500;
 
 	/// Wallet password stuff
 	string masterPassword;
@@ -602,10 +325,13 @@ int main(int argc, char** argv)
 		beneficiary = config[1].toHash<Address>();
 	}
 
+	MinerCLI m(MinerCLI::OperationMode::None);
+
 	for (int i = 1; i < argc; ++i)
 	{
 		string arg = argv[i];
-		if (arg == "--listen-ip" && i + 1 < argc)
+		if (m.interpretOption(i, argc, argv)) {}
+		else if (arg == "--listen-ip" && i + 1 < argc)
 			listenIP = argv[++i];
 		else if ((arg == "-l" || arg == "--listen" || arg == "--listen-port") && i + 1 < argc)
 		{
@@ -640,52 +366,6 @@ int main(int argc, char** argv)
 		{
 			mode = OperationMode::Export;
 			filename = argv[++i];
-		}
-		else if ((arg == "-F" || arg == "--farm") && i + 1 < argc)
-		{
-			mode = OperationMode::Farm;
-			farmURL = argv[++i];
-		}
-		else if (arg == "--farm-recheck" && i + 1 < argc)
-			try {
-				farmRecheckPeriod = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				return -1;
-			}
-		else if (arg == "--opencl-platform" && i + 1 < argc)
-			try {
-				openclPlatform = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				return -1;
-			}
-		else if (arg == "--opencl-device" && i + 1 < argc)
-			try {
-				openclDevice = stol(argv[++i]);
-				miningThreads = 1;
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				return -1;
-			}
-		else if (arg == "--phone-home" && i + 1 < argc)
-		{
-			string m = argv[++i];
-			if (isTrue(m))
-				phoneHome = true;
-			else if (isFalse(m))
-				phoneHome = false;
-			else
-			{
-				cerr << "Bad " << arg << " option: " << m << endl;
-				return -1;
-			}
 		}
 		else if (arg == "--format" && i + 1 < argc)
 		{
@@ -732,33 +412,6 @@ int main(int argc, char** argv)
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
-		else if (arg == "--benchmark-warmup" && i + 1 < argc)
-			try {
-				benchmarkWarmup = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				return -1;
-			}
-		else if (arg == "--benchmark-trial" && i + 1 < argc)
-			try {
-				benchmarkTrial = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				return -1;
-			}
-		else if (arg == "--benchmark-trials" && i + 1 < argc)
-			try {
-				benchmarkTrials = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				return -1;
-			}
 		else if (arg == "-K" || arg == "--kill-blockchain" || arg == "--kill")
 			killChain = WithExisting::Kill;
 		else if (arg == "-R" || arg == "--rebuild")
@@ -783,14 +436,6 @@ int main(int argc, char** argv)
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				return -1;
 			}
-		else if (arg == "-C" || arg == "--cpu")
-			minerType = MinerType::CPU;
-		else if (arg == "-G" || arg == "--opencl")
-			minerType = MinerType::GPU;
-		/*<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
-		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
-		<< "    --sign-key <address>  Sign all transactions with the key of the given address." << endl
-		<< "    --session-sign-key <address>  Sign all transactions with the key of the given address for this session only." << endl*/
 		else if ((arg == "-s" || arg == "--import-secret") && i + 1 < argc)
 		{
 			Secret s(fromHex(argv[++i]));
@@ -818,64 +463,6 @@ int main(int argc, char** argv)
 		}
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
-		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
-		{
-			string m = boost::to_lower_copy(string(argv[++i]));
-			mode = OperationMode::DAGInit;
-			if (m == "next")
-				initDAG = PendingBlock;
-			else if (m == "this")
-				initDAG = LatestBlock;
-			else
-				try
-				{
-					initDAG = stol(m);
-				}
-				catch (...)
-				{
-					cerr << "Bad " << arg << " option: " << m << endl;
-					return -1;
-				}
-		}
-		else if ((arg == "-w" || arg == "--check-pow") && i + 4 < argc)
-		{
-			string m;
-			try
-			{
-				BlockInfo bi;
-				m = boost::to_lower_copy(string(argv[++i]));
-				h256 powHash(m);
-				m = boost::to_lower_copy(string(argv[++i]));
-				h256 seedHash;
-				if (m.size() == 64 || m.size() == 66)
-					seedHash = h256(m);
-				else
-					seedHash = EthashAux::seedHash(stol(m));
-				m = boost::to_lower_copy(string(argv[++i]));
-				bi.difficulty = u256(m);
-				auto boundary = bi.boundary();
-				m = boost::to_lower_copy(string(argv[++i]));
-				bi.nonce = h64(m);
-				auto r = EthashAux::eval((uint64_t)bi.number, powHash, bi.nonce);
-				bool valid = r.value < boundary;
-				cout << (valid ? "VALID :-)" : "INVALID :-(") << endl;
-				cout << r.value << (valid ? " < " : " >= ") << boundary << endl;
-				cout << "  where " << boundary << " = 2^256 / " << bi.difficulty << endl;
-				cout << "  and " << r.value << " = ethash(" << powHash << ", " << bi.nonce << ")" << endl;
-				cout << "  with seed as " << seedHash << endl;
-				if (valid)
-					cout << "(mixHash = " << r.mixHash << ")" << endl;
-				cout << "SHA3( light(seed) ) = " << sha3(EthashAux::light((uint64_t)bi.number)->data()) << endl;
-				exit(0);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << m << endl;
-				return -1;
-			}
-		}
-		else if (arg == "-M" || arg == "--benchmark")
-			mode = OperationMode::Benchmark;
 		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
 			try
@@ -938,17 +525,6 @@ int main(int argc, char** argv)
 					return -1;
 				}
 		}
-		else if ((arg == "-t" || arg == "--mining-threads") && i + 1 < argc)
-		{
-			try {
-				miningThreads = stol(argv[++i]);
-			}
-			catch (...)
-			{
-				cerr << "Bad " << arg << " option: " << argv[i] << endl;
-				return -1;
-			}
-		}
 		else if (arg == "-b" || arg == "--bootstrap")
 			bootstrap = true;
 		else if (arg == "-f" || arg == "--force-mining")
@@ -999,15 +575,11 @@ int main(int argc, char** argv)
 		}
 	}
 
+	m.execute();
+
 	KeyManager keyManager;
 	for (auto const& s: passwordsToNote)
 		keyManager.notePassword(s);
-	for (auto const& s: toImport)
-	{
-		keyManager.import(s, "Imported key");
-		if (!signingKey)
-			signingKey = toAddress(s);
-	}
 
 	{
 		RLPStream config(2);
@@ -1017,26 +589,6 @@ int main(int argc, char** argv)
 
 	if (sessionKey)
 		signingKey = sessionKey;
-
-	if (minerType == MinerType::CPU)
-		ProofOfWork::CPUMiner::setNumInstances(miningThreads);
-	else if (minerType == MinerType::GPU)
-	{
-		ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
-		ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
-		ProofOfWork::GPUMiner::setNumInstances(miningThreads);
-	}
-
-	// Two codepaths is necessary since named block require database, but numbered
-	// blocks are superuseful to have when database is already open in another process.
-	if (mode == OperationMode::DAGInit && !(initDAG == LatestBlock || initDAG == PendingBlock))
-		doInitDAG(initDAG);
-
-	if (mode == OperationMode::Benchmark)
-		doBenchmark(minerType, phoneHome, benchmarkWarmup, benchmarkTrial, benchmarkTrials);
-
-	if (mode == OperationMode::Farm)
-		doFarm(minerType, farmURL, farmRecheckPeriod);
 
 	if (!clientName.empty())
 		clientName += "/";
@@ -1076,34 +628,6 @@ int main(int argc, char** argv)
 		netPrefs,
 		&nodesState);
 	
-	if (mode == OperationMode::DAGInit)
-		doInitDAG(web3.ethereum()->blockChain().number() + (initDAG == PendingBlock ? 30000 : 0));
-
-	if (keyManager.exists())
-		while (masterPassword.empty())
-		{
-			masterPassword = getPassword("Please enter your MASTER password: ");
-			if (!keyManager.load(masterPassword))
-			{
-				cout << "Password invalid. Try again." << endl;
-				masterPassword.clear();
-			}
-		}
-	else
-	{
-		while (masterPassword.empty())
-		{
-			masterPassword = getPassword("Please enter a MASTER password to protect your key store (make it strong!): ");
-			string confirm = getPassword("Please confirm the password by entering it again: ");
-			if (masterPassword != confirm)
-			{
-				cout << "Passwords were different. Try again." << endl;
-				masterPassword.clear();
-			}
-		}
-		keyManager.create(masterPassword);
-	}
-
 	auto toNumber = [&](string const& s) -> unsigned {
 		if (s == "latest")
 			return web3.ethereum()->number();
@@ -1167,7 +691,42 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	cout << credits();
+	if (keyManager.exists())
+		while (masterPassword.empty())
+		{
+			masterPassword = getPassword("Please enter your MASTER password: ");
+			if (!keyManager.load(masterPassword))
+			{
+				cout << "Password invalid. Try again." << endl;
+				masterPassword.clear();
+			}
+		}
+	else
+	{
+		while (masterPassword.empty())
+		{
+			masterPassword = getPassword("Please enter a MASTER password to protect your key store (make it strong!): ");
+			string confirm = getPassword("Please confirm the password by entering it again: ");
+			if (masterPassword != confirm)
+			{
+				cout << "Passwords were different. Try again." << endl;
+				masterPassword.clear();
+			}
+		}
+		keyManager.create(masterPassword);
+	}
+
+	for (auto const& s: toImport)
+	{
+		keyManager.import(s, "Imported key (UNSAFE)");
+		if (!signingKey)
+			signingKey = toAddress(s);
+	}
+
+	if (keyManager.accounts().empty())
+		keyManager.import(Secret::random(), "Default key");
+
+	cout << ethCredits();
 	web3.setIdealPeerCount(peers);
 	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
@@ -1176,7 +735,7 @@ int main(int argc, char** argv)
 	{
 		c->setGasPricer(gasPricer);
 		c->setForceMining(forceMining);
-		c->setTurboMining(minerType == MinerType::GPU);
+		c->setTurboMining(m.minerType() == MinerCLI::MinerType::GPU);
 		c->setAddress(beneficiary);
 		c->setNetworkId(networkId);
 	}
@@ -1368,9 +927,36 @@ int main(int argc, char** argv)
 						<< std::chrono::duration_cast<std::chrono::milliseconds>(it.lastPing).count() << "ms"
 						<< endl;
 			}
-			else if (c && cmd == "balance")
+			else if (cmd == "newaccount")
 			{
-				cout << "Current balance:" << endl;
+				string name;
+				std::getline(iss, name);
+				auto s = Secret::random();
+				string password;
+				while (password.empty())
+				{
+					password = getPassword("Please enter a password to protect this key (press enter for protection only be the MASTER password/keystore): ");
+					string confirm = getPassword("Please confirm the password by entering it again: ");
+					if (password != confirm)
+					{
+						cout << "Passwords were different. Try again." << endl;
+						password.clear();
+					}
+				}
+				if (!password.empty())
+				{
+					cout << "Enter a hint for this password: " << flush;
+					string hint;
+					std::getline(cin, hint);
+					keyManager.import(s, name, password, hint);
+				}
+				else
+					keyManager.import(s, name);
+				cout << "New account created: " << toAddress(s);
+			}
+			else if (c && cmd == "accounts")
+			{
+				cout << "Accounts:" << endl;
 				u256 total = 0;
 				for (auto const& i: keyManager.accountDetails())
 				{
@@ -1765,7 +1351,7 @@ int main(int argc, char** argv)
 		if (useConsole)
 		{
 #if ETH_JSCONSOLE
-			JSConsole console(web3, vector<KeyPair>({sigKey}));
+			JSConsole console(web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager));
 			while (!g_exit)
 			{
 				console.repl();

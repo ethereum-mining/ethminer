@@ -146,6 +146,9 @@ AddressHash OurAccountHolder::realAccounts() const
 
 bool OurAccountHolder::validateTransaction(TransactionSkeleton const& _t, bool _toProxy)
 {
+	if (!m_main->doConfirm())
+		return true;
+
 	if (_t.creation)
 	{
 		// show notice concerning the creation code. TODO: this needs entering into natspec.

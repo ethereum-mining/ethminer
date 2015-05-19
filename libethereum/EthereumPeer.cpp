@@ -74,7 +74,7 @@ string toString(Asking _a)
 	return "?";
 }
 
-void EthereumPeer::transition(Asking _a, bool _force)
+void EthereumPeer::transition(Asking _a, bool _force, bool _needHelp)
 {
 	clog(NetMessageSummary) << "Transition!" << ::toString(_a) << "from" << ::toString(m_asking) << ", " << (isSyncing() ? "syncing" : "holding") << (needsSyncing() ? "& needed" : "");
 
@@ -151,7 +151,7 @@ void EthereumPeer::transition(Asking _a, bool _force)
 		if (m_asking == Asking::Nothing || m_asking == Asking::Hashes || m_asking == Asking::Blocks)
 		{
 			// Looks like it's the best yet for total difficulty. Set to download.
-			setAsking(Asking::Blocks, isSyncing());		// will kick off other peers to help if available.
+			setAsking(Asking::Blocks, isSyncing(), _needHelp);		// will kick off other peers to help if available.
 			auto blocks = m_sub.nextFetch(c_maxBlocksAsk);
 			if (blocks.size())
 			{
@@ -200,13 +200,13 @@ void EthereumPeer::transition(Asking _a, bool _force)
 	clog(NetWarn) << "Invalid state transition:" << ::toString(_a) << "from" << ::toString(m_asking) << ", " << (isSyncing() ? "syncing" : "holding") << (needsSyncing() ? "& needed" : "");
 }
 
-void EthereumPeer::setAsking(Asking _a, bool _isSyncing)
+void EthereumPeer::setAsking(Asking _a, bool _isSyncing, bool _needHelp)
 {
 	bool changedAsking = (m_asking != _a);
 	m_asking = _a;
 
 	if (_isSyncing != (host()->m_syncer == this) || (_isSyncing && changedAsking))
-		host()->changeSyncer(_isSyncing ? this : nullptr);
+		host()->changeSyncer(_isSyncing ? this : nullptr, _needHelp);
 
 	if (!_isSyncing)
 	{
@@ -599,9 +599,10 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			clog(NetMessageSummary) << knowns << "knowns," << unknowns << "unknowns";
 			if (unknowns > 0)
 			{
+				clog(NetNote) << "Not syncing and new block hash discovered: syncing without help.";
 				host()->m_man.resetToChain(m_syncingNeededBlocks);
-				host()->changeSyncer(this);
-				transition(Asking::Blocks);
+				host()->changeSyncer(this, false);
+				transition(Asking::Blocks, false, false);	// TODO: transaction(Asking::NewBlocks, false)
 			}
 			return true;
 		}

@@ -72,13 +72,12 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 	ret.boundary = _bi.boundary();
 	ret.headerHash = _bi.headerHash(WithoutNonce);
 	ret.seedHash = _bi.seedHash();
-	ret.blockNumber = (uint64_t) _bi.number;
 	return ret;
 }
 
 void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
 {
-	EthashAux::full((unsigned)_header.number, _f);
+	EthashAux::full(_header.seedHash(), true, _f);
 }
 
 bool Ethash::preVerify(BlockInfo const& _header)
@@ -135,7 +134,10 @@ void Ethash::CPUMiner::workLoop()
 
 	WorkPackage w = work();
 
-	auto dag = EthashAux::full(w.blockNumber);
+	EthashAux::FullType dag;
+	while (!shouldStop() && !(dag = EthashAux::full(w.seedHash)))
+		this_thread::sleep_for(chrono::milliseconds(500));
+
 	h256 boundary = w.boundary;
 	unsigned hashCount = 1;
 	for (; !shouldStop(); tryNonce++, hashCount++)
@@ -144,8 +146,8 @@ void Ethash::CPUMiner::workLoop()
 		h256 value = h256((uint8_t*)&ethashReturn.result, h256::ConstructFromPointer);
 		if (value <= boundary && submitProof(Solution{(Nonce)(u64)tryNonce, h256((uint8_t*)&ethashReturn.mix_hash, h256::ConstructFromPointer)}))
 			break;
-		if (!(hashCount % 1000))
-			accumulateHashes(1000);
+		if (!(hashCount % 100))
+			accumulateHashes(100);
 	}
 }
 
@@ -284,7 +286,7 @@ Ethash::GPUMiner::~GPUMiner()
 bool Ethash::GPUMiner::report(uint64_t _nonce)
 {
 	Nonce n = (Nonce)(u64)_nonce;
-	Result r = EthashAux::eval(work().blockNumber, work().headerHash, n);
+	Result r = EthashAux::eval(work().seedHash, work().headerHash, n);
 	if (r.value < work().boundary)
 		return submitProof(Solution{n, r.mixHash});
 	return false;
@@ -301,6 +303,7 @@ void Ethash::GPUMiner::workLoop()
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		WorkPackage w = work();
+		cnote << "workLoop" << !!m_miner << m_minerSeed << w.seedHash;
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
 			m_minerSeed = w.seedHash;
@@ -310,9 +313,19 @@ void Ethash::GPUMiner::workLoop()
 
 			unsigned device = instances() > 1 ? index() : s_deviceId;
 
-			if (!EthashAux::computeFull(w.blockNumber))
-				return;
-			EthashAux::FullType dag = EthashAux::full(w.blockNumber);
+			EthashAux::FullType dag;
+			while (true)
+			{
+				if ((dag = EthashAux::full(w.seedHash, false)))
+					break;
+				if (shouldStop())
+				{
+					delete m_miner;
+					return;
+				}
+				cnote << "Awaiting DAG";
+				this_thread::sleep_for(chrono::milliseconds(500));
+			}
 			bytesConstRef dagData = dag->data();
 			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
 		}

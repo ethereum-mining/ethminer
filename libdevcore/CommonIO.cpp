@@ -24,6 +24,12 @@
 #include <cstdlib>
 #include <fstream>
 #include "Exceptions.h"
+#include <stdio.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <termios.h>
+#endif
 using namespace std;
 using namespace dev;
 
@@ -122,10 +128,47 @@ std::string dev::getPassword(std::string const& _prompt)
 {
 #if WIN32
 	cout << _prompt << flush;
+	// Get current Console input flags
+	HANDLE hStdin;
+	DWORD fdwSaveOldMode;
+	if ((hStdin = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE)
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("GetStdHandle"));
+	if (!GetConsoleMode(hStdin, &fdwSaveOldMode))
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("GetConsoleMode"));
+	// Set console flags to no echo
+	if (!SetConsoleMode(hStdin, fdwSaveOldMode & (~ENABLE_ECHO_INPUT)))
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("SetConsoleMode"));
+	// Read the string
 	std::string ret;
 	std::getline(cin, ret);
+	// Restore old input mode
+	if (!SetConsoleMode(hStdin, fdwSaveOldMode))
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("SetConsoleMode"));
 	return ret;
 #else
-	return getpass(_prompt.c_str());
+	struct termios oflags;
+	struct termios nflags;
+	char password[256];
+
+	// disable echo in the terminal
+	tcgetattr(fileno(stdin), &oflags);
+	nflags = oflags;
+	nflags.c_lflag &= ~ECHO;
+	nflags.c_lflag |= ECHONL;
+
+	if (tcsetattr(fileno(stdin), TCSANOW, &nflags) != 0)
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("tcsetattr"));
+
+	printf("%s", _prompt.c_str());
+	if (!fgets(password, sizeof(password), stdin))
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("fgets"));
+	password[strlen(password) - 1] = 0;
+
+	// restore terminal
+	if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0)
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("tcsetattr"));
+
+
+	return password;
 #endif
 }
