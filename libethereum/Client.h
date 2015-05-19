@@ -289,7 +289,7 @@ private:
 	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
 	bool remoteActive() const;				///< Is there an active and valid remote worker?
 	bool m_remoteWorking = false;			///< Has the remote worker recently been reset?
-	std::chrono::system_clock::time_point m_lastGetWork = std::chrono::system_clock::time_point::min();	///< Is there an active and valid remote worker?
+	std::chrono::system_clock::time_point m_lastGetWork;	///< Is there an active and valid remote worker?
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
