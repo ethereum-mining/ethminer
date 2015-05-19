@@ -21,7 +21,9 @@
 
 #include "Precompiled.h"
 
+#include <libdevcore/Log.h>
 #include <libdevcrypto/SHA3.h>
+#include <libdevcrypto/Hash.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Common.h>
 #include <libevmcore/Params.h>
@@ -61,19 +63,12 @@ static bytes ecrecoverCode(bytesConstRef _in)
 
 static bytes sha256Code(bytesConstRef _in)
 {
-	bytes ret(32);
-	sha256(_in, &ret);
-	return ret;
+	return sha256(_in).asBytes();
 }
 
 static bytes ripemd160Code(bytesConstRef _in)
 {
-	bytes ret(32);
-	ripemd160(_in, &ret);
-	// leaves the 20-byte hash left-aligned. we want it right-aligned:
-	memmove(ret.data() + 12, ret.data(), 20);
-	memset(ret.data(), 0, 12);
-	return ret;
+	return h256(ripemd160(_in), h256::AlignRight).asBytes();
 }
 
 static bytes identityCode(bytesConstRef _in)
