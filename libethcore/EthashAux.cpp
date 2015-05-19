@@ -101,13 +101,13 @@ uint64_t EthashAux::number(h256 const& _seedHash)
 
 void EthashAux::killCache(h256 const& _s)
 {
-	RecursiveGuard l(x_lights);
+	WriteGuard l(x_lights);
 	m_lights.erase(_s);
 }
 
 EthashAux::LightType EthashAux::light(h256 const& _seedHash)
 {
-	RecursiveGuard l(get()->x_lights);
+	ReadGuard l(get()->x_lights);
 	LightType ret = get()->m_lights[_seedHash];
 	return ret ? ret : (get()->m_lights[_seedHash] = make_shared<LightAllocation>(_seedHash));
 }
@@ -181,10 +181,18 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 	return ret;
 }
 
+#define DEV_IF_THROWS(X) try { X; } catch (...)
+
 unsigned EthashAux::computeFull(h256 const& _seedHash)
 {
 	Guard l(get()->x_fulls);
-	uint64_t blockNumber = EthashAux::number(_seedHash);
+	uint64_t blockNumber;
+
+	DEV_IF_THROWS(blockNumber = EthashAux::number(_seedHash))
+	{
+		return 0;
+	}
+
 	if (FullType ret = get()->m_fulls[_seedHash].lock())
 	{
 		get()->m_lastUsedFull = ret;
@@ -232,5 +240,8 @@ Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, N
 {
 	if (FullType dag = get()->m_fulls[_seedHash].lock())
 		return dag->compute(_headerHash, _nonce);
-	return EthashAux::get()->light(_seedHash)->compute(_headerHash, _nonce);
+	DEV_IF_THROWS(return EthashAux::get()->light(_seedHash)->compute(_headerHash, _nonce))
+	{
+		return Ethash::Result{ ~h256(), h256() };
+	}
 }

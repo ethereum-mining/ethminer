@@ -181,8 +181,6 @@ ensureAnnotation = function(location, error, type)
 			break;
 		}
 	}
-	if (type === "second")
-		error = "";
 	annotations.push({ "type": type, "annotation": new ErrorAnnotation(editor, location, error)});
 }
 
