@@ -35,7 +35,7 @@ inline bool operator==(h256 _h1, h256 _h2)
 /// Representation of 256-bit value binary compatible with LLVM i256
 struct i256
 {
-	uint64_t words[4] = {0,};
+	uint64_t words[4];
 
 	i256() = default;
 	i256(h256 _h) { *this = *reinterpret_cast<i256*>(&_h); }
@@ -149,7 +149,7 @@ public:
 	/// Returns `true` if the EVM code has been compiled and loaded into memory.
 	/// In this case the code can be executed without overhead.
 	/// \param _codeHash	The Keccak hash of the EVM code.
-	static bool isCodeReady(h256 const& _codeHash);
+	EXPORT static bool isCodeReady(h256 const& _codeHash);
 
 	EXPORT static ReturnCode exec(ExecutionContext& _context);
 };
