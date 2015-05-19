@@ -83,6 +83,16 @@ Item {
 			editorBrowser.runJavaScript("setFontSize(" + size + ")", function(result) {});
 	}
 
+	function setGasCosts(gasCosts) {
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("setGasCosts('" + JSON.stringify(gasCosts) + "')", function(result) {});
+	}
+
+	function displayGasEstimation(show) {
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("displayGasEstimation('" + show + "')", function(result) {});
+	}
+
 	Clipboard
 	{
 		id: clipboard
@@ -134,7 +144,12 @@ Item {
 		function compilationComplete()
 		{
 			if (editorBrowser)
+			{
 				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
+				parent.displayGasEstimation(gasEstimationAction.checked);
+			}
+
+
 		}
 
 		function compilationError(error, sourceName)
