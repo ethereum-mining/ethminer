@@ -44,7 +44,7 @@
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #endif
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethcore/CommonJS.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/ICAP.h>

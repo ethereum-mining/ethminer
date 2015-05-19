@@ -41,12 +41,12 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libdevcore/CommonIO.h>
-#include <libdevcrypto/TrieDB.h>
+#include <libdevcore/TrieDB.h>
 #include <libdevcrypto/SecretStore.h>
 #include <libp2p/All.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/Farm.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethereum/All.h>
 #include <libethereum/KeyManager.h>
 #include <libethereum/AccountDiff.h>

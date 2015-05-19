@@ -24,7 +24,7 @@
 #include <functional>
 #include <mutex>
 #include <libdevcrypto/SecretStore.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 
 namespace dev
 {
