@@ -45,13 +45,19 @@ static CryptoPP::OID s_curveOID(CryptoPP::ASN1::secp256k1());
 static CryptoPP::DL_GroupParameters_EC<CryptoPP::ECP> s_params(s_curveOID);
 static CryptoPP::DL_GroupParameters_EC<CryptoPP::ECP>::EllipticCurve s_curve(s_params.GetCurve());
 
+BOOST_AUTO_TEST_CASE(sha3general)
+{
+	BOOST_REQUIRE_EQUAL(sha3(""), h256("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"));
+	BOOST_REQUIRE_EQUAL(sha3("hello"), h256("1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8"));
+}
+
 BOOST_AUTO_TEST_CASE(emptySHA3Types)
 {
-	h256 emptyListSHA3(fromHex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"));
-	BOOST_REQUIRE_EQUAL(emptyListSHA3, EmptyListSHA3);
-
 	h256 emptySHA3(fromHex("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"));
 	BOOST_REQUIRE_EQUAL(emptySHA3, EmptySHA3);
+
+	h256 emptyListSHA3(fromHex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"));
+	BOOST_REQUIRE_EQUAL(emptyListSHA3, EmptyListSHA3);
 }
 
 BOOST_AUTO_TEST_CASE(cryptopp_patch)
@@ -805,7 +811,7 @@ int cryptoTest()
 	std::string hmsg = sha3(t.rlp(false), false);
 	cout << "SHA256(RLP(TX w/o SIG)): 0x" << toHex(hmsg) << endl;
 
-	bytes privkey = sha3Bytes("123");
+	bytes privkey = sha3("123").asBytes();
 
 	{
 		bytes pubkey(65);
