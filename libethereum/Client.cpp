@@ -172,6 +172,7 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _for
 	m_preMine(m_stateDB, BaseState::CanonGenesis),
 	m_postMine(m_stateDB)
 {
+	m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds(30);
 	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
 	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
 	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
@@ -197,6 +198,7 @@ Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string c
 	m_preMine(m_stateDB),
 	m_postMine(m_stateDB)
 {
+	m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds(30);
 	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
 	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
 	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
@@ -484,7 +486,7 @@ void Client::syncBlockQueue()
 
 	cwork << "BQ ==> CHAIN ==> STATE";
 	{
-		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, 10);
+		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, rand() % 90 + 10);
 		if (ir.first.empty())
 			return;
 	}
@@ -601,6 +603,9 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 bool Client::remoteActive() const
 {
+	cnote << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+	cnote << chrono::duration_cast<chrono::seconds>(m_lastGetWork.time_since_epoch()).count();
+	cnote << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - m_lastGetWork).count();
 	return chrono::system_clock::now() - m_lastGetWork < chrono::seconds(30);
 }
 
