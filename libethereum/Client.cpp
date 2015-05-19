@@ -608,9 +608,6 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 bool Client::remoteActive() const
 {
-	cnote << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
-	cnote << chrono::duration_cast<chrono::seconds>(m_lastGetWork.time_since_epoch()).count();
-	cnote << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - m_lastGetWork).count();
 	return chrono::system_clock::now() - m_lastGetWork < chrono::seconds(30);
 }
 
@@ -647,7 +644,7 @@ void Client::noteChanged(h256Hash const& _filters)
 {
 	Guard l(x_filtersWatches);
 	if (_filters.size())
-		filtersStreamOut(cnote << "noteChanged:", _filters);
+		filtersStreamOut(cwatch << "noteChanged:", _filters);
 	// accrue all changes left in each filter into the watches.
 	for (auto& w: m_watches)
 		if (_filters.count(w.second.id))
