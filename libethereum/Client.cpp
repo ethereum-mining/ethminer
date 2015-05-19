@@ -606,9 +606,10 @@ bool Client::remoteActive() const
 
 void Client::onPostStateChanged()
 {
-	cnote << "Post state changed: Restarting mining...";
+	cnote << "Post state changed";
 	if (isMining() || remoteActive())
 	{
+		cnote << "Restarting mining...";
 		DEV_WRITE_GUARDED(x_working)
 			m_working.commitToMine(m_bc);
 		DEV_READ_GUARDED(x_working)

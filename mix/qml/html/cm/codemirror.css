@@ -8,6 +8,10 @@
   font-size:12px
 }
 
+.CodeMirror-search-field {
+	height:200%;
+}
+
 /* BREAKPOINTS */
 .breakpoints {width: .8em;}
 .breakpoint { color: #822; }
