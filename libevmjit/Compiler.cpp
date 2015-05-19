@@ -148,7 +148,7 @@ std::unique_ptr<llvm::Module> Compiler::compile(code_iterator _begin, code_itera
 	auto fp = m_builder.CreateCall(frameaddress, m_builder.getInt32(0), "fp");
 	m_builder.CreateStore(fp, jmpBufWords);
 	auto stacksave = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::stacksave);
-	auto sp = m_builder.CreateCall(stacksave, "sp");
+	auto sp = m_builder.CreateCall(stacksave, {}, "sp");
 	auto jmpBufSp = m_builder.CreateConstInBoundsGEP1_64(jmpBufWords, 2, "jmpBuf.sp");
 	m_builder.CreateStore(sp, jmpBufSp);
 	auto setjmp = llvm::Intrinsic::getDeclaration(module.get(), llvm::Intrinsic::eh_sjlj_setjmp);

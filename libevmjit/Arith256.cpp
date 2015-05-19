@@ -161,8 +161,8 @@ llvm::Function* createUDivRemFunc(llvm::Type* _type, llvm::Module& _module, char
 	builder.SetInsertPoint(mainBB);
 	auto ctlzIntr = llvm::Intrinsic::getDeclaration(&_module, llvm::Intrinsic::ctlz, _type);
 	// both y and r are non-zero
-	auto yLz = builder.CreateCall2(ctlzIntr, yArg, builder.getInt1(true), "y.lz");
-	auto rLz = builder.CreateCall2(ctlzIntr, r0, builder.getInt1(true), "r.lz");
+	auto yLz = builder.CreateCall(ctlzIntr, {yArg, builder.getInt1(true)}, "y.lz");
+	auto rLz = builder.CreateCall(ctlzIntr, {r0, builder.getInt1(true)}, "r.lz");
 	auto i0 = builder.CreateNUWSub(yLz, rLz, "i0");
 	auto y0 = builder.CreateShl(yArg, i0);
 	builder.CreateBr(loopBB);
