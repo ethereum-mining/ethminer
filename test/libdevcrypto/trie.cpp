@@ -27,8 +27,8 @@
 
 #include "../JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
-#include <libdevcrypto/TrieDB.h>
-#include <libdevcrypto/TrieHash.h>
+#include <libdevcore/TrieDB.h>
+#include <libdevcore/TrieHash.h>
 #include "MemTrie.h"
 #include "../TestHelper.h"
 

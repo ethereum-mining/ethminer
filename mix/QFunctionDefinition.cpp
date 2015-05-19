@@ -20,7 +20,7 @@
  */
 
 #include <libsolidity/AST.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libdevcore/Exceptions.h>
 #include "QVariableDeclaration.h"
 #include "QFunctionDefinition.h"

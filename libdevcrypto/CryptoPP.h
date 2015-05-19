@@ -49,7 +49,7 @@
 #include <cryptopp/dsa.h>
 #pragma warning(pop)
 #pragma GCC diagnostic pop
-#include "SHA3.h"
+#include <libdevcore/SHA3.h>
 #include "Common.h"
 
 namespace dev

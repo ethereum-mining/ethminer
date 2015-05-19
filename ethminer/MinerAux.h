@@ -31,11 +31,11 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Farm.h>

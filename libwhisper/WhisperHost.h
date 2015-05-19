@@ -30,7 +30,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/Worker.h>
 #include <libdevcore/Guards.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include "Common.h"
 #include "WhisperPeer.h"
 #include "Interface.h"

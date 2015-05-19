@@ -25,7 +25,7 @@
 #include <libdevcore/Exceptions.h>
 #include <libethcore/Common.h>
 #include <libevmcore/Instruction.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libethcore/BlockInfo.h>
 #include <libevmcore/Params.h>
 #include "VMFace.h"

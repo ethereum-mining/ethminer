@@ -26,9 +26,9 @@
 #include <thread>
 #include <mutex>
 #include <libdevcore/Guards.h>
-#include "SHA3.h"
+#include <libdevcore/SHA3.h>
+#include <libdevcore/FileSystem.h>
 #include "AES.h"
-#include "FileSystem.h"
 #include "CryptoPP.h"
 using namespace std;
 using namespace dev;

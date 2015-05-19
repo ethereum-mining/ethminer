@@ -34,7 +34,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/CryptoPP.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
 #if ETH_ETHASHCL || !ETH_TRUE

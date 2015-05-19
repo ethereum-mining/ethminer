@@ -26,7 +26,7 @@
 #include "../test/JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libethereum/Client.h>
 using namespace std;
 using namespace dev;

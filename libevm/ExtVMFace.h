@@ -26,7 +26,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Common.h>
 #include <libethcore/BlockInfo.h>

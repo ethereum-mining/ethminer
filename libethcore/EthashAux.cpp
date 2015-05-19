@@ -31,8 +31,8 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
 #include <libdevcrypto/CryptoPP.h>
-#include <libdevcrypto/SHA3.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/SHA3.h>
+#include <libdevcore/FileSystem.h>
 #include <libethash/internal.h>
 #include "BlockInfo.h"
 #include "Exceptions.h"
