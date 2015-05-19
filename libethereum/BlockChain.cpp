@@ -96,7 +96,7 @@ ldb::Slice dev::eth::toSlice(h256 const& _h, unsigned _sub)
 #endif
 }
 
-#if ETH_DEBUG
+#if ETH_DEBUG&&0
 static const chrono::system_clock::duration c_collectionDuration = chrono::seconds(15);
 static const unsigned c_collectionQueueSize = 2;
 static const unsigned c_maxCacheSize = 1024 * 1024 * 1;
@@ -318,7 +318,9 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 		try
 		{
 			// Nonce & uncle nonces already verified thread at this point.
-			auto r = import(block.first, block.second, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
+			ImportRoute r;
+			DEV_TIMED_ABOVE(Block import, 500)
+				r = import(block.first, block.second, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
 			fresh += r.first;
 			dead += r.second;
 		}
