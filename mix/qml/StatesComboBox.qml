@@ -23,7 +23,6 @@
 import QtQuick 2.0
 import QtQuick.Controls 1.0
 import QtQuick.Layouts 1.1
-import QtGraphicalEffects 1.0
 import org.ethereum.qml.InverseMouseArea 1.0
 
 Rectangle {
