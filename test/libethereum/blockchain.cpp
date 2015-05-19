@@ -204,6 +204,20 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				blObj["transactions"] = writeTransactionsToJson(txList);
 
 				BlockInfo current_BlockHeader = state.info();
+
+				RLPStream uncleStream;
+				uncleStream.appendList(vBiUncles.size());
+				for (unsigned i = 0; i < vBiUncles.size(); ++i)
+				{
+					RLPStream uncleRlp;
+					vBiUncles[i].streamRLP(uncleRlp, WithNonce);
+					uncleStream.appendRaw(uncleRlp.out());
+				}
+
+				// update unclehash in case of invalid uncles
+				current_BlockHeader.sha3Uncles = sha3(uncleStream.out());
+				updatePoW(current_BlockHeader);
+
 				if (blObj.count("blockHeader"))
 					overwriteBlockHeader(current_BlockHeader, blObj);
 
@@ -221,15 +235,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					RLPStream txrlp;
 					txList[i].streamRLP(txrlp);
 					txStream.appendRaw(txrlp.out());
-				}
-
-				RLPStream uncleStream;
-				uncleStream.appendList(vBiUncles.size());
-				for (unsigned i = 0; i < vBiUncles.size(); ++i)
-				{
-					RLPStream uncleRlp;
-					vBiUncles[i].streamRLP(uncleRlp, WithNonce);
-					uncleStream.appendRaw(uncleRlp.out());
 				}
 
 				RLPStream block2 = createFullBlockFromHeader(current_BlockHeader, txStream.out(), uncleStream.out());
@@ -497,14 +502,20 @@ mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<B
 			writeBlockHeaderToJson(uncleHeaderObj_pre, vBiUncles[vBiUncles.size()-1]);
 			aUncleList.push_back(uncleHeaderObj_pre);
 			vBiUncles.push_back(vBiUncles[vBiUncles.size()-1]);
+			uncleHeaderObj_pre = uncleHeaderObj;
 			continue;
 		}
 
 		if (uncleHeaderObj.count("sameAsBlock"))
 		{
-			writeBlockHeaderToJson(uncleHeaderObj_pre, vBiBlocks[(size_t)toInt(uncleHeaderObj["sameAsBlock"])]);
-			aUncleList.push_back(uncleHeaderObj_pre);
-			vBiUncles.push_back(vBiBlocks[(size_t)toInt(uncleHeaderObj["sameAsBlock"])]);
+
+			size_t number = (size_t)toInt(uncleHeaderObj["sameAsBlock"]);
+			uncleHeaderObj.erase("sameAsBlock");
+			BlockInfo currentUncle = vBiBlocks[number];
+			writeBlockHeaderToJson(uncleHeaderObj, currentUncle);
+			aUncleList.push_back(uncleHeaderObj);
+			vBiUncles.push_back(currentUncle);
+			uncleHeaderObj_pre = uncleHeaderObj;
 			continue;
 		}
 		string overwrite = "false";
@@ -787,7 +798,8 @@ BOOST_AUTO_TEST_CASE(bcGasPricerTest)
 
 BOOST_AUTO_TEST_CASE(bcWalletTest)
 {
-	dev::test::executeTests("bcWalletTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+	if (test::Options::get().wallet)
+		dev::test::executeTests("bcWalletTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(userDefinedFile)

@@ -101,27 +101,24 @@ uint64_t EthashAux::number(h256 const& _seedHash)
 
 void EthashAux::killCache(h256 const& _s)
 {
-	RecursiveGuard l(x_lights);
+	WriteGuard l(x_lights);
 	m_lights.erase(_s);
 }
 
-EthashAux::LightType EthashAux::light(BlockInfo const& _header)
+EthashAux::LightType EthashAux::light(h256 const& _seedHash)
 {
-	return light((uint64_t)_header.number);
+	ReadGuard l(get()->x_lights);
+	LightType ret = get()->m_lights[_seedHash];
+	return ret ? ret : (get()->m_lights[_seedHash] = make_shared<LightAllocation>(_seedHash));
 }
 
-EthashAux::LightType EthashAux::light(uint64_t _blockNumber)
+EthashAux::LightAllocation::LightAllocation(h256 const& _seedHash)
 {
-	RecursiveGuard l(get()->x_lights);
-	h256 seedHash = EthashAux::seedHash(_blockNumber);
-	LightType ret = get()->m_lights[seedHash];
-	return ret ? ret : (get()->m_lights[seedHash] = make_shared<LightAllocation>(_blockNumber));
-}
-
-EthashAux::LightAllocation::LightAllocation(uint64_t _blockNumber)
-{
-	light = ethash_light_new(_blockNumber);
-	size = ethash_get_cachesize(_blockNumber);
+	uint64_t blockNumber = EthashAux::number(_seedHash);
+	light = ethash_light_new(blockNumber);
+	if (!light)
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_light_new()"));
+	size = ethash_get_cachesize(blockNumber);
 }
 
 EthashAux::LightAllocation::~LightAllocation()
@@ -137,6 +134,8 @@ bytesConstRef EthashAux::LightAllocation::data() const
 EthashAux::FullAllocation::FullAllocation(ethash_light_t _light, ethash_callback_t _cb)
 {
 	full = ethash_full_new(_light, _cb);
+	if (!full)
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_full_new()"));
 }
 
 EthashAux::FullAllocation::~FullAllocation()
@@ -156,32 +155,45 @@ static int dagCallbackShim(unsigned _p)
 	return s_dagCallback ? s_dagCallback(_p) : 0;
 }
 
-EthashAux::FullType EthashAux::full(uint64_t _blockNumber, function<int(unsigned)> const& _f)
+EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing, function<int(unsigned)> const& _f)
 {
-	auto l = light(_blockNumber);
-	h256 seedHash = EthashAux::seedHash(_blockNumber);
 	FullType ret;
+	auto l = light(_seedHash);
 
 	DEV_GUARDED(get()->x_fulls)
-		if ((ret = get()->m_fulls[seedHash].lock()))
+		if ((ret = get()->m_fulls[_seedHash].lock()))
 		{
 			get()->m_lastUsedFull = ret;
 			return ret;
 		}
 
-	s_dagCallback = _f;
-	ret = make_shared<FullAllocation>(l->light, dagCallbackShim);
+	if (_createIfMissing || computeFull(_seedHash) == 100)
+	{
+		s_dagCallback = _f;
+		cnote << "Loading from libethash...";
+		ret = make_shared<FullAllocation>(l->light, dagCallbackShim);
+		cnote << "Done loading.";
 
-	DEV_GUARDED(get()->x_fulls)
-		get()->m_fulls[seedHash] = get()->m_lastUsedFull = ret;
+		DEV_GUARDED(get()->x_fulls)
+			get()->m_fulls[_seedHash] = get()->m_lastUsedFull = ret;
+	}
+
 	return ret;
 }
 
-unsigned EthashAux::computeFull(uint64_t _blockNumber)
+#define DEV_IF_THROWS(X) try { X; } catch (...)
+
+unsigned EthashAux::computeFull(h256 const& _seedHash)
 {
 	Guard l(get()->x_fulls);
-	h256 seedHash = EthashAux::seedHash(_blockNumber);
-	if (FullType ret = get()->m_fulls[seedHash].lock())
+	uint64_t blockNumber;
+
+	DEV_IF_THROWS(blockNumber = EthashAux::number(_seedHash))
+	{
+		return 0;
+	}
+
+	if (FullType ret = get()->m_fulls[_seedHash].lock())
 	{
 		get()->m_lastUsedFull = ret;
 		return 100;
@@ -190,15 +202,17 @@ unsigned EthashAux::computeFull(uint64_t _blockNumber)
 	if (!get()->m_fullGenerator || !get()->m_fullGenerator->joinable())
 	{
 		get()->m_fullProgress = 0;
-		get()->m_generatingFullNumber = _blockNumber / ETHASH_EPOCH_LENGTH * ETHASH_EPOCH_LENGTH;
+		get()->m_generatingFullNumber = blockNumber / ETHASH_EPOCH_LENGTH * ETHASH_EPOCH_LENGTH;
 		get()->m_fullGenerator = unique_ptr<thread>(new thread([=](){
-			get()->full(_blockNumber, [](unsigned p){ get()->m_fullProgress = p; return 0; });
+			cnote << "Loading full DAG of seedhash: " << _seedHash;
+			get()->full(_seedHash, true, [](unsigned p){ get()->m_fullProgress = p; return 0; });
+			cnote << "Full DAG loaded";
 			get()->m_fullProgress = 0;
 			get()->m_generatingFullNumber = NotGenerating;
 		}));
 	}
 
-	return (get()->m_generatingFullNumber == _blockNumber) ? get()->m_fullProgress : 0;
+	return (get()->m_generatingFullNumber == blockNumber) ? get()->m_fullProgress : 0;
 }
 
 Ethash::Result EthashAux::FullAllocation::compute(h256 const& _headerHash, Nonce const& _nonce) const
@@ -219,13 +233,15 @@ Ethash::Result EthashAux::LightAllocation::compute(h256 const& _headerHash, Nonc
 
 Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
 {
-	return eval((uint64_t)_header.number, _header.headerHash(WithoutNonce), _nonce);
+	return eval(_header.seedHash(), _header.headerHash(WithoutNonce), _nonce);
 }
 
-Ethash::Result EthashAux::eval(uint64_t _blockNumber, h256 const& _headerHash, Nonce const& _nonce)
+Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
 {
-	h256 seedHash = EthashAux::seedHash(_blockNumber);
-	if (FullType dag = get()->m_fulls[seedHash].lock())
+	if (FullType dag = get()->m_fulls[_seedHash].lock())
 		return dag->compute(_headerHash, _nonce);
-	return EthashAux::get()->light(_blockNumber)->compute(_headerHash, _nonce);
+	DEV_IF_THROWS(return EthashAux::get()->light(_seedHash)->compute(_headerHash, _nonce))
+	{
+		return Ethash::Result{ ~h256(), h256() };
+	}
 }
