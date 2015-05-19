@@ -1169,7 +1169,7 @@ void Main::refreshBlockChain()
 	if (!ui->blocks->isVisible() || !isVisible())
 		return;
 
-	DEV_TIMED_FUNCTION;
+	DEV_TIMED_FUNCTION_ABOVE(500);
 	cwatch << "refreshBlockChain()";
 
 	// TODO: keep the same thing highlighted.
