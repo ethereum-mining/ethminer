@@ -99,11 +99,12 @@ static Json::Value toJson(dev::eth::Transaction const& _t, std::pair<h256, unsig
 	return res;
 }
 
-static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us, Transactions const& _ts)
+static Json::Value toJson(dev::eth::BlockInfo const& _bi, BlockDetails const& _bd, UncleHashes const& _us, Transactions const& _ts)
 {
 	Json::Value res = toJson(_bi);
 	if (_bi)
 	{
+		res["totalDifficulty"] = toJS(_bd.totalDifficulty);
 		res["uncles"] = Json::Value(Json::arrayValue);
 		for (h256 h: _us)
 			res["uncles"].append(toJS(h));
@@ -114,11 +115,12 @@ static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us
 	return res;
 }
 
-static Json::Value toJson(dev::eth::BlockInfo const& _bi, UncleHashes const& _us, TransactionHashes const& _ts)
+static Json::Value toJson(dev::eth::BlockInfo const& _bi, BlockDetails const& _bd, UncleHashes const& _us, TransactionHashes const& _ts)
 {
 	Json::Value res = toJson(_bi);
 	if (_bi)
 	{
+		res["totalDifficulty"] = toJS(_bd.totalDifficulty);
 		res["uncles"] = Json::Value(Json::arrayValue);
 		for (h256 h: _us)
 			res["uncles"].append(toJS(h));
@@ -602,9 +604,9 @@ Json::Value WebThreeStubServerBase::eth_getBlockByHash(string const& _blockHash,
 	{
 		auto h = jsToFixed<32>(_blockHash);
 		if (_includeTransactions)
-			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactions(h));
+			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h));
 		else
-			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactionHashes(h));
+			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactionHashes(h));
 	}
 	catch (...)
 	{
@@ -618,9 +620,9 @@ Json::Value WebThreeStubServerBase::eth_getBlockByNumber(string const& _blockNum
 	{
 		auto h = jsToBlockNumber(_blockNumber);
 		if (_includeTransactions)
-			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactions(h));
+			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h));
 		else
-			return toJson(client()->blockInfo(h), client()->uncleHashes(h), client()->transactionHashes(h));
+			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactionHashes(h));
 	}
 	catch (...)
 	{

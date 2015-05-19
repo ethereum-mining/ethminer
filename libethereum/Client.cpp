@@ -484,7 +484,7 @@ void Client::syncBlockQueue()
 
 	cwork << "BQ ==> CHAIN ==> STATE";
 	{
-		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, 100);
+		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, 10);
 		if (ir.first.empty())
 			return;
 	}
