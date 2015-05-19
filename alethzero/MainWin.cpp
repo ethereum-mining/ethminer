@@ -1166,7 +1166,7 @@ void Main::on_turboMining_triggered()
 
 void Main::refreshBlockChain()
 {
-	if (!ui->blocks->isVisible() || !isVisible())
+	if (!ui->blocks->isVisible() && isVisible())
 		return;
 
 	DEV_TIMED_FUNCTION_ABOVE(500);
