@@ -388,7 +388,7 @@ private:
 		(void)_m;
 		(void)_remote;
 		(void)_recheckPeriod;
-	#if ETH_JSONRPC || !ETH_TRUE
+#if ETH_JSONRPC || !ETH_TRUE
 		jsonrpc::HttpClient client(_remote);
 
 		Farm rpc(client);
@@ -399,7 +399,7 @@ private:
 			f.startGPU();
 
 		ProofOfWork::WorkPackage current;
-        EthashAux::FullType dag;
+		EthashAux::FullType dag;
 		while (true)
 			try
 			{
@@ -418,9 +418,9 @@ private:
 						cnote << "Getting work package...";
 					Json::Value v = rpc.eth_getWork();
 					h256 hh(v[0].asString());
-                    h256 newSeedHash(v[1].asString());
-                    if (!(dag = EthashAux::full(newSeedHash, true)))
-                        BOOST_THROW_EXCEPTION(DAGCreationFailure());
+					h256 newSeedHash(v[1].asString());
+					if (!(dag = EthashAux::full(newSeedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
+						BOOST_THROW_EXCEPTION(DAGCreationFailure());
 					if (hh != current.headerHash)
 					{
 						current.headerHash = hh;
@@ -459,7 +459,7 @@ private:
 					cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
 				cerr << endl;
 			}
-	#endif
+#endif
 		exit(0);
 	}
 

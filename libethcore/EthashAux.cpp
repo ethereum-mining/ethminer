@@ -167,7 +167,7 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 			return ret;
 		}
 
-	if (_createIfMissing || computeFull(_seedHash) == 100)
+	if (_createIfMissing || computeFull(_seedHash, false) == 100)
 	{
 		s_dagCallback = _f;
 		cnote << "Loading from libethash...";
@@ -183,7 +183,7 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 
 #define DEV_IF_THROWS(X) try { X; } catch (...)
 
-unsigned EthashAux::computeFull(h256 const& _seedHash)
+unsigned EthashAux::computeFull(h256 const& _seedHash, bool _createIfMissing)
 {
 	Guard l(get()->x_fulls);
 	uint64_t blockNumber;
@@ -199,7 +199,7 @@ unsigned EthashAux::computeFull(h256 const& _seedHash)
 		return 100;
 	}
 
-	if (!get()->m_fullGenerator || !get()->m_fullGenerator->joinable())
+	if (_createIfMissing && (!get()->m_fullGenerator || !get()->m_fullGenerator->joinable()))
 	{
 		get()->m_fullProgress = 0;
 		get()->m_generatingFullNumber = blockNumber / ETHASH_EPOCH_LENGTH * ETHASH_EPOCH_LENGTH;
