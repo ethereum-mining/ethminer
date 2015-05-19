@@ -52,8 +52,6 @@ inline u256 fromAddress(Address _a)
 class VM: public VMFace
 {
 public:
-	virtual void reset(u256 _gas = 0) noexcept override final;
-
 	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
 
 	void require(u256 _n, u256 _d) { if (m_stack.size() < _n) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(StackUnderflow() << RequirementError((bigint)_n, (bigint)m_stack.size())); } if (m_stack.size() - _n + _d > c_stackLimit) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(OutOfStack() << RequirementError((bigint)(_d - _n), (bigint)m_stack.size())); } }
@@ -64,17 +62,21 @@ public:
 	bytes const& memory() const { return m_temp; }
 	u256s const& stack() const { return m_stack; }
 
+	void reset(u256 const& _gas = 0) noexcept override;
+	u256 gas() const noexcept override { return (u256)m_gas; }
+
 private:
 	friend class VMFactory;
 
 	/// Construct VM object.
-	explicit VM(u256 _gas): VMFace(_gas) {}
+	explicit VM(u256 _gas): m_gas(_gas) {}
 
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
 	std::set<u256> m_jumpDests;
 	std::function<void()> m_onFail;
+	bigint m_gas = 0;
 };
 
 }
