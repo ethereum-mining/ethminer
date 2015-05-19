@@ -78,6 +78,9 @@ void BlockQueue::verifierBody()
 		try {
 			res.first.populate(res.second, CheckEverything, work.first);
 			res.first.verifyInternals(&res.second);
+			RLP r(&res.second);
+			for (auto const& uncle: r[2])
+				BlockInfo().populateFromHeader(RLP(uncle.data()), CheckEverything);
 		}
 		catch (...)
 		{
