@@ -220,6 +220,7 @@ public:
 			bool operator!=(Node const& _c) const { return !operator==(_c); }
 		};
 
+	protected:
 		std::vector<Node> m_trail;
 		GenericTrieDB<DB> const* m_that;
 	};
@@ -239,6 +240,7 @@ private:
 
 	void mergeAtAux(RLPStream& _out, RLP const& _replace, NibbleSlice _key, bytesConstRef _value);
 	bytes mergeAt(RLP const& _replace, NibbleSlice _k, bytesConstRef _v, bool _inLine = false);
+	bytes mergeAt(RLP const& _replace, h256 const& _replaceHash, NibbleSlice _k, bytesConstRef _v, bool _inLine = false);
 
 	bool deleteAtAux(RLPStream& _out, RLP const& _replace, NibbleSlice _key);
 	bytes deleteAt(RLP const& _replace, NibbleSlice _k);
@@ -295,6 +297,7 @@ private:
 	// for the special case of the root (which is always looked up via a hash). In that case,
 	// use forceKillNode().
 	void killNode(RLP const& _d) { if (_d.data().size() >= 32) forceKillNode(sha3(_d.data())); }
+	void killNode(RLP const& _d, h256 const& _h) { if (_d.data().size() >= 32) forceKillNode(_h); }
 
 	h256 m_root;
 	DB* m_db = nullptr;
@@ -409,46 +412,59 @@ public:
 	iterator lower_bound(bytesConstRef) const { return iterator(); }
 };
 
-// Hashed & Basic
-template <class DB>
-class FatGenericTrieDB: public GenericTrieDB<DB>
+// Hashed & Hash-key mapping
+template <class _DB>
+class FatGenericTrieDB: private SpecificTrieDB<GenericTrieDB<_DB>, h256>
 {
-	using Super = GenericTrieDB<DB>;
+	using Super = SpecificTrieDB<GenericTrieDB<_DB>, h256>;
 
 public:
-	FatGenericTrieDB(DB* _db): Super(_db), m_secure(_db) {}
-	FatGenericTrieDB(DB* _db, h256 _root, Verification _v = Verification::Normal) { open(_db, _root, _v); }
+	using DB = _DB;
+	FatGenericTrieDB(DB* _db = nullptr): Super(_db) {}
+	FatGenericTrieDB(DB* _db, h256 _root, Verification _v = Verification::Normal): Super(_db, _root, _v) {}
 
-	void open(DB* _db, h256 _root, Verification _v = Verification::Normal) { Super::open(_db); m_secure.open(_db); setRoot(_root, _v); }
+	using Super::init;
+	using Super::isNull;
+	using Super::isEmpty;
+	using Super::root;
+	using Super::leftOvers;
+	using Super::check;
+	using Super::open;
+	using Super::setRoot;
 
-	void init() { Super::init(); m_secure.init(); syncRoot(); }
-
-	void setRoot(h256 _root, Verification _v = Verification::Normal)
+	std::string at(bytesConstRef _key) const { return Super::at(sha3(_key)); }
+	bool contains(bytesConstRef _key) { return Super::contains(sha3(_key)); }
+	void insert(bytesConstRef _key, bytesConstRef _value)
 	{
-		if (!m_secure.isNull())
-			Super::db()->removeAux(m_secure.root());
-		m_secure.setRoot(_root, _v);
-		auto rb = Super::db()->lookupAux(m_secure.root());
-		auto r = h256(rb);
-		Super::setRoot(r, _v);
+		h256 hash = sha3(_key);
+		Super::insert(hash, _value);
+		Super::db()->insertAux(hash, _key);
 	}
 
-	h256 root() const { return m_secure.root(); }
+	void remove(bytesConstRef _key) { Super::remove(sha3(_key)); }
 
-	void insert(bytesConstRef _key, bytesConstRef _value) { Super::insert(_key, _value); m_secure.insert(_key, _value); syncRoot(); }
-	void remove(bytesConstRef _key) { Super::remove(_key); m_secure.remove(_key); syncRoot(); }
+	//friend class iterator;
 
-	h256Hash leftOvers(std::ostream* = nullptr) const { return h256Hash{}; }
-	bool check(bool) const { return m_secure.check(false) && Super::check(false); }
-
-private:
-	void syncRoot()
+	class iterator : public GenericTrieDB<_DB>::iterator
 	{
-		// Root changed. Need to record the mapping so we can determine on setRoot.
-		Super::db()->insertAux(m_secure.root(), Super::root().ref());
-	}
+	public:
+		using Super = typename GenericTrieDB<_DB>::iterator;
 
-	HashedGenericTrieDB<DB> m_secure;
+		iterator() { }
+		iterator(FatGenericTrieDB const* _trie): Super(_trie) { }
+
+		typename Super::value_type at() const
+		{
+			auto hashed = Super::at();
+			m_key = static_cast<FatGenericTrieDB const*>(Super::m_that)->db()->lookupAux(h256(hashed.first));
+			return std::make_pair(&m_key, std::move(hashed.second));
+		}
+
+	private:
+		mutable bytes m_key;
+	};
+	iterator begin() const { return iterator(); }
+	iterator end() const { return iterator(); }
 };
 
 template <class KeyType, class DB> using TrieDB = SpecificTrieDB<GenericTrieDB<DB>, KeyType>;
@@ -745,7 +761,7 @@ template <class DB> void GenericTrieDB<DB>::insert(bytesConstRef _key, bytesCons
 
 	std::string rv = node(m_root);
 	assert(rv.size());
-	bytes b = mergeAt(RLP(rv), NibbleSlice(_key), _value);
+	bytes b = mergeAt(RLP(rv), m_root, NibbleSlice(_key), _value);
 
 	// mergeAt won't attempt to delete the node if it's less than 32 bytes
 	// However, we know it's the root node and thus always hashed.
@@ -765,8 +781,9 @@ template <class DB> std::string GenericTrieDB<DB>::atAux(RLP const& _here, Nibbl
 	if (_here.isEmpty() || _here.isNull())
 		// not found.
 		return std::string();
-	assert(_here.isList() && (_here.itemCount() == 2 || _here.itemCount() == 17));
-	if (_here.itemCount() == 2)
+	unsigned itemCount = _here.itemCount();
+	assert(_here.isList() && (itemCount == 2 || itemCount == 17));
+	if (itemCount == 2)
 	{
 		auto k = keyOf(_here);
 		if (_key == k && isLeaf(_here))
@@ -793,6 +810,11 @@ template <class DB> std::string GenericTrieDB<DB>::atAux(RLP const& _here, Nibbl
 
 template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSlice _k, bytesConstRef _v, bool _inLine)
 {
+	return mergeAt(_orig, sha3(_orig.data()), _k, _v, _inLine);
+}
+
+template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, h256 const& _origHash, NibbleSlice _k, bytesConstRef _v, bool _inLine)
+{
 #if ETH_PARANOIA
 	tdebug << "mergeAt " << _orig << _k << sha3(_orig.data());
 #endif
@@ -805,8 +827,9 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 	if (_orig.isEmpty())
 		return place(_orig, _k, _v);
 
-	assert(_orig.isList() && (_orig.itemCount() == 2 || _orig.itemCount() == 17));
-	if (_orig.itemCount() == 2)
+	unsigned itemCount = _orig.itemCount();
+	assert(_orig.isList() && (itemCount == 2 || itemCount == 17));
+	if (itemCount == 2)
 	{
 		// pair...
 		NibbleSlice k = keyOf(_orig);
@@ -819,7 +842,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 		if (_k.contains(k) && !isLeaf(_orig))
 		{
 			if (!_inLine)
-				killNode(_orig);
+				killNode(_orig, _origHash);
 			RLPStream s(2);
 			s.append(_orig[0]);
 			mergeAtAux(s, _orig[1], _k.mid(k.size()), _v);
@@ -851,7 +874,7 @@ template <class DB> bytes GenericTrieDB<DB>::mergeAt(RLP const& _orig, NibbleSli
 
 		// Kill the node.
 		if (!_inLine)
-			killNode(_orig);
+			killNode(_orig, _origHash);
 
 		// not exactly our node - delve to next level at the correct index.
 		byte n = _k[0];

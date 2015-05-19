@@ -78,8 +78,8 @@ struct InvalidHostIPAddress: virtual dev::Exception {};
 
 struct NetWarn: public LogChannel { static const char* name(); static const int verbosity = 0; };
 struct NetNote: public LogChannel { static const char* name(); static const int verbosity = 1; };
-struct NetImpolite: public LogChannel { static const char* name(); static const int verbosity = 1; };
-struct NetMessageSummary: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct NetImpolite: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct NetMessageSummary: public LogChannel { static const char* name(); static const int verbosity = 3; };
 struct NetConnect: public LogChannel { static const char* name(); static const int verbosity = 10; };
 struct NetMessageDetail: public LogChannel { static const char* name(); static const int verbosity = 5; };
 struct NetTriviaSummary: public LogChannel { static const char* name(); static const int verbosity = 10; };
@@ -87,6 +87,9 @@ struct NetTriviaDetail: public LogChannel { static const char* name(); static co
 struct NetAllDetail: public LogChannel { static const char* name(); static const int verbosity = 13; };
 struct NetRight: public LogChannel { static const char* name(); static const int verbosity = 14; };
 struct NetLeft: public LogChannel { static const char* name(); static const int verbosity = 15; };
+struct NetP2PWarn: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct NetP2PNote: public LogChannel { static const char* name(); static const int verbosity = 6; };
+struct NetP2PConnect: public LogChannel { static const char* name(); static const int verbosity = 10; };
 
 enum PacketType
 {
@@ -172,12 +175,13 @@ struct NodeIPEndpoint
 	/// Setting true causes isAllowed to return true for all addresses. (Used by test fixtures)
 	static bool test_allowLocal;
 
+	NodeIPEndpoint() = default;
 	NodeIPEndpoint(bi::address _addr, uint16_t _udp, uint16_t _tcp): address(_addr), udpPort(_udp), tcpPort(_tcp) {}
 	NodeIPEndpoint(RLP const& _r) { interpretRLP(_r); }
 
-	bi::address address;
-	uint16_t udpPort;
-	uint16_t tcpPort;
+	bi::address address = bi::address();
+	uint16_t udpPort = 0;
+	uint16_t tcpPort = 0;
 	
 	operator bi::udp::endpoint() const { return std::move(bi::udp::endpoint(address, udpPort)); }
 	operator bi::tcp::endpoint() const { return std::move(bi::tcp::endpoint(address, tcpPort)); }

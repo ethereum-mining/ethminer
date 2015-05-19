@@ -19,6 +19,8 @@
  * @date 2014
  */
 
+#pragma once
+
 #include <condition_variable>
 #include <libethash/ethash.h>
 #include <libdevcore/Worker.h>
@@ -40,7 +42,7 @@ public:
 
 	struct LightAllocation
 	{
-		LightAllocation(uint64_t _blockNumber);
+		LightAllocation(h256 const& _seedHash);
 		~LightAllocation();
 		bytesConstRef data() const;
 		Ethash::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
@@ -65,29 +67,30 @@ public:
 	static uint64_t number(h256 const& _seedHash);
 	static uint64_t cacheSize(BlockInfo const& _header);
 
-	static LightType light(BlockInfo const& _header);
-	static LightType light(uint64_t _blockNumber);
+	static LightType light(h256 const& _seedHash);
 
 	static const uint64_t NotGenerating = (uint64_t)-1;
-	/// Kicks off generation of DAG for @a _blocknumber and @returns false or @returns true if ready.
-	static unsigned computeFull(uint64_t _blockNumber);
+	/// Kicks off generation of DAG for @a _seedHash and @returns false or @returns true if ready.
+	static unsigned computeFull(h256 const& _seedHash);
 	/// Information on the generation progress.
 	static std::pair<uint64_t, unsigned> fullGeneratingProgress() { return std::make_pair(get()->m_generatingFullNumber, get()->m_fullProgress); }
-	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result.
-	static FullType full(uint64_t _blockNumber, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
+	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result or empty pointer if not existing and _createIfMissing is false.
+	static FullType full(h256 const& _seedHash, bool _createIfMissing = false, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
 
 	static Ethash::Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
 	static Ethash::Result eval(BlockInfo const& _header, Nonce const& _nonce);
-	static Ethash::Result eval(uint64_t _blockNumber, h256 const& _headerHash, Nonce const& _nonce);
+	static Ethash::Result eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce);
 
 private:
 	EthashAux() {}
+
+	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result.
 
 	void killCache(h256 const& _s);
 
 	static EthashAux* s_this;
 
-	RecursiveMutex x_lights;
+	SharedMutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
 
 	Mutex x_fulls;

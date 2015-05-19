@@ -246,6 +246,9 @@ bool Executive::go(OnOpFunc const& _onOp)
 			m_endGas = 0;
 			m_excepted = toTransactionException(_e);
 			m_ext->revert();
+
+			if (m_isCreation)
+				m_newAddress = Address();
 		}
 		catch (Exception const& _e)
 		{
