@@ -19,6 +19,8 @@
  * @date 2014
  */
 
+#pragma once
+
 #include <condition_variable>
 #include <libethash/ethash.h>
 #include <libdevcore/Worker.h>
@@ -88,7 +90,7 @@ private:
 
 	static EthashAux* s_this;
 
-	RecursiveMutex x_lights;
+	SharedMutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
 
 	Mutex x_fulls;
