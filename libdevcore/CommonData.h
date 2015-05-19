@@ -95,8 +95,7 @@ inline bytes asBytes(std::string const& _b)
 
 /// Converts a string into the big-endian base-16 stream of integers (NOT ASCII).
 /// @example asNibbles("A")[0] == 4 && asNibbles("A")[1] == 1
-bytes asNibbles(std::string const& _s);
-bytes asNibbles(bytes const& _s);
+bytes asNibbles(bytesConstRef const& _s);
 
 
 // Big-endian to/from host endian conversion functions.

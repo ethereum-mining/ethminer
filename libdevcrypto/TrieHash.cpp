@@ -165,7 +165,7 @@ bytes rlp256(BytesMap const& _s)
 		return rlp("");
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
-		hexMap[asNibbles(i->first)] = i->second;
+		hexMap[asNibbles(bytesConstRef(&i->first))] = i->second;
 	RLPStream s;
 	hash256rlp(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
 	return s.out();
@@ -176,61 +176,22 @@ h256 hash256(BytesMap const& _s)
 	return sha3(rlp256(_s));
 }
 
-h256 hash256(StringMap const& _s)
+h256 orderedTrieRoot(std::vector<bytes> const& _data)
 {
-	// build patricia tree.
-	if (_s.empty())
-		return sha3(rlp(""));
-	HexMap hexMap;
-	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
-		hexMap[asNibbles(i->first)] = bytes(i->second.begin(), i->second.end());
-	RLPStream s;
-	hash256rlp(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
-	return sha3(s.out());
-}
-
-bytes rlp256(StringMap const& _s)
-{
-	// build patricia tree.
-	if (_s.empty())
-		return rlp("");
-	HexMap hexMap;
-	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
-		hexMap[asNibbles(i->first)] = bytes(i->second.begin(), i->second.end());
-	RLPStream s;
-	hash256rlp(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
-	return s.out();
-}
-
-/*h256 orderedTrieRoot(std::vector<bytes> const& _data)
-{
-	StringMap m;
+	BytesMap m;
 	unsigned j = 0;
 	for (auto i: _data)
-		m[asString(rlp(j++))] = asString(i);
+		m[rlp(j++)] = i;
 	return hash256(m);
-}*/
+}
 
 h256 orderedTrieRoot(std::vector<bytesConstRef> const& _data)
 {
-	MemoryDB db;
-	GenericTrieDB<MemoryDB> t(&db);
-	t.init();
+	BytesMap m;
 	unsigned j = 0;
 	for (auto i: _data)
-		t.insert(rlp(j++), i.toBytes());
-	return t.root();
-}
-
-h256 orderedTrieRoot(std::vector<bytes> const& _data)
-{
-	MemoryDB db;
-	GenericTrieDB<MemoryDB> t(&db);
-	t.init();
-	unsigned j = 0;
-	for (auto i: _data)
-		t.insert(rlp(j++), i);
-	return t.root();
+		m[rlp(j++)] = i.toBytes();
+	return hash256(m);
 }
 
 }
