@@ -155,14 +155,15 @@ Item {
 			for (var k in secondLocations)
 			{
 				lineError = secondLocations[k].start.line + 1;
-				secondErrorDetail += secondLocations[k].contractName + " line " + lineError + ", ";
+				secondErrorDetail += secondLocations[k].contractName + " line " + lineError + " - ";
 				displayErrorAnnotations(secondLocations[k], errorOrigin, "second");
 			}
 			var detail = error.split('\n')[0];
 			var reg = detail.match(/:\d+:\d+:/g);
 			if (reg !== null)
 				detail = detail.replace(reg[0], "");
-			detail += secondErrorDetail;
+			if (secondLocations.length > 0)
+				detail += secondErrorDetail;
 			displayErrorAnnotations(firstLocation, detail, "first");
 		}
 
