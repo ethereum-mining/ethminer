@@ -94,7 +94,7 @@ public:
 	void retryAllUnknown();
 
 	/// Get information on the items queued.
-	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_verified.size(), m_unknown.size()); }
+	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_readySet.size(), m_unknownSet.size()); }
 
 	/// Clear everything.
 	void clear() { WriteGuard l(m_lock); DEV_INVARIANT_CHECK; Guard l2(m_verification); m_readySet.clear(); m_drainingSet.clear(); m_verified.clear(); m_unverified.clear(); m_unknownSet.clear(); m_unknown.clear(); m_future.clear(); }

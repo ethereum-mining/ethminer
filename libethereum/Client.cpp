@@ -455,8 +455,13 @@ ProofOfWork::WorkPackage Client::getWork()
 {
 	// lock the work so a later submission isn't invalidated by processing a transaction elsewhere.
 	// this will be reset as soon as a new block arrives, allowing more transactions to be processed.
+	bool oldShould = shouldServeWork();
 	m_lastGetWork = chrono::system_clock::now();
 	m_remoteWorking = true;
+
+	// if this request has made us bother to serve work, prep it now.
+	if (!oldShould && shouldServeWork())
+		onPostStateChanged();
 	return ProofOfWork::package(m_miningInfo);
 }
 
@@ -612,7 +617,8 @@ bool Client::remoteActive() const
 void Client::onPostStateChanged()
 {
 	cnote << "Post state changed";
-	if (isMining() || remoteActive())
+
+	if (m_bq.items().first == 0 && (isMining() || remoteActive()))
 	{
 		cnote << "Restarting mining...";
 		DEV_WRITE_GUARDED(x_working)
