@@ -201,7 +201,7 @@ private:
 #endif
 
 #define DEV_TIMED_ABOVE(S, MS) for (::std::pair<::dev::TimerHelper, bool> __eth_t(::dev::TimerHelper(#S, MS), true); __eth_t.second; __eth_t.second = false)
-#define DEV_TIMED_SCOPE_ABOVE(S) ::dev::TimerHelper __eth_t(S, MS)
+#define DEV_TIMED_SCOPE_ABOVE(S, MS) ::dev::TimerHelper __eth_t(S, MS)
 #if WIN32
 #define DEV_TIMED_FUNCTION_ABOVE(MS) DEV_TIMED_SCOPE_ABOVE(__FUNCSIG__, MS)
 #else
