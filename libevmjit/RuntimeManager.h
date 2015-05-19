@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "CompilerHelper.h"
 #include "Type.h"
 #include "Instruction.h"
