@@ -34,6 +34,7 @@
 #include <libdevcrypto/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
+#include <libethcore/Exceptions.h>
 #include <libdevcrypto/SHA3.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/EthashAux.h>
@@ -398,6 +399,7 @@ private:
 			f.startGPU();
 
 		ProofOfWork::WorkPackage current;
+        EthashAux::FullType dag;
 		while (true)
 			try
 			{
@@ -416,10 +418,13 @@ private:
 						cnote << "Getting work package...";
 					Json::Value v = rpc.eth_getWork();
 					h256 hh(v[0].asString());
+                    h256 newSeedHash(v[1].asString());
+                    if (!(dag = EthashAux::full(newSeedHash, true)))
+                        BOOST_THROW_EXCEPTION(DAGCreationFailure());
 					if (hh != current.headerHash)
 					{
 						current.headerHash = hh;
-						current.seedHash = h256(v[1].asString());
+						current.seedHash = newSeedHash;
 						current.boundary = h256(fromHex(v[2].asString()), h256::AlignRight);
 						cnote << "Got work package:";
 						cnote << "  Header-hash:" << current.headerHash.hex();
