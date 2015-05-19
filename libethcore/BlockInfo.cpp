@@ -191,22 +191,12 @@ void BlockInfo::populate(bytesConstRef _block, Strictness _s, h256 const& _h)
 
 struct BlockInfoDiagnosticsChannel: public LogChannel { static const char* name() { return EthBlue "▧" EthWhite " ◌"; } static const int verbosity = 9; };
 
-template <class T, class U> h256 trieRootOver(unsigned _itemCount, T const& _getKey, U const& _getValue)
-{
-	MemoryDB db;
-	GenericTrieDB<MemoryDB> t(&db);
-	t.init();
-	for (unsigned i = 0; i < _itemCount; ++i)
-		t.insert(_getKey(i), _getValue(i));
-	return t.root();
-}
-
 void BlockInfo::verifyInternals(bytesConstRef _block) const
 {
 	RLP root(_block);
 
 	auto txList = root[1];
-	auto expectedRoot = trieRootOver(txList.itemCount(), [&](unsigned i){ return rlp(i); }, [&](unsigned i){ return txList[i].data(); });
+	auto expectedRoot = trieRootOver(txList.itemCount(), [&](unsigned i){ return rlp(i); }, [&](unsigned i){ return txList[i].data().toBytes(); });
 
 	clog(BlockInfoDiagnosticsChannel) << "Expected trie root:" << toString(expectedRoot);
 	if (transactionsRoot != expectedRoot)

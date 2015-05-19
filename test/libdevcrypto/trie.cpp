@@ -296,7 +296,6 @@ BOOST_AUTO_TEST_CASE(trie_tests_ordered)
 
 h256 stringMapHash256(StringMap const& _s)
 {
-	//return hash256(_s);
 	BytesMap bytesMap;
 	for (auto const& _v: _s)
 		bytesMap.insert(std::make_pair(bytes(_v.first.begin(), _v.first.end()), bytes(_v.second.begin(), _v.second.end())));
@@ -305,7 +304,6 @@ h256 stringMapHash256(StringMap const& _s)
 
 bytes stringMapRlp256(StringMap const& _s)
 {
-	//return rlp256(_s);
 	BytesMap bytesMap;
 	for (auto const& _v: _s)
 		bytesMap.insert(std::make_pair(bytes(_v.first.begin(), _v.first.end()), bytes(_v.second.begin(), _v.second.end())));
@@ -407,7 +405,6 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 			cout << d;
 			cout << m;
 			cout << d.root() << endl;
-			cout << hash256(s) << endl;
 			cout << stringMapHash256(s) << endl;
 
 			BOOST_REQUIRE(d.check(true));
