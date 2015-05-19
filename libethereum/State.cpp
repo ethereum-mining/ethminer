@@ -840,16 +840,8 @@ void State::commitToMine(BlockChain const& _bc)
 		}
 	}
 
-	// TODO: move over to using TrieHash
-
-
-	MemoryDB tm;
-	GenericTrieDB<MemoryDB> transactionsTrie(&tm);
-	transactionsTrie.init();
-
-	MemoryDB rm;
-	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
-	receiptsTrie.init();
+	BytesMap transactionsMap;
+	BytesMap receiptsMap;
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
@@ -861,11 +853,11 @@ void State::commitToMine(BlockChain const& _bc)
 
 		RLPStream receiptrlp;
 		m_receipts[i].streamRLP(receiptrlp);
-		receiptsTrie.insert(&k.out(), &receiptrlp.out());
+		receiptsMap.insert(std::make_pair(k.out(), receiptrlp.out()));
 
 		RLPStream txrlp;
 		m_transactions[i].streamRLP(txrlp);
-		transactionsTrie.insert(&k.out(), &txrlp.out());
+		transactionsMap.insert(std::make_pair(k.out(), txrlp.out()));
 
 		txs.appendRaw(txrlp.out());
 	}
@@ -874,8 +866,8 @@ void State::commitToMine(BlockChain const& _bc)
 
 	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
 
-	m_currentBlock.transactionsRoot = transactionsTrie.root();
-	m_currentBlock.receiptsRoot = receiptsTrie.root();
+	m_currentBlock.transactionsRoot = hash256(transactionsMap);
+	m_currentBlock.receiptsRoot = hash256(receiptsMap);
 	m_currentBlock.logBloom = logBloom();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
 
