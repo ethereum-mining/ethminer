@@ -27,6 +27,7 @@
 #include <mutex>
 #include <libdevcore/Guards.h>
 #include "SHA3.h"
+#include "AES.h"
 #include "FileSystem.h"
 #include "CryptoPP.h"
 using namespace std;
