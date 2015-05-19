@@ -419,6 +419,8 @@ private:
 					Json::Value v = rpc.eth_getWork();
 					h256 hh(v[0].asString());
 					h256 newSeedHash(v[1].asString());
+					if (current.seedHash != newSeedHash)
+						cnote << "Grabbing DAG for" << newSeedHash;
 					if (!(dag = EthashAux::full(newSeedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
 						BOOST_THROW_EXCEPTION(DAGCreationFailure());
 					if (hh != current.headerHash)

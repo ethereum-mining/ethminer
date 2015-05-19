@@ -274,6 +274,9 @@ private:
 	/// Ticks various system-level objects.
 	void tick();
 
+	/// @returns true only if it's worth bothering to prep the mining block.
+	bool shouldServeWork() const { return m_bq.items().first == 0 && (isMining() || remoteActive()); }
+
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	CanonBlockChain m_bc;					///< Maintains block database.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
