@@ -21,8 +21,8 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/TrieDB.h>
-#include <libdevcrypto/TrieHash.h>
+#include <libdevcore/TrieDB.h>
+#include <libdevcore/TrieHash.h>
 #include <libethcore/Common.h>
 #include <libethcore/Params.h>
 #include "EthashAux.h"

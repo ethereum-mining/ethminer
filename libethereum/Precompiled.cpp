@@ -22,8 +22,8 @@
 #include "Precompiled.h"
 
 #include <libdevcore/Log.h>
-#include <libdevcrypto/SHA3.h>
-#include <libdevcrypto/Hash.h>
+#include <libdevcore/SHA3.h>
+#include <libdevcore/Hash.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Common.h>
 #include <libevmcore/Params.h>

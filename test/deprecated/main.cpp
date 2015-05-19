@@ -20,7 +20,7 @@
  * Main test functions.
  */
 
-#include <libdevcrypto/TrieDB.h>
+#include <libdevcore/TrieDB.h>
 #include "TrieHash.h"
 #include "MemTrie.h"
 

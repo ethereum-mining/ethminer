@@ -23,7 +23,7 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string.hpp>
 #include <libdevcore/Base64.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include "Exceptions.h"
 #include "ABI.h"
 using namespace std;
