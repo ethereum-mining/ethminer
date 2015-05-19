@@ -1353,7 +1353,7 @@ void Main::timerEvent(QTimerEvent*)
 		auto ls = ethereum()->checkWatchSafe(i.first);
 		if (ls.size())
 		{
-			cnote << "FIRING WATCH" << i.first << ls.size();
+//			cnote << "FIRING WATCH" << i.first << ls.size();
 			i.second(ls);
 		}
 	}
