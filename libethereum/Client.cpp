@@ -484,7 +484,7 @@ void Client::syncBlockQueue()
 
 	cwork << "BQ ==> CHAIN ==> STATE";
 	{
-		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, 100);
+		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, 10);
 		if (ir.first.empty())
 			return;
 	}
@@ -606,9 +606,10 @@ bool Client::remoteActive() const
 
 void Client::onPostStateChanged()
 {
-	cnote << "Post state changed: Restarting mining...";
+	cnote << "Post state changed";
 	if (isMining() || remoteActive())
 	{
+		cnote << "Restarting mining...";
 		DEV_WRITE_GUARDED(x_working)
 			m_working.commitToMine(m_bc);
 		DEV_READ_GUARDED(x_working)
