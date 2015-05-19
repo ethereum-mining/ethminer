@@ -363,7 +363,7 @@ private:
 		cout << "inner mean: " << innerMean << " H/s" << endl;
 
 		(void)_phoneHome;
-	#if ETH_JSONRPC || !ETH_TRUE
+#if ETH_JSONRPC || !ETH_TRUE
 		if (_phoneHome)
 		{
 			cout << "Phoning home to find world ranking..." << endl;
@@ -379,7 +379,7 @@ private:
 				cout << "Error phoning home. ET is sad." << endl;
 			}
 		}
-	#endif
+#endif
 		exit(0);
 	}
 
