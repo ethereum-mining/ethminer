@@ -117,6 +117,10 @@ ApplicationWindow {
 			MenuItem { action: toggleAssemblyDebuggingAction }
 		}
 		Menu {
+			title: qsTr("Tools")
+			MenuItem { action: gasEstimationAction }
+		}
+		Menu {
 			title: qsTr("Windows")
 			MenuItem { action: openNextDocumentAction }
 			MenuItem { action: openPrevDocumentAction }
@@ -407,6 +411,17 @@ ApplicationWindow {
 		onTriggered:
 		{
 			mainContent.codeEditor.goToCompilationError();
+		}
+	}
+
+	Action {
+		id: gasEstimationAction
+		text: qsTr("Display gas estimation")
+		shortcut: "Ctrl+G"
+		checkable: true
+		onTriggered:
+		{
+			mainContent.codeEditor.displayGasEstimation(checked);
 		}
 	}
 }
