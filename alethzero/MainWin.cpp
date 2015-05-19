@@ -1166,6 +1166,9 @@ void Main::on_turboMining_triggered()
 
 void Main::refreshBlockChain()
 {
+	if (!ui->blocks->isVisible())
+		return;
+
 	DEV_TIMED_FUNCTION;
 	cwatch << "refreshBlockChain()";
 

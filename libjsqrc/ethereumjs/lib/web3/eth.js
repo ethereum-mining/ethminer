@@ -174,6 +174,14 @@ var call = new Method({
     inputFormatter: [formatters.inputTransactionFormatter, formatters.inputDefaultBlockNumberFormatter]
 });
 
+var estimateGas = new Method({
+    name: 'estimateGas',
+    call: 'eth_estimateGas',
+    params: 1,
+    inputFormatter: [formatters.inputTransactionFormatter],
+    outputFormatter: utils.toDecimal
+});
+
 var compileSolidity = new Method({
     name: 'compile.solidity',
     call: 'eth_compileSolidity',
@@ -192,6 +200,18 @@ var compileSerpent = new Method({
     params: 1
 });
 
+var submitWork = new Method({
+    name: 'submitWork',
+    call: 'eth_submitWork',
+    params: 3
+});
+
+var getWork = new Method({
+    name: 'getWork',
+    call: 'eth_getWork',
+    params: 0
+});
+
 var methods = [
     getBalance,
     getStorageAt,
@@ -205,10 +225,13 @@ var methods = [
     getTransactionFromBlock,
     getTransactionCount,
     call,
+    estimateGas,
     sendTransaction,
     compileSolidity,
     compileLLL,
     compileSerpent,
+    submitWork,
+    getWork
 ];
 
 /// @returns an array of objects describing web3.eth api properties

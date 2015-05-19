@@ -79,7 +79,6 @@ public:
 	static WorkPackage package(BlockInfo const& _header);
 	static void assignResult(Solution const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
 
-
 	class CPUMiner: public Miner, Worker
 	{
 	public:
