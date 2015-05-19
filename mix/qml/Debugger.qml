@@ -4,7 +4,6 @@ import QtQuick.Controls.Styles 1.1
 import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
 import Qt.labs.settings 1.0
-import QtGraphicalEffects 1.0
 import "js/Debugger.js" as Debugger
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
