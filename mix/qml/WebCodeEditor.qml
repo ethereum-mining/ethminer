@@ -83,9 +83,9 @@ Item {
 			editorBrowser.runJavaScript("setFontSize(" + size + ")", function(result) {});
 	}
 
-	function setSourceName(sourceName)
+	function setSourceName(_sourceName)
 	{
-		sourceName = sourceName;
+		sourceName = _sourceName;
 		if (initialized && editorBrowser)
 			editorBrowser.runJavaScript("setSourceName('" + sourceName + "')", function(result) {});
 	}
@@ -148,19 +148,28 @@ Item {
 		{
 			if (!editorBrowser || !error)
 				return;
+
+			var lineError = firstLocation.start.line + 1;
+			var errorOrigin = "source error in " + firstLocation.contractName + " line " + lineError
+			var secondErrorDetail = " Secondary sources: ";
+			for (var k in secondLocations)
+			{
+				lineError = secondLocations[k].start.line + 1;
+				secondErrorDetail += secondLocations[k].contractName + " line " + lineError + ", ";
+				displayErrorAnnotations(secondLocations[k], errorOrigin, "second");
+			}
 			var detail = error.split('\n')[0];
 			var reg = detail.match(/:\d+:\d+:/g);
 			if (reg !== null)
 				detail = detail.replace(reg[0], "");
+			detail += secondErrorDetail;
 			displayErrorAnnotations(firstLocation, detail, "first");
-			for (var k in secondLocations)
-				displayErrorAnnotations(secondLocations[k], detail, "second");
 		}
 
 		function displayErrorAnnotations(location, detail, type)
 		{
-			//if (location.source === parent.sourceName)
-			editorBrowser.runJavaScript("compilationError('" + JSON.stringify(location) + "', '" + detail + "', '" + type + "')", function(result){});
+			if (location.source === parent.sourceName)
+				editorBrowser.runJavaScript("compilationError('" + JSON.stringify(location) + "', '" + detail + "', '" + type + "')", function(result){});
 		}
 
 		Timer
