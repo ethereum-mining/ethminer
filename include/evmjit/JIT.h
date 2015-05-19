@@ -28,8 +28,8 @@ public:
 private:
 	friend class dev::eth::jit::ExecutionEngine;
 
-	static void* getCode(h256 _codeHash);
-	static void mapCode(h256 _codeHash, void* _funcAddr);
+	static uint64_t getCode(h256 _codeHash);
+	static void mapCode(h256 _codeHash, uint64_t _funcAddr);
 };
 
 }
