@@ -25,9 +25,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-void VM::reset(u256 _gas) noexcept
+void VM::reset(u256 const& _gas) noexcept
 {
-	VMFace::reset(_gas);
+	m_gas = _gas;
 	m_curPC = 0;
 	m_jumpDests.clear();
 }
@@ -206,7 +206,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			BOOST_THROW_EXCEPTION(OutOfGas());
 		}
 
-		m_gas = (u256)((bigint)m_gas - runGas);
+		m_gas -= runGas;
 
 		if (newTempSize > m_temp.size())
 			m_temp.resize((size_t)newTempSize);
@@ -565,7 +565,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.push_back(m_temp.size());
 			break;
 		case Instruction::GAS:
-			m_stack.push_back(m_gas);
+			m_stack.push_back((u256)m_gas);
 			break;
 		case Instruction::JUMPDEST:
 			break;
@@ -614,7 +614,11 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.pop_back();
 
 			if (_ext.balance(_ext.myAddress) >= endowment && _ext.depth < 1024)
-				m_stack.push_back((u160)_ext.create(endowment, m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
+			{
+				u256 g(m_gas);
+				m_stack.push_back((u160)_ext.create(endowment, g, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
+				m_gas = g;
+			}
 			else
 				m_stack.push_back(0);
 			break;
