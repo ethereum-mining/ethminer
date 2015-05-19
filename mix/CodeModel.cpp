@@ -45,7 +45,7 @@
 using namespace dev::mix;
 
 const std::set<std::string> c_predefinedContracts =
-	{ "Config", "Coin", "CoinReg", "coin", "service", "owned", "mortal", "NameReg", "named", "std", "configUser" };
+{ "Config", "Coin", "CoinReg", "coin", "service", "owned", "mortal", "NameReg", "named", "std", "configUser" };
 
 
 namespace
@@ -56,7 +56,7 @@ class CollectLocalsVisitor: public ASTConstVisitor
 {
 public:
 	CollectLocalsVisitor(QHash<LocationPair, SolidityDeclaration>* _locals):
-	m_locals(_locals), m_functionScope(false) {}
+		m_locals(_locals), m_functionScope(false) {}
 
 private:
 	LocationPair nodeLocation(ASTNode const& _node)
@@ -96,7 +96,7 @@ class CollectLocationsVisitor: public ASTConstVisitor
 {
 public:
 	CollectLocationsVisitor(SourceMap* _sourceMap):
-	m_sourceMap(_sourceMap) {}
+		m_sourceMap(_sourceMap) {}
 
 private:
 	LocationPair nodeLocation(ASTNode const& _node)
@@ -339,7 +339,14 @@ QVariantMap CodeModel::resolveCompilationErrorLocation(CompilerStack const& _com
 	QVariantMap error;
 	error.insert("start", startError);
 	error.insert("end", endError);
-	error.insert("source", QString::fromStdString(*_location.sourceName));
+	QString sourceName;
+	if (_location.sourceName)
+		sourceName = QString::fromStdString(*_location.sourceName);
+	error.insert("source", sourceName);
+	if (!sourceName.isEmpty())
+		if (CompiledContract* contract = contractByDocumentId(sourceName))
+			sourceName = contract->contract()->name(); //substitute the location to match our contract names
+	error.insert("contractName", sourceName);
 	return error;
 }
 
@@ -385,7 +392,7 @@ void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs, std::v
 				{
 					//make sure there are no other contracts in the same source, otherwise it is not a rename
 					if (!std::any_of(result.begin(),result.end(), [=](ContractMap::const_iterator::value_type _v) { return _v != contract && _v->documentId() == contract->documentId(); }))
-					prevContract = c.value();
+						prevContract = c.value();
 				}
 		}
 		if (prevContract != nullptr && prevContract->contractInterface() != result[name]->contractInterface())
@@ -435,59 +442,59 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 	switch (_type->getCategory())
 	{
 	case Type::Category::Integer:
-		{
-			IntegerType const* it = dynamic_cast<IntegerType const*>(_type);
-			r.size = it->getNumBits() / 8;
-			r.type = it->isAddress() ? SolidityType::Type::Address : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
-		}
+	{
+		IntegerType const* it = dynamic_cast<IntegerType const*>(_type);
+		r.size = it->getNumBits() / 8;
+		r.type = it->isAddress() ? SolidityType::Type::Address : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
+	}
 		break;
 	case Type::Category::Bool:
 		r.type = SolidityType::Type::Bool;
 		break;
 	case Type::Category::FixedBytes:
-		{
-			FixedBytesType const* b = dynamic_cast<FixedBytesType const*>(_type);
-			r.type = SolidityType::Type::Bytes;
-			r.size = static_cast<unsigned>(b->getNumBytes());
-		}
+	{
+		FixedBytesType const* b = dynamic_cast<FixedBytesType const*>(_type);
+		r.type = SolidityType::Type::Bytes;
+		r.size = static_cast<unsigned>(b->getNumBytes());
+	}
 		break;
 	case Type::Category::Contract:
 		r.type = SolidityType::Type::Address;
 		break;
 	case Type::Category::Array:
+	{
+		ArrayType const* array = dynamic_cast<ArrayType const*>(_type);
+		if (array->isByteArray())
+			r.type = SolidityType::Type::Bytes;
+		else
 		{
-			ArrayType const* array = dynamic_cast<ArrayType const*>(_type);
-			if (array->isByteArray())
-				r.type = SolidityType::Type::Bytes;
-			else
-			{
-				SolidityType elementType = nodeType(array->getBaseType().get());
-				elementType.name = r.name;
-				r = elementType;
-			}
-			r.count = static_cast<unsigned>(array->getLength());
-			r.dynamicSize = _type->isDynamicallySized();
-			r.array = true;
+			SolidityType elementType = nodeType(array->getBaseType().get());
+			elementType.name = r.name;
+			r = elementType;
 		}
+		r.count = static_cast<unsigned>(array->getLength());
+		r.dynamicSize = _type->isDynamicallySized();
+		r.array = true;
+	}
 		break;
 	case Type::Category::Enum:
-		{
-			r.type = SolidityType::Type::Enum;
-			EnumType const* e = dynamic_cast<EnumType const*>(_type);
-			for(auto const& enumValue: e->getEnumDefinition().getMembers())
-				r.enumNames.push_back(QString::fromStdString(enumValue->getName()));
-		}
+	{
+		r.type = SolidityType::Type::Enum;
+		EnumType const* e = dynamic_cast<EnumType const*>(_type);
+		for(auto const& enumValue: e->getEnumDefinition().getMembers())
+			r.enumNames.push_back(QString::fromStdString(enumValue->getName()));
+	}
 		break;
 	case Type::Category::Struct:
+	{
+		r.type = SolidityType::Type::Struct;
+		StructType const* s = dynamic_cast<StructType const*>(_type);
+		for(auto const& structMember: s->getMembers())
 		{
-			r.type = SolidityType::Type::Struct;
-			StructType const* s = dynamic_cast<StructType const*>(_type);
-			for(auto const& structMember: s->getMembers())
-			{
-				auto slotAndOffset = s->getStorageOffsetsOfMember(structMember.name);
-				r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.name), nodeType(structMember.type.get()), slotAndOffset.first, slotAndOffset.second });
-			}
+			auto slotAndOffset = s->getStorageOffsetsOfMember(structMember.name);
+			r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.name), nodeType(structMember.type.get()), slotAndOffset.first, slotAndOffset.second });
 		}
+	}
 		break;
 	case Type::Category::Function:
 	case Type::Category::IntegerConstant:
