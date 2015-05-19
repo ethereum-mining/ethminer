@@ -1,5 +1,7 @@
 #include "evmjit/JIT.h"
 
+#include <array>
+
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/Module.h>
 #include <llvm/ADT/Triple.h>
