@@ -157,6 +157,7 @@
     <addaction name="newAccount"/>
     <addaction name="importKey"/>
     <addaction name="importKeyFile"/>
+    <addaction name="claimPresale"/>
     <addaction name="exportKey"/>
     <addaction name="killAccount"/>
     <addaction name="separator"/>
@@ -1656,7 +1657,7 @@ font-size: 14pt</string>
     <string>&amp;Enable Local Addresses</string>
    </property>
   </action>
-  <action name="importKeyFile">
+  <action name="claimPresale">
    <property name="enabled">
     <bool>true</bool>
    </property>
@@ -1743,6 +1744,11 @@ font-size: 14pt</string>
    </property>
    <property name="text">
     <string>Co&amp;nfirm Transactions</string>
+   </property>
+  </action>
+  <action name="importKeyFile">
+   <property name="text">
+    <string>Import &amp;Secret Key File...</string>
    </property>
   </action>
  </widget>
