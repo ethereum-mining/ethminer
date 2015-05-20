@@ -66,20 +66,19 @@ public:
 
 		h256 boundary;
 		h256 headerHash;	///< When h256() means "pause until notified a new work package is available".
-		h256 seedHash; /// LTODO: IS this needed now that we use the block number instead?
-		uint64_t blockNumber;
+		h256 seedHash;
 	};
 
 	static const WorkPackage NullWorkPackage;
 
 	static std::string name();
 	static unsigned revision();
-	static void prep(BlockInfo const& _header);
+	static void prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
+	static void ensurePrecomputed(unsigned _number);
 	static bool verify(BlockInfo const& _header);
 	static bool preVerify(BlockInfo const& _header);
 	static WorkPackage package(BlockInfo const& _header);
 	static void assignResult(Solution const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
-	
 
 	class CPUMiner: public Miner, Worker
 	{
@@ -120,7 +119,7 @@ public:
 		static void setDefaultPlatform(unsigned _id) { s_platformId = _id; }
 		static void setDefaultDevice(unsigned _id) { s_deviceId = _id; }
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
-		
+
 	protected:
 		void kickOff() override;
 		void pause() override;

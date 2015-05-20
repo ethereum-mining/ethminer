@@ -77,7 +77,7 @@ private:
 	virtual bool interpret(unsigned _id, RLP const& _r);
 
 	/// Transition state in a particular direction.
-	void transition(Asking _wantState, bool _force = false);
+	void transition(Asking _wantState, bool _force = false, bool _needHelp = true);
 
 	/// Attempt to begin syncing with this peer; first check the peer has a more difficlult chain to download, then start asking for hashes, then move to blocks.
 	void attemptSync();
@@ -89,7 +89,7 @@ private:
 	void clearKnownTransactions() { std::lock_guard<std::mutex> l(x_knownTransactions); m_knownTransactions.clear(); }
 
 	/// Update our asking state.
-	void setAsking(Asking _g, bool _isSyncing);
+	void setAsking(Asking _g, bool _isSyncing, bool _needHelp = true);
 
 	/// Update our syncing requirements state.
 	void setNeedsSyncing(h256 _latestHash, u256 _td);

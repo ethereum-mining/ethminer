@@ -19,9 +19,9 @@
  * @date 2014
  */
 
-#include "CryptoPP.h"
 #include "AES.h"
-
+#include <libdevcore/Common.h>
+#include "CryptoPP.h"
 using namespace std;
 using namespace dev;
 using namespace dev::crypto;
@@ -58,3 +58,31 @@ size_t Stream::streamOut(bytes&)
 	return 0;
 }
 
+bytes dev::aesDecrypt(bytesConstRef _ivCipher, std::string const& _password, unsigned _rounds, bytesConstRef _salt)
+{
+	bytes pw = asBytes(_password);
+
+	if (!_salt.size())
+		_salt = &pw;
+
+	bytes target(64);
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256>().DeriveKey(target.data(), target.size(), 0, pw.data(), pw.size(), _salt.data(), _salt.size(), _rounds);
+
+	try
+	{
+		CryptoPP::AES::Decryption aesDecryption(target.data(), 16);
+		auto cipher = _ivCipher.cropped(16);
+		auto iv = _ivCipher.cropped(0, 16);
+		CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv.data());
+		std::string decrypted;
+		CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(decrypted));
+		stfDecryptor.Put(cipher.data(), cipher.size());
+		stfDecryptor.MessageEnd();
+		return asBytes(decrypted);
+	}
+	catch (exception const& e)
+	{
+		cerr << e.what() << endl;
+		return bytes();
+	}
+}

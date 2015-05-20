@@ -220,7 +220,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	d.address = _t.receiveAddress();
 	d.sender = _t.sender();
 	d.value = _t.value();
-	d.gasUsed = er.gasUsed + er.gasRefunded;
+	d.gasUsed = er.gasUsed + er.gasRefunded + c_callStipend;
 	if (_t.isCreation())
 		d.contractAddress = right160(sha3(rlpList(_t.sender(), _t.nonce())));
 	if (!_call)
@@ -234,7 +234,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		er =_state.execute(lastHashes, t);
 		if (t.isCreation() && _state.code(d.contractAddress).empty())
 			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
-		d.gasUsed = er.gasUsed + er.gasRefunded + er.gasForDeposit;
+		d.gasUsed = er.gasUsed + er.gasRefunded + er.gasForDeposit + c_callStipend;
 		// collect watches
 		h256Set changed;
 		Guard l(x_filtersWatches);

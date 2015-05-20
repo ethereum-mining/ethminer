@@ -57,7 +57,7 @@ void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, b
 	m_tq.import(t.rlp());
 	
 	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
-	cnote << "New transaction " << t;
+	cnote << "New transaction " << t << "(maxNonce for sender" << a << "is" << m_tq.maxNonce(a) << ")";
 }
 
 Address ClientBase::submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)

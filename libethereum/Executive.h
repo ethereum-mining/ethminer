@@ -95,6 +95,7 @@ public:
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas, Address _originAddress);
+	bool call(CallParameters const& _cp, u256 const& _gasPrice, Address const& _origin);
 	/// Finalise an operation through accruing the substate into the parent context.
 	void accrueSubState(SubState& _parentContext);
 
@@ -137,7 +138,7 @@ private:
 	Transaction m_t;					///< The original transaction. Set by setup().
 	LogEntries m_logs;					///< The log entries created by this transaction. Set by finalize().
 
-	bigint m_gasRequired;
+	bigint m_gasRequired;				///< Gas required during execution of the transaction.
 	bigint m_gasCost;
 	bigint m_totalCost;
 };

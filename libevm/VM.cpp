@@ -53,6 +53,8 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 
 	m_stack.reserve((unsigned)c_stackLimit);
 
+	unique_ptr<CallParameters> callParams;
+
 	static const array<InstructionMetric, 256> c_metrics = metrics();
 
 	auto memNeed = [](u256 _offset, dev::u256 _size) { return _size ? (bigint)_offset + _size : (bigint)0; };
@@ -613,13 +615,16 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 		{
-			u256 gas = m_stack.back();
+			if (!callParams)
+				callParams.reset(new CallParameters);
+
+			callParams->gas = m_stack.back();
 			if (m_stack[m_stack.size() - 3] > 0)
-				gas += c_callStipend;
+				callParams->gas += c_callStipend;
 			m_stack.pop_back();
-			Address receiveAddress = asAddress(m_stack.back());
+			callParams->receiveAddress = asAddress(m_stack.back());
 			m_stack.pop_back();
-			u256 value = m_stack.back();
+			callParams->value = m_stack.back();
 			m_stack.pop_back();
 
 			unsigned inOff = (unsigned)m_stack.back();
@@ -631,12 +636,19 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 			unsigned outSize = (unsigned)m_stack.back();
 			m_stack.pop_back();
 
-			if (_ext.balance(_ext.myAddress) >= value && _ext.depth < 1024)
-				m_stack.push_back(_ext.call(inst == Instruction::CALL ? receiveAddress : _ext.myAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, {}, receiveAddress));
+			if (_ext.balance(_ext.myAddress) >= callParams->value && _ext.depth < 1024)
+			{
+				callParams->onOp = _onOp;
+				callParams->senderAddress = _ext.myAddress;
+				callParams->codeAddress = inst == Instruction::CALL ? callParams->receiveAddress : callParams->senderAddress;
+				callParams->data = bytesConstRef(m_temp.data() + inOff, inSize);
+				callParams->out = bytesRef(m_temp.data() + outOff, outSize);
+				m_stack.push_back(_ext.call(*callParams));
+			}
 			else
 				m_stack.push_back(0);
 
-			io_gas += gas;
+			io_gas += callParams->gas;
 			break;
 		}
 		case Instruction::RETURN:
