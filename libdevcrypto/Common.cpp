@@ -25,6 +25,7 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <libscrypt/libscrypt.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/FileSystem.h>
@@ -177,6 +178,13 @@ bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations,
 	bytes ret(_dkLen);
 	PKCS5_PBKDF2_HMAC<SHA256> pbkdf;
 	pbkdf.DeriveKey(ret.data(), ret.size(), 0, (byte*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _iterations);
+	return ret;
+}
+
+bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen)
+{
+	bytes ret(_dkLen);
+	libscrypt_scrypt((uint8_t const*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _n, _r, _p, ret.data(), ret.size());
 	return ret;
 }
 
