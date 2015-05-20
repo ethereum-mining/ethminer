@@ -25,7 +25,7 @@
 #include <boost/filesystem.hpp>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/BlockInfo.h>

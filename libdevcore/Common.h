@@ -86,8 +86,9 @@ extern const u256 UndefinedU256;
 
 // Map types.
 using StringMap = std::map<std::string, std::string>;
+using BytesMap = std::map<bytes, bytes>;
 using u256Map = std::map<u256, u256>;
-using HexMap = std::map<bytes, std::string>;
+using HexMap = std::map<bytes, bytes>;
 
 // Hash types.
 using StringHashMap = std::unordered_map<std::string, std::string>;
@@ -199,12 +200,12 @@ private:
 #define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE(__PRETTY_FUNCTION__)
 #endif
 
-#define DEV_TIMED_IF(S, MS) for (::std::pair<::dev::TimerHelper, bool> __eth_t(::dev::TimerHelper(#S, MS), true); __eth_t.second; __eth_t.second = false)
-#define DEV_TIMED_SCOPE_IF(S) ::dev::TimerHelper __eth_t(S, MS)
+#define DEV_TIMED_ABOVE(S, MS) for (::std::pair<::dev::TimerHelper, bool> __eth_t(::dev::TimerHelper(#S, MS), true); __eth_t.second; __eth_t.second = false)
+#define DEV_TIMED_SCOPE_ABOVE(S, MS) ::dev::TimerHelper __eth_t(S, MS)
 #if WIN32
-#define DEV_TIMED_FUNCTION_IF(MS) DEV_TIMED_SCOPE_IF(__FUNCSIG__, MS)
+#define DEV_TIMED_FUNCTION_ABOVE(MS) DEV_TIMED_SCOPE_ABOVE(__FUNCSIG__, MS)
 #else
-#define DEV_TIMED_FUNCTION_IF(MS) DEV_TIMED_SCOPE_IF(__PRETTY_FUNCTION__, MS)
+#define DEV_TIMED_FUNCTION_ABOVE(MS) DEV_TIMED_SCOPE_ABOVE(__PRETTY_FUNCTION__, MS)
 #endif
 
 enum class WithExisting: int

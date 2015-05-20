@@ -25,7 +25,8 @@
 #include <unordered_map>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/TrieDB.h>
+#include <libdevcore/TrieDB.h>
+#include <libdevcrypto/OverlayDB.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/ProofOfWork.h>
@@ -118,7 +119,7 @@ public:
 	explicit State(OverlayDB const& _db, BaseState _bs = BaseState::PreExisting, Address _coinbaseAddress = Address());
 
 	/// Construct state object from arbitrary point in blockchain.
-	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash);
+	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Copy state object.
 	State(State const& _s);

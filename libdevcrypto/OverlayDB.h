@@ -29,7 +29,7 @@
 #include <memory>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
-#include "MemoryDB.h"
+#include <libdevcore/MemoryDB.h>
 namespace ldb = leveldb;
 
 namespace dev
@@ -46,11 +46,11 @@ public:
 	void commit();
 	void rollback();
 
-	std::string lookup(h256 _h) const;
-	bool exists(h256 _h) const;
-	void kill(h256 _h);
+	std::string lookup(h256 const& _h) const;
+	bool exists(h256 const& _h) const;
+	void kill(h256 const& _h);
 
-	bytes lookupAux(h256 _h) const;
+	bytes lookupAux(h256 const& _h) const;
 
 private:
 	using MemoryDB::clear;

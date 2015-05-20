@@ -5,7 +5,7 @@ function solCurrency()
 
 function solKeywords()
 {
-	return { "break": true, "case": true, "constant": true, "continue": true, "contract": true, "default": true, "do": true, "else": true, "event": true, "external": true, "is": true, "indexed": true, "for": true, "function": true, "if": true, "import": true, "mapping": true, "modifier": true, "new": true, "public": true, "private": true, "internal": true, "return": true, "returns": true, "struct": true, "switch": true, "var": true, "while": true, "enum": true };
+	return { "break": true, "case": true, "constant": true, "continue": true, "contract": true, "default": true, "delete": true, "do": true, "else": true, "event": true, "external": true, "is": true, "indexed": true, "for": true, "function": true, "if": true, "import": true, "mapping": true, "modifier": true, "new": true, "public": true, "private": true, "internal": true, "return": true, "returns": true, "struct": true, "switch": true, "var": true, "while": true, "enum": true };
 }
 
 function solStdContract()

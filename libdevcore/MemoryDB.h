@@ -23,6 +23,7 @@
 
 #include <unordered_map>
 #include <libdevcore/Common.h>
+#include <libdevcore/Guards.h>
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
@@ -43,6 +44,9 @@ class MemoryDB
 
 public:
 	MemoryDB() {}
+	MemoryDB(MemoryDB const& _c) { operator=(_c); }
+
+	MemoryDB& operator=(MemoryDB const& _c);
 
 	void clear() { m_main.clear(); }	// WARNING !!!! didn't originally clear m_refCount!!!
 	std::unordered_map<h256, std::string> get() const;
@@ -53,13 +57,14 @@ public:
 	bool kill(h256 const& _h);
 	void purge();
 
-	bytes lookupAux(h256 const& _h) const { try { return m_aux.at(_h).first; } catch (...) { return bytes(); } }
-	void removeAux(h256 const& _h) { m_aux[_h].second = false; }
-	void insertAux(h256 const& _h, bytesConstRef _v) { m_aux[_h] = make_pair(_v.toBytes(), true); }
+	bytes lookupAux(h256 const& _h) const { ReadGuard l(x_this); auto it = m_aux.find(_h); if (it != m_aux.end() && (!m_enforceRefs || it->second.second)) return it->second.first; return bytes(); }
+	void removeAux(h256 const& _h) { WriteGuard l(x_this); m_aux[_h].second = false; }
+	void insertAux(h256 const& _h, bytesConstRef _v) { WriteGuard l(x_this); m_aux[_h] = make_pair(_v.toBytes(), true); }
 
 	h256Hash keys() const;
 
 protected:
+	mutable SharedMutex x_this;
 	std::unordered_map<h256, std::pair<std::string, unsigned>> m_main;
 	std::unordered_map<h256, std::pair<bytes, bool>> m_aux;
 

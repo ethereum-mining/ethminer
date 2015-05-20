@@ -23,8 +23,8 @@
 
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/TrieDB.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/TrieDB.h>
+#include <libdevcore/SHA3.h>
 
 namespace dev
 {

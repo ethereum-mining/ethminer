@@ -94,6 +94,7 @@ public:
 	dev::u256 gasPrice() const { return 10 * dev::eth::szabo; }
 
 	dev::eth::KeyManager& keyManager() override { return m_keyManager; }
+	bool doConfirm();
 
 	dev::Secret retrieveSecret(dev::Address const& _a) const override;
 
@@ -124,6 +125,7 @@ private slots:
 
 	// Mining
 	void on_mine_triggered();
+	void on_prepNextDAG_triggered();
 
 	// View
 	void on_refresh_triggered();

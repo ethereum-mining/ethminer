@@ -265,7 +265,7 @@ BOOST_AUTO_TEST_CASE(stRandom)
 
 BOOST_AUTO_TEST_CASE(userDefinedFileState)
 {
-	dev::test::userDefinedTest("--singletest", dev::test::doStateTests);
+	dev::test::userDefinedTest(dev::test::doStateTests);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

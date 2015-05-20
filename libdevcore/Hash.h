@@ -14,21 +14,25 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file TrieHash.h
+/** @file Hash.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
+ *
+ * The FixedHash fixed-size "hash" container type.
  */
 
 #pragma once
 
-#include <libdevcore/Common.h>
+#include <string>
 #include <libdevcore/FixedHash.h>
+#include <libdevcore/vector_ref.h>
+#include "SHA3.h"
 
 namespace dev
 {
 
-bytes rlp256(StringMap const& _s);
-h256 hash256(StringMap const& _s);
-h256 hash256(u256Map const& _s);
+h256 sha256(bytesConstRef _input);
+
+h160 ripemd160(bytesConstRef _input);
 
 }

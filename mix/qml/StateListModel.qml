@@ -22,7 +22,7 @@ Item {
 			s.contracts = [];
 		return {
 			title: s.title,
-			transactions: s.transactions.map(fromPlainTransactionItem),
+			transactions: s.transactions.filter(function(t) { return !t.stdContract; }).map(fromPlainTransactionItem), //support old projects by filtering std contracts
 			accounts: s.accounts.map(fromPlainAccountItem),
 			contracts: s.contracts.map(fromPlainAccountItem),
 			miner: s.miner
@@ -46,6 +46,7 @@ Item {
 			t.sender = defaultAccount; //support for old project
 
 		var r = {
+			type: t.type,
 			contractId: t.contractId,
 			functionId: t.functionId,
 			url: t.url,
@@ -53,10 +54,22 @@ Item {
 			gas: QEtherHelper.createBigInt(t.gas.value),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
 			gasAuto: t.gasAuto,
-			stdContract: t.stdContract ? true : false,
 			parameters: {},
-			sender: t.sender
+			sender: t.sender,
+			isContractCreation: t.isContractCreation,
+			label: t.label,
+			isFunctionCall: t.isFunctionCall
 		};
+
+		if (r.isFunctionCall === undefined)
+			r.isFunctionCall = true;
+
+		if (!r.label)
+			r.label = r.contractId + " - " + r.functionId;
+
+		if (r.isContractCreation === undefined)
+			r.isContractCreation = r.functionId === r.contractId;
+
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
 
@@ -100,6 +113,7 @@ Item {
 
 	function toPlainTransactionItem(t) {
 		var r = {
+			type: t.type,
 			contractId: t.contractId,
 			functionId: t.functionId,
 			url: t.url,
@@ -107,9 +121,11 @@ Item {
 			gas: { value: t.gas.value() },
 			gasAuto: t.gasAuto,
 			gasPrice: { value: t.gasPrice.value, unit: t.gasPrice.unit },
-			stdContract: t.stdContract,
 			sender: t.sender,
-			parameters: {}
+			parameters: {},
+			isContractCreation: t.isContractCreation,
+			label: t.label,
+			isFunctionCall: t.isFunctionCall
 		};
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
@@ -171,10 +187,6 @@ Item {
 		}
 	}
 
-	ContractLibrary {
-		id: contractLibrary;
-	}
-
 	ListModel {
 		id: stateListModel
 		property int defaultStateIndex: 0
@@ -207,18 +219,6 @@ Item {
 			var account = newAccount("1000000", QEther.Ether, defaultAccount)
 			item.accounts.push(account);
 			item.miner = account;
-
-			//add all stdc contracts
-			for (var i = 0; i < contractLibrary.model.count; i++) {
-				var contractTransaction = defaultTransactionItem();
-				var contractItem = contractLibrary.model.get(i);
-				contractTransaction.url = contractItem.url;
-				contractTransaction.contractId = contractItem.name;
-				contractTransaction.functionId = contractItem.name;
-				contractTransaction.stdContract = true;
-				contractTransaction.sender = item.accounts[0].secret; // default account is used to deploy std contract.
-				item.transactions.push(contractTransaction);
-			};
 
 			//add constructors, //TODO: order by dependencies
 			for(var c in codeModel.contracts) {
@@ -255,17 +255,12 @@ Item {
 		}
 
 		function addNewContracts() {
-			//add new contracts for all states
+			//add new contracts to empty states
 			var changed = false;
 			for (var c in codeModel.contracts) {
 				for (var s = 0; s < stateListModel.count; s++) {
 					var state = stateList[s];
-					for (var t = 0; t < state.transactions.length; t++) {
-						var transaction = state.transactions[t];
-						if (transaction.functionId === c && transaction.contractId === c)
-							break;
-					}
-					if (t === state.transactions.length) {
+					if (state.transactions.length === 0) {
 						//append this contract
 						var ctorTr = defaultTransactionItem();
 						ctorTr.functionId = c;

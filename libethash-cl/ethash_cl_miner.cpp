@@ -61,6 +61,11 @@ ethash_cl_miner::ethash_cl_miner()
 {
 }
 
+ethash_cl_miner::~ethash_cl_miner()
+{
+	finish();
+}
+
 std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
 {
 	std::vector<cl::Platform> platforms;
@@ -201,14 +206,15 @@ bool ethash_cl_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned work
 	m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
 	// compute dag on CPU
-	{
+	try {
 		m_queue.enqueueWriteBuffer(m_dag, CL_TRUE, 0, _dagSize, _dag);
-
-		// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
-//		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, _dagSize);
-		// memcpying 1GB: horrible... really. horrible. but necessary since we can't mmap *and* gpumap.
-//		_fillDAG(dag_ptr);
-//		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
+	}
+	catch (...)
+	{
+		// didn't work. shitty driver. try allocating in CPU RAM and manually memcpying it.
+		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, _dagSize);
+		memcpy(dag_ptr, _dag, _dagSize);
+		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
 	}
 
 	// create mining buffers

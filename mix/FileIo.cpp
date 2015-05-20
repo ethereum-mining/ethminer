@@ -34,7 +34,7 @@
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcrypto/Common.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include "FileIo.h"
 
 using namespace dev;
@@ -209,4 +209,10 @@ void FileIo::watchFileChanged(QString const& _path)
 void FileIo::stopWatching(QString const& _path)
 {
 	m_watcher->removePath(pathFromUrl(_path));
+}
+
+void FileIo::deleteFile(QString const& _path)
+{
+	QFile file(pathFromUrl(_path));
+	file.remove();
 }
