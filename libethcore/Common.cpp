@@ -23,7 +23,7 @@
 #include <random>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <libdevcore/Base64.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include "Exceptions.h"
 #include "ProofOfWork.h"
 using namespace std;
@@ -36,11 +36,13 @@ namespace eth
 {
 
 const unsigned c_protocolVersion = 60;
-const unsigned c_minorProtocolVersion = 2;
-const unsigned c_databaseBaseVersion = 9;
 #if ETH_FATDB
+const unsigned c_minorProtocolVersion = 3;
+const unsigned c_databaseBaseVersion = 9;
 const unsigned c_databaseVersionModifier = 1;
 #else
+const unsigned c_minorProtocolVersion = 2;
+const unsigned c_databaseBaseVersion = 9;
 const unsigned c_databaseVersionModifier = 0;
 #endif
 

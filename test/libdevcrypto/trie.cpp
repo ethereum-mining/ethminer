@@ -27,8 +27,8 @@
 
 #include "../JsonSpiritHeaders.h"
 #include <libdevcore/CommonIO.h>
-#include <libdevcrypto/TrieDB.h>
-#include "TrieHash.h"
+#include <libdevcore/TrieDB.h>
+#include <libdevcore/TrieHash.h>
 #include "MemTrie.h"
 #include "../TestHelper.h"
 
@@ -124,7 +124,9 @@ BOOST_AUTO_TEST_CASE(hex_encoded_securetrie_test)
 				BOOST_REQUIRE(t.check(true));
 				BOOST_REQUIRE(ht.check(true));
 				BOOST_REQUIRE(ft.check(true));
-				for (auto i = ft.begin(), j = t.begin(); i != ft.end() && j != t.end(); ++i, ++j)
+				auto i = ft.begin();
+				auto j = t.begin();
+				for (; i != ft.end() && j != t.end(); ++i, ++j)
 				{
 					BOOST_CHECK_EQUAL(i == ft.end(), j == t.end());
 					BOOST_REQUIRE((*i).first.toBytes() == (*j).first.toBytes());
@@ -189,7 +191,9 @@ BOOST_AUTO_TEST_CASE(trie_test_anyorder)
 				BOOST_REQUIRE(t.check(true));
 				BOOST_REQUIRE(ht.check(true));
 				BOOST_REQUIRE(ft.check(true));
-				for (auto i = ft.begin(), j = t.begin(); i != ft.end() && j != t.end(); ++i, ++j)
+				auto i = ft.begin();
+				auto j = t.begin();
+				for (; i != ft.end() && j != t.end(); ++i, ++j)
 				{
 					BOOST_CHECK_EQUAL(i == ft.end(), j == t.end());
 					BOOST_REQUIRE((*i).first.toBytes() == (*j).first.toBytes());
@@ -274,7 +278,9 @@ BOOST_AUTO_TEST_CASE(trie_tests_ordered)
 			BOOST_REQUIRE(t.check(true));
 			BOOST_REQUIRE(ht.check(true));
 			BOOST_REQUIRE(ft.check(true));
-			for (auto i = ft.begin(), j = t.begin(); i != ft.end() && j != t.end(); ++i, ++j)
+			auto i = ft.begin();
+			auto j = t.begin();
+			for (; i != ft.end() && j != t.end(); ++i, ++j)
 			{
 				BOOST_CHECK_EQUAL(i == ft.end(), j == t.end());
 				BOOST_REQUIRE((*i).first.toBytes() == (*j).first.toBytes());
@@ -288,15 +294,25 @@ BOOST_AUTO_TEST_CASE(trie_tests_ordered)
 	}
 }
 
-inline h256 stringMapHash256(StringMap const& _s)
+h256 stringMapHash256(StringMap const& _s)
 {
-	return hash256(_s);
+	BytesMap bytesMap;
+	for (auto const& _v: _s)
+		bytesMap.insert(std::make_pair(bytes(_v.first.begin(), _v.first.end()), bytes(_v.second.begin(), _v.second.end())));
+	return hash256(bytesMap);
+}
+
+bytes stringMapRlp256(StringMap const& _s)
+{
+	BytesMap bytesMap;
+	for (auto const& _v: _s)
+		bytesMap.insert(std::make_pair(bytes(_v.first.begin(), _v.first.end()), bytes(_v.second.begin(), _v.second.end())));
+	return rlp256(bytesMap);
 }
 
 BOOST_AUTO_TEST_CASE(moreTrieTests)
 {
 	cnote << "Testing Trie more...";
-#if 0
 	// More tests...
 	{
 		MemoryDB m;
@@ -305,7 +321,7 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 		cout << t;
 		cout << m;
 		cout << t.root() << endl;
-		cout << hash256(StringMap()) << endl;
+		cout << stringMapHash256(StringMap()) << endl;
 
 		t.insert(string("tesz"), string("test"));
 		cout << t;
@@ -330,7 +346,7 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 		t.remove(string("test"));
 		cout << m;
 		cout << t.root() << endl;
-		cout << hash256(StringMap()) << endl;
+		cout << stringMapHash256(StringMap()) << endl;
 	}
 	{
 		MemoryDB m;
@@ -342,20 +358,23 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 		cout << m;
 		cout << t.root() << endl;
 		cout << stringMapHash256({{"b", "B"}, {"a", "A"}}) << endl;
-		cout << RLP(rlp256({{"b", "B"}, {"a", "A"}})) << endl;
+		bytes r(stringMapRlp256({{"b", "B"}, {"a", "A"}}));
+		cout << RLP(r) << endl;
 	}
 	{
 		MemTrie t;
 		t.insert("dog", "puppy");
 		cout << hex << t.hash256() << endl;
-		cout << RLP(t.rlp()) << endl;
+		bytes r(t.rlp());
+		cout << RLP(r) << endl;
 	}
 	{
 		MemTrie t;
 		t.insert("bed", "d");
 		t.insert("be", "e");
 		cout << hex << t.hash256() << endl;
-		cout << RLP(t.rlp()) << endl;
+		bytes r(t.rlp());
+		cout << RLP(r) << endl;
 	}
 	{
 		cout << hex << stringMapHash256({{"dog", "puppy"}, {"doe", "reindeer"}}) << endl;
@@ -363,10 +382,10 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 		t.insert("dog", "puppy");
 		t.insert("doe", "reindeer");
 		cout << hex << t.hash256() << endl;
-		cout << RLP(t.rlp()) << endl;
+		bytes r(t.rlp());
+		cout << RLP(r) << endl;
 		cout << toHex(t.rlp()) << endl;
 	}
-#endif
 	{
 		MemoryDB m;
 		EnforceRefs r(m, true);
@@ -381,16 +400,16 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 			t.insert(a, b);
 			s[a] = b;
 
-			/*cout << endl << "-------------------------------" << endl;
+			cout << endl << "-------------------------------" << endl;
 			cout << a << " -> " << b << endl;
 			cout << d;
 			cout << m;
 			cout << d.root() << endl;
-			cout << hash256(s) << endl;*/
+			cout << stringMapHash256(s) << endl;
 
 			BOOST_REQUIRE(d.check(true));
-			BOOST_REQUIRE_EQUAL(t.hash256(), hash256(s));
-			BOOST_REQUIRE_EQUAL(d.root(), hash256(s));
+			BOOST_REQUIRE_EQUAL(t.hash256(), stringMapHash256(s));
+			BOOST_REQUIRE_EQUAL(d.root(), stringMapHash256(s));
 			for (auto const& i: s)
 			{
 				(void)i;
@@ -415,8 +434,8 @@ BOOST_AUTO_TEST_CASE(moreTrieTests)
 			BOOST_REQUIRE(d.check(true));
 			BOOST_REQUIRE(t.at(a).empty());
 			BOOST_REQUIRE(d.at(string(a)).empty());
-			BOOST_REQUIRE_EQUAL(t.hash256(), hash256(s));
-			BOOST_REQUIRE_EQUAL(d.root(), hash256(s));
+			BOOST_REQUIRE_EQUAL(t.hash256(), stringMapHash256(s));
+			BOOST_REQUIRE_EQUAL(d.root(), stringMapHash256(s));
 			for (auto const& i: s)
 			{
 				(void)i;
@@ -487,7 +506,6 @@ BOOST_AUTO_TEST_CASE(trieLowerBound)
 BOOST_AUTO_TEST_CASE(trieStess)
 {
 	cnote << "Stress-testing Trie...";
-	if (0)
 	{
 		MemoryDB m;
 		MemoryDB dm;
@@ -506,8 +524,8 @@ BOOST_AUTO_TEST_CASE(trieStess)
 				m[k] = v;
 				t.insert(k, v);
 				d.insert(k, v);
-				BOOST_REQUIRE_EQUAL(hash256(m), t.hash256());
-				BOOST_REQUIRE_EQUAL(hash256(m), d.root());
+				BOOST_REQUIRE_EQUAL(stringMapHash256(m), t.hash256());
+				BOOST_REQUIRE_EQUAL(stringMapHash256(m), d.root());
 				BOOST_REQUIRE(d.check(true));
 			}
 			while (!m.empty())
@@ -551,10 +569,57 @@ BOOST_AUTO_TEST_CASE(trieStess)
 					cwarn << "Good?" << d2.root();
 				}
 				BOOST_REQUIRE(d.check(true));
-				BOOST_REQUIRE_EQUAL(hash256(m), t.hash256());
-				BOOST_REQUIRE_EQUAL(hash256(m), d.root());
+				BOOST_REQUIRE_EQUAL(stringMapHash256(m), t.hash256());
+				BOOST_REQUIRE_EQUAL(stringMapHash256(m), d.root());
 			}
 		}
+	}
+}
+
+template<typename Trie> void perfTestTrie(char const* _name)
+{
+	for (size_t p = 1000; p != 1000000; p*=10)
+	{
+		MemoryDB dm;
+		Trie d(&dm);
+		d.init();
+		cnote << "TriePerf " << _name << p;
+		std::vector<h256> keys(1000);
+		boost::timer t;
+		size_t ki = 0;
+		for (size_t i = 0; i < p; ++i)
+		{
+			auto k = h256::random();
+			auto v = toString(i);
+			d.insert(k, v);
+
+			if (i % (p / 1000) == 0)
+				keys[ki++] = k;
+		}
+		cnote << "Insert " << p << "values: " << t.elapsed();
+		t.restart();
+		for (auto k: keys)
+			d.at(k);
+		cnote << "Query 1000 values: " << t.elapsed();
+		t.restart();
+		size_t i = 0;
+		for (auto it = d.begin(); i < 1000 && it != d.end(); ++it, ++i)
+			*it;
+		cnote << "Iterate 1000 values: " << t.elapsed();
+		t.restart();
+		for (auto k: keys)
+			d.remove(k);
+		cnote << "Remove 1000 values:" << t.elapsed() << "\n";
+	}
+}
+
+BOOST_AUTO_TEST_CASE(triePerf)
+{
+	if (test::Options::get().performance)
+	{
+		perfTestTrie<SpecificTrieDB<GenericTrieDB<MemoryDB>, h256>>("GenericTrieDB");
+		perfTestTrie<SpecificTrieDB<HashedGenericTrieDB<MemoryDB>, h256>>("HashedGenericTrieDB");
+		perfTestTrie<SpecificTrieDB<FatGenericTrieDB<MemoryDB>, h256>>("FatGenericTrieDB");
 	}
 }
 

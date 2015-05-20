@@ -17,12 +17,7 @@ add_dependencies(${EXECUTABLE} BuildInfo.h)
 
 target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
 
-if (READLINE_FOUND)
-	target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
-endif()
-
 if (JSONRPC)
-	target_link_libraries(${EXECUTABLE} web3jsonrpc)
 	target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_CLIENT_LIBRARIES})
 	target_link_libraries(${EXECUTABLE} ${CURL_LIBRARIES})
 	if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
@@ -30,7 +25,7 @@ if (JSONRPC)
 	endif()
 endif()
 
-target_link_libraries(${EXECUTABLE} webthree)
+target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} ethash)
 
 if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)

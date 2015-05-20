@@ -159,6 +159,42 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 	return !m_ext;
 }
 
+bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address const& _origin)
+{
+	m_isCreation = false;
+//	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
+	auto it = !(_p.codeAddress & ~h160(0xffffffff)) ? precompiled().find((unsigned)(u160)_p.codeAddress) : precompiled().end();
+	if (it != precompiled().end())
+	{
+		bigint g = it->second.gas(_p.data);
+		if (_p.gas < g)
+		{
+			m_endGas = 0;
+			m_excepted = TransactionException::OutOfGasBase;
+			// Bail from exception.
+			return true;	// true actually means "all finished - nothing more to be done regarding go().
+		}
+		else
+		{
+			m_endGas = (u256)(_p.gas - g);
+			m_precompiledOut = it->second.exec(_p.data);
+			m_out = &m_precompiledOut;
+		}
+	}
+	else if (m_s.addressHasCode(_p.codeAddress))
+	{
+		m_vm = VMFactory::create(_p.gas);
+		bytes const& c = m_s.code(_p.codeAddress);
+		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _p.receiveAddress, _p.senderAddress, _origin, _p.value, _gasPrice, _p.data, &c, m_depth);
+	}
+	else
+		m_endGas = _p.gas;
+
+	m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.value);
+
+	return !m_ext;
+}
+
 bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
 {
 	m_isCreation = true;
@@ -246,6 +282,9 @@ bool Executive::go(OnOpFunc const& _onOp)
 			m_endGas = 0;
 			m_excepted = toTransactionException(_e);
 			m_ext->revert();
+
+			if (m_isCreation)
+				m_newAddress = Address();
 		}
 		catch (Exception const& _e)
 		{

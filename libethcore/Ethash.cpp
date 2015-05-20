@@ -34,7 +34,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/CryptoPP.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
 #if ETH_ETHASHCL || !ETH_TRUE
@@ -73,6 +73,13 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 	ret.headerHash = _bi.headerHash(WithoutNonce);
 	ret.seedHash = _bi.seedHash();
 	return ret;
+}
+
+void Ethash::ensurePrecomputed(unsigned _number)
+{
+	if (_number % ETHASH_EPOCH_LENGTH > ETHASH_EPOCH_LENGTH * 9 / 10)
+		// 90% of the way to the new epoch
+		EthashAux::computeFull(EthashAux::seedHash(_number + ETHASH_EPOCH_LENGTH), true);
 }
 
 void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
@@ -146,8 +153,8 @@ void Ethash::CPUMiner::workLoop()
 		h256 value = h256((uint8_t*)&ethashReturn.result, h256::ConstructFromPointer);
 		if (value <= boundary && submitProof(Solution{(Nonce)(u64)tryNonce, h256((uint8_t*)&ethashReturn.mix_hash, h256::ConstructFromPointer)}))
 			break;
-		if (!(hashCount % 1000))
-			accumulateHashes(1000);
+		if (!(hashCount % 100))
+			accumulateHashes(100);
 	}
 }
 
@@ -306,6 +313,7 @@ void Ethash::GPUMiner::workLoop()
 		cnote << "workLoop" << !!m_miner << m_minerSeed << w.seedHash;
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
+			cnote << "Initialising miner...";
 			m_minerSeed = w.seedHash;
 
 			delete m_miner;
@@ -319,7 +327,10 @@ void Ethash::GPUMiner::workLoop()
 				if ((dag = EthashAux::full(w.seedHash, false)))
 					break;
 				if (shouldStop())
+				{
+					delete m_miner;
 					return;
+				}
 				cnote << "Awaiting DAG";
 				this_thread::sleep_for(chrono::milliseconds(500));
 			}
@@ -330,9 +341,9 @@ void Ethash::GPUMiner::workLoop()
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
 		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook);
 	}
-	catch (...)
+	catch (cl::Error const& _e)
 	{
-		cwarn << "Error GPU mining. GPU memory fragmentation?";
+		cwarn << "Error GPU mining: " << _e.what() << "(" << _e.err() << ")";
 	}
 }
 

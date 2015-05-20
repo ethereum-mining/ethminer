@@ -94,7 +94,7 @@ void OverlayDB::commit()
 bytes OverlayDB::lookupAux(h256 const& _h) const
 {
 	bytes ret = MemoryDB::lookupAux(_h);
-	if (!ret.empty())
+	if (!ret.empty() || !m_db)
 		return move(ret);
 	std::string v;
 	bytes b = _h.asBytes();

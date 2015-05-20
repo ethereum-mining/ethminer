@@ -24,7 +24,10 @@
 #include <cstdlib>
 #include <fstream>
 #include "Exceptions.h"
-#ifndef _WIN32
+#include <stdio.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <termios.h>
 #endif
 using namespace std;
@@ -125,8 +128,22 @@ std::string dev::getPassword(std::string const& _prompt)
 {
 #if WIN32
 	cout << _prompt << flush;
+	// Get current Console input flags
+	HANDLE hStdin;
+	DWORD fdwSaveOldMode;
+	if ((hStdin = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE)
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("GetStdHandle"));
+	if (!GetConsoleMode(hStdin, &fdwSaveOldMode))
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("GetConsoleMode"));
+	// Set console flags to no echo
+	if (!SetConsoleMode(hStdin, fdwSaveOldMode & (~ENABLE_ECHO_INPUT)))
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("SetConsoleMode"));
+	// Read the string
 	std::string ret;
 	std::getline(cin, ret);
+	// Restore old input mode
+	if (!SetConsoleMode(hStdin, fdwSaveOldMode))
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("SetConsoleMode"));
 	return ret;
 #else
 	struct termios oflags;

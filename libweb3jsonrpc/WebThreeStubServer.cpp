@@ -26,7 +26,7 @@
 #include <boost/filesystem.hpp>
 
 #include <libwebthree/WebThree.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include "WebThreeStubServer.h"
 
 using namespace std;
