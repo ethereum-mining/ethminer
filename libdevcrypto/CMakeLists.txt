@@ -22,6 +22,7 @@ add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 target_link_libraries(${EXECUTABLE} ${Boost_FILESYSTEM_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LIBRARIES})
 target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LIBRARIES})
+target_link_libraries(${EXECUTABLE} scrypt)
 target_link_libraries(${EXECUTABLE} devcore)
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
