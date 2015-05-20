@@ -30,6 +30,11 @@
 namespace dev
 {
 
+enum class KDF {
+	PBKDF2_SHA256,
+	Scrypt,
+};
+
 class SecretStore
 {
 public:
@@ -39,6 +44,7 @@ public:
 	bytes secret(h128 const& _uuid, std::function<std::string()> const& _pass, bool _useCache = true) const;
 	h128 importKey(std::string const& _file) { auto ret = readKey(_file, false); if (ret) save(); return ret; }
 	h128 importSecret(bytes const& _s, std::string const& _pass);
+	void recode(h128 const& _uuid, std::string const& _pass, KDF _kdf = KDF::Scrypt);
 	void kill(h128 const& _uuid);
 
 	// Clear any cached keys.
@@ -47,7 +53,7 @@ public:
 private:
 	void save(std::string const& _keysPath = getDataDir("web3") + "/keys");
 	void load(std::string const& _keysPath = getDataDir("web3") + "/keys");
-	static std::string encrypt(bytes const& _v, std::string const& _pass);
+	static std::string encrypt(bytes const& _v, std::string const& _pass, KDF _kdf = KDF::Scrypt);
 	static bytes decrypt(std::string const& _v, std::string const& _pass);
 	h128 readKey(std::string const& _file, bool _deleteFile);
 

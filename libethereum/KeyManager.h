@@ -84,10 +84,13 @@ public:
 	Secret secret(Address const& _address, std::function<std::string()> const& _pass = DontKnowThrow) const;
 	Secret secret(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
 
+	void reencode(Address const& _address, std::function<std::string()> const& _pass = DontKnowThrow, KDF _kdf = KDF::Scrypt);
+
 	void kill(h128 const& _id) { kill(address(_id)); }
 	void kill(Address const& _a);
 
 private:
+	std::string getPassword(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
 	std::string defaultPassword() const { return asString(m_key.ref()); }
 	h256 hashPassword(std::string const& _pass) const;
 
