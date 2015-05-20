@@ -7,7 +7,7 @@
 #include <math.h>
 
 #ifndef S_SPLINT_S /* Including this here triggers a known bug in splint */
-#include <unistd.h>
+//#include <unistd.h>
 #endif
 
 #include "libscrypt.h"

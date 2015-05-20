@@ -2016,7 +2016,7 @@ void Main::on_killAccount_triggered()
 {
 	if (ui->ourAccounts->currentRow() >= 0)
 	{
-		auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
+		auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
 		Address h((byte const*)hba.data(), Address::ConstructFromPointer);
 		auto k = m_keyManager.accountDetails()[h];
 		if (
@@ -2033,6 +2033,20 @@ void Main::on_killAccount_triggered()
 		keysChanged();
 		if (m_beneficiary == h)
 			setBeneficiary(*m_keyManager.accounts().begin());
+	}
+}
+
+void Main::on_reencryptKey_triggered()
+{
+	if (ui->ourAccounts->currentRow() >= 0)
+	{
+		auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
+		Address a((byte const*)hba.data(), Address::ConstructFromPointer);
+		QStringList kdfs = {"PBKDF2-SHA256", "Scrypt"};
+		QString kdf = QInputDialog::getItem(this, "Re-Encrypt Key", "Select a key derivation function to use for storing your key:", kdfs);
+		m_keyManager.reencode(a, [&](){
+			return QInputDialog::getText(nullptr, "Re-Encrypt Key", "Enter the password for this key to re-encrypt it.", QLineEdit::Password, QString()).toStdString();
+		}, (KDF)kdfs.indexOf(kdf));
 	}
 }
 
