@@ -49,6 +49,12 @@ void KeyManager::create(std::string const& _pass)
 	write(_pass, m_keysFile);
 }
 
+void KeyManager::reencode(Address const& _address, std::function<string()> const& _pass, KDF _kdf)
+{
+	h128 u = uuid(_address);
+	store().recode(u, getPassword(u, _pass), _kdf);
+}
+
 bool KeyManager::load(std::string const& _pass)
 {
 	try {
@@ -89,18 +95,21 @@ Secret KeyManager::secret(Address const& _address, function<std::string()> const
 
 Secret KeyManager::secret(h128 const& _uuid, function<std::string()> const& _pass) const
 {
-	return Secret(m_store.secret(_uuid, [&](){
-		auto kit = m_keyInfo.find(_uuid);
-		if (kit != m_keyInfo.end())
-		{
-			auto it = m_cachedPasswords.find(kit->second.passHash);
-			if (it != m_cachedPasswords.end())
-				return it->second;
-		}
-		std::string p = _pass();
-		m_cachedPasswords[hashPassword(p)] = p;
-		return p;
-	}));
+	return Secret(m_store.secret(_uuid, [&](){ return getPassword(_uuid, _pass); }));
+}
+
+std::string KeyManager::getPassword(h128 const& _uuid, function<std::string()> const& _pass) const
+{
+	auto kit = m_keyInfo.find(_uuid);
+	if (kit != m_keyInfo.end())
+	{
+		auto it = m_cachedPasswords.find(kit->second.passHash);
+		if (it != m_cachedPasswords.end())
+			return it->second;
+	}
+	std::string p = _pass();
+	m_cachedPasswords[hashPassword(p)] = p;
+	return p;
 }
 
 h128 KeyManager::uuid(Address const& _a) const

@@ -159,6 +159,7 @@
     <addaction name="importKeyFile"/>
     <addaction name="claimPresale"/>
     <addaction name="exportKey"/>
+    <addaction name="reencryptKey"/>
     <addaction name="killAccount"/>
     <addaction name="separator"/>
     <addaction name="loadJS"/>
@@ -1749,6 +1750,11 @@ font-size: 14pt</string>
   <action name="importKeyFile">
    <property name="text">
     <string>Import &amp;Secret Key File...</string>
+   </property>
+  </action>
+  <action name="reencryptKey">
+   <property name="text">
+    <string>&amp;Re-encrypt Key</string>
    </property>
   </action>
  </widget>

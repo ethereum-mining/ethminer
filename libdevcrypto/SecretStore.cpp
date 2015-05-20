@@ -169,24 +169,51 @@ h128 SecretStore::readKey(std::string const& _file, bool _deleteFile)
 	return h128();
 }
 
-std::string SecretStore::encrypt(bytes const& _v, std::string const& _pass)
+void SecretStore::recode(h128 const& _uuid, string const& _pass, KDF _kdf)
+{
+	m_keys[_uuid].first = encrypt(secret(_uuid, [&](){ return _pass; }), _pass, _kdf);
+	save();
+}
+
+std::string SecretStore::encrypt(bytes const& _v, std::string const& _pass, KDF _kdf)
 {
 	js::mObject ret;
 
 	// KDF info
 	unsigned dklen = 16;
-	unsigned iterations = 262144;
 	bytes salt = h256::random().asBytes();
-	ret["kdf"] = "pbkdf2";
+	bytes derivedKey;
+	if (_kdf == KDF::Scrypt)
 	{
-		js::mObject params;
-		params["prf"] = "hmac-sha256";
-		params["c"] = (int)iterations;
-		params["salt"] = toHex(salt);
-		params["dklen"] = (int)dklen;
-		ret["kdfparams"] = params;
+		unsigned iterations = 262144;
+		unsigned p = 262144;
+		unsigned r = 262144;
+		ret["kdf"] = "scrypt";
+		{
+			js::mObject params;
+			params["n"] = (int)iterations;
+			params["p"] = 1;
+			params["r"] = 8;
+			params["dklen"] = (int)dklen;
+			params["salt"] = toHex(salt);
+			ret["kdfparams"] = params;
+		}
+		derivedKey = scrypt(_pass, salt, iterations, p, r, dklen);
 	}
-	bytes derivedKey = pbkdf2(_pass, salt, iterations, dklen);
+	else
+	{
+		unsigned iterations = 262144;
+		ret["kdf"] = "pbkdf2";
+		{
+			js::mObject params;
+			params["prf"] = "hmac-sha256";
+			params["c"] = (int)iterations;
+			params["salt"] = toHex(salt);
+			params["dklen"] = (int)dklen;
+			ret["kdfparams"] = params;
+		}
+		derivedKey = pbkdf2(_pass, salt, iterations, dklen);
+	}
 
 	// cipher info
 	ret["cipher"] = "aes-128-cbc";
