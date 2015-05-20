@@ -8,7 +8,6 @@ var editor = CodeMirror(document.body, {
 							styleSelectedText: true
 						});
 var ternServer;
-var sourceName = "";
 
 editor.setOption("theme", "inkpot");
 editor.setOption("indentUnit", 4);
@@ -160,35 +159,40 @@ showWarning = function(content)
 
 var annotations = [];
 var compilationCompleteBool = true;
-compilationError = function(location, error, type)
+compilationError = function(currentSourceName, location, error, secondaryErrors)
 {
 	compilationCompleteBool = false;
 	if (compilationCompleteBool)
 		return;
+	clearAnnotations();
 	location = JSON.parse(location);
-	if (location.start.line)
-		ensureAnnotation(location, error, type);
+	if (location.source === currentSourceName)
+		ensureAnnotation(location, error, "first");
+	var lineError = location.start.line + 1;
+	var errorOrigin = "Source " + location.contractName + " line " + lineError;
+	secondaryErrors = JSON.parse(secondaryErrors);
+	for(var i in secondaryErrors)
+	{
+		if (secondaryErrors[i].source === currentSourceName)
+			ensureAnnotation(secondaryErrors[i], errorOrigin, "second");
+	}
 }
 
 ensureAnnotation = function(location, error, type)
 {
-	for (var k in annotations)
-	{
-		if (annotations[k].annotation.location.start.line === location.start.line)
-		{
-			annotations[k].annotation.destroy();
-			annotations.splice(k, 1);
-			break;
-		}
-	}
 	annotations.push({ "type": type, "annotation": new ErrorAnnotation(editor, location, error)});
 }
 
-compilationComplete = function()
+clearAnnotations = function()
 {
 	for (var k in annotations)
 		annotations[k].annotation.destroy();
 	annotations.length = 0;
+}
+
+compilationComplete = function()
+{
+	clearAnnotations();
 	compilationCompleteBool = true;
 }
 
@@ -202,11 +206,6 @@ setFontSize = function(size)
 {
 	editor.getWrapperElement().style["font-size"] = size + "px";
 	editor.refresh();
-}
-
-setSourceName = function(_sourceName)
-{
-	sourceName = _sourceName;
 }
 
 editor.setOption("extraKeys", extraKeys);
