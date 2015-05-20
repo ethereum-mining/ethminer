@@ -23,7 +23,7 @@
 #include <boost/filesystem.hpp>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/CommonIO.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include "Common.h"
 
 using namespace std;

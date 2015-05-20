@@ -61,12 +61,17 @@ bool KeyManager::load(std::string const& _pass)
 		if (version == 1)
 		{
 			for (auto const& i: s[1])
+			{
 				m_keyInfo[m_addrLookup[(Address)i[0]] = (h128)i[1]] = KeyInfo((h256)i[2], (std::string)i[3]);
+				cdebug << toString((Address)i[0]) << toString((h128)i[1]) << toString((h256)i[2]) << (std::string)i[3];
+			}
+
 			for (auto const& i: s[2])
 				m_passwordInfo[(h256)i[0]] = (std::string)i[1];
 			m_password = (string)s[3];
 		}
 		m_cachedPasswords[hashPassword(m_password)] = m_password;
+		m_cachedPasswords[hashPassword(defaultPassword())] = defaultPassword();
 		return true;
 	}
 	catch (...) {
@@ -210,4 +215,6 @@ void KeyManager::write(h128 const& _key, std::string const& _keysFile) const
 
 	writeFile(_keysFile, encryptSymNoAuth(_key, h128(), &s.out()));
 	m_key = _key;
+	m_cachedPasswords[hashPassword(defaultPassword())] = defaultPassword();
+
 }

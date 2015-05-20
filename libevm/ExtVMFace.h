@@ -26,7 +26,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Common.h>
 #include <libethcore/BlockInfo.h>
@@ -108,6 +108,18 @@ using LastHashes = std::vector<h256>;
 
 using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, bigint /*gas*/, VM*, ExtVMFace const*)>;
 
+struct CallParameters
+{
+	Address senderAddress;
+	Address codeAddress;
+	Address receiveAddress;
+	u256 gas;
+	u256 value;
+	bytesConstRef data;
+	bytesRef out;
+	OnOpFunc onOp;
+};
+
 /**
  * @brief Interface and null implementation of the class for specifying VM externalities.
  */
@@ -153,7 +165,7 @@ public:
 	virtual h160 create(u256, u256&, bytesConstRef, OnOpFunc const&) { return h160(); }
 
 	/// Make a new message call.
-	virtual bool call(Address, u256, bytesConstRef, u256&, bytesRef, OnOpFunc const&, Address, Address) { return false; }
+	virtual bool call(CallParameters&) { return false; }
 
 	/// Revert any changes made (by any of the other calls).
 	virtual void log(h256s&& _topics, bytesConstRef _data) { sub.logs.push_back(LogEntry(myAddress, std::move(_topics), _data.toBytes())); }

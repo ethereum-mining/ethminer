@@ -44,7 +44,7 @@
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #endif
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethcore/CommonJS.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/ICAP.h>
@@ -204,7 +204,7 @@ Main::Main(QWidget *parent) :
 	QSettings s("ethereum", "alethzero");
 	m_networkConfig = s.value("peers").toByteArray();
 	bytesConstRef network((byte*)m_networkConfig.data(), m_networkConfig.size());
-	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), WithExisting::Trust, {"eth", "shh"}, p2p::NetworkPreferences(), network));
+	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), WithExisting::Trust, {"eth"/*, "shh"*/}, p2p::NetworkPreferences(), network));
 
 	m_httpConnector.reset(new jsonrpc::HttpServer(SensibleHttpPort, "", "", dev::SensibleHttpThreads));
 	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), this));
@@ -212,7 +212,7 @@ Main::Main(QWidget *parent) :
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
 
-	WebPage* webPage= new WebPage(this);
+	WebPage* webPage = new WebPage(this);
 	m_webPage = webPage;
 	connect(webPage, &WebPage::consoleMessage, [this](QString const& _msg) { Main::addConsoleMessage(_msg, QString()); });
 	ui->webView->setPage(m_webPage);
@@ -366,6 +366,11 @@ Address Main::getNameReg() const
 Address Main::getCurrencies() const
 {
 	return abiOut<Address>(ethereum()->call(c_newConfig, abiIn("lookup(uint256)", (u256)3)).output);
+}
+
+bool Main::doConfirm()
+{
+	return ui->confirm->isChecked();
 }
 
 void Main::installNameRegWatch()
@@ -943,22 +948,34 @@ void Main::on_preview_triggered()
 	refreshAll();
 }
 
+void Main::on_prepNextDAG_triggered()
+{
+	EthashAux::computeFull(
+		EthashAux::seedHash(
+			ethereum()->blockChain().number() + ETHASH_EPOCH_LENGTH
+		)
+	);
+}
+
 void Main::refreshMining()
 {
+	pair<uint64_t, unsigned> gp = EthashAux::fullGeneratingProgress();
+	QString t;
+	if (gp.first != EthashAux::NotGenerating)
+		t = QString("DAG for #%1-#%2: %3% complete; ").arg(gp.first).arg(gp.first + ETHASH_EPOCH_LENGTH - 1).arg(gp.second);
 	MiningProgress p = ethereum()->miningProgress();
-	ui->mineStatus->setText(ethereum()->isMining() ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Not mining");
-	if (!ui->miningView->isVisible())
-		return;
-	list<MineInfo> l = ethereum()->miningHistory();
-	static unsigned lh = 0;
-	if (p.hashes < lh)
-		ui->miningView->resetStats();
-	lh = p.hashes;
-	ui->miningView->appendStats(l, p);
-/*	if (p.ms)
-		for (MineInfo const& i: l)
-			cnote << i.hashes * 10 << "h/sec, need:" << i.requirement << " best:" << i.best << " best-so-far:" << p.best << " avg-speed:" << (p.hashes * 1000 / p.ms) << "h/sec";
-*/
+	ui->mineStatus->setText(t + (ethereum()->isMining() ? p.hashes > 0 ? QString("%1s @ %2kH/s").arg(p.ms / 1000).arg(p.ms ? p.hashes / p.ms : 0) : "Awaiting DAG" : "Not mining"));
+	if (ethereum()->isMining() && p.hashes > 0)
+	{
+		if (!ui->miningView->isVisible())
+			return;
+		list<MineInfo> l = ethereum()->miningHistory();
+		static unsigned lh = 0;
+		if (p.hashes < lh)
+			ui->miningView->resetStats();
+		lh = p.hashes;
+		ui->miningView->appendStats(l, p);
+	}
 }
 
 void Main::setBeneficiary(Address const& _b)
@@ -1002,7 +1019,7 @@ void Main::refreshBalances()
 		u256 b = ethereum()->balanceAt(i.first);
 		QListWidgetItem* li = new QListWidgetItem(QString("%4 %2: %1 [%3]").arg(formatBalance(b).c_str()).arg(QString::fromStdString(render(i.first))).arg((unsigned)ethereum()->countAt(i.first)).arg(QString::fromStdString(i.second.first)), ui->ourAccounts);
 		li->setData(Qt::UserRole, QByteArray((char const*)i.first.data(), Address::size));
-		li->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
+		li->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
 		li->setCheckState(m_beneficiary == i.first ? Qt::Checked : Qt::Unchecked);
 		totalBalance += b;
 
@@ -1139,7 +1156,7 @@ void Main::refreshBlockCount()
 {
 	auto d = ethereum()->blockChain().details();
 	BlockQueueStatus b = ethereum()->blockQueueStatus();
-	ui->chainStatus->setText(QString("%3 ready %4 future %5 unknown %6 bad  %1 #%2").arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.ready).arg(b.future).arg(b.unknown).arg(b.bad));
+	ui->chainStatus->setText(QString("%3 ready %4 verifying %5 unverified %6 future %7 unknown %8 bad  %1 #%2").arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad));
 }
 
 void Main::on_turboMining_triggered()
@@ -1149,7 +1166,10 @@ void Main::on_turboMining_triggered()
 
 void Main::refreshBlockChain()
 {
-	DEV_TIMED_FUNCTION;
+	if (!ui->blocks->isVisible() && isVisible())
+		return;
+
+	DEV_TIMED_FUNCTION_ABOVE(500);
 	cwatch << "refreshBlockChain()";
 
 	// TODO: keep the same thing highlighted.
@@ -1333,7 +1353,7 @@ void Main::timerEvent(QTimerEvent*)
 		auto ls = ethereum()->checkWatchSafe(i.first);
 		if (ls.size())
 		{
-			cnote << "FIRING WATCH" << i.first << ls.size();
+//			cnote << "FIRING WATCH" << i.first << ls.size();
 			i.second(ls);
 		}
 	}
@@ -1878,6 +1898,7 @@ void Main::on_mine_triggered()
 {
 	if (ui->mine->isChecked())
 	{
+//		EthashAux::computeFull(ethereum()->blockChain().number());
 		ethereum()->setAddress(m_beneficiary);
 		ethereum()->startMining();
 	}
@@ -1981,6 +2002,7 @@ void Main::on_killAccount_triggered()
 		m_keyManager.kill(h);
 		if (m_keyManager.accounts().empty())
 			m_keyManager.import(Secret::random(), "Default account");
+		m_beneficiary = *m_keyManager.accounts().begin();
 		keysChanged();
 		if (m_beneficiary == h)
 			setBeneficiary(*m_keyManager.accounts().begin());
@@ -2027,6 +2049,7 @@ std::string Main::prettyU256(dev::u256 const& _n) const
 
 void Main::on_post_clicked()
 {
+	return;
 	shh::Message m;
 	m.setTo(stringToPublic(ui->shhTo->currentText()));
 	m.setPayload(parseData(ui->shhData->toPlainText().toStdString()));
@@ -2051,6 +2074,7 @@ int Main::authenticate(QString _title, QString _text)
 
 void Main::refreshWhispers()
 {
+	return;
 	ui->whispers->clear();
 	for (auto const& w: whisper()->all())
 	{

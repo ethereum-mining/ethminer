@@ -33,6 +33,8 @@
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libsolidity/InterfaceHandler.h>
+#include <libsolidity/StructuralGasEstimator.h>
+#include <libsolidity/SourceReferenceFormatter.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/CommonJS.h>
 #include "QContractDefinition.h"
@@ -50,6 +52,7 @@ const std::set<std::string> c_predefinedContracts =
 
 namespace
 {
+using namespace dev::eth;
 using namespace dev::solidity;
 
 class CollectLocalsVisitor: public ASTConstVisitor
@@ -219,6 +222,19 @@ void CodeModel::reset(QVariantMap const& _documents)
 	emit scheduleCompilationJob(++m_backgroundJobId);
 }
 
+void CodeModel::unregisterContractSrc(QString const& _documentId)
+{
+	{
+		Guard pl(x_pendingContracts);
+		m_pendingContracts.erase(_documentId);
+	}
+
+	// launch the background thread
+	m_compiling = true;
+	emit stateChanged();
+	emit scheduleCompilationJob(++m_backgroundJobId);
+}
+
 void CodeModel::registerCodeChange(QString const& _documentId, QString const& _code)
 {
 	{
@@ -292,6 +308,7 @@ void CodeModel::runCompilationJob(int _jobId)
 			}
 		}
 		cs.compile(false);
+		gasEstimation(cs);
 		collectContracts(cs, sourceNames);
 	}
 	catch (dev::Exception const& _exception)
@@ -312,6 +329,44 @@ void CodeModel::runCompilationJob(int _jobId)
 	}
 	m_compiling = false;
 	emit stateChanged();
+}
+
+void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
+{
+	if (m_gasCostsMaps)
+		m_gasCostsMaps->deleteLater();
+	m_gasCostsMaps = new GasMapWrapper(this);
+	for (std::string n: _cs.getContractNames())
+	{
+		ContractDefinition const& contractDefinition = _cs.getContractDefinition(n);
+		QString sourceName = QString::fromStdString(*contractDefinition.getLocation().sourceName);
+
+		if (!m_gasCostsMaps->contains(sourceName))
+			m_gasCostsMaps->insert(sourceName, QVariantList());
+
+		if (!contractDefinition.isFullyImplemented())
+			continue;
+		dev::solidity::SourceUnit const& sourceUnit = _cs.getAST(*contractDefinition.getLocation().sourceName);
+		AssemblyItems const* items = _cs.getRuntimeAssemblyItems(n);
+		StructuralGasEstimator estimator;
+		std::map<ASTNode const*, GasMeter::GasConsumption> gasCosts = estimator.breakToStatementLevel(estimator.performEstimation(*items, std::vector<ASTNode const*>({&sourceUnit})), {&sourceUnit});
+		for (auto gasItem = gasCosts.begin(); gasItem != gasCosts.end(); ++gasItem)
+		{
+			SourceLocation const& location = gasItem->first->getLocation();
+			GasMeter::GasConsumption cost = gasItem->second;
+			std::stringstream v;
+			v << cost.value;
+			m_gasCostsMaps->push(sourceName, location.start, location.end, QString::fromStdString(v.str()), cost.isInfinite);
+		}
+	}
+}
+
+QVariantList CodeModel::gasCostByDocumentId(QString const& _documentId) const
+{
+	if (m_gasCostsMaps)
+		return m_gasCostsMaps->gasCostsByDocId(_documentId);
+	else
+		return QVariantList();
 }
 
 void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs, std::vector<std::string> const& _sourceNames)
@@ -503,3 +558,29 @@ QString CodeModel::resolveFunctionName(dev::SourceLocation const& _location)
 	}
 	return QString();
 }
+
+void GasMapWrapper::push(QString _source, int _start, int _end, QString _value, bool _isInfinite)
+{
+	GasMap* gas = new GasMap(_start, _end, _value, _isInfinite, this);
+	m_gasMaps.find(_source).value().push_back(QVariant::fromValue(gas));
+}
+
+bool GasMapWrapper::contains(QString _key)
+{
+	return m_gasMaps.contains(_key);
+}
+
+void GasMapWrapper::insert(QString _source, QVariantList _variantList)
+{
+	m_gasMaps.insert(_source, _variantList);
+}
+
+QVariantList GasMapWrapper::gasCostsByDocId(QString _source)
+{
+	auto gasIter = m_gasMaps.find(_source);
+	if (gasIter != m_gasMaps.end())
+		return gasIter.value();
+	else
+		return QVariantList();
+}
+

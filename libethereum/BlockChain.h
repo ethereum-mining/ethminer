@@ -120,6 +120,7 @@ public:
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
 	ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default);
+	ImportRoute import(BlockInfo const& _bi, bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 const& _hash) const;
@@ -203,14 +204,14 @@ public:
 	/// Get the hash of the genesis block. Thread-safe.
 	h256 genesisHash() const { return m_genesisHash; }
 
-	/// Get all blocks not allowed as uncles given a parent (i.e. featured as uncles/main in parent, parent + 1, ... parent + 5).
-	/// @returns set including the header-hash of every parent (including @a _parent) up to and including generation +5
+	/// Get all blocks not allowed as uncles given a parent (i.e. featured as uncles/main in parent, parent + 1, ... parent + @a _generations).
+	/// @returns set including the header-hash of every parent (including @a _parent) up to and including generation + @a _generations
 	/// togther with all their quoted uncles.
-	h256Hash allUnclesFrom(h256 const& _parent) const;
+	h256Hash allKinFrom(h256 const& _parent, unsigned _generations) const;
 
 	/// Run through database and verify all blocks by reevaluating.
 	/// Will call _progress with the progress in this operation first param done, second total.
-	void rebuild(std::string const& _path, ProgressCallback const& _progress = std::function<void(unsigned, unsigned)>());
+	void rebuild(std::string const& _path, ProgressCallback const& _progress = std::function<void(unsigned, unsigned)>(), bool _prepPoW = false);
 
 	/** @returns a tuple of:
 	 * - an vector of hashes of all blocks between @a _from and @a _to, all blocks are ordered first by a number of
