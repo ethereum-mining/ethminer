@@ -422,7 +422,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 
 				checkAddresses<std::map<Address, std::tuple<u256, u256, std::map<u256, u256>, bytes> > >(test.addresses, fev.addresses);
 
-				checkCallCreates(fev.callcreates, test.callcreates);
+				checkCallCreates(test.callcreates, fev.callcreates);
 
 				checkLog(fev.sub.logs, test.sub.logs);
 			}
