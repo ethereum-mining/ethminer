@@ -19,6 +19,8 @@
  * @date 2014
  */
 
+#pragma once
+
 #include <condition_variable>
 #include <libethash/ethash.h>
 #include <libdevcore/Worker.h>
@@ -69,7 +71,7 @@ public:
 
 	static const uint64_t NotGenerating = (uint64_t)-1;
 	/// Kicks off generation of DAG for @a _seedHash and @returns false or @returns true if ready.
-	static unsigned computeFull(h256 const& _seedHash);
+	static unsigned computeFull(h256 const& _seedHash, bool _createIfMissing = true);
 	/// Information on the generation progress.
 	static std::pair<uint64_t, unsigned> fullGeneratingProgress() { return std::make_pair(get()->m_generatingFullNumber, get()->m_fullProgress); }
 	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result or empty pointer if not existing and _createIfMissing is false.
@@ -88,7 +90,7 @@ private:
 
 	static EthashAux* s_this;
 
-	RecursiveMutex x_lights;
+	SharedMutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
 
 	Mutex x_fulls;
