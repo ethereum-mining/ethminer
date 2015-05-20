@@ -172,6 +172,7 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _for
 	m_preMine(m_stateDB, BaseState::CanonGenesis),
 	m_postMine(m_stateDB)
 {
+	m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds(30);
 	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
 	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
 	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
@@ -197,6 +198,7 @@ Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string c
 	m_preMine(m_stateDB),
 	m_postMine(m_stateDB)
 {
+	m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds(30);
 	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
 	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
 	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
@@ -453,8 +455,15 @@ ProofOfWork::WorkPackage Client::getWork()
 {
 	// lock the work so a later submission isn't invalidated by processing a transaction elsewhere.
 	// this will be reset as soon as a new block arrives, allowing more transactions to be processed.
+	bool oldShould = shouldServeWork();
 	m_lastGetWork = chrono::system_clock::now();
-	m_remoteWorking = true;
+
+	// if this request has made us bother to serve work, prep it now.
+	if (!oldShould && shouldServeWork())
+		onPostStateChanged();
+	else
+		// otherwise, set this to true so that it gets prepped next time.
+		m_remoteWorking = true;
 	return ProofOfWork::package(m_miningInfo);
 }
 
@@ -484,7 +493,7 @@ void Client::syncBlockQueue()
 
 	cwork << "BQ ==> CHAIN ==> STATE";
 	{
-		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, 10);
+		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, rand() % 90 + 10);
 		if (ir.first.empty())
 			return;
 	}
@@ -607,7 +616,8 @@ bool Client::remoteActive() const
 void Client::onPostStateChanged()
 {
 	cnote << "Post state changed";
-	if (isMining() || remoteActive())
+
+	if (m_bq.items().first == 0 && (isMining() || remoteActive()))
 	{
 		cnote << "Restarting mining...";
 		DEV_WRITE_GUARDED(x_working)
@@ -619,6 +629,8 @@ void Client::onPostStateChanged()
 			m_miningInfo = m_postMine.info();
 		}
 		m_farm.setWork(m_miningInfo);
+
+		Ethash::ensurePrecomputed(m_bc.number());
 	}
 	m_remoteWorking = false;
 }
@@ -636,7 +648,7 @@ void Client::noteChanged(h256Hash const& _filters)
 {
 	Guard l(x_filtersWatches);
 	if (_filters.size())
-		filtersStreamOut(cnote << "noteChanged:", _filters);
+		filtersStreamOut(cwatch << "noteChanged:", _filters);
 	// accrue all changes left in each filter into the watches.
 	for (auto& w: m_watches)
 		if (_filters.count(w.second.id))

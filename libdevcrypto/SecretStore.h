@@ -24,8 +24,8 @@
 #include <functional>
 #include <mutex>
 #include <libdevcore/FixedHash.h>
+#include <libdevcore/FileSystem.h>
 #include "Common.h"
-#include "FileSystem.h"
 
 namespace dev
 {

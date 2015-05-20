@@ -74,6 +74,7 @@ public:
 	static std::string name();
 	static unsigned revision();
 	static void prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
+	static void ensurePrecomputed(unsigned _number);
 	static bool verify(BlockInfo const& _header);
 	static bool preVerify(BlockInfo const& _header);
 	static WorkPackage package(BlockInfo const& _header);

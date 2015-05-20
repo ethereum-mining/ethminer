@@ -32,6 +32,7 @@
 #include <libdevcore/Guards.h>
 #include <libevmasm/Assembly.h>
 #include "SolidityType.h"
+#include "QBigInt.h"
 
 class QTextDocument;
 
@@ -127,6 +128,42 @@ struct SourceMap
 };
 
 using SourceMaps = QMap<QString, SourceMap>; //by source id
+using GasCostsMaps = QMap<QString, QVariantList>; //gas cost by contract name
+
+class GasMapWrapper: public QObject
+{
+	Q_OBJECT
+
+	Q_PROPERTY(GasCostsMaps gasMaps MEMBER m_gasMaps CONSTANT)
+
+public:
+	GasMapWrapper(QObject* _parent): QObject(_parent){}
+	void push(QString _source, int _start, int _end, QString _value, bool _isInfinite);
+	bool contains(QString _key);
+	void insert(QString _source, QVariantList _variantList);
+	QVariantList gasCostsByDocId(QString _source);
+
+private:
+	GasCostsMaps m_gasMaps;
+};
+
+class GasMap: public QObject
+{
+	Q_OBJECT
+
+	Q_PROPERTY(int start MEMBER m_start CONSTANT)
+	Q_PROPERTY(int end MEMBER m_end CONSTANT)
+	Q_PROPERTY(QString gas MEMBER m_gas CONSTANT)
+	Q_PROPERTY(bool isInfinite MEMBER m_isInfinite CONSTANT)
+
+public:
+	GasMap(int _start, int _end, QString _gas, bool _isInfinite, QObject* _parent): QObject(_parent), m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite) {}
+
+	int m_start;
+	int m_end;
+	QString m_gas;
+	bool m_isInfinite;
+};
 
 /// Code compilation model. Compiles contracts in background an provides compiled contract data
 class CodeModel: public QObject
@@ -168,6 +205,10 @@ public:
 	bool isContractOrFunctionLocation(dev::SourceLocation const& _location);
 	/// Get funciton name by location
 	QString resolveFunctionName(dev::SourceLocation const& _location);
+	/// Gas estimation for compiled sources
+	void gasEstimation(solidity::CompilerStack const& _cs);
+	/// Gas cost by doc id
+	Q_INVOKABLE QVariantList gasCostByDocumentId(QString const& _documentId) const;
 
 signals:
 	/// Emited on compilation state change
@@ -204,6 +245,7 @@ private:
 	mutable dev::Mutex x_contractMap;
 	ContractMap m_contractMap;
 	SourceMaps m_sourceMaps;
+	GasMapWrapper* m_gasCostsMaps = 0;
 	std::unique_ptr<CodeHighlighterSettings> m_codeHighlighterSettings;
 	QThread m_backgroundThread;
 	BackgroundWorker m_backgroundWorker;
@@ -217,3 +259,5 @@ private:
 }
 
 }
+
+//Q_DECLARE_METATYPE(dev::mix::GasMap)

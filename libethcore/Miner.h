@@ -107,12 +107,10 @@ public:
 		}
 		if (!!_work)
 		{
-			boost::timer t;
-			pause();
-			cdebug << "pause took" << t.elapsed();
-			t.restart();
-			kickOff();
-			cdebug << "kickOff took" << t.elapsed();
+			DEV_TIMED_ABOVE(pause, 250)
+				pause();
+			DEV_TIMED_ABOVE(kickOff, 250)
+				kickOff();
 		}
 		else if (!_work && !!old)
 			pause();

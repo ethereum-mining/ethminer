@@ -44,7 +44,7 @@
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #endif
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethcore/CommonJS.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/ICAP.h>
@@ -1166,10 +1166,10 @@ void Main::on_turboMining_triggered()
 
 void Main::refreshBlockChain()
 {
-	if (!ui->blocks->isVisible())
+	if (!ui->blocks->isVisible() && isVisible())
 		return;
 
-	DEV_TIMED_FUNCTION;
+	DEV_TIMED_FUNCTION_ABOVE(500);
 	cwatch << "refreshBlockChain()";
 
 	// TODO: keep the same thing highlighted.
@@ -1353,7 +1353,7 @@ void Main::timerEvent(QTimerEvent*)
 		auto ls = ethereum()->checkWatchSafe(i.first);
 		if (ls.size())
 		{
-			cnote << "FIRING WATCH" << i.first << ls.size();
+//			cnote << "FIRING WATCH" << i.first << ls.size();
 			i.second(ls);
 		}
 	}

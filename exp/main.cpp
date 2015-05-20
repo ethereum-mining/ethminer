@@ -34,6 +34,9 @@
 #include <functional>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
+#include <libdevcore/TrieDB.h>
+#include <libdevcore/TrieHash.h>
+/*
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
@@ -41,12 +44,11 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libdevcore/CommonIO.h>
-#include <libdevcrypto/TrieDB.h>
 #include <libdevcrypto/SecretStore.h>
 #include <libp2p/All.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/Farm.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethereum/All.h>
 #include <libethereum/KeyManager.h>
 #include <libethereum/AccountDiff.h>
@@ -55,16 +57,42 @@
 #include <liblll/All.h>
 #include <libwhisper/WhisperPeer.h>
 #include <libwhisper/WhisperHost.h>
-#include <test/JsonSpiritHeaders.h>
+#include <test/JsonSpiritHeaders.h>*/
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
+/*using namespace dev::eth;
 using namespace dev::p2p;
 using namespace dev::shh;
 namespace js = json_spirit;
 namespace fs = boost::filesystem;
-
+*/
 #if 1
+
+int main()
+{
+	cdebug << "EXP";
+	vector<bytes> data;
+	for (unsigned i = 0; i < 10000; ++i)
+		data.push_back(rlp(i));
+
+	h256 ret;
+	DEV_TIMED(triedb)
+	{
+		MemoryDB mdb;
+		GenericTrieDB<MemoryDB> t(&mdb);
+		t.init();
+		unsigned i = 0;
+		for (auto const& d: data)
+			t.insert(rlp(i++), d);
+		ret = t.root();
+	}
+	cdebug << ret;
+	DEV_TIMED(hash256)
+		ret = orderedTrieRoot(data);
+	cdebug << ret;
+}
+
+#elif 0
 
 int main()
 {
