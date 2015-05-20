@@ -25,9 +25,9 @@
 #include <boost/filesystem.hpp>
 #include <libdevcore/Log.h>
 #include <libdevcore/Guards.h>
+#include <libdevcore/SHA3.h>
+#include <libdevcore/FileSystem.h>
 #include <test/JsonSpiritHeaders.h>
-#include "SHA3.h"
-#include "FileSystem.h"
 using namespace std;
 using namespace dev;
 namespace js = json_spirit;

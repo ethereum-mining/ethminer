@@ -34,7 +34,7 @@
 #include <libdevcrypto/CryptoPP.h>
 #include <libdevcrypto/Common.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include "FileIo.h"
 
 using namespace dev;

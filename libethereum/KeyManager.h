@@ -24,7 +24,7 @@
 #include <functional>
 #include <mutex>
 #include <libdevcrypto/SecretStore.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 
 namespace dev
 {
@@ -75,10 +75,11 @@ public:
 	Address address(h128 const& _uuid) const;
 
 	h128 import(Secret const& _s, std::string const& _info, std::string const& _pass, std::string const& _passInfo);
-	h128 import(Secret const& _s, std::string const& _info) { return import(_s, _info, m_password, std::string()); }
+	h128 import(Secret const& _s, std::string const& _info) { return import(_s, _info, defaultPassword(), std::string()); }
 
 	SecretStore& store() { return m_store; }
 	void importExisting(h128 const& _uuid, std::string const& _info, std::string const& _pass, std::string const& _passInfo);
+	void importExisting(h128 const& _uuid, std::string const& _info) { importExisting(_uuid, _info, defaultPassword(), std::string()); }
 
 	Secret secret(Address const& _address, std::function<std::string()> const& _pass = DontKnowThrow) const;
 	Secret secret(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
@@ -87,6 +88,7 @@ public:
 	void kill(Address const& _a);
 
 private:
+	std::string defaultPassword() const { return asString(m_key.ref()); }
 	h256 hashPassword(std::string const& _pass) const;
 
 	// Only use if previously loaded ok.
@@ -103,7 +105,11 @@ private:
 	// Passwords that we're storing.
 	mutable std::unordered_map<h256, std::string> m_cachedPasswords;
 
-	// The default password for keys in the keystore - protected by the master password.
+	// DEPRECATED.
+	// Used to be the default password for keys in the keystore, stored in the keys file.
+	// Now the default password is based off the key of the keys file directly, so this is redundant
+	// except for the fact that people have existing keys stored with it. Leave for now until/unless
+	// we have an upgrade strategy.
 	std::string m_password;
 
 	SecretStore m_store;

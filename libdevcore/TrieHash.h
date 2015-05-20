@@ -14,41 +14,33 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
+/** @file TrieHash.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
- * Main test functions.
  */
 
-#include <boost/test/unit_test.hpp>
+#pragma once
 
-int trieTest();
-int rlpTest();
-int daggerTest();
-int cryptoTest();
-int stateTest();
-int vmTest();
-int hexPrefixTest();
-int peerTest(int argc, char** argv);
+#include <libdevcore/Common.h>
+#include <libdevcore/FixedHash.h>
 
-#include <libdevcore/Log.h>
-#include <libethcore/BlockInfo.h>
-using namespace std;
-using namespace dev;
-using namespace dev::eth;
+namespace dev
+{
 
-//BOOST_AUTO_TEST_CASE(basic_tests)
-//{
-/*	RLPStream s;
-	BlockInfo::genesis().streamRLP(s, false);
-	std::cout << RLP(s.out()) << std::endl;
-	std::cout << toHex(s.out()) << std::endl;
-	std::cout << sha3(s.out()) << std::endl;*/
+bytes rlp256(BytesMap const& _s);
+h256 hash256(BytesMap const& _s);
 
-//	int r = 0;
-//	r += daggerTest();
-//	r += stateTest();
-//	r += peerTest(argc, argv);
-//	BOOST_REQUIRE(!r);
-//}
+h256 orderedTrieRoot(std::vector<bytes> const& _data);
 
+template <class T, class U> inline h256 trieRootOver(unsigned _itemCount, T const& _getKey, U const& _getValue)
+{
+	BytesMap m;
+	for (unsigned i = 0; i < _itemCount; ++i)
+		m[_getKey(i)] = _getValue(i);
+	return hash256(m);
+}
+
+h256 orderedTrieRoot(std::vector<bytesConstRef> const& _data);
+h256 orderedTrieRoot(std::vector<bytes> const& _data);
+
+}
