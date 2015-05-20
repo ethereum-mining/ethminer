@@ -815,6 +815,33 @@ void Main::on_importKey_triggered()
 void Main::on_importKeyFile_triggered()
 {
 	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
+	h128 uuid = m_keyManager.store().importKey(s.toStdString());
+	if (!uuid)
+	{
+		QMessageBox::warning(this, "Key File Invalid", "Could not find secret key definition. This is probably not an Web3 key file.");
+		return;
+	}
+
+	QString info = QInputDialog::getText(this, "Import Key File", "Enter a description of this key to help you recognise it in the future.");
+
+	QString pass;
+	for (Secret s; !s;)
+	{
+		s = Secret(m_keyManager.store().secret(uuid, [&](){
+			pass = QInputDialog::getText(this, "Import Key File", "Enter the password for the key to complete the import.", QLineEdit::Password);
+			return pass.toStdString();
+		}, false));
+		if (!s && QMessageBox::question(this, "Import Key File", "The password you provided is incorrect. Would you like to try again?", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
+			return;
+	}
+
+	QString hint = QInputDialog::getText(this, "Import Key File", "Enter a hint for this password to help you remember it.");
+	m_keyManager.importExisting(uuid, info.toStdString(), pass.toStdString(), hint.toStdString());
+}
+
+void Main::on_claimPresale_triggered()
+{
+	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
 	try
 	{
 		js::mValue val;

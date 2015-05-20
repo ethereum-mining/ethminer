@@ -138,6 +138,7 @@ private slots:
 	void on_killAccount_triggered();
 	void on_importKey_triggered();
 	void on_importKeyFile_triggered();
+	void on_claimPresale_triggered();
 	void on_exportKey_triggered();
 
 	// Account pane
