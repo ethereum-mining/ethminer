@@ -364,6 +364,7 @@ if (JSCONSOLE)
 endif ()
 
 add_subdirectory(secp256k1)
+add_subdirectory(libscrypt)
 add_subdirectory(libdevcrypto)
 
 if (GENERAL)

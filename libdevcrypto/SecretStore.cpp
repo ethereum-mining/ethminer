@@ -188,6 +188,11 @@ bytes SecretStore::decrypt(std::string const& _v, std::string const& _pass)
 		bytes salt = fromHex(params["salt"].get_str());
 		derivedKey = pbkdf2(_pass, salt, iterations, params["dklen"].get_int());
 	}
+	else if (o["kdf"].get_str() == "scrypt")
+	{
+		auto p = o["kdfparams"].get_obj();
+		derivedKey = scrypt(_pass, fromHex(p["salt"].get_str()), p["n"].get_int(), p["p"].get_int(), p["r"].get_int(), p["dklen"].get_int());
+	}
 	else
 	{
 		cwarn << "Unknown KDF" << o["kdf"].get_str() << "not supported.";
