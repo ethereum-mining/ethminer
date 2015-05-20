@@ -29,6 +29,7 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Assertions.h>
 #include <libdevcore/StructuredLogger.h>
+#include <libdevcore/TrieHash.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
 #include <libevm/VMFactory.h>
@@ -516,10 +517,10 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 						cnote << i.first << "Dropping old transaction (nonce too low)";
 						_tq.drop(i.first);
 					}
-					else if (got > req + 25)
+					else if (got > req + _tq.waiting(i.second.sender()))
 					{
 						// too new
-						cnote << i.first << "Dropping new transaction (> 25 nonces ahead)";
+						cnote << i.first << "Dropping new transaction (too many nonces ahead)";
 						_tq.drop(i.first);
 					}
 					else
@@ -534,7 +535,12 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 						_tq.drop(i.first);
 					}
 					else
-						_tq.setFuture(i);
+					{
+						// Temporarily no gas left in current block.
+						// OPTIMISE: could note this and then we don't evaluate until a block that does have the gas left.
+						// for now, just leave alone.
+//						_tq.setFuture(i);
+					}
 				}
 				catch (Exception const& _e)
 				{
@@ -592,34 +598,33 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
 	RLP rlp(_block);
 
+	vector<bytes> receipts;
+
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
 	for (auto const& tr: rlp[1])
 	{
-		RLPStream k;
-		k << i;
-
-		transactionsTrie.insert(&k.out(), tr.data());
 		execute(lh, Transaction(tr.data(), CheckTransaction::Everything));
-
-		RLPStream receiptrlp;
-		m_receipts.back().streamRLP(receiptrlp);
-		receiptsTrie.insert(&k.out(), &receiptrlp.out());
+		RLPStream receiptRLP;
+		m_receipts.back().streamRLP(receiptRLP);
+		receipts.push_back(receiptRLP.out());
 		++i;
 	}
 
-	if (receiptsTrie.root() != m_currentBlock.receiptsRoot)
+	auto receiptsRoot = orderedTrieRoot(receipts);
+
+	if (receiptsRoot != m_currentBlock.receiptsRoot)
 	{
 		cwarn << "Bad receipts state root.";
-		cwarn << "Expected: " << toString(receiptsTrie.root()) << " received: " << toString(m_currentBlock.receiptsRoot);
+		cwarn << "Expected: " << toString(receiptsRoot) << " received: " << toString(m_currentBlock.receiptsRoot);
 		cwarn << "Block:" << toHex(_block);
 		cwarn << "Block RLP:" << rlp;
-		cwarn << "Calculated: " << receiptsTrie.root();
+		cwarn << "Calculated: " << receiptsRoot;
 		for (unsigned j = 0; j < i; ++j)
 		{
 			RLPStream k;
 			k << j;
-			auto b = asBytes(receiptsTrie.at(&k.out()));
+			auto b = receipts[j];
 			cwarn << j << ": ";
 			cwarn << "RLP: " << RLP(b);
 			cwarn << "Hex: " << toHex(b);
@@ -662,7 +667,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 			BOOST_THROW_EXCEPTION(UncleInChain() << errinfo_comment("Uncle in block already mentioned") << errinfo_data(toString(excluded)) << errinfo_hash256(sha3(i.data())));
 		excluded.insert(h);
 
-		BlockInfo uncle = BlockInfo::fromHeader(i.data(), CheckEverything,  h);
+		BlockInfo uncle = BlockInfo::fromHeader(i.data(), (_ir & ImportRequirements::CheckUncles) ? CheckEverything : IgnoreNonce,  h);
 		BlockInfo uncleParent(_bc.block(uncle.parentHash));
 		if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
 			BOOST_THROW_EXCEPTION(UncleTooOld());
@@ -835,13 +840,8 @@ void State::commitToMine(BlockChain const& _bc)
 		}
 	}
 
-	MemoryDB tm;
-	GenericTrieDB<MemoryDB> transactionsTrie(&tm);
-	transactionsTrie.init();
-
-	MemoryDB rm;
-	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
-	receiptsTrie.init();
+	BytesMap transactionsMap;
+	BytesMap receiptsMap;
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
@@ -853,11 +853,11 @@ void State::commitToMine(BlockChain const& _bc)
 
 		RLPStream receiptrlp;
 		m_receipts[i].streamRLP(receiptrlp);
-		receiptsTrie.insert(&k.out(), &receiptrlp.out());
+		receiptsMap.insert(std::make_pair(k.out(), receiptrlp.out()));
 
 		RLPStream txrlp;
 		m_transactions[i].streamRLP(txrlp);
-		transactionsTrie.insert(&k.out(), &txrlp.out());
+		transactionsMap.insert(std::make_pair(k.out(), txrlp.out()));
 
 		txs.appendRaw(txrlp.out());
 	}
@@ -866,8 +866,8 @@ void State::commitToMine(BlockChain const& _bc)
 
 	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
 
-	m_currentBlock.transactionsRoot = transactionsTrie.root();
-	m_currentBlock.receiptsRoot = receiptsTrie.root();
+	m_currentBlock.transactionsRoot = hash256(transactionsMap);
+	m_currentBlock.receiptsRoot = hash256(receiptsMap);
 	m_currentBlock.logBloom = logBloom();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
 

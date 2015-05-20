@@ -29,7 +29,7 @@
 #include <memory>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
-#include "MemoryDB.h"
+#include <libdevcore/MemoryDB.h>
 namespace ldb = leveldb;
 
 namespace dev

@@ -3,7 +3,6 @@ import QtQuick.Controls 1.1
 import QtQuick.Layouts 1.1
 import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.InverseMouseArea 1.0
-import QtGraphicalEffects 1.0
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
 

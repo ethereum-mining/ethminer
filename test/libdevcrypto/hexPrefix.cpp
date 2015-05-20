@@ -28,7 +28,7 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Base64.h>
-#include <libdevcrypto/TrieCommon.h>
+#include <libdevcore/TrieCommon.h>
 #include "../TestHelper.h"
 
 using namespace std;

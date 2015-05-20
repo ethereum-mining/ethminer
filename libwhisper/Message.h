@@ -30,7 +30,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include "Common.h"
 
 namespace dev

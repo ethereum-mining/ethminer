@@ -20,10 +20,6 @@
  * Main test functions.
  */
 
-#include <libdevcrypto/TrieDB.h>
-#include "TrieHash.h"
-#include "MemTrie.h"
-
 #include <boost/test/unit_test.hpp>
 
 int trieTest();

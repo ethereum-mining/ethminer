@@ -8,7 +8,6 @@
         <file>qml/CodeEditorStyle.qml</file>
         <file>qml/CodeEditorView.qml</file>
         <file>qml/CommonSeparator.qml</file>
-        <file>qml/ContractLibrary.qml</file>
         <file>qml/DebugBasicInfo.qml</file>
         <file>qml/DebugInfoList.qml</file>
         <file>qml/Debugger.qml</file>
