@@ -183,7 +183,7 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
 		if (!CHECK(entryFuncPtr))
 			return ReturnCode::LLVMLinkError;
-		JIT::mapCode(_data->codeHash, (void*)entryFuncPtr); // FIXME: Remove cast
+		JIT::mapCode(_data->codeHash, (uint64_t)entryFuncPtr); // FIXME: Remove cast
 	}
 
 	listener->stateChanged(ExecState::Execution);
