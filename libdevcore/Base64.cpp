@@ -29,21 +29,25 @@
 #include "Base64.h"
 using namespace dev;
 
-static const char base64_chars[] =
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		"abcdefghijklmnopqrstuvwxyz"
-		"0123456789+/";
-
 static inline bool is_base64(byte c) {
 	return (isalnum(c) || (c == '+') || (c == '/'));
 }
 
 static inline byte find_base64_char_index(byte c) {
-	auto it = std::find(base64_chars, base64_chars + sizeof(base64_chars), c);
-	return static_cast<byte>(it - base64_chars);
+	if ('A' <= c && c <= 'Z') return c - 'A';
+	else if ('a' <= c && c <= 'z') return c - 'a' + 1 + find_base64_char_index('Z');
+	else if ('0' <= c && c <= '9') return c - '0' + 1 + find_base64_char_index('z');
+	else if (c == '+') return 1 + find_base64_char_index('9');
+	else if (c == '/') return 1 + find_base64_char_index('+');
+	else return 1 + find_base64_char_index('/');
 }
 
 std::string dev::toBase64(bytesConstRef _in) {
+	static const char base64_chars[] =
+			"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+			"abcdefghijklmnopqrstuvwxyz"
+			"0123456789+/";
+
 	std::string ret;
 	int i = 0;
 	int j = 0;
