@@ -36,7 +36,8 @@ public:
 	SecretStore();
 	~SecretStore();
 
-	bytes secret(h128 const& _uuid, std::function<std::string()> const& _pass) const;
+	bytes secret(h128 const& _uuid, std::function<std::string()> const& _pass, bool _useCache = true) const;
+	h128 importKey(std::string const& _file) { auto ret = readKey(_file, false); if (ret) save(); return ret; }
 	h128 importSecret(bytes const& _s, std::string const& _pass);
 	void kill(h128 const& _uuid);
 
@@ -48,6 +49,7 @@ private:
 	void load(std::string const& _keysPath = getDataDir("web3") + "/keys");
 	static std::string encrypt(bytes const& _v, std::string const& _pass);
 	static bytes decrypt(std::string const& _v, std::string const& _pass);
+	h128 readKey(std::string const& _file, bool _deleteFile);
 
 	mutable std::unordered_map<h128, bytes> m_cached;
 	std::unordered_map<h128, std::pair<std::string, std::string>> m_keys;

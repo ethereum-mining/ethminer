@@ -22,6 +22,7 @@
 #include "SecretStore.h"
 #include <thread>
 #include <mutex>
+#include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <libdevcore/Log.h>
 #include <libdevcore/Guards.h>
@@ -42,10 +43,10 @@ SecretStore::~SecretStore()
 {
 }
 
-bytes SecretStore::secret(h128 const& _uuid, function<std::string()> const& _pass) const
+bytes SecretStore::secret(h128 const& _uuid, function<std::string()> const& _pass, bool _useCache) const
 {
 	auto rit = m_cached.find(_uuid);
-	if (rit != m_cached.end())
+	if (_useCache && rit != m_cached.end())
 		return rit->second;
 	auto it = m_keys.find(_uuid);
 	if (it == m_keys.end())
@@ -101,28 +102,71 @@ void SecretStore::save(std::string const& _keysPath)
 	}
 }
 
+static js::mValue upgraded(std::string const& _s)
+{
+	js::mValue v;
+	js::read_string(_s, v);
+	if (v.type() != js::obj_type)
+		return js::mValue();
+	js::mObject ret = v.get_obj();
+	unsigned version = ret.count("Version") ? stoi(ret["Version"].get_str()) : ret.count("version") ? ret["version"].get_int() : 0;
+	if (version == 1)
+	{
+		// upgrade to version 2
+		js::mObject old;
+		swap(old, ret);
+
+		ret["id"] = old["Id"];
+		js::mObject c;
+		c["ciphertext"] = old["Crypto"].get_obj()["CipherText"];
+		c["cipher"] = "aes-128-cbc";
+		{
+			js::mObject cp;
+			cp["iv"] = old["Crypto"].get_obj()["IV"];
+			c["cipherparams"] = cp;
+		}
+		c["kdf"] = old["Crypto"].get_obj()["KeyHeader"].get_obj()["Kdf"];
+		{
+			js::mObject kp;
+			kp["salt"] = old["Crypto"].get_obj()["Salt"];
+			for (auto const& i: old["Crypto"].get_obj()["KeyHeader"].get_obj()["KdfParams"].get_obj())
+				if (i.first != "SaltLen")
+					kp[boost::to_lower_copy(i.first)] = i.second;
+			c["kdfparams"] = kp;
+		}
+		c["sillymac"] = old["Crypto"].get_obj()["MAC"];
+		c["sillymacjson"] = _s;
+		ret["crypto"] = c;
+		version = 2;
+	}
+	if (version == 2)
+		return ret;
+	return js::mValue();
+}
+
 void SecretStore::load(std::string const& _keysPath)
 {
 	fs::path p(_keysPath);
 	boost::filesystem::create_directories(p);
-	js::mValue v;
 	for (fs::directory_iterator it(p); it != fs::directory_iterator(); ++it)
 		if (is_regular_file(it->path()))
-		{
-			cdebug << "Reading" << it->path();
-			js::read_string(contentsString(it->path().string()), v);
-			if (v.type() == js::obj_type)
-			{
-				js::mObject o = v.get_obj();
-				int version = o.count("Version") ? stoi(o["Version"].get_str()) : o.count("version") ? o["version"].get_int() : 0;
-				if (version == 2)
-					m_keys[fromUUID(o["id"].get_str())] = make_pair(js::write_string(o["crypto"], false), it->path().string());
-				else
-					cwarn << "Cannot read key version" << version;
-			}
-//				else
-//					cwarn << "Invalid JSON in key file" << it->path().string();
-		}
+			readKey(it->path().string(), true);
+}
+
+h128 SecretStore::readKey(std::string const& _file, bool _deleteFile)
+{
+	cdebug << "Reading" << _file;
+	js::mValue u = upgraded(contentsString(_file));
+	if (u.type() == js::obj_type)
+	{
+		js::mObject& o = u.get_obj();
+		auto uuid = fromUUID(o["id"].get_str());
+		m_keys[uuid] = make_pair(js::write_string(o["crypto"], false), _deleteFile ? _file : string());
+		return uuid;
+	}
+	else
+		cwarn << "Invalid JSON in key file" << _file;
+	return h128();
 }
 
 std::string SecretStore::encrypt(bytes const& _v, std::string const& _pass)
@@ -202,13 +246,28 @@ bytes SecretStore::decrypt(std::string const& _v, std::string const& _pass)
 	bytes cipherText = fromHex(o["ciphertext"].get_str());
 
 	// check MAC
-	h256 mac(o["mac"].get_str());
-	h256 macExp = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
-	if (mac != macExp)
+	if (o.count("mac"))
 	{
-		cwarn << "Invalid key - MAC mismatch; expected" << toString(macExp) << ", got" << toString(mac);
-		return bytes();
+		h256 mac(o["mac"].get_str());
+		h256 macExp = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
+		if (mac != macExp)
+		{
+			cwarn << "Invalid key - MAC mismatch; expected" << toString(macExp) << ", got" << toString(mac);
+			return bytes();
+		}
 	}
+	else if (o.count("sillymac"))
+	{
+		h256 mac(o["sillymac"].get_str());
+		h256 macExp = sha3(asBytes(o["sillymacjson"].get_str()) + bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
+		if (mac != macExp)
+		{
+			cwarn << "Invalid key - MAC mismatch; expected" << toString(macExp) << ", got" << toString(mac);
+			return bytes();
+		}
+	}
+	else
+		cwarn << "No MAC. Proceeding anyway.";
 
 	// decrypt
 	if (o["cipher"].get_str() == "aes-128-cbc")
