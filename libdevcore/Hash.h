@@ -14,36 +14,25 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file TrieHash.h
+/** @file Hash.h
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
+ *
+ * The FixedHash fixed-size "hash" container type.
  */
 
 #pragma once
 
-#include <libdevcore/Common.h>
+#include <string>
 #include <libdevcore/FixedHash.h>
+#include <libdevcore/vector_ref.h>
+#include "SHA3.h"
 
 namespace dev
 {
 
-bytes rlp256(StringMap const& _s);
-h256 hash256(StringMap const& _s);
-h256 hash256(u256Map const& _s);
+h256 sha256(bytesConstRef _input);
 
-/*h256 orderedTrieRoot(std::vector<bytes> const& _data);
-
-template <class T, class U> inline h256 trieRootOver(unsigned _itemCount, T const& _getKey, U const& _getValue)
-{
-	StringMap m;
-	for (unsigned i = 0; i < _itemCount; ++i)
-		m[asString(_getKey(i))] = asString(_getValue(i));
-	return hash256(m);
-}*/
-
-using bytesMap = std::unordered_map<bytes, bytes>;
-
-h256 orderedTrieRoot(std::vector<bytesConstRef> const& _data);
-h256 orderedTrieRoot(std::vector<bytes> const& _data);
+h160 ripemd160(bytesConstRef _input);
 
 }

@@ -34,7 +34,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/CryptoPP.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
 #if ETH_ETHASHCL || !ETH_TRUE
@@ -73,6 +73,13 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 	ret.headerHash = _bi.headerHash(WithoutNonce);
 	ret.seedHash = _bi.seedHash();
 	return ret;
+}
+
+void Ethash::ensurePrecomputed(unsigned _number)
+{
+	if (_number % ETHASH_EPOCH_LENGTH > ETHASH_EPOCH_LENGTH * 9 / 10)
+		// 90% of the way to the new epoch
+		EthashAux::computeFull(EthashAux::seedHash(_number + ETHASH_EPOCH_LENGTH), true);
 }
 
 void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
@@ -306,6 +313,7 @@ void Ethash::GPUMiner::workLoop()
 		cnote << "workLoop" << !!m_miner << m_minerSeed << w.seedHash;
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
+			cnote << "Initialising miner...";
 			m_minerSeed = w.seedHash;
 
 			delete m_miner;
@@ -333,9 +341,9 @@ void Ethash::GPUMiner::workLoop()
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
 		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook);
 	}
-	catch (...)
+	catch (cl::Error const& _e)
 	{
-		cwarn << "Error GPU mining. GPU memory fragmentation?";
+		cwarn << "Error GPU mining: " << _e.what() << "(" << _e.err() << ")";
 	}
 }
 
