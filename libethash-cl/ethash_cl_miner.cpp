@@ -304,7 +304,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 	};
 	std::queue<pending_batch> pending;
 
-	static uint32_t const c_zero = 0;
+    uint32_t const c_zero = 0;
 
 	// update header constant buffer
 	m_queue.enqueueWriteBuffer(m_header, false, 0, 32, header);
