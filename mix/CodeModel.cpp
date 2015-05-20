@@ -331,11 +331,11 @@ QVariantMap CodeModel::resolveCompilationErrorLocation(CompilerStack const& _com
 {
 	std::tuple<int, int, int, int> pos = _compiler.positionFromSourceLocation(_location);
 	QVariantMap startError;
-	startError.insert("line", std::get<0>(pos) - 1);
-	startError.insert("column", std::get<1>(pos) - 1);
+	startError.insert("line", std::get<0>(pos) > 1 ? (std::get<0>(pos) - 1) : 1);
+	startError.insert("column", std::get<1>(pos) > 1 ? (std::get<1>(pos) - 1) : 1);
 	QVariantMap endError;
-	endError.insert("line", std::get<2>(pos) - 1);
-	endError.insert("column", std::get<3>(pos) - 1);
+	endError.insert("line", std::get<2>(pos) > 1 ? (std::get<2>(pos) - 1) : 1);
+	endError.insert("column", std::get<3>(pos) > 1 ? (std::get<3>(pos) - 1) : 1);
 	QVariantMap error;
 	error.insert("start", startError);
 	error.insert("end", endError);

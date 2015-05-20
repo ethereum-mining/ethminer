@@ -44,6 +44,3 @@ ErrorAnnotation.prototype.destroy = function()
 	if (this.errorMark)
 		this.errorMark.clear();
 }
-
-
-
