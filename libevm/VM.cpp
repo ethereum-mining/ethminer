@@ -199,7 +199,7 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 		if (io_gas < runGas)
 			BOOST_THROW_EXCEPTION(OutOfGas());
 
-		io_gas = (u256)((bigint)io_gas - runGas);
+		io_gas -= (u256)runGas;
 
 		if (newTempSize > m_temp.size())
 			m_temp.resize((size_t)newTempSize);
