@@ -4,7 +4,7 @@
 #include "JitVM.h"
 
 #include <libdevcore/Log.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <evmjit/libevmjit/ExecutionEngine.h>
