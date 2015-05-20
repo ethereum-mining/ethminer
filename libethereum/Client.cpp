@@ -457,11 +457,13 @@ ProofOfWork::WorkPackage Client::getWork()
 	// this will be reset as soon as a new block arrives, allowing more transactions to be processed.
 	bool oldShould = shouldServeWork();
 	m_lastGetWork = chrono::system_clock::now();
-	m_remoteWorking = true;
 
 	// if this request has made us bother to serve work, prep it now.
 	if (!oldShould && shouldServeWork())
 		onPostStateChanged();
+	else
+		// otherwise, set this to true so that it gets prepped next time.
+		m_remoteWorking = true;
 	return ProofOfWork::package(m_miningInfo);
 }
 
@@ -627,6 +629,8 @@ void Client::onPostStateChanged()
 			m_miningInfo = m_postMine.info();
 		}
 		m_farm.setWork(m_miningInfo);
+
+		Ethash::ensurePrecomputed(m_bc.number());
 	}
 	m_remoteWorking = false;
 }
