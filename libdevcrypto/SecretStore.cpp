@@ -180,12 +180,10 @@ h128 SecretStore::readKey(std::string const& _file, bool _deleteFile)
 
 bool SecretStore::recode(h128 const& _uuid, string const& _newPass, std::function<std::string()> const& _pass, KDF _kdf)
 {
-	cdebug << "recode:" << toUUID(_uuid);
-	cdebug << "newPass:" << _newPass;
+//	cdebug << "recode:" << toUUID(_uuid);
 	bytes s = secret(_uuid, _pass, true);
 	if (s.empty())
 		return false;
-	cdebug << "secret:" << toHex(s);
 	m_keys[_uuid].first = encrypt(s, _newPass, _kdf);
 	save();
 	return true;
@@ -215,7 +213,6 @@ std::string SecretStore::encrypt(bytes const& _v, std::string const& _pass, KDF 
 			ret["kdfparams"] = params;
 		}
 		derivedKey = scrypt(_pass, salt, iterations, p, r, dklen);
-		cdebug << "derivedKey" << toHex(derivedKey);
 	}
 	else
 	{
@@ -230,13 +227,13 @@ std::string SecretStore::encrypt(bytes const& _v, std::string const& _pass, KDF 
 			ret["kdfparams"] = params;
 		}
 		derivedKey = pbkdf2(_pass, salt, iterations, dklen);
-		cdebug << "derivedKey" << toHex(derivedKey);
 	}
+//	cdebug << "derivedKey" << toHex(derivedKey);
 
 	// cipher info
 	ret["cipher"] = "aes-128-ctr";
 	h128 key(derivedKey, h128::AlignLeft);
-	cdebug << "cipherKey" << key.hex();
+//	cdebug << "cipherKey" << key.hex();
 	h128 iv = h128::random();
 	{
 		js::mObject params;
@@ -250,8 +247,8 @@ std::string SecretStore::encrypt(bytes const& _v, std::string const& _pass, KDF 
 
 	// and mac.
 	h256 mac = sha3(ref(derivedKey).cropped(16, 16).toBytes() + cipherText);
-	cdebug << "macBody" << toHex(ref(derivedKey).cropped(16, 16).toBytes() + cipherText);
-	cdebug << "mac" << mac.hex();
+//	cdebug << "macBody" << toHex(ref(derivedKey).cropped(16, 16).toBytes() + cipherText);
+//	cdebug << "mac" << mac.hex();
 	ret["mac"] = toHex(mac.ref());
 
 	return js::write_string((js::mValue)ret, true);
