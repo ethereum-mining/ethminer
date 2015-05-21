@@ -129,7 +129,7 @@ public:
 
 	bytes_ref getReturnData() const;
 
-private:
+protected:
 	RuntimeData* m_data = nullptr;	///< Pointer to data. Expected by compiled contract.
 	Env* m_env = nullptr;			///< Pointer to environment proxy. Expected by compiled contract.
 	byte* m_memData = nullptr;
