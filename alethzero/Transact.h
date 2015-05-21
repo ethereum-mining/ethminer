@@ -44,6 +44,7 @@ public:
 	void setEnvironment(dev::AddressHash const& _accounts, dev::eth::Client* _eth, NatSpecFace* _natSpecDB);
 
 private slots:
+	void on_from_currentIndexChanged(int) { rejigData(); }
 	void on_destination_currentTextChanged(QString);
 	void on_value_valueChanged(int) { updateFee(); }
 	void on_gas_valueChanged(int) { updateFee(); }

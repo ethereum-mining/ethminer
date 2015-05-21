@@ -44,7 +44,7 @@ public:
 	bytes secret(h128 const& _uuid, std::function<std::string()> const& _pass, bool _useCache = true) const;
 	h128 importKey(std::string const& _file) { auto ret = readKey(_file, false); if (ret) save(); return ret; }
 	h128 importSecret(bytes const& _s, std::string const& _pass);
-	void recode(h128 const& _uuid, std::string const& _pass, KDF _kdf = KDF::Scrypt);
+	bool recode(h128 const& _uuid, std::string const& _newPass, std::function<std::string()> const& _pass, KDF _kdf = KDF::Scrypt);
 	void kill(h128 const& _uuid);
 
 	// Clear any cached keys.
