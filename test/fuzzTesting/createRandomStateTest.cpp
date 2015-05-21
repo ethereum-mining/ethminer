@@ -37,6 +37,7 @@
 #include <libevm/VMFactory.h>
 #include <test/libevm/vm.h>
 #include <test/TestHelper.h>
+#include <test/fuzzTesting/fuzzHelper.h>
 
 using namespace std;
 using namespace json_spirit;
@@ -47,55 +48,7 @@ void doStateTests(json_spirit::mValue& _v);
 int main(int argc, char *argv[])
 {
 	g_logVerbosity = 0;
-
-	// create random code
-
-	boost::random::mt19937 gen;
-
-	auto now = chrono::steady_clock::now().time_since_epoch();
-	auto timeSinceEpoch = chrono::duration_cast<chrono::nanoseconds>(now).count();
-	gen.seed(static_cast<unsigned int>(timeSinceEpoch));
-	// set min and max length of the random evm code
-	boost::random::uniform_int_distribution<> lengthOfCodeDist(8, 24);
-	boost::random::uniform_int_distribution<> reasonableInputValuesSize(0, 7);
-	boost::random::uniform_int_distribution<> opcodeDist(0, 255);
-	boost::random::uniform_int_distribution<> BlockInfoOpcodeDist(0x40, 0x45);
-	boost::random::uniform_int_distribution<> uniformInt(0, 0x7fffffff);
-	boost::random::variate_generator<boost::mt19937&, boost::random::uniform_int_distribution<> > randGenInputValue(gen, reasonableInputValuesSize);
-	boost::random::variate_generator<boost::mt19937&, boost::random::uniform_int_distribution<> > randGenUniformInt(gen, uniformInt);
-	boost::random::variate_generator<boost::mt19937&, boost::random::uniform_int_distribution<> > randGen(gen, opcodeDist);
-	boost::random::variate_generator<boost::mt19937&, boost::random::uniform_int_distribution<> > randGenBlockInfoOpcode(gen, BlockInfoOpcodeDist);
-
-	std::vector<u256> reasonableInputValues;
-	reasonableInputValues.push_back(0);
-	reasonableInputValues.push_back(1);
-	reasonableInputValues.push_back(50000);
-	reasonableInputValues.push_back(u256("0x10000000000000000000000000000000000000000"));
-	reasonableInputValues.push_back(u256("0xffffffffffffffffffffffffffffffffffffffff"));
-	reasonableInputValues.push_back(u256("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe"));
-	reasonableInputValues.push_back(u256("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
-	reasonableInputValues.push_back(u256("0x945304eb96065b2a98b57a48a06ae28d285a71b5"));
-	reasonableInputValues.push_back(randGenUniformInt());
-
-	int lengthOfCode  = lengthOfCodeDist(gen);
-	string randomCode;
-
-	for (int i = 0; i < lengthOfCode; ++i)
-	{
-		// pre-fill stack to avoid that most of the test fail with a stackunderflow
-		if (i < 8 && (randGen() < 192))
-		{
-			randomCode += randGen() < 32 ? toHex(toCompactBigEndian((uint8_t)randGenBlockInfoOpcode())) : "7f" +  toHex(reasonableInputValues[randGenInputValue()]);
-			continue;
-		}
-
-		uint8_t opcode = randGen();
-		// disregard all invalid commands, except of one (0x0c)
-		if ((dev::eth::isValidInstruction(dev::eth::Instruction(opcode)) || (randGen() > 250)))
-			randomCode += toHex(toCompactBigEndian(opcode));
-		else
-			i--;
-	}
+	string randomCode = dev::test::RandomCode::generate(25);
 
 	string const s = R"(
 	{
@@ -147,16 +100,16 @@ int main(int argc, char *argv[])
 	read_string(s, v);
 
 	// insert new random code
-	v.get_obj().find("randomStatetest")->second.get_obj().find("pre")->second.get_obj().begin()->second.get_obj()["code"] = "0x" + randomCode + (randGen() > 128 ? "55" : "") + (randGen() > 128 ? "60005155" : "");
+	v.get_obj().find("randomStatetest")->second.get_obj().find("pre")->second.get_obj().begin()->second.get_obj()["code"] = "0x" + randomCode;
 
 	// insert new data in tx
 	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["data"] = "0x" + randomCode;
 
 	// insert new value in tx
-	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["value"] = toString(randGenUniformInt());
+	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["value"] = dev::test::RandomCode::randomUniInt();
 
 	// insert new gasLimit in tx
-	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["gasLimit"] = "0x" + toHex(toCompactBigEndian((int)randGenUniformInt()));
+	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["gasLimit"] = dev::test::RandomCode::randomUniInt();
 
 	// fill test
 	doStateTests(v);
