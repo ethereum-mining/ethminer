@@ -74,8 +74,8 @@ Item {
 			});
 		}
 		editor.document = document;
-		editor.sourceName = document.documentId;
 		editor.setFontSize(editorSettings.fontSize);
+		editor.sourceName = document.documentId;
 		editor.setText(data, document.syntaxMode);
 		editor.changeGeneration();
 	}
@@ -180,7 +180,7 @@ Item {
 	Connections {
 		target: codeModel
 		onCompilationError: {
-			sourceInError = _sourceName;
+			sourceInError = _firstErrorLoc.source;
 		}
 		onCompilationComplete: {
 			sourceInError = "";
