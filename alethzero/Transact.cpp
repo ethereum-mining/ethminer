@@ -76,6 +76,7 @@ void Transact::setEnvironment(AddressHash const& _accounts, dev::eth::Client* _e
 	m_ethereum = _eth;
 	m_natSpecDB = _natSpecDB;
 
+	auto old = ui->from->currentIndex();
 	ui->from->clear();
 	for (auto const& i: m_accounts)
 	{
@@ -84,6 +85,10 @@ void Transact::setEnvironment(AddressHash const& _accounts, dev::eth::Client* _e
 		QString s = QString("%4 %2: %1").arg(formatBalance(b).c_str()).arg(QString::fromStdString(m_context->render(i))).arg(QString::fromStdString(d.first));
 		ui->from->addItem(s);
 	}
+	if (old > -1 && old < ui->from->count())
+		ui->from->setCurrentIndex(old);
+	else if (ui->from->count())
+		ui->from->setCurrentIndex(0);
 }
 
 bool Transact::isCreation() const
@@ -301,6 +306,9 @@ void Transact::rejigData()
 	// Determine how much balance we have to play with...
 	//findSecret(value() + ethereum()->gasLimitRemaining() * gasPrice());
 	auto s = fromAccount();
+	if (!s)
+		return;
+
 	auto b = ethereum()->balanceAt(s, PendingBlock);
 
 	m_allGood = true;
@@ -344,7 +352,7 @@ void Transact::rejigData()
 	if (b < value() + baseGas * gasPrice())
 	{
 		// Not enough - bail.
-		bail("<div class=\"error\"><span class=\"icon\">ERROR</span> No single account contains enough for paying even the basic amount of gas required.</div>");
+		bail("<div class=\"error\"><span class=\"icon\">ERROR</span> Account doesn't contain enough for paying even the basic amount of gas required.</div>");
 		return;
 	}
 	else
@@ -417,6 +425,8 @@ Secret Transact::findSecret(u256 _totalReq) const
 
 Address Transact::fromAccount()
 {
+	if (ui->from->currentIndex() < 0 || ui->from->currentIndex() >= (int)m_accounts.size())
+		return Address();
 	auto it = m_accounts.begin();
 	std::advance(it, ui->from->currentIndex());
 	return *it;
@@ -425,13 +435,18 @@ Address Transact::fromAccount()
 void Transact::on_send_clicked()
 {
 //	Secret s = findSecret(value() + fee());
-	Secret s = m_context->retrieveSecret(fromAccount());
-	auto b = ethereum()->balanceAt(KeyPair(s).address(), PendingBlock);
-	if (!s || b < value() + fee())
+	auto a = fromAccount();
+	auto b = ethereum()->balanceAt(a, PendingBlock);
+
+	if (!a || b < value() + fee())
 	{
-		QMessageBox::critical(this, "Transaction Failed", "Couldn't make transaction: no single account contains at least the required amount.");
+		QMessageBox::critical(nullptr, "Transaction Failed", "Couldn't make transaction: account doesn't contain at least the required amount.", QMessageBox::Ok);
 		return;
 	}
+
+	Secret s = m_context->retrieveSecret(a);
+	if (!s)
+		return;
 
 	if (isCreation())
 	{
@@ -467,7 +482,7 @@ void Transact::on_debug_clicked()
 	auto b = ethereum()->balanceAt(from, PendingBlock);
 	if (!from || b < value() + fee())
 	{
-		QMessageBox::critical(this, "Transaction Failed", "Couldn't make transaction: no single account contains at least the required amount.");
+		QMessageBox::critical(this, "Transaction Failed", "Couldn't make transaction: account doesn't contain at least the required amount.");
 		return;
 	}
 

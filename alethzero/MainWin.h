@@ -138,6 +138,7 @@ private slots:
 	void on_killAccount_triggered();
 	void on_importKey_triggered();
 	void on_reencryptKey_triggered();
+	void on_reencryptAll_triggered();
 	void on_importKeyFile_triggered();
 	void on_claimPresale_triggered();
 	void on_exportKey_triggered();
@@ -248,7 +249,7 @@ private:
 	void refreshBalances();
 
 	void setBeneficiary(dev::Address const& _b);
-	std::string getPassword(std::string const& _title, std::string const& _for);
+	std::string getPassword(std::string const& _title, std::string const& _for, std::string* _hint = nullptr, bool* _ok = nullptr);
 
 	std::unique_ptr<Ui::Main> ui;
 

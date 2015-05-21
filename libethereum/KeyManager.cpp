@@ -49,10 +49,20 @@ void KeyManager::create(std::string const& _pass)
 	write(_pass, m_keysFile);
 }
 
-void KeyManager::reencode(Address const& _address, std::function<string()> const& _pass, KDF _kdf)
+bool KeyManager::recode(Address const& _address, std::string const& _newPass, std::string const& _hint, std::function<string()> const& _pass, KDF _kdf)
+{
+	noteHint(_newPass, _hint);
+	return store().recode(uuid(_address), _newPass, _pass, _kdf);
+}
+
+bool KeyManager::recode(Address const& _address, SemanticPassword _newPass, std::function<string()> const& _pass, KDF _kdf)
 {
 	h128 u = uuid(_address);
-	store().recode(u, getPassword(u, _pass), _kdf);
+	if (_newPass == SemanticPassword::Existing)
+		return store().recode(u, getPassword(u, _pass), _pass, _kdf);
+	else if (_newPass == SemanticPassword::Master)
+		return store().recode(u, defaultPassword(), _pass, _kdf);
+	return false;
 }
 
 bool KeyManager::load(std::string const& _pass)
