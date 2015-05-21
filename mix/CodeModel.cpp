@@ -197,6 +197,8 @@ CodeModel::~CodeModel()
 	stop();
 	disconnect(this);
 	releaseContracts();
+	if (m_gasCostsMaps)
+		m_gasCostsMaps->deleteLater();
 }
 
 void CodeModel::stop()
@@ -358,7 +360,7 @@ void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 {
 	if (m_gasCostsMaps)
 		m_gasCostsMaps->deleteLater();
-	m_gasCostsMaps = new GasMapWrapper(this);
+	m_gasCostsMaps = new GasMapWrapper();
 	for (std::string n: _cs.getContractNames())
 	{
 		ContractDefinition const& contractDefinition = _cs.getContractDefinition(n);

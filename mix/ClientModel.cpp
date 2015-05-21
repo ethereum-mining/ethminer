@@ -389,7 +389,7 @@ std::pair<QString, int> ClientModel::resolvePair(QString const& _contractId)
 {
 	 std::pair<QString, int> ret;
 	 ret.first = _contractId;
-	 ret.second = -1;
+	 ret.second = 0;
 	 if (_contractId.startsWith("<") && _contractId.endsWith(">"))
 	 {
 		 QStringList values = ret.first.remove("<").remove(">").split(" - ");
@@ -401,10 +401,10 @@ std::pair<QString, int> ClientModel::resolvePair(QString const& _contractId)
 
 QString ClientModel::resolveToken(std::pair<QString, int> const& _value, vector<Address> const& _contracts)
 {
-	 if (_value.second != -1)
-		 return QString::fromStdString("0x" + dev::toHex(_contracts.at(_value.second).ref()));
-	 else
-		 return _value.first;
+	if (_contracts.size() > 0)
+		return QString::fromStdString("0x" + dev::toHex(_contracts.at(_value.second).ref()));
+	else
+		return _value.first;
 }
 
 std::pair<QString, int> ClientModel::retrieveToken(QString const& _value, vector<Address> const& _contracts)
