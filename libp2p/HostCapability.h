@@ -45,7 +45,7 @@ public:
 
 	Host* host() const { return m_host; }
 
-	std::vector<std::pair<std::shared_ptr<Session>,std::shared_ptr<Peer>>> peerSessions() const;
+	std::vector<std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>>> peerSessions() const;
 
 protected:
 	virtual std::string name() const = 0;
