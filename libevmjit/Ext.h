@@ -62,7 +62,6 @@ private:
 	Memory& m_memoryMan;
 
 	llvm::Value* m_size;
-	llvm::Value* m_data = nullptr;
 
 	std::array<llvm::Function*, sizeOf<EnvFunc>::value> m_funcs;
 	std::array<llvm::Value*, 8> m_argAllocas;
