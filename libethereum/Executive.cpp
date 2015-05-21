@@ -120,44 +120,13 @@ bool Executive::execute()
 	if (m_t.isCreation())
 		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_t.gasRequired(), &m_t.data(), m_t.sender());
 	else
-		return call(m_t.receiveAddress(), m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_t.gasRequired(), m_t.sender());
+		return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_t.gasRequired());
 }
 
-bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
+bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas)
 {
-	m_isCreation = false;
-//	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
-	auto it = !(_codeAddress & ~h160(0xffffffff)) ? precompiled().find((unsigned)(u160)_codeAddress) : precompiled().end();
-	if (it != precompiled().end())
-	{
-		bigint g = it->second.gas(_data);
-		if (_gas < g)
-		{
-			m_excepted = TransactionException::OutOfGasBase;
-			// Bail from exception.
-			return true;	// true actually means "all finished - nothing more to be done regarding go().
-		}
-		else
-		{
-			m_gas = (u256)(_gas - g);
-			m_precompiledOut = it->second.exec(_data);
-			m_out = &m_precompiledOut;
-		}
-	}
-	else
-	{
-		m_gas = _gas;
-		if (m_s.addressHasCode(_codeAddress))
-		{
-			m_vm = VMFactory::create();
-			bytes const& c = m_s.code(_codeAddress);
-			m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_depth);
-		}
-	}
-
-	m_s.transferBalance(_senderAddress, _receiveAddress, _value);
-
-	return !m_ext;
+	CallParameters params{_senderAddress, _receiveAddress, _receiveAddress, _gas, _value, _data, {}, {}};
+	return call(params, _gasPrice, _senderAddress);
 }
 
 bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address const& _origin)
