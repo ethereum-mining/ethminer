@@ -101,11 +101,13 @@ public:
 
 private:
 	std::string getPassword(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
-	std::string defaultPassword() const { return asString(m_key.ref()); }
+	std::string getPassword(h256 const& _passHash, std::function<std::string()> const& _pass = DontKnowThrow) const;
+	std::string defaultPassword(std::function<std::string()> const& _pass = DontKnowThrow) const { return getPassword(m_master, _pass); }
 	h256 hashPassword(std::string const& _pass) const;
 
 	// Only use if previously loaded ok.
 	// @returns false if wasn't previously loaded ok.
+	bool write() const { return write(m_keysFile); }
 	bool write(std::string const& _keysFile) const;
 	void write(std::string const& _pass, std::string const& _keysFile) const;
 	void write(h128 const& _key, std::string const& _keysFile) const;
@@ -127,6 +129,7 @@ private:
 
 	SecretStore m_store;
 	mutable h128 m_key;
+	mutable h256 m_master;
 	mutable std::string m_keysFile;
 };
 
