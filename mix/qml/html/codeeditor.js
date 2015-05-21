@@ -157,44 +157,49 @@ showWarning = function(content)
 	debugWarning = editor.addLineWidget(0, node, { coverGutter: false, above: true });
 }
 
-var annotation = null;
+var annotations = [];
 var compilationCompleteBool = true;
-compilationError = function(line, column, content)
+compilationError = function(currentSourceName, location, error, secondaryErrors)
 {
 	compilationCompleteBool = false;
-	window.setTimeout(function(){
-		if (compilationCompleteBool)
-			return;
-		line = parseInt(line);
-		column = parseInt(column);
-		if (line > 0)
-			line = line - 1;
-		if (column > 0)
-			column = column - 1;
+	if (compilationCompleteBool)
+		return;
+	clearAnnotations();
+	location = JSON.parse(location);
+	if (location.source === currentSourceName)
+		ensureAnnotation(location, error, "first");
+	var lineError = location.start.line + 1;
+	var errorOrigin = "Source " + location.contractName + " line " + lineError;
+	secondaryErrors = JSON.parse(secondaryErrors);
+	for(var i in secondaryErrors)
+	{
+		if (secondaryErrors[i].source === currentSourceName)
+			ensureAnnotation(secondaryErrors[i], errorOrigin, "second");
+	}
+}
 
-		if (annotation == null)
-			annotation = new ErrorAnnotation(editor, line, column, content);
-		else if (annotation.line !== line || annotation.column !== column || annotation.content !== content)
-		{
-			annotation.destroy();
-			annotation = new ErrorAnnotation(editor, line, column, content);
-		}
-	}, 500)
+ensureAnnotation = function(location, error, type)
+{
+	annotations.push({ "type": type, "annotation": new ErrorAnnotation(editor, location, error)});
+}
+
+clearAnnotations = function()
+{
+	for (var k in annotations)
+		annotations[k].annotation.destroy();
+	annotations.length = 0;
 }
 
 compilationComplete = function()
 {
-	if (annotation !== null)
-	{
-		annotation.destroy();
-		annotation = null;
-	}
+	clearAnnotations();
 	compilationCompleteBool = true;
 }
 
 goToCompilationError = function()
 {
-	editor.setCursor(annotation.line, annotation.column)
+	if (annotations.length > 0)
+		editor.setCursor(annotations[0].annotation.location.start.line, annotations[0].annotation.location.start.column)
 }
 
 setFontSize = function(size)
