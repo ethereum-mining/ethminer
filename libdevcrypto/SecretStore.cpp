@@ -34,6 +34,56 @@ using namespace dev;
 namespace js = json_spirit;
 namespace fs = boost::filesystem;
 
+static const int c_keyFileVersion = 3;
+
+static js::mValue upgraded(std::string const& _s)
+{
+	js::mValue v;
+	js::read_string(_s, v);
+	if (v.type() != js::obj_type)
+		return js::mValue();
+	js::mObject ret = v.get_obj();
+	unsigned version = ret.count("Version") ? stoi(ret["Version"].get_str()) : ret.count("version") ? ret["version"].get_int() : 0;
+	if (version == 1)
+	{
+		// upgrade to version 2
+		js::mObject old;
+		swap(old, ret);
+
+		ret["id"] = old["Id"];
+		js::mObject c;
+		c["ciphertext"] = old["Crypto"].get_obj()["CipherText"];
+		c["cipher"] = "aes-128-cbc";
+		{
+			js::mObject cp;
+			cp["iv"] = old["Crypto"].get_obj()["IV"];
+			c["cipherparams"] = cp;
+		}
+		c["kdf"] = old["Crypto"].get_obj()["KeyHeader"].get_obj()["Kdf"];
+		{
+			js::mObject kp;
+			kp["salt"] = old["Crypto"].get_obj()["Salt"];
+			for (auto const& i: old["Crypto"].get_obj()["KeyHeader"].get_obj()["KdfParams"].get_obj())
+				if (i.first != "SaltLen")
+					kp[boost::to_lower_copy(i.first)] = i.second;
+			c["kdfparams"] = kp;
+		}
+		c["sillymac"] = old["Crypto"].get_obj()["MAC"];
+		c["sillymacjson"] = _s;
+		ret["crypto"] = c;
+		version = 2;
+	}
+	if (version == 2)
+	{
+		ret["crypto"].get_obj()["cipher"] = "aes-128-ctr";
+		ret["crypto"].get_obj()["compat"] = "2";
+		version = 3;
+	}
+	if (version == c_keyFileVersion)
+		return ret;
+	return js::mValue();
+}
+
 SecretStore::SecretStore()
 {
 	load();
@@ -45,6 +95,7 @@ SecretStore::~SecretStore()
 
 bytes SecretStore::secret(h128 const& _uuid, function<std::string()> const& _pass, bool _useCache) const
 {
+	(void)_pass;
 	auto rit = m_cached.find(_uuid);
 	if (_useCache && rit != m_cached.end())
 		return rit->second;
@@ -94,54 +145,12 @@ void SecretStore::save(std::string const& _keysPath)
 		js::read_string(k.second.first, crypto);
 		v["crypto"] = crypto;
 		v["id"] = uuid;
-		v["version"] = 2;
+		v["version"] = c_keyFileVersion;
 		writeFile(filename, js::write_string(js::mValue(v), true));
 		if (!k.second.second.empty() && k.second.second != filename)
 			boost::filesystem::remove(k.second.second);
 		k.second.second = filename;
 	}
-}
-
-static js::mValue upgraded(std::string const& _s)
-{
-	js::mValue v;
-	js::read_string(_s, v);
-	if (v.type() != js::obj_type)
-		return js::mValue();
-	js::mObject ret = v.get_obj();
-	unsigned version = ret.count("Version") ? stoi(ret["Version"].get_str()) : ret.count("version") ? ret["version"].get_int() : 0;
-	if (version == 1)
-	{
-		// upgrade to version 2
-		js::mObject old;
-		swap(old, ret);
-
-		ret["id"] = old["Id"];
-		js::mObject c;
-		c["ciphertext"] = old["Crypto"].get_obj()["CipherText"];
-		c["cipher"] = "aes-128-cbc";
-		{
-			js::mObject cp;
-			cp["iv"] = old["Crypto"].get_obj()["IV"];
-			c["cipherparams"] = cp;
-		}
-		c["kdf"] = old["Crypto"].get_obj()["KeyHeader"].get_obj()["Kdf"];
-		{
-			js::mObject kp;
-			kp["salt"] = old["Crypto"].get_obj()["Salt"];
-			for (auto const& i: old["Crypto"].get_obj()["KeyHeader"].get_obj()["KdfParams"].get_obj())
-				if (i.first != "SaltLen")
-					kp[boost::to_lower_copy(i.first)] = i.second;
-			c["kdfparams"] = kp;
-		}
-		c["sillymac"] = old["Crypto"].get_obj()["MAC"];
-		c["sillymacjson"] = _s;
-		ret["crypto"] = c;
-		version = 2;
-	}
-	if (version == 2)
-		return ret;
-	return js::mValue();
 }
 
 void SecretStore::load(std::string const& _keysPath)
@@ -169,10 +178,17 @@ h128 SecretStore::readKey(std::string const& _file, bool _deleteFile)
 	return h128();
 }
 
-void SecretStore::recode(h128 const& _uuid, string const& _pass, KDF _kdf)
+bool SecretStore::recode(h128 const& _uuid, string const& _newPass, std::function<std::string()> const& _pass, KDF _kdf)
 {
-	m_keys[_uuid].first = encrypt(secret(_uuid, [&](){ return _pass; }), _pass, _kdf);
+	cdebug << "recode:" << toUUID(_uuid);
+	cdebug << "newPass:" << _newPass;
+	bytes s = secret(_uuid, _pass, true);
+	if (s.empty())
+		return false;
+	cdebug << "secret:" << toHex(s);
+	m_keys[_uuid].first = encrypt(s, _newPass, _kdf);
 	save();
+	return true;
 }
 
 std::string SecretStore::encrypt(bytes const& _v, std::string const& _pass, KDF _kdf)
@@ -180,25 +196,26 @@ std::string SecretStore::encrypt(bytes const& _v, std::string const& _pass, KDF 
 	js::mObject ret;
 
 	// KDF info
-	unsigned dklen = 16;
+	unsigned dklen = 32;
 	bytes salt = h256::random().asBytes();
 	bytes derivedKey;
 	if (_kdf == KDF::Scrypt)
 	{
 		unsigned iterations = 262144;
-		unsigned p = 262144;
-		unsigned r = 262144;
+		unsigned p = 1;
+		unsigned r = 8;
 		ret["kdf"] = "scrypt";
 		{
 			js::mObject params;
-			params["n"] = (int)iterations;
-			params["p"] = 1;
-			params["r"] = 8;
+			params["n"] = (int64_t)iterations;
+			params["p"] = (int)p;
+			params["r"] = (int)r;
 			params["dklen"] = (int)dklen;
 			params["salt"] = toHex(salt);
 			ret["kdfparams"] = params;
 		}
 		derivedKey = scrypt(_pass, salt, iterations, p, r, dklen);
+		cdebug << "derivedKey" << toHex(derivedKey);
 	}
 	else
 	{
@@ -213,11 +230,13 @@ std::string SecretStore::encrypt(bytes const& _v, std::string const& _pass, KDF 
 			ret["kdfparams"] = params;
 		}
 		derivedKey = pbkdf2(_pass, salt, iterations, dklen);
+		cdebug << "derivedKey" << toHex(derivedKey);
 	}
 
 	// cipher info
-	ret["cipher"] = "aes-128-cbc";
-	h128 key(sha3(h128(derivedKey, h128::AlignRight)), h128::AlignRight);
+	ret["cipher"] = "aes-128-ctr";
+	h128 key(derivedKey, h128::AlignLeft);
+	cdebug << "cipherKey" << key.hex();
 	h128 iv = h128::random();
 	{
 		js::mObject params;
@@ -230,7 +249,9 @@ std::string SecretStore::encrypt(bytes const& _v, std::string const& _pass, KDF 
 	ret["ciphertext"] = toHex(cipherText);
 
 	// and mac.
-	h256 mac = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
+	h256 mac = sha3(ref(derivedKey).cropped(16, 16).toBytes() + cipherText);
+	cdebug << "macBody" << toHex(ref(derivedKey).cropped(16, 16).toBytes() + cipherText);
+	cdebug << "mac" << mac.hex();
 	ret["mac"] = toHex(mac.ref());
 
 	return js::write_string((js::mValue)ret, true);
@@ -270,13 +291,23 @@ bytes SecretStore::decrypt(std::string const& _v, std::string const& _pass)
 		return bytes();
 	}
 
+	if (derivedKey.size() < 32 && !(o.count("compat") && o["compat"].get_str() == "2"))
+	{
+		cwarn << "Derived key's length too short (<32 bytes)";
+		return bytes();
+	}
+
 	bytes cipherText = fromHex(o["ciphertext"].get_str());
 
 	// check MAC
 	if (o.count("mac"))
 	{
 		h256 mac(o["mac"].get_str());
-		h256 macExp = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
+		h256 macExp;
+		if (o.count("compat") && o["compat"].get_str() == "2")
+			macExp = sha3(bytesConstRef(&derivedKey).cropped(derivedKey.size() - 16).toBytes() + cipherText);
+		else
+			macExp = sha3(bytesConstRef(&derivedKey).cropped(16, 16).toBytes() + cipherText);
 		if (mac != macExp)
 		{
 			cwarn << "Invalid key - MAC mismatch; expected" << toString(macExp) << ", got" << toString(mac);
@@ -297,12 +328,17 @@ bytes SecretStore::decrypt(std::string const& _v, std::string const& _pass)
 		cwarn << "No MAC. Proceeding anyway.";
 
 	// decrypt
-	if (o["cipher"].get_str() == "aes-128-cbc")
+	if (o["cipher"].get_str() == "aes-128-ctr")
 	{
 		auto params = o["cipherparams"].get_obj();
-		h128 key(sha3(h128(derivedKey, h128::AlignRight)), h128::AlignRight);
 		h128 iv(params["iv"].get_str());
-		return decryptSymNoAuth(key, iv, &cipherText);
+		if (o.count("compat") && o["compat"].get_str() == "2")
+		{
+			h128 key(sha3(h128(derivedKey, h128::AlignRight)), h128::AlignRight);
+			return decryptSymNoAuth(key, iv, &cipherText);
+		}
+		else
+			return decryptSymNoAuth(h128(derivedKey, h128::AlignLeft), iv, &cipherText);
 	}
 	else
 	{

@@ -120,10 +120,11 @@ std::pair<bytes, h128> dev::encryptSymNoAuth(h128 const& _k, bytesConstRef _plai
 	return make_pair(encryptSymNoAuth(_k, iv, _plain), iv);
 }
 
-bytes dev::encryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _plain)
+bytes dev::encryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _plain)
 {
-	const int c_aesKeyLen = 16;
-	SecByteBlock key(_k.data(), c_aesKeyLen);
+	if (_k.size() != 16 && _k.size() != 24 && _k.size() != 32)
+		return bytes();
+	SecByteBlock key(_k.data(), _k.size());
 	try
 	{
 		CTR_Mode<AES>::Encryption e;
@@ -139,10 +140,11 @@ bytes dev::encryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _plai
 	}
 }
 
-bytes dev::decryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _cipher)
+bytes dev::decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _cipher)
 {
-	const size_t c_aesKeyLen = 16;
-	SecByteBlock key(_k.data(), c_aesKeyLen);
+	if (_k.size() != 16 && _k.size() != 24 && _k.size() != 32)
+		return bytes();
+	SecByteBlock key(_k.data(), _k.size());
 	try
 	{
 		CTR_Mode<AES>::Decryption d;
