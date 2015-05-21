@@ -19,7 +19,7 @@
  * @date 2015
  * block test functions.
  */
-
+#include "test/fuzzTesting/fuzzHelper.h"
 #include <boost/filesystem.hpp>
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/TransientDirectory.h>
@@ -809,6 +809,13 @@ BOOST_AUTO_TEST_CASE(bcWalletTest)
 BOOST_AUTO_TEST_CASE(userDefinedFile)
 {
 	dev::test::userDefinedTest(dev::test::doBlockchainTests);
+}
+
+BOOST_AUTO_TEST_CASE(rndCode)
+{
+	cerr << "Testing Random Code: ";
+	std::string code = dev::test::RandomCode::generate(10);
+	cerr << code;
 }
 
 BOOST_AUTO_TEST_SUITE_END()
