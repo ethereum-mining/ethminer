@@ -189,7 +189,7 @@ void EthereumHost::maintainTransactions()
 	for (auto const& i: ts)
 	{
 		bool unsent = !m_transactionsSent.count(i.first);
-		for (auto const& p: randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }).second)
+		for (auto const& p: get<1>(randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); })))
 			peerTransactions[p].push_back(i.first);
 	}
 	for (auto const& t: ts)
@@ -218,25 +218,32 @@ void EthereumHost::maintainTransactions()
 		}
 }
 
-pair<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
+tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, list<shared_ptr<Session>>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
 {
-	pair<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>> ret;
-	ret.second.reserve(peerSessions().size());
-	for (auto const& j: peerSessions())
+	vector<shared_ptr<EthereumPeer>> chosen;
+	vector<shared_ptr<EthereumPeer>> allowed;
+	list<shared_ptr<Session>> sessions;
+	
+	auto ps = peerSessions();
+	allowed.reserve(ps.size());
+	for (auto const& j: ps)
 	{
 		auto pp = j.first->cap<EthereumPeer>();
 		if (_allow(pp.get()))
-			ret.second.push_back(pp);
+		{
+			allowed.push_back(move(pp));
+			sessions.push_back(move(j.first));
+		}
 	}
 
-	ret.second.reserve((peerSessions().size() * _percent + 99) / 100);
-	for (unsigned i = (peerSessions().size() * _percent + 99) / 100; i-- && ret.second.size();)
+	chosen.reserve((ps.size() * _percent + 99) / 100);
+	for (unsigned i = (ps.size() * _percent + 99) / 100; i-- && allowed.size();)
 	{
-		unsigned n = rand() % ret.second.size();
-		ret.first.push_back(std::move(ret.second[n]));
-		ret.second.erase(ret.second.begin() + n);
+		unsigned n = rand() % allowed.size();
+		chosen.push_back(std::move(allowed[n]));
+		allowed.erase(allowed.begin() + n);
 	}
-	return ret;
+	return make_tuple(chosen, allowed, sessions);
 }
 
 void EthereumHost::maintainBlocks(h256 const& _currentHash)
@@ -254,7 +261,7 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 			h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
 			auto s = randomSelection(25, [&](EthereumPeer* p){ DEV_GUARDED(p->x_knownBlocks) return !p->m_knownBlocks.count(_currentHash); return false; });
-			for (shared_ptr<EthereumPeer> const& p: s.first)
+			for (shared_ptr<EthereumPeer> const& p: get<0>(s))
 				for (auto const& b: blocks)
 				{
 					RLPStream ts;
@@ -264,7 +271,7 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 					p->sealAndSend(ts);
 					p->m_knownBlocks.clear();
 				}
-			for (shared_ptr<EthereumPeer> const& p: s.second)
+			for (shared_ptr<EthereumPeer> const& p: get<1>(s))
 			{
 				RLPStream ts;
 				p->prep(ts, NewBlockHashesPacket, blocks.size());
