@@ -457,11 +457,13 @@ ProofOfWork::WorkPackage Client::getWork()
 	// this will be reset as soon as a new block arrives, allowing more transactions to be processed.
 	bool oldShould = shouldServeWork();
 	m_lastGetWork = chrono::system_clock::now();
-	m_remoteWorking = true;
 
 	// if this request has made us bother to serve work, prep it now.
 	if (!oldShould && shouldServeWork())
 		onPostStateChanged();
+	else
+		// otherwise, set this to true so that it gets prepped next time.
+		m_remoteWorking = true;
 	return ProofOfWork::package(m_miningInfo);
 }
 
@@ -608,9 +610,6 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 bool Client::remoteActive() const
 {
-	cnote << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
-	cnote << chrono::duration_cast<chrono::seconds>(m_lastGetWork.time_since_epoch()).count();
-	cnote << chrono::duration_cast<chrono::seconds>(chrono::system_clock::now() - m_lastGetWork).count();
 	return chrono::system_clock::now() - m_lastGetWork < chrono::seconds(30);
 }
 
@@ -630,6 +629,8 @@ void Client::onPostStateChanged()
 			m_miningInfo = m_postMine.info();
 		}
 		m_farm.setWork(m_miningInfo);
+
+		Ethash::ensurePrecomputed(m_bc.number());
 	}
 	m_remoteWorking = false;
 }
@@ -647,7 +648,7 @@ void Client::noteChanged(h256Hash const& _filters)
 {
 	Guard l(x_filtersWatches);
 	if (_filters.size())
-		filtersStreamOut(cnote << "noteChanged:", _filters);
+		filtersStreamOut(cwatch << "noteChanged:", _filters);
 	// accrue all changes left in each filter into the watches.
 	for (auto& w: m_watches)
 		if (_filters.count(w.second.id))

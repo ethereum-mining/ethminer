@@ -44,13 +44,10 @@ h160 FakeExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _init, OnOpF
 	return na;
 }
 
-bool FakeExtVM::call(Address _receiveAddress, u256 _value, bytesConstRef _data, u256& io_gas, bytesRef _out, OnOpFunc const&, Address _myAddressOverride, Address _codeAddressOverride)
+bool FakeExtVM::call(CallParameters& _p)
 {
-	Transaction t(_value, gasPrice, io_gas, _receiveAddress, _data.toVector());
+	Transaction t(_p.value, gasPrice, _p.gas, _p.receiveAddress, _p.data.toVector());
 	callcreates.push_back(t);
-	(void)_out;
-	(void)_myAddressOverride;
-	(void)_codeAddressOverride;
 	return true;
 }
 
@@ -393,7 +390,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 				}
 
 				o["callcreates"] = fev.exportCallCreates();
-				o["out"] = toHex(output, 2, HexPrefix::Add);
+				o["out"] = output.size() > 4096 ? "#" + toString(output.size()) : toHex(output, 2, HexPrefix::Add);
 				o["gas"] = toCompactHex(gas, HexPrefix::Add, 1);
 				o["logs"] = exportLog(fev.sub.logs);
 			}

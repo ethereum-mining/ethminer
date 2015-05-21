@@ -71,6 +71,7 @@ bool KeyManager::load(std::string const& _pass)
 			m_password = (string)s[3];
 		}
 		m_cachedPasswords[hashPassword(m_password)] = m_password;
+		m_cachedPasswords[hashPassword(defaultPassword())] = defaultPassword();
 		return true;
 	}
 	catch (...) {
@@ -214,4 +215,6 @@ void KeyManager::write(h128 const& _key, std::string const& _keysFile) const
 
 	writeFile(_keysFile, encryptSymNoAuth(_key, h128(), &s.out()));
 	m_key = _key;
+	m_cachedPasswords[hashPassword(defaultPassword())] = defaultPassword();
+
 }
