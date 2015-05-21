@@ -176,12 +176,10 @@ BOOST_AUTO_TEST_CASE(stMemoryStressTest)
 		dev::test::executeTests("stMemoryStressTest", "/StateTests",dev::test::getFolder(__FILE__) + "/StateTestsFiller", dev::test::doStateTests);
 }
 
-#if ETH_SOLIDITY
 BOOST_AUTO_TEST_CASE(stSolidityTest)
 {
 	dev::test::executeTests("stSolidityTest", "/StateTests",dev::test::getFolder(__FILE__) + "/StateTestsFiller", dev::test::doStateTests);
 }
-#endif
 
 BOOST_AUTO_TEST_CASE(stMemoryTest)
 {
