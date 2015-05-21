@@ -18,7 +18,6 @@ namespace jit
 {
 
 static const auto c_reallocStep = 1;
-static const auto c_reallocMultipier = 2;
 
 llvm::Value* LazyFunction::call(llvm::IRBuilder<>& _builder, std::initializer_list<llvm::Value*> const& _args, llvm::Twine const& _name)
 {
@@ -57,7 +56,6 @@ llvm::Function* Array::createArrayPushFunc()
 
 	m_builder.SetInsertPoint(reallocBB);
 	auto newCap = m_builder.CreateNUWAdd(cap, m_builder.getInt64(c_reallocStep), "newCap");
-	//newCap = m_builder.CreateNUWMul(newCap, m_builder.getInt64(c_reallocMultipier));
 	auto reallocSize = m_builder.CreateShl(newCap, 5, "reallocSize"); // size in bytes: newCap * 32
 	auto bytes = m_builder.CreateBitCast(data, Type::BytePtr, "bytes");
 	auto newBytes = m_reallocFunc.call(m_builder, {bytes, reallocSize}, "newBytes");
