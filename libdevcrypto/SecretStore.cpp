@@ -206,13 +206,13 @@ std::string SecretStore::encrypt(bytes const& _v, std::string const& _pass, KDF 
 		{
 			js::mObject params;
 			params["n"] = (int64_t)iterations;
-			params["p"] = (int)p;
 			params["r"] = (int)r;
+			params["p"] = (int)p;
 			params["dklen"] = (int)dklen;
 			params["salt"] = toHex(salt);
 			ret["kdfparams"] = params;
 		}
-		derivedKey = scrypt(_pass, salt, iterations, p, r, dklen);
+		derivedKey = scrypt(_pass, salt, iterations, r, p, dklen);
 	}
 	else
 	{
@@ -280,7 +280,7 @@ bytes SecretStore::decrypt(std::string const& _v, std::string const& _pass)
 	else if (o["kdf"].get_str() == "scrypt")
 	{
 		auto p = o["kdfparams"].get_obj();
-		derivedKey = scrypt(_pass, fromHex(p["salt"].get_str()), p["n"].get_int(), p["p"].get_int(), p["r"].get_int(), p["dklen"].get_int());
+		derivedKey = scrypt(_pass, fromHex(p["salt"].get_str()), p["n"].get_int(), p["r"].get_int(), p["p"].get_int(), p["dklen"].get_int());
 	}
 	else
 	{
