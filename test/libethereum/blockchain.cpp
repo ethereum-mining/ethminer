@@ -813,8 +813,16 @@ BOOST_AUTO_TEST_CASE(userDefinedFile)
 
 BOOST_AUTO_TEST_CASE(rndCode)
 {
+	std::string code;
 	cerr << "Testing Random Code: ";
-	std::string code = dev::test::RandomCode::generate(10);
+	try
+	{
+		code = dev::test::RandomCode::generate(10);
+	}
+	catch(...)
+	{
+		BOOST_ERROR("Exception thrown when generating random code!");
+	}
 	cerr << code;
 }
 
