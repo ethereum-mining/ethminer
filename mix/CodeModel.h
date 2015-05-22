@@ -137,7 +137,7 @@ class GasMapWrapper: public QObject
 	Q_PROPERTY(GasCostsMaps gasMaps MEMBER m_gasMaps CONSTANT)
 
 public:
-	GasMapWrapper(QObject* _parent): QObject(_parent){}
+	GasMapWrapper(QObject* _parent = nullptr): QObject(_parent){}
 	void push(QString _source, int _start, int _end, QString _value, bool _isInfinite);
 	bool contains(QString _key);
 	void insert(QString _source, QVariantList _variantList);
