@@ -26,6 +26,7 @@
 #include <test/TestHelper.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/CommonData.h>
+#include <libevmcore/Instruction.h>
 
 #pragma once
 
@@ -35,19 +36,43 @@ namespace test
 {
 
 typedef boost::random::uniform_int_distribution<> boostIntDistrib;
-typedef boost::random::variate_generator<boost::mt19937&, boostIntDistrib > boostIntGenerator;
+typedef boost::random::discrete_distribution<> boostDescreteDistrib;
 
-enum class CodeOptions
+typedef boost::random::variate_generator<boost::mt19937&, boostIntDistrib > boostIntGenerator;
+typedef boost::random::variate_generator<boost::mt19937&, boostDescreteDistrib > boostWeightGenerator;
+
+struct RandomCodeOptions
 {
-	UseUndefinedOpCodes,
-	DontUseUndefinedOpCodes
+public:
+	RandomCodeOptions() : useUndefinedOpCodes(false) {
+		//each op code with same weight-probability
+		for (auto i = 0; i < 255; i++)
+			mapWeights.insert(std::pair<int, int>(i, 50));
+		setWeights();
+	}
+	void setWeight(dev::eth::Instruction opCode, int weight)
+	{
+		mapWeights.at((int)opCode) = weight;
+		setWeights();
+	}
+	bool useUndefinedOpCodes;
+	boostDescreteDistrib opCodeProbability;
+private:
+	void setWeights()
+	{
+		std::vector<int> weights;
+		for (auto const& element: mapWeights)
+			weights.push_back(element.second);
+		opCodeProbability = boostDescreteDistrib(weights);
+	}
+	std::map<int, int> mapWeights;
 };
 
 class RandomCode
 {
 public:
 	/// Generate random vm code
-	static std::string generate(int maxOpNumber = 1, CodeOptions options = CodeOptions::DontUseUndefinedOpCodes);
+	static std::string generate(int maxOpNumber = 1, RandomCodeOptions options = RandomCodeOptions());
 
 	/// Generate random byte string of a given length
 	static std::string rndByteSequence(int length = 1);
@@ -64,7 +89,7 @@ private:
 	static boostIntDistrib opLengDist;			///< 1..32  byte string
 	static boostIntDistrib uniIntDist;          ///< 0..0x7fffffff
 
-	static boostIntGenerator randUniIntGen;		///< Generate random UniformInt from
+	static boostIntGenerator randUniIntGen;		///< Generate random UniformInt from uniIntDist
 	static boostIntGenerator randOpCodeGen;		///< Generate random value from opCodeDist
 	static boostIntGenerator randOpLengGen;		///< Generate random length from opLengDist
 };
