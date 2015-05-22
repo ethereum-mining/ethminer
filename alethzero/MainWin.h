@@ -33,9 +33,9 @@
 #include <QtWidgets/QMainWindow>
 #include <libdevcore/RLP.h>
 #include <libethcore/Common.h>
+#include <libethcore/KeyManager.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
-#include <libethereum/KeyManager.h>
 #include <libwebthree/WebThree.h>
 #include <libsolidity/CompilerStack.h>
 #include "Context.h"

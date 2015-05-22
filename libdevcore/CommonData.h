@@ -323,4 +323,13 @@ std::vector<T> keysOf(std::map<T, U> const& _m)
 	return ret;
 }
 
+template<class T, class U>
+std::vector<T> keysOf(std::unordered_map<T, U> const& _m)
+{
+	std::vector<T> ret;
+	for (auto const& i: _m)
+		ret.push_back(i.first);
+	return ret;
+}
+
 }
