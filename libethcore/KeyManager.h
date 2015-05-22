@@ -61,7 +61,7 @@ enum class SemanticPassword
 class KeyManager
 {
 public:
-	KeyManager(std::string const& _keysFile = getDataDir("ethereum") + "/keys.info");
+	KeyManager(std::string const& _keysFile = defaultPath(), std::string const& _secretsPath = SecretStore::defaultPath());
 	~KeyManager();
 
 	void setKeysFile(std::string const& _keysFile) { m_keysFile = _keysFile; }
@@ -99,6 +99,8 @@ public:
 	void kill(h128 const& _id) { kill(address(_id)); }
 	void kill(Address const& _a);
 
+	static std::string defaultPath() { return getDataDir("ethereum") + "/keys.info"; }
+
 private:
 	std::string getPassword(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
 	std::string getPassword(h256 const& _passHash, std::function<std::string()> const& _pass = DontKnowThrow) const;
@@ -127,10 +129,10 @@ private:
 	// we have an upgrade strategy.
 	std::string m_password;
 
-	SecretStore m_store;
+	mutable std::string m_keysFile;
 	mutable h128 m_key;
 	mutable h256 m_master;
-	mutable std::string m_keysFile;
+	SecretStore m_store;
 };
 
 }

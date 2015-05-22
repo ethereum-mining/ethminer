@@ -39,7 +39,8 @@
 #include <libnatspec/NatspecExpressionEvaluator.h>
 #include <libethereum/Client.h>
 #include <libethereum/Utility.h>
-#include <libethereum/KeyManager.h>
+#include <libethcore/KeyManager.h>
+
 #if ETH_SERPENT
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
