@@ -387,14 +387,11 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 
 std::pair<QString, int> ClientModel::resolvePair(QString const& _contractId)
 {
-	 std::pair<QString, int> ret;
-	 ret.first = _contractId;
-	 ret.second = 0;
+	 std::pair<QString, int> ret = std::make_pair(_contractId, 0);
 	 if (_contractId.startsWith("<") && _contractId.endsWith(">"))
 	 {
 		 QStringList values = ret.first.remove("<").remove(">").split(" - ");
-		 ret.first = values[0];
-		 ret.second = values[1].toUInt();
+		 ret = std::make_pair(values[0], values[1].toUInt());
 	 }
 	 return ret;
 }
