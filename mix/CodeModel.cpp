@@ -198,7 +198,7 @@ CodeModel::~CodeModel()
 	disconnect(this);
 	releaseContracts();
 	if (m_gasCostsMaps)
-		m_gasCostsMaps->deleteLater();
+		delete m_gasCostsMaps;
 }
 
 void CodeModel::stop()
