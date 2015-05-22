@@ -40,7 +40,6 @@ boostIntGenerator RandomCode::randOpCodeGen = boostIntGenerator(gen, opCodeDist)
 boostIntGenerator RandomCode::randOpLengGen = boostIntGenerator(gen, opLengDist);
 boostIntGenerator RandomCode::randUniIntGen = boostIntGenerator(gen, uniIntDist);
 
-
 std::string RandomCode::rndByteSequence(int length)
 {
 	refreshSeed();
@@ -67,22 +66,28 @@ std::string RandomCode::fillArguments(int num)
 }
 
 //generate smart random code
-std::string RandomCode::generate(int maxOpNumber, CodeOptions options)
+std::string RandomCode::generate(int maxOpNumber, RandomCodeOptions options)
 {
 	refreshSeed();
 	std::string code;
+
+	//random opCode amount
 	boostIntDistrib sizeDist (0, maxOpNumber);
 	boostIntGenerator rndSizeGen(gen, sizeDist);
 	int size = (int)rndSizeGen();
+
+	boostWeightGenerator randOpCodeWeight (gen, options.opCodeProbability);
+	bool weightsDefined = options.opCodeProbability.probabilities().size() == 255;
+
 	for (auto i = 0; i < size; i++)
 	{
-		uint8_t opcode = randOpCodeGen();
+		uint8_t opcode = weightsDefined ? randOpCodeWeight() : randOpCodeGen();
 		dev::eth::InstructionInfo info = dev::eth::instructionInfo((dev::eth::Instruction) opcode);
 
 		if (info.name.find_first_of("INVALID_INSTRUCTION") > 0)
 		{
 			//Byte code is yet not implemented
-			if (options == CodeOptions::DontUseUndefinedOpCodes)
+			if (options.useUndefinedOpCodes == false)
 			{
 				i--;
 				continue;
@@ -90,7 +95,8 @@ std::string RandomCode::generate(int maxOpNumber, CodeOptions options)
 		}
 		else
 			code += fillArguments(info.args);
-		code += toCompactHex(opcode);
+		std::string byte = toCompactHex(opcode);
+		code += (byte == "") ? "00" : byte;
 	}
 	return code;
 }
