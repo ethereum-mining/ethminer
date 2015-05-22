@@ -64,22 +64,23 @@ string createPassword(std::string const& _prompt)
 //	return make_pair(ret, hint);
 }
 
-pair<string, string> createPassword(KeyManager& _keyManager, std::string const& _prompt)
+pair<string, string> createPassword(KeyManager& _keyManager, std::string const& _prompt, std::string const& _pass = std::string(), std::string const& _hint = std::string())
 {
-	string pass;
-	while (true)
+	string pass = _pass;
+	while (pass.empty())
 	{
 		pass = getPassword(_prompt);
 		string confirm = getPassword("Please confirm the password by entering it again: ");
 		if (pass == confirm)
 			break;
 		cout << "Passwords were different. Try again." << endl;
+		pass.clear();
 	}
-	string hint;
-	if (!_keyManager.haveHint(pass))
+	string hint = _hint;
+	if (hint.empty() && !_keyManager.haveHint(pass))
 	{
 		cout << "Enter a hint to help you remember this password: " << flush;
-		cin >> hint;
+		getline(cin, hint);
 	}
 	return make_pair(pass, hint);
 }
@@ -95,6 +96,7 @@ public:
 		ImportBare,
 		ExportBare,
 		RecodeBare,
+		KillBare,
 		FirstWallet,
 		CreateWallet,
 		List = FirstWallet,
@@ -140,6 +142,8 @@ public:
 			m_mode = OperationMode::ExportBare;
 		else if (arg == "--recode-bare")
 			m_mode = OperationMode::RecodeBare;
+		else if (arg == "--kill-bare")
+			m_mode = OperationMode::KillBare;
 		else if (arg == "--create-wallet")
 			m_mode = OperationMode::CreateWallet;
 		else if (arg == "--list")
@@ -161,7 +165,7 @@ public:
 			m_mode = OperationMode::Recode;
 		else if (arg == "--no-icap")
 			m_icap = false;
-		else if (m_mode == OperationMode::ImportBare || m_mode == OperationMode::Recode || m_mode == OperationMode::Export || m_mode == OperationMode::RecodeBare || m_mode == OperationMode::ExportBare)
+		else if (m_mode == OperationMode::ImportBare || m_mode == OperationMode::KillBare || m_mode == OperationMode::Recode || m_mode == OperationMode::Export || m_mode == OperationMode::RecodeBare || m_mode == OperationMode::ExportBare)
 			m_inputs.push_back(arg);
 		else
 			return false;
@@ -202,10 +206,10 @@ public:
 				if (m_lock.empty())
 					m_lock = createPassword("Enter a password with which to secure this account: ");
 				auto k = makeKey();
-				store.importSecret(k.secret().asBytes(), m_lock);
-				cout << "Created key " << k.address().abridged() << endl;
-				cout << "Address: " << k.address().hex() << endl;
-				cout << "ICAP: " << ICAP(k.address()).encoded() << endl;
+				h128 u = store.importSecret(k.secret().asBytes(), m_lock);
+				cout << "Created key " << toUUID(u) << endl;
+				cout << "  Address: " << k.address().hex() << endl;
+				cout << "  ICAP: " << ICAP(k.address()).encoded() << endl;
 				break;
 			}
 			case OperationMode::ImportBare:
@@ -244,6 +248,16 @@ public:
 					else
 						cerr << "Couldn't re-encode " << toUUID(u) << "; not found." << endl;
 				}
+			case OperationMode::KillBare:
+				for (auto const& i: m_inputs)
+				{
+					h128 u = fromUUID(i);
+					if (u)
+						store.kill(u);
+					else
+						cerr << "Couldn't kill " << toUUID(u) << "; not found." << endl;
+				}
+				break;
 			default: break;
 			}
 		}
@@ -267,6 +281,55 @@ public:
 				cerr << "Couldn't open wallet. Does it exist?" << endl;
 				exit(-1);
 			}
+			switch (m_mode)
+			{
+			case OperationMode::New:
+			{
+				cout << "Enter a description of this key: " << flush;
+				string info;
+				getline(cin, info);
+
+				tie(m_lock, m_lockHint) = createPassword(wallet, "Enter a password with which to secure this account (or nothing to use the master password): ", m_lock, m_lockHint);
+				auto k = makeKey();
+				h128 u = m_lock.empty() ? wallet.import(k.secret(), m_name) : wallet.import(k.secret(), m_name, m_lock, m_lockHint);
+				cout << "Created key " << toUUID(u) << endl;
+				cout << "  Name: " << m_name;
+				if (!m_lockHint.empty())
+					cout << "  Password hint: " << m_lockHint;
+				cout << "  Address: " << k.address().hex() << endl;
+				cout << "  ICAP: " << ICAP(k.address()).encoded() << endl;
+				break;
+			}
+			case OperationMode::List:
+			{
+				vector<u128> bare;
+				vector<u128> nonIcap;
+				for (auto const& u: wallet.store().keys())
+					if (Address a = wallet.address(u))
+						if (a[0])
+							nonIcap.push_back(u);
+						else
+						{
+							std::pair<std::string, std::string> info = wallet.accountDetails()[a];
+							cout << toUUID(u) << " " << a.abridged();
+							cout << " " << ICAP(a).encoded();
+							cout << " " << info.first << endl;
+						}
+					else
+						bare.push_back(u);
+				for (auto const& u: nonIcap)
+					if (Address a = wallet.address(u))
+					{
+						std::pair<std::string, std::string> info = wallet.accountDetails()[a];
+						cout << toUUID(u) << " " << a.abridged();
+						cout << "            (Not ICAP)             ";
+						cout << " " << info.first << endl;
+					}
+				for (auto const& u: bare)
+					cout << toUUID(u) << " (Bare)" << endl;
+			}
+			default: break;
+			}
 		}
 	}
 
@@ -284,6 +347,7 @@ public:
 			<< "    --import-bare [ <file>|<secret-hex> , ... ] Import keys from given sources." << endl
 			<< "    --recode-bare [ <uuid>|<file> , ... ]  Decrypt and re-encrypt given keys." << endl
 //			<< "    --export-bare [ <uuid> , ... ]  Export given keys." << endl
+			<< "    --kill-bare [ <uuid> , ... ]  Delete given keys." << endl
 			<< "Secret-store configuration:" << endl
 			<< "    --secrets-path <path>  Specify Web3 secret-store path (default: " << SecretStore::defaultPath() << ")" << endl
 			<< endl
@@ -303,7 +367,8 @@ public:
 			<< "    --kdf-param <name> <value>  Specify a parameter for the KDF." << endl
 //			<< "    --cipher <ciphername>  Specify cipher to use when encrypting (default: aes-128-ctr)" << endl
 //			<< "    --cipher-param <name> <value>  Specify a parameter for the cipher." << endl
-			<< "    --lock <password> <hint>  Specify password for when encrypting a (the) key." << endl
+			<< "    --lock <password>  Specify password for when encrypting a (the) key." << endl
+			<< "    --hint <hint>  Specify hint for the --lock password." << endl
 			<< endl
 			<< "Decryption configuration:" << endl
 			<< "    --unlock <password>  Specify password for a (the) key." << endl
@@ -336,6 +401,7 @@ private:
 	string m_masterPassword;
 	strings m_unlocks;
 	string m_lock;
+	string m_lockHint;
 	bool m_icap = true;
 
 	/// Creating
