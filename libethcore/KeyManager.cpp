@@ -31,8 +31,8 @@ using namespace dev;
 using namespace eth;
 namespace fs = boost::filesystem;
 
-KeyManager::KeyManager(std::string const& _keysFile):
-	m_keysFile(_keysFile)
+KeyManager::KeyManager(std::string const& _keysFile, std::string const& _secretsPath):
+	m_keysFile(_keysFile), m_store(_secretsPath)
 {}
 
 KeyManager::~KeyManager()
@@ -96,8 +96,11 @@ bool KeyManager::load(std::string const& _pass)
 				m_passwordInfo[(h256)i[0]] = (std::string)i[1];
 			m_password = (string)s[3];
 		}
+		cdebug << hashPassword(m_password) << toHex(m_password);
 		m_cachedPasswords[hashPassword(m_password)] = m_password;
+		cdebug << hashPassword(asString(m_key.ref())) << m_key.hex();
 		m_cachedPasswords[hashPassword(asString(m_key.ref()))] = asString(m_key.ref());
+		cdebug << hashPassword(_pass) << _pass;
 		m_cachedPasswords[m_master = hashPassword(_pass)] = _pass;
 		return true;
 	}

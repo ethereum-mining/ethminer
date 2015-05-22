@@ -84,7 +84,7 @@ static js::mValue upgraded(std::string const& _s)
 	return js::mValue();
 }
 
-SecretStore::SecretStore()
+SecretStore::SecretStore(std::string const& _path): m_path(_path)
 {
 	load();
 }

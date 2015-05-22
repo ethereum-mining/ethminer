@@ -49,7 +49,8 @@
 #include <libethcore/Farm.h>
 #include <libdevcore/FileSystem.h>
 #include <libethereum/All.h>
-#include <libethereum/KeyManager.h>
+#include <libethcore/KeyManager.h>
+
 #include <libethereum/AccountDiff.h>
 #include <libethereum/DownloadMan.h>
 #include <libethereum/Client.h>
