@@ -2048,12 +2048,11 @@ void Main::on_killAccount_triggered()
 		auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
 		Address h((byte const*)hba.data(), Address::ConstructFromPointer);
 		auto k = m_keyManager.accountDetails()[h];
-		if (
-			ethereum()->balanceAt(h) != 0 &&
-			QMessageBox::critical(this, QString::fromStdString("Kill Account " + k.first + "?!"),
-				QString::fromStdString("Account " + k.first + " (" + render(h) + ") has " + formatBalance(ethereum()->balanceAt(h)) + " in it. It, and any contract that this account can access, will be lost forever if you continue. Do NOT continue unless you know what you are doing.\n"
-				"Are you sure you want to continue?"),
-				QMessageBox::Yes, QMessageBox::No) == QMessageBox::No)
+		QString s = QInputDialog::getText(this, QString::fromStdString("Kill Account " + k.first + "?!"),
+			QString::fromStdString("Account " + k.first + " (" + render(h) + ") has " + formatBalance(ethereum()->balanceAt(h)) + " in it.\r\nIt, and any contract that this account can access, will be lost forever if you continue. Do NOT continue unless you know what you are doing.\n"
+			"Are you sure you want to continue? \r\n If so, type 'YES' to confirm."),
+			QLineEdit::Normal, "NO");
+		if (s != "YES")
 			return;
 		m_keyManager.kill(h);
 		if (m_keyManager.accounts().empty())
