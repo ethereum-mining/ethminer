@@ -67,17 +67,17 @@ string createPassword(std::string const& _prompt)
 pair<string, string> createPassword(KeyManager& _keyManager, std::string const& _prompt, std::string const& _pass = std::string(), std::string const& _hint = std::string())
 {
 	string pass = _pass;
-	while (pass.empty())
-	{
-		pass = getPassword(_prompt);
-		string confirm = getPassword("Please confirm the password by entering it again: ");
-		if (pass == confirm)
-			break;
-		cout << "Passwords were different. Try again." << endl;
-		pass.clear();
-	}
+	if (pass.empty())
+		while (true)
+		{
+			pass = getPassword(_prompt);
+			string confirm = getPassword("Please confirm the password by entering it again: ");
+			if (pass == confirm)
+				break;
+			cout << "Passwords were different. Try again." << endl;
+		}
 	string hint = _hint;
-	if (hint.empty() && !_keyManager.haveHint(pass))
+	if (hint.empty() && !pass.empty() && !_keyManager.haveHint(pass))
 	{
 		cout << "Enter a hint to help you remember this password: " << flush;
 		getline(cin, hint);
@@ -97,9 +97,8 @@ public:
 		ExportBare,
 		RecodeBare,
 		KillBare,
-		FirstWallet,
 		CreateWallet,
-		List = FirstWallet,
+		List,
 		New,
 		Import,
 		Export,
@@ -112,9 +111,7 @@ public:
 	bool interpretOption(int& i, int argc, char** argv)
 	{
 		string arg = argv[i];
-		if (arg == "-n" || arg == "--new")
-			m_mode = OperationMode::New;
-		else if (arg == "--wallet-path" && i + 1 < argc)
+		if (arg == "--wallet-path" && i + 1 < argc)
 			m_walletPath = argv[++i];
 		else if (arg == "--secrets-path" && i + 1 < argc)
 			m_secretsPath = argv[++i];
@@ -192,7 +189,7 @@ public:
 			else
 				wallet.create(m_masterPassword);
 		}
-		else if (m_mode < OperationMode::FirstWallet)
+		else if (m_mode < OperationMode::CreateWallet)
 		{
 			SecretStore store(m_secretsPath);
 			switch (m_mode)
@@ -285,17 +282,16 @@ public:
 			{
 			case OperationMode::New:
 			{
-				cout << "Enter a description of this key: " << flush;
-				string info;
-				getline(cin, info);
-
 				tie(m_lock, m_lockHint) = createPassword(wallet, "Enter a password with which to secure this account (or nothing to use the master password): ", m_lock, m_lockHint);
 				auto k = makeKey();
-				h128 u = m_lock.empty() ? wallet.import(k.secret(), m_name) : wallet.import(k.secret(), m_name, m_lock, m_lockHint);
+				bool usesMaster = m_lock.empty();
+				h128 u = usesMaster ? wallet.import(k.secret(), m_name) : wallet.import(k.secret(), m_name, m_lock, m_lockHint);
 				cout << "Created key " << toUUID(u) << endl;
-				cout << "  Name: " << m_name;
-				if (!m_lockHint.empty())
-					cout << "  Password hint: " << m_lockHint;
+				cout << "  Name: " << m_name << endl;
+				if (usesMaster)
+					cout << "  Uses master password." << endl;
+				else
+					cout << "  Password hint: " << m_lockHint << endl;
 				cout << "  Address: " << k.address().hex() << endl;
 				cout << "  ICAP: " << ICAP(k.address()).encoded() << endl;
 				break;
