@@ -57,7 +57,6 @@ class BlockQueue;
 class EthereumHost: public p2p::HostCapability<EthereumPeer>, Worker
 {
 	friend class EthereumPeer;
-
 public:
 	/// Start server, but don't listen.
 	EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId);
@@ -72,21 +71,22 @@ public:
 	void reset();
 
 	DownloadMan const& downloadMan() const { return m_man; }
-	bool isSyncing() const { return !!m_syncer; }
+	bool isSyncing() const { return m_needSyncBlocks || m_needSyncHashes; }
 
 	bool isBanned(p2p::NodeId _id) const { return !!m_banned.count(_id); }
 
 	void noteNewTransactions() { m_newTransactions = true; }
 	void noteNewBlocks() { m_newBlocks = true; }
 
+	void onPeerState(EthereumPeer* _peer);
+
 private:
 	std::pair<std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<EthereumPeer>>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
+	void forEachPeer(std::function<void(std::shared_ptr<EthereumPeer>)> const& _f);
+	void forEachPeer(std::function<void(EthereumPeer*)> const& _f);
 
 	/// Session is tell us that we may need (re-)syncing with the peer.
 	void noteNeedsSyncing(EthereumPeer* _who);
-
-	/// Called when the peer can no longer provide us with any needed blocks.
-	void noteDoneBlocks(EthereumPeer* _who, bool _clemency);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	void doWork();
@@ -109,6 +109,14 @@ private:
 	virtual void onStopping() { stopWorking(); }
 
 	void changeSyncer(EthereumPeer* _ignore, bool _needHelp = true);
+	void continueSync();
+	void continueSync(EthereumPeer* _peer);
+	void onPeerBlocks(EthereumPeer* _peer, RLP const& _r);
+	void onPeerDoneHashes(EthereumPeer* _peer, bool _new);
+	void onPeerHashes(EthereumPeer* _peer, h256s const& _hashes);
+	void onPeerHashes(EthereumPeer* _peer, unsigned _index, h256s const& _hashes);
+	bool peerShouldGrabBlocks(EthereumPeer* _peer) const;
+	bool peerShouldGrabChain(EthereumPeer* _peer) const;
 
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
@@ -116,9 +124,10 @@ private:
 
 	u256 m_networkId;
 
-	EthereumPeer* m_syncer = nullptr;	// TODO: switch to weak_ptr
+	std::weak_ptr<EthereumPeer> m_hashSyncer;
 
 	DownloadMan m_man;
+	HashDownloadMan m_hashMan;
 
 	h256 m_latestBlockSent;
 	h256Hash m_transactionsSent;
@@ -127,6 +136,15 @@ private:
 
 	bool m_newTransactions = false;
 	bool m_newBlocks = false;
+
+	unsigned m_maxKnownNumber = 0;
+	u256 m_maxKnownDifficulty;
+	bool m_needSyncHashes = true;
+	bool m_needSyncBlocks = true;
+	h256 m_syncingLatestHash;					///< Peer's latest block's hash, as of the current sync.
+	u256 m_syncingTotalDifficulty;				///< Peer's latest block's total difficulty, as of the current sync.
+	h256s m_v60Hashes;
+
 };
 
 }

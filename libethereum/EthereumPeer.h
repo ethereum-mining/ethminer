@@ -70,17 +70,17 @@ public:
 	/// What is the ethereum subprotocol host object.
 	EthereumHost* host() const;
 
+	void setIdle();
+	void requestState();
+	void requestHashes();
+	void requestHashes(h256 const& _lastHash);
+	void requestBlocks();
+
 private:
 	using p2p::Capability::sealAndSend;
 
 	/// Interpret an incoming message.
 	virtual bool interpret(unsigned _id, RLP const& _r);
-
-	/// Transition state in a particular direction.
-	void transition(Asking _wantState, bool _force = false, bool _needHelp = true);
-
-	/// Attempt to begin syncing with this peer; first check the peer has a more difficlult chain to download, then start asking for hashes, then move to blocks.
-	void attemptSync();
 
 	/// Abort the sync operation.
 	void abortSync();
@@ -89,7 +89,7 @@ private:
 	void clearKnownTransactions() { std::lock_guard<std::mutex> l(x_knownTransactions); m_knownTransactions.clear(); }
 
 	/// Update our asking state.
-	void setAsking(Asking _g, bool _isSyncing, bool _needHelp = true);
+	void setAsking(Asking _g);
 
 	/// Update our syncing requirements state.
 	void setNeedsSyncing(h256 _latestHash, u256 _td);
@@ -123,6 +123,7 @@ private:
 	/// These are determined through either a Status message or from NewBlock.
 	h256 m_latestHash;						///< Peer's latest block's hash that we know about or default null value if no need to sync.
 	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.
+	h256 m_genesisHash;						///< Peer's genesis hash
 	/// Once a sync is started on this peer, they are cleared and moved into m_syncing*.
 
 	/// This is built as we ask for hashes. Once no more hashes are given, we present this to the
@@ -131,9 +132,12 @@ private:
 	h256 m_syncingLastReceivedHash;				///< Hash most recently received from peer.
 	h256 m_syncingLatestHash;					///< Peer's latest block's hash, as of the current sync.
 	u256 m_syncingTotalDifficulty;				///< Peer's latest block's total difficulty, as of the current sync.
+	unsigned m_expectedHashes = 0;				///< Estimated Upper bound of hashes to expect from this peer.
+	unsigned m_syncHashNumber = 0;
 
 	/// Once we're asking for blocks, this becomes in use.
 	DownloadSub m_sub;
+	HashDownloadSub m_hashSub;
 
 	/// Have we received a GetTransactions packet that we haven't yet answered?
 	bool m_requireTransactions = false;

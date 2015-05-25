@@ -34,7 +34,6 @@
 #include <libdevcore/Guards.h>
 #include "BlockDetails.h"
 #include "Account.h"
-#include "BlockQueue.h"
 #include "BlockChain.h"
 namespace ldb = leveldb;
 
