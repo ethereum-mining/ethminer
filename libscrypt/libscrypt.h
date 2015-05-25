@@ -33,17 +33,6 @@ int libscrypt_scrypt(const uint8_t *, size_t, const uint8_t *, size_t, uint64_t,
 int libscrypt_mcf(uint32_t N, uint32_t r, uint32_t p, const char *salt,
 	const char *hash, char *mcf);
 
-#ifndef _MSC_VER
-/* Generates a salt. Uses /dev/urandom/
- */
-int libscrypt_salt_gen(/*@out@*/ uint8_t *rand, size_t len);
-
-/* Creates a hash of a passphrase using a randomly generated salt */
-/* Returns >0 on success, or 0 for fail */
-int libscrypt_hash(char *dst, const char* passphrase, uint32_t N, uint8_t r,
-  uint8_t p);
-#endif
-
 /* Checks a given MCF against a password */
 int libscrypt_check(char *mcf, const char *password);
 
