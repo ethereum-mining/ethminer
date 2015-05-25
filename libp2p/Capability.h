@@ -44,6 +44,7 @@ public:
 */
 	Session* session() const { return m_session; }
 	HostCapabilityFace* hostCapability() const { return m_host; }
+	bool enabled() { return m_enabled; }
 
 protected:
 	virtual bool interpret(unsigned _id, RLP const&) = 0;
