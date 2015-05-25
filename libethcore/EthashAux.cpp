@@ -133,7 +133,9 @@ bytesConstRef EthashAux::LightAllocation::data() const
 
 EthashAux::FullAllocation::FullAllocation(ethash_light_t _light, ethash_callback_t _cb)
 {
+//	cdebug << "About to call ethash_full_new...";
 	full = ethash_full_new(_light, _cb);
+//	cdebug << "Called OK.";
 	if (!full)
 		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_full_new()"));
 }
@@ -170,9 +172,9 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 	if (_createIfMissing || computeFull(_seedHash, false) == 100)
 	{
 		s_dagCallback = _f;
-		cnote << "Loading from libethash...";
+//		cnote << "Loading from libethash...";
 		ret = make_shared<FullAllocation>(l->light, dagCallbackShim);
-		cnote << "Done loading.";
+//		cnote << "Done loading.";
 
 		DEV_GUARDED(get()->x_fulls)
 			get()->m_fulls[_seedHash] = get()->m_lastUsedFull = ret;
