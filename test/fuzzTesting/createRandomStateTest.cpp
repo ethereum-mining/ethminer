@@ -173,7 +173,8 @@ void doRandomCodeAlgo()
 	dev::test::RandomCodeOptions options;
 	options.setWeight(dev::eth::Instruction::STOP, 10);		//default 50
 	options.setWeight(dev::eth::Instruction::SSTORE, 70);
-	string randomCode = dev::test::RandomCode::generate(15);
+	string randomCode = dev::test::RandomCode::generate(10);
+	string randomData = dev::test::RandomCode::generate(10);
 
 	mValue v;
 	read_string(c_testExample, v);
@@ -182,7 +183,7 @@ void doRandomCodeAlgo()
 	v.get_obj().find("randomStatetest")->second.get_obj().find("pre")->second.get_obj().begin()->second.get_obj()["code"] = "0x" + randomCode;
 
 	// insert new data in tx
-	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["data"] = "0x" + randomCode;
+	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["data"] = "0x" + randomData;
 
 	// insert new value in tx
 	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["value"] = dev::test::RandomCode::randomUniInt();
