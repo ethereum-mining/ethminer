@@ -198,8 +198,6 @@ void doRandomCodeAlgo()
 	cout << json_spirit::write_string(v, true);
 }
 
-
-
 void doStateTests(json_spirit::mValue& _v)
 {
 	eth::VMFactory::setKind(eth::VMKind::Interpreter);
@@ -238,6 +236,3 @@ void doStateTests(json_spirit::mValue& _v)
 #endif
 	}
 }
-
-
-
