@@ -484,7 +484,10 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 				if (!functionName.isEmpty() && ((prevInstruction.getJumpType() == AssemblyItem::JumpType::IntoFunction) || solCallStack.empty()))
 					solCallStack.push_front(QVariant::fromValue(functionName));
 				else if (prevInstruction.getJumpType() == AssemblyItem::JumpType::OutOfFunction && !solCallStack.empty())
+				{
 					solCallStack.pop_front();
+					solLocals.clear();
+				}
 			}
 
 			//format solidity context values
