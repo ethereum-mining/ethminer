@@ -42,6 +42,9 @@ eth_add_executable(${EXECUTABLE}
 
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
+if(WIN32)
+	target_link_libraries(${EXECUTABLE} Iphlpapi)
+endif()
 target_link_libraries(${EXECUTABLE} Qt5::Core)
 target_link_libraries(${EXECUTABLE} Qt5::Widgets)
 target_link_libraries(${EXECUTABLE} Qt5::WebEngine)
