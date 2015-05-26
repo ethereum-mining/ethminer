@@ -142,8 +142,12 @@ void Ethash::CPUMiner::workLoop()
 	WorkPackage w = work();
 
 	EthashAux::FullType dag;
-	while (!shouldStop() && !(dag = EthashAux::full(w.seedHash)))
-		this_thread::sleep_for(chrono::milliseconds(500));
+	while (!shouldStop() && !dag)
+	{
+		while (!shouldStop() && EthashAux::computeFull(w.seedHash, true) != 100)
+			this_thread::sleep_for(chrono::milliseconds(500));
+		dag = EthashAux::full(w.seedHash, false);
+	}
 
 	h256 boundary = w.boundary;
 	unsigned hashCount = 1;

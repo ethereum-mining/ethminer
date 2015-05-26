@@ -38,8 +38,6 @@ namespace eth
 
 struct InvalidICAP: virtual public dev::Exception {};
 
-static const std::string EmptyString;
-
 /**
  * @brief Encapsulation of an ICAP address.
  * Can be encoded, decoded, looked-up and inspected.
