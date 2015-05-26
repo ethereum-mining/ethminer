@@ -811,19 +811,4 @@ BOOST_AUTO_TEST_CASE(userDefinedFile)
 	dev::test::userDefinedTest(dev::test::doBlockchainTests);
 }
 
-BOOST_AUTO_TEST_CASE(rndCode)
-{
-	std::string code;
-	cerr << "Testing Random Code: ";
-	try
-	{
-		code = dev::test::RandomCode::generate(10);
-	}
-	catch(...)
-	{
-		BOOST_ERROR("Exception thrown when generating random code!");
-	}
-	cerr << code;
-}
-
 BOOST_AUTO_TEST_SUITE_END()
