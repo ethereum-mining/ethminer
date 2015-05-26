@@ -19,7 +19,9 @@ add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 add_dependencies(${EXECUTABLE} BuildInfo.h)
 
-target_link_libraries(${EXECUTABLE} Iphlpapi)
+if((WIN32)
+	target_link_libraries(${EXECUTABLE} Iphlpapi)
+endif()
 target_link_libraries(${EXECUTABLE} ${Boost_REGEX_LIBRARIES})
 
 if (READLINE_FOUND)
