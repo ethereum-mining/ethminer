@@ -390,7 +390,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 				}
 
 				o["callcreates"] = fev.exportCallCreates();
-				o["out"] = toHex(output, 2, HexPrefix::Add);
+				o["out"] = output.size() > 4096 ? "#" + toString(output.size()) : toHex(output, 2, HexPrefix::Add);
 				o["gas"] = toCompactHex(gas, HexPrefix::Add, 1);
 				o["logs"] = exportLog(fev.sub.logs);
 			}
