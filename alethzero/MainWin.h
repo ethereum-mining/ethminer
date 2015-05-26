@@ -33,9 +33,9 @@
 #include <QtWidgets/QMainWindow>
 #include <libdevcore/RLP.h>
 #include <libethcore/Common.h>
+#include <libethcore/KeyManager.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
-#include <libethereum/KeyManager.h>
 #include <libwebthree/WebThree.h>
 #include <libsolidity/CompilerStack.h>
 #include "Context.h"
@@ -137,7 +137,10 @@ private slots:
 	void on_newAccount_triggered();
 	void on_killAccount_triggered();
 	void on_importKey_triggered();
+	void on_reencryptKey_triggered();
+	void on_reencryptAll_triggered();
 	void on_importKeyFile_triggered();
+	void on_claimPresale_triggered();
 	void on_exportKey_triggered();
 
 	// Account pane
@@ -246,7 +249,7 @@ private:
 	void refreshBalances();
 
 	void setBeneficiary(dev::Address const& _b);
-	std::string getPassword(std::string const& _title, std::string const& _for);
+	std::string getPassword(std::string const& _title, std::string const& _for, std::string* _hint = nullptr, bool* _ok = nullptr);
 
 	std::unique_ptr<Ui::Main> ui;
 

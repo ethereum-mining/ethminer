@@ -44,7 +44,7 @@ struct MiningProgress
 //	MiningProgress& operator+=(MiningProgress const& _mp) { hashes += _mp.hashes; ms = std::max(ms, _mp.ms); return *this; }
 	uint64_t hashes = 0;		///< Total number of hashes computed.
 	uint64_t ms = 0;			///< Total number of milliseconds of mining thus far.
-	uint64_t rate() const { return hashes * 1000 / ms; }
+	uint64_t rate() const { return ms == 0 ? 0 : hashes * 1000 / ms; }
 };
 
 struct MineInfo: public MiningProgress {};

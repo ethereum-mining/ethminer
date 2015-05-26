@@ -635,7 +635,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			if (m_stack[m_stack.size() - 3] > 0)
 				callParams->gas += c_callStipend;
 			m_stack.pop_back();
-			callParams->receiveAddress = asAddress(m_stack.back());
+			callParams->codeAddress = asAddress(m_stack.back());
 			m_stack.pop_back();
 			callParams->value = m_stack.back();
 			m_stack.pop_back();
@@ -653,7 +653,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			{
 				callParams->onOp = _onOp;
 				callParams->senderAddress = _ext.myAddress;
-				callParams->codeAddress = inst == Instruction::CALL ? callParams->receiveAddress : callParams->senderAddress;
+				callParams->receiveAddress = inst == Instruction::CALL ? callParams->codeAddress : callParams->senderAddress;
 				callParams->data = bytesConstRef(m_temp.data() + inOff, inSize);
 				callParams->out = bytesRef(m_temp.data() + outOff, outSize);
 				m_stack.push_back(_ext.call(*callParams));

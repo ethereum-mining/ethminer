@@ -137,7 +137,7 @@ class GasMapWrapper: public QObject
 	Q_PROPERTY(GasCostsMaps gasMaps MEMBER m_gasMaps CONSTANT)
 
 public:
-	GasMapWrapper(QObject* _parent): QObject(_parent){}
+	GasMapWrapper(QObject* _parent = nullptr): QObject(_parent){}
 	void push(QString _source, int _start, int _end, QString _value, bool _isInfinite);
 	bool contains(QString _key);
 	void insert(QString _source, QVariantList _variantList);
@@ -216,7 +216,7 @@ signals:
 	/// Emitted on compilation complete
 	void compilationComplete();
 	/// Emitted on compilation error
-	void compilationError(QString _error, QString _sourceName);
+	void compilationError(QString _error, QVariantMap _firstErrorLoc, QVariantList _secondErrorLoc);
 	/// Internal signal used to transfer compilation job to background thread
 	void scheduleCompilationJob(int _jobId);
 	/// Emitted if there are any changes in the code model
@@ -239,6 +239,7 @@ private:
 	void stop();
 	void releaseContracts();
 	void collectContracts(dev::solidity::CompilerStack const& _cs, std::vector<std::string> const& _sourceNames);
+	QVariantMap resolveCompilationErrorLocation(dev::solidity::CompilerStack const& _cs, dev::SourceLocation const& _location);
 
 	std::atomic<bool> m_compiling;
 	mutable dev::Mutex x_contractMap;

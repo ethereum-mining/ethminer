@@ -64,19 +64,24 @@ extern "C"
 
 	EXPORT bool env_call(ExtVMFace* _env, int64_t* io_gas, int64_t _callGas, h256* _receiveAddress, i256* _value, byte* _inBeg, uint64_t _inSize, byte* _outBeg, uint64_t _outSize, h256* _codeAddress)
 	{
-		auto value = llvm2eth(*_value);
-		auto receiveAddress = right160(*_receiveAddress);
-		auto codeAddress = right160(*_codeAddress);
-		const auto isCall = receiveAddress == codeAddress; // OPT: The same address pointer can be used if not CODECALL
+		CallParameters params;
+		params.value = llvm2eth(*_value);
+		params.senderAddress = _env->myAddress;
+		params.receiveAddress = right160(*_receiveAddress);
+		params.codeAddress = right160(*_codeAddress);
+		params.data = {_inBeg, _inSize};
+		params.out = {_outBeg, _outSize};
+		params.onOp = {};
+		const auto isCall = params.receiveAddress == params.codeAddress; // OPT: The same address pointer can be used if not CODECALL
 
 		*io_gas -= _callGas;
 		if (*io_gas < 0)
 			return false;
 
-		if (isCall && !_env->exists(receiveAddress))
+		if (isCall && !_env->exists(params.receiveAddress))
 			*io_gas -= static_cast<int64_t>(c_callNewAccountGas); // no underflow, *io_gas non-negative before
 
-		if (value > 0) // value transfer
+		if (params.value > 0) // value transfer
 		{
 			/*static*/ assert(c_callValueTransferGas > c_callStipend && "Overflow possible");
 			*io_gas -= static_cast<int64_t>(c_callValueTransferGas); // no underflow
@@ -87,11 +92,11 @@ extern "C"
 			return false;
 
 		auto ret = false;
-		auto callGas = u256{_callGas};
-		if (_env->balance(_env->myAddress) >= value && _env->depth < 1024)
-			ret = _env->call(receiveAddress, value, {_inBeg, _inSize}, callGas, {_outBeg, _outSize}, {}, {}, codeAddress);
+		params.gas = u256{_callGas};
+		if (_env->balance(_env->myAddress) >= params.value && _env->depth < 1024)
+			ret = _env->call(params);
 
-		*io_gas += static_cast<int64_t>(callGas); // it is never more than initial _callGas
+		*io_gas += static_cast<int64_t>(params.gas); // it is never more than initial _callGas
 		return ret;
 	}
 
