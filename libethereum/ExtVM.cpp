@@ -28,10 +28,6 @@ using namespace dev::eth;
 
 bool ExtVM::call(CallParameters& _p)
 {
-	// clear output memory
-	for (auto& i: _p.out)
-		i = 0;
-
 	Executive e(m_s, lastHashes, depth + 1);
 	if (!e.call(_p, gasPrice, origin))
 	{
