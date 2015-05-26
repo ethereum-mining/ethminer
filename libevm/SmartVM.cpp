@@ -21,7 +21,7 @@
 #include "SmartVM.h"
 #include <unordered_map>
 #include <libdevcore/Log.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <evmjit/JIT.h>
 #include <evmjit/libevmjit-cpp/Utils.h>
 #include "VMFactory.h"

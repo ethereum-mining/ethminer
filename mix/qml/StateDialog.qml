@@ -507,14 +507,25 @@ Dialog {
 					Button {
 						text: qsTr("OK")
 						onClicked: {
-							close()
-							accepted()
+							if (titleField.text === "")
+								alertDialog.open()
+							else
+							{
+								close()
+								accepted()
+							}
 						}
 					}
 					Button {
 						text: qsTr("Cancel")
 						onClicked: close()
 					}
+				}
+
+				MessageDialog
+				{
+					id: alertDialog
+					text: qsTr("Please provide a name.")
 				}
 
 				ListModel {

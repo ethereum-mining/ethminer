@@ -93,6 +93,9 @@ Column
 					else
 						item.value = getValue();
 
+					if (ptype.category === QSolidityType.Bool)
+						item.init();
+
 					item.onValueChanged.connect(function() {
 						vals[pname] = item.value;
 						valueChanged();

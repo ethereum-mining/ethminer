@@ -23,7 +23,7 @@
 
 #include <boost/regex.hpp>
 #include <libethcore/Common.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
