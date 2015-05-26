@@ -628,7 +628,7 @@ int main(int argc, char** argv)
 		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
 		netPrefs,
 		&nodesState);
-	
+
 	auto toNumber = [&](string const& s) -> unsigned {
 		if (s == "latest")
 			return web3.ethereum()->number();
@@ -693,15 +693,18 @@ int main(int argc, char** argv)
 	}
 
 	if (keyManager.exists())
-		while (masterPassword.empty())
-		{
-			masterPassword = getPassword("Please enter your MASTER password: ");
-			if (!keyManager.load(masterPassword))
+		if (!masterPassword.empty())
+			keyManager.load(masterPassword);
+		else
+			while (masterPassword.empty())
 			{
-				cout << "Password invalid. Try again." << endl;
-				masterPassword.clear();
+				masterPassword = getPassword("Please enter your MASTER password: ");
+				if (!keyManager.load(masterPassword))
+				{
+					cout << "Password invalid. Try again." << endl;
+					masterPassword.clear();
+				}
 			}
-		}
 	else
 	{
 		while (masterPassword.empty())
