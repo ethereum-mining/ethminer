@@ -165,12 +165,17 @@ void SecretStore::load(std::string const& _keysPath)
 h128 SecretStore::readKey(std::string const& _file, bool _deleteFile)
 {
 	cdebug << "Reading" << _file;
-	js::mValue u = upgraded(contentsString(_file));
+	return readKeyContent(contentsString(_file), _deleteFile ? _file : string());
+}
+
+h128 SecretStore::readKeyContent(std::string const& _content, std::string const& _file)
+{
+	js::mValue u = upgraded(_content);
 	if (u.type() == js::obj_type)
 	{
 		js::mObject& o = u.get_obj();
 		auto uuid = fromUUID(o["id"].get_str());
-		m_keys[uuid] = make_pair(js::write_string(o["crypto"], false), _deleteFile ? _file : string());
+		m_keys[uuid] = make_pair(js::write_string(o["crypto"], false), _file);
 		return uuid;
 	}
 	else
