@@ -20,9 +20,9 @@
  */
 
 #include "TrieHash.h"
-#include <libdevcrypto/TrieCommon.h>
-#include <libdevcrypto/TrieDB.h>	// @TODO replace ASAP!
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/TrieCommon.h>
+#include <libdevcore/TrieDB.h>	// @TODO replace ASAP!
+#include <libdevcore/SHA3.h>
 #include <libethcore/Common.h>
 using namespace std;
 using namespace dev;
@@ -158,74 +158,40 @@ void hash256aux(HexMap const& _s, HexMap::const_iterator _begin, HexMap::const_i
 	}
 }
 
-h256 hash256(StringMap const& _s)
-{
-	// build patricia tree.
-	if (_s.empty())
-		return sha3(rlp(""));
-	HexMap hexMap;
-	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
-		hexMap[asNibbles(i->first)] = i->second;
-	RLPStream s;
-	hash256rlp(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
-	return sha3(s.out());
-}
-
-bytes rlp256(StringMap const& _s)
+bytes rlp256(BytesMap const& _s)
 {
 	// build patricia tree.
 	if (_s.empty())
 		return rlp("");
 	HexMap hexMap;
 	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
-		hexMap[asNibbles(i->first)] = i->second;
+		hexMap[asNibbles(bytesConstRef(&i->first))] = i->second;
 	RLPStream s;
-	hash256aux(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
+	hash256rlp(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
 	return s.out();
 }
 
-h256 hash256(u256Map const& _s)
+h256 hash256(BytesMap const& _s)
 {
-	// build patricia tree.
-	if (_s.empty())
-		return sha3(rlp(""));
-	HexMap hexMap;
-	for (auto i = _s.rbegin(); i != _s.rend(); ++i)
-		hexMap[asNibbles(toBigEndianString(i->first))] = asString(rlp(i->second));
-	RLPStream s;
-	hash256rlp(hexMap, hexMap.cbegin(), hexMap.cend(), 0, s);
-	return sha3(s.out());
-}
-
-/*h256 orderedTrieRoot(std::vector<bytes> const& _data)
-{
-	StringMap m;
-	unsigned j = 0;
-	for (auto i: _data)
-		m[asString(rlp(j++))] = asString(i);
-	return hash256(m);
-}*/
-
-h256 orderedTrieRoot(std::vector<bytesConstRef> const& _data)
-{
-	MemoryDB db;
-	GenericTrieDB<MemoryDB> t(&db);
-	t.init();
-	unsigned j = 0;
-	for (auto i: _data)
-		t.insert(rlp(j++), i.toBytes());
-	return t.root();
+	return sha3(rlp256(_s));
 }
 
 h256 orderedTrieRoot(std::vector<bytes> const& _data)
 {
-	MemoryDB db;
-	GenericTrieDB<MemoryDB> t(&db);
-	t.init();
+	BytesMap m;
 	unsigned j = 0;
 	for (auto i: _data)
-		t.insert(rlp(j++), i);
-	return t.root();
+		m[rlp(j++)] = i;
+	return hash256(m);
+}
+
+h256 orderedTrieRoot(std::vector<bytesConstRef> const& _data)
+{
+	BytesMap m;
+	unsigned j = 0;
+	for (auto i: _data)
+		m[rlp(j++)] = i.toBytes();
+	return hash256(m);
 }
 
 }

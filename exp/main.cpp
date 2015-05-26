@@ -34,6 +34,8 @@
 #include <functional>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
+#include <libdevcore/TrieDB.h>
+#include <libdevcore/TrieHash.h>
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
@@ -41,14 +43,14 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libdevcore/CommonIO.h>
-#include <libdevcrypto/TrieDB.h>
 #include <libdevcrypto/SecretStore.h>
 #include <libp2p/All.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/Farm.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethereum/All.h>
-#include <libethereum/KeyManager.h>
+#include <libethcore/KeyManager.h>
+
 #include <libethereum/AccountDiff.h>
 #include <libethereum/DownloadMan.h>
 #include <libethereum/Client.h>
@@ -65,6 +67,44 @@ namespace js = json_spirit;
 namespace fs = boost::filesystem;
 
 #if 1
+
+int main()
+{
+	cdebug << pbkdf2("password", asBytes("salt"), 1, 32);
+	cdebug << pbkdf2("password", asBytes("salt"), 1, 16);
+	cdebug << pbkdf2("password", asBytes("salt"), 2, 16);
+	cdebug << pbkdf2("testpassword", fromHex("de5742f1f1045c402296422cee5a8a9ecf0ac5bf594deca1170d22aef33a79cf"), 262144, 16);
+	return 0;
+}
+
+
+#elif 0
+
+int main()
+{
+	cdebug << "EXP";
+	vector<bytes> data;
+	for (unsigned i = 0; i < 10000; ++i)
+		data.push_back(rlp(i));
+
+	h256 ret;
+	DEV_TIMED(triedb)
+	{
+		MemoryDB mdb;
+		GenericTrieDB<MemoryDB> t(&mdb);
+		t.init();
+		unsigned i = 0;
+		for (auto const& d: data)
+			t.insert(rlp(i++), d);
+		ret = t.root();
+	}
+	cdebug << ret;
+	DEV_TIMED(hash256)
+		ret = orderedTrieRoot(data);
+	cdebug << ret;
+}
+
+#elif 0
 
 int main()
 {

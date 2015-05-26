@@ -29,7 +29,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/ProofOfWork.h>
@@ -37,7 +37,8 @@
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
-#include <libethereum/KeyManager.h>
+#include <libethcore/KeyManager.h>
+
 #include <libwebthree/WebThree.h>
 #if ETH_JSCONSOLE || !ETH_TRUE
 #include <libjsconsole/JSConsole.h>

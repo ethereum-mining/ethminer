@@ -94,7 +94,6 @@ Dialog {
 	function loadCtorParameters(contractId)
 	{
 		paramsModel = [];
-		console.log(contractId);
 		var contract = codeModel.contracts[contractId];
 		if (contract) {
 			var params = contract.contract.constructor.parameters;
@@ -154,7 +153,7 @@ Dialog {
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
 			var contract = codeModel.contracts[contractFromToken(recipients.currentValue())];
 			if (contract) {
-				var func = contract.contract.functions[functionComboBox.currentIndex];
+				var func = contract.contract.functions[functionComboBox.currentIndex - 1];
 				if (func) {
 					var parameters = func.parameters;
 					for (var p = 0; p < parameters.length; p++)

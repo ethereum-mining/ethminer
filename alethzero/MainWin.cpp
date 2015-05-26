@@ -44,7 +44,7 @@
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
 #endif
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethcore/CommonJS.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/ICAP.h>
@@ -75,6 +75,7 @@
 #include "WebPage.h"
 #include "ExportState.h"
 #include "ui_Main.h"
+#include "ui_GetPassword.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -467,7 +468,9 @@ void Main::load(QString _s)
 void Main::on_newTransaction_triggered()
 {
 	m_transact.setEnvironment(m_keyManager.accounts(), ethereum(), &m_natSpecDB);
-	m_transact.exec();
+	m_transact.setWindowFlags(Qt::Dialog);
+	m_transact.setWindowModality(Qt::WindowModal);
+	m_transact.show();
 }
 
 void Main::on_loadJS_triggered()
@@ -698,12 +701,17 @@ Secret Main::retrieveSecret(Address const& _a) const
 	auto info = m_keyManager.accountDetails()[_a];
 	while (true)
 	{
-		if (Secret s = m_keyManager.secret(_a, [&](){
-				return QInputDialog::getText(const_cast<Main*>(this), "Import Account Key", QString("Enter the password for the account %2 (%1). The hint is:\n%3").arg(QString::fromStdString(_a.abridged())).arg(QString::fromStdString(info.first)).arg(QString::fromStdString(info.second)), QLineEdit::Password).toStdString();
-			}))
+		Secret s = m_keyManager.secret(_a, [&](){
+			QDialog d;
+			Ui_GetPassword gp;
+			gp.setupUi(&d);
+			d.setWindowTitle("Unlock Account");
+			gp.label->setText(QString("Enter the password for the account %2 (%1).").arg(QString::fromStdString(_a.abridged())).arg(QString::fromStdString(info.first)));
+			gp.entry->setPlaceholderText("Hint: " + QString::fromStdString(info.second));
+			return d.exec() == QDialog::Accepted ? gp.entry->text().toStdString() : string();
+		});
+		if (s || QMessageBox::warning(nullptr, "Unlock Account", "The password you gave is incorrect for this key.", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
 			return s;
-		else if (QMessageBox::warning(const_cast<Main*>(this), "Incorrect Password", "The password you gave is incorrect for this key.", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
-			return Secret();
 	}
 }
 
@@ -771,17 +779,32 @@ void Main::readSettings(bool _skipGeometry)
 	on_urlEdit_returnPressed();
 }
 
-std::string Main::getPassword(std::string const& _title, std::string const& _for)
+std::string Main::getPassword(std::string const& _title, std::string const& _for, std::string* _hint, bool* _ok)
 {
 	QString password;
 	while (true)
 	{
-		password = QInputDialog::getText(nullptr, QString::fromStdString(_title), QString::fromStdString(_for), QLineEdit::Password, QString());
+		bool ok;
+		password = QInputDialog::getText(nullptr, QString::fromStdString(_title), QString::fromStdString(_for), QLineEdit::Password, QString(), &ok);
+		if (!ok)
+		{
+			if (_ok)
+				*_ok = false;
+			return string();
+		}
+		if (password.isEmpty())
+			break;
 		QString confirm = QInputDialog::getText(nullptr, QString::fromStdString(_title), "Confirm this password by typing it again", QLineEdit::Password, QString());
 		if (password == confirm)
 			break;
 		QMessageBox::warning(nullptr, QString::fromStdString(_title), "You entered two different passwords - please enter the same password twice.", QMessageBox::Ok);
 	}
+
+	if (!password.isEmpty() && _hint && !m_keyManager.haveHint(password.toStdString()))
+		*_hint = QInputDialog::getText(this, "Create Account", "Enter a hint to help you remember this password.").toStdString();
+
+	if (_ok)
+		*_ok = true;
 	return password.toStdString();
 }
 
@@ -797,8 +820,11 @@ void Main::on_importKey_triggered()
 			QString s = QInputDialog::getText(this, "Import Account Key", "Enter this account's name");
 			if (QMessageBox::question(this, "Additional Security?", "Would you like to use additional security for this key? This lets you protect it with a different password to other keys, but also means you must re-enter the key's password every time you wish to use the account.", QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes)
 			{
-				std::string password = getPassword("Import Account Key", "Enter the password you would like to use for this key. Don't forget it!");
-				std::string hint = QInputDialog::getText(this, "Import Account Key", "Enter a hint to help you remember this password.").toStdString();
+				bool ok;
+				std::string hint;
+				std::string password = getPassword("Import Account Key", "Enter the password you would like to use for this key. Don't forget it!", &hint, &ok);
+				if (!ok)
+					return;
 				m_keyManager.import(k.secret(), s.toStdString(), password, hint);
 			}
 			else
@@ -813,6 +839,33 @@ void Main::on_importKey_triggered()
 }
 
 void Main::on_importKeyFile_triggered()
+{
+	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
+	h128 uuid = m_keyManager.store().importKey(s.toStdString());
+	if (!uuid)
+	{
+		QMessageBox::warning(this, "Key File Invalid", "Could not find secret key definition. This is probably not an Web3 key file.");
+		return;
+	}
+
+	QString info = QInputDialog::getText(this, "Import Key File", "Enter a description of this key to help you recognise it in the future.");
+
+	QString pass;
+	for (Secret s; !s;)
+	{
+		s = Secret(m_keyManager.store().secret(uuid, [&](){
+			pass = QInputDialog::getText(this, "Import Key File", "Enter the password for the key to complete the import.", QLineEdit::Password);
+			return pass.toStdString();
+		}, false));
+		if (!s && QMessageBox::question(this, "Import Key File", "The password you provided is incorrect. Would you like to try again?", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
+			return;
+	}
+
+	QString hint = QInputDialog::getText(this, "Import Key File", "Enter a hint for this password to help you remember it.");
+	m_keyManager.importExisting(uuid, info.toStdString(), pass.toStdString(), hint.toStdString());
+}
+
+void Main::on_claimPresale_triggered()
 {
 	QString s = QFileDialog::getOpenFileName(this, "Claim Account Contents", QDir::homePath(), "JSON Files (*.json);;All Files (*)");
 	try
@@ -1166,10 +1219,10 @@ void Main::on_turboMining_triggered()
 
 void Main::refreshBlockChain()
 {
-	if (!ui->blocks->isVisible())
+	if (!ui->blocks->isVisible() && isVisible())
 		return;
 
-	DEV_TIMED_FUNCTION;
+	DEV_TIMED_FUNCTION_ABOVE(500);
 	cwatch << "refreshBlockChain()";
 
 	// TODO: keep the same thing highlighted.
@@ -1353,7 +1406,7 @@ void Main::timerEvent(QTimerEvent*)
 		auto ls = ethereum()->checkWatchSafe(i.first);
 		if (ls.size())
 		{
-			cnote << "FIRING WATCH" << i.first << ls.size();
+//			cnote << "FIRING WATCH" << i.first << ls.size();
 			i.second(ls);
 		}
 	}
@@ -1976,8 +2029,11 @@ void Main::on_newAccount_triggered()
 	QString s = QInputDialog::getText(this, "Create Account", "Enter this account's name");
 	if (QMessageBox::question(this, "Create Account", "Would you like to use additional security for this key? This lets you protect it with a different password to other keys, but also means you must re-enter the key's password every time you wish to use the account.", QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes)
 	{
-		std::string password = getPassword("Create Account", "Enter the password you would like to use for this key. Don't forget it!");
-		std::string hint = QInputDialog::getText(this, "Create Account", "Enter a hint to help you remember this password.").toStdString();
+		bool ok = false;
+		std::string hint;
+		std::string password = getPassword("Create Account", "Enter the password you would like to use for this key. Don't forget it!", &hint, &ok);
+		if (!ok)
+			return;
 		m_keyManager.import(p.secret(), s.toStdString(), password, hint);
 	}
 	else
@@ -1989,15 +2045,14 @@ void Main::on_killAccount_triggered()
 {
 	if (ui->ourAccounts->currentRow() >= 0)
 	{
-		auto hba = ui->accounts->currentItem()->data(Qt::UserRole).toByteArray();
+		auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
 		Address h((byte const*)hba.data(), Address::ConstructFromPointer);
 		auto k = m_keyManager.accountDetails()[h];
-		if (
-			ethereum()->balanceAt(h) != 0 &&
-			QMessageBox::critical(this, QString::fromStdString("Kill Account " + k.first + "?!"),
-				QString::fromStdString("Account " + k.first + " (" + render(h) + ") has " + formatBalance(ethereum()->balanceAt(h)) + " in it. It, and any contract that this account can access, will be lost forever if you continue. Do NOT continue unless you know what you are doing.\n"
-				"Are you sure you want to continue?"),
-				QMessageBox::Yes, QMessageBox::No) == QMessageBox::No)
+		QString s = QInputDialog::getText(this, QString::fromStdString("Kill Account " + k.first + "?!"),
+			QString::fromStdString("Account " + k.first + " (" + render(h) + ") has " + formatBalance(ethereum()->balanceAt(h)) + " in it.\r\nIt, and any contract that this account can access, will be lost forever if you continue. Do NOT continue unless you know what you are doing.\n"
+			"Are you sure you want to continue? \r\n If so, type 'YES' to confirm."),
+			QLineEdit::Normal, "NO");
+		if (s != "YES")
 			return;
 		m_keyManager.kill(h);
 		if (m_keyManager.accounts().empty())
@@ -2007,6 +2062,57 @@ void Main::on_killAccount_triggered()
 		if (m_beneficiary == h)
 			setBeneficiary(*m_keyManager.accounts().begin());
 	}
+}
+
+void Main::on_reencryptKey_triggered()
+{
+	if (ui->ourAccounts->currentRow() >= 0)
+	{
+		auto hba = ui->ourAccounts->currentItem()->data(Qt::UserRole).toByteArray();
+		Address a((byte const*)hba.data(), Address::ConstructFromPointer);
+		QStringList kdfs = {"PBKDF2-SHA256", "Scrypt"};
+		bool ok = true;
+		KDF kdf = (KDF)kdfs.indexOf(QInputDialog::getItem(this, "Re-Encrypt Key", "Select a key derivation function to use for storing your key:", kdfs, kdfs.size() - 1, false, &ok));
+		if (!ok)
+			return;
+		std::string hint;
+		std::string password = getPassword("Create Account", "Enter the password you would like to use for this key. Don't forget it!\nEnter nothing to use your Master password.", &hint, &ok);
+		if (!ok)
+			return;
+		try {
+			auto pw = [&](){
+				auto p = QInputDialog::getText(this, "Re-Encrypt Key", "Enter the original password for this key.\nHint: " + QString::fromStdString(m_keyManager.hint(a)), QLineEdit::Password, QString()).toStdString();
+				if (p.empty())
+					throw UnknownPassword();
+				return p;
+			};
+			while (!(password.empty() ? m_keyManager.recode(a, SemanticPassword::Master, pw, kdf) : m_keyManager.recode(a, password, hint, pw, kdf)))
+				if (QMessageBox::question(this, "Re-Encrypt Key", "Password given is incorrect. Would you like to try again?", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
+					return;
+		}
+		catch (UnknownPassword&) {}
+	}
+}
+
+void Main::on_reencryptAll_triggered()
+{
+	QStringList kdfs = {"PBKDF2-SHA256", "Scrypt"};
+	bool ok = false;
+	QString kdf = QInputDialog::getItem(this, "Re-Encrypt Key", "Select a key derivation function to use for storing your keys:", kdfs, kdfs.size() - 1, false, &ok);
+	if (!ok)
+		return;
+	try {
+		for (Address const& a: m_keyManager.accounts())
+			while (!m_keyManager.recode(a, SemanticPassword::Existing, [&](){
+				auto p = QInputDialog::getText(nullptr, "Re-Encrypt Key", QString("Enter the original password for key %1.\nHint: %2").arg(QString::fromStdString(pretty(a))).arg(QString::fromStdString(m_keyManager.hint(a))), QLineEdit::Password, QString()).toStdString();
+				if (p.empty())
+					throw UnknownPassword();
+				return p;
+			}, (KDF)kdfs.indexOf(kdf)))
+				if (QMessageBox::question(this, "Re-Encrypt Key", "Password given is incorrect. Would you like to try again?", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
+					return;
+	}
+	catch (UnknownPassword&) {}
 }
 
 void Main::on_go_triggered()
