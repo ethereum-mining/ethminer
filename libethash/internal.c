@@ -368,7 +368,7 @@ static bool ethash_mmap(struct ethash_full* ret, FILE* f)
 	if ((fd = ethash_fileno(ret->file)) == -1) {
 		return false;
 	}
-	mmapped_data= mmap(
+	mmapped_data = mmap(
 		NULL,
 		(size_t)ret->file_size + ETHASH_DAG_MAGIC_NUM_SIZE,
 		PROT_READ | PROT_WRITE,
