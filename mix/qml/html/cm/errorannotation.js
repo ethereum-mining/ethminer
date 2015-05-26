@@ -1,42 +1,39 @@
-function ErrorAnnotation(editor, line, column, content)
+function ErrorAnnotation(editor, location, content)
 {
+	this.location = location;
 	this.opened = false;
-	this.line = line;
-	this.column = column;
+	this.rawContent = content;
 	this.content = content.replace("Contract Error:", "");
 	this.editor = editor;
 	this.errorMark = null;
 	this.lineWidget = null;
 	this.init();
-	this.open();
+	if (this.content)
+		this.open();
 }
 
 ErrorAnnotation.prototype.init = function()
 {
-	var separators = [';', ',', '\\\(', '\\\{',  '\\\}', '\\\)', ':'];
-	var errorPart = editor.getLine(this.line).substring(this.column);
-	var incrMark = this.column + errorPart.split(new RegExp(separators.join('|'), 'g'))[0].length;
-	if (incrMark === this.column)
-		incrMark = this.column + 1;
-	this.errorMark = editor.markText({ line: this.line, ch: this.column }, { line: this.line, ch: incrMark }, { className: "CodeMirror-errorannotation", inclusiveRight: true });
+	this.errorMark = editor.markText({ line: this.location.start.line, ch: this.location.start.column }, { line: this.location.end.line, ch: this.location.end.column }, { className: "CodeMirror-errorannotation", inclusiveRight: true });
 }
 
 ErrorAnnotation.prototype.open = function()
 {
-	if (this.line)
+	if (this.location.start.line)
 	{
 		var node = document.createElement("div");
 		node.id = "annotation"
 		node.innerHTML = this.content;
 		node.className = "CodeMirror-errorannotation-context";
-		this.lineWidget = this.editor.addLineWidget(this.line, node, { coverGutter: false });
+		this.lineWidget = this.editor.addLineWidget(this.location.start.line, node, { coverGutter: false });
 		this.opened = true;
 	}
 }
 
 ErrorAnnotation.prototype.close = function()
 {
-	this.lineWidget.clear();
+	if (this.lineWidget)
+		this.lineWidget.clear();
 	this.opened = false;
 }
 

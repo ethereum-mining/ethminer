@@ -52,7 +52,7 @@ span.CodeMirror-selectedtext { color: #ffffff !important; }
 .CodeMirror-errorannotation {
 	border-bottom: 1px solid #DD3330;
 	margin-bottom: 4px;
-}
+	}
 
 .CodeMirror-errorannotation-context {
 	font-family: monospace;
@@ -61,5 +61,10 @@ span.CodeMirror-selectedtext { color: #ffffff !important; }
 	padding: 2px;
 	text-shadow: none !important;
 	border-top: solid 2px #063742;
+}
+
+.CodeMirror-search-field
+{
+	font-size: 12px;
 }
 
