@@ -96,6 +96,14 @@ string const c_testExample = R"(
 
 int main(int argc, char *argv[])
 {
+	for (auto i = 0; i < argc; ++i)
+	{
+		auto arg = std::string{argv[i]};
+		dev::test::Options& options = const_cast<dev::test::Options&>(dev::test::Options::get());
+		if (arg == "--fulloutput")
+			options.fulloutput = true;
+	}
+
 	//doChristophAlgo();
 	doRandomCodeAlgo();
 	return 0;

@@ -114,5 +114,24 @@ void RandomCode::refreshSeed()
 	gen.seed(static_cast<unsigned int>(timeSinceEpoch));
 }
 
+BOOST_AUTO_TEST_SUITE(RandomCodeTests)
+
+BOOST_AUTO_TEST_CASE(rndCode)
+{
+	std::string code;
+	std::cerr << "Testing Random Code: ";
+	try
+	{
+		code = dev::test::RandomCode::generate(10);
+	}
+	catch(...)
+	{
+		BOOST_ERROR("Exception thrown when generating random code!");
+	}
+	std::cerr << code;
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 }
 }
