@@ -37,7 +37,8 @@
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
-#include <libethereum/KeyManager.h>
+#include <libethcore/KeyManager.h>
+
 #include <libwebthree/WebThree.h>
 #if ETH_JSCONSOLE || !ETH_TRUE
 #include <libjsconsole/JSConsole.h>
