@@ -25,9 +25,9 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-void VM::reset(u256 _gas) noexcept
+void VM::reset(u256 const& _gas) noexcept
 {
-	VMFace::reset(_gas);
+	m_gas = _gas;
 	m_curPC = 0;
 	m_jumpDests.clear();
 }
@@ -55,6 +55,8 @@ static array<InstructionMetric, 256> metrics()
 bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
 	m_stack.reserve((unsigned)c_stackLimit);
+
+	unique_ptr<CallParameters> callParams;
 
 	static const array<InstructionMetric, 256> c_metrics = metrics();
 
@@ -206,7 +208,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			BOOST_THROW_EXCEPTION(OutOfGas());
 		}
 
-		m_gas = (u256)((bigint)m_gas - runGas);
+		m_gas -= runGas;
 
 		if (newTempSize > m_temp.size())
 			m_temp.resize((size_t)newTempSize);
@@ -565,7 +567,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.push_back(m_temp.size());
 			break;
 		case Instruction::GAS:
-			m_stack.push_back(m_gas);
+			m_stack.push_back((u256)m_gas);
 			break;
 		case Instruction::JUMPDEST:
 			break;
@@ -614,7 +616,11 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.pop_back();
 
 			if (_ext.balance(_ext.myAddress) >= endowment && _ext.depth < 1024)
-				m_stack.push_back((u160)_ext.create(endowment, m_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
+			{
+				u256 g(m_gas);
+				m_stack.push_back((u160)_ext.create(endowment, g, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
+				m_gas = g;
+			}
 			else
 				m_stack.push_back(0);
 			break;
@@ -622,13 +628,16 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 		{
-			u256 gas = m_stack.back();
+			if (!callParams)
+				callParams.reset(new CallParameters);
+
+			callParams->gas = m_stack.back();
 			if (m_stack[m_stack.size() - 3] > 0)
-				gas += c_callStipend;
+				callParams->gas += c_callStipend;
 			m_stack.pop_back();
-			Address receiveAddress = asAddress(m_stack.back());
+			callParams->codeAddress = asAddress(m_stack.back());
 			m_stack.pop_back();
-			u256 value = m_stack.back();
+			callParams->value = m_stack.back();
 			m_stack.pop_back();
 
 			unsigned inOff = (unsigned)m_stack.back();
@@ -640,12 +649,19 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			unsigned outSize = (unsigned)m_stack.back();
 			m_stack.pop_back();
 
-			if (_ext.balance(_ext.myAddress) >= value && _ext.depth < 1024)
-				m_stack.push_back(_ext.call(inst == Instruction::CALL ? receiveAddress : _ext.myAddress, value, bytesConstRef(m_temp.data() + inOff, inSize), gas, bytesRef(m_temp.data() + outOff, outSize), _onOp, {}, receiveAddress));
+			if (_ext.balance(_ext.myAddress) >= callParams->value && _ext.depth < 1024)
+			{
+				callParams->onOp = _onOp;
+				callParams->senderAddress = _ext.myAddress;
+				callParams->receiveAddress = inst == Instruction::CALL ? callParams->codeAddress : callParams->senderAddress;
+				callParams->data = bytesConstRef(m_temp.data() + inOff, inSize);
+				callParams->out = bytesRef(m_temp.data() + outOff, outSize);
+				m_stack.push_back(_ext.call(*callParams));
+			}
 			else
 				m_stack.push_back(0);
 
-			m_gas += gas;
+			m_gas += callParams->gas;
 			break;
 		}
 		case Instruction::RETURN:

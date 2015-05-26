@@ -115,7 +115,7 @@ bytes dev::fromHex(std::string const& _s, WhenError _throw)
 	return ret;
 }
 
-bytes dev::asNibbles(std::string const& _s)
+bytes dev::asNibbles(bytesConstRef const& _s)
 {
 	std::vector<uint8_t> ret;
 	ret.reserve(_s.size() * 2);

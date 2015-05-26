@@ -274,6 +274,9 @@ private:
 	/// Ticks various system-level objects.
 	void tick();
 
+	/// @returns true only if it's worth bothering to prep the mining block.
+	bool shouldServeWork() const { return m_bq.items().first == 0 && (isMining() || remoteActive()); }
+
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	CanonBlockChain m_bc;					///< Maintains block database.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
@@ -289,7 +292,7 @@ private:
 	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
 	bool remoteActive() const;				///< Is there an active and valid remote worker?
 	bool m_remoteWorking = false;			///< Has the remote worker recently been reset?
-	std::chrono::system_clock::time_point m_lastGetWork = std::chrono::system_clock::time_point::min();	///< Is there an active and valid remote worker?
+	std::chrono::system_clock::time_point m_lastGetWork;	///< Is there an active and valid remote worker?
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
