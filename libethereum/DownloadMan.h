@@ -234,12 +234,6 @@ public:
 		m_chainStart = _start;
 		m_chainCount = 0;
 		m_got = RangeMask<unsigned>(_start, _start);
-
-		{
-			ReadGuard l(x_subs);
-			for (auto i: m_subs)
-				i->resetFetch();
-		}
 	}
 
 	RangeMask<unsigned> taken(bool _desperate = false) const
@@ -259,7 +253,7 @@ public:
 	{
 		ReadGuard l(m_lock);
 		return m_got.full();
-	}\
+	}
 
 	size_t chainSize() const { ReadGuard l(m_lock); return m_chainCount; }
 	size_t chainEmpty() const { ReadGuard l(m_lock); return m_chainCount == 0; }
@@ -276,10 +270,6 @@ private:
 	mutable SharedMutex x_subs;
 	std::unordered_set<HashDownloadSub*> m_subs;
 };
-
-
-
-
 
 }
 
