@@ -179,6 +179,7 @@ public:
 	Q_PROPERTY(QVariantMap contracts READ contracts NOTIFY codeChanged)
 	Q_PROPERTY(bool compiling READ isCompiling NOTIFY stateChanged)
 	Q_PROPERTY(bool hasContract READ hasContract NOTIFY codeChanged)
+	Q_PROPERTY(bool optimizeCode MEMBER m_optimizeCode WRITE setOptimizeCode)
 
 	/// @returns latest compilation results for contracts
 	QVariantMap contracts() const;
@@ -211,6 +212,7 @@ public:
 	void gasEstimation(solidity::CompilerStack const& _cs);
 	/// Gas cost by doc id
 	Q_INVOKABLE QVariantList gasCostByDocumentId(QString const& _documentId) const;
+	Q_INVOKABLE void setOptimizeCode(bool _value);
 
 signals:
 	/// Emited on compilation state change
@@ -255,6 +257,7 @@ private:
 	std::map<QString, dev::bytes> m_compiledContracts; //by name
 	dev::Mutex x_pendingContracts;
 	std::map<QString, QString> m_pendingContracts; //name to source
+	bool m_optimizeCode;
 	friend class BackgroundWorker;
 };
 
