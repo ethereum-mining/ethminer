@@ -63,6 +63,7 @@ enum
 	GetBlocksPacket,
 	BlocksPacket,
 	NewBlockPacket,
+	GetBlockHashesByNumberPacket,
 	PacketCount
 };
 
