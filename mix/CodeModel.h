@@ -277,7 +277,7 @@ private:
 	std::map<QString, dev::bytes> m_compiledContracts; //by name
 	dev::Mutex x_pendingContracts;
 	std::map<QString, QString> m_pendingContracts; //name to source
-	bool m_optimizeCode;
+	bool m_optimizeCode = true;
 	friend class BackgroundWorker;
 };
 
