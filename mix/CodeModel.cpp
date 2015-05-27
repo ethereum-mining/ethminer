@@ -309,7 +309,7 @@ void CodeModel::runCompilationJob(int _jobId)
 				sourceNames.push_back(c.first.toStdString());
 			}
 		}
-		cs.compile(false);
+		cs.compile(m_optimizeCode);
 		gasEstimation(cs);
 		collectContracts(cs, sourceNames);
 	}
@@ -597,6 +597,12 @@ QString CodeModel::resolveFunctionName(dev::SourceLocation const& _location)
 			return functionNameIter.value();
 	}
 	return QString();
+}
+
+void CodeModel::setOptimizeCode(bool _value)
+{
+	m_optimizeCode = _value;
+	emit scheduleCompilationJob(++m_backgroundJobId);
 }
 
 void GasMapWrapper::push(QString _source, int _start, int _end, QString _value, bool _isInfinite, QString _payload)

@@ -119,6 +119,7 @@ ApplicationWindow {
 		Menu {
 			title: qsTr("Tools")
 			MenuItem { action: gasEstimationAction }
+			MenuItem { action: optimizeCodeAction }
 		}
 		Menu {
 			title: qsTr("Windows")
@@ -423,5 +424,15 @@ ApplicationWindow {
 		{
 			mainContent.codeEditor.displayGasEstimation(checked);
 		}
+	}
+
+	Action {
+		id: optimizeCodeAction
+		text: qsTr("Optimize contract code")
+		shortcut: "Ctrl+Shift+O"
+		checkable: true
+		checked: true
+		Component.onCompleted: codeModel.setOptimizeCode(true);
+		onTriggered: codeModel.setOptimizeCode(checked);
 	}
 }
