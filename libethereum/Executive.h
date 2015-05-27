@@ -109,7 +109,7 @@ public:
 	/// @returns gas remaining after the transaction/operation. Valid after the transaction has been executed.
 	u256 gas() const { return m_gas; }
 	/// @returns output data of the transaction/operation.
-	bytesConstRef out() const { return m_out; }
+	bytesConstRef out() const { return {m_out.data(), m_out.size()}; }
 	/// @returns the new address for the created contract in the CREATE operation.
 	h160 newAddress() const { return m_newAddress; }
 	/// @returns true iff the operation ended with a VM exception.
@@ -123,8 +123,7 @@ private:
 	LastHashes m_lastHashes;
 	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required.
 	std::unique_ptr<VMFace> m_vm;		///< The VM object or null if no VM is required.
-	bytes m_precompiledOut;				///< Used for the output when there is no VM for a contract (i.e. precompiled).
-	bytesConstRef m_out;				///< The copyable output.
+	bytes m_out;						///< The VM execution output.
 	Address m_newAddress;				///< The address of the created contract in the case of create() being called.
 
 	unsigned m_depth = 0;				///< The context's call-depth.

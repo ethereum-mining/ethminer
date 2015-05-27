@@ -43,7 +43,12 @@ public:
 	VMFace(VMFace const&) = delete;
 	VMFace& operator=(VMFace const&) = delete;
 
-	virtual bytesConstRef go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) = 0;
+	bytes exec(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1)
+	{
+		return execImpl(io_gas, _ext, _onOp, _steps).toVector();
+	}
+
+	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) = 0;
 };
 
 }

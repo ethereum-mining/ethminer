@@ -46,7 +46,7 @@ u256 Executive::gasUsed() const
 
 ExecutionResult Executive::executionResult() const
 {
-	return ExecutionResult(gasUsed(), m_excepted, m_newAddress, m_out, m_codeDeposit, m_ext ? m_ext->sub.refunds : 0, m_depositSize, m_gasForDeposit);
+	return ExecutionResult(gasUsed(), m_excepted, m_newAddress, out(), m_codeDeposit, m_ext ? m_ext->sub.refunds : 0, m_depositSize, m_gasForDeposit);
 }
 
 void Executive::accrueSubState(SubState& _parentContext)
@@ -145,8 +145,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		else
 		{
 			m_gas = (u256)(_p.gas - g);
-			m_precompiledOut = it->second.exec(_p.data);
-			m_out = &m_precompiledOut;
+			m_out = it->second.exec(_p.data);
 		}
 	}
 	else
@@ -219,7 +218,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 #endif
 		try
 		{
-			m_out = m_vm->go(m_gas, *m_ext, _onOp);
+			m_out = m_vm->exec(m_gas, *m_ext, _onOp);
 
 			if (m_isCreation)
 			{
@@ -232,11 +231,10 @@ bool Executive::go(OnOpFunc const& _onOp)
 				}
 				else
 				{
-
 					m_codeDeposit = CodeDeposit::Failed;
-					m_out.reset();
+					m_out.clear();
 				}
-				m_s.m_cache[m_newAddress].setCode(m_out.toBytes());
+				m_s.m_cache[m_newAddress].setCode(std::move(m_out));
 			}
 		}
 		catch (StepsDone const&)
