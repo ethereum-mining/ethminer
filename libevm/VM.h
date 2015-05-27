@@ -52,7 +52,7 @@ inline u256 fromAddress(Address _a)
 class VM: public VMFace
 {
 public:
-	virtual bytesConstRef go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
+	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
 
 	u256 curPC() const { return m_curPC; }
 

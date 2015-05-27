@@ -45,7 +45,7 @@ static array<InstructionMetric, 256> metrics()
 	return s_ret;
 }
 
-bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
+bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
 	// Reset leftovers from possible previous run
 	m_curPC = 0;

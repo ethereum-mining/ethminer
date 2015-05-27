@@ -160,7 +160,7 @@ void doMyTests(json_spirit::mValue& _v)
 		bool vmExceptionOccured = false;
 		try
 		{
-			output = vm->go(fev.gas, fev, fev.simpleTrace()).toBytes();
+			output = vm->exec(fev.gas, fev, fev.simpleTrace());
 		}
 		catch (eth::VMException const& _e)
 		{
