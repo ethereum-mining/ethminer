@@ -138,7 +138,7 @@ class GasMapWrapper: public QObject
 
 public:
 	GasMapWrapper(QObject* _parent = nullptr): QObject(_parent){}
-	void push(QString _source, int _start, int _end, QString _value, bool _isInfinite);
+	void push(QString _source, int _start, int _end, QString _value, bool _isInfinite, QString _payload);
 	bool contains(QString _key);
 	void insert(QString _source, QVariantList _variantList);
 	QVariantList gasCostsByDocId(QString _source);
@@ -155,14 +155,16 @@ class GasMap: public QObject
 	Q_PROPERTY(int end MEMBER m_end CONSTANT)
 	Q_PROPERTY(QString gas MEMBER m_gas CONSTANT)
 	Q_PROPERTY(bool isInfinite MEMBER m_isInfinite CONSTANT)
+	Q_PROPERTY(QString payload MEMBER m_payload CONSTANT)
 
 public:
-	GasMap(int _start, int _end, QString _gas, bool _isInfinite, QObject* _parent): QObject(_parent), m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite) {}
+	GasMap(int _start, int _end, QString _gas, bool _isInfinite, QString _payload, QObject* _parent): QObject(_parent), m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite), m_payload(_payload) {}
 
 	int m_start;
 	int m_end;
 	QString m_gas;
 	bool m_isInfinite;
+	QString m_payload;
 };
 
 /// Code compilation model. Compiles contracts in background an provides compiled contract data
