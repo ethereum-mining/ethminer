@@ -44,28 +44,24 @@ typedef boost::random::variate_generator<boost::mt19937&, boostDescreteDistrib >
 struct RandomCodeOptions
 {
 public:
-	RandomCodeOptions() : useUndefinedOpCodes(false) {
-		//each op code with same weight-probability
-		for (auto i = 0; i < 255; i++)
-			mapWeights.insert(std::pair<int, int>(i, 50));
-		setWeights();
-	}
-	void setWeight(dev::eth::Instruction opCode, int weight)
-	{
-		mapWeights.at((int)opCode) = weight;
-		setWeights();
-	}
+	RandomCodeOptions();
+	void setWeight(dev::eth::Instruction opCode, int weight);
+	void addAddress(dev::Address address);
+	dev::Address getRandomAddress();
+
 	bool useUndefinedOpCodes;
+	int smartCodeProbability;
 	boostDescreteDistrib opCodeProbability;
 private:
-	void setWeights()
-	{
-		std::vector<int> weights;
-		for (auto const& element: mapWeights)
-			weights.push_back(element.second);
-		opCodeProbability = boostDescreteDistrib(weights);
-	}
+	void setWeights();
 	std::map<int, int> mapWeights;
+	std::vector<dev::Address> addressList;
+};
+
+enum class SizeStrictness
+{
+	Strict,
+	Random
 };
 
 class RandomCode
@@ -75,13 +71,16 @@ public:
 	static std::string generate(int maxOpNumber = 1, RandomCodeOptions options = RandomCodeOptions());
 
 	/// Generate random byte string of a given length
-	static std::string rndByteSequence(int length = 1);
+	static std::string rndByteSequence(int length = 1, SizeStrictness sizeType = SizeStrictness::Strict);
 
 	/// Generate random uniForm Int with reasonable value 0..0x7fffffff
-	static std::string randomUniInt();
+	static std::string randomUniIntHex();
+	static int randomUniInt();
 
 private:
-	static std::string fillArguments(int num);
+	static std::string fillArguments(dev::eth::Instruction opcode, RandomCodeOptions options);
+	static std::string getPushCode(int value);
+	static std::string getPushCode(std::string hex);
 	static void refreshSeed();
 
 	static boost::random::mt19937 gen;			///< Random generator

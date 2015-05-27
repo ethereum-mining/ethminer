@@ -181,8 +181,15 @@ void doRandomCodeAlgo()
 	dev::test::RandomCodeOptions options;
 	options.setWeight(dev::eth::Instruction::STOP, 10);		//default 50
 	options.setWeight(dev::eth::Instruction::SSTORE, 70);
-	string randomCode = dev::test::RandomCode::generate(10);
-	string randomData = dev::test::RandomCode::generate(10);
+	options.setWeight(dev::eth::Instruction::CALL, 75);
+	options.addAddress(Address("0xffffffffffffffffffffffffffffffffffffffff"));
+	options.addAddress(Address("0x1000000000000000000000000000000000000000"));
+	options.addAddress(Address("0x095e7baea6a6c7c4c2dfeb977efac326af552d87")); //coinbase
+	options.addAddress(Address("0x945304eb96065b2a98b57a48a06ae28d285a71b5"));
+	options.addAddress(Address("0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"));
+	options.smartCodeProbability = 35;
+	string randomCode = dev::test::RandomCode::generate(10, options);
+	string randomData = dev::test::RandomCode::generate(10, options);
 
 	mValue v;
 	read_string(c_testExample, v);
@@ -194,10 +201,10 @@ void doRandomCodeAlgo()
 	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["data"] = "0x" + randomData;
 
 	// insert new value in tx
-	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["value"] = dev::test::RandomCode::randomUniInt();
+	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["value"] = dev::test::RandomCode::randomUniIntHex();
 
 	// insert new gasLimit in tx
-	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["gasLimit"] = dev::test::RandomCode::randomUniInt();
+	v.get_obj().find("randomStatetest")->second.get_obj().find("transaction")->second.get_obj()["gasLimit"] = dev::test::RandomCode::randomUniIntHex();
 
 	// fill test
 	doStateTests(v);

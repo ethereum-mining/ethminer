@@ -40,29 +40,17 @@ boostIntGenerator RandomCode::randOpCodeGen = boostIntGenerator(gen, opCodeDist)
 boostIntGenerator RandomCode::randOpLengGen = boostIntGenerator(gen, opLengDist);
 boostIntGenerator RandomCode::randUniIntGen = boostIntGenerator(gen, uniIntDist);
 
-std::string RandomCode::rndByteSequence(int length)
+std::string RandomCode::rndByteSequence(int length, SizeStrictness sizeType)
 {
 	refreshSeed();
 	std::string hash;
-	length = std::max(1, length);
+	length = (sizeType == SizeStrictness::Strict) ? std::max(1, length) : randomUniInt() % length;
 	for (auto i = 0; i < length; i++)
 	{
 		uint8_t byte = randOpCodeGen();
 		hash += toCompactHex(byte);
 	}
 	return hash;
-}
-
-std::string RandomCode::fillArguments(int num)
-{
-	std::string code;
-	for (auto i = 0; i < num; i++)
-	{
-		int length = randOpLengGen();
-		int pushCode = 96 + length - 1;
-		code += toCompactHex(pushCode) + rndByteSequence(length);
-	}
-	return code;
 }
 
 //generate smart random code
@@ -94,17 +82,23 @@ std::string RandomCode::generate(int maxOpNumber, RandomCodeOptions options)
 			}
 		}
 		else
-			code += fillArguments(info.args);
+			code += fillArguments((dev::eth::Instruction) opcode, options);
 		std::string byte = toCompactHex(opcode);
 		code += (byte == "") ? "00" : byte;
 	}
 	return code;
 }
 
-std::string RandomCode::randomUniInt()
+std::string RandomCode::randomUniIntHex()
 {
 	refreshSeed();
 	return "0x" + toCompactHex((int)randUniIntGen());
+}
+
+int RandomCode::randomUniInt()
+{
+	refreshSeed();
+	return (int)randUniIntGen();
 }
 
 void RandomCode::refreshSeed()
@@ -113,6 +107,99 @@ void RandomCode::refreshSeed()
 	auto timeSinceEpoch = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
 	gen.seed(static_cast<unsigned int>(timeSinceEpoch));
 }
+
+std::string RandomCode::getPushCode(std::string hex)
+{
+	int length = hex.length()/2;
+	int pushCode = 96 + length - 1;
+	return toCompactHex(pushCode) + hex;
+}
+
+std::string RandomCode::getPushCode(int value)
+{
+	std::string hexString = toCompactHex(value);
+	return getPushCode(hexString);
+}
+
+std::string RandomCode::fillArguments(dev::eth::Instruction opcode, RandomCodeOptions options)
+{
+	dev::eth::InstructionInfo info = dev::eth::instructionInfo(opcode);
+
+	std::string code;
+	bool smart = false;
+	unsigned num = info.args;
+	int rand = randOpCodeGen() % 100;
+	if (rand < options.smartCodeProbability)
+		smart = true;
+
+	if (smart)
+	{
+		switch (opcode)
+		{
+		case dev::eth::Instruction::CALL:
+			//(CALL gaslimit address value memstart1 memlen1 memstart2 memlen2)
+			code += getPushCode(randUniIntGen() % 32);  //memlen2
+			code += getPushCode(randUniIntGen() % 32);  //memstart2
+			code += getPushCode(randUniIntGen() % 32);  //memlen1
+			code += getPushCode(randUniIntGen() % 32);  //memlen1
+			code += getPushCode(randUniIntGen());		//value
+			code += getPushCode(toString(options.getRandomAddress()));//address
+			code += getPushCode(randUniIntGen());		//gaslimit
+		break;
+		default:
+			smart = false;
+		}
+	}
+
+	if (smart == false)
+	for (unsigned i = 0; i < num; i++)
+	{
+		//generate random parameters
+		int length = randOpLengGen();
+		code += getPushCode(rndByteSequence(length));
+	}
+	return code;
+}
+
+
+//Ramdom Code Options
+RandomCodeOptions::RandomCodeOptions() : useUndefinedOpCodes(false), smartCodeProbability(50)
+{
+	//each op code with same weight-probability
+	for (auto i = 0; i < 255; i++)
+		mapWeights.insert(std::pair<int, int>(i, 50));
+	setWeights();
+}
+
+void RandomCodeOptions::setWeight(dev::eth::Instruction opCode, int weight)
+{
+	mapWeights.at((int)opCode) = weight;
+	setWeights();
+}
+
+void RandomCodeOptions::addAddress(dev::Address address)
+{
+	addressList.push_back(address);
+}
+
+dev::Address RandomCodeOptions::getRandomAddress()
+{
+	if (addressList.size() > 0)
+	{
+		int index = RandomCode::randomUniInt() % addressList.size();
+		return addressList[index];
+	}
+	return Address(RandomCode::rndByteSequence(20));
+}
+
+void RandomCodeOptions::setWeights()
+{
+	std::vector<int> weights;
+	for (auto const& element: mapWeights)
+		weights.push_back(element.second);
+	opCodeProbability = boostDescreteDistrib(weights);
+}
+
 
 BOOST_AUTO_TEST_SUITE(RandomCodeTests)
 
