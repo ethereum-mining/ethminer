@@ -122,5 +122,6 @@ void HashDownloadSub::noteHash(unsigned _index, unsigned _size)
 	Guard l(m_fetch);
 	if (m_man)
 		for(unsigned i = _index; i < _index + _size; ++i)
-			m_man->m_got += i;
+			if (i >= m_man->m_got.all().first && i < m_man->m_got.all().second)
+				m_man->m_got += i;
 }
