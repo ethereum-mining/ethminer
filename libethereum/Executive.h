@@ -106,6 +106,9 @@ public:
 	/// Operation function for providing a simple trace of the VM execution.
 	static OnOpFunc simpleTrace();
 
+	/// Operation function for providing a simple trace of the VM execution.
+	static OnOpFunc standardTrace(std::ostream& o_output);
+
 	/// @returns gas remaining after the transaction/operation.
 	u256 endGas() const { return m_endGas; }
 	/// @returns output data of the transaction/operation.

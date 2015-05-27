@@ -242,6 +242,24 @@ OnOpFunc Executive::simpleTrace()
 	};
 }
 
+OnOpFunc Executive::standardTrace(ostream& o_output)
+{
+	return [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, VM* voidVM, ExtVMFace const* voidExt)
+	{
+		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
+		VM& vm = *voidVM;
+
+		o_output << endl << "    STACK" << endl;
+		for (auto i: vm.stack())
+			o_output << (h256)i << endl;
+		o_output << "    MEMORY" << endl << ((vm.memory().size() > 1000) ? " mem size greater than 1000 bytes " : memDump(vm.memory()));
+		o_output << "    STORAGE" << endl;
+		for (auto const& i: ext.state().storage(ext.myAddress))
+			o_output << showbase << hex << i.first << ": " << i.second << endl;
+		o_output << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << vm.gas() << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
+	};
+}
+
 bool Executive::go(OnOpFunc const& _onOp)
 {
 	if (m_vm)
