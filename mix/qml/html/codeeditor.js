@@ -210,7 +210,6 @@ setFontSize = function(size)
 
 makeGasCostMarker = function(value) {
 	var marker = document.createElement("div");
-	//marker.style.color = "#822";
 	marker.innerHTML = value;
 	marker.className = "CodeMirror-gasCost";
 	return marker;
