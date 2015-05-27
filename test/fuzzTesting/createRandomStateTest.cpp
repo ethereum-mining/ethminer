@@ -218,15 +218,19 @@ void doStateTests(json_spirit::mValue& _v)
 		assert(o.count("env") > 0);
 		assert(o.count("pre") > 0);
 		assert(o.count("transaction") > 0);
-
-		test::ImportTest importer(o, true);
-
-		eth::State theState = importer.m_statePre;
 		bytes output;
+		eth::State theState;
 
 		try
 		{
-			output = theState.execute(test::lastHashes(importer.m_environment.currentBlock.number), importer.m_transaction).output;
+			test::ImportTest importer(o, true);
+			eth::State theState = importer.m_statePre;
+			output = theState.execute(test::lastHashes(importer.m_environment.currentBlock.number), importer.m_transaction).output;	
+			#if ETH_FATDB
+				importer.exportTest(output, theState);
+			#else
+				cout << "You can not fill tests when FATDB is switched off";
+			#endif
 		}
 		catch (Exception const& _e)
 		{
@@ -237,10 +241,9 @@ void doStateTests(json_spirit::mValue& _v)
 		{
 			cnote << "state execution did throw an exception: " << _e.what();
 		}
-#if ETH_FATDB
-		importer.exportTest(output, theState);
-#else
-		cout << "You can not fill tests when FATDB is switched off";
-#endif
+		catch (...)
+		{
+			cnote << "state execution did throw an exception!";
+		}
 	}
 }

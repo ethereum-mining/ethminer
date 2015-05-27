@@ -94,7 +94,5 @@ private:
 	static boostIntGenerator randOpLengGen;		///< Generate random length from opLengDist
 };
 
-
-
 }
 }
