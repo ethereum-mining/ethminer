@@ -253,12 +253,12 @@ displayGasEstimation = function(show)
 				var className = "CodeMirror-gasCosts" + i;
 				var line = editor.posFromIndex(gasCosts[i].start);
 				var endChar;
-				if (gasCosts[i].payload === "statement")
+				if (gasCosts[i].codeBlockType === "statement" || gasCosts[i].codeBlockType === "")
 				{
 					endChar = editor.posFromIndex(gasCosts[i].end);
 					gasMarkText.push({ line: line, markText: editor.markText(line, endChar, { inclusiveLeft: true, inclusiveRight: true, handleMouseEvents: true, className: className, css: "background-color:" + color })});
 				}
-				else if (gasCosts[i].payload === "function" || gasCosts[i].payload === "constructor")
+				else if (gasCosts[i].codeBlockType === "function" || gasCosts[i].codeBlockType === "constructor")
 				{
 					var l = editor.getLine(line.line);
 					endChar = { line: line.line, ch: line.ch + l.length };
