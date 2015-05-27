@@ -104,5 +104,28 @@ std::string formatBalance(bigint const& _b)
 	return ret.str();
 }
 
+static void badBlockInfo(BlockInfo const& _bi, string const& _err)
+{
+	cwarn << EthRedBold << "========================================================================";
+	cwarn << EthRedBold << "==  Software Failure    " + _err + string(max<int>(0, 44 - _err.size()), ' ') + "  ==";
+	string bin = toString(_bi.number);
+	cwarn << EthRedBold << ("==                 Guru Meditation #" + string(max<int>(0, 8 - bin.size()), '0') + bin + "." + _bi.hash().abridged() + "                ==");
+	cwarn << EthRedBold << "========================================================================";
+}
+
+void badBlock(bytesConstRef _block, string const& _err)
+{
+	badBlockInfo(BlockInfo(_block, CheckNothing), _err);
+	cwarn << "  Block:" << toHex(_block);
+	cwarn << "  Block RLP:" << RLP(_block);
+}
+
+void badBlockHeader(bytesConstRef _header, string const& _err)
+{
+	badBlockInfo(BlockInfo::fromHeader(_header, CheckNothing), _err);
+	cwarn << "  Header:" << toHex(_header);
+	cwarn << "  Header RLP:" << RLP(_header);;
+}
+
 }
 }
