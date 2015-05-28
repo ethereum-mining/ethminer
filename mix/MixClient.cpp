@@ -132,7 +132,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	execState.addBalance(t.sender(), t.gas() * t.gasPrice()); //give it enough balance for gas estimation
 	eth::ExecutionResult er;
 	Executive execution(execState, lastHashes, 0);
-	execution.setResultRef(er);
+	execution.collectResult(er);
 	execution.initialize(t);
 	execution.execute();
 	std::vector<MachineState> machineStates;
