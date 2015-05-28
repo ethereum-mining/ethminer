@@ -1126,7 +1126,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	// transaction is bad in any way.
 	Executive e(*this, _lh, 0);
 	ExecutionResult res;
-	e.setResultRef(res);
+	e.collectResult(res);
 	e.initialize(_t);
 
 	// Uncommitting is a non-trivial operation - only do it once we've verified as much of the
