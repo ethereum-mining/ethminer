@@ -108,29 +108,25 @@ public:
 
 	/// @returns gas remaining after the transaction/operation. Valid after the transaction has been executed.
 	u256 gas() const { return m_gas; }
-	/// @returns output data of the transaction/operation.
-	bytesConstRef out() const { return {m_out.data(), m_out.size()}; }
+
 	/// @returns the new address for the created contract in the CREATE operation.
 	h160 newAddress() const { return m_newAddress; }
 	/// @returns true iff the operation ended with a VM exception.
 	bool excepted() const { return m_excepted != TransactionException::None; }
 
-	/// Get the above in an amalgamated fashion.
-	ExecutionResult executionResult() const;
+	/// Collect execution results in the result storage provided.
+	void setResultRef(ExecutionResult& _res) { m_res = &_res; }
 
 private:
 	State& m_s;							///< The state to which this operation/transaction is applied.
 	LastHashes m_lastHashes;
 	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required.
-	std::unique_ptr<VMFace> m_vm;		///< The VM object or null if no VM is required.
-	bytes m_out;						///< The VM execution output.
+	bytesRef m_outRef;					///< Reference to "expected output" buffer.
+	ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
 	Address m_newAddress;				///< The address of the created contract in the case of create() being called.
 
 	unsigned m_depth = 0;				///< The context's call-depth.
 	bool m_isCreation = false;			///< True if the transaction creates a contract, or if create() is called.
-	unsigned m_depositSize = 0;			///< Amount of code of the creation's attempted deposit.
-	u256 m_gasForDeposit;				///< Amount of gas remaining for the code deposit phase.
-	CodeDeposit m_codeDeposit = CodeDeposit::None;	///< True if an attempted deposit failed due to lack of gas.
 	TransactionException m_excepted = TransactionException::None;	///< Details if the VM's execution resulted in an exception.
 	u256 m_gas = 0;						///< The gas for EVM code execution. Initial amount before go() execution, final amount after go() execution.
 
