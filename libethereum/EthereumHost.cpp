@@ -224,7 +224,7 @@ tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, list<s
 	vector<shared_ptr<EthereumPeer>> allowed;
 	list<shared_ptr<Session>> sessions;
 	
-	auto ps = peerSessions();
+	auto const& ps = peerSessions();
 	allowed.reserve(ps.size());
 	for (auto const& j: ps)
 	{
