@@ -246,10 +246,6 @@ bool Executive::go(OnOpFunc const& _onOp)
 					vm->exec(m_gas, *m_ext, m_outRef, _onOp); // take only expected output
 			}
 		}
-		catch (StepsDone const&)
-		{
-			return false;
-		}
 		catch (VMException const& _e)
 		{
 			clog(StateSafeExceptions) << "Safe VM Exception. " << diagnostic_information(_e);
