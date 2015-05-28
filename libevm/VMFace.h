@@ -26,7 +26,6 @@ namespace eth
 {
 
 struct VMException: virtual Exception {};
-struct StepsDone: virtual VMException {};
 struct BreakPointHit: virtual VMException {};
 struct BadInstruction: virtual VMException {};
 struct BadJumpDestination: virtual VMException {};
@@ -46,19 +45,19 @@ public:
 	/// Execute EVM code by VM.
 	///
 	/// @param _out		Expected output
-	void exec(u256& io_gas, ExtVMFace& _ext, bytesRef _out, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1)
+	void exec(u256& io_gas, ExtVMFace& _ext, bytesRef _out, OnOpFunc const& _onOp = {})
 	{
-		execImpl(io_gas, _ext, _onOp, _steps).copyTo(_out);
+		execImpl(io_gas, _ext, _onOp).copyTo(_out);
 	}
 
 	/// The same as above but returns a copy of full output.
-	bytes exec(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1)
+	bytes exec(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {})
 	{
-		return execImpl(io_gas, _ext, _onOp, _steps).toVector();
+		return execImpl(io_gas, _ext, _onOp).toVector();
 	}
 
 	/// VM implementation
-	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps) = 0;
+	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) = 0;
 };
 
 }
