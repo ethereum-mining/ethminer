@@ -140,8 +140,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		else
 		{
 			m_gas = (u256)(_p.gas - g);
-			auto out = it->second.exec(_p.data); // FIXME: Avoid double copy
-			bytesConstRef{&out}.copyTo(_p.out);
+			it->second.exec(_p.data, _p.out);
 		}
 	}
 	else
