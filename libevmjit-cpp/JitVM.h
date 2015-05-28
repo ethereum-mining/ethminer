@@ -11,7 +11,7 @@ namespace eth
 class JitVM: public VMFace
 {
 public:
-	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps) override final;
+	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) override final;
 
 private:
 	jit::RuntimeData m_data;
