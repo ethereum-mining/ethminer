@@ -45,6 +45,7 @@ struct SolidityType
 		Bool,
 		Address,
 		Bytes,
+		String,
 		Enum,
 		Struct
 	};

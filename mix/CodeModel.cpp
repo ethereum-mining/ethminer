@@ -507,7 +507,9 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 	case Type::Category::Array:
 	{
 		ArrayType const* array = dynamic_cast<ArrayType const*>(_type);
-		if (array->isByteArray())
+		if (array->isString())
+			r.type = SolidityType::Type::String;
+		else if (array->isByteArray())
 			r.type = SolidityType::Type::Bytes;
 		else
 		{
