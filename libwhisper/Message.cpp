@@ -35,34 +35,8 @@ Message::Message(Envelope const& _e, FullTopic const& _fk, Secret const& _s)
 			if (!decrypt(_s, &(_e.data()), b))
 				return;
 			else{}
-		else
-		{
-			// public - need to get the key through combining with the topic/topicIndex we know.
-			unsigned topicIndex = 0;
-			Secret topicSecret;
-
-			// determine topicSecret/topicIndex from knowledge of the collapsed topics (which give the order) and our full-size filter topic.
-			CollapsedTopic knownTopic = collapse(_fk);
-			for (unsigned ti = 0; ti < _fk.size() && !topicSecret; ++ti)
-				for (unsigned i = 0; i < _e.topic().size(); ++i)
-					if (_e.topic()[i] == knownTopic[ti])
-					{
-						topicSecret = _fk[ti];
-						topicIndex = i;
-						break;
-					}
-
-			if (_e.data().size() < _e.topic().size() * 32)
-				return;
-
-			// get key from decrypted topic key: just xor
-			h256 tk = h256(bytesConstRef(&(_e.data())).cropped(32 * topicIndex, 32));
-			bytesConstRef cipherText = bytesConstRef(&(_e.data())).cropped(32 * _e.topic().size());
-//			cdebug << "Decrypting(" << topicIndex << "): " << topicSecret << tk << (topicSecret ^ tk) << toHex(cipherText);
-			if (!decryptSym(topicSecret ^ tk, cipherText, b))
-				return;
-//			cdebug << "Got: " << toHex(b);
-		}
+		else if (!openBroadcastEnvelope(_e, _fk, b))
+			return;
 
 		if (populate(b))
 			if (_s)
@@ -71,6 +45,40 @@ Message::Message(Envelope const& _e, FullTopic const& _fk, Secret const& _s)
 	catch (...)	// Invalid secret? TODO: replace ... with InvalidSecret
 	{
 	}
+}
+
+bool Message::openBroadcastEnvelope(Envelope const& _e, FullTopic const& _fk, bytes& o_b)
+{
+	// retrieve the key using the known topic and topicIndex.
+	unsigned topicIndex = 0;
+	Secret topicSecret;
+
+	// determine topicSecret/topicIndex from knowledge of the collapsed topics (which give the order) and our full-size filter topic.
+	CollapsedTopic knownTopic = collapse(_fk);
+	for (unsigned ti = 0; ti < _fk.size() && !topicSecret; ++ti)
+		for (unsigned i = 0; i < _e.topic().size(); ++i)
+			if (_e.topic()[i] == knownTopic[ti])
+			{
+				topicSecret = _fk[ti];
+				topicIndex = i;
+				break;
+			}
+
+	if (_e.data().size() < _e.topic().size() * 32)
+		return false;
+
+	h256 encryptedKey = h256(bytesConstRef(&(_e.data())).cropped(32 * topicIndex, 32));
+	h256 key = generateGamma(topicSecret) ^ encryptedKey;
+	bytesConstRef cipherText = bytesConstRef(&(_e.data())).cropped(32 * _e.topic().size());
+	return decryptSym(key, cipherText, o_b);
+}
+
+h256 Message::generateGamma(h256 const& _seed) const
+{
+	int const c_rounds = 128;
+	bytes zeroSalt;
+	bytes hashedTopic = dev::pbkdf2(_seed.hex(), zeroSalt, c_rounds);
+	return h256(hashedTopic);
 }
 
 bool Message::populate(bytes const& _data)
@@ -116,23 +124,14 @@ Envelope Message::seal(Secret _from, FullTopic const& _fullTopic, unsigned _ttl,
 		encrypt(m_to, &input, ret.m_data);
 	else
 	{
-		// create the shared secret and encrypt
+		// create the shared secret for encrypting the payload, then encrypt the shared secret with each topic
 		Secret s = Secret::random();
-		for (h256 const& t: _fullTopic)
-			ret.m_data += (t ^ s).asBytes();
+		for (h256 const& t : _fullTopic)
+			ret.m_data += (generateGamma(t) ^ s).asBytes();
+
 		bytes d;
 		encryptSym(s, &input, d);
 		ret.m_data += d;
-
-		for (unsigned i = 0; i < _fullTopic.size(); ++i)
-		{
-			bytes b;
-			h256 tk = h256(bytesConstRef(&(ret.m_data)).cropped(32 * i, 32));
-			bytesConstRef cipherText = bytesConstRef(&(ret.m_data)).cropped(32 * ret.topic().size());
-			cnote << "Test decrypting(" << i << "): " << _fullTopic[i] << tk << (_fullTopic[i] ^ tk) << toHex(cipherText);
-			assert(decryptSym(_fullTopic[i] ^ tk, cipherText, b));
-			cnote << "Got: " << toHex(b);
-		}
 	}
 
 	ret.proveWork(_workToProve);
