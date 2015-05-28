@@ -33,7 +33,7 @@
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libsolidity/InterfaceHandler.h>
-#include <libsolidity/StructuralGasEstimator.h>
+#include <libsolidity/GasEstimator.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/CommonJS.h>
@@ -373,8 +373,7 @@ void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 			continue;
 		dev::solidity::SourceUnit const& sourceUnit = _cs.getAST(*contractDefinition.getLocation().sourceName);
 		AssemblyItems const* items = _cs.getRuntimeAssemblyItems(n);
-		StructuralGasEstimator estimator;
-		std::map<ASTNode const*, GasMeter::GasConsumption> gasCosts = estimator.breakToStatementLevel(estimator.performEstimation(*items, std::vector<ASTNode const*>({&sourceUnit})), {&sourceUnit});
+		std::map<ASTNode const*, GasMeter::GasConsumption> gasCosts = GasEstimator::breakToStatementLevel(GasEstimator::structuralEstimation(*items, std::vector<ASTNode const*>({&sourceUnit})), {&sourceUnit});
 		for (auto gasItem = gasCosts.begin(); gasItem != gasCosts.end(); ++gasItem)
 		{
 			SourceLocation const& location = gasItem->first->getLocation();
