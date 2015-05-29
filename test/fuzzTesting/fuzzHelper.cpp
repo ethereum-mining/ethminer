@@ -128,7 +128,7 @@ std::string RandomCode::fillArguments(dev::eth::Instruction opcode, RandomCodeOp
 	std::string code;
 	bool smart = false;
 	unsigned num = info.args;
-	int rand = randOpCodeGen() % 100;
+	int rand = randUniIntGen() % 100;
 	if (rand < options.smartCodeProbability)
 		smart = true;
 
