@@ -22,8 +22,8 @@
  */
 
 #include "FileSystem.h"
-#include <libdevcore/Common.h>
-#include <libdevcore/Log.h>
+#include "Common.h"
+#include "Log.h"
 
 #if defined(_WIN32)
 #include <shlobj.h>

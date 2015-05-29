@@ -24,33 +24,54 @@
 #include <functional>
 #include <mutex>
 #include <libdevcore/FixedHash.h>
+#include <libdevcore/FileSystem.h>
 #include "Common.h"
-#include "FileSystem.h"
 
 namespace dev
 {
 
+enum class KDF {
+	PBKDF2_SHA256,
+	Scrypt,
+};
+
 class SecretStore
 {
 public:
-	SecretStore();
+	SecretStore(std::string const& _path = defaultPath());
 	~SecretStore();
 
-	bytes secret(h128 const& _uuid, std::function<std::string()> const& _pass) const;
+	bytes secret(h128 const& _uuid, std::function<std::string()> const& _pass, bool _useCache = true) const;
+	h128 importKey(std::string const& _file) { auto ret = readKey(_file, false); if (ret) save(); return ret; }
+	h128 importKeyContent(std::string const& _content) { auto ret = readKeyContent(_content, std::string()); if (ret) save(); return ret; }
 	h128 importSecret(bytes const& _s, std::string const& _pass);
+	bool recode(h128 const& _uuid, std::string const& _newPass, std::function<std::string()> const& _pass, KDF _kdf = KDF::Scrypt);
 	void kill(h128 const& _uuid);
+
+	std::vector<h128> keys() const { return keysOf(m_keys); }
 
 	// Clear any cached keys.
 	void clearCache() const;
 
+	// Doesn't save().
+	h128 readKey(std::string const& _file, bool _deleteFile);
+	h128 readKeyContent(std::string const& _content, std::string const& _file = std::string());
+
+	void save(std::string const& _keysPath);
+	void save() { save(m_path); }
+
+	static std::string defaultPath() { return getDataDir("web3") + "/keys"; }
+
 private:
-	void save(std::string const& _keysPath = getDataDir("web3") + "/keys");
-	void load(std::string const& _keysPath = getDataDir("web3") + "/keys");
-	static std::string encrypt(bytes const& _v, std::string const& _pass);
+	void load(std::string const& _keysPath);
+	void load() { load(m_path); }
+	static std::string encrypt(bytes const& _v, std::string const& _pass, KDF _kdf = KDF::Scrypt);
 	static bytes decrypt(std::string const& _v, std::string const& _pass);
 
 	mutable std::unordered_map<h128, bytes> m_cached;
 	std::unordered_map<h128, std::pair<std::string, std::string>> m_keys;
+
+	std::string m_path;
 };
 
 }

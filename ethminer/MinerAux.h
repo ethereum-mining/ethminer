@@ -16,10 +16,10 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
+/** @file MinerAux.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
- * Ethereum client.
+ * CLI module for mining.
  */
 
 #include <thread>
@@ -31,11 +31,11 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Farm.h>
@@ -174,6 +174,10 @@ public:
 			m_minerType = MinerType::GPU;
 			miningThreads = 1;
 		}
+		else if (arg == "--no-precompute")
+		{
+			precompute = false;
+		}
 		else if ((arg == "-D" || arg == "--create-dag") && i + 1 < argc)
 		{
 			string m = boost::to_lower_copy(string(argv[++i]));
@@ -268,6 +272,7 @@ public:
 			<< "Work farming mode:" << endl
 			<< "    -F,--farm <url>  Put into mining farm mode with the work server at URL (default: http://127.0.0.1:8545)" << endl
 			<< "    --farm-recheck <n>  Leave n ms between checks for changed work (default: 500)." << endl
+			<< "    --no-precompute  Don't precompute the next epoch's DAG." << endl
 #endif
 			<< "Ethash verify mode:" << endl
 			<< "    -w,--check-pow <headerHash> <seedHash> <difficulty> <nonce>  Check PoW credentials for validity." << endl
@@ -388,7 +393,7 @@ private:
 		(void)_m;
 		(void)_remote;
 		(void)_recheckPeriod;
-	#if ETH_JSONRPC || !ETH_TRUE
+#if ETH_JSONRPC || !ETH_TRUE
 		jsonrpc::HttpClient client(_remote);
 
 		Farm rpc(client);
@@ -399,7 +404,7 @@ private:
 			f.startGPU();
 
 		ProofOfWork::WorkPackage current;
-        EthashAux::FullType dag;
+		EthashAux::FullType dag;
 		while (true)
 			try
 			{
@@ -418,9 +423,13 @@ private:
 						cnote << "Getting work package...";
 					Json::Value v = rpc.eth_getWork();
 					h256 hh(v[0].asString());
-                    h256 newSeedHash(v[1].asString());
-                    if (!(dag = EthashAux::full(newSeedHash, true)))
-                        BOOST_THROW_EXCEPTION(DAGCreationFailure());
+					h256 newSeedHash(v[1].asString());
+					if (current.seedHash != newSeedHash)
+						cnote << "Grabbing DAG for" << newSeedHash;
+					if (!(dag = EthashAux::full(newSeedHash, true, [&](unsigned _pc){ cout << "\rCreating DAG. " << _pc << "% done..." << flush; return 0; })))
+						BOOST_THROW_EXCEPTION(DAGCreationFailure());
+					if (precompute)
+						EthashAux::computeFull(sha3(newSeedHash), true);
 					if (hh != current.headerHash)
 					{
 						current.headerHash = hh;
@@ -459,7 +468,7 @@ private:
 					cerr << "JSON-RPC problem. Probably couldn't connect. Retrying in " << i << "... \r";
 				cerr << endl;
 			}
-	#endif
+#endif
 		exit(0);
 	}
 
@@ -484,5 +493,5 @@ private:
 	/// Farm params
 	string farmURL = "http://127.0.0.1:8545";
 	unsigned farmRecheckPeriod = 500;
-
+	bool precompute = true;
 };

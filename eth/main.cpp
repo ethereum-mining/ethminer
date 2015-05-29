@@ -29,7 +29,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
 
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libevmcore/Instruction.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/ProofOfWork.h>
@@ -37,7 +37,8 @@
 #include <libevm/VM.h>
 #include <libevm/VMFactory.h>
 #include <libethereum/All.h>
-#include <libethereum/KeyManager.h>
+#include <libethcore/KeyManager.h>
+
 #include <libwebthree/WebThree.h>
 #if ETH_JSCONSOLE || !ETH_TRUE
 #include <libjsconsole/JSConsole.h>
@@ -692,15 +693,16 @@ int main(int argc, char** argv)
 	}
 
 	if (keyManager.exists())
-		while (masterPassword.empty())
-		{
-			masterPassword = getPassword("Please enter your MASTER password: ");
-			if (!keyManager.load(masterPassword))
+	{
+		if (masterPassword.empty() || !keyManager.load(masterPassword))
+			while (true)
 			{
+				masterPassword = getPassword("Please enter your MASTER password: ");
+				if (keyManager.load(masterPassword))
+					break;
 				cout << "Password invalid. Try again." << endl;
-				masterPassword.clear();
 			}
-		}
+	}
 	else
 	{
 		while (masterPassword.empty())

@@ -29,7 +29,7 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Assertions.h>
 #include <libdevcore/StructuredLogger.h>
-#include <libdevcrypto/TrieHash.h>
+#include <libdevcore/TrieHash.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Exceptions.h>
 #include <libevm/VMFactory.h>
@@ -564,6 +564,34 @@ pair<TransactionReceipts, bool> State::sync(BlockChain const& _bc, TransactionQu
 	return ret;
 }
 
+string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir)
+{
+	RLP rlp(_block);
+
+	cleanup(false);
+	BlockInfo bi(_block, (_ir & ImportRequirements::ValidNonce) ? CheckEverything : IgnoreNonce);
+	m_currentBlock = bi;
+	m_currentBlock.verifyInternals(_block);
+	m_currentBlock.noteDirty();
+
+	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
+	vector<bytes> receipts;
+
+	ostringstream ss;
+	unsigned i = 0;
+	for (auto const& tr: rlp[1])
+	{
+		ss << "    VM Execution of transaction" << i << ":" << endl;
+		execute(lh, Transaction(tr.data(), CheckTransaction::Everything), Permanence::Committed, Executive::standardTrace(ss));
+		RLPStream receiptRLP;
+		m_receipts.back().streamRLP(receiptRLP);
+		receipts.push_back(receiptRLP.out());
+		++i;
+		ss << endl;
+	}
+	return ss.str();
+}
+
 u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
@@ -587,14 +615,6 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
 
-	MemoryDB tm;
-	GenericTrieDB<MemoryDB> transactionsTrie(&tm);
-	transactionsTrie.init();
-
-	MemoryDB rm;
-	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
-	receiptsTrie.init();
-
 	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
 	RLP rlp(_block);
 
@@ -612,40 +632,33 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	}
 
 	auto receiptsRoot = orderedTrieRoot(receipts);
-
 	if (receiptsRoot != m_currentBlock.receiptsRoot)
 	{
-		cwarn << "Bad receipts state root.";
-		cwarn << "Expected: " << toString(receiptsRoot) << " received: " << toString(m_currentBlock.receiptsRoot);
-		cwarn << "Block:" << toHex(_block);
-		cwarn << "Block RLP:" << rlp;
-		cwarn << "Calculated: " << receiptsRoot;
+		badBlock(_block, "Bad receipts state root");
+		cwarn << "  Received: " << toString(m_currentBlock.receiptsRoot);
+		cwarn << "  Expected: " << toString(receiptsRoot) << " which is:";
 		for (unsigned j = 0; j < i; ++j)
 		{
-			RLPStream k;
-			k << j;
 			auto b = receipts[j];
 			cwarn << j << ": ";
-			cwarn << "RLP: " << RLP(b);
-			cwarn << "Hex: " << toHex(b);
-			cwarn << TransactionReceipt(&b);
+			cwarn << "    RLP: " << RLP(b);
+			cwarn << "    Hex: " << toHex(b);
+			cwarn << "    " << TransactionReceipt(&b);
 		}
-		cwarn << "Recorded: " << m_currentBlock.receiptsRoot;
-		auto rs = _bc.receipts(m_currentBlock.hash());
-		for (unsigned j = 0; j < rs.receipts.size(); ++j)
-		{
-			auto b = rs.receipts[j].rlp();
-			cwarn << j << ": ";
-			cwarn << "RLP: " << RLP(b);
-			cwarn << "Hex: " << toHex(b);
-			cwarn << rs.receipts[j];
-		}
+		cwarn << "  VMTrace:\n" << vmTrace(_block, _bc, _ir);
 		BOOST_THROW_EXCEPTION(InvalidReceiptsStateRoot());
 	}
 
 	if (m_currentBlock.logBloom != logBloom())
 	{
-		cwarn << "Bad log bloom!";
+		badBlock(_block, "Bad log bloom");
+		cwarn << "  Receipt blooms:";
+		for (unsigned j = 0; j < i; ++j)
+		{
+			auto b = receipts[j];
+			cwarn << "    " << j << ":" << TransactionReceipt(&b).bloom().hex();
+		}
+		cwarn << "  Final bloom:" << m_currentBlock.logBloom.hex();
 		BOOST_THROW_EXCEPTION(InvalidLogBloom());
 	}
 
@@ -654,7 +667,10 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 
 	// Check uncles & apply their rewards to state.
 	if (rlp[2].itemCount() > 2)
+	{
+		badBlock(_block, "Too many uncles");
 		BOOST_THROW_EXCEPTION(TooManyUncles());
+	}
 
 	vector<BlockInfo> rewarded;
 	h256Hash excluded = _bc.allKinFrom(m_currentBlock.parentHash, 6);
@@ -664,13 +680,22 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	{
 		auto h = sha3(i.data());
 		if (excluded.count(h))
+		{
+			badBlock(_block, "Invalid uncle included");
 			BOOST_THROW_EXCEPTION(UncleInChain() << errinfo_comment("Uncle in block already mentioned") << errinfo_data(toString(excluded)) << errinfo_hash256(sha3(i.data())));
+		}
 		excluded.insert(h);
 
 		BlockInfo uncle = BlockInfo::fromHeader(i.data(), (_ir & ImportRequirements::CheckUncles) ? CheckEverything : IgnoreNonce,  h);
 		BlockInfo uncleParent(_bc.block(uncle.parentHash));
 		if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
+		{
+			badBlock(_block, "Uncle too old");
+			cwarn << "  Uncle number: " << uncle.number;
+			cwarn << "  Uncle parent number: " << uncleParent.number;
+			cwarn << "  Block number: " << m_currentBlock.number;
 			BOOST_THROW_EXCEPTION(UncleTooOld());
+		}
 		uncle.verifyParent(uncleParent);
 
 //		tdIncrease += uncle.difficulty;
@@ -685,13 +710,13 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot != m_previousBlock.stateRoot && m_currentBlock.stateRoot != rootHash())
 	{
-		cwarn << "Bad state root!";
-		cnote << "Given to be:" << m_currentBlock.stateRoot;
+		badBlock(_block, "Bad state root");
+		cnote << "  Given to be:" << m_currentBlock.stateRoot;
 		// TODO: Fix
 //		cnote << SecureTrieDB<Address, OverlayDB>(&m_db, m_currentBlock.stateRoot);
-		cnote << "Calculated to be:" << rootHash();
+		cnote << "  Calculated to be:" << rootHash();
+		cwarn << "  VMTrace:\n" << vmTrace(_block, _bc, _ir);
 //		cnote << m_state;
-		cnote << *this;
 		// Rollback the trie.
 		m_db.rollback();
 		BOOST_THROW_EXCEPTION(InvalidStateRoot());
@@ -700,6 +725,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	if (m_currentBlock.gasUsed != gasUsed())
 	{
 		// Rollback the trie.
+		badBlock(_block, "Invalid gas used");
 		m_db.rollback();
 		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed)));
 	}
@@ -840,16 +866,8 @@ void State::commitToMine(BlockChain const& _bc)
 		}
 	}
 
-	// TODO: move over to using TrieHash
-
-
-	MemoryDB tm;
-	GenericTrieDB<MemoryDB> transactionsTrie(&tm);
-	transactionsTrie.init();
-
-	MemoryDB rm;
-	GenericTrieDB<MemoryDB> receiptsTrie(&rm);
-	receiptsTrie.init();
+	BytesMap transactionsMap;
+	BytesMap receiptsMap;
 
 	RLPStream txs;
 	txs.appendList(m_transactions.size());
@@ -861,11 +879,11 @@ void State::commitToMine(BlockChain const& _bc)
 
 		RLPStream receiptrlp;
 		m_receipts[i].streamRLP(receiptrlp);
-		receiptsTrie.insert(&k.out(), &receiptrlp.out());
+		receiptsMap.insert(std::make_pair(k.out(), receiptrlp.out()));
 
 		RLPStream txrlp;
 		m_transactions[i].streamRLP(txrlp);
-		transactionsTrie.insert(&k.out(), &txrlp.out());
+		transactionsMap.insert(std::make_pair(k.out(), txrlp.out()));
 
 		txs.appendRaw(txrlp.out());
 	}
@@ -874,8 +892,8 @@ void State::commitToMine(BlockChain const& _bc)
 
 	RLPStream(unclesCount).appendRaw(unclesData.out(), unclesCount).swapOut(m_currentUncles);
 
-	m_currentBlock.transactionsRoot = transactionsTrie.root();
-	m_currentBlock.receiptsRoot = receiptsTrie.root();
+	m_currentBlock.transactionsRoot = hash256(transactionsMap);
+	m_currentBlock.receiptsRoot = hash256(receiptsMap);
 	m_currentBlock.logBloom = logBloom();
 	m_currentBlock.sha3Uncles = sha3(m_currentUncles);
 
@@ -1122,7 +1140,7 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 	return true;
 }
 
-ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Permanence _p)
+ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp)
 {
 #if ETH_PARANOIA
 	paranoia("start of execution.", true);
@@ -1149,7 +1167,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 #if ETH_VMTRACE
 		e.go(e.simpleTrace());
 #else
-		e.go();
+		e.go(_onOp);
 #endif
 	e.finalize();
 

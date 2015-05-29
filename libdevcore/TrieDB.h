@@ -30,9 +30,8 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include "MemoryDB.h"
-#include "OverlayDB.h"
 #include "TrieCommon.h"
 namespace ldb = leveldb;
 

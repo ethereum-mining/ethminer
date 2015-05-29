@@ -74,8 +74,8 @@ Item {
 			});
 		}
 		editor.document = document;
-		editor.sourceName = document.documentId;
 		editor.setFontSize(editorSettings.fontSize);
+		editor.sourceName = document.documentId;
 		editor.setText(data, document.syntaxMode);
 		editor.changeGeneration();
 	}
@@ -168,15 +168,26 @@ Item {
 			editors.itemAt(i).item.setFontSize(size);
 	}
 
+	function displayGasEstimation(checked)
+	{
+		var editor = getEditor(currentDocumentId);
+		if (editor)
+			editor.displayGasEstimation(checked);
+	}
+
 	Component.onCompleted: projectModel.codeEditor = codeEditorView;
 
 	Connections {
 		target: codeModel
 		onCompilationError: {
-			sourceInError = _sourceName;
+			sourceInError = _firstErrorLoc.source;
 		}
 		onCompilationComplete: {
 			sourceInError = "";
+			var gasCosts = codeModel.gasCostByDocumentId(currentDocumentId);
+			var editor = getEditor(currentDocumentId);
+			if (editor)
+				editor.setGasCosts(gasCosts);
 		}
 	}
 
@@ -280,6 +291,7 @@ Item {
 						messageDialog.doc = editorListModel.get(index);
 						messageDialog.open();
 					}
+					loader.item.displayGasEstimation(gasEstimationAction.checked);
 				}
 			}
 			Component.onCompleted: {
