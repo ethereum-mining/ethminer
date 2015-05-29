@@ -74,7 +74,7 @@ private:
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
-	std::vector<u256> m_jumpDests;
+	std::vector<uint64_t> m_jumpDests;
 	std::function<void()> m_onFail;
 	bigint m_gas = 0;
 };
