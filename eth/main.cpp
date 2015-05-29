@@ -628,7 +628,6 @@ int main(int argc, char** argv)
 		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
 		netPrefs,
 		&nodesState);
-
 	auto toNumber = [&](string const& s) -> unsigned {
 		if (s == "latest")
 			return web3.ethereum()->number();
