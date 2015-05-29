@@ -95,6 +95,7 @@ public:
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas, Address _originAddress);
+	bool call(CallParameters const& _cp, u256 const& _gasPrice, Address const& _origin);
 	/// Finalise an operation through accruing the substate into the parent context.
 	void accrueSubState(SubState& _parentContext);
 
@@ -104,6 +105,9 @@ public:
 
 	/// Operation function for providing a simple trace of the VM execution.
 	static OnOpFunc simpleTrace();
+
+	/// Operation function for providing a simple trace of the VM execution.
+	static OnOpFunc standardTrace(std::ostream& o_output);
 
 	/// @returns gas remaining after the transaction/operation.
 	u256 endGas() const { return m_endGas; }

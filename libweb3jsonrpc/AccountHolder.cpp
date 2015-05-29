@@ -26,7 +26,8 @@
 #include <ctime>
 #include <libdevcore/Guards.h>
 #include <libethereum/Client.h>
-#include <libethereum/KeyManager.h>
+#include <libethcore/KeyManager.h>
+
 
 using namespace std;
 using namespace dev;

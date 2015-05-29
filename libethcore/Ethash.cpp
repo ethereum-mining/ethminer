@@ -34,7 +34,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/CryptoPP.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethash/ethash.h>
 #include <libethash/internal.h>
 #if ETH_ETHASHCL || !ETH_TRUE
@@ -75,6 +75,13 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 	return ret;
 }
 
+void Ethash::ensurePrecomputed(unsigned _number)
+{
+	if (_number % ETHASH_EPOCH_LENGTH > ETHASH_EPOCH_LENGTH * 9 / 10)
+		// 90% of the way to the new epoch
+		EthashAux::computeFull(EthashAux::seedHash(_number + ETHASH_EPOCH_LENGTH), true);
+}
+
 void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
 {
 	EthashAux::full(_header.seedHash(), true, _f);
@@ -87,11 +94,13 @@ bool Ethash::preVerify(BlockInfo const& _header)
 
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
-	return !!ethash_quick_check_difficulty(
-		(ethash_h256_t const*)_header.headerHash(WithoutNonce).data(),
-		(uint64_t)(u64)_header.nonce,
-		(ethash_h256_t const*)_header.mixHash.data(),
-		(ethash_h256_t const*)boundary.data());
+	bool ret = !!ethash_quick_check_difficulty(
+			(ethash_h256_t const*)_header.headerHash(WithoutNonce).data(),
+			(uint64_t)(u64)_header.nonce,
+			(ethash_h256_t const*)_header.mixHash.data(),
+			(ethash_h256_t const*)boundary.data());
+
+	return ret;
 }
 
 bool Ethash::verify(BlockInfo const& _header)
@@ -104,6 +113,10 @@ bool Ethash::verify(BlockInfo const& _header)
 
 	auto result = EthashAux::eval(_header);
 	bool slow = result.value <= _header.boundary() && result.mixHash == _header.mixHash;
+
+//	cdebug << (slow ? "VERIFY" : "VERYBAD");
+//	cdebug << result.value.hex() << _header.boundary().hex();
+//	cdebug << result.mixHash.hex() << _header.mixHash.hex();
 
 #if ETH_DEBUG || !ETH_TRUE
 	if (!pre && slow)
@@ -135,8 +148,12 @@ void Ethash::CPUMiner::workLoop()
 	WorkPackage w = work();
 
 	EthashAux::FullType dag;
-	while (!shouldStop() && !(dag = EthashAux::full(w.seedHash)))
-		this_thread::sleep_for(chrono::milliseconds(500));
+	while (!shouldStop() && !dag)
+	{
+		while (!shouldStop() && EthashAux::computeFull(w.seedHash, true) != 100)
+			this_thread::sleep_for(chrono::milliseconds(500));
+		dag = EthashAux::full(w.seedHash, false);
+	}
 
 	h256 boundary = w.boundary;
 	unsigned hashCount = 1;
@@ -306,6 +323,7 @@ void Ethash::GPUMiner::workLoop()
 		cnote << "workLoop" << !!m_miner << m_minerSeed << w.seedHash;
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
+			cnote << "Initialising miner...";
 			m_minerSeed = w.seedHash;
 
 			delete m_miner;

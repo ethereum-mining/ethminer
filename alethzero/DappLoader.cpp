@@ -29,7 +29,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
 #include <libdevcrypto/CryptoPP.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libethcore/CommonJS.h>
 #include <libethereum/Client.h>
 #include <libwebthree/WebThree.h>

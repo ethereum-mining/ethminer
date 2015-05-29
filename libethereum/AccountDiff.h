@@ -62,7 +62,7 @@ struct AccountDiff
 	Diff<bool> exist;						///< The account's existance; was it created/deleted or not?
 	Diff<u256> balance;						///< The account's balance; did it alter?
 	Diff<u256> nonce;						///< The account's nonce; did it alter?
-	std::unordered_map<u256, Diff<u256>> storage;		///< The account's storage addresses; each has its own Diff.
+	std::map<u256, Diff<u256>> storage;		///< The account's storage addresses; each has its own Diff.
 	Diff<bytes> code;						///< The account's code; in general this should only have changed if exist also changed.
 };
 
