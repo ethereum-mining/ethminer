@@ -546,7 +546,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			break;
 		case Instruction::JUMP:
 			nextPC = m_stack.back();
-			if (find(m_jumpDests.begin(), m_jumpDests.end(), nextPC) == m_jumpDests.end())
+			if (find(m_jumpDests.begin(), m_jumpDests.end(), (uint64_t)nextPC) == m_jumpDests.end() || nextPC > numeric_limits<uint64_t>::max() )
 				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			m_stack.pop_back();
 			break;
@@ -554,7 +554,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			if (m_stack[m_stack.size() - 2])
 			{
 				nextPC = m_stack.back();
-				if (find(m_jumpDests.begin(), m_jumpDests.end(), nextPC) == m_jumpDests.end())
+				if (find(m_jumpDests.begin(), m_jumpDests.end(), (uint64_t)nextPC) == m_jumpDests.end() || nextPC > numeric_limits<uint64_t>::max() )
 					BOOST_THROW_EXCEPTION(BadJumpDestination());
 			}
 			m_stack.pop_back();
