@@ -40,12 +40,12 @@ boostIntGenerator RandomCode::randOpCodeGen = boostIntGenerator(gen, opCodeDist)
 boostIntGenerator RandomCode::randOpLengGen = boostIntGenerator(gen, opLengDist);
 boostIntGenerator RandomCode::randUniIntGen = boostIntGenerator(gen, uniIntDist);
 
-std::string RandomCode::rndByteSequence(int length, SizeStrictness sizeType)
+std::string RandomCode::rndByteSequence(int _length, SizeStrictness sizeType)
 {
 	refreshSeed();
 	std::string hash;
-	length = (sizeType == SizeStrictness::Strict) ? std::max(1, length) : randomUniInt() % length;
-	for (auto i = 0; i < length; i++)
+	_length = (sizeType == SizeStrictness::Strict) ? std::max(1, _length) : randomUniInt() % _length;
+	for (auto i = 0; i < _length; i++)
 	{
 		uint8_t byte = randOpCodeGen();
 		hash += toCompactHex(byte);
@@ -54,18 +54,18 @@ std::string RandomCode::rndByteSequence(int length, SizeStrictness sizeType)
 }
 
 //generate smart random code
-std::string RandomCode::generate(int maxOpNumber, RandomCodeOptions options)
+std::string RandomCode::generate(int _maxOpNumber, RandomCodeOptions _options)
 {
 	refreshSeed();
 	std::string code;
 
 	//random opCode amount
-	boostIntDistrib sizeDist (0, maxOpNumber);
+	boostIntDistrib sizeDist (0, _maxOpNumber);
 	boostIntGenerator rndSizeGen(gen, sizeDist);
 	int size = (int)rndSizeGen();
 
-	boostWeightGenerator randOpCodeWeight (gen, options.opCodeProbability);
-	bool weightsDefined = options.opCodeProbability.probabilities().size() == 255;
+	boostWeightGenerator randOpCodeWeight (gen, _options.opCodeProbability);
+	bool weightsDefined = _options.opCodeProbability.probabilities().size() == 255;
 
 	for (auto i = 0; i < size; i++)
 	{
@@ -75,14 +75,14 @@ std::string RandomCode::generate(int maxOpNumber, RandomCodeOptions options)
 		if (info.name.find_first_of("INVALID_INSTRUCTION") > 0)
 		{
 			//Byte code is yet not implemented
-			if (options.useUndefinedOpCodes == false)
+			if (_options.useUndefinedOpCodes == false)
 			{
 				i--;
 				continue;
 			}
 		}
 		else
-			code += fillArguments((dev::eth::Instruction) opcode, options);
+			code += fillArguments((dev::eth::Instruction) opcode, _options);
 		std::string byte = toCompactHex(opcode);
 		code += (byte == "") ? "00" : byte;
 	}
@@ -108,33 +108,33 @@ void RandomCode::refreshSeed()
 	gen.seed(static_cast<unsigned int>(timeSinceEpoch));
 }
 
-std::string RandomCode::getPushCode(std::string hex)
+std::string RandomCode::getPushCode(std::string const& _hex)
 {
-	int length = hex.length()/2;
+	int length = _hex.length() / 2;
 	int pushCode = 96 + length - 1;
-	return toCompactHex(pushCode) + hex;
+	return toCompactHex(pushCode) + _hex;
 }
 
-std::string RandomCode::getPushCode(int value)
+std::string RandomCode::getPushCode(int _value)
 {
-	std::string hexString = toCompactHex(value);
+	std::string hexString = toCompactHex(_value);
 	return getPushCode(hexString);
 }
 
-std::string RandomCode::fillArguments(dev::eth::Instruction opcode, RandomCodeOptions options)
+std::string RandomCode::fillArguments(dev::eth::Instruction _opcode, RandomCodeOptions const& _options)
 {
-	dev::eth::InstructionInfo info = dev::eth::instructionInfo(opcode);
+	dev::eth::InstructionInfo info = dev::eth::instructionInfo(_opcode);
 
 	std::string code;
 	bool smart = false;
 	unsigned num = info.args;
 	int rand = randUniIntGen() % 100;
-	if (rand < options.smartCodeProbability)
+	if (rand < _options.smartCodeProbability)
 		smart = true;
 
 	if (smart)
 	{
-		switch (opcode)
+		switch (_opcode)
 		{
 		case dev::eth::Instruction::CALL:
 			//(CALL gaslimit address value memstart1 memlen1 memstart2 memlen2)
@@ -143,7 +143,7 @@ std::string RandomCode::fillArguments(dev::eth::Instruction opcode, RandomCodeOp
 			code += getPushCode(randUniIntGen() % 32);  //memlen1
 			code += getPushCode(randUniIntGen() % 32);  //memlen1
 			code += getPushCode(randUniIntGen());		//value
-			code += getPushCode(toString(options.getRandomAddress()));//address
+			code += getPushCode(toString(_options.getRandomAddress()));//address
 			code += getPushCode(randUniIntGen());		//gaslimit
 		break;
 		default:
@@ -171,15 +171,15 @@ RandomCodeOptions::RandomCodeOptions() : useUndefinedOpCodes(false), smartCodePr
 	setWeights();
 }
 
-void RandomCodeOptions::setWeight(dev::eth::Instruction opCode, int weight)
+void RandomCodeOptions::setWeight(dev::eth::Instruction _opCode, int _weight)
 {
-	mapWeights.at((int)opCode) = weight;
+	mapWeights.at((int)_opCode) = _weight;
 	setWeights();
 }
 
-void RandomCodeOptions::addAddress(dev::Address address)
+void RandomCodeOptions::addAddress(dev::Address const& _address)
 {
-	addressList.push_back(address);
+	addressList.push_back(_address);
 }
 
 dev::Address RandomCodeOptions::getRandomAddress()
