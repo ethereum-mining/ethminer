@@ -13,6 +13,11 @@ Column
 	property string context
 	Layout.fillWidth: true
 	spacing: 0
+
+	DebuggerPaneStyle {
+		id: dbgStyle
+	}
+
 	Repeater
 	{
 		id: repeater
@@ -29,6 +34,9 @@ Column
 				id: typeLabel
 				text: modelData.type.name
 				anchors.verticalCenter: parent.verticalCenter
+				font.family: dbgStyle.general.basicFont
+				color: dbgStyle.general.basicColor
+				font.pointSize: dbgStyle.general.basicFontSize
 			}
 
 			DefaultLabel {
@@ -36,6 +44,9 @@ Column
 				id: nameLabel
 				text: modelData.name
 				anchors.verticalCenter: parent.verticalCenter
+				font.family: dbgStyle.general.basicFont
+				color: dbgStyle.general.basicColor
+				font.pointSize: dbgStyle.general.basicFontSize
 			}
 
 			DefaultLabel {
@@ -43,7 +54,11 @@ Column
 				id: equalLabel
 				text: "="
 				anchors.verticalCenter: parent.verticalCenter
+				font.family: dbgStyle.general.basicFont
+				color: dbgStyle.general.basicColor
+				font.pointSize: dbgStyle.general.basicFontSize
 			}
+
 			Loader
 			{
 				id: typeLoader
