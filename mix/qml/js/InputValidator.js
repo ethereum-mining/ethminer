@@ -1,3 +1,5 @@
+Qt.include("QEtherHelper.js")
+
 var nbRegEx = new RegExp('^[0-9]+$');
 function validate(model, values)
 {
@@ -8,7 +10,9 @@ function validate(model, values)
 		{
 			var type = model[k].type.name;
 			var res;
-			if (type.indexOf("int") !== -1)
+			if (isContractType(type))
+				res = validateAddress(type, values[model[k].name]);
+			else if (type.indexOf("int") !== -1)
 				res = validateInt(type, values[model[k].name]);
 			else if (type.indexOf("bytes") !== -1)
 				res = validateBytes(type, values[model[k].name]);
@@ -17,12 +21,22 @@ function validate(model, values)
 			else if (type.indexOf("address") !== -1)
 				res = validateAddress(type, values[model[k].name]);
 			else
-				res = validateAddress(type, values[model[k].name]); //we suppose that this is a ctr type.
+				res.valid = true;
 			if (!res.valid)
 				inError.push({ type: type, value: values, message: res.message });
 		}
 	}
 	return inError;
+}
+
+function isContractType(_type)
+{
+	for (var k in Object.keys(codeModel.contracts))
+	{
+		if ("contract " + Object.keys(codeModel.contracts)[k] === _type)
+			return true;
+	}
+	return false;
 }
 
 function validateInt(_type, _value)
@@ -35,7 +49,6 @@ function validateInt(_type, _value)
 		{
 			ret.valid = false;
 			ret.message = "uint type cannot represent negative number";
-			return false;
 		}
 	}
 	ret.valid = nbRegEx.test(_value);
@@ -43,12 +56,13 @@ function validateInt(_type, _value)
 		ret.message = _value + " does not represent " + _type + " type.";
 	else
 	{
-		var t = _type.replace("uint", "").replace("int", "");
-		var max = parseInt(t) / 4;
-		if (_value.length > max)
+		var bigInt = createBigInt(_value);
+		bigInt.setBigInt(_value);
+		var result = bigInt.checkAgainst(_type);
+		if (!result.valid)
 		{
 			ret.valid = false;
-			ret.message = _type + " should not contains more than " + max + " digits";
+			ret.message = _type + " should be between " + result.minValue + " and " + result.maxValue;
 		}
 	}
 	return ret;
@@ -60,7 +74,6 @@ function validateAddress(_type, _value)
 	if (_value.indexOf("<") === 0 && _value.indexOf(">") === _value.length - 1)
 	{
 		var v = _value.split(' - ');
-		console.log(JSON.stringify(v));
 		if (v.length !== 2 || !nbRegEx.test(v[1].replace(">", ""))) // <Contract - 2>
 		{
 			ret.valid = false;
