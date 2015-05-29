@@ -29,7 +29,7 @@
     "lib/web3/shh.js",
     "lib/web3/watches.js",
     "node_modules/browserify/lib/_empty.js",
-    "node_modules/bignumber.js/bignumber.js",
+    "bignumber.js",
     "index.js"
   ],
   "names": [],
