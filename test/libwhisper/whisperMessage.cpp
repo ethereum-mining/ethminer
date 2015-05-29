@@ -28,7 +28,7 @@ using namespace dev::shh;
 
 struct VerbosityHolder
 {
-	VerbosityHolder() : oldLogVerbosity(g_logVerbosity) { g_logVerbosity = 10; }
+	VerbosityHolder(int _temporaryValue) : oldLogVerbosity(g_logVerbosity) { g_logVerbosity = _temporaryValue; }
 	~VerbosityHolder() { g_logVerbosity = oldLogVerbosity; }
 
 	int oldLogVerbosity;
@@ -90,14 +90,11 @@ BOOST_AUTO_TEST_SUITE(whisperMessage)
 
 BOOST_AUTO_TEST_CASE(seal)
 {
-	VerbosityHolder verbosityHolder;
+	VerbosityHolder setTemporaryLevel(10);
 	cnote << "Testing Envelope encryption...";
 
-	for (unsigned int i = 1; i < 32; ++i)
-	{
-		cnote << i;
+	for (unsigned int i = 1; i < 10; ++i)
 		sealAndOpenSingleMessage(i);
-	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()
