@@ -119,11 +119,11 @@ public:
 	operator bool() const { return !!m_payload.size() || m_from || m_to; }
 
 	/// Turn this message into a ditributable Envelope.
-	Envelope seal(Secret _from, FullTopic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) const;
+	Envelope seal(Secret _from, FullTopic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) const;
 	// Overloads for skipping _from or specifying _to.
-	Envelope seal(FullTopic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) const { return seal(Secret(), _topic, _workToProve, _ttl); }
-	Envelope sealTo(Public _to, FullTopic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) { m_to = _to; return seal(Secret(), _topic, _workToProve, _ttl); }
-	Envelope sealTo(Secret _from, Public _to, FullTopic const& _topic, unsigned _workToProve = 50, unsigned _ttl = 50) { m_to = _to; return seal(_from, _topic, _workToProve, _ttl); }
+	Envelope seal(FullTopic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) const { return seal(Secret(), _topic, _ttl, _workToProve); }
+	Envelope sealTo(Public _to, FullTopic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { m_to = _to; return seal(Secret(), _topic, _ttl, _workToProve); }
+	Envelope sealTo(Secret _from, Public _to, FullTopic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { m_to = _to; return seal(_from, _topic, _ttl, _workToProve); }
 
 private:
 	bool populate(bytes const& _data);
