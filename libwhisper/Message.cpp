@@ -64,21 +64,15 @@ bool Message::openBroadcastEnvelope(Envelope const& _e, FullTopic const& _fk, by
 				break;
 			}
 
-	if (_e.data().size() < _e.topic().size() * 32)
+	if (_e.data().size() < _e.topic().size() * h256::size)
 		return false;
 
-	h256 encryptedKey = h256(bytesConstRef(&(_e.data())).cropped(32 * topicIndex, 32));
-	h256 key = generateGamma(topicSecret) ^ encryptedKey;
-	bytesConstRef cipherText = bytesConstRef(&(_e.data())).cropped(32 * _e.topic().size());
+	unsigned index = topicIndex * 2;
+	h256 encryptedKey = h256(bytesConstRef(&(_e.data())).cropped(h256::size * index, h256::size));
+	h256 salt = h256(bytesConstRef(&(_e.data())).cropped(h256::size * ++index, h256::size));
+	h256 key = generateGamma(topicSecret, salt) ^ encryptedKey;
+	bytesConstRef cipherText = bytesConstRef(&(_e.data())).cropped(h256::size * 2 * _e.topic().size());
 	return decryptSym(key, cipherText, o_b);
-}
-
-h256 Message::generateGamma(h256 const& _seed) const
-{
-	int const c_rounds = 128;
-	bytes zeroSalt;
-	bytes hashedTopic = dev::pbkdf2(_seed.hex(), zeroSalt, c_rounds);
-	return h256(hashedTopic);
 }
 
 bool Message::populate(bytes const& _data)
@@ -111,7 +105,7 @@ Envelope Message::seal(Secret _from, FullTopic const& _fullTopic, unsigned _ttl,
 	input[0] = 0;
 	memcpy(input.data() + 1, m_payload.data(), m_payload.size());
 
-	if (_from)		// needs a sig
+	if (_from) // needs a signature
 	{
 		input.resize(1 + m_payload.size() + sizeof(Signature));
 		input[0] |= ContainsSignature;
@@ -124,10 +118,15 @@ Envelope Message::seal(Secret _from, FullTopic const& _fullTopic, unsigned _ttl,
 		encrypt(m_to, &input, ret.m_data);
 	else
 	{
+		// this message is for broadcast (could be read by anyone who knows at least one of the topics)
 		// create the shared secret for encrypting the payload, then encrypt the shared secret with each topic
 		Secret s = Secret::random();
 		for (h256 const& t : _fullTopic)
-			ret.m_data += (generateGamma(t) ^ s).asBytes();
+		{
+			h256 salt = h256::random();
+			ret.m_data += (generateGamma(t, salt) ^ s).asBytes();
+			ret.m_data += salt.asBytes();
+		}
 
 		bytes d;
 		encryptSym(s, &input, d);
