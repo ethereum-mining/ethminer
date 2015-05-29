@@ -21,7 +21,7 @@
  */
 
 #include <boost/filesystem.hpp>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethereum/CanonBlockChain.h>
 #include <test/TestHelper.h>

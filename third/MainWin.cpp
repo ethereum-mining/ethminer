@@ -32,7 +32,7 @@
 #include <QtCore/QtCore>
 #include <libserpent/funcs.h>
 #include <libserpent/util.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <liblll/Compiler.h>
 #include <liblll/CodeFragment.h>
 #include <libevm/VM.h>

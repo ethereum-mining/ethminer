@@ -159,6 +159,42 @@ bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _sen
 	return !m_ext;
 }
 
+bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address const& _origin)
+{
+	m_isCreation = false;
+//	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
+	auto it = !(_p.codeAddress & ~h160(0xffffffff)) ? precompiled().find((unsigned)(u160)_p.codeAddress) : precompiled().end();
+	if (it != precompiled().end())
+	{
+		bigint g = it->second.gas(_p.data);
+		if (_p.gas < g)
+		{
+			m_endGas = 0;
+			m_excepted = TransactionException::OutOfGasBase;
+			// Bail from exception.
+			return true;	// true actually means "all finished - nothing more to be done regarding go().
+		}
+		else
+		{
+			m_endGas = (u256)(_p.gas - g);
+			m_precompiledOut = it->second.exec(_p.data);
+			m_out = &m_precompiledOut;
+		}
+	}
+	else if (m_s.addressHasCode(_p.codeAddress))
+	{
+		m_vm = VMFactory::create(_p.gas);
+		bytes const& c = m_s.code(_p.codeAddress);
+		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _p.receiveAddress, _p.senderAddress, _origin, _p.value, _gasPrice, _p.data, &c, m_depth);
+	}
+	else
+		m_endGas = _p.gas;
+
+	m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.value);
+
+	return !m_ext;
+}
+
 bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _init, Address _origin)
 {
 	m_isCreation = true;
@@ -203,6 +239,24 @@ OnOpFunc Executive::simpleTrace()
 			o << showbase << hex << i.first << ": " << i.second << endl;
 		dev::LogOutputStream<VMTraceChannel, false>() << o.str();
 		dev::LogOutputStream<VMTraceChannel, false>() << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << vm.gas() << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
+	};
+}
+
+OnOpFunc Executive::standardTrace(ostream& o_output)
+{
+	return [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, VM* voidVM, ExtVMFace const* voidExt)
+	{
+		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
+		VM& vm = *voidVM;
+
+		o_output << endl << "    STACK" << endl;
+		for (auto i: vm.stack())
+			o_output << (h256)i << endl;
+		o_output << "    MEMORY" << endl << ((vm.memory().size() > 1000) ? " mem size greater than 1000 bytes " : memDump(vm.memory()));
+		o_output << "    STORAGE" << endl;
+		for (auto const& i: ext.state().storage(ext.myAddress))
+			o_output << showbase << hex << i.first << ": " << i.second << endl;
+		o_output << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << vm.gas() << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
 	};
 }
 

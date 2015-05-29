@@ -9,6 +9,8 @@ QtObject {
 
 	property QtObject general: QtObject {
 		property int basicFontSize: absoluteSize(-2)
+		property string basicColor: "#4a4a4a"
+		property string basicFont: "monospace"
 		property int dataDumpFontSize: absoluteSize(-3)
 	}
 }

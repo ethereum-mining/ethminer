@@ -32,46 +32,29 @@ namespace dev
 
 // SHA-3 convenience routines.
 
-/// Calculate SHA3-256 hash of the given input and load it into the given output.
-void sha3(bytesConstRef _input, bytesRef _output);
-
-/// Calculate SHA3-256 hash of the given input, possibly interpreting it as nibbles, and return the hash as a string filled with binary data.
-std::string sha3(std::string const& _input, bool _isNibbles);
-
-/// Calculate SHA3-256 hash of the given input, returning as a byte array.
-bytes sha3Bytes(bytesConstRef _input);
-
-/// Calculate SHA3-256 hash of the given input (presented as a binary string), returning as a byte array.
-inline bytes sha3Bytes(std::string const& _input) { return sha3Bytes((std::string*)&_input); }
-
-/// Calculate SHA3-256 hash of the given input, returning as a byte array.
-inline bytes sha3Bytes(bytes const& _input) { return sha3Bytes((bytes*)&_input); }
-
 /// Calculate SHA3-256 hash of the given input, returning as a 256-bit hash.
 h256 sha3(bytesConstRef _input);
 
+/// Calculate SHA3-256 hash of the given input and load it into the given output.
+inline void sha3(bytesConstRef _input, bytesRef _output) { sha3(_input).ref().populate(_output); }
+
 /// Calculate SHA3-256 hash of the given input, returning as a 256-bit hash.
-inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef((bytes*)&_input)); }
+inline h256 sha3(bytes const& _input) { return sha3(bytesConstRef(&_input)); }
 
 /// Calculate SHA3-256 hash of the given input (presented as a binary-filled string), returning as a 256-bit hash.
 inline h256 sha3(std::string const& _input) { return sha3(bytesConstRef(_input)); }
-	
-/// Calculate SHA3-256 MAC
-void sha3mac(bytesConstRef _secret, bytesConstRef _plain, bytesRef _output);
 
 /// Calculate SHA3-256 hash of the given input (presented as a FixedHash), returns a 256-bit hash.
 template<unsigned N> inline h256 sha3(FixedHash<N> const& _input) { return sha3(_input.ref()); }
 
+/// Calculate SHA3-256 hash of the given input, possibly interpreting it as nibbles, and return the hash as a string filled with binary data.
+inline std::string sha3(std::string const& _input, bool _isNibbles) { return asString((_isNibbles ? sha3(fromHex(_input)) : sha3(bytesConstRef(&_input))).asBytes()); }
+
+/// Calculate SHA3-256 MAC
+inline void sha3mac(bytesConstRef _secret, bytesConstRef _plain, bytesRef _output) { sha3(_secret.toBytes() + _plain.toBytes()).ref().populate(_output); }
+
 extern h256 EmptySHA3;
 
 extern h256 EmptyListSHA3;
-
-// Other crypto convenience routines
-
-bytes aesDecrypt(bytesConstRef _cipher, std::string const& _password, unsigned _rounds = 2000, bytesConstRef _salt = bytesConstRef());
-
-void sha256(bytesConstRef _input, bytesRef _output);
-
-void ripemd160(bytesConstRef _input, bytesRef _output);
 
 }

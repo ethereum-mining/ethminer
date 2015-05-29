@@ -164,27 +164,8 @@ const char* ClientDetail::name() { return EthTeal "⧫" EthCoal " ●"; }
 #endif
 
 Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId):
-	Worker("eth", 0),
-	m_vc(_dbPath),
-	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
-	m_gp(new TrivialGasPricer),
-	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
-	m_preMine(m_stateDB, BaseState::CanonGenesis),
-	m_postMine(m_stateDB)
+	Client(_extNet, make_shared<TrivialGasPricer>(), _dbPath, _forceAction, _networkId)
 {
-	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
-	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
-	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
-
-	m_gp->update(m_bc);
-
-	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
-
-	if (_dbPath.size())
-		Defaults::setDBPath(_dbPath);
-	m_vc.setOk();
-	doWork();
-
 	startWorking();
 }
 
@@ -194,16 +175,19 @@ Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string c
 	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
 	m_gp(_gp),
 	m_stateDB(State::openDB(_dbPath, max(m_vc.action(), _forceAction))),
-	m_preMine(m_stateDB),
+	m_preMine(m_stateDB, BaseState::CanonGenesis),
 	m_postMine(m_stateDB)
 {
+	m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds(30);
 	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
 	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
 	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
 
 	m_gp->update(m_bc);
 
-	m_host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
+	auto host = _extNet->registerCapability(new EthereumHost(m_bc, m_tq, m_bq, _networkId));
+	m_host = host;
+	_extNet->addCapability(host, EthereumHost::staticName(), EthereumHost::c_oldProtocolVersion); //TODO: remove this one v61+ protocol is common
 
 	if (_dbPath.size())
 		Defaults::setDBPath(_dbPath);
@@ -453,8 +437,15 @@ ProofOfWork::WorkPackage Client::getWork()
 {
 	// lock the work so a later submission isn't invalidated by processing a transaction elsewhere.
 	// this will be reset as soon as a new block arrives, allowing more transactions to be processed.
+	bool oldShould = shouldServeWork();
 	m_lastGetWork = chrono::system_clock::now();
-	m_remoteWorking = true;
+
+	// if this request has made us bother to serve work, prep it now.
+	if (!oldShould && shouldServeWork())
+		onPostStateChanged();
+	else
+		// otherwise, set this to true so that it gets prepped next time.
+		m_remoteWorking = true;
 	return ProofOfWork::package(m_miningInfo);
 }
 
@@ -484,7 +475,7 @@ void Client::syncBlockQueue()
 
 	cwork << "BQ ==> CHAIN ==> STATE";
 	{
-		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, 10);
+		tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, rand() % 90 + 10);
 		if (ir.first.empty())
 			return;
 	}
@@ -607,7 +598,8 @@ bool Client::remoteActive() const
 void Client::onPostStateChanged()
 {
 	cnote << "Post state changed";
-	if (isMining() || remoteActive())
+
+	if (m_bq.items().first == 0 && (isMining() || remoteActive()))
 	{
 		cnote << "Restarting mining...";
 		DEV_WRITE_GUARDED(x_working)
@@ -619,6 +611,8 @@ void Client::onPostStateChanged()
 			m_miningInfo = m_postMine.info();
 		}
 		m_farm.setWork(m_miningInfo);
+
+		Ethash::ensurePrecomputed(m_bc.number());
 	}
 	m_remoteWorking = false;
 }
@@ -636,7 +630,7 @@ void Client::noteChanged(h256Hash const& _filters)
 {
 	Guard l(x_filtersWatches);
 	if (_filters.size())
-		filtersStreamOut(cnote << "noteChanged:", _filters);
+		filtersStreamOut(cwatch << "noteChanged:", _filters);
 	// accrue all changes left in each filter into the watches.
 	for (auto& w: m_watches)
 		if (_filters.count(w.second.id))
