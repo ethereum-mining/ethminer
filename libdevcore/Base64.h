@@ -28,7 +28,6 @@
 /// DEVified by Gav Wood.
 #pragma once
 
-#include <vector>
 #include <string>
 #include "Common.h"
 #include "FixedHash.h"
