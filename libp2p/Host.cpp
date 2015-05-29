@@ -202,6 +202,10 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	// clang error (previously: ... << hex << caps ...)
 	// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
 	stringstream capslog;
+
+	if (caps.size() > 1)
+		caps.erase(remove_if(caps.begin(), caps.end(), [&](CapDesc const& _r){ return any_of(caps.begin(), caps.end(), [&](CapDesc const& _o){ return _r.first == _o.first && _o.second > _r.second; }); }), caps.end());
+
 	for (auto cap: caps)
 		capslog << "(" << cap.first << "," << dec << cap.second << ")";
 	clog(NetMessageSummary) << "Hello: " << clientVersion << "V[" << protocolVersion << "]" << _id << showbase << capslog.str() << dec << listenPort;
@@ -237,7 +241,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 		for (auto const& i: caps)
 			if (haveCapability(i))
 			{
-				ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps.get(), o));
+				ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps.get(), o, i));
 				o += m_capabilities[i]->messageCount();
 			}
 		ps->start();
