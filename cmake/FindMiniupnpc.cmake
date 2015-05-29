@@ -14,16 +14,31 @@ find_path(
 	MINIUPNPC_INCLUDE_DIR 
 	NAMES miniupnpc/miniupnpc.h
 	DOC "miniupnpc include dir"
-	)
+)
 
 find_library(
 	MINIUPNPC_LIBRARY
 	NAMES miniupnpc
 	DOC "miniupnpc library"
-	)
+)
 
 set(MINIUPNPC_INCLUDE_DIRS ${MINIUPNPC_INCLUDE_DIR})
 set(MINIUPNPC_LIBRARIES ${MINIUPNPC_LIBRARY})
+
+# debug library on windows
+# same naming convention as in QT (appending debug library with d)
+# boost is using the same "hack" as us with "optimized" and "debug"
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+
+	find_library(
+		MINIUPNPC_LIBRARY_DEBUG
+		NAMES miniupnpcd
+		DOC "miniupnpc debug library"
+	)
+
+	set(MINIUPNPC_LIBRARIES "iphlpapi" optimized ${MINIUPNPC_LIBRARIES} debug ${MINIUPNPC_LIBRARY_DEBUG})
+
+endif()
 
 # handle the QUIETLY and REQUIRED arguments and set MINIUPNPC_FOUND to TRUE
 # if all listed variables are TRUE, hide their existence from configuration view

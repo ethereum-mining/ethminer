@@ -119,6 +119,7 @@ ApplicationWindow {
 		Menu {
 			title: qsTr("Tools")
 			MenuItem { action: gasEstimationAction }
+			MenuItem { action: optimizeCodeAction }
 		}
 		Menu {
 			title: qsTr("Windows")
@@ -419,9 +420,19 @@ ApplicationWindow {
 		text: qsTr("Display gas estimation")
 		shortcut: "Ctrl+G"
 		checkable: true
-		onTriggered:
-		{
-			mainContent.codeEditor.displayGasEstimation(checked);
-		}
+		onTriggered: mainContent.codeEditor.displayGasEstimation(checked);
+	}
+
+	Action {
+		id: optimizeCodeAction
+		text: qsTr("Enable optimized compilation")
+		shortcut: "Ctrl+Shift+O"
+		checkable: true
+		onTriggered: codeModel.setOptimizeCode(checked);
+	}
+
+	Settings {
+		property alias gasEstimation: gasEstimationAction.checked
+		property alias optimizeCode: optimizeCodeAction.checked
 	}
 }
