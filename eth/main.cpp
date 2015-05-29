@@ -693,18 +693,16 @@ int main(int argc, char** argv)
 	}
 
 	if (keyManager.exists())
-		if (!masterPassword.empty())
-			keyManager.load(masterPassword);
-		else
-			while (masterPassword.empty())
+	{
+		if (masterPassword.empty() || !keyManager.load(masterPassword))
+			while (true)
 			{
 				masterPassword = getPassword("Please enter your MASTER password: ");
-				if (!keyManager.load(masterPassword))
-				{
-					cout << "Password invalid. Try again." << endl;
-					masterPassword.clear();
-				}
+				if (keyManager.load(masterPassword))
+					break;
+				cout << "Password invalid. Try again." << endl;
 			}
+	}
 	else
 	{
 		while (masterPassword.empty())

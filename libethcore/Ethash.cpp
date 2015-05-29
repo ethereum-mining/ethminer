@@ -94,11 +94,13 @@ bool Ethash::preVerify(BlockInfo const& _header)
 
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
-	return !!ethash_quick_check_difficulty(
-		(ethash_h256_t const*)_header.headerHash(WithoutNonce).data(),
-		(uint64_t)(u64)_header.nonce,
-		(ethash_h256_t const*)_header.mixHash.data(),
-		(ethash_h256_t const*)boundary.data());
+	bool ret = !!ethash_quick_check_difficulty(
+			(ethash_h256_t const*)_header.headerHash(WithoutNonce).data(),
+			(uint64_t)(u64)_header.nonce,
+			(ethash_h256_t const*)_header.mixHash.data(),
+			(ethash_h256_t const*)boundary.data());
+
+	return ret;
 }
 
 bool Ethash::verify(BlockInfo const& _header)
@@ -111,6 +113,10 @@ bool Ethash::verify(BlockInfo const& _header)
 
 	auto result = EthashAux::eval(_header);
 	bool slow = result.value <= _header.boundary() && result.mixHash == _header.mixHash;
+
+//	cdebug << (slow ? "VERIFY" : "VERYBAD");
+//	cdebug << result.value.hex() << _header.boundary().hex();
+//	cdebug << result.mixHash.hex() << _header.mixHash.hex();
 
 #if ETH_DEBUG || !ETH_TRUE
 	if (!pre && slow)

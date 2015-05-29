@@ -317,7 +317,7 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 	{
 		try
 		{
-			// Nonce & uncle nonces already verified thread at this point.
+			// Nonce & uncle nonces already verified in verification thread at this point.
 			ImportRoute r;
 			DEV_TIMED_ABOVE(Block import, 500)
 				r = import(block.first, block.second, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
