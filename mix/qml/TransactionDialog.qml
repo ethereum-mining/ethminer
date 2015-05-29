@@ -515,7 +515,7 @@ Dialog {
 						}
 						else
 						{
-							errorDialog.text = qsTr("some parameters are invalid:\n");
+							errorDialog.text = qsTr("Some parameters are invalid:\n");
 							for (var k in invalid)
 								errorDialog.text += invalid[k].message + "\n";
 							errorDialog.open();
