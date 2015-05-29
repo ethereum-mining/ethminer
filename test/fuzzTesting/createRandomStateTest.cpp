@@ -226,31 +226,33 @@ void doStateTests(json_spirit::mValue& _v)
 		assert(o.count("pre") > 0);
 		assert(o.count("transaction") > 0);
 		bytes output;
-		eth::State theState;
 
 		try
 		{
 			test::ImportTest importer(o, true);
 			eth::State theState = importer.m_statePre;
-			output = theState.execute(test::lastHashes(importer.m_environment.currentBlock.number), importer.m_transaction).output;	
-			#if ETH_FATDB
-				importer.exportTest(output, theState);
-			#else
-				cout << "You can not fill tests when FATDB is switched off";
-			#endif
+			try
+			{
+				output = theState.execute(test::lastHashes(importer.m_environment.currentBlock.number), importer.m_transaction).output;
+			}
+			catch (Exception const& _e)
+			{
+				cnote << "state execution did throw an exception: " << diagnostic_information(_e);
+				theState.commit();
+			}
+			catch (std::exception const& _e)
+			{
+				cnote << "state execution did throw an exception: " << _e.what();
+			}
+#if ETH_FATDB
+			importer.exportTest(output, theState);
+#else
+			cout << "You can not fill tests when FATDB is switched off";
+#endif
 		}
-		catch (Exception const& _e)
+		catch(...)
 		{
-			cnote << "state execution did throw an exception: " << diagnostic_information(_e);
-			theState.commit();
-		}
-		catch (std::exception const& _e)
-		{
-			cnote << "state execution did throw an exception: " << _e.what();
-		}
-		catch (...)
-		{
-			cnote << "state execution did throw an exception!";
+			cnote << "Error filling test, probably...";
 		}
 	}
 }
