@@ -45,8 +45,8 @@ struct RandomCodeOptions
 {
 public:
 	RandomCodeOptions();
-	void setWeight(dev::eth::Instruction opCode, int weight);
-	void addAddress(dev::Address address);
+	void setWeight(dev::eth::Instruction _opCode, int _weight);
+	void addAddress(dev::Address const& _address);
 	dev::Address getRandomAddress();
 
 	bool useUndefinedOpCodes;
@@ -68,19 +68,19 @@ class RandomCode
 {
 public:
 	/// Generate random vm code
-	static std::string generate(int maxOpNumber = 1, RandomCodeOptions options = RandomCodeOptions());
+	static std::string generate(int _maxOpNumber = 1, RandomCodeOptions _options = RandomCodeOptions());
 
 	/// Generate random byte string of a given length
-	static std::string rndByteSequence(int length = 1, SizeStrictness sizeType = SizeStrictness::Strict);
+	static std::string rndByteSequence(int _length = 1, SizeStrictness _sizeType = SizeStrictness::Strict);
 
 	/// Generate random uniForm Int with reasonable value 0..0x7fffffff
 	static std::string randomUniIntHex();
 	static int randomUniInt();
 
 private:
-	static std::string fillArguments(dev::eth::Instruction opcode, RandomCodeOptions options);
-	static std::string getPushCode(int value);
-	static std::string getPushCode(std::string hex);
+	static std::string fillArguments(dev::eth::Instruction _opcode, RandomCodeOptions const& _options);
+	static std::string getPushCode(int _value);
+	static std::string getPushCode(std::string const& _hex);
 	static void refreshSeed();
 
 	static boost::random::mt19937 gen;			///< Random generator
