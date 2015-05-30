@@ -101,7 +101,8 @@ void BlockQueue::verifierBody()
 			}
 
 			RLP r(&res.second);
-			for (auto const& uncle: r[2])
+			for (auto const& uncle : r[2])
+			{
 				try
 				{
 					BlockInfo().populateFromHeader(RLP(uncle.data()), CheckEverything);
@@ -125,6 +126,7 @@ void BlockQueue::verifierBody()
 					badBlockHeader(uncle.data(), _e.what());
 					throw;
 				}
+			}
 		}
 		catch (...)
 		{
