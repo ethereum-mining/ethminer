@@ -547,6 +547,10 @@ mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<B
 			uncleBlockFromFields.gasUsed = overwrite == "gasUsed" ? toInt(uncleHeaderObj["gasUsed"]) : uncleBlockFromFields.gasUsed;
 			uncleBlockFromFields.parentHash = overwrite == "parentHash" ? h256(uncleHeaderObj["parentHash"].get_str()) : uncleBlockFromFields.parentHash;
 			uncleBlockFromFields.stateRoot = overwrite == "stateRoot" ? h256(uncleHeaderObj["stateRoot"].get_str()) : uncleBlockFromFields.stateRoot;
+
+			if (overwrite == "parentHashIsBlocksParent")
+				uncleBlockFromFields.populateFromParent(vBiBlocks[vBiBlocks.size() - 1]);
+
 			if (overwrite == "timestamp")
 			{
 				uncleBlockFromFields.timestamp = toInt(uncleHeaderObj["timestamp"]);
