@@ -85,6 +85,20 @@ using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
 using u160Set = std::set<u160>;
 
+// Workaround for mixed type big int comparison bug introduced in boost 1.58
+// https://svn.boost.org/trac/boost/ticket/11328
+#define ETH_BIGINT_WRONG_COMPARISON_WORKAROUND(_OP) \
+	template<typename _T, typename _U> auto operator _OP (_T const& a, _U const& b) -> typename std::enable_if<std::is_same<_T, u256>::value && std::is_same<_U, bigint>::value, bool>::type { return (bigint)a _OP b; } \
+	template<typename _T, typename _U> auto operator _OP (_U const& a, _T const& b) -> typename std::enable_if<std::is_same<_T, u256>::value && std::is_same<_U, bigint>::value, bool>::type { return a _OP (bigint)b; }
+
+ETH_BIGINT_WRONG_COMPARISON_WORKAROUND(==)
+ETH_BIGINT_WRONG_COMPARISON_WORKAROUND(!=)
+ETH_BIGINT_WRONG_COMPARISON_WORKAROUND(>=)
+ETH_BIGINT_WRONG_COMPARISON_WORKAROUND(<=)
+ETH_BIGINT_WRONG_COMPARISON_WORKAROUND(<)
+ETH_BIGINT_WRONG_COMPARISON_WORKAROUND(>)
+
+
 extern const u256 UndefinedU256;
 
 // Map types.
