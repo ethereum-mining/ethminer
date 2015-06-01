@@ -35,6 +35,7 @@ build_xc
 # build system
 build.*/
 extdep/install
+extdep/download
 
 *.pyc
 
