@@ -331,7 +331,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 				{
 					QSolidityType const* type = p->type();
 					QVariant value = transaction.parameterValues.value(p->name());
-					if (type->type().type == SolidityType::Type::Address)
+					if (type->type().type == SolidityType::Type::Address && value.toString().startsWith("<"))
 					{
 						std::pair<QString, int> ctrParamInstance = resolvePair(value.toString());
 						value = QVariant(resolveToken(ctrParamInstance, deployedContracts));

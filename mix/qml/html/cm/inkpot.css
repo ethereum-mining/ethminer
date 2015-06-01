@@ -68,3 +68,11 @@ span.CodeMirror-selectedtext { color: #ffffff !important; }
 	font-size: 12px;
 }
 
+.CodeMirror-gasCost
+{
+	font-family: monospace;
+	font-size: 14px;
+	color: #409090;
+	text-shadow: none !important;
+	margin-left: 5px;
+}
