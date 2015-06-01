@@ -16,7 +16,7 @@
 */
 /** @file boost.cpp
  * @author Lefteris Karapetsas <lefteris@ethdev.com>
- * @date 205
+ * @date 2015
  * Tests for external dependencies: Boost
  */
 
