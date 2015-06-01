@@ -47,7 +47,7 @@ public:
 	RandomCodeOptions();
 	void setWeight(dev::eth::Instruction _opCode, int _weight);
 	void addAddress(dev::Address const& _address);
-	dev::Address getRandomAddress();
+	dev::Address getRandomAddress() const;
 
 	bool useUndefinedOpCodes;
 	int smartCodeProbability;

@@ -40,11 +40,11 @@ boostIntGenerator RandomCode::randOpCodeGen = boostIntGenerator(gen, opCodeDist)
 boostIntGenerator RandomCode::randOpLengGen = boostIntGenerator(gen, opLengDist);
 boostIntGenerator RandomCode::randUniIntGen = boostIntGenerator(gen, uniIntDist);
 
-std::string RandomCode::rndByteSequence(int _length, SizeStrictness sizeType)
+std::string RandomCode::rndByteSequence(int _length, SizeStrictness _sizeType)
 {
 	refreshSeed();
 	std::string hash;
-	_length = (sizeType == SizeStrictness::Strict) ? std::max(1, _length) : randomUniInt() % _length;
+	_length = (_sizeType == SizeStrictness::Strict) ? std::max(1, _length) : randomUniInt() % _length;
 	for (auto i = 0; i < _length; i++)
 	{
 		uint8_t byte = randOpCodeGen();
@@ -182,7 +182,7 @@ void RandomCodeOptions::addAddress(dev::Address const& _address)
 	addressList.push_back(_address);
 }
 
-dev::Address RandomCodeOptions::getRandomAddress()
+dev::Address RandomCodeOptions::getRandomAddress() const
 {
 	if (addressList.size() > 0)
 	{
