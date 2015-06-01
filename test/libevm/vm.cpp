@@ -438,15 +438,6 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 
 BOOST_AUTO_TEST_SUITE(VMTests)
 
-// test that reproduces issue https://github.com/ethereum/cpp-ethereum/issues/1977
-BOOST_AUTO_TEST_CASE(u256_overflow_test)
-{
-	dev::u256 a = 14;
-	dev::bigint b = dev::bigint("115792089237316195423570985008687907853269984665640564039457584007913129639948");
-	// to fix cast `a` to dev::bigint
-	BOOST_CHECK(a < b);
-}
-
 BOOST_AUTO_TEST_CASE(vmtests)
 {
 	dev::test::executeTests("vmtests", "/VMTests",dev::test::getFolder(__FILE__) + "/VMTestsFiller", dev::test::doVMTests);
