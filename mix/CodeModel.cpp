@@ -309,7 +309,7 @@ void CodeModel::runCompilationJob(int _jobId)
 				sourceNames.push_back(c.first.toStdString());
 			}
 		}
-		cs.compile(false);
+		cs.compile(m_optimizeCode);
 		gasEstimation(cs);
 		collectContracts(cs, sourceNames);
 	}
@@ -380,7 +380,23 @@ void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
 			GasMeter::GasConsumption cost = gasItem->second;
 			std::stringstream v;
 			v << cost.value;
-			m_gasCostsMaps->push(sourceName, location.start, location.end, QString::fromStdString(v.str()), cost.isInfinite);
+			m_gasCostsMaps->push(sourceName, location.start, location.end, QString::fromStdString(v.str()), cost.isInfinite, GasMap::type::Statement);
+		}
+
+		if (contractDefinition.getConstructor() != nullptr)
+		{
+			GasMeter::GasConsumption cost = GasEstimator::functionalEstimation(*_cs.getRuntimeAssemblyItems(n), contractDefinition.getConstructor()->externalSignature());
+			std::stringstream v;
+			v << cost.value;
+			m_gasCostsMaps->push(sourceName, contractDefinition.getConstructor()->getLocation().start, contractDefinition.getConstructor()->getLocation().end, QString::fromStdString(v.str()), cost.isInfinite, GasMap::type::Constructor);
+		}
+
+		for (auto func: contractDefinition.getDefinedFunctions())
+		{
+			GasMeter::GasConsumption cost = GasEstimator::functionalEstimation(*_cs.getRuntimeAssemblyItems(n), func->externalSignature());
+			std::stringstream v;
+			v << cost.value;
+			m_gasCostsMaps->push(sourceName, func->getLocation().start, func->getLocation().end, QString::fromStdString(v.str()), cost.isInfinite, GasMap::type::Function);
 		}
 	}
 }
@@ -583,9 +599,15 @@ QString CodeModel::resolveFunctionName(dev::SourceLocation const& _location)
 	return QString();
 }
 
-void GasMapWrapper::push(QString _source, int _start, int _end, QString _value, bool _isInfinite)
+void CodeModel::setOptimizeCode(bool _value)
 {
-	GasMap* gas = new GasMap(_start, _end, _value, _isInfinite, this);
+	m_optimizeCode = _value;
+	emit scheduleCompilationJob(++m_backgroundJobId);
+}
+
+void GasMapWrapper::push(QString _source, int _start, int _end, QString _value, bool _isInfinite, GasMap::type _type)
+{
+	GasMap* gas = new GasMap(_start, _end, _value, _isInfinite, _type, this);
 	m_gasMaps.find(_source).value().push_back(QVariant::fromValue(gas));
 }
 
