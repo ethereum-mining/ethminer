@@ -168,6 +168,8 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					{
 						uncleBlockQueue.import(&uncle.out(), bc);
 						uncleBlockQueueList.push_back(uncle.out());
+						// wait until block is verified
+						this_thread::sleep_for(chrono::seconds(1));
 					}
 					catch(...)
 					{
