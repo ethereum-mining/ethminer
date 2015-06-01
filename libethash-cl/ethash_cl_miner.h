@@ -36,7 +36,14 @@ public:
 	static unsigned get_num_devices(unsigned _platformId = 0);
 	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
 
-	bool init(uint8_t const* _dag, uint64_t _dagSize, unsigned workgroup_size = 64, unsigned _platformId = 0, unsigned _deviceId = 0);
+	bool init(
+		uint8_t const* _dag,
+		uint64_t _dagSize,
+		unsigned workgroup_size = 64,
+		unsigned _platformId = 0,
+		unsigned _deviceId = 0,
+		unsigned _dagChunksNum = 1
+	);
 	void finish();
 	void hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);
 	void search(uint8_t const* header, uint64_t target, search_hook& hook);
@@ -51,8 +58,8 @@ private:
 	cl::CommandQueue m_queue;
 	cl::Kernel m_hash_kernel;
 	cl::Kernel m_search_kernel;
-	cl::Buffer m_dag;
-	cl::Buffer m_dags[4];
+	unsigned m_dagChunksNum;
+	cl::Buffer* m_dagChunks;
 	cl::Buffer m_header;
 	cl::Buffer m_hash_buf[c_num_buffers];
 	cl::Buffer m_search_buf[c_num_buffers];
