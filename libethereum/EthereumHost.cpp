@@ -241,6 +241,7 @@ void EthereumHost::onPeerStatus(EthereumPeer* _peer)
 		_peer->disable("Peer banned for previous bad behaviour.");
 	else
 	{
+		_peer->m_protocolVersion = EthereumHost::c_oldProtocolVersion; //force V60 for now
 		if (_peer->m_protocolVersion != protocolVersion())
 			estimatePeerHashes(_peer);
 		else if (_peer->m_latestBlockNumber > m_chain.number())
