@@ -119,6 +119,7 @@ public:
 		static void setDefaultPlatform(unsigned _id) { s_platformId = _id; }
 		static void setDefaultDevice(unsigned _id) { s_deviceId = _id; }
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
+		static void setDagChunks(unsigned _dagChunks) { s_dagChunks = _dagChunks; }
 
 	protected:
 		void kickOff() override;
@@ -137,6 +138,7 @@ public:
 		static unsigned s_platformId;
 		static unsigned s_deviceId;
 		static unsigned s_numInstances;
+		static unsigned s_dagChunks;
 	};
 #else
 	using GPUMiner = CPUMiner;

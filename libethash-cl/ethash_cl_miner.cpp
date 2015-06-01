@@ -43,9 +43,6 @@
 #define CL_MEM_HOST_READ_ONLY 0
 #endif
 
-// maybe move to CMakeLists.txt ?
-// #define ETHASH_CL_CHUNK_UPLOAD
-
 #undef min
 #undef max
 
@@ -61,7 +58,7 @@ static void add_definition(std::string& source, char const* id, unsigned value)
 ethash_cl_miner::search_hook::~search_hook() {}
 
 ethash_cl_miner::ethash_cl_miner()
-:	m_opencl_1_1()
+:	m_dagChunks(nullptr), m_opencl_1_1()
 {
 }
 
@@ -130,10 +127,26 @@ void ethash_cl_miner::finish()
 {
 	if (m_queue())
 		m_queue.finish();
+
+	if (m_dagChunks)
+		delete [] m_dagChunks;
 }
 
-bool ethash_cl_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned workgroup_size, unsigned _platformId, unsigned _deviceId)
+bool ethash_cl_miner::init(
+	uint8_t const* _dag,
+	uint64_t _dagSize,
+	unsigned workgroup_size,
+	unsigned _platformId,
+	unsigned _deviceId,
+	unsigned _dagChunksNum
+)
 {
+	// for now due to the .cl kernels we can only have either 1 big chunk or 4 chunks
+	assert(_dagChunksNum == 1 || _dagChunksNum == 4);
+	// now create the number of chunk buffers
+	m_dagChunks = new cl::Buffer[_dagChunksNum];
+	m_dagChunksNum = _dagChunksNum;
+
 	// get all platforms
 	try
 	{
@@ -205,50 +218,61 @@ bool ethash_cl_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned work
 			cout << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str();
 			return false;
 		}
-		#ifdef ETHASH_CL_CHUNK_UPLOAD
-		cout << "loading ethash_hash_chunks" << endl;
-		m_hash_kernel = cl::Kernel(program, "ethash_hash_chunks");
-		cout << "loading ethash_search_chunks" << endl;
-		m_search_kernel = cl::Kernel(program, "ethash_search_chunks");
-		#else
-		cout << "loading ethash_hash" << endl;
-		m_hash_kernel = cl::Kernel(program, "ethash_hash");
-		cout << "loading ethash_search" << endl;
-		m_search_kernel = cl::Kernel(program, "ethash_search");
-		#endif
+		if (_dagChunksNum == 1)
+		{
+			cout << "loading ethash_hash" << endl;
+			m_hash_kernel = cl::Kernel(program, "ethash_hash");
+			cout << "loading ethash_search" << endl;
+			m_search_kernel = cl::Kernel(program, "ethash_search");
+		}
+		else
+		{
+			cout << "loading ethash_hash_chunks" << endl;
+			m_hash_kernel = cl::Kernel(program, "ethash_hash_chunks");
+			cout << "loading ethash_search_chunks" << endl;
+			m_search_kernel = cl::Kernel(program, "ethash_search_chunks");
+		}
 
 		// create buffer for dag
-		#ifdef ETHASH_CL_CHUNK_UPLOAD
-		for (unsigned i = 0; i < 4; i++)
-		{
-			cout << "Creating chunky buffer: " << i << endl;
-			m_dags[i] = cl::Buffer(m_context, CL_MEM_READ_ONLY, (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
-		}
-		#else
+		if (_dagChunksNum == 1)
+			m_dagChunks[0] = cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize);
+		else
+			for (unsigned i = 0; i < _dagChunksNum; i++)
+			{
+				// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
+				cout << "Creating buffer for chunk " << i << endl;
+				m_dagChunks[i] = cl::Buffer(
+					m_context,
+					CL_MEM_READ_ONLY,
+					(i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7
+				);
+			}
 		cout << "Creating one big buffer." << endl;
-		m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize);
-		#endif
 
 		// create buffer for header
 		cout << "Creating buffer for header." << endl;
 		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
-		#ifdef ETHASH_CL_CHUNK_UPLOAD
-		void* dag_ptr[4];
-		for (unsigned i = 0; i < 4; i++)
+		if (_dagChunksNum == 1)
 		{
-			cout << "Mapping chunk " << i << endl;
-			dag_ptr[i] = m_queue.enqueueMapBuffer(m_dags[i], true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
+			cout << "Mapping one big chunk." << endl;
+			m_queue.enqueueWriteBuffer(m_dagChunks[0], CL_TRUE, 0, _dagSize, _dag);
 		}
-		for (unsigned i = 0; i < 4; i++)
+		else
 		{
-			memcpy(dag_ptr[i], (char *)_dag + i*((_dagSize >> 9) << 7), (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
-			m_queue.enqueueUnmapMemObject(m_dags[i], dag_ptr[i]);
+			// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
+			void* dag_ptr[4];
+			for (unsigned i = 0; i < _dagChunksNum; i++)
+			{
+				cout << "Mapping chunk " << i << endl;
+				dag_ptr[i] = m_queue.enqueueMapBuffer(m_dagChunks[i], true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
+			}
+			for (unsigned i = 0; i < _dagChunksNum; i++)
+			{
+				memcpy(dag_ptr[i], (char *)_dag + i*((_dagSize >> 9) << 7), (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
+				m_queue.enqueueUnmapMemObject(m_dagChunks[i], dag_ptr[i]);
+			}
 		}
-		#else
-		cout << "Mapping chunk." << endl;
-		m_queue.enqueueWriteBuffer(m_dag, CL_TRUE, 0, _dagSize, _dag);
-		#endif
 
 		// create mining buffers
 		for (unsigned i = 0; i != c_num_buffers; ++i)
@@ -288,22 +312,13 @@ void ethash_cl_miner::hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, 
 		uint isolate
 		)
 	*/
-	#ifdef ETHASH_CL_CHUNK_UPLOAD
 	cout << "Setting chunk hash arguments." << endl;
+	unsigned argPos = 2;
 	m_hash_kernel.setArg(1, m_header);
-	m_hash_kernel.setArg(2, m_dags[0]);
-	m_hash_kernel.setArg(3, m_dags[1]);
-	m_hash_kernel.setArg(4, m_dags[2]);
-	m_hash_kernel.setArg(5, m_dags[3]);
-	m_hash_kernel.setArg(6, nonce);
-	m_hash_kernel.setArg(7, ~0u); // have to pass this to stop the compile unrolling the loop
-	#else
-	cout << "Setting hash arguments." << endl;
-	m_hash_kernel.setArg(1, m_header);
-	m_hash_kernel.setArg(2, m_dag);
-	m_hash_kernel.setArg(3, nonce);
-	m_hash_kernel.setArg(4, ~0u); // have to pass this to stop the compile unrolling the loop
-	#endif
+	for (unsigned i = 0 ; i < m_dagChunksNum; ++i, ++argPos)
+		m_hash_kernel.setArg(argPos, m_dagChunks[i]);
+	m_hash_kernel.setArg(argPos + 1, nonce);
+	m_hash_kernel.setArg(argPos + 2, ~0u); // have to pass this to stop the compiler unrolling the loop
 
 	unsigned buf = 0;
 	for (unsigned i = 0; i < count || !pending.empty(); )
@@ -381,27 +396,13 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		uint isolate							// 5
 		)
 		*/
-		#ifdef ETHASH_CL_CHUNK_UPLOAD
-		cout << "Setting chunk search arguments." << endl;
+		unsigned argPos = 2;
 		m_search_kernel.setArg(1, m_header);
-		m_search_kernel.setArg(2, m_dags[0]);
-		m_search_kernel.setArg(3, m_dags[1]);
-		m_search_kernel.setArg(4, m_dags[2]);
-		m_search_kernel.setArg(5, m_dags[3]);
-
+		for (unsigned i = 0; i < m_dagChunksNum; ++i, ++argPos)
+			m_search_kernel.setArg(argPos, m_dagChunks[i]);
 		// pass these to stop the compiler unrolling the loops
-		m_search_kernel.setArg(7, target);
-		m_search_kernel.setArg(8, ~0u);
-
-		#else
-		cout << "Setting search arguments." << endl;
-		m_search_kernel.setArg(1, m_header);
-		m_search_kernel.setArg(2, m_dag);
-
-		// pass these to stop the compiler unrolling the loops
-		m_search_kernel.setArg(4, target);
-		m_search_kernel.setArg(5, ~0u);
-		#endif
+		m_search_kernel.setArg(argPos + 1, target);
+		m_search_kernel.setArg(argPos + 2, ~0u);
 
 		unsigned buf = 0;
 		std::random_device engine;
@@ -410,11 +411,10 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		{
 			// supply output buffer to kernel
 			m_search_kernel.setArg(0, m_search_buf[buf]);
-			#ifdef ETHASH_CL_CHUNK_UPLOAD
-			m_search_kernel.setArg(6, start_nonce);
-			#else
-			m_search_kernel.setArg(3, start_nonce);
-			#endif
+			if (m_dagChunksNum == 1)
+				m_search_kernel.setArg(3, start_nonce);
+			else
+				m_search_kernel.setArg(6, start_nonce);
 
 			// execute it!
 			m_queue.enqueueNDRangeKernel(m_search_kernel, cl::NullRange, c_search_batch_size, m_workgroup_size);
