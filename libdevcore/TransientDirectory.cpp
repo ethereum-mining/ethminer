@@ -19,6 +19,7 @@
  * @date 2015
  */
 
+#include <thread>
 #include <boost/filesystem.hpp>
 #include "Exceptions.h"
 #include "TransientDirectory.h"
@@ -42,5 +43,16 @@ TransientDirectory::TransientDirectory(std::string const& _path):
 
 TransientDirectory::~TransientDirectory()
 {
-	boost::filesystem::remove_all(m_path);
+	for (int i = 0; i < 3; ++i)
+	{
+		try
+		{
+			boost::filesystem::remove_all(m_path);
+			break;
+		}
+		catch (...)
+		{
+			std::this_thread::sleep_for(chrono::milliseconds(10));
+		}
+	}
 }
