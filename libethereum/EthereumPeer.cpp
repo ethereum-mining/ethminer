@@ -40,6 +40,7 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, Cap
 	m_hashSub(host()->hashDownloadMan()),
 	m_peerCapabilityVersion(_cap.second)
 {
+	m_peerCapabilityVersion = EthereumHost::c_oldProtocolVersion;
 	m_syncHashNumber = host()->chain().number() + 1;
 	requestStatus();
 }
