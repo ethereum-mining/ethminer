@@ -41,6 +41,9 @@ public:
 	void hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);
 	void search(uint8_t const* header, uint64_t target, search_hook& hook);
 
+	void hash_chunk(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);
+	void search_chunk(uint8_t const* header, uint64_t target, search_hook& hook);
+
 private:
 	enum { c_max_search_results = 63, c_num_buffers = 2, c_hash_batch_size = 1024, c_search_batch_size = 1024*256 };
 
@@ -49,6 +52,7 @@ private:
 	cl::Kernel m_hash_kernel;
 	cl::Kernel m_search_kernel;
 	cl::Buffer m_dag;
+	cl::Buffer m_dags[4];
 	cl::Buffer m_header;
 	cl::Buffer m_hash_buf[c_num_buffers];
 	cl::Buffer m_search_buf[c_num_buffers];
