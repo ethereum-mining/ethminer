@@ -180,8 +180,20 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		else
 			levels.resize(ext.depth);
 
-		machineStates.emplace_back(MachineState({steps, vm.curPC(), inst, newMemSize, (u256)gas,
-									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels, codeIndex, dataIndex}));
+		machineStates.push_back(MachineState{
+			steps,
+			vm.curPC(),
+			inst,
+			newMemSize,
+			static_cast<u256>(gas),
+			vm.stack(),
+			vm.memory(),
+			gasCost,
+			ext.state().storage(ext.myAddress),
+			std::move(levels),
+			codeIndex,
+			dataIndex
+		});
 	};
 
 	execution.go(onOp);
