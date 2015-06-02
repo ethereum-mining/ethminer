@@ -726,6 +726,14 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 			cwarn << "  Block number: " << m_currentBlock.number;
 			BOOST_THROW_EXCEPTION(UncleTooOld());
 		}
+		else if (uncle.number == m_currentBlock.number)
+		{
+			badBlock(_block, "Uncle is brother");
+			cwarn << "  Uncle number: " << uncle.number;
+			cwarn << "  Uncle parent number: " << uncleParent.number;
+			cwarn << "  Block number: " << m_currentBlock.number;
+			BOOST_THROW_EXCEPTION(UncleIsBrother());
+		}
 		uncle.verifyParent(uncleParent);
 
 //		tdIncrease += uncle.difficulty;
