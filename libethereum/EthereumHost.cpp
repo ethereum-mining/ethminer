@@ -442,7 +442,7 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 void EthereumHost::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 {
 	Guard l(x_sync);
-	if (isSyncingInternal())
+	if (isSyncing_UNSAFE())
 	{
 		clog(NetMessageSummary) << "Ignoring new hashes since we're already downloading.";
 		return;
@@ -454,7 +454,7 @@ void EthereumHost::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 {
 	Guard l(x_sync);
-	if (isSyncingInternal())
+	if (isSyncing_UNSAFE())
 	{
 		clog(NetMessageSummary) << "Ignoring new blocks since we're already downloading.";
 		return;
@@ -617,7 +617,7 @@ bool EthereumHost::peerShouldGrabChain(EthereumPeer* _peer) const
 	}
 }
 
-bool EthereumHost::isSyncingInternal() const
+bool EthereumHost::isSyncing_UNSAFE() const
 {
 	bool syncing = false;
 	forEachPeer([&](EthereumPeer* _p)
