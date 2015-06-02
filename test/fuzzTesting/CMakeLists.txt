@@ -9,9 +9,12 @@ include_directories(${CRYPTOPP_INCLUDE_DIRS})
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
 
 add_executable(createRandomVMTest "./createRandomVMTest.cpp" "../libevm/vm.cpp" "../TestHelper.cpp" "../Stats.cpp")
-add_executable(createRandomStateTest "./createRandomStateTest.cpp" "../TestHelper.cpp" "../Stats.cpp")
-add_executable(checkRandomVMTest "./checkRandomVMTest.cpp" "../libevm/vm.cpp" "../TestHelper.cpp" "../Stats.cpp")
+add_executable(createRandomStateTest "./createRandomStateTest.cpp" "../TestHelper.cpp" "../Stats.cpp" "fuzzHelper.cpp")
+add_executable(checkRandomVMTest "./checkRandomVMTest.cpp" "../libevm/vm.cpp" "../TestHelper.cpp" "../Stats.cpp" )
 add_executable(checkRandomStateTest "./checkRandomStateTest.cpp" "../TestHelper.cpp" "../Stats.cpp")
+
+list(APPEND SRCS "./fuzzHelper.cpp")
+add_sources(${SRCS})
 
 target_link_libraries(createRandomVMTest ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
 target_link_libraries(createRandomVMTest ethereum)
