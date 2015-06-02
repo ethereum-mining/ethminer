@@ -115,7 +115,7 @@ class UDPSocket: UDPSocketFace, public std::enable_shared_from_this<UDPSocket<Ha
 {
 public:
 	enum { maxDatagramSize = MaxDatagramSize };
-	static_assert(unsigned(maxDatagramSize) < 65507, "UDP datagrams cannot be larger than 65507 bytes");
+	static_assert((unsigned)maxDatagramSize < 65507u, "UDP datagrams cannot be larger than 65507 bytes");
 
 	/// Create socket for specific endpoint.
 	UDPSocket(ba::io_service& _io, UDPSocketEvents& _host, bi::udp::endpoint _endpoint): m_host(_host), m_endpoint(_endpoint), m_socket(_io) { m_started.store(false); m_closed.store(true); };
