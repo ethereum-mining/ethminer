@@ -32,6 +32,7 @@ using namespace dev;
 using namespace dev::eth;
 
 const char* VMTraceChannel::name() { return "EVM"; }
+const char* ExecutiveWarnChannel::name() { return WarnChannel::name(); }
 
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
@@ -63,7 +64,7 @@ void Executive::initialize(Transaction const& _transaction)
 	u256 startGasUsed = m_s.gasUsed();
 	if (startGasUsed + (bigint)m_t.gas() > m_s.m_currentBlock.gasLimit)
 	{
-		clog(StateDetail) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas();
+		clog(ExecutiveWarnChannel) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas();
 		m_excepted = TransactionException::BlockGasLimitReached;
 		BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementError((bigint)(m_s.m_currentBlock.gasLimit - startGasUsed), (bigint)m_t.gas()));
 	}
@@ -71,7 +72,7 @@ void Executive::initialize(Transaction const& _transaction)
 	// Check gas cost is enough.
 	if (!m_t.checkPayment())
 	{
-		clog(StateDetail) << "Not enough gas to pay for the transaction: Require >" << m_t.gasRequired() << " Got" << m_t.gas();
+		clog(ExecutiveWarnChannel) << "Not enough gas to pay for the transaction: Require >" << m_t.gasRequired() << " Got" << m_t.gas();
 		m_excepted = TransactionException::OutOfGas;
 		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError(m_t.gasRequired(), (bigint)m_t.gas()));
 	}
@@ -84,13 +85,13 @@ void Executive::initialize(Transaction const& _transaction)
 	}
 	catch (...)
 	{
-		clog(StateDetail) << "Invalid Signature";
+		clog(ExecutiveWarnChannel) << "Invalid Signature";
 		m_excepted = TransactionException::InvalidSignature;
 		throw;
 	}
 	if (m_t.nonce() != nonceReq)
 	{
-		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
+		clog(ExecutiveWarnChannel) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
 		m_excepted = TransactionException::InvalidNonce;
 		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
 	}
@@ -100,7 +101,7 @@ void Executive::initialize(Transaction const& _transaction)
 	m_totalCost = m_t.value() + m_gasCost;
 	if (m_s.balance(m_t.sender()) < m_totalCost)
 	{
-		clog(StateDetail) << "Not enough cash: Require >" << m_totalCost << " Got" << m_s.balance(m_t.sender());
+		clog(ExecutiveWarnChannel) << "Not enough cash: Require >" << m_totalCost << " Got" << m_s.balance(m_t.sender());
 		m_excepted = TransactionException::NotEnoughCash;
 		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(m_totalCost, (bigint)m_s.balance(m_t.sender())));
 	}

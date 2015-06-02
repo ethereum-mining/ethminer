@@ -36,6 +36,7 @@ class ExtVM;
 struct Manifest;
 
 struct VMTraceChannel: public LogChannel { static const char* name(); static const int verbosity = 11; };
+struct ExecutiveWarnChannel: public LogChannel { static const char* name(); static const int verbosity = 6; };
 
 /**
  * @brief Message-call/contract-creation executor; useful for executing transactions.

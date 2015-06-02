@@ -44,10 +44,11 @@ VersionChecker::VersionChecker(string const& _dbPath):
 	try
 	{
 		auto protocolVersion = (unsigned)status[0];
+		(void)protocolVersion;
 		auto minorProtocolVersion = (unsigned)status[1];
 		auto databaseVersion = (unsigned)status[2];
 		m_action =
-			protocolVersion != eth::c_protocolVersion || databaseVersion != c_databaseVersion ?
+			databaseVersion != c_databaseVersion ?
 				WithExisting::Kill
 			: minorProtocolVersion != eth::c_minorProtocolVersion ?
 				WithExisting::Verify

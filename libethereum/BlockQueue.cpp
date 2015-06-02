@@ -101,7 +101,7 @@ void BlockQueue::verifierBody()
 			}
 
 			RLP r(&res.second);
-			for (auto const& uncle : r[2])
+			for (auto const& uncle: r[2])
 			{
 				try
 				{
