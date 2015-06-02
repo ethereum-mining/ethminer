@@ -91,10 +91,7 @@ void EthereumHost::doWork()
 	bool netChange = ensureInitialised();
 	auto h = m_chain.currentHash();
 	// If we've finished our initial sync (including getting all the blocks into the chain so as to reduce invalid transactions), start trading transactions & blocks
-	bool syncing = false;
-	DEV_GUARDED(x_sync)
-		syncing = isSyncing();
-	if (syncing && m_chain.isKnown(m_latestBlockSent))
+	if (isSyncing() && m_chain.isKnown(m_latestBlockSent))
 	{
 		if (m_newTransactions)
 		{
@@ -444,7 +441,8 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 
 void EthereumHost::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 {
-	if (isSyncing())
+	Guard l(x_sync);
+	if (isSyncingInternal())
 	{
 		clog(NetMessageSummary) << "Ignoring new hashes since we're already downloading.";
 		return;
@@ -456,7 +454,7 @@ void EthereumHost::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 {
 	Guard l(x_sync);
-	if (isSyncing())
+	if (isSyncingInternal())
 	{
 		clog(NetMessageSummary) << "Ignoring new blocks since we're already downloading.";
 		return;
@@ -619,7 +617,7 @@ bool EthereumHost::peerShouldGrabChain(EthereumPeer* _peer) const
 	}
 }
 
-bool EthereumHost::isSyncing() const
+bool EthereumHost::isSyncingInternal() const
 {
 	bool syncing = false;
 	forEachPeer([&](EthereumPeer* _p)
