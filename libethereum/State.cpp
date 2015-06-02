@@ -592,6 +592,24 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	return ss.str();
 }
 
+template <class Channel>
+class LogOverride
+{
+public:
+	LogOverride(bool _value): m_old(g_logOverride.count(&typeid(Channel)) ? (int)g_logOverride[&typeid(Channel)] : c_null) { g_logOverride[&typeid(Channel)] = _value; }
+	~LogOverride()
+	{
+		if (m_old == c_null)
+			g_logOverride.erase(&typeid(Channel));
+		else
+			g_logOverride[&typeid(Channel)] = (bool)m_old;
+	}
+
+private:
+	static const int c_null = -1;
+	int m_old;
+};
+
 u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
@@ -624,7 +642,19 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	unsigned i = 0;
 	for (auto const& tr: rlp[1])
 	{
-		execute(lh, Transaction(tr.data(), CheckTransaction::Everything));
+		try {
+			LogOverride<ExecutiveWarnChannel> o(false);
+			execute(lh, Transaction(tr.data(), CheckTransaction::Everything));
+		}
+		catch (...)
+		{
+			badBlock(_block, "Invalid transaction");
+			cwarn << "  Transaction Index:" << i;
+			LogOverride<ExecutiveWarnChannel> o(true);
+			execute(lh, Transaction(tr.data(), CheckTransaction::Everything));
+			throw;
+		}
+
 		RLPStream receiptRLP;
 		m_receipts.back().streamRLP(receiptRLP);
 		receipts.push_back(receiptRLP.out());
@@ -695,6 +725,14 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 			cwarn << "  Uncle parent number: " << uncleParent.number;
 			cwarn << "  Block number: " << m_currentBlock.number;
 			BOOST_THROW_EXCEPTION(UncleTooOld());
+		}
+		else if (uncle.number == m_currentBlock.number)
+		{
+			badBlock(_block, "Uncle is brother");
+			cwarn << "  Uncle number: " << uncle.number;
+			cwarn << "  Uncle parent number: " << uncleParent.number;
+			cwarn << "  Block number: " << m_currentBlock.number;
+			BOOST_THROW_EXCEPTION(UncleIsBrother());
 		}
 		uncle.verifyParent(uncleParent);
 
@@ -1165,7 +1203,10 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 #endif
 	if (!e.execute())
 #if ETH_VMTRACE
+	{
+		(void)_onOp;
 		e.go(e.simpleTrace());
+	}
 #else
 		e.go(_onOp);
 #endif
