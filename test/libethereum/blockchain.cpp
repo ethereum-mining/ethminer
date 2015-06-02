@@ -33,6 +33,9 @@ using namespace dev::eth;
 
 namespace dev {  namespace test {
 
+typedef std::vector<bytes> uncleList;
+typedef std::pair<bytes, uncleList> blockSet;
+
 BlockInfo constructBlock(mObject& _o);
 bytes createBlockRLPFromFields(mObject& _tObj);
 RLPStream createFullBlockFromHeader(BlockInfo const& _bi, bytes const& _txs = RLPEmptyList, bytes const& _uncles = RLPEmptyList);
@@ -42,7 +45,7 @@ mObject writeBlockHeaderToJson(mObject& _o, BlockInfo const& _bi);
 void overwriteBlockHeader(BlockInfo& _current_BlockHeader, mObject& _blObj);
 BlockInfo constructBlock(mObject& _o);
 void updatePoW(BlockInfo& _bi);
-mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<BlockInfo> const& vBiBlocks);
+mArray importUncles(mObject const& _blObj, vector<BlockInfo>& _vBiUncles, vector<BlockInfo> const& _vBiBlocks, std::vector<blockSet> _blockSet);
 
 void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 {
@@ -65,8 +68,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 		State trueState(OverlayDB(State::openDB(td_stateDB_tmp.path())), BaseState::Empty, biGenesisBlock.coinbaseAddress);
 
 		//Imported blocks from the start
-		typedef std::vector<bytes> uncleList;
-		typedef std::pair<bytes, uncleList> blockSet;
 		std::vector<blockSet> blockSets;
 
 		importer.importState(o["pre"].get_obj(), trueState);
@@ -138,7 +139,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					bc.sync(uncleQueue, state.db(), 4);
 					bc.attemptImport(block, state.db());
 					vBiBlocks.push_back(BlockInfo(block));
-
 					state.sync(bc);
 				}
 
@@ -156,7 +156,7 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 				//get uncles
 				vector<BlockInfo> vBiUncles;
-				blObj["uncleHeaders"] = importUncles(blObj, vBiUncles, vBiBlocks);
+				blObj["uncleHeaders"] = importUncles(blObj, vBiUncles, vBiBlocks, blockSets);
 
 				BlockQueue uncleBlockQueue;
 				uncleList uncleBlockQueueList;
@@ -176,7 +176,6 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 						cnote << "error in importing uncle! This produces an invalid block (May be by purpose for testing).";
 					}
 				} 
-
 				bc.sync(uncleBlockQueue, state.db(), 4);
 				state.commitToMine(bc);
 
@@ -216,15 +215,18 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					uncleStream.appendRaw(uncleRlp.out());
 				}
 
+				if (blObj.count("blockHeader"))
+					overwriteBlockHeader(current_BlockHeader, blObj);
+
+				if (blObj.count("blockHeader") && blObj["blockHeader"].get_obj().count("bruncle"))
+					current_BlockHeader.populateFromParent(vBiBlocks[vBiBlocks.size() -1]);
+
 				if (vBiUncles.size())
 				{
 					// update unclehash in case of invalid uncles
 					current_BlockHeader.sha3Uncles = sha3(uncleStream.out());
 					updatePoW(current_BlockHeader);
 				}
-
-				if (blObj.count("blockHeader"))
-					overwriteBlockHeader(current_BlockHeader, blObj);
 
 				// write block header
 				mObject oBlockHeader;
@@ -496,36 +498,48 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 
 // helping functions
 
-mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<BlockInfo> const& vBiBlocks)
+mArray importUncles(mObject const& _blObj, vector<BlockInfo>& _vBiUncles, vector<BlockInfo> const& _vBiBlocks, std::vector<blockSet> _blockSet)
 {
 	// write uncle list
 	mArray aUncleList;
 	mObject uncleHeaderObj_pre;
 
-	for (auto const& uHObj: blObj.at("uncleHeaders").get_array())
+	for (auto const& uHObj: _blObj.at("uncleHeaders").get_array())
 	{
 		mObject uncleHeaderObj = uHObj.get_obj();
 		if (uncleHeaderObj.count("sameAsPreviousSibling"))
 		{
-			writeBlockHeaderToJson(uncleHeaderObj_pre, vBiUncles[vBiUncles.size()-1]);
+			writeBlockHeaderToJson(uncleHeaderObj_pre, _vBiUncles[_vBiUncles.size()-1]);
 			aUncleList.push_back(uncleHeaderObj_pre);
-			vBiUncles.push_back(vBiUncles[vBiUncles.size()-1]);
+			_vBiUncles.push_back(_vBiUncles[_vBiUncles.size()-1]);
 			uncleHeaderObj_pre = uncleHeaderObj;
 			continue;
 		}
 
 		if (uncleHeaderObj.count("sameAsBlock"))
 		{
-
 			size_t number = (size_t)toInt(uncleHeaderObj["sameAsBlock"]);
 			uncleHeaderObj.erase("sameAsBlock");
-			BlockInfo currentUncle = vBiBlocks[number];
+			BlockInfo currentUncle = _vBiBlocks[number];
 			writeBlockHeaderToJson(uncleHeaderObj, currentUncle);
 			aUncleList.push_back(uncleHeaderObj);
-			vBiUncles.push_back(currentUncle);
+			_vBiUncles.push_back(currentUncle);
 			uncleHeaderObj_pre = uncleHeaderObj;
 			continue;
 		}
+
+		if (uncleHeaderObj.count("sameAsPreviousBlockUncle"))
+		{
+			bytes uncleRLP = _blockSet[(size_t)toInt(uncleHeaderObj["sameAsPreviousBlockUncle"])].second[0];
+			BlockInfo uncleHeader(uncleRLP);
+			writeBlockHeaderToJson(uncleHeaderObj, uncleHeader);
+			aUncleList.push_back(uncleHeaderObj);
+
+			_vBiUncles.push_back(uncleHeader);
+			uncleHeaderObj_pre = uncleHeaderObj;
+			continue;
+		}
+
 		string overwrite = "false";
 		if (uncleHeaderObj.count("overwriteAndRedoPoW"))
 		{
@@ -538,12 +552,12 @@ mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<B
 		// make uncle header valid
 		uncleBlockFromFields.timestamp = (u256)time(0);
 		cnote << "uncle block n = " << toString(uncleBlockFromFields.number);
-		if (vBiBlocks.size() > 2)
+		if (_vBiBlocks.size() > 2)
 		{
-			if (uncleBlockFromFields.number - 1 < vBiBlocks.size())
-				uncleBlockFromFields.populateFromParent(vBiBlocks[(size_t)uncleBlockFromFields.number - 1]);
+			if (uncleBlockFromFields.number - 1 < _vBiBlocks.size())
+				uncleBlockFromFields.populateFromParent(_vBiBlocks[(size_t)uncleBlockFromFields.number - 1]);
 			else
-				uncleBlockFromFields.populateFromParent(vBiBlocks[vBiBlocks.size() - 2]);
+				uncleBlockFromFields.populateFromParent(_vBiBlocks[_vBiBlocks.size() - 2]);
 		}
 		else
 			continue;
@@ -557,12 +571,12 @@ mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<B
 			uncleBlockFromFields.stateRoot = overwrite == "stateRoot" ? h256(uncleHeaderObj["stateRoot"].get_str()) : uncleBlockFromFields.stateRoot;
 
 			if (overwrite == "parentHashIsBlocksParent")
-				uncleBlockFromFields.populateFromParent(vBiBlocks[vBiBlocks.size() - 1]);
+				uncleBlockFromFields.populateFromParent(_vBiBlocks[_vBiBlocks.size() - 1]);
 
 			if (overwrite == "timestamp")
 			{
 				uncleBlockFromFields.timestamp = toInt(uncleHeaderObj["timestamp"]);
-				uncleBlockFromFields.difficulty = uncleBlockFromFields.calculateDifficulty(vBiBlocks[(size_t)uncleBlockFromFields.number - 1]);
+				uncleBlockFromFields.difficulty = uncleBlockFromFields.calculateDifficulty(_vBiBlocks[(size_t)uncleBlockFromFields.number - 1]);
 			}
 		}
 
@@ -570,10 +584,10 @@ mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<B
 		writeBlockHeaderToJson(uncleHeaderObj, uncleBlockFromFields);
 
 		aUncleList.push_back(uncleHeaderObj);
-		vBiUncles.push_back(uncleBlockFromFields);
+		_vBiUncles.push_back(uncleBlockFromFields);
 
 		uncleHeaderObj_pre = uncleHeaderObj;
-	} //for blObj["uncleHeaders"].get_array()
+	} //for _blObj["uncleHeaders"].get_array()
 
 	return aUncleList;
 }
@@ -806,6 +820,11 @@ BOOST_AUTO_TEST_CASE(bcUncleHeaderValiditiy)
 BOOST_AUTO_TEST_CASE(bcGasPricerTest)
 {
 	dev::test::executeTests("bcGasPricerTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
+}
+
+BOOST_AUTO_TEST_CASE(bcBruncleTest)
+{
+	dev::test::executeTests("bcBruncleTest", "/BlockTests",dev::test::getFolder(__FILE__) + "/BlockTestsFiller", dev::test::doBlockchainTests);
 }
 
 BOOST_AUTO_TEST_CASE(bcWalletTest)
