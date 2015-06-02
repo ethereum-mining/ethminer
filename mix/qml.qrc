@@ -63,5 +63,6 @@
         <file>qml/js/Printer.js</file>
         <file>qml/js/ansi2html.js</file>
         <file>qml/js/NetworkDeployment.js</file>
+        <file>qml/js/InputValidator.js</file>
     </qresource>
 </RCC>

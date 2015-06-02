@@ -68,7 +68,7 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 		for (unsigned i = 0; i < _ext.code.size(); ++i)
 		{
 			if (_ext.code[i] == (byte)Instruction::JUMPDEST)
-				m_jumpDests.insert(i);
+				m_jumpDests.push_back(i);
 			else if (_ext.code[i] >= (byte)Instruction::PUSH1 && _ext.code[i] <= (byte)Instruction::PUSH32)
 				i += _ext.code[i] - (unsigned)Instruction::PUSH1 + 1;
 		}
@@ -537,7 +537,7 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 			break;
 		case Instruction::JUMP:
 			nextPC = m_stack.back();
-			if (!m_jumpDests.count(nextPC))
+			if (find(m_jumpDests.begin(), m_jumpDests.end(), (uint64_t)nextPC) == m_jumpDests.end() || nextPC > numeric_limits<uint64_t>::max() )
 				BOOST_THROW_EXCEPTION(BadJumpDestination());
 			m_stack.pop_back();
 			break;
@@ -545,7 +545,7 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 			if (m_stack[m_stack.size() - 2])
 			{
 				nextPC = m_stack.back();
-				if (!m_jumpDests.count(nextPC))
+				if (find(m_jumpDests.begin(), m_jumpDests.end(), (uint64_t)nextPC) == m_jumpDests.end() || nextPC > numeric_limits<uint64_t>::max() )
 					BOOST_THROW_EXCEPTION(BadJumpDestination());
 			}
 			m_stack.pop_back();
