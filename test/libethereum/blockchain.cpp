@@ -214,9 +214,12 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					uncleStream.appendRaw(uncleRlp.out());
 				}
 
-				// update unclehash in case of invalid uncles
-				current_BlockHeader.sha3Uncles = sha3(uncleStream.out());
-				updatePoW(current_BlockHeader);
+				if (vBiUncles.size())
+				{
+					// update unclehash in case of invalid uncles
+					current_BlockHeader.sha3Uncles = sha3(uncleStream.out());
+					updatePoW(current_BlockHeader);
+				}
 
 				if (blObj.count("blockHeader"))
 					overwriteBlockHeader(current_BlockHeader, blObj);
@@ -242,7 +245,10 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				blObj["rlp"] = toHex(block2.out(), 2, HexPrefix::Add);
 
 				if (sha3(RLP(state.blockData())[0].data()) != sha3(RLP(block2.out())[0].data()))
-					cnote << "block header mismatch\n";
+				{
+					cnote << "block header mismatch state.blockData() vs updated state.info()\n";
+					cerr << toHex(state.blockData()) << "vs" << toHex(block2.out());
+				}
 
 				if (sha3(RLP(state.blockData())[1].data()) != sha3(RLP(block2.out())[1].data()))
 					cnote << "txs mismatch\n";
