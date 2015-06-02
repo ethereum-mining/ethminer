@@ -70,8 +70,7 @@ public:
 	void reset();
 
 	DownloadMan const& downloadMan() const { return m_man; }
-	bool isSyncing() const;
-
+	bool isSyncing() const { Guard l(x_sync); return isSyncingInternal(); }
 	bool isBanned(p2p::NodeId _id) const { return !!m_banned.count(_id); }
 
 	void noteNewTransactions() { m_newTransactions = true; }
@@ -93,6 +92,7 @@ private:
 	std::pair<std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<EthereumPeer>>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
 	void forEachPeerPtr(std::function<void(std::shared_ptr<EthereumPeer>)> const& _f) const;
 	void forEachPeer(std::function<void(EthereumPeer*)> const& _f) const;
+	bool isSyncingInternal() const;
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	void doWork();
