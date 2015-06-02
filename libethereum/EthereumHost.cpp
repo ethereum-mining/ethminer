@@ -619,6 +619,8 @@ bool EthereumHost::peerShouldGrabChain(EthereumPeer* _peer) const
 
 bool EthereumHost::isSyncing_UNSAFE() const
 {
+	/// We need actual peer information here to handle the case when we are the first ever peer on the network to mine.
+	/// I.e. on a new private network the first node mining has noone to sync with and should start block propogation immediately.
 	bool syncing = false;
 	forEachPeer([&](EthereumPeer* _p)
 	{
