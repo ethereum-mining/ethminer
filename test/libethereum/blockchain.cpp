@@ -19,7 +19,7 @@
  * @date 2015
  * block test functions.
  */
-
+#include "test/fuzzTesting/fuzzHelper.h"
 #include <boost/filesystem.hpp>
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/TransientDirectory.h>
