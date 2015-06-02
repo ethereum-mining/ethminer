@@ -364,7 +364,13 @@ void ArrayUtils::clearStorageLoop(Type const& _type) const
 		return;
 	}
 	// stack: end_pos pos
-	eth::AssemblyItem loopStart = m_context.newTag();
+
+	// jump to and return from the loop to allow for duplicate code removal
+	eth::AssemblyItem returnTag = m_context.pushNewTag();
+	m_context << eth::Instruction::SWAP2 << eth::Instruction::SWAP1;
+
+	// stack: <return tag> end_pos pos
+	eth::AssemblyItem loopStart = m_context.appendJumpToNew();
 	m_context << loopStart;
 	// check for loop condition
 	m_context << eth::Instruction::DUP1 << eth::Instruction::DUP3
@@ -380,7 +386,11 @@ void ArrayUtils::clearStorageLoop(Type const& _type) const
 	m_context.appendJumpTo(loopStart);
 	// cleanup
 	m_context << zeroLoopEnd;
-	m_context << eth::Instruction::POP;
+	m_context << eth::Instruction::POP << eth::Instruction::SWAP1;
+	// "return"
+	m_context << eth::Instruction::JUMP;
+
+	m_context << returnTag;
 	solAssert(m_context.getStackHeight() == stackHeightStart - 1, "");
 }
 
@@ -455,12 +465,10 @@ void ArrayUtils::accessIndex(ArrayType const& _arrayType) const
 		m_context << eth::Instruction::DUP2 << load;
 	// stack: <base_ref> <index> <length>
 	// check out-of-bounds access
-	m_context << eth::Instruction::DUP2 << eth::Instruction::LT;
-	eth::AssemblyItem legalAccess = m_context.appendConditionalJump();
-	// out-of-bounds access throws exception (just STOP for now)
-	m_context << eth::Instruction::STOP;
+	m_context << eth::Instruction::DUP2 << eth::Instruction::LT << eth::Instruction::ISZERO;
+	// out-of-bounds access throws exception
+	m_context.appendConditionalJumpTo(m_context.errorTag());
 
-	m_context << legalAccess;
 	// stack: <base_ref> <index>
 	m_context << eth::Instruction::SWAP1;
 	if (_arrayType.isDynamicallySized())

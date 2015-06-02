@@ -19,7 +19,7 @@
  * @date 2015
  * block test functions.
  */
-
+#include "test/fuzzTesting/fuzzHelper.h"
 #include <boost/filesystem.hpp>
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/TransientDirectory.h>
@@ -214,9 +214,12 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 					uncleStream.appendRaw(uncleRlp.out());
 				}
 
-				// update unclehash in case of invalid uncles
-				current_BlockHeader.sha3Uncles = sha3(uncleStream.out());
-				updatePoW(current_BlockHeader);
+				if (vBiUncles.size())
+				{
+					// update unclehash in case of invalid uncles
+					current_BlockHeader.sha3Uncles = sha3(uncleStream.out());
+					updatePoW(current_BlockHeader);
+				}
 
 				if (blObj.count("blockHeader"))
 					overwriteBlockHeader(current_BlockHeader, blObj);
@@ -242,7 +245,10 @@ void doBlockchainTests(json_spirit::mValue& _v, bool _fillin)
 				blObj["rlp"] = toHex(block2.out(), 2, HexPrefix::Add);
 
 				if (sha3(RLP(state.blockData())[0].data()) != sha3(RLP(block2.out())[0].data()))
-					cnote << "block header mismatch\n";
+				{
+					cnote << "block header mismatch state.blockData() vs updated state.info()\n";
+					cerr << toHex(state.blockData()) << "vs" << toHex(block2.out());
+				}
 
 				if (sha3(RLP(state.blockData())[1].data()) != sha3(RLP(block2.out())[1].data()))
 					cnote << "txs mismatch\n";
@@ -547,6 +553,10 @@ mArray importUncles(mObject const& blObj, vector<BlockInfo>& vBiUncles, vector<B
 			uncleBlockFromFields.gasUsed = overwrite == "gasUsed" ? toInt(uncleHeaderObj["gasUsed"]) : uncleBlockFromFields.gasUsed;
 			uncleBlockFromFields.parentHash = overwrite == "parentHash" ? h256(uncleHeaderObj["parentHash"].get_str()) : uncleBlockFromFields.parentHash;
 			uncleBlockFromFields.stateRoot = overwrite == "stateRoot" ? h256(uncleHeaderObj["stateRoot"].get_str()) : uncleBlockFromFields.stateRoot;
+
+			if (overwrite == "parentHashIsBlocksParent")
+				uncleBlockFromFields.populateFromParent(vBiBlocks[vBiBlocks.size() - 1]);
+
 			if (overwrite == "timestamp")
 			{
 				uncleBlockFromFields.timestamp = toInt(uncleHeaderObj["timestamp"]);

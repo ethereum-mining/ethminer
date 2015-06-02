@@ -42,6 +42,7 @@ using p2p::Session;
 using p2p::HostCapabilityFace;
 using p2p::HostCapability;
 using p2p::Capability;
+using p2p::CapDesc;
 
 /**
  */
@@ -50,7 +51,7 @@ class WhisperPeer: public Capability
 	friend class WhisperHost;
 
 public:
-	WhisperPeer(Session* _s, HostCapabilityFace* _h, unsigned _i);
+	WhisperPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, CapDesc const& _cap);
 	virtual ~WhisperPeer();
 
 	static std::string name() { return "shh"; }
