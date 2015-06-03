@@ -95,13 +95,13 @@ public:
 	bool create(Address _txSender, u256 _endowment, u256 _gasPrice, u256 _gas, bytesConstRef _code, Address _originAddress);
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
-	bool call(Address _myAddress, Address _codeAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas, Address _originAddress);
+	bool call(Address _receiveAddress, Address _txSender, u256 _txValue, u256 _gasPrice, bytesConstRef _txData, u256 _gas);
 	bool call(CallParameters const& _cp, u256 const& _gasPrice, Address const& _origin);
 	/// Finalise an operation through accruing the substate into the parent context.
 	void accrueSubState(SubState& _parentContext);
 
 	/// Executes (or continues execution of) the VM.
-	/// @returns false iff go() must be called again to finish the transction.
+	/// @returns false iff go() must be called again to finish the transaction.
 	bool go(OnOpFunc const& _onOp = OnOpFunc());
 
 	/// Operation function for providing a simple trace of the VM execution.
@@ -110,8 +110,8 @@ public:
 	/// Operation function for providing a simple trace of the VM execution.
 	static OnOpFunc standardTrace(std::ostream& o_output);
 
-	/// @returns gas remaining after the transaction/operation.
-	u256 endGas() const { return m_endGas; }
+	/// @returns gas remaining after the transaction/operation. Valid after the transaction has been executed.
+	u256 gas() const { return m_gas; }
 	/// @returns output data of the transaction/operation.
 	bytesConstRef out() const { return m_out; }
 	/// @returns the new address for the created contract in the CREATE operation.
@@ -137,7 +137,7 @@ private:
 	u256 m_gasForDeposit;				///< Amount of gas remaining for the code deposit phase.
 	CodeDeposit m_codeDeposit = CodeDeposit::None;	///< True if an attempted deposit failed due to lack of gas.
 	TransactionException m_excepted = TransactionException::None;	///< Details if the VM's execution resulted in an exception.
-	u256 m_endGas;						///< The final amount of gas for the transaction.
+	u256 m_gas = 0;						///< The gas for EVM code execution. Initial amount before go() execution, final amount after go() execution.
 
 	Transaction m_t;					///< The original transaction. Set by setup().
 	LogEntries m_logs;					///< The log entries created by this transaction. Set by finalize().

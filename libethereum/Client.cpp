@@ -423,7 +423,7 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 			temp = m_postMine;
 		temp.addBalance(_from, _value + _gasPrice * _gas);
 		Executive e(temp, LastHashes(), 0);
-		if (!e.call(_dest, _dest, _from, _value, _gasPrice, &_data, _gas, _from))
+		if (!e.call(_dest, _from, _value, _gasPrice, &_data, _gas))
 			e.go();
 		ret = e.executionResult();
 	}
