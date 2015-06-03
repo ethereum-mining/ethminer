@@ -41,7 +41,7 @@ namespace
 	}
 }
 
-bytesConstRef SmartVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
+bytesConstRef SmartVM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
 	auto codeHash = sha3(_ext.code);
 	auto vmKind = VMKind::Interpreter; // default VM
@@ -66,11 +66,9 @@ bytesConstRef SmartVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step
 	}
 
 	// TODO: Selected VM must be kept only because it returns reference to its internal memory.
-	//       VM implementations should be stateless, without gas counter and escaping memory reference.
-	m_selectedVM = VMFactory::create(vmKind, gas());
-	auto out = m_selectedVM->go(_ext, _onOp, _steps);
-	m_gas = m_selectedVM->gas();
-	return out;
+	//       VM implementations should be stateless, without escaping memory reference.
+	m_selectedVM = VMFactory::create(vmKind);
+	return m_selectedVM->go(io_gas, _ext, _onOp, _steps);
 }
 
 }
