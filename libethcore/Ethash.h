@@ -115,6 +115,7 @@ public:
 
 		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 		static std::string platformInfo();
+		static bool haveSufficientGPUMemory();
 		static unsigned getNumDevices();
 		static void setDefaultPlatform(unsigned _id) { s_platformId = _id; }
 		static void setDefaultDevice(unsigned _id) { s_deviceId = _id; }
