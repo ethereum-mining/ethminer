@@ -100,7 +100,7 @@ class Watch: public boost::noncopyable
 
 public:
 	Watch() {}
-	Watch(Interface& _c, Topics const& _t) : m_c(&_c), m_id(_c.installWatch(_t)) {}
+	Watch(Interface& _c, Topics const& _t): m_c(&_c), m_id(_c.installWatch(_t)) {}
 	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
 
 	h256s check() { return m_c ? m_c->checkWatch(m_id) : h256s(); }
