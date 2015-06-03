@@ -319,7 +319,7 @@ void Session::send(bytes&& _msg)
 
 void Session::write()
 {
-	bytes *out;
+	bytes const* out;
 	DEV_GUARDED(x_writeQueue)
 	{
 		m_io->writeSingleFramePacket(&m_writeQueue[0], m_writeQueue[0]);
