@@ -97,6 +97,7 @@ public:
 		ExportBare,
 		RecodeBare,
 		KillBare,
+		InspectBare,
 		CreateWallet,
 		List,
 		New,
@@ -137,6 +138,8 @@ public:
 			m_mode = OperationMode::ListBare;
 		else if (arg == "--export-bare")
 			m_mode = OperationMode::ExportBare;
+		else if (arg == "--inspect-bare")
+			m_mode = OperationMode::InspectBare;
 		else if (arg == "--recode-bare")
 			m_mode = OperationMode::RecodeBare;
 		else if (arg == "--kill-bare")
@@ -162,7 +165,7 @@ public:
 			m_mode = OperationMode::Recode;
 		else if (arg == "--no-icap")
 			m_icap = false;
-		else if (m_mode == OperationMode::ImportBare || m_mode == OperationMode::KillBare || m_mode == OperationMode::Recode || m_mode == OperationMode::Export || m_mode == OperationMode::RecodeBare || m_mode == OperationMode::ExportBare)
+		else if (m_mode == OperationMode::ImportBare || m_mode == OperationMode::InspectBare || m_mode == OperationMode::KillBare || m_mode == OperationMode::Recode || m_mode == OperationMode::Export || m_mode == OperationMode::RecodeBare || m_mode == OperationMode::ExportBare)
 			m_inputs.push_back(arg);
 		else
 			return false;
@@ -224,7 +227,7 @@ public:
 					}
 					if (!u && b.size() == 32)
 						u = store.importSecret(b, lockPassword(toAddress(Secret(b)).abridged()));
-					else
+					if (!u)
 					{
 						cerr << "Cannot import " << i << " not a file or secret." << endl;
 						continue;
@@ -232,28 +235,43 @@ public:
 					cout << "Successfully imported " << i << " as " << toUUID(u);
 				}
 				break;
+			case OperationMode::InspectBare:
+				for (auto const& i: m_inputs)
+					if (!contents(i).empty())
+					{
+						h128 u = store.readKey(i, false);
+						bytes s = store.secret(u, [&](){ return getPassword("Enter password for key " + i + ": "); });
+						cout << "Key " << i << ":" << endl;
+						cout << "  UUID: " << toUUID(u) << ":" << endl;
+						cout << "  Address: " << toAddress(Secret(s)).hex() << endl;
+						cout << "  Secret: " << Secret(s).abridged() << endl;
+					}
+					else if (h128 u = fromUUID(i))
+					{
+						bytes s = store.secret(u, [&](){ return getPassword("Enter password for key " + toUUID(u) + ": "); });
+						cout << "Key " << i << ":" << endl;
+						cout << "  Address: " << toAddress(Secret(s)).hex() << endl;
+						cout << "  Secret: " << Secret(s).abridged() << endl;
+					}
+					else
+						cerr << "Couldn't inspect " << i << "; not found." << endl;
+				break;
 			case OperationMode::ExportBare: break;
 			case OperationMode::RecodeBare:
 				for (auto const& i: m_inputs)
-				{
-					h128 u = fromUUID(i);
-					if (u)
+					if (h128 u = fromUUID(i))
 						if (store.recode(u, lockPassword(toUUID(u)), [&](){ return getPassword("Enter password for key " + toUUID(u) + ": "); }, kdf()))
 							cerr << "Re-encoded " << toUUID(u) << endl;
 						else
 							cerr << "Couldn't re-encode " << toUUID(u) << "; key corrupt or incorrect password supplied." << endl;
 					else
-						cerr << "Couldn't re-encode " << toUUID(u) << "; not found." << endl;
-				}
+						cerr << "Couldn't re-encode " << i << "; not found." << endl;
 			case OperationMode::KillBare:
 				for (auto const& i: m_inputs)
-				{
-					h128 u = fromUUID(i);
-					if (u)
+					if (h128 u = fromUUID(i))
 						store.kill(u);
 					else
-						cerr << "Couldn't kill " << toUUID(u) << "; not found." << endl;
-				}
+						cerr << "Couldn't kill " << i << "; not found." << endl;
 				break;
 			default: break;
 			}

@@ -23,10 +23,8 @@
 #include <libdevcore/TrieCommon.h>
 #include <libdevcore/TrieDB.h>	// @TODO replace ASAP!
 #include <libdevcore/SHA3.h>
-#include <libethcore/Common.h>
 using namespace std;
 using namespace dev;
-using namespace dev::eth;
 
 namespace dev
 {

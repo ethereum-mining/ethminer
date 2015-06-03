@@ -18,7 +18,7 @@ DebugInfoList
 			property alias members: typeLoader.members;
 			property alias value: typeLoader.value;
 			anchors.fill: parent
-			anchors.rightMargin: 8
+			anchors.leftMargin: 10
 			StructView
 			{
 				id: typeLoader
