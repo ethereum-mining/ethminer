@@ -94,7 +94,7 @@ private:
 	eth::State m_state;
 	eth::State m_startState;
 	OverlayDB m_stateDB;
-	std::auto_ptr<MixBlockChain> m_bc;
+	std::unique_ptr<MixBlockChain> m_bc;
 	mutable boost::shared_mutex x_state;
 	mutable boost::shared_mutex x_executions;
 	ExecutionResults m_executions;

@@ -71,6 +71,11 @@ void Compiler::compileContract(ContractDefinition const& _contract,
 	packIntoContractCreator(_contract, m_runtimeContext);
 }
 
+eth::AssemblyItem Compiler::getFunctionEntryLabel(FunctionDefinition const& _function) const
+{
+	return m_runtimeContext.getFunctionEntryLabelIfExists(_function);
+}
+
 void Compiler::initializeContext(ContractDefinition const& _contract,
 								 map<ContractDefinition const*, bytes const*> const& _contracts)
 {
@@ -189,7 +194,6 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 	}
 	else
 		m_context << eth::Instruction::STOP; // function not found
-
 	for (auto const& it: interfaceFunctions)
 	{
 		FunctionTypePointer const& functionType = it.second;
@@ -284,7 +288,6 @@ bool Compiler::visit(VariableDeclaration const& _variableDeclaration)
 	m_breakTags.clear();
 	m_continueTags.clear();
 
-	m_context << m_context.getFunctionEntryLabel(_variableDeclaration);
 	ExpressionCompiler(m_context, m_optimize).appendStateVariableAccessor(_variableDeclaration);
 
 	return false;

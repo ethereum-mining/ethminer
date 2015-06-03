@@ -13,6 +13,7 @@ call :download json-rpc-cpp 0.5.0
 call :download leveldb 1.2
 call :download microhttpd 0.9.2
 call :download qt 5.4.1
+call :download miniupnpc 1.9
 
 goto :EOF
 
