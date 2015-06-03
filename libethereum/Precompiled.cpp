@@ -83,12 +83,12 @@ void identityCode(bytesConstRef _in, bytesRef _out)
 
 std::unordered_map<unsigned, PrecompiledAddress> const& dev::eth::precompiled()
 {
-	static const std::unordered_map<unsigned, PrecompiledAddress> s_precompiled =
+	static const std::unordered_map<unsigned, PrecompiledAddress> c_precompiled =
 	{
 		{ 1, { [](bytesConstRef) -> bigint { return c_ecrecoverGas; }, ecrecoverCode }},
 		{ 2, { [](bytesConstRef i) -> bigint { return c_sha256Gas + (i.size() + 31) / 32 * c_sha256WordGas; }, sha256Code }},
 		{ 3, { [](bytesConstRef i) -> bigint { return c_ripemd160Gas + (i.size() + 31) / 32 * c_ripemd160WordGas; }, ripemd160Code }},
 		{ 4, { [](bytesConstRef i) -> bigint { return c_identityGas + (i.size() + 31) / 32 * c_identityWordGas; }, identityCode }}
 	};
-	return s_precompiled;
+	return c_precompiled;
 }
