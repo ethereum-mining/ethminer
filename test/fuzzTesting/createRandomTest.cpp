@@ -63,11 +63,28 @@ int main(int argc, char *argv[])
 
 void randomTransactionTest()
 {
-	std::string newTest = c_testExampleTransactionTest;
-	parseTestWithTypes(newTest);
+	//redirect all output to the stream
+	std::ostringstream strCout;
+	std::streambuf* oldCoutStreamBuf = std::cout.rdbuf();
+	std::cout.rdbuf( strCout.rdbuf() );
+	std::cerr.rdbuf( strCout.rdbuf() );
+
 	json_spirit::mValue v;
-	json_spirit::read_string(newTest, v);
-	dev::test::doTransactionTests(v, true);
+	try
+	{
+		std::string newTest = c_testExampleTransactionTest;
+		parseTestWithTypes(newTest);
+		json_spirit::read_string(newTest, v);
+		dev::test::doTransactionTests(v, true);
+	}
+	catch(...)
+	{
+		std::cerr << "Test fill exception!";
+	}
+
+	//restroe output
+	std::cout.rdbuf(oldCoutStreamBuf);
+	std::cerr.rdbuf(oldCoutStreamBuf);
 	std::cout << json_spirit::write_string(v, true);
 }
 
