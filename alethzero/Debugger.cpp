@@ -104,7 +104,7 @@ bool DebugSession::populate(dev::eth::Executive& _executive, dev::eth::Transacti
 			levels.push_back(&history.back());
 		else
 			levels.resize(ext.depth);
-		history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, (u256)gas, lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
+		history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, static_cast<u256>(gas), lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 	};
 	_executive.go(onOp);
 	_executive.finalize();

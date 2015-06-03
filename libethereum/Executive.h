@@ -36,6 +36,7 @@ class ExtVM;
 struct Manifest;
 
 struct VMTraceChannel: public LogChannel { static const char* name(); static const int verbosity = 11; };
+struct ExecutiveWarnChannel: public LogChannel { static const char* name(); static const int verbosity = 6; };
 
 /**
  * @brief Message-call/contract-creation executor; useful for executing transactions.
@@ -105,6 +106,9 @@ public:
 
 	/// Operation function for providing a simple trace of the VM execution.
 	static OnOpFunc simpleTrace();
+
+	/// Operation function for providing a simple trace of the VM execution.
+	static OnOpFunc standardTrace(std::ostream& o_output);
 
 	/// @returns gas remaining after the transaction/operation. Valid after the transaction has been executed.
 	u256 gas() const { return m_gas; }

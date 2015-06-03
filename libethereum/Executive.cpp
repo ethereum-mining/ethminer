@@ -32,6 +32,7 @@ using namespace dev;
 using namespace dev::eth;
 
 const char* VMTraceChannel::name() { return "EVM"; }
+const char* ExecutiveWarnChannel::name() { return WarnChannel::name(); }
 
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
@@ -58,7 +59,7 @@ void Executive::initialize(Transaction const& _transaction)
 	u256 startGasUsed = m_s.gasUsed();
 	if (startGasUsed + (bigint)m_t.gas() > m_s.m_currentBlock.gasLimit)
 	{
-		clog(StateDetail) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas();
+		clog(ExecutiveWarnChannel) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas();
 		m_excepted = TransactionException::BlockGasLimitReached;
 		BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementError((bigint)(m_s.m_currentBlock.gasLimit - startGasUsed), (bigint)m_t.gas()));
 	}
@@ -66,7 +67,7 @@ void Executive::initialize(Transaction const& _transaction)
 	// Check gas cost is enough.
 	if (!m_t.checkPayment())
 	{
-		clog(StateDetail) << "Not enough gas to pay for the transaction: Require >" << m_t.gasRequired() << " Got" << m_t.gas();
+		clog(ExecutiveWarnChannel) << "Not enough gas to pay for the transaction: Require >" << m_t.gasRequired() << " Got" << m_t.gas();
 		m_excepted = TransactionException::OutOfGas;
 		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError(m_t.gasRequired(), (bigint)m_t.gas()));
 	}
@@ -79,13 +80,13 @@ void Executive::initialize(Transaction const& _transaction)
 	}
 	catch (...)
 	{
-		clog(StateDetail) << "Invalid Signature";
+		clog(ExecutiveWarnChannel) << "Invalid Signature";
 		m_excepted = TransactionException::InvalidSignature;
 		throw;
 	}
 	if (m_t.nonce() != nonceReq)
 	{
-		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
+		clog(ExecutiveWarnChannel) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
 		m_excepted = TransactionException::InvalidNonce;
 		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
 	}
@@ -95,7 +96,7 @@ void Executive::initialize(Transaction const& _transaction)
 	m_totalCost = m_t.value() + m_gasCost;
 	if (m_s.balance(m_t.sender()) < m_totalCost)
 	{
-		clog(StateDetail) << "Not enough cash: Require >" << m_totalCost << " Got" << m_s.balance(m_t.sender());
+		clog(ExecutiveWarnChannel) << "Not enough cash: Require >" << m_totalCost << " Got" << m_s.balance(m_t.sender());
 		m_excepted = TransactionException::NotEnoughCash;
 		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(m_totalCost, (bigint)m_s.balance(m_t.sender())));
 	}
@@ -198,6 +199,24 @@ OnOpFunc Executive::simpleTrace()
 			o << showbase << hex << i.first << ": " << i.second << endl;
 		dev::LogOutputStream<VMTraceChannel, false>() << o.str();
 		dev::LogOutputStream<VMTraceChannel, false>() << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
+	};
+}
+
+OnOpFunc Executive::standardTrace(ostream& o_output)
+{
+	return [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
+	{
+		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
+		VM& vm = *voidVM;
+
+		o_output << endl << "    STACK" << endl;
+		for (auto i: vm.stack())
+			o_output << (h256)i << endl;
+		o_output << "    MEMORY" << endl << ((vm.memory().size() > 1000) ? " mem size greater than 1000 bytes " : memDump(vm.memory()));
+		o_output << "    STORAGE" << endl;
+		for (auto const& i: ext.state().storage(ext.myAddress))
+			o_output << showbase << hex << i.first << ": " << i.second << endl;
+		o_output << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
 	};
 }
 
