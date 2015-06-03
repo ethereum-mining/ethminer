@@ -218,11 +218,11 @@ void EthereumHost::maintainTransactions()
 		}
 }
 
-tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, list<shared_ptr<Session>>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
+tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<Session>>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
 {
 	vector<shared_ptr<EthereumPeer>> chosen;
 	vector<shared_ptr<EthereumPeer>> allowed;
-	list<shared_ptr<Session>> sessions;
+	vector<shared_ptr<Session>> sessions;
 	
 	auto const& ps = peerSessions();
 	allowed.reserve(ps.size());
@@ -243,7 +243,7 @@ tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, list<s
 		chosen.push_back(std::move(allowed[n]));
 		allowed.erase(allowed.begin() + n);
 	}
-	return make_tuple(chosen, allowed, sessions);
+	return make_tuple(move(chosen), move(allowed), move(sessions));
 }
 
 void EthereumHost::maintainBlocks(h256 const& _currentHash)
