@@ -137,7 +137,10 @@ EthashAux::FullAllocation::FullAllocation(ethash_light_t _light, ethash_callback
 	full = ethash_full_new(_light, _cb);
 //	cdebug << "Called OK.";
 	if (!full)
-		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_full_new()"));
+	{
+		clog(DAGChannel) << "DAG Generation Failure. Reason: "  << strerror(errno);
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_full_new"));
+	}
 }
 
 EthashAux::FullAllocation::~FullAllocation()
