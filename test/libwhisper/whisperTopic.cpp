@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(topic)
 		{
 			for (auto i: whost1->checkWatch(w))
 			{
-				Message msg = whost1->envelope(i).open(whost1->fullTopic(w));
+				Message msg = whost1->envelope(i).open(whost1->fullTopics(w));
 				last = RLP(msg.payload()).toInt<unsigned>();
 				if (received.count(last))
 					continue;
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE(forwarding)
 
 	// Host must be configured not to share peers.
 	Host host1("Listner", NetworkPreferences("127.0.0.1", 30303, false));
-	host1.setIdealPeerCount(0);
+	host1.setIdealPeerCount(1);
 	auto whost1 = host1.registerCapability(new WhisperHost());
 	host1.start();
 	while (!host1.haveNetwork())
@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE(forwarding)
 		{
 			for (auto i: whost1->checkWatch(w))
 			{
-				Message msg = whost1->envelope(i).open(whost1->fullTopic(w));
+				Message msg = whost1->envelope(i).open(whost1->fullTopics(w));
 				unsigned last = RLP(msg.payload()).toInt<unsigned>();
 				cnote << "New message from:" << msg.from() << RLP(msg.payload()).toInt<unsigned>();
 				result = last;
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE(forwarding)
 		{
 			for (auto i: whost2->checkWatch(w))
 			{
-				Message msg = whost2->envelope(i).open(whost2->fullTopic(w));
+				Message msg = whost2->envelope(i).open(whost2->fullTopics(w));
 				cnote << "New message from:" << msg.from() << RLP(msg.payload()).toInt<unsigned>();
 			}
 			this_thread::sleep_for(chrono::milliseconds(50));
@@ -190,6 +190,9 @@ BOOST_AUTO_TEST_CASE(forwarding)
 	ph.start();
 	ph.addNode(host2.id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), 30305, 30305));
 	while (!ph.haveNetwork())
+		this_thread::sleep_for(chrono::milliseconds(10));
+
+	while (!ph.peerCount())
 		this_thread::sleep_for(chrono::milliseconds(10));
 
 	KeyPair us = KeyPair::create();
@@ -237,7 +240,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 		{
 			for (auto i: whost1->checkWatch(w))
 			{
-				Message msg = whost1->envelope(i).open(whost1->fullTopic(w));
+				Message msg = whost1->envelope(i).open(whost1->fullTopics(w));
 				cnote << "New message from:" << msg.from() << RLP(msg.payload()).toInt<unsigned>();
 			}
 			this_thread::sleep_for(chrono::milliseconds(50));
@@ -280,7 +283,7 @@ BOOST_AUTO_TEST_CASE(asyncforwarding)
 		{
 			for (auto i: wh->checkWatch(w))
 			{
-				Message msg = wh->envelope(i).open(wh->fullTopic(w));
+				Message msg = wh->envelope(i).open(wh->fullTopics(w));
 				unsigned last = RLP(msg.payload()).toInt<unsigned>();
 				cnote << "New message from:" << msg.from() << RLP(msg.payload()).toInt<unsigned>();
 				result = last;
