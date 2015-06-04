@@ -54,7 +54,7 @@ EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQu
 
 EthereumHost::~EthereumHost()
 {
-	forEachPeer([](EthereumPeer* _p) { _p->abortSync(); });
+	foreachPeer([](EthereumPeer* _p) { _p->abortSync(); });
 }
 
 bool EthereumHost::ensureInitialised()
@@ -74,7 +74,7 @@ bool EthereumHost::ensureInitialised()
 
 void EthereumHost::reset()
 {
-	forEachPeer([](EthereumPeer* _p) { _p->abortSync(); });
+	foreachPeer([](EthereumPeer* _p) { _p->abortSync(); });
 	m_man.resetToChain(h256s());
 	m_hashMan.reset(m_chain.number() + 1);
 	m_needSyncBlocks = true;
@@ -105,7 +105,7 @@ void EthereumHost::doWork()
 		}
 	}
 
-	forEachPeer([](EthereumPeer* _p) { _p->tick(); });
+	foreachPeer([](EthereumPeer* _p) { _p->tick(); });
 
 //	return netChange;
 	// TODO: Figure out what to do with netChange.
@@ -125,7 +125,7 @@ void EthereumHost::maintainTransactions()
 	}
 	for (auto const& t: ts)
 		m_transactionsSent.insert(t.first);
-	forEachPeerPtr([&](shared_ptr<EthereumPeer> _p)
+	foreachPeerPtr([&](shared_ptr<EthereumPeer> _p)
 	{
 		bytes b;
 		unsigned n = 0;
@@ -148,16 +148,16 @@ void EthereumHost::maintainTransactions()
 	});
 }
 
-void EthereumHost::forEachPeer(std::function<void(EthereumPeer*)> const& _f) const
+void EthereumHost::foreachPeer(std::function<void(EthereumPeer*)> const& _f) const
 {
-	forEachPeerPtr([&](std::shared_ptr<EthereumPeer> _p)
+	foreachPeerPtr([&](std::shared_ptr<EthereumPeer> _p)
 	{
 		if (_p)
 			_f(_p.get());
 	});
 }
 
-void EthereumHost::forEachPeerPtr(std::function<void(std::shared_ptr<EthereumPeer>)> const& _f) const
+void EthereumHost::foreachPeerPtr(std::function<void(std::shared_ptr<EthereumPeer>)> const& _f) const
 {
 	for (auto s: peerSessions())
 		_f(s.first->cap<EthereumPeer>());
@@ -551,7 +551,7 @@ void EthereumHost::onPeerTransactions(EthereumPeer* _peer, RLP const& _r)
 void EthereumHost::continueSync()
 {
 	clog(NetAllDetail) << "Getting help with downloading hashes and blocks";
-	forEachPeer([&](EthereumPeer* _p)
+	foreachPeer([&](EthereumPeer* _p)
 	{
 		if (_p->m_asking == Asking::Nothing)
 			continueSync(_p);
@@ -564,7 +564,7 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 	bool otherPeerSync = false;
 	if (m_needSyncHashes && peerShouldGrabChain(_peer))
 	{
-		forEachPeer([&](EthereumPeer* _p)
+		foreachPeer([&](EthereumPeer* _p)
 		{
 			if (_p != _peer && _p->m_asking == Asking::Hashes && _p->m_protocolVersion != protocolVersion())
 				otherPeerSync = true; // Already have a peer downloading hash chain with old protocol, do nothing
@@ -630,7 +630,7 @@ bool EthereumHost::isSyncing_UNSAFE() const
 	/// We need actual peer information here to handle the case when we are the first ever peer on the network to mine.
 	/// I.e. on a new private network the first node mining has noone to sync with and should start block propogation immediately.
 	bool syncing = false;
-	forEachPeer([&](EthereumPeer* _p)
+	foreachPeer([&](EthereumPeer* _p)
 	{
 		if (_p->m_asking != Asking::Nothing)
 			syncing = true;
