@@ -1803,7 +1803,7 @@ void Main::on_accounts_doubleClicked()
 	}
 }
 
-static shh::FullTopic topicFromText(QString _s)
+static shh::Topics topicFromText(QString _s)
 {
 	shh::BuildTopic ret;
 	while (_s.size())
@@ -2187,10 +2187,10 @@ void Main::refreshWhispers()
 		shh::Envelope const& e = w.second;
 		shh::Message m;
 		for (pair<Public, Secret> const& i: m_server->ids())
-			if (!!(m = e.open(shh::FullTopic(), i.second)))
+			if (!!(m = e.open(shh::Topics(), i.second)))
 				break;
 		if (!m)
-			m = e.open(shh::FullTopic());
+			m = e.open(shh::Topics());
 
 		QString msg;
 		if (m.from())

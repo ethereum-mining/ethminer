@@ -72,22 +72,22 @@ public:
 	unsigned sent() const { return m_expiry - m_ttl; }
 	unsigned expiry() const { return m_expiry; }
 	unsigned ttl() const { return m_ttl; }
-	CollapsedTopic const& topic() const { return m_topic; }
+	AbridgedTopics const& topic() const { return m_topic; }
 	bytes const& data() const { return m_data; }
 
-	Message open(FullTopic const& _ft, Secret const& _s = Secret()) const;
+	Message open(Topics const& _t, Secret const& _s = Secret()) const;
 
 	unsigned workProved() const;
 	void proveWork(unsigned _ms);
 
 private:
-	Envelope(unsigned _exp, unsigned _ttl, CollapsedTopic const& _topic): m_expiry(_exp), m_ttl(_ttl), m_topic(_topic) {}
+	Envelope(unsigned _exp, unsigned _ttl, AbridgedTopics const& _topic): m_expiry(_exp), m_ttl(_ttl), m_topic(_topic) {}
 
 	unsigned m_expiry = 0;
 	unsigned m_ttl = 0;
 	u256 m_nonce;
 
-	CollapsedTopic m_topic;
+	AbridgedTopics m_topic;
 	bytes m_data;
 };
 
@@ -102,7 +102,7 @@ class Message
 {
 public:
 	Message() {}
-	Message(Envelope const& _e, FullTopic const& _ft, Secret const& _s = Secret());
+	Message(Envelope const& _e, Topics const& _t, Secret const& _s = Secret());
 	Message(bytes const& _payload): m_payload(_payload) {}
 	Message(bytesConstRef _payload): m_payload(_payload.toBytes()) {}
 	Message(bytes&& _payload) { std::swap(_payload, m_payload); }
@@ -119,15 +119,15 @@ public:
 	operator bool() const { return !!m_payload.size() || m_from || m_to; }
 
 	/// Turn this message into a ditributable Envelope.
-	Envelope seal(Secret _from, FullTopic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) const;
+	Envelope seal(Secret _from, Topics const& _topics, unsigned _ttl = 50, unsigned _workToProve = 50) const;
 	// Overloads for skipping _from or specifying _to.
-	Envelope seal(FullTopic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) const { return seal(Secret(), _topic, _ttl, _workToProve); }
-	Envelope sealTo(Public _to, FullTopic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { m_to = _to; return seal(Secret(), _topic, _ttl, _workToProve); }
-	Envelope sealTo(Secret _from, Public _to, FullTopic const& _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { m_to = _to; return seal(_from, _topic, _ttl, _workToProve); }
+	Envelope seal(Topics const& _topics, unsigned _ttl = 50, unsigned _workToProve = 50) const { return seal(Secret(), _topics, _ttl, _workToProve); }
+	Envelope sealTo(Public _to, Topics const& _topics, unsigned _ttl = 50, unsigned _workToProve = 50) { m_to = _to; return seal(Secret(), _topics, _ttl, _workToProve); }
+	Envelope sealTo(Secret _from, Public _to, Topics const& _topics, unsigned _ttl = 50, unsigned _workToProve = 50) { m_to = _to; return seal(_from, _topics, _ttl, _workToProve); }
 
 private:
 	bool populate(bytes const& _data);
-	bool openBroadcastEnvelope(Envelope const& _e, FullTopic const& _fk, bytes& o_b);
+	bool openBroadcastEnvelope(Envelope const& _e, Topics const& _t, bytes& o_b);
 	h256 generateGamma(h256 const& _key, h256 const& _salt) const { return sha3(_key ^ _salt); }
 
 	Public m_from;

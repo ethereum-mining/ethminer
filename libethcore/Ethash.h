@@ -87,6 +87,7 @@ public:
 
 		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
 		static std::string platformInfo();
+		static bool haveSufficientGPUMemory() { return false; }
 		static void setDefaultPlatform(unsigned) {}
 		static void setDefaultDevice(unsigned) {}
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
@@ -115,6 +116,7 @@ public:
 
 		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 		static std::string platformInfo();
+		static bool haveSufficientGPUMemory();
 		static unsigned getNumDevices();
 		static void setDefaultPlatform(unsigned _id) { s_platformId = _id; }
 		static void setDefaultDevice(unsigned _id) { s_deviceId = _id; }

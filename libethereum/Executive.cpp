@@ -32,6 +32,7 @@ using namespace dev;
 using namespace dev::eth;
 
 const char* VMTraceChannel::name() { return "EVM"; }
+const char* ExecutiveWarnChannel::name() { return WarnChannel::name(); }
 
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
@@ -41,7 +42,7 @@ Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 
 u256 Executive::gasUsed() const
 {
-	return m_t.gas() - m_endGas;
+	return m_t.gas() - m_gas;
 }
 
 ExecutionResult Executive::executionResult() const
@@ -63,7 +64,7 @@ void Executive::initialize(Transaction const& _transaction)
 	u256 startGasUsed = m_s.gasUsed();
 	if (startGasUsed + (bigint)m_t.gas() > m_s.m_currentBlock.gasLimit)
 	{
-		clog(StateDetail) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas();
+		clog(ExecutiveWarnChannel) << "Too much gas used in this block: Require <" << (m_s.m_currentBlock.gasLimit - startGasUsed) << " Got" << m_t.gas();
 		m_excepted = TransactionException::BlockGasLimitReached;
 		BOOST_THROW_EXCEPTION(BlockGasLimitReached() << RequirementError((bigint)(m_s.m_currentBlock.gasLimit - startGasUsed), (bigint)m_t.gas()));
 	}
@@ -71,7 +72,7 @@ void Executive::initialize(Transaction const& _transaction)
 	// Check gas cost is enough.
 	if (!m_t.checkPayment())
 	{
-		clog(StateDetail) << "Not enough gas to pay for the transaction: Require >" << m_t.gasRequired() << " Got" << m_t.gas();
+		clog(ExecutiveWarnChannel) << "Not enough gas to pay for the transaction: Require >" << m_t.gasRequired() << " Got" << m_t.gas();
 		m_excepted = TransactionException::OutOfGas;
 		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError(m_t.gasRequired(), (bigint)m_t.gas()));
 	}
@@ -84,13 +85,13 @@ void Executive::initialize(Transaction const& _transaction)
 	}
 	catch (...)
 	{
-		clog(StateDetail) << "Invalid Signature";
+		clog(ExecutiveWarnChannel) << "Invalid Signature";
 		m_excepted = TransactionException::InvalidSignature;
 		throw;
 	}
 	if (m_t.nonce() != nonceReq)
 	{
-		clog(StateDetail) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
+		clog(ExecutiveWarnChannel) << "Invalid Nonce: Require" << nonceReq << " Got" << m_t.nonce();
 		m_excepted = TransactionException::InvalidNonce;
 		BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
 	}
@@ -100,7 +101,7 @@ void Executive::initialize(Transaction const& _transaction)
 	m_totalCost = m_t.value() + m_gasCost;
 	if (m_s.balance(m_t.sender()) < m_totalCost)
 	{
-		clog(StateDetail) << "Not enough cash: Require >" << m_totalCost << " Got" << m_s.balance(m_t.sender());
+		clog(ExecutiveWarnChannel) << "Not enough cash: Require >" << m_totalCost << " Got" << m_s.balance(m_t.sender());
 		m_excepted = TransactionException::NotEnoughCash;
 		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(m_totalCost, (bigint)m_s.balance(m_t.sender())));
 	}
@@ -120,75 +121,45 @@ bool Executive::execute()
 	if (m_t.isCreation())
 		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_t.gasRequired(), &m_t.data(), m_t.sender());
 	else
-		return call(m_t.receiveAddress(), m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_t.gasRequired(), m_t.sender());
+		return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_t.gasRequired());
 }
 
-bool Executive::call(Address _receiveAddress, Address _codeAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas, Address _originAddress)
+bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas)
 {
-	m_isCreation = false;
-//	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
-	auto it = !(_codeAddress & ~h160(0xffffffff)) ? precompiled().find((unsigned)(u160)_codeAddress) : precompiled().end();
-	if (it != precompiled().end())
-	{
-		bigint g = it->second.gas(_data);
-		if (_gas < g)
-		{
-			m_endGas = 0;
-			m_excepted = TransactionException::OutOfGasBase;
-			// Bail from exception.
-			return true;	// true actually means "all finished - nothing more to be done regarding go().
-		}
-		else
-		{
-			m_endGas = (u256)(_gas - g);
-			m_precompiledOut = it->second.exec(_data);
-			m_out = &m_precompiledOut;
-		}
-	}
-	else if (m_s.addressHasCode(_codeAddress))
-	{
-		m_vm = VMFactory::create(_gas);
-		bytes const& c = m_s.code(_codeAddress);
-		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _receiveAddress, _senderAddress, _originAddress, _value, _gasPrice, _data, &c, m_depth);
-	}
-	else
-		m_endGas = _gas;
-
-	m_s.transferBalance(_senderAddress, _receiveAddress, _value);
-
-	return !m_ext;
+	CallParameters params{_senderAddress, _receiveAddress, _receiveAddress, _gas, _value, _data, {}, {}};
+	return call(params, _gasPrice, _senderAddress);
 }
 
 bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address const& _origin)
 {
 	m_isCreation = false;
-//	cnote << "Transferring" << formatBalance(_value) << "to receiver.";
 	auto it = !(_p.codeAddress & ~h160(0xffffffff)) ? precompiled().find((unsigned)(u160)_p.codeAddress) : precompiled().end();
 	if (it != precompiled().end())
 	{
 		bigint g = it->second.gas(_p.data);
 		if (_p.gas < g)
 		{
-			m_endGas = 0;
 			m_excepted = TransactionException::OutOfGasBase;
 			// Bail from exception.
 			return true;	// true actually means "all finished - nothing more to be done regarding go().
 		}
 		else
 		{
-			m_endGas = (u256)(_p.gas - g);
+			m_gas = (u256)(_p.gas - g);
 			m_precompiledOut = it->second.exec(_p.data);
 			m_out = &m_precompiledOut;
 		}
 	}
-	else if (m_s.addressHasCode(_p.codeAddress))
-	{
-		m_vm = VMFactory::create(_p.gas);
-		bytes const& c = m_s.code(_p.codeAddress);
-		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _p.receiveAddress, _p.senderAddress, _origin, _p.value, _gasPrice, _p.data, &c, m_depth);
-	}
 	else
-		m_endGas = _p.gas;
+	{
+		m_gas = _p.gas;
+		if (m_s.addressHasCode(_p.codeAddress))
+		{
+			m_vm = VMFactory::create();
+			bytes const& c = m_s.code(_p.codeAddress);
+			m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _p.receiveAddress, _p.senderAddress, _origin, _p.value, _gasPrice, _p.data, &c, m_depth);
+		}
+	}
 
 	m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.value);
 
@@ -202,11 +173,12 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	// We can allow for the reverted state (i.e. that with which m_ext is constructed) to contain the m_newAddress, since
 	// we delete it explicitly if we decide we need to revert.
 	m_newAddress = right160(sha3(rlpList(_sender, m_s.transactionsFrom(_sender) - 1)));
+	m_gas = _gas;
 
 	// Execute _init.
 	if (!_init.empty())
 	{
-		m_vm = VMFactory::create(_gas);
+		m_vm = VMFactory::create();
 		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
 	}
 
@@ -214,17 +186,14 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 	m_s.transferBalance(_sender, m_newAddress, _endowment);
 
 	if (_init.empty())
-	{
 		m_s.m_cache[m_newAddress].setCode({});
-		m_endGas = _gas;
-	}
 
 	return !m_ext;
 }
 
 OnOpFunc Executive::simpleTrace()
 {
-	return [](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, VM* voidVM, ExtVMFace const* voidExt)
+	return [](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
 	{
 		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
 		VM& vm = *voidVM;
@@ -238,13 +207,13 @@ OnOpFunc Executive::simpleTrace()
 		for (auto const& i: ext.state().storage(ext.myAddress))
 			o << showbase << hex << i.first << ": " << i.second << endl;
 		dev::LogOutputStream<VMTraceChannel, false>() << o.str();
-		dev::LogOutputStream<VMTraceChannel, false>() << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << vm.gas() << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
+		dev::LogOutputStream<VMTraceChannel, false>() << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
 	};
 }
 
 OnOpFunc Executive::standardTrace(ostream& o_output)
 {
-	return [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, VM* voidVM, ExtVMFace const* voidExt)
+	return [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
 	{
 		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
 		VM& vm = *voidVM;
@@ -256,7 +225,7 @@ OnOpFunc Executive::standardTrace(ostream& o_output)
 		o_output << "    STORAGE" << endl;
 		for (auto const& i: ext.state().storage(ext.myAddress))
 			o_output << showbase << hex << i.first << ": " << i.second << endl;
-		o_output << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << vm.gas() << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
+		o_output << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
 	};
 }
 
@@ -269,17 +238,16 @@ bool Executive::go(OnOpFunc const& _onOp)
 #endif
 		try
 		{
-			m_out = m_vm->go(*m_ext, _onOp);
-			m_endGas = m_vm->gas();
+			m_out = m_vm->go(m_gas, *m_ext, _onOp);
 
 			if (m_isCreation)
 			{
-				m_gasForDeposit = m_endGas;
+				m_gasForDeposit = m_gas;
 				m_depositSize = m_out.size();
-				if (m_out.size() * c_createDataGas <= m_endGas)
+				if (m_out.size() * c_createDataGas <= m_gas)
 				{
 					m_codeDeposit = CodeDeposit::Success;
-					m_endGas -= m_out.size() * c_createDataGas;
+					m_gas -= m_out.size() * c_createDataGas;
 				}
 				else
 				{
@@ -297,7 +265,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 		catch (VMException const& _e)
 		{
 			clog(StateSafeExceptions) << "Safe VM Exception. " << diagnostic_information(_e);
-			m_endGas = 0;
+			m_gas = 0;
 			m_excepted = toTransactionException(_e);
 			m_ext->revert();
 
@@ -330,12 +298,12 @@ void Executive::finalize()
 	// SSTORE refunds...
 	// must be done before the miner gets the fees.
 	if (m_ext)
-		m_endGas += min((m_t.gas() - m_endGas) / 2, m_ext->sub.refunds);
+		m_gas += min((m_t.gas() - m_gas) / 2, m_ext->sub.refunds);
 
 	//	cnote << "Refunding" << formatBalance(m_endGas * m_ext->gasPrice) << "to origin (=" << m_endGas << "*" << formatBalance(m_ext->gasPrice) << ")";
-	m_s.addBalance(m_t.sender(), m_endGas * m_t.gasPrice());
+	m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
 
-	u256 feesEarned = (m_t.gas() - m_endGas) * m_t.gasPrice();
+	u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
 	m_s.addBalance(m_s.m_currentBlock.coinbaseAddress, feesEarned);
 
 	// Suicides...

@@ -25,13 +25,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-void VM::reset(u256 const& _gas) noexcept
-{
-	m_gas = _gas;
-	m_curPC = 0;
-	m_jumpDests.clear();
-}
-
 struct InstructionMetric
 {
 	int gasPriceTier;
@@ -52,8 +45,12 @@ static array<InstructionMetric, 256> metrics()
 	return s_ret;
 }
 
-bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
+bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 {
+	// Reset leftovers from possible previous run
+	m_curPC = 0;
+	m_jumpDests.clear();
+
 	m_stack.reserve((unsigned)c_stackLimit);
 
 	unique_ptr<CallParameters> callParams;
@@ -100,7 +97,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 		auto onOperation = [&]()
 		{
 			if (_onOp)
-				_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);
+				_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, io_gas, this, &_ext);
 		};
 
 		switch (inst)
@@ -198,17 +195,11 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 		runGas += c_copyGas * ((copySize + 31) / 32);
 
 		onOperation();
-//		if (_onOp)
-//			_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, this, &_ext);
 
-		if (m_gas < runGas)
-		{
-			// Out of gas!
-			m_gas = 0;
+		if (io_gas < runGas)
 			BOOST_THROW_EXCEPTION(OutOfGas());
-		}
 
-		m_gas -= runGas;
+		io_gas -= (u256)runGas;
 
 		if (newTempSize > m_temp.size())
 			m_temp.resize((size_t)newTempSize);
@@ -567,7 +558,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.push_back(m_temp.size());
 			break;
 		case Instruction::GAS:
-			m_stack.push_back((u256)m_gas);
+			m_stack.push_back(io_gas);
 			break;
 		case Instruction::JUMPDEST:
 			break;
@@ -616,11 +607,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.pop_back();
 
 			if (_ext.balance(_ext.myAddress) >= endowment && _ext.depth < 1024)
-			{
-				u256 g(m_gas);
-				m_stack.push_back((u160)_ext.create(endowment, g, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
-				m_gas = g;
-			}
+				m_stack.push_back((u160)_ext.create(endowment, io_gas, bytesConstRef(m_temp.data() + initOff, initSize), _onOp));
 			else
 				m_stack.push_back(0);
 			break;
@@ -661,7 +648,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			else
 				m_stack.push_back(0);
 
-			m_gas += callParams->gas;
+			io_gas += callParams->gas;
 			break;
 		}
 		case Instruction::RETURN:
@@ -670,7 +657,6 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			m_stack.pop_back();
 			unsigned s = (unsigned)m_stack.back();
 			m_stack.pop_back();
-
 			return bytesConstRef(m_temp.data() + b, s);
 		}
 		case Instruction::SUICIDE:
@@ -683,6 +669,7 @@ bytesConstRef VM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
 			return bytesConstRef();
 		}
 	}
+
 	if (_steps == (uint64_t)-1)
 		BOOST_THROW_EXCEPTION(StepsDone());
 	return bytesConstRef();
