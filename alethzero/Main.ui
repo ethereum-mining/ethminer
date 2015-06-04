@@ -151,12 +151,16 @@
     </property>
     <addaction name="mine"/>
     <addaction name="turboMining"/>
+    <addaction name="prepNextDAG"/>
     <addaction name="separator"/>
     <addaction name="newTransaction"/>
     <addaction name="newAccount"/>
     <addaction name="importKey"/>
     <addaction name="importKeyFile"/>
+    <addaction name="claimPresale"/>
     <addaction name="exportKey"/>
+    <addaction name="reencryptAll"/>
+    <addaction name="reencryptKey"/>
     <addaction name="killAccount"/>
     <addaction name="separator"/>
     <addaction name="loadJS"/>
@@ -184,6 +188,7 @@
     <addaction name="usePrivate"/>
     <addaction name="jitvm"/>
     <addaction name="retryUnknown"/>
+    <addaction name="confirm"/>
    </widget>
    <widget class="QMenu" name="menu_View">
     <property name="title">
@@ -548,10 +553,13 @@
        <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
        </property>
-       <property name="dragDropMode">
-        <enum>QAbstractItemView::InternalMove</enum>
+       <property name="showDropIndicator" stdset="0">
+        <bool>false</bool>
        </property>
        <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
+       <property name="sortingEnabled">
         <bool>true</bool>
        </property>
       </widget>
@@ -1651,7 +1659,7 @@ font-size: 14pt</string>
     <string>&amp;Enable Local Addresses</string>
    </property>
   </action>
-  <action name="importKeyFile">
+  <action name="claimPresale">
    <property name="enabled">
     <bool>true</bool>
    </property>
@@ -1722,6 +1730,37 @@ font-size: 14pt</string>
   <action name="injectBlock">
    <property name="text">
     <string>In&amp;ject Block</string>
+   </property>
+  </action>
+  <action name="prepNextDAG">
+   <property name="text">
+    <string>Prepare Next &amp;DAG</string>
+   </property>
+  </action>
+  <action name="confirm">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Co&amp;nfirm Transactions</string>
+   </property>
+  </action>
+  <action name="importKeyFile">
+   <property name="text">
+    <string>Import &amp;Secret Key File...</string>
+   </property>
+  </action>
+  <action name="reencryptKey">
+   <property name="text">
+    <string>&amp;Re-Encrypt Key</string>
+   </property>
+  </action>
+  <action name="reencryptAll">
+   <property name="text">
+    <string>Re-Encrypt All Keys...</string>
    </property>
   </action>
  </widget>

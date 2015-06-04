@@ -23,7 +23,7 @@
 
 #include "KnownState.h"
 #include <functional>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libevmasm/AssemblyItem.h>
 
 using namespace std;
@@ -92,7 +92,11 @@ KnownState::StoreOperation KnownState::feedItem(AssemblyItem const& _item, bool 
 	else if (_item.type() != Operation)
 	{
 		assertThrow(_item.deposit() == 1, InvalidDeposit, "");
-		setStackElement(++m_stackHeight, m_expressionClasses->find(_item, {}, _copyItem));
+		if (_item.pushedValue())
+			// only available after assembly stage, should not be used for optimisation
+			setStackElement(++m_stackHeight, m_expressionClasses->find(*_item.pushedValue()));
+		else
+			setStackElement(++m_stackHeight, m_expressionClasses->find(_item, {}, _copyItem));
 	}
 	else
 	{
@@ -160,23 +164,68 @@ KnownState::StoreOperation KnownState::feedItem(AssemblyItem const& _item, bool 
 	return op;
 }
 
-void KnownState::reduceToCommonKnowledge(KnownState const& /*_other*/)
+/// Helper function for KnownState::reduceToCommonKnowledge, removes everything from
+/// _this which is not in or not equal to the value in _other.
+template <class _Mapping> void intersect(_Mapping& _this, _Mapping const& _other)
 {
-	//@todo
-	*this = KnownState(m_expressionClasses);
+	for (auto it = _this.begin(); it != _this.end();)
+		if (_other.count(it->first) && _other.at(it->first) == it->second)
+			++it;
+		else
+			it = _this.erase(it);
+}
+
+void KnownState::reduceToCommonKnowledge(KnownState const& _other)
+{
+	int stackDiff = m_stackHeight - _other.m_stackHeight;
+	for (auto it = m_stackElements.begin(); it != m_stackElements.end();)
+		if (_other.m_stackElements.count(it->first - stackDiff))
+		{
+			Id other = _other.m_stackElements.at(it->first - stackDiff);
+			if (it->second == other)
+				++it;
+			else
+			{
+				set<u256> theseTags = tagsInExpression(it->second);
+				set<u256> otherTags = tagsInExpression(other);
+				if (!theseTags.empty() && !otherTags.empty())
+				{
+					theseTags.insert(otherTags.begin(), otherTags.end());
+					it->second = tagUnion(theseTags);
+					++it;
+				}
+				else
+					it = m_stackElements.erase(it);
+			}
+		}
+		else
+			it = m_stackElements.erase(it);
+
+	// Use the smaller stack height. Essential to terminate in case of loops.
+	if (m_stackHeight > _other.m_stackHeight)
+	{
+		map<int, Id> shiftedStack;
+		for (auto const& stackElement: m_stackElements)
+			shiftedStack[stackElement.first - stackDiff] = stackElement.second;
+		m_stackElements = move(shiftedStack);
+		m_stackHeight = _other.m_stackHeight;
+	}
+
+	intersect(m_storageContent, _other.m_storageContent);
+	intersect(m_memoryContent, _other.m_memoryContent);
 }
 
 bool KnownState::operator==(const KnownState& _other) const
 {
-	//@todo
-	return (
-		m_stackElements.empty() &&
-		_other.m_stackElements.empty() &&
-		m_storageContent.empty() &&
-		_other.m_storageContent.empty() &&
-		m_memoryContent.empty() &&
-		_other.m_memoryContent.empty()
-	);
+	if (m_storageContent != _other.m_storageContent || m_memoryContent != _other.m_memoryContent)
+		return false;
+	int stackDiff = m_stackHeight - _other.m_stackHeight;
+	auto thisIt = m_stackElements.cbegin();
+	auto otherIt = _other.m_stackElements.cbegin();
+	for (; thisIt != m_stackElements.cend() && otherIt != _other.m_stackElements.cend(); ++thisIt, ++otherIt)
+		if (thisIt->first - stackDiff != otherIt->first || thisIt->second != otherIt->second)
+			return false;
+	return (thisIt == m_stackElements.cend() && otherIt == _other.m_stackElements.cend());
 }
 
 ExpressionClasses::Id KnownState::stackElement(int _stackHeight, SourceLocation const& _location)
@@ -184,18 +233,22 @@ ExpressionClasses::Id KnownState::stackElement(int _stackHeight, SourceLocation 
 	if (m_stackElements.count(_stackHeight))
 		return m_stackElements.at(_stackHeight);
 	// Stack element not found (not assigned yet), create new unknown equivalence class.
-	//@todo check that we do not infer incorrect equivalences when the stack is cleared partially
-	//in between.
-	return m_stackElements[_stackHeight] = initialStackElement(_stackHeight, _location);
+	return m_stackElements[_stackHeight] =
+			m_expressionClasses->find(AssemblyItem(UndefinedItem, _stackHeight, _location));
 }
 
-ExpressionClasses::Id KnownState::initialStackElement(
-	int _stackHeight,
-	SourceLocation const& _location
-)
+KnownState::Id KnownState::relativeStackElement(int _stackOffset, SourceLocation const& _location)
 {
-	// This is a special assembly item that refers to elements pre-existing on the initial stack.
-	return m_expressionClasses->find(AssemblyItem(UndefinedItem, u256(_stackHeight), _location));
+	return stackElement(m_stackHeight + _stackOffset, _location);
+}
+
+void KnownState::clearTagUnions()
+{
+	for (auto it = m_stackElements.begin(); it != m_stackElements.end();)
+		if (m_tagUnions.left.count(it->second))
+			it = m_stackElements.erase(it);
+		else
+			++it;
 }
 
 void KnownState::setStackElement(int _stackHeight, Id _class)
@@ -322,5 +375,29 @@ KnownState::Id KnownState::applySha3(
 	else
 		v = m_expressionClasses->find(sha3Item, {_start, _length}, true, m_sequenceNumber);
 	return m_knownSha3Hashes[arguments] = v;
+}
+
+set<u256> KnownState::tagsInExpression(KnownState::Id _expressionId)
+{
+	if (m_tagUnions.left.count(_expressionId))
+		return m_tagUnions.left.at(_expressionId);
+	// Might be a tag, then return the set of itself.
+	ExpressionClasses::Expression expr = m_expressionClasses->representative(_expressionId);
+	if (expr.item && expr.item->type() == PushTag)
+		return set<u256>({expr.item->data()});
+	else
+		return set<u256>();
+}
+
+KnownState::Id KnownState::tagUnion(set<u256> _tags)
+{
+	if (m_tagUnions.right.count(_tags))
+		return m_tagUnions.right.at(_tags);
+	else
+	{
+		Id id = m_expressionClasses->newClass(SourceLocation());
+		m_tagUnions.right.insert(make_pair(_tags, id));
+		return id;
+	}
 }
 

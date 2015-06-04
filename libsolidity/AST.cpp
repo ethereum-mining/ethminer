@@ -28,7 +28,7 @@
 #include <libsolidity/Exceptions.h>
 #include <libsolidity/AST_accept.h>
 
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 
 using namespace std;
 
@@ -746,7 +746,7 @@ void FunctionCall::checkTypeRequirements(TypePointers const*)
 		//@todo for structs, we have to check the number of arguments to be equal to the
 		// number of non-mapping members
 		if (m_arguments.size() != 1)
-			BOOST_THROW_EXCEPTION(createTypeError("More than one argument for explicit type conversion."));
+			BOOST_THROW_EXCEPTION(createTypeError("Exactly one argument expected for explicit type conversion."));
 		if (!isPositionalCall)
 			BOOST_THROW_EXCEPTION(createTypeError("Type conversion cannot allow named arguments."));
 		if (!m_arguments.front()->getType()->isExplicitlyConvertibleTo(*type.getActualType()))
@@ -890,6 +890,8 @@ void IndexAccess::checkTypeRequirements(TypePointers const*)
 		ArrayType const& type = dynamic_cast<ArrayType const&>(*m_base->getType());
 		if (!m_index)
 			BOOST_THROW_EXCEPTION(createTypeError("Index expression cannot be omitted."));
+		if (type.isString())
+			BOOST_THROW_EXCEPTION(createTypeError("Index access for string is not possible."));
 		m_index->expectType(IntegerType(256));
 		if (type.isByteArray())
 			m_type = make_shared<FixedBytesType>(1);

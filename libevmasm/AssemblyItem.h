@@ -65,9 +65,11 @@ public:
 	/// @returns the instruction of this item (only valid if type() == Operation)
 	Instruction instruction() const { return Instruction(byte(m_data)); }
 
-	/// @returns true iff the type and data of the items are equal.
+	/// @returns true if the type and data of the items are equal.
 	bool operator==(AssemblyItem const& _other) const { return m_type == _other.m_type && m_data == _other.m_data; }
 	bool operator!=(AssemblyItem const& _other) const { return !operator==(_other); }
+	/// Less-than operator compatible with operator==.
+	bool operator<(AssemblyItem const& _other) const { return std::tie(m_type, m_data) < std::tie(_other.m_type, _other.m_data); }
 
 	/// @returns an upper bound for the number of bytes required by this item, assuming that
 	/// the value of a jump tag takes @a _addressLength bytes.
@@ -82,11 +84,17 @@ public:
 	JumpType getJumpType() const { return m_jumpType; }
 	std::string getJumpTypeAsString() const;
 
+	void setPushedValue(u256 const& _value) const { m_pushedValue = std::make_shared<u256>(_value); }
+	u256 const* pushedValue() const { return m_pushedValue.get(); }
+
 private:
 	AssemblyItemType m_type;
 	u256 m_data;
 	SourceLocation m_location;
 	JumpType m_jumpType = JumpType::Ordinary;
+	/// Pushed value for operations with data to be determined during assembly stage,
+	/// e.g. PushSubSize, PushTag, PushSub, etc.
+	mutable std::shared_ptr<u256> m_pushedValue;
 };
 
 using AssemblyItems = std::vector<AssemblyItem>;

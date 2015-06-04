@@ -19,9 +19,9 @@
  * @date 2014
  */
 
-#include "SHA3.h"
-#include "CryptoPP.h"
 #include "ECDHE.h"
+#include <libdevcore/SHA3.h>
+#include "CryptoPP.h"
 
 using namespace std;
 using namespace dev;

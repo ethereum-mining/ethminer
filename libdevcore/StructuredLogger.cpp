@@ -34,6 +34,15 @@ using namespace std;
 namespace dev
 {
 
+void StructuredLogger::initialize(bool _enabled, std::string const& _timeFormat, std::string const& _destinationURL)
+{
+	m_enabled = _enabled;
+	m_timeFormat = _timeFormat;
+	if (_destinationURL.size() > 7 && _destinationURL.substr(0, 7) == "file://")
+		m_out.open(_destinationURL.substr(7));
+	// TODO: support tcp://
+}
+
 void StructuredLogger::outputJson(Json::Value const& _value, std::string const& _name) const
 {
 	Json::Value event;
@@ -41,7 +50,7 @@ void StructuredLogger::outputJson(Json::Value const& _value, std::string const& 
 	Json::FastWriter fastWriter;
 	Guard l(s_lock);
 	event[_name] = _value;
-	cout << fastWriter.write(event) << endl;
+	(m_out.is_open() ? m_out : cout) << fastWriter.write(event) << endl;
 }
 
 void StructuredLogger::starting(string const& _clientImpl, const char* _ethVersion)
@@ -51,6 +60,7 @@ void StructuredLogger::starting(string const& _clientImpl, const char* _ethVersi
 		Json::Value event;
 		event["client_impl"] = _clientImpl;
 		event["eth_version"] = std::string(_ethVersion);
+		// TODO net_version
 		event["ts"] = dev::toString(chrono::system_clock::now(), get().m_timeFormat.c_str());
 
 		get().outputJson(event, "starting");
@@ -64,6 +74,7 @@ void StructuredLogger::stopping(string const& _clientImpl, const char* _ethVersi
 		Json::Value event;
 		event["client_impl"] = _clientImpl;
 		event["eth_version"] = std::string(_ethVersion);
+		// TODO net_version
 		event["ts"] = dev::toString(chrono::system_clock::now(), get().m_timeFormat.c_str());
 
 		get().outputJson(event, "stopping");

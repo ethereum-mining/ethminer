@@ -31,7 +31,7 @@
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/InterfaceHandler.h>
 
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 
 using namespace std;
 
@@ -55,10 +55,27 @@ const map<string, string> StandardSources = map<string, string>{
 };
 
 CompilerStack::CompilerStack(bool _addStandardSources):
-	m_addStandardSources(_addStandardSources), m_parseSuccessful(false)
+	m_parseSuccessful(false)
 {
-	if (m_addStandardSources)
+	if (_addStandardSources)
 		addSources(StandardSources, true); // add them as libraries
+}
+
+void CompilerStack::reset(bool _keepSources, bool _addStandardSources)
+{
+	m_parseSuccessful = false;
+	if (_keepSources)
+		for (auto sourcePair: m_sources)
+			sourcePair.second.reset();
+	else
+	{
+		m_sources.clear();
+		if (_addStandardSources)
+			addSources(StandardSources, true);
+	}
+	m_globalContext.reset();
+	m_sourceOrder.clear();
+	m_contracts.clear();
 }
 
 bool CompilerStack::addSource(string const& _name, string const& _content, bool _isLibrary)
@@ -251,6 +268,24 @@ ContractDefinition const& CompilerStack::getContractDefinition(string const& _co
 	return *getContract(_contractName).contract;
 }
 
+size_t CompilerStack::getFunctionEntryPoint(
+	std::string const& _contractName,
+	FunctionDefinition const& _function
+) const
+{
+	shared_ptr<Compiler> const& compiler = getContract(_contractName).compiler;
+	if (!compiler)
+		return 0;
+	eth::AssemblyItem tag = compiler->getFunctionEntryLabel(_function);
+	if (tag.type() == eth::UndefinedItem)
+		return 0;
+	eth::AssemblyItems const& items = compiler->getRuntimeAssemblyItems();
+	for (size_t i = 0; i < items.size(); ++i)
+		if (items.at(i).type() == eth::Tag && items.at(i).data() == tag.data())
+			return i;
+	return 0;
+}
+
 bytes CompilerStack::staticCompile(std::string const& _sourceCode, bool _optimize)
 {
 	CompilerStack stack;
@@ -267,23 +302,6 @@ tuple<int, int, int, int> CompilerStack::positionFromSourceLocation(SourceLocati
 	tie(endLine, endColumn) = getScanner(*_sourceLocation.sourceName).translatePositionToLineColumn(_sourceLocation.end);
 
 	return make_tuple(++startLine, ++startColumn, ++endLine, ++endColumn);
-}
-
-void CompilerStack::reset(bool _keepSources)
-{
-	m_parseSuccessful = false;
-	if (_keepSources)
-		for (auto sourcePair: m_sources)
-			sourcePair.second.reset();
-	else
-	{
-		m_sources.clear();
-		if (m_addStandardSources)
-			addSources(StandardSources, true);
-	}
-	m_globalContext.reset();
-	m_sourceOrder.clear();
-	m_contracts.clear();
 }
 
 void CompilerStack::resolveImports()

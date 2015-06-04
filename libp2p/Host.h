@@ -95,8 +95,11 @@ public:
 	/// Default host for current version of client.
 	static std::string pocHost();
 
+	static std::unordered_map<Public, std::string> const& pocHosts();
+
 	/// Register a peer-capability; all new peer connections will have this capability.
 	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; std::shared_ptr<T> ret(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
+	template <class T> void addCapability(std::shared_ptr<T> const & _p, std::string const& _name, u256 const& _version) { m_capabilities[std::make_pair(_name, _version)] = _p; }
 
 	bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
@@ -241,7 +244,7 @@ private:
 	std::list<std::weak_ptr<RLPXHandshake>> m_connecting;					///< Pending connections.
 	Mutex x_connecting;													///< Mutex for m_connecting.
 
-	unsigned m_idealPeerCount = 5;										///< Ideal number of peers to be connected to.
+	unsigned m_idealPeerCount = 11;										///< Ideal number of peers to be connected to.
 
 	std::map<CapDesc, std::shared_ptr<HostCapabilityFace>> m_capabilities;	///< Each of the capabilities we support.
 	

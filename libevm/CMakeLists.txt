@@ -15,6 +15,9 @@ aux_source_directory(. SRC_LIST)
 # and windows is failing to build without that
 include_directories(BEFORE ..)
 include_directories(${Boost_INCLUDE_DIRS})
+if (EVMJIT)
+	include_directories(../evmjit/include)
+endif()
 
 set(EXECUTABLE evm)
 

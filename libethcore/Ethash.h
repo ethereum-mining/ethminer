@@ -73,12 +73,12 @@ public:
 
 	static std::string name();
 	static unsigned revision();
-	static void prep(BlockInfo const& _header);
+	static void prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
+	static void ensurePrecomputed(unsigned _number);
 	static bool verify(BlockInfo const& _header);
 	static bool preVerify(BlockInfo const& _header);
 	static WorkPackage package(BlockInfo const& _header);
 	static void assignResult(Solution const& _r, BlockInfo& _header) { _header.nonce = _r.nonce; _header.mixHash = _r.mixHash; }
-	
 
 	class CPUMiner: public Miner, Worker
 	{
@@ -87,6 +87,7 @@ public:
 
 		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
 		static std::string platformInfo();
+		static bool haveSufficientGPUMemory() { return false; }
 		static void setDefaultPlatform(unsigned) {}
 		static void setDefaultDevice(unsigned) {}
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
@@ -115,11 +116,12 @@ public:
 
 		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 		static std::string platformInfo();
+		static bool haveSufficientGPUMemory();
 		static unsigned getNumDevices();
 		static void setDefaultPlatform(unsigned _id) { s_platformId = _id; }
 		static void setDefaultDevice(unsigned _id) { s_deviceId = _id; }
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
-		
+
 	protected:
 		void kickOff() override;
 		void pause() override;

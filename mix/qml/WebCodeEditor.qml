@@ -83,6 +83,16 @@ Item {
 			editorBrowser.runJavaScript("setFontSize(" + size + ")", function(result) {});
 	}
 
+	function setGasCosts(gasCosts) {
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("setGasCosts('" + JSON.stringify(gasCosts) + "')", function(result) {});
+	}
+
+	function displayGasEstimation(show) {
+		if (initialized && editorBrowser)
+			editorBrowser.runJavaScript("displayGasEstimation('" + show + "')", function(result) {});
+	}
+
 	Clipboard
 	{
 		id: clipboard
@@ -134,20 +144,28 @@ Item {
 		function compilationComplete()
 		{
 			if (editorBrowser)
+			{
 				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
+				parent.displayGasEstimation(gasEstimationAction.checked);
+			}
+
+
 		}
 
-		function compilationError(error, sourceName)
+		function compilationError(error, firstLocation, secondLocations)
 		{
-			if (sourceName !== parent.sourceName)
-				return;
 			if (!editorBrowser || !error)
 				return;
-			var errorInfo = ErrorLocationFormater.extractErrorInfo(error, false);
-			if (errorInfo.line && errorInfo.column)
-				editorBrowser.runJavaScript("compilationError('" +  errorInfo.line + "', '" +  errorInfo.column + "', '" +  errorInfo.errorDetail + "')", function(result) { });
-			else
-				editorBrowser.runJavaScript("compilationComplete()", function(result) { });
+			var detail = error.split('\n')[0];
+			var reg = detail.match(/:\d+:\d+:/g);
+			if (reg !== null)
+				detail = detail.replace(reg[0], "");
+			displayErrorAnnotations(detail, firstLocation, secondLocations);
+		}
+
+		function displayErrorAnnotations(detail, location, secondaryErrors)
+		{
+			editorBrowser.runJavaScript("compilationError('" + sourceName + "', '" + JSON.stringify(location) + "', '" + detail + "', '" + JSON.stringify(secondaryErrors) + "')", function(result){});
 		}
 
 		Timer

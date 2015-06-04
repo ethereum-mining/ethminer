@@ -25,7 +25,7 @@
 #include <boost/range/adaptor/reversed.hpp>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/CommonData.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libsolidity/Utils.h>
 #include <libsolidity/AST.h>
 
@@ -145,6 +145,8 @@ TypePointer Type::fromElementaryTypeName(Token::Value _typeToken)
 		return make_shared<BoolType>();
 	else if (_typeToken == Token::Bytes)
 		return make_shared<ArrayType>(ArrayType::Location::Storage);
+	else if (_typeToken == Token::String)
+		return make_shared<ArrayType>(ArrayType::Location::Storage, true);
 	else
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unable to convert elementary typename " +
 																		 std::string(Token::toString(_typeToken)) + " to type."));
@@ -316,6 +318,7 @@ TypePointer IntegerType::binaryOperatorResult(Token::Value _operator, TypePointe
 const MemberList IntegerType::AddressMemberList({
 	{"balance", make_shared<IntegerType >(256)},
 	{"call", make_shared<FunctionType>(strings(), strings(), FunctionType::Location::Bare, true)},
+	{"callcode", make_shared<FunctionType>(strings(), strings(), FunctionType::Location::BareCallCode, true)},
 	{"send", make_shared<FunctionType>(strings{"uint"}, strings{}, FunctionType::Location::Send)}
 });
 
@@ -662,7 +665,7 @@ bool ArrayType::isImplicitlyConvertibleTo(const Type& _convertTo) const
 	// let us not allow assignment to memory arrays for now
 	if (convertTo.getLocation() != Location::Storage)
 		return false;
-	if (convertTo.isByteArray() != isByteArray())
+	if (convertTo.isByteArray() != isByteArray() || convertTo.isString() != isString())
 		return false;
 	if (!getBaseType()->isImplicitlyConvertibleTo(*convertTo.getBaseType()))
 		return false;
@@ -683,8 +686,12 @@ bool ArrayType::operator==(Type const& _other) const
 	if (_other.getCategory() != getCategory())
 		return false;
 	ArrayType const& other = dynamic_cast<ArrayType const&>(_other);
-	if (other.m_location != m_location || other.isByteArray() != isByteArray() ||
-			other.isDynamicallySized() != isDynamicallySized())
+	if (
+		other.m_location != m_location ||
+		other.isByteArray() != isByteArray() ||
+		other.isString() != isString() ||
+		other.isDynamicallySized() != isDynamicallySized()
+	)
 		return false;
 	return isDynamicallySized() || getLength()  == other.getLength();
 }
@@ -735,7 +742,9 @@ unsigned ArrayType::getSizeOnStack() const
 
 string ArrayType::toString() const
 {
-	if (isByteArray())
+	if (isString())
+		return "string";
+	else if (isByteArray())
 		return "bytes";
 	string ret = getBaseType()->toString() + "[";
 	if (!isDynamicallySized())
@@ -745,7 +754,7 @@ string ArrayType::toString() const
 
 TypePointer ArrayType::externalType() const
 {
-	if (m_isByteArray)
+	if (m_arrayKind != ArrayKind::Ordinary)
 		return shared_from_this();
 	if (!m_baseType->externalType())
 		return TypePointer();
@@ -761,7 +770,7 @@ TypePointer ArrayType::externalType() const
 shared_ptr<ArrayType> ArrayType::copyForLocation(ArrayType::Location _location) const
 {
 	auto copy = make_shared<ArrayType>(_location);
-	copy->m_isByteArray = m_isByteArray;
+	copy->m_arrayKind = m_arrayKind;
 	if (m_baseType->getCategory() == Type::Category::Array)
 		copy->m_baseType = dynamic_cast<ArrayType const&>(*m_baseType).copyForLocation(_location);
 	else
@@ -1115,9 +1124,11 @@ unsigned FunctionType::getSizeOnStack() const
 	}
 
 	unsigned size = 0;
-	if (location == Location::External)
+	if (location == Location::External || location == Location::CallCode)
 		size = 2;
-	else if (location == Location::Internal || location == Location::Bare)
+	else if (location == Location::Bare || location == Location::BareCallCode)
+		size = 1;
+	else if (location == Location::Internal)
 		size = 1;
 	if (m_gasSet)
 		size++;
@@ -1156,6 +1167,7 @@ MemberList const& FunctionType::getMembers() const
 	case Location::SHA256:
 	case Location::RIPEMD160:
 	case Location::Bare:
+	case Location::BareCallCode:
 		if (!m_members)
 		{
 			MemberList::MemberMap members{
@@ -1226,6 +1238,21 @@ bool FunctionType::hasEqualArgumentTypes(FunctionType const& _other) const
 		_other.m_parameterTypes.cbegin(),
 		[](TypePointer const& _a, TypePointer const& _b) -> bool { return *_a == *_b; }
 	);
+}
+
+bool FunctionType::isBareCall() const
+{
+	switch (m_location)
+	{
+	case Location::Bare:
+	case Location::BareCallCode:
+	case Location::ECRecover:
+	case Location::SHA256:
+	case Location::RIPEMD160:
+		return true;
+	default:
+		return false;
+	}
 }
 
 string FunctionType::externalSignature(std::string const& _name) const

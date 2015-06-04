@@ -41,15 +41,16 @@ public:
 	explicit Transact(Context* _context, QWidget* _parent = 0);
 	~Transact();
 
-	void setEnvironment(QList<dev::KeyPair> _myKeys, dev::eth::Client* _eth, NatSpecFace* _natSpecDB);
+	void setEnvironment(dev::AddressHash const& _accounts, dev::eth::Client* _eth, NatSpecFace* _natSpecDB);
 
 private slots:
+	void on_from_currentIndexChanged(int) { rejigData(); rejigData(); }
 	void on_destination_currentTextChanged(QString);
-	void on_value_valueChanged(int) { updateFee(); }
-	void on_gas_valueChanged(int) { updateFee(); }
-	void on_valueUnits_currentIndexChanged(int) { updateFee(); }
-	void on_gasPriceUnits_currentIndexChanged(int) { updateFee(); }
-	void on_gasPrice_valueChanged(int) { updateFee(); }
+	void on_value_valueChanged(int) { updateFee(); rejigData(); }
+	void on_gas_valueChanged(int) { updateFee(); rejigData(); }
+	void on_valueUnits_currentIndexChanged(int) { updateFee(); rejigData(); }
+	void on_gasPriceUnits_currentIndexChanged(int) { updateFee(); rejigData(); }
+	void on_gasPrice_valueChanged(int) { updateFee(); rejigData(); }
 	void on_data_textChanged() { rejigData(); }
 	void on_optimize_clicked() { rejigData(); }
 	void on_send_clicked();
@@ -60,6 +61,7 @@ private:
 	dev::eth::Client* ethereum() const { return m_ethereum; }
 	void rejigData();
 
+	dev::Address fromAccount();
 	void updateDestination();
 	void updateFee();
 	bool isCreation() const;
@@ -76,7 +78,7 @@ private:
 	unsigned m_backupGas = 0;
 	dev::bytes m_data;
 
-	QList<dev::KeyPair> m_myKeys;
+	dev::AddressHash m_accounts;
 	dev::eth::Client* m_ethereum = nullptr;
 	Context* m_context = nullptr;
 	NatSpecFace* m_natSpecDB = nullptr;

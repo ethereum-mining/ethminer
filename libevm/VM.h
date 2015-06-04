@@ -25,7 +25,7 @@
 #include <libdevcore/Exceptions.h>
 #include <libethcore/Common.h>
 #include <libevmcore/Instruction.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libethcore/BlockInfo.h>
 #include <libevmcore/Params.h>
 #include "VMFace.h"
@@ -52,12 +52,7 @@ inline u256 fromAddress(Address _a)
 class VM: public VMFace
 {
 public:
-	virtual void reset(u256 _gas = 0) noexcept override final;
-
-	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
-
-	void require(u256 _n, u256 _d) { if (m_stack.size() < _n) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(StackUnderflow() << RequirementError((bigint)_n, (bigint)m_stack.size())); } if (m_stack.size() - _n + _d > c_stackLimit) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(OutOfStack() << RequirementError((bigint)(_d - _n), (bigint)m_stack.size())); } }
-	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
+	virtual bytesConstRef go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
 
 	u256 curPC() const { return m_curPC; }
 
@@ -65,15 +60,13 @@ public:
 	u256s const& stack() const { return m_stack; }
 
 private:
-	friend class VMFactory;
-
-	/// Construct VM object.
-	explicit VM(u256 _gas): VMFace(_gas) {}
+	void require(u256 _n, u256 _d) { if (m_stack.size() < _n) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(StackUnderflow() << RequirementError((bigint)_n, (bigint)m_stack.size())); } if (m_stack.size() - _n + _d > c_stackLimit) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(OutOfStack() << RequirementError((bigint)(_d - _n), (bigint)m_stack.size())); } }
+	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
 
 	u256 m_curPC = 0;
 	bytes m_temp;
 	u256s m_stack;
-	std::set<u256> m_jumpDests;
+	std::vector<uint64_t> m_jumpDests;
 	std::function<void()> m_onFail;
 };
 

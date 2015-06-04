@@ -33,6 +33,8 @@
 #include <libsolidity/CompilerStack.h>
 #include <libsolidity/SourceReferenceFormatter.h>
 #include <libsolidity/InterfaceHandler.h>
+#include <libsolidity/GasEstimator.h>
+#include <libsolidity/SourceReferenceFormatter.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/CommonJS.h>
 #include "QContractDefinition.h"
@@ -45,18 +47,19 @@
 using namespace dev::mix;
 
 const std::set<std::string> c_predefinedContracts =
-	{ "Config", "Coin", "CoinReg", "coin", "service", "owned", "mortal", "NameReg", "named", "std", "configUser" };
+{ "Config", "Coin", "CoinReg", "coin", "service", "owned", "mortal", "NameReg", "named", "std", "configUser" };
 
 
 namespace
 {
+using namespace dev::eth;
 using namespace dev::solidity;
 
 class CollectLocalsVisitor: public ASTConstVisitor
 {
 public:
 	CollectLocalsVisitor(QHash<LocationPair, SolidityDeclaration>* _locals):
-	m_locals(_locals), m_functionScope(false) {}
+		m_locals(_locals), m_functionScope(false) {}
 
 private:
 	LocationPair nodeLocation(ASTNode const& _node)
@@ -96,7 +99,7 @@ class CollectLocationsVisitor: public ASTConstVisitor
 {
 public:
 	CollectLocationsVisitor(SourceMap* _sourceMap):
-	m_sourceMap(_sourceMap) {}
+		m_sourceMap(_sourceMap) {}
 
 private:
 	LocationPair nodeLocation(ASTNode const& _node)
@@ -194,6 +197,8 @@ CodeModel::~CodeModel()
 	stop();
 	disconnect(this);
 	releaseContracts();
+	if (m_gasCostsMaps)
+		delete m_gasCostsMaps;
 }
 
 void CodeModel::stop()
@@ -213,6 +218,19 @@ void CodeModel::reset(QVariantMap const& _documents)
 
 	for (QVariantMap::const_iterator d =  _documents.cbegin(); d != _documents.cend(); ++d)
 		m_pendingContracts[d.key()] = d.value().toString();
+	// launch the background thread
+	m_compiling = true;
+	emit stateChanged();
+	emit scheduleCompilationJob(++m_backgroundJobId);
+}
+
+void CodeModel::unregisterContractSrc(QString const& _documentId)
+{
+	{
+		Guard pl(x_pendingContracts);
+		m_pendingContracts.erase(_documentId);
+	}
+
 	// launch the background thread
 	m_compiling = true;
 	emit stateChanged();
@@ -291,27 +309,104 @@ void CodeModel::runCompilationJob(int _jobId)
 				sourceNames.push_back(c.first.toStdString());
 			}
 		}
-		cs.compile(false);
+		cs.compile(m_optimizeCode);
+		gasEstimation(cs);
 		collectContracts(cs, sourceNames);
 	}
 	catch (dev::Exception const& _exception)
 	{
-		std::ostringstream error;
+		std::stringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, _exception, "Error", cs);
 		QString message = QString::fromStdString(error.str());
-		QString sourceName;
-		if (SourceLocation const* location = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception))
+		QVariantMap firstLocation;
+		QVariantList secondLocations;
+		if (SourceLocation const* first = boost::get_error_info<solidity::errinfo_sourceLocation>(_exception))
+			firstLocation = resolveCompilationErrorLocation(cs, *first);
+		if (SecondarySourceLocation const* second = boost::get_error_info<solidity::errinfo_secondarySourceLocation>(_exception))
 		{
-			if (location->sourceName)
-				sourceName = QString::fromStdString(*location->sourceName);
-			if (!sourceName.isEmpty())
-				if (CompiledContract* contract = contractByDocumentId(sourceName))
-					message = message.replace(sourceName, contract->contract()->name()); //substitute the location to match our contract names
+			for (auto const& c: second->infos)
+				secondLocations.push_back(resolveCompilationErrorLocation(cs, c.second));
 		}
-		compilationError(message, sourceName);
+		compilationError(message, firstLocation, secondLocations);
 	}
 	m_compiling = false;
 	emit stateChanged();
+}
+
+QVariantMap CodeModel::resolveCompilationErrorLocation(CompilerStack const& _compiler, SourceLocation const& _location)
+{
+	std::tuple<int, int, int, int> pos = _compiler.positionFromSourceLocation(_location);
+	QVariantMap startError;
+	startError.insert("line", std::get<0>(pos) > 1 ? (std::get<0>(pos) - 1) : 1);
+	startError.insert("column", std::get<1>(pos) > 1 ? (std::get<1>(pos) - 1) : 1);
+	QVariantMap endError;
+	endError.insert("line", std::get<2>(pos) > 1 ? (std::get<2>(pos) - 1) : 1);
+	endError.insert("column", std::get<3>(pos) > 1 ? (std::get<3>(pos) - 1) : 1);
+	QVariantMap error;
+	error.insert("start", startError);
+	error.insert("end", endError);
+	QString sourceName;
+	if (_location.sourceName)
+		sourceName = QString::fromStdString(*_location.sourceName);
+	error.insert("source", sourceName);
+	if (!sourceName.isEmpty())
+		if (CompiledContract* contract = contractByDocumentId(sourceName))
+			sourceName = contract->contract()->name(); //substitute the location to match our contract names
+	error.insert("contractName", sourceName);
+	return error;
+}
+
+void CodeModel::gasEstimation(solidity::CompilerStack const& _cs)
+{
+	if (m_gasCostsMaps)
+		m_gasCostsMaps->deleteLater();
+	m_gasCostsMaps = new GasMapWrapper;
+	for (std::string n: _cs.getContractNames())
+	{
+		ContractDefinition const& contractDefinition = _cs.getContractDefinition(n);
+		QString sourceName = QString::fromStdString(*contractDefinition.getLocation().sourceName);
+
+		if (!m_gasCostsMaps->contains(sourceName))
+			m_gasCostsMaps->insert(sourceName, QVariantList());
+
+		if (!contractDefinition.isFullyImplemented())
+			continue;
+		dev::solidity::SourceUnit const& sourceUnit = _cs.getAST(*contractDefinition.getLocation().sourceName);
+		AssemblyItems const* items = _cs.getRuntimeAssemblyItems(n);
+		std::map<ASTNode const*, GasMeter::GasConsumption> gasCosts = GasEstimator::breakToStatementLevel(GasEstimator::structuralEstimation(*items, std::vector<ASTNode const*>({&sourceUnit})), {&sourceUnit});
+		for (auto gasItem = gasCosts.begin(); gasItem != gasCosts.end(); ++gasItem)
+		{
+			SourceLocation const& location = gasItem->first->getLocation();
+			GasMeter::GasConsumption cost = gasItem->second;
+			std::stringstream v;
+			v << cost.value;
+			m_gasCostsMaps->push(sourceName, location.start, location.end, QString::fromStdString(v.str()), cost.isInfinite, GasMap::type::Statement);
+		}
+
+		if (contractDefinition.getConstructor() != nullptr)
+		{
+			GasMeter::GasConsumption cost = GasEstimator::functionalEstimation(*_cs.getRuntimeAssemblyItems(n), contractDefinition.getConstructor()->externalSignature());
+			std::stringstream v;
+			v << cost.value;
+			m_gasCostsMaps->push(sourceName, contractDefinition.getConstructor()->getLocation().start, contractDefinition.getConstructor()->getLocation().end, QString::fromStdString(v.str()), cost.isInfinite, GasMap::type::Constructor);
+		}
+
+		for (auto func: contractDefinition.getDefinedFunctions())
+		{
+			GasMeter::GasConsumption cost = GasEstimator::functionalEstimation(*_cs.getRuntimeAssemblyItems(n), func->externalSignature());
+			std::stringstream v;
+			v << cost.value;
+			m_gasCostsMaps->push(sourceName, func->getLocation().start, func->getLocation().end, QString::fromStdString(v.str()), cost.isInfinite, GasMap::type::Function);
+		}
+	}
+}
+
+QVariantList CodeModel::gasCostByDocumentId(QString const& _documentId) const
+{
+	if (m_gasCostsMaps)
+		return m_gasCostsMaps->gasCostsByDocId(_documentId);
+	else
+		return QVariantList();
 }
 
 void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs, std::vector<std::string> const& _sourceNames)
@@ -356,7 +451,7 @@ void CodeModel::collectContracts(dev::solidity::CompilerStack const& _cs, std::v
 				{
 					//make sure there are no other contracts in the same source, otherwise it is not a rename
 					if (!std::any_of(result.begin(),result.end(), [=](ContractMap::const_iterator::value_type _v) { return _v != contract && _v->documentId() == contract->documentId(); }))
-					prevContract = c.value();
+						prevContract = c.value();
 				}
 		}
 		if (prevContract != nullptr && prevContract->contractInterface() != result[name]->contractInterface())
@@ -406,59 +501,61 @@ SolidityType CodeModel::nodeType(dev::solidity::Type const* _type)
 	switch (_type->getCategory())
 	{
 	case Type::Category::Integer:
-		{
-			IntegerType const* it = dynamic_cast<IntegerType const*>(_type);
-			r.size = it->getNumBits() / 8;
-			r.type = it->isAddress() ? SolidityType::Type::Address : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
-		}
+	{
+		IntegerType const* it = dynamic_cast<IntegerType const*>(_type);
+		r.size = it->getNumBits() / 8;
+		r.type = it->isAddress() ? SolidityType::Type::Address : it->isSigned() ? SolidityType::Type::SignedInteger : SolidityType::Type::UnsignedInteger;
+	}
 		break;
 	case Type::Category::Bool:
 		r.type = SolidityType::Type::Bool;
 		break;
 	case Type::Category::FixedBytes:
-		{
-			FixedBytesType const* b = dynamic_cast<FixedBytesType const*>(_type);
-			r.type = SolidityType::Type::Bytes;
-			r.size = static_cast<unsigned>(b->getNumBytes());
-		}
+	{
+		FixedBytesType const* b = dynamic_cast<FixedBytesType const*>(_type);
+		r.type = SolidityType::Type::Bytes;
+		r.size = static_cast<unsigned>(b->getNumBytes());
+	}
 		break;
 	case Type::Category::Contract:
 		r.type = SolidityType::Type::Address;
 		break;
 	case Type::Category::Array:
+	{
+		ArrayType const* array = dynamic_cast<ArrayType const*>(_type);
+		if (array->isString())
+			r.type = SolidityType::Type::String;
+		else if (array->isByteArray())
+			r.type = SolidityType::Type::Bytes;
+		else
 		{
-			ArrayType const* array = dynamic_cast<ArrayType const*>(_type);
-			if (array->isByteArray())
-				r.type = SolidityType::Type::Bytes;
-			else
-			{
-				SolidityType elementType = nodeType(array->getBaseType().get());
-				elementType.name = r.name;
-				r = elementType;
-			}
-			r.count = static_cast<unsigned>(array->getLength());
-			r.dynamicSize = _type->isDynamicallySized();
-			r.array = true;
+			SolidityType elementType = nodeType(array->getBaseType().get());
+			elementType.name = r.name;
+			r = elementType;
 		}
+		r.count = static_cast<unsigned>(array->getLength());
+		r.dynamicSize = _type->isDynamicallySized();
+		r.array = true;
+	}
 		break;
 	case Type::Category::Enum:
-		{
-			r.type = SolidityType::Type::Enum;
-			EnumType const* e = dynamic_cast<EnumType const*>(_type);
-			for(auto const& enumValue: e->getEnumDefinition().getMembers())
-				r.enumNames.push_back(QString::fromStdString(enumValue->getName()));
-		}
+	{
+		r.type = SolidityType::Type::Enum;
+		EnumType const* e = dynamic_cast<EnumType const*>(_type);
+		for(auto const& enumValue: e->getEnumDefinition().getMembers())
+			r.enumNames.push_back(QString::fromStdString(enumValue->getName()));
+	}
 		break;
 	case Type::Category::Struct:
+	{
+		r.type = SolidityType::Type::Struct;
+		StructType const* s = dynamic_cast<StructType const*>(_type);
+		for(auto const& structMember: s->getMembers())
 		{
-			r.type = SolidityType::Type::Struct;
-			StructType const* s = dynamic_cast<StructType const*>(_type);
-			for(auto const& structMember: s->getMembers())
-			{
-				auto slotAndOffset = s->getStorageOffsetsOfMember(structMember.name);
-				r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.name), nodeType(structMember.type.get()), slotAndOffset.first, slotAndOffset.second });
-			}
+			auto slotAndOffset = s->getStorageOffsetsOfMember(structMember.name);
+			r.members.push_back(SolidityDeclaration { QString::fromStdString(structMember.name), nodeType(structMember.type.get()), slotAndOffset.first, slotAndOffset.second });
 		}
+	}
 		break;
 	case Type::Category::Function:
 	case Type::Category::IntegerConstant:
@@ -503,3 +600,35 @@ QString CodeModel::resolveFunctionName(dev::SourceLocation const& _location)
 	}
 	return QString();
 }
+
+void CodeModel::setOptimizeCode(bool _value)
+{
+	m_optimizeCode = _value;
+	emit scheduleCompilationJob(++m_backgroundJobId);
+}
+
+void GasMapWrapper::push(QString _source, int _start, int _end, QString _value, bool _isInfinite, GasMap::type _type)
+{
+	GasMap* gas = new GasMap(_start, _end, _value, _isInfinite, _type, this);
+	m_gasMaps.find(_source).value().push_back(QVariant::fromValue(gas));
+}
+
+bool GasMapWrapper::contains(QString _key)
+{
+	return m_gasMaps.contains(_key);
+}
+
+void GasMapWrapper::insert(QString _source, QVariantList _variantList)
+{
+	m_gasMaps.insert(_source, _variantList);
+}
+
+QVariantList GasMapWrapper::gasCostsByDocId(QString _source)
+{
+	auto gasIter = m_gasMaps.find(_source);
+	if (gasIter != m_gasMaps.end())
+		return gasIter.value();
+	else
+		return QVariantList();
+}
+
