@@ -62,7 +62,7 @@ static void add_definition(std::string& source, char const* id, unsigned value)
 ethash_cl_miner::search_hook::~search_hook() {}
 
 ethash_cl_miner::ethash_cl_miner()
-:	m_dagChunks(nullptr), m_opencl_1_1()
+:	m_opencl_1_1()
 {
 }
 
@@ -172,9 +172,6 @@ void ethash_cl_miner::finish()
 {
 	if (m_queue())
 		m_queue.finish();
-
-	if (m_dagChunks)
-		delete [] m_dagChunks;
 }
 
 bool ethash_cl_miner::init(
@@ -189,7 +186,6 @@ bool ethash_cl_miner::init(
 	// for now due to the .cl kernels we can only have either 1 big chunk or 4 chunks
 	assert(_dagChunksNum == 1 || _dagChunksNum == 4);
 	// now create the number of chunk buffers
-	m_dagChunks = new cl::Buffer[_dagChunksNum];
 	m_dagChunksNum = _dagChunksNum;
 
 	// get all platforms
@@ -254,52 +250,52 @@ bool ethash_cl_miner::init(
 		try
 		{
 			program.build({ device });
-			cout << "Printing program log" << endl;
-			cout << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str();
+			ETHCL_LOG("Printing program log");
+			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
 		}
 		catch (cl::Error err)
 		{
-			cout << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str();
+			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
 			return false;
 		}
 		if (_dagChunksNum == 1)
 		{
-			cout << "loading ethash_hash" << endl;
+			ETHCL_LOG("Loading single big chunk kernels");
 			m_hash_kernel = cl::Kernel(program, "ethash_hash");
-			cout << "loading ethash_search" << endl;
 			m_search_kernel = cl::Kernel(program, "ethash_search");
 		}
 		else
 		{
-			cout << "loading ethash_hash_chunks" << endl;
+			ETHCL_LOG("Loading chunk kernels");
 			m_hash_kernel = cl::Kernel(program, "ethash_hash_chunks");
-			cout << "loading ethash_search_chunks" << endl;
 			m_search_kernel = cl::Kernel(program, "ethash_search_chunks");
 		}
 
 		// create buffer for dag
 		if (_dagChunksNum == 1)
-			m_dagChunks[0] = cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize);
+		{
+			ETHCL_LOG("Creating one big buffer");
+			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
+		}
 		else
 			for (unsigned i = 0; i < _dagChunksNum; i++)
 			{
 				// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
-				cout << "Creating buffer for chunk " << i << endl;
-				m_dagChunks[i] = cl::Buffer(
+				ETHCL_LOG("Creating buffer for chunk " << i);
+				m_dagChunks.push_back(cl::Buffer(
 					m_context,
 					CL_MEM_READ_ONLY,
 					(i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7
-				);
+				));
 			}
-		cout << "Creating one big buffer." << endl;
 
 		// create buffer for header
-		cout << "Creating buffer for header." << endl;
+		ETHCL_LOG("Creating buffer for header.");
 		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
 		if (_dagChunksNum == 1)
 		{
-			cout << "Mapping one big chunk." << endl;
+			ETHCL_LOG("Mapping one big chunk.");
 			m_queue.enqueueWriteBuffer(m_dagChunks[0], CL_TRUE, 0, _dagSize, _dag);
 		}
 		else
@@ -308,7 +304,7 @@ bool ethash_cl_miner::init(
 			void* dag_ptr[4];
 			for (unsigned i = 0; i < _dagChunksNum; i++)
 			{
-				cout << "Mapping chunk " << i << endl;
+				ETHCL_LOG("Mapping chunk " << i);
 				dag_ptr[i] = m_queue.enqueueMapBuffer(m_dagChunks[i], true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
 			}
 			for (unsigned i = 0; i < _dagChunksNum; i++)
@@ -321,7 +317,7 @@ bool ethash_cl_miner::init(
 		// create mining buffers
 		for (unsigned i = 0; i != c_num_buffers; ++i)
 		{
-			cout << "Creating mining buffer " << i <<endl;
+			ETHCL_LOG("Creating mining buffer " << i);
 			m_hash_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY | (!m_opencl_1_1 ? CL_MEM_HOST_READ_ONLY : 0), 32 * c_hash_batch_size);
 			m_search_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_max_search_results + 1) * sizeof(uint32_t));
 		}
@@ -347,16 +343,7 @@ void ethash_cl_miner::hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, 
 	// update header constant buffer
 	m_queue.enqueueWriteBuffer(m_header, true, 0, 32, header);
 
-	/*
-	__kernel void ethash_combined_hash(
-		__global hash32_t* g_hashes,
-		__constant hash32_t const* g_header,
-		__global hash128_t const* g_dag,
-		ulong start_nonce,
-		uint isolate
-		)
-	*/
-	cout << "Setting chunk hash arguments." << endl;
+	ETHCL_LOG("Setting chunk hash arguments.");
 	unsigned argPos = 2;
 	m_hash_kernel.setArg(1, m_header);
 	for (unsigned i = 0 ; i < m_dagChunksNum; ++i, ++argPos)
@@ -430,16 +417,6 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 #endif
 			m_queue.finish();
 
-		/*
-		__kernel void ethash_combined_search(
-		__global hash32_t* g_hashes,			// 0
-		__constant hash32_t const* g_header,	// 1
-		__global hash128_t const* g_dag,		// 2
-		ulong start_nonce,						// 3
-		ulong target,							// 4
-		uint isolate							// 5
-		)
-		*/
 		unsigned argPos = 2;
 		m_search_kernel.setArg(1, m_header);
 		for (unsigned i = 0; i < m_dagChunksNum; ++i, ++argPos)
@@ -501,6 +478,6 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 	}
 	catch (cl::Error err)
 	{
-		std::cout << err.what() << "(" << err.err() << ")" << std::endl;
+		ETHCL_LOG(err.what() << "(" << err.err() << ")");
 	}
 }
