@@ -60,7 +60,7 @@ private:
 	cl::Kernel m_hash_kernel;
 	cl::Kernel m_search_kernel;
 	unsigned m_dagChunksNum;
-	cl::Buffer* m_dagChunks;
+	std::vector<cl::Buffer> m_dagChunks;
 	cl::Buffer m_header;
 	cl::Buffer m_hash_buf[c_num_buffers];
 	cl::Buffer m_search_buf[c_num_buffers];
