@@ -319,10 +319,14 @@ void Session::send(bytes&& _msg)
 
 void Session::write()
 {
-	const bytes& bytes = m_writeQueue[0];
-	m_io->writeSingleFramePacket(&bytes, m_writeQueue[0]);
+	bytes const* out;
+	DEV_GUARDED(x_writeQueue)
+	{
+		m_io->writeSingleFramePacket(&m_writeQueue[0], m_writeQueue[0]);
+		out = &m_writeQueue[0];
+	}
 	auto self(shared_from_this());
-	ba::async_write(m_socket, ba::buffer(bytes), [this, self](boost::system::error_code ec, std::size_t /*length*/)
+	ba::async_write(m_socket, ba::buffer(*out), [this, self](boost::system::error_code ec, std::size_t /*length*/)
 	{
 		ThreadContext tc(info().id.abridged());
 		ThreadContext tc2(info().clientVersion);
