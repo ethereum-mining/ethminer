@@ -48,6 +48,7 @@ namespace solidity
 // forward declarations
 class Scanner;
 class ContractDefinition;
+class FunctionDefinition;
 class SourceUnit;
 class Compiler;
 class GlobalContext;
@@ -71,6 +72,9 @@ class CompilerStack: boost::noncopyable
 public:
 	/// Creates a new compiler stack. Adds standard sources if @a _addStandardSources.
 	explicit CompilerStack(bool _addStandardSources = true);
+
+	/// Resets the compiler to a state where the sources are not parsed or even removed.
+	void reset(bool _keepSources = false, bool _addStandardSources = true);
 
 	/// Adds a source object (e.g. file) to the parser. After this, parse has to be called again.
 	/// @returns true if a source object by the name already existed and was replaced.
@@ -128,6 +132,13 @@ public:
 	/// does not exist.
 	ContractDefinition const& getContractDefinition(std::string const& _contractName) const;
 
+	/// @returns the offset of the entry point of the given function into the list of assembly items
+	/// or zero if it is not found or does not exist.
+	size_t getFunctionEntryPoint(
+		std::string const& _contractName,
+		FunctionDefinition const& _function
+	) const;
+
 	/// Compile the given @a _sourceCode to bytecode. If a scanner is provided, it is used for
 	/// scanning the source code - this is useful for printing exception information.
 	static bytes staticCompile(std::string const& _sourceCode, bool _optimize = false);
@@ -165,13 +176,11 @@ private:
 		Contract();
 	};
 
-	void reset(bool _keepSources = false);
 	void resolveImports();
 
 	Contract const& getContract(std::string const& _contractName = "") const;
 	Source const& getSource(std::string const& _sourceName = "") const;
 
-	bool m_addStandardSources; ///< If true, standard sources are added.
 	bool m_parseSuccessful;
 	std::map<std::string const, Source> m_sources;
 	std::shared_ptr<GlobalContext> m_globalContext;

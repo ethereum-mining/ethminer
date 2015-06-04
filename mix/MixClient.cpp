@@ -143,7 +143,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	bytesConstRef const* lastData = nullptr;
 	unsigned codeIndex = 0;
 	unsigned dataIndex = 0;
-	auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, void* voidVM, void const* voidExt)
+	auto onOp = [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, void* voidVM, void const* voidExt)
 	{
 		VM& vm = *static_cast<VM*>(voidVM);
 		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
@@ -180,8 +180,20 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		else
 			levels.resize(ext.depth);
 
-		machineStates.emplace_back(MachineState({steps, vm.curPC(), inst, newMemSize, vm.gas(),
-									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels, codeIndex, dataIndex}));
+		machineStates.push_back(MachineState{
+			steps,
+			vm.curPC(),
+			inst,
+			newMemSize,
+			static_cast<u256>(gas),
+			vm.stack(),
+			vm.memory(),
+			gasCost,
+			ext.state().storage(ext.myAddress),
+			std::move(levels),
+			codeIndex,
+			dataIndex
+		});
 	};
 
 	execution.go(onOp);
@@ -220,7 +232,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	d.address = _t.receiveAddress();
 	d.sender = _t.sender();
 	d.value = _t.value();
-	d.gasUsed = er.gasUsed + er.gasRefunded;
+	d.gasUsed = er.gasUsed + er.gasRefunded + c_callStipend;
 	if (_t.isCreation())
 		d.contractAddress = right160(sha3(rlpList(_t.sender(), _t.nonce())));
 	if (!_call)
@@ -234,7 +246,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		er =_state.execute(lastHashes, t);
 		if (t.isCreation() && _state.code(d.contractAddress).empty())
 			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
-		d.gasUsed = er.gasUsed + er.gasRefunded + er.gasForDeposit;
+		d.gasUsed = er.gasUsed + er.gasRefunded + er.gasForDeposit + c_callStipend;
 		// collect watches
 		h256Set changed;
 		Guard l(x_filtersWatches);

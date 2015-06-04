@@ -23,10 +23,11 @@ set(ETH_SCRIPTS_DIR ${CMAKE_SOURCE_DIR}/cmake/scripts)
 # TODO use proper version of windows SDK (32 vs 64)
 # TODO make it possible to use older versions of windows SDK (7.0+ should also work)
 # TODO it windows SDK is NOT FOUND, throw ERROR
+# from https://github.com/rpavlik/cmake-modules/blob/master/FindWindowsSDK.cmake
 if (WIN32)
-	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x86")
-	message(" - Found windows 8.1 SDK")
-	#set (CMAKE_PREFIX_PATH "C:/Program Files/Windows Kits/8.1/Lib/winv6.3/um/x64")
+	find_package(WINDOWSSDK REQUIRED)
+	message(" - WindowsSDK dirs: ${WINDOWSSDK_DIRS}")
+	set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${WINDOWSSDK_DIRS})
 endif()
 
 # homebrew installs qts in opt
@@ -157,6 +158,11 @@ if (GUI)
 	if (WIN32)
 		set (WINDEPLOYQT_APP ${Qt5Core_DIR}/../../../bin/windeployqt)
 		message(" - windeployqt path: ${WINDEPLOYQT_APP}")
+	endif()
+
+	if (APPLE)
+		find_program(ETH_APP_DMG appdmg)
+		message(" - appdmg location : ${ETH_APP_DMG}")
 	endif()
 
 	if (USENPM)

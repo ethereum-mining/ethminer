@@ -71,6 +71,11 @@ void Compiler::compileContract(ContractDefinition const& _contract,
 	packIntoContractCreator(_contract, m_runtimeContext);
 }
 
+eth::AssemblyItem Compiler::getFunctionEntryLabel(FunctionDefinition const& _function) const
+{
+	return m_runtimeContext.getFunctionEntryLabelIfExists(_function);
+}
+
 void Compiler::initializeContext(ContractDefinition const& _contract,
 								 map<ContractDefinition const*, bytes const*> const& _contracts)
 {
@@ -189,7 +194,6 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 	}
 	else
 		m_context << eth::Instruction::STOP; // function not found
-
 	for (auto const& it: interfaceFunctions)
 	{
 		FunctionTypePointer const& functionType = it.second;
@@ -284,7 +288,6 @@ bool Compiler::visit(VariableDeclaration const& _variableDeclaration)
 	m_breakTags.clear();
 	m_continueTags.clear();
 
-	m_context << m_context.getFunctionEntryLabel(_variableDeclaration);
 	ExpressionCompiler(m_context, m_optimize).appendStateVariableAccessor(_variableDeclaration);
 
 	return false;
@@ -377,12 +380,16 @@ bool Compiler::visit(IfStatement const& _ifStatement)
 	StackHeightChecker checker(m_context);
 	CompilerContext::LocationSetter locationSetter(m_context, _ifStatement);
 	compileExpression(_ifStatement.getCondition());
-	eth::AssemblyItem trueTag = m_context.appendConditionalJump();
-	if (_ifStatement.getFalseStatement())
-		_ifStatement.getFalseStatement()->accept(*this);
-	eth::AssemblyItem endTag = m_context.appendJumpToNew();
-	m_context << trueTag;
+	m_context << eth::Instruction::ISZERO;
+	eth::AssemblyItem falseTag = m_context.appendConditionalJump();
+	eth::AssemblyItem endTag = falseTag;
 	_ifStatement.getTrueStatement().accept(*this);
+	if (_ifStatement.getFalseStatement())
+	{
+		endTag = m_context.appendJumpToNew();
+		m_context << falseTag;
+		_ifStatement.getFalseStatement()->accept(*this);
+	}
 	m_context << endTag;
 
 	checker.check();

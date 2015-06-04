@@ -26,15 +26,15 @@
 #include <boost/filesystem.hpp>
 
 #include <libwebthree/WebThree.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include "WebThreeStubServer.h"
 
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
-	WebThreeStubServerBase(_conn, _accounts),
+WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, WebThreeDirect& _web3, shared_ptr<AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts):
+	WebThreeStubServerBase(_conn, _ethAccounts, _shhAccounts),
 	m_web3(_web3)
 {
 	auto path = getDataDir() + "/.web3";

@@ -32,6 +32,8 @@ option(USENPM "Use npm to recompile ethereum.js if it was changed" OFF)
 option(PROFILING "Build in support for profiling" OFF)
 
 set(BUNDLE "none" CACHE STRING "Predefined bundle of software to build (none, full, user, tests, minimal).")
+option(MINER "Build the CLI miner component" ON)
+option(ETHKEY "Build the CLI key manager component" ON)
 option(SOLIDITY "Build the Solidity language components" ON)
 option(SERPENT "Build the Serpent language components" ON)
 option(TOOLS "Build the tools components" ON)
@@ -155,7 +157,7 @@ set (ETH_HAVE_WEBENGINE 1)
 # Backwards compatibility
 if (HEADLESS)
 	message("*** WARNING: -DHEADLESS=1 option is DEPRECATED! Use -DBUNDLE=minimal or -DGUI=0")
-	set(BUNDLE "minimal")
+	set(GUI OFF)
 endif ()
 
 # TODO: Abstract into something sensible and move into a function.
@@ -187,6 +189,7 @@ eth_format_option(VMTRACE)
 eth_format_option(EVMJIT)
 eth_format_option(FATDB)
 eth_format_option(JSONRPC)
+eth_format_option(MINER)
 eth_format_option(USENPM)
 eth_format_option(PROFILING)
 eth_format_option(SOLIDITY)
@@ -249,6 +252,28 @@ elseif (BUNDLE STREQUAL "user")
 	set(NCURSES ${DECENT_PLATFORM})
 	set(TOOLS ON)
 	set(TESTS OFF)
+elseif (BUNDLE STREQUAL "wallet")
+	set(SERPENT OFF)
+	set(SOLIDITY OFF)
+	set(USENPM OFF)
+	set(GUI OFF)
+	set(NCURSES OFF)
+	set(TOOLS OFF)
+	set(TESTS OFF)
+	set(ETHKEY ON)
+	set(MINER OFF)
+	set(ETHASHCL ON)
+elseif (BUNDLE STREQUAL "miner")
+	set(SERPENT OFF)
+	set(SOLIDITY OFF)
+	set(USENPM OFF)
+	set(GUI OFF)
+	set(NCURSES OFF)
+	set(TOOLS OFF)
+	set(TESTS OFF)
+	set(ETHKEY OFF)
+	set(MINER ON)
+	set(ETHASHCL ON)
 endif ()
 
 # Default CMAKE_BUILD_TYPE to "Release".
@@ -283,6 +308,8 @@ message("-- FATDB            Full database exploring                  ${FATDB}")
 message("-- JSONRPC          JSON-RPC support                         ${JSONRPC}")
 message("-- USENPM           Javascript source building               ${USENPM}")
 message("------------------------------------------------------------- components")
+message("-- MINER            Build miner                              ${MINER}")
+message("-- ETHKEY           Build wallet tools                       ${ETHKEY}")
 message("-- TOOLS            Build basic tools                        ${TOOLS}")
 message("-- SOLIDITY         Build Solidity language components       ${SOLIDITY}")
 message("-- SERPENT          Build Serpent language components        ${SERPENT}")
@@ -310,10 +337,20 @@ if (EVMJIT)
 	add_subdirectory(evmjit)
 endif()
 
+if (TOOLS OR GUI OR SOLIDITY OR NCURSES OR TESTS)
+	set(GENERAL 1)
+else ()
+	set(GENERAL 0)
+endif ()
+
+message("GENERAL ${GENERAL}")
+
 add_subdirectory(libdevcore)
-add_subdirectory(libevmcore)
-add_subdirectory(libevmasm)
-add_subdirectory(liblll)
+if (GENERAL)
+	add_subdirectory(libevmcore)
+	add_subdirectory(libevmasm)
+	add_subdirectory(liblll)
+endif ()
 
 if (SERPENT)
 	add_subdirectory(libserpent)
@@ -329,31 +366,48 @@ if (TOOLS)
 	if (SOLIDITY)
 		add_subdirectory(solc)
 	endif ()
-endif()
+endif ()
 
-if (JSONRPC)
+if (JSONRPC AND GENERAL)
 	add_subdirectory(libweb3jsonrpc)
-endif()
+endif ()
 
 if (JSCONSOLE)
 	add_subdirectory(libjsengine)
 	add_subdirectory(libjsconsole)
-endif()
+endif ()
 
 add_subdirectory(secp256k1)
-add_subdirectory(libp2p)
+add_subdirectory(libscrypt)
 add_subdirectory(libdevcrypto)
-add_subdirectory(libwhisper)
 
-add_subdirectory(libethash)
-if (ETHASHCL)
-	add_subdirectory(libethash-cl)
+if (GENERAL)
+	add_subdirectory(libp2p)
+	add_subdirectory(libwhisper)
+endif ()
+
+if (GENERAL OR MINER)
+	add_subdirectory(libethash)
+	if (ETHASHCL)
+		add_subdirectory(libethash-cl)
+	endif ()
 endif ()
 
 add_subdirectory(libethcore)
-add_subdirectory(libevm)
-add_subdirectory(libethereum)
-add_subdirectory(libwebthree)
+
+if (GENERAL)
+	add_subdirectory(libevm)
+	add_subdirectory(libethereum)
+	add_subdirectory(libwebthree)
+endif ()
+
+if (MINER OR TOOLS)
+	add_subdirectory(ethminer)
+endif ()
+
+if (ETHKEY OR TOOLS)
+	add_subdirectory(ethkey)
+endif ()
 
 if (TESTS)
 	add_subdirectory(libtestutils)
@@ -367,7 +421,6 @@ if (TOOLS)
 
 	add_subdirectory(rlp)
 	add_subdirectory(abi)
-	add_subdirectory(ethminer)
 	add_subdirectory(eth)
 
 	if("x${CMAKE_BUILD_TYPE}" STREQUAL "xDebug")
@@ -396,8 +449,22 @@ if (GUI)
 
 endif()
 
+if (APPLE AND GUI)
 
-#unset(TARGET_PLATFORM CACHE)
+	add_custom_target(appdmg
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		COMMAND ${CMAKE_COMMAND}
+		-DAPP_DMG_EXE=${ETH_APP_DMG}
+		-DAPP_DMG_FILE=appdmg.json.in
+		-DAPP_DMG_ICON="alethzero/alethzero.icns"
+		-DAPP_DMG_BACKGROUND="bg.png"
+		-DETH_BUILD_DIR="${CMAKE_BINARY_DIR}"
+		-DETH_MIX_APP="$<TARGET_FILE_DIR:mix>"
+		-DETH_ALETHZERO_APP="$<TARGET_FILE_DIR:AlethZero>"
+		-P "${ETH_SCRIPTS_DIR}/appdmg.cmake"
+	)
+
+endif ()
 
 if (WIN32)
 	# packaging stuff

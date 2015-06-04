@@ -30,7 +30,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/Worker.h>
 #include <libdevcore/Guards.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include "Common.h"
 #include "WhisperPeer.h"
 #include "Interface.h"
@@ -40,7 +40,7 @@ namespace dev
 namespace shh
 {
 
-static const FullTopic EmptyFullTopic;
+static const Topics EmptyTopics;
 
 class WhisperHost: public HostCapability<WhisperPeer>, public Interface, public Worker
 {
@@ -54,8 +54,8 @@ public:
 
 	virtual void inject(Envelope const& _e, WhisperPeer* _from = nullptr) override;
 
-	virtual FullTopic const& fullTopic(unsigned _id) const { try { return m_filters.at(m_watches.at(_id).id).full; } catch (...) { return EmptyFullTopic; } }
-	virtual unsigned installWatch(FullTopic const& _filter) override;
+	virtual Topics const& fullTopics(unsigned _id) const { try { return m_filters.at(m_watches.at(_id).id).full; } catch (...) { return EmptyTopics; } }
+	virtual unsigned installWatch(Topics const& _filter) override;
 	virtual unsigned installWatchOnId(h256 _filterId) override;
 	virtual void uninstallWatch(unsigned _watchId) override;
 	virtual h256s peekWatch(unsigned _watchId) const override { dev::Guard l(m_filterLock); try { return m_watches.at(_watchId).changes; } catch (...) { return h256s(); } }

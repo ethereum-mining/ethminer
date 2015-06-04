@@ -118,7 +118,7 @@ if(WIN32)
   endif()
 else()
   find_library(OpenCL_LIBRARY
-    NAMES OpenCL)
+    NAMES OpenCL libOpenCL.so.1)
 endif()
 
 set(OpenCL_LIBRARIES ${OpenCL_LIBRARY})

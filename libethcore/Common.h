@@ -100,9 +100,10 @@ struct ImportRequirements
 	using value = unsigned;
 	enum
 	{
-		ValidNonce = 1, ///< Validate Nonce
+		ValidNonce = 1, ///< Validate nonce
 		DontHave = 2, ///< Avoid old blocks
-		Default = ValidNonce | DontHave
+		CheckUncles = 4, ///< Check uncle nonces
+		Default = ValidNonce | DontHave | CheckUncles
 	};
 };
 
@@ -135,6 +136,22 @@ private:
 };
 
 using Handler = std::shared_ptr<Signal::HandlerAux>;
+
+struct TransactionSkeleton
+{
+	bool creation = false;
+	Address from;
+	Address to;
+	u256 value;
+	bytes data;
+	u256 gas = UndefinedU256;
+	u256 gasPrice = UndefinedU256;
+};
+
+void badBlockHeader(bytesConstRef _header, std::string const& _err);
+inline void badBlockHeader(bytes const& _header, std::string const& _err) { badBlockHeader(&_header, _err); }
+void badBlock(bytesConstRef _header, std::string const& _err);
+inline void badBlock(bytes const& _header, std::string const& _err) { badBlock(&_header, _err); }
 
 }
 }

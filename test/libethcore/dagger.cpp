@@ -63,14 +63,14 @@ BOOST_AUTO_TEST_CASE(basic_test)
 
 		unsigned cacheSize(o["cache_size"].get_int());
 		h256 cacheHash(o["cache_hash"].get_str());
-		BOOST_REQUIRE_EQUAL(EthashAux::get()->params(header).cache_size, cacheSize);
-		BOOST_REQUIRE_EQUAL(sha3(EthashAux::get()->light(header)->data()), cacheHash);
+		BOOST_REQUIRE_EQUAL(EthashAux::get()->light(header.seedHash())->size, cacheSize);
+		BOOST_REQUIRE_EQUAL(sha3(EthashAux::get()->light(header.seedHash())->data()), cacheHash);
 
 #if TEST_FULL
 		unsigned fullSize(o["full_size"].get_int());
 		h256 fullHash(o["full_hash"].get_str());
-		BOOST_REQUIRE_EQUAL(EthashAux::get()->full(header).size(), fullSize);
-		BOOST_REQUIRE_EQUAL(sha3(EthashAux::get()->full(header)), fullHash);
+		BOOST_REQUIRE_EQUAL(EthashAux::get()->full(header.seedHash())->size(), fullSize);
+		BOOST_REQUIRE_EQUAL(sha3(EthashAux::get()->full(header.seedHash())->data()), fullHash);
 #endif
 
 		h256 result(o["result"].get_str());

@@ -57,11 +57,11 @@ ExpressionClasses::Id ExpressionClasses::find(
 	exp.arguments = _arguments;
 	exp.sequenceNumber = _sequenceNumber;
 
+	if (SemanticInformation::isCommutativeOperation(_item))
+		sort(exp.arguments.begin(), exp.arguments.end());
+
 	if (SemanticInformation::isDeterministic(_item))
 	{
-		if (SemanticInformation::isCommutativeOperation(_item))
-			sort(exp.arguments.begin(), exp.arguments.end());
-
 		auto it = m_expressions.find(exp);
 		if (it != m_expressions.end())
 			return it->id;
@@ -78,6 +78,37 @@ ExpressionClasses::Id ExpressionClasses::find(
 		exp.id = m_representatives.size();
 		m_representatives.push_back(exp);
 	}
+	m_expressions.insert(exp);
+	return exp.id;
+}
+
+void ExpressionClasses::forceEqual(
+	ExpressionClasses::Id _id,
+	AssemblyItem const& _item,
+	ExpressionClasses::Ids const& _arguments,
+	bool _copyItem
+)
+{
+	Expression exp;
+	exp.id = _id;
+	exp.item = &_item;
+	exp.arguments = _arguments;
+
+	if (SemanticInformation::isCommutativeOperation(_item))
+		sort(exp.arguments.begin(), exp.arguments.end());
+
+	if (_copyItem)
+		exp.item = storeItem(_item);
+
+	m_expressions.insert(exp);
+}
+
+ExpressionClasses::Id ExpressionClasses::newClass(SourceLocation const& _location)
+{
+	Expression exp;
+	exp.id = m_representatives.size();
+	exp.item = storeItem(AssemblyItem(UndefinedItem, (u256(1) << 255) + exp.id, _location));
+	m_representatives.push_back(exp);
 	m_expressions.insert(exp);
 	return exp.id;
 }

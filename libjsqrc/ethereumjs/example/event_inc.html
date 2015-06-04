@@ -6,19 +6,20 @@
         var web3 = require('web3');
         web3.setProvider(new web3.providers.HttpProvider('http://localhost:8545'));
 
-        /*var source = "" + */
-        /*"contract Contract { " +*/
-        /*"   event Incremented(bool indexed odd, uint x); " +*/
-        /*"   function Contract() { " +*/
-        /*"        x = 69; " +*/
-        /*"    } " +*/
-        /*"    function inc() { " +*/
-        /*"        ++x; " +*/
-        /*"        Incremented(x % 2 == 1, x); " +*/
-        /*"    } " +*/
-        /*"    uint x; " +*/
-        /*"}";*/
-        var source = "5b60456000600050819055505b608c8060196000396000f3006000357c010000000000000000000000000000000000000000000000000000000090048063371303c014602e57005b6034603a565b60006000f35b6000600081815054600101919050819055506001600260006000505406147f6e61ef44ac2747ff8b84d353a908eb8bd5c3fb118334d57698c5cfc7041196ad600060006000505481526020016000a25b56";
+        var source = "" +
+        "contract Contract { " +
+        "   event Incremented(bool indexed odd, uint x); " +
+        "   function Contract() { " +
+        "        x = 70; " +
+        "    } " +
+        "    function inc() { " +
+        "        ++x; " +
+        "        Incremented(x % 2 == 1, x); " +
+        "    } " +
+        "    uint x; " +
+        "}";
+        var code = web3.eth.compile.solidity(source).code;
+        /*var code = "5b60456000600050819055505b608c8060196000396000f3006000357c010000000000000000000000000000000000000000000000000000000090048063371303c014602e57005b6034603a565b60006000f35b6000600081815054600101919050819055506001600260006000505406147f6e61ef44ac2747ff8b84d353a908eb8bd5c3fb118334d57698c5cfc7041196ad600060006000505481526020016000a25b56";*/
 
         var desc = [{
             "constant" : false,
@@ -45,19 +46,46 @@
         var contract;
 
         var update = function (err, x) {
-            document.getElementById('result').innerText = JSON.stringify(x, null, 2);
+            document.getElementById('result').textContent = JSON.stringify(x, null, 2);
         };
     
         var createContract = function () {
             // let's assume that we have a private key to coinbase ;)
             web3.eth.defaultAccount = web3.eth.coinbase;
-            var Contract = web3.eth.contract(desc); 
-            contract = new Contract({data: source});
+            
+            var watch = web3.eth.filter('latest');
+
+            contract = web3.eth.contract(desc).new({data: code});
+            
+            console.log('address: ' + contract.address);
+
+            document.getElementById('create').style.visibility = 'hidden';
+            document.getElementById('status').innerText = "transaction sent, waiting for confirmation";
+            watch.watch(function (err, hash) {
+                var block = web3.eth.getBlock(hash, true); 
+                var contractMined = block.transactions.reduce(function (mined, th) {
+                    // TODO: compiled code do not have 0x prefix
+                    return mined || (th.from === web3.eth.defaultAccount && th.input.indexOf(code) !== -1);
+                }, false);
+
+                if (contractMined) {
+                    document.getElementById('status').innerText = 'Mined!';
+                    document.getElementById('call').style.visibility = 'visible';
+                }
+            });
+
             contract.Incremented({odd: true}).watch(update);
             
         };
 
+        var counter = 0;
         var callContract = function () {
+            counter++;
+            var all = 70 + counter;
+            document.getElementById('count').innerText = 'Transaction sent ' + counter + ' times. ' + 
+                'Expected x value is: ' + (all - (all % 2 ? 0 : 1)) + ' ' +
+                'Waiting for the blocks to be mined...';
+                 
             contract.inc();
         };
 
@@ -66,12 +94,14 @@
     </head>
 
     <body>
+        <div id="status"></div>
         <div>
-            <button type="button" onClick="createContract();">create contract</button>
+            <button id="create" type="button" onClick="createContract();">create contract</button>
         </div>
         <div>
-            <button type="button" onClick="callContract();">test1</button>
+            <button id="call" style="visibility: hidden;" type="button" onClick="callContract();">test1</button>
         </div>
+        <div id='count'></div>
         <div id="result">
         </div>
     </body>

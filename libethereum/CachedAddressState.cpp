@@ -21,8 +21,9 @@
 
 #include "CachedAddressState.h"
 
+#include <libdevcore/TrieDB.h>
 #include <libdevcrypto/Common.h>
-#include <libdevcrypto/TrieDB.h>
+#include <libdevcrypto/OverlayDB.h>
 #include "Account.h"
 using namespace std;
 using namespace dev;
@@ -57,8 +58,8 @@ std::unordered_map<u256, u256> CachedAddressState::storage() const
 	if (m_r)
 	{
 		SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(m_o), m_r[2].toHash<h256>());		// promise we won't alter the overlay! :)
-//		for (auto const& j: memdb)
-//			ret[j.first] = RLP(j.second).toInt<u256>();
+		for (auto const& j: memdb)
+			ret[j.first] = RLP(j.second).toInt<u256>();
 	}
 	if (m_s)
 		for (auto const& j: m_s->storageOverlay())
