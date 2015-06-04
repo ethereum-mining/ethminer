@@ -34,9 +34,9 @@ struct VerbosityHolder
 	int oldLogVerbosity;
 };
 
-FullTopic createRandomTopics(unsigned int i)
+Topics createRandomTopics(unsigned int i)
 {
-	FullTopic ret;
+	Topics ret;
 	h256 t(i);
 
 	for (int j = 0; j < 8; ++j)
@@ -72,14 +72,14 @@ void comparePayloads(Message const& m1, Message const& m2)
 void sealAndOpenSingleMessage(unsigned int i)
 {
 	Secret zero;
-	FullTopic topics = createRandomTopics(i);
+	Topics topics = createRandomTopics(i);
 	bytes const payload = createRandomPayload(i);
 	Message m1(payload);
 	Envelope e = m1.seal(zero, topics, 1, 1);
 
 	for (auto const& t: topics)
 	{
-		FullTopic singleTopic;
+		Topics singleTopic;
 		singleTopic.push_back(t);
 		Message m2(e, singleTopic, zero);
 		comparePayloads(m1, m2);

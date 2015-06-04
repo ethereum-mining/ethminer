@@ -60,14 +60,14 @@ enum WhisperPacket
 	PacketCount
 };
 
-using CollapsedTopicPart = FixedHash<4>;
-using FullTopicPart = h256;
+using AbridgedTopic = FixedHash<4>;
+using Topic = h256;
 
-using CollapsedTopic = std::vector<CollapsedTopicPart>;
-using FullTopic = h256s;
+using AbridgedTopics = std::vector<AbridgedTopic>;
+using Topics = h256s;
 
-CollapsedTopicPart collapse(FullTopicPart const& _fullTopicPart);
-CollapsedTopic collapse(FullTopic const& _fullTopic);
+AbridgedTopic abridge(Topic const& _topic);
+AbridgedTopics abridge(Topics const& _topics);
 
 class BuildTopic
 {
@@ -80,10 +80,10 @@ public:
 
 	BuildTopic& shiftRaw(h256 const& _part) { m_parts.push_back(_part); return *this; }
 
-	operator CollapsedTopic() const { return toTopic(); }
-	operator FullTopic() const { return toFullTopic(); }
-	CollapsedTopic toTopic() const;
-	FullTopic toFullTopic() const { return m_parts; }
+	operator AbridgedTopics() const { return toAbridgedTopics(); }
+	operator Topics() const { return toTopics(); }
+	AbridgedTopics toAbridgedTopics() const;
+	Topics toTopics() const { return m_parts; }
 
 protected:
 	BuildTopic& shiftBytes(bytes const& _b);
@@ -91,14 +91,14 @@ protected:
 	h256s m_parts;
 };
 
-using TopicMask = std::vector<std::pair<CollapsedTopicPart, CollapsedTopicPart>>;
+using TopicMask = std::vector<std::pair<AbridgedTopic, AbridgedTopic>>;
 using TopicMasks = std::vector<TopicMask>;
 
 class TopicFilter
 {
 public:
 	TopicFilter() {}
-	TopicFilter(FullTopic const& _m) { m_topicMasks.push_back(TopicMask()); for (auto const& h: _m) m_topicMasks.back().push_back(std::make_pair(collapse(h), h ? ~CollapsedTopicPart() : CollapsedTopicPart())); }
+	TopicFilter(Topics const& _m) { m_topicMasks.push_back(TopicMask()); for (auto const& h: _m) m_topicMasks.back().push_back(std::make_pair(abridge(h), h ? ~AbridgedTopic() : AbridgedTopic())); }
 	TopicFilter(TopicMask const& _m): m_topicMasks(1, _m) {}
 	TopicFilter(TopicMasks const& _m): m_topicMasks(_m) {}
 	TopicFilter(RLP const& _r)//: m_topicMasks(_r.toVector<std::vector<>>())
@@ -132,9 +132,9 @@ public:
 	template <class T> BuildTopicMask& operator()(T const& _t) { shift(_t); return *this; }
 
 	operator TopicMask() const { return toTopicMask(); }
-	operator FullTopic() const { return toFullTopic(); }
+	operator Topics() const { return toTopics(); }
 	TopicMask toTopicMask() const;
-	FullTopic toFullTopic() const { return m_parts; }
+	Topics toTopics() const { return m_parts; }
 };
 
 }
