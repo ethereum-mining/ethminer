@@ -6,6 +6,7 @@ import QtQuick.Window 2.0
 import QtQuick.Controls.Styles 1.3
 import org.ethereum.qml.QEther 1.0
 import "js/TransactionHelper.js" as TransactionHelper
+import "js/InputValidator.js" as InputValidator
 import "."
 
 Dialog {
@@ -94,7 +95,6 @@ Dialog {
 	function loadCtorParameters(contractId)
 	{
 		paramsModel = [];
-		console.log(contractId);
 		var contract = codeModel.contracts[contractId];
 		if (contract) {
 			var params = contract.contract.constructor.parameters;
@@ -154,7 +154,7 @@ Dialog {
 		if (functionComboBox.currentIndex >= 0 && functionComboBox.currentIndex < functionsModel.count) {
 			var contract = codeModel.contracts[contractFromToken(recipients.currentValue())];
 			if (contract) {
-				var func = contract.contract.functions[functionComboBox.currentIndex];
+				var func = contract.contract.functions[functionComboBox.currentIndex - 1];
 				if (func) {
 					var parameters = func.parameters;
 					for (var p = 0; p < parameters.length; p++)
@@ -504,16 +504,34 @@ Dialog {
 				anchors.right: parent.right;
 
 				Button {
+
 					text: qsTr("OK");
 					onClicked: {
-						close();
-						accepted();
+						var invalid = InputValidator.validate(paramsModel, paramValues);
+						if (invalid.length === 0)
+						{
+							close();
+							accepted();
+						}
+						else
+						{
+							errorDialog.text = qsTr("Some parameters are invalid:\n");
+							for (var k in invalid)
+								errorDialog.text += invalid[k].message + "\n";
+							errorDialog.open();
+						}
 					}
 				}
 
 				Button {
 					text: qsTr("Cancel");
 					onClicked: close();
+				}
+
+				MessageDialog {
+					id: errorDialog
+					standardButtons: StandardButton.Ok
+					icon: StandardIcon.Critical
 				}
 			}
 		}

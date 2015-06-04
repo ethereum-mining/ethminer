@@ -16,10 +16,10 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file main.cpp
+/** @file MinerAux.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
- * Ethereum client.
+ * CLI module for mining.
  */
 
 #include <thread>
@@ -171,8 +171,16 @@ public:
 			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
 		{
-			m_minerType = MinerType::GPU;
-			miningThreads = 1;
+			if (!ProofOfWork::GPUMiner::haveSufficientGPUMemory())
+			{
+				cout << "No GPU device with sufficient memory was found. Defaulting to CPU" << endl;
+				m_minerType = MinerType::CPU;
+			}
+			else
+			{
+				m_minerType = MinerType::GPU;
+				miningThreads = 1;
+			}
 		}
 		else if (arg == "--no-precompute")
 		{

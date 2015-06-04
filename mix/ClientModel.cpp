@@ -331,7 +331,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 				{
 					QSolidityType const* type = p->type();
 					QVariant value = transaction.parameterValues.value(p->name());
-					if (type->type().type == SolidityType::Type::Address)
+					if (type->type().type == SolidityType::Type::Address && value.toString().startsWith("<"))
 					{
 						std::pair<QString, int> ctrParamInstance = resolvePair(value.toString());
 						value = QVariant(resolveToken(ctrParamInstance, deployedContracts));
@@ -387,24 +387,21 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 
 std::pair<QString, int> ClientModel::resolvePair(QString const& _contractId)
 {
-	 std::pair<QString, int> ret;
-	 ret.first = _contractId;
-	 ret.second = -1;
+	 std::pair<QString, int> ret = std::make_pair(_contractId, 0);
 	 if (_contractId.startsWith("<") && _contractId.endsWith(">"))
 	 {
 		 QStringList values = ret.first.remove("<").remove(">").split(" - ");
-		 ret.first = values[0];
-		 ret.second = values[1].toUInt();
+		 ret = std::make_pair(values[0], values[1].toUInt());
 	 }
 	 return ret;
 }
 
 QString ClientModel::resolveToken(std::pair<QString, int> const& _value, vector<Address> const& _contracts)
 {
-	 if (_value.second != -1)
-		 return QString::fromStdString("0x" + dev::toHex(_contracts.at(_value.second).ref()));
-	 else
-		 return _value.first;
+	if (_contracts.size() > 0)
+		return QString::fromStdString("0x" + dev::toHex(_contracts.at(_value.second).ref()));
+	else
+		return _value.first;
 }
 
 std::pair<QString, int> ClientModel::retrieveToken(QString const& _value, vector<Address> const& _contracts)
@@ -487,7 +484,10 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 				if (!functionName.isEmpty() && ((prevInstruction.getJumpType() == AssemblyItem::JumpType::IntoFunction) || solCallStack.empty()))
 					solCallStack.push_front(QVariant::fromValue(functionName));
 				else if (prevInstruction.getJumpType() == AssemblyItem::JumpType::OutOfFunction && !solCallStack.empty())
+				{
 					solCallStack.pop_front();
+					solLocals.clear();
+				}
 			}
 
 			//format solidity context values
