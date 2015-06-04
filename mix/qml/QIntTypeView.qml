@@ -21,8 +21,15 @@ Item
 			clip: true
 			selectByMouse: true
 			text: value
+			anchors.fill: parent
 			font.pointSize: dbgStyle.general.basicFontSize
 			color: dbgStyle.general.basicColor
+			MouseArea {
+				id: mouseArea
+				anchors.fill: parent
+				hoverEnabled: true
+				onClicked: textinput.forceActiveFocus()
+			}
 		}
 	}
 }

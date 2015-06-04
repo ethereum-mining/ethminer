@@ -14,36 +14,24 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-#pragma once
+/** @file boost.cpp
+ * @author Lefteris Karapetsas <lefteris@ethdev.com>
+ * @date 2015
+ * Tests for external dependencies: Boost
+ */
 
-#include "VMFace.h"
+#include <boost/test/unit_test.hpp>
+#include <libdevcore/Common.h>
 
-namespace dev
+BOOST_AUTO_TEST_SUITE(ExtDepBoost)
+
+// test that reproduces issue https://github.com/ethereum/cpp-ethereum/issues/1977
+BOOST_AUTO_TEST_CASE(u256_overflow_test)
 {
-namespace eth
-{
-
-enum class VMKind
-{
-	Interpreter,
-	JIT,
-	Smart
-};
-
-class VMFactory
-{
-public:
-	VMFactory() = delete;
-
-	/// Creates a VM instance of global kind (controlled by setKind() function).
-	static std::unique_ptr<VMFace> create();
-
-	/// Creates a VM instance of kind provided.
-	static std::unique_ptr<VMFace> create(VMKind _kind);
-
-	/// Set global VM kind
-	static void setKind(VMKind _kind);
-};
-
+	dev::u256 a = 14;
+	dev::bigint b = dev::bigint("115792089237316195423570985008687907853269984665640564039457584007913129639948");
+	// to fix cast `a` to dev::bigint
+	BOOST_CHECK(a < b);
 }
-}
+
+BOOST_AUTO_TEST_SUITE_END()
