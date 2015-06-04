@@ -26,14 +26,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::shh;
 
-struct VerbosityHolder
-{
-	VerbosityHolder(int _temporaryValue) : oldLogVerbosity(g_logVerbosity) { g_logVerbosity = _temporaryValue; }
-	~VerbosityHolder() { g_logVerbosity = oldLogVerbosity; }
-
-	int oldLogVerbosity;
-};
-
 Topics createRandomTopics(unsigned int i)
 {
 	Topics ret;
