@@ -80,7 +80,7 @@ public:
 	eth::Transactions callcreates;
 	bytes thisTxData;
 	bytes thisTxCode;
-	u256 gas;
+	u256 gas, execGas;
 };
 
 
