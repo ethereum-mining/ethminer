@@ -99,7 +99,7 @@ struct UDPSocketFace
  */
 struct UDPSocketEvents
 {
-	virtual void onDisconnected(UDPSocketFace*) {};
+	virtual void onDisconnected(UDPSocketFace*) {}
 	virtual void onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packetData) = 0;
 };
 

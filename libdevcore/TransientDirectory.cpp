@@ -46,7 +46,7 @@ TransientDirectory::~TransientDirectory()
 {
 	boost::system::error_code ec;		
 	boost::filesystem::remove_all(m_path, ec);
-	if (0 == ec)
+	if (!ec)
 		return;
 
 	// In some cases, antivirus runnig on Windows will scan all the newly created directories.
@@ -57,6 +57,6 @@ TransientDirectory::~TransientDirectory()
 
 	ec.clear();
 	boost::filesystem::remove_all(m_path, ec);
-	if (ec != 0)
+	if (!ec)
 		cwarn << "Failed to delete directory '" << m_path << "': " << ec.message();
 }
