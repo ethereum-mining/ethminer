@@ -363,6 +363,11 @@ void Ethash::GPUMiner::pause()
 	stopWorking();
 }
 
+bool Ethash::GPUMiner::haveSufficientGPUMemory()
+{
+	return ethash_cl_miner::haveSufficientGPUMemory(s_platformId);
+}
+
 std::string Ethash::GPUMiner::platformInfo()
 {
 	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
