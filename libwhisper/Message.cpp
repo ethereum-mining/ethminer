@@ -26,7 +26,7 @@ using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-Message::Message(Envelope const& _e, FullTopic const& _fk, Secret const& _s)
+Message::Message(Envelope const& _e, Topics const& _t, Secret const& _s)
 {
 	try
 	{
@@ -35,7 +35,7 @@ Message::Message(Envelope const& _e, FullTopic const& _fk, Secret const& _s)
 			if (!decrypt(_s, &(_e.data()), b))
 				return;
 			else{}
-		else if (!openBroadcastEnvelope(_e, _fk, b))
+		else if (!openBroadcastEnvelope(_e, _t, b))
 			return;
 
 		if (populate(b))
@@ -47,14 +47,14 @@ Message::Message(Envelope const& _e, FullTopic const& _fk, Secret const& _s)
 	}
 }
 
-bool Message::openBroadcastEnvelope(Envelope const& _e, FullTopic const& _fk, bytes& o_b)
+bool Message::openBroadcastEnvelope(Envelope const& _e, Topics const& _fk, bytes& o_b)
 {
 	// retrieve the key using the known topic and topicIndex.
 	unsigned topicIndex = 0;
 	Secret topicSecret;
 
 	// determine topicSecret/topicIndex from knowledge of the collapsed topics (which give the order) and our full-size filter topic.
-	CollapsedTopic knownTopic = collapse(_fk);
+	AbridgedTopics knownTopic = abridge(_fk);
 	for (unsigned ti = 0; ti < _fk.size() && !topicSecret; ++ti)
 		for (unsigned i = 0; i < _e.topic().size(); ++i)
 			if (_e.topic()[i] == knownTopic[ti])
@@ -96,10 +96,10 @@ bool Message::populate(bytes const& _data)
 	return true;
 }
 
-Envelope Message::seal(Secret _from, FullTopic const& _fullTopic, unsigned _ttl, unsigned _workToProve) const
+Envelope Message::seal(Secret _from, Topics const& _fullTopics, unsigned _ttl, unsigned _workToProve) const
 {
-	CollapsedTopic topic = collapse(_fullTopic);
-	Envelope ret(time(0) + _ttl, _ttl, topic);
+	AbridgedTopics topics = abridge(_fullTopics);
+	Envelope ret(time(0) + _ttl, _ttl, topics);
 
 	bytes input(1 + m_payload.size());
 	input[0] = 0;
@@ -121,7 +121,7 @@ Envelope Message::seal(Secret _from, FullTopic const& _fullTopic, unsigned _ttl,
 		// this message is for broadcast (could be read by anyone who knows at least one of the topics)
 		// create the shared secret for encrypting the payload, then encrypt the shared secret with each topic
 		Secret s = Secret::random();
-		for (h256 const& t : _fullTopic)
+		for (h256 const& t : _fullTopics)
 		{
 			h256 salt = h256::random();
 			ret.m_data += (generateGamma(t, salt) ^ s).asBytes();
@@ -146,9 +146,9 @@ Envelope::Envelope(RLP const& _m)
 	m_nonce = _m[4].toInt<u256>();
 }
 
-Message Envelope::open(FullTopic const& _ft, Secret const& _s) const
+Message Envelope::open(Topics const& _t, Secret const& _s) const
 {
-	return Message(*this, _ft, _s);
+	return Message(*this, _t, _s);
 }
 
 unsigned Envelope::workProved() const

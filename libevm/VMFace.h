@@ -43,10 +43,7 @@ public:
 	VMFace(VMFace const&) = delete;
 	VMFace& operator=(VMFace const&) = delete;
 
-	virtual void reset(u256 const& _gas = 0) noexcept = 0;
-	virtual u256 gas() const noexcept = 0;
-
-	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) = 0;
+	virtual bytesConstRef go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) = 0;
 };
 
 }

@@ -44,10 +44,11 @@ VersionChecker::VersionChecker(string const& _dbPath):
 	try
 	{
 		auto protocolVersion = (unsigned)status[0];
+		(void)protocolVersion;
 		auto minorProtocolVersion = (unsigned)status[1];
 		auto databaseVersion = (unsigned)status[2];
 		m_action =
-			protocolVersion != eth::c_protocolVersion || databaseVersion != c_databaseVersion ?
+			databaseVersion != c_databaseVersion ?
 				WithExisting::Kill
 			: minorProtocolVersion != eth::c_minorProtocolVersion ?
 				WithExisting::Verify
@@ -268,9 +269,11 @@ void Client::killChain()
 	{
 		WriteGuard l(x_postMine);
 		WriteGuard l2(x_preMine);
+		WriteGuard l3(x_working);
 
 		m_preMine = State();
 		m_postMine = State();
+		m_working = State();
 
 		m_stateDB = OverlayDB();
 		m_stateDB = State::openDB(Defaults::dbPath(), WithExisting::Kill);
@@ -283,6 +286,7 @@ void Client::killChain()
 	if (auto h = m_host.lock())
 		h->reset();
 
+	startedWorking();
 	doWork();
 
 	startWorking();
@@ -422,7 +426,7 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 			temp = m_postMine;
 		temp.addBalance(_from, _value + _gasPrice * _gas);
 		Executive e(temp, LastHashes(), 0);
-		if (!e.call(_dest, _dest, _from, _value, _gasPrice, &_data, _gas, _from))
+		if (!e.call(_dest, _from, _value, _gasPrice, &_data, _gas))
 			e.go();
 		ret = e.executionResult();
 	}
