@@ -171,8 +171,16 @@ public:
 			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
 		{
-			m_minerType = MinerType::GPU;
-			miningThreads = 1;
+			if (!ProofOfWork::GPUMiner::haveSufficientGPUMemory())
+			{
+				cout << "No GPU device with sufficient memory was found. Defaulting to CPU" << endl;
+				m_minerType = MinerType::CPU;
+			}
+			else
+			{
+				m_minerType = MinerType::GPU;
+				miningThreads = 1;
+			}
 		}
 		else if (arg == "--no-precompute")
 		{
