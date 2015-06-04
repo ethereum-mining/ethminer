@@ -70,8 +70,7 @@ public:
 	void reset();
 
 	DownloadMan const& downloadMan() const { return m_man; }
-	bool isSyncing() const;
-
+	bool isSyncing() const { Guard l(x_sync); return isSyncing_UNSAFE(); }
 	bool isBanned(p2p::NodeId _id) const { return !!m_banned.count(_id); }
 
 	void noteNewTransactions() { m_newTransactions = true; }
@@ -82,7 +81,6 @@ public:
 	void onPeerNewBlock(EthereumPeer* _peer, RLP const& _r); ///< Called by peer once it has new blocks
 	void onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes); ///< Called by peer once it has new hashes
 	void onPeerHashes(EthereumPeer* _peer, h256s const& _hashes); ///< Called by peer once it has another sequential block of hashes during sync
-	void onPeerHashes(EthereumPeer* _peer, unsigned _index, h256s const& _hashes); ///< Called by peer once it has a new ordered block of hashes starting with a particular number
 	void onPeerTransactions(EthereumPeer* _peer, RLP const& _r); ///< Called by peer when it has new transactions
 
 	DownloadMan& downloadMan() { return m_man; }
@@ -96,6 +94,7 @@ private:
 
 	void forEachPeerPtr(std::function<void(std::shared_ptr<EthereumPeer>)> const& _f) const;
 	void forEachPeer(std::function<void(EthereumPeer*)> const& _f) const;
+	bool isSyncing_UNSAFE() const;
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	void doWork();
