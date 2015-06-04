@@ -90,8 +90,10 @@ public:
 	BlockChain const& chain() { return m_chain; }
 
 	static unsigned const c_oldProtocolVersion;
+
 private:
-	std::pair<std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<EthereumPeer>>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
+	std::tuple<std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<p2p::Session>>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
+
 	void forEachPeerPtr(std::function<void(std::shared_ptr<EthereumPeer>)> const& _f) const;
 	void forEachPeer(std::function<void(EthereumPeer*)> const& _f) const;
 
