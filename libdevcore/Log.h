@@ -59,6 +59,14 @@ extern std::function<void(std::string const&, char const*)> g_logPost;
 /// or equal to the currently output verbosity (g_logVerbosity).
 extern std::map<std::type_info const*, bool> g_logOverride;
 
+/// Temporary changes system's verbosity for specific function. Restores the old verbosity when function returns.
+struct VerbosityHolder
+{
+	VerbosityHolder(int _temporaryValue) : oldLogVerbosity(g_logVerbosity) { g_logVerbosity = _temporaryValue; }
+	~VerbosityHolder() { g_logVerbosity = oldLogVerbosity; }
+	int oldLogVerbosity;
+};
+
 #define ETH_THREAD_CONTEXT(name) for (std::pair<dev::ThreadContext, bool> __eth_thread_context(name, true); p.second; p.second = false)
 
 class ThreadContext
