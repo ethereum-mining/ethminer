@@ -28,7 +28,9 @@ using namespace dev;
 namespace dev
 {
 
-char const* Version = "0.9.17";
+char const* Version = "0.9.23";
+
+const u256 UndefinedU256 = ~(u256)0;
 
 void HasInvariants::checkInvariants() const
 {

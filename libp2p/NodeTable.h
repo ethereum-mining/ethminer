@@ -40,15 +40,17 @@ namespace p2p
  */
 struct NodeEntry: public Node
 {
-	NodeEntry(Node _src, Public _pubk, NodeIPEndpoint _gw);
+	NodeEntry(NodeId const& _src, Public const& _pubk, NodeIPEndpoint const& _gw);
 	unsigned const distance;	///< Node's distance (xor of _src as integer).
 	bool pending = true;		///< Node will be ignored until Pong is received
 };
 
-enum NodeTableEventType {
+enum NodeTableEventType
+{
 	NodeEntryAdded,
 	NodeEntryDropped
 };
+
 class NodeTable;
 class NodeTableEventHandler
 {
@@ -184,7 +186,7 @@ private:
 	/* todo: replace boost::posix_time; change constants to upper camelcase */
 	boost::posix_time::milliseconds const c_evictionCheckInterval = boost::posix_time::milliseconds(75);	///< Interval at which eviction timeouts are checked.
 	std::chrono::milliseconds const c_reqTimeout = std::chrono::milliseconds(300);						///< How long to wait for requests (evict, find iterations).
-	std::chrono::milliseconds const c_bucketRefresh = std::chrono::milliseconds(57600);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
+	std::chrono::milliseconds const c_bucketRefresh = std::chrono::milliseconds(7200);							///< Refresh interval prevents bucket from becoming stale. [Kademlia]
 
 	struct NodeBucket
 	{
@@ -201,7 +203,7 @@ private:
 	void ping(NodeEntry* _n) const;
 
 	/// Returns center node entry which describes this node and used with dist() to calculate xor metric for node table nodes.
-	NodeEntry center() const { return NodeEntry(m_node, m_node.publicKey(), m_node.endpoint); }
+	NodeEntry center() const { return NodeEntry(m_node.id, m_node.publicKey(), m_node.endpoint); }
 
 	/// Used by asynchronous operations to return NodeEntry which is active and managed by node table.
 	std::shared_ptr<NodeEntry> nodeEntry(NodeId _id);
@@ -245,7 +247,7 @@ private:
 
 	std::unique_ptr<NodeTableEventHandler> m_nodeEventHandler;		///< Event handler for node events.
 
-	Node m_node;													///< This node.
+	Node m_node;													///< This node. LOCK x_state if endpoint access or mutation is required. Do not modify id.
 	Secret m_secret;												///< This nodes secret key.
 
 	mutable Mutex x_nodes;											///< LOCK x_state first if both locks are required. Mutable for thread-safe copy in nodes() const.

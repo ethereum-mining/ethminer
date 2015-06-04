@@ -21,33 +21,33 @@
 
 #include "Common.h"
 
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include "Message.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 using namespace dev::shh;
 
-CollapsedTopicPart dev::shh::collapse(FullTopicPart const& _p)
+AbridgedTopic dev::shh::abridge(Topic const& _p)
 {
-	return CollapsedTopicPart(sha3(_p));
+	return AbridgedTopic(sha3(_p));
 }
 
-CollapsedTopic dev::shh::collapse(FullTopic const& _fullTopic)
+AbridgedTopics dev::shh::abridge(Topics const& _topics)
 {
-	CollapsedTopic ret;
-	ret.reserve(_fullTopic.size());
-	for (auto const& ft: _fullTopic)
-		ret.push_back(collapse(ft));
+	AbridgedTopics ret;
+	ret.reserve(_topics.size());
+	for (auto const& t : _topics)
+		ret.push_back(abridge(t));
 	return ret;
 }
 
-CollapsedTopic BuildTopic::toTopic() const
+AbridgedTopics BuildTopic::toAbridgedTopics() const
 {
-	CollapsedTopic ret;
+	AbridgedTopics ret;
 	ret.reserve(m_parts.size());
 	for (auto const& h: m_parts)
-		ret.push_back(collapse(h));
+		ret.push_back(abridge(h));
 	return ret;
 }
 
@@ -71,7 +71,7 @@ bool TopicFilter::matches(Envelope const& _e) const
 		for (unsigned i = 0; i < t.size(); ++i)
 		{
 			for (auto et: _e.topic())
-				if (((t[i].first ^ et) & t[i].second) == CollapsedTopicPart())
+				if (((t[i].first ^ et) & t[i].second) == AbridgedTopic())
 					goto NEXT_TOPICPART;
 			// failed to match topicmask against any topics: move on to next mask
 			goto NEXT_TOPICMASK;
@@ -89,7 +89,7 @@ TopicMask BuildTopicMask::toTopicMask() const
 	TopicMask ret;
 	ret.reserve(m_parts.size());
 	for (auto const& h: m_parts)
-		ret.push_back(make_pair(collapse(h), ~CollapsedTopicPart()));
+		ret.push_back(make_pair(abridge(h), ~AbridgedTopic()));
 	return ret;
 }
 

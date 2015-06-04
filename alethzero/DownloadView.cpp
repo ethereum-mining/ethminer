@@ -52,7 +52,10 @@ void DownloadView::paintEvent(QPaintEvent*)
 	QPointF pos(0, 0);
 
 	auto bg = m_man->blocksGot();
-
+	unsigned subCount = m_man->subCount();
+	if (subCount == 0)
+		return;
+	unsigned dh = 360 / subCount;
 	for (unsigned i = bg.all().first, ei = bg.all().second; i < ei; ++i)
 	{
 		int s = -2;
@@ -68,7 +71,6 @@ void DownloadView::paintEvent(QPaintEvent*)
 				h++;
 			});
 		}
-		unsigned dh = 360 / m_man->subCount();
 		if (s == -2)
 			p.fillRect(QRectF(QPointF(pos) + QPointF(3 * area.width() / 8, 3 * area.height() / 8), area / 4), Qt::black);
 		else if (s == -1)

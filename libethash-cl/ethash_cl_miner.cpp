@@ -27,6 +27,7 @@
 #include <iostream>
 #include <assert.h>
 #include <queue>
+#include <random>
 #include <vector>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
@@ -34,6 +35,7 @@
 #include "ethash_cl_miner_kernel.h"
 
 #define ETHASH_BYTES 32
+#define ETHASH_CL_MINIMUM_MEMORY 2000000000
 
 // workaround lame platforms
 #if !CL_VERSION_1_2
@@ -45,6 +47,9 @@
 #undef max
 
 using namespace std;
+
+// TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
+#define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
 
 static void add_definition(std::string& source, char const* id, unsigned value)
 {
@@ -60,13 +65,18 @@ ethash_cl_miner::ethash_cl_miner()
 {
 }
 
+ethash_cl_miner::~ethash_cl_miner()
+{
+	finish();
+}
+
 std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
 {
 	std::vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
 	if (platforms.empty())
 	{
-		cout << "No OpenCL platforms found." << endl;
+		ETHCL_LOG("No OpenCL platforms found.");
 		return std::string();
 	}
 
@@ -76,7 +86,7 @@ std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _devic
 	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 	if (devices.empty())
 	{
-		cout << "No OpenCL devices found." << endl;
+		ETHCL_LOG("No OpenCL devices found.");
 		return std::string();
 	}
 
@@ -101,7 +111,7 @@ unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
 	cl::Platform::get(&platforms);
 	if (platforms.empty())
 	{
-		cout << "No OpenCL platforms found." << endl;
+		ETHCL_LOG("No OpenCL platforms found.");
 		return 0;
 	}
 
@@ -110,18 +120,57 @@ unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
 	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 	if (devices.empty())
 	{
-		cout << "No OpenCL devices found." << endl;
+		ETHCL_LOG("No OpenCL devices found.");
 		return 0;
 	}
 	return devices.size();
 }
 
+bool ethash_cl_miner::haveSufficientGPUMemory(unsigned _platformId)
+{
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (platforms.empty())
+	{
+		ETHCL_LOG("No OpenCL platforms found.");
+		return false;
+	}
+
+	std::vector<cl::Device> devices;
+	unsigned platform_num = std::min<unsigned>(_platformId, platforms.size() - 1);
+	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
+	if (devices.empty())
+	{
+		ETHCL_LOG("No OpenCL devices found.");
+		return false;
+	}
+
+	for (cl::Device const& device: devices)
+	{
+		cl_ulong result;
+		device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
+		if (result >= ETHASH_CL_MINIMUM_MEMORY)
+		{
+			ETHCL_LOG(
+				"Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
+				<< "] with " << result << " bytes of GPU memory"
+			);
+			return true;
+		}
+		else
+			ETHCL_LOG(
+				"OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
+				<< " has insufficient GPU memory." << result <<
+				" bytes of memory found < " << ETHASH_CL_MINIMUM_MEMORY << " bytes of memory required"
+			);
+	}
+	return false;
+}
+
 void ethash_cl_miner::finish()
 {
 	if (m_queue())
-	{
 		m_queue.finish();
-	}
 }
 
 bool ethash_cl_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned workgroup_size, unsigned _platformId, unsigned _deviceId)
@@ -131,7 +180,7 @@ bool ethash_cl_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned work
 	cl::Platform::get(&platforms);
 	if (platforms.empty())
 	{
-		cout << "No OpenCL platforms found." << endl;
+		ETHCL_LOG("No OpenCL platforms found.");
 		return false;
 	}
 
@@ -139,31 +188,29 @@ bool ethash_cl_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned work
 
 	_platformId = std::min<unsigned>(_platformId, platforms.size() - 1);
 
-	cout << "Using platform: " << platforms[_platformId].getInfo<CL_PLATFORM_NAME>().c_str() << endl;
+	ETHCL_LOG("Using platform: " << platforms[_platformId].getInfo<CL_PLATFORM_NAME>().c_str());
 
 	// get GPU device of the default platform
 	std::vector<cl::Device> devices;
 	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 	if (devices.empty())
 	{
-		cout << "No OpenCL devices found." << endl;
+		ETHCL_LOG("No OpenCL devices found.");
 		return false;
 	}
 
 	// use selected device
 	cl::Device& device = devices[std::min<unsigned>(_deviceId, devices.size() - 1)];
 	std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
-	cout << "Using device: " << device.getInfo<CL_DEVICE_NAME>().c_str() << "(" << device_version.c_str() << ")" << endl;
+	ETHCL_LOG("Using device: " << device.getInfo<CL_DEVICE_NAME>().c_str() << "(" << device_version.c_str() << ")");
 
 	if (strncmp("OpenCL 1.0", device_version.c_str(), 10) == 0)
 	{
-		cout << "OpenCL 1.0 is not supported." << endl;
+		ETHCL_LOG("OpenCL 1.0 is not supported.");
 		return false;
 	}
 	if (strncmp("OpenCL 1.1", device_version.c_str(), 10) == 0)
-	{
 		m_opencl_1_1 = true;
-	}
 
 	// create context
 	m_context = cl::Context(std::vector<cl::Device>(&device, &device + 1));
@@ -191,7 +238,7 @@ bool ethash_cl_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned work
 	}
 	catch (cl::Error err)
 	{
-		cout << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str();
+		ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
 		return false;
 	}
 	m_hash_kernel = cl::Kernel(program, "ethash_hash");
@@ -204,14 +251,15 @@ bool ethash_cl_miner::init(uint8_t const* _dag, uint64_t _dagSize, unsigned work
 	m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
 	// compute dag on CPU
-	{
+	try {
 		m_queue.enqueueWriteBuffer(m_dag, CL_TRUE, 0, _dagSize, _dag);
-
-		// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
-//		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, _dagSize);
-		// memcpying 1GB: horrible... really. horrible. but necessary since we can't mmap *and* gpumap.
-//		_fillDAG(dag_ptr);
-//		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
+	}
+	catch (...)
+	{
+		// didn't work. shitty driver. try allocating in CPU RAM and manually memcpying it.
+		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, _dagSize);
+		memcpy(dag_ptr, _dag, _dagSize);
+		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
 	}
 
 	// create mining buffers
@@ -301,26 +349,20 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 	};
 	std::queue<pending_batch> pending;
 
-	static uint32_t const c_zero = 0;
+	uint32_t const c_zero = 0;
 
 	// update header constant buffer
 	m_queue.enqueueWriteBuffer(m_header, false, 0, 32, header);
 	for (unsigned i = 0; i != c_num_buffers; ++i)
-	{
 		m_queue.enqueueWriteBuffer(m_search_buf[i], false, 0, 4, &c_zero);
-	}
 
 #if CL_VERSION_1_2 && 0
 	cl::Event pre_return_event;
 	if (!m_opencl_1_1)
-	{
 		m_queue.enqueueBarrierWithWaitList(NULL, &pre_return_event);
-	}
 	else
 #endif
-	{
 		m_queue.finish();
-	}
 
 	/*
 	__kernel void ethash_combined_search(
@@ -341,7 +383,9 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 
 	unsigned buf = 0;
-	for (uint64_t start_nonce = 0; ; start_nonce += c_search_batch_size)
+	std::random_device engine;
+	uint64_t start_nonce = std::uniform_int_distribution<uint64_t>()(engine);
+	for (; ; start_nonce += c_search_batch_size)
 	{
 		// supply output buffer to kernel
 		m_search_kernel.setArg(0, m_search_buf[buf]);
@@ -386,9 +430,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 	// not safe to return until this is ready
 #if CL_VERSION_1_2 && 0
 	if (!m_opencl_1_1)
-	{
 		pre_return_event.wait();
-	}
 #endif
 }
 

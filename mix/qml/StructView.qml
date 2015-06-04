@@ -13,6 +13,11 @@ Column
 	property string context
 	Layout.fillWidth: true
 	spacing: 0
+
+	DebuggerPaneStyle {
+		id: dbgStyle
+	}
+
 	Repeater
 	{
 		id: repeater
@@ -29,6 +34,9 @@ Column
 				id: typeLabel
 				text: modelData.type.name
 				anchors.verticalCenter: parent.verticalCenter
+				font.family: dbgStyle.general.basicFont
+				color: dbgStyle.general.basicColor
+				font.pointSize: dbgStyle.general.basicFontSize
 			}
 
 			DefaultLabel {
@@ -36,6 +44,9 @@ Column
 				id: nameLabel
 				text: modelData.name
 				anchors.verticalCenter: parent.verticalCenter
+				font.family: dbgStyle.general.basicFont
+				color: dbgStyle.general.basicColor
+				font.pointSize: dbgStyle.general.basicFontSize
 			}
 
 			DefaultLabel {
@@ -43,7 +54,11 @@ Column
 				id: equalLabel
 				text: "="
 				anchors.verticalCenter: parent.verticalCenter
+				font.family: dbgStyle.general.basicFont
+				color: dbgStyle.general.basicColor
+				font.pointSize: dbgStyle.general.basicFontSize
 			}
+
 			Loader
 			{
 				id: typeLoader
@@ -75,38 +90,13 @@ Column
 					item.readOnly = context === "variable";
 					if (ptype.category === QSolidityType.Address)
 					{
+						item.accounts = accounts
 						item.value = getValue();
 						if (context === "parameter")
 						{
 							var dec = modelData.type.name.split(" ");
 							item.subType = dec[0];
-							item.accountRef.append({"itemid": " - "});
-
-							if (item.subType === "contract" || item.subType === "address")
-							{
-								var trCr = 0;
-								for (var k = 0; k < transactionsModel.count; k++)
-								{
-									if (k >= transactionIndex)
-										break;
-									var tr = transactionsModel.get(k);
-									if (tr.functionId === tr.contractId && (dec[1] === tr.contractId || item.subType === "address"))
-									{
-										item.accountRef.append({ "itemid": tr.contractId + " - " + trCr, "value": "<" + tr.contractId + " - " + trCr + ">", "type": "contract" });
-										trCr++;
-									}
-								}
-							}
-							if (item.subType === "address")
-							{
-								for (k = 0; k < accounts.length; k++)
-								{
-									if (accounts[k].address === undefined)
-										accounts[k].address = clientModel.address(accounts[k].secret);
-									item.accountRef.append({ "itemid": accounts[k].name, "value": "0x" + accounts[k].address, "type": "address" });
-								}
-
-							}
+							item.load();
 						}
 						item.init();
 					}
@@ -117,6 +107,9 @@ Column
 					}
 					else
 						item.value = getValue();
+
+					if (ptype.category === QSolidityType.Bool)
+						item.init();
 
 					item.onValueChanged.connect(function() {
 						vals[pname] = item.value;

@@ -25,7 +25,6 @@
 #include <libweb3jsonrpc/WebThreeStubServer.h>
 #include "JSConsole.h"
 #include "JSV8Connector.h"
-#include "libjsconsole/JSConsoleResources.hpp"
 
 // TODO! make readline optional!
 #include <readline/readline.h>
@@ -35,12 +34,12 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-JSConsole::JSConsole(WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
+JSConsole::JSConsole(WebThreeDirect& _web3, shared_ptr<AccountHolder> const& _accounts):
 	m_engine(),
 	m_printer(m_engine)
 {
 	m_jsonrpcConnector.reset(new JSV8Connector(m_engine));
-	m_jsonrpcServer.reset(new WebThreeStubServer(*m_jsonrpcConnector.get(), _web3, _accounts));
+	m_jsonrpcServer.reset(new WebThreeStubServer(*m_jsonrpcConnector.get(), _web3, _accounts, vector<KeyPair>()));
 }
 
 JSConsole::~JSConsole() {}

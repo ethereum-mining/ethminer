@@ -33,6 +33,7 @@
 #include <QtWidgets/QMainWindow>
 #include <libdevcore/RLP.h>
 #include <libethcore/Common.h>
+#include <libethcore/KeyManager.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
 #include <libwebthree/WebThree.h>
@@ -41,6 +42,8 @@
 #include "Transact.h"
 #include "NatspecHandler.h"
 #include "Connect.h"
+
+class QListWidgetItem;
 
 namespace Ui {
 class Main;
@@ -86,9 +89,14 @@ public:
 	std::pair<dev::Address, dev::bytes> fromString(std::string const& _a) const override;
 	std::string renderDiff(dev::eth::StateDiff const& _d) const override;
 
-	QList<dev::KeyPair> owned() const { return m_myIdentities + m_myKeys; }
+	QList<dev::KeyPair> owned() const { return m_myIdentities; }
 
 	dev::u256 gasPrice() const { return 10 * dev::eth::szabo; }
+
+	dev::eth::KeyManager& keyManager() override { return m_keyManager; }
+	bool doConfirm();
+
+	dev::Secret retrieveSecret(dev::Address const& _a) const override;
 
 public slots:
 	void load(QString _file);
@@ -117,6 +125,7 @@ private slots:
 
 	// Mining
 	void on_mine_triggered();
+	void on_prepNextDAG_triggered();
 
 	// View
 	void on_refresh_triggered();
@@ -128,7 +137,10 @@ private slots:
 	void on_newAccount_triggered();
 	void on_killAccount_triggered();
 	void on_importKey_triggered();
+	void on_reencryptKey_triggered();
+	void on_reencryptAll_triggered();
 	void on_importKeyFile_triggered();
+	void on_claimPresale_triggered();
 	void on_exportKey_triggered();
 
 	// Account pane
@@ -144,7 +156,7 @@ private slots:
 	void on_exportState_triggered();
 
 	// Stuff concerning the blocks/transactions/accounts panels
-	void ourAccountsRowsMoved();
+	void on_ourAccounts_itemClicked(QListWidgetItem* _i);
 	void on_ourAccounts_doubleClicked();
 	void on_accounts_doubleClicked();
 	void on_accounts_currentItemChanged();
@@ -236,6 +248,9 @@ private:
 	void refreshBlockCount();
 	void refreshBalances();
 
+	void setBeneficiary(dev::Address const& _b);
+	std::string getPassword(std::string const& _title, std::string const& _for, std::string* _hint = nullptr, bool* _ok = nullptr);
+
 	std::unique_ptr<Ui::Main> ui;
 
 	std::unique_ptr<dev::WebThreeDirect> m_webThree;
@@ -247,10 +262,11 @@ private:
 
 	QByteArray m_networkConfig;
 	QStringList m_servers;
-	QList<dev::KeyPair> m_myKeys;
 	QList<dev::KeyPair> m_myIdentities;
+	dev::eth::KeyManager m_keyManager;
 	QString m_privateChain;
 	dev::Address m_nameReg;
+	dev::Address m_beneficiary;
 
 	QList<QPair<QString, QString>> m_consoleHistory;
 	QMutex m_logLock;

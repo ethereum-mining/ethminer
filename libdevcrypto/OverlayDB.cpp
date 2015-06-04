@@ -19,6 +19,7 @@
  * @date 2014
  */
 
+#include <thread>
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
 #include <libdevcore/Common.h>
@@ -29,11 +30,19 @@ using namespace dev;
 namespace dev
 {
 
+h256 const EmptyTrie = sha3(rlp(""));
+
 OverlayDB::~OverlayDB()
 {
 	if (m_db.use_count() == 1 && m_db.get())
 		cnote << "Closing state DB";
 }
+
+class WriteBatchNoter: public ldb::WriteBatch::Handler
+{
+	virtual void Put(ldb::Slice const& _key, ldb::Slice const& _value) { cnote << "Put" << toHex(bytesConstRef(_key)) << "=>" << toHex(bytesConstRef(_value)); }
+	virtual void Delete(ldb::Slice const& _key) { cnote << "Delete" << toHex(bytesConstRef(_key)); }
+};
 
 void OverlayDB::commit()
 {
@@ -41,30 +50,52 @@ void OverlayDB::commit()
 	{
 		ldb::WriteBatch batch;
 //		cnote << "Committing nodes to disk DB:";
-		for (auto const& i: m_main)
+		DEV_READ_GUARDED(x_this)
 		{
-//			cnote << i.first << "#" << m_main[i.first].second;
-			if (i.second.second)
-				batch.Put(ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.first.data(), i.second.first.size()));
-		}
-		for (auto const& i: m_aux)
-			if (i.second.second)
+			for (auto const& i: m_main)
 			{
-				bytes b = i.first.asBytes();
-				b.push_back(255);	// for aux
-				batch.Put(bytesConstRef(&b), bytesConstRef(&i.second.first));
+				if (i.second.second)
+					batch.Put(ldb::Slice((char const*)i.first.data(), i.first.size), ldb::Slice(i.second.first.data(), i.second.first.size()));
+//				cnote << i.first << "#" << m_main[i.first].second;
 			}
-		m_db->Write(m_writeOptions, &batch);
-		m_aux.clear();
-		m_main.clear();
+			for (auto const& i: m_aux)
+				if (i.second.second)
+				{
+					bytes b = i.first.asBytes();
+					b.push_back(255);	// for aux
+					batch.Put(bytesConstRef(&b), bytesConstRef(&i.second.first));
+				}
+		}
+
+		for (unsigned i = 0; i < 10; ++i)
+		{
+			ldb::Status o = m_db->Write(m_writeOptions, &batch);
+			if (o.ok())
+				break;
+			if (i == 9)
+			{
+				cwarn << "Fail writing to state database. Bombing out.";
+				exit(-1);
+			}
+			cwarn << "Error writing to state database: " << o.ToString();
+			WriteBatchNoter n;
+			batch.Iterate(&n);
+			cwarn << "Sleeping for" << (i + 1) << "seconds, then retrying.";
+			this_thread::sleep_for(chrono::seconds(i + 1));
+		}
+		DEV_WRITE_GUARDED(x_this)
+		{
+			m_aux.clear();
+			m_main.clear();
+		}
 	}
 }
 
-bytes OverlayDB::lookupAux(h256 _h) const
+bytes OverlayDB::lookupAux(h256 const& _h) const
 {
 	bytes ret = MemoryDB::lookupAux(_h);
-	if (!ret.empty())
-		return ret;
+	if (!ret.empty() || !m_db)
+		return move(ret);
 	std::string v;
 	bytes b = _h.asBytes();
 	b.push_back(255);	// for aux
@@ -76,18 +107,19 @@ bytes OverlayDB::lookupAux(h256 _h) const
 
 void OverlayDB::rollback()
 {
+	WriteGuard l(x_this);
 	m_main.clear();
 }
 
-std::string OverlayDB::lookup(h256 _h) const
+std::string OverlayDB::lookup(h256 const& _h) const
 {
 	std::string ret = MemoryDB::lookup(_h);
 	if (ret.empty() && m_db)
 		m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
-	return ret;
+	return move(ret);
 }
 
-bool OverlayDB::exists(h256 _h) const
+bool OverlayDB::exists(h256 const& _h) const
 {
 	if (MemoryDB::exists(_h))
 		return true;
@@ -97,16 +129,20 @@ bool OverlayDB::exists(h256 _h) const
 	return !ret.empty();
 }
 
-void OverlayDB::kill(h256 _h)
+void OverlayDB::kill(h256 const& _h)
 {
-#if ETH_PARANOIA
+#if ETH_PARANOIA || 1
 	if (!MemoryDB::kill(_h))
 	{
 		std::string ret;
 		if (m_db)
 			m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
-		if (ret.empty())
+		// No point node ref decreasing for EmptyTrie since we never bother incrementing it in the first place for
+		// empty storage tries.
+		if (ret.empty() && _h != EmptyTrie)
 			cnote << "Decreasing DB node ref count below zero with no DB node. Probably have a corrupt Trie." << _h;
+
+		// TODO: for 1.1: ref-counted triedb.
 	}
 #else
 	MemoryDB::kill(_h);

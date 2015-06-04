@@ -29,7 +29,7 @@
 
 #include <libdevcore/RLP.h>
 #include <libdevcore/Guards.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include "Common.h"
 #include "Message.h"
 
@@ -38,19 +38,13 @@ namespace dev
 namespace shh
 {
 
-/*struct TopicMask
-{
-	Topic data;
-	Topic mask;
-};*/
-
 class Watch;
 
 struct InstalledFilter
 {
-	InstalledFilter(FullTopic const& _f): full(_f), filter(_f) {}
+	InstalledFilter(Topics const& _t): full(_t), filter(_t) {}
 
-	FullTopic full;
+	Topics full;
 	TopicFilter filter;
 	unsigned refCount = 1;
 };
@@ -71,8 +65,8 @@ public:
 
 	virtual void inject(Envelope const& _m, WhisperPeer* _from = nullptr) = 0;
 
-	virtual FullTopic const& fullTopic(unsigned _id) const = 0;
-	virtual unsigned installWatch(FullTopic const& _mask) = 0;
+	virtual Topics const& fullTopics(unsigned _id) const = 0;
+	virtual unsigned installWatch(Topics const& _filter) = 0;
 	virtual unsigned installWatchOnId(h256 _filterId) = 0;
 	virtual void uninstallWatch(unsigned _watchId) = 0;
 	virtual h256s peekWatch(unsigned _watchId) const = 0;
@@ -81,10 +75,10 @@ public:
 
 	virtual Envelope envelope(h256 _m) const = 0;
 
-	void post(bytes const& _payload, FullTopic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_topic, _ttl, _workToProve)); }
-	void post(Public _to, bytes const& _payload, FullTopic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).sealTo(_to, _topic, _ttl, _workToProve)); }
-	void post(Secret _from, bytes const& _payload, FullTopic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_from, _topic, _ttl, _workToProve)); }
-	void post(Secret _from, Public _to, bytes const& _payload, FullTopic _topic, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).sealTo(_from, _to, _topic, _ttl, _workToProve)); }
+	void post(bytes const& _payload, Topics _topics, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_topics, _ttl, _workToProve)); }
+	void post(Public _to, bytes const& _payload, Topics _topics, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).sealTo(_to, _topics, _ttl, _workToProve)); }
+	void post(Secret _from, bytes const& _payload, Topics _topics, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).seal(_from, _topics, _ttl, _workToProve)); }
+	void post(Secret _from, Public _to, bytes const& _payload, Topics _topics, unsigned _ttl = 50, unsigned _workToProve = 50) { inject(Message(_payload).sealTo(_from, _to, _topics, _ttl, _workToProve)); }
 };
 
 struct WatshhChannel: public dev::LogChannel { static const char* name() { return "shh"; } static const int verbosity = 1; };
@@ -106,7 +100,7 @@ class Watch: public boost::noncopyable
 
 public:
 	Watch() {}
-	Watch(Interface& _c, FullTopic const& _f): m_c(&_c), m_id(_c.installWatch(_f)) {}
+	Watch(Interface& _c, Topics const& _t): m_c(&_c), m_id(_c.installWatch(_t)) {}
 	~Watch() { if (m_c) m_c->uninstallWatch(m_id); }
 
 	h256s check() { return m_c ? m_c->checkWatch(m_id) : h256s(); }

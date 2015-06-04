@@ -22,7 +22,7 @@
 #pragma once
 
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libethcore/Common.h>
 #include <libevmcore/Params.h>
 namespace dev
@@ -234,6 +234,9 @@ inline std::ostream& operator<<(std::ostream& _out, Transaction const& _t)
 	_out << "<-" << _t.safeSender().abridged() << " #" << _t.nonce() << "}";
 	return _out;
 }
+
+void badTransaction(bytesConstRef _tx, std::string const& _err);
+inline void badTransaction(bytes const& _tx, std::string const& _err) { badTransaction(&_tx, _err); }
 
 }
 }

@@ -367,10 +367,10 @@ public:
 
 	virtual Category getCategory() const override { return Category::Array; }
 
-	/// Constructor for a byte array ("bytes")
-	explicit ArrayType(Location _location):
+	/// Constructor for a byte array ("bytes") and string.
+	explicit ArrayType(Location _location, bool _isString = false):
 		m_location(_location),
-		m_isByteArray(true),
+		m_arrayKind(_isString ? ArrayKind::String : ArrayKind::Bytes),
 		m_baseType(std::make_shared<FixedBytesType>(1))
 	{}
 	/// Constructor for a dynamically sized array type ("type[]")
@@ -394,11 +394,17 @@ public:
 	virtual u256 getStorageSize() const override;
 	virtual unsigned getSizeOnStack() const override;
 	virtual std::string toString() const override;
-	virtual MemberList const& getMembers() const override { return s_arrayTypeMemberList; }
+	virtual MemberList const& getMembers() const override
+	{
+		return isString() ? EmptyMemberList : s_arrayTypeMemberList;
+	}
 	virtual TypePointer externalType() const override;
 
 	Location getLocation() const { return m_location; }
-	bool isByteArray() const { return m_isByteArray; }
+	/// @returns true if this is a byte array or a string
+	bool isByteArray() const { return m_arrayKind != ArrayKind::Ordinary; }
+	/// @returns true if this is a string
+	bool isString() const { return m_arrayKind == ArrayKind::String; }
 	TypePointer const& getBaseType() const { solAssert(!!m_baseType, ""); return m_baseType;}
 	u256 const& getLength() const { return m_length; }
 
@@ -407,8 +413,12 @@ public:
 	std::shared_ptr<ArrayType> copyForLocation(Location _location) const;
 
 private:
+	/// String is interpreted as a subtype of Bytes.
+	enum class ArrayKind { Ordinary, Bytes, String };
+
 	Location m_location;
-	bool m_isByteArray = false; ///< Byte arrays ("bytes") have different semantics from ordinary arrays.
+	///< Byte arrays ("bytes") and strings have different semantics from ordinary arrays.
+	ArrayKind m_arrayKind = ArrayKind::Ordinary;
 	TypePointer m_baseType;
 	bool m_hasDynamicLength = true;
 	u256 m_length;
@@ -540,17 +550,32 @@ private:
 class FunctionType: public Type
 {
 public:
-	/// The meaning of the value(s) on the stack referencing the function:
-	/// INTERNAL: jump tag, EXTERNAL: contract address + function identifier,
-	/// BARE: contract address (non-abi contract call)
-	/// OTHERS: special virtual function, nothing on the stack
+	/// How this function is invoked on the EVM.
 	/// @todo This documentation is outdated, and Location should rather be named "Type"
-	enum class Location { Internal, External, Creation, Send,
-						  SHA3, Suicide,
-						  ECRecover, SHA256, RIPEMD160,
-						  Log0, Log1, Log2, Log3, Log4, Event,
-						  SetGas, SetValue, BlockHash,
-						  Bare };
+	enum class Location
+	{
+		Internal, ///< stack-call using plain JUMP
+		External, ///< external call using CALL
+		CallCode, ///< extercnal call using CALLCODE, i.e. not exchanging the storage
+		Bare, ///< CALL without function hash
+		BareCallCode, ///< CALLCODE without function hash
+		Creation, ///< external call using CREATE
+		Send, ///< CALL, but without data and gas
+		SHA3, ///< SHA3
+		Suicide, ///< SUICIDE
+		ECRecover, ///< CALL to special contract for ecrecover
+		SHA256, ///< CALL to special contract for sha256
+		RIPEMD160, ///< CALL to special contract for ripemd160
+		Log0,
+		Log1,
+		Log2,
+		Log3,
+		Log4,
+		Event, ///< syntactic sugar for LOG*
+		SetGas, ///< modify the default gas value for the function call
+		SetValue, ///< modify the default value transfer for the function call
+		BlockHash ///< BLOCKHASH
+	};
 
 	virtual Category getCategory() const override { return Category::Function; }
 
@@ -620,6 +645,8 @@ public:
 	/// @returns true if the types of parameters are equal (does't check return parameter types)
 	bool hasEqualArgumentTypes(FunctionType const& _other) const;
 
+	/// @returns true if the ABI is used for this call (only meaningful for external calls)
+	bool isBareCall() const;
 	Location const& getLocation() const { return m_location; }
 	/// @returns the external signature of this function type given the function name
 	/// If @a _name is not provided (empty string) then the @c m_declaration member of the

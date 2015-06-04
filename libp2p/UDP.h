@@ -29,7 +29,7 @@
 
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include "Common.h"
@@ -65,8 +65,8 @@ protected:
  */
 struct RLPXDatagramFace: public UDPDatagram
 {
-	static uint32_t futureFromEpoch(std::chrono::seconds _sec) { return std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count(); }
-	static uint32_t secondsSinceEpoch() { return std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now()).time_since_epoch()).count(); }
+	static uint32_t futureFromEpoch(std::chrono::seconds _sec) { return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count()); }
+	static uint32_t secondsSinceEpoch() { return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now()).time_since_epoch()).count()); }
 	static Public authenticate(bytesConstRef _sig, bytesConstRef _rlp);
 
 	virtual uint8_t packetType() = 0;
@@ -99,7 +99,7 @@ struct UDPSocketFace
  */
 struct UDPSocketEvents
 {
-	virtual void onDisconnected(UDPSocketFace*) {};
+	virtual void onDisconnected(UDPSocketFace*) {}
 	virtual void onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packetData) = 0;
 };
 
@@ -115,7 +115,7 @@ class UDPSocket: UDPSocketFace, public std::enable_shared_from_this<UDPSocket<Ha
 {
 public:
 	enum { maxDatagramSize = MaxDatagramSize };
-	static_assert(maxDatagramSize < 65507, "UDP datagrams cannot be larger than 65507 bytes");
+	static_assert((unsigned)maxDatagramSize < 65507u, "UDP datagrams cannot be larger than 65507 bytes");
 
 	/// Create socket for specific endpoint.
 	UDPSocket(ba::io_service& _io, UDPSocketEvents& _host, bi::udp::endpoint _endpoint): m_host(_host), m_endpoint(_endpoint), m_socket(_io) { m_started.store(false); m_closed.store(true); };

@@ -436,7 +436,7 @@ Dialog {
 							model: transactionsModel
 							headerVisible: false
 							TableViewColumn {
-								role: "name"
+								role: "label"
 								title: qsTr("Name")
 								width: 150
 								delegate: Item {
@@ -476,7 +476,7 @@ Dialog {
 											text: {
 												if (styleData.row >= 0)
 													return transactionsModel.get(
-																styleData.row).functionId
+																styleData.row).label
 												else
 													return ""
 											}
@@ -507,14 +507,25 @@ Dialog {
 					Button {
 						text: qsTr("OK")
 						onClicked: {
-							close()
-							accepted()
+							if (titleField.text === "")
+								alertDialog.open()
+							else
+							{
+								close()
+								accepted()
+							}
 						}
 					}
 					Button {
 						text: qsTr("Cancel")
 						onClicked: close()
 					}
+				}
+
+				MessageDialog
+				{
+					id: alertDialog
+					text: qsTr("Please provide a name.")
 				}
 
 				ListModel {

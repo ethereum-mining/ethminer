@@ -19,12 +19,19 @@
  * @date 2014
  */
 
+#pragma once
+
+#include <condition_variable>
 #include <libethash/ethash.h>
+#include <libdevcore/Worker.h>
 #include "Ethash.h"
 
 namespace dev
 {
-namespace eth{
+namespace eth
+{
+
+struct DAGChannel: public LogChannel { static const char* name(); static const int verbosity = 1; };
 
 class EthashAux
 {
@@ -33,35 +40,42 @@ public:
 
 	static EthashAux* get() { if (!s_this) s_this = new EthashAux(); return s_this; }
 
-	struct FullAllocation
-	{
-		FullAllocation(bytesConstRef _d): data(_d) {}
-		~FullAllocation() { delete [] data.data(); }
-		Ethash::Result compute(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) const;
-		bytesConstRef const data;
-	};
-
 	struct LightAllocation
 	{
-		LightAllocation(h256 const& _seed);
+		LightAllocation(h256 const& _seedHash);
 		~LightAllocation();
-		bytesConstRef data() const { return bytesConstRef((byte const*)light, size); }
-		Ethash::Result compute(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce) const;
+		bytesConstRef data() const;
+		Ethash::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
 		ethash_light_t light;
 		uint64_t size;
+	};
+
+	struct FullAllocation
+	{
+		FullAllocation(ethash_light_t _light, ethash_callback_t _cb);
+		~FullAllocation();
+		Ethash::Result compute(h256 const& _headerHash, Nonce const& _nonce) const;
+		bytesConstRef data() const;
+		uint64_t size() const { return ethash_full_dag_size(full); }
+		ethash_full_t full;
 	};
 
 	using LightType = std::shared_ptr<LightAllocation>;
 	using FullType = std::shared_ptr<FullAllocation>;
 
 	static h256 seedHash(unsigned _number);
-	static ethash_params params(BlockInfo const& _header);
-	static ethash_params params(h256 const& _seedHash);
-	static ethash_params params(unsigned _n);
-	static LightType light(BlockInfo const& _header);
+	static uint64_t number(h256 const& _seedHash);
+	static uint64_t cacheSize(BlockInfo const& _header);
+
 	static LightType light(h256 const& _seedHash);
-	static FullType full(BlockInfo const& _header, bytesRef _dest = bytesRef(), bool _createIfMissing = true);
-	static FullType full(h256 const& _header, bytesRef _dest = bytesRef(), bool _createIfMissing = true);
+
+	static const uint64_t NotGenerating = (uint64_t)-1;
+	/// Kicks off generation of DAG for @a _seedHash and @returns false or @returns true if ready.
+	static unsigned computeFull(h256 const& _seedHash, bool _createIfMissing = true);
+	/// Information on the generation progress.
+	static std::pair<uint64_t, unsigned> fullGeneratingProgress() { return std::make_pair(get()->m_generatingFullNumber, get()->m_fullProgress); }
+	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result or empty pointer if not existing and _createIfMissing is false.
+	static FullType full(h256 const& _seedHash, bool _createIfMissing = false, std::function<int(unsigned)> const& _f = std::function<int(unsigned)>());
 
 	static Ethash::Result eval(BlockInfo const& _header) { return eval(_header, _header.nonce); }
 	static Ethash::Result eval(BlockInfo const& _header, Nonce const& _nonce);
@@ -70,14 +84,22 @@ public:
 private:
 	EthashAux() {}
 
+	/// Kicks off generation of DAG for @a _blocknumber and blocks until ready; @returns result.
+
 	void killCache(h256 const& _s);
 
 	static EthashAux* s_this;
-	RecursiveMutex x_this;
 
+	SharedMutex x_lights;
 	std::unordered_map<h256, std::shared_ptr<LightAllocation>> m_lights;
+
+	Mutex x_fulls;
+	std::condition_variable m_fullsChanged;
 	std::unordered_map<h256, std::weak_ptr<FullAllocation>> m_fulls;
 	FullType m_lastUsedFull;
+	std::unique_ptr<std::thread> m_fullGenerator;
+	uint64_t m_generatingFullNumber = NotGenerating;
+	unsigned m_fullProgress;
 
 	Mutex x_epochs;
 	std::unordered_map<h256, unsigned> m_epochs;

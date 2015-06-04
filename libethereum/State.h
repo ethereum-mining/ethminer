@@ -25,7 +25,8 @@
 #include <unordered_map>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/TrieDB.h>
+#include <libdevcore/TrieDB.h>
+#include <libdevcrypto/OverlayDB.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/ProofOfWork.h>
@@ -49,7 +50,7 @@ class BlockChain;
 class State;
 
 struct StateChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
-struct StateTrace: public LogChannel { static const char* name(); static const int verbosity = 7; };
+struct StateTrace: public LogChannel { static const char* name(); static const int verbosity = 5; };
 struct StateDetail: public LogChannel { static const char* name(); static const int verbosity = 14; };
 struct StateSafeExceptions: public LogChannel { static const char* name(); static const int verbosity = 21; };
 
@@ -83,9 +84,16 @@ public:
 
 class TrivialGasPricer: public GasPricer
 {
-protected:
-	u256 ask(State const&) const override { return 10 * szabo; }
-	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return 10 * szabo; }
+public:
+	TrivialGasPricer() = default;
+	TrivialGasPricer(u256 const& _ask, u256 const& _bid): m_ask(_ask), m_bid(_bid) {}
+
+	u256 ask(State const&) const override { return m_ask; }
+	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return m_bid; }
+
+private:
+	u256 m_ask = 10 * szabo;
+	u256 m_bid = 10 * szabo;
 };
 
 enum class Permanence
@@ -118,7 +126,7 @@ public:
 	explicit State(OverlayDB const& _db, BaseState _bs = BaseState::PreExisting, Address _coinbaseAddress = Address());
 
 	/// Construct state object from arbitrary point in blockchain.
-	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash);
+	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Copy state object.
 	State(State const& _s);
@@ -189,7 +197,7 @@ public:
 
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed);
+	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
 	/// Get the remaining gas limit in this block.
 	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
@@ -349,6 +357,9 @@ private:
 	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
 	/// Debugging only. Good for checking the Trie is in shape.
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
+
+	/// Provide a standard VM trace for debugging purposes.
+	std::string vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir);
 
 	OverlayDB m_db;								///< Our overlay for the state tree.
 	SecureTrieDB<Address, OverlayDB> m_state;	///< Our state tree, as an OverlayDB DB.
