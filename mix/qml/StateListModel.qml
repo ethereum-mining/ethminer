@@ -225,6 +225,7 @@ Item {
 				var ctorTr = defaultTransactionItem();
 				ctorTr.functionId = c;
 				ctorTr.contractId = c;
+				ctorTr.label = qsTr("Deploy") + " " + ctorTr.contractId;
 				ctorTr.sender = item.accounts[0].secret;
 				item.transactions.push(ctorTr);
 			}
@@ -265,6 +266,7 @@ Item {
 						var ctorTr = defaultTransactionItem();
 						ctorTr.functionId = c;
 						ctorTr.contractId = c;
+						ctorTr.label = qsTr("Deploy") + " " + ctorTr.contractId;
 						ctorTr.sender = state.accounts[0].secret;
 						state.transactions.push(ctorTr);
 						changed = true;

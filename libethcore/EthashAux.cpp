@@ -133,9 +133,14 @@ bytesConstRef EthashAux::LightAllocation::data() const
 
 EthashAux::FullAllocation::FullAllocation(ethash_light_t _light, ethash_callback_t _cb)
 {
+//	cdebug << "About to call ethash_full_new...";
 	full = ethash_full_new(_light, _cb);
+//	cdebug << "Called OK.";
 	if (!full)
-		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_full_new()"));
+	{
+		clog(DAGChannel) << "DAG Generation Failure. Reason: "  << strerror(errno);
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_full_new"));
+	}
 }
 
 EthashAux::FullAllocation::~FullAllocation()
@@ -170,9 +175,9 @@ EthashAux::FullType EthashAux::full(h256 const& _seedHash, bool _createIfMissing
 	if (_createIfMissing || computeFull(_seedHash, false) == 100)
 	{
 		s_dagCallback = _f;
-		cnote << "Loading from libethash...";
+//		cnote << "Loading from libethash...";
 		ret = make_shared<FullAllocation>(l->light, dagCallbackShim);
-		cnote << "Done loading.";
+//		cnote << "Done loading.";
 
 		DEV_GUARDED(get()->x_fulls)
 			get()->m_fulls[_seedHash] = get()->m_lastUsedFull = ret;
@@ -238,8 +243,9 @@ Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
 
 Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
 {
-	if (FullType dag = get()->m_fulls[_seedHash].lock())
-		return dag->compute(_headerHash, _nonce);
+	DEV_GUARDED(get()->x_fulls)
+		if (FullType dag = get()->m_fulls[_seedHash].lock())
+			return dag->compute(_headerHash, _nonce);
 	DEV_IF_THROWS(return EthashAux::get()->light(_seedHash)->compute(_headerHash, _nonce))
 	{
 		return Ethash::Result{ ~h256(), h256() };

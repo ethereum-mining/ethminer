@@ -157,44 +157,49 @@ showWarning = function(content)
 	debugWarning = editor.addLineWidget(0, node, { coverGutter: false, above: true });
 }
 
-var annotation = null;
+var annotations = [];
 var compilationCompleteBool = true;
-compilationError = function(line, column, content)
+compilationError = function(currentSourceName, location, error, secondaryErrors)
 {
 	compilationCompleteBool = false;
-	window.setTimeout(function(){
-		if (compilationCompleteBool)
-			return;
-		line = parseInt(line);
-		column = parseInt(column);
-		if (line > 0)
-			line = line - 1;
-		if (column > 0)
-			column = column - 1;
+	if (compilationCompleteBool)
+		return;
+	clearAnnotations();
+	location = JSON.parse(location);
+	if (location.source === currentSourceName)
+		ensureAnnotation(location, error, "first");
+	var lineError = location.start.line + 1;
+	var errorOrigin = "Source " + location.contractName + " line " + lineError;
+	secondaryErrors = JSON.parse(secondaryErrors);
+	for(var i in secondaryErrors)
+	{
+		if (secondaryErrors[i].source === currentSourceName)
+			ensureAnnotation(secondaryErrors[i], errorOrigin, "second");
+	}
+}
 
-		if (annotation == null)
-			annotation = new ErrorAnnotation(editor, line, column, content);
-		else if (annotation.line !== line || annotation.column !== column || annotation.content !== content)
-		{
-			annotation.destroy();
-			annotation = new ErrorAnnotation(editor, line, column, content);
-		}
-	}, 500)
+ensureAnnotation = function(location, error, type)
+{
+	annotations.push({ "type": type, "annotation": new ErrorAnnotation(editor, location, error)});
+}
+
+clearAnnotations = function()
+{
+	for (var k in annotations)
+		annotations[k].annotation.destroy();
+	annotations.length = 0;
 }
 
 compilationComplete = function()
 {
-	if (annotation !== null)
-	{
-		annotation.destroy();
-		annotation = null;
-	}
+	clearAnnotations();
 	compilationCompleteBool = true;
 }
 
 goToCompilationError = function()
 {
-	editor.setCursor(annotation.line, annotation.column)
+	if (annotations.length > 0)
+		editor.setCursor(annotations[0].annotation.location.start.line, annotations[0].annotation.location.start.column)
 }
 
 setFontSize = function(size)
@@ -205,9 +210,8 @@ setFontSize = function(size)
 
 makeGasCostMarker = function(value) {
 	var marker = document.createElement("div");
-	marker.style.color = "#822";
 	marker.innerHTML = value;
-	marker.className = "CodeMirror-errorannotation-context";
+	marker.className = "CodeMirror-gasCost";
 	return marker;
 };
 
@@ -247,8 +251,23 @@ displayGasEstimation = function(show)
 				else
 					color = colorGradient[colorIndex];
 				var className = "CodeMirror-gasCosts" + i;
-				var line = editor.posFromIndex(gasCosts[i].start)
-				gasMarkText.push(editor.markText(line, editor.posFromIndex(gasCosts[i].end), { inclusiveLeft: true, inclusiveRight: true, handleMouseEvents: true, className: className, css: "background-color:" + color }));
+				var line = editor.posFromIndex(gasCosts[i].start);
+				var endChar;
+				if (gasCosts[i].codeBlockType === "statement" || gasCosts[i].codeBlockType === "")
+				{
+					endChar = editor.posFromIndex(gasCosts[i].end);
+					gasMarkText.push({ line: line, markText: editor.markText(line, endChar, { inclusiveLeft: true, inclusiveRight: true, handleMouseEvents: true, className: className, css: "background-color:" + color })});
+				}
+				else if (gasCosts[i].codeBlockType === "function" || gasCosts[i].codeBlockType === "constructor")
+				{
+					var l = editor.getLine(line.line);
+					endChar = { line: line.line, ch: line.ch + l.length };
+					var marker = document.createElement("div");
+					marker.innerHTML = " max execution cost: " + gasCosts[i].gas + " gas";
+					marker.className = "CodeMirror-gasCost";
+					editor.addWidget(endChar, marker, false, "over");
+					gasMarkText.push({ line: line.line, widget: marker });
+				}
 				gasMarkRef[className] = { line: line.line, value: gasCosts[i] };
 			}
 		}
@@ -270,7 +289,12 @@ function clearGasMark()
 {
 	if (gasMarkText)
 		for (var k in gasMarkText)
-			gasMarkText[k].clear();
+		{
+			if (gasMarkText[k] && gasMarkText[k].markText)
+				gasMarkText[k].markText.clear();
+			if (gasMarkText[k] && gasMarkText[k].widget)
+				gasMarkText[k].widget.remove();
+		}
 }
 
 var gasAnnotation;
@@ -285,7 +309,7 @@ function listenMouseOver(e)
 				gasAnnotation.clear();
 			var cl = getGasCostClass(node);
 			var gasTitle = gasMarkRef[cl].value.isInfinite ? "infinite" : gasMarkRef[cl].value.gas;
-			gasTitle = gasTitle + " gas";
+			gasTitle = " execution cost: " + gasTitle + " gas";
 			gasAnnotation = editor.addLineWidget(gasMarkRef[cl].line + 1, makeGasCostMarker(gasTitle), { coverGutter: false, above: true });
 		}
 		else if (gasAnnotation)

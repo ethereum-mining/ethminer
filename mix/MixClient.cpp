@@ -143,7 +143,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	bytesConstRef const* lastData = nullptr;
 	unsigned codeIndex = 0;
 	unsigned dataIndex = 0;
-	auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, void* voidVM, void const* voidExt)
+	auto onOp = [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, void* voidVM, void const* voidExt)
 	{
 		VM& vm = *static_cast<VM*>(voidVM);
 		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
@@ -180,8 +180,20 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		else
 			levels.resize(ext.depth);
 
-		machineStates.emplace_back(MachineState({steps, vm.curPC(), inst, newMemSize, vm.gas(),
-									  vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels, codeIndex, dataIndex}));
+		machineStates.push_back(MachineState{
+			steps,
+			vm.curPC(),
+			inst,
+			newMemSize,
+			static_cast<u256>(gas),
+			vm.stack(),
+			vm.memory(),
+			gasCost,
+			ext.state().storage(ext.myAddress),
+			std::move(levels),
+			codeIndex,
+			dataIndex
+		});
 	};
 
 	execution.go(onOp);
