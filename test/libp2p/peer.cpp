@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(saveNodes)
 	unsigned const c_nodes = 6;
 	unsigned const c_peers = c_nodes - 1;
 
-	for (int i = 0; i < c_nodes; ++i)
+	for (unsigned i = 0; i < c_nodes; ++i)
 	{
 		Host* h = new Host("Test", NetworkPreferences("127.0.0.1", 30300 + i, false));
 		h->setIdealPeerCount(10);
@@ -95,14 +95,14 @@ BOOST_AUTO_TEST_CASE(saveNodes)
 	for (auto const& h: hosts)
 		host.addNode(h->id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), h->listenPort(), h->listenPort()));
 
-	for (int i = 0; i < c_peers * 1000 && host.peerCount() < c_peers; i += c_step)
+	for (unsigned i = 0; i < c_peers * 1000 && host.peerCount() < c_peers; i += c_step)
 		this_thread::sleep_for(chrono::milliseconds(c_step));
 
 	Host& host2 = *hosts.back();
 	for (auto const& h: hosts)
 		host2.addNode(h->id(), NodeIPEndpoint(bi::address::from_string("127.0.0.1"), h->listenPort(), h->listenPort()));
 
-	for (int i = 0; i < c_peers * 1000 && host2.peerCount() < c_peers; i += c_step)
+	for (unsigned i = 0; i < c_peers * 1000 && host2.peerCount() < c_peers; i += c_step)
 		this_thread::sleep_for(chrono::milliseconds(c_step));
 
 	BOOST_CHECK_EQUAL(host.peerCount(), c_peers);
