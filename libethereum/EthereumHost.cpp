@@ -120,7 +120,8 @@ void EthereumHost::maintainTransactions()
 	for (auto const& i: ts)
 	{
 		bool unsent = !m_transactionsSent.count(i.first);
-		for (auto const& p: get<1>(randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); })))
+		auto peers = get<1>(randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(i.first)); }));
+		for (auto const& p: peers)
 			peerTransactions[p].push_back(i.first);
 	}
 	for (auto const& t: ts)
