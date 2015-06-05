@@ -76,6 +76,7 @@
 #include "ExportState.h"
 #include "ui_Main.h"
 #include "ui_GetPassword.h"
+#include "ui_GasPricing.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -260,6 +261,42 @@ Main::~Main()
 bool Main::confirm() const
 {
 	return ui->natSpec->isChecked();
+}
+
+void Main::on_gasPrices_triggered()
+{
+	QDialog d;
+	Ui_GasPricing gp;
+	gp.setupUi(&d);
+	d.setWindowTitle("Gas Pricing");
+
+	initUnits(gp.bidUnits);
+	u256 bid = static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->bid();
+	gp.bidUnits->setCurrentIndex(0);
+	while (bid > 50000 && gp.bidUnits->currentIndex() < (int)(units().size() - 2))
+	{
+		bid /= 1000;
+		gp.bidUnits->setCurrentIndex(gp.bidUnits->currentIndex() + 1);
+	}
+	gp.bidValue->setValue((unsigned)bid);
+
+	// TODO: refactor into a single function.
+	initUnits(gp.askUnits);
+	u256 ask = static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->ask();
+	gp.askUnits->setCurrentIndex(0);
+	while (ask > 50000 && gp.askUnits->currentIndex() < (int)(units().size() - 2))
+	{
+		ask /= 1000;
+		gp.askUnits->setCurrentIndex(gp.askUnits->currentIndex() + 1);
+	}
+	gp.askValue->setValue((unsigned)ask);
+
+	if (d.exec() == QDialog::Accepted)
+	{
+		// TODO: refactor into a single function.
+		static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setBid(gp.bidValue->value() * units()[units().size() - 1 - gp.bidUnits->currentIndex()].first);
+		static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(gp.askValue->value() * units()[units().size() - 1 - gp.askUnits->currentIndex()].first);
+	}
 }
 
 void Main::on_newIdentity_triggered()

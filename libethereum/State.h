@@ -88,6 +88,10 @@ public:
 	TrivialGasPricer() = default;
 	TrivialGasPricer(u256 const& _ask, u256 const& _bid): m_ask(_ask), m_bid(_bid) {}
 
+	void setAsk(u256 const& _ask) { m_ask = _ask; }
+	void setBid(u256 const& _bid) { m_bid = _bid; }
+
+	u256 ask() const { return m_ask; }
 	u256 ask(State const&) const override { return m_ask; }
 	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return m_bid; }
 
