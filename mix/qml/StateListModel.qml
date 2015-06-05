@@ -23,7 +23,8 @@ Item {
 		return {
 			title: s.title,
 			transactions: s.transactions.filter(function(t) { return !t.stdContract; }).map(fromPlainTransactionItem), //support old projects by filtering std contracts
-			accounts: s.accounts.map(fromPlainAccountItem),
+            blocks: s.blocks.map(fromPlainBlockItem),
+            accounts: s.accounts.map(fromPlainAccountItem),
 			contracts: s.contracts.map(fromPlainAccountItem),
 			miner: s.miner
 		};
@@ -58,7 +59,8 @@ Item {
 			sender: t.sender,
 			isContractCreation: t.isContractCreation,
 			label: t.label,
-			isFunctionCall: t.isFunctionCall
+            isFunctionCall: t.isFunctionCall,
+            saveStatus: t.saveStatus
 		};
 
 		if (r.isFunctionCall === undefined)
@@ -76,10 +78,22 @@ Item {
 		return r;
 	}
 
+    function fromPlainBlockItem(b)
+    {
+        var r = {
+            hash: b.hash,
+            number: b.number,
+            transactions: b.transactions.filter(function(t) { return !t.stdContract; }).map(fromPlainTransactionItem), //support old projects by filtering std contracts
+            status: b.status
+        }
+        return r;
+    }
+
 	function toPlainStateItem(s) {
 		return {
 			title: s.title,
-			transactions: s.transactions.map(toPlainTransactionItem),
+            blocks: s.blocks.map(toPlainBlockItem),
+            transactions: s.transactions.map(toPlainTransactionItem),
 			accounts: s.accounts.map(toPlainAccountItem),
 			contracts: s.contracts.map(toPlainAccountItem),
 			miner: s.miner
@@ -95,6 +109,17 @@ Item {
 		}
 		return '';
 	}
+
+    function toPlainBlockItem(b)
+    {
+        var r = {
+            hash: b.hash,
+            number: b.number,
+            transactions: b.transactions.map(toPlainTransactionItem),
+            status: b.status
+        }
+        return r;
+    }
 
 	function toPlainAccountItem(t)
 	{
@@ -112,6 +137,7 @@ Item {
 	}
 
 	function toPlainTransactionItem(t) {
+        console.log(JSON.stringify(t));
 		var r = {
 			type: t.type,
 			contractId: t.contractId,
@@ -125,7 +151,8 @@ Item {
 			parameters: {},
 			isContractCreation: t.isContractCreation,
 			label: t.label,
-			isFunctionCall: t.isFunctionCall
+            isFunctionCall: t.isFunctionCall,
+            saveStatus: t.saveStatus
 		};
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
@@ -146,14 +173,16 @@ Item {
 				projectData.states.push(toPlainStateItem(stateList[i]));
 			}
 			projectData.defaultStateIndex = stateListModel.defaultStateIndex;
-		}
+            stateListModel.data = projectData
+
+        }
 		onNewProject: {
 			var state = toPlainStateItem(stateListModel.createDefaultState());
 			state.title = qsTr("Default");
 			projectData.states = [ state ];
 			projectData.defaultStateIndex = 0;
-			stateListModel.loadStatesFromProject(projectData);
-		}
+            stateListModel.loadStatesFromProject(projectData);
+        }
 	}
 
 	Connections {
@@ -170,34 +199,40 @@ Item {
 		id: stateDialog
 		onAccepted: {
 			var item = stateDialog.getItem();
-			if (stateDialog.stateIndex < stateListModel.count) {
-				if (stateDialog.isDefault)
-					stateListModel.defaultStateIndex = stateIndex;
-				stateList[stateDialog.stateIndex] = item;
-				stateListModel.set(stateDialog.stateIndex, item);
-			} else {
-				if (stateDialog.isDefault)
-					stateListModel.defaultStateIndex = 0;
-				stateList.push(item);
-				stateListModel.append(item);
-			}
-			if (stateDialog.isDefault)
-				stateListModel.defaultStateChanged();
-			stateListModel.save();
+            saveState(item);
 		}
+
+        function saveState(item)
+        {
+            if (stateDialog.stateIndex < stateListModel.count) {
+                if (stateDialog.isDefault)
+                    stateListModel.defaultStateIndex = stateIndex;
+                stateList[stateDialog.stateIndex] = item;
+                stateListModel.set(stateDialog.stateIndex, item);
+            } else {
+                if (stateDialog.isDefault)
+                    stateListModel.defaultStateIndex = 0;
+                stateList.push(item);
+                stateListModel.append(item);
+            }
+            if (stateDialog.isDefault)
+                stateListModel.defaultStateChanged();
+            stateListModel.save();
+        }
 	}
 
 	ListModel {
 		id: stateListModel
 		property int defaultStateIndex: 0
-		signal defaultStateChanged;
+        property variant data
+        signal defaultStateChanged;
 		signal stateListModelReady;
 		signal stateRun(int index)
 		signal stateDeleted(int index)
 
 		function defaultTransactionItem() {
 			return TransactionHelper.defaultTransaction();
-		}
+        }
 
 		function newAccount(_balance, _unit, _secret)
 		{
@@ -208,15 +243,26 @@ Item {
 			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit), address: address };
 		}
 
+        function createEmptyBlock()
+        {
+            return {
+                hash: "",
+                number: -1,
+                transactions: [],
+                status: "pending"
+            }
+        }
+
 		function createDefaultState() {
 			var item = {
 				title: "",
 				transactions: [],
 				accounts: [],
-				contracts: []
-			};
+                contracts: [],
+                blocks: [{ status: "pending", number: -1, hash: "", transactions: []}]
+            };
 
-			var account = newAccount("1000000", QEther.Ether, defaultAccount)
+            var account = newAccount("1000000", QEther.Ether, defaultAccount)
 			item.accounts.push(account);
 			item.miner = account;
 
@@ -228,7 +274,8 @@ Item {
 				ctorTr.label = qsTr("Deploy") + " " + ctorTr.contractId;
 				ctorTr.sender = item.accounts[0].secret;
 				item.transactions.push(ctorTr);
-			}
+                item.blocks[0].transactions.push(ctorTr)
+            }
 			return item;
 		}
 
@@ -284,9 +331,19 @@ Item {
 			stateDialog.open(stateListModel.count, item, false);
 		}
 
+        function appendState(item)
+        {
+            stateListModel.append(item);
+            stateList.push(item);
+        }
+
 		function editState(index) {
 			stateDialog.open(index, stateList[index], defaultStateIndex === index);
 		}
+
+        function getState(index) {
+            return stateList[index];
+        }
 
 		function debugDefaultState() {
 			if (defaultStateIndex >= 0 && defaultStateIndex < stateList.length)
@@ -295,8 +352,8 @@ Item {
 
 		function runState(index) {
 			var item = stateList[index];
-			clientModel.setupState(item);
-			stateRun(index);
+            //clientModel.setupState(item);
+            //stateRun(index);
 		}
 
 		function deleteState(index) {
@@ -322,8 +379,22 @@ Item {
 			return stateList[defaultStateIndex].title;
 		}
 
+        function reloadStateFromFromProject(index)
+        {
+            console.log(JSON.stringify(data))
+            if (data)
+            {
+                var item = fromPlainStateItem(data.states[index])
+
+                stateListModel.set(index, item)
+                stateList[index] = item
+                return item
+            }
+        }
+
 		function loadStatesFromProject(projectData)
 		{
+            data = projectData
 			if (!projectData.states)
 				projectData.states = [];
 			if (projectData.defaultStateIndex !== undefined)

@@ -29,6 +29,7 @@
 #include "QVariableDefinition.h"
 #include "QFunctionDefinition.h"
 #include "ContractCallDataEncoder.h"
+using namespace std;
 using namespace dev;
 using namespace dev::solidity;
 using namespace dev::mix;
@@ -227,6 +228,18 @@ QVariant ContractCallDataEncoder::decode(SolidityType const& _type, bytes const&
 		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Parameter declaration not found"));
 }
 
+QStringList ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& _returnParameters, vector<bytes> _value)
+{
+    QStringList r;
+    for (int k = 0; k <_returnParameters.length(); k++)
+    {
+        QVariableDeclaration* dec = static_cast<QVariableDeclaration*>(_returnParameters.at(k));
+        SolidityType const& type = dec->type()->type();
+        r.append(decode(type, _value.at(k)).toString());
+    }
+    return r;
+}
+
 QStringList ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& _returnParameters, bytes _value)
 {
 	bytesConstRef value(&_value);
@@ -238,7 +251,7 @@ QStringList ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& 
 		value.populate(&rawParam);
 		value = value.cropped(32);
 		QVariableDeclaration* dec = static_cast<QVariableDeclaration*>(_returnParameters.at(k));
-		SolidityType const& type = dec->type()->type();
+        SolidityType const& type = dec->type()->type();
 		r.append(decode(type, rawParam).toString());
 	}
 	return r;
