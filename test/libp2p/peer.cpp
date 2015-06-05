@@ -116,6 +116,9 @@ BOOST_AUTO_TEST_CASE(saveNodes)
 		BOOST_REQUIRE(i.itemCount() == 4 || i.itemCount() == 11);
 		BOOST_REQUIRE(i[0].size() == 4 || i[0].size() == 16);
 	}
+
+	for (auto host: hosts)
+		delete host;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

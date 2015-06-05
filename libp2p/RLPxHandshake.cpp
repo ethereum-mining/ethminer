@@ -265,8 +265,17 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 						}
 
 						clog(NetTriviaSummary) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: success. starting session.";
-						RLP rlp(frame.cropped(1), RLP::ThrowOnFail | RLP::FailIfTooSmall);
-						m_host->startPeerSession(m_remote, rlp, m_io, m_socket->remoteEndpoint());
+						try
+						{
+							RLP rlp(frame.cropped(1), RLP::ThrowOnFail | RLP::FailIfTooSmall);
+							m_host->startPeerSession(m_remote, rlp, m_io, m_socket->remoteEndpoint());
+						}
+						catch (std::exception const& _e)
+						{
+							clog(NetWarn) << "Handshake causing an exception:" << _e.what();
+							m_nextState = Error;
+							transition();
+						}
 					}
 				});
 			}
