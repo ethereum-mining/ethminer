@@ -19,18 +19,23 @@
  * @date 2015
  */
 
+///This file require #define DONTUSE_BOOST_MACROS compile flag to run!
+
 #include <string>
 #include <iostream>
 
 #include <test/TestHelper.h>
 #include <test/fuzzTesting/fuzzHelper.h>
+#include <libevm/VMFactory.h>
 
 //String Variables
 extern std::string const c_testExampleStateTest;
 extern std::string const c_testExampleTransactionTest;
+extern std::string const c_testExampleVMTest;
 
 //Main Test functinos
 void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, std::string const& testString);
+int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, json_spirit::mValue& value);
 
 //Helper Functions
 std::vector<std::string> getTypes();
@@ -39,33 +44,109 @@ void parseTestWithTypes(std::string& test);
 int main(int argc, char *argv[])
 {
 	std::string testSuite;
+	json_spirit::mValue testValue;
+	bool checktest = false;
 	for (auto i = 0; i < argc; ++i)
 	{
 		auto arg = std::string{argv[i]};
 		dev::test::Options& options = const_cast<dev::test::Options&>(dev::test::Options::get());
 		if (arg == "--fulloutput")
 			options.fulloutput = true;
+		else
 		if (arg == "-t" && i + 1 < argc)
 		{
 			testSuite = argv[i + 1];
-			if (testSuite != "BlockChainTests" && testSuite != "TransactionTests" && testSuite != "StateTests")
+			if (testSuite != "BlockChainTests" && testSuite != "TransactionTests" && testSuite != "StateTests" && testSuite != "VMTests")
 				testSuite = "";
+		}
+		else
+		if (arg == "-checktest" && i + 1 < argc)
+		{
+			std::string s;
+			for (int j = i+1; j < argc; ++j)
+				s += argv[j];
+			if (asserts(s.length() > 0))
+			{
+				std::cout << "Error! Content of argument is empty! (Usage -checktest textstream) \n";
+				return 1;
+			}
+			read_string(s, testValue);
+			checktest = true;
 		}
 	}
 
 	if (testSuite == "")
+	{
 		std::cout << "Error! Test suite not supported! (Usage -t TestSuite)";
+		return 1;
+	}
 	else
 	if (testSuite == "BlockChainTests")
-		fillRandomTest(dev::test::doTransactionTests, c_testExampleTransactionTest);
+	{
+		if (checktest)
+			return checkRandomTest(dev::test::doTransactionTests, testValue);
+		else
+			fillRandomTest(dev::test::doTransactionTests, c_testExampleTransactionTest);
+	}
 	else
 	if (testSuite == "TransactionTests")
-		fillRandomTest(dev::test::doTransactionTests, c_testExampleTransactionTest);
+	{
+		if (checktest)
+			return checkRandomTest(dev::test::doTransactionTests, testValue);
+		else
+			fillRandomTest(dev::test::doTransactionTests, c_testExampleTransactionTest);
+	}
 	else
 	if (testSuite == "StateTests")
-		fillRandomTest(dev::test::doStateTests, c_testExampleStateTest);
+	{
+		if (checktest)
+			return checkRandomTest(dev::test::doStateTests, testValue);
+		else
+			fillRandomTest(dev::test::doStateTests, c_testExampleStateTest);
+	}
+	else
+	if (testSuite == "VMTests")
+	{
+		if (checktest)
+		{
+			dev::eth::VMFactory::setKind(dev::eth::VMKind::JIT);
+			return checkRandomTest(dev::test::doVMTests, testValue);
+		}
+		else
+			fillRandomTest(dev::test::doVMTests, c_testExampleVMTest);
+	}
 
 	return 0;
+}
+
+int checkRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, json_spirit::mValue& value)
+{
+	bool ret = 0;
+	try
+	{
+		//redirect all output to the stream
+		std::ostringstream strCout;
+		std::streambuf* oldCoutStreamBuf = std::cout.rdbuf();
+		std::cout.rdbuf( strCout.rdbuf() );
+		std::cerr.rdbuf( strCout.rdbuf() );
+
+		doTests(value, false);
+
+		//restroe output
+		std::cout.rdbuf(oldCoutStreamBuf);
+		std::cerr.rdbuf(oldCoutStreamBuf);
+	}
+	catch (dev::Exception const& _e)
+	{
+		std::cout << "Failed test with Exception: " << diagnostic_information(_e) << std::endl;
+		ret = 1;
+	}
+	catch (std::exception const& _e)
+	{
+		std::cout << "Failed test with Exception: " << _e.what() << std::endl;
+		ret = 1;
+	}
+	return ret;
 }
 
 void fillRandomTest(std::function<void(json_spirit::mValue&, bool)> doTests, std::string const& testString)
@@ -107,6 +188,7 @@ void parseTestWithTypes(std::string& _test)
 	options.addAddress(dev::Address("0x095e7baea6a6c7c4c2dfeb977efac326af552d87"));
 	options.addAddress(dev::Address("0x945304eb96065b2a98b57a48a06ae28d285a71b5"));
 	options.addAddress(dev::Address("0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"));
+	options.addAddress(dev::Address("0x0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6"));
 	options.addAddress(dev::Address("0x0000000000000000000000000000000000000001"));
 	options.addAddress(dev::Address("0x0000000000000000000000000000000000000002"));
 	options.addAddress(dev::Address("0x0000000000000000000000000000000000000003"));
@@ -138,10 +220,10 @@ void parseTestWithTypes(std::string& _test)
 			{
 				int random = dev::test::RandomCode::randomUniInt() % 100;
 				if (random < 30)
-					_test.replace(pos, 3, "28");
+					_test.replace(pos, 3, "0x1c");
 				else
 				if (random < 60)
-					_test.replace(pos, 3, "29");
+					_test.replace(pos, 3, "0x1d");
 				else
 					_test.replace(pos, 3, "0x" + dev::test::RandomCode::rndByteSequence(1));
 			}
@@ -219,5 +301,37 @@ std::string const c_testExampleStateTest = R"(
 		"value" : "[HEX]"
 		}
 	}
+}
+)";
+
+std::string const c_testExampleVMTest = R"(
+{
+	"randomVMTest": {
+		"env" : {
+				"previousHash" : "[HASH32]",
+				"currentNumber" : "[HEX]",
+				"currentGasLimit" : "[HEX]",
+				"currentDifficulty" : "[HEX]",
+				"currentTimestamp" : "[HEX]",
+				"currentCoinbase" : "[HASH20]"
+		},
+		"pre" : {
+		   "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6" : {
+				"balance" : "[HEX]",
+				"nonce" : "[HEX]",
+				"code" : "[CODE]",
+				"storage": {}
+		   }
+		},
+		"exec" : {
+				"address" : "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6",
+				"origin" : "[HASH20]",
+				"caller" : "[HASH20]",
+				"value" : "[HEX]",
+				"data" : "[CODE]",
+				"gasPrice" : "[V]",
+				"gas" : "[HEX]"
+		   }
+	   }
 }
 )";
