@@ -60,6 +60,7 @@ extern std::function<void(std::string const&, char const*)> g_logPost;
 extern std::map<std::type_info const*, bool> g_logOverride;
 
 /// Temporary changes system's verbosity for specific function. Restores the old verbosity when function returns.
+/// Not thread-safe, use with caution!
 struct VerbosityHolder
 {
 	VerbosityHolder(int _temporaryValue): oldLogVerbosity(g_logVerbosity) { g_logVerbosity = _temporaryValue; }
