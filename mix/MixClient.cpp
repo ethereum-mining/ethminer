@@ -22,6 +22,7 @@
 
 #include "MixClient.h"
 #include <vector>
+#include <utility>
 #include <libdevcore/Exceptions.h>
 #include <libethereum/CanonBlockChain.h>
 #include <libethereum/Transaction.h>
@@ -69,19 +70,28 @@ bytes MixBlockChain::createGenesisBlock(h256 _stateRoot)
 MixClient::MixClient(std::string const& _dbPath):
 	m_dbPath(_dbPath)
 {
-	resetState(std::unordered_map<Address, Account>());
+    resetState(std::unordered_map<Address, Account>());
 }
 
 MixClient::~MixClient()
 {
 }
 
+LocalisedLogEntries MixClient::logs()
+{
+    return m_watches.at(0).changes;
+}
+
 void MixClient::resetState(std::unordered_map<Address, Account> const& _accounts,  Secret const& _miner)
 {
+
 	WriteGuard l(x_state);
 	Guard fl(x_filtersWatches);
 	m_filters.clear();
 	m_watches.clear();
+    LogFilter filter;
+    m_filters.insert(std::make_pair(filter.sha3(), filter));
+    m_watches.insert(std::make_pair(0, ClientWatch(filter.sha3(), Reaping::Automatic)));
 
 	m_stateDB = OverlayDB();
 	SecureTrieDB<Address, MemoryDB> accountState(&m_stateDB);
@@ -122,7 +132,7 @@ Transaction MixClient::replaceGas(Transaction const& _t, u256 const& _gas, Secre
 void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _call, bool _gasAuto, Secret const& _secret)
 {
 	Transaction t = _gasAuto ? replaceGas(_t, m_state.gasLimitRemaining()) : _t;
-	// do debugging run first
+    // do debugging run first
 	LastHashes lastHashes(256);
 	lastHashes[0] = bc().numberHash(bc().number());
 	for (unsigned i = 1; i < 256; ++i)
@@ -213,6 +223,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 	};
 
 	ExecutionResult d;
+    d.inputParameters = t.data();
 	d.result = execution.executionResult();
 	d.machineStates = machineStates;
 	d.executionCode = std::move(codes);
@@ -227,7 +238,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		d.transactionIndex = m_state.pending().size();
 	d.executonIndex = m_executions.size();
 
-	// execute on a state
+    // execute on a state
 	if (!_call)
 	{
 		t = _gasAuto ? replaceGas(_t, d.gasUsed, _secret) : _t;
