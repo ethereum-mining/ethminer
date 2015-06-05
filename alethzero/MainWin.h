@@ -194,6 +194,9 @@ private slots:
 	void on_newIdentity_triggered();
 	void on_post_clicked();
 
+	// Config
+	void on_gasPrices_triggered();
+
 	void refreshWhisper();
 	void refreshBlockChain();
 	void addNewId(QString _ids);
