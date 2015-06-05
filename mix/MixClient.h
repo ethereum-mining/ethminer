@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <string>
+#include <libethereum/ExtVM.h>
 #include <libethereum/ClientBase.h>
 #include <libethereum/Client.h>
 #include "MachineStates.h"
@@ -76,6 +77,8 @@ public:
 	using Interface::blockInfo; // to remove warning about hiding virtual function
 	eth::BlockInfo blockInfo() const;
 
+    dev::eth::LocalisedLogEntries logs();
+
 protected:
 	/// ClientBase methods
 	using ClientBase::asOf;
@@ -91,7 +94,7 @@ private:
 	void noteChanged(h256Set const& _filters);
 	dev::eth::Transaction replaceGas(dev::eth::Transaction const& _t, dev::u256 const& _gas, dev::Secret const& _secret = dev::Secret());
 
-	eth::State m_state;
+    eth::State m_state;
 	eth::State m_startState;
 	OverlayDB m_stateDB;
 	std::unique_ptr<MixBlockChain> m_bc;

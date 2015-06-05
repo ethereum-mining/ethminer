@@ -101,6 +101,8 @@ function loadProject(path) {
 			console.log("Loading project at " + path);
 			var projectFile = path + projectFileName;
 			var json = fileIo.readFile(projectFile);
+            if (!json)
+                return;
 			var projectData = JSON.parse(json);
 			if (projectData.deploymentDir)
 				projectModel.deploymentDir = projectData.deploymentDir

@@ -20,13 +20,14 @@ Rectangle {
 	anchors.fill: parent
 	id: root
 
-	property alias rightViewVisible: rightView.visible
+    property alias rightViewVisible: scenarioExe.visible
 	property alias webViewVisible: webPreview.visible
 	property alias webView: webPreview
 	property alias projectViewVisible: projectList.visible
 	property alias projectNavigator: projectList
 	property alias runOnProjectLoad: mainSettings.runOnProjectLoad
-	property alias rightPane: rightView
+    property alias rightPane: scenarioExe
+    property alias debuggerPanel: debugPanel
 	property alias codeEditor: codeEditor
 	property bool webViewHorizontal: codeWebSplitter.orientation === Qt.Vertical //vertical splitter positions elements vertically, splits screen horizontally
 	property bool firstCompile: true
@@ -42,17 +43,17 @@ Rectangle {
 		}
 	}
 
-	Connections {
-		target: rightView
-		onDebugExecuteLocation: {
+    Connections {
+        target: debugPanel
+        onDebugExecuteLocation: {
 			codeEditor.highlightExecution(documentId, location);
 		}
-	}
+    }
 
 	Connections {
 		target: codeEditor
 		onBreakpointsChanged: {
-			rightPane.setBreakpoints(codeEditor.getBreakpoints());
+            debugPanel.setBreakpoints(codeEditor.getBreakpoints());
 		}
 	}
 
@@ -63,20 +64,20 @@ Rectangle {
 	}
 
 	function toggleRightView() {
-		rightView.visible = !rightView.visible;
+        scenarioExe.visible = !scenarioExe.visible;
 	}
 
 	function ensureRightView() {
-		rightView.visible = true;
+        scenarioExe.visible = true;
 	}
 
 	function rightViewIsVisible()
 	{
-		return rightView.visible;
+        return scenarioExe.visible;
 	}
 
 	function hideRightView() {
-		rightView.visible = false;
+        scenarioExe.visible = lfalse;
 	}
 
 	function toggleWebPreview() {
@@ -98,8 +99,8 @@ Rectangle {
 
 	function displayCompilationErrorIfAny()
 	{
-		rightView.visible = true;
-		rightView.displayCompilationErrorIfAny();
+        scenarioExe.visible = true;
+        scenarioExe.displayCompilationErrorIfAny();
 	}
 
 	Settings {
@@ -153,7 +154,7 @@ Rectangle {
 				id: splitSettings
 				property alias projectWidth: projectList.width
 				property alias contentViewWidth: contentView.width
-				property alias rightViewWidth: rightView.width
+                property alias rightViewWidth: scenarioExe.width
 			}
 
 			Splitter
@@ -198,14 +199,41 @@ Rectangle {
 					}
 				}
 
-				Debugger {
-					visible: false;
-					id: rightView;
-					Layout.fillHeight: true
-					Keys.onEscapePressed: visible = false
-					Layout.minimumWidth: 515
-					anchors.right: parent.right
-				}
+                ScenarioExecution
+                {
+                    id: scenarioExe;
+                    visible: false;
+                    Layout.fillHeight: true
+                    Keys.onEscapePressed: visible = false
+                    Layout.minimumWidth: 650
+                    anchors.right: parent.right
+                }
+
+                Debugger
+                {
+                    id: debugPanel
+                    visible: false
+                    Layout.fillHeight: true
+                    Keys.onEscapePressed: visible = false
+                    Layout.minimumWidth: 650
+                    anchors.right: parent.right
+                }
+
+                Connections {
+                    target: clientModel
+                    onDebugDataReady:  {
+                        scenarioExe.visible = false
+                        debugPanel.visible = true
+                    }
+                }
+
+                Connections {
+                    target: debugPanel
+                    onPanelClosed:  {
+                        scenarioExe.visible = true
+                        debugPanel.visible = false
+                    }
+                }
 			}
 		}
 	}
