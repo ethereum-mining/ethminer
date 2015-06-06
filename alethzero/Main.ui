@@ -212,12 +212,19 @@
     <addaction name="debugDumpState"/>
     <addaction name="debugDumpStatePre"/>
    </widget>
+   <widget class="QMenu" name="menu_Config">
+    <property name="title">
+     <string>&amp;Config</string>
+    </property>
+    <addaction name="gasPrices"/>
+   </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_View"/>
    <addaction name="menu_Network"/>
    <addaction name="menu_Tools"/>
    <addaction name="menuWhispe"/>
    <addaction name="menuDebug"/>
+   <addaction name="menu_Config"/>
    <addaction name="menu_Help"/>
    <addaction name="menu_Debug"/>
   </widget>
@@ -1761,6 +1768,11 @@ font-size: 14pt</string>
   <action name="reencryptAll">
    <property name="text">
     <string>Re-Encrypt All Keys...</string>
+   </property>
+  </action>
+  <action name="gasPrices">
+   <property name="text">
+    <string>&amp;Gas Prices...</string>
    </property>
   </action>
  </widget>

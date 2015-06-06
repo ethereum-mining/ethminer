@@ -124,9 +124,11 @@ void help()
 		<< "    --password <password>  Give a password for a private key." << endl
 		<< endl
 		<< "Client transacting:" << endl
-		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
+		/*<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (default: 30.679)." << endl
-		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
+		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl*/
+		<< "    --ask <wei>  Set the minimum ask gas price under which no transactions will be mined (default 500000000000)." << endl
+		<< "    --bid <wei>  Set the bid gas price for to pay for transactions (default 500000000000)." << endl
 		<< endl
 		<< "Client mining:" << endl
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
@@ -299,8 +301,10 @@ int main(int argc, char** argv)
 
 	/// Transaction params
 	TransactionPriority priority = TransactionPriority::Medium;
-	double etherPrice = 30.679;
-	double blockFees = 15.0;
+//	double etherPrice = 30.679;
+//	double blockFees = 15.0;
+	u256 askPrice("500000000000");
+	u256 bidPrice("500000000000");
 
 	// javascript console
 	bool useConsole = false;
@@ -464,7 +468,7 @@ int main(int argc, char** argv)
 		}
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
-		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
+/*		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
 			try
 			{
@@ -481,6 +485,30 @@ int main(int argc, char** argv)
 			try
 			{
 				etherPrice = stof(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		}*/
+		else if (arg == "--ask" && i + 1 < argc)
+		{
+			try
+			{
+				askPrice = u256(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		}
+		else if (arg == "--bid" && i + 1 < argc)
+		{
+			try
+			{
+				bidPrice = u256(argv[++i]);
 			}
 			catch (...)
 			{
@@ -730,7 +758,8 @@ int main(int argc, char** argv)
 
 	cout << ethCredits();
 	web3.setIdealPeerCount(peers);
-	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
+//	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
+	std::shared_ptr<eth::TrivialGasPricer> gasPricer = make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
 	eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
 	StructuredLogger::starting(clientImplString, dev::Version);
 	if (c)
@@ -829,7 +858,7 @@ int main(int argc, char** argv)
 				iss >> enable;
 				c->setForceMining(isTrue(enable));
 			}
-			else if (c && cmd == "setblockfees")
+/*			else if (c && cmd == "setblockfees")
 			{
 				iss >> blockFees;
 				try
@@ -884,7 +913,7 @@ int main(int argc, char** argv)
 						cerr << "Unknown priority: " << m << endl;
 					}
 				cout << "Priority: " << (int)priority << "/8" << endl;
-			}
+			}*/
 			else if (cmd == "verbosity")
 			{
 				if (iss.peek() != -1)

@@ -447,8 +447,12 @@ void Session::doRead()
 					clog(NetWarn) << "Error reading: " << ec.message();
 					drop(TCPError);
 				}
-				else if (ec && length == 0)
+				else if (ec && length < tlen)
+				{
+					clog(NetWarn) << "Error reading - Abrupt peer disconnect: " << ec.message();
+					drop(TCPError);
 					return;
+				}
 				else
 				{
 					if (!m_io->authAndDecryptFrame(bytesRef(m_data.data(), tlen)))

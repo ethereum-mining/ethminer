@@ -24,6 +24,7 @@ qt5_wrap_ui(ui_Debugger.h Debugger.ui)
 qt5_wrap_ui(ui_Transact.h Transact.ui)
 qt5_wrap_ui(ui_ExportState.h ExportState.ui)
 qt5_wrap_ui(ui_GetPassword.h GetPassword.ui)
+qt5_wrap_ui(ui_GasPricing.h GasPricing.ui)
 
 file(GLOB HEADERS "*.h")
 
@@ -36,7 +37,7 @@ endif ()
 # eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 eth_add_executable(${EXECUTABLE} 
 	ICON alethzero
-	UI_RESOURCES alethzero.icns Main.ui Connect.ui Debugger.ui Transact.ui ExportState.ui GetPassword.ui
+	UI_RESOURCES alethzero.icns Main.ui Connect.ui Debugger.ui Transact.ui ExportState.ui GetPassword.ui GasPricing.ui
 	WIN_RESOURCES alethzero.rc
 )
 
