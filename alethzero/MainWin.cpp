@@ -76,6 +76,7 @@
 #include "ExportState.h"
 #include "ui_Main.h"
 #include "ui_GetPassword.h"
+#include "ui_GasPricing.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -128,7 +129,7 @@ static QString filterOutTerminal(QString _s)
 Main::Main(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::Main),
-	m_transact(this, this),
+	m_transact(nullptr),
 	m_dappLoader(nullptr),
 	m_webPage(nullptr)
 {
@@ -232,6 +233,11 @@ Main::Main(QWidget *parent) :
 //	inspector->setPage(page);
 	setBeneficiary(*m_keyManager.accounts().begin());
 	readSettings();
+
+	m_transact = new Transact(this, this);
+	m_transact->setWindowFlags(Qt::Dialog);
+	m_transact->setWindowModality(Qt::WindowModal);
+
 #if !ETH_FATDB
 	removeDockWidget(ui->dockWidget_accounts);
 #endif
@@ -260,6 +266,23 @@ Main::~Main()
 bool Main::confirm() const
 {
 	return ui->natSpec->isChecked();
+}
+
+void Main::on_gasPrices_triggered()
+{
+	QDialog d;
+	Ui_GasPricing gp;
+	gp.setupUi(&d);
+	d.setWindowTitle("Gas Pricing");
+	setValueUnits(gp.bidUnits, gp.bidValue, static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->bid());
+	setValueUnits(gp.askUnits, gp.askValue, static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->ask());
+
+	if (d.exec() == QDialog::Accepted)
+	{
+		static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setBid(fromValueUnits(gp.bidUnits, gp.bidValue));
+		static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(fromValueUnits(gp.askUnits, gp.askValue));
+		m_transact->resetGasPrice();
+	}
 }
 
 void Main::on_newIdentity_triggered()
@@ -467,10 +490,8 @@ void Main::load(QString _s)
 
 void Main::on_newTransaction_triggered()
 {
-	m_transact.setEnvironment(m_keyManager.accounts(), ethereum(), &m_natSpecDB);
-	m_transact.setWindowFlags(Qt::Dialog);
-	m_transact.setWindowModality(Qt::WindowModal);
-	m_transact.show();
+	m_transact->setEnvironment(m_keyManager.accounts(), ethereum(), &m_natSpecDB);
+	m_transact->show();
 }
 
 void Main::on_loadJS_triggered()
@@ -653,6 +674,11 @@ void Main::on_paranoia_triggered()
 	ethereum()->setParanoia(ui->paranoia->isChecked());
 }
 
+dev::u256 Main::gasPrice() const
+{
+	return ethereum()->gasPricer()->bid();
+}
+
 void Main::writeSettings()
 {
 	QSettings s("ethereum", "alethzero");
@@ -669,6 +695,8 @@ void Main::writeSettings()
 		s.setValue("identities", b);
 	}
 
+	s.setValue("askPrice", QString::fromStdString(toString(static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->ask())));
+	s.setValue("bidPrice", QString::fromStdString(toString(static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->bid())));
 	s.setValue("upnp", ui->upnp->isChecked());
 	s.setValue("forceAddress", ui->forcePublicIP->text());
 	s.setValue("forceMining", ui->forceMining->isChecked());
@@ -751,6 +779,9 @@ void Main::readSettings(bool _skipGeometry)
 			}
 		}
 	}
+
+	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setAsk(u256(s.value("askPrice", "500000000000").toString().toStdString()));
+	static_cast<TrivialGasPricer*>(ethereum()->gasPricer().get())->setBid(u256(s.value("bidPrice", "500000000000").toString().toStdString()));
 
 	ui->upnp->setChecked(s.value("upnp", true).toBool());
 	ui->forcePublicIP->setText(s.value("forceAddress", "").toString());
