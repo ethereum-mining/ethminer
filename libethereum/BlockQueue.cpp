@@ -81,7 +81,7 @@ void BlockQueue::verifierBody()
 				res.first.populate(res.second, CheckEverything, work.first);
 				res.first.verifyInternals(&res.second);
 			}
-			catch (InvalidNonce&)
+			catch (InvalidBlockNonce&)
 			{
 				badBlock(res.second, "Invalid block nonce");
 				cwarn << "  Nonce:" << res.first.nonce.hex();

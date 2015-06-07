@@ -184,7 +184,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		// old packet format
 		// 5 arguments, HelloPacket
 		RLPStream s;
-		s.append((unsigned)0).appendList(5)
+		s.append((unsigned)HelloPacket).appendList(5)
 		<< dev::p2p::c_protocolVersion
 		<< m_host->m_clientVersion
 		<< m_host->caps()
@@ -205,15 +205,16 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 		m_nextState = StartSession;
 		
 		// read frame header
-		m_handshakeInBuffer.resize(h256::size);
-		ba::async_read(m_socket->ref(), boost::asio::buffer(m_handshakeInBuffer, h256::size), [this, self](boost::system::error_code ec, std::size_t)
+		unsigned const handshakeSize = 32;
+		m_handshakeInBuffer.resize(handshakeSize);
+		ba::async_read(m_socket->ref(), boost::asio::buffer(m_handshakeInBuffer, handshakeSize), [this, self](boost::system::error_code ec, std::size_t)
 		{
 			if (ec)
 				transition(ec);
 			else
 			{
 				/// authenticate and decrypt header
-				if (!m_io->authAndDecryptHeader(bytesRef(m_handshakeInBuffer.data(), h256::size)))
+				if (!m_io->authAndDecryptHeader(bytesRef(m_handshakeInBuffer.data(), handshakeSize)))
 				{
 					m_nextState = Error;
 					transition();
@@ -235,7 +236,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 				}
 				
 				/// rlp of header has protocol-type, sequence-id[, total-packet-size]
-				bytes headerRLP(header.size() - 3 - h128::size);
+				bytes headerRLP(header.size() - 3 - h128::size);	// this is always 32 - 3 - 16 = 13. wtf?
 				bytesConstRef(&header).cropped(3).copyTo(&headerRLP);
 				
 				/// read padded frame and mac
@@ -255,8 +256,8 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 							return;
 						}
 						
-						PacketType packetType = (PacketType)(frame[0] == 0x80 ? 0x0 : frame[0]);
-						if (packetType != 0)
+						PacketType packetType = frame[0] == 0x80 ? HelloPacket : (PacketType)frame[0];
+						if (packetType != HelloPacket)
 						{
 							clog(NetTriviaSummary) << (m_originated ? "p2p.connect.egress" : "p2p.connect.ingress") << "hello frame: invalid packet type";
 							m_nextState = Error;

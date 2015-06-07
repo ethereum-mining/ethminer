@@ -665,7 +665,7 @@ void Client::doWork()
 		syncBlockQueue();
 
 	t = true;
-	if (m_syncTransactionQueue.compare_exchange_strong(t, false) && !m_remoteWorking)
+	if (m_syncTransactionQueue.compare_exchange_strong(t, false) && !m_remoteWorking && !isSyncing())
 		syncTransactionQueue();
 
 	tick();
