@@ -46,6 +46,12 @@ const unsigned c_databaseBaseVersion = 9;
 const unsigned c_databaseVersionModifier = 0;
 #endif
 
+#if ETH_FRONTIER
+Network const c_network = Network::Frontier;
+#else
+Network const c_network = Network::Olympic;
+#endif
+
 const unsigned c_databaseVersion = c_databaseBaseVersion + (c_databaseVersionModifier << 8) + (ProofOfWork::revision() << 9);
 
 vector<pair<u256, string>> const& units()

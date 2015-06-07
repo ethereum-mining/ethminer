@@ -144,9 +144,9 @@ TypePointer Type::fromElementaryTypeName(Token::Value _typeToken)
 	else if (_typeToken == Token::Bool)
 		return make_shared<BoolType>();
 	else if (_typeToken == Token::Bytes)
-		return make_shared<ArrayType>(ArrayType::Location::Storage);
+		return make_shared<ArrayType>(ReferenceType::Location::Storage);
 	else if (_typeToken == Token::String)
-		return make_shared<ArrayType>(ArrayType::Location::Storage, true);
+		return make_shared<ArrayType>(ReferenceType::Location::Storage, true);
 	else
 		BOOST_THROW_EXCEPTION(InternalCompilerError() << errinfo_comment("Unable to convert elementary typename " +
 																		 std::string(Token::toString(_typeToken)) + " to type."));
@@ -196,10 +196,10 @@ TypePointer Type::fromArrayTypeName(TypeName& _baseTypeName, Expression* _length
 		auto const* length = dynamic_cast<IntegerConstantType const*>(_length->getType().get());
 		if (!length)
 			BOOST_THROW_EXCEPTION(_length->createTypeError("Invalid array length."));
-		return make_shared<ArrayType>(ArrayType::Location::Storage, baseType, length->literalValue(nullptr));
+		return make_shared<ArrayType>(ReferenceType::Location::Storage, baseType, length->literalValue(nullptr));
 	}
 	else
-		return make_shared<ArrayType>(ArrayType::Location::Storage, baseType);
+		return make_shared<ArrayType>(ReferenceType::Location::Storage, baseType);
 }
 
 TypePointer Type::forLiteral(Literal const& _literal)
@@ -317,9 +317,9 @@ TypePointer IntegerType::binaryOperatorResult(Token::Value _operator, TypePointe
 
 const MemberList IntegerType::AddressMemberList({
 	{"balance", make_shared<IntegerType >(256)},
-	{"call", make_shared<FunctionType>(strings(), strings(), FunctionType::Location::Bare, true)},
-	{"callcode", make_shared<FunctionType>(strings(), strings(), FunctionType::Location::BareCallCode, true)},
-	{"send", make_shared<FunctionType>(strings{"uint"}, strings{}, FunctionType::Location::Send)}
+	{"call", make_shared<FunctionType>(strings(), strings{"bool"}, FunctionType::Location::Bare, true)},
+	{"callcode", make_shared<FunctionType>(strings(), strings{"bool"}, FunctionType::Location::BareCallCode, true)},
+	{"send", make_shared<FunctionType>(strings{"uint"}, strings{"bool"}, FunctionType::Location::Send)}
 });
 
 IntegerConstantType::IntegerConstantType(Literal const& _literal)
@@ -361,17 +361,27 @@ IntegerConstantType::IntegerConstantType(Literal const& _literal)
 
 bool IntegerConstantType::isImplicitlyConvertibleTo(Type const& _convertTo) const
 {
-	shared_ptr<IntegerType const> integerType = getIntegerType();
-	if (!integerType)
-		return false;
-
-	if (_convertTo.getCategory() == Category::FixedBytes)
+	if (auto targetType = dynamic_cast<IntegerType const*>(&_convertTo))
 	{
-		FixedBytesType const& convertTo = dynamic_cast<FixedBytesType const&>(_convertTo);
-		return convertTo.getNumBytes() * 8 >= integerType->getNumBits();
+		if (m_value == 0)
+			return true;
+		int forSignBit = (targetType->isSigned() ? 1 : 0);
+		if (m_value > 0)
+		{
+			if (m_value <= (u256(-1) >> (256 - targetType->getNumBits() + forSignBit)))
+				return true;
+		}
+		else if (targetType->isSigned() && -m_value <= (u256(1) << (targetType->getNumBits() - forSignBit)))
+			return true;
+		return false;
 	}
-
-	return integerType->isImplicitlyConvertibleTo(_convertTo);
+	else if (_convertTo.getCategory() == Category::FixedBytes)
+	{
+		FixedBytesType const& fixedBytes = dynamic_cast<FixedBytesType const&>(_convertTo);
+		return fixedBytes.getNumBytes() * 8 >= getIntegerType()->getNumBits();
+	}
+	else
+		return false;
 }
 
 bool IntegerConstantType::isExplicitlyConvertibleTo(Type const& _convertTo) const
@@ -514,9 +524,10 @@ shared_ptr<IntegerType const> IntegerConstantType::getIntegerType() const
 	if (value > u256(-1))
 		return shared_ptr<IntegerType const>();
 	else
-		return make_shared<IntegerType>(max(bytesRequired(value), 1u) * 8,
-										negative ? IntegerType::Modifier::Signed
-												 : IntegerType::Modifier::Unsigned);
+		return make_shared<IntegerType>(
+			max(bytesRequired(value), 1u) * 8,
+			negative ? IntegerType::Modifier::Signed : IntegerType::Modifier::Unsigned
+		);
 }
 
 shared_ptr<FixedBytesType> FixedBytesType::smallestTypeForLiteral(string const& _literal)
@@ -663,7 +674,7 @@ bool ArrayType::isImplicitlyConvertibleTo(const Type& _convertTo) const
 		return false;
 	auto& convertTo = dynamic_cast<ArrayType const&>(_convertTo);
 	// let us not allow assignment to memory arrays for now
-	if (convertTo.getLocation() != Location::Storage)
+	if (convertTo.location() != Location::Storage)
 		return false;
 	if (convertTo.isByteArray() != isByteArray() || convertTo.isString() != isString())
 		return false;
@@ -767,12 +778,12 @@ TypePointer ArrayType::externalType() const
 		return std::make_shared<ArrayType>(Location::CallData, m_baseType->externalType(), m_length);
 }
 
-shared_ptr<ArrayType> ArrayType::copyForLocation(ArrayType::Location _location) const
+TypePointer ArrayType::copyForLocation(ReferenceType::Location _location) const
 {
 	auto copy = make_shared<ArrayType>(_location);
 	copy->m_arrayKind = m_arrayKind;
-	if (m_baseType->getCategory() == Type::Category::Array)
-		copy->m_baseType = dynamic_cast<ArrayType const&>(*m_baseType).copyForLocation(_location);
+	if (auto ref = dynamic_cast<ReferenceType const*>(m_baseType.get()))
+		copy->m_baseType = ref->copyForLocation(_location);
 	else
 		copy->m_baseType = m_baseType;
 	copy->m_hasDynamicLength = m_hasDynamicLength;
@@ -921,6 +932,13 @@ MemberList const& StructType::getMembers() const
 		m_members.reset(new MemberList(members));
 	}
 	return *m_members;
+}
+
+TypePointer StructType::copyForLocation(ReferenceType::Location _location) const
+{
+	auto copy = make_shared<StructType>(m_struct);
+	copy->m_location = _location;
+	return copy;
 }
 
 pair<u256, unsigned> const& StructType::getStorageOffsetsOfMember(string const& _name) const
@@ -1455,7 +1473,7 @@ MagicType::MagicType(MagicType::Kind _kind):
 			{"sender", make_shared<IntegerType>(0, IntegerType::Modifier::Address)},
 			{"gas", make_shared<IntegerType>(256)},
 			{"value", make_shared<IntegerType>(256)},
-			{"data", make_shared<ArrayType>(ArrayType::Location::CallData)},
+			{"data", make_shared<ArrayType>(ReferenceType::Location::CallData)},
 			{"sig", make_shared<FixedBytesType>(4)}
 		}));
 		break;

@@ -160,7 +160,7 @@ mObject FakeExtVM::exportExec()
 	ret["origin"] = toString(origin);
 	ret["value"] = toCompactHex(value, HexPrefix::Add, 1);
 	ret["gasPrice"] = toCompactHex(gasPrice, HexPrefix::Add, 1);
-	ret["gas"] = toCompactHex(gas, HexPrefix::Add, 1);
+	ret["gas"] = toCompactHex(execGas, HexPrefix::Add, 1);
 	ret["data"] = toHex(data, 2, HexPrefix::Add);
 	ret["code"] = toHex(code, 2, HexPrefix::Add);
 	return ret;
@@ -183,6 +183,7 @@ void FakeExtVM::importExec(mObject& _o)
 	value = toInt(_o["value"]);
 	gasPrice = toInt(_o["gasPrice"]);
 	gas = toInt(_o["gas"]);
+	execGas = gas;
 
 	thisTxCode.clear();
 	code = thisTxCode;

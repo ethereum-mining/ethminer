@@ -262,7 +262,21 @@ void ImportTest::importTransaction(json_spirit::mObject& _o)
 	{
 		RLPStream transactionRLPStream = createRLPStreamFromTransactionFields(_o);
 		RLP transactionRLP(transactionRLPStream.out());
-		m_transaction = Transaction(transactionRLP.data(), CheckTransaction::Everything);
+		try
+		{
+			m_transaction = Transaction(transactionRLP.data(), CheckTransaction::Everything);
+		}
+		catch (InvalidSignature)
+		{
+			// create unsigned transaction
+			m_transaction = _o["to"].get_str().empty() ?
+				Transaction(toInt(_o["value"]), toInt(_o["gasPrice"]), toInt(_o["gasLimit"]), importData(_o), toInt(_o["nonce"])) :
+				Transaction(toInt(_o["value"]), toInt(_o["gasPrice"]), toInt(_o["gasLimit"]), Address(_o["to"].get_str()), importData(_o), toInt(_o["nonce"]));
+		}
+		catch (Exception& _e)
+		{
+			cnote << "invalid transaction" << boost::diagnostic_information(_e);
+		}
 	}
 }
 
@@ -567,8 +581,7 @@ void userDefinedTest(std::function<void(json_spirit::mValue&, bool)> doTests)
 
 	auto& filename = Options::get().singleTestFile;
 	auto& testname = Options::get().singleTestName;
-	int currentVerbosity = g_logVerbosity;
-	g_logVerbosity = 12;
+	VerbosityHolder sentinel(12);
 	try
 	{
 		cnote << "Testing user defined test: " << filename;
@@ -593,14 +606,11 @@ void userDefinedTest(std::function<void(json_spirit::mValue&, bool)> doTests)
 	catch (Exception const& _e)
 	{
 		BOOST_ERROR("Failed Test with Exception: " << diagnostic_information(_e));
-		g_logVerbosity = currentVerbosity;
 	}
 	catch (std::exception const& _e)
 	{
 		BOOST_ERROR("Failed Test with Exception: " << _e.what());
-		g_logVerbosity = currentVerbosity;
 	}
-	g_logVerbosity = currentVerbosity;
 }
 
 void executeTests(const string& _name, const string& _testPathAppendix, const boost::filesystem::path _pathToFiller, std::function<void(json_spirit::mValue&, bool)> doTests)
