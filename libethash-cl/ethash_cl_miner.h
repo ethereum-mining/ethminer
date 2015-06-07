@@ -46,7 +46,6 @@ public:
 		unsigned _dagChunksNum = 1
 	);
 	void finish();
-	void hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);
 	void search(uint8_t const* header, uint64_t target, search_hook& hook);
 
 	void hash_chunk(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);

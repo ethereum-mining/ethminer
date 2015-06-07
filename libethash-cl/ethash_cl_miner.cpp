@@ -330,67 +330,6 @@ bool ethash_cl_miner::init(
 	return true;
 }
 
-void ethash_cl_miner::hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count)
-{
-	struct pending_batch
-	{
-		unsigned base;
-		unsigned count;
-		unsigned buf;
-	};
-	std::queue<pending_batch> pending;
-
-	// update header constant buffer
-	m_queue.enqueueWriteBuffer(m_header, true, 0, 32, header);
-
-	ETHCL_LOG("Setting chunk hash arguments.");
-	unsigned argPos = 2;
-	m_hash_kernel.setArg(1, m_header);
-	for (unsigned i = 0 ; i < m_dagChunksNum; ++i, ++argPos)
-		m_hash_kernel.setArg(argPos, m_dagChunks[i]);
-	m_hash_kernel.setArg(argPos + 1, nonce);
-	m_hash_kernel.setArg(argPos + 2, ~0u); // have to pass this to stop the compiler unrolling the loop
-
-	unsigned buf = 0;
-	for (unsigned i = 0; i < count || !pending.empty(); )
-	{
-		// how many this batch
-		if (i < count)
-		{
-			unsigned const this_count = std::min<unsigned>(count - i, c_hash_batch_size);
-			unsigned const batch_count = std::max<unsigned>(this_count, m_workgroup_size);
-
-			// supply output hash buffer to kernel
-			m_hash_kernel.setArg(0, m_hash_buf[buf]);
-
-			// execute it!
-			m_queue.enqueueNDRangeKernel(
-				m_hash_kernel,
-				cl::NullRange,
-				cl::NDRange(batch_count),
-				cl::NDRange(m_workgroup_size)
-			);
-			m_queue.flush();
-
-			pending.push({i, this_count, buf});
-			i += this_count;
-			buf = (buf + 1) % c_num_buffers;
-		}
-
-		// read results
-		if (i == count || pending.size() == c_num_buffers)
-		{
-			pending_batch const& batch = pending.front();
-			// could use pinned host pointer instead, but this path isn't that important.
-			uint8_t* hashes = (uint8_t*)m_queue.enqueueMapBuffer(m_hash_buf[batch.buf], true, CL_MAP_READ, 0, batch.count * ETHASH_BYTES);
-			memcpy(ret + batch.base*ETHASH_BYTES, hashes, batch.count*ETHASH_BYTES);
-			m_queue.enqueueUnmapMemObject(m_hash_buf[batch.buf], hashes);
-			pending.pop();
-		}
-	}
-}
-
-
 void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
 {
 	try
