@@ -72,6 +72,7 @@ std::unordered_map<Address, Account> const& dev::eth::genesisState()
 
 std::unique_ptr<BlockInfo> CanonBlockChain::s_genesis;
 boost::shared_mutex CanonBlockChain::x_genesis;
+Nonce CanonBlockChain::s_nonce(u64(42));
 
 bytes CanonBlockChain::createGenesisBlock()
 {
@@ -87,12 +88,33 @@ bytes CanonBlockChain::createGenesisBlock()
 	}
 
 	block.appendList(15)
-			<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << c_genesisGasLimit << 0 << (unsigned)0 << string() << h256() << Nonce(u64(42));
+			<< h256() << EmptyListSHA3 << h160() << stateRoot << EmptyTrie << EmptyTrie << LogBloom() << c_genesisDifficulty << 0 << c_genesisGasLimit << 0 << (unsigned)0 << string() << h256() << s_nonce;
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);
 	return block.out();
 }
 
-CanonBlockChain::CanonBlockChain(std::string const& _path, WithExisting _we, ProgressCallback const& _pc): BlockChain(CanonBlockChain::createGenesisBlock(), _path, _we, _pc)
+CanonBlockChain::CanonBlockChain(std::string const& _path, WithExisting _we, ProgressCallback const& _pc):
+	BlockChain(createGenesisBlock(), _path, _we, _pc)
 {
+}
+
+void CanonBlockChain::setGenesisNonce(Nonce const& _n)
+{
+	WriteGuard l(x_genesis);
+	s_nonce = _n;
+	s_genesis.reset();
+}
+
+BlockInfo const& CanonBlockChain::genesis()
+{
+	UpgradableGuard l(x_genesis);
+	if (!s_genesis)
+	{
+		auto gb = createGenesisBlock();
+		UpgradeGuard ul(l);
+		s_genesis.reset(new BlockInfo);
+		s_genesis->populate(&gb);
+	}
+	return *s_genesis;
 }
