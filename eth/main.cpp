@@ -66,6 +66,8 @@ using namespace dev::eth;
 using namespace boost::algorithm;
 using dev::eth::Instruction;
 
+static bool g_silence = false;
+
 void interactiveHelp()
 {
 	cout
@@ -623,21 +625,20 @@ int main(int argc, char** argv)
 		clientName += "/";
 
 	string logbuf;
-	bool silence = false;
 	std::string additional;
 	g_logPost = [&](std::string const& a, char const*){
-		if (silence)
+		if (g_silence)
 			logbuf += a + "\n";
 		else
 			cout << "\r           \r" << a << endl << additional << flush;
 	};
 
 	auto getPassword = [&](string const& prompt){
-		auto s = silence;
-		silence = true;
+		auto s = g_silence;
+		g_silence = true;
 		cout << endl;
 		string ret = dev::getPassword(prompt);
-		silence = s;
+		g_silence = s;
 		return ret;
 	};
 	auto getAccountPassword = [&](Address const& a){
@@ -803,11 +804,11 @@ int main(int argc, char** argv)
 		string l;
 		while (!g_exit)
 		{
-			silence = false;
+			g_silence = false;
 			cout << logbuf << "Press Enter" << flush;
 			std::getline(cin, l);
 			logbuf.clear();
-			silence = true;
+			g_silence = true;
 
 #if ETH_READLINE
 			if (l.size())
