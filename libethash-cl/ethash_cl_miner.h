@@ -39,7 +39,6 @@ public:
 
 	bool init(uint8_t const* _dag, uint64_t _dagSize, unsigned workgroup_size = 64, unsigned _platformId = 0, unsigned _deviceId = 0);
 	void finish();
-	void hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count);
 	void search(uint8_t const* header, uint64_t target, search_hook& hook);
 
 private:
