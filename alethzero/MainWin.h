@@ -91,7 +91,7 @@ public:
 
 	QList<dev::KeyPair> owned() const { return m_myIdentities; }
 
-	dev::u256 gasPrice() const { return 10 * dev::eth::szabo; }
+	dev::u256 gasPrice() const override;
 
 	dev::eth::KeyManager& keyManager() override { return m_keyManager; }
 	bool doConfirm();
@@ -194,6 +194,9 @@ private slots:
 	void on_newIdentity_triggered();
 	void on_post_clicked();
 
+	// Config
+	void on_gasPrices_triggered();
+
 	void refreshWhisper();
 	void refreshBlockChain();
 	void addNewId(QString _ids);
@@ -279,7 +282,7 @@ private:
 	static std::string fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
 	NatspecHandler m_natSpecDB;
 
-	Transact m_transact;
+	Transact* m_transact;
 	std::unique_ptr<DappHost> m_dappHost;
 	DappLoader* m_dappLoader;
 	QWebEnginePage* m_webPage;
