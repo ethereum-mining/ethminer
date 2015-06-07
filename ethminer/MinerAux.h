@@ -268,6 +268,7 @@ public:
 			ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
 			ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
 			ProofOfWork::GPUMiner::setNumInstances(miningThreads);
+			ProofOfWork::GPUMiner::setDagChunks(dagChunks);
 		}
 		if (mode == OperationMode::DAGInit)
 			doInitDAG(initDAG);
