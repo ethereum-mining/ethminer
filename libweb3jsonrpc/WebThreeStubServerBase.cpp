@@ -201,9 +201,9 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 
 	// check only !empty. it should throw exceptions if input params are incorrect
 	if (!_json["fromBlock"].empty())
-		filter.withEarliest(jsToBlockNumber(_json["fromBlock"].asString()));
+		filter.withEarliest(jsToFixed<32>(_json["fromBlock"].asString()));
 	if (!_json["toBlock"].empty())
-		filter.withLatest(jsToBlockNumber(_json["toBlock"].asString()));
+		filter.withLatest(jsToFixed<32>(_json["toBlock"].asString()));
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
