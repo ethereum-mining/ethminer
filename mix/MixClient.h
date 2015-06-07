@@ -91,7 +91,7 @@ protected:
 
 private:
 	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state, bool _call, bool _gasAuto, dev::Secret const& _secret = dev::Secret());
-	void noteChanged(h256Set const& _filters);
+    //void noteChanged(h256Set const& _filters);
 	dev::eth::Transaction replaceGas(dev::eth::Transaction const& _t, dev::u256 const& _gas, dev::Secret const& _secret = dev::Secret());
 
     eth::State m_state;

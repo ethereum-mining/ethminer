@@ -121,21 +121,35 @@ ColumnLayout
                         clip: true
                     }
 
+                    Label
+                    {
+                        id: logs
+                        width: logsWidth
+                        text: {
+                            if (index >= 0 && transactions.get(index).logs)
+                            {
+                                for (var k in transactions.get(index).logs)
+                                {
+                                    console.log("_________________________")
+                                    console.log(JSON.stringify(transactions.get(index).logs[k]))
+                                    console.log("_________________________")
+                                }
+                                return transactions.get(index).logs.length
+                            }
+                            else
+                                return 0
+                        }
+                    }
+
                     Button
                     {
                         id: debug
-                        width: logsWidth
+                        width: debugActionWidth
                         text: "debug"
                         onClicked:
                         {
                             clientModel.debugRecord(transactions.get(index).recordIndex);
                         }
-                    }
-
-                    Label
-                    {
-                        id: logs
-                        width: logsWidth
                     }
                 }
             }
