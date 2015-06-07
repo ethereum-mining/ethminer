@@ -214,7 +214,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 			else
 			{
 				/// authenticate and decrypt header
-				if (!m_io->authAndDecryptHeader(bytesRef(m_handshakeInBuffer.data(), handshakeSize)))
+				if (!m_io->authAndDecryptHeader(bytesRef(m_handshakeInBuffer.data(), m_handshakeInBuffer.size())))
 				{
 					m_nextState = Error;
 					transition();
