@@ -337,7 +337,7 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& 
 {
 	Guard l(x_filtersWatches);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
-		if (i.second.filter.envelops(RelativeBlock::Pending, m_bc.number() + 1))
+		if (isInBlockHashRange(i.second.filter.earliest(), i.second.filter.latest(), PendingBlockHash))
 		{
 			// acceptable number.
 			auto m = i.second.filter.matches(_receipt);
@@ -359,7 +359,7 @@ void Client::appendFromNewBlock(h256 const& _block, h256Hash& io_changed)
 
 	Guard l(x_filtersWatches);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
-		if (i.second.filter.envelops(RelativeBlock::Latest, d.number) && i.second.filter.matches(d.logBloom))
+		if (isInBlockHashRange(i.second.filter.earliest(), i.second.filter.latest(), d.hash()) && i.second.filter.matches(d.logBloom))
 			// acceptable number & looks like block may contain a matching log entry.
 			for (size_t j = 0; j < br.receipts.size(); j++)
 			{

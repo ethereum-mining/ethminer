@@ -77,6 +77,10 @@ using BlockNumber = unsigned;
 
 static const BlockNumber LatestBlock = (BlockNumber)-2;
 static const BlockNumber PendingBlock = (BlockNumber)-1;
+static const h256 LatestBlockHash = h256(2);
+static const h256 EarliestBlockHash = h256(1);
+static const h256 PendingBlockHash = h256(0);
+
 
 enum class RelativeBlock: BlockNumber
 {

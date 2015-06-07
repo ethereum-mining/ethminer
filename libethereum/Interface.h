@@ -137,6 +137,8 @@ public:
 	virtual std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const = 0;
 	virtual h256 hashFromNumber(BlockNumber _number) const = 0;
 	virtual BlockNumber numberFromHash(h256 _blockHash) const = 0;
+	virtual int compareBlockHashes(h256 _h1, h256 _h2) const = 0;
+	virtual bool isInBlockHashRange(h256 _from, h256 _to, h256 _q) const = 0;
 
 	virtual BlockInfo blockInfo(h256 _hash) const = 0;
 	virtual BlockDetails blockDetails(h256 _hash) const = 0;
