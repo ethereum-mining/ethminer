@@ -774,6 +774,7 @@ void Main::readSettings(bool _skipGeometry)
 	ui->usePrivate->setChecked(m_privateChain.size());
 	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
 	ui->jitvm->setChecked(s.value("jitvm", true).toBool());
+	on_jitvm_triggered();
 
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
@@ -1262,6 +1263,7 @@ void Main::refreshBlockChain()
 		if (oldSelected == hba)
 			blockItem->setSelected(true);
 
+		/*
 		int n = 0;
 		try {
 			auto b = bc.block(h);
@@ -1290,6 +1292,7 @@ void Main::refreshBlockChain()
 			}
 		}
 		catch (...) {}
+		*/
 	};
 
 	if (filters.empty())

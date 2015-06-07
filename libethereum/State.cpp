@@ -141,7 +141,7 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h, ImportRequire
 
 		// 2. Enact the block's transactions onto this state.
 		m_ourAddress = bi.coinbaseAddress;
-		enact(&b, _bc, _ir);
+		enact(BlockChain::verifyBlock(b, _ir), _bc, _ir);
 	}
 	else
 	{
@@ -382,7 +382,7 @@ bool State::sync(BlockChain const& _bc, h256 _block, BlockInfo const& _bi, Impor
 	return ret;
 }
 
-u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc, ImportRequirements::value _ir)
+u256 State::enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 #if ETH_TIMED_ENACTMENTS
 	boost::timer t;
@@ -393,8 +393,8 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 #endif
 
 	// Check family:
-	BlockInfo biParent = _bc.info(_bi.parentHash);
-	_bi.verifyParent(biParent);
+	BlockInfo biParent = _bc.info(_block.info.parentHash);
+	_block.info.verifyParent(biParent);
 
 #if ETH_TIMED_ENACTMENTS
 	populateVerify = t.elapsed();
@@ -410,7 +410,7 @@ u256 State::enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const
 	t.restart();
 #endif
 
-	sync(_bc, _bi.parentHash, BlockInfo(), _ir);
+	sync(_bc, _block.info.parentHash, BlockInfo(), _ir);
 	resetCurrent();
 
 #if ETH_TIMED_ENACTMENTS
@@ -596,29 +596,34 @@ template <class Channel>
 class LogOverride
 {
 public:
-	LogOverride(bool _value): m_old(g_logOverride.count(&typeid(Channel)) ? (int)g_logOverride[&typeid(Channel)] : c_null) { g_logOverride[&typeid(Channel)] = _value; }
+	LogOverride(bool _value):
+		m_old(g_logOverride.count(&typeid(Channel)) ? (int)g_logOverride[&typeid(Channel)] : c_null)
+	{
+		x_sync.lock();
+		g_logOverride[&typeid(Channel)] = _value;
+	}
+
 	~LogOverride()
 	{
 		if (m_old == c_null)
 			g_logOverride.erase(&typeid(Channel));
 		else
 			g_logOverride[&typeid(Channel)] = (bool)m_old;
+		x_sync.unlock();
 	}
 
 private:
 	static const int c_null = -1;
 	int m_old;
+	Mutex x_sync;
 };
 
-u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir)
+u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
-
-	BlockInfo bi(_block, (_ir & ImportRequirements::ValidNonce) ? CheckEverything : IgnoreNonce);
-
 #if !ETH_RELEASE
-	assert(m_previousBlock.hash() == bi.parentHash);
-	assert(m_currentBlock.parentHash == bi.parentHash);
+	assert(m_previousBlock.hash() == _block.info.parentHash);
+	assert(m_currentBlock.parentHash == _block.info.parentHash);
 	assert(rootHash() == m_previousBlock.stateRoot);
 #endif
 
@@ -626,32 +631,31 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 		BOOST_THROW_EXCEPTION(InvalidParentHash());
 
 	// Populate m_currentBlock with the correct values.
-	m_currentBlock = bi;
-	m_currentBlock.verifyInternals(_block);
+	m_currentBlock = _block.info;
 	m_currentBlock.noteDirty();
 
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
 
 	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
-	RLP rlp(_block);
+	RLP rlp(_block.block);
 
 	vector<bytes> receipts;
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
-	for (auto const& tr: rlp[1])
+	for (auto const& tr: _block.transactions)
 	{
 		try {
 			LogOverride<ExecutiveWarnChannel> o(false);
-			execute(lh, Transaction(tr.data(), CheckTransaction::Everything));
+			execute(lh, tr);
 		}
 		catch (...)
 		{
-			badBlock(_block, "Invalid transaction");
+			badBlock(_block.block, "Invalid transaction");
 			cwarn << "  Transaction Index:" << i;
 			LogOverride<ExecutiveWarnChannel> o(true);
-			execute(lh, Transaction(tr.data(), CheckTransaction::Everything));
+			execute(lh, tr);
 			throw;
 		}
 
@@ -664,7 +668,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	auto receiptsRoot = orderedTrieRoot(receipts);
 	if (receiptsRoot != m_currentBlock.receiptsRoot)
 	{
-		badBlock(_block, "Bad receipts state root");
+		badBlock(_block.block, "Bad receipts state root");
 		cwarn << "  Received: " << toString(m_currentBlock.receiptsRoot);
 		cwarn << "  Expected: " << toString(receiptsRoot) << " which is:";
 		for (unsigned j = 0; j < i; ++j)
@@ -675,13 +679,13 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 			cwarn << "    Hex: " << toHex(b);
 			cwarn << "    " << TransactionReceipt(&b);
 		}
-		cwarn << "  VMTrace:\n" << vmTrace(_block, _bc, _ir);
+		cwarn << "  VMTrace:\n" << vmTrace(_block.block, _bc, _ir);
 		BOOST_THROW_EXCEPTION(InvalidReceiptsStateRoot());
 	}
 
 	if (m_currentBlock.logBloom != logBloom())
 	{
-		badBlock(_block, "Bad log bloom");
+		badBlock(_block.block, "Bad log bloom");
 		cwarn << "  Receipt blooms:";
 		for (unsigned j = 0; j < i; ++j)
 		{
@@ -698,7 +702,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	// Check uncles & apply their rewards to state.
 	if (rlp[2].itemCount() > 2)
 	{
-		badBlock(_block, "Too many uncles");
+		badBlock(_block.block, "Too many uncles");
 		BOOST_THROW_EXCEPTION(TooManyUncles());
 	}
 
@@ -711,7 +715,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 		auto h = sha3(i.data());
 		if (excluded.count(h))
 		{
-			badBlock(_block, "Invalid uncle included");
+			badBlock(_block.block, "Invalid uncle included");
 			BOOST_THROW_EXCEPTION(UncleInChain() << errinfo_comment("Uncle in block already mentioned") << errinfo_data(toString(excluded)) << errinfo_hash256(sha3(i.data())));
 		}
 		excluded.insert(h);
@@ -720,7 +724,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 		BlockInfo uncleParent(_bc.block(uncle.parentHash));
 		if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
 		{
-			badBlock(_block, "Uncle too old");
+			badBlock(_block.block, "Uncle too old");
 			cwarn << "  Uncle number: " << uncle.number;
 			cwarn << "  Uncle parent number: " << uncleParent.number;
 			cwarn << "  Block number: " << m_currentBlock.number;
@@ -728,7 +732,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 		}
 		else if (uncle.number == m_currentBlock.number)
 		{
-			badBlock(_block, "Uncle is brother");
+			badBlock(_block.block, "Uncle is brother");
 			cwarn << "  Uncle number: " << uncle.number;
 			cwarn << "  Uncle parent number: " << uncleParent.number;
 			cwarn << "  Block number: " << m_currentBlock.number;
@@ -748,12 +752,12 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot != m_previousBlock.stateRoot && m_currentBlock.stateRoot != rootHash())
 	{
-		badBlock(_block, "Bad state root");
+		badBlock(_block.block, "Bad state root");
 		cnote << "  Given to be:" << m_currentBlock.stateRoot;
 		// TODO: Fix
 //		cnote << SecureTrieDB<Address, OverlayDB>(&m_db, m_currentBlock.stateRoot);
 		cnote << "  Calculated to be:" << rootHash();
-		cwarn << "  VMTrace:\n" << vmTrace(_block, _bc, _ir);
+		cwarn << "  VMTrace:\n" << vmTrace(_block.block, _bc, _ir);
 //		cnote << m_state;
 		// Rollback the trie.
 		m_db.rollback();
@@ -763,7 +767,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	if (m_currentBlock.gasUsed != gasUsed())
 	{
 		// Rollback the trie.
-		badBlock(_block, "Invalid gas used");
+		badBlock(_block.block, "Invalid gas used");
 		m_db.rollback();
 		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed)));
 	}
@@ -841,7 +845,7 @@ bool State::amIJustParanoid(BlockChain const& _bc)
 		cnote << "PARANOIA root:" << s.rootHash();
 //		s.m_currentBlock.populate(&block.out(), false);
 //		s.m_currentBlock.verifyInternals(&block.out());
-		s.enact(&block.out(), _bc, false);	// don't check nonce for this since we haven't mined it yet.
+		s.enact(BlockChain::verifyBlock(block.out()), _bc, false);	// don't check nonce for this since we haven't mined it yet.
 		s.cleanup(false);
 		return true;
 	}
