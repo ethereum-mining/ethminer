@@ -251,7 +251,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		h256Set changed;
 		Guard l(x_filtersWatches);
 		for (std::pair<h256 const, eth::InstalledFilter>& i: m_filters)
-			if ((unsigned)i.second.filter.latest() > bc().number())
+			if (compareBlockHashes(i.second.filter.latest(), bc().currentHash()) > 0)
 			{
 				// acceptable number.
 				auto m = i.second.filter.matches(_state.receipt(_state.pending().size() - 1));

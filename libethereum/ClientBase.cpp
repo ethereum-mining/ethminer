@@ -171,8 +171,8 @@ LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 {
 	LocalisedLogEntries ret;
-	unsigned begin = min<unsigned>(bc().number() + 1, (unsigned)_f.latest());
-	unsigned end = min(bc().number(), min(begin, (unsigned)_f.earliest()));
+	unsigned begin = min<unsigned>(bc().number() + 1, (unsigned)numberFromHash(_f.latest()));
+	unsigned end = min(bc().number(), min(begin, (unsigned)numberFromHash(_f.earliest())));
 	
 	// Handle pending transactions differently as they're not on the block chain.
 	if (begin > bc().number())
@@ -442,6 +442,31 @@ h256 ClientBase::hashFromNumber(BlockNumber _number) const
 
 BlockNumber ClientBase::numberFromHash(h256 _blockHash) const
 {
+	if (_blockHash == PendingBlockHash)
+		_blockHash = hashFromNumber(PendingBlock);
+	else if (_blockHash == LatestBlockHash)
+		_blockHash = hashFromNumber(LatestBlock);
+	else if (_blockHash == EarliestBlockHash)
+		_blockHash = hashFromNumber(0);
 	return bc().number(_blockHash);
 }
 
+int ClientBase::compareBlockHashes(h256 _h1, h256 _h2) const
+{
+	BlockNumber n1 = numberFromHash(_h1);
+	BlockNumber n2 = numberFromHash(_h2);
+
+	if (n1 > n2) {
+		return 1;
+	} else if (n1 == n2) {
+		return 0;
+	}
+	return -1;
+}
+
+bool ClientBase::isInBlockHashRange(h256 _from, h256 _to, h256 _q) const
+{
+	int c1 = compareBlockHashes(_from, _q);
+	int c2 = compareBlockHashes(_q, _to);
+	return (c1 == 0 || c1 == -1) && (c2 == 0 || c2 == -1);
+}
