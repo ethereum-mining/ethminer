@@ -592,24 +592,6 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	return ss.str();
 }
 
-template <class Channel>
-class LogOverride
-{
-public:
-	LogOverride(bool _value): m_old(g_logOverride.count(&typeid(Channel)) ? (int)g_logOverride[&typeid(Channel)] : c_null) { g_logOverride[&typeid(Channel)] = _value; }
-	~LogOverride()
-	{
-		if (m_old == c_null)
-			g_logOverride.erase(&typeid(Channel));
-		else
-			g_logOverride[&typeid(Channel)] = (bool)m_old;
-	}
-
-private:
-	static const int c_null = -1;
-	int m_old;
-};
-
 u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
 	// m_currentBlock is assumed to be prepopulated and reset.
