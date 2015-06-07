@@ -46,7 +46,7 @@ using namespace dev::eth;
 #define ctrace clog(StateTrace)
 #define ETH_TIMED_ENACTMENTS 0
 
-static const u256 c_blockReward = 1500 * finney;
+static const u256 c_blockReward = c_network == Network::Olympic ? (1500 * finney) : (5 * ether);
 
 const char* StateSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
 const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
