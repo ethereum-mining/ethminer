@@ -89,6 +89,7 @@ public:
 		static std::string platformInfo();
 		static bool haveSufficientGPUMemory() { return false; }
 		static void setDefaultPlatform(unsigned) {}
+		static void setDagChunks(unsigned) {}
 		static void setDefaultDevice(unsigned) {}
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
 	protected:
