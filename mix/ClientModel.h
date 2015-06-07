@@ -115,6 +115,8 @@ class RecordLogEntry: public QObject
     Q_PROPERTY(QString label MEMBER m_label CONSTANT)
     /// input parameters
     Q_PROPERTY(QVariantMap parameters MEMBER m_inputParameters CONSTANT)
+    /// logs
+    Q_PROPERTY(QVariantList logs MEMBER m_logs CONSTANT)
 
 public:
 	enum RecordType
@@ -126,9 +128,9 @@ public:
 	RecordLogEntry():
 		m_recordIndex(0), m_call(false), m_type(RecordType::Transaction) {}
     RecordLogEntry(unsigned _recordIndex, QString _transactionIndex, QString _contract, QString _function, QString _value, QString _address, QString _returned, bool _call, RecordType _type, QString _gasUsed,
-                   QString _sender, QString _label, QVariantMap _inputParameters):
+                   QString _sender, QString _label, QVariantMap _inputParameters, QVariantList _logs):
         m_recordIndex(_recordIndex), m_transactionIndex(_transactionIndex), m_contract(_contract), m_function(_function), m_value(_value), m_address(_address), m_returned(_returned), m_call(_call), m_type(_type), m_gasUsed(_gasUsed),
-        m_sender(_sender), m_label(_label), m_inputParameters(_inputParameters) {}
+        m_sender(_sender), m_label(_label), m_inputParameters(_inputParameters), m_logs(_logs) {}
 
 private:
 	unsigned m_recordIndex;
@@ -144,6 +146,7 @@ private:
     QString m_sender;
     QString m_label;
     QVariantMap m_inputParameters;
+    QVariantList m_logs;
 };
 
 /**

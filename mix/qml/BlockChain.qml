@@ -30,8 +30,9 @@ Column {
     property int statusWidth: 50
     property int fromWidth: 100
     property int toWidth: 250
-    property int valueWidth: 100
+    property int valueWidth: 50
     property int logsWidth: 50
+    property int debugActionWidth: 50
 
     Row
     {
@@ -61,6 +62,11 @@ Column {
         {
             text: "Logs"
             width: logsWidth
+        }
+        Label
+        {
+            text: "Action"
+            width: debugActionWidth
         }
     }
 
@@ -253,6 +259,8 @@ Column {
                         blockModel.getTransaction(blockIndex, trIndex).returned = _r.returned;
                         tr.recordIndex = _r.recordIndex;
                         blockModel.getTransaction(blockIndex, trIndex).recordIndex = _r.recordIndex;
+                        tr.logs = _r.logs;
+                        blockModel.getTransaction(blockIndex, trIndex).logs = _r.logs;
                         return;
                     }
                 }
@@ -270,6 +278,7 @@ Column {
                 itemTr.value = QEtherHelper.createEther(_r.value, QEther.Wei)
                 itemTr.sender = _r.sender
                 itemTr.recordIndex = _r.recordIndex
+                itemTr.logs = _r.logs
 
                 model.blocks[model.blocks.length - 1].transactions.push(itemTr)
                 blockModel.appendTransaction(itemTr)
