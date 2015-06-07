@@ -39,6 +39,7 @@ namespace eth
 {
 
 class BlockChain;
+struct VerifiedBlock;
 
 struct BlockQueueChannel: public LogChannel { static const char* name(); static const int verbosity = 4; };
 #define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
@@ -81,7 +82,7 @@ public:
 
 	/// Grabs at most @a _max of the blocks that are ready, giving them in the correct order for insertion into the chain.
 	/// Don't forget to call doneDrain() once you're done importing.
-	void drain(std::vector<std::pair<BlockInfo, bytes>>& o_out, unsigned _max);
+	void drain(std::vector<VerifiedBlock>& o_out, unsigned _max);
 
 	/// Must be called after a drain() call. Notes that the drained blocks have been imported into the blockchain, so we can forget about them.
 	/// @returns true iff there are additional blocks ready to be processed.
@@ -128,8 +129,8 @@ private:
 
 	mutable Mutex m_verification;										///< Mutex that allows writing to m_verified, m_verifying and m_unverified.
 	std::condition_variable m_moreToVerify;								///< Signaled when m_unverified has a new entry.
-	std::vector<std::pair<BlockInfo, bytes>> m_verified;				///< List of blocks, in correct order, verified and ready for chain-import.
-	std::deque<std::pair<BlockInfo, bytes>> m_verifying;				///< List of blocks being verified; as long as the second component (bytes) is empty, it's not finished.
+	std::vector<VerifiedBlock> m_verified;				///< List of blocks, in correct order, verified and ready for chain-import.
+	std::deque<VerifiedBlock> m_verifying;				///< List of blocks being verified; as long as the second component (bytes) is empty, it's not finished.
 	std::deque<std::pair<h256, bytes>> m_unverified;					///< List of blocks, in correct order, ready for verification.
 
 	std::vector<std::thread> m_verifiers;								///< Threads who only verify.
