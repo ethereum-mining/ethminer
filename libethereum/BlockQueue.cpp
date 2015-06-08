@@ -77,61 +77,9 @@ void BlockQueue::verifierBody()
 
 		VerifiedBlock res;
 		swap(work.second, res.blockData);
-		try {
-<<<<<<< HEAD
+		try
+		{
 			res.verified = BlockChain::verifyBlock(res.blockData);
-=======
-			try {
-				res.first.populate(res.second, CheckEverything, work.first);
-				res.first.verifyInternals(&res.second);
-			}
-			catch (InvalidBlockNonce&)
-			{
-				badBlock(res.second, "Invalid block nonce");
-				cwarn << "  Nonce:" << res.first.nonce.hex();
-				cwarn << "  PoWHash:" << res.first.headerHash(WithoutNonce).hex();
-				cwarn << "  SeedHash:" << res.first.seedHash().hex();
-				cwarn << "  Target:" << res.first.boundary().hex();
-				cwarn << "  MixHash:" << res.first.mixHash.hex();
-				Ethash::Result er = EthashAux::eval(res.first.seedHash(), res.first.headerHash(WithoutNonce), res.first.nonce);
-				cwarn << "  Ethash v:" << er.value.hex();
-				cwarn << "  Ethash mH:" << er.mixHash.hex();
-				throw;
-			}
-			catch (Exception& _e)
-			{
-				badBlock(res.second, _e.what());
-				throw;
-			}
-
-			RLP r(&res.second);
-			for (auto const& uncle: r[2])
-			{
-				try
-				{
-					BlockInfo().populateFromHeader(RLP(uncle.data()), CheckEverything);
-				}
-				catch (InvalidNonce&)
-				{
-					badBlockHeader(uncle.data(), "Invalid uncle nonce");
-					BlockInfo bi = BlockInfo::fromHeader(uncle.data(), CheckNothing);
-					cwarn << "  Nonce:" << bi.nonce.hex();
-					cwarn << "  PoWHash:" << bi.headerHash(WithoutNonce).hex();
-					cwarn << "  SeedHash:" << bi.seedHash().hex();
-					cwarn << "  Target:" << bi.boundary().hex();
-					cwarn << "  MixHash:" << bi.mixHash.hex();
-					Ethash::Result er = EthashAux::eval(bi.seedHash(), bi.headerHash(WithoutNonce), bi.nonce);
-					cwarn << "  Ethash v:" << er.value.hex();
-					cwarn << "  Ethash mH:" << er.mixHash.hex();
-					throw;
-				}
-				catch (Exception& _e)
-				{
-					badBlockHeader(uncle.data(), _e.what());
-					throw;
-				}
-			}
->>>>>>> 5ee6f9b9784289c5c4f665c90eff4a138f4d194b
 		}
 		catch (...)
 		{

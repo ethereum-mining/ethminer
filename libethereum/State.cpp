@@ -1118,6 +1118,8 @@ h256 State::codeHash(Address _contract) const
 {
 	if (!addressHasCode(_contract))
 		return EmptySHA3;
+	if (m_cache[_contract].isFreshCode())
+		return sha3(code(_contract));
 	return m_cache[_contract].codeHash();
 }
 

@@ -1066,7 +1066,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, ImportRequirements
 		res.info.populate(_block, CheckEverything);
 		res.info.verifyInternals(&_block);
 	}
-	catch (InvalidNonce&)
+	catch (InvalidBlockNonce&)
 	{
 		badBlock(_block, "Invalid block nonce");
 		cwarn << "  Nonce:" << res.info.nonce.hex();
