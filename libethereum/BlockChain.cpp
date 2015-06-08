@@ -645,7 +645,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	}
 
 	try {
-		//State canary(_db, *this, _block.info.hash(), ImportRequirements::DontHave);
+		State canary(_db, *this, _block.info.hash(), ImportRequirements::DontHave);
 	}
 	catch (...)
 	{
