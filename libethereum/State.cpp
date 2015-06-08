@@ -1169,6 +1169,8 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	// Create and initialize the executive. This will throw fairly cheaply and quickly if the
 	// transaction is bad in any way.
 	Executive e(*this, _lh, 0);
+	ExecutionResult res;
+	e.setResultRecipient(res);
 	e.initialize(_t);
 
 	// Uncommitting is a non-trivial operation - only do it once we've verified as much of the
@@ -1228,7 +1230,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 		m_transactionSet.insert(e.t().sha3());
 	}
 
-	return e.executionResult();
+	return res;
 }
 
 State State::fromPending(unsigned _i) const

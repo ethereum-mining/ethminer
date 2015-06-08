@@ -2115,14 +2115,14 @@ void Main::on_reencryptKey_triggered()
 			auto pw = [&](){
 				auto p = QInputDialog::getText(this, "Re-Encrypt Key", "Enter the original password for this key.\nHint: " + QString::fromStdString(m_keyManager.hint(a)), QLineEdit::Password, QString()).toStdString();
 				if (p.empty())
-					throw UnknownPassword();
+					throw PasswordUnknown();
 				return p;
 			};
 			while (!(password.empty() ? m_keyManager.recode(a, SemanticPassword::Master, pw, kdf) : m_keyManager.recode(a, password, hint, pw, kdf)))
 				if (QMessageBox::question(this, "Re-Encrypt Key", "Password given is incorrect. Would you like to try again?", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
 					return;
 		}
-		catch (UnknownPassword&) {}
+		catch (PasswordUnknown&) {}
 	}
 }
 
@@ -2138,13 +2138,13 @@ void Main::on_reencryptAll_triggered()
 			while (!m_keyManager.recode(a, SemanticPassword::Existing, [&](){
 				auto p = QInputDialog::getText(nullptr, "Re-Encrypt Key", QString("Enter the original password for key %1.\nHint: %2").arg(QString::fromStdString(pretty(a))).arg(QString::fromStdString(m_keyManager.hint(a))), QLineEdit::Password, QString()).toStdString();
 				if (p.empty())
-					throw UnknownPassword();
+					throw PasswordUnknown();
 				return p;
 			}, (KDF)kdfs.indexOf(kdf)))
 				if (QMessageBox::question(this, "Re-Encrypt Key", "Password given is incorrect. Would you like to try again?", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
 					return;
 	}
-	catch (UnknownPassword&) {}
+	catch (PasswordUnknown&) {}
 }
 
 void Main::on_go_triggered()
