@@ -781,6 +781,18 @@ string WebThreeStubServerBase::eth_newFilter(Json::Value const& _json)
 	}
 }
 
+string WebThreeStubServerBase::eth_newFilterEx(Json::Value const& _json)
+{
+	try
+	{
+		return toJS(client()->installWatch(toLogFilter(_json)));
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
 string WebThreeStubServerBase::eth_newBlockFilter(string const& _filter)
 {
 	h256 filter;
@@ -825,7 +837,35 @@ Json::Value WebThreeStubServerBase::eth_getFilterChanges(string const& _filterId
 	}
 }
 
+Json::Value WebThreeStubServerBase::eth_getFilterChangesEx(string const& _filterId)
+{
+	try
+	{
+		int id = jsToInt(_filterId);
+		auto entries = client()->checkWatch(id);
+		if (entries.size())
+			cnote << "FIRING WATCH" << id << entries.size();
+		return toJson(entries);
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
 Json::Value WebThreeStubServerBase::eth_getFilterLogs(string const& _filterId)
+{
+	try
+	{
+		return toJson(client()->logs(jsToInt(_filterId)));
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+Json::Value WebThreeStubServerBase::eth_getFilterLogsEx(string const& _filterId)
 {
 	try
 	{
@@ -982,7 +1022,6 @@ string WebThreeStubServerBase::shh_addToGroup(string const& _group, string const
 
 string WebThreeStubServerBase::shh_newFilter(Json::Value const& _json)
 {
-	
 	try
 	{
 		pair<shh::Topics, Public> w = toWatch(_json);
@@ -1073,3 +1112,5 @@ Json::Value WebThreeStubServerBase::shh_getMessages(string const& _filterId)
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
 }
+
+
