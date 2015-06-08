@@ -89,18 +89,18 @@ bool KeyManager::load(std::string const& _pass)
 			for (auto const& i: s[1])
 			{
 				m_keyInfo[m_addrLookup[(Address)i[0]] = (h128)i[1]] = KeyInfo((h256)i[2], (std::string)i[3]);
-				cdebug << toString((Address)i[0]) << toString((h128)i[1]) << toString((h256)i[2]) << (std::string)i[3];
+//				cdebug << toString((Address)i[0]) << toString((h128)i[1]) << toString((h256)i[2]) << (std::string)i[3];
 			}
 
 			for (auto const& i: s[2])
 				m_passwordInfo[(h256)i[0]] = (std::string)i[1];
 			m_password = (string)s[3];
 		}
-		cdebug << hashPassword(m_password) << toHex(m_password);
+//		cdebug << hashPassword(m_password) << toHex(m_password);
 		m_cachedPasswords[hashPassword(m_password)] = m_password;
-		cdebug << hashPassword(asString(m_key.ref())) << m_key.hex();
+//		cdebug << hashPassword(asString(m_key.ref())) << m_key.hex();
 		m_cachedPasswords[hashPassword(asString(m_key.ref()))] = asString(m_key.ref());
-		cdebug << hashPassword(_pass) << _pass;
+//		cdebug << hashPassword(_pass) << _pass;
 		m_cachedPasswords[m_master = hashPassword(_pass)] = _pass;
 		return true;
 	}
@@ -141,7 +141,7 @@ std::string KeyManager::getPassword(h256 const& _passHash, function<std::string(
 		std::string p = _pass();
 		if (p.empty())
 			break;
-		if (hashPassword(p) == _passHash || !_passHash)
+		if (hashPassword(p) == _passHash || _passHash == UnknownPassword)
 		{
 			m_cachedPasswords[hashPassword(p)] = p;
 			return p;
@@ -186,12 +186,17 @@ void KeyManager::importExisting(h128 const& _uuid, std::string const& _info, std
 		return;
 	Address a = KeyPair(Secret(key)).address();
 	auto passHash = hashPassword(_pass);
-	if (!m_passwordInfo.count(passHash))
-		m_passwordInfo[passHash] = _passInfo;
 	if (!m_cachedPasswords.count(passHash))
 		m_cachedPasswords[passHash] = _pass;
-	m_addrLookup[a] = _uuid;
-	m_keyInfo[_uuid].passHash = passHash;
+	importExisting(_uuid, _info, a, passHash, _passInfo);
+}
+
+void KeyManager::importExisting(h128 const& _uuid, std::string const& _info, Address const& _address, h256 const& _passHash, std::string const& _passInfo)
+{
+	if (!m_passwordInfo.count(_passHash))
+		m_passwordInfo[_passHash] = _passInfo;
+	m_addrLookup[_address] = _uuid;
+	m_keyInfo[_uuid].passHash = _passHash;
 	m_keyInfo[_uuid].info = _info;
 	write(m_keysFile);
 }

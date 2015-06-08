@@ -45,11 +45,6 @@ u256 Executive::gasUsed() const
 	return m_t.gas() - m_gas;
 }
 
-ExecutionResult Executive::executionResult() const
-{
-	return ExecutionResult(gasUsed(), m_excepted, m_newAddress, m_out, m_codeDeposit, m_ext ? m_ext->sub.refunds : 0, m_depositSize, m_gasForDeposit);
-}
-
 void Executive::accrueSubState(SubState& _parentContext)
 {
 	if (m_ext)
@@ -146,8 +141,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		else
 		{
 			m_gas = (u256)(_p.gas - g);
-			m_precompiledOut = it->second.exec(_p.data);
-			m_out = &m_precompiledOut;
+			it->second.exec(_p.data, _p.out);
 		}
 	}
 	else
@@ -155,7 +149,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		m_gas = _p.gas;
 		if (m_s.addressHasCode(_p.codeAddress))
 		{
-			m_vm = VMFactory::create();
+			m_outRef = _p.out; // Save ref to expected output buffer to be used in go()
 			bytes const& c = m_s.code(_p.codeAddress);
 			m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _p.receiveAddress, _p.senderAddress, _origin, _p.value, _gasPrice, _p.data, &c, m_depth);
 		}
@@ -177,10 +171,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 	// Execute _init.
 	if (!_init.empty())
-	{
-		m_vm = VMFactory::create();
 		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
-	}
 
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress), Account::ContractConception);
 	m_s.transferBalance(_sender, m_newAddress, _endowment);
@@ -231,36 +222,48 @@ OnOpFunc Executive::standardTrace(ostream& o_output)
 
 bool Executive::go(OnOpFunc const& _onOp)
 {
-	if (m_vm)
+	if (m_ext)
 	{
 #if ETH_TIMED_EXECUTIONS
 		boost::timer t;
 #endif
 		try
 		{
-			m_out = m_vm->go(m_gas, *m_ext, _onOp);
-
+			auto vm = VMFactory::create();
 			if (m_isCreation)
 			{
-				m_gasForDeposit = m_gas;
-				m_depositSize = m_out.size();
-				if (m_out.size() * c_createDataGas <= m_gas)
+				auto out = vm->exec(m_gas, *m_ext, _onOp);
+				if (m_res)
 				{
-					m_codeDeposit = CodeDeposit::Success;
-					m_gas -= m_out.size() * c_createDataGas;
+					m_res->gasForDeposit = m_gas;
+					m_res->depositSize = out.size();
+				}
+				if (out.size() * c_createDataGas <= m_gas)
+				{
+					if (m_res)
+						m_res->codeDeposit = CodeDeposit::Success;
+					m_gas -= out.size() * c_createDataGas;
 				}
 				else
 				{
-
-					m_codeDeposit = CodeDeposit::Failed;
-					m_out.reset();
+					if (m_res)
+						m_res->codeDeposit = CodeDeposit::Failed;
+					out.clear();
 				}
-				m_s.m_cache[m_newAddress].setCode(m_out.toBytes());
+				if (m_res)
+					m_res->output = out; // copy output to execution result
+				m_s.m_cache[m_newAddress].setCode(std::move(out)); // FIXME: Set only if Success?
 			}
-		}
-		catch (StepsDone const&)
-		{
-			return false;
+			else
+			{
+				if (m_res)
+				{
+					m_res->output = vm->exec(m_gas, *m_ext, _onOp); // take full output
+					bytesConstRef{&m_res->output}.copyTo(m_outRef);
+				}
+				else
+					vm->exec(m_gas, *m_ext, m_outRef, _onOp); // take only expected output
+			}
 		}
 		catch (VMException const& _e)
 		{
@@ -314,4 +317,12 @@ void Executive::finalize()
 	// Logs..
 	if (m_ext)
 		m_logs = m_ext->sub.logs;
+
+	if (m_res) // Collect results
+	{
+		m_res->gasUsed = gasUsed();
+		m_res->excepted = m_excepted; // TODO: m_except is used only in ExtVM::call
+		m_res->newAddress = m_newAddress;
+		m_res->gasRefunded = m_ext ? m_ext->sub.refunds : 0;
+	}
 }
