@@ -61,7 +61,7 @@ bytes Secp256k1::eciesKDF(Secret _z, bytes _s1, unsigned kdByteLen)
 	}
 	
 	k.resize(kdByteLen);
-	return move(k);
+	return k;
 }
 
 void Secp256k1::encryptECIES(Public const& _k, bytes& io_cipher)
