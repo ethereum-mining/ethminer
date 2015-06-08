@@ -119,7 +119,7 @@ public:
 	bool excepted() const { return m_excepted != TransactionException::None; }
 
 	/// Collect execution results in the result storage provided.
-	void collectResult(ExecutionResult& _res) { m_res = &_res; }
+	void setResultRecipient(ExecutionResult& _res) { m_res = &_res; }
 
 private:
 	State& m_s;							///< The state to which this operation/transaction is applied.
