@@ -217,6 +217,8 @@ ColumnLayout {
                 text: qsTr("Rebuild")
                 onClicked:
                 {
+                    if (ensureNotFuturetime.running)
+                        return;
                     for (var j = 0; j < model.blocks.length; j++)
                     {
                         for (var k = 0; k < model.blocks[j].transactions.length; k++)
@@ -233,6 +235,7 @@ ColumnLayout {
                             }
                         }
                     }
+                    ensureNotFuturetime.start()
                     clientModel.setupScenario(model);
                 }
 
