@@ -156,6 +156,8 @@ public:
 	CanonBlockChain const& blockChain() const { return m_bc; }
 	/// Get some information on the block queue.
 	BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
+	/// Get some information on the block queue.
+	HashChainStatus hashChainStatus() const;
 
 	// Mining stuff:
 
