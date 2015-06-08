@@ -95,7 +95,7 @@ bytes OverlayDB::lookupAux(h256 const& _h) const
 {
 	bytes ret = MemoryDB::lookupAux(_h);
 	if (!ret.empty() || !m_db)
-		return move(ret);
+		return ret;
 	std::string v;
 	bytes b = _h.asBytes();
 	b.push_back(255);	// for aux
@@ -116,7 +116,7 @@ std::string OverlayDB::lookup(h256 const& _h) const
 	std::string ret = MemoryDB::lookup(_h);
 	if (ret.empty() && m_db)
 		m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
-	return move(ret);
+	return ret;
 }
 
 bool OverlayDB::exists(h256 const& _h) const
