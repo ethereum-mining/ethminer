@@ -47,9 +47,10 @@ void ecrecoverCode(bytesConstRef _in, bytesRef _out)
 	memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
 
 	h256 ret;
-	if ((u256)in.v <= 28)
+	u256 v = (u256)in.v;
+	if (v >= 27 && v <= 28)
 	{
-		SignatureStruct sig(in.r, in.s, (byte)((int)(u256)in.v - 27));
+		SignatureStruct sig(in.r, in.s, (byte)((int)v - 27));
 		if (sig.isValid())
 		{
 			try
