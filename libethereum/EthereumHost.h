@@ -70,7 +70,7 @@ public:
 	void reset();
 
 	DownloadMan const& downloadMan() const { return m_man; }
-	bool isSyncing() const { Guard l(x_sync); return isSyncing_UNSAFE(); }
+	bool isSyncing() const { RecursiveGuard l(x_sync); return isSyncing_UNSAFE(); }
 	bool isBanned(p2p::NodeId _id) const { return !!m_banned.count(_id); }
 
 	void noteNewTransactions() { m_newTransactions = true; }
@@ -82,6 +82,7 @@ public:
 	void onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes); ///< Called by peer once it has new hashes
 	void onPeerHashes(EthereumPeer* _peer, h256s const& _hashes); ///< Called by peer once it has another sequential block of hashes during sync
 	void onPeerTransactions(EthereumPeer* _peer, RLP const& _r); ///< Called by peer when it has new transactions
+	void onPeerAborting(EthereumPeer* _peer); ///< Called by peer when it is disconnecting
 
 	DownloadMan& downloadMan() { return m_man; }
 	HashDownloadMan& hashDownloadMan() { return m_hashMan; }
@@ -141,7 +142,7 @@ private:
 	bool m_newTransactions = false;
 	bool m_newBlocks = false;
 
-	mutable Mutex x_sync;
+	mutable RecursiveMutex x_sync;
 	bool m_needSyncHashes = true;				///< Indicates if need to downlad hashes
 	bool m_needSyncBlocks = true;				///< Indicates if we still need to download some blocks
 	h256 m_syncingLatestHash;					///< Latest block's hash, as of the current sync.
