@@ -1294,7 +1294,6 @@ void Main::refreshBlockChain()
 		if (oldSelected == hba)
 			blockItem->setSelected(true);
 
-		/*
 		int n = 0;
 		try {
 			auto b = bc.block(h);
@@ -1323,7 +1322,6 @@ void Main::refreshBlockChain()
 			}
 		}
 		catch (...) {}
-		*/
 	};
 
 	if (filters.empty())
