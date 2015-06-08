@@ -255,6 +255,11 @@ public:
 		return m_got.full();
 	}
 
+	unsigned gotCount() const
+	{
+		return m_got.size();
+	}
+
 	size_t chainSize() const { ReadGuard l(m_lock); return m_chainCount; }
 	size_t chainEmpty() const { ReadGuard l(m_lock); return m_chainCount == 0; }
 	void foreachSub(std::function<void(HashDownloadSub const&)> const& _f) const { ReadGuard l(x_subs); for(auto i: m_subs) _f(*i); }

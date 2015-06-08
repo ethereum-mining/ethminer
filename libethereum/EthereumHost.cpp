@@ -615,7 +615,10 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 			return;
 		}
 		if (_peer->m_protocolVersion == protocolVersion() && !m_hashMan.isComplete())
+		{
+			m_syncingV61 = true;
 			_peer->requestHashes(); /// v61+ and not catching up to a particular hash
+		}
 		else
 		{
 			// Restart/continue sync in single peer mode
@@ -625,7 +628,13 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 				m_syncingTotalDifficulty = _peer->m_totalDifficulty;
 			}
 			if (_peer->m_totalDifficulty >= m_syncingTotalDifficulty)
+			{
 				_peer->requestHashes(m_syncingLatestHash);
+				m_syncingV61 = false;
+				m_estimatedHashes = _peer->m_expectedHashes;
+			}
+			else
+				_peer->setIdle();
 		}
 	}
 	else if (m_needSyncBlocks && peerShouldGrabBlocks(_peer)) // Check if this peer can help with downloading blocks
@@ -676,4 +685,12 @@ bool EthereumHost::isSyncing_UNSAFE() const
 			syncing = true;
 	});
 	return syncing;
+}
+
+HashChainStatus EthereumHost::status()
+{
+	RecursiveGuard l(x_sync);
+	if (m_syncingV61)
+		return HashChainStatus { static_cast<unsigned>(m_hashMan.chainSize()), static_cast<unsigned>(m_hashMan.gotCount()), false };
+	return HashChainStatus { m_estimatedHashes, static_cast<unsigned>(m_hashes.size()), true };
 }

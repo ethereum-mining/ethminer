@@ -87,6 +87,7 @@ public:
 	DownloadMan& downloadMan() { return m_man; }
 	HashDownloadMan& hashDownloadMan() { return m_hashMan; }
 	BlockChain const& chain() { return m_chain; }
+	HashChainStatus status();
 
 	static unsigned const c_oldProtocolVersion;
 
@@ -147,7 +148,9 @@ private:
 	bool m_needSyncBlocks = true;				///< Indicates if we still need to download some blocks
 	h256 m_syncingLatestHash;					///< Latest block's hash, as of the current sync.
 	u256 m_syncingTotalDifficulty;				///< Latest block's total difficulty, as of the current sync.
-	h256s m_hashes;								///< List of hashes with unknown block numbers. Used for v60 chain downloading and catching up to a particular unknown
+	h256s m_hashes;								///< List of hashes with unknown block numbers. Used for PV60 chain downloading and catching up to a particular unknown
+	unsigned m_estimatedHashes = 0;				///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
+	bool m_syncingV61 = false;					///< True if recent activity was over pv61+. Used for status reporting only.
 };
 
 }
