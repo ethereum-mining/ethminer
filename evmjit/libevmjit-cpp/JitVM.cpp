@@ -51,7 +51,7 @@ bytesConstRef JitVM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, ui
 	m_data.timestamp 	= static_cast<decltype(m_data.timestamp)>(_ext.currentBlock.timestamp);
 	m_data.code     	= _ext.code.data();
 	m_data.codeSize 	= _ext.code.size();
-	m_data.codeHash		= eth2llvm(sha3(_ext.code));
+	m_data.codeHash		= eth2llvm(_ext.codeHash);
 
 	auto env = reinterpret_cast<Env*>(&_ext);
 	auto exitCode = m_engine.run(&m_data, env);
