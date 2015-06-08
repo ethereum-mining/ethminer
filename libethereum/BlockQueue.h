@@ -31,6 +31,7 @@
 #include <libdevcore/Guards.h>
 #include <libethcore/Common.h>
 #include <libethcore/BlockInfo.h>
+#include "VerifiedBlock.h"
 
 namespace dev
 {
@@ -39,7 +40,6 @@ namespace eth
 {
 
 class BlockChain;
-struct VerifiedBlock;
 
 struct BlockQueueChannel: public LogChannel { static const char* name(); static const int verbosity = 4; };
 #define cblockq dev::LogOutputStream<dev::eth::BlockQueueChannel, true>()
