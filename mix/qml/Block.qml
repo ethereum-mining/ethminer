@@ -10,25 +10,40 @@ import "."
 
 ColumnLayout
 {
+    id: root
     property variant transactions
     property string status
     property int number
-    Rectangle
-    {
-        width: parent.width
-        height: 50
-        anchors.left: parent.left
-        anchors.leftMargin: statusWidth
-        Label {
-            text:
-            {
-                if (status === "mined")
-                    return qsTr("BLOCK") + " " + number
-                else
-                    return qsTr("BLOCK") + " pending"
-            }
+    property int blockWidth: Layout.preferredWidth - statusWidth - horizontalMargin
+    property int horizontalMargin: 10
+    property int trHeight: 30
+    spacing: 0
 
+    RowLayout
+    {
+        Layout.preferredHeight: trHeight
+        Layout.preferredWidth: blockWidth
+        id: rowHeader
+        Rectangle
+        {
+            color: "#DEDCDC"
+            Layout.preferredWidth: blockWidth
+            Layout.preferredHeight: trHeight
+            radius: 4
             anchors.left: parent.left
+            anchors.leftMargin: statusWidth + 5
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.leftMargin: horizontalMargin
+                text:
+                {
+                    if (status === "mined")
+                        return qsTr("BLOCK") + " " + number
+                    else
+                        return qsTr("BLOCK") + " pending"
+                }
+            }
         }
     }
 
@@ -36,57 +51,80 @@ ColumnLayout
     {
         id: transactionRepeater
         model: transactions
-        Row
+
+        RowLayout
         {
-            height: 50
+            Layout.preferredHeight: trHeight
             Rectangle
             {
                 id: trSaveStatus
+                Layout.preferredWidth: statusWidth
+                Layout.preferredHeight: trHeight
                 color: "transparent"
-                CheckBox
+                property bool saveStatus
+
+                Image {
+                    id: saveStatusImage
+                    source: "qrc:/qml/img/recycle-discard@2x.png"
+                    width: statusWidth
+                    fillMode: Image.PreserveAspectFit
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+
+                Component.onCompleted:
                 {
-                    id: saveStatus
-                    checked: {
-                        if (index >= 0)
-                            return transactions.get(index).saveStatus
-                        else
-                            return true
-                    }
-                    onCheckedChanged:
+                    if (index >= 0)
+                        saveStatus = transactions.get(index).saveStatus
+                }
+
+                onSaveStatusChanged:
+                {
+                    if (saveStatus)
+                        saveStatusImage.source = "qrc:/qml/img/recycle-keep@2x.png"
+                    else
+                        saveStatusImage.source = "qrc:/qml/img/recycle-discard@2x.png"
+
+                    if (index >= 0)
+                        transactions.get(index).saveStatus = saveStatus
+                }
+
+                MouseArea {
+                    id: statusMouseArea
+                    anchors.fill: parent
+                    onClicked:
                     {
-                        if (index >= 0)
-                            transactions.get(index).saveStatus = checked
+                        parent.saveStatus = !parent.saveStatus
                     }
                 }
             }
 
             Rectangle
             {
-                width: parent.width
-                height: 50
-                color: "#cccccc"
-                radius: 4
-                Row
+                Layout.preferredWidth: blockWidth
+                Layout.preferredHeight: parent.height
+                color: "#DEDCDC"
+                RowLayout
                 {
-                    Label
-                    {
-                        id: status
-                        width: statusWidth
-                    }
-                    Label
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: cellSpacing
+                    Text
                     {
                         id: hash
-                        width: fromWidth
+                        anchors.left: parent.left
+                        anchors.leftMargin: horizontalMargin
+                        Layout.preferredWidth: fromWidth
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
                         text: {
                             if (index >= 0)
                                 return transactions.get(index).sender
                             else
                                 return ""
                         }
-
-                        clip: true
                     }
-                    Label
+
+                    Text
                     {
                         id: func
                         text: {
@@ -95,9 +133,9 @@ ColumnLayout
                             else
                                 return ""
                         }
-
-                        width: toWidth
-                        clip: true
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
+                        Layout.preferredWidth: toWidth
                     }
 
                     function userFrienldyToken(value)
@@ -108,43 +146,52 @@ ColumnLayout
                             return value
                     }
 
-                    Label
+                    Text
                     {
                         id: returnValue
-                        width: valueWidth
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
+                        Layout.preferredWidth: valueWidth
                         text: {
                             if (index >= 0 && transactions.get(index).returned)
                                 return transactions.get(index).returned
                             else
                                 return ""
                         }
-                        clip: true
                     }
 
-                    Label
+                    Rectangle
                     {
-                        id: logs
+                        Layout.preferredWidth: logsWidth
+                        Layout.preferredHeight: trHeight - 10
                         width: logsWidth
-                        text: {
-                            if (index >= 0 && transactions.get(index).logs)
-                            {
-                                for (var k in transactions.get(index).logs)
+                        color: "transparent"
+                        Text
+                        {
+                            id: logs
+                            anchors.left: parent.left
+                            anchors.leftMargin: 10
+                            text: {
+                                if (index >= 0 && transactions.get(index).logs && transactions.get(index).logs.count)
                                 {
-                                    console.log("_________________________")
-                                    console.log(JSON.stringify(transactions.get(index).logs[k]))
-                                    console.log("_________________________")
+                                    for (var k = 0; k < transactions.get(index).logs.count; k++)
+                                    {
+                                        /*console.log("_________________________")
+                                        console.log(JSON.stringify(transactions.get(index).logs[k]))
+                                        console.log("_________________________")*/
+                                    }
+                                    return transactions.get(index).logs.count
                                 }
-                                return transactions.get(index).logs.length
+                                else
+                                    return ""
                             }
-                            else
-                                return 0
                         }
                     }
 
                     Button
                     {
                         id: debug
-                        width: debugActionWidth
+                        Layout.preferredWidth: debugActionWidth
                         text: "debug"
                         onClicked:
                         {

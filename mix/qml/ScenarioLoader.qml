@@ -37,32 +37,39 @@ RowLayout
             loaded(state)
         }
     }
-    Button
-    {
+
+    ScenarioButton {
         id: restoreScenario
-        text: qsTr("Restore")
+        Layout.preferredWidth: 100
+        Layout.preferredHeight: 30
+        buttonShortcut: ""
+        sourceImg: "qrc:/qml/img/restoreIcon@2x.png"
         onClicked: {
             restore()
         }
-
+        text: qsTr("Restore")
         function restore()
         {
             var state = projectModel.stateListModel.reloadStateFromFromProject(scenarioList.currentIndex)
             restored(state)
             loaded(state)
         }
-
     }
-    Button
-    {
+
+    ScenarioButton {
         id: saveScenario
         text: qsTr("Save")
         onClicked: {
             projectModel.saveProjectFile()
             saved(state)
         }
+        Layout.preferredWidth: 100
+        Layout.preferredHeight: 30
+        buttonShortcut: ""
+        sourceImg: "qrc:/qml/img/saveIcon@2x.png"
     }
-    Button
+
+    ScenarioButton
     {
         id: duplicateScenario
         text: qsTr("Duplicate")
@@ -73,5 +80,9 @@ RowLayout
             projectModel.stateListModel.save()
             duplicated(state)
         }
+        Layout.preferredWidth: 100
+        Layout.preferredHeight: 30
+        buttonShortcut: ""
+        sourceImg: "qrc:/qml/img/duplicateIcon@2x.png"
     }
 }

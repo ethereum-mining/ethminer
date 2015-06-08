@@ -11,91 +11,126 @@ import "js/TransactionHelper.js" as TransactionHelper
 import "js/QEtherHelper.js" as QEtherHelper
 import "."
 
-Column {
+ColumnLayout {
     id: blockChainPanel
     property variant model
-    spacing: 5
+    spacing: 0
+    property int previousWidth
+    onWidthChanged:
+    {
+
+        if (width <= 630 || previousWidth <= 630)
+        {
+            fromWidth = 100
+            toWidth = 100
+            valueWidth = 200
+        }
+        else
+        {
+            var diff = (width - previousWidth) / 3;
+            fromWidth = fromWidth + diff < 100 ? 100 : fromWidth + diff
+            toWidth = toWidth + diff < 100 ? 100 : toWidth + diff
+            valueWidth = valueWidth + diff < 200 ? 200 : valueWidth + diff
+        }
+        previousWidth = width
+    }
 
     function load(scenario)
     {
-
         if (!scenario)
             return;
         model = scenario
         blockModel.clear()
         for (var b in model.blocks)
             blockModel.append(model.blocks[b])
+        previousWidth = width
     }
 
-    property int statusWidth: 50
+    property int statusWidth: 30
     property int fromWidth: 100
-    property int toWidth: 250
-    property int valueWidth: 50
+    property int toWidth: 100
+    property int valueWidth: 200
     property int logsWidth: 50
     property int debugActionWidth: 50
+    property int horizontalMargin: 10
+    property int cellSpacing: 10
 
-    Row
+    RowLayout
     {
         id: header
-        width: parent.width
-        Label
-        {
-            text: "Status"
-            width: statusWidth
+        spacing: 0
+        Layout.preferredHeight: 25
+        Image {
+            id: debugImage
+            source: "qrc:/qml/img/recycle-icon@2x.png"
+            Layout.preferredWidth: statusWidth
+            Layout.preferredHeight: 25
+            fillMode: Image.PreserveAspectFit
         }
-        Label
+        Rectangle
         {
-            text: "From"
-            width: fromWidth
+            Layout.preferredWidth: fromWidth + cellSpacing
+            Label
+            {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "From"
+                anchors.left: parent.left
+                anchors.leftMargin: horizontalMargin + 5
+            }
         }
         Label
         {
             text: "To"
-            width: toWidth
+            Layout.preferredWidth: toWidth + cellSpacing
         }
         Label
         {
             text: "Value"
-            width: valueWidth
+            Layout.preferredWidth: valueWidth + cellSpacing
         }
         Label
         {
             text: "Logs"
-            width: logsWidth
+            Layout.preferredWidth: logsWidth + cellSpacing
         }
         Label
         {
             text: "Action"
-            width: debugActionWidth
+            Layout.preferredWidth: debugActionWidth
         }
     }
 
     Rectangle
     {
-        width: parent.width
-        height: 500
+        Layout.preferredHeight: 500
+        Layout.preferredWidth: parent.width
+        //height: 500
         border.color: "#cccccc"
         border.width: 2
         color: "white"
         ScrollView
         {
-            width: parent.width
-            height: parent.height
+            id: blockChainScrollView
+            anchors.fill: parent
+            anchors.topMargin: 10
             ColumnLayout
             {
+                id: blockChainLayout
+                width: parent.width
+                spacing: 10
                 Repeater // List of blocks
                 {
                     id: blockChainRepeater
-                    width: parent.width
                     model: blockModel
                     Block
                     {
-                        height:
+                        Layout.preferredWidth: blockChainScrollView.width
+                        Layout.preferredHeight:
                         {
                             if (index >= 0)
-                                return 50 + 50 * blockModel.get(index).transactions.length
+                                return 30 + 30 * blockModel.get(index).transactions.count
                             else
-                                return 0
+                                return 50
                         }
 
                         transactions:
@@ -143,8 +178,6 @@ Column {
 
         function removeTransaction(blockIndex, trIndex)
         {
-            console.log(blockIndex)
-            console.log(trIndex)
             blockModel.get(blockIndex).transactions.remove(trIndex)
         }
 
@@ -160,139 +193,174 @@ Column {
 
         function getTransaction(block, tr)
         {
-            return blockModel.get(block - 1).transactions.get(tr)
+            return blockModel.get(block).transactions.get(tr)
+        }
+
+        function setTransaction(blockIndex, trIndex, tr)
+        {
+            blockModel.get(blockIndex).transactions.set(trIndex, tr)
+        }
+
+        function setTransactionProperty(blockIndex, trIndex, propertyName, value)
+        {
+            blockModel.get(blockIndex).transactions.set(trIndex, { propertyName: value })
         }
     }
 
-    RowLayout
+    Rectangle
     {
-        width: parent.width
-        Button {
-            id: rebuild
-            text: qsTr("Rebuild")
-            onClicked:
-            {
-                for (var j = 0; j < model.blocks.length; j++)
+        Layout.preferredWidth: parent.width
+        RowLayout
+        {
+            width: parent.width
+            anchors.top: parent.top
+            anchors.topMargin: 10
+            ScenarioButton {
+                id: rebuild
+                text: qsTr("Rebuild")
+                onClicked:
                 {
-                    for (var k = 0; k < model.blocks[j].transactions.length; k++)
+                    for (var j = 0; j < model.blocks.length; j++)
                     {
-                        if (!blockModel.get(j).transactions.get(k).saveStatus)
+                        for (var k = 0; k < model.blocks[j].transactions.length; k++)
                         {
-                            model.blocks[j].transactions.splice(k, 1)
-                            blockModel.removeTransaction(j, k)
-                            if (model.blocks[j].transactions.length === 0)
+                            if (!blockModel.get(j).transactions.get(k).saveStatus)
                             {
-                                model.blocks[j].splice(j, 1);
-                                blockModel.removeBlock(j);
+                                model.blocks[j].transactions.splice(k, 1)
+                                blockModel.removeTransaction(j, k)
+                                if (model.blocks[j].transactions.length === 0)
+                                {
+                                    model.blocks.splice(j, 1);
+                                    blockModel.removeBlock(j);
+                                }
                             }
                         }
                     }
+                    clientModel.setupScenario(model);
                 }
-                clientModel.setupScenario(model);
-            }
-        }
 
-        Button {
-            id: addTransaction
-            text: qsTr("Add Transaction")
-            onClicked:
-            {
-                var lastBlock = model.blocks[model.blocks.length - 1];
-                if (lastBlock.status === "mined")
-                    model.blocks.push(projectModel.stateListModel.createEmptyBlock());
-                var item = TransactionHelper.defaultTransaction()
-                transactionDialog.stateAccounts = model.accounts
-                transactionDialog.open(model.blocks[model.blocks.length - 1].transactions.length, model.blocks.length - 1, item)
-            }
-        }
-
-        Button {
-            id: addBlockBtn
-            text: qsTr("Add Block")
-            onClicked:
-            {
-                var lastBlock = model.blocks[model.blocks.length - 1]
-                if (lastBlock.status === "pending")
-                    clientModel.mine()
-                else
-                    addNewBlock()
+                Layout.preferredWidth: 100
+                Layout.preferredHeight: 30
+                buttonShortcut: ""
+                sourceImg: "qrc:/qml/img/recycle-icon@2x.png"
             }
 
-            function addNewBlock()
-            {
-                var block = projectModel.stateListModel.createEmptyBlock()
-                model.blocks.push(block)
-                blockModel.appendBlock(block)
+            ScenarioButton {
+                id: addTransaction
+                text: qsTr("Add Transaction")
+                onClicked:
+                {
+                    var lastBlock = model.blocks[model.blocks.length - 1];
+                    if (lastBlock.status === "mined")
+                        model.blocks.push(projectModel.stateListModel.createEmptyBlock());
+                    var item = TransactionHelper.defaultTransaction()
+                    transactionDialog.stateAccounts = model.accounts
+                    transactionDialog.open(model.blocks[model.blocks.length - 1].transactions.length, model.blocks.length - 1, item)
+                }
+                Layout.preferredWidth: 100
+                Layout.preferredHeight: 30
+                buttonShortcut: ""
+                sourceImg: "qrc:/qml/img/recycle-icon@2x.png"
             }
-        }
 
-        Connections
-        {
-            target: clientModel
-            onNewBlock:
-            {
-                if (!clientModel.running)
+            ScenarioButton {
+                id: addBlockBtn
+                text: qsTr("Add Block")
+                onClicked:
                 {
                     var lastBlock = model.blocks[model.blocks.length - 1]
-                    lastBlock.status = "mined"
-                    lastBlock.number = model.blocks.length
-                    var lastB = blockModel.get(model.blocks.length - 1)
-                    lastB.status = "mined"
-                    lastB.number = model.blocks.length
-                    addBlockBtn.addNewBlock()
+                    if (lastBlock.status === "pending")
+                        clientModel.mine()
+                    else
+                        addNewBlock()
                 }
-            }
-            onStateCleared:
-            {
-            }
-            onNewRecord:
-            {
-                var blockIndex = _r.transactionIndex.split(":")[0]
-                var trIndex = _r.transactionIndex.split(":")[1]
-                if (parseInt(blockIndex) <= model.blocks.length)
+
+                function addNewBlock()
                 {
-                    var item = model.blocks[parseInt(blockIndex) - 1];
-                    if (parseInt(trIndex) <= item.transactions.length)
+                    var block = projectModel.stateListModel.createEmptyBlock()
+                    model.blocks.push(block)
+                    blockModel.appendBlock(block)
+                }
+                Layout.preferredWidth: 100
+                Layout.preferredHeight: 30
+                buttonShortcut: ""
+                sourceImg: "qrc:/qml/img/recycle-icon@2x.png"
+            }
+
+            Connections
+            {
+                target: clientModel
+                onNewBlock:
+                {
+                    if (!clientModel.running)
                     {
-                        var tr = item.transactions[parseInt(trIndex)];
-                        tr.returned = _r.returned;
-                        blockModel.getTransaction(blockIndex, trIndex).returned = _r.returned;
-                        tr.recordIndex = _r.recordIndex;
-                        blockModel.getTransaction(blockIndex, trIndex).recordIndex = _r.recordIndex;
-                        tr.logs = _r.logs;
-                        blockModel.getTransaction(blockIndex, trIndex).logs = _r.logs;
-                        return;
+                        var lastBlock = model.blocks[model.blocks.length - 1]
+                        lastBlock.status = "mined"
+                        lastBlock.number = model.blocks.length
+                        var lastB = blockModel.get(model.blocks.length - 1)
+                        lastB.status = "mined"
+                        lastB.number = model.blocks.length
+                        addBlockBtn.addNewBlock()
                     }
                 }
+                onStateCleared:
+                {
+                }
+                onNewRecord:
+                {
+                    var blockIndex =  parseInt(_r.transactionIndex.split(":")[0]) - 1
+                    var trIndex = parseInt(_r.transactionIndex.split(":")[1])
+                    if (blockIndex <= model.blocks.length)
+                    {
+                        var item = model.blocks[blockIndex]
+                        if (trIndex <= item.transactions.length)
+                        {
+                            var tr = item.transactions[trIndex]
+                            tr.returned = _r.returned
+                            tr.recordIndex = _r.recordIndex
+                            tr.logs = _r.logs
+                            var trModel = blockModel.getTransaction(blockIndex, trIndex)
+                            trModel.returned = _r.returned
+                            trModel.recordIndex = _r.recordIndex
+                            trModel.logs = _r.logs
+                            blockModel.setTransaction(blockIndex, trIndex, trModel)
+                            return;
+                        }
+                    }
 
-                // tr is not in the list. coming from JavaScript
-                var itemTr = TransactionHelper.defaultTransaction()
-                itemTr.functionId = _r.function
-                itemTr.contractId = _r.contract
-                itemTr.gasAuto = true
-                itemTr.parameters = _r.parameters
-                itemTr.isContractCreation = itemTr.functionId === itemTr.contractId
-                itemTr.label = _r.label
-                itemTr.isFunctionCall = itemTr.functionId !== ""
-                itemTr.returned = _r.returned
-                itemTr.value = QEtherHelper.createEther(_r.value, QEther.Wei)
-                itemTr.sender = _r.sender
-                itemTr.recordIndex = _r.recordIndex
-                itemTr.logs = _r.logs
-
-                model.blocks[model.blocks.length - 1].transactions.push(itemTr)
-                blockModel.appendTransaction(itemTr)
+                    // tr is not in the list. coming from JavaScript
+                    var itemTr = TransactionHelper.defaultTransaction()
+                    itemTr.saveStatus = false
+                    itemTr.functionId = _r.function
+                    itemTr.contractId = _r.contract
+                    itemTr.gasAuto = true
+                    itemTr.parameters = _r.parameters
+                    itemTr.isContractCreation = itemTr.functionId === itemTr.contractId
+                    itemTr.label = _r.label
+                    itemTr.isFunctionCall = itemTr.functionId !== ""
+                    itemTr.returned = _r.returned
+                    itemTr.value = QEtherHelper.createEther(_r.value, QEther.Wei)
+                    itemTr.sender = _r.sender
+                    itemTr.recordIndex = _r.recordIndex
+                    itemTr.logs = _r.logs
+                    model.blocks[model.blocks.length - 1].transactions.push(itemTr)
+                    blockModel.appendTransaction(itemTr)
+                }
+                onMiningComplete:
+                {
+                }
             }
-            onMiningComplete:
-            {
-            }
-        }
 
-        Button {
-            id: newAccount
-            text: qsTr("New Account")
-            onClicked: {
-                model.accounts.push(projectModel.stateListModel.newAccount("1000000", QEther.Ether))
+            ScenarioButton {
+                id: newAccount
+                text: qsTr("New Account")
+                onClicked: {
+                    model.accounts.push(projectModel.stateListModel.newAccount("1000000", QEther.Ether))
+                }
+                Layout.preferredWidth: 100
+                Layout.preferredHeight: 30
+                buttonShortcut: ""
+                sourceImg: "qrc:/qml/img/recycle-icon@2x.png"
             }
         }
     }

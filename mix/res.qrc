@@ -68,5 +68,17 @@
         <file>qml/img/warningicon.png</file>
         <file>qml/img/warningicon@2x.png</file>
         <file>qml/QAddressView.qml</file>
+        <file>qml/img/recycle-discard.png</file>
+        <file>qml/img/recycle-discard@2x.png</file>
+        <file>qml/img/recycle-icon.png</file>
+        <file>qml/img/recycle-icon@2x.png</file>
+        <file>qml/img/recycle-keep.png</file>
+        <file>qml/img/recycle-keep@2x.png</file>
+        <file>qml/img/restoreIcon.png</file>
+        <file>qml/img/restoreIcon@2x.png</file>
+        <file>qml/img/saveIcon.png</file>
+        <file>qml/img/saveIcon@2x.png</file>
+        <file>qml/img/duplicateIcon.png</file>
+        <file>qml/img/duplicateIcon@2x.png</file>
     </qresource>
 </RCC>
