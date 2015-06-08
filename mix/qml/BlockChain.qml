@@ -260,14 +260,29 @@ ColumnLayout {
                 sourceImg: "qrc:/qml/img/recycle-icon@2x.png"
             }
 
+            Timer
+            {
+                id: ensureNotFuturetime
+                interval: 1000
+                repeat: false
+                running: false
+            }
+
             ScenarioButton {
                 id: addBlockBtn
                 text: qsTr("Add Block")
                 onClicked:
                 {
+                    if (ensureNotFuturetime.running)
+                        return
+                    if (clientModel.mining || clientModel.running)
+                        return
                     var lastBlock = model.blocks[model.blocks.length - 1]
                     if (lastBlock.status === "pending")
+                    {
+                        ensureNotFuturetime.start()
                         clientModel.mine()
+                    }
                     else
                         addNewBlock()
                 }
