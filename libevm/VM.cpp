@@ -45,6 +45,143 @@ static array<InstructionMetric, 256> metrics()
 	return s_ret;
 }
 
+void VM::checkRequirements(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, Instruction _inst)
+{
+	static const auto c_metrics = metrics();
+	auto& metric = c_metrics[static_cast<size_t>(_inst)];
+
+	if (metric.gasPriceTier == InvalidTier)
+		BOOST_THROW_EXCEPTION(BadInstruction());
+
+	// FEES...
+	bigint runGas = c_tierStepGas[metric.gasPriceTier];
+	bigint newTempSize = m_temp.size();
+	bigint copySize = 0;
+
+	// should work, but just seems to result in immediate errorless exit on initial execution. yeah. weird.
+	//m_onFail = std::function<void()>(onOperation);
+
+	require(metric.args, metric.ret);
+
+	auto onOperation = [&]()
+	{
+		if (_onOp)
+			_onOp(m_steps, _inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, io_gas, this, &_ext);
+	};
+
+	auto memNeed = [](u256 _offset, dev::u256 _size) { return _size ? (bigint)_offset + _size : (bigint)0; };
+	
+	switch (_inst)
+	{
+	case Instruction::SSTORE:
+		if (!_ext.store(m_stack.back()) && m_stack[m_stack.size() - 2])
+			runGas = c_sstoreSetGas;
+		else if (_ext.store(m_stack.back()) && !m_stack[m_stack.size() - 2])
+		{
+			runGas = c_sstoreResetGas;
+			_ext.sub.refunds += c_sstoreRefundGas;
+		}
+		else
+			runGas = c_sstoreResetGas;
+		break;
+
+	case Instruction::SLOAD:
+		runGas = c_sloadGas;
+		break;
+
+	// These all operate on memory and therefore potentially expand it:
+	case Instruction::MSTORE:
+		newTempSize = (bigint)m_stack.back() + 32;
+		break;
+	case Instruction::MSTORE8:
+		newTempSize = (bigint)m_stack.back() + 1;
+		break;
+	case Instruction::MLOAD:
+		newTempSize = (bigint)m_stack.back() + 32;
+		break;
+	case Instruction::RETURN:
+		newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
+		break;
+	case Instruction::SHA3:
+		runGas = c_sha3Gas + (m_stack[m_stack.size() - 2] + 31) / 32 * c_sha3WordGas;
+		newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
+		break;
+	case Instruction::CALLDATACOPY:
+		copySize = m_stack[m_stack.size() - 3];
+		newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
+		break;
+	case Instruction::CODECOPY:
+		copySize = m_stack[m_stack.size() - 3];
+		newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
+		break;
+	case Instruction::EXTCODECOPY:
+		copySize = m_stack[m_stack.size() - 4];
+		newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 4]);
+		break;
+
+	case Instruction::JUMPDEST:
+		runGas = 1;
+		break;
+
+	case Instruction::LOG0:
+	case Instruction::LOG1:
+	case Instruction::LOG2:
+	case Instruction::LOG3:
+	case Instruction::LOG4:
+	{
+		unsigned n = (unsigned)_inst - (unsigned)Instruction::LOG0;
+		runGas = c_logGas + c_logTopicGas * n + (bigint)c_logDataGas * m_stack[m_stack.size() - 2];
+		newTempSize = memNeed(m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2]);
+		break;
+	}
+
+	case Instruction::CALL:
+	case Instruction::CALLCODE:
+		runGas = (bigint)c_callGas + m_stack[m_stack.size() - 1];
+		if (_inst != Instruction::CALLCODE && !_ext.exists(asAddress(m_stack[m_stack.size() - 2])))
+			runGas += c_callNewAccountGas;
+		if (m_stack[m_stack.size() - 3] > 0)
+			runGas += c_callValueTransferGas;
+		newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
+		break;
+
+	case Instruction::CREATE:
+	{
+		newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 3]);
+		runGas = c_createGas;
+		break;
+	}
+	case Instruction::EXP:
+	{
+		auto expon = m_stack[m_stack.size() - 2];
+		runGas = c_expGas + c_expByteGas * (32 - (h256(expon).firstBitSet() / 8));
+		break;
+	}
+	default:;
+	}
+
+	auto gasForMem = [](bigint _size) -> bigint
+	{
+		bigint s = _size / 32;
+		return (bigint)c_memoryGas * s + s * s / c_quadCoeffDiv;
+	};
+
+	newTempSize = (newTempSize + 31) / 32 * 32;
+	if (newTempSize > m_temp.size())
+		runGas += gasForMem(newTempSize) - gasForMem(m_temp.size());
+	runGas += c_copyGas * ((copySize + 31) / 32);
+
+	onOperation();
+
+	if (io_gas < runGas)
+		BOOST_THROW_EXCEPTION(OutOfGas());
+
+	io_gas -= (u256)runGas;
+
+	if (newTempSize > m_temp.size())
+		m_temp.resize((size_t)newTempSize);
+}
+
 bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
 	// Reset leftovers from possible previous run
@@ -55,15 +192,6 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 
 	unique_ptr<CallParameters> callParams;
 
-	static const array<InstructionMetric, 256> c_metrics = metrics();
-
-	auto memNeed = [](u256 _offset, dev::u256 _size) { return _size ? (bigint)_offset + _size : (bigint)0; };
-	auto gasForMem = [](bigint _size) -> bigint
-	{
-		bigint s = _size / 32;
-		return (bigint)c_memoryGas * s + s * s / c_quadCoeffDiv;
-	};
-
 	if (m_jumpDests.empty())
 		for (unsigned i = 0; i < _ext.code.size(); ++i)
 		{
@@ -73,135 +201,11 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 				i += _ext.code[i] - (unsigned)Instruction::PUSH1 + 1;
 		}
 	u256 nextPC = m_curPC + 1;
-	for (uint64_t steps = 0; true; m_curPC = nextPC, nextPC = m_curPC + 1, ++steps)
+	for (m_steps = 0; true; m_curPC = nextPC, nextPC = m_curPC + 1, ++m_steps)
 	{
 		// INSTRUCTION...
 		Instruction inst = (Instruction)_ext.getCode(m_curPC);
-		auto metric = c_metrics[(int)inst];
-		int gasPriceTier = metric.gasPriceTier;
-
-		if (gasPriceTier == InvalidTier)
-			BOOST_THROW_EXCEPTION(BadInstruction());
-
-		// FEES...
-		bigint runGas = c_tierStepGas[metric.gasPriceTier];
-		bigint newTempSize = m_temp.size();
-		bigint copySize = 0;
-
-		// should work, but just seems to result in immediate errorless exit on initial execution. yeah. weird.
-		//m_onFail = std::function<void()>(onOperation);
-
-		require(metric.args, metric.ret);
-
-		auto onOperation = [&]()
-		{
-			if (_onOp)
-				_onOp(steps, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, io_gas, this, &_ext);
-		};
-
-		switch (inst)
-		{
-		case Instruction::SSTORE:
-			if (!_ext.store(m_stack.back()) && m_stack[m_stack.size() - 2])
-				runGas = c_sstoreSetGas;
-			else if (_ext.store(m_stack.back()) && !m_stack[m_stack.size() - 2])
-			{
-				runGas = c_sstoreResetGas;
-				_ext.sub.refunds += c_sstoreRefundGas;
-			}
-			else
-				runGas = c_sstoreResetGas;
-			break;
-
-		case Instruction::SLOAD:
-			runGas = c_sloadGas;
-			break;
-
-		// These all operate on memory and therefore potentially expand it:
-		case Instruction::MSTORE:
-			newTempSize = (bigint)m_stack.back() + 32;
-			break;
-		case Instruction::MSTORE8:
-			newTempSize = (bigint)m_stack.back() + 1;
-			break;
-		case Instruction::MLOAD:
-			newTempSize = (bigint)m_stack.back() + 32;
-			break;
-		case Instruction::RETURN:
-			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
-			break;
-		case Instruction::SHA3:
-			runGas = c_sha3Gas + (m_stack[m_stack.size() - 2] + 31) / 32 * c_sha3WordGas;
-			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 2]);
-			break;
-		case Instruction::CALLDATACOPY:
-			copySize = m_stack[m_stack.size() - 3];
-			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
-			break;
-		case Instruction::CODECOPY:
-			copySize = m_stack[m_stack.size() - 3];
-			newTempSize = memNeed(m_stack.back(), m_stack[m_stack.size() - 3]);
-			break;
-		case Instruction::EXTCODECOPY:
-			copySize = m_stack[m_stack.size() - 4];
-			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 4]);
-			break;
-
-		case Instruction::JUMPDEST:
-			runGas = 1;
-			break;
-
-		case Instruction::LOG0:
-		case Instruction::LOG1:
-		case Instruction::LOG2:
-		case Instruction::LOG3:
-		case Instruction::LOG4:
-		{
-			unsigned n = (unsigned)inst - (unsigned)Instruction::LOG0;
-			runGas = c_logGas + c_logTopicGas * n + (bigint)c_logDataGas * m_stack[m_stack.size() - 2];
-			newTempSize = memNeed(m_stack[m_stack.size() - 1], m_stack[m_stack.size() - 2]);
-			break;
-		}
-
-		case Instruction::CALL:
-		case Instruction::CALLCODE:
-			runGas = (bigint)c_callGas + m_stack[m_stack.size() - 1];
-			if (inst != Instruction::CALLCODE && !_ext.exists(asAddress(m_stack[m_stack.size() - 2])))
-				runGas += c_callNewAccountGas;
-			if (m_stack[m_stack.size() - 3] > 0)
-				runGas += c_callValueTransferGas;
-			newTempSize = std::max(memNeed(m_stack[m_stack.size() - 6], m_stack[m_stack.size() - 7]), memNeed(m_stack[m_stack.size() - 4], m_stack[m_stack.size() - 5]));
-			break;
-
-		case Instruction::CREATE:
-		{
-			newTempSize = memNeed(m_stack[m_stack.size() - 2], m_stack[m_stack.size() - 3]);
-			runGas = c_createGas;
-			break;
-		}
-		case Instruction::EXP:
-		{
-			auto expon = m_stack[m_stack.size() - 2];
-			runGas = c_expGas + c_expByteGas * (32 - (h256(expon).firstBitSet() / 8));
-			break;
-		}
-		default:;
-		}
-
-		newTempSize = (newTempSize + 31) / 32 * 32;
-		if (newTempSize > m_temp.size())
-			runGas += gasForMem(newTempSize) - gasForMem(m_temp.size());
-		runGas += c_copyGas * ((copySize + 31) / 32);
-
-		onOperation();
-
-		if (io_gas < runGas)
-			BOOST_THROW_EXCEPTION(OutOfGas());
-
-		io_gas -= (u256)runGas;
-
-		if (newTempSize > m_temp.size())
-			m_temp.resize((size_t)newTempSize);
+		checkRequirements(io_gas, _ext, _onOp, inst);
 
 		// EXECUTE...
 		switch (inst)
