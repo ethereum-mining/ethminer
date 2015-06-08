@@ -18,6 +18,28 @@ ColumnLayout
     property int horizontalMargin: 10
     property int trHeight: 30
     spacing: 0
+    property int openedTr: 0
+
+    function calculateHeight()
+    {
+        if (transactions)
+        {
+            if (index >= 0)
+                return 30 + 30 * transactions.count + openedTr
+            else
+                return 30
+        }
+        else
+            return 30
+    }
+
+    onOpenedTrChanged:
+    {
+        Layout.preferredHeight = calculateHeight()
+        height = calculateHeight()
+    }
+
+
 
     RowLayout
     {
@@ -54,13 +76,43 @@ ColumnLayout
 
         RowLayout
         {
+            id: rowTransaction
             Layout.preferredHeight: trHeight
+            function displayContent()
+            {
+                logsText.text = ""
+                if (index >= 0 && transactions.get(index).logs && transactions.get(index).logs.count)
+                {
+                    for (var k = 0; k < transactions.get(index).logs.count; k++)
+                    {
+                        var log = transactions.get(index).logs.get(k)
+                        if (log.name)
+                            logsText.text += log.name + ":\n"
+                        else
+                            logsText.text += "log:\n"
+
+                        if (log.param)
+                            for (var i = 0; i < log.param.count; i++)
+                            {
+                                var p = log.param.get(i)
+                                logsText.text += p.name + " = " + p.value + " - indexed:" + p.indexed + "\n"
+                            }
+                        else{
+                            logsText.text += "From : " + log.address + "\n"
+                        }
+                    }
+                    logsText.text += "\n\n"
+                }
+                rowDetailedContent.visible = !rowDetailedContent.visible
+            }
+
             Rectangle
             {
                 id: trSaveStatus
                 Layout.preferredWidth: statusWidth
                 Layout.preferredHeight: trHeight
                 color: "transparent"
+                anchors.top: parent.top
                 property bool saveStatus
 
                 Image {
@@ -104,98 +156,144 @@ ColumnLayout
                 Layout.preferredWidth: blockWidth
                 Layout.preferredHeight: parent.height
                 color: "#DEDCDC"
-                RowLayout
+                id: rowContentTr
+                anchors.top: parent.top
+                ColumnLayout
                 {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: cellSpacing
-                    Text
+                    anchors.top: parent.top
+                    spacing: 10
+                    RowLayout
                     {
-                        id: hash
-                        anchors.left: parent.left
-                        anchors.leftMargin: horizontalMargin
-                        Layout.preferredWidth: fromWidth
-                        elide: Text.ElideRight
-                        maximumLineCount: 1
-                        text: {
-                            if (index >= 0)
-                                return transactions.get(index).sender
-                            else
-                                return ""
-                        }
-                    }
-
-                    Text
-                    {
-                        id: func
-                        text: {
-                            if (index >= 0)
-                                parent.userFrienldyToken(transactions.get(index).label)
-                            else
-                                return ""
-                        }
-                        elide: Text.ElideRight
-                        maximumLineCount: 1
-                        Layout.preferredWidth: toWidth
-                    }
-
-                    function userFrienldyToken(value)
-                    {
-                        if (value && value.indexOf("<") === 0)
-                            return value.split(" - ")[0].replace("<", "") + "." + value.split("> ")[1] + "()";
-                        else
-                            return value
-                    }
-
-                    Text
-                    {
-                        id: returnValue
-                        elide: Text.ElideRight
-                        maximumLineCount: 1
-                        Layout.preferredWidth: valueWidth
-                        text: {
-                            if (index >= 0 && transactions.get(index).returned)
-                                return transactions.get(index).returned
-                            else
-                                return ""
-                        }
-                    }
-
-                    Rectangle
-                    {
-                        Layout.preferredWidth: logsWidth
-                        Layout.preferredHeight: trHeight - 10
-                        width: logsWidth
-                        color: "transparent"
+                        anchors.top: parent.top
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: cellSpacing
                         Text
                         {
-                            id: logs
+                            id: hash
                             anchors.left: parent.left
-                            anchors.leftMargin: 10
+                            anchors.leftMargin: horizontalMargin
+                            Layout.preferredWidth: fromWidth
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
                             text: {
-                                if (index >= 0 && transactions.get(index).logs && transactions.get(index).logs.count)
-                                {
-                                    for (var k = 0; k < transactions.get(index).logs.count; k++)
-                                    {
-                                        /*console.log("_________________________")
-                                        console.log(JSON.stringify(transactions.get(index).logs[k]))
-                                        console.log("_________________________")*/
-                                    }
-                                    return transactions.get(index).logs.count
-                                }
+                                if (index >= 0)
+                                    return transactions.get(index).sender
                                 else
                                     return ""
                             }
                         }
+
+                        Text
+                        {
+                            id: func
+                            text: {
+                                if (index >= 0)
+                                    parent.userFrienldyToken(transactions.get(index).label)
+                                else
+                                    return ""
+                            }
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
+                            Layout.preferredWidth: toWidth
+                        }
+
+                        function userFrienldyToken(value)
+                        {
+                            if (value && value.indexOf("<") === 0)
+                                return value.split(" - ")[0].replace("<", "") + "." + value.split("> ")[1] + "()";
+                            else
+                                return value
+                        }
+
+                        Text
+                        {
+                            id: returnValue
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
+                            Layout.preferredWidth: valueWidth
+                            text: {
+                                if (index >= 0 && transactions.get(index).returned)
+                                    return transactions.get(index).returned
+                                else
+                                    return ""
+                            }
+                        }
+
+                        Rectangle
+                        {
+                            Layout.preferredWidth: logsWidth
+                            Layout.preferredHeight: trHeight - 10
+                            width: logsWidth
+                            color: "transparent"
+                            Text
+                            {
+                                id: logs
+                                anchors.left: parent.left
+                                anchors.leftMargin: 10
+                                text: {
+                                    if (index >= 0 && transactions.get(index).logs && transactions.get(index).logs.count)
+                                    {
+                                        for (var k = 0; k < transactions.get(index).logs.count; k++)
+                                        {
+                                            console.log("_________________________")
+                                            console.log(JSON.stringify(transactions.get(index).logs[k]))
+                                            console.log("_________________________")
+                                        }
+                                        return transactions.get(index).logs.count
+                                    }
+                                    else
+                                        return ""
+                                }
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    rowTransaction.displayContent();
+                                }
+                            }
+                        }
+
+                        Button
+                        {
+                            id: debug
+                            Layout.preferredWidth: debugActionWidth
+                            text: "debug"
+                            onClicked:
+                            {
+                                clientModel.debugRecord(transactions.get(index).recordIndex);
+                            }
+                        }
                     }
 
-                    Button
+                    RowLayout
                     {
-                        id: debug
-                        Layout.preferredWidth: debugActionWidth
-                        text: "debug"
-                        onClicked:
+                        id: rowDetailedContent
+                        visible: false
+                        Layout.preferredHeight:{
+                            if (index >= 0 && transactions.get(index).logs)
+                                return 100 * transactions.get(index).logs.count
+                            else
+                                return 100
+                        }
+                        onVisibleChanged:
                         {
-                            clientModel.debugRecord(transactions.get(index).recordIndex);
+                            var lognb = transactions.get(index).logs.count
+                            if (visible)
+                            {
+                                rowContentTr.Layout.preferredHeight = trHeight + 100 * lognb
+                                openedTr += 100 * lognb
+                            }
+                            else
+                            {
+                                rowContentTr.Layout.preferredHeight = trHeight
+                                openedTr -= 100 * lognb
+                            }
+                        }
+
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: horizontalMargin
+                            id: logsText
                         }
                     }
                 }
