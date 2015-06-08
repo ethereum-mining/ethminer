@@ -54,21 +54,27 @@ std::unordered_map<Address, Account> const& genesisState();
 class CanonBlockChain: public BlockChain
 {
 public:
-		CanonBlockChain(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()): CanonBlockChain(std::string(), _we, _pc) {}
-		CanonBlockChain(std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
-		~CanonBlockChain() {}
+	CanonBlockChain(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()): CanonBlockChain(std::string(), _we, _pc) {}
+	CanonBlockChain(std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
+	~CanonBlockChain() {}
 
-		/// @returns the genesis block header.
-		static BlockInfo const& genesis() { UpgradableGuard l(x_genesis); if (!s_genesis) { auto gb = createGenesisBlock(); UpgradeGuard ul(l); s_genesis.reset(new BlockInfo); s_genesis->populate(&gb); } return *s_genesis; }
+	/// @returns the genesis block header.
+	static BlockInfo const& genesis();
 
-		/// @returns the genesis block as its RLP-encoded byte array.
-		/// @note This is slow as it's constructed anew each call. Consider genesis() instead.
-		static bytes createGenesisBlock();
+	/// @returns the genesis block as its RLP-encoded byte array.
+	/// @note This is slow as it's constructed anew each call. Consider genesis() instead.
+	static bytes createGenesisBlock();
+
+	/// Alter the value of the genesis block's nonce.
+	/// @warning Unless you're very careful, make sure you call this right at the start of the
+	/// program, before anything has had the chance to use this class at all.
+	static void setGenesisNonce(Nonce const& _n);
 
 private:
-		/// Static genesis info and its lock.
-		static boost::shared_mutex x_genesis;
-		static std::unique_ptr<BlockInfo> s_genesis;
+	/// Static genesis info and its lock.
+	static boost::shared_mutex x_genesis;
+	static std::unique_ptr<BlockInfo> s_genesis;
+	static Nonce s_nonce;
 };
 
 }

@@ -47,8 +47,11 @@ VersionChecker::VersionChecker(string const& _dbPath):
 		(void)protocolVersion;
 		auto minorProtocolVersion = (unsigned)status[1];
 		auto databaseVersion = (unsigned)status[2];
+		h256 ourGenesisHash = CanonBlockChain::genesis().hash();
+		auto genesisHash = status.itemCount() > 3 ? (h256)status[3] : ourGenesisHash;
+
 		m_action =
-			databaseVersion != c_databaseVersion ?
+			databaseVersion != c_databaseVersion || genesisHash != ourGenesisHash ?
 				WithExisting::Kill
 			: minorProtocolVersion != eth::c_minorProtocolVersion ?
 				WithExisting::Verify
@@ -73,7 +76,7 @@ void VersionChecker::setOk()
 		{
 			cwarn << "Unhandled exception! Failed to create directory: " << m_path << "\n" << boost::current_exception_diagnostic_information();
 		}
-		writeFile(m_path + "/status", rlpList(eth::c_protocolVersion, eth::c_minorProtocolVersion, c_databaseVersion));
+		writeFile(m_path + "/status", rlpList(eth::c_protocolVersion, eth::c_minorProtocolVersion, c_databaseVersion, CanonBlockChain::genesis().hash()));
 	}
 }
 
@@ -662,7 +665,7 @@ void Client::doWork()
 		syncBlockQueue();
 
 	t = true;
-	if (m_syncTransactionQueue.compare_exchange_strong(t, false) && !m_remoteWorking)
+	if (m_syncTransactionQueue.compare_exchange_strong(t, false) && !m_remoteWorking && !isSyncing())
 		syncTransactionQueue();
 
 	tick();
