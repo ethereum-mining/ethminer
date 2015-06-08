@@ -263,7 +263,7 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 				return;
 			}
 			lastHash = bi.hash();
-			import(std::move(b), s.db(), 0);
+			import(b, s.db(), 0);
 		}
 		catch (...)
 		{

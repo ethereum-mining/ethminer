@@ -32,17 +32,19 @@ namespace eth
 
 class Transaction;
 
+/// @brief Verified block info, does not hold block data, but a reference instead
 struct VerifiedBlockRef
 {
-	bytesConstRef block;
-	BlockInfo info;
-	std::vector<Transaction> transactions;
+	bytesConstRef block; 					///<  Block data reference
+	BlockInfo info;							///< Prepopulated block info
+	std::vector<Transaction> transactions;	///< Verified list of block transactions
 };
 
+/// @brief Verified block info, combines block data and verified info/transactions
 struct VerifiedBlock
 {
-	VerifiedBlockRef verified;
-	bytes blockData;
+	VerifiedBlockRef verified;				///< Verified block structures
+	bytes blockData;						///< Block data
 };
 
 using VerifiedBlocks = std::vector<VerifiedBlock>;
