@@ -127,10 +127,7 @@ ColumnLayout {
                         Layout.preferredWidth: blockChainScrollView.width
                         Layout.preferredHeight:
                         {
-                            if (index >= 0)
-                                return 30 + 30 * blockModel.get(index).transactions.count
-                            else
-                                return 50
+                            return calculateHeight()
                         }
 
                         transactions:

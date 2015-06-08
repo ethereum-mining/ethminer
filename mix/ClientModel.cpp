@@ -759,6 +759,12 @@ void ClientModel::onNewTransaction()
 		{
 			QVariantMap l;
 			l.insert("address",  QString::fromStdString(log.address.hex()));
+			std::ostringstream s;
+			s << log.data;
+			l.insert("data", QString::fromStdString(s.str()));
+			std::ostringstream streamTopic;
+			streamTopic << log.topics;
+			l.insert("topic", QString::fromStdString(streamTopic.str()));
 			auto const& sign = log.topics.front(); // first hash supposed to be the event signature. To check
 			auto dataIterator = log.data.begin();
 			int topicDataIndex = 1;
