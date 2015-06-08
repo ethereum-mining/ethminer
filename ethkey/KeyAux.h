@@ -102,6 +102,7 @@ public:
 		List,
 		New,
 		Import,
+		ImportWithAddress,
 		Export,
 		Recode,
 		Kill
@@ -157,6 +158,13 @@ public:
 		{
 			m_mode = OperationMode::Import;
 			m_inputs = strings(1, argv[++i]);
+			m_name = argv[++i];
+		}
+		else if ((arg == "-i" || arg == "--import-with-address") && i + 3 < argc)
+		{
+			m_mode = OperationMode::ImportWithAddress;
+			m_inputs = strings(1, argv[++i]);
+			m_address = Address(argv[++i]);
 			m_name = argv[++i];
 		}
 		else if (arg == "--export")
@@ -314,6 +322,33 @@ public:
 				cout << "  ICAP: " << ICAP(k.address()).encoded() << endl;
 				break;
 			}
+			case OperationMode::ImportWithAddress:
+			{
+				string const& i = m_inputs[0];
+				h128 u;
+				bytes b;
+				b = fromHex(i);
+				if (b.size() != 32)
+				{
+					std::string s = contentsString(i);
+					b = fromHex(s);
+					if (b.size() != 32)
+						u = wallet.store().importKey(i);
+				}
+				if (!u && b.size() == 32)
+					u = wallet.store().importSecret(b, lockPassword(toAddress(Secret(b)).abridged()));
+				if (!u)
+				{
+					cerr << "Cannot import " << i << " not a file or secret." << endl;
+					break;
+				}
+				wallet.importExisting(u, m_name, m_address);
+				cout << "Successfully imported " << i << ":" << endl;
+				cout << "  Name: " << m_name << endl;
+				cout << "  Address: " << m_address << endl;
+				cout << "  UUID: " << toUUID(u) << endl;
+				break;
+			}
 			case OperationMode::List:
 			{
 				vector<u128> bare;
@@ -369,6 +404,7 @@ public:
 			<< "    -l,--list  List all keys available in wallet." << endl
 			<< "    -n,--new <name>  Create a new key with given name and add it in the wallet." << endl
 			<< "    -i,--import [<uuid>|<file>|<secret-hex>] <name>  Import keys from given source and place in wallet." << endl
+			<< "    --import-with-address [<uuid>|<file>|<secret-hex>] <address> <name>  Import keys from given source with given address and place in wallet." << endl
 			<< "    -e,--export [ <address>|<uuid> , ... ]  Export given keys." << endl
 			<< "    -r,--recode [ <address>|<uuid>|<file> , ... ]  Decrypt and re-encrypt given keys." << endl
 			<< "Wallet configuration:" << endl
@@ -418,8 +454,9 @@ private:
 	string m_lockHint;
 	bool m_icap = true;
 
-	/// Creating
+	/// Creating/importing
 	string m_name;
+	Address m_address;
 
 	/// Importing
 	strings m_inputs;
