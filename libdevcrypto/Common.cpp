@@ -37,7 +37,7 @@ using namespace dev::crypto;
 
 static Secp256k1 s_secp256k1;
 
-bool dev::SignatureStruct::isValid() const
+bool dev::SignatureStruct::isValid() const noexcept
 {
 	if (v > 1 ||
 		r >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
