@@ -237,7 +237,7 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 
 void EthereumHost::onPeerStatus(EthereumPeer* _peer)
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	if (_peer->m_genesisHash != m_chain.genesisHash())
 		_peer->disable("Invalid genesis hash");
 	else if (_peer->m_protocolVersion != protocolVersion() && _peer->m_protocolVersion != c_oldProtocolVersion)
@@ -252,10 +252,13 @@ void EthereumHost::onPeerStatus(EthereumPeer* _peer)
 	{
 		if (_peer->m_protocolVersion != protocolVersion())
 			estimatePeerHashes(_peer);
-		else if (_peer->m_latestBlockNumber > m_chain.number())
+		else
+		{
+			if (_peer->m_latestBlockNumber > m_chain.number())
 			_peer->m_expectedHashes = (unsigned)_peer->m_latestBlockNumber - m_chain.number();
-		if (m_hashMan.chainSize() < _peer->m_expectedHashes)
-			m_hashMan.resetToRange(m_chain.number() + 1, _peer->m_expectedHashes);
+			if (m_hashMan.chainSize() < _peer->m_expectedHashes)
+				m_hashMan.resetToRange(m_chain.number() + 1, _peer->m_expectedHashes);
+		}
 		continueSync(_peer);
 	}
 }
@@ -265,7 +268,7 @@ void EthereumHost::estimatePeerHashes(EthereumPeer* _peer)
 	BlockInfo block = m_chain.info();
 	time_t lastBlockTime = (block.hash() == m_chain.genesisHash()) ? 1428192000 : (time_t)block.timestamp;
 	time_t now = time(0);
-	unsigned blockCount = 1000;
+	unsigned blockCount = 30000;
 	if (lastBlockTime > now)
 		clog(NetWarn) << "Clock skew? Latest block is in the future";
 	else
@@ -276,7 +279,7 @@ void EthereumHost::estimatePeerHashes(EthereumPeer* _peer)
 
 void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes)
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	assert(_peer->m_asking == Asking::Nothing);
 	onPeerHashes(_peer, _hashes, false);
 }
@@ -285,13 +288,22 @@ void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes, bool 
 {
 	if (_hashes.empty())
 	{
-		onPeerDoneHashes(_peer, true);
+		continueSync();
 		return;
 	}
+
+	bool syncByNumber = _peer->m_syncHashNumber;
+	if (!syncByNumber && _peer->m_latestHash != m_syncingLatestHash)
+	{
+		// Obsolete hashes, discard
+		continueSync(_peer);
+		return;
+	}
+
 	unsigned knowns = 0;
 	unsigned unknowns = 0;
 	h256s neededBlocks;
-	bool syncByNumber = !m_syncingLatestHash;
+	unsigned firstNumber = _peer->m_syncHashNumber - _hashes.size();
 	for (unsigned i = 0; i < _hashes.size(); ++i)
 	{
 		_peer->addRating(1);
@@ -321,8 +333,11 @@ void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes, bool 
 		}
 		else
 			knowns++;
+
 		if (!syncByNumber)
 			m_syncingLatestHash = h;
+		else
+			_peer->m_hashSub.noteHash(firstNumber + i, 1);
 	}
 	if (syncByNumber)
 	{
@@ -368,13 +383,14 @@ void EthereumHost::onPeerDoneHashes(EthereumPeer* _peer, bool _localChain)
 	{
 		m_man.resetToChain(m_hashes);
 		m_hashes.clear();
+		m_hashMan.reset(m_chain.number() + 1);
 	}
 	continueSync();
 }
 
 void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	assert(_peer->m_asking == Asking::Nothing);
 	unsigned itemCount = _r.itemCount();
 	clog(NetMessageSummary) << "Blocks (" << dec << itemCount << "entries)" << (itemCount ? "" : ": NoMoreBlocks");
@@ -450,7 +466,7 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 
 void EthereumHost::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	if (isSyncing_UNSAFE())
 	{
 		clog(NetMessageSummary) << "Ignoring new hashes since we're already downloading.";
@@ -462,7 +478,7 @@ void EthereumHost::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 
 void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 {
-	Guard l(x_sync);
+	RecursiveGuard l(x_sync);
 	if (isSyncing_UNSAFE())
 	{
 		clog(NetMessageSummary) << "Ignoring new blocks since we're already downloading.";
@@ -549,6 +565,16 @@ void EthereumHost::onPeerTransactions(EthereumPeer* _peer, RLP const& _r)
 	}
 }
 
+void EthereumHost::onPeerAborting(EthereumPeer* _peer)
+{
+	RecursiveGuard l(x_sync);
+	if (_peer->isSyncing())
+	{
+		_peer->setIdle();
+		continueSync();
+	}
+}
+
 void EthereumHost::continueSync()
 {
 	clog(NetAllDetail) << "Getting help with downloading hashes and blocks";
@@ -562,21 +588,33 @@ void EthereumHost::continueSync()
 void EthereumHost::continueSync(EthereumPeer* _peer)
 {
 	assert(_peer->m_asking == Asking::Nothing);
-	bool otherPeerSync = false;
+	bool otherPeerV60Sync = false;
+	bool otherPeerV61Sync = false;
 	if (m_needSyncHashes && peerShouldGrabChain(_peer))
 	{
 		foreachPeer([&](EthereumPeer* _p)
 		{
-			if (_p != _peer && _p->m_asking == Asking::Hashes && _p->m_protocolVersion != protocolVersion())
-				otherPeerSync = true; // Already have a peer downloading hash chain with old protocol, do nothing
+			if (_p != _peer && _p->m_asking == Asking::Hashes)
+			{
+				if (_p->m_protocolVersion != protocolVersion())
+					otherPeerV60Sync = true; // Already have a peer downloading hash chain with old protocol, do nothing
+				else
+					otherPeerV61Sync = true; // Already have a peer downloading hash chain with V61+ protocol, join if supported
+			}
 		});
-		if (otherPeerSync)
+		if (otherPeerV60Sync && !m_hashes.empty())
 		{
 			/// Downloading from other peer with v60 protocol, nothing ese we can do
 			_peer->setIdle();
 			return;
 		}
-		if (_peer->m_protocolVersion == protocolVersion() && !m_syncingLatestHash)
+		if (otherPeerV61Sync && _peer->m_protocolVersion != protocolVersion())
+		{
+			/// Downloading from other peer with v61+ protocol which this peer does not support,
+			_peer->setIdle();
+			return;
+		}
+		if (_peer->m_protocolVersion == protocolVersion() && !m_hashMan.isComplete())
 			_peer->requestHashes(); /// v61+ and not catching up to a particular hash
 		else
 		{
@@ -586,7 +624,8 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 				m_syncingLatestHash =_peer->m_latestHash;
 				m_syncingTotalDifficulty = _peer->m_totalDifficulty;
 			}
-			_peer->requestHashes(m_syncingLatestHash);
+			if (_peer->m_totalDifficulty >= m_syncingTotalDifficulty)
+				_peer->requestHashes(m_syncingLatestHash);
 		}
 	}
 	else if (m_needSyncBlocks && peerShouldGrabBlocks(_peer)) // Check if this peer can help with downloading blocks
