@@ -67,7 +67,7 @@ private:
 		return LocationPair(_node.getLocation().start, _node.getLocation().end);
 	}
 
-	virtual bool visit(FunctionDefinition const&)
+	virtual bool visit(FunctionDefinition const&) override
 	{
 		m_functionScope = true;
 		return true;
