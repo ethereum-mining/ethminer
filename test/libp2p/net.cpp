@@ -74,7 +74,7 @@ struct TestNodeTable: public NodeTable
 			ret.push_back(make_pair(k,s_basePort+i));
 		}
 
-		return std::move(ret);
+		return ret;
 	}
 
 	void pingTestNodes(std::vector<std::pair<KeyPair,unsigned>> const& _testNodes)
