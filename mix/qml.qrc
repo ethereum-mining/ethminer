@@ -68,5 +68,6 @@
         <file>qml/BlockChain.qml</file>
         <file>qml/ScenarioExecution.qml</file>
         <file>qml/ScenarioLoader.qml</file>
+        <file>qml/ScenarioButton.qml</file>
     </qresource>
 </RCC>
