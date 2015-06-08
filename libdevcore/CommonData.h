@@ -61,7 +61,7 @@ std::string toHex(_T const& _data, int _w = 2, HexPrefix _prefix = HexPrefix::Do
 
 /// Converts a (printable) ASCII hex character into the correspnding integer value.
 /// @example fromHex('A') == 10 && fromHex('f') == 15 && fromHex('5') == 5
-int fromHex(char _i);
+int fromHex(char _i, WhenError _throw);
 
 /// Converts a (printable) ASCII hex string into the corresponding byte stream.
 /// @example fromHex("41626261") == asBytes("Abba")

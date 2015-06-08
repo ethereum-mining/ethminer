@@ -45,7 +45,7 @@ static array<InstructionMetric, 256> metrics()
 	return s_ret;
 }
 
-bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _steps)
+bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
 	// Reset leftovers from possible previous run
 	m_curPC = 0;
@@ -73,8 +73,7 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 				i += _ext.code[i] - (unsigned)Instruction::PUSH1 + 1;
 		}
 	u256 nextPC = m_curPC + 1;
-	auto osteps = _steps;
-	for (bool stopped = false; !stopped && _steps--; m_curPC = nextPC, nextPC = m_curPC + 1)
+	for (uint64_t steps = 0; true; m_curPC = nextPC, nextPC = m_curPC + 1, ++steps)
 	{
 		// INSTRUCTION...
 		Instruction inst = (Instruction)_ext.getCode(m_curPC);
@@ -97,7 +96,7 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 		auto onOperation = [&]()
 		{
 			if (_onOp)
-				_onOp(osteps - _steps - 1, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, io_gas, this, &_ext);
+				_onOp(steps, inst, newTempSize > m_temp.size() ? (newTempSize - m_temp.size()) / 32 : bigint(0), runGas, io_gas, this, &_ext);
 		};
 
 		switch (inst)
@@ -670,7 +669,5 @@ bytesConstRef VM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint6
 		}
 	}
 
-	if (_steps == (uint64_t)-1)
-		BOOST_THROW_EXCEPTION(StepsDone());
 	return bytesConstRef();
 }

@@ -262,7 +262,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		// return the requested blocks.
 		bytes rlp;
 		unsigned n = 0;
-		for (unsigned i = 0; i < min(count, c_maxBlocks); ++i)
+		for (unsigned i = 0; i < min(count, c_maxBlocks) && rlp.size() < c_maxPayload; ++i)
 		{
 			auto h = _r[i].toHash<h256>();
 			if (host()->chain().isKnown(h))
@@ -285,7 +285,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	case BlocksPacket:
 	{
 		if (m_asking != Asking::Blocks)
-			clog(NetWarn) << "Peer giving us blocks when we didn't ask for them.";
+			clog(NetImpolite) << "Peer giving us blocks when we didn't ask for them.";
 		else
 		{
 			setAsking(Asking::Nothing);
