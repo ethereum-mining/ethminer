@@ -9,9 +9,7 @@ import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
 
 Rectangle {
-
-    border.color: "red"
-    border.width: 1
+    color: "#ededed"
 
     Connections
     {
@@ -26,9 +24,10 @@ Rectangle {
     {
         anchors.margins: 10
         anchors.fill: parent
-        spacing: 5
+        spacing: 10
         ScenarioLoader
         {
+            height: 70
             width: parent.width
             id: loader
         }

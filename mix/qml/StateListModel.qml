@@ -16,7 +16,9 @@ Item {
 	property string defaultAccount: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074" //support for old project
 
 	function fromPlainStateItem(s) {
-		if (!s.accounts)
+        console.log("èèèèèèèèèèèè");
+        console.log(s);
+        if (!s.accounts)
 			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether, defaultAccount)]; //support for old project
 		if (!s.contracts)
 			s.contracts = [];
@@ -137,7 +139,6 @@ Item {
 	}
 
 	function toPlainTransactionItem(t) {
-        console.log(JSON.stringify(t));
 		var r = {
 			type: t.type,
 			contractId: t.contractId,
