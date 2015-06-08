@@ -232,15 +232,7 @@ ColumnLayout
                                 anchors.leftMargin: 10
                                 text: {
                                     if (index >= 0 && transactions.get(index).logs && transactions.get(index).logs.count)
-                                    {
-                                        for (var k = 0; k < transactions.get(index).logs.count; k++)
-                                        {
-                                            console.log("_________________________")
-                                            console.log(JSON.stringify(transactions.get(index).logs[k]))
-                                            console.log("_________________________")
-                                        }
                                         return transactions.get(index).logs.count
-                                    }
                                     else
                                         return ""
                                 }
