@@ -127,7 +127,7 @@ unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 	return devices.size();
 }
 
-bool ethash_cl_miner::haveSufficientGPUMemory()
+bool ethash_cl_miner::configureGPU()
 {
 	return searchForAllDevices([](cl::Device const _device) -> bool
 		{
@@ -184,15 +184,40 @@ bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, std::function<bo
 	return false;
 }
 
+void ethash_cl_miner::doForAllDevices(std::function<void(cl::Device const&)> _callback)
+{
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (platforms.empty())
+	{
+		ETHCL_LOG("No OpenCL platforms found.");
+		return;
+	}
+	for (unsigned i = 0; i < platforms.size(); ++i)
+		doForAllDevices(i, _callback);
+}
+
+void ethash_cl_miner::doForAllDevices(unsigned _platformId, std::function<void(cl::Device const&)> _callback)
+{
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (_platformId >= platforms.size())
+		return;
+
+	std::vector<cl::Device> devices;
+	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
+	for (cl::Device const& device: devices)
+		_callback(device);
+}
+
 void ethash_cl_miner::listDevices()
 {
 	std::string outString ="\nListing OpenCL devices.\nFORMAT: [deviceID] deviceName\n";
 	unsigned int i = 0;
-	searchForAllDevices([&outString, &i](cl::Device const _device) -> bool
+	doForAllDevices([&outString, &i](cl::Device const _device)
 		{
 			outString += "[" + to_string(i) + "] " + _device.getInfo<CL_DEVICE_NAME>() + "\n";
 			++i;
-			return false; // so that search continues
 		}
 	);
 	ETHCL_LOG(outString);
@@ -209,15 +234,9 @@ bool ethash_cl_miner::init(
 	uint64_t _dagSize,
 	unsigned workgroup_size,
 	unsigned _platformId,
-	unsigned _deviceId,
-	unsigned _dagChunksNum
+	unsigned _deviceId
 )
 {
-	// for now due to the .cl kernels we can only have either 1 big chunk or 4 chunks
-	assert(_dagChunksNum == 1 || _dagChunksNum == 4);
-	// now create the number of chunk buffers
-	m_dagChunksNum = _dagChunksNum;
-
 	// get all platforms
 	try
 	{
@@ -247,6 +266,10 @@ bool ethash_cl_miner::init(
 		std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
 		ETHCL_LOG("Using device: " << device.getInfo<CL_DEVICE_NAME>().c_str() << "(" << device_version.c_str() << ")");
 
+		// configure chunk number depending on max allocateable memory
+		cl_ulong result;		
+		device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
+		m_dagChunksNum = result >= ETHASH_CL_MINIMUM_MEMORY ? 4 : 1;
 		if (strncmp("OpenCL 1.0", device_version.c_str(), 10) == 0)
 		{
 			ETHCL_LOG("OpenCL 1.0 is not supported.");
@@ -288,7 +311,7 @@ bool ethash_cl_miner::init(
 			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
 			return false;
 		}
-		if (_dagChunksNum == 1)
+		if (m_dagChunksNum == 1)
 		{
 			ETHCL_LOG("Loading single big chunk kernels");
 			m_hash_kernel = cl::Kernel(program, "ethash_hash");
@@ -302,13 +325,13 @@ bool ethash_cl_miner::init(
 		}
 
 		// create buffer for dag
-		if (_dagChunksNum == 1)
+		if (m_dagChunksNum == 1)
 		{
 			ETHCL_LOG("Creating one big buffer");
 			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
 		}
 		else
-			for (unsigned i = 0; i < _dagChunksNum; i++)
+			for (unsigned i = 0; i < m_dagChunksNum; i++)
 			{
 				// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
 				ETHCL_LOG("Creating buffer for chunk " << i);
@@ -323,7 +346,7 @@ bool ethash_cl_miner::init(
 		ETHCL_LOG("Creating buffer for header.");
 		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
-		if (_dagChunksNum == 1)
+		if (m_dagChunksNum == 1)
 		{
 			ETHCL_LOG("Mapping one big chunk.");
 			m_queue.enqueueWriteBuffer(m_dagChunks[0], CL_TRUE, 0, _dagSize, _dag);
@@ -332,12 +355,12 @@ bool ethash_cl_miner::init(
 		{
 			// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
 			void* dag_ptr[4];
-			for (unsigned i = 0; i < _dagChunksNum; i++)
+			for (unsigned i = 0; i < m_dagChunksNum; i++)
 			{
 				ETHCL_LOG("Mapping chunk " << i);
 				dag_ptr[i] = m_queue.enqueueMapBuffer(m_dagChunks[i], true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
 			}
-			for (unsigned i = 0; i < _dagChunksNum; i++)
+			for (unsigned i = 0; i < m_dagChunksNum; i++)
 			{
 				memcpy(dag_ptr[i], (char *)_dag + i*((_dagSize >> 9) << 7), (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
 				m_queue.enqueueUnmapMemObject(m_dagChunks[i], dag_ptr[i]);

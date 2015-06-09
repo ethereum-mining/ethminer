@@ -34,10 +34,11 @@ public:
 
 	static bool searchForAllDevices(unsigned _platformId, std::function<bool(cl::Device const&)> _callback);
 	static bool searchForAllDevices(std::function<bool(cl::Device const&)> _callback);
+	static void doForAllDevices(unsigned _platformId, std::function<void(cl::Device const&)> _callback);
+	static void doForAllDevices(std::function<void(cl::Device const&)> _callback);
 	static unsigned getNumPlatforms();
 	static unsigned getNumDevices(unsigned _platformId = 0);
 	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
-	static bool haveSufficientGPUMemory();
 	static void listDevices();
 	static bool configureGPU();
 
@@ -46,8 +47,7 @@ public:
 		uint64_t _dagSize,
 		unsigned workgroup_size = 64,
 		unsigned _platformId = 0,
-		unsigned _deviceId = 0,
-		unsigned _dagChunksNum = 1
+		unsigned _deviceId = 0
 	);
 	void finish();
 	void search(uint8_t const* header, uint64_t target, search_hook& hook);
@@ -62,7 +62,7 @@ private:
 	cl::CommandQueue m_queue;
 	cl::Kernel m_hash_kernel;
 	cl::Kernel m_search_kernel;
-	unsigned m_dagChunksNum;
+	unsigned int m_dagChunksNum;
 	std::vector<cl::Buffer> m_dagChunks;
 	cl::Buffer m_header;
 	cl::Buffer m_hash_buf[c_num_buffers];
@@ -70,5 +70,4 @@ private:
 	unsigned m_workgroup_size;
 	bool m_opencl_1_1;
 
-	static const unsigned int s_dagChunksNum = 1;
 };
