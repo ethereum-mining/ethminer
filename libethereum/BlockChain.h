@@ -143,6 +143,7 @@ public:
 	BlockLogBlooms logBlooms() const { return logBlooms(currentHash()); }
 
 	/// Get the transactions' receipts of a block (or the most recent mined if none given). Thread-safe.
+	/// receipts are given in the same order are in the same order as the transactions
 	BlockReceipts receipts(h256 const& _hash) const { return queryExtras<BlockReceipts, ExtraReceipts>(_hash, m_receipts, x_receipts, NullBlockReceipts); }
 	BlockReceipts receipts() const { return receipts(currentHash()); }
 

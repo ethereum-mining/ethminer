@@ -182,11 +182,10 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 		{
 			// Might have a transaction that contains a matching log.
 			TransactionReceipt const& tr = temp.receipt(i);
-			auto th = temp.pending()[i].sha3();
 			LogEntries le = _f.matches(tr);
 			if (le.size())
 				for (unsigned j = 0; j < le.size(); ++j)
-					ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin, th));
+					ret.insert(ret.begin(), LocalisedLogEntry(le[j]));
 		}
 		begin = bc().number();
 	}
@@ -201,20 +200,22 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 	{
 		int total = 0;
 		auto h = bc().numberHash(n);
+		auto info = bc().info(h);
 		auto receipts = bc().receipts(h).receipts;
+		unsigned logIndex = 0;
 		for (size_t i = 0; i < receipts.size(); i++)
 		{
+			logIndex++;
 			TransactionReceipt receipt = receipts[i];
 			if (_f.matches(receipt.bloom()))
 			{
-				auto info = bc().info(h);
 				auto th = transaction(info.hash(), i).sha3();
 				LogEntries le = _f.matches(receipt);
 				if (le.size())
 				{
 					total += le.size();
 					for (unsigned j = 0; j < le.size(); ++j)
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], n, th));
+						ret.insert(ret.begin(), LocalisedLogEntry(le[j], info, th, i, logIndex));
 				}
 			}
 			
