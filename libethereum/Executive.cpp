@@ -19,6 +19,9 @@
 #include "Executive.h"
 
 #include <boost/timer.hpp>
+#if ETH_JSONRPC || !ETH_TRUE
+#include <json/json.h>
+#endif
 #include <libdevcore/CommonIO.h>
 #include <libevm/VMFactory.h>
 #include <libevm/VM.h>
@@ -33,6 +36,101 @@ using namespace dev::eth;
 
 const char* VMTraceChannel::name() { return "EVM"; }
 const char* ExecutiveWarnChannel::name() { return WarnChannel::name(); }
+
+StandardTrace::StandardTrace():
+	m_trace(new Json::Value(Json::arrayValue))
+{}
+
+bool changesMemory(Instruction _inst)
+{
+	return
+		_inst == Instruction::MSTORE ||
+		_inst == Instruction::MSTORE8 ||
+		_inst == Instruction::CALL ||
+		_inst == Instruction::CALLCODE ||
+		_inst == Instruction::SHA3 ||
+		_inst == Instruction::CALLDATACOPY ||
+		_inst == Instruction::CODECOPY ||
+		_inst == Instruction::EXTCODECOPY;
+}
+
+bool changesStorage(Instruction _inst)
+{
+	return _inst == Instruction::SSTORE;
+}
+
+void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
+{
+	ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
+	VM& vm = *voidVM;
+
+	Json::Value r(Json::objectValue);
+
+	Json::Value stack(Json::arrayValue);
+	for (auto const& i: vm.stack())
+		stack.append(toHex(toCompactBigEndian(i), 1));
+	r["stack"] = stack;
+
+	bool newContext = false;
+	Instruction lastInst = Instruction::STOP;
+
+	if (m_lastInst.size() == ext.depth)
+	{
+		// starting a new context
+		assert(m_lastInst.size() == ext.depth);
+		m_lastInst.push_back(inst);
+		newContext = true;
+	}
+	else if (m_lastInst.size() == ext.depth + 2)
+	{
+		// returned from old context
+		m_lastInst.pop_back();
+		lastInst = m_lastInst.back();
+	}
+	else if (m_lastInst.size() == ext.depth + 1)
+	{
+		// continuing in previous context
+		lastInst = m_lastInst.back();
+	}
+	else
+	{
+		cwarn << "GAA!!! Tracing VM and more than one new/deleted stack frame between steps!";
+		cwarn << "Attmepting naive recovery...";
+		m_lastInst.resize(ext.depth + 1);
+	}
+
+	if (changesMemory(lastInst) || newContext)
+	{
+		Json::Value mem(Json::arrayValue);
+		for (auto const& i: vm.memory())
+			mem.append(toHex(toCompactBigEndian(i), 1));
+		r["memory"] = mem;
+	}
+
+	if (changesStorage(lastInst) || newContext)
+	{
+		Json::Value storage(Json::objectValue);
+		for (auto const& i: ext.state().storage(ext.myAddress))
+			storage[toHex(toCompactBigEndian(i.first), 1)] = toHex(toCompactBigEndian(i.second), 1);
+		r["storage"] = storage;
+	}
+
+	r["depth"] = ext.depth;
+	r["address"] = ext.myAddress.hex();
+	r["steps"] = (unsigned)_steps;
+	r["inst"] = (unsigned)inst;
+	r["pc"] = toString(vm.curPC());
+	r["gas"] = toString(gas);
+	r["gascost"] = toString(gasCost);
+	r["memexpand"] = toString(newMemSize);
+
+	m_trace->append(r);
+}
+
+string StandardTrace::json() const
+{
+	return Json::FastWriter().write(*m_trace);
+}
 
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
@@ -68,7 +166,7 @@ void Executive::initialize(Transaction const& _transaction)
 	if (!m_t.checkPayment())
 	{
 		clog(ExecutiveWarnChannel) << "Not enough gas to pay for the transaction: Require >" << m_t.gasRequired() << " Got" << m_t.gas();
-		m_excepted = TransactionException::OutOfGas;
+		m_excepted = TransactionException::OutOfGasBase;
 		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError(m_t.gasRequired(), (bigint)m_t.gas()));
 	}
 
@@ -200,24 +298,6 @@ OnOpFunc Executive::simpleTrace()
 			o << showbase << hex << i.first << ": " << i.second << endl;
 		dev::LogOutputStream<VMTraceChannel, false>() << o.str();
 		dev::LogOutputStream<VMTraceChannel, false>() << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
-	};
-}
-
-OnOpFunc Executive::standardTrace(ostream& o_output)
-{
-	return [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
-	{
-		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
-		VM& vm = *voidVM;
-
-		o_output << endl << "    STACK" << endl;
-		for (auto i: vm.stack())
-			o_output << (h256)i << endl;
-		o_output << "    MEMORY" << endl << ((vm.memory().size() > 1000) ? " mem size greater than 1000 bytes " : memDump(vm.memory()));
-		o_output << "    STORAGE" << endl;
-		for (auto const& i: ext.state().storage(ext.myAddress))
-			o_output << showbase << hex << i.first << ": " << i.second << endl;
-		o_output << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
 	};
 }
 

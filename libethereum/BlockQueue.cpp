@@ -26,7 +26,7 @@
 #include <libethcore/BlockInfo.h>
 #include "BlockChain.h"
 #include "VerifiedBlock.h"
-
+#include "State.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -79,7 +79,7 @@ void BlockQueue::verifierBody()
 		swap(work.second, res.blockData);
 		try
 		{
-			res.verified = BlockChain::verifyBlock(res.blockData);
+			res.verified = BlockChain::verifyBlock(res.blockData, m_onBad);
 		}
 		catch (...)
 		{

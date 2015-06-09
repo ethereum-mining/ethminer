@@ -71,7 +71,9 @@ public:
 
 	DownloadMan const& downloadMan() const { return m_man; }
 	bool isSyncing() const { RecursiveGuard l(x_sync); return isSyncing_UNSAFE(); }
-	bool isBanned(p2p::NodeId _id) const { return !!m_banned.count(_id); }
+	bool isBanned(p2p::NodeId const& _id) const { return !!m_banned.count(_id); }
+	void noteRude(p2p::NodeId const& _id, std::string const& _client);
+	bool isRude(p2p::NodeId const& _id, std::string const& _client) const { return m_rudeClients.count(_client) && m_rudeNodes.count(_id); }
 
 	void noteNewTransactions() { m_newTransactions = true; }
 	void noteNewBlocks() { m_newBlocks = true; }
@@ -151,6 +153,8 @@ private:
 	h256s m_hashes;								///< List of hashes with unknown block numbers. Used for PV60 chain downloading and catching up to a particular unknown
 	unsigned m_estimatedHashes = 0;				///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
 	bool m_syncingV61 = false;					///< True if recent activity was over pv61+. Used for status reporting only.
+	std::unordered_set<p2p::NodeId> m_rudeNodes;	///< Nodes that were impolite while syncing. We avoid syncing from these if possible.
+	std::unordered_set<std::string> m_rudeClients;	///< Nodes that were impolite while syncing. We avoid syncing from these if possible.
 };
 
 }
