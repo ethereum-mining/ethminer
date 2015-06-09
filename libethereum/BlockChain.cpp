@@ -331,9 +331,18 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 			// Can't continue - chain bad.
 			badBlocks.push_back(block.first.hash());
 		}
-		catch (Exception const& _e)
+		catch (dev::eth::FutureTime)
 		{
-			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << LogTag::Error << diagnostic_information(_e);
+			cwarn << "ODD: Import queue contains a block with future time." << LogTag::Error << boost::current_exception_diagnostic_information();
+			// NOTE: don't reimport since the queue should guarantee everything in the past.
+			// Can't continue - chain bad.
+			badBlocks.push_back(block.first.hash());
+		}
+		catch (Exception& ex)
+		{
+			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << LogTag::Error << diagnostic_information(ex);
+			if (m_onBad)
+				m_onBad(ex);
 			// NOTE: don't reimport since the queue should guarantee everything in the right order.
 			// Can't continue - chain  bad.
 			badBlocks.push_back(block.first.hash());
@@ -360,8 +369,10 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
 	{
 		return make_pair(ImportResult::FutureTime, make_pair(h256s(), h256s()));
 	}
-	catch (...)
+	catch (Exception& ex)
 	{
+		if (m_onBad)
+			m_onBad(ex);
 		return make_pair(ImportResult::Malformed, make_pair(h256s(), h256s()));
 	}
 }
@@ -379,10 +390,11 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 		bi.verifyInternals(&_block);
 	}
 #if ETH_CATCH
-	catch (Exception const& _e)
+	catch (Exception& ex)
 	{
-		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(_e);
-		_e << errinfo_comment("Malformed block ");
+		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
+		ex << errinfo_now(time(0));
+		ex << errinfo_block(_block);
 		throw;
 	}
 #endif
@@ -470,14 +482,8 @@ ImportRoute BlockChain::import(BlockInfo const& _bi, bytes const& _block, Overla
 			blb.blooms.push_back(s.receipt(i).bloom());
 			br.receipts.push_back(s.receipt(i));
 		}
-		try {
-			s.cleanup(true);
-		}
-		catch (BadRoot)
-		{
-			cwarn << "BadRoot error. Retrying import later.";
-			BOOST_THROW_EXCEPTION(FutureTime());
-		}
+
+		s.cleanup(true);
 
 		td = pd.totalDifficulty + tdIncrease;
 
@@ -520,20 +526,20 @@ ImportRoute BlockChain::import(BlockInfo const& _bi, bytes const& _block, Overla
 #endif
 	}
 #if ETH_CATCH
-	catch (InvalidNonce const& _e)
+	catch (BadRoot& ex)
 	{
-		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(_e);
-		_e << errinfo_comment("Malformed block ");
-		throw;
+		cwarn << "BadRoot error. Retrying import later.";
+		BOOST_THROW_EXCEPTION(FutureTime());
 	}
-	catch (Exception const& _e)
+	catch (Exception& ex)
 	{
-		clog(BlockChainWarn) << "   Malformed block: " << diagnostic_information(_e);
-		_e << errinfo_comment("Malformed block ");
+		clog(BlockChainWarn) << "   Malformed block: " << diagnostic_information(ex);
 		clog(BlockChainWarn) << "Block: " << _bi.hash();
 		clog(BlockChainWarn) << _bi;
 		clog(BlockChainWarn) << "Block parent: " << _bi.parentHash;
 		clog(BlockChainWarn) << BlockInfo(block(_bi.parentHash));
+		ex << errinfo_now(time(0));
+		ex << errinfo_block(_block);
 		throw;
 	}
 #endif

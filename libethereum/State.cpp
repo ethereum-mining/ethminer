@@ -577,19 +577,20 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
 	vector<bytes> receipts;
 
-	ostringstream ss;
+	string ret;
 	unsigned i = 0;
 	for (auto const& tr: rlp[1])
 	{
-		ss << "    VM Execution of transaction" << i << ":" << endl;
-		execute(lh, Transaction(tr.data(), CheckTransaction::Everything), Permanence::Committed, Executive::standardTrace(ss));
+		StandardTrace st;
+		execute(lh, Transaction(tr.data(), CheckTransaction::Everything), Permanence::Committed, [&](uint64_t _steps, Instruction _inst, bigint _newMemSize, bigint _gasCost, bigint _gas, VM* _vm, ExtVMFace const* _extVM) { st(_steps, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM); });
+		ret += (ret.empty() ? "[" : ",") + st.json();
+
 		RLPStream receiptRLP;
 		m_receipts.back().streamRLP(receiptRLP);
 		receipts.push_back(receiptRLP.out());
 		++i;
-		ss << endl;
 	}
-	return ss.str();
+	return ret.empty() ? "[]" : (ret + "]");
 }
 
 u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir)
@@ -664,7 +665,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 		cwarn << "  VMTrace:\n" << vmTrace(_block, _bc, _ir);
 
 		InvalidReceiptsStateRoot ex;
-		ex << HashMismatchError(receiptsRoot, m_currentBlock.receiptsRoot);
+		ex << Hash256RequirementError(receiptsRoot, m_currentBlock.receiptsRoot);
 		ex << errinfo_receipts(receipts);
 		ex << errinfo_vmtrace(vmTrace(_block, _bc, _ir));
 		BOOST_THROW_EXCEPTION(ex);
@@ -681,7 +682,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 		}
 		cwarn << "  Final bloom:" << m_currentBlock.logBloom.hex();
 		InvalidLogBloom ex;
-		ex << LogBloomMismatchError(logBloom(), m_currentBlock.logBloom);
+		ex << LogBloomRequirementError(logBloom(), m_currentBlock.logBloom);
 		ex << errinfo_receipts(receipts);
 		BOOST_THROW_EXCEPTION(ex);
 	}
@@ -769,7 +770,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	{
 		badBlock(_block, "Bad state root");
 		m_db.rollback();
-		BOOST_THROW_EXCEPTION(InvalidStateRoot() << HashMismatchError(rootHash(), m_currentBlock.stateRoot));
+		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(rootHash(), m_currentBlock.stateRoot));
 	}
 
 	if (m_currentBlock.gasUsed != gasUsed())
