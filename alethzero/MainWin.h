@@ -33,9 +33,9 @@
 #include <QtWidgets/QMainWindow>
 #include <libdevcore/RLP.h>
 #include <libethcore/Common.h>
+#include <libethcore/KeyManager.h>
 #include <libethereum/State.h>
 #include <libethereum/Executive.h>
-#include <libethereum/KeyManager.h>
 #include <libwebthree/WebThree.h>
 #include <libsolidity/CompilerStack.h>
 #include "Context.h"
@@ -91,7 +91,7 @@ public:
 
 	QList<dev::KeyPair> owned() const { return m_myIdentities; }
 
-	dev::u256 gasPrice() const { return 10 * dev::eth::szabo; }
+	dev::u256 gasPrice() const override;
 
 	dev::eth::KeyManager& keyManager() override { return m_keyManager; }
 	bool doConfirm();
@@ -137,7 +137,10 @@ private slots:
 	void on_newAccount_triggered();
 	void on_killAccount_triggered();
 	void on_importKey_triggered();
+	void on_reencryptKey_triggered();
+	void on_reencryptAll_triggered();
 	void on_importKeyFile_triggered();
+	void on_claimPresale_triggered();
 	void on_exportKey_triggered();
 
 	// Account pane
@@ -190,6 +193,9 @@ private slots:
 	// Whisper
 	void on_newIdentity_triggered();
 	void on_post_clicked();
+
+	// Config
+	void on_gasPrices_triggered();
 
 	void refreshWhisper();
 	void refreshBlockChain();
@@ -246,7 +252,7 @@ private:
 	void refreshBalances();
 
 	void setBeneficiary(dev::Address const& _b);
-	std::string getPassword(std::string const& _title, std::string const& _for);
+	std::string getPassword(std::string const& _title, std::string const& _for, std::string* _hint = nullptr, bool* _ok = nullptr);
 
 	std::unique_ptr<Ui::Main> ui;
 
@@ -276,7 +282,7 @@ private:
 	static std::string fromRaw(dev::h256 _n, unsigned* _inc = nullptr);
 	NatspecHandler m_natSpecDB;
 
-	Transact m_transact;
+	Transact* m_transact;
 	std::unique_ptr<DappHost> m_dappHost;
 	DappLoader* m_dappLoader;
 	QWebEnginePage* m_webPage;

@@ -29,12 +29,13 @@ using namespace dev::eth;
 
 GasMeter::GasConsumption& GasMeter::GasConsumption::operator+=(GasConsumption const& _other)
 {
-	isInfinite = isInfinite || _other.isInfinite;
+	if (_other.isInfinite && !isInfinite)
+		*this = infinite();
 	if (isInfinite)
 		return *this;
 	bigint v = bigint(value) + _other.value;
-	if (v > std::numeric_limits<u256>::max())
-		isInfinite = true;
+	if (v > numeric_limits<u256>::max())
+		*this = infinite();
 	else
 		value = u256(v);
 	return *this;
@@ -147,7 +148,7 @@ GasMeter::GasConsumption GasMeter::estimateMax(AssemblyItem const& _item)
 			if (u256 const* value = classes.knownConstant(m_state->relativeStackElement(-1)))
 				gas += c_expByteGas * (32 - (h256(*value).firstBitSet() / 8));
 			else
-				gas = GasConsumption::infinite();
+				gas += c_expByteGas * 32;
 			break;
 		default:
 			break;
@@ -200,13 +201,14 @@ GasMeter::GasConsumption GasMeter::memoryGas(int _stackPosOffset, int _stackPosS
 		}));
 }
 
-GasMeter::GasConsumption GasMeter::runGas(Instruction _instruction)
+u256 GasMeter::runGas(Instruction _instruction)
 {
 	if (_instruction == Instruction::JUMPDEST)
-		return GasConsumption(1);
+		return 1;
 
 	int tier = instructionInfo(_instruction).gasPriceTier;
-	return tier == InvalidTier ? GasConsumption::infinite() : c_tierStepGas[tier];
+	assertThrow(tier != InvalidTier, OptimizerException, "Invalid gas tier.");
+	return c_tierStepGas[tier];
 }
 
 

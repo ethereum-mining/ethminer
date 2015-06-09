@@ -25,6 +25,7 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <libscrypt/libscrypt.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/FileSystem.h>
@@ -36,7 +37,7 @@ using namespace dev::crypto;
 
 static Secp256k1 s_secp256k1;
 
-bool dev::SignatureStruct::isValid() const
+bool dev::SignatureStruct::isValid() const noexcept
 {
 	if (v > 1 ||
 		r >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
@@ -119,10 +120,11 @@ std::pair<bytes, h128> dev::encryptSymNoAuth(h128 const& _k, bytesConstRef _plai
 	return make_pair(encryptSymNoAuth(_k, iv, _plain), iv);
 }
 
-bytes dev::encryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _plain)
+bytes dev::encryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _plain)
 {
-	const int c_aesKeyLen = 16;
-	SecByteBlock key(_k.data(), c_aesKeyLen);
+	if (_k.size() != 16 && _k.size() != 24 && _k.size() != 32)
+		return bytes();
+	SecByteBlock key(_k.data(), _k.size());
 	try
 	{
 		CTR_Mode<AES>::Encryption e;
@@ -138,10 +140,11 @@ bytes dev::encryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _plai
 	}
 }
 
-bytes dev::decryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _cipher)
+bytes dev::decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _cipher)
 {
-	const size_t c_aesKeyLen = 16;
-	SecByteBlock key(_k.data(), c_aesKeyLen);
+	if (_k.size() != 16 && _k.size() != 24 && _k.size() != 32)
+		return bytes();
+	SecByteBlock key(_k.data(), _k.size());
 	try
 	{
 		CTR_Mode<AES>::Decryption d;
@@ -177,6 +180,13 @@ bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations,
 	bytes ret(_dkLen);
 	PKCS5_PBKDF2_HMAC<SHA256> pbkdf;
 	pbkdf.DeriveKey(ret.data(), ret.size(), 0, (byte*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _iterations);
+	return ret;
+}
+
+bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen)
+{
+	bytes ret(_dkLen);
+	libscrypt_scrypt((uint8_t const*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _n, _r, _p, ret.data(), ret.size());
 	return ret;
 }
 

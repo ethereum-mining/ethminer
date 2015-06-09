@@ -4080,7 +4080,6 @@ BOOST_AUTO_TEST_CASE(struct_delete_member)
 		}
 	)";
 	compileAndRun(sourceCode, 0, "test");
-	auto res = callContractFunction("deleteMember()");
 	BOOST_CHECK(callContractFunction("deleteMember()") == encodeArgs(0));
 }
 
@@ -4106,8 +4105,108 @@ BOOST_AUTO_TEST_CASE(struct_delete_struct_in_mapping)
 		}
 	)";
 	compileAndRun(sourceCode, 0, "test");
-	auto res = callContractFunction("deleteIt()");
 	BOOST_CHECK(callContractFunction("deleteIt()") == encodeArgs(0));
+}
+
+BOOST_AUTO_TEST_CASE(evm_exceptions_out_of_band_access)
+{
+	char const* sourceCode = R"(
+		contract A {
+			uint[3] arr;
+			bool public test = false;
+			function getElement(uint i) returns (uint)
+			{
+				return arr[i];
+			}
+			function testIt() returns (bool)
+			{
+				uint i = this.getElement(5);
+				test = true;
+				return true;
+			}
+		}
+	)";
+	compileAndRun(sourceCode, 0, "A");
+	BOOST_CHECK(callContractFunction("test()") == encodeArgs(false));
+	BOOST_CHECK(callContractFunction("testIt()") == encodeArgs());
+	BOOST_CHECK(callContractFunction("test()") == encodeArgs(false));
+}
+
+BOOST_AUTO_TEST_CASE(evm_exceptions_in_constructor_call_fail)
+{
+	char const* sourceCode = R"(
+		contract A {
+			function A()
+			{
+				this.call("123");
+			}
+		}
+		contract B {
+			uint public test = 1;
+			function testIt()
+			{
+				A a = new A();
+				++test;
+			}
+		}
+	)";
+	compileAndRun(sourceCode, 0, "B");
+
+	BOOST_CHECK(callContractFunction("testIt()") == encodeArgs());
+	BOOST_CHECK(callContractFunction("test()") == encodeArgs(2));
+}
+
+BOOST_AUTO_TEST_CASE(evm_exceptions_in_constructor_out_of_baund)
+{
+	char const* sourceCode = R"(
+		contract A {
+			uint public test = 1;
+			uint[3] arr;
+			function A()
+			{
+				test = arr[5];
+				++test;
+			}
+		}
+	)";
+	BOOST_CHECK(compileAndRunWthoutCheck(sourceCode, 0, "A").empty());
+}
+
+BOOST_AUTO_TEST_CASE(positive_integers_to_signed)
+{
+	char const* sourceCode = R"(
+		contract test {
+			int8 public x = 2;
+			int8 public y = 127;
+			int16 public q = 250;
+		}
+	)";
+	compileAndRun(sourceCode, 0, "test");
+	BOOST_CHECK(callContractFunction("x()") == encodeArgs(2));
+	BOOST_CHECK(callContractFunction("y()") == encodeArgs(127));
+	BOOST_CHECK(callContractFunction("q()") == encodeArgs(250));
+}
+
+BOOST_AUTO_TEST_CASE(failing_send)
+{
+	char const* sourceCode = R"(
+		contract Helper {
+			uint[] data;
+			function () {
+				data[9]; // trigger exception
+			}
+		}
+		contract Main {
+			function callHelper(address _a) returns (bool r, uint bal) {
+				r = !_a.send(5);
+				bal = this.balance;
+			}
+		}
+	)";
+	compileAndRun(sourceCode, 0, "Helper");
+	u160 const c_helperAddress = m_contractAddress;
+	compileAndRun(sourceCode, 20, "Main");
+	BOOST_REQUIRE(callContractFunction("callHelper(address)", c_helperAddress) == encodeArgs(true, 20));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

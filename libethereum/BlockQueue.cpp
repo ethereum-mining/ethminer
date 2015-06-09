@@ -22,6 +22,7 @@
 #include "BlockQueue.h"
 #include <thread>
 #include <libdevcore/Log.h>
+#include <libethcore/EthashAux.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include "BlockChain.h"
@@ -76,11 +77,56 @@ void BlockQueue::verifierBody()
 		std::pair<BlockInfo, bytes> res;
 		swap(work.second, res.second);
 		try {
-			res.first.populate(res.second, CheckEverything, work.first);
-			res.first.verifyInternals(&res.second);
+			try {
+				res.first.populate(res.second, CheckEverything, work.first);
+				res.first.verifyInternals(&res.second);
+			}
+			catch (InvalidBlockNonce&)
+			{
+				badBlock(res.second, "Invalid block nonce");
+				cwarn << "  Nonce:" << res.first.nonce.hex();
+				cwarn << "  PoWHash:" << res.first.headerHash(WithoutNonce).hex();
+				cwarn << "  SeedHash:" << res.first.seedHash().hex();
+				cwarn << "  Target:" << res.first.boundary().hex();
+				cwarn << "  MixHash:" << res.first.mixHash.hex();
+				Ethash::Result er = EthashAux::eval(res.first.seedHash(), res.first.headerHash(WithoutNonce), res.first.nonce);
+				cwarn << "  Ethash v:" << er.value.hex();
+				cwarn << "  Ethash mH:" << er.mixHash.hex();
+				throw;
+			}
+			catch (Exception& _e)
+			{
+				badBlock(res.second, _e.what());
+				throw;
+			}
+
 			RLP r(&res.second);
 			for (auto const& uncle: r[2])
-				BlockInfo().populateFromHeader(RLP(uncle.data()), CheckEverything);
+			{
+				try
+				{
+					BlockInfo().populateFromHeader(RLP(uncle.data()), CheckEverything);
+				}
+				catch (InvalidNonce&)
+				{
+					badBlockHeader(uncle.data(), "Invalid uncle nonce");
+					BlockInfo bi = BlockInfo::fromHeader(uncle.data(), CheckNothing);
+					cwarn << "  Nonce:" << bi.nonce.hex();
+					cwarn << "  PoWHash:" << bi.headerHash(WithoutNonce).hex();
+					cwarn << "  SeedHash:" << bi.seedHash().hex();
+					cwarn << "  Target:" << bi.boundary().hex();
+					cwarn << "  MixHash:" << bi.mixHash.hex();
+					Ethash::Result er = EthashAux::eval(bi.seedHash(), bi.headerHash(WithoutNonce), bi.nonce);
+					cwarn << "  Ethash v:" << er.value.hex();
+					cwarn << "  Ethash mH:" << er.mixHash.hex();
+					throw;
+				}
+				catch (Exception& _e)
+				{
+					badBlockHeader(uncle.data(), _e.what());
+					throw;
+				}
+			}
 		}
 		catch (...)
 		{
@@ -371,4 +417,16 @@ void BlockQueue::retryAllUnknown()
 	}
 	m_unknown.clear();
 	m_moreToVerify.notify_all();
+}
+
+std::ostream& dev::eth::operator<<(std::ostream& _out, BlockQueueStatus const& _bqs)
+{
+	_out << "verified: " << _bqs.verified << endl;
+	_out << "verifying: " << _bqs.verifying << endl;
+	_out << "unverified: " << _bqs.unverified << endl;
+	_out << "future: " << _bqs.future << endl;
+	_out << "unknown: " << _bqs.unknown << endl;
+	_out << "bad: " << _bqs.bad << endl;
+
+	return _out;
 }

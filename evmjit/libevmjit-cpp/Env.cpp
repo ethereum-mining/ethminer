@@ -54,7 +54,7 @@ extern "C"
 		if (_env->balance(_env->myAddress) >= endowment && _env->depth < 1024)
 		{
 			u256 gas = *io_gas;
-			h256 address(_env->create(endowment, gas, {_initBeg, _initSize}, {}), h256::AlignRight);
+			h256 address(_env->create(endowment, gas, {_initBeg, (size_t)_initSize}, {}), h256::AlignRight);
 			*io_gas = static_cast<int64_t>(gas);
 			*o_address = address;
 		}
@@ -69,8 +69,8 @@ extern "C"
 		params.senderAddress = _env->myAddress;
 		params.receiveAddress = right160(*_receiveAddress);
 		params.codeAddress = right160(*_codeAddress);
-		params.data = {_inBeg, _inSize};
-		params.out = {_outBeg, _outSize};
+		params.data = {_inBeg, (size_t)_inSize};
+		params.out = {_outBeg, (size_t)_outSize};
 		params.onOp = {};
 		const auto isCall = params.receiveAddress == params.codeAddress; // OPT: The same address pointer can be used if not CODECALL
 
@@ -102,7 +102,7 @@ extern "C"
 
 	EXPORT void env_sha3(byte* _begin, uint64_t _size, h256* o_hash)
 	{
-		auto hash = sha3({_begin, _size});
+		auto hash = sha3({_begin, (size_t)_size});
 		*o_hash = hash;
 	}
 
@@ -130,7 +130,7 @@ extern "C"
 		if (_topic4)
 			topics.push_back(*_topic4);
 
-		_env->log(std::move(topics), {_beg, _size});
+		_env->log(std::move(topics), {_beg, (size_t)_size});
 	}
 }
 

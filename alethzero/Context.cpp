@@ -21,6 +21,7 @@
 
 #include "Context.h"
 #include <QComboBox>
+#include <QSpinBox>
 #include <libethcore/Common.h>
 using namespace std;
 using namespace dev;
@@ -32,6 +33,23 @@ NatSpecFace::~NatSpecFace()
 
 Context::~Context()
 {
+}
+
+void setValueUnits(QComboBox* _units, QSpinBox* _value, u256 _v)
+{
+	initUnits(_units);
+	_units->setCurrentIndex(0);
+	while (_v > 50000 && _units->currentIndex() < (int)(units().size() - 2))
+	{
+		_v /= 1000;
+		_units->setCurrentIndex(_units->currentIndex() + 1);
+	}
+	_value->setValue((unsigned)_v);
+}
+
+u256 fromValueUnits(QComboBox* _units, QSpinBox* _value)
+{
+	return _value->value() * units()[units().size() - 1 - _units->currentIndex()].first;
 }
 
 void initUnits(QComboBox* _b)
