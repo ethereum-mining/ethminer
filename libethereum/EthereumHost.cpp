@@ -276,6 +276,13 @@ void EthereumHost::estimatePeerHashes(EthereumPeer* _peer)
 	_peer->m_expectedHashes = blockCount;
 }
 
+void EthereumHost::noteRude(p2p::NodeId const& _id, std::string const& _client)
+{
+	cwarn << "RUDE node/client: " << _id << _client;
+	m_rudeNodes.insert(_id);
+	m_rudeClients.insert(_client);
+}
+
 void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes)
 {
 	Guard l(x_sync);
@@ -574,7 +581,7 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 		});
 		if (otherPeerSync)
 		{
-			/// Downloading from other peer with v60 protocol, nothing ese we can do
+			/// Downloading from other peer with v60 protocol, nothing else we can do
 			_peer->setIdle();
 			return;
 		}
@@ -599,6 +606,10 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 
 bool EthereumHost::peerShouldGrabBlocks(EthereumPeer* _peer) const
 {
+	// Early exit if this peer has proved unreliable.
+	if (_peer->isRude())
+		return false;
+
 	auto td = _peer->m_totalDifficulty;
 	auto lh = m_syncingLatestHash;
 	auto ctd = m_chain.details().totalDifficulty;
@@ -611,6 +622,10 @@ bool EthereumHost::peerShouldGrabBlocks(EthereumPeer* _peer) const
 
 bool EthereumHost::peerShouldGrabChain(EthereumPeer* _peer) const
 {
+	// Early exit if this peer has proved unreliable.
+	if (_peer->isRude())
+		return false;
+
 	h256 c = m_chain.currentHash();
 	unsigned n = m_chain.number();
 	u256 td = m_chain.details().totalDifficulty;
