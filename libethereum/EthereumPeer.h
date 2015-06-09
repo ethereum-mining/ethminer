@@ -82,6 +82,12 @@ public:
 	/// Request blocks. Uses block download manager.
 	void requestBlocks();
 
+	/// Check if this node is rude.
+	bool isRude() const { return m_isRude; }
+
+	/// Set that it's a rude node.
+	void setRude();
+
 private:
 	using p2p::Capability::sealAndSend;
 
@@ -101,7 +107,7 @@ private:
 	void setAsking(Asking _g);
 
 	/// Do we presently need syncing with this peer?
-	bool needsSyncing() const { return !!m_latestHash; }
+	bool needsSyncing() const { return !isRude() && !!m_latestHash; }
 
 	/// Are we presently syncing with this peer?
 	bool isSyncing() const;
@@ -146,6 +152,8 @@ private:
 	h256Hash m_knownBlocks;					///< Blocks that the peer already knows about (that don't need to be sent to them).
 	Mutex x_knownTransactions;
 	h256Hash m_knownTransactions;			///< Transactions that the peer already knows of.
+
+	bool m_isRude;							///< True if this node has been rude in the past.
 };
 
 }

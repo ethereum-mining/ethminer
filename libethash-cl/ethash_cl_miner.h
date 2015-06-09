@@ -35,7 +35,10 @@ public:
 	static unsigned get_num_platforms();
 	static unsigned get_num_devices(unsigned _platformId = 0);
 	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
-	static bool haveSufficientGPUMemory(unsigned _platformId = 0);
+	static bool haveSufficientGPUMemory();
+	static bool haveSufficientGPUMemory(unsigned _platformId);
+	static void listDevices();
+	static void listDevices(unsigned _platformId);
 
 	bool init(
 		uint8_t const* _dag,

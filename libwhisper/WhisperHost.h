@@ -54,7 +54,7 @@ public:
 
 	virtual void inject(Envelope const& _e, WhisperPeer* _from = nullptr) override;
 
-	virtual Topics const& fullTopics(unsigned _id) const { try { return m_filters.at(m_watches.at(_id).id).full; } catch (...) { return EmptyTopics; } }
+	virtual Topics const& fullTopics(unsigned _id) const override { try { return m_filters.at(m_watches.at(_id).id).full; } catch (...) { return EmptyTopics; } }
 	virtual unsigned installWatch(Topics const& _filter) override;
 	virtual unsigned installWatchOnId(h256 _filterId) override;
 	virtual void uninstallWatch(unsigned _watchId) override;
@@ -69,11 +69,11 @@ public:
 	void cleanup();
 
 protected:
-	void doWork();
+	virtual void doWork() override;
 
 private:
-	virtual void onStarting() { startWorking(); }
-	virtual void onStopping() { stopWorking(); }
+	virtual void onStarting() override { startWorking(); }
+	virtual void onStopping() override { stopWorking(); }
 
 	void streamMessage(h256 _m, RLPStream& _s) const;
 
