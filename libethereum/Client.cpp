@@ -340,18 +340,17 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& 
 {
 	Guard l(x_filtersWatches);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
-		if (isInBlockHashRange(i.second.filter.earliest(), i.second.filter.latest(), PendingBlockHash))
+	{
+		// acceptable number.
+		auto m = i.second.filter.matches(_receipt);
+		if (m.size())
 		{
-			// acceptable number.
-			auto m = i.second.filter.matches(_receipt);
-			if (m.size())
-			{
-				// filter catches them
-				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1, _transactionHash));
-				io_changed.insert(i.first);
-			}
+			// filter catches them
+			for (LogEntry const& l: m)
+				i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1, _transactionHash));
+			io_changed.insert(i.first);
 		}
+	}
 }
 
 void Client::appendFromNewBlock(h256 const& _block, h256Hash& io_changed)
@@ -362,21 +361,20 @@ void Client::appendFromNewBlock(h256 const& _block, h256Hash& io_changed)
 
 	Guard l(x_filtersWatches);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
-		if (isInBlockHashRange(i.second.filter.earliest(), i.second.filter.latest(), d.hash()) && i.second.filter.matches(d.logBloom))
-			// acceptable number & looks like block may contain a matching log entry.
-			for (size_t j = 0; j < br.receipts.size(); j++)
+		// acceptable number & looks like block may contain a matching log entry.
+		for (size_t j = 0; j < br.receipts.size(); j++)
+		{
+			auto tr = br.receipts[j];
+			auto m = i.second.filter.matches(tr);
+			if (m.size())
 			{
-				auto tr = br.receipts[j];
-				auto m = i.second.filter.matches(tr);
-				if (m.size())
-				{
-					auto transactionHash = transaction(d.hash(), j).sha3();
-					// filter catches them
-					for (LogEntry const& l: m)
-						i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number, transactionHash));
-					io_changed.insert(i.first);
-				}
+				auto transactionHash = transaction(d.hash(), j).sha3();
+				// filter catches them
+				for (LogEntry const& l: m)
+					i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number, transactionHash));
+				io_changed.insert(i.first);
 			}
+		}
 }
 
 void Client::setForceMining(bool _enable)

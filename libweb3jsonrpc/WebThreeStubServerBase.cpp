@@ -172,7 +172,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 		for (auto const& t: _e.topics)
 			res["topics"].append(toJS(t));
 		res["number"] = _e.number;
-		res["hash"] = toJS(_e.transactionHash);
+		res["transactionHash"] = toJS(_e.transactionHash);
 	}
 	return res;
 }
