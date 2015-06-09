@@ -50,7 +50,7 @@ std::string RandomCode::rndByteSequence(int _length, SizeStrictness _sizeType)
 	for (auto i = 0; i < _length; i++)
 	{
 		uint8_t byte = randOpCodeGen();
-		hash += toCompactHex(byte);
+		hash += toCompactHex(byte, HexPrefix::DontAdd, 1);
 	}
 	return hash;
 }
