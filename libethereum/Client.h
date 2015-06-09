@@ -213,6 +213,8 @@ public:
 	void retryUnkonwn() { m_bq.retryAllUnknown(); }
 	/// Get a report of activity.
 	ActivityReport activityReport() { ActivityReport ret; std::swap(m_report, ret); return ret; }
+	/// Set a JSONRPC server to which we can report bad blocks.
+	void setSentinel(std::string const& _server) { m_sentinel = _server; }
 
 protected:
 	/// InterfaceStub methods
@@ -278,6 +280,10 @@ private:
 	/// @returns true only if it's worth bothering to prep the mining block.
 	bool shouldServeWork() const { return m_bq.items().first == 0 && (isMining() || remoteActive()); }
 
+	/// Called when we have attempted to import a bad block.
+	/// @warning May be called from any thread.
+	void onBadBlock(Exception& _ex);
+
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	CanonBlockChain m_bc;					///< Maintains block database.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
@@ -317,6 +323,8 @@ private:
 	Mutex x_signalled;
 	std::atomic<bool> m_syncTransactionQueue = {false};
 	std::atomic<bool> m_syncBlockQueue = {false};
+
+	std::string m_sentinel;
 };
 
 }

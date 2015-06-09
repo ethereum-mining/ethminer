@@ -51,14 +51,16 @@ using errinfo_uncleIndex = boost::error_info<struct tag_uncleIndex, unsigned>;
 using errinfo_currentNumber = boost::error_info<struct tag_currentNumber, u256>;
 using errinfo_uncleNumber = boost::error_info<struct tag_uncleNumber, u256>;
 using errinfo_unclesExcluded = boost::error_info<struct tag_unclesExcluded, h256Hash>;
+using errinfo_block = boost::error_info<struct tag_block, bytes>;
+using errinfo_now = boost::error_info<struct tag_now, unsigned>;
 
 using errinfo_transactionIndex = boost::error_info<struct tag_transactionIndex, unsigned>;
 
 using errinfo_vmtrace = boost::error_info<struct tag_vmtrace, std::string>;
 using errinfo_receipts = boost::error_info<struct tag_receipts, std::vector<bytes>>;
-using errinfo_logBloom = boost::error_info<struct tag_logBloom, LogBloom>;
-using LogBloomMismatchError = boost::tuple<errinfo_logBloom, errinfo_logBloom>;
-
+using errinfo_required_LogBloom = boost::error_info<struct tag_required_LogBloom, LogBloom>;
+using errinfo_got_LogBloom = boost::error_info<struct tag_get_LogBloom, LogBloom>;
+using LogBloomRequirementError = boost::tuple<errinfo_required_LogBloom, errinfo_got_LogBloom>;
 
 class BlockChain;
 class State;
