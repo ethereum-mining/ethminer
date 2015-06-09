@@ -151,7 +151,7 @@ void EthereumPeer::setAsking(Asking _a)
 
 void EthereumPeer::tick()
 {
-	if (chrono::system_clock::now() - m_lastAsk > chrono::seconds(20) && m_asking != Asking::Nothing)
+	if (chrono::system_clock::now() - m_lastAsk > chrono::seconds(10) && m_asking != Asking::Nothing)
 		// timeout
 		session()->disconnect(PingTimeout);
 }
