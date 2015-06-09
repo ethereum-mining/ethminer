@@ -40,7 +40,6 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, Cap
 	m_hashSub(host()->hashDownloadMan()),
 	m_peerCapabilityVersion(_cap.second)
 {
-	m_peerCapabilityVersion = EthereumHost::c_oldProtocolVersion;
 	m_syncHashNumber = host()->chain().number() + 1;
 	requestStatus();
 }
@@ -78,7 +77,6 @@ string toString(Asking _a)
 	return "?";
 }
 
-
 void EthereumPeer::setIdle()
 {
 	m_sub.doneFetch();
@@ -88,8 +86,7 @@ void EthereumPeer::setIdle()
 
 void EthereumPeer::requestStatus()
 {
-	if (m_asking != Asking::Nothing)
-	clog(NetWarn) << "Bad state: requesting state should be the first action";
+	assert(m_asking == Asking::Nothing);
 	setAsking(Asking::State);
 	RLPStream s;
 	bool latest = m_peerCapabilityVersion == host()->protocolVersion();
@@ -106,22 +103,22 @@ void EthereumPeer::requestStatus()
 
 void EthereumPeer::requestHashes()
 {
-	if (m_asking == Asking::Blocks)
-		return;
+	assert(m_asking == Asking::Nothing);
 	m_syncHashNumber = m_hashSub.nextFetch(c_maxHashesAsk);
 	setAsking(Asking::Hashes);
 	RLPStream s;
 	prep(s, GetBlockHashesByNumberPacket, 2) << m_syncHashNumber << c_maxHashesAsk;
+	clog(NetMessageDetail) << "Requesting block hashes for numbers " << m_syncHashNumber << "-" << m_syncHashNumber + c_maxHashesAsk - 1;
 	sealAndSend(s);
 }
 
 void EthereumPeer::requestHashes(h256 const& _lastHash)
 {
-	if (m_asking == Asking::Blocks)
-		return;
+	assert(m_asking == Asking::Nothing);
 	setAsking(Asking::Hashes);
 	RLPStream s;
 	prep(s, GetBlockHashesPacket, 2) << _lastHash << c_maxHashesAsk;
+	clog(NetMessageDetail) << "Requesting block hashes staring from " << _lastHash;
 	sealAndSend(s);
 }
 
@@ -212,7 +209,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		u256 number256 = _r[0].toInt<u256>();
 		unsigned number = (unsigned) number256;
 		unsigned limit = _r[1].toInt<unsigned>();
-		clog(NetMessageSummary) << "GetBlockHashesByNumber (" << number << "-" << number + limit << ")";
+		clog(NetMessageSummary) << "GetBlockHashesByNumber (" << number << "-" << number + limit - 1 << ")";
 		RLPStream s;
 		if (number <= host()->chain().number())
 		{
@@ -248,11 +245,8 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			m_hashSub.noteHash(m_syncHashNumber + i, 1);
 		}
 
-		if (m_protocolVersion == host()->protocolVersion())
-			host()->onPeerHashes(this,  m_syncHashNumber, hashes); // V61+, report hashes by number
-		else
-			host()->onPeerHashes(this, hashes);
 		m_syncHashNumber += itemCount;
+		host()->onPeerHashes(this, hashes);
 		break;
 	}
 	case GetBlocksPacket:
@@ -269,7 +263,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		// return the requested blocks.
 		bytes rlp;
 		unsigned n = 0;
-		for (unsigned i = 0; i < min(count, c_maxBlocks); ++i)
+		for (unsigned i = 0; i < min(count, c_maxBlocks) && rlp.size() < c_maxPayload; ++i)
 		{
 			auto h = _r[i].toHash<h256>();
 			if (host()->chain().isKnown(h))
@@ -292,7 +286,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 	case BlocksPacket:
 	{
 		if (m_asking != Asking::Blocks)
-			clog(NetWarn) << "Peer giving us blocks when we didn't ask for them.";
+			clog(NetImpolite) << "Peer giving us blocks when we didn't ask for them.";
 		else
 		{
 			setAsking(Asking::Nothing);

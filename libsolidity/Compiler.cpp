@@ -69,6 +69,8 @@ void Compiler::compileContract(ContractDefinition const& _contract,
 	swap(m_context, m_runtimeContext);
 	initializeContext(_contract, _contracts);
 	packIntoContractCreator(_contract, m_runtimeContext);
+	if (m_optimize)
+		m_context.optimise(m_optimizeRuns);
 }
 
 eth::AssemblyItem Compiler::getFunctionEntryLabel(FunctionDefinition const& _function) const
@@ -120,9 +122,11 @@ void Compiler::packIntoContractCreator(ContractDefinition const& _contract, Comp
 	else if (auto c = m_context.getNextConstructor(_contract))
 		appendBaseConstructor(*c);
 
-	eth::AssemblyItem sub = m_context.addSubroutine(_runtimeContext.getAssembly());
+	eth::AssemblyItem runtimeSub = m_context.addSubroutine(_runtimeContext.getAssembly());
+	solAssert(runtimeSub.data() < numeric_limits<size_t>::max(), "");
+	m_runtimeSub = size_t(runtimeSub.data());
 	// stack contains sub size
-	m_context << eth::Instruction::DUP1 << sub << u256(0) << eth::Instruction::CODECOPY;
+	m_context << eth::Instruction::DUP1 << runtimeSub << u256(0) << eth::Instruction::CODECOPY;
 	m_context << u256(0) << eth::Instruction::RETURN;
 
 	// note that we have to include the functions again because of absolute jump labels
@@ -174,6 +178,16 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 	map<FixedHash<4>, FunctionTypePointer> interfaceFunctions = _contract.getInterfaceFunctions();
 	map<FixedHash<4>, const eth::AssemblyItem> callDataUnpackerEntryPoints;
 
+	FunctionDefinition const* fallback = _contract.getFallbackFunction();
+	eth::AssemblyItem notFound = m_context.newTag();
+	// shortcut messages without data if we have many functions in order to be able to receive
+	// ether with constant gas
+	if (interfaceFunctions.size() > 5 || fallback)
+	{
+		m_context << eth::Instruction::CALLDATASIZE << eth::Instruction::ISZERO;
+		m_context.appendConditionalJumpTo(notFound);
+	}
+
 	// retrieve the function signature hash from the calldata
 	if (!interfaceFunctions.empty())
 		CompilerUtils(m_context).loadFromMemory(0, IntegerType(CompilerUtils::dataStartOffset * 8), true);
@@ -185,7 +199,10 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 		m_context << eth::dupInstruction(1) << u256(FixedHash<4>::Arith(it.first)) << eth::Instruction::EQ;
 		m_context.appendConditionalJumpTo(callDataUnpackerEntryPoints.at(it.first));
 	}
-	if (FunctionDefinition const* fallback = _contract.getFallbackFunction())
+	m_context.appendJumpTo(notFound);
+
+	m_context << notFound;
+	if (fallback)
 	{
 		eth::AssemblyItem returnTag = m_context.pushNewTag();
 		fallback->accept(*this);
@@ -194,6 +211,7 @@ void Compiler::appendFunctionSelector(ContractDefinition const& _contract)
 	}
 	else
 		m_context << eth::Instruction::STOP; // function not found
+
 	for (auto const& it: interfaceFunctions)
 	{
 		FunctionTypePointer const& functionType = it.second;
@@ -349,7 +367,7 @@ bool Compiler::visit(FunctionDefinition const& _function)
 		stackLayout.push_back(i);
 	stackLayout += vector<int>(c_localVariablesSize, -1);
 
-	solAssert(stackLayout.size() <= 17, "Stack too deep.");
+	solAssert(stackLayout.size() <= 17, "Stack too deep, try removing local variables.");
 	while (stackLayout.back() != int(stackLayout.size() - 1))
 		if (stackLayout.back() < 0)
 		{

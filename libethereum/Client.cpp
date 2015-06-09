@@ -47,8 +47,11 @@ VersionChecker::VersionChecker(string const& _dbPath):
 		(void)protocolVersion;
 		auto minorProtocolVersion = (unsigned)status[1];
 		auto databaseVersion = (unsigned)status[2];
+		h256 ourGenesisHash = CanonBlockChain::genesis().hash();
+		auto genesisHash = status.itemCount() > 3 ? (h256)status[3] : ourGenesisHash;
+
 		m_action =
-			databaseVersion != c_databaseVersion ?
+			databaseVersion != c_databaseVersion || genesisHash != ourGenesisHash ?
 				WithExisting::Kill
 			: minorProtocolVersion != eth::c_minorProtocolVersion ?
 				WithExisting::Verify
@@ -73,7 +76,7 @@ void VersionChecker::setOk()
 		{
 			cwarn << "Unhandled exception! Failed to create directory: " << m_path << "\n" << boost::current_exception_diagnostic_information();
 		}
-		writeFile(m_path + "/status", rlpList(eth::c_protocolVersion, eth::c_minorProtocolVersion, c_databaseVersion));
+		writeFile(m_path + "/status", rlpList(eth::c_protocolVersion, eth::c_minorProtocolVersion, c_databaseVersion, CanonBlockChain::genesis().hash()));
 	}
 }
 
@@ -269,9 +272,11 @@ void Client::killChain()
 	{
 		WriteGuard l(x_postMine);
 		WriteGuard l2(x_preMine);
+		WriteGuard l3(x_working);
 
 		m_preMine = State();
 		m_postMine = State();
+		m_working = State();
 
 		m_stateDB = OverlayDB();
 		m_stateDB = State::openDB(Defaults::dbPath(), WithExisting::Kill);
@@ -284,6 +289,7 @@ void Client::killChain()
 	if (auto h = m_host.lock())
 		h->reset();
 
+	startedWorking();
 	doWork();
 
 	startWorking();
@@ -423,9 +429,10 @@ ExecutionResult Client::call(Address _dest, bytes const& _data, u256 _gas, u256 
 			temp = m_postMine;
 		temp.addBalance(_from, _value + _gasPrice * _gas);
 		Executive e(temp, LastHashes(), 0);
-		if (!e.call(_dest, _dest, _from, _value, _gasPrice, &_data, _gas, _from))
+		e.setResultRecipient(ret);
+		if (!e.call(_dest, _from, _value, _gasPrice, &_data, _gas))
 			e.go();
-		ret = e.executionResult();
+		e.finalize();
 	}
 	catch (...)
 	{
@@ -659,7 +666,7 @@ void Client::doWork()
 		syncBlockQueue();
 
 	t = true;
-	if (m_syncTransactionQueue.compare_exchange_strong(t, false) && !m_remoteWorking)
+	if (m_syncTransactionQueue.compare_exchange_strong(t, false) && !m_remoteWorking && !isSyncing())
 		syncTransactionQueue();
 
 	tick();

@@ -43,6 +43,14 @@ extern const unsigned c_minorProtocolVersion;
 /// Current database version.
 extern const unsigned c_databaseVersion;
 
+/// The network id.
+enum class Network
+{
+	Olympic = 0,
+	Frontier = 1
+};
+extern const Network c_network;
+
 /// User-friendly string representation of the amount _b in wei.
 std::string formatBalance(bigint const& _b);
 

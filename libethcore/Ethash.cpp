@@ -285,6 +285,7 @@ private:
 unsigned Ethash::GPUMiner::s_platformId = 0;
 unsigned Ethash::GPUMiner::s_deviceId = 0;
 unsigned Ethash::GPUMiner::s_numInstances = 0;
+unsigned Ethash::GPUMiner::s_dagChunks = 1;
 
 Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
@@ -345,7 +346,7 @@ void Ethash::GPUMiner::workLoop()
 				this_thread::sleep_for(chrono::milliseconds(500));
 			}
 			bytesConstRef dagData = dag->data();
-			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
+			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device, s_dagChunks);
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
@@ -361,6 +362,11 @@ void Ethash::GPUMiner::pause()
 {
 	m_hook->abort();
 	stopWorking();
+}
+
+bool Ethash::GPUMiner::haveSufficientGPUMemory()
+{
+	return ethash_cl_miner::haveSufficientGPUMemory(s_platformId);
 }
 
 std::string Ethash::GPUMiner::platformInfo()
