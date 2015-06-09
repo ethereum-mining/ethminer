@@ -299,21 +299,17 @@ void Client::killChain()
 
 void Client::clearPending()
 {
-	h256Hash changeds;
 	DEV_WRITE_GUARDED(x_postMine)
 	{
 		if (!m_postMine.pending().size())
 			return;
-//		for (unsigned i = 0; i < m_postMine.pending().size(); ++i)
-//			appendFromNewPending(m_postMine.logBloom(i), changeds);
-		changeds.insert(PendingChangedFilter);
 		m_tq.clear();
 		DEV_READ_GUARDED(x_preMine)
 			m_postMine = m_preMine;
 	}
 
 	startMining();
-
+	h256Hash changeds;
 	noteChanged(changeds);
 }
 
@@ -336,9 +332,11 @@ static S& filtersStreamOut(S& _out, T const& _fs)
 	return _out;
 }
 
-void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& io_changed)
+void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& io_changed, h256 _sha3)
 {
 	Guard l(x_filtersWatches);
+	io_changed.insert(PendingChangedFilter);
+	m_specialFilters.at(PendingChangedFilter).push_back(_sha3);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
 	{
 		// acceptable number.
@@ -360,6 +358,8 @@ void Client::appendFromNewBlock(h256 const& _block, h256Hash& io_changed)
 	auto receipts = m_bc.receipts(_block).receipts;
 
 	Guard l(x_filtersWatches);
+	io_changed.insert(ChainChangedFilter);
+	m_specialFilters.at(ChainChangedFilter).push_back(_block);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
 	{
 		// acceptable number & looks like block may contain a matching log entry.
@@ -512,8 +512,8 @@ void Client::syncTransactionQueue()
 
 	DEV_READ_GUARDED(x_postMine)
 		for (size_t i = 0; i < newPendingReceipts.size(); i++)
-			appendFromNewPending(newPendingReceipts[i], changeds);
-	changeds.insert(PendingChangedFilter);
+			appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
+
 
 	// Tell farm about new transaction (i.e. restartProofOfWork mining).
 	onPostStateChanged();
@@ -556,7 +556,6 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	h256Hash changeds;
 	for (auto const& h: _ir.first)
 		appendFromNewBlock(h, changeds);
-	changeds.insert(ChainChangedFilter);
 
 	// RESTART MINING
 
@@ -650,15 +649,18 @@ void Client::noteChanged(h256Hash const& _filters)
 				cwatch << "!!!" << w.first << w.second.id.abridged();
 				w.second.changes += m_filters.at(w.second.id).changes;
 			}
-			else
-			{
-				cwatch << "!!!" << w.first << LogTag::Special << (w.second.id == PendingChangedFilter ? "pending" : w.second.id == ChainChangedFilter ? "chain" : "???");
-				w.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry));
-			}
+			else if (m_specialFilters.count(w.second.id))
+				for (h256 const& hash: m_specialFilters.at(w.second.id))
+				{
+					cwatch << "!!!" << w.first << LogTag::Special << (w.second.id == PendingChangedFilter ? "pending" : w.second.id == ChainChangedFilter ? "chain" : "???");
+					w.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, hash));
+				}
 		}
 	// clear the filters now.
 	for (auto& i: m_filters)
 		i.second.changes.clear();
+	for (auto& i: m_specialFilters)
+		i.second.clear();
 }
 
 void Client::doWork()

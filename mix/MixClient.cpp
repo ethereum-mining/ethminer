@@ -81,6 +81,8 @@ void MixClient::resetState(std::unordered_map<Address, Account> const& _accounts
 	WriteGuard l(x_state);
 	Guard fl(x_filtersWatches);
 	m_filters.clear();
+	for (auto& i: m_specialFilters)
+		i.second.clear();
 	m_watches.clear();
 
 	m_stateDB = OverlayDB();
@@ -265,6 +267,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 				}
 			}
 		changed.insert(dev::eth::PendingChangedFilter);
+		m_specialFilters.at(dev::eth::PendingChangedFilter).push_back(t.sha3());
 		noteChanged(changed);
 	}
 	WriteGuard l(x_executions);
@@ -279,7 +282,7 @@ void MixClient::mine()
 	bc().import(m_state.blockData(), m_state.db(), ImportRequirements::Default & ~ImportRequirements::ValidNonce);
 	m_state.sync(bc());
 	m_startState = m_state;
-	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
+	h256Set changed { dev::eth::ChainChangedFilter };
 	noteChanged(changed);
 }
 
@@ -374,11 +377,14 @@ void MixClient::noteChanged(h256Set const& _filters)
 		{
 			if (m_filters.count(i.second.id))
 				i.second.changes += m_filters.at(i.second.id).changes;
-			else
-				i.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry));
+			else if (m_specialFilters.count(i.second.id))
+				for (h256 const& hash: m_specialFilters.at(i.second.id))
+					i.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, hash));
 		}
 	for (auto& i: m_filters)
 		i.second.changes.clear();
+	for (auto& i: m_specialFilters)
+		i.second.clear();
 }
 
 eth::BlockInfo MixClient::blockInfo() const
