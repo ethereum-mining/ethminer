@@ -45,7 +45,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getCompilers", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY,  NULL), &AbstractWebThreeStubServer::eth_getCompilersI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_compileLLL", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_compileLLLI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_compileSerpent", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_compileSerpentI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_compileSolidity", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_compileSolidityI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_compileSolidity", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_compileSolidityI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_newFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_newFilterI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_newFilterEx", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_newFilterExI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_newBlockFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_newBlockFilterI);
@@ -372,7 +372,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual Json::Value eth_getCompilers() = 0;
         virtual std::string eth_compileLLL(const std::string& param1) = 0;
         virtual std::string eth_compileSerpent(const std::string& param1) = 0;
-        virtual std::string eth_compileSolidity(const std::string& param1) = 0;
+        virtual Json::Value eth_compileSolidity(const std::string& param1) = 0;
         virtual std::string eth_newFilter(const Json::Value& param1) = 0;
         virtual std::string eth_newFilterEx(const Json::Value& param1) = 0;
         virtual std::string eth_newBlockFilter(const std::string& param1) = 0;
