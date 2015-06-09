@@ -211,6 +211,7 @@ QVariantList ClientModel::gasCosts() const
 
 void ClientModel::setupScenario(QVariantMap _scenario)
 {
+	WriteGuard(x_queueTransactions);
 	m_queueTransactions.clear();
 	m_running = true;
 
@@ -220,7 +221,6 @@ void ClientModel::setupScenario(QVariantMap _scenario)
 
 	m_accounts.clear();
 	std::vector<KeyPair> userAccounts;
-
 	for (auto const& b: stateAccounts)
 	{
 		QVariantMap account = b.toMap();
@@ -239,23 +239,29 @@ void ClientModel::setupScenario(QVariantMap _scenario)
 		m_accounts[address] = Account(qvariant_cast<QEther*>(account.value("balance"))->toU256Wei(), Account::NormalCreation);
 	}
 	m_ethAccounts->setAccounts(userAccounts);
+
+	bool trToExecute = false;
 	for (auto const& b: blocks)
 	{
 		QVariantList transactions = b.toMap().value("transactions").toList();
 		m_queueTransactions.push_back(transactions);
+		trToExecute = transactions.size() > 0;
 	}
-
 	m_client->resetState(m_accounts, Secret(m_currentScenario.value("miner").toMap().value("secret").toString().toStdString()));
-
-	connect(this, &ClientModel::newBlock, this, &ClientModel::processNextBlock, Qt::QueuedConnection);
-	connect(this, &ClientModel::runFailed, this, &ClientModel::stopExecution, Qt::QueuedConnection);
-	connect(this, &ClientModel::runStateChanged, this, &ClientModel::finalizeBlock, Qt::QueuedConnection);
-	processNextBlock();
+	if (m_queueTransactions.count() > 0 && trToExecute)
+	{
+		connect(this, &ClientModel::newBlock, this, &ClientModel::processNextTransactions, Qt::QueuedConnection);
+		connect(this, &ClientModel::runFailed, this, &ClientModel::stopExecution, Qt::QueuedConnection);
+		connect(this, &ClientModel::runStateChanged, this, &ClientModel::finalizeBlock, Qt::QueuedConnection);
+		processNextTransactions();
+	}
+	else
+		m_running = false;
 }
 
 void ClientModel::stopExecution()
 {
-	disconnect(this, &ClientModel::newBlock, this, &ClientModel::processNextBlock);
+	disconnect(this, &ClientModel::newBlock, this, &ClientModel::processNextTransactions);
 	disconnect(this, &ClientModel::runStateChanged, this, &ClientModel::finalizeBlock);
 	disconnect(this, &ClientModel::runFailed, this, &ClientModel::stopExecution);
 	m_running = false;
@@ -263,26 +269,19 @@ void ClientModel::stopExecution()
 
 void ClientModel::finalizeBlock()
 {
+	m_queueTransactions.pop_front();// pop last execution group. The last block is never mined (pending block)
 	if (m_queueTransactions.size() > 0)
 		mine();
 	else
 	{
-		disconnect(this, &ClientModel::newBlock, this, &ClientModel::processNextBlock);
-		disconnect(this, &ClientModel::runStateChanged, this, &ClientModel::finalizeBlock);
-		disconnect(this, &ClientModel::runFailed, this, &ClientModel::stopExecution);
-		m_running = false;
+		stopExecution();
 		emit runComplete();
 	}
 }
 
-
-void ClientModel::processNextBlock()
-{
-	processNextTransactions();
-}
-
 void ClientModel::processNextTransactions()
 {
+	WriteGuard(x_queueTransactions);
 	vector<TransactionSettings> transactionSequence;
 	for (auto const& t: m_queueTransactions.front())
 	{
@@ -311,7 +310,6 @@ void ClientModel::processNextTransactions()
 
 		transactionSequence.push_back(transactionSettings);
 	}
-	m_queueTransactions.pop_front();
 	executeSequence(transactionSequence);
 }
 
@@ -322,18 +320,13 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 		qWarning() << "Waiting for current execution to complete";
 		m_runFuture.waitForFinished();
 	}
-
 	emit runStarted();
-	//emit runStateChanged();
-
-
 	//run sequence
 	m_runFuture = QtConcurrent::run([=]()
 	{
 		try
 		{
 			vector<Address> deployedContracts;
-			//onStateReset();
 			m_gasCosts.clear();
 			for (TransactionSettings const& transaction: _sequence)
 			{
@@ -397,8 +390,8 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 				}
 				m_gasCosts.append(m_client->lastExecution().gasUsed);
 				onNewTransaction();
-				emit runComplete();
 			}
+			emit runComplete();
 		}
 		catch(boost::exception const&)
 		{
@@ -416,10 +409,16 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 
 void ClientModel::executeTr(QVariantMap _tr)
 {
+	WriteGuard(x_queueTransactions);
 	QVariantList trs;
 	trs.push_back(_tr);
 	m_queueTransactions.push_back(trs);
-	processNextTransactions();
+	if (!m_running)
+	{
+		m_running = true;
+		connect(this, &ClientModel::runFailed, this, &ClientModel::stopExecution, Qt::QueuedConnection);
+		processNextTransactions();
+	}
 }
 
 
