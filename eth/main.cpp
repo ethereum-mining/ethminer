@@ -1026,6 +1026,9 @@ int main(int argc, char** argv)
 					case QueueStatus::Ready:
 						cout << "Ready" << endl;
 						break;
+					case QueueStatus::Importing:
+						cout << "Importing" << endl;
+						break;
 					case QueueStatus::UnknownParent:
 						cout << "UnknownParent" << endl;
 						break;
