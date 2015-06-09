@@ -57,3 +57,40 @@ QBigInt* QBigInt::divide(QBigInt* const& _value) const
 	BigIntVariant toDivide = _value->internalValue();
 	return new QBigInt(boost::apply_visitor(mix::divide(), m_internalValue, toDivide));
 }
+
+QVariantMap QBigInt::checkAgainst(QString const& _type) const
+{
+	QVariantMap ret;
+	QString type = _type;
+	QString capacity = type.replace("uint", "").replace("int", "");
+	if (capacity.isEmpty())
+		capacity = "256";
+	bigint range = 1;
+	for (int k = 0; k < capacity.toInt() / 8; ++k)
+		range = range * 256;
+	bigint value = boost::get<bigint>(this->internalValue());
+	ret.insert("valid", true);
+	if (_type.startsWith("uint") && value > range - 1)
+	{
+		ret.insert("minValue", "0");
+		std::ostringstream s;
+		s << range - 1;
+		ret.insert("maxValue", QString::fromStdString(s.str()));
+		if (value > range)
+			ret["valid"] = false;
+	}
+	else if (_type.startsWith("int"))
+	{
+		range = range / 2;
+		std::ostringstream s;
+		s << -range;
+		ret.insert("minValue", QString::fromStdString(s.str()));
+		s.str("");
+		s.clear();
+		s << range - 1;
+		ret.insert("maxValue", QString::fromStdString(s.str()));
+		if (-range > value || value > range - 1)
+			ret["valid"] = false;
+	}
+	return ret;
+}

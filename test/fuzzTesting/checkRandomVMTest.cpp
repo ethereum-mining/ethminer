@@ -94,15 +94,13 @@ bool doVMTest(mValue& _v)
 		}
 
 		bytes output;
-		u256 gas;
 		bool vmExceptionOccured = false;
 		try
 		{
-			auto vm = eth::VMFactory::create(fev.gas);
-			output = vm->go(fev, fev.simpleTrace()).toBytes();
-			gas = vm->gas();
+			auto vm = eth::VMFactory::create();
+			output = vm->exec(fev.gas, fev, fev.simpleTrace());
 		}
-		catch (eth::VMException)
+		catch (eth::VMException const&)
 		{
 			cnote << "Safe VM Exception";
 			vmExceptionOccured = true;
@@ -168,7 +166,7 @@ bool doVMTest(mValue& _v)
 					return 1;
 			}
 
-			if (asserts(toInt(o["gas"]) == gas))
+			if (asserts(toInt(o["gas"]) == fev.gas))
 				return 1;
 
 			auto& expectedAddrs = test.addresses;

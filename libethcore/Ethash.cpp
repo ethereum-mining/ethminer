@@ -94,11 +94,13 @@ bool Ethash::preVerify(BlockInfo const& _header)
 
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
-	return !!ethash_quick_check_difficulty(
-		(ethash_h256_t const*)_header.headerHash(WithoutNonce).data(),
-		(uint64_t)(u64)_header.nonce,
-		(ethash_h256_t const*)_header.mixHash.data(),
-		(ethash_h256_t const*)boundary.data());
+	bool ret = !!ethash_quick_check_difficulty(
+			(ethash_h256_t const*)_header.headerHash(WithoutNonce).data(),
+			(uint64_t)(u64)_header.nonce,
+			(ethash_h256_t const*)_header.mixHash.data(),
+			(ethash_h256_t const*)boundary.data());
+
+	return ret;
 }
 
 bool Ethash::verify(BlockInfo const& _header)
@@ -111,6 +113,10 @@ bool Ethash::verify(BlockInfo const& _header)
 
 	auto result = EthashAux::eval(_header);
 	bool slow = result.value <= _header.boundary() && result.mixHash == _header.mixHash;
+
+//	cdebug << (slow ? "VERIFY" : "VERYBAD");
+//	cdebug << result.value.hex() << _header.boundary().hex();
+//	cdebug << result.mixHash.hex() << _header.mixHash.hex();
 
 #if ETH_DEBUG || !ETH_TRUE
 	if (!pre && slow)
@@ -142,8 +148,12 @@ void Ethash::CPUMiner::workLoop()
 	WorkPackage w = work();
 
 	EthashAux::FullType dag;
-	while (!shouldStop() && !(dag = EthashAux::full(w.seedHash, true)))
-		this_thread::sleep_for(chrono::milliseconds(500));
+	while (!shouldStop() && !dag)
+	{
+		while (!shouldStop() && EthashAux::computeFull(w.seedHash, true) != 100)
+			this_thread::sleep_for(chrono::milliseconds(500));
+		dag = EthashAux::full(w.seedHash, false);
+	}
 
 	h256 boundary = w.boundary;
 	unsigned hashCount = 1;
@@ -275,6 +285,7 @@ private:
 unsigned Ethash::GPUMiner::s_platformId = 0;
 unsigned Ethash::GPUMiner::s_deviceId = 0;
 unsigned Ethash::GPUMiner::s_numInstances = 0;
+unsigned Ethash::GPUMiner::s_dagChunks = 1;
 
 Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
@@ -335,7 +346,7 @@ void Ethash::GPUMiner::workLoop()
 				this_thread::sleep_for(chrono::milliseconds(500));
 			}
 			bytesConstRef dagData = dag->data();
-			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
+			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device, s_dagChunks);
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
@@ -351,6 +362,11 @@ void Ethash::GPUMiner::pause()
 {
 	m_hook->abort();
 	stopWorking();
+}
+
+bool Ethash::GPUMiner::haveSufficientGPUMemory()
+{
+	return ethash_cl_miner::haveSufficientGPUMemory(s_platformId);
 }
 
 std::string Ethash::GPUMiner::platformInfo()
