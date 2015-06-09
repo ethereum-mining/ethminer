@@ -761,25 +761,25 @@ Json::Value WebThreeStubServerBase::eth_getCompilers()
 }
 
 
-string WebThreeStubServerBase::eth_compileLLL(string const& _code)
+string WebThreeStubServerBase::eth_compileLLL(string const& _source)
 {
 	// TODO throw here jsonrpc errors
 	string res;
 	vector<string> errors;
-	res = toJS(dev::eth::compileLLL(_code, true, &errors));
+	res = toJS(dev::eth::compileLLL(_source, true, &errors));
 	cwarn << "LLL compilation errors: " << errors;
 	return res;
 }
 
-string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
+string WebThreeStubServerBase::eth_compileSerpent(string const& _source)
 {
 	// TODO throw here jsonrpc errors
 	string res;
-	(void)_code;
+	(void)_source;
 #if ETH_SERPENT || !ETH_TRUE
 	try
 	{
-		res = toJS(dev::asBytes(::compile(_code)));
+		res = toJS(dev::asBytes(::compile(_source)));
 	}
 	catch (string err)
 	{
@@ -793,26 +793,46 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 	return res;
 }
 
-string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
+Json::Value WebThreeStubServerBase::eth_compileSolidity(string const& _source)
 {
 	// TOOD throw here jsonrpc errors
-	(void)_code;
-	string res;
+	Json::Value res(Json::objectValue);
 #if ETH_SOLIDITY || !ETH_TRUE
 	dev::solidity::CompilerStack compiler;
 	try
 	{
-		res = toJS(compiler.compile(_code, true));
+		compiler.addSource("source", _source);
+		compiler.compile();
+
+		for (string const& name: compiler.getContractNames())
+		{
+			Json::Value contract(Json::objectValue);
+			contract["code"] = toJS(compiler.getBytecode(name));
+
+			Json::Value info(Json::objectValue);
+			info["source"] = _source;
+			info["language"] = "";
+			info["languageVersion"] = "";
+			info["compilerVersion"] = "";
+			info["abiDefinition"] = compiler.getInterface(name);
+			info["userDoc"] = compiler.getMetadata(name, dev::solidity::DocumentationType::NatspecUser);
+			info["developerDoc"] = compiler.getMetadata(name, dev::solidity::DocumentationType::NatspecDev);
+			contract["info"] = info;
+		
+			res[name] = contract;
+		}
 	}
 	catch (dev::Exception const& exception)
 	{
 		ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
 		cwarn << "Solidity compilation error: " << error.str();
+		return Json::Value(Json::objectValue);
 	}
 	catch (...)
 	{
 		cwarn << "Uncought solidity compilation exception";
+		return Json::Value(Json::objectValue);
 	}
 #endif
 	return res;
