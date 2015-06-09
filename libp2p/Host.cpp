@@ -834,7 +834,7 @@ KeyPair Host::networkAlias(bytesConstRef _b)
 {
 	RLP r(_b);
 	if (r.itemCount() == 3 && r[0].isInt() && r[0].toInt<unsigned>() >= 3)
-		return move(KeyPair(move(Secret(r[1].toBytes()))));
+		return KeyPair(Secret(r[1].toBytes()));
 	else
-		return move(KeyPair::create());
+		return KeyPair::create();
 }

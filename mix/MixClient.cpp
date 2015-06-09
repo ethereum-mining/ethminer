@@ -205,27 +205,29 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 
 	switch (er.excepted)
 	{
-		case TransactionException::None:
-			break;
-		case TransactionException::NotEnoughCash:
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Insufficient balance for contract deployment"));
-		case TransactionException::OutOfGasBase:
-		case TransactionException::OutOfGas:
-			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas"));
-		case TransactionException::BlockGasLimitReached:
-			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Block gas limit reached"));
-		case TransactionException::OutOfStack:
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Out of stack"));
-		case TransactionException::StackUnderflow:
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Stack underflow"));
-		//these should not happen in mix
-		case TransactionException::Unknown:
-		case TransactionException::BadInstruction:
-		case TransactionException::BadJumpDestination:
-		case TransactionException::InvalidSignature:
-		case TransactionException::InvalidNonce:
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Internal execution error"));
-	};
+	case TransactionException::None:
+		break;
+	case TransactionException::NotEnoughCash:
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Insufficient balance for contract deployment"));
+	case TransactionException::OutOfGasIntrinsic:
+	case TransactionException::OutOfGasBase:
+	case TransactionException::OutOfGas:
+		BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas"));
+	case TransactionException::BlockGasLimitReached:
+		BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Block gas limit reached"));
+	case TransactionException::OutOfStack:
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Out of stack"));
+	case TransactionException::StackUnderflow:
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Stack underflow"));
+	//these should not happen in mix
+	case TransactionException::Unknown:
+	case TransactionException::BadInstruction:
+	case TransactionException::BadJumpDestination:
+	case TransactionException::InvalidSignature:
+	case TransactionException::InvalidNonce:
+	case TransactionException::BadRLP:
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Internal execution error"));
+	}
 
 	ExecutionResult d;
 	d.result = er;
