@@ -605,6 +605,7 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 #endif
 
 	if (m_currentBlock.parentHash != m_previousBlock.hash())
+		// Internal client error.
 		BOOST_THROW_EXCEPTION(InvalidParentHash());
 
 	// Populate m_currentBlock with the correct values.
@@ -624,16 +625,19 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	unsigned i = 0;
 	for (auto const& tr: rlp[1])
 	{
-		try {
+		try
+		{
 			LogOverride<ExecutiveWarnChannel> o(false);
 			execute(lh, Transaction(tr.data(), CheckTransaction::Everything));
 		}
-		catch (...)
+		catch (Exception& ex)
 		{
-			badBlock(_block, "Invalid transaction");
+			badBlock(_block, "Invalid transaction: " + toString(toTransactionException(ex)));
 			cwarn << "  Transaction Index:" << i;
 			LogOverride<ExecutiveWarnChannel> o(true);
-			execute(lh, Transaction(tr.data(), CheckTransaction::Everything));
+			DEV_IGNORE_EXCEPTIONS(execute(lh, Transaction(tr.data(), CheckTransaction::Everything)));
+
+			ex << errinfo_transactionIndex(i);
 			throw;
 		}
 
@@ -658,7 +662,12 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 			cwarn << "    " << TransactionReceipt(&b);
 		}
 		cwarn << "  VMTrace:\n" << vmTrace(_block, _bc, _ir);
-		BOOST_THROW_EXCEPTION(InvalidReceiptsStateRoot());
+
+		InvalidReceiptsStateRoot ex;
+		ex << HashMismatchError(receiptsRoot, m_currentBlock.receiptsRoot);
+		ex << errinfo_receipts(receipts);
+		ex << errinfo_vmtrace(vmTrace(_block, _bc, _ir));
+		BOOST_THROW_EXCEPTION(ex);
 	}
 
 	if (m_currentBlock.logBloom != logBloom())
@@ -671,7 +680,10 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 			cwarn << "    " << j << ":" << TransactionReceipt(&b).bloom().hex();
 		}
 		cwarn << "  Final bloom:" << m_currentBlock.logBloom.hex();
-		BOOST_THROW_EXCEPTION(InvalidLogBloom());
+		InvalidLogBloom ex;
+		ex << LogBloomMismatchError(logBloom(), m_currentBlock.logBloom);
+		ex << errinfo_receipts(receipts);
+		BOOST_THROW_EXCEPTION(ex);
 	}
 
 	// Initialise total difficulty calculation.
@@ -681,45 +693,70 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	if (rlp[2].itemCount() > 2)
 	{
 		badBlock(_block, "Too many uncles");
-		BOOST_THROW_EXCEPTION(TooManyUncles());
+		BOOST_THROW_EXCEPTION(TooManyUncles() << errinfo_max(2) << errinfo_got(rlp[2].itemCount()));
 	}
 
 	vector<BlockInfo> rewarded;
 	h256Hash excluded = _bc.allKinFrom(m_currentBlock.parentHash, 6);
 	excluded.insert(m_currentBlock.hash());
 
+	unsigned ii = 0;
 	for (auto const& i: rlp[2])
 	{
-		auto h = sha3(i.data());
-		if (excluded.count(h))
+		try
 		{
-			badBlock(_block, "Invalid uncle included");
-			BOOST_THROW_EXCEPTION(UncleInChain() << errinfo_comment("Uncle in block already mentioned") << errinfo_data(toString(excluded)) << errinfo_hash256(sha3(i.data())));
-		}
-		excluded.insert(h);
+			auto h = sha3(i.data());
+			if (excluded.count(h))
+			{
+				badBlock(_block, "Invalid uncle included");
+				UncleInChain ex;
+				ex << errinfo_comment("Uncle in block already mentioned");
+				ex << errinfo_unclesExcluded(excluded);
+				ex << errinfo_hash256(sha3(i.data()));
+				BOOST_THROW_EXCEPTION(ex);
+			}
+			excluded.insert(h);
 
-		BlockInfo uncle = BlockInfo::fromHeader(i.data(), (_ir & ImportRequirements::CheckUncles) ? CheckEverything : IgnoreNonce,  h);
-		BlockInfo uncleParent(_bc.block(uncle.parentHash));
-		if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
-		{
-			badBlock(_block, "Uncle too old");
-			cwarn << "  Uncle number: " << uncle.number;
-			cwarn << "  Uncle parent number: " << uncleParent.number;
-			cwarn << "  Block number: " << m_currentBlock.number;
-			BOOST_THROW_EXCEPTION(UncleTooOld());
-		}
-		else if (uncle.number == m_currentBlock.number)
-		{
-			badBlock(_block, "Uncle is brother");
-			cwarn << "  Uncle number: " << uncle.number;
-			cwarn << "  Uncle parent number: " << uncleParent.number;
-			cwarn << "  Block number: " << m_currentBlock.number;
-			BOOST_THROW_EXCEPTION(UncleIsBrother());
-		}
-		uncle.verifyParent(uncleParent);
+			BlockInfo uncle;
+			BlockInfo uncleParent;
+				uncle = BlockInfo::fromHeader(i.data(), (_ir & ImportRequirements::CheckUncles) ? CheckEverything : IgnoreNonce,  h);
+			if (!_bc.isKnown(uncle.parentHash))
+				BOOST_THROW_EXCEPTION(UnknownParent());
 
-//		tdIncrease += uncle.difficulty;
-		rewarded.push_back(uncle);
+			uncleParent = BlockInfo(_bc.block(uncle.parentHash));
+			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
+			{
+				badBlock(_block, "Uncle too old");
+				cwarn << "  Uncle number: " << uncle.number;
+				cwarn << "  Uncle parent number: " << uncleParent.number;
+				cwarn << "  Block number: " << m_currentBlock.number;
+				UncleTooOld ex;
+				ex << errinfo_uncleNumber(uncle.number);
+				ex << errinfo_currentNumber(m_currentBlock.number);
+				BOOST_THROW_EXCEPTION(ex);
+			}
+			else if (uncle.number == m_currentBlock.number)
+			{
+				badBlock(_block, "Uncle is brother");
+				cwarn << "  Uncle number: " << uncle.number;
+				cwarn << "  Uncle parent number: " << uncleParent.number;
+				cwarn << "  Block number: " << m_currentBlock.number;
+				UncleIsBrother ex;
+				ex << errinfo_uncleNumber(uncle.number);
+				ex << errinfo_currentNumber(m_currentBlock.number);
+				BOOST_THROW_EXCEPTION(ex);
+			}
+			uncle.verifyParent(uncleParent);
+
+//			tdIncrease += uncle.difficulty;
+			rewarded.push_back(uncle);
+			++ii;
+		}
+		catch (Exception& ex)
+		{
+			ex << errinfo_uncleIndex(ii);
+			throw;
+		}
 	}
 
 	applyRewards(rewarded);
@@ -731,15 +768,8 @@ u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirement
 	if (m_currentBlock.stateRoot != m_previousBlock.stateRoot && m_currentBlock.stateRoot != rootHash())
 	{
 		badBlock(_block, "Bad state root");
-		cnote << "  Given to be:" << m_currentBlock.stateRoot;
-		// TODO: Fix
-//		cnote << SecureTrieDB<Address, OverlayDB>(&m_db, m_currentBlock.stateRoot);
-		cnote << "  Calculated to be:" << rootHash();
-		cwarn << "  VMTrace:\n" << vmTrace(_block, _bc, _ir);
-//		cnote << m_state;
-		// Rollback the trie.
 		m_db.rollback();
-		BOOST_THROW_EXCEPTION(InvalidStateRoot());
+		BOOST_THROW_EXCEPTION(InvalidStateRoot() << HashMismatchError(rootHash(), m_currentBlock.stateRoot));
 	}
 
 	if (m_currentBlock.gasUsed != gasUsed())
