@@ -40,6 +40,8 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, Cap
 	m_hashSub(host()->hashDownloadMan()),
 	m_peerCapabilityVersion(_cap.second)
 {
+	m_isRude = host()->isRude(session()->id(), session()->info().clientVersion);
+	session()->addNote("manners", m_isRude ? "RUDE" : "nice");
 	m_syncHashNumber = host()->chain().number() + 1;
 	requestStatus();
 }
@@ -52,8 +54,16 @@ EthereumPeer::~EthereumPeer()
 
 void EthereumPeer::abortSync()
 {
-	if (isSyncing())
-		setIdle();
+	if (m_asking != Asking::Nothing)
+		setRude();
+	setIdle();
+}
+
+void EthereumPeer::setRude()
+{
+	m_isRude = true;
+	host()->noteRude(session()->id(), session()->info().clientVersion);
+	session()->addNote("manners", m_isRude ? "RUDE" : "nice");
 }
 
 EthereumHost* EthereumPeer::host() const

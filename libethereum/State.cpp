@@ -158,6 +158,7 @@ State::State(State const& _s):
 	m_transactions(_s.m_transactions),
 	m_receipts(_s.m_receipts),
 	m_transactionSet(_s.m_transactionSet),
+	m_touched(_s.m_touched),
 	m_cache(_s.m_cache),
 	m_previousBlock(_s.m_previousBlock),
 	m_currentBlock(_s.m_currentBlock),
@@ -206,7 +207,7 @@ State::~State()
 {
 }
 
-StateDiff State::diff(State const& _c) const
+StateDiff State::diff(State const& _c, bool _quick) const
 {
 	StateDiff ret;
 
@@ -217,10 +218,20 @@ StateDiff State::diff(State const& _c) const
 	auto trie = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&m_db), rootHash());
 	auto trieD = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_c.m_db), _c.rootHash());
 
-	for (auto i: trie)
-		ads.insert(i.first), trieAds.insert(i.first);
-	for (auto i: trieD)
-		ads.insert(i.first), trieAdsD.insert(i.first);
+	if (_quick)
+	{
+		trieAds = m_touched;
+		trieAdsD = _c.m_touched;
+		(ads += m_touched) += _c.m_touched;
+	}
+	else
+	{
+		for (auto i: trie)
+			ads.insert(i.first), trieAds.insert(i.first);
+		for (auto i: trieD)
+			ads.insert(i.first), trieAdsD.insert(i.first);
+	}
+
 	for (auto i: m_cache)
 		ads.insert(i.first);
 	for (auto i: _c.m_cache)
@@ -272,7 +283,7 @@ void State::ensureCached(std::unordered_map<Address, Account>& _cache, Address _
 
 void State::commit()
 {
-	dev::eth::commit(m_cache, m_db, m_state);
+	m_touched += dev::eth::commit(m_cache, m_db, m_state);
 	m_cache.clear();
 }
 
@@ -450,6 +461,7 @@ void State::resetCurrent()
 	m_receipts.clear();
 	m_transactionSet.clear();
 	m_cache.clear();
+	m_touched.clear();
 	m_currentBlock = BlockInfo();
 	m_currentBlock.coinbaseAddress = m_ourAddress;
 	m_currentBlock.timestamp = max(m_previousBlock.timestamp + 1, (u256)time(0));
@@ -1219,8 +1231,10 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	if (!e.execute())
 #if ETH_VMTRACE
 	{
-		(void)_onOp;
-		e.go(e.simpleTrace());
+		if (isChannelVisible<VMTraceChannel>())
+			e.go(e.simpleTrace());
+		else
+			e.go(_onOp);
 	}
 #else
 		e.go(_onOp);
