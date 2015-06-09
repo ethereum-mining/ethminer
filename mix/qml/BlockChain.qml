@@ -16,6 +16,7 @@ ColumnLayout {
     property variant model
     spacing: 0
     property int previousWidth
+    property variant debugTrRequested: []
     onWidthChanged:
     {
 
@@ -62,7 +63,7 @@ ColumnLayout {
         Layout.preferredHeight: 25
         Image {
             id: debugImage
-            source: "qrc:/qml/img/recycle-icon@2x.png"
+            source: "qrc:/qml/img/recycleicon@2x.png"
             Layout.preferredWidth: statusWidth
             Layout.preferredHeight: 25
             fillMode: Image.PreserveAspectFit
@@ -95,7 +96,7 @@ ColumnLayout {
         }
         Label
         {
-            text: "Action"
+            text: ""
             Layout.preferredWidth: debugActionWidth
         }
     }
@@ -128,7 +129,7 @@ ColumnLayout {
                         {
                             return calculateHeight()
                         }
-
+                        blockIndex: index
                         transactions:
                         {
                             if (index >= 0)
@@ -260,7 +261,7 @@ ColumnLayout {
                 Layout.preferredWidth: 100
                 Layout.preferredHeight: 30
                 buttonShortcut: ""
-                sourceImg: "qrc:/qml/img/recycle-icon@2x.png"
+                sourceImg: "qrc:/qml/img/recycleicon@2x.png"
             }
 
             ScenarioButton {
@@ -278,7 +279,7 @@ ColumnLayout {
                 Layout.preferredWidth: 100
                 Layout.preferredHeight: 30
                 buttonShortcut: ""
-                sourceImg: "qrc:/qml/img/recycle-icon@2x.png"
+                sourceImg: "qrc:/qml/img/sendtransactionicon@2x.png"
             }
 
             Timer
@@ -324,7 +325,7 @@ ColumnLayout {
                 Layout.preferredWidth: 100
                 Layout.preferredHeight: 30
                 buttonShortcut: ""
-                sourceImg: "qrc:/qml/img/recycle-icon@2x.png"
+                sourceImg: "qrc:/qml/img/addblock@2x.png"
             }
 
             Connections
@@ -380,7 +381,6 @@ ColumnLayout {
                     itemTr.isFunctionCall = itemTr.functionId !== ""
                     itemTr.returned = _r.returned
                     itemTr.value = QEtherHelper.createEther(_r.value, QEther.Wei)
-                    console.log("sender " + _r.sender)
                     itemTr.sender = _r.sender
                     itemTr.recordIndex = _r.recordIndex
                     itemTr.logs = _r.logs
@@ -401,7 +401,7 @@ ColumnLayout {
                 Layout.preferredWidth: 100
                 Layout.preferredHeight: 30
                 buttonShortcut: ""
-                sourceImg: "qrc:/qml/img/recycle-icon@2x.png"
+                sourceImg: "qrc:/qml/img/newaccounticon@2x.png"
             }
         }
     }
