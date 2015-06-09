@@ -1,8 +1,10 @@
 import QtQuick 2.2
 import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.1
-import QtQuick.Dialogs 1.1
 import QtQuick.Layouts 1.1
+import QtQuick.Dialogs 1.2
+import QtQuick.Window 2.0
+import QtQuick.Dialogs 1.1
 import Qt.labs.settings 1.0
 import "js/Debugger.js" as Debugger
 import "js/ErrorLocationFormater.js" as ErrorLocationFormater
@@ -21,6 +23,75 @@ RowLayout
     }
 
     id: blockChainSelector
+
+    Dialog {
+        id: newStateWin
+        modality: Qt.ApplicationModal
+        title: qsTr("New Project");
+
+        width: 320
+        height: 120
+
+        visible: false
+
+        contentItem: Rectangle {
+            anchors.fill: parent
+            anchors.margins: 10
+            RowLayout {
+                anchors.verticalCenter: parent.verticalCenter
+                Text {
+                    text: qsTr("Name:")
+                }
+
+                Rectangle
+                {
+                    Layout.preferredWidth: 250
+                    Layout.preferredHeight: parent.height
+                    border.width: 1
+                    border.color: "#cccccc"
+                    TextInput
+                    {
+                        anchors.fill: parent
+                        id: stateName
+                    }
+                }
+            }
+            RowLayout
+            {
+                anchors.bottom: parent.bottom
+                anchors.right: parent.right;
+                function acceptAndClose()
+                {
+                    var item = projectModel.stateListModel.createDefaultState();
+                    item.title = stateName.text
+                    projectModel.stateListModel.appendState(item)
+                    projectModel.stateListModel.save()
+                    close()
+                    scenarioList.currentIndex = projectModel.stateListModel.count - 1
+                }
+
+                function close()
+                {
+                    newStateWin.close()
+                    stateName.text = ""
+                }
+
+                Button {
+                    id: okButton;
+                    enabled: stateName.text !== ""
+                    text: qsTr("OK");
+                    onClicked: {
+                        parent.acceptAndClose();
+                    }
+                }
+                Button {
+                    text: qsTr("Cancel");
+                    onClicked: parent.close();
+                }
+            }
+        }
+    }
+
     ComboBox
     {
         id: scenarioList
@@ -40,7 +111,7 @@ RowLayout
 
     Row
     {
-        Layout.preferredWidth: 100 * 3
+        Layout.preferredWidth: 100 * 4
         Layout.preferredHeight: 30
         spacing: 0
         ScenarioButton {
@@ -87,5 +158,18 @@ RowLayout
             buttonShortcut: ""
             sourceImg: "qrc:/qml/img/duplicateicon@2x.png"
         }
+
+        ScenarioButton {
+            id: addScenario
+            width: 100
+            height: 30
+            buttonShortcut: ""
+            sourceImg: "qrc:/qml/img/plus.png"
+            onClicked: {
+                newStateWin.open()
+            }
+            text: qsTr("New")
+        }
     }
+
 }
