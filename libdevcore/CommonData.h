@@ -61,7 +61,7 @@ std::string toHex(_T const& _data, int _w = 2, HexPrefix _prefix = HexPrefix::Do
 
 /// Converts a (printable) ASCII hex character into the correspnding integer value.
 /// @example fromHex('A') == 10 && fromHex('f') == 15 && fromHex('5') == 5
-int fromHex(char _i);
+int fromHex(char _i, WhenError _throw);
 
 /// Converts a (printable) ASCII hex string into the corresponding byte stream.
 /// @example fromHex("41626261") == asBytes("Abba")
@@ -316,6 +316,15 @@ std::string toString(string32 const& _s);
 
 template<class T, class U>
 std::vector<T> keysOf(std::map<T, U> const& _m)
+{
+	std::vector<T> ret;
+	for (auto const& i: _m)
+		ret.push_back(i.first);
+	return ret;
+}
+
+template<class T, class U>
+std::vector<T> keysOf(std::unordered_map<T, U> const& _m)
 {
 	std::vector<T> ret;
 	for (auto const& i: _m)

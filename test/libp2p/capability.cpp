@@ -38,18 +38,10 @@ struct P2PFixture
 	~P2PFixture() { dev::p2p::NodeIPEndpoint::test_allowLocal = false; }
 };
 
-struct VerbosityHolder
-{
-	VerbosityHolder(): oldLogVerbosity(g_logVerbosity) { g_logVerbosity = 10; }
-	~VerbosityHolder() { g_logVerbosity = oldLogVerbosity; }
-
-	int oldLogVerbosity;
-};
-
 class TestCapability: public Capability
 {
 public:
-	TestCapability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset): Capability(_s, _h, _idOffset), m_cntReceivedMessages(0), m_testSum(0) {}
+	TestCapability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset, CapDesc const&): Capability(_s, _h, _idOffset), m_cntReceivedMessages(0), m_testSum(0) {}
 	virtual ~TestCapability() {}
 	int countReceivedMessages() { return m_cntReceivedMessages; }
 	int testSum() { return m_testSum; }
@@ -106,7 +98,7 @@ BOOST_FIXTURE_TEST_SUITE(p2pCapability, P2PFixture)
 
 BOOST_AUTO_TEST_CASE(capability)
 {
-	VerbosityHolder verbosityHolder;
+	VerbosityHolder verbosityHolder(10);
 	cnote << "Testing Capability...";
 
 	const char* const localhost = "127.0.0.1";

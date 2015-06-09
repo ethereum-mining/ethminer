@@ -44,7 +44,7 @@ public:
 
 private:
 	TransientDirectory m_dir;
-	std::auto_ptr<eth::BlockChain> m_bc;
+	std::unique_ptr<eth::BlockChain> m_bc;
 	eth::State m_state;
 };
 

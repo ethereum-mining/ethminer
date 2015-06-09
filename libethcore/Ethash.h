@@ -87,7 +87,9 @@ public:
 
 		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
 		static std::string platformInfo();
+		static bool haveSufficientGPUMemory() { return false; }
 		static void setDefaultPlatform(unsigned) {}
+		static void setDagChunks(unsigned) {}
 		static void setDefaultDevice(unsigned) {}
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
 	protected:
@@ -115,10 +117,12 @@ public:
 
 		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : 1; }
 		static std::string platformInfo();
+		static bool haveSufficientGPUMemory();
 		static unsigned getNumDevices();
 		static void setDefaultPlatform(unsigned _id) { s_platformId = _id; }
 		static void setDefaultDevice(unsigned _id) { s_deviceId = _id; }
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
+		static void setDagChunks(unsigned _dagChunks) { s_dagChunks = _dagChunks; }
 
 	protected:
 		void kickOff() override;
@@ -137,6 +141,7 @@ public:
 		static unsigned s_platformId;
 		static unsigned s_deviceId;
 		static unsigned s_numInstances;
+		static unsigned s_dagChunks;
 	};
 #else
 	using GPUMiner = CPUMiner;

@@ -46,6 +46,7 @@ vector<AssemblyItem> CommonSubexpressionEliminator::getOptimizedItems()
 		targetStackContents[height] = m_state.stackElement(height, SourceLocation());
 
 	AssemblyItems items = CSECodeGenerator(m_state.expressionClasses(), m_storeOperations).generateCode(
+		m_initialState.sequenceNumber(),
 		m_initialState.stackHeight(),
 		initialStackContents,
 		targetStackContents
@@ -112,6 +113,7 @@ CSECodeGenerator::CSECodeGenerator(
 }
 
 AssemblyItems CSECodeGenerator::generateCode(
+	unsigned _initialSequenceNumber,
 	int _initialStackHeight,
 	map<int, Id> const& _initialStack,
 	map<int, Id> const& _targetStackContents
@@ -137,7 +139,14 @@ AssemblyItems CSECodeGenerator::generateCode(
 	for (auto const& p: m_neededBy)
 		for (auto id: {p.first, p.second})
 			if (unsigned seqNr = m_expressionClasses.representative(id).sequenceNumber)
+			{
+				if (seqNr < _initialSequenceNumber)
+					// Invalid sequenced operation.
+					// @todo quick fix for now. Proper fix needs to choose representative with higher
+					// sequence number during dependency analyis.
+					BOOST_THROW_EXCEPTION(StackTooDeepException());
 				sequencedExpressions.insert(make_pair(seqNr, id));
+			}
 
 	// Perform all operations on storage and memory in order, if they are needed.
 	for (auto const& seqAndId: sequencedExpressions)
@@ -428,7 +437,7 @@ void CSECodeGenerator::appendDup(int _fromPosition, SourceLocation const& _locat
 {
 	assertThrow(_fromPosition != c_invalidPosition, OptimizerException, "");
 	int instructionNum = 1 + m_stackHeight - _fromPosition;
-	assertThrow(instructionNum <= 16, StackTooDeepException, "Stack too deep.");
+	assertThrow(instructionNum <= 16, StackTooDeepException, "Stack too deep, try removing local variables.");
 	assertThrow(1 <= instructionNum, OptimizerException, "Invalid stack access.");
 	appendItem(AssemblyItem(dupInstruction(instructionNum), _location));
 	m_stack[m_stackHeight] = m_stack[_fromPosition];
@@ -441,7 +450,7 @@ void CSECodeGenerator::appendOrRemoveSwap(int _fromPosition, SourceLocation cons
 	if (_fromPosition == m_stackHeight)
 		return;
 	int instructionNum = m_stackHeight - _fromPosition;
-	assertThrow(instructionNum <= 16, StackTooDeepException, "Stack too deep.");
+	assertThrow(instructionNum <= 16, StackTooDeepException, "Stack too deep, try removing local variables.");
 	assertThrow(1 <= instructionNum, OptimizerException, "Invalid stack access.");
 	appendItem(AssemblyItem(swapInstruction(instructionNum), _location));
 

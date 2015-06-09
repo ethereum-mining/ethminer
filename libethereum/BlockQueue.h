@@ -136,5 +136,7 @@ private:
 	bool m_deleting = false;											///< Exit condition for verifiers.
 };
 
+std::ostream& operator<<(std::ostream& _out, BlockQueueStatus const& _s);
+
 }
 }
