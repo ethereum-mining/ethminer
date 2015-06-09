@@ -48,7 +48,7 @@ public:
 	virtual eth::State asOf(h256 const& _h) const override;
 	virtual eth::State preMine() const override { ReadGuard l(x_stateDB); return m_state; }
 	virtual eth::State postMine() const override { ReadGuard l(x_stateDB); return m_state; }
-	virtual void setAddress(Address _us) { WriteGuard l(x_stateDB); m_state.setAddress(_us); }
+	virtual void setAddress(Address _us) override { WriteGuard l(x_stateDB); m_state.setAddress(_us); }
 	virtual void prepareForTransaction() override {}
 
 private:

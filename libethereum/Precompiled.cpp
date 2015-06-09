@@ -55,9 +55,13 @@ void ecrecoverCode(bytesConstRef _in, bytesRef _out)
 		{
 			try
 			{
-				ret = sha3(recover(sig, in.hash));
+				Public rec = recover(sig, in.hash);
+				if (rec)
+					ret = dev::sha3(rec);
+				else
+					return;
 			}
-			catch (...) {}
+			catch (...) { return; }
 		}
 	}
 

@@ -139,7 +139,6 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const
 		mixHash = _header[field = 13].toHash<h256>(RLP::VeryStrict);
 		nonce = _header[field = 14].toHash<Nonce>(RLP::VeryStrict);
 	}
-
 	catch (Exception const& _e)
 	{
 		_e << errinfo_name("invalid block header format") << BadFieldError(field, toHex(_header[field].data().toBytes()));
@@ -151,9 +150,26 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s, h256 const
 
 	// check it hashes according to proof of work or that it's the genesis block.
 	if (_s == CheckEverything && parentHash && !ProofOfWork::verify(*this))
-		BOOST_THROW_EXCEPTION(InvalidBlockNonce() << errinfo_hash256(headerHash(WithoutNonce)) << errinfo_nonce(nonce) << errinfo_difficulty(difficulty));
+	{
+		InvalidBlockNonce ex;
+		ex << errinfo_hash256(headerHash(WithoutNonce));
+		ex << errinfo_nonce(nonce);
+		ex << errinfo_difficulty(difficulty);
+		ex << errinfo_seedHash(seedHash());
+		ex << errinfo_target(boundary());
+		ex << errinfo_mixHash(mixHash);
+		Ethash::Result er = EthashAux::eval(seedHash(), headerHash(WithoutNonce), nonce);
+		ex << errinfo_ethashResult(make_tuple(er.value, er.mixHash));
+		BOOST_THROW_EXCEPTION(ex);
+	}
 	else if (_s == QuickNonce && parentHash && !ProofOfWork::preVerify(*this))
-		BOOST_THROW_EXCEPTION(InvalidBlockNonce() << errinfo_hash256(headerHash(WithoutNonce)) << errinfo_nonce(nonce) << errinfo_difficulty(difficulty));
+	{
+		InvalidBlockNonce ex;
+		ex << errinfo_hash256(headerHash(WithoutNonce));
+		ex << errinfo_nonce(nonce);
+		ex << errinfo_difficulty(difficulty);
+		BOOST_THROW_EXCEPTION(ex);
+	}
 
 	if (_s != CheckNothing)
 	{
@@ -224,7 +240,7 @@ void BlockInfo::verifyInternals(bytesConstRef _block) const
 		for (auto const& t: txs)
 			cdebug << toHex(t);
 
-		BOOST_THROW_EXCEPTION(InvalidTransactionsHash() << HashMismatchError(expectedRoot, transactionsRoot));
+		BOOST_THROW_EXCEPTION(InvalidTransactionsRoot() << Hash256RequirementError(expectedRoot, transactionsRoot));
 	}
 	clog(BlockInfoDiagnosticsChannel) << "Expected uncle hash:" << toString(sha3(root[2].data()));
 	if (sha3Uncles != sha3(root[2].data()))
