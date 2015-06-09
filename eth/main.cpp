@@ -84,15 +84,24 @@ void interactiveHelp()
 		<< "    minestop  Stops mining." << endl
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
 		<< "    block  Gives the current block height." << endl
+		<< "    blockhashfromnumber <number>  Gives the block hash with the givne number." << endl
+		<< "    numberfromblockhash <hash>  Gives the block number with the given hash." << endl
+		<< "    blockqueue  Gives the current block queue status." << endl
+		<< "    findblock <hash>  Searches for the block in the blockchain and blockqueue." << endl
+		<< "    firstunknown  Gives the first unknown block from the blockqueue." << endl
+		<< "    retryunknown  retries to import all unknown blocks from the blockqueue." << endl
 		<< "    accounts  Gives information on all owned accounts (balances, mining beneficiary and default signer)." << endl
 		<< "    newaccount <name>  Creates a new account with the given name." << endl
 		<< "    transact  Execute a given transaction." << endl
+		<< "    txcreate  Execute a given contract creation transaction." << endl
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
 #if ETH_FATDB || !ETH_TRUE
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
+		<< "    balanceat <address>  Gives the balance of the given account." << endl
+		<< "    codeat <address>  Gives the code of the given account." << endl
 #endif
 		<< "    setsigningkey <addr>  Set the address with which to sign transactions." << endl
 		<< "    setaddress <addr>  Set the coinbase (mining payout) address." << endl
@@ -961,9 +970,85 @@ int main(int argc, char** argv)
 				cout << "Current mining beneficiary:" << endl << beneficiary << endl;
 				cout << "Current signing account:" << endl << signingKey << endl;
 			}
+			else if (c && cmd == "blockhashfromnumber")
+			{
+				if (iss.peek() != -1)
+				{
+					unsigned number;
+					iss >> number;
+					cout << " hash of block: " << c->hashFromNumber(number).hex() << endl;
+				}
+			}
+			else if (c && cmd == "numberfromblockhash")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					iss >> stringHash;
+
+					h256 hash = h256(fromHex(stringHash));
+					cout << " number of block: " << c->numberFromHash(hash) << endl;
+				}
+			}
 			else if (c && cmd == "block")
 			{
-				cout << "Current block: " <<c->blockChain().details().number << endl;
+				cout << "Current block: " << c->blockChain().details().number << endl;
+			}
+			else if (c && cmd == "blockqueue")
+			{
+				cout << "Current blockqueue status: " << endl << c->blockQueueStatus() << endl;
+			}
+			else if (c && cmd == "findblock")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					iss >> stringHash;
+
+					h256 hash = h256(fromHex(stringHash));
+
+					// search in blockchain
+					cout << "search in blockchain... " << endl;
+					try
+					{
+						cout << c->blockInfo(hash) << endl;
+					}
+					catch(Exception& _e)
+					{
+						cout << "block not in blockchain" << endl;
+						cout << boost::diagnostic_information(_e) << endl;
+					}
+
+					cout << "search in blockqueue... " << endl;
+
+					switch(c->blockQueue().blockStatus(hash))
+					{
+					case QueueStatus::Ready:
+						cout << "Ready" << endl;
+						break;
+					case QueueStatus::UnknownParent:
+						cout << "UnknownParent" << endl;
+						break;
+					case QueueStatus::Bad:
+						cout << "Bad" << endl;
+						break;
+					case QueueStatus::Unknown:
+						cout << "Unknown" << endl;
+						break;
+					default:
+						cout << "invalid queueStatus" << endl;
+					}
+				}
+				else
+					cwarn << "Require parameter: findblock HASH";
+			}
+			else if (c && cmd == "firstunknown")
+			{
+				cout << "first unknown blockhash: " << c->blockQueue().firstUnknown().hex() << endl;
+			}
+			else if (c && cmd == "retryunknown")
+			{
+				c->retryUnkonwn();
 			}
 			else if (cmd == "peers")
 			{
@@ -1077,7 +1162,7 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
-			else if (c && cmd == "cretract")
+			else if (c && cmd == "txcreate")
 			{
 				auto const& bc =c->blockChain();
 				auto h = bc.currentHash();
@@ -1119,10 +1204,7 @@ int main(int argc, char** argv)
 						try
 						{
 							Secret secret = h256(fromHex(sechex));
-							c->submitTransaction(secret, amount, data, gas, gasPrice);
-
-							//Address dest = h160(fromHex(hexAddr));
-							//c->submitTransaction(secret, amount, dest, data, gas, gasPrice);
+							cout << " new contract address : " << c->submitTransaction(secret, amount, data, gas, gasPrice) << endl;
 						}
 						catch (BadHexCharacter& _e)
 						{
@@ -1136,7 +1218,7 @@ int main(int argc, char** argv)
 					}
 				}
 				else
-					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
+					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET INIT";
 			}
 #if ETH_FATDB
 			else if (c && cmd == "listcontracts")
@@ -1160,6 +1242,43 @@ int main(int argc, char** argv)
 						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
 						cout << ss << endl;
 					}
+			}
+			else if (c && cmd == "balanceat")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					iss >> stringHash;
+
+					Address address = h160(fromHex(stringHash));
+
+					cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address)) << endl;
+				}
+			}
+			// TODO implement << operator for std::unorderd_map
+//			else if (c && cmd == "storageat")
+//			{
+//				if (iss.peek() != -1)
+//				{
+//					string stringHash;
+//					iss >> stringHash;
+
+//					Address address = h160(fromHex(stringHash));
+
+//					cout << "storage at " << stringHash << " is: " << c->storageAt(address) << endl;
+//				}
+//			}
+			else if (c && cmd == "codeat")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					iss >> stringHash;
+
+					Address address = h160(fromHex(stringHash));
+
+					cout << "code at " << stringHash << " is: " << toHex(c->codeAt(address)) << endl;
+				}
 			}
 #endif
 			else if (c && cmd == "send")
