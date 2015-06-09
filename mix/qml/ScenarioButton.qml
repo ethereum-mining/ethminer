@@ -8,6 +8,7 @@ Rectangle {
     property string text
     property string buttonShortcut
     property string sourceImg
+    property string fillColor
     signal clicked
 
     Rectangle {
@@ -16,6 +17,7 @@ Rectangle {
         border.color: "#cccccc"
         border.width: 1
         radius: 4
+        color: parent.fillColor ? parent.fillColor : "white"
         Image {
             id: debugImage
             anchors {

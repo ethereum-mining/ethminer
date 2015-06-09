@@ -234,8 +234,8 @@ Rectangle {
                 Connections {
                     target: debugPanel
                     onPanelClosed:  {
-                        scenarioExe.visible = true
                         debugPanel.visible = false
+                        scenarioExe.visible = true
                     }
                 }
 			}

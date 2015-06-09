@@ -83,14 +83,11 @@ ClientModel::ClientModel():
 	qRegisterMetaType<QCallData*>("QCallData");
 	qRegisterMetaType<RecordLogEntry*>("RecordLogEntry*");
 
-	//connect(this, &ClientModel::runComplete, this, &ClientModel::showDebugger, Qt::QueuedConnection);
 	m_client.reset(new MixClient(QStandardPaths::writableLocation(QStandardPaths::TempLocation).toStdString()));
 
 	m_ethAccounts = make_shared<FixedAccountHolder>([=](){return m_client.get();}, std::vector<KeyPair>());
 	m_web3Server.reset(new Web3Server(*m_rpcConnector.get(), m_ethAccounts, std::vector<KeyPair>(), m_client.get()));
 	connect(m_web3Server.get(), &Web3Server::newTransaction, this, &ClientModel::onNewTransaction, Qt::DirectConnection);
-
-
 }
 
 ClientModel::~ClientModel()
@@ -211,8 +208,8 @@ QVariantList ClientModel::gasCosts() const
 
 void ClientModel::setupScenario(QVariantMap _scenario)
 {
+	onStateReset();
 	WriteGuard(x_queueTransactions);
-	m_queueTransactions.clear();
 	m_running = true;
 
 	m_currentScenario = _scenario;
@@ -220,7 +217,7 @@ void ClientModel::setupScenario(QVariantMap _scenario)
 	QVariantList stateAccounts = _scenario.value("accounts").toList();
 
 	m_accounts.clear();
-	std::vector<KeyPair> userAccounts;
+	m_accountsSecret.clear();
 	for (auto const& b: stateAccounts)
 	{
 		QVariantMap account = b.toMap();
@@ -228,7 +225,7 @@ void ClientModel::setupScenario(QVariantMap _scenario)
 		if (account.contains("secret"))
 		{
 			KeyPair key(Secret(account.value("secret").toString().toStdString()));
-			userAccounts.push_back(key);
+			m_accountsSecret.push_back(key);
 			address = key.address();
 		}
 		else if (account.contains("address"))
@@ -238,7 +235,7 @@ void ClientModel::setupScenario(QVariantMap _scenario)
 
 		m_accounts[address] = Account(qvariant_cast<QEther*>(account.value("balance"))->toU256Wei(), Account::NormalCreation);
 	}
-	m_ethAccounts->setAccounts(userAccounts);
+	m_ethAccounts->setAccounts(m_accountsSecret);
 
 	bool trToExecute = false;
 	for (auto const& b: blocks)
@@ -250,13 +247,18 @@ void ClientModel::setupScenario(QVariantMap _scenario)
 	m_client->resetState(m_accounts, Secret(m_currentScenario.value("miner").toMap().value("secret").toString().toStdString()));
 	if (m_queueTransactions.count() > 0 && trToExecute)
 	{
-		connect(this, &ClientModel::newBlock, this, &ClientModel::processNextTransactions, Qt::QueuedConnection);
-		connect(this, &ClientModel::runFailed, this, &ClientModel::stopExecution, Qt::QueuedConnection);
-		connect(this, &ClientModel::runStateChanged, this, &ClientModel::finalizeBlock, Qt::QueuedConnection);
+		setupExecutionChain();
 		processNextTransactions();
 	}
 	else
 		m_running = false;
+}
+
+void ClientModel::setupExecutionChain()
+{
+	connect(this, &ClientModel::newBlock, this, &ClientModel::processNextTransactions, Qt::QueuedConnection);
+	connect(this, &ClientModel::runFailed, this, &ClientModel::stopExecution, Qt::QueuedConnection);
+	connect(this, &ClientModel::runStateChanged, this, &ClientModel::finalizeBlock, Qt::QueuedConnection);
 }
 
 void ClientModel::stopExecution()
@@ -302,7 +304,8 @@ void ClientModel::processNextTransactions()
 		bool isFunctionCall = transaction.value("isFunctionCall").toBool();
 		if (contractId.isEmpty() && m_codeModel->hasContract()) //TODO: This is to support old project files, remove later
 			contractId = m_codeModel->contracts().keys()[0];
-		TransactionSettings transactionSettings(contractId, functionId, value, gas, gasAuto, gasPrice, Secret(sender.toStdString()), isContractCreation, isFunctionCall);
+		Secret f = Secret(sender.toStdString());
+		TransactionSettings transactionSettings(contractId, functionId, value, gas, gasAuto, gasPrice, f, isContractCreation, isFunctionCall);
 		transactionSettings.parameterValues = transaction.value("parameters").toMap();
 
 		if (contractId == functionId || functionId == "Constructor")
@@ -326,12 +329,11 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 	{
 		try
 		{
-			vector<Address> deployedContracts;
 			m_gasCosts.clear();
 			for (TransactionSettings const& transaction: _sequence)
 			{
 				std::pair<QString, int> ctrInstance = resolvePair(transaction.contractId);
-				QString address = resolveToken(ctrInstance, deployedContracts);
+				QString address = resolveToken(ctrInstance);
 				if (!transaction.isFunctionCall)
 				{
 					callAddress(Address(address.toStdString()), bytes(), transaction);
@@ -364,7 +366,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 					if (type->type().type == SolidityType::Type::Address && value.toString().startsWith("<"))
 					{
 						std::pair<QString, int> ctrParamInstance = resolvePair(value.toString());
-						value = QVariant(resolveToken(ctrParamInstance, deployedContracts));
+						value = QVariant(resolveToken(ctrParamInstance));
 					}
 					encoder.encode(value, type->type());
 				}
@@ -374,8 +376,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence)
 					bytes param = encoder.encodedData();
 					contractCode.insert(contractCode.end(), param.begin(), param.end());
 					Address newAddress = deployContract(contractCode, transaction);
-					deployedContracts.push_back(newAddress);
-					std::pair<QString, int> contractToken = retrieveToken(transaction.contractId, deployedContracts);
+					std::pair<QString, int> contractToken = retrieveToken(transaction.contractId);
 					m_contractAddresses[contractToken] = newAddress;
 					m_contractNames[newAddress] = contractToken.first;
 					contractAddressesChanged();
@@ -416,7 +417,7 @@ void ClientModel::executeTr(QVariantMap _tr)
 	if (!m_running)
 	{
 		m_running = true;
-		connect(this, &ClientModel::runFailed, this, &ClientModel::stopExecution, Qt::QueuedConnection);
+		setupExecutionChain();
 		processNextTransactions();
 	}
 }
@@ -433,19 +434,19 @@ std::pair<QString, int> ClientModel::resolvePair(QString const& _contractId)
 	return ret;
 }
 
-QString ClientModel::resolveToken(std::pair<QString, int> const& _value, vector<Address> const& _contracts)
+QString ClientModel::resolveToken(std::pair<QString, int> const& _value)
 {
-	if (_contracts.size() > 0)
-		return QString::fromStdString("0x" + dev::toHex(m_contractAddresses[_value].ref())); //dev::toHex(_contracts.at(_value.second).ref()));
+	if (m_contractAddresses.size() > 0)
+		return QString::fromStdString("0x" + dev::toHex(m_contractAddresses[_value].ref()));
 	else
 		return _value.first;
 }
 
-std::pair<QString, int> ClientModel::retrieveToken(QString const& _value, vector<Address> const& _contracts)
+std::pair<QString, int> ClientModel::retrieveToken(QString const& _value)
 {
 	std::pair<QString, int> ret;
 	ret.first = _value;
-	ret.second = _contracts.size() - 1;
+	ret.second = m_contractAddresses.size();
 	return ret;
 }
 
@@ -679,6 +680,7 @@ void ClientModel::onStateReset()
 	m_contractNames.clear();
 	m_stdContractAddresses.clear();
 	m_stdContractNames.clear();
+	m_queueTransactions.clear();
 	emit stateCleared();
 }
 
@@ -801,8 +803,21 @@ void ClientModel::onNewTransaction()
 			logs.push_back(l);
 		}
 	}
-	QString sender = QString::fromStdString(dev::toHex(tr.sender.ref()));
-	QString label = contract + "." + function + "()";
+
+	QString sender;
+	for (auto const& secret: m_accountsSecret)
+	{
+		if (secret.address() == tr.sender)
+		{
+			sender = QString::fromStdString(dev::toHex(secret.secret().ref()));
+			break;
+		}
+	}
+	QString label;
+	if (function != QObject::tr("<none>"))
+		label = contract + "." + function + "()";
+	else
+		label = contract;
 	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall(), RecordLogEntry::RecordType::Transaction,
 											 gasUsed, sender, label, inputParameters, logs);
 	QQmlEngine::setObjectOwnership(log, QQmlEngine::JavaScriptOwnership);
