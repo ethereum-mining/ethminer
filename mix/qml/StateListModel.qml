@@ -16,6 +16,7 @@ Item {
 	property string defaultAccount: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074" //support for old project
 
 	function fromPlainStateItem(s) {
+        console.log("ggg " + s)
         if (!s.accounts)
 			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether, defaultAccount)]; //support for old project
 		if (!s.contracts)
@@ -242,6 +243,15 @@ Item {
 			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit), address: address };
 		}
 
+        function duplicateState(index)
+        {
+            var state = stateList[index]
+            var item = fromPlainStateItem(toPlainStateItem(state))
+            item.title = qsTr("Copy of") + " " + state.title
+            appendState(item)
+            save()
+        }
+
         function createEmptyBlock()
         {
             return {
@@ -380,11 +390,9 @@ Item {
 
         function reloadStateFromFromProject(index)
         {
-            console.log(JSON.stringify(data))
             if (data)
             {
                 var item = fromPlainStateItem(data.states[index])
-
                 stateListModel.set(index, item)
                 stateList[index] = item
                 return item

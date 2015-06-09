@@ -19,6 +19,7 @@ ColumnLayout
     property int trHeight: 30
     spacing: 0
     property int openedTr: 0
+    property int blockIndex
 
     function calculateHeight()
     {
@@ -117,7 +118,7 @@ ColumnLayout
 
                 Image {
                     id: saveStatusImage
-                    source: "qrc:/qml/img/recycle-discard@2x.png"
+                    source: "qrc:/qml/img/recyclediscard@2x.png"
                     width: statusWidth
                     fillMode: Image.PreserveAspectFit
                     anchors.verticalCenter: parent.verticalCenter
@@ -133,9 +134,9 @@ ColumnLayout
                 onSaveStatusChanged:
                 {
                     if (saveStatus)
-                        saveStatusImage.source = "qrc:/qml/img/recycle-keep@2x.png"
+                        saveStatusImage.source = "qrc:/qml/img/recyclekeep@2x.png"
                     else
-                        saveStatusImage.source = "qrc:/qml/img/recycle-discard@2x.png"
+                        saveStatusImage.source = "qrc:/qml/img/recyclediscard@2x.png"
 
                     if (index >= 0)
                         transactions.get(index).saveStatus = saveStatus
@@ -245,14 +246,30 @@ ColumnLayout
                             }
                         }
 
-                        Button
+                        Rectangle
                         {
-                            id: debug
                             Layout.preferredWidth: debugActionWidth
-                            text: "debug"
-                            onClicked:
+                            Layout.preferredHeight: trHeight - 10
+                            color: "transparent"
+                            Image {
+                                source: "qrc:/qml/img/rightarrow@2x.png"
+                                width: statusWidth
+                                fillMode: Image.PreserveAspectFit
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                visible: transactions.get(index).recordIndex !== undefined
+                            }
+                            MouseArea
                             {
-                                clientModel.debugRecord(transactions.get(index).recordIndex);
+                                anchors.fill: parent
+                                onClicked:
+                                {
+                                    if (transactions.get(index).recordIndex)
+                                    {
+                                        debugTrRequested = [ blockIndex, index ]
+                                        clientModel.debugRecord(transactions.get(index).recordIndex);
+                                    }
+                                }
                             }
                         }
                     }
