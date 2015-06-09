@@ -84,5 +84,12 @@ enum class Syncing
 	Done
 };
 
+struct HashChainStatus
+{
+	unsigned total;
+	unsigned received;
+	bool estimated;
+};
+
 }
 }

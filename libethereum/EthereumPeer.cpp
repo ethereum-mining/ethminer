@@ -40,6 +40,8 @@ EthereumPeer::EthereumPeer(Session* _s, HostCapabilityFace* _h, unsigned _i, Cap
 	m_hashSub(host()->hashDownloadMan()),
 	m_peerCapabilityVersion(_cap.second)
 {
+	m_isRude = host()->isRude(session()->id(), session()->info().clientVersion);
+	session()->addNote("manners", m_isRude ? "RUDE" : "nice");
 	m_syncHashNumber = host()->chain().number() + 1;
 	requestStatus();
 }
@@ -52,8 +54,14 @@ EthereumPeer::~EthereumPeer()
 
 void EthereumPeer::abortSync()
 {
-	if (isSyncing())
-		setIdle();
+	host()->onPeerAborting(this);
+}
+
+void EthereumPeer::setRude()
+{
+	m_isRude = true;
+	host()->noteRude(session()->id(), session()->info().clientVersion);
+	session()->addNote("manners", m_isRude ? "RUDE" : "nice");
 }
 
 EthereumHost* EthereumPeer::host() const
@@ -105,6 +113,7 @@ void EthereumPeer::requestHashes()
 {
 	assert(m_asking == Asking::Nothing);
 	m_syncHashNumber = m_hashSub.nextFetch(c_maxHashesAsk);
+	m_syncHash = h256();
 	setAsking(Asking::Hashes);
 	RLPStream s;
 	prep(s, GetBlockHashesByNumberPacket, 2) << m_syncHashNumber << c_maxHashesAsk;
@@ -119,6 +128,8 @@ void EthereumPeer::requestHashes(h256 const& _lastHash)
 	RLPStream s;
 	prep(s, GetBlockHashesPacket, 2) << _lastHash << c_maxHashesAsk;
 	clog(NetMessageDetail) << "Requesting block hashes staring from " << _lastHash;
+	m_syncHash = _lastHash;
+	m_syncHashNumber = 0;
 	sealAndSend(s);
 }
 
@@ -175,8 +186,16 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		m_genesisHash = _r[4].toHash<h256>();
 		if (m_peerCapabilityVersion == host()->protocolVersion())
 		{
-			m_protocolVersion = host()->protocolVersion();
-			m_latestBlockNumber = _r[5].toInt<u256>();
+			if (_r.itemCount() != 6)
+			{
+				clog(NetImpolite) << "Peer does not support PV61+ status extension.";
+				m_protocolVersion = EthereumHost::c_oldProtocolVersion;
+			}
+			else
+			{
+				m_protocolVersion = host()->protocolVersion();
+				m_latestBlockNumber = _r[5].toInt<u256>();
+			}
 		}
 
 		clog(NetMessageSummary) << "Status:" << m_protocolVersion << "/" << m_networkId << "/" << m_genesisHash << "/" << m_latestBlockNumber << ", TD:" << m_totalDifficulty << "=" << m_latestHash;
@@ -240,12 +259,10 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		setAsking(Asking::Nothing);
 		h256s hashes(itemCount);
 		for (unsigned i = 0; i < itemCount; ++i)
-		{
 			hashes[i] = _r[i].toHash<h256>();
-			m_hashSub.noteHash(m_syncHashNumber + i, 1);
-		}
 
-		m_syncHashNumber += itemCount;
+		if (m_syncHashNumber > 0)
+			m_syncHashNumber += itemCount;
 		host()->onPeerHashes(this, hashes);
 		break;
 	}
