@@ -194,6 +194,14 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 			i += _ext.code[i] - (size_t)Instruction::PUSH1 + 1;
 	}
 
+	auto verifyJumpDest = [](u256 const& _dest, std::vector<uint64_t> const& _validDests)
+	{
+		auto nextPC = static_cast<uint64_t>(_dest);
+		if (!std::binary_search(_validDests.begin(), _validDests.end(), nextPC) || _dest > std::numeric_limits<uint64_t>::max())
+			BOOST_THROW_EXCEPTION(BadJumpDestination());
+		return nextPC;
+	};
+
 	m_steps = 0;
 	for (auto nextPC = m_curPC + 1; true; m_curPC = nextPC, nextPC = m_curPC + 1, ++m_steps)
 	{
@@ -531,18 +539,12 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 			m_stack.pop_back();
 			break;
 		case Instruction::JUMP:
-			nextPC = static_cast<uint64_t>(m_stack.back());
-			if (find(m_jumpDests.begin(), m_jumpDests.end(), nextPC) == m_jumpDests.end() || m_stack.back() > numeric_limits<uint64_t>::max())
-				BOOST_THROW_EXCEPTION(BadJumpDestination());
+			nextPC = verifyJumpDest(m_stack.back(), m_jumpDests);
 			m_stack.pop_back();
 			break;
 		case Instruction::JUMPI:
 			if (m_stack[m_stack.size() - 2])
-			{
-				nextPC = static_cast<uint64_t>(m_stack.back());
-				if (find(m_jumpDests.begin(), m_jumpDests.end(), nextPC) == m_jumpDests.end() || m_stack.back() > numeric_limits<uint64_t>::max())
-					BOOST_THROW_EXCEPTION(BadJumpDestination());
-			}
+				nextPC = verifyJumpDest(m_stack.back(), m_jumpDests);
 			m_stack.pop_back();
 			m_stack.pop_back();
 			break;
