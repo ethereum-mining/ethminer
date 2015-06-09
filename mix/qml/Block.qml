@@ -20,6 +20,7 @@ ColumnLayout
     spacing: 0
     property int openedTr: 0
     property int blockIndex
+    property variant scenario
 
     function calculateHeight()
     {
@@ -201,7 +202,12 @@ ColumnLayout
                         function userFrienldyToken(value)
                         {
                             if (value && value.indexOf("<") === 0)
-                                return value.split(" - ")[0].replace("<", "") + "." + value.split("> ")[1] + "()";
+                            {
+                                if (value.split("> ")[1] === " - ")
+                                    return value.split(" - ")[0].replace("<", "")
+                                else
+                                    return value.split(" - ")[0].replace("<", "") + "." + value.split("> ")[1] + "()";
+                            }
                             else
                                 return value
                         }
@@ -251,7 +257,34 @@ ColumnLayout
                             Layout.preferredWidth: debugActionWidth
                             Layout.preferredHeight: trHeight - 10
                             color: "transparent"
+
                             Image {
+                                source: "qrc:/qml/img/edit.png"
+                                width: 18
+                                fillMode: Image.PreserveAspectFit
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.horizontalCenter: parent.horizontalCenter
+                            }
+                            MouseArea
+                            {
+                                anchors.fill: parent
+                                onClicked:
+                                {
+                                    transactionDialog.stateAccounts = scenario.accounts
+                                    transactionDialog.execute = false
+                                    transactionDialog.open(index, blockIndex,  transactions.get(index))
+                                }
+                            }
+                        }
+
+                        Rectangle
+                        {
+                            Layout.preferredWidth: debugActionWidth
+                            Layout.preferredHeight: trHeight - 10
+                            color: "transparent"
+
+                            Image {
+                                id: debugImg
                                 source: "qrc:/qml/img/rightarrow@2x.png"
                                 width: statusWidth
                                 fillMode: Image.PreserveAspectFit

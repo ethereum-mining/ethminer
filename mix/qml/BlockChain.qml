@@ -17,6 +17,12 @@ ColumnLayout {
     spacing: 0
     property int previousWidth
     property variant debugTrRequested: []
+    signal chainChanged
+
+    onChainChanged: {
+        reBuildNeeded.start()
+    }
+
     onWidthChanged:
     {
 
@@ -40,6 +46,8 @@ ColumnLayout {
     {
         if (!scenario)
             return;
+        if (model)
+            chainChanged()
         model = scenario
         blockModel.clear()
         for (var b in model.blocks)
@@ -124,6 +132,7 @@ ColumnLayout {
                     model: blockModel
                     Block
                     {
+                        scenario: blockChainPanel.model
                         Layout.preferredWidth: blockChainScrollView.width
                         Layout.preferredHeight:
                         {
@@ -220,6 +229,7 @@ ColumnLayout {
                 {
                     if (ensureNotFuturetime.running)
                         return;
+                    reBuildNeeded.stop()
                     var retBlocks = [];
                     for (var j = 0; j < model.blocks.length; j++)
                     {
@@ -233,26 +243,18 @@ ColumnLayout {
                         for (var k = 0; k < model.blocks[j].transactions.length; k++)
                         {
                             if (blockModel.get(j).transactions.get(k).saveStatus)
-                            {
                                 block.transactions.push(model.blocks[j].transactions[k]);
-                            }
                         }
                         if (block.transactions.length > 0)
-                        {
                             retBlocks.push(block)
-                        }
                     }
                     if (retBlocks.length === 0)
-                    {
                         retBlocks.push(projectModel.stateListModel.createEmptyBlock())
-                    }
 
                     model.blocks = retBlocks
                     blockModel.clear()
                     for (var j = 0; j < model.blocks.length; j++)
-                    {
                         blockModel.append(model.blocks[j])
-                    }
 
                     ensureNotFuturetime.start()
                     clientModel.setupScenario(model);
@@ -262,6 +264,23 @@ ColumnLayout {
                 Layout.preferredHeight: 30
                 buttonShortcut: ""
                 sourceImg: "qrc:/qml/img/recycleicon@2x.png"
+                Timer
+                {
+                    id: reBuildNeeded
+                    repeat: true
+                    interval: 1000
+                    running: false
+                    onTriggered: {
+                        if (!parent.fillColor || parent.fillColor === "white")
+                            parent.fillColor = "orange"
+                        else
+                            parent.fillColor = "white"
+                    }
+                    onRunningChanged: {
+                        if (!running)
+                            parent.fillColor = "white"
+                    }
+                }
             }
 
             ScenarioButton {
@@ -274,6 +293,7 @@ ColumnLayout {
                         model.blocks.push(projectModel.stateListModel.createEmptyBlock());
                     var item = TransactionHelper.defaultTransaction()
                     transactionDialog.stateAccounts = model.accounts
+                    transactionDialog.execute = true
                     transactionDialog.open(model.blocks[model.blocks.length - 1].transactions.length, model.blocks.length - 1, item)
                 }
                 Layout.preferredWidth: 100
@@ -299,7 +319,6 @@ ColumnLayout {
                         return
                     if (clientModel.mining || clientModel.running)
                         return
-                    console.log("lllll");
                     if (model.blocks.length > 0)
                     {
                         var lastBlock = model.blocks[model.blocks.length - 1]
@@ -351,25 +370,30 @@ ColumnLayout {
                 {
                     var blockIndex =  parseInt(_r.transactionIndex.split(":")[0]) - 1
                     var trIndex = parseInt(_r.transactionIndex.split(":")[1])
-                    if (blockIndex <= model.blocks.length)
+                    console.log("kkkk" + blockIndex)
+                    console.log(trIndex)
+                    if (blockIndex <= model.blocks.length - 1)
                     {
                         var item = model.blocks[blockIndex]
-                        if (trIndex <= item.transactions.length)
+                        if (trIndex <= item.transactions.length - 1)
                         {
                             var tr = item.transactions[trIndex]
+                            console.log(JSON.stringify(_r))
                             tr.returned = _r.returned
                             tr.recordIndex = _r.recordIndex
                             tr.logs = _r.logs
+                            tr.sender = _r.sender
                             var trModel = blockModel.getTransaction(blockIndex, trIndex)
                             trModel.returned = _r.returned
                             trModel.recordIndex = _r.recordIndex
                             trModel.logs = _r.logs
+                            trModel.sender = _r.sender
                             blockModel.setTransaction(blockIndex, trIndex, trModel)
                             return;
                         }
                     }
 
-                    // tr is not in the list. coming from JavaScript
+                    // tr is not in the list.
                     var itemTr = TransactionHelper.defaultTransaction()
                     itemTr.saveStatus = false
                     itemTr.functionId = _r.function
@@ -397,6 +421,7 @@ ColumnLayout {
                 text: qsTr("New Account")
                 onClicked: {
                     model.accounts.push(projectModel.stateListModel.newAccount("1000000", QEther.Ether))
+                    chainChanged()
                 }
                 Layout.preferredWidth: 100
                 Layout.preferredHeight: 30
@@ -408,15 +433,25 @@ ColumnLayout {
 
     TransactionDialog {
         id: transactionDialog
+        property bool execute
         onAccepted: {
             var item = transactionDialog.getItem()
-            var lastBlock = model.blocks[model.blocks.length - 1];
-            if (lastBlock.status === "mined")
-                model.blocks.push(projectModel.stateListModel.createEmptyBlock());
-            model.blocks[model.blocks.length - 1].transactions.push(item)
-            blockModel.appendTransaction(item)
-            if (!clientModel.running)
-                clientModel.executeTr(item)
+            if (execute)
+            {
+                var lastBlock = model.blocks[model.blocks.length - 1];
+                if (lastBlock.status === "mined")
+                    model.blocks.push(projectModel.stateListModel.createEmptyBlock());
+                model.blocks[model.blocks.length - 1].transactions.push(item)
+                blockModel.appendTransaction(item)
+                if (!clientModel.running)
+                    clientModel.executeTr(item)
+            }
+            else {
+                model.blocks[blockIndex].transactions[transactionIndex] = item
+                blockModel.setTransaction(blockIndex, transactionIndex, item)
+                chainChanged()
+            }
+
         }
     }
 }
