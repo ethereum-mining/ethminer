@@ -25,9 +25,16 @@
 #include <thread>
 #include <boost/filesystem.hpp>
 #include <boost/math/distributions/normal.hpp>
+#if ETH_JSONRPC || !ETH_TRUE
+#include <jsonrpccpp/client.h>
+#include <jsonrpccpp/client/connectors/httpclient.h>
+#endif
 #include <libdevcore/Log.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libp2p/Host.h>
+#if ETH_JSONRPC || !ETH_TRUE
+#include "Sentinel.h"
+#endif
 #include "Defaults.h"
 #include "Executive.h"
 #include "EthereumHost.h"
@@ -78,6 +85,101 @@ void VersionChecker::setOk()
 		}
 		writeFile(m_path + "/status", rlpList(eth::c_protocolVersion, eth::c_minorProtocolVersion, c_databaseVersion, CanonBlockChain::genesis().hash()));
 	}
+}
+
+void Client::onBadBlock(Exception& _ex)
+{
+	// BAD BLOCK!!!
+	bytes const& block = *boost::get_error_info<errinfo_block>(_ex);
+	if (!&block)
+	{
+		cwarn << "ODD: onBadBlock called but exception has no block in it.";
+		return;
+	}
+
+	badBlock(block, _ex.what());
+	cwarn << boost::diagnostic_information(_ex, true);
+
+#if ETH_JSONRPC || !ETH_TRUE
+	if (!m_sentinel.empty())
+	{
+		Json::Value report;
+
+		report["client"] = "cpp";
+		report["version"] = Version;
+		report["protocolVersion"] = c_protocolVersion;
+		report["databaseVersion"] = c_databaseVersion;
+		report["errortype"] = _ex.what();
+		report["block"] = toHex(block);
+		report["hint"] = Json::Value(Json::objectValue);
+
+		// add the various hints.
+		if (unsigned const* uncleIndex = boost::get_error_info<errinfo_uncleIndex>(_ex))
+		{
+			// uncle that failed.
+			report["hints"]["uncleIndex"] = *uncleIndex;
+		}
+		else if (unsigned const* txIndex = boost::get_error_info<errinfo_transactionIndex>(_ex))
+		{
+			// transaction that failed.
+			report["hints"]["transactionIndex"] = *txIndex;
+		}
+		else
+		{
+			// general block failure.
+		}
+
+		if (string const* vmtraceJson = boost::get_error_info<errinfo_vmtrace>(_ex))
+			Json::Reader().parse(*vmtraceJson, report["hints"]["vmtrace"]);
+		if (vector<bytes> const* receipts = boost::get_error_info<errinfo_receipts>(_ex))
+		{
+			report["hints"]["receipts"] = Json::arrayValue;
+			for (auto const& r: *receipts)
+				report["hints"]["receipts"].append(toHex(r));
+		}
+		if (h256Hash const* excluded = boost::get_error_info<errinfo_unclesExcluded>(_ex))
+		{
+			report["hints"]["unclesExcluded"] = Json::arrayValue;
+			for (auto const& r: h256Set() + *excluded)
+				report["hints"]["unclesExcluded"].append(Json::Value(r.hex()));
+		}
+
+#define DEV_HINT_ERRINFO(X) \
+			if (auto const* n = boost::get_error_info<errinfo_ ## X>(_ex)) \
+				report["hints"][#X] = toString(*n)
+#define DEV_HINT_ERRINFO_HASH(X) \
+			if (auto const* n = boost::get_error_info<errinfo_ ## X>(_ex)) \
+				report["hints"][#X] = n->hex()
+
+		DEV_HINT_ERRINFO_HASH(hash256);
+		DEV_HINT_ERRINFO(uncleNumber);
+		DEV_HINT_ERRINFO(currentNumber);
+		DEV_HINT_ERRINFO(now);
+		DEV_HINT_ERRINFO(invalidSymbol);
+		DEV_HINT_ERRINFO(wrongAddress);
+		DEV_HINT_ERRINFO(comment);
+		DEV_HINT_ERRINFO(min);
+		DEV_HINT_ERRINFO(max);
+
+		DEV_HINT_ERRINFO(required);
+		DEV_HINT_ERRINFO(got);
+		DEV_HINT_ERRINFO_HASH(required_LogBloom);
+		DEV_HINT_ERRINFO_HASH(got_LogBloom);
+		DEV_HINT_ERRINFO_HASH(required_h256);
+		DEV_HINT_ERRINFO_HASH(got_h256);
+
+		jsonrpc::HttpClient client(m_sentinel);
+		Sentinel rpc(client);
+		try
+		{
+			rpc.eth_badBlock(report);
+		}
+		catch (...)
+		{
+			cwarn << "Error reporting to sentinel. Sure the address" << m_sentinel << "is correct?";
+		}
+	}
+#endif
 }
 
 void BasicGasPricer::update(BlockChain const& _bc)
@@ -185,6 +287,8 @@ Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string c
 	m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds(30);
 	m_tqReady = m_tq.onReady([=](){ this->onTransactionQueueReady(); });	// TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
 	m_bqReady = m_bq.onReady([=](){ this->onBlockQueueReady(); });			// TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
+	m_bq.setOnBad([=](Exception& ex){ this->onBadBlock(ex); });
+	m_bc.setOnBad([=](Exception& ex){ this->onBadBlock(ex); });
 	m_farm.onSolutionFound([=](ProofOfWork::Solution const& s){ return this->submitWork(s); });
 
 	m_gp->update(m_bc);
