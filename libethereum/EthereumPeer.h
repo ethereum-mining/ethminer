@@ -134,8 +134,9 @@ private:
 
 	/// This is built as we ask for hashes. Once no more hashes are given, we present this to the
 	/// host who initialises the DownloadMan and m_sub becomes active for us to begin asking for blocks.
-	unsigned m_expectedHashes = 0;				///< Estimated upper bound of hashes to expect from this peer.
-	unsigned m_syncHashNumber = 0;				///< Number of latest hash we sync to
+	unsigned m_expectedHashes = 0;			///< Estimated upper bound of hashes to expect from this peer.
+	unsigned m_syncHashNumber = 0;			///< Number of latest hash we sync to (PV61+)
+	h256 m_syncHash;						///< Latest hash we sync to (PV60)
 
 	/// Once we're asking for blocks, this becomes in use.
 	DownloadSub m_sub;
