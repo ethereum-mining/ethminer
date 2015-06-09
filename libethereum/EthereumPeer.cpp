@@ -186,8 +186,16 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		m_genesisHash = _r[4].toHash<h256>();
 		if (m_peerCapabilityVersion == host()->protocolVersion())
 		{
-			m_protocolVersion = host()->protocolVersion();
-			m_latestBlockNumber = _r[5].toInt<u256>();
+			if (_r.itemCount() != 6)
+			{
+				clog(NetImpolite) << "Peer does not support PV61+ status extension.";
+				m_protocolVersion = EthereumHost::c_oldProtocolVersion;
+			}
+			else
+			{
+				m_protocolVersion = host()->protocolVersion();
+				m_latestBlockNumber = _r[5].toInt<u256>();
+			}
 		}
 
 		clog(NetMessageSummary) << "Status:" << m_protocolVersion << "/" << m_networkId << "/" << m_genesisHash << "/" << m_latestBlockNumber << ", TD:" << m_totalDifficulty << "=" << m_latestHash;
