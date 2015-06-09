@@ -68,7 +68,7 @@ void Executive::initialize(Transaction const& _transaction)
 	if (!m_t.checkPayment())
 	{
 		clog(ExecutiveWarnChannel) << "Not enough gas to pay for the transaction: Require >" << m_t.gasRequired() << " Got" << m_t.gas();
-		m_excepted = TransactionException::OutOfGas;
+		m_excepted = TransactionException::OutOfGasBase;
 		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError(m_t.gasRequired(), (bigint)m_t.gas()));
 	}
 

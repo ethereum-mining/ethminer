@@ -46,6 +46,20 @@ namespace test { class ImportTest; class StateLoader; }
 namespace eth
 {
 
+// Import-specific errinfos
+using errinfo_uncleIndex = boost::error_info<struct tag_uncleIndex, unsigned>;
+using errinfo_currentNumber = boost::error_info<struct tag_currentNumber, u256>;
+using errinfo_uncleNumber = boost::error_info<struct tag_uncleNumber, u256>;
+using errinfo_unclesExcluded = boost::error_info<struct tag_unclesExcluded, h256Hash>;
+
+using errinfo_transactionIndex = boost::error_info<struct tag_transactionIndex, unsigned>;
+
+using errinfo_vmtrace = boost::error_info<struct tag_vmtrace, std::string>;
+using errinfo_receipts = boost::error_info<struct tag_receipts, std::vector<bytes>>;
+using errinfo_logBloom = boost::error_info<struct tag_logBloom, LogBloom>;
+using LogBloomMismatchError = boost::tuple<errinfo_logBloom, errinfo_logBloom>;
+
+
 class BlockChain;
 class State;
 
