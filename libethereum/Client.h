@@ -143,7 +143,7 @@ public:
 	ExecutionResult call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether, Address const& _from = Address());
 
 	/// Get the remaining gas limit in this block.
-	virtual u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
+	virtual u256 gasLimitRemaining() const override { return m_postMine.gasLimitRemaining(); }
 
 	// [PRIVATE API - only relevant for base clients, not available in general]
 	dev::eth::State state(unsigned _txi, h256 _block) const;
@@ -159,7 +159,7 @@ public:
 
 	// Mining stuff:
 
-	void setAddress(Address _us) { WriteGuard l(x_preMine); m_preMine.setAddress(_us); }
+	virtual void setAddress(Address _us) override { WriteGuard l(x_preMine); m_preMine.setAddress(_us); }
 
 	/// Check block validity prior to mining.
 	bool miningParanoia() const { return m_paranoia; }
