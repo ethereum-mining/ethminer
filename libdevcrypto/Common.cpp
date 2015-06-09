@@ -54,7 +54,7 @@ Public dev::toPublic(Secret const& _secret)
 {
 	Public p;
 	s_secp256k1.toPublic(_secret, p);
-	return std::move(p);
+	return p;
 }
 
 Address dev::toAddress(Public const& _public)
@@ -230,7 +230,7 @@ h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 	
 	if (!s || !_hash || !_priv)
 		BOOST_THROW_EXCEPTION(InvalidState());
-	return std::move(s);
+	return s;
 }
 
 h256 Nonce::get(bool _commit)
