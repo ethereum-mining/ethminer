@@ -30,17 +30,19 @@ namespace dev
 {
 namespace eth
 {
-class UnknownPassword: public Exception {};
+class PasswordUnknown: public Exception {};
 
 struct KeyInfo
 {
 	KeyInfo() = default;
 	KeyInfo(h256 const& _passHash, std::string const& _info): passHash(_passHash), info(_info) {}
-	h256 passHash;
-	std::string info;
+
+	h256 passHash;		///< Hash of the password or h256() if unknown.
+	std::string info;	///< Name of the key, or JSON key info if begins with '{'.
 };
 
-static const auto DontKnowThrow = [](){ throw UnknownPassword(); return std::string(); };
+static const h256 UnknownPassword;
+static const auto DontKnowThrow = [](){ throw PasswordUnknown(); return std::string(); };
 
 enum class SemanticPassword
 {
@@ -89,6 +91,7 @@ public:
 	SecretStore& store() { return m_store; }
 	void importExisting(h128 const& _uuid, std::string const& _info, std::string const& _pass, std::string const& _passInfo);
 	void importExisting(h128 const& _uuid, std::string const& _info) { importExisting(_uuid, _info, defaultPassword(), std::string()); }
+	void importExisting(h128 const& _uuid, std::string const& _info, Address const& _addr, h256 const& _passHash = h256(), std::string const& _passInfo = std::string());
 
 	Secret secret(Address const& _address, std::function<std::string()> const& _pass = DontKnowThrow) const;
 	Secret secret(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;

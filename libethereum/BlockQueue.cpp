@@ -26,6 +26,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include "BlockChain.h"
+#include "State.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -76,56 +77,44 @@ void BlockQueue::verifierBody()
 
 		std::pair<BlockInfo, bytes> res;
 		swap(work.second, res.second);
-		try {
-			try {
+		try
+		{
+			try
+			{
 				res.first.populate(res.second, CheckEverything, work.first);
 				res.first.verifyInternals(&res.second);
 			}
-			catch (InvalidBlockNonce&)
+			catch (Exception& ex)
 			{
-				badBlock(res.second, "Invalid block nonce");
-				cwarn << "  Nonce:" << res.first.nonce.hex();
-				cwarn << "  PoWHash:" << res.first.headerHash(WithoutNonce).hex();
-				cwarn << "  SeedHash:" << res.first.seedHash().hex();
-				cwarn << "  Target:" << res.first.boundary().hex();
-				cwarn << "  MixHash:" << res.first.mixHash.hex();
-				Ethash::Result er = EthashAux::eval(res.first.seedHash(), res.first.headerHash(WithoutNonce), res.first.nonce);
-				cwarn << "  Ethash v:" << er.value.hex();
-				cwarn << "  Ethash mH:" << er.mixHash.hex();
-				throw;
-			}
-			catch (Exception& _e)
-			{
-				badBlock(res.second, _e.what());
+				clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
+				badBlock(res.second, ex.what());
+				ex << errinfo_now(time(0));
+				ex << errinfo_block(res.second);
+				if (m_onBad)
+					m_onBad(ex);
 				throw;
 			}
 
 			RLP r(&res.second);
+			unsigned ii = 0;
 			for (auto const& uncle: r[2])
 			{
 				try
 				{
 					BlockInfo().populateFromHeader(RLP(uncle.data()), CheckEverything);
 				}
-				catch (InvalidNonce&)
+				catch (Exception& ex)
 				{
-					badBlockHeader(uncle.data(), "Invalid uncle nonce");
-					BlockInfo bi = BlockInfo::fromHeader(uncle.data(), CheckNothing);
-					cwarn << "  Nonce:" << bi.nonce.hex();
-					cwarn << "  PoWHash:" << bi.headerHash(WithoutNonce).hex();
-					cwarn << "  SeedHash:" << bi.seedHash().hex();
-					cwarn << "  Target:" << bi.boundary().hex();
-					cwarn << "  MixHash:" << bi.mixHash.hex();
-					Ethash::Result er = EthashAux::eval(bi.seedHash(), bi.headerHash(WithoutNonce), bi.nonce);
-					cwarn << "  Ethash v:" << er.value.hex();
-					cwarn << "  Ethash mH:" << er.mixHash.hex();
+					clog(BlockChainNote) << "   Malformed block header: " << diagnostic_information(ex);
+					badBlockHeader(uncle.data(), ex.what());
+					ex << errinfo_uncleIndex(ii);
+					ex << errinfo_now(time(0));
+					ex << errinfo_block(res.second);
+					if (m_onBad)
+						m_onBad(ex);
 					throw;
 				}
-				catch (Exception& _e)
-				{
-					badBlockHeader(uncle.data(), _e.what());
-					throw;
-				}
+				++ii;
 			}
 		}
 		catch (...)

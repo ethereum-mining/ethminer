@@ -59,7 +59,7 @@ namespace crypto
 
 using namespace CryptoPP;
 
-inline ECP::Point publicToPoint(Public const& _p) { Integer x(_p.data(), 32); Integer y(_p.data() + 32, 32); return std::move(ECP::Point(x,y)); }
+inline ECP::Point publicToPoint(Public const& _p) { Integer x(_p.data(), 32); Integer y(_p.data() + 32, 32); return ECP::Point(x,y); }
 
 inline Integer secretToExponent(Secret const& _s) { return std::move(Integer(_s.data(), Secret::size)); }
 

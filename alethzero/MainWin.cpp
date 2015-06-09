@@ -1240,7 +1240,9 @@ void Main::refreshBlockCount()
 {
 	auto d = ethereum()->blockChain().details();
 	BlockQueueStatus b = ethereum()->blockQueueStatus();
-	ui->chainStatus->setText(QString("%3 ready %4 verifying %5 unverified %6 future %7 unknown %8 bad  %1 #%2").arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad));
+	HashChainStatus h = ethereum()->hashChainStatus();
+	ui->chainStatus->setText(QString("%9/%10%11 hashes %3 ready %4 verifying %5 unverified %6 future %7 unknown %8 bad  %1 #%2")
+		.arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad).arg(h.received).arg(h.estimated ? "~" : "").arg(h.total));
 }
 
 void Main::on_turboMining_triggered()
@@ -2114,14 +2116,14 @@ void Main::on_reencryptKey_triggered()
 			auto pw = [&](){
 				auto p = QInputDialog::getText(this, "Re-Encrypt Key", "Enter the original password for this key.\nHint: " + QString::fromStdString(m_keyManager.hint(a)), QLineEdit::Password, QString()).toStdString();
 				if (p.empty())
-					throw UnknownPassword();
+					throw PasswordUnknown();
 				return p;
 			};
 			while (!(password.empty() ? m_keyManager.recode(a, SemanticPassword::Master, pw, kdf) : m_keyManager.recode(a, password, hint, pw, kdf)))
 				if (QMessageBox::question(this, "Re-Encrypt Key", "Password given is incorrect. Would you like to try again?", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
 					return;
 		}
-		catch (UnknownPassword&) {}
+		catch (PasswordUnknown&) {}
 	}
 }
 
@@ -2137,13 +2139,13 @@ void Main::on_reencryptAll_triggered()
 			while (!m_keyManager.recode(a, SemanticPassword::Existing, [&](){
 				auto p = QInputDialog::getText(nullptr, "Re-Encrypt Key", QString("Enter the original password for key %1.\nHint: %2").arg(QString::fromStdString(pretty(a))).arg(QString::fromStdString(m_keyManager.hint(a))), QLineEdit::Password, QString()).toStdString();
 				if (p.empty())
-					throw UnknownPassword();
+					throw PasswordUnknown();
 				return p;
 			}, (KDF)kdfs.indexOf(kdf)))
 				if (QMessageBox::question(this, "Re-Encrypt Key", "Password given is incorrect. Would you like to try again?", QMessageBox::Retry, QMessageBox::Cancel) == QMessageBox::Cancel)
 					return;
 	}
-	catch (UnknownPassword&) {}
+	catch (PasswordUnknown&) {}
 }
 
 void Main::on_go_triggered()

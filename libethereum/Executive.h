@@ -26,6 +26,11 @@
 #include "ExtVM.h"
 #include "Transaction.h"
 
+namespace Json
+{
+	class Value;
+}
+
 namespace dev
 {
 namespace eth
@@ -37,6 +42,19 @@ struct Manifest;
 
 struct VMTraceChannel: public LogChannel { static const char* name(); static const int verbosity = 11; };
 struct ExecutiveWarnChannel: public LogChannel { static const char* name(); static const int verbosity = 6; };
+
+class StandardTrace
+{
+public:
+	StandardTrace();
+	void operator()(uint64_t _steps, Instruction _inst, bigint _newMemSize, bigint _gasCost, bigint _gas, VM* _vm, ExtVMFace const* _extVM);
+
+	std::string json() const;
+
+private:
+	std::vector<Instruction> m_lastInst;
+	std::shared_ptr<Json::Value> m_trace;
+};
 
 /**
  * @brief Message-call/contract-creation executor; useful for executing transactions.
