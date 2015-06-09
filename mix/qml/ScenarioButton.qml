@@ -19,9 +19,12 @@ Rectangle {
         Image {
             id: debugImage
             anchors {
-                centerIn: parent
-                bottomMargin: debugImg.pressed ? 0 : 1;
-                topMargin: debugImg.pressed ? 1 : 0;
+                left: parent.left
+                right: parent.right
+                top: parent.top
+                bottom: parent.bottom
+                bottomMargin: debugImg.pressed ? 0 : 2;
+                topMargin: debugImg.pressed ? 2 : 0;
             }
             source: sourceImg
             fillMode: Image.PreserveAspectFit

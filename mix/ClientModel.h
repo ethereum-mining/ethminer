@@ -256,7 +256,6 @@ private:
 	std::pair<QString, int> resolvePair(QString const& _contractId);
 	QVariant formatStorageValue(SolidityType const& _type, std::unordered_map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
     void processNextTransactions();
-    void processNextBlock();
     void finalizeBlock();
     void stopExecution();
 
@@ -276,6 +275,7 @@ private:
 	CodeModel* m_codeModel = nullptr;
     QList<QVariantList> m_queueTransactions;
     QVariantMap m_currentScenario;
+	mutable boost::shared_mutex x_queueTransactions;
 };
 
 }

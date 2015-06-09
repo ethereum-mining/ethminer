@@ -104,7 +104,6 @@ ColumnLayout {
     {
         Layout.preferredHeight: 500
         Layout.preferredWidth: parent.width
-        //height: 500
         border.color: "#cccccc"
         border.width: 2
         color: "white"
@@ -209,9 +208,10 @@ ColumnLayout {
         Layout.preferredWidth: parent.width
         RowLayout
         {
-            width: parent.width
+            width: 4 * 100
             anchors.top: parent.top
             anchors.topMargin: 10
+            spacing: 0
             ScenarioButton {
                 id: rebuild
                 text: qsTr("Rebuild")
@@ -219,22 +219,40 @@ ColumnLayout {
                 {
                     if (ensureNotFuturetime.running)
                         return;
+                    var retBlocks = [];
                     for (var j = 0; j < model.blocks.length; j++)
                     {
+                        var b = model.blocks[j];
+                        var block = {
+                            hash: b.hash,
+                            number: b.number,
+                            transactions: [],
+                            status: b.status
+                        }
                         for (var k = 0; k < model.blocks[j].transactions.length; k++)
                         {
-                            if (!blockModel.get(j).transactions.get(k).saveStatus)
+                            if (blockModel.get(j).transactions.get(k).saveStatus)
                             {
-                                model.blocks[j].transactions.splice(k, 1)
-                                blockModel.removeTransaction(j, k)
-                                if (model.blocks[j].transactions.length === 0)
-                                {
-                                    model.blocks.splice(j, 1);
-                                    blockModel.removeBlock(j);
-                                }
+                                block.transactions.push(model.blocks[j].transactions[k]);
                             }
                         }
+                        if (block.transactions.length > 0)
+                        {
+                            retBlocks.push(block)
+                        }
                     }
+                    if (retBlocks.length === 0)
+                    {
+                        retBlocks.push(projectModel.stateListModel.createEmptyBlock())
+                    }
+
+                    model.blocks = retBlocks
+                    blockModel.clear()
+                    for (var j = 0; j < model.blocks.length; j++)
+                    {
+                        blockModel.append(model.blocks[j])
+                    }
+
                     ensureNotFuturetime.start()
                     clientModel.setupScenario(model);
                 }
@@ -280,14 +298,21 @@ ColumnLayout {
                         return
                     if (clientModel.mining || clientModel.running)
                         return
-                    var lastBlock = model.blocks[model.blocks.length - 1]
-                    if (lastBlock.status === "pending")
+                    console.log("lllll");
+                    if (model.blocks.length > 0)
                     {
-                        ensureNotFuturetime.start()
-                        clientModel.mine()
+                        var lastBlock = model.blocks[model.blocks.length - 1]
+                        if (lastBlock.status === "pending")
+                        {
+                            ensureNotFuturetime.start()
+                            clientModel.mine()
+                        }
+                        else
+                            addNewBlock()
                     }
                     else
                         addNewBlock()
+
                 }
 
                 function addNewBlock()
@@ -355,6 +380,7 @@ ColumnLayout {
                     itemTr.isFunctionCall = itemTr.functionId !== ""
                     itemTr.returned = _r.returned
                     itemTr.value = QEtherHelper.createEther(_r.value, QEther.Wei)
+                    console.log("sender " + _r.sender)
                     itemTr.sender = _r.sender
                     itemTr.recordIndex = _r.recordIndex
                     itemTr.logs = _r.logs
