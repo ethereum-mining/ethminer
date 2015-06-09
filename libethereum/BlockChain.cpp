@@ -333,9 +333,18 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 			// Can't continue - chain bad.
 			badBlocks.push_back(block.verified.info.hash());
 		}
-		catch (Exception const& _e)
+		catch (dev::eth::FutureTime)
 		{
-			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << LogTag::Error << diagnostic_information(_e);
+			cwarn << "ODD: Import queue contains a block with future time." << LogTag::Error << boost::current_exception_diagnostic_information();
+			// NOTE: don't reimport since the queue should guarantee everything in the past.
+			// Can't continue - chain bad.
+			badBlocks.push_back(block.verified.info.hash());
+		}
+		catch (Exception& ex)
+		{
+			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << LogTag::Error << diagnostic_information(ex);
+			if (m_onBad)
+				m_onBad(ex);
 			// NOTE: don't reimport since the queue should guarantee everything in the right order.
 			// Can't continue - chain  bad.
 			badBlocks.push_back(block.verified.info.hash());
@@ -348,7 +357,7 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
 {
 	try
 	{
-		return make_pair(ImportResult::Success, import(verifyBlock(_block, _ir), _stateDB, _ir));
+		return make_pair(ImportResult::Success, import(verifyBlock(_block, m_onBad), _stateDB, _ir));
 	}
 	catch (UnknownParent&)
 	{
@@ -362,8 +371,10 @@ pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, O
 	{
 		return make_pair(ImportResult::FutureTime, make_pair(h256s(), h256s()));
 	}
-	catch (...)
+	catch (Exception& ex)
 	{
+		if (m_onBad)
+			m_onBad(ex);
 		return make_pair(ImportResult::Malformed, make_pair(h256s(), h256s()));
 	}
 }
@@ -377,13 +388,14 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 	try
 #endif
 	{
-		block = verifyBlock(_block, _ir);
+		block = verifyBlock(_block, m_onBad);
 	}
 #if ETH_CATCH
-	catch (Exception const& _e)
+	catch (Exception& ex)
 	{
-		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(_e);
-		_e << errinfo_comment("Malformed block ");
+		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
+		ex << errinfo_now(time(0));
+		ex << errinfo_block(_block);
 		throw;
 	}
 #endif
@@ -471,14 +483,8 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 			blb.blooms.push_back(s.receipt(i).bloom());
 			br.receipts.push_back(s.receipt(i));
 		}
-		try {
-			s.cleanup(true);
-		}
-		catch (BadRoot)
-		{
-			cwarn << "BadRoot error. Retrying import later.";
-			BOOST_THROW_EXCEPTION(FutureTime());
-		}
+
+		s.cleanup(true);
 
 		td = pd.totalDifficulty + tdIncrease;
 
@@ -521,20 +527,20 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 #endif
 	}
 #if ETH_CATCH
-	catch (InvalidNonce const& _e)
+	catch (BadRoot& ex)
 	{
-		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(_e);
-		_e << errinfo_comment("Malformed block ");
-		throw;
+		cwarn << "BadRoot error. Retrying import later.";
+		BOOST_THROW_EXCEPTION(FutureTime());
 	}
-	catch (Exception const& _e)
+	catch (Exception& ex)
 	{
-		clog(BlockChainWarn) << "   Malformed block: " << diagnostic_information(_e);
-		_e << errinfo_comment("Malformed block ");
+		clog(BlockChainWarn) << "   Malformed block: " << diagnostic_information(ex);
 		clog(BlockChainWarn) << "Block: " << _block.info.hash();
 		clog(BlockChainWarn) << _block.info;
 		clog(BlockChainWarn) << "Block parent: " << _block.info.parentHash;
 		clog(BlockChainWarn) << BlockInfo(block(_block.info.parentHash));
+		ex << errinfo_now(time(0));
+		ex << errinfo_block(_block.block.toBytes());
 		throw;
 	}
 #endif
@@ -1058,7 +1064,7 @@ bytes BlockChain::block(h256 const& _hash) const
 	return m_blocks[_hash];
 }
 
-VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, ImportRequirements::value)
+VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exception&)> const& _onBad)
 {
 	VerifiedBlockRef res;
 	try
@@ -1066,54 +1072,39 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, ImportRequirements
 		res.info.populate(_block, CheckEverything);
 		res.info.verifyInternals(&_block);
 	}
-	catch (InvalidBlockNonce&)
+	catch (Exception& ex)
 	{
-		badBlock(_block, "Invalid block nonce");
-		cwarn << "  Nonce:" << res.info.nonce.hex();
-		cwarn << "  PoWHash:" << res.info.headerHash(WithoutNonce).hex();
-		cwarn << "  SeedHash:" << res.info.seedHash().hex();
-		cwarn << "  Target:" << res.info.boundary().hex();
-		cwarn << "  MixHash:" << res.info.mixHash.hex();
-		Ethash::Result er = EthashAux::eval(res.info.seedHash(), res.info.headerHash(WithoutNonce), res.info.nonce);
-		cwarn << "  Ethash v:" << er.value.hex();
-		cwarn << "  Ethash mH:" << er.mixHash.hex();
-		throw;
-	}
-	catch (Exception& _e)
-	{
-		badBlock(_block, _e.what());
+		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
+		badBlock(_block, ex.what());
+		ex << errinfo_now(time(0));
+		ex << errinfo_block(_block);
+		if (_onBad)
+			_onBad(ex);
 		throw;
 	}
 
-	RLP r(&_block);
+	RLP r(_block);
+	unsigned i = 0;
 	for (auto const& uncle: r[2])
 	{
 		try
 		{
 			BlockInfo().populateFromHeader(RLP(uncle.data()), CheckEverything);
 		}
-		catch (InvalidNonce&)
+		catch (Exception& ex)
 		{
-			badBlockHeader(uncle.data(), "Invalid uncle nonce");
-			BlockInfo bi = BlockInfo::fromHeader(uncle.data(), CheckNothing);
-			cwarn << "  Nonce:" << bi.nonce.hex();
-			cwarn << "  PoWHash:" << bi.headerHash(WithoutNonce).hex();
-			cwarn << "  SeedHash:" << bi.seedHash().hex();
-			cwarn << "  Target:" << bi.boundary().hex();
-			cwarn << "  MixHash:" << bi.mixHash.hex();
-			Ethash::Result er = EthashAux::eval(bi.seedHash(), bi.headerHash(WithoutNonce), bi.nonce);
-			cwarn << "  Ethash v:" << er.value.hex();
-			cwarn << "  Ethash mH:" << er.mixHash.hex();
+			clog(BlockChainNote) << "   Malformed block header: " << diagnostic_information(ex);
+			badBlockHeader(uncle.data(), ex.what());
+			ex << errinfo_uncleIndex(i);
+			ex << errinfo_now(time(0));
+			ex << errinfo_block(_block);
+			if (_onBad)
+				_onBad(ex);
 			throw;
 		}
-		catch (Exception& _e)
-		{
-			badBlockHeader(uncle.data(), _e.what());
-			throw;
-		}
+		++i;
 	}
-
-	unsigned i = 0;
+	i = 0;
 	for (auto const& tr: r[1])
 	{
 		try

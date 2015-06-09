@@ -111,6 +111,8 @@ public:
 
 	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
 
+	template <class T> void setOnBad(T const& _t) { m_onBad = _t; }
+
 private:
 	void noteReady_WITH_LOCK(h256 const& _b);
 
@@ -135,6 +137,8 @@ private:
 
 	std::vector<std::thread> m_verifiers;								///< Threads who only verify.
 	bool m_deleting = false;											///< Exit condition for verifiers.
+
+	std::function<void(Exception&)> m_onBad;									///< Called if we have a block that doesn't verify.
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockQueueStatus const& _s);
