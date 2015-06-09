@@ -422,8 +422,8 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	
 	unsigned packetType = signedBytes[0];
 	bytesConstRef rlpBytes(_packet.cropped(h256::size + Signature::size + 1));
-	RLP rlp(rlpBytes);
 	try {
+		RLP rlp(rlpBytes);
 		switch (packetType)
 		{
 			case Pong::type:
