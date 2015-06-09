@@ -310,6 +310,18 @@ Client::~Client()
 	stopWorking();
 }
 
+static const Address c_canary("0x");
+
+bool Client::isChainBad() const
+{
+	return stateAt(c_canary, 0) != 0;
+}
+
+bool Client::isUpgradeNeeded() const
+{
+	return stateAt(c_canary, 0) == 2;
+}
+
 void Client::setNetworkId(u256 _n)
 {
 	if (auto h = m_host.lock())
@@ -552,6 +564,9 @@ ProofOfWork::WorkPackage Client::getWork()
 	bool oldShould = shouldServeWork();
 	m_lastGetWork = chrono::system_clock::now();
 
+	if (!m_mineOnBadChain && isChainBad())
+		return ProofOfWork::WorkPackage();
+
 	// if this request has made us bother to serve work, prep it now.
 	if (!oldShould && shouldServeWork())
 		onPostStateChanged();
@@ -709,11 +724,22 @@ bool Client::remoteActive() const
 
 void Client::onPostStateChanged()
 {
-	cnote << "Post state changed";
+	cnote << "Post state changed.";
+	rejigMining();
+	m_remoteWorking = false;
+}
 
-	if (m_bq.items().first == 0 && (isMining() || remoteActive()))
+void Client::startMining()
+{
+	m_wouldMine = true;
+	rejigMining();
+}
+
+void Client::rejigMining()
+{
+	if ((wouldMine() || remoteActive()) && !m_bq.items().first && (!isChainBad() || mineOnBadChain()) /*&& (forceMining() || transactionsWaiting())*/)
 	{
-		cnote << "Restarting mining...";
+		cnote << "Rejigging mining...";
 		DEV_WRITE_GUARDED(x_working)
 			m_working.commitToMine(m_bc);
 		DEV_READ_GUARDED(x_working)
@@ -722,20 +748,21 @@ void Client::onPostStateChanged()
 				m_postMine = m_working;
 			m_miningInfo = m_postMine.info();
 		}
-		m_farm.setWork(m_miningInfo);
 
-		Ethash::ensurePrecomputed(m_bc.number());
+		if (m_wouldMine)
+		{
+			m_farm.setWork(m_miningInfo);
+			if (m_turboMining)
+				m_farm.startGPU();
+			else
+				m_farm.startCPU();
+
+			m_farm.setWork(m_miningInfo);
+			Ethash::ensurePrecomputed(m_bc.number());
+		}
 	}
-	m_remoteWorking = false;
-}
-
-void Client::startMining()
-{
-	if (m_turboMining)
-		m_farm.startGPU();
-	else
-		m_farm.startCPU();
-	onPostStateChanged();
+	if (!m_wouldMine)
+		m_farm.stop();
 }
 
 void Client::noteChanged(h256Hash const& _filters)

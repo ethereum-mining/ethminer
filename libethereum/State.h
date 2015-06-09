@@ -310,10 +310,12 @@ public:
 	State fromPending(unsigned _i) const;
 
 	/// @returns the StateDiff caused by the pending transaction of index @a _i.
-	StateDiff pendingDiff(unsigned _i) const { return fromPending(_i).diff(fromPending(_i + 1)); }
+	StateDiff pendingDiff(unsigned _i) const { return fromPending(_i).diff(fromPending(_i + 1), true); }
 
 	/// @return the difference between this state (origin) and @a _c (destination).
-	StateDiff diff(State const& _c) const;
+	/// @param _quick if true doesn't check all addresses possible (/very/ slow for a full chain)
+	/// but rather only those touched by the transactions in creating the two States.
+	StateDiff diff(State const& _c, bool _quick = false) const;
 
 	/// Sync our state with the block chain.
 	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
@@ -387,6 +389,7 @@ private:
 	TransactionReceipts m_receipts;				///< The corresponding list of transaction receipts.
 	h256Hash m_transactionSet;					///< The set of transaction hashes that we've included in the state.
 	OverlayDB m_lastTx;
+	AddressHash m_touched;						///< Tracks all addresses touched by transactions so far.
 
 	mutable std::unordered_map<Address, Account> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
@@ -410,8 +413,9 @@ private:
 std::ostream& operator<<(std::ostream& _out, State const& _s);
 
 template <class DB>
-void commit(std::unordered_map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
+AddressHash commit(std::unordered_map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
 {
+	AddressHash ret;
 	for (auto const& i: _cache)
 		if (i.second.isDirty())
 		{
@@ -450,7 +454,9 @@ void commit(std::unordered_map<Address, Account> const& _cache, DB& _db, SecureT
 
 				_state.insert(i.first, &s.out());
 			}
+			ret.insert(i.first);
 		}
+	return ret;
 }
 
 }

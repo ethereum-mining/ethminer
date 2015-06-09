@@ -174,14 +174,26 @@ public:
 	/// Enable/disable GPU mining.
 	void setTurboMining(bool _enable = true) { m_turboMining = _enable; if (isMining()) startMining(); }
 
+	/// Check to see if we'd mine on an apparently bad chain.
+	bool mineOnBadChain() const { return m_mineOnBadChain; }
+	/// Set true if you want to mine even when the canary says you're on the wrong chain.
+	void setMineOnBadChain(bool _v) { m_mineOnBadChain = _v; }
+
+	/// @returns true if the canary says that the chain is bad.
+	bool isChainBad() const;
+	/// @returns true if the canary says that the client should be upgraded.
+	bool isUpgradeNeeded() const;
+
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
 	void startMining() override;
 	/// Stop mining.
 	/// NOT thread-safe
-	void stopMining() override { m_farm.stop(); }
+	void stopMining() override { m_wouldMine = false; rejigMining(); }
 	/// Are we mining now?
 	bool isMining() const override { return m_farm.isMining(); }
+	/// Are we mining now?
+	bool wouldMine() const override { return m_wouldMine; }
 	/// The hashrate...
 	uint64_t hashrate() const override;
 	/// Check the progress of the mining.
@@ -251,6 +263,9 @@ private:
 	/// Called when Worker is exiting.
 	void doneWorking() override;
 
+	/// Called when wouldMine(), turboMining(), isChainBad(), forceMining(), pendingTransactions() have changed.
+	void rejigMining();
+
 	/// Magically called when the chain has changed. An import route is provided.
 	/// Called by either submitWork() or in our main thread through syncBlockQueue().
 	void onChainChanged(ImportRoute const& _ir);
@@ -308,8 +323,10 @@ private:
 	Handler m_tqReady;
 	Handler m_bqReady;
 
+	bool m_wouldMine = false;					///< True if we /should/ be mining.
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
+	bool m_mineOnBadChain = false;			///< Mine even when the canary says it's a bad chain.
 	bool m_paranoia = false;				///< Should we be paranoid about our state?
 
 	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
