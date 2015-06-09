@@ -186,8 +186,6 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
 	m_stack.reserve((unsigned)c_stackLimit);
 
-	unique_ptr<CallParameters> callParams;
-
 	for (size_t i = 0; i < _ext.code.size(); ++i)
 	{
 		if (_ext.code[i] == (byte)Instruction::JUMPDEST)
@@ -612,16 +610,14 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 		case Instruction::CALL:
 		case Instruction::CALLCODE:
 		{
-			if (!callParams)
-				callParams.reset(new CallParameters);
-
-			callParams->gas = m_stack.back();
+			CallParameters callParams;
+			callParams.gas = m_stack.back();
 			if (m_stack[m_stack.size() - 3] > 0)
-				callParams->gas += c_callStipend;
+				callParams.gas += c_callStipend;
 			m_stack.pop_back();
-			callParams->codeAddress = asAddress(m_stack.back());
+			callParams.codeAddress = asAddress(m_stack.back());
 			m_stack.pop_back();
-			callParams->value = m_stack.back();
+			callParams.value = m_stack.back();
 			m_stack.pop_back();
 
 			unsigned inOff = (unsigned)m_stack.back();
@@ -633,19 +629,19 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 			unsigned outSize = (unsigned)m_stack.back();
 			m_stack.pop_back();
 
-			if (_ext.balance(_ext.myAddress) >= callParams->value && _ext.depth < 1024)
+			if (_ext.balance(_ext.myAddress) >= callParams.value && _ext.depth < 1024)
 			{
-				callParams->onOp = _onOp;
-				callParams->senderAddress = _ext.myAddress;
-				callParams->receiveAddress = inst == Instruction::CALL ? callParams->codeAddress : callParams->senderAddress;
-				callParams->data = bytesConstRef(m_temp.data() + inOff, inSize);
-				callParams->out = bytesRef(m_temp.data() + outOff, outSize);
-				m_stack.push_back(_ext.call(*callParams));
+				callParams.onOp = _onOp;
+				callParams.senderAddress = _ext.myAddress;
+				callParams.receiveAddress = inst == Instruction::CALL ? callParams.codeAddress : callParams.senderAddress;
+				callParams.data = bytesConstRef(m_temp.data() + inOff, inSize);
+				callParams.out = bytesRef(m_temp.data() + outOff, outSize);
+				m_stack.push_back(_ext.call(callParams));
 			}
 			else
 				m_stack.push_back(0);
 
-			io_gas += callParams->gas;
+			io_gas += callParams.gas;
 			break;
 		}
 		case Instruction::RETURN:
