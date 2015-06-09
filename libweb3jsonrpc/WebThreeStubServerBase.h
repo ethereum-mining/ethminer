@@ -60,8 +60,6 @@ public:
 
 /**
  * @brief JSON-RPC api implementation
- * @todo filters should work on unsigned instead of int
- * unsigned are not supported in json-rpc-cpp and there are bugs with double in json-rpc-cpp version 0.2.1
  * @todo split these up according to subprotocol (eth, shh, db, p2p, web3) and make it /very/ clear about how to add other subprotocols.
  * @todo modularise everything so additional subprotocols don't need to change this file.
  */

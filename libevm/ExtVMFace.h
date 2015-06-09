@@ -63,10 +63,21 @@ using LogEntries = std::vector<LogEntry>;
 struct LocalisedLogEntry: public LogEntry
 {
 	LocalisedLogEntry() {}
-	LocalisedLogEntry(LogEntry const& _le, unsigned _number, h256 _transactionHash = h256()): LogEntry(_le), number(_number), transactionHash(_transactionHash) {}
+	explicit LocalisedLogEntry(LogEntry const& _le): LogEntry(_le) {};
+	explicit LocalisedLogEntry(
+		LogEntry const& _le,
+		BlockInfo const& _bi,
+	    h256 _th,
+        unsigned _ti,
+	    unsigned _li
+	): LogEntry(_le), blockHash(_bi.hash()), blockNumber((BlockNumber)_bi.number), transactionHash(_th), transactionIndex(_ti), logIndex(_li), mined(true) {};
 
-	unsigned number = 0;
-	h256 transactionHash;
+	h256 blockHash = h256();
+	BlockNumber blockNumber = 0;
+	h256 transactionHash = h256();
+	unsigned transactionIndex = 0;
+	unsigned logIndex = 0;
+	bool mined = false;
 };
 
 using LocalisedLogEntries = std::vector<LocalisedLogEntry>;

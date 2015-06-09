@@ -164,15 +164,29 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 {
 	Json::Value res;
-	if (_e.transactionHash)
+	if (_e.topics.size() > 0)
 	{
 		res["data"] = toJS(_e.data);
 		res["address"] = toJS(_e.address);
 		res["topics"] = Json::Value(Json::arrayValue);
 		for (auto const& t: _e.topics)
 			res["topics"].append(toJS(t));
-		res["number"] = _e.number;
-		res["transactionHash"] = toJS(_e.transactionHash);
+		if (_e.mined)
+		{
+			res["blockNumber"] = _e.blockNumber;
+			res["blockHash"] = toJS(_e.blockHash);
+			res["logIndex"] = _e.logIndex;
+			res["transactionHash"] = toJS(_e.transactionHash);
+			res["transactionIndex"] = _e.transactionIndex;
+		}
+		else
+		{
+			res["blockNumber"] = Json::Value(Json::nullValue);
+			res["blockHash"] = Json::Value(Json::nullValue);
+			res["logIndex"] = Json::Value(Json::nullValue);
+			res["transactionHash"] = Json::Value(Json::nullValue);
+			res["transactionIndex"] = Json::Value(Json::nullValue);
+		}
 	}
 	return res;
 }
