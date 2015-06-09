@@ -127,7 +127,7 @@ unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
 	return devices.size();
 }
 
-bool ethash_cl_miner::haveSufficientGPUMemory(unsigned _platformId)
+bool ethash_cl_miner::haveSufficientGPUMemory()
 {
 	std::vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
@@ -136,15 +136,25 @@ bool ethash_cl_miner::haveSufficientGPUMemory(unsigned _platformId)
 		ETHCL_LOG("No OpenCL platforms found.");
 		return false;
 	}
+	for (unsigned i = 0; i < platforms.size(); ++i)
+		if (haveSufficientGPUMemory(i))
+			return true;
+
+	return false;
+}
+
+bool ethash_cl_miner::haveSufficientGPUMemory(unsigned _platformId)
+{
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (_platformId >= platforms.size())
+		return false;
 
 	std::vector<cl::Device> devices;
 	unsigned platform_num = std::min<unsigned>(_platformId, platforms.size() - 1);
 	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 	if (devices.empty())
-	{
-		ETHCL_LOG("No OpenCL devices found.");
 		return false;
-	}
 
 	for (cl::Device const& device: devices)
 	{
@@ -166,6 +176,39 @@ bool ethash_cl_miner::haveSufficientGPUMemory(unsigned _platformId)
 			);
 	}
 	return false;
+}
+
+void ethash_cl_miner::listDevices()
+{
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (platforms.empty())
+	{
+		ETHCL_LOG("No OpenCL platforms found.");
+		return;
+	}
+	for (unsigned i = 0; i < platforms.size(); ++i)
+		listDevices(i);
+}
+
+void ethash_cl_miner::listDevices(unsigned _platformId)
+{
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (_platformId >= platforms.size())
+		return;
+
+	std::string outString ="Listing OpenCL devices for platform "  + to_string(_platformId) + "\n[deviceID] deviceName\n";
+	std::vector<cl::Device> devices;
+	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
+	unsigned i = 0;
+	std::string deviceString;
+	for (cl::Device const& device: devices)
+	{
+		outString += "[" + to_string(i) + "] " + device.getInfo<CL_DEVICE_NAME>() + "\n";
+		++i;
+	}
+	ETHCL_LOG(outString);
 }
 
 void ethash_cl_miner::finish()
