@@ -135,9 +135,7 @@ private:
 	Transaction m_t;					///< The original transaction. Set by setup().
 	LogEntries m_logs;					///< The log entries created by this transaction. Set by finalize().
 
-	bigint m_gasRequired;				///< Gas required during execution of the transaction.
 	bigint m_gasCost;
-	bigint m_totalCost;
 };
 
 }
