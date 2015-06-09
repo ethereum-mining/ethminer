@@ -364,11 +364,6 @@ void Ethash::GPUMiner::pause()
 	stopWorking();
 }
 
-bool Ethash::GPUMiner::haveSufficientGPUMemory()
-{
-	return ethash_cl_miner::haveSufficientGPUMemory(s_platformId);
-}
-
 std::string Ethash::GPUMiner::platformInfo()
 {
 	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
@@ -377,6 +372,16 @@ std::string Ethash::GPUMiner::platformInfo()
 unsigned Ethash::GPUMiner::getNumDevices()
 {
 	return ethash_cl_miner::get_num_devices(s_platformId);
+}
+
+void Ethash::GPUMiner::listDevices()
+{
+	return ethash_cl_miner::listDevices();
+}
+
+bool Ethash::GPUMiner::haveSufficientMemory()
+{
+	return ethash_cl_miner::haveSufficientGPUMemory();
 }
 
 #endif

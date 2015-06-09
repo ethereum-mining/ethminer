@@ -88,7 +88,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 	}
 	
 	if (!_node.endpoint)
-		return move(shared_ptr<NodeEntry>());
+		return shared_ptr<NodeEntry>();
 	
 	// ping address to recover nodeid if nodeid is empty
 	if (!_node.id)
@@ -98,7 +98,7 @@ shared_ptr<NodeEntry> NodeTable::addNode(Node const& _node, NodeRelation _relati
 		DEV_GUARDED(x_pubkDiscoverPings)
 			m_pubkDiscoverPings[_node.endpoint.address] = std::chrono::steady_clock::now();
 		ping(_node.endpoint);
-		return move(shared_ptr<NodeEntry>());
+		return shared_ptr<NodeEntry>();
 	}
 	
 	DEV_GUARDED(x_nodes)
@@ -129,7 +129,7 @@ list<NodeId> NodeTable::nodes() const
 	DEV_GUARDED(x_nodes)
 		for (auto& i: m_nodes)
 			nodes.push_back(i.second->id);
-	return move(nodes);
+	return nodes;
 }
 
 list<NodeEntry> NodeTable::snapshot() const
@@ -140,7 +140,7 @@ list<NodeEntry> NodeTable::snapshot() const
 			for (auto const& np: s.nodes)
 				if (auto n = np.lock())
 					ret.push_back(*n);
-	return move(ret);
+	return ret;
 }
 
 Node NodeTable::node(NodeId const& _id)
@@ -282,7 +282,7 @@ vector<shared_ptr<NodeEntry>> NodeTable::nearestNodeEntries(NodeId _target)
 		for (auto const& n: nodes.second)
 			if (ret.size() < s_bucketSize && !!n->endpoint && n->endpoint.isAllowed())
 				ret.push_back(n);
-	return move(ret);
+	return ret;
 }
 
 void NodeTable::ping(NodeIPEndpoint _to) const
@@ -422,8 +422,8 @@ void NodeTable::onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytes
 	
 	unsigned packetType = signedBytes[0];
 	bytesConstRef rlpBytes(_packet.cropped(h256::size + Signature::size + 1));
-	RLP rlp(rlpBytes);
 	try {
+		RLP rlp(rlpBytes);
 		switch (packetType)
 		{
 			case Pong::type:

@@ -219,6 +219,14 @@ public:
 		return uit == m_ranges.end() ? m_all.second : uit->first;
 	}
 
+	size_t size() const
+	{
+		size_t c = 0;
+		for (auto const& r: this->m_ranges)
+			c += r.second - r.first;
+		return c;
+	}
+
 private:
 	UnsignedRange m_all;
 	std::map<T, T> m_ranges;
