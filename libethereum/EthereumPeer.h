@@ -82,6 +82,12 @@ public:
 	/// Request blocks. Uses block download manager.
 	void requestBlocks();
 
+	/// Check if this node is rude.
+	bool isRude() const { return m_isRude; }
+
+	/// Set that it's a rude node.
+	void setRude();
+
 private:
 	using p2p::Capability::sealAndSend;
 
@@ -101,7 +107,7 @@ private:
 	void setAsking(Asking _g);
 
 	/// Do we presently need syncing with this peer?
-	bool needsSyncing() const { return !!m_latestHash; }
+	bool needsSyncing() const { return !isRude() && !!m_latestHash; }
 
 	/// Are we presently syncing with this peer?
 	bool isSyncing() const;
@@ -128,8 +134,9 @@ private:
 
 	/// This is built as we ask for hashes. Once no more hashes are given, we present this to the
 	/// host who initialises the DownloadMan and m_sub becomes active for us to begin asking for blocks.
-	unsigned m_expectedHashes = 0;				///< Estimated upper bound of hashes to expect from this peer.
-	unsigned m_syncHashNumber = 0;				///< Number of latest hash we sync to
+	unsigned m_expectedHashes = 0;			///< Estimated upper bound of hashes to expect from this peer.
+	unsigned m_syncHashNumber = 0;			///< Number of latest hash we sync to (PV61+)
+	h256 m_syncHash;						///< Latest hash we sync to (PV60)
 
 	/// Once we're asking for blocks, this becomes in use.
 	DownloadSub m_sub;
@@ -145,6 +152,8 @@ private:
 	h256Hash m_knownBlocks;					///< Blocks that the peer already knows about (that don't need to be sent to them).
 	Mutex x_knownTransactions;
 	h256Hash m_knownTransactions;			///< Transactions that the peer already knows of.
+
+	bool m_isRude;							///< True if this node has been rude in the past.
 };
 
 }

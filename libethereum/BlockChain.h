@@ -257,6 +257,9 @@ public:
 	/// Deallocate unused data.
 	void garbageCollect(bool _force = false);
 
+	/// Change the function that is called with a bad block.
+	template <class T> void setOnBad(T const& _t) { m_onBad = _t; }
+
 private:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
@@ -335,6 +338,8 @@ private:
 
 	ldb::ReadOptions m_readOptions;
 	ldb::WriteOptions m_writeOptions;
+
+	std::function<void(Exception&)> m_onBad;									///< Called if we have a block that doesn't verify.
 
 	friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
 };

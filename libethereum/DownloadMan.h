@@ -187,7 +187,6 @@ public:
 
 	bool askedContains(unsigned _i) const { Guard l(m_fetch); return m_asked.contains(_i); }
 	RangeMask<unsigned> const& asked() const { return m_asked; }
-	RangeMask<unsigned> const& attemped() const { return m_attempted; }
 
 private:
 	void resetFetch();		// Called by DownloadMan when we need to reset the download.
@@ -196,7 +195,6 @@ private:
 	mutable Mutex m_fetch;
 	unsigned m_remaining;
 	RangeMask<unsigned> m_asked;
-	RangeMask<unsigned> m_attempted;
 };
 
 class HashDownloadMan
@@ -255,6 +253,11 @@ public:
 		return m_got.full();
 	}
 
+	unsigned gotCount() const
+	{
+		return m_got.size();
+	}
+
 	size_t chainSize() const { ReadGuard l(m_lock); return m_chainCount; }
 	size_t chainEmpty() const { ReadGuard l(m_lock); return m_chainCount == 0; }
 	void foreachSub(std::function<void(HashDownloadSub const&)> const& _f) const { ReadGuard l(x_subs); for(auto i: m_subs) _f(*i); }
@@ -274,3 +277,4 @@ private:
 }
 
 }
+
