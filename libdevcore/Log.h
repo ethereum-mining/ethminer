@@ -73,6 +73,9 @@ public:
 	LogOverride(bool _value): LogOverrideAux(&typeid(Channel), _value) {}
 };
 
+bool isChannelVisible(std::type_info const* _ch, bool _default);
+template <class Channel> bool isChannelVisible() { return isChannelVisible(&typeid(Channel), Channel::verbosity <= g_logVerbosity); }
+
 /// Temporary changes system's verbosity for specific function. Restores the old verbosity when function returns.
 /// Not thread-safe, use with caution!
 struct VerbosityHolder
