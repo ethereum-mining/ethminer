@@ -184,30 +184,24 @@ void VM::checkRequirements(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp,
 
 bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
-	// Reset leftovers from possible previous run
-	m_curPC = 0;
-	m_jumpDests.clear();
-
 	m_stack.reserve((unsigned)c_stackLimit);
 
 	unique_ptr<CallParameters> callParams;
 
-	if (m_jumpDests.empty())
-		for (unsigned i = 0; i < _ext.code.size(); ++i)
-		{
-			if (_ext.code[i] == (byte)Instruction::JUMPDEST)
-				m_jumpDests.push_back(i);
-			else if (_ext.code[i] >= (byte)Instruction::PUSH1 && _ext.code[i] <= (byte)Instruction::PUSH32)
-				i += _ext.code[i] - (unsigned)Instruction::PUSH1 + 1;
-		}
+	for (size_t i = 0; i < _ext.code.size(); ++i)
+	{
+		if (_ext.code[i] == (byte)Instruction::JUMPDEST)
+			m_jumpDests.push_back(i);
+		else if (_ext.code[i] >= (byte)Instruction::PUSH1 && _ext.code[i] <= (byte)Instruction::PUSH32)
+			i += _ext.code[i] - (size_t)Instruction::PUSH1 + 1;
+	}
+
 	u256 nextPC = m_curPC + 1;
 	for (m_steps = 0; true; m_curPC = nextPC, nextPC = m_curPC + 1, ++m_steps)
 	{
-		// INSTRUCTION...
 		Instruction inst = (Instruction)_ext.getCode(m_curPC);
 		checkRequirements(io_gas, _ext, _onOp, inst);
 
-		// EXECUTE...
 		switch (inst)
 		{
 		case Instruction::ADD:
@@ -303,7 +297,7 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 		case Instruction::SIGNEXTEND:
 			if (m_stack.back() < 31)
 			{
-				unsigned const testBit(m_stack.back() * 8 + 7);
+				auto testBit = static_cast<unsigned>(m_stack.back()) * 8 + 7;
 				u256& number = m_stack[m_stack.size() - 2];
 				u256 mask = ((u256(1) << testBit) - 1);
 				if (boost::multiprecision::bit_test(number, testBit))
@@ -484,7 +478,7 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 		case Instruction::DUP15:
 		case Instruction::DUP16:
 		{
-			auto n = 1 + (int)inst - (int)Instruction::DUP1;
+			auto n = 1 + (unsigned)inst - (unsigned)Instruction::DUP1;
 			m_stack.push_back(m_stack[m_stack.size() - n]);
 			break;
 		}
@@ -505,7 +499,7 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 		case Instruction::SWAP15:
 		case Instruction::SWAP16:
 		{
-			unsigned n = (int)inst - (int)Instruction::SWAP1 + 2;
+			auto n = (unsigned)inst - (unsigned)Instruction::SWAP1 + 2;
 			auto d = m_stack.back();
 			m_stack.back() = m_stack[m_stack.size() - n];
 			m_stack[m_stack.size() - n] = d;
