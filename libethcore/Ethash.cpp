@@ -371,7 +371,7 @@ std::string Ethash::GPUMiner::platformInfo()
 
 unsigned Ethash::GPUMiner::getNumDevices()
 {
-	return ethash_cl_miner::get_num_devices(s_platformId);
+	return ethash_cl_miner::getNumDevices(s_platformId);
 }
 
 void Ethash::GPUMiner::listDevices()

@@ -99,14 +99,14 @@ std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _devic
 	return "{ \"platform\": \"" + platforms[platform_num].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
 }
 
-unsigned ethash_cl_miner::get_num_platforms()
+unsigned ethash_cl_miner::getNumPlatforms()
 {
 	std::vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
 	return platforms.size();
 }
 
-unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
+unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 {
 	std::vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
@@ -129,6 +129,31 @@ unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
 
 bool ethash_cl_miner::haveSufficientGPUMemory()
 {
+	return searchForAllDevices([](cl::Device const _device) -> bool
+		{
+			cl_ulong result;
+			_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
+			if (result >= ETHASH_CL_MINIMUM_MEMORY)
+			{
+				ETHCL_LOG(
+					"Found suitable OpenCL device [" << _device.getInfo<CL_DEVICE_NAME>()
+					<< "] with " << result << " bytes of GPU memory"
+				);
+				return true;
+			}
+			
+			ETHCL_LOG(
+				"OpenCL device " << _device.getInfo<CL_DEVICE_NAME>()
+				<< " has insufficient GPU memory." << result <<
+				" bytes of memory found < " << ETHASH_CL_MINIMUM_MEMORY << " bytes of memory required"
+			);
+			return false;
+		}
+	);
+}
+
+bool ethash_cl_miner::searchForAllDevices(std::function<bool(cl::Device const&)> _callback)
+{
 	std::vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
 	if (platforms.empty())
@@ -137,13 +162,13 @@ bool ethash_cl_miner::haveSufficientGPUMemory()
 		return false;
 	}
 	for (unsigned i = 0; i < platforms.size(); ++i)
-		if (haveSufficientGPUMemory(i))
+		if (searchForAllDevices(i, _callback))
 			return true;
 
 	return false;
 }
 
-bool ethash_cl_miner::haveSufficientGPUMemory(unsigned _platformId)
+bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, std::function<bool(cl::Device const&)> _callback)
 {
 	std::vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
@@ -151,63 +176,25 @@ bool ethash_cl_miner::haveSufficientGPUMemory(unsigned _platformId)
 		return false;
 
 	std::vector<cl::Device> devices;
-	unsigned platform_num = std::min<unsigned>(_platformId, platforms.size() - 1);
-	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
-	if (devices.empty())
-		return false;
-
+	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 	for (cl::Device const& device: devices)
-	{
-		cl_ulong result;
-		device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-		if (result >= ETHASH_CL_MINIMUM_MEMORY)
-		{
-			ETHCL_LOG(
-				"Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
-				<< "] with " << result << " bytes of GPU memory"
-			);
+		if (_callback(device))
 			return true;
-		}
-		else
-			ETHCL_LOG(
-				"OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
-				<< " has insufficient GPU memory." << result <<
-				" bytes of memory found < " << ETHASH_CL_MINIMUM_MEMORY << " bytes of memory required"
-			);
-	}
+		
 	return false;
 }
 
 void ethash_cl_miner::listDevices()
 {
-	std::vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
-	if (platforms.empty())
-	{
-		ETHCL_LOG("No OpenCL platforms found.");
-		return;
-	}
-	for (unsigned i = 0; i < platforms.size(); ++i)
-		listDevices(i);
-}
-
-void ethash_cl_miner::listDevices(unsigned _platformId)
-{
-	std::vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
-	if (_platformId >= platforms.size())
-		return;
-
-	std::string outString ="Listing OpenCL devices for platform "  + to_string(_platformId) + "\n[deviceID] deviceName\n";
-	std::vector<cl::Device> devices;
-	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
-	unsigned i = 0;
-	std::string deviceString;
-	for (cl::Device const& device: devices)
-	{
-		outString += "[" + to_string(i) + "] " + device.getInfo<CL_DEVICE_NAME>() + "\n";
-		++i;
-	}
+	std::string outString ="\nListing OpenCL devices.\nFORMAT: [deviceID] deviceName\n";
+	unsigned int i = 0;
+	searchForAllDevices([&outString, &i](cl::Device const _device) -> bool
+		{
+			outString += "[" + to_string(i) + "] " + _device.getInfo<CL_DEVICE_NAME>() + "\n";
+			++i;
+			return false; // so that search continues
+		}
+	);
 	ETHCL_LOG(outString);
 }
 

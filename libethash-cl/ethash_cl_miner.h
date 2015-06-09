@@ -32,13 +32,14 @@ public:
 	ethash_cl_miner();
 	~ethash_cl_miner();
 
-	static unsigned get_num_platforms();
-	static unsigned get_num_devices(unsigned _platformId = 0);
+	static bool searchForAllDevices(unsigned _platformId, std::function<bool(cl::Device const&)> _callback);
+	static bool searchForAllDevices(std::function<bool(cl::Device const&)> _callback);
+	static unsigned getNumPlatforms();
+	static unsigned getNumDevices(unsigned _platformId = 0);
 	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
 	static bool haveSufficientGPUMemory();
-	static bool haveSufficientGPUMemory(unsigned _platformId);
 	static void listDevices();
-	static void listDevices(unsigned _platformId);
+	static bool configureGPU();
 
 	bool init(
 		uint8_t const* _dag,
@@ -68,4 +69,6 @@ private:
 	cl::Buffer m_search_buf[c_num_buffers];
 	unsigned m_workgroup_size;
 	bool m_opencl_1_1;
+
+	static const unsigned int s_dagChunksNum = 1;
 };
