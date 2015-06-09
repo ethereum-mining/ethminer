@@ -260,7 +260,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 				{
 					// filter catches them
 					for (LogEntry const& l: m)
-						i.second.changes.push_back(LocalisedLogEntry(l, bc().number() + 1));
+						i.second.changes.push_back(LocalisedLogEntry(l));
 					changed.insert(i.first);
 				}
 			}
@@ -375,7 +375,7 @@ void MixClient::noteChanged(h256Set const& _filters)
 			if (m_filters.count(i.second.id))
 				i.second.changes += m_filters.at(i.second.id).changes;
 			else
-				i.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, 0));
+				i.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry));
 		}
 	for (auto& i: m_filters)
 		i.second.changes.clear();

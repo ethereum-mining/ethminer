@@ -44,7 +44,7 @@ static const h256 PendingChangedFilter = u256(0);
 static const h256 ChainChangedFilter = u256(1);
 
 static const LogEntry SpecialLogEntry = LogEntry(Address(), h256s(), bytes());
-static const LocalisedLogEntry InitialChange(SpecialLogEntry, 0);
+static const LocalisedLogEntry InitialChange(SpecialLogEntry);
 
 struct ClientWatch
 {

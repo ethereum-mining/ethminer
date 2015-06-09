@@ -336,7 +336,7 @@ static S& filtersStreamOut(S& _out, T const& _fs)
 	return _out;
 }
 
-void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& io_changed, h256 _transactionHash)
+void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& io_changed)
 {
 	Guard l(x_filtersWatches);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
@@ -347,7 +347,7 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& 
 		{
 			// filter catches them
 			for (LogEntry const& l: m)
-				i.second.changes.push_back(LocalisedLogEntry(l, m_bc.number() + 1, _transactionHash));
+				i.second.changes.push_back(LocalisedLogEntry(l));
 			io_changed.insert(i.first);
 		}
 	}
@@ -357,24 +357,28 @@ void Client::appendFromNewBlock(h256 const& _block, h256Hash& io_changed)
 {
 	// TODO: more precise check on whether the txs match.
 	auto d = m_bc.info(_block);
-	auto br = m_bc.receipts(_block);
+	auto receipts = m_bc.receipts(_block).receipts;
 
 	Guard l(x_filtersWatches);
 	for (pair<h256 const, InstalledFilter>& i: m_filters)
+	{
 		// acceptable number & looks like block may contain a matching log entry.
-		for (size_t j = 0; j < br.receipts.size(); j++)
+		unsigned logIndex = 0;
+		for (size_t j = 0; j < receipts.size(); j++)
 		{
-			auto tr = br.receipts[j];
+			logIndex++;
+			auto tr = receipts[j];
 			auto m = i.second.filter.matches(tr);
 			if (m.size())
 			{
 				auto transactionHash = transaction(d.hash(), j).sha3();
 				// filter catches them
 				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, (unsigned)d.number, transactionHash));
+					i.second.changes.push_back(LocalisedLogEntry(l, d, transactionHash, j, logIndex));
 				io_changed.insert(i.first);
 			}
 		}
+	}
 }
 
 void Client::setForceMining(bool _enable)
@@ -508,7 +512,7 @@ void Client::syncTransactionQueue()
 
 	DEV_READ_GUARDED(x_postMine)
 		for (size_t i = 0; i < newPendingReceipts.size(); i++)
-			appendFromNewPending(newPendingReceipts[i], changeds, m_postMine.pending()[i].sha3());
+			appendFromNewPending(newPendingReceipts[i], changeds);
 	changeds.insert(PendingChangedFilter);
 
 	// Tell farm about new transaction (i.e. restartProofOfWork mining).
@@ -649,7 +653,7 @@ void Client::noteChanged(h256Hash const& _filters)
 			else
 			{
 				cwatch << "!!!" << w.first << LogTag::Special << (w.second.id == PendingChangedFilter ? "pending" : w.second.id == ChainChangedFilter ? "chain" : "???");
-				w.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, 0));
+				w.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry));
 			}
 		}
 	// clear the filters now.

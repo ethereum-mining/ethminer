@@ -229,7 +229,7 @@ protected:
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& io_changed, h256 _sha3);
+	void appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& io_changed);
 
 	/// Collate the changed filters for the hash of the given block.
 	/// Insert any filters that are activated into @a o_changed.
