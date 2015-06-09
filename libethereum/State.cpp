@@ -226,21 +226,21 @@ StateDiff State::diff(State const& _c, bool _quick) const
 	}
 	else
 	{
-		for (auto i: trie)
+		for (auto const& i: trie)
 			ads.insert(i.first), trieAds.insert(i.first);
-		for (auto i: trieD)
+		for (auto const& i: trieD)
 			ads.insert(i.first), trieAdsD.insert(i.first);
 	}
 
-	for (auto i: m_cache)
+	for (auto const& i: m_cache)
 		ads.insert(i.first);
-	for (auto i: _c.m_cache)
+	for (auto const& i: _c.m_cache)
 		ads.insert(i.first);
 
 //	cnote << *this;
 //	cnote << _c;
 
-	for (auto i: ads)
+	for (auto const& i: ads)
 	{
 		auto it = m_cache.find(i);
 		auto itD = _c.m_cache.find(i);
