@@ -81,7 +81,7 @@ void BlockQueue::verifierBody()
 				res.first.populate(res.second, CheckEverything, work.first);
 				res.first.verifyInternals(&res.second);
 			}
-			catch (InvalidNonce&)
+			catch (InvalidBlockNonce&)
 			{
 				badBlock(res.second, "Invalid block nonce");
 				cwarn << "  Nonce:" << res.first.nonce.hex();
@@ -417,4 +417,16 @@ void BlockQueue::retryAllUnknown()
 	}
 	m_unknown.clear();
 	m_moreToVerify.notify_all();
+}
+
+std::ostream& dev::eth::operator<<(std::ostream& _out, BlockQueueStatus const& _bqs)
+{
+	_out << "verified: " << _bqs.verified << endl;
+	_out << "verifying: " << _bqs.verifying << endl;
+	_out << "unverified: " << _bqs.unverified << endl;
+	_out << "future: " << _bqs.future << endl;
+	_out << "unknown: " << _bqs.unknown << endl;
+	_out << "bad: " << _bqs.bad << endl;
+
+	return _out;
 }

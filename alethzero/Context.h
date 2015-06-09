@@ -28,6 +28,7 @@
 #include <libethcore/Common.h>
 
 class QComboBox;
+class QSpinBox;
 
 namespace dev { namespace eth { struct StateDiff; class KeyManager; } }
 
@@ -37,6 +38,8 @@ namespace dev { namespace eth { struct StateDiff; class KeyManager; } }
 #define Span(S) "<span style=\"" S "\">"
 
 void initUnits(QComboBox* _b);
+void setValueUnits(QComboBox* _units, QSpinBox* _value, dev::u256 _v);
+dev::u256 fromValueUnits(QComboBox* _units, QSpinBox* _value);
 
 std::vector<dev::KeyPair> keysAsVector(QList<dev::KeyPair> const& _keys);
 
@@ -67,5 +70,6 @@ public:
 	virtual dev::Secret retrieveSecret(dev::Address const& _a) const = 0;
 	virtual dev::eth::KeyManager& keyManager() = 0;
 
+	virtual dev::u256 gasPrice() const = 0;
 };
 
