@@ -23,6 +23,7 @@
 #include <libevmcore/Instruction.h>
 #include <libethcore/Common.h>
 #include <libevm/VMFace.h>
+#include "ExtVM.h"
 #include "Transaction.h"
 
 namespace dev
@@ -32,7 +33,6 @@ namespace eth
 
 class State;
 class BlockChain;
-class ExtVM;
 struct Manifest;
 
 struct VMTraceChannel: public LogChannel { static const char* name(); static const int verbosity = 11; };
@@ -65,8 +65,6 @@ public:
 	Executive(State& _s, LastHashes const& _lh, unsigned _level = 0): m_s(_s), m_lastHashes(_lh), m_depth(_level) {}
 	/// Basic constructor.
 	Executive(State& _s, BlockChain const& _bc, unsigned _level = 0);
-	/// Basic destructor.
-	~Executive() = default;
 
 	Executive(Executive const&) = delete;
 	void operator=(Executive) = delete;
@@ -124,7 +122,7 @@ public:
 private:
 	State& m_s;							///< The state to which this operation/transaction is applied.
 	LastHashes m_lastHashes;
-	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required.
+	std::unique_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required.
 	bytesRef m_outRef;					///< Reference to "expected output" buffer.
 	ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
 	Address m_newAddress;				///< The address of the created contract in the case of create() being called.
