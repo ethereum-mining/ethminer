@@ -288,6 +288,7 @@ void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes, bool 
 {
 	if (_hashes.empty())
 	{
+		_peer->m_hashSub.doneFetch();
 		continueSync();
 		return;
 	}
@@ -400,6 +401,7 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 		// Got to this peer's latest block - just give up.
 		clog(NetNote) << "Finishing blocks fetch...";
 		// NOTE: need to notify of giving up on chain-hashes, too, altering state as necessary.
+		_peer->m_sub.doneFetch();
 		_peer->setIdle();
 		return;
 	}
@@ -694,3 +696,4 @@ HashChainStatus EthereumHost::status()
 		return HashChainStatus { static_cast<unsigned>(m_hashMan.chainSize()), static_cast<unsigned>(m_hashMan.gotCount()), false };
 	return HashChainStatus { m_estimatedHashes, static_cast<unsigned>(m_hashes.size()), true };
 }
+
