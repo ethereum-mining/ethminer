@@ -179,6 +179,8 @@ protected:
 	// filters
 	mutable Mutex x_filtersWatches;							///< Our lock.
 	std::unordered_map<h256, InstalledFilter> m_filters;	///< The dictionary of filters that are active.
+	std::unordered_map<h256, h256s> m_specialFilters = {{PendingChangedFilter, {}}, {ChainChangedFilter, {}}};
+															///< The dictionary of special filters and their additional data
 	std::map<unsigned, ClientWatch> m_watches;				///< Each and every watch - these reference a filter.
 };
 
