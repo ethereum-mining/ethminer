@@ -127,6 +127,11 @@ public:
 				cerr << "Bad " << arg << " option: " << argv[i] << endl;
 				throw BadArgument();
 			}
+		else if (arg == "--list-devices")
+		{
+			ProofOfWork::GPUMiner::listDevices();
+			exit(0);
+		}
 		else if (arg == "--use-chunks")
 		{
 			dagChunks = 4;
@@ -175,7 +180,7 @@ public:
 			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
 		{
-			if (!ProofOfWork::GPUMiner::haveSufficientGPUMemory())
+			if (!ProofOfWork::GPUMiner::haveSufficientMemory())
 			{
 				cout << "No GPU device with sufficient memory was found. Defaulting to CPU" << endl;
 				m_minerType = MinerType::CPU;
