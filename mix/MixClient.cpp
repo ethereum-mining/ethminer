@@ -131,7 +131,6 @@ Transaction MixClient::replaceGas(Transaction const& _t, u256 const& _gas, Secre
 
 void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _call, bool _gasAuto, Secret const& _secret)
 {
-<<<<<<< HEAD
 	Transaction t = _gasAuto ? replaceGas(_t, m_state.gasLimitRemaining()) : _t;
 	// do debugging run first
 	LastHashes lastHashes(256);

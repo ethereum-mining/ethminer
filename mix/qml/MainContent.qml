@@ -224,6 +224,10 @@ Rectangle {
                     onDebugDataReady:  {
                         scenarioExe.visible = false
                         debugPanel.visible = true
+                        if (scenarioExe.bc.debugTrRequested)
+                        {
+                            debugPanel.setTr(scenarioExe.bc.model.blocks[scenarioExe.bc.debugTrRequested[0]].transactions[scenarioExe.bc.debugTrRequested[1]])
+                        }
                     }
                 }
 

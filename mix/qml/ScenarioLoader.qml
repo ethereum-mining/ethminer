@@ -48,7 +48,7 @@ RowLayout
             width: 100
             height: 30
             buttonShortcut: ""
-            sourceImg: "qrc:/qml/img/restoreIcon@2x.png"
+            sourceImg: "qrc:/qml/img/restoreicon@2x.png"
             onClicked: {
                 restore()
             }
@@ -71,7 +71,7 @@ RowLayout
             width: 100
             height: 30
             buttonShortcut: ""
-            sourceImg: "qrc:/qml/img/saveIcon@2x.png"
+            sourceImg: "qrc:/qml/img/saveicon@2x.png"
         }
 
         ScenarioButton
@@ -79,16 +79,13 @@ RowLayout
             id: duplicateScenario
             text: qsTr("Duplicate")
             onClicked: {
-                var state = JSON.parse(JSON.stringify(projectModel.stateListModel.getState(scenarioList.currentIndex)))
-                state.title = qsTr("Copy of ") + state.title;
-                projectModel.stateListModel.appendState(state)
-                projectModel.stateListModel.save()
+                projectModel.stateListModel.duplicateState(scenarioList.currentIndex)
                 duplicated(state)
             }
             width: 100
             height: 30
             buttonShortcut: ""
-            sourceImg: "qrc:/qml/img/duplicateIcon@2x.png"
+            sourceImg: "qrc:/qml/img/duplicateicon@2x.png"
         }
     }
 }

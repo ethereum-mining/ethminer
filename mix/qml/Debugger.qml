@@ -11,7 +11,7 @@ import "."
 Rectangle {
 	id: debugPanel
 
-	property alias debugSlider: statesSlider
+    property alias debugSlider: statesSlider
 	property alias solLocals: solLocals
 	property alias solStorage: solStorage
 	property alias solCallStack: solCallStack
@@ -38,6 +38,11 @@ Rectangle {
 		Debugger.updateMode();
 		machineStates.updateHeight();
 	}
+
+    function setTr(tr)
+    {
+        trName.text = tr.label
+    }
 
 	function displayCompilationErrorIfAny()
 	{
@@ -104,28 +109,67 @@ Rectangle {
 		property alias solLocalsHeightSettings: solLocalsRect.height
 	}
 
-    Splitter {
+    ColumnLayout {
 		id: debugScrollArea
 		anchors.fill: parent
-		orientation: Qt.Vertical
-
-        /*TransactionLog {
-			id: transactionLog
-			Layout.fillWidth: true
-			Layout.minimumHeight: 130
-			height: 250
-			anchors.top: parent.top
-			anchors.left: parent.left
-			anchors.right: parent.right
-			anchors.leftMargin: machineStates.sideMargin
-			anchors.rightMargin: machineStates.sideMargin
-			anchors.topMargin: machineStates.sideMargin
-        }*/
-
-        Button
+        //orientation: Qt.Vertical
+        spacing: 0
+        RowLayout
         {
-            text: qsTr("close")
-            onClicked: panelClosed()
+            Layout.preferredWidth: parent.width
+            Layout.preferredHeight: 30
+            Rectangle
+            {
+                Layout.preferredWidth: parent.width
+                Layout.preferredHeight: parent.height
+                color: "transparent"
+                Text {
+                    anchors.centerIn: parent
+                    text: qsTr("Current Transaction")
+                }
+
+                Rectangle
+                {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    width: 30
+                    height: parent.height
+                    color: "transparent"
+                    anchors.verticalCenter: parent.verticalCenter
+                    Image {
+                        source: "qrc:/qml/img/leftarrow@2x.png"
+                        width: parent.width
+                        fillMode: Image.PreserveAspectFit
+                        anchors.centerIn: parent
+                    }
+                    MouseArea
+                    {
+                        anchors.fill: parent
+                        onClicked:
+                        {
+                            Debugger.init(null);
+                            panelClosed()
+                        }
+                    }
+                }
+            }
+        }
+
+        RowLayout
+        {
+            Layout.preferredWidth: parent.width
+            Layout.preferredHeight: 30
+            Rectangle
+            {
+                Layout.preferredWidth: parent.width
+                Layout.preferredHeight: parent.height
+                color: "#2C79D3"
+                Text {
+                    id: trName
+                    color: "white"
+                    anchors.centerIn: parent
+                }
+            }
         }
 
 		ScrollView
@@ -169,32 +213,6 @@ Rectangle {
 							id: jumpButtons
 							spacing: 3
 							layoutDirection: Qt.LeftToRight
-
-                           /*StepActionImage
-							{
-								id: playAction
-								enabledStateImg: "qrc:/qml/img/play_button.png"
-								disableStateImg: "qrc:/qml/img/play_button.png"
-								buttonLeft: true
-								onClicked: projectModel.stateListModel.runState(transactionLog.selectedStateIndex)
-								width: 23
-								buttonShortcut: "Ctrl+Shift+F8"
-								buttonTooltip: qsTr("Start Debugging")
-								visible: true
-								Layout.alignment: Qt.AlignLeft
-							}
-
-							StepActionImage
-							{
-								id: pauseAction
-								enabledStateImg: "qrc:/qml/img/stop_button2x.png"
-								disableStateImg: "qrc:/qml/img/stop_button2x.png"
-								onClicked: Debugger.init(null);
-								width: 23
-								buttonShortcut: "Ctrl+Shift+F9"
-								buttonTooltip: qsTr("Stop Debugging")
-								visible: true
-                            }*/
 
 							StepActionImage
 							{

@@ -10,6 +10,7 @@ import "."
 
 Rectangle {
     color: "#ededed"
+    property alias bc: blockChain
 
     Connections
     {
