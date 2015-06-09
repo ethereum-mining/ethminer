@@ -64,6 +64,12 @@ struct LocalisedLogEntry: public LogEntry
 {
 	LocalisedLogEntry() {}
 	explicit LocalisedLogEntry(LogEntry const& _le): LogEntry(_le) {};
+
+	explicit LocalisedLogEntry(
+		LogEntry const& _le,
+	    h256 _special
+	): LogEntry(_le), special(_special) {};
+
 	explicit LocalisedLogEntry(
 		LogEntry const& _le,
 		BlockInfo const& _bi,
@@ -78,6 +84,7 @@ struct LocalisedLogEntry: public LogEntry
 	unsigned transactionIndex = 0;
 	unsigned logIndex = 0;
 	bool mined = false;
+	h256 special = h256();
 };
 
 using LocalisedLogEntries = std::vector<LocalisedLogEntry>;

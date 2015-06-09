@@ -187,6 +187,8 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 			res["transactionHash"] = Json::Value(Json::nullValue);
 			res["transactionIndex"] = Json::Value(Json::nullValue);
 		}
+	} else {
+		res = toJS(_e.special);
 	}
 	return res;
 }
@@ -814,11 +816,13 @@ Json::Value WebThreeStubServerBase::eth_compileSolidity(string const& _source)
 			info["language"] = "";
 			info["languageVersion"] = "";
 			info["compilerVersion"] = "";
-			info["abiDefinition"] = compiler.getInterface(name);
-			info["userDoc"] = compiler.getMetadata(name, dev::solidity::DocumentationType::NatspecUser);
-			info["developerDoc"] = compiler.getMetadata(name, dev::solidity::DocumentationType::NatspecDev);
+
+			Json::Reader reader;
+			reader.parse(compiler.getInterface(name), info["abiDefinition"]);
+			reader.parse(compiler.getMetadata(name, dev::solidity::DocumentationType::NatspecUser), info["userDoc"]);
+			reader.parse(compiler.getMetadata(name, dev::solidity::DocumentationType::NatspecDev), info["developerDoc"]);
+
 			contract["info"] = info;
-		
 			res[name] = contract;
 		}
 	}
