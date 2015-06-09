@@ -207,7 +207,7 @@ static Json::Value toJson(map<u256, u256> const& _storage)
 	return res;
 }
 
-static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
+static dev::eth::LogFilter toLogFilter(Json::Value const& _json)
 {
 	dev::eth::LogFilter filter;
 	if (!_json.isObject() || _json.empty())
@@ -218,6 +218,41 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 		filter.withEarliest(jsToFixed<32>(_json["fromBlock"].asString()));
 	if (!_json["toBlock"].empty())
 		filter.withLatest(jsToFixed<32>(_json["toBlock"].asString()));
+	if (!_json["address"].empty())
+	{
+		if (_json["address"].isArray())
+			for (auto i : _json["address"])
+				filter.address(jsToAddress(i.asString()));
+		else
+			filter.address(jsToAddress(_json["address"].asString()));
+	}
+	if (!_json["topics"].empty())
+		for (unsigned i = 0; i < _json["topics"].size(); i++)
+		{
+			if (_json["topics"][i].isArray())
+			{
+				for (auto t: _json["topics"][i])
+					if (!t.isNull())
+						filter.topic(i, jsToFixed<32>(t.asString()));
+			}
+			else if (!_json["topics"][i].isNull()) // if it is anything else then string, it should and will fail
+				filter.topic(i, jsToFixed<32>(_json["topics"][i].asString()));
+		}
+	return filter;
+}
+
+// TODO: this should be removed once we decide to remove backward compatibility with old log filters
+static dev::eth::LogFilter toLogFilter(Json::Value const& _json, Interface const& _client)	// commented to avoid warning. Uncomment once in use @ PoC-7.
+{
+	dev::eth::LogFilter filter;
+	if (!_json.isObject() || _json.empty())
+		return filter;
+
+	// check only !empty. it should throw exceptions if input params are incorrect
+	if (!_json["fromBlock"].empty())
+		filter.withEarliest(_client.hashFromNumber(jsToBlockNumber(_json["fromBlock"].asString())));
+	if (!_json["toBlock"].empty())
+		filter.withLatest(_client.hashFromNumber(jsToBlockNumber(_json["toBlock"].asString())));
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
@@ -787,7 +822,7 @@ string WebThreeStubServerBase::eth_newFilter(Json::Value const& _json)
 {
 	try
 	{
-		return toJS(client()->installWatch(toLogFilter(_json)));
+		return toJS(client()->installWatch(toLogFilter(_json, *client())));
 	}
 	catch (...)
 	{
