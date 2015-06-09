@@ -330,12 +330,10 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		{
 			auto vm = eth::VMFactory::create();
 			auto vmtrace = Options::get().vmtrace ? fev.simpleTrace() : OnOpFunc{};
-			auto outputRef = bytesConstRef{};
 			{
 				Listener::ExecTimeGuard guard{i.first};
-				outputRef = vm->go(fev.gas, fev, vmtrace);
+				output = vm->exec(fev.gas, fev, vmtrace);
 			}
-			output = outputRef.toBytes();
 		}
 		catch (VMException const&)
 		{
