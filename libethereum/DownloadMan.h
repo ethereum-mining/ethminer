@@ -187,7 +187,6 @@ public:
 
 	bool askedContains(unsigned _i) const { Guard l(m_fetch); return m_asked.contains(_i); }
 	RangeMask<unsigned> const& asked() const { return m_asked; }
-	RangeMask<unsigned> const& attemped() const { return m_attempted; }
 
 private:
 	void resetFetch();		// Called by DownloadMan when we need to reset the download.
@@ -196,7 +195,6 @@ private:
 	mutable Mutex m_fetch;
 	unsigned m_remaining;
 	RangeMask<unsigned> m_asked;
-	RangeMask<unsigned> m_attempted;
 };
 
 class HashDownloadMan
@@ -279,3 +277,4 @@ private:
 }
 
 }
+
