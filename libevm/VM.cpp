@@ -594,7 +594,7 @@ bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 			break;
 		case Instruction::CREATE:
 		{
-			auto& endowment = m_stack.back();
+			auto endowment = m_stack.back();
 			m_stack.pop_back();
 			unsigned initOff = (unsigned)m_stack.back();
 			m_stack.pop_back();
