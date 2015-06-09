@@ -34,7 +34,7 @@ namespace eth
 struct PrecompiledAddress
 {
 	std::function<bigint(bytesConstRef)> gas;
-	std::function<bytes(bytesConstRef)> exec;
+	std::function<void(bytesConstRef, bytesRef)> exec;
 };
 
 /// Info on precompiled contract accounts baked into the protocol.

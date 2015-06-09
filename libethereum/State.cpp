@@ -46,7 +46,7 @@ using namespace dev::eth;
 #define ctrace clog(StateTrace)
 #define ETH_TIMED_ENACTMENTS 0
 
-static const u256 c_blockReward = 1500 * finney;
+static const u256 c_blockReward = c_network == Network::Olympic ? (1500 * finney) : (5 * ether);
 
 const char* StateSafeExceptions::name() { return EthViolet "⚙" EthBlue " ℹ"; }
 const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
@@ -591,24 +591,6 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	}
 	return ss.str();
 }
-
-template <class Channel>
-class LogOverride
-{
-public:
-	LogOverride(bool _value): m_old(g_logOverride.count(&typeid(Channel)) ? (int)g_logOverride[&typeid(Channel)] : c_null) { g_logOverride[&typeid(Channel)] = _value; }
-	~LogOverride()
-	{
-		if (m_old == c_null)
-			g_logOverride.erase(&typeid(Channel));
-		else
-			g_logOverride[&typeid(Channel)] = (bool)m_old;
-	}
-
-private:
-	static const int c_null = -1;
-	int m_old;
-};
 
 u256 State::enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
@@ -1189,6 +1171,8 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 	// Create and initialize the executive. This will throw fairly cheaply and quickly if the
 	// transaction is bad in any way.
 	Executive e(*this, _lh, 0);
+	ExecutionResult res;
+	e.setResultRecipient(res);
 	e.initialize(_t);
 
 	// Uncommitting is a non-trivial operation - only do it once we've verified as much of the
@@ -1248,7 +1232,7 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 		m_transactionSet.insert(e.t().sha3());
 	}
 
-	return e.executionResult();
+	return res;
 }
 
 State State::fromPending(unsigned _i) const

@@ -19,10 +19,12 @@
  * @date 2015
  */
 
+#include <thread>
 #include <boost/filesystem.hpp>
 #include "Exceptions.h"
 #include "TransientDirectory.h"
 #include "CommonIO.h"
+#include "Log.h"
 using namespace std;
 using namespace dev;
 
@@ -42,5 +44,19 @@ TransientDirectory::TransientDirectory(std::string const& _path):
 
 TransientDirectory::~TransientDirectory()
 {
-	boost::filesystem::remove_all(m_path);
+	boost::system::error_code ec;		
+	boost::filesystem::remove_all(m_path, ec);
+	if (!ec)
+		return;
+
+	// In some cases, antivirus runnig on Windows will scan all the newly created directories.
+	// As a consequence, directory is locked and can not be deleted immediately.
+	// Retry after 10 milliseconds usually is successful.
+	// This will help our tests run smoothly in such environment.
+	this_thread::sleep_for(chrono::milliseconds(10));
+
+	ec.clear();
+	boost::filesystem::remove_all(m_path, ec);
+	if (!ec)
+		cwarn << "Failed to delete directory '" << m_path << "': " << ec.message();
 }

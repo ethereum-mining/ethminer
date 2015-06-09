@@ -65,7 +65,9 @@ QVariantMap QBigInt::checkAgainst(QString const& _type) const
 	QString capacity = type.replace("uint", "").replace("int", "");
 	if (capacity.isEmpty())
 		capacity = "256";
-	bigint range = 256^(capacity.toInt() / 8);
+	bigint range = 1;
+	for (int k = 0; k < capacity.toInt() / 8; ++k)
+		range = range * 256;
 	bigint value = boost::get<bigint>(this->internalValue());
 	ret.insert("valid", true);
 	if (_type.startsWith("uint") && value > range - 1)

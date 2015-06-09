@@ -81,6 +81,7 @@ public:
 	bytes thisTxData;
 	bytes thisTxCode;
 	u256 gas;
+	u256 execGas;
 };
 
 

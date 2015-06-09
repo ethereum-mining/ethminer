@@ -46,7 +46,7 @@ public:
 	{
 		m_compiler.reset(false, m_addStandardSources);
 		m_compiler.addSource("", _sourceCode);
-		ETH_TEST_REQUIRE_NO_THROW(m_compiler.compile(m_optimize), "Compiling contract failed");
+		ETH_TEST_REQUIRE_NO_THROW(m_compiler.compile(m_optimize, m_optimizeRuns), "Compiling contract failed");
 		bytes code = m_compiler.getBytecode(_contractName);
 		sendMessage(code, true, _value);
 		return m_output;
@@ -148,6 +148,8 @@ protected:
 	{
 		m_state.addBalance(m_sender, _value); // just in case
 		eth::Executive executive(m_state, eth::LastHashes(), 0);
+		eth::ExecutionResult res;
+		executive.setResultRecipient(res);
 		eth::Transaction t =
 			_isCreation ?
 				eth::Transaction(_value, m_gasPrice, m_gas, _data, 0, KeyPair::create().sec()) :
@@ -170,16 +172,17 @@ protected:
 		else
 		{
 			BOOST_REQUIRE(m_state.addressHasCode(m_contractAddress));
-			BOOST_REQUIRE(!executive.call(m_contractAddress, m_contractAddress, m_sender, _value, m_gasPrice, &_data, m_gas, m_sender));
+			BOOST_REQUIRE(!executive.call(m_contractAddress, m_sender, _value, m_gasPrice, &_data, m_gas));
 		}
 		BOOST_REQUIRE(executive.go());
 		m_state.noteSending(m_sender);
 		executive.finalize();
 		m_gasUsed = executive.gasUsed();
-		m_output = executive.out().toVector();
+		m_output = std::move(res.output); // FIXME: Looks like Framework needs ExecutiveResult embedded
 		m_logs = executive.logs();
 	}
 
+	size_t m_optimizeRuns = 200;
 	bool m_optimize = false;
 	bool m_addStandardSources = false;
 	dev::solidity::CompilerStack m_compiler;

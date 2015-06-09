@@ -131,157 +131,171 @@ Transaction MixClient::replaceGas(Transaction const& _t, u256 const& _gas, Secre
 
 void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _call, bool _gasAuto, Secret const& _secret)
 {
-    Transaction t = _gasAuto ? replaceGas(_t, m_state.gasLimitRemaining()) : _t;
-    // do debugging run first
-    LastHashes lastHashes(256);
-    lastHashes[0] = bc().numberHash(bc().number());
-    for (unsigned i = 1; i < 256; ++i)
-        lastHashes[i] = lastHashes[i - 1] ? bc().details(lastHashes[i - 1]).parent : h256();
+<<<<<<< HEAD
+	Transaction t = _gasAuto ? replaceGas(_t, m_state.gasLimitRemaining()) : _t;
+	// do debugging run first
+	LastHashes lastHashes(256);
+	lastHashes[0] = bc().numberHash(bc().number());
+	for (unsigned i = 1; i < 256; ++i)
+		lastHashes[i] = lastHashes[i - 1] ? bc().details(lastHashes[i - 1]).parent : h256();
 
-    State execState = _state;
-    execState.addBalance(t.sender(), t.gas() * t.gasPrice()); //give it enough balance for gas estimation
-    Executive execution(execState, lastHashes, 0);
-    execution.initialize(t);
-    execution.execute();
-    std::vector<MachineState> machineStates;
-    std::vector<unsigned> levels;
-    std::vector<MachineCode> codes;
-    std::map<bytes const*, unsigned> codeIndexes;
-    std::vector<bytes> data;
-    std::map<bytesConstRef const*, unsigned> dataIndexes;
-    bytes const* lastCode = nullptr;
-    bytesConstRef const* lastData = nullptr;
-    unsigned codeIndex = 0;
-    unsigned dataIndex = 0;
-    auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, void* voidVM, void const* voidExt)
-    {
-        VM& vm = *static_cast<VM*>(voidVM);
-        ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
-        if (lastCode == nullptr || lastCode != &ext.code)
-        {
-            auto const& iter = codeIndexes.find(&ext.code);
-            if (iter != codeIndexes.end())
-                codeIndex = iter->second;
-            else
-            {
-                codeIndex = codes.size();
-                codes.push_back(MachineCode({ext.myAddress, ext.code}));
-                codeIndexes[&ext.code] = codeIndex;
-            }
-            lastCode = &ext.code;
-        }
+	State execState = _state;
+	execState.addBalance(t.sender(), t.gas() * t.gasPrice()); //give it enough balance for gas estimation
+	eth::ExecutionResult er;
+	Executive execution(execState, lastHashes, 0);
+	execution.setResultRecipient(er);
+	execution.initialize(t);
+	execution.execute();
+	std::vector<MachineState> machineStates;
+	std::vector<unsigned> levels;
+	std::vector<MachineCode> codes;
+	std::map<bytes const*, unsigned> codeIndexes;
+	std::vector<bytes> data;
+	std::map<bytesConstRef const*, unsigned> dataIndexes;
+	bytes const* lastCode = nullptr;
+	bytesConstRef const* lastData = nullptr;
+	unsigned codeIndex = 0;
+	unsigned dataIndex = 0;
+	auto onOp = [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, void* voidVM, void const* voidExt)
+	{
+		VM& vm = *static_cast<VM*>(voidVM);
+		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
+		if (lastCode == nullptr || lastCode != &ext.code)
+		{
+			auto const& iter = codeIndexes.find(&ext.code);
+			if (iter != codeIndexes.end())
+				codeIndex = iter->second;
+			else
+			{
+				codeIndex = codes.size();
+				codes.push_back(MachineCode({ext.myAddress, ext.code}));
+				codeIndexes[&ext.code] = codeIndex;
+			}
+			lastCode = &ext.code;
+		}
 
-        if (lastData == nullptr || lastData != &ext.data)
-        {
-            auto const& iter = dataIndexes.find(&ext.data);
-            if (iter != dataIndexes.end())
-                dataIndex = iter->second;
-            else
-            {
-                dataIndex = data.size();
-                data.push_back(ext.data.toBytes());
-                dataIndexes[&ext.data] = dataIndex;
-            }
-            lastData = &ext.data;
-        }
+		if (lastData == nullptr || lastData != &ext.data)
+		{
+			auto const& iter = dataIndexes.find(&ext.data);
+			if (iter != dataIndexes.end())
+				dataIndex = iter->second;
+			else
+			{
+				dataIndex = data.size();
+				data.push_back(ext.data.toBytes());
+				dataIndexes[&ext.data] = dataIndex;
+			}
+			lastData = &ext.data;
+		}
 
-        if (levels.size() < ext.depth)
-            levels.push_back(machineStates.size() - 1);
-        else
-            levels.resize(ext.depth);
+		if (levels.size() < ext.depth)
+			levels.push_back(machineStates.size() - 1);
+		else
+			levels.resize(ext.depth);
 
-        machineStates.emplace_back(MachineState({steps, vm.curPC(), inst, newMemSize, vm.gas(),
-                                                 vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels, codeIndex, dataIndex}));
-    };
+		machineStates.push_back(MachineState{
+			steps,
+			vm.curPC(),
+			inst,
+			newMemSize,
+			static_cast<u256>(gas),
+			vm.stack(),
+			vm.memory(),
+			gasCost,
+			ext.state().storage(ext.myAddress),
+			std::move(levels),
+			codeIndex,
+			dataIndex
+		});
+	};
 
-    execution.go(onOp);
-    execution.finalize();
-    dev::eth::ExecutionResult er = execution.executionResult();
+	execution.go(onOp);
+	execution.finalize();
 
-    switch (er.excepted)
-    {
-    case TransactionException::None:
-        break;
-    case TransactionException::NotEnoughCash:
-        BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Insufficient balance for contract deployment"));
-    case TransactionException::OutOfGasBase:
-    case TransactionException::OutOfGas:
-        BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas"));
-    case TransactionException::BlockGasLimitReached:
-        BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Block gas limit reached"));
-    case TransactionException::OutOfStack:
-        BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Out of stack"));
-    case TransactionException::StackUnderflow:
-        BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Stack underflow"));
-        //these should not happen in mix
-    case TransactionException::Unknown:
-    case TransactionException::BadInstruction:
-    case TransactionException::BadJumpDestination:
-    case TransactionException::InvalidSignature:
-    case TransactionException::InvalidNonce:
-        BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Internal execution error"));
-    };
+	switch (er.excepted)
+	{
+		case TransactionException::None:
+			break;
+		case TransactionException::NotEnoughCash:
+			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Insufficient balance for contract deployment"));
+		case TransactionException::OutOfGasBase:
+		case TransactionException::OutOfGas:
+			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas"));
+		case TransactionException::BlockGasLimitReached:
+			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Block gas limit reached"));
+		case TransactionException::OutOfStack:
+			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Out of stack"));
+		case TransactionException::StackUnderflow:
+			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Stack underflow"));
+			//these should not happen in mix
+		case TransactionException::Unknown:
+		case TransactionException::BadInstruction:
+		case TransactionException::BadJumpDestination:
+		case TransactionException::InvalidSignature:
+		case TransactionException::InvalidNonce:
+			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Internal execution error"));
+	};
 
-    ExecutionResult d;
-    d.inputParameters = t.data();
-    d.result = execution.executionResult();
-    d.machineStates = machineStates;
-    d.executionCode = std::move(codes);
-    d.transactionData = std::move(data);
-    d.address = _t.receiveAddress();
-    d.sender = _t.sender();
-    d.value = _t.value();
-    d.gasUsed = er.gasUsed + er.gasRefunded + c_callStipend;
-    if (_t.isCreation())
-        d.contractAddress = right160(sha3(rlpList(_t.sender(), _t.nonce())));
-    if (!_call)
-        d.transactionIndex = m_state.pending().size();
-    d.executonIndex = m_executions.size();
+	ExecutionResult d;
+	d.inputParameters = t.data();
+	d.result = er;
+	d.machineStates = machineStates;
+	d.executionCode = std::move(codes);
+	d.transactionData = std::move(data);
+	d.address = _t.receiveAddress();
+	d.sender = _t.sender();
+	d.value = _t.value();
+	d.gasUsed = er.gasUsed + er.gasRefunded + c_callStipend;
+	if (_t.isCreation())
+		d.contractAddress = right160(sha3(rlpList(_t.sender(), _t.nonce())));
+	if (!_call)
+		d.transactionIndex = m_state.pending().size();
+	d.executonIndex = m_executions.size();
 
-    // execute on a state
-    if (!_call)
-    {
-        t = _gasAuto ? replaceGas(_t, d.gasUsed, _secret) : _t;
-        er = _state.execute(lastHashes, t);
-        if (t.isCreation() && _state.code(d.contractAddress).empty())
-            BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
-        d.gasUsed = er.gasUsed + er.gasRefunded + er.gasForDeposit + c_callStipend;
-        // collect watches
-        h256Set changed;
-        Guard l(x_filtersWatches);
-        LocalisedLogEntries logs;
-        //for (unsigned i = 0; i < _state.pending().size(); ++i)
-        //{
-        TransactionReceipt const& tr = _state.receipt(_state.pending().size() - 1);
+	// execute on a state
+	if (!_call)
+	{
+		t = _gasAuto ? replaceGas(_t, d.gasUsed, _secret) : _t;
+		er = _state.execute(lastHashes, t);
+		if (t.isCreation() && _state.code(d.contractAddress).empty())
+			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
+		d.gasUsed = er.gasUsed + er.gasRefunded + er.gasForDeposit + c_callStipend;
+		// collect watches
+		h256Set changed;
+		Guard l(x_filtersWatches);
+		LocalisedLogEntries logs;
+		//for (unsigned i = 0; i < _state.pending().size(); ++i)
+		//{
+		TransactionReceipt const& tr = _state.receipt(_state.pending().size() - 1);
 
-        auto trHash = _state.pending().at(_state.pending().size() - 1).sha3();
-        //for (std::pair<h256 const, eth::InstalledFilter>& installedFilter: m_filters)
-        //{
-        LogEntries le = tr.log(); // installedFilter.second.filter.matches(tr);
-        if (le.size())
-            for (unsigned j = 0; j < le.size(); ++j)
-                logs.insert(logs.begin(), LocalisedLogEntry(le[j], bc().number() + 1, trHash));
-        //}
-        //}
+		auto trHash = _state.pending().at(_state.pending().size() - 1).sha3();
+		//for (std::pair<h256 const, eth::InstalledFilter>& installedFilter: m_filters)
+		//{
+		LogEntries le = tr.log(); // installedFilter.second.filter.matches(tr);
+		if (le.size())
+			for (unsigned j = 0; j < le.size(); ++j)
+				logs.insert(logs.begin(), LocalisedLogEntry(le[j], bc().number() + 1, trHash));
+		//}
+		//}
 
-        /*if ((unsigned)i.second.filter.latest() > bc().number())
-            {
-                // acceptable number.
-                auto m = i.second.filter.matches(_state.receipt(_state.pending().size() - 1));
-                if (m.size())
-                {
-                    // filter catches them
-                    for (LogEntry const& l: m)
-                        i.second.changes.push_back(LocalisedLogEntry(l, bc().number() + 1));
-                    changed.insert(i.first);
-                }
-            }*/
-        changed.insert(dev::eth::PendingChangedFilter);
-        d.logs =  logs;
-        //noteChanged(changed);
-    }
-    WriteGuard l(x_executions);
-    m_executions.emplace_back(std::move(d));
+		/*if ((unsigned)i.second.filter.latest() > bc().number())
+			{
+				// acceptable number.
+				auto m = i.second.filter.matches(_state.receipt(_state.pending().size() - 1));
+				if (m.size())
+				{
+					// filter catches them
+					for (LogEntry const& l: m)
+						i.second.changes.push_back(LocalisedLogEntry(l, bc().number() + 1));
+					changed.insert(i.first);
+				}
+			}*/
+		changed.insert(dev::eth::PendingChangedFilter);
+		d.logs =  logs;
+		//noteChanged(changed);
+	}
+	WriteGuard l(x_executions);
+	m_executions.emplace_back(std::move(d));
 }
 
 void MixClient::mine()

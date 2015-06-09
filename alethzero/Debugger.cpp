@@ -82,7 +82,7 @@ bool DebugSession::populate(dev::eth::Executive& _executive, dev::eth::Transacti
 	bytesConstRef lastData;
 	h256 lastHash;
 	h256 lastDataHash;
-	auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, VM* voidVM, ExtVMFace const* voidExt)
+	auto onOp = [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
 	{
 		VM& vm = *voidVM;
 		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
@@ -104,7 +104,7 @@ bool DebugSession::populate(dev::eth::Executive& _executive, dev::eth::Transacti
 			levels.push_back(&history.back());
 		else
 			levels.resize(ext.depth);
-		history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(), lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
+		history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, static_cast<u256>(gas), lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 	};
 	_executive.go(onOp);
 	_executive.finalize();
