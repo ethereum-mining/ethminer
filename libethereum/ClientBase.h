@@ -132,8 +132,8 @@ public:
 	virtual Transactions pending() const override;
 	virtual h256s pendingHashes() const override;
 
-	ImportResult injectTransaction(bytes const& _rlp) override { prepareForTransaction(); return m_tq.import(_rlp); }
-	ImportResult injectBlock(bytes const& _block);
+	virtual ImportResult injectTransaction(bytes const& _rlp) override { prepareForTransaction(); return m_tq.import(_rlp); }
+	virtual ImportResult injectBlock(bytes const& _block) override;
 
 	using Interface::diff;
 	virtual StateDiff diff(unsigned _txi, h256 _block) const override;
@@ -142,9 +142,6 @@ public:
 	using Interface::addresses;
 	virtual Addresses addresses(BlockNumber _block) const override;
 	virtual u256 gasLimitRemaining() const override;
-
-	/// Set the coinbase address
-	virtual void setAddress(Address _us) = 0;
 
 	/// Get the coinbase address
 	virtual Address address() const override;
