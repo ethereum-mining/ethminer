@@ -34,7 +34,7 @@
 { "name": "eth_getCompilers", "params": [], "order": [], "returns": []},
 { "name": "eth_compileLLL", "params": [""], "order": [], "returns": ""},
 { "name": "eth_compileSerpent", "params": [""], "order": [], "returns": ""},
-{ "name": "eth_compileSolidity", "params": [""], "order": [], "returns": ""},
+{ "name": "eth_compileSolidity", "params": [""], "order": [], "returns": {}},
 { "name": "eth_newFilter", "params": [{}], "order": [], "returns": ""},
 { "name": "eth_newFilterEx", "params": [{}], "order": [], "returns": ""},
 { "name": "eth_newBlockFilter", "params": [""], "order": [], "returns": ""},

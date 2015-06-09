@@ -103,7 +103,7 @@ public:
 	virtual Json::Value eth_getCompilers();
 	virtual std::string eth_compileLLL(std::string const& _s);
 	virtual std::string eth_compileSerpent(std::string const& _s);
-	virtual std::string eth_compileSolidity(std::string const& _code);
+	virtual Json::Value eth_compileSolidity(std::string const& _code);
 	virtual std::string eth_newFilter(Json::Value const& _json);
 	virtual std::string eth_newFilterEx(Json::Value const& _json);
 	virtual std::string eth_newBlockFilter(std::string const& _filter);
