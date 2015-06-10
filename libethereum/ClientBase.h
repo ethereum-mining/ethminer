@@ -118,7 +118,6 @@ public:
 	virtual h256 hashFromNumber(BlockNumber _number) const override;
 	virtual BlockNumber numberFromHash(h256 _blockHash) const override;
 	virtual int compareBlockHashes(h256 _h1, h256 _h2) const override;
-	virtual bool isInBlockHashRange(h256 _from, h256 _to, h256 _q) const override;
 	virtual BlockInfo blockInfo(h256 _hash) const override;
 	virtual BlockDetails blockDetails(h256 _hash) const override;
 	virtual Transaction transaction(h256 _transactionHash) const override;

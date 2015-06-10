@@ -465,10 +465,3 @@ int ClientBase::compareBlockHashes(h256 _h1, h256 _h2) const
 	}
 	return -1;
 }
-
-bool ClientBase::isInBlockHashRange(h256 _from, h256 _to, h256 _q) const
-{
-	int c1 = compareBlockHashes(_from, _q);
-	int c2 = compareBlockHashes(_q, _to);
-	return (c1 == 0 || c1 == -1) && (c2 == 0 || c2 == -1);
-}
