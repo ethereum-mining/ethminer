@@ -37,8 +37,16 @@ const char* BlockQueueChannel::name() { return EthOrange "[]>"; }
 const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
 #endif
 
+size_t const c_maxKnownCount = 100000;				///< M
+size_t const c_maxKnownSize = 64 * 1024 * 1024;
+size_t const c_maxUnknownCount = 100000;
+size_t const c_maxUnknownSize = 64 * 1024 * 1024;
 
-BlockQueue::BlockQueue()
+BlockQueue::BlockQueue():
+	m_unknownSize(0),
+	m_knownSize(0),
+	m_unknownCount(0),
+	m_knownCount(0)
 {
 	// Allow some room for other activity
 	unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
@@ -55,6 +63,24 @@ BlockQueue::~BlockQueue()
 	m_moreToVerify.notify_all();
 	for (auto& i: m_verifiers)
 		i.join();
+}
+
+void BlockQueue::clear()
+{
+	WriteGuard l(m_lock);
+	DEV_INVARIANT_CHECK;
+	Guard l2(m_verification);
+	m_readySet.clear();
+	m_drainingSet.clear();
+	m_verified.clear();
+	m_unverified.clear();
+	m_unknownSet.clear();
+	m_unknown.clear();
+	m_future.clear();
+	m_unknownSize = 0;
+	m_unknownCount = 0;
+	m_knownSize = 0;
+	m_knownCount = 0;
 }
 
 void BlockQueue::verifierBody()
@@ -187,6 +213,8 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 		if (strftime(buf, 24, "%X", localtime(&bit)) == 0)
 			buf[0] = '\0'; // empty if case strftime fails
 		cblockq << "OK - queued for future [" << bi.timestamp << "vs" << time(0) << "] - will wait until" << buf;
+		m_unknownSize += _block.size();
+		m_unknownCount++;
 		return ImportResult::FutureTime;
 	}
 	else
@@ -204,6 +232,8 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 			cblockq << "OK - queued as unknown parent:" << bi.parentHash;
 			m_unknown.insert(make_pair(bi.parentHash, make_pair(h, _block.toBytes())));
 			m_unknownSet.insert(h);
+			m_unknownSize += _block.size();
+			m_unknownCount++;
 
 			return ImportResult::UnknownParent;
 		}
@@ -215,6 +245,8 @@ ImportResult BlockQueue::import(bytesConstRef _block, BlockChain const& _bc, boo
 				m_unverified.push_back(make_pair(h, _block.toBytes()));
 			m_moreToVerify.notify_one();
 			m_readySet.insert(h);
+			m_knownSize += _block.size();
+			m_knownCount++;
 
 			noteReady_WITH_LOCK(h);
 
@@ -270,7 +302,11 @@ void BlockQueue::tick(BlockChain const& _bc)
 			DEV_INVARIANT_CHECK;
 			auto end = m_future.lower_bound(t);
 			for (auto i = m_future.begin(); i != end; ++i)
+			{
+				m_unknownSize -= i->second.second.size();
+				m_unknownCount--;
 				todo.push_back(move(i->second));
+			}
 			m_future.erase(m_future.begin(), end);
 		}
 	}
@@ -301,12 +337,24 @@ QueueStatus BlockQueue::blockStatus(h256 const& _h) const
 			QueueStatus::Unknown;
 }
 
+bool BlockQueue::knownFull() const
+{
+	return m_knownSize > c_maxKnownSize || m_knownCount > c_maxKnownCount;
+}
+
+bool BlockQueue::unknownFull() const
+{
+	return m_unknownSize > c_maxUnknownSize || m_unknownCount > c_maxUnknownCount;
+}
+
 void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 {
 	WriteGuard l(m_lock);
 	DEV_INVARIANT_CHECK;
+
 	if (m_drainingSet.empty())
 	{
+		bool wasFull = knownFull();
 		DEV_GUARDED(m_verification)
 		{
 			o_out.resize(min<unsigned>(_max, m_verified.size()));
@@ -320,8 +368,13 @@ void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 			auto h = bs.verified.info.hash();
 			m_drainingSet.insert(h);
 			m_readySet.erase(h);
+			m_knownSize -= bs.verified.block.size();
+			m_knownCount--;
 		}
+		if (wasFull && !knownFull())
+			m_onRoomAvailable();
 	}
+
 }
 
 bool BlockQueue::invariants() const
@@ -343,6 +396,10 @@ void BlockQueue::noteReady_WITH_LOCK(h256 const& _good)
 		{
 			DEV_GUARDED(m_verification)
 				m_unverified.push_back(it->second);
+			m_knownSize += it->second.second.size();
+			m_knownCount++;
+			m_unknownSize -= it->second.second.size();
+			m_unknownCount--;
 			auto newReady = it->second.first;
 			m_unknownSet.erase(newReady);
 			m_readySet.insert(newReady);
@@ -366,9 +423,13 @@ void BlockQueue::retryAllUnknown()
 		auto newReady = it->second.first;
 		m_unknownSet.erase(newReady);
 		m_readySet.insert(newReady);
+		m_knownCount++;
 		m_moreToVerify.notify_one();
 	}
 	m_unknown.clear();
+	m_knownSize += m_unknownSize;
+	m_unknownSize = 0;
+	m_unknownCount = 0;
 	m_moreToVerify.notify_all();
 }
 
