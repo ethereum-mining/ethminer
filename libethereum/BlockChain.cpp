@@ -50,7 +50,7 @@ using namespace dev::eth;
 namespace js = json_spirit;
 
 #define ETH_CATCH 1
-#define ETH_TIMED_IMPORTS 0
+#define ETH_TIMED_IMPORTS 1
 
 #ifdef _WIN32
 const char* BlockChainDebug::name() { return EthBlue "8" EthWhite " <>"; }
@@ -534,11 +534,6 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	}
 	catch (Exception& ex)
 	{
-		clog(BlockChainWarn) << "   Malformed block: " << diagnostic_information(ex);
-		clog(BlockChainWarn) << "Block: " << _block.info.hash();
-		clog(BlockChainWarn) << _block.info;
-		clog(BlockChainWarn) << "Block parent: " << _block.info.parentHash;
-		clog(BlockChainWarn) << BlockInfo(block(_block.info.parentHash));
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block.block.toBytes());
 		throw;
@@ -641,7 +636,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	m_blocksDB->Write(m_writeOptions, &blocksBatch);
 	m_extrasDB->Write(m_writeOptions, &extrasBatch);
 
-#if ETH_DEBUG || !ETH_TRUE
+#if ETH_PARANOIA || !ETH_TRUE
 	if (isKnown(_block.info.hash()) && !details(_block.info.hash()))
 	{
 		clog(BlockChainDebug) << "Known block just inserted has no details.";
@@ -676,12 +671,16 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 
 #if ETH_TIMED_IMPORTS
 	checkBest = t.elapsed();
-	cnote << "Import took:" << total.elapsed();
-	cnote << "preliminaryChecks:" << preliminaryChecks;
-	cnote << "enactment:" << enactment;
-	cnote << "collation:" << collation;
-	cnote << "writing:" << writing;
-	cnote << "checkBest:" << checkBest;
+	if (total.elapsed() > 1.0)
+	{
+		cnote << "SLOW IMPORT:" << _block.info.hash();
+		cnote << "  Import took:" << total.elapsed();
+		cnote << "  preliminaryChecks:" << preliminaryChecks;
+		cnote << "  enactment:" << enactment;
+		cnote << "  collation:" << collation;
+		cnote << "  writing:" << writing;
+		cnote << "  checkBest:" << checkBest;
+	}
 #endif
 
 	if (!route.empty())
