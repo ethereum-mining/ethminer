@@ -119,11 +119,21 @@ public:
 	bool unknownFull() const;
 
 private:
+
+	struct UnverifiedBlock
+	{
+		h256 hash;
+		h256 parentHash;
+		bytes block;
+	};
+
 	void noteReady_WITH_LOCK(h256 const& _b);
 
 	bool invariants() const override;
 
 	void verifierBody();
+	void collectUnknownBad(h256 const& _bad);
+	void updateBad(h256 const& _bad);
 
 	mutable boost::shared_mutex m_lock;									///< General lock for the sets, m_future and m_unknown.
 	h256Hash m_drainingSet;												///< All blocks being imported.
@@ -139,7 +149,7 @@ private:
 	std::condition_variable m_moreToVerify;								///< Signaled when m_unverified has a new entry.
 	std::vector<VerifiedBlock> m_verified;								///< List of blocks, in correct order, verified and ready for chain-import.
 	std::deque<VerifiedBlock> m_verifying;								///< List of blocks being verified; as long as the block component (bytes) is empty, it's not finished.
-	std::deque<std::pair<h256, bytes>> m_unverified;					///< List of blocks, in correct order, ready for verification.
+	std::deque<UnverifiedBlock> m_unverified;							///< List of <block hash, parent hash, block data> in correct order, ready for verification.
 
 	std::vector<std::thread> m_verifiers;								///< Threads who only verify.
 	bool m_deleting = false;											///< Exit condition for verifiers.
