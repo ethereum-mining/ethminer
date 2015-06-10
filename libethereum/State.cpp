@@ -1214,21 +1214,6 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 		else
 			e.go(_onOp);
 	}
-#elif ETH_VMTIMER
-	{
-		(void)_onOp;
-		boost::timer t;
-		unordered_map<byte, unsigned> counts;
-		unsigned total = 0;
-		e.go([&](uint64_t, Instruction inst, bigint, bigint, bigint, VM*, ExtVMFace const*) {
-			counts[(byte)inst]++;
-			total++;
-		});
-		cnote << total << "total in" << t.elapsed();
-		for (auto const& c: {Instruction::SSTORE, Instruction::SLOAD, Instruction::CALL, Instruction::CREATE, Instruction::CALLCODE, Instruction::MSTORE8, Instruction::MSTORE, Instruction::MLOAD, Instruction::SHA3})
-			cnote << instructionInfo(c).name << counts[(byte)c];
-		cnote;
-	}
 #else
 		e.go(_onOp);
 #endif
