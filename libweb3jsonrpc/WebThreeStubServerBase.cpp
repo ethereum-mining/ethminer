@@ -173,6 +173,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 			res["topics"].append(toJS(t));
 		if (_e.mined)
 		{
+			res["type"] = "block";
 			res["blockNumber"] = _e.blockNumber;
 			res["blockHash"] = toJS(_e.blockHash);
 			res["logIndex"] = _e.logIndex;
@@ -181,6 +182,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 		}
 		else
 		{
+			res["type"] = "pending";
 			res["blockNumber"] = Json::Value(Json::nullValue);
 			res["blockHash"] = Json::Value(Json::nullValue);
 			res["logIndex"] = Json::Value(Json::nullValue);
