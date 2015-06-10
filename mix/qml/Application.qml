@@ -205,14 +205,14 @@ ApplicationWindow {
 		enabled: codeModel.hasContract && !clientModel.running
 	}
 
-    Action {
+	Action {
 		id: toggleAssemblyDebuggingAction
 		text: qsTr("Show VM Code")
 		shortcut: "Ctrl+Alt+V"
-        onTriggered: mainContent.debuggerPanel.assemblyMode = !mainContent.debuggerPanel.assemblyMode;
-        checked:  mainContent.debuggerPanel.assemblyMode;
+		onTriggered: mainContent.debuggerPanel.assemblyMode = !mainContent.debuggerPanel.assemblyMode;
+		checked:  mainContent.debuggerPanel.assemblyMode;
 		enabled: true
-    }
+	}
 
 	Action {
 		id: toggleWebPreviewAction
@@ -221,7 +221,7 @@ ApplicationWindow {
 		checkable: true
 		checked: mainContent.webViewVisible
 		onTriggered: mainContent.toggleWebPreview();
-    }
+	}
 
 	Action {
 		id: toggleProjectNavigatorAction

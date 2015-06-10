@@ -50,7 +50,7 @@ public:
 	QStringList decode(QList<QVariableDeclaration*> const& _dec, bytes _value);
 	/// Decode @param _parameter
 	QString decode(QVariableDeclaration* const& _param, bytes _value);
-    /// Decode single variable
+	/// Decode single variable
 	QVariant decode(SolidityType const& _type, bytes const& _value);
 	/// Get all encoded data encoded by encode function.
 	bytes encodedData();
