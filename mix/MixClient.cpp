@@ -73,6 +73,10 @@ MixClient::MixClient(std::string const& _dbPath):
 	resetState(std::unordered_map<Address, Account>());
 }
 
+MixClient::~MixClient()
+{
+}
+
 void MixClient::resetState(std::unordered_map<Address, Account> const& _accounts,  Secret const& _miner)
 {
 
