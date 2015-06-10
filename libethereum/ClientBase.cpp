@@ -314,6 +314,8 @@ LocalisedLogEntries ClientBase::checkWatch(unsigned _watchId)
 
 BlockInfo ClientBase::blockInfo(h256 _hash) const
 {
+	if (_hash == PendingBlockHash)
+		return preMine().info();
 	return BlockInfo(bc().block(_hash));
 }
 
