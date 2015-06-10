@@ -51,7 +51,7 @@ EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQu
 {
 	m_latestBlockSent = _ch.currentHash();
 	m_hashMan.reset(m_chain.number() + 1);
-	m_bqRoomAvailable = m_bq.onRoomAvailable([this](){ this->continueSync(); });
+	m_bqRoomAvailable = m_bq.onRoomAvailable([this](){ m_continueSync = true; });
 }
 
 EthereumHost::~EthereumHost()
@@ -105,6 +105,12 @@ void EthereumHost::doWork()
 			m_newBlocks = false;
 			maintainBlocks(h);
 		}
+	}
+
+	if (m_continueSync)
+	{
+		m_continueSync = false;
+		continueSync();
 	}
 
 	foreachPeer([](EthereumPeer* _p) { _p->tick(); });
