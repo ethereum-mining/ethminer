@@ -276,7 +276,7 @@ Client::Client(p2p::Host* _extNet, std::string const& _dbPath, WithExisting _for
 }
 
 Client::Client(p2p::Host* _extNet, std::shared_ptr<GasPricer> _gp, std::string const& _dbPath, WithExisting _forceAction, u256 _networkId):
-	Worker("eth"),
+	Worker("eth", 0),
 	m_vc(_dbPath),
 	m_bc(_dbPath, max(m_vc.action(), _forceAction), [](unsigned d, unsigned t){ cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }),
 	m_gp(_gp),
