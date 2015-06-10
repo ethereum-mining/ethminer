@@ -1185,5 +1185,3 @@ Json::Value WebThreeStubServerBase::shh_getMessages(string const& _filterId)
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
 }
-
-
