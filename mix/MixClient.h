@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <string>
+#include <libethereum/ExtVM.h>
 #include <libethereum/ClientBase.h>
 #include <libethereum/Client.h>
 #include "MachineStates.h"
@@ -80,7 +81,7 @@ protected:
 	/// ClientBase methods
 	using ClientBase::asOf;
 	virtual dev::eth::State asOf(h256 const& _block) const override;
-	virtual dev::eth::BlockChain& bc() { return *m_bc; }
+	virtual dev::eth::BlockChain& bc() override { return *m_bc; }
 	virtual dev::eth::BlockChain const& bc() const override { return *m_bc; }
 	virtual dev::eth::State preMine() const override { ReadGuard l(x_state);  return m_startState; }
 	virtual dev::eth::State postMine() const override { ReadGuard l(x_state); return m_state; }
@@ -88,7 +89,6 @@ protected:
 
 private:
 	void executeTransaction(dev::eth::Transaction const& _t, eth::State& _state, bool _call, bool _gasAuto, dev::Secret const& _secret = dev::Secret());
-	void noteChanged(h256Set const& _filters);
 	dev::eth::Transaction replaceGas(dev::eth::Transaction const& _t, dev::u256 const& _gas, dev::Secret const& _secret = dev::Secret());
 
 	eth::State m_state;

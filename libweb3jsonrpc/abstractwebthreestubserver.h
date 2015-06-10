@@ -47,7 +47,8 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("eth_compileSerpent", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_compileSerpentI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_compileSolidity", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_compileSolidityI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_newFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_OBJECT, NULL), &AbstractWebThreeStubServer::eth_newFilterI);
-            this->bindAndAddMethod(jsonrpc::Procedure("eth_newBlockFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_newBlockFilterI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_newBlockFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_newBlockFilterI);
+            this->bindAndAddMethod(jsonrpc::Procedure("eth_newPendingTransactionFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING,  NULL), &AbstractWebThreeStubServer::eth_newPendingTransactionFilterI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_uninstallFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_uninstallFilterI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getFilterChanges", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getFilterChangesI);
             this->bindAndAddMethod(jsonrpc::Procedure("eth_getFilterLogs", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::eth_getFilterLogsI);
@@ -228,7 +229,13 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         }
         inline virtual void eth_newBlockFilterI(const Json::Value &request, Json::Value &response)
         {
-            response = this->eth_newBlockFilter(request[0u].asString());
+            (void)request;
+            response = this->eth_newBlockFilter();
+        }
+        inline virtual void eth_newPendingTransactionFilterI(const Json::Value &request, Json::Value &response)
+        {
+            (void)request;
+            response = this->eth_newPendingTransactionFilter();
         }
         inline virtual void eth_uninstallFilterI(const Json::Value &request, Json::Value &response)
         {
@@ -359,7 +366,8 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual std::string eth_compileSerpent(const std::string& param1) = 0;
         virtual std::string eth_compileSolidity(const std::string& param1) = 0;
         virtual std::string eth_newFilter(const Json::Value& param1) = 0;
-        virtual std::string eth_newBlockFilter(const std::string& param1) = 0;
+        virtual std::string eth_newBlockFilter() = 0;
+        virtual std::string eth_newPendingTransactionFilter() = 0;
         virtual bool eth_uninstallFilter(const std::string& param1) = 0;
         virtual Json::Value eth_getFilterChanges(const std::string& param1) = 0;
         virtual Json::Value eth_getFilterLogs(const std::string& param1) = 0;
