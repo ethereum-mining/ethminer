@@ -173,7 +173,7 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 			res["topics"].append(toJS(t));
 		if (_e.mined)
 		{
-			res["type"] = "block";
+			res["type"] = "mined";
 			res["blockNumber"] = _e.blockNumber;
 			res["blockHash"] = toJS(_e.blockHash);
 			res["logIndex"] = _e.logIndex;
