@@ -52,7 +52,7 @@ template<> struct hash<pair<dev::p2p::NodeId, string>>
 	size_t operator()(pair<dev::p2p::NodeId, string> const& _value) const
 	{
 		size_t ret = hash<dev::p2p::NodeId>()(_value.first);
-		return ret ^ hash<string>()(_value.second) + 0x9e3779b9 + (ret << 6) + (ret >> 2);
+		return ret ^ (hash<string>()(_value.second) + 0x9e3779b9 + (ret << 6) + (ret >> 2));
 	}
 };
 }
