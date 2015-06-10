@@ -48,6 +48,7 @@ EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQu
 	m_bq		(_bq),
 	m_networkId	(_networkId)
 {
+	m_bq.onReady([=](){ if (readyForMore()) m_continueSync = true; });
 	m_latestBlockSent = _ch.currentHash();
 	m_hashMan.reset(m_chain.number() + 1);
 }
@@ -103,6 +104,12 @@ void EthereumHost::doWork()
 			m_newBlocks = false;
 			maintainBlocks(h);
 		}
+	}
+
+	if (m_continueSync)
+	{
+		m_continueSync = false;
+		continueSync();
 	}
 
 	foreachPeer([](EthereumPeer* _p) { _p->tick(); });
@@ -589,6 +596,11 @@ void EthereumHost::continueSync()
 	});
 }
 
+bool EthereumHost::readyForMore() const
+{
+	return m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified < 1024;
+}
+
 void EthereumHost::continueSync(EthereumPeer* _peer)
 {
 	assert(_peer->m_asking == Asking::Nothing);
@@ -642,7 +654,10 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 		}
 	}
 	else if (m_needSyncBlocks && peerCanHelp(_peer)) // Check if this peer can help with downloading blocks
-		_peer->requestBlocks();
+	{
+		if (readyForMore())
+			_peer->requestBlocks();
+	}
 	else
 		_peer->setIdle();
 }
