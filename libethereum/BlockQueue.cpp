@@ -107,7 +107,7 @@ void BlockQueue::verifierBody()
 		bool ready = false;
 		{
 			unique_lock<Mutex> l(m_verification);
-			if (m_verifying.front().verified.info.mixHash == work.first)
+			if (!m_verifying.empty() && m_verifying.front().verified.info.mixHash == work.first)
 			{
 				// we're next!
 				m_verifying.pop_front();
