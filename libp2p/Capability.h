@@ -29,6 +29,8 @@ namespace dev
 namespace p2p
 {
 
+class ReputationManager;
+
 class Capability
 {
 	friend class Session;
@@ -43,7 +45,9 @@ public:
 	static unsigned messageCount() { return 0; }
 */
 	Session* session() const { return m_session; }
-	HostCapabilityFace* hostCapability() const { return m_host; }
+	HostCapabilityFace* hostCapability() const { return m_hostCap; }
+	Host* host() const { return m_hostCap->host(); }
+	ReputationManager& repMan() const;
 
 protected:
 	virtual bool interpret(unsigned _id, RLP const&) = 0;
@@ -56,7 +60,7 @@ protected:
 
 private:
 	Session* m_session;
-	HostCapabilityFace* m_host;
+	HostCapabilityFace* m_hostCap;
 	bool m_enabled = true;
 	unsigned m_idOffset;
 };

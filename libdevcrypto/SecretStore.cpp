@@ -164,7 +164,7 @@ void SecretStore::load(std::string const& _keysPath)
 
 h128 SecretStore::readKey(std::string const& _file, bool _deleteFile)
 {
-	cdebug << "Reading" << _file;
+	cnote << "Reading" << _file;
 	return readKeyContent(contentsString(_file), _deleteFile ? _file : string());
 }
 

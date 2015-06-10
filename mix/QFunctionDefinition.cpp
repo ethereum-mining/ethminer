@@ -28,15 +28,41 @@
 using namespace dev::solidity;
 using namespace dev::mix;
 
-QFunctionDefinition::QFunctionDefinition(QObject* _parent, dev::solidity::FunctionTypePointer const& _f): QBasicNodeDefinition(_parent, &_f->getDeclaration()), m_hash(dev::sha3(_f->externalSignature()))
+QFunctionDefinition::QFunctionDefinition(QObject* _parent, dev::solidity::FunctionTypePointer const& _f): QBasicNodeDefinition(_parent, &_f->getDeclaration()), m_hash(dev::sha3(_f->externalSignature())),
+	m_fullHash(dev::sha3(_f->externalSignature()))
+{
+	init(_f);
+}
+
+QFunctionDefinition::QFunctionDefinition(QObject* _parent, ASTPointer<FunctionDefinition> const& _f): QBasicNodeDefinition(_parent, _f.get()), m_hash(dev::sha3(_f->externalSignature())),
+	m_fullHash(dev::sha3(_f->externalSignature()))
+{
+
+	for (unsigned i = 0; i < _f->getParameters().size(); ++i)
+		m_parameters.append(new QVariableDeclaration(parent(), _f->getParameters().at(i)));
+
+	for (unsigned i = 0; i < _f->getReturnParameters().size(); ++i)
+		m_returnParameters.append(new QVariableDeclaration(parent(), _f->getReturnParameters().at(i)));
+}
+
+QFunctionDefinition::QFunctionDefinition(QObject* _parent, ASTPointer<dev::solidity::EventDefinition> const& _e): QBasicNodeDefinition(_parent, _e.get())
+{
+	for (unsigned i = 0; i < _e->getParameters().size(); ++i)
+		m_parameters.append(new QVariableDeclaration(parent(), _e->getParameters().at(i)));
+	FunctionTypePointer _f = std::make_shared<FunctionType>(*_e);
+	m_hash = (FixedHash<4>)dev::sha3(_f->externalSignature(_e->getName()));
+	m_fullHash = dev::sha3(_f->externalSignature(_e->getName()));
+}
+
+void QFunctionDefinition::init(dev::solidity::FunctionTypePointer _f)
 {
 	auto paramNames = _f->getParameterNames();
 	auto paramTypes = _f->getParameterTypes();
 	auto returnNames = _f->getReturnParameterNames();
 	auto returnTypes = _f->getReturnParameterTypes();
 	for (unsigned i = 0; i < paramNames.size(); ++i)
-		m_parameters.append(new QVariableDeclaration(_parent, paramNames[i], paramTypes[i].get()));
+		m_parameters.append(new QVariableDeclaration(parent(), paramNames[i], paramTypes[i].get()));
 
 	for (unsigned i = 0; i < returnNames.size(); ++i)
-		m_returnParameters.append(new QVariableDeclaration(_parent, returnNames[i], returnTypes[i].get()));
+		m_returnParameters.append(new QVariableDeclaration(parent(), returnNames[i], returnTypes[i].get()));
 }

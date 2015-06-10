@@ -67,7 +67,7 @@ std::string dev::randomWord()
 	return ret;
 }
 
-int dev::fromHex(char _i)
+int dev::fromHex(char _i, WhenError _throw)
 {
 	if (_i >= '0' && _i <= '9')
 		return _i - '0';
@@ -75,7 +75,10 @@ int dev::fromHex(char _i)
 		return _i - 'a' + 10;
 	if (_i >= 'A' && _i <= 'F')
 		return _i - 'A' + 10;
-	BOOST_THROW_EXCEPTION(BadHexCharacter() << errinfo_invalidSymbol(_i));
+	if (_throw == WhenError::Throw)
+		BOOST_THROW_EXCEPTION(BadHexCharacter() << errinfo_invalidSymbol(_i));
+	else
+		return -1;
 }
 
 bytes dev::fromHex(std::string const& _s, WhenError _throw)
@@ -85,33 +88,26 @@ bytes dev::fromHex(std::string const& _s, WhenError _throw)
 	ret.reserve((_s.size() - s + 1) / 2);
 
 	if (_s.size() % 2)
-		try
-		{
-			ret.push_back(fromHex(_s[s++]));
-		}
-		catch (...)
-		{ 
-			ret.push_back(0);
-			// msvc does not support it
-#ifndef BOOST_NO_EXCEPTIONS
-			cwarn << boost::current_exception_diagnostic_information(); 
-#endif
-			if (_throw == WhenError::Throw)
-				throw;
-		}
+	{
+		int h = fromHex(_s[s++], WhenError::DontThrow);
+		if (h != -1)
+			ret.push_back(h);
+		else if (_throw == WhenError::Throw)
+			throw BadHexCharacter();
+		else
+			return bytes();
+	}
 	for (unsigned i = s; i < _s.size(); i += 2)
-		try
-		{
-			ret.push_back((byte)(fromHex(_s[i]) * 16 + fromHex(_s[i + 1])));
-		}
-		catch (...){
-			ret.push_back(0);
-#ifndef BOOST_NO_EXCEPTIONS
-			cwarn << boost::current_exception_diagnostic_information();
-#endif
-			if (_throw == WhenError::Throw)
-				throw;
-		}
+	{
+		int h = fromHex(_s[i], WhenError::DontThrow);
+		int l = fromHex(_s[i + 1], WhenError::DontThrow);
+		if (h != -1 && l != -1)
+			ret.push_back((byte)(h * 16 + l));
+		else if (_throw == WhenError::Throw)
+			throw BadHexCharacter();
+		else
+			return bytes();
+	}
 	return ret;
 }
 
