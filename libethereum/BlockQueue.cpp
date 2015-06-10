@@ -99,7 +99,7 @@ void BlockQueue::verifierBody()
 					m_verifying.erase(it);
 					goto OK1;
 				}
-			cwarn << "GAA BlockQueue corrupt: job cancelled but cannot be found in m_verifying queue.";
+			cwarn << "BlockQueue missing our job: was there a GM?";
 			OK1:;
 			continue;
 		}
@@ -127,7 +127,7 @@ void BlockQueue::verifierBody()
 						i = move(res);
 						goto OK;
 					}
-				cwarn << "GAA BlockQueue corrupt: job finished but cannot be found in m_verifying queue.";
+				cwarn << "BlockQueue missing our job: was there a GM?";
 				OK:;
 			}
 		}
@@ -229,23 +229,16 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 	DEV_INVARIANT_CHECK;
 	m_drainingSet.clear();
 	if (_bad.size())
-	{
-		vector<VerifiedBlock> old;
+		// one of them was bad. since they all rely on their parent, all following are bad.
 		DEV_GUARDED(m_verification)
-			swap(m_verified, old);
-		for (auto& b: old)
 		{
-			if (m_knownBad.count(b.verified.info.parentHash))
-			{
-				m_knownBad.insert(b.verified.info.hash());
-				m_readySet.erase(b.verified.info.hash());
-			}
-			else
-				DEV_GUARDED(m_verification)
-					m_verified.push_back(std::move(b));
+			m_knownBad += _bad;
+			m_knownBad += m_readySet;
+			m_readySet.clear();
+			m_verified.clear();
+			m_verifying.clear();
+			m_unverified.clear();
 		}
-	}
-	m_knownBad += _bad;
 	return !m_readySet.empty();
 }
 
