@@ -41,6 +41,7 @@ public:
 	explicit Transact(Context* _context, QWidget* _parent = 0);
 	~Transact();
 
+	void resetGasPrice();
 	void setEnvironment(dev::AddressHash const& _accounts, dev::eth::Client* _eth, NatSpecFace* _natSpecDB);
 
 private slots:

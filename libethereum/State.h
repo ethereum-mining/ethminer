@@ -46,8 +46,25 @@ namespace test { class ImportTest; class StateLoader; }
 namespace eth
 {
 
+// Import-specific errinfos
+using errinfo_uncleIndex = boost::error_info<struct tag_uncleIndex, unsigned>;
+using errinfo_currentNumber = boost::error_info<struct tag_currentNumber, u256>;
+using errinfo_uncleNumber = boost::error_info<struct tag_uncleNumber, u256>;
+using errinfo_unclesExcluded = boost::error_info<struct tag_unclesExcluded, h256Hash>;
+using errinfo_block = boost::error_info<struct tag_block, bytes>;
+using errinfo_now = boost::error_info<struct tag_now, unsigned>;
+
+using errinfo_transactionIndex = boost::error_info<struct tag_transactionIndex, unsigned>;
+
+using errinfo_vmtrace = boost::error_info<struct tag_vmtrace, std::string>;
+using errinfo_receipts = boost::error_info<struct tag_receipts, std::vector<bytes>>;
+using errinfo_required_LogBloom = boost::error_info<struct tag_required_LogBloom, LogBloom>;
+using errinfo_got_LogBloom = boost::error_info<struct tag_get_LogBloom, LogBloom>;
+using LogBloomRequirementError = boost::tuple<errinfo_required_LogBloom, errinfo_got_LogBloom>;
+
 class BlockChain;
 class State;
+struct VerifiedBlockRef;
 
 struct StateChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
 struct StateTrace: public LogChannel { static const char* name(); static const int verbosity = 5; };
@@ -84,9 +101,20 @@ public:
 
 class TrivialGasPricer: public GasPricer
 {
-protected:
-	u256 ask(State const&) const override { return 10 * szabo; }
-	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return 10 * szabo; }
+public:
+	TrivialGasPricer() = default;
+	TrivialGasPricer(u256 const& _ask, u256 const& _bid): m_ask(_ask), m_bid(_bid) {}
+
+	void setAsk(u256 const& _ask) { m_ask = _ask; }
+	void setBid(u256 const& _bid) { m_bid = _bid; }
+
+	u256 ask() const { return m_ask; }
+	u256 ask(State const&) const override { return m_ask; }
+	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return m_bid; }
+
+private:
+	u256 m_ask = 10 * szabo;
+	u256 m_bid = 10 * szabo;
 };
 
 enum class Permanence
@@ -190,7 +218,7 @@ public:
 
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed);
+	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
 	/// Get the remaining gas limit in this block.
 	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
@@ -283,10 +311,12 @@ public:
 	State fromPending(unsigned _i) const;
 
 	/// @returns the StateDiff caused by the pending transaction of index @a _i.
-	StateDiff pendingDiff(unsigned _i) const { return fromPending(_i).diff(fromPending(_i + 1)); }
+	StateDiff pendingDiff(unsigned _i) const { return fromPending(_i).diff(fromPending(_i + 1), true); }
 
 	/// @return the difference between this state (origin) and @a _c (destination).
-	StateDiff diff(State const& _c) const;
+	/// @param _quick if true doesn't check all addresses possible (/very/ slow for a full chain)
+	/// but rather only those touched by the transactions in creating the two States.
+	StateDiff diff(State const& _c, bool _quick = false) const;
 
 	/// Sync our state with the block chain.
 	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
@@ -297,7 +327,7 @@ public:
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
-	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
+	u256 enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Returns back to a pristine state after having done a playback.
 	/// @arg _fullCommit if true flush everything out to disk. If false, this effectively only validates
@@ -338,7 +368,7 @@ private:
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock.
 	/// Throws on failure.
-	u256 enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
+	u256 enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(std::vector<BlockInfo> const& _uncleBlockHeaders);
@@ -351,12 +381,16 @@ private:
 	/// Debugging only. Good for checking the Trie is in shape.
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
 
+	/// Provide a standard VM trace for debugging purposes.
+	std::string vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir);
+
 	OverlayDB m_db;								///< Our overlay for the state tree.
 	SecureTrieDB<Address, OverlayDB> m_state;	///< Our state tree, as an OverlayDB DB.
 	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
 	TransactionReceipts m_receipts;				///< The corresponding list of transaction receipts.
 	h256Hash m_transactionSet;					///< The set of transaction hashes that we've included in the state.
 	OverlayDB m_lastTx;
+	AddressHash m_touched;						///< Tracks all addresses touched by transactions so far.
 
 	mutable std::unordered_map<Address, Account> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
@@ -380,8 +414,9 @@ private:
 std::ostream& operator<<(std::ostream& _out, State const& _s);
 
 template <class DB>
-void commit(std::unordered_map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
+AddressHash commit(std::unordered_map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
 {
+	AddressHash ret;
 	for (auto const& i: _cache)
 		if (i.second.isDirty())
 		{
@@ -420,7 +455,9 @@ void commit(std::unordered_map<Address, Account> const& _cache, DB& _db, SecureT
 
 				_state.insert(i.first, &s.out());
 			}
+			ret.insert(i.first);
 		}
+	return ret;
 }
 
 }

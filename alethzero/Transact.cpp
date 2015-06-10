@@ -58,11 +58,9 @@ Transact::Transact(Context* _c, QWidget* _parent):
 {
 	ui->setupUi(this);
 
-	initUnits(ui->gasPriceUnits);
-	initUnits(ui->valueUnits);
-	ui->valueUnits->setCurrentIndex(6);
-	ui->gasPriceUnits->setCurrentIndex(4);
-	ui->gasPrice->setValue(10);
+	resetGasPrice();
+	setValueUnits(ui->valueUnits, ui->value, 0);
+
 	on_destination_currentTextChanged(QString());
 }
 
@@ -90,6 +88,11 @@ void Transact::setEnvironment(AddressHash const& _accounts, dev::eth::Client* _e
 		ui->from->setCurrentIndex(old);
 	else if (ui->from->count())
 		ui->from->setCurrentIndex(0);
+}
+
+void Transact::resetGasPrice()
+{
+	setValueUnits(ui->gasPriceUnits, ui->gasPrice, m_context->gasPrice());
 }
 
 bool Transact::isCreation() const
@@ -357,7 +360,7 @@ void Transact::rejigData()
 		return;
 	}
 	else
-		gasNeeded = (qint64)min<bigint>(ethereum()->gasLimitRemaining(), ((b - value()) / gasPrice()));
+		gasNeeded = (qint64)min<bigint>(ethereum()->gasLimitRemaining(), ((b - value()) / max<u256>(gasPrice(), 1)));
 
 	// Dry-run execution to determine gas requirement and any execution errors
 	Address to;

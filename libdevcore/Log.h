@@ -54,10 +54,36 @@ extern int g_logVerbosity;
 /// The current method that the logging system uses to output the log messages. Defaults to simpleDebugOut().
 extern std::function<void(std::string const&, char const*)> g_logPost;
 
-/// Map of Log Channel types to bool, false forces the channel to be disabled, true forces it to be enabled.
-/// If a channel has no entry, then it will output as long as its verbosity (LogChannel::verbosity) is less than
-/// or equal to the currently output verbosity (g_logVerbosity).
-extern std::map<std::type_info const*, bool> g_logOverride;
+class LogOverrideAux
+{
+protected:
+	LogOverrideAux(std::type_info const* _ch, bool _value);
+	~LogOverrideAux();
+
+private:
+	std::type_info const* m_ch;
+	static const int c_null = -1;
+	int m_old;
+};
+
+template <class Channel>
+class LogOverride: LogOverrideAux
+{
+public:
+	LogOverride(bool _value): LogOverrideAux(&typeid(Channel), _value) {}
+};
+
+bool isChannelVisible(std::type_info const* _ch, bool _default);
+template <class Channel> bool isChannelVisible() { return isChannelVisible(&typeid(Channel), Channel::verbosity <= g_logVerbosity); }
+
+/// Temporary changes system's verbosity for specific function. Restores the old verbosity when function returns.
+/// Not thread-safe, use with caution!
+struct VerbosityHolder
+{
+	VerbosityHolder(int _temporaryValue): oldLogVerbosity(g_logVerbosity) { g_logVerbosity = _temporaryValue; }
+	~VerbosityHolder() { g_logVerbosity = oldLogVerbosity; }
+	int oldLogVerbosity;
+};
 
 #define ETH_THREAD_CONTEXT(name) for (std::pair<dev::ThreadContext, bool> __eth_thread_context(name, true); p.second; p.second = false)
 

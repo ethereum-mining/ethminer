@@ -17,25 +17,23 @@ namespace eth
 
 extern "C" void env_sload(); // fake declaration for linker symbol stripping workaround, see a call below
 
-bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
+bytesConstRef JitVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
 	auto rejected = false;
 	// TODO: Rejecting transactions with gas limit > 2^63 can be used by attacker to take JIT out of scope
-	rejected |= m_gas > std::numeric_limits<decltype(m_data.gas)>::max(); // Do not accept requests with gas > 2^63 (int64 max)
+	rejected |= io_gas > std::numeric_limits<decltype(m_data.gas)>::max(); // Do not accept requests with gas > 2^63 (int64 max)
 	rejected |= _ext.gasPrice > std::numeric_limits<decltype(m_data.gasPrice)>::max();
 	rejected |= _ext.currentBlock.number > std::numeric_limits<decltype(m_data.number)>::max();
 	rejected |= _ext.currentBlock.timestamp > std::numeric_limits<decltype(m_data.timestamp)>::max();
 
 	if (rejected)
 	{
-		cwarn << "Execution rejected by EVM JIT (gas limit: " << m_gas << "), executing with interpreter";
-		m_fallbackVM = VMFactory::create(VMKind::Interpreter, m_gas);
-		auto&& output = m_fallbackVM->go(_ext, _onOp, _step);
-		m_gas = m_fallbackVM->gas(); // copy remaining gas, Executive expects it
-		return output;
+		cwarn << "Execution rejected by EVM JIT (gas limit: " << io_gas << "), executing with interpreter";
+		m_fallbackVM = VMFactory::create(VMKind::Interpreter);
+		return m_fallbackVM->execImpl(io_gas, _ext, _onOp);
 	}
 
-	m_data.gas 			= static_cast<decltype(m_data.gas)>(m_gas);
+	m_data.gas 			= static_cast<decltype(m_data.gas)>(io_gas);
 	m_data.gasPrice		= static_cast<decltype(m_data.gasPrice)>(_ext.gasPrice);
 	m_data.callData 	= _ext.data.data();
 	m_data.callDataSize = _ext.data.size();
@@ -50,7 +48,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 	m_data.timestamp 	= static_cast<decltype(m_data.timestamp)>(_ext.currentBlock.timestamp);
 	m_data.code     	= _ext.code.data();
 	m_data.codeSize 	= _ext.code.size();
-	m_data.codeHash		= eth2jit(sha3(_ext.code));
+	m_data.codeHash		= eth2jit(_ext.codeHash);
 
 	m_context.init(m_data, reinterpret_cast<evmjit::Env*>(&_ext));
 	auto exitCode = evmjit::JIT::exec(m_context);
@@ -75,7 +73,7 @@ bytesConstRef JitVM::go(ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
 		break;
 	}
 
-	m_gas = m_data.gas; // TODO: Remove m_gas field
+	io_gas = m_data.gas;
 	return {std::get<0>(m_context.returnData), std::get<1>(m_context.returnData)};
 }
 

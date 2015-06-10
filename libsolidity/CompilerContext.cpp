@@ -99,6 +99,12 @@ eth::AssemblyItem CompilerContext::getFunctionEntryLabel(Declaration const& _dec
 		return res->second.tag();
 }
 
+eth::AssemblyItem CompilerContext::getFunctionEntryLabelIfExists(Declaration const& _declaration) const
+{
+	auto res = m_functionEntryLabels.find(&_declaration);
+	return res == m_functionEntryLabels.end() ? eth::AssemblyItem(eth::UndefinedItem) : res->second.tag();
+}
+
 eth::AssemblyItem CompilerContext::getVirtualFunctionEntryLabel(FunctionDefinition const& _function)
 {
 	solAssert(!m_inheritanceHierarchy.empty(), "No inheritance hierarchy set.");
@@ -127,7 +133,7 @@ set<Declaration const*> CompilerContext::getFunctionsWithoutCode()
 	for (auto const& it: m_functionEntryLabels)
 		if (m_functionsWithCode.count(it.first) == 0)
 			functions.insert(it.first);
-	return move(functions);
+	return functions;
 }
 
 ModifierDefinition const& CompilerContext::getFunctionModifier(string const& _name) const

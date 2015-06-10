@@ -31,16 +31,10 @@ namespace eth
 class SmartVM: public VMFace
 {
 public:
-	SmartVM(u256 const& _gas): m_gas(_gas) {}
-
-	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
-
-	void reset(u256 const& _gas = 0) noexcept override { m_gas = _gas; }
-	u256 gas() const noexcept override { return (u256)m_gas; }
+	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) override final;
 
 private:
 	std::unique_ptr<VMFace> m_selectedVM;
-	bigint m_gas;
 };
 
 }

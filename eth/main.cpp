@@ -66,6 +66,8 @@ using namespace dev::eth;
 using namespace boost::algorithm;
 using dev::eth::Instruction;
 
+static bool g_silence = false;
+
 void interactiveHelp()
 {
 	cout
@@ -82,15 +84,24 @@ void interactiveHelp()
 		<< "    minestop  Stops mining." << endl
 		<< "    mineforce <enable>  Forces mining, even when there are no transactions." << endl
 		<< "    block  Gives the current block height." << endl
+		<< "    blockhashfromnumber <number>  Gives the block hash with the givne number." << endl
+		<< "    numberfromblockhash <hash>  Gives the block number with the given hash." << endl
+		<< "    blockqueue  Gives the current block queue status." << endl
+		<< "    findblock <hash>  Searches for the block in the blockchain and blockqueue." << endl
+		<< "    firstunknown  Gives the first unknown block from the blockqueue." << endl
+		<< "    retryunknown  retries to import all unknown blocks from the blockqueue." << endl
 		<< "    accounts  Gives information on all owned accounts (balances, mining beneficiary and default signer)." << endl
 		<< "    newaccount <name>  Creates a new account with the given name." << endl
 		<< "    transact  Execute a given transaction." << endl
+		<< "    txcreate  Execute a given contract creation transaction." << endl
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
 		<< "    peers  List the peers that are connected" << endl
 #if ETH_FATDB || !ETH_TRUE
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
+		<< "    balanceat <address>  Gives the balance of the given account." << endl
+		<< "    codeat <address>  Gives the code of the given account." << endl
 #endif
 		<< "    setsigningkey <addr>  Set the address with which to sign transactions." << endl
 		<< "    setaddress <addr>  Set the coinbase (mining payout) address." << endl
@@ -116,22 +127,27 @@ void help()
 #endif
 		<< "    -K,--kill  First kill the blockchain." << endl
 		<< "    -R,--rebuild  Rebuild the blockchain from the existing database." << endl
+		<< "    --genesis-nonce <nonce>  Set the Genesis Nonce to the given hex nonce." << endl
 		<< "    -s,--import-secret <secret>  Import a secret key into the key store and use as the default." << endl
 		<< "    -S,--import-session-secret <secret>  Import a secret key into the key store and use as the default for this session only." << endl
 		<< "    --sign-key <address>  Sign all transactions with the key of the given address." << endl
 		<< "    --session-sign-key <address>  Sign all transactions with the key of the given address for this session only." << endl
 		<< "    --master <password>  Give the master password for the key store." << endl
 		<< "    --password <password>  Give a password for a private key." << endl
+		<< "    --sentinel <server>  Set the sentinel for reporting bad blocks or chain issues." << endl
 		<< endl
 		<< "Client transacting:" << endl
-		<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
+		/*<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
 		<< "    -e,--ether-price <n>  Set the ether price in the reference unit e.g. ¢ (default: 30.679)." << endl
-		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl
+		<< "    -P,--priority <0 - 100>  Default % priority of a transaction (default: 50)." << endl*/
+		<< "    --ask <wei>  Set the minimum ask gas price under which no transactions will be mined (default 500000000000)." << endl
+		<< "    --bid <wei>  Set the bid gas price for to pay for transactions (default 500000000000)." << endl
 		<< endl
 		<< "Client mining:" << endl
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (default: off)" << endl
 		<< "    -f,--force-mining  Mine even when there are no transactions to mine (default: off)" << endl
+		<< "    --mine-on-wrong-chain  Mine even when we know it's the wrong chain (default: off)" << endl
 		<< "    -C,--cpu  When mining, use the CPU." << endl
 		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
 		<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
@@ -273,6 +289,7 @@ int main(int argc, char** argv)
 	bool upnp = true;
 	WithExisting killChain = WithExisting::Trust;
 	bool jit = false;
+	string sentinel;
 
 	/// Networking params.
 	string clientName;
@@ -288,6 +305,7 @@ int main(int argc, char** argv)
 	/// Mining params
 	unsigned mining = 0;
 	bool forceMining = false;
+	bool mineOnWrongChain = false;
 	Address signingKey;
 	Address sessionKey;
 	Address beneficiary = signingKey;
@@ -299,8 +317,10 @@ int main(int argc, char** argv)
 
 	/// Transaction params
 	TransactionPriority priority = TransactionPriority::Medium;
-	double etherPrice = 30.679;
-	double blockFees = 15.0;
+//	double etherPrice = 30.679;
+//	double blockFees = 15.0;
+	u256 askPrice("500000000000");
+	u256 bidPrice("500000000000");
 
 	// javascript console
 	bool useConsole = false;
@@ -368,6 +388,10 @@ int main(int argc, char** argv)
 			mode = OperationMode::Export;
 			filename = argv[++i];
 		}
+		else if (arg == "--sentinel" && i + 1 < argc)
+			sentinel = argv[++i];
+		else if (arg == "--mine-on-wrong-chain")
+			mineOnWrongChain = true;
 		else if (arg == "--format" && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -464,7 +488,19 @@ int main(int argc, char** argv)
 		}
 		else if ((arg == "-d" || arg == "--path" || arg == "--db-path") && i + 1 < argc)
 			dbPath = argv[++i];
-		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
+		else if (arg == "--genesis-nonce" && i + 1 < argc)
+		{
+			try
+			{
+				CanonBlockChain::setGenesisNonce(Nonce(argv[++i]));
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		}
+/*		else if ((arg == "-B" || arg == "--block-fees") && i + 1 < argc)
 		{
 			try
 			{
@@ -481,6 +517,30 @@ int main(int argc, char** argv)
 			try
 			{
 				etherPrice = stof(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		}*/
+		else if (arg == "--ask" && i + 1 < argc)
+		{
+			try
+			{
+				askPrice = u256(argv[++i]);
+			}
+			catch (...)
+			{
+				cerr << "Bad " << arg << " option: " << argv[i] << endl;
+				return -1;
+			}
+		}
+		else if (arg == "--bid" && i + 1 < argc)
+		{
+			try
+			{
+				bidPrice = u256(argv[++i]);
 			}
 			catch (...)
 			{
@@ -595,21 +655,20 @@ int main(int argc, char** argv)
 		clientName += "/";
 
 	string logbuf;
-	bool silence = false;
 	std::string additional;
 	g_logPost = [&](std::string const& a, char const*){
-		if (silence)
+		if (g_silence)
 			logbuf += a + "\n";
 		else
 			cout << "\r           \r" << a << endl << additional << flush;
 	};
 
 	auto getPassword = [&](string const& prompt){
-		auto s = silence;
-		silence = true;
+		auto s = g_silence;
+		g_silence = true;
 		cout << endl;
 		string ret = dev::getPassword(prompt);
-		silence = s;
+		g_silence = s;
 		return ret;
 	};
 	auto getAccountPassword = [&](Address const& a){
@@ -628,7 +687,9 @@ int main(int argc, char** argv)
 		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
 		netPrefs,
 		&nodesState);
-	
+	web3.ethereum()->setMineOnBadChain(mineOnWrongChain);
+	web3.ethereum()->setSentinel(sentinel);
+
 	auto toNumber = [&](string const& s) -> unsigned {
 		if (s == "latest")
 			return web3.ethereum()->number();
@@ -693,15 +754,16 @@ int main(int argc, char** argv)
 	}
 
 	if (keyManager.exists())
-		while (masterPassword.empty())
-		{
-			masterPassword = getPassword("Please enter your MASTER password: ");
-			if (!keyManager.load(masterPassword))
+	{
+		if (masterPassword.empty() || !keyManager.load(masterPassword))
+			while (true)
 			{
+				masterPassword = getPassword("Please enter your MASTER password: ");
+				if (keyManager.load(masterPassword))
+					break;
 				cout << "Password invalid. Try again." << endl;
-				masterPassword.clear();
 			}
-		}
+	}
 	else
 	{
 		while (masterPassword.empty())
@@ -729,7 +791,8 @@ int main(int argc, char** argv)
 
 	cout << ethCredits();
 	web3.setIdealPeerCount(peers);
-	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
+//	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
+	std::shared_ptr<eth::TrivialGasPricer> gasPricer = make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
 	eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
 	StructuredLogger::starting(clientImplString, dev::Version);
 	if (c)
@@ -773,11 +836,11 @@ int main(int argc, char** argv)
 		string l;
 		while (!g_exit)
 		{
-			silence = false;
+			g_silence = false;
 			cout << logbuf << "Press Enter" << flush;
 			std::getline(cin, l);
 			logbuf.clear();
-			silence = true;
+			g_silence = true;
 
 #if ETH_READLINE
 			if (l.size())
@@ -828,7 +891,7 @@ int main(int argc, char** argv)
 				iss >> enable;
 				c->setForceMining(isTrue(enable));
 			}
-			else if (c && cmd == "setblockfees")
+/*			else if (c && cmd == "setblockfees")
 			{
 				iss >> blockFees;
 				try
@@ -883,7 +946,7 @@ int main(int argc, char** argv)
 						cerr << "Unknown priority: " << m << endl;
 					}
 				cout << "Priority: " << (int)priority << "/8" << endl;
-			}
+			}*/
 			else if (cmd == "verbosity")
 			{
 				if (iss.peek() != -1)
@@ -917,9 +980,88 @@ int main(int argc, char** argv)
 				cout << "Current mining beneficiary:" << endl << beneficiary << endl;
 				cout << "Current signing account:" << endl << signingKey << endl;
 			}
+			else if (c && cmd == "blockhashfromnumber")
+			{
+				if (iss.peek() != -1)
+				{
+					unsigned number;
+					iss >> number;
+					cout << " hash of block: " << c->hashFromNumber(number).hex() << endl;
+				}
+			}
+			else if (c && cmd == "numberfromblockhash")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					iss >> stringHash;
+
+					h256 hash = h256(fromHex(stringHash));
+					cout << " number of block: " << c->numberFromHash(hash) << endl;
+				}
+			}
 			else if (c && cmd == "block")
 			{
-				cout << "Current block: " <<c->blockChain().details().number << endl;
+				cout << "Current block: " << c->blockChain().details().number << endl;
+			}
+			else if (c && cmd == "blockqueue")
+			{
+				cout << "Current blockqueue status: " << endl << c->blockQueueStatus() << endl;
+			}
+			else if (c && cmd == "findblock")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					iss >> stringHash;
+
+					h256 hash = h256(fromHex(stringHash));
+
+					// search in blockchain
+					cout << "search in blockchain... " << endl;
+					try
+					{
+						cout << c->blockInfo(hash) << endl;
+					}
+					catch(Exception& _e)
+					{
+						cout << "block not in blockchain" << endl;
+						cout << boost::diagnostic_information(_e) << endl;
+					}
+
+					cout << "search in blockqueue... " << endl;
+
+					switch(c->blockQueue().blockStatus(hash))
+					{
+					case QueueStatus::Ready:
+						cout << "Ready" << endl;
+						break;
+					case QueueStatus::Importing:
+						cout << "Importing" << endl;
+						break;
+					case QueueStatus::UnknownParent:
+						cout << "UnknownParent" << endl;
+						break;
+					case QueueStatus::Bad:
+						cout << "Bad" << endl;
+						break;
+					case QueueStatus::Unknown:
+						cout << "Unknown" << endl;
+						break;
+					default:
+						cout << "invalid queueStatus" << endl;
+					}
+				}
+				else
+					cwarn << "Require parameter: findblock HASH";
+			}
+			else if (c && cmd == "firstunknown")
+			{
+				cout << "first unknown blockhash: " << c->blockQueue().firstUnknown().hex() << endl;
+			}
+			else if (c && cmd == "retryunknown")
+			{
+				c->retryUnkonwn();
 			}
 			else if (cmd == "peers")
 			{
@@ -1033,6 +1175,64 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
+			else if (c && cmd == "txcreate")
+			{
+				auto const& bc =c->blockChain();
+				auto h = bc.currentHash();
+				auto blockData = bc.block(h);
+				BlockInfo info(blockData);
+				if (iss.peek() != -1)
+				{
+					u256 amount;
+					u256 gasPrice;
+					u256 gas;
+					string sechex;
+					string sdata;
+
+					iss >> amount >> gasPrice >> gas >> sechex >> sdata;
+
+					if (!gasPrice)
+						gasPrice = gasPricer->bid(priority);
+
+					cnote << "Data:";
+					cnote << sdata;
+					bytes data = dev::eth::parseData(sdata);
+					cnote << "Bytes:";
+					string sbd = asString(data);
+					bytes bbd = asBytes(sbd);
+					stringstream ssbd;
+					ssbd << bbd;
+					cnote << ssbd.str();
+					int ssize = sechex.length();
+					u256 minGas = (u256)Transaction::gasRequired(data, 0);
+					if (gas < minGas)
+						cwarn << "Minimum gas amount is" << minGas;
+					else if (ssize < 40)
+					{
+						if (ssize > 0)
+							cwarn << "Invalid secret length:" << ssize;
+					}
+					else
+					{
+						try
+						{
+							Secret secret = h256(fromHex(sechex));
+							cout << " new contract address : " << c->submitTransaction(secret, amount, data, gas, gasPrice) << endl;
+						}
+						catch (BadHexCharacter& _e)
+						{
+							cwarn << "invalid hex character, transaction rejected";
+							cwarn << boost::diagnostic_information(_e);
+						}
+						catch (...)
+						{
+							cwarn << "transaction rejected";
+						}
+					}
+				}
+				else
+					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET INIT";
+			}
 #if ETH_FATDB
 			else if (c && cmd == "listcontracts")
 			{
@@ -1055,6 +1255,43 @@ int main(int argc, char** argv)
 						ss = toString(i) + " : " + toString( c->balanceAt(i)) + " [" + toString((unsigned) c->countAt(i)) + "]";
 						cout << ss << endl;
 					}
+			}
+			else if (c && cmd == "balanceat")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					iss >> stringHash;
+
+					Address address = h160(fromHex(stringHash));
+
+					cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address)) << endl;
+				}
+			}
+			// TODO implement << operator for std::unorderd_map
+//			else if (c && cmd == "storageat")
+//			{
+//				if (iss.peek() != -1)
+//				{
+//					string stringHash;
+//					iss >> stringHash;
+
+//					Address address = h160(fromHex(stringHash));
+
+//					cout << "storage at " << stringHash << " is: " << c->storageAt(address) << endl;
+//				}
+//			}
+			else if (c && cmd == "codeat")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					iss >> stringHash;
+
+					Address address = h160(fromHex(stringHash));
+
+					cout << "code at " << stringHash << " is: " << toHex(c->codeAt(address)) << endl;
+				}
 			}
 #endif
 			else if (c && cmd == "send")
@@ -1186,7 +1423,7 @@ int main(int argc, char** argv)
 					{
 						OnOpFunc oof;
 						if (format == "pretty")
-							oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
+							oof = [&](uint64_t steps, Instruction instr, bigint newMemSize, bigint gasCost, bigint gas, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
 							{
 								dev::eth::VM* vm = vvm;
 								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
@@ -1197,24 +1434,24 @@ int main(int argc, char** argv)
 								f << "    STORAGE" << endl;
 								for (auto const& i: ext->state().storage(ext->myAddress))
 									f << showbase << hex << i.first << ": " << i.second << endl;
-								f << dec << ext->depth << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << vm->gas() << " | -" << dec << gasCost << " | " << newMemSize << "x32";
+								f << dec << ext->depth << " | " << ext->myAddress << " | #" << steps << " | " << hex << setw(4) << setfill('0') << vm->curPC() << " : " << dev::eth::instructionInfo(instr).name << " | " << dec << gas << " | -" << dec << gasCost << " | " << newMemSize << "x32";
 							};
 						else if (format == "standard")
-							oof = [&](uint64_t, Instruction instr, bigint, bigint, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
+							oof = [&](uint64_t, Instruction instr, bigint, bigint, bigint gas, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
 							{
 								dev::eth::VM* vm = vvm;
 								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
-								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)gas, 1)) << endl;
 							};
 						else if (format == "standard+")
-							oof = [&](uint64_t, Instruction instr, bigint, bigint, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
+							oof = [&](uint64_t, Instruction instr, bigint, bigint, bigint gas, dev::eth::VM* vvm, dev::eth::ExtVMFace const* vextVM)
 							{
 								dev::eth::VM* vm = vvm;
 								dev::eth::ExtVM const* ext = static_cast<ExtVM const*>(vextVM);
 								if (instr == Instruction::STOP || instr == Instruction::RETURN || instr == Instruction::SUICIDE)
 									for (auto const& i: ext->state().storage(ext->myAddress))
 										f << toHex(dev::toCompactBigEndian(i.first, 1)) << " " << toHex(dev::toCompactBigEndian(i.second, 1)) << endl;
-								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)vm->gas(), 1)) << endl;
+								f << ext->myAddress << " " << hex << toHex(dev::toCompactBigEndian(vm->curPC(), 1)) << " " << hex << toHex(dev::toCompactBigEndian((int)(byte)instr, 1)) << " " << hex << toHex(dev::toCompactBigEndian((uint64_t)gas, 1)) << endl;
 							};
 						e.initialize(t);
 						if (!e.execute())
