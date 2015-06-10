@@ -46,6 +46,8 @@ bool changesMemory(Instruction _inst)
 	return
 		_inst == Instruction::MSTORE ||
 		_inst == Instruction::MSTORE8 ||
+		_inst == Instruction::MLOAD ||
+		_inst == Instruction::CREATE ||
 		_inst == Instruction::CALL ||
 		_inst == Instruction::CALLCODE ||
 		_inst == Instruction::SHA3 ||
@@ -71,6 +73,7 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 		stack.append(toHex(toCompactBigEndian(i), 1));
 	r["stack"] = stack;
 
+	bool returned = false;
 	bool newContext = false;
 	Instruction lastInst = Instruction::STOP;
 
@@ -84,6 +87,7 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 	else if (m_lastInst.size() == ext.depth + 2)
 	{
 		// returned from old context
+		returned = true;
 		m_lastInst.pop_back();
 		lastInst = m_lastInst.back();
 	}
@@ -91,6 +95,7 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 	{
 		// continuing in previous context
 		lastInst = m_lastInst.back();
+		m_lastInst.back() = inst;
 	}
 	else
 	{
@@ -100,12 +105,7 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 	}
 
 	if (changesMemory(lastInst) || newContext)
-	{
-		Json::Value mem(Json::arrayValue);
-		for (auto const& i: vm.memory())
-			mem.append(toHex(toCompactBigEndian(i), 1));
-		r["memory"] = mem;
-	}
+		r["memory"] = toHex(vm.memory());
 
 	if (changesStorage(lastInst) || newContext)
 	{
@@ -115,21 +115,26 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 		r["storage"] = storage;
 	}
 
-	r["depth"] = ext.depth;
-	r["address"] = ext.myAddress.hex();
+	if (returned)
+		r["depth"] = ext.depth;
+	if (newContext)
+		r["address"] = ext.myAddress.hex();
 	r["steps"] = (unsigned)_steps;
 	r["inst"] = (unsigned)inst;
+	if (m_showMnemonics)
+		r["instname"] = instructionInfo(inst).name;
 	r["pc"] = toString(vm.curPC());
 	r["gas"] = toString(gas);
 	r["gascost"] = toString(gasCost);
-	r["memexpand"] = toString(newMemSize);
+	if (!!newMemSize)
+		r["memexpand"] = toString(newMemSize);
 
 	m_trace->append(r);
 }
 
-string StandardTrace::json() const
+string StandardTrace::json(bool _styled) const
 {
-	return Json::FastWriter().write(*m_trace);
+	return _styled ? Json::StyledWriter().write(*m_trace) : Json::FastWriter().write(*m_trace);
 }
 
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
