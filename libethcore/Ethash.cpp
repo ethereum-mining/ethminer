@@ -335,7 +335,7 @@ void Ethash::GPUMiner::workLoop()
 			EthashAux::FullType dag;
 			while (true)
 			{
-				if ((dag = EthashAux::full(w.seedHash, false)))
+				if ((dag = EthashAux::full(w.seedHash, true)))
 					break;
 				if (shouldStop())
 				{
