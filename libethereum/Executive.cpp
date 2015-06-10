@@ -105,7 +105,12 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 	}
 
 	if (changesMemory(lastInst) || newContext)
-		r["memory"] = toHex(vm.memory());
+	{
+		if (vm.memory().size() < 1024)
+			r["memory"] = toHex(vm.memory());
+		else
+			r["sha3memory"] = sha3(vm.memory()).hex();
+	}
 
 	if (changesStorage(lastInst) || newContext)
 	{
