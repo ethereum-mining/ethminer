@@ -35,28 +35,51 @@ using namespace eth;
 void help()
 {
 	cout
-		<< "Usage ethvm <options>" << endl
-		<< "Options:" << endl
-		;
+		<< "Usage ethvm <options> [trace|stats|output] (<file>|--)" << endl
+		<< "Transaction options:" << endl
+		<< "    --value <n>  Transaction should transfer the <n> wei (default: 0)." << endl
+		<< "    --gas <n>  Transaction should be given <n> gas (default: block gas limit)." << endl
+		<< "    --gas-price <n>  Transaction's gas price' should be <n> (default: 0)." << endl
+		<< "    --sender <a>  Transaction sender should be <a> (default: 0000...0069)." << endl
+		<< "    --origin <a>  Transaction origin should be <a> (default: 0000...0069)." << endl
+		<< "Options for trace:" << endl
+		<< "    --flat  Minimal whitespace in the JSON." << endl
+		<< "    --mnemonics  Show instruction mnemonics in the trace (non-standard)." << endl
+		<< endl
+		<< "General options:" << endl
+		<< "    -V,--version  Show the version and exit." << endl
+		<< "    -h,--help  Show this help message and exit." << endl;
 	exit(0);
 }
 
 void version()
 {
-	cout << "evm version " << dev::Version << endl;
+	cout << "ethvm version " << dev::Version << endl;
+	cout << "By Gav Wood, 2015." << endl;
+	cout << "Build: " << DEV_QUOTED(ETH_BUILD_PLATFORM) << "/" << DEV_QUOTED(ETH_BUILD_TYPE) << endl;
 	exit(0);
 }
+
+enum class Mode
+{
+	Trace,
+	Statistics,
+	OutputOnly
+};
 
 int main(int argc, char** argv)
 {
 	string incoming = "--";
 
+	Mode mode = Mode::Statistics;
 	State state;
 	Address sender = Address(69);
 	Address origin = Address(69);
 	u256 value = 0;
 	u256 gas = state.gasLimitRemaining();
 	u256 gasPrice = 0;
+	bool styledJson = true;
+	StandardTrace st;
 
 	for (int i = 1; i < argc; ++i)
 	{
@@ -65,6 +88,30 @@ int main(int argc, char** argv)
 			help();
 		else if (arg == "-V" || arg == "--version")
 			version();
+		else if (arg == "--mnemonics")
+			st.setShowMnemonics();
+		else if (arg == "--flat")
+			styledJson = false;
+		else if (arg == "--value" && i + 1 < argc)
+			value = u256(argv[++i]);
+		else if (arg == "--sender" && i + 1 < argc)
+			sender = Address(argv[++i]);
+		else if (arg == "--origin" && i + 1 < argc)
+			origin = Address(argv[++i]);
+		else if (arg == "--gas" && i + 1 < argc)
+			gas = u256(argv[++i]);
+		else if (arg == "--gas-price" && i + 1 < argc)
+			gasPrice = u256(argv[++i]);
+		else if (arg == "--value" && i + 1 < argc)
+			value = u256(argv[++i]);
+		else if (arg == "--value" && i + 1 < argc)
+			value = u256(argv[++i]);
+		else if (arg == "stats")
+			mode = Mode::Statistics;
+		else if (arg == "output")
+			mode = Mode::OutputOnly;
+		else if (arg == "trace")
+			mode = Mode::Trace;
 		else
 			incoming = arg;
 	}
@@ -89,12 +136,17 @@ int main(int argc, char** argv)
 	unordered_map<byte, pair<unsigned, bigint>> counts;
 	unsigned total = 0;
 	bigint memTotal;
-	auto onOp = [&](uint64_t, Instruction inst, bigint m, bigint gasCost, bigint, VM*, ExtVMFace const*) {
-		counts[(byte)inst].first++;
-		counts[(byte)inst].second += gasCost;
-		total++;
-		if (m > 0)
-			memTotal = m;
+	auto onOp = [&](uint64_t step, Instruction inst, bigint m, bigint gasCost, bigint gas, VM* vm, ExtVMFace const* extVM) {
+		if (mode == Mode::Statistics)
+		{
+			counts[(byte)inst].first++;
+			counts[(byte)inst].second += gasCost;
+			total++;
+			if (m > 0)
+				memTotal = m;
+		}
+		else if (mode == Mode::Trace)
+			st(step, inst, m, gasCost, gas, vm, extVM);
 	};
 
 	executive.initialize(t);
@@ -104,24 +156,31 @@ int main(int argc, char** argv)
 	double execTime = timer.elapsed();
 	executive.finalize();
 	bytes output = std::move(res.output);
-	LogEntries logs = executive.logs();
 
-	cout << "Gas used: " << res.gasUsed << " (+" << t.gasRequired() << " for transaction, -" << res.gasRefunded << " refunded)" << endl;
-	cout << "Output: " << toHex(output) << endl;
-	cout << logs.size() << " logs" << (logs.empty() ? "." : ":") << endl;
-	for (LogEntry const& l: logs)
+	if (mode == Mode::Statistics)
 	{
-		cout << "  " << l.address.hex() << ": " << toHex(t.data()) << endl;
-		for (h256 const& t: l.topics)
-			cout << "    " << t.hex() << endl;
-	}
+		cout << "Gas used: " << res.gasUsed << " (+" << t.gasRequired() << " for transaction, -" << res.gasRefunded << " refunded)" << endl;
+		cout << "Output: " << toHex(output) << endl;
+		LogEntries logs = executive.logs();
+		cout << logs.size() << " logs" << (logs.empty() ? "." : ":") << endl;
+		for (LogEntry const& l: logs)
+		{
+			cout << "  " << l.address.hex() << ": " << toHex(t.data()) << endl;
+			for (h256 const& t: l.topics)
+				cout << "    " << t.hex() << endl;
+		}
 
-	cout << total << " operations in " << execTime << " seconds." << endl;
-	cout << "Maximum memory usage: " << memTotal * 32 << " bytes" << endl;
-	cout << "Expensive operations:" << endl;
-	for (auto const& c: {Instruction::SSTORE, Instruction::SLOAD, Instruction::CALL, Instruction::CREATE, Instruction::CALLCODE, Instruction::MSTORE8, Instruction::MSTORE, Instruction::MLOAD, Instruction::SHA3})
-		if (!!counts[(byte)c].first)
-			cout << "  " << instructionInfo(c).name << " x " << counts[(byte)c].first << " (" << counts[(byte)c].second << " gas)" << endl;
+		cout << total << " operations in " << execTime << " seconds." << endl;
+		cout << "Maximum memory usage: " << memTotal * 32 << " bytes" << endl;
+		cout << "Expensive operations:" << endl;
+		for (auto const& c: {Instruction::SSTORE, Instruction::SLOAD, Instruction::CALL, Instruction::CREATE, Instruction::CALLCODE, Instruction::MSTORE8, Instruction::MSTORE, Instruction::MLOAD, Instruction::SHA3})
+			if (!!counts[(byte)c].first)
+				cout << "  " << instructionInfo(c).name << " x " << counts[(byte)c].first << " (" << counts[(byte)c].second << " gas)" << endl;
+	}
+	else if (mode == Mode::Trace)
+		cout << st.json(styledJson);
+	else if (mode == Mode::OutputOnly)
+		cout << toHex(output);
 
 	return 0;
 }
