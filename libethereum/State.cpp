@@ -641,11 +641,6 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 		}
 		catch (Exception& ex)
 		{
-			badBlock(_block.block, "Invalid transaction: " + toString(toTransactionException(ex)));
-			cwarn << "  Transaction Index:" << i;
-			LogOverride<ExecutiveWarnChannel> o(true);
-			DEV_IGNORE_EXCEPTIONS(execute(lh, tr));
-
 			ex << errinfo_transactionIndex(i);
 			throw;
 		}
@@ -659,19 +654,6 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 	auto receiptsRoot = orderedTrieRoot(receipts);
 	if (receiptsRoot != m_currentBlock.receiptsRoot)
 	{
-		badBlock(_block.block, "Bad receipts state root");
-		cwarn << "  Received: " << toString(m_currentBlock.receiptsRoot);
-		cwarn << "  Expected: " << toString(receiptsRoot) << " which is:";
-		for (unsigned j = 0; j < i; ++j)
-		{
-			auto b = receipts[j];
-			cwarn << j << ": ";
-			cwarn << "    RLP: " << RLP(b);
-			cwarn << "    Hex: " << toHex(b);
-			cwarn << "    " << TransactionReceipt(&b);
-		}
-		cwarn << "  VMTrace:\n" << vmTrace(_block.block, _bc, _ir);
-
 		InvalidReceiptsStateRoot ex;
 		ex << Hash256RequirementError(receiptsRoot, m_currentBlock.receiptsRoot);
 		ex << errinfo_receipts(receipts);
@@ -681,14 +663,6 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 
 	if (m_currentBlock.logBloom != logBloom())
 	{
-		badBlock(_block.block, "Bad log bloom");
-		cwarn << "  Receipt blooms:";
-		for (unsigned j = 0; j < i; ++j)
-		{
-			auto b = receipts[j];
-			cwarn << "    " << j << ":" << TransactionReceipt(&b).bloom().hex();
-		}
-		cwarn << "  Final bloom:" << m_currentBlock.logBloom.hex();
 		InvalidLogBloom ex;
 		ex << LogBloomRequirementError(logBloom(), m_currentBlock.logBloom);
 		ex << errinfo_receipts(receipts);
@@ -701,8 +675,10 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 	// Check uncles & apply their rewards to state.
 	if (rlp[2].itemCount() > 2)
 	{
-		badBlock(_block.block, "Too many uncles");
-		BOOST_THROW_EXCEPTION(TooManyUncles() << errinfo_max(2) << errinfo_got(rlp[2].itemCount()));
+		TooManyUncles ex;
+		ex << errinfo_max(2);
+		ex << errinfo_got(rlp[2].itemCount());
+		BOOST_THROW_EXCEPTION(ex);
 	}
 
 	vector<BlockInfo> rewarded;
@@ -717,7 +693,6 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 			auto h = sha3(i.data());
 			if (excluded.count(h))
 			{
-				badBlock(_block.block, "Invalid uncle included");
 				UncleInChain ex;
 				ex << errinfo_comment("Uncle in block already mentioned");
 				ex << errinfo_unclesExcluded(excluded);
@@ -726,19 +701,15 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 			}
 			excluded.insert(h);
 
-			BlockInfo uncle;
+			BlockInfo uncle = BlockInfo::fromHeader(i.data(), (_ir & ImportRequirements::CheckUncles) ? CheckEverything : IgnoreNonce,  h);
+
 			BlockInfo uncleParent;
-				uncle = BlockInfo::fromHeader(i.data(), (_ir & ImportRequirements::CheckUncles) ? CheckEverything : IgnoreNonce,  h);
 			if (!_bc.isKnown(uncle.parentHash))
 				BOOST_THROW_EXCEPTION(UnknownParent());
-
 			uncleParent = BlockInfo(_bc.block(uncle.parentHash));
+
 			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
 			{
-				badBlock(_block.block, "Uncle too old");
-				cwarn << "  Uncle number: " << uncle.number;
-				cwarn << "  Uncle parent number: " << uncleParent.number;
-				cwarn << "  Block number: " << m_currentBlock.number;
 				UncleTooOld ex;
 				ex << errinfo_uncleNumber(uncle.number);
 				ex << errinfo_currentNumber(m_currentBlock.number);
@@ -746,10 +717,6 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 			}
 			else if (uncle.number == m_currentBlock.number)
 			{
-				badBlock(_block.block, "Uncle is brother");
-				cwarn << "  Uncle number: " << uncle.number;
-				cwarn << "  Uncle parent number: " << uncleParent.number;
-				cwarn << "  Block number: " << m_currentBlock.number;
 				UncleIsBrother ex;
 				ex << errinfo_uncleNumber(uncle.number);
 				ex << errinfo_currentNumber(m_currentBlock.number);
@@ -757,7 +724,6 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 			}
 			uncle.verifyParent(uncleParent);
 
-//			tdIncrease += uncle.difficulty;
 			rewarded.push_back(uncle);
 			++ii;
 		}
@@ -776,7 +742,6 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot != m_previousBlock.stateRoot && m_currentBlock.stateRoot != rootHash())
 	{
-		badBlock(_block.block, "Bad state root");
 		m_db.rollback();
 		BOOST_THROW_EXCEPTION(InvalidStateRoot() << Hash256RequirementError(rootHash(), m_currentBlock.stateRoot));
 	}
@@ -784,7 +749,6 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 	if (m_currentBlock.gasUsed != gasUsed())
 	{
 		// Rollback the trie.
-		badBlock(_block.block, "Invalid gas used");
 		m_db.rollback();
 		BOOST_THROW_EXCEPTION(InvalidGasUsed() << RequirementError(bigint(gasUsed()), bigint(m_currentBlock.gasUsed)));
 	}
