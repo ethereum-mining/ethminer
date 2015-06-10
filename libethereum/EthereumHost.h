@@ -70,8 +70,8 @@ public:
 	void reset();
 
 	DownloadMan const& downloadMan() const { return m_man; }
-	bool isSyncing() const { Guard l(x_sync); return isSyncing_UNSAFE(); }
-	bool isBanned(p2p::NodeId _id) const { return !!m_banned.count(_id); }
+	bool isSyncing() const { RecursiveGuard l(x_sync); return isSyncing_UNSAFE(); }
+	bool isBanned(p2p::NodeId const& _id) const { return !!m_banned.count(_id); }
 
 	void noteNewTransactions() { m_newTransactions = true; }
 	void noteNewBlocks() { m_newBlocks = true; }
@@ -82,10 +82,12 @@ public:
 	void onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes); ///< Called by peer once it has new hashes
 	void onPeerHashes(EthereumPeer* _peer, h256s const& _hashes); ///< Called by peer once it has another sequential block of hashes during sync
 	void onPeerTransactions(EthereumPeer* _peer, RLP const& _r); ///< Called by peer when it has new transactions
+	void onPeerAborting(EthereumPeer* _peer); ///< Called by peer when it is disconnecting
 
 	DownloadMan& downloadMan() { return m_man; }
 	HashDownloadMan& hashDownloadMan() { return m_hashMan; }
 	BlockChain const& chain() { return m_chain; }
+	HashChainStatus status();
 
 	static unsigned const c_oldProtocolVersion;
 
@@ -122,6 +124,7 @@ private:
 	void onPeerHashes(EthereumPeer* _peer, h256s const& _hashes, bool _complete);
 	bool peerShouldGrabBlocks(EthereumPeer* _peer) const;
 	bool peerShouldGrabChain(EthereumPeer* _peer) const;
+	bool peerCanHelp(EthereumPeer* _peer) const;
 	void estimatePeerHashes(EthereumPeer* _peer);
 
 	BlockChain const& m_chain;
@@ -141,12 +144,14 @@ private:
 	bool m_newTransactions = false;
 	bool m_newBlocks = false;
 
-	mutable Mutex x_sync;
+	mutable RecursiveMutex x_sync;
 	bool m_needSyncHashes = true;				///< Indicates if need to downlad hashes
 	bool m_needSyncBlocks = true;				///< Indicates if we still need to download some blocks
 	h256 m_syncingLatestHash;					///< Latest block's hash, as of the current sync.
 	u256 m_syncingTotalDifficulty;				///< Latest block's total difficulty, as of the current sync.
-	h256s m_hashes;								///< List of hashes with unknown block numbers. Used for v60 chain downloading and catching up to a particular unknown
+	h256s m_hashes;								///< List of hashes with unknown block numbers. Used for PV60 chain downloading and catching up to a particular unknown
+	unsigned m_estimatedHashes = 0;				///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
+	bool m_syncingV61 = false;					///< True if recent activity was over pv61+. Used for status reporting only.
 };
 
 }

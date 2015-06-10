@@ -22,10 +22,11 @@
 #include "BlockQueue.h"
 #include <thread>
 #include <libdevcore/Log.h>
-#include <libethcore/EthashAux.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include "BlockChain.h"
+#include "VerifiedBlock.h"
+#include "State.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -71,62 +72,14 @@ void BlockQueue::verifierBody()
 			m_unverified.pop_front();
 			BlockInfo bi;
 			bi.mixHash = work.first;
-			m_verifying.push_back(make_pair(bi, bytes()));
+			m_verifying.push_back(VerifiedBlock { VerifiedBlockRef { bytesConstRef(), move(bi), Transactions() }, bytes() });
 		}
 
-		std::pair<BlockInfo, bytes> res;
-		swap(work.second, res.second);
-		try {
-			try {
-				res.first.populate(res.second, CheckEverything, work.first);
-				res.first.verifyInternals(&res.second);
-			}
-			catch (InvalidBlockNonce&)
-			{
-				badBlock(res.second, "Invalid block nonce");
-				cwarn << "  Nonce:" << res.first.nonce.hex();
-				cwarn << "  PoWHash:" << res.first.headerHash(WithoutNonce).hex();
-				cwarn << "  SeedHash:" << res.first.seedHash().hex();
-				cwarn << "  Target:" << res.first.boundary().hex();
-				cwarn << "  MixHash:" << res.first.mixHash.hex();
-				Ethash::Result er = EthashAux::eval(res.first.seedHash(), res.first.headerHash(WithoutNonce), res.first.nonce);
-				cwarn << "  Ethash v:" << er.value.hex();
-				cwarn << "  Ethash mH:" << er.mixHash.hex();
-				throw;
-			}
-			catch (Exception& _e)
-			{
-				badBlock(res.second, _e.what());
-				throw;
-			}
-
-			RLP r(&res.second);
-			for (auto const& uncle: r[2])
-			{
-				try
-				{
-					BlockInfo().populateFromHeader(RLP(uncle.data()), CheckEverything);
-				}
-				catch (InvalidNonce&)
-				{
-					badBlockHeader(uncle.data(), "Invalid uncle nonce");
-					BlockInfo bi = BlockInfo::fromHeader(uncle.data(), CheckNothing);
-					cwarn << "  Nonce:" << bi.nonce.hex();
-					cwarn << "  PoWHash:" << bi.headerHash(WithoutNonce).hex();
-					cwarn << "  SeedHash:" << bi.seedHash().hex();
-					cwarn << "  Target:" << bi.boundary().hex();
-					cwarn << "  MixHash:" << bi.mixHash.hex();
-					Ethash::Result er = EthashAux::eval(bi.seedHash(), bi.headerHash(WithoutNonce), bi.nonce);
-					cwarn << "  Ethash v:" << er.value.hex();
-					cwarn << "  Ethash mH:" << er.mixHash.hex();
-					throw;
-				}
-				catch (Exception& _e)
-				{
-					badBlockHeader(uncle.data(), _e.what());
-					throw;
-				}
-			}
+		VerifiedBlock res;
+		swap(work.second, res.blockData);
+		try
+		{
+			res.verified = BlockChain::verifyBlock(res.blockData, m_onBad);
 		}
 		catch (...)
 		{
@@ -141,7 +94,7 @@ void BlockQueue::verifierBody()
 
 			unique_lock<Mutex> l(m_verification);
 			for (auto it = m_verifying.begin(); it != m_verifying.end(); ++it)
-				if (it->first.mixHash == work.first)
+				if (it->verified.info.mixHash == work.first)
 				{
 					m_verifying.erase(it);
 					goto OK1;
@@ -154,12 +107,12 @@ void BlockQueue::verifierBody()
 		bool ready = false;
 		{
 			unique_lock<Mutex> l(m_verification);
-			if (m_verifying.front().first.mixHash == work.first)
+			if (m_verifying.front().verified.info.mixHash == work.first)
 			{
 				// we're next!
 				m_verifying.pop_front();
 				m_verified.push_back(move(res));
-				while (m_verifying.size() && !m_verifying.front().second.empty())
+				while (m_verifying.size() && !m_verifying.front().blockData.empty())
 				{
 					m_verified.push_back(move(m_verifying.front()));
 					m_verifying.pop_front();
@@ -169,7 +122,7 @@ void BlockQueue::verifierBody()
 			else
 			{
 				for (auto& i: m_verifying)
-					if (i.first.mixHash == work.first)
+					if (i.verified.info.mixHash == work.first)
 					{
 						i = move(res);
 						goto OK;
@@ -277,15 +230,15 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 	m_drainingSet.clear();
 	if (_bad.size())
 	{
-		vector<pair<BlockInfo, bytes>> old;
+		vector<VerifiedBlock> old;
 		DEV_GUARDED(m_verification)
 			swap(m_verified, old);
 		for (auto& b: old)
 		{
-			if (m_knownBad.count(b.first.parentHash))
+			if (m_knownBad.count(b.verified.info.parentHash))
 			{
-				m_knownBad.insert(b.first.hash());
-				m_readySet.erase(b.first.hash());
+				m_knownBad.insert(b.verified.info.hash());
+				m_readySet.erase(b.verified.info.hash());
 			}
 			else
 				DEV_GUARDED(m_verification)
@@ -348,7 +301,7 @@ QueueStatus BlockQueue::blockStatus(h256 const& _h) const
 			QueueStatus::Unknown;
 }
 
-void BlockQueue::drain(std::vector<std::pair<BlockInfo, bytes>>& o_out, unsigned _max)
+void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 {
 	WriteGuard l(m_lock);
 	DEV_INVARIANT_CHECK;
@@ -364,7 +317,7 @@ void BlockQueue::drain(std::vector<std::pair<BlockInfo, bytes>>& o_out, unsigned
 		for (auto const& bs: o_out)
 		{
 			// TODO: @optimise use map<h256, bytes> rather than vector<bytes> & set<h256>.
-			auto h = bs.first.hash();
+			auto h = bs.verified.info.hash();
 			m_drainingSet.insert(h);
 			m_readySet.erase(h);
 		}
@@ -421,6 +374,7 @@ void BlockQueue::retryAllUnknown()
 
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockQueueStatus const& _bqs)
 {
+	_out << "importing: " << _bqs.importing << endl;
 	_out << "verified: " << _bqs.verified << endl;
 	_out << "verifying: " << _bqs.verifying << endl;
 	_out << "unverified: " << _bqs.unverified << endl;
