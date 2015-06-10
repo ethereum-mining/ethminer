@@ -67,15 +67,15 @@ struct LocalisedLogEntry: public LogEntry
 
 	explicit LocalisedLogEntry(
 		LogEntry const& _le,
-	    h256 _special
+		h256 _special
 	): LogEntry(_le), special(_special) {};
 
 	explicit LocalisedLogEntry(
 		LogEntry const& _le,
 		BlockInfo const& _bi,
-	    h256 _th,
-        unsigned _ti,
-	    unsigned _li
+		h256 _th,
+		unsigned _ti,
+		unsigned _li
 	): LogEntry(_le), blockHash(_bi.hash()), blockNumber((BlockNumber)_bi.number), transactionHash(_th), transactionIndex(_ti), logIndex(_li), mined(true) {};
 
 	h256 blockHash = h256();
