@@ -1074,8 +1074,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 	}
 	catch (Exception& ex)
 	{
-		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
-		badBlock(_block, ex.what());
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block);
 		if (_onBad)
@@ -1093,8 +1091,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		}
 		catch (Exception& ex)
 		{
-			clog(BlockChainNote) << "   Malformed block header: " << diagnostic_information(ex);
-			badBlockHeader(uncle.data(), ex.what());
 			ex << errinfo_uncleIndex(i);
 			ex << errinfo_now(time(0));
 			ex << errinfo_block(_block);
@@ -1111,10 +1107,10 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		{
 			res.transactions.push_back(Transaction(tr.data(), CheckTransaction::Everything));
 		}
-		catch (...)
+		catch (Exception& ex)
 		{
-			badBlock(_block, "Invalid transaction");
-			cwarn << "  Transaction Index:" << i;
+			ex << errinfo_transactionIndex(i);
+			ex << errinfo_block(_block);
 			throw;
 		}
 		++i;

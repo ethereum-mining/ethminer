@@ -39,27 +39,6 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, ExecutionResult const& _e
 	return _out;
 }
 
-std::string badTransaction(bytesConstRef _tx, string const& _err)
-{
-	stringstream ret;
-	ret << "========================================================================" << endl;
-	ret << "==  Software Failure    " << (_err + string(max<int>(0, 44 - _err.size()), ' ')) << "  ==" << endl;
-	ret << "==                      Guru Meditation " << sha3(_tx).abridged() << "                     ==" << endl;
-	ret << "========================================================================" << endl;
-	ret << "  Transaction: " << toHex(_tx) << endl;
-	ret << "  Transaction RLP: ";
-	try {
-		ret << RLP(_tx);
-	}
-	catch (Exception& _e)
-	{
-		ret << "Invalid: " << _e.what();
-	}
-	ret << endl;
-
-	return ret.str();
-}
-
 TransactionException dev::eth::toTransactionException(Exception const& _e)
 {
 	// Basic Transaction exceptions
