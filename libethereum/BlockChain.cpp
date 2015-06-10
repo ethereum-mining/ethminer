@@ -50,7 +50,7 @@ using namespace dev::eth;
 namespace js = json_spirit;
 
 #define ETH_CATCH 1
-#define ETH_TIMED_IMPORTS 0
+#define ETH_TIMED_IMPORTS 1
 
 #ifdef _WIN32
 const char* BlockChainDebug::name() { return EthBlue "8" EthWhite " <>"; }
@@ -315,41 +315,44 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 	h256s fresh;
 	h256s dead;
 	h256s badBlocks;
-	for (auto const& block: blocks)
-	{
-		try
-		{
-			// Nonce & uncle nonces already verified in verification thread at this point.
-			ImportRoute r;
-			DEV_TIMED_ABOVE(Block import, 500)
-				r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
-			fresh += r.first;
-			dead += r.second;
-		}
-		catch (dev::eth::UnknownParent)
-		{
-			cwarn << "ODD: Import queue contains block with unknown parent." << LogTag::Error << boost::current_exception_diagnostic_information();
-			// NOTE: don't reimport since the queue should guarantee everything in the right order.
-			// Can't continue - chain bad.
+	for (VerifiedBlock const& block: blocks)
+		if (!badBlocks.empty())
 			badBlocks.push_back(block.verified.info.hash());
-		}
-		catch (dev::eth::FutureTime)
+		else
 		{
-			cwarn << "ODD: Import queue contains a block with future time." << LogTag::Error << boost::current_exception_diagnostic_information();
-			// NOTE: don't reimport since the queue should guarantee everything in the past.
-			// Can't continue - chain bad.
-			badBlocks.push_back(block.verified.info.hash());
+			try
+			{
+				// Nonce & uncle nonces already verified in verification thread at this point.
+				ImportRoute r;
+				DEV_TIMED_ABOVE(Block import, 500)
+					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
+				fresh += r.first;
+				dead += r.second;
+			}
+			catch (dev::eth::UnknownParent)
+			{
+				cwarn << "ODD: Import queue contains block with unknown parent." << LogTag::Error << boost::current_exception_diagnostic_information();
+				// NOTE: don't reimport since the queue should guarantee everything in the right order.
+				// Can't continue - chain bad.
+				badBlocks.push_back(block.verified.info.hash());
+			}
+			catch (dev::eth::FutureTime)
+			{
+				cwarn << "ODD: Import queue contains a block with future time." << LogTag::Error << boost::current_exception_diagnostic_information();
+				// NOTE: don't reimport since the queue should guarantee everything in the past.
+				// Can't continue - chain bad.
+				badBlocks.push_back(block.verified.info.hash());
+			}
+			catch (Exception& ex)
+			{
+				cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << LogTag::Error << diagnostic_information(ex);
+				if (m_onBad)
+					m_onBad(ex);
+				// NOTE: don't reimport since the queue should guarantee everything in the right order.
+				// Can't continue - chain  bad.
+				badBlocks.push_back(block.verified.info.hash());
+			}
 		}
-		catch (Exception& ex)
-		{
-			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << LogTag::Error << diagnostic_information(ex);
-			if (m_onBad)
-				m_onBad(ex);
-			// NOTE: don't reimport since the queue should guarantee everything in the right order.
-			// Can't continue - chain  bad.
-			badBlocks.push_back(block.verified.info.hash());
-		}
-	}
 	return make_tuple(fresh, dead, _bq.doneDrain(badBlocks));
 }
 
@@ -534,11 +537,6 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	}
 	catch (Exception& ex)
 	{
-		clog(BlockChainWarn) << "   Malformed block: " << diagnostic_information(ex);
-		clog(BlockChainWarn) << "Block: " << _block.info.hash();
-		clog(BlockChainWarn) << _block.info;
-		clog(BlockChainWarn) << "Block parent: " << _block.info.parentHash;
-		clog(BlockChainWarn) << BlockInfo(block(_block.info.parentHash));
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block.block.toBytes());
 		throw;
@@ -641,7 +639,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	m_blocksDB->Write(m_writeOptions, &blocksBatch);
 	m_extrasDB->Write(m_writeOptions, &extrasBatch);
 
-#if ETH_DEBUG || !ETH_TRUE
+#if ETH_PARANOIA || !ETH_TRUE
 	if (isKnown(_block.info.hash()) && !details(_block.info.hash()))
 	{
 		clog(BlockChainDebug) << "Known block just inserted has no details.";
@@ -676,12 +674,16 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 
 #if ETH_TIMED_IMPORTS
 	checkBest = t.elapsed();
-	cnote << "Import took:" << total.elapsed();
-	cnote << "preliminaryChecks:" << preliminaryChecks;
-	cnote << "enactment:" << enactment;
-	cnote << "collation:" << collation;
-	cnote << "writing:" << writing;
-	cnote << "checkBest:" << checkBest;
+	if (total.elapsed() > 1.0)
+	{
+		cnote << "SLOW IMPORT:" << _block.info.hash();
+		cnote << "  Import took:" << total.elapsed();
+		cnote << "  preliminaryChecks:" << preliminaryChecks;
+		cnote << "  enactment:" << enactment;
+		cnote << "  collation:" << collation;
+		cnote << "  writing:" << writing;
+		cnote << "  checkBest:" << checkBest;
+	}
 #endif
 
 	if (!route.empty())
@@ -1074,8 +1076,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 	}
 	catch (Exception& ex)
 	{
-		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
-		badBlock(_block, ex.what());
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block);
 		if (_onBad)
@@ -1093,8 +1093,6 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		}
 		catch (Exception& ex)
 		{
-			clog(BlockChainNote) << "   Malformed block header: " << diagnostic_information(ex);
-			badBlockHeader(uncle.data(), ex.what());
 			ex << errinfo_uncleIndex(i);
 			ex << errinfo_now(time(0));
 			ex << errinfo_block(_block);
@@ -1111,10 +1109,10 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 		{
 			res.transactions.push_back(Transaction(tr.data(), CheckTransaction::Everything));
 		}
-		catch (...)
+		catch (Exception& ex)
 		{
-			badBlock(_block, "Invalid transaction");
-			cwarn << "  Transaction Index:" << i;
+			ex << errinfo_transactionIndex(i);
+			ex << errinfo_block(_block);
 			throw;
 		}
 		++i;

@@ -228,8 +228,5 @@ inline std::ostream& operator<<(std::ostream& _out, Transaction const& _t)
 	return _out;
 }
 
-void badTransaction(bytesConstRef _tx, std::string const& _err);
-inline void badTransaction(bytes const& _tx, std::string const& _err) { badTransaction(&_tx, _err); }
-
 }
 }

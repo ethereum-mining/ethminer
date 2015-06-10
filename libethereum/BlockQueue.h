@@ -46,6 +46,7 @@ struct BlockQueueChannel: public LogChannel { static const char* name(); static 
 
 struct BlockQueueStatus
 {
+	size_t importing;
 	size_t verified;
 	size_t verifying;
 	size_t unverified;
@@ -104,7 +105,7 @@ public:
 	h256 firstUnknown() const { ReadGuard l(m_lock); return m_unknownSet.size() ? *m_unknownSet.begin() : h256(); }
 
 	/// Get some infomration on the current status.
-	BlockQueueStatus status() const { ReadGuard l(m_lock); Guard l2(m_verification); return BlockQueueStatus{m_verified.size(), m_verifying.size(), m_unverified.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
+	BlockQueueStatus status() const { ReadGuard l(m_lock); Guard l2(m_verification); return BlockQueueStatus{m_drainingSet.size(), m_verified.size(), m_verifying.size(), m_unverified.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
 
 	/// Get some infomration on the given block's status regarding us.
 	QueueStatus blockStatus(h256 const& _h) const;

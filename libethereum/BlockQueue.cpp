@@ -125,7 +125,7 @@ void BlockQueue::verifierBody()
 					m_verifying.erase(it);
 					goto OK1;
 				}
-			cwarn << "GAA BlockQueue corrupt: job cancelled but cannot be found in m_verifying queue.";
+			cwarn << "BlockQueue missing our job: was there a GM?";
 			OK1:;
 			continue;
 		}
@@ -133,7 +133,7 @@ void BlockQueue::verifierBody()
 		bool ready = false;
 		{
 			unique_lock<Mutex> l(m_verification);
-			if (m_verifying.front().verified.info.mixHash == work.first)
+			if (!m_verifying.empty() && m_verifying.front().verified.info.mixHash == work.first)
 			{
 				// we're next!
 				m_verifying.pop_front();
@@ -153,7 +153,7 @@ void BlockQueue::verifierBody()
 						i = move(res);
 						goto OK;
 					}
-				cwarn << "GAA BlockQueue corrupt: job finished but cannot be found in m_verifying queue.";
+				cwarn << "BlockQueue missing our job: was there a GM?";
 				OK:;
 			}
 		}
@@ -261,23 +261,16 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 	DEV_INVARIANT_CHECK;
 	m_drainingSet.clear();
 	if (_bad.size())
-	{
-		vector<VerifiedBlock> old;
+		// one of them was bad. since they all rely on their parent, all following are bad.
 		DEV_GUARDED(m_verification)
-			swap(m_verified, old);
-		for (auto& b: old)
 		{
-			if (m_knownBad.count(b.verified.info.parentHash))
-			{
-				m_knownBad.insert(b.verified.info.hash());
-				m_readySet.erase(b.verified.info.hash());
-			}
-			else
-				DEV_GUARDED(m_verification)
-					m_verified.push_back(std::move(b));
+			m_knownBad += _bad;
+			m_knownBad += m_readySet;
+			m_readySet.clear();
+			m_verified.clear();
+			m_verifying.clear();
+			m_unverified.clear();
 		}
-	}
-	m_knownBad += _bad;
 	return !m_readySet.empty();
 }
 
@@ -435,6 +428,7 @@ void BlockQueue::retryAllUnknown()
 
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockQueueStatus const& _bqs)
 {
+	_out << "importing: " << _bqs.importing << endl;
 	_out << "verified: " << _bqs.verified << endl;
 	_out << "verifying: " << _bqs.verifying << endl;
 	_out << "unverified: " << _bqs.unverified << endl;
