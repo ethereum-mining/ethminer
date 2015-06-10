@@ -23,7 +23,6 @@
 #include <libevmcore/Instruction.h>
 #include <libethcore/Common.h>
 #include <libevm/VMFace.h>
-#include "ExtVM.h"
 #include "Transaction.h"
 
 namespace Json
@@ -38,6 +37,7 @@ namespace eth
 
 class State;
 class BlockChain;
+class ExtVM;
 struct Manifest;
 
 struct VMTraceChannel: public LogChannel { static const char* name(); static const int verbosity = 11; };
@@ -140,7 +140,7 @@ public:
 private:
 	State& m_s;							///< The state to which this operation/transaction is applied.
 	LastHashes m_lastHashes;
-	std::unique_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required.
+	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference.
 	bytesRef m_outRef;					///< Reference to "expected output" buffer.
 	ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
 	Address m_newAddress;				///< The address of the created contract in the case of create() being called.
