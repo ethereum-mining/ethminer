@@ -19,6 +19,9 @@
 #include "Executive.h"
 
 #include <boost/timer.hpp>
+#if ETH_JSONRPC || !ETH_TRUE
+#include <json/json.h>
+#endif
 #include <libdevcore/CommonIO.h>
 #include <libevm/VMFactory.h>
 #include <libevm/VM.h>
@@ -34,6 +37,101 @@ using namespace dev::eth;
 const char* VMTraceChannel::name() { return "EVM"; }
 const char* ExecutiveWarnChannel::name() { return WarnChannel::name(); }
 
+StandardTrace::StandardTrace():
+	m_trace(new Json::Value(Json::arrayValue))
+{}
+
+bool changesMemory(Instruction _inst)
+{
+	return
+		_inst == Instruction::MSTORE ||
+		_inst == Instruction::MSTORE8 ||
+		_inst == Instruction::CALL ||
+		_inst == Instruction::CALLCODE ||
+		_inst == Instruction::SHA3 ||
+		_inst == Instruction::CALLDATACOPY ||
+		_inst == Instruction::CODECOPY ||
+		_inst == Instruction::EXTCODECOPY;
+}
+
+bool changesStorage(Instruction _inst)
+{
+	return _inst == Instruction::SSTORE;
+}
+
+void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
+{
+	ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
+	VM& vm = *voidVM;
+
+	Json::Value r(Json::objectValue);
+
+	Json::Value stack(Json::arrayValue);
+	for (auto const& i: vm.stack())
+		stack.append(toHex(toCompactBigEndian(i), 1));
+	r["stack"] = stack;
+
+	bool newContext = false;
+	Instruction lastInst = Instruction::STOP;
+
+	if (m_lastInst.size() == ext.depth)
+	{
+		// starting a new context
+		assert(m_lastInst.size() == ext.depth);
+		m_lastInst.push_back(inst);
+		newContext = true;
+	}
+	else if (m_lastInst.size() == ext.depth + 2)
+	{
+		// returned from old context
+		m_lastInst.pop_back();
+		lastInst = m_lastInst.back();
+	}
+	else if (m_lastInst.size() == ext.depth + 1)
+	{
+		// continuing in previous context
+		lastInst = m_lastInst.back();
+	}
+	else
+	{
+		cwarn << "GAA!!! Tracing VM and more than one new/deleted stack frame between steps!";
+		cwarn << "Attmepting naive recovery...";
+		m_lastInst.resize(ext.depth + 1);
+	}
+
+	if (changesMemory(lastInst) || newContext)
+	{
+		Json::Value mem(Json::arrayValue);
+		for (auto const& i: vm.memory())
+			mem.append(toHex(toCompactBigEndian(i), 1));
+		r["memory"] = mem;
+	}
+
+	if (changesStorage(lastInst) || newContext)
+	{
+		Json::Value storage(Json::objectValue);
+		for (auto const& i: ext.state().storage(ext.myAddress))
+			storage[toHex(toCompactBigEndian(i.first), 1)] = toHex(toCompactBigEndian(i.second), 1);
+		r["storage"] = storage;
+	}
+
+	r["depth"] = ext.depth;
+	r["address"] = ext.myAddress.hex();
+	r["steps"] = (unsigned)_steps;
+	r["inst"] = (unsigned)inst;
+	r["pc"] = toString(vm.curPC());
+	r["gas"] = toString(gas);
+	r["gascost"] = toString(gasCost);
+	r["memexpand"] = toString(newMemSize);
+
+	m_trace->append(r);
+}
+
+string StandardTrace::json() const
+{
+	return Json::FastWriter().write(*m_trace);
+}
+
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 	m_s(_s),
 	m_lastHashes(_bc.lastHashes((unsigned)_s.info().number - 1)),
@@ -43,11 +141,6 @@ Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
 u256 Executive::gasUsed() const
 {
 	return m_t.gas() - m_gas;
-}
-
-ExecutionResult Executive::executionResult() const
-{
-	return ExecutionResult(gasUsed(), m_excepted, m_newAddress, m_out, m_codeDeposit, m_ext ? m_ext->sub.refunds : 0, m_depositSize, m_gasForDeposit);
 }
 
 void Executive::accrueSubState(SubState& _parentContext)
@@ -73,7 +166,7 @@ void Executive::initialize(Transaction const& _transaction)
 	if (!m_t.checkPayment())
 	{
 		clog(ExecutiveWarnChannel) << "Not enough gas to pay for the transaction: Require >" << m_t.gasRequired() << " Got" << m_t.gas();
-		m_excepted = TransactionException::OutOfGas;
+		m_excepted = TransactionException::OutOfGasBase;
 		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError(m_t.gasRequired(), (bigint)m_t.gas()));
 	}
 
@@ -146,8 +239,7 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		else
 		{
 			m_gas = (u256)(_p.gas - g);
-			m_precompiledOut = it->second.exec(_p.data);
-			m_out = &m_precompiledOut;
+			it->second.exec(_p.data, _p.out);
 		}
 	}
 	else
@@ -155,9 +247,10 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		m_gas = _p.gas;
 		if (m_s.addressHasCode(_p.codeAddress))
 		{
-			m_vm = VMFactory::create();
+			m_outRef = _p.out; // Save ref to expected output buffer to be used in go()
 			bytes const& c = m_s.code(_p.codeAddress);
-			m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _p.receiveAddress, _p.senderAddress, _origin, _p.value, _gasPrice, _p.data, &c, m_depth);
+			h256 codeHash = m_s.codeHash(_p.codeAddress);
+			m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _p.receiveAddress, _p.senderAddress, _origin, _p.value, _gasPrice, _p.data, &c, codeHash, m_depth);
 		}
 	}
 
@@ -177,10 +270,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 	// Execute _init.
 	if (!_init.empty())
-	{
-		m_vm = VMFactory::create();
-		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
-	}
+		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, sha3(_init), m_depth);
 
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress), Account::ContractConception);
 	m_s.transferBalance(_sender, m_newAddress, _endowment);
@@ -211,56 +301,50 @@ OnOpFunc Executive::simpleTrace()
 	};
 }
 
-OnOpFunc Executive::standardTrace(ostream& o_output)
-{
-	return [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
-	{
-		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
-		VM& vm = *voidVM;
-
-		o_output << endl << "    STACK" << endl;
-		for (auto i: vm.stack())
-			o_output << (h256)i << endl;
-		o_output << "    MEMORY" << endl << ((vm.memory().size() > 1000) ? " mem size greater than 1000 bytes " : memDump(vm.memory()));
-		o_output << "    STORAGE" << endl;
-		for (auto const& i: ext.state().storage(ext.myAddress))
-			o_output << showbase << hex << i.first << ": " << i.second << endl;
-		o_output << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
-	};
-}
-
 bool Executive::go(OnOpFunc const& _onOp)
 {
-	if (m_vm)
+	if (m_ext)
 	{
 #if ETH_TIMED_EXECUTIONS
 		boost::timer t;
 #endif
 		try
 		{
-			m_out = m_vm->go(m_gas, *m_ext, _onOp);
-
+			auto vm = VMFactory::create();
 			if (m_isCreation)
 			{
-				m_gasForDeposit = m_gas;
-				m_depositSize = m_out.size();
-				if (m_out.size() * c_createDataGas <= m_gas)
+				auto out = vm->exec(m_gas, *m_ext, _onOp);
+				if (m_res)
 				{
-					m_codeDeposit = CodeDeposit::Success;
-					m_gas -= m_out.size() * c_createDataGas;
+					m_res->gasForDeposit = m_gas;
+					m_res->depositSize = out.size();
+				}
+				if (out.size() * c_createDataGas <= m_gas)
+				{
+					if (m_res)
+						m_res->codeDeposit = CodeDeposit::Success;
+					m_gas -= out.size() * c_createDataGas;
 				}
 				else
 				{
-
-					m_codeDeposit = CodeDeposit::Failed;
-					m_out.reset();
+					if (m_res)
+						m_res->codeDeposit = CodeDeposit::Failed;
+					out.clear();
 				}
-				m_s.m_cache[m_newAddress].setCode(m_out.toBytes());
+				if (m_res)
+					m_res->output = out; // copy output to execution result
+				m_s.m_cache[m_newAddress].setCode(std::move(out)); // FIXME: Set only if Success?
 			}
-		}
-		catch (StepsDone const&)
-		{
-			return false;
+			else
+			{
+				if (m_res)
+				{
+					m_res->output = vm->exec(m_gas, *m_ext, _onOp); // take full output
+					bytesConstRef{&m_res->output}.copyTo(m_outRef);
+				}
+				else
+					vm->exec(m_gas, *m_ext, m_outRef, _onOp); // take only expected output
+			}
 		}
 		catch (VMException const& _e)
 		{
@@ -314,4 +398,12 @@ void Executive::finalize()
 	// Logs..
 	if (m_ext)
 		m_logs = m_ext->sub.logs;
+
+	if (m_res) // Collect results
+	{
+		m_res->gasUsed = gasUsed();
+		m_res->excepted = m_excepted; // TODO: m_except is used only in ExtVM::call
+		m_res->newAddress = m_newAddress;
+		m_res->gasRefunded = m_ext ? m_ext->sub.refunds : 0;
+	}
 }

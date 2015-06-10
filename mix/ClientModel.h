@@ -30,12 +30,13 @@
 #include <QVariantMap>
 #include <QFuture>
 #include <QVariableDeclaration.h>
+#include <libethereum/Account.h>
 #include "MachineStates.h"
 
 namespace dev
 {
 
-namespace eth { class Account; class FixedAccountHolder; }
+namespace eth { class FixedAccountHolder; }
 
 namespace mix
 {
@@ -108,6 +109,14 @@ class RecordLogEntry: public QObject
 	Q_PROPERTY(RecordType type MEMBER m_type CONSTANT)
 	/// Gas used
 	Q_PROPERTY(QString gasUsed MEMBER m_gasUsed CONSTANT)
+	/// Sender
+	Q_PROPERTY(QString sender MEMBER m_sender CONSTANT)
+	/// label
+	Q_PROPERTY(QString label MEMBER m_label CONSTANT)
+	/// input parameters
+	Q_PROPERTY(QVariantMap parameters MEMBER m_inputParameters CONSTANT)
+	/// logs
+	Q_PROPERTY(QVariantList logs MEMBER m_logs CONSTANT)
 
 public:
 	enum RecordType
@@ -118,8 +127,10 @@ public:
 
 	RecordLogEntry():
 		m_recordIndex(0), m_call(false), m_type(RecordType::Transaction) {}
-	RecordLogEntry(unsigned _recordIndex, QString _transactionIndex, QString _contract, QString _function, QString _value, QString _address, QString _returned, bool _call, RecordType _type, QString _gasUsed):
-		m_recordIndex(_recordIndex), m_transactionIndex(_transactionIndex), m_contract(_contract), m_function(_function), m_value(_value), m_address(_address), m_returned(_returned), m_call(_call), m_type(_type), m_gasUsed(_gasUsed) {}
+	RecordLogEntry(unsigned _recordIndex, QString _transactionIndex, QString _contract, QString _function, QString _value, QString _address, QString _returned, bool _call, RecordType _type, QString _gasUsed,
+				   QString _sender, QString _label, QVariantMap _inputParameters, QVariantList _logs):
+		m_recordIndex(_recordIndex), m_transactionIndex(_transactionIndex), m_contract(_contract), m_function(_function), m_value(_value), m_address(_address), m_returned(_returned), m_call(_call), m_type(_type), m_gasUsed(_gasUsed),
+		m_sender(_sender), m_label(_label), m_inputParameters(_inputParameters), m_logs(_logs) {}
 
 private:
 	unsigned m_recordIndex;
@@ -132,6 +143,10 @@ private:
 	bool m_call;
 	RecordType m_type;
 	QString m_gasUsed;
+	QString m_sender;
+	QString m_label;
+	QVariantMap m_inputParameters;
+	QVariantList m_logs;
 };
 
 /**
@@ -170,9 +185,11 @@ public:
 	Q_INVOKABLE QString toHex(QString const& _int);
 
 public slots:
-	/// Setup state, run transaction sequence, show debugger for the last transaction
+	/// Setup scenario, run transaction sequence, show debugger for the last transaction
 	/// @param _state JS object with state configuration
-	void setupState(QVariantMap _state);
+	void setupScenario(QVariantMap _scenario);
+	/// Execute the given @param _tr on the current state
+	void executeTr(QVariantMap _tr);
 	/// Show the debugger for a specified record
 	Q_INVOKABLE void debugRecord(unsigned _index);
 	/// Show the debugger for an empty record
@@ -224,17 +241,21 @@ private:
 	RecordLogEntry* lastBlock() const;
 	QVariantMap contractAddresses() const;
 	QVariantList gasCosts() const;
-	void executeSequence(std::vector<TransactionSettings> const& _sequence, std::unordered_map<Address, dev::eth::Account> const& _accounts, Secret const& _miner);
+	void executeSequence(std::vector<TransactionSettings> const& _sequence);
 	dev::Address deployContract(bytes const& _code, TransactionSettings const& _tr = TransactionSettings());
 	void callAddress(Address const& _contract, bytes const& _data, TransactionSettings const& _tr);
 	void onNewTransaction();
 	void onStateReset();
 	void showDebuggerForTransaction(ExecutionResult const& _t);
 	QVariant formatValue(SolidityType const& _type, dev::u256 const& _value);
-	QString resolveToken(std::pair<QString, int> const& _value, std::vector<Address> const& _contracts);
-	std::pair<QString, int> retrieveToken(QString const& _value, std::vector<Address> const& _contracts);
+	QString resolveToken(std::pair<QString, int> const& _value);
+	std::pair<QString, int> retrieveToken(QString const& _value);
 	std::pair<QString, int> resolvePair(QString const& _contractId);
 	QVariant formatStorageValue(SolidityType const& _type, std::unordered_map<dev::u256, dev::u256> const& _storage, unsigned _offset, dev::u256 const& _slot);
+	void processNextTransactions();
+	void finalizeBlock();
+	void stopExecution();
+	void setupExecutionChain();
 
 	std::atomic<bool> m_running;
 	std::atomic<bool> m_mining;
@@ -243,12 +264,17 @@ private:
 	std::unique_ptr<RpcConnector> m_rpcConnector;
 	std::unique_ptr<Web3Server> m_web3Server;
 	std::shared_ptr<eth::FixedAccountHolder> m_ethAccounts;
+	std::unordered_map<Address, eth::Account> m_accounts;
+	std::vector<KeyPair> m_accountsSecret;
 	QList<u256> m_gasCosts;
 	std::map<std::pair<QString, int>, Address> m_contractAddresses;
 	std::map<Address, QString> m_contractNames;
 	std::map<QString, Address> m_stdContractAddresses;
 	std::map<Address, QString> m_stdContractNames;
 	CodeModel* m_codeModel = nullptr;
+	QList<QVariantList> m_queueTransactions;
+	QVariantMap m_currentScenario;
+	mutable boost::shared_mutex x_queueTransactions;
 };
 
 }

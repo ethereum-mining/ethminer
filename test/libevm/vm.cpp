@@ -33,7 +33,7 @@ using namespace dev::eth;
 using namespace dev::test;
 
 FakeExtVM::FakeExtVM(eth::BlockInfo const& _previousBlock, eth::BlockInfo const& _currentBlock, unsigned _depth):			/// TODO: XXX: remove the default argument & fix.
-	ExtVMFace(Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(), _previousBlock, _currentBlock, test::lastHashes(_currentBlock.number), _depth) {}
+	ExtVMFace(Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(), EmptySHA3, _previousBlock, _currentBlock, test::lastHashes(_currentBlock.number), _depth) {}
 
 h160 FakeExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _init, OnOpFunc const&)
 {
@@ -330,12 +330,10 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		{
 			auto vm = eth::VMFactory::create();
 			auto vmtrace = Options::get().vmtrace ? fev.simpleTrace() : OnOpFunc{};
-			auto outputRef = bytesConstRef{};
 			{
 				Listener::ExecTimeGuard guard{i.first};
-				outputRef = vm->go(fev.gas, fev, vmtrace);
+				output = vm->exec(fev.gas, fev, vmtrace);
 			}
-			output = outputRef.toBytes();
 		}
 		catch (VMException const&)
 		{

@@ -132,8 +132,8 @@ public:
 	virtual Transactions pending() const override;
 	virtual h256s pendingHashes() const override;
 
-	ImportResult injectTransaction(bytes const& _rlp) override { prepareForTransaction(); return m_tq.import(_rlp); }
-	ImportResult injectBlock(bytes const& _block);
+	virtual ImportResult injectTransaction(bytes const& _rlp) override { prepareForTransaction(); return m_tq.import(_rlp); }
+	virtual ImportResult injectBlock(bytes const& _block) override;
 
 	using Interface::diff;
 	virtual StateDiff diff(unsigned _txi, h256 _block) const override;
@@ -143,9 +143,6 @@ public:
 	virtual Addresses addresses(BlockNumber _block) const override;
 	virtual u256 gasLimitRemaining() const override;
 
-	/// Set the coinbase address
-	virtual void setAddress(Address _us) = 0;
-
 	/// Get the coinbase address
 	virtual Address address() const override;
 
@@ -154,6 +151,7 @@ public:
 	virtual void startMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::startMining")); }
 	virtual void stopMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::stopMining")); }
 	virtual bool isMining() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::isMining")); }
+	virtual bool wouldMine() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::wouldMine")); }
 	virtual uint64_t hashrate() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::hashrate")); }
 	virtual MiningProgress miningProgress() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::miningProgress")); }
 	virtual ProofOfWork::WorkPackage getWork() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::getWork")); }

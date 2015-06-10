@@ -128,10 +128,8 @@ ApplicationWindow {
 			MenuSeparator {}
 			MenuItem { action: toggleProjectNavigatorAction }
 			MenuItem { action: showHideRightPanelAction }
-			MenuItem { action: toggleTransactionLogAction }
 			MenuItem { action: toggleWebPreviewAction }
 			MenuItem { action: toggleWebPreviewOrientationAction }
-			//MenuItem { action: toggleCallsInLog }
 		}
 	}
 
@@ -211,8 +209,8 @@ ApplicationWindow {
 		id: toggleAssemblyDebuggingAction
 		text: qsTr("Show VM Code")
 		shortcut: "Ctrl+Alt+V"
-		onTriggered: mainContent.rightPane.assemblyMode = !mainContent.rightPane.assemblyMode;
-		checked: mainContent.rightPane.assemblyMode;
+		onTriggered: mainContent.debuggerPanel.assemblyMode = !mainContent.debuggerPanel.assemblyMode;
+		checked:  mainContent.debuggerPanel.assemblyMode;
 		enabled: true
 	}
 
@@ -223,15 +221,6 @@ ApplicationWindow {
 		checkable: true
 		checked: mainContent.webViewVisible
 		onTriggered: mainContent.toggleWebPreview();
-	}
-
-	Action {
-		id: toggleTransactionLogAction
-		text: qsTr("Show States and Transactions")
-		shortcut: "Alt+1"
-		checkable: true
-		checked: mainContent.rightPane.transactionLog.visible
-		onTriggered: mainContent.rightPane.transactionLog.visible = !mainContent.rightPane.transactionLog.visible
 	}
 
 	Action {

@@ -31,6 +31,7 @@
 #include <libdevcore/Guards.h>
 #include <libethcore/Common.h>
 #include <libethcore/BlockInfo.h>
+#include "VerifiedBlock.h"
 
 namespace dev
 {
@@ -45,6 +46,7 @@ struct BlockQueueChannel: public LogChannel { static const char* name(); static 
 
 struct BlockQueueStatus
 {
+	size_t importing;
 	size_t verified;
 	size_t verifying;
 	size_t unverified;
@@ -81,7 +83,7 @@ public:
 
 	/// Grabs at most @a _max of the blocks that are ready, giving them in the correct order for insertion into the chain.
 	/// Don't forget to call doneDrain() once you're done importing.
-	void drain(std::vector<std::pair<BlockInfo, bytes>>& o_out, unsigned _max);
+	void drain(std::vector<VerifiedBlock>& o_out, unsigned _max);
 
 	/// Must be called after a drain() call. Notes that the drained blocks have been imported into the blockchain, so we can forget about them.
 	/// @returns true iff there are additional blocks ready to be processed.
@@ -103,12 +105,14 @@ public:
 	h256 firstUnknown() const { ReadGuard l(m_lock); return m_unknownSet.size() ? *m_unknownSet.begin() : h256(); }
 
 	/// Get some infomration on the current status.
-	BlockQueueStatus status() const { ReadGuard l(m_lock); Guard l2(m_verification); return BlockQueueStatus{m_verified.size(), m_verifying.size(), m_unverified.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
+	BlockQueueStatus status() const { ReadGuard l(m_lock); Guard l2(m_verification); return BlockQueueStatus{m_drainingSet.size(), m_verified.size(), m_verifying.size(), m_unverified.size(), m_future.size(), m_unknown.size(), m_knownBad.size()}; }
 
 	/// Get some infomration on the given block's status regarding us.
 	QueueStatus blockStatus(h256 const& _h) const;
 
 	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
+
+	template <class T> void setOnBad(T const& _t) { m_onBad = _t; }
 
 private:
 	void noteReady_WITH_LOCK(h256 const& _b);
@@ -128,12 +132,14 @@ private:
 
 	mutable Mutex m_verification;										///< Mutex that allows writing to m_verified, m_verifying and m_unverified.
 	std::condition_variable m_moreToVerify;								///< Signaled when m_unverified has a new entry.
-	std::vector<std::pair<BlockInfo, bytes>> m_verified;				///< List of blocks, in correct order, verified and ready for chain-import.
-	std::deque<std::pair<BlockInfo, bytes>> m_verifying;				///< List of blocks being verified; as long as the second component (bytes) is empty, it's not finished.
+	std::vector<VerifiedBlock> m_verified;				///< List of blocks, in correct order, verified and ready for chain-import.
+	std::deque<VerifiedBlock> m_verifying;				///< List of blocks being verified; as long as the second component (bytes) is empty, it's not finished.
 	std::deque<std::pair<h256, bytes>> m_unverified;					///< List of blocks, in correct order, ready for verification.
 
 	std::vector<std::thread> m_verifiers;								///< Threads who only verify.
 	bool m_deleting = false;											///< Exit condition for verifiers.
+
+	std::function<void(Exception&)> m_onBad;									///< Called if we have a block that doesn't verify.
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockQueueStatus const& _s);
