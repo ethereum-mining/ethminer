@@ -265,7 +265,7 @@ void EthereumHost::onPeerStatus(EthereumPeer* _peer)
 				_peer->m_expectedHashes = (unsigned)_peer->m_latestBlockNumber - m_chain.number();
 			if (_peer->m_expectedHashes > estimatedHashes)
 				_peer->disable("Too many hashes");
-			else if (m_hashMan.chainSize() < _peer->m_expectedHashes)
+			else if (m_needSyncHashes && m_hashMan.chainSize() < _peer->m_expectedHashes)
 				m_hashMan.resetToRange(m_chain.number() + 1, _peer->m_expectedHashes);
 		}
 		else
