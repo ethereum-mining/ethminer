@@ -111,10 +111,22 @@ void BlockQueue::verifierBody()
 			{
 				// we're next!
 				m_verifying.pop_front();
-				m_verified.push_back(move(res));
+				if (m_knownBad.count(res.verified.info.hash()))
+				{
+					m_readySet.erase(res.verified.info.hash());
+					m_knownBad.insert(res.verified.info.hash());
+				}
+				else
+					m_verified.push_back(move(res));
 				while (m_verifying.size() && !m_verifying.front().blockData.empty())
 				{
-					m_verified.push_back(move(m_verifying.front()));
+					if (m_knownBad.count(m_verifying.front().verified.info.hash()))
+					{
+						m_readySet.erase(m_verifying.front().verified.info.hash());
+						m_knownBad.insert(res.verified.info.hash());
+					}
+					else
+						m_verified.push_back(move(m_verifying.front()));
 					m_verifying.pop_front();
 				}
 				ready = true;
@@ -229,8 +241,24 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 	DEV_INVARIANT_CHECK;
 	m_drainingSet.clear();
 	if (_bad.size())
-		// one of them was bad. since they all rely on their parent, all following are bad.
+	{
+		// at least one of them was bad.
+		m_knownBad += _bad;
 		DEV_GUARDED(m_verification)
+		{
+			std::vector<VerifiedBlock> oldVerified;
+			swap(m_verified, oldVerified);
+			for (auto& b: oldVerified)
+				if (m_knownBad.count(b.verified.info.parentHash))
+				{
+					m_knownBad.insert(b.verified.info.hash());
+					m_readySet.erase(b.verified.info.hash());
+				}
+				else
+					m_verified.push_back(std::move(b));
+		}
+	}
+/*		DEV_GUARDED(m_verification)
 		{
 			m_knownBad += _bad;
 			m_knownBad += m_readySet;
@@ -238,7 +266,7 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 			m_verified.clear();
 			m_verifying.clear();
 			m_unverified.clear();
-		}
+		}*/
 	return !m_readySet.empty();
 }
 
