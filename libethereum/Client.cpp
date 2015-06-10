@@ -176,11 +176,11 @@ void Client::onBadBlock(Exception& _ex)
 
 	cwarn << ("Report: \n" + Json::StyledWriter().write(report));
 
-	if (string const* vmtraceJson = boost::get_error_info<errinfo_vmtrace>(_ex))
-		Json::Reader().parse(*vmtraceJson, report["hints"]["vmtrace"]);
-
 	if (!m_sentinel.empty())
 	{
+		if (string const* vmtraceJson = boost::get_error_info<errinfo_vmtrace>(_ex))
+			Json::Reader().parse(*vmtraceJson, report["hints"]["vmtrace"]);
+
 		jsonrpc::HttpClient client(m_sentinel);
 		Sentinel rpc(client);
 		try
