@@ -581,7 +581,9 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 
 			// filter out locations that match whole function or contract
 			SourceLocation location = instruction.getLocation();
-			QString source = QString::fromUtf8(location.sourceName->c_str());
+			QString source;
+			if (location.sourceName)
+				source = QString::fromUtf8(location.sourceName->c_str());
 			if (m_codeModel->isContractOrFunctionLocation(location))
 				location = dev::SourceLocation(-1, -1, location.sourceName);
 

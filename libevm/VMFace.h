@@ -25,6 +25,7 @@ namespace dev
 namespace eth
 {
 
+#define ETH_SIMPLE_EXCEPTION_VM(X) struct X: virtual VMException { public X(): VMException(#X) {} };
 struct VMException: virtual Exception {};
 struct BreakPointHit: virtual VMException {};
 struct BadInstruction: virtual VMException {};

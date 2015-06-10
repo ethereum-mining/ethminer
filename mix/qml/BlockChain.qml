@@ -230,7 +230,6 @@ ColumnLayout {
                     if (ensureNotFuturetime.running)
                         return;
                     reBuildNeeded.stop()
-                    console.log("model block length " + model.blocks.length)
                     var retBlocks = [];
                     var bAdded = 0;
                     for (var j = 0; j < model.blocks.length; j++)

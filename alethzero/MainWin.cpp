@@ -241,6 +241,10 @@ Main::Main(QWidget *parent) :
 #if !ETH_FATDB
 	removeDockWidget(ui->dockWidget_accounts);
 #endif
+#if !ETH_EVMJIT
+	ui->jitvm->setEnabled(false);
+	ui->jitvm->setChecked(false);
+#endif
 	installWatches();
 	startTimer(100);
 
@@ -805,6 +809,7 @@ void Main::readSettings(bool _skipGeometry)
 	ui->usePrivate->setChecked(m_privateChain.size());
 	ui->verbosity->setValue(s.value("verbosity", 1).toInt());
 	ui->jitvm->setChecked(s.value("jitvm", true).toBool());
+	on_jitvm_triggered();
 
 	ui->urlEdit->setText(s.value("url", "about:blank").toString());	//http://gavwood.com/gavcoin.html
 	on_urlEdit_returnPressed();
@@ -1240,7 +1245,9 @@ void Main::refreshBlockCount()
 {
 	auto d = ethereum()->blockChain().details();
 	BlockQueueStatus b = ethereum()->blockQueueStatus();
-	ui->chainStatus->setText(QString("%3 ready %4 verifying %5 unverified %6 future %7 unknown %8 bad  %1 #%2").arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad));
+	HashChainStatus h = ethereum()->hashChainStatus();
+	ui->chainStatus->setText(QString("%10/%11%12 hashes %3 importing %4 ready %5 verifying %6 unverified %7 future %8 unknown %9 bad  %1 #%2")
+		.arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.importing).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad).arg(h.received).arg(h.estimated ? "~" : "").arg(h.total));
 }
 
 void Main::on_turboMining_triggered()
