@@ -340,6 +340,7 @@ void Ethash::GPUMiner::workLoop()
 				if (shouldStop())
 				{
 					delete m_miner;
+					m_miner = nullptr;
 					return;
 				}
 				cnote << "Awaiting DAG";
@@ -354,6 +355,8 @@ void Ethash::GPUMiner::workLoop()
 	}
 	catch (cl::Error const& _e)
 	{
+		delete m_miner;
+		m_miner = nullptr;
 		cwarn << "Error GPU mining: " << _e.what() << "(" << _e.err() << ")";
 	}
 }
