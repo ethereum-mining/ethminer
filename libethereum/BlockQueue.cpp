@@ -374,6 +374,7 @@ void BlockQueue::retryAllUnknown()
 
 std::ostream& dev::eth::operator<<(std::ostream& _out, BlockQueueStatus const& _bqs)
 {
+	_out << "importing: " << _bqs.importing << endl;
 	_out << "verified: " << _bqs.verified << endl;
 	_out << "verifying: " << _bqs.verifying << endl;
 	_out << "unverified: " << _bqs.unverified << endl;

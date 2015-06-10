@@ -1246,8 +1246,8 @@ void Main::refreshBlockCount()
 	auto d = ethereum()->blockChain().details();
 	BlockQueueStatus b = ethereum()->blockQueueStatus();
 	HashChainStatus h = ethereum()->hashChainStatus();
-	ui->chainStatus->setText(QString("%9/%10%11 hashes %3 ready %4 verifying %5 unverified %6 future %7 unknown %8 bad  %1 #%2")
-		.arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad).arg(h.received).arg(h.estimated ? "~" : "").arg(h.total));
+	ui->chainStatus->setText(QString("%10/%11%12 hashes %3 importing %4 ready %5 verifying %6 unverified %7 future %8 unknown %9 bad  %1 #%2")
+		.arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.importing).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad).arg(h.received).arg(h.estimated ? "~" : "").arg(h.total));
 }
 
 void Main::on_turboMining_triggered()

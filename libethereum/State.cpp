@@ -607,6 +607,8 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 
 u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir)
 {
+	DEV_TIMED_FUNCTION_ABOVE(500);
+
 	// m_currentBlock is assumed to be prepopulated and reset.
 #if !ETH_RELEASE
 	assert(m_previousBlock.hash() == _block.info.parentHash);
@@ -625,33 +627,40 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 //	cnote << "playback begins:" << m_state.root();
 //	cnote << m_state;
 
-	LastHashes lh = _bc.lastHashes((unsigned)m_previousBlock.number);
+	LastHashes lh;
+	DEV_TIMED_ABOVE(lastHashes, 500)
+		lh = _bc.lastHashes((unsigned)m_previousBlock.number);
+
 	RLP rlp(_block.block);
 
 	vector<bytes> receipts;
 
 	// All ok with the block generally. Play back the transactions now...
 	unsigned i = 0;
-	for (auto const& tr: _block.transactions)
-	{
-		try
+	DEV_TIMED_ABOVE(txEcec, 500)
+		for (auto const& tr: _block.transactions)
 		{
-			LogOverride<ExecutiveWarnChannel> o(false);
-			execute(lh, tr);
-		}
-		catch (Exception& ex)
-		{
-			ex << errinfo_transactionIndex(i);
-			throw;
+			try
+			{
+				LogOverride<ExecutiveWarnChannel> o(false);
+				execute(lh, tr);
+			}
+			catch (Exception& ex)
+			{
+				ex << errinfo_transactionIndex(i);
+				throw;
+			}
+
+			RLPStream receiptRLP;
+			m_receipts.back().streamRLP(receiptRLP);
+			receipts.push_back(receiptRLP.out());
+			++i;
 		}
 
-		RLPStream receiptRLP;
-		m_receipts.back().streamRLP(receiptRLP);
-		receipts.push_back(receiptRLP.out());
-		++i;
-	}
+	h256 receiptsRoot;
+	DEV_TIMED_ABOVE(receiptsRoot, 500)
+		receiptsRoot = orderedTrieRoot(receipts);
 
-	auto receiptsRoot = orderedTrieRoot(receipts);
 	if (receiptsRoot != m_currentBlock.receiptsRoot)
 	{
 		InvalidReceiptsStateRoot ex;
@@ -682,62 +691,67 @@ u256 State::enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportR
 	}
 
 	vector<BlockInfo> rewarded;
-	h256Hash excluded = _bc.allKinFrom(m_currentBlock.parentHash, 6);
+	h256Hash excluded;
+	DEV_TIMED_ABOVE(allKin, 500)
+		excluded = _bc.allKinFrom(m_currentBlock.parentHash, 6);
 	excluded.insert(m_currentBlock.hash());
 
 	unsigned ii = 0;
-	for (auto const& i: rlp[2])
-	{
-		try
+	DEV_TIMED_ABOVE(uncleCheck, 500)
+		for (auto const& i: rlp[2])
 		{
-			auto h = sha3(i.data());
-			if (excluded.count(h))
+			try
 			{
-				UncleInChain ex;
-				ex << errinfo_comment("Uncle in block already mentioned");
-				ex << errinfo_unclesExcluded(excluded);
-				ex << errinfo_hash256(sha3(i.data()));
-				BOOST_THROW_EXCEPTION(ex);
+				auto h = sha3(i.data());
+				if (excluded.count(h))
+				{
+					UncleInChain ex;
+					ex << errinfo_comment("Uncle in block already mentioned");
+					ex << errinfo_unclesExcluded(excluded);
+					ex << errinfo_hash256(sha3(i.data()));
+					BOOST_THROW_EXCEPTION(ex);
+				}
+				excluded.insert(h);
+
+				BlockInfo uncle = BlockInfo::fromHeader(i.data(), (_ir & ImportRequirements::CheckUncles) ? CheckEverything : IgnoreNonce,  h);
+
+				BlockInfo uncleParent;
+				if (!_bc.isKnown(uncle.parentHash))
+					BOOST_THROW_EXCEPTION(UnknownParent());
+				uncleParent = BlockInfo(_bc.block(uncle.parentHash));
+
+				if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
+				{
+					UncleTooOld ex;
+					ex << errinfo_uncleNumber(uncle.number);
+					ex << errinfo_currentNumber(m_currentBlock.number);
+					BOOST_THROW_EXCEPTION(ex);
+				}
+				else if (uncle.number == m_currentBlock.number)
+				{
+					UncleIsBrother ex;
+					ex << errinfo_uncleNumber(uncle.number);
+					ex << errinfo_currentNumber(m_currentBlock.number);
+					BOOST_THROW_EXCEPTION(ex);
+				}
+				uncle.verifyParent(uncleParent);
+
+				rewarded.push_back(uncle);
+				++ii;
 			}
-			excluded.insert(h);
-
-			BlockInfo uncle = BlockInfo::fromHeader(i.data(), (_ir & ImportRequirements::CheckUncles) ? CheckEverything : IgnoreNonce,  h);
-
-			BlockInfo uncleParent;
-			if (!_bc.isKnown(uncle.parentHash))
-				BOOST_THROW_EXCEPTION(UnknownParent());
-			uncleParent = BlockInfo(_bc.block(uncle.parentHash));
-
-			if ((bigint)uncleParent.number < (bigint)m_currentBlock.number - 7)
+			catch (Exception& ex)
 			{
-				UncleTooOld ex;
-				ex << errinfo_uncleNumber(uncle.number);
-				ex << errinfo_currentNumber(m_currentBlock.number);
-				BOOST_THROW_EXCEPTION(ex);
+				ex << errinfo_uncleIndex(ii);
+				throw;
 			}
-			else if (uncle.number == m_currentBlock.number)
-			{
-				UncleIsBrother ex;
-				ex << errinfo_uncleNumber(uncle.number);
-				ex << errinfo_currentNumber(m_currentBlock.number);
-				BOOST_THROW_EXCEPTION(ex);
-			}
-			uncle.verifyParent(uncleParent);
-
-			rewarded.push_back(uncle);
-			++ii;
 		}
-		catch (Exception& ex)
-		{
-			ex << errinfo_uncleIndex(ii);
-			throw;
-		}
-	}
 
-	applyRewards(rewarded);
+	DEV_TIMED_ABOVE(applyRewards, 500)
+		applyRewards(rewarded);
 
 	// Commit all cached state changes to the state trie.
-	commit();
+	DEV_TIMED_ABOVE(commit, 500)
+		commit();
 
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot != m_previousBlock.stateRoot && m_currentBlock.stateRoot != rootHash())
@@ -1165,6 +1179,8 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 	return true;
 }
 
+#define ETH_VMTIMER 1
+
 ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp)
 {
 #if ETH_PARANOIA
@@ -1197,6 +1213,21 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 			e.go(e.simpleTrace());
 		else
 			e.go(_onOp);
+	}
+#elif ETH_VMTIMER
+	{
+		(void)_onOp;
+		boost::timer t;
+		unordered_map<byte, unsigned> counts;
+		unsigned total = 0;
+		e.go([&](uint64_t, Instruction inst, bigint, bigint, bigint, VM*, ExtVMFace const*) {
+			counts[(byte)inst]++;
+			total++;
+		});
+		cnote << total << "total in" << t.elapsed();
+		for (auto const& c: {Instruction::SSTORE, Instruction::SLOAD, Instruction::CALL, Instruction::CREATE, Instruction::CALLCODE, Instruction::MSTORE8, Instruction::MSTORE, Instruction::MLOAD, Instruction::SHA3})
+			cnote << instructionInfo(c).name << counts[(byte)c];
+		cnote;
 	}
 #else
 		e.go(_onOp);
