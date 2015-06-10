@@ -22,9 +22,12 @@
 #include "Assembly.h"
 #include <fstream>
 #include <libdevcore/Log.h>
+#include <libevmcore/Params.h>
 #include <libevmasm/CommonSubexpressionEliminator.h>
 #include <libevmasm/ControlFlowGraph.h>
 #include <libevmasm/BlockDeduplicator.h>
+#include <libevmasm/ConstantOptimiser.h>
+#include <libevmasm/GasMeter.h>
 #include <json/json.h>
 using namespace std;
 using namespace dev;
@@ -106,7 +109,7 @@ string Assembly::getLocationFromSources(StringMap const& _sourceCodes, SourceLoc
 	if (newLinePos != string::npos)
 		cut = cut.substr(0, newLinePos) + "...";
 
-	return move(cut);
+	return cut;
 }
 
 ostream& Assembly::streamAsm(ostream& _out, string const& _prefix, StringMap const& _sourceCodes) const
@@ -127,7 +130,10 @@ ostream& Assembly::streamAsm(ostream& _out, string const& _prefix, StringMap con
 			_out << "  PUSH \"" << m_strings.at((h256)i.data()) << "\"";
 			break;
 		case PushTag:
-			_out << "  PUSH [tag" << dec << i.data() << "]";
+			if (i.data() == 0)
+				_out << "  PUSH [ErrorTag]";
+			else
+				_out << "  PUSH [tag" << dec << i.data() << "]";
 			break;
 		case PushSub:
 			_out << "  PUSH [$" << h256(i.data()).abridged() << "]";
@@ -207,8 +213,12 @@ Json::Value Assembly::streamAsmJson(ostream& _out, StringMap const& _sourceCodes
 				createJsonValue("PUSH tag", i.getLocation().start, i.getLocation().end, m_strings.at((h256)i.data())));
 			break;
 		case PushTag:
-			collection.append(
-				createJsonValue("PUSH [tag]", i.getLocation().start, i.getLocation().end, string(i.data())));
+			if (i.data() == 0)
+				collection.append(
+					createJsonValue("PUSH [ErrorTag]", i.getLocation().start, i.getLocation().end, ""));
+			else
+				collection.append(
+					createJsonValue("PUSH [tag]", i.getLocation().start, i.getLocation().end, string(i.data())));
 			break;
 		case PushSub:
 			collection.append(
@@ -226,7 +236,7 @@ Json::Value Assembly::streamAsmJson(ostream& _out, StringMap const& _sourceCodes
 			collection.append(
 				createJsonValue("tag", i.getLocation().start, i.getLocation().end, string(i.data())));
 			collection.append(
-				createJsonValue("JUMDEST", i.getLocation().start, i.getLocation().end));
+				createJsonValue("JUMPDEST", i.getLocation().start, i.getLocation().end));
 			break;
 		case PushData:
 			collection.append(createJsonValue("PUSH data", i.getLocation().start, i.getLocation().end, toStringInHex(i.data())));
@@ -295,7 +305,7 @@ inline bool matches(AssemblyItemsConstRef _a, AssemblyItemsConstRef _b)
 struct OptimiserChannel: public LogChannel { static const char* name() { return "OPT"; } static const int verbosity = 12; };
 #define copt dev::LogOutputStream<OptimiserChannel, true>()
 
-Assembly& Assembly::optimise(bool _enable)
+Assembly& Assembly::optimise(bool _enable, bool _isCreation, size_t _runs)
 {
 	if (!_enable)
 		return *this;
@@ -307,6 +317,11 @@ Assembly& Assembly::optimise(bool _enable)
 		count = 0;
 
 		copt << "Performing optimisation...";
+		// This only modifies PushTags, we have to run again to actually remove code.
+		BlockDeduplicator dedup(m_items);
+		if (dedup.deduplicate())
+			count++;
+
 		{
 			ControlFlowGraph cfg(m_items);
 			AssemblyItems optimisedItems;
@@ -349,18 +364,20 @@ Assembly& Assembly::optimise(bool _enable)
 				m_items = move(optimisedItems);
 				count++;
 			}
-
-			// This only modifies PushTags, we have to run again to actually remove code.
-			BlockDeduplicator dedup(m_items);
-			if (dedup.deduplicate())
-				count++;
 		}
 	}
+
+	total += ConstantOptimisationMethod::optimiseConstants(
+		_isCreation,
+		_isCreation ? 1 : _runs,
+		*this,
+		m_items
+	);
 
 	copt << total << " optimisations done.";
 
 	for (auto& sub: m_subs)
-	  sub.optimise(true);
+	  sub.optimise(true, false, _runs);
 
 	return *this;
 }
@@ -387,6 +404,11 @@ bytes Assembly::assemble() const
 	// m_data must not change from here on
 
 	for (AssemblyItem const& i: m_items)
+	{
+		// store position of the invalid jump destination
+		if (i.type() != Tag && tagPos[0] == 0)
+			tagPos[0] = ret.size();
+
 		switch (i.type())
 		{
 		case Operation:
@@ -448,17 +470,23 @@ bytes Assembly::assemble() const
 		}
 		case Tag:
 			tagPos[(unsigned)i.data()] = ret.size();
+			assertThrow(i.data() != 0, AssemblyException, "");
 			ret.push_back((byte)Instruction::JUMPDEST);
 			break;
 		default:
 			BOOST_THROW_EXCEPTION(InvalidOpcode());
 		}
-
+	}
 	for (auto const& i: tagRef)
 	{
 		bytesRef r(ret.data() + i.first, bytesPerTag);
-		//@todo in the failure case, we could use the position of the invalid jumpdest
-		toBigEndian(i.second < tagPos.size() ? tagPos[i.second] : (1 << (8 * bytesPerTag)) - 1, r);
+		auto tag = i.second;
+		if (tag >= tagPos.size())
+			tag = 0;
+		if (tag == 0)
+			assertThrow(tagPos[tag] != 0, AssemblyException, "");
+
+		toBigEndian(tagPos[tag], r);
 	}
 
 	if (!m_data.empty())

@@ -55,6 +55,25 @@ void HostNodeTableHandler::processEvent(NodeId const& _n, NodeTableEventType con
 	m_host.onNodeTableEvent(_n, _e);
 }
 
+ReputationManager::ReputationManager()
+{
+}
+
+void ReputationManager::noteRude(Session const& _s, std::string const& _sub)
+{
+	m_nodes[make_pair(_s.id(), _s.info().clientVersion)].subs[_sub].isRude = true;
+}
+
+bool ReputationManager::isRude(Session const& _s, std::string const& _sub) const
+{
+	auto nit = m_nodes.find(make_pair(_s.id(), _s.info().clientVersion));
+	if (nit == m_nodes.end())
+		return false;
+	auto sit = nit->second.subs.find(_sub);
+	bool ret = sit == nit->second.subs.end() ? false : sit->second.isRude;
+	return _sub.empty() ? ret : (ret || isRude(_s));
+}
+
 Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork):
 	Worker("p2p", 0),
 	m_restoreNetwork(_restoreNetwork.toBytes()),
@@ -202,6 +221,10 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 	// clang error (previously: ... << hex << caps ...)
 	// "'operator<<' should be declared prior to the call site or in an associated namespace of one of its arguments"
 	stringstream capslog;
+
+	if (caps.size() > 1)
+		caps.erase(remove_if(caps.begin(), caps.end(), [&](CapDesc const& _r){ return any_of(caps.begin(), caps.end(), [&](CapDesc const& _o){ return _r.first == _o.first && _o.second > _r.second; }); }), caps.end());
+
 	for (auto cap: caps)
 		capslog << "(" << cap.first << "," << dec << cap.second << ")";
 	clog(NetMessageSummary) << "Hello: " << clientVersion << "V[" << protocolVersion << "]" << _id << showbase << capslog.str() << dec << listenPort;
@@ -237,7 +260,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, RLPXFrameIO* _io
 		for (auto const& i: caps)
 			if (haveCapability(i))
 			{
-				ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps.get(), o));
+				ps->m_capabilities[i] = shared_ptr<Capability>(m_capabilities[i]->newPeerCapability(ps.get(), o, i));
 				o += m_capabilities[i]->messageCount();
 			}
 		ps->start();
@@ -830,7 +853,7 @@ KeyPair Host::networkAlias(bytesConstRef _b)
 {
 	RLP r(_b);
 	if (r.itemCount() == 3 && r[0].isInt() && r[0].toInt<unsigned>() >= 3)
-		return move(KeyPair(move(Secret(r[1].toBytes()))));
+		return KeyPair(Secret(r[1].toBytes()));
 	else
-		return move(KeyPair::create());
+		return KeyPair::create();
 }

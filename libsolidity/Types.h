@@ -354,33 +354,50 @@ public:
 };
 
 /**
+ * Trait used by types which are not value types and can be stored either in storage, memory
+ * or calldata. This is currently used by arrays and structs.
+ */
+class ReferenceType
+{
+public:
+	enum class Location { Storage, CallData, Memory };
+	explicit ReferenceType(Location _location): m_location(_location) {}
+	Location location() const { return m_location; }
+
+	/// @returns a copy of this type with location (recursively) changed to @a _location.
+	virtual TypePointer copyForLocation(Location _location) const = 0;
+
+protected:
+	Location m_location = Location::Storage;
+};
+
+/**
  * The type of an array. The flavours are byte array (bytes), statically- (<type>[<length>])
  * and dynamically-sized array (<type>[]).
  * In storage, all arrays are packed tightly (as long as more than one elementary type fits in
  * one slot). Dynamically sized arrays (including byte arrays) start with their size as a uint and
  * thus start on their own slot.
  */
-class ArrayType: public Type
+class ArrayType: public Type, public ReferenceType
 {
 public:
-	enum class Location { Storage, CallData, Memory };
 
 	virtual Category getCategory() const override { return Category::Array; }
 
-	/// Constructor for a byte array ("bytes")
-	explicit ArrayType(Location _location):
-		m_location(_location),
-		m_isByteArray(true),
+	/// Constructor for a byte array ("bytes") and string.
+	explicit ArrayType(Location _location, bool _isString = false):
+		ReferenceType(_location),
+		m_arrayKind(_isString ? ArrayKind::String : ArrayKind::Bytes),
 		m_baseType(std::make_shared<FixedBytesType>(1))
 	{}
 	/// Constructor for a dynamically sized array type ("type[]")
 	ArrayType(Location _location, const TypePointer &_baseType):
-		m_location(_location),
+		ReferenceType(_location),
 		m_baseType(_baseType)
 	{}
 	/// Constructor for a fixed-size array type ("type[20]")
 	ArrayType(Location _location, const TypePointer &_baseType, u256 const& _length):
-		m_location(_location),
+		ReferenceType(_location),
 		m_baseType(_baseType),
 		m_hasDynamicLength(false),
 		m_length(_length)
@@ -390,25 +407,31 @@ public:
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual bool operator==(const Type& _other) const override;
 	virtual unsigned getCalldataEncodedSize(bool _padded) const override;
-	virtual bool isDynamicallySized() const { return m_hasDynamicLength; }
+	virtual bool isDynamicallySized() const override { return m_hasDynamicLength; }
 	virtual u256 getStorageSize() const override;
 	virtual unsigned getSizeOnStack() const override;
 	virtual std::string toString() const override;
-	virtual MemberList const& getMembers() const override { return s_arrayTypeMemberList; }
+	virtual MemberList const& getMembers() const override
+	{
+		return isString() ? EmptyMemberList : s_arrayTypeMemberList;
+	}
 	virtual TypePointer externalType() const override;
 
-	Location getLocation() const { return m_location; }
-	bool isByteArray() const { return m_isByteArray; }
+	/// @returns true if this is a byte array or a string
+	bool isByteArray() const { return m_arrayKind != ArrayKind::Ordinary; }
+	/// @returns true if this is a string
+	bool isString() const { return m_arrayKind == ArrayKind::String; }
 	TypePointer const& getBaseType() const { solAssert(!!m_baseType, ""); return m_baseType;}
 	u256 const& getLength() const { return m_length; }
 
-	/// @returns a copy of this type with location changed to @a _location
-	/// @todo this might move as far up as Type later
-	std::shared_ptr<ArrayType> copyForLocation(Location _location) const;
+	TypePointer copyForLocation(Location _location) const override;
 
 private:
-	Location m_location;
-	bool m_isByteArray = false; ///< Byte arrays ("bytes") have different semantics from ordinary arrays.
+	/// String is interpreted as a subtype of Bytes.
+	enum class ArrayKind { Ordinary, Bytes, String };
+
+	///< Byte arrays ("bytes") and strings have different semantics from ordinary arrays.
+	ArrayKind m_arrayKind = ArrayKind::Ordinary;
 	TypePointer m_baseType;
 	bool m_hasDynamicLength = true;
 	u256 m_length;
@@ -474,11 +497,13 @@ private:
 /**
  * The type of a struct instance, there is one distinct type per struct definition.
  */
-class StructType: public Type
+class StructType: public Type, public ReferenceType
 {
 public:
 	virtual Category getCategory() const override { return Category::Struct; }
-	explicit StructType(StructDefinition const& _struct): m_struct(_struct) {}
+	explicit StructType(StructDefinition const& _struct):
+		//@todo only storage until we have non-storage structs
+		ReferenceType(Location::Storage), m_struct(_struct) {}
 	virtual TypePointer unaryOperatorResult(Token::Value _operator) const override;
 	virtual bool operator==(Type const& _other) const override;
 	virtual u256 getStorageSize() const override;
@@ -487,6 +512,8 @@ public:
 	virtual std::string toString() const override;
 
 	virtual MemberList const& getMembers() const override;
+
+	TypePointer copyForLocation(Location _location) const override;
 
 	std::pair<u256, unsigned> const& getStorageOffsetsOfMember(std::string const& _name) const;
 
@@ -793,7 +820,7 @@ public:
 		return TypePointer();
 	}
 
-	virtual bool operator==(Type const& _other) const;
+	virtual bool operator==(Type const& _other) const override;
 	virtual bool canBeStored() const override { return false; }
 	virtual bool canLiveOutsideStorage() const override { return true; }
 	virtual unsigned getSizeOnStack() const override { return 0; }

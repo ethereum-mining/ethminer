@@ -39,17 +39,17 @@ class NatspecHandler: public NatSpecFace
 	~NatspecHandler();
 
 	/// Stores locally in a levelDB a key value pair of contract code hash to natspec documentation
-	void add(dev::h256 const& _contractHash, std::string const& _doc);
+	virtual void add(dev::h256 const& _contractHash, std::string const& _doc) override;
 	/// Retrieves the natspec documentation as a string given a contract code hash
 	std::string retrieve(dev::h256 const& _contractHash) const override;
 
 	/// Given a json natspec string and the transaction data return the user notice
-	std::string getUserNotice(std::string const& json, const dev::bytes& _transactionData);
+	virtual std::string getUserNotice(std::string const& json, const dev::bytes& _transactionData) override;
 	/// Given a contract code hash and the transaction's data retrieve the natspec documention's
 	/// user notice for that transaction.
 	/// @returns The user notice or an empty string if no natspec for the contract exists
 	///          or if the existing natspec does not document the @c _methodName
-	std::string getUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionDacta);
+	virtual std::string getUserNotice(dev::h256 const& _contractHash, dev::bytes const& _transactionDacta) override;
 	
   private:
 	ldb::ReadOptions m_readOptions;

@@ -137,7 +137,10 @@ EthashAux::FullAllocation::FullAllocation(ethash_light_t _light, ethash_callback
 	full = ethash_full_new(_light, _cb);
 //	cdebug << "Called OK.";
 	if (!full)
-		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_full_new()"));
+	{
+		clog(DAGChannel) << "DAG Generation Failure. Reason: "  << strerror(errno);
+		BOOST_THROW_EXCEPTION(ExternalFunctionFailure("ethash_full_new"));
+	}
 }
 
 EthashAux::FullAllocation::~FullAllocation()
@@ -240,8 +243,9 @@ Ethash::Result EthashAux::eval(BlockInfo const& _header, Nonce const& _nonce)
 
 Ethash::Result EthashAux::eval(h256 const& _seedHash, h256 const& _headerHash, Nonce const& _nonce)
 {
-	if (FullType dag = get()->m_fulls[_seedHash].lock())
-		return dag->compute(_headerHash, _nonce);
+	DEV_GUARDED(get()->x_fulls)
+		if (FullType dag = get()->m_fulls[_seedHash].lock())
+			return dag->compute(_headerHash, _nonce);
 	DEV_IF_THROWS(return EthashAux::get()->light(_seedHash)->compute(_headerHash, _nonce))
 	{
 		return Ethash::Result{ ~h256(), h256() };

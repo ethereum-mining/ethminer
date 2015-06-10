@@ -33,7 +33,7 @@ using namespace dev::eth;
 using namespace dev::test;
 
 FakeExtVM::FakeExtVM(eth::BlockInfo const& _previousBlock, eth::BlockInfo const& _currentBlock, unsigned _depth):			/// TODO: XXX: remove the default argument & fix.
-	ExtVMFace(Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(), _previousBlock, _currentBlock, test::lastHashes(_currentBlock.number), _depth) {}
+	ExtVMFace(Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(), EmptySHA3, _previousBlock, _currentBlock, test::lastHashes(_currentBlock.number), _depth) {}
 
 h160 FakeExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _init, OnOpFunc const&)
 {
@@ -160,7 +160,7 @@ mObject FakeExtVM::exportExec()
 	ret["origin"] = toString(origin);
 	ret["value"] = toCompactHex(value, HexPrefix::Add, 1);
 	ret["gasPrice"] = toCompactHex(gasPrice, HexPrefix::Add, 1);
-	ret["gas"] = toCompactHex(gas, HexPrefix::Add, 1);
+	ret["gas"] = toCompactHex(execGas, HexPrefix::Add, 1);
 	ret["data"] = toHex(data, 2, HexPrefix::Add);
 	ret["code"] = toHex(code, 2, HexPrefix::Add);
 	return ret;
@@ -183,6 +183,7 @@ void FakeExtVM::importExec(mObject& _o)
 	value = toInt(_o["value"]);
 	gasPrice = toInt(_o["gasPrice"]);
 	gas = toInt(_o["gas"]);
+	execGas = gas;
 
 	thisTxCode.clear();
 	code = thisTxCode;
@@ -231,7 +232,7 @@ void FakeExtVM::importCallCreates(mArray& _callcreates)
 eth::OnOpFunc FakeExtVM::simpleTrace()
 {
 
-	return [](uint64_t steps, eth::Instruction inst, bigint newMemSize, bigint gasCost, dev::eth::VM* voidVM, dev::eth::ExtVMFace const* voidExt)
+	return [](uint64_t steps, eth::Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, dev::eth::VM* voidVM, dev::eth::ExtVMFace const* voidExt)
 	{
 		FakeExtVM const& ext = *static_cast<FakeExtVM const*>(voidExt);
 		eth::VM& vm = *voidVM;
@@ -247,7 +248,7 @@ eth::OnOpFunc FakeExtVM::simpleTrace()
 			o << std::showbase << std::hex << i.first << ": " << i.second << std::endl;
 
 		dev::LogOutputStream<eth::VMTraceChannel, false>() << o.str();
-		dev::LogOutputStream<eth::VMTraceChannel, false>() << " | " << std::dec << ext.depth << " | " << ext.myAddress << " | #" << steps << " | " << std::hex << std::setw(4) << std::setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " | " << std::dec << vm.gas() << " | -" << std::dec << gasCost << " | " << newMemSize << "x32" << " ]";
+		dev::LogOutputStream<eth::VMTraceChannel, false>() << " | " << std::dec << ext.depth << " | " << ext.myAddress << " | #" << steps << " | " << std::hex << std::setw(4) << std::setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " | " << std::dec << gas << " | -" << std::dec << gasCost << " | " << newMemSize << "x32" << " ]";
 
 		/*creates json stack trace*/
 		if (eth::VMTraceChannel::verbosity <= g_logVerbosity)
@@ -276,7 +277,7 @@ eth::OnOpFunc FakeExtVM::simpleTrace()
 			/*add all the other details*/
 			o_step.push_back(Pair("storage", storage));
 			o_step.push_back(Pair("depth", to_string(ext.depth)));
-			o_step.push_back(Pair("gas", (string)vm.gas()));
+			o_step.push_back(Pair("gas", (string)gas));
 			o_step.push_back(Pair("address", toString(ext.myAddress )));
 			o_step.push_back(Pair("step", steps ));
 			o_step.push_back(Pair("pc", (int)vm.curPC()));
@@ -324,19 +325,15 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 		}
 
 		bytes output;
-		u256 gas;
 		bool vmExceptionOccured = false;
 		try
 		{
-			auto vm = eth::VMFactory::create(fev.gas);
+			auto vm = eth::VMFactory::create();
 			auto vmtrace = Options::get().vmtrace ? fev.simpleTrace() : OnOpFunc{};
-			auto outputRef = bytesConstRef{};
 			{
 				Listener::ExecTimeGuard guard{i.first};
-				outputRef = vm->go(fev, vmtrace);
+				output = vm->exec(fev.gas, fev, vmtrace);
 			}
-			output = outputRef.toBytes();
-			gas = vm->gas();
 		}
 		catch (VMException const&)
 		{
@@ -391,7 +388,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 
 				o["callcreates"] = fev.exportCallCreates();
 				o["out"] = output.size() > 4096 ? "#" + toString(output.size()) : toHex(output, 2, HexPrefix::Add);
-				o["gas"] = toCompactHex(gas, HexPrefix::Add, 1);
+				o["gas"] = toCompactHex(fev.gas, HexPrefix::Add, 1);
 				o["logs"] = exportLog(fev.sub.logs);
 			}
 		}
@@ -414,7 +411,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 
 				checkOutput(output, o);
 
-				BOOST_CHECK_EQUAL(toInt(o["gas"]), gas);
+				BOOST_CHECK_EQUAL(toInt(o["gas"]), fev.gas);
 
 				State postState, expectState;
 				mObject mPostState = fev.exportState();
@@ -424,7 +421,7 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 
 				checkAddresses<std::map<Address, std::tuple<u256, u256, std::map<u256, u256>, bytes> > >(test.addresses, fev.addresses);
 
-				checkCallCreates(fev.callcreates, test.callcreates);
+				checkCallCreates(test.callcreates, fev.callcreates);
 
 				checkLog(fev.sub.logs, test.sub.logs);
 			}

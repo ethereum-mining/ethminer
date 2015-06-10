@@ -45,6 +45,18 @@
 namespace ba = boost::asio;
 namespace bi = ba::ip;
 
+namespace std
+{
+template<> struct hash<pair<dev::p2p::NodeId, string>>
+{
+	size_t operator()(pair<dev::p2p::NodeId, string> const& _value) const
+	{
+		size_t ret = hash<dev::p2p::NodeId>()(_value.first);
+		return ret ^ (hash<string>()(_value.second) + 0x9e3779b9 + (ret << 6) + (ret >> 2));
+	}
+};
+}
+
 namespace dev
 {
 
@@ -64,6 +76,29 @@ private:
 	virtual void processEvent(NodeId const& _n, NodeTableEventType const& _e);
 
 	Host& m_host;
+};
+
+struct SubReputation
+{
+	bool isRude = false;
+	int utility = 0;
+};
+
+struct Reputation
+{
+	std::unordered_map<std::string, SubReputation> subs;
+};
+
+class ReputationManager
+{
+public:
+	ReputationManager();
+
+	void noteRude(Session const& _s, std::string const& _sub = std::string());
+	bool isRude(Session const& _s, std::string const& _sub = std::string()) const;
+
+private:
+	std::unordered_map<std::pair<p2p::NodeId, std::string>, Reputation> m_nodes;	///< Nodes that were impolite while syncing. We avoid syncing from these if possible.
 };
 
 /**
@@ -99,6 +134,7 @@ public:
 
 	/// Register a peer-capability; all new peer connections will have this capability.
 	template <class T> std::shared_ptr<T> registerCapability(T* _t) { _t->m_host = this; std::shared_ptr<T> ret(_t); m_capabilities[std::make_pair(T::staticName(), T::staticVersion())] = ret; return ret; }
+	template <class T> void addCapability(std::shared_ptr<T> const & _p, std::string const& _name, u256 const& _version) { m_capabilities[std::make_pair(_name, _version)] = _p; }
 
 	bool haveCapability(CapDesc const& _name) const { return m_capabilities.count(_name) != 0; }
 	CapDescs caps() const { CapDescs ret; for (auto const& i: m_capabilities) ret.push_back(i.first); return ret; }
@@ -150,6 +186,9 @@ public:
 
 	/// @returns if network has been started.
 	bool isStarted() const { return isWorking(); }
+
+	/// @returns our reputation manager.
+	ReputationManager& repMan() { return m_repMan; }
 
 	/// @returns if network is started and interactive.
 	bool haveNetwork() const { return m_run && !!m_nodeTable; }
@@ -254,6 +293,8 @@ private:
 	std::chrono::steady_clock::time_point m_lastPing;						///< Time we sent the last ping to all peers.
 	bool m_accepting = false;
 	bool m_dropPeers = false;
+
+	ReputationManager m_repMan;
 };
 
 }

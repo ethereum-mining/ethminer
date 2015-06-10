@@ -161,12 +161,14 @@ namespace solidity
 	K(Import, "import", 0)                                             \
 	K(Is, "is", 0)                                                     \
 	K(Mapping, "mapping", 0)                                           \
+	K(Memory, "memory", 0)                                             \
 	K(Modifier, "modifier", 0)                                         \
 	K(New, "new", 0)                                                   \
 	K(Public, "public", 0)                                             \
 	K(Private, "private", 0)                                           \
 	K(Return, "return", 0)                                             \
 	K(Returns, "returns", 0)                                           \
+	K(Storage, "storage", 0)                                           \
 	K(Struct, "struct", 0)                                             \
 	K(Var, "var", 0)                                                   \
 	K(While, "while", 0)                                               \
@@ -251,7 +253,6 @@ namespace solidity
 	K(UInt240, "uint240", 0)                                           \
 	K(UInt248, "uint248", 0)                                           \
 	K(UInt256, "uint256", 0)                                           \
-	K(Bytes0, "bytes0", 0)                                             \
 	K(Bytes1, "bytes1", 0)                                             \
 	K(Bytes2, "bytes2", 0)                                             \
 	K(Bytes3, "bytes3", 0)                                             \
@@ -286,6 +287,7 @@ namespace solidity
 	K(Bytes32, "bytes32", 0)                                           \
 	K(Bytes, "bytes", 0)                                               \
 	K(Byte, "byte", 0)                                                 \
+	K(String, "string", 0)                                             \
 	K(Address, "address", 0)                                           \
 	K(Bool, "bool", 0)                                                 \
 	K(Real, "real", 0)                                                 \
@@ -303,7 +305,7 @@ namespace solidity
 	/* Identifiers (not keywords or future reserved words). */         \
 	T(Identifier, NULL, 0)                                             \
 	\
-	/* Keywords reserved for future. use*/                             \
+	/* Keywords reserved for future. use. */                           \
 	K(As, "as", 0)                                                     \
 	K(Case, "case", 0)                                                 \
 	K(Catch, "catch", 0)                                               \
@@ -312,7 +314,6 @@ namespace solidity
 	K(Match, "match", 0)                                               \
 	K(Of, "of", 0)                                                     \
 	K(Relocatable, "relocatable", 0)                                   \
-	T(String, "string", 0)                                             \
 	K(Switch, "switch", 0)                                             \
 	K(Throw, "throw", 0)                                               \
 	K(Try, "try", 0)                                                   \
@@ -370,6 +371,7 @@ public:
 	static bool isShiftOp(Value op) { return (SHL <= op) && (op <= SHR); }
 	static bool isVisibilitySpecifier(Value op) { return isVariableVisibilitySpecifier(op) || op == External; }
 	static bool isVariableVisibilitySpecifier(Value op) { return op == Public || op == Private || op == Internal; }
+	static bool isLocationSpecifier(Value op) { return op == Memory || op == Storage; }
 	static bool isEtherSubdenomination(Value op) { return op == SubWei || op == SubSzabo || op == SubFinney || op == SubEther; }
 	static bool isTimeSubdenomination(Value op) { return op == SubSecond || op == SubMinute || op == SubHour || op == SubDay || op == SubWeek || op == SubYear; }
 

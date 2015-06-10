@@ -94,11 +94,13 @@ bool Ethash::preVerify(BlockInfo const& _header)
 
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
-	return !!ethash_quick_check_difficulty(
-		(ethash_h256_t const*)_header.headerHash(WithoutNonce).data(),
-		(uint64_t)(u64)_header.nonce,
-		(ethash_h256_t const*)_header.mixHash.data(),
-		(ethash_h256_t const*)boundary.data());
+	bool ret = !!ethash_quick_check_difficulty(
+			(ethash_h256_t const*)_header.headerHash(WithoutNonce).data(),
+			(uint64_t)(u64)_header.nonce,
+			(ethash_h256_t const*)_header.mixHash.data(),
+			(ethash_h256_t const*)boundary.data());
+
+	return ret;
 }
 
 bool Ethash::verify(BlockInfo const& _header)
@@ -111,6 +113,10 @@ bool Ethash::verify(BlockInfo const& _header)
 
 	auto result = EthashAux::eval(_header);
 	bool slow = result.value <= _header.boundary() && result.mixHash == _header.mixHash;
+
+//	cdebug << (slow ? "VERIFY" : "VERYBAD");
+//	cdebug << result.value.hex() << _header.boundary().hex();
+//	cdebug << result.mixHash.hex() << _header.mixHash.hex();
 
 #if ETH_DEBUG || !ETH_TRUE
 	if (!pre && slow)
@@ -279,6 +285,7 @@ private:
 unsigned Ethash::GPUMiner::s_platformId = 0;
 unsigned Ethash::GPUMiner::s_deviceId = 0;
 unsigned Ethash::GPUMiner::s_numInstances = 0;
+unsigned Ethash::GPUMiner::s_dagChunks = 1;
 
 Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
@@ -328,18 +335,19 @@ void Ethash::GPUMiner::workLoop()
 			EthashAux::FullType dag;
 			while (true)
 			{
-				if ((dag = EthashAux::full(w.seedHash, false)))
+				if ((dag = EthashAux::full(w.seedHash, true)))
 					break;
 				if (shouldStop())
 				{
 					delete m_miner;
+					m_miner = nullptr;
 					return;
 				}
 				cnote << "Awaiting DAG";
 				this_thread::sleep_for(chrono::milliseconds(500));
 			}
 			bytesConstRef dagData = dag->data();
-			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
+			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device, s_dagChunks);
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
@@ -347,6 +355,8 @@ void Ethash::GPUMiner::workLoop()
 	}
 	catch (cl::Error const& _e)
 	{
+		delete m_miner;
+		m_miner = nullptr;
 		cwarn << "Error GPU mining: " << _e.what() << "(" << _e.err() << ")";
 	}
 }
@@ -365,6 +375,16 @@ std::string Ethash::GPUMiner::platformInfo()
 unsigned Ethash::GPUMiner::getNumDevices()
 {
 	return ethash_cl_miner::get_num_devices(s_platformId);
+}
+
+void Ethash::GPUMiner::listDevices()
+{
+	return ethash_cl_miner::listDevices();
+}
+
+bool Ethash::GPUMiner::haveSufficientMemory()
+{
+	return ethash_cl_miner::haveSufficientGPUMemory();
 }
 
 #endif
