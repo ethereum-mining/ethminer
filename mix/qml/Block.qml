@@ -297,7 +297,7 @@ ColumnLayout
                                 anchors.fill: parent
                                 onClicked:
                                 {
-                                    if (transactions.get(index).recordIndex)
+                                    if (transactions.get(index).recordIndex !== undefined)
                                     {
                                         debugTrRequested = [ blockIndex, index ]
                                         clientModel.debugRecord(transactions.get(index).recordIndex);

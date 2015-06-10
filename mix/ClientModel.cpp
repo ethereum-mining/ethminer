@@ -431,12 +431,16 @@ std::pair<QString, int> ClientModel::resolvePair(QString const& _contractId)
 		QStringList values = ret.first.remove("<").remove(">").split(" - ");
 		ret = std::make_pair(values[0], values[1].toUInt());
 	}
+	if (_contractId.startsWith("0x"))
+		ret = std::make_pair(_contractId, -2);
 	return ret;
 }
 
 QString ClientModel::resolveToken(std::pair<QString, int> const& _value)
 {
-	if (m_contractAddresses.size() > 0)
+	if (_value.second == -2)
+		return _value.first;
+	else if (m_contractAddresses.size() > 0)
 		return QString::fromStdString("0x" + dev::toHex(m_contractAddresses[_value].ref()));
 	else
 		return _value.first;
@@ -737,6 +741,8 @@ void ClientModel::onNewTransaction()
 		CompiledContract const& compilerRes = m_codeModel->contract(contractAddressIter->second);
 		const QContractDefinition* def = compilerRes.contract();
 		contract = def->name();
+		if (creation)
+			function = contract;
 		if (abi)
 		{
 			QFunctionDefinition const* funcDef = def->getFunction(functionHash);
@@ -818,6 +824,17 @@ void ClientModel::onNewTransaction()
 		label = contract + "." + function + "()";
 	else
 		label = contract;
+
+	if (!creation)
+		for (auto const& ctr: m_contractAddresses)
+		{
+			if (ctr.second == tr.address)
+			{
+				contract = "<" + ctr.first.first + " - " + QString::number(ctr.first.second) + ">";
+				break;
+			}
+		}
+
 	RecordLogEntry* log = new RecordLogEntry(recordIndex, transactionIndex, contract, function, value, address, returned, tr.isCall(), RecordLogEntry::RecordType::Transaction,
 											 gasUsed, sender, label, inputParameters, logs);
 	QQmlEngine::setObjectOwnership(log, QQmlEngine::JavaScriptOwnership);

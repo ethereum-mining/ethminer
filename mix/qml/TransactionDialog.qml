@@ -64,7 +64,7 @@ Dialog {
 		for (var c in contracts) {
 			contractsModel.append({ cid: c, text: contracts[c].contract.name });
 			if (contracts[c].contract.name === contractId)
-				contractIndex = contractsModel.count - 1;
+                contractIndex = contractsModel.count - 1;
 		}
 
 		if (contractIndex == -1 && contractsModel.count > 0)
