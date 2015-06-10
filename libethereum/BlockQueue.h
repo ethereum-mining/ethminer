@@ -75,7 +75,7 @@ public:
 	~BlockQueue();
 
 	/// Import a block into the queue.
-	ImportResult import(bytesConstRef _tx, BlockChain const& _bc, bool _isOurs = false);
+	ImportResult import(bytesConstRef _block, BlockChain const& _bc, bool _isOurs = false);
 
 	/// Notes that time has moved on and some blocks that used to be "in the future" may no be valid.
 	void tick(BlockChain const& _bc);
@@ -98,7 +98,7 @@ public:
 	std::pair<unsigned, unsigned> items() const { ReadGuard l(m_lock); return std::make_pair(m_readySet.size(), m_unknownSet.size()); }
 
 	/// Clear everything.
-	void clear() { WriteGuard l(m_lock); DEV_INVARIANT_CHECK; Guard l2(m_verification); m_readySet.clear(); m_drainingSet.clear(); m_verified.clear(); m_unverified.clear(); m_unknownSet.clear(); m_unknown.clear(); m_future.clear(); }
+	void clear();
 
 	/// Return first block with an unknown parent.
 	h256 firstUnknown() const { ReadGuard l(m_lock); return m_unknownSet.size() ? *m_unknownSet.begin() : h256(); }
@@ -110,8 +110,12 @@ public:
 	QueueStatus blockStatus(h256 const& _h) const;
 
 	template <class T> Handler onReady(T const& _t) { return m_onReady.add(_t); }
+	template <class T> Handler onRoomAvailable(T const& _t) { return m_onRoomAvailable.add(_t); }
 
 	template <class T> void setOnBad(T const& _t) { m_onBad = _t; }
+
+	bool knownFull() const;
+	bool unknownFull() const;
 
 private:
 	void noteReady_WITH_LOCK(h256 const& _b);
@@ -128,17 +132,22 @@ private:
 	h256Hash m_knownBad;												///< Set of blocks that we know will never be valid.
 	std::multimap<unsigned, std::pair<h256, bytes>> m_future;			///< Set of blocks that are not yet valid. Ordered by timestamp
 	Signal m_onReady;													///< Called when a subsequent call to import blocks will return a non-empty container. Be nice and exit fast.
+	Signal m_onRoomAvailable;											///< Called when space for new blocks becomes availabe after a drain. Be nice and exit fast.
 
 	mutable Mutex m_verification;										///< Mutex that allows writing to m_verified, m_verifying and m_unverified.
 	std::condition_variable m_moreToVerify;								///< Signaled when m_unverified has a new entry.
-	std::vector<VerifiedBlock> m_verified;				///< List of blocks, in correct order, verified and ready for chain-import.
-	std::deque<VerifiedBlock> m_verifying;				///< List of blocks being verified; as long as the second component (bytes) is empty, it's not finished.
+	std::vector<VerifiedBlock> m_verified;								///< List of blocks, in correct order, verified and ready for chain-import.
+	std::deque<VerifiedBlock> m_verifying;								///< List of blocks being verified; as long as the block component (bytes) is empty, it's not finished.
 	std::deque<std::pair<h256, bytes>> m_unverified;					///< List of blocks, in correct order, ready for verification.
 
 	std::vector<std::thread> m_verifiers;								///< Threads who only verify.
 	bool m_deleting = false;											///< Exit condition for verifiers.
 
-	std::function<void(Exception&)> m_onBad;									///< Called if we have a block that doesn't verify.
+	std::function<void(Exception&)> m_onBad;							///< Called if we have a block that doesn't verify.
+	std::atomic<size_t> m_unknownSize;
+	std::atomic<size_t> m_knownSize;
+	std::atomic<size_t> m_unknownCount;
+	std::atomic<size_t> m_knownCount;
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockQueueStatus const& _s);
