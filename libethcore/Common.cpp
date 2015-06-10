@@ -112,25 +112,26 @@ std::string formatBalance(bigint const& _b)
 
 static void badBlockInfo(BlockInfo const& _bi, string const& _err)
 {
-	cwarn << EthRedBold << "========================================================================";
-	cwarn << EthRedBold << "==  Software Failure    " + _err + string(max<int>(0, 44 - _err.size()), ' ') + "  ==";
+	string const c_line = EthReset EthOnMaroon + string(80, ' ');
+	string const c_border = EthReset EthOnMaroon + string(2, ' ') + EthReset EthMaroonBold;
+	string const c_space = c_border + string(76, ' ') + c_border;
+	stringstream ss;
+	ss << c_line << endl;
+	ss << c_space << endl;
+	ss << c_border + "  Import Failure     " + _err + string(max<int>(0, 53 - _err.size()), ' ') + "  " + c_border << endl;
+	ss << c_space << endl;
 	string bin = toString(_bi.number);
-	cwarn << EthRedBold << ("==                 Guru Meditation #" + string(max<int>(0, 8 - bin.size()), '0') + bin + "." + _bi.hash().abridged() + "                ==");
-	cwarn << EthRedBold << "========================================================================";
+	ss << c_border + ("                     Guru Meditation #" + string(max<int>(0, 8 - bin.size()), '0') + bin + "." + _bi.hash().abridged() + "                    ") + c_border << endl;
+	ss << c_space << endl;
+	ss << c_line;
+	cwarn << "\n" + ss.str();
 }
 
 void badBlock(bytesConstRef _block, string const& _err)
 {
-	badBlockInfo(BlockInfo(_block, CheckNothing), _err);
-	cwarn << "  Block:" << toHex(_block);
-	cwarn << "  Block RLP:" << RLP(_block);
-}
-
-void badBlockHeader(bytesConstRef _header, string const& _err)
-{
-	badBlockInfo(BlockInfo::fromHeader(_header, CheckNothing), _err);
-	cwarn << "  Header:" << toHex(_header);
-	cwarn << "  Header RLP:" << RLP(_header);;
+	BlockInfo bi;
+	DEV_IGNORE_EXCEPTIONS(bi = BlockInfo(_block, CheckNothing));
+	badBlockInfo(bi, _err);
 }
 
 }

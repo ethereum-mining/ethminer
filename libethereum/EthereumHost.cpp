@@ -277,13 +277,6 @@ void EthereumHost::estimatePeerHashes(EthereumPeer* _peer)
 	_peer->m_expectedHashes = blockCount;
 }
 
-void EthereumHost::noteRude(p2p::NodeId const& _id, std::string const& _client)
-{
-	cwarn << "RUDE node/client: " << _id << _client;
-	m_rudeNodes.insert(_id);
-	m_rudeClients.insert(_client);
-}
-
 void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes)
 {
 	RecursiveGuard l(x_sync);
@@ -577,10 +570,11 @@ void EthereumHost::onPeerTransactions(EthereumPeer* _peer, RLP const& _r)
 void EthereumHost::onPeerAborting(EthereumPeer* _peer)
 {
 	RecursiveGuard l(x_sync);
-	if (_peer->isSyncing())
+	if (_peer->isConversing())
 	{
 		_peer->setIdle();
-		_peer->setRude();
+		if (_peer->isCriticalSyncing())
+			_peer->setRude();
 		continueSync();
 	}
 }
@@ -647,18 +641,23 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 				_peer->setIdle();
 		}
 	}
-	else if (m_needSyncBlocks && peerShouldGrabBlocks(_peer)) // Check if this peer can help with downloading blocks
+	else if (m_needSyncBlocks && peerCanHelp(_peer)) // Check if this peer can help with downloading blocks
 		_peer->requestBlocks();
 	else
 		_peer->setIdle();
 }
 
+bool EthereumHost::peerCanHelp(EthereumPeer* _peer) const
+{
+	(void)_peer;
+	return true;
+}
+
 bool EthereumHost::peerShouldGrabBlocks(EthereumPeer* _peer) const
 {
-	// Early exit if this peer has proved unreliable.
-	if (_peer->isRude())
-		return false;
-
+	// this is only good for deciding whether to go ahead and grab a particular peer's hash chain,
+	// yet it's being used in determining whether to allow a peer help with downloading an existing
+	// chain of blocks.
 	auto td = _peer->m_totalDifficulty;
 	auto lh = m_syncingLatestHash;
 	auto ctd = m_chain.details().totalDifficulty;
@@ -710,6 +709,6 @@ HashChainStatus EthereumHost::status()
 	RecursiveGuard l(x_sync);
 	if (m_syncingV61)
 		return HashChainStatus { static_cast<unsigned>(m_hashMan.chainSize()), static_cast<unsigned>(m_hashMan.gotCount()), false };
-	return HashChainStatus { m_estimatedHashes, static_cast<unsigned>(m_hashes.size()), true };
+	return HashChainStatus { m_estimatedHashes - 30000, static_cast<unsigned>(m_hashes.size()), true };
 }
 

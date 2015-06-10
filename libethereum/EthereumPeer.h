@@ -83,7 +83,7 @@ public:
 	void requestBlocks();
 
 	/// Check if this node is rude.
-	bool isRude() const { return m_isRude; }
+	bool isRude() const;
 
 	/// Set that it's a rude node.
 	void setRude();
@@ -109,8 +109,11 @@ private:
 	/// Do we presently need syncing with this peer?
 	bool needsSyncing() const { return !isRude() && !!m_latestHash; }
 
-	/// Are we presently syncing with this peer?
-	bool isSyncing() const;
+	/// Are we presently in the process of communicating with this peer?
+	bool isConversing() const;
+
+	/// Are we presently in a critical part of the syncing process with this peer?
+	bool isCriticalSyncing() const;
 
 	/// Runs period checks to check up on the peer.
 	void tick();
@@ -152,8 +155,6 @@ private:
 	h256Hash m_knownBlocks;					///< Blocks that the peer already knows about (that don't need to be sent to them).
 	Mutex x_knownTransactions;
 	h256Hash m_knownTransactions;			///< Transactions that the peer already knows of.
-
-	bool m_isRude;							///< True if this node has been rude in the past.
 };
 
 }
