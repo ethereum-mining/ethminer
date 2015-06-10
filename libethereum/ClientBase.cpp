@@ -171,7 +171,7 @@ LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 {
 	LocalisedLogEntries ret;
-	unsigned begin = min<unsigned>(bc().number() + 1, (unsigned)numberFromHash(_f.latest()));
+	unsigned begin = min(bc().number() + 1, (unsigned)numberFromHash(_f.latest()));
 	unsigned end = min(bc().number(), min(begin, (unsigned)numberFromHash(_f.earliest())));
 	
 	// Handle pending transactions differently as they're not on the block chain.
@@ -443,11 +443,11 @@ h256 ClientBase::hashFromNumber(BlockNumber _number) const
 BlockNumber ClientBase::numberFromHash(h256 _blockHash) const
 {
 	if (_blockHash == PendingBlockHash)
-		_blockHash = hashFromNumber(PendingBlock);
+		return bc().number() + 1;
 	else if (_blockHash == LatestBlockHash)
-		_blockHash = hashFromNumber(LatestBlock);
+		return bc().number();
 	else if (_blockHash == EarliestBlockHash)
-		_blockHash = hashFromNumber(0);
+		return 0;
 	return bc().number(_blockHash);
 }
 
