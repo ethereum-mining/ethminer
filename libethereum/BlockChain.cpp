@@ -331,21 +331,21 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 			}
 			catch (dev::eth::UnknownParent)
 			{
-				cwarn << "ODD: Import queue contains block with unknown parent." << LogTag::Error << boost::current_exception_diagnostic_information();
+				cwarn << "ODD: Import queue contains block with unknown parent.";// << LogTag::Error << boost::current_exception_diagnostic_information();
 				// NOTE: don't reimport since the queue should guarantee everything in the right order.
 				// Can't continue - chain bad.
 				badBlocks.push_back(block.verified.info.hash());
 			}
 			catch (dev::eth::FutureTime)
 			{
-				cwarn << "ODD: Import queue contains a block with future time." << LogTag::Error << boost::current_exception_diagnostic_information();
+				cwarn << "ODD: Import queue contains a block with future time.";// << LogTag::Error << boost::current_exception_diagnostic_information();
 				// NOTE: don't reimport since the queue should guarantee everything in the past.
 				// Can't continue - chain bad.
 				badBlocks.push_back(block.verified.info.hash());
 			}
 			catch (Exception& ex)
 			{
-				cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << LogTag::Error << diagnostic_information(ex);
+//				cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!";// << LogTag::Error << diagnostic_information(ex);
 				if (m_onBad)
 					m_onBad(ex);
 				// NOTE: don't reimport since the queue should guarantee everything in the right order.
@@ -396,7 +396,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 #if ETH_CATCH
 	catch (Exception& ex)
 	{
-		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
+//		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block);
 		throw;
