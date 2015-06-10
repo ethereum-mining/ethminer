@@ -587,7 +587,7 @@ void EthereumHost::onPeerAborting(EthereumPeer* _peer)
 
 void EthereumHost::continueSync()
 {
-	clog(NetAllDetail) << "Getting help with downloading hashes and blocks";
+	clog(NetAllDetail) << "Continuing sync for all peers";
 	foreachPeer([&](EthereumPeer* _p)
 	{
 		if (_p->m_asking == Asking::Nothing)
