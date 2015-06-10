@@ -43,6 +43,7 @@ namespace p2p
 {
 
 class Peer;
+class ReputationManager;
 
 /**
  * @brief The Session class
@@ -75,6 +76,7 @@ public:
 	static RLPStream& prep(RLPStream& _s, PacketType _t, unsigned _args = 0);
 	void sealAndSend(RLPStream& _s);
 
+	ReputationManager& repMan() const;
 	int rating() const;
 	void addRating(int _r);
 

@@ -156,8 +156,6 @@ struct TransactionSkeleton
 	u256 gasPrice = UndefinedU256;
 };
 
-void badBlockHeader(bytesConstRef _header, std::string const& _err);
-inline void badBlockHeader(bytes const& _header, std::string const& _err) { badBlockHeader(&_header, _err); }
 void badBlock(bytesConstRef _header, std::string const& _err);
 inline void badBlock(bytes const& _header, std::string const& _err) { badBlock(&_header, _err); }
 

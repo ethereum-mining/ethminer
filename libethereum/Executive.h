@@ -49,9 +49,12 @@ public:
 	StandardTrace();
 	void operator()(uint64_t _steps, Instruction _inst, bigint _newMemSize, bigint _gasCost, bigint _gas, VM* _vm, ExtVMFace const* _extVM);
 
-	std::string json() const;
+	void setShowMnemonics() { m_showMnemonics = true; }
+
+	std::string json(bool _styled = false) const;
 
 private:
+	bool m_showMnemonics = false;
 	std::vector<Instruction> m_lastInst;
 	std::shared_ptr<Json::Value> m_trace;
 };
