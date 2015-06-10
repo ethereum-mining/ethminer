@@ -39,29 +39,25 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, ExecutionResult const& _e
 	return _out;
 }
 
-std::string badTransaction(bytesConstRef _tx, string const& _err)
+TransactionException dev::eth::toTransactionException(Exception const& _e)
 {
-	stringstream ret;
-	ret << "========================================================================" << endl;
-	ret << "==  Software Failure    " << (_err + string(max<int>(0, 44 - _err.size()), ' ')) << "  ==" << endl;
-	ret << "==                      Guru Meditation " << sha3(_tx).abridged() << "                     ==" << endl;
-	ret << "========================================================================" << endl;
-	ret << "  Transaction: " << toHex(_tx) << endl;
-	ret << "  Transaction RLP: ";
-	try {
-		ret << RLP(_tx);
-	}
-	catch (Exception& _e)
-	{
-		ret << "Invalid: " << _e.what();
-	}
-	ret << endl;
-
-	return ret.str();
-}
-
-TransactionException dev::eth::toTransactionException(VMException const& _e)
-{
+	// Basic Transaction exceptions
+	if (!!dynamic_cast<BadRLP const*>(&_e))
+		return TransactionException::BadRLP;
+	if (!!dynamic_cast<OutOfGasIntrinsic const*>(&_e))
+		return TransactionException::OutOfGasIntrinsic;
+	if (!!dynamic_cast<InvalidSignature const*>(&_e))
+		return TransactionException::InvalidSignature;
+	// Executive exceptions
+	if (!!dynamic_cast<OutOfGasBase const*>(&_e))
+		return TransactionException::OutOfGasBase;
+	if (!!dynamic_cast<InvalidNonce const*>(&_e))
+		return TransactionException::InvalidNonce;
+	if (!!dynamic_cast<NotEnoughCash const*>(&_e))
+		return TransactionException::NotEnoughCash;
+	if (!!dynamic_cast<BlockGasLimitReached const*>(&_e))
+		return TransactionException::BlockGasLimitReached;
+	// VM execution exceptions
 	if (!!dynamic_cast<BadInstruction const*>(&_e))
 		return TransactionException::BadInstruction;
 	if (!!dynamic_cast<BadJumpDestination const*>(&_e))
@@ -73,6 +69,28 @@ TransactionException dev::eth::toTransactionException(VMException const& _e)
 	if (!!dynamic_cast<StackUnderflow const*>(&_e))
 		return TransactionException::StackUnderflow;
 	return TransactionException::Unknown;
+}
+
+std::ostream& dev::eth::operator<<(std::ostream& _out, TransactionException const& _er)
+{
+	switch (_er)
+	{
+		case TransactionException::None: _out << "None"; break;
+		case TransactionException::BadRLP: _out << "BadRLP"; break;
+		case TransactionException::OutOfGasIntrinsic: _out << "OutOfGasIntrinsic"; break;
+		case TransactionException::InvalidSignature: _out << "InvalidSignature"; break;
+		case TransactionException::InvalidNonce: _out << "InvalidNonce"; break;
+		case TransactionException::NotEnoughCash: _out << "NotEnoughCash"; break;
+		case TransactionException::OutOfGasBase: _out << "OutOfGasBase"; break;
+		case TransactionException::BlockGasLimitReached: _out << "BlockGasLimitReached"; break;
+		case TransactionException::BadInstruction: _out << "BadInstruction"; break;
+		case TransactionException::BadJumpDestination: _out << "BadJumpDestination"; break;
+		case TransactionException::OutOfGas: _out << "OutOfGas"; break;
+		case TransactionException::OutOfStack: _out << "OutOfStack"; break;
+		case TransactionException::StackUnderflow: _out << "StackUnderflow"; break;
+		default: _out << "Unknown"; break;
+	}
+	return _out;
 }
 
 Transaction::Transaction(bytesConstRef _rlpData, CheckTransaction _checkSig)
@@ -114,7 +132,7 @@ Transaction::Transaction(bytesConstRef _rlpData, CheckTransaction _checkSig)
 		throw;
 	}
 	if (_checkSig >= CheckTransaction::Cheap && !checkPayment())
-		BOOST_THROW_EXCEPTION(OutOfGasBase() << RequirementError(gasRequired(), (bigint)gas()));
+		BOOST_THROW_EXCEPTION(OutOfGasIntrinsic() << RequirementError(gasRequired(), (bigint)gas()));
 }
 
 Address const& Transaction::safeSender() const noexcept
