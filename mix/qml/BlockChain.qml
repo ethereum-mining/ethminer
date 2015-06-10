@@ -230,7 +230,9 @@ ColumnLayout {
                     if (ensureNotFuturetime.running)
                         return;
                     reBuildNeeded.stop()
+                    console.log("model block length " + model.blocks.length)
                     var retBlocks = [];
+                    var bAdded = 0;
                     for (var j = 0; j < model.blocks.length; j++)
                     {
                         var b = model.blocks[j];
@@ -243,13 +245,30 @@ ColumnLayout {
                         for (var k = 0; k < model.blocks[j].transactions.length; k++)
                         {
                             if (blockModel.get(j).transactions.get(k).saveStatus)
-                                block.transactions.push(model.blocks[j].transactions[k]);
+                            {
+                                var tr = model.blocks[j].transactions[k]
+                                tr.saveStatus = true
+                                block.transactions.push(tr);
+                            }
+
                         }
                         if (block.transactions.length > 0)
+                        {
+                            bAdded++
+                            block.number = bAdded
+                            block.status = "mined"
                             retBlocks.push(block)
+                        }
+
                     }
                     if (retBlocks.length === 0)
                         retBlocks.push(projectModel.stateListModel.createEmptyBlock())
+                    else
+                    {
+                        var last = retBlocks[retBlocks.length - 1]
+                        last.number = -1
+                        last.status = "pending"
+                    }
 
                     model.blocks = retBlocks
                     blockModel.clear()
@@ -289,8 +308,14 @@ ColumnLayout {
                 onClicked:
                 {
                     var lastBlock = model.blocks[model.blocks.length - 1];
+                    console.log(lastBlock.status + "!!!")
                     if (lastBlock.status === "mined")
-                        model.blocks.push(projectModel.stateListModel.createEmptyBlock());
+                    {
+                        var newblock = projectModel.stateListModel.createEmptyBlock()
+                        blockModel.appendBlock(newblock)
+                        model.blocks.push(newblock);
+                    }
+
                     var item = TransactionHelper.defaultTransaction()
                     transactionDialog.stateAccounts = model.accounts
                     transactionDialog.execute = true
@@ -352,6 +377,7 @@ ColumnLayout {
                 target: clientModel
                 onNewBlock:
                 {
+                    console.log("new Block!!")
                     if (!clientModel.running)
                     {
                         var lastBlock = model.blocks[model.blocks.length - 1]
@@ -370,15 +396,12 @@ ColumnLayout {
                 {
                     var blockIndex =  parseInt(_r.transactionIndex.split(":")[0]) - 1
                     var trIndex = parseInt(_r.transactionIndex.split(":")[1])
-                    console.log("kkkk" + blockIndex)
-                    console.log(trIndex)
                     if (blockIndex <= model.blocks.length - 1)
                     {
                         var item = model.blocks[blockIndex]
                         if (trIndex <= item.transactions.length - 1)
                         {
                             var tr = item.transactions[trIndex]
-                            console.log(JSON.stringify(_r))
                             tr.returned = _r.returned
                             tr.recordIndex = _r.recordIndex
                             tr.logs = _r.logs
@@ -408,6 +431,7 @@ ColumnLayout {
                     itemTr.sender = _r.sender
                     itemTr.recordIndex = _r.recordIndex
                     itemTr.logs = _r.logs
+                    console.log(JSON.stringify(itemTr))
                     model.blocks[model.blocks.length - 1].transactions.push(itemTr)
                     blockModel.appendTransaction(itemTr)
                 }
@@ -421,7 +445,6 @@ ColumnLayout {
                 text: qsTr("New Account")
                 onClicked: {
                     model.accounts.push(projectModel.stateListModel.newAccount("1000000", QEther.Ether))
-                    chainChanged()
                 }
                 Layout.preferredWidth: 100
                 Layout.preferredHeight: 30
@@ -438,11 +461,15 @@ ColumnLayout {
             var item = transactionDialog.getItem()
             if (execute)
             {
+                console.log("cc " + model.blocks.length)
                 var lastBlock = model.blocks[model.blocks.length - 1];
+                console.log("mined?" + lastBlock.status)
                 if (lastBlock.status === "mined")
-                    model.blocks.push(projectModel.stateListModel.createEmptyBlock());
-                model.blocks[model.blocks.length - 1].transactions.push(item)
-                blockModel.appendTransaction(item)
+                {
+                    var newBlock = projectModel.stateListModel.createEmptyBlock();
+                    model.blocks.push(newBlock);
+                    blockModel.appendBlock(newBlock)
+                }
                 if (!clientModel.running)
                     clientModel.executeTr(item)
             }
