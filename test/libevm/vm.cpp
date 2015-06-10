@@ -324,6 +324,8 @@ void doVMTests(json_spirit::mValue& v, bool _fillin)
 			fev.code = fev.thisTxCode;
 		}
 
+		fev.codeHash = sha3(fev.code);
+
 		bytes output;
 		bool vmExceptionOccured = false;
 		try
