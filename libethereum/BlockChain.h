@@ -40,6 +40,7 @@
 #include "Account.h"
 #include "Transaction.h"
 #include "BlockQueue.h"
+#include "VerifiedBlock.h"
 namespace ldb = leveldb;
 
 namespace std
@@ -120,7 +121,7 @@ public:
 	/// Import block into disk-backed DB
 	/// @returns the block hashes of any blocks that came into/went out of the canonical block chain.
 	ImportRoute import(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default);
-	ImportRoute import(BlockInfo const& _bi, bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir = ImportRequirements::Default);
+	ImportRoute import(VerifiedBlockRef const& _block, OverlayDB const& _db, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
 	bool isKnown(h256 const& _hash) const;
@@ -256,6 +257,9 @@ public:
 
 	/// Deallocate unused data.
 	void garbageCollect(bool _force = false);
+
+	/// Verify block and prepare it for enactment
+	static VerifiedBlockRef verifyBlock(bytes const& _block, std::function<void(Exception&)> const& _onBad = std::function<void(Exception&)>());
 
 	/// Change the function that is called with a bad block.
 	template <class T> void setOnBad(T const& _t) { m_onBad = _t; }
