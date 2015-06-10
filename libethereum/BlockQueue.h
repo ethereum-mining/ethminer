@@ -145,10 +145,10 @@ private:
 	bool m_deleting = false;											///< Exit condition for verifiers.
 
 	std::function<void(Exception&)> m_onBad;							///< Called if we have a block that doesn't verify.
-	std::atomic<size_t> m_unknownSize;
-	std::atomic<size_t> m_knownSize;
-	std::atomic<size_t> m_unknownCount;
-	std::atomic<size_t> m_knownCount;
+	std::atomic<size_t> m_unknownSize;									///< Tracks total size in bytes of all unknown blocks
+	std::atomic<size_t> m_knownSize;									///< Tracks total size in bytes of all known blocks;
+	std::atomic<size_t> m_unknownCount;									///< Tracks total count of unknown blocks. Used to avoid additional syncing
+	std::atomic<size_t> m_knownCount;									///< Tracks total count of known blocks. Used to avoid additional syncing
 };
 
 std::ostream& operator<<(std::ostream& _out, BlockQueueStatus const& _s);
