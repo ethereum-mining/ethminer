@@ -598,7 +598,8 @@ void EthereumHost::continueSync()
 
 bool EthereumHost::readyForMore() const
 {
-	return m_bq.status().verified + m_bq.status().verifying + m_bq.status().unverified < 1024;
+	auto s = m_bq.status();
+	return s.verified + s.verifying + s.unverified < 1024 && s.unknown < 1024;
 }
 
 void EthereumHost::continueSync(EthereumPeer* _peer)
