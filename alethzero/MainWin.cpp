@@ -241,6 +241,10 @@ Main::Main(QWidget *parent) :
 #if !ETH_FATDB
 	removeDockWidget(ui->dockWidget_accounts);
 #endif
+#if !ETH_EVMJIT
+	ui->jitvm->setEnabled(false);
+	ui->jitvm->setChecked(false);
+#endif
 	installWatches();
 	startTimer(100);
 
