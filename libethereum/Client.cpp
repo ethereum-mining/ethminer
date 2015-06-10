@@ -125,8 +125,6 @@ void Client::onBadBlock(Exception& _ex)
 		// general block failure.
 	}
 
-	if (string const* vmtraceJson = boost::get_error_info<errinfo_vmtrace>(_ex))
-		Json::Reader().parse(*vmtraceJson, report["hints"]["vmtrace"]);
 	if (vector<bytes> const* receipts = boost::get_error_info<errinfo_receipts>(_ex))
 	{
 		report["hints"]["receipts"] = Json::arrayValue;
@@ -177,6 +175,9 @@ void Client::onBadBlock(Exception& _ex)
 	DEV_HINT_ERRINFO_HASH(got_h256);
 
 	cwarn << ("Report: \n" + Json::StyledWriter().write(report));
+
+	if (string const* vmtraceJson = boost::get_error_info<errinfo_vmtrace>(_ex))
+		Json::Reader().parse(*vmtraceJson, report["hints"]["vmtrace"]);
 
 	if (!m_sentinel.empty())
 	{
