@@ -125,11 +125,12 @@ private:
 	bool peerShouldGrabBlocks(EthereumPeer* _peer) const;
 	bool peerShouldGrabChain(EthereumPeer* _peer) const;
 	bool peerCanHelp(EthereumPeer* _peer) const;
-	void estimatePeerHashes(EthereumPeer* _peer);
+	unsigned estimateHashes();
 
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
 	BlockQueue& m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
+	Handler m_bqRoomAvailable;
 
 	u256 m_networkId;
 

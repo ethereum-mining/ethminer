@@ -38,9 +38,9 @@ const char* BlockQueueChannel::name() { return EthOrange "▣┅▶"; }
 #endif
 
 size_t const c_maxKnownCount = 100000;				///< M
-size_t const c_maxKnownSize = 64 * 1024 * 1024;
+size_t const c_maxKnownSize = 128 * 1024 * 1024;
 size_t const c_maxUnknownCount = 100000;
-size_t const c_maxUnknownSize = 64 * 1024 * 1024;
+size_t const c_maxUnknownSize = 128 * 1024 * 1024;
 
 BlockQueue::BlockQueue():
 	m_unknownSize(0),
