@@ -126,6 +126,7 @@ private:
 	bool peerShouldGrabChain(EthereumPeer* _peer) const;
 	bool peerCanHelp(EthereumPeer* _peer) const;
 	unsigned estimateHashes();
+	void estimatePeerHashes(EthereumPeer* _peer);
 
 	BlockChain const& m_chain;
 	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
@@ -153,6 +154,7 @@ private:
 	h256s m_hashes;								///< List of hashes with unknown block numbers. Used for PV60 chain downloading and catching up to a particular unknown
 	unsigned m_estimatedHashes = 0;				///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
 	bool m_syncingV61 = false;					///< True if recent activity was over pv61+. Used for status reporting only.
+	bool m_continueSync = false;				///< True when the block queue has processed a block; we should restart grabbing blocks.
 };
 
 }

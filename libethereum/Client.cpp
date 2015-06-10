@@ -125,8 +125,6 @@ void Client::onBadBlock(Exception& _ex)
 		// general block failure.
 	}
 
-	if (string const* vmtraceJson = boost::get_error_info<errinfo_vmtrace>(_ex))
-		Json::Reader().parse(*vmtraceJson, report["hints"]["vmtrace"]);
 	if (vector<bytes> const* receipts = boost::get_error_info<errinfo_receipts>(_ex))
 	{
 		report["hints"]["receipts"] = Json::arrayValue;
@@ -180,6 +178,9 @@ void Client::onBadBlock(Exception& _ex)
 
 	if (!m_sentinel.empty())
 	{
+		if (string const* vmtraceJson = boost::get_error_info<errinfo_vmtrace>(_ex))
+			Json::Reader().parse(*vmtraceJson, report["hints"]["vmtrace"]);
+
 		jsonrpc::HttpClient client(m_sentinel);
 		Sentinel rpc(client);
 		try
