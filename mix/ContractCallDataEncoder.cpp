@@ -245,7 +245,7 @@ QStringList ContractCallDataEncoder::decode(QList<QVariableDeclaration*> const& 
 		value.populate(&rawParam);
 		value = value.cropped(32);
 		QVariableDeclaration* dec = static_cast<QVariableDeclaration*>(_returnParameters.at(k));
-        SolidityType const& type = dec->type()->type();
+		SolidityType const& type = dec->type()->type();
 		r.append(decode(type, rawParam).toString());
 	}
 	return r;

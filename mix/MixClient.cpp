@@ -73,25 +73,11 @@ MixClient::MixClient(std::string const& _dbPath):
 	resetState(std::unordered_map<Address, Account>());
 }
 
-MixClient::~MixClient()
-{
-}
-
-LocalisedLogEntries MixClient::logs()
-{
-	return m_watches.at(0).changes;
-}
-
 void MixClient::resetState(std::unordered_map<Address, Account> const& _accounts,  Secret const& _miner)
 {
 
 	WriteGuard l(x_state);
 	Guard fl(x_filtersWatches);
-	m_filters.clear();
-	m_watches.clear();
-	//LogFilter filter;
-	//m_filters.insert(std::make_pair(filter.sha3(), filter));
-	//m_watches.insert(std::make_pair(0, ClientWatch(filter.sha3(), Reaping::Automatic)));
 
 	m_stateDB = OverlayDB();
 	SecureTrieDB<Address, MemoryDB> accountState(&m_stateDB);
@@ -261,39 +247,15 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		if (t.isCreation() && _state.code(d.contractAddress).empty())
 			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas for contract deployment"));
 		d.gasUsed = er.gasUsed + er.gasRefunded + er.gasForDeposit + c_callStipend;
-		// collect watches
-		h256Set changed;
-		Guard l(x_filtersWatches);
 		LocalisedLogEntries logs;
-		//for (unsigned i = 0; i < _state.pending().size(); ++i)
-		//{
 		TransactionReceipt const& tr = _state.receipt(_state.pending().size() - 1);
 
 		auto trHash = _state.pending().at(_state.pending().size() - 1).sha3();
-		//for (std::pair<h256 const, eth::InstalledFilter>& installedFilter: m_filters)
-		//{
-		LogEntries le = tr.log(); // installedFilter.second.filter.matches(tr);
+		LogEntries le = tr.log();
 		if (le.size())
 			for (unsigned j = 0; j < le.size(); ++j)
 				logs.insert(logs.begin(), LocalisedLogEntry(le[j], bc().number() + 1, trHash));
-		//}
-		//}
-
-		/*if ((unsigned)i.second.filter.latest() > bc().number())
-			{
-				// acceptable number.
-				auto m = i.second.filter.matches(_state.receipt(_state.pending().size() - 1));
-				if (m.size())
-				{
-					// filter catches them
-					for (LogEntry const& l: m)
-						i.second.changes.push_back(LocalisedLogEntry(l, bc().number() + 1));
-					changed.insert(i.first);
-				}
-			}*/
-		changed.insert(dev::eth::PendingChangedFilter);
 		d.logs =  logs;
-		//noteChanged(changed);
 	}
 	WriteGuard l(x_executions);
 	m_executions.emplace_back(std::move(d));
@@ -308,7 +270,6 @@ void MixClient::mine()
 	m_state.sync(bc());
 	m_startState = m_state;
 	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
-	//noteChanged(changed);
 }
 
 ExecutionResult MixClient::lastExecution() const
@@ -394,20 +355,6 @@ dev::eth::ExecutionResult MixClient::create(Address const& _from, u256 _value, b
 	executeTransaction(t, temp, true, false);
 	return lastExecution().result;
 }
-
-/*void MixClient::noteChanged(h256Set const& _filters)
-{
-	for (auto& i: m_watches)
-		if (_filters.count(i.second.id))
-		{
-			if (m_filters.count(i.second.id))
-				i.second.changes += m_filters.at(i.second.id).changes;
-			else
-				i.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, 0));
-		}
-	for (auto& i: m_filters)
-		i.second.changes.clear();
-}*/
 
 eth::BlockInfo MixClient::blockInfo() const
 {

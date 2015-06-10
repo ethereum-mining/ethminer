@@ -32,9 +32,9 @@ int main(int _argc, char* _argv[])
 {
 	try
 	{
-        MixApplication::initialize();
+		MixApplication::initialize();
 		MixApplication app(_argc, _argv);
-        return app.exec();
+		return app.exec();
 	}
 	catch (boost::exception const& _e)
 	{

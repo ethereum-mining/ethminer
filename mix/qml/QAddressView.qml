@@ -39,9 +39,6 @@ Item
 	{
 		accountRef.clear();
 		accountRef.append({"itemid": " - "});
-
-        console.log(blockIndex)
-        console.log(transactionIndex)
         if (subType === "contract" || subType === "address")
 		{
 			var trCr = 0;

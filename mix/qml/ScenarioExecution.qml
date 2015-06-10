@@ -9,49 +9,49 @@ import "js/ErrorLocationFormater.js" as ErrorLocationFormater
 import "."
 
 Rectangle {
-    color: "#ededed"
-    property alias bc: blockChain
+	color: "#ededed"
+	property alias bc: blockChain
 
-    Connections
-    {
-        target:  projectModel
-        onProjectLoaded: {
-            loader.init()
-        }
+	Connections
+	{
+		target:  projectModel
+		onProjectLoaded: {
+			loader.init()
+		}
 
-    }
+	}
 
-    Column
-    {
-        anchors.margins: 10
-        anchors.fill: parent
-        spacing: 10
-        ScenarioLoader
-        {
-            height: 70
-            width: parent.width
-            id: loader
-        }
+	Column
+	{
+		anchors.margins: 10
+		anchors.fill: parent
+		spacing: 10
+		ScenarioLoader
+		{
+			height: 70
+			width: parent.width
+			id: loader
+		}
 
-        Rectangle
-        {
-            width: parent.width
-            height: 1
-            color: "#cccccc"
-        }
+		Rectangle
+		{
+			width: parent.width
+			height: 1
+			color: "#cccccc"
+		}
 
-        Connections
-        {
-            target: loader
-            onLoaded: {
-                blockChain.load(scenario)
-            }
-        }
+		Connections
+		{
+			target: loader
+			onLoaded: {
+				blockChain.load(scenario)
+			}
+		}
 
-        BlockChain
-        {
-            id: blockChain
-            width: parent.width
-        }
-    }
+		BlockChain
+		{
+			id: blockChain
+			width: parent.width
+		}
+	}
 }
