@@ -16,19 +16,32 @@ Item {
 	property string defaultAccount: "cb73d9408c4720e230387d956eb0f829d8a4dd2c1055f96257167e14e7169074" //support for old project
 
 	function fromPlainStateItem(s) {
-        console.log("ggg " + s)
         if (!s.accounts)
 			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether, defaultAccount)]; //support for old project
 		if (!s.contracts)
 			s.contracts = [];
-		return {
-			title: s.title,
-			transactions: s.transactions.filter(function(t) { return !t.stdContract; }).map(fromPlainTransactionItem), //support old projects by filtering std contracts
-            blocks: s.blocks.map(fromPlainBlockItem),
-            accounts: s.accounts.map(fromPlainAccountItem),
-			contracts: s.contracts.map(fromPlainAccountItem),
-			miner: s.miner
-		};
+
+        var ret = {};
+        ret.title = s.title;
+        ret.transactions = s.transactions.filter(function(t) { return !t.stdContract; }).map(fromPlainTransactionItem); //support old projects by filtering std contracts
+        if (s.blocks)
+            ret.blocks = s.blocks.map(fromPlainBlockItem);
+        ret.accounts = s.accounts.map(fromPlainAccountItem);
+        ret.contracts = s.contracts.map(fromPlainAccountItem);
+        ret.miner = s.miner;
+
+        // support old projects
+        if (!ret.blocks)
+        {
+            ret.blocks = [{
+                              hash: "",
+                              number: -1,
+                              transactions: [],
+                              status: "pending"
+                          }]
+            for (var j in ret.transactions)
+                ret.blocks[0].transactions.push(fromPlainTransactionItem(toPlainTransactionItem(ret.transactions[j])))
+        }
 	}
 
 	function fromPlainAccountItem(t)
@@ -63,6 +76,9 @@ Item {
             isFunctionCall: t.isFunctionCall,
             saveStatus: t.saveStatus
 		};
+
+        if (r.saveStatus === undefined)
+            r.saveStatus = true
 
 		if (r.isFunctionCall === undefined)
 			r.isFunctionCall = true;
