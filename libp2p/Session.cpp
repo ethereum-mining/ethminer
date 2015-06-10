@@ -70,6 +70,11 @@ Session::~Session()
 	delete m_io;
 }
 
+ReputationManager& Session::repMan() const
+{
+	return m_server->repMan();
+}
+
 NodeId Session::id() const
 {
 	return m_peer ? m_peer->id : NodeId();
@@ -319,10 +324,14 @@ void Session::send(bytes&& _msg)
 
 void Session::write()
 {
-	const bytes& bytes = m_writeQueue[0];
-	m_io->writeSingleFramePacket(&bytes, m_writeQueue[0]);
+	bytes const* out;
+	DEV_GUARDED(x_writeQueue)
+	{
+		m_io->writeSingleFramePacket(&m_writeQueue[0], m_writeQueue[0]);
+		out = &m_writeQueue[0];
+	}
 	auto self(shared_from_this());
-	ba::async_write(m_socket, ba::buffer(bytes), [this, self](boost::system::error_code ec, std::size_t /*length*/)
+	ba::async_write(m_socket, ba::buffer(*out), [this, self](boost::system::error_code ec, std::size_t /*length*/)
 	{
 		ThreadContext tc(info().id.abridged());
 		ThreadContext tc2(info().clientVersion);
@@ -443,8 +452,13 @@ void Session::doRead()
 					clog(NetWarn) << "Error reading: " << ec.message();
 					drop(TCPError);
 				}
-				else if (ec && length == 0)
+				else if (ec && length < tlen)
+				{
+					clog(NetWarn) << "Error reading - Abrupt peer disconnect: " << ec.message();
+					repMan().noteRude(*this);
+					drop(TCPError);
 					return;
+				}
 				else
 				{
 					if (!m_io->authAndDecryptFrame(bytesRef(m_data.data(), tlen)))

@@ -49,6 +49,7 @@ public:
 	AssemblyItem newPushTag() { return AssemblyItem(PushTag, m_usedTags++); }
 	AssemblyItem newData(bytes const& _data) { h256 h = (u256)std::hash<std::string>()(asString(_data)); m_data[h] = _data; return AssemblyItem(PushData, h); }
 	AssemblyItem newSub(Assembly const& _sub) { m_subs.push_back(_sub); return AssemblyItem(PushSub, m_subs.size() - 1); }
+	Assembly const& getSub(size_t _sub) const { return m_subs.at(_sub); }
 	AssemblyItem newPushString(std::string const& _data) { h256 h = (u256)std::hash<std::string>()(_data); m_strings[h] = _data; return AssemblyItem(PushString, h); }
 	AssemblyItem newPushSubSize(u256 const& _subId) { return AssemblyItem(PushSubSize, _subId); }
 
@@ -67,6 +68,8 @@ public:
 	AssemblyItem appendJumpI() { auto ret = append(newPushTag()); append(Instruction::JUMPI); return ret; }
 	AssemblyItem appendJump(AssemblyItem const& _tag) { auto ret = append(_tag.pushTag()); append(Instruction::JUMP); return ret; }
 	AssemblyItem appendJumpI(AssemblyItem const& _tag) { auto ret = append(_tag.pushTag()); append(Instruction::JUMPI); return ret; }
+	AssemblyItem errorTag() { return AssemblyItem(PushTag, 0); }
+
 	template <class T> Assembly& operator<<(T const& _d) { append(_d); return *this; }
 	AssemblyItems const& getItems() const { return m_items; }
 	AssemblyItem const& back() const { return m_items.back(); }
@@ -90,14 +93,19 @@ public:
 	void setSourceLocation(SourceLocation const& _location) { m_currentSourceLocation = _location; }
 
 	bytes assemble() const;
-	Assembly& optimise(bool _enable);
+	bytes const& data(h256 const& _i) const { return m_data[_i]; }
+
+	/// Modify (if @a _enable is set) and return the current assembly such that creation and
+	/// execution gas usage is optimised. @a _isCreation should be true for the top-level assembly.
+	/// @a _runs specifes an estimate on how often each opcode in this assembly will be executed,
+	/// i.e. use a small value to optimise for size and a large value to optimise for runtime.
+	Assembly& optimise(bool _enable, bool _isCreation = true, size_t _runs = 200);
 	Json::Value stream(
 		std::ostream& _out,
 		std::string const& _prefix = "",
 		const StringMap &_sourceCodes = StringMap(),
 		bool _inJsonFormat = false
 	) const;
-
 protected:
 	std::string getLocationFromSources(StringMap const& _sourceCodes, SourceLocation const& _location) const;
 	void donePath() { if (m_totalDeposit != INT_MAX && m_totalDeposit != m_deposit) BOOST_THROW_EXCEPTION(InvalidDeposit()); }
@@ -109,7 +117,8 @@ private:
 	Json::Value createJsonValue(std::string _name, int _begin, int _end, std::string _value = std::string(), std::string _jumpType = std::string()) const;
 
 protected:
-	unsigned m_usedTags = 0;
+	// 0 is reserved for exception
+	unsigned m_usedTags = 1;
 	AssemblyItems m_items;
 	mutable std::map<h256, bytes> m_data;
 	std::vector<Assembly> m_subs;

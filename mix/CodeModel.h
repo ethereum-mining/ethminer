@@ -28,6 +28,7 @@
 #include <QObject>
 #include <QThread>
 #include <QHash>
+#include <QMetaEnum>
 #include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
 #include <libevmasm/Assembly.h>
@@ -130,6 +131,45 @@ struct SourceMap
 using SourceMaps = QMap<QString, SourceMap>; //by source id
 using GasCostsMaps = QMap<QString, QVariantList>; //gas cost by contract name
 
+class GasMap: public QObject
+{
+	Q_OBJECT
+	Q_ENUMS(type)
+	Q_PROPERTY(int start MEMBER m_start CONSTANT)
+	Q_PROPERTY(int end MEMBER m_end CONSTANT)
+	Q_PROPERTY(QString gas MEMBER m_gas CONSTANT)
+	Q_PROPERTY(bool isInfinite MEMBER m_isInfinite CONSTANT)
+	Q_PROPERTY(QString codeBlockType READ codeBlockType CONSTANT)
+
+public:
+
+	enum type
+	{
+		Statement,
+		Function,
+		Constructor
+	};
+
+	GasMap(int _start, int _end, QString _gas, bool _isInfinite, type _type, QObject* _parent): QObject(_parent), m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite), m_type(_type) {}
+
+	int m_start;
+	int m_end;
+	QString m_gas;
+	bool m_isInfinite;
+	type m_type;
+
+	QString codeBlockType() const
+	{
+		QMetaEnum units = staticMetaObject.enumerator(staticMetaObject.indexOfEnumerator("type"));
+		if (m_type)
+		{
+			const char* key = units.valueToKey(m_type);
+			return QString(key).toLower();
+		}
+		return QString("");
+	}
+};
+
 class GasMapWrapper: public QObject
 {
 	Q_OBJECT
@@ -138,31 +178,13 @@ class GasMapWrapper: public QObject
 
 public:
 	GasMapWrapper(QObject* _parent = nullptr): QObject(_parent){}
-	void push(QString _source, int _start, int _end, QString _value, bool _isInfinite);
+	void push(QString _source, int _start, int _end, QString _value, bool _isInfinite, GasMap::type _type);
 	bool contains(QString _key);
 	void insert(QString _source, QVariantList _variantList);
 	QVariantList gasCostsByDocId(QString _source);
 
 private:
 	GasCostsMaps m_gasMaps;
-};
-
-class GasMap: public QObject
-{
-	Q_OBJECT
-
-	Q_PROPERTY(int start MEMBER m_start CONSTANT)
-	Q_PROPERTY(int end MEMBER m_end CONSTANT)
-	Q_PROPERTY(QString gas MEMBER m_gas CONSTANT)
-	Q_PROPERTY(bool isInfinite MEMBER m_isInfinite CONSTANT)
-
-public:
-	GasMap(int _start, int _end, QString _gas, bool _isInfinite, QObject* _parent): QObject(_parent), m_start(_start), m_end(_end), m_gas(_gas), m_isInfinite(_isInfinite) {}
-
-	int m_start;
-	int m_end;
-	QString m_gas;
-	bool m_isInfinite;
 };
 
 /// Code compilation model. Compiles contracts in background an provides compiled contract data
@@ -177,6 +199,7 @@ public:
 	Q_PROPERTY(QVariantMap contracts READ contracts NOTIFY codeChanged)
 	Q_PROPERTY(bool compiling READ isCompiling NOTIFY stateChanged)
 	Q_PROPERTY(bool hasContract READ hasContract NOTIFY codeChanged)
+	Q_PROPERTY(bool optimizeCode MEMBER m_optimizeCode WRITE setOptimizeCode)
 
 	/// @returns latest compilation results for contracts
 	QVariantMap contracts() const;
@@ -209,6 +232,7 @@ public:
 	void gasEstimation(solidity::CompilerStack const& _cs);
 	/// Gas cost by doc id
 	Q_INVOKABLE QVariantList gasCostByDocumentId(QString const& _documentId) const;
+	Q_INVOKABLE void setOptimizeCode(bool _value);
 
 signals:
 	/// Emited on compilation state change
@@ -253,11 +277,10 @@ private:
 	std::map<QString, dev::bytes> m_compiledContracts; //by name
 	dev::Mutex x_pendingContracts;
 	std::map<QString, QString> m_pendingContracts; //name to source
+	bool m_optimizeCode = false;
 	friend class BackgroundWorker;
 };
 
 }
 
 }
-
-//Q_DECLARE_METATYPE(dev::mix::GasMap)

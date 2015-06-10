@@ -25,6 +25,8 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include "BlockChain.h"
+#include "VerifiedBlock.h"
+#include "State.h"
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -70,17 +72,14 @@ void BlockQueue::verifierBody()
 			m_unverified.pop_front();
 			BlockInfo bi;
 			bi.mixHash = work.first;
-			m_verifying.push_back(make_pair(bi, bytes()));
+			m_verifying.push_back(VerifiedBlock { VerifiedBlockRef { bytesConstRef(), move(bi), Transactions() }, bytes() });
 		}
 
-		std::pair<BlockInfo, bytes> res;
-		swap(work.second, res.second);
-		try {
-			res.first.populate(res.second, CheckEverything, work.first);
-			res.first.verifyInternals(&res.second);
-			RLP r(&res.second);
-			for (auto const& uncle: r[2])
-				BlockInfo().populateFromHeader(RLP(uncle.data()), CheckEverything);
+		VerifiedBlock res;
+		swap(work.second, res.blockData);
+		try
+		{
+			res.verified = BlockChain::verifyBlock(res.blockData, m_onBad);
 		}
 		catch (...)
 		{
@@ -95,12 +94,12 @@ void BlockQueue::verifierBody()
 
 			unique_lock<Mutex> l(m_verification);
 			for (auto it = m_verifying.begin(); it != m_verifying.end(); ++it)
-				if (it->first.mixHash == work.first)
+				if (it->verified.info.mixHash == work.first)
 				{
 					m_verifying.erase(it);
 					goto OK1;
 				}
-			cwarn << "GAA BlockQueue corrupt: job cancelled but cannot be found in m_verifying queue.";
+			cwarn << "BlockQueue missing our job: was there a GM?";
 			OK1:;
 			continue;
 		}
@@ -108,14 +107,26 @@ void BlockQueue::verifierBody()
 		bool ready = false;
 		{
 			unique_lock<Mutex> l(m_verification);
-			if (m_verifying.front().first.mixHash == work.first)
+			if (!m_verifying.empty() && m_verifying.front().verified.info.mixHash == work.first)
 			{
 				// we're next!
 				m_verifying.pop_front();
-				m_verified.push_back(move(res));
-				while (m_verifying.size() && !m_verifying.front().second.empty())
+				if (m_knownBad.count(res.verified.info.hash()))
 				{
-					m_verified.push_back(move(m_verifying.front()));
+					m_readySet.erase(res.verified.info.hash());
+					m_knownBad.insert(res.verified.info.hash());
+				}
+				else
+					m_verified.push_back(move(res));
+				while (m_verifying.size() && !m_verifying.front().blockData.empty())
+				{
+					if (m_knownBad.count(m_verifying.front().verified.info.hash()))
+					{
+						m_readySet.erase(m_verifying.front().verified.info.hash());
+						m_knownBad.insert(res.verified.info.hash());
+					}
+					else
+						m_verified.push_back(move(m_verifying.front()));
 					m_verifying.pop_front();
 				}
 				ready = true;
@@ -123,12 +134,12 @@ void BlockQueue::verifierBody()
 			else
 			{
 				for (auto& i: m_verifying)
-					if (i.first.mixHash == work.first)
+					if (i.verified.info.mixHash == work.first)
 					{
 						i = move(res);
 						goto OK;
 					}
-				cwarn << "GAA BlockQueue corrupt: job finished but cannot be found in m_verifying queue.";
+				cwarn << "BlockQueue missing our job: was there a GM?";
 				OK:;
 			}
 		}
@@ -231,22 +242,31 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 	m_drainingSet.clear();
 	if (_bad.size())
 	{
-		vector<pair<BlockInfo, bytes>> old;
+		// at least one of them was bad.
+		m_knownBad += _bad;
 		DEV_GUARDED(m_verification)
-			swap(m_verified, old);
-		for (auto& b: old)
 		{
-			if (m_knownBad.count(b.first.parentHash))
-			{
-				m_knownBad.insert(b.first.hash());
-				m_readySet.erase(b.first.hash());
-			}
-			else
-				DEV_GUARDED(m_verification)
+			std::vector<VerifiedBlock> oldVerified;
+			swap(m_verified, oldVerified);
+			for (auto& b: oldVerified)
+				if (m_knownBad.count(b.verified.info.parentHash))
+				{
+					m_knownBad.insert(b.verified.info.hash());
+					m_readySet.erase(b.verified.info.hash());
+				}
+				else
 					m_verified.push_back(std::move(b));
 		}
 	}
-	m_knownBad += _bad;
+/*		DEV_GUARDED(m_verification)
+		{
+			m_knownBad += _bad;
+			m_knownBad += m_readySet;
+			m_readySet.clear();
+			m_verified.clear();
+			m_verifying.clear();
+			m_unverified.clear();
+		}*/
 	return !m_readySet.empty();
 }
 
@@ -302,7 +322,7 @@ QueueStatus BlockQueue::blockStatus(h256 const& _h) const
 			QueueStatus::Unknown;
 }
 
-void BlockQueue::drain(std::vector<std::pair<BlockInfo, bytes>>& o_out, unsigned _max)
+void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 {
 	WriteGuard l(m_lock);
 	DEV_INVARIANT_CHECK;
@@ -318,7 +338,7 @@ void BlockQueue::drain(std::vector<std::pair<BlockInfo, bytes>>& o_out, unsigned
 		for (auto const& bs: o_out)
 		{
 			// TODO: @optimise use map<h256, bytes> rather than vector<bytes> & set<h256>.
-			auto h = bs.first.hash();
+			auto h = bs.verified.info.hash();
 			m_drainingSet.insert(h);
 			m_readySet.erase(h);
 		}
@@ -371,4 +391,17 @@ void BlockQueue::retryAllUnknown()
 	}
 	m_unknown.clear();
 	m_moreToVerify.notify_all();
+}
+
+std::ostream& dev::eth::operator<<(std::ostream& _out, BlockQueueStatus const& _bqs)
+{
+	_out << "importing: " << _bqs.importing << endl;
+	_out << "verified: " << _bqs.verified << endl;
+	_out << "verifying: " << _bqs.verifying << endl;
+	_out << "unverified: " << _bqs.unverified << endl;
+	_out << "future: " << _bqs.future << endl;
+	_out << "unknown: " << _bqs.unknown << endl;
+	_out << "bad: " << _bqs.bad << endl;
+
+	return _out;
 }

@@ -331,7 +331,7 @@ void ClientModel::executeSequence(vector<TransactionSettings> const& _sequence, 
 				{
 					QSolidityType const* type = p->type();
 					QVariant value = transaction.parameterValues.value(p->name());
-					if (type->type().type == SolidityType::Type::Address)
+					if (type->type().type == SolidityType::Type::Address && value.toString().startsWith("<"))
 					{
 						std::pair<QString, int> ctrParamInstance = resolvePair(value.toString());
 						value = QVariant(resolveToken(ctrParamInstance, deployedContracts));
@@ -484,7 +484,10 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 				if (!functionName.isEmpty() && ((prevInstruction.getJumpType() == AssemblyItem::JumpType::IntoFunction) || solCallStack.empty()))
 					solCallStack.push_front(QVariant::fromValue(functionName));
 				else if (prevInstruction.getJumpType() == AssemblyItem::JumpType::OutOfFunction && !solCallStack.empty())
+				{
 					solCallStack.pop_front();
+					solLocals.clear();
+				}
 			}
 
 			//format solidity context values
@@ -536,7 +539,9 @@ void ClientModel::showDebuggerForTransaction(ExecutionResult const& _t)
 
 			// filter out locations that match whole function or contract
 			SourceLocation location = instruction.getLocation();
-			QString source = QString::fromUtf8(location.sourceName->c_str());
+			QString source;
+			if (location.sourceName)
+				source = QString::fromUtf8(location.sourceName->c_str());
 			if (m_codeModel->isContractOrFunctionLocation(location))
 				location = dev::SourceLocation(-1, -1, location.sourceName);
 

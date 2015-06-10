@@ -267,7 +267,7 @@ static shh::Envelope toSealed(Json::Value const& _json, shh::Message const& _m, 
 	return _m.seal(_from, bt, ttl, workToProve);
 }
 
-static pair<shh::FullTopic, Public> toWatch(Json::Value const& _json)
+static pair<shh::Topics, Public> toWatch(Json::Value const& _json)
 {
 	shh::BuildTopic bt;
 	Public to;
@@ -781,17 +781,15 @@ string WebThreeStubServerBase::eth_newFilter(Json::Value const& _json)
 	}
 }
 
-string WebThreeStubServerBase::eth_newBlockFilter(string const& _filter)
+string WebThreeStubServerBase::eth_newBlockFilter()
 {
-	h256 filter;
-	
-	if (_filter.compare("chain") == 0 || _filter.compare("latest") == 0)
-		filter = dev::eth::ChainChangedFilter;
-	else if (_filter.compare("pending") == 0)
-		filter = dev::eth::PendingChangedFilter;
-	else
-		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
-	
+	h256 filter = dev::eth::ChainChangedFilter;
+	return toJS(client()->installWatch(filter));
+}
+
+string WebThreeStubServerBase::eth_newPendingTransactionFilter()
+{
+	h256 filter = dev::eth::PendingChangedFilter;
 	return toJS(client()->installWatch(filter));
 }
 
@@ -985,7 +983,7 @@ string WebThreeStubServerBase::shh_newFilter(Json::Value const& _json)
 	
 	try
 	{
-		pair<shh::FullTopic, Public> w = toWatch(_json);
+		pair<shh::Topics, Public> w = toWatch(_json);
 		auto ret = face()->installWatch(w.first);
 		m_shhWatches.insert(make_pair(ret, w.second));
 		return toJS(ret);
@@ -1025,10 +1023,10 @@ Json::Value WebThreeStubServerBase::shh_getFilterChanges(string const& _filterId
 				if (pub)
 				{
 					cwarn << "Silently decrypting message from identity" << pub << ": User validation hook goes here.";
-					m = e.open(face()->fullTopic(id), m_shhIds[pub]);
+					m = e.open(face()->fullTopics(id), m_shhIds[pub]);
 				}
 				else
-					m = e.open(face()->fullTopic(id));
+					m = e.open(face()->fullTopics(id));
 				if (!m)
 					continue;
 				ret.append(toJson(h, e, m));
@@ -1058,10 +1056,10 @@ Json::Value WebThreeStubServerBase::shh_getMessages(string const& _filterId)
 				if (pub)
 				{
 					cwarn << "Silently decrypting message from identity" << pub << ": User validation hook goes here.";
-					m = e.open(face()->fullTopic(id), m_shhIds[pub]);
+					m = e.open(face()->fullTopics(id), m_shhIds[pub]);
 				}
 				else
-					m = e.open(face()->fullTopic(id));
+					m = e.open(face()->fullTopics(id));
 				if (!m)
 					continue;
 				ret.append(toJson(h, e, m));

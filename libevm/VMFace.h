@@ -25,8 +25,8 @@ namespace dev
 namespace eth
 {
 
+#define ETH_SIMPLE_EXCEPTION_VM(X) struct X: virtual VMException { public X(): VMException(#X) {} };
 struct VMException: virtual Exception {};
-struct StepsDone: virtual VMException {};
 struct BreakPointHit: virtual VMException {};
 struct BadInstruction: virtual VMException {};
 struct BadJumpDestination: virtual VMException {};
@@ -43,10 +43,22 @@ public:
 	VMFace(VMFace const&) = delete;
 	VMFace& operator=(VMFace const&) = delete;
 
-	virtual void reset(u256 const& _gas = 0) noexcept = 0;
-	virtual u256 gas() const noexcept = 0;
+	/// Execute EVM code by VM.
+	///
+	/// @param _out		Expected output
+	void exec(u256& io_gas, ExtVMFace& _ext, bytesRef _out, OnOpFunc const& _onOp = {})
+	{
+		execImpl(io_gas, _ext, _onOp).copyTo(_out);
+	}
 
-	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) = 0;
+	/// The same as above but returns a copy of full output.
+	bytes exec(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {})
+	{
+		return execImpl(io_gas, _ext, _onOp).toVector();
+	}
+
+	/// VM implementation
+	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) = 0;
 };
 
 }

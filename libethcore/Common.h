@@ -43,6 +43,14 @@ extern const unsigned c_minorProtocolVersion;
 /// Current database version.
 extern const unsigned c_databaseVersion;
 
+/// The network id.
+enum class Network
+{
+	Olympic = 0,
+	Frontier = 1
+};
+extern const Network c_network;
+
 /// User-friendly string representation of the amount _b in wei.
 std::string formatBalance(bigint const& _b);
 
@@ -147,6 +155,9 @@ struct TransactionSkeleton
 	u256 gas = UndefinedU256;
 	u256 gasPrice = UndefinedU256;
 };
+
+void badBlock(bytesConstRef _header, std::string const& _err);
+inline void badBlock(bytes const& _header, std::string const& _err) { badBlock(&_header, _err); }
 
 }
 }
