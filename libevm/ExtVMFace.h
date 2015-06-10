@@ -130,7 +130,7 @@ public:
 	ExtVMFace() = default;
 
 	/// Full constructor.
-	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytes const& _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, LastHashes const& _lh, unsigned _depth);
+	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytes const& _code, h256 const& _codeHash, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, LastHashes const& _lh, unsigned _depth);
 
 	virtual ~ExtVMFace() = default;
 
@@ -186,6 +186,7 @@ public:
 	u256 gasPrice;				///< Price of gas (that we already paid).
 	bytesConstRef data;			///< Current input data.
 	bytes code;					///< Current code that is executing.
+	h256 codeHash;				///< SHA3 hash of the executing code
 	LastHashes lastHashes;		///< Most recent 256 blocks' hashes.
 	BlockInfo previousBlock;	///< The previous block's information.	TODO: PoC-8: REMOVE
 	BlockInfo currentBlock;		///< The current block's information.
