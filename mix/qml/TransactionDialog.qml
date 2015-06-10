@@ -17,7 +17,7 @@ Dialog {
 	visible: false
 	title: qsTr("Edit Transaction")
 	property int transactionIndex
-    property int blockIndex
+	property int blockIndex
 	property alias gas: gasValueEdit.gasValue;
 	property alias gasAuto: gasAutoCheck.checked;
 	property alias gasPrice: gasPriceField.value;
@@ -28,24 +28,24 @@ Dialog {
 	property var paramsModel: [];
 	property bool useTransactionDefaultValue: false
 	property alias stateAccounts: senderComboBox.model
-    property bool saveStatus
+	property bool saveStatus
 	signal accepted;
 
 	StateDialogStyle {
 		id: transactionDialogStyle
 	}
 
-    function open(index, blockIdx, item) {
+	function open(index, blockIdx, item) {
 		rowFunction.visible = !useTransactionDefaultValue;
 		rowValue.visible = !useTransactionDefaultValue;
 		rowGas.visible = !useTransactionDefaultValue;
 		rowGasPrice.visible = !useTransactionDefaultValue;
 
-        transactionIndex = index
-        blockIndex = blockIdx
-        typeLoader.transactionIndex = index
-        typeLoader.blockIndex = blockIdx
-        saveStatus = item.saveStatus
+		transactionIndex = index
+		blockIndex = blockIdx
+		typeLoader.transactionIndex = index
+		typeLoader.blockIndex = blockIdx
+		saveStatus = item.saveStatus
 		gasValueEdit.gasValue = item.gas;
 		gasAutoCheck.checked = item.gasAuto ? true : false;
 		gasPriceField.value = item.gasPrice;
@@ -64,7 +64,7 @@ Dialog {
 		for (var c in contracts) {
 			contractsModel.append({ cid: c, text: contracts[c].contract.name });
 			if (contracts[c].contract.name === contractId)
-                contractIndex = contractsModel.count - 1;
+				contractIndex = contractsModel.count - 1;
 		}
 
 		if (contractIndex == -1 && contractsModel.count > 0)
@@ -233,7 +233,7 @@ Dialog {
 			item.functionId = item.contractId;
 			item.label = qsTr("Deploy") + " " + item.contractId;
 		}
-        item.saveStatus = saveStatus
+		item.saveStatus = saveStatus
 		item.sender = senderComboBox.model[senderComboBox.currentIndex].secret;
 		item.parameters = paramValues;
 		return item;

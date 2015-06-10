@@ -11,7 +11,7 @@ import "."
 Rectangle {
 	id: debugPanel
 
-    property alias debugSlider: statesSlider
+	property alias debugSlider: statesSlider
 	property alias solLocals: solLocals
 	property alias solStorage: solStorage
 	property alias solCallStack: solCallStack
@@ -22,7 +22,7 @@ Rectangle {
 	signal debugExecuteLocation(string documentId, var location)
 	property string compilationErrorMessage
 	property bool assemblyMode: false
-    signal panelClosed
+	signal panelClosed
 	objectName: "debugPanel"
 	color: "#ededed"
 	clip: true
@@ -39,10 +39,10 @@ Rectangle {
 		machineStates.updateHeight();
 	}
 
-    function setTr(tr)
-    {
-        trName.text = tr.label
-    }
+	function setTr(tr)
+	{
+		trName.text = tr.label
+	}
 
 	function displayCompilationErrorIfAny()
 	{
@@ -109,68 +109,68 @@ Rectangle {
 		property alias solLocalsHeightSettings: solLocalsRect.height
 	}
 
-    ColumnLayout {
+	ColumnLayout {
 		id: debugScrollArea
 		anchors.fill: parent
-        //orientation: Qt.Vertical
-        spacing: 0
-        RowLayout
-        {
-            Layout.preferredWidth: parent.width
-            Layout.preferredHeight: 30
-            Rectangle
-            {
-                Layout.preferredWidth: parent.width
-                Layout.preferredHeight: parent.height
-                color: "transparent"
-                Text {
-                    anchors.centerIn: parent
-                    text: qsTr("Current Transaction")
-                }
+		//orientation: Qt.Vertical
+		spacing: 0
+		RowLayout
+		{
+			Layout.preferredWidth: parent.width
+			Layout.preferredHeight: 30
+			Rectangle
+			{
+				Layout.preferredWidth: parent.width
+				Layout.preferredHeight: parent.height
+				color: "transparent"
+				Text {
+					anchors.centerIn: parent
+					text: qsTr("Current Transaction")
+				}
 
-                Rectangle
-                {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 10
-                    width: 30
-                    height: parent.height
-                    color: "transparent"
-                    anchors.verticalCenter: parent.verticalCenter
-                    Image {
-                        source: "qrc:/qml/img/leftarrow@2x.png"
-                        width: parent.width
-                        fillMode: Image.PreserveAspectFit
-                        anchors.centerIn: parent
-                    }
-                    MouseArea
-                    {
-                        anchors.fill: parent
-                        onClicked:
-                        {
-                            Debugger.init(null);
-                            panelClosed()
-                        }
-                    }
-                }
-            }
-        }
+				Rectangle
+				{
+					anchors.left: parent.left
+					anchors.leftMargin: 10
+					width: 30
+					height: parent.height
+					color: "transparent"
+					anchors.verticalCenter: parent.verticalCenter
+					Image {
+						source: "qrc:/qml/img/leftarrow@2x.png"
+						width: parent.width
+						fillMode: Image.PreserveAspectFit
+						anchors.centerIn: parent
+					}
+					MouseArea
+					{
+						anchors.fill: parent
+						onClicked:
+						{
+							Debugger.init(null);
+							panelClosed()
+						}
+					}
+				}
+			}
+		}
 
-        RowLayout
-        {
-            Layout.preferredWidth: parent.width
-            Layout.preferredHeight: 30
-            Rectangle
-            {
-                Layout.preferredWidth: parent.width
-                Layout.preferredHeight: parent.height
-                color: "#2C79D3"
-                Text {
-                    id: trName
-                    color: "white"
-                    anchors.centerIn: parent
-                }
-            }
-        }
+		RowLayout
+		{
+			Layout.preferredWidth: parent.width
+			Layout.preferredHeight: 30
+			Rectangle
+			{
+				Layout.preferredWidth: parent.width
+				Layout.preferredHeight: parent.height
+				color: "#2C79D3"
+				Text {
+					id: trName
+					color: "white"
+					anchors.centerIn: parent
+				}
+			}
+		}
 
 		ScrollView
 		{
@@ -520,12 +520,12 @@ Rectangle {
 									}
 
 									Rectangle {
-									   id: separator
-									   width: parent.width;
-									   height: 1;
-									   color: "#cccccc"
-									   anchors.bottom: parent.bottom
-									 }
+										id: separator
+										width: parent.width;
+										height: 1;
+										color: "#cccccc"
+										anchors.bottom: parent.bottom
+									}
 								}
 							}
 						}

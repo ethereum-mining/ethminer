@@ -438,7 +438,7 @@ std::pair<QString, int> ClientModel::resolvePair(QString const& _contractId)
 
 QString ClientModel::resolveToken(std::pair<QString, int> const& _value)
 {
-	if (_value.second == -2)
+	if (_value.second == -2) //-2: first contains a real address
 		return _value.first;
 	else if (m_contractAddresses.size() > 0)
 		return QString::fromStdString("0x" + dev::toHex(m_contractAddresses[_value].ref()));
