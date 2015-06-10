@@ -119,7 +119,6 @@ public:
 	bool unknownFull() const;
 
 private:
-
 	struct UnverifiedBlock
 	{
 		h256 hash;
