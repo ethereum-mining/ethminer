@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE(basic_tests)
 	{
 		cnote << i.first;
 		js::mObject& o = i.second.get_obj();
-		SecretStore store(".");
+		SecretStore store("");
 		h128 u = store.readKeyContent(js::write_string(o["json"], false));
 		cdebug << "read uuid" << u;
 		bytes s = store.secret(u, [&](){ return o["password"].get_str(); });

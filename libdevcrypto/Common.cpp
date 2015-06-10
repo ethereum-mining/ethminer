@@ -178,15 +178,35 @@ bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen)
 {
 	bytes ret(_dkLen);
-	PKCS5_PBKDF2_HMAC<SHA256> pbkdf;
-	pbkdf.DeriveKey(ret.data(), ret.size(), 0, (byte*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _iterations);
+	if (PKCS5_PBKDF2_HMAC<SHA256>().DeriveKey(
+		ret.data(),
+		ret.size(),
+		0,
+		reinterpret_cast<byte const*>(_pass.data()),
+		_pass.size(),
+		_salt.data(),
+		_salt.size(),
+		_iterations
+	) != _iterations)
+		return bytes();
 	return ret;
 }
 
 bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen)
 {
 	bytes ret(_dkLen);
-	libscrypt_scrypt((uint8_t const*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _n, _r, _p, ret.data(), ret.size());
+	if (libscrypt_scrypt(
+		reinterpret_cast<uint8_t const*>(_pass.data()),
+		_pass.size(),
+		_salt.data(),
+		_salt.size(),
+		_n,
+		_r,
+		_p,
+		ret.data(),
+		ret.size()
+	) != 0)
+		return bytes();
 	return ret;
 }
 
