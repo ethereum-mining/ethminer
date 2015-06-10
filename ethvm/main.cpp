@@ -42,6 +42,7 @@ void help()
 		<< "    --gas-price <n>  Transaction's gas price' should be <n> (default: 0)." << endl
 		<< "    --sender <a>  Transaction sender should be <a> (default: 0000...0069)." << endl
 		<< "    --origin <a>  Transaction origin should be <a> (default: 0000...0069)." << endl
+		<< endl
 		<< "Options for trace:" << endl
 		<< "    --flat  Minimal whitespace in the JSON." << endl
 		<< "    --mnemonics  Show instruction mnemonics in the trace (non-standard)." << endl
