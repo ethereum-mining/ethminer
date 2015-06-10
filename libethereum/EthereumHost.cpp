@@ -39,6 +39,7 @@ using namespace dev::eth;
 using namespace p2p;
 
 unsigned const EthereumHost::c_oldProtocolVersion = 60; //TODO: remove this once v61+ is common
+unsigned const c_chainReorgSize = 30000;
 
 EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId):
 	HostCapability<EthereumPeer>(),
@@ -50,6 +51,7 @@ EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQu
 {
 	m_latestBlockSent = _ch.currentHash();
 	m_hashMan.reset(m_chain.number() + 1);
+	m_bqRoomAvailable = m_bq.onRoomAvailable([this](){ this->continueSync(); });
 }
 
 EthereumHost::~EthereumHost()
@@ -250,37 +252,43 @@ void EthereumHost::onPeerStatus(EthereumPeer* _peer)
 		_peer->disable("Peer banned for previous bad behaviour.");
 	else
 	{
-		if (_peer->m_protocolVersion != protocolVersion())
-			estimatePeerHashes(_peer);
-		else
+		unsigned estimatedHashes = estimateHashes();
+		if (_peer->m_protocolVersion == protocolVersion())
 		{
 			if (_peer->m_latestBlockNumber > m_chain.number())
 				_peer->m_expectedHashes = (unsigned)_peer->m_latestBlockNumber - m_chain.number();
-			if (m_hashMan.chainSize() < _peer->m_expectedHashes)
+			if (_peer->m_expectedHashes > estimatedHashes)
+				_peer->disable("Too many hashes");
+			else if (m_hashMan.chainSize() < _peer->m_expectedHashes)
 				m_hashMan.resetToRange(m_chain.number() + 1, _peer->m_expectedHashes);
 		}
+		else
+			_peer->m_expectedHashes = estimatedHashes;
 		continueSync(_peer);
 	}
 }
 
-void EthereumHost::estimatePeerHashes(EthereumPeer* _peer)
+unsigned EthereumHost::estimateHashes()
 {
 	BlockInfo block = m_chain.info();
 	time_t lastBlockTime = (block.hash() == m_chain.genesisHash()) ? 1428192000 : (time_t)block.timestamp;
 	time_t now = time(0);
-	unsigned blockCount = 30000;
+	unsigned blockCount = c_chainReorgSize;
 	if (lastBlockTime > now)
 		clog(NetWarn) << "Clock skew? Latest block is in the future";
 	else
 		blockCount += (now - lastBlockTime) / (unsigned)c_durationLimit;
 	clog(NetAllDetail) << "Estimated hashes: " << blockCount;
-	_peer->m_expectedHashes = blockCount;
+	return blockCount;
 }
 
 void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes)
 {
 	RecursiveGuard l(x_sync);
-	assert(_peer->m_asking == Asking::Nothing);
+	if (_peer->m_syncHashNumber > 0)
+		_peer->m_syncHashNumber += _hashes.size();
+
+	_peer->setAsking(Asking::Nothing);
 	onPeerHashes(_peer, _hashes, false);
 }
 
@@ -392,7 +400,7 @@ void EthereumHost::onPeerDoneHashes(EthereumPeer* _peer, bool _localChain)
 void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 {
 	RecursiveGuard l(x_sync);
-	assert(_peer->m_asking == Asking::Nothing);
+	_peer->setAsking(Asking::Nothing);
 	unsigned itemCount = _r.itemCount();
 	clog(NetMessageSummary) << "Blocks (" << dec << itemCount << "entries)" << (itemCount ? "" : ": NoMoreBlocks");
 
@@ -594,8 +602,14 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 	assert(_peer->m_asking == Asking::Nothing);
 	bool otherPeerV60Sync = false;
 	bool otherPeerV61Sync = false;
-	if (m_needSyncHashes && peerShouldGrabChain(_peer))
+	if (m_needSyncHashes)
 	{
+		if (!peerShouldGrabChain(_peer))
+		{
+			_peer->setIdle();
+			return;
+		}
+
 		foreachPeer([&](EthereumPeer* _p)
 		{
 			if (_p != _peer && _p->m_asking == Asking::Hashes)
@@ -642,7 +656,23 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 		}
 	}
 	else if (m_needSyncBlocks && peerCanHelp(_peer)) // Check if this peer can help with downloading blocks
-		_peer->requestBlocks();
+	{
+		// Check block queue status
+		if (m_bq.unknownFull())
+		{
+			clog(NetWarn) << "Too many unknown blocks, restarting sync";
+			m_bq.clear();
+			reset();
+			continueSync();
+		}
+		else if (m_bq.knownFull())
+		{
+			clog(NetAllDetail) << "Waiting for block queue before downloading blocks";
+			_peer->setIdle();
+		}
+		else
+			_peer->requestBlocks();
+	}
 	else
 		_peer->setIdle();
 }
@@ -709,6 +739,6 @@ HashChainStatus EthereumHost::status()
 	RecursiveGuard l(x_sync);
 	if (m_syncingV61)
 		return HashChainStatus { static_cast<unsigned>(m_hashMan.chainSize()), static_cast<unsigned>(m_hashMan.gotCount()), false };
-	return HashChainStatus { m_estimatedHashes - 30000, static_cast<unsigned>(m_hashes.size()), true };
+	return HashChainStatus { m_estimatedHashes > 0 ? m_estimatedHashes - c_chainReorgSize : 0, static_cast<unsigned>(m_hashes.size()), m_estimatedHashes > 0 };
 }
 
