@@ -29,6 +29,7 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcore/FileSystem.h>
 #include <test/JsonSpiritHeaders.h>
+#include <libdevcrypto/Exceptions.h>
 using namespace std;
 using namespace dev;
 namespace js = json_spirit;
@@ -111,12 +112,11 @@ h128 SecretStore::importSecret(bytes const& _s, string const& _pass)
 	h128 r;
 	EncryptedKey key{encrypt(_s, _pass), string()};
 	if (!key.encryptedKey.empty())
-	{
-		r = h128::random();
-		m_cached[r] = _s;
-		m_keys[r] = move(key);
-		save();
-	}
+		BOOST_THROW_EXCEPTION(crypto::CryptoException());
+	r = h128::random();
+	m_cached[r] = _s;
+	m_keys[r] = move(key);
+	save();
 	return r;
 }
 
