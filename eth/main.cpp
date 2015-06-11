@@ -93,6 +93,7 @@ void interactiveHelp()
 		<< "    accounts  Gives information on all owned accounts (balances, mining beneficiary and default signer)." << endl
 		<< "    newaccount <name>  Creates a new account with the given name." << endl
 		<< "    transact  Execute a given transaction." << endl
+		<< "    transactnonce  Execute a given transaction with a specified nonce." << endl
 		<< "    txcreate  Execute a given contract creation transaction." << endl
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
@@ -1165,6 +1166,75 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
+
+			else if (c && cmd == "transactnonce")
+			{
+				auto const& bc =c->blockChain();
+				auto h = bc.currentHash();
+				auto blockData = bc.block(h);
+				BlockInfo info(blockData);
+				if (iss.peek() != -1)
+				{
+					string hexAddr;
+					u256 amount;
+					u256 gasPrice;
+					u256 gas;
+					string sechex;
+					string sdata;
+					u256 nonce;
+
+					iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata >> nonce;
+
+					if (!gasPrice)
+						gasPrice = gasPricer->bid(priority);
+
+					cnote << "Data:";
+					cnote << sdata;
+					bytes data = dev::eth::parseData(sdata);
+					cnote << "Bytes:";
+					string sbd = asString(data);
+					bytes bbd = asBytes(sbd);
+					stringstream ssbd;
+					ssbd << bbd;
+					cnote << ssbd.str();
+					int ssize = sechex.length();
+					int size = hexAddr.length();
+					u256 minGas = (u256)Transaction::gasRequired(data, 0);
+					if (size < 40)
+					{
+						if (size > 0)
+							cwarn << "Invalid address length:" << size;
+					}
+					else if (gas < minGas)
+						cwarn << "Minimum gas amount is" << minGas;
+					else if (ssize < 40)
+					{
+						if (ssize > 0)
+							cwarn << "Invalid secret length:" << ssize;
+					}
+					else
+					{
+						try
+						{
+							Secret secret = h256(fromHex(sechex));
+							Address dest = h160(fromHex(hexAddr));
+							c->submitTransaction(secret, amount, dest, data, gas, gasPrice, nonce);
+						}
+						catch (BadHexCharacter& _e)
+						{
+							cwarn << "invalid hex character, transaction rejected";
+							cwarn << boost::diagnostic_information(_e);
+						}
+						catch (...)
+						{
+							cwarn << "transaction rejected";
+						}
+					}
+				}
+				else
+					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA NONCE";
+			}
+
 			else if (c && cmd == "txcreate")
 			{
 				auto const& bc =c->blockChain();
