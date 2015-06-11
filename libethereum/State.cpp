@@ -778,7 +778,8 @@ void State::cleanup(bool _fullCommit)
 		paranoia("immediately before database commit", true);
 
 		// Commit the new trie to disk.
-		clog(StateTrace) << "Committing to disk: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
+		if (isChannelVisible<StateTrace>()) // Avoid calling toHex if not needed
+			clog(StateTrace) << "Committing to disk: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 
 		try {
 			EnforceRefs er(m_db, true);
@@ -791,7 +792,8 @@ void State::cleanup(bool _fullCommit)
 		}
 
 		m_db.commit();
-		clog(StateTrace) << "Committed: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
+		if (isChannelVisible<StateTrace>()) // Avoid calling toHex if not needed
+			clog(StateTrace) << "Committed: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 
 		paranoia("immediately after database commit", true);
 		m_previousBlock = m_currentBlock;
