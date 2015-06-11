@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <functional>
 
 #ifdef _MSC_VER
@@ -38,7 +39,7 @@ struct i256
 	uint64_t words[4];
 
 	i256() = default;
-	i256(h256 _h) { *this = *reinterpret_cast<i256*>(&_h); }
+	i256(h256 _h) { std::memcpy(this, &_h, sizeof(*this)); }
 };
 
 // TODO: Merge with ExecutionContext
