@@ -81,8 +81,7 @@ void ripemd160Code(bytesConstRef _in, bytesRef _out)
 
 void identityCode(bytesConstRef _in, bytesRef _out)
 {
-	bytes b = _in.toBytes();
-	memcpy(_out.data(), b.data(), min(_out.size(), b.size()));
+	_in.copyTo(_out);
 }
 
 }
