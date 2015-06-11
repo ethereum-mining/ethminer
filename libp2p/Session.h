@@ -33,7 +33,8 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Guards.h>
-#include "RLPxHandshake.h"
+#include "RLPXFrameCoder.h"
+#include "RLPXSocket.h"
 #include "Common.h"
 
 namespace dev
@@ -54,7 +55,7 @@ class Session: public std::enable_shared_from_this<Session>
 	friend class HostCapabilityFace;
 
 public:
-	Session(Host* _server, RLPXFrameIO* _io, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info);
+	Session(Host* _server, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info);
 	virtual ~Session();
 
 	void start();
@@ -62,7 +63,7 @@ public:
 
 	void ping();
 
-	bool isConnected() const { return m_socket.is_open(); }
+	bool isConnected() const { return m_socket->ref().is_open(); }
 
 	NodeId id() const;
 	unsigned socketId() const { return m_info.socketId; }
@@ -105,8 +106,8 @@ private:
 
 	Host* m_server;							///< The host that owns us. Never null.
 
-	RLPXFrameIO* m_io;						///< Transport over which packets are sent.
-	bi::tcp::socket& m_socket;				///< Socket for the peer's connection.
+	RLPXFrameCoder* m_io;						///< Transport over which packets are sent.
+	std::shared_ptr<RLPXSocket> m_socket;		///< Socket of peer's connection.
 	Mutex x_writeQueue;						///< Mutex for the write queue.
 	std::deque<bytes> m_writeQueue;			///< The write queue.
 	std::array<byte, 16777216> m_data;			///< Buffer for ingress packet data.

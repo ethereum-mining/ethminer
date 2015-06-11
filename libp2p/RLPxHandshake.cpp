@@ -179,7 +179,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 
 		/// This pointer will be freed if there is an error otherwise
 		/// it will be passed to Host which will take ownership.
-		m_io = new RLPXFrameIO(*this);
+		m_io = new RLPXFrameCoder(*this);
 
 		// old packet format
 		// 5 arguments, HelloPacket
@@ -200,7 +200,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 	}
 	else if (m_nextState == ReadHello)
 	{
-		// Authenticate and decrypt initial hello frame with initial RLPXFrameIO
+		// Authenticate and decrypt initial hello frame with initial RLPXFrameCoder
 		// and request m_host to start session.
 		m_nextState = StartSession;
 		
@@ -269,7 +269,7 @@ void RLPXHandshake::transition(boost::system::error_code _ech)
 						try
 						{
 							RLP rlp(frame.cropped(1), RLP::ThrowOnFail | RLP::FailIfTooSmall);
-							m_host->startPeerSession(m_remote, rlp, m_io, m_socket->remoteEndpoint());
+							m_host->startPeerSession(m_remote, rlp, m_io, m_socket);
 						}
 						catch (std::exception const& _e)
 						{
