@@ -30,6 +30,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
+#include <boost/optional.hpp>
 
 #include <libdevcore/FileSystem.h>
 #include <libevmcore/Instruction.h>
@@ -131,6 +132,8 @@ public:
 			m_shouldListDevices = true;
 		else if (arg == "--allow-opencl-cpu")
 			m_clAllowCPU = true;
+		else if (arg == "--cl-extragpu-mem" && i + 1 < argc)
+			m_extraGPUMemory = 1000000 * stol(argv[++i]);
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -175,6 +178,8 @@ public:
 			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
 			m_minerType = MinerType::GPU;
+		else if (arg == "--current-block" && i + 1 < argc)
+			m_currentBlock = stol(argv[++i]);
 		else if (arg == "--no-precompute")
 		{
 			m_precompute = false;
@@ -261,7 +266,13 @@ public:
 		else if (m_minerType == MinerType::GPU)
 		{
 			ProofOfWork::GPUMiner::setNumInstances(m_miningThreads);
-			if (!ProofOfWork::GPUMiner::configureGPU(m_openclPlatform, m_openclDevice, m_clAllowCPU))
+			if (!ProofOfWork::GPUMiner::configureGPU(
+					m_openclPlatform,
+					m_openclDevice,
+					m_clAllowCPU,
+					m_extraGPUMemory,
+					m_currentBlock
+				))
 			{
 				cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
 				exit(1);
@@ -303,6 +314,10 @@ public:
 			<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 			<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
+			<< "    --allow-opencl-cpu Allows CPU to be considered as an OpenCL device if the OpenCL platform supports it." << endl
+			<< "    --list-devices List the detected OpenCL devices and exit." <<endl
+			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." <<endl
+			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." <<endl
 			;
 	}
 
@@ -492,6 +507,9 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 	bool m_clAllowCPU = false;
+	boost::optional<uint64_t> m_currentBlock;
+	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
+	unsigned m_extraGPUMemory = 350000000;
 
 	/// DAG initialisation param.
 	unsigned m_initDAG = 0;
