@@ -44,7 +44,7 @@ static const h256 PendingChangedFilter = u256(0);
 static const h256 ChainChangedFilter = u256(1);
 
 static const LogEntry SpecialLogEntry = LogEntry(Address(), h256s(), bytes());
-static const LocalisedLogEntry InitialChange(SpecialLogEntry, 0);
+static const LocalisedLogEntry InitialChange(SpecialLogEntry);
 
 struct ClientWatch
 {
@@ -118,6 +118,7 @@ public:
 
 	virtual h256 hashFromNumber(BlockNumber _number) const override;
 	virtual BlockNumber numberFromHash(h256 _blockHash) const override;
+	virtual int compareBlockHashes(h256 _h1, h256 _h2) const override;
 	virtual BlockInfo blockInfo(h256 _hash) const override;
 	virtual BlockDetails blockDetails(h256 _hash) const override;
 	virtual Transaction transaction(h256 _transactionHash) const override;
@@ -133,8 +134,8 @@ public:
 	virtual Transactions pending() const override;
 	virtual h256s pendingHashes() const override;
 
-	ImportResult injectTransaction(bytes const& _rlp) override { prepareForTransaction(); return m_tq.import(_rlp); }
-	ImportResult injectBlock(bytes const& _block);
+	virtual ImportResult injectTransaction(bytes const& _rlp) override { prepareForTransaction(); return m_tq.import(_rlp); }
+	virtual ImportResult injectBlock(bytes const& _block) override;
 
 	using Interface::diff;
 	virtual StateDiff diff(unsigned _txi, h256 _block) const override;
@@ -144,9 +145,6 @@ public:
 	virtual Addresses addresses(BlockNumber _block) const override;
 	virtual u256 gasLimitRemaining() const override;
 
-	/// Set the coinbase address
-	virtual void setAddress(Address _us) = 0;
-
 	/// Get the coinbase address
 	virtual Address address() const override;
 
@@ -155,6 +153,7 @@ public:
 	virtual void startMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::startMining")); }
 	virtual void stopMining() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::stopMining")); }
 	virtual bool isMining() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::isMining")); }
+	virtual bool wouldMine() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::wouldMine")); }
 	virtual uint64_t hashrate() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::hashrate")); }
 	virtual MiningProgress miningProgress() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::miningProgress")); }
 	virtual ProofOfWork::WorkPackage getWork() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::getWork")); }
@@ -178,6 +177,8 @@ protected:
 	// filters
 	mutable Mutex x_filtersWatches;							///< Our lock.
 	std::unordered_map<h256, InstalledFilter> m_filters;	///< The dictionary of filters that are active.
+	std::unordered_map<h256, h256s> m_specialFilters = std::unordered_map<h256, std::vector<h256>>{{PendingChangedFilter, {}}, {ChainChangedFilter, {}}};
+															///< The dictionary of special filters and their additional data
 	std::map<unsigned, ClientWatch> m_watches;				///< Each and every watch - these reference a filter.
 };
 

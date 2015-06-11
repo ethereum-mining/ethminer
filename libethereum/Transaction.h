@@ -25,6 +25,7 @@
 #include <libdevcore/SHA3.h>
 #include <libethcore/Common.h>
 #include <libevmcore/Params.h>
+
 namespace dev
 {
 namespace eth
@@ -48,6 +49,8 @@ enum class TransactionException
 {
 	None = 0,
 	Unknown,
+	BadRLP,
+	OutOfGasIntrinsic,		///< Too little gas to pay for the base transaction cost.
 	InvalidSignature,
 	InvalidNonce,
 	NotEnoughCash,
@@ -69,7 +72,8 @@ enum class CodeDeposit
 
 struct VMException;
 
-TransactionException toTransactionException(VMException const& _e);
+TransactionException toTransactionException(Exception const& _e);
+std::ostream& operator<<(std::ostream& _out, TransactionException const& _er);
 
 /// Description of the result of executing a transaction.
 struct ExecutionResult
@@ -223,9 +227,6 @@ inline std::ostream& operator<<(std::ostream& _out, Transaction const& _t)
 	_out << "<-" << _t.safeSender().abridged() << " #" << _t.nonce() << "}";
 	return _out;
 }
-
-void badTransaction(bytesConstRef _tx, std::string const& _err);
-inline void badTransaction(bytes const& _tx, std::string const& _err) { badTransaction(&_tx, _err); }
 
 }
 }

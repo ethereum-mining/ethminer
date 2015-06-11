@@ -25,6 +25,11 @@
 #include <libevm/VMFace.h>
 #include "Transaction.h"
 
+namespace Json
+{
+	class Value;
+}
+
 namespace dev
 {
 namespace eth
@@ -37,6 +42,22 @@ struct Manifest;
 
 struct VMTraceChannel: public LogChannel { static const char* name(); static const int verbosity = 11; };
 struct ExecutiveWarnChannel: public LogChannel { static const char* name(); static const int verbosity = 6; };
+
+class StandardTrace
+{
+public:
+	StandardTrace();
+	void operator()(uint64_t _steps, Instruction _inst, bigint _newMemSize, bigint _gasCost, bigint _gas, VM* _vm, ExtVMFace const* _extVM);
+
+	void setShowMnemonics() { m_showMnemonics = true; }
+
+	std::string json(bool _styled = false) const;
+
+private:
+	bool m_showMnemonics = false;
+	std::vector<Instruction> m_lastInst;
+	std::shared_ptr<Json::Value> m_trace;
+};
 
 /**
  * @brief Message-call/contract-creation executor; useful for executing transactions.
@@ -65,8 +86,6 @@ public:
 	Executive(State& _s, LastHashes const& _lh, unsigned _level = 0): m_s(_s), m_lastHashes(_lh), m_depth(_level) {}
 	/// Basic constructor.
 	Executive(State& _s, BlockChain const& _bc, unsigned _level = 0);
-	/// Basic destructor.
-	~Executive() = default;
 
 	Executive(Executive const&) = delete;
 	void operator=(Executive) = delete;
@@ -124,7 +143,7 @@ public:
 private:
 	State& m_s;							///< The state to which this operation/transaction is applied.
 	LastHashes m_lastHashes;
-	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required.
+	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference.
 	bytesRef m_outRef;					///< Reference to "expected output" buffer.
 	ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
 	Address m_newAddress;				///< The address of the created contract in the case of create() being called.
@@ -137,9 +156,7 @@ private:
 	Transaction m_t;					///< The original transaction. Set by setup().
 	LogEntries m_logs;					///< The log entries created by this transaction. Set by finalize().
 
-	bigint m_gasRequired;				///< Gas required during execution of the transaction.
 	bigint m_gasCost;
-	bigint m_totalCost;
 };
 
 }

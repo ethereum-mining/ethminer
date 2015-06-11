@@ -238,7 +238,7 @@ private:
 	void installNameRegWatch();
 	void installBalancesWatch();
 
-	virtual void timerEvent(QTimerEvent*);
+	virtual void timerEvent(QTimerEvent*) override;
 
 	void refreshNetwork();
 	void refreshMining();
