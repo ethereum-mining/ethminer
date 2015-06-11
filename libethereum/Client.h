@@ -301,7 +301,7 @@ private:
 
 	/// Called when we have attempted to import a bad block.
 	/// @warning May be called from any thread.
-	void onBadBlock(Exception& _ex);
+	void onBadBlock(Exception& _ex) const;
 
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	CanonBlockChain m_bc;					///< Maintains block database.

@@ -8,8 +8,6 @@
 #include "RuntimeManager.h"
 #include "Utils.h"
 
-#include <set> // DEBUG only
-
 namespace dev
 {
 namespace eth
@@ -266,52 +264,15 @@ void Array::extend(llvm::Value* _arrayPtr, llvm::Value* _size)
 }
 }
 
-namespace
-{
-	struct AllocatedMemoryWatchdog
-	{
-		std::set<void*> allocatedMemory;
-
-		~AllocatedMemoryWatchdog()
-		{
-			if (!allocatedMemory.empty())
-			{
-				DLOG(mem) << allocatedMemory.size() << " MEM LEAKS!\n";
-				for (auto&& leak : allocatedMemory)
-					DLOG(mem) << "\t" << leak << "\n";
-			}
-		}
-	};
-
-	AllocatedMemoryWatchdog watchdog;
-}
-
 extern "C"
 {
-	using namespace dev::eth::jit;
-
 	EXPORT void* ext_realloc(void* _data, size_t _size) noexcept
 	{
-		//std::cerr << "REALLOC: " << _data << " [" << _size << "]" << std::endl;
-		auto newData = std::realloc(_data, _size);
-		if (_data != newData)
-		{
-			DLOG(mem) << "REALLOC: " << newData << " <- " << _data << " [" << _size << "]\n";
-			watchdog.allocatedMemory.erase(_data);
-			watchdog.allocatedMemory.insert(newData);
-		}
-		return newData;
+		return std::realloc(_data, _size);
 	}
 
 	EXPORT void ext_free(void* _data) noexcept
 	{
 		std::free(_data);
-		if (_data)
-		{
-			DLOG(mem) << "FREE   : " << _data << "\n";
-			watchdog.allocatedMemory.erase(_data);
-		}
 	}
-
-} // extern "C"
-
+}
