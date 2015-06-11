@@ -308,7 +308,7 @@ void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes, bool 
 	}
 
 	bool syncByNumber = _peer->m_syncHashNumber;
-	if (!syncByNumber && _peer->m_syncHash != m_syncingLatestHash)
+	if (!syncByNumber && !_complete && _peer->m_syncHash != m_syncingLatestHash)
 	{
 		// Obsolete hashes, discard
 		continueSync(_peer);
@@ -467,35 +467,26 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 	}
 
 	clog(NetMessageSummary) << dec << success << "imported OK," << unknown << "with unknown parents," << future << "with future timestamps," << got << " already known," << repeated << " repeats received.";
-
-	if (m_man.isComplete() && !m_needSyncHashes)
-	{
-		// Done our chain-get.
-		m_needSyncBlocks = false;
-		clog(NetNote) << "Chain download complete.";
-		// 1/100th for each useful block hash.
-		_peer->addRating(m_man.chainSize() / 100); //TODO: what about other peers?
-		m_man.reset();
-	}
 	continueSync(_peer);
 }
 
 void EthereumHost::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 {
 	RecursiveGuard l(x_sync);
-	if (isSyncing_UNSAFE())
+	if (isSyncing_UNSAFE() || _peer->isConversing())
 	{
 		clog(NetMessageSummary) << "Ignoring new hashes since we're already downloading.";
 		return;
 	}
 	clog(NetNote) << "New block hash discovered: syncing without help.";
+	_peer->m_syncHashNumber = 0;
 	onPeerHashes(_peer, _hashes, true);
 }
 
 void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 {
 	RecursiveGuard l(x_sync);
-	if (isSyncing_UNSAFE())
+	if (isSyncing_UNSAFE() || _peer->isConversing())
 	{
 		clog(NetMessageSummary) << "Ignoring new blocks since we're already downloading.";
 		return;
@@ -661,23 +652,37 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 				_peer->setIdle();
 		}
 	}
-	else if (m_needSyncBlocks && peerCanHelp(_peer)) // Check if this peer can help with downloading blocks
+	else if (m_needSyncBlocks)
 	{
-		// Check block queue status
-		if (m_bq.unknownFull())
+		if (m_man.isComplete())
 		{
-			clog(NetWarn) << "Too many unknown blocks, restarting sync";
-			m_bq.clear();
-			reset();
-			continueSync();
-		}
-		else if (m_bq.knownFull())
-		{
-			clog(NetAllDetail) << "Waiting for block queue before downloading blocks";
+			// Done our chain-get.
+			m_needSyncBlocks = false;
+			clog(NetNote) << "Chain download complete.";
+			// 1/100th for each useful block hash.
+			_peer->addRating(m_man.chainSize() / 100); //TODO: what about other peers?
+			m_man.reset();
 			_peer->setIdle();
+			return;
 		}
-		else
-			_peer->requestBlocks();
+		else if (peerCanHelp(_peer))
+		{
+			// Check block queue status
+			if (m_bq.unknownFull())
+			{
+				clog(NetWarn) << "Too many unknown blocks, restarting sync";
+				m_bq.clear();
+				reset();
+				continueSync();
+			}
+			else if (m_bq.knownFull())
+			{
+				clog(NetAllDetail) << "Waiting for block queue before downloading blocks";
+				_peer->setIdle();
+			}
+			else
+				_peer->requestBlocks();
+		}
 	}
 	else
 		_peer->setIdle();
