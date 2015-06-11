@@ -119,6 +119,7 @@ llvm::Value* Ext::calldataload(llvm::Value* _idx)
 	auto pad = m_builder.CreateGEP(Type::Byte, result, copySize);
 	m_builder.CreateMemSet(pad, m_builder.getInt8(0), padSize, 1);
 
+	m_argCounter = 0; // Release args allocas. TODO: This is a bad design
 	return Endianness::toNative(m_builder, m_builder.CreateLoad(ret));
 }
 
