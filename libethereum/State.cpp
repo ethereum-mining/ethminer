@@ -594,6 +594,7 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	for (auto const& tr: rlp[1])
 	{
 		StandardTrace st;
+		st.setShowMnemonics();
 		execute(lh, Transaction(tr.data(), CheckTransaction::Everything), Permanence::Committed, [&](uint64_t _steps, Instruction _inst, bigint _newMemSize, bigint _gasCost, bigint _gas, VM* _vm, ExtVMFace const* _extVM) { st(_steps, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM); });
 		ret += (ret.empty() ? "[" : ",") + st.json();
 
@@ -777,7 +778,8 @@ void State::cleanup(bool _fullCommit)
 		paranoia("immediately before database commit", true);
 
 		// Commit the new trie to disk.
-		clog(StateTrace) << "Committing to disk: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
+		if (isChannelVisible<StateTrace>()) // Avoid calling toHex if not needed
+			clog(StateTrace) << "Committing to disk: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 
 		try {
 			EnforceRefs er(m_db, true);
@@ -790,7 +792,8 @@ void State::cleanup(bool _fullCommit)
 		}
 
 		m_db.commit();
-		clog(StateTrace) << "Committed: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
+		if (isChannelVisible<StateTrace>()) // Avoid calling toHex if not needed
+			clog(StateTrace) << "Committed: stateRoot" << m_currentBlock.stateRoot << "=" << rootHash() << "=" << toHex(asBytes(m_db.lookup(rootHash())));
 
 		paranoia("immediately after database commit", true);
 		m_previousBlock = m_currentBlock;
@@ -1213,21 +1216,6 @@ ExecutionResult State::execute(LastHashes const& _lh, Transaction const& _t, Per
 			e.go(e.simpleTrace());
 		else
 			e.go(_onOp);
-	}
-#elif ETH_VMTIMER
-	{
-		(void)_onOp;
-		boost::timer t;
-		unordered_map<byte, unsigned> counts;
-		unsigned total = 0;
-		e.go([&](uint64_t, Instruction inst, bigint, bigint, bigint, VM*, ExtVMFace const*) {
-			counts[(byte)inst]++;
-			total++;
-		});
-		cnote << total << "total in" << t.elapsed();
-		for (auto const& c: {Instruction::SSTORE, Instruction::SLOAD, Instruction::CALL, Instruction::CREATE, Instruction::CALLCODE, Instruction::MSTORE8, Instruction::MSTORE, Instruction::MLOAD, Instruction::SHA3})
-			cnote << instructionInfo(c).name << counts[(byte)c];
-		cnote;
 	}
 #else
 		e.go(_onOp);

@@ -83,6 +83,11 @@ void MixClient::resetState(std::unordered_map<Address, Account> const& _accounts
 	WriteGuard l(x_state);
 	Guard fl(x_filtersWatches);
 
+	m_filters.clear();
+	for (auto& i: m_specialFilters)
+		i.second.clear();
+	m_watches.clear();
+
 	m_stateDB = OverlayDB();
 	SecureTrieDB<Address, MemoryDB> accountState(&m_stateDB);
 	accountState.init();
@@ -254,11 +259,11 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		LocalisedLogEntries logs;
 		TransactionReceipt const& tr = _state.receipt(_state.pending().size() - 1);
 
-		auto trHash = _state.pending().at(_state.pending().size() - 1).sha3();
+		//auto trHash = _state.pending().at(_state.pending().size() - 1).sha3();
 		LogEntries le = tr.log();
 		if (le.size())
 			for (unsigned j = 0; j < le.size(); ++j)
-				logs.insert(logs.begin(), LocalisedLogEntry(le[j], bc().number() + 1, trHash));
+				logs.insert(logs.begin(), LocalisedLogEntry(le[j]));
 		d.logs =  logs;
 	}
 	WriteGuard l(x_executions);
