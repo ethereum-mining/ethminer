@@ -87,12 +87,8 @@ public:
 
 		static unsigned instances() { return s_numInstances > 0 ? s_numInstances : std::thread::hardware_concurrency(); }
 		static std::string platformInfo();
-		static void setDefaultPlatform(unsigned) {}
-		static void setDagChunks(unsigned) {}
-		static void setDefaultDevice(unsigned) {}
 		static void listDevices() {}
-		static bool configureGPU() { return false; }
-		static void allowCPU() {}
+		static bool configureGPU(unsigned, unsigned, bool) { return false; }
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, std::thread::hardware_concurrency()); }
 	protected:
 		void kickOff() override
@@ -121,10 +117,7 @@ public:
 		static std::string platformInfo();
 		static unsigned getNumDevices();
 		static void listDevices();
-		static bool configureGPU();
-		static void allowCPU();
-		static void setDefaultPlatform(unsigned _id) { s_platformId = _id; }
-		static void setDefaultDevice(unsigned _id) { s_deviceId = _id; }
+		static bool configureGPU(unsigned _platformId, unsigned _deviceId, bool _allowCPU);
 		static void setNumInstances(unsigned _instances) { s_numInstances = std::min<unsigned>(_instances, getNumDevices()); }
 
 	protected:
