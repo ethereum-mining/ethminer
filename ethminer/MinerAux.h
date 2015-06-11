@@ -128,12 +128,9 @@ public:
 				throw BadArgument();
 			}
 		else if (arg == "--list-devices")
-		{
-			ProofOfWork::GPUMiner::listDevices();
-			exit(0);
-		}
+			shouldListDevices = true;
 		else if (arg == "--allow-opencl-cpu")
-			ProofOfWork::GPUMiner::allowCPU();
+			clAllowCPU = true;
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -177,18 +174,7 @@ public:
 		else if (arg == "-C" || arg == "--cpu")
 			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
-		{
-			if (!ProofOfWork::GPUMiner::configureGPU())
-			{
-				cout << "No GPU device with sufficient memory was found. Defaulting to CPU" << endl;
-				m_minerType = MinerType::CPU;
-			}
-			else
-			{
-				m_minerType = MinerType::GPU;
-				miningThreads = 1;
-			}
-		}
+			m_minerType = MinerType::GPU;
 		else if (arg == "--no-precompute")
 		{
 			precompute = false;
@@ -264,13 +250,22 @@ public:
 
 	void execute()
 	{
+		if (shouldListDevices)
+		{
+			ProofOfWork::GPUMiner::listDevices();
+			exit(0);
+		}
+
 		if (m_minerType == MinerType::CPU)
 			ProofOfWork::CPUMiner::setNumInstances(miningThreads);
 		else if (m_minerType == MinerType::GPU)
 		{
-			ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
-			ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
 			ProofOfWork::GPUMiner::setNumInstances(miningThreads);
+			if (!ProofOfWork::GPUMiner::configureGPU(openclPlatform, openclDevice, clAllowCPU))
+			{
+				cout << "No GPU device with sufficient memory was found. Can't GPU mine. Remove the -G argument" << endl;
+				exit(1);
+			}
 		}
 		if (mode == OperationMode::DAGInit)
 			doInitDAG(initDAG);
@@ -495,7 +490,8 @@ private:
 	unsigned openclPlatform = 0;
 	unsigned openclDevice = 0;
 	unsigned miningThreads = UINT_MAX;
-	unsigned dagChunks = 1;
+	bool shouldListDevices = false;
+	bool clAllowCPU = false;
 
 	/// DAG initialisation param.
 	unsigned initDAG = 0;
