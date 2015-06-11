@@ -31,6 +31,7 @@
 #include <libdevcore/FileSystem.h>
 #include "AES.h"
 #include "CryptoPP.h"
+#include "Exceptions.h"
 using namespace std;
 using namespace dev;
 using namespace dev::crypto;
@@ -188,7 +189,7 @@ bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations,
 		_salt.size(),
 		_iterations
 	) != _iterations)
-		return bytes();
+		BOOST_THROW_EXCEPTION(CryptoException());
 	return ret;
 }
 
@@ -206,7 +207,7 @@ bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uin
 		ret.data(),
 		ret.size()
 	) != 0)
-		return bytes();
+		BOOST_THROW_EXCEPTION(CryptoException());
 	return ret;
 }
 
