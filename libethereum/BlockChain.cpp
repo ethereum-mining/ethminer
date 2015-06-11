@@ -315,41 +315,44 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 	h256s fresh;
 	h256s dead;
 	h256s badBlocks;
-	for (auto const& block: blocks)
-	{
-		try
-		{
-			// Nonce & uncle nonces already verified in verification thread at this point.
-			ImportRoute r;
-			DEV_TIMED_ABOVE(Block import, 500)
-				r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
-			fresh += r.first;
-			dead += r.second;
-		}
-		catch (dev::eth::UnknownParent)
-		{
-			cwarn << "ODD: Import queue contains block with unknown parent." << LogTag::Error << boost::current_exception_diagnostic_information();
-			// NOTE: don't reimport since the queue should guarantee everything in the right order.
-			// Can't continue - chain bad.
+	for (VerifiedBlock const& block: blocks)
+		if (!badBlocks.empty())
 			badBlocks.push_back(block.verified.info.hash());
-		}
-		catch (dev::eth::FutureTime)
+		else
 		{
-			cwarn << "ODD: Import queue contains a block with future time." << LogTag::Error << boost::current_exception_diagnostic_information();
-			// NOTE: don't reimport since the queue should guarantee everything in the past.
-			// Can't continue - chain bad.
-			badBlocks.push_back(block.verified.info.hash());
+			try
+			{
+				// Nonce & uncle nonces already verified in verification thread at this point.
+				ImportRoute r;
+				DEV_TIMED_ABOVE(Block import, 500)
+					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
+				fresh += r.first;
+				dead += r.second;
+			}
+			catch (dev::eth::UnknownParent)
+			{
+				cwarn << "ODD: Import queue contains block with unknown parent.";// << LogTag::Error << boost::current_exception_diagnostic_information();
+				// NOTE: don't reimport since the queue should guarantee everything in the right order.
+				// Can't continue - chain bad.
+				badBlocks.push_back(block.verified.info.hash());
+			}
+			catch (dev::eth::FutureTime)
+			{
+				cwarn << "ODD: Import queue contains a block with future time.";// << LogTag::Error << boost::current_exception_diagnostic_information();
+				// NOTE: don't reimport since the queue should guarantee everything in the past.
+				// Can't continue - chain bad.
+				badBlocks.push_back(block.verified.info.hash());
+			}
+			catch (Exception& ex)
+			{
+//				cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!";// << LogTag::Error << diagnostic_information(ex);
+				if (m_onBad)
+					m_onBad(ex);
+				// NOTE: don't reimport since the queue should guarantee everything in the right order.
+				// Can't continue - chain  bad.
+				badBlocks.push_back(block.verified.info.hash());
+			}
 		}
-		catch (Exception& ex)
-		{
-			cnote << "Exception while importing block. Someone (Jeff? That you?) seems to be giving us dodgy blocks!" << LogTag::Error << diagnostic_information(ex);
-			if (m_onBad)
-				m_onBad(ex);
-			// NOTE: don't reimport since the queue should guarantee everything in the right order.
-			// Can't continue - chain  bad.
-			badBlocks.push_back(block.verified.info.hash());
-		}
-	}
 	return make_tuple(fresh, dead, _bq.doneDrain(badBlocks));
 }
 
@@ -393,7 +396,7 @@ ImportRoute BlockChain::import(bytes const& _block, OverlayDB const& _db, Import
 #if ETH_CATCH
 	catch (Exception& ex)
 	{
-		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
+//		clog(BlockChainNote) << "   Malformed block: " << diagnostic_information(ex);
 		ex << errinfo_now(time(0));
 		ex << errinfo_block(_block);
 		throw;
@@ -923,8 +926,8 @@ void BlockChain::checkConsistency()
 	delete it;
 }
 
-static inline unsigned upow(unsigned a, unsigned b) { while (b-- > 0) a *= a; return a; }
-static inline unsigned ceilDiv(unsigned n, unsigned d) { return n / (n + d - 1); }
+static inline unsigned upow(unsigned a, unsigned b) { if (!b) return 1; while (--b > 0) a *= a; return a; }
+static inline unsigned ceilDiv(unsigned n, unsigned d) { return (n + d - 1) / d; }
 //static inline unsigned floorDivPow(unsigned n, unsigned a, unsigned b) { return n / upow(a, b); }
 //static inline unsigned ceilDivPow(unsigned n, unsigned a, unsigned b) { return ceilDiv(n, upow(a, b)); }
 

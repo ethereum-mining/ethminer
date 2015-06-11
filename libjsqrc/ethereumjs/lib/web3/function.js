@@ -23,6 +23,7 @@
 var web3 = require('../web3');
 var coder = require('../solidity/coder');
 var utils = require('../utils/utils');
+var sha3 = require('../utils/sha3');
 
 /**
  * This prototype should be used to call/sendTransaction to solidity functions
@@ -69,12 +70,12 @@ SolidityFunction.prototype.toPayload = function (args) {
  * @return {String} function signature
  */
 SolidityFunction.prototype.signature = function () {
-    return web3.sha3(web3.fromAscii(this._name)).slice(2, 10);
+    return sha3(this._name).slice(0, 8);
 };
 
 
 SolidityFunction.prototype.unpackOutput = function (output) {
-    if (output === null) {
+    if (!output) {
         return;
     }
 
@@ -94,7 +95,7 @@ SolidityFunction.prototype.unpackOutput = function (output) {
  * @return {String} output bytes
  */
 SolidityFunction.prototype.call = function () {
-    var args = Array.prototype.slice.call(arguments);
+    var args = Array.prototype.slice.call(arguments).filter(function (a) {return a !== undefined; });
     var callback = this.extractCallback(args);
     var payload = this.toPayload(args);
 
@@ -116,16 +117,33 @@ SolidityFunction.prototype.call = function () {
  * @param {Object} options
  */
 SolidityFunction.prototype.sendTransaction = function () {
+    var args = Array.prototype.slice.call(arguments).filter(function (a) {return a !== undefined; });
+    var callback = this.extractCallback(args);
+    var payload = this.toPayload(args);
+
+    if (!callback) {
+        return web3.eth.sendTransaction(payload);
+    }
+
+    web3.eth.sendTransaction(payload, callback);
+};
+
+/**
+ * Should be used to estimateGas of solidity function
+ *
+ * @method estimateGas
+ * @param {Object} options
+ */
+SolidityFunction.prototype.estimateGas = function () {
     var args = Array.prototype.slice.call(arguments);
     var callback = this.extractCallback(args);
     var payload = this.toPayload(args);
 
     if (!callback) {
-        web3.eth.sendTransaction(payload);
-        return;
+        return web3.eth.estimateGas(payload);
     }
 
-    web3.eth.sendTransaction(payload, callback);
+    web3.eth.estimateGas(payload, callback);
 };
 
 /**
@@ -195,6 +213,7 @@ SolidityFunction.prototype.attachToContract = function (contract) {
     execute.request = this.request.bind(this);
     execute.call = this.call.bind(this);
     execute.sendTransaction = this.sendTransaction.bind(this);
+    execute.estimateGas = this.estimateGas.bind(this);
     var displayName = this.displayName();
     if (!contract[displayName]) {
         contract[displayName] = execute;

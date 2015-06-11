@@ -164,15 +164,33 @@ static Json::Value toJson(dev::eth::Transaction const& _t)
 static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 {
 	Json::Value res;
-	if (_e.transactionHash)
+	if (_e.topics.size() > 0)
 	{
 		res["data"] = toJS(_e.data);
 		res["address"] = toJS(_e.address);
 		res["topics"] = Json::Value(Json::arrayValue);
 		for (auto const& t: _e.topics)
 			res["topics"].append(toJS(t));
-		res["number"] = _e.number;
-		res["hash"] = toJS(_e.transactionHash);
+		if (_e.mined)
+		{
+			res["type"] = "mined";
+			res["blockNumber"] = _e.blockNumber;
+			res["blockHash"] = toJS(_e.blockHash);
+			res["logIndex"] = _e.logIndex;
+			res["transactionHash"] = toJS(_e.transactionHash);
+			res["transactionIndex"] = _e.transactionIndex;
+		}
+		else
+		{
+			res["type"] = "pending";
+			res["blockNumber"] = Json::Value(Json::nullValue);
+			res["blockHash"] = Json::Value(Json::nullValue);
+			res["logIndex"] = Json::Value(Json::nullValue);
+			res["transactionHash"] = Json::Value(Json::nullValue);
+			res["transactionIndex"] = Json::Value(Json::nullValue);
+		}
+	} else {
+		res = toJS(_e.special);
 	}
 	return res;
 }
@@ -193,7 +211,7 @@ static Json::Value toJson(map<u256, u256> const& _storage)
 	return res;
 }
 
-static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to avoid warning. Uncomment once in use @ PoC-7.
+static dev::eth::LogFilter toLogFilter(Json::Value const& _json)
 {
 	dev::eth::LogFilter filter;
 	if (!_json.isObject() || _json.empty())
@@ -201,9 +219,44 @@ static dev::eth::LogFilter toLogFilter(Json::Value const& _json)	// commented to
 
 	// check only !empty. it should throw exceptions if input params are incorrect
 	if (!_json["fromBlock"].empty())
-		filter.withEarliest(jsToBlockNumber(_json["fromBlock"].asString()));
+		filter.withEarliest(jsToFixed<32>(_json["fromBlock"].asString()));
 	if (!_json["toBlock"].empty())
-		filter.withLatest(jsToBlockNumber(_json["toBlock"].asString()));
+		filter.withLatest(jsToFixed<32>(_json["toBlock"].asString()));
+	if (!_json["address"].empty())
+	{
+		if (_json["address"].isArray())
+			for (auto i : _json["address"])
+				filter.address(jsToAddress(i.asString()));
+		else
+			filter.address(jsToAddress(_json["address"].asString()));
+	}
+	if (!_json["topics"].empty())
+		for (unsigned i = 0; i < _json["topics"].size(); i++)
+		{
+			if (_json["topics"][i].isArray())
+			{
+				for (auto t: _json["topics"][i])
+					if (!t.isNull())
+						filter.topic(i, jsToFixed<32>(t.asString()));
+			}
+			else if (!_json["topics"][i].isNull()) // if it is anything else then string, it should and will fail
+				filter.topic(i, jsToFixed<32>(_json["topics"][i].asString()));
+		}
+	return filter;
+}
+
+// TODO: this should be removed once we decide to remove backward compatibility with old log filters
+static dev::eth::LogFilter toLogFilter(Json::Value const& _json, Interface const& _client)	// commented to avoid warning. Uncomment once in use @ PoC-7.
+{
+	dev::eth::LogFilter filter;
+	if (!_json.isObject() || _json.empty())
+		return filter;
+
+	// check only !empty. it should throw exceptions if input params are incorrect
+	if (!_json["fromBlock"].empty())
+		filter.withEarliest(_client.hashFromNumber(jsToBlockNumber(_json["fromBlock"].asString())));
+	if (!_json["toBlock"].empty())
+		filter.withLatest(_client.hashFromNumber(jsToBlockNumber(_json["toBlock"].asString())));
 	if (!_json["address"].empty())
 	{
 		if (_json["address"].isArray())
@@ -712,25 +765,24 @@ Json::Value WebThreeStubServerBase::eth_getCompilers()
 }
 
 
-string WebThreeStubServerBase::eth_compileLLL(string const& _code)
+string WebThreeStubServerBase::eth_compileLLL(string const& _source)
 {
 	// TODO throw here jsonrpc errors
 	string res;
 	vector<string> errors;
-	res = toJS(dev::eth::compileLLL(_code, true, &errors));
+	res = toJS(dev::eth::compileLLL(_source, true, &errors));
 	cwarn << "LLL compilation errors: " << errors;
 	return res;
 }
 
-string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
+string WebThreeStubServerBase::eth_compileSerpent(string const& _source)
 {
 	// TODO throw here jsonrpc errors
 	string res;
-	(void)_code;
 #if ETH_SERPENT || !ETH_TRUE
 	try
 	{
-		res = toJS(dev::asBytes(::compile(_code)));
+		res = toJS(dev::asBytes(::compile(_source)));
 	}
 	catch (string err)
 	{
@@ -740,36 +792,74 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _code)
 	{
 		cwarn << "Uncought serpent compilation exception";
 	}
+#else
+	(void)_source;
 #endif
 	return res;
 }
 
-string WebThreeStubServerBase::eth_compileSolidity(string const& _code)
+Json::Value WebThreeStubServerBase::eth_compileSolidity(string const& _source)
 {
 	// TOOD throw here jsonrpc errors
-	(void)_code;
-	string res;
+	Json::Value res(Json::objectValue);
 #if ETH_SOLIDITY || !ETH_TRUE
 	dev::solidity::CompilerStack compiler;
 	try
 	{
-		res = toJS(compiler.compile(_code, true));
+		compiler.addSource("source", _source);
+		compiler.compile();
+
+		for (string const& name: compiler.getContractNames())
+		{
+			Json::Value contract(Json::objectValue);
+			contract["code"] = toJS(compiler.getBytecode(name));
+
+			Json::Value info(Json::objectValue);
+			info["source"] = _source;
+			info["language"] = "";
+			info["languageVersion"] = "";
+			info["compilerVersion"] = "";
+
+			Json::Reader reader;
+			reader.parse(compiler.getInterface(name), info["abiDefinition"]);
+			reader.parse(compiler.getMetadata(name, dev::solidity::DocumentationType::NatspecUser), info["userDoc"]);
+			reader.parse(compiler.getMetadata(name, dev::solidity::DocumentationType::NatspecDev), info["developerDoc"]);
+
+			contract["info"] = info;
+			res[name] = contract;
+		}
 	}
 	catch (dev::Exception const& exception)
 	{
 		ostringstream error;
 		solidity::SourceReferenceFormatter::printExceptionInformation(error, exception, "Error", compiler);
 		cwarn << "Solidity compilation error: " << error.str();
+		return Json::Value(Json::objectValue);
 	}
 	catch (...)
 	{
 		cwarn << "Uncought solidity compilation exception";
+		return Json::Value(Json::objectValue);
 	}
+#else
+	(void)_source;
 #endif
 	return res;
 }
 
 string WebThreeStubServerBase::eth_newFilter(Json::Value const& _json)
+{
+	try
+	{
+		return toJS(client()->installWatch(toLogFilter(_json, *client())));
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+string WebThreeStubServerBase::eth_newFilterEx(Json::Value const& _json)
 {
 	try
 	{
@@ -823,7 +913,35 @@ Json::Value WebThreeStubServerBase::eth_getFilterChanges(string const& _filterId
 	}
 }
 
+Json::Value WebThreeStubServerBase::eth_getFilterChangesEx(string const& _filterId)
+{
+	try
+	{
+		int id = jsToInt(_filterId);
+		auto entries = client()->checkWatch(id);
+		if (entries.size())
+			cnote << "FIRING WATCH" << id << entries.size();
+		return toJson(entries);
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
 Json::Value WebThreeStubServerBase::eth_getFilterLogs(string const& _filterId)
+{
+	try
+	{
+		return toJson(client()->logs(jsToInt(_filterId)));
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+Json::Value WebThreeStubServerBase::eth_getFilterLogsEx(string const& _filterId)
 {
 	try
 	{
@@ -980,7 +1098,6 @@ string WebThreeStubServerBase::shh_addToGroup(string const& _group, string const
 
 string WebThreeStubServerBase::shh_newFilter(Json::Value const& _json)
 {
-	
 	try
 	{
 		pair<shh::Topics, Public> w = toWatch(_json);
