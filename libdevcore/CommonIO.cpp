@@ -95,11 +95,12 @@ string dev::contentsString(string const& _file)
 	return contentsGeneric<string>(_file);
 }
 
-bool dev::writeFile(std::string const& _file, bytesConstRef _data)
+void dev::writeFile(std::string const& _file, bytesConstRef _data)
 {
 	ofstream s(_file, ios::trunc | ios::binary);
 	s.write(reinterpret_cast<char const*>(_data.data()), _data.size());
-	return !!s;
+	if (!s)
+		BOOST_THROW_EXCEPTION(FileError());
 }
 
 std::string dev::getPassword(std::string const& _prompt)

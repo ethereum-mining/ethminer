@@ -149,12 +149,10 @@ void SecretStore::save(string const& _keysPath)
 		v["crypto"] = crypto;
 		v["id"] = uuid;
 		v["version"] = c_keyFileVersion;
-		if (writeFile(filename, js::write_string(js::mValue(v), true)))
-		{
-			swap(k.second.filename, filename);
-			if (!filename.empty() && !fs::equivalent(filename, k.second.filename))
-				fs::remove(filename);
-		}
+		writeFile(filename, js::write_string(js::mValue(v), true));
+		swap(k.second.filename, filename);
+		if (!filename.empty() && !fs::equivalent(filename, k.second.filename))
+			fs::remove(filename);
 	}
 }
 
