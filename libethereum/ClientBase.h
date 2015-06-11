@@ -44,7 +44,7 @@ static const h256 PendingChangedFilter = u256(0);
 static const h256 ChainChangedFilter = u256(1);
 
 static const LogEntry SpecialLogEntry = LogEntry(Address(), h256s(), bytes());
-static const LocalisedLogEntry InitialChange(SpecialLogEntry, 0);
+static const LocalisedLogEntry InitialChange(SpecialLogEntry);
 
 struct ClientWatch
 {
@@ -117,6 +117,7 @@ public:
 
 	virtual h256 hashFromNumber(BlockNumber _number) const override;
 	virtual BlockNumber numberFromHash(h256 _blockHash) const override;
+	virtual int compareBlockHashes(h256 _h1, h256 _h2) const override;
 	virtual BlockInfo blockInfo(h256 _hash) const override;
 	virtual BlockDetails blockDetails(h256 _hash) const override;
 	virtual Transaction transaction(h256 _transactionHash) const override;
@@ -175,6 +176,8 @@ protected:
 	// filters
 	mutable Mutex x_filtersWatches;							///< Our lock.
 	std::unordered_map<h256, InstalledFilter> m_filters;	///< The dictionary of filters that are active.
+	std::unordered_map<h256, h256s> m_specialFilters = std::unordered_map<h256, std::vector<h256>>{{PendingChangedFilter, {}}, {ChainChangedFilter, {}}};
+															///< The dictionary of special filters and their additional data
 	std::map<unsigned, ClientWatch> m_watches;				///< Each and every watch - these reference a filter.
 };
 

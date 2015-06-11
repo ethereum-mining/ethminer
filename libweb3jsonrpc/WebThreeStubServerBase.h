@@ -60,8 +60,6 @@ public:
 
 /**
  * @brief JSON-RPC api implementation
- * @todo filters should work on unsigned instead of int
- * unsigned are not supported in json-rpc-cpp and there are bugs with double in json-rpc-cpp version 0.2.1
  * @todo split these up according to subprotocol (eth, shh, db, p2p, web3) and make it /very/ clear about how to add other subprotocols.
  * @todo modularise everything so additional subprotocols don't need to change this file.
  */
@@ -105,13 +103,16 @@ public:
 	virtual Json::Value eth_getCompilers();
 	virtual std::string eth_compileLLL(std::string const& _s);
 	virtual std::string eth_compileSerpent(std::string const& _s);
-	virtual std::string eth_compileSolidity(std::string const& _code);
+	virtual Json::Value eth_compileSolidity(std::string const& _code);
 	virtual std::string eth_newFilter(Json::Value const& _json);
+	virtual std::string eth_newFilterEx(Json::Value const& _json);
 	virtual std::string eth_newBlockFilter();
 	virtual std::string eth_newPendingTransactionFilter();
 	virtual bool eth_uninstallFilter(std::string const& _filterId);
 	virtual Json::Value eth_getFilterChanges(std::string const& _filterId);
+	virtual Json::Value eth_getFilterChangesEx(std::string const& _filterId);
 	virtual Json::Value eth_getFilterLogs(std::string const& _filterId);
+	virtual Json::Value eth_getFilterLogsEx(std::string const& _filterId);
 	virtual Json::Value eth_getLogs(Json::Value const& _json);
 	virtual Json::Value eth_getWork();
 	virtual bool eth_submitWork(std::string const& _nonce, std::string const&, std::string const& _mixHash);
