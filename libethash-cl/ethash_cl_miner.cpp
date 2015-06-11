@@ -137,8 +137,9 @@ unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 	return devices.size();
 }
 
-bool ethash_cl_miner::configureGPU()
+bool ethash_cl_miner::configureGPU(bool _allowCPU)
 {
+	s_allowCPU = _allowCPU;
 	return searchForAllDevices([](cl::Device const _device) -> bool
 		{
 			cl_ulong result;
@@ -163,11 +164,6 @@ bool ethash_cl_miner::configureGPU()
 }
 
 bool ethash_cl_miner::s_allowCPU = false;
-
-void ethash_cl_miner::allowCPU()
-{
-	s_allowCPU = true;
-}
 
 bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
 {

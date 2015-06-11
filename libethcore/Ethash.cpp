@@ -366,11 +366,6 @@ void Ethash::GPUMiner::pause()
 	stopWorking();
 }
 
-void Ethash::GPUMiner::allowCPU()
-{
-	return ethash_cl_miner::allowCPU();
-}
-
 std::string Ethash::GPUMiner::platformInfo()
 {
 	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
@@ -386,9 +381,11 @@ void Ethash::GPUMiner::listDevices()
 	return ethash_cl_miner::listDevices();
 }
 
-bool Ethash::GPUMiner::configureGPU()
+bool Ethash::GPUMiner::configureGPU(unsigned _platformId, unsigned _deviceId, bool _allowCPU)
 {
-	return ethash_cl_miner::configureGPU();
+	s_platformId = _platformId;
+	s_deviceId = _deviceId;
+	return ethash_cl_miner::configureGPU(_allowCPU);
 }
 
 #endif
