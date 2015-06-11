@@ -267,9 +267,19 @@ bool ethash_cl_miner::init(
 		ETHCL_LOG("Using device: " << device.getInfo<CL_DEVICE_NAME>().c_str() << "(" << device_version.c_str() << ")");
 
 		// configure chunk number depending on max allocateable memory
-		cl_ulong result;		
+		cl_ulong result;
 		device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
-		m_dagChunksNum = result >= ETHASH_CL_MINIMUM_MEMORY ? 4 : 1;
+		if (result >= ETHASH_CL_MINIMUM_MEMORY)
+		{
+			m_dagChunksNum = 1;
+			ETHCL_LOG("Using 1 big chunk. Max OpenCL allocateable memory is" << result);
+		}
+		else
+		{
+			m_dagChunksNum = 4;
+			ETHCL_LOG("Using 4 chunks. Max OpenCL allocateable memory is" << result);
+		}
+
 		if (strncmp("OpenCL 1.0", device_version.c_str(), 10) == 0)
 		{
 			ETHCL_LOG("OpenCL 1.0 is not supported.");
