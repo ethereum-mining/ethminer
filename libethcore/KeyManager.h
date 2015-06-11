@@ -23,8 +23,9 @@
 
 #include <functional>
 #include <mutex>
-#include <libdevcrypto/SecretStore.h>
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/CommonData.h>
+#include <libdevcrypto/SecretStore.h>
 
 namespace dev
 {
@@ -35,14 +36,15 @@ class PasswordUnknown: public Exception {};
 struct KeyInfo
 {
 	KeyInfo() = default;
-	KeyInfo(h256 const& _passHash, std::string const& _info): passHash(_passHash), info(_info) {}
+	KeyInfo(h256 const& _passHash, std::string const& _accountName): passHash(_passHash), accountName(_accountName) {}
 
-	h256 passHash;		///< Hash of the password or h256() if unknown.
-	std::string info;	///< Name of the key, or JSON key info if begins with '{'.
+	h256 passHash; ///< Hash of the password or h256() / UnknownPassword if unknown.
+	std::string accountName; ///< Name of the key, or JSON key info if begins with '{'.
 };
 
-static const h256 UnknownPassword;
-static const auto DontKnowThrow = [](){ throw PasswordUnknown(); return std::string(); };
+static h256 const UnknownPassword;
+/// Password query function that never returns a password.
+static auto const DontKnowThrow = [](){ throw PasswordUnknown(); return std::string(); };
 
 enum class SemanticPassword
 {
@@ -53,12 +55,15 @@ enum class SemanticPassword
 // TODO: This one is specifically for Ethereum, but we can make it generic in due course.
 // TODO: hidden-partition style key-store.
 /**
- * @brief High-level manager of keys for Ethereum.
+ * @brief High-level manager of password-encrypted keys for Ethereum.
  * Usage:
  *
  * Call exists() to check whether there is already a database. If so, get the master password from
  * the user and call load() with it. If not, get a new master password from the user (get them to type
  * it twice and keep some hint around!) and call create() with it.
+ *
+ * Uses a "key file" (and a corresponding .salt file) that contains encrypted information about the keys and
+ * a directory called "secrets path" that contains a file for each key.
  */
 class KeyManager
 {
@@ -75,25 +80,37 @@ public:
 	void save(std::string const& _pass) const { write(_pass, m_keysFile); }
 
 	void notePassword(std::string const& _pass) { m_cachedPasswords[hashPassword(_pass)] = _pass; }
-	void noteHint(std::string const& _pass, std::string const& _hint) { if (!_hint.empty()) m_passwordInfo[hashPassword(_pass)] = _hint; }
+	void noteHint(std::string const& _pass, std::string const& _hint) { if (!_hint.empty()) m_passwordHint[hashPassword(_pass)] = _hint; }
 	bool haveHint(std::string const& _pass) const { auto h = hashPassword(_pass); return m_cachedPasswords.count(h) && !m_cachedPasswords.at(h).empty(); }
 
-	AddressHash accounts() const;
-	std::unordered_map<Address, std::pair<std::string, std::string>> accountDetails() const;
-	std::string const& hint(Address const& _a) const { try { return m_passwordInfo.at(m_keyInfo.at(m_addrLookup.at(_a)).passHash); } catch (...) { return EmptyString; } }
+	/// @returns the list of account addresses.
+	Addresses accounts() const;
+	/// @returns a hashset of all account addresses.
+	AddressHash accountsHash() const { return AddressHash() + accounts(); }
+	bool hasAccount(Address const& _address) const;
+	/// @returns the human-readable name or json-encoded info of the account for the given address.
+	std::string const& accountName(Address const& _address) const;
+	/// @returns the password hint for the account for the given address;
+	std::string const& passwordHint(Address const& _address) const;
 
+	/// @returns the uuid of the key for the address @a _a or the empty hash on error.
 	h128 uuid(Address const& _a) const;
+	/// @returns the address corresponding to the key with uuid @a _uuid or the zero address on error.
 	Address address(h128 const& _uuid) const;
 
-	h128 import(Secret const& _s, std::string const& _info, std::string const& _pass, std::string const& _passInfo);
-	h128 import(Secret const& _s, std::string const& _info) { return import(_s, _info, defaultPassword(), std::string()); }
+	h128 import(Secret const& _s, std::string const& _accountName, std::string const& _pass, std::string const& _passwordHint);
+	h128 import(Secret const& _s, std::string const& _accountName) { return import(_s, _accountName, defaultPassword(), std::string()); }
 
 	SecretStore& store() { return m_store; }
-	void importExisting(h128 const& _uuid, std::string const& _info, std::string const& _pass, std::string const& _passInfo);
-	void importExisting(h128 const& _uuid, std::string const& _info) { importExisting(_uuid, _info, defaultPassword(), std::string()); }
-	void importExisting(h128 const& _uuid, std::string const& _info, Address const& _addr, h256 const& _passHash = h256(), std::string const& _passInfo = std::string());
+	void importExisting(h128 const& _uuid, std::string const& _accountName, std::string const& _pass, std::string const& _passwordHint);
+	void importExisting(h128 const& _uuid, std::string const& _accountName) { importExisting(_uuid, _accountName, defaultPassword(), std::string()); }
+	void importExisting(h128 const& _uuid, std::string const& _accountName, Address const& _addr, h256 const& _passHash = h256(), std::string const& _passwordHint = std::string());
 
+	/// @returns the secret key associated with an address provided the password query
+	/// function @a _pass or the zero-secret key on error.
 	Secret secret(Address const& _address, std::function<std::string()> const& _pass = DontKnowThrow) const;
+	/// @returns the secret key associated with the uuid of a key provided the password query
+	/// function @a _pass or the zero-secret key on error.
 	Secret secret(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
 
 	bool recode(Address const& _address, SemanticPassword _newPass, std::function<std::string()> const& _pass = DontKnowThrow, KDF _kdf = KDF::Scrypt);
@@ -110,6 +127,9 @@ private:
 	std::string defaultPassword(std::function<std::string()> const& _pass = DontKnowThrow) const { return getPassword(m_master, _pass); }
 	h256 hashPassword(std::string const& _pass) const;
 
+	/// Stores the password by its hash in the password cache.
+	void cachePassword(std::string const& _password) const;
+
 	// Only use if previously loaded ok.
 	// @returns false if wasn't previously loaded ok.
 	bool write() const { return write(m_keysFile); }
@@ -118,11 +138,15 @@ private:
 	void write(h128 const& _key, std::string const& _keysFile) const;
 
 	// Ethereum keys.
-	std::unordered_map<Address, h128> m_addrLookup;
-	std::unordered_map<h128, KeyInfo> m_keyInfo;
-	std::unordered_map<h256, std::string> m_passwordInfo;
 
-	// Passwords that we're storing.
+	/// Mapping address -> key uuid.
+	std::unordered_map<Address, h128> m_addrLookup;
+	/// Mapping key uuid -> key info.
+	std::unordered_map<h128, KeyInfo> m_keyInfo;
+	/// Mapping password hash -> password hint.
+	std::unordered_map<h256, std::string> m_passwordHint;
+
+	// Passwords that we're storing. Mapping password hash -> password.
 	mutable std::unordered_map<h256, std::string> m_cachedPasswords;
 
 	// DEPRECATED.
@@ -130,10 +154,10 @@ private:
 	// Now the default password is based off the key of the keys file directly, so this is redundant
 	// except for the fact that people have existing keys stored with it. Leave for now until/unless
 	// we have an upgrade strategy.
-	std::string m_password;
+	std::string m_defaultPasswordDeprecated;
 
 	mutable std::string m_keysFile;
-	mutable h128 m_key;
+	mutable h128 m_keysFileKey;
 	mutable h256 m_master;
 	SecretStore m_store;
 };

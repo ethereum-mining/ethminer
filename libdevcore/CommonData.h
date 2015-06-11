@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <unordered_set>
 #include <type_traits>
 #include <cstring>
 #include <string>
@@ -258,7 +259,7 @@ template <class T, class U> std::set<T>& operator+=(std::set<T>& _a, U const& _b
 	return _a;
 }
 
-/// Insert the contents of a container into an unordered_st
+/// Insert the contents of a container into an unordered_set
 template <class T, class U> std::unordered_set<T>& operator+=(std::unordered_set<T>& _a, U const& _b)
 {
 	for (auto const& i: _b)
@@ -276,6 +277,12 @@ template <class T, class U> std::vector<T>& operator+=(std::vector<T>& _a, U con
 
 /// Insert the contents of a container into a set
 template <class T, class U> std::set<T> operator+(std::set<T> _a, U const& _b)
+{
+	return _a += _b;
+}
+
+/// Insert the contents of a container into an unordered_set
+template <class T, class U> std::unordered_set<T> operator+(std::unordered_set<T> _a, U const& _b)
 {
 	return _a += _b;
 }
