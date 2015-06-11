@@ -120,7 +120,7 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 		r["storage"] = storage;
 	}
 
-	if (returned)
+	if (returned || newContext)
 		r["depth"] = ext.depth;
 	if (newContext)
 		r["address"] = ext.myAddress.hex();

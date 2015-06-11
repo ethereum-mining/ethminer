@@ -594,6 +594,7 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	for (auto const& tr: rlp[1])
 	{
 		StandardTrace st;
+		st.setShowMnemonics();
 		execute(lh, Transaction(tr.data(), CheckTransaction::Everything), Permanence::Committed, [&](uint64_t _steps, Instruction _inst, bigint _newMemSize, bigint _gasCost, bigint _gas, VM* _vm, ExtVMFace const* _extVM) { st(_steps, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM); });
 		ret += (ret.empty() ? "[" : ",") + st.json();
 
