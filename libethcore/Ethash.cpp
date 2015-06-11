@@ -366,6 +366,11 @@ void Ethash::GPUMiner::pause()
 	stopWorking();
 }
 
+void Ethash::GPUMiner::allowCPU()
+{
+	return ethash_cl_miner::allowCPU();
+}
+
 std::string Ethash::GPUMiner::platformInfo()
 {
 	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
