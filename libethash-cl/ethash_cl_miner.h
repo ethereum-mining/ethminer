@@ -12,6 +12,7 @@
 #include "cl.hpp"
 #endif
 
+#include <boost/optional.hpp>
 #include <time.h>
 #include <functional>
 #include <libethash/ethash.h>
@@ -40,7 +41,7 @@ public:
 	static unsigned getNumDevices(unsigned _platformId = 0);
 	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
 	static void listDevices();
-	static bool configureGPU(bool _allowCPU);
+	static bool configureGPU(bool _allowCPU, unsigned _extraGPUMemory, boost::optional<uint64_t> _currentBlock);
 
 	bool init(
 		uint8_t const* _dag,
@@ -73,5 +74,9 @@ private:
 	unsigned m_workgroup_size;
 	bool m_opencl_1_1;
 
+	/// Allow CPU to appear as an OpenCL device or not. Default is false
 	static bool s_allowCPU;
+	/// GPU memory required for other things, like window rendering e.t.c.
+	/// User can set it via the --cl-extragpu-mem argument.
+	static unsigned s_extraRequiredGPUMem;
 };
