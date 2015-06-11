@@ -37,7 +37,6 @@ QFunctionDefinition::QFunctionDefinition(QObject* _parent, dev::solidity::Functi
 QFunctionDefinition::QFunctionDefinition(QObject* _parent, ASTPointer<FunctionDefinition> const& _f): QBasicNodeDefinition(_parent, _f.get()), m_hash(dev::sha3(_f->externalSignature())),
 	m_fullHash(dev::sha3(_f->externalSignature()))
 {
-
 	for (unsigned i = 0; i < _f->getParameters().size(); ++i)
 		m_parameters.append(new QVariableDeclaration(parent(), _f->getParameters().at(i)));
 

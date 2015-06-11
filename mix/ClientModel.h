@@ -273,7 +273,6 @@ private:
 	std::map<Address, QString> m_stdContractNames;
 	CodeModel* m_codeModel = nullptr;
 	QList<QVariantList> m_queueTransactions;
-	QVariantMap m_currentScenario;
 	mutable boost::shared_mutex x_queueTransactions;
 };
 
