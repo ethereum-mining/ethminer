@@ -88,7 +88,6 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		if (isEnd)
 		{
 			auto beginIdx = begin - _codeBegin;
-			std::cerr << "BB #" << beginIdx << ": " << (next - begin) << "B\n";
 			m_basicBlocks.emplace(std::piecewise_construct, std::forward_as_tuple(beginIdx),
 					std::forward_as_tuple(beginIdx, begin, next, m_mainFunc, m_builder, nextJumpDest));
 			nextJumpDest = false;
