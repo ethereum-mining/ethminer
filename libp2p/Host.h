@@ -99,6 +99,7 @@ public:
 
 private:
 	std::unordered_map<std::pair<p2p::NodeId, std::string>, Reputation> m_nodes;	///< Nodes that were impolite while syncing. We avoid syncing from these if possible.
+	SharedMutex mutable x_nodes;
 };
 
 /**
