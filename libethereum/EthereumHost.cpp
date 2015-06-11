@@ -368,7 +368,7 @@ void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes, bool 
 	if (_complete)
 	{
 		m_needSyncBlocks = true;
-		continueSync(_peer);
+		continueSync();
 	}
 	else if (syncByNumber && m_hashMan.isComplete())
 	{
@@ -541,7 +541,7 @@ void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 			_peer->m_knownBlocks.insert(h);
 
 		if (sync)
-			continueSync(_peer);
+			continueSync();
 	}
 }
 
