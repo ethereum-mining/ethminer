@@ -132,10 +132,6 @@ public:
 			ProofOfWork::GPUMiner::listDevices();
 			exit(0);
 		}
-		else if (arg == "--use-chunks")
-		{
-			dagChunks = 4;
-		}
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -180,7 +176,7 @@ public:
 			m_minerType = MinerType::CPU;
 		else if (arg == "-G" || arg == "--opencl")
 		{
-			if (!ProofOfWork::GPUMiner::haveSufficientMemory())
+			if (!ProofOfWork::GPUMiner::configureGPU())
 			{
 				cout << "No GPU device with sufficient memory was found. Defaulting to CPU" << endl;
 				m_minerType = MinerType::CPU;
@@ -273,7 +269,6 @@ public:
 			ProofOfWork::GPUMiner::setDefaultPlatform(openclPlatform);
 			ProofOfWork::GPUMiner::setDefaultDevice(openclDevice);
 			ProofOfWork::GPUMiner::setNumInstances(miningThreads);
-			ProofOfWork::GPUMiner::setDagChunks(dagChunks);
 		}
 		if (mode == OperationMode::DAGInit)
 			doInitDAG(initDAG);
@@ -311,7 +306,6 @@ public:
 			<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
 			<< "    --opencl-device <n>  When mining using -G/--opencl use OpenCL device n (default: 0)." << endl
 			<< "    -t, --mining-threads <n> Limit number of CPU/GPU miners to n (default: use everything available on selected platform)" << endl
-			<< "    --use-chunks When using GPU mining upload the DAG to the GPU in 4 chunks. " << endl
 			;
 	}
 
