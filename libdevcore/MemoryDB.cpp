@@ -32,7 +32,9 @@ const char* DBWarn::name() { return "TDB"; }
 
 std::unordered_map<h256, std::string> MemoryDB::get() const
 {
+#if DEV_GUARDED_DB
 	ReadGuard l(x_this);
+#endif
 	std::unordered_map<h256, std::string> ret;
 	for (auto const& i: m_main)
 		if (!m_enforceRefs || i.second.second > 0)
@@ -44,8 +46,10 @@ MemoryDB& MemoryDB::operator=(MemoryDB const& _c)
 {
 	if (this == &_c)
 		return *this;
+#if DEV_GUARDED_DB
 	ReadGuard l(_c.x_this);
 	WriteGuard l2(x_this);
+#endif
 	m_main = _c.m_main;
 	m_aux = _c.m_aux;
 	return *this;
@@ -53,7 +57,9 @@ MemoryDB& MemoryDB::operator=(MemoryDB const& _c)
 
 std::string MemoryDB::lookup(h256 const& _h) const
 {
+#if DEV_GUARDED_DB
 	ReadGuard l(x_this);
+#endif
 	auto it = m_main.find(_h);
 	if (it != m_main.end())
 	{
@@ -67,7 +73,9 @@ std::string MemoryDB::lookup(h256 const& _h) const
 
 bool MemoryDB::exists(h256 const& _h) const
 {
+#if DEV_GUARDED_DB
 	ReadGuard l(x_this);
+#endif
 	auto it = m_main.find(_h);
 	if (it != m_main.end() && (!m_enforceRefs || it->second.second > 0))
 		return true;
@@ -76,7 +84,9 @@ bool MemoryDB::exists(h256 const& _h) const
 
 void MemoryDB::insert(h256 const& _h, bytesConstRef _v)
 {
+#if DEV_GUARDED_DB
 	WriteGuard l(x_this);
+#endif
 	auto it = m_main.find(_h);
 	if (it != m_main.end())
 	{
@@ -92,7 +102,9 @@ void MemoryDB::insert(h256 const& _h, bytesConstRef _v)
 
 bool MemoryDB::kill(h256 const& _h)
 {
+#if DEV_GUARDED_DB
 	ReadGuard l(x_this);
+#endif
 	if (m_main.count(_h))
 	{
 		if (m_main[_h].second > 0)
@@ -117,9 +129,38 @@ bool MemoryDB::kill(h256 const& _h)
 	return false;
 }
 
+bytes MemoryDB::lookupAux(h256 const& _h) const
+{
+#if DEV_GUARDED_DB
+	ReadGuard l(x_this);
+#endif
+	auto it = m_aux.find(_h);
+	if (it != m_aux.end() && (!m_enforceRefs || it->second.second))
+		return it->second.first;
+	return bytes();
+}
+
+void MemoryDB::removeAux(h256 const& _h)
+{
+#if DEV_GUARDED_DB
+	WriteGuard l(x_this);
+#endif
+	m_aux[_h].second = false;
+}
+
+void MemoryDB::insertAux(h256 const& _h, bytesConstRef _v)
+{
+#if DEV_GUARDED_DB
+	WriteGuard l(x_this);
+#endif
+	m_aux[_h] = make_pair(_v.toBytes(), true);
+}
+
 void MemoryDB::purge()
 {
+#if DEV_GUARDED_DB
 	WriteGuard l(x_this);
+#endif
 	for (auto it = m_main.begin(); it != m_main.end(); )
 		if (it->second.second)
 			++it;
@@ -129,7 +170,9 @@ void MemoryDB::purge()
 
 h256Hash MemoryDB::keys() const
 {
+#if DEV_GUARDED_DB
 	ReadGuard l(x_this);
+#endif
 	h256Hash ret;
 	for (auto const& i: m_main)
 		if (i.second.second)

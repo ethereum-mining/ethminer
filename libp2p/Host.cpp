@@ -55,6 +55,25 @@ void HostNodeTableHandler::processEvent(NodeId const& _n, NodeTableEventType con
 	m_host.onNodeTableEvent(_n, _e);
 }
 
+ReputationManager::ReputationManager()
+{
+}
+
+void ReputationManager::noteRude(Session const& _s, std::string const& _sub)
+{
+	m_nodes[make_pair(_s.id(), _s.info().clientVersion)].subs[_sub].isRude = true;
+}
+
+bool ReputationManager::isRude(Session const& _s, std::string const& _sub) const
+{
+	auto nit = m_nodes.find(make_pair(_s.id(), _s.info().clientVersion));
+	if (nit == m_nodes.end())
+		return false;
+	auto sit = nit->second.subs.find(_sub);
+	bool ret = sit == nit->second.subs.end() ? false : sit->second.isRude;
+	return _sub.empty() ? ret : (ret || isRude(_s));
+}
+
 Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork):
 	Worker("p2p", 0),
 	m_restoreNetwork(_restoreNetwork.toBytes()),
@@ -834,7 +853,7 @@ KeyPair Host::networkAlias(bytesConstRef _b)
 {
 	RLP r(_b);
 	if (r.itemCount() == 3 && r[0].isInt() && r[0].toInt<unsigned>() >= 3)
-		return move(KeyPair(move(Secret(r[1].toBytes()))));
+		return KeyPair(Secret(r[1].toBytes()));
 	else
-		return move(KeyPair::create());
+		return KeyPair::create();
 }

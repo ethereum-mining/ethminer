@@ -410,7 +410,14 @@ void InheritanceSpecifier::checkTypeRequirements()
 		BOOST_THROW_EXCEPTION(createTypeError("Wrong argument count for constructor call."));
 	for (size_t i = 0; i < m_arguments.size(); ++i)
 		if (!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameterTypes[i]))
-			BOOST_THROW_EXCEPTION(createTypeError("Invalid type for argument in constructer call."));
+			BOOST_THROW_EXCEPTION(m_arguments[i]->createTypeError(
+				"Invalid type for argument in constructor call. "
+				"Invalid implicit conversion from " +
+				m_arguments[i]->getType()->toString() +
+				" to " +
+				parameterTypes[i]->toString() +
+				" requested."
+			));
 }
 
 TypePointer StructDefinition::getType(ContractDefinition const*) const
@@ -462,9 +469,6 @@ void FunctionDefinition::checkTypeRequirements()
 	{
 		if (!var->getType()->canLiveOutsideStorage())
 			BOOST_THROW_EXCEPTION(var->createTypeError("Type is required to live outside storage."));
-		// todo delete when will be implemented arrays as parameter type in internal functions
-		if (getVisibility() == Visibility::Public && var->getType()->getCategory() == Type::Category::Array)
-			BOOST_THROW_EXCEPTION(var->createTypeError("Arrays only implemented for external functions."));
 		if (getVisibility() >= Visibility::Public && !(var->getType()->externalType()))
 			BOOST_THROW_EXCEPTION(var->createTypeError("Internal type is not allowed for public and external functions."));
 	}
@@ -592,7 +596,14 @@ void ModifierInvocation::checkTypeRequirements(vector<ContractDefinition const*>
 		BOOST_THROW_EXCEPTION(createTypeError("Wrong argument count for modifier invocation."));
 	for (size_t i = 0; i < m_arguments.size(); ++i)
 		if (!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*(*parameters)[i]->getType()))
-			BOOST_THROW_EXCEPTION(createTypeError("Invalid type for argument in modifier invocation."));
+			BOOST_THROW_EXCEPTION(m_arguments[i]->createTypeError(
+				"Invalid type for argument in modifier invocation. "
+				"Invalid implicit conversion from " +
+				m_arguments[i]->getType()->toString() +
+				" to " +
+				(*parameters)[i]->getType()->toString() +
+				" requested."
+			));
 }
 
 void EventDefinition::checkTypeRequirements()
@@ -782,9 +793,18 @@ void FunctionCall::checkTypeRequirements(TypePointers const*)
 		{
 			// call by positional arguments
 			for (size_t i = 0; i < m_arguments.size(); ++i)
-				if (!functionType->takesArbitraryParameters() &&
-						!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameterTypes[i]))
-					BOOST_THROW_EXCEPTION(m_arguments[i]->createTypeError("Invalid type for argument in function call."));
+				if (
+					!functionType->takesArbitraryParameters() &&
+					!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameterTypes[i])
+				)
+					BOOST_THROW_EXCEPTION(m_arguments[i]->createTypeError(
+						"Invalid type for argument in function call. "
+						"Invalid implicit conversion from " +
+						m_arguments[i]->getType()->toString() +
+						" to " +
+						parameterTypes[i]->toString() +
+						" requested."
+					));
 		}
 		else
 		{
@@ -808,7 +828,14 @@ void FunctionCall::checkTypeRequirements(TypePointers const*)
 					if (parameterNames[j] == *m_names[i]) {
 						// check type convertible
 						if (!m_arguments[i]->getType()->isImplicitlyConvertibleTo(*parameterTypes[j]))
-							BOOST_THROW_EXCEPTION(createTypeError("Invalid type for argument in function call."));
+							BOOST_THROW_EXCEPTION(m_arguments[i]->createTypeError(
+								"Invalid type for argument in function call. "
+								"Invalid implicit conversion from " +
+								m_arguments[i]->getType()->toString() +
+								" to " +
+								parameterTypes[i]->toString() +
+								" requested."
+							));
 
 						found = true;
 						break;
