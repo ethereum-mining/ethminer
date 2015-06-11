@@ -49,6 +49,13 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		return _curr + offset;
 	};
 
+	// Skip all STOPs in the end
+	for (; _codeEnd != _codeBegin; --_codeEnd)
+	{
+		if (*(_codeEnd - 1) != static_cast<byte>(Instruction::STOP))
+			break;
+	}
+
 	auto begin = _codeBegin; // begin of current block
 	bool nextJumpDest = false;
 	for (auto curr = begin, next = begin; curr != _codeEnd; curr = next)
@@ -81,6 +88,7 @@ void Compiler::createBasicBlocks(code_iterator _codeBegin, code_iterator _codeEn
 		if (isEnd)
 		{
 			auto beginIdx = begin - _codeBegin;
+			std::cerr << "BB #" << beginIdx << ": " << (next - begin) << "B\n";
 			m_basicBlocks.emplace(std::piecewise_construct, std::forward_as_tuple(beginIdx),
 					std::forward_as_tuple(beginIdx, begin, next, m_mainFunc, m_builder, nextJumpDest));
 			nextJumpDest = false;
