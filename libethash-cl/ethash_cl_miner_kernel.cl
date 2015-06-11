@@ -275,8 +275,6 @@ uint inner_loop_chunks(uint4 init, uint thread_id, __local uint* share, __global
 	return fnv_reduce(mix);
 }
 
-
-
 uint inner_loop(uint4 init, uint thread_id, __local uint* share, __global hash128_t const* g_dag, uint isolate)
 {
 	uint4 mix = init;

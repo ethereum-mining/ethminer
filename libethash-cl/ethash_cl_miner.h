@@ -41,6 +41,7 @@ public:
 	static std::string platform_info(unsigned _platformId = 0, unsigned _deviceId = 0);
 	static void listDevices();
 	static bool configureGPU();
+	static void allowCPU();
 
 	bool init(
 		uint8_t const* _dag,
@@ -56,6 +57,9 @@ public:
 	void search_chunk(uint8_t const* header, uint64_t target, search_hook& hook);
 
 private:
+
+	static std::vector<cl::Device> getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId);
+	
 	enum { c_max_search_results = 63, c_num_buffers = 2, c_hash_batch_size = 1024, c_search_batch_size = 1024*256 };
 
 	cl::Context m_context;
@@ -70,4 +74,5 @@ private:
 	unsigned m_workgroup_size;
 	bool m_opencl_1_1;
 
+	static bool s_allowCPU;
 };
