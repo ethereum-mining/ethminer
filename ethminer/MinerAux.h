@@ -132,6 +132,8 @@ public:
 			ProofOfWork::GPUMiner::listDevices();
 			exit(0);
 		}
+		else if (arg == "--allow-opencl-cpu")
+			ProofOfWork::GPUMiner::allowCPU();
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
 			string m = argv[++i];
