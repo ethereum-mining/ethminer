@@ -52,11 +52,11 @@ using namespace std;
 // TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
 #define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
 
-static void add_definition(std::string& source, char const* id, unsigned value)
+static void addDefinition(string& _source, char const* _id, unsigned _value)
 {
 	char buf[256];
-	sprintf(buf, "#define %s %uu\n", id, value);
-	source.insert(source.begin(), buf, buf + strlen(buf));
+	sprintf(buf, "#define %s %uu\n", _id, _value);
+	_source.insert(_source.begin(), buf, buf + strlen(buf));
 }
 
 ethash_cl_miner::search_hook::~search_hook() {}
@@ -71,44 +71,44 @@ ethash_cl_miner::~ethash_cl_miner()
 	finish();
 }
 
-std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
+string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
 {
-	std::vector<cl::Platform> platforms;
+	vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
 	if (platforms.empty())
 	{
 		ETHCL_LOG("No OpenCL platforms found.");
-		return std::string();
+		return string();
 	}
 
 	// get GPU device of the selected platform
-	std::vector<cl::Device> devices;
-	unsigned platform_num = std::min<unsigned>(_platformId, platforms.size() - 1);
+	vector<cl::Device> devices;
+	unsigned platform_num = min<unsigned>(_platformId, platforms.size() - 1);
 	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 	if (devices.empty())
 	{
 		ETHCL_LOG("No OpenCL devices found.");
-		return std::string();
+		return string();
 	}
 
 	// use selected default device
-	unsigned device_num = std::min<unsigned>(_deviceId, devices.size() - 1);
+	unsigned device_num = min<unsigned>(_deviceId, devices.size() - 1);
 	cl::Device& device = devices[device_num];
-	std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
+	string device_version = device.getInfo<CL_DEVICE_VERSION>();
 
 	return "{ \"platform\": \"" + platforms[platform_num].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
 }
 
-unsigned ethash_cl_miner::get_num_platforms()
+unsigned ethash_cl_miner::getNumPlatforms()
 {
-	std::vector<cl::Platform> platforms;
+	vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
 	return platforms.size();
 }
 
-unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
+unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 {
-	std::vector<cl::Platform> platforms;
+	vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
 	if (platforms.empty())
 	{
@@ -116,8 +116,8 @@ unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
 		return 0;
 	}
 
-	std::vector<cl::Device> devices;
-	unsigned platform_num = std::min<unsigned>(_platformId, platforms.size() - 1);
+	vector<cl::Device> devices;
+	unsigned platform_num = min<unsigned>(_platformId, platforms.size() - 1);
 	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 	if (devices.empty())
 	{
@@ -127,9 +127,34 @@ unsigned ethash_cl_miner::get_num_devices(unsigned _platformId)
 	return devices.size();
 }
 
-bool ethash_cl_miner::haveSufficientGPUMemory()
+bool ethash_cl_miner::configureGPU()
 {
-	std::vector<cl::Platform> platforms;
+	return searchForAllDevices([](cl::Device const _device) -> bool
+		{
+			cl_ulong result;
+			_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
+			if (result >= ETHASH_CL_MINIMUM_MEMORY)
+			{
+				ETHCL_LOG(
+					"Found suitable OpenCL device [" << _device.getInfo<CL_DEVICE_NAME>()
+					<< "] with " << result << " bytes of GPU memory"
+				);
+				return true;
+			}
+			
+			ETHCL_LOG(
+				"OpenCL device " << _device.getInfo<CL_DEVICE_NAME>()
+				<< " has insufficient GPU memory." << result <<
+				" bytes of memory found < " << ETHASH_CL_MINIMUM_MEMORY << " bytes of memory required"
+			);
+			return false;
+		}
+	);
+}
+
+bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
+{
+	vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
 	if (platforms.empty())
 	{
@@ -137,77 +162,64 @@ bool ethash_cl_miner::haveSufficientGPUMemory()
 		return false;
 	}
 	for (unsigned i = 0; i < platforms.size(); ++i)
-		if (haveSufficientGPUMemory(i))
+		if (searchForAllDevices(i, _callback))
 			return true;
 
 	return false;
 }
 
-bool ethash_cl_miner::haveSufficientGPUMemory(unsigned _platformId)
+bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl::Device const&)> _callback)
 {
-	std::vector<cl::Platform> platforms;
+	vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
 	if (_platformId >= platforms.size())
 		return false;
 
-	std::vector<cl::Device> devices;
-	unsigned platform_num = std::min<unsigned>(_platformId, platforms.size() - 1);
-	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
-	if (devices.empty())
-		return false;
-
+	vector<cl::Device> devices;
+	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 	for (cl::Device const& device: devices)
-	{
-		cl_ulong result;
-		device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-		if (result >= ETHASH_CL_MINIMUM_MEMORY)
-		{
-			ETHCL_LOG(
-				"Found suitable OpenCL device [" << device.getInfo<CL_DEVICE_NAME>()
-				<< "] with " << result << " bytes of GPU memory"
-			);
+		if (_callback(device))
 			return true;
-		}
-		else
-			ETHCL_LOG(
-				"OpenCL device " << device.getInfo<CL_DEVICE_NAME>()
-				<< " has insufficient GPU memory." << result <<
-				" bytes of memory found < " << ETHASH_CL_MINIMUM_MEMORY << " bytes of memory required"
-			);
-	}
+		
 	return false;
+}
+
+void ethash_cl_miner::doForAllDevices(function<void(cl::Device const&)> _callback)
+{
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (platforms.empty())
+	{
+		ETHCL_LOG("No OpenCL platforms found.");
+		return;
+	}
+	for (unsigned i = 0; i < platforms.size(); ++i)
+		doForAllDevices(i, _callback);
+}
+
+void ethash_cl_miner::doForAllDevices(unsigned _platformId, function<void(cl::Device const&)> _callback)
+{
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (_platformId >= platforms.size())
+		return;
+
+	vector<cl::Device> devices;
+	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
+	for (cl::Device const& device: devices)
+		_callback(device);
 }
 
 void ethash_cl_miner::listDevices()
 {
-	std::vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
-	if (platforms.empty())
-	{
-		ETHCL_LOG("No OpenCL platforms found.");
-		return;
-	}
-	for (unsigned i = 0; i < platforms.size(); ++i)
-		listDevices(i);
-}
-
-void ethash_cl_miner::listDevices(unsigned _platformId)
-{
-	std::vector<cl::Platform> platforms;
-	cl::Platform::get(&platforms);
-	if (_platformId >= platforms.size())
-		return;
-
-	std::string outString ="Listing OpenCL devices for platform "  + to_string(_platformId) + "\n[deviceID] deviceName\n";
-	std::vector<cl::Device> devices;
-	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
-	unsigned i = 0;
-	std::string deviceString;
-	for (cl::Device const& device: devices)
-	{
-		outString += "[" + to_string(i) + "] " + device.getInfo<CL_DEVICE_NAME>() + "\n";
-		++i;
-	}
+	string outString ="\nListing OpenCL devices.\nFORMAT: [deviceID] deviceName\n";
+	unsigned int i = 0;
+	doForAllDevices([&outString, &i](cl::Device const _device)
+		{
+			outString += "[" + to_string(i) + "] " + _device.getInfo<CL_DEVICE_NAME>() + "\n";
+			++i;
+		}
+	);
 	ETHCL_LOG(outString);
 }
 
@@ -222,19 +234,13 @@ bool ethash_cl_miner::init(
 	uint64_t _dagSize,
 	unsigned workgroup_size,
 	unsigned _platformId,
-	unsigned _deviceId,
-	unsigned _dagChunksNum
+	unsigned _deviceId
 )
 {
-	// for now due to the .cl kernels we can only have either 1 big chunk or 4 chunks
-	assert(_dagChunksNum == 1 || _dagChunksNum == 4);
-	// now create the number of chunk buffers
-	m_dagChunksNum = _dagChunksNum;
-
 	// get all platforms
 	try
 	{
-		std::vector<cl::Platform> platforms;
+		vector<cl::Platform> platforms;
 		cl::Platform::get(&platforms);
 		if (platforms.empty())
 		{
@@ -243,11 +249,11 @@ bool ethash_cl_miner::init(
 		}
 
 		// use selected platform
-		_platformId = std::min<unsigned>(_platformId, platforms.size() - 1);
+		_platformId = min<unsigned>(_platformId, platforms.size() - 1);
 		ETHCL_LOG("Using platform: " << platforms[_platformId].getInfo<CL_PLATFORM_NAME>().c_str());
 
 		// get GPU device of the default platform
-		std::vector<cl::Device> devices;
+		vector<cl::Device> devices;
 		platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
 		if (devices.empty())
 		{
@@ -256,9 +262,23 @@ bool ethash_cl_miner::init(
 		}
 
 		// use selected device
-		cl::Device& device = devices[std::min<unsigned>(_deviceId, devices.size() - 1)];
-		std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
+		cl::Device& device = devices[min<unsigned>(_deviceId, devices.size() - 1)];
+		string device_version = device.getInfo<CL_DEVICE_VERSION>();
 		ETHCL_LOG("Using device: " << device.getInfo<CL_DEVICE_NAME>().c_str() << "(" << device_version.c_str() << ")");
+
+		// configure chunk number depending on max allocateable memory
+		cl_ulong result;
+		device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
+		if (result >= ETHASH_CL_MINIMUM_MEMORY)
+		{
+			m_dagChunksNum = 1;
+			ETHCL_LOG("Using 1 big chunk. Max OpenCL allocateable memory is" << result);
+		}
+		else
+		{
+			m_dagChunksNum = 4;
+			ETHCL_LOG("Using 4 chunks. Max OpenCL allocateable memory is" << result);
+		}
 
 		if (strncmp("OpenCL 1.0", device_version.c_str(), 10) == 0)
 		{
@@ -269,7 +289,7 @@ bool ethash_cl_miner::init(
 			m_opencl_1_1 = true;
 
 		// create context
-		m_context = cl::Context(std::vector<cl::Device>(&device, &device + 1));
+		m_context = cl::Context(vector<cl::Device>(&device, &device + 1));
 		m_queue = cl::CommandQueue(m_context, device);
 
 		// use requested workgroup size, but we require multiple of 8
@@ -278,11 +298,11 @@ bool ethash_cl_miner::init(
 		// patch source code
 		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
 		// into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
-		std::string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
-		add_definition(code, "GROUP_SIZE", m_workgroup_size);
-		add_definition(code, "DAG_SIZE", (unsigned)(_dagSize / ETHASH_MIX_BYTES));
-		add_definition(code, "ACCESSES", ETHASH_ACCESSES);
-		add_definition(code, "MAX_OUTPUTS", c_max_search_results);
+		string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
+		addDefinition(code, "GROUP_SIZE", m_workgroup_size);
+		addDefinition(code, "DAG_SIZE", (unsigned)(_dagSize / ETHASH_MIX_BYTES));
+		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
+		addDefinition(code, "MAX_OUTPUTS", c_max_search_results);
 		//debugf("%s", code.c_str());
 
 		// create miner OpenCL program
@@ -301,7 +321,7 @@ bool ethash_cl_miner::init(
 			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
 			return false;
 		}
-		if (_dagChunksNum == 1)
+		if (m_dagChunksNum == 1)
 		{
 			ETHCL_LOG("Loading single big chunk kernels");
 			m_hash_kernel = cl::Kernel(program, "ethash_hash");
@@ -315,13 +335,13 @@ bool ethash_cl_miner::init(
 		}
 
 		// create buffer for dag
-		if (_dagChunksNum == 1)
+		if (m_dagChunksNum == 1)
 		{
 			ETHCL_LOG("Creating one big buffer");
 			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
 		}
 		else
-			for (unsigned i = 0; i < _dagChunksNum; i++)
+			for (unsigned i = 0; i < m_dagChunksNum; i++)
 			{
 				// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
 				ETHCL_LOG("Creating buffer for chunk " << i);
@@ -336,7 +356,7 @@ bool ethash_cl_miner::init(
 		ETHCL_LOG("Creating buffer for header.");
 		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
 
-		if (_dagChunksNum == 1)
+		if (m_dagChunksNum == 1)
 		{
 			ETHCL_LOG("Mapping one big chunk.");
 			m_queue.enqueueWriteBuffer(m_dagChunks[0], CL_TRUE, 0, _dagSize, _dag);
@@ -345,12 +365,12 @@ bool ethash_cl_miner::init(
 		{
 			// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
 			void* dag_ptr[4];
-			for (unsigned i = 0; i < _dagChunksNum; i++)
+			for (unsigned i = 0; i < m_dagChunksNum; i++)
 			{
 				ETHCL_LOG("Mapping chunk " << i);
 				dag_ptr[i] = m_queue.enqueueMapBuffer(m_dagChunks[i], true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
 			}
-			for (unsigned i = 0; i < _dagChunksNum; i++)
+			for (unsigned i = 0; i < m_dagChunksNum; i++)
 			{
 				memcpy(dag_ptr[i], (char *)_dag + i*((_dagSize >> 9) << 7), (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
 				m_queue.enqueueUnmapMemObject(m_dagChunks[i], dag_ptr[i]);
@@ -382,7 +402,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 			uint64_t start_nonce;
 			unsigned buf;
 		};
-		std::queue<pending_batch> pending;
+		queue<pending_batch> pending;
 
 		static uint32_t const c_zero = 0;
 
@@ -408,8 +428,8 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 		m_search_kernel.setArg(argPos + 2, ~0u);
 
 		unsigned buf = 0;
-		std::random_device engine;
-		uint64_t start_nonce = std::uniform_int_distribution<uint64_t>()(engine);
+		random_device engine;
+		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
 		for (;; start_nonce += c_search_batch_size)
 		{
 			// supply output buffer to kernel
@@ -432,7 +452,7 @@ void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook
 
 				// could use pinned host pointer instead
 				uint32_t* results = (uint32_t*)m_queue.enqueueMapBuffer(m_search_buf[batch.buf], true, CL_MAP_READ, 0, (1 + c_max_search_results) * sizeof(uint32_t));
-				unsigned num_found = std::min<unsigned>(results[0], c_max_search_results);
+				unsigned num_found = min<unsigned>(results[0], c_max_search_results);
 
 				uint64_t nonces[c_max_search_results];
 				for (unsigned i = 0; i != num_found; ++i)

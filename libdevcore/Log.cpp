@@ -40,7 +40,7 @@ mutex x_logOverride;
 /// or equal to the currently output verbosity (g_logVerbosity).
 static map<type_info const*, bool> s_logOverride;
 
-bool isLogVisible(std::type_info const* _ch, bool _default)
+bool dev::isChannelVisible(std::type_info const* _ch, bool _default)
 {
 	Guard l(x_logOverride);
 	if (s_logOverride.count(_ch))
