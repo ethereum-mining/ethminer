@@ -52,21 +52,27 @@ void Compiler::compileContract(ContractDefinition const& _contract,
 							   map<ContractDefinition const*, bytes const*> const& _contracts)
 {
 	m_context = CompilerContext(); // clear it just in case
-	initializeContext(_contract, _contracts);
-	appendFunctionSelector(_contract);
-	set<Declaration const*> functions = m_context.getFunctionsWithoutCode();
-	while (!functions.empty())
 	{
-		for (Declaration const* function: functions)
+		CompilerContext::LocationSetter locationSetterRunTime(m_context, _contract);
+		CompilerUtils(m_context).initialiseFreeMemoryPointer();
+		initializeContext(_contract, _contracts);
+		appendFunctionSelector(_contract);
+		set<Declaration const*> functions = m_context.getFunctionsWithoutCode();
+		while (!functions.empty())
 		{
-			m_context.setStackOffset(0);
-			function->accept(*this);
+			for (Declaration const* function: functions)
+			{
+				m_context.setStackOffset(0);
+				function->accept(*this);
+			}
+			functions = m_context.getFunctionsWithoutCode();
 		}
-		functions = m_context.getFunctionsWithoutCode();
 	}
 
 	// Swap the runtime context with the creation-time context
 	swap(m_context, m_runtimeContext);
+	CompilerContext::LocationSetter locationSetterCreationTime(m_context, _contract);
+	CompilerUtils(m_context).initialiseFreeMemoryPointer();
 	initializeContext(_contract, _contracts);
 	packIntoContractCreator(_contract, m_runtimeContext);
 	if (m_optimize)
@@ -233,31 +239,42 @@ void Compiler::appendCalldataUnpacker(TypePointers const& _typeParameters, bool 
 	m_context << u256(CompilerUtils::dataStartOffset);
 	for (TypePointer const& type: _typeParameters)
 	{
-		switch (type->getCategory())
+		if (type->getCategory() == Type::Category::Array)
 		{
-		case Type::Category::Array:
-			if (type->isDynamicallySized())
+			auto const& arrayType = dynamic_cast<ArrayType const&>(*type);
+			if (arrayType.location() == ReferenceType::Location::CallData)
 			{
-				// put on stack: data_pointer length
-				CompilerUtils(m_context).loadFromMemoryDynamic(IntegerType(256), !_fromMemory);
-				// stack: data_offset next_pointer
-				//@todo once we support nested arrays, this offset needs to be dynamic.
-				m_context << eth::Instruction::SWAP1 << u256(CompilerUtils::dataStartOffset);
-				m_context << eth::Instruction::ADD;
-				// stack: next_pointer data_pointer
-				// retrieve length
-				CompilerUtils(m_context).loadFromMemoryDynamic(IntegerType(256), !_fromMemory, true);
-				// stack: next_pointer length data_pointer
-				m_context << eth::Instruction::SWAP2;
+				if (type->isDynamicallySized())
+				{
+					// put on stack: data_pointer length
+					CompilerUtils(m_context).loadFromMemoryDynamic(IntegerType(256), !_fromMemory);
+					// stack: data_offset next_pointer
+					//@todo once we support nested arrays, this offset needs to be dynamic.
+					m_context << eth::Instruction::SWAP1 << u256(CompilerUtils::dataStartOffset);
+					m_context << eth::Instruction::ADD;
+					// stack: next_pointer data_pointer
+					// retrieve length
+					CompilerUtils(m_context).loadFromMemoryDynamic(IntegerType(256), !_fromMemory, true);
+					// stack: next_pointer length data_pointer
+					m_context << eth::Instruction::SWAP2;
+				}
+				else
+				{
+					// leave the pointer on the stack
+					m_context << eth::Instruction::DUP1;
+					m_context << u256(type->getCalldataEncodedSize()) << eth::Instruction::ADD;
+				}
 			}
 			else
 			{
-				// leave the pointer on the stack
-				m_context << eth::Instruction::DUP1;
-				m_context << u256(type->getCalldataEncodedSize()) << eth::Instruction::ADD;
+				solAssert(arrayType.location() == ReferenceType::Location::Memory, "");
+				CompilerUtils(m_context).fetchFreeMemoryPointer();
+				CompilerUtils(m_context).storeInMemoryDynamic(*type);
+				CompilerUtils(m_context).storeFreeMemoryPointer();
 			}
-			break;
-		default:
+		}
+		else
+		{
 			solAssert(!type->isDynamicallySized(), "Unknown dynamically sized type: " + type->toString());
 			CompilerUtils(m_context).loadFromMemoryDynamic(*type, !_fromMemory, true);
 		}

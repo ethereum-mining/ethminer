@@ -183,8 +183,8 @@ struct NodeIPEndpoint
 	uint16_t udpPort = 0;
 	uint16_t tcpPort = 0;
 	
-	operator bi::udp::endpoint() const { return std::move(bi::udp::endpoint(address, udpPort)); }
-	operator bi::tcp::endpoint() const { return std::move(bi::tcp::endpoint(address, tcpPort)); }
+	operator bi::udp::endpoint() const { return bi::udp::endpoint(address, udpPort); }
+	operator bi::tcp::endpoint() const { return bi::tcp::endpoint(address, tcpPort); }
 	
 	operator bool() const { return !address.is_unspecified() && udpPort > 0 && tcpPort > 0; }
 	

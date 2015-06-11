@@ -70,6 +70,11 @@ Session::~Session()
 	delete m_io;
 }
 
+ReputationManager& Session::repMan() const
+{
+	return m_server->repMan();
+}
+
 NodeId Session::id() const
 {
 	return m_peer ? m_peer->id : NodeId();
@@ -450,6 +455,7 @@ void Session::doRead()
 				else if (ec && length < tlen)
 				{
 					clog(NetWarn) << "Error reading - Abrupt peer disconnect: " << ec.message();
+					repMan().noteRude(*this);
 					drop(TCPError);
 					return;
 				}

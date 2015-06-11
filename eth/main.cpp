@@ -135,6 +135,7 @@ void help()
 		<< "    --session-sign-key <address>  Sign all transactions with the key of the given address for this session only." << endl
 		<< "    --master <password>  Give the master password for the key store." << endl
 		<< "    --password <password>  Give a password for a private key." << endl
+		<< "    --sentinel <server>  Set the sentinel for reporting bad blocks or chain issues." << endl
 		<< endl
 		<< "Client transacting:" << endl
 		/*<< "    -B,--block-fees <n>  Set the block fee profit in the reference unit e.g. ¢ (default: 15)." << endl
@@ -147,6 +148,7 @@ void help()
 		<< "    -a,--address <addr>  Set the coinbase (mining payout) address to addr (default: auto)." << endl
 		<< "    -m,--mining <on/off/number>  Enable mining, optionally for a specified number of blocks (default: off)" << endl
 		<< "    -f,--force-mining  Mine even when there are no transactions to mine (default: off)" << endl
+		<< "    --mine-on-wrong-chain  Mine even when we know it's the wrong chain (default: off)" << endl
 		<< "    -C,--cpu  When mining, use the CPU." << endl
 		<< "    -G,--opencl  When mining use the GPU via OpenCL." << endl
 		<< "    --opencl-platform <n>  When mining using -G/--opencl use OpenCL platform n (default: 0)." << endl
@@ -288,6 +290,7 @@ int main(int argc, char** argv)
 	bool upnp = true;
 	WithExisting killChain = WithExisting::Trust;
 	bool jit = false;
+	string sentinel;
 
 	/// Networking params.
 	string clientName;
@@ -303,6 +306,7 @@ int main(int argc, char** argv)
 	/// Mining params
 	unsigned mining = 0;
 	bool forceMining = false;
+	bool mineOnWrongChain = false;
 	Address signingKey;
 	Address sessionKey;
 	Address beneficiary = signingKey;
@@ -385,6 +389,10 @@ int main(int argc, char** argv)
 			mode = OperationMode::Export;
 			filename = argv[++i];
 		}
+		else if (arg == "--sentinel" && i + 1 < argc)
+			sentinel = argv[++i];
+		else if (arg == "--mine-on-wrong-chain")
+			mineOnWrongChain = true;
 		else if (arg == "--format" && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -680,6 +688,8 @@ int main(int argc, char** argv)
 		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
 		netPrefs,
 		&nodesState);
+	web3.ethereum()->setMineOnBadChain(mineOnWrongChain);
+	web3.ethereum()->setSentinel(sentinel);
 
 	auto toNumber = [&](string const& s) -> unsigned {
 		if (s == "latest")
