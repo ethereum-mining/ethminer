@@ -779,7 +779,6 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _source)
 {
 	// TODO throw here jsonrpc errors
 	string res;
-	(void)_source;
 #if ETH_SERPENT || !ETH_TRUE
 	try
 	{
@@ -793,6 +792,8 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _source)
 	{
 		cwarn << "Uncought serpent compilation exception";
 	}
+#else
+	(void)_source;
 #endif
 	return res;
 }
@@ -840,6 +841,8 @@ Json::Value WebThreeStubServerBase::eth_compileSolidity(string const& _source)
 		cwarn << "Uncought solidity compilation exception";
 		return Json::Value(Json::objectValue);
 	}
+#else
+	(void)_source;
 #endif
 	return res;
 }
