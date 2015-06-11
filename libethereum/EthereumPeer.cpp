@@ -265,13 +265,10 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 			clog(NetWarn) << "Peer giving us hashes when we didn't ask for them.";
 			break;
 		}
-		setAsking(Asking::Nothing);
 		h256s hashes(itemCount);
 		for (unsigned i = 0; i < itemCount; ++i)
 			hashes[i] = _r[i].toHash<h256>();
 
-		if (m_syncHashNumber > 0)
-			m_syncHashNumber += itemCount;
 		host()->onPeerHashes(this, hashes);
 		break;
 	}
@@ -314,10 +311,7 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
 		if (m_asking != Asking::Blocks)
 			clog(NetImpolite) << "Peer giving us blocks when we didn't ask for them.";
 		else
-		{
-			setAsking(Asking::Nothing);
 			host()->onPeerBlocks(this, _r);
-		}
 		break;
 	}
 	case NewBlockPacket:
