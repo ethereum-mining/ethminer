@@ -87,7 +87,7 @@ void VersionChecker::setOk()
 	}
 }
 
-void Client::onBadBlock(Exception& _ex)
+void Client::onBadBlock(Exception& _ex) const
 {
 	// BAD BLOCK!!!
 	bytes const* block = boost::get_error_info<errinfo_block>(_ex);
@@ -124,6 +124,9 @@ void Client::onBadBlock(Exception& _ex)
 	{
 		// general block failure.
 	}
+
+	if (string const* vmtraceJson = boost::get_error_info<errinfo_vmtrace>(_ex))
+		Json::Reader().parse(*vmtraceJson, report["hints"]["vmtrace"]);
 
 	if (vector<bytes> const* receipts = boost::get_error_info<errinfo_receipts>(_ex))
 	{
@@ -178,9 +181,6 @@ void Client::onBadBlock(Exception& _ex)
 
 	if (!m_sentinel.empty())
 	{
-		if (string const* vmtraceJson = boost::get_error_info<errinfo_vmtrace>(_ex))
-			Json::Reader().parse(*vmtraceJson, report["hints"]["vmtrace"]);
-
 		jsonrpc::HttpClient client(m_sentinel);
 		Sentinel rpc(client);
 		try
@@ -860,7 +860,16 @@ void Client::checkWatchGarbage()
 
 State Client::asOf(h256 const& _block) const
 {
-	return State(m_stateDB, bc(), _block);
+	try
+	{
+		return State(m_stateDB, bc(), _block);
+	}
+	catch (Exception& ex)
+	{
+		ex << errinfo_block(bc().block(_block));
+		onBadBlock(ex);
+		return State();
+	}
 }
 
 void Client::prepareForTransaction()
