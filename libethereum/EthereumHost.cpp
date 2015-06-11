@@ -81,11 +81,20 @@ void EthereumHost::reset()
 	m_hashMan.reset(m_chain.number() + 1);
 	m_needSyncBlocks = true;
 	m_needSyncHashes = true;
+	m_syncingNewHashes = false;
 	m_syncingLatestHash = h256();
 	m_syncingTotalDifficulty = 0;
 	m_latestBlockSent = h256();
 	m_transactionsSent.clear();
 	m_hashes.clear();
+}
+
+void EthereumHost::resetSyncTo(h256 const& _h)
+{
+	m_needSyncHashes = true;
+	m_needSyncBlocks = true;
+	m_syncingLatestHash = _h;
+	m_syncingNewHashes = false;
 }
 
 void EthereumHost::doWork()
@@ -366,8 +375,13 @@ void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes, bool 
 	}
 	if (_complete)
 	{
+		clog(NetMessageSummary) << "Start new blocks download...";
 		m_needSyncBlocks = true;
-		continueSync();
+		m_syncingNewHashes = true;
+		m_man.resetToChain(m_hashes);
+		m_hashes.clear();
+		m_hashMan.reset(m_chain.number() + 1);
+		continueSync(_peer);
 	}
 	else if (syncByNumber && m_hashMan.isComplete())
 	{
@@ -425,6 +439,7 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 	unsigned unknown = 0;
 	unsigned got = 0;
 	unsigned repeated = 0;
+	h256 lastUnknown;
 
 	for (unsigned i = 0; i < itemCount; ++i)
 	{
@@ -453,6 +468,7 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 				break;
 
 			case ImportResult::UnknownParent:
+				lastUnknown = h;
 				unknown++;
 				break;
 
@@ -467,6 +483,13 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 	}
 
 	clog(NetMessageSummary) << dec << success << "imported OK," << unknown << "with unknown parents," << future << "with future timestamps," << got << " already known," << repeated << " repeats received.";
+
+	if (m_syncingNewHashes && unknown > 0)
+	{
+		_peer->m_latestHash = lastUnknown;
+		resetSyncTo(lastUnknown);
+	}
+
 	continueSync(_peer);
 }
 
@@ -486,7 +509,7 @@ void EthereumHost::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 {
 	RecursiveGuard l(x_sync);
-	if (isSyncing_UNSAFE() || _peer->isConversing())
+	if ((isSyncing_UNSAFE() || _peer->isConversing()) && !m_syncingNewHashes)
 	{
 		clog(NetMessageSummary) << "Ignoring new blocks since we're already downloading.";
 		return;
@@ -526,9 +549,7 @@ void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 					clog(NetMessageSummary) << "Received block with no known parent. Resyncing...";
 					_peer->m_latestHash = h;
 					_peer->m_totalDifficulty = difficulty;
-					m_needSyncHashes = true;
-					m_needSyncBlocks = true;
-					m_syncingLatestHash = h;
+					resetSyncTo(h);;
 					sync = true;
 				}
 			}
@@ -646,7 +667,7 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 			{
 				_peer->requestHashes(m_syncingLatestHash);
 				m_syncingV61 = false;
-				m_estimatedHashes = _peer->m_expectedHashes;
+				m_estimatedHashes = _peer->m_expectedHashes - (_peer->m_protocolVersion == protocolVersion() ? 0 : c_chainReorgSize);
 			}
 			else
 				_peer->setIdle();
@@ -658,6 +679,7 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 		{
 			// Done our chain-get.
 			m_needSyncBlocks = false;
+			m_syncingNewHashes = false;
 			clog(NetNote) << "Chain download complete.";
 			// 1/100th for each useful block hash.
 			_peer->addRating(m_man.chainSize() / 100); //TODO: what about other peers?
@@ -742,6 +764,6 @@ HashChainStatus EthereumHost::status()
 	RecursiveGuard l(x_sync);
 	if (m_syncingV61)
 		return HashChainStatus { static_cast<unsigned>(m_hashMan.chainSize()), static_cast<unsigned>(m_hashMan.gotCount()), false };
-	return HashChainStatus { m_estimatedHashes > 0 ? m_estimatedHashes - c_chainReorgSize : 0, static_cast<unsigned>(m_hashes.size()), m_estimatedHashes > 0 };
+	return HashChainStatus { m_estimatedHashes > 0 ? m_estimatedHashes : 0, static_cast<unsigned>(m_hashes.size()), m_estimatedHashes > 0 };
 }
 
