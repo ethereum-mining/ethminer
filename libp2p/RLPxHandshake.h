@@ -25,7 +25,8 @@
 #include <memory>
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/ECDHE.h>
-#include "RLPxFrameIO.h"
+#include "RLPXSocket.h"
+#include "RLPXFrameCoder.h"
 #include "Common.h"
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
@@ -36,7 +37,7 @@ namespace p2p
 {
 
 /**
- * @brief Setup inbound or outbound connection for communication over RLPXFrameIO.
+ * @brief Setup inbound or outbound connection for communication over RLPXFrameCoder.
  * RLPx Spec: https://github.com/ethereum/devp2p/blob/master/rlpx.md#encrypted-handshake
  *
  * @todo Implement StartSession transition via lambda which is passed to constructor.
@@ -47,7 +48,7 @@ namespace p2p
  */
 class RLPXHandshake: public std::enable_shared_from_this<RLPXHandshake>
 {
-	friend class RLPXFrameIO;
+	friend class RLPXFrameCoder;
 	
 	/// Sequential states of handshake
 	enum State
@@ -122,7 +123,7 @@ protected:
 	
 	/// Used to read and write RLPx encrypted frames for last step of handshake authentication.
 	/// Passed onto Host which will take ownership.
-	RLPXFrameIO* m_io = nullptr;
+	RLPXFrameCoder* m_io = nullptr;
 	
 	std::shared_ptr<RLPXSocket> m_socket;		///< Socket.
 	boost::asio::deadline_timer m_idleTimer;	///< Timer which enforces c_timeout.
