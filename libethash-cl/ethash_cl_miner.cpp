@@ -32,11 +32,11 @@
 #include <vector>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
+#include <libethash/internal.h>
 #include "ethash_cl_miner.h"
 #include "ethash_cl_miner_kernel.h"
 
 #define ETHASH_BYTES 32
-#define ETHASH_CL_MINIMUM_MEMORY 2000000000
 
 // workaround lame platforms
 #if !CL_VERSION_1_2
@@ -137,14 +137,18 @@ unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 	return devices.size();
 }
 
-bool ethash_cl_miner::configureGPU(bool _allowCPU)
+bool ethash_cl_miner::configureGPU(bool _allowCPU, unsigned _extraGPUMemory, boost::optional<uint64_t> _currentBlock)
 {
 	s_allowCPU = _allowCPU;
-	return searchForAllDevices([](cl::Device const _device) -> bool
+	s_extraRequiredGPUMem = _extraGPUMemory;
+	// by default let's only consider the DAG of the first epoch
+	uint64_t dagSize = _currentBlock ? ethash_get_datasize(*_currentBlock) : 1073739904U;
+	uint64_t requiredSize =  dagSize + _extraGPUMemory;
+	return searchForAllDevices([&requiredSize](cl::Device const _device) -> bool
 		{
 			cl_ulong result;
 			_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-			if (result >= ETHASH_CL_MINIMUM_MEMORY)
+			if (result >= requiredSize)
 			{
 				ETHCL_LOG(
 					"Found suitable OpenCL device [" << _device.getInfo<CL_DEVICE_NAME>()
@@ -156,7 +160,7 @@ bool ethash_cl_miner::configureGPU(bool _allowCPU)
 			ETHCL_LOG(
 				"OpenCL device " << _device.getInfo<CL_DEVICE_NAME>()
 				<< " has insufficient GPU memory." << result <<
-				" bytes of memory found < " << ETHASH_CL_MINIMUM_MEMORY << " bytes of memory required"
+				" bytes of memory found < " << requiredSize << " bytes of memory required"
 			);
 			return false;
 		}
@@ -164,6 +168,7 @@ bool ethash_cl_miner::configureGPU(bool _allowCPU)
 }
 
 bool ethash_cl_miner::s_allowCPU = false;
+unsigned ethash_cl_miner::s_extraRequiredGPUMem;
 
 bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
 {
@@ -279,7 +284,7 @@ bool ethash_cl_miner::init(
 		// configure chunk number depending on max allocateable memory
 		cl_ulong result;
 		device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
-		if (result >= ETHASH_CL_MINIMUM_MEMORY)
+		if (result >= _dagSize)
 		{
 			m_dagChunksNum = 1;
 			ETHCL_LOG("Using 1 big chunk. Max OpenCL allocateable memory is" << result);
