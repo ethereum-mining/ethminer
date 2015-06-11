@@ -108,6 +108,7 @@ void interactiveHelp()
 		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." << endl
 		<< "    importconfig <path>  Import the config (.RLP) from the path provided." << endl
 		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    reprocess <block>  Reprocess a given block." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
 		<< "    exit  Exits the application." << endl;
@@ -806,13 +807,19 @@ int main(int argc, char** argv)
 
 	cout << "Transaction Signer: " << signingKey << endl;
 	cout << "Mining Benefactor: " << beneficiary << endl;
-	web3.startNetwork();
-	cout << "Node ID: " << web3.enode() << endl;
+
+	if (bootstrap || !remoteHost.empty())
+	{
+		web3.startNetwork();
+		cout << "Node ID: " << web3.enode() << endl;
+	}
+	else
+		cout << "Networking disabled. To start, use netstart or pass -b or a remote host." << endl;
 
 	if (bootstrap)
 		for (auto const& i: Host::pocHosts())
 			web3.requirePeer(i.first, i.second);
-	if (remoteHost.size())
+	if (!remoteHost.empty())
 		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 
 #if ETH_JSONRPC || !ETH_TRUE
@@ -1402,6 +1409,22 @@ int main(int argc, char** argv)
 				cout << "RLP: " << RLP(rb) << endl;
 				cout << "Hex: " << toHex(rb) << endl;
 				cout << r << endl;
+			}
+			else if (c && cmd == "reprocess")
+			{
+				string block;
+				iss >> block;
+				h256 blockHash;
+				try
+				{
+					if (block.size() == 64 || block.size() == 66)
+						blockHash = h256(block);
+					else
+						blockHash = c->blockChain().numberHash(stoi(block));
+					c->state(blockHash);
+				}
+				catch (...)
+				{}
 			}
 			else if (c && cmd == "dumptrace")
 			{
