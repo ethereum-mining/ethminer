@@ -212,7 +212,6 @@ void ClientModel::setupScenario(QVariantMap _scenario)
 	WriteGuard(x_queueTransactions);
 	m_running = true;
 
-	m_currentScenario = _scenario;
 	QVariantList blocks = _scenario.value("blocks").toList();
 	QVariantList stateAccounts = _scenario.value("accounts").toList();
 
@@ -244,7 +243,7 @@ void ClientModel::setupScenario(QVariantMap _scenario)
 		m_queueTransactions.push_back(transactions);
 		trToExecute = transactions.size() > 0;
 	}
-	m_client->resetState(m_accounts, Secret(m_currentScenario.value("miner").toMap().value("secret").toString().toStdString()));
+	m_client->resetState(m_accounts, Secret(_scenario.value("miner").toMap().value("secret").toString().toStdString()));
 	if (m_queueTransactions.count() > 0 && trToExecute)
 	{
 		setupExecutionChain();

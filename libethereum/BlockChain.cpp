@@ -1068,11 +1068,11 @@ VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exce
 	VerifiedBlockRef res;
 	try
 	{
-		Strictness strictNess = Strictness::CheckEverything;
+		Strictness strictness = Strictness::CheckEverything;
 		if (_ir & ~ImportRequirements::ValidNonce)
-			strictNess = Strictness::IgnoreNonce;
+			strictness = Strictness::IgnoreNonce;
 
-		res.info.populate(_block, strictNess);
+		res.info.populate(_block, strictness);
 		res.info.verifyInternals(&_block);
 	}
 	catch (Exception& ex)
