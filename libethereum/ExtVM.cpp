@@ -30,7 +30,7 @@ using namespace dev::eth;
 namespace
 {
 static unsigned const c_depthLimit = 1024;
-static size_t const c_singleExecutionStackSize = 8 * 1024;
+static size_t const c_singleExecutionStackSize = 12 * 1024;
 static size_t const c_defaultStackSize = 512 * 1024;
 static unsigned const c_offloadPoint = c_defaultStackSize / c_singleExecutionStackSize;
 
