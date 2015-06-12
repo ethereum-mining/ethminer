@@ -100,7 +100,7 @@ public:
 	FixedHash operator|(FixedHash const& _c) const { return FixedHash(*this) |= _c; }
 	FixedHash& operator&=(FixedHash const& _c) { for (unsigned i = 0; i < N; ++i) m_data[i] &= _c.m_data[i]; return *this; }
 	FixedHash operator&(FixedHash const& _c) const { return FixedHash(*this) &= _c; }
-	FixedHash& operator~() { for (unsigned i = 0; i < N; ++i) m_data[i] = ~m_data[i]; return *this; }
+	FixedHash operator~() const { FixedHash ret; for (unsigned i = 0; i < N; ++i) ret[i] = ~m_data[i]; return ret; }
 
 	/// @returns true if all bytes in @a _c are set in this object.
 	bool contains(FixedHash const& _c) const { return (*this & _c) == _c; }
@@ -113,7 +113,7 @@ public:
 	/// @returns an abridged version of the hash as a user-readable hex string.
 	std::string abridged() const { return toHex(ref().cropped(0, 4)) + "\342\200\246"; }
 
-	/// @returns an abridged version of the hash as a user-readable hex string.
+	/// @returns the hash as a user-readable hex string.
 	std::string hex() const { return toHex(ref()); }
 
 	/// @returns a mutable byte vector_ref to the object's data.
