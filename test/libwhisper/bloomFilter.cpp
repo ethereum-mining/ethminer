@@ -44,6 +44,14 @@ BOOST_AUTO_TEST_CASE(match)
 	unsigned b00110110 = 0x36;
 	unsigned b00110111 = 0x37;
 
+	AbridgedTopic x(b00111000);
+	SharedBloomFilter f1(b00111000);
+	SharedBloomFilter f2(x);
+	BOOST_REQUIRE_EQUAL(x, f1.getAbridgedTopic());
+	BOOST_REQUIRE_EQUAL(x, f2.getAbridgedTopic());
+	BOOST_REQUIRE_EQUAL(b00111000, f1.getUnsigned());
+	BOOST_REQUIRE_EQUAL(b00111000, f2.getUnsigned());
+
 	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00000001)));
 	f.add(AbridgedTopic(b00000001));
 	BOOST_REQUIRE(!f.matches(AbridgedTopic(b00010000)));
