@@ -209,7 +209,9 @@ Main::Main(QWidget *parent) :
 	m_webThree.reset(new WebThreeDirect(string("AlethZero/v") + dev::Version + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM), getDataDir(), WithExisting::Trust, {"eth"/*, "shh"*/}, p2p::NetworkPreferences(), network));
 
 	m_httpConnector.reset(new jsonrpc::HttpServer(SensibleHttpPort, "", "", dev::SensibleHttpThreads));
-	m_server.reset(new OurWebThreeStubServer(*m_httpConnector, *web3(), this));
+	auto w3ss = new OurWebThreeStubServer(*m_httpConnector, this);
+	m_server.reset(w3ss);
+	auto sessionKey = w3ss->newSession({true});
 	connect(&*m_server, SIGNAL(onNewId(QString)), SLOT(addNewId(QString)));
 	m_server->setIdentities(keysAsVector(owned()));
 	m_server->StartListening();
@@ -226,12 +228,16 @@ Main::Main(QWidget *parent) :
 
 	m_dappHost.reset(new DappHost(8081));
 	m_dappLoader = new DappLoader(this, web3(), getNameReg());
+	m_dappLoader->setSessionKey(sessionKey);
 	connect(m_dappLoader, &DappLoader::dappReady, this, &Main::dappLoaded);
 	connect(m_dappLoader, &DappLoader::pageReady, this, &Main::pageLoaded);
 //	ui->webView->page()->settings()->setAttribute(QWebEngineSettings::DeveloperExtrasEnabled, true);
 //	QWebEngineInspector* inspector = new QWebEngineInspector();
 //	inspector->setPage(page);
 	setBeneficiary(*m_keyManager.accounts().begin());
+
+	ethereum()->setDefault(LatestBlock);
+
 	readSettings();
 
 	m_transact = new Transact(this, this);

@@ -136,7 +136,9 @@ public:
 	virtual bool shh_uninstallFilter(std::string const& _filterId);
 	virtual Json::Value shh_getFilterChanges(std::string const& _filterId);
 	virtual Json::Value shh_getMessages(std::string const& _filterId);
-	
+
+	virtual Json::Value admin_eth_blockQueueStatus(std::string const&) { return Json::Value(); }
+
 	void setIdentities(std::vector<dev::KeyPair> const& _ids);
 	std::map<dev::Public, dev::Secret> const& ids() const { return m_shhIds; }
 
