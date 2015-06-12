@@ -24,24 +24,30 @@
 // Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
-
-#include <libwebthree/WebThree.h>
 #include <libdevcore/FileSystem.h>
+#include <libethcore/KeyManager.h>
+#include <libwebthree/WebThree.h>
 #include "WebThreeStubServer.h"
-
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, WebThreeDirect& _web3, shared_ptr<AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts):
+WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, WebThreeDirect& _web3, shared_ptr<AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts, KeyManager& _keyMan):
 	WebThreeStubServerBase(_conn, _ethAccounts, _shhAccounts),
-	m_web3(_web3)
+	m_web3(_web3),
+	m_keyMan(_keyMan)
 {
 	auto path = getDataDir() + "/.web3";
 	boost::filesystem::create_directories(path);
 	ldb::Options o;
 	o.create_if_missing = true;
 	ldb::DB::Open(o, path, &m_db);
+}
+
+bool WebThreeStubServer::eth_notePassword(string const& _password)
+{
+	m_keyMan.notePassword(_password);
+	return true;
 }
 
 std::string WebThreeStubServer::web3_clientVersion()
