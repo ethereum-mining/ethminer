@@ -141,7 +141,12 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h, ImportRequire
 
 		// 2. Enact the block's transactions onto this state.
 		m_ourAddress = bi.coinbaseAddress;
-		enact(BlockChain::verifyBlock(b), _bc, _ir);
+		boost::timer t;
+		auto vb = BlockChain::verifyBlock(b);
+		cnote << "verifyBlock:" << t.elapsed();
+		t.restart();
+		enact(vb, _bc, _ir);
+		cnote << "enact:" << t.elapsed();
 	}
 	else
 	{
