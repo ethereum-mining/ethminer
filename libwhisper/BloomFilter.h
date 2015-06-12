@@ -36,9 +36,14 @@ public:
 	BloomFilter(unsigned _i): m_filter(_i) {}
 	BloomFilter(AbridgedTopic const& _t): m_filter(AbridgedTopic::Arith(_t).convert_to<unsigned>()) {}
 
+	unsigned getUnsigned() const { return m_filter; }
+	AbridgedTopic getAbridgedTopic() const { return AbridgedTopic(m_filter); }
+
 	bool matches(AbridgedTopic const& _t) const;
+	virtual void add(Topic const& _t) { add(abridge(_t)); }
+	virtual void add(Topics const& _topics) { for (Topic t : _topics) add(abridge(t)); }
 	virtual void add(AbridgedTopic const& _t) { m_filter |= AbridgedTopic::Arith(_t).convert_to<unsigned>(); }
-	virtual void remove(AbridgedTopic const& ) {} // not implemented in this class, use derived class instead.
+	virtual void remove(AbridgedTopic const&) {} // not implemented in this class, use derived class instead.
 
 protected:
 	unsigned m_filter;
