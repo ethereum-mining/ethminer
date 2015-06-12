@@ -18,7 +18,7 @@ namespace eth
 
 extern "C" void env_sload(); // fake declaration for linker symbol stripping workaround, see a call below
 
-bytesConstRef JitVM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, uint64_t _step)
+bytesConstRef JitVM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
 	using namespace jit;
 
@@ -33,7 +33,7 @@ bytesConstRef JitVM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, ui
 	{
 		cwarn << "Execution rejected by EVM JIT (gas limit: " << io_gas << "), executing with interpreter";
 		m_fallbackVM = VMFactory::create(VMKind::Interpreter);
-		return m_fallbackVM->go(io_gas, _ext, _onOp, _step);
+		return m_fallbackVM->execImpl(io_gas, _ext, _onOp);
 	}
 
 	m_data.gas 			= static_cast<decltype(m_data.gas)>(io_gas);
@@ -51,7 +51,7 @@ bytesConstRef JitVM::go(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, ui
 	m_data.timestamp 	= static_cast<decltype(m_data.timestamp)>(_ext.currentBlock.timestamp);
 	m_data.code     	= _ext.code.data();
 	m_data.codeSize 	= _ext.code.size();
-	m_data.codeHash		= eth2llvm(sha3(_ext.code));
+	m_data.codeHash		= eth2llvm(_ext.codeHash);
 
 	auto env = reinterpret_cast<Env*>(&_ext);
 	auto exitCode = m_engine.run(&m_data, env);

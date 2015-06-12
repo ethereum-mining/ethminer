@@ -35,6 +35,19 @@ vector<AssemblyItem> CommonSubexpressionEliminator::getOptimizedItems()
 {
 	optimizeBreakingItem();
 
+	KnownState nextInitialState = m_state;
+	if (m_breakingItem)
+		nextInitialState.feedItem(*m_breakingItem);
+	KnownState nextState = nextInitialState;
+
+	ScopeGuard reset([&]()
+	{
+		m_breakingItem = nullptr;
+		m_storeOperations.clear();
+		m_initialState = move(nextInitialState);
+		m_state = move(nextState);
+	});
+
 	map<int, Id> initialStackContents;
 	map<int, Id> targetStackContents;
 	int minHeight = m_state.stackHeight() + 1;
@@ -52,15 +65,7 @@ vector<AssemblyItem> CommonSubexpressionEliminator::getOptimizedItems()
 		targetStackContents
 	);
 	if (m_breakingItem)
-	{
 		items.push_back(*m_breakingItem);
-		m_state.feedItem(*m_breakingItem);
-	}
-
-	// cleanup
-	m_initialState = m_state;
-	m_breakingItem = nullptr;
-	m_storeOperations.clear();
 
 	return items;
 }
@@ -437,7 +442,7 @@ void CSECodeGenerator::appendDup(int _fromPosition, SourceLocation const& _locat
 {
 	assertThrow(_fromPosition != c_invalidPosition, OptimizerException, "");
 	int instructionNum = 1 + m_stackHeight - _fromPosition;
-	assertThrow(instructionNum <= 16, StackTooDeepException, "Stack too deep.");
+	assertThrow(instructionNum <= 16, StackTooDeepException, "Stack too deep, try removing local variables.");
 	assertThrow(1 <= instructionNum, OptimizerException, "Invalid stack access.");
 	appendItem(AssemblyItem(dupInstruction(instructionNum), _location));
 	m_stack[m_stackHeight] = m_stack[_fromPosition];
@@ -450,7 +455,7 @@ void CSECodeGenerator::appendOrRemoveSwap(int _fromPosition, SourceLocation cons
 	if (_fromPosition == m_stackHeight)
 		return;
 	int instructionNum = m_stackHeight - _fromPosition;
-	assertThrow(instructionNum <= 16, StackTooDeepException, "Stack too deep.");
+	assertThrow(instructionNum <= 16, StackTooDeepException, "Stack too deep, try removing local variables.");
 	assertThrow(1 <= instructionNum, OptimizerException, "Invalid stack access.");
 	appendItem(AssemblyItem(swapInstruction(instructionNum), _location));
 

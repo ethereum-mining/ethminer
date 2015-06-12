@@ -35,7 +35,6 @@ bool ExtVM::call(CallParameters& _p)
 		e.accrueSubState(sub);
 	}
 	_p.gas = e.gas();
-	e.out().copyTo(_p.out);
 
 	return !e.excepted();
 }

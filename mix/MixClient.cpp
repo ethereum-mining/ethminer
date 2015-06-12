@@ -81,6 +81,8 @@ void MixClient::resetState(std::unordered_map<Address, Account> const& _accounts
 	WriteGuard l(x_state);
 	Guard fl(x_filtersWatches);
 	m_filters.clear();
+	for (auto& i: m_specialFilters)
+		i.second.clear();
 	m_watches.clear();
 
 	m_stateDB = OverlayDB();
@@ -130,7 +132,9 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 
 	State execState = _state;
 	execState.addBalance(t.sender(), t.gas() * t.gasPrice()); //give it enough balance for gas estimation
+	eth::ExecutionResult er;
 	Executive execution(execState, lastHashes, 0);
+	execution.setResultRecipient(er);
 	execution.initialize(t);
 	execution.execute();
 	std::vector<MachineState> machineStates;
@@ -198,34 +202,35 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 
 	execution.go(onOp);
 	execution.finalize();
-	dev::eth::ExecutionResult er = execution.executionResult();
 
 	switch (er.excepted)
 	{
-		case TransactionException::None:
-			break;
-		case TransactionException::NotEnoughCash:
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Insufficient balance for contract deployment"));
-		case TransactionException::OutOfGasBase:
-		case TransactionException::OutOfGas:
-			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas"));
-		case TransactionException::BlockGasLimitReached:
-			BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Block gas limit reached"));
-		case TransactionException::OutOfStack:
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Out of stack"));
-		case TransactionException::StackUnderflow:
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Stack underflow"));
-		//these should not happen in mix
-		case TransactionException::Unknown:
-		case TransactionException::BadInstruction:
-		case TransactionException::BadJumpDestination:
-		case TransactionException::InvalidSignature:
-		case TransactionException::InvalidNonce:
-			BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Internal execution error"));
-	};
+	case TransactionException::None:
+		break;
+	case TransactionException::NotEnoughCash:
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Insufficient balance for contract deployment"));
+	case TransactionException::OutOfGasIntrinsic:
+	case TransactionException::OutOfGasBase:
+	case TransactionException::OutOfGas:
+		BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas"));
+	case TransactionException::BlockGasLimitReached:
+		BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Block gas limit reached"));
+	case TransactionException::OutOfStack:
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Out of stack"));
+	case TransactionException::StackUnderflow:
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Stack underflow"));
+	//these should not happen in mix
+	case TransactionException::Unknown:
+	case TransactionException::BadInstruction:
+	case TransactionException::BadJumpDestination:
+	case TransactionException::InvalidSignature:
+	case TransactionException::InvalidNonce:
+	case TransactionException::BadRLP:
+		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Internal execution error"));
+	}
 
 	ExecutionResult d;
-	d.result = execution.executionResult();
+	d.result = er;
 	d.machineStates = machineStates;
 	d.executionCode = std::move(codes);
 	d.transactionData = std::move(data);
@@ -251,7 +256,7 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		h256Set changed;
 		Guard l(x_filtersWatches);
 		for (std::pair<h256 const, eth::InstalledFilter>& i: m_filters)
-			if ((unsigned)i.second.filter.latest() > bc().number())
+			if (compareBlockHashes(i.second.filter.latest(), bc().currentHash()) > 0)
 			{
 				// acceptable number.
 				auto m = i.second.filter.matches(_state.receipt(_state.pending().size() - 1));
@@ -259,11 +264,12 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 				{
 					// filter catches them
 					for (LogEntry const& l: m)
-						i.second.changes.push_back(LocalisedLogEntry(l, bc().number() + 1));
+						i.second.changes.push_back(LocalisedLogEntry(l));
 					changed.insert(i.first);
 				}
 			}
 		changed.insert(dev::eth::PendingChangedFilter);
+		m_specialFilters.at(dev::eth::PendingChangedFilter).push_back(t.sha3());
 		noteChanged(changed);
 	}
 	WriteGuard l(x_executions);
@@ -278,7 +284,7 @@ void MixClient::mine()
 	bc().import(m_state.blockData(), m_state.db(), ImportRequirements::Default & ~ImportRequirements::ValidNonce);
 	m_state.sync(bc());
 	m_startState = m_state;
-	h256Set changed { dev::eth::PendingChangedFilter, dev::eth::ChainChangedFilter };
+	h256Set changed { dev::eth::ChainChangedFilter };
 	noteChanged(changed);
 }
 
@@ -373,11 +379,14 @@ void MixClient::noteChanged(h256Set const& _filters)
 		{
 			if (m_filters.count(i.second.id))
 				i.second.changes += m_filters.at(i.second.id).changes;
-			else
-				i.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, 0));
+			else if (m_specialFilters.count(i.second.id))
+				for (h256 const& hash: m_specialFilters.at(i.second.id))
+					i.second.changes.push_back(LocalisedLogEntry(SpecialLogEntry, hash));
 		}
 	for (auto& i: m_filters)
 		i.second.changes.clear();
+	for (auto& i: m_specialFilters)
+		i.second.clear();
 }
 
 eth::BlockInfo MixClient::blockInfo() const

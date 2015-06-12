@@ -50,7 +50,9 @@ void OverlayDB::commit()
 	{
 		ldb::WriteBatch batch;
 //		cnote << "Committing nodes to disk DB:";
+#if DEV_GUARDED_DB
 		DEV_READ_GUARDED(x_this)
+#endif
 		{
 			for (auto const& i: m_main)
 			{
@@ -83,7 +85,9 @@ void OverlayDB::commit()
 			cwarn << "Sleeping for" << (i + 1) << "seconds, then retrying.";
 			this_thread::sleep_for(chrono::seconds(i + 1));
 		}
+#if DEV_GUARDED_DB
 		DEV_WRITE_GUARDED(x_this)
+#endif
 		{
 			m_aux.clear();
 			m_main.clear();
@@ -95,7 +99,7 @@ bytes OverlayDB::lookupAux(h256 const& _h) const
 {
 	bytes ret = MemoryDB::lookupAux(_h);
 	if (!ret.empty() || !m_db)
-		return move(ret);
+		return ret;
 	std::string v;
 	bytes b = _h.asBytes();
 	b.push_back(255);	// for aux
@@ -107,7 +111,9 @@ bytes OverlayDB::lookupAux(h256 const& _h) const
 
 void OverlayDB::rollback()
 {
+#if DEV_GUARDED_DB
 	WriteGuard l(x_this);
+#endif
 	m_main.clear();
 }
 
@@ -116,7 +122,7 @@ std::string OverlayDB::lookup(h256 const& _h) const
 	std::string ret = MemoryDB::lookup(_h);
 	if (ret.empty() && m_db)
 		m_db->Get(m_readOptions, ldb::Slice((char const*)_h.data(), 32), &ret);
-	return move(ret);
+	return ret;
 }
 
 bool OverlayDB::exists(h256 const& _h) const
