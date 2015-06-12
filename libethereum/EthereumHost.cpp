@@ -128,6 +128,7 @@ void EthereumHost::doWork()
 	if (m_continueSync)
 	{
 		m_continueSync = false;
+		RecursiveGuard l(x_sync);
 		continueSync();
 	}
 
