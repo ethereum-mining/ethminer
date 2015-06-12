@@ -25,13 +25,9 @@ namespace json_spirit
         return 'A' - 10 + ch;
     }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-local-typedefs")
 	template< class String_type >
     String_type non_printable_to_string( unsigned int c )
     {
-        typedef typename String_type::value_type Char_type;
-
         String_type result( 6, '\\' );
 
         result[1] = 'u';
@@ -43,7 +39,6 @@ namespace json_spirit
 
         return result;
     }
-#pragma GCC diagnostic pop
 
     template< typename Char_type, class String_type >
     bool add_esc_char( Char_type c, String_type& s )
