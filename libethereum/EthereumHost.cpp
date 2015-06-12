@@ -41,6 +41,8 @@ using namespace p2p;
 unsigned const EthereumHost::c_oldProtocolVersion = 60; //TODO: remove this once v61+ is common
 unsigned const c_chainReorgSize = 30000;
 
+char const* const EthereumHost::s_stateNames[static_cast<int>(SyncState::Size)] = {"Idle", "WaitingQueue", "HashesNegotiate", "HashesSingle", "HashesParallel", "Blocks", "NewBlocks" };
+
 EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId):
 	HostCapability<EthereumPeer>(),
 	Worker		("ethsync"),
@@ -49,6 +51,7 @@ EthereumHost::EthereumHost(BlockChain const& _ch, TransactionQueue& _tq, BlockQu
 	m_bq		(_bq),
 	m_networkId	(_networkId)
 {
+	setState(SyncState::HashesNegotiate);
 	m_latestBlockSent = _ch.currentHash();
 	m_hashMan.reset(m_chain.number() + 1);
 	m_bqRoomAvailable = m_bq.onRoomAvailable([this](){ m_continueSync = true; });
@@ -79,9 +82,7 @@ void EthereumHost::reset()
 	foreachPeer([](EthereumPeer* _p) { _p->abortSync(); });
 	m_man.resetToChain(h256s());
 	m_hashMan.reset(m_chain.number() + 1);
-	m_needSyncBlocks = true;
-	m_needSyncHashes = true;
-	m_syncingNewHashes = false;
+	setState(SyncState::HashesNegotiate);
 	m_syncingLatestHash = h256();
 	m_syncingTotalDifficulty = 0;
 	m_latestBlockSent = h256();
@@ -91,10 +92,18 @@ void EthereumHost::reset()
 
 void EthereumHost::resetSyncTo(h256 const& _h)
 {
-	m_needSyncHashes = true;
-	m_needSyncBlocks = true;
+	setState(SyncState::HashesNegotiate);
 	m_syncingLatestHash = _h;
-	m_syncingNewHashes = false;
+}
+
+
+void EthereumHost::setState(SyncState _s)
+{
+	if (m_state != _s)
+	{
+		clog(NetAllDetail) << "SyncState changed from " << stateName(m_state) << " to " << stateName(_s);
+		m_state = _s;
+	}
 }
 
 void EthereumHost::doWork()
@@ -255,6 +264,7 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 void EthereumHost::onPeerStatus(EthereumPeer* _peer)
 {
 	RecursiveGuard l(x_sync);
+	DEV_INVARIANT_CHECK;
 	if (_peer->m_genesisHash != m_chain.genesisHash())
 		_peer->disable("Invalid genesis hash");
 	else if (_peer->m_protocolVersion != protocolVersion() && _peer->m_protocolVersion != c_oldProtocolVersion)
@@ -274,13 +284,14 @@ void EthereumHost::onPeerStatus(EthereumPeer* _peer)
 				_peer->m_expectedHashes = (unsigned)_peer->m_latestBlockNumber - m_chain.number();
 			if (_peer->m_expectedHashes > estimatedHashes)
 				_peer->disable("Too many hashes");
-			else if (m_needSyncHashes && m_hashMan.chainSize() < _peer->m_expectedHashes)
+			else if (needHashes() && m_hashMan.chainSize() < _peer->m_expectedHashes)
 				m_hashMan.resetToRange(m_chain.number() + 1, _peer->m_expectedHashes);
 		}
 		else
 			_peer->m_expectedHashes = estimatedHashes;
 		continueSync(_peer);
 	}
+	DEV_INVARIANT_CHECK;
 }
 
 unsigned EthereumHost::estimateHashes()
@@ -309,6 +320,7 @@ void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes)
 
 void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes, bool _complete)
 {
+	DEV_INVARIANT_CHECK;
 	if (_hashes.empty())
 	{
 		_peer->m_hashSub.doneFetch();
@@ -376,8 +388,8 @@ void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes, bool 
 	if (_complete)
 	{
 		clog(NetMessageSummary) << "Start new blocks download...";
-		m_needSyncBlocks = true;
-		m_syncingNewHashes = true;
+		m_syncingLatestHash = h256();
+		setState(SyncState::NewBlocks);
 		m_man.resetToChain(m_hashes);
 		m_hashes.clear();
 		m_hashMan.reset(m_chain.number() + 1);
@@ -386,40 +398,41 @@ void EthereumHost::onPeerHashes(EthereumPeer* _peer, h256s const& _hashes, bool 
 	else if (syncByNumber && m_hashMan.isComplete())
 	{
 		// Done our chain-get.
-		m_needSyncHashes = false;
 		clog(NetNote) << "Hashes download complete.";
-		// 1/100th for each useful block hash.
-		_peer->addRating(m_man.chainSize() / 100); //TODO: what about other peers?
-		m_hashMan.reset(m_chain.number() + 1);
-		continueSync();
+		onPeerDoneHashes(_peer, false);
 	}
 	else if (m_hashes.size() > _peer->m_expectedHashes)
 	{
 		_peer->disable("Too many hashes");
 		m_hashes.clear();
 		m_syncingLatestHash = h256();
+		setState(SyncState::HashesNegotiate);
 		continueSync(); ///Try with some other peer, keep the chain
 	}
 	else
 		continueSync(_peer); /// Grab next hashes
+	DEV_INVARIANT_CHECK;
 }
 
 void EthereumHost::onPeerDoneHashes(EthereumPeer* _peer, bool _localChain)
 {
 	assert(_peer->m_asking == Asking::Nothing);
-	m_needSyncHashes = false;
+	m_syncingLatestHash = h256();
+	setState(SyncState::Blocks);
 	if (_peer->m_protocolVersion != protocolVersion() || _localChain)
 	{
 		m_man.resetToChain(m_hashes);
-		m_hashes.clear();
-		m_hashMan.reset(m_chain.number() + 1);
+		_peer->addRating(m_man.chainSize() / 100); //TODO: what about other peers?
 	}
+	m_hashMan.reset(m_chain.number() + 1);
+	m_hashes.clear();
 	continueSync();
 }
 
 void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 {
 	RecursiveGuard l(x_sync);
+	DEV_INVARIANT_CHECK;
 	_peer->setAsking(Asking::Nothing);
 	unsigned itemCount = _r.itemCount();
 	clog(NetMessageSummary) << "Blocks (" << dec << itemCount << "entries)" << (itemCount ? "" : ": NoMoreBlocks");
@@ -484,19 +497,21 @@ void EthereumHost::onPeerBlocks(EthereumPeer* _peer, RLP const& _r)
 
 	clog(NetMessageSummary) << dec << success << "imported OK," << unknown << "with unknown parents," << future << "with future timestamps," << got << " already known," << repeated << " repeats received.";
 
-	if (m_syncingNewHashes && unknown > 0)
+	if (m_state == SyncState::NewBlocks && unknown > 0)
 	{
 		_peer->m_latestHash = lastUnknown;
 		resetSyncTo(lastUnknown);
 	}
 
 	continueSync(_peer);
+	DEV_INVARIANT_CHECK;
 }
 
 void EthereumHost::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 {
 	RecursiveGuard l(x_sync);
-	if (isSyncing_UNSAFE() || _peer->isConversing())
+	DEV_INVARIANT_CHECK;
+	if (isSyncing() || _peer->isConversing())
 	{
 		clog(NetMessageSummary) << "Ignoring new hashes since we're already downloading.";
 		return;
@@ -504,12 +519,14 @@ void EthereumHost::onPeerNewHashes(EthereumPeer* _peer, h256s const& _hashes)
 	clog(NetNote) << "New block hash discovered: syncing without help.";
 	_peer->m_syncHashNumber = 0;
 	onPeerHashes(_peer, _hashes, true);
+	DEV_INVARIANT_CHECK;
 }
 
 void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 {
 	RecursiveGuard l(x_sync);
-	if ((isSyncing_UNSAFE() || _peer->isConversing()) && !m_syncingNewHashes)
+	DEV_INVARIANT_CHECK;
+	if ((isSyncing() || _peer->isConversing()) && m_state != SyncState::NewBlocks)
 	{
 		clog(NetMessageSummary) << "Ignoring new blocks since we're already downloading.";
 		return;
@@ -563,6 +580,7 @@ void EthereumHost::onPeerNewBlock(EthereumPeer* _peer, RLP const& _r)
 		if (sync)
 			continueSync();
 	}
+	DEV_INVARIANT_CHECK;
 }
 
 void EthereumHost::onPeerTransactions(EthereumPeer* _peer, RLP const& _r)
@@ -607,6 +625,8 @@ void EthereumHost::onPeerAborting(EthereumPeer* _peer)
 
 void EthereumHost::continueSync()
 {
+	if (m_state == SyncState::WaitingQueue)
+		setState(m_lastActiveState);
 	clog(NetAllDetail) << "Continuing sync for all peers";
 	foreachPeer([&](EthereumPeer* _p)
 	{
@@ -617,10 +637,11 @@ void EthereumHost::continueSync()
 
 void EthereumHost::continueSync(EthereumPeer* _peer)
 {
+	DEV_INVARIANT_CHECK;
 	assert(_peer->m_asking == Asking::Nothing);
 	bool otherPeerV60Sync = false;
 	bool otherPeerV61Sync = false;
-	if (m_needSyncHashes)
+	if (needHashes())
 	{
 		if (!peerShouldGrabChain(_peer))
 		{
@@ -652,7 +673,7 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 		}
 		if (_peer->m_protocolVersion == protocolVersion() && !m_hashMan.isComplete())
 		{
-			m_syncingV61 = true;
+			setState(SyncState::HashesParallel);
 			_peer->requestHashes(); /// v61+ and not catching up to a particular hash
 		}
 		else
@@ -666,20 +687,19 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 			if (_peer->m_totalDifficulty >= m_syncingTotalDifficulty)
 			{
 				_peer->requestHashes(m_syncingLatestHash);
-				m_syncingV61 = false;
+				setState(SyncState::HashesSingle);
 				m_estimatedHashes = _peer->m_expectedHashes - (_peer->m_protocolVersion == protocolVersion() ? 0 : c_chainReorgSize);
 			}
 			else
 				_peer->setIdle();
 		}
 	}
-	else if (m_needSyncBlocks)
+	else if (needBlocks())
 	{
 		if (m_man.isComplete())
 		{
 			// Done our chain-get.
-			m_needSyncBlocks = false;
-			m_syncingNewHashes = false;
+			setState(SyncState::Idle);
 			clog(NetNote) << "Chain download complete.";
 			// 1/100th for each useful block hash.
 			_peer->addRating(m_man.chainSize() / 100); //TODO: what about other peers?
@@ -700,6 +720,8 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 			else if (m_bq.knownFull())
 			{
 				clog(NetAllDetail) << "Waiting for block queue before downloading blocks";
+				m_lastActiveState = m_state;
+				setState(SyncState::WaitingQueue);
 				_peer->setIdle();
 			}
 			else
@@ -708,6 +730,7 @@ void EthereumHost::continueSync(EthereumPeer* _peer)
 	}
 	else
 		_peer->setIdle();
+	DEV_INVARIANT_CHECK;
 }
 
 bool EthereumHost::peerCanHelp(EthereumPeer* _peer) const
@@ -754,16 +777,42 @@ bool EthereumHost::peerShouldGrabChain(EthereumPeer* _peer) const
 	}
 }
 
-bool EthereumHost::isSyncing_UNSAFE() const
+bool EthereumHost::isSyncing() const
 {
-	return m_needSyncBlocks || m_needSyncHashes;
+	return m_state != SyncState::Idle;
 }
 
-HashChainStatus EthereumHost::status()
+SyncStatus EthereumHost::status() const
 {
 	RecursiveGuard l(x_sync);
-	if (m_syncingV61)
-		return HashChainStatus { static_cast<unsigned>(m_hashMan.chainSize()), static_cast<unsigned>(m_hashMan.gotCount()), false };
-	return HashChainStatus { m_estimatedHashes > 0 ? m_estimatedHashes : 0, static_cast<unsigned>(m_hashes.size()), m_estimatedHashes > 0 };
+	SyncStatus res;
+	res.state = m_state;
+	if (m_state == SyncState::HashesParallel)
+	{
+		res.hashesReceived = m_hashMan.hashesGot().size();
+		res.hashesTotal = m_hashMan.chainSize();
+	}
+	else if (m_state == SyncState::HashesSingle)
+	{
+		res.hashesTotal = m_estimatedHashes;
+		res.hashesReceived = static_cast<unsigned>(m_hashes.size());
+		res.hashesEstimated = true;
+	}
+	else if (m_state == SyncState::Blocks || m_state == SyncState::NewBlocks || m_state == SyncState::WaitingQueue)
+	{
+		res.blocksTotal = m_man.chainSize();
+		res.blocksReceived = m_man.blocksGot().size();
+	}
+	return res;
 }
 
+
+bool EthereumHost::invariants() const
+{
+	if (m_state == SyncState::HashesNegotiate && !m_hashes.empty())
+		return false;
+	if (needBlocks() && (m_syncingLatestHash || !m_hashes.empty()))
+		return false;
+
+	return true;
+}
