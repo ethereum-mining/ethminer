@@ -34,7 +34,7 @@ OurWebThreeStubServer::OurWebThreeStubServer(
 	WebThreeDirect& _web3,
 	Main* _main
 ):
-	WebThreeStubServer(_conn, _web3, make_shared<OurAccountHolder>(_web3, _main), _main->owned().toVector().toStdVector()),
+	WebThreeStubServer(_conn, _web3, make_shared<OurAccountHolder>(_web3, _main), _main->owned().toVector().toStdVector(), _main->keyManager()),
 	m_main(_main)
 {
 }

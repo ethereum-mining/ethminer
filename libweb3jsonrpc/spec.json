@@ -53,6 +53,7 @@
 { "name": "eth_signTransaction", "params": [{}], "order": [], "returns": ""},
 { "name": "eth_inspectTransaction", "params": [""], "order": [], "returns": {}},
 { "name": "eth_injectTransaction", "params": [""], "order": [], "returns": true},
+{ "name": "eth_notePassword", "params": [""], "order": [], "returns": true},
 
 { "name": "db_put", "params": ["", "", ""], "order": [], "returns": true},
 { "name": "db_get", "params": ["", ""], "order": [], "returns": ""},

@@ -33,6 +33,10 @@
 namespace dev
 {
 class WebThreeDirect;
+namespace eth
+{
+class KeyManager;
+}
 }
 
 /**
@@ -41,7 +45,7 @@ class WebThreeDirect;
 class WebThreeStubServer: public dev::WebThreeStubServerBase, public dev::WebThreeStubDatabaseFace
 {
 public:
-	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::shared_ptr<dev::eth::AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts);
+	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::shared_ptr<dev::eth::AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts, dev::eth::KeyManager& _keyMan);
 
 	virtual std::string web3_clientVersion() override;
 
@@ -54,8 +58,11 @@ private:
 	virtual std::string get(std::string const& _name, std::string const& _key) override;
 	virtual void put(std::string const& _name, std::string const& _key, std::string const& _value) override;
 
+	virtual bool eth_notePassword(std::string const& _password);
+
 private:
 	dev::WebThreeDirect& m_web3;
+	dev::eth::KeyManager& m_keyMan;
 	leveldb::ReadOptions m_readOptions;
 	leveldb::WriteOptions m_writeOptions;
 	leveldb::DB* m_db;
