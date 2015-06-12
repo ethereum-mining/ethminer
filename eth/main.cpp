@@ -93,6 +93,7 @@ void interactiveHelp()
 		<< "    accounts  Gives information on all owned accounts (balances, mining beneficiary and default signer)." << endl
 		<< "    newaccount <name>  Creates a new account with the given name." << endl
 		<< "    transact  Execute a given transaction." << endl
+		<< "    transactnonce  Execute a given transaction with a specified nonce." << endl
 		<< "    txcreate  Execute a given contract creation transaction." << endl
 		<< "    send  Execute a given transaction with current secret." << endl
 		<< "    contract  Create a new contract with current secret." << endl
@@ -108,6 +109,7 @@ void interactiveHelp()
 		<< "    exportconfig <path>  Export the config (.RLP) to the path provided." << endl
 		<< "    importconfig <path>  Import the config (.RLP) from the path provided." << endl
 		<< "    inspect <contract>  Dumps a contract to <APPDATA>/<contract>.evm." << endl
+		<< "    reprocess <block>  Reprocess a given block." << endl
 		<< "    dumptrace <block> <index> <filename> <format>  Dumps a transaction trace" << endl << "to <filename>. <format> should be one of pretty, standard, standard+." << endl
 		<< "    dumpreceipt <block> <index>  Dumps a transation receipt." << endl
 		<< "    exit  Exits the application." << endl;
@@ -806,13 +808,19 @@ int main(int argc, char** argv)
 
 	cout << "Transaction Signer: " << signingKey << endl;
 	cout << "Mining Benefactor: " << beneficiary << endl;
-	web3.startNetwork();
-	cout << "Node ID: " << web3.enode() << endl;
+
+	if (bootstrap || !remoteHost.empty())
+	{
+		web3.startNetwork();
+		cout << "Node ID: " << web3.enode() << endl;
+	}
+	else
+		cout << "Networking disabled. To start, use netstart or pass -b or a remote host." << endl;
 
 	if (bootstrap)
 		for (auto const& i: Host::pocHosts())
 			web3.requirePeer(i.first, i.second);
-	if (remoteHost.size())
+	if (!remoteHost.empty())
 		web3.addNode(p2p::NodeId(), remoteHost + ":" + toString(remotePort));
 
 #if ETH_JSONRPC || !ETH_TRUE
@@ -1175,6 +1183,75 @@ int main(int argc, char** argv)
 				else
 					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA";
 			}
+
+			else if (c && cmd == "transactnonce")
+			{
+				auto const& bc =c->blockChain();
+				auto h = bc.currentHash();
+				auto blockData = bc.block(h);
+				BlockInfo info(blockData);
+				if (iss.peek() != -1)
+				{
+					string hexAddr;
+					u256 amount;
+					u256 gasPrice;
+					u256 gas;
+					string sechex;
+					string sdata;
+					u256 nonce;
+
+					iss >> hexAddr >> amount >> gasPrice >> gas >> sechex >> sdata >> nonce;
+
+					if (!gasPrice)
+						gasPrice = gasPricer->bid(priority);
+
+					cnote << "Data:";
+					cnote << sdata;
+					bytes data = dev::eth::parseData(sdata);
+					cnote << "Bytes:";
+					string sbd = asString(data);
+					bytes bbd = asBytes(sbd);
+					stringstream ssbd;
+					ssbd << bbd;
+					cnote << ssbd.str();
+					int ssize = sechex.length();
+					int size = hexAddr.length();
+					u256 minGas = (u256)Transaction::gasRequired(data, 0);
+					if (size < 40)
+					{
+						if (size > 0)
+							cwarn << "Invalid address length:" << size;
+					}
+					else if (gas < minGas)
+						cwarn << "Minimum gas amount is" << minGas;
+					else if (ssize < 40)
+					{
+						if (ssize > 0)
+							cwarn << "Invalid secret length:" << ssize;
+					}
+					else
+					{
+						try
+						{
+							Secret secret = h256(fromHex(sechex));
+							Address dest = h160(fromHex(hexAddr));
+							c->submitTransaction(secret, amount, dest, data, gas, gasPrice, nonce);
+						}
+						catch (BadHexCharacter& _e)
+						{
+							cwarn << "invalid hex character, transaction rejected";
+							cwarn << boost::diagnostic_information(_e);
+						}
+						catch (...)
+						{
+							cwarn << "transaction rejected";
+						}
+					}
+				}
+				else
+					cwarn << "Require parameters: submitTransaction ADDRESS AMOUNT GASPRICE GAS SECRET DATA NONCE";
+			}
+
 			else if (c && cmd == "txcreate")
 			{
 				auto const& bc =c->blockChain();
@@ -1402,6 +1479,22 @@ int main(int argc, char** argv)
 				cout << "RLP: " << RLP(rb) << endl;
 				cout << "Hex: " << toHex(rb) << endl;
 				cout << r << endl;
+			}
+			else if (c && cmd == "reprocess")
+			{
+				string block;
+				iss >> block;
+				h256 blockHash;
+				try
+				{
+					if (block.size() == 64 || block.size() == 66)
+						blockHash = h256(block);
+					else
+						blockHash = c->blockChain().numberHash(stoi(block));
+					c->state(blockHash);
+				}
+				catch (...)
+				{}
 			}
 			else if (c && cmd == "dumptrace")
 			{

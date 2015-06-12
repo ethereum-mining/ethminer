@@ -97,6 +97,7 @@ private:
 	void foreachPeerPtr(std::function<void(std::shared_ptr<EthereumPeer>)> const& _f) const;
 	void foreachPeer(std::function<void(EthereumPeer*)> const& _f) const;
 	bool isSyncing_UNSAFE() const;
+	void resetSyncTo(h256 const& _h);
 
 	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
 	void doWork();
@@ -151,6 +152,7 @@ private:
 	bool m_needSyncBlocks = true;				///< Indicates if we still need to download some blocks
 	h256 m_syncingLatestHash;					///< Latest block's hash, as of the current sync.
 	u256 m_syncingTotalDifficulty;				///< Latest block's total difficulty, as of the current sync.
+	bool m_syncingNewHashes = false;			///< True if currently downloading hashes received with NewHashes
 	h256s m_hashes;								///< List of hashes with unknown block numbers. Used for PV60 chain downloading and catching up to a particular unknown
 	unsigned m_estimatedHashes = 0;				///< Number of estimated hashes for the last peer over PV60. Used for status reporting only.
 	bool m_syncingV61 = false;					///< True if recent activity was over pv61+. Used for status reporting only.
