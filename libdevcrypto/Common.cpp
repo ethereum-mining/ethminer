@@ -280,12 +280,12 @@ h256 Nonce::get(bool _commit)
 			BOOST_THROW_EXCEPTION(InvalidState());
 		
 		// prevent seed reuse if process terminates abnormally
-		writeFile(s_seedFile, bytes());
+		try { writeFile(s_seedFile, bytes()); } catch (FileError const&) {}
 	}
 	h256 prev(s_seed);
 	sha3(prev.ref(), s_seed.ref());
 	if (_commit)
-		writeFile(s_seedFile, s_seed.asBytes());
+		try { writeFile(s_seedFile, s_seed.asBytes()); } catch (FileError const&) {}
 	return std::move(s_seed);
 }
 
