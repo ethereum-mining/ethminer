@@ -671,6 +671,16 @@ class WebThreeStubClient : public jsonrpc::Client
             else
                 throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString());
         }
+        Json::Value admin_eth_blockQueueStatus(const std::string& param1) throw (jsonrpc::JsonRpcException)
+        {
+            Json::Value p;
+            p.append(param1);
+            Json::Value result = this->CallMethod("admin_eth_blockQueueStatus",p);
+            if (result.isObject())
+                return result;
+            else
+                throw jsonrpc::JsonRpcException(jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString());
+        }
 };
 
 #endif //JSONRPC_CPP_STUB_WEBTHREESTUBCLIENT_H_

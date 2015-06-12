@@ -158,5 +158,17 @@ setupProperties(web3.eth, eth.properties);
 setupMethods(web3.db, db.methods);
 setupMethods(web3.shh, shh.methods);
 
+web3.admin = {};
+web3.admin.setSessionKey = function(s) { web3.admin.sessionKey = s; };
+
+var blockQueueStatus = new Method({
+	name: 'blockQueueStatus',
+	call: 'admin_eth_blockQueueStatus',
+	params: 1,
+	inputFormatter: [function() { return web3.sessionKey; }]
+});
+
+setupMethods(web3.admin, [blockQueueStatus]);
+
 module.exports = web3;
 

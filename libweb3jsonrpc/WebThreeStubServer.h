@@ -39,6 +39,11 @@ class KeyManager;
 }
 }
 
+struct SessionPermissions
+{
+	bool admin;
+};
+
 /**
  * @brief JSON-RPC api implementation for WebThreeDirect
  */
@@ -49,7 +54,12 @@ public:
 
 	virtual std::string web3_clientVersion() override;
 
+	std::string newSession(SessionPermissions const& _p);
+	void addSession(std::string const& _session, SessionPermissions const& _p) { m_sessions[_session] = _p; }
+
 private:
+	bool isAdmin(std::string const& _session) const { auto it = m_sessions.find(_session); return it != m_sessions.end() && it->second.admin; }
+
 	virtual dev::eth::Interface* client() override;
 	virtual std::shared_ptr<dev::shh::Interface> face() override;
 	virtual dev::WebThreeNetworkFace* network() override;
@@ -59,6 +69,7 @@ private:
 	virtual void put(std::string const& _name, std::string const& _key, std::string const& _value) override;
 
 	virtual bool eth_notePassword(std::string const& _password);
+	virtual Json::Value admin_eth_blockQueueStatus(std::string const& _session);
 
 private:
 	dev::WebThreeDirect& m_web3;
@@ -66,4 +77,6 @@ private:
 	leveldb::ReadOptions m_readOptions;
 	leveldb::WriteOptions m_writeOptions;
 	leveldb::DB* m_db;
+
+	std::unordered_map<std::string, SessionPermissions> m_sessions;
 };

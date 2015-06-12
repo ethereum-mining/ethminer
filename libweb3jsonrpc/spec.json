@@ -66,6 +66,9 @@
 { "name": "shh_newFilter", "params": [{}], "order": [], "returns": ""},
 { "name": "shh_uninstallFilter", "params": [""], "order": [], "returns": true},
 { "name": "shh_getFilterChanges", "params": [""], "order": [], "returns": []},
-{ "name": "shh_getMessages", "params": [""], "order": [], "returns": []}
+{ "name": "shh_getMessages", "params": [""], "order": [], "returns": []},
+
+{ "name": "admin_eth_blockQueueStatus", "params": [""], "returns": {}}
+
 ]
 

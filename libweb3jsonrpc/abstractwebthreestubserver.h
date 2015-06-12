@@ -76,6 +76,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
             this->bindAndAddMethod(jsonrpc::Procedure("shh_uninstallFilter", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_BOOLEAN, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::shh_uninstallFilterI);
             this->bindAndAddMethod(jsonrpc::Procedure("shh_getFilterChanges", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::shh_getFilterChangesI);
             this->bindAndAddMethod(jsonrpc::Procedure("shh_getMessages", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::shh_getMessagesI);
+            this->bindAndAddMethod(jsonrpc::Procedure("admin_eth_blockQueueStatus", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &AbstractWebThreeStubServer::admin_eth_blockQueueStatusI);
         }
 
         inline virtual void web3_sha3I(const Json::Value &request, Json::Value &response)
@@ -351,6 +352,10 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         {
             response = this->shh_getMessages(request[0u].asString());
         }
+        inline virtual void admin_eth_blockQueueStatusI(const Json::Value &request, Json::Value &response)
+        {
+            response = this->admin_eth_blockQueueStatus(request[0u].asString());
+        }
         virtual std::string web3_sha3(const std::string& param1) = 0;
         virtual std::string web3_clientVersion() = 0;
         virtual std::string net_version() = 0;
@@ -415,6 +420,7 @@ class AbstractWebThreeStubServer : public jsonrpc::AbstractServer<AbstractWebThr
         virtual bool shh_uninstallFilter(const std::string& param1) = 0;
         virtual Json::Value shh_getFilterChanges(const std::string& param1) = 0;
         virtual Json::Value shh_getMessages(const std::string& param1) = 0;
+        virtual Json::Value admin_eth_blockQueueStatus(const std::string& param1) = 0;
 };
 
 #endif //JSONRPC_CPP_STUB_ABSTRACTWEBTHREESTUBSERVER_H_

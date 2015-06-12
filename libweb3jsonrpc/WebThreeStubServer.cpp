@@ -44,10 +44,34 @@ WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, 
 	ldb::DB::Open(o, path, &m_db);
 }
 
+std::string WebThreeStubServer::newSession(SessionPermissions const& _p)
+{
+	std::string s = toBase64(h64::random().ref());
+	m_sessions[s] = _p;
+	return s;
+}
+
 bool WebThreeStubServer::eth_notePassword(string const& _password)
 {
 	m_keyMan.notePassword(_password);
 	return true;
+}
+
+Json::Value WebThreeStubServer::admin_eth_blockQueueStatus(string const& _session)
+{
+	Json::Value ret;
+	if (isAdmin(_session))
+	{
+		BlockQueueStatus bqs = m_web3.ethereum()->blockQueue().status();
+		ret["importing"] = (int)bqs.importing;
+		ret["verified"] = (int)bqs.verified;
+		ret["verifying"] = (int)bqs.verifying;
+		ret["unverified"] = (int)bqs.unverified;
+		ret["future"] = (int)bqs.future;
+		ret["unknown"] = (int)bqs.unknown;
+		ret["bad"] = (int)bqs.bad;
+	}
+	return ret;
 }
 
 std::string WebThreeStubServer::web3_clientVersion()
