@@ -80,7 +80,19 @@ ldb::Slice toSlice(h256 const& _h, unsigned _sub = 0);
 using BlocksHash = std::unordered_map<h256, bytes>;
 using TransactionHashes = h256s;
 using UncleHashes = h256s;
-using ImportRoute = std::pair<h256s, h256s>;
+
+class ImportRoute
+{
+public:
+	ImportRoute() {};
+	ImportRoute(h256s const& _deadBlocks, h256s const& _liveBlocks): m_deadBlocks(_deadBlocks), m_liveBlocks(_liveBlocks) {};
+	h256s const& deadBlocks() const { return m_deadBlocks; }
+	h256s const& liveBlocks() const { return m_liveBlocks; }
+
+private:
+	h256s m_deadBlocks;
+	h256s m_liveBlocks;
+};
 
 enum {
 	ExtraDetails = 0,
