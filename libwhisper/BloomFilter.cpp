@@ -27,11 +27,11 @@ using namespace dev::shh;
 
 bool BloomFilter::matches(AbridgedTopic const& _t) const
 {
-	static unsigned const c_PerfectMatch = ~unsigned(0);
+	static unsigned const c_match = ~unsigned(0);
 	unsigned topic = AbridgedTopic::Arith(_t).convert_to<unsigned>();
 	unsigned matchingBits = m_filter & topic;
 	matchingBits |= ~topic;
-	return (c_PerfectMatch == matchingBits);
+	return (c_match == matchingBits);
 }
 
 void SharedBloomFilter::add(AbridgedTopic const& _t)
@@ -46,7 +46,8 @@ void SharedBloomFilter::add(AbridgedTopic const& _t)
 				m_refCounter[i]++;
 			//else: overflow
 
-	// in order to encounter overflow, you have to set 65536 filters simultaneously.
+	// in order to encounter overflow, you have to set at least 65536 filters simultaneously.
+	// even then, the problem will only arise after at least 65536 filters will be be removed.
 	// we assume, it will never happen.
 }
 

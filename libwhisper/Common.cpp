@@ -20,9 +20,9 @@
  */
 
 #include "Common.h"
-
 #include <libdevcore/SHA3.h>
 #include "Message.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -82,6 +82,26 @@ bool TopicFilter::matches(Envelope const& _e) const
 		NEXT_TOPICMASK:;
 	}
 	return false;
+}
+
+TopicFilter::TopicFilter(RLP const& _r)
+{
+	for (RLP i: _r)
+	{
+		m_topicMasks.push_back(TopicMask());
+		for (RLP j: i)
+			m_topicMasks.back().push_back(j.toPair<FixedHash<4>, FixedHash<4>>());
+	}
+}
+
+AbridgedTopic TopicFilter::exportBloomFilter() const
+{
+	AbridgedTopic ret;
+	for (TopicMask const& t: m_topicMasks)
+		for (auto i: t)
+			ret |= i.first;		
+		
+	return ret;
 }
 
 TopicMask BuildTopicMask::toTopicMask() const
