@@ -27,23 +27,24 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/StructuredLogger.h>
 #include <libethcore/Exceptions.h>
+#include "RLPxHandshake.h"
 #include "Host.h"
 #include "Capability.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-Session::Session(Host* _s, RLPXFrameIO* _io, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info):
-	m_server(_s),
+Session::Session(Host* _h, RLPXFrameCoder* _io, std::shared_ptr<RLPXSocket> const& _s, std::shared_ptr<Peer> const& _n, PeerSessionInfo _info):
+	m_server(_h),
 	m_io(_io),
-	m_socket(m_io->socket()),
+	m_socket(_s),
 	m_peer(_n),
 	m_info(_info),
 	m_ping(chrono::steady_clock::time_point::max())
 {
 	m_peer->m_lastDisconnect = NoDisconnect;
 	m_lastReceived = m_connect = chrono::steady_clock::now();
-	m_info.socketId = _io->socket().native_handle();
+	m_info.socketId = m_socket->ref().native_handle();
 }
 
 Session::~Session()
@@ -59,11 +60,12 @@ Session::~Session()
 
 	try
 	{
-		if (m_socket.is_open())
+		bi::tcp::socket& socket = m_socket->ref();
+		if (socket.is_open())
 		{
 			boost::system::error_code ec;
-			m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-			m_socket.close();
+			socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+			socket.close();
 		}
 	}
 	catch (...){}
@@ -308,7 +310,7 @@ void Session::send(bytes&& _msg)
 	if (!checkPacket(msg))
 		clog(NetWarn) << "INVALID PACKET CONSTRUCTED!";
 
-	if (!m_socket.is_open())
+	if (!m_socket->ref().is_open())
 		return;
 
 	bool doWrite = false;
@@ -331,7 +333,7 @@ void Session::write()
 		out = &m_writeQueue[0];
 	}
 	auto self(shared_from_this());
-	ba::async_write(m_socket, ba::buffer(*out), [this, self](boost::system::error_code ec, std::size_t /*length*/)
+	ba::async_write(m_socket->ref(), ba::buffer(*out), [this, self](boost::system::error_code ec, std::size_t /*length*/)
 	{
 		ThreadContext tc(info().id.abridged());
 		ThreadContext tc2(info().clientVersion);
@@ -357,13 +359,14 @@ void Session::drop(DisconnectReason _reason)
 {
 	if (m_dropped)
 		return;
-	if (m_socket.is_open())
+	bi::tcp::socket& socket = m_socket->ref();
+	if (socket.is_open())
 		try
 		{
-			clog(NetConnect) << "Closing " << m_socket.remote_endpoint() << "(" << reasonOf(_reason) << ")";
+			clog(NetConnect) << "Closing " << socket.remote_endpoint() << "(" << reasonOf(_reason) << ")";
 			boost::system::error_code ec;
-			m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-			m_socket.close();
+			socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+			socket.close();
 		}
 		catch (...) {}
 
@@ -384,7 +387,7 @@ void Session::disconnect(DisconnectReason _reason)
 		m_peer->endpoint, // TODO: may not be 100% accurate
 		m_server->peerCount()
 	);
-	if (m_socket.is_open())
+	if (m_socket->ref().is_open())
 	{
 		RLPStream s;
 		prep(s, DisconnectPacket, 1) << (int)_reason;
@@ -406,7 +409,7 @@ void Session::doRead()
 		return;
 
 	auto self(shared_from_this());
-	ba::async_read(m_socket, boost::asio::buffer(m_data, h256::size), [this,self](boost::system::error_code ec, std::size_t length)
+	ba::async_read(m_socket->ref(), boost::asio::buffer(m_data, h256::size), [this,self](boost::system::error_code ec, std::size_t length)
 	{
 		ThreadContext tc(info().id.abridged());
 		ThreadContext tc2(info().clientVersion);
@@ -443,7 +446,7 @@ void Session::doRead()
 			
 			/// read padded frame and mac
 			auto tlen = frameSize + ((16 - (frameSize % 16)) % 16) + h128::size;
-			ba::async_read(m_socket, boost::asio::buffer(m_data, tlen), [this, self, headerRLP, frameSize, tlen](boost::system::error_code ec, std::size_t length)
+			ba::async_read(m_socket->ref(), boost::asio::buffer(m_data, tlen), [this, self, headerRLP, frameSize, tlen](boost::system::error_code ec, std::size_t length)
 			{
 				ThreadContext tc(info().id.abridged());
 				ThreadContext tc2(info().clientVersion);

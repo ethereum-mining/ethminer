@@ -198,6 +198,7 @@ Main::Main(QWidget *parent) :
 	statusBar()->addPermanentWidget(ui->balance);
 	statusBar()->addPermanentWidget(ui->peerCount);
 	statusBar()->addPermanentWidget(ui->mineStatus);
+	statusBar()->addPermanentWidget(ui->syncStatus);
 	statusBar()->addPermanentWidget(ui->chainStatus);
 	statusBar()->addPermanentWidget(ui->blockCount);
 
@@ -1251,9 +1252,15 @@ void Main::refreshBlockCount()
 {
 	auto d = ethereum()->blockChain().details();
 	BlockQueueStatus b = ethereum()->blockQueueStatus();
-	HashChainStatus h = ethereum()->hashChainStatus();
-	ui->chainStatus->setText(QString("%10/%11%12 hashes %3 importing %4 ready %5 verifying %6 unverified %7 future %8 unknown %9 bad  %1 #%2")
-		.arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.importing).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad).arg(h.received).arg(h.estimated ? "~" : "").arg(h.total));
+	SyncStatus sync = ethereum()->syncStatus();
+	QString syncStatus = EthereumHost::stateName(sync.state);
+	if (sync.state == SyncState::HashesParallel || sync.state == SyncState::HashesSingle)
+		syncStatus += QString(": %1/%2%3").arg(sync.hashesReceived).arg(sync.hashesEstimated ? "~" : "").arg(sync.hashesTotal);
+	if (sync.state == SyncState::Blocks || sync.state == SyncState::NewBlocks)
+		syncStatus += QString(": %1/%2").arg(sync.blocksReceived).arg(sync.blocksTotal);
+	ui->syncStatus->setText(syncStatus);
+	ui->chainStatus->setText(QString("%3 importing %4 ready %5 verifying %6 unverified %7 future %8 unknown %9 bad  %1 #%2")
+		.arg(m_privateChain.size() ? "[" + m_privateChain + "] " : "testnet").arg(d.number).arg(b.importing).arg(b.verified).arg(b.verifying).arg(b.unverified).arg(b.future).arg(b.unknown).arg(b.bad));
 }
 
 void Main::on_turboMining_triggered()
