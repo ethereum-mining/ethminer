@@ -58,7 +58,7 @@ public:
 	void addSession(std::string const& _session, SessionPermissions const& _p) { m_sessions[_session] = _p; }
 
 private:
-	bool isAdmin(std::string const& _session) const { auto it = m_sessions.find(_session); return it != m_sessions.end() && it->second.admin; }
+	bool isAdmin(std::string const& _session) const override { auto it = m_sessions.find(_session); return it != m_sessions.end() && it->second.admin; }
 
 	virtual dev::eth::Interface* client() override;
 	virtual std::shared_ptr<dev::shh::Interface> face() override;

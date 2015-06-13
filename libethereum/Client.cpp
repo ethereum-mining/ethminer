@@ -611,11 +611,21 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 	return true;
 }
 
+unsigned static const c_syncMin = 1;
+unsigned static const c_syncMax = 100;
+double static const c_targetDuration = 0.5;
+
 void Client::syncBlockQueue()
 {
 	ImportRoute ir;
 	cwork << "BQ ==> CHAIN ==> STATE";
-	tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, rand() % 10 + 5);
+	boost::timer t;
+	tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
+	double elapsed = t.elapsed();
+	if (elapsed > 0.55 && m_syncAmount > c_syncMin)
+		m_syncAmount = max(c_syncMin, m_syncAmount * 9 / 10);
+	else if (elapsed < 0.45 && m_syncAmount < c_syncMax)
+		m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
 	if (ir.first.empty())
 		return;
 	onChainChanged(ir);
@@ -688,42 +698,45 @@ void Client::onChainChanged(ImportRoute const& _ir)
 
 	// RESTART MINING
 
-	bool preChanged = false;
-	State newPreMine;
-	DEV_READ_GUARDED(x_preMine)
-		newPreMine = m_preMine;
-
-	// TODO: use m_postMine to avoid re-evaluating our own blocks.
-	preChanged = newPreMine.sync(m_bc);
-
-	if (preChanged || m_postMine.address() != m_preMine.address())
+	if (!m_bq.items().first)
 	{
-		if (isMining())
-			cnote << "New block on chain.";
+		bool preChanged = false;
+		State newPreMine;
+		DEV_READ_GUARDED(x_preMine)
+			newPreMine = m_preMine;
 
-		DEV_WRITE_GUARDED(x_preMine)
-			m_preMine = newPreMine;
-		DEV_WRITE_GUARDED(x_working)
-			m_working = newPreMine;
-		DEV_READ_GUARDED(x_postMine)
-			for (auto const& t: m_postMine.pending())
-			{
-				clog(ClientNote) << "Resubmitting post-mine transaction " << t;
-				auto ir = m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
-				if (ir != ImportResult::Success)
-					onTransactionQueueReady();
-			}
-		DEV_READ_GUARDED(x_working) DEV_WRITE_GUARDED(x_postMine)
-			m_postMine = m_working;
+		// TODO: use m_postMine to avoid re-evaluating our own blocks.
+		preChanged = newPreMine.sync(m_bc);
 
-		changeds.insert(PendingChangedFilter);
+		if (preChanged || m_postMine.address() != m_preMine.address())
+		{
+			if (isMining())
+				cnote << "New block on chain.";
 
-		onPostStateChanged();
+			DEV_WRITE_GUARDED(x_preMine)
+				m_preMine = newPreMine;
+			DEV_WRITE_GUARDED(x_working)
+				m_working = newPreMine;
+			DEV_READ_GUARDED(x_postMine)
+				for (auto const& t: m_postMine.pending())
+				{
+					clog(ClientNote) << "Resubmitting post-mine transaction " << t;
+					auto ir = m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
+					if (ir != ImportResult::Success)
+						onTransactionQueueReady();
+				}
+			DEV_READ_GUARDED(x_working) DEV_WRITE_GUARDED(x_postMine)
+				m_postMine = m_working;
+
+			changeds.insert(PendingChangedFilter);
+
+			onPostStateChanged();
+		}
+
+		// Quick hack for now - the TQ at this point already has the prior pending transactions in it;
+		// we should resync with it manually until we are stricter about what constitutes "knowing".
+		onTransactionQueueReady();
 	}
-
-	// Quick hack for now - the TQ at this point already has the prior pending transactions in it;
-	// we should resync with it manually until we are stricter about what constitutes "knowing".
-	onTransactionQueueReady();
 
 	noteChanged(changeds);
 }
