@@ -9,6 +9,7 @@ Column
 	property alias members: repeater.model  //js array
 	property variant accounts
 	property var value: ({})
+	property int blockIndex
 	property int transactionIndex
 	property string context
 	Layout.fillWidth: true

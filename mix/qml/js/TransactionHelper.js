@@ -12,7 +12,8 @@ function defaultTransaction()
 		stdContract: false,
 		isContractCreation: true,
 		label: "",
-		isFunctionCall: true
+		isFunctionCall: true,
+		saveStatus: true
 	};
 }
 
