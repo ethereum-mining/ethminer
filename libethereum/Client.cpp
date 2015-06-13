@@ -622,6 +622,9 @@ void Client::syncBlockQueue()
 	boost::timer t;
 	tie(ir.first, ir.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
 	double elapsed = t.elapsed();
+
+	cnote << m_syncAmount << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (m_syncAmount / elapsed) << "blocks/s)";
+
 	if (elapsed > 0.55 && m_syncAmount > c_syncMin)
 		m_syncAmount = max(c_syncMin, m_syncAmount * 9 / 10);
 	else if (elapsed < 0.45 && m_syncAmount < c_syncMax)
