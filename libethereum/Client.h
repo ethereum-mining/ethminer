@@ -338,6 +338,8 @@ private:
 	mutable std::chrono::system_clock::time_point m_lastTick = std::chrono::system_clock::now();
 											///< When did we last tick()?
 
+	unsigned m_syncAmount = 50;				///< Number of blocks to sync in each go.
+
 	ActivityReport m_report;
 
 	std::condition_variable m_signalled;
