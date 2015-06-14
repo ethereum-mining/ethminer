@@ -169,8 +169,11 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 		res["data"] = toJS(_e.data);
 		res["address"] = toJS(_e.address);
 		res["topics"] = Json::Value(Json::arrayValue);
+		res["polarity"] = _e.polarity == BlockPolarity::Live ? true : false;
+
 		for (auto const& t: _e.topics)
 			res["topics"].append(toJS(t));
+
 		if (_e.mined)
 		{
 			res["type"] = "mined";

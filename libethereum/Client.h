@@ -251,7 +251,7 @@ protected:
 
 	/// Collate the changed filters for the hash of the given block.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromBlock(h256 const& _blockHash, bool _polarity, h256Hash& io_changed);
+	void appendFromBlock(h256 const& _blockHash, BlockPolarity _polarity, h256Hash& io_changed);
 
 	/// Record that the set of filters @a _filters have changed.
 	/// This doesn't actually make any callbacks, but incrememnts some counters in m_watches.
