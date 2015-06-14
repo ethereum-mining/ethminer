@@ -121,7 +121,6 @@ size_t RLPXFrameWriter::drain(RLPXFrameCoder& _coder, unsigned _size, vector<byt
 			if (!qs.remaining)
 			{
 				qs.writing = nullptr;
-				qs.remaining = 0;
 				qs.sequenced = false;
 				DEV_GUARDED(qs.x)
 					qs.q.pop_front();
