@@ -36,6 +36,13 @@ namespace dev
 namespace eth
 {
 
+enum class BlockPolarity
+{
+	Unknown,
+	Dead,
+	Live
+};
+
 struct LogEntry
 {
 	LogEntry() {}
@@ -76,7 +83,7 @@ struct LocalisedLogEntry: public LogEntry
 		h256 _th,
 		unsigned _ti,
 		unsigned _li,
-	    bool _polarity = true
+	    BlockPolarity _polarity = BlockPolarity::Unknown
 	): LogEntry(_le), blockHash(_bi.hash()), blockNumber((BlockNumber)_bi.number), transactionHash(_th), transactionIndex(_ti), logIndex(_li), mined(true), polarity(_polarity) {};
 
 	h256 blockHash = h256();
@@ -85,7 +92,7 @@ struct LocalisedLogEntry: public LogEntry
 	unsigned transactionIndex = 0;
 	unsigned logIndex = 0;
 	bool mined = false;
-	bool polarity = true;
+	BlockPolarity polarity = BlockPolarity::Unknown;
 	h256 special = h256();
 };
 

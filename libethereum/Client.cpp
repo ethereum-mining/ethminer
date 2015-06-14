@@ -480,7 +480,7 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& 
 	}
 }
 
-void Client::appendFromBlock(h256 const& _block, bool _polarity, h256Hash& io_changed)
+void Client::appendFromBlock(h256 const& _block, BlockPolarity _polarity, h256Hash& io_changed)
 {
 	// TODO: more precise check on whether the txs match.
 	auto d = m_bc.info(_block);
@@ -682,7 +682,7 @@ void Client::onDeadBlocks(h256s const& _blocks, h256Hash& io_changed)
 	}
 
 	for (auto const& h: _blocks)
-		appendFromBlock(h, false, io_changed);
+		appendFromBlock(h, BlockPolarity::Dead, io_changed);
 }
 
 void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
@@ -702,7 +702,7 @@ void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
 		h->noteNewBlocks();
 
 	for (auto const& h: _blocks)
-		appendFromBlock(h, true, io_changed);
+		appendFromBlock(h, BlockPolarity::Live, io_changed);
 }
 
 void Client::restartMining()
