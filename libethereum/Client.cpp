@@ -629,7 +629,7 @@ void Client::syncBlockQueue()
 		m_syncAmount = max(c_syncMin, m_syncAmount * 9 / 10);
 	else if (elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
 		m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
-	if (ir.first.empty())
+	if (ir.liveBlocks.empty())
 		return;
 	onChainChanged(ir);
 }
