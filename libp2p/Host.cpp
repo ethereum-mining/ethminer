@@ -619,26 +619,36 @@ void Host::run(boost::system::error_code const&)
 	// updated. // disconnectLatePeers();
 
 	// todo: update peerSlotsAvailable()
+	
+	list<shared_ptr<Peer>> toConnect;
+	unsigned reqConn = 0;
+	{
+		RecursiveGuard l(x_sessions);
+		for (auto const& p: m_peers)
+		{
+			bool haveSession = havePeerSession(p.second->id);
+			bool required = p.second->required;
+			if (haveSession && required)
+				reqConn++;
+			else if (!haveSession && p.second->shouldReconnect() && (!m_netPrefs.pin || required))
+				toConnect.push_back(p.second);
+		}
+	}
+
+	for (auto p: toConnect)
+		if (p->required && reqConn++ < m_idealPeerCount)
+			connect(p);
+	
 	unsigned pendingCount = 0;
 	DEV_GUARDED(x_pendingNodeConns)
 		pendingCount = m_pendingPeerConns.size();
-	int openSlots = m_idealPeerCount - peerCount() - pendingCount;
-	if (openSlots > 0)
+	int openSlots = m_idealPeerCount - peerCount() - pendingCount + reqConn;
+	if (openSlots > 0 && !m_netPrefs.pin)
 	{
-		list<shared_ptr<Peer>> toConnect;
-		{
-			RecursiveGuard l(x_sessions);
-			for (auto p: m_peers)
-				if (p.second->shouldReconnect() && !havePeerSession(p.second->id) && (!m_netPrefs.pin || p.second->required))
-					toConnect.push_back(p.second);
-		}
-		
 		for (auto p: toConnect)
-			if (openSlots--)
+			if (!p->required && openSlots--)
 				connect(p);
-			else
-				break;
-		
+	
 		m_nodeTable->discover();
 	}
 
