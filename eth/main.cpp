@@ -598,13 +598,7 @@ int main(int argc, char** argv)
 		else if (arg == "-b" || arg == "--bootstrap")
 			bootstrap = true;
 		else if (arg == "--no-discovery")
-			if (bootstrap)
-			{
-				cerr << "-b/--bootstrap cannot be used with --no-discovery." << endl;
-				return -1;
-			}
-			else
-				disableDiscovery = true;
+			disableDiscovery = true;
 		else if (arg == "--pin")
 			pinning = true;
 		else if (arg == "-f" || arg == "--force-mining")

@@ -130,7 +130,7 @@ public:
 	enum NodeRelation { Unknown = 0, Known };
 	
 	/// Constructor requiring host for I/O, credentials, and IP Address and port to listen on.
-	NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint, bool _disabled = false);
+	NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint, bool _enabled = true);
 	~NodeTable();
 
 	/// Returns distance based on xor metric two node ids. Used by NodeEntry and NodeTable.
