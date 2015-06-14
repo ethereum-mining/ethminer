@@ -285,7 +285,6 @@ private:
 unsigned Ethash::GPUMiner::s_platformId = 0;
 unsigned Ethash::GPUMiner::s_deviceId = 0;
 unsigned Ethash::GPUMiner::s_numInstances = 0;
-unsigned Ethash::GPUMiner::s_dagChunks = 1;
 
 Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
@@ -335,18 +334,19 @@ void Ethash::GPUMiner::workLoop()
 			EthashAux::FullType dag;
 			while (true)
 			{
-				if ((dag = EthashAux::full(w.seedHash, false)))
+				if ((dag = EthashAux::full(w.seedHash, true)))
 					break;
 				if (shouldStop())
 				{
 					delete m_miner;
+					m_miner = nullptr;
 					return;
 				}
 				cnote << "Awaiting DAG";
 				this_thread::sleep_for(chrono::milliseconds(500));
 			}
 			bytesConstRef dagData = dag->data();
-			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device, s_dagChunks);
+			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
@@ -354,6 +354,8 @@ void Ethash::GPUMiner::workLoop()
 	}
 	catch (cl::Error const& _e)
 	{
+		delete m_miner;
+		m_miner = nullptr;
 		cwarn << "Error GPU mining: " << _e.what() << "(" << _e.err() << ")";
 	}
 }
@@ -371,7 +373,7 @@ std::string Ethash::GPUMiner::platformInfo()
 
 unsigned Ethash::GPUMiner::getNumDevices()
 {
-	return ethash_cl_miner::get_num_devices(s_platformId);
+	return ethash_cl_miner::getNumDevices(s_platformId);
 }
 
 void Ethash::GPUMiner::listDevices()
@@ -379,9 +381,18 @@ void Ethash::GPUMiner::listDevices()
 	return ethash_cl_miner::listDevices();
 }
 
-bool Ethash::GPUMiner::haveSufficientMemory()
+bool Ethash::GPUMiner::configureGPU(
+	unsigned _platformId,
+	unsigned _deviceId,
+	bool _allowCPU,
+	unsigned _extraGPUMemory,
+	bool _forceSingleChunk,
+	boost::optional<uint64_t> _currentBlock
+)
 {
-	return ethash_cl_miner::haveSufficientGPUMemory();
+	s_platformId = _platformId;
+	s_deviceId = _deviceId;
+	return ethash_cl_miner::configureGPU(_allowCPU, _extraGPUMemory, _forceSingleChunk, _currentBlock);
 }
 
 #endif

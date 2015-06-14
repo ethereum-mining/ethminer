@@ -108,6 +108,7 @@ void DappLoader::downloadComplete(QNetworkReply* _reply)
 		//inject web3 js
 		QByteArray content = "<script>\n";
 		content.append(web3Content());
+		content.append(("web3.admin.setSessionKey('" + m_sessionKey + "');").c_str());
 		content.append("</script>\n");
 		content.append(_reply->readAll());
 		QString contentType = _reply->header(QNetworkRequest::ContentTypeHeader).toString();

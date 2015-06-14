@@ -54,6 +54,11 @@ uint64_t EthashAux::cacheSize(BlockInfo const& _header)
 	return ethash_get_cachesize((uint64_t)_header.number);
 }
 
+uint64_t EthashAux::dataSize(uint64_t _blockNumber)
+{
+	return ethash_get_datasize(_blockNumber);
+}
+
 h256 EthashAux::seedHash(unsigned _number)
 {
 	unsigned epoch = _number / ETHASH_EPOCH_LENGTH;
