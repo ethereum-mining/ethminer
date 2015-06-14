@@ -798,6 +798,83 @@ string WebThreeStubServerBase::eth_compileSerpent(string const& _source)
 	return res;
 }
 
+bool WebThreeStubServerBase::admin_web3_setVerbosity(int _v, string const& _session)
+{
+	if (!isAdmin(_session))
+		return false;
+	g_logVerbosity = _v;
+	return true;
+}
+
+bool WebThreeStubServerBase::admin_net_start(std::string const& _session)
+{
+	if (!isAdmin(_session))
+		return false;
+	network()->startNetwork();
+	return true;
+}
+
+bool WebThreeStubServerBase::admin_net_stop(std::string const& _session)
+{
+	if (!isAdmin(_session))
+		return false;
+	network()->stopNetwork();
+	return true;
+}
+
+bool WebThreeStubServerBase::admin_net_connect(std::string const& _node, std::string const& _session)
+{
+	if (!isAdmin(_session))
+		return false;
+	p2p::NodeId id;
+	bi::tcp::endpoint ep;
+	if (_node.substr(0, 8) == "enode://" && _node.find('@') == 136)
+	{
+		id = p2p::NodeId(_node.substr(8, 128));
+		ep = p2p::Network::resolveHost(_node.substr(137));
+	}
+	else
+		ep = p2p::Network::resolveHost(_node);
+	network()->requirePeer(id, ep);
+	return true;
+}
+
+Json::Value toJson(p2p::PeerSessionInfo const& _p)
+{
+	Json::Value ret;
+	ret["id"] = _p.id.hex();
+	ret["clientVersion"] = _p.clientVersion;
+	ret["host"] = _p.host;
+	ret["port"] = _p.port;
+	ret["lastPing"] = (int)chrono::duration_cast<chrono::milliseconds>(_p.lastPing).count();
+	for (auto const& i: _p.notes)
+		ret["notes"][i.first] = i.second;
+	for (auto const& i: _p.caps)
+		ret["caps"][i.first] = (unsigned)i.second;
+	return ret;
+}
+
+Json::Value WebThreeStubServerBase::admin_net_peers(std::string const& _session)
+{
+	if (!isAdmin(_session))
+		return false;
+	Json::Value ret;
+	for (p2p::PeerSessionInfo const& i: network()->peers())
+		ret.append(toJson(i));
+	return ret;
+}
+
+bool WebThreeStubServerBase::admin_eth_setMining(bool _on, std::string const& _session)
+{
+	if (!isAdmin(_session))
+		return false;
+	if (_on)
+		client()->startMining();
+	else
+		client()->stopMining();
+	return true;
+}
+
 Json::Value WebThreeStubServerBase::eth_compileSolidity(string const& _source)
 {
 	// TOOD throw here jsonrpc errors
