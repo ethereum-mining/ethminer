@@ -40,7 +40,7 @@ const char* NodeTableIngress::name() { return "<<P"; }
 
 NodeEntry::NodeEntry(NodeId const& _src, Public const& _pubk, NodeIPEndpoint const& _gw): Node(_pubk, _gw), distance(NodeTable::distance(_src, _pubk)) {}
 
-NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint, bool _disabled):
+NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint const& _endpoint, bool _enabled):
 	m_node(Node(_alias.pub(), _endpoint)),
 	m_secret(_alias.sec()),
 	m_io(_io),
@@ -48,7 +48,7 @@ NodeTable::NodeTable(ba::io_service& _io, KeyPair const& _alias, NodeIPEndpoint 
 	m_socketPointer(m_socket.get()),
 	m_bucketRefreshTimer(m_io),
 	m_evictionCheckTimer(m_io),
-	m_disabled(_disabled)
+	m_disabled(!_enabled)
 {
 	for (unsigned i = 0; i < s_bins; i++)
 	{
