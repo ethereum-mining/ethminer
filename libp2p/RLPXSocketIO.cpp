@@ -26,7 +26,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-uint32_t const RLPXSocketIO::MinFrameSize = /*header*/h128::size + /*type*/1 + /*mac*/h128::size;
+uint32_t const RLPXSocketIO::MinFrameSize = h128::size * 3; // header + block + mac
 uint32_t const RLPXSocketIO::MaxPacketSize = 1 << 24;
 uint16_t const RLPXSocketIO::DefaultInitialCapacity = 8 << 8;
 
@@ -72,7 +72,7 @@ void RLPXSocketIO::doWrite()
 			active += 1;
 	size_t dequed = 0;
 	size_t protFrameSize = capacity / active;
-	if (protFrameSize >= MinFrameSize * active)
+	if (protFrameSize >= MinFrameSize)
 		for (auto& w: m_writers)
 			dequed += w.drain(m_coder, protFrameSize, m_toSend);
 
