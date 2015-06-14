@@ -639,17 +639,20 @@ void Host::run(boost::system::error_code const&)
 		if (p->required && reqConn++ < m_idealPeerCount)
 			connect(p);
 	
-	unsigned pendingCount = 0;
-	DEV_GUARDED(x_pendingNodeConns)
-		pendingCount = m_pendingPeerConns.size();
-	int openSlots = m_idealPeerCount - peerCount() - pendingCount + reqConn;
-	if (openSlots > 0 && !m_netPrefs.pin)
+	if (!m_netPrefs.pin)
 	{
-		for (auto p: toConnect)
-			if (!p->required && openSlots--)
-				connect(p);
-	
-		m_nodeTable->discover();
+		unsigned pendingCount = 0;
+		DEV_GUARDED(x_pendingNodeConns)
+			pendingCount = m_pendingPeerConns.size();
+		int openSlots = m_idealPeerCount - peerCount() - pendingCount + reqConn;
+		if (openSlots > 0)
+		{
+			for (auto p: toConnect)
+				if (!p->required && openSlots--)
+					connect(p);
+		
+			m_nodeTable->discover();
+		}
 	}
 
 	auto runcb = [this](boost::system::error_code const& error) { run(error); };
