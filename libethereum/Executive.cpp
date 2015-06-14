@@ -46,6 +46,8 @@ bool changesMemory(Instruction _inst)
 	return
 		_inst == Instruction::MSTORE ||
 		_inst == Instruction::MSTORE8 ||
+		_inst == Instruction::MLOAD ||
+		_inst == Instruction::CREATE ||
 		_inst == Instruction::CALL ||
 		_inst == Instruction::CALLCODE ||
 		_inst == Instruction::SHA3 ||
@@ -71,6 +73,7 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 		stack.append(toHex(toCompactBigEndian(i), 1));
 	r["stack"] = stack;
 
+	bool returned = false;
 	bool newContext = false;
 	Instruction lastInst = Instruction::STOP;
 
@@ -84,6 +87,7 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 	else if (m_lastInst.size() == ext.depth + 2)
 	{
 		// returned from old context
+		returned = true;
 		m_lastInst.pop_back();
 		lastInst = m_lastInst.back();
 	}
@@ -91,6 +95,7 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 	{
 		// continuing in previous context
 		lastInst = m_lastInst.back();
+		m_lastInst.back() = inst;
 	}
 	else
 	{
@@ -101,10 +106,10 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 
 	if (changesMemory(lastInst) || newContext)
 	{
-		Json::Value mem(Json::arrayValue);
-		for (auto const& i: vm.memory())
-			mem.append(toHex(toCompactBigEndian(i), 1));
-		r["memory"] = mem;
+		if (vm.memory().size() < 1024)
+			r["memory"] = toHex(vm.memory());
+		else
+			r["sha3memory"] = sha3(vm.memory()).hex();
 	}
 
 	if (changesStorage(lastInst) || newContext)
@@ -115,21 +120,26 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 		r["storage"] = storage;
 	}
 
-	r["depth"] = ext.depth;
-	r["address"] = ext.myAddress.hex();
+	if (returned || newContext)
+		r["depth"] = ext.depth;
+	if (newContext)
+		r["address"] = ext.myAddress.hex();
 	r["steps"] = (unsigned)_steps;
 	r["inst"] = (unsigned)inst;
+	if (m_showMnemonics)
+		r["instname"] = instructionInfo(inst).name;
 	r["pc"] = toString(vm.curPC());
 	r["gas"] = toString(gas);
 	r["gascost"] = toString(gasCost);
-	r["memexpand"] = toString(newMemSize);
+	if (!!newMemSize)
+		r["memexpand"] = toString(newMemSize);
 
 	m_trace->append(r);
 }
 
-string StandardTrace::json() const
+string StandardTrace::json(bool _styled) const
 {
-	return Json::FastWriter().write(*m_trace);
+	return _styled ? Json::StyledWriter().write(*m_trace) : Json::FastWriter().write(*m_trace);
 }
 
 Executive::Executive(State& _s, BlockChain const& _bc, unsigned _level):
@@ -191,12 +201,12 @@ void Executive::initialize(Transaction const& _transaction)
 
 	// Avoid unaffordable transactions.
 	m_gasCost = (bigint)m_t.gas() * m_t.gasPrice();
-	m_totalCost = m_t.value() + m_gasCost;
-	if (m_s.balance(m_t.sender()) < m_totalCost)
+	bigint totalCost = m_t.value() + m_gasCost;
+	if (m_s.balance(m_t.sender()) < totalCost)
 	{
-		clog(ExecutiveWarnChannel) << "Not enough cash: Require >" << m_totalCost << " Got" << m_s.balance(m_t.sender()) << "for sender: " << m_t.sender();
+		clog(ExecutiveWarnChannel) << "Not enough cash: Require >" << totalCost << " Got" << m_s.balance(m_t.sender()) << "for sender: " << m_t.sender();
 		m_excepted = TransactionException::NotEnoughCash;
-		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(m_totalCost, (bigint)m_s.balance(m_t.sender())) << errinfo_comment(m_t.sender().abridged()));
+		BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender())) << errinfo_comment(m_t.sender().abridged()));
 	}
 }
 
@@ -249,7 +259,8 @@ bool Executive::call(CallParameters const& _p, u256 const& _gasPrice, Address co
 		{
 			m_outRef = _p.out; // Save ref to expected output buffer to be used in go()
 			bytes const& c = m_s.code(_p.codeAddress);
-			m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _p.receiveAddress, _p.senderAddress, _origin, _p.value, _gasPrice, _p.data, &c, m_depth);
+			h256 codeHash = m_s.codeHash(_p.codeAddress);
+			m_ext = make_shared<ExtVM>(m_s, m_lastHashes, _p.receiveAddress, _p.senderAddress, _origin, _p.value, _gasPrice, _p.data, &c, codeHash, m_depth);
 		}
 	}
 
@@ -269,7 +280,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 	// Execute _init.
 	if (!_init.empty())
-		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, m_depth);
+		m_ext = make_shared<ExtVM>(m_s, m_lastHashes, m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init, sha3(_init), m_depth);
 
 	m_s.m_cache[m_newAddress] = Account(m_s.balance(m_newAddress), Account::ContractConception);
 	m_s.transferBalance(_sender, m_newAddress, _endowment);

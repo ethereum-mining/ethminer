@@ -181,7 +181,7 @@ private:
 
 /// Scope guard for invariant check in a class derived from HasInvariants.
 #if ETH_DEBUG
-#define DEV_INVARIANT_CHECK ::dev::InvariantChecker __dev_invariantCheck(this)
+#define DEV_INVARIANT_CHECK { ::dev::InvariantChecker __dev_invariantCheck(this); }
 #else
 #define DEV_INVARIANT_CHECK (void)0;
 #endif

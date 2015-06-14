@@ -43,7 +43,8 @@ public:
 	vector_ref<_T> cropped(size_t _begin) const { if (m_data && _begin <= m_count) return vector_ref<_T>(m_data + _begin, m_count - _begin); else return vector_ref<_T>(); }
 	void retarget(_T* _d, size_t _s) { m_data = _d; m_count = _s; }
 	void retarget(std::vector<_T> const& _t) { m_data = _t.data(); m_count = _t.size(); }
-	void copyTo(vector_ref<typename std::remove_const<_T>::type> _t) const { memcpy(_t.data(), m_data, std::min(_t.size(), m_count) * sizeof(_T)); }
+	template <class T> bool overlapsWith(vector_ref<T> _t) const { void const* f1 = data(); void const* t1 = data() + size(); void const* f2 = _t.data(); void const* t2 = _t.data() + _t.size(); return f1 < t2 && t1 > f2; }
+	void copyTo(vector_ref<typename std::remove_const<_T>::type> _t) const { if (overlapsWith(_t)) memmove(_t.data(), m_data, std::min(_t.size(), m_count) * sizeof(_T)); else memcpy(_t.data(), m_data, std::min(_t.size(), m_count) * sizeof(_T)); }
 	void populate(vector_ref<typename std::remove_const<_T>::type> _t) const { copyTo(_t); memset(_t.data() + m_count, 0, std::max(_t.size(), m_count) - m_count); }
 
 	_T* begin() { return m_data; }

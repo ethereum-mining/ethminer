@@ -46,33 +46,6 @@ h256 LogFilter::sha3() const
 	return dev::sha3(s.out());
 }
 
-static bool isNoLater(RelativeBlock _logBlockRelation, u256 _logBlockNumber, unsigned _latest)
-{
-	if (_latest == PendingBlock)
-		return true;
-	else if (_latest == LatestBlock)
-		return _logBlockRelation == RelativeBlock::Latest;
-	else
-		return _logBlockNumber <= _latest;
-}
-
-static bool isNoEarlier(RelativeBlock _logBlockRelation, u256 _logBlockNumber, unsigned _earliest)
-{
-	if (_earliest == PendingBlock)
-		return _logBlockRelation == RelativeBlock::Pending;
-	else if (_earliest == LatestBlock)
-		return true;
-	else
-		return _logBlockNumber >= _earliest;
-}
-
-bool LogFilter::envelops(RelativeBlock _logBlockRelation, u256 _logBlockNumber) const
-{
-	return
-		isNoLater(_logBlockRelation, _logBlockNumber, m_latest) &&
-		isNoEarlier(_logBlockRelation, _logBlockNumber, m_earliest);
-}
-
 bool LogFilter::matches(LogBloom _bloom) const
 {
 	if (m_addresses.size())

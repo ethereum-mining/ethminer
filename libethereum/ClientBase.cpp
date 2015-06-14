@@ -45,19 +45,21 @@ State ClientBase::asOf(BlockNumber _h) const
 	return asOf(bc().numberHash(_h));
 }
 
-void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, u256 _nonce)
 {
 	prepareForTransaction();
 
-	auto a = toAddress(_secret);
-	u256 n = postMine().transactionsFrom(a);
-	cdebug << "submitTx: " << a << "postMine=" << n << "; tq=" << m_tq.maxNonce(a);
-	n = max<u256>(n, m_tq.maxNonce(a));
-	Transaction t(_value, _gasPrice, _gas, _dest, _data, n, _secret);
+	Transaction t(_value, _gasPrice, _gas, _dest, _data, _nonce, _secret);
 	m_tq.import(t.rlp());
-	
+
 	StructuredLogger::transactionReceived(t.sha3().abridged(), t.sender().abridged());
-	cnote << "New transaction " << t << "(maxNonce for sender" << a << "is" << m_tq.maxNonce(a) << ")";
+	cnote << "New transaction " << t;
+}
+
+void ClientBase::submitTransaction(Secret _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice)
+{
+	auto a = toAddress(_secret);
+	submitTransaction(_secret, _value, _dest, _data, _gas, _gasPrice, max<u256>(postMine().transactionsFrom(a), m_tq.maxNonce(a)));
 }
 
 Address ClientBase::submitTransaction(Secret _secret, u256 _endowment, bytes const& _init, u256 _gas, u256 _gasPrice)
@@ -171,8 +173,8 @@ LocalisedLogEntries ClientBase::logs(unsigned _watchId) const
 LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 {
 	LocalisedLogEntries ret;
-	unsigned begin = min<unsigned>(bc().number() + 1, (unsigned)_f.latest());
-	unsigned end = min(bc().number(), min(begin, (unsigned)_f.earliest()));
+	unsigned begin = min(bc().number() + 1, (unsigned)numberFromHash(_f.latest()));
+	unsigned end = min(bc().number(), min(begin, (unsigned)numberFromHash(_f.earliest())));
 	
 	// Handle pending transactions differently as they're not on the block chain.
 	if (begin > bc().number())
@@ -182,11 +184,10 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 		{
 			// Might have a transaction that contains a matching log.
 			TransactionReceipt const& tr = temp.receipt(i);
-			auto th = temp.pending()[i].sha3();
 			LogEntries le = _f.matches(tr);
 			if (le.size())
 				for (unsigned j = 0; j < le.size(); ++j)
-					ret.insert(ret.begin(), LocalisedLogEntry(le[j], begin, th));
+					ret.insert(ret.begin(), LocalisedLogEntry(le[j]));
 		}
 		begin = bc().number();
 	}
@@ -201,20 +202,22 @@ LocalisedLogEntries ClientBase::logs(LogFilter const& _f) const
 	{
 		int total = 0;
 		auto h = bc().numberHash(n);
+		auto info = bc().info(h);
 		auto receipts = bc().receipts(h).receipts;
+		unsigned logIndex = 0;
 		for (size_t i = 0; i < receipts.size(); i++)
 		{
+			logIndex++;
 			TransactionReceipt receipt = receipts[i];
 			if (_f.matches(receipt.bloom()))
 			{
-				auto info = bc().info(h);
 				auto th = transaction(info.hash(), i).sha3();
 				LogEntries le = _f.matches(receipt);
 				if (le.size())
 				{
 					total += le.size();
 					for (unsigned j = 0; j < le.size(); ++j)
-						ret.insert(ret.begin(), LocalisedLogEntry(le[j], n, th));
+						ret.insert(ret.begin(), LocalisedLogEntry(le[j], info, th, i, logIndex));
 				}
 			}
 			
@@ -313,6 +316,8 @@ LocalisedLogEntries ClientBase::checkWatch(unsigned _watchId)
 
 BlockInfo ClientBase::blockInfo(h256 _hash) const
 {
+	if (_hash == PendingBlockHash)
+		return preMine().info();
 	return BlockInfo(bc().block(_hash));
 }
 
@@ -441,6 +446,24 @@ h256 ClientBase::hashFromNumber(BlockNumber _number) const
 
 BlockNumber ClientBase::numberFromHash(h256 _blockHash) const
 {
+	if (_blockHash == PendingBlockHash)
+		return bc().number() + 1;
+	else if (_blockHash == LatestBlockHash)
+		return bc().number();
+	else if (_blockHash == EarliestBlockHash)
+		return 0;
 	return bc().number(_blockHash);
 }
 
+int ClientBase::compareBlockHashes(h256 _h1, h256 _h2) const
+{
+	BlockNumber n1 = numberFromHash(_h1);
+	BlockNumber n2 = numberFromHash(_h2);
+
+	if (n1 > n2) {
+		return 1;
+	} else if (n1 == n2) {
+		return 0;
+	}
+	return -1;
+}

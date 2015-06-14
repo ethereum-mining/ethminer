@@ -57,14 +57,16 @@ public:
 	bool kill(h256 const& _h);
 	void purge();
 
-	bytes lookupAux(h256 const& _h) const { ReadGuard l(x_this); auto it = m_aux.find(_h); if (it != m_aux.end() && (!m_enforceRefs || it->second.second)) return it->second.first; return bytes(); }
-	void removeAux(h256 const& _h) { WriteGuard l(x_this); m_aux[_h].second = false; }
-	void insertAux(h256 const& _h, bytesConstRef _v) { WriteGuard l(x_this); m_aux[_h] = make_pair(_v.toBytes(), true); }
+	bytes lookupAux(h256 const& _h) const;
+	void removeAux(h256 const& _h);
+	void insertAux(h256 const& _h, bytesConstRef _v);
 
 	h256Hash keys() const;
 
 protected:
+#if DEV_GUARDED_DB
 	mutable SharedMutex x_this;
+#endif
 	std::unordered_map<h256, std::pair<std::string, unsigned>> m_main;
 	std::unordered_map<h256, std::pair<bytes, bool>> m_aux;
 
