@@ -614,8 +614,9 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 void Client::syncBlockQueue()
 {
 	cwork << "BQ ==> CHAIN ==> STATE";
+
 	ImportRoute ir;
-	tie(ir.liveBlocks, ir.deadBlocks, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, rand() % 10 + 5);
+	tie(ir, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, rand() % 10 + 5);
 	if (ir.liveBlocks.empty())
 		return;
 	onChainChanged(ir);
