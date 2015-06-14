@@ -51,6 +51,8 @@ struct NetworkPreferences
 	std::string publicIPAddress;
 	std::string listenIPAddress;
 	unsigned short listenPort = 30303;
+	bool discovery = true;		// Discovery is activated with network.
+	bool pin = false;			// Only connect to trusted ("required") peers.
 	bool traverseNAT = true;
 };
 
