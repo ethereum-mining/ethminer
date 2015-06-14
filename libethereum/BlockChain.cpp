@@ -326,8 +326,8 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 				ImportRoute r;
 				DEV_TIMED_ABOVE(Block import, 500)
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
-				fresh += r.liveBlocks();
-				dead += r.deadBlocks();
+				fresh += r.liveBlocks;
+				dead += r.deadBlocks;
 			}
 			catch (dev::eth::UnknownParent)
 			{
@@ -699,8 +699,8 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 			dead.push_back(h);
 		else
 			fresh.push_back(h);
-	return ImportRoute(dead, fresh);
-}
+	return ImportRoute{dead, fresh};
+};
 
 void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
 {
