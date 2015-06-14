@@ -611,13 +611,25 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 	return true;
 }
 
+unsigned static const c_syncMin = 1;
+unsigned static const c_syncMax = 100;
+double static const c_targetDuration = 1;
+
 void Client::syncBlockQueue()
 {
+	ImportRoute ir;
 	cwork << "BQ ==> CHAIN ==> STATE";
-	pair <h256s, h256s> blocks;
-	tie(blocks.first, blocks.second, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, rand() % 10 + 5);
-	ImportRoute ir(blocks.second, blocks.first);
-	if (ir.liveBlocks().empty())
+	boost::timer t;
+	tie(ir, m_syncBlockQueue) = m_bc.sync(m_bq, m_stateDB, m_syncAmount);
+	double elapsed = t.elapsed();
+
+	cnote << m_syncAmount << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (m_syncAmount / elapsed) << "blocks/s)";
+
+	if (elapsed > c_targetDuration * 1.1 && m_syncAmount > c_syncMin)
+		m_syncAmount = max(c_syncMin, m_syncAmount * 9 / 10);
+	else if (elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
+		m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
+	if (ir.liveBlocks.empty())
 		return;
 	onChainChanged(ir);
 }
@@ -695,43 +707,48 @@ void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
 
 void Client::restartMining()
 {
-	bool preChanged = false;
-	State newPreMine;
-	DEV_READ_GUARDED(x_preMine)
-		newPreMine = m_preMine;
+	// RESTART MINING
 
-	// TODO: use m_postMine to avoid re-evaluating our own blocks.
-	preChanged = newPreMine.sync(m_bc);
-
-	if (preChanged || m_postMine.address() != m_preMine.address())
+	if (!m_bq.items().first)
 	{
-		if (isMining())
-			cnote << "New block on chain.";
+		bool preChanged = false;
+		State newPreMine;
+		DEV_READ_GUARDED(x_preMine)
+			newPreMine = m_preMine;
 
-		DEV_WRITE_GUARDED(x_preMine)
-			m_preMine = newPreMine;
-		DEV_WRITE_GUARDED(x_working)
-			m_working = newPreMine;
-		DEV_READ_GUARDED(x_postMine)
-			for (auto const& t: m_postMine.pending())
-			{
-				clog(ClientNote) << "Resubmitting post-mine transaction " << t;
-				auto ir = m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
-				if (ir != ImportResult::Success)
-					onTransactionQueueReady();
-			}
-		DEV_READ_GUARDED(x_working) DEV_WRITE_GUARDED(x_postMine)
-			m_postMine = m_working;
+		// TODO: use m_postMine to avoid re-evaluating our own blocks.
+		preChanged = newPreMine.sync(m_bc);
 
-		onPostStateChanged();
+		if (preChanged || m_postMine.address() != m_preMine.address())
+		{
+			if (isMining())
+				cnote << "New block on chain.";
+
+			DEV_WRITE_GUARDED(x_preMine)
+				m_preMine = newPreMine;
+			DEV_WRITE_GUARDED(x_working)
+				m_working = newPreMine;
+			DEV_READ_GUARDED(x_postMine)
+				for (auto const& t: m_postMine.pending())
+				{
+					clog(ClientNote) << "Resubmitting post-mine transaction " << t;
+					auto ir = m_tq.import(t, TransactionQueue::ImportCallback(), IfDropped::Retry);
+					if (ir != ImportResult::Success)
+						onTransactionQueueReady();
+				}
+			DEV_READ_GUARDED(x_working) DEV_WRITE_GUARDED(x_postMine)
+				m_postMine = m_working;
+
+			onPostStateChanged();
+		}
 	}
 }
 
 void Client::onChainChanged(ImportRoute const& _ir)
 {
 	h256Hash changeds;
-	onDeadBlocks(_ir.deadBlocks(), changeds);
-	onNewBlocks(_ir.liveBlocks(), changeds);
+	onDeadBlocks(_ir.deadBlocks, changeds);
+	onNewBlocks(_ir.liveBlocks, changeds);
 	restartMining();
 
 	// Quick hack for now - the TQ at this point already has the prior pending transactions in it;
@@ -913,8 +930,8 @@ void Client::flushTransactions()
 	doWork();
 }
 
-HashChainStatus Client::hashChainStatus() const
+SyncStatus Client::syncStatus() const
 {
 	auto h = m_host.lock();
-	return h ? h->status() : HashChainStatus { 0, 0, false };
+	return h ? h->status() : SyncStatus();
 }

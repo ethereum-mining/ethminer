@@ -305,7 +305,7 @@ LastHashes BlockChain::lastHashes(unsigned _n) const
 	return m_lastLastHashes;
 }
 
-tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
+tuple<ImportRoute, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _stateDB, unsigned _max)
 {
 //	_bq.tick(*this);
 
@@ -326,8 +326,8 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 				ImportRoute r;
 				DEV_TIMED_ABOVE(Block import, 500)
 					r = import(block.verified, _stateDB, ImportRequirements::Default & ~ImportRequirements::ValidNonce & ~ImportRequirements::CheckUncles);
-				fresh += r.liveBlocks();
-				dead += r.deadBlocks();
+				fresh += r.liveBlocks;
+				dead += r.deadBlocks;
 			}
 			catch (dev::eth::UnknownParent)
 			{
@@ -353,14 +353,14 @@ tuple<h256s, h256s, bool> BlockChain::sync(BlockQueue& _bq, OverlayDB const& _st
 				badBlocks.push_back(block.verified.info.hash());
 			}
 		}
-	return make_tuple(fresh, dead, _bq.doneDrain(badBlocks));
+	return make_tuple(ImportRoute{dead, fresh}, _bq.doneDrain(badBlocks));
 }
 
 pair<ImportResult, ImportRoute> BlockChain::attemptImport(bytes const& _block, OverlayDB const& _stateDB, ImportRequirements::value _ir) noexcept
 {
 	try
 	{
-		return make_pair(ImportResult::Success, import(verifyBlock(_block, m_onBad), _stateDB, _ir));
+		return make_pair(ImportResult::Success, import(verifyBlock(_block, m_onBad, _ir), _stateDB, _ir));
 	}
 	catch (UnknownParent&)
 	{
@@ -699,8 +699,8 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 			dead.push_back(h);
 		else
 			fresh.push_back(h);
-	return ImportRoute(dead, fresh);
-}
+	return ImportRoute{dead, fresh};
+};
 
 void BlockChain::clearBlockBlooms(unsigned _begin, unsigned _end)
 {
@@ -1066,12 +1066,16 @@ bytes BlockChain::block(h256 const& _hash) const
 	return m_blocks[_hash];
 }
 
-VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exception&)> const& _onBad)
+VerifiedBlockRef BlockChain::verifyBlock(bytes const& _block, function<void(Exception&)> const& _onBad, ImportRequirements::value _ir)
 {
 	VerifiedBlockRef res;
 	try
 	{
-		res.info.populate(_block, CheckEverything);
+		Strictness strictness = Strictness::CheckEverything;
+		if (_ir & ~ImportRequirements::ValidNonce)
+			strictness = Strictness::IgnoreNonce;
+
+		res.info.populate(_block, strictness);
 		res.info.verifyInternals(&_block);
 	}
 	catch (Exception& ex)

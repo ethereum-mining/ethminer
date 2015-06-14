@@ -137,9 +137,15 @@ unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
 	return devices.size();
 }
 
-bool ethash_cl_miner::configureGPU(bool _allowCPU, unsigned _extraGPUMemory, boost::optional<uint64_t> _currentBlock)
+bool ethash_cl_miner::configureGPU(
+	bool _allowCPU,
+	unsigned _extraGPUMemory,
+	bool _forceSingleChunk,
+	boost::optional<uint64_t> _currentBlock
+)
 {
 	s_allowCPU = _allowCPU;
+	s_forceSingleChunk = _forceSingleChunk;
 	s_extraRequiredGPUMem = _extraGPUMemory;
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = _currentBlock ? ethash_get_datasize(*_currentBlock) : 1073739904U;
@@ -168,6 +174,7 @@ bool ethash_cl_miner::configureGPU(bool _allowCPU, unsigned _extraGPUMemory, boo
 }
 
 bool ethash_cl_miner::s_allowCPU = false;
+bool ethash_cl_miner::s_forceSingleChunk = false;
 unsigned ethash_cl_miner::s_extraRequiredGPUMem;
 
 bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
@@ -284,15 +291,18 @@ bool ethash_cl_miner::init(
 		// configure chunk number depending on max allocateable memory
 		cl_ulong result;
 		device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
-		if (result >= _dagSize)
+		if (s_forceSingleChunk || result >= _dagSize)
 		{
 			m_dagChunksNum = 1;
-			ETHCL_LOG("Using 1 big chunk. Max OpenCL allocateable memory is" << result);
+			ETHCL_LOG(
+				((result <= _dagSize && s_forceSingleChunk) ? "Forcing single chunk. Good luck!\n" : "") <<
+				"Using 1 big chunk. Max OpenCL allocateable memory is " << result
+			);
 		}
 		else
 		{
 			m_dagChunksNum = 4;
-			ETHCL_LOG("Using 4 chunks. Max OpenCL allocateable memory is" << result);
+			ETHCL_LOG("Using 4 chunks. Max OpenCL allocateable memory is " << result);
 		}
 
 		if (strncmp("OpenCL 1.0", device_version.c_str(), 10) == 0)
