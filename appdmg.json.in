@@ -2,11 +2,11 @@
     "title": "Ethereum",
     "icon": "appdmg_icon.icns",
     "background": "appdmg_background.png",
-    "icon-size": 80,
+    "icon-size": 55,
     "contents": [
-        { "x": 600, "y": 170, "type": "link", "path": "/Applications" },
-        { "x": 150, "y": 90,  "type": "file", "path": "${ETH_ALETHZERO_APP}" },
-        { "x": 150, "y": 260, "type": "file", "path": "${ETH_MIX_APP}" }
+        { "x": 242, "y": 240, "type": "link", "path": "/Applications" },
+        { "x": 145, "y": 125,  "type": "file", "path": "${ETH_ALETHZERO_APP}" },
+        { "x": 339, "y": 125, "type": "file", "path": "${ETH_MIX_APP}" }
     ]
 }
 
