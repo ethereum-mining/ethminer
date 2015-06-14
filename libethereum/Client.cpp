@@ -613,7 +613,7 @@ bool Client::submitWork(ProofOfWork::Solution const& _solution)
 
 unsigned static const c_syncMin = 1;
 unsigned static const c_syncMax = 100;
-double static const c_targetDuration = 0.5;
+double static const c_targetDuration = 1;
 
 void Client::syncBlockQueue()
 {
@@ -625,9 +625,9 @@ void Client::syncBlockQueue()
 
 	cnote << m_syncAmount << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (m_syncAmount / elapsed) << "blocks/s)";
 
-	if (elapsed > 0.55 && m_syncAmount > c_syncMin)
+	if (elapsed > c_targetDuration * 1.1 && m_syncAmount > c_syncMin)
 		m_syncAmount = max(c_syncMin, m_syncAmount * 9 / 10);
-	else if (elapsed < 0.45 && m_syncAmount < c_syncMax)
+	else if (elapsed < c_targetDuration * 0.9 && m_syncAmount < c_syncMax)
 		m_syncAmount = min(c_syncMax, m_syncAmount * 11 / 10 + 1);
 	if (ir.first.empty())
 		return;
