@@ -480,7 +480,7 @@ void Client::appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& 
 	}
 }
 
-void Client::appendFromNewBlock(h256 const& _block, h256Hash& io_changed)
+void Client::appendFromBlock(h256 const& _block, bool _polarity, h256Hash& io_changed)
 {
 	// TODO: more precise check on whether the txs match.
 	auto d = m_bc.info(_block);
@@ -503,7 +503,7 @@ void Client::appendFromNewBlock(h256 const& _block, h256Hash& io_changed)
 				auto transactionHash = transaction(d.hash(), j).sha3();
 				// filter catches them
 				for (LogEntry const& l: m)
-					i.second.changes.push_back(LocalisedLogEntry(l, d, transactionHash, j, logIndex));
+					i.second.changes.push_back(LocalisedLogEntry(l, d, transactionHash, j, logIndex, _polarity));
 				io_changed.insert(i.first);
 			}
 		}
@@ -656,10 +656,10 @@ void Client::syncTransactionQueue()
 		h->noteNewTransactions();
 }
 
-void Client::onChainChanged(ImportRoute const& _ir)
+void Client::onDeadBlocks(h256s const& _blocks, h256Hash& io_changed)
 {
 	// insert transactions that we are declaring the dead part of the chain
-	for (auto const& h: _ir.deadBlocks())
+	for (auto const& h: _blocks)
 	{
 		clog(ClientNote) << "Dead block:" << h;
 		for (auto const& t: m_bc.transactions(h))
@@ -669,8 +669,14 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		}
 	}
 
+	for (auto const& h: _blocks)
+		appendFromBlock(h, false, io_changed);
+}
+
+void Client::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
+{
 	// remove transactions from m_tq nicely rather than relying on out of date nonce later on.
-	for (auto const& h: _ir.liveBlocks())
+	for (auto const& h: _blocks)
 	{
 		clog(ClientChat) << "Live block:" << h;
 		for (auto const& th: m_bc.transactionHashes(h))
@@ -683,12 +689,12 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	if (auto h = m_host.lock())
 		h->noteNewBlocks();
 
-	h256Hash changeds;
-	for (auto const& h: _ir.liveBlocks())
-		appendFromNewBlock(h, changeds);
+	for (auto const& h: _blocks)
+		appendFromBlock(h, true, io_changed);
+}
 
-	// RESTART MINING
-
+void Client::restartMining()
+{
 	bool preChanged = false;
 	State newPreMine;
 	DEV_READ_GUARDED(x_preMine)
@@ -717,15 +723,20 @@ void Client::onChainChanged(ImportRoute const& _ir)
 		DEV_READ_GUARDED(x_working) DEV_WRITE_GUARDED(x_postMine)
 			m_postMine = m_working;
 
-		changeds.insert(PendingChangedFilter);
-
 		onPostStateChanged();
 	}
+}
+
+void Client::onChainChanged(ImportRoute const& _ir)
+{
+	h256Hash changeds;
+	onDeadBlocks(_ir.deadBlocks(), changeds);
+	onNewBlocks(_ir.liveBlocks(), changeds);
+	restartMining();
 
 	// Quick hack for now - the TQ at this point already has the prior pending transactions in it;
 	// we should resync with it manually until we are stricter about what constitutes "knowing".
 	onTransactionQueueReady();
-
 	noteChanged(changeds);
 }
 
