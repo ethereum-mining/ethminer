@@ -23,6 +23,7 @@
 
 #include <libdevcore/Assertions.h>
 #include "RLPxHandshake.h"
+#include "RLPXPacket.h"
 
 using namespace std;
 using namespace dev;
@@ -92,36 +93,63 @@ RLPXFrameCoder::RLPXFrameCoder(RLPXHandshake const& _init)
 	m_ingressMac.Update(keyMaterial.data(), keyMaterial.size());
 }
 
-void RLPXFrameCoder::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
+void RLPXFrameCoder::writeFrame(uint16_t _protocolType, bytesConstRef _payload, bytes& o_bytes)
 {
-	// _packet = type || rlpList()
-
 	RLPStream header;
-	uint32_t len = (uint32_t)_packet.size();
+	uint32_t len = (uint32_t)_payload.size();
 	header.appendRaw(bytes({byte((len >> 16) & 0xff), byte((len >> 8) & 0xff), byte(len & 0xff)}));
-	// zeroHeader: []byte{0xC2, 0x80, 0x80}. Should be rlpList(protocolType,seqId,totalPacketSize).
-	header.appendRaw(bytes({0xc2,0x80,0x80}));
-	
-	// TODO: SECURITY check that header is <= 16 bytes
+	header.appendList(1) << _protocolType;
+	writeFrame(header, _payload, o_bytes);
+}
 
+void RLPXFrameCoder::writeFrame(uint16_t _protocolType, uint16_t _seqId, bytesConstRef _payload, bytes& o_bytes)
+{
+	RLPStream header;
+	uint32_t len = (uint32_t)_payload.size();
+	header.appendRaw(bytes({byte((len >> 16) & 0xff), byte((len >> 8) & 0xff), byte(len & 0xff)}));
+	header.appendList(2) << _protocolType << _seqId;
+	writeFrame(header, _payload, o_bytes);
+}
+
+void RLPXFrameCoder::writeFrame(uint16_t _protocolType, uint16_t _seqId, uint32_t _totalSize, bytesConstRef _payload, bytes& o_bytes)
+{
+	RLPStream header;
+	uint32_t len = (uint32_t)_payload.size();
+	header.appendRaw(bytes({byte((len >> 16) & 0xff), byte((len >> 8) & 0xff), byte(len & 0xff)}));
+	header.appendList(3) << _protocolType << _seqId << _totalSize;
+	writeFrame(header, _payload, o_bytes);
+}
+
+void RLPXFrameCoder::writeFrame(RLPStream const& _header, bytesConstRef _payload, bytes& o_bytes)
+{
+	// TODO: SECURITY check header values && header <= 16 bytes
 	bytes headerWithMac(h256::size);
-	bytesConstRef(&header.out()).copyTo(bytesRef(&headerWithMac));
+	bytesConstRef(&_header.out()).copyTo(bytesRef(&headerWithMac));
 	m_frameEnc.ProcessData(headerWithMac.data(), headerWithMac.data(), 16);
 	updateEgressMACWithHeader(bytesConstRef(&headerWithMac).cropped(0, 16));
 	egressDigest().ref().copyTo(bytesRef(&headerWithMac).cropped(h128::size,h128::size));
-
-	auto padding = (16 - (_packet.size() % 16)) % 16;
+	
+	auto padding = (16 - (_payload.size() % 16)) % 16;
 	o_bytes.swap(headerWithMac);
-	o_bytes.resize(32 + _packet.size() + padding + h128::size);
-	bytesRef packetRef(o_bytes.data() + 32, _packet.size());
-	m_frameEnc.ProcessData(packetRef.data(), _packet.data(), _packet.size());
-	bytesRef paddingRef(o_bytes.data() + 32 + _packet.size(), padding);
+	o_bytes.resize(32 + _payload.size() + padding + h128::size);
+	bytesRef packetRef(o_bytes.data() + 32, _payload.size());
+	m_frameEnc.ProcessData(packetRef.data(), _payload.data(), _payload.size());
+	bytesRef paddingRef(o_bytes.data() + 32 + _payload.size(), padding);
 	if (padding)
 		m_frameEnc.ProcessData(paddingRef.data(), paddingRef.data(), padding);
-	bytesRef packetWithPaddingRef(o_bytes.data() + 32, _packet.size() + padding);
+	bytesRef packetWithPaddingRef(o_bytes.data() + 32, _payload.size() + padding);
 	updateEgressMACWithFrame(packetWithPaddingRef);
-	bytesRef macRef(o_bytes.data() + 32 + _packet.size() + padding, h128::size);
+	bytesRef macRef(o_bytes.data() + 32 + _payload.size() + padding, h128::size);
 	egressDigest().ref().copyTo(macRef);
+}
+
+void RLPXFrameCoder::writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes)
+{
+	RLPStream header;
+	uint32_t len = (uint32_t)_packet.size();
+	header.appendRaw(bytes({byte((len >> 16) & 0xff), byte((len >> 8) & 0xff), byte(len & 0xff)}));
+	header.appendRaw(bytes({0xc2,0x80,0x80}));
+	writeFrame(header, _packet, o_bytes);
 }
 
 bool RLPXFrameCoder::authAndDecryptHeader(bytesRef io)
