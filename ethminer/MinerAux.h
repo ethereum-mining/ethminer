@@ -134,6 +134,8 @@ public:
 			m_clAllowCPU = true;
 		else if (arg == "--cl-extragpu-mem" && i + 1 < argc)
 			m_extraGPUMemory = 1000000 * stol(argv[++i]);
+		else if (arg == "--force-single-chunk")
+			m_forceSingleChunk = true;
 		else if (arg == "--phone-home" && i + 1 < argc)
 		{
 			string m = argv[++i];
@@ -271,6 +273,7 @@ public:
 					m_openclDevice,
 					m_clAllowCPU,
 					m_extraGPUMemory,
+					m_forceSingleChunk,
 					m_currentBlock
 				))
 			{
@@ -318,6 +321,7 @@ public:
 			<< "    --list-devices List the detected OpenCL devices and exit." <<endl
 			<< "    --current-block Let the miner know the current block number at configuration time. Will help determine DAG size and required GPU memory." <<endl
 			<< "    --cl-extragpu-mem Set the memory (in MB) you believe your GPU requires for stuff other than mining. Windows rendering e.t.c.." <<endl
+			<< "    --force-single-chunk Force DAG uploading in a single chunk against OpenCL's judgement. Use at your own risk." <<endl
 			;
 	}
 
@@ -507,6 +511,7 @@ private:
 	unsigned m_miningThreads = UINT_MAX;
 	bool m_shouldListDevices = false;
 	bool m_clAllowCPU = false;
+	bool m_forceSingleChunk = false;
 	boost::optional<uint64_t> m_currentBlock;
 	// default value is 350MB of GPU memory for other stuff (windows system rendering, e.t.c.)
 	unsigned m_extraGPUMemory = 350000000;
