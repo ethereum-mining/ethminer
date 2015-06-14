@@ -157,7 +157,7 @@ public:
 	/// Get some information on the block queue.
 	BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
 	/// Get some information on the block queue.
-	HashChainStatus hashChainStatus() const;
+	SyncStatus syncStatus() const;
 	/// Get the block queue.
 	BlockQueue const& blockQueue() const { return m_bq; }
 
