@@ -73,7 +73,7 @@ gulp.task('buildLight', ['clean'], function () {
         .pipe(gulp.dest( DEST ));
 });
 
-gulp.task('buildStandalone', ['clean'], function () {
+gulp.task('buildStandalone', [], function () {
     return browserify(browserifyOptions)
         .require('./' + src + '.js', {expose: 'web3'})
         .require('bignumber.js') // expose it to dapp users

@@ -64,6 +64,7 @@ using LogBloomRequirementError = boost::tuple<errinfo_required_LogBloom, errinfo
 
 class BlockChain;
 class State;
+struct VerifiedBlockRef;
 
 struct StateChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
 struct StateTrace: public LogChannel { static const char* name(); static const int verbosity = 5; };
@@ -326,7 +327,7 @@ public:
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
-	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
+	u256 enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Returns back to a pristine state after having done a playback.
 	/// @arg _fullCommit if true flush everything out to disk. If false, this effectively only validates
@@ -367,7 +368,7 @@ private:
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock.
 	/// Throws on failure.
-	u256 enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
+	u256 enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(std::vector<BlockInfo> const& _uncleBlockHeaders);

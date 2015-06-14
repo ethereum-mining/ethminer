@@ -78,6 +78,8 @@ public:
 	///@param _uri Page Uri
 	void loadPage(QString const& _uri);
 
+	void setSessionKey(std::string const& _s) { m_sessionKey = _s; }
+
 signals:
 	void dappReady(Dapp& _dapp);
 	void pageReady(QByteArray const& _content, QString const& _mimeType, QUrl const& _uri);
@@ -99,5 +101,6 @@ private:
 	std::set<QUrl> m_pageUrls;
 	QByteArray m_web3Js;
 	dev::Address m_nameReg;
+	std::string m_sessionKey;
 };
 

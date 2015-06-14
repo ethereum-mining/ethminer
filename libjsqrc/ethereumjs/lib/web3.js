@@ -34,18 +34,11 @@ var Filter = require('./web3/filter');
 var utils = require('./utils/utils');
 var formatters = require('./web3/formatters');
 var RequestManager = require('./web3/requestmanager');
-var c = require('./utils/config');
 var Method = require('./web3/method');
+var c = require('./utils/config');
 var Property = require('./web3/property');
 var Batch = require('./web3/batch');
-
-var web3Methods = [
-    new Method({
-        name: 'sha3',
-        call: 'web3_sha3',
-        params: 1
-    })
-];
+var sha3 = require('./utils/sha3');
 
 var web3Properties = [
     new Property({
@@ -130,6 +123,8 @@ web3.toBigNumber = utils.toBigNumber;
 web3.toWei = utils.toWei;
 web3.fromWei = utils.fromWei;
 web3.isAddress = utils.isAddress;
+web3.isIBAN = utils.isIBAN;
+web3.sha3 = sha3;
 web3.createBatch = function () {
     return new Batch();
 };
@@ -156,7 +151,6 @@ Object.defineProperty(web3.eth, 'defaultAccount', {
 });
 
 /// setups all api methods
-setupMethods(web3, web3Methods);
 setupProperties(web3, web3Properties);
 setupMethods(web3.net, net.methods);
 setupProperties(web3.net, net.properties);
@@ -164,6 +158,18 @@ setupMethods(web3.eth, eth.methods);
 setupProperties(web3.eth, eth.properties);
 setupMethods(web3.db, db.methods);
 setupMethods(web3.shh, shh.methods);
+
+web3.admin = {};
+web3.admin.setSessionKey = function(s) { web3.admin.sessionKey = s; };
+
+var blockQueueStatus = new Property({
+	name: 'blockQueueStatus',
+	call: 'admin_eth_blockQueueStatus',
+	params: 1,
+	inputFormatter: [function() { return web3.admin.sessionKey; }]
+});
+
+setupMethods(web3.admin, [blockQueueStatus]);
 
 module.exports = web3;
 

@@ -85,6 +85,10 @@ using BlockNumber = unsigned;
 
 static const BlockNumber LatestBlock = (BlockNumber)-2;
 static const BlockNumber PendingBlock = (BlockNumber)-1;
+static const h256 LatestBlockHash = h256(2);
+static const h256 EarliestBlockHash = h256(1);
+static const h256 PendingBlockHash = h256(0);
+
 
 enum class RelativeBlock: BlockNumber
 {
@@ -119,28 +123,43 @@ struct ImportRequirements
 class Signal
 {
 public:
+	using Callback = std::function<void()>;
+
 	class HandlerAux
 	{
 		friend class Signal;
 
 	public:
 		~HandlerAux() { if (m_s) m_s->m_fire.erase(m_i); m_s = nullptr; }
+		void reset() { m_s = nullptr; }
+		void fire() { m_h(); }
 
 	private:
-		HandlerAux(unsigned _i, Signal* _s): m_i(_i), m_s(_s) {}
+		HandlerAux(unsigned _i, Signal* _s, Callback const& _h): m_i(_i), m_s(_s), m_h(_h) {}
 
 		unsigned m_i = 0;
 		Signal* m_s = nullptr;
+		Callback m_h;
 	};
 
-	using Callback = std::function<void()>;
+	~Signal()
+	{
+		for (auto const& h : m_fire)
+			h.second->reset();
+	}
 
-	std::shared_ptr<HandlerAux> add(Callback const& _h) { auto n = m_fire.empty() ? 0 : (m_fire.rbegin()->first + 1); m_fire[n] = _h; return std::shared_ptr<HandlerAux>(new HandlerAux(n, this)); }
+	std::shared_ptr<HandlerAux> add(Callback const& _h)
+	{
+		auto n = m_fire.empty() ? 0 : (m_fire.rbegin()->first + 1);
+		auto h =  std::shared_ptr<HandlerAux>(new HandlerAux(n, this, _h));
+		m_fire[n] = h;
+		return h;
+	}
 
-	void operator()() { for (auto const& f: m_fire) f.second(); }
+	void operator()() { for (auto const& f: m_fire) f.second->fire(); }
 
 private:
-	std::map<unsigned, Callback> m_fire;
+	std::map<unsigned, std::shared_ptr<Signal::HandlerAux>> m_fire;
 };
 
 using Handler = std::shared_ptr<Signal::HandlerAux>;
@@ -156,8 +175,6 @@ struct TransactionSkeleton
 	u256 gasPrice = UndefinedU256;
 };
 
-void badBlockHeader(bytesConstRef _header, std::string const& _err);
-inline void badBlockHeader(bytes const& _header, std::string const& _err) { badBlockHeader(&_header, _err); }
 void badBlock(bytesConstRef _header, std::string const& _err);
 inline void badBlock(bytes const& _header, std::string const& _err) { badBlock(&_header, _err); }
 

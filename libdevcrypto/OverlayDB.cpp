@@ -50,7 +50,9 @@ void OverlayDB::commit()
 	{
 		ldb::WriteBatch batch;
 //		cnote << "Committing nodes to disk DB:";
+#if DEV_GUARDED_DB
 		DEV_READ_GUARDED(x_this)
+#endif
 		{
 			for (auto const& i: m_main)
 			{
@@ -83,7 +85,9 @@ void OverlayDB::commit()
 			cwarn << "Sleeping for" << (i + 1) << "seconds, then retrying.";
 			this_thread::sleep_for(chrono::seconds(i + 1));
 		}
+#if DEV_GUARDED_DB
 		DEV_WRITE_GUARDED(x_this)
+#endif
 		{
 			m_aux.clear();
 			m_main.clear();
@@ -107,7 +111,9 @@ bytes OverlayDB::lookupAux(h256 const& _h) const
 
 void OverlayDB::rollback()
 {
+#if DEV_GUARDED_DB
 	WriteGuard l(x_this);
+#endif
 	m_main.clear();
 }
 
