@@ -307,7 +307,8 @@ void Host::onNodeTableEvent(NodeId const& _n, NodeTableEventType const& _e)
 	{
 		clog(NetP2PNote) << "p2p.host.nodeTable.events.NodeEntryDropped " << _n;
 		RecursiveGuard l(x_sessions);
-		m_peers.erase(_n);
+		if (m_peers.count(_n) && !m_peers[_n]->required)
+			m_peers.erase(_n);
 	}
 }
 
@@ -628,7 +629,7 @@ void Host::run(boost::system::error_code const&)
 		{
 			RecursiveGuard l(x_sessions);
 			for (auto p: m_peers)
-				if (p.second->shouldReconnect() && !havePeerSession(p.second->id))
+				if (p.second->shouldReconnect() && !havePeerSession(p.second->id) && (!m_netPrefs.pin || p.second->required))
 					toConnect.push_back(p.second);
 		}
 		
@@ -679,7 +680,7 @@ void Host::startedWorking()
 	else
 		clog(NetP2PNote) << "p2p.start.notice id:" << id() << "TCP Listen port is invalid or unavailable.";
 
-	shared_ptr<NodeTable> nodeTable(new NodeTable(m_ioService, m_alias, NodeIPEndpoint(bi::address::from_string(listenAddress()), listenPort(), listenPort())));
+	shared_ptr<NodeTable> nodeTable(new NodeTable(m_ioService, m_alias, NodeIPEndpoint(bi::address::from_string(listenAddress()), listenPort(), listenPort()), m_netPrefs.discovery));
 	nodeTable->setEventHandler(new HostNodeTableHandler(*this));
 	m_nodeTable = nodeTable;
 	restoreNetwork(&m_restoreNetwork);
