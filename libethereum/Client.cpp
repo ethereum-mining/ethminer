@@ -741,6 +741,10 @@ void Client::restartMining()
 
 			onPostStateChanged();
 		}
+
+		// Quick hack for now - the TQ at this point already has the prior pending transactions in it;
+		// we should resync with it manually until we are stricter about what constitutes "knowing".
+		onTransactionQueueReady();
 	}
 }
 
@@ -750,10 +754,6 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	onDeadBlocks(_ir.deadBlocks, changeds);
 	onNewBlocks(_ir.liveBlocks, changeds);
 	restartMining();
-
-	// Quick hack for now - the TQ at this point already has the prior pending transactions in it;
-	// we should resync with it manually until we are stricter about what constitutes "knowing".
-	onTransactionQueueReady();
 	noteChanged(changeds);
 }
 
