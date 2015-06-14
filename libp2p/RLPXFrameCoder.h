@@ -52,6 +52,15 @@ public:
 	RLPXFrameCoder(RLPXHandshake const& _init);
 	~RLPXFrameCoder() {}
 	
+	/// Write single-frame payload of packet(s).
+	void writeFrame(uint16_t _protocolType, bytesConstRef _payload, bytes& o_bytes);
+
+	/// Write continuation frame of segmented payload.
+	void writeFrame(uint16_t _protocolType, uint16_t _seqId, bytesConstRef _payload, bytes& o_bytes);
+	
+	/// Write first frame of segmented payload.
+	void writeFrame(uint16_t _protocolType, uint16_t _seqId, uint32_t _totalSize, bytesConstRef _payload, bytes& o_bytes);
+	
 	/// Encrypt _packet as RLPx frame.
 	void writeSingleFramePacket(bytesConstRef _packet, bytes& o_bytes);
 
@@ -68,6 +77,8 @@ public:
 	h128 ingressDigest();
 
 protected:
+	void writeFrame(RLPStream const& _header, bytesConstRef _payload, bytes& o_bytes);
+	
 	/// Update state of egress MAC with frame header.
 	void updateEgressMACWithHeader(bytesConstRef _headerCipher);
 
