@@ -758,10 +758,6 @@ bool EthereumHost::peerShouldGrabBlocks(EthereumPeer* _peer) const
 
 bool EthereumHost::peerShouldGrabChain(EthereumPeer* _peer) const
 {
-	// Early exit if this peer has proved unreliable.
-	if (_peer->isRude())
-		return false;
-
 	h256 c = m_chain.currentHash();
 	unsigned n = m_chain.number();
 	u256 td = m_chain.details().totalDifficulty;
