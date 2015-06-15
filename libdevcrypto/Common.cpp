@@ -20,26 +20,30 @@
  * @date 2014
  */
 
+#include "Common.h"
 #include <random>
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <libscrypt/libscrypt.h>
 #include <libdevcore/Guards.h>
-#include "SHA3.h"
-#include "FileSystem.h"
+#include <libdevcore/SHA3.h>
+#include <libdevcore/FileSystem.h>
+#include "AES.h"
 #include "CryptoPP.h"
-#include "Common.h"
 using namespace std;
 using namespace dev;
 using namespace dev::crypto;
 
 static Secp256k1 s_secp256k1;
 
-bool dev::SignatureStruct::isValid() const
+bool dev::SignatureStruct::isValid() const noexcept
 {
 	if (v > 1 ||
 		r >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
-		s >= h256("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"))
+		s >= h256("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141") ||
+		s < h256(1) ||
+		r < h256(1))
 		return false;
 	return true;
 }
@@ -50,7 +54,7 @@ Public dev::toPublic(Secret const& _secret)
 {
 	Public p;
 	s_secp256k1.toPublic(_secret, p);
-	return std::move(p);
+	return p;
 }
 
 Address dev::toAddress(Public const& _public)
@@ -110,51 +114,49 @@ bool dev::decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plain)
 	return decrypt(_k, _cipher, o_plain);
 }
 
-h128 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher)
+std::pair<bytes, h128> dev::encryptSymNoAuth(h128 const& _k, bytesConstRef _plain)
 {
 	h128 iv(Nonce::get());
-	return encryptSymNoAuth(_k, _plain, o_cipher, iv);
+	return make_pair(encryptSymNoAuth(_k, iv, _plain), iv);
 }
 
-h128 dev::encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher, h128 const& _iv)
+bytes dev::encryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _plain)
 {
-	o_cipher.resize(_plain.size());
-
-	const int c_aesKeyLen = 16;
-	SecByteBlock key(_k.data(), c_aesKeyLen);
+	if (_k.size() != 16 && _k.size() != 24 && _k.size() != 32)
+		return bytes();
+	SecByteBlock key(_k.data(), _k.size());
 	try
 	{
 		CTR_Mode<AES>::Encryption e;
 		e.SetKeyWithIV(key, key.size(), _iv.data());
-		e.ProcessData(o_cipher.data(), _plain.data(), _plain.size());
-		return _iv;
+		bytes ret(_plain.size());
+		e.ProcessData(ret.data(), _plain.data(), _plain.size());
+		return ret;
 	}
 	catch (CryptoPP::Exception& _e)
 	{
 		cerr << _e.what() << endl;
-		o_cipher.resize(0);
-		return h128();
+		return bytes();
 	}
 }
 
-bool dev::decryptSymNoAuth(Secret const& _k, h128 const& _iv, bytesConstRef _cipher, bytes& o_plaintext)
+bytes dev::decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _cipher)
 {
-	o_plaintext.resize(_cipher.size());
-	
-	const size_t c_aesKeyLen = 16;
-	SecByteBlock key(_k.data(), c_aesKeyLen);
+	if (_k.size() != 16 && _k.size() != 24 && _k.size() != 32)
+		return bytes();
+	SecByteBlock key(_k.data(), _k.size());
 	try
 	{
 		CTR_Mode<AES>::Decryption d;
 		d.SetKeyWithIV(key, key.size(), _iv.data());
-		d.ProcessData(o_plaintext.data(), _cipher.data(), _cipher.size());
-		return true;
+		bytes ret(_cipher.size());
+		d.ProcessData(ret.data(), _cipher.data(), _cipher.size());
+		return ret;
 	}
 	catch (CryptoPP::Exception& _e)
 	{
 		cerr << _e.what() << endl;
-		o_plaintext.resize(0);
-		return false;
+		return bytes();
 	}
 }
 
@@ -171,6 +173,21 @@ Signature dev::sign(Secret const& _k, h256 const& _hash)
 bool dev::verify(Public const& _p, Signature const& _s, h256 const& _hash)
 {
 	return s_secp256k1.verify(_p, _s, _hash.ref(), true);
+}
+
+bytes dev::pbkdf2(string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen)
+{
+	bytes ret(_dkLen);
+	PKCS5_PBKDF2_HMAC<SHA256> pbkdf;
+	pbkdf.DeriveKey(ret.data(), ret.size(), 0, (byte*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _iterations);
+	return ret;
+}
+
+bytes dev::scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen)
+{
+	bytes ret(_dkLen);
+	libscrypt_scrypt((uint8_t const*)_pass.data(), _pass.size(), _salt.data(), _salt.size(), _n, _r, _p, ret.data(), ret.size());
+	return ret;
 }
 
 KeyPair KeyPair::create()
@@ -213,7 +230,7 @@ h256 crypto::kdf(Secret const& _priv, h256 const& _hash)
 	
 	if (!s || !_hash || !_priv)
 		BOOST_THROW_EXCEPTION(InvalidState());
-	return std::move(s);
+	return s;
 }
 
 h256 Nonce::get(bool _commit)

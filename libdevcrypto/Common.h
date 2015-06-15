@@ -51,7 +51,7 @@ struct SignatureStruct
 	operator Signature() const { return *(h520 const*)this; }
 
 	/// @returns true if r,s,v values are valid, otherwise false
-	bool isValid() const;
+	bool isValid() const noexcept;
 
 	h256 r;
 	h256 s;
@@ -68,8 +68,8 @@ extern Address ZeroAddress;
 /// A vector of Ethereum addresses.
 using Addresses = h160s;
 
-/// A set of Ethereum addresses.
-using AddressSet = std::set<h160>;
+/// A hash set of Ethereum addresses.
+using AddressHash = std::unordered_set<h160>;
 
 /// A vector of secrets.
 using Secrets = h256s;
@@ -98,18 +98,26 @@ bool decryptSym(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
 
 /// Encrypt payload using ECIES standard with AES128-CTR.
 void encryptECIES(Public const& _k, bytesConstRef _plain, bytes& o_cipher);
-	
+
 /// Decrypt payload using ECIES standard with AES128-CTR.
 bool decryptECIES(Secret const& _k, bytesConstRef _cipher, bytes& o_plaintext);
-	
+
 /// Encrypts payload with random IV/ctr using AES128-CTR.
-h128 encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher);
+std::pair<bytes, h128> encryptSymNoAuth(h128 const& _k, bytesConstRef _plain);
 
 /// Encrypts payload with specified IV/ctr using AES128-CTR.
-h128 encryptSymNoAuth(Secret const& _k, bytesConstRef _plain, bytes& o_cipher, h128 const& _iv);
-	
-/// Decrypts payload with specified IV/ctr.
-bool decryptSymNoAuth(Secret const& _k, h128 const& _iv, bytesConstRef _cipher, bytes& o_plaintext);
+bytes encryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _plain);
+
+/// Decrypts payload with specified IV/ctr using AES128-CTR.
+bytes decryptAES128CTR(bytesConstRef _k, h128 const& _iv, bytesConstRef _cipher);
+
+/// Encrypts payload with specified IV/ctr using AES128-CTR.
+inline bytes encryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _plain) { return encryptAES128CTR(_k.ref(), _iv, _plain); }
+inline bytes encryptSymNoAuth(h256 const& _k, h128 const& _iv, bytesConstRef _plain) { return encryptAES128CTR(_k.ref(), _iv, _plain); }
+
+/// Decrypts payload with specified IV/ctr using AES128-CTR.
+inline bytes decryptSymNoAuth(h128 const& _k, h128 const& _iv, bytesConstRef _cipher) { return decryptAES128CTR(_k.ref(), _iv, _cipher); }
+inline bytes decryptSymNoAuth(h256 const& _k, h128 const& _iv, bytesConstRef _cipher) { return decryptAES128CTR(_k.ref(), _iv, _cipher); }
 
 /// Recovers Public key from signed message hash.
 Public recover(Signature const& _sig, h256 const& _hash);
@@ -119,6 +127,12 @@ Signature sign(Secret const& _k, h256 const& _hash);
 	
 /// Verify signature.
 bool verify(Public const& _k, Signature const& _s, h256 const& _hash);
+
+/// Derive key via PBKDF2.
+bytes pbkdf2(std::string const& _pass, bytes const& _salt, unsigned _iterations, unsigned _dkLen = 32);
+
+/// Derive key via Scrypt.
+bytes scrypt(std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r, uint32_t _p, unsigned _dkLen);
 
 /// Simple class that represents a "key pair".
 /// All of the data of the class can be regenerated from the secret key (m_secret) alone.
@@ -164,7 +178,7 @@ struct InvalidState: public dev::Exception {};
 
 /// Key derivation
 h256 kdf(Secret const& _priv, h256 const& _hash);
-	
+
 /**
  * @brief Generator for nonce material
  */

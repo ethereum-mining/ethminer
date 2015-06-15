@@ -22,11 +22,34 @@
 
 #include <libsolidity/DeclarationContainer.h>
 #include <libsolidity/AST.h>
+#include <libsolidity/Types.h>
 
-namespace dev
+using namespace std;
+using namespace dev;
+using namespace dev::solidity;
+
+Declaration const* DeclarationContainer::conflictingDeclaration(Declaration const& _declaration) const
 {
-namespace solidity
-{
+	ASTString const& name(_declaration.getName());
+	solAssert(!name.empty(), "");
+	vector<Declaration const*> declarations;
+	if (m_declarations.count(name))
+		declarations += m_declarations.at(name);
+	if (m_invisibleDeclarations.count(name))
+		declarations += m_invisibleDeclarations.at(name);
+
+	if (dynamic_cast<FunctionDefinition const*>(&_declaration))
+	{
+		// check that all other declarations with the same name are functions
+		for (Declaration const* declaration: declarations)
+			if (!dynamic_cast<FunctionDefinition const*>(declaration))
+				return declaration;
+	}
+	else if (!declarations.empty())
+		return declarations.front();
+
+	return nullptr;
+}
 
 bool DeclarationContainer::registerDeclaration(Declaration const& _declaration, bool _invisible, bool _update)
 {
@@ -34,17 +57,23 @@ bool DeclarationContainer::registerDeclaration(Declaration const& _declaration, 
 	if (name.empty())
 		return true;
 
-	if (!_update && (m_declarations.count(name) || m_invisibleDeclarations.count(name)))
+	if (_update)
+	{
+		solAssert(!dynamic_cast<FunctionDefinition const*>(&_declaration), "Attempt to update function definition.");
+		m_declarations.erase(name);
+		m_invisibleDeclarations.erase(name);
+	}
+	else if (conflictingDeclaration(_declaration))
 		return false;
 
 	if (_invisible)
-		m_invisibleDeclarations.insert(name);
+		m_invisibleDeclarations[name].push_back(&_declaration);
 	else
-		m_declarations[name] = &_declaration;
+		m_declarations[name].push_back(&_declaration);
 	return true;
 }
 
-Declaration const* DeclarationContainer::resolveName(ASTString const& _name, bool _recursive) const
+std::vector<Declaration const*> DeclarationContainer::resolveName(ASTString const& _name, bool _recursive) const
 {
 	solAssert(!_name.empty(), "Attempt to resolve empty name.");
 	auto result = m_declarations.find(_name);
@@ -52,8 +81,5 @@ Declaration const* DeclarationContainer::resolveName(ASTString const& _name, boo
 		return result->second;
 	if (_recursive && m_enclosingContainer)
 		return m_enclosingContainer->resolveName(_name, true);
-	return nullptr;
-}
-
-}
+	return vector<Declaration const*>({});
 }

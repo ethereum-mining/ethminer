@@ -27,7 +27,7 @@
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Log.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libethereum/Defaults.h>
 
 using namespace dev;
@@ -51,14 +51,14 @@ NatspecHandler::~NatspecHandler()
 void NatspecHandler::add(dev::h256 const& _contractHash, string const& _doc)
 {
 	m_db->Put(m_writeOptions, _contractHash.ref(), _doc);
-	cdebug << "Registering NatSpec: " << _contractHash.abridged() << _doc;
+	cdebug << "Registering NatSpec: " << _contractHash << _doc;
 }
 
 string NatspecHandler::retrieve(dev::h256 const& _contractHash) const
 {
 	string ret;
 	m_db->Get(m_readOptions, _contractHash.ref(), &ret);
-	cdebug << "Looking up NatSpec: " << _contractHash.abridged() << ret;
+	cdebug << "Looking up NatSpec: " << _contractHash << ret;
 	return ret;
 }
 

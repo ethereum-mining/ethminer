@@ -18,20 +18,42 @@ Item {
 	function fromPlainStateItem(s) {
 		if (!s.accounts)
 			s.accounts = [stateListModel.newAccount("1000000", QEther.Ether, defaultAccount)]; //support for old project
-		return {
-			title: s.title,
-			transactions: s.transactions.map(fromPlainTransactionItem),
-			accounts: s.accounts.map(fromPlainAccountItem),
-			miner: s.miner
-		};
+		if (!s.contracts)
+			s.contracts = [];
+
+		var ret = {};
+		ret.title = s.title;
+		ret.transactions = s.transactions.filter(function(t) { return !t.stdContract; }).map(fromPlainTransactionItem); //support old projects by filtering std contracts
+		if (s.blocks)
+			ret.blocks = s.blocks.map(fromPlainBlockItem);
+		ret.accounts = s.accounts.map(fromPlainAccountItem);
+		ret.contracts = s.contracts.map(fromPlainAccountItem);
+		ret.miner = s.miner;
+
+		// support old projects
+		if (!ret.blocks)
+		{
+			ret.blocks = [{
+							  hash: "",
+							  number: -1,
+							  transactions: [],
+							  status: "pending"
+						  }]
+			for (var j in ret.transactions)
+				ret.blocks[0].transactions.push(fromPlainTransactionItem(toPlainTransactionItem(ret.transactions[j])))
+		}
+		return ret;
 	}
 
 	function fromPlainAccountItem(t)
 	{
 		return {
 			name: t.name,
+			address: t.address,
 			secret: t.secret,
-			balance: QEtherHelper.createEther(t.balance.value, t.balance.unit)
+			balance: QEtherHelper.createEther(t.balance.value, t.balance.unit),
+			storage: t.storage,
+			code: t.code,
 		};
 	}
 
@@ -40,6 +62,7 @@ Item {
 			t.sender = defaultAccount; //support for old project
 
 		var r = {
+			type: t.type,
 			contractId: t.contractId,
 			functionId: t.functionId,
 			url: t.url,
@@ -47,21 +70,50 @@ Item {
 			gas: QEtherHelper.createBigInt(t.gas.value),
 			gasPrice: QEtherHelper.createEther(t.gasPrice.value, t.gasPrice.unit),
 			gasAuto: t.gasAuto,
-			stdContract: t.stdContract ? true : false,
 			parameters: {},
-			sender: t.sender
+			sender: t.sender,
+			isContractCreation: t.isContractCreation,
+			label: t.label,
+			isFunctionCall: t.isFunctionCall,
+			saveStatus: t.saveStatus
 		};
+
+		if (r.saveStatus === undefined)
+			r.saveStatus = true
+
+		if (r.isFunctionCall === undefined)
+			r.isFunctionCall = true;
+
+		if (!r.label)
+			r.label = r.contractId + " - " + r.functionId;
+
+		if (r.isContractCreation === undefined)
+			r.isContractCreation = r.functionId === r.contractId;
+
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
 
 		return r;
 	}
 
+	function fromPlainBlockItem(b)
+	{
+		var r = {
+			hash: b.hash,
+			number: b.number,
+			transactions: b.transactions.filter(function(t) { return !t.stdContract; }).map(fromPlainTransactionItem), //support old projects by filtering std contracts
+			status: b.status
+		}
+		return r;
+	}
+
 	function toPlainStateItem(s) {
 		return {
 			title: s.title,
+			blocks: s.blocks.map(toPlainBlockItem),
 			transactions: s.transactions.map(toPlainTransactionItem),
 			accounts: s.accounts.map(toPlainAccountItem),
+			contracts: s.contracts.map(toPlainAccountItem),
 			miner: s.miner
 		};
 	}
@@ -76,6 +128,17 @@ Item {
 		return '';
 	}
 
+	function toPlainBlockItem(b)
+	{
+		var r = {
+			hash: b.hash,
+			number: b.number,
+			transactions: b.transactions.map(toPlainTransactionItem),
+			status: b.status
+		}
+		return r;
+	}
+
 	function toPlainAccountItem(t)
 	{
 		return {
@@ -85,11 +148,15 @@ Item {
 				value: t.balance.value,
 				unit: t.balance.unit
 			},
+			address: t.address,
+			storage: t.storage,
+			code: t.code,
 		};
 	}
 
 	function toPlainTransactionItem(t) {
 		var r = {
+			type: t.type,
 			contractId: t.contractId,
 			functionId: t.functionId,
 			url: t.url,
@@ -97,9 +164,12 @@ Item {
 			gas: { value: t.gas.value() },
 			gasAuto: t.gasAuto,
 			gasPrice: { value: t.gasPrice.value, unit: t.gasPrice.unit },
-			stdContract: t.stdContract,
 			sender: t.sender,
-			parameters: {}
+			parameters: {},
+			isContractCreation: t.isContractCreation,
+			label: t.label,
+			isFunctionCall: t.isFunctionCall,
+			saveStatus: t.saveStatus
 		};
 		for (var key in t.parameters)
 			r.parameters[key] = t.parameters[key];
@@ -120,6 +190,8 @@ Item {
 				projectData.states.push(toPlainStateItem(stateList[i]));
 			}
 			projectData.defaultStateIndex = stateListModel.defaultStateIndex;
+			stateListModel.data = projectData
+
 		}
 		onNewProject: {
 			var state = toPlainStateItem(stateListModel.createDefaultState());
@@ -144,6 +216,11 @@ Item {
 		id: stateDialog
 		onAccepted: {
 			var item = stateDialog.getItem();
+			saveState(item);
+		}
+
+		function saveState(item)
+		{
 			if (stateDialog.stateIndex < stateListModel.count) {
 				if (stateDialog.isDefault)
 					stateListModel.defaultStateIndex = stateIndex;
@@ -161,13 +238,10 @@ Item {
 		}
 	}
 
-	ContractLibrary {
-		id: contractLibrary;
-	}
-
 	ListModel {
 		id: stateListModel
 		property int defaultStateIndex: 0
+		property variant data
 		signal defaultStateChanged;
 		signal stateListModelReady;
 		signal stateRun(int index)
@@ -183,39 +257,50 @@ Item {
 				_secret = clientModel.newSecret();
 			var address = clientModel.address(_secret);
 			var name = qsTr("Account") + "-" + address.substring(0, 4);
-			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit) };
+			return { name: name, secret: _secret, balance: QEtherHelper.createEther(_balance, _unit), address: address };
+		}
+
+		function duplicateState(index)
+		{
+			var state = stateList[index]
+			var item = fromPlainStateItem(toPlainStateItem(state))
+			item.title = qsTr("Copy of") + " " + state.title
+			appendState(item)
+			save()
+		}
+
+		function createEmptyBlock()
+		{
+			return {
+				hash: "",
+				number: -1,
+				transactions: [],
+				status: "pending"
+			}
 		}
 
 		function createDefaultState() {
 			var item = {
 				title: "",
 				transactions: [],
-				accounts: []
+				accounts: [],
+				contracts: [],
+				blocks: [{ status: "pending", number: -1, hash: "", transactions: []}]
 			};
 
 			var account = newAccount("1000000", QEther.Ether, defaultAccount)
 			item.accounts.push(account);
 			item.miner = account;
 
-			//add all stdc contracts
-			for (var i = 0; i < contractLibrary.model.count; i++) {
-				var contractTransaction = defaultTransactionItem();
-				var contractItem = contractLibrary.model.get(i);
-				contractTransaction.url = contractItem.url;
-				contractTransaction.contractId = contractItem.name;
-				contractTransaction.functionId = contractItem.name;
-				contractTransaction.stdContract = true;
-				contractTransaction.sender = item.accounts[0].secret; // default account is used to deploy std contract.
-				item.transactions.push(contractTransaction);
-			};
-
 			//add constructors, //TODO: order by dependencies
 			for(var c in codeModel.contracts) {
 				var ctorTr = defaultTransactionItem();
 				ctorTr.functionId = c;
 				ctorTr.contractId = c;
+				ctorTr.label = qsTr("Deploy") + " " + ctorTr.contractId;
 				ctorTr.sender = item.accounts[0].secret;
 				item.transactions.push(ctorTr);
+				item.blocks[0].transactions.push(ctorTr)
 			}
 			return item;
 		}
@@ -244,21 +329,17 @@ Item {
 		}
 
 		function addNewContracts() {
-			//add new contracts for all states
+			//add new contracts to empty states
 			var changed = false;
-			for(var c in codeModel.contracts) {
+			for (var c in codeModel.contracts) {
 				for (var s = 0; s < stateListModel.count; s++) {
 					var state = stateList[s];
-					for (var t = 0; t < state.transactions.length; t++) {
-						var transaction = state.transactions[t];
-						if (transaction.functionId === c && transaction.contractId === c)
-							break;
-					}
-					if (t === state.transactions.length) {
+					if (state.transactions.length === 0) {
 						//append this contract
 						var ctorTr = defaultTransactionItem();
 						ctorTr.functionId = c;
 						ctorTr.contractId = c;
+						ctorTr.label = qsTr("Deploy") + " " + ctorTr.contractId;
 						ctorTr.sender = state.accounts[0].secret;
 						state.transactions.push(ctorTr);
 						changed = true;
@@ -276,8 +357,18 @@ Item {
 			stateDialog.open(stateListModel.count, item, false);
 		}
 
+		function appendState(item)
+		{
+			stateListModel.append(item);
+			stateList.push(item);
+		}
+
 		function editState(index) {
 			stateDialog.open(index, stateList[index], defaultStateIndex === index);
+		}
+
+		function getState(index) {
+			return stateList[index];
 		}
 
 		function debugDefaultState() {
@@ -287,7 +378,7 @@ Item {
 
 		function runState(index) {
 			var item = stateList[index];
-			clientModel.setupState(item);
+			clientModel.setupScenario(item);
 			stateRun(index);
 		}
 
@@ -314,8 +405,20 @@ Item {
 			return stateList[defaultStateIndex].title;
 		}
 
+		function reloadStateFromFromProject(index)
+		{
+			if (data)
+			{
+				var item = fromPlainStateItem(data.states[index])
+				stateListModel.set(index, item)
+				stateList[index] = item
+				return item
+			}
+		}
+
 		function loadStatesFromProject(projectData)
 		{
+			data = projectData
 			if (!projectData.states)
 				projectData.states = [];
 			if (projectData.defaultStateIndex !== undefined)

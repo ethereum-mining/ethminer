@@ -10,8 +10,7 @@ if (NOT MSVC)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
 endif()
 
-set(FILES 	util.c
-          	util.h
+set(FILES 	util.h
           	io.c
           	internal.c
           	ethash.h
@@ -21,7 +20,7 @@ set(FILES 	util.c
           	data_sizes.h)
 
 if (MSVC)
-	list(APPEND FILES io_win32.c)
+	list(APPEND FILES util_win32.c io_win32.c mmap_win32.c)
 else()
 	list(APPEND FILES io_posix.c)
 endif()
@@ -43,3 +42,5 @@ add_library(${LIBRARY} ${FILES})
 if (CRYPTOPP_FOUND)
 	TARGET_LINK_LIBRARIES(${LIBRARY} ${CRYPTOPP_LIBRARIES})
 endif()
+
+install( TARGETS ${LIBRARY} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )

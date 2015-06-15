@@ -24,13 +24,48 @@ using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-const unsigned dev::p2p::c_protocolVersion = 3;
+const unsigned dev::p2p::c_protocolVersion = 4;
 const unsigned dev::p2p::c_defaultIPPort = 30303;
+static_assert(dev::p2p::c_protocolVersion == 4, "Replace v3 compatbility with v4 compatibility before updating network version.");
 
 const dev::p2p::NodeIPEndpoint dev::p2p::UnspecifiedNodeIPEndpoint = NodeIPEndpoint(bi::address(), 0, 0);
 const dev::p2p::Node dev::p2p::UnspecifiedNode = dev::p2p::Node(NodeId(), UnspecifiedNodeIPEndpoint);
 
 bool dev::p2p::NodeIPEndpoint::test_allowLocal = false;
+
+//⊳⊲◀▶■▣▢□▷◁▧▨▩▲◆◉◈◇◎●◍◌○◼☑☒☎☢☣☰☀♽♥♠✩✭❓✔✓✖✕✘✓✔✅⚒⚡⦸⬌∅⁕«««»»»⚙━┅┉▬
+
+#ifdef _WIN32
+const char* NetWarn::name() { return EthYellow "N" EthRed " X"; }
+const char* NetImpolite::name() { return EthYellow "N" EthRed " !"; }
+const char* NetNote::name() { return EthYellow "N" EthBlue " i"; }
+const char* NetConnect::name() { return EthYellow "N" EthYellow " C"; }
+const char* NetMessageSummary::name() { return EthYellow "N" EthWhite " ."; }
+const char* NetMessageDetail::name() { return EthYellow "N" EthGray " o"; }
+const char* NetTriviaSummary::name() { return EthYellow "N" EthGray " O"; }
+const char* NetTriviaDetail::name() { return EthYellow "N" EthCoal " 0"; }
+const char* NetAllDetail::name() { return EthYellow "N" EthCoal " A"; }
+const char* NetRight::name() { return EthYellow "N" EthGreen "->"; }
+const char* NetLeft::name() { return EthYellow "N" EthNavy "<-"; }
+const char* NetP2PWarn::name() { return EthYellow "N" EthRed " X"; }
+const char* NetP2PNote::name() { return EthYellow "N" EthBlue " i"; }
+const char* NetP2PConnect::name() { return EthYellow "N" EthYellow " C"; }
+#else
+const char* NetWarn::name() { return EthYellow "⧎" EthRed " ✘"; }
+const char* NetImpolite::name() { return EthYellow "⧎" EthRed " !"; }
+const char* NetNote::name() { return EthYellow "⧎" EthBlue " ℹ"; }
+const char* NetConnect::name() { return EthYellow "⧎" EthYellow " ▢"; }
+const char* NetMessageSummary::name() { return EthYellow "⧎" EthWhite " ◌"; }
+const char* NetMessageDetail::name() { return EthYellow "⧎" EthGray " ○"; }
+const char* NetTriviaSummary::name() { return EthYellow "⧎" EthGray " ◎"; }
+const char* NetTriviaDetail::name() { return EthYellow "⧎" EthCoal " ◍"; }
+const char* NetAllDetail::name() { return EthYellow "⧎" EthCoal " ●"; }
+const char* NetRight::name() { return EthYellow "⧎" EthGreen "▬▶"; }
+const char* NetLeft::name() { return EthYellow "⧎" EthNavy "◀▬"; }
+const char* NetP2PWarn::name() { return EthYellow "⧎" EthRed " ✘"; }
+const char* NetP2PNote::name() { return EthYellow "⧎" EthBlue " ℹ"; }
+const char* NetP2PConnect::name() { return EthYellow "⧎" EthYellow " ▢"; }
+#endif
 
 bool p2p::isPublicAddress(std::string const& _addressToCheck)
 {
@@ -114,6 +149,31 @@ std::string p2p::reasonOf(DisconnectReason _r)
 	case NoDisconnect: return "(No disconnect has happened.)";
 	default: return "Unknown reason.";
 	}
+}
+
+void NodeIPEndpoint::streamRLP(RLPStream& _s, RLPAppend _append) const
+{
+	if (_append == StreamList)
+		_s.appendList(3);
+	if (address.is_v4())
+		_s << bytesConstRef(&address.to_v4().to_bytes()[0], 4);
+	else if (address.is_v6())
+		_s << bytesConstRef(&address.to_v6().to_bytes()[0], 16);
+	else
+		_s << bytes();
+	_s << udpPort << tcpPort;
+}
+
+void NodeIPEndpoint::interpretRLP(RLP const& _r)
+{
+	if (_r[0].size() == 4)
+		address = bi::address_v4(*(bi::address_v4::bytes_type*)_r[0].toBytes().data());
+	else if (_r[0].size() == 16)
+		address = bi::address_v6(*(bi::address_v6::bytes_type*)_r[0].toBytes().data());
+	else
+		address = bi::address();
+	udpPort = _r[1].toInt<uint16_t>();
+	tcpPort = _r[2].toInt<uint16_t>();
 }
 
 namespace dev {

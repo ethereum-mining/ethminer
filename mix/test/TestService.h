@@ -41,6 +41,7 @@ public:
 	void setTargetWindow(QObject* _window);
 
 public slots:
+	QString createUuid() const;
 	bool waitForSignal(QObject* _item, QString _signalName, int _timeout);
 	bool waitForRendering(QObject* _item, int timeout);
 	bool keyPress(QObject* _item, int _key, int _modifiers, int _delay);

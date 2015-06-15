@@ -25,9 +25,9 @@
 #include <libdevcore/Exceptions.h>
 #include <libethcore/Common.h>
 #include <libevmcore/Instruction.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libethcore/BlockInfo.h>
-#include <libethcore/Params.h>
+#include <libevmcore/Params.h>
 #include "VMFace.h"
 
 namespace dev
@@ -52,28 +52,23 @@ inline u256 fromAddress(Address _a)
 class VM: public VMFace
 {
 public:
-	virtual void reset(u256 _gas = 0) noexcept override final;
+	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) override final;
 
-	virtual bytesConstRef go(ExtVMFace& _ext, OnOpFunc const& _onOp = {}, uint64_t _steps = (uint64_t)-1) override final;
-
-	void require(u256 _n, u256 _d) { if (m_stack.size() < _n) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(StackUnderflow() << RequirementError((bigint)_n, (bigint)m_stack.size())); } if (m_stack.size() - _n + _d > c_stackLimit) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(OutOfStack() << RequirementError((bigint)(_d - _n), (bigint)m_stack.size())); } }
-	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
-
-	u256 curPC() const { return m_curPC; }
+	uint64_t curPC() const { return m_curPC; }
 
 	bytes const& memory() const { return m_temp; }
 	u256s const& stack() const { return m_stack; }
 
 private:
-	friend class VMFactory;
+	void checkRequirements(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, Instruction _inst);
+	void require(u256 _n, u256 _d) { if (m_stack.size() < _n) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(StackUnderflow() << RequirementError((bigint)_n, (bigint)m_stack.size())); } if (m_stack.size() - _n + _d > c_stackLimit) { if (m_onFail) m_onFail(); BOOST_THROW_EXCEPTION(OutOfStack() << RequirementError((bigint)(_d - _n), (bigint)m_stack.size())); } }
+	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
 
-	/// Construct VM object.
-	explicit VM(u256 _gas): VMFace(_gas) {}
-
-	u256 m_curPC = 0;
+	uint64_t m_curPC = 0;
+	uint64_t m_steps = 0;
 	bytes m_temp;
 	u256s m_stack;
-	std::set<u256> m_jumpDests;
+	std::vector<uint64_t> m_jumpDests;
 	std::function<void()> m_onFail;
 };
 

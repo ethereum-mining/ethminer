@@ -9,14 +9,19 @@ function defaultTransaction()
 		gasAuto: true,
 		gasPrice: createEther("100000", QEther.Wei),
 		parameters: {},
-		stdContract: false
+		stdContract: false,
+		isContractCreation: true,
+		label: "",
+		isFunctionCall: true,
+		saveStatus: true
 	};
 }
 
 function rpcCall(requests, callBack)
 {
-	var jsonRpcUrl = "http://localhost:8080";
+	var jsonRpcUrl = "http://localhost:8545";
 	var rpcRequest = JSON.stringify(requests);
+	console.log(rpcRequest);
 	var httpRequest = new XMLHttpRequest();
 	httpRequest.open("POST", jsonRpcUrl, true);
 	httpRequest.setRequestHeader("Content-type", "application/json");
@@ -31,7 +36,10 @@ function rpcCall(requests, callBack)
 				deploymentError(errorText);
 			}
 			else
+			{
+				console.log(httpRequest.responseText);
 				callBack(httpRequest.status, httpRequest.responseText)
+			}
 		}
 	}
 	httpRequest.send(rpcRequest);

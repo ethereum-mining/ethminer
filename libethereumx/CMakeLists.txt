@@ -11,11 +11,7 @@ set(EXECUTABLE ethereumx)
 
 file(GLOB HEADERS "*.h") 
 
-if (ETH_STATIC)
-	add_library(${EXECUTABLE} STATIC ${SRC_LIST} ${HEADERS})
-else()
-	add_library(${EXECUTABLE} SHARED ${SRC_LIST} ${HEADERS})
-endif()
+add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 target_link_libraries(${EXECUTABLE} ${LEVELDB_LS})
 target_link_libraries(${EXECUTABLE} ${CRYPTOPP_LS})

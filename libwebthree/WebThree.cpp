@@ -72,6 +72,11 @@ WebThreeDirect::~WebThreeDirect()
 	m_ethereum.reset();
 }
 
+p2p::NetworkPreferences const& WebThreeDirect::networkPreferences() const
+{
+	return m_net.networkPreferences();
+}
+
 void WebThreeDirect::setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers)
 {
 	auto had = isNetworkStarted();

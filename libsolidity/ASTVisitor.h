@@ -22,8 +22,10 @@
 
 #pragma once
 
-#include <libsolidity/ASTForward.h>
 #include <string>
+#include <functional>
+#include <vector>
+#include <libsolidity/AST.h>
 
 namespace dev
 {
@@ -41,185 +43,243 @@ namespace solidity
 class ASTVisitor
 {
 public:
-	virtual bool visit(ASTNode&) { return true; }
-	virtual bool visit(SourceUnit&) { return true; }
-	virtual bool visit(ImportDirective&) { return true; }
-	virtual bool visit(ContractDefinition&) { return true; }
-	virtual bool visit(InheritanceSpecifier&) { return true; }
-	virtual bool visit(StructDefinition&) { return true; }
-	virtual bool visit(EnumDefinition&) { return true; }
-	virtual bool visit(EnumValue&) { return true; }
-	virtual bool visit(ParameterList&) { return true; }
-	virtual bool visit(FunctionDefinition&) { return true; }
-	virtual bool visit(VariableDeclaration&) { return true; }
-	virtual bool visit(ModifierDefinition&) { return true; }
-	virtual bool visit(ModifierInvocation&) { return true; }
-	virtual bool visit(EventDefinition&) { return true; }
-	virtual bool visit(TypeName&) { return true; }
-	virtual bool visit(ElementaryTypeName&) { return true; }
-	virtual bool visit(UserDefinedTypeName&) { return true; }
-	virtual bool visit(Mapping&) { return true; }
-	virtual bool visit(ArrayTypeName&) { return true; }
-	virtual bool visit(Statement&) { return true; }
-	virtual bool visit(Block&) { return true; }
-	virtual bool visit(PlaceholderStatement&) { return true; }
-	virtual bool visit(IfStatement&) { return true; }
-	virtual bool visit(BreakableStatement&) { return true; }
-	virtual bool visit(WhileStatement&) { return true; }
-	virtual bool visit(ForStatement&) { return true; }
-	virtual bool visit(Continue&) { return true; }
-	virtual bool visit(Break&) { return true; }
-	virtual bool visit(Return&) { return true; }
-	virtual bool visit(VariableDeclarationStatement&) { return true; }
-	virtual bool visit(ExpressionStatement&) { return true; }
-	virtual bool visit(Expression&) { return true; }
-	virtual bool visit(Assignment&) { return true; }
-	virtual bool visit(UnaryOperation&) { return true; }
-	virtual bool visit(BinaryOperation&) { return true; }
-	virtual bool visit(FunctionCall&) { return true; }
-	virtual bool visit(NewExpression&) { return true; }
-	virtual bool visit(MemberAccess&) { return true; }
-	virtual bool visit(IndexAccess&) { return true; }
-	virtual bool visit(PrimaryExpression&) { return true; }
-	virtual bool visit(Identifier&) { return true; }
-	virtual bool visit(ElementaryTypeNameExpression&) { return true; }
-	virtual bool visit(Literal&) { return true; }
+	virtual bool visit(SourceUnit& _node) { return visitNode(_node); }
+	virtual bool visit(ImportDirective& _node) { return visitNode(_node); }
+	virtual bool visit(ContractDefinition& _node) { return visitNode(_node); }
+	virtual bool visit(InheritanceSpecifier& _node) { return visitNode(_node); }
+	virtual bool visit(StructDefinition& _node) { return visitNode(_node); }
+	virtual bool visit(EnumDefinition& _node) { return visitNode(_node); }
+	virtual bool visit(EnumValue& _node) { return visitNode(_node); }
+	virtual bool visit(ParameterList& _node) { return visitNode(_node); }
+	virtual bool visit(FunctionDefinition& _node) { return visitNode(_node); }
+	virtual bool visit(VariableDeclaration& _node) { return visitNode(_node); }
+	virtual bool visit(ModifierDefinition& _node) { return visitNode(_node); }
+	virtual bool visit(ModifierInvocation& _node) { return visitNode(_node); }
+	virtual bool visit(EventDefinition& _node) { return visitNode(_node); }
+	virtual bool visit(TypeName& _node) { return visitNode(_node); }
+	virtual bool visit(ElementaryTypeName& _node) { return visitNode(_node); }
+	virtual bool visit(UserDefinedTypeName& _node) { return visitNode(_node); }
+	virtual bool visit(Mapping& _node) { return visitNode(_node); }
+	virtual bool visit(ArrayTypeName& _node) { return visitNode(_node); }
+	virtual bool visit(Block& _node) { return visitNode(_node); }
+	virtual bool visit(PlaceholderStatement& _node) { return visitNode(_node); }
+	virtual bool visit(IfStatement& _node) { return visitNode(_node); }
+	virtual bool visit(WhileStatement& _node) { return visitNode(_node); }
+	virtual bool visit(ForStatement& _node) { return visitNode(_node); }
+	virtual bool visit(Continue& _node) { return visitNode(_node); }
+	virtual bool visit(Break& _node) { return visitNode(_node); }
+	virtual bool visit(Return& _node) { return visitNode(_node); }
+	virtual bool visit(VariableDeclarationStatement& _node) { return visitNode(_node); }
+	virtual bool visit(ExpressionStatement& _node) { return visitNode(_node); }
+	virtual bool visit(Assignment& _node) { return visitNode(_node); }
+	virtual bool visit(UnaryOperation& _node) { return visitNode(_node); }
+	virtual bool visit(BinaryOperation& _node) { return visitNode(_node); }
+	virtual bool visit(FunctionCall& _node) { return visitNode(_node); }
+	virtual bool visit(NewExpression& _node) { return visitNode(_node); }
+	virtual bool visit(MemberAccess& _node) { return visitNode(_node); }
+	virtual bool visit(IndexAccess& _node) { return visitNode(_node); }
+	virtual bool visit(Identifier& _node) { return visitNode(_node); }
+	virtual bool visit(ElementaryTypeNameExpression& _node) { return visitNode(_node); }
+	virtual bool visit(Literal& _node) { return visitNode(_node); }
 
-	virtual void endVisit(ASTNode&) { }
-	virtual void endVisit(SourceUnit&) { }
-	virtual void endVisit(ImportDirective&) { }
-	virtual void endVisit(ContractDefinition&) { }
-	virtual void endVisit(InheritanceSpecifier&) { }
-	virtual void endVisit(StructDefinition&) { }
-	virtual void endVisit(EnumDefinition&) { }
-	virtual void endVisit(EnumValue&) { }
-	virtual void endVisit(ParameterList&) { }
-	virtual void endVisit(FunctionDefinition&) { }
-	virtual void endVisit(VariableDeclaration&) { }
-	virtual void endVisit(ModifierDefinition&) { }
-	virtual void endVisit(ModifierInvocation&) { }
-	virtual void endVisit(EventDefinition&) { }
-	virtual void endVisit(TypeName&) { }
-	virtual void endVisit(ElementaryTypeName&) { }
-	virtual void endVisit(UserDefinedTypeName&) { }
-	virtual void endVisit(Mapping&) { }
-	virtual void endVisit(ArrayTypeName&) { }
-	virtual void endVisit(Statement&) { }
-	virtual void endVisit(Block&) { }
-	virtual void endVisit(PlaceholderStatement&) { }
-	virtual void endVisit(IfStatement&) { }
-	virtual void endVisit(BreakableStatement&) { }
-	virtual void endVisit(WhileStatement&) { }
-	virtual void endVisit(ForStatement&) { }
-	virtual void endVisit(Continue&) { }
-	virtual void endVisit(Break&) { }
-	virtual void endVisit(Return&) { }
-	virtual void endVisit(VariableDeclarationStatement&) { }
-	virtual void endVisit(ExpressionStatement&) { }
-	virtual void endVisit(Expression&) { }
-	virtual void endVisit(Assignment&) { }
-	virtual void endVisit(UnaryOperation&) { }
-	virtual void endVisit(BinaryOperation&) { }
-	virtual void endVisit(FunctionCall&) { }
-	virtual void endVisit(NewExpression&) { }
-	virtual void endVisit(MemberAccess&) { }
-	virtual void endVisit(IndexAccess&) { }
-	virtual void endVisit(PrimaryExpression&) { }
-	virtual void endVisit(Identifier&) { }
-	virtual void endVisit(ElementaryTypeNameExpression&) { }
-	virtual void endVisit(Literal&) { }
+	virtual void endVisit(SourceUnit& _node) { endVisitNode(_node); }
+	virtual void endVisit(ImportDirective& _node) { endVisitNode(_node); }
+	virtual void endVisit(ContractDefinition& _node) { endVisitNode(_node); }
+	virtual void endVisit(InheritanceSpecifier& _node) { endVisitNode(_node); }
+	virtual void endVisit(StructDefinition& _node) { endVisitNode(_node); }
+	virtual void endVisit(EnumDefinition& _node) { endVisitNode(_node); }
+	virtual void endVisit(EnumValue& _node) { endVisitNode(_node); }
+	virtual void endVisit(ParameterList& _node) { endVisitNode(_node); }
+	virtual void endVisit(FunctionDefinition& _node) { endVisitNode(_node); }
+	virtual void endVisit(VariableDeclaration& _node) { endVisitNode(_node); }
+	virtual void endVisit(ModifierDefinition& _node) { endVisitNode(_node); }
+	virtual void endVisit(ModifierInvocation& _node) { endVisitNode(_node); }
+	virtual void endVisit(EventDefinition& _node) { endVisitNode(_node); }
+	virtual void endVisit(TypeName& _node) { endVisitNode(_node); }
+	virtual void endVisit(ElementaryTypeName& _node) { endVisitNode(_node); }
+	virtual void endVisit(UserDefinedTypeName& _node) { endVisitNode(_node); }
+	virtual void endVisit(Mapping& _node) { endVisitNode(_node); }
+	virtual void endVisit(ArrayTypeName& _node) { endVisitNode(_node); }
+	virtual void endVisit(Block& _node) { endVisitNode(_node); }
+	virtual void endVisit(PlaceholderStatement& _node) { endVisitNode(_node); }
+	virtual void endVisit(IfStatement& _node) { endVisitNode(_node); }
+	virtual void endVisit(WhileStatement& _node) { endVisitNode(_node); }
+	virtual void endVisit(ForStatement& _node) { endVisitNode(_node); }
+	virtual void endVisit(Continue& _node) { endVisitNode(_node); }
+	virtual void endVisit(Break& _node) { endVisitNode(_node); }
+	virtual void endVisit(Return& _node) { endVisitNode(_node); }
+	virtual void endVisit(VariableDeclarationStatement& _node) { endVisitNode(_node); }
+	virtual void endVisit(ExpressionStatement& _node) { endVisitNode(_node); }
+	virtual void endVisit(Assignment& _node) { endVisitNode(_node); }
+	virtual void endVisit(UnaryOperation& _node) { endVisitNode(_node); }
+	virtual void endVisit(BinaryOperation& _node) { endVisitNode(_node); }
+	virtual void endVisit(FunctionCall& _node) { endVisitNode(_node); }
+	virtual void endVisit(NewExpression& _node) { endVisitNode(_node); }
+	virtual void endVisit(MemberAccess& _node) { endVisitNode(_node); }
+	virtual void endVisit(IndexAccess& _node) { endVisitNode(_node); }
+	virtual void endVisit(Identifier& _node) { endVisitNode(_node); }
+	virtual void endVisit(ElementaryTypeNameExpression& _node) { endVisitNode(_node); }
+	virtual void endVisit(Literal& _node) { endVisitNode(_node); }
+
+protected:
+	/// Generic function called by default for each node, to be overridden by derived classes
+	/// if behaviour unspecific to a node type is desired.
+	virtual bool visitNode(ASTNode&) { return true; }
+	/// Generic function called by default for each node, to be overridden by derived classes
+	/// if behaviour unspecific to a node type is desired.
+	virtual void endVisitNode(ASTNode&) { }
 };
 
 class ASTConstVisitor
 {
 public:
-	virtual bool visit(ASTNode const&) { return true; }
-	virtual bool visit(SourceUnit const&) { return true; }
-	virtual bool visit(ImportDirective const&) { return true; }
-	virtual bool visit(ContractDefinition const&) { return true; }
-	virtual bool visit(InheritanceSpecifier const&) { return true; }
-	virtual bool visit(StructDefinition const&) { return true; }
-	virtual bool visit(EnumDefinition const&) { return true; }
-	virtual bool visit(EnumValue const&) { return true; }
-	virtual bool visit(ParameterList const&) { return true; }
-	virtual bool visit(FunctionDefinition const&) { return true; }
-	virtual bool visit(VariableDeclaration const&) { return true; }
-	virtual bool visit(ModifierDefinition const&) { return true; }
-	virtual bool visit(ModifierInvocation const&) { return true; }
-	virtual bool visit(EventDefinition const&) { return true; }
-	virtual bool visit(TypeName const&) { return true; }
-	virtual bool visit(ElementaryTypeName const&) { return true; }
-	virtual bool visit(UserDefinedTypeName const&) { return true; }
-	virtual bool visit(Mapping const&) { return true; }
-	virtual bool visit(ArrayTypeName const&) { return true; }
-	virtual bool visit(Statement const&) { return true; }
-	virtual bool visit(Block const&) { return true; }
-	virtual bool visit(PlaceholderStatement const&) { return true; }
-	virtual bool visit(IfStatement const&) { return true; }
-	virtual bool visit(BreakableStatement const&) { return true; }
-	virtual bool visit(WhileStatement const&) { return true; }
-	virtual bool visit(ForStatement const&) { return true; }
-	virtual bool visit(Continue const&) { return true; }
-	virtual bool visit(Break const&) { return true; }
-	virtual bool visit(Return const&) { return true; }
-	virtual bool visit(VariableDeclarationStatement const&) { return true; }
-	virtual bool visit(ExpressionStatement const&) { return true; }
-	virtual bool visit(Expression const&) { return true; }
-	virtual bool visit(Assignment const&) { return true; }
-	virtual bool visit(UnaryOperation const&) { return true; }
-	virtual bool visit(BinaryOperation const&) { return true; }
-	virtual bool visit(FunctionCall const&) { return true; }
-	virtual bool visit(NewExpression const&) { return true; }
-	virtual bool visit(MemberAccess const&) { return true; }
-	virtual bool visit(IndexAccess const&) { return true; }
-	virtual bool visit(PrimaryExpression const&) { return true; }
-	virtual bool visit(Identifier const&) { return true; }
-	virtual bool visit(ElementaryTypeNameExpression const&) { return true; }
-	virtual bool visit(Literal const&) { return true; }
+	virtual bool visit(SourceUnit const& _node) { return visitNode(_node); }
+	virtual bool visit(ImportDirective const& _node) { return visitNode(_node); }
+	virtual bool visit(ContractDefinition const& _node) { return visitNode(_node); }
+	virtual bool visit(InheritanceSpecifier const& _node) { return visitNode(_node); }
+	virtual bool visit(StructDefinition const& _node) { return visitNode(_node); }
+	virtual bool visit(EnumDefinition const& _node) { return visitNode(_node); }
+	virtual bool visit(EnumValue const& _node) { return visitNode(_node); }
+	virtual bool visit(ParameterList const& _node) { return visitNode(_node); }
+	virtual bool visit(FunctionDefinition const& _node) { return visitNode(_node); }
+	virtual bool visit(VariableDeclaration const& _node) { return visitNode(_node); }
+	virtual bool visit(ModifierDefinition const& _node) { return visitNode(_node); }
+	virtual bool visit(ModifierInvocation const& _node) { return visitNode(_node); }
+	virtual bool visit(EventDefinition const& _node) { return visitNode(_node); }
+	virtual bool visit(TypeName const& _node) { return visitNode(_node); }
+	virtual bool visit(ElementaryTypeName const& _node) { return visitNode(_node); }
+	virtual bool visit(UserDefinedTypeName const& _node) { return visitNode(_node); }
+	virtual bool visit(Mapping const& _node) { return visitNode(_node); }
+	virtual bool visit(ArrayTypeName const& _node) { return visitNode(_node); }
+	virtual bool visit(Block const& _node) { return visitNode(_node); }
+	virtual bool visit(PlaceholderStatement const& _node) { return visitNode(_node); }
+	virtual bool visit(IfStatement const& _node) { return visitNode(_node); }
+	virtual bool visit(WhileStatement const& _node) { return visitNode(_node); }
+	virtual bool visit(ForStatement const& _node) { return visitNode(_node); }
+	virtual bool visit(Continue const& _node) { return visitNode(_node); }
+	virtual bool visit(Break const& _node) { return visitNode(_node); }
+	virtual bool visit(Return const& _node) { return visitNode(_node); }
+	virtual bool visit(VariableDeclarationStatement const& _node) { return visitNode(_node); }
+	virtual bool visit(ExpressionStatement const& _node) { return visitNode(_node); }
+	virtual bool visit(Assignment const& _node) { return visitNode(_node); }
+	virtual bool visit(UnaryOperation const& _node) { return visitNode(_node); }
+	virtual bool visit(BinaryOperation const& _node) { return visitNode(_node); }
+	virtual bool visit(FunctionCall const& _node) { return visitNode(_node); }
+	virtual bool visit(NewExpression const& _node) { return visitNode(_node); }
+	virtual bool visit(MemberAccess const& _node) { return visitNode(_node); }
+	virtual bool visit(IndexAccess const& _node) { return visitNode(_node); }
+	virtual bool visit(Identifier const& _node) { return visitNode(_node); }
+	virtual bool visit(ElementaryTypeNameExpression const& _node) { return visitNode(_node); }
+	virtual bool visit(Literal const& _node) { return visitNode(_node); }
 
-	virtual void endVisit(ASTNode const&) { }
-	virtual void endVisit(SourceUnit const&) { }
-	virtual void endVisit(ImportDirective const&) { }
-	virtual void endVisit(ContractDefinition const&) { }
-	virtual void endVisit(InheritanceSpecifier const&) { }
-	virtual void endVisit(StructDefinition const&) { }
-	virtual void endVisit(EnumDefinition const&) { }
-	virtual void endVisit(EnumValue const&) { }
-	virtual void endVisit(ParameterList const&) { }
-	virtual void endVisit(FunctionDefinition const&) { }
-	virtual void endVisit(VariableDeclaration const&) { }
-	virtual void endVisit(ModifierDefinition const&) { }
-	virtual void endVisit(ModifierInvocation const&) { }
-	virtual void endVisit(EventDefinition const&) { }
-	virtual void endVisit(TypeName const&) { }
-	virtual void endVisit(ElementaryTypeName const&) { }
-	virtual void endVisit(UserDefinedTypeName const&) { }
-	virtual void endVisit(Mapping const&) { }
-	virtual void endVisit(ArrayTypeName const&) { }
-	virtual void endVisit(Statement const&) { }
-	virtual void endVisit(Block const&) { }
-	virtual void endVisit(PlaceholderStatement const&) { }
-	virtual void endVisit(IfStatement const&) { }
-	virtual void endVisit(BreakableStatement const&) { }
-	virtual void endVisit(WhileStatement const&) { }
-	virtual void endVisit(ForStatement const&) { }
-	virtual void endVisit(Continue const&) { }
-	virtual void endVisit(Break const&) { }
-	virtual void endVisit(Return const&) { }
-	virtual void endVisit(VariableDeclarationStatement const&) { }
-	virtual void endVisit(ExpressionStatement const&) { }
-	virtual void endVisit(Expression const&) { }
-	virtual void endVisit(Assignment const&) { }
-	virtual void endVisit(UnaryOperation const&) { }
-	virtual void endVisit(BinaryOperation const&) { }
-	virtual void endVisit(FunctionCall const&) { }
-	virtual void endVisit(NewExpression const&) { }
-	virtual void endVisit(MemberAccess const&) { }
-	virtual void endVisit(IndexAccess const&) { }
-	virtual void endVisit(PrimaryExpression const&) { }
-	virtual void endVisit(Identifier const&) { }
-	virtual void endVisit(ElementaryTypeNameExpression const&) { }
-	virtual void endVisit(Literal const&) { }
+	virtual void endVisit(SourceUnit const& _node) { endVisitNode(_node); }
+	virtual void endVisit(ImportDirective const& _node) { endVisitNode(_node); }
+	virtual void endVisit(ContractDefinition const& _node) { endVisitNode(_node); }
+	virtual void endVisit(InheritanceSpecifier const& _node) { endVisitNode(_node); }
+	virtual void endVisit(StructDefinition const& _node) { endVisitNode(_node); }
+	virtual void endVisit(EnumDefinition const& _node) { endVisitNode(_node); }
+	virtual void endVisit(EnumValue const& _node) { endVisitNode(_node); }
+	virtual void endVisit(ParameterList const& _node) { endVisitNode(_node); }
+	virtual void endVisit(FunctionDefinition const& _node) { endVisitNode(_node); }
+	virtual void endVisit(VariableDeclaration const& _node) { endVisitNode(_node); }
+	virtual void endVisit(ModifierDefinition const& _node) { endVisitNode(_node); }
+	virtual void endVisit(ModifierInvocation const& _node) { endVisitNode(_node); }
+	virtual void endVisit(EventDefinition const& _node) { endVisitNode(_node); }
+	virtual void endVisit(TypeName const& _node) { endVisitNode(_node); }
+	virtual void endVisit(ElementaryTypeName const& _node) { endVisitNode(_node); }
+	virtual void endVisit(UserDefinedTypeName const& _node) { endVisitNode(_node); }
+	virtual void endVisit(Mapping const& _node) { endVisitNode(_node); }
+	virtual void endVisit(ArrayTypeName const& _node) { endVisitNode(_node); }
+	virtual void endVisit(Block const& _node) { endVisitNode(_node); }
+	virtual void endVisit(PlaceholderStatement const& _node) { endVisitNode(_node); }
+	virtual void endVisit(IfStatement const& _node) { endVisitNode(_node); }
+	virtual void endVisit(WhileStatement const& _node) { endVisitNode(_node); }
+	virtual void endVisit(ForStatement const& _node) { endVisitNode(_node); }
+	virtual void endVisit(Continue const& _node) { endVisitNode(_node); }
+	virtual void endVisit(Break const& _node) { endVisitNode(_node); }
+	virtual void endVisit(Return const& _node) { endVisitNode(_node); }
+	virtual void endVisit(VariableDeclarationStatement const& _node) { endVisitNode(_node); }
+	virtual void endVisit(ExpressionStatement const& _node) { endVisitNode(_node); }
+	virtual void endVisit(Assignment const& _node) { endVisitNode(_node); }
+	virtual void endVisit(UnaryOperation const& _node) { endVisitNode(_node); }
+	virtual void endVisit(BinaryOperation const& _node) { endVisitNode(_node); }
+	virtual void endVisit(FunctionCall const& _node) { endVisitNode(_node); }
+	virtual void endVisit(NewExpression const& _node) { endVisitNode(_node); }
+	virtual void endVisit(MemberAccess const& _node) { endVisitNode(_node); }
+	virtual void endVisit(IndexAccess const& _node) { endVisitNode(_node); }
+	virtual void endVisit(Identifier const& _node) { endVisitNode(_node); }
+	virtual void endVisit(ElementaryTypeNameExpression const& _node) { endVisitNode(_node); }
+	virtual void endVisit(Literal const& _node) { endVisitNode(_node); }
+
+protected:
+	/// Generic function called by default for each node, to be overridden by derived classes
+	/// if behaviour unspecific to a node type is desired.
+	virtual bool visitNode(ASTNode const&) { return true; }
+	/// Generic function called by default for each node, to be overridden by derived classes
+	/// if behaviour unspecific to a node type is desired.
+	virtual void endVisitNode(ASTNode const&) { }
+};
+
+/**
+ * Utility class that accepts std::functions and calls them for visitNode and endVisitNode.
+ */
+class SimpleASTVisitor: public ASTConstVisitor
+{
+public:
+	SimpleASTVisitor(
+		std::function<bool(ASTNode const&)> _onVisit,
+		std::function<void(ASTNode const&)> _onEndVisit
+	): m_onVisit(_onVisit), m_onEndVisit(_onEndVisit) {}
+
+protected:
+	virtual bool visitNode(ASTNode const& _n) override { return m_onVisit ? m_onVisit(_n) : true; }
+	virtual void endVisitNode(ASTNode const& _n) override { m_onEndVisit(_n); }
+
+private:
+	std::function<bool(ASTNode const&)> m_onVisit;
+	std::function<void(ASTNode const&)> m_onEndVisit;
+};
+
+/**
+ * Utility class that visits the AST in depth-first order and calls a function on each node and each edge.
+ * Child nodes are only visited if the node callback of the parent returns true.
+ * The node callback of a parent is called before any edge or node callback involving the children.
+ * The edge callbacks of all children are called before the edge callback of the parent.
+ * This way, the node callback can be used as an initializing callback and the edge callbacks can be
+ * used to compute a "reduce" function.
+ */
+class ASTReduce: public ASTConstVisitor
+{
+public:
+	/**
+	 * Constructs a new ASTReduce object with the given callback functions.
+	 * @param _onNode called for each node, before its child edges and nodes, should return true to descend deeper
+	 * @param _onEdge called for each edge with (parent, child)
+	 */
+	ASTReduce(
+		std::function<bool(ASTNode const&)> _onNode,
+		std::function<void(ASTNode const&, ASTNode const&)> _onEdge
+	): m_onNode(_onNode), m_onEdge(_onEdge)
+	{
+	}
+
+protected:
+	bool visitNode(ASTNode const& _node) override
+	{
+		m_parents.push_back(&_node);
+		return m_onNode(_node);
+	}
+	void endVisitNode(ASTNode const& _node) override
+	{
+		m_parents.pop_back();
+		if (!m_parents.empty())
+			m_onEdge(*m_parents.back(), _node);
+	}
+
+private:
+	std::vector<ASTNode const*> m_parents;
+	std::function<bool(ASTNode const&)> m_onNode;
+	std::function<void(ASTNode const&, ASTNode const&)> m_onEdge;
 };
 
 }

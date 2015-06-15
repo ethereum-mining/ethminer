@@ -29,7 +29,8 @@
 
 #include <libdevcore/Guards.h>
 #include <libdevcrypto/Common.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
+#include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include "Common.h"
 namespace ba = boost::asio;
@@ -39,6 +40,9 @@ namespace dev
 {
 namespace p2p
 {
+
+struct RLPXWarn: public LogChannel { static const char* name(); static const int verbosity = 0; };
+struct RLPXNote: public LogChannel { static const char* name(); static const int verbosity = 1; };
 
 /**
  * UDP Datagram
@@ -61,8 +65,8 @@ protected:
  */
 struct RLPXDatagramFace: public UDPDatagram
 {
-	static uint64_t futureFromEpoch(std::chrono::milliseconds _ms) { return std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now() + _ms).time_since_epoch()).count(); }
-	static uint64_t futureFromEpoch(std::chrono::seconds _sec) { return std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count(); }
+	static uint32_t futureFromEpoch(std::chrono::seconds _sec) { return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now() + _sec).time_since_epoch()).count()); }
+	static uint32_t secondsSinceEpoch() { return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::seconds>((std::chrono::system_clock::now()).time_since_epoch()).count()); }
 	static Public authenticate(bytesConstRef _sig, bytesConstRef _rlp);
 
 	virtual uint8_t packetType() = 0;
@@ -77,7 +81,7 @@ template <class T>
 struct RLPXDatagram: public RLPXDatagramFace
 {
 	RLPXDatagram(bi::udp::endpoint const& _ep): RLPXDatagramFace(_ep) {}
-	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { try { T t(_ep); t.interpretRLP(_bytes); return std::move(t); } catch(...) { T t(_ep); return std::move(t); } }
+	static T fromBytesConstRef(bi::udp::endpoint const& _ep, bytesConstRef _bytes) { try { T t(_ep); t.interpretRLP(_bytes); return t; } catch(...) { return T{_ep}; } }
 	uint8_t packetType() { return T::type; }
 };
 
@@ -95,7 +99,7 @@ struct UDPSocketFace
  */
 struct UDPSocketEvents
 {
-	virtual void onDisconnected(UDPSocketFace*) {};
+	virtual void onDisconnected(UDPSocketFace*) {}
 	virtual void onReceived(UDPSocketFace*, bi::udp::endpoint const& _from, bytesConstRef _packetData) = 0;
 };
 
@@ -111,7 +115,7 @@ class UDPSocket: UDPSocketFace, public std::enable_shared_from_this<UDPSocket<Ha
 {
 public:
 	enum { maxDatagramSize = MaxDatagramSize };
-	static_assert(maxDatagramSize < 65507, "UDP datagrams cannot be larger than 65507 bytes");
+	static_assert((unsigned)maxDatagramSize < 65507u, "UDP datagrams cannot be larger than 65507 bytes");
 
 	/// Create socket for specific endpoint.
 	UDPSocket(ba::io_service& _io, UDPSocketEvents& _host, bi::udp::endpoint _endpoint): m_host(_host), m_endpoint(_endpoint), m_socket(_io) { m_started.store(false); m_closed.store(true); };
@@ -203,14 +207,14 @@ void UDPSocket<Handler, MaxDatagramSize>::doRead()
 	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
 	m_socket.async_receive_from(boost::asio::buffer(m_recvData), m_recvEndpoint, [this, self](boost::system::error_code _ec, size_t _len)
 	{
-		// ASIO Safety: It is possible that ASIO will call lambda w/o an error
-		// and after the socket has been disconnected. Checking m_closed
-		// guarantees that m_host will not be called after disconnect().
-		if (_ec || m_closed)
+		if (m_closed)
 			return disconnectWithError(_ec);
+		
+		if (_ec != boost::system::errc::success)
+			clog(NetWarn) << "Receiving UDP message failed. " << _ec.value() << ":" << _ec.message();
 
-		assert(_len);
-		m_host.onReceived(this, m_recvEndpoint, bytesConstRef(m_recvData.data(), _len));
+		if (_len)
+			m_host.onReceived(this, m_recvEndpoint, bytesConstRef(m_recvData.data(), _len));
 		doRead();
 	});
 }
@@ -223,17 +227,19 @@ void UDPSocket<Handler, MaxDatagramSize>::doWrite()
 
 	const UDPDatagram& datagram = m_sendQ[0];
 	auto self(UDPSocket<Handler, MaxDatagramSize>::shared_from_this());
-	m_socket.async_send_to(boost::asio::buffer(datagram.data), datagram.endpoint(), [this, self](boost::system::error_code _ec, std::size_t)
+	bi::udp::endpoint endpoint(datagram.endpoint());
+	m_socket.async_send_to(boost::asio::buffer(datagram.data), endpoint, [this, self, endpoint](boost::system::error_code _ec, std::size_t)
 	{
-		if (_ec || m_closed)
+		if (m_closed)
 			return disconnectWithError(_ec);
-		else
-		{
-			Guard l(x_sendQ);
-			m_sendQ.pop_front();
-			if (m_sendQ.empty())
-				return;
-		}
+		
+		if (_ec != boost::system::errc::success)
+			clog(NetWarn) << "Failed delivering UDP message. " << _ec.value() << ":" << _ec.message();
+		
+		Guard l(x_sendQ);
+		m_sendQ.pop_front();
+		if (m_sendQ.empty())
+			return;
 		doWrite();
 	});
 }

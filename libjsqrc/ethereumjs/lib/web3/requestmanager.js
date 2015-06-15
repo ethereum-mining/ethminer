@@ -65,7 +65,7 @@ RequestManager.getInstance = function () {
  */
 RequestManager.prototype.send = function (data) {
     if (!this.provider) {
-        console.error(errors.InvalidProvider);
+        console.error(errors.InvalidProvider());
         return null;
     }
 
@@ -88,7 +88,7 @@ RequestManager.prototype.send = function (data) {
  */
 RequestManager.prototype.sendAsync = function (data, callback) {
     if (!this.provider) {
-        return callback(errors.InvalidProvider);
+        return callback(errors.InvalidProvider());
     }
 
     var payload = Jsonrpc.getInstance().toPayload(data.method, data.params);
@@ -103,6 +103,33 @@ RequestManager.prototype.sendAsync = function (data, callback) {
 
         callback(null, result.result);
     });
+};
+
+/**
+ * Should be called to asynchronously send batch request
+ *
+ * @method sendBatch
+ * @param {Array} batch data
+ * @param {Function} callback
+ */
+RequestManager.prototype.sendBatch = function (data, callback) {
+    if (!this.provider) {
+        return callback(errors.InvalidProvider());
+    }
+
+    var payload = Jsonrpc.getInstance().toBatchPayload(data);
+
+    this.provider.sendAsync(payload, function (err, results) {
+        if (err) {
+            return callback(err);
+        }
+
+        if (!utils.isArray(results)) {
+            return callback(errors.InvalidResponse(results));
+        }
+
+        callback(err, results);
+    }); 
 };
 
 /**
@@ -179,7 +206,7 @@ RequestManager.prototype.poll = function () {
     }
 
     if (!this.provider) {
-        console.error(errors.InvalidProvider);
+        console.error(errors.InvalidProvider());
         return;
     }
 

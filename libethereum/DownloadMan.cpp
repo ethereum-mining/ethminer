@@ -39,7 +39,7 @@ DownloadSub::~DownloadSub()
 	}
 }
 
-h256Set DownloadSub::nextFetch(unsigned _n)
+h256Hash DownloadSub::nextFetch(unsigned _n)
 {
 	Guard l(m_fetch);
 
@@ -50,8 +50,8 @@ h256Set DownloadSub::nextFetch(unsigned _n)
 	m_indices.clear();
 	m_remaining.clear();
 
-	if (!m_man || m_man->chain().empty())
-		return h256Set();
+	if (!m_man || m_man->chainEmpty())
+		return h256Hash();
 
 	m_asked = (~(m_man->taken() + m_attempted)).lowest(_n);
 	if (m_asked.empty())
@@ -74,4 +74,51 @@ bool DownloadSub::noteBlock(h256 _hash)
 	bool ret = !!m_remaining.count(_hash);
 	m_remaining.erase(_hash);
 	return ret;
+}
+
+HashDownloadSub::HashDownloadSub(HashDownloadMan& _man): m_man(&_man)
+{
+	WriteGuard l(m_man->x_subs);
+	m_asked = RangeMask<unsigned>(m_man->m_chainStart, m_man->m_chainStart + m_man->m_chainCount);
+	m_man->m_subs.insert(this);
+}
+
+HashDownloadSub::~HashDownloadSub()
+{
+	if (m_man)
+	{
+		WriteGuard l(m_man->x_subs);
+		m_man->m_subs.erase(this);
+	}
+}
+
+void HashDownloadSub::resetFetch()
+{
+	Guard l(m_fetch);
+	m_remaining = 0;
+	m_asked = RangeMask<unsigned>(m_man->m_chainStart, m_man->m_chainStart + m_man->m_chainCount);
+}
+
+unsigned HashDownloadSub::nextFetch(unsigned _n)
+{
+	Guard l(m_fetch);
+
+	m_asked = RangeMask<unsigned>(m_man->m_chainStart, m_man->m_chainStart + m_man->m_chainCount);
+
+	if (!m_man || m_man->chainEmpty())
+		return 0;
+
+	m_asked = (~(m_man->taken())).lowest(_n);
+	if (m_asked.empty())
+		m_asked = (~(m_man->taken(true))).lowest(_n);
+	return *m_asked.begin();
+}
+
+void HashDownloadSub::noteHash(unsigned _index, unsigned _size)
+{
+	Guard l(m_fetch);
+	if (m_man)
+		for(unsigned i = _index; i < _index + _size; ++i)
+			if (i >= m_man->m_got.all().first && i < m_man->m_got.all().second)
+				m_man->m_got += i;
 }

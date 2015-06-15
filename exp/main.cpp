@@ -22,10 +22,20 @@
 #if ETH_ETHASHCL
 #define __CL_ENABLE_EXCEPTIONS
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
-#include "libethash-cl/cl.hpp"
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#include <libethash-cl/cl.hpp>
+#pragma clang diagnostic pop
+#else
+#include <libethash-cl/cl.hpp>
+#endif
 #endif
 #include <functional>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
+#include <libdevcore/TrieDB.h>
+#include <libdevcore/TrieHash.h>
 #include <libdevcore/RangeMask.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Common.h>
@@ -33,11 +43,14 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libdevcore/CommonIO.h>
-#include <libdevcrypto/TrieDB.h>
+#include <libdevcrypto/SecretStore.h>
 #include <libp2p/All.h>
 #include <libethcore/ProofOfWork.h>
+#include <libethcore/Farm.h>
+#include <libdevcore/FileSystem.h>
 #include <libethereum/All.h>
-#include <libethereum/Farm.h>
+#include <libethcore/KeyManager.h>
+
 #include <libethereum/AccountDiff.h>
 #include <libethereum/DownloadMan.h>
 #include <libethereum/Client.h>
@@ -51,8 +64,71 @@ using namespace dev::eth;
 using namespace dev::p2p;
 using namespace dev::shh;
 namespace js = json_spirit;
+namespace fs = boost::filesystem;
 
-#if 0
+#if 1
+
+int main()
+{
+	cdebug << pbkdf2("password", asBytes("salt"), 1, 32);
+	cdebug << pbkdf2("password", asBytes("salt"), 1, 16);
+	cdebug << pbkdf2("password", asBytes("salt"), 2, 16);
+	cdebug << pbkdf2("testpassword", fromHex("de5742f1f1045c402296422cee5a8a9ecf0ac5bf594deca1170d22aef33a79cf"), 262144, 16);
+	return 0;
+}
+
+
+#elif 0
+
+int main()
+{
+	cdebug << "EXP";
+	vector<bytes> data;
+	for (unsigned i = 0; i < 10000; ++i)
+		data.push_back(rlp(i));
+
+	h256 ret;
+	DEV_TIMED(triedb)
+	{
+		MemoryDB mdb;
+		GenericTrieDB<MemoryDB> t(&mdb);
+		t.init();
+		unsigned i = 0;
+		for (auto const& d: data)
+			t.insert(rlp(i++), d);
+		ret = t.root();
+	}
+	cdebug << ret;
+	DEV_TIMED(hash256)
+		ret = orderedTrieRoot(data);
+	cdebug << ret;
+}
+
+#elif 0
+
+int main()
+{
+	KeyManager keyman;
+	if (keyman.exists())
+		keyman.load("foo");
+	else
+		keyman.create("foo");
+
+	Address a("9cab1cc4e8fe528267c6c3af664a1adbce810b5f");
+
+//	keyman.importExisting(fromUUID("441193ae-a767-f1c3-48ba-dd6610db5ed0"), "{\"name\":\"Gavin Wood - Main identity\"}", "bar", "{\"hint\":\"Not foo.\"}");
+//	Address a2 = keyman.address(keyman.import(Secret::random(), "Key with no additional security."));
+//	cdebug << toString(a2);
+	Address a2("19c486071651b2650449ba3c6a807f316a73e8fe");
+
+	cdebug << keyman.accountDetails();
+
+	cdebug << "Secret key for " << a << "is" << keyman.secret(a, [](){ return "bar"; });
+	cdebug << "Secret key for " << a2 << "is" << keyman.secret(a2);
+
+}
+
+#elif 0
 int main()
 {
 	DownloadMan man;

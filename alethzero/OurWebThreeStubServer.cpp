@@ -20,23 +20,22 @@
  */
 
 #include "OurWebThreeStubServer.h"
-
 #include <QMessageBox>
 #include <QAbstractButton>
 #include <libwebthree/WebThree.h>
 #include <libnatspec/NatspecExpressionEvaluator.h>
-
 #include "MainWin.h"
-
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-OurWebThreeStubServer::OurWebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, WebThreeDirect& _web3,
-											 vector<KeyPair> const& _accounts, Main* _main):
-	WebThreeStubServer(_conn, _web3, _accounts), m_web3(&_web3), m_main(_main)
+OurWebThreeStubServer::OurWebThreeStubServer(
+	jsonrpc::AbstractServerConnector& _conn,
+	Main* _main
+):
+	WebThreeStubServer(_conn, *_main->web3(), make_shared<OurAccountHolder>(_main), _main->owned().toVector().toStdVector(), _main->keyManager()),
+	m_main(_main)
 {
-	connect(_main, SIGNAL(poll()), this, SLOT(doValidations()));
 }
 
 string OurWebThreeStubServer::shh_newIdentity()
@@ -46,7 +45,14 @@ string OurWebThreeStubServer::shh_newIdentity()
 	return toJS(kp.pub());
 }
 
-bool OurWebThreeStubServer::showAuthenticationPopup(string const& _title, string const& _text)
+OurAccountHolder::OurAccountHolder(Main* _main):
+	AccountHolder([=](){ return _main->ethereum(); }),
+	m_main(_main)
+{
+	connect(_main, SIGNAL(poll()), this, SLOT(doValidations()));
+}
+
+bool OurAccountHolder::showAuthenticationPopup(string const& _title, string const& _text)
 {
 	if (!m_main->confirm())
 	{
@@ -66,22 +72,22 @@ bool OurWebThreeStubServer::showAuthenticationPopup(string const& _title, string
 	//return button == QMessageBox::Ok;
 }
 
-bool OurWebThreeStubServer::showCreationNotice(TransactionSkeleton const& _t, bool _toProxy)
+bool OurAccountHolder::showCreationNotice(TransactionSkeleton const& _t, bool _toProxy)
 {
 	return showAuthenticationPopup("Contract Creation Transaction", string("ÐApp is attemping to create a contract; ") + (_toProxy ? "(this transaction is not executed directly, but forwarded to another ÐApp) " : "") + "to be endowed with " + formatBalance(_t.value) + ", with additional network fees of up to " + formatBalance(_t.gas * _t.gasPrice) + ".\n\nMaximum total cost is " + formatBalance(_t.value + _t.gas * _t.gasPrice) + ".");
 }
 
-bool OurWebThreeStubServer::showSendNotice(TransactionSkeleton const& _t, bool _toProxy)
+bool OurAccountHolder::showSendNotice(TransactionSkeleton const& _t, bool _toProxy)
 {
-	return showAuthenticationPopup("Fund Transfer Transaction", "ÐApp is attempting to send " + formatBalance(_t.value) + " to a recipient " + m_main->pretty(_t.to).toStdString() + (_toProxy ? " (this transaction is not executed directly, but forwarded to another ÐApp)" : "") +
+	return showAuthenticationPopup("Fund Transfer Transaction", "ÐApp is attempting to send " + formatBalance(_t.value) + " to a recipient " + m_main->pretty(_t.to) + (_toProxy ? " (this transaction is not executed directly, but forwarded to another ÐApp)" : "") +
 ", with additional network fees of up to " + formatBalance(_t.gas * _t.gasPrice) + ".\n\nMaximum total cost is " + formatBalance(_t.value + _t.gas * _t.gasPrice) + ".");
 }
 
-bool OurWebThreeStubServer::showUnknownCallNotice(TransactionSkeleton const& _t, bool _toProxy)
+bool OurAccountHolder::showUnknownCallNotice(TransactionSkeleton const& _t, bool _toProxy)
 {
 	return showAuthenticationPopup("DANGEROUS! Unknown Contract Transaction!",
 		"ÐApp is attempting to call into an unknown contract at address " +
-		m_main->pretty(_t.to).toStdString() + ".\n\n" +
+		m_main->pretty(_t.to) + ".\n\n" +
 		(_toProxy ? "This transaction is not executed directly, but forwarded to another ÐApp.\n\n" : "")  +
 		"Call involves sending " +
 		formatBalance(_t.value) + " to the recipient, with additional network fees of up to " +
@@ -93,33 +99,58 @@ bool OurWebThreeStubServer::showUnknownCallNotice(TransactionSkeleton const& _t,
 		"REJECT UNLESS YOU REALLY KNOW WHAT YOU ARE DOING!");
 }
 
-void OurWebThreeStubServer::authenticate(TransactionSkeleton const& _t, bool _toProxy)
+void OurAccountHolder::authenticate(TransactionSkeleton const& _t)
 {
 	Guard l(x_queued);
-	m_queued.push(make_pair(_t, _toProxy));
+	m_queued.push(_t);
 }
 
-void OurWebThreeStubServer::doValidations()
+void OurAccountHolder::doValidations()
 {
 	Guard l(x_queued);
 	while (!m_queued.empty())
 	{
-		auto q = m_queued.front();
+		auto t = m_queued.front();
 		m_queued.pop();
-		if (validateTransaction(q.first, q.second))
-			WebThreeStubServerBase::authenticate(q.first, q.second);
+
+		bool proxy = isProxyAccount(t.from);
+		if (!proxy && !isRealAccount(t.from))
+		{
+			cwarn << "Trying to send from non-existant account" << t.from;
+			return;
+		}
+
+		// TODO: determine gas price.
+
+		if (!validateTransaction(t, proxy))
+			return;
+
+		if (proxy)
+			queueTransaction(t);
+		else
+			// sign and submit.
+			if (Secret s = m_main->retrieveSecret(t.from))
+				m_main->ethereum()->submitTransaction(s, t);
 	}
 }
 
-bool OurWebThreeStubServer::validateTransaction(TransactionSkeleton const& _t, bool _toProxy)
+AddressHash OurAccountHolder::realAccounts() const
 {
+	return m_main->keyManager().accounts();
+}
+
+bool OurAccountHolder::validateTransaction(TransactionSkeleton const& _t, bool _toProxy)
+{
+	if (!m_main->doConfirm())
+		return true;
+
 	if (_t.creation)
 	{
 		// show notice concerning the creation code. TODO: this needs entering into natspec.
 		return showCreationNotice(_t, _toProxy);
 	}
 
-	h256 contractCodeHash = m_web3->ethereum()->postState().codeHash(_t.to);
+	h256 contractCodeHash = m_main->ethereum()->postState().codeHash(_t.to);
 	if (contractCodeHash == EmptySHA3)
 	{
 		// recipient has no code - nothing special about this transaction, show basic value transfer info
@@ -137,7 +168,7 @@ bool OurWebThreeStubServer::validateTransaction(TransactionSkeleton const& _t, b
 	// otherwise it's a transaction to a contract for which we have the natspec
 	return showAuthenticationPopup("Contract Transaction",
 		"ÐApp attempting to conduct contract interaction with " +
-		m_main->pretty(_t.to).toStdString() +
+		m_main->pretty(_t.to) +
 		": <b>" + userNotice + "</b>.\n\n" +
 		(_toProxy ? "This transaction is not executed directly, but forwarded to another ÐApp.\n\n" : "") +
 		(_t.value > 0 ?

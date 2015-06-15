@@ -24,24 +24,54 @@
 // Make sure boost/asio.hpp is included before windows.h.
 #include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
-
+#include <libdevcore/FileSystem.h>
+#include <libethcore/KeyManager.h>
 #include <libwebthree/WebThree.h>
-#include <libdevcrypto/FileSystem.h>
 #include "WebThreeStubServer.h"
-
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts):
-	WebThreeStubServerBase(_conn, _accounts),
-	m_web3(_web3)
+WebThreeStubServer::WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, WebThreeDirect& _web3, shared_ptr<AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts, KeyManager& _keyMan):
+	WebThreeStubServerBase(_conn, _ethAccounts, _shhAccounts),
+	m_web3(_web3),
+	m_keyMan(_keyMan)
 {
 	auto path = getDataDir() + "/.web3";
 	boost::filesystem::create_directories(path);
 	ldb::Options o;
 	o.create_if_missing = true;
 	ldb::DB::Open(o, path, &m_db);
+}
+
+std::string WebThreeStubServer::newSession(SessionPermissions const& _p)
+{
+	std::string s = toBase64(h64::random().ref());
+	m_sessions[s] = _p;
+	return s;
+}
+
+bool WebThreeStubServer::eth_notePassword(string const& _password)
+{
+	m_keyMan.notePassword(_password);
+	return true;
+}
+
+Json::Value WebThreeStubServer::admin_eth_blockQueueStatus(string const& _session)
+{
+	Json::Value ret;
+	if (isAdmin(_session))
+	{
+		BlockQueueStatus bqs = m_web3.ethereum()->blockQueue().status();
+		ret["importing"] = (int)bqs.importing;
+		ret["verified"] = (int)bqs.verified;
+		ret["verifying"] = (int)bqs.verifying;
+		ret["unverified"] = (int)bqs.unverified;
+		ret["future"] = (int)bqs.future;
+		ret["unknown"] = (int)bqs.unknown;
+		ret["bad"] = (int)bqs.bad;
+	}
+	return ret;
 }
 
 std::string WebThreeStubServer::web3_clientVersion()

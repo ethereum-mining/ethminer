@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <map>
+#include <unordered_map>
 #include <functional>
 #include <libdevcore/CommonData.h>
 
@@ -34,11 +34,11 @@ namespace eth
 struct PrecompiledAddress
 {
 	std::function<bigint(bytesConstRef)> gas;
-	std::function<bytes(bytesConstRef)> exec;
+	std::function<void(bytesConstRef, bytesRef)> exec;
 };
 
 /// Info on precompiled contract accounts baked into the protocol.
-std::map<unsigned, PrecompiledAddress> const& precompiled();
+std::unordered_map<unsigned, PrecompiledAddress> const& precompiled();
 
 }
 }

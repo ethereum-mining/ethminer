@@ -18,6 +18,7 @@
 #include "VMFactory.h"
 #include <libdevcore/Assertions.h>
 #include "VM.h"
+#include "SmartVM.h"
 
 #if ETH_EVMJIT
 #include <evmjit/libevmjit-cpp/JitVM.h>
@@ -29,7 +30,7 @@ namespace eth
 {
 namespace
 {
-	VMKind g_kind = VMKind::Interpreter;
+	auto g_kind = VMKind::Interpreter;
 }
 
 void VMFactory::setKind(VMKind _kind)
@@ -37,13 +38,27 @@ void VMFactory::setKind(VMKind _kind)
 	g_kind = _kind;
 }
 
-std::unique_ptr<VMFace> VMFactory::create(u256 _gas)
+std::unique_ptr<VMFace> VMFactory::create()
+{
+	return create(g_kind);
+}
+
+std::unique_ptr<VMFace> VMFactory::create(VMKind _kind)
 {
 #if ETH_EVMJIT
-	return std::unique_ptr<VMFace>(g_kind == VMKind::JIT ? static_cast<VMFace*>(new JitVM(_gas)) : static_cast<VMFace*>(new VM(_gas)));
+	switch (_kind)
+	{
+	default:
+	case VMKind::Interpreter:
+		return std::unique_ptr<VMFace>(new VM);
+	case VMKind::JIT:
+		return std::unique_ptr<VMFace>(new JitVM);
+	case VMKind::Smart:
+		return std::unique_ptr<VMFace>(new SmartVM);
+	}
 #else
-	asserts(g_kind == VMKind::Interpreter && "JIT disabled in build configuration");
-	return std::unique_ptr<VMFace>(new VM(_gas));
+	asserts(_kind == VMKind::Interpreter && "JIT disabled in build configuration");
+	return std::unique_ptr<VMFace>(new VM);
 #endif
 }
 

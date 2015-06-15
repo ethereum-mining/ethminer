@@ -24,6 +24,7 @@
 #include <libdevcore/Log.h>
 #include <libethereum/Interface.h>
 #include <libwebthree/WebThree.h>
+#include <libweb3jsonrpc/AccountHolder.h>
 #include "Web3Server.h"
 
 using namespace dev::mix;
@@ -70,6 +71,12 @@ class EmptyNetwork : public dev::WebThreeNetworkFace
 		return false;
 	}
 
+	p2p::NetworkPreferences const& networkPreferences() const override
+	{
+		static const p2p::NetworkPreferences c_ret;
+		return c_ret;
+	}
+
 	void setNetworkPreferences(p2p::NetworkPreferences const& _n, bool _dropPeers) override
 	{
 		(void)_n;
@@ -102,8 +109,8 @@ class EmptyNetwork : public dev::WebThreeNetworkFace
 
 }
 
-Web3Server::Web3Server(jsonrpc::AbstractServerConnector& _conn, std::vector<dev::KeyPair> const& _accounts, dev::eth::Interface* _client):
-	WebThreeStubServerBase(_conn, _accounts),
+Web3Server::Web3Server(jsonrpc::AbstractServerConnector& _conn, std::shared_ptr<eth::AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts, dev::eth::Interface* _client):
+	WebThreeStubServerBase(_conn, _ethAccounts, _shhAccounts),
 	m_client(_client),
 	m_network(new EmptyNetwork())
 {

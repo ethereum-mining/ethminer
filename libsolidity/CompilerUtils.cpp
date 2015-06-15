@@ -31,7 +31,31 @@ namespace dev
 namespace solidity
 {
 
-const unsigned int CompilerUtils::dataStartOffset = 4;
+const unsigned CompilerUtils::dataStartOffset = 4;
+const size_t CompilerUtils::freeMemoryPointer = 64;
+
+void CompilerUtils::initialiseFreeMemoryPointer()
+{
+	m_context << u256(freeMemoryPointer + 32);
+	storeFreeMemoryPointer();
+}
+
+void CompilerUtils::fetchFreeMemoryPointer()
+{
+	m_context << u256(freeMemoryPointer) << eth::Instruction::MLOAD;
+}
+
+void CompilerUtils::storeFreeMemoryPointer()
+{
+	m_context << u256(freeMemoryPointer) << eth::Instruction::MSTORE;
+}
+
+void CompilerUtils::toSizeAfterFreeMemoryPointer()
+{
+	fetchFreeMemoryPointer();
+	m_context << eth::Instruction::DUP1 << eth::Instruction::SWAP2 << eth::Instruction::SUB;
+	m_context << eth::Instruction::SWAP1;
+}
 
 unsigned CompilerUtils::loadFromMemory(
 	unsigned _offset,
@@ -81,7 +105,7 @@ void CompilerUtils::storeInMemoryDynamic(Type const& _type, bool _padToWordBound
 		auto const& type = dynamic_cast<ArrayType const&>(_type);
 		solAssert(type.isByteArray(), "Non byte arrays not yet implemented here.");
 
-		if (type.getLocation() == ArrayType::Location::CallData)
+		if (type.location() == ReferenceType::Location::CallData)
 		{
 			// stack: target source_offset source_len
 			m_context << eth::Instruction::DUP1 << eth::Instruction::DUP3 << eth::Instruction::DUP5
@@ -92,7 +116,7 @@ void CompilerUtils::storeInMemoryDynamic(Type const& _type, bool _padToWordBound
 		}
 		else
 		{
-			solAssert(type.getLocation() == ArrayType::Location::Storage, "Memory arrays not yet implemented.");
+			solAssert(type.location() == ReferenceType::Location::Storage, "Memory arrays not yet implemented.");
 			m_context << eth::Instruction::POP; // remove offset, arrays always start new slot
 			m_context << eth::Instruction::DUP1 << eth::Instruction::SLOAD;
 			// stack here: memory_offset storage_offset length_bytes
@@ -142,17 +166,27 @@ void CompilerUtils::moveToStackVariable(VariableDeclaration const& _variable)
 	solAssert(stackPosition >= size, "Variable size and position mismatch.");
 	// move variable starting from its top end in the stack
 	if (stackPosition - size + 1 > 16)
-		BOOST_THROW_EXCEPTION(CompilerError() << errinfo_sourceLocation(_variable.getLocation())
-											  << errinfo_comment("Stack too deep."));
+		BOOST_THROW_EXCEPTION(
+			CompilerError() <<
+			errinfo_sourceLocation(_variable.getLocation()) <<
+			errinfo_comment("Stack too deep, try removing local variables.")
+		);
 	for (unsigned i = 0; i < size; ++i)
 		m_context << eth::swapInstruction(stackPosition - size + 1) << eth::Instruction::POP;
 }
 
 void CompilerUtils::copyToStackTop(unsigned _stackDepth, unsigned _itemSize)
 {
-	solAssert(_stackDepth <= 16, "Stack too deep.");
+	solAssert(_stackDepth <= 16, "Stack too deep, try removing local variables.");
 	for (unsigned i = 0; i < _itemSize; ++i)
 		m_context << eth::dupInstruction(_stackDepth);
+}
+
+void CompilerUtils::moveToStackTop(unsigned _stackDepth)
+{
+	solAssert(_stackDepth <= 15, "Stack too deep, try removing local variables.");
+	for (unsigned i = 0; i < _stackDepth; ++i)
+		m_context << eth::swapInstruction(1 + i);
 }
 
 void CompilerUtils::popStackElement(Type const& _type)
@@ -177,6 +211,7 @@ unsigned CompilerUtils::getSizeOnStack(vector<shared_ptr<Type const>> const& _va
 void CompilerUtils::computeHashStatic(Type const& _type, bool _padToWordBoundaries)
 {
 	unsigned length = storeInMemory(0, _type, _padToWordBoundaries);
+	solAssert(length <= CompilerUtils::freeMemoryPointer, "");
 	m_context << u256(length) << u256(0) << eth::Instruction::SHA3;
 }
 

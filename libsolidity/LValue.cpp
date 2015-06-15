@@ -42,8 +42,11 @@ void StackVariable::retrieveValue(SourceLocation const& _location, bool) const
 {
 	unsigned stackPos = m_context.baseToCurrentStackOffset(m_baseStackOffset);
 	if (stackPos >= 15) //@todo correct this by fetching earlier or moving to memory
-		BOOST_THROW_EXCEPTION(CompilerError()
-			<< errinfo_sourceLocation(_location) << errinfo_comment("Stack too deep."));
+		BOOST_THROW_EXCEPTION(
+			CompilerError() <<
+			errinfo_sourceLocation(_location) <<
+			errinfo_comment("Stack too deep, try removing local variables.")
+		);
 	for (unsigned i = 0; i < m_size; ++i)
 		m_context << eth::dupInstruction(stackPos + 1);
 }
@@ -52,8 +55,11 @@ void StackVariable::storeValue(Type const&, SourceLocation const& _location, boo
 {
 	unsigned stackDiff = m_context.baseToCurrentStackOffset(m_baseStackOffset) - m_size + 1;
 	if (stackDiff > 16)
-		BOOST_THROW_EXCEPTION(CompilerError()
-			<< errinfo_sourceLocation(_location) << errinfo_comment("Stack too deep."));
+		BOOST_THROW_EXCEPTION(
+			CompilerError() <<
+			errinfo_sourceLocation(_location) <<
+			errinfo_comment("Stack too deep, try removing local variables.")
+		);
 	else if (stackDiff > 0)
 		for (unsigned i = 0; i < m_size; ++i)
 			m_context << eth::swapInstruction(stackDiff) << eth::Instruction::POP;
@@ -65,8 +71,11 @@ void StackVariable::setToZero(SourceLocation const& _location, bool) const
 {
 	unsigned stackDiff = m_context.baseToCurrentStackOffset(m_baseStackOffset);
 	if (stackDiff > 16)
-		BOOST_THROW_EXCEPTION(CompilerError()
-			<< errinfo_sourceLocation(_location) << errinfo_comment("Stack too deep."));
+		BOOST_THROW_EXCEPTION(
+			CompilerError() <<
+			errinfo_sourceLocation(_location) <<
+			errinfo_comment("Stack too deep, try removing local variables.")
+		);
 	solAssert(stackDiff >= m_size - 1, "");
 	for (unsigned i = 0; i < m_size; ++i)
 		m_context << u256(0) << eth::swapInstruction(stackDiff + 1 - i)
@@ -193,10 +202,10 @@ void StorageItem::storeValue(Type const& _sourceType, SourceLocation const& _loc
 			for (auto const& member: structType.getMembers())
 			{
 				// assign each member that is not a mapping
-				TypePointer const& memberType = member.second;
+				TypePointer const& memberType = member.type;
 				if (memberType->getCategory() == Type::Category::Mapping)
 					continue;
-				pair<u256, unsigned> const& offsets = structType.getStorageOffsetsOfMember(member.first);
+				pair<u256, unsigned> const& offsets = structType.getStorageOffsetsOfMember(member.name);
 				m_context
 					<< offsets.first << u256(offsets.second)
 					<< eth::Instruction::DUP6 << eth::Instruction::DUP3
@@ -204,7 +213,10 @@ void StorageItem::storeValue(Type const& _sourceType, SourceLocation const& _loc
 				// stack: source_ref source_off target_ref target_off member_slot_offset member_byte_offset source_member_ref source_member_off
 				StorageItem(m_context, *memberType).retrieveValue(_location, true);
 				// stack: source_ref source_off target_ref target_off member_offset source_value...
-				solAssert(4 + memberType->getSizeOnStack() <= 16, "Stack too deep.");
+				solAssert(
+					4 + memberType->getSizeOnStack() <= 16,
+					"Stack too deep, try removing local varibales."
+				);
 				m_context
 					<< eth::dupInstruction(4 + memberType->getSizeOnStack())
 					<< eth::dupInstruction(3 + memberType->getSizeOnStack()) << eth::Instruction::ADD
@@ -247,10 +259,10 @@ void StorageItem::setToZero(SourceLocation const&, bool _removeReference) const
 		for (auto const& member: structType.getMembers())
 		{
 			// zero each member that is not a mapping
-			TypePointer const& memberType = member.second;
+			TypePointer const& memberType = member.type;
 			if (memberType->getCategory() == Type::Category::Mapping)
 				continue;
-			pair<u256, unsigned> const& offsets = structType.getStorageOffsetsOfMember(member.first);
+			pair<u256, unsigned> const& offsets = structType.getStorageOffsetsOfMember(member.name);
 			m_context
 				<< offsets.first << eth::Instruction::DUP3 << eth::Instruction::ADD
 				<< u256(offsets.second);
@@ -311,8 +323,6 @@ void StorageByteArrayElement::retrieveValue(SourceLocation const&, bool _remove)
 
 void StorageByteArrayElement::storeValue(Type const&, SourceLocation const&, bool _move) const
 {
-	//@todo optimize this
-
 	// stack: value ref byte_number
 	m_context << u256(31) << eth::Instruction::SUB << u256(0x100) << eth::Instruction::EXP;
 	// stack: value ref (1<<(8*(31-byte_number)))
@@ -335,19 +345,16 @@ void StorageByteArrayElement::setToZero(SourceLocation const&, bool _removeRefer
 {
 	// stack: ref byte_number
 	if (!_removeReference)
-		m_context << eth::Instruction::SWAP1 << eth::Instruction::DUP2;
+		m_context << eth::Instruction::DUP2 << eth::Instruction::DUP2;
 	m_context << u256(31) << eth::Instruction::SUB << u256(0x100) << eth::Instruction::EXP;
 	// stack: ref (1<<(8*(31-byte_number)))
 	m_context << eth::Instruction::DUP2 << eth::Instruction::SLOAD;
 	// stack: ref (1<<(8*(31-byte_number))) old_full_value
 	// clear byte in old value
-	m_context << eth::Instruction::SWAP1 << u256(0xff) << eth::Instruction::MUL << eth::Instruction::AND;
+	m_context << eth::Instruction::SWAP1 << u256(0xff) << eth::Instruction::MUL;
+	m_context << eth::Instruction::NOT << eth::Instruction::AND;
 	// stack: ref old_full_value_with_cleared_byte
 	m_context << eth::Instruction::SWAP1 << eth::Instruction::SSTORE;
-	if (!_removeReference)
-		m_context << eth::Instruction::SWAP1;
-	else
-		m_context << eth::Instruction::POP;
 }
 
 StorageArrayLength::StorageArrayLength(CompilerContext& _compilerContext, const ArrayType& _arrayType):

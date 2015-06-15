@@ -16,8 +16,10 @@ InterfaceHandler::InterfaceHandler()
 	m_lastTag = DocTagType::None;
 }
 
-std::unique_ptr<std::string> InterfaceHandler::getDocumentation(ContractDefinition const& _contractDef,
-																DocumentationType _type)
+unique_ptr<string> InterfaceHandler::getDocumentation(
+	ContractDefinition const& _contractDef,
+	DocumentationType _type
+)
 {
 	switch(_type)
 	{
@@ -35,33 +37,51 @@ std::unique_ptr<std::string> InterfaceHandler::getDocumentation(ContractDefiniti
 	return nullptr;
 }
 
-std::unique_ptr<std::string> InterfaceHandler::getABIInterface(ContractDefinition const& _contractDef)
+unique_ptr<string> InterfaceHandler::getABIInterface(ContractDefinition const& _contractDef)
 {
 	Json::Value abi(Json::arrayValue);
-	for (auto const& it: _contractDef.getInterfaceFunctions())
-	{
-		auto populateParameters = [](vector<string> const& _paramNames, vector<string> const& _paramTypes)
-		{
-			Json::Value params(Json::arrayValue);
-			solAssert(_paramNames.size() == _paramTypes.size(), "Names and types vector size does not match");
-			for (unsigned i = 0; i < _paramNames.size(); ++i)
-			{
-				Json::Value param;
-				param["name"] = _paramNames[i];
-				param["type"] = _paramTypes[i];
-				params.append(param);
-			}
-			return params;
-		};
 
+	auto populateParameters = [](vector<string> const& _paramNames, vector<string> const& _paramTypes)
+	{
+		Json::Value params(Json::arrayValue);
+		solAssert(_paramNames.size() == _paramTypes.size(), "Names and types vector size does not match");
+		for (unsigned i = 0; i < _paramNames.size(); ++i)
+		{
+			Json::Value param;
+			param["name"] = _paramNames[i];
+			param["type"] = _paramTypes[i];
+			params.append(param);
+		}
+		return params;
+	};
+
+	for (auto it: _contractDef.getInterfaceFunctions())
+	{
+		auto externalFunctionType = it.second->externalFunctionType();
 		Json::Value method;
 		method["type"] = "function";
 		method["name"] = it.second->getDeclaration().getName();
 		method["constant"] = it.second->isConstant();
-		method["inputs"] = populateParameters(it.second->getParameterNames(),
-											  it.second->getParameterTypeNames());
-		method["outputs"] = populateParameters(it.second->getReturnParameterNames(),
-											   it.second->getReturnParameterTypeNames());
+		method["inputs"] = populateParameters(
+			externalFunctionType->getParameterNames(),
+			externalFunctionType->getParameterTypeNames()
+		);
+		method["outputs"] = populateParameters(
+			externalFunctionType->getReturnParameterNames(),
+			externalFunctionType->getReturnParameterTypeNames()
+		);
+		abi.append(method);
+	}
+	if (_contractDef.getConstructor())
+	{
+		Json::Value method;
+		method["type"] = "constructor";
+		auto externalFunction = FunctionType(*_contractDef.getConstructor()).externalFunctionType();
+		solAssert(!!externalFunction, "");
+		method["inputs"] = populateParameters(
+			externalFunction->getParameterNames(),
+			externalFunction->getParameterTypeNames()
+		);
 		abi.append(method);
 	}
 
@@ -83,23 +103,33 @@ std::unique_ptr<std::string> InterfaceHandler::getABIInterface(ContractDefinitio
 		event["inputs"] = params;
 		abi.append(event);
 	}
-	return std::unique_ptr<std::string>(new std::string(m_writer.write(abi)));
+	return unique_ptr<string>(new string(Json::FastWriter().write(abi)));
 }
 
 unique_ptr<string> InterfaceHandler::getABISolidityInterface(ContractDefinition const& _contractDef)
 {
 	string ret = "contract " + _contractDef.getName() + "{";
+
+	auto populateParameters = [](vector<string> const& _paramNames, vector<string> const& _paramTypes)
+	{
+		string r = "";
+		solAssert(_paramNames.size() == _paramTypes.size(), "Names and types vector size does not match");
+		for (unsigned i = 0; i < _paramNames.size(); ++i)
+			r += (r.size() ? "," : "(") + _paramTypes[i] + " " + _paramNames[i];
+		return r.size() ? r + ")" : "()";
+	};
+	if (_contractDef.getConstructor())
+	{
+		auto externalFunction = FunctionType(*_contractDef.getConstructor()).externalFunctionType();
+		solAssert(!!externalFunction, "");
+		ret +=
+			"function " +
+			_contractDef.getName() +
+			populateParameters(externalFunction->getParameterNames(), externalFunction->getParameterTypeNames()) +
+			";";
+	}
 	for (auto const& it: _contractDef.getInterfaceFunctions())
 	{
-		auto populateParameters = [](vector<string> const& _paramNames,
-									 vector<string> const& _paramTypes)
-		{
-			string r = "";
-			solAssert(_paramNames.size() == _paramTypes.size(), "Names and types vector size does not match");
-			for (unsigned i = 0; i < _paramNames.size(); ++i)
-				r += (r.size() ? "," : "(") + _paramTypes[i] + " " + _paramNames[i];
-			return r.size() ? r + ")" : "()";
-		};
 		ret += "function " + it.second->getDeclaration().getName() +
 			populateParameters(it.second->getParameterNames(), it.second->getParameterTypeNames()) +
 			(it.second->isConstant() ? "constant " : "");
@@ -107,13 +137,13 @@ unique_ptr<string> InterfaceHandler::getABISolidityInterface(ContractDefinition 
 			ret += "returns" + populateParameters(it.second->getReturnParameterNames(), it.second->getReturnParameterTypeNames());
 		else if (ret.back() == ' ')
 			ret.pop_back();
-		ret += "{}";
+		ret += ";";
 	}
 
 	return unique_ptr<string>(new string(ret + "}"));
 }
 
-std::unique_ptr<std::string> InterfaceHandler::getUserDocumentation(ContractDefinition const& _contractDef)
+unique_ptr<string> InterfaceHandler::getUserDocumentation(ContractDefinition const& _contractDef)
 {
 	Json::Value doc;
 	Json::Value methods(Json::objectValue);
@@ -135,10 +165,10 @@ std::unique_ptr<std::string> InterfaceHandler::getUserDocumentation(ContractDefi
 	}
 	doc["methods"] = methods;
 
-	return std::unique_ptr<std::string>(new std::string(m_writer.write(doc)));
+	return unique_ptr<string>(new string(Json::FastWriter().write(doc)));
 }
 
-std::unique_ptr<std::string> InterfaceHandler::getDevDocumentation(ContractDefinition const& _contractDef)
+unique_ptr<string> InterfaceHandler::getDevDocumentation(ContractDefinition const& _contractDef)
 {
 	// LTODO: Somewhere in this function warnings for mismatch of param names
 	// should be thrown
@@ -175,7 +205,7 @@ std::unique_ptr<std::string> InterfaceHandler::getDevDocumentation(ContractDefin
 				method["author"] = m_author;
 
 			Json::Value params(Json::objectValue);
-			std::vector<std::string> paramNames = it.second->getParameterNames();
+			vector<string> paramNames = it.second->getParameterNames();
 			for (auto const& pair: m_params)
 			{
 				if (find(paramNames.begin(), paramNames.end(), pair.first) == paramNames.end())
@@ -199,7 +229,7 @@ std::unique_ptr<std::string> InterfaceHandler::getDevDocumentation(ContractDefin
 	}
 	doc["methods"] = methods;
 
-	return std::unique_ptr<std::string>(new std::string(m_writer.write(doc)));
+	return unique_ptr<string>(new string(Json::FastWriter().write(doc)));
 }
 
 /* -- private -- */
@@ -216,48 +246,56 @@ void InterfaceHandler::resetDev()
 	m_params.clear();
 }
 
-static inline std::string::const_iterator skipLineOrEOS(std::string::const_iterator _nlPos,
-														std::string::const_iterator _end)
+static inline string::const_iterator skipLineOrEOS(
+	string::const_iterator _nlPos,
+	string::const_iterator _end
+)
 {
 	return (_nlPos == _end) ? _end : ++_nlPos;
 }
 
-std::string::const_iterator InterfaceHandler::parseDocTagLine(std::string::const_iterator _pos,
-															  std::string::const_iterator _end,
-															  std::string& _tagString,
-															  DocTagType _tagType,
-															  bool _appending)
+string::const_iterator InterfaceHandler::parseDocTagLine(
+	string::const_iterator _pos,
+	string::const_iterator _end,
+	string& _tagString,
+	DocTagType _tagType,
+	bool _appending
+)
 {
-	auto nlPos = std::find(_pos, _end, '\n');
+	auto nlPos = find(_pos, _end, '\n');
 	if (_appending && _pos < _end && *_pos != ' ')
 		_tagString += " ";
-	std::copy(_pos, nlPos, back_inserter(_tagString));
+	copy(_pos, nlPos, back_inserter(_tagString));
 	m_lastTag = _tagType;
 	return skipLineOrEOS(nlPos, _end);
 }
 
-std::string::const_iterator InterfaceHandler::parseDocTagParam(std::string::const_iterator _pos,
-															   std::string::const_iterator _end)
+string::const_iterator InterfaceHandler::parseDocTagParam(
+	string::const_iterator _pos,
+	string::const_iterator _end
+)
 {
 	// find param name
-	auto currPos = std::find(_pos, _end, ' ');
+	auto currPos = find(_pos, _end, ' ');
 	if (currPos == _end)
-		BOOST_THROW_EXCEPTION(DocstringParsingError() << errinfo_comment("End of param name not found" + std::string(_pos, _end)));
+		BOOST_THROW_EXCEPTION(DocstringParsingError() << errinfo_comment("End of param name not found" + string(_pos, _end)));
 
 
-	auto paramName = std::string(_pos, currPos);
+	auto paramName = string(_pos, currPos);
 
 	currPos += 1;
-	auto nlPos = std::find(currPos, _end, '\n');
-	auto paramDesc = std::string(currPos, nlPos);
-	m_params.push_back(std::make_pair(paramName, paramDesc));
+	auto nlPos = find(currPos, _end, '\n');
+	auto paramDesc = string(currPos, nlPos);
+	m_params.push_back(make_pair(paramName, paramDesc));
 
 	m_lastTag = DocTagType::Param;
 	return skipLineOrEOS(nlPos, _end);
 }
 
-std::string::const_iterator InterfaceHandler::appendDocTagParam(std::string::const_iterator _pos,
-																std::string::const_iterator _end)
+string::const_iterator InterfaceHandler::appendDocTagParam(
+	string::const_iterator _pos,
+	string::const_iterator _end
+)
 {
 	// Should never be called with an empty vector
 	solAssert(!m_params.empty(), "Internal: Tried to append to empty parameter");
@@ -265,18 +303,20 @@ std::string::const_iterator InterfaceHandler::appendDocTagParam(std::string::con
 	auto pair = m_params.back();
 	if (_pos < _end && *_pos != ' ')
 		pair.second += " ";
-	auto nlPos = std::find(_pos, _end, '\n');
-	std::copy(_pos, nlPos, back_inserter(pair.second));
+	auto nlPos = find(_pos, _end, '\n');
+	copy(_pos, nlPos, back_inserter(pair.second));
 
 	m_params.at(m_params.size() - 1) = pair;
 
 	return skipLineOrEOS(nlPos, _end);
 }
 
-std::string::const_iterator InterfaceHandler::parseDocTag(std::string::const_iterator _pos,
-														  std::string::const_iterator _end,
-														  std::string const& _tag,
-														  CommentOwner _owner)
+string::const_iterator InterfaceHandler::parseDocTag(
+	string::const_iterator _pos,
+	string::const_iterator _end,
+	string const& _tag,
+	CommentOwner _owner
+)
 {
 	// LTODO: need to check for @(start of a tag) between here and the end of line
 	// for all cases. Also somehow automate list of acceptable tags for each
@@ -317,9 +357,11 @@ std::string::const_iterator InterfaceHandler::parseDocTag(std::string::const_ite
 		return appendDocTag(_pos, _end, _owner);
 }
 
-std::string::const_iterator InterfaceHandler::appendDocTag(std::string::const_iterator _pos,
-														   std::string::const_iterator _end,
-														   CommentOwner _owner)
+string::const_iterator InterfaceHandler::appendDocTag(
+	string::const_iterator _pos,
+	string::const_iterator _end,
+	CommentOwner _owner
+)
 {
 	switch (m_lastTag)
 	{
@@ -351,33 +393,36 @@ std::string::const_iterator InterfaceHandler::appendDocTag(std::string::const_it
 	}
 }
 
-static inline std::string::const_iterator getFirstSpaceOrNl(std::string::const_iterator _pos,
-															std::string::const_iterator _end)
+static inline string::const_iterator getFirstSpaceOrNl(
+	string::const_iterator _pos,
+	string::const_iterator _end
+)
 {
-	auto spacePos = std::find(_pos, _end, ' ');
-	auto nlPos = std::find(_pos, _end, '\n');
+	auto spacePos = find(_pos, _end, ' ');
+	auto nlPos = find(_pos, _end, '\n');
 	return (spacePos < nlPos) ? spacePos : nlPos;
 }
 
-void InterfaceHandler::parseDocString(std::string const& _string, CommentOwner _owner)
+void InterfaceHandler::parseDocString(string const& _string, CommentOwner _owner)
 {
 	auto currPos = _string.begin();
 	auto end = _string.end();
 
 	while (currPos != end)
 	{
-		auto tagPos = std::find(currPos, end, '@');
-		auto nlPos = std::find(currPos, end, '\n');
+		auto tagPos = find(currPos, end, '@');
+		auto nlPos = find(currPos, end, '\n');
 
 		if (tagPos != end && tagPos < nlPos)
 		{
 			// we found a tag
 			auto tagNameEndPos = getFirstSpaceOrNl(tagPos, end);
 			if (tagNameEndPos == end)
-				BOOST_THROW_EXCEPTION(DocstringParsingError() <<
-									  errinfo_comment("End of tag " + std::string(tagPos, tagNameEndPos) + "not found"));
+				BOOST_THROW_EXCEPTION(
+					DocstringParsingError() <<
+					errinfo_comment("End of tag " + string(tagPos, tagNameEndPos) + "not found"));
 
-			currPos = parseDocTag(tagNameEndPos + 1, end, std::string(tagPos + 1, tagNameEndPos), _owner);
+			currPos = parseDocTag(tagNameEndPos + 1, end, string(tagPos + 1, tagNameEndPos), _owner);
 		}
 		else if (m_lastTag != DocTagType::None) // continuation of the previous tag
 			currPos = appendDocTag(currPos, end, _owner);

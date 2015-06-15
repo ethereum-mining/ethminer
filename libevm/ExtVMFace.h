@@ -26,7 +26,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/SHA3.h>
 #include <libevmcore/Instruction.h>
 #include <libethcore/Common.h>
 #include <libethcore/BlockInfo.h>
@@ -63,10 +63,28 @@ using LogEntries = std::vector<LogEntry>;
 struct LocalisedLogEntry: public LogEntry
 {
 	LocalisedLogEntry() {}
-	LocalisedLogEntry(LogEntry const& _le, unsigned _number, h256 _transactionHash = h256()): LogEntry(_le), number(_number), transactionHash(_transactionHash) {}
+	explicit LocalisedLogEntry(LogEntry const& _le): LogEntry(_le) {};
 
-	unsigned number = 0;
-	h256 transactionHash;
+	explicit LocalisedLogEntry(
+		LogEntry const& _le,
+		h256 _special
+	): LogEntry(_le), special(_special) {};
+
+	explicit LocalisedLogEntry(
+		LogEntry const& _le,
+		BlockInfo const& _bi,
+		h256 _th,
+		unsigned _ti,
+		unsigned _li
+	): LogEntry(_le), blockHash(_bi.hash()), blockNumber((BlockNumber)_bi.number), transactionHash(_th), transactionIndex(_ti), logIndex(_li), mined(true) {};
+
+	h256 blockHash = h256();
+	BlockNumber blockNumber = 0;
+	h256 transactionHash = h256();
+	unsigned transactionIndex = 0;
+	unsigned logIndex = 0;
+	bool mined = false;
+	h256 special = h256();
 };
 
 using LocalisedLogEntries = std::vector<LocalisedLogEntry>;
@@ -106,7 +124,19 @@ class VM;
 
 using LastHashes = std::vector<h256>;
 
-using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, VM*, ExtVMFace const*)>;
+using OnOpFunc = std::function<void(uint64_t /*steps*/, Instruction /*instr*/, bigint /*newMemSize*/, bigint /*gasCost*/, bigint /*gas*/, VM*, ExtVMFace const*)>;
+
+struct CallParameters
+{
+	Address senderAddress;
+	Address codeAddress;
+	Address receiveAddress;
+	u256 gas;
+	u256 value;
+	bytesConstRef data;
+	bytesRef out;
+	OnOpFunc onOp;
+};
 
 /**
  * @brief Interface and null implementation of the class for specifying VM externalities.
@@ -118,7 +148,7 @@ public:
 	ExtVMFace() = default;
 
 	/// Full constructor.
-	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytes const& _code, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, LastHashes const& _lh, unsigned _depth);
+	ExtVMFace(Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytes const& _code, h256 const& _codeHash, BlockInfo const& _previousBlock, BlockInfo const& _currentBlock, LastHashes const& _lh, unsigned _depth);
 
 	virtual ~ExtVMFace() = default;
 
@@ -153,7 +183,7 @@ public:
 	virtual h160 create(u256, u256&, bytesConstRef, OnOpFunc const&) { return h160(); }
 
 	/// Make a new message call.
-	virtual bool call(Address, u256, bytesConstRef, u256&, bytesRef, OnOpFunc const&, Address, Address) { return false; }
+	virtual bool call(CallParameters&) { return false; }
 
 	/// Revert any changes made (by any of the other calls).
 	virtual void log(h256s&& _topics, bytesConstRef _data) { sub.logs.push_back(LogEntry(myAddress, std::move(_topics), _data.toBytes())); }
@@ -174,6 +204,7 @@ public:
 	u256 gasPrice;				///< Price of gas (that we already paid).
 	bytesConstRef data;			///< Current input data.
 	bytes code;					///< Current code that is executing.
+	h256 codeHash;				///< SHA3 hash of the executing code
 	LastHashes lastHashes;		///< Most recent 256 blocks' hashes.
 	BlockInfo previousBlock;	///< The previous block's information.	TODO: PoC-8: REMOVE
 	BlockInfo currentBlock;		///< The current block's information.
