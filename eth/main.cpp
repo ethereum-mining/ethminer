@@ -41,7 +41,7 @@
 
 #include <libwebthree/WebThree.h>
 #if ETH_JSCONSOLE || !ETH_TRUE
-#include <libjsconsole/JSConsole.h>
+#include <libjsconsole/JSLocalConsole.h>
 #endif
 #if ETH_READLINE || !ETH_TRUE
 #include <readline/readline.h>
@@ -1696,7 +1696,7 @@ int main(int argc, char** argv)
 		if (useConsole)
 		{
 #if ETH_JSCONSOLE
-			JSConsole console(web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager));
+			JSLocalConsole console(web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager));
 			while (!g_exit)
 			{
 				console.repl();
