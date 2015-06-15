@@ -68,5 +68,27 @@
         <file>qml/img/warningicon.png</file>
         <file>qml/img/warningicon@2x.png</file>
         <file>qml/QAddressView.qml</file>
+        <file>qml/img/addblock.png</file>
+        <file>qml/img/addblock@2x.png</file>
+        <file>qml/img/duplicateicon.png</file>
+        <file>qml/img/duplicateicon@2x.png</file>
+        <file>qml/img/leftarrow.png</file>
+        <file>qml/img/leftarrow@2x.png</file>
+        <file>qml/img/newaccounticon.png</file>
+        <file>qml/img/newaccounticon@2x.png</file>
+        <file>qml/img/recyclediscard.png</file>
+        <file>qml/img/recyclediscard@2x.png</file>
+        <file>qml/img/recycleicon.png</file>
+        <file>qml/img/recycleicon@2x.png</file>
+        <file>qml/img/recyclekeep.png</file>
+        <file>qml/img/recyclekeep@2x.png</file>
+        <file>qml/img/restoreicon.png</file>
+        <file>qml/img/restoreicon@2x.png</file>
+        <file>qml/img/rightarrow.png</file>
+        <file>qml/img/rightarrow@2x.png</file>
+        <file>qml/img/saveicon.png</file>
+        <file>qml/img/saveicon@2x.png</file>
+        <file>qml/img/sendtransactionicon.png</file>
+        <file>qml/img/sendtransactionicon@2x.png</file>
     </qresource>
 </RCC>
