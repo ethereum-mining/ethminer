@@ -22,33 +22,66 @@
 
 #pragma once
 
-#include <libjsengine/JSV8Engine.h>
-#include <libjsengine/JSV8Printer.h>
-
-class WebThreeStubServer;
-namespace jsonrpc { class AbstractServerConnector; }
+#include <libdevcore/Log.h>
+// TODO! make readline optional!
+#include <readline/readline.h>
+#include <readline/history.h>
 
 namespace dev
 {
 namespace eth
 {
 
-class AccountHolder;
-
+template<typename Engine, typename Printer>
 class JSConsole
 {
 public:
-	JSConsole(WebThreeDirect& _web3, std::shared_ptr<AccountHolder> const& _accounts);
-	~JSConsole();
-	void repl() const;
+	JSConsole(): m_engine(Engine()), m_printer(Printer(m_engine)) {};
+	~JSConsole() {};
 
-private:
-	std::string promptForIndentionLevel(int _i) const;
+	void repl() const
+	{
+		std::string cmd = "";
+		g_logPost = [](std::string const& a, char const*) { std::cout << "\r           \r" << a << std::endl << std::flush; rl_forced_update_display(); };
 
-	JSV8Engine m_engine;
-	JSV8Printer m_printer;
-	std::unique_ptr<WebThreeStubServer> m_jsonrpcServer;
-	std::unique_ptr<jsonrpc::AbstractServerConnector> m_jsonrpcConnector;
+		bool isEmpty = true;
+		int openBrackets = 0;
+		do {
+			char* buff = readline(promptForIndentionLevel(openBrackets).c_str());
+			isEmpty = !(buff && *buff);
+			if (!isEmpty)
+			{
+				cmd += std::string(buff);
+				cmd += " ";
+				free(buff);
+				int open = std::count(cmd.begin(), cmd.end(), '{');
+				open += std::count(cmd.begin(), cmd.end(), '(');
+				int closed = std::count(cmd.begin(), cmd.end(), '}');
+				closed += std::count(cmd.begin(), cmd.end(), ')');
+				openBrackets = open - closed;
+			}
+		} while (openBrackets > 0);
+
+		if (!isEmpty)
+		{
+			add_history(cmd.c_str());
+			auto value = m_engine.eval(cmd.c_str());
+			std::string result = m_printer.prettyPrint(value).cstr();
+			std::cout << result << std::endl;
+		}
+	}
+
+protected:
+	Engine m_engine;
+	Printer m_printer;
+
+	virtual std::string promptForIndentionLevel(int _i) const
+	{
+		if (_i == 0)
+			return "> ";
+
+		return std::string((_i + 1) * 2, ' ');
+	}
 };
 
 }
