@@ -6,6 +6,7 @@
 
 #include <string>
 #include <libjsengine/JSV8RPC.h>
+#include "CURLRequest.h"
 
 namespace dev
 {
@@ -24,7 +25,7 @@ public:
 
 private:
 	std::string m_url;
-
+	CURLRequest m_request;
 };
 
 }

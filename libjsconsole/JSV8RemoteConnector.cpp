@@ -3,7 +3,6 @@
 //
 
 #include "JSV8RemoteConnector.h"
-#include "CURLRequest.h"
 
 using namespace std;
 using namespace dev;
@@ -11,12 +10,11 @@ using namespace dev::eth;
 
 void JSV8RemoteConnector::onSend(char const* _payload)
 {
-	CURLRequest request;
-	request.setUrl(m_url);
-	request.setBody(_payload);
+	m_request.setUrl(m_url);
+	m_request.setBody(_payload);
 	long code;
 	string response;
-	tie(code, response) = request.post();
+	tie(code, response) = m_request.post();
 	(void)code;
 	m_lastResponse = response.c_str();
 }

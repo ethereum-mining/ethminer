@@ -22,6 +22,8 @@
 
 // based on http://stackoverflow.com/questions/1011339/how-do-you-make-a-http-request-with-c/27026683#27026683
 
+#pragma once
+
 #include <stdio.h>
 #include <sstream>
 #include <unordered_map>
