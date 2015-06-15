@@ -14,6 +14,7 @@ include_directories(BEFORE ${V8_INCLUDE_DIRS})
 include_directories(BEFORE ..)
 include_directories(${READLINE_INCLUDE_DIRS})
 include_directories(${JSON_RPC_CPP_INCLUDE_DIRS})
+include_directories(${CURL_INCLUDE_DIRS})
 
 set(EXECUTABLE jsconsole)
 
@@ -28,3 +29,4 @@ target_link_libraries(${EXECUTABLE} web3jsonrpc)
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
+

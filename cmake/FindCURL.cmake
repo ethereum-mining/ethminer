@@ -1,26 +1,26 @@
 # Find CURL
 #
-# Find the curl includes and library
+# Find the m_curl includes and library
 # 
 # if you nee to add a custom library search path, do it via via CMAKE_PREFIX_PATH 
 # 
 # This module defines
 #  CURL_INCLUDE_DIRS, where to find header, etc.
-#  CURL_LIBRARIES, the libraries needed to use curl.
-#  CURL_FOUND, If false, do not try to use curl.
+#  CURL_LIBRARIES, the libraries needed to use m_curl.
+#  CURL_FOUND, If false, do not try to use m_curl.
 
 # only look in default directories
 find_path(
 	CURL_INCLUDE_DIR 
-	NAMES curl/curl.h
-	DOC "curl include dir"
+	NAMES m_curl/m_curl.h
+	DOC "m_curl include dir"
 )
 
 find_library(
 	CURL_LIBRARY
 	# names from cmake's FindCURL
-	NAMES curl curllib libcurl_imp curllib_static libcurl
-	DOC "curl library"
+	NAMES m_curl curllib libcurl_imp curllib_static libcurl
+	DOC "m_curl library"
 )
 
 set(CURL_INCLUDE_DIRS ${CURL_INCLUDE_DIR})
@@ -34,7 +34,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	find_library(
 		CURL_LIBRARY_DEBUG
 		NAMES curld libcurld
-		DOC "curl debug library"
+		DOC "m_curl debug library"
 	)
 	
 	set(CURL_LIBRARIES optimized ${CURL_LIBRARIES} debug ${CURL_LIBRARY_DEBUG})
