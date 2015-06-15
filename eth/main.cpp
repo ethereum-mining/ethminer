@@ -102,6 +102,9 @@ void interactiveHelp()
 		<< "    listaccounts  List the accounts on the network." << endl
 		<< "    listcontracts  List the contracts on the network." << endl
 		<< "    balanceat <address>  Gives the balance of the given account." << endl
+		<< "    balanceatblock <address> <blocknumber>  Gives the balance of the given account." << endl
+		<< "    storageat <address>  Gives the storage of the given account." << endl
+		<< "    storageatblock <address> <blocknumber>  Gives the storahe of the given account at a given blocknumber." << endl
 		<< "    codeat <address>  Gives the code of the given account." << endl
 #endif
 		<< "    setsigningkey <addr>  Set the address with which to sign transactions." << endl
@@ -1338,19 +1341,48 @@ int main(int argc, char** argv)
 					cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address)) << endl;
 				}
 			}
-			// TODO implement << operator for std::unorderd_map
-//			else if (c && cmd == "storageat")
-//			{
-//				if (iss.peek() != -1)
-//				{
-//					string stringHash;
-//					iss >> stringHash;
+			else if (c && cmd == "balanceatblock")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					unsigned blocknumber;
+					iss >> stringHash >> blocknumber;
 
-//					Address address = h160(fromHex(stringHash));
+					Address address = h160(fromHex(stringHash));
 
-//					cout << "storage at " << stringHash << " is: " << c->storageAt(address) << endl;
-//				}
-//			}
+					cout << "balance of " << stringHash << " is: " << toString(c->balanceAt(address, blocknumber)) << endl;
+				}
+			}
+			else if (c && cmd == "storageat")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					iss >> stringHash;
+
+					Address address = h160(fromHex(stringHash));
+
+					cout << "storage at " << stringHash << " is: " << endl;
+					for (auto s: c->storageAt(address))
+						cout << toHex(s.first) << " : " << toHex(s.second) << endl;
+				}
+			}
+			else if (c && cmd == "storageatblock")
+			{
+				if (iss.peek() != -1)
+				{
+					string stringHash;
+					unsigned blocknumber;
+					iss >> stringHash >> blocknumber;
+
+					Address address = h160(fromHex(stringHash));
+
+					cout << "storage at " << stringHash << " is: " << endl;
+					for (auto s: c->storageAt(address, blocknumber))
+						cout << "\"0x" << toHex(s.first) << "\" : \"0x" << toHex(s.second) << "\"," << endl;
+				}
+			}
 			else if (c && cmd == "codeat")
 			{
 				if (iss.peek() != -1)
@@ -1364,6 +1396,7 @@ int main(int argc, char** argv)
 				}
 			}
 #endif
+
 			else if (c && cmd == "send")
 			{
 				if (iss.peek() != -1)
