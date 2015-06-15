@@ -24,6 +24,7 @@ public:
 
 private:
 	std::string m_url;
+
 };
 
 }
