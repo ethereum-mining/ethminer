@@ -167,8 +167,8 @@ llvm::Function* Arith256::getDivFunc(llvm::Type* _type)
 		m_builder.SetInsertPoint(mainBB);
 		auto ctlzIntr = llvm::Intrinsic::getDeclaration(getModule(), llvm::Intrinsic::ctlz, _type);
 		// both y and r are non-zero
-		auto yLz = m_builder.CreateCall2(ctlzIntr, yArg, m_builder.getInt1(true), "y.lz");
-		auto rLz = m_builder.CreateCall2(ctlzIntr, r0, m_builder.getInt1(true), "r.lz");
+		auto yLz = m_builder.CreateCall(ctlzIntr, {yArg, m_builder.getInt1(true)}, "y.lz");
+		auto rLz = m_builder.CreateCall(ctlzIntr, {r0, m_builder.getInt1(true)}, "r.lz");
 		auto i0 = m_builder.CreateNUWSub(yLz, rLz, "i0");
 		auto y0 = m_builder.CreateShl(yArg, i0);
 		m_builder.CreateBr(loopBB);
