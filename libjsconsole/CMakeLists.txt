@@ -25,8 +25,12 @@ add_library(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 target_link_libraries(${EXECUTABLE} jsengine)
 target_link_libraries(${EXECUTABLE} devcore)
 target_link_libraries(${EXECUTABLE} ${READLINE_LIBRARIES})
-target_link_libraries(${EXECUTABLE} web3jsonrpc)
+target_link_libraries(${EXECUTABLE} ${JSON_RPC_CPP_SERVER_LIBRARIES})
+
+target_link_libraries(${EXECUTABLE} ${CURL_LIBRARIES})
+if (DEFINED WIN32 AND NOT DEFINED CMAKE_COMPILER_IS_MINGW)
+	eth_copy_dlls(${EXECUTABLE} CURL_DLLS)
+endif()
 
 install( TARGETS ${EXECUTABLE} RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib )
 install( FILES ${HEADERS} DESTINATION include/${EXECUTABLE} )
-

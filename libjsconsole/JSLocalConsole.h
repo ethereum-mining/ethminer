@@ -39,11 +39,12 @@ class AccountHolder;
 class JSLocalConsole: public JSConsole<JSV8Engine, JSV8Printer>
 {
 public:
-	JSLocalConsole(WebThreeDirect& _web3, std::shared_ptr<AccountHolder> const& _accounts);
+	JSLocalConsole();
 	virtual ~JSLocalConsole() {};
 
+	jsonrpc::AbstractServerConnector* connector() { return m_jsonrpcConnector.get(); }
+
 private:
-	std::unique_ptr<WebThreeStubServer> m_jsonrpcServer;
 	std::unique_ptr<jsonrpc::AbstractServerConnector> m_jsonrpcConnector;
 };
 
