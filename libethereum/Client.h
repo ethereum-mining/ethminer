@@ -22,6 +22,7 @@
 #pragma once
 
 #include <thread>
+#include <condition_variable>
 #include <mutex>
 #include <list>
 #include <atomic>
@@ -35,13 +36,13 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/Params.h>
+#include <libethcore/ABI.h>
+#include <libethcore/Farm.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
 #include "TransactionQueue.h"
 #include "State.h"
 #include "CommonNet.h"
-#include "ABI.h"
-#include "Farm.h"
 #include "ClientBase.h"
 
 namespace dev
@@ -77,8 +78,8 @@ class BasicGasPricer: public GasPricer
 public:
 	explicit BasicGasPricer(u256 _weiPerRef, u256 _refsPerBlock): m_weiPerRef(_weiPerRef), m_refsPerBlock(_refsPerBlock) {}
 
-	void setRefPrice(u256 _weiPerRef) { m_weiPerRef = _weiPerRef; }
-	void setRefBlockFees(u256 _refsPerBlock) { m_refsPerBlock = _refsPerBlock; }
+	void setRefPrice(u256 _weiPerRef) { if ((bigint)m_refsPerBlock * _weiPerRef > std::numeric_limits<u256>::max() ) BOOST_THROW_EXCEPTION(Overflow() << errinfo_comment("ether price * block fees is larger than 2**256-1, choose a smaller number.") ); else m_weiPerRef = _weiPerRef; }
+	void setRefBlockFees(u256 _refsPerBlock) { if ((bigint)m_weiPerRef * _refsPerBlock > std::numeric_limits<u256>::max() ) BOOST_THROW_EXCEPTION(Overflow() << errinfo_comment("ether price * block fees is larger than 2**256-1, choose a smaller number.") ); else m_refsPerBlock = _refsPerBlock; }
 
 	u256 ask(State const&) const override { return m_weiPerRef * m_refsPerBlock / m_gasPerBlock; }
 	u256 bid(TransactionPriority _p = TransactionPriority::Medium) const override { return m_octiles[(int)_p] > 0 ? m_octiles[(int)_p] : (m_weiPerRef * m_refsPerBlock / m_gasPerBlock); }
@@ -92,10 +93,10 @@ private:
 	std::array<u256, 9> m_octiles;
 };
 
-struct ClientNote: public LogChannel { static const char* name() { return "*C*"; } static const int verbosity = 2; };
-struct ClientChat: public LogChannel { static const char* name() { return "=C="; } static const int verbosity = 4; };
-struct ClientTrace: public LogChannel { static const char* name() { return "-C-"; } static const int verbosity = 7; };
-struct ClientDetail: public LogChannel { static const char* name() { return " C "; } static const int verbosity = 14; };
+struct ClientNote: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct ClientChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
+struct ClientTrace: public LogChannel { static const char* name(); static const int verbosity = 7; };
+struct ClientDetail: public LogChannel { static const char* name(); static const int verbosity = 14; };
 
 struct ActivityReport
 {
@@ -132,9 +133,7 @@ public:
 
 	/// Resets the gas pricer to some other object.
 	void setGasPricer(std::shared_ptr<GasPricer> _gp) { m_gp = _gp; }
-
-	/// Injects the RLP-encoded transaction given by the _rlp into the transaction queue directly.
-	virtual void inject(bytesConstRef _rlp);
+	std::shared_ptr<GasPricer> gasPricer() const { return m_gp; }
 
 	/// Blocks until all pending transactions have been processed.
 	virtual void flushTransactions() override;
@@ -144,7 +143,7 @@ public:
 	ExecutionResult call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether, Address const& _from = Address());
 
 	/// Get the remaining gas limit in this block.
-	virtual u256 gasLimitRemaining() const { return m_postMine.gasLimitRemaining(); }
+	virtual u256 gasLimitRemaining() const override { return m_postMine.gasLimitRemaining(); }
 
 	// [PRIVATE API - only relevant for base clients, not available in general]
 	dev::eth::State state(unsigned _txi, h256 _block) const;
@@ -157,10 +156,14 @@ public:
 	CanonBlockChain const& blockChain() const { return m_bc; }
 	/// Get some information on the block queue.
 	BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
+	/// Get some information on the block queue.
+	SyncStatus syncStatus() const;
+	/// Get the block queue.
+	BlockQueue const& blockQueue() const { return m_bq; }
 
 	// Mining stuff:
 
-	void setAddress(Address _us) { WriteGuard l(x_preMine); m_preMine.setAddress(_us); }
+	virtual void setAddress(Address _us) override { WriteGuard l(x_preMine); m_preMine.setAddress(_us); }
 
 	/// Check block validity prior to mining.
 	bool miningParanoia() const { return m_paranoia; }
@@ -175,14 +178,26 @@ public:
 	/// Enable/disable GPU mining.
 	void setTurboMining(bool _enable = true) { m_turboMining = _enable; if (isMining()) startMining(); }
 
+	/// Check to see if we'd mine on an apparently bad chain.
+	bool mineOnBadChain() const { return m_mineOnBadChain; }
+	/// Set true if you want to mine even when the canary says you're on the wrong chain.
+	void setMineOnBadChain(bool _v) { m_mineOnBadChain = _v; }
+
+	/// @returns true if the canary says that the chain is bad.
+	bool isChainBad() const;
+	/// @returns true if the canary says that the client should be upgraded.
+	bool isUpgradeNeeded() const;
+
 	/// Start mining.
 	/// NOT thread-safe - call it & stopMining only from a single thread
 	void startMining() override;
 	/// Stop mining.
 	/// NOT thread-safe
-	void stopMining() override { m_farm.stop(); }
+	void stopMining() override { m_wouldMine = false; rejigMining(); }
 	/// Are we mining now?
 	bool isMining() const override { return m_farm.isMining(); }
+	/// Are we mining now?
+	bool wouldMine() const override { return m_wouldMine; }
 	/// The hashrate...
 	uint64_t hashrate() const override;
 	/// Check the progress of the mining.
@@ -214,6 +229,8 @@ public:
 	void retryUnkonwn() { m_bq.retryAllUnknown(); }
 	/// Get a report of activity.
 	ActivityReport activityReport() { ActivityReport ret; std::swap(m_report, ret); return ret; }
+	/// Set a JSONRPC server to which we can report bad blocks.
+	void setSentinel(std::string const& _server) { m_sentinel = _server; }
 
 protected:
 	/// InterfaceStub methods
@@ -230,15 +247,15 @@ protected:
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewPending(TransactionReceipt const& _receipt, h256Set& io_changed, h256 _sha3);
+	void appendFromNewPending(TransactionReceipt const& _receipt, h256Hash& io_changed, h256 _sha3);
 
 	/// Collate the changed filters for the hash of the given block.
 	/// Insert any filters that are activated into @a o_changed.
-	void appendFromNewBlock(h256 const& _blockHash, h256Set& io_changed);
+	void appendFromNewBlock(h256 const& _blockHash, h256Hash& io_changed);
 
 	/// Record that the set of filters @a _filters have changed.
 	/// This doesn't actually make any callbacks, but incrememnts some counters in m_watches.
-	void noteChanged(h256Set const& _filters);
+	void noteChanged(h256Hash const& _filters);
 
 private:
 	/// Called when Worker is starting.
@@ -249,6 +266,9 @@ private:
 
 	/// Called when Worker is exiting.
 	void doneWorking() override;
+
+	/// Called when wouldMine(), turboMining(), isChainBad(), forceMining(), pendingTransactions() have changed.
+	void rejigMining();
 
 	/// Magically called when the chain has changed. An import route is provided.
 	/// Called by either submitWork() or in our main thread through syncBlockQueue().
@@ -261,10 +281,10 @@ private:
 	void syncTransactionQueue();
 
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
-	void onTransactionQueueReady() { m_syncTransactionQueue = true; }
+	void onTransactionQueueReady() { m_syncTransactionQueue = true; m_signalled.notify_all(); }
 
 	/// Magically called when m_tq needs syncing. Be nice and don't block.
-	void onBlockQueueReady() { m_syncBlockQueue = true; }
+	void onBlockQueueReady() { m_syncBlockQueue = true; m_signalled.notify_all(); }
 
 	/// Called when the post state has changed (i.e. when more transactions are in it or we're mining on a new block).
 	/// This updates m_miningInfo.
@@ -276,20 +296,29 @@ private:
 	/// Ticks various system-level objects.
 	void tick();
 
+	/// @returns true only if it's worth bothering to prep the mining block.
+	bool shouldServeWork() const { return m_bq.items().first == 0 && (isMining() || remoteActive()); }
+
+	/// Called when we have attempted to import a bad block.
+	/// @warning May be called from any thread.
+	void onBadBlock(Exception& _ex) const;
+
 	VersionChecker m_vc;					///< Dummy object to check & update the protocol version.
 	CanonBlockChain m_bc;					///< Maintains block database.
 	BlockQueue m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
 	std::shared_ptr<GasPricer> m_gp;		///< The gas pricer.
 
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
-	mutable SharedMutex x_preMine;			///< Lock on the OverlayDB and other attributes of m_preMine.
+	mutable SharedMutex x_preMine;			///< Lock on m_preMine.
 	State m_preMine;						///< The present state of the client.
-	mutable SharedMutex x_postMine;			///< Lock on the OverlayDB and other attributes of m_postMine.
+	mutable SharedMutex x_postMine;			///< Lock on m_postMine.
 	State m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+	mutable SharedMutex x_working;			///< Lock on m_working.
+	State m_working;						///< The state of the client which we're mining (i.e. it'll have all the rewards added), while we're actually working on it.
 	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
 	bool remoteActive() const;				///< Is there an active and valid remote worker?
 	bool m_remoteWorking = false;			///< Has the remote worker recently been reset?
-	std::chrono::system_clock::time_point m_lastGetWork = std::chrono::system_clock::time_point::min();	///< Is there an active and valid remote worker?
+	std::chrono::system_clock::time_point m_lastGetWork;	///< Is there an active and valid remote worker?
 
 	std::weak_ptr<EthereumHost> m_host;		///< Our Ethereum Host. Don't do anything if we can't lock.
 
@@ -298,8 +327,10 @@ private:
 	Handler m_tqReady;
 	Handler m_bqReady;
 
+	bool m_wouldMine = false;					///< True if we /should/ be mining.
 	bool m_turboMining = false;				///< Don't squander all of our time mining actually just sleeping.
 	bool m_forceMining = false;				///< Mine even when there are no transactions pending?
+	bool m_mineOnBadChain = false;			///< Mine even when the canary says it's a bad chain.
 	bool m_paranoia = false;				///< Should we be paranoid about our state?
 
 	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
@@ -307,11 +338,16 @@ private:
 	mutable std::chrono::system_clock::time_point m_lastTick = std::chrono::system_clock::now();
 											///< When did we last tick()?
 
+	unsigned m_syncAmount = 50;				///< Number of blocks to sync in each go.
+
 	ActivityReport m_report;
 
-	// TODO!!!!!! REPLACE WITH A PROPER X-THREAD ASIO SIGNAL SYSTEM (could just be condition variables)
+	std::condition_variable m_signalled;
+	Mutex x_signalled;
 	std::atomic<bool> m_syncTransactionQueue = {false};
 	std::atomic<bool> m_syncBlockQueue = {false};
+
+	std::string m_sentinel;
 };
 
 }

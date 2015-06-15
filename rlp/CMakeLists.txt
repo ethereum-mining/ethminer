@@ -12,5 +12,9 @@ add_executable(${EXECUTABLE} ${SRC_LIST})
 
 target_link_libraries(${EXECUTABLE} devcrypto)
 
-install( TARGETS ${EXECUTABLE} DESTINATION bin) 
+if (APPLE)
+	install(TARGETS ${EXECUTABLE} DESTINATION bin)
+else()
+	eth_install_executable(${EXECUTABLE})
+endif()
 

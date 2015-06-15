@@ -41,7 +41,7 @@ var isPredefinedBlockNumber = function (blockNumber) {
 
 var inputDefaultBlockNumberFormatter = function (blockNumber) {
     if (blockNumber === undefined) {
-        return config.ETH_DEFAULTBLOCK;
+        return config.defaultBlock;
     }
     return inputBlockNumberFormatter(blockNumber);
 };
@@ -64,13 +64,15 @@ var inputBlockNumberFormatter = function (blockNumber) {
 */
 var inputTransactionFormatter = function (options){
 
+    options.from = options.from || config.defaultAccount;
+
     // make code -> data
     if (options.code) {
         options.data = options.code;
         delete options.code;
     }
 
-    ['gasPrice', 'gas', 'value'].filter(function (key) {
+    ['gasPrice', 'gas', 'value', 'nonce'].filter(function (key) {
         return options[key] !== undefined;
     }).forEach(function(key){
         options[key] = utils.fromDecimal(options[key]);
@@ -89,6 +91,7 @@ var inputTransactionFormatter = function (options){
 var outputTransactionFormatter = function (tx){
     tx.blockNumber = utils.toDecimal(tx.blockNumber);
     tx.transactionIndex = utils.toDecimal(tx.transactionIndex);
+    tx.nonce = utils.toDecimal(tx.nonce);
     tx.gas = utils.toDecimal(tx.gas);
     tx.gasPrice = utils.toBigNumber(tx.gasPrice);
     tx.value = utils.toBigNumber(tx.value);
@@ -111,7 +114,6 @@ var outputBlockFormatter = function(block) {
     block.timestamp = utils.toDecimal(block.timestamp);
     block.number = utils.toDecimal(block.number);
 
-    block.minGasPrice = utils.toBigNumber(block.minGasPrice);
     block.difficulty = utils.toBigNumber(block.difficulty);
     block.totalDifficulty = utils.toBigNumber(block.totalDifficulty);
 
@@ -155,10 +157,12 @@ var inputPostFormatter = function(post) {
 
     post.payload = utils.toHex(post.payload);
     post.ttl = utils.fromDecimal(post.ttl);
+    post.workToProve = utils.fromDecimal(post.workToProve);
     post.priority = utils.fromDecimal(post.priority);
 
-    if(!utils.isArray(post.topics)) {
-        post.topics = [post.topics];
+    // fallback
+    if (!utils.isArray(post.topics)) {
+        post.topics = post.topics ? [post.topics] : [];
     }
 
     // format the following options
@@ -190,6 +194,9 @@ var outputPostFormatter = function(post){
     }
 
     // format the following options
+    if (!post.topics) {
+        post.topics = [];
+    }
     post.topics = post.topics.map(function(topic){
         return utils.toAscii(topic);
     });

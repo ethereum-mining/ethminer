@@ -21,15 +21,20 @@
 
 #include "Precompiled.h"
 
-#include <libdevcrypto/SHA3.h>
+#include <libdevcore/Log.h>
+#include <libdevcore/SHA3.h>
+#include <libdevcore/Hash.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Common.h>
-#include <libethcore/Params.h>
+#include <libevmcore/Params.h>
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-static bytes ecrecoverCode(bytesConstRef _in)
+namespace
+{
+
+void ecrecoverCode(bytesConstRef _in, bytesRef _out)
 {
 	struct inType
 	{
@@ -42,54 +47,53 @@ static bytes ecrecoverCode(bytesConstRef _in)
 	memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
 
 	h256 ret;
-
-	if ((u256)in.v > 28)
-		return ret.asBytes();
-	SignatureStruct sig(in.r, in.s, (byte)((int)(u256)in.v - 27));
-	if (!sig.isValid())
-		return ret.asBytes();
-
-	try
+	u256 v = (u256)in.v;
+	if (v >= 27 && v <= 28)
 	{
-		ret = dev::sha3(recover(sig, in.hash));
+		SignatureStruct sig(in.r, in.s, (byte)((int)v - 27));
+		if (sig.isValid())
+		{
+			try
+			{
+				Public rec = recover(sig, in.hash);
+				if (rec)
+					ret = dev::sha3(rec);
+				else
+					return;
+			}
+			catch (...) { return; }
+		}
 	}
-	catch (...) {}
 
 	memset(ret.data(), 0, 12);
-	return ret.asBytes();
+	ret.ref().copyTo(_out);
 }
 
-static bytes sha256Code(bytesConstRef _in)
+void sha256Code(bytesConstRef _in, bytesRef _out)
 {
-	bytes ret(32);
-	sha256(_in, &ret);
-	return ret;
+	sha256(_in).ref().copyTo(_out);
 }
 
-static bytes ripemd160Code(bytesConstRef _in)
+void ripemd160Code(bytesConstRef _in, bytesRef _out)
 {
-	bytes ret(32);
-	ripemd160(_in, &ret);
-	// leaves the 20-byte hash left-aligned. we want it right-aligned:
-	memmove(ret.data() + 12, ret.data(), 20);
-	memset(ret.data(), 0, 12);
-	return ret;
+	h256(ripemd160(_in), h256::AlignRight).ref().copyTo(_out);
 }
 
-static bytes identityCode(bytesConstRef _in)
+void identityCode(bytesConstRef _in, bytesRef _out)
 {
-	return _in.toBytes();
+	_in.copyTo(_out);
 }
 
-static const std::map<unsigned, PrecompiledAddress> c_precompiled =
-{
-	{ 1, { [](bytesConstRef) -> bigint { return c_ecrecoverGas; }, ecrecoverCode }},
-	{ 2, { [](bytesConstRef i) -> bigint { return c_sha256Gas + (i.size() + 31) / 32 * c_sha256WordGas; }, sha256Code }},
-	{ 3, { [](bytesConstRef i) -> bigint { return c_ripemd160Gas + (i.size() + 31) / 32 * c_ripemd160WordGas; }, ripemd160Code }},
-	{ 4, { [](bytesConstRef i) -> bigint { return c_identityGas + (i.size() + 31) / 32 * c_identityWordGas; }, identityCode }}
-};
+}
 
-std::map<unsigned, PrecompiledAddress> const& dev::eth::precompiled()
+std::unordered_map<unsigned, PrecompiledAddress> const& dev::eth::precompiled()
 {
+	static const std::unordered_map<unsigned, PrecompiledAddress> c_precompiled =
+	{
+		{ 1, { [](bytesConstRef) -> bigint { return c_ecrecoverGas; }, ecrecoverCode }},
+		{ 2, { [](bytesConstRef i) -> bigint { return c_sha256Gas + (i.size() + 31) / 32 * c_sha256WordGas; }, sha256Code }},
+		{ 3, { [](bytesConstRef i) -> bigint { return c_ripemd160Gas + (i.size() + 31) / 32 * c_ripemd160WordGas; }, ripemd160Code }},
+		{ 4, { [](bytesConstRef i) -> bigint { return c_identityGas + (i.size() + 31) / 32 * c_identityWordGas; }, identityCode }}
+	};
 	return c_precompiled;
 }

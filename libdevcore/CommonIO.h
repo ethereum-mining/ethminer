@@ -42,6 +42,8 @@
 namespace dev
 {
 
+std::string getPassword(std::string const& _prompt);
+
 /// Retrieve and returns the contents of the given file. If the file doesn't exist or isn't readable, returns an empty bytes.
 bytes contents(std::string const& _file);
 std::string contentsString(std::string const& _file);
@@ -77,7 +79,11 @@ template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, 
 template <class T, class U> inline std::ostream& operator<<(std::ostream& _out, std::multimap<T, U> const& _e);
 template <class _S, class _T> _S& operator<<(_S& _out, std::shared_ptr<_T> const& _p);
 
+#ifdef _WIN32
+template <class T> inline std::string toString(std::chrono::time_point<T> const& _e, std::string _format = "%Y-%m-%d %H:%M:%S")
+#else
 template <class T> inline std::string toString(std::chrono::time_point<T> const& _e, std::string _format = "%F %T")
+#endif
 {
 	unsigned long milliSecondsSinceEpoch = std::chrono::duration_cast<std::chrono::milliseconds>(_e.time_since_epoch()).count();
 	auto const durationSinceEpoch = std::chrono::milliseconds(milliSecondsSinceEpoch);

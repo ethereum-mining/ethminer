@@ -29,6 +29,7 @@
 #include <QUrl>
 #include <QNetworkAccessManager>
 #include <libdevcore/FixedHash.h>
+#include <libdevcrypto/Common.h>
 
 namespace dev
 {
@@ -69,13 +70,15 @@ class DappLoader: public QObject
 {
 	Q_OBJECT
 public:
-	DappLoader(QObject* _parent, dev::WebThreeDirect* _web3);
+	DappLoader(QObject* _parent, dev::WebThreeDirect* _web3, dev::Address _nameReg);
 	///Load a new DApp. Resolves a name with a name reg contract. Asynchronous. dappReady is emitted once everything is read, dappError othervise
 	///@param _uri Eth name path
 	void loadDapp(QString const& _uri);
 	///Load a regular html page
 	///@param _uri Page Uri
 	void loadPage(QString const& _uri);
+
+	void setSessionKey(std::string const& _s) { m_sessionKey = _s; }
 
 signals:
 	void dappReady(Dapp& _dapp);
@@ -97,5 +100,7 @@ private:
 	std::map<QUrl, dev::h256> m_uriHashes;
 	std::set<QUrl> m_pageUrls;
 	QByteArray m_web3Js;
+	dev::Address m_nameReg;
+	std::string m_sessionKey;
 };
 

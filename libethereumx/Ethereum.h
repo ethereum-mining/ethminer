@@ -75,7 +75,7 @@ public:
 	void flushTransactions();
 
 	/// Makes the given call. Nothing is recorded into the state.
-	bytes call(Secret _secret, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
+	bytes call(Address const& _from, u256 _value, Address _dest, bytes const& _data = bytes(), u256 _gas = 10000, u256 _gasPrice = 10 * szabo);
 
 	// Informational stuff
 

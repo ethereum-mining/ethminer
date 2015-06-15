@@ -22,16 +22,15 @@
 #pragma once
 
 #include <array>
-#include <map>
 #include <unordered_map>
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
-#include <libdevcrypto/TrieDB.h>
+#include <libdevcore/TrieDB.h>
+#include <libdevcrypto/OverlayDB.h>
 #include <libethcore/Exceptions.h>
 #include <libethcore/BlockInfo.h>
 #include <libethcore/ProofOfWork.h>
 #include <libethcore/Miner.h>
-#include <libethcore/Params.h>
 #include <libevm/ExtVMFace.h>
 #include "TransactionQueue.h"
 #include "Account.h"
@@ -47,13 +46,30 @@ namespace test { class ImportTest; class StateLoader; }
 namespace eth
 {
 
+// Import-specific errinfos
+using errinfo_uncleIndex = boost::error_info<struct tag_uncleIndex, unsigned>;
+using errinfo_currentNumber = boost::error_info<struct tag_currentNumber, u256>;
+using errinfo_uncleNumber = boost::error_info<struct tag_uncleNumber, u256>;
+using errinfo_unclesExcluded = boost::error_info<struct tag_unclesExcluded, h256Hash>;
+using errinfo_block = boost::error_info<struct tag_block, bytes>;
+using errinfo_now = boost::error_info<struct tag_now, unsigned>;
+
+using errinfo_transactionIndex = boost::error_info<struct tag_transactionIndex, unsigned>;
+
+using errinfo_vmtrace = boost::error_info<struct tag_vmtrace, std::string>;
+using errinfo_receipts = boost::error_info<struct tag_receipts, std::vector<bytes>>;
+using errinfo_required_LogBloom = boost::error_info<struct tag_required_LogBloom, LogBloom>;
+using errinfo_got_LogBloom = boost::error_info<struct tag_get_LogBloom, LogBloom>;
+using LogBloomRequirementError = boost::tuple<errinfo_required_LogBloom, errinfo_got_LogBloom>;
+
 class BlockChain;
 class State;
+struct VerifiedBlockRef;
 
-struct StateChat: public LogChannel { static const char* name() { return "-S-"; } static const int verbosity = 4; };
-struct StateTrace: public LogChannel { static const char* name() { return "=S="; } static const int verbosity = 7; };
-struct StateDetail: public LogChannel { static const char* name() { return "/S/"; } static const int verbosity = 14; };
-struct StateSafeExceptions: public LogChannel { static const char* name() { return "(S)"; } static const int verbosity = 21; };
+struct StateChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
+struct StateTrace: public LogChannel { static const char* name(); static const int verbosity = 5; };
+struct StateDetail: public LogChannel { static const char* name(); static const int verbosity = 14; };
+struct StateSafeExceptions: public LogChannel { static const char* name(); static const int verbosity = 21; };
 
 enum class BaseState
 {
@@ -85,9 +101,20 @@ public:
 
 class TrivialGasPricer: public GasPricer
 {
-protected:
-	u256 ask(State const&) const override { return 10 * szabo; }
-	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return 10 * szabo; }
+public:
+	TrivialGasPricer() = default;
+	TrivialGasPricer(u256 const& _ask, u256 const& _bid): m_ask(_ask), m_bid(_bid) {}
+
+	void setAsk(u256 const& _ask) { m_ask = _ask; }
+	void setBid(u256 const& _bid) { m_bid = _bid; }
+
+	u256 ask() const { return m_ask; }
+	u256 ask(State const&) const override { return m_ask; }
+	u256 bid(TransactionPriority = TransactionPriority::Medium) const override { return m_bid; }
+
+private:
+	u256 m_ask = 10 * szabo;
+	u256 m_bid = 10 * szabo;
 };
 
 enum class Permanence
@@ -120,7 +147,7 @@ public:
 	explicit State(OverlayDB const& _db, BaseState _bs = BaseState::PreExisting, Address _coinbaseAddress = Address());
 
 	/// Construct state object from arbitrary point in blockchain.
-	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash);
+	State(OverlayDB const& _db, BlockChain const& _bc, h256 _hash, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Copy state object.
 	State(State const& _s);
@@ -143,7 +170,7 @@ public:
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
 	/// @throws InterfaceNotSupported if compiled without ETH_FATDB.
-	std::map<Address, u256> addresses() const;
+	std::unordered_map<Address, u256> addresses() const;
 
 	/// Get the header information on the present block.
 	BlockInfo const& info() const { return m_currentBlock; }
@@ -161,40 +188,25 @@ public:
 	/// This may be called multiple times and without issue.
 	void commitToMine(BlockChain const& _bc);
 
+	/// @returns true iff commitToMine() has been called without any subsequest transactions added &c.
+	bool isCommittedToMine() const { return m_committedToMine; }
+
 	/// Pass in a solution to the proof-of-work.
-	/// @returns true iff the given nonce is a proof-of-work for this State's block.
+	/// @returns true iff we were previously committed to mining.
 	template <class PoW>
 	bool completeMine(typename PoW::Solution const& _result)
 	{
+		if (!m_committedToMine)
+			return false;
+
 		PoW::assignResult(_result, m_currentBlock);
 
-	//	if (!m_pow.verify(m_currentBlock))
-	//		return false;
-
-		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce).abridged() << m_currentBlock.nonce.abridged() << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
+		cnote << "Completed" << m_currentBlock.headerHash(WithoutNonce) << m_currentBlock.nonce << m_currentBlock.difficulty << PoW::verify(m_currentBlock);
 
 		completeMine();
 
 		return true;
 	}
-
-	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
-	 * Typically looks like:
-	 * @code
-	 * while (notYetMined)
-	 * {
-	 * // lock
-	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
-	 * // unlock
-	 * MineInfo info;
-	 * for (info.completed = false; !info.completed; info = mine()) {}
-	 * }
-	 * // lock
-	 * completeMine();
-	 * // unlock
-	 * @endcode
-	 */
-	void completeMine();
 
 	/// Get the complete current block, including valid nonce.
 	/// Only valid after mine() returns true.
@@ -206,7 +218,7 @@ public:
 
 	/// Execute a given transaction.
 	/// This will append @a _t to the transaction list and change the state accordingly.
-	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed);
+	ExecutionResult execute(LastHashes const& _lh, Transaction const& _t, Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
 	/// Get the remaining gas limit in this block.
 	u256 gasLimitRemaining() const { return m_currentBlock.gasLimit - gasUsed(); }
@@ -254,8 +266,8 @@ public:
 
 	/// Get the storage of an account.
 	/// @note This is expensive. Don't use it unless you need to.
-	/// @returns std::map<u256, u256> if no account exists at that address.
-	std::map<u256, u256> storage(Address _contract) const;
+	/// @returns std::unordered_map<u256, u256> if no account exists at that address.
+	std::unordered_map<u256, u256> storage(Address _contract) const;
 
 	/// Get the code of an account.
 	/// @returns bytes() if no account exists at that address.
@@ -279,7 +291,7 @@ public:
 	Transactions const& pending() const { return m_transactions; }
 
 	/// Get the list of hashes of pending transactions.
-	h256Set const& pendingHashes() const { return m_transactionSet; }
+	h256Hash const& pendingHashes() const { return m_transactionSet; }
 
 	/// Get the transaction receipt for the transaction of the given index.
 	TransactionReceipt const& receipt(unsigned _i) const { return m_receipts[_i]; }
@@ -299,10 +311,12 @@ public:
 	State fromPending(unsigned _i) const;
 
 	/// @returns the StateDiff caused by the pending transaction of index @a _i.
-	StateDiff pendingDiff(unsigned _i) const { return fromPending(_i).diff(fromPending(_i + 1)); }
+	StateDiff pendingDiff(unsigned _i) const { return fromPending(_i).diff(fromPending(_i + 1), true); }
 
 	/// @return the difference between this state (origin) and @a _c (destination).
-	StateDiff diff(State const& _c) const;
+	/// @param _quick if true doesn't check all addresses possible (/very/ slow for a full chain)
+	/// but rather only those touched by the transactions in creating the two States.
+	StateDiff diff(State const& _c, bool _quick = false) const;
 
 	/// Sync our state with the block chain.
 	/// This basically involves wiping ourselves if we've been superceded and rebuilding from the transaction queue.
@@ -313,7 +327,7 @@ public:
 
 	/// Execute all transactions within a given block.
 	/// @returns the additional total difficulty.
-	u256 enactOn(bytesConstRef _block, BlockInfo const& _bi, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
+	u256 enactOn(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Returns back to a pristine state after having done a playback.
 	/// @arg _fullCommit if true flush everything out to disk. If false, this effectively only validates
@@ -327,6 +341,19 @@ public:
 	void resetCurrent();
 
 private:
+	/** Commit to DB and build the final block if the previous call to mine()'s result is completion.
+	 * Typically looks like:
+	 * @code
+	 * while (notYetMined)
+	 * {
+	 * // lock
+	 * commitToMine(_blockChain);  // will call uncommitToMine if a repeat.
+	 * completeMine();
+	 * // unlock
+	 * @endcode
+	 */
+	void completeMine();
+
 	/// Undo the changes to the state for committing to mine.
 	void uncommitToMine();
 
@@ -337,11 +364,11 @@ private:
 	void ensureCached(Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Retrieve all information about a given address into a cache.
-	void ensureCached(std::map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
+	void ensureCached(std::unordered_map<Address, Account>& _cache, Address _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Execute the given block, assuming it corresponds to m_currentBlock.
 	/// Throws on failure.
-	u256 enact(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
+	u256 enact(VerifiedBlockRef const& _block, BlockChain const& _bc, ImportRequirements::value _ir = ImportRequirements::Default);
 
 	/// Finalise the block, applying the earned rewards.
 	void applyRewards(std::vector<BlockInfo> const& _uncleBlockHeaders);
@@ -354,14 +381,18 @@ private:
 	/// Debugging only. Good for checking the Trie is in shape.
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
 
+	/// Provide a standard VM trace for debugging purposes.
+	std::string vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequirements::value _ir);
+
 	OverlayDB m_db;								///< Our overlay for the state tree.
 	SecureTrieDB<Address, OverlayDB> m_state;	///< Our state tree, as an OverlayDB DB.
 	Transactions m_transactions;				///< The current list of transactions that we've included in the state.
 	TransactionReceipts m_receipts;				///< The corresponding list of transaction receipts.
-	std::set<h256> m_transactionSet;			///< The set of transaction hashes that we've included in the state.
+	h256Hash m_transactionSet;					///< The set of transaction hashes that we've included in the state.
 	OverlayDB m_lastTx;
+	AddressHash m_touched;						///< Tracks all addresses touched by transactions so far.
 
-	mutable std::map<Address, Account> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
+	mutable std::unordered_map<Address, Account> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
 
 	BlockInfo m_previousBlock;					///< The previous block's information.
 	BlockInfo m_currentBlock;					///< The current block's information.
@@ -383,8 +414,9 @@ private:
 std::ostream& operator<<(std::ostream& _out, State const& _s);
 
 template <class DB>
-void commit(std::map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
+AddressHash commit(std::unordered_map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Address, DB>& _state)
 {
+	AddressHash ret;
 	for (auto const& i: _cache)
 		if (i.second.isDirty())
 		{
@@ -423,7 +455,9 @@ void commit(std::map<Address, Account> const& _cache, DB& _db, SecureTrieDB<Addr
 
 				_state.insert(i.first, &s.out());
 			}
+			ret.insert(i.first);
 		}
+	return ret;
 }
 
 }

@@ -22,11 +22,32 @@ var tests = [{
     formattedResult: '0xf',
     call: 'eth_newFilter'
 },{
-    args: ['pending'],
-    formattedArgs: ['pending'],
+    args: [{
+        fromBlock: 'latest',
+        toBlock: 'latest',
+        address: '0x47d33b27bb249a2dbab4c0612bf9caf4c1950855'
+    }],
+    formattedArgs: [{
+        fromBlock: 'latest',
+        toBlock: 'latest',
+        address: '0x47d33b27bb249a2dbab4c0612bf9caf4c1950855',
+        topics: []
+    }],
+    result: '0xf',
+    formattedResult: '0xf',
+    call: 'eth_newFilter'
+},{
+    args: ['latest'],
+    formattedArgs: [],
     result: '0xf',
     formattedResult: '0xf',
     call: 'eth_newBlockFilter'
+},{
+    args: ['pending'],
+    formattedArgs: [],
+    result: '0xf',
+    formattedResult: '0xf',
+    call: 'eth_newPendingTransactionFilter'
 }];
 
 describe('web3.eth', function () {

@@ -1,14 +1,15 @@
 {
   "name": "web3",
   "namespace": "ethereum",
-  "version": "0.2.6",
+  "version": "0.5.0",
   "description": "Ethereum Compatible JavaScript API",
   "main": [
     "./dist/web3.js",
     "./dist/web3.min.js"
   ],
   "dependencies": {
-    "bignumber.js": ">=2.0.0"
+    "bignumber.js": ">=2.0.0",
+    "crypto-js": "~3.1.4"
   },
   "repository": {
     "type": "git",

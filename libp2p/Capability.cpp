@@ -23,18 +23,19 @@
 
 #include <libdevcore/Log.h>
 #include "Session.h"
+#include "Host.h"
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
 
-Capability::Capability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset): m_session(_s), m_host(_h), m_idOffset(_idOffset)
+Capability::Capability(Session* _s, HostCapabilityFace* _h, unsigned _idOffset): m_session(_s), m_hostCap(_h), m_idOffset(_idOffset)
 {
-	clog(NetConnect) << "New session for capability" << m_host->name() << "; idOffset:" << m_idOffset;
+	clog(NetConnect) << "New session for capability" << m_hostCap->name() << "; idOffset:" << m_idOffset;
 }
 
 void Capability::disable(std::string const& _problem)
 {
-	clog(NetWarn) << "DISABLE: Disabling capability '" << m_host->name() << "'. Reason:" << _problem;
+	clog(NetWarn) << "DISABLE: Disabling capability '" << m_hostCap->name() << "'. Reason:" << _problem;
 	m_enabled = false;
 }
 
@@ -51,4 +52,9 @@ void Capability::sealAndSend(RLPStream& _s)
 void Capability::addRating(int _r)
 {
 	m_session->addRating(_r);
+}
+
+ReputationManager& Capability::repMan() const
+{
+	return host()->repMan();
 }

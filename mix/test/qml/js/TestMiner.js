@@ -25,6 +25,10 @@ function test_mine()
 	waitForExecution();
 	mainApplication.clientModel.mine();
 	waitForMining();
+	wait(1000); //there need to be at least 1 sec diff between block times
+	mainApplication.clientModel.mine();
+	waitForMining();
 	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(3), "contract", " - Block - ");
+	tryCompare(mainApplication.mainContent.rightPane.transactionLog.transactionModel.get(4), "contract", " - Block - ");
 }
 

@@ -189,3 +189,8 @@ view-port
 }
 
 span.CodeMirror-selectedtext { color: #586e75 !important; }
+
+/* Gas Costs */
+.CodeMirror-gasCosts {
+  border-bottom: double 1px #2aa198;
+}

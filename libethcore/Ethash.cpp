@@ -34,8 +34,9 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcrypto/CryptoPP.h>
-#include <libdevcrypto/FileSystem.h>
+#include <libdevcore/FileSystem.h>
 #include <libethash/ethash.h>
+#include <libethash/internal.h>
 #if ETH_ETHASHCL || !ETH_TRUE
 #include <libethash-cl/ethash_cl_miner.h>
 #endif
@@ -74,9 +75,16 @@ Ethash::WorkPackage Ethash::package(BlockInfo const& _bi)
 	return ret;
 }
 
-void Ethash::prep(BlockInfo const& _header)
+void Ethash::ensurePrecomputed(unsigned _number)
 {
-	EthashAux::full(_header);
+	if (_number % ETHASH_EPOCH_LENGTH > ETHASH_EPOCH_LENGTH * 9 / 10)
+		// 90% of the way to the new epoch
+		EthashAux::computeFull(EthashAux::seedHash(_number + ETHASH_EPOCH_LENGTH), true);
+}
+
+void Ethash::prep(BlockInfo const& _header, std::function<int(unsigned)> const& _f)
+{
+	EthashAux::full(_header.seedHash(), true, _f);
 }
 
 bool Ethash::preVerify(BlockInfo const& _header)
@@ -86,11 +94,13 @@ bool Ethash::preVerify(BlockInfo const& _header)
 
 	h256 boundary = u256((bigint(1) << 256) / _header.difficulty);
 
-	return !!ethash_quick_check_difficulty(
-		_header.headerHash(WithoutNonce).data(),
-		(uint64_t)(u64)_header.nonce,
-		_header.mixHash.data(),
-		boundary.data());
+	bool ret = !!ethash_quick_check_difficulty(
+			(ethash_h256_t const*)_header.headerHash(WithoutNonce).data(),
+			(uint64_t)(u64)_header.nonce,
+			(ethash_h256_t const*)_header.mixHash.data(),
+			(ethash_h256_t const*)boundary.data());
+
+	return ret;
 }
 
 bool Ethash::verify(BlockInfo const& _header)
@@ -103,6 +113,10 @@ bool Ethash::verify(BlockInfo const& _header)
 
 	auto result = EthashAux::eval(_header);
 	bool slow = result.value <= _header.boundary() && result.mixHash == _header.mixHash;
+
+//	cdebug << (slow ? "VERIFY" : "VERYBAD");
+//	cdebug << result.value.hex() << _header.boundary().hex();
+//	cdebug << result.mixHash.hex() << _header.mixHash.hex();
 
 #if ETH_DEBUG || !ETH_TRUE
 	if (!pre && slow)
@@ -121,6 +135,8 @@ bool Ethash::verify(BlockInfo const& _header)
 	return slow;
 }
 
+unsigned Ethash::CPUMiner::s_numInstances = 0;
+
 void Ethash::CPUMiner::workLoop()
 {
 	auto tid = std::this_thread::get_id();
@@ -131,20 +147,24 @@ void Ethash::CPUMiner::workLoop()
 
 	WorkPackage w = work();
 
-	auto p = EthashAux::params(w.seedHash);
-	auto dag = EthashAux::full(w.seedHash);
-	auto dagPointer = dag->data.data();
-	uint8_t const* headerHashPointer = w.headerHash.data();
+	EthashAux::FullType dag;
+	while (!shouldStop() && !dag)
+	{
+		while (!shouldStop() && EthashAux::computeFull(w.seedHash, true) != 100)
+			this_thread::sleep_for(chrono::milliseconds(500));
+		dag = EthashAux::full(w.seedHash, false);
+	}
+
 	h256 boundary = w.boundary;
 	unsigned hashCount = 1;
 	for (; !shouldStop(); tryNonce++, hashCount++)
 	{
-		ethash_compute_full(&ethashReturn, dagPointer, &p, headerHashPointer, tryNonce);
-		h256 value = h256(ethashReturn.result, h256::ConstructFromPointer);
-		if (value <= boundary && submitProof(Solution{(Nonce)(u64)tryNonce, h256(ethashReturn.mix_hash, h256::ConstructFromPointer)}))
+		ethashReturn = ethash_full_compute(dag->full, *(ethash_h256_t*)w.headerHash.data(), tryNonce);
+		h256 value = h256((uint8_t*)&ethashReturn.result, h256::ConstructFromPointer);
+		if (value <= boundary && submitProof(Solution{(Nonce)(u64)tryNonce, h256((uint8_t*)&ethashReturn.mix_hash, h256::ConstructFromPointer)}))
 			break;
-		if (!(hashCount % 1000))
-			accumulateHashes(1000);
+		if (!(hashCount % 100))
+			accumulateHashes(100);
 	}
 }
 
@@ -264,10 +284,11 @@ private:
 
 unsigned Ethash::GPUMiner::s_platformId = 0;
 unsigned Ethash::GPUMiner::s_deviceId = 0;
+unsigned Ethash::GPUMiner::s_numInstances = 0;
 
 Ethash::GPUMiner::GPUMiner(ConstructionInfo const& _ci):
 	Miner(_ci),
-	Worker("gpuminer"),
+	Worker("gpuminer" + toString(index())),
 	m_hook(new EthashCLHook(this))
 {
 }
@@ -299,24 +320,43 @@ void Ethash::GPUMiner::workLoop()
 	// take local copy of work since it may end up being overwritten by kickOff/pause.
 	try {
 		WorkPackage w = work();
+		cnote << "workLoop" << !!m_miner << m_minerSeed << w.seedHash;
 		if (!m_miner || m_minerSeed != w.seedHash)
 		{
+			cnote << "Initialising miner...";
 			m_minerSeed = w.seedHash;
 
 			delete m_miner;
 			m_miner = new ethash_cl_miner;
 
-			auto p = EthashAux::params(m_minerSeed);
-			auto cb = [&](void* d) { EthashAux::full(m_minerSeed, bytesRef((byte*)d, p.full_size)); };
-			m_miner->init(p, cb, 32, s_platformId, s_deviceId);
+			unsigned device = instances() > 1 ? index() : s_deviceId;
+
+			EthashAux::FullType dag;
+			while (true)
+			{
+				if ((dag = EthashAux::full(w.seedHash, true)))
+					break;
+				if (shouldStop())
+				{
+					delete m_miner;
+					m_miner = nullptr;
+					return;
+				}
+				cnote << "Awaiting DAG";
+				this_thread::sleep_for(chrono::milliseconds(500));
+			}
+			bytesConstRef dagData = dag->data();
+			m_miner->init(dagData.data(), dagData.size(), 32, s_platformId, device);
 		}
 
 		uint64_t upper64OfBoundary = (uint64_t)(u64)((u256)w.boundary >> 192);
 		m_miner->search(w.headerHash.data(), upper64OfBoundary, *m_hook);
 	}
-	catch (...)
+	catch (cl::Error const& _e)
 	{
-		cwarn << "Error GPU mining. GPU memory fragmentation?";
+		delete m_miner;
+		m_miner = nullptr;
+		cwarn << "Error GPU mining: " << _e.what() << "(" << _e.err() << ")";
 	}
 }
 
@@ -329,6 +369,30 @@ void Ethash::GPUMiner::pause()
 std::string Ethash::GPUMiner::platformInfo()
 {
 	return ethash_cl_miner::platform_info(s_platformId, s_deviceId);
+}
+
+unsigned Ethash::GPUMiner::getNumDevices()
+{
+	return ethash_cl_miner::getNumDevices(s_platformId);
+}
+
+void Ethash::GPUMiner::listDevices()
+{
+	return ethash_cl_miner::listDevices();
+}
+
+bool Ethash::GPUMiner::configureGPU(
+	unsigned _platformId,
+	unsigned _deviceId,
+	bool _allowCPU,
+	unsigned _extraGPUMemory,
+	bool _forceSingleChunk,
+	boost::optional<uint64_t> _currentBlock
+)
+{
+	s_platformId = _platformId;
+	s_deviceId = _deviceId;
+	return ethash_cl_miner::configureGPU(_allowCPU, _extraGPUMemory, _forceSingleChunk, _currentBlock);
 }
 
 #endif

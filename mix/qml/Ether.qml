@@ -15,8 +15,10 @@ RowLayout {
 	property bool displayFormattedValue;
 	property bool edit;
 	property variant value;
+	property bool displayUnitSelection
 	onValueChanged: update()
 	Component.onCompleted: update()
+
 
 	function update()
 	{
@@ -45,13 +47,13 @@ RowLayout {
 			}
 		}
 		readOnly: !edit
-		visible: edit
 		id: etherValueEdit;
 	}
 
 	ComboBox
 	{
 		id: units
+		visible: displayUnitSelection;
 		onCurrentTextChanged:
 		{
 			if (value)

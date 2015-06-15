@@ -36,6 +36,7 @@
 #include <libdevcrypto/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Exceptions.h>
+#include <libdevcore/RLP.h>
 namespace ba = boost::asio;
 namespace bi = boost::asio::ip;
 
@@ -75,17 +76,20 @@ struct NetworkStartRequired: virtual dev::Exception {};
 struct InvalidPublicIPAddress: virtual dev::Exception {};
 struct InvalidHostIPAddress: virtual dev::Exception {};
 
-struct NetWarn: public LogChannel { static const char* name() { return "!N!"; } static const int verbosity = 0; };
-struct NetNote: public LogChannel { static const char* name() { return "*N*"; } static const int verbosity = 1; };
-struct NetImpolite: public LogChannel { static const char* name() { return "#!*"; } static const int verbosity = 1; };
-struct NetMessageSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 2; };
-struct NetConnect: public LogChannel { static const char* name() { return "+N+"; } static const int verbosity = 10; };
-struct NetMessageDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 5; };
-struct NetTriviaSummary: public LogChannel { static const char* name() { return "-N-"; } static const int verbosity = 10; };
-struct NetTriviaDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 11; };
-struct NetAllDetail: public LogChannel { static const char* name() { return "=N="; } static const int verbosity = 13; };
-struct NetRight: public LogChannel { static const char* name() { return ">N>"; } static const int verbosity = 14; };
-struct NetLeft: public LogChannel { static const char* name() { return "<N<"; } static const int verbosity = 15; };
+struct NetWarn: public LogChannel { static const char* name(); static const int verbosity = 0; };
+struct NetNote: public LogChannel { static const char* name(); static const int verbosity = 1; };
+struct NetImpolite: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct NetMessageSummary: public LogChannel { static const char* name(); static const int verbosity = 3; };
+struct NetConnect: public LogChannel { static const char* name(); static const int verbosity = 10; };
+struct NetMessageDetail: public LogChannel { static const char* name(); static const int verbosity = 5; };
+struct NetTriviaSummary: public LogChannel { static const char* name(); static const int verbosity = 10; };
+struct NetTriviaDetail: public LogChannel { static const char* name(); static const int verbosity = 11; };
+struct NetAllDetail: public LogChannel { static const char* name(); static const int verbosity = 13; };
+struct NetRight: public LogChannel { static const char* name(); static const int verbosity = 14; };
+struct NetLeft: public LogChannel { static const char* name(); static const int verbosity = 15; };
+struct NetP2PWarn: public LogChannel { static const char* name(); static const int verbosity = 2; };
+struct NetP2PNote: public LogChannel { static const char* name(); static const int verbosity = 6; };
+struct NetP2PConnect: public LogChannel { static const char* name(); static const int verbosity = 10; };
 
 enum PacketType
 {
@@ -162,26 +166,37 @@ using PeerSessionInfos = std::vector<PeerSessionInfo>;
  */
 struct NodeIPEndpoint
 {
+	enum RLPAppend
+	{
+		StreamList,
+		StreamInline
+	};
+	
 	/// Setting true causes isAllowed to return true for all addresses. (Used by test fixtures)
 	static bool test_allowLocal;
 
+	NodeIPEndpoint() = default;
 	NodeIPEndpoint(bi::address _addr, uint16_t _udp, uint16_t _tcp): address(_addr), udpPort(_udp), tcpPort(_tcp) {}
+	NodeIPEndpoint(RLP const& _r) { interpretRLP(_r); }
 
-	bi::address address;
-	uint16_t udpPort;
-	uint16_t tcpPort;
+	bi::address address = bi::address();
+	uint16_t udpPort = 0;
+	uint16_t tcpPort = 0;
 	
-	operator bi::udp::endpoint() const { return std::move(bi::udp::endpoint(address, udpPort)); }
-	operator bi::tcp::endpoint() const { return std::move(bi::tcp::endpoint(address, tcpPort)); }
+	operator bi::udp::endpoint() const { return bi::udp::endpoint(address, udpPort); }
+	operator bi::tcp::endpoint() const { return bi::tcp::endpoint(address, tcpPort); }
 	
 	operator bool() const { return !address.is_unspecified() && udpPort > 0 && tcpPort > 0; }
 	
 	bool isAllowed() const { return NodeIPEndpoint::test_allowLocal ? !address.is_unspecified() : isPublicAddress(address); }
+	
+	void streamRLP(RLPStream& _s, RLPAppend _append = StreamList) const;
+	void interpretRLP(RLP const& _r);
 };
 	
 struct Node
 {
-	Node(Public _pubk, NodeIPEndpoint _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
+	Node(Public _pubk, NodeIPEndpoint const& _ip, bool _required = false): id(_pubk), endpoint(_ip), required(_required) {}
 
 	virtual NodeId const& address() const { return id; }
 	virtual Public const& publicKey() const { return id; }
@@ -202,4 +217,27 @@ struct Node
 	
 /// Simple stream output for a NodeIPEndpoint.
 std::ostream& operator<<(std::ostream& _out, dev::p2p::NodeIPEndpoint const& _ep);
+}
+
+/// std::hash for asio::adress
+namespace std
+{
+
+template <> struct hash<bi::address>
+{
+	size_t operator()(bi::address const& _a) const
+	{
+		if (_a.is_v4())
+			return std::hash<unsigned long>()(_a.to_v4().to_ulong());
+		if (_a.is_v6())
+		{
+			auto const& range = _a.to_v6().to_bytes();
+			return boost::hash_range(range.begin(), range.end());
+		}
+		if (_a.is_unspecified())
+			return static_cast<size_t>(0x3487194039229152ul);  // Chosen by fair dice roll, guaranteed to be random
+		return std::hash<std::string>()(_a.to_string());
+	}
+};
+
 }

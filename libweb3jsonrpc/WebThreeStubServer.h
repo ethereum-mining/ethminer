@@ -33,7 +33,16 @@
 namespace dev
 {
 class WebThreeDirect;
+namespace eth
+{
+class KeyManager;
 }
+}
+
+struct SessionPermissions
+{
+	bool admin;
+};
 
 /**
  * @brief JSON-RPC api implementation for WebThreeDirect
@@ -41,11 +50,16 @@ class WebThreeDirect;
 class WebThreeStubServer: public dev::WebThreeStubServerBase, public dev::WebThreeStubDatabaseFace
 {
 public:
-	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::vector<dev::KeyPair> const& _accounts);
+	WebThreeStubServer(jsonrpc::AbstractServerConnector& _conn, dev::WebThreeDirect& _web3, std::shared_ptr<dev::eth::AccountHolder> const& _ethAccounts, std::vector<dev::KeyPair> const& _shhAccounts, dev::eth::KeyManager& _keyMan);
 
-	virtual std::string web3_clientVersion();
+	virtual std::string web3_clientVersion() override;
+
+	std::string newSession(SessionPermissions const& _p);
+	void addSession(std::string const& _session, SessionPermissions const& _p) { m_sessions[_session] = _p; }
 
 private:
+	bool isAdmin(std::string const& _session) const override { auto it = m_sessions.find(_session); return it != m_sessions.end() && it->second.admin; }
+
 	virtual dev::eth::Interface* client() override;
 	virtual std::shared_ptr<dev::shh::Interface> face() override;
 	virtual dev::WebThreeNetworkFace* network() override;
@@ -54,9 +68,15 @@ private:
 	virtual std::string get(std::string const& _name, std::string const& _key) override;
 	virtual void put(std::string const& _name, std::string const& _key, std::string const& _value) override;
 
+	virtual bool eth_notePassword(std::string const& _password);
+	virtual Json::Value admin_eth_blockQueueStatus(std::string const& _session);
+
 private:
 	dev::WebThreeDirect& m_web3;
+	dev::eth::KeyManager& m_keyMan;
 	leveldb::ReadOptions m_readOptions;
 	leveldb::WriteOptions m_writeOptions;
 	leveldb::DB* m_db;
+
+	std::unordered_map<std::string, SessionPermissions> m_sessions;
 };

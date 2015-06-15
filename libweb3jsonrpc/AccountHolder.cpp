@@ -26,6 +26,8 @@
 #include <ctime>
 #include <libdevcore/Guards.h>
 #include <libethereum/Client.h>
+#include <libethcore/KeyManager.h>
+
 
 using namespace std;
 using namespace dev;
@@ -35,31 +37,23 @@ vector<TransactionSkeleton> g_emptyQueue;
 static std::mt19937 g_randomNumberGenerator(time(0));
 static Mutex x_rngMutex;
 
-void AccountHolder::setAccounts(vector<KeyPair> const& _accounts)
+vector<Address> AccountHolder::allAccounts() const
 {
-	m_accounts.clear();
-	for (auto const& keyPair: _accounts)
-	{
-		m_accounts.push_back(keyPair.address());
-		m_keyPairs[keyPair.address()] = keyPair;
-	}
-}
-
-vector<Address> AccountHolder::getAllAccounts() const
-{
-	vector<Address> accounts = m_accounts;
+	vector<Address> accounts;
+	accounts += realAccounts();
 	for (auto const& pair: m_proxyAccounts)
 		if (!isRealAccount(pair.first))
 			accounts.push_back(pair.first);
 	return accounts;
 }
 
-Address const& AccountHolder::getDefaultTransactAccount() const
+Address const& AccountHolder::defaultTransactAccount() const
 {
-	if (m_accounts.empty())
+	auto accounts = realAccounts();
+	if (accounts.empty())
 		return ZeroAddress;
-	Address const* bestMatch = &m_accounts.front();
-	for (auto const& account: m_accounts)
+	Address const* bestMatch = &*accounts.begin();
+	for (auto const& account: accounts)
 		if (m_client()->balanceAt(account) > m_client()->balanceAt(*bestMatch))
 			bestMatch = &account;
 	return *bestMatch;
@@ -94,7 +88,7 @@ void AccountHolder::queueTransaction(TransactionSkeleton const& _transaction)
 	m_transactionQueues[id].second.push_back(_transaction);
 }
 
-vector<TransactionSkeleton> const& AccountHolder::getQueuedTransactions(int _id) const
+vector<TransactionSkeleton> const& AccountHolder::queuedTransactions(int _id) const
 {
 	if (!m_transactionQueues.count(_id))
 		return g_emptyQueue;
@@ -106,3 +100,27 @@ void AccountHolder::clearQueue(int _id)
 	if (m_transactionQueues.count(_id))
 		m_transactionQueues.at(_id).second.clear();
 }
+
+AddressHash SimpleAccountHolder::realAccounts() const
+{
+	return m_keyManager.accounts();
+}
+
+void SimpleAccountHolder::authenticate(dev::eth::TransactionSkeleton const& _t)
+{
+	if (isRealAccount(_t.from))
+		m_client()->submitTransaction(m_keyManager.secret(_t.from, [&](){ return m_getPassword(_t.from); }), _t);
+	else if (isProxyAccount(_t.from))
+		queueTransaction(_t);
+}
+
+void FixedAccountHolder::authenticate(dev::eth::TransactionSkeleton const& _t)
+{
+	if (isRealAccount(_t.from))
+		m_client()->submitTransaction(m_accounts[_t.from], _t);
+	else if (isProxyAccount(_t.from))
+		queueTransaction(_t);
+}
+
+
+

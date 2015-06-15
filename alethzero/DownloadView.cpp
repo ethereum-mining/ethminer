@@ -39,20 +39,23 @@ void DownloadView::paintEvent(QPaintEvent*)
 	QPainter p(this);
 
 	p.fillRect(rect(), Qt::white);
-	if (!m_man || m_man->chain().empty() || !m_man->subCount())
+	if (!m_man || m_man->chainEmpty() || !m_man->subCount())
 		return;
 
 	double ratio = (double)rect().width() / rect().height();
 	if (ratio < 1)
 		ratio = 1 / ratio;
-	double n = min(16.0, min(rect().width(), rect().height()) / ceil(sqrt(m_man->chain().size() / ratio)));
+	double n = min(16.0, min(rect().width(), rect().height()) / ceil(sqrt(m_man->chainSize() / ratio)));
 
 //	QSizeF area(rect().width() / floor(rect().width() / n), rect().height() / floor(rect().height() / n));
 	QSizeF area(n, n);
 	QPointF pos(0, 0);
 
 	auto bg = m_man->blocksGot();
-
+	unsigned subCount = m_man->subCount();
+	if (subCount == 0)
+		return;
+	unsigned dh = 360 / subCount;
 	for (unsigned i = bg.all().first, ei = bg.all().second; i < ei; ++i)
 	{
 		int s = -2;
@@ -68,7 +71,6 @@ void DownloadView::paintEvent(QPaintEvent*)
 				h++;
 			});
 		}
-		unsigned dh = 360 / m_man->subCount();
 		if (s == -2)
 			p.fillRect(QRectF(QPointF(pos) + QPointF(3 * area.width() / 8, 3 * area.height() / 8), area / 4), Qt::black);
 		else if (s == -1)

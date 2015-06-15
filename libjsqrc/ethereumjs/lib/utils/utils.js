@@ -14,9 +14,9 @@
     You should have received a copy of the GNU Lesser General Public License
     along with ethereum.js.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file utils.js
- * @authors:
- *   Marek Kotewicz <marek@ethdev.com>
+/** 
+ * @file utils.js
+ * @author Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  */
 
@@ -36,22 +36,30 @@
 var BigNumber = require('bignumber.js');
 
 var unitMap = {
-    'wei':      '1',
-    'kwei':     '1000',
-    'ada':      '1000',
-    'mwei':     '1000000',
-    'babbage':  '1000000',
-    'gwei':     '1000000000',
-    'shannon':  '1000000000',
-    'szabo':    '1000000000000',
-    'finney':   '1000000000000000',
-    'ether':    '1000000000000000000',
-    'kether':   '1000000000000000000000',
-    'grand':    '1000000000000000000000',
-    'einstein': '1000000000000000000000',
-    'mether':   '1000000000000000000000000',
-    'gether':   '1000000000000000000000000000',
-    'tether':   '1000000000000000000000000000000'
+    'wei':          '1',
+    'kwei':         '1000',
+    'ada':          '1000',
+    'femtoether':   '1000',
+    'mwei':         '1000000',
+    'babbage':      '1000000',
+    'picoether':    '1000000',
+    'gwei':         '1000000000',
+    'shannon':      '1000000000',
+    'nanoether':    '1000000000',
+    'nano':         '1000000000',
+    'szabo':        '1000000000000',
+    'microether':   '1000000000000',
+    'micro':        '1000000000000',
+    'finney':       '1000000000000000',
+    'milliether':    '1000000000000000',
+    'milli':         '1000000000000000',
+    'ether':        '1000000000000000000',
+    'kether':       '1000000000000000000000',
+    'grand':        '1000000000000000000000',
+    'einstein':     '1000000000000000000000',
+    'mether':       '1000000000000000000000000',
+    'gether':       '1000000000000000000000000000',
+    'tether':       '1000000000000000000000000000000'
 };
 
 /**
@@ -65,22 +73,6 @@ var unitMap = {
  */
 var padLeft = function (string, chars, sign) {
     return new Array(chars - string.length + 1).join(sign ? sign : "0") + string;
-};
-
-/** Finds first index of array element matching pattern
- *
- * @method findIndex
- * @param {Array}
- * @param {Function} pattern
- * @returns {Number} index of element
- */
-var findIndex = function (array, callback) {
-    var end = false;
-    var i = 0;
-    for (; i < array.length && !end; i++) {
-        end = callback(array[i]);
-    }
-    return end ? i - 1 : -1;
 };
 
 /** 
@@ -112,7 +104,7 @@ var toAscii = function(hex) {
 /**
  * Shold be called to get hex representation (prefixed by 0x) of ascii string 
  *
- * @method fromAscii
+ * @method toHexNative
  * @param {String} string
  * @returns {String} hex representation of input string
  */
@@ -140,6 +132,22 @@ var fromAscii = function(str, pad) {
     while (hex.length < pad*2)
         hex += "00";
     return "0x" + hex;
+};
+
+/**
+ * Should be used to create full function/event name from json abi
+ *
+ * @method transformToFullName
+ * @param {Object} json-abi
+ * @return {String} full fnction/event name
+ */
+var transformToFullName = function (json) {
+    if (json.name.indexOf('(') !== -1) {
+        return json.name;
+    }
+
+    var typeName = json.inputs.map(function(i){return i.type; }).join();
+    return json.name + '(' + typeName + ')';
 };
 
 /**
@@ -239,13 +247,14 @@ var getValueOfUnit = function (unit) {
  * Takes a number of wei and converts it to any other ether unit.
  *
  * Possible units are:
- * - kwei/ada
- * - mwei/babbage
- * - gwei/shannon
- * - szabo
- * - finney
- * - ether
- * - kether/grand/einstein
+ *   SI Short   SI Full        Effigy       Other
+ * - kwei       femtoether     ada
+ * - mwei       picoether      babbage
+ * - gwei       nanoether      shannon      nano
+ * - --         microether     szabo        micro
+ * - --         milliether     finney       milli
+ * - ether      --             --
+ * - kether                    einstein     grand 
  * - mether
  * - gether
  * - tether
@@ -265,13 +274,14 @@ var fromWei = function(number, unit) {
  * Takes a number of a unit and converts it to wei.
  *
  * Possible units are:
- * - kwei/ada
- * - mwei/babbage
- * - gwei/shannon
- * - szabo
- * - finney
- * - ether
- * - kether/grand/einstein
+ *   SI Short   SI Full        Effigy       Other
+ * - kwei       femtoether     ada
+ * - mwei       picoether      babbage       
+ * - gwei       nanoether      shannon      nano
+ * - --         microether     szabo        micro
+ * - --         milliether     finney       milli
+ * - ether      --             --
+ * - kether                    einstein     grand 
  * - mether
  * - gether
  * - tether
@@ -363,6 +373,7 @@ var toAddress = function (address) {
     return '0x' + padLeft(toHex(address).substr(2), 40);
 };
 
+
 /**
  * Returns true if object is BigNumber, otherwise false
  *
@@ -446,14 +457,26 @@ var isJson = function (str) {
     }
 };
 
+/**
+ * This method should be called to check if string is valid ethereum IBAN number
+ * Supports direct and indirect IBANs
+ *
+ * @method isIBAN
+ * @param {String}
+ * @return {Boolean}
+ */
+var isIBAN = function (iban) {
+    return /^XE[0-9]{2}(ETH[0-9A-Z]{13}|[0-9A-Z]{30})$/.test(iban);
+};
+
 module.exports = {
     padLeft: padLeft,
-    findIndex: findIndex,
     toHex: toHex,
     toDecimal: toDecimal,
     fromDecimal: fromDecimal,
     toAscii: toAscii,
     fromAscii: fromAscii,
+    transformToFullName: transformToFullName,
     extractDisplayName: extractDisplayName,
     extractTypeName: extractTypeName,
     toWei: toWei,
@@ -469,6 +492,7 @@ module.exports = {
     isObject: isObject,
     isBoolean: isBoolean,
     isArray: isArray,
-    isJson: isJson
+    isJson: isJson,
+    isIBAN: isIBAN
 };
 

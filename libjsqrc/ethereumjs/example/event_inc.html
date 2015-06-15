@@ -4,13 +4,13 @@
     <script type="text/javascript" src="../dist/web3.js"></script>
     <script type="text/javascript">
         var web3 = require('web3');
-        web3.setProvider(new web3.providers.HttpProvider('http://localhost:8080'));
+        web3.setProvider(new web3.providers.HttpProvider('http://localhost:8545'));
 
-        var source = "" + 
+        var source = "" +
         "contract Contract { " +
         "   event Incremented(bool indexed odd, uint x); " +
         "   function Contract() { " +
-        "        x = 69; " +
+        "        x = 70; " +
         "    } " +
         "    function inc() { " +
         "        ++x; " +
@@ -19,33 +19,55 @@
         "    uint x; " +
         "}";
 
-        var desc = [{
-            "type":"event",
-            "name":"Incremented",
-            "inputs": [{"name":"odd","type":"bool","indexed":true},{"name":"x","type":"uint","indexed":false}],
-        }, {
-            "type":"function",
-            "name":"inc",
-            "inputs": [],
-            "outputs": []
-        }];
+        var compiled = web3.eth.compile.solidity(source);
+        var code = compiled.Contract.code;
+        var abi = compiled.Contract.info.abiDefinition;
 
         var address;
         var contract;
 
-        var update = function (x) {
-            document.getElementById('result').innerText = JSON.stringify(x);
+        var update = function (err, x) {
+            document.getElementById('result').textContent = JSON.stringify(x, null, 2);
         };
     
         var createContract = function () {
-            address = web3.eth.sendTransaction({data: web3.eth.compile.solidity(source)});
-            contract = web3.eth.contract(address, desc); 
-            contract.Incremented({odd: true}).changed(update);
+            // let's assume that we have a private key to coinbase ;)
+            web3.eth.defaultAccount = web3.eth.coinbase;
+            
+            var watch = web3.eth.filter('latest');
+
+            contract = web3.eth.contract(abi).new({data: code});
+            
+            console.log('address: ' + contract.address);
+
+            document.getElementById('create').style.visibility = 'hidden';
+            document.getElementById('status').innerText = "transaction sent, waiting for confirmation";
+            watch.watch(function (err, hash) {
+                var block = web3.eth.getBlock(hash, true); 
+                var contractMined = block.transactions.reduce(function (mined, th) {
+                    // TODO: compiled code do not have 0x prefix
+                    return mined || (th.from === web3.eth.defaultAccount && th.input.indexOf(code) !== -1);
+                }, false);
+
+                if (contractMined) {
+                    document.getElementById('status').innerText = 'Mined!';
+                    document.getElementById('call').style.visibility = 'visible';
+                }
+            });
+
+            contract.Incremented({odd: true}).watch(update);
             
         };
 
+        var counter = 0;
         var callContract = function () {
-            contract.call().inc();
+            counter++;
+            var all = 70 + counter;
+            document.getElementById('count').innerText = 'Transaction sent ' + counter + ' times. ' + 
+                'Expected x value is: ' + (all - (all % 2 ? 0 : 1)) + ' ' +
+                'Waiting for the blocks to be mined...';
+                 
+            contract.inc();
         };
 
 
@@ -53,12 +75,14 @@
     </head>
 
     <body>
+        <div id="status"></div>
         <div>
-            <button type="button" onClick="createContract();">create contract</button>
+            <button id="create" type="button" onClick="createContract();">create contract</button>
         </div>
         <div>
-            <button type="button" onClick="callContract();">test1</button>
+            <button id="call" style="visibility: hidden;" type="button" onClick="callContract();">test1</button>
         </div>
+        <div id='count'></div>
         <div id="result">
         </div>
     </body>

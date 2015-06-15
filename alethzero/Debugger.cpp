@@ -82,7 +82,7 @@ bool DebugSession::populate(dev::eth::Executive& _executive, dev::eth::Transacti
 	bytesConstRef lastData;
 	h256 lastHash;
 	h256 lastDataHash;
-	auto onOp = [&](uint64_t steps, Instruction inst, dev::bigint newMemSize, dev::bigint gasCost, VM* voidVM, ExtVMFace const* voidExt)
+	auto onOp = [&](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
 	{
 		VM& vm = *voidVM;
 		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
@@ -104,7 +104,7 @@ bool DebugSession::populate(dev::eth::Executive& _executive, dev::eth::Transacti
 			levels.push_back(&history.back());
 		else
 			levels.resize(ext.depth);
-		history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, vm.gas(), lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
+		history.append(WorldState({steps, ext.myAddress, vm.curPC(), inst, newMemSize, static_cast<u256>(gas), lastHash, lastDataHash, vm.stack(), vm.memory(), gasCost, ext.state().storage(ext.myAddress), levels}));
 	};
 	_executive.go(onOp);
 	_executive.finalize();
@@ -226,7 +226,7 @@ void Debugger::update()
 
 			QString stack;
 			for (auto i: ws.stack)
-				stack.prepend("<div>" + m_context->prettyU256(i) + "</div>");
+				stack.prepend("<div>" + QString::fromStdString(m_context->prettyU256(i)) + "</div>");
 			ui->debugStack->setHtml(stack);
 			ui->debugMemory->setHtml(QString::fromStdString(dev::memDump(ws.memory, 16, true)));
 			assert(m_session.codes.count(ws.code));
@@ -246,7 +246,7 @@ void Debugger::update()
 			ui->debugStateInfo->setText(QString::fromStdString(ss.str()));
 			stringstream s;
 			for (auto const& i: ws.storage)
-				s << "@" << m_context->prettyU256(i.first).toStdString() << "&nbsp;&nbsp;&nbsp;&nbsp;" << m_context->prettyU256(i.second).toStdString() << "<br/>";
+				s << "@" << m_context->prettyU256(i.first) << "&nbsp;&nbsp;&nbsp;&nbsp;" << m_context->prettyU256(i.second) << "<br/>";
 			ui->debugStorage->setHtml(QString::fromStdString(s.str()));
 		}
 	}

@@ -23,9 +23,6 @@
 
 #include <thread>
 #include <chrono>
-
-#include <boost/filesystem/path.hpp>
-
 #include <libethereum/Client.h>
 #include <liblll/Compiler.h>
 #include <libevm/VMFactory.h>
@@ -140,7 +137,7 @@ json_spirit::mObject& ImportTest::makeAllFieldsHex(json_spirit::mObject& _o)
 			str = value.get_str();
 		else continue;
 
-		_o[key] = (str.substr(0, 2) == "0x") ? str : "0x" + toHex(toCompactBigEndian(toInt(str), 1));
+		_o[key] = (str.substr(0, 2) == "0x") ? str : toCompactHex(toInt(str), HexPrefix::Add, 1);
 	}
 	return _o;
 }
@@ -265,7 +262,21 @@ void ImportTest::importTransaction(json_spirit::mObject& _o)
 	{
 		RLPStream transactionRLPStream = createRLPStreamFromTransactionFields(_o);
 		RLP transactionRLP(transactionRLPStream.out());
-		m_transaction = Transaction(transactionRLP.data(), CheckTransaction::Everything);
+		try
+		{
+			m_transaction = Transaction(transactionRLP.data(), CheckTransaction::Everything);
+		}
+		catch (InvalidSignature)
+		{
+			// create unsigned transaction
+			m_transaction = _o["to"].get_str().empty() ?
+				Transaction(toInt(_o["value"]), toInt(_o["gasPrice"]), toInt(_o["gasLimit"]), importData(_o), toInt(_o["nonce"])) :
+				Transaction(toInt(_o["value"]), toInt(_o["gasPrice"]), toInt(_o["gasLimit"]), Address(_o["to"].get_str()), importData(_o), toInt(_o["nonce"]));
+		}
+		catch (Exception& _e)
+		{
+			cnote << "invalid transaction" << boost::diagnostic_information(_e);
+		}
 	}
 }
 
@@ -291,7 +302,7 @@ void ImportTest::checkExpectedState(State const& _stateExpect, State const& _sta
 				{
 					addressOptions = _expectedStateOptions.at(a.first);
 				}
-				catch(std::out_of_range)
+				catch(std::out_of_range const&)
 				{
 					BOOST_ERROR("expectedStateOptions map does not match expectedState in checkExpectedState!");
 					break;
@@ -308,7 +319,7 @@ void ImportTest::checkExpectedState(State const& _stateExpect, State const& _sta
 
 			if (addressOptions.m_bHasStorage)
 			{
-				map<u256, u256> stateStorage = _statePost.storage(a.first);
+				unordered_map<u256, u256> stateStorage = _statePost.storage(a.first);
 				for (auto const& s: _stateExpect.storage(a.first))
 					CHECK(stateStorage[s.first] == s.second,
 							"Check State: " << a.first <<  ": incorrect storage [" << s.first << "] = " << toHex(stateStorage[s.first]) << ", expected [" << s.first << "] = " << toHex(s.second));
@@ -330,7 +341,20 @@ void ImportTest::checkExpectedState(State const& _stateExpect, State const& _sta
 void ImportTest::exportTest(bytes const& _output, State const& _statePost)
 {
 	// export output
-	m_TestObject["out"] = "0x" + toHex(_output);
+
+	m_TestObject["out"] = (_output.size() > 4096 && !Options::get().fulloutput) ? "#" + toString(_output.size()) : toHex(_output, 2, HexPrefix::Add);
+
+	// compare expected output with post output
+	if (m_TestObject.count("expectOut") > 0)
+	{
+		std::string warning = "Check State: Error! Unexpected output: " + m_TestObject["out"].get_str() + " Expected: " + m_TestObject["expectOut"].get_str();
+		if (Options::get().checkState)
+			BOOST_CHECK_MESSAGE((m_TestObject["out"].get_str() == m_TestObject["expectOut"].get_str()), warning);
+		else
+			BOOST_WARN_MESSAGE((m_TestObject["out"].get_str() == m_TestObject["expectOut"].get_str()), warning);
+
+		m_TestObject.erase(m_TestObject.find("expectOut"));
+	}
 
 	// export logs
 	m_TestObject["logs"] = exportLog(_statePost.pending().size() ? _statePost.log(0) : LogEntries());
@@ -355,27 +379,58 @@ void ImportTest::exportTest(bytes const& _output, State const& _statePost)
 	m_TestObject["transaction"] = makeAllFieldsHex(m_TestObject["transaction"].get_obj());
 }
 
+json_spirit::mObject fillJsonWithTransaction(Transaction _txn)
+{
+	json_spirit::mObject txObject;
+	txObject["nonce"] = toCompactHex(_txn.nonce(), HexPrefix::Add, 1);
+	txObject["data"] = toHex(_txn.data(), 2, HexPrefix::Add);
+	txObject["gasLimit"] = toCompactHex(_txn.gas(), HexPrefix::Add, 1);
+	txObject["gasPrice"] = toCompactHex(_txn.gasPrice(), HexPrefix::Add, 1);
+	txObject["r"] = toCompactHex(_txn.signature().r, HexPrefix::Add, 1);
+	txObject["s"] = toCompactHex(_txn.signature().s, HexPrefix::Add, 1);
+	txObject["v"] = toCompactHex(_txn.signature().v + 27, HexPrefix::Add, 1);
+	txObject["to"] = _txn.isCreation() ? "" : toString(_txn.receiveAddress());
+	txObject["value"] = toCompactHex(_txn.value(), HexPrefix::Add, 1);
+	return txObject;
+}
+
 json_spirit::mObject fillJsonWithState(State _state)
 {
-	// export pre state
 	json_spirit::mObject oState;
-
 	for (auto const& a: _state.addresses())
 	{
 		json_spirit::mObject o;
-		o["balance"] = "0x" + toHex(toCompactBigEndian(_state.balance(a.first), 1));
-		o["nonce"] = "0x" + toHex(toCompactBigEndian(_state.transactionsFrom(a.first), 1));
+		o["balance"] = toCompactHex(_state.balance(a.first), HexPrefix::Add, 1);
+		o["nonce"] = toCompactHex(_state.transactionsFrom(a.first), HexPrefix::Add, 1);
 		{
 			json_spirit::mObject store;
 			for (auto const& s: _state.storage(a.first))
-				store["0x"+toHex(toCompactBigEndian(s.first))] = "0x"+toHex(toCompactBigEndian(s.second));
+				store[toCompactHex(s.first, HexPrefix::Add, 1)] = toCompactHex(s.second, HexPrefix::Add, 1);
 			o["storage"] = store;
 		}
-		o["code"] = "0x" + toHex(_state.code(a.first));
-
+		o["code"] = toHex(_state.code(a.first), 2, HexPrefix::Add);
 		oState[toString(a.first)] = o;
 	}
 	return oState;
+}
+
+json_spirit::mArray exportLog(eth::LogEntries _logs)
+{
+	json_spirit::mArray ret;
+	if (_logs.size() == 0) return ret;
+	for (LogEntry const& l: _logs)
+	{
+		json_spirit::mObject o;
+		o["address"] = toString(l.address);
+		json_spirit::mArray topics;
+		for (auto const& t: l.topics)
+			topics.push_back(toString(t));
+		o["topics"] = topics;
+		o["data"] = toHex(l.data, 2, HexPrefix::Add);
+		o["bloom"] = toString(l.bloom());
+		ret.push_back(o);
+	}
+	return ret;
 }
 
 u256 toInt(json_spirit::mValue const& _v)
@@ -458,29 +513,14 @@ LogEntries importLog(json_spirit::mArray& _a)
 	return logEntries;
 }
 
-json_spirit::mArray exportLog(eth::LogEntries _logs)
-{
-	json_spirit::mArray ret;
-	if (_logs.size() == 0) return ret;
-	for (LogEntry const& l: _logs)
-	{
-		json_spirit::mObject o;
-		o["address"] = toString(l.address);
-		json_spirit::mArray topics;
-		for (auto const& t: l.topics)
-			topics.push_back(toString(t));
-		o["topics"] = topics;
-		o["data"] = "0x" + toHex(l.data);
-		o["bloom"] = toString(l.bloom());
-		ret.push_back(o);
-	}
-	return ret;
-}
-
 void checkOutput(bytes const& _output, json_spirit::mObject& _o)
 {
 	int j = 0;
-	if (_o["out"].type() == json_spirit::array_type)
+
+	if (_o["out"].get_str().find("#") == 0)
+		BOOST_CHECK((u256)_output.size() == toInt(_o["out"].get_str().substr(1)));
+
+	else if (_o["out"].type() == json_spirit::array_type)
 		for (auto const& d: _o["out"].get_array())
 		{
 			BOOST_CHECK_MESSAGE(_output[j] == toInt(d), "Output byte [" << j << "] different!");
@@ -540,61 +580,52 @@ void checkCallCreates(eth::Transactions _resultCallCreates, eth::Transactions _e
 	}
 }
 
-void userDefinedTest(string testTypeFlag, std::function<void(json_spirit::mValue&, bool)> doTests)
+void userDefinedTest(std::function<void(json_spirit::mValue&, bool)> doTests)
 {
-	Options::get(); // parse command line options, e.g. to enable JIT
+	if (!Options::get().singleTest)
+		return;
 
-	for (int i = 1; i < boost::unit_test::framework::master_test_suite().argc; ++i)
+	if (Options::get().singleTestFile.empty() || Options::get().singleTestName.empty())
 	{
-		string arg = boost::unit_test::framework::master_test_suite().argv[i];
-		if (arg == testTypeFlag)
+		cnote << "Missing user test specification\nUsage: testeth --singletest <filename> <testname>\n";
+		return;
+	}
+
+	auto& filename = Options::get().singleTestFile;
+	auto& testname = Options::get().singleTestName;
+	VerbosityHolder sentinel(12);
+	try
+	{
+		cnote << "Testing user defined test: " << filename;
+		json_spirit::mValue v;
+		string s = asString(contents(filename));
+		BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + filename + " is empty. ");
+		json_spirit::read_string(s, v);
+		json_spirit::mObject oSingleTest;
+
+		json_spirit::mObject::const_iterator pos = v.get_obj().find(testname);
+		if (pos == v.get_obj().end())
 		{
-			if (boost::unit_test::framework::master_test_suite().argc <= i + 2)
-			{
-				cnote << "Missing filename\nUsage: testeth " << testTypeFlag << " <filename> <testname>\n";
-				return;
-			}
-			string filename = boost::unit_test::framework::master_test_suite().argv[i + 1];
-			string testname = boost::unit_test::framework::master_test_suite().argv[i + 2];
-			int currentVerbosity = g_logVerbosity;
-			g_logVerbosity = 12;
-			try
-			{
-				cnote << "Testing user defined test: " << filename;
-				json_spirit::mValue v;
-				string s = asString(contents(filename));
-				BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + filename + " is empty. ");
-				json_spirit::read_string(s, v);
-				json_spirit::mObject oSingleTest;
-
-				json_spirit::mObject::const_iterator pos = v.get_obj().find(testname);
-				if (pos == v.get_obj().end())
-				{
-					cnote << "Could not find test: " << testname << " in " << filename << "\n";
-					return;
-				}
-				else
-					oSingleTest[pos->first] = pos->second;
-
-				json_spirit::mValue v_singleTest(oSingleTest);
-				doTests(v_singleTest, false);
-			}
-			catch (Exception const& _e)
-			{
-				BOOST_ERROR("Failed Test with Exception: " << diagnostic_information(_e));
-				g_logVerbosity = currentVerbosity;
-			}
-			catch (std::exception const& _e)
-			{
-				BOOST_ERROR("Failed Test with Exception: " << _e.what());
-				g_logVerbosity = currentVerbosity;
-			}
-			g_logVerbosity = currentVerbosity;
+			cnote << "Could not find test: " << testname << " in " << filename << "\n";
+			return;
 		}
+		else
+			oSingleTest[pos->first] = pos->second;
+
+		json_spirit::mValue v_singleTest(oSingleTest);
+		doTests(v_singleTest, test::Options::get().fillTests);
+	}
+	catch (Exception const& _e)
+	{
+		BOOST_ERROR("Failed Test with Exception: " << diagnostic_information(_e));
+	}
+	catch (std::exception const& _e)
+	{
+		BOOST_ERROR("Failed Test with Exception: " << _e.what());
 	}
 }
 
-void executeTests(const string& _name, const string& _testPathAppendix, std::function<void(json_spirit::mValue&, bool)> doTests)
+void executeTests(const string& _name, const string& _testPathAppendix, const boost::filesystem::path _pathToFiller, std::function<void(json_spirit::mValue&, bool)> doTests)
 {
 	string testPath = getTestPath();
 	testPath += _testPathAppendix;
@@ -609,9 +640,8 @@ void executeTests(const string& _name, const string& _testPathAppendix, std::fun
 			cnote << "Populating tests...";
 			json_spirit::mValue v;
 			boost::filesystem::path p(__FILE__);
-			boost::filesystem::path dir = p.parent_path();
-			string s = asString(dev::contents(dir.string() + "/" + _name + "Filler.json"));
-			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + dir.string() + "/" + _name + "Filler.json is empty.");
+			string s = asString(dev::contents(_pathToFiller.string() + "/" + _name + "Filler.json"));
+			BOOST_REQUIRE_MESSAGE(s.length() > 0, "Contents of " + _pathToFiller.string() + "/" + _name + "Filler.json is empty.");
 			json_spirit::read_string(s, v);
 			doTests(v, true);
 			writeFile(testPath + "/" + _name + ".json", asBytes(json_spirit::write_string(v, true)));
@@ -699,19 +729,17 @@ Options::Options()
 	{
 		auto arg = std::string{argv[i]};
 		if (arg == "--jit")
-		{
-			jit = true;
 			eth::VMFactory::setKind(eth::VMKind::JIT);
-		}
+		else if (arg == "--vm=smart")
+			eth::VMFactory::setKind(eth::VMKind::Smart);
 		else if (arg == "--vmtrace")
 			vmtrace = true;
 		else if (arg == "--filltests")
 			fillTests = true;
-		else if (arg.compare(0, 7, "--stats") == 0)
+		else if (arg == "--stats" && i + 1 < argc)
 		{
 			stats = true;
-			if (arg.size() > 7)
-				statsOutFile = arg.substr(8); // skip '=' char
+			statsOutFile = argv[i + 1];
 		}
 		else if (arg == "--performance")
 			performance = true;
@@ -725,6 +753,8 @@ Options::Options()
 			bigData = true;
 		else if (arg == "--checkstate")
 			checkState = true;
+		else if (arg == "--wallet")
+			wallet = true;
 		else if (arg == "--all")
 		{
 			performance = true;
@@ -732,7 +762,28 @@ Options::Options()
 			memory = true;
 			inputLimits = true;
 			bigData = true;
+			wallet= true;
 		}
+		else if (arg == "--singletest" && i + 1 < argc)
+		{
+			singleTest = true;
+			auto name1 = std::string{argv[i + 1]};
+			if (i + 1 < argc) // two params
+			{
+				auto name2 = std::string{argv[i + 2]};
+				if (name2[0] == '-') // not param, another option
+					singleTestName = std::move(name1);
+				else
+				{
+					singleTestFile = std::move(name1);
+					singleTestName = std::move(name2);
+				}
+			}
+			else
+				singleTestName = std::move(name1);
+		}
+		else if (arg == "--fulloutput")
+			fulloutput = true;
 	}
 }
 
@@ -741,7 +792,6 @@ Options const& Options::get()
 	static Options instance;
 	return instance;
 }
-
 
 LastHashes lastHashes(u256 _currentBlockNumber)
 {

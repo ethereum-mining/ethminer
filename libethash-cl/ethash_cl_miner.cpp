@@ -24,11 +24,15 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
+#include <iostream>
 #include <assert.h>
 #include <queue>
+#include <random>
 #include <vector>
 #include <libethash/util.h>
 #include <libethash/ethash.h>
+#include <libethash/internal.h>
 #include "ethash_cl_miner.h"
 #include "ethash_cl_miner_kernel.h"
 
@@ -43,11 +47,18 @@
 #undef min
 #undef max
 
-static void add_definition(std::string& source, char const* id, unsigned value)
+using namespace std;
+
+// TODO: If at any point we can use libdevcore in here then we should switch to using a LogChannel
+#define ETHCL_LOG(_contents) cout << "[OPENCL]:" << _contents << endl
+// Types of OpenCL devices we are interested in
+#define ETHCL_QUERIED_DEVICE_TYPES (CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_ACCELERATOR)
+
+static void addDefinition(string& _source, char const* _id, unsigned _value)
 {
 	char buf[256];
-	sprintf(buf, "#define %s %uu\n", id, value);
-	source.insert(source.begin(), buf, buf + strlen(buf));
+	sprintf(buf, "#define %s %uu\n", _id, _value);
+	_source.insert(_source.begin(), buf, buf + strlen(buf));
 }
 
 ethash_cl_miner::search_hook::~search_hook() {}
@@ -57,314 +68,443 @@ ethash_cl_miner::ethash_cl_miner()
 {
 }
 
-std::string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
+ethash_cl_miner::~ethash_cl_miner()
 {
-	std::vector<cl::Platform> platforms;
+	finish();
+}
+
+string ethash_cl_miner::platform_info(unsigned _platformId, unsigned _deviceId)
+{
+	vector<cl::Platform> platforms;
 	cl::Platform::get(&platforms);
 	if (platforms.empty())
 	{
-		debugf("No OpenCL platforms found.\n");
-		return std::string();
+		ETHCL_LOG("No OpenCL platforms found.");
+		return string();
 	}
 
 	// get GPU device of the selected platform
-	std::vector<cl::Device> devices;
-	unsigned platform_num = std::min<unsigned>(_platformId, platforms.size() - 1);
-	platforms[platform_num].getDevices(CL_DEVICE_TYPE_ALL, &devices);
+	unsigned platform_num = min<unsigned>(_platformId, platforms.size() - 1);
+	vector<cl::Device> devices = getDevices(platforms, _platformId);
 	if (devices.empty())
 	{
-		debugf("No OpenCL devices found.\n");
-		return std::string();
+		ETHCL_LOG("No OpenCL devices found.");
+		return string();
 	}
 
 	// use selected default device
-	unsigned device_num = std::min<unsigned>(_deviceId, devices.size() - 1);
+	unsigned device_num = min<unsigned>(_deviceId, devices.size() - 1);
 	cl::Device& device = devices[device_num];
-	std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
+	string device_version = device.getInfo<CL_DEVICE_VERSION>();
 
 	return "{ \"platform\": \"" + platforms[platform_num].getInfo<CL_PLATFORM_NAME>() + "\", \"device\": \"" + device.getInfo<CL_DEVICE_NAME>() + "\", \"version\": \"" + device_version + "\" }";
+}
+
+std::vector<cl::Device> ethash_cl_miner::getDevices(std::vector<cl::Platform> const& _platforms, unsigned _platformId)
+{
+	vector<cl::Device> devices;
+	unsigned platform_num = min<unsigned>(_platformId, _platforms.size() - 1);
+	_platforms[platform_num].getDevices(
+		s_allowCPU ? CL_DEVICE_TYPE_ALL : ETHCL_QUERIED_DEVICE_TYPES,
+		&devices
+	);
+	return devices;
+}
+
+unsigned ethash_cl_miner::getNumPlatforms()
+{
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	return platforms.size();
+}
+
+unsigned ethash_cl_miner::getNumDevices(unsigned _platformId)
+{
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (platforms.empty())
+	{
+		ETHCL_LOG("No OpenCL platforms found.");
+		return 0;
+	}
+
+	vector<cl::Device> devices = getDevices(platforms, _platformId);
+	if (devices.empty())
+	{
+		ETHCL_LOG("No OpenCL devices found.");
+		return 0;
+	}
+	return devices.size();
+}
+
+bool ethash_cl_miner::configureGPU(
+	bool _allowCPU,
+	unsigned _extraGPUMemory,
+	bool _forceSingleChunk,
+	boost::optional<uint64_t> _currentBlock
+)
+{
+	s_allowCPU = _allowCPU;
+	s_forceSingleChunk = _forceSingleChunk;
+	s_extraRequiredGPUMem = _extraGPUMemory;
+	// by default let's only consider the DAG of the first epoch
+	uint64_t dagSize = _currentBlock ? ethash_get_datasize(*_currentBlock) : 1073739904U;
+	uint64_t requiredSize =  dagSize + _extraGPUMemory;
+	return searchForAllDevices([&requiredSize](cl::Device const _device) -> bool
+		{
+			cl_ulong result;
+			_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
+			if (result >= requiredSize)
+			{
+				ETHCL_LOG(
+					"Found suitable OpenCL device [" << _device.getInfo<CL_DEVICE_NAME>()
+					<< "] with " << result << " bytes of GPU memory"
+				);
+				return true;
+			}
+			
+			ETHCL_LOG(
+				"OpenCL device " << _device.getInfo<CL_DEVICE_NAME>()
+				<< " has insufficient GPU memory." << result <<
+				" bytes of memory found < " << requiredSize << " bytes of memory required"
+			);
+			return false;
+		}
+	);
+}
+
+bool ethash_cl_miner::s_allowCPU = false;
+bool ethash_cl_miner::s_forceSingleChunk = false;
+unsigned ethash_cl_miner::s_extraRequiredGPUMem;
+
+bool ethash_cl_miner::searchForAllDevices(function<bool(cl::Device const&)> _callback)
+{
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (platforms.empty())
+	{
+		ETHCL_LOG("No OpenCL platforms found.");
+		return false;
+	}
+	for (unsigned i = 0; i < platforms.size(); ++i)
+		if (searchForAllDevices(i, _callback))
+			return true;
+
+	return false;
+}
+
+bool ethash_cl_miner::searchForAllDevices(unsigned _platformId, function<bool(cl::Device const&)> _callback)
+{
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (_platformId >= platforms.size())
+		return false;
+
+	vector<cl::Device> devices = getDevices(platforms, _platformId);
+	for (cl::Device const& device: devices)
+		if (_callback(device))
+			return true;
+		
+	return false;
+}
+
+void ethash_cl_miner::doForAllDevices(function<void(cl::Device const&)> _callback)
+{
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (platforms.empty())
+	{
+		ETHCL_LOG("No OpenCL platforms found.");
+		return;
+	}
+	for (unsigned i = 0; i < platforms.size(); ++i)
+		doForAllDevices(i, _callback);
+}
+
+void ethash_cl_miner::doForAllDevices(unsigned _platformId, function<void(cl::Device const&)> _callback)
+{
+	vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (_platformId >= platforms.size())
+		return;
+
+	vector<cl::Device> devices = getDevices(platforms, _platformId);
+	for (cl::Device const& device: devices)
+		_callback(device);
+}
+
+void ethash_cl_miner::listDevices()
+{
+	string outString ="\nListing OpenCL devices.\nFORMAT: [deviceID] deviceName\n";
+	unsigned int i = 0;
+	doForAllDevices([&outString, &i](cl::Device const _device)
+		{
+			outString += "[" + to_string(i) + "] " + _device.getInfo<CL_DEVICE_NAME>() + "\n";
+			++i;
+		}
+	);
+	ETHCL_LOG(outString);
 }
 
 void ethash_cl_miner::finish()
 {
 	if (m_queue())
-	{
 		m_queue.finish();
-	}
 }
 
-bool ethash_cl_miner::init(ethash_params const& params, std::function<void(void*)> _fillDAG, unsigned workgroup_size, unsigned _platformId, unsigned _deviceId)
+bool ethash_cl_miner::init(
+	uint8_t const* _dag,
+	uint64_t _dagSize,
+	unsigned workgroup_size,
+	unsigned _platformId,
+	unsigned _deviceId
+)
 {
-	// store params
-	m_params = params;
-
 	// get all platforms
-    std::vector<cl::Platform> platforms;
-    cl::Platform::get(&platforms);
-	if (platforms.empty())
-	{
-		debugf("No OpenCL platforms found.\n");
-		return false;
-	}
-
-	// use selected platform
-
-	_platformId = std::min<unsigned>(_platformId, platforms.size() - 1);
-
-	fprintf(stderr, "Using platform: %s\n", platforms[_platformId].getInfo<CL_PLATFORM_NAME>().c_str());
-
-    // get GPU device of the default platform
-    std::vector<cl::Device> devices;
-	platforms[_platformId].getDevices(CL_DEVICE_TYPE_ALL, &devices);
-    if (devices.empty())
-	{
-		debugf("No OpenCL devices found.\n");
-		return false;
-	}
-
-	// use default device
-	cl::Device& device = devices[std::min<unsigned>(_deviceId, devices.size() - 1)];
-	for (unsigned n = 0; n < devices.size(); ++n)
-	{
-		auto version = devices[n].getInfo<CL_DEVICE_VERSION>();
-		auto name = devices[n].getInfo<CL_DEVICE_NAME>();
-		fprintf(stderr, "%s %d: %s (%s)\n", n == _deviceId ? "USING " : "      ", n, name.c_str(), version.c_str());
-	}
-	std::string device_version = device.getInfo<CL_DEVICE_VERSION>();
-	fprintf(stderr, "Using device: %s (%s)\n", device.getInfo<CL_DEVICE_NAME>().c_str(),device_version.c_str());
-
-	if (strncmp("OpenCL 1.0", device_version.c_str(), 10) == 0)
-	{
-		debugf("OpenCL 1.0 is not supported.\n");
-		return false;
-	}
-	if (strncmp("OpenCL 1.1", device_version.c_str(), 10) == 0)
-	{
-		m_opencl_1_1 = true;
-	}
-
-	// create context
-	m_context = cl::Context(std::vector<cl::Device>(&device, &device + 1));
-	m_queue = cl::CommandQueue(m_context, device);
-
-	// use requested workgroup size, but we require multiple of 8
-	m_workgroup_size = ((workgroup_size + 7) / 8) * 8;
-
-	// patch source code
-	std::string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
-	add_definition(code, "GROUP_SIZE", m_workgroup_size);
-	add_definition(code, "DAG_SIZE", (unsigned)(params.full_size / ETHASH_MIX_BYTES));
-	add_definition(code, "ACCESSES", ETHASH_ACCESSES);
-	add_definition(code, "MAX_OUTPUTS", c_max_search_results);
-	//debugf("%s", code.c_str());
-
-	// create miner OpenCL program
-	cl::Program::Sources sources;
-	sources.push_back({code.c_str(), code.size()});
-
-	cl::Program program(m_context, sources);
 	try
 	{
-		program.build({device});
+		vector<cl::Platform> platforms;
+		cl::Platform::get(&platforms);
+		if (platforms.empty())
+		{
+			ETHCL_LOG("No OpenCL platforms found.");
+			return false;
+		}
+
+		// use selected platform
+		_platformId = min<unsigned>(_platformId, platforms.size() - 1);
+		ETHCL_LOG("Using platform: " << platforms[_platformId].getInfo<CL_PLATFORM_NAME>().c_str());
+
+		// get GPU device of the default platform
+		vector<cl::Device> devices = getDevices(platforms, _platformId);
+		if (devices.empty())
+		{
+			ETHCL_LOG("No OpenCL devices found.");
+			return false;
+		}
+
+		// use selected device
+		cl::Device& device = devices[min<unsigned>(_deviceId, devices.size() - 1)];
+		string device_version = device.getInfo<CL_DEVICE_VERSION>();
+		ETHCL_LOG("Using device: " << device.getInfo<CL_DEVICE_NAME>().c_str() << "(" << device_version.c_str() << ")");
+
+		// configure chunk number depending on max allocateable memory
+		cl_ulong result;
+		device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
+		if (s_forceSingleChunk || result >= _dagSize)
+		{
+			m_dagChunksNum = 1;
+			ETHCL_LOG(
+				((result <= _dagSize && s_forceSingleChunk) ? "Forcing single chunk. Good luck!\n" : "") <<
+				"Using 1 big chunk. Max OpenCL allocateable memory is " << result
+			);
+		}
+		else
+		{
+			m_dagChunksNum = 4;
+			ETHCL_LOG("Using 4 chunks. Max OpenCL allocateable memory is " << result);
+		}
+
+		if (strncmp("OpenCL 1.0", device_version.c_str(), 10) == 0)
+		{
+			ETHCL_LOG("OpenCL 1.0 is not supported.");
+			return false;
+		}
+		if (strncmp("OpenCL 1.1", device_version.c_str(), 10) == 0)
+			m_opencl_1_1 = true;
+
+		// create context
+		m_context = cl::Context(vector<cl::Device>(&device, &device + 1));
+		m_queue = cl::CommandQueue(m_context, device);
+
+		// use requested workgroup size, but we require multiple of 8
+		m_workgroup_size = ((workgroup_size + 7) / 8) * 8;
+
+		// patch source code
+		// note: ETHASH_CL_MINER_KERNEL is simply ethash_cl_miner_kernel.cl compiled
+		// into a byte array by bin2h.cmake. There is no need to load the file by hand in runtime
+		string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
+		addDefinition(code, "GROUP_SIZE", m_workgroup_size);
+		addDefinition(code, "DAG_SIZE", (unsigned)(_dagSize / ETHASH_MIX_BYTES));
+		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
+		addDefinition(code, "MAX_OUTPUTS", c_max_search_results);
+		//debugf("%s", code.c_str());
+
+		// create miner OpenCL program
+		cl::Program::Sources sources;
+		sources.push_back({ code.c_str(), code.size() });
+
+		cl::Program program(m_context, sources);
+		try
+		{
+			program.build({ device });
+			ETHCL_LOG("Printing program log");
+			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
+		}
+		catch (cl::Error err)
+		{
+			ETHCL_LOG(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
+			return false;
+		}
+		if (m_dagChunksNum == 1)
+		{
+			ETHCL_LOG("Loading single big chunk kernels");
+			m_hash_kernel = cl::Kernel(program, "ethash_hash");
+			m_search_kernel = cl::Kernel(program, "ethash_search");
+		}
+		else
+		{
+			ETHCL_LOG("Loading chunk kernels");
+			m_hash_kernel = cl::Kernel(program, "ethash_hash_chunks");
+			m_search_kernel = cl::Kernel(program, "ethash_search_chunks");
+		}
+
+		// create buffer for dag
+		if (m_dagChunksNum == 1)
+		{
+			ETHCL_LOG("Creating one big buffer");
+			m_dagChunks.push_back(cl::Buffer(m_context, CL_MEM_READ_ONLY, _dagSize));
+		}
+		else
+			for (unsigned i = 0; i < m_dagChunksNum; i++)
+			{
+				// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
+				ETHCL_LOG("Creating buffer for chunk " << i);
+				m_dagChunks.push_back(cl::Buffer(
+					m_context,
+					CL_MEM_READ_ONLY,
+					(i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7
+				));
+			}
+
+		// create buffer for header
+		ETHCL_LOG("Creating buffer for header.");
+		m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
+
+		if (m_dagChunksNum == 1)
+		{
+			ETHCL_LOG("Mapping one big chunk.");
+			m_queue.enqueueWriteBuffer(m_dagChunks[0], CL_TRUE, 0, _dagSize, _dag);
+		}
+		else
+		{
+			// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
+			void* dag_ptr[4];
+			for (unsigned i = 0; i < m_dagChunksNum; i++)
+			{
+				ETHCL_LOG("Mapping chunk " << i);
+				dag_ptr[i] = m_queue.enqueueMapBuffer(m_dagChunks[i], true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
+			}
+			for (unsigned i = 0; i < m_dagChunksNum; i++)
+			{
+				memcpy(dag_ptr[i], (char *)_dag + i*((_dagSize >> 9) << 7), (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
+				m_queue.enqueueUnmapMemObject(m_dagChunks[i], dag_ptr[i]);
+			}
+		}
+
+		// create mining buffers
+		for (unsigned i = 0; i != c_num_buffers; ++i)
+		{
+			ETHCL_LOG("Creating mining buffer " << i);
+			m_hash_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY | (!m_opencl_1_1 ? CL_MEM_HOST_READ_ONLY : 0), 32 * c_hash_batch_size);
+			m_search_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_max_search_results + 1) * sizeof(uint32_t));
+		}
 	}
 	catch (cl::Error err)
 	{
-		debugf("%s\n", program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device).c_str());
+		ETHCL_LOG(err.what() << "(" << err.err() << ")");
 		return false;
-	}
-	m_hash_kernel = cl::Kernel(program, "ethash_hash");
-	m_search_kernel = cl::Kernel(program, "ethash_search");
-
-	// create buffer for dag
-	m_dag = cl::Buffer(m_context, CL_MEM_READ_ONLY, params.full_size);
-	
-	// create buffer for header
-	m_header = cl::Buffer(m_context, CL_MEM_READ_ONLY, 32);
-
-	// compute dag on CPU
-	{
-		// if this throws then it's because we probably need to subdivide the dag uploads for compatibility
-		void* dag_ptr = m_queue.enqueueMapBuffer(m_dag, true, m_opencl_1_1 ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, params.full_size);
-		// memcpying 1GB: horrible... really. horrible. but necessary since we can't mmap *and* gpumap.
-		_fillDAG(dag_ptr);
-		m_queue.enqueueUnmapMemObject(m_dag, dag_ptr);
-	}
-
-	// create mining buffers
-	for (unsigned i = 0; i != c_num_buffers; ++i)
-	{
-		m_hash_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY | (!m_opencl_1_1 ? CL_MEM_HOST_READ_ONLY : 0), 32*c_hash_batch_size);
-		m_search_buf[i] = cl::Buffer(m_context, CL_MEM_WRITE_ONLY, (c_max_search_results + 1) * sizeof(uint32_t));
 	}
 	return true;
 }
 
-void ethash_cl_miner::hash(uint8_t* ret, uint8_t const* header, uint64_t nonce, unsigned count)
-{
-	struct pending_batch
-	{
-		unsigned base;
-		unsigned count;
-		unsigned buf;
-	};
-	std::queue<pending_batch> pending;
-	
-	// update header constant buffer
-	m_queue.enqueueWriteBuffer(m_header, true, 0, 32, header);
-
-	/*
-	__kernel void ethash_combined_hash(
-		__global hash32_t* g_hashes,
-		__constant hash32_t const* g_header,
-		__global hash128_t const* g_dag,
-		ulong start_nonce,
-		uint isolate
-		)
-	*/
-	m_hash_kernel.setArg(1, m_header);
-	m_hash_kernel.setArg(2, m_dag);
-	m_hash_kernel.setArg(3, nonce);
-	m_hash_kernel.setArg(4, ~0u); // have to pass this to stop the compile unrolling the loop
-
-	unsigned buf = 0;
-	for (unsigned i = 0; i < count || !pending.empty(); )
-	{
-		// how many this batch
-		if (i < count)
-		{
-			unsigned const this_count = std::min<unsigned>(count - i, c_hash_batch_size);
-			unsigned const batch_count = std::max<unsigned>(this_count, m_workgroup_size);
-
-			// supply output hash buffer to kernel
-			m_hash_kernel.setArg(0, m_hash_buf[buf]);
-
-			// execute it!
-			m_queue.enqueueNDRangeKernel(
-				m_hash_kernel,
-				cl::NullRange,
-				cl::NDRange(batch_count),
-				cl::NDRange(m_workgroup_size)
-				);
-			m_queue.flush();
-		
-			pending.push({i, this_count, buf});
-			i += this_count;
-			buf = (buf + 1) % c_num_buffers;
-		}
-
-		// read results
-		if (i == count || pending.size() == c_num_buffers)
-		{
-			pending_batch const& batch = pending.front();
-
-			// could use pinned host pointer instead, but this path isn't that important.
-			uint8_t* hashes = (uint8_t*)m_queue.enqueueMapBuffer(m_hash_buf[batch.buf], true, CL_MAP_READ, 0, batch.count * ETHASH_BYTES);
-			memcpy(ret + batch.base*ETHASH_BYTES, hashes, batch.count*ETHASH_BYTES);
-			m_queue.enqueueUnmapMemObject(m_hash_buf[batch.buf], hashes);
-
-			pending.pop();
-		}
-	}
-}
-
-
 void ethash_cl_miner::search(uint8_t const* header, uint64_t target, search_hook& hook)
 {
-	struct pending_batch
+	try
 	{
-		uint64_t start_nonce;
-		unsigned buf;
-	};
-	std::queue<pending_batch> pending;
-
-	static uint32_t const c_zero = 0;
-
-	// update header constant buffer
-	m_queue.enqueueWriteBuffer(m_header, false, 0, 32, header);
-	for (unsigned i = 0; i != c_num_buffers; ++i)
-	{
-		m_queue.enqueueWriteBuffer(m_search_buf[i], false, 0, 4, &c_zero);
-	}
-
-#if CL_VERSION_1_2 && 0
-	cl::Event pre_return_event;
-	if (!m_opencl_1_1)
-	{
-		m_queue.enqueueBarrierWithWaitList(NULL, &pre_return_event);
-	}
-	else
-#endif
-	{
-		m_queue.finish();
-	}
-
-	/*
-	__kernel void ethash_combined_search(
-		__global hash32_t* g_hashes,			// 0
-		__constant hash32_t const* g_header,	// 1
-		__global hash128_t const* g_dag,		// 2
-		ulong start_nonce,						// 3
-		ulong target,							// 4
-		uint isolate							// 5
-	)
-	*/
-	m_search_kernel.setArg(1, m_header);
-	m_search_kernel.setArg(2, m_dag);
-
-	// pass these to stop the compiler unrolling the loops
-	m_search_kernel.setArg(4, target);
-	m_search_kernel.setArg(5, ~0u);
-
-
-	unsigned buf = 0;
-	for (uint64_t start_nonce = 0; ; start_nonce += c_search_batch_size)
-	{
-		// supply output buffer to kernel
-		m_search_kernel.setArg(0, m_search_buf[buf]);
-		m_search_kernel.setArg(3, start_nonce);
-
-		// execute it!
-		m_queue.enqueueNDRangeKernel(m_search_kernel, cl::NullRange, c_search_batch_size, m_workgroup_size);
-		
-		pending.push({start_nonce, buf});
-		buf = (buf + 1) % c_num_buffers;
-
-		// read results
-		if (pending.size() == c_num_buffers)
+		struct pending_batch
 		{
-			pending_batch const& batch = pending.front();
+			uint64_t start_nonce;
+			unsigned buf;
+		};
+		queue<pending_batch> pending;
 
-			// could use pinned host pointer instead
-			uint32_t* results = (uint32_t*)m_queue.enqueueMapBuffer(m_search_buf[batch.buf], true, CL_MAP_READ, 0, (1+c_max_search_results) * sizeof(uint32_t));
-			unsigned num_found = std::min<unsigned>(results[0], c_max_search_results);
+		static uint32_t const c_zero = 0;
 
-			uint64_t nonces[c_max_search_results];
-			for (unsigned i = 0; i != num_found; ++i)
-			{
-				nonces[i] = batch.start_nonce + results[i+1];
-			}
+		// update header constant buffer
+		m_queue.enqueueWriteBuffer(m_header, false, 0, 32, header);
+		for (unsigned i = 0; i != c_num_buffers; ++i)
+			m_queue.enqueueWriteBuffer(m_search_buf[i], false, 0, 4, &c_zero);
 
-			m_queue.enqueueUnmapMemObject(m_search_buf[batch.buf], results);
-			
-			bool exit = num_found && hook.found(nonces, num_found);
-			exit |= hook.searched(batch.start_nonce, c_search_batch_size); // always report searched before exit
-			if (exit)
-				break;
-
-			// reset search buffer if we're still going
-			if (num_found)
-				m_queue.enqueueWriteBuffer(m_search_buf[batch.buf], true, 0, 4, &c_zero);
-
-			pending.pop();
-		}
-	}
-
-	// not safe to return until this is ready
 #if CL_VERSION_1_2 && 0
-	if (!m_opencl_1_1)
-	{
-		pre_return_event.wait();
-	}
+		cl::Event pre_return_event;
+		if (!m_opencl_1_1)
+			m_queue.enqueueBarrierWithWaitList(NULL, &pre_return_event);
+		else
 #endif
-}
+			m_queue.finish();
 
+		unsigned argPos = 2;
+		m_search_kernel.setArg(1, m_header);
+		for (unsigned i = 0; i < m_dagChunksNum; ++i, ++argPos)
+			m_search_kernel.setArg(argPos, m_dagChunks[i]);
+		// pass these to stop the compiler unrolling the loops
+		m_search_kernel.setArg(argPos + 1, target);
+		m_search_kernel.setArg(argPos + 2, ~0u);
+
+		unsigned buf = 0;
+		random_device engine;
+		uint64_t start_nonce = uniform_int_distribution<uint64_t>()(engine);
+		for (;; start_nonce += c_search_batch_size)
+		{
+			// supply output buffer to kernel
+			m_search_kernel.setArg(0, m_search_buf[buf]);
+			if (m_dagChunksNum == 1)
+				m_search_kernel.setArg(3, start_nonce);
+			else
+				m_search_kernel.setArg(6, start_nonce);
+
+			// execute it!
+			m_queue.enqueueNDRangeKernel(m_search_kernel, cl::NullRange, c_search_batch_size, m_workgroup_size);
+
+			pending.push({ start_nonce, buf });
+			buf = (buf + 1) % c_num_buffers;
+
+			// read results
+			if (pending.size() == c_num_buffers)
+			{
+				pending_batch const& batch = pending.front();
+
+				// could use pinned host pointer instead
+				uint32_t* results = (uint32_t*)m_queue.enqueueMapBuffer(m_search_buf[batch.buf], true, CL_MAP_READ, 0, (1 + c_max_search_results) * sizeof(uint32_t));
+				unsigned num_found = min<unsigned>(results[0], c_max_search_results);
+
+				uint64_t nonces[c_max_search_results];
+				for (unsigned i = 0; i != num_found; ++i)
+					nonces[i] = batch.start_nonce + results[i + 1];
+
+				m_queue.enqueueUnmapMemObject(m_search_buf[batch.buf], results);
+				bool exit = num_found && hook.found(nonces, num_found);
+				exit |= hook.searched(batch.start_nonce, c_search_batch_size); // always report searched before exit
+				if (exit)
+					break;
+
+				// reset search buffer if we're still going
+				if (num_found)
+					m_queue.enqueueWriteBuffer(m_search_buf[batch.buf], true, 0, 4, &c_zero);
+
+				pending.pop();
+			}
+		}
+
+		// not safe to return until this is ready
+#if CL_VERSION_1_2 && 0
+		if (!m_opencl_1_1)
+			pre_return_event.wait();
+#endif
+	}
+	catch (cl::Error err)
+	{
+		ETHCL_LOG(err.what() << "(" << err.err() << ")");
+	}
+}

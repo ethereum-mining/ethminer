@@ -22,6 +22,9 @@ qt5_wrap_ui(ui_Main.h Main.ui)
 qt5_wrap_ui(ui_Connect.h Connect.ui)
 qt5_wrap_ui(ui_Debugger.h Debugger.ui)
 qt5_wrap_ui(ui_Transact.h Transact.ui)
+qt5_wrap_ui(ui_ExportState.h ExportState.ui)
+qt5_wrap_ui(ui_GetPassword.h GetPassword.ui)
+qt5_wrap_ui(ui_GasPricing.h GasPricing.ui)
 
 file(GLOB HEADERS "*.h")
 
@@ -34,7 +37,7 @@ endif ()
 # eth_add_executable is defined in cmake/EthExecutableHelper.cmake
 eth_add_executable(${EXECUTABLE} 
 	ICON alethzero
-	UI_RESOURCES alethzero.icns Main.ui Connect.ui Debugger.ui Transact.ui
+	UI_RESOURCES alethzero.icns Main.ui Connect.ui Debugger.ui Transact.ui ExportState.ui GetPassword.ui GasPricing.ui
 	WIN_RESOURCES alethzero.rc
 )
 
@@ -51,9 +54,10 @@ target_link_libraries(${EXECUTABLE} ethcore)
 target_link_libraries(${EXECUTABLE} devcrypto)
 target_link_libraries(${EXECUTABLE} secp256k1)
 target_link_libraries(${EXECUTABLE} lll)
-target_link_libraries(${EXECUTABLE} solidity)
-target_link_libraries(${EXECUTABLE} evmcore)
-target_link_libraries(${EXECUTABLE} devcore)
+if (SOLIDITY)
+	target_link_libraries(${EXECUTABLE} solidity)
+endif ()
+target_link_libraries(${EXECUTABLE} evmasm)
 target_link_libraries(${EXECUTABLE} web3jsonrpc)
 target_link_libraries(${EXECUTABLE} jsqrc)
 target_link_libraries(${EXECUTABLE} natspec)
