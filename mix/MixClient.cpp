@@ -218,6 +218,8 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Not enough gas"));
 	case TransactionException::BlockGasLimitReached:
 		BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Block gas limit reached"));
+	case TransactionException::BadJumpDestination:
+		BOOST_THROW_EXCEPTION(OutOfGas() << errinfo_comment("Solidity exception (bad jump)"));
 	case TransactionException::OutOfStack:
 		BOOST_THROW_EXCEPTION(Exception() << errinfo_comment("Out of stack"));
 	case TransactionException::StackUnderflow:
@@ -225,7 +227,6 @@ void MixClient::executeTransaction(Transaction const& _t, State& _state, bool _c
 		//these should not happen in mix
 	case TransactionException::Unknown:
 	case TransactionException::BadInstruction:
-	case TransactionException::BadJumpDestination:
 	case TransactionException::InvalidSignature:
 	case TransactionException::InvalidNonce:
 	case TransactionException::BadRLP:
