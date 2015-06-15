@@ -19,6 +19,7 @@
 #include <llvm/Support/ManagedStatic.h>
 #include "preprocessor/llvm_includes_end.h"
 
+#include "evmjit/JIT.h"
 #include "Runtime.h"
 #include "Compiler.h"
 #include "Optimizer.h"
@@ -33,6 +34,7 @@ namespace eth
 {
 namespace jit
 {
+using evmjit::JIT;
 
 namespace
 {
@@ -106,8 +108,6 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	// TODO: Do not pseudo-init the cache every time
 	auto objectCache = (g_cache != CacheMode::off && g_cache != CacheMode::clear) ? Cache::getObjectCache(g_cache, listener.get()) : nullptr;
 
-	static std::unordered_map<std::string, uint64_t> funcCache;
-
 	static std::unique_ptr<llvm::ExecutionEngine> ee;
 	if (!ee)
 	{
@@ -134,8 +134,9 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 			return ReturnCode::LLVMConfigError;
 		ee->setObjectCache(objectCache);
 
-		if (preloadCache)
-			Cache::preload(*ee, funcCache);
+		// FIXME: Disabled during API changes
+		//if (preloadCache)
+		//	Cache::preload(*ee, funcCache);
 	}
 
 	static StatsCollector statsCollector;
@@ -143,11 +144,8 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 	auto mainFuncName = codeHash(_data->codeHash);
 	m_runtime.init(_data, _env);
 
-	EntryFuncPtr entryFuncPtr = nullptr;
-	auto it = funcCache.find(mainFuncName);
-	if (it != funcCache.end())
-		entryFuncPtr = (EntryFuncPtr) it->second;
-
+	// TODO: Remove cast
+	auto entryFuncPtr = (EntryFuncPtr) JIT::getCode(_data->codeHash);
 	if (!entryFuncPtr)
 	{
 		auto module = objectCache ? Cache::getObject(mainFuncName) : nullptr;
@@ -169,12 +167,10 @@ ReturnCode ExecutionEngine::run(RuntimeData* _data, Env* _env)
 		ee->addModule(std::move(module));
 		listener->stateChanged(ExecState::CodeGen);
 		entryFuncPtr = (EntryFuncPtr)ee->getFunctionAddress(mainFuncName);
+		if (!CHECK(entryFuncPtr))
+			return ReturnCode::LLVMLinkError;
+		JIT::mapCode(_data->codeHash, (uint64_t)entryFuncPtr); // FIXME: Remove cast
 	}
-	if (!CHECK(entryFuncPtr))
-		return ReturnCode::LLVMLinkError;
-
-	if (it == funcCache.end())
-		funcCache[mainFuncName] = (uint64_t) entryFuncPtr;
 
 	listener->stateChanged(ExecState::Execution);
 	auto returnCode = entryFuncPtr(&m_runtime);
