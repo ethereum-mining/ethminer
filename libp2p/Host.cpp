@@ -79,6 +79,25 @@ bool ReputationManager::isRude(Session const& _s, std::string const& _sub) const
 	return false;
 }
 
+void ReputationManager::setData(Session const& _s, std::string const& _sub, bytes const& _data)
+{
+	DEV_WRITE_GUARDED(x_nodes)
+		m_nodes[make_pair(_s.id(), _s.info().clientVersion)].subs[_sub].data = _data;
+}
+
+bytes ReputationManager::data(Session const& _s, std::string const& _sub) const
+{
+	DEV_READ_GUARDED(x_nodes)
+	{
+		auto nit = m_nodes.find(make_pair(_s.id(), _s.info().clientVersion));
+		if (nit == m_nodes.end())
+			return bytes();
+		auto sit = nit->second.subs.find(_sub);
+		return sit == nit->second.subs.end() ? bytes() : sit->second.data;
+	}
+	return bytes();
+}
+
 Host::Host(std::string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork):
 	Worker("p2p", 0),
 	m_restoreNetwork(_restoreNetwork.toBytes()),

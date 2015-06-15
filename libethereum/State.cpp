@@ -115,21 +115,19 @@ State::State(OverlayDB const& _db, BaseState _bs, Address _coinbaseAddress):
 	paranoia("end of normal construction.", true);
 }
 
-State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h, ImportRequirements::value _ir):
-	m_db(_db),
-	m_state(&m_db),
-	m_blockReward(c_blockReward)
+PopulationStatistics State::populateFromChain(BlockChain const& _bc, h256 const& _h, ImportRequirements::value _ir)
 {
-	auto b = _bc.block(_h);
-	BlockInfo bi(b);
+	PopulationStatistics ret;
 
-	if (!bi)
+	if (!_bc.isKnown(_h))
 	{
 		// Might be worth throwing here.
 		cwarn << "Invalid block given for state population: " << _h;
-		return;
+		return ret;
 	}
 
+	auto b = _bc.block(_h);
+	BlockInfo bi(b);
 	if (bi.number)
 	{
 		// Non-genesis:
@@ -143,10 +141,10 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h, ImportRequire
 		m_ourAddress = bi.coinbaseAddress;
 		boost::timer t;
 		auto vb = BlockChain::verifyBlock(b);
-		cnote << "verifyBlock:" << t.elapsed();
+		ret.verify = t.elapsed();
 		t.restart();
 		enact(vb, _bc, _ir);
-		cnote << "enact:" << t.elapsed();
+		ret.enact = t.elapsed();
 	}
 	else
 	{
@@ -155,6 +153,8 @@ State::State(OverlayDB const& _db, BlockChain const& _bc, h256 _h, ImportRequire
 		m_state.init();
 		sync(_bc, _h, bi, _ir);
 	}
+
+	return ret;
 }
 
 State::State(State const& _s):
@@ -600,7 +600,7 @@ string State::vmTrace(bytesConstRef _block, BlockChain const& _bc, ImportRequire
 	{
 		StandardTrace st;
 		st.setShowMnemonics();
-		execute(lh, Transaction(tr.data(), CheckTransaction::Everything), Permanence::Committed, [&](uint64_t _steps, Instruction _inst, bigint _newMemSize, bigint _gasCost, bigint _gas, VM* _vm, ExtVMFace const* _extVM) { st(_steps, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM); });
+		execute(lh, Transaction(tr.data(), CheckTransaction::Everything), Permanence::Committed, st.onOp());
 		ret += (ret.empty() ? "[" : ",") + st.json();
 
 		RLPStream receiptRLP;

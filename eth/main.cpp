@@ -685,9 +685,8 @@ int main(int argc, char** argv)
 	VMFactory::setKind(jit ? VMKind::JIT : VMKind::Interpreter);
 	auto netPrefs = publicIP.empty() ? NetworkPreferences(listenIP ,listenPort, upnp) : NetworkPreferences(publicIP, listenIP ,listenPort, upnp);
 	auto nodesState = contents((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp");
-	std::string clientImplString = "++eth/" + clientName + "v" + dev::Version + "-" + string(DEV_QUOTED(ETH_COMMIT_HASH)).substr(0, 8) + (ETH_CLEAN_REPO ? "" : "*") + "/" DEV_QUOTED(ETH_BUILD_TYPE) "/" DEV_QUOTED(ETH_BUILD_PLATFORM) + (jit ? "/JIT" : "");
 	dev::WebThreeDirect web3(
-		clientImplString,
+		WebThreeDirect::composeClientVersion("++eth", clientName),
 		dbPath,
 		killChain,
 		nodeMode == NodeMode::Full ? set<string>{"eth"/*, "shh"*/} : set<string>(),
@@ -800,7 +799,7 @@ int main(int argc, char** argv)
 //	std::shared_ptr<eth::BasicGasPricer> gasPricer = make_shared<eth::BasicGasPricer>(u256(double(ether / 1000) / etherPrice), u256(blockFees * 1000));
 	std::shared_ptr<eth::TrivialGasPricer> gasPricer = make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
 	eth::Client* c = nodeMode == NodeMode::Full ? web3.ethereum() : nullptr;
-	StructuredLogger::starting(clientImplString, dev::Version);
+	StructuredLogger::starting(WebThreeDirect::composeClientVersion("++eth", clientName), dev::Version);
 	if (c)
 	{
 		c->setGasPricer(gasPricer);
@@ -827,12 +826,12 @@ int main(int argc, char** argv)
 	if (jsonrpc > -1)
 	{
 		jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){return web3.ethereum();}, getAccountPassword, keyManager), vector<KeyPair>(), keyManager));
+		jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
 		jsonrpcServer->StartListening();
 		if (jsonAdmin.empty())
-			jsonAdmin = jsonrpcServer->newSession(SessionPermissions{true});
+			jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
 		else
-			jsonrpcServer->addSession(jsonAdmin, SessionPermissions{true});
+			jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
 		cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
 	}
 #endif
@@ -982,12 +981,12 @@ int main(int argc, char** argv)
 				if (jsonrpc < 0)
 					jsonrpc = SensibleHttpPort;
 				jsonrpcConnector = unique_ptr<jsonrpc::AbstractServerConnector>(new jsonrpc::HttpServer(jsonrpc, "", "", SensibleHttpThreads));
-				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager));
+				jsonrpcServer = shared_ptr<WebThreeStubServer>(new WebThreeStubServer(*jsonrpcConnector.get(), web3, make_shared<SimpleAccountHolder>([&](){ return web3.ethereum(); }, getAccountPassword, keyManager), vector<KeyPair>(), keyManager, *gasPricer));
 				jsonrpcServer->StartListening();
 				if (jsonAdmin.empty())
-					jsonAdmin = jsonrpcServer->newSession(SessionPermissions{true});
+					jsonAdmin = jsonrpcServer->newSession(SessionPermissions{{Priviledge::Admin}});
 				else
-					jsonrpcServer->addSession(jsonAdmin, SessionPermissions{true});
+					jsonrpcServer->addSession(jsonAdmin, SessionPermissions{{Priviledge::Admin}});
 				cout << "JSONRPC Admin Session Key: " << jsonAdmin << endl;
 			}
 			else if (cmd == "jsonstop")
@@ -1083,7 +1082,7 @@ int main(int argc, char** argv)
 			}
 			else if (c && cmd == "retryunknown")
 			{
-				c->retryUnkonwn();
+				c->retryUnknown();
 			}
 			else if (cmd == "peers")
 			{
@@ -1520,7 +1519,7 @@ int main(int argc, char** argv)
 				ofstream f;
 				f.open(filename);
 
-				dev::eth::State state =c->state(index + 1,c->blockChain().numberHash(block));
+				dev::eth::State state = c->state(index + 1,c->blockChain().numberHash(block));
 				if (index < state.pending().size())
 				{
 					Executive e(state, c->blockChain(), 0);
@@ -1712,7 +1711,7 @@ int main(int argc, char** argv)
 		while (!g_exit)
 			this_thread::sleep_for(chrono::milliseconds(1000));
 
-	StructuredLogger::stopping(clientImplString, dev::Version);
+	StructuredLogger::stopping(WebThreeDirect::composeClientVersion("++eth", clientName), dev::Version);
 	auto netData = web3.saveNetwork();
 	if (!netData.empty())
 		writeFile((dbPath.size() ? dbPath : getDataDir()) + "/network.rlp", netData);
