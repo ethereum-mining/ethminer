@@ -198,6 +198,56 @@ static Json::Value toJson(dev::eth::LocalisedLogEntry const& _e)
 	return res;
 }
 
+static Json::Value toJsonEx(dev::eth::LocalisedLogEntries const& _es)
+{
+	map <h256, LocalisedLogEntries> entriesByBlock;
+
+	for (dev::eth::LocalisedLogEntry const& e: _es)
+	{
+		if (e.topics.size() == 0) // skip special log
+			continue;
+
+		if (entriesByBlock.count(e.blockHash) == 0)
+			entriesByBlock[e.blockHash] = LocalisedLogEntries();
+
+		entriesByBlock[e.blockHash].push_back(e);
+	}
+
+	Json::Value res(Json::arrayValue);
+	for (auto const& i: entriesByBlock)
+	{
+		Json::Value currentBlock(Json::objectValue);
+		LocalisedLogEntry entry = i.second[0];
+		if (entry.mined)
+		{
+
+			currentBlock["blockNumber"] = entry.blockNumber;
+			currentBlock["blockHash"] = toJS(entry.blockHash);
+			currentBlock["type"] = "mined";
+		}
+		else
+			currentBlock["type"] = "pending";
+
+		currentBlock["logs"] = Json::Value(Json::arrayValue);
+
+		for (LocalisedLogEntry const& e: i.second)
+		{
+			Json::Value log(Json::objectValue);
+			log["logIndex"] = e.logIndex;
+			log["polarity"] = e.polarity == BlockPolarity::Live ? true : false;
+			log["transactionIndex"] = e.transactionIndex;
+			log["transactionHash"] = toJS(e.transactionHash);
+			log["address"] = toJS(e.address);
+			log["data"] = toJS(e.data);
+			log["topics"] = toJS(e.topics);
+
+			currentBlock["logs"].append(log);
+		}
+
+		res.append(currentBlock);
+	}
+}
+
 static Json::Value toJson(dev::eth::LocalisedLogEntries const& _es)
 {
 	Json::Value res(Json::arrayValue);
@@ -1001,7 +1051,7 @@ Json::Value WebThreeStubServerBase::eth_getFilterChangesEx(string const& _filter
 		auto entries = client()->checkWatch(id);
 		if (entries.size())
 			cnote << "FIRING WATCH" << id << entries.size();
-		return toJson(entries);
+		return toJsonEx(entries);
 	}
 	catch (...)
 	{
@@ -1025,7 +1075,7 @@ Json::Value WebThreeStubServerBase::eth_getFilterLogsEx(string const& _filterId)
 {
 	try
 	{
-		return toJson(client()->logs(jsToInt(_filterId)));
+		return toJsonEx(client()->logs(jsToInt(_filterId)));
 	}
 	catch (...)
 	{
