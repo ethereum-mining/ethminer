@@ -3,7 +3,9 @@
 #include <memory>
 #include <unordered_map>
 
+#include "preprocessor/llvm_includes_start.h"
 #include <llvm/ExecutionEngine/ObjectCache.h>
+#include "preprocessor/llvm_includes_end.h"
 
 namespace llvm
 {
