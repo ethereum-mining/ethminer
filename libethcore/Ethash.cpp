@@ -109,7 +109,7 @@ bool Ethash::verify(BlockInfo const& _header)
 #if !ETH_DEBUG
 	if (!pre)
 	{
-		cdebug << "Fail on preVerify";
+		cwarn << "Fail on preVerify";
 		return false;
 	}
 #endif
