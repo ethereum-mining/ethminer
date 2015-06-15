@@ -14,11 +14,23 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file JSConsole.cpp
+/** @file JSLocalConsole.cpp
  * @author Marek Kotewicz <marek@ethdev.com>
  * @date 2015
  * Ethereum client.
  */
 
+#include <iostream>
+#include <libweb3jsonrpc/WebThreeStubServer.h>
+#include "JSLocalConsole.h"
+#include "JSV8Connector.h"
 
-#include "JSConsole.h"
+using namespace std;
+using namespace dev;
+using namespace dev::eth;
+
+JSLocalConsole::JSLocalConsole(WebThreeDirect& _web3, shared_ptr<AccountHolder> const& _accounts)
+{
+	m_jsonrpcConnector.reset(new JSV8Connector(m_engine));
+//	m_jsonrpcServer.reset(new WebThreeStubServer(*m_jsonrpcConnector.get(), _web3, _accounts, vector<KeyPair>()));
+}
